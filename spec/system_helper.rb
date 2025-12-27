@@ -7,7 +7,7 @@ require "capybara/cuprite"
 Capybara.register_driver :cuprite do |app|
   Capybara::Cuprite::Driver.new(
     app,
-    window_size: [1400, 900],
+    window_size: [ 1400, 900 ],
     headless: %w[0 false].exclude?(ENV.fetch("HEADLESS", "true")),
     slowmo: ENV.fetch("SLOWMO", 0).to_f,
     process_timeout: 30,
