@@ -27,6 +27,27 @@ class MTGCard < ApplicationRecord
   # Callbacks
   before_validation :generate_uuid, on: :create
 
+  # Scopes
+  # Full-text search using FTS5 virtual table
+  # @param query [String] Search query
+  # @return [ActiveRecord::Relation] Matching cards
+  scope :search, ->(query) {
+    return none if query.blank?
+
+    # Add wildcard suffix for partial matching
+    # FTS5 prefix queries allow "light*" to match "lightning"
+    fts_query = query.strip.split.map { |term| "#{term}*" }.join(" ")
+
+    # Use FTS5 MATCH for full-text search
+    # The FTS5 table is kept in sync via triggers
+    joins("INNER JOIN mtg_cards_fts ON mtg_cards.rowid = mtg_cards_fts.rowid")
+      .where("mtg_cards_fts MATCH ?", fts_query)
+      .order("rank")
+  }
+
+  # Alias for search for clearer intent
+  scope :search_by_name, ->(query) { search(query) }
+
   # CatalogEntryInterface compliance
   # Returns the stable MTGJSON identifier for this card.
   #
