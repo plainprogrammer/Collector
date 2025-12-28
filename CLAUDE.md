@@ -239,8 +239,16 @@ Do not invent requirements or make assumptions about unstated behavior.
 
 <!-- Update this section as the project progresses -->
 
-**Completed Features**: None (bootstrapping)
+**Completed Features**:
+- ✅ Phase 0.1 - Project Setup (2025-12-27, commits T001–T009)
+  - Rails 8.1 application bootstrapped
+  - Tailwind CSS with MTG color theme
+  - ViewComponent architecture with ApplicationComponent base
+  - Turbo/Stimulus configured with controller structure
+  - RSpec test framework with FactoryBot, Capybara, Cuprite
+  - CI pipeline (RuboCop, Bundler Audit, Brakeman)
+  - Responsive layout with navigation and Turbo Frames
 
-**In Progress**: Project setup and infrastructure
+**In Progress**: None
 
-**Next Up**: Phase 0 - Foundation (see ROADMAP.md)
+**Next Up**: Phase 0.2 - Catalog Infrastructure (see ROADMAP.md § 0.2)

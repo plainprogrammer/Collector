@@ -37,17 +37,42 @@ This roadmap defines the development phases for Collector, a Magic: The Gatherin
 **Duration**: 1-2 weeks  
 **Dependencies**: None
 
-### 0.1 Project Setup
+### 0.1 Project Setup ✅ **COMPLETE**
+
+**Status**: Completed 2025-12-27
+**Commits**: T001–T009 (9 commits)
 
 Establish the Rails 8.1 application with core dependencies and configuration.
 
-**Scope**:
-- Rails 8.1 new application with SQLite configuration
-- Tailwind CSS integration
-- Turbo and Stimulus configuration
-- ViewComponent setup with ApplicationComponent base class
-- Basic application layout with responsive navigation shell
-- Development environment configuration (linting, testing framework)
+**Completed Deliverables**:
+- ✅ Rails 8.1 new application with SQLite configuration
+- ✅ Tailwind CSS integration with MTG color theme
+- ✅ Turbo and Stimulus configuration with controller structure
+- ✅ ViewComponent gem installed (v4.1.1)
+- ✅ ApplicationComponent base class with helper methods
+- ✅ Basic application layout with responsive navigation shell
+- ✅ Turbo Frame targets: `flash_messages` and `modal`
+- ✅ Development environment configuration (linting, testing framework)
+- ✅ RSpec 8.0.2 with FactoryBot integration
+- ✅ Capybara + Cuprite for system tests
+- ✅ ViewComponent test helpers configured
+- ✅ Spec directory structure (components, factories, models, requests, system)
+- ✅ RuboCop Omakase style checking
+- ✅ Brakeman security scanning
+- ✅ CI script integration (`bin/ci`)
+- ✅ Database migrations directory created
+
+**Test Coverage**:
+- ApplicationComponent: 15 specs, all passing
+- CI checks: All passing (setup, style, security)
+
+**Key Files Created**:
+- `app/components/application_component.rb` - Base component with badge styling helpers
+- `app/assets/tailwind/application.css` - Tailwind v4 with MTG color theme
+- `app/views/layouts/application.html.erb` - Responsive layout with nav and Turbo Frames
+- `app/javascript/controllers/` - Stimulus controller structure
+- `spec/support/` - Test helper configuration
+- `Procfile.dev` - Development process manager
 
 **Out of Scope**:
 - Authentication (single-user MVP)
@@ -652,3 +677,4 @@ The following features are explicitly out of scope for MVP but the architecture 
 |------------|--------|----------------------------------------------|
 | 2025-01-XX | —      | Initial roadmap based on design discussions  |
 | 2025-01-XX | —      | Added Catalog abstraction to Phase 0, aligned model naming with CORE_DATA_MODEL, clarified quantity field usage |
+| 2025-12-27 | Claude | Phase 0.1 Project Setup completed (T001–T009): Rails 8.1 app bootstrapped with Tailwind, ViewComponent, Turbo/Stimulus, RSpec, and CI configuration |
