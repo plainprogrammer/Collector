@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 class Catalog < ApplicationRecord
+  # Associations
+  has_one :collection, dependent: :restrict_with_error
+
   # Validations
   validates :name, presence: true
   validates :source_type, presence: true, inclusion: { in: %w[mtgjson api custom] }
