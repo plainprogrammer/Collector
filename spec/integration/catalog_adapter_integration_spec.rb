@@ -7,8 +7,8 @@ RSpec.describe "Catalog adapter integration" do
     context "with mtgjson source_type" do
       let(:catalog) { create(:catalog, source_type: "mtgjson") }
 
-      it "returns a MtgjsonAdapter instance" do
-        expect(catalog.adapter).to be_a(MtgjsonAdapter)
+      it "returns a MTGJSONAdapter instance" do
+        expect(catalog.adapter).to be_a(MTGJSONAdapter)
       end
 
       it "passes the catalog to the adapter" do

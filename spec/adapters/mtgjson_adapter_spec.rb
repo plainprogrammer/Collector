@@ -2,7 +2,7 @@
 
 require "rails_helper"
 
-RSpec.describe MtgjsonAdapter do
+RSpec.describe MTGJSONAdapter do
   let(:catalog) { create(:catalog, :mtgjson) }
   let(:adapter) { described_class.new(catalog) }
 
@@ -24,26 +24,26 @@ RSpec.describe MtgjsonAdapter do
 
   describe "#search" do
     it "raises NotImplementedError (placeholder for Phase 0.3)" do
-      expect { adapter.search("Black Lotus") }.to raise_error(NotImplementedError)
+      expect { adapter.search("Black Lotus") }.to raise_error(NotImplementedError, /MTGJSONAdapter/)
     end
   end
 
   describe "#fetch_entry" do
     it "raises NotImplementedError (placeholder for Phase 0.3)" do
-      expect { adapter.fetch_entry("some-uuid") }.to raise_error(NotImplementedError)
+      expect { adapter.fetch_entry("some-uuid") }.to raise_error(NotImplementedError, /MTGJSONAdapter/)
     end
   end
 
   describe "#refresh" do
     it "raises NotImplementedError (placeholder for Phase 0.3)" do
       entry = double("entry")
-      expect { adapter.refresh(entry) }.to raise_error(NotImplementedError)
+      expect { adapter.refresh(entry) }.to raise_error(NotImplementedError, /MTGJSONAdapter/)
     end
   end
 
   describe "#bulk_import" do
     it "raises NotImplementedError (placeholder for Phase 0.3)" do
-      expect { adapter.bulk_import }.to raise_error(NotImplementedError)
+      expect { adapter.bulk_import }.to raise_error(NotImplementedError, /MTGJSONAdapter/)
     end
   end
 end
