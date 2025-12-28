@@ -17,8 +17,8 @@ class CreateItems < ActiveRecord::Migration[8.1]
 
     add_index :items, :collection_id
     add_index :items, :storage_unit_id
-    add_index :items, [:catalog_entry_type, :catalog_entry_id]
-    add_index :items, [:detail_type, :detail_id], unique: true
+    add_index :items, [ :catalog_entry_type, :catalog_entry_id ]
+    add_index :items, [ :detail_type, :detail_id ], unique: true
     add_foreign_key :items, :collections
     add_foreign_key :items, :storage_units
   end

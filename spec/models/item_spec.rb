@@ -33,6 +33,28 @@ RSpec.describe Item, type: :model do
       expect(item).not_to be_valid
       expect(item.errors[:quantity]).to include("must be greater than 0")
     end
+
+    describe "storage unit collection scope" do
+      it "validates storage_unit belongs to item's collection" do
+        collection = create(:collection)
+        other_collection = create(:collection)
+        storage_unit = create(:storage_unit)
+        create(:collection_storage_unit, collection: other_collection, storage_unit: storage_unit)
+
+        item = build(:item, collection: collection, storage_unit: storage_unit)
+        expect(item).not_to be_valid
+        expect(item.errors[:storage_unit]).to include("must belong to the item's collection")
+      end
+
+      it "allows storage_unit that belongs to item's collection" do
+        collection = create(:collection)
+        storage_unit = create(:storage_unit)
+        create(:collection_storage_unit, collection: collection, storage_unit: storage_unit)
+
+        item = build(:item, collection: collection, storage_unit: storage_unit)
+        expect(item).to be_valid
+      end
+    end
   end
 
   describe "UUID primary key" do

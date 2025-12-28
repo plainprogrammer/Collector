@@ -7,7 +7,7 @@ class CreateCollectionStorageUnits < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :collection_storage_units, [:collection_id, :storage_unit_id], unique: true, name: "index_csu_on_collection_and_storage_unit"
+    add_index :collection_storage_units, [ :collection_id, :storage_unit_id ], unique: true, name: "index_csu_on_collection_and_storage_unit"
     add_foreign_key :collection_storage_units, :collections
     add_foreign_key :collection_storage_units, :storage_units
   end

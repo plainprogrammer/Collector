@@ -18,6 +18,7 @@ class Item < ApplicationRecord
 
   # Validations
   validates :quantity, numericality: { greater_than: 0 }
+  validate :storage_unit_belongs_to_collection, if: :storage_unit_id?
 
   # Callbacks
   before_validation :generate_uuid, on: :create
@@ -26,5 +27,13 @@ class Item < ApplicationRecord
 
   def generate_uuid
     self.id ||= SecureRandom.uuid
+  end
+
+  def storage_unit_belongs_to_collection
+    return unless storage_unit && collection
+
+    unless storage_unit.collections.include?(collection)
+      errors.add(:storage_unit, "must belong to the item's collection")
+    end
   end
 end
