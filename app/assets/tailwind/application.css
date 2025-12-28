@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+@theme {
+  /* MTG Mana Colors */
+  --color-mtg-white: #F8F6D8;
+  --color-mtg-blue: #0E68AB;
+  --color-mtg-black: #150B00;
+  --color-mtg-red: #D3202A;
+  --color-mtg-green: #00733E;
+  --color-mtg-colorless: #CBC2BF;
+}
