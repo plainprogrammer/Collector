@@ -1,7 +1,7 @@
 # Feature 002: Scryfall Catalog Ingestion and Card Search
 
 **Status:** Approved
-**Version:** 1.1.0
+**Version:** 1.1.1
 **Created:** 2026-09-29
 **Last Updated:** 2026-09-29
 **Branch:** `feat/002-scryfall-catalog-search`
@@ -14,6 +14,7 @@
 |---------|------|--------|
 | 1.0.0 | 2026-09-29 | Initial approved spec |
 | 1.1.0 | 2026-09-29 | Spec review revisions: a run applies when the source version *or* the language set changed (AC-4.3, AC-6.2/6.3, FR-4); concurrent-refresh semantics and interrupted runs (AC-4.4–4.6, FR-4); result groups capped at 10 printings with a per-card printings page (AC-1.4, new Story 10, FR-10); groups list every printing of a matching card (AC-1.4, FR-7); literal wildcard matching (AC-1.13); detail URLs keyed by Scryfall ID (AC-3.4, FR-8); Scryfall adapter under `MTG::Scryfall` behind a core `Catalog::Sources` interface (AC-9.2/9.3, FR-3, FR-9); FR-9 covers root `CLAUDE.md`; bulk-format spike (FR-3); clarified sort tie-breakers, blank/invalid input, last-refresh definition, count semantics, artist per face, localized names on multi-face printings, allowed hosts |
+| 1.1.1 | 2026-09-29 | Wording clarifications from the implementation review (no behaviour change): AC-8.1 "seen" counts valid records and malformed ones are counted separately; FR-3 allows the English-only `default_cards` file; AC-3.5 link shown only when the card has searchable printings |
 
 ---
 
@@ -103,7 +104,7 @@ Collector has no catalog data. Every later feature (owned copies, collections, d
 - [ ] **AC-3.2** Given a printing's detail page When it renders Then it links to the printing's page on Scryfall and shows attribution that card data and images come from Scryfall
 - [ ] **AC-3.3** Given a retired printing When the visitor opens its detail page Then the page renders with status 200 and states that the printing is no longer present in the upstream source
 - [ ] **AC-3.4** Given a printing When its detail page URL is inspected Then it is addressed by the printing's Scryfall ID (its external ID), not an internal database ID; and given a Scryfall ID that matches no printing When the visitor opens that URL Then the response status is 404
-- [ ] **AC-3.5** Given a printing's detail page When it renders Then it links to the printings page of its card (Story 10)
+- [ ] **AC-3.5** Given a printing's detail page When it renders and its card has at least one non-retired card-kind printing Then it links to the printings page of its card (Story 10); otherwise no such link is shown (that page would return 404 per AC-10.3)
 - [ ] **AC-3.6** Given any search or detail page When the server renders it Then the server makes no outbound network request (images are loaded by the visitor's browser from Scryfall's image host)
 
 ### Story 4: Operator gets fresh data on a schedule
@@ -174,7 +175,7 @@ Collector has no catalog data. Every later feature (owned copies, collections, d
 
 **Acceptance criteria:**
 
-- [ ] **AC-8.1** Given refresh runs have happened When the operator runs the documented status command Then it lists the most recent 10 runs, newest first, each with source version, trigger, status, start and finish time, and counts of seen, inserted, updated, retired, restored, and skipped-malformed printings ("seen" counts records that passed the language and paper filters; every count refers to printings only)
+- [ ] **AC-8.1** Given refresh runs have happened When the operator runs the documented status command Then it lists the most recent 10 runs, newest first, each with source version, trigger, status, start and finish time, and counts of seen, inserted, updated, retired, restored, and skipped-malformed printings ("seen" counts valid records that passed the language and paper filters, and records that passed the filters but could not be mapped are counted only as skipped-malformed; every count refers to printings only)
 - [ ] **AC-8.2** Given a failed run When it is listed Then its error message is shown
 - [ ] **AC-8.3** Given a refresh finishes (applied, skipped, or failed) When the application log is inspected Then it contains one structured entry for the run with its status and counts
 
@@ -230,7 +231,7 @@ Collector has no catalog data. Every later feature (owned copies, collections, d
 The adapter lives at `MTG::Scryfall` and implements a collectible-agnostic `Catalog::Sources` interface; the refresh (FR-4) talks only to that interface. Before implementation, a spike confirms Scryfall's bulk-data index fields, the bulk file's encoding and structure, and what the published size refers to, and picks a way to read it record by record; the plan records the result.
 
 **Must:**
-- Discover the current bulk file of all printings from Scryfall's bulk-data index and treat its published version as the source version.
+- Discover the current bulk file of all printings from Scryfall's bulk-data index and treat its published version as the source version (for an English-only configuration, Scryfall's smaller `default_cards` file, which contains every English printing, may be used instead).
 - Download the file in the background into the persistent storage directory, verify its integrity against what Scryfall publishes (per the spike), and retain at most the two most recent downloaded versions.
 - Read the file record by record without loading it all into memory.
 - Filter out printings whose language is not configured and printings that are digital-only before they are persisted.
