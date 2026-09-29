@@ -1,0 +1,20 @@
+#!/bin/sh
+# Automatic worktree setup (spec 003, FR-3). Enabled by bin/setup via
+# core.hooksPath=.githooks. Runs only for a brand-new linked worktree:
+# null previous commit ($1), branch checkout ($3 = 1), and git dir != common dir.
+# Never fails the checkout: a setup failure is reported and the worktree kept.
+
+# $1 must be all zeros (SHA-1 or SHA-256 null object id); empty is not a new checkout.
+case "$1" in "" | *[!0]*) exit 0 ;; esac
+[ "$3" = "1" ] || exit 0
+
+git_dir=$(git rev-parse --path-format=absolute --git-dir 2>/dev/null) || exit 0
+common_dir=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || exit 0
+[ "$git_dir" != "$common_dir" ] || exit 0
+[ -x bin/setup ] || exit 0
+
+echo "== New worktree: running bin/setup --skip-server =="
+if ! bin/setup --skip-server; then
+  echo "!! Automatic setup failed. Run bin/setup in $(pwd) to finish setting up this worktree." >&2
+fi
+exit 0
