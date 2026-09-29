@@ -1,0 +1,11 @@
+<section class="catalog-group">
+  <h2><%= group.identity.name %></h2>
+  <ul class="catalog-printings">
+    <% group.entries.each do |entry| %>
+      <li><%= render "catalog/entries/summary", entry: %></li>
+    <% end %>
+  </ul>
+  <% if group.total_entries > group.entries.size %>
+    <%= link_to "Show all #{group.total_entries} printings", catalog_identity_path(group.identity, set: set_code) %>
+  <% end %>
+</section>
