@@ -1,0 +1,28 @@
+<dl>
+  <dt>Rarity</dt><dd><%= extension.rarity.humanize %></dd>
+  <dt>Finishes</dt><dd><%= extension.finishes.join(", ") %></dd>
+</dl>
+
+<% extension.faces.each do |face| %>
+  <section class="mtg-face">
+    <% image = catalog_url(face.dig("image_uris", "large") || face.dig("image_uris", "normal")) %>
+    <% if image %>
+      <%= image_tag image, alt: face["name"], loading: "lazy", width: 336, height: 468 %>
+    <% end %>
+    <h2><%= face["name"] %></h2>
+    <% if face["printed_name"] %>
+      <p><%= face["printed_name"] %></p>
+    <% end %>
+    <p><%= face["mana_cost"] %></p>
+    <p><%= face["type_line"] %></p>
+    <%= simple_format(h(face["oracle_text"])) %>
+    <p>Illustrated by <%= face["artist"] %></p>
+  </section>
+<% end %>
+
+<p>
+  Card data and images provided by Scryfall.
+  <% if catalog_url(extension.scryfall_uri) %>
+    <%= link_to "View on Scryfall", catalog_url(extension.scryfall_uri) %>
+  <% end %>
+</p>

@@ -6,6 +6,12 @@ class Catalog::EntriesController < ApplicationController
     @last_refresh = Catalog::RefreshRun.last_applied
   end
 
+  def show
+    @entry = Catalog::Entry.includes(:set, :identity).find_by!(external_key: params[:external_key])
+    Catalog::Entry.preload_extensions([ @entry ])
+    @printings_listed = @entry.identity.entries.searchable.exists?
+  end
+
   private
     def search_params = params.permit(:q, :set, :page)
 end
