@@ -34,9 +34,9 @@ Ruby 4.0.7, Rails 8.1.4, SQLite in every environment (including production), Hot
 
 ## Architecture Intent
 
-- **Collectible-agnostic core.** Core domain models (collections, items, conditions, valuations) must not know about any specific collectible; MTG-specific code lives under an `Mtg::` namespace behind an extension boundary.
+- **Collectible-agnostic core.** Core domain models (collections, items, conditions, valuations) must not know about any specific collectible; MTG-specific code lives under the `MTG::` namespace (inflector acronym in `config/initializers/inflections.rb`) behind an extension boundary.
 - **Row-level multi-tenancy.** Every tenant-owned table carries `account_id`; requests resolve `Current.account` and all queries scope through it. Jobs and Turbo Stream broadcasts must carry/restore the tenant. Shared catalog data (e.g. Scryfall cards) is global.
-- **External data behind adapters.** Sources such as Scryfall sit behind `Catalog::Sources::*` adapters, are synced in background jobs (bulk data, cached locally), and are never called during page render.
+- **External data behind adapters.** Sources such as Scryfall implement the `Catalog::Sources` contract and live in their collectible's namespace (`MTG::Scryfall`); they are synced in background jobs (bulk data, cached locally) and never called during page render.
 - **Self-hosting & upgrades.** Separate SQLite DBs (primary/queue/cache/cable) live in `storage/` on a persistent volume. Released migrations are never edited; every migration must be safe to run unattended from any prior version. User data export/import uses a documented, versioned format keyed by external IDs.
 
 ## Claude Code Hooks (`.claude/settings.json`)
