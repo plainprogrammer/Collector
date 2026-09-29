@@ -10,6 +10,9 @@ module Collector
     # Missing from the main checkout without a warning: Rails regenerates it.
     REGENERATED_IF_MISSING = %w[tmp/local_secret.txt].freeze
     NOT_GIT = "Not a git checkout; skipping file copy and worktree hooks.".freeze
+    # Relative, so each worktree runs the hooks versioned with the code it checks out.
+    HOOKS_PATH = ".githooks"
+    LOCK_FILE = "tmp/setup.lock"
 
     attr_reader :root
 
@@ -72,7 +75,47 @@ module Collector
       messages.compact
     end
 
+    # Plain `git config` writes the shared repository config, so this applies to
+    # every worktree. A different custom hooks path is never replaced.
+    def enable_worktree_hooks
+      return [] if checkout_kind == :none
+
+      current = git_output("config", "--get", "core.hooksPath").to_s.strip
+      return [] if current == HOOKS_PATH
+      unless current.empty?
+        return [ "Note: core.hooksPath is already #{current}; automatic worktree setup was not enabled." ]
+      end
+
+      active = active_default_hooks
+      unless git_output("config", "core.hooksPath", HOOKS_PATH)
+        return [ "!! could not enable automatic setup for new worktrees (git config core.hooksPath #{HOOKS_PATH} failed)." ]
+      end
+
+      messages = []
+      messages << "Note: these hooks in .git/hooks stop running now: #{active.join(', ')}" if active.any?
+      messages << "Enabled automatic setup for new worktrees (core.hooksPath=#{HOOKS_PATH})."
+    end
+
+    # Serializes setup runs in this worktree: a second run waits for the first.
+    def with_lock
+      path = File.join(root, LOCK_FILE)
+      FileUtils.mkdir_p(File.dirname(path))
+      File.open(path, File::RDWR | File::CREAT, 0o644) do |lock|
+        lock.flock(File::LOCK_EX)
+        yield
+      end
+    end
+
     private
+
+    def active_default_hooks
+      common = git_output("rev-parse", "--path-format=absolute", "--git-common-dir").to_s.strip
+      return [] if common.empty?
+
+      Dir.glob(File.join(common, "hooks", "*"))
+        .select { |f| File.file?(f) && File.executable?(f) && !f.end_with?(".sample") }
+        .map { |f| File.basename(f) }.sort
+    end
 
     def git_output(*args)
       out, status = Open3.capture2(git_env, @git, *args, chdir: root, err: File::NULL)
