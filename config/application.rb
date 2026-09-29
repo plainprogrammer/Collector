@@ -38,5 +38,8 @@ module Collector
 
     # Don't generate system test files.
     config.generators.system_tests = nil
+
+    # Downloaded catalog source files live on the persistent storage volume.
+    config.x.catalog_download_dir = Rails.root.join("storage/catalog")
   end
 end

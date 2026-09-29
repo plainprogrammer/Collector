@@ -1,6 +1,6 @@
 # External Data Sources, Import/Export & Upgrades
 
-- ✓ Wrap each external source in an adapter behind a source-agnostic interface (e.g. `Catalog::Sources::Scryfall`).
+- ✓ Wrap each external source in an adapter behind a source-agnostic interface (e.g. `MTG::Scryfall::Source` implementing `Catalog::Sources`).
 - ✓ Prefer Scryfall bulk-data downloads over per-card API calls; cache locally and refresh at most daily.
 - ✓ When calling Scryfall directly, send a descriptive `User-Agent` and `Accept` header, throttle (~50–100ms between requests), and back off on 429. (Verify against scryfall.com/docs/api.)
 - ✓ Key external records by the provider's stable IDs (Scryfall `id`, `oracle_id`) with a unique index; upsert in batches.

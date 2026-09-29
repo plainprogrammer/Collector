@@ -9,7 +9,7 @@ loaded-by: sdd-specify, sdd-plan, sdd-execute, sdd-review
 Rails/Zeitwerk: `snake_case` files mirroring `CamelCase` constants; singular models, plural controllers/tables; specs end in `_spec.rb` and mirror `app/`.
 
 ## Directory Structure
-Standard Rails 8 layout. Core, collectible-agnostic domain in `app/models/` (e.g. `Collection`, `Item`, `Catalog::`); collectible-specific code in namespaces such as `app/models/mtg/`. External source adapters under `Catalog::Sources::`. Detailed rules: `.claude/rules/`.
+Standard Rails 8 layout. Core, collectible-agnostic domain in `app/models/` (e.g. `Collection`, `Item`, `Catalog::`); collectible-specific code in namespaces such as `MTG::` (`app/models/mtg/`). External source adapters implement `Catalog::Sources` and live in their collectible's namespace (`MTG::Scryfall`). Detailed rules: `.claude/rules/`.
 
 ## Code Style
 `rubocop-rails-omakase` + `rubocop-rspec`, auto-corrected on edit; minimal, commented local overrides. RESTful thin controllers, HTML over the wire.

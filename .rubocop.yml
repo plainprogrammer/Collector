@@ -43,3 +43,7 @@ RSpec/DescribeClass:
     - "spec/githooks/post_checkout_spec.rb"
     - "spec/network_isolation_spec.rb"
     - "spec/project_config_spec.rb"
+
+# Integration-style examples need setup → act → assert; the default 5 lines is too tight.
+RSpec/ExampleLength:
+  Max: 15

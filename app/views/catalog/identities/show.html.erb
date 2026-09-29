@@ -1,0 +1,16 @@
+<% content_for :title, "#{@identity.name} printings · Collector" %>
+<main class="catalog">
+  <p><%= link_to "Back to search", catalog_entries_path(q: @identity.name) %></p>
+  <h1><%= @identity.name %></h1>
+  <% if @set_code %>
+    <p><%= link_to "Show all sets", catalog_identity_path(@identity) %></p>
+  <% end %>
+
+  <ul class="catalog-printings">
+    <% @entries.each do |entry| %>
+      <li><%= render "catalog/entries/summary", entry: %></li>
+    <% end %>
+  </ul>
+
+  <%= render "catalog/pagination", pagination: @pagination, link_params: { set: @set_code } %>
+</main>
