@@ -50,4 +50,7 @@ Rails.application.configure do
 
   # Raise error when a before_action's only/except options reference missing actions.
   config.action_controller.raise_on_missing_callback_actions = true
+
+  # Keep downloaded catalog source files out of storage/ in tests.
+  config.x.catalog_download_dir = Rails.root.join("tmp/catalog")
 end

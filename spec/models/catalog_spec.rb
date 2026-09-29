@@ -7,4 +7,18 @@ RSpec.describe Catalog, type: :model do
 
     expect(columns.grep(mtg_terms)).to be_empty
   end
+
+  describe ".source_class" do
+    it "returns the registered source class for a collectible type" do
+      expect(described_class.source_class("mtg")).to eq(MTG::Scryfall::Source)
+    end
+
+    it "rejects unknown collectible types" do
+      expect { described_class.source_class("pokemon") }.to raise_error(ArgumentError, /pokemon/)
+    end
+  end
+
+  it "allows images and links only from registered sources' hosts" do
+    expect(described_class.allowed_hosts).to contain_exactly("scryfall.com", "cards.scryfall.io", "svgs.scryfall.io")
+  end
 end
