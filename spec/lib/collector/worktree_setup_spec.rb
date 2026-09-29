@@ -52,6 +52,14 @@ RSpec.describe Collector::WorktreeSetup, :git_sandbox do
     end
   end
 
+  describe "#checkout_label" do
+    it "names each checkout kind readably", :aggregate_failures do
+      expect(setup_for(main).checkout_label).to eq("main checkout")
+      expect(setup_for(worktree).checkout_label).to eq("linked worktree")
+      expect(setup_for(dir).checkout_label).to eq("non-git directory")
+    end
+  end
+
   describe "#main_checkout" do
     it "resolves the main checkout from a linked worktree" do
       expect(setup_for(worktree).main_checkout).to eq(main)

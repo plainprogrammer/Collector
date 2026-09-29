@@ -13,6 +13,7 @@ module Collector
     # Relative, so each worktree runs the hooks versioned with the code it checks out.
     HOOKS_PATH = ".githooks"
     LOCK_FILE = "tmp/setup.lock"
+    CHECKOUT_LABELS = { main: "main checkout", linked: "linked worktree", none: "non-git directory" }.freeze
 
     attr_reader :root
 
@@ -30,6 +31,10 @@ module Collector
         else :linked
         end
       end
+    end
+
+    def checkout_label
+      CHECKOUT_LABELS.fetch(checkout_kind)
     end
 
     def main_checkout

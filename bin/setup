@@ -20,7 +20,7 @@ FileUtils.chdir APP_ROOT do
     puts "== Installing dependencies =="
     system("bundle check") || system!("bundle install")
 
-    puts "\n== Configuring #{checkout.checkout_kind} checkout =="
+    puts "\n== Configuring #{checkout.checkout_label} =="
     (checkout.copy_included_files + checkout.enable_worktree_hooks).each { |line| puts line }
 
     puts "\n== Preparing database =="
