@@ -93,10 +93,11 @@ data in SQLite on a persistent volume.
 
 `compose.yaml` works with both `docker compose` and `podman compose`.
 
-| Variable          | Required | Default | Purpose                                              |
-| ----------------- | -------- | ------- | ---------------------------------------------------- |
-| `SECRET_KEY_BASE` | yes      | none    | Secret used to sign and encrypt sessions and cookies |
-| `COLLECTOR_PORT`  | no       | `3000`  | Host port the app is published on                    |
+| Variable                  | Required | Default      | Purpose                                                                |
+| ------------------------- | -------- | ------------ | ---------------------------------------------------------------------- |
+| `SECRET_KEY_BASE`         | yes      | none         | Secret used to sign and encrypt sessions and cookies                   |
+| `COLLECTOR_PORT`          | no       | `3000`       | Host port the app is published on                                      |
+| `COLLECTOR_MTG_LANGUAGES` | no       | English only | Extra card languages, e.g. `ja,de` (see [Card catalog](#card-catalog)) |
 
 Compose refuses to start without `SECRET_KEY_BASE`. Generate one with:
 
@@ -139,6 +140,45 @@ Kamal (`bin/kamal`) deploys the same image to servers you control over SSH.
 
 Data is stored in the `collector_storage` volume (mounted at `/rails/storage`), and Solid
 Queue runs inside Puma (`SOLID_QUEUE_IN_PUMA`).
+
+## Card catalog
+
+Card data comes from [Scryfall](https://scryfall.com)'s bulk data files, which the app
+downloads in a background job and caches in its own database. Pages are rendered only from
+that local copy; the app never calls Scryfall while rendering a page.
+
+**The catalog is empty until the first refresh.** After the first deployment, queue a manual
+refresh:
+
+```sh
+bin/rails "catalog:refresh[mtg]"                          # locally
+docker compose exec web bin/rails "catalog:refresh[mtg]"  # Docker Compose (or podman compose)
+bin/kamal catalog-refresh                                 # Kamal
+```
+
+The command returns straight away; the refresh runs in the background (Solid Queue inside
+Puma). To see how it went, list the 10 most recent runs, newest first, with their counts and
+any error message:
+
+```sh
+bin/rails "catalog:status[mtg]"   # Kamal: bin/kamal catalog-status
+```
+
+- **Schedule:** in production the catalog refreshes weekly, on Mondays at 03:15 server time
+  (`config/recurring.yml`). A scheduled run is skipped when the same Scryfall file and
+  language set were already applied; a manual run always applies. Only one refresh per
+  collectible type runs at a time.
+- **Languages:** set `COLLECTOR_MTG_LANGUAGES` to a comma-separated, case-insensitive list of
+  extra languages (for example `ja,de`). The default is English only, and English is always
+  included. Accepted codes: `en es fr de it pt ja ko ru zhs zht he la grc ar sa ph qya`.
+  Changes take effect at the next refresh. Printings in a language you remove are retired,
+  not deleted. An unsupported code fails the refresh before anything is downloaded.
+- **Disk:** downloads are kept in `storage/catalog/mtg/` on the persistent volume, and only the
+  two newest are kept. English only uses Scryfall's `default_cards` file (about 80 MB each);
+  any other language needs the `all_cards` file (about 400 MB each). They can always be
+  downloaded again, so they don't need backing up.
+- **Attribution:** card data and images are © Wizards of the Coast and are provided by
+  Scryfall. Collector follows Scryfall's API guidelines.
 
 ## License
 
