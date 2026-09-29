@@ -3,3 +3,5 @@
 - [Foundation](foundation.md) — mission and principles, loaded every session
 - [Small incremental commits](small-incremental-commits.md) — one Conventional Commit per step/change
 - [Secret files are user-verified](secret-files-user-verified.md) — agents are read-denied on secrets/storage; ask the user to cat them
+- [SDD review model choice](sdd-review-model-choice.md) — reviews on Fable via subagent; planning on Opus in-session
+- [Scryfall API access](scryfall-api-access.md) — docs 403 to WebFetch; use curl + User-Agent; bulk JSONL facts
