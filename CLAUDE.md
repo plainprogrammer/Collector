@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status
 
-Collector is a self-hostable, multi-tenant web app for tracking collectibles, starting with Magic: The Gathering cards. The Rails app skeleton exists (stack, RSpec, `bin/ci`, Compose and Kamal deployment); no domain features yet. License: AGPL-3.0.
+Collector is a self-hostable, multi-tenant web app for tracking collectibles, starting with Magic: The Gathering cards. The Rails app skeleton exists (stack, RSpec, `bin/ci`, Compose and Kamal deployment). Feature 002 added a collectible-agnostic catalog core (`app/models/catalog/`) with an MTG extension (`app/models/mtg/`), Scryfall bulk-data ingestion via a background refresh, and a public card search proof-of-concept at `/catalog/entries`. No accounts or collections yet. License: AGPL-3.0.
 
 Mission and principles: `.claude/memory/foundation.md`. Detailed coding rules: `.claude/rules/`. Feature specs: `docs/specs/`.
 
@@ -22,6 +22,7 @@ Ruby 4.0.7, Rails 8.1.4, SQLite in every environment (including production), Hot
 - Security: `bin/brakeman`, `bin/bundler-audit`, `bin/importmap audit`
 - Local CI (single CI definition, `config/ci.rb`): `bin/ci` — setup, RuboCop, Brakeman, bundler-audit, importmap audit, RSpec. GitHub Actions runs only `bin/ci`, so change CI steps in `config/ci.rb`.
 - DB: `bin/rails db:prepare` (also what containers run on boot via `bin/docker-entrypoint`)
+- Catalog: `bin/rails "catalog:refresh[mtg]"` (queues a background refresh), `bin/rails "catalog:status[mtg]"` (10 most recent runs); extra languages via `COLLECTOR_MTG_LANGUAGES`
 - Containers locally: `podman compose up -d` (no Docker on the dev machine; `compose.yaml` needs `SECRET_KEY_BASE`, optional `COLLECTOR_PORT`)
 
 ## Non-obvious Facts
@@ -30,6 +31,7 @@ Ruby 4.0.7, Rails 8.1.4, SQLite in every environment (including production), Hot
 - **Worktrees:** `bin/setup` sets `core.hooksPath=.githooks` (unless a custom hooks path exists), so `git worktree add`, `claude --worktree` and Orca (`orca.yaml`) worktrees set themselves up via `.githooks/post-checkout` (new linked worktrees only; failures keep the worktree). Each worktree has its own DBs; dev port is 3000 in the main checkout, 3001–3999 per worktree (`lib/collector/dev_port.rb`), `PORT` overrides. Copy list = `.worktreeinclude` (copied only if missing, mode 0600; logic in `lib/collector/worktree_setup.rb`). A missing `config/master.key` only warns; a wrong one breaks boot.
 - **Specs:** tag spec types explicitly (`type: :request`, `type: :system`; no inference); multi-expectation examples use `:aggregate_failures`. System specs run in headless Firefox. WebMock + VCR block all real HTTP (cassettes in `spec/cassettes`).
 - **Deploy:** Compose (`compose.yaml`) and Kamal (`config/deploy.yml`, placeholder server/registry) both mount the `collector_storage` volume at `/rails/storage` and set `SOLID_QUEUE_IN_PUMA`. Both paths are documented in `README.md`; keep it in sync.
+- **Catalog data is global** (no `account_id`) and changes only through `Catalog::Refresh` (weekly `config/recurring.yml` schedule + the manual rake task, via `Catalog::RefreshJob`). Downloads are kept in `storage/catalog/<type>/`. Pages never call Scryfall during render.
 - **Off-limits for reads (permission-denied):** `.kamal/secrets`, `config/master.key`, `.env*`, `storage/`. Don't try to read them.
 
 ## Architecture Intent
