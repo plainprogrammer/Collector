@@ -1,0 +1,176 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(bin/rails generate *)",
+      "Bash(bin/rails g *)",
+      "Bash(bin/rails routes *)",
+      "Bash(bin/rails about)",
+      "Bash(bin/rails zeitwerk:check)",
+      "Bash(bin/rails db:migrate)",
+      "Bash(bin/rails db:prepare)",
+      "Bash(bin/rails db:test:prepare)",
+      "Bash(bin/rails db:migrate:status)",
+      "Bash(bin/rspec *)",
+      "Bash(bundle exec rspec *)",
+      "Bash(bin/rubocop *)",
+      "Bash(bundle exec rubocop *)",
+      "Bash(bin/brakeman *)",
+      "Bash(bin/bundler-audit *)",
+      "Bash(bin/importmap audit)",
+      "Bash(bin/importmap outdated)",
+      "Bash(bin/ci)",
+      "Bash(bundle install)",
+      "Bash(bundle check)",
+      "Bash(bundle outdated *)",
+      "Bash(bundle info *)",
+      "Bash(ruby -v)",
+      "Bash(ruby -c *)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(git branch *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git switch *)",
+      "Bash(git checkout -b *)",
+      "Bash(git stash *)",
+      "Bash(docker compose ps *)",
+      "Bash(docker compose logs *)",
+      "Bash(docker build *)",
+      "WebFetch(domain:guides.rubyonrails.org)",
+      "WebFetch(domain:api.rubyonrails.org)",
+      "WebFetch(domain:turbo.hotwired.dev)",
+      "WebFetch(domain:stimulus.hotwired.dev)",
+      "WebFetch(domain:rubygems.org)",
+      "WebFetch(domain:scryfall.com)",
+      "WebFetch(domain:kamal-deploy.org)"
+    ],
+    "ask": [
+      "Bash(git push *)",
+      "Bash(git rebase *)",
+      "Bash(git merge *)",
+      "Bash(bin/rails console *)",
+      "Bash(bin/rails c *)",
+      "Bash(bin/rails runner *)",
+      "Bash(bin/rails dbconsole *)",
+      "Bash(bin/rails db:rollback *)",
+      "Bash(bin/rails db:migrate:down *)",
+      "Bash(bin/rails db:seed *)",
+      "Bash(bundle update *)",
+      "Bash(bundle add *)",
+      "Bash(bin/importmap pin *)",
+      "Bash(bin/importmap unpin *)",
+      "Bash(RAILS_ENV=production *)",
+      "Bash(sqlite3 *)",
+      "Bash(curl *)",
+      "Bash(wget *)",
+      "Bash(kamal deploy *)",
+      "Bash(kamal rollback *)",
+      "Bash(kamal setup *)",
+      "Edit(./Dockerfile)",
+      "Edit(./config/deploy*.yml)",
+      "Edit(./.github/workflows/**)"
+    ],
+    "deny": [
+      "Bash(bin/rails db:drop *)",
+      "Bash(bin/rails db:reset *)",
+      "Bash(bin/rails db:purge *)",
+      "Bash(bin/rails db:schema:load *)",
+      "Bash(bin/rails db:truncate_all *)",
+      "Bash(bin/rails credentials:show *)",
+      "Bash(bin/rails credentials:fetch *)",
+      "Bash(bin/rails credentials:edit *)",
+      "Bash(cat config/master.key)",
+      "Bash(cat config/credentials/*.key)",
+      "Bash(cat .env*)",
+      "Bash(cat .kamal/secrets*)",
+      "Bash(printenv *)",
+      "Bash(env)",
+      "Bash(git push --force *)",
+      "Bash(git push -f *)",
+      "Bash(git reset --hard *)",
+      "Bash(git clean *)",
+      "Bash(git filter-branch *)",
+      "Bash(rm -rf *)",
+      "Bash(rm -fr *)",
+      "Bash(sudo *)",
+      "Bash(kamal secrets print *)",
+      "Bash(kamal remove *)",
+      "Bash(kamal app exec *)",
+      "Bash(kamal server exec *)",
+      "Bash(docker system prune *)",
+      "Bash(docker volume rm *)",
+      "Bash(docker compose down -v *)",
+      "Bash(gem push *)",
+      "Read(./config/master.key)",
+      "Edit(./config/master.key)",
+      "Read(./config/credentials/*.key)",
+      "Edit(./config/credentials/*.key)",
+      "Edit(./config/credentials.yml.enc)",
+      "Edit(./config/credentials/*.yml.enc)",
+      "Read(.env)",
+      "Read(.env.*)",
+      "Edit(.env)",
+      "Edit(.env.*)",
+      "Read(!.env.example)",
+      "Read(./.kamal/secrets*)",
+      "Edit(./.kamal/secrets*)",
+      "Read(./storage/**)",
+      "Edit(./storage/**)",
+      "Read(*.sqlite3)",
+      "Read(*.sqlite3-wal)",
+      "Read(*.sqlite3-shm)",
+      "Read(*.pem)",
+      "Read(*.key)",
+      "Read(*.p12)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Read(~/.gem/credentials)",
+      "Read(~/.config/gh/hosts.yml)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "timeout": 60,
+            "command": "command -v jq >/dev/null || exit 0; f=$(jq -r '.tool_input.file_path // empty'); case \"$f\" in *.rb|*.rake|*.ru|*.gemspec|*.jbuilder|*/Gemfile|*/Rakefile) ;; *) exit 0 ;; esac; [ -f \"$f\" ] || exit 0; cd \"$CLAUDE_PROJECT_DIR\" 2>/dev/null || exit 0; [ -x bin/rubocop ] || exit 0; out=$(bin/rubocop -a --force-exclusion --format simple \"$f\" 2>&1) || { printf 'RuboCop offenses remain after autocorrect in %s:\\n%s\\n' \"$f\" \"$out\" >&2; exit 2; }"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "timeout": 180,
+            "command": "command -v jq >/dev/null || exit 0; c=$(jq -r '.tool_input.command // empty'); printf '%s' \"$c\" | grep -Eq '(^|[;&|[:space:]])git([[:space:]]+-C[[:space:]]+[^[:space:]]+)?[[:space:]]+commit' || exit 0; cd \"$CLAUDE_PROJECT_DIR\" 2>/dev/null || exit 0; [ -x bin/rubocop ] || exit 0; git diff --cached --name-only --diff-filter=ACMR -z -- '*.rb' '*.rake' '*.ru' '*.gemspec' '*.jbuilder' Gemfile Rakefile | xargs -0 -r bin/rubocop --force-exclusion --format simple >&2 || { echo 'Pre-commit: RuboCop offenses in staged files. Run bin/rubocop -a, re-stage, then commit.' >&2; exit 2; }; if [ -x bin/brakeman ]; then bin/brakeman --quiet --no-pager --no-summary --exit-on-warn --exit-on-error >&2 || { echo 'Pre-commit: Brakeman reported warnings. Fix or add to config/brakeman.ignore before committing.' >&2; exit 2; }; fi"
+          },
+          {
+            "type": "command",
+            "timeout": 900,
+            "command": "command -v jq >/dev/null || exit 0; c=$(jq -r '.tool_input.command // empty'); printf '%s' \"$c\" | grep -Eq '(^|[;&|[:space:]])git([[:space:]]+-C[[:space:]]+[^[:space:]]+)?[[:space:]]+push' || exit 0; cd \"$CLAUDE_PROJECT_DIR\" 2>/dev/null || exit 0; [ -x bin/ci ] || exit 0; bin/ci >&2 || { echo 'Pre-push: bin/ci failed. Fix the failing step before pushing.' >&2; exit 2; }"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "timeout": 10,
+            "command": "command -v notify-send >/dev/null || exit 0; notify-send 'Claude Code' \"$(jq -r '.message // \"Needs your attention\"' 2>/dev/null)\" || true"
+          }
+        ]
+      }
+    ]
+  }
+}
