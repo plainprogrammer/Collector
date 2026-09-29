@@ -14,8 +14,8 @@ Ruby 4.0.7, Rails 8.1.4, SQLite in every environment (including production), Hot
 
 ## Commands
 
-- Setup: `bin/setup` (starts the server afterwards; `--skip-server` to not)
-- Run: `bin/dev` (just `bin/rails server`)
+- Setup: `bin/setup` (idempotent; works in clones and worktrees, copies `.worktreeinclude` files from the main checkout, enables `.githooks/` auto-setup; starts the server afterwards, `--skip-server` to not)
+- Run: `bin/dev` (just `bin/rails server`; port 3000, or the worktree's port printed by `bin/setup`)
 - All specs: `bin/rspec`
 - Single spec file / example: `bin/rspec spec/requests/home_spec.rb:5`
 - Lint (autocorrect): `bin/rubocop -a`
@@ -27,6 +27,7 @@ Ruby 4.0.7, Rails 8.1.4, SQLite in every environment (including production), Hot
 ## Non-obvious Facts
 
 - **Dev mirrors prod.** Development uses separate SQLite DBs (`storage/development{,_cache,_queue,_cable}.sqlite3`) and runs Solid Queue inside Puma (`config/puma.rb` plugin), so the server already processes jobs. Never also run `bin/jobs` (two supervisors on one SQLite queue DB). The test env uses Rails defaults (primary DB only, `:test` job adapter, null cache).
+- **Worktrees:** `bin/setup` sets `core.hooksPath=.githooks` (unless a custom hooks path exists), so `git worktree add`, `claude --worktree` and Orca (`orca.yaml`) worktrees set themselves up via `.githooks/post-checkout` (new linked worktrees only; failures keep the worktree). Each worktree has its own DBs; dev port is 3000 in the main checkout, 3001–3999 per worktree (`lib/collector/dev_port.rb`), `PORT` overrides. Copy list = `.worktreeinclude` (copied only if missing, mode 0600; logic in `lib/collector/worktree_setup.rb`). A missing `config/master.key` only warns; a wrong one breaks boot.
 - **Specs:** tag spec types explicitly (`type: :request`, `type: :system`; no inference); multi-expectation examples use `:aggregate_failures`. System specs run in headless Firefox. WebMock + VCR block all real HTTP (cassettes in `spec/cassettes`).
 - **Deploy:** Compose (`compose.yaml`) and Kamal (`config/deploy.yml`, placeholder server/registry) both mount the `collector_storage` volume at `/rails/storage` and set `SOLID_QUEUE_IN_PUMA`. Both paths are documented in `README.md`; keep it in sync.
 - **Off-limits for reads (permission-denied):** `.kamal/secrets`, `config/master.key`, `.env*`, `storage/`. Don't try to read them.
