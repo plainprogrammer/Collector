@@ -5,3 +5,5 @@
 - [Secret files are user-verified](secret-files-user-verified.md) — agents are read-denied on secrets/storage; ask the user to cat them
 - [SDD review model choice](sdd-review-model-choice.md) — reviews on Fable via subagent; planning on Opus in-session
 - [Scryfall API access](scryfall-api-access.md) — docs 403 to WebFetch; use curl + User-Agent; bulk JSONL facts
+- [PR screenshots workflow](pr-screenshots-workflow.md) — headless Firefox + magick/ffmpeg; embed in private-repo PRs via blob/<sha>?raw=true
+- [Background servers via task](background-servers-via-task.md) — run_in_background + TaskStop, not &/kill/pkill
