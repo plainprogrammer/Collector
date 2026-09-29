@@ -10,6 +10,14 @@ inherit_gem: { rubocop-rails-omakase: rubocop.yml }
 plugins:
   - rubocop-rspec
 
+# Claude Code worktrees are separate checkouts nested in this directory; lint them there, not here.
+inherit_mode:
+  merge:
+    - Exclude
+AllCops:
+  Exclude:
+    - ".claude/worktrees/**/*"
+
 RSpec:
   Enabled: true
 
@@ -27,7 +35,9 @@ RSpec/Output:
   Enabled: true
 
 # The network-isolation spec verifies the test harness (WebMock/VCR), not a
-# class, so a string describe is intentional there.
+# class, so a string describe is intentional there, and the project-config spec
+# checks repository files, not a class.
 RSpec/DescribeClass:
   Exclude:
     - "spec/network_isolation_spec.rb"
+    - "spec/project_config_spec.rb"
