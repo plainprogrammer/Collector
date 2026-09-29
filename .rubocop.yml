@@ -6,3 +6,28 @@ inherit_gem: { rubocop-rails-omakase: rubocop.yml }
 # # Use `[a, [b, c]]` not `[ a, [ b, c ] ]`
 # Layout/SpaceInsideArrayLiteralBrackets:
 #   Enabled: false
+
+plugins:
+  - rubocop-rspec
+
+RSpec:
+  Enabled: true
+
+# Pending rubocop-rspec cops are not switched on by the department-level
+# `Enabled: true` above; opt in explicitly so none are silently skipped.
+RSpec/DiscardedMatcher:
+  Enabled: true
+RSpec/IncludeExamples:
+  Enabled: true
+RSpec/LeakyLocalVariable:
+  Enabled: true
+RSpec/MatchWithSimpleRegex:
+  Enabled: true
+RSpec/Output:
+  Enabled: true
+
+# The network-isolation spec verifies the test harness (WebMock/VCR), not a
+# class, so a string describe is intentional there.
+RSpec/DescribeClass:
+  Exclude:
+    - "spec/network_isolation_spec.rb"
