@@ -26,4 +26,16 @@ class Catalog::Entry < ApplicationRecord
   def retired? = retired_at.present?
 
   def to_param = external_key
+
+  # Loads each entry's collectible-specific record in one query per type.
+  def self.preload_extensions(entries)
+    entries.group_by(&:collectible_type).each do |collectible_type, group|
+      model = Catalog.source_class(collectible_type).entry_extension_model
+      next if model.nil?
+
+      extensions = model.where(catalog_entry_id: group.map(&:id)).index_by(&:catalog_entry_id)
+      group.each { |entry| entry.extension = extensions[entry.id] }
+    end
+    entries
+  end
 end
