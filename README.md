@@ -18,15 +18,46 @@ Cable, all backed by SQLite.
 
 ```sh
 bin/setup   # install gems, prepare the database, then start the server
-bin/dev     # start the server on http://localhost:3000
+bin/dev     # start the server on http://localhost:3000 (another port in a worktree)
 ```
 
-`bin/setup --skip-server` prepares everything without starting the server.
+`bin/setup --skip-server` prepares everything without starting the server. `bin/setup` is
+idempotent; run it again after pulling changes.
 
 Development mirrors production: the app uses separate SQLite databases in `storage/`
 (`development`, `development_cache`, `development_queue`, `development_cable`), and Solid Queue
 runs inside Puma. `bin/dev` (or `bin/rails server`) therefore already processes background
 jobs. Do not also run `bin/jobs`, as that starts a second supervisor on the same queue database.
+
+### Worktrees
+
+`bin/setup` also prepares git worktrees, so several branches can run side by side. Run it
+once in your clone: it points `core.hooksPath` at the versioned `.githooks/` directory, and
+from then on every new worktree runs `bin/setup --skip-server` automatically. This covers
+plain `git worktree add`, `claude --worktree`, and Orca worktrees (local or remote); Orca
+also runs the same command through `orca.yaml`. The hook ignores ordinary branch switches,
+file checkouts, and the main checkout (including `git clone`), and concurrent runs in one
+worktree are serialized (`tmp/setup.lock`), so running it twice is safe.
+
+Enabling this replaces the clone's default `.git/hooks/` directory: setup lists any active
+hooks there that stop running. An existing custom `core.hooksPath` is left alone, and
+automatic setup stays off; run `bin/setup` in each new worktree yourself.
+
+- **Copied from the main checkout:** the files listed in `.worktreeinclude`
+  (`config/master.key` and `tmp/local_secret.txt`), only when missing in the worktree and
+  with mode 0600. Existing files are never overwritten. If Orca's `ORCA_ROOT_PATH` disagrees
+  with git about where the main checkout is, setup prints a notice and uses git's answer.
+- **Regenerated per worktree:** the development databases (primary, queue, cache, cable),
+  the test database, caches, logs, and pids. Nothing is shared between worktrees.
+- **Ports:** the main checkout serves on 3000; each worktree gets a stable port in
+  3001–3999, derived from its path and printed by `bin/setup`. Set `PORT` to override it,
+  for example if two worktrees happen to get the same port.
+- **Credentials:** a remote Orca runtime has no copy of your local `config/master.key`, so
+  setup warns and continues; development and the specs work without it. Copy the key there,
+  or set `RAILS_MASTER_KEY`, if you need credentials. A missing key only warns, but a wrong
+  key makes the app fail to boot.
+- **Failures:** if automatic setup fails, the worktree is still created; run `bin/setup` in
+  it to finish.
 
 ## Testing and CI
 

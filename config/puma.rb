@@ -28,8 +28,10 @@
 threads_count = ENV.fetch("RAILS_MAX_THREADS", 3)
 threads threads_count, threads_count
 
-# Specifies the `port` that Puma will listen on to receive requests; default is 3000.
-port ENV.fetch("PORT", 3000)
+# Port: PORT if set; otherwise 3000 in the main checkout and a stable per-worktree
+# port in linked git worktrees during development (spec 003). See lib/collector/dev_port.rb.
+require_relative "../lib/collector/dev_port"
+port Collector::DevPort.resolve(root: File.expand_path("..", __dir__))
 
 # Allow puma to be restarted by `bin/rails restart` command.
 plugin :tmp_restart

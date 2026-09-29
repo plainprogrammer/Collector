@@ -1,0 +1,4 @@
+# Gitignored files copied from the main checkout into new worktrees (spec 003, FR-2).
+# Read by Claude Code, Orca, and bin/setup. Literal paths only: no globs or negation.
+config/master.key
+tmp/local_secret.txt
