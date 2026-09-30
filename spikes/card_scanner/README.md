@@ -21,8 +21,8 @@ is autoloaded, served by Rails or run by `bin/rspec`/`bin/ci`. Outputs go to the
 ## Photo protocol
 
 - Set the iPhone camera to JPEG (Settings → Camera → Formats → Most Compatible).
-- Shoot in portrait with the card upright and centred, filling about 90% of the frame height, on a plain background,
-  in normal room light.
+- Shoot in portrait with the card upright and centred (its centre about halfway across and just above halfway down),
+  filling about 74% of the frame height, on a plain background, in normal room light.
 - Shoot foils as they naturally catch the light.
 - Use unique file names.
 - Copy the photos to `$CARD_SCANNER_CORPUS` (default `~/card-scanner-corpus/`) and keep them in the iPhone's Photos

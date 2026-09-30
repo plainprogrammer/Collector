@@ -1,10 +1,11 @@
 // Phase 0 OCR spike (spec 005): fixed card guide, two strips, Tesseract.js served from this origin.
 // Strip boxes are fractions of the card; tuned on the pilot photos, then frozen before measured runs.
-const GUIDE_HEIGHT = 0.9 // card height as a share of the image height, centred
+const GUIDE_HEIGHT = 0.74 // card height as a share of the image height
+const GUIDE_CENTRE = { x: 0.51, y: 0.485 } // guide centre as fractions of image width/height
 const CARD_ASPECT = 63 / 88
 const STRIPS = {
-  name: { x: 0.06, y: 0.035, w: 0.7, h: 0.06, psm: "7" },
-  collector: { x: 0.03, y: 0.905, w: 0.55, h: 0.075, psm: "6" }
+  name: { x: 0.0, y: 0.0, w: 0.76, h: 0.16, psm: "7" },
+  collector: { x: 0.0, y: 0.86, w: 0.45, h: 0.18, psm: "6" }
 }
 const ASSETS = "/ocr/v7.0.0"
 const mode = new URLSearchParams(location.search).get("mode") || "device"
@@ -15,7 +16,7 @@ window.__spike = { results, done: false, error: null, ready: null }
 function guideRect(image) {
   const height = image.height * GUIDE_HEIGHT
   const width = height * CARD_ASPECT
-  return { x: (image.width - width) / 2, y: (image.height - height) / 2, width, height }
+  return { x: image.width * GUIDE_CENTRE.x - width / 2, y: image.height * GUIDE_CENTRE.y - height / 2, width, height }
 }
 
 function crop(image, card, strip) {
