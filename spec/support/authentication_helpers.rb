@@ -11,6 +11,9 @@ module AuthenticationHelpers
     fill_in "Email", with: user.email_address
     fill_in "Password", with: PASSWORD
     click_on "Sign in"
+    # Turbo submits the form with fetch; wait for the signed-in page (every one renders the avatar)
+    # so a following `visit` can't abort the POST before its session cookie lands.
+    expect(page).to have_css(".c-avatar")
     user
   end
 end
