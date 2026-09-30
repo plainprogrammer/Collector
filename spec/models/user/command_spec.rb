@@ -7,6 +7,13 @@ RSpec.describe User::Command, type: :model do
     expect(Registration).not_to be_open
   end
 
+  it "leaves an open sign-up open when other users exist" do
+    create(:admin)
+    InstanceSetting.current.update!(sign_up_open: true)
+    described_class.call(email: "later@example.test", password: "a long enough secret")
+    expect(InstanceSetting.current.sign_up_open?).to be(true)
+  end
+
   it "resets an existing user's password and ends their sessions" do
     existing = create(:user, email_address: "bo@example.test")
     existing.sessions.create!

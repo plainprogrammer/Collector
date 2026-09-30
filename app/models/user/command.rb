@@ -2,11 +2,12 @@
 class User::Command
   def self.call(email:, password:)
     User.transaction do
+      first_run = !User.exists?
       user = User.find_or_initialize_by(email_address: email.to_s.strip.downcase)
       created = user.new_record?
       if created
         user.assign_attributes(name: user.email_address.split("@").first.presence || user.email_address, admin: true)
-        InstanceSetting.current.update!(sign_up_open: false)
+        InstanceSetting.current.update!(sign_up_open: false) if first_run
       end
       user.password = password
       user.save!
