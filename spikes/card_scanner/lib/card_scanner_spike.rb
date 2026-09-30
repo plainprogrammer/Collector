@@ -8,3 +8,5 @@ module CardScannerSpike
 end
 require_relative "card_scanner_spike/normaliser"
 require_relative "card_scanner_spike/collector_line"
+require_relative "card_scanner_spike/scoring"
+require_relative "card_scanner_spike/rates"
