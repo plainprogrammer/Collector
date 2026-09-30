@@ -32,6 +32,15 @@ RSpec.describe "User administration", type: :request do
       expect([ bo.authenticate("another long secret").present?, bo.admin? ]).to eq([ true, true ])
     end
 
+    it "links an invalid email field to its message", :aggregate_failures do
+      post admin_users_path, params: { user: { name: "Bo", email_address: "", password: "another long secret" } }
+      expect(response).to have_http_status(:unprocessable_content)
+      page = Nokogiri::HTML5(response.body)
+      ids = page.at_css('[name="user[email_address]"]')["aria-describedby"].to_s.split
+      expect(ids.map { |id| page.at_css("##{id}")&.text }.join(" ")).to include("Email")
+      expect(page.at_css('[name="user[name]"]')["aria-describedby"]).to be_nil
+    end
+
     it "edits a user's name and email" do
       bo = create(:user)
       patch admin_user_path(bo), params: { user: { name: "Bo B", email_address: "bo.b@example.test", password: "" } }

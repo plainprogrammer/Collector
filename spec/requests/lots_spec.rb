@@ -45,6 +45,22 @@ RSpec.describe "Lots", type: :request do
       expect(Lot.count).to eq(0)
     end
 
+    it "links each invalid field to its message", :aggregate_failures do
+      post catalog_entry_lots_path(entry), params: { lot: { quantity: "0", finish: "etched", condition: "mint", price_paid: "1.234" } }
+      page = Nokogiri::HTML5(response.body)
+      { quantity: "Quantity must be a whole number", finish: "Finish isn't available", condition: "Condition isn't a known condition",
+        price_paid: "Price paid must be a non-negative amount" }.each do |field, message|
+        ids = page.at_css(%([name="lot[#{field}]"]))&.[]("aria-describedby").to_s.split
+        expect(ids).not_to be_empty, "lot[#{field}] has no aria-describedby"
+        expect(ids.map { |id| page.at_css("##{id}")&.text }.join(" ")).to include(message)
+      end
+    end
+
+    it "doesn't describe valid fields by an error" do
+      post catalog_entry_lots_path(entry), params: { lot: { quantity: "0" } }
+      expect(Nokogiri::HTML5(response.body).at_css('[name="lot[condition]"]')["aria-describedby"]).to be_nil
+    end
+
     it "reads quantities in base 10" do
       post catalog_entry_lots_path(entry), params: { lot: { quantity: "010" } }
       expect(user.account.lots.sole.quantity).to eq(10)
