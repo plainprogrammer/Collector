@@ -88,6 +88,21 @@ RSpec.describe "Card search", type: :request do
     expect(response.body).not_to include("evil.example")
   end
 
+  it "shows the name on a blank tile when a printing has no usable image", :aggregate_failures do
+    missing = printing("Lightning Bolt", set: create(:catalog_set, code: "m10"), number: "146", image_url: nil)
+    blocked = printing("Lightning Bolt", identity: missing.identity, language: "ja", image_url: "https://evil.example/bolt.jpg")
+
+    search(q: "bolt")
+
+    html = Nokogiri::HTML5(response.body)
+    [ missing, blocked ].each do |entry|
+      media = html.at_css("##{ActionView::RecordIdentifier.dom_id(entry, :tile)} .c-tile__media")
+      expect(media.at_css(".c-tile__missing strong")&.text).to eq("Lightning Bolt")
+      expect(media.css("img")).to be_empty
+    end
+    expect(html.at_css("##{ActionView::RecordIdentifier.dom_id(missing, :tile)} .c-tile__missing span")&.text).to eq("M10 · 146")
+  end
+
   it "links to all printings when a card has more than 10", :aggregate_failures do
     forest = create(:catalog_identity, name: "Forest")
     11.times { printing("Forest", identity: forest) }

@@ -42,6 +42,17 @@ RSpec.describe "Card page", type: :request do
     expect(response.body).not_to include("<script>x</script>")
   end
 
+  it "shows the name on a blank image when the printing has no image", :aggregate_failures do
+    plain = create(:catalog_entry, identity: create(:catalog_identity, name: "Opt"), image_url: nil)
+    create(:mtg_printing, entry: plain)
+
+    get catalog_entry_path(plain)
+
+    media = Nokogiri::HTML5(response.body).at_css(".c-item__media")
+    expect(media.at_css(".c-item__image .c-tile__missing strong")&.text).to eq("Opt")
+    expect(media.css("img")).to be_empty
+  end
+
   it "links to Scryfall with attribution, to the card's printings and back to search" do
     get catalog_entry_path(entry)
 

@@ -22,6 +22,16 @@ RSpec.describe "Collection", type: :request do
     expect(response.body).not_to include('type="checkbox"', "Edit many", "c-seg")
   end
 
+  it "shows the name on a blank tile when a card has no image", :aggregate_failures do
+    entry = create(:mtg_printing).entry.tap { |e| e.update!(name: "Lightning Bolt", number: "146", image_url: nil) }
+    create(:lot, account: user.account, entry:)
+    get collection_path
+    media = Nokogiri::HTML5(response.body).at_css(".c-grid .c-tile__media")
+    expect(media.at_css(".c-tile__missing strong")&.text).to eq("Lightning Bolt")
+    expect(media.at_css(".c-tile__missing span")&.text).to eq("#{entry.set.code.upcase} · 146")
+    expect(media.css("img")).to be_empty
+  end
+
   it "names tiles by the printed name and sorts them by card name" do
     bolt = create(:mtg_printing).entry.tap { |e| e.update!(name: "Lightning Bolt", language: "ja", localized_name: "稲妻") }
     opt = create(:mtg_printing).entry.tap { |e| e.update!(name: "Opt") }
