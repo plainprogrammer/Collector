@@ -1,0 +1,1022 @@
+{
+  "format_version": 1,
+  "run": "run-a",
+  "results": [
+    {
+      "collector_confidence": 41,
+      "collector_text": "\\\\ } I DQOILU Lali\n\\\n4 | LEON TUKKER",
+      "file": "IMG_6688.jpeg",
+      "ms": 3064,
+      "name_confidence": 18,
+      "name_text": "ARSENATE SO YI TE pI Sa SIT\nER% wa BOR CTA i RANA AA AAA A A pr AA ART\n(RE SER A TBE al HNN EY rl) 0 ad RIL, » AAAI cl EN\nRR we RE A\nHIN ACG AREER CER ERE hr 52 4 7 TT a Gia\nBEE OL (Res RAGE hy EA a Ei dr\n“RAD TERE b ] Ae CL EE A a SE eth\nAK ASE 8 NER i § LK RR] Hae 5 Waar v's 7 a er\nBREA A fh ily iol o Bie tlhon mg unt THERM pe 7\nses NEARY a\nNY LS NOMURA TONE NEVE Yc fA 27 Reimar yy SER\n! ] dG\n\\ ’ IIR\n/ roe",
+      "run": "run-a",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 54,
+      "collector_text": "1L LO talgcClL CiCatu\n301/062 M\nAFC #*# EN db JOHANNES YOSS",
+      "file": "IMG_6689.jpeg",
+      "ms": 1792,
+      "name_confidence": 31,
+      "name_text": "ow A k \"\n— - edd os BTR\nBN Ps a . 1 TN Fo io - ~ : ¢\nQ 4 — a\na ¢ —— » worm\n| 57 BE” PO Paps 1) Ra WY BHT\n| y A f or | \\CRal| 11 a ] O : A on ais i\na Be | § U5 y ANRARUAATC ). A A f EC .\n| LBS a RL oll \\ g I 4% g 7\n| Fe = — -_— SRSA SSN. ON TH\nEy",
+      "run": "run-a",
+      "parsed": {
+        "set_code": "AFC",
+        "number": "301",
+        "language": null,
+        "foil": null,
+        "format": "slash"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "db03809b-d0b3-4265-ad31-b8d0066986c9"
+        ]
+      }
+    },
+    {
+      "collector_confidence": 87,
+      "collector_text": "R 0225\nTMT * EN % GREGG SCHIGIEL",
+      "file": "IMG_6690.jpeg",
+      "ms": 2529,
+      "name_confidence": 29,
+      "name_text": "ra—————T aaa ae\n: Ld Vs TE\n1, J if mw y/\nPVE 1 A I\" i a o fi y\nbh. i J\nA lev » i uo 7\ntr Brarsio 4\nJ / 49), msi 7) Aiki 7 7 il) 7H 7\nf hn am 0.\n2 RIAA IAIN? dz, DPI\ni ia——— A OA————o———————\nR ee p———————————_\nN iv 7 nore y ji p 2 Lidia 7 7 wr\naR NR A finn I i 77\nI ROR a i i yl qm\nims jp 7), yy\noa Lo ni Ar”, INA J\nia V 7\n§ W / 7\nSUSI heii] HI A 7. yy",
+      "run": "run-a",
+      "parsed": {
+        "set_code": "TMT",
+        "number": "225",
+        "language": "en",
+        "foil": true,
+        "format": "rarity_first"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "e07e1c31-d6f0-491c-b231-e1df87c9ea9f"
+        ]
+      }
+    },
+    {
+      "collector_confidence": 38,
+      "collector_text": "§ TEE R— TL SATE. ARR\nM 2802\nSLD + EN ¥%s CONCERNED",
+      "file": "IMG_6691.jpeg",
+      "ms": 2515,
+      "name_confidence": 26,
+      "name_text": "— a a = .\n= Sere TRS eee\nRe a ough Lo SR KT 4 (ek\n; i] A Se A ge 2 ek Se\ni oo TR . ly Kru ut inn Ce EE\nag Si LTR Pediat MUHA 0 -\nAEA - on\ny HES CEA PLB - _ =\nEe ; SPRITE WT 1 BRR\nN\\ Fk 1 A AR Ihe A SP » BR a LH,\nb 4 1. —- AT = |) =} wr Er p\n. » 4 ¢ = [)\n2 | Vlermaoid’s Fendant\n=3 RY 5 by on hikes sac : ; Fo\n: TT\naE mem— —-\nBeal Wedding Ri me Put Tn 7 tes\nBa VYedding Ring Fax:\nEERE CCC TC ~",
+      "run": "run-a",
+      "parsed": {
+        "set_code": "SLD",
+        "number": "2802",
+        "language": null,
+        "foil": null,
+        "format": "rarity_first"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "3c16b2a4-2c40-4d38-bfe8-43ca127b5bdd"
+        ]
+      }
+    },
+    {
+      "collector_confidence": 74,
+      "collector_text": "(If it was a creat;\ncreature.)\n\n024/281 C\n\nAFR * EN WN STEVE PRESCOTT",
+      "file": "IMG_6692.jpeg",
+      "ms": 724,
+      "name_confidence": 46,
+      "name_text": "a. a | W—-—\nMinimus Containment",
+      "run": "run-a",
+      "parsed": {
+        "set_code": "AFR",
+        "number": "24",
+        "language": "en",
+        "foil": true,
+        "format": "slash"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "0556f0d9-50d2-4c67-8522-de366d96500a"
+        ]
+      }
+    },
+    {
+      "collector_confidence": 43,
+      "collector_text": "§ A | (EV LL YY 8 er FWA\nsorcery.”)\n: M0002\ni pip *# EN ww KILRAN YANNER\ni EE ER\n-",
+      "file": "IMG_6702.jpeg",
+      "ms": 807,
+      "name_confidence": 85,
+      "name_text": "I | Dogmeat, Ever Loyal\naA",
+      "run": "run-a",
+      "parsed": {
+        "set_code": "PIP",
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 63,
+      "collector_text": "token.\ni\nM0340\nPIP + EN da MAK POOLI",
+      "file": "IMG_6703.jpeg",
+      "ms": 870,
+      "name_confidence": 40,
+      "name_text": "SE\nEe: rN - - S ahaa\nDogmeat+ Ever Loyal\n\na, IEEE",
+      "run": "run-a",
+      "parsed": {
+        "set_code": "PIP",
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 63,
+      "collector_text": "aud passea aown\npr generation Lo\n412 R\nDMR + EN ¥ RICHARD KA",
+      "file": "IMG_6704.jpeg",
+      "ms": 655,
+      "name_confidence": 82,
+      "name_text": "Enlightened Tutor",
+      "run": "run-a",
+      "parsed": {
+        "set_code": "DMR",
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 49,
+      "collector_text": "CYR SUL\nNED » EN MW JONATHAN KUO\nBE\n| Art\nBE rr",
+      "file": "IMG_6705.jpeg",
+      "ms": 494,
+      "name_confidence": 0,
+      "name_text": "",
+      "run": "run-a",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 71,
+      "collector_text": "222/281 R\nAFR ¢* EN % YOLKAN BAGA",
+      "file": "IMG_6706.jpeg",
+      "ms": 682,
+      "name_confidence": 50,
+      "name_text": "\\ | t ighter Class | _ Pa\nfree pa",
+      "run": "run-a",
+      "parsed": {
+        "set_code": "AFR",
+        "number": "222",
+        "language": null,
+        "foil": null,
+        "format": "slash"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "d54a8329-b940-42c9-8ace-1d74407d14cb"
+        ]
+      }
+    },
+    {
+      "collector_confidence": 66,
+      "collector_text": "his dark power . .. ana\nR 0264 *Mm\nLCI « EN dw NLRCIOA",
+      "file": "IMG_6707.jpeg",
+      "ms": 539,
+      "name_confidence": 87,
+      "name_text": "Tarrian's Soulcleaver",
+      "run": "run-a",
+      "parsed": {
+        "set_code": "LCI",
+        "number": "264",
+        "language": "en",
+        "foil": false,
+        "format": "rarity_first"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "99413817-1218-4947-b12f-9a952b095a89"
+        ]
+      }
+    },
+    {
+      "collector_confidence": 33,
+      "collector_text": "PIV LL 7 WIN FO TYAIVRLIN WIR",
+      "file": "IMG_6708.jpeg",
+      "ms": 514,
+      "name_confidence": 16,
+      "name_text": "v \\d cote\nE (a s de ed\n\"N",
+      "run": "run-a",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 70,
+      "collector_text": "- quip\np+ “\nThe blade glows on\n218 R\nAEC + EN Ww DaNILL LIUNGGRE?\n1",
+      "file": "IMG_6709.jpeg",
+      "ms": 637,
+      "name_confidence": 83,
+      "name_text": "Sword of the Animist\n| Buia",
+      "run": "run-a",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 71,
+      "collector_text": "Bi Enougn jor easy pick\nQl end up skinned.”\n—Sully’s Log\nR 0289 CAE\nPIP +» EN % CONSTANTIN MARIN",
+      "file": "IMG_6710.jpeg",
+      "ms": 875,
+      "name_confidence": 42,
+      "name_text": "I Sheltered Thicket\nb ee — pi. ; r 7\n' - \"A op ng Jag ” ; 3",
+      "run": "run-a",
+      "parsed": {
+        "set_code": "PIP",
+        "number": "10g",
+        "language": null,
+        "foil": null,
+        "format": "rarity_first"
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 57,
+      "collector_text": "Vig 204\n—Shigeki, Jukar v1\n120 Ke\nNEC » EN do SAM BURLEY\n— eww",
+      "file": "IMG_6711.jpeg",
+      "ms": 872,
+      "name_confidence": 36,
+      "name_text": "- / AN\n3\n~~ A a\ny/ \\ > by -—.\n> Ee » \\",
+      "run": "run-a",
+      "parsed": {
+        "set_code": "NEC",
+        "number": null,
+        "language": "en",
+        "foil": false,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 61,
+      "collector_text": "Once you get going,\nsomething big enoug\n| : ie Ce. sp SL\nR 2465 ot\nSLD « EN & BARTEK FEDYCZAK",
+      "file": "IMG_6712.jpeg",
+      "ms": 858,
+      "name_confidence": 58,
+      "name_text": "1ichtnine Greaves",
+      "run": "run-a",
+      "parsed": {
+        "set_code": "SLD",
+        "number": "2465",
+        "language": "en",
+        "foil": false,
+        "format": "rarity_first"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "caba0b46-4ffd-476a-839a-625aa988f67b"
+        ]
+      }
+    },
+    {
+      "collector_confidence": 60,
+      "collector_text": "385 R\nNEO * EN & niiiR/PENEKOR\neon BEES",
+      "file": "IMG_6713.jpeg",
+      "ms": 1092,
+      "name_confidence": 35,
+      "name_text": "se RR CT A TR \" - = =\nJ ———————————————\nLizard Blades\nHe sere",
+      "run": "run-a",
+      "parsed": {
+        "set_code": "NEO",
+        "number": null,
+        "language": "en",
+        "foil": true,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 74,
+      "collector_text": "Equip 3\n“I must say, I quite en\n\\\n0258 FFV\nFIN oo EN Wo ELIZABETH PEIRO",
+      "file": "IMG_6714.jpeg",
+      "ms": 1015,
+      "name_confidence": 36,
+      "name_text": "HS pay - mcr wos + VE OEIC coma ~omot\nenji Glove a\n\na —\npA -",
+      "run": "run-a",
+      "parsed": {
+        "set_code": "FIN",
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 82,
+      "collector_text": "Equip worthy 1 (A4 ci\nlegendary non-Villain t\n2 @, Discard this carc\neach creature.\n\n[3",
+      "file": "IMG_6715.jpeg",
+      "ms": 1066,
+      "name_confidence": 10,
+      "name_text": "=X\n. REPENS 4 IE a. _ VTENE.",
+      "run": "run-a",
+      "parsed": {
+        "set_code": null,
+        "number": "2",
+        "language": null,
+        "foil": null,
+        "format": "rarity_first"
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 77,
+      "collector_text": "1¢ naa failed nis fu\nrofessor had kindly\nnake up the work.",
+      "file": "IMG_6716.jpeg",
+      "ms": 898,
+      "name_confidence": 35,
+      "name_text": "Oy 1\njessed (nou\nEr af 4\na, Po |\n>, gi Lo\nrd wo Ng AOR\nA © wet\nAL Nip\nPAY 9 A h",
+      "run": "run-a",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 87,
+      "collector_text": "¢ speaks what the futu\nritten.\n004",
+      "file": "IMG_6717.jpeg",
+      "ms": 1383,
+      "name_confidence": 26,
+      "name_text": "Ag ) T | £ ®m | _«\nEE —————————————————————————————— EE —\n\nDS TEE Ny - a =\n\n& i / ye _ ~) 5 A N Ro - 1\n\ny L K he. \" 4% i\n\nYom uke al BE (0, Ra \\\nAGREE See\nSN SN * a ve,",
+      "run": "run-a",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 43,
+      "collector_text": "Illus. |\n™ & 2023 W",
+      "file": "IMG_6718.jpeg",
+      "ms": 505,
+      "name_confidence": 34,
+      "name_text": "AW\n\\ 5\n¥ 1 Ry - A",
+      "run": "run-a",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 63,
+      "collector_text": "| oar Pe O\nhow far you travel f\n( | EN Wo KAJ CARPENTER",
+      "file": "IMG_6719.jpeg",
+      "ms": 561,
+      "name_confidence": 82,
+      "name_text": "{ Folk Hero",
+      "run": "run-a",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 71,
+      "collector_text": "44 rt A JUI ULC rail U {\nalways taken certain com\nthat he wouldn’t die of s\nC 0118\nMHZ « EN % CAMPBELL WHITE",
+      "file": "IMG_6720.jpeg",
+      "ms": 724,
+      "name_confidence": 63,
+      "name_text": "| Fanged Flames N",
+      "run": "run-a",
+      "parsed": {
+        "set_code": null,
+        "number": "1e",
+        "language": null,
+        "foil": null,
+        "format": "rarity_first"
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 63,
+      "collector_text": "battlefield.\nFE the world 1s 1\n4>Ngong-Hao Han\nI & #201 3 Wizards of the Conse 1.",
+      "file": "IMG_6721.jpeg",
+      "ms": 739,
+      "name_confidence": 60,
+      "name_text": "Hammer of Purphoros\n.",
+      "run": "run-a",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 75,
+      "collector_text": "raged for so long that 1\nit started. Few would\nlong-ago dispute over\nAssault on Delverl\nFE ———",
+      "file": "IMG_6722.jpeg",
+      "ms": 970,
+      "name_confidence": 47,
+      "name_text": "N\nA ‘ £4 | N Vy f\n| vo Ig ) VN Al V",
+      "run": "run-a",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 49,
+      "collector_text": "| F \\ ; 3 4\n© Gg\nM0149\nMOM + EN dw DARREN TAN",
+      "file": "IMG_6723.jpeg",
+      "ms": 636,
+      "name_confidence": 16,
+      "name_text": "gm N a i 2: io\nWS yo",
+      "run": "run-a",
+      "parsed": {
+        "set_code": "MOM",
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 70,
+      "collector_text": "COULILCLO Ull INILIT LAVIO,\nWhen Nine Lives leaves\nlose the game.\n\n28/274 R X\n21 + EN % PAUL SCOTT CANAVAN",
+      "file": "IMG_6724.jpeg",
+      "ms": 827,
+      "name_confidence": 41,
+      "name_text": "Nine Lives dd\netiewmaily Liaw 0 Rak $0 Lu =",
+      "run": "run-a",
+      "parsed": {
+        "set_code": null,
+        "number": "28",
+        "language": null,
+        "foil": null,
+        "format": "slash"
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 74,
+      "collector_text": "ts controller may S€arcli\nsasic land card, put it o1\napped, then shuffle.\nFlashback 3 @#®",
+      "file": "IMG_6725.jpeg",
+      "ms": 865,
+      "name_confidence": 60,
+      "name_text": "TE EE\nDire-Strain Rampage J",
+      "run": "run-a",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 75,
+      "collector_text": "R 0092\nHOBXEN der ALDO DOMINGL",
+      "file": "IMG_6726.jpeg",
+      "ms": 634,
+      "name_confidence": 45,
+      "name_text": "4, \\ Desert Were-Worm\n— rel A NAY 3 Ke a |",
+      "run": "run-a",
+      "parsed": {
+        "set_code": null,
+        "number": "92",
+        "language": null,
+        "foil": null,
+        "format": "rarity_first"
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 86,
+      "collector_text": "first time each t\ncreatures. After\nadditional COIN",
+      "file": "IMG_6727.jpeg",
+      "ms": 885,
+      "name_confidence": 33,
+      "name_text": "Eg Desert Were-Worm\n= 54 ow k) ’ - #\n3 * a Vp Af",
+      "run": "run-a",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 85,
+      "collector_text": "“One brother fou\nMultiverse. The o\n—The Elderspe",
+      "file": "IMG_6728.jpeg",
+      "ms": 639,
+      "name_confidence": 80,
+      "name_text": "{ Crux of Fate |",
+      "run": "run-a",
+      "parsed": {
+        "set_code": "ONE",
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 70,
+      "collector_text": "HAlllo tialllpiv ali\ncreature deals cor\nplayer, draw a car",
+      "file": "IMG_6729.jpeg",
+      "ms": 696,
+      "name_confidence": 35,
+      "name_text": "- 2 wr t\n\n3 | \\ J\n\naf -\n\nPRR, ai AY \\ ’ .",
+      "run": "run-a",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 89,
+      "collector_text": "The Copper Host sc\nstrongest converts. 1\nperfection.",
+      "file": "IMG_6730.jpeg",
+      "ms": 891,
+      "name_confidence": 29,
+      "name_text": "A) ae ea i Rd TE NC DORA AA Sa pr\nCosmic Hunger",
+      "run": "run-a",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 81,
+      "collector_text": "Younger dragons bow\nbut out of fear.\n\nR 0084\n\nTDC » EN > LOIC CANAYAGGIA",
+      "file": "IMG_6731.jpeg",
+      "ms": 757,
+      "name_confidence": 68,
+      "name_text": "fl Broodcaller Scourge",
+      "run": "run-a",
+      "parsed": {
+        "set_code": "TDC",
+        "number": "84",
+        "language": "en",
+        "foil": false,
+        "format": "rarity_first"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "1d80ddd2-1e10-45dc-9f8f-6fe3623fd73c"
+        ]
+      }
+    },
+    {
+      "collector_confidence": 46,
+      "collector_text": "M0697\nCMM*EN > Scori b",
+      "file": "IMG_6732.jpeg",
+      "ms": 637,
+      "name_confidence": 28,
+      "name_text": ". Dace Uragon\n=\nER - ho” oo.",
+      "run": "run-a",
+      "parsed": {
+        "set_code": "CMM",
+        "number": null,
+        "language": "en",
+        "foil": true,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 55,
+      "collector_text": "AA NJAALL RA Se CD Tr Fon oh\nCenturies ago, five .\nto rule the hung.\n\nA !",
+      "file": "IMG_6733.jpeg",
+      "ms": 653,
+      "name_confidence": 0,
+      "name_text": "",
+      "run": "run-a",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 59,
+      "collector_text": "rather stale, but it\n—Baron Sengir\n\n>Zglgan Boros & Gab\n\nWa #2013 Wisard of Bie 4 oast 20",
+      "file": "IMG_6734.jpeg",
+      "ms": 824,
+      "name_confidence": 40,
+      "name_text": "BE -\n-b A\nLo \\! :\ns. A -",
+      "run": "run-a",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 79,
+      "collector_text": "really are.” .\n—FExtus Narr\n27% U",
+      "file": "IMG_6735.jpeg",
+      "ms": 696,
+      "name_confidence": 16,
+      "name_text": "BT",
+      "run": "run-a",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 56,
+      "collector_text": "~: Add ¢.\nI, ©: Add one",
+      "file": "IMG_6736.jpeg",
+      "ms": 661,
+      "name_confidence": 35,
+      "name_text": "- NE J : d FY PRT\nTE -\nJ\n’\n\nv §",
+      "run": "run-a",
+      "parsed": {
+        "set_code": "ONE",
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 89,
+      "collector_text": "8 Lands you contr\ntype in addition",
+      "file": "IMG_6737.jpeg",
+      "ms": 1439,
+      "name_confidence": 29,
+      "name_text": "CE ER ERT Le SAC eve «\nv § “ : 3 NE f B B g |\neAN AS SRV\nb BE NRE Mie 7. \\\n% IEE i A TE Ga Ti iE twa 8 ™umt ap 2 aa = EES.\n| bh Jl |\nno N\n“ »\n.\n. cu SE",
+      "run": "run-a",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 86,
+      "collector_text": "Structures built\nneither assault 1",
+      "file": "IMG_6738.jpeg",
+      "ms": 488,
+      "name_confidence": 39,
+      "name_text": "a > tz - S ig ; LJ p ‘ | | 5 -\nwe ~— yr.\n’ 4",
+      "run": "run-a",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 61,
+      "collector_text": "==» Adam Paquette\nA 1003 2011 Wizards of the Coa\n\nV 4\nI —————————————————wwmwmmmmmmmmmmmmmmmTTTTTTTT",
+      "file": "IMG_6739.jpeg",
+      "ms": 938,
+      "name_confidence": 13,
+      "name_text": "Plains. »\nNendo TO A\n\nh :\n\n» )\n\n-",
+      "run": "run-a",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 76,
+      "collector_text": "two Or more othe\n®: Add O or &.",
+      "file": "IMG_6740.jpeg",
+      "ms": 575,
+      "name_confidence": 92,
+      "name_text": "tormcarved Coast",
+      "run": "run-a",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 90,
+      "collector_text": "“The land grows onl\n—Dosan the Falling",
+      "file": "IMG_6741.jpeg",
+      "ms": 528,
+      "name_confidence": 25,
+      "name_text": "Rodamas Reac\nrr A",
+      "run": "run-a",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 62,
+      "collector_text": "AAAS LAS 5 din ad & WV = We hd\nind. Put that car\nInd the rest on th\naid in a rando",
+      "file": "IMG_6742.jpeg",
+      "ms": 724,
+      "name_confidence": 58,
+      "name_text": "bundant Harvest",
+      "run": "run-a",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 58,
+      "collector_text": "4. LldgVllo yUYViL &\nuntil end of turn.\nM19 + EN de ALEX IKONSTAD",
+      "file": "IMG_6743.jpeg",
+      "ms": 781,
+      "name_confidence": 23,
+      "name_text": "<ALIEIO0y AIA KRURYL ILL IY\n: aid : ¥ g a | -\n-— 3 pry",
+      "run": "run-a",
+      "parsed": {
+        "set_code": "M19",
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 77,
+      "collector_text": "; Its maw opens, and",
+      "file": "IMG_6744.jpeg",
+      "ms": 513,
+      "name_confidence": 66,
+      "name_text": "{ Gluttonous Hellkite Xi",
+      "run": "run-a",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 37,
+      "collector_text": "BE a re: S— Lye Tw poe ZR\noe: Add @ or ®t\nwi» Franz Vohwinkel",
+      "file": "IMG_6745.jpeg",
+      "ms": 791,
+      "name_confidence": 64,
+      "name_text": "{ Kazandu Refuge\n:\nJ - :",
+      "run": "run-a",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "collector_confidence": 79,
+      "collector_text": "Tiamat that ec\nnames, reveal\nyour hand, the\n$08 EEL.",
+      "file": "IMG_6746.jpeg",
+      "ms": 943,
+      "name_confidence": 41,
+      "name_text": "cent —\n\nf Tiamat 2 4\nr a EN\n\nfa B he Th | Cs",
+      "run": "run-a",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    }
+  ]
+}
