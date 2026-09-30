@@ -1,7 +1,7 @@
 # Feature 005: Card Scanner Phase 0 — Feasibility Spikes
 
 **Status:** Approved
-**Version:** 1.1.0
+**Version:** 1.1.1
 **Created:** 2026-09-30
 **Last Updated:** 2026-09-30
 **Branch:** `005-card-scanner-phase-0`
@@ -14,6 +14,7 @@
 |---------|------|--------|
 | 1.0.0 | 2026-09-30 | Initial approved spec |
 | 1.1.0 | 2026-09-30 | Spec review revisions. **Merged-code check:** AC-4.5 lists the only paths the branch may change, so OCR assets in `public/`, vendored JS, importmap pins and gems are caught too (NFR Security, Non-Goals). **Where the spike page is served:** "same origin as the spike page" replaces "the development instance" (FR-2, Users and Context, AC-1.6, NFR Security). **Matcher ownership:** Story 1 records OCR text and parsed collector lines only; top-1/top-3 rates move to Story 3 with the per-era, foil and frame-treatment breakdowns (AC-1.2, AC-1.3, AC-1.7, AC-3.3). **Repeatability:** replays report their differences instead of requiring identical text (AC-1.5, new error row, NFR Reliability). **Eras:** defined by what the collector line prints; the exact-printing rate counts M15–ONE and MOM-and-later photos only; the parser can report ambiguous (AC-1.1, AC-1.3, FR-3). **No third-party hosts:** proven by a strict self-only Content Security Policy on the cold iPhone run, not by a Safari network log (NFR Security). **Newly defined:** ADR location and format (AC-4.3, Goals), fixture paths and format (AC-4.4, FR-1, FR-2). **Also:** ground truth uses catalog names; the 50-photo minimum counts rated photos; both full and per-face names are indexed; the similarity measure is stated; AC-2.2 asserts something card-specific; AC-2.4 covers the chosen approach; the spike page is exempt from the design system (FR-4) |
+| 1.1.1 | 2026-09-30 | From planning: the quoted policy header blocked WebAssembly compilation, so the NFR now states the rule (only `'self'`, `blob:` for the worker, `'wasm-unsafe-eval'` for the engine; no other host) and the findings quote the header actually sent. Same intent (NFR Security) |
 
 ---
 
@@ -170,7 +171,7 @@ Story 3's candidate lists are the ones Story 1's findings use (AC-1.7).
 ### Security and privacy
 
 - Photos stay on the maintainer's devices and development machine (FR-1).
-- The OCR spike page makes no requests to any host other than its own origin. It is served with `Content-Security-Policy: default-src 'self'; worker-src 'self' blob:; connect-src 'self'`, and OCR still succeeds on one cold iPhone run, which shows no other host was needed. The findings quote the header sent. Where a desktop browser's network log of the same page is available, it is attached as well.
+- The OCR spike page makes no requests to any host other than its own origin. It is served with a Content Security Policy in which every directive allows only `'self'`, the `blob:` scheme (for the OCR worker), or `'wasm-unsafe-eval'` (to compile the engine), with no other host and violations reported to the page's own origin. OCR still succeeds on one cold iPhone run, which shows no other host was needed. The findings quote the header sent. Where a desktop browser's network log of the same page is available, it is attached as well.
 - Any throwaway page, route or asset is absent from the merged code, so it can't reach production (AC-4.5).
 
 ### Reliability
