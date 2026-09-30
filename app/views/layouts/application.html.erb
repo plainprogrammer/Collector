@@ -20,7 +20,7 @@
 
   <body class="c-shell">
     <%= yield :appbar %>
-    <div id="status" class="c-status" role="status" aria-live="polite"><% if (message = flash[:notice] || flash[:alert]) %><p class="c-status__message<%= " c-status__message--alert" if flash[:alert] %>"><%= message %></p><% end %></div>
+    <div id="status" class="c-status" role="status" aria-live="polite"><% if (message = flash[:notice] || flash[:alert]) %><%= render "shared/status_message", message:, alert: flash[:alert].present? %><% end %></div>
     <%= yield %>
     <%= yield :tabbar %>
   </body>

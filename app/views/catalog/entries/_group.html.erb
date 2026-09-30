@@ -1,11 +1,15 @@
-<section class="catalog-group">
-  <h2><%= group.identity.name %></h2>
-  <ul class="catalog-printings">
-    <% group.entries.each do |entry| %>
-      <li><%= render "catalog/entries/summary", entry: %></li>
+<%# locals: (group:, owned:, set_code:, return_to:) %>
+<section class="c-group" aria-labelledby="<%= dom_id(group.identity, :heading) %>">
+  <div class="c-section__head">
+    <h2 class="c-section__title" id="<%= dom_id(group.identity, :heading) %>"><%= group.identity.name %></h2>
+    <span class="c-section__count"><%= pluralize(group.total_entries, "printing") %></span>
+    <% if group.total_entries > group.entries.size %>
+      <span class="c-section__actions"><%= link_to "Show all #{group.total_entries} printings", catalog_identity_path(group.identity, set: set_code), class: "c-btn c-btn--ghost c-btn--sm" %></span>
     <% end %>
-  </ul>
-  <% if group.total_entries > group.entries.size %>
-    <%= link_to "Show all #{group.total_entries} printings", catalog_identity_path(group.identity, set: set_code) %>
-  <% end %>
+  </div>
+  <div class="c-grid">
+    <% group.entries.each do |entry| %>
+      <%= render "catalog/entries/tile", entry:, owned: owned[entry.id], return_to: %>
+    <% end %>
+  </div>
 </section>

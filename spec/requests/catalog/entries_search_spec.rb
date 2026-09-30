@@ -1,7 +1,9 @@
 require "rails_helper"
 
 RSpec.describe "Card search", type: :request do
-  before { sign_in_as(create(:user)) }
+  let(:user) { create(:user) }
+
+  before { sign_in_as(user) }
 
   def printing(name, identity: create(:catalog_identity, name:), **attributes)
     create(:catalog_entry, identity:, name:, **attributes)
@@ -29,16 +31,42 @@ RSpec.describe "Card search", type: :request do
     expect(response.body).to include("Lightning Bolt", "稲妻", catalog_entry_path(en), catalog_entry_path(ja))
   end
 
-  it "shows image, set, number, language, rarity and finishes for each printing", :aggregate_failures do
+  it "shows each printing as a tile with image, name, set · number and language", :aggregate_failures do
     set = create(:catalog_set, code: "m10", name: "Magic 2010")
-    entry = printing("Lightning Bolt", set:, number: "146",
-      image_url: "https://cards.scryfall.io/normal/front/a/b/bolt.jpg")
-    create(:mtg_printing, entry:, rarity: "common", finishes: %w[foil nonfoil])
+    entry = printing("Lightning Bolt", set:, number: "146", image_url: "https://cards.scryfall.io/normal/front/a/b/bolt.jpg")
+    create(:mtg_printing, entry:)
 
     search(q: "bolt")
 
-    expect(response.body).to include('src="https://cards.scryfall.io/normal/front/a/b/bolt.jpg"',
-      "Magic 2010", "M10", "#146", "en", "Common", "foil, nonfoil")
+    expect(response.body).to include('src="https://cards.scryfall.io/normal/front/a/b/bolt.jpg"', "M10 · 146", ">EN<",
+      %(href="#{catalog_entry_path(entry)}"))
+  end
+
+  it "shows owned quantities and fades printings you don't own", :aggregate_failures do
+    owned = printing("Lightning Bolt")
+    create(:lot, account: user.account, entry: owned, quantity: 3)
+    create(:lot, entry: owned, quantity: 7) # someone else's copies
+    unowned = printing("Lightning Bolt", identity: owned.identity, language: "ja")
+
+    search(q: "bolt")
+
+    expect(response.body).to include(">×3<")
+    expect(response.body).not_to include(">×7<", ">×10<")
+    expect(response.body).to match(/class="c-tile c-tile--owned-none" href="#{Regexp.escape(catalog_entry_path(unowned))}"/)
+  end
+
+  it "counts matching cards on the line under the filter bar" do
+    printing("Lightning Bolt")
+    search(q: "bolt")
+    expect(response.body).to include('<div class="c-results__meta"><span class="c-filterbar__count">1 card</span>')
+  end
+
+  it "puts each add button outside its tile link, named for what it adds", :aggregate_failures do
+    entry = printing("Lightning Bolt", set: create(:catalog_set, code: "m10"), number: "146")
+    search(q: "bolt")
+    html = Nokogiri::HTML(response.body)
+    expect(html.css("a.c-tile form, a.c-tile button")).to be_empty
+    expect(html.at_css("##{ActionView::RecordIdentifier.dom_id(entry, :tile)} button")["aria-label"]).to eq("Add 1 × Lightning Bolt (M10 · 146)")
   end
 
   it "does not render images from hosts outside the allowlist" do
@@ -85,13 +113,13 @@ RSpec.describe "Card search", type: :request do
     search(q: "nothing matches")
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("No cards found")
+    expect(response.body).to include(%(No cards match "nothing matches". Check the spelling or try part of the name.))
   end
 
   it "prompts for a name when the query is blank or whitespace" do
     search(q: "   ")
 
-    expect(response.body).to include("Enter a card name")
+    expect(response.body).to include("Type part of a card name to search.")
   end
 
   it "treats wildcard characters literally" do
@@ -99,7 +127,7 @@ RSpec.describe "Card search", type: :request do
 
     search(q: "Fire_")
 
-    expect(response.body).to include("No cards found")
+    expect(response.body).to include(%(No cards match "Fire_".))
   end
 
   it "hides tokens, emblems, art cards and retired printings", :aggregate_failures do
@@ -110,7 +138,7 @@ RSpec.describe "Card search", type: :request do
 
     search(q: "goblin")
 
-    expect(response.body).to include("No cards found")
+    expect(response.body).to include(%(No cards match "goblin".))
   end
 
   it "narrows a card's printings to the selected set", :aggregate_failures do
@@ -151,7 +179,7 @@ RSpec.describe "Card search", type: :request do
     search(q: "bolt", set: "nope")
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("No cards found")
+    expect(response.body).to include(%(No cards match "bolt".))
   end
 
   it "says the catalog has not been loaded until a refresh has applied" do
@@ -159,7 +187,7 @@ RSpec.describe "Card search", type: :request do
 
     search
 
-    expect(response.body).to include("has not been loaded yet")
+    expect(response.body).to include("The card catalog hasn't been loaded yet.")
   end
 
   it "shows the date of the last applied refresh" do
@@ -167,7 +195,7 @@ RSpec.describe "Card search", type: :request do
 
     search
 
-    expect(response.body).to include("September 28, 2026")
+    expect(response.body).to include("Catalog updated 28 September 2026")
   end
 
   it "makes no outbound requests while rendering" do

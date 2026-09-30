@@ -28,7 +28,7 @@ RSpec.describe "Printing detail", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include(
       "Azusa&#39;s Many Journeys // Likeness of the Seeker", "梓の幾多の旅 // 探求者の肖像",
-      "Kamigawa: Neon Dynasty", "NEO", "172", "ja", "Uncommon", "foil, nonfoil", "February 18, 2022",
+      "Kamigawa: Neon Dynasty", "NEO", "172", "ja", "Uncommon", "foil, nonfoil", "18 February 2022",
       "{1}{G}", "Enchantment — Saga", "Chapter one", "Enchantment Creature — Human Monk", "Lindsey Look",
       "https://cards.scryfall.io/large/front/e/c/ec725e92.jpg", "https://cards.scryfall.io/large/back/e/c/ec725e92.jpg")
   end

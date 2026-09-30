@@ -16,7 +16,9 @@ Rails.application.routes.draw do
   resource :more, only: :show
 
   namespace :catalog do
-    resources :entries, only: %i[index show], param: :external_key
+    resources :entries, only: %i[index show], param: :external_key do
+      resource :quick_add, only: :create
+    end
     resources :identities, only: :show, param: :external_key
   end
 

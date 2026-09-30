@@ -7,7 +7,17 @@ module CatalogHelper
     nil
   end
 
-  # Renders the collectible-specific partial for an entry, e.g. mtg/printings/_summary.
+  def set_number(entry) = "#{entry.set.code.upcase} · #{entry.number}"
+
+  def quick_add_button(entry, return_to:, label: "Add")
+    button_to catalog_entry_quick_add_path(entry), params: { return_to: }, class: "c-btn c-btn--ghost c-btn--sm",
+      form: { class: "c-tile__add", data: { turbo_frame: "_top" } },
+      "aria-label": "Add 1 × #{entry.name} (#{set_number(entry)})" do
+      safe_join([ render("icons/plus"), label ])
+    end
+  end
+
+  # Renders the collectible-specific partial for an entry, e.g. mtg/printings/_details.
   def render_catalog_extension(entry, part)
     return if entry.extension.nil?
 

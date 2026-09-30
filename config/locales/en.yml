@@ -3,3 +3,6 @@ en:
     attributes:
       user:
         email_address: "Email"
+  date:
+    formats:
+      long: "%-d %B %Y"

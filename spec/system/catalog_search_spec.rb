@@ -11,8 +11,8 @@ RSpec.describe "Card search", type: :system do
     fill_in "Card name", with: "bolt"
     click_button "Search"
 
-    expect(page).to have_css("h2", text: "Lightning Bolt")
-    click_on "Lightning Bolt"
+    expect(page).to have_css(".c-group h2", text: "Lightning Bolt")
+    click_link "Lightning Bolt"
     expect(page).to have_css("h1", text: "Lightning Bolt")
   end
 end

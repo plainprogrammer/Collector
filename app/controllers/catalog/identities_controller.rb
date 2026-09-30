@@ -10,6 +10,7 @@ class Catalog::IdentitiesController < ApplicationController
     @pagination = Catalog::Pagination.for(total_count: scope.count, requested_page: printing_params[:page], per_page: PER_PAGE)
     @entries = Catalog::Entry.preload_extensions(
       scope.newest_first.includes(:set).offset(@pagination.offset).limit(PER_PAGE).to_a)
+    @owned = Lot.owned_quantities(Current.account, @entries.map(&:id))
   end
 
   private

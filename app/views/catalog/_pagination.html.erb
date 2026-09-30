@@ -1,9 +1,12 @@
-<nav class="catalog-pagination" aria-label="Pagination">
-  <% if pagination.previous_page %>
-    <%= link_to "Previous", url_for(link_params.merge(page: pagination.previous_page)), rel: "prev" %>
-  <% end %>
-  <span>Page <%= pagination.page %> of <%= pagination.total_pages %></span>
-  <% if pagination.next_page %>
-    <%= link_to "Next", url_for(link_params.merge(page: pagination.next_page)), rel: "next" %>
-  <% end %>
-</nav>
+<%# locals: (pagination:, link_params:, frame: nil) %>
+<% if pagination.total_pages > 1 %>
+  <nav class="c-pager" aria-label="Pagination">
+    <% if pagination.previous_page %>
+      <%= link_to "Previous", url_for(link_params.compact.merge(page: pagination.previous_page)), rel: "prev", class: "c-btn c-btn--secondary c-btn--sm", data: { turbo_frame: frame } %>
+    <% end %>
+    <span class="c-pager__position">Page <%= pagination.page %> of <%= pagination.total_pages %></span>
+    <% if pagination.next_page %>
+      <%= link_to "Next", url_for(link_params.compact.merge(page: pagination.next_page)), rel: "next", class: "c-btn c-btn--secondary c-btn--sm", data: { turbo_frame: frame } %>
+    <% end %>
+  </nav>
+<% end %>

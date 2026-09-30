@@ -7,6 +7,10 @@ RSpec.describe "Routes", type: :routing do
     expect(get: "/catalog/identities/abc").to route_to("catalog/identities#show", external_key: "abc")
   end
 
+  it "routes quick add under a printing" do
+    expect(post: "/catalog/entries/abc/quick_add").to route_to("catalog/quick_adds#create", entry_external_key: "abc")
+  end
+
   it "routes sign-in, sign-out and the collection", :aggregate_failures do
     expect(get: "/session/new").to route_to("sessions#new")
     expect(post: "/session").to route_to("sessions#create")

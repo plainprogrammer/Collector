@@ -54,3 +54,27 @@
 .c-admin__signup p { margin:0; font:400 14px/20px var(--font-sans); }
 .c-admin__add { display:none; }
 @media (max-width: 639px) { .c-admin__add { display:inline-flex; } }
+
+/* ---------- Search result group: card heading + tile grid ---------- */
+.c-group { display:flex; flex-direction:column; gap:var(--space-2); margin-top:var(--space-6); }
+.c-results__meta { display:flex; flex-wrap:wrap; gap:var(--space-3); padding:var(--space-2) 0; }
+.c-results__freshness { font:400 12px/16px var(--font-sans); color:var(--ink-muted); }
+
+/* ---------- Tile with an add control outside its link ---------- */
+.c-tilecell { display:flex; flex-direction:column; gap:var(--space-1); min-width:0; }
+.c-tile__add { display:flex; }
+.c-tile__add .c-btn { width:100%; justify-content:flex-start; }
+
+/* ---------- Select inside the filter bar ---------- */
+.c-select select { height:28px; max-width:220px; padding:0 var(--space-2); background:var(--surface-raised); color:var(--ink);
+  border:1px solid var(--line-strong); border-radius:var(--radius-md); font:400 13px/18px var(--font-sans); }
+.c-select select:focus-visible { outline:2px solid var(--focus); outline-offset:2px; }
+@media (pointer: coarse) { .c-select select { min-height:40px; } }
+
+/* ---------- Pagination ---------- */
+.c-pager { display:flex; align-items:center; justify-content:center; gap:var(--space-3); margin:var(--space-6) 0; }
+.c-pager__position { font:400 13px/18px var(--font-mono); color:var(--ink-muted); }
+
+/* ---------- Empty state ---------- */
+.c-empty { margin:var(--space-6) 0; padding:var(--space-6); text-align:center; background:var(--surface-sunken);
+  border-radius:var(--radius-md); font:400 15px/22px var(--font-sans); color:var(--ink); }

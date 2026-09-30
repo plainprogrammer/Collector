@@ -1,31 +1,36 @@
-<% content_for :title, "Card search · Collector" %>
+<% content_for :title, "Search · Collector" %>
 <%= render "layouts/appbar", section: :search %>
-<main class="catalog">
-  <h1>Card search</h1>
+<main class="c-main">
+  <div class="c-pagehead"><div><h1 class="c-pagehead__title">Search</h1></div></div>
+  <div class="c-collection" data-controller="search-shortcut">
+    <%= form_with url: catalog_entries_path, method: :get, class: "c-filterbar", role: "search",
+          data: { turbo_frame: "results", turbo_action: "advance" } do |form| %>
+      <label class="c-input"><%= render "icons/search" %><%= form.search_field :q, value: @search.query, placeholder: "Lightning Bolt", "aria-label": "Card name",
+            data: { search_shortcut_target: "input" } %><kbd>/</kbd></label>
+      <div class="c-filterbar__filters">
+        <label class="c-select"><span class="c-sr">Set</span><%= form.select :set,
+              options_for_select(@sets.map { |set| [ "#{set.name} (#{set.code.upcase})", set.code ] }, @search.set_code),
+              include_blank: "All sets" %></label>
+        <%= form.submit "Search", name: nil, class: "c-btn c-btn--secondary c-btn--sm" %>
+      </div>
+    <% end %>
 
-  <% if @last_refresh %>
-    <p class="catalog__freshness">Catalog last updated <%= l(@last_refresh.finished_at.to_date, format: :long) %>.</p>
-  <% else %>
-    <p class="catalog__notice">The card catalog has not been loaded yet.</p>
-  <% end %>
-
-  <%= form_with url: catalog_entries_path, method: :get, class: "catalog-search" do |form| %>
-    <%= form.label :q, "Card name" %>
-    <%= form.search_field :q, value: @search.query %>
-    <%= form.label :set, "Set" %>
-    <%= form.select :set, options_for_select(@sets.map { |set| [ "#{set.name} (#{set.code.upcase})", set.code ] }, @search.set_code),
-          include_blank: "All sets" %>
-    <%= form.submit "Search", name: nil %>
-  <% end %>
-
-  <% if !@search.active? %>
-    <p>Enter a card name to search the catalog.</p>
-  <% elsif @groups.empty? %>
-    <p>No cards found.</p>
-  <% else %>
-    <p><%= pluralize(@search.pagination.total_count, "card") %> found.</p>
-    <%= render partial: "catalog/entries/group", collection: @groups, locals: { set_code: @search.set_code } %>
-    <%= render "catalog/pagination", pagination: @search.pagination, link_params: { q: @search.query.presence, set: @search.set_code } %>
-  <% end %>
+    <turbo-frame id="results" target="_top" data-turbo-action="advance">
+      <div class="c-results__meta"><% if @search.active? %><span class="c-filterbar__count"><%= pluralize(@search.pagination.total_count, "card") %></span><% end %><% if @last_refresh %><span class="c-results__freshness">Catalog updated <%= l(@last_refresh.finished_at.to_date, format: :long) %></span><% end %></div>
+      <% if @last_refresh.nil? %>
+        <p class="c-status__message c-status__message--alert">The card catalog hasn't been loaded yet.</p>
+      <% end %>
+      <% if !@search.active? %>
+        <p class="c-empty">Type part of a card name to search.</p>
+      <% elsif @groups.empty? %>
+        <p class="c-empty">No cards match "<%= @search.query %>". Check the spelling or try part of the name.</p>
+      <% else %>
+        <% @groups.each do |group| %>
+          <%= render "catalog/entries/group", group:, owned: @owned, set_code: @search.set_code, return_to: request.fullpath %>
+        <% end %>
+        <%= render "catalog/pagination", pagination: @search.pagination, link_params: { q: @search.query.presence, set: @search.set_code }, frame: "results" %>
+      <% end %>
+    </turbo-frame>
+  </div>
 </main>
 <%= render "layouts/tabbar", section: :search %>

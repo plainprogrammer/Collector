@@ -1,0 +1,16 @@
+<%# locals: (entry:, owned:, return_to:, link_params: {}) %>
+<div class="c-tilecell" id="<%= dom_id(entry, :tile) %>">
+  <%= link_to catalog_entry_path(entry, **link_params), class: class_names("c-tile", "c-tile--owned-none": owned.to_i.zero?) do %>
+    <div class="c-tile__media">
+      <% if (image = catalog_url(entry.image_url)) %>
+        <%= image_tag image, alt: entry.name, loading: "lazy", width: 146, height: 204 %>
+      <% else %>
+        <div class="c-tile__missing"><strong><%= entry.name %></strong><span><%= set_number(entry) %></span></div>
+      <% end %>
+      <% if owned.to_i.positive? %><span class="c-tile__qty">×<%= owned %></span><% end %>
+    </div>
+    <div class="c-tile__name"><%= entry.localized_name || entry.name %></div>
+    <div class="c-tile__meta"><span class="c-tag"><%= set_number(entry) %></span><span class="c-tag"><%= entry.language.upcase %></span></div>
+  <% end %>
+  <%= quick_add_button(entry, return_to:) %>
+</div>
