@@ -1,0 +1,18 @@
+<%= form_with model: [ :admin, user ], class: "c-form" do |form| %>
+  <% [ [ :name, "Name", :text_field ], [ :email_address, "Email", :email_field ], [ :password, (user.persisted? ? "New password" : "Password"), :password_field ] ].each do |field, label, type| %>
+    <div class="c-field<%= " c-field--invalid" if user.errors[field].any? %>">
+      <%= form.label field, label, class: "c-field__label" %>
+      <label class="c-input"><%= form.public_send(type, field, autocomplete: (field == :password ? "new-password" : "off")) %></label>
+      <% if field == :password %><p class="c-field__hint"><%= user.persisted? ? "Leave blank to keep the current password. At least 12 characters." : "At least 12 characters." %></p><% end %>
+      <%= render "shared/field_errors", record: user, field: %>
+    </div>
+  <% end %>
+  <div class="c-field<%= " c-field--invalid" if user.errors[:admin].any? %>">
+    <label class="c-check"><%= form.check_box :admin %> Admin (can manage users and sign-up)</label>
+    <%= render "shared/field_errors", record: user, field: :admin %>
+  </div>
+  <div class="c-form__actions">
+    <%= form.submit(user.persisted? ? "Save" : "Add user", class: "c-btn c-btn--primary") %>
+    <%= link_to "Cancel", admin_users_path, class: "c-btn c-btn--secondary" %>
+  </div>
+<% end %>

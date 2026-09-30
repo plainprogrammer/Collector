@@ -1,0 +1,44 @@
+<% content_for :title, "Users and sign-up · Collector" %>
+<%= render "layouts/appbar", section: nil %>
+<main class="c-main">
+  <div class="c-pagehead">
+    <div><h1 class="c-pagehead__title">Users and sign-up</h1><p class="c-pagehead__stats"><%= pluralize(@users.size, "user") %></p></div>
+    <div class="c-pagehead__actions"><%= link_to "Add a user", new_admin_user_path, class: "c-btn c-btn--primary" %></div>
+  </div>
+  <p><%= link_to "Add a user", new_admin_user_path, class: "c-btn c-btn--secondary c-admin__add" %></p>
+
+  <section class="c-admin__signup">
+    <p><%= @setting.sign_up_open? ? "Sign-up is open: anyone who can reach this instance can create an account." : "Sign-up is closed: only you can add users." %></p>
+    <%= button_to(@setting.sign_up_open? ? "Close sign-up" : "Open sign-up", admin_sign_up_setting_path, method: :patch,
+          params: { sign_up_open: @setting.sign_up_open? ? "0" : "1" }, class: "c-btn c-btn--secondary") %>
+  </section>
+
+  <div class="c-collection">
+    <table class="c-table">
+      <thead><tr><th>Name</th><th class="is-opt">Email</th><th class="is-opt">Role</th><th class="is-num">Copies</th><th><span class="c-sr">Actions</span></th></tr></thead>
+      <tbody>
+        <% @users.each do |user| %>
+          <tr>
+            <td><div><%= user.name %><span class="c-table__sub"><%= user.email_address %> · <%= user.admin? ? "Admin" : "Member" %></span></div></td>
+            <td class="is-opt is-data"><%= user.email_address %></td>
+            <td class="is-opt"><%= user.admin? ? "Admin" : "Member" %></td>
+            <td class="is-num"><%= number_with_delimiter(@copies.fetch(user.account_id, 0)) %></td>
+            <td class="c-table__actions">
+              <details class="c-menu" data-controller="menu">
+                <summary class="c-btn c-btn--ghost c-btn--sm c-btn--icon" aria-label="Actions for <%= user.name %>"><%= render "icons/more" %></summary>
+                <div class="c-menu__list">
+                  <%= link_to "Edit", edit_admin_user_path(user), class: "c-menu__item" %>
+                  <% unless user == Current.user %>
+                    <div class="c-menu__sep"></div>
+                    <%= link_to "Delete…", new_admin_user_deletion_path(user), class: "c-menu__item c-menu__item--danger" %>
+                  <% end %>
+                </div>
+              </details>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</main>
+<%= render "layouts/tabbar", section: nil %>

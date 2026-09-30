@@ -1,0 +1,13 @@
+<% content_for :title, "Delete #{@user.name} · Collector" %>
+<%= render "layouts/appbar", section: nil %>
+<main class="c-main">
+  <section class="c-confirm">
+    <h1 class="c-pagehead__title">Delete <%= @user.name %>?</h1>
+    <p>This permanently deletes <%= @user.name %>'s account and all <%= number_with_delimiter(@user.account.copies_count) %> copies in their collection. It can't be undone.</p>
+    <div class="c-form__actions">
+      <%= button_to "Delete #{@user.name}", admin_user_path(@user), method: :delete, class: "c-btn c-btn--danger" %>
+      <%= link_to "Cancel", admin_users_path, class: "c-btn c-btn--secondary" %>
+    </div>
+  </section>
+</main>
+<%= render "layouts/tabbar", section: nil %>

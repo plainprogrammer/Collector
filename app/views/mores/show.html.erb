@@ -4,6 +4,7 @@
   <h1 class="c-pagehead__title">More</h1>
   <ul class="c-list c-more">
     <li><span>Signed in as <strong><%= Current.user.name %></strong></span><span class="c-list__meta"><%= Current.user.email_address %></span></li>
+    <% if Current.user.admin? %><li><%= link_to "Users and sign-up", admin_users_path %></li><% end %>
     <li><%= button_to "Sign out", session_path, method: :delete, class: "c-btn c-btn--secondary" %></li>
   </ul>
 </main>

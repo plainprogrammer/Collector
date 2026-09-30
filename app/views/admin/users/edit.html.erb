@@ -1,0 +1,4 @@
+<% content_for :title, "Edit #{@user.name} · Collector" %>
+<%= render "layouts/appbar", section: nil %>
+<main class="c-main"><h1 class="c-pagehead__title">Edit <%= @user.name %></h1><%= render "form", user: @user %></main>
+<%= render "layouts/tabbar", section: nil %>

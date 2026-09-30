@@ -18,9 +18,16 @@ class User < ApplicationRecord
 
   before_validation :build_account, on: :create, unless: :account
 
+  validate :keeps_an_admin, on: :update, if: -> { admin_changed?(from: true, to: false) }
+
   scope :admins, -> { where(admin: true) }
 
   def initial = name.to_s.first.to_s.upcase
 
   def end_sessions! = sessions.delete_all
+
+  private
+    def keeps_an_admin
+      errors.add(:admin, "can't be removed: Collector needs at least one admin.") if User.admins.where.not(id:).none?
+    end
 end

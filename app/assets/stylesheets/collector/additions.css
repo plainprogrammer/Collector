@@ -40,3 +40,17 @@
 /* ---------- More page: c-list of account links ---------- */
 .c-more { margin-top:var(--space-6); }
 .c-more li { flex-wrap:wrap; }
+
+/* ---------- Confirmation page (no-script confirm for destructive actions) ---------- */
+.c-confirm { max-width:560px; display:flex; flex-direction:column; gap:var(--space-4); }
+.c-confirm p { margin:0; font:400 15px/22px var(--font-sans); }
+
+/* ---------- Table action cell: as narrow as its "…" menu ---------- */
+.c-table td.c-table__actions { width:1%; }
+
+/* ---------- Admin users list: c-table in .c-collection, plus the sign-up setting row ---------- */
+.c-admin__signup { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-3); margin:var(--space-6) 0;
+  padding:var(--space-3) var(--space-4); background:var(--surface-raised); border:1px solid var(--line); border-radius:var(--radius-md); }
+.c-admin__signup p { margin:0; font:400 14px/20px var(--font-sans); }
+.c-admin__add { display:none; }
+@media (max-width: 639px) { .c-admin__add { display:inline-flex; } }

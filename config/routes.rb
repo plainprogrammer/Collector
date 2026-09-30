@@ -20,6 +20,13 @@ Rails.application.routes.draw do
     resources :identities, only: :show, param: :external_key
   end
 
+  namespace :admin do
+    resources :users, except: :show do
+      resource :deletion, only: :new, module: :users
+    end
+    resource :sign_up_setting, only: :update
+  end
+
   # Defines the root path route ("/")
   root "collections#root"
 end

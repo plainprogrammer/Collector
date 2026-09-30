@@ -23,4 +23,13 @@ RSpec.describe "Routes", type: :routing do
     expect(get: "/").to route_to("collections#root")
     expect(get: "/more").to route_to("mores#show")
   end
+
+  it "routes user administration", :aggregate_failures do
+    expect(get: "/admin/users").to route_to("admin/users#index")
+    expect(post: "/admin/users").to route_to("admin/users#create")
+    expect(get: "/admin/users/1/edit").to route_to("admin/users#edit", id: "1")
+    expect(delete: "/admin/users/1").to route_to("admin/users#destroy", id: "1")
+    expect(get: "/admin/users/1/deletion/new").to route_to("admin/users/deletions#new", user_id: "1")
+    expect(patch: "/admin/sign_up_setting").to route_to("admin/sign_up_settings#update")
+  end
 end
