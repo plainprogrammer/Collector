@@ -1,7 +1,7 @@
 # Feature 006: Collection Table View and Bulk Editing
 
 **Status:** Approved
-**Version:** 2.0.0
+**Version:** 3.0.0
 **Created:** 2026-09-30
 **Last Updated:** 2026-09-30
 **Branch:** `006-collection-list-view`
@@ -14,6 +14,7 @@
 |---------|------|--------|
 | 1.0.0 | 2026-09-30 | Initial approved spec |
 | 2.0.0 | 2026-09-30 | Spec review revisions.<br>**Tenancy:** lot ids outside the account are ignored, not answered with 404; only Undo keeps its 404 (AC-8.1, AC-8.3).<br>**View preference:** saved by any non-bulk collection URL that names a view; `Done` names none; the back button restores the earlier URL (AC-1.3, AC-1.4, AC-4.5, FR-1).<br>**Selection:** stored server-side per session; in bulk mode, paging, sorting and filtering submit the ticks (FR-4, AC-4.7).<br>**Set condition:** has its own page (AC-6.1).<br>**Bulk mode:** rows have no actions menu (AC-2.1, AC-2.8, AC-4.2).<br>**Undo:** belongs to the session, reachable only from the message right after the removal; a replayed Undo answers 422 and an unknown one 404 (AC-7.6, AC-8.3, FR-6).<br>**Refusals:** answer 422 and re-render the originating page (FR-5); a successful action re-renders the results rather than single rows (AC-6.5).<br>**New patterns:** FR-7 lists the new design-system patterns.<br>**Also:** pluralisation, confirmation wording, tie-break order, name and set · number sort keys, unique row-menu names, `Done` keeps the sort, landing pages after removal and Undo, bulk mode with no matches, and phone back links for the new pages |
+| 3.0.0 | 2026-09-30 | Second spec review.<br>**View switch:** its options are buttons in a GET form, and prefetch requests never save a view (FR-1, new AC-1.10). AC-1.4 now allows the browser's cached page.<br>**Set condition and Remove:** because both are submitted from their own pages, success always redirects (303) to the bulk table, and a refusal re-renders the page it came from. The in-place re-render is dropped (AC-6.5, AC-6.6, FR-5).<br>**Selection:** the tick-submission protocol is defined (FR-4).<br>**Undo after sign-out:** redirects to sign-in, then answers 404 (AC-7.6). There is at most one undoable record per session, and every way a session ends discards it (FR-4, FR-6).<br>**Also:** the cap message names the first lot in table order; AC-8.1 wording; finish order joins the extension contract; the first click on Name sorts descending; the count wording after an exception; the Undo landing URL; AC-4.7 wording |
 
 ---
 
@@ -67,7 +68,7 @@ The collection page (feature 004) shows a collection only as an image grid, one 
 - [ ] **AC-1.1** Given a collector with copies When the collection page renders Then the filter bar holds a view switch labelled "View" with two options, Grid and Table, and exactly the option being shown is marked pressed
 - [ ] **AC-1.2** Given a collector who has never chosen a view When they open the collection Then the grid is shown
 - [ ] **AC-1.3** Given a collector outside bulk mode When they choose Table (or Grid) with the view switch Then that view is shown with the same name filter (and the table's sort), the view is in the URL, and the choice is saved for that user. The next collection visit without a view in the URL shows the chosen view, including after signing out and in again or on another device. Any collection URL outside bulk mode that names a valid view saves it the same way. Bulk-mode URLs never save a view
-- [ ] **AC-1.4** Given a collector who switched views When they use the browser's back button Then the URL from before the switch is shown again: the view it names, or, if it names none, the collector's saved view
+- [ ] **AC-1.4** Given a collector who switched views When they use the browser's back button Then the URL from before the switch is restored; the browser may show its kept copy of that page, and a fresh load of that URL shows the view it names, or, if it names none, the collector's saved view
 - [ ] **AC-1.5** Given a URL with an unrecognised view value When the collection renders Then the collector's saved view is shown (the grid if none), with status 200, and the saved choice is unchanged
 - [ ] **AC-1.6** Given two users on one instance When one chooses Table Then the other's view is unaffected
 - [ ] **AC-1.7** Given feature 004 When this feature ships Then these 004 rules are superseded, and all other 004 collection behaviours still hold for the grid:
@@ -79,6 +80,7 @@ The collection page (feature 004) shows a collection only as an image grid, one 
   004 FR-8 (per-lot edit and remove) and FR-10 (the collection page) are extended by this spec, not replaced.
 - [ ] **AC-1.8** (verified in a browser-level test) Given a phone-width page When the view switch renders Then it shows icons only, and each option keeps its accessible name ("Grid", "Table")
 - [ ] **AC-1.9** Given an empty collection When the page renders Then there is no view switch and no `Edit many`, whatever the saved view (004 AC-11.6 still applies)
+- [ ] **AC-1.10** (verified in a browser-level test) Given the grid with scripting enabled When the collector points at or hovers the Table option without choosing it Then the saved view is unchanged
 
 ### Story 2: Collector browses the collection as a table
 
@@ -114,7 +116,7 @@ The collection page (feature 004) shows a collection only as an image grid, one 
 **Acceptance criteria:**
 
 - [ ] **AC-3.1** Given the table with no sort chosen When it renders Then rows are in the grid's order (card name A–Z, then release date newest first, set code, collector number, language; 004 AC-11.3), then by finish in the collectible's finish order (MTG: nonfoil, foil, etched), condition in scale order and price paid ascending, with unspecified values last in each. The name column is marked as sorted ascending
-- [ ] **AC-3.2** Given the table When the collector activates the header of the name, set · number, condition, quantity or price paid column Then rows are sorted by that column ascending. Activating the same header again sorts it descending. Name sorts by card name, as the grid does, not by the printed name shown. The sorted column's header states its direction to assistive technology, and every other column states none
+- [ ] **AC-3.2** Given the table When the collector activates the header of the name, set · number, condition, quantity or price paid column Then rows are sorted by that column ascending. Activating the same header again sorts it descending; because the default order already shows Name ascending, the first activation of the Name header sorts it descending. Name sorts by card name, as the grid does, not by the printed name shown. The sorted column's header states its direction to assistive technology, and every other column states none
 - [ ] **AC-3.3** Given a sort by set · number When it applies Then rows order by set code, then collector number in the order the grid uses; descending reverses both. Condition sorts by the collectible's scale (MTG ascending: Near mint, Lightly played, Moderately played, Heavily played, Damaged), not alphabetically. Quantity and price paid sort numerically
 - [ ] **AC-3.4** Given a sort by condition or price paid When lots have that value unspecified Then those rows come last in both directions
 - [ ] **AC-3.5** Given rows with equal values in the sorted column When they render Then they follow the default order of AC-3.1, so the order is stable across page loads and pages
@@ -136,7 +138,7 @@ The collection page (feature 004) shows a collection only as an image grid, one 
 - [ ] **AC-4.4** Given bulk mode When the bulk bar renders Then it shows the selection count, the actions "Set condition…" and "Remove" (Remove styled as the destructive action), and `Done` as the one primary action; below 640px the actions move into the bar's "…" menu while the count and `Done` stay visible
 - [ ] **AC-4.5** Given bulk mode When the collector chooses `Done` Then bulk mode ends and the collector's saved view (the grid if none) is shown with the same filter and sort, the selection is cleared, and the saved view preference is unchanged (the URL `Done` leads to names no view)
 - [ ] **AC-4.6** (verified in a browser-level test) Given bulk mode with scripting enabled and no menu or dialog open When the collector presses Esc Then it behaves as `Done`
-- [ ] **AC-4.7** Given bulk mode When the collector uses the table outside it (sorting, paging, filtering) Then they stay in bulk mode and the URL says so, so a reload or the back button returns to bulk mode with the selection it had (unless the filter or sort changed, AC-5.6)
+- [ ] **AC-4.7** Given bulk mode When the collector uses the table's own controls (sorting, paging, filtering) while in bulk mode Then they stay in bulk mode and the URL says so, so a reload or the back button returns to bulk mode with the selection it had (unless the filter or sort changed, AC-5.6)
 - [ ] **AC-4.8** Given the table outside bulk mode When it is inspected Then it has no checkboxes and no bulk bar
 
 ### Story 5: Collector selects lots
@@ -151,7 +153,7 @@ The collection page (feature 004) shows a collection only as an image grid, one 
 - [ ] **AC-5.2** Given bulk mode When the collector ticks rows Then each ticked row is marked selected, and the count reads "<sum of the selected lots' quantities> of <matching copies> selected" with digit grouping ("12 of 4,812 selected")
 - [ ] **AC-5.3** Given a selection When the collector moves to another page of the same filter and sort, and back Then every ticked lot is still selected, on every page, and the count still covers all of them
 - [ ] **AC-5.4** Given bulk mode When the collector ticks the header's "Select all" Then every lot matching the current filter is selected, including lots on other pages, and the count reads "All <matching copies> items selected" ("All 4,812 items selected")
-- [ ] **AC-5.5** Given every matching lot is selected When the collector unticks one row Then every other matching lot stays selected and the count drops by that row's quantity; when they untick the header's "Select all" Then nothing is selected
+- [ ] **AC-5.5** Given every matching lot is selected When the collector unticks one row Then every other matching lot stays selected, and the count changes from "All <m> items selected" to "<m minus that row's quantity> of <m> selected"; when they untick the header's "Select all" Then nothing is selected
 - [ ] **AC-5.6** Given a selection When the collector changes the filter or the sort, or leaves bulk mode Then the selection is cleared
 - [ ] **AC-5.7** Given scripting is disabled When the collector ticks rows, selects all, pages or runs an action Then selection, paging with a kept selection, and every action still work (the count may update only when the page is next loaded)
 - [ ] **AC-5.8** (verified in a browser-level test) Given scripting is enabled When the collector ticks or unticks a row or "Select all" Then the count updates without a page load
@@ -168,9 +170,9 @@ The collection page (feature 004) shows a collection only as an image grid, one 
 - [ ] **AC-6.1** Given a selection When the collector chooses "Set condition…" Then a page titled "Set the condition of <n> items" offers the collectible's condition scale (MTG: Near mint, Lightly played, Moderately played, Heavily played, Damaged) and "Not specified" as a single choice, with "Apply" as the primary action and "Cancel", which returns to the bulk table with the same filter, sort, page and selection. The page works without scripting
 - [ ] **AC-6.2** Given a selection and a chosen condition When it is applied Then every selected lot has that condition, and the status message reads "Set the condition of <n> items to <condition label>." (or "Cleared the condition of <n> items." for "Not specified"), where n is the selected copies. Lots already in that condition count and stay unchanged
 - [ ] **AC-6.3** Given a changed condition that makes a selected lot's printing, finish, condition and price paid equal to another lot of the same account (selected or not) When it is applied Then those lots become one lot with the summed quantity, as in 004 AC-10.2, and the table shows one row for it
-- [ ] **AC-6.4** Given any merge in the action would exceed 9,999 copies in one lot When it is applied Then no lot changes (all or nothing), the response status is 422, the selection is kept, and the status message reads "Nothing changed. <card name> (<SET> · <number>) would have more than 9,999 copies in one lot."
-- [ ] **AC-6.5** Given a successful Set condition When the table updates Then the collector stays in bulk mode on the same filter, sort and page (the nearest real page if it no longer exists). The selection stays on the changed lots, and a merged lot is selected. With scripting enabled, the results (rows, pager, counts and bulk bar) are re-rendered without a full page load, so rows stay in the sorted order and a merged lot shows once
-- [ ] **AC-6.6** Given scripting is disabled When Set condition is applied Then the response redirects (303) to the bulk table with the same filter, sort and page, and the status message is shown
+- [ ] **AC-6.4** Given any merge in the action would exceed 9,999 copies in one lot When it is applied Then no lot changes (all or nothing), the response status is 422, the selection is kept, and the status message reads "Nothing changed. <card name> (<SET> · <number>) would have more than 9,999 copies in one lot." When several lots would exceed the cap, the message names the first of them in the table's current order
+- [ ] **AC-6.5** Given a successful Set condition When the table updates Then the collector stays in bulk mode on the same filter, sort and page (the nearest real page if it no longer exists). The selection stays on the changed lots, and a merged lot is selected. Rows are in the sorted order and a merged lot shows once
+- [ ] **AC-6.6** Given Set condition is applied successfully, with or without scripting When the response is sent Then it redirects (303) to the bulk table with the same filter, sort and page, and the status message is shown
 
 ### Story 7: Collector removes many lots, with undo
 
@@ -183,9 +185,9 @@ The collection page (feature 004) shows a collection only as an image grid, one 
 - [ ] **AC-7.1** Given a selection When the collector chooses "Remove" Then nothing is removed yet. A confirmation (the `ConfirmPage` pattern, which works without scripting) asks "Remove <n> items?" and states the consequence in numbers ("This removes <n> items in <lots> lots from your collection. You can undo this right afterwards."). It offers a destructive "Remove <n> items" button and "Cancel"
 - [ ] **AC-7.2** Given the confirmation When the collector chooses "Cancel" Then they return to the bulk table with the same filter, sort, page and selection, and nothing is removed
 - [ ] **AC-7.3** Given the confirmation When the collector confirms Then every selected lot is removed. They return to the bulk table on the same filter and sort (the nearest real page) with the selection cleared, the counts and stats reflect the removal, and the status message reads "Removed <n> items from your collection." with an "Undo" button. If the removal empties the collection, they land on the empty state (004 AC-11.6), which shows the same message and Undo. The Undo is offered only in this message; it has no other entry point
-- [ ] **AC-7.4** Given the status message after a bulk removal When the collector chooses "Undo" Then exactly the removed lots are restored, each with its printing, finish, condition, price paid and quantity. The collector lands on the collection page they submitted the Undo from, in its view, filter and sort (the bulk table with nothing selected, when that is where they were). The status message reads "Restored <n> items to your collection.", and the Undo is used up
-- [ ] **AC-7.5** Given lots were added since the removal with the same identity as a removed lot When the removal is undone Then each restored lot merges into the existing lot (quantities summed); if any merge would exceed 9,999 copies, nothing is restored and the status message reads "Nothing restored. <card name> (<SET> · <number>) would have more than 9,999 copies in one lot."
-- [ ] **AC-7.6** Given a bulk removal When the collector then removes anything else in the same session (in bulk or a single lot), or signs out of that session Then the earlier removal can no longer be undone. Submitting its Undo (including a second time, or from a page kept open) changes nothing and returns status 422 with "This removal can no longer be undone." Removals in the collector's other sessions don't affect it
+- [ ] **AC-7.4** Given the status message after a bulk removal When the collector chooses "Undo" Then exactly the removed lots are restored, each with its printing, finish, condition, price paid and quantity. The collector lands on the collection URL the Undo carries, which is the page the message was rendered on, with its view, filter and sort (the bulk table with nothing selected, when that is where they were). The status message reads "Restored <n> items to your collection.", and the Undo is used up
+- [ ] **AC-7.5** Given lots were added since the removal with the same identity as a removed lot When the removal is undone Then each restored lot merges into the existing lot (quantities summed); if any merge would exceed 9,999 copies, nothing is restored and the status message reads "Nothing restored. <card name> (<SET> · <number>) would have more than 9,999 copies in one lot." When several lots would exceed the cap, the message names the first of them in the table's current order
+- [ ] **AC-7.6** Given a bulk removal When the collector then removes anything else in the same session (in bulk or a single lot), or uses its Undo Then the earlier removal can no longer be undone. Submitting its Undo again (a second time, or from a page kept open) changes nothing and returns status 422 with "This removal can no longer be undone." Removals in the collector's other sessions don't affect it. Signing out ends the session and discards its Undo: submitting it afterwards is redirected to sign-in, and after signing in again it answers 404 (AC-8.3)
 - [ ] **AC-7.7** Given a removed lot whose printing has been retired from the catalog When the removal is undone Then that lot is restored like any other
 - [ ] **AC-7.8** Given the selection covers every matching lot (AC-5.4) When the removal is confirmed Then exactly the lots matching the filter at the time of confirming are removed, and lots outside the filter are untouched
 - [ ] **AC-7.9** Given the bulk confirmation page or the Set condition page on a phone When it renders Then it is a detail page (004 AC-2.7) whose back link returns to the bulk table with the same filter, sort, page and selection, and it keeps the collection's app header and tab bar
@@ -198,7 +200,7 @@ The collection page (feature 004) shows a collection only as an image grid, one 
 
 **Acceptance criteria:**
 
-- [ ] **AC-8.1** Given a Set condition or Remove request whose selection names lot ids that aren't in the signed-in account's collection (another account's, or no longer existing) When it is processed Then those ids are ignored: no other account's lot changes, the action applies to the remaining selected lots, and if none remain nothing changes and the response is 422 with "None of the selected items are in your collection any more."
+- [ ] **AC-8.1** Given a submission of ticks, or a Set condition or Remove request, whose ticks or stored selection include lot ids that aren't in the signed-in account's collection (another account's, or no longer existing) When it is processed Then those ids are ignored (they are checked when ticks are stored and again when the action runs): no other account's lot changes, the action applies to the remaining selected lots, and if none remain nothing changes and the response is 422 with "None of the selected items are in your collection any more."
 - [ ] **AC-8.2** Given "Select all" for a filter When a bulk action runs Then only the signed-in account's lots are affected
 - [ ] **AC-8.3** Given an Undo for a removal made in another session (of any account) or an unknown removal When it is submitted Then the response status is 404 and nothing is restored
 - [ ] **AC-8.4** Given a bulk request containing account, user or admin values When it is processed Then those values are ignored
@@ -211,11 +213,13 @@ The collection page (feature 004) shows a collection only as an image grid, one 
 **Must:**
 - Store the collection view (grid or table) per user, defaulting to grid.
 - Take the view from the URL when present and valid, and fall back to the saved preference otherwise.
-- Save the view when a collection page is requested outside bulk mode with a valid view in its URL (AC-1.3). This write on a page request is deliberate: it changes only the requester's own display preference, so the view switch can be a plain link that the back button restores.
+- Save the view when a collection page is requested outside bulk mode with a valid view in its URL (AC-1.3). This write on a page request is deliberate: it changes only the requester's own display preference, and it gives each view its own URL that the back button restores.
+- Make the view switch's options buttons (`ViewSwitch`'s `aria-pressed` markup) in a GET form that names the view along with the current filter and sort, so they are never prefetched.
 - Make the storage change safe to run unattended on boot against a feature-004 database. Existing users start with the grid.
 
 **Must not:**
 - Change the saved preference when entering or leaving bulk mode (AC-4.5). Bulk-mode URLs and the URL `Done` leads to never save a view.
+- Save a view from a request the browser marks as a prefetch (AC-1.10).
 
 ### FR-2: Collection table
 
@@ -223,7 +227,7 @@ The collection page (feature 004) shows a collection only as an image grid, one 
 - Follow the `CollectionTable` design, using the design system's table, thumbnail, sub-line, numeric and data cell styles and `TableActions`. The columns and their contents are those in AC-2.1.
 - Share the grid's filter, counts, empty and no-match states and pager.
 - Paginate at 120 rows, and lazy-load thumbnails.
-- Get condition labels, short forms and scale order, finish labels and special finishes from the collectible's extension, as 004 FR-6 does.
+- Get condition labels, short forms and scale order, finish labels, finish order and special finishes from the collectible's extension, as 004 FR-6 does.
 
 **Must not:**
 - Put MTG-specific knowledge in core collection code.
@@ -239,9 +243,13 @@ The collection page (feature 004) shows a collection only as an image grid, one 
 **Must:**
 - Follow the `CollectionTable` bulk-mode rules, and `FilterBar`'s placement of `Edit many`.
 - Keep bulk mode in the URL.
-- Store the selection on the server for the signed-in session, tied to the filter and sort it was made under. Clear it when the filter or sort changes, on `Done`, and when the session ends. It survives paging, reload, the back button, Cancel and redirects (AC-4.7, AC-5.3, AC-6.5, AC-7.2).
+- Store the selection on the server for the signed-in session, tied to the filter and sort it was made under. Clear it when the filter or sort changes, on `Done`, and whenever the session ends, including sessions ended by an admin's password change or a user deletion (004 AC-5.3, AC-5.4, AC-5.7). It survives paging, reload, the back button, Cancel and redirects (AC-4.7, AC-5.3, AC-6.5, AC-7.2).
 - Represent "every matching lot" as its own state (with any unticked lots as exceptions), not as a list of the lots on screen.
-- Work without scripting (AC-5.7): in bulk mode, the pager's Previous/Next, the sort headers, the filter and the action buttons submit the ticks on the current page before they navigate, so unsubmitted ticks are never lost. This is a deliberate departure from `Pager`'s plain links, in bulk mode only.
+- Work without scripting (AC-5.7): in bulk mode, the row checkboxes, the header checkbox, the pager's Previous/Next, the sort headers, the filter input and the action buttons belong to one state-changing form, so unsubmitted ticks are never lost. This is a deliberate departure from `Pager`'s plain links, in bulk mode only. Each submission carries the ids of the rows shown and the ids ticked:
+  - Shown-and-ticked lots become selected. Shown-and-unticked lots become unselected, recorded as exceptions when every matching lot is selected.
+  - A ticked header checkbox selects every matching lot and discards exceptions. An unticked header checkbox that was rendered ticked clears the selection, whatever the rows say.
+  - A submission whose filter or sort differs from the stored selection's clears the selection instead of storing the ticks.
+  - The server then redirects (303) to the URL the pressed control names, or to the pressed action's page.
 - Resolve an "every matching lot" selection against the signed-in account's lots and the filter when the action runs.
 
 ### FR-5: Bulk actions
@@ -250,8 +258,15 @@ The collection page (feature 004) shows a collection only as an image grid, one 
 - Provide Set condition and Remove on the selected lots, each all-or-nothing within the account (AC-6.4, AC-7.5).
 - Apply 004's lot identity and 9,999 cap to every merge, whether from Set condition or from Undo.
 - Confirm Remove with exact numbers before it happens (AC-7.1). Offer a single-use Undo afterwards, valid until the collector's next removal in that session or the end of that session (AC-7.6).
-- Report every outcome in the page's status message region with exact numbers, as `StatusMessage` specifies, pluralising counts ("1 item", "2 items", "1 lot"). With scripting enabled, re-render the results (rows, pager, counts, bulk bar) in place. Without scripting, redirect (303) back to the bulk table on success.
-- Answer every refused bulk action or Undo with 422, changing nothing. Render the page it was submitted from (the bulk table with its filter, sort, page and selection; for Undo, the collection page in its current view) with the message in the status region marked as an alert. With scripting enabled, deliver the same message by updating the status region and leave the page otherwise as it was.
+- Report every outcome in the page's status message region with exact numbers, as `StatusMessage` specifies, pluralising counts ("1 item", "2 items", "1 lot").
+- Answer a successful Set condition, Remove or Undo with a redirect (303): Set condition and Remove to the bulk table (AC-6.5, AC-7.3), Undo to the URL it carries (AC-7.4). This is a deliberate departure from `CollectionTable`'s "answer with Turbo Streams that replace the changed rows", because both actions are submitted from their own pages.
+- Answer every refused action with 422, changing nothing, and show the message in the status region marked as an alert:
+  - a refused Set condition re-renders the Set condition page
+  - a refused Remove re-renders the confirmation page
+  - a refused Undo re-renders the collection page at the URL it carries
+  - an action button pressed with nothing selected re-renders the bulk table
+
+  With scripting enabled, the same message may instead be delivered by updating the status region, leaving the page otherwise as it was.
 - Return 422 with "Select at least one item." and change nothing when a bulk action is submitted with nothing selected.
 
 **Must not:**
@@ -262,8 +277,8 @@ The collection page (feature 004) shows a collection only as an image grid, one 
 
 **Must:**
 - Keep enough about each removed lot to restore it exactly: the printing, finish, condition, price paid and quantity. Key the printing by the same catalog reference lots use, so it survives a catalog refresh.
-- Belong to the session that made the removal, at most one per session. Ending the session discards it.
-- When it is used or superseded, drop its lot data but keep a record of it, so a replayed Undo answers 422 (AC-7.6). An unknown Undo, or one belonging to another session, answers 404 (AC-8.3).
+- Belong to the session that made the removal. Each session has at most one undoable record. However the session ends (sign-out, or 004 AC-5.3, AC-5.4, AC-5.7), its records are discarded.
+- When a record is used or superseded, drop its lot data but keep the record as a stub without lot data until the session ends, so a replayed Undo answers 422 (AC-7.6). An unknown Undo, or one belonging to another session, answers 404 (AC-8.3).
 
 **Must not:**
 - Keep removed-lot data beyond the latest bulk removal per session, or after the session ends.
@@ -320,7 +335,9 @@ The collection page (feature 004) shows a collection only as an image grid, one 
 | Selected lot removed elsewhere (another tab) before the action runs | That lot is ignored; the message counts only the lots actually changed or removed |
 | Selection names another account's lot | That id is ignored, like a missing lot (AC-8.1) |
 | Every selected lot is gone or not the account's | 422, "None of the selected items are in your collection any more.", nothing changes |
-| Undo after a later removal in the session, after sign-out, or used twice | 422, "This removal can no longer be undone.", nothing changes |
+| Undo after a later removal in the session, or used twice | 422, "This removal can no longer be undone.", nothing changes |
+| Undo after signing out of the session that removed | Redirect to sign-in; after signing in, 404, nothing restored |
+| Collection request marked as a prefetch naming a view | Page served; the saved view unchanged |
 | Undo merge would exceed 9,999 | 422, nothing restored, status names the printing (AC-7.5) |
 | Undo for another session's removal, or an unknown one | 404, nothing restored |
 | Bulk mode with a filter that matches nothing | No-match message, "0 of 0 selected", no header checkbox; actions answer "Select at least one item." (AC-5.9) |
