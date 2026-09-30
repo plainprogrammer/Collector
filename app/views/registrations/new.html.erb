@@ -1,0 +1,25 @@
+<% content_for :title, "Sign up · Collector" %>
+<% content_for :appbar, render("layouts/brand_appbar") %>
+<main class="c-main c-auth">
+  <h1 class="c-pagehead__title"><%= @first_user ? "Set up Collector" : "Sign up" %></h1>
+  <% if @registration.nil? || @registration.closed? %>
+    <%= render "registrations/closed" %>
+  <% else %>
+    <% if @first_user %>
+      <p>This first account will be the admin of this instance. You can open sign-up for others and manage users afterwards.</p>
+    <% end %>
+    <%= form_with model: @registration.user, url: registration_path, scope: :user, class: "c-form" do |form| %>
+      <% user = @registration.user %>
+      <% [ [ :name, "Name", :text_field, "name" ], [ :email_address, "Email", :email_field, "username" ],
+           [ :password, "Password", :password_field, "new-password" ], [ :password_confirmation, "Confirm password", :password_field, "new-password" ] ].each do |field, label, type, autocomplete| %>
+        <div class="c-field<%= " c-field--invalid" if user.errors[field].any? %>">
+          <%= form.label field, label, class: "c-field__label" %>
+          <label class="c-input"><%= form.public_send(type, field, autocomplete:, "aria-describedby": ("#{field}-error" if user.errors[field].any?)) %></label>
+          <% if field == :password %><p class="c-field__hint">At least 12 characters.</p><% end %>
+          <%= render "shared/field_errors", record: user, field: %>
+        </div>
+      <% end %>
+      <div class="c-form__actions"><%= form.submit(@first_user ? "Create admin account" : "Sign up", class: "c-btn c-btn--primary") %></div>
+    <% end %>
+  <% end %>
+</main>

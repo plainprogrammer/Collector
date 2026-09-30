@@ -11,6 +11,7 @@ Rails.application.routes.draw do
   # get "service-worker" => "rails/pwa#service_worker", as: :pwa_service_worker
 
   resource :session, only: %i[new create destroy]
+  resource :registration, only: %i[new create]
   resource :collection, only: :show
 
   namespace :catalog do

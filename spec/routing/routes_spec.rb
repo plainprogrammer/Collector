@@ -13,4 +13,9 @@ RSpec.describe "Routes", type: :routing do
     expect(delete: "/session").to route_to("sessions#destroy")
     expect(get: "/collection").to route_to("collections#show")
   end
+
+  it "routes sign-up", :aggregate_failures do
+    expect(get: "/registration/new").to route_to("registrations#new")
+    expect(post: "/registration").to route_to("registrations#create")
+  end
 end
