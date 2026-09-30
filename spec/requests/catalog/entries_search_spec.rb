@@ -31,6 +31,17 @@ RSpec.describe "Card search", type: :request do
     expect(response.body).to include("Lightning Bolt", "稲妻", catalog_entry_path(en), catalog_entry_path(ja))
   end
 
+  it "names each tile by the printing's printed name when it has one" do
+    bolt = create(:catalog_identity, name: "Lightning Bolt")
+    en = printing("Lightning Bolt", identity: bolt)
+    ja = printing("Lightning Bolt", identity: bolt, language: "ja", localized_name: "稲妻")
+
+    search(q: "bolt")
+
+    names = [ en, ja ].to_h { |entry| [ entry.language, Nokogiri::HTML5(response.body).at_css("##{ActionView::RecordIdentifier.dom_id(entry, :tile)} .c-tile__name")&.text ] }
+    expect(names).to eq("en" => "Lightning Bolt", "ja" => "稲妻")
+  end
+
   it "shows each printing as a tile with image, name, set · number and language", :aggregate_failures do
     set = create(:catalog_set, code: "m10", name: "Magic 2010")
     entry = printing("Lightning Bolt", set:, number: "146", image_url: "https://cards.scryfall.io/normal/front/a/b/bolt.jpg")

@@ -22,6 +22,15 @@ RSpec.describe "Collection", type: :request do
     expect(response.body).not_to include('type="checkbox"', "Edit many", "c-seg")
   end
 
+  it "names tiles by the printed name and sorts them by card name" do
+    bolt = create(:mtg_printing).entry.tap { |e| e.update!(name: "Lightning Bolt", language: "ja", localized_name: "稲妻") }
+    opt = create(:mtg_printing).entry.tap { |e| e.update!(name: "Opt") }
+    create(:lot, account: user.account, entry: opt)
+    create(:lot, account: user.account, entry: bolt)
+    get collection_path
+    expect(Nokogiri::HTML5(response.body).css(".c-grid .c-tile__name").map(&:text)).to eq([ "稲妻", "Opt" ])
+  end
+
   it "filters by name and counts matching of total", :aggregate_failures do
     bolt = create(:mtg_printing).entry.tap { |e| e.update!(name: "Lightning Bolt") }
     opt = create(:mtg_printing).entry.tap { |e| e.update!(name: "Opt") }
