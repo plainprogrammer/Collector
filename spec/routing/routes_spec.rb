@@ -18,4 +18,9 @@ RSpec.describe "Routes", type: :routing do
     expect(get: "/registration/new").to route_to("registrations#new")
     expect(post: "/registration").to route_to("registrations#create")
   end
+
+  it "routes the root and the More page", :aggregate_failures do
+    expect(get: "/").to route_to("collections#root")
+    expect(get: "/more").to route_to("mores#show")
+  end
 end

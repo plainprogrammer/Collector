@@ -1,0 +1,10 @@
+<% content_for :title, "More · Collector" %>
+<%= render "layouts/appbar", section: nil %>
+<main class="c-main">
+  <h1 class="c-pagehead__title">More</h1>
+  <ul class="c-list c-more">
+    <li><span>Signed in as <strong><%= Current.user.name %></strong></span><span class="c-list__meta"><%= Current.user.email_address %></span></li>
+    <li><%= button_to "Sign out", session_path, method: :delete, class: "c-btn c-btn--secondary" %></li>
+  </ul>
+</main>
+<%= render "layouts/tabbar", section: nil %>

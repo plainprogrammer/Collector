@@ -9,7 +9,7 @@ RSpec.describe "Card search", type: :system do
 
     visit catalog_entries_path
     fill_in "Card name", with: "bolt"
-    click_on "Search"
+    click_button "Search"
 
     expect(page).to have_css("h2", text: "Lightning Bolt")
     click_on "Lightning Bolt"

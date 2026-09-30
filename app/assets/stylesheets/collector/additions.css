@@ -26,3 +26,17 @@
 /* ---------- Auth page (sign-in, sign-up) ---------- */
 .c-auth { max-width:480px; margin:0 auto; display:flex; flex-direction:column; gap:var(--space-6); }
 .c-auth p { margin:0; font:400 15px/22px var(--font-sans); }
+
+/* ---------- Logo follows the OS theme when the page pins none (the export swaps only on data-theme="dark") ---------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .c-logo--light { display:none; }
+  :root:not([data-theme]) .c-logo--dark { display:inline; }
+}
+
+/* ---------- Menu items that are forms (button_to) ---------- */
+.c-menu__form { display:contents; }
+.c-menu__form .c-menu__item { width:100%; }
+
+/* ---------- More page: c-list of account links ---------- */
+.c-more { margin-top:var(--space-6); }
+.c-more li { flex-wrap:wrap; }

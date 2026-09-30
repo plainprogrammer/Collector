@@ -1,4 +1,5 @@
 <% content_for :title, "Card search · Collector" %>
+<%= render "layouts/appbar", section: :search %>
 <main class="catalog">
   <h1>Card search</h1>
 
@@ -27,3 +28,4 @@
     <%= render "catalog/pagination", pagination: @search.pagination, link_params: { q: @search.query.presence, set: @search.set_code } %>
   <% end %>
 </main>
+<%= render "layouts/tabbar", section: :search %>

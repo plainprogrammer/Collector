@@ -1,4 +1,5 @@
 <% content_for :title, "#{@identity.name} printings · Collector" %>
+<%= render "layouts/appbar", section: :search %>
 <main class="catalog">
   <p><%= link_to "Back to search", catalog_entries_path(q: @identity.name) %></p>
   <h1><%= @identity.name %></h1>
@@ -14,3 +15,4 @@
 
   <%= render "catalog/pagination", pagination: @pagination, link_params: { set: @set_code } %>
 </main>
+<%= render "layouts/tabbar", section: :search %>

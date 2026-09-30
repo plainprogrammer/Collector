@@ -1,4 +1,5 @@
 <% content_for :title, "#{@entry.name} · Collector" %>
+<%= render "layouts/appbar", section: :search %>
 <main class="catalog">
   <p><%= link_to "Search for #{@entry.identity.name}", catalog_entries_path(q: @entry.identity.name) %></p>
   <h1><%= @entry.name %></h1>
@@ -27,3 +28,4 @@
     <p><%= link_to "All printings of #{@entry.identity.name}", catalog_identity_path(@entry.identity) %></p>
   <% end %>
 </main>
+<%= render "layouts/tabbar", section: :search %>

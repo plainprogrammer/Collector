@@ -13,6 +13,7 @@ Rails.application.routes.draw do
   resource :session, only: %i[new create destroy]
   resource :registration, only: %i[new create]
   resource :collection, only: :show
+  resource :more, only: :show
 
   namespace :catalog do
     resources :entries, only: %i[index show], param: :external_key
@@ -20,5 +21,5 @@ Rails.application.routes.draw do
   end
 
   # Defines the root path route ("/")
-  root "home#index"
+  root "collections#root"
 end
