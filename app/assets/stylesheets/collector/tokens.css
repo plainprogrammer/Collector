@@ -1,0 +1,151 @@
+/* Collector design tokens — generated from docs/design-system/tokens.json. Edit the JSON, not this file. */
+@font-face { font-family: "Fraunces"; src: url("/collector/fraunces-latin-600-normal.woff2") format("woff2"); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: "IBM Plex Sans"; src: url("/collector/ibm-plex-sans-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "IBM Plex Sans"; src: url("/collector/ibm-plex-sans-latin-600-normal.woff2") format("woff2"); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: "IBM Plex Mono"; src: url("/collector/ibm-plex-mono-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+
+:root, [data-theme="light"] {
+  --surface: #f6f2ea;
+  --surface-raised: #fffdf8;
+  --surface-sunken: #ece6da;
+  --line: #d4cbba;
+  --line-strong: #8c8374;
+  --ink: #1f1d1a;
+  --ink-muted: #5f5a52;
+  --brand: #13595a;
+  --brand-hover: #0e4546;
+  --on-brand: #ffffff;
+  --brand-tint: #dcebe8;
+  --foil: #d9a03f;
+  --on-foil: #1f1d1a;
+  --cat-cards: #7a3b8f;
+  --cat-cards-tint: #f0e2f3;
+  --cat-comics: #a8470c;
+  --cat-comics-tint: #f8e3d4;
+  --cat-other: #4b5a6a;
+  --cat-other-tint: #e3e8ec;
+  --mana-w: #f1e6c4;
+  --on-mana-w: #2b2118;
+  --mana-u: #2d63a8;
+  --on-mana-u: #ffffff;
+  --mana-b: #2a2522;
+  --on-mana-b: #f1e6c4;
+  --mana-r: #bd3a26;
+  --on-mana-r: #ffffff;
+  --mana-g: #2c7442;
+  --on-mana-g: #ffffff;
+  --mana-c: #d3cdc2;
+  --on-mana-c: #1f1d1a;
+  --focus: #1d6fd1;
+  --success: #256a3a;
+  --warning: #8a5a00;
+  --danger: #b3362b;
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --surface: #161513;
+  --surface-raised: #201e1b;
+  --surface-sunken: #0f0e0d;
+  --line: #3a3631;
+  --line-strong: #7a7268;
+  --ink: #efe9de;
+  --ink-muted: #aaa298;
+  --brand: #5fb7b2;
+  --brand-hover: #7ccbc6;
+  --on-brand: #0c1f1f;
+  --brand-tint: #1c3432;
+  --foil: #e0ad52;
+  --on-foil: #231a08;
+  --cat-cards: #d9a6ea;
+  --cat-cards-tint: #34223a;
+  --cat-comics: #ffa46e;
+  --cat-comics-tint: #3d2518;
+  --cat-other: #aebccb;
+  --cat-other-tint: #252c33;
+  --mana-w: #f1e6c4;
+  --on-mana-w: #2b2118;
+  --mana-u: #2d63a8;
+  --on-mana-u: #ffffff;
+  --mana-b: #2a2522;
+  --on-mana-b: #f1e6c4;
+  --mana-r: #bd3a26;
+  --on-mana-r: #ffffff;
+  --mana-g: #2c7442;
+  --on-mana-g: #ffffff;
+  --mana-c: #d3cdc2;
+  --on-mana-c: #1f1d1a;
+  --focus: #7fb2ff;
+  --success: #6cc488;
+  --warning: #e8b75a;
+  --danger: #ff8a7a;
+  color-scheme: dark;
+}
+
+/* "System" theme: follow the OS unless the page pins data-theme. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --surface: #161513;
+    --surface-raised: #201e1b;
+    --surface-sunken: #0f0e0d;
+    --line: #3a3631;
+    --line-strong: #7a7268;
+    --ink: #efe9de;
+    --ink-muted: #aaa298;
+    --brand: #5fb7b2;
+    --brand-hover: #7ccbc6;
+    --on-brand: #0c1f1f;
+    --brand-tint: #1c3432;
+    --foil: #e0ad52;
+    --on-foil: #231a08;
+    --cat-cards: #d9a6ea;
+    --cat-cards-tint: #34223a;
+    --cat-comics: #ffa46e;
+    --cat-comics-tint: #3d2518;
+    --cat-other: #aebccb;
+    --cat-other-tint: #252c33;
+    --mana-w: #f1e6c4;
+    --on-mana-w: #2b2118;
+    --mana-u: #2d63a8;
+    --on-mana-u: #ffffff;
+    --mana-b: #2a2522;
+    --on-mana-b: #f1e6c4;
+    --mana-r: #bd3a26;
+    --on-mana-r: #ffffff;
+    --mana-g: #2c7442;
+    --on-mana-g: #ffffff;
+    --mana-c: #d3cdc2;
+    --on-mana-c: #1f1d1a;
+    --focus: #7fb2ff;
+    --success: #6cc488;
+    --warning: #e8b75a;
+    --danger: #ff8a7a;
+    color-scheme: dark;
+  }
+}
+
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-card: 4.75%;
+  --shadow-lift: 0 1px 2px rgba(31,29,26,.12), 0 4px 12px rgba(31,29,26,.08);
+  --bp-narrow: 640px;
+  --font-display: "Fraunces", Georgia, serif;
+  --font-sans: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+/* Type styles (tokens.json type.groups) */
+.type-display { font-family: var(--font-display); font-size: 48px; line-height: 52px; font-weight: 600; }
+.type-title { font-family: var(--font-display); font-size: 30px; line-height: 36px; font-weight: 600; }
+.type-heading { font-family: var(--font-sans); font-size: 20px; line-height: 28px; font-weight: 600; }
+.type-body { font-family: var(--font-sans); font-size: 15px; line-height: 22px; font-weight: 400; }
+.type-body-sm { font-family: var(--font-sans); font-size: 13px; line-height: 18px; font-weight: 400; }
+.type-label { font-family: var(--font-sans); font-size: 12px; line-height: 16px; font-weight: 600; }
+.type-data { font-family: var(--font-mono); font-size: 13px; line-height: 18px; font-weight: 400; }

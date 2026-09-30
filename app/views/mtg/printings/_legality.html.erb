@@ -1,0 +1,14 @@
+<section>
+  <div class="c-section__head"><h2 class="c-section__title">Format legality</h2></div>
+  <ul class="c-legality">
+    <% MTG::Legality.rows(extension.legalities).each do |format, status| %>
+      <li><span><%= format %></span>
+        <% if status == "legal" %>
+          <span class="c-legal c-legal--yes"><%= render "icons/check" %><%= MTG::Legality.word(status) %></span>
+        <% else %>
+          <span class="c-legal c-legal--no"><%= render "icons/cross" %><%= MTG::Legality.word(status) %></span>
+        <% end %>
+      </li>
+    <% end %>
+  </ul>
+</section>

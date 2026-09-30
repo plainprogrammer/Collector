@@ -27,6 +27,10 @@ class Catalog::Entry < ApplicationRecord
 
   def to_param = external_key
 
+  # The printed name for non-English printings; English printed names can be
+  # stylized (e.g. "SERRA ANGEL"), so English printings use the card name.
+  def display_name = (language != "en" && localized_name.presence) || name
+
   # Loads each entry's collectible-specific record in one query per type.
   def self.preload_extensions(entries)
     entries.group_by(&:collectible_type).each do |collectible_type, group|

@@ -1,0 +1,28 @@
+<% detail = local_assigns.fetch(:detail, false) %>
+<% content_for :appbar do %>
+  <header class="c-appbar<%= " c-appbar--detail" if detail %>" id="appbar">
+    <% if detail && local_assigns[:back_path] %>
+      <%= link_to local_assigns[:back_path], class: "c-btn c-btn--ghost c-btn--icon c-appbar__back", "aria-label": "Back" do %><%= render "icons/back" %><% end %>
+    <% end %>
+    <%= link_to root_path, class: "c-appbar__brand", "aria-label": "Collector home" do %>
+      <span class="c-appbar__wordmark"><%= image_tag "collector/collector-wordmark.svg", alt: "", class: "c-logo--light" %><%= image_tag "collector/collector-wordmark-reversed.svg", alt: "", class: "c-logo--dark" %></span>
+      <span class="c-appbar__mark"><%= image_tag "collector/collector-mark.svg", alt: "", class: "c-logo--light" %><%= image_tag "collector/collector-mark-reversed.svg", alt: "", class: "c-logo--dark" %></span>
+    <% end %>
+    <nav class="c-appbar__nav" aria-label="Main">
+      <%= link_to "Collection", collection_path, "aria-current": ("page" if section == :collection) %>
+      <%= link_to "Search", catalog_entries_path, "aria-current": ("page" if section == :search) %>
+    </nav>
+    <div class="c-appbar__actions">
+      <% unless detail %>
+        <%= link_to catalog_entries_path, class: "c-btn c-btn--primary c-btn--sm c-btn--icon c-appbar__add", "aria-label": "Add items" do %><%= render "icons/plus" %><% end %>
+      <% end %>
+      <details class="c-menu" data-controller="menu">
+        <summary class="c-avatar" aria-label="Account: <%= Current.user.name %>"><%= Current.user.initial %></summary>
+        <div class="c-menu__list">
+          <% if Current.user.admin? %><%= link_to "Users and sign-up", admin_users_path, class: "c-menu__item" %><div class="c-menu__sep"></div><% end %>
+          <%= button_to "Sign out", session_path, method: :delete, class: "c-menu__item", form: { class: "c-menu__form" } %>
+        </div>
+      </details>
+    </div>
+  </header>
+<% end %>

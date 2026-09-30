@@ -1,0 +1,17 @@
+<%# locals: (tile:) %>
+<% entry = tile.entry %>
+<%= link_to catalog_entry_path(entry, from: "collection"), class: "c-tile" do %>
+  <div class="c-tile__media">
+    <% if (image = catalog_url(entry.image_url)) %>
+      <%= image_tag image, alt: entry.name, loading: "lazy", width: 146, height: 204 %>
+    <% else %>
+      <div class="c-tile__missing"><strong><%= entry.name %></strong><span><%= set_number(entry) %></span></div>
+    <% end %>
+    <span class="c-tile__qty">×<%= tile.quantity %></span>
+    <% if tile.special_finishes.any? %>
+      <span class="c-tile__flags"><%= render "catalog/entries/finish_badge", label: tile.special_finishes.join(", ").capitalize %></span>
+    <% end %>
+  </div>
+  <div class="c-tile__name"><%= entry.display_name %></div>
+  <div class="c-tile__meta"><span class="c-tag"><%= set_number(entry) %></span><span class="c-tag"><%= entry.language.upcase %></span></div>
+<% end %>

@@ -52,6 +52,20 @@ RSpec.describe Catalog::Entry, type: :model do
     end
   end
 
+  describe "#display_name" do
+    it "uses the printed name of a non-English printing" do
+      expect(build(:catalog_entry, name: "Lightning Bolt", localized_name: "稲妻", language: "ja").display_name).to eq("稲妻")
+    end
+
+    it "uses the card name of an English printing with a stylized printed name" do
+      expect(build(:catalog_entry, name: "Serra Angel", localized_name: "SERRA ANGEL", language: "en").display_name).to eq("Serra Angel")
+    end
+
+    it "falls back to the card name without a printed name" do
+      expect(build(:catalog_entry, name: "Opt", localized_name: nil, language: "de").display_name).to eq("Opt")
+    end
+  end
+
   it "is addressed by its external key" do
     expect(build(:catalog_entry, external_key: "abc-123").to_param).to eq("abc-123")
   end

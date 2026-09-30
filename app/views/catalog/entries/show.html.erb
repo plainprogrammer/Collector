@@ -1,29 +1,54 @@
 <% content_for :title, "#{@entry.name} · Collector" %>
-<main class="catalog">
-  <p><%= link_to "Search for #{@entry.identity.name}", catalog_entries_path(q: @entry.identity.name) %></p>
-  <h1><%= @entry.name %></h1>
-  <% if @entry.localized_name %>
-    <p lang="<%= @entry.language %>"><%= @entry.localized_name %></p>
-  <% end %>
-
+<% crumb_path = card_context == :collection ? collection_path : catalog_entries_path %>
+<%= render "layouts/appbar", section: card_context, detail: true, back_path: crumb_path %>
+<main class="c-main c-page">
+  <ol class="c-crumbs">
+    <li><%= link_to(card_context == :collection ? "Collection" : "Search", crumb_path) %></li>
+    <li><%= @overview.vocabulary.category_name %></li>
+    <li><%= @entry.name %></li>
+  </ol>
   <% if @entry.retired? %>
-    <p class="catalog__notice">This printing is no longer present in the upstream source.</p>
+    <p class="c-status__message c-status__message--alert">This printing is no longer present in the upstream source.</p>
   <% end %>
-
-  <dl>
-    <dt>Set</dt><dd><%= @entry.set.name %> (<%= @entry.set.code.upcase %>)</dd>
-    <dt>Collector number</dt><dd><%= @entry.number %></dd>
-    <dt>Language</dt><dd><%= @entry.language %></dd>
-    <dt>Released</dt><dd><%= @entry.released_on ? l(@entry.released_on, format: :long) : "Unknown" %></dd>
-  </dl>
-
-  <% if @entry.extension %>
-    <%= render_catalog_extension @entry, :details %>
-  <% elsif catalog_url(@entry.image_url) %>
-    <%= image_tag catalog_url(@entry.image_url), alt: @entry.name %>
-  <% end %>
-
-  <% if @printings_listed %>
-    <p><%= link_to "All printings of #{@entry.identity.name}", catalog_identity_path(@entry.identity) %></p>
-  <% end %>
+  <div class="c-item">
+    <div class="c-item__media">
+      <% face_images(@entry).each do |image_url, name| %>
+        <div class="c-item__image">
+          <% if (image = catalog_url(image_url)) %>
+            <%= image_tag image, alt: name, width: 300, height: 419 %>
+          <% else %>
+            <div class="c-tile__missing"><strong><%= name %></strong></div>
+          <% end %>
+        </div>
+      <% end %>
+      <p class="c-item__caption">Showing <%= set_number(@entry) %> · <%= @entry.language.upcase %></p>
+    </div>
+    <div class="c-item__body">
+      <div class="c-item__head">
+        <div>
+          <h1 class="c-item__title"><%= @entry.name %></h1>
+          <p class="c-item__type"><span class="c-chip c-chip--cards"><span class="c-chip__dot"></span><%= @overview.vocabulary.category_name %></span></p>
+        </div>
+        <div class="c-item__actions">
+          <%= link_to new_catalog_entry_lot_path(@entry, **card_params), class: "c-btn c-btn--primary" do %><%= render "icons/plus" %>Add a copy<% end %>
+          <% if (scryfall = catalog_url(@entry.extension&.scryfall_uri)) %>
+            <details class="c-menu" data-controller="menu">
+              <summary class="c-btn c-btn--secondary c-btn--icon" aria-label="More actions"><%= render "icons/more" %></summary>
+              <div class="c-menu__list"><%= link_to "View on Scryfall", scryfall, class: "c-menu__item", rel: "noopener" %></div>
+            </details>
+          <% end %>
+        </div>
+      </div>
+      <%= render_catalog_extension @entry, :head %>
+      <%= render_catalog_extension @entry, :details %>
+      <dl class="c-stats c-stats--single">
+        <div class="c-stat"><dt>Owned</dt><dd><%= number_with_delimiter(@overview.owned_count) %></dd><small><%= pluralize(@overview.printings_owned, "printing") %></small></div>
+      </dl>
+      <%= render "catalog/entries/copies", overview: @overview %>
+      <%= render "catalog/entries/printings", overview: @overview %>
+      <%= render_catalog_extension @entry, :legality %>
+      <p class="c-attribution">Card data and images provided by Scryfall.</p>
+    </div>
+  </div>
 </main>
+<%= render "layouts/tabbar", section: card_context %>

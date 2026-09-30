@@ -10,11 +10,32 @@ Rails.application.routes.draw do
   # get "manifest" => "rails/pwa#manifest", as: :pwa_manifest
   # get "service-worker" => "rails/pwa#service_worker", as: :pwa_service_worker
 
+  resource :session, only: %i[new create destroy]
+  resource :registration, only: %i[new create]
+  resource :collection, only: :show
+  resource :more, only: :show
+
   namespace :catalog do
-    resources :entries, only: %i[index show], param: :external_key
+    resources :entries, only: %i[index show], param: :external_key do
+      resource :quick_add, only: :create
+    end
     resources :identities, only: :show, param: :external_key
   end
 
+  scope "catalog/entries/:entry_external_key", as: :catalog_entry do
+    resources :lots, only: %i[new create]
+  end
+  resources :lots, only: %i[edit update destroy] do
+    resource :removal, only: :new, module: :lots
+  end
+
+  namespace :admin do
+    resources :users, except: :show do
+      resource :deletion, only: :new, module: :users
+    end
+    resource :sign_up_setting, only: :update
+  end
+
   # Defines the root path route ("/")
-  root "home#index"
+  root "collections#root"
 end

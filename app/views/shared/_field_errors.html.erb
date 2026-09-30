@@ -1,0 +1,4 @@
+<%# locals: (messages:, id:) %>
+<% messages.zip(field_error_ids(id, messages)).each do |message, message_id| %>
+  <p class="c-field__error" id="<%= message_id %>"><%= message %></p>
+<% end %>

@@ -1,8 +1,0 @@
-<%= link_to catalog_entry_path(entry), class: "catalog-printing" do %>
-  <% if catalog_url(entry.image_url) %>
-    <%= image_tag catalog_url(entry.image_url), alt: entry.name, loading: "lazy", width: 146, height: 204 %>
-  <% end %>
-  <span class="catalog-printing__name"><%= entry.localized_name || entry.name %></span>
-  <span><%= entry.set.name %> (<%= entry.set.code.upcase %>) #<%= entry.number %> · <%= entry.language %></span>
-  <%= render_catalog_extension entry, :summary %>
-<% end %>

@@ -46,3 +46,7 @@ Ruby 4.0.7, Rails 8.1.4, SQLite in every environment (including production), Hot
 - After editing a Ruby file: `bin/rubocop -a` runs on that file; remaining offenses are reported back.
 - Before `git commit`: RuboCop on staged Ruby files + Brakeman; failures block the commit.
 - Before `git push`: `bin/ci`; failure blocks the push.
+
+## UI and design system
+
+All UI follows the Collector design system in `docs/design-system/`. Before creating or changing any view, partial, stylesheet or UI copy, use the `collector-design-system` skill (`.claude/skills/collector-design-system/SKILL.md`) and read `docs/design-system/README.md`. Use only the token variables and `c-*` classes from `app/assets/stylesheets/collector/`; never hard-code colours, spacing or fonts. The export's files (`tokens.css`, `components.css`, fonts, logos, `docs/design-system/`) are replaced wholesale by re-exporting the published design system; app-specific patterns live in `collector/additions.css` with a doc per pattern under `docs/design-system/components/`.

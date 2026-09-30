@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en" data-theme="light"><head>
+<link rel="stylesheet" href="preview-fonts.css"><link rel="stylesheet" href="../../../app/assets/stylesheets/collector/tokens.css"><link rel="stylesheet" href="../../../app/assets/stylesheets/collector/components.css"><meta charset="utf-8">
+<style>
+  body { margin:0; padding:var(--space-4); background:var(--surface); color:var(--ink); font-family:var(--font-sans); }
+  .row { display:flex; flex-wrap:wrap; align-items:flex-start; gap:var(--space-6); }
+  .cap { font:600 12px/16px var(--font-sans); color:var(--ink-muted); margin:0 0 var(--space-2); }
+  .phone { width:375px; border:1px solid var(--line); border-radius:var(--radius-md); padding:0 var(--space-4) var(--space-4); background:var(--surface); }
+  
+</style></head>
+<body>
+<p class="cap">Wide</p>
+<div class="c-collection"><div class="c-filterbar">
+  <label class="c-input"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input placeholder="Search 4,812 items" aria-label="Search collection"><kbd>/</kbd></label>
+  <div class="c-filterbar__filters">
+    <button class="c-filter" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>Trading cards</button>
+    <button class="c-filter" aria-pressed="false">Comics</button>
+    <button class="c-filter" aria-pressed="false">Foil</button>
+    <button class="c-filter" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg>More filters</button>
+  </div>
+  <div class="c-filterbar__end">
+    <span class="c-filterbar__count">4,812 items</span>
+    <a class="c-btn c-btn--secondary c-btn--sm c-filterbar__bulk" href="?view=table&amp;bulk=1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="4" height="4" rx="1"/><rect x="3" y="14" width="4" height="4" rx="1"/><path d="M11 6h10M11 16h10"/></svg>Edit many</a>
+    <div class="c-seg" role="group" aria-label="View">
+      <button aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="9" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span class="c-seg__label">Grid</span></button>
+      <button aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span class="c-seg__label">Table</span></button>
+    </div>
+    <details class="c-menu c-filterbar__more">
+      <summary class="c-btn c-btn--secondary c-btn--sm c-btn--icon" aria-label="More actions"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></summary>
+      <div class="c-menu__list">
+        <a class="c-menu__item" href="?view=table&amp;bulk=1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="4" height="4" rx="1"/><rect x="3" y="14" width="4" height="4" rx="1"/><path d="M11 6h10M11 16h10"/></svg>Edit many</a>
+      </div>
+    </details>
+  </div>
+</div></div>
+<p class="cap" style="margin-top:var(--space-6)">Narrow (375px) — "Edit many" moves into the menu</p>
+<div class="c-collection phone"><div class="c-filterbar">
+  <label class="c-input"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input placeholder="Search 4,812 items" aria-label="Search collection"><kbd>/</kbd></label>
+  <div class="c-filterbar__filters">
+    <button class="c-filter" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>Trading cards</button>
+    <button class="c-filter" aria-pressed="false">Comics</button>
+    <button class="c-filter" aria-pressed="false">Foil</button>
+    <button class="c-filter" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg>More filters</button>
+  </div>
+  <div class="c-filterbar__end">
+    <span class="c-filterbar__count">4,812 items</span>
+    <a class="c-btn c-btn--secondary c-btn--sm c-filterbar__bulk" href="?view=table&amp;bulk=1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="4" height="4" rx="1"/><rect x="3" y="14" width="4" height="4" rx="1"/><path d="M11 6h10M11 16h10"/></svg>Edit many</a>
+    <div class="c-seg" role="group" aria-label="View">
+      <button aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="9" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span class="c-seg__label">Grid</span></button>
+      <button aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span class="c-seg__label">Table</span></button>
+    </div>
+    <details class="c-menu c-filterbar__more" open>
+      <summary class="c-btn c-btn--secondary c-btn--sm c-btn--icon" aria-label="More actions"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></summary>
+      <div class="c-menu__list">
+        <a class="c-menu__item" href="?view=table&amp;bulk=1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="4" height="4" rx="1"/><rect x="3" y="14" width="4" height="4" rx="1"/><path d="M11 6h10M11 16h10"/></svg>Edit many</a>
+      </div>
+    </details>
+  </div>
+</div><div style="height:120px"></div></div>
+<script>/* preview only: ?theme=dark */ if(new URLSearchParams(location.search).get("theme")==="dark")document.documentElement.dataset.theme="dark";</script>
+</body></html>

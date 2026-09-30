@@ -1,7 +1,11 @@
 require "rails_helper"
 
 RSpec.describe "Card printings", type: :request do
+  let(:user) { create(:user) }
   let(:forest) { create(:catalog_identity, name: "Forest", external_key: "oracle-forest") }
+
+  before { sign_in_as(user) }
+
 
   it "lists printings newest first, 12 per page", :aggregate_failures do
     entries = Array.new(25) { |i| create(:catalog_entry, identity: forest, released_on: Date.new(2000, 1, 1) + i) }
@@ -21,6 +25,15 @@ RSpec.describe "Card printings", type: :request do
 
     expect(response.body).to include(catalog_entry_path(a), "Show all sets")
     expect(response.body).not_to include(catalog_entry_path(b))
+  end
+
+  it "shows owned quantities and an add control on each printing", :aggregate_failures do
+    entry = create(:catalog_entry, identity: forest, number: "7", set: create(:catalog_set, code: "abc"))
+    create(:lot, account: user.account, entry:, quantity: 2)
+
+    get catalog_identity_path(forest)
+
+    expect(response.body).to include(">×2<", 'aria-label="Add 1 × Forest (ABC · 7)"')
   end
 
   it "returns 404 for an unknown card" do

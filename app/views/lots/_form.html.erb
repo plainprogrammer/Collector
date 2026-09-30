@@ -1,0 +1,35 @@
+<%# locals: (form_model:, url:, method:, submit:) %>
+<% entry = form_model.entry %>
+<% vocab = form_model.vocabulary %>
+<% finishes = vocab.finishes_for(entry) %>
+<% errors = %i[quantity finish condition price_paid].index_with { |field| lot_error_messages(form_model, field) } %>
+<% describedby = errors.to_h { |field, messages| [ field, field_error_describedby("lot_#{field}-error", messages) ] } %>
+<%= form_with model: form_model, scope: :lot, url:, method:, class: "c-form" do |form| %>
+  <div class="c-field<%= " c-field--invalid" if errors[:quantity].any? %>">
+    <%= form.label :quantity, "Quantity", class: "c-field__label" %>
+    <label class="c-input"><%= form.number_field :quantity, min: 1, max: Lot::MAX_QUANTITY, step: 1, inputmode: "numeric", required: true, "aria-describedby": describedby[:quantity] %></label>
+    <%= render "shared/field_errors", messages: errors[:quantity], id: "lot_quantity-error" %>
+  </div>
+  <% if finishes.any? %>
+    <div class="c-field<%= " c-field--invalid" if errors[:finish].any? %>">
+      <%= form.label :finish, "Finish", class: "c-field__label" %>
+      <%= form.select :finish, finishes.map { |finish| [ vocab.finish_label(finish), finish ] }, { include_blank: "Not specified" }, { "aria-describedby": describedby[:finish] } %>
+      <%= render "shared/field_errors", messages: errors[:finish], id: "lot_finish-error" %>
+    </div>
+  <% end %>
+  <div class="c-field<%= " c-field--invalid" if errors[:condition].any? %>">
+    <%= form.label :condition, "Condition", class: "c-field__label" %>
+    <%= form.select :condition, vocab.conditions.map { |value, (label, short)| [ "#{label} (#{short})", value ] }, { include_blank: "Not specified" }, { "aria-describedby": describedby[:condition] } %>
+    <%= render "shared/field_errors", messages: errors[:condition], id: "lot_condition-error" %>
+  </div>
+  <div class="c-field<%= " c-field--invalid" if errors[:price_paid].any? %>">
+    <%= form.label :price_paid, "Price paid per copy (#{Rails.configuration.x.currency.code})", class: "c-field__label" %>
+    <label class="c-input"><span aria-hidden="true"><%= Rails.configuration.x.currency.symbol %></span><%= form.text_field :price_paid, inputmode: "decimal", placeholder: "1.25", "aria-describedby": describedby[:price_paid] %></label>
+    <p class="c-field__hint">Optional.</p>
+    <%= render "shared/field_errors", messages: errors[:price_paid], id: "lot_price_paid-error" %>
+  </div>
+  <div class="c-form__actions">
+    <%= form.submit submit, class: "c-btn c-btn--primary" %>
+    <%= link_to "Cancel", catalog_entry_path(entry, **card_params), class: "c-btn c-btn--secondary" %>
+  </div>
+<% end %>

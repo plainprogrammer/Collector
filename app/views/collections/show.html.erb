@@ -1,0 +1,33 @@
+<% content_for :title, "My collection · Collector" %>
+<%= render "layouts/appbar", section: :collection %>
+<main class="c-main">
+  <div class="c-pagehead">
+    <div>
+      <h1 class="c-pagehead__title">My collection</h1>
+      <p class="c-pagehead__stats"><%= number_with_delimiter(@grid.total_quantity) %> <%= "item".pluralize(@grid.total_quantity) %> · <%= number_with_delimiter(@grid.unique_cards) %> unique</p>
+    </div>
+    <div class="c-pagehead__actions"><%= link_to catalog_entries_path, class: "c-btn c-btn--primary" do %><%= render "icons/plus" %>Add items<% end %></div>
+  </div>
+  <% if @grid.empty_collection? %>
+    <p class="c-empty">No cards in your collection yet. Search for a card to start adding. <%= link_to "Search cards", catalog_entries_path %></p>
+  <% else %>
+    <div class="c-collection" data-controller="search-shortcut">
+      <%= form_with url: collection_path, method: :get, class: "c-filterbar", role: "search", data: { controller: "url-sync", turbo_frame: "results", turbo_action: "advance" } do |form| %>
+        <label class="c-input"><%= render "icons/search" %><%= form.search_field :q, value: @grid.query, placeholder: "Search your collection", "aria-label": "Search your collection",
+              data: { search_shortcut_target: "input" } %><kbd>/</kbd></label>
+      <% end %>
+      <turbo-frame id="results" target="_top" data-turbo-action="advance">
+        <div class="c-results__meta">
+          <span class="c-filterbar__count"><%= "#{number_with_delimiter(@grid.matching_quantity)} of " if @grid.filtered? %><%= number_with_delimiter(@grid.total_quantity) %> <%= "item".pluralize(@grid.total_quantity) %></span>
+        </div>
+        <% if @grid.tiles.empty? %>
+          <p class="c-empty">No cards in your collection match "<%= @grid.query %>".</p>
+        <% else %>
+          <div class="c-grid"><%= render partial: "collections/tile", collection: @grid.tiles, as: :tile %></div>
+          <%= render "catalog/pagination", pagination: @grid.pagination, link_params: { q: @grid.query.presence }, frame: "results" %>
+        <% end %>
+      </turbo-frame>
+    </div>
+  <% end %>
+</main>
+<%= render "layouts/tabbar", section: :collection %>

@@ -1,0 +1,94 @@
+/* Collector app additions: patterns the export lacks (spec 004 FR-11), built only on tokens.
+   Documented in docs/design-system/components/; upstream them into the published design system. */
+
+/* ---------- Status message (live region under the header) ---------- */
+.c-status:empty { display:none; }
+.c-status { padding:var(--space-3) var(--space-8) 0; }
+.c-status__message { margin:0; padding:var(--space-2) var(--space-3); background:var(--brand-tint); color:var(--ink);
+  border:1px solid var(--brand); border-radius:var(--radius-md); font:400 14px/20px var(--font-sans); }
+.c-status__message--alert { background:var(--surface-raised); border-color:var(--warning); }
+@media (max-width: 639px) { .c-status { padding:var(--space-3) var(--space-4) 0; } }
+
+/* ---------- Form: stacked fields with per-field errors ---------- */
+.c-form { display:flex; flex-direction:column; gap:var(--space-4); max-width:420px; }
+.c-pagehead + .c-form { margin-top:var(--space-6); }
+.c-field { display:flex; flex-direction:column; gap:var(--space-1); }
+.c-field__label { font:600 12px/16px var(--font-sans); color:var(--ink); }
+.c-field__hint { margin:0; font:400 12px/16px var(--font-sans); color:var(--ink-muted); }
+.c-field__error { margin:0; font:600 12px/16px var(--font-sans); color:var(--danger); }
+.c-field select { height:36px; padding:0 var(--space-3); background:var(--surface-raised); color:var(--ink);
+  border:1px solid var(--line-strong); border-radius:var(--radius-md); font:400 15px/22px var(--font-sans); }
+.c-field select:focus-visible { outline:2px solid var(--focus); outline-offset:2px; }
+.c-field--invalid .c-input, .c-field--invalid select { border-color:var(--danger); }
+.c-form__actions { display:flex; flex-wrap:wrap; gap:var(--space-2); }
+.c-check { display:flex; align-items:center; gap:var(--space-2); font:400 14px/20px var(--font-sans); }
+.c-check input { width:16px; height:16px; accent-color:var(--brand); }
+
+/* ---------- Auth page (sign-in, sign-up) ---------- */
+.c-auth { max-width:480px; margin:0 auto; display:flex; flex-direction:column; gap:var(--space-6); }
+.c-auth p { margin:0; font:400 15px/22px var(--font-sans); }
+
+/* ---------- Logo follows the OS theme when the page pins none (the export swaps only on data-theme="dark") ---------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .c-logo--light { display:none; }
+  :root:not([data-theme]) .c-logo--dark { display:inline; }
+}
+
+/* ---------- Menu items that are forms (button_to) ---------- */
+.c-menu__form { display:contents; }
+.c-menu__form .c-menu__item { width:100%; }
+
+/* ---------- More page: c-list of account links ---------- */
+.c-more { margin-top:var(--space-6); }
+.c-more li { flex-wrap:wrap; }
+
+/* ---------- Confirmation page (no-script confirm for destructive actions) ---------- */
+.c-confirm { max-width:560px; display:flex; flex-direction:column; gap:var(--space-4); }
+.c-confirm p { margin:0; font:400 15px/22px var(--font-sans); }
+
+/* ---------- Table action cell: as narrow as its "…" menu ---------- */
+.c-table td.c-table__actions { width:1%; }
+
+/* ---------- Admin users list: c-table in .c-collection, plus the sign-up setting row ---------- */
+.c-admin__signup { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-3); margin:var(--space-6) 0;
+  padding:var(--space-3) var(--space-4); background:var(--surface-raised); border:1px solid var(--line); border-radius:var(--radius-md); }
+.c-admin__signup p { margin:0; font:400 14px/20px var(--font-sans); }
+.c-admin__add { display:none; }
+@media (max-width: 639px) { .c-admin__add { display:inline-flex; } }
+
+/* ---------- Search result group: card heading + tile grid ---------- */
+.c-group { display:flex; flex-direction:column; gap:var(--space-2); margin-top:var(--space-6); }
+.c-results__meta { display:flex; flex-wrap:wrap; gap:var(--space-3); padding:var(--space-2) 0; }
+.c-results__freshness { font:400 12px/16px var(--font-sans); color:var(--ink-muted); }
+
+/* ---------- Tile with an add control outside its link ---------- */
+.c-tilecell { display:flex; flex-direction:column; gap:var(--space-1); min-width:0; }
+.c-tile__add { display:flex; }
+.c-tile__add .c-btn { width:100%; justify-content:flex-start; }
+
+/* ---------- Select inside the filter bar ---------- */
+.c-select select { height:28px; max-width:220px; padding:0 var(--space-2); background:var(--surface-raised); color:var(--ink);
+  border:1px solid var(--line-strong); border-radius:var(--radius-md); font:400 13px/18px var(--font-sans); }
+.c-select select:focus-visible { outline:2px solid var(--focus); outline-offset:2px; }
+@media (pointer: coarse) { .c-select select { min-height:40px; } }
+
+/* ---------- Pagination ---------- */
+.c-pager { display:flex; align-items:center; justify-content:center; gap:var(--space-3); margin:var(--space-6) 0; }
+.c-pager__position { font:400 13px/18px var(--font-mono); color:var(--ink-muted); }
+
+/* ---------- Empty state ---------- */
+.c-empty { margin:var(--space-6) 0; padding:var(--space-6); text-align:center; background:var(--surface-sunken);
+  border-radius:var(--radius-md); font:400 15px/22px var(--font-sans); color:var(--ink); }
+
+/* ---------- Card page: details list, single stat, faces, attribution ---------- */
+.c-details { display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:var(--space-3) var(--space-4); margin:0; }
+.c-details dt { font:600 12px/16px var(--font-sans); color:var(--ink-muted); }
+.c-details dd { margin:var(--space-1) 0 0; font:400 14px/20px var(--font-sans); color:var(--ink); }
+.c-details .is-data { font-family:var(--font-mono); }
+.c-stats--single { grid-template-columns:minmax(0, 1fr); max-width:240px; }
+.c-face { display:flex; flex-direction:column; gap:var(--space-2); }
+.c-list li.is-unowned { color:var(--ink-muted); }
+.c-list .is-data { font-family:var(--font-mono); white-space:nowrap; }
+.c-list .c-tile__add .c-btn { width:auto; }
+.c-attribution { margin:0; font:400 12px/16px var(--font-sans); color:var(--ink-muted); }
+@container page (max-width: 639px) { .c-stats--single { grid-template-columns:minmax(0, 1fr); max-width:none; } }

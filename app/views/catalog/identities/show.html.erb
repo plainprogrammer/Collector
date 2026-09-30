@@ -1,16 +1,21 @@
 <% content_for :title, "#{@identity.name} printings · Collector" %>
-<main class="catalog">
-  <p><%= link_to "Back to search", catalog_entries_path(q: @identity.name) %></p>
-  <h1><%= @identity.name %></h1>
-  <% if @set_code %>
-    <p><%= link_to "Show all sets", catalog_identity_path(@identity) %></p>
-  <% end %>
-
-  <ul class="catalog-printings">
-    <% @entries.each do |entry| %>
-      <li><%= render "catalog/entries/summary", entry: %></li>
-    <% end %>
-  </ul>
-
-  <%= render "catalog/pagination", pagination: @pagination, link_params: { set: @set_code } %>
+<%= render "layouts/appbar", section: :search %>
+<main class="c-main">
+  <ol class="c-crumbs"><li><%= link_to "Search", catalog_entries_path(q: @identity.name) %></li><li><%= @identity.name %></li></ol>
+  <div class="c-pagehead">
+    <div>
+      <h1 class="c-pagehead__title"><%= @identity.name %></h1>
+      <p class="c-pagehead__stats"><%= pluralize(@pagination.total_count, "printing") %></p>
+      <% if @set_code %><%= link_to "Show all sets", catalog_identity_path(@identity), class: "c-btn c-btn--ghost c-btn--sm" %><% end %>
+    </div>
+  </div>
+  <div class="c-collection">
+    <div class="c-grid">
+      <% @entries.each do |entry| %>
+        <%= render "catalog/entries/tile", entry:, owned: @owned[entry.id], return_to: request.fullpath %>
+      <% end %>
+    </div>
+    <%= render "catalog/pagination", pagination: @pagination, link_params: { set: @set_code } %>
+  </div>
 </main>
+<%= render "layouts/tabbar", section: :search %>
