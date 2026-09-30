@@ -4,5 +4,6 @@ class CollectionsController < ApplicationController
   end
 
   def show
+    @grid = CollectionGrid.new(account: Current.account, query: params[:q], page: params[:page])
   end
 end
