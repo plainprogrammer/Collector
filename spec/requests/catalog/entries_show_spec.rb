@@ -36,6 +36,24 @@ RSpec.describe "Card page", type: :request do
       "https://cards.scryfall.io/large/back/e/c/ec725e92.jpg")
   end
 
+  it "shows one image per distinct face image" do
+    get catalog_entry_path(entry)
+
+    expect(Nokogiri::HTML5(response.body).css(".c-item__media .c-item__image img").size).to eq(2)
+  end
+
+  it "shows an image shared by both faces once" do
+    shared = { "normal" => "https://cards.scryfall.io/normal/front/a/b/ab12.jpg" }
+    adventure = create(:catalog_entry, identity: create(:catalog_identity, name: "Bonecrusher Giant // Stomp"))
+    create(:mtg_printing, entry: adventure, faces: [
+      { "name" => "Bonecrusher Giant", "image_uris" => shared }, { "name" => "Stomp", "image_uris" => shared }
+    ])
+
+    get catalog_entry_path(adventure)
+
+    expect(Nokogiri::HTML5(response.body).css(".c-item__media .c-item__image img").size).to eq(1)
+  end
+
   it "escapes source text" do
     get catalog_entry_path(entry)
 

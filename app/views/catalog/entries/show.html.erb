@@ -13,7 +13,7 @@
   <div class="c-item">
     <div class="c-item__media">
       <% faces = @entry.extension&.faces.presence || [ { "image_uris" => { "normal" => @entry.image_url }, "name" => @entry.name } ] %>
-      <% faces.each do |face| %>
+      <% faces.uniq { |face| face.dig("image_uris", "large") || face.dig("image_uris", "normal") }.each do |face| %>
         <div class="c-item__image">
           <% if (image = catalog_url(face.dig("image_uris", "large") || face.dig("image_uris", "normal"))) %>
             <%= image_tag image, alt: face["name"], width: 300, height: 419 %>
