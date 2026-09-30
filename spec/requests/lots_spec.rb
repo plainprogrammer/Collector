@@ -17,6 +17,20 @@ RSpec.describe "Lots", type: :request do
     expect(response.body).to include('<main class="c-main c-page">')
   end
 
+  # AC-2.7: lot pages are detail pages whose Back link returns to the printing's card page.
+  it "gives every lot page a detail header that goes back to the card page", :aggregate_failures do
+    lot = create(:lot, account: user.account, entry:)
+    { {} => catalog_entry_path(entry), { from: "collection" } => catalog_entry_path(entry, from: "collection") }.each do |context, card_page|
+      [ new_catalog_entry_lot_path(entry, **context), edit_lot_path(lot, **context), new_lot_removal_path(lot, **context) ].each do |path|
+        get path
+        header = Nokogiri::HTML5(response.body).at_css("header.c-appbar")
+        expect(header&.[]("class").to_s.split).to include("c-appbar--detail"), "#{path} has no detail header"
+        expect(header&.at_css('a[aria-label="Back"]')&.[]("href")).to eq(card_page), "#{path} doesn't go back to #{card_page}"
+        expect(header&.at_css(".c-appbar__add")).to be_nil, "#{path} shows the add button"
+      end
+    end
+  end
+
   describe "adding" do
     it "offers only the printing's finishes and the condition scale", :aggregate_failures do
       get new_catalog_entry_lot_path(entry)
