@@ -24,6 +24,7 @@ RSpec.describe "Card page", type: :system do
       JS
       expect(widths[0]).to eq(widths[1])
       expect(widths[2]).to be > widths[0] / 2
+      expect(page.evaluate_script("document.querySelector('.c-item__actions .c-btn--primary').getBoundingClientRect().width")).to be > 200
     end
   end
 end
