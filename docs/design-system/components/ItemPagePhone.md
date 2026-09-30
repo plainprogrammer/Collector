@@ -7,5 +7,6 @@ The same card page at phone width (390px). Same markup as `ItemPage`; only CSS c
 - The image sits centred at the top at about two-thirds width; it is no longer sticky.
 - Stats become a 2 × 2 grid.
 - Tables take their narrow layout: set, finish, condition, language and location fold into a second line under the printing.
+- Printings rows keep the `SET · number` code (`.c-list .is-data`) on one line; only the set name beside it wraps. (Collector addition, `additions.css`.)
 - Decks and legality stack instead of sitting side by side.
 - The bottom tab bar stays, with Collection current.

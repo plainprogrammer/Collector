@@ -43,6 +43,20 @@ RSpec.describe "Card page", type: :system do
     end
   end
 
+  # A long set name may wrap, but a printing's set · number never breaks mid-code.
+  it "keeps each printing's set and number on one line on a phone", :aggregate_failures do
+    create(:catalog_entry, identity: entry.identity, number: "806",
+      set: create(:catalog_set, code: "msc", name: "Marvel Super Heroes Commander Collector Showcase Extras"))
+    expect(open_card_on_phone).to eq([ 390, true ])
+    within_narrow_frame do
+      lines = page.evaluate_script(<<~JS)
+        [ ...document.querySelectorAll("#printings .c-list .is-data") ].map((data) =>
+          Math.round(data.getBoundingClientRect().height / parseFloat(getComputedStyle(data).lineHeight)))
+      JS
+      expect(lines).to eq([ 1, 1 ])
+    end
+  end
+
   private
 
   # Signs in, owns one foil copy of the card, and opens the card page in a 390px frame.
