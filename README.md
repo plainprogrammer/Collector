@@ -95,11 +95,14 @@ data in SQLite on a persistent volume.
 
 `compose.yaml` works with both `docker compose` and `podman compose`.
 
-| Variable                  | Required | Default      | Purpose                                                                |
-| ------------------------- | -------- | ------------ | ---------------------------------------------------------------------- |
-| `SECRET_KEY_BASE`         | yes      | none         | Secret used to sign and encrypt sessions and cookies                   |
-| `COLLECTOR_PORT`          | no       | `3000`       | Host port the app is published on                                      |
-| `COLLECTOR_MTG_LANGUAGES` | no       | English only | Extra card languages, e.g. `ja,de` (see [Card catalog](#card-catalog)) |
+| Variable                  | Required | Default      | Purpose                                                                                                                               |
+| ------------------------- | -------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `SECRET_KEY_BASE`         | yes      | none         | Secret used to sign and encrypt sessions and cookies                                                                                  |
+| `COLLECTOR_PORT`          | no       | `3000`       | Host port the app is published on                                                                                                     |
+| `COLLECTOR_MTG_LANGUAGES` | no       | English only | Extra card languages, e.g. `ja,de` (see [Card catalog](#card-catalog))                                                                |
+| `COLLECTOR_CURRENCY`      | no       | `USD`        | Currency for the price you paid: USD, CAD, AUD, NZD, EUR, GBP, CHF, SEK, NOK, DKK, PLN, CZK, JPY, CNY, KRW, SGD, HKD, BRL, MXN or ZAR |
+
+Changing `COLLECTOR_CURRENCY` later doesn't convert prices you've already entered; they're shown with the new symbol. An unsupported code stops the app at boot, naming the setting.
 
 Compose refuses to start without `SECRET_KEY_BASE`. Generate one with:
 
