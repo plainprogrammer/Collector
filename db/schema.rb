@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_30_000003) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_30_000004) do
   create_table "accounts", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -79,6 +79,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_30_000003) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["collectible_type", "code"], name: "index_catalog_sets_on_collectible_type_and_code", unique: true
+  end
+
+  create_table "instance_settings", force: :cascade do |t|
+    t.boolean "sign_up_open", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
   end
 
   create_table "mtg_cards", force: :cascade do |t|
