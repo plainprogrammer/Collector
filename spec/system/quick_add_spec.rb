@@ -43,6 +43,7 @@ RSpec.describe "Quick add from search", type: :system do
     expect(page).to have_current_path(bolt_search_path)
     expect(page.evaluate_script("window.__marker")).to eq("still here")
 
+    wait_for_turbo_idle
     page.go_back
     expect(page).to have_current_path(catalog_entries_path)
     expect(page).to have_no_css(".c-group h2", text: "Lightning Bolt")
@@ -53,9 +54,11 @@ RSpec.describe "Quick add from search", type: :system do
 
   it "goes forward to the search again", :aggregate_failures do
     search_for_bolt_in_its_set
+    wait_for_turbo_idle
     page.go_back
     expect(page).to have_no_css(".c-group h2", text: "Lightning Bolt")
 
+    wait_for_turbo_idle(frames: false)
     page.go_forward
     expect(page).to have_current_path(bolt_search_path)
     expect(page).to have_css(".c-group h2", text: "Lightning Bolt")

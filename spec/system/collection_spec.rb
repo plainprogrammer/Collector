@@ -25,6 +25,7 @@ RSpec.describe "Collection on a phone", type: :system do
     expect(page).to have_css(".c-tile__name", count: 1)
     expect(page.evaluate_script("window.__marker")).to eq("still here")
 
+    wait_for_turbo_idle
     page.go_back
     expect(page).to have_current_path(collection_path)
     expect(page).to have_css(".c-filterbar__count", exact_text: "5 items")
@@ -34,9 +35,11 @@ RSpec.describe "Collection on a phone", type: :system do
 
   it "goes forward to the filtered collection again", :aggregate_failures do
     filter_owned_bolt_and_opt_to_bolt
+    wait_for_turbo_idle
     page.go_back
     expect(page).to have_css(".c-filterbar__count", exact_text: "5 items")
 
+    wait_for_turbo_idle(frames: false)
     page.go_forward
     expect(page).to have_current_path(collection_path(q: "bolt"))
     expect(page).to have_css(".c-filterbar__count", text: "3 of 5 items")
