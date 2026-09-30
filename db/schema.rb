@@ -11,6 +11,11 @@
 # It's strongly recommended that you check this file into your version control system.
 
 ActiveRecord::Schema[8.1].define(version: 2026_09_30_000002) do
+  create_table "accounts", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
   create_table "catalog_entries", force: :cascade do |t|
     t.string "collectible_type", null: false
     t.string "external_key", null: false
@@ -107,8 +112,31 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_30_000002) do
     t.index ["catalog_entry_id"], name: "index_mtg_printings_on_catalog_entry_id", unique: true
   end
 
+  create_table "sessions", force: :cascade do |t|
+    t.integer "user_id", null: false
+    t.string "ip_address"
+    t.string "user_agent"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_sessions_on_user_id"
+  end
+
+  create_table "users", force: :cascade do |t|
+    t.integer "account_id", null: false
+    t.string "name", null: false
+    t.string "email_address", null: false
+    t.string "password_digest", null: false
+    t.boolean "admin", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_users_on_account_id", unique: true
+    t.index ["email_address"], name: "index_users_on_email_address", unique: true
+  end
+
   add_foreign_key "catalog_entries", "catalog_identities"
   add_foreign_key "catalog_entries", "catalog_sets"
   add_foreign_key "mtg_cards", "catalog_identities"
   add_foreign_key "mtg_printings", "catalog_entries"
+  add_foreign_key "sessions", "users"
+  add_foreign_key "users", "accounts"
 end
