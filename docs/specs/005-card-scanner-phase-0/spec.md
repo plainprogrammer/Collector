@@ -1,7 +1,7 @@
 # Feature 005: Card Scanner Phase 0 — Feasibility Spikes
 
-**Status:** Draft
-**Version:** 0.1.0
+**Status:** Approved
+**Version:** 1.0.0
 **Created:** 2026-09-30
 **Last Updated:** 2026-09-30
 **Branch:** `005-card-scanner-phase-0`
@@ -12,7 +12,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
-| 0.1.0 | 2026-09-30 | Initial draft |
+| 1.0.0 | 2026-09-30 | Initial approved spec |
 
 ---
 
