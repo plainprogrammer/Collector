@@ -42,6 +42,14 @@ RSpec.describe "Card search", type: :request do
     expect(names).to eq("en" => "Lightning Bolt", "ja" => "稲妻")
   end
 
+  it "names an English tile by the card name, not a stylized printed name" do
+    serra = printing("Serra Angel", localized_name: "SERRA ANGEL")
+
+    search(q: "serra")
+
+    expect(Nokogiri::HTML5(response.body).at_css("##{ActionView::RecordIdentifier.dom_id(serra, :tile)} .c-tile__name")&.text).to eq("Serra Angel")
+  end
+
   it "shows each printing as a tile with image, name, set · number and language", :aggregate_failures do
     set = create(:catalog_set, code: "m10", name: "Magic 2010")
     entry = printing("Lightning Bolt", set:, number: "146", image_url: "https://cards.scryfall.io/normal/front/a/b/bolt.jpg")

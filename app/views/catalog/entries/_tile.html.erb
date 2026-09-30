@@ -9,7 +9,7 @@
       <% end %>
       <% if owned.to_i.positive? %><span class="c-tile__qty">×<%= owned %></span><% end %>
     </div>
-    <div class="c-tile__name"><%= entry.localized_name || entry.name %></div>
+    <div class="c-tile__name"><%= entry.display_name %></div>
     <div class="c-tile__meta"><span class="c-tag"><%= set_number(entry) %></span><span class="c-tag"><%= entry.language.upcase %></span></div>
   <% end %>
   <%= quick_add_button(entry, return_to:) %>

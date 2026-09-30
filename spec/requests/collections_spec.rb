@@ -41,6 +41,13 @@ RSpec.describe "Collection", type: :request do
     expect(Nokogiri::HTML5(response.body).css(".c-grid .c-tile__name").map(&:text)).to eq([ "稲妻", "Opt" ])
   end
 
+  it "names an English tile by the card name, not a stylized printed name" do
+    serra = create(:mtg_printing).entry.tap { |e| e.update!(name: "Serra Angel", language: "en", localized_name: "SERRA ANGEL") }
+    create(:lot, account: user.account, entry: serra)
+    get collection_path
+    expect(Nokogiri::HTML5(response.body).css(".c-grid .c-tile__name").map(&:text)).to eq([ "Serra Angel" ])
+  end
+
   it "filters by name and counts matching of total", :aggregate_failures do
     bolt = create(:mtg_printing).entry.tap { |e| e.update!(name: "Lightning Bolt") }
     opt = create(:mtg_printing).entry.tap { |e| e.update!(name: "Opt") }
