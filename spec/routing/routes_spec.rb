@@ -36,4 +36,13 @@ RSpec.describe "Routes", type: :routing do
     expect(get: "/admin/users/1/deletion/new").to route_to("admin/users/deletions#new", user_id: "1")
     expect(patch: "/admin/sign_up_setting").to route_to("admin/sign_up_settings#update")
   end
+
+  it "routes adding and managing copies", :aggregate_failures do
+    expect(get: "/catalog/entries/abc/lots/new").to route_to("lots#new", entry_external_key: "abc")
+    expect(post: "/catalog/entries/abc/lots").to route_to("lots#create", entry_external_key: "abc")
+    expect(get: "/lots/1/edit").to route_to("lots#edit", id: "1")
+    expect(patch: "/lots/1").to route_to("lots#update", id: "1")
+    expect(delete: "/lots/1").to route_to("lots#destroy", id: "1")
+    expect(get: "/lots/1/removal/new").to route_to("lots/removals#new", lot_id: "1")
+  end
 end
