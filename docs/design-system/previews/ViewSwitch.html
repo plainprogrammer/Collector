@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en" data-theme="light"><head>
+<link rel="stylesheet" href="preview-fonts.css"><link rel="stylesheet" href="../../../app/assets/stylesheets/collector/tokens.css"><link rel="stylesheet" href="../../../app/assets/stylesheets/collector/components.css"><meta charset="utf-8">
+<style>
+  body { margin:0; padding:var(--space-4); background:var(--surface); color:var(--ink); font-family:var(--font-sans); }
+  .row { display:flex; flex-wrap:wrap; align-items:flex-start; gap:var(--space-6); }
+  .cap { font:600 12px/16px var(--font-sans); color:var(--ink-muted); margin:0 0 var(--space-2); }
+  .phone { width:375px; border:1px solid var(--line); border-radius:var(--radius-md); padding:0 var(--space-4) var(--space-4); background:var(--surface); }
+  
+</style></head>
+<body>
+<div class="row">
+  <div class="c-seg" role="group" aria-label="View">
+    <button aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="9" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span class="c-seg__label">Grid</span></button>
+    <button aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span class="c-seg__label">Table</span></button>
+  </div>
+  <div class="c-seg" role="group" aria-label="Density">
+    <button aria-pressed="false">Large</button>
+    <button aria-pressed="true">Compact</button>
+  </div>
+</div>
+<script>/* preview only: ?theme=dark */ if(new URLSearchParams(location.search).get("theme")==="dark")document.documentElement.dataset.theme="dark";</script>
+</body></html>

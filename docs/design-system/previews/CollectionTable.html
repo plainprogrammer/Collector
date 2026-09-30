@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en" data-theme="light"><head>
+<link rel="stylesheet" href="preview-fonts.css"><link rel="stylesheet" href="../../../app/assets/stylesheets/collector/tokens.css"><link rel="stylesheet" href="../../../app/assets/stylesheets/collector/components.css"><meta charset="utf-8">
+<style>
+  body { margin:0; padding:var(--space-4); background:var(--surface); color:var(--ink); font-family:var(--font-sans); }
+  .row { display:flex; flex-wrap:wrap; align-items:flex-start; gap:var(--space-6); }
+  .cap { font:600 12px/16px var(--font-sans); color:var(--ink-muted); margin:0 0 var(--space-2); }
+  .phone { width:375px; border:1px solid var(--line); border-radius:var(--radius-md); padding:0 var(--space-4) var(--space-4); background:var(--surface); }
+
+</style></head>
+<body>
+<p class="cap">Wide</p>
+<div class="c-collection"><div class="c-bulkbar" role="region" aria-label="Bulk actions">
+  <div class="c-bulkbar__count"><span>2</span> of 4,812 selected</div>
+  <div class="c-bulkbar__extra">
+    <button class="c-btn c-btn--secondary c-btn--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Move to…</button>
+    <button class="c-btn c-btn--secondary c-btn--sm">Set condition</button>
+    <button class="c-btn c-btn--secondary c-btn--sm">Update prices</button>
+    <button class="c-btn c-btn--danger c-btn--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>Remove</button>
+  </div>
+  <details class="c-menu c-bulkbar__more">
+    <summary class="c-btn c-btn--secondary c-btn--sm c-btn--icon" aria-label="More bulk actions"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></summary>
+    <div class="c-menu__list">
+      <button class="c-menu__item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Move to…</button>
+      <button class="c-menu__item">Set condition</button>
+      <button class="c-menu__item">Update prices</button>
+      <div class="c-menu__sep"></div>
+      <button class="c-menu__item c-menu__item--danger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>Remove</button>
+    </div>
+  </details>
+  <a class="c-btn c-btn--primary c-btn--sm" href="?view=grid">Done</a>
+</div>
+<table class="c-table">
+<thead><tr><th><input type="checkbox" aria-label="Select all"></th><th>Name</th><th class="is-opt">Set</th><th class="is-opt">Condition</th><th class="is-num">Qty</th><th class="is-opt">Location</th><th class="is-num is-opt">Price</th></tr></thead>
+<tbody><tr aria-selected="true"><td><input type="checkbox" checked aria-label="Select Lightning Bolt"></td><td><div class="c-table__item"><span class="c-table__thumb"></span><div>Lightning Bolt <span class="c-badge c-badge--foil"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m12 2 3 6.5 7 .8-5.2 4.8 1.4 7L12 17.6 5.8 21.1l1.4-7L2 9.3l7-.8z"/></svg>Foil</span><span class="c-table__sub">2X2 · 117 · Binder 2</span></div></div></td><td class="is-data is-opt">2X2 · 117</td><td class="is-data is-opt">NM</td><td class="is-num">4</td><td class="is-muted is-opt">Binder 2</td><td class="is-num is-opt">$2.10</td></tr><tr><td><input type="checkbox" aria-label="Select Counterspell"></td><td><div class="c-table__item"><span class="c-table__thumb"></span><div>Counterspell<span class="c-table__sub">MH2 · 267 · Izzet Tempo deck</span></div></div></td><td class="is-data is-opt">MH2 · 267</td><td class="is-data is-opt">LP</td><td class="is-num">3</td><td class="is-muted is-opt">Izzet Tempo deck</td><td class="is-num is-opt">$1.45</td></tr><tr aria-selected="true"><td><input type="checkbox" checked aria-label="Select Sol Ring"></td><td><div class="c-table__item"><span class="c-table__thumb"></span><div>Sol Ring<span class="c-table__sub">CMM · 464 · Box A</span></div></div></td><td class="is-data is-opt">CMM · 464</td><td class="is-data is-opt">NM</td><td class="is-num">1</td><td class="is-muted is-opt">Box A</td><td class="is-num is-opt">$1.80</td></tr><tr><td><input type="checkbox" aria-label="Select Llanowar Elves"></td><td><div class="c-table__item"><span class="c-table__thumb"></span><div>Llanowar Elves<span class="c-table__sub">DMU · 168 · Binder 1</span></div></div></td><td class="is-data is-opt">DMU · 168</td><td class="is-data is-opt">NM</td><td class="is-num">4</td><td class="is-muted is-opt">Binder 1</td><td class="is-num is-opt">$0.25</td></tr></tbody></table></div>
+<p class="cap" style="margin-top:var(--space-6)">Narrow (375px) — optional columns fold into a second line; secondary actions move into the menu</p>
+<div class="c-collection phone" style="padding-top:var(--space-4)"><div class="c-bulkbar" role="region" aria-label="Bulk actions">
+  <div class="c-bulkbar__count"><span>2</span> of 4,812 selected</div>
+  <div class="c-bulkbar__extra">
+    <button class="c-btn c-btn--secondary c-btn--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Move to…</button>
+    <button class="c-btn c-btn--secondary c-btn--sm">Set condition</button>
+    <button class="c-btn c-btn--secondary c-btn--sm">Update prices</button>
+    <button class="c-btn c-btn--danger c-btn--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>Remove</button>
+  </div>
+  <details class="c-menu c-bulkbar__more">
+    <summary class="c-btn c-btn--secondary c-btn--sm c-btn--icon" aria-label="More bulk actions"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></summary>
+    <div class="c-menu__list">
+      <button class="c-menu__item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Move to…</button>
+      <button class="c-menu__item">Set condition</button>
+      <button class="c-menu__item">Update prices</button>
+      <div class="c-menu__sep"></div>
+      <button class="c-menu__item c-menu__item--danger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>Remove</button>
+    </div>
+  </details>
+  <a class="c-btn c-btn--primary c-btn--sm" href="?view=grid">Done</a>
+</div>
+<table class="c-table">
+<thead><tr><th><input type="checkbox" aria-label="Select all"></th><th>Name</th><th class="is-opt">Set</th><th class="is-opt">Condition</th><th class="is-num">Qty</th><th class="is-opt">Location</th><th class="is-num is-opt">Price</th></tr></thead>
+<tbody><tr aria-selected="true"><td><input type="checkbox" checked aria-label="Select Lightning Bolt"></td><td><div class="c-table__item"><span class="c-table__thumb"></span><div>Lightning Bolt <span class="c-badge c-badge--foil"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m12 2 3 6.5 7 .8-5.2 4.8 1.4 7L12 17.6 5.8 21.1l1.4-7L2 9.3l7-.8z"/></svg>Foil</span><span class="c-table__sub">2X2 · 117 · Binder 2</span></div></div></td><td class="is-data is-opt">2X2 · 117</td><td class="is-data is-opt">NM</td><td class="is-num">4</td><td class="is-muted is-opt">Binder 2</td><td class="is-num is-opt">$2.10</td></tr><tr><td><input type="checkbox" aria-label="Select Counterspell"></td><td><div class="c-table__item"><span class="c-table__thumb"></span><div>Counterspell<span class="c-table__sub">MH2 · 267 · Izzet Tempo deck</span></div></div></td><td class="is-data is-opt">MH2 · 267</td><td class="is-data is-opt">LP</td><td class="is-num">3</td><td class="is-muted is-opt">Izzet Tempo deck</td><td class="is-num is-opt">$1.45</td></tr><tr aria-selected="true"><td><input type="checkbox" checked aria-label="Select Sol Ring"></td><td><div class="c-table__item"><span class="c-table__thumb"></span><div>Sol Ring<span class="c-table__sub">CMM · 464 · Box A</span></div></div></td><td class="is-data is-opt">CMM · 464</td><td class="is-data is-opt">NM</td><td class="is-num">1</td><td class="is-muted is-opt">Box A</td><td class="is-num is-opt">$1.80</td></tr><tr><td><input type="checkbox" aria-label="Select Llanowar Elves"></td><td><div class="c-table__item"><span class="c-table__thumb"></span><div>Llanowar Elves<span class="c-table__sub">DMU · 168 · Binder 1</span></div></div></td><td class="is-data is-opt">DMU · 168</td><td class="is-data is-opt">NM</td><td class="is-num">4</td><td class="is-muted is-opt">Binder 1</td><td class="is-num is-opt">$0.25</td></tr></tbody></table></div>
+<script>/* preview only: ?theme=dark */ if(new URLSearchParams(location.search).get("theme")==="dark")document.documentElement.dataset.theme="dark";</script>
+</body></html>

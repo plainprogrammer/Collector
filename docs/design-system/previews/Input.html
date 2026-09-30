@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en" data-theme="light"><head>
+<link rel="stylesheet" href="preview-fonts.css"><link rel="stylesheet" href="../../../app/assets/stylesheets/collector/tokens.css"><link rel="stylesheet" href="../../../app/assets/stylesheets/collector/components.css"><meta charset="utf-8">
+<style>
+  body { margin:0; padding:var(--space-4); background:var(--surface); color:var(--ink); font-family:var(--font-sans); }
+  .row { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-3); }
+  .stack { display:flex; flex-direction:column; gap:var(--space-4); }
+  .cap { font:600 12px/16px var(--font-sans); color:var(--ink-muted); margin:0 0 var(--space-2); }
+  
+</style></head>
+<body>
+<div class="stack" style="max-width:420px">
+<label class="c-input"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input placeholder="Search your collection" aria-label="Search your collection"><kbd>/</kbd></label>
+<label class="c-input"><input value="Lightning Bolt" aria-label="Card name"></label>
+</div>
+<script>/* preview only: ?theme=dark */ if(new URLSearchParams(location.search).get("theme")==="dark")document.documentElement.dataset.theme="dark";</script>
+</body></html>

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Collector"><g stroke-linejoin="round" transform="translate(6 0)">
+<g transform="rotate(-24 30 58)" fill="#fffdf8" stroke="#1f1d1a" stroke-width="2.5"><rect x="17" y="12" width="30" height="42" rx="4"/></g>
+<g transform="rotate(-11 30 58)" fill="#fffdf8" stroke="#1f1d1a" stroke-width="2.5"><rect x="17" y="12" width="30" height="42" rx="4"/></g>
+<g transform="rotate(3 30 58)" fill="#13595a" stroke="#1f1d1a" stroke-width="2.5"><rect x="17" y="12" width="30" height="42" rx="4"/></g>
+<path transform="rotate(3 30 58)" d="M32 24 L39 33 L32 42 L25 33 Z" fill="#d9a03f"/>
+</g></svg>
