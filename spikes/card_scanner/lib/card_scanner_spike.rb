@@ -7,3 +7,4 @@ module CardScannerSpike
   def self.corpus_dir = File.expand_path(ENV.fetch("CARD_SCANNER_CORPUS", "~/card-scanner-corpus"))
 end
 require_relative "card_scanner_spike/normaliser"
+require_relative "card_scanner_spike/collector_line"
