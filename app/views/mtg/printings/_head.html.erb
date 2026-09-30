@@ -1,0 +1,7 @@
+<% extension.faces.each do |face| %>
+  <section class="c-face">
+    <% if extension.faces.size > 1 %><h2 class="c-section__title"><%= face["name"] %></h2><% end %>
+    <p class="c-item__type"><%= face["type_line"] %> <%= mana_cost_tag(face["mana_cost"], large: true) %></p>
+    <% if face["oracle_text"].present? %><div class="c-rules"><%= simple_format(h(face["oracle_text"])) %></div><% end %>
+  </section>
+<% end %>

@@ -10,7 +10,7 @@ class Catalog::EntriesController < ApplicationController
   def show
     @entry = Catalog::Entry.includes(:set, :identity).find_by!(external_key: params[:external_key])
     Catalog::Entry.preload_extensions([ @entry ])
-    @printings_listed = @entry.identity.entries.searchable.exists?
+    @overview = Catalog::CardOverview.new(account: Current.account, entry: @entry)
   end
 
   private

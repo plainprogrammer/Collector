@@ -1,28 +1,10 @@
-<dl>
-  <dt>Rarity</dt><dd><%= extension.rarity.humanize %></dd>
-  <dt>Finishes</dt><dd><%= extension.finishes.join(", ") %></dd>
+<% entry = extension.entry %>
+<dl class="c-details">
+  <div><dt>Set</dt><dd><%= entry.set.name %> <span class="c-tag"><%= set_number(entry) %></span></dd></div>
+  <div><dt>Language</dt><dd class="is-data"><%= entry.language.upcase %></dd></div>
+  <% if entry.localized_name %><div><dt>Printed name</dt><dd lang="<%= entry.language %>"><%= entry.localized_name %></dd></div><% end %>
+  <div><dt>Rarity</dt><dd><%= extension.rarity.humanize %></dd></div>
+  <div><dt>Finishes</dt><dd><%= MTG::Collecting.finishes_for(entry).map { |finish| MTG::Collecting.finish_label(finish) }.join(", ") %></dd></div>
+  <div><dt>Released</dt><dd><%= entry.released_on ? l(entry.released_on, format: :long) : "Unknown" %></dd></div>
+  <div><dt><%= extension.faces.size > 1 ? "Artists" : "Artist" %></dt><dd><%= extension.faces.map { |face| face["artist"] }.compact.join(" // ") %></dd></div>
 </dl>
-
-<% extension.faces.each do |face| %>
-  <section class="mtg-face">
-    <% image = catalog_url(face.dig("image_uris", "large") || face.dig("image_uris", "normal")) %>
-    <% if image %>
-      <%= image_tag image, alt: face["name"], loading: "lazy", width: 336, height: 468 %>
-    <% end %>
-    <h2><%= face["name"] %></h2>
-    <% if face["printed_name"] %>
-      <p><%= face["printed_name"] %></p>
-    <% end %>
-    <p><%= face["mana_cost"] %></p>
-    <p><%= face["type_line"] %></p>
-    <%= simple_format(h(face["oracle_text"])) %>
-    <p>Illustrated by <%= face["artist"] %></p>
-  </section>
-<% end %>
-
-<p>
-  Card data and images provided by Scryfall.
-  <% if catalog_url(extension.scryfall_uri) %>
-    <%= link_to "View on Scryfall", catalog_url(extension.scryfall_uri) %>
-  <% end %>
-</p>

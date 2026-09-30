@@ -78,3 +78,16 @@
 /* ---------- Empty state ---------- */
 .c-empty { margin:var(--space-6) 0; padding:var(--space-6); text-align:center; background:var(--surface-sunken);
   border-radius:var(--radius-md); font:400 15px/22px var(--font-sans); color:var(--ink); }
+
+/* ---------- Card page: details list, single stat, faces, attribution ---------- */
+.c-details { display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:var(--space-3) var(--space-4); margin:0; }
+.c-details dt { font:600 12px/16px var(--font-sans); color:var(--ink-muted); }
+.c-details dd { margin:var(--space-1) 0 0; font:400 14px/20px var(--font-sans); color:var(--ink); }
+.c-details .is-data { font-family:var(--font-mono); }
+.c-stats--single { grid-template-columns:minmax(0, 1fr); max-width:240px; }
+.c-face { display:flex; flex-direction:column; gap:var(--space-2); }
+.c-list li.is-unowned { color:var(--ink-muted); }
+.c-list .is-data { font-family:var(--font-mono); }
+.c-list .c-tile__add .c-btn { width:auto; }
+.c-attribution { margin:0; font:400 12px/16px var(--font-sans); color:var(--ink-muted); }
+@container page (max-width: 639px) { .c-stats--single { grid-template-columns:minmax(0, 1fr); max-width:none; } }

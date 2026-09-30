@@ -19,6 +19,10 @@ class Catalog::QuickAddsController < ApplicationController
   end
 
   private
-    # Replaced in Phase 8 by the card page rendered at 422.
-    def render_full_lot = render(plain: FULL_LOT, status: :unprocessable_content)
+    def render_full_lot
+      flash.now[:alert] = FULL_LOT
+      Catalog::Entry.preload_extensions([ @entry ])
+      @overview = Catalog::CardOverview.new(account: Current.account, entry: @entry)
+      render "catalog/entries/show", status: :unprocessable_content
+    end
 end

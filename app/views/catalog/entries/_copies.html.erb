@@ -1,0 +1,41 @@
+<section id="copies">
+  <div class="c-section__head">
+    <h2 class="c-section__title">Your copies</h2>
+    <% if overview.lots.any? %><span class="c-section__count"><%= overview.owned_count %> in <%= pluralize(overview.lots.size, "lot") %></span><% end %>
+  </div>
+  <% if overview.lots.empty? %>
+    <p class="c-empty">You don't have this card yet. <%= link_to "Add a copy", new_catalog_entry_lot_path(overview.entry, **card_params) %></p>
+  <% else %>
+    <div class="c-collection">
+      <table class="c-table">
+        <thead><tr><th>Printing</th><th class="is-opt">Finish</th><th class="is-opt">Condition</th><th class="is-opt">Language</th><th class="is-num">Qty</th><th class="is-num is-opt">Paid</th><th><span class="c-sr">Actions</span></th></tr></thead>
+        <tbody>
+          <% overview.lots.each do |lot| %>
+            <% vocab = overview.vocabulary %>
+            <% finish = lot.finish && (vocab.special_finishes.include?(lot.finish) ? render("catalog/entries/finish_badge", label: vocab.finish_label(lot.finish)) : tag.span(vocab.finish_label(lot.finish), class: "is-muted")) %>
+            <% condition = lot.condition ? vocab.conditions.fetch(lot.condition).last : "—" %>
+            <tr>
+              <td><div class="c-table__item"><div><span class="is-data"><%= set_number(lot.entry) %></span>
+                <span class="c-table__sub"><%= safe_join([ (lot.finish ? vocab.finish_label(lot.finish) : nil), condition, lot.entry.language.upcase ].compact, " · ") %></span></div></div></td>
+              <td class="is-opt"><%= finish || "—" %></td>
+              <td class="is-data is-opt"><%= condition %></td>
+              <td class="is-data is-opt"><%= lot.entry.language.upcase %></td>
+              <td class="is-num"><%= lot.quantity %></td>
+              <td class="is-num is-opt"><%= lot.price_paid ? number_to_currency(lot.price_paid, unit: Rails.configuration.x.currency.symbol) : "—" %></td>
+              <td class="c-table__actions">
+                <details class="c-menu" data-controller="menu">
+                  <summary class="c-btn c-btn--ghost c-btn--sm c-btn--icon" aria-label="Actions for <%= set_number(lot.entry) %> <%= condition %>"><%= render "icons/more" %></summary>
+                  <div class="c-menu__list">
+                    <%= link_to "Edit copy", edit_lot_path(lot, **card_params), class: "c-menu__item" %>
+                    <div class="c-menu__sep"></div>
+                    <%= link_to "Remove", new_lot_removal_path(lot, **card_params), class: "c-menu__item c-menu__item--danger" %>
+                  </div>
+                </details>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
+</section>

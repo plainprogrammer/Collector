@@ -1,0 +1,24 @@
+<section id="printings">
+  <div class="c-section__head">
+    <h2 class="c-section__title">Printings</h2>
+    <span class="c-section__count"><%= overview.total_printings %> known · <%= overview.printings_owned %> owned</span>
+    <% if overview.total_printings.positive? %>
+      <span class="c-section__actions"><%= link_to "Show all #{overview.total_printings} printings", catalog_identity_path(overview.identity), class: "c-btn c-btn--ghost c-btn--sm" %></span>
+    <% end %>
+  </div>
+  <ul class="c-list">
+    <% overview.rows.each do |row| %>
+      <li class="<%= "is-unowned" if row.owned.zero? %>">
+        <% if row.shown %>
+          <span class="is-data"><%= set_number(row.entry) %></span><span class="c-tag">Shown</span>
+        <% else %>
+          <%= link_to set_number(row.entry), catalog_entry_path(row.entry, **card_params), class: "is-data" %>
+        <% end %>
+        <span class="c-list__meta"><%= row.entry.set.name %> · <%= row.entry.language.upcase %><%= " · Retired" if row.entry.retired? %></span>
+        <span class="c-list__end">
+          <% if row.owned.positive? %>×<%= row.owned %><% else %><%= quick_add_button(row.entry, return_to: catalog_entry_path(overview.entry, **card_params)) %><% end %>
+        </span>
+      </li>
+    <% end %>
+  </ul>
+</section>

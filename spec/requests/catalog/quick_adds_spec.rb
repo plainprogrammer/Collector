@@ -39,11 +39,11 @@ RSpec.describe "Quick add", type: :request do
     expect(user.account.lots.sole.quantity).to eq(9_999)
   end
 
-  it "answers an over-cap add without scripting with 422 and the message", :aggregate_failures do
+  it "answers an over-cap add without scripting with the card page at 422", :aggregate_failures do
     create(:lot, account: user.account, entry:, quantity: 9_999)
     post catalog_entry_quick_add_path(entry)
     expect(response).to have_http_status(:unprocessable_content)
-    expect(response.body).to include("You already have the most copies one lot can hold (9,999).")
+    expect(response.body).to include("You already have the most copies one lot can hold (9,999).", "Your copies", "9999")
   end
 
   it "returns 404 for an unknown printing" do

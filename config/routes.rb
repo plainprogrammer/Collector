@@ -22,6 +22,13 @@ Rails.application.routes.draw do
     resources :identities, only: :show, param: :external_key
   end
 
+  scope "catalog/entries/:entry_external_key", as: :catalog_entry do
+    resources :lots, only: %i[new create]
+  end
+  resources :lots, only: %i[edit update destroy] do
+    resource :removal, only: :new, module: :lots
+  end
+
   namespace :admin do
     resources :users, except: :show do
       resource :deletion, only: :new, module: :users
