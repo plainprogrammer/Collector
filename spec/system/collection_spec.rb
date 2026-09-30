@@ -16,6 +16,7 @@ RSpec.describe "Collection on a phone", type: :system do
       expect(page).to have_css(".c-appbar__add[href='#{catalog_entries_path}']", visible: :visible)
       expect(page).to have_no_css(".c-pagehead__actions", visible: :visible)
       expect(page).to have_css(".c-tabbar", visible: :visible)
+      expect(page).to have_css(".c-appbar__nav", visible: :hidden)
     end
   end
 
