@@ -1,7 +1,7 @@
 # Feature 004: Design System, Accounts, Adding Cards and the Collection Grid
 
 **Status:** Approved
-**Version:** 2.1.1
+**Version:** 2.1.2
 **Created:** 2026-09-29
 **Last Updated:** 2026-09-29
 **Branch:** `feat/004-design-system-collection` (chosen at `sdd-execute`; drafted on `plainprogrammer/design-system-implementation`)
@@ -17,6 +17,7 @@
 | 2.0.1 | 2026-09-29 | Second-review wording fixes (no behaviour change). **Card page:** the shown printing always has a Printings row (AC-8.7); the phone back link targets the breadcrumb's first item (AC-2.7); multi-face artists are listed per face (AC-8.1); a listed format missing from the data shows "Not legal" (AC-8.8); 002 FR-8's search link is replaced by the breadcrumb (AC-8.2). **Admin and command:** the admin's new password needs no confirmation (AC-5.3); the command rejects a malformed email (AC-5.7). **Also:** the page used for a no-script over-cap quick add (AC-7.3a); browser-level tags on AC-1.5 and AC-6.1; a single-stat block pattern (FR-11) |
 | 2.1.0 | 2026-09-29 | From the plan review: the result count sits on the line directly beneath the filter bar, inside the results, so it updates with each search without scripting (AC-6.4, AC-11.4). With scripting on, an over-cap quick add shows its message in the status region and leaves the page as it was (AC-7.3a) |
 | 2.1.1 | 2026-09-29 | FR-11 lists the table action cell (`TableActions`), which the admin users list and the copies table already use (no behaviour change) |
+| 2.1.2 | 2026-09-29 | From the implementation review. The add, edit and removal pages for a lot are detail pages like the card page, with a back link to the card page (AC-2.7, AC-2.8). Tiles show the printing's printed name, localized when present, while sorting stays by card name (AC-6.2, AC-11.2) |
 
 ---
 
@@ -96,8 +97,10 @@ Collector can find a Magic card, but that's all it can do. Search (feature 002) 
 - [ ] **AC-2.4** Given the avatar menu (wide) or the More page (phone) When it is opened Then it offers "Sign out", and also "Users and sign-up" when the collector is an admin
 - [ ] **AC-2.5** Given the collector has no theme set in the page When their operating system prefers dark Then the page renders with the design system's dark tokens and the reversed (dark-ground) logo, and otherwise with the light tokens and the standard logo
 - [ ] **AC-2.6** Given a signed-in collector When they request the root path Then they are redirected to their collection page
-- [ ] **AC-2.7** Given a card page (a detail page) on a phone When it renders Then the header shows a back link (accessible name "Back") in place of the logo, whose target is the breadcrumb's first item from AC-8.9 (the collection page or the search page), and no add button; scripting may enhance it to go back in history
-- [ ] **AC-2.8** Given any other signed-in page on a phone When it renders Then the header shows the logo mark, an icon-only add button (accessible name "Add items") leading to search, and the avatar menu
+- [ ] **AC-2.7** Given a detail page on a phone When it renders Then the header shows a back link (accessible name "Back") in place of the logo, and no add button; scripting may enhance it to go back in history. Detail pages and their back link targets:
+  - a card page: the breadcrumb's first item from AC-8.9 (the collection page or the search page)
+  - the add, edit and removal pages for a lot: that printing's card page
+- [ ] **AC-2.8** Given any signed-in page that is not a detail page (AC-2.7) on a phone When it renders Then the header shows the logo mark, an icon-only add button (accessible name "Add items") leading to search, and the avatar menu
 
 ### Story 3: First visitor sets up the instance
 
@@ -172,7 +175,7 @@ Collector can find a Magic card, but that's all it can do. Search (feature 002) 
 **Acceptance criteria:**
 
 - [ ] **AC-6.1** (in-place update verified in a browser-level test) Given the search page When it renders Then it has one page title ("Search"), and a sticky filter bar with a name search input and a set choice. Submitting it changes the URL (query and set in the URL, back button restores the previous search) and updates the results without a full page load, and it also works with scripting disabled
-- [ ] **AC-6.2** Given results When they render Then each card is a section headed by the card name, holding one tile per listed printing. Each tile shows the printing's image (or the name on a plain fallback when there is none), its name, a `SET · number` tag and its language code (e.g. "EN", "JA"), and links to that printing's card page
+- [ ] **AC-6.2** Given results When they render Then each card is a section headed by the card name, holding one tile per listed printing. Each tile shows the printing's image (or the name on a plain fallback when there is none), its printed name (the localized name when the printing has one, otherwise its name), a `SET · number` tag and its language code (e.g. "EN", "JA"), and links to that printing's card page
 - [ ] **AC-6.3** Given the collector owns copies of a listed printing When the results render Then that printing's tile shows the owned quantity ("×3"), and tiles of printings they don't own are shown faded with no quantity
 - [ ] **AC-6.4** Given results When they render Then the line directly beneath the filter bar shows the exact number of matching cards ("12 cards" or "1 card") and the catalog's last-updated date (002 AC-1.12)
 - [ ] **AC-6.5** Given feature 002's search behaviours (ACs 1.1–1.14, 2.1–2.4, 10.1–10.3) When they are exercised by a signed-in collector Then they still hold, except for these superseded parts:
@@ -289,7 +292,7 @@ Collector can find a Magic card, but that's all it can do. Search (feature 002) 
   - its image (or the no-image fallback) at the card's 63:88 ratio
   - the total quantity across its lots, always shown, including "×1"
   - at most one finish badge, reading "Foil" if any lot is foil, "Etched" if any is etched, or "Foil, etched" if both
-  - the card name
+  - the printing's printed name (localized when present, as in AC-6.2); tiles still sort by card name (AC-11.3)
   - a `SET · number` tag and the language code
   
   Each tile links to that printing's card page
