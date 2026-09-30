@@ -33,6 +33,18 @@ RSpec.describe "Collection", type: :request do
     expect(response.body).to include(%(No cards in your collection match "zzz".), "0 of 5 items")
   end
 
+  it "says item, not items, for a single copy", :aggregate_failures do
+    entry = create(:mtg_printing).entry.tap { |e| e.update!(name: "Lightning Bolt") }
+    create(:lot, account: user.account, entry:)
+    get collection_path
+    expect(response.body).to include("1 item · 1 unique", %(<span class="c-filterbar__count">1 item</span>))
+    expect(response.body).not_to include("1 items")
+    get collection_path(q: "zzz")
+    expect(response.body).to include("0 of 1 item<")
+    get collection_path(q: "bolt")
+    expect(response.body).to include("1 of 1 item<")
+  end
+
   it "only shows the signed-in account's copies" do
     create(:lot, quantity: 7)
     get collection_path
