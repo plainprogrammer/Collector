@@ -22,7 +22,7 @@ RSpec.describe "Sign-in", type: :request do
 
   it "rejects a wrong password without saying which field was wrong", :aggregate_failures do
     sign_in(password: "wrong password!")
-    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response).to have_http_status(:unprocessable_content)
     expect(response.body).to include("Email or password is incorrect.")
   end
 

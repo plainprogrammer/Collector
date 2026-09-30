@@ -15,7 +15,7 @@ class RegistrationsController < ApplicationController
       redirect_to collection_path, status: :see_other
     else
       @first_user = !User.exists? && !@registration.closed?
-      render :new, status: :unprocessable_entity
+      render :new, status: :unprocessable_content
     end
   end
 

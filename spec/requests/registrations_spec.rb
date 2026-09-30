@@ -26,7 +26,7 @@ RSpec.describe "Sign-up", type: :request do
       get new_registration_path
       create(:admin)
       expect { post registration_path, params: params }.not_to change(User, :count)
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       expect(response.body).to include("Sign-up is closed on this instance.")
     end
   end
@@ -41,7 +41,7 @@ RSpec.describe "Sign-up", type: :request do
       expect(response.body).not_to include("<form")
 
       expect { post registration_path, params: params }.not_to change(User, :count)
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       expect(response.body).to include("Sign-up is closed on this instance.")
     end
   end
@@ -58,7 +58,7 @@ RSpec.describe "Sign-up", type: :request do
 
     it "shows each invalid field's message with 422", :aggregate_failures do
       post registration_path, params: { user: { name: "", email_address: "nope", password: "short", password_confirmation: "other" } }
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       expect(response.body).to include("Name can&#39;t be blank", "Email must look like name@example.com",
         "Password must be at least 12 characters", "Password confirmation doesn&#39;t match Password")
     end

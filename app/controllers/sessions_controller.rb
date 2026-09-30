@@ -14,7 +14,7 @@ class SessionsController < ApplicationController
       start_new_session_for(user)
       redirect_to after_authentication_url, status: :see_other
     else
-      render_new("Email or password is incorrect.", :unprocessable_entity)
+      render_new("Email or password is incorrect.", :unprocessable_content)
     end
   end
 
