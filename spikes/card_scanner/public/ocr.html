@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Card scanner spike: OCR</title>
+  <script src="/ocr/v7.0.0/tesseract.min.js"></script>
+  <script type="module" src="/ocr.js"></script>
+</head>
+<body>
+  <h1>OCR spike</h1>
+  <p id="status" aria-live="polite">Loading OCR engine…</p>
+  <label>Photos <input id="photos" type="file" accept="image/*" multiple disabled></label>
+  <table>
+    <thead><tr><th>File</th><th>Name strip</th><th>Collector strip</th><th>ms</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+</body>
+</html>

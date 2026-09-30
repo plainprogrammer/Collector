@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Downloads the pinned OCR engine into tmp/card_scanner_spike/ocr/v7.0.0 (never committed).
+set -euo pipefail
+root="$(cd "$(dirname "$0")/../../.." && pwd)"
+dest="$root/tmp/card_scanner_spike/ocr/v7.0.0"
+work="$(mktemp -d)"; trap 'rm -rf "$work"' EXIT
+mkdir -p "$dest/core" "$dest/lang"
+fetch() { # <registry path> <tarball base name> <version>
+  curl -fsSL --max-time 180 "https://registry.npmjs.org/$1/-/$2-$3.tgz" -o "$work/$2.tgz"
+  mkdir -p "$work/$2" && tar -xzf "$work/$2.tgz" -C "$work/$2"
+  sha256sum "$work/$2.tgz" | sed "s|$work/||"
+}
+fetch tesseract.js tesseract.js 7.0.0
+fetch tesseract.js-core tesseract.js-core 7.0.0
+fetch @tesseract.js-data/eng eng 1.0.0
+cp "$work/tesseract.js/package/dist/tesseract.min.js" "$work/tesseract.js/package/dist/worker.min.js" "$dest/"
+cp "$work/tesseract.js-core/package/"tesseract-core*.wasm.js "$dest/core/"
+cp "$work/eng/package/4.0.0_best_int/eng.traineddata.gz" "$dest/lang/"
+du -b "$dest"/*.js "$dest"/core/* "$dest"/lang/*
