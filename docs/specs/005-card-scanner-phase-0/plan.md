@@ -3,6 +3,7 @@
 **Spec:** docs/specs/005-card-scanner-phase-0/spec.md (v1.1.0, Approved; v1.1.1 PATCH in Phase 0)
 **Decisions:** none yet. This feature *produces* ADRs 0001–0003 (Phase 8)
 **Created:** 2026-09-30
+**Revised:** 2026-09-30 — plan review (Fable): manifest parsed without `csv`, 304 revalidation for the engine, log move ordering, both runs' rates, fixture and name-read wording, parser inputs in findings, Phase 0 reduced to the spec patch, `img-src` dropped, wider set-line separators, `name_edge_cases.rb` moved to Phase 5
 
 ## Context
 
@@ -23,7 +24,7 @@ This plan builds a small throwaway spike harness under `spikes/card_scanner/`, r
 
 **Plan decisions (not spelled out in the spec):**
 - **Spike page origin:** a static Rack app (`CardScannerSpike::Server`) under the spike's own Puma config (`spikes/card_scanner/puma.rb`, port 4100, bound to `0.0.0.0` for the iPhone). This is the spec's "static file server over the spike directory" option. The Rails server is left untouched.
-- **Security policy:** the spec's quoted header would block the engine. WebAssembly compilation needs `'wasm-unsafe-eval'`, and photos drawn from the file picker need `img-src blob:`. Phase 0 applies a **PATCH (1.1.1)** that keeps "every source is `'self'` or a scheme, no other host", and quotes the header actually sent: `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; img-src 'self' blob: data:; worker-src 'self' blob:; connect-src 'self'; report-uri /csp-report`. Any violation is POSTed back and logged, and zero reports is part of the evidence.
+- **Security policy:** the spec's quoted header would block the engine, because WebAssembly compilation needs `'wasm-unsafe-eval'` (verified in the plan review: the engine loads and reads a card under this header with 0 violation reports). Phase 0 applies a **PATCH (1.1.1)** that keeps "every source is `'self'` or a scheme, no other host", and quotes the header actually sent: `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; connect-src 'self'; report-uri /csp-report`. Any violation is POSTed back and logged, and zero reports is part of the evidence.
 - **Guide:** a photo has no live overlay, so the "card-shaped guide" is a fixed rectangle: centred, 90% of the image height, 63:88 aspect. The photo protocol tells the maintainer to fill it. The strip positions are tuned once on a 5-photo pilot, then frozen before the measured runs (the findings say so).
 - **Ground truth:** the maintainer writes `manifest.csv` (`file,set,number,foil[,era]`). A builder derives the catalog name, the name-bar (front face) name, whether the card is borderless or showcase, and the era from the release date (before 2014-07-18 is pre-M15; before 2023-04-21 is M15–ONE; otherwise MOM+). The `era` column overrides it.
 - **Name index:** built in its own SQLite file (`tmp/card_scanner_spike/names.sqlite3`), not in the app schema. The query ORs the query's trigrams, takes the top 50 by `bm25`, re-ranks by Jaro-Winkler and de-duplicates per card. Queries shorter than 3 characters use an exact or prefix match on the normalised column.
@@ -58,15 +59,14 @@ A throwaway spike harness plus measured findings (`research.md`, ADRs 0001–000
 
 ---
 
-## Phase 0: Spec patch and doc-first commit
+## Phase 0: Spec patch
 
 **Implements:** — | **Satisfies:** — (enables all)
-**Files:** `docs/specs/005-card-scanner-phase-0/{spec.md,plan.md}`
-**Interfaces:** Consumes: nothing. Produces: spec v1.1.1 and this plan on the branch.
+**Files:** `docs/specs/005-card-scanner-phase-0/spec.md`
+**Interfaces:** Consumes: nothing. Produces: spec v1.1.1. (This plan is already committed.)
 
-- [ ] Using `sdd-superpowers:sdd-spec-update`, apply PATCH 1.1.1 to spec NFR "Security and privacy" bullet 2. Replace the quoted header with: "served with a Content Security Policy in which every directive allows only `'self'`, the `blob:`/`data:` schemes, or `'wasm-unsafe-eval'` (no other host), with violations reported to the page's own origin". Add a changelog row: "1.1.1: the quoted header blocked WebAssembly and picked photos; same intent (no other host)".
-- [ ] Write this plan to `docs/specs/005-card-scanner-phase-0/plan.md`.
-- [ ] Commit: `docs(spec): add plan for 005 and patch the spike CSP (v1.1.1)`
+- [ ] Using `sdd-superpowers:sdd-spec-update`, apply PATCH 1.1.1 to spec NFR "Security and privacy" bullet 2. Replace the quoted header with: "served with a Content Security Policy in which every directive allows only `'self'`, the `blob:` scheme (for the OCR worker), or `'wasm-unsafe-eval'` (to compile the engine), with no other host and violations reported to the page's own origin". Add a changelog row: "1.1.1: the quoted header blocked WebAssembly compilation; same intent (no other host)".
+- [ ] Commit: `docs(spec): patch the spike CSP (v1.1.1)`
 
 ---
 
@@ -162,6 +162,12 @@ A throwaway spike harness plus measured findings (`research.md`, ADRs 0001–000
       expect(parse("0123/0281 M\nDMU ★ EN").foil).to be(true)
     end
 
+    it "accepts a bullet misread as a guillemet", :aggregate_failures do
+      result = parse("051/302 R\nNEO « EN")
+      expect(result.language).to eq("en")
+      expect(result.foil).to be(false)
+    end
+
     it "reads the MOM and later rarity-first format", :aggregate_failures do
       result = parse("R 0123\nMOM • EN")
       expect(result.to_h).to eq(set_code: "MOM", number: "123", language: "en", foil: false, format: :rarity_first)
@@ -211,7 +217,7 @@ A throwaway spike harness plus measured findings (`research.md`, ADRs 0001–000
       NUMBERISH = "[0-9ODILSB]"
       SLASH = %r{(?<![A-Z0-9])(#{NUMBERISH}{1,4})\s*/\s*#{NUMBERISH}{1,4}(?![A-Z0-9])}
       RARITY_FIRST = /(?<![A-Z0-9])[CURMSLTP]\s+(#{NUMBERISH}{1,4})([A-Z★]?)(?![A-Z0-9])/
-      SET_LINE = /(?<![A-Z0-9])([A-Z0-9]{3,5})\s*([•·*★.])\s*([A-Z]{2})(?![A-Z])/
+      SET_LINE = /(?<![A-Z0-9])([A-Z0-9]{3,5})\s*([•·*★.«»°~-])\s*([A-Z]{2})(?![A-Z])/ # OCR reads • as « at times
       FOIL_MARKERS = %w[★ *].freeze
 
       module_function
@@ -256,7 +262,7 @@ A throwaway spike harness plus measured findings (`research.md`, ADRs 0001–000
   end
   ```
   Append `require_relative "card_scanner_spike/collector_line"` to the entry file.
-- [ ] Run the same command. Expect: 10 examples, 0 failures. Then run `bin/rubocop spikes/`. Expect: no offenses.
+- [ ] Run the same command. Expect: 11 examples, 0 failures. Then run `bin/rubocop spikes/`. Expect: no offenses.
 - [ ] Commit: `feat(spike): add tolerant collector-line parser`
 
 ---
@@ -310,6 +316,12 @@ A throwaway spike harness plus measured findings (`research.md`, ADRs 0001–000
       expect(app.get("/ocr/v7.0.0/worker.min.js", loopback).headers["cache-control"]).to include("immutable")
     end
 
+    it "answers an engine revalidation with 304 and no body", :aggregate_failures do
+      response = app.get("/ocr/v7.0.0/worker.min.js", loopback.merge("HTTP_IF_MODIFIED_SINCE" => "Tue, 29 Sep 2026 00:00:00 GMT"))
+      expect(response.status).to eq(304)
+      expect(response.body).to eq("")
+    end
+
     it "serves corpus photos to this machine only", :aggregate_failures do
       expect(app.get("/corpus/a.jpg", loopback).status).to eq(200)
       expect(app.get("/corpus/a.jpg", "REMOTE_ADDR" => "192.168.1.20").status).to eq(403)
@@ -357,8 +369,8 @@ A throwaway spike harness plus measured findings (`research.md`, ADRs 0001–000
     # photo corpus from one origin, under a self-only CSP, logging each response's
     # size (FR-2, AC-1.6, NFR Security).
     class Server
-      CSP = [ "default-src 'self'", "script-src 'self' 'wasm-unsafe-eval'", "img-src 'self' blob: data:",
-              "worker-src 'self' blob:", "connect-src 'self'", "report-uri /csp-report" ].join("; ").freeze
+      CSP = [ "default-src 'self'", "script-src 'self' 'wasm-unsafe-eval'", "worker-src 'self' blob:",
+              "connect-src 'self'", "report-uri /csp-report" ].join("; ").freeze
       IMMUTABLE = { "cache-control" => "public, max-age=31536000, immutable" }.freeze
       LOOPBACK = %w[127.0.0.1 ::1].freeze
       PHOTO = /\.jpe?g\z/i
@@ -388,7 +400,7 @@ A throwaway spike harness plus measured findings (`research.md`, ADRs 0001–000
           in [ "POST", "/csp-report" ] then save_csp_report(request)
           in [ "GET", "/corpus/index.json" ] then local?(request) ? corpus_index : text(403, "Forbidden")
           in [ "GET", %r{\A/corpus/} ] then local?(request) ? delegate(@corpus, request, path.delete_prefix("/corpus")) : text(403, "Forbidden")
-          in [ "GET", %r{\A/ocr/} ] then delegate(@ocr, request, path.delete_prefix("/ocr"))
+          in [ "GET", %r{\A/ocr/} ] then revalidating?(request) ? [ 304, {}, [] ] : delegate(@ocr, request, path.delete_prefix("/ocr"))
           in [ "GET", _ ] then delegate(@public, request, path)
           else text(405, "Method not allowed")
           end
@@ -397,6 +409,10 @@ A throwaway spike harness plus measured findings (`research.md`, ADRs 0001–000
         def delegate(files, request, path) = files.call(request.env.merge("PATH_INFO" => path))
 
         def local?(request) = LOOPBACK.include?(request.ip)
+
+        # The engine files are pinned by version in their path, so a revalidation never needs a body.
+        # Safari ignores `immutable` and revalidates on reload; answering 304 keeps warm runs honest (AC-1.6).
+        def revalidating?(request) = request.has_header?("HTTP_IF_MODIFIED_SINCE") || request.has_header?("HTTP_IF_NONE_MATCH")
 
         def corpus_index
           json(200, Dir.exist?(@corpus_dir) ? Dir.children(@corpus_dir).grep(PHOTO).sort : [])
@@ -432,7 +448,7 @@ A throwaway spike harness plus measured findings (`research.md`, ADRs 0001–000
     end
   end
   ```
-- [ ] Run the same command. Expect: 8 examples, 0 failures. Then run `bin/rubocop spikes/`. Expect: no offenses.
+- [ ] Run the same command. Expect: 9 examples, 0 failures. Then run `bin/rubocop spikes/`. Expect: no offenses.
 - [ ] Commit: `feat(spike): add same-origin spike server with self-only CSP and byte log`
 - [ ] Add `spikes/card_scanner/config.ru`:
   ```ruby
@@ -476,7 +492,7 @@ A throwaway spike harness plus measured findings (`research.md`, ADRs 0001–000
   cp "$work/eng/package/4.0.0_best_int/eng.traineddata.gz" "$dest/lang/"
   du -b "$dest"/*.js "$dest"/core/* "$dest"/lang/*
   ```
-- [ ] Run `spikes/card_scanner/script/fetch_ocr_assets`. Expect: three sha256 lines, then the four core builds (`tesseract-core{,-simd}{,-lstm}.wasm.js`), `worker.min.js`, `tesseract.min.js` and `eng.traineddata.gz`, with their sizes. If a `cp` source path differs inside a tarball, list it with `tar -tzf` and correct that one line before continuing. Record the sha256 values and sizes for `research.md`.
+- [ ] Run `spikes/card_scanner/script/fetch_ocr_assets`. Expect: three sha256 lines, then the six core builds (`tesseract-core{,-simd,-relaxedsimd}{,-lstm}.wasm.js`, each with its WebAssembly embedded), `worker.min.js`, `tesseract.min.js` and `eng.traineddata.gz`, with their sizes. If a `cp` source path differs inside a tarball, list it with `tar -tzf` and correct that one line before continuing. Record the sha256 values and sizes for `research.md`.
 - [ ] Commit: `chore(spike): add pinned OCR asset fetcher`
 - [ ] Add `spikes/card_scanner/public/ocr.html`:
   ```html
@@ -641,8 +657,9 @@ A throwaway spike harness plus measured findings (`research.md`, ADRs 0001–000
   - Shoot foils as they naturally catch the light.
   - Use unique file names.
   - Copy the photos to `$CARD_SCANNER_CORPUS` (default `~/card-scanner-corpus/`) and keep them in the iPhone's Photos library for Phase 6.
-  - Write `manifest.csv` there, with the columns `file,set,number,foil[,era]`: `set` is the Scryfall set code, `number` the collector number, `foil` is `yes` or `no`, and `era` (optional) is `pre-M15`, `M15–ONE` or `MOM+`.
+  - Write `manifest.csv` there, with the columns `file,set,number,foil[,era]`: `set` is the Scryfall set code, `number` the collector number, `foil` is `yes` or `no`, and `era` (optional) is `pre-M15`, `M15–ONE` or `MOM+`. Values must not contain commas (the manifest is split on commas, since `csv` isn't in the bundle).
   - Quotas: at least 50 usable photos, at least 5 per era, at least 5 foil, and some borderless or showcase cards.
+  - Notes: the iPhone photo picker usually names every picked file `image.jpeg`, so device timing rows can't be matched to corpus files (they don't need to be). Run `camera_spec.rb` on its own, never in the same process as a `rails_helper` spec (rspec-rails would replace `Capybara.app`).
 - [ ] Commit: `feat(spike): add OCR spike page, desktop replay driver and photo protocol`
 - [ ] **Checkpoint (maintainer):** put 5 pilot photos (mixed eras) in the corpus directory.
 - [ ] Start the server as a background task: `bundle exec puma -C spikes/card_scanner/puma.rb`. Run `bundle exec ruby spikes/card_scanner/script/replay.rb pilot`. Expect: `5 photos -> …/replays/pilot/ocr.json`.
@@ -791,8 +808,6 @@ A throwaway spike harness plus measured findings (`research.md`, ADRs 0001–000
 - [ ] Run `bundle exec rspec spikes/card_scanner/spec/card_scanner_spike/ground_truth_spec.rb`. Expect: FAIL (`cannot load such file -- card_scanner_spike/ground_truth`).
 - [ ] Implement `spikes/card_scanner/lib/card_scanner_spike/ground_truth.rb`:
   ```ruby
-  require "csv"
-
   module CardScannerSpike
     # Builds ground-truth records from the maintainer's manifest (AC-1.1).
     # Manifest columns: file,set,number,foil[,era]. Needs Rails.
@@ -815,14 +830,21 @@ A throwaway spike harness plus measured findings (`research.md`, ADRs 0001–000
       def build(manifest_csv, corpus_files:)
         photos = []
         errors = []
-        CSV.parse(manifest_csv, headers: true).each do |row|
+        rows(manifest_csv).each do |row|
           problem, entry = check(row, corpus_files)
-          problem ? errors << row.to_h.merge("problem" => problem) : photos << record(row, entry)
+          problem ? errors << row.merge("problem" => problem) : photos << record(row, entry)
         end
         { "photos" => photos, "errors" => errors, "counts" => counts(photos) }
       end
 
       private
+        # The manifest has no quoted or comma-bearing values, so a split is enough (csv isn't in the bundle).
+        def rows(manifest_csv)
+          header, *lines = manifest_csv.lines.map(&:strip).reject(&:empty?)
+          keys = header.to_s.split(",").map(&:strip)
+          lines.map { |line| keys.zip(line.split(",", -1).map(&:strip)).to_h }
+        end
+
         def check(row, corpus_files)
           return [ "missing photo" ] unless corpus_files.include?(row["file"])
           return [ "unknown era" ] if row["era"].present? && ERAS.exclude?(row["era"])
@@ -872,8 +894,8 @@ A throwaway spike harness plus measured findings (`research.md`, ADRs 0001–000
 
 ## Phase 4: Fuzzy name index
 
-**Implements:** Story 3 | **Satisfies:** AC-3.1, AC-3.2, AC-3.4, AC-3.5
-**Files:** `spikes/card_scanner/lib/card_scanner_spike/name_index.rb`, `spikes/card_scanner/spec/card_scanner_spike/name_index_spec.rb`, `spikes/card_scanner/script/{schema_round_trip,build_name_index,name_edge_cases}.rb`
+**Implements:** Story 3 | **Satisfies:** AC-3.1, AC-3.2, AC-3.5 (AC-3.4 in Phase 5)
+**Files:** `spikes/card_scanner/lib/card_scanner_spike/name_index.rb`, `spikes/card_scanner/spec/card_scanner_spike/name_index_spec.rb`, `spikes/card_scanner/script/{schema_round_trip,build_name_index}.rb` (`name_edge_cases.rb`, which needs `Scoring`, is in Phase 5)
 **Interfaces:** Consumes: `Normaliser.call`. Produces:
 - `NameIndex.new(path)`;
 - `#rebuild([[card_name, indexed_name], …]) -> Integer`;
@@ -1087,40 +1109,13 @@ A throwaway spike harness plus measured findings (`research.md`, ADRs 0001–000
   ```
 - [ ] Run `bin/rails runner spikes/card_scanner/script/build_name_index.rb` three times. Record the median `total_s` and `build_s`, plus `names`, `file_bytes` and `fts_bytes` (`null` means `dbstat` isn't compiled in, so say so). `total_s` is the cost a full rebuild would add to each refresh (AC-3.5).
 - [ ] Commit: `chore(spike): add name index build benchmark`
-- [ ] Add `spikes/card_scanner/script/name_edge_cases.rb`:
-  ```ruby
-  # AC-3.4: short, accented and multi-face names, queried exactly and with one misread character.
-  # Usage: bundle exec ruby spikes/card_scanner/script/name_edge_cases.rb
-  require "bundler/setup"
-  require_relative "../lib/card_scanner_spike"
-  require_relative "../lib/card_scanner_spike/name_index"
-
-  index = CardScannerSpike::NameIndex.new(File.join(CardScannerSpike::WORK_DIR, "names.sqlite3"))
-  abort "Build the name index first (build_name_index.rb)" if index.count.zero?
-  cases = index.short_names.map { |_, name| [ "shorter than 3", name ] } +
-    [ "Æther Vial", "Lim-Dûl's Vault", "Jötun Grunt", "Dandân" ].map { [ "diacritic or ligature", it ] } +
-    [ "Fire // Ice", "Fire", "Ice" ].map { [ "split", it ] } +
-    [ "Bonecrusher Giant", "Stomp" ].map { [ "adventure", it ] } +
-    [ "Delver of Secrets", "Insectile Aberration" ].map { [ "double-faced", it ] }
-  found = ->(expected, text) { (index.search(text).map(&:card_name) & expected).any? ? "yes" : "no" }
-
-  puts "| Category | Printed name | Expected card | Exact: top 3 | Misread | Misread: top 3 |", "|---|---|---|---|---|---|"
-  cases.each do |category, name|
-    expected = index.card_names_for(name)
-    misread = CardScannerSpike::Scoring.misread(name)
-    shown = expected.empty? ? "(not indexed)" : expected.join("; ")
-    puts "| #{category} | #{name} | #{shown} | #{found.call(expected, name)} | #{misread} | #{found.call(expected, misread)} |"
-  end
-  ```
-  This script uses `Scoring.misread` from Phase 5, so it runs in Phase 5.
-- [ ] Commit: `chore(spike): add name edge-case experiment`
 
 ---
 
 ## Phase 5: Scoring, matching and the accuracy runs
 
-**Implements:** FR-2 (recording), Story 1 rates, Story 3 rates | **Satisfies:** AC-1.2, AC-1.3, AC-1.5, AC-1.7, AC-3.3 (and AC-3.4 by running Phase 4's script)
-**Files:** `spikes/card_scanner/lib/card_scanner_spike/{scoring,rates}.rb`, `spikes/card_scanner/spec/card_scanner_spike/{scoring,rates}_spec.rb`, `spikes/card_scanner/lib/card_scanner_spike.rb`, `spikes/card_scanner/script/{match,report}.rb`
+**Implements:** FR-2 (recording), Story 1 rates, Story 3 rates | **Satisfies:** AC-1.2, AC-1.3, AC-1.5, AC-1.7, AC-3.3, AC-3.4
+**Files:** `spikes/card_scanner/lib/card_scanner_spike/{scoring,rates}.rb`, `spikes/card_scanner/spec/card_scanner_spike/{scoring,rates}_spec.rb`, `spikes/card_scanner/lib/card_scanner_spike.rb`, `spikes/card_scanner/script/{name_edge_cases,match,report}.rb`
 **Interfaces:** Consumes:
 - `CollectorLine.parse`, `PrintingLookup#call` and `.known_set_codes`, `NameIndex#search`;
 - `replays/<label>/ocr.json` and `ground_truth.json`.
@@ -1288,7 +1283,33 @@ Produces:
   In `spikes/card_scanner/lib/card_scanner_spike.rb`, add `require_relative "card_scanner_spike/scoring"` and `require_relative "card_scanner_spike/rates"` after the collector-line require.
 - [ ] Run the same command. Expect: 8 examples, 0 failures. Then run `bin/rubocop spikes/`. Expect: no offenses.
 - [ ] Commit: `feat(spike): add scoring and rate breakdowns`
-- [ ] Run Phase 4's `bundle exec ruby spikes/card_scanner/script/name_edge_cases.rb`. Save the table for AC-3.4.
+- [ ] Add `spikes/card_scanner/script/name_edge_cases.rb`:
+  ```ruby
+  # AC-3.4: short, accented and multi-face names, queried exactly and with one misread character.
+  # Usage: bundle exec ruby spikes/card_scanner/script/name_edge_cases.rb
+  require "bundler/setup"
+  require_relative "../lib/card_scanner_spike"
+  require_relative "../lib/card_scanner_spike/name_index"
+
+  index = CardScannerSpike::NameIndex.new(File.join(CardScannerSpike::WORK_DIR, "names.sqlite3"))
+  abort "Build the name index first (build_name_index.rb)" if index.count.zero?
+  cases = index.short_names.map { |_, name| [ "shorter than 3", name ] } +
+    [ "Æther Vial", "Lim-Dûl's Vault", "Jötun Grunt", "Dandân" ].map { [ "diacritic or ligature", it ] } +
+    [ "Fire // Ice", "Fire", "Ice" ].map { [ "split", it ] } +
+    [ "Bonecrusher Giant", "Stomp" ].map { [ "adventure", it ] } +
+    [ "Delver of Secrets", "Insectile Aberration" ].map { [ "double-faced", it ] }
+  found = ->(expected, text) { (index.search(text).map(&:card_name) & expected).any? ? "yes" : "no" }
+
+  puts "| Category | Printed name | Expected card | Exact: top 3 | Misread | Misread: top 3 |", "|---|---|---|---|---|---|"
+  cases.each do |category, name|
+    expected = index.card_names_for(name)
+    misread = CardScannerSpike::Scoring.misread(name)
+    shown = expected.empty? ? "(not indexed)" : expected.join("; ")
+    puts "| #{category} | #{name} | #{shown} | #{found.call(expected, name)} | #{misread} | #{found.call(expected, misread)} |"
+  end
+  ```
+- [ ] Commit: `chore(spike): add name edge-case experiment`
+- [ ] Run `bundle exec ruby spikes/card_scanner/script/name_edge_cases.rb`. Save the table for AC-3.4.
 - [ ] Add `spikes/card_scanner/script/match.rb`:
   ```ruby
   # Parses each replayed collector strip, looks up the printing, and queries the name index (AC-1.2, AC-3.3).
@@ -1345,7 +1366,9 @@ Produces:
   with_set_line = rows.select { %w[M15–ONE MOM+].include?(it["era"]) }
 
   puts "## Name strip read exactly (AC-1.3)", "",
-    spike::Rates.markdown("Name read", spike::Rates.breakdown(rows) { spike::Scoring.name_read?(it["result"], it) })
+    "Compared with the front-face name (`name_bar`), which is what the name bar prints; the strict catalog-name rate follows.", "",
+    spike::Rates.markdown("Name read", spike::Rates.breakdown(rows) { spike::Scoring.name_read?(it["result"], it) }), "",
+    spike::Rates.markdown("Catalog name", spike::Rates.breakdown(rows) { spike::Scoring.name_read?(it["result"], it.merge("name_bar" => it["name"])) })
   puts "", "## Exact printing from the collector line, M15–ONE and MOM+ only (AC-1.3)", "",
     spike::Rates.markdown("Printing", spike::Rates.breakdown(with_set_line) { spike::Scoring.printing_identified?(it["result"], it) }),
     "", "Lookup outcomes: #{with_set_line.map { it.dig("result", "lookup", "status") }.tally}"
@@ -1369,7 +1392,8 @@ Produces:
 - [ ] Run `bin/rubocop spikes/`. Expect: no offenses. Commit: `feat(spike): add matching and report scripts`
 - [ ] With the spike server running as a background task, run `bundle exec ruby spikes/card_scanner/script/replay.rb run-a`, then `bundle exec ruby spikes/card_scanner/script/replay.rb run-b` (AC-1.5: same machine, twice). Expect: `N photos -> …/ocr.json` for each, where N equals the corpus size.
 - [ ] Run `bin/rails runner spikes/card_scanner/script/match.rb run-a` and `… match.rb run-b`. Expect: `N results -> …` for each.
-- [ ] Run `bundle exec ruby spikes/card_scanner/script/report.rb run-a run-b > tmp/card_scanner_spike/report.md`. Expect: tables for AC-1.3 (name read, exact printing plus the outcome tally), AC-3.3 (top 1, top 3, query time), the AC-1.7 miss list and the AC-1.5 difference count.
+- [ ] Run `bundle exec ruby spikes/card_scanner/script/report.rb run-a run-b > tmp/card_scanner_spike/report.md`. Expect: tables for AC-1.3 (name read against the front-face name and the catalog name, exact printing plus the outcome tally), AC-3.3 (top 1, top 3, query time), the AC-1.7 miss list and the AC-1.5 difference count.
+- [ ] Run `bundle exec ruby spikes/card_scanner/script/report.rb run-b > tmp/card_scanner_spike/report-b.md`. Expect: run-b's own rate tables, so `research.md` can show both runs' rates (AC-1.5).
 - [ ] For each AC-1.7 miss, view its crops (`replays/run-a/crops/<file>-{name,collector}.png`) and fill in the likely cause: glare, blur, strip misalignment, unusual frame, parser miss or matcher miss. Keep the completed table for `research.md`. (No commit; the outputs are ignored until Phase 8 copies the fixtures.)
 
 ---
@@ -1449,14 +1473,14 @@ Produces:
   puts "CSP violation reports: #{File.exist?(reports) ? File.readlines(reports).size : 0}"
   ```
 - [ ] Run `bin/rubocop spikes/`. Expect: no offenses. Commit: `feat(spike): add device timing summary`
-- [ ] Start the spike server as a background task and move the old logs aside: `mv tmp/card_scanner_spike/logs tmp/card_scanner_spike/logs-desktop`. Run `curl -sI http://127.0.0.1:4100/ocr.html | grep -i content-security-policy`. Expect: the `Server::CSP` value. Record it for NFR Security.
+- [ ] Stop the spike server if it's running (the server creates its log directory only at boot). Move the desktop logs aside with `mv tmp/card_scanner_spike/logs tmp/card_scanner_spike/logs-desktop`, then start the server as a background task. Run `curl -s -D - -o /dev/null http://127.0.0.1:4100/ocr.html | grep -i content-security-policy` (a GET; the server doesn't route HEAD). Expect: the `Server::CSP` value. Record it for NFR Security.
 - [ ] **Checkpoint (maintainer):**
   1. Open port 4100 for this session only: `sudo firewall-cmd --add-port=4100/tcp` (runtime only; it's gone after a reboot or `--reload`).
   2. On the iPhone, clear this site's data (Settings → Safari → Advanced → Website Data → remove the dev machine's IP).
   3. In a Safari tab, open `http://<dev-ip>:4100/ocr.html`, wait for "Ready", and pick at least 10 corpus photos (**cold**).
   4. Reload the same tab and pick the same photos again (**warm**).
   5. Afterwards, run `sudo firewall-cmd --remove-port=4100/tcp`.
-- [ ] Run `bundle exec ruby spikes/card_scanner/script/timing_summary.rb <iphone-ip>`. Expect: two page loads (cold then warm) with their bytes, two timing lines (ready ms, median and slowest ms over ≥ 10 photos), and `CSP violation reports: 0`. Record everything for AC-1.6. A cold load with OCR succeeding and zero reports is the NFR Security evidence.
+- [ ] Run `bundle exec ruby spikes/card_scanner/script/timing_summary.rb <iphone-ip>`. Expect: two page loads (cold then warm) with their bytes (each session's bytes include the ~20-byte timing post response; say so), two timing lines (ready ms, median and slowest ms over ≥ 10 photos), and `CSP violation reports: 0`. Record everything for AC-1.6. A cold load with OCR succeeding and zero reports is the NFR Security evidence.
 - [ ] Optionally run the same page in desktop Firefox with devtools open, and keep a network-log screenshot out of the repo (the spec lists it as optional).
 
 ---
@@ -1611,7 +1635,7 @@ Produces:
   (If RuboCop flags `RSpec/InstanceVariable` for `@distance`, disable it inline with the justification "carries the measured distance to the recording hook".)
 - [ ] Run `CAMERA_SOURCE=<file> bundle exec rspec spikes/card_scanner/spec/camera_spec.rb --format documentation`. Expect: each example's pass or fail status, which **is** the finding. The first Chrome run may download Chrome for Testing through Selenium Manager; record that in the setup cost. Record the Firefox driver prefs, each distance, and each example's seconds from `camera-results.jsonl` (AC-2.1, AC-2.2, AC-2.3).
 - [ ] Run `for i in $(seq 10); do CAMERA_SOURCE=<file> bundle exec rspec spikes/card_scanner/spec/camera_spec.rb; done`. Tally the passes and failures per approach from `camera-results.jsonl`, with any failure messages (AC-2.3 flakiness, and AC-2.4 for the approach the findings recommend).
-- [ ] Record the CI setup needed per approach. Check whether GitHub's `ubuntu-latest` image lists Chrome and ffmpeg (from the runner-images README). Record the extra per-run cost (the Chrome download, generating the `.y4m`) and how the suite's run time would change, using each example's seconds. Note that v4l2loopback was considered but not tried, because it needs a root kernel module.
+- [ ] Record the CI setup needed per approach. Check whether GitHub's `ubuntu-latest` image lists Chrome and ffmpeg (from the runner-images README). Record the extra per-run cost (the Chrome download, generating the `.y4m`) and how the suite's run time would change, using each example's seconds. Note that v4l2loopback was considered but not tried, because it needs a root kernel module, and that approach (c) needs no browser prefs at all (it only reuses the Firefox driver).
 - [ ] Run `bin/rubocop spikes/`. Expect: no offenses. Commit: `test(spike): add headless camera experiments`
 
 ---
@@ -1643,11 +1667,17 @@ Produces:
 - [ ] Write `docs/specs/005-card-scanner-phase-0/research.md` with these sections, in this order:
   1. **Summary.** One paragraph per spike, then the headline numbers.
   2. **Method and apparatus.** The spike server and its policy header, the asset versions and sha256 values, the guide and strip values with the number of pilot tuning rounds, and where the corpus lives by convention (`$CARD_SCANNER_CORPUS`).
-  3. **Spike 1: OCR strip accuracy.** Question, method, the report tables (AC-1.3), the replay differences (AC-1.5), iPhone cold and warm timings (AC-1.6), the miss list with causes (AC-1.7), and a recommendation.
+  3. **Spike 1: OCR strip accuracy.**
+     - Question and method, including that the name-read rate compares against the front-face name (`name_bar`, what the bar prints), with the strict catalog-name rate alongside (AC-1.3).
+     - The collector-line parser's spec inputs, including `051/302 NEO` (AC-1.4).
+     - Both runs' rate tables and their differences (AC-1.5).
+     - iPhone cold and warm timings (AC-1.6).
+     - The miss list with causes (AC-1.7), noting any false set codes from the loose token fallback.
+     - A recommendation.
   4. **Spike 2: headless camera testing.** Question, method, a per-approach table (works, setup on the dev machine and in CI, run time, 10-run pass count, failures), and a recommendation.
   5. **Spike 3: fuzzy name index.** Question, method, round-trip result (AC-3.1), build time, size and count (AC-3.2), top-1 and top-3 rates with query times (AC-3.3), the edge-case table (AC-3.4), the refresh cost (AC-3.5), and a recommendation.
   6. **Privacy evidence.** The header sent, a successful cold iPhone OCR run, and the CSP report count.
-  7. **Fixtures.** Every field of `ground_truth.json`, `ocr_results.json` and `name_matches.json`, and which run they came from (AC-4.4).
+  7. **Fixtures.** Every field of `ground_truth.json`, `ocr_results.json` and `name_matches.json`, and which run they came from (AC-4.4). State that each file holds one record per photo whose unique `file` field is its key. Also state that `era` is derived from the release date, with manifest overrides, which approximates "what the collector line prints".
   8. **Recommended Phase 1 scope.** What's in, what's out, and what changed from the roadmap (AC-4.2).
   9. **Roadmap assumptions contradicted.** Each with its evidence (AC-4.2).
   10. **Decisions.** Links to ADRs 0001–0003 (AC-4.3).
