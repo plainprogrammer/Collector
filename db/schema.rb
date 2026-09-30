@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_30_000004) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_30_000005) do
   create_table "accounts", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -87,6 +87,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_30_000004) do
     t.datetime "updated_at", null: false
   end
 
+  create_table "lots", force: :cascade do |t|
+    t.integer "account_id", null: false
+    t.integer "catalog_entry_id", null: false
+    t.integer "quantity", null: false
+    t.string "finish"
+    t.string "condition"
+    t.integer "price_paid_cents"
+    t.string "lot_key", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "catalog_entry_id", "lot_key"], name: "index_lots_on_account_id_and_catalog_entry_id_and_lot_key", unique: true
+    t.index ["catalog_entry_id"], name: "index_lots_on_catalog_entry_id"
+    t.check_constraint "price_paid_cents IS NULL OR price_paid_cents >= 0", name: "lots_price_non_negative"
+    t.check_constraint "quantity BETWEEN 1 AND 9999", name: "lots_quantity_range"
+  end
+
   create_table "mtg_cards", force: :cascade do |t|
     t.integer "catalog_identity_id", null: false
     t.string "mana_cost"
@@ -141,6 +157,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_30_000004) do
 
   add_foreign_key "catalog_entries", "catalog_identities"
   add_foreign_key "catalog_entries", "catalog_sets"
+  add_foreign_key "lots", "accounts"
+  add_foreign_key "lots", "catalog_entries"
   add_foreign_key "mtg_cards", "catalog_identities"
   add_foreign_key "mtg_printings", "catalog_entries"
   add_foreign_key "sessions", "users"
