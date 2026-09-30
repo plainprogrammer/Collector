@@ -21,6 +21,14 @@ RSpec.describe "Sign-up", type: :request do
       expect(response).to redirect_to(collection_path)
       expect(User.sole).to be_admin
     end
+
+    it "refuses a first-admin form submitted after someone else became the first user", :aggregate_failures do
+      get new_registration_path
+      create(:admin)
+      expect { post registration_path, params: params }.not_to change(User, :count)
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response.body).to include("Sign-up is closed on this instance.")
+    end
   end
 
   context "when sign-up is closed" do
