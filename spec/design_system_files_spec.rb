@@ -14,6 +14,16 @@ RSpec.describe "Design system files" do
     expect(root.join("CLAUDE.md").read).to include("## UI and design system", "collector-design-system")
   end
 
+  it "documents every new pattern and lists it in the README", :aggregate_failures do
+    new_patterns = %w[StatusMessage Form AuthPage ConfirmPage SearchResults TileAdd FinishBadge FilterSelect Pager EmptyState
+      Details SingleStat MorePage AdminUsers TableActions SystemLogo]
+    readme = root.join("docs/design-system/README.md").read
+    new_patterns.each do |name|
+      expect(root.join("docs/design-system/components/#{name}.md")).to exist
+      expect(readme).to include("`#{name}`")
+    end
+  end
+
   it "keeps colour literals and font families inside the design system directory" do
     offenders = root.glob("app/assets/stylesheets/**/*.css").reject { |path| path.to_s.include?("/collector/") }
       .select { |path| path.read.match?(/#\h{3,8}\b|rgba?\(|hsla?\(|font-family/i) }

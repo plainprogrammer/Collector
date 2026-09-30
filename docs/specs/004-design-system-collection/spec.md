@@ -1,7 +1,7 @@
 # Feature 004: Design System, Accounts, Adding Cards and the Collection Grid
 
 **Status:** Approved
-**Version:** 2.1.0
+**Version:** 2.1.1
 **Created:** 2026-09-29
 **Last Updated:** 2026-09-29
 **Branch:** `feat/004-design-system-collection` (chosen at `sdd-execute`; drafted on `plainprogrammer/design-system-implementation`)
@@ -16,6 +16,7 @@
 | 2.0.0 | 2026-09-29 | Spec review revisions. **Health check and first run:** the health check is exempt from the first-run redirect, and the upgrade warning is stronger (AC-3.1, AC-3.5, FR-4). **Sign-in and sessions:** the sign-in rate limit is keyed on email + client address behind a trusted proxy, with a 429 (AC-4.8); the session cookie is secure over HTTPS, with a documented setting (NFR Security). **Price paid:** the currency is a documented instance setting (FR-6). **Condition and finish:** vocabulary moves into the collectible's extension, and lot identity is enforced in the data store (FR-6). **Superseded 002 ACs are now listed explicitly (AC-6.5, AC-8.2):** search tiles gain a language code, and the card page gets a details section. **Design-system fixes:** the logo follows the OS dark theme, and each tile has one finish badge (AC-2.5, AC-8.5, AC-11.2, FR-11). **Newly defined:** where the collector came from and the return path (AC-7.3, AC-8.9, FR-13); the Printings list (AC-8.7); mana-cost labels and formats (AC-8.3, AC-8.8); the command's inputs (AC-5.7); the count semantics (AC-11.4); merges past the 9,999 cap (AC-10.2). **Also:** AC-3.4 rewritten to be testable; stats keep one stat, with no 2 × 2 grid (FR-9); new FR-13 (app shell) and FR-14 (search page); FR-11 lists more patterns; self-service profile is explicitly out of scope; minor clarifications |
 | 2.0.1 | 2026-09-29 | Second-review wording fixes (no behaviour change). **Card page:** the shown printing always has a Printings row (AC-8.7); the phone back link targets the breadcrumb's first item (AC-2.7); multi-face artists are listed per face (AC-8.1); a listed format missing from the data shows "Not legal" (AC-8.8); 002 FR-8's search link is replaced by the breadcrumb (AC-8.2). **Admin and command:** the admin's new password needs no confirmation (AC-5.3); the command rejects a malformed email (AC-5.7). **Also:** the page used for a no-script over-cap quick add (AC-7.3a); browser-level tags on AC-1.5 and AC-6.1; a single-stat block pattern (FR-11) |
 | 2.1.0 | 2026-09-29 | From the plan review: the result count sits on the line directly beneath the filter bar, inside the results, so it updates with each search without scripting (AC-6.4, AC-11.4). With scripting on, an over-cap quick add shows its message in the status region and leaves the page as it was (AC-7.3a) |
+| 2.1.1 | 2026-09-29 | FR-11 lists the table action cell (`TableActions`), which the admin users list and the copies table already use (no behaviour change) |
 
 ---
 
@@ -436,6 +437,7 @@ Collector can find a Magic card, but that's all it can do. Search (feature 002) 
   - the More page
   - the sign-in and sign-up form page
   - the admin users list
+  - the narrow table action cell holding a row's "…" menu
 - Keep the export's rules: `brand` is the only action colour, status colours come with a word or icon, and the copy is sentence case with no emoji or exclamation marks and doesn't say "we".
 
 ### FR-12: Responsiveness and accessibility
