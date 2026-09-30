@@ -11,3 +11,5 @@
 - [Headless Firefox narrow frame](headless-firefox-narrow-frame.md) — windows can't go below 500px; test/screenshot phone widths in a fixed-width iframe
 - [Pre-commit hook staging](precommit-hook-staging.md) — hook reads the command text for `git add` / `commit -a`; stage separately to be safe
 - [Reproduce CI with its seed](reproduce-ci-with-seed.md) — on CI failure, run the full suite with the CI seed as an early reproduction step
+- [Turbo Back navigation quirks](turbo-back-navigation-quirks.md) — two restore paths, snapshots keep form values, stale aria-busy; url-sync + wait_for_turbo_idle
+- [PR #5 follow-ups](pr5-open-followups.md) — after merge: stale aria-busy decision pending, back-button flake watch, uncaptured failure
