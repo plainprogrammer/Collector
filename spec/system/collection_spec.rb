@@ -21,11 +21,7 @@ RSpec.describe "Collection on a phone", type: :system do
   end
 
   it "filters in place and goes back to the unfiltered collection", :aggregate_failures do
-    user = system_sign_in_as(create(:user))
-    bolt = create(:mtg_printing).entry.tap { |e| e.update!(name: "Lightning Bolt") }
-    opt = create(:mtg_printing).entry.tap { |e| e.update!(name: "Opt") }
-    create(:lot, account: user.account, entry: bolt, quantity: 3)
-    create(:lot, account: user.account, entry: opt, quantity: 2)
+    sign_in_owning_bolt_and_opt
     visit collection_path
     page.execute_script("window.__marker = 'still here'")
 
@@ -47,5 +43,16 @@ RSpec.describe "Collection on a phone", type: :system do
     create(:lot, account: user.account, quantity: 9_999)
     visit collection_path
     expect(open_in_narrow_frame(collection_path(q: "bolt"), width: 360, ready: ".c-grid")).to eq([ 360, true ])
+  end
+
+  private
+
+  # Three Lightning Bolts and two Opts: five items, three of them matching "bolt".
+  def sign_in_owning_bolt_and_opt
+    user = system_sign_in_as(create(:user))
+    bolt = create(:mtg_printing).entry.tap { |e| e.update!(name: "Lightning Bolt") }
+    opt = create(:mtg_printing).entry.tap { |e| e.update!(name: "Opt") }
+    create(:lot, account: user.account, entry: bolt, quantity: 3)
+    create(:lot, account: user.account, entry: opt, quantity: 2)
   end
 end
