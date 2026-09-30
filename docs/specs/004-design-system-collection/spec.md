@@ -1,7 +1,7 @@
 # Feature 004: Design System, Accounts, Adding Cards and the Collection Grid
 
 **Status:** Approved
-**Version:** 2.1.2
+**Version:** 2.1.3
 **Created:** 2026-09-29
 **Last Updated:** 2026-09-29
 **Branch:** `feat/004-design-system-collection` (chosen at `sdd-execute`; drafted on `plainprogrammer/design-system-implementation`)
@@ -18,6 +18,7 @@
 | 2.1.0 | 2026-09-29 | From the plan review: the result count sits on the line directly beneath the filter bar, inside the results, so it updates with each search without scripting (AC-6.4, AC-11.4). With scripting on, an over-cap quick add shows its message in the status region and leaves the page as it was (AC-7.3a) |
 | 2.1.1 | 2026-09-29 | FR-11 lists the table action cell (`TableActions`), which the admin users list and the copies table already use (no behaviour change) |
 | 2.1.2 | 2026-09-29 | From the implementation review. The add, edit and removal pages for a lot are detail pages like the card page, with a back link to the card page (AC-2.7, AC-2.8). Tiles show the printing's printed name, localized when present, while sorting stays by card name (AC-6.2, AC-11.2) |
+| 2.1.3 | 2026-09-30 | From the manual walkthrough: tiles use the localized printed name only for non-English printings. English printings keep their name, because Scryfall's English `printed_name` is a stylization such as "SERRA ANGEL" (AC-6.2, AC-11.2) |
 
 ---
 
@@ -175,7 +176,7 @@ Collector can find a Magic card, but that's all it can do. Search (feature 002) 
 **Acceptance criteria:**
 
 - [ ] **AC-6.1** (in-place update verified in a browser-level test) Given the search page When it renders Then it has one page title ("Search"), and a sticky filter bar with a name search input and a set choice. Submitting it changes the URL (query and set in the URL, back button restores the previous search) and updates the results without a full page load, and it also works with scripting disabled
-- [ ] **AC-6.2** Given results When they render Then each card is a section headed by the card name, holding one tile per listed printing. Each tile shows the printing's image (or the name on a plain fallback when there is none), its printed name (the localized name when the printing has one, otherwise its name), a `SET · number` tag and its language code (e.g. "EN", "JA"), and links to that printing's card page
+- [ ] **AC-6.2** Given results When they render Then each card is a section headed by the card name, holding one tile per listed printing. Each tile shows the printing's image (or the name on a plain fallback when there is none), its printed name (the localized name when the printing isn't English and has one, otherwise its name), a `SET · number` tag and its language code (e.g. "EN", "JA"), and links to that printing's card page
 - [ ] **AC-6.3** Given the collector owns copies of a listed printing When the results render Then that printing's tile shows the owned quantity ("×3"), and tiles of printings they don't own are shown faded with no quantity
 - [ ] **AC-6.4** Given results When they render Then the line directly beneath the filter bar shows the exact number of matching cards ("12 cards" or "1 card") and the catalog's last-updated date (002 AC-1.12)
 - [ ] **AC-6.5** Given feature 002's search behaviours (ACs 1.1–1.14, 2.1–2.4, 10.1–10.3) When they are exercised by a signed-in collector Then they still hold, except for these superseded parts:
@@ -292,7 +293,7 @@ Collector can find a Magic card, but that's all it can do. Search (feature 002) 
   - its image (or the no-image fallback) at the card's 63:88 ratio
   - the total quantity across its lots, always shown, including "×1"
   - at most one finish badge, reading "Foil" if any lot is foil, "Etched" if any is etched, or "Foil, etched" if both
-  - the printing's printed name (localized when present, as in AC-6.2); tiles still sort by card name (AC-11.3)
+  - the printing's printed name (localized for non-English printings, as in AC-6.2); tiles still sort by card name (AC-11.3)
   - a `SET · number` tag and the language code
   
   Each tile links to that printing's card page
