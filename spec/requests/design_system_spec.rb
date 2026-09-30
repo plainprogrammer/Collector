@@ -1,6 +1,8 @@
 require "rails_helper"
 
 RSpec.describe "Design system assets", type: :request do
+  before { sign_in_as(create(:user)) }
+
   it "links tokens before components before additions", :aggregate_failures do
     get catalog_entries_path
 

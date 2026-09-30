@@ -1,6 +1,8 @@
 require "rails_helper"
 
 RSpec.describe "Home", type: :request do
+  before { sign_in_as(create(:user)) }
+
   describe "GET /" do
     it "renders the placeholder page with the app name", :aggregate_failures do
       get root_path

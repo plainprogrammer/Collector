@@ -19,6 +19,7 @@ RSpec.describe "Printing detail", type: :request do
           "type_line" => "Enchantment Creature — Human Monk", "oracle_text" => "<script>x</script>Blocked",
           "artist" => "Lindsey Look", "image_uris" => { "large" => "https://cards.scryfall.io/large/back/e/c/ec725e92.jpg" } }
       ])
+    sign_in_as(create(:user))
   end
 
   it "is addressed by the Scryfall ID and shows everything about the printing", :aggregate_failures do

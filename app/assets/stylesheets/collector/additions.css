@@ -1,2 +1,28 @@
 /* Collector app additions: patterns the export lacks (spec 004 FR-11), built only on tokens.
    Documented in docs/design-system/components/; upstream them into the published design system. */
+
+/* ---------- Status message (live region under the header) ---------- */
+.c-status:empty { display:none; }
+.c-status { padding:var(--space-3) var(--space-8) 0; }
+.c-status__message { margin:0; padding:var(--space-2) var(--space-3); background:var(--brand-tint); color:var(--ink);
+  border:1px solid var(--brand); border-radius:var(--radius-md); font:400 14px/20px var(--font-sans); }
+.c-status__message--alert { background:var(--surface-raised); border-color:var(--warning); }
+@media (max-width: 639px) { .c-status { padding:var(--space-3) var(--space-4) 0; } }
+
+/* ---------- Form: stacked fields with per-field errors ---------- */
+.c-form { display:flex; flex-direction:column; gap:var(--space-4); max-width:420px; }
+.c-field { display:flex; flex-direction:column; gap:var(--space-1); }
+.c-field__label { font:600 12px/16px var(--font-sans); color:var(--ink); }
+.c-field__hint { margin:0; font:400 12px/16px var(--font-sans); color:var(--ink-muted); }
+.c-field__error { margin:0; font:600 12px/16px var(--font-sans); color:var(--danger); }
+.c-field select { height:36px; padding:0 var(--space-3); background:var(--surface-raised); color:var(--ink);
+  border:1px solid var(--line-strong); border-radius:var(--radius-md); font:400 15px/22px var(--font-sans); }
+.c-field select:focus-visible { outline:2px solid var(--focus); outline-offset:2px; }
+.c-field--invalid .c-input, .c-field--invalid select { border-color:var(--danger); }
+.c-form__actions { display:flex; flex-wrap:wrap; gap:var(--space-2); }
+.c-check { display:flex; align-items:center; gap:var(--space-2); font:400 14px/20px var(--font-sans); }
+.c-check input { width:16px; height:16px; accent-color:var(--brand); }
+
+/* ---------- Auth page (sign-in, sign-up) ---------- */
+.c-auth { max-width:480px; margin:0 auto; display:flex; flex-direction:column; gap:var(--space-6); }
+.c-auth p { margin:0; font:400 15px/22px var(--font-sans); }

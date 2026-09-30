@@ -1,0 +1,3 @@
+<% record.errors.full_messages_for(field).each do |message| %>
+  <p class="c-field__error" id="<%= "#{field}-error" %>"><%= message %></p>
+<% end %>

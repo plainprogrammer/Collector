@@ -10,6 +10,9 @@ Rails.application.routes.draw do
   # get "manifest" => "rails/pwa#manifest", as: :pwa_manifest
   # get "service-worker" => "rails/pwa#service_worker", as: :pwa_service_worker
 
+  resource :session, only: %i[new create destroy]
+  resource :collection, only: :show
+
   namespace :catalog do
     resources :entries, only: %i[index show], param: :external_key
     resources :identities, only: :show, param: :external_key

@@ -1,0 +1,16 @@
+<% content_for :title, "Sign in · Collector" %>
+<% content_for :appbar, render("layouts/brand_appbar") %>
+<main class="c-main c-auth">
+  <h1 class="c-pagehead__title">Sign in</h1>
+  <%= form_with url: session_path, class: "c-form" do |form| %>
+    <div class="c-field">
+      <%= form.label :email_address, "Email", class: "c-field__label" %>
+      <label class="c-input"><%= form.email_field :email_address, autocomplete: "username", required: true, value: params[:email_address] %></label>
+    </div>
+    <div class="c-field">
+      <%= form.label :password, "Password", class: "c-field__label" %>
+      <label class="c-input"><%= form.password_field :password, autocomplete: "current-password", required: true %></label>
+    </div>
+    <div class="c-form__actions"><%= form.submit "Sign in", class: "c-btn c-btn--primary" %></div>
+  <% end %>
+</main>

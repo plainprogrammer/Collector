@@ -1,6 +1,8 @@
 require "rails_helper"
 
 RSpec.describe "Card printings", type: :request do
+  before { sign_in_as(create(:user)) }
+
   let(:forest) { create(:catalog_identity, name: "Forest", external_key: "oracle-forest") }
 
   it "lists printings newest first, 12 per page", :aggregate_failures do

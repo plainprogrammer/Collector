@@ -18,6 +18,8 @@ require "action_cable/engine"
 # you've limited to :test, :development, or :production.
 Bundler.require(*Rails.groups)
 
+require_relative "../lib/collector/trusted_proxies"
+
 module Collector
   class Application < Rails::Application
     # Initialize configuration defaults for originally generated Rails version.
@@ -41,5 +43,9 @@ module Collector
 
     # Downloaded catalog source files live on the persistent storage volume.
     config.x.catalog_download_dir = Rails.root.join("storage/catalog")
+
+    # Reverse proxies whose X-Forwarded-For is trusted (spec 004 AC-4.8).
+    config.action_dispatch.trusted_proxies = Collector::TrustedProxies.parse(ENV["COLLECTOR_TRUSTED_PROXIES"])
+    config.x.sign_in_rate_limit_store = nil # nil: Rails.cache
   end
 end

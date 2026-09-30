@@ -1,6 +1,8 @@
 require "rails_helper"
 
 RSpec.describe "Card search", type: :request do
+  before { sign_in_as(create(:user)) }
+
   def printing(name, identity: create(:catalog_identity, name:), **attributes)
     create(:catalog_entry, identity:, name:, **attributes)
   end

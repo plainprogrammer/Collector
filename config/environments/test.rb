@@ -53,4 +53,7 @@ Rails.application.configure do
 
   # Keep downloaded catalog source files out of storage/ in tests.
   config.x.catalog_download_dir = Rails.root.join("tmp/catalog")
+
+  # The test cache is :null_store, which never counts; the sign-in rate limit needs a real store.
+  config.x.sign_in_rate_limit_store = ActiveSupport::Cache::MemoryStore.new
 end
