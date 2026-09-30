@@ -1,6 +1,6 @@
 <% content_for :title, "Delete #{@user.name} · Collector" %>
 <%= render "layouts/appbar", section: nil %>
-<main class="c-main">
+<main class="c-main c-page">
   <section class="c-confirm">
     <h1 class="c-pagehead__title">Delete <%= @user.name %>?</h1>
     <p>This permanently deletes <%= @user.name %>'s account and all <%= number_with_delimiter(@user.account.copies_count) %> copies in their collection. It can't be undone.</p>

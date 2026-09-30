@@ -37,4 +37,9 @@ RSpec.describe "App shell", type: :request do
     expect(response.body).to include("Sign out", "Signed in as")
     expect(response.body).not_to include('aria-current="page"')
   end
+
+  it "uses the page head on the More page" do
+    get more_path
+    expect(response.body).to include('<div class="c-pagehead">')
+  end
 end

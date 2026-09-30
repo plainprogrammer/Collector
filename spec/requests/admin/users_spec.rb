@@ -20,6 +20,16 @@ RSpec.describe "User administration", type: :request do
       expect(response.body).to include("Users and sign-up")
     end
 
+    it "uses the page head on the user forms and the detail page layout on the deletion page", :aggregate_failures do
+      bo = create(:user)
+      [ new_admin_user_path, edit_admin_user_path(bo) ].each do |path|
+        get path
+        expect(response.body).to include('<div class="c-pagehead">'), "#{path} has no page head"
+      end
+      get new_admin_user_deletion_path(bo)
+      expect(response.body).to include('<main class="c-main c-page">')
+    end
+
     it "opens sign-up" do
       patch admin_sign_up_setting_path, params: { sign_up_open: "1" }
       expect(InstanceSetting.current).to be_sign_up_open
