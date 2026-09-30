@@ -2,6 +2,7 @@ require "rails_helper"
 
 RSpec.describe "Quick add from search", type: :system do
   let!(:entry) { create(:mtg_printing).entry.tap { |e| e.update!(name: "Lightning Bolt") } }
+  let(:set_label) { "#{entry.set.name} (#{entry.set.code.upcase})" }
   let(:tile) { "##{ActionView::RecordIdentifier.dom_id(entry, :tile)}" }
 
   before { create(:catalog_refresh_run) }
@@ -30,22 +31,36 @@ RSpec.describe "Quick add from search", type: :system do
     expect(page.evaluate_script("window.__marker")).to eq("still here")
   end
 
-  it "updates results in place and focuses search with /", :aggregate_failures do
+  it "focuses search with /" do
     system_sign_in_as(create(:user))
     visit catalog_entries_path
-    page.execute_script("window.__marker = 'still here'")
     find("body").send_keys("/")
     expect(page).to have_css("input[name=q]:focus")
-    fill_in "Card name", with: "bolt"
-    click_button "Search"
-    expect(page).to have_css(".c-group h2", text: "Lightning Bolt")
-    expect(page).to have_current_path(catalog_entries_path(q: "bolt", set: ""))
+  end
+
+  it "updates results in place and goes back to the empty search", :aggregate_failures do
+    search_for_bolt_in_its_set
+    expect(page).to have_current_path(bolt_search_path)
     expect(page.evaluate_script("window.__marker")).to eq("still here")
 
     page.go_back
     expect(page).to have_current_path(catalog_entries_path)
     expect(page).to have_no_css(".c-group h2", text: "Lightning Bolt")
+    expect(page).to have_field("Card name", with: "")
+    expect(page).to have_select("Set", selected: "All sets")
     expect(page.evaluate_script("window.__marker")).to eq("still here")
+  end
+
+  it "goes forward to the search again", :aggregate_failures do
+    search_for_bolt_in_its_set
+    page.go_back
+    expect(page).to have_no_css(".c-group h2", text: "Lightning Bolt")
+
+    page.go_forward
+    expect(page).to have_current_path(bolt_search_path)
+    expect(page).to have_css(".c-group h2", text: "Lightning Bolt")
+    expect(page).to have_field("Card name", with: "bolt")
+    expect(page).to have_select("Set", selected: set_label)
   end
 
   it "fits a 360px screen without horizontal scrolling", :aggregate_failures do
@@ -53,5 +68,19 @@ RSpec.describe "Quick add from search", type: :system do
     visit catalog_entries_path(q: "bolt")
     expect(open_in_narrow_frame(catalog_entries_path(q: "bolt"), width: 360, ready: ".c-group h2")).to eq([ 360, true ])
     within_narrow_frame { expect(page).to have_css(".c-group h2", text: "Lightning Bolt") }
+  end
+
+  private
+
+  def bolt_search_path = catalog_entries_path(q: "bolt", set: entry.set.code)
+
+  def search_for_bolt_in_its_set
+    system_sign_in_as(create(:user))
+    visit catalog_entries_path
+    page.execute_script("window.__marker = 'still here'")
+    fill_in "Card name", with: "bolt"
+    select set_label, from: "Set"
+    click_button "Search"
+    expect(page).to have_css(".c-group h2", text: "Lightning Bolt")
   end
 end

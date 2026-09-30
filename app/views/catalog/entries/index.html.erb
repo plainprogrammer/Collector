@@ -4,7 +4,7 @@
   <div class="c-pagehead"><div><h1 class="c-pagehead__title">Search</h1></div></div>
   <div class="c-collection" data-controller="search-shortcut">
     <%= form_with url: catalog_entries_path, method: :get, class: "c-filterbar", role: "search",
-          data: { turbo_frame: "results", turbo_action: "advance" } do |form| %>
+          data: { controller: "url-sync", turbo_frame: "results", turbo_action: "advance" } do |form| %>
       <label class="c-input"><%= render "icons/search" %><%= form.search_field :q, value: @search.query, placeholder: "Lightning Bolt", "aria-label": "Card name",
             data: { search_shortcut_target: "input" } %><kbd>/</kbd></label>
       <div class="c-filterbar__filters">

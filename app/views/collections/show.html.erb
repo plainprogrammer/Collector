@@ -12,7 +12,7 @@
     <p class="c-empty">No cards in your collection yet. Search for a card to start adding. <%= link_to "Search cards", catalog_entries_path %></p>
   <% else %>
     <div class="c-collection" data-controller="search-shortcut">
-      <%= form_with url: collection_path, method: :get, class: "c-filterbar", role: "search", data: { turbo_frame: "results", turbo_action: "advance" } do |form| %>
+      <%= form_with url: collection_path, method: :get, class: "c-filterbar", role: "search", data: { controller: "url-sync", turbo_frame: "results", turbo_action: "advance" } do |form| %>
         <label class="c-input"><%= render "icons/search" %><%= form.search_field :q, value: @grid.query, placeholder: "Search your collection", "aria-label": "Search your collection",
               data: { search_shortcut_target: "input" } %><kbd>/</kbd></label>
       <% end %>

@@ -21,21 +21,26 @@ RSpec.describe "Collection on a phone", type: :system do
   end
 
   it "filters in place and goes back to the unfiltered collection", :aggregate_failures do
-    sign_in_owning_bolt_and_opt
-    visit collection_path
-    page.execute_script("window.__marker = 'still here'")
-
-    fill_in "Search your collection", with: "bolt"
-    find_field("Search your collection").send_keys(:enter)
-    expect(page).to have_current_path(collection_path(q: "bolt"))
-    expect(page).to have_css(".c-filterbar__count", text: "3 of 5 items")
+    filter_owned_bolt_and_opt_to_bolt
     expect(page).to have_css(".c-tile__name", count: 1)
     expect(page.evaluate_script("window.__marker")).to eq("still here")
 
     page.go_back
     expect(page).to have_current_path(collection_path)
     expect(page).to have_css(".c-filterbar__count", exact_text: "5 items")
+    expect(page).to have_field("Search your collection", with: "")
     expect(page.evaluate_script("window.__marker")).to eq("still here")
+  end
+
+  it "goes forward to the filtered collection again", :aggregate_failures do
+    filter_owned_bolt_and_opt_to_bolt
+    page.go_back
+    expect(page).to have_css(".c-filterbar__count", exact_text: "5 items")
+
+    page.go_forward
+    expect(page).to have_current_path(collection_path(q: "bolt"))
+    expect(page).to have_css(".c-filterbar__count", text: "3 of 5 items")
+    expect(page).to have_field("Search your collection", with: "bolt")
   end
 
   it "fits a 360px screen without horizontal scrolling" do
@@ -46,6 +51,16 @@ RSpec.describe "Collection on a phone", type: :system do
   end
 
   private
+
+  def filter_owned_bolt_and_opt_to_bolt
+    sign_in_owning_bolt_and_opt
+    visit collection_path
+    page.execute_script("window.__marker = 'still here'")
+    fill_in "Search your collection", with: "bolt"
+    find_field("Search your collection").send_keys(:enter)
+    expect(page).to have_current_path(collection_path(q: "bolt"))
+    expect(page).to have_css(".c-filterbar__count", text: "3 of 5 items")
+  end
 
   # Three Lightning Bolts and two Opts: five items, three of them matching "bolt".
   def sign_in_owning_bolt_and_opt
