@@ -41,6 +41,11 @@ RSpec.describe "Quick add from search", type: :system do
     expect(page).to have_css(".c-group h2", text: "Lightning Bolt")
     expect(page).to have_current_path(catalog_entries_path(q: "bolt", set: ""))
     expect(page.evaluate_script("window.__marker")).to eq("still here")
+
+    page.go_back
+    expect(page).to have_current_path(catalog_entries_path)
+    expect(page).to have_no_css(".c-group h2", text: "Lightning Bolt")
+    expect(page.evaluate_script("window.__marker")).to eq("still here")
   end
 
   it "fits a 360px screen without horizontal scrolling", :aggregate_failures do

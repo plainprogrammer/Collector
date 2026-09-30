@@ -19,6 +19,28 @@ RSpec.describe "Collection on a phone", type: :system do
     end
   end
 
+  it "filters in place and goes back to the unfiltered collection", :aggregate_failures do
+    user = system_sign_in_as(create(:user))
+    bolt = create(:mtg_printing).entry.tap { |e| e.update!(name: "Lightning Bolt") }
+    opt = create(:mtg_printing).entry.tap { |e| e.update!(name: "Opt") }
+    create(:lot, account: user.account, entry: bolt, quantity: 3)
+    create(:lot, account: user.account, entry: opt, quantity: 2)
+    visit collection_path
+    page.execute_script("window.__marker = 'still here'")
+
+    fill_in "Search your collection", with: "bolt"
+    find_field("Search your collection").send_keys(:enter)
+    expect(page).to have_current_path(collection_path(q: "bolt"))
+    expect(page).to have_css(".c-filterbar__count", text: "3 of 5 items")
+    expect(page).to have_css(".c-tile__name", count: 1)
+    expect(page.evaluate_script("window.__marker")).to eq("still here")
+
+    page.go_back
+    expect(page).to have_current_path(collection_path)
+    expect(page).to have_css(".c-filterbar__count", exact_text: "5 items")
+    expect(page.evaluate_script("window.__marker")).to eq("still here")
+  end
+
   it "fits a 360px screen without horizontal scrolling" do
     user = system_sign_in_as(create(:user))
     create(:lot, account: user.account, quantity: 9_999)
