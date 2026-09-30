@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Card scanner spike: camera</title>
+  <script type="module" src="/camera.js"></script>
+</head>
+<body>
+  <button id="start" type="button">Start camera</button>
+  <button id="capture" type="button" disabled>Capture</button>
+  <video id="video" autoplay muted playsinline width="360"></video>
+  <p>Frame hash: <output id="frame-hash"></output></p>
+  <p>Source hash: <output id="source-hash"></output></p>
+  <p id="status" aria-live="polite"></p>
+</body>
+</html>
