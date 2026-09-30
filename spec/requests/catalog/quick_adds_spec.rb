@@ -46,6 +46,13 @@ RSpec.describe "Quick add", type: :request do
     expect(response.body).to include("You already have the most copies one lot can hold (9,999).", "Your copies", "9999")
   end
 
+  it "adds a retired printing like any other", :aggregate_failures do
+    entry.update!(retired_at: 1.day.ago)
+    post catalog_entry_quick_add_path(entry)
+    expect(response).to redirect_to(catalog_entry_path(entry))
+    expect(user.account.lots.sole).to have_attributes(entry:, quantity: 1)
+  end
+
   it "returns 404 for an unknown printing" do
     post catalog_entry_quick_add_path("nope")
     expect(response).to have_http_status(:not_found)

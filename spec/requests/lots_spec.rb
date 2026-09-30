@@ -32,6 +32,11 @@ RSpec.describe "Lots", type: :request do
   end
 
   describe "adding" do
+    it "returns 404 for an unknown printing" do
+      get new_catalog_entry_lot_path("nope")
+      expect(response).to have_http_status(:not_found)
+    end
+
     it "offers only the printing's finishes and the condition scale", :aggregate_failures do
       get new_catalog_entry_lot_path(entry)
       expect(response.body).to include("Nonfoil", "Foil", "Near mint (NM)", "Damaged (DMG)", "Price paid per copy (USD)")
