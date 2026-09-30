@@ -4,7 +4,7 @@ const GUIDE_HEIGHT = 0.74 // card height as a share of the image height
 const GUIDE_CENTRE = { x: 0.51, y: 0.485 } // guide centre as fractions of image width/height
 const CARD_ASPECT = 63 / 88
 const STRIPS = {
-  name: { x: 0.0, y: 0.0, w: 0.76, h: 0.16, psm: "7" },
+  name: { x: 0.0, y: 0.0, w: 0.76, h: 0.16, psm: "6" },
   collector: { x: 0.0, y: 0.86, w: 0.45, h: 0.18, psm: "6" }
 }
 const ASSETS = "/ocr/v7.0.0"
