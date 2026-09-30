@@ -54,6 +54,38 @@ RSpec.describe "Card page", type: :request do
     expect(Nokogiri::HTML5(response.body).css(".c-item__media .c-item__image img").size).to eq(1)
   end
 
+  describe "face image names" do
+    def media_for(faces)
+      two_faced = create(:catalog_entry, identity: create(:catalog_identity, name: "Front // Back"), image_url: nil)
+      create(:mtg_printing, entry: two_faced, faces:)
+      get catalog_entry_path(two_faced)
+      Nokogiri::HTML5(response.body).at_css(".c-item__media")
+    end
+
+    it "names every face a shared image covers" do
+      shared = { "normal" => "https://cards.scryfall.io/normal/front/a/b/ab12.jpg" }
+      media = media_for([ { "name" => "Front", "image_uris" => shared }, { "name" => "Back", "image_uris" => shared } ])
+
+      expect(media.css(".c-item__image img").map { |img| img["alt"] }).to eq([ "Front // Back" ])
+    end
+
+    it "names each face its own image when the images differ" do
+      media = media_for([
+        { "name" => "Front", "image_uris" => { "normal" => "https://cards.scryfall.io/normal/front/a/b/ab12.jpg" } },
+        { "name" => "Back", "image_uris" => { "normal" => "https://cards.scryfall.io/normal/back/a/b/ab12.jpg" } }
+      ])
+
+      expect(media.css(".c-item__image img").map { |img| img["alt"] }).to eq(%w[Front Back])
+    end
+
+    it "names every face on a shared blank image", :aggregate_failures do
+      media = media_for([ { "name" => "Front" }, { "name" => "Back" } ])
+
+      expect(media.css(".c-item__image .c-tile__missing strong").map(&:text)).to eq([ "Front // Back" ])
+      expect(media.css("img")).to be_empty
+    end
+  end
+
   it "escapes source text" do
     get catalog_entry_path(entry)
 

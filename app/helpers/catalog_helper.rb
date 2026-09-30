@@ -7,7 +7,15 @@ module CatalogHelper
     nil
   end
 
-  def set_number(entry) = "#{entry.set.code.upcase} · #{entry.number}"
+  # One [image_url, name] pair per distinct face image, in face order; faces sharing an image (or
+  # sharing no image) are named together, e.g. "Bonecrusher Giant // Stomp".
+  def face_images(entry)
+    faces = entry.extension&.faces.presence || [ { "image_uris" => { "normal" => entry.image_url }, "name" => entry.name } ]
+    faces.group_by { |face| face.dig("image_uris", "large") || face.dig("image_uris", "normal") }
+      .map { |image, shared| [ image, shared.map { |face| face["name"] }.join(" // ") ] }
+  end
+
+  def set_number(entry) ="#{entry.set.code.upcase} · #{entry.number}"
 
   def quick_add_button(entry, return_to:, label: "Add")
     button_to catalog_entry_quick_add_path(entry), params: { return_to: }, class: "c-btn c-btn--ghost c-btn--sm",

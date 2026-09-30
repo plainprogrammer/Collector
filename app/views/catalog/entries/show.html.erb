@@ -12,13 +12,12 @@
   <% end %>
   <div class="c-item">
     <div class="c-item__media">
-      <% faces = @entry.extension&.faces.presence || [ { "image_uris" => { "normal" => @entry.image_url }, "name" => @entry.name } ] %>
-      <% faces.uniq { |face| face.dig("image_uris", "large") || face.dig("image_uris", "normal") }.each do |face| %>
+      <% face_images(@entry).each do |image_url, name| %>
         <div class="c-item__image">
-          <% if (image = catalog_url(face.dig("image_uris", "large") || face.dig("image_uris", "normal"))) %>
-            <%= image_tag image, alt: face["name"], width: 300, height: 419 %>
+          <% if (image = catalog_url(image_url)) %>
+            <%= image_tag image, alt: name, width: 300, height: 419 %>
           <% else %>
-            <div class="c-tile__missing"><strong><%= face["name"] %></strong></div>
+            <div class="c-tile__missing"><strong><%= name %></strong></div>
           <% end %>
         </div>
       <% end %>
