@@ -48,6 +48,15 @@ env:
     # Extra card languages to ingest from Scryfall, comma-separated (e.g. "ja,de").
     # COLLECTOR_MTG_LANGUAGES: ja   # extra Scryfall languages; English is always included
 
+    # Currency for the price you paid (ISO 4217 code; see the README for the supported list).
+    # COLLECTOR_CURRENCY: USD
+
+    # Set to "true" when the app is served over HTTPS (secure cookies, redirect to HTTPS).
+    # COLLECTOR_HTTPS: true
+
+    # Extra reverse proxies (IPs or CIDRs, comma-separated) whose X-Forwarded-For is trusted.
+    # COLLECTOR_TRUSTED_PROXIES: 10.0.0.5
+
     # Set number of processes dedicated to Solid Queue (default: 1)
     # JOB_CONCURRENCY: 3
 

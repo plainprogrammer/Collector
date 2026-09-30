@@ -91,16 +91,21 @@ Two deployment paths are supported: Docker Compose for a single machine, and Kam
 deploying to your own servers. Both use the `Dockerfile` in this repository and keep all
 data in SQLite on a persistent volume.
 
+> **Before you expose Collector:** the first person to reach a new or freshly upgraded instance becomes its admin. Either sign up straight away while the instance is only reachable on your private network, or create the admin from the command line first (see [Accounts](#accounts)).
+
 ### Docker Compose
 
 `compose.yaml` works with both `docker compose` and `podman compose`.
 
-| Variable                  | Required | Default      | Purpose                                                                                                                               |
-| ------------------------- | -------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `SECRET_KEY_BASE`         | yes      | none         | Secret used to sign and encrypt sessions and cookies                                                                                  |
-| `COLLECTOR_PORT`          | no       | `3000`       | Host port the app is published on                                                                                                     |
-| `COLLECTOR_MTG_LANGUAGES` | no       | English only | Extra card languages, e.g. `ja,de` (see [Card catalog](#card-catalog))                                                                |
-| `COLLECTOR_CURRENCY`      | no       | `USD`        | Currency for the price you paid: USD, CAD, AUD, NZD, EUR, GBP, CHF, SEK, NOK, DKK, PLN, CZK, JPY, CNY, KRW, SGD, HKD, BRL, MXN or ZAR |
+| Variable                    | Required | Default               | Purpose                                                                                                                               |
+| --------------------------- | -------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `SECRET_KEY_BASE`           | yes      | none                  | Secret used to sign and encrypt sessions and cookies                                                                                  |
+| `COLLECTOR_PORT`            | no       | `3000`                | Host port the app is published on                                                                                                     |
+| `COLLECTOR_MTG_LANGUAGES`   | no       | English only          | Extra card languages, e.g. `ja,de` (see [Card catalog](#card-catalog))                                                                |
+| `COLLECTOR_CURRENCY`        | no       | `USD`                 | Currency for the price you paid: USD, CAD, AUD, NZD, EUR, GBP, CHF, SEK, NOK, DKK, PLN, CZK, JPY, CNY, KRW, SGD, HKD, BRL, MXN or ZAR |
+| `COLLECTOR_HTTPS`           | no       | `false`               | Set to `true` when Collector is served over HTTPS (secure cookies, redirect to HTTPS)                                                 |
+| `COLLECTOR_TRUSTED_PROXIES` | no       | Rails' private ranges | Extra reverse proxies (IPs or CIDRs, comma-separated) whose `X-Forwarded-For` is trusted                                              |
+| `COLLECTOR_PASSWORD`        | no       | none                  | Password for the user command below; never stored in logs                                                                             |
 
 Changing `COLLECTOR_CURRENCY` later doesn't convert prices you've already entered; they're shown with the new symbol. An unsupported code stops the app at boot, naming the setting.
 
@@ -126,9 +131,7 @@ The app is then available at `http://localhost:3000` (or your `COLLECTOR_PORT`).
 - **Health:** the container has a healthcheck on `/up`, and runs as a non-root user (uid 1000).
 - **Upgrades:** pull the new code, then run `docker compose up -d --build`. Database migrations
   run automatically when the container starts.
-- **HTTPS:** the Compose setup serves plain HTTP. To use HTTPS, put a reverse proxy (for
-  example Caddy, nginx, or Traefik) in front of it; configuring one is outside the scope of
-  this repository.
+- **HTTPS:** the Compose setup serves plain HTTP. Signing in over plain HTTP sends your password unencrypted, which is only acceptable on a trusted private network. Put an HTTPS reverse proxy (for example Caddy, nginx, or Traefik) in front of it and set `COLLECTOR_HTTPS=true`.
 
 ### Kamal
 
@@ -145,6 +148,26 @@ Kamal (`bin/kamal`) deploys the same image to servers you control over SSH.
 
 Data is stored in the `collector_storage` volume (mounted at `/rails/storage`), and Solid
 Queue runs inside Puma (`SOLID_QUEUE_IN_PUMA`).
+
+### Accounts
+
+Each person has their own account and collection. The first account is the admin: whoever signs up first, or whoever you create with the user command. The admin opens or closes sign-up and manages users under **Users and sign-up** in the avatar menu (or **More** on a phone).
+
+The user command sets a user's password, or creates an admin if no user has that email. It takes the password from `COLLECTOR_PASSWORD`, or asks for it when run in a terminal, or generates one and prints it once. Setting a password signs that user out everywhere.
+
+```sh
+bin/rails "collector:user[you@example.com]"                                                    # locally
+docker compose exec -e COLLECTOR_PASSWORD='…' web bin/rails "collector:user[you@example.com]"  # Docker Compose
+bin/kamal app exec -i "bin/rails 'collector:user[you@example.com]'"                           # Kamal
+```
+
+### Upgrading to accounts
+
+**Read this before you upgrade.** An instance upgraded from a version without accounts has no users, and the first person to reach it becomes its admin. If others can reach your instance, stop exposing it (for example, take it off your reverse proxy) before you upgrade, or run the user command straight after the upgrade to create your admin. Then sign in, and only then expose it again.
+
+1. Pull the new code.
+2. Run `docker compose up -d --build` (or `bin/kamal deploy`). Migrations run when the container starts.
+3. Create or claim the admin account as described above.
 
 ## Card catalog
 

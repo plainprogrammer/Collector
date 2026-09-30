@@ -3,6 +3,8 @@
 # Optional: COLLECTOR_PORT (host port, default 3000)
 # Optional: COLLECTOR_MTG_LANGUAGES (extra card languages, e.g. "ja,de")
 # Optional: COLLECTOR_CURRENCY (currency for the price you paid, default USD)
+# Optional: COLLECTOR_HTTPS ("true" when served over HTTPS, e.g. behind a TLS proxy; default false)
+# Optional: COLLECTOR_TRUSTED_PROXIES (extra reverse proxy IPs/CIDRs, comma-separated)
 services:
   web:
     build: .
@@ -16,6 +18,8 @@ services:
       HTTP_PORT: "8080"
       COLLECTOR_MTG_LANGUAGES: "${COLLECTOR_MTG_LANGUAGES:-}"
       COLLECTOR_CURRENCY: "${COLLECTOR_CURRENCY:-USD}"
+      COLLECTOR_HTTPS: "${COLLECTOR_HTTPS:-false}"
+      COLLECTOR_TRUSTED_PROXIES: "${COLLECTOR_TRUSTED_PROXIES:-}"
     volumes:
       - collector_storage:/rails/storage
     healthcheck:
