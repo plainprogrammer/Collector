@@ -7,6 +7,16 @@ RSpec.describe "Lots", type: :request do
 
   before { sign_in_as(user) }
 
+  it "uses the page head and the detail page layout on every lot page", :aggregate_failures do
+    lot = create(:lot, account: user.account, entry:)
+    [ new_catalog_entry_lot_path(entry), edit_lot_path(lot) ].each do |path|
+      get path
+      expect(response.body).to include('<div class="c-pagehead">'), "#{path} has no page head"
+    end
+    get new_lot_removal_path(lot)
+    expect(response.body).to include('<main class="c-main c-page">')
+  end
+
   describe "adding" do
     it "offers only the printing's finishes and the condition scale", :aggregate_failures do
       get new_catalog_entry_lot_path(entry)

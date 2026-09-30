@@ -1,8 +1,12 @@
 <% content_for :title, "Edit #{@lot.entry.name} · Collector" %>
 <%= render "layouts/appbar", section: card_context, detail: true, back_path: catalog_entry_path(@lot.entry, **card_params) %>
 <main class="c-main c-page">
-  <h1 class="c-pagehead__title">Edit copy</h1>
-  <p class="c-pagehead__stats"><%= @lot.entry.name %> · <%= set_number(@lot.entry) %> · <%= @lot.entry.language.upcase %></p>
+  <div class="c-pagehead">
+    <div>
+      <h1 class="c-pagehead__title">Edit copy</h1>
+      <p class="c-pagehead__stats"><%= @lot.entry.name %> · <%= set_number(@lot.entry) %> · <%= @lot.entry.language.upcase %></p>
+    </div>
+  </div>
   <%= render "lots/form", form_model: @form, url: lot_path(@lot, **card_params), method: :patch, submit: "Save" %>
 </main>
 <%= render "layouts/tabbar", section: card_context %>
