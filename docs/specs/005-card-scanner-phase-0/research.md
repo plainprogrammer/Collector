@@ -9,7 +9,7 @@ Every rate below carries its sample size. Anything that was not measured is labe
 
 ## 1. Summary
 
-**Spike 1, OCR strip accuracy.** Tesseract.js 7.0.0, served from the spike page's own origin, read the name-bar and collector-line strips of 50 hand-held iPhone photos cut at fixed positions relative to a fixed card guide. The engine loads and runs on the maintainer's iPhone: 7,031,507 bytes on a cold load, about 1 KB on a warm one, ready in 528 ms cold and 313 ms warm, and a median of 626 ms per photo (n=11). Accuracy is the problem. The name strip read exactly on 5 of 50 photos, and the collector line identified the exact printing on 7 of 45. Two desktop replays gave identical OCR text on all 50 photos. Of the 24 photos whose card was not in the top 3 candidates, 19 trace to the fixed guide: hand-held photos drift by about ±4% of the image, so the strips had to be tall, and they either clipped the name or took in so much art that the OCR text was mostly noise.
+**Spike 1, OCR strip accuracy.** Tesseract.js 7.0.0, served from the spike page's own origin, read the name-bar and collector-line strips of 50 hand-held iPhone photos cut at fixed positions relative to a fixed card guide. The engine loads and runs on the maintainer's iPhone: 7,031,507 bytes on a cold load, about 1 KB on a warm one, ready in 528 ms cold and 313 ms warm, and a median of 626 ms per photo (n=11). Accuracy is the problem. The name strip read exactly on 5 of 50 photos, and the collector line identified the exact printing on 7 of 45. Two desktop replays gave identical OCR text on all 50 photos. Of the 24 photos whose card was not in the top 3 candidates, 19 trace to the fixed guide: hand-held photos drift by about ±4% of the image (measured on the pilot, n=5), so the strips had to be tall, and they either clipped the name or took in so much art that the OCR text was mostly noise.
 
 **Spike 2, headless camera testing.** Firefox's built-in fake camera, the project's current system-test driver, shows a synthetic pattern and can't be given a chosen card image. Two alternatives worked 10 times out of 10 with a card-specific assertion (a 256-bit average hash of the captured frame against the source photo): replacing `getUserMedia` inside the page with a stream drawn from the photo (in the existing headless Firefox, hash distance 0), and Chrome's file-backed fake camera fed a `.y4m` made from the photo (hash distance 27, threshold 32).
 
@@ -243,9 +243,9 @@ Live-camera timing was not measured: the on-device run used the photo picker, as
 
 | File | Expected | Name strip (first 60 chars) | Collector strip (first 60 chars) | Top 3 | Likely cause |
 |---|---|---|---|---|---|
-| IMG_6688.jpeg | Mountain | ARSENATE SO YI TE pI Sa SIT ER% wa BOR CTA i RANA AA AAA A A… | \\ } I DQOILU Lali \ 4 \| LEON TUKKER | Reshape the Earth; Arsenal Thresher; Sea Gate Restoration // Sea Gate, Reborn | Strip clutter: name legible, but the tall fixed strip takes in borderless art and its OCR noise swamps the name |
+| IMG_6688.jpeg | Mountain | ARSENATE SO YI TE pI Sa SIT ER% wa BOR CTA i RANA AA AAA A A… | \\ } I DQOILU Lali \ 4 \| LEON TUKKER | Reshape the Earth; Arsenal Thresher; Sea Gate Restoration // Sea Gate, Reborn | Misalignment of the fixed strip (clutter): name legible, but the tall fixed strip takes in borderless art and its OCR noise swamps the name |
 | IMG_6689.jpeg | Galea, Kindler of Hope | ow A k " — - edd os BTR BN Ps a . 1 TN Fo io - ~ : ¢ Q 4 — a… | 1L LO talgcClL CiCatu 301/062 M AFC #\*# EN db JOHANNES YOSS | Plea for Power; Aatchik, Emerald Radian; S.N.E.A.K. Dispatcher | Glare (foil) |
-| IMG_6690.jpeg | Sally Pride, Lioness Leader | ra—————T aaa ae : Ld Vs TE 1, J if mw y/ PVE 1 A I" i a o fi… | R 0225 TMT \* EN % GREGG SCHIGIEL | Ria Ivor, Bane of Bladehold; V.A.T.S.; Rafi, Retro Racer | Strip clutter: name legible, but the tall fixed strip takes in showcase art and its OCR noise swamps the name |
+| IMG_6690.jpeg | Sally Pride, Lioness Leader | ra—————T aaa ae : Ld Vs TE 1, J if mw y/ PVE 1 A I" i a o fi… | R 0225 TMT \* EN % GREGG SCHIGIEL | Ria Ivor, Bane of Bladehold; V.A.T.S.; Rafi, Retro Racer | Misalignment of the fixed strip (clutter): name legible, but the tall fixed strip takes in showcase art and its OCR noise swamps the name |
 | IMG_6691.jpeg | Wedding Ring | — a a = . = Sere TRS eee Re a ough Lo SR KT 4 (ek ; i] A Se… | § TEE R— TL SATE. ARR M 2802 SLD + EN ¥%s CONCERNED | Borough Backup; Ba Sing Se; Maralen, Fae Ascendant | Unusual frame: flavour name printed ("Mermaid's Pendant"), catalog name is "Wedding Ring" |
 | IMG_6705.jpeg | Cloudsteel Kirin | (empty) | CYR SUL NED » EN MW JONATHAN KUO BE \| Art BE rr | (none) | Misalignment: name clipped by the strip edge or strip off the name |
 | IMG_6708.jpeg | Reyav, Master Smith | v \d cote E (a s de ed "N | PIV LL 7 WIN FO TYAIVRLIN WIR | S.H.I.E.L.D. Deployment Drone; Quake, Agent of S.H.I.E.L.D.; Nick Fury, Agent of S.H.I.E.L.D. | Blur (sleeved) |
@@ -263,15 +263,15 @@ Live-camera timing was not measured: the on-device run used the photo picker, as
 | IMG_6733.jpeg | Primevals' Glorious Rebirth | (empty) | AA NJAALL RA Se CD Tr Fon oh Centuries ago, five . to rule t… | (none) | Misalignment: name clipped by the strip edge or strip off the name |
 | IMG_6734.jpeg | Elixir of Immortality | BE - -b A Lo \! : s. A - | rather stale, but it —Baron Sengir  >Zglgan Boros & Gab  Wa… | Phoebe, Head of S.N.E.A.K.; Goblin S.W.A.T. Team; Bello, Bard of the Brambles | Misalignment: name clipped by the strip edge or strip off the name |
 | IMG_6735.jpeg | Fracture | BT | really are.” . —FExtus Narr 27% U | (none) | Misalignment: name clipped by the strip edge or strip off the name (foil) |
-| IMG_6736.jpeg | Crystal Grotto | - NE J : d FY PRT TE - J ’  v § | ~: Add ¢. I, ©: Add one | S.H.I.E.L.D. Flying Car; The Art of Tea; M.O.D.O.K. | Strip clutter: name legible, but the tall fixed strip takes in art and its OCR noise swamps the name |
-| IMG_6737.jpeg | Leyline of the Guildpact | CE ER ERT Le SAC eve « v § “ : 3 NE f B B g \| eAN AS SRV b… | 8 Lands you contr type in addition | B-I-N-G-O; Faerie Miscreant; Bee-Bee Gun | Strip clutter: name legible, but the tall fixed strip takes in art and its OCR noise swamps the name |
+| IMG_6736.jpeg | Crystal Grotto | - NE J : d FY PRT TE - J ’  v § | ~: Add ¢. I, ©: Add one | S.H.I.E.L.D. Flying Car; The Art of Tea; M.O.D.O.K. | Misalignment of the fixed strip (clutter): name legible, but the tall fixed strip takes in art and its OCR noise swamps the name |
+| IMG_6737.jpeg | Leyline of the Guildpact | CE ER ERT Le SAC eve « v § “ : 3 NE f B B g \| eAN AS SRV b… | 8 Lands you contr type in addition | B-I-N-G-O; Faerie Miscreant; Bee-Bee Gun | Misalignment of the fixed strip (clutter): name legible, but the tall fixed strip takes in art and its OCR noise swamps the name |
 | IMG_6738.jpeg | Darksteel Citadel | a > tz - S ig ; LJ p ‘ \| \| 5 - we ~— yr. ’ 4 | Structures built neither assault 1 | T.A.P.P.E.R.; Goblin S.W.A.T. Team; Waltz of Rage | Misalignment: name clipped by the strip edge or strip off the name (foil) |
 | IMG_6743.jpeg | Lathliss, Dragon Queen | <ALIEIO0y AIA KRURYL ILL IY : aid : ¥ g a \| - -— 3 pry | 4. LldgVllo yUYViL & until end of turn. M19 + EN de ALEX IKO… | Unlikely Aid; Airborne Aid; Call for Aid | Misalignment: name clipped by the strip edge or strip off the name |
 
 | Cause | Photos |
 |---|---|
 | Misalignment of the fixed strip: name clipped by the strip edge, or strip off the name | 15 |
-| Strip clutter: name legible, but the tall fixed strip takes in art and the OCR noise swamps it | 4 |
+| Misalignment of the fixed strip (clutter): name legible, but the tall fixed strip takes in art and the OCR noise swamps it | 4 |
 | Glare (foil) | 1 |
 | Blur | 1 |
 | Unusual frame (battle layout; flavour name) | 2 |
@@ -312,7 +312,7 @@ v4l2loopback (a virtual camera device) was considered but not tried, because it 
 | Dev-machine setup | None (Firefox already installed) | Chrome isn't installed; Selenium Manager downloads Chrome for Testing to `~/.cache/selenium` on the first run. ffmpeg to make the `.y4m` (installed) | None |
 | CI setup (GitHub `ubuntu-24.04` image) | None: Firefox 156 and geckodriver 0.37.1 are on the image | Chrome 153 and ChromeDriver 153 are on the image; ffmpeg is not, so install it with apt or write the `.y4m` in Ruby | None |
 | Run time per example, 10-run loop | median 3.42 s, max 3.54 s | median 1.41 s, max 1.52 s | median 1.61 s, max 4.41 s |
-| First run | 3.67 s | 8.23 s (includes the Chrome for Testing download) | 1.73 s |
+| First run (from the printed run log; its rows were not retained in `camera-results.jsonl`) | 3.67 s | 8.23 s (includes the Chrome for Testing download) | 1.73 s |
 | Passes over 10 consecutive runs (AC-2.3, AC-2.4) | 10/10 (the example asserts the pattern is *not* the card) | 10/10 | 10/10 |
 | Failures | None | None | None |
 | What it exercises | The real `getUserMedia` path, but not a card | The real `getUserMedia` and permission path, with a card | The page's code after `getUserMedia`; bypasses the real media and permission path |
