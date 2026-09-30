@@ -10,3 +10,4 @@
 - [Branch naming convention](branch-naming-convention.md) — feat/NNN-slug per docs/git-convention.md, even in differently named worktrees
 - [Headless Firefox narrow frame](headless-firefox-narrow-frame.md) — windows can't go below 500px; test/screenshot phone widths in a fixed-width iframe
 - [Pre-commit hook staging](precommit-hook-staging.md) — hook reads the command text for `git add` / `commit -a`; stage separately to be safe
+- [Reproduce CI with its seed](reproduce-ci-with-seed.md) — on CI failure, run the full suite with the CI seed as an early reproduction step
