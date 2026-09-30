@@ -339,7 +339,7 @@ See [data-model.md](data-model.md): Account, User, Session, InstanceSetting, Lot
   end
   ```
 - [ ] Run: `bin/rspec spec/models/user_spec.rb` — expect: FAIL (no `User`).
-- [ ] Write the migration `db/migrate/20260929120000_create_accounts_users_sessions.rb`:
+- [ ] Write the migration `db/migrate/20260930000003_create_accounts_users_sessions.rb`:
   ```ruby
   class CreateAccountsUsersSessions < ActiveRecord::Migration[8.1]
     def change
@@ -814,7 +814,7 @@ See [data-model.md](data-model.md): Account, User, Session, InstanceSetting, Lot
   end
   ```
 - [ ] Run: `bin/rspec spec/models/registration_spec.rb` — expect: FAIL.
-- [ ] Write the migration `db/migrate/20260929120100_create_instance_settings.rb`:
+- [ ] Write the migration `db/migrate/20260930000004_create_instance_settings.rb`:
   ```ruby
   class CreateInstanceSettings < ActiveRecord::Migration[8.1]
     def change
@@ -1494,7 +1494,7 @@ See [data-model.md](data-model.md): Account, User, Session, InstanceSetting, Lot
   end
   ```
 - [ ] Run: `bin/rspec spec/models/lot_spec.rb` — expect: FAIL.
-- [ ] Write the migration `db/migrate/20260929120200_create_lots.rb` (check constraints inside `create_table`, so SQLite builds the table once):
+- [ ] Write the migration `db/migrate/20260930000005_create_lots.rb` (check constraints inside `create_table`, so SQLite builds the table once):
   ```ruby
   class CreateLots < ActiveRecord::Migration[8.1]
     def change
