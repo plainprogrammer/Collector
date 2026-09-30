@@ -589,6 +589,6 @@ Checked and held:
 
 Each recommended decision has a Proposed ADR (AC-4.3; convention: [`docs/adr/README.md`](../../adr/README.md)):
 
-- [ADR 0001: Browser OCR engine and asset hosting](../../adr/0001-browser-ocr-engine-and-asset-hosting.md)
-- [ADR 0002: Camera-path testing](../../adr/0002-camera-path-testing.md)
-- [ADR 0003: Card-name index](../../adr/0003-card-name-index.md)
+- [ADR 0001: Self-host Tesseract.js 7 for in-browser OCR](../../adr/0001-browser-ocr-engine-and-asset-hosting.md)
+- [ADR 0002: Test the camera path by substituting getUserMedia in the page](../../adr/0002-camera-path-testing.md)
+- [ADR 0003: Index card names with an FTS5 trigram table](../../adr/0003-card-name-index.md)
