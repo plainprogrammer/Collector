@@ -71,4 +71,12 @@ RSpec.describe "Routes", type: :routing do
     expect(get: "/scanner").to route_to("scanners#show")
     expect(post: "/scanner/readings").to route_to("scanner/readings#create")
   end
+
+  it "routes measurement mode under the scanner", :aggregate_failures do
+    expect(get: "/scanner/measurement").to route_to("scanner/measurements#show")
+    expect(post: "/scanner/measurement/captures").to route_to("scanner/measurements/captures#create")
+    expect(post: "/scanner/measurement/skips").to route_to("scanner/measurements/skips#create")
+    expect(get: "/scanner/measurement/replay").to route_to("scanner/measurements/replays#show")
+    expect(get: "/scanner/measurement/strips/IMG_1.jpeg").to route_to("scanner/measurements/strips#show", id: "IMG_1.jpeg")
+  end
 end

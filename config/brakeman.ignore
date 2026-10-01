@@ -22,6 +22,29 @@
         22
       ],
       "note": "The path never comes from the request: Collector::OcrEngine.path_for returns a path only for a key of the pinned FILES allowlist (six engine files under vendor/ocr/v7.0.0/) and nil for anything else, which the action answers with 404 before send_file (spec 007 AC-2.2)."
+    },
+    {
+      "warning_type": "File Access",
+      "warning_code": 16,
+      "fingerprint": "2d08b20747893ac4e77ae57738fba93cce81c4d9e2aac6855f8f993893a4f3ea",
+      "check_name": "SendFile",
+      "message": "Parameter value used in file name",
+      "file": "app/controllers/scanner/measurements/strips_controller.rb",
+      "line": 12,
+      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
+      "code": "send_file((measurement_run.row(params[:id]) and measurement_run.strip_path(measurement_run.row(params[:id]), params[:strip])), :type => \"image/png\", :disposition => :inline)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Scanner::Measurements::StripsController",
+        "method": "show"
+      },
+      "user_input": "params[:strip]",
+      "confidence": "Weak",
+      "cwe_id": [
+        22
+      ],
+      "note": "The path never comes from raw request input: Scanner::MeasurementRun#row returns only a manifest row whose file name matches FILE_NAME (no slashes, no leading dot), and #strip_path returns a path only when the strip is in the STRIPS allowlist (name, collector), else nil, which the action answers with 404. The route is development-only and local-only (spec 007 AC-5.1, AC-5.6)."
     }
   ],
   "brakeman_version": "8.0.6"

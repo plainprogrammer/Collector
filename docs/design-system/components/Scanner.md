@@ -24,3 +24,4 @@ The card scanner (spec 007): a live camera feed with a card-shaped guide, the co
 - Problems (no camera, no HTTPS, the text not sent) use the `StatusMessage` inline alert, with one next step as a button.
 - The page needs JavaScript; `<noscript>` points to the catalog search.
 - Parts the controllers show and hide use the `hidden` attribute; `.c-scanner [hidden]` keeps a hidden `c-btn` hidden.
+- The development-only measurement panel (`scanner/measurements/_panel.html.erb`, outside `.c-scanner`) is built from `c-section`, `c-field` and `c-status__message`; `#measurement_panel [hidden]` keeps its hidden retry button and message hidden.

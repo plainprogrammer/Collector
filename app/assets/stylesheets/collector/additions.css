@@ -133,6 +133,7 @@
 .c-scanner__stage { position:relative; width:100%; aspect-ratio:3 / 4; overflow:hidden; background:var(--surface-sunken);
   border:1px solid var(--line); border-radius:var(--radius-md); }
 .c-scanner [hidden] { display:none; } /* c-btn's display would otherwise show hidden controls */
+#measurement_panel [hidden] { display:none; } /* the development-only measurement panel (spec 007 Story 5) */
 .c-scanner__video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
 .c-scanner__guide { position:absolute; border:2px solid var(--brand); outline:2px dashed var(--on-brand); outline-offset:-6px;
   border-radius:var(--radius-card) / calc(var(--radius-card) * 63 / 88); pointer-events:none; }

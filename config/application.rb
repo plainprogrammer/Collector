@@ -47,5 +47,8 @@ module Collector
     # Reverse proxies whose X-Forwarded-For is trusted (spec 004 AC-4.8).
     config.action_dispatch.trusted_proxies = Collector::TrustedProxies.parse(ENV["COLLECTOR_TRUSTED_PROXIES"])
     config.x.sign_in_rate_limit_store = nil # nil: Rails.cache
+
+    # Card scanner measurement mode (spec 007 Story 5): off unless an environment sets it.
+    config.x.scanner_measurement = nil
   end
 end

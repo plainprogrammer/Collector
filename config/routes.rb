@@ -27,6 +27,16 @@ Rails.application.routes.draw do
   resource :scanner, only: :show
   namespace :scanner do
     resources :readings, only: :create
+
+    # Development-only measurement mode (spec 007 Story 5); every action answers 404 when it's off.
+    resource :measurement, only: :show do
+      scope module: :measurements do
+        resources :captures, only: :create
+        resources :skips, only: :create
+        resource :replay, only: %i[show create]
+        resources :strips, only: :show, constraints: { id: /[\w.-]+/ }
+      end
+    end
   end
 
   namespace :catalog do
