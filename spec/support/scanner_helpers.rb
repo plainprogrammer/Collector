@@ -1,5 +1,5 @@
 # Drives the scanner page in system specs (spec 007; ADR 0002): a synthetic 63:88 card, drawn so its name and
-# collector line sit exactly where the page cuts its strips, stands in for the camera or a picked photo.
+# collector line sit inside the page's strips, stands in for the camera or a picked photo.
 module ScannerHelpers
   CARD_JS = <<~JS.freeze
     // WebDriver runs this in a sandbox without the page's import map, so load the page's own geometry module
@@ -11,21 +11,19 @@ module ScannerHelpers
       document.head.append(script)
     })
     window.__syntheticCard = async (name, lines) => {
-      const { STRIPS, guideRect } = await window.__geometry
+      const { guideRect } = await window.__geometry
       const canvas = Object.assign(document.createElement("canvas"), { width: 900, height: 1200 })
       const context = canvas.getContext("2d")
       const card = guideRect(canvas.width, canvas.height)
-      const box = (strip) => ({ x: card.x + card.width * strip.x, y: card.y + card.height * strip.y, w: card.width * strip.w, h: card.height * strip.h })
+      // Text is sized and placed from the card, as on a real card, so strip tuning doesn't change the test text.
       const draw = () => {
         context.fillStyle = "gray"; context.fillRect(0, 0, canvas.width, canvas.height)
         context.fillStyle = "white"; context.fillRect(card.x, card.y, card.width, card.height)
         context.fillStyle = "black"; context.textBaseline = "middle"
-        const title = box(STRIPS.name)
-        context.font = `${Math.round(title.h * 0.55)}px sans-serif`
-        context.fillText(name, title.x + title.h * 0.2, title.y + title.h / 2)
-        const footer = box(STRIPS.collector)
-        context.font = `${Math.round(footer.h * 0.3)}px sans-serif`
-        lines.forEach((line, index) => context.fillText(line, footer.x + footer.h * 0.2, footer.y + footer.h * (index + 1) / (lines.length + 1)))
+        context.font = `${Math.round(card.height * 0.045)}px sans-serif`
+        context.fillText(name, card.x + card.width * 0.08, card.y + card.height * 0.10)
+        context.font = `${Math.round(card.height * 0.022)}px sans-serif`
+        lines.forEach((line, index) => context.fillText(line, card.x + card.width * 0.06, card.y + card.height * (0.935 + 0.03 * index)))
       }
       draw()
       return { canvas, draw }
