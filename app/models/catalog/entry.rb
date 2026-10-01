@@ -19,6 +19,10 @@ class Catalog::Entry < ApplicationRecord
       .or(where(arel_table[:localized_name].matches(pattern, "\\")))
   }
   scope :in_set, ->(code) { code.present? ? joins(:set).where(catalog_sets: { code: }) : all }
+  # Active printings with this set code, collector number and language (spec 007 FR-4).
+  scope :printed_as, ->(set_code:, number:, language:) {
+    active.joins(:set).where(number:, language:, catalog_sets: { code: set_code.to_s.downcase })
+  }
   scope :newest_first, -> {
     joins(:set).order(released_on: :desc).order(Catalog::Set.arel_table[:code].asc).order(number: :asc, language: :asc)
   }
