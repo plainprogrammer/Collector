@@ -28,8 +28,26 @@ RSpec.describe Collector::ScannerFindings::Report do
   it "writes the live run as text-only fixtures (AC-6.6)", :aggregate_failures do
     report.write_fixtures!
     results = JSON.parse(dir.join("phase1_ocr_results.json").read)
-    expect(results).to include("format_version" => 2, "run" => "live")
+    expect(results).to include("format_version" => 2, "run" => "Phase 1 live")
     expect(results["results"].sole.keys).to contain_exactly("file", "name_text", "collector_text", "ms", "user_agent", "captured_at", "parsed", "lookup")
     expect(JSON.parse(dir.join("phase1_name_matches.json").read)["matches"].sole.keys).to include("name_candidates", "final_candidates")
+  end
+
+  context "when the run is named (the photo replay, a tuning round)" do
+    let(:report) { described_class.new(run:, output: dir, label: "Phase 1 photo replay", prefix: "phase1_photos") }
+
+    it "names the run's column and its misses after the label", :aggregate_failures do
+      markdown = report.to_markdown
+      expect(markdown).to include("| Top 3, name only | Group | Phase 0 | Phase 0 text, Phase 1 matcher | Phase 1 photo replay |")
+      expect(markdown).to include("Not in the top 3 (Phase 1 photo replay, final ranking)")
+      expect(markdown).not_to include("Phase 1 live")
+    end
+
+    it "writes its fixtures under the prefix, with the label as the run", :aggregate_failures do
+      report.write_fixtures!
+      expect(JSON.parse(dir.join("phase1_photos_ocr_results.json").read)).to include("run" => "Phase 1 photo replay")
+      expect(JSON.parse(dir.join("phase1_photos_name_matches.json").read)).to include("run" => "Phase 1 photo replay")
+      expect(dir.join("phase1_ocr_results.json")).not_to exist
+    end
   end
 end

@@ -1,21 +1,24 @@
 # The Markdown for spec 007's findings (AC-6.2–AC-6.5): each rate for Phase 0, Phase 0's text through Phase 1's
-# matcher, and the live run; then the live run's misses, timings, coverage and replay differences.
+# matcher, and the scored run (named by label:, e.g. the photo replay or a tuning round); then that run's misses,
+# timings, coverage and replay differences.
 class Collector::ScannerFindings::Report
   FIXTURES = Rails.root.join("spec/fixtures/card_scanner")
 
-  def initialize(run:, ground_truth: FIXTURES.join("ground_truth.json"), output: FIXTURES)
+  def initialize(run:, ground_truth: FIXTURES.join("ground_truth.json"), output: FIXTURES, label: "Phase 1 live", prefix: "phase1")
     @run = run
+    @label = label
+    @prefix = prefix
     @truth = JSON.parse(Pathname(ground_truth).expand_path.read).fetch("photos").to_h { [ it["file"], it ] }
     @output = Pathname(output)
   end
 
   def to_markdown = [ rates, misses, timings, coverage, replays ].join("\n\n")
 
-  # The live run as text-only fixtures beside Phase 0's, keyed by manifest file (AC-6.6).
+  # The scored run as text-only fixtures beside Phase 0's, keyed by manifest file (AC-6.6).
   def write_fixtures!
-    @output.join("phase1_ocr_results.json").write(JSON.pretty_generate("format_version" => 2, "run" => "live",
+    @output.join("#{@prefix}_ocr_results.json").write(JSON.pretty_generate("format_version" => 2, "run" => @label,
       "results" => live.map { it.slice("file", "name_text", "collector_text", "ms", "user_agent", "captured_at", "parsed", "lookup") }))
-    @output.join("phase1_name_matches.json").write(JSON.pretty_generate("format_version" => 2, "run" => "live",
+    @output.join("#{@prefix}_name_matches.json").write(JSON.pretty_generate("format_version" => 2, "run" => @label,
       "matches" => live.map { it.slice("file", "lookup_ms", "name_candidates", "final_candidates").merge("query" => it["name_text"]) }))
   end
 
@@ -29,7 +32,7 @@ class Collector::ScannerFindings::Report
     def sources
       @sources ||= { "Phase 0" => findings.phase0(@truth, fixture("ocr_results.json"), fixture("name_matches.json")),
                      "Phase 0 text, Phase 1 matcher" => findings.rescore(@truth, fixture("ocr_results.json").fetch("results")),
-                     "Phase 1 live" => live }
+                     @label => live }
     end
 
     def rates
@@ -50,7 +53,7 @@ class Collector::ScannerFindings::Report
       rows = live.reject { findings.in_top?(it, "final_candidates", 3) }.map do |record|
         "| #{record["file"]} | #{cell(record["name"])} | #{cell(record["name_text"])} | #{cell(record["collector_text"])} | #{cell(record["final_candidates"].join("; "))} | |"
       end
-      [ "Not in the top 3 (live run, final ranking): #{rows.size} of #{live.size}", "",
+      [ "Not in the top 3 (#{@label}, final ranking): #{rows.size} of #{live.size}", "",
         "| File | Expected | Name strip | Collector strip | Top 3 | Likely cause |", "|---|---|---|---|---|---|", *rows ].join("\n")
     end
 
