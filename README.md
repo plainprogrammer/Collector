@@ -67,17 +67,30 @@ automatic setup stays off; run `bin/setup` in each new worktree yourself.
 `registry.npmjs.org`, checks every file against a pinned SHA-256 and keeps it in `vendor/ocr/` (ignored by git).
 
 The scanner is at `/scanner`; nothing links to it yet. Browsers only allow a live camera on HTTPS (or on
-`localhost`), so to use it from a phone, put an HTTPS tunnel of your choice in front of the dev server and tell
-the app about it. For example, with Tailscale:
+`localhost`), so to use it from a phone on your network, serve the dev server over HTTPS with a self-signed
+certificate that the phone trusts:
 
 ```sh
-tailscale serve --bg 3000                                       # your worktree's port; prints https://<machine>.<tailnet>.ts.net
-RAILS_DEVELOPMENT_HOSTS=<machine>.<tailnet>.ts.net COLLECTOR_HTTPS=true bin/dev
+bin/dev-certificate          # creates or reuses the certificate; prints the next command for your worktree's port
+bin/dev -b "ssl://0.0.0.0:3000?key=$HOME/.local/share/collector-dev-https/dev.key&cert=$HOME/.local/share/collector-dev-https/dev.crt"
+bin/dev-certificate --serve  # in another terminal: serves only the certificate on port 3579 until you press Ctrl-C
 ```
 
-- `RAILS_DEVELOPMENT_HOSTS`: the tunnel's host names, comma-separated, so Rails accepts requests for them.
-- `COLLECTOR_HTTPS=true`: the tunnel ended TLS, so Rails treats the request as HTTPS (cookies, form checks).
-- No certificate or key goes in the repository. Over plain HTTP from another device, the page offers a photo instead.
+Then, once per certificate, on the iPhone:
+
+1. In Safari, open the download URL that `bin/dev-certificate --serve` prints (`http://<your address>:3579/`) and allow the profile.
+2. Settings → General → VPN & Device Management: install the profile.
+3. Settings → General → About → Certificate Trust Settings: turn on full trust for the certificate.
+4. Open `https://<your address>:<port>/scanner` in any browser.
+
+- The key and certificate stay outside the repository, in `~/.local/share/collector-dev-https/`
+  (`COLLECTOR_DEV_CERT_DIR` overrides it). Only the certificate is ever served; the key never leaves your machine.
+- The certificate names your machine's local network addresses (or the ones you pass as arguments). Run
+  `bin/dev-certificate` again after the address changes; it makes a new certificate, which the phone must trust again.
+- Puma ends TLS itself, so Rails sees real HTTPS and needs no other setting.
+- An HTTPS tunnel of your choice also works: set `RAILS_DEVELOPMENT_HOSTS` to the tunnel's host names
+  (comma-separated) and `COLLECTOR_HTTPS=true` (the tunnel ended TLS), then run `bin/dev`.
+- Over plain HTTP from another device, the page offers a photo instead.
 
 **Measurement mode** (development only) records live captures of known cards for the scanner's findings, at
 `/scanner/measurement`. It reads the manifest at `COLLECTOR_SCANNER_MANIFEST` (default

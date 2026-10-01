@@ -4,6 +4,7 @@
 **Decisions:** docs/adr/0001-browser-ocr-engine-and-asset-hosting.md, 0002-camera-path-testing.md, 0003-card-name-index.md (Proposed → Accepted in Phase 0, AC-7.4)
 **Created:** 2026-09-30
 **Revised:** 2026-09-30, after the plan review (Fable): import map–safe and README-anchored assertions, a `camera:stopped` event and a feed-ready wait against a shutter race, geometry loaded through a nonce'd module script in the synthetic-card helper, rubocop-rspec fixes, Brakeman notes for both `send_file`s, no bare `c-section`, and an orientation check on the iPhone
+**Revised:** 2026-10-01, during execution: dev HTTPS by a self-signed certificate (bin/dev-certificate) and Puma's ssl:// bind, after the maintainer's Cloudflare tunnel returned 502; the spec is unchanged (AC-7.1 names no mechanism)
 
 ## Context
 
@@ -20,7 +21,7 @@ Phase 0 (spec 005) showed that self-hosted Tesseract.js, an FTS5 trigram name in
 - **SQLite.** `create_virtual_table` and `drop_virtual_table` exist in Rails 8.1.4's SQLite3 adapter. SQLite has `json_each` and `json_array_length`. The stdlib has `DidYouMean::JaroWinkler` and `DidYouMean::Levenshtein`.
 - **Tests.** System specs run Selenium headless Firefox (`spec/support/system.rb`). `window.Stimulus` is exposed (`app/javascript/controllers/application.js`). `spec/support/narrow_frame.rb` tests phone widths in a same-origin iframe.
 - **Measurement data.** The corpus manifest is `~/card-scanner-corpus/manifest.csv` (`file,set,number,foil`). Ground truth for the 50 cards is committed in `spec/fixtures/card_scanner/ground_truth.json`, and Phase 0's OCR text in `ocr_results.json` and `name_matches.json` (format_version 1).
-- **Dev HTTPS.** The maintainer will reach the dev server over HTTPS through their own tunnel (decided 2026-09-30). The app only has to accept the tunnel's host name and trust that the request was HTTPS.
+- **Dev HTTPS.** The maintainer will reach the dev server over HTTPS through their own tunnel (decided 2026-09-30). The app only has to accept the tunnel's host name and trust that the request was HTTPS. The tunnel didn't work in this environment (the maintainer's Cloudflare tunnel returned 502 and no request reached Rails), so for Phases 10–11 a self-signed certificate for the LAN address (`bin/dev-certificate`), served by Puma's `ssl://` bind and trusted once on the iPhone, replaced it.
 
 **Plan decisions (beyond the spec):**
 - **Engine files** (maintainer, 2026-09-30): `bin/fetch-ocr-engine` (stdlib-only Ruby, `Collector::OcrEngine`) downloads the three pinned tarballs, checks each tarball's and each file's SHA-256, and unpacks the six files into the ignored `vendor/ocr/v7.0.0/`. `bin/setup`, so also `bin/ci`, and the Dockerfile's build stage run it.
@@ -48,10 +49,10 @@ Phase 0 (spec 005) showed that self-hosted Tesseract.js, an FTS5 trigram name in
   - The desktop replay page and the strip endpoint are local-only and need no sign-in, so a headless script can drive them.
 - **Findings tooling:** `Collector::ScannerFindings` (rates, scoring, re-scoring through `MTG::Reading`, ground truth for tuning manifests) and `lib/tasks/scanner.rake`. A development-only `Collector::RequestLog` middleware records response bytes for the cold and warm iPhone loads, as the Phase 0 spike server did.
 - **Migration version:** `20260930170000`, not the next sequential `…000006`. Feature 006 (collection list view) is being built in parallel and may take `…000006`, and two migrations with the same version would collide on merge.
-- **Tunnel support:** Rails' built-in `RAILS_DEVELOPMENT_HOSTS` allows the tunnel's host name, and `COLLECTOR_HTTPS=true` sets `assume_ssl` in development too, so CSRF origin checks pass behind a tunnel that ends TLS.
+- **Tunnel support:** Rails' built-in `RAILS_DEVELOPMENT_HOSTS` allows the tunnel's host name, and `COLLECTOR_HTTPS=true` sets `assume_ssl` in development too, so CSRF origin checks pass behind a tunnel that ends TLS. The tunnel didn't work in this environment, so the self-signed route (`bin/dev-certificate` plus Puma's `ssl://` bind, where Rails sees real HTTPS) replaced it for Phases 10–11; the tunnel support stays as the documented alternative.
 
 **Maintainer inputs (ask for all of them at the start of execution, per the work-ahead memory):**
-1. The tunnel host name, for `RAILS_DEVELOPMENT_HOSTS`.
+1. That the `bin/dev-certificate` certificate is trusted on the iPhone (originally: the tunnel host name, for `RAILS_DEVELOPMENT_HOSTS`).
 2. 10 or more English cards **not** in the 50-card corpus, mixed eras, with a `tuning/manifest.csv` (Phase 10).
 3. The 50 corpus cards to hand for the measured run (Phase 11).
 4. The iPhone for the manual device checks (AC-6.5).
@@ -3329,14 +3330,14 @@ The maintainer uses their own HTTPS tunnel, so the app only has to accept the tu
 Before the measured run, the strip boxes, page segmentation and matcher constants are tuned only on cards the corpus doesn't contain. Then they're committed and frozen.
 
 - [ ] **Checkpoint (maintainer):** this needs, all asked for at the start of execution:
-  - the tunnel host name;
+  - the certificate is trusted on the iPhone (`bin/dev-certificate`, then the README's phone steps);
   - 10 or more English cards that are **not** among the 50 corpus cards, covering pre-M15, M15–ONE and MOM+, with at least 2 foils, listed in `~/card-scanner-corpus/tuning/manifest.csv` (`file,set,number,foil`, where `file` is any unique name such as `T01`).
 - [ ] Build their ground truth: `bin/rails "scanner:ground_truth[$HOME/card-scanner-corpus/tuning/manifest.csv]"`. Expect: every row resolves. Confirm any error with the maintainer, fix the manifest, and record a `Ruling:` in the round's commit.
-- [ ] Start the dev server with the tunnel settings and the tuning run, as a background task (memory: background servers via task): `RAILS_DEVELOPMENT_HOSTS=<host> COLLECTOR_HTTPS=true COLLECTOR_REQUEST_LOG=1 COLLECTOR_SCANNER_MANIFEST=$HOME/card-scanner-corpus/tuning/manifest.csv COLLECTOR_SCANNER_RUN_DIR=$HOME/card-scanner-corpus/runs/tuning-1 bin/dev`.
+- [ ] Start the dev server over HTTPS with the tuning run, as a background task (memory: background servers via task): run `bin/dev-certificate`, then `COLLECTOR_REQUEST_LOG=1 COLLECTOR_SCANNER_MANIFEST=$HOME/card-scanner-corpus/tuning/manifest.csv COLLECTOR_SCANNER_RUN_DIR=$HOME/card-scanner-corpus/runs/tuning-1 bin/dev -b "ssl://0.0.0.0:3578?key=$HOME/.local/share/collector-dev-https/dev.key&cert=$HOME/.local/share/collector-dev-https/dev.crt"`.
 - [ ] **Checkpoint (maintainer):**
-  - On the iPhone, open `https://<host>/scanner/measurement` and capture each tuning card once.
+  - On the iPhone, open `https://192.168.1.76:3578/scanner/measurement` and capture each tuning card once.
   - Report the manual device checks: the rear camera opened (AC-1.1); the camera indicator went off after leaving the page (AC-1.4); the torch lit, or wasn't offered (AC-1.5); `http://<LAN IP>:<port>/scanner` (server bound with `-b 0.0.0.0`) explained the HTTPS need and offered a photo (AC-1.6); and a portrait iPhone photo of a tuning card, picked with **Use a photo**, was read upright, so its orientation metadata was applied (AC-4.2; the synthetic test image has none).
-  - That the tunnel procedure worked as the README describes (AC-7.1).
+  - That the self-signed HTTPS procedure worked as the README describes (AC-7.1).
 - [ ] Score the round: `COLLECTOR_SCANNER_MANIFEST=$HOME/card-scanner-corpus/tuning/manifest.csv COLLECTOR_SCANNER_RUN_DIR=$HOME/card-scanner-corpus/runs/tuning-1 GROUND_TRUTH=$HOME/card-scanner-corpus/tuning/ground_truth.json bin/rails scanner:findings`. Read the "Phase 1 live" column. Look at every capture's strips with the Read tool (`runs/tuning-1/<file>/capture-001-{name,collector}.png`) to judge the framing: does each strip hold the whole name bar or collector line, and nothing else?
 - [ ] Adjust and repeat, each round in a fresh run directory (`tuning-2`, …):
   - adjust `STRIPS` (and `GUIDE` if the cards don't fill the guide) in `geometry.js`, and `SETTINGS` (page segmentation per strip) in `recognition.js`;
@@ -3354,9 +3355,9 @@ Before the measured run, the strip boxes, page segmentation and matcher constant
 **Files:** `docs/specs/007-card-scanner-live-capture/research.md`, `spec/fixtures/card_scanner/phase1_ocr_results.json`, `spec/fixtures/card_scanner/phase1_name_matches.json`
 **Interfaces:** Consumes: the frozen settings, measurement mode, `script/scanner/replay.rb` and `scanner:findings`. Produces: the findings and the text fixtures that the maintainer's go/no-go on the confirm flow rests on.
 
-- [ ] Start the dev server for the measured run, as a background task: `RAILS_DEVELOPMENT_HOSTS=<host> COLLECTOR_HTTPS=true COLLECTOR_REQUEST_LOG=1 bin/dev`. That uses the default manifest `~/card-scanner-corpus/manifest.csv` and the run directory `~/card-scanner-corpus/runs/live`. Move `log/requests.jsonl` aside first, so the log holds only this run.
+- [ ] Start the dev server for the measured run over HTTPS, as a background task: run `bin/dev-certificate`, then `COLLECTOR_REQUEST_LOG=1 bin/dev -b "ssl://0.0.0.0:3578?key=$HOME/.local/share/collector-dev-https/dev.key&cert=$HOME/.local/share/collector-dev-https/dev.crt"`. That uses the default manifest `~/card-scanner-corpus/manifest.csv` and the run directory `~/card-scanner-corpus/runs/live`. Move `log/requests.jsonl` aside first, so the log holds only this run.
 - [ ] **Checkpoint (maintainer):** on the iPhone, in the browser used in Phase 0 (Brave, WebKit), work through these steps:
-  1. Clear the instance's website data, then open `https://<host>/scanner/measurement`. This is the cold load.
+  1. Clear the instance's website data, then open `https://192.168.1.76:3578/scanner/measurement`. This is the cold load.
   2. Wait for "Ready", reload the page, and wait for "Ready" again. This is the warm load.
   3. Capture the 50 corpus cards in manifest order, one deliberate shot each. Use **Skip** for any card not to hand; retakes are kept but don't count (AC-5.4, AC-5.5).
   4. Say when done, and give the browser and iOS version.
@@ -3409,7 +3410,7 @@ Before the measured run, the strip boxes, page segmentation and matcher constant
 3. In desktop Firefox, sign in and open `http://localhost:<port>/scanner`. Allow the camera: the feed shows with the teal guide, and the status says "Ready. Line the card up with the guide, then capture."
 4. Choose **Use a photo** and pick a phone photo of a card held to fill the frame. "What the scanner read" and up to 3 candidates appear. A card whose collector line matched carries "Matched by its collector line". There is no add button.
 5. `curl -sI http://localhost:<port>/scanner` (signed out) gives `302`. `curl -sI http://localhost:<port>/ocr/v7.0.0/tesseract.min.js` gives `cache-control: max-age=31536000, public, immutable`.
-6. With a tunnel: `RAILS_DEVELOPMENT_HOSTS=<host> COLLECTOR_HTTPS=true bin/dev`, then open `https://<host>/scanner` on a phone. The rear camera opens, and capturing a card shows its candidates.
+6. Over HTTPS on the local network: `bin/dev-certificate`, then `bin/dev -b "ssl://0.0.0.0:3578?key=$HOME/.local/share/collector-dev-https/dev.key&cert=$HOME/.local/share/collector-dev-https/dev.crt"`; trust the certificate on the phone (README) and open `https://192.168.1.76:3578/scanner` on it. The rear camera opens, and capturing a card shows its candidates.
 
 ---
 
