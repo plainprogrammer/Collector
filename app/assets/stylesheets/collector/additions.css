@@ -116,3 +116,8 @@
 /* ---------- Bulk head (spec 006): the filter bar and the bulk bar as one sticky block below the app header ---------- */
 .c-shell .c-bulkhead { position:sticky; top:56px; z-index:3; background:var(--surface); }
 .c-bulkhead .c-filterbar, .c-bulkhead .c-bulkbar { position:static; }
+
+/* ---------- Table item link (spec 006): the card name in a table row, in the brand link colour ---------- */
+.c-table__item a { color:var(--brand); text-decoration:none; }
+.c-table__item a:hover { text-decoration:underline; }
+.c-table__item a:focus-visible { outline:2px solid var(--focus); outline-offset:2px; border-radius:var(--radius-sm); }

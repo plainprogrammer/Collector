@@ -16,6 +16,20 @@ RSpec.describe "Collection table", type: :system do
     expect(page).to have_css("tbody tr", count: 2)
   end
 
+  it "styles card names as brand links, not browser-default ones", :aggregate_failures do
+    user = system_sign_in_as(create(:user))
+    owned_printing("Lightning Bolt", account: user.account)
+    visit collection_path(view: "table")
+    link_style = page.evaluate_script(<<~JS)
+      (() => {
+        const style = getComputedStyle(document.querySelector("tbody tr .c-table__item a"))
+        return [ style.color, style.textDecorationLine ]
+      })()
+    JS
+    brand = page.evaluate_script("getComputedStyle(document.querySelector('.c-seg button[aria-pressed=true]')).backgroundColor")
+    expect(link_style).to eq([ brand, "none" ])
+  end
+
   it "shows only name, quantity and actions on a phone, with the key facts under the name", :aggregate_failures do
     user = system_sign_in_as(create(:user))
     owned_printing("Lightning Bolt", account: user.account, number: "146", quantity: 9_999, finish: "foil", condition: "near_mint")

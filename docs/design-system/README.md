@@ -90,7 +90,7 @@ It should feel like a well-kept archive that gets used: warm paper, deep ink, on
 
 App additions (spec 004, in `collector/additions.css`): `StatusMessage`, `Form`, `AuthPage`, `ConfirmPage`, `SearchResults`, `TileAdd`, `FinishBadge`, `FilterSelect`, `Pager`, `EmptyState`, `Details`, `SingleStat`, `MorePage`, `AdminUsers`, `TableActions`, `SystemLogo`. Upstream these into the published design system before the next export replaces this folder.
 
-App additions (spec 006, in `collector/additions.css`): `SortHeader`, `StatusAction`, `BulkConfirmPage`, `ChoicePage`, `BulkForm`, `ViewSwitchForm`. Upstream these into the published design system before the next export replaces this folder.
+App additions (spec 006, in `collector/additions.css`): `SortHeader`, `StatusAction`, `BulkConfirmPage`, `ChoicePage`, `BulkForm`, `ViewSwitchForm`, `TableItemLink`. Upstream these into the published design system before the next export replaces this folder.
 
 ## Logo
 
