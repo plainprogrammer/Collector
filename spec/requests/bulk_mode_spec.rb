@@ -48,10 +48,12 @@ RSpec.describe "Bulk mode", type: :request do
       expect(count_text).to eq("0 of 1 selected")
     end
 
-    it "shows the table in bulk mode even when the URL names the grid" do
+    it "shows the table in bulk mode even when the URL names the grid, saving no view", :aggregate_failures do
       own
+      user.update!(collection_view: "table")
       get collection_path(bulk: 1, view: "grid")
       expect(response.body).to include('<table class="c-table">')
+      expect(user.reload.collection_view).to eq("table")
     end
 
     it "shows the empty state, with no bulk bar, on an empty collection" do

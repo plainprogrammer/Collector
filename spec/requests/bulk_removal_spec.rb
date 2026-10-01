@@ -131,6 +131,14 @@ RSpec.describe "Bulk Remove and Undo", type: :request do
     expect([ Lot.exists?(bolt.id), Lot.exists?(opt.id) ]).to eq([ false, true ])
   end
 
+  it "never reaches another account's lots with Select all", :aggregate_failures do
+    mine = own("Lightning Bolt")
+    theirs = owned_printing("Lightning Bolt", account: create(:user).account)
+    select_lots(q: "bolt", all: true)
+    post collection_bulk_removals_path
+    expect([ Lot.exists?(mine.id), Lot.exists?(theirs.id), BulkRemoval.sole.copies ]).to eq([ false, true, 1 ])
+  end
+
   it "refuses when every selected lot is gone", :aggregate_failures do
     lot = own
     select_lots(lot)

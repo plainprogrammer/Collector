@@ -50,11 +50,22 @@ RSpec.describe "Bulk Set condition", type: :request do
     second = own("Opt")
     select_lots(first, second)
     post collection_condition_change_path, params: { condition: "lightly_played" }
+    expect(response).to have_http_status(:see_other)
     expect(response).to redirect_to(collection_path(bulk: 1))
     expect(flash[:notice]).to eq("Set the condition of 3 items to Lightly played.")
     expect([ first.reload.condition, second.reload.condition ]).to eq(%w[lightly_played lightly_played])
     follow_redirect!
     expect(page_html.at_css(".c-bulkbar__count").text).to eq("3 of 3 selected")
+  end
+
+  it "counts only the selected lots still in the collection when one was removed in another tab", :aggregate_failures do
+    kept = own(quantity: 2)
+    gone = own("Opt", quantity: 3)
+    select_lots(kept, gone)
+    gone.destroy!
+    post collection_condition_change_path, params: { condition: "lightly_played" }
+    expect(flash[:notice]).to eq("Set the condition of 2 items to Lightly played.")
+    expect(kept.reload.condition).to eq("lightly_played")
   end
 
   it "clears the condition for Not specified" do

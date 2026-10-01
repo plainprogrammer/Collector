@@ -57,6 +57,16 @@ RSpec.describe BulkRemoval, type: :model do
     expect([ Lot.pluck(:quantity), removal.reload.undoable? ]).to eq([ [ 9_999 ], true ])
   end
 
+  it "names the first lot in the sort order when several merges would pass 9,999 copies", :aggregate_failures do
+    entries = %w[Ant Zebra].map { |name| own(name).entry }
+    select_all
+    removal = described_class.remove!(selection).reload
+    ant, zebra = entries.map { |entry| Lot.add!(account:, entry:, quantity: 9_999) }
+    by_name_desc = CollectionTable::Sort.parse("name", "desc")
+    expect { removal.undo!(sort: by_name_desc) }.to raise_error(Lot::CapExceeded) { |error| expect(error.lot).to eq(zebra) }
+    expect([ Lot.where(id: [ ant, zebra ]).pluck(:quantity), removal.reload.undoable? ]).to eq([ [ 9_999, 9_999 ], true ])
+  end
+
   it "restores lots of retired printings" do
     own.entry.update!(retired_at: 1.day.ago)
     select_all

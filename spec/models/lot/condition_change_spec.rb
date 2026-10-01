@@ -32,6 +32,19 @@ RSpec.describe Lot::ConditionChange, type: :model do
     expect(Lot.order(:id).pluck(:condition, :quantity)).to eq([ [ nil, 1 ], [ "near_mint", 9_999 ] ])
   end
 
+  context "when several lots would pass 9,999 copies" do
+    let(:sort) { CollectionTable::Sort.parse("name", "desc") }
+
+    it "names the first one in the selection's sort order", :aggregate_failures do
+      ant, zebra = %w[Ant Zebra].map do |name|
+        full = owned_printing(name, account:, finish: "foil", condition: "near_mint", quantity: 9_999)
+        create(:lot, account:, entry: full.entry, finish: "foil")
+      end
+      expect { change([ ant, zebra ], "near_mint").apply! }.to raise_error(Lot::CapExceeded) { |error| expect(error.lot).to eq(zebra) }
+      expect(Lot.where(id: [ ant, zebra ]).pluck(:condition)).to eq([ nil, nil ])
+    end
+  end
+
   def queries_during
     count = 0
     counter = ->(*, payload) { count += 1 unless payload[:cached] || %w[SCHEMA TRANSACTION].include?(payload[:name]) }
