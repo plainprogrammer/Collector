@@ -12,6 +12,7 @@ module MTG::Collecting
   def self.category_name = CATEGORY_NAME
   def self.conditions = CONDITIONS
   def self.special_finishes = SPECIAL_FINISHES
+  def self.finish_order = FINISH_ORDER
   def self.finish_label(finish) = finish.to_s.humanize
 
   def self.finishes_for(entry)
