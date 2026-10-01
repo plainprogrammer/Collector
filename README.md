@@ -97,7 +97,8 @@ Then, once per certificate, on the iPhone:
 `~/card-scanner-corpus/manifest.csv`, columns `file,set,number,foil[,era]`) and stores each capture's text and
 strip images under `COLLECTOR_SCANNER_RUN_DIR` (default `~/card-scanner-corpus/runs/live`), outside the
 repository. `bin/rails scanner:findings` scores a run; `bundle exec ruby script/scanner/replay.rb <label>`
-re-reads its strips on the desktop. `COLLECTOR_REQUEST_LOG=1` logs each response's size to `log/requests.jsonl`.
+re-reads its strips on the desktop (`SCANNER_URL=https://127.0.0.1:<port>` points it at an HTTPS server).
+`COLLECTOR_REQUEST_LOG=1` logs each response's size to `log/requests.jsonl`.
 
 ## Testing and CI
 
