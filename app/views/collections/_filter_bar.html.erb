@@ -3,5 +3,12 @@
   <label class="c-input"><%= render "icons/search" %><%= form.search_field :q, value: listing.query, placeholder: "Search your collection", "aria-label": "Search your collection",
         data: { search_shortcut_target: "input" } %><kbd>/</kbd></label>
   <% sort.to_params.each do |name, value| %><%= hidden_field_tag name, value, id: nil %><% end %>
-  <div class="c-filterbar__end"><%= render "collections/view_switch", view: %></div>
+  <div class="c-filterbar__end">
+    <%= button_tag "Edit many", type: "submit", name: nil, form: "edit-many", class: "c-btn c-btn--secondary c-btn--sm c-filterbar__bulk" %>
+    <%= render "collections/view_switch", view: %>
+    <details class="c-menu c-filterbar__more" data-controller="menu">
+      <summary class="c-btn c-btn--secondary c-btn--sm c-btn--icon" aria-label="More actions"><%= render "icons/more" %></summary>
+      <div class="c-menu__list"><%= button_tag "Edit many", type: "submit", name: nil, form: "edit-many", class: "c-menu__item" %></div>
+    </details>
+  </div>
 <% end %>

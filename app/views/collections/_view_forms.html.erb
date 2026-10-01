@@ -1,6 +1,10 @@
 <%# locals: (listing:, sort:) %>
-<%# The form the filter bar's view switch submits (spec 006 FR-1). It sits in the results frame, so it always carries the current filter. %>
+<%# The forms the filter bar's view switch and Edit many submit (spec 006 FR-1, AC-4.2). They sit in the results frame, so they always carry the current filter. %>
 <%= tag.form id: "view-switch", action: collection_path, method: "get", hidden: true, data: { turbo_frame: "_top" } do %>
+  <% if listing.query.present? %><%= hidden_field_tag :q, listing.query, id: nil %><% end %>
+  <% sort.to_params.each do |name, value| %><%= hidden_field_tag name, value, id: nil %><% end %>
+<% end %>
+<%= form_with url: collection_selection_path, method: :post, id: "edit-many", html: { hidden: true }, data: { turbo_frame: "_top" } do %>
   <% if listing.query.present? %><%= hidden_field_tag :q, listing.query, id: nil %><% end %>
   <% sort.to_params.each do |name, value| %><%= hidden_field_tag name, value, id: nil %><% end %>
 <% end %>
