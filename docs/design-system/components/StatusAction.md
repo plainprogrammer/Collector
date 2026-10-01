@@ -17,3 +17,4 @@ A `StatusMessage` that offers one follow-up action, such as the one-time Undo af
 - The action is a form button (`POST`), never a link, so a prefetch can't trigger it. It carries the page the message was shown on (`return_to`), and lands there afterwards.
 - The message and the button wrap onto two lines on narrow screens, with the button kept at the end.
 - Offer the action only where the spec says it has no other entry point; when it has expired, the button answers with an alert message ("This removal can no longer be undone.") rather than disappearing silently.
+- The layout shows an alert in preference to a notice, and never offers an Undo beside an alert, so a refusal is never hidden behind an older confirmation.
