@@ -1,7 +1,7 @@
 # Feature 006: Collection Table View and Bulk Editing
 
 **Status:** Approved
-**Version:** 4.0.1
+**Version:** 5.0.0
 **Created:** 2026-09-30
 **Last Updated:** 2026-10-01
 **Branch:** `006-collection-list-view`
@@ -17,6 +17,7 @@
 | 3.0.0 | 2026-09-30 | Second spec review.<br>**View switch:** its options are buttons in a GET form, and prefetch requests never save a view (FR-1, new AC-1.10). AC-1.4 now allows the browser's cached page.<br>**Set condition and Remove:** because both are submitted from their own pages, success always redirects (303) to the bulk table, and a refusal re-renders the page it came from. The in-place re-render is dropped (AC-6.5, AC-6.6, FR-5).<br>**Selection:** the tick-submission protocol is defined (FR-4).<br>**Undo after sign-out:** redirects to sign-in, then answers 404 (AC-7.6). There is at most one undoable record per session, and every way a session ends discards it (FR-4, FR-6).<br>**Also:** the cap message names the first lot in table order; AC-8.1 wording; finish order joins the extension contract; the first click on Name sorts descending; the count wording after an exception; the Undo landing URL; AC-4.7 wording |
 | 4.0.0 | 2026-09-30 | Third spec review.<br>**Controls that change state:** `Edit many` and `Done` are buttons that change server state, never links, so a hover prefetch can't clear a selection. `Edit many` always starts with nothing selected, and loading a page never changes the selection. Leaving bulk mode other than by `Done` leaves the selection to be cleared by the next `Edit many` (AC-4.1, AC-4.2, AC-4.5, AC-5.6, FR-4).<br>**Header checkbox:** it acts on a change from how it was rendered, so an untick after Select all is kept (FR-4, AC-5.5, AC-5.8).<br>**Bulk form details:** the form's default submit is the filter; in bulk mode the view switch is inert and outside the bulk form (FR-1, FR-4, AC-4.3); a bulk page whose filter or sort differs from the stored selection's shows nothing selected (FR-4).<br>**Undo URL:** follows the local-path rule.<br>**Also:** AC-6.5 and NFR wording, the third sort click, cap-message order on the grid, FR-7 patterns, `view=grid` on a bulk URL |
 | 4.0.1 | 2026-10-01 | From the implementation review: AC-3.2 says every other *sortable* column states none, and columns that can't be sorted state nothing, as ARIA practice and the SortHeader pattern do. Wording only, no behaviour change |
+| 5.0.0 | 2026-10-01 | From the PR screenshot walkthrough. With scripting, "Select all" then an untick showed 51 of 59 selected, but the action covered all 59: FR-4's header rule discarded the rows after a header change. FR-4 now applies the rows that changed against a per-row baseline after a header toggle. Scripting keeps the baselines in step and reports a toggle. New AC-5.10. Behaviour without scripting is unchanged |
 
 ---
 
@@ -160,6 +161,7 @@ The collection page (feature 004) shows a collection only as an image grid, one 
 - [ ] **AC-5.7** Given scripting is disabled When the collector ticks rows, selects all, pages or runs an action Then selection, paging with a kept selection, and every action still work (the count may update only when the page is next loaded)
 - [ ] **AC-5.8** (verified in a browser-level test) Given scripting is enabled When the collector ticks or unticks a row or "Select all" Then the count (and the header's mixed state) update without a page load, and nothing is submitted
 - [ ] **AC-5.9** Given bulk mode with a filter that matches nothing When it renders Then the no-match message shows, the bar reads "0 of 0 selected", and there is no header checkbox
+- [ ] **AC-5.10** (verified in a browser-level test) Given scripting is enabled When the collector ticks "Select all" and unticks a row, or unticks "Select all" and ticks a row, and then applies an action Then the action covers exactly the copies the count showed, never the lots the collector unticked
 
 ### Story 6: Collector sets the condition of many lots
 
@@ -250,7 +252,10 @@ The collection page (feature 004) shows a collection only as an image grid, one 
 - Change the selection only through submissions (`Edit many`, `Done`, the bulk form). Rendering a page never changes it. A bulk page whose filter or sort differs from the stored selection's renders with nothing selected and a count of 0, and its first submission replaces the stored selection.
 - Work without scripting (AC-5.7): in bulk mode, the row checkboxes, the header checkbox, the pager's Previous/Next, the sort headers, the filter input, the action buttons and `Done` belong to one state-changing form, so unsubmitted ticks are never lost. This is a deliberate departure from `Pager`'s plain links, in bulk mode only. Each submission carries the ids of the rows shown and the ids ticked:
   - Shown-and-ticked lots become selected. Shown-and-unticked lots become unselected, recorded as exceptions when every matching lot is selected.
-  - Each submission also carries how the header checkbox was rendered. It renders ticked whenever every matching lot is selected, with or without exceptions. A header submitted ticked after being rendered unticked selects every matching lot and discards exceptions. A header submitted unticked after being rendered ticked clears the selection, whatever the rows say. A header submitted as it was rendered changes nothing by itself; the rows decide.
+  - Each submission also carries how the header checkbox was rendered, and each shown row's baseline: whether it was ticked when rendered. The header renders ticked whenever every matching lot is selected, with or without exceptions.
+  - The header was toggled when it is submitted differently from how it was rendered, or when scripting reports that it was toggled on the page. After a toggle, the selection first becomes every matching lot (header ticked) or nothing (header unticked), discarding earlier marks. Then only the shown rows whose tick differs from their baseline change it: a row ticked against its baseline is selected, a row unticked against its baseline is unselected (an exception when every matching lot is selected).
+  - When the header was not toggled, the shown rows decide, as in the first bullet.
+  - Scripting keeps the baselines in step with what the page shows: toggling the header moves every shown row and its baseline to the header's state, so a later untick or tick on that page reaches the server as a change (AC-5.10).
   - A submission whose filter or sort differs from the stored selection's clears the selection instead of storing the ticks.
   - The form's default submit (what Enter in the filter input triggers) is the filter: it names the bulk URL with the submitted filter, the current sort and page 1. A filter submission with an unchanged filter stores the ticks and reloads the same page.
   - The server then redirects (303) to the URL the pressed control names, or to the pressed action's page, unless nothing is selected (FR-5: 422 re-rendering the bulk table). `Done` discards the ticks.

@@ -1,6 +1,6 @@
 # Implementation Plan: Collection Table View and Bulk Editing
 
-**Spec:** docs/specs/006-collection-list-view/spec.md (v4.0.0, Approved)
+**Spec:** docs/specs/006-collection-list-view/spec.md (v5.0.0, Approved)
 **Decisions:** none (no ADRs; the plan decisions below trace to the spec)
 **Supporting docs:** [data-model.md](data-model.md) (its content is the "Data model" section below, written to disk with this plan)
 **Created:** 2026-09-30
@@ -3290,6 +3290,82 @@ In this phase the table is reached with `?view=table`; Phase 3 adds the switch a
   - **If remove goes over 2 s:** replace `destroy_all` in `BulkRemoval.remove!` with `delete_all`, with the same kind of comment: `Lot` has no destroy callbacks, and `Account` already uses `dependent: :delete_all`.
 - [ ] Walk the spec's ACs in the browser at 1280px and 390px, in light and dark themes (NFR Accessibility): switch views, sort, Edit many, tick, page, Select all, Set condition, Remove and Undo, Esc. Repeat the bulk flow with JavaScript disabled in the browser.
 - [ ] Use `sdd-superpowers:verification-before-completion`, then `sdd-superpowers:sdd-review` (implementation mode, Fable).
+
+---
+
+## Phase 12: Selection baselines (spec v5.0.0) and empty-state link colour
+
+**Implements:** FR-4 (v5.0.0 header rule), FR-7, 004 FR-11 (link colour) | **Satisfies:** AC-5.4, AC-5.5, AC-5.7, AC-5.8, AC-5.10
+**Files:** `app/models/bulk_selection.rb`, `app/controllers/collections/selections_controller.rb`, `app/views/collections/{_table,_bulk}.html.erb`, `app/javascript/controllers/bulk_selection_controller.js`, `app/assets/stylesheets/collector/additions.css`, `docs/design-system/components/{BulkForm,EmptyState}.md`, `spec/models/bulk_selection_spec.rb`, `spec/requests/bulk_mode_spec.rb`, `spec/system/bulk_mode_spec.rb`, `spec/system/collection_table_spec.rb`
+**Interfaces:** Consumes: Phases 5–7. Produces:
+- `BulkSelection#record!(shown_ids:, ticked_ids:, header_rendered:, header_ticked:, baseline_ids: [], header_toggled: false)`
+- the bulk form fields `baseline_ids[]` (one hidden input per shown row, `disabled` unless the row was ticked when rendered) and `header_toggled` (`"0"`, set to `"1"` by scripting)
+
+The PR screenshot walkthrough found the bug. With scripting on, "Select all" then an untick showed **51 of 59 selected**, but Set condition covered **59**. Under v4's rule, a header submitted differently from how it was rendered ignored the rows, and with scripting the header always changes on the client before anything is submitted.
+
+**The rule from spec v5.0.0 FR-4:**
+- A header toggle happens when the header is submitted differently from how it was rendered, or when scripting reports one. It resets the selection to every matching lot or to nothing.
+- Then only the shown rows whose tick differs from their baseline (rendered state) are applied.
+- With no toggle, the shown rows decide, as before.
+- Scripting moves the rows and their baselines to the header's state when the header is toggled, and sets `header_toggled`.
+
+- [ ] Write failing specs first:
+  - `spec/models/bulk_selection_spec.rb`: after a toggle to ticked, a shown row unticked against a ticked baseline becomes an exception. After a toggle to unticked, a row ticked against an unticked baseline becomes selected. Rows equal to their baseline follow the header. `header_toggled: true` with the header submitted as rendered still resets.
+  - `spec/system/bulk_mode_spec.rb`, AC-5.10, two examples:
+    1. Two lots, A (3 copies) and B (2). Edit many, tick "Select all", untick B, then "Set condition…". The page title reads "Set the condition of 3 items". Apply; only A's condition changes.
+    2. Tick "Select all" and press "Next", or reload, so the header renders ticked. Then untick "Select all", tick A and choose "Set condition…". The page reads "Set the condition of 3 items".
+
+  Run them and confirm the AC-5.10 examples FAIL. The first shows "Set the condition of 5 items".
+- [ ] Update the existing request and model specs to send realistic baselines. A submission's `baseline_ids` are the shown rows that were ticked when that page rendered. For example, the request spec "clears everything when the header is unticked, whatever the rows say" sends `baseline_ids: [first]`, because the row was rendered ticked under "Select all". Keep every example's meaning; only the inputs the browser would really send change.
+- [ ] Implement `BulkSelection#record!`:
+  ```ruby
+  # Records one page's ticks (FR-4, spec v5.0.0). A header toggle (submitted unlike it was rendered, or
+  # reported by scripting) resets the selection to every matching lot or nothing; then only the shown rows
+  # whose tick differs from their rendered baseline apply. Without a toggle, the shown rows decide.
+  # Shown ids outside the account's matching lots are ignored (AC-8.1).
+  def record!(shown_ids:, ticked_ids:, header_rendered:, header_ticked:, baseline_ids: [], header_toggled: false)
+    shown = CollectionFilter.lots(account, query).where(id: shown_ids).pluck(:id)
+    transaction do
+      if header_toggled || header_ticked != header_rendered
+        marks.delete_all
+        update!(all_matching: header_ticked)
+        changed = shown.select { |id| ticked_ids.include?(id) != baseline_ids.include?(id) }
+        mark!(all_matching? ? changed - ticked_ids : changed & ticked_ids)
+      else
+        marks.where(lot_id: shown).delete_all
+        mark!(all_matching? ? shown - ticked_ids : shown & ticked_ids)
+      end
+    end
+  end
+  ```
+- [ ] Have `Collections::SelectionsController#update` pass `baseline_ids: ids(:baseline_ids)` and `header_toggled: params[:header_toggled] == "1"`.
+- [ ] In `_table.html.erb`, in each bulk row's select cell, after `shown_ids[]`, add:
+  ```erb
+  <%= hidden_field_tag "baseline_ids[]", lot.id, id: nil, disabled: !state.selected?(lot), data: { bulk_selection_target: "baseline" } %>
+  ```
+  In `_bulk.html.erb`, inside `form#bulk`, add:
+  ```erb
+  <%= hidden_field_tag :header_toggled, "0", id: nil, data: { bulk_selection_target: "toggled" } %>
+  ```
+- [ ] In `bulk_selection_controller.js`, add `"baseline"` and `"toggled"` to `static targets`. At the end of the `forEach` in `toggleAll()`, keep every baseline in step with its row, and set the flag:
+  ```js
+  this.baselineTargets.forEach((baseline) => { baseline.disabled = !checked })
+  this.toggledTarget.value = "1"
+  ```
+  This works because the rows and baselines are rendered in the same order. Alternatively, match them by `value`.
+- [ ] Empty-state links (004 design rule: links are `brand`). Append to `additions.css`:
+  ```css
+  /* ---------- Links inside an empty state use the brand link colour (README: brand is the one action colour) ---------- */
+  .c-empty a { color:var(--brand); text-decoration:none; }
+  .c-empty a:hover { text-decoration:underline; }
+  .c-empty a:focus-visible { outline:2px solid var(--focus); outline-offset:2px; border-radius:var(--radius-sm); }
+  ```
+  Add one bullet to the app's `docs/design-system/components/EmptyState.md`. Test it first in `spec/system/collection_table_spec.rb`: on an empty collection, the "Search cards" link's computed colour equals the brand colour, read from a brand-filled element such as the header's "Add items" button.
+- [ ] Update `BulkForm.md` for `baseline_ids[]` and `header_toggled`.
+- [ ] Run the touched specs, then the full `bin/rspec`. Expect PASS.
+- [ ] Commits:
+  1. `fix(collection): apply only changed rows after a Select all toggle`
+  2. `fix(design): give empty-state links the brand link colour`
 
 ---
 
