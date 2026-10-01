@@ -1,0 +1,48 @@
+#!/usr/bin/env ruby
+# HTTPS for the dev server on the local network, so a phone can use the card scanner's camera (spec 007 AC-7.1).
+# Creates (or reuses) a self-signed certificate outside the repository and prints how to use it.
+#
+#   bin/dev-certificate [address ...]   # default: this machine's private IPv4 addresses
+#   bin/dev-certificate --serve [port]  # then serve the certificate (never the key) for the phone; default 3579
+require_relative "../lib/collector/dev_certificate"
+require_relative "../lib/collector/dev_port"
+
+args = ARGV.dup
+serve_port = nil
+if (index = args.index("--serve"))
+  args.delete_at(index)
+  serve_port = args[index]&.match?(/\A\d+\z/) ? Integer(args.delete_at(index)) : 3579
+end
+
+cert = Collector::DevCertificate
+addresses = args.empty? ? cert.lan_addresses : args
+abort "No private IPv4 address found; pass the phone-reachable address as an argument." if addresses.empty?
+
+paths = cert.ensure!(dir: cert::DIR, addresses: addresses)
+port = Collector::DevPort.resolve(root: File.expand_path("..", __dir__))
+
+puts "#{paths[:created] ? "Created" : "Reusing"} the certificate for #{addresses.join(", ")}:"
+puts "  key:         #{paths[:key]} (stays on this machine)"
+puts "  certificate: #{paths[:cert]}"
+puts
+puts "Start the dev server over HTTPS:"
+puts %(  bin/dev -b "ssl://0.0.0.0:#{port}?key=#{paths[:key]}&cert=#{paths[:cert]}")
+puts
+puts "On the iPhone (once per certificate):"
+puts "  1. In Safari, open the certificate's download URL (bin/dev-certificate --serve) and allow the profile."
+puts "  2. Settings > General > VPN & Device Management: install the profile."
+puts "  3. Settings > General > About > Certificate Trust Settings: turn on full trust for it."
+puts "  4. Open #{addresses.map { |a| "https://#{a}:#{port}/scanner" }.join(" or ")}"
+puts
+puts "Run bin/dev-certificate again after this machine's network address changes."
+
+if serve_port
+  puts
+  puts "Serving the certificate (not the key) over plain HTTP; Ctrl-C to stop:"
+  addresses.each { |a| puts "  http://#{a}:#{serve_port}/" }
+  begin
+    cert.serve(paths[:cert], port: serve_port)
+  rescue Interrupt
+    puts
+  end
+end
