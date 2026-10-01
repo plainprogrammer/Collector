@@ -52,4 +52,15 @@ RSpec.describe "Page query counts", type: :request do
     7.times { own(printing(identity:), finish: "foil", condition: "near_mint") }
     expect(queries_for(catalog_entry_path(entry))).to eq(few)
   end
+
+  it "keeps the table's queries independent of the number of lots, in and out of bulk mode", :aggregate_failures do
+    user.update!(collection_view: "table")
+    own(printing, finish: "foil")
+    post collection_selection_path
+    few = queries_for(collection_path)
+    few_bulk = queries_for(collection_path(bulk: 1))
+    29.times { |n| own(printing, condition: n.even? ? "near_mint" : nil) }
+    expect(queries_for(collection_path)).to eq(few)
+    expect(queries_for(collection_path(bulk: 1))).to eq(few_bulk)
+  end
 end
