@@ -182,4 +182,28 @@ RSpec.describe Catalog::Refresh, type: :model do
     expect(refresh).to be_skipped
     expect(Catalog::Entry.count).to eq(0)
   end
+
+  describe "the name index (spec 007 AC-3.9)" do
+    def names(text) = Catalog::NameIndex.new("fake", source_class: FakeCatalogSource).search(text).map(&:name)
+
+    it "indexes the cards of an applied refresh, including one added later", :aggregate_failures do
+      refresh
+      expect(names("Lightning Bolt")).to eq([ "Lightning Bolt" ])
+      source.entries += [ entry_record("c", identity: identity_record("helix", name: "Lightning Helix")) ]
+      refresh
+      expect(names("Lightning Helix")).to include("Lightning Helix")
+    end
+
+    it "rebuilds an empty index when a scheduled run is skipped", :aggregate_failures do
+      refresh(trigger: "scheduled")
+      Catalog::Name.delete_all
+      expect(refresh(trigger: "scheduled")).to have_attributes(status: "skipped", message: "v1 already applied; name index rebuilt with 1 name")
+      expect(names("Lightning Bolt")).to eq([ "Lightning Bolt" ])
+    end
+
+    it "leaves a populated index alone when a scheduled run is skipped" do
+      refresh(trigger: "scheduled")
+      expect { refresh(trigger: "scheduled") }.not_to(change { Catalog::Name.pluck(:id) })
+    end
+  end
 end
