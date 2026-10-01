@@ -73,6 +73,16 @@ RSpec.describe "Bulk mode", type: :request do
       expect(seg.ancestors("form")).to be_empty
     end
 
+    it "joins every bulk-bar button to the bulk form from the sticky block outside it", :aggregate_failures do
+      own
+      start_bulk
+      buttons = page_html.css(".c-bulkhead .c-bulkbar button")
+      expect(buttons.map { |button| [ button["value"], button["form"] ] }).to eq(
+        %w[set_condition remove set_condition remove done].map { |value| [ value, "bulk" ] }
+      )
+      expect(page_html.at_css(".c-bulkhead").ancestors("form")).to be_empty
+    end
+
     it "makes Filter the form's default submit, and keeps url-sync off it", :aggregate_failures do
       own
       start_bulk

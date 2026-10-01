@@ -1,34 +1,36 @@
 <%# locals: (table:, state:) %>
-<%# Bulk mode (spec 006 Stories 4–5, FR-4): one PATCH form. The filter input and its Filter button sit in the filter bar and join the form by its id; Filter comes first, so Enter filters. The view switch stays outside the form. %>
+<%# Bulk mode (spec 006 Stories 4–5, FR-4): one PATCH form. The filter input and its Filter button sit in the filter bar and join the form by its id; Filter comes first, so Enter filters. The view switch stays outside the form. The filter bar and the bulk bar share one sticky block below the app header, so the bulk bar's buttons also join by id. %>
 <div class="c-collection" data-controller="search-shortcut bulk-selection"
      data-bulk-selection-matching-value="<%= table.matching_quantity %>" data-bulk-selection-base-value="<%= state.copies_off_page %>">
-  <div class="c-filterbar" role="search">
-    <label class="c-input"><%= render "icons/search" %><%= search_field_tag :q, table.query, form: "bulk", id: nil, placeholder: "Search your collection",
-          "aria-label": "Search your collection", data: { search_shortcut_target: "input" } %><kbd>/</kbd></label>
-    <%= button_tag "Filter", type: "submit", form: "bulk", name: "go", value: "filter", class: "c-sr", tabindex: -1 %>
-    <div class="c-filterbar__end"><%= render "collections/view_switch", view: "table", bulk: true %></div>
+  <div class="c-bulkhead">
+    <div class="c-filterbar" role="search">
+      <label class="c-input"><%= render "icons/search" %><%= search_field_tag :q, table.query, form: "bulk", id: nil, placeholder: "Search your collection",
+            "aria-label": "Search your collection", data: { search_shortcut_target: "input" } %><kbd>/</kbd></label>
+      <%= button_tag "Filter", type: "submit", form: "bulk", name: "go", value: "filter", class: "c-sr", tabindex: -1 %>
+      <div class="c-filterbar__end"><%= render "collections/view_switch", view: "table", bulk: true %></div>
+    </div>
+    <div class="c-bulkbar" role="region" aria-label="Bulk actions">
+      <div class="c-bulkbar__count" data-bulk-selection-target="count"><%= selection_count(state, table.matching_quantity) %></div>
+      <div class="c-bulkbar__extra">
+        <%= button_tag "Set condition…", type: "submit", form: "bulk", name: "go", value: "set_condition", class: "c-btn c-btn--secondary c-btn--sm" %>
+        <%= button_tag "Remove", type: "submit", form: "bulk", name: "go", value: "remove", class: "c-btn c-btn--danger c-btn--sm" %>
+      </div>
+      <details class="c-menu c-bulkbar__more" data-controller="menu">
+        <summary class="c-btn c-btn--secondary c-btn--sm c-btn--icon" aria-label="More bulk actions"><%= render "icons/more" %></summary>
+        <div class="c-menu__list">
+          <%= button_tag "Set condition…", type: "submit", form: "bulk", name: "go", value: "set_condition", class: "c-menu__item" %>
+          <div class="c-menu__sep"></div>
+          <%= button_tag "Remove", type: "submit", form: "bulk", name: "go", value: "remove", class: "c-menu__item c-menu__item--danger" %>
+        </div>
+      </details>
+      <%= button_tag "Done", type: "submit", form: "bulk", name: "go", value: "done", class: "c-btn c-btn--primary c-btn--sm", data: { bulk_selection_target: "done" } %>
+    </div>
   </div>
   <%= form_with url: collection_selection_path, method: :patch, id: "bulk" do %>
     <%= hidden_field_tag :rendered_q, table.query, id: nil %>
     <% table.sort.to_params.each do |name, value| %><%= hidden_field_tag name, value, id: nil %><% end %>
     <%= hidden_field_tag :page, table.pagination.page, id: nil %>
     <%= hidden_field_tag :all_rendered, state.all? ? "1" : "0", id: nil %>
-    <div class="c-bulkbar" role="region" aria-label="Bulk actions">
-      <div class="c-bulkbar__count" data-bulk-selection-target="count"><%= selection_count(state, table.matching_quantity) %></div>
-      <div class="c-bulkbar__extra">
-        <%= button_tag "Set condition…", type: "submit", name: "go", value: "set_condition", class: "c-btn c-btn--secondary c-btn--sm" %>
-        <%= button_tag "Remove", type: "submit", name: "go", value: "remove", class: "c-btn c-btn--danger c-btn--sm" %>
-      </div>
-      <details class="c-menu c-bulkbar__more" data-controller="menu">
-        <summary class="c-btn c-btn--secondary c-btn--sm c-btn--icon" aria-label="More bulk actions"><%= render "icons/more" %></summary>
-        <div class="c-menu__list">
-          <%= button_tag "Set condition…", type: "submit", name: "go", value: "set_condition", class: "c-menu__item" %>
-          <div class="c-menu__sep"></div>
-          <%= button_tag "Remove", type: "submit", name: "go", value: "remove", class: "c-menu__item c-menu__item--danger" %>
-        </div>
-      </details>
-      <%= button_tag "Done", type: "submit", name: "go", value: "done", class: "c-btn c-btn--primary c-btn--sm", data: { bulk_selection_target: "done" } %>
-    </div>
     <div class="c-results__meta">
       <span class="c-filterbar__count"><%= "#{number_with_delimiter(table.matching_quantity)} of " if table.filtered? %><%= number_with_delimiter(table.total_quantity) %> <%= "item".pluralize(table.total_quantity) %></span>
     </div>

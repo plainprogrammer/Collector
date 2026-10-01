@@ -112,3 +112,7 @@
 /* ---------- Status message with an action (spec 006): the sentence, then one small button ---------- */
 .c-status__message--action { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:var(--space-2); }
 .c-status__action { display:flex; }
+
+/* ---------- Bulk head (spec 006): the filter bar and the bulk bar as one sticky block below the app header ---------- */
+.c-shell .c-bulkhead { position:sticky; top:56px; z-index:3; background:var(--surface); }
+.c-bulkhead .c-filterbar, .c-bulkhead .c-bulkbar { position:static; }

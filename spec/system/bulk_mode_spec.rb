@@ -3,6 +3,18 @@ require "rails_helper"
 RSpec.describe "Bulk mode", type: :system do
   let(:user) { system_sign_in_as(create(:user)) }
 
+  # [bar top at or below the app header's bottom, the point at Done's center hits Done]
+  def bulkbar_uncovered = page.evaluate_script(<<~JS)
+    (() => {
+      const bar = document.querySelector(".c-bulkbar").getBoundingClientRect()
+      const header = document.querySelector(".c-appbar").getBoundingClientRect()
+      const done = [...document.querySelectorAll(".c-bulkbar button")].find((b) => b.textContent.trim() === "Done")
+      const box = done.getBoundingClientRect()
+      const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)
+      return [ bar.top >= header.bottom, done.contains(hit) ]
+    })()
+  JS
+
   def own(name, **options) = owned_printing(name, account: user.account, **options)
   def row_box(name) = find("tbody tr", text: name).find("input[type=checkbox]")
 
@@ -51,6 +63,17 @@ RSpec.describe "Bulk mode", type: :system do
     expect(page).to have_no_css(".c-bulkbar")
     expect(page).to have_css(".c-grid")
     expect(page).to have_current_path(collection_path)
+  end
+
+  it "keeps the bulk bar uncovered below the app header when the page scrolls", :aggregate_failures do
+    25.times { |index| own("Card #{index.to_s.rjust(2, '0')}") }
+    page.current_window.resize_to(1280, 700)
+    visit collection_path(bulk: 1)
+    page.execute_script("window.scrollTo(0, document.body.scrollHeight)")
+    expect(page.evaluate_script("window.scrollY")).to be > 0
+    expect(bulkbar_uncovered).to eq([ true, true ])
+    click_on "Done"
+    expect(page).to have_no_css(".c-bulkbar")
   end
 
   it "keeps the count and Done in view on a phone, with the actions in a menu", :aggregate_failures do
