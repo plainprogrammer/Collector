@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Accepted (2026-09-30, spec 007 plan)
 
 ## Context
 
@@ -22,6 +22,12 @@ Phase 0 built a trigram index over the full English catalog in a separate SQLite
 - Rebuild the index in full after each catalog refresh that applies a new source version (about 3 s against a 61 s refresh), as part of the refresh's background work.
 - Rank by OR-ing the query's trigrams, shortlisting 50 by `bm25`, re-ranking by Jaro-Winkler and keeping each card's best row.
 - Add three fallbacks: clean the query first (take the longest mostly-alphabetic line, drop tokens under 3 characters); when the normalised query is empty, match the raw text exactly; for short queries, accept an edit distance of at most 1 over names of similar length.
+
+## Changes from the Proposed text (spec 007)
+
+- Tables are `catalog_names` (`collectible_type`, `catalog_identity_id`, `name`, `normalized`) and `catalog_names_fts`, in the collectible-agnostic catalog core and keyed by collectible type. Identity names come from the core; a source class may add others through `.alternate_names(entries)` (MTG adds face names of multi-face printings).
+- `Catalog::Refresh` rebuilds the index after an applied run, and when a scheduled run is skipped for an already-applied version while the index is empty, so an upgraded instance fills it on its next run.
+- Query cleaning drops tokens shorter than 3 characters from every line, then takes the longest line in which at least half the non-space characters are letters. Queries of 5 characters or fewer also match names within one edit whose length differs by at most 1; text that normalises to nothing is matched exactly against the raw name.
 
 ## Consequences
 
