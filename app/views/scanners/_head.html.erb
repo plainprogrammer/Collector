@@ -1,0 +1,6 @@
+<% content_for :head do %>
+  <%# The page's policy only applies to a full load, and a stale snapshot of a camera page is never wanted. %>
+  <meta name="turbo-visit-control" content="reload">
+  <meta name="turbo-cache-control" content="no-cache">
+  <%= javascript_include_tag "#{ocr_engine_path}/tesseract.min.js", defer: true %>
+<% end %>

@@ -66,4 +66,9 @@ RSpec.describe "Routes", type: :routing do
     expect(get: "/ocr/v7.0.0/core/tesseract-core-lstm.wasm.js")
       .to route_to("ocr_assets#show", version: "v7.0.0", path: "core/tesseract-core-lstm.wasm.js")
   end
+
+  it "routes the scanner and its readings", :aggregate_failures do
+    expect(get: "/scanner").to route_to("scanners#show")
+    expect(post: "/scanner/readings").to route_to("scanner/readings#create")
+  end
 end

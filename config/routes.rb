@@ -23,6 +23,12 @@ Rails.application.routes.draw do
   end
   resource :more, only: :show
 
+  # The card scanner (spec 007): reachable by URL only until adding from the scanner ships.
+  resource :scanner, only: :show
+  namespace :scanner do
+    resources :readings, only: :create
+  end
+
   namespace :catalog do
     resources :entries, only: %i[index show], param: :external_key do
       resource :quick_add, only: :create

@@ -1,0 +1,18 @@
+<%# locals: (candidate:) %>
+<% entry = candidate.entry %>
+<div class="c-tilecell c-scanner__candidate">
+  <%= link_to catalog_entry_path(entry), class: "c-tile" do %>
+    <div class="c-tile__media">
+      <% if (image = catalog_url(entry.image_url)) %>
+        <%= image_tag image, alt: entry.name, loading: "lazy", width: 146, height: 204 %>
+      <% else %>
+        <div class="c-tile__missing"><strong><%= entry.name %></strong><span><%= set_number(entry) %></span></div>
+      <% end %>
+    </div>
+    <div class="c-tile__name"><%= entry.display_name %></div>
+    <div class="c-tile__meta"><span class="c-tag"><%= set_number(entry) %></span><span class="c-tag"><%= entry.set.name %></span></div>
+  <% end %>
+  <% if candidate.source == :collector_line %>
+    <span class="c-badge c-badge--success"><%= render "icons/check" %>Matched by its collector line</span>
+  <% end %>
+</div>
