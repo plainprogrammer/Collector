@@ -15,3 +15,4 @@ What a page or section shows when it has nothing to list: one sentence on why, a
 - No illustration, emoji or exclamation mark, and no "Oops"; the state is normal, not an error.
 - An empty collection shows the empty state instead of the filter bar, since there is nothing to filter.
 - It is centred text on `surface-sunken` with `radius-md`, spaced `space-6` from what's around it.
+- Its link is a brand link: `brand` colour with no underline, underlined on hover, with the `focus` ring on keyboard focus (004 FR-11).

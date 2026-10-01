@@ -30,6 +30,20 @@ RSpec.describe "Collection table", type: :system do
     expect(link_style).to eq([ brand, "none" ])
   end
 
+  it "gives the empty state's Search cards link the brand link colour", :aggregate_failures do
+    system_sign_in_as(create(:user))
+    visit collection_path
+    link_style = page.evaluate_script(<<~JS)
+      (() => {
+        const link = [...document.querySelectorAll(".c-empty a")].find((a) => a.textContent.trim() === "Search cards")
+        const style = getComputedStyle(link)
+        return [ style.color, style.textDecorationLine ]
+      })()
+    JS
+    brand = page.evaluate_script("getComputedStyle(document.querySelector('.c-pagehead__actions .c-btn--primary')).backgroundColor")
+    expect(link_style).to eq([ brand, "none" ])
+  end
+
   it "shows only name, quantity and actions on a phone, with the key facts under the name", :aggregate_failures do
     user = system_sign_in_as(create(:user))
     owned_printing("Lightning Bolt", account: user.account, number: "146", quantity: 9_999, finish: "foil", condition: "near_mint")
