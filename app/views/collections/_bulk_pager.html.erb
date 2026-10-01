@@ -1,0 +1,14 @@
+<%# locals: (table:) %>
+<%# The pager in bulk mode: buttons of the bulk form, so the ticks go along (spec 006 FR-4). %>
+<% pagination = table.pagination %>
+<% if pagination.total_pages > 1 %>
+  <nav class="c-pager" aria-label="Pagination">
+    <% if pagination.previous_page %>
+      <%= button_tag "Previous", type: "submit", name: "go", value: collection_listing_path(bulk: 1, query: table.query, sort: table.sort, page: pagination.previous_page), class: "c-btn c-btn--secondary c-btn--sm" %>
+    <% end %>
+    <span class="c-pager__position">Page <%= pagination.page %> of <%= pagination.total_pages %></span>
+    <% if pagination.next_page %>
+      <%= button_tag "Next", type: "submit", name: "go", value: collection_listing_path(bulk: 1, query: table.query, sort: table.sort, page: pagination.next_page), class: "c-btn c-btn--secondary c-btn--sm" %>
+    <% end %>
+  </nav>
+<% end %>

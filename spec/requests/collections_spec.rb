@@ -19,7 +19,7 @@ RSpec.describe "Collection", type: :request do
     get collection_path
     expect(response.body).to include("4 items · 1 unique", ">×4<", "Foil", "Lightning Bolt", "#{entry.set.code.upcase} · 146", ">EN<",
       %(href="#{catalog_entry_path(entry, from: 'collection')}"), %(href="#{catalog_entries_path}"))
-    expect(response.body).not_to include('type="checkbox"', "Edit many", "c-seg")
+    expect(response.body).not_to include('type="checkbox"')
   end
 
   it "shows the name on a blank tile when a card has no image", :aggregate_failures do

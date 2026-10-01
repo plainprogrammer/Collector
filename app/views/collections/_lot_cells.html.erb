@@ -1,0 +1,18 @@
+<%# locals: (lot:) %>
+<% entry = lot.entry %>
+<td>
+  <div class="c-table__item">
+    <% if (image = catalog_url(entry.image_url)) %>
+      <%= image_tag image, alt: "", class: "c-table__thumb", loading: "lazy", width: 24, height: 34 %>
+    <% else %>
+      <span class="c-table__thumb" aria-hidden="true"></span>
+    <% end %>
+    <div><%= link_to entry.display_name, catalog_entry_path(entry, from: "collection") %><span class="c-table__sub"><%= lot_summary(lot) %></span></div>
+  </div>
+</td>
+<td class="is-data is-opt"><%= set_number(entry) %></td>
+<td class="is-data is-opt"><%= entry.language.upcase %></td>
+<td class="is-opt"><%= lot_finish(lot) %></td>
+<td class="is-data is-opt"><%= lot_condition(lot) %></td>
+<td class="is-num"><%= number_with_delimiter(lot.quantity) %></td>
+<td class="is-num is-opt"><%= lot_price(lot) %></td>

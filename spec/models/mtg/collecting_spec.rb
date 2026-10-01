@@ -17,4 +17,8 @@ RSpec.describe MTG::Collecting, type: :model do
     expect(described_class.special_finishes).to eq(%w[foil etched])
     expect(described_class.finish_label("glossy")).to eq("Glossy")
   end
+
+  it "orders finishes nonfoil, foil, etched" do
+    expect(described_class.finish_order).to eq(%w[nonfoil foil etched])
+  end
 end

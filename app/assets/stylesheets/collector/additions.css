@@ -92,3 +92,37 @@
 .c-list .c-tile__add .c-btn { width:auto; }
 .c-attribution { margin:0; font:400 12px/16px var(--font-sans); color:var(--ink-muted); }
 @container page (max-width: 639px) { .c-stats--single { grid-template-columns:minmax(0, 1fr); max-width:none; } }
+
+/* ---------- Sortable table header (spec 006): a link, or a bulk-form button, with the order's arrow ---------- */
+.c-table__sort { display:inline-flex; align-items:center; gap:var(--space-1); padding:0; border:0; background:none;
+  color:inherit; font:inherit; text-decoration:none; cursor:pointer; }
+.c-table__sort:hover { color:var(--brand); }
+.c-table__sort:focus-visible { outline:2px solid var(--focus); outline-offset:2px; border-radius:var(--radius-sm); }
+.c-table th[aria-sort="ascending"] .c-table__sort::after { content:"↑" / ""; }
+.c-table th[aria-sort="descending"] .c-table__sort::after { content:"↓" / ""; }
+.c-table th.is-num .c-table__sort { flex-direction:row-reverse; }
+
+/* ---------- Bulk mode (spec 006): the checkbox column, as narrow as its box ---------- */
+.c-table th.c-table__select, .c-table td.c-table__select { width:1%; }
+
+/* ---------- Choice page (spec 006): one choice from a short list, as radios in a fieldset ---------- */
+.c-choices { display:flex; flex-direction:column; gap:var(--space-2); margin:0; padding:0; border:0; }
+.c-choices legend { margin-bottom:var(--space-2); padding:0; }
+
+/* ---------- Status message with an action (spec 006): the sentence, then one small button ---------- */
+.c-status__message--action { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:var(--space-2); }
+.c-status__action { display:flex; }
+
+/* ---------- Bulk head (spec 006): the filter bar and the bulk bar as one sticky block below the app header ---------- */
+.c-shell .c-bulkhead { position:sticky; top:56px; z-index:3; background:var(--surface); }
+.c-bulkhead .c-filterbar, .c-bulkhead .c-bulkbar { position:static; }
+
+/* ---------- Table item link (spec 006): the card name in a table row, in the brand link colour ---------- */
+.c-table__item a { color:var(--brand); text-decoration:none; }
+.c-table__item a:hover { text-decoration:underline; }
+.c-table__item a:focus-visible { outline:2px solid var(--focus); outline-offset:2px; border-radius:var(--radius-sm); }
+
+/* ---------- Links inside an empty state use the brand link colour (README: brand is the one action colour) ---------- */
+.c-empty a { color:var(--brand); text-decoration:none; }
+.c-empty a:hover { text-decoration:underline; }
+.c-empty a:focus-visible { outline:2px solid var(--focus); outline-offset:2px; border-radius:var(--radius-sm); }

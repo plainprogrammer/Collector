@@ -171,4 +171,39 @@ RSpec.describe "Lots", type: :request do
       expect(foreign.reload.quantity).to eq(5)
     end
   end
+
+  describe "from the collection table" do
+    let(:table) { collection_path(view: "table", q: "bolt", sort: "price", dir: "desc", page: 2) }
+    let(:lot) { create(:lot, account: user.account, entry:) }
+
+    it "returns to the table after saving, or from Cancel and Back", :aggregate_failures do
+      get edit_lot_path(lot, from: "collection", return_to: table)
+      page = Nokogiri::HTML5(response.body)
+      expect(page.at_css('header a[aria-label="Back"]')["href"]).to eq(table)
+      expect(page.at_css("form.c-form")["action"]).to eq(lot_path(lot, from: "collection", return_to: table))
+      expect(page.at_css(".c-form__actions a")["href"]).to eq(table)
+      patch lot_path(lot, from: "collection", return_to: table), params: { lot: { quantity: 2 } }
+      expect(response).to redirect_to(table)
+      follow_redirect!
+      expect(response.body).to include("Saved.")
+    end
+
+    it "returns to the table after removing, or from Cancel and Back", :aggregate_failures do
+      get new_lot_removal_path(lot, from: "collection", return_to: table)
+      page = Nokogiri::HTML5(response.body)
+      expect(page.at_css('header a[aria-label="Back"]')["href"]).to eq(table)
+      expect(page.at_css(".c-confirm a.c-btn--secondary")["href"]).to eq(table)
+      expect(page.at_css(".c-confirm form")["action"]).to eq(lot_path(lot, from: "collection", return_to: table))
+      delete lot_path(lot, from: "collection", return_to: table)
+      expect(response).to redirect_to(table)
+      expect(flash[:notice]).to eq("Removed 1 × Lightning Bolt (#{entry.set.code.upcase} · 146) from your collection.")
+    end
+
+    it "ignores a return path off this instance", :aggregate_failures do
+      patch lot_path(lot, return_to: "https://elsewhere.example/collection"), params: { lot: { quantity: 2 } }
+      expect(response).to redirect_to(catalog_entry_path(entry))
+      get edit_lot_path(lot, return_to: "https://elsewhere.example/collection")
+      expect(Nokogiri::HTML5(response.body).at_css("form.c-form")["action"]).to eq(lot_path(lot))
+    end
+  end
 end

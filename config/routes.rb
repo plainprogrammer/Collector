@@ -12,7 +12,15 @@ Rails.application.routes.draw do
 
   resource :session, only: %i[new create destroy]
   resource :registration, only: %i[new create]
-  resource :collection, only: :show
+  resource :collection, only: :show do
+    scope module: :collections do
+      resource :selection, only: %i[create update]
+      resource :condition_change, only: %i[new create]
+      resources :bulk_removals, only: %i[new create] do
+        resource :undo, only: :create, module: :bulk_removals
+      end
+    end
+  end
   resource :more, only: :show
 
   namespace :catalog do

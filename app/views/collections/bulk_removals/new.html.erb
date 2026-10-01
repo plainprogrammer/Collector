@@ -1,0 +1,13 @@
+<% content_for :title, "Remove items · Collector" %>
+<%= render "layouts/appbar", section: :collection, detail: true, back_path: @bulk_path %>
+<main class="c-main c-page">
+  <section class="c-confirm">
+    <h1 class="c-pagehead__title">Remove <%= items_count(@copies) %>?</h1>
+    <p>This removes <%= items_count(@copies) %> in <%= pluralize(number_with_delimiter(@lots_count), "lot") %> from your collection. You can undo this right afterwards.</p>
+    <div class="c-form__actions">
+      <%= button_to "Remove #{items_count(@copies)}", collection_bulk_removals_path(page: params[:page]), class: "c-btn c-btn--danger" %>
+      <%= link_to "Cancel", @bulk_path, class: "c-btn c-btn--secondary" %>
+    </div>
+  </section>
+</main>
+<%= render "layouts/tabbar", section: :collection %>

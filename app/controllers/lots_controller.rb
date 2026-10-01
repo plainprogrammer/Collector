@@ -27,7 +27,7 @@ class LotsController < ApplicationController
     return render(:edit, status: :unprocessable_content) unless @form.valid?
 
     @lot.revise!(@form.lot_attributes)
-    redirect_to catalog_entry_path(@lot.entry, **card_params), status: :see_other, notice: "Saved."
+    redirect_to lot_return_path(@lot.entry), status: :see_other, notice: "Saved."
   rescue ActiveRecord::RecordInvalid
     @form.absorb(@lot)
     render :edit, status: :unprocessable_content
@@ -35,7 +35,8 @@ class LotsController < ApplicationController
 
   def destroy
     @lot.destroy!
-    redirect_to catalog_entry_path(@lot.entry, **card_params), status: :see_other,
+    BulkRemoval.supersede!(Current.session)
+    redirect_to lot_return_path(@lot.entry), status: :see_other,
       notice: "Removed #{@lot.quantity} × #{@lot.entry.name} (#{helpers.set_number(@lot.entry)}) from your collection."
   end
 

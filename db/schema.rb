@@ -10,10 +10,43 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_30_000005) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_30_100003) do
   create_table "accounts", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+  end
+
+  create_table "bulk_removals", force: :cascade do |t|
+    t.integer "session_id", null: false
+    t.integer "account_id", null: false
+    t.integer "copies", null: false
+    t.json "lots_data"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_bulk_removals_on_account_id"
+    t.index ["session_id"], name: "index_bulk_removals_on_session_id"
+    t.index ["session_id"], name: "index_bulk_removals_undoable_per_session", unique: true, where: "lots_data IS NOT NULL"
+  end
+
+  create_table "bulk_selection_marks", force: :cascade do |t|
+    t.integer "bulk_selection_id", null: false
+    t.integer "account_id", null: false
+    t.integer "lot_id", null: false
+    t.index ["account_id"], name: "index_bulk_selection_marks_on_account_id"
+    t.index ["bulk_selection_id", "lot_id"], name: "index_bulk_selection_marks_on_bulk_selection_id_and_lot_id", unique: true
+    t.index ["lot_id"], name: "index_bulk_selection_marks_on_lot_id"
+  end
+
+  create_table "bulk_selections", force: :cascade do |t|
+    t.integer "session_id", null: false
+    t.integer "account_id", null: false
+    t.string "query", default: "", null: false
+    t.string "sort_key", default: "", null: false
+    t.boolean "all_matching", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_bulk_selections_on_account_id"
+    t.index ["session_id"], name: "index_bulk_selections_on_session_id", unique: true
   end
 
   create_table "catalog_entries", force: :cascade do |t|
@@ -151,10 +184,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_30_000005) do
     t.boolean "admin", default: false, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "collection_view", default: "grid", null: false
     t.index ["account_id"], name: "index_users_on_account_id", unique: true
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
   end
 
+  add_foreign_key "bulk_removals", "accounts", on_delete: :cascade
+  add_foreign_key "bulk_removals", "sessions", on_delete: :cascade
+  add_foreign_key "bulk_selection_marks", "accounts", on_delete: :cascade
+  add_foreign_key "bulk_selection_marks", "bulk_selections", on_delete: :cascade
+  add_foreign_key "bulk_selection_marks", "lots", on_delete: :cascade
+  add_foreign_key "bulk_selections", "accounts", on_delete: :cascade
+  add_foreign_key "bulk_selections", "sessions", on_delete: :cascade
   add_foreign_key "catalog_entries", "catalog_identities"
   add_foreign_key "catalog_entries", "catalog_sets"
   add_foreign_key "lots", "accounts"

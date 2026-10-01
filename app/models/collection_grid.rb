@@ -1,23 +1,14 @@
 # One page of an account's collection as image tiles: one per owned printing (spec 004 Story 11).
 class CollectionGrid
+  include CollectionFilter
+
   PER_PAGE = 120
   Tile = Data.define(:entry, :quantity, :special_finishes)
 
-  attr_reader :query
-
   def initialize(account:, query:, page:)
     @account = account
-    @query = query.to_s.strip.first(Catalog::Search::MAX_QUERY_LENGTH)
+    @query = CollectionFilter.normalize(query)
     @requested_page = page
-  end
-
-  def filtered? = query.present?
-  def empty_collection? = total_quantity.zero?
-  def total_quantity = @total_quantity ||= @account.lots.sum(:quantity)
-  def matching_quantity = @matching_quantity ||= matching_lots.sum(:quantity)
-
-  def unique_cards
-    @unique_cards ||= @account.lots.joins(:entry).distinct.count("catalog_entries.catalog_identity_id")
   end
 
   def pagination
@@ -39,10 +30,4 @@ class CollectionGrid
       end
     end
   end
-
-  private
-    def matching_lots
-      scope = @account.lots.joins(:entry)
-      filtered? ? scope.merge(Catalog::Entry.named_like(query)) : scope
-    end
 end

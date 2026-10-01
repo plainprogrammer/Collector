@@ -11,20 +11,17 @@
         <thead><tr><th>Printing</th><th class="is-opt">Finish</th><th class="is-opt">Condition</th><th class="is-opt">Language</th><th class="is-num">Qty</th><th class="is-num is-opt">Paid</th><th><span class="c-sr">Actions</span></th></tr></thead>
         <tbody>
           <% overview.lots.each do |lot| %>
-            <% vocab = overview.vocabulary %>
-            <% finish = lot.finish && (vocab.special_finishes.include?(lot.finish) ? render("catalog/entries/finish_badge", label: vocab.finish_label(lot.finish)) : tag.span(vocab.finish_label(lot.finish), class: "is-muted")) %>
-            <% condition = lot.condition ? vocab.conditions.fetch(lot.condition).last : "—" %>
             <tr>
               <td><div class="c-table__item"><div><span class="is-data"><%= set_number(lot.entry) %></span>
-                <span class="c-table__sub"><%= safe_join([ (lot.finish ? vocab.finish_label(lot.finish) : nil), condition, lot.entry.language.upcase ].compact, " · ") %></span></div></div></td>
-              <td class="is-opt"><%= finish || "—" %></td>
-              <td class="is-data is-opt"><%= condition %></td>
+                <span class="c-table__sub"><%= safe_join([ (lot.finish ? overview.vocabulary.finish_label(lot.finish) : nil), lot_condition(lot), lot.entry.language.upcase ].compact, " · ") %></span></div></div></td>
+              <td class="is-opt"><%= lot_finish(lot) %></td>
+              <td class="is-data is-opt"><%= lot_condition(lot) %></td>
               <td class="is-data is-opt"><%= lot.entry.language.upcase %></td>
               <td class="is-num"><%= lot.quantity %></td>
-              <td class="is-num is-opt"><%= lot.price_paid ? number_to_currency(lot.price_paid, unit: Rails.configuration.x.currency.symbol) : "—" %></td>
+              <td class="is-num is-opt"><%= lot_price(lot) %></td>
               <td class="c-table__actions">
                 <details class="c-menu" data-controller="menu">
-                  <summary class="c-btn c-btn--ghost c-btn--sm c-btn--icon" aria-label="Actions for <%= set_number(lot.entry) %> <%= condition %>"><%= render "icons/more" %></summary>
+                  <summary class="c-btn c-btn--ghost c-btn--sm c-btn--icon" aria-label="Actions for <%= set_number(lot.entry) %> <%= lot_condition(lot) %>"><%= render "icons/more" %></summary>
                   <div class="c-menu__list">
                     <%= link_to "Edit copy", edit_lot_path(lot, **card_params), class: "c-menu__item" %>
                     <div class="c-menu__sep"></div>

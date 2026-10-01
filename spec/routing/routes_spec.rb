@@ -45,4 +45,20 @@ RSpec.describe "Routes", type: :routing do
     expect(delete: "/lots/1").to route_to("lots#destroy", id: "1")
     expect(get: "/lots/1/removal/new").to route_to("lots/removals#new", lot_id: "1")
   end
+
+  it "routes bulk mode's selection", :aggregate_failures do
+    expect(post: "/collection/selection").to route_to("collections/selections#create")
+    expect(patch: "/collection/selection").to route_to("collections/selections#update")
+  end
+
+  it "routes Set condition", :aggregate_failures do
+    expect(get: "/collection/condition_change/new").to route_to("collections/condition_changes#new")
+    expect(post: "/collection/condition_change").to route_to("collections/condition_changes#create")
+  end
+
+  it "routes bulk removal and its undo", :aggregate_failures do
+    expect(get: "/collection/bulk_removals/new").to route_to("collections/bulk_removals#new")
+    expect(post: "/collection/bulk_removals").to route_to("collections/bulk_removals#create")
+    expect(post: "/collection/bulk_removals/1/undo").to route_to("collections/bulk_removals/undos#create", bulk_removal_id: "1")
+  end
 end

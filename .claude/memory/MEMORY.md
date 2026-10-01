@@ -16,3 +16,6 @@
 - [Card scanner direction](card-scanner-direction.md) — maintainer is going ahead after Phase 0 (PR #6); spec Phase 1 from research.md §8; corpus in ~/card-scanner-corpus
 - [Phone LAN dev access](phone-lan-dev-access.md) — 192.168.1.76, firewall already open for high ports, bind 0.0.0.0; iPhone uses Brave (WebKit); camera needs HTTPS
 - [Work ahead of human checkpoints](work-ahead-of-human-checkpoints.md) — in sdd-execute, run maintainer-independent units first; record rulings in commit bodies
+- [Migrate schema noise](migrate-schema-noise.md) — restore cable/cache/queue schema after db:migrate; rollback needs :primary
+- [Brakeman --ensure-latest](brakeman-ensure-latest.md) — a new Brakeman release breaks hooks/CI; bump the gem in a chore(deps) commit
+- [Search spec CI flake](search-spec-ci-flake.md) — open: catalog_search_spec.rb:4 times out opening a card page on GitHub CI only; cause unknown

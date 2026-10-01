@@ -2,6 +2,7 @@ class User < ApplicationRecord
   PASSWORD_MINIMUM = 12
   # One "@" with text on both sides and no whitespace (spec 004 AC-4.3).
   EMAIL_FORMAT = /\A[^@\s]+@[^@\s]+\z/
+  COLLECTION_VIEWS = %w[grid table].freeze
 
   has_secure_password
   belongs_to :account, dependent: :destroy
@@ -15,6 +16,7 @@ class User < ApplicationRecord
     format: { with: EMAIL_FORMAT, message: "must look like name@example.com", allow_blank: true }
   validates :password, length: { minimum: PASSWORD_MINIMUM, message: "must be at least #{PASSWORD_MINIMUM} characters" },
     allow_nil: true
+  validates :collection_view, inclusion: { in: COLLECTION_VIEWS }
 
   before_validation :build_account, on: :create, unless: :account
 
