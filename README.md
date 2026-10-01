@@ -61,6 +61,31 @@ automatic setup stays off; run `bin/setup` in each new worktree yourself.
 - **Failures:** if automatic setup fails, the worktree is still created; run `bin/setup` in
   it to finish.
 
+### Card scanner on a phone
+
+`bin/setup` also runs `bin/fetch-ocr-engine`, which downloads the card scanner's OCR engine (about 15 MB) from
+`registry.npmjs.org`, checks every file against a pinned SHA-256 and keeps it in `vendor/ocr/` (ignored by git).
+
+The scanner is at `/scanner`; nothing links to it yet. Browsers only allow a live camera on HTTPS (or on
+`localhost`), so to use it from a phone, put an HTTPS tunnel of your choice in front of the dev server and tell
+the app about it. For example, with Tailscale:
+
+```sh
+tailscale serve --bg 3000                                       # your worktree's port; prints https://<machine>.<tailnet>.ts.net
+RAILS_DEVELOPMENT_HOSTS=<machine>.<tailnet>.ts.net COLLECTOR_HTTPS=true bin/dev
+```
+
+- `RAILS_DEVELOPMENT_HOSTS`: the tunnel's host names, comma-separated, so Rails accepts requests for them.
+- `COLLECTOR_HTTPS=true`: the tunnel ended TLS, so Rails treats the request as HTTPS (cookies, form checks).
+- No certificate or key goes in the repository. Over plain HTTP from another device, the page offers a photo instead.
+
+**Measurement mode** (development only) records live captures of known cards for the scanner's findings, at
+`/scanner/measurement`. It reads the manifest at `COLLECTOR_SCANNER_MANIFEST` (default
+`~/card-scanner-corpus/manifest.csv`, columns `file,set,number,foil[,era]`) and stores each capture's text and
+strip images under `COLLECTOR_SCANNER_RUN_DIR` (default `~/card-scanner-corpus/runs/live`), outside the
+repository. `bin/rails scanner:findings` scores a run; `bundle exec ruby script/scanner/replay.rb <label>`
+re-reads its strips on the desktop. `COLLECTOR_REQUEST_LOG=1` logs each response's size to `log/requests.jsonl`.
+
 ## Testing and CI
 
 ```sh
@@ -148,6 +173,20 @@ Kamal (`bin/kamal`) deploys the same image to servers you control over SSH.
 
 Data is stored in the `collector_storage` volume (mounted at `/rails/storage`), and Solid
 Queue runs inside Puma (`SOLID_QUEUE_IN_PUMA`).
+
+### Card scanner
+
+The card scanner (`/scanner`, not linked yet while it's being measured) reads a card with the camera of the phone
+it runs on. Photos never leave the phone: only the text read from the card is sent to your instance. The image
+build downloads the scanner's OCR engine from `registry.npmjs.org` and checks each file against a pinned
+SHA-256; your instance serves it from `/ocr/v7.0.0/`, so phones fetch it from you, not from a third party.
+
+Browsers only allow a live camera on HTTPS. Without HTTPS, only the photo picker works.
+
+- **Docker Compose:** put an HTTPS reverse proxy in front of the app (see **HTTPS** under Docker Compose) and set
+  `COLLECTOR_HTTPS=true`.
+- **Kamal:** enable the proxy's certificate in `config/deploy.yml` (uncomment `proxy:` with `ssl: true` and set
+  your `host:`), and uncomment `COLLECTOR_HTTPS: true` under `env: clear:`.
 
 ### Accounts
 

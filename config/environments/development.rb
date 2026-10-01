@@ -91,4 +91,9 @@ Rails.application.configure do
   # Response sizes for the scanner's on-device load measurements (spec 007 AC-6.5): COLLECTOR_REQUEST_LOG=1
   # writes one JSON line per response to log/requests.jsonl.
   config.middleware.insert_before 0, Collector::RequestLog, path: Rails.root.join("log/requests.jsonl") if ENV["COLLECTOR_REQUEST_LOG"] == "1"
+
+  # Reaching the dev server from a phone through your own HTTPS tunnel (spec 007 AC-7.1): Rails' own
+  # RAILS_DEVELOPMENT_HOSTS names the tunnel's hosts, and COLLECTOR_HTTPS=true (as in production) says the tunnel
+  # ends TLS, so Rails treats requests as HTTPS and their Origin matches.
+  config.assume_ssl = ENV["COLLECTOR_HTTPS"] == "true"
 end

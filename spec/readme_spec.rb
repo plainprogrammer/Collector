@@ -17,4 +17,10 @@ RSpec.describe "README" do
     upgrade = readme[/### Upgrading to accounts.*?(?=^## )/m]
     expect(upgrade.index("Read this before you upgrade")).to be < upgrade.index("1. Pull the new code.")
   end
+
+  it "documents the card scanner's HTTPS needs for phones, Compose and Kamal (spec 007 AC-7.1, AC-7.2, AC-7.3)", :aggregate_failures do
+    expect(readme).to include("RAILS_DEVELOPMENT_HOSTS", "bin/fetch-ocr-engine", "COLLECTOR_SCANNER_MANIFEST", "COLLECTOR_REQUEST_LOG")
+    scanner = readme[/^### Card scanner\n.*?(?=^##)/m].to_s
+    expect(scanner).to include("HTTPS", "only the photo picker works", "Docker Compose", "Kamal", "ssl: true", "registry.npmjs.org")
+  end
 end
