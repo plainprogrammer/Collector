@@ -35,8 +35,11 @@ class BulkRemoval < ApplicationRecord
     transaction do
       entries = Catalog::Entry.where(id: lots_data.pluck("catalog_entry_id")).index_by(&:id)
       Catalog::Entry.preload_extensions(entries.values)
-      check_cap!(sort)
-      lots_data.each do |data|
+      existing = existing_lots
+      check_cap!(existing, sort)
+      merging, alone = lots_data.partition { |data| existing.key?(identity(data)) }
+      insert_alone!(alone)
+      merging.each do |data|
         Lot.add!(account:, entry: entries.fetch(data["catalog_entry_id"]), quantity: data["quantity"],
           finish: data["finish"], condition: data["condition"], price_paid_cents: data["price_paid_cents"])
       end
@@ -45,14 +48,29 @@ class BulkRemoval < ApplicationRecord
   end
 
   private
-    # One query for every lot a restore would merge into, then the cap check in memory.
-    def check_cap!(sort)
-      existing = account.lots.where(catalog_entry_id: lots_data.pluck("catalog_entry_id").uniq)
-        .index_by { |lot| [ lot.catalog_entry_id, lot.lot_key ] }
+    # One query for every lot a restore would merge into, indexed by identity.
+    def existing_lots
+      account.lots.where(catalog_entry_id: lots_data.pluck("catalog_entry_id").uniq).index_by { |lot| [ lot.catalog_entry_id, lot.lot_key ] }
+    end
+
+    def identity(data) = [ data["catalog_entry_id"], Lot.key_for(data["finish"], data["condition"], data["price_paid_cents"]) ]
+
+    def check_cap!(existing, sort)
       over = lots_data.filter_map do |data|
-        lot = existing[[ data["catalog_entry_id"], Lot.key_for(data["finish"], data["condition"], data["price_paid_cents"]) ]]
+        lot = existing[identity(data)]
         lot if lot && lot.quantity + data["quantity"] > Lot::MAX_QUANTITY
       end
       raise Lot::CapExceeded, sort.apply(account.lots.joins(entry: :set).where(id: over.map(&:id))).preload(entry: :set).first if over.any?
+    end
+
+    # Rows with no lot of their identity, in one statement.
+    def insert_alone!(rows)
+      return if rows.empty?
+
+      now = Time.current
+      account.lots.insert_all(rows.map do |data| # Safe: values are restored exactly as they were validated when stored, and each identity is free (checked against the index loaded in this transaction)
+        data.slice("catalog_entry_id", "quantity", "finish", "condition", "price_paid_cents")
+          .merge("lot_key" => identity(data).last, "created_at" => now, "updated_at" => now)
+      end)
     end
 end

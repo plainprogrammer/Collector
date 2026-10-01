@@ -31,4 +31,27 @@ RSpec.describe Lot::ConditionChange, type: :model do
     expect { change([ first ], "near_mint").apply! }.to raise_error(Lot::CapExceeded) { |error| expect(error.lot).to eq(first) }
     expect(Lot.order(:id).pluck(:condition, :quantity)).to eq([ [ nil, 1 ], [ "near_mint", 9_999 ] ])
   end
+
+  def queries_during
+    count = 0
+    counter = ->(*, payload) { count += 1 unless payload[:cached] || %w[SCHEMA TRANSACTION].include?(payload[:name]) }
+    ActiveSupport::Notifications.subscribed(counter, "sql.active_record") { yield }
+    count
+  end
+
+  def printings(count) = Array.new(count) { owned_printing(account:, finish: "foil") }
+
+  it "runs as many queries for 12 lots that don't merge as for 2" do
+    few, many = printings(2), printings(12)
+    expect(queries_during { change(many, "near_mint").apply! }).to eq(queries_during { change(few, "near_mint").apply! })
+  end
+
+  it "keeps each bulk-updated lot's key equal to the one Lot.key_for gives", :aggregate_failures do
+    lots = [ owned_printing(account:, finish: "foil"), owned_printing(account:, price_paid_cents: 150, condition: "damaged") ]
+    [ "lightly_played", nil ].each do |condition|
+      change(lots, condition).apply!
+      expect(Lot.where(id: lots).map { |lot| [ lot.condition, lot.lot_key ] })
+        .to match_array(Lot.where(id: lots).map { |lot| [ condition, Lot.key_for(lot.finish, condition, lot.price_paid_cents) ] })
+    end
+  end
 end

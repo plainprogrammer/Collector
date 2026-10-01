@@ -14,14 +14,18 @@ class Lot::ConditionChange
       groups = lots.group_by { |lot| [ lot.catalog_entry_id, Lot.key_for(lot.finish, @condition, lot.price_paid_cents) ] }
       targets = existing_targets(groups.keys, lots)
       check_cap!(groups, targets)
-      groups.map { |key, group| merge(targets[key], group).id }
+      alone = groups.reject { |key, group| group.many? || targets[key] }
+      update_alone!(alone.values.flatten.map(&:id))
+      groups.map { |key, group| alone.key?(key) ? group.first.id : merge(targets[key], group).id }
     end
   end
 
   private
-    # Lots outside the change that already have a target identity.
+    # Lots outside the change that already have a target identity. Only the entry is filtered in SQL:
+    # adding lot_key IN and id NOT IN lists made SQLite take seconds at 5,000 lots.
     def existing_targets(keys, lots)
-      @account.lots.where(catalog_entry_id: keys.map(&:first).uniq, lot_key: keys.map(&:last).uniq).where.not(id: lots.map(&:id))
+      changed = lots.to_set(&:id)
+      @account.lots.where(catalog_entry_id: keys.map(&:first).uniq).reject { |lot| changed.include?(lot.id) }
         .index_by { |lot| [ lot.catalog_entry_id, lot.lot_key ] }.slice(*keys)
     end
 
@@ -30,6 +34,13 @@ class Lot::ConditionChange
       return if over.empty?
 
       raise Lot::CapExceeded, @sort.apply(@account.lots.joins(entry: :set).where(id: over.map(&:id))).preload(entry: :set).first
+    end
+
+    # Lots that keep their own identity, in one statement: lot_key is rebuilt as Lot.key_for would.
+    def update_alone!(ids)
+      return if ids.empty?
+
+      @account.lots.where(id: ids).update_all([ "condition = ?, lot_key = COALESCE(finish, '') || '|' || ? || '|' || COALESCE(price_paid_cents, ''), updated_at = ?", @condition.presence, @condition.to_s, Time.current ]) # Safe: tenant-scoped; the controller validated the condition against the vocabulary; quantity and finish don't change; merges are handled separately, so no identity collides
     end
 
     # The existing lot survives if there is one, else the group's first lot; the others fold into it.

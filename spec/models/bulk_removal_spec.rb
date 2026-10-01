@@ -90,4 +90,24 @@ RSpec.describe BulkRemoval, type: :model do
     expect(connection.indexes("bulk_removals").map(&:columns)).to include(a_collection_starting_with("account_id"))
     expect(connection.foreign_keys("bulk_removals").find { |key| key.to_table == "sessions" }.on_delete).to eq(:cascade)
   end
+
+  def queries_during
+    count = 0
+    counter = ->(*, payload) { count += 1 unless payload[:cached] || %w[SCHEMA TRANSACTION].include?(payload[:name]) }
+    ActiveSupport::Notifications.subscribed(counter, "sql.active_record") { yield }
+    count
+  end
+
+  def undo_queries_for(count)
+    count.times { |n| own("Card #{n}", finish: n.even? ? "foil" : nil, price_paid_cents: n.even? ? nil : 100 * n) }
+    select_all
+    removal = described_class.remove!(selection).reload
+    queries = queries_during { removal.undo!(sort:) }
+    account.lots.destroy_all
+    queries
+  end
+
+  it "runs as many queries to restore 12 lots that don't merge as for 2" do
+    expect(undo_queries_for(12)).to eq(undo_queries_for(2))
+  end
 end
