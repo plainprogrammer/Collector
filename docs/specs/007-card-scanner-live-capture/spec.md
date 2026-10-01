@@ -1,9 +1,9 @@
 # Feature 007: Card Scanner Phase 1 — Live Capture and Re-measure
 
 **Status:** Approved
-**Version:** 1.1.1
+**Version:** 2.0.0
 **Created:** 2026-09-30
-**Last Updated:** 2026-09-30
+**Last Updated:** 2026-10-01
 **Branch:** `007-card-scanner-live-capture`
 
 ---
@@ -15,6 +15,7 @@
 | 1.0.0 | 2026-09-30 | Initial approved spec |
 | 1.1.0 | 2026-09-30 | Spec review revisions (Fable). **Comparable rates:** top 1 / top 3 are reported both over name candidates alone (Phase 0's definition, research.md §5) and over the page's final ranking (AC-6.2, AC-6.3). **Parser cases** are the verbatim multi-line `collector_text` of named Phase 0 fixture rows, with the known set codes listed exactly (AC-3.6); the loose fallback uses a fixed exclusion list and the `SET • LANG` shape wins (AC-3.7). **Measurement mode** is behind a setting (on in development, off in production and test by default, switchable in tests) so it can be tested (AC-5.1, FR-6, NFR Security). **Headless-verifiable camera ACs:** track state, the requested facing mode, torch capability and secure-context detection replace device-only observations, with device checks recorded as manual steps (AC-1.1, AC-1.4–1.6, AC-6.5). **Query cleaning order** fixed, with IMG_6730 as a case; "similar length" is ±1 character (AC-3.4, AC-3.5). **Language:** a lookup with no language read assumes English (AC-3.2, FR-4; maintainer ruling). **Name index** is collectible-agnostic catalog data keyed by collectible type, fed by each collectible's source (FR-4, FR-5; maintainer ruling), and is also rebuilt when a refresh is skipped while the index is empty (AC-3.9, FR-5). **CSP:** the app sends no policy today, so other pages still send none; the scanner's policy allows a per-request nonce for its own inline tags (AC-2.3, AC-2.4). **Also:** conditional-request wording (AC-2.2), new error rows (request failure, expired session, engine can't start), fixture keys and `format_version` (AC-5.2, AC-6.6), ground truth from `ground_truth.json` (AC-6.2), a separate tuning manifest (AC-6.1), a capture protocol (AC-5.4), lookup time in the findings (AC-6.5), dev HTTPS wording (AC-7.1), checksum verification (AC-7.3), control placement instead of "one-handed" (NFR Accessibility) |
 | 1.1.1 | 2026-09-30 | From the spec re-review (Fable, READY TO PLAN): "mostly-alphabetic" is defined as at least half the non-space characters being letters (AC-3.4); the engine files are present in a development checkout after `bin/setup`, so the checksum test can run (AC-7.3). Clarifications only |
+| 2.0.0 | 2026-10-01 | **The measured run is a photo replay** (maintainer ruling): the 50 corpus cards were borrowed and returned, so they couldn't be re-captured live. The 50 Phase 0 photos are replayed on the desktop through the shipped photo-picker path instead (AC-6.2–AC-6.6, Goals, Problem Statement, Users and Context, Story 6). The tuning rounds' live captures on the iPhone are reported as the only live-alignment evidence, labelled as biased because the settings were tuned on those cards (new AC-6.8). AC-6.5's on-device recognition times come from the tuning rounds, and its download sizes from a load test on the iPhone. Story 5's evidence (retakes, skips, desktop replay) comes from the tuning runs. Nothing else changes; no FR changes |
 
 ---
 
@@ -22,16 +23,16 @@
 
 Collectors want to add a card by pointing a phone at it instead of searching by name. Phase 0 (spec 005, [research.md](../005-card-scanner-phase-0/research.md)) showed that the parts work: the self-hosted OCR engine is fast on the maintainer's iPhone (median 626 ms per photo, n=11), the trigram name index works within `schema.rb`, and a camera page can be tested headlessly. Accuracy is the problem. On hand-held photos cut at fixed positions, the right card was in the top 3 candidates for 26 of 50 photos, and the collector line identified the exact printing for 7 of 45. 19 of the 24 misses come from the fixed guide: the card drifted by about ±4% of the image, so the strips had to be tall, and they either clipped the name or filled up with art.
 
-The roadmap's real premise, that the user lines the card up with a guide they can see before the shutter, was never tested, because Phase 0 had no live camera. Phase 1 builds that live capture in the app, fixes the parser and matcher gaps Phase 0 found, and measures again on the same 50 cards. Only then does the maintainer decide whether to build the scan → confirm → add-to-collection flow (research.md §8, "a measurement gate between the capture step and the scan → confirm flow").
+The roadmap's real premise, that the user lines the card up with a guide they can see before the shutter, was never tested, because Phase 0 had no live camera. Phase 1 builds that live capture in the app, fixes the parser and matcher gaps Phase 0 found, and measures again. The 50 Phase 0 cards were borrowed and had to be returned, so they couldn't be re-captured live. The measured run replays their 50 photos through the shipped photo path instead. Live alignment is measured only on the tuning cards, whose captures informed the settings. Only then does the maintainer decide whether to build the scan → confirm → add-to-collection flow (research.md §8, "a measurement gate between the capture step and the scan → confirm flow").
 
 > **Inputs.** The scope follows research.md §8 (recommended Phase 1 scope) and §9 (roadmap assumptions it contradicted), not the original roadmap (`~/Downloads/card-scanner-research-and-roadmap.md`). The techniques chosen in Phase 0's Proposed ADRs are fixed inputs, the way the stack is: the OCR engine and its self-hosting ([ADR 0001](../../adr/0001-browser-ocr-engine-and-asset-hosting.md)), camera-path testing ([ADR 0002](../../adr/0002-camera-path-testing.md)) and the name index ([ADR 0003](../../adr/0003-card-name-index.md)). Phase 1's plan accepts or revises each ADR; it does not reopen the choice without new evidence.
 
 ## Goals
 
 - A signed-in collector can open a scanner page on their phone, see the live camera feed with a card-shaped guide over it, line up a card, capture it, and see what was read and the ranked candidate printings, all without any photo leaving their device.
-- The same 50 physical cards as Phase 0 are re-captured live through that page and scored with Phase 0's rate definitions, so the maintainer can compare the two directly and decide whether the scan → confirm flow (a future spec) is built.
+- The 50 Phase 0 photos are replayed through the shipped photo-picker path (guide placement, strips, OCR, parsing and matching) and scored with Phase 0's rate definitions, so the maintainer can compare the two directly. The tuning rounds' live captures are reported alongside them as the only live-alignment evidence, labelled as biased. Together they inform the decision on whether the scan → confirm flow (a future spec) is built.
 - The findings separate the gain from live alignment from the gain from parser and matcher fixes, by re-scoring Phase 0's recorded OCR text with Phase 1's matcher.
-- Captured strips from the measured run are kept on the maintainer's machine, so later tuning can replay them without re-scanning 50 cards.
+- Captured strips from the tuning runs and the photo replay are kept on the maintainer's machine, so later tuning can replay them without capturing again.
 - Phase 0's Proposed ADRs are accepted or revised, and the scanner's HTTPS requirement is documented for development and for self-hosters.
 
 ## Non-Goals
@@ -47,10 +48,10 @@ The roadmap's real premise, that the user lines the card up with a guide they ca
 
 ## Users and Context
 
-**Primary users:** The maintainer, who re-captures the 50 corpus cards, runs the on-device checks and makes the go/no-go call on the confirm flow. Signed-in collectors on the maintainer's instance can also use the page by URL.
+**Primary users:** The maintainer, who captures the tuning cards live, runs the on-device checks and makes the go/no-go call on the confirm flow. Signed-in collectors on the maintainer's instance can also use the page by URL.
 **Secondary users:** Self-hosters, who need HTTPS for the scanner to use the camera and who serve the OCR engine files themselves. Claude Code sessions that write the next spec from the findings.
 **Usage context:** A collector at a table, holding a card under their phone. On the iPhone that means a WebKit browser (the maintainer uses Brave, which is WebKit on iOS), reaching the app over HTTPS. In development, the app runs on the maintainer's machine and the phone reaches it over the local network.
-**User mental model:** "Point my phone at the card, line it up with the box, tap, and it tells me which card it is." For the maintainer: "Show me whether lining the card up live fixed the accuracy problem, on the same cards as last time."
+**User mental model:** "Point my phone at the card, line it up with the box, tap, and it tells me which card it is." For the maintainer: "Show me whether lining the card up live, and the new matcher, fixed the accuracy problem."
 
 ## User Stories
 
@@ -132,7 +133,7 @@ The roadmap's real premise, that the user lines the card up with a guide they ca
 
 **As the** maintainer
 **I want** each live capture of a corpus card recorded against its known identity, with the strips kept on my machine
-**So that** I can score the live run exactly, and replay it later without re-scanning 50 cards
+**So that** I can score each run exactly, and replay it later without capturing again
 
 **Acceptance criteria:**
 
@@ -146,18 +147,19 @@ The roadmap's real premise, that the user lines the card up with a guide they ca
 ### Story 6: Re-measure findings
 
 **As the** maintainer
-**I want** the live run scored against Phase 0 with the same definitions
+**I want** the photo replay and the live tuning captures scored against Phase 0 with the same definitions
 **So that** I can decide whether to build the scan → confirm flow
 
 **Acceptance criteria:**
 
 - [ ] **AC-6.1** Given the strip geometry, OCR settings and matcher settings for the measured run When they are tuned Then the tuning uses only captures of cards outside the 50-card corpus, the settings are committed before the measured run starts, and the findings name the commit.
-- [ ] **AC-6.2** Given the measured live run of the 50 corpus cards When the findings are written Then they report, overall, per frame era, for foil vs non-foil and for borderless or showcase vs regular frames, each with its sample size, against `spec/fixtures/card_scanner/ground_truth.json` (card name, front-face name, era, foil, frame treatment per manifest `file`), using research.md §3 and §5's definitions: name read (the raw name-strip text, normalised, against the front-face name and against the catalog name); top 1 and top 3 reported twice, once over the name candidates alone (Phase 0's definition, comparable with it) and once over the page's final ranking with any collector-line match first (what the collector sees); and, over the M15–ONE and MOM+ cards only, exact printing from the collector line, with none and ambiguous counted separately.
-- [ ] **AC-6.3** Given Phase 0's committed OCR text (`spec/fixtures/card_scanner/ocr_results.json`) When it is re-scored with Phase 1's parser and matcher Then the findings report the same rates for it, including both top-N rankings, so each rate appears three times: Phase 0, Phase 0's text with Phase 1's matcher, and the Phase 1 live run.
-- [ ] **AC-6.4** Given the measured live run When the findings are written Then every card whose correct card is not in the top 3 is listed with its strip text and likely cause (glare, blur, misalignment, unusual frame, parser miss, matcher miss, or catalog gap).
-- [ ] **AC-6.5** Given the measured live run on the maintainer's iPhone When the findings are written Then they report the median and slowest recognition time per capture, the median and 95th-percentile app-side candidate lookup time, the bytes downloaded on a cold load and a warm load of the scanner page, the device and browser used, and the result of each manual device check (rear camera opened, camera indicator off after leaving, torch lights, plain-HTTP fallback shown).
-- [ ] **AC-6.6** Given the measured live run When it ends Then its strip text and parsed results are committed as text fixtures alongside Phase 0's, keyed by manifest `file`, in Phase 0's format extended with the new fields (recognition time, user agent, capture time) under a higher `format_version`; no image, crop or photo is committed.
+- [ ] **AC-6.2** Given the measured run, a replay of the 50 Phase 0 corpus photos on the desktop through the shipped photo-picker path (the guide placed on each photo as AC-4.2 describes, the same strips, recognition, parsing and matching, with captures stored as in measurement mode), When the findings are written Then they report, overall, per frame era, for foil vs non-foil and for borderless or showcase vs regular frames, each with its sample size, against `spec/fixtures/card_scanner/ground_truth.json` (card name, front-face name, era, foil, frame treatment per manifest `file`), using research.md §3 and §5's definitions: name read (the raw name-strip text, normalised, against the front-face name and against the catalog name); top 1 and top 3 reported twice, once over the name candidates alone (Phase 0's definition, comparable with it) and once over the page's final ranking with any collector-line match first (what the collector sees); and, over the M15–ONE and MOM+ cards only, exact printing from the collector line, with none and ambiguous counted separately.
+- [ ] **AC-6.3** Given Phase 0's committed OCR text (`spec/fixtures/card_scanner/ocr_results.json`) When it is re-scored with Phase 1's parser and matcher Then the findings report the same rates for it, including both top-N rankings, so each rate appears three times: Phase 0, Phase 0's text with Phase 1's matcher, and the Phase 1 photo replay.
+- [ ] **AC-6.4** Given the photo replay and the final tuning round's live captures When the findings are written Then, separately for each, every card whose correct card is not in the top 3 is listed with its strip text and likely cause (glare, blur, misalignment, unusual frame, parser miss, matcher miss, or catalog gap).
+- [ ] **AC-6.5** Given the tuning rounds' live captures on the maintainer's iPhone, the photo replay, and a cold and a warm load of the scanner page on the iPhone When the findings are written Then they report the median and slowest on-device recognition time per capture (from the tuning rounds), the median and 95th-percentile app-side candidate lookup time (from the photo replay), the bytes downloaded on the cold load and on the warm load, the device and browser used, and the result of each manual device check (rear camera opened, camera indicator off after leaving, torch lights, plain-HTTP fallback shown).
+- [ ] **AC-6.6** Given the photo replay and the final tuning round When they end Then their strip text and parsed results are committed as text fixtures alongside Phase 0's, keyed by manifest `file`, in Phase 0's format extended with the new fields (recognition time, user agent, capture time) under a higher `format_version`; no image, crop or photo is committed.
 - [ ] **AC-6.7** Given the findings are complete When they are written Then they end with options for the maintainer (build the confirm flow, bring card detection forward, or stop) and set no pass threshold; the next spec is not written until the maintainer rules.
+- [ ] **AC-6.8** Given the live captures of every tuning round When the findings are written Then they report each round's rates with the definitions of AC-6.2 (each with its sample size), what changed between rounds, and a plain statement that these cards also chose the settings, so their rates are biased upwards and are the only live-alignment evidence in Phase 1.
 
 ### Story 7: HTTPS and documentation
 
@@ -240,7 +242,7 @@ The roadmap's real premise, that the user lines the card up with a guide they ca
 
 ### Performance
 
-- The findings report on-device recognition time per capture (median and slowest over the measured run) and app-side candidate lookup time (median and 95th percentile). Phase 0's reference is a median of 626 ms per photo (n=11) and a name-query 95th percentile of 114 ms (n=50); a slower result is reported against these, not hidden.
+- The findings report on-device recognition time per capture (median and slowest over the tuning rounds' live captures) and app-side candidate lookup time (median and 95th percentile). Phase 0's reference is a median of 626 ms per photo (n=11) and a name-query 95th percentile of 114 ms (n=50); a slower result is reported against these, not hidden.
 - A cold load of the scanner page downloads one core build, not all of them, and a warm load re-downloads no engine file.
 
 ### Security
@@ -285,7 +287,11 @@ The roadmap's real premise, that the user lines the card up with a guide they ca
 None. Decided while specifying (2026-09-30, maintainer):
 
 - Scope: capture and re-measure only; the confirm flow is a later spec gated on the findings.
-- The page is in the app, signed-in, unlinked; the same 50 physical cards are re-captured; measurement mode sends text and strip images (no full frames) to the development machine; the page shows read text and candidates; no pass threshold; extras are the photo-picker fallback and a torch toggle; the development HTTPS mechanism is left to the plan.
+- The page is in the app, signed-in, unlinked; the same 50 physical cards were to be re-captured (superseded on 2026-10-01, below); measurement mode sends text and strip images (no full frames) to the development machine; the page shows read text and candidates; no pass threshold; extras are the photo-picker fallback and a torch toggle; the development HTTPS mechanism is left to the plan.
+
+Decided during execution (2026-10-01, maintainer):
+
+- The 50 corpus cards were borrowed and returned, so the measured run replays their Phase 0 photos through the photo-picker path instead of re-capturing them live. The tuning rounds' live captures are reported as the only live-alignment evidence, labelled as biased. Download sizes come from a load test on the iPhone.
 
 ## Out of Scope (Future Considerations)
 

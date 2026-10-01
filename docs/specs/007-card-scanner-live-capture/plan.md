@@ -1,9 +1,10 @@
 # Implementation Plan: Card Scanner Phase 1 — Live Capture and Re-measure
 
-**Spec:** docs/specs/007-card-scanner-live-capture/spec.md (v1.1.1, Approved)
+**Spec:** docs/specs/007-card-scanner-live-capture/spec.md (v2.0.0, Approved)
 **Decisions:** docs/adr/0001-browser-ocr-engine-and-asset-hosting.md, 0002-camera-path-testing.md, 0003-card-name-index.md (Proposed → Accepted in Phase 0, AC-7.4)
 **Created:** 2026-09-30
 **Revised:** 2026-09-30, after the plan review (Fable): import map–safe and README-anchored assertions, a `camera:stopped` event and a feed-ready wait against a shutter race, geometry loaded through a nonce'd module script in the synthetic-card helper, rubocop-rspec fixes, Brakeman notes for both `send_file`s, no bare `c-section`, and an orientation check on the iPhone
+**Revised:** 2026-10-01, during execution (spec v2.0.0): Phase 11 replays the 50 Phase 0 photos through the photo path and reports the tuning rounds' live captures as biased live evidence, because the corpus cards were returned.
 **Revised:** 2026-10-01, during execution: dev HTTPS by a self-signed certificate (bin/dev-certificate) and Puma's ssl:// bind, after the maintainer's Cloudflare tunnel returned 502; the spec is unchanged (AC-7.1 names no mechanism)
 
 ## Context
@@ -3349,45 +3350,52 @@ Before the measured run, the strip boxes, page segmentation and matcher constant
 
 ---
 
-## Phase 11: The measured run and the findings
+## Phase 11: The photo replay, the live tuning evidence and the findings
 
-**Implements:** Story 6, AC-5.4–AC-5.6 (evidence) | **Satisfies:** AC-5.4, AC-5.5, AC-5.6, AC-6.2, AC-6.3, AC-6.4, AC-6.5, AC-6.6, AC-6.7, NFR Performance
-**Files:** `docs/specs/007-card-scanner-live-capture/research.md`, `spec/fixtures/card_scanner/phase1_ocr_results.json`, `spec/fixtures/card_scanner/phase1_name_matches.json`
-**Interfaces:** Consumes: the frozen settings, measurement mode, `script/scanner/replay.rb` and `scanner:findings`. Produces: the findings and the text fixtures that the maintainer's go/no-go on the confirm flow rests on.
+**Implements:** Story 6 (spec v2.0.0), AC-5.4–AC-5.6 (evidence) | **Satisfies:** AC-5.4, AC-5.5, AC-5.6, AC-6.2, AC-6.3, AC-6.4, AC-6.5, AC-6.6, AC-6.7, AC-6.8, NFR Performance
+**Files:** `config/routes.rb`, `app/models/scanner/measurement_run.rb` (`#photo_path`), `app/controllers/scanner/measurements/photos_controller.rb`, `script/scanner/photo_run.rb`, `lib/collector/scanner_findings/report.rb` (`label:`, `prefix:`), `lib/tasks/scanner.rake` (`RUN_LABEL`, `FIXTURES_PREFIX`), `README.md`, specs for each, `docs/specs/007-card-scanner-live-capture/research.md`, `spec/fixtures/card_scanner/phase1_photos_*.json`, `spec/fixtures/card_scanner/phase1_tuning4_*.json`
+**Interfaces:** Consumes: the frozen settings (`c68ffbd`), measurement mode, the photo picker path (`card-reader#pick`), `script/scanner/replay.rb` and `scanner:findings`. Produces: the findings and the text fixtures that the maintainer's go/no-go on the confirm flow rests on.
 
-- [ ] Start the dev server for the measured run over HTTPS, as a background task: run `bin/dev-certificate`, then `COLLECTOR_REQUEST_LOG=1 bin/dev -b "ssl://0.0.0.0:3578?key=$HOME/.local/share/collector-dev-https/dev.key&cert=$HOME/.local/share/collector-dev-https/dev.crt"`. That uses the default manifest `~/card-scanner-corpus/manifest.csv` and the run directory `~/card-scanner-corpus/runs/live`. Move `log/requests.jsonl` aside first, so the log holds only this run.
-- [ ] **Checkpoint (maintainer):** on the iPhone, in the browser used in Phase 0 (Brave, WebKit), work through these steps:
-  1. Clear the instance's website data, then open `https://192.168.1.76:3578/scanner/measurement`. This is the cold load.
-  2. Wait for "Ready", reload the page, and wait for "Ready" again. This is the warm load.
-  3. Capture the 50 corpus cards in manifest order, one deliberate shot each. Use **Skip** for any card not to hand; retakes are kept but don't count (AC-5.4, AC-5.5).
-  4. Say when done, and give the browser and iOS version.
-- [ ] Replay the stored strips twice on the desktop (AC-5.6): `bundle exec ruby script/scanner/replay.rb desktop-a && bundle exec ruby script/scanner/replay.rb desktop-b`. Expect: `Replayed N captures as desktop-a`, then the same for `desktop-b`, where N is the number of measured captures.
-- [ ] Measure the loads from the request log (AC-6.5, NFR Performance):
+> **Revised 2026-10-01 (spec v2.0.0).** The 50 corpus cards were borrowed and returned, so they can't be re-captured live. The measured run replays the 50 Phase 0 photos on the desktop through the shipped photo-picker path, storing each capture through measurement mode. The four tuning rounds' live iPhone captures are the only live-alignment evidence and are reported as biased (AC-6.8). The code in this phase is specified by interface; implementer subagents write it test-first.
+
+### 11a: The photo replay harness (code, TDD)
+
+- [ ] `Scanner::MeasurementRun#photo_path(row)` → `<manifest's folder>/<row.file>` when that file exists, else nil.
+- [ ] `GET /scanner/measurement/photos/:id` (`Scanner::Measurements::PhotosController#show`, `constraints: { id: /[\w.-]+/ }`), in the shape of `StripsController`: `MeasurementMode`, `allow_unauthenticated_access`, `require_local_request`, a manifest row by `file`, `send_file` with the photo's image type, `disposition: :inline`; 404 for an unknown row, a missing file, a non-local request, or measurement mode off. Request specs cover each case. Brakeman: same allowlist justification as the strips (manifest row matching `FILE_NAME`).
+- [ ] `script/scanner/photo_run.rb`: headless Firefox (accept insecure certificates; `SCANNER_URL`, default `http://127.0.0.1:<this checkout's port>`), signs in with `SCANNER_EMAIL` / `SCANNER_PASSWORD`, opens `/scanner/measurement`, waits for the photo picker to be enabled (the engine is ready), and then, for each manifest row the panel selects next: fetches `/scanner/measurement/photos/<file>` in the page, hands it to the real picker (`DataTransfer` → `change`), and waits until the panel reports `Stored <file>` (or an alert), up to 120 s per photo. Stops when no row is pending; prints the count stored. No `sleep`; poll the DOM.
+- [ ] `Collector::ScannerFindings::Report.new(run:, ground_truth:, output:, label: "Phase 1 live", prefix: "phase1")`: `label` names the third column; `write_fixtures!` writes `<prefix>_ocr_results.json` and `<prefix>_name_matches.json`, with `run` set from the label. `scanner:findings` passes `RUN_LABEL` and `FIXTURES_PREFIX` from the environment. Specs: label in the table headers, prefix in the fixture names.
+- [ ] README (measurement mode paragraph): one sentence on `script/scanner/photo_run.rb` for replaying a folder of photos through the photo path.
+- [ ] Commits: `feat(scanner): replay corpus photos through the photo picker in measurement mode` and `feat(scanner): name the scored run and its fixtures`.
+
+### 11b: The runs and the findings
+
+- [ ] Create a local replay user once: `COLLECTOR_PASSWORD=<random> bin/rails "collector:user[photo-replay@localhost]"`.
+- [ ] Start a local server (plain HTTP on 127.0.0.1, a secure context) as a background task: `COLLECTOR_SCANNER_RUN_DIR=$HOME/card-scanner-corpus/runs/photos bin/rails server -b 127.0.0.1 -p 3590` (default corpus manifest). Run `SCANNER_URL=http://127.0.0.1:3590 SCANNER_EMAIL=photo-replay@localhost SCANNER_PASSWORD=<same> bundle exec ruby script/scanner/photo_run.rb`. Expect: `Stored 50 captures`. Stop the server.
+- [ ] Score and write the fixtures (AC-6.2–AC-6.4, AC-6.6): `COLLECTOR_SCANNER_RUN_DIR=$HOME/card-scanner-corpus/runs/photos RUN_LABEL="Phase 1 photo replay" FIXTURES=1 FIXTURES_PREFIX=phase1_photos bin/rails scanner:findings > tmp/findings-photos.md`, and for the final tuning round: `COLLECTOR_SCANNER_MANIFEST=$HOME/card-scanner-corpus/tuning/manifest.csv COLLECTOR_SCANNER_RUN_DIR=$HOME/card-scanner-corpus/runs/tuning-4 GROUND_TRUTH=$HOME/card-scanner-corpus/tuning/ground_truth.json RUN_LABEL="Tuning round 4 (live)" FIXTURES=1 FIXTURES_PREFIX=phase1_tuning4 bin/rails scanner:findings > tmp/findings-tuning4.md`. Score tuning rounds 1–3 the same way without `FIXTURES` (AC-6.8).
+- [ ] View each photo-replay miss's strips (`runs/photos/<file>/capture-001-*.png`) and each tuning-4 miss's strips with the Read tool, and fill in the likely cause (AC-6.4).
+- [ ] **Checkpoint (maintainer), load test (AC-6.5):** start the HTTPS server with `COLLECTOR_REQUEST_LOG=1` and a fresh `log/requests.jsonl`. On the iPhone in Brave: clear the website data for `192.168.1.76`, open `https://192.168.1.76:3578/scanner`, sign in, wait for "Ready" (cold); reload and wait for "Ready" (warm). Measure with the request-log snippet below (path `/scanner`). Expect one `core/` build on the cold load and no engine file re-downloaded on the warm load.
 
   ```sh
   ruby -rjson -e 'rows = File.readlines("log/requests.jsonl").map { JSON.parse(_1) }.select { _1["user_agent"].to_s.include?("iPhone") }
-    loads = rows.each_index.select { |i| rows[i]["path"] == "/scanner/measurement" }
-    loads.first(2).each_with_index { |start, n| stop = loads[n + 1] || rows.size; part = rows[start...stop].reject { _1["path"].start_with?("/scanner/measurement/captures", "/scanner/readings") }
+    loads = rows.each_index.select { |i| rows[i]["path"] == "/scanner" }
+    loads.first(2).each_with_index { |start, n| stop = loads[n + 1] || rows.size; part = rows[start...stop].reject { _1["path"].start_with?("/scanner/readings") }
       puts "#{%w[cold warm][n]}: #{part.sum { _1["bytes"] }} bytes in #{part.size} requests; engine: #{part.select { _1["path"].start_with?("/ocr/") }.map { "#{_1["path"]} #{_1["status"]}" }.join(", ")}" }'
   ```
-
-  Expect: the cold load fetches one `core/` build, not all three; the warm load re-downloads no engine file (each answers `304`, or isn't requested).
-- [ ] Score and write the fixtures: `FIXTURES=1 bin/rails scanner:findings > tmp/findings.md`. Expect: `spec/fixtures/card_scanner/phase1_ocr_results.json` and `phase1_name_matches.json` are written (format_version 2, text only).
-- [ ] For each miss in `tmp/findings.md`, view its two strips with the Read tool (`~/card-scanner-corpus/runs/live/<file>/capture-001-*.png`). Fill in the likely cause: glare, blur, misalignment, unusual frame, parser miss, matcher miss or catalog gap (AC-6.4).
-- [ ] Write `docs/specs/007-card-scanner-live-capture/research.md`, with every rate carrying its sample size and anything not measured labelled as such:
-  1. **Summary.**
-  2. **Method and apparatus:** the settings commit SHA (AC-6.1), the tuning rounds and cards, the device and browser, the capture protocol (one deliberate shot per card, the first counts; AC-5.4), and the strip geometry.
-  3. **Rates (AC-6.2, AC-6.3):** the three-column tables from `tmp/findings.md`. The name-only rows are comparable with Phase 0. The final-ranking rows add the collector-line match the collector sees. Name which column shows the gain from live alignment and which shows the gain from the parser and matcher fixes.
-  4. **Misses (AC-6.4):** the table with its causes.
-  5. **Timings and downloads (AC-6.5, NFR Performance):** the recognition median and slowest; the lookup median and p95, set against Phase 0's 626 ms and 114 ms; and the cold and warm bytes with their request counts.
-  6. **Device checks (AC-6.5):** each manual check from Phase 10 and this phase, with its result.
-  7. **Replays (AC-5.6):** the desktop-a and desktop-b differences from the device text, and between each other.
-  8. **Coverage:** captured, skipped (listed) and not captured, plus retakes (AC-5.5).
-  9. **Fixtures (AC-6.6):** the paths and the format_version 2 fields (`ms`, `user_agent`, `captured_at`, `parsed`, `lookup`; and `lookup_ms`, `name_candidates`, `final_candidates`, `query`), keyed by manifest `file`. No images are committed.
-  10. **Options for the maintainer (AC-6.7):** build the confirm flow, bring card detection forward, or stop. Each comes with what the evidence says for and against it. There is no pass threshold, and the next spec waits for the maintainer's ruling.
-- [ ] Run: `git status --short`. Expect: only the two fixtures and `research.md` are new. There is no `.png`, `.jpeg` or `vendor/ocr` path.
-- [ ] Commit: `test(scanner): add the measured run's text fixtures` (the two JSON files).
-- [ ] Commit: `docs(spec): record the Phase 1 re-measure findings`
+- [ ] Write `docs/specs/007-card-scanner-live-capture/research.md` (every rate with its sample size; anything not measured labelled so):
+  1. **Summary.** Lead with what was and wasn't measured: live alignment only on the 12 tuning cards (biased), the 50 corpus cards only through their Phase 0 photos.
+  2. **Method and apparatus:** settings commit `c68ffbd` (AC-6.1); tuning cards and rounds; device and browser; capture protocol (AC-5.4); the photo replay (desktop headless Firefox, photo path, the photos' framing: no guide, cards 69–77% of the frame height against the guide's 80%).
+  3. **Rates (AC-6.2, AC-6.3):** the three-column tables (Phase 0, Phase 0 text with Phase 1's matcher, Phase 1 photo replay); which column shows the matcher's gain and what the photo replay does and doesn't show.
+  4. **Live tuning captures (AC-6.8):** each round's rates, what changed between rounds (commits `ca27148`, `7d4f09d`, `ec71cd9`, `c68ffbd`), the desktop replay experiments, and the bias statement.
+  5. **Misses (AC-6.4):** photo replay and tuning round 4, separately, with causes.
+  6. **Timings and downloads (AC-6.5, NFR Performance):** on-device recognition (median, slowest) over the tuning rounds; lookup median and p95 from the photo replay, against Phase 0's 626 ms and 114 ms; cold and warm bytes and requests.
+  7. **Device checks (AC-6.5):** rear camera ✓, indicator off ✓, torch ✓, photo orientation ✓, plain-HTTP fallback ✓ (Phase 10).
+  8. **Replays (AC-5.6):** desktop replays of the tuning strips matched the device's text exactly (rounds 2 and 3).
+  9. **Coverage (AC-5.4, AC-5.5):** per run: captured, skipped (none), retakes (tuning round 4: 1).
+  10. **Findings for the next spec:** a misread collector line can match a real, different printing and outrank the right name match (AC-3.2, round 3's T003 → AER 184); faint foil collector lines; one-substitution set-code correction rejected.
+  11. **Fixtures (AC-6.6):** paths, format_version 2 fields, keyed by manifest `file`; no images.
+  12. **Options for the maintainer (AC-6.7):** build the confirm flow, bring card detection forward, or stop; no threshold.
+- [ ] `git status --short`: only the fixtures, `research.md` and Phase 11a's code are new; no `.png`, `.jpeg` or `vendor/ocr` path.
+- [ ] Commits: `test(scanner): add the photo replay and tuning round 4 text fixtures`, then `docs(spec): record the Phase 1 findings`.
 
 ---
 
