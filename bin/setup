@@ -20,6 +20,9 @@ FileUtils.chdir APP_ROOT do
     puts "== Installing dependencies =="
     system("bundle check") || system!("bundle install")
 
+    puts "\n== Installing the OCR engine =="
+    system! "bin/fetch-ocr-engine"
+
     puts "\n== Configuring #{checkout.checkout_label} =="
     (checkout.copy_included_files + checkout.enable_worktree_hooks).each { |line| puts line }
 

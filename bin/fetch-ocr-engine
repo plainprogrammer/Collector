@@ -1,0 +1,8 @@
+#!/usr/bin/env ruby
+# Installs the pinned OCR engine into vendor/ocr/ (spec 007 AC-7.3, ADR 0001). Idempotent: files already
+# present with the right checksum aren't downloaded again. Needs network access to registry.npmjs.org.
+require_relative "../lib/collector/ocr_engine"
+
+engine = Collector::OcrEngine
+written = engine.install!
+puts(written.empty? ? "OCR engine #{engine::VERSION} already installed" : "Installed OCR engine #{engine::VERSION}: #{written.join(", ")}")
