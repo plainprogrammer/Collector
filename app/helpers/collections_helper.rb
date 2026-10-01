@@ -23,4 +23,9 @@ module CollectionsHelper
       safe_join([ tag.span(number_with_delimiter(state.copies)), " of #{number_with_delimiter(matching)} selected" ])
     end
   end
+
+  # Why a change was refused at the lot cap (spec 006 AC-6.4, AC-7.5).
+  def over_cap_message(prefix, lot)
+    "#{prefix} #{lot.entry.name} (#{set_number(lot.entry)}) would have more than #{number_with_delimiter(Lot::MAX_QUANTITY)} copies in one lot."
+  end
 end

@@ -104,3 +104,7 @@
 
 /* ---------- Bulk mode (spec 006): the checkbox column, as narrow as its box ---------- */
 .c-table th.c-table__select, .c-table td.c-table__select { width:1%; }
+
+/* ---------- Choice page (spec 006): one choice from a short list, as radios in a fieldset ---------- */
+.c-choices { display:flex; flex-direction:column; gap:var(--space-2); margin:0; padding:0; border:0; }
+.c-choices legend { margin-bottom:var(--space-2); padding:0; }

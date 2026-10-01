@@ -23,6 +23,14 @@ class BulkSelection < ApplicationRecord
   def copies = lots.sum(:quantity)
   def everything? = all_matching? && marks.none?
 
+  # Selects lots that hold changed copies after Set condition, e.g. a merged lot (AC-6.5).
+  def include!(lot_ids)
+    all_matching? ? marks.where(lot_id: lot_ids).delete_all : mark!(lot_ids - marks.pluck(:lot_id))
+  end
+
+  # The selected lots' collectible vocabulary; a selection spans one collectible (spec 006 Non-Goals).
+  def vocabulary = Catalog.collecting_for(lots.pick(Catalog::Entry.arel_table[:collectible_type]) || Catalog.collecting.keys.first)
+
   # Empty again, under a filter and sort: Edit many, a changed filter or sort, a removal (FR-4, AC-7.3).
   # The marks are this selection's own rows, so deleting them in SQL skips nothing.
   def restart!(query:, sort:)

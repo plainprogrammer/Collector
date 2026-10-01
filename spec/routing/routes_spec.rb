@@ -50,4 +50,9 @@ RSpec.describe "Routes", type: :routing do
     expect(post: "/collection/selection").to route_to("collections/selections#create")
     expect(patch: "/collection/selection").to route_to("collections/selections#update")
   end
+
+  it "routes Set condition", :aggregate_failures do
+    expect(get: "/collection/condition_change/new").to route_to("collections/condition_changes#new")
+    expect(post: "/collection/condition_change").to route_to("collections/condition_changes#create")
+  end
 end

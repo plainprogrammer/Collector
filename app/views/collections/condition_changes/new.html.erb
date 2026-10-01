@@ -1,0 +1,19 @@
+<% content_for :title, "Set condition · Collector" %>
+<%= render "layouts/appbar", section: :collection, detail: true, back_path: @bulk_path %>
+<main class="c-main c-page">
+  <div class="c-pagehead"><div><h1 class="c-pagehead__title">Set the condition of <%= items_count(@copies) %></h1></div></div>
+  <%= form_with url: collection_condition_change_path(page: params[:page]), class: "c-form" do |form| %>
+    <fieldset class="c-choices">
+      <legend class="c-field__label">Condition</legend>
+      <% @vocabulary.conditions.each do |value, (label, short)| %>
+        <label class="c-check"><%= radio_button_tag :condition, value, @condition == value, required: true %><%= label %> (<%= short %>)</label>
+      <% end %>
+      <label class="c-check"><%= radio_button_tag :condition, "", @condition == "" %>Not specified</label>
+    </fieldset>
+    <div class="c-form__actions">
+      <%= form.submit "Apply", class: "c-btn c-btn--primary" %>
+      <%= link_to "Cancel", @bulk_path, class: "c-btn c-btn--secondary" %>
+    </div>
+  <% end %>
+</main>
+<%= render "layouts/tabbar", section: :collection %>

@@ -78,4 +78,21 @@ RSpec.describe BulkSelection, type: :model do
     expect(connection.foreign_keys("bulk_selections").find { |key| key.to_table == "sessions" }.on_delete).to eq(:cascade)
     expect(connection.foreign_keys("bulk_selection_marks").find { |key| key.to_table == "lots" }.on_delete).to eq(:cascade)
   end
+
+  it "selects lots added later, in either mode", :aggregate_failures do
+    a = own("Card A")
+    b = own("Card B")
+    selection.include!([ a.id ])
+    expect(selection.lots).to eq([ a ])
+    tick([ a ], [], header_ticked: true)
+    tick([ a, b ], [], header_rendered: true, header_ticked: true)
+    selection.include!([ b.id ])
+    expect(selection.lots).to eq([ b ])
+  end
+
+  it "uses the vocabulary of its lots' collectible" do
+    own
+    selection.include!(Lot.ids)
+    expect(selection.vocabulary).to eq(MTG::Collecting)
+  end
 end
