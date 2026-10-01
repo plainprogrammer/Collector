@@ -1,2 +1,11 @@
-<%# locals: (message:, alert: false) %>
-<p class="c-status__message<%= " c-status__message--alert" if alert %>"><%= message %></p>
+<%# locals: (message:, alert: false, undo: nil) %>
+<% if undo %>
+  <%# After a bulk removal: the message and its one-time Undo, which returns to this page (spec 006 AC-7.3, AC-7.4). %>
+  <div class="c-status__message c-status__message--action">
+    <span><%= message %></span>
+    <%= button_to "Undo", collection_bulk_removal_undo_path(undo), params: { return_to: request.fullpath },
+          class: "c-btn c-btn--secondary c-btn--sm", form: { class: "c-status__action", data: { turbo_frame: "_top" } } %>
+  </div>
+<% else %>
+  <p class="c-status__message<%= " c-status__message--alert" if alert %>"><%= message %></p>
+<% end %>

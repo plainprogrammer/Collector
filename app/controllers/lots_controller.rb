@@ -35,6 +35,7 @@ class LotsController < ApplicationController
 
   def destroy
     @lot.destroy!
+    BulkRemoval.supersede!(Current.session)
     redirect_to lot_return_path(@lot.entry), status: :see_other,
       notice: "Removed #{@lot.quantity} × #{@lot.entry.name} (#{helpers.set_number(@lot.entry)}) from your collection."
   end

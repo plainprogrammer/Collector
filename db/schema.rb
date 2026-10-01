@@ -10,10 +10,22 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_30_100002) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_30_100003) do
   create_table "accounts", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+  end
+
+  create_table "bulk_removals", force: :cascade do |t|
+    t.integer "session_id", null: false
+    t.integer "account_id", null: false
+    t.integer "copies", null: false
+    t.json "lots_data"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_bulk_removals_on_account_id"
+    t.index ["session_id"], name: "index_bulk_removals_on_session_id"
+    t.index ["session_id"], name: "index_bulk_removals_undoable_per_session", unique: true, where: "lots_data IS NOT NULL"
   end
 
   create_table "bulk_selection_marks", force: :cascade do |t|
@@ -177,6 +189,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_30_100002) do
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
   end
 
+  add_foreign_key "bulk_removals", "accounts", on_delete: :cascade
+  add_foreign_key "bulk_removals", "sessions", on_delete: :cascade
   add_foreign_key "bulk_selection_marks", "accounts", on_delete: :cascade
   add_foreign_key "bulk_selection_marks", "bulk_selections", on_delete: :cascade
   add_foreign_key "bulk_selection_marks", "lots", on_delete: :cascade
