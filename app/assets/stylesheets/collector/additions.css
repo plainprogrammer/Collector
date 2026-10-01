@@ -126,3 +126,26 @@
 .c-empty a { color:var(--brand); text-decoration:none; }
 .c-empty a:hover { text-decoration:underline; }
 .c-empty a:focus-visible { outline:2px solid var(--focus); outline-offset:2px; border-radius:var(--radius-sm); }
+
+/* ---------- Scanner (spec 007): live camera with the card guide, controls, what was read ---------- */
+.c-scanner { display:flex; flex-direction:column; gap:var(--space-4); max-width:480px; }
+.c-scanner__status { margin:0; font:400 15px/22px var(--font-sans); color:var(--ink); }
+.c-scanner__stage { position:relative; width:100%; aspect-ratio:3 / 4; overflow:hidden; background:var(--surface-sunken);
+  border:1px solid var(--line); border-radius:var(--radius-md); }
+.c-scanner [hidden] { display:none; } /* c-btn's display would otherwise show hidden controls */
+.c-scanner__video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+.c-scanner__guide { position:absolute; border:2px solid var(--brand); outline:2px dashed var(--on-brand); outline-offset:-6px;
+  border-radius:var(--radius-card) / calc(var(--radius-card) * 63 / 88); pointer-events:none; }
+.c-scanner__controls { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-2); }
+.c-scanner__shutter, .c-scanner__torch, .c-scanner__photo { min-height:44px; min-width:44px; }
+.c-scanner__shutter { flex:1 1 auto; }
+.c-scanner__photo:focus-within { outline:2px solid var(--focus); outline-offset:2px; }
+.c-scanner__unavailable, .c-scanner__failure { display:flex; flex-direction:column; align-items:flex-start; gap:var(--space-2); }
+.c-scanner__read { display:grid; grid-template-columns:max-content 1fr; gap:var(--space-1) var(--space-3); margin:0;
+  font:400 14px/20px var(--font-sans); }
+.c-scanner__read dt { color:var(--ink-muted); }
+.c-scanner__read dd { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; }
+.c-scanner__mono { font-family:var(--font-mono); }
+.c-scanner__result { display:flex; flex-direction:column; gap:var(--space-6); }
+.c-scanner__note { margin:var(--space-3) 0 0; font:400 14px/20px var(--font-sans); color:var(--ink-muted); }
+@media (prefers-reduced-motion: reduce) { .c-scanner * { transition:none; animation:none; } }
