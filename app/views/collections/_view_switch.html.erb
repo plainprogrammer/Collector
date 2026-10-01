@@ -1,0 +1,6 @@
+<%# locals: (view:) %>
+<div class="c-seg" role="group" aria-label="View">
+  <% { "grid" => "Grid", "table" => "Table" }.each do |value, label| %>
+    <%= button_tag type: "submit", form: "view-switch", name: "view", value:, "aria-pressed": (value == view).to_s do %><%= render "icons/#{value}" %><span class="c-seg__label"><%= label %></span><% end %>
+  <% end %>
+</div>
