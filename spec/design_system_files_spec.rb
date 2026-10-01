@@ -16,7 +16,8 @@ RSpec.describe "Design system files" do
 
   it "documents every new pattern and lists it in the README", :aggregate_failures do
     new_patterns = %w[StatusMessage Form AuthPage ConfirmPage SearchResults TileAdd FinishBadge FilterSelect Pager EmptyState
-      Details SingleStat MorePage AdminUsers TableActions SystemLogo]
+      Details SingleStat MorePage AdminUsers TableActions SystemLogo
+      SortHeader StatusAction BulkConfirmPage ChoicePage BulkForm ViewSwitchForm]
     readme = root.join("docs/design-system/README.md").read
     new_patterns.each do |name|
       expect(root.join("docs/design-system/components/#{name}.md")).to exist
