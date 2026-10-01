@@ -1,0 +1,28 @@
+{
+  "ignored_warnings": [
+    {
+      "warning_type": "File Access",
+      "warning_code": 16,
+      "fingerprint": "f757b64c9b5225a6314691ec79ddd1eeaad268aea8de2ef6915a29946cec137f",
+      "check_name": "SendFile",
+      "message": "Parameter value used in file name",
+      "file": "app/controllers/ocr_assets_controller.rb",
+      "line": 19,
+      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
+      "code": "send_file(::Collector::OcrEngine.path_for(params[:path]), :type => ::Collector::OcrEngine.content_type(::Collector::OcrEngine.path_for(params[:path])), :disposition => :inline)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "OcrAssetsController",
+        "method": "show"
+      },
+      "user_input": "params[:path]",
+      "confidence": "Weak",
+      "cwe_id": [
+        22
+      ],
+      "note": "The path never comes from the request: Collector::OcrEngine.path_for returns a path only for a key of the pinned FILES allowlist (six engine files under vendor/ocr/v7.0.0/) and nil for anything else, which the action answers with 404 before send_file (spec 007 AC-2.2)."
+    }
+  ],
+  "brakeman_version": "8.0.6"
+}

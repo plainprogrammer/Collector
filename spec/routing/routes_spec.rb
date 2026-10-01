@@ -61,4 +61,9 @@ RSpec.describe "Routes", type: :routing do
     expect(post: "/collection/bulk_removals").to route_to("collections/bulk_removals#create")
     expect(post: "/collection/bulk_removals/1/undo").to route_to("collections/bulk_removals/undos#create", bulk_removal_id: "1")
   end
+
+  it "routes the OCR engine's files by version and path" do
+    expect(get: "/ocr/v7.0.0/core/tesseract-core-lstm.wasm.js")
+      .to route_to("ocr_assets#show", version: "v7.0.0", path: "core/tesseract-core-lstm.wasm.js")
+  end
 end
