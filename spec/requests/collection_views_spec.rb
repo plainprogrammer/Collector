@@ -65,6 +65,14 @@ RSpec.describe "Collection views", type: :request do
     expect(user.reload.collection_view).to eq("grid")
   end
 
+  it "never saves a view from a Firefox or legacy prefetch", :aggregate_failures do
+    own
+    get collection_path(view: "table"), headers: { "X-Moz" => "prefetch" }
+    expect(user.reload.collection_view).to eq("grid")
+    get collection_path(view: "table"), headers: { "Purpose" => "prefetch" }
+    expect(user.reload.collection_view).to eq("grid")
+  end
+
   it "has no switch and no table on an empty collection, whatever the saved view", :aggregate_failures do
     user.update!(collection_view: "table")
     get collection_path

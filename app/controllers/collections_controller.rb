@@ -26,6 +26,6 @@ class CollectionsController < ApplicationController
     end
 
     def prefetch?
-      [ request.headers["Sec-Purpose"], request.headers["X-Sec-Purpose"] ].compact.any? { |purpose| purpose.include?("prefetch") }
+      %w[Sec-Purpose X-Sec-Purpose X-Moz Purpose].any? { |header| request.headers[header].to_s.include?("prefetch") }
     end
 end
