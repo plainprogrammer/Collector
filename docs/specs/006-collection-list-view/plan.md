@@ -47,6 +47,14 @@ Everything must work without scripting. Three Fable spec reviews shaped the spec
   - Esc calls `requestSubmit(Done)`. Its listener runs in the capture phase, so an open `<details>` menu is seen before the menu controller closes it.
 - **Merges (AC-6.3, AC-7.5):** `Lot::ConditionChange` groups the selected lots by target identity and checks the cap for every group before writing anything, so it's all or nothing. It names the first over-cap lot in the table's order. `BulkRemoval#undo!` does the same against existing lots, then calls `Lot.add!`.
 - **Row actions (AC-2.6):** the row menus link `edit_lot_path` and `new_lot_removal_path` with `from=collection&return_to=<table URL>`. `CardContext#lot_return_path` follows `return_to` only when `url_from` accepts it, and otherwise goes to the card page (004 AC-7.3).
+- **Plan review revisions (Fable, 2026-09-30):**
+  - `Sort.from_key` takes keys without a direction, including `""`.
+  - The Edit many form is really hidden (`html: { hidden: true }`), and buttons with no name use `name: nil`.
+  - Lot-id params are hardened against hash input, and page numbers are integers.
+  - Undo checks the cap with one query.
+  - The 360px checks run in the narrow frame.
+  - Over-long examples are split, and Phase 6 is three commits.
+  - Tests are added for other-session Undo (AC-7.6), the nearest page after a merge (AC-6.5), the confirmation's tab bar (AC-7.9) and in-place table filtering (AC-2.3).
 - **Migrations:** they're numbered `20260930100001`–`…003`, clear of the parallel 005 branch's numbering. Every one is additive and reversible.
 
 ## Global Constraints
@@ -207,6 +215,7 @@ The collection can be shown as a sortable per-lot table or as the grid, and the 
     it "round-trips through its key", :aggregate_failures do
       expect(described_class.from_key("condition-desc").to_params).to eq(sort: "condition", dir: "desc")
       expect(described_class.from_key("")).to be_default
+      expect(described_class.from_key("name").to_params).to eq(sort: "name", dir: "asc")
     end
   end
   ```
@@ -400,7 +409,10 @@ The collection can be shown as a sortable per-lot table or as the grid, and the 
     end
 
     # The form a bulk selection stores: "condition-desc", or "" for the default order.
-    def self.from_key(key) = parse(*key.to_s.split("-", 2))
+    def self.from_key(key)
+      column, direction = key.to_s.split("-", 2)
+      parse(column, direction)
+    end
 
     def self.default_order
       [ asc(entries[:name]), desc(entries[:released_on]), asc(sets[:code]), asc(entries[:number]), asc(entries[:language]),
@@ -678,7 +690,7 @@ In this phase the table is reached with `?view=table`; Phase 3 adds the switch a
     # A collection URL with its params in one form (spec 006): the view or bulk mode, the filter, the
     # table's sort and the page (left out on page 1).
     def collection_listing_path(query: nil, sort: nil, page: nil, bulk: nil, view: nil)
-      collection_path({ bulk:, view:, q: query.presence, page: (page if page.to_i > 1) }.merge(sort&.to_params || {}).compact)
+      collection_path({ bulk:, view:, q: query.presence, page: (page.to_i if page.to_i > 1) }.merge(sort&.to_params || {}).compact)
     end
 
     # A sortable column header (spec 006 AC-3.2): it states the order, and links to the next one.
@@ -1462,25 +1474,6 @@ In this phase the table is reached with `?view=table`; Phase 3 adds the switch a
     end
 
     describe "entering" do
-      it "offers Edit many in the filter bar and its narrow menu, from the grid and the table", :aggregate_failures do
-        own
-        [ collection_path, collection_path(view: "table") ].each do |path|
-          get path
-          expect(page_html.css(".c-filterbar button[form=edit-many]").map { |button| [ button.text, button["class"] ] }).to eq([
-            [ "Edit many", "c-btn c-btn--secondary c-btn--sm c-filterbar__bulk" ], [ "Edit many", "c-menu__item" ]
-          ])
-          form = page_html.at_css("turbo-frame#results form#edit-many")
-          expect([ form["method"], form["action"], form["data-turbo-frame"] ]).to eq([ "post", collection_selection_path, "_top" ])
-        end
-      end
-
-      it "carries the filter and sort into Edit many", :aggregate_failures do
-        own
-        get collection_path(view: "table", q: "bolt", sort: "price", dir: "desc")
-        fields = page_html.css("form#edit-many input[type=hidden]").to_h { |input| [ input["name"], input["value"] ] }
-        expect(fields.except("authenticity_token")).to eq("q" => "bolt", "sort" => "price", "dir" => "desc")
-      end
-
       it "opens the table in bulk mode with the same filter and sort and nothing selected", :aggregate_failures do
         bolt = own("Lightning Bolt", quantity: 3)
         own("Opt")
@@ -1586,24 +1579,36 @@ In this phase the table is reached with `?view=table`; Phase 3 adds the switch a
         expect(ticked).to eq([ first.id ])
       end
 
-      it "selects every matching lot from the header and keeps an untick as an exception", :aggregate_failures do
-        stub_const("CollectionTable::PER_PAGE", 1)
-        first = own("Bolt A", quantity: 2)
-        second = own("Bolt B", quantity: 3)
-        own("Opt")
-        start_bulk(q: "bolt")
-        submit_bulk(go: "filter", q: "bolt", shown: [ first ], all: true)
-        follow_redirect!
-        expect([ count_text, ticked, page_html.at_css("thead input[name=all]").key?("checked") ]).to eq([ "All 5 items selected", [ first.id ], true ])
-        submit_bulk(go: "filter", q: "bolt", shown: [ first ], all: true, all_rendered: true)
-        follow_redirect!
-        expect([ count_text, ticked, page_html.at_css("input[name=all_rendered]")["value"] ]).to eq([ "3 of 5 selected", [], "1" ])
-        submit_bulk(go: collection_path(bulk: 1, q: "bolt", page: 2), q: "bolt", shown: [ first ], all: true, all_rendered: true)
-        follow_redirect!
-        expect(ticked).to eq([ second.id ])
-        submit_bulk(go: "filter", q: "bolt", shown: [ second ], ticked: [ second ], all_rendered: true, page: 2)
-        follow_redirect!
-        expect(count_text).to eq("0 of 5 selected")
+      context "with every matching lot selected from the header" do
+        let!(:first) { own("Bolt A", quantity: 2) }
+        let!(:second) { own("Bolt B", quantity: 3) }
+
+        before do
+          stub_const("CollectionTable::PER_PAGE", 1)
+          own("Opt")
+          start_bulk(q: "bolt")
+          submit_bulk(go: "filter", q: "bolt", shown: [ first ], all: true)
+          follow_redirect!
+        end
+
+        it "selects lots on every page and says so" do
+          expect([ count_text, ticked, page_html.at_css("thead input[name=all]").key?("checked") ]).to eq([ "All 5 items selected", [ first.id ], true ])
+        end
+
+        it "keeps an untick as an exception across pages", :aggregate_failures do
+          submit_bulk(go: "filter", q: "bolt", shown: [ first ], all: true, all_rendered: true)
+          follow_redirect!
+          expect([ count_text, ticked, page_html.at_css("input[name=all_rendered]")["value"] ]).to eq([ "3 of 5 selected", [], "1" ])
+          submit_bulk(go: collection_path(bulk: 1, q: "bolt", page: 2), q: "bolt", shown: [ first ], all: true, all_rendered: true)
+          follow_redirect!
+          expect(ticked).to eq([ second.id ])
+        end
+
+        it "clears everything when the header is unticked, whatever the rows say" do
+          submit_bulk(go: "filter", q: "bolt", shown: [ first ], ticked: [ first ], all_rendered: true)
+          follow_redirect!
+          expect(count_text).to eq("0 of 5 selected")
+        end
       end
 
       it "clears the selection when the filter or sort changes", :aggregate_failures do
@@ -1636,6 +1641,13 @@ In this phase the table is reached with `?view=table`; Phase 3 adds the switch a
         expect(count_text).to eq("0 of 1 selected")
         get collection_path(bulk: 1)
         expect(ticked).to eq([ lot.id ])
+      end
+
+      it "treats malformed id lists as no ticks" do
+        own
+        start_bulk
+        patch collection_selection_path, params: { go: "filter", q: "", rendered_q: "", all_rendered: "0", shown_ids: { "a" => "1" }, ticked_ids: { "a" => "1" } }
+        expect(response).to have_http_status(:see_other)
       end
 
       it "ignores another account's lots and account or user values", :aggregate_failures do
@@ -1737,6 +1749,8 @@ In this phase the table is reached with `?view=table`; Phase 3 adds the switch a
       def selected_ids = @selected_ids ||= @selection ? @selection.lots.where(id: lot_ids).pluck(:id).to_set : Set.new
   end
   ```
+- [ ] Run: `bin/rspec spec/models/collection_table/selection_state_spec.rb` — expect PASS.
+- [ ] Commit: `feat(collection): show a stored bulk selection on the table`
 - [ ] Replace `app/controllers/concerns/collection_listing.rb`:
   ```ruby
   # Builds the collection page in its views (spec 004 Story 11, spec 006): the grid, the table, or the
@@ -1833,7 +1847,8 @@ In this phase the table is reached with `?view=table`; Phase 3 adds the switch a
     end
 
     private
-      def ids(key) = Array(params[key]).map(&:to_i)
+      # Lot ids from the form; anything that isn't a list of strings counts as none.
+      def ids(key) = Array(params[key]).grep(String).map(&:to_i)
 
       # Back to the saved view with the same filter and sort; the ticks are discarded (AC-4.5).
       def done(selection, query, sort)
@@ -1886,7 +1901,7 @@ In this phase the table is reached with `?view=table`; Phase 3 adds the switch a
     # A collection URL with its params in one form (spec 006): bulk mode or the view, the filter, the
     # table's sort and the page (left out on page 1).
     def collection_listing_path(query: nil, sort: nil, page: nil, bulk: nil, view: nil)
-      collection_path({ bulk:, view:, q: query.presence, page: (page if page.to_i > 1) }.merge(sort&.to_params || {}).compact)
+      collection_path({ bulk:, view:, q: query.presence, page: (page.to_i if page.to_i > 1) }.merge(sort&.to_params || {}).compact)
     end
 
     # A sortable column header (spec 006 AC-3.2): it states the order and leads to the next one. Outside
@@ -1916,42 +1931,12 @@ In this phase the table is reached with `?view=table`; Phase 3 adds the switch a
   <div class="c-seg" role="group" aria-label="View">
     <% { "grid" => "Grid", "table" => "Table" }.each do |value, label| %>
       <% if bulk %>
-        <%= button_tag type: "button", "aria-pressed": (value == "table").to_s, disabled: value == "grid" do %><%= render "icons/#{value}" %><span class="c-seg__label"><%= label %></span><% end %>
+        <%= button_tag type: "button", name: nil, "aria-pressed": (value == "table").to_s, disabled: value == "grid" do %><%= render "icons/#{value}" %><span class="c-seg__label"><%= label %></span><% end %>
       <% else %>
         <%= button_tag type: "submit", form: "view-switch", name: "view", value:, "aria-pressed": (value == view).to_s do %><%= render "icons/#{value}" %><span class="c-seg__label"><%= label %></span><% end %>
       <% end %>
     <% end %>
   </div>
-  ```
-- [ ] Replace `app/views/collections/_view_forms.html.erb`:
-  ```erb
-  <%# locals: (listing:, sort:) %>
-  <%# The forms the filter bar's view switch and Edit many submit (spec 006 FR-1, AC-4.2). They sit in the results frame, so they always carry the current filter. %>
-  <%= tag.form id: "view-switch", action: collection_path, method: "get", hidden: true, data: { turbo_frame: "_top" } do %>
-    <% if listing.query.present? %><%= hidden_field_tag :q, listing.query, id: nil %><% end %>
-    <% sort.to_params.each do |name, value| %><%= hidden_field_tag name, value, id: nil %><% end %>
-  <% end %>
-  <%= form_with url: collection_selection_path, method: :post, id: "edit-many", hidden: true, data: { turbo_frame: "_top" } do %>
-    <% if listing.query.present? %><%= hidden_field_tag :q, listing.query, id: nil %><% end %>
-    <% sort.to_params.each do |name, value| %><%= hidden_field_tag name, value, id: nil %><% end %>
-  <% end %>
-  ```
-- [ ] Replace `app/views/collections/_filter_bar.html.erb`:
-  ```erb
-  <%# locals: (listing:, sort:, view:) %>
-  <%= form_with url: collection_path, method: :get, class: "c-filterbar", role: "search", data: { controller: "url-sync", turbo_frame: "results", turbo_action: "advance" } do |form| %>
-    <label class="c-input"><%= render "icons/search" %><%= form.search_field :q, value: listing.query, placeholder: "Search your collection", "aria-label": "Search your collection",
-          data: { search_shortcut_target: "input" } %><kbd>/</kbd></label>
-    <% sort.to_params.each do |name, value| %><%= hidden_field_tag name, value, id: nil %><% end %>
-    <div class="c-filterbar__end">
-      <%= button_tag "Edit many", type: "submit", form: "edit-many", class: "c-btn c-btn--secondary c-btn--sm c-filterbar__bulk" %>
-      <%= render "collections/view_switch", view: %>
-      <details class="c-menu c-filterbar__more" data-controller="menu">
-        <summary class="c-btn c-btn--secondary c-btn--sm c-btn--icon" aria-label="More actions"><%= render "icons/more" %></summary>
-        <div class="c-menu__list"><%= button_tag "Edit many", type: "submit", form: "edit-many", class: "c-menu__item" %></div>
-      </details>
-    </div>
-  <% end %>
   ```
 - [ ] Replace `app/views/collections/_table.html.erb`:
   ```erb
@@ -2081,12 +2066,77 @@ In this phase the table is reached with `?view=table`; Phase 3 adds the switch a
   ```
 - [ ] Run: `bin/rspec spec/routing/routes_spec.rb spec/models/collection_table/selection_state_spec.rb spec/requests/bulk_mode_spec.rb spec/requests/collection_views_spec.rb spec/requests/collection_table_spec.rb spec/requests/collections_spec.rb` — expect PASS.
 - [ ] Commit: `feat(collection): select lots in bulk mode, across pages and all matching`
+- [ ] Write `spec/requests/edit_many_spec.rb`:
+  ```ruby
+  require "rails_helper"
+
+  RSpec.describe "Edit many", type: :request do
+    let(:user) { create(:user) }
+
+    before { sign_in_as(user) }
+
+    def own(name = "Lightning Bolt", **options) = owned_printing(name, account: user.account, **options)
+    def page_html = Nokogiri::HTML5(response.body)
+
+    it "offers Edit many in the filter bar and its narrow menu, from the grid and the table", :aggregate_failures do
+      own
+      [ collection_path, collection_path(view: "table") ].each do |path|
+        get path
+        expect(page_html.css(".c-filterbar button[form=edit-many]").map { |button| [ button.text, button["class"] ] }).to eq([
+          [ "Edit many", "c-btn c-btn--secondary c-btn--sm c-filterbar__bulk" ], [ "Edit many", "c-menu__item" ]
+        ])
+        form = page_html.at_css("turbo-frame#results form#edit-many")
+        expect([ form["method"], form["action"], form["data-turbo-frame"], form.key?("hidden") ]).to eq([ "post", collection_selection_path, "_top", true ])
+      end
+    end
+
+    it "carries the filter and sort into Edit many", :aggregate_failures do
+      own
+      get collection_path(view: "table", q: "bolt", sort: "price", dir: "desc")
+      fields = page_html.css("form#edit-many input[type=hidden]").to_h { |input| [ input["name"], input["value"] ] }
+      expect(fields.except("authenticity_token")).to eq("q" => "bolt", "sort" => "price", "dir" => "desc")
+    end
+  end
+  ```
+- [ ] Run: `bin/rspec spec/requests/edit_many_spec.rb` — expect FAIL (no `Edit many` button).
+- [ ] Replace `app/views/collections/_view_forms.html.erb`:
+  ```erb
+  <%# locals: (listing:, sort:) %>
+  <%# The forms the filter bar's view switch and Edit many submit (spec 006 FR-1, AC-4.2). They sit in the results frame, so they always carry the current filter. %>
+  <%= tag.form id: "view-switch", action: collection_path, method: "get", hidden: true, data: { turbo_frame: "_top" } do %>
+    <% if listing.query.present? %><%= hidden_field_tag :q, listing.query, id: nil %><% end %>
+    <% sort.to_params.each do |name, value| %><%= hidden_field_tag name, value, id: nil %><% end %>
+  <% end %>
+  <%= form_with url: collection_selection_path, method: :post, id: "edit-many", html: { hidden: true }, data: { turbo_frame: "_top" } do %>
+    <% if listing.query.present? %><%= hidden_field_tag :q, listing.query, id: nil %><% end %>
+    <% sort.to_params.each do |name, value| %><%= hidden_field_tag name, value, id: nil %><% end %>
+  <% end %>
+  ```
+- [ ] Replace `app/views/collections/_filter_bar.html.erb`:
+  ```erb
+  <%# locals: (listing:, sort:, view:) %>
+  <%= form_with url: collection_path, method: :get, class: "c-filterbar", role: "search", data: { controller: "url-sync", turbo_frame: "results", turbo_action: "advance" } do |form| %>
+    <label class="c-input"><%= render "icons/search" %><%= form.search_field :q, value: listing.query, placeholder: "Search your collection", "aria-label": "Search your collection",
+          data: { search_shortcut_target: "input" } %><kbd>/</kbd></label>
+    <% sort.to_params.each do |name, value| %><%= hidden_field_tag name, value, id: nil %><% end %>
+    <div class="c-filterbar__end">
+      <%= button_tag "Edit many", type: "submit", name: nil, form: "edit-many", class: "c-btn c-btn--secondary c-btn--sm c-filterbar__bulk" %>
+      <%= render "collections/view_switch", view: %>
+      <details class="c-menu c-filterbar__more" data-controller="menu">
+        <summary class="c-btn c-btn--secondary c-btn--sm c-btn--icon" aria-label="More actions"><%= render "icons/more" %></summary>
+        <div class="c-menu__list"><%= button_tag "Edit many", type: "submit", name: nil, form: "edit-many", class: "c-menu__item" %></div>
+      </details>
+    </div>
+  <% end %>
+  ```
+- [ ] Run: `bin/rspec spec/requests/edit_many_spec.rb spec/requests/bulk_mode_spec.rb spec/requests/collection_views_spec.rb spec/requests/collections_spec.rb` — expect PASS.
+- [ ] Commit: `feat(collection): enter bulk mode with Edit many from the grid and the table`
 
 ---
 
 ## Phase 7: Live count, mixed header and Esc
 
-**Implements:** FR-4 (scripting enhancements), FR-12 of 004 | **Satisfies:** AC-4.4 (phone), AC-4.6, AC-5.8, AC-2.8
+**Implements:** FR-4 (scripting enhancements), FR-12 of 004 | **Satisfies:** AC-2.3 (in place), AC-4.4 (phone), AC-4.6, AC-5.8, AC-2.8
 **Files:** `app/javascript/controllers/bulk_selection_controller.js`, `spec/system/bulk_mode_spec.rb`, `spec/system/collection_table_spec.rb`
 **Interfaces:** Consumes: Phase 6's markup (`data-bulk-selection-*` values and targets; `data-quantity` on row boxes). Produces: the `bulk-selection` Stimulus controller.
 
@@ -2166,8 +2216,23 @@ In this phase the table is reached with `?view=table`; Phase 3 adds the switch a
   ```ruby
   require "rails_helper"
 
-  RSpec.describe "Collection table on a phone", type: :system do
-    it "shows only name, quantity and actions, with the key facts under the name", :aggregate_failures do
+  RSpec.describe "Collection table", type: :system do
+    it "filters in place and goes back to the unfiltered table", :aggregate_failures do
+      user = system_sign_in_as(create(:user))
+      owned_printing("Lightning Bolt", account: user.account)
+      owned_printing("Opt", account: user.account)
+      visit collection_path(view: "table")
+      page.execute_script("window.__marker = 'still here'")
+      fill_in "Search your collection", with: "bolt"
+      find_field("Search your collection").send_keys(:enter)
+      expect(page).to have_css("tbody tr", count: 1)
+      expect(page.evaluate_script("window.__marker")).to eq("still here")
+      wait_for_turbo_idle
+      page.go_back
+      expect(page).to have_css("tbody tr", count: 2)
+    end
+
+    it "shows only name, quantity and actions on a phone, with the key facts under the name", :aggregate_failures do
       user = system_sign_in_as(create(:user))
       owned_printing("Lightning Bolt", account: user.account, number: "146", quantity: 9_999, finish: "foil", condition: "near_mint")
       visit collection_path
@@ -2361,6 +2426,17 @@ In this phase the table is reached with `?view=table`; Phase 3 adds the switch a
     it "sends the collector back to the bulk table when nothing is selected" do
       get new_collection_condition_change_path
       expect([ response.location, flash[:alert] ]).to eq([ "http://www.example.com#{collection_path(bulk: 1)}", "Select at least one item." ])
+    end
+
+    it "lands on the nearest real page when a merge empties the last one", :aggregate_failures do
+      stub_const("CollectionTable::PER_PAGE", 1)
+      played = own(finish: "foil", condition: "lightly_played")
+      unknown = create(:lot, account: user.account, entry: played.entry, finish: "foil")
+      select_lots(unknown, page: 2)
+      post collection_condition_change_path(page: 2), params: { condition: "lightly_played" }
+      expect(response).to redirect_to(collection_path(bulk: 1, page: 2))
+      follow_redirect!
+      expect([ response.status, Nokogiri::HTML5(response.body).css("tbody tr").size ]).to eq([ 200, 1 ])
     end
 
     it "sets the condition and returns to the bulk table with the selection kept", :aggregate_failures do
@@ -2742,6 +2818,7 @@ In this phase the table is reached with `?view=table`; Phase 3 adds the switch a
       expect(page_html.at_css(".c-confirm form")["action"]).to eq(collection_bulk_removals_path(page: 1))
       expect(page_html.at_css(".c-confirm a.c-btn--secondary")["href"]).to eq(collection_path(bulk: 1))
       expect(page_html.at_css('header a[aria-label="Back"]')["href"]).to eq(collection_path(bulk: 1))
+      expect(page_html.at_css('.c-tabbar a[aria-current="page"]').text).to include("Collection")
       expect(Lot.count).to eq(2)
     end
 
@@ -2807,6 +2884,17 @@ In this phase the table is reached with `?view=table`; Phase 3 adds the switch a
       delete lot_path(other)
       post action, params: { return_to: collection_path }
       expect([ response.status, alert_text ]).to eq([ 422, "This removal can no longer be undone." ])
+    end
+
+    it "keeps the Undo when the collector removes something in another session" do
+      select_lots(own("Opt"))
+      remove_selected
+      action = undo_form["action"]
+      other = own
+      other_session = open_session.tap { |browser| browser.post session_path, params: { email_address: user.email_address, password: AuthenticationHelpers::PASSWORD } }
+      other_session.delete lot_path(other)
+      post action, params: { return_to: collection_path }
+      expect(flash[:notice]).to eq("Restored 1 item to your collection.")
     end
 
     it "refuses an Undo past 9,999 copies, restoring nothing", :aggregate_failures do
@@ -2918,11 +3006,13 @@ In this phase the table is reached with `?view=table`; Phase 3 adds the switch a
     end
 
     private
+      # One query for every lot a restore would merge into, then the cap check in memory.
       def check_cap!(sort)
+        existing = account.lots.where(catalog_entry_id: lots_data.pluck("catalog_entry_id").uniq)
+          .index_by { |lot| [ lot.catalog_entry_id, lot.lot_key ] }
         over = lots_data.filter_map do |data|
-          existing = account.lots.find_by(catalog_entry_id: data["catalog_entry_id"],
-            lot_key: Lot.key_for(data["finish"], data["condition"], data["price_paid_cents"]))
-          existing if existing && existing.quantity + data["quantity"] > Lot::MAX_QUANTITY
+          lot = existing[[ data["catalog_entry_id"], Lot.key_for(data["finish"], data["condition"], data["price_paid_cents"]) ]]
+          lot if lot && lot.quantity + data["quantity"] > Lot::MAX_QUANTITY
         end
         raise Lot::CapExceeded, sort.apply(account.lots.joins(entry: :set).where(id: over.map(&:id))).preload(entry: :set).first if over.any?
       end
@@ -3054,7 +3144,7 @@ In this phase the table is reached with `?view=table`; Phase 3 adds the switch a
 ## Phase 10: Design-system docs, phone sweep and query counts
 
 **Implements:** FR-7, NFR Performance (bounded queries), NFR Accessibility (360px) | **Satisfies:** AC-2.8 (sweep), AC-4.4 (sweep), AC-7.9 (phone)
-**Files:** `docs/design-system/components/{SortHeader,StatusAction,BulkConfirmPage,ChoicePage,BulkForm,ViewSwitchForm}.md`, `docs/design-system/README.md`, `spec/design_system_files_spec.rb`, `spec/system/narrow_pages_spec.rb`, `spec/requests/query_counts_spec.rb`
+**Files:** `docs/design-system/components/{SortHeader,StatusAction,BulkConfirmPage,ChoicePage,BulkForm,ViewSwitchForm}.md`, `docs/design-system/README.md`, `spec/design_system_files_spec.rb`, `spec/system/narrow_bulk_pages_spec.rb`, `spec/requests/query_counts_spec.rb`
 **Interfaces:** Consumes: every view above. Produces: nothing new.
 
 - [ ] In `spec/design_system_files_spec.rb`, example "documents every new pattern and lists it in the README", extend `new_patterns` with `SortHeader StatusAction BulkConfirmPage ChoicePage BulkForm ViewSwitchForm`.
@@ -3094,7 +3184,7 @@ In this phase the table is reached with `?view=table`; Phase 3 adds the switch a
   | `StatusAction` | `.c-status__message--action` with `.c-status__action`: one sentence plus one small secondary button (Undo) |
   | `BulkConfirmPage` | `ConfirmPage` for many items: "Remove <n> items?", items and lots stated, `Remove <n> items` (danger) and Cancel back to the bulk table |
   | `ChoicePage` | `.c-choices` fieldset of `.c-check` radios, Apply (primary) and Cancel, as a detail page |
-  | `ViewSwitchForm` | `c-seg` buttons with `form="view-switch"` and the hidden GET forms (`#view-switch`, `#edit-many`) in the results frame |
+  | `ViewSwitchForm` | `c-seg` buttons with `form="view-switch"` and the hidden forms in the results frame (GET `#view-switch`, POST `#edit-many`) |
 - [ ] In `docs/design-system/README.md`, after the "App additions (spec 004 …)" paragraph, add: "App additions (spec 006, in `collector/additions.css`): `SortHeader`, `StatusAction`, `BulkConfirmPage`, `ChoicePage`, `BulkForm`, `ViewSwitchForm`. Upstream these into the published design system before the next export replaces this folder."
 - [ ] Run: `bin/rspec spec/design_system_files_spec.rb` — expect PASS.
 - [ ] Commit: `docs(design): document the patterns added for spec 006`
@@ -3113,33 +3203,58 @@ In this phase the table is reached with `?view=table`; Phase 3 adds the switch a
   ```
 - [ ] Run: `bin/rspec spec/requests/query_counts_spec.rb` — expect PASS. If it fails, a row partial is querying per row. Fix it with `preload` in `CollectionTable#lots` or in `SelectionState`, and don't commit until it passes.
 - [ ] Commit: `test(collection): bound the table's queries in and out of bulk mode`
-- [ ] Extend `spec/system/narrow_pages_spec.rb` with a second example, in the same 360px driver:
+- [ ] Write `spec/system/narrow_bulk_pages_spec.rb`. Headless Firefox can't open a 360px window, so each page loads in the 360px frame (`open_in_narrow_frame`), as `spec/system/collection_spec.rb` does:
   ```ruby
-  it "never scrolls sideways on the table, bulk mode and its pages", :aggregate_failures do
-    user = create(:user)
-    owned_printing(account: user.account, quantity: 9_999, finish: "foil", condition: "near_mint", price_paid_cents: 123_456)
-    system_sign_in_as(user)
-    fits = -> { page.evaluate_script("document.documentElement.scrollWidth <= window.innerWidth") }
-    visit collection_path(view: "table")
-    expect(fits.call).to be(true), "the table scrolls sideways"
-    visit collection_path
-    find(".c-filterbar__more summary").click
-    click_on "Edit many"
-    expect(fits.call).to be(true), "bulk mode scrolls sideways"
-    check "Select all"
-    find(".c-bulkbar__more summary").click
-    click_on "Set condition…"
-    expect(page).to have_css("h1", text: "Set the condition of 9,999 items")
-    expect(fits.call).to be(true), "Set condition scrolls sideways"
-    expect(page).to have_css(".c-appbar__back")
-    find(".c-appbar__back").click
-    find(".c-bulkbar__more summary").click
-    click_on "Remove"
-    expect(page).to have_css("h1", text: "Remove 9,999 items?")
-    expect(fits.call).to be(true), "the removal confirmation scrolls sideways"
+  require "rails_helper"
+
+  RSpec.describe "Table and bulk pages at 360px", type: :system do
+    let(:user) { create(:user) }
+
+    before do
+      owned_printing(account: user.account, quantity: 9_999, finish: "foil", condition: "near_mint", price_paid_cents: 123_456)
+      system_sign_in_as(user)
+      visit collection_path
+    end
+
+    def frame_fits? = page.evaluate_script("(() => { const view = document.getElementById('narrow').contentWindow; return view.document.documentElement.scrollWidth <= view.innerWidth })()")
+
+    def select_all_and_choose(action)
+      open_in_narrow_frame(collection_path(bulk: 1), width: 360, ready: ".c-bulkbar")
+      within_narrow_frame do
+        check "Select all"
+        find(".c-bulkbar__more summary").click
+        click_on action
+      end
+    end
+
+    it "fits the table" do
+      expect(open_in_narrow_frame(collection_path(view: "table"), width: 360, ready: "table.c-table")).to eq([ 360, true ])
+    end
+
+    it "fits bulk mode, entered from the narrow menu", :aggregate_failures do
+      open_in_narrow_frame(collection_path, width: 360, ready: ".c-grid")
+      within_narrow_frame do
+        find(".c-filterbar__more summary").click
+        click_on "Edit many"
+        expect(page).to have_css(".c-bulkbar")
+      end
+      expect(frame_fits?).to be(true)
+    end
+
+    it "fits the Set condition page, with a Back link" do
+      select_all_and_choose("Set condition…")
+      within_narrow_frame { expect(page).to have_css("h1", text: "Set the condition of 9,999 items").and have_css(".c-appbar__back") }
+      expect(frame_fits?).to be(true)
+    end
+
+    it "fits the removal confirmation, with a Back link" do
+      select_all_and_choose("Remove")
+      within_narrow_frame { expect(page).to have_css("h1", text: "Remove 9,999 items?").and have_css(".c-appbar__back") }
+      expect(frame_fits?).to be(true)
+    end
   end
   ```
-- [ ] Run: `bin/rspec spec/system/narrow_pages_spec.rb` — expect PASS. A failure names the overflowing page; the fix goes in `additions.css` (tokens only), and the spec is re-run before committing.
+- [ ] Run: `bin/rspec spec/system/narrow_bulk_pages_spec.rb` — expect PASS. A failure names the overflowing page; the fix goes in `additions.css` (tokens only), and the spec is re-run before committing.
 - [ ] Commit: `test(design): check the table and bulk pages at 360px`
 
 ---
@@ -3167,10 +3282,11 @@ In this phase the table is reached with `?view=table`; Phase 3 adds the switch a
   time.call("set condition 5,000") { Lot::ConditionChange.new(account:, lots: selection.lots, condition: "near_mint", sort: selection.sort).apply! }
   removal = nil
   time.call("remove 5,000") { removal = BulkRemoval.remove!(selection) }
-  time.call("undo 5,000 (not in NFR)") { removal.reload.undo!(sort: selection.sort) }
+  time.call("undo 5,000 (no NFR target)") { removal.reload.undo!(sort: selection.sort) }
   ```
   Expect every table line under 500 ms, and Set condition and remove under 2,000 ms. Record the numbers in the PR description.
   - **If Set condition goes over 2 s:** in `Lot::ConditionChange#merge`, write lots with no merge (group of one, no existing target) through one `@account.lots.where(id: ids).update_all(condition: @condition, lot_key: …, updated_at: Time.current)` per target key. Add a same-line comment: tenant-scoped, the condition is already validated against the vocabulary, and the cap can't change without a merge. Re-run the script.
+  - **Undo** has no spec target, but record its time. If it goes over 5 s, insert the non-merging rows of `BulkRemoval#undo!` with one `account.lots.insert_all` (with `lot_key` set via `Lot.key_for`), under the same kind of justifying comment, keeping `Lot.add!` for the rows that merge.
   - **If remove goes over 2 s:** replace `destroy_all` in `BulkRemoval.remove!` with `delete_all`, with the same kind of comment: `Lot` has no destroy callbacks, and `Account` already uses `dependent: :delete_all`.
 - [ ] Walk the spec's ACs in the browser at 1280px and 390px, in light and dark themes (NFR Accessibility): switch views, sort, Edit many, tick, page, Select all, Set condition, Remove and Undo, Esc. Repeat the bulk flow with JavaScript disabled in the browser.
 - [ ] Use `sdd-superpowers:verification-before-completion`, then `sdd-superpowers:sdd-review` (implementation mode, Fable).
@@ -3203,7 +3319,7 @@ In this phase the table is reached with `?view=table`; Phase 3 adds the switch a
 | FR-7 (design patterns) | 2, 6, 8, 9 (CSS), 10 (docs) |
 | AC-1.1–1.6, 1.8–1.10, AC-8.5 | 3 |
 | AC-1.7 | 3 (AC-11.7), 4 (return target), 9 (single remove ends Undo) |
-| AC-2.1–2.5, 2.7 | 1, 2 |
+| AC-2.1–2.5, 2.7 | 1, 2 (AC-2.3 in place: 7) |
 | AC-2.6 | 4 |
 | AC-2.8 | 7, 10 |
 | AC-3.1–3.8 | 1, 2, 3 (switch keeps sort) |
