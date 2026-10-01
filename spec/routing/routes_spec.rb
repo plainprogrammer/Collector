@@ -78,5 +78,6 @@ RSpec.describe "Routes", type: :routing do
     expect(post: "/scanner/measurement/skips").to route_to("scanner/measurements/skips#create")
     expect(get: "/scanner/measurement/replay").to route_to("scanner/measurements/replays#show")
     expect(get: "/scanner/measurement/strips/IMG_1.jpeg").to route_to("scanner/measurements/strips#show", id: "IMG_1.jpeg")
+    expect(get: "/scanner/measurement/photos/IMG_1.jpeg").to route_to("scanner/measurements/photos#show", id: "IMG_1.jpeg")
   end
 end

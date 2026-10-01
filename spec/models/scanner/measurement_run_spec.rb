@@ -23,4 +23,11 @@ RSpec.describe Scanner::MeasurementRun, type: :model do
     expect(described_class).not_to be_enabled
     expect(described_class.current).to be_nil
   end
+
+  it "finds a row's photo beside the manifest, or nil when it's missing (spec 007 photo replay)", :aggregate_failures do
+    dir.join("manifest.csv").write("file,set,number,foil\nIMG_1.jpeg,mom,123,no\nIMG_2.jpeg,neo,51,no\n")
+    dir.join("IMG_1.jpeg").binwrite("\xFF\xD8\xFF".b)
+    expect(run.photo_path(run.row("IMG_1.jpeg"))).to eq(dir.join("IMG_1.jpeg"))
+    expect(run.photo_path(run.row("IMG_2.jpeg"))).to be_nil
+  end
 end

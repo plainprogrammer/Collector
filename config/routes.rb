@@ -35,6 +35,7 @@ Rails.application.routes.draw do
         resources :skips, only: :create
         resource :replay, only: %i[show create]
         resources :strips, only: :show, constraints: { id: /[\w.-]+/ }
+        resources :photos, only: :show, constraints: { id: /[\w.-]+/ }
       end
     end
   end

@@ -32,7 +32,8 @@ RSpec.describe "Scanner measurement mode", type: :request do
     it "answers 404 for every measurement route" do
       requests = [ -> { get scanner_measurement_path }, -> { capture }, -> { post scanner_measurement_skips_path, params: { file: "IMG_1.jpeg" } },
         -> { get scanner_measurement_replay_path(label: "a") }, -> { post scanner_measurement_replay_path, params: { label: "a", results: [] }, as: :json },
-        -> { get scanner_measurement_strip_path("IMG_1.jpeg", strip: "name") } ]
+        -> { get scanner_measurement_strip_path("IMG_1.jpeg", strip: "name") },
+        -> { get scanner_measurement_photo_path("IMG_1.jpeg") } ]
       expect(requests.map { it.call && response.status }).to all(eq(404))
     end
 
@@ -84,6 +85,24 @@ RSpec.describe "Scanner measurement mode", type: :request do
     post scanner_measurement_replay_path, as: :json, params: { label: "desktop-a", results: [ { file: "IMG_1.jpeg", name_text: "Bolt", collector_text: "" } ] }
     expect(current.replays.fetch("desktop-a").first).to include("file" => "IMG_1.jpeg", "name_text" => "Bolt")
     get scanner_measurement_strip_path("IMG_1.jpeg", strip: "name"), env: { "REMOTE_ADDR" => "192.168.1.22" }
+    expect(response).to have_http_status(:not_found)
+  end
+
+  it "serves a manifest row's photo to this machine only, for the photo replay", :aggregate_failures do
+    jpeg = "\xFF\xD8\xFF\xE0photo".b
+    corpus.join("IMG_1.jpeg").binwrite(jpeg)
+    get scanner_measurement_photo_path("IMG_1.jpeg")
+    expect(response.body.b).to eq(jpeg)
+    expect(response.headers).to include("Content-Type" => "image/jpeg", "Content-Disposition" => a_string_starting_with("inline"))
+    get scanner_measurement_photo_path("IMG_1.jpeg"), env: { "REMOTE_ADDR" => "192.168.1.22" }
+    expect(response).to have_http_status(:not_found)
+  end
+
+  it "answers 404 for a photo the manifest doesn't list or that isn't on disk", :aggregate_failures do
+    corpus.join("IMG_9.jpeg").binwrite("\xFF\xD8\xFF".b)
+    get scanner_measurement_photo_path("IMG_9.jpeg")
+    expect(response).to have_http_status(:not_found)
+    get scanner_measurement_photo_path("IMG_2.jpeg")
     expect(response).to have_http_status(:not_found)
   end
 

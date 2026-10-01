@@ -92,6 +92,12 @@ class Scanner::MeasurementRun
   # The measured capture's strip image, for the desktop replay (AC-5.6).
   def strip_path(row, strip) = STRIPS.include?(strip) ? row_dir(row).join("capture-001-#{strip}.png") : nil
 
+  # The manifest's own photo of a row (it sits beside the manifest, as in Phase 0's corpus), for the photo replay.
+  def photo_path(row)
+    path = @manifest.dirname.join(row.file)
+    path if path.file?
+  end
+
   def record_replay!(label, results)
     @dir.join("replays").mkpath
     @dir.join("replays/#{label}.json").write(JSON.pretty_generate("label" => label, "replayed_at" => Time.current.utc.iso8601,

@@ -45,6 +45,29 @@
         22
       ],
       "note": "The path never comes from raw request input: Scanner::MeasurementRun#row returns only a manifest row whose file name matches FILE_NAME (no slashes, no leading dot), and #strip_path returns a path only when the strip is in the STRIPS allowlist (name, collector), else nil, which the action answers with 404. The route is development-only and local-only (spec 007 AC-5.1, AC-5.6)."
+    },
+    {
+      "warning_type": "File Access",
+      "warning_code": 16,
+      "fingerprint": "62c6a9dbf5a68130fbfbb4a7847cfff63e4a041fd2502d55a531d563e7b64207",
+      "check_name": "SendFile",
+      "message": "Parameter value used in file name",
+      "file": "app/controllers/scanner/measurements/photos_controller.rb",
+      "line": 13,
+      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
+      "code": "send_file((measurement_run.row(params[:id]) and measurement_run.photo_path(measurement_run.row(params[:id]))), :type => Marcel::MimeType.for((measurement_run.row(params[:id]) and measurement_run.photo_path(measurement_run.row(params[:id]))), :name => (measurement_run.row(params[:id]) and measurement_run.photo_path(measurement_run.row(params[:id]))).basename.to_s), :disposition => :inline)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Scanner::Measurements::PhotosController",
+        "method": "show"
+      },
+      "user_input": "params[:id]",
+      "confidence": "Weak",
+      "cwe_id": [
+        22
+      ],
+      "note": "The path never comes from raw request input: Scanner::MeasurementRun#row returns only a manifest row whose file name matches FILE_NAME (no slashes, no leading dot), and #photo_path joins that file name to the manifest's own folder and returns nil when no such file exists, which the action answers with 404. The route is development-only and local-only (spec 007 AC-5.1, AC-6.2)."
     }
   ],
   "brakeman_version": "8.0.6"

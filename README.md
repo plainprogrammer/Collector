@@ -98,6 +98,8 @@ Then, once per certificate, on the iPhone:
 strip images under `COLLECTOR_SCANNER_RUN_DIR` (default `~/card-scanner-corpus/runs/live`), outside the
 repository. `bin/rails scanner:findings` scores a run; `bundle exec ruby script/scanner/replay.rb <label>`
 re-reads its strips on the desktop (`SCANNER_URL=https://127.0.0.1:<port>` points it at an HTTPS server).
+`SCANNER_EMAIL=… SCANNER_PASSWORD=… bundle exec ruby script/scanner/photo_run.rb` replays the photos beside the
+manifest through the scanner's photo picker, storing each as a capture.
 `COLLECTOR_REQUEST_LOG=1` logs each response's size to `log/requests.jsonl`.
 
 ## Testing and CI
