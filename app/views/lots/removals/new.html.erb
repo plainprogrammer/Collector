@@ -1,12 +1,12 @@
 <% content_for :title, "Remove copies · Collector" %>
-<%= render "layouts/appbar", section: card_context, detail: true, back_path: catalog_entry_path(@lot.entry, **card_params) %>
+<%= render "layouts/appbar", section: card_context, detail: true, back_path: lot_return_path(@lot.entry) %>
 <main class="c-main c-page">
   <section class="c-confirm">
     <h1 class="c-pagehead__title">Remove <%= @lot.quantity %> × <%= @lot.entry.name %>?</h1>
     <p><%= set_number(@lot.entry) %> · <%= @lot.entry.language.upcase %>. This removes the whole lot from your collection.</p>
     <div class="c-form__actions">
-      <%= button_to "Remove", lot_path(@lot, **card_params), method: :delete, class: "c-btn c-btn--danger" %>
-      <%= link_to "Cancel", catalog_entry_path(@lot.entry, **card_params), class: "c-btn c-btn--secondary" %>
+      <%= button_to "Remove", lot_path(@lot, **card_params, **lot_return_params), method: :delete, class: "c-btn c-btn--danger" %>
+      <%= link_to "Cancel", lot_return_path(@lot.entry), class: "c-btn c-btn--secondary" %>
     </div>
   </section>
 </main>
