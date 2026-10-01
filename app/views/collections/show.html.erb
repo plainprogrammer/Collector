@@ -10,6 +10,8 @@
   </div>
   <% if @listing.empty_collection? %>
     <p class="c-empty">No cards in your collection yet. Search for a card to start adding. <%= link_to "Search cards", catalog_entries_path %></p>
+  <% elsif @bulk %>
+    <%= render "collections/bulk", table: @listing, state: @selection_state %>
   <% else %>
     <div class="c-collection" data-controller="search-shortcut">
       <%= render "collections/filter_bar", listing: @listing, sort: @sort, view: @view %>

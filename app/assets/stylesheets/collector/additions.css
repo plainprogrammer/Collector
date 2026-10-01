@@ -101,3 +101,6 @@
 .c-table th[aria-sort="ascending"] .c-table__sort::after { content:"↑" / ""; }
 .c-table th[aria-sort="descending"] .c-table__sort::after { content:"↓" / ""; }
 .c-table th.is-num .c-table__sort { flex-direction:row-reverse; }
+
+/* ---------- Bulk mode (spec 006): the checkbox column, as narrow as its box ---------- */
+.c-table th.c-table__select, .c-table td.c-table__select { width:1%; }

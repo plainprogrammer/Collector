@@ -1,6 +1,11 @@
-<%# locals: (view:) %>
+<%# locals: (view:, bulk: false) %>
+<%# In bulk mode the switch is inert: Table is pressed, Grid is disabled, and neither submits (spec 006 AC-4.3). %>
 <div class="c-seg" role="group" aria-label="View">
   <% { "grid" => "Grid", "table" => "Table" }.each do |value, label| %>
-    <%= button_tag type: "submit", form: "view-switch", name: "view", value:, "aria-pressed": (value == view).to_s do %><%= render "icons/#{value}" %><span class="c-seg__label"><%= label %></span><% end %>
+    <% if bulk %>
+      <%= button_tag type: "button", name: nil, "aria-pressed": (value == "table").to_s, disabled: value == "grid" do %><%= render "icons/#{value}" %><span class="c-seg__label"><%= label %></span><% end %>
+    <% else %>
+      <%= button_tag type: "submit", form: "view-switch", name: "view", value:, "aria-pressed": (value == view).to_s do %><%= render "icons/#{value}" %><span class="c-seg__label"><%= label %></span><% end %>
+    <% end %>
   <% end %>
 </div>
