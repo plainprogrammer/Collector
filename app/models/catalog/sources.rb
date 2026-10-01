@@ -5,6 +5,7 @@
 #   ALLOWED_HOSTS                       hosts whose https URLs views may render
 #   .entry_extension_model              model keyed by catalog_entry_id, or nil
 #   .identity_extension_model           model keyed by catalog_identity_id, or nil
+#   .alternate_names(entries)           optional: [[identity id, name], …] the name index adds to identity names
 #   #languages                          sorted language codes to ingest (raises ConfigurationError)
 #   #current_version(languages:)        opaque String naming the current source data
 #   #download(version, dir:)            Pathname of the verified local copy (IntegrityError, TransientError)
