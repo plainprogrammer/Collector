@@ -11,6 +11,9 @@ export const STRIPS = {
 }
 // Strips are drawn at this many times their size before OCR. A tuning setting, frozen before the measured run (AC-6.1).
 export const STRIP_SCALE = 2
+// Strips whose dark pixel rows are inverted before OCR. A tuning setting, frozen before the measured run (AC-6.1).
+// Collector lines are light text on the black border; inverting the name strip too hurt name matching (round 3).
+export const INVERT_DARK_ROWS = [ "collector" ]
 
 export function guideRect(viewWidth, viewHeight) {
   let height = viewHeight * GUIDE.height
@@ -42,6 +45,7 @@ export function cropStrips(image, card) {
     context.drawImage(image, card.x + card.width * strip.x, card.y + card.height * strip.y,
       width, height, 0, 0, canvas.width, canvas.height)
     stretchContrast(context, canvas.width, canvas.height)
+    if (INVERT_DARK_ROWS.includes(key)) invertDarkRows(context, canvas.width, canvas.height)
     return [ key, canvas ]
   }))
 }
@@ -61,6 +65,23 @@ function stretchContrast(context, width, height) {
   for (let i = 0; i < gray.length; i++) {
     const value = (gray[i] - min) * 255 / (max - min)
     pixels[i * 4] = pixels[i * 4 + 1] = pixels[i * 4 + 2] = value
+  }
+  context.putImageData(image, 0, 0)
+}
+
+// Turn light-on-dark rows into dark-on-light: invert every pixel row whose mean luminance is below 128. The bright
+// text-box rows above a collector line are left alone.
+function invertDarkRows(context, width, height) {
+  const image = context.getImageData(0, 0, width, height)
+  const pixels = image.data
+  for (let y = 0; y < height; y++) {
+    const start = y * width * 4, end = start + width * 4
+    let sum = 0
+    for (let i = start; i < end; i += 4) sum += 0.299 * pixels[i] + 0.587 * pixels[i + 1] + 0.114 * pixels[i + 2]
+    if (sum / width >= 128) continue
+    for (let i = start; i < end; i += 4) {
+      pixels[i] = 255 - pixels[i]; pixels[i + 1] = 255 - pixels[i + 1]; pixels[i + 2] = 255 - pixels[i + 2]
+    }
   }
   context.putImageData(image, 0, 0)
 }
