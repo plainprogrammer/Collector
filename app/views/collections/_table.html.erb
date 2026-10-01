@@ -1,0 +1,32 @@
+<%# locals: (table:, return_to:) %>
+<table class="c-table">
+  <thead>
+    <tr>
+      <%= sort_header table, "name", "Name" %>
+      <%= sort_header table, "set", "Set", class: "is-opt" %>
+      <th class="is-opt">Language</th>
+      <th class="is-opt">Finish</th>
+      <%= sort_header table, "condition", "Condition", class: "is-opt" %>
+      <%= sort_header table, "quantity", "Qty", class: "is-num" %>
+      <%= sort_header table, "price", "Paid", class: "is-num is-opt" %>
+      <th><span class="c-sr">Actions</span></th>
+    </tr>
+  </thead>
+  <tbody>
+    <% table.lots.each do |lot| %>
+      <tr>
+        <%= render "collections/lot_cells", lot: %>
+        <td class="c-table__actions">
+          <details class="c-menu" data-controller="menu">
+            <summary class="c-btn c-btn--ghost c-btn--sm c-btn--icon" aria-label="Actions for <%= lot_label(lot) %>"><%= render "icons/more" %></summary>
+            <div class="c-menu__list">
+              <%= link_to "Edit copy", edit_lot_path(lot, from: "collection", return_to:), class: "c-menu__item" %>
+              <div class="c-menu__sep"></div>
+              <%= link_to "Remove", new_lot_removal_path(lot, from: "collection", return_to:), class: "c-menu__item c-menu__item--danger" %>
+            </div>
+          </details>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
