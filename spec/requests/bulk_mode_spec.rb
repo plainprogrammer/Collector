@@ -15,9 +15,10 @@ RSpec.describe "Bulk mode", type: :request do
     follow_redirect!
   end
 
-  def submit_bulk(go:, shown: [], ticked: [], all: false, all_rendered: false, q: "", rendered_q: q, sort: nil, dir: nil, page: nil)
-    params = { go:, shown_ids: shown.map(&:id), ticked_ids: ticked.map(&:id), q:, rendered_q:, sort:, dir:, page:,
-      all_rendered: all_rendered ? "1" : "0" }
+  # baseline: the shown rows that were ticked when the page rendered (FR-4, spec v5.0.0).
+  def submit_bulk(go:, shown: [], ticked: [], baseline: [], all: false, all_rendered: false, q: "", rendered_q: q, sort: nil, dir: nil, page: nil)
+    params = { go:, shown_ids: shown.map(&:id), ticked_ids: ticked.map(&:id), baseline_ids: baseline.map(&:id), q:, rendered_q:, sort:, dir:, page:,
+      all_rendered: all_rendered ? "1" : "0", header_toggled: "0" }
     params[:all] = "1" if all
     patch collection_selection_path, params: params.compact
   end
@@ -124,6 +125,18 @@ RSpec.describe "Bulk mode", type: :request do
       expect(page_html.at_css("tbody tr:has(input[value='#{big.id}'])")["aria-selected"]).to eq("true")
     end
 
+    it "renders each row's baseline, enabled only for rows rendered ticked, and an unset toggle flag", :aggregate_failures do
+      big = own("Lightning Bolt")
+      small = own("Opt")
+      start_bulk
+      submit_bulk(go: "filter", shown: [ big, small ], ticked: [ big ])
+      follow_redirect!
+      form = page_html.at_css("form#bulk")
+      baselines = form.css("input[name='baseline_ids[]']").to_h { |input| [ input["value"].to_i, input.key?("disabled") ] }
+      expect(baselines).to eq(big.id => false, small.id => true)
+      expect(form.at_css("input[name=header_toggled]")["value"]).to eq("0")
+    end
+
     it "keeps ticks across pages and after a reload", :aggregate_failures do
       stub_const("CollectionTable::PER_PAGE", 1)
       first = own("Card A")
@@ -157,7 +170,7 @@ RSpec.describe "Bulk mode", type: :request do
       end
 
       it "keeps an untick as an exception across pages", :aggregate_failures do
-        submit_bulk(go: "filter", q: "bolt", shown: [ first ], all: true, all_rendered: true)
+        submit_bulk(go: "filter", q: "bolt", shown: [ first ], baseline: [ first ], all: true, all_rendered: true)
         follow_redirect!
         expect([ count_text, ticked, page_html.at_css("input[name=all_rendered]")["value"] ]).to eq([ "3 of 5 selected", [], "1" ])
         submit_bulk(go: collection_path(bulk: 1, q: "bolt", page: 2), q: "bolt", shown: [ first ], all: true, all_rendered: true)
@@ -166,7 +179,7 @@ RSpec.describe "Bulk mode", type: :request do
       end
 
       it "clears everything when the header is unticked, whatever the rows say" do
-        submit_bulk(go: "filter", q: "bolt", shown: [ first ], ticked: [ first ], all_rendered: true)
+        submit_bulk(go: "filter", q: "bolt", shown: [ first ], ticked: [ first ], baseline: [ first ], all_rendered: true)
         follow_redirect!
         expect(count_text).to eq("0 of 5 selected")
       end

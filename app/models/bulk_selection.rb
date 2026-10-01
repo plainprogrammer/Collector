@@ -40,16 +40,19 @@ class BulkSelection < ApplicationRecord
     end
   end
 
-  # Records one page's ticks (FR-4). The header acts only when it changed from how it was rendered:
-  # ticked, it selects every matching lot; unticked, it clears. Otherwise the shown rows decide.
+  # Records one page's ticks (FR-4, spec v5.0.0). A header toggle (submitted unlike it was rendered, or
+  # reported by scripting) resets the selection to every matching lot or nothing; then only the shown rows
+  # whose tick differs from their rendered baseline apply. Without a toggle, the shown rows decide.
   # Shown ids outside the account's matching lots are ignored (AC-8.1).
-  def record!(shown_ids:, ticked_ids:, header_rendered:, header_ticked:)
+  def record!(shown_ids:, ticked_ids:, header_rendered:, header_ticked:, baseline_ids: [], header_toggled: false)
+    shown = CollectionFilter.lots(account, query).where(id: shown_ids).pluck(:id)
     transaction do
-      if header_ticked != header_rendered
+      if header_toggled || header_ticked != header_rendered
         marks.delete_all
         update!(all_matching: header_ticked)
+        changed = shown.select { |id| ticked_ids.include?(id) != baseline_ids.include?(id) }
+        mark!(all_matching? ? changed - ticked_ids : changed & ticked_ids)
       else
-        shown = CollectionFilter.lots(account, query).where(id: shown_ids).pluck(:id)
         marks.where(lot_id: shown).delete_all
         mark!(all_matching? ? shown - ticked_ids : shown & ticked_ids)
       end

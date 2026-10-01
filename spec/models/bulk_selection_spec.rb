@@ -8,8 +8,9 @@ RSpec.describe BulkSelection, type: :model do
 
   def own(name = "Lightning Bolt", **options) = owned_printing(name, account:, **options)
 
-  def tick(shown, ticked, header_rendered: false, header_ticked: false)
-    selection.record!(shown_ids: shown.map(&:id), ticked_ids: ticked.map(&:id), header_rendered:, header_ticked:)
+  def tick(shown, ticked, header_rendered: false, header_ticked: false, baseline: [], header_toggled: false)
+    selection.record!(shown_ids: shown.map(&:id), ticked_ids: ticked.map(&:id), header_rendered:, header_ticked:,
+      baseline_ids: baseline.map(&:id), header_toggled:)
   end
 
   it "starts empty under the default filter and sort", :aggregate_failures do
@@ -32,10 +33,43 @@ RSpec.describe BulkSelection, type: :model do
     tick([ a ], [], header_ticked: true)
     expect(selection.lots).to contain_exactly(a, b)
     expect([ selection.copies, selection.everything? ]).to eq([ 5, true ])
-    tick([ a ], [], header_rendered: true, header_ticked: true)
+    tick([ a ], [], header_rendered: true, header_ticked: true, baseline: [ a ])
     expect([ selection.lots.to_a, selection.copies, selection.everything? ]).to eq([ [ b ], 3, false ])
-    tick([ a, b ], [ a, b ], header_rendered: true, header_ticked: false)
+    tick([ a, b ], [ b ], header_rendered: true, header_ticked: false, baseline: [ b ])
     expect(selection.lots).to be_empty
+  end
+
+  context "when the header was toggled (spec v5.0.0 FR-4)" do
+    let(:lots) { [ "Card A", "Card B", "Card C" ].map { |name| own(name) } }
+
+    it "keeps a row unticked against its ticked baseline as an exception after Select all" do
+      a, b, c = lots
+      tick([ a, b, c ], [ a, c ], header_ticked: true, baseline: [ a, b, c ], header_toggled: true)
+      expect(selection.lots).to contain_exactly(a, c)
+    end
+
+    it "selects a row ticked against its unticked baseline after clearing the header" do
+      a, b, c = lots
+      tick([ a, b, c ], [], header_ticked: true)
+      tick([ a, b, c ], [ b ], header_rendered: true, header_ticked: false, baseline: [], header_toggled: true)
+      expect(selection.lots).to contain_exactly(b)
+    end
+
+    it "lets rows equal to their baseline follow the header", :aggregate_failures do
+      a, b, c = lots
+      tick([ a ], [ a ])
+      tick([ a, b ], [ a ], header_ticked: true, baseline: [ a ])
+      expect(selection.lots).to contain_exactly(a, b, c)
+      tick([ a, b ], [ a, b ], header_rendered: true, header_ticked: false, baseline: [ a, b ])
+      expect(selection.lots).to be_empty
+    end
+
+    it "resets when scripting reports a toggle, even with the header submitted as rendered" do
+      a, b, c = lots
+      tick([ a ], [ a ])
+      tick([ b, c ], [ b ], baseline: [], header_toggled: true)
+      expect(selection.lots).to contain_exactly(b)
+    end
   end
 
   it "ignores ids that aren't the account's matching lots" do
@@ -84,8 +118,8 @@ RSpec.describe BulkSelection, type: :model do
     b = own("Card B")
     selection.include!([ a.id ])
     expect(selection.lots).to eq([ a ])
-    tick([ a ], [], header_ticked: true)
-    tick([ a, b ], [], header_rendered: true, header_ticked: true)
+    tick([ a ], [ a ], header_ticked: true, baseline: [ a ])
+    tick([ a, b ], [], header_rendered: true, header_ticked: true, baseline: [ a, b ])
     selection.include!([ b.id ])
     expect(selection.lots).to eq([ b ])
   end

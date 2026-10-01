@@ -20,8 +20,8 @@ class Collections::SelectionsController < ApplicationController
     return done(selection, query, sort) if params[:go] == "done"
 
     selection.restart!(query:, sort:) unless selection.context?(query, sort)
-    selection.record!(shown_ids: ids(:shown_ids), ticked_ids: ids(:ticked_ids),
-      header_rendered: params[:all_rendered] == "1", header_ticked: params[:all] == "1")
+    selection.record!(shown_ids: ids(:shown_ids), ticked_ids: ids(:ticked_ids), baseline_ids: ids(:baseline_ids),
+      header_rendered: params[:all_rendered] == "1", header_ticked: params[:all] == "1", header_toggled: params[:header_toggled] == "1")
     ACTIONS.include?(params[:go]) ? act(selection, query, sort) : navigate(selection, *destination(query, sort))
   end
 

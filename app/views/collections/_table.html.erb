@@ -27,6 +27,7 @@
         <% if bulk %>
           <td class="c-table__select">
             <%= hidden_field_tag "shown_ids[]", lot.id, id: nil %>
+            <%= hidden_field_tag "baseline_ids[]", lot.id, id: nil, disabled: !state.selected?(lot), data: { bulk_selection_target: "baseline" } %>
             <%= check_box_tag "ticked_ids[]", lot.id, state.selected?(lot), id: nil, "aria-label": "Select #{lot_label(lot)}",
                   data: { quantity: lot.quantity, bulk_selection_target: "row", action: "bulk-selection#toggle" } %>
           </td>

@@ -1,10 +1,10 @@
 import { Controller } from "@hotwired/stimulus"
 
 // Bulk mode's live count, mixed header and Esc (spec 006 AC-5.8, AC-4.6). Nothing is submitted here:
-// the bulk form carries the ticks with the next control the collector presses (FR-4).
+// the bulk form carries the ticks, their baselines and any header toggle with the next control pressed (FR-4).
 // base = the server's selected copies not on this page; the count adds this page's ticked rows.
 export default class extends Controller {
-  static targets = ["count", "header", "row", "done"]
+  static targets = ["count", "header", "row", "baseline", "toggled", "done"]
   static values = { matching: Number, base: Number }
 
   connect() {
@@ -29,6 +29,10 @@ export default class extends Controller {
       row.checked = checked
       row.closest("tr")?.setAttribute("aria-selected", String(checked))
     })
+    // Rows and baselines render in the same order: after a toggle every shown row matches the header,
+    // so a later tick or untick on this page reaches the server as a change (spec v5.0.0 FR-4, AC-5.10).
+    this.baselineTargets.forEach((baseline) => { baseline.disabled = !checked })
+    this.toggledTarget.value = "1"
     this.baseValue = checked ? this.matchingValue - this.sum(this.rowTargets) : 0
     this.render()
   }

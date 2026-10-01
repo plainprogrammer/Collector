@@ -49,6 +49,36 @@ RSpec.describe "Bulk mode", type: :system do
     expect(row_box("Card A")).to be_checked
   end
 
+  it "acts on exactly the copies counted after Select all and an untick (AC-5.10)", :aggregate_failures do
+    a = own("Card A", quantity: 3, condition: "near_mint")
+    b = own("Card B", quantity: 2, condition: "near_mint")
+    visit collection_path(bulk: 1)
+    check "Select all"
+    row_box("Card B").uncheck
+    expect(page).to have_css(".c-bulkbar__count", exact_text: "3 of 5 selected")
+    within(".c-bulkbar__extra") { click_on "Set condition…" }
+    expect(page).to have_css("h1", exact_text: "Set the condition of 3 items")
+    choose "Lightly played (LP)"
+    click_on "Apply"
+    expect(page).to have_text("Set the condition of 3 items to Lightly played.")
+    expect([ a.reload.condition, b.reload.condition ]).to eq(%w[lightly_played near_mint])
+  end
+
+  it "acts on exactly the copies counted after clearing a ticked header and ticking a row (AC-5.10)", :aggregate_failures do
+    stub_const("CollectionTable::PER_PAGE", 1)
+    own("Card A", quantity: 3)
+    own("Card B", quantity: 2)
+    visit collection_path(bulk: 1)
+    check "Select all"
+    click_on "Next"
+    click_on "Previous"
+    expect(page).to have_checked_field("Select all")
+    uncheck "Select all"
+    row_box("Card A").check
+    within(".c-bulkbar__extra") { click_on "Set condition…" }
+    expect(page).to have_css("h1", exact_text: "Set the condition of 3 items")
+  end
+
   it "leaves bulk mode on Esc, but Esc with a menu open only closes the menu", :aggregate_failures do
     own("Lightning Bolt")
     visit collection_path

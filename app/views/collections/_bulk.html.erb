@@ -31,6 +31,7 @@
     <% table.sort.to_params.each do |name, value| %><%= hidden_field_tag name, value, id: nil %><% end %>
     <%= hidden_field_tag :page, table.pagination.page, id: nil %>
     <%= hidden_field_tag :all_rendered, state.all? ? "1" : "0", id: nil %>
+    <%= hidden_field_tag :header_toggled, "0", id: nil, data: { bulk_selection_target: "toggled" } %>
     <div class="c-results__meta">
       <span class="c-filterbar__count"><%= "#{number_with_delimiter(table.matching_quantity)} of " if table.filtered? %><%= number_with_delimiter(table.total_quantity) %> <%= "item".pluralize(table.total_quantity) %></span>
     </div>

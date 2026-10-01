@@ -25,6 +25,7 @@ The table in bulk mode as one form, so every tick reaches the server with whatev
   <form id="bulk" action="/collection/selection" method="post">
     <input type="hidden" name="_method" value="patch">
     <input type="hidden" name="rendered_q" value=""><input type="hidden" name="page" value="1"><input type="hidden" name="all_rendered" value="0">
+    <input type="hidden" name="header_toggled" value="0">
     <table class="c-table">
       <thead><tr>
         <th class="c-table__select"><input type="checkbox" name="all" value="1" aria-label="Select all"></th>
@@ -34,6 +35,7 @@ The table in bulk mode as one form, so every tick reaches the server with whatev
       <tbody><tr aria-selected="true">
         <td class="c-table__select">
           <input type="hidden" name="shown_ids[]" value="41">
+          <input type="hidden" name="baseline_ids[]" value="41">
           <input type="checkbox" name="ticked_ids[]" value="41" checked aria-label="Select M10 · 146 NM">
         </td>
         …
@@ -52,5 +54,7 @@ The table in bulk mode as one form, so every tick reaches the server with whatev
 - `c-bulkhead` is one sticky block below the app header (`top:56px`, like `.c-shell .c-filterbar`), with the filter bar and the bulk bar static inside it. The export makes both bars sticky at their own offsets, which slides the bulk bar under the app header and the filter bar when the page scrolls; one block keeps the count, the actions and Done in view. Because the block sits outside the form, its buttons join it by id.
 - The view switch stays outside the form and is inert: Table pressed, Grid disabled.
 - Each submission sends `shown_ids[]`, `ticked_ids[]`, the header checkbox (`all`) and how it was rendered (`all_rendered`), with the filter, sort and page it was rendered with. Every id is re-checked against the account.
+- Each row also carries its baseline, a hidden `baseline_ids[]` that is `disabled` unless the row was ticked when rendered, and the form carries `header_toggled` (`"0"`). The header was toggled when `all` differs from `all_rendered` or `header_toggled` is `"1"`: the selection then resets to every matching lot or nothing, and only rows whose tick differs from their baseline change it. Without a toggle the shown rows decide (spec 006 FR-4, v5.0.0).
+- Toggling the header with scripting moves every row and its baseline to the header's state and sets `header_toggled` to `"1"`, so a later untick or tick on that page reaches the server as a change and the action covers exactly the copies the count shows (AC-5.10).
 - The checkbox column is as narrow as its box (`width:1%`); each checkbox's `aria-label` names its row, and a ticked row carries `aria-selected="true"`.
 - Scripting only enhances: it updates the count live, shows the header checkbox's mixed state and leaves bulk mode on Esc.
