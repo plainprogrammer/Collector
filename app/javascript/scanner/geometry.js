@@ -6,9 +6,11 @@ export const STAGE_ASPECT = 3 / 4
 export const GUIDE = { height: 0.8, maxWidth: 0.9 } // shares of the stage
 // Frozen before the measured run, tuned only on cards outside the corpus (spec 007 AC-6.1).
 export const STRIPS = {
-  name: { x: 0.05, y: 0.03, w: 0.72, h: 0.085 },
+  name: { x: 0.05, y: 0.055, w: 0.75, h: 0.11 },
   collector: { x: 0.03, y: 0.905, w: 0.55, h: 0.085 }
 }
+// Strips are drawn at this many times their size before OCR. A tuning setting, frozen before the measured run (AC-6.1).
+export const STRIP_SCALE = 2
 
 export function guideRect(viewWidth, viewHeight) {
   let height = viewHeight * GUIDE.height
@@ -31,11 +33,34 @@ export function guideInFrame(frameWidth, frameHeight, viewWidth, viewHeight) {
 
 export function cropStrips(image, card) {
   return Object.fromEntries(Object.entries(STRIPS).map(([ key, strip ]) => {
+    const width = Math.round(card.width * strip.w)
+    const height = Math.round(card.height * strip.h)
     const canvas = document.createElement("canvas")
-    canvas.width = Math.round(card.width * strip.w)
-    canvas.height = Math.round(card.height * strip.h)
-    canvas.getContext("2d").drawImage(image, card.x + card.width * strip.x, card.y + card.height * strip.y,
-      canvas.width, canvas.height, 0, 0, canvas.width, canvas.height)
+    canvas.width = width * STRIP_SCALE
+    canvas.height = height * STRIP_SCALE
+    const context = canvas.getContext("2d", { willReadFrequently: true })
+    context.drawImage(image, card.x + card.width * strip.x, card.y + card.height * strip.y,
+      width, height, 0, 0, canvas.width, canvas.height)
+    stretchContrast(context, canvas.width, canvas.height)
     return [ key, canvas ]
   }))
+}
+
+// Grayscale, then stretch so the darkest pixel is black and the lightest white. Tuning round 1 read clipped names
+// and small, low-contrast collector lines (grey on a dark border) as empty; enlarging and stretching helps OCR.
+function stretchContrast(context, width, height) {
+  const image = context.getImageData(0, 0, width, height)
+  const pixels = image.data
+  const gray = new Uint8ClampedArray(pixels.length / 4)
+  for (let i = 0; i < gray.length; i++) {
+    gray[i] = 0.299 * pixels[i * 4] + 0.587 * pixels[i * 4 + 1] + 0.114 * pixels[i * 4 + 2]
+  }
+  let min = 255, max = 0
+  for (const value of gray) { min = Math.min(min, value); max = Math.max(max, value) }
+  if (max === min) return
+  for (let i = 0; i < gray.length; i++) {
+    const value = (gray[i] - min) * 255 / (max - min)
+    pixels[i * 4] = pixels[i * 4 + 1] = pixels[i * 4 + 2] = value
+  }
+  context.putImageData(image, 0, 0)
 }
