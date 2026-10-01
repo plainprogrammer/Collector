@@ -1,4 +1,5 @@
 require "active_support/core_ext/integer/time"
+require_relative "../../lib/collector/request_log"
 
 Rails.application.configure do
   # Settings specified here will take precedence over those in config/application.rb.
@@ -86,4 +87,8 @@ Rails.application.configure do
     manifest: ENV.fetch("COLLECTOR_SCANNER_MANIFEST", "~/card-scanner-corpus/manifest.csv"),
     dir: ENV.fetch("COLLECTOR_SCANNER_RUN_DIR", "~/card-scanner-corpus/runs/live")
   }
+
+  # Response sizes for the scanner's on-device load measurements (spec 007 AC-6.5): COLLECTOR_REQUEST_LOG=1
+  # writes one JSON line per response to log/requests.jsonl.
+  config.middleware.insert_before 0, Collector::RequestLog, path: Rails.root.join("log/requests.jsonl") if ENV["COLLECTOR_REQUEST_LOG"] == "1"
 end
