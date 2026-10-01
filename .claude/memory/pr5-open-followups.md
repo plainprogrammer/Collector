@@ -8,7 +8,7 @@ metadata:
 PR #5 (feature 004) merged into `main` on 2026-09-30 as `5bc4779`, with green CI at `8a188ef`. Follow-ups still open:
 
 - **Stale busy state:** decide whether to add a local workaround that clears stale `busy`/`aria-busy` after a restore visit, or to report it to Turbo. The user has been asked but hasn't answered.
-- **Back-button flake:** the fix for the intermittent back-button test (CI run 36748308952) was test hardening based on a hypothesis, commit `8a188ef`. Watch the next CI runs. If it fails again, start from the failed log, the screenshot artifact and CI's seed ([[reproduce-ci-with-seed]]).
+- **Back-button flake:** root-caused 2026-10-01 to Turbo's frame-advance snapshot race (see [[turbo-back-navigation-quirks]]) and fixed with `turbo-cache-control: no-cache` on the collection and search pages. The earlier hardening in `8a188ef` was a hypothesis and was not the cause.
 - **Uncaptured failure:** one full-suite local failure was seen once and never identified. There have been 23 green full runs since.
 - **Next features:** bulk and table views, then export/import.
 

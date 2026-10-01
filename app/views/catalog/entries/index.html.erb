@@ -1,4 +1,6 @@
 <% content_for :title, "Search · Collector" %>
+<%# Turbo frame-advance snapshot race: Back could restore the filtered page under the unfiltered URL, so these pages are not cached. %>
+<% content_for :head, tag.meta(name: "turbo-cache-control", content: "no-cache") %>
 <%= render "layouts/appbar", section: :search %>
 <main class="c-main">
   <div class="c-pagehead"><div><h1 class="c-pagehead__title">Search</h1></div></div>
