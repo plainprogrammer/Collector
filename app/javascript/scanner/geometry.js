@@ -4,7 +4,7 @@
 export const CARD_ASPECT = 63 / 88
 export const STAGE_ASPECT = 3 / 4
 export const GUIDE = { height: 0.8, maxWidth: 0.9 } // shares of the stage
-// Frozen before the measured run, tuned only on cards outside the corpus (spec 007 AC-6.1).
+// Frozen on 2026-10-01 for the measured run after 4 tuning rounds on 12 cards outside the corpus (spec 007 AC-6.1).
 export const STRIPS = {
   name: { x: 0.05, y: 0.055, w: 0.75, h: 0.11 },
   collector: { x: 0.03, y: 0.89, w: 0.55, h: 0.11 }
