@@ -30,6 +30,7 @@ Every rate carries its sample size. Anything not measured is labelled as such. P
   - Collector strip: x 0.03, y 0.89, w 0.55, h 0.11, page segmentation 6.
   - Both strips drawn at 2× with a grayscale min–max contrast stretch. The collector strip's dark pixel rows are inverted before OCR.
   - Engine: Tesseract.js 7.0.0, core 7.0.0, `eng` `4.0.0_best_int`, served by the app from `/ocr/v7.0.0/`.
+- **Camera resolution (FR-2):** the page asks for `width: ideal 1920, height: ideal 1080`, rear camera. The delivered resolution wasn't logged. Round 1's strips, drawn at 1× before 2× scaling was added, were 590×97 px for the name. That puts the guide about 1,141 px tall in the frame, and the stage's visible area about 1,070×1,426 px, which matches a 1080×1920 portrait frame: the requested size, rotated. This is inferred from the strip sizes, not measured directly.
 - **Catalog:** Scryfall `default-cards-20260930210545` (106,677 English entries), with 35,946 names indexed.
 - **Device:** the maintainer's iPhone, iOS 18.7, Brave (WebKit; `… Version/26.6.1 Mobile/15E148 Safari/604.1 Brave`). It reached the dev server over HTTPS on the local network, using a self-signed certificate it trusts (`bin/dev-certificate`). The maintainer's Cloudflare tunnel returned 502 and was abandoned.
 - **Tuning cards:** 12 English cards outside the 50-card corpus (`~/card-scanner-corpus/tuning/manifest.csv`): 3 pre-M15, 7 M15–ONE, 2 MOM+, 3 foil. Rounds 1–2 had the first 10 cards; T011–T012 (MOM+) were added for rounds 3–4. Ground truth was built from the catalog (`scanner:ground_truth`): 12 of 12 resolved.
@@ -39,7 +40,7 @@ Every rate carries its sample size. Anything not measured is labelled as such. P
 
 ## 3. Rates: Phase 0, Phase 0's text with Phase 1's matcher, and the photo replay (AC-6.2, AC-6.3)
 
-The middle column changes only the code, since it uses Phase 0's own OCR text. The right column also changes the strips: the guide-relative strips are cut from Phase 0's unguided photos. The final ranking has no Phase 0 column, because Phase 0 had no collector-first ranking.
+The middle column changes only the code, since it uses Phase 0's own OCR text. The right column also changes the strips: the guide-relative strips are cut from Phase 0's unguided photos. The final ranking has no Phase 0 column, because Phase 0 had no collector-first ranking. Lookup outcomes over the 45 set-line cards: Phase 0 one 8, none 37; Phase 0 text with Phase 1's matcher one 17, none 28; photo replay one 18, none 27. No lookup in any run was ambiguous (0).
 
 | Name read (front face) | Group | Phase 0 | Phase 0 text, Phase 1 matcher | Phase 1 photo replay |
 |---|---|---|---|---|
@@ -259,9 +260,9 @@ Round 4 in full, at the frozen settings:
 
 | Measure | Value | n | Phase 0 reference |
 |---|---|---|---|
-| On-device recognition of both strips, per capture (iPhone, all tuning rounds) | median ≈185 ms, slowest 539 ms | 44 | median 626 ms, slowest 1,911 ms (n=11) |
-| — per round (median / slowest) | 131/179, 167/271, 221/271, 288/539 ms | 10, 10, 12, 12 | |
-| App-side candidate lookup (desktop, photo replay) | median 44.4 ms, p95 70.1 ms | 50 | name query p95 114 ms (n=50) |
+| On-device recognition of both strips, per capture (iPhone, all tuning rounds) | median ≈185 ms (185–186, n even), slowest 539 ms | 44 | median 626 ms, slowest 1,911 ms (n=11) |
+| — per round (upper median / slowest) | 131/179, 167/271, 221/271, 288/539 ms | 10, 10, 12, 12 | |
+| App-side candidate lookup (desktop, photo replay; machine timing, varies by about ±2 ms between runs) | median 44.4 ms, p95 70.1 ms | 50 | name query p95 114 ms (n=50) |
 | Cold load of `/scanner` after sign-in | 7,050,153 bytes, 6 requests (engine 7,026,613 bytes in 4: library, worker, `core/tesseract-core-simd-lstm.wasm.js`, `lang/eng.traineddata.gz`) | 1 | 7,031,507 bytes |
 | Cold session including the sign-in page and app assets | 7,353,346 bytes, 37 requests | 1 | |
 | Warm reload of `/scanner` | 11,770 bytes, 1 request (the page; no engine file requested, not even revalidated) | 1 | about 1 KB |

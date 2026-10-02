@@ -39,7 +39,7 @@ Use Tesseract.js 7.0.0 with `tesseract.js-core` 7.0.0 and the `eng` `4.0.0_best_
 
 - Photos stay on the device, and the page makes no third-party requests.
 - The first scan on a device costs about 7 MB; later visits cost about 1 KB. Self-hosters serve those files themselves.
-- 28,904,967 bytes of engine files (the library, the worker, six core builds and the language data; the sum of the measured sizes) would live in the repository or be fetched at build time. Phase 1's plan chooses which.
+- The engine files are fetched at setup and build time, not committed: 14,828,864 bytes (the library, the worker, the three LSTM-only core builds and the language data; see "Changes from the Proposed text"). The Proposed text's 28,904,967 bytes counted all six core builds.
 - `'wasm-unsafe-eval'` on the scanner page widens its policy slightly compared with the rest of the app. Keeping the engine off other pages limits that.
 - Upgrades are manual: fetch the new versions, add a new version path, update the page's paths, re-measure.
 - The engine doesn't fix accuracy. Phase 1's capture method (a live guide overlay, research.md Section 8) decides whether the scanner is good enough.

@@ -35,4 +35,4 @@
 
 ## Fixtures (committed, text only)
 
-`spec/fixtures/card_scanner/phase1_ocr_results.json` and `phase1_name_matches.json`, format_version 2: spec 005's format_version 1 fields plus `ms`, `user_agent`, `captured_at` (results) and `lookup_ms`, `name_candidates`, `final_candidates` (matches), keyed by manifest `file` (AC-6.6).
+`spec/fixtures/card_scanner/phase1_photos_{ocr_results,name_matches}.json` (the photo replay of the 50 corpus photos) and `phase1_tuning4_{ocr_results,name_matches}.json` (tuning round 4's live captures), format_version 2, `run` set to the scored run's label: spec 005's format_version 1 fields plus `ms`, `user_agent`, `captured_at` (results) and `lookup_ms`, `name_candidates`, `final_candidates` (matches), keyed by manifest `file` (AC-6.6).
