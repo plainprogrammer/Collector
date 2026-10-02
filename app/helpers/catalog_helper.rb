@@ -19,7 +19,7 @@ module CatalogHelper
 
   def quick_add_button(entry, return_to:, label: "Add")
     button_to catalog_entry_quick_add_path(entry), params: { return_to: }, class: "c-btn c-btn--ghost c-btn--sm",
-      form: { class: "c-tile__add", data: { turbo_frame: "_top" } },
+      form: { class: "c-tile__add" },
       "aria-label": "Add 1 × #{entry.name} (#{set_number(entry)})" do
       safe_join([ render("icons/plus"), label ])
     end

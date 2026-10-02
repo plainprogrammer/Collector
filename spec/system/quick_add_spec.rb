@@ -58,7 +58,7 @@ RSpec.describe "Quick add from search", type: :system do
     page.go_back
     expect(page).to have_no_css(".c-group h2", text: "Lightning Bolt")
 
-    wait_for_turbo_idle(frames: false)
+    wait_for_turbo_idle
     page.go_forward
     expect(page).to have_current_path(bolt_search_path)
     expect(page).to have_css(".c-group h2", text: "Lightning Bolt")

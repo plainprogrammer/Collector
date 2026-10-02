@@ -22,8 +22,8 @@ RSpec.describe "Collection views", type: :request do
   it "submits the switch to the whole page with the current filter and sort", :aggregate_failures do
     own
     get collection_path(view: "table", q: "bolt", sort: "price", dir: "desc")
-    form = page_html.at_css("turbo-frame#results form#view-switch")
-    expect([ form["method"], form["action"], form["data-turbo-frame"], form.key?("hidden") ]).to eq([ "get", collection_path, "_top", true ])
+    form = page_html.at_css("form#view-switch")
+    expect([ form["method"], form["action"], form["data-turbo-frame"], form.key?("hidden") ]).to eq([ "get", collection_path, nil, true ])
     expect(form.css("input[type=hidden]").to_h { |input| [ input["name"], input["value"] ] }).to eq("q" => "bolt", "sort" => "price", "dir" => "desc")
   end
 
