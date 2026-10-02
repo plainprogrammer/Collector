@@ -75,14 +75,17 @@ class Collector::ScannerFindings::Report
       sections = @run.replays.map do |label, results|
         diffs = results.flat_map do |result|
           %w[name_text collector_text].filter_map do |field|
-            on_device = device.dig(result["file"], field)
-            "- #{result["file"]} #{field}: #{on_device.inspect} on the device, #{result[field].inspect} replayed" if on_device != result[field]
+            on_device, replayed = lines(device.dig(result["file"], field)), lines(result[field])
+            "- #{result["file"]} #{field}: #{on_device.inspect} on the device, #{replayed.inspect} replayed" if on_device != replayed
           end
         end
         [ "Replay #{label}: #{diffs.map { it.split[1] }.uniq.size} of #{results.size} captures differ from the device's text", *diffs ].join("\n")
       end
       sections.join("\n\n").presence || "No replays yet."
     end
+
+    # Phone text arrives through a multipart form post (CRLF), desktop replays as JSON (LF).
+    def lines(text) = text&.gsub(/\r\n?/, "\n")
 
     def cell(text) = text.to_s.gsub("|", "\\|").gsub(/\s+/, " ")
 end

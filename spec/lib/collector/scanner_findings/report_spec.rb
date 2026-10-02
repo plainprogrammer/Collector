@@ -42,6 +42,18 @@ RSpec.describe Collector::ScannerFindings::Report do
       expect(markdown.lines).to include(a_string_starting_with("| IMG_6688.jpeg |").and(including("Nothing useful")))
       expect(markdown).not_to include("\r")
     end
+
+    it "ignores replays that differ from the device's text only in line endings" do
+      run.record_replay!("desktop-a", [ { "file" => "IMG_6688.jpeg", "name_text" => "Nothing\nuseful", "collector_text" => "" } ])
+      expect(report.to_markdown).to include("Replay desktop-a: 0 of 1 captures differ")
+    end
+
+    it "still reports a replay whose text differs, with normalised line endings", :aggregate_failures do
+      run.record_replay!("desktop-a", [ { "file" => "IMG_6688.jpeg", "name_text" => "Nothing\nelse", "collector_text" => "" } ])
+      markdown = report.to_markdown
+      expect(markdown).to include("Replay desktop-a: 1 of 1 captures differ")
+      expect(markdown).to include(%(- IMG_6688.jpeg name_text: "Nothing\\nuseful" on the device, "Nothing\\nelse" replayed))
+    end
   end
 
   context "when the run is named (the photo replay, a tuning round)" do
