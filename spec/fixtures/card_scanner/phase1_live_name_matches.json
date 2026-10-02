@@ -1,0 +1,721 @@
+{
+  "format_version": 2,
+  "run": "Phase 1 live (new corpus)",
+  "matches": [
+    {
+      "file": "IMG_6755.jpeg",
+      "lookup_ms": 213.3,
+      "name_candidates": [
+        "Gandalf, Friend of the Shire",
+        "Gandalf, White Rider",
+        "Gandalf of the Secret Fire"
+      ],
+      "final_candidates": [
+        "Gandalf, Friend of the Shire",
+        "Gandalf, White Rider",
+        "Gandalf of the Secret Fire"
+      ],
+      "query": "Gandalf, Friend of the Shire\r\n€ PR TTR"
+    },
+    {
+      "file": "IMG_6756.jpeg",
+      "lookup_ms": 39.56,
+      "name_candidates": [
+        "Indatha Crystal",
+        "Indatha Triome",
+        "The Wind Crystal"
+      ],
+      "final_candidates": [
+        "Indatha Crystal",
+        "Indatha Triome",
+        "The Wind Crystal"
+      ],
+      "query": ") Indatha Crysial"
+    },
+    {
+      "file": "IMG_6757.jpeg",
+      "lookup_ms": 60.9,
+      "name_candidates": [
+        "Spike-Tailed Ceratops",
+        "Kurbis, Harvest Celebrant",
+        "The Celestus"
+      ],
+      "final_candidates": [
+        "Invasion of Muraganda // Primordial Plasm",
+        "Spike-Tailed Ceratops",
+        "Kurbis, Harvest Celebrant"
+      ],
+      "query": "-\r\n® pr oR 53\r\nE.T «CE"
+    },
+    {
+      "file": "IMG_6758.jpeg",
+      "lookup_ms": 69.25,
+      "name_candidates": [
+        "Minsc, Beloved Ranger",
+        "Shoreline Ranger",
+        "Kelsinko Ranger"
+      ],
+      "final_candidates": [
+        "Minsc, Beloved Ranger",
+        "Shoreline Ranger",
+        "Kelsinko Ranger"
+      ],
+      "query": "{ Minsc, Beloved Ranger\r\n| pr TEEN"
+    },
+    {
+      "file": "IMG_6759.jpeg",
+      "lookup_ms": 41.44,
+      "name_candidates": [
+        "Repurposed Enforcer",
+        "Thieves' Guild Enforcer",
+        "Perimeter Enforcer"
+      ],
+      "final_candidates": [
+        "Repurposed Enforcer",
+        "Thieves' Guild Enforcer",
+        "Perimeter Enforcer"
+      ],
+      "query": "{{ Repurposed Enforcer\r\n\\ —"
+    },
+    {
+      "file": "IMG_6760.jpeg",
+      "lookup_ms": 39.41,
+      "name_candidates": [
+        "Vintara Snapper",
+        "Vintara Elephant",
+        "Vine Snare"
+      ],
+      "final_candidates": [
+        "Vintara Snapper",
+        "Vintara Elephant",
+        "Vine Snare"
+      ],
+      "query": "Vintara Snapper Le\r\nIW 2a aa, V7"
+    },
+    {
+      "file": "IMG_6761.jpeg",
+      "lookup_ms": 47.15,
+      "name_candidates": [
+        "Join the Dead",
+        "Poison the Cup",
+        "Anowon, the Ruin Thief"
+      ],
+      "final_candidates": [
+        "Join the Dead",
+        "Poison the Cup",
+        "Anowon, the Ruin Thief"
+      ],
+      "query": "loon the Church of Dea"
+    },
+    {
+      "file": "IMG_6762.jpeg",
+      "lookup_ms": 35.29,
+      "name_candidates": [
+        "Moonhold",
+        "Moonshadow",
+        "Moon Heron"
+      ],
+      "final_candidates": [
+        "Moonhold",
+        "Moonshadow",
+        "Moon Heron"
+      ],
+      "query": "# Moonhold"
+    },
+    {
+      "file": "IMG_6763.jpeg",
+      "lookup_ms": 45.56,
+      "name_candidates": [
+        "Leyline Immersion",
+        "Invasion of Shandalar // Leyline Surge",
+        "Leyline Dowser"
+      ],
+      "final_candidates": [
+        "Leyline Immersion",
+        "Invasion of Shandalar // Leyline Surge",
+        "Leyline Dowser"
+      ],
+      "query": "Leyline Immersion\r\nRat: BB"
+    },
+    {
+      "file": "IMG_6764.jpeg",
+      "lookup_ms": 38.54,
+      "name_candidates": [
+        "Rad Rascal",
+        "Radstorm",
+        "Bad Ass"
+      ],
+      "final_candidates": [
+        "Rad Rascal",
+        "Radstorm",
+        "Bad Ass"
+      ],
+      "query": "Cr RAD | A SR—\r\n: #1 -"
+    },
+    {
+      "file": "IMG_6765.jpeg",
+      "lookup_ms": 66.9,
+      "name_candidates": [
+        "Tome Shredder",
+        "Bone Shredder",
+        "Tome Raider"
+      ],
+      "final_candidates": [
+        "Elite Spellbinder",
+        "Tome Shredder",
+        "Bone Shredder"
+      ],
+      "query": "Tome Shredder\r\n5) - ps\r\nca BY"
+    },
+    {
+      "file": "IMG_6766.jpeg",
+      "lookup_ms": 90.05,
+      "name_candidates": [
+        "Gray Merchant of Alphabet",
+        "Gray Merchant of Asphodel",
+        "Oracle of the Alpha"
+      ],
+      "final_candidates": [
+        "Gray Merchant of Alphabet",
+        "Gray Merchant of Asphodel",
+        "Oracle of the Alpha"
+      ],
+      "query": "R Gray Merchant of Alphabet\r\n3 RE AE."
+    },
+    {
+      "file": "IMG_6767.jpeg",
+      "lookup_ms": 67.8,
+      "name_candidates": [
+        "Trigger Happy",
+        "Strider Harness",
+        "Courier Hawk"
+      ],
+      "final_candidates": [
+        "Trigger Happy",
+        "Strider Harness",
+        "Courier Hawk"
+      ],
+      "query": "( Trigger Happy\r\n2 / at"
+    },
+    {
+      "file": "IMG_6768.jpeg",
+      "lookup_ms": 41.36,
+      "name_candidates": [
+        "Den of the Bugbear",
+        "Warden of the Eye",
+        "Warden of the Wall"
+      ],
+      "final_candidates": [
+        "Den of the Bugbear",
+        "Warden of the Eye",
+        "Warden of the Wall"
+      ],
+      "query": "&/ Den of the\r\ny ~~ Bugbear"
+    },
+    {
+      "file": "IMG_6769.jpeg",
+      "lookup_ms": 74.76,
+      "name_candidates": [
+        "Grand Master of Flowers",
+        "Grand Melee",
+        "Grand Marshal Macie"
+      ],
+      "final_candidates": [
+        "Ranger Class",
+        "Grand Master of Flowers",
+        "Grand Melee"
+      ],
+      "query": "Grand Master of Flowers , @\r\nEES [oY"
+    },
+    {
+      "file": "IMG_6770.jpeg",
+      "lookup_ms": 72.51,
+      "name_candidates": [
+        "Ajani Unrelenting",
+        "Ajani Unyielding",
+        "Ajani's Influence"
+      ],
+      "final_candidates": [
+        "Ajani Unrelenting",
+        "Ajani Unyielding",
+        "Ajani's Influence"
+      ],
+      "query": "————\r\n[ Ajani Unrelenting 4"
+    },
+    {
+      "file": "IMG_6771.jpeg",
+      "lookup_ms": 69.58,
+      "name_candidates": [
+        "Flourishing Grapple",
+        "Flourishing Strike",
+        "Flourishing Hunter"
+      ],
+      "final_candidates": [
+        "Flourishing Grapple",
+        "Flourishing Strike",
+        "Flourishing Hunter"
+      ],
+      "query": "Flourishing Grapple\r\nJo ~ 4 o)l\\ ect"
+    },
+    {
+      "file": "IMG_6772.jpeg",
+      "lookup_ms": 47.28,
+      "name_candidates": [
+        "Kasla, the Broken Halo",
+        "Fain, the Broker",
+        "Gisela, the Broken Blade"
+      ],
+      "final_candidates": [
+        "Kasla, the Broken Halo",
+        "Fain, the Broker",
+        "Gisela, the Broken Blade"
+      ],
+      "query": "Kasla, the Broken Halo 3\r\nb pe"
+    },
+    {
+      "file": "IMG_6773.jpeg",
+      "lookup_ms": 28.34,
+      "name_candidates": [],
+      "final_candidates": [
+        "Flameskull"
+      ],
+      "query": ""
+    },
+    {
+      "file": "IMG_6774.jpeg",
+      "lookup_ms": 65.67,
+      "name_candidates": [
+        "Merry, Esquire of Rohan",
+        "Merry-Go-Round",
+        "Xerex Squire"
+      ],
+      "final_candidates": [
+        "Merry, Esquire of Rohan",
+        "Merry-Go-Round",
+        "Xerex Squire"
+      ],
+      "query": "Merry, Esquire of Rohan\r\n| a"
+    },
+    {
+      "file": "IMG_6776.jpeg",
+      "lookup_ms": 69.65,
+      "name_candidates": [
+        "Shock",
+        "Shocker",
+        "Shock Troops"
+      ],
+      "final_candidates": [
+        "Shock",
+        "Shocker",
+        "Shock Troops"
+      ],
+      "query": "| 000 [+]\r\nShock"
+    },
+    {
+      "file": "IMG_6777.jpeg",
+      "lookup_ms": 10.54,
+      "name_candidates": [],
+      "final_candidates": [],
+      "query": "I ' 44 TY8"
+    },
+    {
+      "file": "IMG_6778.jpeg",
+      "lookup_ms": 89.95,
+      "name_candidates": [
+        "Evolving Wilds",
+        "Evolving Door",
+        "Evolving Adaptive"
+      ],
+      "final_candidates": [
+        "Evolving Wilds",
+        "Evolving Door",
+        "Evolving Adaptive"
+      ],
+      "query": "By OF Uunygcon nuns 4d\r\nFP A\r\nEvolving Wilds"
+    },
+    {
+      "file": "IMG_6780.jpeg",
+      "lookup_ms": 67.7,
+      "name_candidates": [
+        "Ghalta and Mavren",
+        "Ghalta, Stampede Tyrant",
+        "Ghalta, Primal Hunger"
+      ],
+      "final_candidates": [
+        "Ghalta and Mavren",
+        "Ghalta, Stampede Tyrant",
+        "Ghalta, Primal Hunger"
+      ],
+      "query": "} Ghalta and Mavren 38"
+    },
+    {
+      "file": "IMG_6781.jpeg",
+      "lookup_ms": 89.01,
+      "name_candidates": [
+        "Mountain",
+        "Mountain Goat",
+        "Mountain Yeti"
+      ],
+      "final_candidates": [
+        "Mountain",
+        "Mountain Goat",
+        "Mountain Yeti"
+      ],
+      "query": "| 4\r\nEMountain\r\n[\r\n\r\n€ a"
+    },
+    {
+      "file": "IMG_6782.jpeg",
+      "lookup_ms": 28.62,
+      "name_candidates": [],
+      "final_candidates": [
+        "Sunblade Samurai"
+      ],
+      "query": ""
+    },
+    {
+      "file": "IMG_6783.jpeg",
+      "lookup_ms": 69.26,
+      "name_candidates": [
+        "Lucky Offering",
+        "Lucky Clover",
+        "Dark Offering"
+      ],
+      "final_candidates": [
+        "Lucky Offering",
+        "Lucky Clover",
+        "Dark Offering"
+      ],
+      "query": "Lucky Offering\r\nMe Bad rad"
+    },
+    {
+      "file": "IMG_6784.jpeg",
+      "lookup_ms": 64.33,
+      "name_candidates": [
+        "Sungold Sentinel",
+        "Surging Sentinels",
+        "Sun Sentinel"
+      ],
+      "final_candidates": [
+        "Sungold Sentinel",
+        "Surging Sentinels",
+        "Sun Sentinel"
+      ],
+      "query": "| Sungold Sentinel\r\n7 GEESE TE"
+    },
+    {
+      "file": "IMG_6785.jpeg",
+      "lookup_ms": 39.77,
+      "name_candidates": [
+        "Bribe Taker",
+        "Lobe Lobber",
+        "Robe of Stars"
+      ],
+      "final_candidates": [
+        "Bribe Taker",
+        "Lobe Lobber",
+        "Robe of Stars"
+      ],
+      "query": "BE 0"
+    },
+    {
+      "file": "IMG_6786.jpeg",
+      "lookup_ms": 70.9,
+      "name_candidates": [
+        "Great Ugly-Looking Goblin // Clap! Snap!",
+        "Great Goblin, Foul-Hearted",
+        "Ultimate Green Goblin"
+      ],
+      "final_candidates": [
+        "Great Ugly-Looking Goblin // Clap! Snap!",
+        "Great Goblin, Foul-Hearted",
+        "Ultimate Green Goblin"
+      ],
+      "query": "CO —\r\n: Great Ugly-Looking Goblin\r\neS"
+    },
+    {
+      "file": "IMG_6787.jpeg",
+      "lookup_ms": 80.02,
+      "name_candidates": [
+        "Terramorphic Expanse",
+        "Terramorph",
+        "Terrarion"
+      ],
+      "final_candidates": [
+        "Terramorphic Expanse",
+        "Terramorph",
+        "Terrarion"
+      ],
+      "query": "| Terramorphic Expanse"
+    },
+    {
+      "file": "IMG_6788.jpeg",
+      "lookup_ms": 70.67,
+      "name_candidates": [
+        "Ascendant Packleader",
+        "Ascendant Dustspeaker",
+        "Ascendant Acolyte"
+      ],
+      "final_candidates": [
+        "Ascendant Packleader",
+        "Ascendant Dustspeaker",
+        "Ascendant Acolyte"
+      ],
+      "query": "Sra ae dha Boia died ‘\r\n| B Ascendant Packleader\r\n2 7” AEE"
+    },
+    {
+      "file": "IMG_6789.jpeg",
+      "lookup_ms": 63.18,
+      "name_candidates": [
+        "Reaper of Night // Harvest Fear",
+        "Harvest Pyre",
+        "Harvester Druid"
+      ],
+      "final_candidates": [
+        "Illithid Harvester // Plant Tadpoles",
+        "Reaper of Night // Harvest Fear",
+        "Harvest Pyre"
+      ],
+      "query": "a flarvester 8\r\ni A V4\r\n| - x :"
+    },
+    {
+      "file": "IMG_6790.jpeg",
+      "lookup_ms": 41.69,
+      "name_candidates": [
+        "Storvald, Frost Giant Jarl",
+        "Scab-Clan Giant",
+        "Frost Giant"
+      ],
+      "final_candidates": [
+        "Storvald, Frost Giant Jarl",
+        "Scab-Clan Giant",
+        "Frost Giant"
+      ],
+      "query": "Yan frost Giant jarit ES\r\nFo a"
+    },
+    {
+      "file": "IMG_6791.jpeg",
+      "lookup_ms": 73.64,
+      "name_candidates": [
+        "Way of the Deathbringer",
+        "Sarevok, Deathbringer",
+        "Azor, the Lawbringer"
+      ],
+      "final_candidates": [
+        "Way of the Deathbringer",
+        "Sarevok, Deathbringer",
+        "Azor, the Lawbringer"
+      ],
+      "query": ". NEE FL : -\r\nWay of the Deathbringer\r\npr yom Ty"
+    },
+    {
+      "file": "IMG_6792.jpeg",
+      "lookup_ms": 63.55,
+      "name_candidates": [
+        "Cast Away Doubt",
+        "Cast Out",
+        "Cast Down"
+      ],
+      "final_candidates": [
+        "Enlightened Confidant",
+        "Cast Away Doubt",
+        "Cast Out"
+      ],
+      "query": "Cast Away Doubt\r\n~~ Fr __\" ~~"
+    },
+    {
+      "file": "IMG_6793.jpeg",
+      "lookup_ms": 65.15,
+      "name_candidates": [
+        "Coronation of Chaos",
+        "Keeper of the Crown // Coronation of the Wilds",
+        "Fire Nation Occupation"
+      ],
+      "final_candidates": [
+        "Coronation of Chaos",
+        "Keeper of the Crown // Coronation of the Wilds",
+        "Fire Nation Occupation"
+      ],
+      "query": "} Coronation of Chaos\r\na2 = TR) 2%"
+    },
+    {
+      "file": "IMG_6794.jpeg",
+      "lookup_ms": 60.72,
+      "name_candidates": [
+        "V.A.T.S.",
+        "A-Town",
+        "Altaïr Ibn-La'Ahad"
+      ],
+      "final_candidates": [
+        "Devious Cover-Up",
+        "V.A.T.S.",
+        "A-Town"
+      ],
+      "query": "a Tl RV NB bn od"
+    },
+    {
+      "file": "IMG_6795.jpeg",
+      "lookup_ms": 64.81,
+      "name_candidates": [
+        "Pure Intentions",
+        "Ojutai Interceptor",
+        "Elite Instructor"
+      ],
+      "final_candidates": [
+        "Daring Demolition",
+        "Pure Intentions",
+        "Ojutai Interceptor"
+      ],
+      "query": "et - nti instore ITN ol——\r\n| A Daring Demolition"
+    },
+    {
+      "file": "IMG_6796.jpeg",
+      "lookup_ms": 58.93,
+      "name_candidates": [
+        "Die Young",
+        "Speed, Young Avenger",
+        "Meddling Youths"
+      ],
+      "final_candidates": [
+        "Die Young",
+        "Speed, Young Avenger",
+        "Meddling Youths"
+      ],
+      "query": "nl —— NN iia\r\n| f Die Young"
+    },
+    {
+      "file": "IMG_6797.jpeg",
+      "lookup_ms": 64.87,
+      "name_candidates": [
+        "Vengeant Earth",
+        "Vengeant Vampire",
+        "Vengeance"
+      ],
+      "final_candidates": [
+        "Vengeant Earth",
+        "Vengeant Vampire",
+        "Vengeance"
+      ],
+      "query": "pro Rp ——\r\np fl Vengeant Earth\r\n* -"
+    },
+    {
+      "file": "IMG_6798.jpeg",
+      "lookup_ms": 67.3,
+      "name_candidates": [
+        "Vanquish the Weak",
+        "Vanquish the Horde",
+        "Vanquish the Foul"
+      ],
+      "final_candidates": [
+        "Vanquish the Weak",
+        "Vanquish the Horde",
+        "Vanquish the Foul"
+      ],
+      "query": "BR Vanquish the Weak\r\naE > TEE"
+    },
+    {
+      "file": "IMG_6799.jpeg",
+      "lookup_ms": 69.43,
+      "name_candidates": [
+        "+2 Mace",
+        "Macetail Hystrodon",
+        "Mace of the Valiant"
+      ],
+      "final_candidates": [
+        "+2 Mace",
+        "Macetail Hystrodon",
+        "Mace of the Valiant"
+      ],
+      "query": "+2 Mace\r\nCTT"
+    },
+    {
+      "file": "IMG_6800.jpeg",
+      "lookup_ms": 67.61,
+      "name_candidates": [
+        "Secrets of the Key",
+        "Secrets of the Dead",
+        "Secrets of the Golden City"
+      ],
+      "final_candidates": [
+        "Secrets of the Key",
+        "Secrets of the Dead",
+        "Secrets of the Golden City"
+      ],
+      "query": "| Secrets of the Key\r\n- CTU \" ,"
+    },
+    {
+      "file": "IMG_6801.jpeg",
+      "lookup_ms": 62.65,
+      "name_candidates": [
+        "Renegade's Getaway",
+        "Renegade Silent",
+        "Renegade Map"
+      ],
+      "final_candidates": [
+        "Renegade's Getaway",
+        "Renegade Silent",
+        "Renegade Map"
+      ],
+      "query": "| Renegades Getaway\r\n- Fe."
+    },
+    {
+      "file": "IMG_6802.jpeg",
+      "lookup_ms": 62.9,
+      "name_candidates": [
+        "Stuffed Bear",
+        "Striped Bears",
+        "Shield Bearer"
+      ],
+      "final_candidates": [
+        "Stuffed Bear",
+        "Striped Bears",
+        "Shield Bearer"
+      ],
+      "query": "{ Stuffed Bear\r\nCF AE NS DRT"
+    },
+    {
+      "file": "IMG_6803.jpeg",
+      "lookup_ms": 71.81,
+      "name_candidates": [
+        "Thriving Rats",
+        "Thriving Grubs",
+        "Thriving Heath"
+      ],
+      "final_candidates": [
+        "Thriving Rats",
+        "Thriving Grubs",
+        "Thriving Heath"
+      ],
+      "query": "| Thriving Rats"
+    },
+    {
+      "file": "IMG_6804.jpeg",
+      "lookup_ms": 74.1,
+      "name_candidates": [
+        "Now for Wrath, Now for Ruin!",
+        "Hold for Ransom",
+        "Down for Repairs"
+      ],
+      "final_candidates": [
+        "Now for Wrath, Now for Ruin!",
+        "Hold for Ransom",
+        "Down for Repairs"
+      ],
+      "query": "\\ Now for Wrath, Now for Ruin"
+    },
+    {
+      "file": "IMG_6805.jpeg",
+      "lookup_ms": 63.41,
+      "name_candidates": [
+        "Treason of Isengard",
+        "Treasonous Ogre",
+        "Treasure"
+      ],
+      "final_candidates": [
+        "Treason of Isengard",
+        "Treasonous Ogre",
+        "Treasure"
+      ],
+      "query": "ee ———————————————ei\r\nTreason of Isengard"
+    }
+  ]
+}

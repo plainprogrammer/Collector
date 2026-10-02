@@ -1,0 +1,941 @@
+{
+  "format_version": 2,
+  "run": "Phase 1 photos (new corpus)",
+  "results": [
+    {
+      "file": "IMG_6755.jpeg",
+      "name_text": "ny, 8 -  wP TANT SmLT meat oP 3\r\nrvs <> ‘J ; 2’ vi oe 3 :\r\n\r\n-~ 9 = ¥ we aye Re\r\n\r\nAa - La 2\r\n\r\n’ & ae TZ ats _—\r\n# Na SE,\r\n\r\n“ \" ve . > DY en R 3\r\n\r\n’ I Noh ed £5 Le\r\n\r\n: : PE oA § RAN LN,\r\n\r\n. - 4 # \"- - -\r\n\r\n» “i “7 .-, Fy |",
+      "collector_text": "g | » \\ aw p )\r\nP 0401 Prerelease iE a\r\nLTR # EN W LIVIA PRIMA",
+      "ms": 1699,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:23:22Z",
+      "parsed": {
+        "set_code": "LTR",
+        "number": "401",
+        "language": "en",
+        "foil": false,
+        "format": "rarity_first"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "646ff18e-9d6a-4a55-838c-0bd88b8c9fae"
+        ]
+      }
+    },
+    {
+      "file": "IMG_6756.jpeg",
+      "name_text": "/Z A Z> |\r\n7\r\n} 4 NE LA Ae il.\r\n| a cw rE\r\n' Oe b a os\r\n<7 a\" LE 4 Aap” (2 -",
+      "collector_text": "reLca trees as iy berry\r\nembrace.\r\naimee oi. aR",
+      "ms": 1397,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:23:24Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6757.jpeg",
+      "name_text": "fe\" be “% a 7 A -y ’\r\n Y Yi o 4 § 7 2 Q\r\nepg ay “A L\r\n\r\n\\ ; 51% DUT VD ®\r\n\r\n| é Ai LF = ; Rong R\r\n; £ N pT\r\na ¥ 77 AR TY | i C &\r\n\r\nfe. > he 7 z :\r\n\r\n®, Oh, . u es A Ge Fes 4 ™ By 9 de 0",
+      "collector_text": "ve s — EY VY\r\n4 | |\r\noy A \"|\r\n- ‘ + ol $\r\ner > ‘0\r\n~~ & a\r\nf 0199",
+      "ms": 1509,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:23:27Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6758.jpeg",
+      "name_text": "Be ee T——\r\n\\. A&P \\",
+      "collector_text": "arid DCCOI1IICO 4a \\Jliallt iil\r\ntypes. Activate only as a",
+      "ms": 1064,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:23:28Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6759.jpeg",
+      "name_text": "a - -\r\n. % ‘ t ' Ty be y\r\nLY } ll \" Ee [¥ 3 - a\r\n\\ ly <\r\n\\ Ta :\r\n4, etd :\r\n\\ a. on -\r\nSyd -\r\nA — ) ¥-\r\nR ‘y J A :\r\na - v 2s g pd Bs »\r\n* = rl . ’ y ro. Fo _— LY",
+      "collector_text": "A face half remembered, a f\r\n42",
+      "ms": 1123,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:23:31Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6760.jpeg",
+      "name_text": "3 :\r\n+ ¢ J\r\n’ ;\r\n- PF\r\ni\r\n\r\n\"4 g\r\n\r\n. ‘ o\r\nd -\r\n| - rr 4\r\n\r\n— Sa o\r\n> TR 4 : 4d *s “",
+      "collector_text": "IMlus. Joel E\r\n1993-2000 Wizards of the C",
+      "ms": 824,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:23:33Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6761.jpeg",
+      "name_text": "\"Re 7",
+      "collector_text": "DESL LU DTaY UEUTE VU\r\nRR, 5. Fr ee . Ty",
+      "ms": 938,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:23:35Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6762.jpeg",
+      "name_text": "fa fn te\r\n» AT \" k\r\n¥ 4 pos. ox ah. 1 sf pt\r\ni Ld Cy A wo i\r\nit RY; =. a po > ”> z 3\r\n: EY. s\r\n\" 3 5 ja | /\r\n2% ad al Se ny dal » Re a\r\nBT IER > . »* EN\r\nZp ir - 3 4\r\nEe. a A 2 a By ™\r\nLl - : \" 3 i cs ve\r\nPa x, , .\r\n» ’ hey Mh\r\n[3 ry 2 ig\r\n> ’ . : pr -— r A",
+      "collector_text": "play it. (Do ooth 1] &",
+      "ms": 1374,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:23:37Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6763.jpeg",
+      "name_text": "RK\r\n| < bo\r\n\\!\r\n. at",
+      "collector_text": "Tie Marl",
+      "ms": 543,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:23:39Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6764.jpeg",
+      "name_text": "| 8\r\nAN, ATEN\r\nra ver 0: ~\r\n4 mmm | ¥",
+      "collector_text": "ZICVIVIELENN VIOLIN (IVI EFF",
+      "ms": 886,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:23:40Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6765.jpeg",
+      "name_text": "oo” EY\r\n»\r\n‘\r\n>,\r\nJ $ Fa\r\na v TR a",
+      "collector_text": "rey BEA EV SoA yy NNT Vr ie OY\r\n~Augusta, Lorehold dear\r\n‘278 £&",
+      "ms": 978,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:23:43Z",
+      "parsed": {
+        "set_code": "SOA",
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6766.jpeg",
+      "name_text": "al\r\n\\ | ’ NC BLY » iy BEN\r\nrT TE oi I 5 my Ye |\r\n[PAE Yeh hh LI | \\ L",
+      "collector_text": "} a EE a Te.\r\n075/244 |\r\nUNF « EN Ww YANGTIAN LI",
+      "ms": 1231,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:23:45Z",
+      "parsed": {
+        "set_code": "UNF",
+        "number": "75",
+        "language": "en",
+        "foil": false,
+        "format": "slash"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "2fbf4ab1-f558-41fb-a7b5-3e543a307e1c"
+        ]
+      }
+    },
+    {
+      "file": "IMG_6767.jpeg",
+      "name_text": "NEL r\r\n4 (J RL .\r\n% 4\r\ny, ot ——\r\n’“  u\r\n/ pa | DL RRS\r\n4 wl 2 TP Ra | 4 if “ 3 ’ :\r\n” 4 - > ‘NR [ AA :\r\n4 TR — ARDY oo.\r\n\r\nF <! aN ha i [/ a eS",
+      "collector_text": "ou may ao a Lite aan\r\neres\r\n/7%44 (1",
+      "ms": 1417,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:23:47Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6768.jpeg",
+      "name_text": "IDNR UT CL\r\nADVENTURE FOR CHARACTER LEV\r\n: RP] rome WON g i",
+      "collector_text": "gm Ne gm Sp a mt i 4\r\nSONSOONIN CYOALIND Toon Lr\r\n1 | . »\" It’ al '",
+      "ms": 1812,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:23:50Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6769.jpeg",
+      "name_text": "xX Cc : - = Kd . re\r\n. ly pe “ 3 1 -\r\n3 > a | a oS\r\n- a \" & . . “3\r\nrs , 4 * ¥ Yy\r\n., & Sal\" \"\r\n’ h Tagg NES |\r\nhe : Do\r\na | v ’ \\\r\na\r\nL - - . :\r\nN 'y ~ :\r\n8 v vi |",
+      "collector_text": "+] BR d Monk of the Op\r\n— POUIL 30 100 VOUT Nani, 11\r\nthis way, shuffle.",
+      "ms": 1411,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:23:52Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6770.jpeg",
+      "name_text": "LW NETH» ARe@lART NTR NAA RS Te Naw. a . j NG Bri, yer SOS SRR PG\r\n© < _ ~~\r\n- . rg 19 2 {\r\n4 723\" ) |\r\n| R 2 i > ba dg\r\n- Lo :\r\n= - 7 »* J\r\n| ir\r\ni re : sl\r\n, eR. , P ’ v L v\r\n- >. nN\r\no - a Sy 4 ; = 3",
+      "collector_text": "1 Ajani aeals 4 qamage\r\n—* CXCCDL TOT TOKENS VO\r\nPv Tey",
+      "ms": 1660,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:23:55Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6771.jpeg",
+      "name_text": "3 ‘a ro “a 9° 9\r\nkz Ee 7\r\n2 X\\ : \\ ~/ 1 o> —\r\n\\ 3 =\r\n4) gr AES\r\n“1H RN ~~\r\n. 2 AN Gry Wo =\r\nNN hs . vs -\r\nANN CW].\r\nV es SANE 2 Pe",
+      "collector_text": "allldgC CuUal LO 1S PI\r\ncrmanent.",
+      "ms": 1531,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:23:57Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6772.jpeg",
+      "name_text": "| rd\r\n<7 W) py 4\r\nYB = |\r\n- = #h\r\nfe TE Eo i",
+      "collector_text": "YY IiINAAVY LL YUM VAROL REV E\r\nconvoke, scry 2, then dr",
+      "ms": 1273,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:23:59Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6773.jpeg",
+      "name_text": "[] K of\r\n» : 4\r\nJ ' L -\r\n» i 1 4 . rd i V/ ’\r\n@ y- - (1 ro\r\n4 x ’\r\n. $ Lo t i i ' ~ £Y y 4 / 4 .\r\nNf \\ (7 . [ ne 5 “ :\r\n- . >» [s - “by A\r\n. KE) > y i 5\r\nRY J Ey\r\n3 o ° »\r\n. .",
+      "collector_text": "EE EE TEE, EEF ad ne TL ET Tap ee\r\ncast Flameskull this way, y\r\nawther card, and ance versa.\r\nEE” ZW 0202",
+      "ms": 1638,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:24:02Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6774.jpeg",
+      "name_text": "-\r\n.\r\naha - ee.\r\nB d = i v9, a } EL\r\n| f f h 4 i\r\nWw - ~ > | :\r\n| | | | J | 4 i Ne - = \" FE a\r\n- y ¥ % 5 5 4 gs\r\n, hl I. \\ B\r\n. ow Bu : ; | | | | i\r\n] Re AW A “ \\ he A\r\n. ‘ - } of\r\na he\r\n14 ‘ > iL 4 Lo 4 ph\r\np oy : . y a ~ a ; : y\r\nrs ot . - J Li 3s h or, N Br 5 \"i o\r\nEE ; 3 . om SER NE\r\n| oo Ry % 4; | |\r\n[5 eg, ie 5\r\n2 . - rig RY, > sa 4",
+      "collector_text": "ard.",
+      "ms": 1360,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:24:04Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6776.jpeg",
+      "name_text": "\\ \\a a\r\na \\7\r\nA -~\r\n. CR os P\r\n4 rai gl A \\\r\n’ h . / / or\r\nvO {rw _ y a\r\n- & 4g od . 4 » ——\r\n- ERNE TN ”\r\n- aN 2) = \\.\r\n\r\n. 4 .* <",
+      "collector_text": "-Ral Zarek, research n",
+      "ms": 1217,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:24:07Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6777.jpeg",
+      "name_text": "4 v hyo\r\nats if 5 / ’ vo\r\n» y g “EE an t\r\n/ ’ i 0.\r\nv o 3 5 %\r\nN° pr 4\r\n3 4 Sy al",
+      "collector_text": "YY ANClent mages, Vy\r\nill survive this night.”\r\n0 —eeeee ee ——",
+      "ms": 1243,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:24:09Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6778.jpeg",
+      "name_text": "N ADVENTURE FOR CHARACTER LE\r\norgie oR 2",
+      "collector_text": "fac ns BT, Ao, FEARED hs HE\r\nFey wt i ai ei 2 ¢ ’ Bd . AY & a a . Te iA\r\nsa Toh + For rh A TPC TT HRI A, wT Lo LR Cy LEAN . g CR\r\nA TE A ADE an ay J F 3 | BEES CARP Sond 7 Ps, 2 a nye hy\r\nRE \"ah iL 2% <4 re A DBRT GG 3 JT ELLEN $< K pe 3 WF lab aye ¥ 3A h, 1\r\nSod eR BY > \"ne (NE: 1 5 Wy M5 $0 4 MCA Cry Tat Ee A | 5\r\nCh ERG RR pe SRL Tae Si\r\ng a hs, go Fe Hy VWF AN px Fi + Mig; 2 - 3 row GT 7 A o 1A Tw Ag iy wh p nT ~ v 5\r\nb# * ras ‘5 iw : L 1 En \" * a Lap ve jo A SARE |\r\nA a Re RIN Sr Ee CN IR Ty\r\n- Va a¥ PLY Tas OF a - ~ vy & Si Re =, ATH % £2\" 5 Eu 3 Fey BLT. . Frade , ert ad\r\ne hy ra Sg Fy 3 LE PE sed al Fo AE - y Sa TLL od oe E\r\n3 Cw SEE es cole sd ar y Tg dt 15h fe EAL A pd EF Eh Et a 14 $2 hr A\r\nCama \"7 5“ J a wy a 3 ; lh wl Yc ; &\r\nLR TT Aa RANT REN ob MRR LES0 aed\r\neB 5 > IMEI. BH int hes Lot RE XE CAs RT wid\r\n» ” 51 FE oe FT = . gh Lr Thy 3 p Hs MRA Ch 3 fa vr} » 4 v { Ly\r\nYi BNE ER Sse dR oe Latha Sip EVE C1 0, Spt Ls wi £5 Aas\r\nx4) A eed Ge SRR SH NEE i, SRR © A\r\n. he Lo res Ne 7 Fy ’ 4} wi 4 ‘ ay ¥ ow 5 A. - I ¥ B\r\n. a i or i TF In ok ; PAE = ay a hy uf, rx - (be NS. ¥ 4 fe: » * 4\r\nron Se A REET EE JE se a PEE FR\r\nAF 5 bo . ht wi “tS Vf nl SET CW ad\r\nby 35 ' - # au - Lh p—\r\n: ~ BTR Sa Re . -\r\nfic A SV we YE g Pe - ¥",
+      "ms": 5685,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:24:15Z",
+      "parsed": {
+        "set_code": "FRA",
+        "number": "1",
+        "language": "de",
+        "foil": null,
+        "format": "rarity_first"
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6780.jpeg",
+      "name_text": "3 Cf ~3,\r\n\r\naod A | A\r\n\r\n» _ 3 y i -\r\n\r\n% ~ SY ot 7, \\\r\n. . : p; “&",
+      "collector_text": "with lifelink, where X is tl\r\nattacking crearures.",
+      "ms": 904,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:24:17Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6781.jpeg",
+      "name_text": "a]",
+      "collector_text": "i \" |",
+      "ms": 481,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:24:19Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6782.jpeg",
+      "name_text": "\\ N hs\r\n& X)\r\nCd\r\n5 : f\r\nJ\r\nRS \\ \\) \\ ry\r\nA |\r\n7 4\r\n4 |\r\nEL\r\na\r\n/ 4 \\ \\ ’ o (1s | hn |\r\n» p \" it ”\r\n4\r\n(\r\n2 N",
+      "collector_text": "i a ilk 'y olf\r\nws adi",
+      "ms": 1031,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:24:21Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6783.jpeg",
+      "name_text": "rf Vaan Yy¢ ~~. = > —.\r\nx EL) :\r\n« * F 2 A\r\n- s . /\\ ~ a )\r\nEX ’ ONT AB TI\r\nSn | Ey\r\nNA V4 rs ORD gd 7 {\r\n. 2 Pa BB JF \"yb -_s . pr {",
+      "collector_text": "JOULLIVY Ul TW v LWivrvwuv evo\r\nmusing trinkets.",
+      "ms": 1514,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:24:23Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6784.jpeg",
+      "name_text": "¥ a\r\n¥ ON ~\r\ny - tu N\r\n’ 8 9 p\r\n» a” ’ 9 4 re\r\nb aad ~\r\nol a «\r\n- -\r\nve \"\r\np & ’\r\n- a\r\nR ~\r\nbs as, e\r\n- , pr 5 \\ 3'7\r\na ats [8 - - pe “Way",
+      "collector_text": "of that color this turn. Act\r\npowers. 3",
+      "ms": 1019,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:24:25Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6785.jpeg",
+      "name_text": "\\ J :\r\n) (\r\n4 : |\r\n~ A PN",
+      "collector_text": "Ld",
+      "ms": 505,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:24:26Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6786.jpeg",
+      "name_text": "h I —\r\nA\r\n:\r\n-\r\ny - |\r\n&\r\n0",
+      "collector_text": "T11ASS UT “ud,",
+      "ms": 948,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:24:28Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6787.jpeg",
+      "name_text": ". be rh TA COT SEE\r\n- - oF 2 £ § ar = X\r\n| ; ‘a 277 5 oF:\r\nF IV: a pr # + «BE ’\r\n; 1 bY FY . & ap 2\r\nof head\r\n2 Chr i a Y\r\nN BN a 3\r\npve » = « h a % : : g -. A - oo > . 3\r\ni J - 1 -. A Fs : v MN ~ ga - KW ~\r\n» 3 FS A Py RE Mr 3 “yr z, : ¢ .\r\n) ” / ho oe PR Era rs é Kl _ .\r\ni . ‘ LT. p Fo A o wd v n » o = » : a .\" -\r\n# £ 4 ha  ATBE wie 04 als i R NE\r\n» - Pa » ya >\r\nPy hb 2 J sak 3 4 y 2 op ~ . . -4 - * Og i — -",
+      "collector_text": "/ revive vs SVS AVVEY WV vv wT Tvs\r\nmorrows, so will thewr ru\r\n-Koth",
+      "ms": 2054,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:24:31Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6788.jpeg",
+      "name_text": "4 ZF ’ | o | Vv\" {\r\nve ' A] Fs\r\n/i 7/4 7.5 Ll) AR)\r\n/ ge wr wy 44 4»\r\n: | J / 2 # a , Ae - : .\r\nJ i J&A / 4 LJ Lf ‘",
+      "collector_text": "valusn I Vi slilvaivis pve\r\non Ascendant Packleac",
+      "ms": 1212,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:24:33Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6789.jpeg",
+      "name_text": "— 44 \\ WY 4\r\nSE 9RY 4\r\nA 4 fH Fa 2 4 \\",
+      "collector_text": "BEE on ey wm © id\r\n: J0Ke HETS 11€X1 fT om\r\nEE |\r\n\r\n» . & AE\r\n\r\nTan 51 KY LD a oy",
+      "ms": 1567,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:24:35Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6790.jpeg",
+      "name_text": "i? pa 4\r\nBb\r\n\r\nA Sa ~\r\n\r\nCh ' a",
+      "collector_text": "irget creature has base\r\nughness 1/1 until end «¢",
+      "ms": 1165,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:24:37Z",
+      "parsed": {
+        "set_code": null,
+        "number": "1",
+        "language": null,
+        "foil": null,
+        "format": "slash"
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6791.jpeg",
+      "name_text": "3 “1 “rr » or v3 (os CL IASI yoy. ry\r\nns : i XR of B . 7, . Par Ly AF rr Pp od\r\nWS oy. . ? oS ey v #5 7, ALLA p77 by £\r\nI ’ PM or “a y's / ITI < he\r\n, ) 7, rr i LoS SYA CL\r\n¥ Linas yah ress WRIT os At\r\nen OF a ea\r\nL 3 i SHIA . . - /8 Ad sor 47 APR 7 ns\r\na i 4 » ( he p yy Ar -» A . - AA\r\nA ay ‘e pe 7 4 ’ f eal AY Hp , \"i 7 ’ 4 rt oz 4\r\n) ar 38 4 77 7 7 7 < /4 i oN fol AA 7\r\n4 ’ 4 AY Paley 4 Pere Lous\r\n; J a at\r\n\\ . oF y ys ry Vp i 65.7 0 ar p\r\ni 2 Ye\r\n% +H a Me\r\n| o ’ : rr Aw 2 C, vo yb wi\r\nA y7 Gai\r\n4 “a L r . er, J ATL rh 0 4A wal Pole’ 4",
+      "collector_text": "atiTe TH or\r\ngreen Beast creature toke:",
+      "ms": 3209,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:24:41Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6792.jpeg",
+      "name_text": "¥o 2 a OURR ge Y eh SOAR & Goes | ctheld : JA . ee J\r\n: p> Nn NINE «Qt A \\ NY > » vs .\r\n> 4 A RI J P00 oN X LN + ET) ’ Ww, ( -h\r\n4 . py J LY . Ss \\ ot : ’\r\n» = WE EG NSE TREE, GE\r\neh,\" A Re Sanasty ‘on : Pa SE Sa init d are\r\n“77 > BA R20 RR CRIREEN CT. $30 he BRET\r\ni Fd % ) RA TA R LR Co Ta LOU RIC ARS 44 XE “3 o gon =\r\nYe dd . L2 SUNN, se Bh, 4 INRA RTI EL\r\nvw. A vo - PRR | 20 (A AE ER an Sa SRL a, dE\r\nCS o£ ' vee, REE Naty a 3 AAAI, -\r\n4 ) L ; ¥ ra kd ‘, h Nd b 5 aan oY h3 a he Rp So . RYE: 5 ry v4\r\nAN y . FD BW - \" a - r ’\r\na, ¥ AY, S ' < PNY BYNe”? AN RN. 49 “vt\r\naa 3 Ne Y v % AFZRIE VY Dh 3% PARR eo HL NC\r\n3 7 \\ ‘e | » y : : bo XW ad Vet) va v Ye ol ANd Ve\r\n| A N\\ al bh of A ’ \\ \" EAN) WG STH AX \\ > SORES | “3 « le\r\n21s AN » hy 1 No YC AS Se : 3 MN \"a ' No , a A, > N od\r\n5 . . : a Se oS > VOIR Re +4 ; ~\r\nWi IN , Ro oN SEY: EBRA  GR  BCAY a Ya L\r\n~ Ye AS oe = J : A ’ Ny C\r\nRe AN : pre { $ Ad RO R-A ESE: RETNA NT BR SL",
+      "collector_text": "Fev) wit smite AA Jy Vv wv wy NR 3 - Vv Vv Ww\r\nheorist was all that ren",
+      "ms": 4196,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:24:47Z",
+      "parsed": {
+        "set_code": "REN",
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6793.jpeg",
+      "name_text": "pd 4 T Y 2 |\r\nNe a k a Er Cp é",
+      "collector_text": "‘NEN OAre VOOR § decepLior.\r\nheerimg crowd erupted int",
+      "ms": 1047,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:24:49Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6794.jpeg",
+      "name_text": "ge.",
+      "collector_text": "Vidow Weber's new scare\r\ny1tract more crows than",
+      "ms": 1205,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:24:51Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6795.jpeg",
+      "name_text": "Es “\r\nSERN,",
+      "collector_text": "A  _,",
+      "ms": 1214,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:24:53Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6796.jpeg",
+      "name_text": ">)\r\n3 .",
+      "collector_text": "Wren rie Linnie Contes, |\r\nsts forever.”",
+      "ms": 708,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:24:55Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6797.jpeg",
+      "name_text": "§ 4 ; Jo -\r\n: n\r\n- Ld\r\n- - - pe ‘\r\n| « ~ i\r\n> ™N K 4 «",
+      "collector_text": "hen Zendikar’s defender:\r\n)se up to shake the invad",
+      "ms": 930,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:24:57Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6798.jpeg",
+      "name_text": "< | pr\r\n. \\ ’\r\nCRS Heh\r\n. ; ® % - % J “ Te _ Ny\r\ni a - i” J\r\nev , y \" 4 Lind a Wy he",
+      "collector_text": "(C71 A rari rig. 4 1it\r\n2A.",
+      "ms": 1284,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:24:59Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6799.jpeg",
+      "name_text": "x, Eo AR” Sal\r\n; a Eo Fa Bo\r\na. |S i 9 &\" I « To owe ge I\r\n® > samt\r\nIN oe\r\n: i & 3 po of\r\n1] MN Ed § S es EE J A v\r\n’ : A - . a\r\nb 5 y # | ’ . : v, h- oe\r\na Os Ry RW\r\n- TCT a\r\n\\ k . Py: \"- kn\r\n. ~ ~~ A aby or ps pf ¢ a3 ¢ p {\r\n, pL —,\r\nN he am io a 2 \" ar",
+      "collector_text": "EE WD CT Aon RAF Wd\r\neavy on the wicked.",
+      "ms": 1598,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:25:01Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6800.jpeg",
+      "name_text": "4 PAY CPs\r\nry —\r\nWA TT Ad RNY",
+      "collector_text": "§ digarda ana Sorin battled\r\ncovered the key from the M:",
+      "ms": 1472,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:25:04Z",
+      "parsed": {
+        "set_code": "ANA",
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6801.jpeg",
+      "name_text": "A",
+      "collector_text": "You can’t fight what you c",
+      "ms": 876,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:25:06Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6802.jpeg",
+      "name_text": "rd 4 N°",
+      "collector_text": "CLECLILIAT NLIALT CLVLCL FVLLYIANY.\r\nSEUET THE ILS PTTL, Pret",
+      "ms": 894,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:25:08Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6803.jpeg",
+      "name_text": "3 -_\r\nN > id yd - ™ i Ny\r\nfF oV PA AS\"\r\nig” 4 | :\r\nSa Q 7 ~~",
+      "collector_text": "Ghirapur, even the lowlie\r\nlavish surroundings.",
+      "ms": 1267,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:25:10Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6804.jpeg",
+      "name_text": "— Wr NB, ed . TUNES J Le\r\n\r\n“. ™  . 3 i | ge ;\r\nSI Be L-y . ~\r\n\r\n. . \\ “ EN. ho ’ |\r\n\r\n| L - 7 { 4 . ; rd\r\n\r\nSUR 5 EON Vi.\r\n\r\nA Wa . ‘ - ~ » -.¥\r\n\r\nTt Y a gee JC SE ¥ : dN h.",
+      "collector_text": "EE ET RS FY Wy Pw VY WN\r\nchallenge the Black Ga\r\nof Mordor.",
+      "ms": 1806,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:25:13Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "IMG_6805.jpeg",
+      "name_text": "179 $3 = .\r\n: - : 5 : A +4\r\n| i\r\npe Zs WL fmm RE Sh a\r\na i ~ 2 sh nT. Bb *a 44 oa A hog a vo pF Ji i> SE\r\n9 TR ogi ay\r\n. we 4 pL fa J. a - ye = 27 po 4\r\n' ’ » a 4\r\nx » \"oe 1 i it Bl",
+      "collector_text": "0 an Orc. If you dont cc\r\nate a 0/0 black Orc Arn\r\nPr )",
+      "ms": 1493,
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0",
+      "captured_at": "2026-10-02T18:25:15Z",
+      "parsed": {
+        "set_code": "ARN",
+        "number": "0",
+        "language": null,
+        "foil": null,
+        "format": "slash"
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    }
+  ]
+}
