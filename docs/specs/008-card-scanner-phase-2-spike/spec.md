@@ -1,6 +1,6 @@
 # Feature 008: Card Scanner Phase 2 Spike — Card Detection and Art Matching
 
-**Status:** Draft
+**Status:** Approved
 **Version:** 1.0.0
 **Created:** 2026-10-02
 **Last Updated:** 2026-10-02
@@ -12,7 +12,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
-| 1.0.0 | 2026-10-02 | Initial spec, formalized from [prd.md](prd.md) |
+| 1.0.0 | 2026-10-02 | Initial approved spec, formalized from [prd.md](prd.md) |
 
 ---
 
