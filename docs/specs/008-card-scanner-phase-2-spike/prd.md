@@ -30,7 +30,7 @@ Building either into the scan → confirm → add flow before measuring it would
 **What the spike works with:**
 
 - **99 stored photos** by manifest, outside the repo in `~/card-scanner-corpus/`: Phase 0's 50 (the card fills 69–77% of the frame height, hand-held) and the new corpus's 49 in `phase1-live/` (the card fills about 95% of the frame height). Each corpus has a manifest and ground truth. No photo was taken with the guide.
-  - All 99 display as 3024×4032 portrait. Phase 0's files are stored that way (EXIF orientation 1). The new corpus's are stored as 4032×3024 with EXIF orientation 6, so every tool that reads them must honour the EXIF rotation. (Spec 007's research.md §2 gives the two sizes the other way round; the files were checked with `magick identify` on 2026-10-02.)
+  - All 99 display as 3024×4032 portrait. Phase 0's files are stored that way (EXIF orientation 1). The new corpus's are stored as 4032×3024 with EXIF orientation 6, so every tool that reads them must honour the EXIF rotation. (Checked with `magick identify` on 2026-10-02; spec 007's research.md §2, which had the two the other way round, was corrected the same day.)
   - `phase1-live/` also holds 2 photos whose rows were dropped from its manifest. They aren't used.
 - **No stored live frames.** The live runs kept only the two strips per capture, so live capture can't be replayed through a detector.
 - **The shipped reading chain**, frozen at commit `c68ffbd`: guide-relative strips, on-device OCR, the collector-line parser and the matcher, driven on the desktop by `script/scanner/photo_run.rb` in headless Firefox through development-only measurement mode.
