@@ -1,5 +1,5 @@
 {
-  "hand": { "workWidth": 480, "blur": 1, "edgePercentile": 0.92, "thetaRangeDeg": 25, "minSeparation": 0.3, "minArea": 0.15, "aspectRange": [0.5, 0.9] },
+  "hand": { "workWidth": 480, "blur": 2, "edgePercentile": 0.85, "thetaRangeDeg": 6, "minSeparation": 0.65, "minArea": 0.15, "aspectRange": [0.5, 0.9] },
   "opencv": { "workWidth": 480, "blur": 5, "canny": [50, 150], "approxEpsilon": 0.02, "minArea": 0.15, "aspectRange": [0.5, 0.9] },
   "warp": { "width": 1008, "height": 1408, "fill": "#808080" },
   "fingerprint": {
