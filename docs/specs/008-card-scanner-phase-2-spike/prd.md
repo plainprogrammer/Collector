@@ -29,18 +29,21 @@ Building either into the scan → confirm → add flow before measuring it would
 
 **What the spike works with:**
 
-- **99 stored photos**, outside the repo in `~/card-scanner-corpus/`: Phase 0's 50 (4032×3024, the card fills 69–77% of the frame height, hand-held) and the new corpus's 49 in `phase1-live/` (3024×4032, the card fills about 95% of the frame height). Each corpus has a manifest and ground truth. No photo was taken with the guide.
+- **99 stored photos** by manifest, outside the repo in `~/card-scanner-corpus/`: Phase 0's 50 (the card fills 69–77% of the frame height, hand-held) and the new corpus's 49 in `phase1-live/` (the card fills about 95% of the frame height). Each corpus has a manifest and ground truth. No photo was taken with the guide.
+  - All 99 display as 3024×4032 portrait. Phase 0's files are stored that way (EXIF orientation 1). The new corpus's are stored as 4032×3024 with EXIF orientation 6, so every tool that reads them must honour the EXIF rotation. (Spec 007's research.md §2 gives the two sizes the other way round; the files were checked with `magick identify` on 2026-10-02.)
+  - `phase1-live/` also holds 2 photos whose rows were dropped from its manifest. They aren't used.
 - **No stored live frames.** The live runs kept only the two strips per capture, so live capture can't be replayed through a detector.
 - **The shipped reading chain**, frozen at commit `c68ffbd`: guide-relative strips, on-device OCR, the collector-line parser and the matcher, driven on the desktop by `script/scanner/photo_run.rb` in headless Firefox through development-only measurement mode.
 - **Baselines already committed** as text fixtures in `spec/fixtures/card_scanner/`: the same 99 photos through the shipped photo path.
-- **The Scryfall bulk file** the catalog is built from. The catalog doesn't store artwork ids, so the spike reads them from the bulk file directly.
+- **The Scryfall bulk file** the catalog is built from, kept by the app under `storage/catalog/mtg/`. The catalog doesn't store artwork ids, so spike scripts read them from the bulk file at run time. (Claude Code sessions are denied direct reads of `storage/`; running a script that reads it is fine.)
 - **Spike code** lives under `spikes/card_scanner/`, beside Phase 0's.
 
 **Constraints:**
 
 - Everything runs on the desktop. There is no device run and no new card capture (maintainer ruling).
-- Recognition runs in the browser only ([ADR 0004](../../adr/0004-card-recognition-in-the-browser.md)).
+- Phase 2 keeps spec 007's privacy guarantee (no frame, strip or photo leaves the device in normal use) and adds nothing a self-hoster has to run. Recognition therefore runs in the browser only ([ADR 0004](../../adr/0004-card-recognition-in-the-browser.md)).
 - No Node toolchain, as for the rest of the app.
+- The spike may use tools that aren't in the app's bundle, kept under `spikes/` or outside the repo, as Phase 0 did with its OCR engine. The `Gemfile` doesn't change.
 - Requests to Scryfall follow `.claude/rules/external-data-and-portability.md`: a descriptive `User-Agent`, throttling, and explicit timeouts.
 
 ## Goals
@@ -53,7 +56,9 @@ Building either into the scan → confirm → add flow before measuring it would
    - Phase 0's photos are also run scaled down to the size of a live frame (about 1080×1440), reported separately and labelled as a stand-in for live capture, not a measure of it.
 2. **Answer the art-matching question with measured numbers.** Can a fingerprint of the artwork, computed in the browser from the straightened card, pick out the right artwork among every artwork in the catalog?
    - The technique under test is the published fingerprint the roadmap describes: a crop of the art region, four 256-bit difference-hash planes (1,024 bits), and six query offsets.
-   - The spike builds its own index over the front-face artwork of every English entry in the bulk file, and records what building it costs: images fetched, bytes, time, and index size.
+   - The spike builds its own index: one fingerprint per distinct front-face artwork id among the English entries in the bulk file (not one per entry). It records what building it costs: images fetched, bytes, time, and index size.
+   - The index is built outside the browser, with a tool the app could run in its own container at catalog refresh. The plan chooses the tool. The findings name it and say what it would add to the app's image.
+   - Art matching runs on the cards straightened by one detector: the one with the better development-half rates, chosen when the settings are frozen. A photo where that detector finds no card counts as an art-matching miss. The rate over detected photos only is shown beside it.
    - For each photo: whether the right artwork ranks first and in the top 3, and the distance gap to the nearest wrong artwork.
    - What art adds to text: how many photos the text path missed (right card not in its top 3) that art matching gets right, and, for cards with no exact printing from the collector line, how many printings share the card's name against how many share its artwork.
    - Whether fingerprints computed at index build and in the browser agree closely enough to match, since the two are computed by different code.
@@ -119,8 +124,8 @@ These bind the spec. The plan decides the rest.
 - **Where it runs:** in headless Firefox on the desktop, driving real browser code, as spec 007's photo replay did.
 - **Isolating what detection adds:** everything after straightening is the shipped code at `c68ffbd`. The straightened card is presented to the shipped photo path the way the guide expects, so the app's code is used but not changed. Any difference from the baseline is then the detector's.
 - **Judging detection:** end to end by the rate tables, and by eye from the contact sheet. No card corners are marked by hand.
-- **Fetching artwork in two steps:** fetch 500 artworks and extrapolate the full cost in images, bytes and time. The maintainer sees the estimate, and the full fetch goes ahead only on their approval. If they decline, the index is built over a subset the findings name, and the art-matching rates are labelled as measured against that subset.
-- **Pilot first:** five photos go through the whole chain before the full run.
+- **Fetching artwork in two steps:** fetch 500 artworks and extrapolate the full cost in images, bytes and time. The maintainer sees the estimate, and the full fetch goes ahead only on their approval. If they decline, the index is built over a subset that contains the artwork of all 99 corpus cards. The findings name the subset and its size, and label the art-matching rates as measured against it.
+- **Pilot first:** five photos from the development half go through the whole chain before the full run.
 - **Timings** are desktop figures and are labelled as such.
 
 ## Decisions carried to spec 009
@@ -133,5 +138,5 @@ Answered by the maintainer during this brainstorm, before the phase was reshaped
 - **Records:** a stored list of the sitting's adds, each with Undo and a way into its details, which survives leaving the scanner and returning. It records what was added, not what the camera read.
 - **Ranking** (ruled 2026-10-02 on spec 007's findings): when the name and the collector line point to different cards, a strong name match ranks first and the collector-line match second. Spec 009 defines "strong" from the 3 misread-number cases in spec 007's research.md §5.
 - **Photo picker** (same ruling): kept as the fallback when there is no HTTPS or no camera, with copy telling the collector to frame the card like the guide.
-- **Reading refinements** in spec 009's scope: faint foil collector lines, light names on dark bars, long names, a noise line beating the name in query cleaning, cross-checking a misread number against the named card's printings, and the foil star as a finish hint (spec 007 research.md §11).
+- **Reading refinements** in spec 009's scope: faint foil collector lines, light names on dark bars, long names, a noise line beating the name in query cleaning, cross-checking a misread number against the named card's printings, and the foil star as a finish hint. The first four are findings in spec 007's research.md §11; the cross-check follows from §11's first finding; the foil star hint is the roadmap's.
 - **Evidence for spec 009:** the ranking rule is set and checked on the stored text from earlier runs, then the maintainer scans a pile of cards the scanner has never seen through the whole flow on the iPhone. The findings report how many ended as the right printing and finish, how many needed a correction, and the time per card. No pass threshold.

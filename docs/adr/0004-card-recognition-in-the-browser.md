@@ -23,7 +23,7 @@ What bears on the decision:
 ### Option A: In the browser only
 
 **Pros:**
-- Keeps spec 007's guarantee as it stands: the picture never leaves the device.
+- Keeps spec 007's guarantee that no frame, strip or photo leaves the device.
 - Self-hosters run nothing new, on either deployment path.
 - No upload of a multi-megabyte picture per scan, so no added latency or server load from other tenants' scans.
 
@@ -61,7 +61,8 @@ The reason is the PRD's constraint that Phase 2 keeps spec 007's privacy guarant
 
 - The spike compares in-browser detectors only, and computes the art fingerprint in the browser. Server-side straightening and fingerprinting of collectors' pictures are not tested.
 - If in-browser detection or art matching turns out too inaccurate, too large or too slow, the remedy is to defer or drop the technique. Moving it to the server needs a new ADR that supersedes this one, together with a change to spec 007 FR-3.
-- The art index is built from the catalog source's images when the catalog refreshes. That work handles catalog data, not collectors' pictures, so it can run on the server. The fingerprint is then computed in two places (the index build and the browser), so the spike must measure whether the two agree closely enough to match.
+- An art index would be built from the catalog source's images. That work handles catalog data, not collectors' pictures, so this decision allows it on the server; the index's design is left to the spike's findings. The fingerprint would then be computed in two places (the index build and the browser), so the spike must measure whether the two agree closely enough to match.
 - Whether the browser downloads the index and searches it, or sends the fingerprint for the server to search, stays open. Both satisfy this decision, and the spike measures both.
+- If the browser sends a fingerprint, spec 007 FR-3's line "Send only recognised text to the app in normal use" has to be amended to allow it. Its "must not send any frame, strip or photo" line is unaffected. That amendment belongs to spec 009, not to the spike.
 - Development-only measurement mode, which stores strips on the maintainer's machine, is unchanged.
 - A later native app is consistent with this decision as long as it recognises cards on the device.
