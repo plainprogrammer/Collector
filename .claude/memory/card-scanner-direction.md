@@ -1,6 +1,6 @@
 ---
 name: card-scanner-direction
-description: Maintainer chose to go ahead with the card scanner after Phase 0 (PR #6); Phase 1 should follow research.md §8's changed scope; corpus lives outside the repo
+description: Card scanner status — Phase 0 (PR #6) led to Phase 1 (spec 007, PR #8, ready for review); go/no-go on the confirm flow pending; corpus cards returned, only photos remain
 metadata:
   type: project
 ---
@@ -19,4 +19,10 @@ Phase 0 found:
 - ADRs 0001–0003 are still `Proposed`, so accept or revise them during Phase 1 planning.
 - The photo corpus (50 JPEGs plus `manifest.csv`, with the original in `manifest.csv.orig`) is in `~/card-scanner-corpus/`, outside the repo on purpose (FR-1). Reuse it for Phase 1 measurements; `spec/fixtures/card_scanner/` holds the text-only fixtures.
 
-Related: [[phone-lan-dev-access]], [[sdd-review-model-choice]].
+**Phase 1 status (2026-10-02):** spec 007 was implemented and is in PR #8, ready for review. The findings are in `docs/specs/007-card-scanner-live-capture/research.md`.
+- **Spec v2.0.0:** the 50 corpus cards were **borrowed and returned**. Only their photos and `manifest.csv` remain in `~/card-scanner-corpus/`, so the measured run replayed the photos through the photo-picker path.
+- **Tuning cards:** the 12 cards in `~/card-scanner-corpus/tuning/` (manifest and ground truth) were captured live in 4 tuning rounds. They also chose the frozen settings (`c68ffbd`), so their rates are biased upwards. They can't serve as an unbiased live measurement.
+- **The next step is the maintainer's ruling** on research.md §12's options: build the confirm flow, bring card detection forward, re-measure live on 50 new cards first, or stop. Don't write the next spec before that ruling.
+- **Carry into the next spec** (research.md §10): a misread collector line can match a real, different printing and outrank the right name match (AC-3.2); faint foil collector lines; query cleaning can prefer a long noise line.
+
+Related: [[phone-lan-dev-access]], [[sdd-review-model-choice]], [[check-corpus-availability]].
