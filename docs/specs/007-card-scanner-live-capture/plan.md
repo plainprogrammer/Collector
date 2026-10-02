@@ -1,6 +1,6 @@
 # Implementation Plan: Card Scanner Phase 1 — Live Capture and Re-measure
 
-**Spec:** docs/specs/007-card-scanner-live-capture/spec.md (v2.1.0, Approved)
+**Spec:** docs/specs/007-card-scanner-live-capture/spec.md (v2.1.1, Approved)
 **Decisions:** docs/adr/0001-browser-ocr-engine-and-asset-hosting.md, 0002-camera-path-testing.md, 0003-card-name-index.md (Proposed → Accepted in Phase 0, AC-7.4)
 **Created:** 2026-09-30
 **Revised:** 2026-09-30, after the plan review (Fable): import map–safe and README-anchored assertions, a `camera:stopped` event and a feed-ready wait against a shutter race, geometry loaded through a nonce'd module script in the synthetic-card helper, rubocop-rspec fixes, Brakeman notes for both `send_file`s, no bare `c-section`, and an orientation check on the iPhone
@@ -3406,7 +3406,7 @@ Before the measured run, the strip boxes, page segmentation and matcher constant
 **Files:** `docs/specs/007-card-scanner-live-capture/research.md`, `spec/fixtures/card_scanner/phase1_live_*.json`, `spec/fixtures/card_scanner/phase1_live_photos_*.json`; `lib/collector/scanner_findings/report.rb` and its spec only if the check below calls for it
 **Interfaces:** Consumes: the frozen settings (`c68ffbd`), measurement mode, `script/scanner/photo_run.rb`, `script/scanner/replay.rb`, `scanner:ground_truth` and `scanner:findings`. Produces: the unbiased live rates and the photo baseline on the same cards that the maintainer's choice between the confirm flow and card detection rests on.
 
-The maintainer ruled on research.md §12 (2026-10-02): re-measure live first, on 50 cards they own, inside this PR. No code changes are expected; the run uses the shipped tooling. Corpus folder: `~/card-scanner-corpus/phase1-live/` (call it `$NEW`).
+The maintainer ruled on research.md's options (§12 then, §13 now; 2026-10-02): re-measure live first, on 50 cards they own, inside this PR. No code changes are expected; the run uses the shipped tooling. Corpus folder: `~/card-scanner-corpus/phase1-live/` (call it `$NEW`).
 
 - [ ] **Checkpoint (maintainer):** `$NEW/manifest.csv` (`file,set,number,foil[,era]`, Scryfall set codes and collector numbers) and one unguided hand-held photo per card in `$NEW`, named exactly as the row's `file` (the photo replay finds photos by `file`; live captures are keyed by it too).
 - [ ] Check the corpus is new: no `(set, number)` pair in `$NEW/manifest.csv` appears in `~/card-scanner-corpus/manifest.csv` or `~/card-scanner-corpus/tuning/manifest.csv`, and every `file` exists in `$NEW`. Report any overlap to the maintainer before going on.
@@ -3503,3 +3503,4 @@ The maintainer ruled on research.md §12 (2026-10-02): re-measure live first, on
 |---------|-------|--------|
 | 2.0.0 | Phase 11 | Rewrote: photo replay of the Phase 0 photos (11a harness, 11b runs and findings) and the tuning rounds as biased live evidence |
 | 2.1.0 | Phase 11c | Added: the live re-measure on a new 50-card corpus with a photo baseline on the same cards (AC-6.9) |
+| 2.1.1 | Phase 11c | None: the corpus is 49 cards (spec clarification) |
