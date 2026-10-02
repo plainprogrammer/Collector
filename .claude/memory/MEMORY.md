@@ -20,3 +20,4 @@
 - [Brakeman --ensure-latest](brakeman-ensure-latest.md) — a new Brakeman release breaks hooks/CI; bump the gem in a chore(deps) commit
 - [Search spec CI flake](search-spec-ci-flake.md) — open: catalog_search_spec.rb:4 times out opening a card page on GitHub CI only; cause unknown
 - [Check corpus availability](check-corpus-availability.md) — confirm physical items (cards) will be at hand before specifying a re-measure on them
+- [Verify corpus manifests](verify-corpus-manifests.md) — resolve, check overlap, plst `PCY-132` numbers, era override for frames without set codes; a clean-reading miss may be a manifest error
