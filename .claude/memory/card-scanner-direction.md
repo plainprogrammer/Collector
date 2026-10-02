@@ -1,6 +1,6 @@
 ---
 name: card-scanner-direction
-description: Card scanner status — Phase 0 (PR #6) led to Phase 1 (spec 007, PR #8, ready for review); re-measure on a new 50-card corpus ruled in (2026-10-02), then confirm-flow vs detection ruling; corpus cards returned, only photos remain
+description: Card scanner status — Phase 0 (PR #6) led to Phase 1 (spec 007, PR #8, ready for review); live re-measure on a new 49-card corpus done (research.md §5); confirm flow vs card detection ruling pending; corpus cards returned, only photos remain
 metadata:
   type: project
 ---
@@ -22,7 +22,8 @@ Phase 0 found:
 **Phase 1 status (2026-10-02):** spec 007 was implemented and is in PR #8, ready for review. The findings are in `docs/specs/007-card-scanner-live-capture/research.md`.
 - **Spec v2.0.0:** the 50 corpus cards were **borrowed and returned**. Only their photos and `manifest.csv` remain in `~/card-scanner-corpus/`, so the measured run replayed the photos through the photo-picker path.
 - **Tuning cards:** the 12 cards in `~/card-scanner-corpus/tuning/` (manifest and ground truth) were captured live in 4 tuning rounds. They also chose the frozen settings (`c68ffbd`), so their rates are biased upwards. They can't serve as an unbiased live measurement.
-- **Ruling (2026-10-02) on research.md §12:** re-measure live first, on a **new 50-card corpus the maintainer owns**, at the frozen settings (`c68ffbd`). It goes **in PR #8 before merge**, as a MINOR spec 007 update with the results added to research.md. Capture each card live **and** take one unguided photo of it, so there is a photo-path baseline. **No pass threshold:** the maintainer rules on confirm flow vs card detection after reading the rates. Don't write the next spec before that second ruling.
-- **Carry into the next spec** (research.md §10): a misread collector line can match a real, different printing and outrank the right name match (AC-3.2); faint foil collector lines; query cleaning can prefer a long noise line.
+- **Ruling (2026-10-02) on research.md §12:** re-measure live first, on a **new corpus the maintainer owns (49 cards)**, at the frozen settings (`c68ffbd`). It goes **in PR #8 before merge**, as a MINOR spec 007 update with the results added to research.md. Capture each card live **and** take one unguided photo of it, so there is a photo-path baseline. **No pass threshold:** the maintainer rules on confirm flow vs card detection after reading the rates. Don't write the next spec before that second ruling.
+- **Re-measure result (2026-10-02, research.md §5):** live, right card first 42/49, top 3 45/49, exact printing 34/44, median 168 ms. Same cards' photos 2/49 (cards fill the frame beyond the guide). 3/49 misread collector numbers matched another card's real printing and outranked the right name; foils 4/10 exact printing. New corpus in `~/card-scanner-corpus/phase1-live/`.
+- **Carry into the next spec** (research.md §11): a misread collector line can match a real, different printing and outrank the right name match (AC-3.2); faint foil collector lines; query cleaning can prefer a long noise line.
 
 Related: [[phone-lan-dev-access]], [[sdd-review-model-choice]], [[check-corpus-availability]].
