@@ -66,6 +66,7 @@ Building either into the scan → confirm → add flow before measuring it would
 3. **Keep the measure unbiased.**
    - Each corpus is halved before any work starts, balanced on foil (maintainer ruling, 2026-10-02). Within each corpus, the foil rows and the non-foil rows are each taken in manifest order (data rows, not counting the header) and alternated: the first to development, the second held out, and so on.
    - That gives 51 development photos (26 Phase 0, 25 new; 11 foils) and 48 held out (24 Phase 0, 24 new; 9 foils). A plain odd-and-even split was rejected because it put 15 of the 20 foils in the held-out half.
+   - Spec review (v1.1.0): one card, Leyline Immersion `mat 71`, is in both corpora, so its new-corpus photo (`IMG_6763`) goes to development regardless of its turn, keeping any one printing or artwork on one side of the split: 52 development, 47 held out (24 Phase 0, 23 new; 9 foils).
    - Detector and fingerprint settings are tuned on the development half only, then frozen at a commit.
    - The held-out half is run once at the frozen settings. Its rates are the headline. The development half's rates are reported beside them, labelled as biased.
 4. **Produce findings spec 009 can be written from:** a recommended scope (for each of detection and art matching: build with the confirm flow, defer, or drop), the options for the maintainer's ruling, every held-out miss with its likely cause, and what stayed unmeasured.
