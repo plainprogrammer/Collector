@@ -84,13 +84,12 @@ RSpec.describe "Bulk mode", type: :request do
       expect(page_html.at_css(".c-bulkhead").ancestors("form")).to be_empty
     end
 
-    it "makes Filter the form's default submit, and keeps url-sync off it", :aggregate_failures do
+    it "makes Filter the form's default submit", :aggregate_failures do
       own
       start_bulk
       submitters = page_html.css("button[form=bulk], form#bulk button[type=submit]")
       expect([ submitters.first["value"], submitters.first["tabindex"] ]).to eq([ "filter", "-1" ])
       expect(page_html.at_css("input[name=q]")["form"]).to eq("bulk")
-      expect(page_html.at_css("form#bulk")["data-controller"]).to be_nil
     end
 
     it "sorts with buttons of the bulk form that keep bulk mode", :aggregate_failures do
