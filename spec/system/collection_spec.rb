@@ -39,7 +39,7 @@ RSpec.describe "Collection on a phone", type: :system do
     page.go_back
     expect(page).to have_css(".c-filterbar__count", exact_text: "5 items")
 
-    wait_for_turbo_idle(frames: false)
+    wait_for_turbo_idle
     page.go_forward
     expect(page).to have_current_path(collection_path(q: "bolt"))
     expect(page).to have_css(".c-filterbar__count", text: "3 of 5 items")

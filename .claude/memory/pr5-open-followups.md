@@ -7,8 +7,7 @@ metadata:
 
 PR #5 (feature 004) merged into `main` on 2026-09-30 as `5bc4779`, with green CI at `8a188ef`. Follow-ups still open:
 
-- **Stale busy state:** decide whether to add a local workaround that clears stale `busy`/`aria-busy` after a restore visit, or to report it to Turbo. The user has been asked but hasn't answered.
-- **Back-button flake:** root-caused 2026-10-01 to Turbo's frame-advance snapshot race (see [[turbo-back-navigation-quirks]]) and fixed with `turbo-cache-control: no-cache` on the collection and search pages. The earlier hardening in `8a188ef` was a hypothesis and was not the cause.
+- **Back-button flake:** the `no-cache` fix (2026-10-01) closed only the snapshot race. The flake came back on PR #8's CI on 2026-10-02 through a second race, the late frame page visit. Branch `004-filter-without-frames` removes the results frame, which also makes the stale-busy question moot (see [[turbo-back-navigation-quirks]]). Remove this item once that branch merges and CI stays green.
 - **Uncaptured failure:** one full-suite local failure was seen once and never identified. There have been 23 green full runs since.
 - **Next features:** bulk and table views, then export/import.
 

@@ -15,8 +15,8 @@ RSpec.describe "Edit many", type: :request do
       expect(page_html.css(".c-filterbar button[form=edit-many]").map { |button| [ button.text, button["class"] ] }).to eq([
         [ "Edit many", "c-btn c-btn--secondary c-btn--sm c-filterbar__bulk" ], [ "Edit many", "c-menu__item" ]
       ])
-      form = page_html.at_css("turbo-frame#results form#edit-many")
-      expect([ form["method"], form["action"], form["data-turbo-frame"], form.key?("hidden") ]).to eq([ "post", collection_selection_path, "_top", true ])
+      form = page_html.at_css("form#edit-many")
+      expect([ form["method"], form["action"], form["data-turbo-frame"], form.key?("hidden") ]).to eq([ "post", collection_selection_path, nil, true ])
     end
   end
 

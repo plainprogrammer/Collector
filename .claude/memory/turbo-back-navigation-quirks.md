@@ -1,16 +1,15 @@
 ---
 name: turbo-back-navigation-quirks
-description: Turbo 8.0.23 Back after a frame "advance" search - two restore paths, snapshots keep form values, stale busy state; url-sync and wait_for_turbo_idle
+description: Turbo 8.0.23 frame "advance" + Back is racy (snapshot race, late page visit); filter pages now use plain Drive GET visits with no-cache; wait_for_turbo_idle
 metadata:
   type: reference
 ---
 
-This is how Turbo 8.0.23 (turbo-rails 2.0.23) behaves after a frame `data-turbo-action="advance"` navigation. The search and collection filter forms sit outside `turbo-frame#results`.
+How Turbo 8.0.23 (turbo-rails 2.0.23) behaved with a filter form targeting `turbo-frame#results` with `data-turbo-action="advance"`. The collection and search pages used that until 2026-10-02. Branch `004-filter-without-frames` replaced it with plain Turbo Drive GET visits, deviating from the design system's "results sit in a Turbo Frame" rule (maintainer ruling).
 
-- **Two restore paths on Back.** If a snapshot of the previous page was cached (normally within about 10 ms), Turbo renders it with no fetch. Otherwise it re-fetches the page. Which one happens depends on timing.
-- **Snapshots keep live form values.** `PageSnapshot.clone()` copies typed input and select values, so Back restored the old results but left "bolt" in the search box. The `url-sync` Stimulus controller (`app/javascript/controllers/url_sync_controller.js`) resets the filter fields from the URL on `turbo:load`.
-- **Stale busy state.** The snapshot is cloned while the frame and form still carry `busy`/`aria-busy`, so a restored page can keep them until the next navigation. This is an accessibility problem that isn't fixed; see [[pr5-open-followups]].
-- **Snapshot race, root-caused 2026-10-01.** A frame `data-turbo-action="advance"` pushes the URL, but its follow-up visit is `willRender: false`, so `Turbo.session.view.lastRenderedLocation` stays at the old URL (`/collection`). On Back, the restoration visit's `turbo:before-cache` caches the current, filtered page under that old key. Normally Back has already read the cached snapshot, but on a slow runner the write lands first and Back restores the filtered results ("3 of 5 items") at the unfiltered URL. Reproduce it deterministically by calling `Turbo.session.view.cacheSnapshot()` after filtering, then `go_back` (`spec/system/back_navigation_spec.rb`). Fix: `<meta name="turbo-cache-control" content="no-cache">` (via `content_for :head`) on the collection and search pages, so Back refetches them. Still a Turbo visit, so `window` state survives.
-- **Tests.** Wait for Turbo to be idle before `go_back`/`go_forward` (`spec/support/turbo_idle.rb`, `wait_for_turbo_idle`). The frame-busy check has to be skipped (`frames: false`) before `go_forward`, because of the stale busy state.
+- **Snapshot race (root-caused 2026-10-01).** A frame advance pushes the URL, but its page visit is `willRender: false`, so `Turbo.session.view.lastRenderedLocation` stays at the old URL. Back's cache write could file the filtered page under the unfiltered URL. `turbo-cache-control: no-cache` closed this.
+- **Late page visit (root-caused 2026-10-02).** `#loadFrameResponse` pushes the URL and swaps the frame, then `FrameRenderer#render` waits two repaints before `session.visit` marks `html[aria-busy]`. Nothing is busy in that gap, so `wait_for_turbo_idle` passed. Back in the gap was cancelled by the late visit's `navigator.stop()`, leaving "3 of 5 items" at `/collection`. `no-cache` doesn't help. It's reproduced by slowing `requestAnimationFrame` and delaying unfiltered fetches (`spec/system/back_navigation_spec.rb`).
+- **Snapshots keep live form values, and cloned busy state goes stale.** Both only matter when a page is restored from a snapshot. The filter pages are `no-cache`, so Back/Forward refetch them, and the `url-sync` controller was removed.
+- **Tests.** Call `wait_for_turbo_idle` (`spec/support/turbo_idle.rb`) before `go_back`/`go_forward`.
 
-**How to apply:** when adding a frame-targeted filter form, attach `url-sync`, and use `wait_for_turbo_idle` in back/forward system specs. To see which restore path ran, instrument the `turbo:visit`, `turbo:before-fetch-request` and `turbo:render` events. Related: [[headless-firefox-narrow-frame]].
+**How to apply:** don't reintroduce frame-advance filters; a GET form doing a Drive visit keeps state in the URL with a working Back. If a frame advance is ever needed, test Back with the slow-repaint helper. To see which path ran, instrument `turbo:visit`, `turbo:before-fetch-request`, `turbo:frame-load` and `turbo:load`, and log `html[aria-busy]`/`turbo-frame[busy]` every few ms. Related: [[headless-firefox-narrow-frame]], [[pr5-open-followups]].
