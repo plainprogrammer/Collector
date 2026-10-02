@@ -10,9 +10,9 @@ autoloaded, served by Rails or run by `bin/rspec`/`bin/ci`, and nothing under `a
   `OpencvAsset`, and later phases' units).
 - `settings.json`: every tuned knob (detectors, warp, fingerprint). The page fetches it as `/settings.json`; the Ruby
   side reads it. The settings commit is the last commit that changes it.
-- `public/`: the detect page (`detect.html`, `detect.js`) and its modules (`canvas.js`, `hand_detector.js`, `warp.js`,
-  `output.js`).
-- `script/`: the fetcher, the run driver and the contact-sheet builder (later phases add reading, index and findings).
+- `public/`: the detect page (`detect.html`, `detect.js`) and its modules (`canvas.js`, `hand_detector.js`,
+  `opencv_detector.js`, `warp.js`, `output.js`).
+- `script/`: the fetcher, the run driver, the contact-sheet builder and the size report (later phases add reading, index and findings).
 - `spec/`: the spike specs.
 - `config.ru`, `puma.rb`: the spike server.
 
@@ -28,13 +28,17 @@ autoloaded, served by Rails or run by `bin/rspec`/`bin/ci`, and nothing under `a
    with a nonce and `report-uri /csp-report`; reports go to `tmp/card_scanner_phase2/logs/csp-reports.jsonl`.
    `SPIKE_UNSAFE_EVAL=1` adds `'unsafe-eval'` to `script-src` (for the AC-2.8 diagnosis only).
 3. Detect run (server running):
-   `SE_AVOID_STATS=true bundle exec ruby spikes/card_scanner/phase2/script/detect_run.rb --run <name> --half development --detector hand [--scale 1440] [--corpus phase0,new] [--files IMG_6688.jpeg,...]`.
+   `SE_AVOID_STATS=true bundle exec ruby spikes/card_scanner/phase2/script/detect_run.rb --run <name> --half development --detector hand|opencv [--scale 1440] [--corpus phase0,new] [--files IMG_6688.jpeg,...]`.
    Drives the detect page in headless Firefox, one photo at a time, and writes `run.json` (provenance) and per photo
    `<stem>/detect.json`, `card.png` (the straightened card) and `picture.png` (the 3:4 picture with the card filling
-   the guide's box). `SPIKE_URL` overrides `http://127.0.0.1:4200`. Run names are used once.
+   the guide's box). `SPIKE_URL` overrides `http://127.0.0.1:4200`. Run names are used once. The OpenCV detector
+   doesn't load under the scanner page's policy (its `new Function` calls are blocked by `script-src`); run it with the
+   server started as `SPIKE_UNSAFE_EVAL=1`.
 4. Contact sheets: `bundle exec ruby spikes/card_scanner/phase2/script/contact_sheet.rb <run>` writes
    `contact-<n>.png` (20 cards each) into the run directory, for the by-eye classes (`classes.json` beside them).
-5. Spike specs: `bundle exec rspec spikes/card_scanner/phase2/spec`.
+5. Sizes (AC-2.7): `bundle exec ruby spikes/card_scanner/phase2/script/sizes.rb` prints each detector's file count,
+   raw and gzip sizes and writes `tmp/card_scanner_phase2/sizes.json`.
+6. Spike specs: `bundle exec rspec spikes/card_scanner/phase2/spec`.
 
 Reading, art-index and findings commands are added here as later phases build them.
 

@@ -34,9 +34,11 @@ if options[:files] && (outside = options[:files] - jobs.map { it[:file] }).any?
 end
 abort "No photos selected" if jobs.empty?
 
+# The failure key isn't `error`: Selenium reads a returned object with an `error` key as a WebDriver error and
+# drops the page's message. Firefox's `stack` omits the message, so both are sent.
 RUN_JS = <<~JS.freeze
   const [ params, done ] = arguments
-  window.__phase2.run(params).then((result) => done({ result }), (error) => done({ error: String(error && error.stack || error) }))
+  window.__phase2.run(params).then((result) => done({ result }), (error) => done({ failure: `${error}\n${error && error.stack || ""}` }))
 JS
 
 driver = Selenium::WebDriver.for(:firefox, options: Selenium::WebDriver::Firefox::Options.new(args: [ "-headless" ]))
@@ -48,7 +50,7 @@ begin
     stem = File.basename(job[:file], ".*")
     answer = driver.execute_async_script(RUN_JS, { "path" => job[:path], "detector" => options[:detector], "scale" => options[:scale],
       "run" => options[:run], "stem" => stem })
-    abort "#{job[:file]}: #{answer["error"]}" if answer["error"]
+    abort "#{job[:file]}: #{answer["failure"]}" if answer["failure"]
     result = answer["result"]
     abort "#{job[:file]}: the source is landscape (#{result["sourceWidth"]}x#{result["sourceHeight"]}); EXIF orientation wasn't applied" if result["sourceWidth"] > result["sourceHeight"]
     record = CardScannerPhase2::Runs.stamp(run_dir, result.merge("file" => job[:file], "corpus" => job[:corpus]))

@@ -1,11 +1,15 @@
 import { sourceCanvas } from "/canvas.js"
 import { detectHand } from "/hand_detector.js"
+import { loadOpenCV, detectOpenCV } from "/opencv_detector.js"
 import { warp, picture } from "/warp.js"
 import { store } from "/output.js"
 
 const status = document.getElementById("status")
 const settings = await (await fetch("/settings.json")).json()
-const detectors = { hand: async (source) => detectHand(source, settings.hand) }
+const detectors = {
+  hand: async (source) => detectHand(source, settings.hand),
+  opencv: async (source) => detectOpenCV(await loadOpenCV("/opencv/4.13.0/opencv.js"), source, settings.opencv)
+}
 
 // Runs one photo: fetch it, detect, straighten, build the 3:4 picture, store both PNGs, and answer with
 // the small JSON the driver records. `scale` is null (full size) or a picture height (the live stand-in).
