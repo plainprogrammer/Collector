@@ -1,11 +1,12 @@
 # Implementation Plan: Card Scanner Phase 1 — Live Capture and Re-measure
 
-**Spec:** docs/specs/007-card-scanner-live-capture/spec.md (v2.0.0, Approved)
+**Spec:** docs/specs/007-card-scanner-live-capture/spec.md (v2.1.0, Approved)
 **Decisions:** docs/adr/0001-browser-ocr-engine-and-asset-hosting.md, 0002-camera-path-testing.md, 0003-card-name-index.md (Proposed → Accepted in Phase 0, AC-7.4)
 **Created:** 2026-09-30
 **Revised:** 2026-09-30, after the plan review (Fable): import map–safe and README-anchored assertions, a `camera:stopped` event and a feed-ready wait against a shutter race, geometry loaded through a nonce'd module script in the synthetic-card helper, rubocop-rspec fixes, Brakeman notes for both `send_file`s, no bare `c-section`, and an orientation check on the iPhone
 **Revised:** 2026-10-01, during execution (spec v2.0.0): Phase 11 replays the 50 Phase 0 photos through the photo path and reports the tuning rounds' live captures as biased live evidence, because the corpus cards were returned.
 **Revised:** 2026-10-01, during execution: dev HTTPS by a self-signed certificate (bin/dev-certificate) and Puma's ssl:// bind, after the maintainer's Cloudflare tunnel returned 502; the spec is unchanged (AC-7.1 names no mechanism)
+**Revised:** 2026-10-02 (spec v2.1.0): Phase 11c adds the live re-measure on a new 50-card corpus the maintainer owns, with a photo baseline on the same cards (AC-6.9), at the frozen settings
 
 ## Context
 
@@ -3399,6 +3400,41 @@ Before the measured run, the strip boxes, page segmentation and matcher constant
 
 ---
 
+## Phase 11c (added v2.1.0): The live re-measure on a new corpus
+
+**Implements:** AC-6.9 (spec v2.1.0) | **Satisfies:** AC-6.1 (settings unchanged), AC-6.4, AC-6.5, AC-6.6, AC-6.7, AC-6.8 (amended), AC-6.9, AC-5.4–AC-5.6 (evidence)
+**Files:** `docs/specs/007-card-scanner-live-capture/research.md`, `spec/fixtures/card_scanner/phase1_live_*.json`, `spec/fixtures/card_scanner/phase1_live_photos_*.json`; `lib/collector/scanner_findings/report.rb` and its spec only if the check below calls for it
+**Interfaces:** Consumes: the frozen settings (`c68ffbd`), measurement mode, `script/scanner/photo_run.rb`, `script/scanner/replay.rb`, `scanner:ground_truth` and `scanner:findings`. Produces: the unbiased live rates and the photo baseline on the same cards that the maintainer's choice between the confirm flow and card detection rests on.
+
+The maintainer ruled on research.md §12 (2026-10-02): re-measure live first, on 50 cards they own, inside this PR. No code changes are expected; the run uses the shipped tooling. Corpus folder: `~/card-scanner-corpus/phase1-live/` (call it `$NEW`).
+
+- [ ] **Checkpoint (maintainer):** `$NEW/manifest.csv` (`file,set,number,foil[,era]`, Scryfall set codes and collector numbers) and one unguided hand-held photo per card in `$NEW`, named exactly as the row's `file` (the photo replay finds photos by `file`; live captures are keyed by it too).
+- [ ] Check the corpus is new: no `(set, number)` pair in `$NEW/manifest.csv` appears in `~/card-scanner-corpus/manifest.csv` or `~/card-scanner-corpus/tuning/manifest.csv`, and every `file` exists in `$NEW`. Report any overlap to the maintainer before going on.
+- [ ] Build ground truth: `bin/rails "scanner:ground_truth[$HOME/card-scanner-corpus/phase1-live/manifest.csv]"`. Expect: 50 rows resolved. Confirm each error (none or ambiguous) with the maintainer and fix the manifest; record a `Ruling:` in the findings commit if a row is dropped. Report the corpus's era, foil and frame-treatment counts.
+- [ ] Confirm the settings are still those frozen at `c68ffbd` (AC-6.1): `git diff --stat c68ffbd HEAD -- app/javascript/scanner app/models/catalog app/models/mtg` shows no change (2026-10-02: none; `measurement_run.rb`'s `#photo_path` is tooling, not a setting).
+- [ ] Start the HTTPS server for the live run as a background task (memory: background servers via task; 2-hour limit, so start it just before the checkpoint). If the dev machine's address is no longer `192.168.1.76`, run `bin/dev-certificate` first and have the maintainer trust the new certificate. `COLLECTOR_SCANNER_MANIFEST=$NEW/manifest.csv COLLECTOR_SCANNER_RUN_DIR=$HOME/card-scanner-corpus/runs/phase1-live bin/dev -b "ssl://0.0.0.0:3578?key=$HOME/.local/share/collector-dev-https/dev.key&cert=$HOME/.local/share/collector-dev-https/dev.crt"`.
+- [ ] **Checkpoint (maintainer), the live run:** on the iPhone in Brave, open `https://192.168.1.76:3578/scanner/measurement`, sign in, and capture the 50 cards in manifest order: one deliberate shot each, the card filling the guide, the first capture counting (AC-5.4); **Skip** any card not to hand (AC-5.5). Say when done.
+- [ ] Replay the live strips once on the desktop (AC-5.6): `SCANNER_URL=https://127.0.0.1:3578 bundle exec ruby script/scanner/replay.rb desktop-a` against the same server (it already has the new manifest and run directory). Expect: the device's text reproduced (line endings aside). Stop the server.
+- [ ] The photo baseline: start a local plain-HTTP server as a background task, `COLLECTOR_SCANNER_MANIFEST=$NEW/manifest.csv COLLECTOR_SCANNER_RUN_DIR=$HOME/card-scanner-corpus/runs/phase1-live-photos bin/rails server -b 127.0.0.1 -p 3590`, and run `SCANNER_URL=http://127.0.0.1:3590 SCANNER_EMAIL=<replay user> SCANNER_PASSWORD=<…> bundle exec ruby script/scanner/photo_run.rb` (create a replay user with `bin/rails "collector:user[…]"` if none is at hand). Expect: one stored capture per row. Stop the server.
+- [ ] Score both runs and write their fixtures (AC-6.6, AC-6.9), with `GROUND_TRUTH=$NEW/ground_truth.json` and the matching `COLLECTOR_SCANNER_MANIFEST` / `COLLECTOR_SCANNER_RUN_DIR`:
+  - `RUN_LABEL="Phase 1 live (new corpus)" FIXTURES=1 FIXTURES_PREFIX=phase1_live bin/rails scanner:findings > tmp/findings-live.md`
+  - `RUN_LABEL="Phase 1 photos (new corpus)" FIXTURES=1 FIXTURES_PREFIX=phase1_live_photos bin/rails scanner:findings > tmp/findings-live-photos.md`
+- [ ] Check the report's Phase 0 columns. They are scored against the ground truth given, so with the new corpus they should be empty (`0/0` or `—`). If they print as rates that could be misread as Phase 0's, fix it test-first in `Report` (leave the Phase 0 columns out when the ground truth covers none of Phase 0's files), commit `fix(scanner): …`, and score again. Otherwise take only the new run's column into research.md.
+- [ ] View each miss's two strips with the Read tool (`runs/phase1-live/<file>/capture-001-*.png`, and the same under `runs/phase1-live-photos/`) and fill in the likely cause (AC-6.4).
+- [ ] Update `docs/specs/007-card-scanner-live-capture/research.md` (every rate with its sample size):
+  - **New section after §4, "Live re-measure on a new corpus (AC-6.9)",** renumbering the later sections and their cross-references (and the `card-scanner-direction` memory's): the corpus (counts by era, foil, frame), both runs' rate tables (live and photo, same cards, side by side), live vs photo on the same cards, the Phase 0 and tuning-round numbers beside them labelled as different cards, misses for both runs with causes, the desktop replay's agreement, coverage (captured, skipped, retakes).
+  - **Summary (§1):** lead with the unbiased live result; keep the tuning rounds labelled biased.
+  - **Method (§2):** the new corpus, its run directories, and that the settings were unchanged from `c68ffbd`.
+  - **Timings (§6 before renumbering):** on-device recognition median and slowest from the new live run, beside the tuning rounds' (AC-6.5).
+  - **Findings for the next spec (§10 before renumbering):** add what the new run shows; keep or drop the earlier points by whether the new run bears them out.
+  - **Fixtures (§11 before renumbering):** the two new fixture pairs.
+  - **Options (§12 before renumbering):** build the confirm flow, bring card detection forward, or stop, with the new evidence for and against each; no threshold (AC-6.7).
+- [ ] `git status --short`: only the four new fixtures and `research.md` (and the `Report` fix, if made) are changed; no `.png`, `.jpeg` or `vendor/ocr` path.
+- [ ] Commits: `test(scanner): add the new corpus's live and photo text fixtures`, then `docs(spec): record the live re-measure on a new corpus`.
+- [ ] Run `bin/ci`. Then run `sdd-superpowers:sdd-review` Mode B on Fable over the new and amended ACs (AC-6.1, AC-6.4–AC-6.9); apply its fixes as their own commits; push to PR #8 and update its description.
+
+---
+
 ## Phase 12: Integration Verification
 
 **Implements:** All FRs | **Satisfies:** All ACs
@@ -3445,7 +3481,7 @@ Before the measured run, the strip boxes, page segmentation and matcher constant
   - Story 3: AC-3.1 to AC-3.3 in Phases 3 and 5; AC-3.4 and AC-3.5 in Phase 2; AC-3.6 and AC-3.7 in Phase 1; AC-3.8 in Phases 3 and 5; AC-3.9 in Phase 2; AC-3.10 in Phase 5.
   - Story 4: AC-4.1 to AC-4.3 in Phase 6.
   - Story 5: AC-5.1 to AC-5.6 in Phases 7 and 11.
-  - Story 6: AC-6.1 in Phase 10, AC-6.2 to AC-6.7 in Phases 8 and 11.
+  - Story 6: AC-6.1 in Phase 10 (and 11c), AC-6.2 to AC-6.8 in Phases 8 and 11, AC-6.9 in Phase 11c.
   - Story 7: AC-7.1 in Phases 9 and 10, AC-7.2 in Phase 9, AC-7.3 in Phase 4, AC-7.4 in Phase 0.
 - **Manual-only evidence, recorded in the findings:**
   - the rear camera on the iPhone (AC-1.1);
@@ -3458,3 +3494,12 @@ Before the measured run, the strip boxes, page segmentation and matcher constant
   - **Simplicity Gate: violated, and justified.** There are more than 3 components (engine hosting, name index, parser and reading, page and front end, measurement mode, findings tooling). Each traces to its own AC group in the spec. Measurement mode and the findings tooling exist only because Story 5 and Story 6 require a reproducible re-measure.
   - **Anti-Abstraction Gate: passes.** Framework features are used directly: the policy DSL, `stale?`/`expires_in`, Turbo Streams, Stimulus values and targets.
   - **Integration-First Gate: passes.** The contracts are in `contracts/api.md`, and the request specs precede the controllers.
+
+---
+
+## Plan Changelog
+
+| Version | Phase | Change |
+|---------|-------|--------|
+| 2.0.0 | Phase 11 | Rewrote: photo replay of the Phase 0 photos (11a harness, 11b runs and findings) and the tuning rounds as biased live evidence |
+| 2.1.0 | Phase 11c | Added: the live re-measure on a new 50-card corpus with a photo baseline on the same cards (AC-6.9) |
