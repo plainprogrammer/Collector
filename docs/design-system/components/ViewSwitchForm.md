@@ -2,10 +2,10 @@
 
 How the collection page's `ViewSwitch` and `Edit many` work as forms, so switching views and entering bulk mode carry the current filter and sort without scripting or links.
 
-**Markup** — the `c-seg` options and both `Edit many` buttons sit in the filter bar but submit forms by id. The forms are hidden and live inside the results frame, so each re-render of the results refreshes the filter and sort they carry.
+**Markup** — the `c-seg` options and both `Edit many` buttons sit in the filter bar but submit forms by id. The forms are hidden and rendered with the results, so they always carry the page's current filter and sort.
 
 ```html
-<form class="c-filterbar" role="search" action="/collection" method="get" data-turbo-frame="results">
+<form class="c-filterbar" role="search" action="/collection" method="get">
   …
   <div class="c-filterbar__end">
     <button type="submit" form="edit-many" class="c-btn c-btn--secondary c-btn--sm c-filterbar__bulk">Edit many</button>
@@ -19,15 +19,13 @@ How the collection page's `ViewSwitch` and `Edit many` work as forms, so switchi
     </details>
   </div>
 </form>
-<turbo-frame id="results" target="_top" data-turbo-action="advance">
-  <form id="view-switch" action="/collection" method="get" hidden data-turbo-frame="_top">
-    <input type="hidden" name="q" value="bolt"><input type="hidden" name="sort" value="set"><input type="hidden" name="dir" value="asc">
-  </form>
-  <form id="edit-many" action="/collection/selection" method="post" hidden data-turbo-frame="_top">
-    <input type="hidden" name="q" value="bolt"><input type="hidden" name="sort" value="set"><input type="hidden" name="dir" value="asc">
-  </form>
-  …
-</turbo-frame>
+<form id="view-switch" action="/collection" method="get" hidden>
+  <input type="hidden" name="q" value="bolt"><input type="hidden" name="sort" value="set"><input type="hidden" name="dir" value="asc">
+</form>
+<form id="edit-many" action="/collection/selection" method="post" hidden>
+  <input type="hidden" name="q" value="bolt"><input type="hidden" name="sort" value="set"><input type="hidden" name="dir" value="asc">
+</form>
+…
 ```
 
 - The view switch is a `GET` form: the chosen view is a URL param and the page that names it saves the preference. A request the browser marks as a prefetch never saves it.

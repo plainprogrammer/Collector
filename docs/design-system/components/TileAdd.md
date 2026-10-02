@@ -7,7 +7,7 @@ A tile in search results or a card's printings with an add button beside its lin
 ```html
 <div class="c-tilecell" id="tile_catalog_entry_1">
   <a class="c-tile c-tile--owned-none" href="/catalog/entries/…">…ItemTile content…</a>
-  <form class="c-tile__add" data-turbo-frame="_top" method="post" action="/catalog/entries/…/quick_add">
+  <form class="c-tile__add" method="post" action="/catalog/entries/…/quick_add">
     <button class="c-btn c-btn--ghost c-btn--sm" aria-label="Add 1 × Lightning Bolt (M10 · 146)" type="submit"><svg …/>Add</button>
     <input type="hidden" name="return_to" value="/catalog/entries?q=bolt">
   </form>
