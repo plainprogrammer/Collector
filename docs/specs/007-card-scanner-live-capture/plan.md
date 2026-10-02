@@ -3357,7 +3357,7 @@ Before the measured run, the strip boxes, page segmentation and matcher constant
 **Files:** `config/routes.rb`, `app/models/scanner/measurement_run.rb` (`#photo_path`), `app/controllers/scanner/measurements/photos_controller.rb`, `script/scanner/photo_run.rb`, `lib/collector/scanner_findings/report.rb` (`label:`, `prefix:`), `lib/tasks/scanner.rake` (`RUN_LABEL`, `FIXTURES_PREFIX`), `README.md`, specs for each, `docs/specs/007-card-scanner-live-capture/research.md`, `spec/fixtures/card_scanner/phase1_photos_*.json`, `spec/fixtures/card_scanner/phase1_tuning4_*.json`
 **Interfaces:** Consumes: the frozen settings (`c68ffbd`), measurement mode, the photo picker path (`card-reader#pick`), `script/scanner/replay.rb` and `scanner:findings`. Produces: the findings and the text fixtures that the maintainer's go/no-go on the confirm flow rests on.
 
-> **Revised 2026-10-01 (spec v2.0.0).** The 50 corpus cards were borrowed and returned, so they can't be re-captured live. The measured run replays the 50 Phase 0 photos on the desktop through the shipped photo-picker path, storing each capture through measurement mode. The four tuning rounds' live iPhone captures are the only live-alignment evidence and are reported as biased (AC-6.8). The code in this phase is specified by interface; implementer subagents write it test-first.
+> **Revised 2026-10-01 (spec v2.0.0).** The 50 corpus cards were borrowed and returned, so they can't be re-captured live. The measured run replays the 50 Phase 0 photos on the desktop through the shipped photo-picker path, storing each capture through measurement mode. The four tuning rounds' live iPhone captures are reported as biased (AC-6.8); they were the only live-alignment evidence until Phase 11c. The code in this phase is specified by interface; implementer subagents write it test-first.
 
 ### 11a: The photo replay harness (code, TDD)
 
@@ -3481,7 +3481,7 @@ The maintainer ruled on research.md's options (§12 then, §13 now; 2026-10-02):
   - Story 3: AC-3.1 to AC-3.3 in Phases 3 and 5; AC-3.4 and AC-3.5 in Phase 2; AC-3.6 and AC-3.7 in Phase 1; AC-3.8 in Phases 3 and 5; AC-3.9 in Phase 2; AC-3.10 in Phase 5.
   - Story 4: AC-4.1 to AC-4.3 in Phase 6.
   - Story 5: AC-5.1 to AC-5.6 in Phases 7 and 11.
-  - Story 6: AC-6.1 in Phase 10 (and 11c), AC-6.2 to AC-6.8 in Phases 8 and 11, AC-6.9 in Phase 11c.
+  - Story 6: AC-6.1 in Phase 10 (and 11c), AC-6.2 to AC-6.8 in Phases 8, 11 and 11c, AC-6.9 in Phase 11c.
   - Story 7: AC-7.1 in Phases 9 and 10, AC-7.2 in Phase 9, AC-7.3 in Phase 4, AC-7.4 in Phase 0.
 - **Manual-only evidence, recorded in the findings:**
   - the rear camera on the iPhone (AC-1.1);

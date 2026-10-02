@@ -1,6 +1,6 @@
 # Feature 007: Card Scanner Phase 1 — Findings
 
-**Spec:** [spec.md](spec.md) (v2.0.0) | **Plan:** [plan.md](plan.md)
+**Spec:** [spec.md](spec.md) (v2.1.1) | **Plan:** [plan.md](plan.md)
 **Measured:** 2026-10-01 and 2026-10-02 | **Branch:** `007-card-scanner-live-capture` | **Settings:** commit `c68ffbd` (frozen)
 
 Every rate carries its sample size. Anything not measured is labelled as such. Phase 1 sets no pass threshold: the numbers inform the maintainer's decision on the scan → confirm flow, they don't make it.
@@ -13,7 +13,7 @@ Every rate carries its sample size. Anything not measured is labelled as such. P
 
 **Live capture on the new corpus (iPhone, Brave, n=49).** The right card was first in the final ranking for 42/49 (85.7%) and in the top 3 for 45/49 (91.8%). The collector line identified the exact printing for 34 of the 44 set-line cards (77.3%). Phase 0's comparable rates, on different cards, were 26/50 in the name-only top 3 and 7/45 for the exact printing. Recognition took a median of 168 ms per capture, slowest 322 ms. The weak spots are foils (exact printing 4/10, first 7/11) and older frames (top 3 for 3/5). In 3 captures a misread collector number pointed at a real printing of another card, which then outranked the right name (§5).
 
-**Photos of the same 49 cards, without the guide.** The right card was in the top 3 for 2/49. These photos show the card filling about 95% of the frame height, against the guide's 80%, so every name strip landed on the art. Phase 0's photos, where cards filled 69–77% of the frame, got 23/50 through the same path (§3). The photo path works only when the framing happens to match the guide.
+**Photos of the same 49 cards, without the guide.** The right card was in the top 3 for 2/49. In these photos the card fills about 95% of the frame height (estimated from the photos, not measured), against the guide's 80%, so every name strip landed on the art. Phase 0's photos, where cards filled 69–77% of the frame, had the right card in the top 3 for 24/50 through the same path (§3). The photo path works only when the framing happens to match the guide.
 
 **Live capture on the tuning cards (iPhone, Brave; biased).** On the final two rounds of fresh captures, the right card was in the name-only top 3 for 11/12 and 10/12. It was first in the final ranking for 10/12 and 9/12. The exact printing came from the collector line for 6/9 in both rounds. Phase 0's comparable rates, on the different 50 cards, were 26/50 (top 3) and 7/45 (exact printing). Recognition on the phone took a median of about 185 ms per capture, slowest 539 ms (n=44), against Phase 0's 626 ms.
 
@@ -234,6 +234,8 @@ Round 4 in full, at the frozen settings:
 
 Lookup outcomes over the 44 set-line cards: live, one 37 and none 7; photos, one 2 and none 42. No lookup was ambiguous (0).
 
+Name read against the catalog name gives the same counts as against the front-face name, group by group, in both runs (live 5/49, photos 0/49), so only the front-face table is shown (last below).
+
 | Top 1, name only | Group | Live (iPhone) | Photos (no guide) |
 |---|---|---|---|
 | overall | all | 39/49 (79.6%) | 0/49 (0.0%) |
@@ -328,7 +330,7 @@ Lookup outcomes over the 44 set-line cards: live, one 37 and none 7; photos, one
 | IMG_6777.jpeg | Ritual Guardian | I ' 44 TY8 | wT dat C MID*EN w Dinmany Roowur |  | Misalignment: name cut at the strip's top; the faint foil collector line (`030/277 C / MID★EN`) lost its number |
 | IMG_6785.jpeg | Dunland Crebain | BE 0 | —————a— Ba i C 04am ¥ LTR « EN % DaviD RAPOZA | Bribe Taker; Lobe Lobber; Robe of Stars | Unusual frame: a sharp, well-framed white name on a dark bar read as `BE 0`; collector number `0411` read as `04am` |
 
-**Misses, photos, not in the final top 3: 47 of 49.** All 47 have the same cause. The maintainer photographed each card filling about 95% of the frame height, so the guide's 80% box put the name strip on the art and the collector strip on the rules or flavour text. A contact sheet of all 49 name strips shows art on every one, and two show an Adventure banner. The 2 hits came from collector lines.
+**Misses, photos, not in the final top 3: 47 of 49.** All 47 have the same cause. The maintainer photographed each card filling about 95% of the frame height (estimated, not measured), so the guide's 80% box put the name strip on the art and the collector strip on the rules or flavour text. A contact sheet of all 49 name strips shows art on every one, and two show an Adventure banner. The 2 hits came from collector lines.
 
 | File | Expected | Name strip | Collector strip | Top 3 | Likely cause |
 |---|---|---|---|---|---|
@@ -434,6 +436,7 @@ The new corpus's misses, live and photo, are in §5.
 | — per round (upper median / slowest) | 131/179, 167/271, 221/271, 288/539 ms | 10, 10, 12, 12 | |
 | On-device recognition, per capture (iPhone, new corpus live run, §5) | median 168 ms, slowest 322 ms | 49 | median 626 ms, slowest 1,911 ms (n=11) |
 | App-side candidate lookup (desktop, new corpus live run; machine timing) | median 64.9 ms, p95 90.0 ms | 49 | name query p95 114 ms (n=50) |
+| App-side candidate lookup (desktop, new corpus photos; machine timing) | median 37.1 ms, p95 59.6 ms | 49 | |
 | App-side candidate lookup (desktop, photo replay; machine timing, varies by about ±2 ms between runs) | median 44.4 ms, p95 70.1 ms | 50 | name query p95 114 ms (n=50) |
 | Cold load of `/scanner` after sign-in | 7,050,153 bytes, 6 requests (engine 7,026,613 bytes in 4: library, worker, `core/tesseract-core-simd-lstm.wasm.js`, `lang/eng.traineddata.gz`) | 1 | 7,031,507 bytes |
 | Cold session including the sign-in page and app assets | 7,353,346 bytes, 37 requests | 1 | |
@@ -501,7 +504,7 @@ No pass threshold is set. The next spec waits for your ruling. You ruled on 2026
   - *For:* on 49 cards that played no part in tuning, live capture put the right card first for 42 and in the top 3 for 45, and identified the exact printing for 34 of 44 set-line cards, at a median of 0.17 s of recognition. A confirm step catches the remainder.
   - *Against:* the final ranking puts any collector-line match first, and in 3 of 49 a misread number made that match the wrong card. The confirm step must show the disagreement between name and collector line, or rank differently (a spec change to AC-3.2). Foils are weak: the exact printing was found for 4 of 10. The photo picker isn't usable as it stands.
 - **Bring card detection forward (Phase 2).**
-  - *For:* the photo path fails whenever framing doesn't match the guide, in either direction: 23/50 on Phase 0's photos, 2/49 on the new ones. 3 of the 4 live misses were framing (a name cut at the strip's top or right edge). Detection would make the photo picker and careless live framing robust.
+  - *For:* the photo path fails whenever framing doesn't match the guide, in either direction: in the top 3 for 24/50 of Phase 0's photos and 2/49 of the new ones. 3 of the 4 live misses were framing (a name cut at the strip's top or right edge). Detection would make the photo picker and careless live framing robust.
   - *Against:* live capture already reaches 45/49 in the top 3. Most of the remaining live errors are collector-line misreads, which detection doesn't fix. It costs a larger download (OpenCV.js, about 8 MB per the roadmap, not measured) and more work before any benefit to collectors.
 - **Stop.**
   - *For / against:* the evidence doesn't point this way. Even so, the name index, the parser and the printing lookup would still serve a typed quick-add.
