@@ -1,6 +1,6 @@
 ---
 name: card-scanner-direction
-description: Card scanner status — Phase 0 (PR #6) led to Phase 1 (spec 007, PR #8, ready for review); go/no-go on the confirm flow pending; corpus cards returned, only photos remain
+description: Card scanner status — Phase 0 (PR #6) led to Phase 1 (spec 007, PR #8, ready for review); re-measure on a new 50-card corpus ruled in (2026-10-02), then confirm-flow vs detection ruling; corpus cards returned, only photos remain
 metadata:
   type: project
 ---
@@ -22,7 +22,7 @@ Phase 0 found:
 **Phase 1 status (2026-10-02):** spec 007 was implemented and is in PR #8, ready for review. The findings are in `docs/specs/007-card-scanner-live-capture/research.md`.
 - **Spec v2.0.0:** the 50 corpus cards were **borrowed and returned**. Only their photos and `manifest.csv` remain in `~/card-scanner-corpus/`, so the measured run replayed the photos through the photo-picker path.
 - **Tuning cards:** the 12 cards in `~/card-scanner-corpus/tuning/` (manifest and ground truth) were captured live in 4 tuning rounds. They also chose the frozen settings (`c68ffbd`), so their rates are biased upwards. They can't serve as an unbiased live measurement.
-- **The next step is the maintainer's ruling** on research.md §12's options: build the confirm flow, bring card detection forward, re-measure live on 50 new cards first, or stop. Don't write the next spec before that ruling.
+- **Ruling (2026-10-02) on research.md §12:** re-measure live first, on a **new 50-card corpus the maintainer owns**, at the frozen settings (`c68ffbd`). It goes **in PR #8 before merge**, as a MINOR spec 007 update with the results added to research.md. Capture each card live **and** take one unguided photo of it, so there is a photo-path baseline. **No pass threshold:** the maintainer rules on confirm flow vs card detection after reading the rates. Don't write the next spec before that second ruling.
 - **Carry into the next spec** (research.md §10): a misread collector line can match a real, different printing and outrank the right name match (AC-3.2); faint foil collector lines; query cleaning can prefer a long noise line.
 
 Related: [[phone-lan-dev-access]], [[sdd-review-model-choice]], [[check-corpus-availability]].
