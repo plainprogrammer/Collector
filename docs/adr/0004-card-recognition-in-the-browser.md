@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed (2026-10-02, spec 008 brainstorm)
+Accepted (2026-10-02, maintainer approval of the spec 008 PRD)
 
 **Date:** 2026-10-02
 **Feature:** 008-card-scanner-phase-2-spike
