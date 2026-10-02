@@ -84,5 +84,5 @@ class Collector::ScannerFindings::Report
       sections.join("\n\n").presence || "No replays yet."
     end
 
-    def cell(text) = text.to_s.gsub("|", "\\|").tr("\n", " ")
+    def cell(text) = text.to_s.gsub("|", "\\|").gsub(/\s+/, " ")
 end

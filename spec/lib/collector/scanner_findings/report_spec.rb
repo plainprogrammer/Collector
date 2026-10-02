@@ -4,11 +4,12 @@ RSpec.describe Collector::ScannerFindings::Report do
   let(:dir) { Pathname(Dir.mktmpdir("findings")) }
   let(:run) { Scanner::MeasurementRun.new(manifest: dir.join("manifest.csv"), dir: dir.join("run")) }
   let(:report) { described_class.new(run:, output: dir) }
+  let(:name_text) { "Nothing useful" }
 
   before do
     dir.join("manifest.csv").write("file,set,number,foil\nIMG_6688.jpeg,fra,391,no\nIMG_6689.jpeg,afc,1,yes\n")
     strip = -> { StringIO.new("\x89PNG\r\n\x1A\n".b) }
-    run.record!(run.row("IMG_6688.jpeg"), name_text: "Nothing useful", collector_text: "", ms: 640, user_agent: "iPhone", name_strip: strip.call, collector_strip: strip.call)
+    run.record!(run.row("IMG_6688.jpeg"), name_text:, collector_text: "", ms: 640, user_agent: "iPhone", name_strip: strip.call, collector_strip: strip.call)
     run.skip!(run.row("IMG_6689.jpeg"))
   end
 
@@ -31,6 +32,16 @@ RSpec.describe Collector::ScannerFindings::Report do
     expect(results).to include("format_version" => 2, "run" => "Phase 1 live")
     expect(results["results"].sole.keys).to contain_exactly("file", "name_text", "collector_text", "ms", "user_agent", "captured_at", "parsed", "lookup")
     expect(JSON.parse(dir.join("phase1_name_matches.json").read)["matches"].sole.keys).to include("name_candidates", "final_candidates")
+  end
+
+  context "when the OCR text arrives with CRLF line endings (multipart form posts)" do
+    let(:name_text) { "Nothing\r\nuseful" }
+
+    it "keeps each miss on a single table row", :aggregate_failures do
+      markdown = report.to_markdown
+      expect(markdown.lines).to include(a_string_starting_with("| IMG_6688.jpeg |").and(including("Nothing useful")))
+      expect(markdown).not_to include("\r")
+    end
   end
 
   context "when the run is named (the photo replay, a tuning round)" do
