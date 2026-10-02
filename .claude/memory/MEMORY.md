@@ -13,7 +13,7 @@
 - [Reproduce CI with its seed](reproduce-ci-with-seed.md) — on CI failure, run the full suite with the CI seed as an early reproduction step
 - [Turbo Back navigation quirks](turbo-back-navigation-quirks.md) — frame-advance + Back has two races; filters now plain Drive GET visits + no-cache; wait_for_turbo_idle
 - [PR #5 follow-ups](pr5-open-followups.md) — back-button flake fix on 004-filter-without-frames pending merge; uncaptured failure
-- [Card scanner direction](card-scanner-direction.md) — Phase 1 in PR #8 (spec 007 v2.1.1); live re-measure on new 49 cards done (42/49 first); confirm flow vs card detection ruling pending; tuning cards biased
+- [Card scanner direction](card-scanner-direction.md) — Phase 1 in PR #8 (spec 007 v2.1.1); live re-measure on new 49 cards done (42/49 first); ruled 2026-10-02: confirm flow next (spec 008); tuning cards biased
 - [Phone LAN dev access](phone-lan-dev-access.md) — 192.168.1.76, high ports open, bind 0.0.0.0; Brave (WebKit); camera HTTPS = self-signed cert + Puma ssl:// bind (Cloudflare tunnel failed); no openssl CLI
 - [Work ahead of human checkpoints](work-ahead-of-human-checkpoints.md) — in sdd-execute, run maintainer-independent units first; record rulings in commit bodies
 - [Migrate schema noise](migrate-schema-noise.md) — restore cable/cache/queue schema after db:migrate; rollback needs :primary

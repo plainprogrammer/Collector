@@ -1,6 +1,6 @@
 ---
 name: card-scanner-direction
-description: Card scanner status — Phase 0 (PR #6) led to Phase 1 (spec 007, PR #8, ready for review); live re-measure on a new 49-card corpus done (research.md §5); confirm flow vs card detection ruling pending; corpus cards returned, only photos remain
+description: Card scanner status — Phase 0 (PR #6) led to Phase 1 (spec 007, PR #8, ready for review); live re-measure on a new 49-card corpus done (research.md §5); ruled: confirm flow next (spec 008), strong name beats collector match, photo picker kept with framing advice; corpus cards returned, only photos remain
 metadata:
   type: project
 ---
@@ -24,6 +24,10 @@ Phase 0 found:
 - **Tuning cards:** the 12 cards in `~/card-scanner-corpus/tuning/` (manifest and ground truth) were captured live in 4 tuning rounds. They also chose the frozen settings (`c68ffbd`), so their rates are biased upwards. They can't serve as an unbiased live measurement.
 - **Ruling (2026-10-02) on research.md §12:** re-measure live first, on a **new corpus the maintainer owns (49 cards)**, at the frozen settings (`c68ffbd`). It goes **in PR #8 before merge**, as a MINOR spec 007 update with the results added to research.md. Capture each card live **and** take one unguided photo of it, so there is a photo-path baseline. **No pass threshold:** the maintainer rules on confirm flow vs card detection after reading the rates. Don't write the next spec before that second ruling.
 - **Re-measure result (2026-10-02, research.md §5):** live, right card first 42/49, top 3 45/49, exact printing 34/44, median 168 ms. Same cards' photos 2/49 (cards fill the frame beyond the guide). 3/49 misread collector numbers matched another card's real printing and outranked the right name; foils 4/10 exact printing. New corpus in `~/card-scanner-corpus/phase1-live/`.
+- **Ruling (2026-10-02) on research.md §13:** the next spec (008) is the **scan → confirm → add flow on live capture**. Card detection stays a later phase, for the photo path.
+  - **Collector line against name:** when they point to different cards, a strong name match outranks the collector-line match, which is shown second. This changes spec 007's AC-3.2 ("collector match first"); spec 008 must define "strong" from the evidence (the 3 misread-number cases in research.md §5).
+  - **Photo picker:** kept as the fallback when there's no HTTPS or no camera, with copy telling the collector to frame the card like the guide. Detection improves it later.
+  - Still open for sdd-specify: where confirmed cards land (the roadmap's "Loose bucket" vs an existing lot), choosing the finish (foil exact printing 4/10), correcting the printing, and whether scan attempts are logged.
 - **Carry into the next spec** (research.md §11): a misread collector line can match a real, different printing and outrank the right name match (AC-3.2); faint foil collector lines; query cleaning can prefer a long noise line.
 
 Related: [[phone-lan-dev-access]], [[sdd-review-model-choice]], [[check-corpus-availability]].
