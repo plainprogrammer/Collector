@@ -39,3 +39,6 @@
 
 # Claude Code worktrees (claude --worktree) live inside the repo.
 /.claude/worktrees/
+
+# The OCR engine, fetched and verified by bin/fetch-ocr-engine (spec 007).
+/vendor/ocr/

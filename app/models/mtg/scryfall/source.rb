@@ -8,6 +8,7 @@ class MTG::Scryfall::Source
 
   def self.entry_extension_model = MTG::Printing
   def self.identity_extension_model = MTG::Card
+  def self.alternate_names(entries) = MTG::Printing.face_names(entries)
 
   def initialize(client: MTG::Scryfall::Client.new, env: ENV)
     @client = client

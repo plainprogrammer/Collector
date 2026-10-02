@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Accepted (2026-09-30, spec 007 plan)
 
 ## Context
 
@@ -24,6 +24,12 @@ No flakes were seen. Selenium Manager tried to send usage statistics to `plausib
 - Optionally, if the maintainer accepts the cost, add one Chrome file-capture test that exercises the browser's real media and permission path, with the `.y4m` generated at test time and `SE_AVOID_STATS=true` set.
 - Don't use Firefox's fake camera for any test that asserts on the content of the feed.
 - Use a synthetic or suitably licensed card image as the fixture, never a corpus photo.
+
+## Changes from the Proposed text (spec 007)
+
+- The fixture card is drawn in the page: the substituted stream paints a white 63:88 card whose name and collector line sit exactly where the scanner cuts its strips (the page's own `scanner/geometry` module), so real OCR runs on it and no image is committed.
+- The system driver grants camera access without a prompt and starts with Firefox's synthetic stream (`media.navigator.permission.disabled`, `media.navigator.streams.fake`); a spec then substitutes its card and restarts the page's camera controller.
+- The optional Chrome file-capture test isn't added in spec 007.
 
 ## Consequences
 

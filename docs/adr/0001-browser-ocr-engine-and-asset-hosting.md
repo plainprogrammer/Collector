@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Accepted (2026-09-30, spec 007 plan)
 
 ## Context
 
@@ -28,11 +28,18 @@ Use Tesseract.js 7.0.0 with `tesseract.js-core` 7.0.0 and the `eng` `4.0.0_best_
 - Give the scanner page a CSP whose sources are only `'self'`, `blob:` for the worker and `'wasm-unsafe-eval'` for compiling the engine.
 - Pin the exact versions; upgrading is a new version path, so cached files never go stale.
 
+## Changes from the Proposed text (spec 007)
+
+- Only the three LSTM-only core builds are hosted (`tesseract-core-lstm`, `-simd-lstm`, `-relaxedsimd-lstm`): with `oem` 1 the engine never requests the others (`getCore.js`). Six files, 14,828,864 bytes.
+- The files aren't committed. `bin/fetch-ocr-engine` downloads the pinned tarballs, checks each tarball's and each file's SHA-256, and unpacks them into the ignored `vendor/ocr/v7.0.0/`. `bin/setup` (so `bin/ci`) and the Dockerfile build run it; a spec checks every installed file against its pin.
+- The app serves them from `/ocr/v7.0.0/` through `OcrAssetsController`, not `public/`: only the pinned files, `Cache-Control: public, max-age=31536000, immutable`, and `304` for `If-None-Match` or `If-Modified-Since`.
+- The scanner's policy also carries a per-request nonce for its own inline tags (the import map), `style-src 'self' 'unsafe-inline'`, `img-src` for the hosts catalog pages already use for card images, and `frame-src 'none'`. Only scanner pages send a policy; the page always loads in full so its policy applies.
+
 ## Consequences
 
 - Photos stay on the device, and the page makes no third-party requests.
 - The first scan on a device costs about 7 MB; later visits cost about 1 KB. Self-hosters serve those files themselves.
-- 28,904,967 bytes of engine files (the library, the worker, six core builds and the language data; the sum of the measured sizes) would live in the repository or be fetched at build time. Phase 1's plan chooses which.
+- The engine files are fetched at setup and build time, not committed: 14,828,864 bytes (the library, the worker, the three LSTM-only core builds and the language data; see "Changes from the Proposed text"). The Proposed text's 28,904,967 bytes counted all six core builds.
 - `'wasm-unsafe-eval'` on the scanner page widens its policy slightly compared with the rest of the app. Keeping the engine off other pages limits that.
 - Upgrades are manual: fetch the new versions, add a new version path, update the page's paths, re-measure.
 - The engine doesn't fix accuracy. Phase 1's capture method (a live guide overlay, research.md Section 8) decides whether the scanner is good enough.

@@ -61,4 +61,23 @@ RSpec.describe "Routes", type: :routing do
     expect(post: "/collection/bulk_removals").to route_to("collections/bulk_removals#create")
     expect(post: "/collection/bulk_removals/1/undo").to route_to("collections/bulk_removals/undos#create", bulk_removal_id: "1")
   end
+
+  it "routes the OCR engine's files by version and path" do
+    expect(get: "/ocr/v7.0.0/core/tesseract-core-lstm.wasm.js")
+      .to route_to("ocr_assets#show", version: "v7.0.0", path: "core/tesseract-core-lstm.wasm.js")
+  end
+
+  it "routes the scanner and its readings", :aggregate_failures do
+    expect(get: "/scanner").to route_to("scanners#show")
+    expect(post: "/scanner/readings").to route_to("scanner/readings#create")
+  end
+
+  it "routes measurement mode under the scanner", :aggregate_failures do
+    expect(get: "/scanner/measurement").to route_to("scanner/measurements#show")
+    expect(post: "/scanner/measurement/captures").to route_to("scanner/measurements/captures#create")
+    expect(post: "/scanner/measurement/skips").to route_to("scanner/measurements/skips#create")
+    expect(get: "/scanner/measurement/replay").to route_to("scanner/measurements/replays#show")
+    expect(get: "/scanner/measurement/strips/IMG_1.jpeg").to route_to("scanner/measurements/strips#show", id: "IMG_1.jpeg")
+    expect(get: "/scanner/measurement/photos/IMG_1.jpeg").to route_to("scanner/measurements/photos#show", id: "IMG_1.jpeg")
+  end
 end

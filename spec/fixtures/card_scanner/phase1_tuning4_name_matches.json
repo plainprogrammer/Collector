@@ -1,0 +1,186 @@
+{
+  "format_version": 2,
+  "run": "Tuning round 4 (live)",
+  "matches": [
+    {
+      "file": "T001",
+      "lookup_ms": 177.6,
+      "name_candidates": [
+        "Terra, Magical Adept // Esper Terra",
+        "Ogre Errant",
+        "Serra Redeemer"
+      ],
+      "final_candidates": [
+        "Terra, Magical Adept // Esper Terra",
+        "Ogre Errant",
+        "Serra Redeemer"
+      ],
+      "query": "Exploration PE\r\nCC EEEEEEEERRAY Lv"
+    },
+    {
+      "file": "T002",
+      "lookup_ms": 65.24,
+      "name_candidates": [
+        "Capture Sphere",
+        "Captured Sunlight",
+        "Captured by the Consulate"
+      ],
+      "final_candidates": [
+        "Capture Sphere",
+        "Captured Sunlight",
+        "Captured by the Consulate"
+      ],
+      "query": "( Capture Sphere"
+    },
+    {
+      "file": "T003",
+      "lookup_ms": 70.19,
+      "name_candidates": [
+        "Universal Solvent",
+        "Universal Surveillance",
+        "Universal Automaton"
+      ],
+      "final_candidates": [
+        "Universal Solvent",
+        "Universal Surveillance",
+        "Universal Automaton"
+      ],
+      "query": "| Universal Solvent"
+    },
+    {
+      "file": "T004",
+      "lookup_ms": 70.1,
+      "name_candidates": [
+        "Raging Swordtooth",
+        "Raging Spirit",
+        "Raging Kronch"
+      ],
+      "final_candidates": [
+        "Raging Swordtooth",
+        "Raging Spirit",
+        "Raging Kronch"
+      ],
+      "query": "Raging Swordtooth \\"
+    },
+    {
+      "file": "T005",
+      "lookup_ms": 37.9,
+      "name_candidates": [
+        "Hornet Sting",
+        "Hornet Nest",
+        "Hornet Harasser"
+      ],
+      "final_candidates": [
+        "Hornet Sting",
+        "Hornet Nest",
+        "Hornet Harasser"
+      ],
+      "query": "T Hornet Stns"
+    },
+    {
+      "file": "T006",
+      "lookup_ms": 43.28,
+      "name_candidates": [
+        "Loathsome Catoblepas",
+        "Loathsome Curator",
+        "Loathsome Troll"
+      ],
+      "final_candidates": [
+        "Loathsome Catoblepas",
+        "Loathsome Curator",
+        "Loathsome Troll"
+      ],
+      "query": "Loathsome Catoblepas 5"
+    },
+    {
+      "file": "T007",
+      "lookup_ms": 64.82,
+      "name_candidates": [
+        "Honored Heirloom",
+        "Hero's Heirloom",
+        "Honored Hierarch"
+      ],
+      "final_candidates": [
+        "Welcoming Vampire",
+        "Honored Heirloom",
+        "Hero's Heirloom"
+      ],
+      "query": "a ana EE al a\r\n| Honored Heirloom\r\n— Ee 0909090909090"
+    },
+    {
+      "file": "T008",
+      "lookup_ms": 70.56,
+      "name_candidates": [
+        "Goreclaw, Terror of Qal Sisma",
+        "Wave of Terror",
+        "Runeclaw Bear"
+      ],
+      "final_candidates": [
+        "Goreclaw, Terror of Qal Sisma",
+        "Wave of Terror",
+        "Runeclaw Bear"
+      ],
+      "query": "Goreclaw, Terror of Qal Sisma\r\n_.."
+    },
+    {
+      "file": "T009",
+      "lookup_ms": 69.36,
+      "name_candidates": [
+        "Vrondiss, Rage of Ancients",
+        "Indomitable Ancients",
+        "Timberland Ancient"
+      ],
+      "final_candidates": [
+        "Vrondiss, Rage of Ancients",
+        "Indomitable Ancients",
+        "Timberland Ancient"
+      ],
+      "query": "VYrondiss, Rage of Ancients\r\nAw [ sae. EE 4"
+    },
+    {
+      "file": "T010",
+      "lookup_ms": 65.78,
+      "name_candidates": [
+        "Miirym, Sentinel Wyrm",
+        "Maze Sentinel",
+        "Sentinel"
+      ],
+      "final_candidates": [
+        "Miirym, Sentinel Wyrm",
+        "Maze Sentinel",
+        "Sentinel"
+      ],
+      "query": "oad. db\r\nyy -__  —\r\nMiirym, Sentinel Wyrm EX. X\r\nEE"
+    },
+    {
+      "file": "T011",
+      "lookup_ms": 40.25,
+      "name_candidates": [
+        "Give // Take",
+        "Taeko, the Patient Avalanche",
+        "Touch of Vitae"
+      ],
+      "final_candidates": [
+        "Give // Take",
+        "Taeko, the Patient Avalanche",
+        "Touch of Vitae"
+      ],
+      "query": "el Tae."
+    },
+    {
+      "file": "T012",
+      "lookup_ms": 86.49,
+      "name_candidates": [
+        "Ghalta the Immovable",
+        "Ghalta the Unstoppable",
+        "Ghalta and Mavren"
+      ],
+      "final_candidates": [
+        "Ghalta the Immovable",
+        "Ghalta the Unstoppable",
+        "Ghalta and Mavren"
+      ],
+      "query": "{ Ghalta the Immovable"
+    }
+  ]
+}

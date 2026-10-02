@@ -42,6 +42,17 @@ RSpec.describe Catalog::Entry, type: :model do
     end
   end
 
+  describe ".printed_as" do
+    it "finds active printings by set code, number and language", :aggregate_failures do
+      set = create(:catalog_set, code: "mom")
+      match = create(:catalog_entry, set:, number: "123")
+      create(:catalog_entry, set:, number: "123", language: "ja")
+      create(:catalog_entry, :retired, set:, number: "123")
+      expect(described_class.printed_as(set_code: "MOM", number: "123", language: "en")).to eq([ match ])
+      expect(described_class.printed_as(set_code: "mom", number: "124", language: "en")).to be_empty
+    end
+  end
+
   describe ".newest_first" do
     it "orders by release date, then set code, number and language" do
       old = create(:catalog_entry, released_on: Date.new(2001, 1, 1))

@@ -24,6 +24,7 @@ class Catalog::Refresh
     sync_sets
     sync_entries(path, languages)
     retire_unseen
+    name_index.rebuild
     @run.finish!(:applied, counts: @counts)
     @run
   rescue StandardError => error
@@ -38,9 +39,13 @@ class Catalog::Refresh
     end
 
     def skip(version)
-      @run.finish!(:skipped, message: "#{version} already applied")
+      rebuilt = name_index.rebuild unless name_index.populated?
+      note = "; name index rebuilt with #{rebuilt} #{"name".pluralize(rebuilt)}" if rebuilt
+      @run.finish!(:skipped, message: "#{version} already applied#{note}")
       @run
     end
+
+    def name_index = @name_index ||= Catalog::NameIndex.new(@collectible_type, source_class: @source.class)
 
     def sync_sets
       @sets = Catalog::Set.where(collectible_type: @collectible_type).pluck(:code, :id, :content_digest)

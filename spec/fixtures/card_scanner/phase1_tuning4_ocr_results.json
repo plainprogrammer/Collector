@@ -1,0 +1,248 @@
+{
+  "format_version": 2,
+  "run": "Tuning round 4 (live)",
+  "results": [
+    {
+      "file": "T001",
+      "name_text": "Exploration PE\r\nCC EEEEEEEERRAY Lv",
+      "collector_text": "AL WANY BFE 34588 Sa\r\n| C1O0 8 199% Wigands of the 4",
+      "ms": 415,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-01T22:07:25Z",
+      "parsed": {
+        "set_code": null,
+        "number": "100",
+        "language": null,
+        "foil": null,
+        "format": "glued_rarity"
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "T002",
+      "name_text": "( Capture Sphere",
+      "collector_text": "NALA Min ALD NVA LALANVNTALAN A J\r\n044/274 C\r\nIKO « EN % laxkus Kasper",
+      "ms": 330,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-01T22:07:39Z",
+      "parsed": {
+        "set_code": "IKO",
+        "number": "44",
+        "language": "en",
+        "foil": false,
+        "format": "slash"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "3c1d2d9d-6eee-4334-bbbe-87e026fa6fc0"
+        ]
+      }
+    },
+    {
+      "file": "T003",
+      "name_text": "| Universal Solvent",
+      "collector_text": "178/184 C\r\nAER * EN > CHRISTOPHER MOELLER",
+      "ms": 174,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-01T22:07:57Z",
+      "parsed": {
+        "set_code": "AER",
+        "number": "178",
+        "language": "en",
+        "foil": true,
+        "format": "slash"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "2f1b66b2-12b2-497b-a328-b43630c79e73"
+        ]
+      }
+    },
+    {
+      "file": "T004",
+      "name_text": "Raging Swordtooth \\",
+      "collector_text": "® the scent of blood on the\r\n226/279 U\r\nXLN + EN dW lz2Y",
+      "ms": 216,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-01T22:08:14Z",
+      "parsed": {
+        "set_code": "XLN",
+        "number": "226",
+        "language": "en",
+        "foil": false,
+        "format": "slash"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "15a79137-9589-4c24-9bea-31041fd3c9ae"
+        ]
+      }
+    },
+    {
+      "file": "T005",
+      "name_text": "T Hornet Stns",
+      "collector_text": "wr Matt Stewart\r\n4 ED 19973 2000\" Wiad of the Cogs LLC 1",
+      "ms": 288,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-01T22:08:35Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "T006",
+      "name_text": "Loathsome Catoblepas 5",
+      "collector_text": "lal Lo Ce ORTON a Re Tn ES\r\n“ - a “¢\r\n\r\n~~ Christopher Burdett *\r\n™ a 0 2013 Wizards of the Cadst 95/219\r\n\r\nee ——————",
+      "ms": 476,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-01T22:08:56Z",
+      "parsed": {
+        "set_code": null,
+        "number": "95",
+        "language": null,
+        "foil": null,
+        "format": "slash"
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "T007",
+      "name_text": "a ana EE al a\r\n| Honored Heirloom\r\n— Ee 0909090909090",
+      "collector_text": "Church.\r\n287/277 €\r\nVOW «EN Wo LEANNA Crossan",
+      "ms": 404,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-01T22:09:08Z",
+      "parsed": {
+        "set_code": "VOW",
+        "number": "287",
+        "language": "en",
+        "foil": false,
+        "format": "slash"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "fd60ee8d-fb50-41df-89a8-aed5a53d755f"
+        ]
+      }
+    },
+    {
+      "file": "T008",
+      "name_text": "Goreclaw, Terror of Qal Sisma\r\n_..",
+      "collector_text": "186/280 R «aD\r\nM19 + EN % SYETUIN YELINOY",
+      "ms": 243,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-01T22:09:24Z",
+      "parsed": {
+        "set_code": "M19",
+        "number": "186",
+        "language": "en",
+        "foil": false,
+        "format": "slash"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "36d4574a-3266-4497-b145-fb25820d8a7f"
+        ]
+      }
+    },
+    {
+      "file": "T009",
+      "name_text": "VYrondiss, Rage of Ancients\r\nAw [ sae. EE 4",
+      "collector_text": "| 528 M Cul\r\nAFC « EN % SYETUIN YELINOY",
+      "ms": 255,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-01T22:09:44Z",
+      "parsed": {
+        "set_code": "AFC",
+        "number": "528",
+        "language": "en",
+        "foil": false,
+        "format": "before_set_line"
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "T010",
+      "name_text": "oad. db\r\nyy -__  —\r\nMiirym, Sentinel Wyrm EX. X\r\nEE",
+      "collector_text": "284/361 R S\r\nCLB « EN % Krxal Koray ™~",
+      "ms": 539,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-01T22:10:00Z",
+      "parsed": {
+        "set_code": "CLB",
+        "number": "284",
+        "language": "en",
+        "foil": false,
+        "format": "slash"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "a934590b-5c70-4f07-af67-fbe817a99531"
+        ]
+      }
+    },
+    {
+      "file": "T011",
+      "name_text": "el Tae.",
+      "collector_text": "> | I\r\n— NEY SCHWARTT",
+      "ms": 260,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-01T22:10:39Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      }
+    },
+    {
+      "file": "T012",
+      "name_text": "{ Ghalta the Immovable",
+      "collector_text": "= its power.\r\nU 0197 ‘\r\nFRA + EN % ANTONIO JOSE MANZANEDO",
+      "ms": 205,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-01T22:11:06Z",
+      "parsed": {
+        "set_code": "FRA",
+        "number": "197",
+        "language": "en",
+        "foil": false,
+        "format": "rarity_first"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "a9f3aa55-908f-42db-8135-4201433df850"
+        ]
+      }
+    }
+  ]
+}

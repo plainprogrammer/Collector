@@ -92,6 +92,8 @@ App additions (spec 004, in `collector/additions.css`): `StatusMessage`, `Form`,
 
 App additions (spec 006, in `collector/additions.css`): `SortHeader`, `StatusAction`, `BulkConfirmPage`, `ChoicePage`, `BulkForm`, `ViewSwitchForm`, `TableItemLink`. Upstream these into the published design system before the next export replaces this folder.
 
+App additions (spec 007, in `collector/additions.css`): `Scanner`. Upstream it into the published design system before the next export replaces this folder.
+
 ## Logo
 
 - The mark is three fanned cards, the front one vault teal with a foil diamond: a collection, one piece of which is special. It is deliberately game-neutral so it grows past trading cards.

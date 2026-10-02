@@ -1,0 +1,13 @@
+<% content_for :title, "Measure the scanner · Collector" %>
+<%= render "scanners/head" %>
+<%= render "layouts/appbar", section: :scanner %>
+<main class="c-main c-page">
+  <div class="c-pagehead"><div><h1 class="c-pagehead__title">Measure the scanner</h1></div></div>
+  <% if @manifest_problem %>
+    <p class="c-status__message c-status__message--alert"><%= @manifest_problem %> Measurement mode can't start. The scanner itself is unaffected.</p>
+  <% else %>
+    <%= render "scanner/measurements/panel", @panel %>
+    <%= render "scanners/scanner" %>
+  <% end %>
+</main>
+<%= render "layouts/tabbar", section: :scanner %>

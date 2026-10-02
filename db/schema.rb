@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_30_100003) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_30_170000) do
   create_table "accounts", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -80,6 +80,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_30_100003) do
     t.datetime "updated_at", null: false
     t.index ["collectible_type", "external_key"], name: "index_catalog_identities_on_collectible_type_and_external_key", unique: true
     t.index ["name"], name: "index_catalog_identities_on_name"
+  end
+
+  create_table "catalog_names", force: :cascade do |t|
+    t.string "collectible_type", null: false
+    t.integer "catalog_identity_id", null: false
+    t.string "name", null: false
+    t.string "normalized", null: false
+    t.index ["catalog_identity_id"], name: "index_catalog_names_on_catalog_identity_id"
+    t.index ["collectible_type", "catalog_identity_id", "normalized"], name: "index_catalog_names_uniqueness", unique: true
+    t.index ["collectible_type", "normalized"], name: "index_catalog_names_on_collectible_type_and_normalized"
   end
 
   create_table "catalog_refresh_runs", force: :cascade do |t|
@@ -198,10 +208,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_30_100003) do
   add_foreign_key "bulk_selections", "sessions", on_delete: :cascade
   add_foreign_key "catalog_entries", "catalog_identities"
   add_foreign_key "catalog_entries", "catalog_sets"
+  add_foreign_key "catalog_names", "catalog_identities"
   add_foreign_key "lots", "accounts"
   add_foreign_key "lots", "catalog_entries"
   add_foreign_key "mtg_cards", "catalog_identities"
   add_foreign_key "mtg_printings", "catalog_entries"
   add_foreign_key "sessions", "users"
   add_foreign_key "users", "accounts"
+
+  # Virtual tables defined in this database.
+  # Note that virtual tables may not work with other database engines. Be careful if changing database.
+  create_virtual_table "catalog_names_fts", "fts5", ["normalized", "content='catalog_names'", "content_rowid='id'", "tokenize='trigram remove_diacritics 1'"]
 end

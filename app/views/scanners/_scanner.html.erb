@@ -1,0 +1,30 @@
+<div class="c-scanner" data-controller="card-reader camera"
+     data-card-reader-readings-url-value="<%= scanner_readings_path %>" data-card-reader-engine-path-value="<%= ocr_engine_path %>"
+     data-action="camera:ready->card-reader#cameraReady camera:stopped->card-reader#cameraStopped camera:unavailable->card-reader#cameraUnavailable">
+  <p class="c-scanner__status" role="status" aria-live="polite" data-card-reader-target="status">Loading the scanner…</p>
+  <div class="c-scanner__stage" data-camera-target="stage" hidden>
+    <video class="c-scanner__video" data-camera-target="video" playsinline muted autoplay></video>
+    <div class="c-scanner__guide" data-camera-target="guide" aria-hidden="true"></div>
+  </div>
+  <div class="c-scanner__unavailable" data-card-reader-target="unavailable" hidden>
+    <p class="c-status__message c-status__message--alert" data-card-reader-target="reason"></p>
+    <button type="button" class="c-btn c-btn--secondary" data-card-reader-target="retry" data-action="card-reader#retryCamera">Try the camera again</button>
+  </div>
+  <div class="c-scanner__controls">
+    <button type="button" class="c-btn c-btn--primary c-scanner__shutter" data-card-reader-target="shutter" data-action="card-reader#capture" disabled aria-busy="true">Capture</button>
+    <button type="button" class="c-btn c-btn--secondary c-scanner__torch" data-camera-target="torch" data-action="camera#toggleTorch" aria-pressed="false" hidden>Torch</button>
+    <label class="c-btn c-btn--ghost c-scanner__photo">Use a photo<input type="file" accept="image/*" class="c-sr" data-card-reader-target="picker" data-action="change->card-reader#pick" disabled></label>
+    <button type="button" class="c-btn c-btn--secondary" data-card-reader-target="engineRetry" data-action="card-reader#retryEngine" hidden>Load the scanner again</button>
+  </div>
+  <div class="c-scanner__failure" data-card-reader-target="failure" hidden>
+    <p class="c-status__message c-status__message--alert" data-card-reader-target="failureMessage"></p>
+    <dl class="c-scanner__read">
+      <dt>Name</dt><dd data-card-reader-target="failureName"></dd>
+      <dt>Collector line</dt><dd class="c-scanner__mono" data-card-reader-target="failureCollector"></dd>
+    </dl>
+    <button type="button" class="c-btn c-btn--secondary" data-card-reader-target="resend" data-action="card-reader#resend">Send again</button>
+    <%= link_to "Sign in", new_session_path, class: "c-btn c-btn--primary", data: { card_reader_target: "signIn", turbo: false }, hidden: true %>
+  </div>
+  <div id="scanner_result" class="c-scanner__result" data-card-reader-target="result"></div>
+  <noscript><p class="c-status__message c-status__message--alert">The scanner needs JavaScript. <%= link_to "Search the catalog", catalog_entries_path %> instead.</p></noscript>
+</div>

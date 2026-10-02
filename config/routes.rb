@@ -23,6 +23,23 @@ Rails.application.routes.draw do
   end
   resource :more, only: :show
 
+  # The card scanner (spec 007): reachable by URL only until adding from the scanner ships.
+  resource :scanner, only: :show
+  namespace :scanner do
+    resources :readings, only: :create
+
+    # Development-only measurement mode (spec 007 Story 5); every action answers 404 when it's off.
+    resource :measurement, only: :show do
+      scope module: :measurements do
+        resources :captures, only: :create
+        resources :skips, only: :create
+        resource :replay, only: %i[show create]
+        resources :strips, only: :show, constraints: { id: /[\w.-]+/ }
+        resources :photos, only: :show, constraints: { id: /[\w.-]+/ }
+      end
+    end
+  end
+
   namespace :catalog do
     resources :entries, only: %i[index show], param: :external_key do
       resource :quick_add, only: :create
@@ -36,6 +53,9 @@ Rails.application.routes.draw do
   resources :lots, only: %i[edit update destroy] do
     resource :removal, only: :new, module: :lots
   end
+
+  # The self-hosted OCR engine for the card scanner (spec 007, ADR 0001).
+  get "ocr/:version/*path", to: "ocr_assets#show", as: :ocr_asset, format: false, constraints: { version: /v\d+\.\d+\.\d+/ }
 
   namespace :admin do
     resources :users, except: :show do

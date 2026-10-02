@@ -61,6 +61,47 @@ automatic setup stays off; run `bin/setup` in each new worktree yourself.
 - **Failures:** if automatic setup fails, the worktree is still created; run `bin/setup` in
   it to finish.
 
+### Card scanner on a phone
+
+`bin/setup` also runs `bin/fetch-ocr-engine`, which downloads the card scanner's OCR engine (about 15 MB) from
+`registry.npmjs.org`, checks every file against a pinned SHA-256 and keeps it in `vendor/ocr/` (ignored by git).
+
+The scanner is at `/scanner`; nothing links to it yet. Browsers only allow a live camera on HTTPS (or on
+`localhost`), so to use it from a phone on your network, serve the dev server over HTTPS with a self-signed
+certificate that the phone trusts:
+
+```sh
+bin/dev-certificate          # creates or reuses the certificate; prints the next command for your worktree's port
+bin/dev -b "ssl://0.0.0.0:3000?key=$HOME/.local/share/collector-dev-https/dev.key&cert=$HOME/.local/share/collector-dev-https/dev.crt"
+bin/dev-certificate --serve  # in another terminal: serves only the certificate on port 3579 until you press Ctrl-C
+```
+
+Then, once per certificate, on the iPhone:
+
+1. In Safari, open the download URL that `bin/dev-certificate --serve` prints (`http://<your address>:3579/`) and allow the profile.
+2. Settings → General → VPN & Device Management: install the profile.
+3. Settings → General → About → Certificate Trust Settings: turn on full trust for the certificate.
+4. Open `https://<your address>:<port>/scanner` in any browser.
+
+- The key and certificate stay outside the repository, in `~/.local/share/collector-dev-https/`
+  (`COLLECTOR_DEV_CERT_DIR` overrides it). Only the certificate is ever served; the key never leaves your machine.
+- The certificate names your machine's local network addresses (or the ones you pass as arguments). Run
+  `bin/dev-certificate` again after the address changes; it makes a new certificate, which the phone must trust again.
+- Puma ends TLS itself, so Rails sees real HTTPS and needs no other setting.
+- An HTTPS tunnel of your choice also works: set `RAILS_DEVELOPMENT_HOSTS` to the tunnel's host names
+  (comma-separated) and `COLLECTOR_HTTPS=true` (the tunnel ended TLS), then run `bin/dev`.
+- Over plain HTTP from another device, the page offers a photo instead.
+
+**Measurement mode** (development only) records live captures of known cards for the scanner's findings, at
+`/scanner/measurement`. It reads the manifest at `COLLECTOR_SCANNER_MANIFEST` (default
+`~/card-scanner-corpus/manifest.csv`, columns `file,set,number,foil[,era]`) and stores each capture's text and
+strip images under `COLLECTOR_SCANNER_RUN_DIR` (default `~/card-scanner-corpus/runs/live`), outside the
+repository. `bin/rails scanner:findings` scores a run; `bundle exec ruby script/scanner/replay.rb <label>`
+re-reads its strips on the desktop (`SCANNER_URL=https://127.0.0.1:<port>` points it at an HTTPS server).
+`SCANNER_EMAIL=… SCANNER_PASSWORD=… bundle exec ruby script/scanner/photo_run.rb` replays the photos beside the
+manifest through the scanner's photo picker, storing each as a capture.
+`COLLECTOR_REQUEST_LOG=1` logs each response's size to `log/requests.jsonl`.
+
 ## Testing and CI
 
 ```sh
@@ -148,6 +189,20 @@ Kamal (`bin/kamal`) deploys the same image to servers you control over SSH.
 
 Data is stored in the `collector_storage` volume (mounted at `/rails/storage`), and Solid
 Queue runs inside Puma (`SOLID_QUEUE_IN_PUMA`).
+
+### Card scanner
+
+The card scanner (`/scanner`, not linked yet while it's being measured) reads a card with the camera of the phone
+it runs on. Photos never leave the phone: only the text read from the card is sent to your instance. The image
+build downloads the scanner's OCR engine from `registry.npmjs.org` and checks each file against a pinned
+SHA-256; your instance serves it from `/ocr/v7.0.0/`, so phones fetch it from you, not from a third party.
+
+Browsers only allow a live camera on HTTPS. Without HTTPS, only the photo picker works.
+
+- **Docker Compose:** put an HTTPS reverse proxy in front of the app (see **HTTPS** under Docker Compose) and set
+  `COLLECTOR_HTTPS=true`.
+- **Kamal:** enable the proxy's certificate in `config/deploy.yml` (uncomment `proxy:` with `ssl: true` and set
+  your `host:`), and uncomment `COLLECTOR_HTTPS: true` under `env: clear:`.
 
 ### Accounts
 
