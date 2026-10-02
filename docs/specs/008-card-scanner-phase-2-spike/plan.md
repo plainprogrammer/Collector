@@ -3,6 +3,7 @@
 **Spec:** docs/specs/008-card-scanner-phase-2-spike/spec.md (v1.1.1, Approved, reviewed twice)
 **Decisions:** [ADR 0004](../../adr/0004-card-recognition-in-the-browser.md) (Accepted). This feature *produces* Proposed ADRs for the techniques it recommends (Phase 8).
 **Created:** 2026-10-02
+**Revised:** 2026-10-02 — plan review (Fable, which ran the plan's code blocks): the split spec's expected lists corrected to the AC-1.1 rule and the braceless hash fixed; the entry file requires no unit, so Phase 1 runs in order; every spec uses `let` directories and `:aggregate_failures` for rubocop-rspec; `art_index.rb` requires `fingerprint`, `scoring.rb` requires `derived_corpus`; AC-3.3's found-only column uses the by-eye class; the replay runs get classes too (copied where the straightened image is byte-identical); the fetch chunk size comes from the estimate; the pilot files are all in the development half and `detect_run.rb` aborts otherwise, with an EXIF guard; the detection line tallies classes and skips sources without them; the per-photo distance table and the left-out corpus artworks are printed by the scripts; `derive.rb` resolves the port; the libvips package name; contour Mats deleted and the odd-blur rule; no commits between the freeze and the held-out runs
 
 ## Context
 
@@ -112,11 +113,9 @@ module CardScannerPhase2
     "new" => { manifest: "phase1-live/manifest.csv", label: "New corpus" }
   }.freeze
 end
-
-require "card_scanner_phase2/settings"
-require "card_scanner_phase2/split"
-require "card_scanner_phase2/runs"
 ```
+
+  The entry file requires no unit: every spec and script requires the units it uses (`require "card_scanner_phase2/split"`), so a spec can fail with `cannot load such file` before its unit exists and the Phase 1 steps run in order.
 
 - [ ] Write `spikes/card_scanner/phase2/spec/phase2_helper.rb`:
 
@@ -149,9 +148,10 @@ require "card_scanner_phase2"
 
 ```ruby
 require_relative "../phase2_helper"
+require "card_scanner_phase2/settings"
 
 RSpec.describe CardScannerPhase2::Settings do
-  it "loads the committed settings with every section" do
+  it "loads the committed settings with every section", :aggregate_failures do
     settings = described_class.load
     expect(settings.keys).to include("hand", "opencv", "warp", "fingerprint") # the freeze adds "frozen" and "chosen_detector"
     expect(settings.dig("fingerprint", "offsets").size).to eq(6)
@@ -183,31 +183,34 @@ module CardScannerPhase2
 end
 ```
 
-- [ ] Run the spec again. Expect: 2 examples, 0 failures. (The commit example passes once the file is committed; run it after the commit below.)
+- [ ] Run the spec again. Expect: 2 examples, 1 failure: the commit example fails until the file is committed (`git log` prints nothing), and passes after the commit below.
 - [ ] Write the failing spec `spikes/card_scanner/phase2/spec/card_scanner_phase2/split_spec.rb`:
 
 ```ruby
 require_relative "../phase2_helper"
+require "card_scanner_phase2/split"
 
 RSpec.describe CardScannerPhase2::Split do
+  # Non-foils A, C, D alternate to development, held out, development; foils B, E to development, held out.
   let(:phase0) { "file,set,number,foil\nA.jpeg,aaa,1,no\nB.jpeg,aaa,2,yes\nC.jpeg,aaa,3,no\nD.jpeg,aaa,4,no\nE.jpeg,aaa,5,yes\n" }
   let(:new) { "file,set,number,foil,era\nF.jpeg,bbb,1,no,\nG.jpeg,bbb,2,no,pre-M15\nH.jpeg,bbb,3,yes,\n" }
+  let(:texts) { { "phase0" => phase0, "new" => new } }
 
-  it "alternates foils and non-foils separately, each group starting with development" do
-    halves = described_class.halves("phase0" => phase0, "new" => new)
-    expect(halves.dig("phase0", "development")).to eq(%w[A.jpeg C.jpeg B.jpeg])
-    expect(halves.dig("phase0", "held_out")).to eq(%w[D.jpeg E.jpeg])
+  it "alternates foils and non-foils separately, each group starting with development", :aggregate_failures do
+    halves = described_class.halves(texts, force_development: {})
+    expect(halves.dig("phase0", "development")).to eq(%w[A.jpeg D.jpeg B.jpeg])
+    expect(halves.dig("phase0", "held_out")).to eq(%w[C.jpeg E.jpeg])
     expect(halves.dig("new", "development")).to eq(%w[F.jpeg H.jpeg])
     expect(halves.dig("new", "held_out")).to eq(%w[G.jpeg])
   end
 
-  it "forces the shared card's new-corpus photo into development" do
-    halves = described_class.halves({ "phase0" => phase0, "new" => new }, force_development: { "new" => %w[G.jpeg] })
+  it "forces the shared card's new-corpus photo into development", :aggregate_failures do
+    halves = described_class.halves(texts, force_development: { "new" => %w[G.jpeg] })
     expect(halves.dig("new", "development")).to eq(%w[F.jpeg H.jpeg G.jpeg])
     expect(halves.dig("new", "held_out")).to be_empty
   end
 
-  it "reads the real manifests into the committed counts" do
+  it "reads the real manifests into the committed counts", :aggregate_failures do
     halves = described_class.halves
     counts = halves.transform_values { |h| h.transform_values(&:size) }
     expect(counts).to eq("phase0" => { "development" => 26, "held_out" => 24 }, "new" => { "development" => 26, "held_out" => 23 })
@@ -215,6 +218,8 @@ RSpec.describe CardScannerPhase2::Split do
   end
 end
 ```
+
+  (The plan review ran this against the implementation: the expected lists follow from the AC-1.1 rule, and the real manifests give exactly the committed counts.)
 
 - [ ] Run `bundle exec rspec spikes/card_scanner/phase2/spec/card_scanner_phase2/split_spec.rb`. Expect: FAIL (`cannot load such file -- card_scanner_phase2/split`).
 - [ ] Implement `spikes/card_scanner/phase2/lib/card_scanner_phase2/split.rb`:
@@ -268,58 +273,62 @@ end
   Note the ordering: `group_by` keeps the first-seen order of groups, so `sort_by` puts non-foils before foils; within each group, manifest order is kept. The spec's first example pins the exact lists.
 
 - [ ] Run the spec again. Expect: 3 examples, 0 failures. Then `bin/rubocop spikes/`. Expect: no offenses.
-- [ ] Write the split fixture: `bundle exec ruby -e 'require "./spikes/card_scanner/phase2/lib/card_scanner_phase2"; CardScannerPhase2::Split.write!'`. Inspect `spec/fixtures/card_scanner/phase2_split.json`: 26/24 and 26/23 files, `IMG_6763.jpeg` under `new` → `development`.
+- [ ] Write the split fixture: `bundle exec ruby -I spikes/card_scanner/phase2/lib -e 'require "card_scanner_phase2"; require "card_scanner_phase2/split"; CardScannerPhase2::Split.write!'`. Inspect `spec/fixtures/card_scanner/phase2_split.json`: 26/24 and 26/23 files, `IMG_6763.jpeg` under `new` → `development`.
 - [ ] Commit: `feat(spike): add the Phase 2 split, settings and spec helper` (stage `spikes/card_scanner/phase2/` and `spec/fixtures/card_scanner/phase2_split.json`). This commit precedes every tuning commit (AC-1.1).
 - [ ] Write the failing spec `spikes/card_scanner/phase2/spec/card_scanner_phase2/runs_spec.rb`:
 
 ```ruby
 require_relative "../phase2_helper"
+require "card_scanner_phase2/runs"
+require "fileutils"
 require "tmpdir"
 
 RSpec.describe CardScannerPhase2::Runs do
   let(:git) { instance_double(CardScannerPhase2::Runs::Git, head: "a" * 40, clean?: true) }
+  let(:dir) { Pathname(Dir.mktmpdir) }
 
-  around { |example| Dir.mktmpdir { |dir| @dir = Pathname(dir); example.run } }
+  after { FileUtils.remove_entry(dir) }
 
   it "starts a development run and records its provenance" do
-    run = described_class.start!("dev-hand", half: "development", root: @dir, git:, settings_commit: "b" * 40, now: Time.utc(2026, 10, 3, 12))
-    record = JSON.parse(run.join("run.json").read)
-    expect(record).to include("run" => "dev-hand", "half" => "development", "code_commit" => "a" * 40, "tree_clean" => true,
+    run = described_class.start!("dev-hand", half: "development", root: dir, git:, settings_commit: "b" * 40, now: Time.utc(2026, 10, 3, 12))
+    expect(JSON.parse(run.join("run.json").read)).to include("run" => "dev-hand", "half" => "development", "code_commit" => "a" * 40, "tree_clean" => true,
       "settings_commit" => "b" * 40, "started_at" => "2026-10-03T12:00:00Z")
   end
 
   it "refuses a held-out run without the settings commit" do
-    expect { described_class.start!("held", half: "held_out", root: @dir, git:, settings_commit: nil) }.to raise_error(described_class::Refused, /settings commit/)
+    expect { described_class.start!("held", half: "held_out", root: dir, git:, settings_commit: nil) }.to raise_error(described_class::Refused, /settings commit/)
   end
 
   it "refuses a held-out run when the code isn't at the settings commit" do
-    expect { described_class.start!("held", half: "held_out", root: @dir, git:, settings_commit: "b" * 40) }
+    expect { described_class.start!("held", half: "held_out", root: dir, git:, settings_commit: "b" * 40) }
       .to raise_error(described_class::Refused, /code is at/)
   end
 
   it "refuses a held-out run on a dirty tree" do
     dirty = instance_double(CardScannerPhase2::Runs::Git, head: "a" * 40, clean?: false)
-    expect { described_class.start!("held", half: "held_out", root: @dir, git: dirty, settings_commit: "a" * 40) }
+    expect { described_class.start!("held", half: "held_out", root: dir, git: dirty, settings_commit: "a" * 40) }
       .to raise_error(described_class::Refused, /uncommitted/)
   end
 
   it "starts a held-out run at the settings commit on a clean tree" do
-    run = described_class.start!("held", half: "held_out", root: @dir, git:, settings_commit: "a" * 40)
+    run = described_class.start!("held", half: "held_out", root: dir, git:, settings_commit: "a" * 40)
     expect(JSON.parse(run.join("run.json").read)).to include("half" => "held_out", "settings_commit" => "a" * 40)
   end
 
   it "refuses to reuse a run directory" do
-    described_class.start!("dev", half: "development", root: @dir, git:)
-    expect { described_class.start!("dev", half: "development", root: @dir, git:) }.to raise_error(described_class::Refused, /exists/)
+    described_class.start!("dev", half: "development", root: dir, git:, settings_commit: nil)
+    expect { described_class.start!("dev", half: "development", root: dir, git:, settings_commit: nil) }.to raise_error(described_class::Refused, /exists/)
   end
 
   it "stamps a record with the run's provenance" do
-    run = described_class.start!("dev", half: "development", root: @dir, git:, now: Time.utc(2026, 10, 3, 12))
+    run = described_class.start!("dev", half: "development", root: dir, git:, settings_commit: nil, now: Time.utc(2026, 10, 3, 12))
     stamped = described_class.stamp(run, { "file" => "A.jpeg" }, now: Time.utc(2026, 10, 3, 12, 5))
     expect(stamped).to include("file" => "A.jpeg", "run" => "dev", "code_commit" => "a" * 40, "tree_clean" => true, "recorded_at" => "2026-10-03T12:05:00Z")
   end
 end
 ```
+
+  Spec style throughout the spike: multi-expectation examples carry `:aggregate_failures`, temporary directories are `let`s cleaned in `after` (no instance variables), as `spikes/card_scanner/spec/card_scanner_spike/server_spec.rb` does, so `bin/rubocop spikes/` stays clean under rubocop-rspec.
 
 - [ ] Run `bundle exec rspec spikes/card_scanner/phase2/spec/card_scanner_phase2/runs_spec.rb`. Expect: FAIL (`cannot load such file -- card_scanner_phase2/runs`).
 - [ ] Implement `spikes/card_scanner/phase2/lib/card_scanner_phase2/runs.rb`:
@@ -393,44 +402,44 @@ end
 ```ruby
 require_relative "../phase2_helper"
 require "card_scanner_phase2/server"
+require "fileutils"
 require "rack/mock"
 require "tmpdir"
 
 RSpec.describe CardScannerPhase2::Server do
-  around do |example|
-    Dir.mktmpdir do |dir|
-      @root = Pathname(dir)
-      %w[public opencv/4.13.0 corpus/phase1-live work runs logs].each { @root.join(it).mkpath }
-      @root.join("public/detect.html").write("<!doctype html>")
-      @root.join("opencv/4.13.0/opencv.js").write("// cv")
-      @root.join("corpus/IMG_1.jpeg").binwrite("\xFF\xD8\xFF".b)
-      @root.join("corpus/phase1-live/IMG_2.jpeg").binwrite("\xFF\xD8\xFF".b)
-      @root.join("settings.json").write("{}")
-      example.run
+  let(:root) do
+    Pathname(Dir.mktmpdir).tap do |root|
+      %w[public opencv/4.13.0 corpus/phase1-live work runs logs].each { root.join(it).mkpath }
+      root.join("public/detect.html").write("<!doctype html>")
+      root.join("opencv/4.13.0/opencv.js").write("// cv")
+      root.join("corpus/IMG_1.jpeg").binwrite("\xFF\xD8\xFF".b)
+      root.join("corpus/phase1-live/IMG_2.jpeg").binwrite("\xFF\xD8\xFF".b)
+      root.join("settings.json").write("{}")
     end
   end
-
-  let(:app) do
-    described_class.new(public_dir: @root.join("public"), opencv_dir: @root.join("opencv"), corpus_dir: @root.join("corpus"),
-      work_dir: @root.join("work"), runs_dir: @root.join("runs"), log_dir: @root.join("logs"), settings_path: @root.join("settings.json"))
+  let(:dirs) do
+    { public_dir: root.join("public"), opencv_dir: root.join("opencv"), corpus_dir: root.join("corpus"), work_dir: root.join("work"),
+      runs_dir: root.join("runs"), log_dir: root.join("logs"), settings_path: root.join("settings.json") }
   end
+  let(:app) { described_class.new(**dirs) }
   let(:local) { { "REMOTE_ADDR" => "127.0.0.1" } }
 
-  def get(path, env = local) = Rack::MockRequest.new(app).get(path, env)
+  after { FileUtils.remove_entry(root) }
 
-  it "serves the page with the scanner page's policy plus a nonce and a report endpoint" do
+  def get(path, env = local) = Rack::MockRequest.new(app).get(path, env)
+  def post(path, env) = Rack::MockRequest.new(app).post(path, env)
+
+  it "serves the page with the scanner page's policy plus a nonce and a report endpoint", :aggregate_failures do
     response = get("/detect.html")
-    expect(response.status).to eq(200)
     policy = response.headers["content-security-policy"]
+    expect(response.status).to eq(200)
     expect(policy).to start_with("default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'nonce-")
     expect(policy).to include("worker-src 'self' blob:", "connect-src 'self'", "object-src 'none'", "report-uri /csp-report")
     expect(policy).not_to match(%r{https?:|\*})
   end
 
   it "widens script-src only when asked, for the AC-2.8 diagnosis" do
-    loose = described_class.new(public_dir: @root.join("public"), opencv_dir: @root.join("opencv"), corpus_dir: @root.join("corpus"),
-      work_dir: @root.join("work"), runs_dir: @root.join("runs"), log_dir: @root.join("logs"), settings_path: @root.join("settings.json"),
-      unsafe_eval: true)
+    loose = described_class.new(**dirs, unsafe_eval: true)
     expect(Rack::MockRequest.new(loose).get("/detect.html", local).headers["content-security-policy"]).to include("'unsafe-eval'")
   end
 
@@ -438,39 +447,39 @@ RSpec.describe CardScannerPhase2::Server do
     expect(get("/settings.json").body).to eq("{}")
   end
 
-  it "serves OpenCV.js immutably" do
+  it "serves OpenCV.js immutably", :aggregate_failures do
     response = get("/opencv/4.13.0/opencv.js")
     expect(response.status).to eq(200)
     expect(response.headers["cache-control"]).to eq("public, max-age=31536000, immutable")
   end
 
-  it "serves corpus photos, including subdirectories, to this machine only" do
+  it "serves corpus photos, including subdirectories, to this machine only", :aggregate_failures do
     expect(get("/corpus/IMG_1.jpeg").status).to eq(200)
     expect(get("/corpus/phase1-live/IMG_2.jpeg").status).to eq(200)
     expect(get("/corpus/IMG_1.jpeg", "REMOTE_ADDR" => "192.168.1.9").status).to eq(403)
   end
 
-  it "serves working files (artwork, index) to this machine only" do
-    @root.join("work/index.bin").binwrite("abc")
+  it "serves working files (artwork, index) to this machine only", :aggregate_failures do
+    root.join("work/index.bin").binwrite("abc")
     expect(get("/work/index.bin").body).to eq("abc")
     expect(get("/work/index.bin", "REMOTE_ADDR" => "192.168.1.9").status).to eq(403)
   end
 
-  it "stores a page's output under the run directory" do
-    response = Rack::MockRequest.new(app).post("/outputs/dev-hand/IMG_1/card.png", local.merge(input: "\x89PNG".b, "CONTENT_TYPE" => "image/png"))
+  it "stores a page's output under the run directory", :aggregate_failures do
+    response = post("/outputs/dev-hand/IMG_1/card.png", local.merge(input: "\x89PNG".b, "CONTENT_TYPE" => "image/png"))
     expect(response.status).to eq(201)
-    expect(@root.join("runs/dev-hand/IMG_1/card.png").binread).to eq("\x89PNG".b)
+    expect(root.join("runs/dev-hand/IMG_1/card.png").binread).to eq("\x89PNG".b)
   end
 
-  it "refuses output paths that leave the run directory or carry odd names" do
-    expect(Rack::MockRequest.new(app).post("/outputs/dev-hand/../x/card.png", local.merge(input: "x")).status).to eq(400)
-    expect(Rack::MockRequest.new(app).post("/outputs/dev-hand/IMG_1/card.exe", local.merge(input: "x")).status).to eq(400)
-    expect(Rack::MockRequest.new(app).post("/outputs/dev-hand/IMG_1/card.png", { "REMOTE_ADDR" => "192.168.1.9", input: "x" }).status).to eq(403)
+  it "refuses output paths that leave the run directory or carry odd names", :aggregate_failures do
+    expect(post("/outputs/dev-hand/../x/card.png", local.merge(input: "x")).status).to eq(400)
+    expect(post("/outputs/dev-hand/IMG_1/card.exe", local.merge(input: "x")).status).to eq(400)
+    expect(post("/outputs/dev-hand/IMG_1/card.png", { "REMOTE_ADDR" => "192.168.1.9", input: "x" }).status).to eq(403)
   end
 
-  it "records policy violation reports" do
-    expect(Rack::MockRequest.new(app).post("/csp-report", local.merge(input: '{"csp-report":{}}')).status).to eq(204)
-    expect(@root.join("logs/csp-reports.jsonl").read).to include("csp-report")
+  it "records policy violation reports", :aggregate_failures do
+    expect(post("/csp-report", local.merge(input: '{"csp-report":{}}')).status).to eq(204)
+    expect(root.join("logs/csp-reports.jsonl").read).to include("csp-report")
   end
 end
 ```
@@ -598,32 +607,34 @@ threads 1, 4
 require_relative "../phase2_helper"
 require "card_scanner_phase2/opencv_asset"
 require "digest"
+require "fileutils"
 require "tmpdir"
 
 RSpec.describe CardScannerPhase2::OpencvAsset do
-  around { |example| Dir.mktmpdir { |dir| @root = Pathname(dir); example.run } }
-
+  let(:root) { Pathname(Dir.mktmpdir) }
   let(:content) { "// opencv".b }
   let(:pin) { described_class::Pin.new(url: "https://example.test/opencv.js", sha256: Digest::SHA256.hexdigest(content), served: "4.13.0/opencv.js") }
 
-  it "downloads, verifies and writes the pinned file" do
-    written = described_class.install!(root: @root, pin:, download: ->(_url) { content })
-    expect(written).to eq(@root.join("4.13.0/opencv.js"))
+  after { FileUtils.remove_entry(root) }
+
+  it "downloads, verifies and writes the pinned file", :aggregate_failures do
+    written = described_class.install!(root:, pin:, download: ->(_url) { content })
+    expect(written).to eq(root.join("4.13.0/opencv.js"))
     expect(written.binread).to eq(content)
   end
 
   it "skips a file that is already intact" do
-    @root.join("4.13.0").mkpath
-    @root.join("4.13.0/opencv.js").binwrite(content)
-    expect(described_class.install!(root: @root, pin:, download: ->(_url) { raise "not called" })).to be_nil
+    root.join("4.13.0").mkpath
+    root.join("4.13.0/opencv.js").binwrite(content)
+    expect(described_class.install!(root:, pin:, download: ->(_url) { raise "not called" })).to be_nil
   end
 
-  it "refuses a download whose checksum differs and leaves nothing behind" do
-    expect { described_class.install!(root: @root, pin:, download: ->(_url) { "// other".b }) }.to raise_error(described_class::IntegrityError, /sha256/)
-    expect(@root.join("4.13.0/opencv.js")).not_to exist
+  it "refuses a download whose checksum differs and leaves nothing behind", :aggregate_failures do
+    expect { described_class.install!(root:, pin:, download: ->(_url) { "// other".b }) }.to raise_error(described_class::IntegrityError, /sha256/)
+    expect(root.join("4.13.0/opencv.js")).not_to exist
   end
 
-  it "pins the official 4.13.0 build" do
+  it "pins the official 4.13.0 build", :aggregate_failures do
     expect(described_class::PIN.url).to eq("https://docs.opencv.org/4.13.0/opencv.js")
     expect(described_class::PIN.sha256).to eq("63366510248adf3a7eddf3e793dd825404efb7df3749f4d6f8557c7fa4ca8aa0")
   end
@@ -1005,7 +1016,7 @@ const detectors = { hand: async (source) => detectHand(source, settings.hand) }
 
 // Runs one photo: fetch it, detect, straighten, build the 3:4 picture, store both PNGs, and answer with
 // the small JSON the driver records. `scale` is null (full size) or a picture height (the live stand-in).
-async function run({ path, detector, scale, run: runName, stem }) {
+async function run({ path, detector, scale, run: runName, stem, art }) {
   status.textContent = `${runName}: ${stem} (${detector})`
   const blob = await (await fetch(`/corpus/${path}`)).blob()
   const bitmap = await createImageBitmap(blob) // applies EXIF orientation
@@ -1043,6 +1054,8 @@ require "bundler/setup"
 require "optparse"
 require "selenium-webdriver"
 require_relative "../lib/card_scanner_phase2"
+require "card_scanner_phase2/split"
+require "card_scanner_phase2/runs"
 
 options = { corpus: CardScannerPhase2::CORPORA.keys, scale: nil, files: nil }
 OptionParser.new do |parser|
@@ -1063,6 +1076,9 @@ jobs = options[:corpus].flat_map do |corpus|
   files = files & options[:files] if options[:files]
   files.map { |file| { corpus:, file:, path: File.join(File.dirname(CardScannerPhase2::CORPORA.fetch(corpus)[:manifest]), file).delete_prefix("./") } }
 end
+if options[:files] && (outside = options[:files] - jobs.map { it[:file] }).any?
+  abort "Not in the #{options[:half]} half of the selected corpora: #{outside.join(", ")}" # AC-1.2: never run the other half by accident
+end
 abort "No photos selected" if jobs.empty?
 
 RUN_JS = <<~JS.freeze
@@ -1080,7 +1096,9 @@ begin
     answer = driver.execute_async_script(RUN_JS, { "path" => job[:path], "detector" => options[:detector], "scale" => options[:scale],
       "run" => options[:run], "stem" => stem })
     abort "#{job[:file]}: #{answer["error"]}" if answer["error"]
-    record = CardScannerPhase2::Runs.stamp(run_dir, answer["result"].merge("file" => job[:file], "corpus" => job[:corpus]))
+    result = answer["result"]
+    abort "#{job[:file]}: the source is landscape (#{result["sourceWidth"]}x#{result["sourceHeight"]}); EXIF orientation wasn't applied" if result["sourceWidth"] > result["sourceHeight"]
+    record = CardScannerPhase2::Runs.stamp(run_dir, result.merge("file" => job[:file], "corpus" => job[:corpus]))
     dir = run_dir.join(stem)
     dir.mkpath
     dir.join("detect.json").write(JSON.pretty_generate(record))
@@ -1119,7 +1137,7 @@ end
 
 - [ ] Write `spikes/card_scanner/phase2/README.md` with: the layout; how to start the server (`bundle exec puma -C spikes/card_scanner/phase2/puma.rb`); the fetch, detect, contact-sheet, reading, index and findings commands with their environment variables (filled in as later phases add them); where outputs land (`tmp/card_scanner_phase2/`, `~/card-scanner-corpus/runs/phase2/`); and the rule that held-out runs need `SETTINGS_COMMIT` and a clean tree.
 - [ ] Commit: `feat(spike): add the detect page, the hand-written detector, the shared warp and the run driver`
-- [ ] **Pilot (AC-1.6).** Start the server as a background task: `bundle exec puma -C spikes/card_scanner/phase2/puma.rb`; check `curl -s http://127.0.0.1:4200/settings.json | head -c 40`. Run five development photos, at least two from each corpus: `SE_AVOID_STATS=true bundle exec ruby spikes/card_scanner/phase2/script/detect_run.rb --run pilot-hand --half development --detector hand --files IMG_6688.jpeg,IMG_6702.jpeg,IMG_6705.jpeg,IMG_6755.jpeg,IMG_6758.jpeg` (adjust to files that are in the development half per `phase2_split.json`; include at least one foil). Expect five lines ending in `… ms` and `5 photos -> …/runs/phase2/pilot-hand`.
+- [ ] **Pilot (AC-1.6).** Start the server as a background task: `bundle exec puma -C spikes/card_scanner/phase2/puma.rb`; check `curl -s http://127.0.0.1:4200/settings.json | head -c 40`. Run five development photos, at least two from each corpus and including foils: `SE_AVOID_STATS=true bundle exec ruby spikes/card_scanner/phase2/script/detect_run.rb --run pilot-hand --half development --detector hand --files IMG_6688.jpeg,IMG_6689.jpeg,IMG_6704.jpeg,IMG_6755.jpeg,IMG_6758.jpeg` (all five are in the development half per `phase2_split.json`, as the plan review computed; the script aborts if any isn't). Expect five lines ending in `… ms` and `5 photos -> …/runs/phase2/pilot-hand`.
 - [ ] Build the sheet: `bundle exec ruby spikes/card_scanner/phase2/script/contact_sheet.rb pilot-hand`. View `contact-1.png` and each `card.png` with the Read tool. For each found card, check the straightened image shows the whole card upright; for each not-found, view the photo and note why (edge contrast, hand, background). Also confirm `picture.png` is 1320×1760 with the card centred: `magick identify …/pilot-hand/IMG_6688/picture.png`.
 - [ ] If the detector misses or mis-outlines a pilot photo, tune only the named knobs in `settings.json` (`hand.workWidth`, `blur`, `edgePercentile`, `thetaRangeDeg`, `minSeparation`, `minArea`, `aspectRange`), re-run the pilot under a new run name (`pilot-hand-2`, …), and record each round's change and effect for `research.md`. Stop when the five are as good as the knobs allow, or after four rounds.
 - [ ] Commit: `chore(spike): tune the hand-written detector on the pilot photos` (only if `settings.json` changed; otherwise note "no change after the pilot" in the next commit body).
@@ -1177,7 +1195,11 @@ export function detectOpenCV(cv, source, settings) {
     cv.dilate(edges, dilated, kernel)
     cv.findContours(dilated, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
     const candidates = []
-    for (let i = 0; i < contours.size(); i++) candidates.push({ index: i, area: cv.contourArea(contours.get(i)) })
+    for (let i = 0; i < contours.size(); i++) {
+      const contour = contours.get(i)
+      candidates.push({ index: i, area: cv.contourArea(contour) })
+      contour.delete()
+    }
     candidates.sort((p, q) => q.area - p.area)
     for (const { index, area } of candidates.slice(0, 10)) {
       if (area < settings.minArea * w * h) break
@@ -1185,6 +1207,7 @@ export function detectOpenCV(cv, source, settings) {
       cv.approxPolyDP(contour, approx, settings.approxEpsilon * cv.arcLength(contour, true), true)
       const points = approx.rows === 4 && cv.isContourConvex(approx) ? [0, 1, 2, 3].map((k) => [approx.data32S[2 * k], approx.data32S[2 * k + 1]]) : null
       approx.delete()
+      contour.delete()
       if (!points) continue
       const ordered = orderCorners(points)
       if (validQuad(ordered, w, h, settings)) { corners = ordered; break }
@@ -1199,7 +1222,7 @@ export function detectOpenCV(cv, source, settings) {
 
 - [ ] Edit `spikes/card_scanner/phase2/public/detect.js`: add `import { loadOpenCV, detectOpenCV } from "/opencv_detector.js"` and the detector entry `opencv: async (source) => detectOpenCV(await loadOpenCV("/opencv/4.13.0/opencv.js"), source, settings.opencv)`.
 - [ ] **Policy check (AC-2.8).** With the server running under the default policy, run the same five pilot photos: `… detect_run.rb --run pilot-opencv --half development --detector opencv --files <same five>`. Expect either five result lines, or an abort naming the load error. In both cases read `tmp/card_scanner_phase2/logs/csp-reports.jsonl` (if it exists) and record every `violated-directive`. If it fails under the default policy, restart the server with `SPIKE_UNSAFE_EVAL=1`, run again as `pilot-opencv-eval`, and record that `script-src` would need `'unsafe-eval'` (or whatever the report names). This is the AC-2.8 finding; all later OpenCV runs use whichever policy works, and the findings say which.
-- [ ] Build and view the contact sheet for `pilot-opencv` as in Phase 2; tune only `opencv.workWidth`, `blur`, `canny`, `approxEpsilon`, `minArea`, `aspectRange` on the five pilot photos, at most four rounds, recording each.
+- [ ] Build and view the contact sheet for `pilot-opencv` as in Phase 2; tune only `opencv.workWidth`, `blur` (must stay odd: `GaussianBlur` rejects an even kernel), `canny`, `approxEpsilon`, `minArea`, `aspectRange` on the five pilot photos, at most four rounds, recording each.
 - [ ] Write `spikes/card_scanner/phase2/script/sizes.rb` (AC-2.7: files, stored and gzip sizes, per detector):
 
 ```ruby
@@ -1260,36 +1283,38 @@ end
 ```ruby
 require_relative "../phase2_helper"
 require "card_scanner_phase2/derived_corpus"
+require "fileutils"
 require "tmpdir"
 
 RSpec.describe CardScannerPhase2::DerivedCorpus do
   let(:phase0) { "file,set,number,foil\nIMG_6718.jpeg,mat,71,no\nIMG_6690.jpeg,aaa,2,yes\n" }
   let(:new) { "file,set,number,foil,era\nIMG_6763.jpeg,mat,71,no,pre-M15\nIMG_6756.jpeg,iko,235,no,\n" }
+  let(:texts) { { "phase0" => phase0, "new" => new } }
+  let(:run) { Pathname(Dir.mktmpdir) }
 
-  it "adds an era column that overrides only the shared card's Phase 0 photo" do
-    expect(described_class.manifest_with_era("phase0", texts: { "phase0" => phase0, "new" => new }))
-      .to eq("file,set,number,foil,era\nIMG_6718.jpeg,mat,71,no,pre-M15\nIMG_6690.jpeg,aaa,2,yes,\n")
-    expect(described_class.manifest_with_era("new", texts: { "phase0" => phase0, "new" => new })).to eq(new)
+  after { FileUtils.remove_entry(run) }
+
+  def detection(file, corpus, found)
+    stem = File.basename(file, ".*")
+    run.join(stem).mkpath
+    run.join(stem, "picture.png").binwrite("\x89PNG".b) if found
+    run.join(stem, "detect.json").write({ "file" => file, "corpus" => corpus, "found" => found }.to_json)
   end
 
-  it "writes a derived manifest of the found photos with png names, and copies their pictures" do
-    Dir.mktmpdir do |dir|
-      run = Pathname(dir)
-      run.join("IMG_6718").mkpath
-      run.join("IMG_6718/picture.png").binwrite("\x89PNG".b)
-      run.join("IMG_6718/detect.json").write({ "file" => "IMG_6718.jpeg", "corpus" => "phase0", "found" => true }.to_json)
-      run.join("IMG_6690").mkpath
-      run.join("IMG_6690/detect.json").write({ "file" => "IMG_6690.jpeg", "corpus" => "phase0", "found" => false }.to_json)
-      run.join("IMG_6756").mkpath
-      run.join("IMG_6756/picture.png").binwrite("\x89PNG".b)
-      run.join("IMG_6756/detect.json").write({ "file" => "IMG_6756.jpeg", "corpus" => "new", "found" => true }.to_json)
+  it "adds an era column that overrides only the shared card's Phase 0 photo", :aggregate_failures do
+    expect(described_class.manifest_with_era("phase0", texts:)).to eq("file,set,number,foil,era\nIMG_6718.jpeg,mat,71,no,pre-M15\nIMG_6690.jpeg,aaa,2,yes,\n")
+    expect(described_class.manifest_with_era("new", texts:)).to eq(new)
+  end
 
-      written = described_class.write!(run, texts: { "phase0" => phase0, "new" => new })
-      expect(written.join("manifest.csv").read).to eq("file,set,number,foil,era\nIMG_6718.png,mat,71,no,pre-M15\nIMG_6756.png,iko,235,no,\n")
-      expect(written.join("IMG_6718.png").binread).to eq("\x89PNG".b)
-      expect(written.join("IMG_6690.png")).not_to exist
-      expect(described_class.not_found(run)).to eq([ { "file" => "IMG_6690.jpeg", "corpus" => "phase0" } ])
-    end
+  it "writes a derived manifest of the found photos with png names, and copies their pictures", :aggregate_failures do
+    detection("IMG_6718.jpeg", "phase0", true)
+    detection("IMG_6690.jpeg", "phase0", false)
+    detection("IMG_6756.jpeg", "new", true)
+    written = described_class.write!(run, texts:)
+    expect(written.join("manifest.csv").read).to eq("file,set,number,foil,era\nIMG_6718.png,mat,71,no,pre-M15\nIMG_6756.png,iko,235,no,\n")
+    expect(written.join("IMG_6718.png").binread).to eq("\x89PNG".b)
+    expect(written.join("IMG_6690.png")).not_to exist
+    expect(described_class.not_found(run)).to eq([ { "file" => "IMG_6690.jpeg", "corpus" => "phase0" } ])
   end
 end
 ```
@@ -1299,6 +1324,7 @@ end
 
 ```ruby
 require "fileutils"
+require "card_scanner_phase2/split"
 
 module CardScannerPhase2
   # Turns a detect run into a corpus the shipped photo path can read unchanged: one 3:4 picture per found
@@ -1356,8 +1382,10 @@ corpus = CardScannerPhase2::DerivedCorpus.write!(run_dir)
 system("bin/rails", "scanner:ground_truth[#{corpus.join("manifest.csv")}]", chdir: CardScannerPhase2::REPO.to_s, exception: true)
 found = corpus.glob("*.png").size
 puts "#{found} pictures, #{CardScannerPhase2::DerivedCorpus.not_found(run_dir).size} not found -> #{corpus}"
+require_relative "#{CardScannerPhase2::REPO}/lib/collector/dev_port"
+port = Collector::DevPort.resolve(root: CardScannerPhase2::REPO.to_s) # the port photo_run.rb defaults to (3204 in this worktree)
 puts "Reading run:"
-puts "  COLLECTOR_SCANNER_MANIFEST=#{corpus.join("manifest.csv")} COLLECTOR_SCANNER_RUN_DIR=#{run_dir.join("measurement")} bin/rails server -b 127.0.0.1 -p 3204"
+puts "  COLLECTOR_SCANNER_MANIFEST=#{corpus.join("manifest.csv")} COLLECTOR_SCANNER_RUN_DIR=#{run_dir.join("measurement")} bin/rails server -b 127.0.0.1 -p #{port}"
 puts "  SE_AVOID_STATS=true SCANNER_EMAIL=phase2@localhost SCANNER_PASSWORD=… bundle exec ruby script/scanner/photo_run.rb"
 ```
 
@@ -1381,9 +1409,9 @@ RSpec.describe CardScannerPhase2::Scoring, type: :model do
       record("C.jpeg", "new", found: false),
       record("D.jpeg", "new", era: "pre-M15", final: %w[Right], names: %w[Right]) ]
   end
-  let(:baseline) { run.map { it.merge("final_candidates" => [], "name_candidates" => [], "lookup" => { "status" => "none", "external_keys" => [] }) } }
+  let(:baseline) { run.map { it.except("found", "class").merge("final_candidates" => [], "name_candidates" => [], "lookup" => { "status" => "none", "external_keys" => [] }) } }
 
-  it "lays out the spec's rates per source, for both corpora together and each on its own" do
+  it "lays out the spec's rates per source, for both corpora together and each on its own", :aggregate_failures do
     tables = described_class.tables("Hand (dev, biased)" => run, "Baseline" => baseline)
     expect(tables.keys).to eq([ "both", "phase0", "new" ])
     both = tables["both"]
@@ -1391,11 +1419,12 @@ RSpec.describe CardScannerPhase2::Scoring, type: :model do
     expect(both).to include("| Top 3, final ranking | Group | Hand (dev, biased) | Baseline |", "| overall | all | 3/4 (75.0%) | 0/4 (0.0%) |")
     expect(both).to include("| Exact printing (M15–ONE, MOM+) | Group | Hand (dev, biased) | Baseline |", "| overall | all | 1/3 (33.3%) | 0/3 (0.0%) |")
     expect(both).to include("| Top 3, name only | Group | Hand (dev, biased) | Baseline |", "| overall | all | 2/4 (50.0%) | 0/4 (0.0%) |")
-    expect(both).to include("Lookup outcomes", "3 found, 1 not found")
+    expect(both).to include("Lookup outcomes", "Detection: Hand (dev, biased) found 3, not_found 1")
+    expect(both).not_to include("Detection: Baseline")
     expect(tables["new"]).to include("| overall | all | 1/2 (50.0%) | 0/2 (0.0%) |")
   end
 
-  it "lists the misses with their class" do
+  it "lists the misses with their class", :aggregate_failures do
     misses = described_class.misses(run)
     expect(misses.map { it["file"] }).to eq(%w[C.jpeg])
     expect(misses.first["class"]).to eq("not_found")
@@ -1407,6 +1436,8 @@ end
 - [ ] Implement `spikes/card_scanner/phase2/lib/card_scanner_phase2/scoring.rb` (needs Rails; `Collector::ScannerFindings` is autoloaded from `lib/`):
 
 ```ruby
+require "card_scanner_phase2/derived_corpus"
+
 module CardScannerPhase2
   # Scores a reading run with spec 007's rate definitions (Collector::ScannerFindings), with a baseline column
   # from the committed fixtures and, for the new corpus, the live column (AC-2.2, AC-2.3, AC-2.5).
@@ -1456,7 +1487,8 @@ module CardScannerPhase2
       set_line = sources.transform_values { |rs| rs.select { FINDINGS::SET_LINE_ERAS.include?(it["era"]) } }
       parts << FINDINGS.comparison("Exact printing (M15–ONE, MOM+)", set_line) { FINDINGS.printing_identified?(it) }
       parts << "Lookup outcomes (M15–ONE, MOM+): " + set_line.map { |label, rs| "#{label} #{rs.map { it.dig("lookup", "status") }.tally.sort.to_h}" }.join("; ")
-      parts << "Detection: " + sources.map { |label, rs| "#{label} #{rs.count { it["found"] }} found, #{rs.count { !it["found"] }} not found" }.join("; ")
+      detected = sources.select { |_, rs| rs.any? { it.key?("class") } }
+      parts << "Detection: " + detected.map { |label, rs| "#{label} #{rs.map { it["class"] }.tally.sort.map { |k, n| "#{k} #{n}" }.join(", ")}" }.join("; ") if detected.any?
       parts.join("\n\n")
     end
 
@@ -1481,6 +1513,7 @@ end
 # Usage: bin/rails runner spikes/card_scanner/phase2/script/score.rb <run> [<label>]
 $LOAD_PATH.unshift(File.expand_path("../lib", __dir__))
 require "card_scanner_phase2"
+require "card_scanner_phase2/runs"
 require "card_scanner_phase2/derived_corpus"
 require "card_scanner_phase2/scoring"
 
@@ -1540,7 +1573,7 @@ require_relative "../phase2_helper"
 require "card_scanner_phase2/ppm"
 
 RSpec.describe CardScannerPhase2::Ppm do
-  it "parses a binary P6 image into width, height and RGB bytes" do
+  it "parses a binary P6 image into width, height and RGB bytes", :aggregate_failures do
     image = described_class.parse("P6\n2 1\n255\n".b + [ 255, 0, 0, 0, 0, 255 ].pack("C*"))
     expect([ image.width, image.height ]).to eq([ 2, 1 ])
     expect(image.rgb(0, 0)).to eq([ 255, 0, 0 ])
@@ -1595,6 +1628,7 @@ end
 
 ```ruby
 require_relative "../phase2_helper"
+require "card_scanner_phase2/settings"
 require "card_scanner_phase2/ppm"
 require "card_scanner_phase2/fingerprint"
 
@@ -1608,7 +1642,7 @@ RSpec.describe CardScannerPhase2::Fingerprint do
     CardScannerPhase2::Ppm::Image.new(100, 140, data)
   end
 
-  it "resamples a box by area into the grid, keeping the gradient" do
+  it "resamples a box by area into the grid, keeping the gradient", :aggregate_failures do
     r, g, b = described_class.area_resample(image, 14.0, 22.4, 86.0, 70.0, 17, 16)
     expect(r.size).to eq(17 * 16)
     expect(r[0]).to be < r[16]
@@ -1616,7 +1650,7 @@ RSpec.describe CardScannerPhase2::Fingerprint do
     expect(b.uniq.map(&:round)).to eq([ 128 ])
   end
 
-  it "hashes four planes into 128 bytes with neighbour comparisons" do
+  it "hashes four planes into 128 bytes with neighbour comparisons", :aggregate_failures do
     hash = described_class.hash(image, settings, settings["offsets"].first)
     expect(hash.bytesize).to eq(128)
     red_plane = hash.byteslice(96, 32)
@@ -1625,13 +1659,13 @@ RSpec.describe CardScannerPhase2::Fingerprint do
     expect(blue_plane.unpack1("B*")).to eq("0" * 256) # blue is flat, so none is
   end
 
-  it "computes six offset hashes, all distinct boxes" do
+  it "computes six offset hashes, all distinct boxes", :aggregate_failures do
     boxes = settings["offsets"].map { described_class.box(100, 140, settings["box"], it) }
     expect(boxes.uniq.size).to eq(6)
     expect(described_class.hashes(image, settings).size).to eq(6)
   end
 
-  it "measures Hamming distance" do
+  it "measures Hamming distance", :aggregate_failures do
     a = ([ 0xFF ] * 128).pack("C*")
     b = ([ 0xFF ] * 127 + [ 0x0F ]).pack("C*")
     expect(described_class.hamming(a, a)).to eq(0)
@@ -1751,7 +1785,7 @@ RSpec.describe CardScannerPhase2::BulkArtworks do
       card(id: "p8", name: "No Art") ]
   end
 
-  it "keeps the entries the catalog imports and one front-face artwork per illustration id" do
+  it "keeps the entries the catalog imports and one front-face artwork per illustration id", :aggregate_failures do
     Dir.mktmpdir do |dir|
       path = Pathname(dir).join("default-cards-20261003000000.jsonl.gz")
       Zlib::GzipWriter.open(path.to_s) { |gz| lines.each { gz.puts(it.to_json) } }
@@ -1846,48 +1880,52 @@ puts "#{result["bulk_version"]}: #{result["counts"]}"
 ```ruby
 require_relative "../phase2_helper"
 require "card_scanner_phase2/art_fetcher"
+require "fileutils"
 require "tmpdir"
 
 RSpec.describe CardScannerPhase2::ArtFetcher do
   before { stub_const("Response", Struct.new(:code, :body, :headers) { def [](name) = headers[name] }) }
 
+  let(:dir) { Pathname(Dir.mktmpdir) }
   let(:clock) { [ 0.0 ] }
   let(:sleeps) { [] }
   let(:requests) { [] }
   let(:fetcher) do
-    described_class.new(dir: @dir, size: "small", http: ->(url, headers) { requests << [ url, headers ]; responses.shift },
+    described_class.new(dir:, size: "small", http: ->(url, headers) { requests << [ url, headers ]; responses.shift },
       sleeper: ->(seconds) { sleeps << seconds; clock[0] += seconds }, clock: -> { clock[0] })
   end
 
-  around { |example| Dir.mktmpdir { |dir| @dir = Pathname(dir); example.run } }
+  after { FileUtils.remove_entry(dir) }
 
   context "with ordinary responses" do
     let(:responses) { [ Response.new("200", "jpg-a".b, {}), Response.new("200", "jpg-b".b, {}) ] }
 
-    it "fetches each artwork with the headers the rules name, at least 100 ms apart, into the cache" do
+    it "fetches each artwork with the headers the rules name, at least 100 ms apart, into the cache", :aggregate_failures do
       stats = fetcher.fetch({ "a" => { "small" => "https://cards.scryfall.io/small/front/a.jpg" }, "b" => { "small" => "https://cards.scryfall.io/small/front/b.jpg" } })
       expect(requests.map(&:first)).to eq(%w[https://cards.scryfall.io/small/front/a.jpg https://cards.scryfall.io/small/front/b.jpg])
       expect(requests.first.last).to include("User-Agent" => a_string_including("Collector"), "Accept" => "image/jpeg")
       expect(sleeps).to all(be >= 0.1)
-      expect(@dir.join("small/a.jpg").binread).to eq("jpg-a".b)
+      expect(dir.join("small/a.jpg").binread).to eq("jpg-a".b)
       expect(stats).to include("fetched" => 2, "bytes" => 10, "skipped" => 0, "failed" => [])
     end
 
     it "skips artworks already in the cache" do
-      @dir.join("small").mkpath
-      @dir.join("small/a.jpg").binwrite("cached")
+      dir.join("small").mkpath
+      dir.join("small/a.jpg").binwrite("cached")
       stats = fetcher.fetch({ "a" => { "small" => "u" }, "b" => { "small" => "https://cards.scryfall.io/small/front/b.jpg" } })
       expect(stats).to include("fetched" => 1, "skipped" => 1)
     end
   end
 
-  it "backs off on 429 using Retry-After, then gives up after three attempts" do
-    responses = [ Response.new("429", "", { "retry-after" => "2" }), Response.new("429", "", {}), Response.new("429", "", {}) ]
-    fetcher = described_class.new(dir: @dir, size: "small", http: ->(_u, _h) { responses.shift }, sleeper: ->(s) { sleeps << s }, clock: -> { 0.0 })
-    stats = fetcher.fetch({ "a" => { "small" => "u" } })
-    expect(sleeps).to include(2.0, 4.0)
-    expect(stats["failed"]).to eq([ { "id" => "a", "error" => "HTTP 429 after 3 attempts" } ])
-    expect(@dir.join("small/a.jpg")).not_to exist
+  context "with a rate-limited host" do
+    let(:responses) { [ Response.new("429", "", { "retry-after" => "2" }), Response.new("429", "", {}), Response.new("429", "", {}) ] }
+
+    it "backs off on 429 using Retry-After, then gives up after three attempts", :aggregate_failures do
+      stats = fetcher.fetch({ "a" => { "small" => "u" } })
+      expect(sleeps).to include(2.0, 4.0)
+      expect(stats["failed"]).to eq([ { "id" => "a", "error" => "HTTP 429 after 3 attempts" } ])
+      expect(dir.join("small/a.jpg")).not_to exist
+    end
   end
 end
 ```
@@ -2029,35 +2067,37 @@ CardScannerPhase2::WORK_DIR.join("fetch_#{options[:size]}_#{options[:mode]}_#{Ti
 puts JSON.pretty_generate(stats.except("failed")) + "\nfailed: #{stats["failed"].size}"
 ```
 
-- [ ] Run `truth_copies.rb` if not yet done, then `fetch_art.rb --size small --mode corpus` and `--size normal --mode corpus`. Expect about 99 fetched each (fewer if cards share artwork), 0 failed.
+- [ ] Run `truth_copies.rb` if not yet done, then `fetch_art.rb --size small --mode corpus` and `--size normal --mode corpus`. Expect about 99 fetched each (fewer if cards share artwork), 0 failed. These precede the estimate on purpose: the corpus artworks are needed whether or not the full fetch is approved (AC-4.3), and the 500-artwork sample is drawn from the artworks not yet cached, so the estimate stays a random sample of the remainder; the findings say so.
 - [ ] **Estimate (AC-4.2):** `fetch_art.rb --size small --mode estimate`. Expect `fetched: 500` and an `estimate` block with `remaining_images`, `remaining_bytes` and `remaining_hours`. Write the estimate into `docs/specs/008-card-scanner-phase-2-spike/research.md` as a first section ("Fetch estimate, awaiting approval"), with the seed, sample size, per-image bytes and seconds, and the totals. Commit: `docs(spec): record the artwork fetch estimate for the maintainer's approval (008)`.
 - [ ] **Checkpoint (maintainer):** approve or decline the full fetch from the committed estimate. Record the answer and its date in `research.md`. If declined, the index covers the corpus artworks plus the 500-sample and the rates are labelled accordingly (AC-4.3); skip the next step.
-- [ ] **Full fetch,** in chunks that fit a background task's 2-hour limit: `fetch_art.rb --size small --mode full --limit 20000`, repeated until `fetched: 0`. Each invocation writes its own `fetch_small_full_<stamp>.json`; the findings sum them (fetched, bytes, seconds) and list `failed` (AC-4.8).
+- [ ] **Full fetch,** in chunks that fit a background task's 2-hour limit, with the chunk size taken from the estimate: `--limit` = `floor(5400 / per_image.seconds)` from `fetch_estimate.json` (90 minutes' worth, leaving headroom for slow responses). Run `fetch_art.rb --size small --mode full --limit <that>` as a background task, repeated until `fetched: 0`. Each invocation writes its own `fetch_small_full_<stamp>.json` only when it finishes, so a chunk killed by the limit loses its statistics but not its cached images; the findings sum the finished chunks (fetched, bytes, seconds), count cached files for the total, and list `failed` (AC-4.8).
 - [ ] Write the failing spec `spikes/card_scanner/phase2/spec/card_scanner_phase2/art_index_spec.rb`:
 
 ```ruby
 require_relative "../phase2_helper"
 require "card_scanner_phase2/art_index"
+require "fileutils"
 require "tmpdir"
 
 RSpec.describe CardScannerPhase2::ArtIndex do
   let(:ids) { %w[00000000-0000-4000-8000-000000000001 00000000-0000-4000-8000-000000000002] }
   let(:hashes) { [ ("\x00" * 128).b, ("\xFF" * 128).b ] }
+  let(:dir) { Pathname(Dir.mktmpdir) }
 
-  around { |example| Dir.mktmpdir { |dir| @dir = Pathname(dir); example.run } }
+  after { FileUtils.remove_entry(dir) }
 
-  it "writes and reads back fixed-size records of uuid plus hash" do
-    described_class.write!(@dir, ids, hashes, meta: { "image_size" => "small" })
-    expect(@dir.join("art_index.bin").size).to eq(2 * 144)
-    index = described_class.read(@dir)
+  it "writes and reads back fixed-size records of uuid plus hash", :aggregate_failures do
+    described_class.write!(dir, ids, hashes, meta: { "image_size" => "small" })
+    index = described_class.read(dir)
+    expect(dir.join("art_index.bin").size).to eq(2 * 144)
     expect(index.size).to eq(2)
     expect(index.ids).to eq(ids)
     expect(index.meta).to include("image_size" => "small", "count" => 2)
   end
 
   it "ranks by the smallest distance over the query's offsets" do
-    described_class.write!(@dir, ids, hashes, meta: {})
-    index = described_class.read(@dir)
+    described_class.write!(dir, ids, hashes, meta: {})
+    index = described_class.read(dir)
     query = [ ("\xFF" * 127 + "\x0F").b, ("\x00" * 127 + "\x0F").b ]
     ranked = index.search(query, limit: 2)
     expect(ranked).to eq([ { "id" => ids[0], "distance" => 4 }, { "id" => ids[1], "distance" => 4 } ])
@@ -2070,6 +2110,7 @@ end
 
 ```ruby
 require "time"
+require "card_scanner_phase2/fingerprint"
 
 module CardScannerPhase2
   # The index as a flat binary file (16-byte uuid + 128-byte hash per artwork), which the browser downloads
@@ -2124,6 +2165,7 @@ require "bundler/setup"
 require "optparse"
 require "zlib"
 require_relative "../lib/card_scanner_phase2"
+require "card_scanner_phase2/settings"
 require "card_scanner_phase2/bulk_artworks"
 require "card_scanner_phase2/ppm"
 require "card_scanner_phase2/fingerprint"
@@ -2147,11 +2189,16 @@ dir = CardScannerPhase2::WORK_DIR.join("index")
 CardScannerPhase2::ArtIndex.write!(dir, ids, hashes, meta: { "image_size" => size, "bulk_version" => data["bulk_version"], "settings_commit" => CardScannerPhase2::Settings.commit,
   "tool" => "ImageMagick #{`magick -version`[/\d+\.\d+\.\d+-\d+/]} (P6 decode) + pure Ruby", "fingerprint_seconds" => seconds.round(1), "missing_artworks" => missing.size })
 raw = dir.join("art_index.bin").size
+corpus_ids = CardScannerPhase2::CORPORA.keys.flat_map do |corpus|
+  JSON.parse(CardScannerPhase2::WORK_DIR.join("truth", corpus, "ground_truth.json").read).fetch("photos").map { data["entries"][it["external_key"]] }
+end.compact.uniq
 puts "#{ids.size} artworks in #{seconds.round(1)} s; #{missing.size} without a cached image; index #{raw} bytes raw, #{Zlib::Deflate.deflate(dir.join("art_index.bin").binread, Zlib::BEST_COMPRESSION).bytesize} gzip"
+left_out = corpus_ids & missing
+puts "corpus artworks left out (AC-4.8): #{left_out.empty? ? "none" : left_out.join(", ")}"
 ```
 
 - [ ] Run it after whichever fetch the maintainer approved. Expect one line with the counts, the fingerprinting time and both index sizes (AC-4.4). Record them.
-- [ ] **AC-4.5, what the production build would add.** Measure the two candidates' package sizes with Podman against the Dockerfile's base image, dry-run only (no image changes): `podman run --rm docker.io/library/ruby:4.0.7-slim sh -c 'apt-get update -qq && apt-get install --no-install-recommends -y --dry-run imagemagick | grep -i "additional disk"'` and the same for `libvips42` (already installed by the Dockerfile: confirm with `--dry-run libvips42` reporting nothing to install) plus `gem fetch ruby-vips` size. (Check the Dockerfile's exact base image tag first and use it.) Record both figures for `research.md`.
+- [ ] **AC-4.5, what the production build would add.** Measure the two candidates' package sizes with Podman against the Dockerfile's base image, dry-run only (no image changes): `podman run --rm docker.io/library/ruby:4.0.7-slim sh -c 'apt-get update -qq && apt-get install --no-install-recommends -y --dry-run imagemagick | grep -i "additional disk"'` and the same for `libvips` (the package name the Dockerfile installs at line 19; in the app's image it is already present, so the dry run reports what the base image would add) plus the `ruby-vips` gem's size (`gem fetch ruby-vips` into the scratchpad, then `ls -l`). (Check the Dockerfile's exact base image tag first and use it.) Record both figures for `research.md`.
 - [ ] Commit: `feat(spike): fetch artwork with Scryfall's manners and build the art index`
 
 ---
@@ -2165,8 +2212,6 @@ puts "#{ids.size} artworks in #{seconds.round(1)} s; #{missing.size} without a c
 - [ ] Write `spikes/card_scanner/phase2/public/fingerprint.js` (the same arithmetic and loop order as `Fingerprint` in Ruby):
 
 ```js
-import { canvasOf } from "/canvas.js"
-
 export function box(width, height, box, offset) {
   const inset = offset.inset || 0, dx = offset.dx || 0, dy = offset.dy || 0
   const bw = box.x1 - box.x0, bh = box.y1 - box.y0
@@ -2275,7 +2320,7 @@ export function search(index, hashes, limit = 10) {
 }
 ```
 
-- [ ] Edit `spikes/card_scanner/phase2/public/detect.js`: import `fingerprints, fingerprint, hex` and `loadIndex, search`; in `run`, after the card is straightened and when `params.art` is true, add:
+- [ ] Edit `spikes/card_scanner/phase2/public/detect.js`: import `fingerprints, fingerprint, hex` and `loadIndex, search`; in `run`, after the card is straightened and when the destructured `art` is true, add:
 
 ```js
     const t2 = performance.now()
@@ -2309,6 +2354,7 @@ require "bundler/setup"
 require "optparse"
 require "selenium-webdriver"
 require_relative "../lib/card_scanner_phase2"
+require "card_scanner_phase2/settings"
 require "card_scanner_phase2/bulk_artworks"
 require "card_scanner_phase2/ppm"
 require "card_scanner_phase2/fingerprint"
@@ -2357,6 +2403,7 @@ require "bundler/setup"
 require "optparse"
 require "selenium-webdriver"
 require_relative "../lib/card_scanner_phase2"
+require "card_scanner_phase2/runs"
 require "card_scanner_phase2/derived_corpus"
 
 options = {}
@@ -2426,23 +2473,23 @@ RSpec.describe CardScannerPhase2::ArtScoring do
       "entries" => { "k1" => "art-1", "k2" => "art-1", "k3" => "art-3" }, "names" => { "Right" => 3, "Other" => 1 } }
   end
   let(:records) do
-    [ { "file" => "A.jpeg", "corpus" => "phase0", "name" => "Right", "external_key" => "k1", "era" => "MOM+", "foil" => false, "borderless_or_showcase" => false, "found" => true,
-        "art" => [ { "id" => "art-1", "distance" => 200 }, { "id" => "art-2", "distance" => 300 } ], "text_top3" => false, "lookup" => { "status" => "none" } },
-      { "file" => "B.jpeg", "corpus" => "phase0", "name" => "Right", "external_key" => "k3", "era" => "pre-M15", "foil" => true, "borderless_or_showcase" => false, "found" => true,
-        "art" => [ { "id" => "art-2", "distance" => 250 }, { "id" => "art-3", "distance" => 260 } ], "text_top3" => true, "lookup" => { "status" => "none" } },
-      { "file" => "C.jpeg", "corpus" => "new", "name" => "Right", "external_key" => "k2", "era" => "MOM+", "foil" => false, "borderless_or_showcase" => true, "found" => false,
-        "art" => nil, "text_top3" => false, "lookup" => { "status" => "none" } } ]
+    [ { "file" => "A.jpeg", "corpus" => "phase0", "name" => "Right", "external_key" => "k1", "era" => "MOM+", "foil" => false, "borderless_or_showcase" => false,
+        "found" => true, "class" => "found", "art" => [ { "id" => "art-1", "distance" => 200 }, { "id" => "art-2", "distance" => 300 } ], "text_top3" => false, "lookup" => { "status" => "none" } },
+      { "file" => "B.jpeg", "corpus" => "phase0", "name" => "Right", "external_key" => "k3", "era" => "pre-M15", "foil" => true, "borderless_or_showcase" => false,
+        "found" => true, "class" => "wrong_outline", "art" => [ { "id" => "art-2", "distance" => 250 }, { "id" => "art-3", "distance" => 260 } ], "text_top3" => true, "lookup" => { "status" => "none" } },
+      { "file" => "C.jpeg", "corpus" => "new", "name" => "Right", "external_key" => "k2", "era" => "MOM+", "foil" => false, "borderless_or_showcase" => true,
+        "found" => false, "class" => "not_found", "art" => nil, "text_top3" => false, "lookup" => { "status" => "none" } } ]
   end
 
-  it "scores the right artwork first and in the top 3, over all photos and over the found ones" do
+  it "scores the right artwork first and in the top 3, over all photos and over the ones classed as found", :aggregate_failures do
     scored = described_class.score(records, data)
     expect(scored.map { it["right_artwork"] }).to eq(%w[art-1 art-3 art-1])
     expect(scored.map { it["art_rank"] }).to eq([ 1, 2, nil ])
     expect(scored.map { it["right_distance"] }).to eq([ 200, 260, nil ])
     expect(scored.map { it["nearest_wrong_distance"] }).to eq([ 300, 250, nil ])
     md = described_class.markdown(scored)
-    expect(md).to include("| Right artwork first | Group | All photos | Found photos |", "| overall | all | 1/3 (33.3%) | 1/2 (50.0%) |")
-    expect(md).to include("| Right artwork in top 3 | Group | All photos | Found photos |", "| overall | all | 2/3 (66.7%) | 2/2 (100.0%) |")
+    expect(md).to include("| Right artwork first | Group | All photos | Classed found |", "| overall | all | 1/3 (33.3%) | 1/1 (100.0%) |")
+    expect(md).to include("| Right artwork in top 3 | Group | All photos | Classed found |", "| overall | all | 2/3 (66.7%) | 1/1 (100.0%) |")
     expect(md).to include("Text missed 2; of those art first 1; text top 3 or art first 2 of 3")
     expect(md).to include("| B.jpeg | Right | 3 | 1 |") # printings sharing the name vs sharing the artwork, for a card with no exact printing
   end
@@ -2484,7 +2531,7 @@ module CardScannerPhase2
     end
 
     def markdown(scored)
-      sources = { "All photos" => scored, "Found photos" => scored.select { it["found"] } }
+      sources = { "All photos" => scored, "Classed found" => scored.select { it["class"] == "found" } } # the by-eye class (AC-2.4), per AC-3.3
       distances = scored.select { it["art_rank"] }
       parts = [ comparison("Right artwork first", sources) { it["art_first"] }, comparison("Right artwork in top 3", sources) { it["art_top3"] } ]
       parts << "Distances (right artwork ranked): median right #{median(distances.map { it["right_distance"] })}, median nearest wrong " \
@@ -2496,6 +2543,8 @@ module CardScannerPhase2
         narrowing.map { "| #{it["file"]} | #{it["name"]} | #{it["share_name"]} | #{it["share_artwork"]} |" }.join("\n")
       parts << "Narrowing: median sharing name #{median(narrowing.map { it["share_name"] }.compact)}, median sharing artwork #{median(narrowing.map { it["share_artwork"] }.compact)}, " \
                "artwork belongs to exactly one printing #{narrowing.count { it["share_artwork"] == 1 }} of #{narrowing.size}"
+      parts << "| File | Right artwork's distance | Nearest wrong artwork's distance | Rank |\n|---|---|---|---|\n" +
+        scored.map { "| #{it["file"]} | #{it["right_distance"] || "not ranked"} | #{it["nearest_wrong_distance"] || "-"} | #{it["art_rank"] || "-"} |" }.join("\n")
       parts.join("\n\n")
     end
 
@@ -2513,6 +2562,7 @@ end
 # Scores an art run against the text results of its detect run. Usage: bundle exec ruby … art_score.rb <art run> <detect run>
 require "bundler/setup"
 require_relative "../lib/card_scanner_phase2"
+require "card_scanner_phase2/runs"
 require "card_scanner_phase2/bulk_artworks"
 require "card_scanner_phase2/art_scoring"
 
@@ -2557,7 +2607,7 @@ puts md
 **Interfaces:** Consumes: every run's `score.json`, `art_score.json`, `classes.json`, `agreement_<size>.json`; Produces: the committed fixtures
 
 - [ ] **Before the freeze:** confirm the agreement check ran at the current fingerprint settings (`agreement_<size>.json`'s `settings_commit` equals `Settings.commit`); if not, re-run `agreement.rb` (AC-4.6 precedes the freeze).
-- [ ] **Freeze (AC-1.3).** Add `"frozen": "<today>"` as the first key of `settings.json`, with a `"chosen_detector"` key naming the detector with the better development-half top-3 count over all 52 photos (smaller download on a tie), and the development counts both reached. Commit: `chore(spike): freeze the Phase 2 settings` with the tuning-round table in the body. `bundle exec ruby -e '…; puts CardScannerPhase2::Settings.commit'` must now print this commit's SHA. Export it: `export SETTINGS_COMMIT=$(git rev-parse HEAD)`. `git status --porcelain` must be empty before every held-out run.
+- [ ] **Freeze (AC-1.3).** Add `"frozen": "<today>"` as the first key of `settings.json`, with a `"chosen_detector"` key naming the detector with the better development-half top-3 count over all 52 photos (smaller download on a tie), and the development counts both reached. Commit: `chore(spike): freeze the Phase 2 settings` with the tuning-round table in the body. `bundle exec ruby -e '…; puts CardScannerPhase2::Settings.commit'` must now print this commit's SHA. Export it: `export SETTINGS_COMMIT=$(git rev-parse HEAD)`. `git status --porcelain` must be empty before every held-out run, and **no commit of any kind may land between the freeze and the last held-out run** (the guard compares `HEAD` with the settings commit): hold the `classes.json`, fixture and findings commits until Phase 7's runs are all done, or re-freeze (a new commit touching `settings.json`) and re-run every held-out run.
 - [ ] **Held-out detect runs.** `detect_run.rb --run held-hand --half held_out --detector hand`, `--run held-opencv … --detector opencv`, `--run held-hand-scaled --half held_out --detector hand --corpus phase0 --scale 1440`, `--run held-opencv-scaled …`. Each must print `47` (or `24` for the scaled runs) lines; a `Refused` error means the guard tripped, so fix the cause (commit or stash nothing: the tree must be clean because nothing is pending) and re-run under the same name only after deleting the empty directory the refusal didn't create (it creates none).
 - [ ] For each: `derive.rb`, the reading run (dev server on 3204 with the printed environment, `photo_run.rb`, stop), `score.rb`, `contact_sheet.rb`, the by-eye `classes.json`, `score.rb` again. If a reading run dies for an apparatus reason, re-run `photo_run.rb` on the same measurement directory (it resumes from pending rows) and note it in `research.md` (AC-1.5).
 - [ ] **Held-out art run:** `art_run.rb --from held-<chosen> --detector <chosen>`, `art_score.rb held-<chosen>-art held-<chosen>`, `search_server.rb held-<chosen>-art`.
@@ -2575,7 +2625,7 @@ differing = a.keys.select { outcome.(a[it]) != outcome.(b.fetch(it)) }
 puts "#{differing.size} of #{a.size} differ: #{differing.join(", ")}"
 ```
 
-  Run it for both pairs; record the counts and files.
+  The outcome's detection class is the by-eye one (AC-2.4), so the replay runs need `classes.json` too: judge `dev-<detector>-r1` from its contact sheets as usual; for `r2`, copy each photo's class from `r1` when its `card.png` is byte-identical (`cmp`), since the same straightened image has the same class by definition, and judge only the photos whose images differ. Re-run `score.rb` on both, then run `replay_diff.rb` for both pairs; record the counts, the files, and how many images were byte-identical.
 
 - [ ] Write `spikes/card_scanner/phase2/script/fixtures.rb` (AC-5.5: one record per photo keyed by the original manifest file name; text and numbers only):
 
@@ -2586,6 +2636,7 @@ puts "#{differing.size} of #{a.size} differ: #{differing.join(", ")}"
 require "bundler/setup"
 require "optparse"
 require_relative "../lib/card_scanner_phase2"
+require "card_scanner_phase2/settings"
 
 options = {}
 OptionParser.new { |p| %w[held scaled dev replays art agreement].each { |k| p.on("--#{k} V") { options[k] = it } } }.parse!
