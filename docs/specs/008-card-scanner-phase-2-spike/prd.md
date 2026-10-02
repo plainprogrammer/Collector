@@ -64,7 +64,8 @@ Building either into the scan → confirm → add flow before measuring it would
    - Whether fingerprints computed at index build and in the browser agree closely enough to match, since the two are computed by different code.
    - The cost of each place the search could run: the index as a browser download, and a server-side search of a fingerprint sent by the browser.
 3. **Keep the measure unbiased.**
-   - Each corpus is halved by manifest order before any work starts: odd rows for development (25 and 25), even rows held out (25 Phase 0 photos and 24 new ones).
+   - Each corpus is halved before any work starts, balanced on foil (maintainer ruling, 2026-10-02). Within each corpus, the foil rows and the non-foil rows are each taken in manifest order (data rows, not counting the header) and alternated: the first to development, the second held out, and so on.
+   - That gives 51 development photos (26 Phase 0, 25 new; 11 foils) and 48 held out (24 Phase 0, 24 new; 9 foils). A plain odd-and-even split was rejected because it put 15 of the 20 foils in the held-out half.
    - Detector and fingerprint settings are tuned on the development half only, then frozen at a commit.
    - The held-out half is run once at the frozen settings. Its rates are the headline. The development half's rates are reported beside them, labelled as biased.
 4. **Produce findings spec 009 can be written from:** a recommended scope (for each of detection and art matching: build with the confirm flow, defer, or drop), the options for the maintainer's ruling, every held-out miss with its likely cause, and what stayed unmeasured.
