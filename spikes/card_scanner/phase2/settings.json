@@ -1,0 +1,14 @@
+{
+  "hand": { "workWidth": 480, "blur": 1, "edgePercentile": 0.92, "thetaRangeDeg": 25, "minSeparation": 0.3, "minArea": 0.15, "aspectRange": [0.5, 0.9] },
+  "opencv": { "workWidth": 480, "blur": 5, "canny": [50, 150], "approxEpsilon": 0.02, "minArea": 0.15, "aspectRange": [0.5, 0.9] },
+  "warp": { "width": 1008, "height": 1408, "fill": "#808080" },
+  "fingerprint": {
+    "box": { "x0": 0.14, "x1": 0.86, "y0": 0.16, "y1": 0.5 },
+    "grid": [17, 16],
+    "offsets": [
+      { "dx": 0, "dy": 0 }, { "dx": 0.02, "dy": 0 }, { "dx": -0.02, "dy": 0 },
+      { "dx": 0, "dy": 0.02 }, { "dx": 0, "dy": -0.02 }, { "dx": 0, "dy": 0, "inset": 0.03 }
+    ],
+    "imageSize": "small"
+  }
+}
