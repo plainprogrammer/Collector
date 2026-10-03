@@ -27,4 +27,9 @@ RSpec.describe CardScannerPhase2::ArtScoring do
     expect(md).to include("Text missed 2; of those art first 1; text top 3 or art first 2 of 3")
     expect(md).to include("| B.jpeg | Right | 3 | 1 |") # printings sharing the name vs sharing the artwork, for a card with no exact printing
   end
+
+  it "reports the conventional median of the ranked distances, the mean of the two middle values for an even count" do
+    md = described_class.markdown(described_class.score(records, data))
+    expect(md).to include("median right 230, median nearest wrong 275, right nearer than every wrong 1 of 2")
+  end
 end

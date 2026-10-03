@@ -38,7 +38,7 @@ ensure
   driver.quit
 end
 distances = results.map { it["distance"] }.sort
-summary = { "size" => size, "n" => results.size, "corpus_cards" => results.count { it["corpus_card"] }, "median" => distances[distances.size / 2], "max" => distances.last,
+summary = { "size" => size, "n" => results.size, "corpus_cards" => results.count { it["corpus_card"] }, "median" => CardScannerPhase2.median(distances), "max" => distances.last,
   "settings_commit" => CardScannerPhase2::Settings.commit, "results" => results }
 CardScannerPhase2::WORK_DIR.join("agreement_#{size}.json").write(JSON.pretty_generate(summary))
 puts summary.except("results").to_json

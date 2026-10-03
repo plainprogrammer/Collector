@@ -23,7 +23,7 @@ end
 scored = CardScannerPhase2::ArtScoring.score(records, data)
 provenance = CardScannerPhase2::Runs.read(art_dir)
 by_corpus = scored.group_by { it["corpus"] }
-timing = ->(values) { values.compact.then { { "n" => it.size, "median" => it.sort[it.size / 2], "max" => it.max } } }
+timing = ->(values) { values.compact.then { { "n" => it.size, "median" => CardScannerPhase2.median(it), "max" => it.max } } }
 md = [ "# Art matching: #{art_run} (#{provenance["half"]}#{provenance["half"] == "development" ? ", biased" : ""}), #{against}",
   "Index: #{index_meta.slice("count", "label", "image_size", "bulk_version", "settings_commit", "subset")}",
   "## Both corpora (#{against})", CardScannerPhase2::ArtScoring.markdown(scored),

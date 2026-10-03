@@ -47,7 +47,7 @@ module CardScannerPhase2
       parts.join("\n\n")
     end
 
-    def median(values) = values.empty? ? "n/a" : values.sort[values.size / 2]
+    def median(values) = CardScannerPhase2.median(values) || "n/a"
 
     def misses(scored) = scored.reject { it["art_first"] }
   end

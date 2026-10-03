@@ -15,7 +15,7 @@ rows = run_dir.glob("*/art.json").map { JSON.parse(it.read) }.select { it["hashe
   { "file" => record["file"], "ms" => ms.round(1), "same_first" => ranked.first["id"] == record["art"].first["id"], "browser_ms" => record["msSearch"] }
 end
 ms = rows.map { it["ms"] }.sort
-summary = { "n" => rows.size, "index_count" => index.size, "median_ms" => ms[ms.size / 2], "max_ms" => ms.last, "same_first" => rows.count { it["same_first"] },
+summary = { "n" => rows.size, "index_count" => index.size, "median_ms" => CardScannerPhase2.median(ms)&.round(2), "max_ms" => ms.last, "same_first" => rows.count { it["same_first"] },
   "timed_span" => "ArtIndex#search over the loaded index: six Hamming distances per artwork and the top-10 sort; excludes loading the index", "rows" => rows }
 run_dir.join("search_server.json").write(JSON.pretty_generate(summary))
 puts summary.except("rows").to_json

@@ -61,6 +61,6 @@ module CardScannerPhase2
       { "detect" => summary(records.map { it["msDetect"] }.compact), "warp" => summary(found.map { it["msWarp"] }.compact), "ocr" => summary(found.map { it["ms"] }.compact) }
     end
 
-    def summary(values) = values.empty? ? nil : { "n" => values.size, "median" => FINDINGS.percentile(values, 50).round(1), "max" => values.max.round(1) }
+    def summary(values) = values.empty? ? nil : { "n" => values.size, "median" => CardScannerPhase2.median(values).round(1), "max" => values.max.round(1) }
   end
 end

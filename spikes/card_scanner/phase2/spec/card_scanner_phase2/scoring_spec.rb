@@ -35,4 +35,11 @@ RSpec.describe CardScannerPhase2::Scoring, type: :model do
     expect(misses.map { it["file"] }).to eq(%w[C.jpeg])
     expect(misses.first["class"]).to eq("not_found")
   end
+
+  it "reports timing medians as the mean of the two middle values for an even count", :aggregate_failures do
+    timed = run.zip([ 10.0, 20.0, 40.0, 30.0 ]).map { |r, ms| r.merge("msDetect" => ms, "msWarp" => ms / 10, "ms" => ms * 10) }
+    timings = described_class.timings(timed)
+    expect(timings["detect"]).to eq("n" => 4, "median" => 25.0, "max" => 40.0)
+    expect(timings["warp"]).to eq("n" => 3, "median" => 2.0, "max" => 3.0) # odd count: the middle value
+  end
 end
