@@ -37,7 +37,7 @@ Every rate carries its sample size. Held-out rates are the headline; development
 - **What the full index costs in accuracy.** 85 times as many wrong artworks cost one held-out first choice (`IMG_6709`) and one more top 3 (`IMG_6759`), and three development first choices. Every one of these was a weak match, its right-artwork distance 330 bits or more; no match nearer than 296 bits was lost (§9).
 - **What art adds to text.** The text path missed the right card (not in its final top 3) for 15 of 47. Art matching against the full index put the right artwork first for 8 of those 15, as against the subset. Text top 3 or art first: 40/47 (85.1%), against 32/47 for text alone.
 - **Printings.** 34 held-out cards didn't get their exact printing from the collector line. For 14 of the 34, the right artwork belongs to exactly one printing in the catalog's entries; the full index put that artwork first for 10 of the 14.
-- **Margin.** Where the right artwork was ranked, its median distance was 203 bits against 346 for the nearest wrong artwork (219 against 386 on the subset), and it was nearer than every wrong artwork for 33 of 33.
+- **Margin.** Where the right artwork was ranked, its median distance was 203 bits against 346 for the nearest wrong artwork (211 against 385.5 on the subset), and it was nearer than every wrong artwork for 33 of 33.
 
 **Costs (desktop figures).**
 
@@ -73,6 +73,7 @@ The full index is 7,332,912 bytes as stored (50,923 × 144) and 6,007,929 bytes 
 - **Catalog and bulk file.** Scoring and the art index used the worktree's catalog, built from Scryfall `default-cards-20261002210553`: 106,697 entries and 35,946 names. Spec 007 scored against `default-cards-20260930210545`; here the baseline and live columns are re-scored from their committed text against the same catalog as the spike's runs.
 - **The shipped reading chain**, at the settings frozen at `c68ffbd`, on the branch head. `git diff c68ffbd HEAD -- app/javascript/scanner app/models/catalog app/models/mtg` is empty, so the strips, text recognition settings, parser and matcher are the ones spec 007 measured. Each straightened card was placed, exactly filling the guide's box (1008×1408 at (156, 176)), in a 1320×1760 picture whose remainder is flat grey (`#808080`). That picture went through `script/scanner/photo_run.rb` and development-only measurement mode, and `Collector::ScannerFindings` scored it, as in spec 007.
 - **Browser and machine.** Headless Firefox 156 (`rv:156.0`, Linux x86_64) driven by Selenium, on the maintainer's development machine. Every timing in these findings is from this machine.
+- **Medians.** Medians are the middle value, or the mean of the two middle values for an even count.
 - **The detectors.** The hand-written detector (`public/hand_detector.js`, no dependency) finds the strongest near-horizontal and near-vertical edge lines in a downscaled copy and pairs them into a card-shaped quad. The OpenCV.js detector (`public/opencv_detector.js`) runs blur, Canny, contours and polygon approximation on OpenCV.js 4.13.0 (`opencv.js`, 10,964,323 bytes, SHA-256 `63366510248adf3a7eddf3e793dd825404efb7df3749f4d6f8557c7fa4ca8aa0`), fetched by `fetch_opencv.rb` into the ignored `tmp/card_scanner_phase2/opencv/4.13.0/` and served by the spike server from its own origin. Both share one warp (`public/warp.js`).
 - **Frozen settings (AC-1.3)**, every key of `spikes/card_scanner/phase2/settings.json` at `39cdc6e`:
 
@@ -460,8 +461,8 @@ The hand detector gives the same top 3 on the scaled photos as at full size (hel
 | held-hand (full size) | 47, 104, 138 | 43, 111, 169 |
 | held-opencv (full size) | 47, 8, 982 | 35, 113, 167 |
 | held-hand-scaled (1080×1440) | 24, 103, 148 | 23, 72, 85 |
-| held-opencv-scaled (1080×1440) | 24, 7, 1,031 | 18, 74, 84 |
-| dev-hand-3, development | 52, 103, 134 | 52, 112, 135 |
+| held-opencv-scaled (1080×1440) | 24, 7, 1,031 | 18, 73.5, 84 |
+| dev-hand-3, development | 52, 103, 134 | 52, 111.5, 135 |
 | dev-opencv-5, development | 52, 8, 915 | 40, 113, 179 |
 
 OpenCV's slowest detection in each run is the run's first photo (`IMG_6690` held out, 982 ms), which also waits for OpenCV.js to finish starting; later photos take a median of 7–8 ms. Straightening is only timed for photos where a card was reported.
@@ -590,7 +591,7 @@ The index build (Ruby, ImageMagick decode) and the browser (canvas) compute the 
 | `small` (146×204), the index's size | 198 (98 corpus + 100 others) | 98 of 98 | 0 bits | 0 bits |
 | `normal` (488×680) | 98 | 98 of 98 | 0 bits | 0 bits |
 
-Beside them (§9): the right artwork's median distance from a held-out photo is 203 bits and the nearest wrong artwork's 346 against the full index (219 and 386 against the subset). Between unrelated artworks in the subset index, distances run from 296 to 695 bits, median 510 (all 178,503 pairs of the 598 indexed fingerprints, computed from the index file for these findings). The same figure was not computed for the full index's 1.3 billion pairs. **The two computations agree exactly, so a fingerprint made in the browser can be matched against an index built in Ruby.** The disagreement the roadmap expected between resamplers doesn't arise here, because both sides implement the same area resampling rather than calling a library's.
+Beside them (§9): the right artwork's median distance from a held-out photo is 203 bits and the nearest wrong artwork's 346 against the full index (211 and 385.5 against the subset). Between unrelated artworks in the subset index, distances run from 296 to 695 bits, median 510 (all 178,503 pairs of the 598 indexed fingerprints, computed from the index file for these findings). The same figure was not computed for the full index's 1.3 billion pairs. **The two computations agree exactly, so a fingerprint made in the browser can be matched against an index built in Ruby.** The disagreement the roadmap expected between resamplers doesn't arise here, because both sides implement the same area resampling rather than calling a library's.
 
 ## 9. Art matching (AC-3.1–AC-3.6, AC-3.8, AC-3.9)
 
@@ -730,7 +731,7 @@ Comparing each photo's results against the two indexes: held out, the full index
 | IMG_6767.jpeg | development, biased | Trigger Happy | wrong outline | first and top 3 | 1, 394 | not in the 10 returned | `83d0fbcd…` (Trickery Charm), 371 |
 | IMG_6774.jpeg | development, biased | Merry, Esquire of Rohan | found | first and top 3 | 1, 330 | 4, 330 | `d9f19630…` (Clattering Skeletons), 323 |
 
-**Why.** Each loss was a weak match that ranked high on the subset only because the subset had few rivals. The right artwork's distance was 330–394 bits, against medians of 203 (held out) and 214 (development) for the right artwork against the full index, and at or above 296 bits, the smallest distance between two artworks in the subset index (§8). The right artwork's distance itself doesn't change between the indexes (the same fingerprint is compared with the same record, as `IMG_6758` and `IMG_6774` show); what changes is that among 85 times as many wrong artworks, one now lies nearer (272–371 bits). No match nearer than 296 bits was lost in either half. Of the 7 held-out first choices on the subset at 296 bits or more, which the subset findings named as the ones at risk, 1 was lost (`IMG_6709`) and 6 kept; of the 9 such development first choices, 3 were lost. `IMG_6723` is a battle card, printed sideways (§4), and the artwork now ranked first is another battle's.
+**Why.** Each loss was a weak match that ranked high on the subset only because the subset had few rivals. The right artwork's distance was 330–394 bits, against medians of 203 (held out) and 213 (development) for the right artwork against the full index, and at or above 296 bits, the smallest distance between two artworks in the subset index (§8). The right artwork's distance itself doesn't change between the indexes (the same fingerprint is compared with the same record, as `IMG_6758` and `IMG_6774` show); what changes is that among 85 times as many wrong artworks, one now lies nearer (272–371 bits). No match nearer than 296 bits was lost in either half. Of the 7 held-out first choices on the subset at 296 bits or more, which the subset findings named as the ones at risk, 1 was lost (`IMG_6709`) and 6 kept; of the 9 such development first choices, 3 were lost. `IMG_6723` is a battle card, printed sideways (§4), and the artwork now ranked first is another battle's.
 
 The text path had the right card in its top 3 for both held-out losses, so "text top 3 or art first" is unchanged at 40/47. In the development half it had it for 3 of the 4 (not `IMG_6767`), so that figure falls from 52/52 to 51/52.
 
@@ -741,14 +742,14 @@ The text path had the right card in its top 3 for both held-out losses, so "text
 | Summary, held out | Full index (50,923) | 598-artwork subset |
 |---|---|---|
 | Photos with the right artwork among the 10 returned | 33 of 47 | 36 of 47 |
-| Median distance to the right artwork | 203 bits | 219 bits |
-| Median distance to the nearest wrong artwork | 346 bits | 386 bits |
+| Median distance to the right artwork | 203 bits | 211 bits |
+| Median distance to the nearest wrong artwork | 346 bits | 385.5 bits |
 | Right artwork nearer than every wrong one | 33 of 33 | 34 of 36 |
-| Phase 0: medians, right nearer | 203 / 357; 17 of 17 | 219 / 390; 18 of 18 |
-| New corpus: medians, right nearer | 203 / 341; 16 of 16 | 247 / 383; 16 of 18 |
-| Development, biased: medians, right nearer | 214 / 343; 46 of 48 | 216 / 381; 49 of 50 |
+| Phase 0: medians, right nearer | 203 / 357; 17 of 17 | 211 / 390; 18 of 18 |
+| New corpus: medians, right nearer | 202.5 / 338; 16 of 16 | 225 / 379; 16 of 18 |
+| Development, biased: medians, right nearer | 213 / 342.5; 46 of 48 | 215 / 381; 49 of 50 |
 
-The right artwork's median falls from 219 to 203 bits only because the three photos that left the 10 returned had large distances (360, 377 and 421); no right-artwork distance changed. The nearest wrong artwork is nearer for all 43 searched photos, by 4 to 185 bits (`IMG_6777`'s from 348 to 163).
+The right artwork's median falls from 211 to 203 bits only because the three photos that left the 10 returned had large distances (360, 377 and 421); no right-artwork distance changed. The nearest wrong artwork is nearer for all 43 searched photos, by 4 to 185 bits (`IMG_6777`'s from 348 to 163).
 
 The margins vary. Of the 33 photos where the right artwork came first against the full index, the smallest gap to the nearest wrong artwork was 15 bits (`IMG_6788`: 308 against 323, another Ascendant Packleader printing's artwork), and 6 had a right-artwork distance of 296 bits or more. Against the subset the smallest gap was 4 bits (`IMG_6709`: 377 against 381), the photo the full index lost.
 
@@ -827,7 +828,7 @@ The margins vary. Of the 33 photos where the right artwork came first against th
 | Cards whose artwork belongs to exactly one printing | 14 of 34 (41.2%) |
 | Phase 0 (13 cards): medians; exactly one | 5 / 2; 4 of 13 |
 | New corpus (21 cards): medians; exactly one | 2 / 2; 10 of 21 |
-| Development, biased (32 cards): medians; exactly one | 3 / 2; 16 of 32 |
+| Development, biased (32 cards): medians; exactly one | 3 / 1.5; 16 of 32 |
 
 <details>
 <summary>Per card, held out (34)</summary>
@@ -927,7 +928,7 @@ Desktop figures, held out (n=43 photos with a fingerprint), against the full ind
 | Search the index | browser | six Hamming distances per artwork over the loaded index and the top-10 sort | 77 ms | 93 ms |
 | Search the index | server: Ruby on the maintainer's machine, nothing outside the app's bundle (`search_server.rb`) | `ArtIndex#search` over the loaded index for the fingerprint the browser made: six Hamming distances per artwork and the top-10 sort; excludes loading the index | 2,667.4 ms | 3,314.7 ms |
 
-The Ruby search ranked the same first artwork as the browser for 43 of 43 photos. Development, biased (n=52): fingerprint 77 ms median, 99 ms slowest; browser search 76 / 109 ms; Ruby search 2,623.4 / 2,690.6 ms, same first artwork 52 of 52.
+The Ruby search ranked the same first artwork as the browser for 43 of 43 photos. Development, biased (n=52): fingerprint 77 ms median, 99 ms slowest; browser search 76 / 109 ms; Ruby search 2,622.8 / 2,690.6 ms, same first artwork 52 of 52.
 
 Against the 598-artwork subset, for comparison (same photos, same timed spans):
 
