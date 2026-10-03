@@ -19,7 +19,7 @@ The spike ([research.md](../specs/008-card-scanner-phase-2-spike/research.md) §
 | Right artwork first, outline classed found | 20/24 (83.3%) | 21/24 (87.5%) |
 | Right card in the text top 3 or right artwork first | 40/47 (85.1%) | 40/47 (85.1%) |
 | Text top 3 alone, same photos | 32/47 (68.1%) | 32/47 (68.1%) |
-| Median distance: right artwork / nearest wrong | 203 / 346 bits | 219 / 386 bits |
+| Median distance: right artwork / nearest wrong | 203 / 346 bits | 211 / 385.5 bits |
 
 | The full index | Value |
 |---|---|
