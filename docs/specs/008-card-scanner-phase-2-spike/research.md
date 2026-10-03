@@ -1,17 +1,17 @@
 # Feature 008: Card Scanner Phase 2 Spike — Findings
 
-**Spec:** [spec.md](spec.md) (v1.1.1) | **Plan:** [plan.md](plan.md)
-**Measured:** 2026-10-03 (UTC; the evening of 2026-10-02 local time) | **Branch:** `008-card-scanner-phase-2-spike` | **Settings:** commit `39cdc6e` (frozen)
+**Spec:** [spec.md](spec.md) (v1.2.0) | **Plan:** [plan.md](plan.md)
+**Measured:** 2026-10-03 (UTC; the evening of 2026-10-02 local time), the full art index 2026-10-03 03:44–14:41 UTC | **Branch:** `008-card-scanner-phase-2-spike` | **Settings:** commit `39cdc6e` (frozen), and `5ce0238` (index metadata only, AC-1.3)
 
-Every rate carries its sample size. Held-out rates are the headline; development rates sit beside them, labelled "development, biased", because the development photos chose the settings. Every timing is a desktop figure. Every art-matching rate is measured against a 598-artwork subset of the catalog's 50,959 artworks, because the maintainer declined the full artwork fetch (§7). Anything not measured is listed in §12 and is not estimated as if it were measured. The spike sets no pass threshold: the maintainer rules on spec 009's scope from §14.
+Every rate carries its sample size. Held-out rates are the headline; development rates sit beside them, labelled "development, biased", because the development photos chose the settings. Every timing is a desktop figure. Art matching was measured twice, at the same frozen fingerprint settings: first against a 598-artwork subset, while the maintainer had declined the full artwork fetch, then, after the maintainer approved it (spec v1.2.0), against the full index of 50,923 artworks (every one of the catalog's 50,959 artworks that has an image). The full index's rates are the headline; the subset's sit beside them (§7, §9). Anything not measured is listed in §12 and is not estimated as if it were measured. The spike sets no pass threshold: the maintainer rules on spec 009's scope from §14.
 
 ---
 
 ## 1. Summary
 
-**What was measured.** Two in-browser card detectors (a hand-written one with no dependency, and one built on OpenCV.js 4.13.0) and the roadmap's art fingerprint, on the 99 stored photos, on the desktop, in headless Firefox 156. The photos were split before any tuning: 52 development, 47 held out (§2). Settings were tuned on the development half, frozen at `39cdc6e`, and each held-out measurement was then run once at that commit.
+**What was measured.** Two in-browser card detectors (a hand-written one with no dependency, and one built on OpenCV.js 4.13.0) and the roadmap's art fingerprint, on the 99 stored photos, on the desktop, in headless Firefox 156. The photos were split before any tuning: 52 development, 47 held out (§2). Settings were tuned on the development half, frozen at `39cdc6e`, and each held-out measurement was then run once at that commit. Art matching was then measured against the full index (50,923 artworks), with no fingerprint setting changed, held out once at `5ce0238`, a settings commit that adds only the index's description (§2).
 
-**What was not measured.** Anything on a phone (download time, time per frame), real live capture, and art matching against the full 50,959-artwork index (§12).
+**What was not measured.** Anything on a phone (download time, time per frame, including the full index's download and search), and real live capture (§12).
 
 **Detection, held out (n=47).** Each detector straightened the card, and the shipped photo path (strips, text recognition, parser and matcher, unchanged since `c68ffbd`) read the result.
 
@@ -26,18 +26,18 @@ Every rate carries its sample size. Held-out rates are the headline; development
 - It loses the collector line on the new corpus: exact printing 2/21, against 17/21 live. Its outline often stops above the card's bottom edge when the card fills the frame (§4).
 - OpenCV.js does little better than the baseline (top 3 13/47 against 10/47), and worse on Phase 0's photos (8/24 against 9/24). It doesn't run under the scanner page's policy without `'unsafe-eval'` (§2).
 
-**Art matching, held out (n=47), against the 598-artwork subset.** The fingerprint was computed in the browser from the hand-written detector's straightened cards (the detector chosen at the freeze).
+**Art matching, held out (n=47), against the full index (50,923 artworks).** The fingerprint was computed in the browser from the hand-written detector's straightened cards (the detector chosen at the freeze). The subset's figures, measured earlier with the same fingerprints, are beside them.
 
-| Held out (47 photos), against the 598-artwork subset | All photos | Photos classed found |
-|---|---|---|
-| Right artwork first | 34/47 (72.3%) | 21/24 (87.5%) |
-| Right artwork in the top 3 | 35/47 (74.5%) | 21/24 (87.5%) |
-| Development, biased: right artwork first | 49/52 (94.2%) | 34/35 (97.1%) |
+| Held out (47 photos) | Full index (50,923): all photos | Full index: photos classed found | 598-artwork subset: all photos | Subset: photos classed found |
+|---|---|---|---|---|
+| Right artwork first | 33/47 (70.2%) | 20/24 (83.3%) | 34/47 (72.3%) | 21/24 (87.5%) |
+| Right artwork in the top 3 | 33/47 (70.2%) | 20/24 (83.3%) | 35/47 (74.5%) | 21/24 (87.5%) |
+| Development, biased: right artwork first | 46/52 (88.5%) | 32/35 (91.4%) | 49/52 (94.2%) | 34/35 (97.1%) |
 
-- **What art adds to text.** The text path missed the right card (not in its final top 3) for 15 of 47. Art matching put the right artwork first for 8 of those 15. Text top 3 or art first: 40/47 (85.1%), against 32/47 for text alone.
-- **Printings.** 34 held-out cards didn't get their exact printing from the collector line. For 14 of the 34, the right artwork belongs to exactly one printing in the catalog's entries.
-- **Margin.** Where the right artwork was ranked, its median distance was 219 bits against 386 for the nearest wrong artwork, and it was nearer than every wrong artwork for 34 of 36.
-- The 598-artwork subset flatters these rates: a full index has 85 times as many wrong artworks to confuse with the right one. That effect is not measured.
+- **What the full index costs in accuracy.** 85 times as many wrong artworks cost one held-out first choice (`IMG_6709`) and one more top 3 (`IMG_6759`), and three development first choices. Every one of these was a weak match, its right-artwork distance 330 bits or more; no match nearer than 296 bits was lost (§9).
+- **What art adds to text.** The text path missed the right card (not in its final top 3) for 15 of 47. Art matching against the full index put the right artwork first for 8 of those 15, as against the subset. Text top 3 or art first: 40/47 (85.1%), against 32/47 for text alone.
+- **Printings.** 34 held-out cards didn't get their exact printing from the collector line. For 14 of the 34, the right artwork belongs to exactly one printing in the catalog's entries; the full index put that artwork first for 10 of the 14.
+- **Margin.** Where the right artwork was ranked, its median distance was 203 bits against 346 for the nearest wrong artwork (219 against 386 on the subset), and it was nearer than every wrong artwork for 33 of 33.
 
 **Costs (desktop figures).**
 
@@ -48,9 +48,15 @@ Every rate carries its sample size. Held-out rates are the headline; development
 | Detection per photo, median / slowest (full size, n=47) | 104 / 138 ms | 8 / 982 ms |
 | Straightening per photo, median / slowest | 111 / 169 ms (n=43) | 113 / 167 ms (n=35) |
 
-Art matching: fingerprint 81 ms median, 129 ms slowest per photo (n=43); search of the 598-artwork index 1 ms median in the browser, 30.9 ms median in Ruby on the server (n=43). The 598-artwork index is 86,112 bytes (70,750 compressed). A full index would need about 50,361 image fetches (about 702 MB, about 2.52 hours, extrapolated from a 500-image sample) and would hold 50,959 × 144 bytes = 7,338,096 bytes (arithmetic, not measured).
+| Art matching, full index (held out, n=43 with a fingerprint) | Median | Slowest |
+|---|---|---|
+| Fingerprint one photo, browser | 76 ms | 100 ms |
+| Search the full index, browser | 77 ms | 93 ms |
+| Search the full index, Ruby on the server | 2,667.4 ms | 3,314.7 ms |
 
-**Recommendation (§14), for the maintainer's ruling.** Drop the OpenCV.js detector. Build the hand-written detector into spec 009 for the photo-picker path only, with live capture staying the primary path ([ADR 0005](../../adr/0005-hand-written-card-detector-for-the-photo-path.md), Proposed). For art matching, two options: defer it until a full-index measurement exists, or build it with that measurement as spec 009's first step.
+The full index is 7,332,912 bytes as stored (50,923 × 144) and 6,007,929 bytes compressed. Beyond the 598 images the subset had cached, it took 50,325 image fetches (699,685,259 bytes, 9,340.5 s of fetching, about 2.59 hours), beside the estimate of 50,361 fetches, about 702 MB and about 2.52 hours; the 36 artworks without an image URL were never requested. Fingerprinting the 50,923 images took 1,066.6 s (desktop).
+
+**Recommendation (§14), for the maintainer's ruling.** Drop the OpenCV.js detector. Build the hand-written detector into spec 009 for the photo-picker path only, with live capture staying the primary path ([ADR 0005](../../adr/0005-hand-written-card-detector-for-the-photo-path.md), Proposed). Build art matching into spec 009, with the index built server-side from the catalog's images during the catalog refresh and searched in the browser ([ADR 0006](../../adr/0006-art-fingerprint-and-index.md) and [ADR 0007](../../adr/0007-art-search-in-the-browser.md), Proposed). Its download and search time on a phone are spec 009's first measurement.
 
 ## 2. Method and apparatus
 
@@ -82,10 +88,19 @@ Art matching: fingerprint 81 ms median, 129 ms slowest per photo (n=43); search 
   | `fingerprint.grid` | 17×16 per plane (grey, blue, green, red), horizontal neighbour differences: 4 × 256 = 1,024 bits |
   | `fingerprint.offsets` | six boxes: (0, 0), (+0.02, 0), (−0.02, 0), (0, +0.02), (0, −0.02) as fractions of the card, and the unshifted box inset by 0.03 |
   | `fingerprint.imageSize` | `small` (Scryfall's 146×204 image stands for each artwork in the index) |
+  | `art_index` (added at `5ce0238`, below) | `full: 50923 artworks, small images, bulk default-cards-20261002210553, built 2026-10-03` |
 
   Area resampling to 17×16 is done the same way in the browser and in Ruby: each grid cell is the mean of the source pixels it covers, with fractional edge weights. §8 shows the two agree exactly.
 - **Settings commit and the chosen detector (AC-1.3).** `39cdc6ef8d6dbb19f8ddcc98a6e9dd2d80da3ce7` (2026-10-03T02:05:47Z). The rule chose the detector with the better development top 3 (final ranking) over all 52 development photos: hand 43/52 (`dev-hand-3`) against OpenCV 14/52 (`dev-opencv-5`), so no tie. The freeze commit added only `frozen`, `chosen_detector` and `development_top3_final`; no detector or fingerprint value changed after round 4 (`8152021`). The agreement check (§8) ran at `8152021`, so its result holds for the frozen settings.
-- **Held-out provenance (AC-1.2, AC-1.4, AC-1.5).** Every held-out run (`held-hand`, `held-opencv`, `held-hand-scaled`, `held-opencv-scaled`, `held-hand-art`) records code commit `39cdc6e`, settings commit `39cdc6e` and a clean tree. Every held-out record is later than the settings commit: the earliest is 2026-10-03T02:07:08Z, the last 02:34:54Z. Nothing was committed between the freeze and the last held-out run. Each held-out measurement ran once; none was repeated.
+- **The index-metadata settings commit (AC-1.3).** `5ce0238589f61d40541f2addc8610d921fe77453` (2026-10-03T14:37:47Z) is the one later commit to the settings file that AC-1.3 allows. It adds only the top-level `art_index` key naming the full index; `git diff -U0` of the settings file at that commit:
+
+  ```
+  @@ -3,0 +4 @@
+  +  "art_index": "full: 50923 artworks, small images, bulk default-cards-20261002210553, built 2026-10-03",
+  ```
+
+  The `fingerprint`, `hand`, `opencv` and `warp` values are equal to those at `39cdc6e` (compared as JSON; the only key that differs is `art_index`). No fingerprint setting changed between the subset runs and the full-index runs (AC-3.9): the six fingerprints of every photo are bit-identical between `held-hand-art` and `held-hand-art-full` (0 of 43 photos with a fingerprint differ) and between `dev-hand-3-art` and `dev-hand-3-art-full` (0 of 52), so only the index changed.
+- **Held-out provenance (AC-1.2, AC-1.4, AC-1.5).** Every held-out run at the freeze (`held-hand`, `held-opencv`, `held-hand-scaled`, `held-opencv-scaled`, `held-hand-art`) records code commit `39cdc6e`, settings commit `39cdc6e` and a clean tree. Every one of their records is later than the settings commit: the earliest is 2026-10-03T02:07:08Z, the last 02:34:54Z. Nothing was committed between the freeze and the last of these runs. The held-out full-index run, `held-hand-art-full`, records code commit `5ce0238`, settings commit `5ce0238` and a clean tree for all 47 photos; its records run from 2026-10-03T14:37:55Z to 14:38:45Z, after the commit, and nothing was committed between `5ce0238` and the end of its scoring (14:40:54Z; the fixtures commit `fb79cd1` followed at 14:42:07Z). Each held-out measurement ran once; none was repeated.
 - **Tuning rounds (development half, biased).** Classes by eye from contact sheets; top 1 and top 3 over the final ranking; exact printing over the 45 development set-line cards. The baseline on the same 52 photos is top 1 15/52, top 3 16/52, exact printing 11/45.
 
   | Round | Settings changed | Hand run | found / not found / wrong outline | Top 1 | Top 3 | Exact | OpenCV run | found / not found / wrong outline | Top 1 | Top 3 | Exact |
@@ -453,7 +468,7 @@ OpenCV's slowest detection in each run is the run's first photo (`IMG_6690` held
 
 **Text recognition, for comparison (desktop):** the shipped OCR of both strips took a median of 449 ms, slowest 781 ms, on the hand detector's held-out pictures (n=43); 479 ms and 836 ms on OpenCV's (n=35). Spec 007 measured 168 ms median on the iPhone. The desktop figures here come from a different browser and machine, so the two don't compare directly.
 
-## 7. The art index (AC-4.1–AC-4.5, AC-4.7, AC-4.8)
+## 7. The art index (AC-4.1–AC-4.5, AC-4.7–AC-4.10)
 
 ### Fetch estimate and the maintainer's decision
 
@@ -495,15 +510,49 @@ The first printing in the bulk file's order stands for each artwork, and its fro
 
 The 50,361 remaining images include the 36 artworks without an image URL, which will fail without a request. The full fetch would take about 50,361 requests to `cards.scryfall.io`. A background task stops after 2 hours, so it would run in chunks of 90 minutes' worth: `floor(5400 / 0.180)` = 30,006 images per chunk, so two chunks. The cache makes it resumable; nothing is fetched twice.
 
-Decision (maintainer, 2026-10-03): the full fetch was declined. The index covers a subset containing the artwork of all 99 corpus cards: the 98 corpus artworks plus the 500 sampled, 598 in all (AC-4.3). Every art-matching rate in these findings is measured against that subset of 598 artworks, not the catalog's 50,959.
+Decision (maintainer, 2026-10-03): the full fetch was declined. The index covers a subset containing the artwork of all 99 corpus cards: the 98 corpus artworks plus the 500 sampled, 598 in all (AC-4.3). The first art-matching measurement (the subset columns in §9 and §10) is against that subset of 598 artworks.
 
 Decision revised (maintainer, 2026-10-03): the full fetch is approved, to measure art matching against the full index (spec v1.2.0).
 
+### The full fetch (AC-4.9)
+
+`fetch_art.rb --size small --mode full`, run in chunks until one reported `fetched: 0`. The chunks' reports (`tmp/card_scanner_phase2/fetch_small_full_*.json`) were written between 2026-10-03T03:53:49Z and 06:21:35Z.
+
+| Figure | Measured (full fetch) | Estimated beforehand (500-image sample) |
+|---|---|---|
+| Images fetched | 50,325 | 50,361 remaining (including the 36 without an image URL) |
+| Bytes | 699,685,259 (about 700 MB) | 701,627,639 (about 702 MB) |
+| Time | 9,340.5 s of fetching (2.59 hours) | 2.52 hours |
+| Per image (mean) | 13,903 bytes and 0.186 s | 13,932 bytes and 0.180 s |
+| Failed | 36 of 50,361: exactly the 36 artworks without an image URL, for which no request was made | — |
+| Chunks | 19: 3 of 3,000 images, 14 of 2,800, one of 2,125, and a last one that fetched 0 | 2 of up to 30,006 (planned) |
+
+With the 598 images already cached for the subset, every artwork with an image URL is cached: 50,325 + 598 = 50,923.
+
+**A deviation from the plan.** The plan had the fetch run as background tasks of `--limit 30006` each (90 minutes' worth), within the 2-hour limit on a background task. It was run instead as foreground commands of at most 3,000 images each (393–556 s per fetching chunk), so that each finished inside the 10-minute limit on a foreground command. No chunk was killed or cut short; the cache resumed each chunk where the last had stopped, and nothing was fetched twice. The chunking changes the number of runs, not what was fetched or the rate: the throttle and the fetcher are the same.
+
 ### Fetch manners (AC-4.7)
 
-`ArtFetcher` sends a descriptive `User-Agent` and `Accept: image/jpeg`, waits at least 100 ms between requests, sets 10 s open and 60 s read timeouts, and backs off on 429 and 5xx (`Retry-After`, else 2 s then 4 s, three attempts). Fetched images are kept in the ignored `tmp/card_scanner_phase2/artwork/<size>/` and a re-run doesn't fetch them again. No 429 was received. Only the scripts contacted Scryfall; the spike page never did.
+`ArtFetcher` sends a descriptive `User-Agent` and `Accept: image/jpeg`, waits at least 100 ms between requests, sets 10 s open and 60 s read timeouts, and backs off on 429 and 5xx (`Retry-After`, else 2 s then 4 s, three attempts). Fetched images are kept in the ignored `tmp/card_scanner_phase2/artwork/<size>/` and a re-run doesn't fetch them again. No 429 was received during the corpus and estimate fetches. In the full fetch no request failed after its retries; the fetcher doesn't record a 429 that a retry recovered from, so whether any was received during the full fetch isn't known. Only the scripts contacted Scryfall; the spike page never did.
 
-### The index as built (AC-4.3, AC-4.4, AC-4.8)
+### The full index (AC-4.10)
+
+| Figure | Value |
+|---|---|
+| Label in the index metadata | `full` (no `subset` field) |
+| Artworks | 50,923: every one of the catalog's 50,959 artworks that has an image (AC-4.1) |
+| Left out | 36 (`missing_artworks` 36, `missing_without_image` 36): the artworks without an image URL |
+| Corpus artworks left out (AC-4.8) | none |
+| Image per artwork | the first printing in bulk-file order, front face, `small` (146×204), as for the subset |
+| Fingerprinting time | 1,066.6 s for 50,923 (about 17.8 minutes, desktop; about 21 ms each, as for the subset) |
+| Index as stored | 7,332,912 bytes (50,923 × 144) and a 388-byte metadata file |
+| Index compressed (zlib deflate, best) | 6,007,929 bytes (82% of stored, as for the subset) |
+| Built | 2026-10-03T06:39:31Z, fingerprint settings commit `39cdc6e`, ImageMagick 7.1.2-31 (P6 decode) and pure Ruby |
+| Bulk file | `default-cards-20261002210553` |
+
+The subset index is kept beside it in the ignored `tmp/card_scanner_phase2/index-subset/`.
+
+### The subset index (AC-4.3, AC-4.4, AC-4.8)
 
 | Figure | Value |
 |---|---|
@@ -518,7 +567,7 @@ Decision revised (maintainer, 2026-10-03): the full fetch is approved, to measur
 | Index compressed (zlib deflate, best) | 70,750 bytes |
 | Built | 2026-10-03T01:45:53Z, settings commit `8152021` |
 
-**A full index, projected (arithmetic, not measured).** 50,959 artworks × 144 bytes = 7,338,096 bytes (about 7.3 MB) as stored. The fingerprints are close to random bits, so compression saves little: the subset compressed to 82% of its size. The full fetch's cost is the estimate above: about 50,361 requests, about 702 MB and about 2.52 hours at the throttled rate, for every instance that builds its own index.
+**What a full index costs an instance.** The fingerprints are close to random bits, so compression saves little: both indexes compress to 82% of their size. Every instance that builds its own index would make 50,923 requests to `cards.scryfall.io`: the spike's 598 for the subset and 50,325 in the full fetch came to 707,955,694 bytes and 9,448.8 s (2.62 hours) at the throttled rate (arithmetic, from the two measurements). It would then spend about 18 minutes fingerprinting on a machine like the desktop, and afterwards fetch only new artworks as sets are added.
 
 ### The tool and what the production build would add (AC-4.5)
 
@@ -541,43 +590,78 @@ The index build (Ruby, ImageMagick decode) and the browser (canvas) compute the 
 | `small` (146×204), the index's size | 198 (98 corpus + 100 others) | 98 of 98 | 0 bits | 0 bits |
 | `normal` (488×680) | 98 | 98 of 98 | 0 bits | 0 bits |
 
-Beside them (§9): the right artwork's median distance from a held-out photo is 219 bits and the nearest wrong artwork's 386. Between unrelated artworks in the index, distances run from 296 to 695 bits, median 510 (all 178,503 pairs of the 598 indexed fingerprints, computed from the index file for these findings). **The two computations agree exactly, so a fingerprint made in the browser can be matched against an index built in Ruby.** The disagreement the roadmap expected between resamplers doesn't arise here, because both sides implement the same area resampling rather than calling a library's.
+Beside them (§9): the right artwork's median distance from a held-out photo is 203 bits and the nearest wrong artwork's 346 against the full index (219 and 386 against the subset). Between unrelated artworks in the subset index, distances run from 296 to 695 bits, median 510 (all 178,503 pairs of the 598 indexed fingerprints, computed from the index file for these findings). The same figure was not computed for the full index's 1.3 billion pairs. **The two computations agree exactly, so a fingerprint made in the browser can be matched against an index built in Ruby.** The disagreement the roadmap expected between resamplers doesn't arise here, because both sides implement the same area resampling rather than calling a library's.
 
-## 9. Art matching (AC-3.1–AC-3.6, AC-3.8)
+## 9. Art matching (AC-3.1–AC-3.6, AC-3.8, AC-3.9)
 
-The fingerprint was computed in the browser from the hand-written detector's straightened card, tried at the six offsets against every fingerprint in the index, keeping each artwork's smallest distance (AC-3.1). A photo where the detector found no card counts as a miss; a wrong outline is fingerprinted and scored like any other (AC-3.3). **Every rate is against the 598-artwork subset.**
+The fingerprint was computed in the browser from the hand-written detector's straightened card, tried at the six offsets against every fingerprint in the index, keeping each artwork's smallest distance (AC-3.1). A photo where the detector found no card counts as a miss; a wrong outline is fingerprinted and scored like any other (AC-3.3).
 
-**Held out, both corpora (n=47), against the 598-artwork subset:**
+Art matching was measured against two indexes. **The full index (50,923 artworks, §7) is the headline**: `held-hand-art-full`, held out, run once at `5ce0238`, and `dev-hand-3-art-full`, development, biased. **The 598-artwork subset**, measured first (`held-hand-art` at `39cdc6e`, `dev-hand-3-art`), sits beside it. No fingerprint setting changed between them, and each photo's six fingerprints are bit-identical in the two runs (§2), so every difference between the columns comes from the index.
 
-| Right artwork first | Group | All photos | Classed found |
-|---|---|---|---|
-| overall | all | 34/47 (72.3%) | 21/24 (87.5%) |
-| era | M15–ONE | 14/22 (63.6%) | 8/10 (80.0%) |
-| era | MOM+ | 16/21 (76.2%) | 10/11 (90.9%) |
-| era | pre-M15 | 4/4 (100.0%) | 3/3 (100.0%) |
-| foil | foil | 7/9 (77.8%) | 5/6 (83.3%) |
-| foil | non-foil | 27/38 (71.1%) | 16/18 (88.9%) |
-| frame treatment | borderless/showcase | 8/13 (61.5%) | 5/5 (100.0%) |
-| frame treatment | regular | 26/34 (76.5%) | 16/19 (84.2%) |
+**Held out, both corpora (n=47):**
 
-| Right artwork in top 3 | Group | All photos | Classed found |
-|---|---|---|---|
-| overall | all | 35/47 (74.5%) | 21/24 (87.5%) |
-| era | M15–ONE | 14/22 (63.6%) | 8/10 (80.0%) |
-| era | MOM+ | 17/21 (81.0%) | 10/11 (90.9%) |
-| era | pre-M15 | 4/4 (100.0%) | 3/3 (100.0%) |
-| foil | foil | 7/9 (77.8%) | 5/6 (83.3%) |
-| foil | non-foil | 28/38 (73.7%) | 16/18 (88.9%) |
-| frame treatment | borderless/showcase | 8/13 (61.5%) | 5/5 (100.0%) |
-| frame treatment | regular | 27/34 (79.4%) | 16/19 (84.2%) |
+| Right artwork first | Group | All photos, full index | Classed found, full index | All photos, subset | Classed found, subset |
+|---|---|---|---|---|---|
+| overall | all | 33/47 (70.2%) | 20/24 (83.3%) | 34/47 (72.3%) | 21/24 (87.5%) |
+| era | M15–ONE | 13/22 (59.1%) | 7/10 (70.0%) | 14/22 (63.6%) | 8/10 (80.0%) |
+| era | MOM+ | 16/21 (76.2%) | 10/11 (90.9%) | 16/21 (76.2%) | 10/11 (90.9%) |
+| era | pre-M15 | 4/4 (100.0%) | 3/3 (100.0%) | 4/4 (100.0%) | 3/3 (100.0%) |
+| foil | foil | 7/9 (77.8%) | 5/6 (83.3%) | 7/9 (77.8%) | 5/6 (83.3%) |
+| foil | non-foil | 26/38 (68.4%) | 15/18 (83.3%) | 27/38 (71.1%) | 16/18 (88.9%) |
+| frame treatment | borderless/showcase | 8/13 (61.5%) | 5/5 (100.0%) | 8/13 (61.5%) | 5/5 (100.0%) |
+| frame treatment | regular | 25/34 (73.5%) | 15/19 (78.9%) | 26/34 (76.5%) | 16/19 (84.2%) |
 
-**By corpus, against the 598-artwork subset**, with the development half beside it (biased: `dev-hand-3-art`, on the development detector run):
+| Right artwork in top 3 | Group | All photos, full index | Classed found, full index | All photos, subset | Classed found, subset |
+|---|---|---|---|---|---|
+| overall | all | 33/47 (70.2%) | 20/24 (83.3%) | 35/47 (74.5%) | 21/24 (87.5%) |
+| era | M15–ONE | 13/22 (59.1%) | 7/10 (70.0%) | 14/22 (63.6%) | 8/10 (80.0%) |
+| era | MOM+ | 16/21 (76.2%) | 10/11 (90.9%) | 17/21 (81.0%) | 10/11 (90.9%) |
+| era | pre-M15 | 4/4 (100.0%) | 3/3 (100.0%) | 4/4 (100.0%) | 3/3 (100.0%) |
+| foil | foil | 7/9 (77.8%) | 5/6 (83.3%) | 7/9 (77.8%) | 5/6 (83.3%) |
+| foil | non-foil | 26/38 (68.4%) | 15/18 (83.3%) | 28/38 (73.7%) | 16/18 (88.9%) |
+| frame treatment | borderless/showcase | 8/13 (61.5%) | 5/5 (100.0%) | 8/13 (61.5%) | 5/5 (100.0%) |
+| frame treatment | regular | 25/34 (73.5%) | 15/19 (78.9%) | 27/34 (79.4%) | 16/19 (84.2%) |
+
+**By corpus, against the full index**, with the development half beside it (biased: `dev-hand-3-art-full`, on the development detector run):
+
+| Corpus | Right artwork first, held out | Top 3, held out | First, classed found, held out | Right artwork first, development, biased | Top 3, development, biased |
+|---|---|---|---|---|---|
+| Phase 0 | 17/24 (70.8%) | 17/24 (70.8%) | 17/20 (85.0%) | 23/26 (88.5%) | 23/26 (88.5%) |
+| New corpus | 16/23 (69.6%) | 16/23 (69.6%) | 3/4 (75.0%) | 23/26 (88.5%) | 23/26 (88.5%) |
+| Both | 33/47 (70.2%) | 33/47 (70.2%) | 20/24 (83.3%) | 46/52 (88.5%) | 46/52 (88.5%) |
+
+**By corpus, against the 598-artwork subset** (`dev-hand-3-art` for the development columns):
 
 | Corpus | Right artwork first, held out | Top 3, held out | First, classed found, held out | Right artwork first, development, biased | Top 3, development, biased |
 |---|---|---|---|---|---|
 | Phase 0 | 18/24 (75.0%) | 18/24 (75.0%) | 18/20 (90.0%) | 23/26 (88.5%) | 24/26 (92.3%) |
 | New corpus | 16/23 (69.6%) | 17/23 (73.9%) | 3/4 (75.0%) | 26/26 (100.0%) | 26/26 (100.0%) |
 | Both | 34/47 (72.3%) | 35/47 (74.5%) | 21/24 (87.5%) | 49/52 (94.2%) | 50/52 (96.2%) |
+
+<details>
+<summary>By era, foil and frame treatment for each corpus, held out, against the full index</summary>
+
+| Right artwork first | Group | Phase 0, all (24) | Phase 0, found (20) | New, all (23) | New, found (4) |
+|---|---|---|---|---|---|
+| era | M15–ONE | 5/10 (50.0%) | 5/8 (62.5%) | 8/12 (66.7%) | 2/2 (100.0%) |
+| era | MOM+ | 10/12 (83.3%) | 10/10 (100.0%) | 6/9 (66.7%) | 0/1 (0.0%) |
+| era | pre-M15 | 2/2 (100.0%) | 2/2 (100.0%) | 2/2 (100.0%) | 1/1 (100.0%) |
+| foil | foil | 3/4 (75.0%) | 3/4 (75.0%) | 4/5 (80.0%) | 2/2 (100.0%) |
+| foil | non-foil | 14/20 (70.0%) | 14/16 (87.5%) | 12/18 (66.7%) | 1/2 (50.0%) |
+| frame treatment | borderless/showcase | 4/7 (57.1%) | 4/4 (100.0%) | 4/6 (66.7%) | 1/1 (100.0%) |
+| frame treatment | regular | 13/17 (76.5%) | 13/16 (81.2%) | 12/17 (70.6%) | 2/3 (66.7%) |
+
+| Right artwork in top 3 | Group | Phase 0, all (24) | Phase 0, found (20) | New, all (23) | New, found (4) |
+|---|---|---|---|---|---|
+| era | M15–ONE | 5/10 (50.0%) | 5/8 (62.5%) | 8/12 (66.7%) | 2/2 (100.0%) |
+| era | MOM+ | 10/12 (83.3%) | 10/10 (100.0%) | 6/9 (66.7%) | 0/1 (0.0%) |
+| era | pre-M15 | 2/2 (100.0%) | 2/2 (100.0%) | 2/2 (100.0%) | 1/1 (100.0%) |
+| foil | foil | 3/4 (75.0%) | 3/4 (75.0%) | 4/5 (80.0%) | 2/2 (100.0%) |
+| foil | non-foil | 14/20 (70.0%) | 14/16 (87.5%) | 12/18 (66.7%) | 1/2 (50.0%) |
+| frame treatment | borderless/showcase | 4/7 (57.1%) | 4/4 (100.0%) | 4/6 (66.7%) | 1/1 (100.0%) |
+| frame treatment | regular | 13/17 (76.5%) | 13/16 (81.2%) | 12/17 (70.6%) | 2/3 (66.7%) |
+
+</details>
 
 <details>
 <summary>By era, foil and frame treatment for each corpus, held out, against the 598-artwork subset</summary>
@@ -604,82 +688,133 @@ The fingerprint was computed in the browser from the hand-written detector's str
 
 </details>
 
-On the new corpus, art matching held up where reading didn't: right artwork first for 16/23 although only 4 of the 23 outlines were classed found. The art box (y 0.16–0.50) sits in the middle of the card, so an outline that stops above the bottom edge still covers most of it.
+<details>
+<summary>Development, biased (52), both corpora, by era, foil and frame treatment: full index and subset</summary>
 
-**Distances (AC-3.4), held out.** The search returns the 10 nearest artworks; the right artwork's distance is known when it is among them (36 of 47 photos).
+| Right artwork first | Group | All photos, full index | Classed found, full index | All photos, subset | Classed found, subset |
+|---|---|---|---|---|---|
+| overall | all | 46/52 (88.5%) | 32/35 (91.4%) | 49/52 (94.2%) | 34/35 (97.1%) |
+| era | M15–ONE | 23/26 (88.5%) | 14/15 (93.3%) | 25/26 (96.2%) | 15/15 (100.0%) |
+| era | MOM+ | 16/19 (84.2%) | 11/13 (84.6%) | 17/19 (89.5%) | 12/13 (92.3%) |
+| era | pre-M15 | 7/7 (100.0%) | 7/7 (100.0%) | 7/7 (100.0%) | 7/7 (100.0%) |
+| foil | foil | 10/11 (90.9%) | 8/8 (100.0%) | 10/11 (90.9%) | 8/8 (100.0%) |
+| foil | non-foil | 36/41 (87.8%) | 24/27 (88.9%) | 39/41 (95.1%) | 26/27 (96.3%) |
+| frame treatment | borderless/showcase | 13/15 (86.7%) | 10/11 (90.9%) | 14/15 (93.3%) | 11/11 (100.0%) |
+| frame treatment | regular | 33/37 (89.2%) | 22/24 (91.7%) | 35/37 (94.6%) | 23/24 (95.8%) |
 
-| Summary, held out, against the 598-artwork subset | Value |
-|---|---|
-| Median distance to the right artwork (36 ranked) | 219 bits |
-| Median distance to the nearest wrong artwork | 386 bits |
-| Right artwork nearer than every wrong one | 34 of 36 |
-| Phase 0: medians, right nearer | 219 / 390; 18 of 18 |
-| New corpus: medians, right nearer | 247 / 383; 16 of 18 |
-| Development, biased: medians, right nearer | 216 / 381; 49 of 50 |
+| Right artwork in top 3 | Group | All photos, full index | Classed found, full index | All photos, subset | Classed found, subset |
+|---|---|---|---|---|---|
+| overall | all | 46/52 (88.5%) | 32/35 (91.4%) | 50/52 (96.2%) | 35/35 (100.0%) |
+| era | M15–ONE | 23/26 (88.5%) | 14/15 (93.3%) | 25/26 (96.2%) | 15/15 (100.0%) |
+| era | MOM+ | 16/19 (84.2%) | 11/13 (84.6%) | 18/19 (94.7%) | 13/13 (100.0%) |
+| era | pre-M15 | 7/7 (100.0%) | 7/7 (100.0%) | 7/7 (100.0%) | 7/7 (100.0%) |
+| foil | foil | 10/11 (90.9%) | 8/8 (100.0%) | 10/11 (90.9%) | 8/8 (100.0%) |
+| foil | non-foil | 36/41 (87.8%) | 24/27 (88.9%) | 40/41 (97.6%) | 27/27 (100.0%) |
+| frame treatment | borderless/showcase | 13/15 (86.7%) | 10/11 (90.9%) | 14/15 (93.3%) | 11/11 (100.0%) |
+| frame treatment | regular | 33/37 (89.2%) | 22/24 (91.7%) | 36/37 (97.3%) | 24/24 (100.0%) |
 
-The margins vary. Of the 34 photos where the right artwork came first, the smallest gap to the nearest wrong artwork was 4 bits (`IMG_6709`: 377 against 381), and 7 had a right-artwork distance of 296 bits or more, the smallest distance between any two artworks in the index (§8). Against 50,959 artworks the nearest wrong artwork can only be as near or nearer than against 598, so those photos are the ones most at risk. How many would be lost is not measured.
+</details>
+
+On the new corpus, art matching held up where reading didn't: right artwork first for 16/23 against the full index, as against the subset, although only 4 of the 23 outlines were classed found. The art box (y 0.16–0.50) sits in the middle of the card, so an outline that stops above the bottom edge still covers most of it.
+
+### What the full index loses (AC-3.9)
+
+Comparing each photo's results against the two indexes: held out, the full index lost 1 of the subset's 34 right-artwork-first results (34 → 33) and 2 of its 35 top-3 results (35 → 33). Development, biased, it lost 3 of 49 first results (49 → 46) and 4 of 50 top-3 results (50 → 46). It gained none in either half.
+
+| File | Half | Expected | Class (hand) | Lost | Subset: rank, right artwork's distance | Full index: rank, right artwork's distance | Ranked first by the full index (its printing's name), distance |
+|---|---|---|---|---|---|---|---|
+| IMG_6709.jpeg | held out | Sword of the Animist | found | first and top 3 | 1, 377 (nearest wrong 381) | not in the 10 returned | `a9526ac2…` (Icy Manipulator), 324 |
+| IMG_6759.jpeg | held out | Repurposed Enforcer | wrong outline | top 3 | 2, 360 (first `5ebb66f2…`, Lightning Greaves, 357) | not in the 10 returned | `7a61214d…` (Heirloom Mirror // Inherited Fiend), 325 |
+| IMG_6723.jpeg | development, biased | Invasion of Tarkir // Defiant Thundermaw | found | top 3 | 2, 360 | not in the 10 returned | `c9183023…` (Invasion of Kaladesh // Aetherwing, Golden-Scale Flagship), 272 |
+| IMG_6758.jpeg | development, biased | Minsc, Beloved Ranger | found | first and top 3 | 1, 347 | 10, 347 | `21ad95e1…` (Spirit), 318 |
+| IMG_6767.jpeg | development, biased | Trigger Happy | wrong outline | first and top 3 | 1, 394 | not in the 10 returned | `83d0fbcd…` (Trickery Charm), 371 |
+| IMG_6774.jpeg | development, biased | Merry, Esquire of Rohan | found | first and top 3 | 1, 330 | 4, 330 | `d9f19630…` (Clattering Skeletons), 323 |
+
+**Why.** Each loss was a weak match that ranked high on the subset only because the subset had few rivals. The right artwork's distance was 330–394 bits, against medians of 203 (held out) and 214 (development) for the right artwork against the full index, and at or above 296 bits, the smallest distance between two artworks in the subset index (§8). The right artwork's distance itself doesn't change between the indexes (the same fingerprint is compared with the same record, as `IMG_6758` and `IMG_6774` show); what changes is that among 85 times as many wrong artworks, one now lies nearer (272–371 bits). No match nearer than 296 bits was lost in either half. Of the 7 held-out first choices on the subset at 296 bits or more, which the subset findings named as the ones at risk, 1 was lost (`IMG_6709`) and 6 kept; of the 9 such development first choices, 3 were lost. `IMG_6723` is a battle card, printed sideways (§4), and the artwork now ranked first is another battle's.
+
+The text path had the right card in its top 3 for both held-out losses, so "text top 3 or art first" is unchanged at 40/47. In the development half it had it for 3 of the 4 (not `IMG_6767`), so that figure falls from 52/52 to 51/52.
+
+**Other printings' artworks.** The full index also holds the artworks of other printings of the same card, which the bulk file gives their own artwork ids. For `IMG_6777` (Ritual Guardian, wrong outline) the artwork ranked first, at 163 bits, is another Ritual Guardian printing's (`9c0535c5…`), not the ground truth's (`bb22efe0…`, not in the 10 returned). It is scored as a miss, but it names the right card. For 6 more photos (`IMG_6788` held out; `IMG_6725`, `IMG_6784`, `IMG_6794`, `IMG_6800`, `IMG_6802` development) the right artwork came first and the nearest wrong one belonged to a printing of the same card, 2–57 bits behind.
+
+**Distances (AC-3.4), held out.** The search returns the 10 nearest artworks; the right artwork's distance is known when it is among them (33 of 47 photos against the full index, 36 against the subset).
+
+| Summary, held out | Full index (50,923) | 598-artwork subset |
+|---|---|---|
+| Photos with the right artwork among the 10 returned | 33 of 47 | 36 of 47 |
+| Median distance to the right artwork | 203 bits | 219 bits |
+| Median distance to the nearest wrong artwork | 346 bits | 386 bits |
+| Right artwork nearer than every wrong one | 33 of 33 | 34 of 36 |
+| Phase 0: medians, right nearer | 203 / 357; 17 of 17 | 219 / 390; 18 of 18 |
+| New corpus: medians, right nearer | 203 / 341; 16 of 16 | 247 / 383; 16 of 18 |
+| Development, biased: medians, right nearer | 214 / 343; 46 of 48 | 216 / 381; 49 of 50 |
+
+The right artwork's median falls from 219 to 203 bits only because the three photos that left the 10 returned had large distances (360, 377 and 421); no right-artwork distance changed. The nearest wrong artwork is nearer for all 43 searched photos, by 4 to 185 bits (`IMG_6777`'s from 348 to 163).
+
+The margins vary. Of the 33 photos where the right artwork came first against the full index, the smallest gap to the nearest wrong artwork was 15 bits (`IMG_6788`: 308 against 323, another Ascendant Packleader printing's artwork), and 6 had a right-artwork distance of 296 bits or more. Against the subset the smallest gap was 4 bits (`IMG_6709`: 377 against 381), the photo the full index lost.
 
 <details>
-<summary>Per photo, held out (47), against the 598-artwork subset</summary>
+<summary>Per photo, held out (47), against the full index and the 598-artwork subset</summary>
 
-| File | Corpus | Class (hand) | Right artwork's distance | Nearest wrong artwork's distance | Rank of the right artwork |
-|---|---|---|---|---|---|
-| IMG_6690.jpeg | Phase 0 | not found | not searched | — | — |
-| IMG_6692.jpeg | Phase 0 | found | 302 | 387 | 1 |
-| IMG_6702.jpeg | Phase 0 | found | 319 | 397 | 1 |
-| IMG_6705.jpeg | Phase 0 | wrong outline | not in the 10 returned | 391 | — |
-| IMG_6707.jpeg | Phase 0 | found | 159 | 371 | 1 |
-| IMG_6709.jpeg | Phase 0 | found | 377 | 381 | 1 |
-| IMG_6711.jpeg | Phase 0 | found | not in the 10 returned | 405 | — |
-| IMG_6713.jpeg | Phase 0 | found | 239 | 397 | 1 |
-| IMG_6715.jpeg | Phase 0 | found | 168 | 390 | 1 |
-| IMG_6717.jpeg | Phase 0 | found | 116 | 398 | 1 |
-| IMG_6719.jpeg | Phase 0 | found | not in the 10 returned | 405 | — |
-| IMG_6720.jpeg | Phase 0 | found | 198 | 373 | 1 |
-| IMG_6722.jpeg | Phase 0 | found | 354 | 408 | 1 |
-| IMG_6724.jpeg | Phase 0 | found | 264 | 409 | 1 |
-| IMG_6727.jpeg | Phase 0 | not found | not searched | — | — |
-| IMG_6729.jpeg | Phase 0 | found | 224 | 416 | 1 |
-| IMG_6731.jpeg | Phase 0 | found | 141 | 379 | 1 |
-| IMG_6732.jpeg | Phase 0 | found | 176 | 388 | 1 |
-| IMG_6734.jpeg | Phase 0 | found | 134 | 373 | 1 |
-| IMG_6737.jpeg | Phase 0 | found | 203 | 415 | 1 |
-| IMG_6738.jpeg | Phase 0 | found | 122 | 386 | 1 |
-| IMG_6740.jpeg | Phase 0 | found | 236 | 390 | 1 |
-| IMG_6742.jpeg | Phase 0 | wrong outline | not in the 10 returned | 366 | — |
-| IMG_6745.jpeg | Phase 0 | found | 219 | 405 | 1 |
-| IMG_6757.jpeg | new | wrong outline | 275 | 351 | 1 |
-| IMG_6759.jpeg | new | wrong outline | 360 | 357 | 2 |
-| IMG_6761.jpeg | new | wrong outline | 255 | 356 | 1 |
-| IMG_6764.jpeg | new | found | 259 | 349 | 1 |
-| IMG_6766.jpeg | new | wrong outline | not in the 10 returned | 410 | — |
-| IMG_6769.jpeg | new | found | 142 | 383 | 1 |
-| IMG_6770.jpeg | new | wrong outline | 170 | 390 | 1 |
-| IMG_6773.jpeg | new | found | 194 | 384 | 1 |
-| IMG_6776.jpeg | new | wrong outline | 203 | 366 | 1 |
-| IMG_6777.jpeg | new | wrong outline | not in the 10 returned | 348 | — |
-| IMG_6780.jpeg | new | wrong outline | 170 | 385 | 1 |
-| IMG_6782.jpeg | new | not found | not searched | — | — |
-| IMG_6785.jpeg | new | not found | not searched | — | — |
-| IMG_6786.jpeg | new | wrong outline | 170 | 371 | 1 |
-| IMG_6788.jpeg | new | wrong outline | 308 | 387 | 1 |
-| IMG_6791.jpeg | new | wrong outline | 202 | 385 | 1 |
-| IMG_6793.jpeg | new | wrong outline | 158 | 386 | 1 |
-| IMG_6795.jpeg | new | wrong outline | 247 | 369 | 1 |
-| IMG_6797.jpeg | new | wrong outline | 163 | 354 | 1 |
-| IMG_6799.jpeg | new | wrong outline | 314 | 393 | 1 |
-| IMG_6801.jpeg | new | wrong outline | not in the 10 returned | 380 | — |
-| IMG_6803.jpeg | new | wrong outline | 296 | 375 | 1 |
-| IMG_6805.jpeg | new | found | 421 | 396 | 9 |
+| File | Corpus | Class (hand) | Full index: right artwork's distance | Full index: nearest wrong | Full index: rank | Subset: right artwork's distance | Subset: nearest wrong | Subset: rank |
+|---|---|---|---|---|---|---|---|---|
+| IMG_6690.jpeg | Phase 0 | not found | not searched | — | — | not searched | — | — |
+| IMG_6692.jpeg | Phase 0 | found | 302 | 339 | 1 | 302 | 387 | 1 |
+| IMG_6702.jpeg | Phase 0 | found | 319 | 360 | 1 | 319 | 397 | 1 |
+| IMG_6705.jpeg | Phase 0 | wrong outline | not in the 10 returned | 350 | — | not in the 10 returned | 391 | — |
+| IMG_6707.jpeg | Phase 0 | found | 159 | 334 | 1 | 159 | 371 | 1 |
+| IMG_6709.jpeg | Phase 0 | found | not in the 10 returned | 324 | — | 377 | 381 | 1 |
+| IMG_6711.jpeg | Phase 0 | found | not in the 10 returned | 338 | — | not in the 10 returned | 405 | — |
+| IMG_6713.jpeg | Phase 0 | found | 239 | 348 | 1 | 239 | 397 | 1 |
+| IMG_6715.jpeg | Phase 0 | found | 168 | 359 | 1 | 168 | 390 | 1 |
+| IMG_6717.jpeg | Phase 0 | found | 116 | 346 | 1 | 116 | 398 | 1 |
+| IMG_6719.jpeg | Phase 0 | found | not in the 10 returned | 349 | — | not in the 10 returned | 405 | — |
+| IMG_6720.jpeg | Phase 0 | found | 198 | 356 | 1 | 198 | 373 | 1 |
+| IMG_6722.jpeg | Phase 0 | found | 354 | 371 | 1 | 354 | 408 | 1 |
+| IMG_6724.jpeg | Phase 0 | found | 264 | 371 | 1 | 264 | 409 | 1 |
+| IMG_6727.jpeg | Phase 0 | not found | not searched | — | — | not searched | — | — |
+| IMG_6729.jpeg | Phase 0 | found | 224 | 385 | 1 | 224 | 416 | 1 |
+| IMG_6731.jpeg | Phase 0 | found | 141 | 357 | 1 | 141 | 379 | 1 |
+| IMG_6732.jpeg | Phase 0 | found | 176 | 335 | 1 | 176 | 388 | 1 |
+| IMG_6734.jpeg | Phase 0 | found | 134 | 363 | 1 | 134 | 373 | 1 |
+| IMG_6737.jpeg | Phase 0 | found | 203 | 349 | 1 | 203 | 415 | 1 |
+| IMG_6738.jpeg | Phase 0 | found | 122 | 332 | 1 | 122 | 386 | 1 |
+| IMG_6740.jpeg | Phase 0 | found | 236 | 361 | 1 | 236 | 390 | 1 |
+| IMG_6742.jpeg | Phase 0 | wrong outline | not in the 10 returned | 362 | — | not in the 10 returned | 366 | — |
+| IMG_6745.jpeg | Phase 0 | found | 219 | 357 | 1 | 219 | 405 | 1 |
+| IMG_6757.jpeg | new | wrong outline | 275 | 294 | 1 | 275 | 351 | 1 |
+| IMG_6759.jpeg | new | wrong outline | not in the 10 returned | 325 | — | 360 | 357 | 2 |
+| IMG_6761.jpeg | new | wrong outline | 255 | 292 | 1 | 255 | 356 | 1 |
+| IMG_6764.jpeg | new | found | 259 | 341 | 1 | 259 | 349 | 1 |
+| IMG_6766.jpeg | new | wrong outline | not in the 10 returned | 366 | — | not in the 10 returned | 410 | — |
+| IMG_6769.jpeg | new | found | 142 | 335 | 1 | 142 | 383 | 1 |
+| IMG_6770.jpeg | new | wrong outline | 170 | 341 | 1 | 170 | 390 | 1 |
+| IMG_6773.jpeg | new | found | 194 | 343 | 1 | 194 | 384 | 1 |
+| IMG_6776.jpeg | new | wrong outline | 203 | 344 | 1 | 203 | 366 | 1 |
+| IMG_6777.jpeg | new | wrong outline | not in the 10 returned | 163 | — | not in the 10 returned | 348 | — |
+| IMG_6780.jpeg | new | wrong outline | 170 | 352 | 1 | 170 | 385 | 1 |
+| IMG_6782.jpeg | new | not found | not searched | — | — | not searched | — | — |
+| IMG_6785.jpeg | new | not found | not searched | — | — | not searched | — | — |
+| IMG_6786.jpeg | new | wrong outline | 170 | 312 | 1 | 170 | 371 | 1 |
+| IMG_6788.jpeg | new | wrong outline | 308 | 323 | 1 | 308 | 387 | 1 |
+| IMG_6791.jpeg | new | wrong outline | 202 | 363 | 1 | 202 | 385 | 1 |
+| IMG_6793.jpeg | new | wrong outline | 158 | 333 | 1 | 158 | 386 | 1 |
+| IMG_6795.jpeg | new | wrong outline | 247 | 353 | 1 | 247 | 369 | 1 |
+| IMG_6797.jpeg | new | wrong outline | 163 | 291 | 1 | 163 | 354 | 1 |
+| IMG_6799.jpeg | new | wrong outline | 314 | 377 | 1 | 314 | 393 | 1 |
+| IMG_6801.jpeg | new | wrong outline | not in the 10 returned | 361 | — | not in the 10 returned | 380 | — |
+| IMG_6803.jpeg | new | wrong outline | 296 | 328 | 1 | 296 | 375 | 1 |
+| IMG_6805.jpeg | new | found | not in the 10 returned | 366 | — | 421 | 396 | 9 |
 </details>
 
 **What art adds to text (AC-3.5)**, on the same straightened cards, held out:
 
-| Held out, against the 598-artwork subset | Phase 0 (24) | New corpus (23) | Both (47) | Development, biased (52) |
+| Held out | Phase 0 (24) | New corpus (23) | Both (47) | Development, biased (52) |
 |---|---|---|---|---|
 | Right card not in the text path's final top 3 | 5 | 10 | 15 | 9 |
-| Of those, right artwork first | 2 | 6 | 8 | 9 |
-| Right card in the text top 3 or right artwork first | 21/24 (87.5%) | 19/23 (82.6%) | 40/47 (85.1%) | 52/52 (100.0%) |
+| Of those, right artwork first: full index | 2 | 6 | 8 | 8 |
+| Of those, right artwork first: subset | 2 | 6 | 8 | 9 |
+| Right card in the text top 3 or right artwork first: full index | 21/24 (87.5%) | 19/23 (82.6%) | 40/47 (85.1%) | 51/52 (98.1%) |
+| Right card in the text top 3 or right artwork first: subset | 21/24 (87.5%) | 19/23 (82.6%) | 40/47 (85.1%) | 52/52 (100.0%) |
 | Text top 3 alone, for comparison | 19/24 (79.2%) | 13/23 (56.5%) | 32/47 (68.1%) | 43/52 (82.7%) |
 
 **Narrowing the printing (AC-3.6).** The 34 held-out cards whose collector line didn't give the exact printing, including every card whose frame prints no set code. For each: the printings among the entries the index covers (the catalog's English paper entries) that share the card's name, and those that share its artwork.
@@ -737,7 +872,31 @@ The margins vary. Of the 34 photos where the right artwork came first, the small
 Flameskull's artwork is shared by 6 entries but its name by only 5: one printing with that artwork carries another name.
 </details>
 
-**Art-matching misses, held out (AC-3.8)**, right artwork not first, 13 of 47:
+The counts above don't depend on the index: they count the catalog's entries, so they are the same for both indexes. Of the 14 held-out cards whose artwork belongs to exactly one printing, the right artwork was first for 10 against the full index (10 against the subset); of all 34, for 23 (24 against the subset). Development, biased: 15 of 16 against the full index (16 of 16 against the subset).
+
+**Art-matching misses, held out (AC-3.8)**, right artwork not first against the full index, 14 of 47:
+
+| File | Expected | Artwork ranked first (its printing's name) | Right artwork's distance | Nearest wrong | Class | Likely cause |
+|---|---|---|---|---|---|---|
+| IMG_6690.jpeg | Sally Pride, Lioness Leader | — | — | — | not found | No card, so no fingerprint (tilt, §4) |
+| IMG_6705.jpeg | Cloudsteel Kirin | `4f8d740f…` (Noble's Purse) | not in the 10 returned | 350 | wrong outline | The outline's top is on the art box, so the art box is shifted down |
+| IMG_6709.jpeg | Sword of the Animist | `a9526ac2…` (Icy Manipulator) | not in the 10 returned | 324 | found | A weak match: first on the subset at 377 bits, by 4; among 50,923 artworks a wrong one lies nearer |
+| IMG_6711.jpeg | Kodama's Reach | `dfa04573…` (Arcane Bombardment) | not in the 10 returned | 338 | found | Not established: the card was found; the art in the photo is dark and low in contrast |
+| IMG_6719.jpeg | Folk Hero | `db8aac19…` (Cursed Firebreathing Yogurt) | not in the 10 returned | 349 | found | Foil sheen over the art |
+| IMG_6727.jpeg | Desert Were-Worm | — | — | — | not found | No card, so no fingerprint (§4) |
+| IMG_6742.jpeg | Abundant Harvest | `9789bc68…` (Lightkeeper of Emeria) | not in the 10 returned | 362 | wrong outline | The outline's top is inside the art, so the art box is shifted |
+| IMG_6759.jpeg | Repurposed Enforcer | `7a61214d…` (Heirloom Mirror // Inherited Fiend) | not in the 10 returned | 325 | wrong outline | The outline stops above the bottom edge, stretching the art box; second on the subset at 360 bits, it falls out of the 10 returned |
+| IMG_6766.jpeg | Gray Merchant of Alphabet | `b2d07fea…` (Vivid Creek) | not in the 10 returned | 366 | wrong outline | The outline stops above the bottom edge, stretching the art box |
+| IMG_6777.jpeg | Ritual Guardian | `9c0535c5…` (Ritual Guardian) | not in the 10 returned | 163 | wrong outline | The outline stops above the bottom edge, stretching the art box; the artwork ranked first is another Ritual Guardian printing's, so it names the right card |
+| IMG_6782.jpeg | Sunblade Samurai | — | — | — | not found | No card, so no fingerprint (§4) |
+| IMG_6785.jpeg | Dunland Crebain | — | — | — | not found | No card, so no fingerprint (§4) |
+| IMG_6801.jpeg | Renegade's Getaway | `10cc921b…` (Ashnod's Altar) | not in the 10 returned | 361 | wrong outline | The outline's top is below the name bar, so the art box is shifted down |
+| IMG_6805.jpeg | Treason of Isengard | `cb164a55…` (As Foretold) | not in the 10 returned | 366 | found | Not established: the card was found; the photo is dim and blue-cast (ninth on the subset at 421 bits) |
+
+Of the 14: 4 had no card, 6 a wrong outline, 4 a found card (one foil). The text path had the right card in its top 3 for 7 of these 14 (`IMG_6709`, `IMG_6711`, `IMG_6719`, `IMG_6742`, `IMG_6759`, `IMG_6766`, `IMG_6801`), so text and art fail on largely different photos. Both failed on 7: the 4 not found, and `IMG_6705`, `IMG_6777` and `IMG_6805`.
+
+<details>
+<summary>Art-matching misses, held out, against the 598-artwork subset (13 of 47)</summary>
 
 | File | Expected | Artwork ranked first (its printing's name) | Right artwork's distance | Nearest wrong | Class | Likely cause |
 |---|---|---|---|---|---|---|
@@ -756,20 +915,31 @@ Flameskull's artwork is shared by 6 entries but its name by only 5: one printing
 | IMG_6805.jpeg | Treason of Isengard | `a9758017…` (Reclusive Taxidermist) | 421 (rank 9) | 396 | found | Not established: the card was found; the photo is dim and blue-cast |
 
 Of the 13: 4 had no card, 6 a wrong outline, 3 a found card (one foil). The text path had the right card in its top 3 for 6 of these 13 (`IMG_6711`, `IMG_6719`, `IMG_6742`, `IMG_6759`, `IMG_6766`, `IMG_6801`), so text and art fail on largely different photos. Both failed on 7: the 4 not found, and `IMG_6705`, `IMG_6777` and `IMG_6805`.
+</details>
 
-## 10. Search costs (AC-3.7)
+## 10. Search costs (AC-3.7, AC-3.10)
 
-Desktop figures, held out (n=43 photos with a fingerprint), against the 598-artwork index:
+Desktop figures, held out (n=43 photos with a fingerprint), against the full index (50,923 artworks):
 
 | Step | Where | Timed span | Median | Slowest |
 |---|---|---|---|---|
-| Fingerprint one photo | browser (headless Firefox 156) | crop, resample and hash the six offset boxes of the straightened card | 81 ms | 129 ms |
-| Search the index | browser | six Hamming distances per artwork over the loaded index and the top-10 sort | 1 ms | 3 ms |
-| Search the index | server: Ruby on the maintainer's machine, nothing outside the app's bundle (`search_server.rb`) | `ArtIndex#search` over the loaded index for the fingerprint the browser made: six Hamming distances per artwork and the top-10 sort; excludes loading the index | 30.9 ms | 41.4 ms |
+| Fingerprint one photo | browser (headless Firefox 156) | crop, resample and hash the six offset boxes of the straightened card | 76 ms | 100 ms |
+| Search the index | browser | six Hamming distances per artwork over the loaded index and the top-10 sort | 77 ms | 93 ms |
+| Search the index | server: Ruby on the maintainer's machine, nothing outside the app's bundle (`search_server.rb`) | `ArtIndex#search` over the loaded index for the fingerprint the browser made: six Hamming distances per artwork and the top-10 sort; excludes loading the index | 2,667.4 ms | 3,314.7 ms |
 
-The Ruby search ranked the same first artwork as the browser for 43 of 43 photos. Development, biased (n=52): fingerprint 81 ms median, 113 ms slowest; browser search 1 / 3 ms; Ruby search 30.9 / 47.8 ms, same first artwork 52 of 52.
+The Ruby search ranked the same first artwork as the browser for 43 of 43 photos. Development, biased (n=52): fingerprint 77 ms median, 99 ms slowest; browser search 76 / 109 ms; Ruby search 2,623.4 / 2,690.6 ms, same first artwork 52 of 52.
 
-**The index as a download.** The 598-artwork index is 86,112 bytes, 70,750 compressed. A full index would be 7,338,096 bytes as stored (arithmetic, §7). Neither the download of a full index nor a search over it was measured. The search does one pass over every artwork, so its time grows with the index; scaling the 598-artwork medians by 50,959/598 gives about 85 ms in the browser and about 2.6 s in Ruby. That is arithmetic, not a measurement.
+Against the 598-artwork subset, for comparison (same photos, same timed spans):
+
+| Step | Where | Median | Slowest |
+|---|---|---|---|
+| Fingerprint one photo | browser | 81 ms | 129 ms |
+| Search the index | browser | 1 ms | 3 ms |
+| Search the index | server, Ruby | 30.9 ms | 41.4 ms |
+
+Development, biased (n=52), against the subset: fingerprint 81 / 113 ms; browser search 1 / 3 ms; Ruby search 30.9 / 47.8 ms, same first artwork 52 of 52. The fingerprint is the same computation in both runs; its 76 ms against 81 ms is the variation between two runs on the same desktop. The search does one pass over every artwork, so its time grows with the index: scaled by 50,923/598, the subset's medians had suggested about 85 ms in the browser and about 2.6 s in Ruby, and the full index measured 77 ms and 2.67 s.
+
+**The index as a download (AC-3.10).** The full index is 7,332,912 bytes as stored and 6,007,929 bytes compressed (zlib deflate, best; §7), with a 388-byte metadata file. The 598-artwork index is 86,112 bytes, 70,750 compressed. The time to download the full index to a phone, and to search it there, was not measured (§12).
 
 ## 11. Replays (AC-2.10)
 
@@ -784,10 +954,10 @@ The straightened images are pixel-identical between the two replays, and identic
 
 ## 12. Not measured (AC-5.3)
 
-- **Every phone figure.** Download time of either detector or of an index, detection, straightening, fingerprint or search time on a phone, and memory use on a phone. Every timing above is from the desktop.
+- **Every phone figure.** Download time of either detector or of the full index (6,007,929 bytes compressed), detection, straightening, fingerprint or search time on a phone, and memory use on a phone, including holding the 7.3 MB index in a phone's browser. Every timing above is from the desktop.
 - **Real live capture.** No live frame was stored or replayed (none exists: spec 007 kept only the strips). The effect of detection or art matching on live capture is unknown. §5's scaled photos are a stand-in, not a measure of it.
-- **The full 50,959-artwork index.** Its accuracy, its fetch (about 50,361 requests, about 702 MB, about 2.52 hours: an estimate from a 500-image sample, §7), its build time, its size compressed, its download, and the time to search it in the browser or on the server. The 7,338,096-byte size and the search times in §10 are arithmetic projections.
-- **Building the index during the catalog refresh**, in the app's container, with `ruby-vips` or ImageMagick (§7 lists what each would add; neither was installed in the image).
+- **The full index, beyond the desktop.** Its fetch, build, size, accuracy and desktop search times are measured (§7, §9, §10). Not measured: the smallest distance between two of its artworks (§8 gives the subset's), any server search other than pure Ruby (a native extension or a search in SQL), and whether a 429 was received and recovered from during the full fetch (§7).
+- **Building the index during the catalog refresh**, in the app's container, with `ruby-vips` or ImageMagick (§7 lists what each would add; neither was installed in the image), and updating it when new sets arrive. The spike built its index on the desktop, from a cache it filled once.
 - **Detection on new photos or other conditions:** other phones, lighting, backgrounds, sleeves, or cards not held in a hand.
 - **The reading refinements** spec 009 will make (strip placement, name-strip height, foil handling): the shipped chain ran unchanged.
 - **A published art-hash index** (neotoxicfr's): not consumed or compared; the spike built its own.
@@ -799,7 +969,7 @@ Text and numbers only, in `spec/fixtures/card_scanner/`, beside specs 005 and 00
 
 **`phase2_split.json`** (AC-1.1): `format_version` (1); `rule` (the split rule in words); `halves.<corpus>.development` and `halves.<corpus>.held_out` (manifest file names), for corpora `phase0` and `new`.
 
-**`phase2_results.json`**: `format_version` (1), `spec` (`"008"`), `settings_commit` (the frozen settings commit, `39cdc6e…`), and `records`, one per photo (99: 52 development, 47 held out), sorted and keyed by manifest `file`:
+**`phase2_results.json`**: `format_version` (1), `spec` (`"008"`), `settings_commit` (the latest settings commit, `5ce0238…`: the freeze `39cdc6e` plus the `art_index` metadata, §2), and `records`, one per photo (99: 52 development, 47 held out), sorted and keyed by manifest `file`:
 
 | Field | Meaning |
 |---|---|
@@ -844,6 +1014,10 @@ Each `full` and `scaled` entry holds:
 | `run`, `half`, `detector` | The art run, its half and the detect run it straightened from |
 | `recorded_at`, `code_commit`, `settings_commit`, `tree_clean` | Provenance, as above. `dev-hand-3-art` ran at `e0b34b2` with an uncommitted tree and no settings commit, which development runs allow |
 
+`art_full` (from `held-hand-art-full`, or `dev-hand-3-art-full` for development photos): art matching against the full index (AC-3.9). The same fields as `art`, plus `index_count` (the index's artwork count, 50923, from the run's index metadata). `detector` names the detect run (`held-hand` or `dev-hand-3`). `art` keeps the subset results unchanged. Every held-out `art_full` record has `half` `held_out`, `code_commit` and `settings_commit` `5ce0238…` and `tree_clean` true; the development records ran at code `1d51648` with a clean tree and no settings commit.
+
+**Which settings commit each record names.** The top-level `settings_commit` now names `5ce0238`, the last commit to the settings file. The held-out records name the commit their run was given: the detector records (`detectors.*`) and `art` name `39cdc6e`, and `art_full` names `5ce0238`. So a provenance check of the held-out records compares each slot with its own run's commit, not every slot with the top-level value. `fixtures.rb` was not changed to write a settings commit per slot, because the phase's ordering rule allows no code change after the index-metadata settings commit; the fixtures commit (`fb79cd1`) records this ruling.
+
 **`phase2_agreement.json`** (AC-4.6): `format_version` (1); `size` (`small`); `n` (198); `corpus_cards` (98); `median` and `max` (the distances in bits, 0 and 0); `settings_commit` (`8152021…`); `results`, one per artwork, `{id, corpus_card, distance}`.
 
 **Straightened cards and strips (AC-5.7)**, outside the repository, in `~/card-scanner-corpus/runs/phase2/<run>/`:
@@ -857,10 +1031,12 @@ Each `full` and `scaled` entry holds:
 |---|---|---|---|
 | `held-hand`, `held-hand-scaled` | hand | held out | `39cdc6e` |
 | `held-opencv`, `held-opencv-scaled` | OpenCV | held out | `39cdc6e` |
-| `held-hand-art` | hand (fingerprint and search) | held out | `39cdc6e` |
+| `held-hand-art` | hand (fingerprint and search), 598-artwork subset | held out | `39cdc6e` |
+| `held-hand-art-full` | hand (fingerprint and search), full index | held out | `5ce0238` |
 | `dev-hand-3` | hand | development | code `59a4474` (hand settings identical to the frozen ones) |
 | `dev-opencv-5`, `dev-hand-scaled`, `dev-opencv-scaled` | as named | development | code `8152021` (identical to the frozen settings) |
-| `dev-hand-3-art` | hand (fingerprint and search) | development | code `e0b34b2` |
+| `dev-hand-3-art` | hand (fingerprint and search), 598-artwork subset | development | code `e0b34b2` |
+| `dev-hand-3-art-full` | hand (fingerprint and search), full index | development | code `1d51648` |
 | `dev-hand-r1`, `dev-hand-r2`, `dev-opencv-r1`, `dev-opencv-r2` | as named | development | `39cdc6e` |
 
 ## 14. Recommendation and options (AC-5.2)
@@ -893,26 +1069,28 @@ This is a recommendation. The maintainer rules on spec 009's scope; no pass thre
 - *What spec 009 would need:* the bottom-edge weakness and the name strip's position for a detected card (both are reading refinements spec 009 already owns); a phone timing in spec 009's live sitting; and a decision on whether detection also runs on live frames (not measured here).
 - [ADR 0005: Detect and straighten the card with a hand-written detector on the photo path](../../adr/0005-hand-written-card-detector-for-the-photo-path.md) (Proposed).
 
-### Art matching — two options for the maintainer
+### Art matching — recommended: build with the confirm flow, searched in the browser
 
 - *For:*
-  - Held out, against the 598-artwork subset, the right artwork was first for 34/47, and for 21/24 where the outline was right.
-  - It fails on largely different photos from text: it put the right artwork first for 8 of the 15 photos the text path missed, lifting "text top 3 or art first" from 32/47 to 40/47.
+  - Held out, against the full index (50,923 artworks), the right artwork was first for 33/47, and for 20/24 where the outline was right. Against the 598-artwork subset it had been 34/47 and 21/24, so the full index cost one held-out first choice.
+  - What the full index lost was weak matches only: 1 held-out first choice and 1 more top 3, and 3 development first choices (biased), each with a right-artwork distance of 330 bits or more. No match nearer than 296 bits was lost in either half (§9).
+  - It fails on largely different photos from text: it put the right artwork first for 8 of the 15 photos the text path missed, lifting "text top 3 or art first" from 32/47 to 40/47, the same as against the subset.
   - It survives the hand detector's main weakness: on the new corpus, 16/23 first with only 4 outlines classed found.
-  - For 14 of the 34 cards without an exact printing from the text, the artwork belongs to one printing, so it would identify the printing where the collector line can't (older frames, faint foil lines).
-  - The browser and a Ruby build agree to 0 bits (n=198), so the index can be built server-side from catalog images with the fingerprint made on the device (ADR 0004).
-  - Search is cheap at this size (1 ms in the browser, 31 ms in Ruby, desktop).
+  - For 14 of the 34 cards without an exact printing from the text, the artwork belongs to one printing, and the full index put it first for 10 of them. It would identify the printing where the collector line can't (older frames, faint foil lines).
+  - The browser and a Ruby build agree to 0 bits (n=198), so the index can be built server-side from the catalog's images with the fingerprint made on the device (ADR 0004).
+  - Searching the full index in the browser takes 77 ms median, 93 ms slowest (desktop), after a 76 ms fingerprint.
 - *Against:*
-  - Every rate is against 598 artworks, 1.2% of the catalog's 50,959. A full index has 85 times as many wrong artworks. 7 of the 34 correct first choices had a right-artwork distance at or above 296 bits, the smallest distance between two indexed artworks, so those are at risk. Its accuracy at full size is unmeasured.
-  - Every instance would fetch about 50,361 images (about 702 MB, about 2.52 hours at Scryfall's throttled rate, an estimate) to build its index, and refetch on new sets.
-  - The build needs ImageMagick (4 packages, 3,177 KiB on the app's image) or `ruby-vips` with `ffi` (not in the lockfile).
-  - A full index is about 7.3 MB to download, or a server search of a projected 2.6 s in pure Ruby; both are projections, not measurements.
+  - Every instance would fetch the catalog's artwork images to build its index: 50,923 requests to Scryfall's image host, about 708 MB and about 2.6 hours at the throttled rate (measured in two parts, §7), and then the new artworks as sets are added.
+  - The browser downloads the index: 6,007,929 bytes compressed (7,332,912 stored), refreshed when the catalog changes. Its download and search time on a phone are not measured.
+  - The build needs ImageMagick (4 packages, 3,177 KiB on the app's image) or `ruby-vips` with `ffi` (not in the lockfile), and about 18 minutes of fingerprinting on the desktop.
   - The catalog would need an artwork id (a schema change).
-  - A sent fingerprint needs spec 007 FR-3 amended (ADR 0004).
-- **Option A: defer** art matching until a full-index measurement exists: the full fetch (approved by the maintainer), the same held-out photos against 50,959 artworks, the index's compressed size, and the browser and server search times at full size. Spec 009 builds the confirm flow and the hand-written detector without it.
-- **Option B: build it with the confirm flow, with the full-index measurement as spec 009's first step**, and a stop rule if accuracy at full size falls too far. This commits spec 009 to the fetch, the index build in the catalog refresh, the schema change and the FR-3 amendment before knowing whether the rates hold.
-- Either way, the ADRs for the fingerprint, the index's design (image size, build tool, refresh) and where the search runs wait for the full-index measurement. None is written now.
-- The evidence leans towards Option A. The subset rates are strong, but they are the most likely of all these figures to fall at full size, and Option B's costs land on every self-hosted instance.
+  - A card's other printings have their own artworks, and one of them can rank first: for `IMG_6777` the artwork ranked first, at 163 bits, is another Ritual Guardian printing's, scored here as a miss though it names the right card (§9).
+- **Where the search runs: in the browser.** The same search took 77 ms median in the browser and 2,667.4 ms in pure Ruby on the server (desktop, n=43). In Ruby each scan would hold a Puma thread for about 2.7 seconds, on an instance every tenant shares. A native or SQL search on the server wasn't measured. Searching in the browser costs the 6 MB download instead, once per catalog change.
+- **Spec 007 FR-3.** ADR 0004 says FR-3's "Send only recognised text to the app in normal use" has to be amended if the browser sends a fingerprint. With the search in the browser the fingerprint never leaves the device, so that amendment isn't needed. What the page would send is the search's result, the artwork ids it ranked first, so that the app can name their printings. That result is derived from the picture but isn't recognised text, and ADR 0004 doesn't address it. Spec 009 should decide whether FR-3's "only recognised text" covers it or needs a word changed. Either way, no frame, strip, photo or fingerprint leaves the device.
+- *What spec 009 would need:* the catalog's artwork id and the index build in the catalog refresh, with ImageMagick or `ruby-vips` (ADR 0006); the index served to the scanner page, cached and refreshed with the catalog (ADR 0007); as its first step, the index's download and search time on a phone; a ranking that combines the art result with the text result; and grouping by card, because another printing's artwork of the same card can rank first.
+- [ADR 0006: Fingerprint the artwork and build the art index from the catalog's images](../../adr/0006-art-fingerprint-and-index.md) (Proposed).
+- [ADR 0007: Search the art index in the browser](../../adr/0007-art-search-in-the-browser.md) (Proposed).
+- **Why build rather than defer.** The subset findings offered two options: defer art matching until a full-index measurement existed (Option A), or build it with that measurement as spec 009's first step and a stop rule if accuracy fell too far (Option B). The measurement now exists. Accuracy at full size is close to the subset's (33/47 against 34/47 first; 40/47 text or art, unchanged), so Option A's precondition is met and Option B's stop rule is answered. The costs that remain are the fetch on every instance (measured) and the index download (its size measured; its time on a phone not).
 
 ### Roadmap assumptions the evidence contradicted
 
@@ -924,5 +1102,5 @@ This is a recommendation. The maintainer rules on spec 009's scope; no pass thre
 | OpenCV.js can be gated on `onRuntimeInitialized` | 4.13.0 never fires it; `cv` is a thenable that resolves with itself |
 | A strict policy works for the scanner's libraries | OpenCV.js 4.13.0 needs `'unsafe-eval'` in `script-src` (embind's `new Function`) |
 | libvips or canvas resizes will differ from OpenCV's `INTER_AREA`, eroding the margin between right and wrong artworks | For the project's own index, a Ruby build and the browser implement the same area resampling and agree to 0 bits (n=198 small, n=98 normal). Agreement with a published index wasn't tested |
-| A 50,000-artwork index is about 6.4 MB (128 bytes each) | Each record also carries its 16-byte artwork id: 144 bytes, so 7,338,096 bytes for 50,959 (arithmetic) |
-| A pure-Ruby search of about 50,000 artworks is likely sub-second | 30.9 ms median over 598 artworks (desktop); linear scaling gives about 2.6 s at full size (a projection; not measured) |
+| A 50,000-artwork index is about 6.4 MB (128 bytes each) | Each record also carries its 16-byte artwork id: 144 bytes. The full index of 50,923 artworks is 7,332,912 bytes stored and 6,007,929 compressed (measured) |
+| A pure-Ruby search of about 50,000 artworks is likely sub-second | 2,667.4 ms median over the 50,923-artwork index (desktop, held out, n=43); the browser searched the same index in 77 ms |
