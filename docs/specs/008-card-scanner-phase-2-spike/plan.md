@@ -2709,6 +2709,47 @@ puts "#{out.size} records -> #{CardScannerPhase2::FIXTURE_DIR.join("phase2_resul
 
 ---
 
+## Phase 10 (added v1.2.0): Full-index art matching
+
+Runs after Phase 8 and before Phase 9.
+
+**Implements:** FR-3, FR-4 (no-tuning rule), Stories 3 and 4 | **Satisfies:** AC-4.9, AC-4.10, AC-3.9, AC-3.10, AC-1.3 (index-metadata settings commit), AC-4.2 (approval recorded)
+**Files:** `spikes/card_scanner/phase2/script/{build_index,art_run,art_score,fixtures}.rb`, `spikes/card_scanner/phase2/settings.json` (index metadata only), `spec/fixtures/card_scanner/phase2_results.json`, `docs/specs/008-card-scanner-phase-2-spike/research.md`, `docs/adr/` (if art matching is recommended to build), `spikes/card_scanner/phase2/README.md`, `.claude/memory/card-scanner-direction.md`
+**Interfaces:** Consumes: the cached subset, `artworks.json`, the frozen fingerprint settings, `dev-hand-3` and `held-hand`; Produces: `tmp/card_scanner_phase2/index/` (full), `index-subset/` (kept), runs `dev-hand-3-art-full` and `held-hand-art-full`, `art_full` fixture slot
+
+**Ordering rule.** Every code change in this phase is committed before the index-metadata settings commit. From that commit until `held-hand-art-full` and its scoring are done, there is no commit and no new file in the repository (the held-out guard). The fixtures, findings, ADR and memory commits come after.
+
+- [ ] Record the approval: in research.md's "Fetch estimate and the maintainer's decision" section, add "Decision revised (maintainer, 2026-10-03): the full fetch is approved, to measure art matching against the full index (spec v1.2.0)." Commit `docs(spec): record the maintainer's approval of the full artwork fetch (008)`.
+- [ ] **Full fetch (AC-4.9):** as background tasks, `bundle exec ruby spikes/card_scanner/phase2/script/fetch_art.rb --size small --mode full --limit 30006` (30,006 = floor(5400 / 0.17996 s), from the estimate), repeated until a chunk reports `fetched: 0`. Each chunk writes `fetch_small_full_<stamp>.json` when it finishes. If a chunk is killed by the 2-hour limit, start another (the cache resumes it) and say so in the findings. Expect about 50,361 fetched in all, minus the 36 artworks without a URL (listed as failed, AC-4.8).
+- [ ] Keep the subset index: `cp -a tmp/card_scanner_phase2/index tmp/card_scanner_phase2/index-subset`.
+- [ ] `build_index.rb`: replace the fixed `SUBSET` meta with a `--label` option, so the metadata names the index (AC-4.10):
+
+```ruby
+size, label = "small", nil
+OptionParser.new do |p|
+  p.on("--size SIZE") { size = it }
+  p.on("--label TEXT") { label = it }
+end.parse!
+# … unchanged fingerprinting …
+meta = { "image_size" => size, "bulk_version" => data["bulk_version"], "settings_commit" => CardScannerPhase2::Settings.commit,
+  "tool" => …, "fingerprint_seconds" => seconds.round(1), "missing_artworks" => missing.size }
+meta["subset"] = label if label && missing.any? # a partial index names itself; the full index carries no subset field
+meta["label"] = label || (missing.empty? ? "full" : "subset")
+CardScannerPhase2::ArtIndex.write!(dir, ids, hashes, meta:)
+```
+
+  `art_score.rb` already labels rates "against a N-artwork subset" only when `subset` is present, and "against N artworks" otherwise.
+- [ ] `art_run.rb`: add `--name RUN` (default `"#{from}-art"`), so a second art run from the same detect run gets its own directory: `run_dir = CardScannerPhase2::Runs.start!(options[:name] || "#{options[:from]}-art", half: provenance["half"])`.
+- [ ] `fixtures.rb`: add `--full-art` and `--dev-full-art` options that write the same fields as `--art` into a separate `art_full` slot per record (so `art` keeps the subset results). In the record's `art_full` also store `"index_count"` from the run's art_score.json provenance or the index meta.
+- [ ] Check `bin/rubocop spikes/` and `bundle exec rspec spikes/card_scanner/phase2/spec`. Commit `feat(spike): label art indexes and name art runs for the full-index measurement`.
+- [ ] Build the full index: `bundle exec ruby spikes/card_scanner/phase2/script/build_index.rb`. Expect about 50,923 artworks (50,959 minus those without an image) in roughly 15 minutes; `missing_artworks` equals the fetch failures; `corpus artworks left out: none`. Record count, time, raw and compressed size (AC-4.10, AC-3.10's download).
+- [ ] **Development full-index art run** (biased, AC-3.9): spike server without `SPIKE_UNSAFE_EVAL`; `art_run.rb --from dev-hand-3 --detector hand --name dev-hand-3-art-full`; `art_score.rb dev-hand-3-art-full dev-hand-3`; `search_server.rb dev-hand-3-art-full`.
+- [ ] **Index-metadata settings commit (AC-1.3):** add `"art_index": "full: <count> artworks, small images, bulk default-cards-20261002210553, built 2026-10-03"` as a top-level key in `settings.json`, changing nothing else. Check with `git diff -U0 spikes/card_scanner/phase2/settings.json` that the only change is that line (record the diff for the findings), and that `settings.json`'s fingerprint, hand, opencv and warp values equal those at `39cdc6e` (`git diff 39cdc6e -- spikes/card_scanner/phase2/settings.json`). Commit `chore(spike): record the full art index in the frozen settings`. Set `SETTINGS_COMMIT=$(git rev-parse HEAD)`; `git status --porcelain` must be empty.
+- [ ] **Held-out full-index art run, once (AC-3.9):** `SETTINGS_COMMIT=<sha> … art_run.rb --from held-hand --detector hand --name held-hand-art-full`; `art_score.rb held-hand-art-full held-hand`; `search_server.rb held-hand-art-full`. Check provenance: every `art.json` has `half` held_out, `settings_commit` = `code_commit` = the new commit, `tree_clean` true, `recorded_at` after it. If a run dies for an apparatus reason, re-run under the same settings commit as `held-hand-art-full-2` and note it (AC-1.5).
+- [ ] Compare subset and full results per photo (both halves): which right-artwork-first results the full index loses, with the artwork that now ranks first and both distances; this is AC-3.9's "how many and why".
+- [ ] Fixtures: re-run `fixtures.rb` with the Phase 7 options plus `--full-art held-hand-art-full --dev-full-art dev-hand-3-art-full`. Expect `99 records`; check every held-out `art_full` record's provenance. Commit `test(scanner): add the full-index art results to the Phase 2 fixtures`.
+- [ ] Findings: update research.md (§1 summary, §7 index with the fetch totals beside the estimate and the full index's cost, §9 art matching with full-index tables as the headline beside the subset's, §10 search costs against the full index, §12 not measured, §13 the `art_full` fields, §14 recommendation re-drafted from the full-index evidence). If §14 now recommends building art matching, write Proposed ADRs for the fingerprint and index design and for where the search runs (from 0006), linked from research.md; otherwise say why not. Update the spike README (the `--label`, `--name`, `--full-art` options) and `card-scanner-direction` memory. Commit in steps: `docs(spec): record the full-index art results`, `docs(adr): …`, `docs(spike): …`, `chore(memory): …`.
+
 ## Phase 9: Integration Verification
 
 **Implements:** NFR Security, NFR Reliability | **Satisfies:** AC-5.6, AC-5.5 (no images), AC-1.2 (verified from the records)
@@ -2717,9 +2758,9 @@ puts "#{out.size} records -> #{CardScannerPhase2::FIXTURE_DIR.join("phase2_resul
 
 - [ ] `bundle exec rspec spikes/card_scanner/phase2/spec`. Expect: all examples pass (about 25).
 - [ ] `bin/ci`. Expect: pass (RuboCop covers `spikes/`; RSpec runs only `spec/**`, which now includes nothing new except fixtures no spec reads).
-- [ ] Allowed paths: `git diff main --name-only | grep -Ev '^(docs/|spikes/card_scanner/|spec/fixtures/card_scanner/|\.claude/memory/|\.rubocop\.yml$|\.gitignore$)'`. Expect: no output.
-- [ ] `git diff main --stat -- Gemfile Gemfile.lock app public vendor config db lib script`. Expect: empty.
-- [ ] No images: `git diff main --name-only | grep -Ei '\.(jpe?g|png|webp|heic|bin)$'`. Expect: no output. And `grep -l "data:image" spec/fixtures/card_scanner/phase2_*.json`. Expect: none.
+- [ ] Allowed paths: `git diff origin/main --name-only | grep -Ev '^(docs/|spikes/card_scanner/|spec/fixtures/card_scanner/|\.claude/memory/|\.rubocop\.yml$|\.gitignore$)'`. Expect: no output.
+- [ ] `git diff origin/main --stat -- Gemfile Gemfile.lock app public vendor config db lib script`. Expect: empty.
+- [ ] No images: `git diff origin/main --name-only | grep -Ei '\.(jpe?g|png|webp|heic|bin)$'`. Expect: no output. And `grep -l "data:image" spec/fixtures/card_scanner/phase2_*.json`. Expect: none.
 - [ ] Held-out provenance (AC-1.2): `bundle exec ruby -e 'require "json"; f = JSON.parse(File.read("spec/fixtures/card_scanner/phase2_results.json")); c = f["settings_commit"]; bad = f["records"].select { |r| r["half"] == "held_out" }.flat_map { |r| r["detectors"].values.flat_map(&:values).flatten.select { |s| s.is_a?(Hash) && s["settings_commit"] } + [ r["art"] ].compact }.reject { |s| s["settings_commit"] == c && s["code_commit"] == c && s["tree_clean"] }; puts bad.size'`. Expect: `0`. And every held-out `recorded_at` is after `git show -s --format=%cI <settings commit>`.
 - [ ] The spike page made no third-party request: `grep -c '"ip"' tmp/card_scanner_phase2/logs/requests.jsonl` is not needed (the server logs nothing but policy reports); instead confirm `csp-reports.jsonl` holds only the entries the AC-2.8 step explained, and that no `connect-src` or `img-src` report names an external host.
 - [ ] Every AC-N.M in the spec maps to a phase above (Phases 1–8 headers); list any gap for the implementation review.
@@ -2735,3 +2776,10 @@ From a clean checkout of the branch, with `~/card-scanner-corpus/` present:
 5. `bundle exec rspec spikes/card_scanner/phase2/spec` → green; `bin/ci` → green.
 
 **Next steps after approval:** run `sdd-superpowers:sdd-review` (plan mode) on Fable, then `sdd-superpowers:sdd-execute` on Opus, creating the branch `008-card-scanner-phase-2-spike` first.
+
+## Plan Changelog
+
+| Version | Phase | Change |
+|---------|-------|--------|
+| 1.2.0 | Phase 10 | Added: full-index art matching (AC-4.9, AC-4.10, AC-3.9, AC-3.10), run after Phase 8 and before Phase 9 |
+| 1.2.0 | Phase 9 | Diff checks run against `origin/main` (AC-5.6 clarified; local `main` can be stale) |
