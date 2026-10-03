@@ -1,4 +1,7 @@
 {
+  "frozen": "2026-10-03",
+  "chosen_detector": "hand",
+  "development_top3_final": { "hand": "43/52 (dev-hand-3)", "opencv": "14/52 (dev-opencv-5)" },
   "hand": { "workWidth": 480, "blur": 2, "edgePercentile": 0.55, "thetaRangeDeg": 6, "minSeparation": 0.65, "minArea": 0.15, "aspectRange": [0.5, 0.9] },
   "opencv": { "workWidth": 320, "blur": 3, "canny": [20, 60], "approxEpsilon": 0.04, "minArea": 0.15, "aspectRange": [0.5, 0.9] },
   "warp": { "width": 1008, "height": 1408, "fill": "#808080" },
