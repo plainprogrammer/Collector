@@ -10,7 +10,8 @@ autoloaded, served by Rails or run by `bin/rspec`/`bin/ci`, and nothing under `a
   `OpencvAsset`, `DerivedCorpus`, `Scoring`, `BulkArtworks`, `ArtFetcher`, `Ppm`, `Fingerprint`, `ArtIndex`,
   `ArtScoring`).
 - `settings.json`: every tuned knob (detectors, warp, fingerprint). The page fetches it as `/settings.json`; the Ruby
-  side reads it. The settings commit is the last commit that changes it (the freeze, `39cdc6e`).
+  side reads it. The settings commit is the last commit that changes it: the freeze, `39cdc6e`, then `5ce0238`, which
+  adds only the full index's description (`art_index`) for the held-out full-index art run.
 - `public/`: the detect page (`detect.html`, `detect.js`) and its modules (`canvas.js`, `hand_detector.js`,
   `opencv_detector.js`, `warp.js`, `output.js`, and for art matching `fingerprint.js` and `search.js`).
 - `script/`: every step below, from fetching OpenCV.js to assembling the fixtures.
@@ -35,13 +36,13 @@ The findings are in `docs/specs/008-card-scanner-phase-2-spike/research.md`. `S`
 | 9 | Sizes (AC-2.7) | `bundle exec ruby S/sizes.rb` | `tmp/card_scanner_phase2/sizes.json` |
 | 10 | Artworks (AC-4.1) | `bundle exec ruby S/artworks.rb` (reads the bulk file under `storage/catalog/mtg/`) | `tmp/card_scanner_phase2/{artworks,entries,names}.json` |
 | 11 | Fetch artwork | `bundle exec ruby S/fetch_art.rb --size small\|normal --mode corpus\|estimate\|full [--limit N] [--seed N]` | `tmp/card_scanner_phase2/artwork/<size>/`, `fetch_*.json`, `fetch_estimate.json` |
-| 12 | Build the index | `bundle exec ruby S/build_index.rb [--size small]` | `tmp/card_scanner_phase2/index/art_index.bin`, `art_index_meta.json` |
+| 12 | Build the index | `bundle exec ruby S/build_index.rb [--size small] [--label TEXT]` | `tmp/card_scanner_phase2/index/art_index.bin`, `art_index_meta.json` (copy a previous index aside first: the full index's run kept the subset in `index-subset/`) |
 | 13 | Agreement (AC-4.6), before the freeze | `SE_AVOID_STATS=true bundle exec ruby S/agreement.rb [--size small] [--extra 100]` (server running) | `tmp/card_scanner_phase2/agreement_<size>.json` |
-| 14 | Art run | `SE_AVOID_STATS=true bundle exec ruby S/art_run.rb --from <detect run> --detector hand` (server running) | `<detect run>-art/` (`art.json`, `card.png`, `picture.png` per photo) |
+| 14 | Art run | `SE_AVOID_STATS=true bundle exec ruby S/art_run.rb --from <detect run> --detector hand [--name <run>]` (server running) | `<detect run>-art/`, or `<run>/` with `--name` (`art.json`, `card.png`, `picture.png` per photo) |
 | 15 | Art score | `bundle exec ruby S/art_score.rb <art run> <detect run>` | `<art run>/art_score.{md,json}` |
 | 16 | Server-side search timing (AC-3.7) | `bundle exec ruby S/search_server.rb <art run>` | `<art run>/search_server.json` |
 | 17 | Replay difference (AC-2.10) | `bundle exec ruby S/replay_diff.rb <run a> <run b>` | prints the count |
-| 18 | Fixtures (AC-5.5) | `bundle exec ruby S/fixtures.rb --held hand=held-hand,opencv=held-opencv --scaled hand=held-hand-scaled,opencv=held-opencv-scaled --dev hand=dev-hand-3,opencv=dev-opencv-5 --dev-scaled hand=dev-hand-scaled,opencv=dev-opencv-scaled --replays hand=dev-hand-r1+dev-hand-r2,opencv=dev-opencv-r1+dev-opencv-r2 --art held-hand-art --dev-art dev-hand-3-art --agreement small` | `spec/fixtures/card_scanner/phase2_{results,agreement}.json` |
+| 18 | Fixtures (AC-5.5) | `bundle exec ruby S/fixtures.rb --held hand=held-hand,opencv=held-opencv --scaled hand=held-hand-scaled,opencv=held-opencv-scaled --dev hand=dev-hand-3,opencv=dev-opencv-5 --dev-scaled hand=dev-hand-scaled,opencv=dev-opencv-scaled --replays hand=dev-hand-r1+dev-hand-r2,opencv=dev-opencv-r1+dev-opencv-r2 --art held-hand-art --dev-art dev-hand-3-art --full-art held-hand-art-full --dev-full-art dev-hand-3-art-full --agreement small` | `spec/fixtures/card_scanner/phase2_{results,agreement}.json` |
 | — | Spike specs | `bundle exec rspec spikes/card_scanner/phase2/spec` (not run by `bin/ci`; no real HTTP) | — |
 
 `<run>` is `~/card-scanner-corpus/runs/phase2/<run>/`. Run names are used once: `Runs.start!` refuses an existing
@@ -50,9 +51,11 @@ directory.
 **The artwork fetch needs the maintainer's approval.** `--mode corpus` (the 98 corpus artworks) and `--mode estimate`
 (500 random uncached artworks, seed `20261003`) may run at any time. `--mode full` (about 50,361 requests) runs only
 after the maintainer has approved the committed estimate, and the approval is recorded in `research.md` with its date.
-For this spike the maintainer declined it (2026-10-03), so the index covers 598 artworks. Every request carries a
-descriptive `User-Agent` and `Accept`, at least 100 ms apart, with timeouts and back-off on 429; cached images are never
-fetched again.
+For this spike the maintainer first declined it (2026-10-03), so the first index covered 598 artworks, then approved
+it the same day (spec v1.2.0). It ran as 19 chunks with `--limit` (at most 3,000 images each, so each finished inside
+a 10-minute command), until a chunk reported `fetched: 0`; the cache resumes each chunk where the last stopped. Every
+request carries a descriptive `User-Agent` and `Accept`, at least 100 ms apart, with timeouts and back-off on 429;
+cached images are never fetched again.
 
 ### Notes on the steps
 
@@ -81,8 +84,19 @@ fetched again.
   a local user (`COLLECTOR_PASSWORD=… bin/rails "collector:user[phase2@localhost]"`); `photo_run.rb` resumes from
   pending rows, so an interrupted reading run is re-run on the same directory. `score.rb` reads `classes.json` if
   present, so run it again after classing.
+- **Step 12.** `build_index.rb` labels the index in `art_index_meta.json`: `full` when every artwork with an image URL
+  is cached (the artworks without one are counted in `missing_artworks` and `missing_without_image`), otherwise a
+  subset, described by `--label TEXT` (default `cached artworks only`) in a `subset` field. `art_score.rb` names the
+  index in every heading ("against a N-artwork subset" or "against N artworks") and copies its metadata into
+  `art_score.json`. The full index's metadata is also recorded in `settings.json`'s `art_index` key by its own
+  settings commit (`5ce0238`), so the held-out art run against it can run at that commit.
 - **Steps 13–16.** The agreement check runs before the freeze (it ran at `8152021`). `art_run.rb` takes its half from
-  the detect run, so a development detect run can only make a development art run.
+  the detect run, so a development detect run can only make a development art run. `--name <run>` gives a second art
+  run from the same detect run its own directory (the full-index runs are `dev-hand-3-art-full` and
+  `held-hand-art-full`).
+- **Step 18.** `--art`/`--dev-art` fill each record's `art` slot (the subset runs); `--full-art`/`--dev-full-art` fill
+  a separate `art_full` slot with the same fields plus `index_count` (the full-index runs). Field meanings are in
+  `research.md` §13.
 
 ## Environment
 
@@ -92,7 +106,7 @@ fetched again.
 | `SPIKE_PORT` | the spike server | Its port (default 4200, on `127.0.0.1`) |
 | `SPIKE_URL` | `detect_run.rb`, `agreement.rb`, `art_run.rb` | The spike server's address (default `http://127.0.0.1:4200`) |
 | `SPIKE_UNSAFE_EVAL` | the spike server | `1` adds `'unsafe-eval'` to `script-src`; needed for any OpenCV run (AC-2.8) |
-| `SETTINGS_COMMIT` | `detect_run.rb`, `art_run.rb` | The frozen settings commit; required for `--half held_out` (below) |
+| `SETTINGS_COMMIT` | `detect_run.rb`, `art_run.rb` | The settings commit (`39cdc6e`, or `5ce0238` for the full-index art run); required for `--half held_out` (below) |
 | `SE_AVOID_STATS` | the Selenium drivers | `true` stops Selenium Manager sending usage statistics |
 | `COLLECTOR_SCANNER_MANIFEST`, `COLLECTOR_SCANNER_RUN_DIR` | the dev server (step 7) | The derived corpus and the run's `measurement/` directory, as `derive.rb` prints them |
 | `SCANNER_EMAIL`, `SCANNER_PASSWORD`, `SCANNER_URL` | `script/scanner/photo_run.rb` | The local user, and the dev server's address (default: the worktree's port) |
@@ -100,7 +114,7 @@ fetched again.
 ## Outputs
 
 - `tmp/card_scanner_phase2/` (ignored): OpenCV.js, the ground-truth copies, `artworks.json` and its siblings, the
-  fetched artwork and fetch reports, the index, `sizes.json`, `agreement_<size>.json` and the policy reports.
+  fetched artwork and fetch reports, the index (`index/`, the full index; `index-subset/`, the 598-artwork subset), `sizes.json`, `agreement_<size>.json` and the policy reports.
 - `~/card-scanner-corpus/runs/phase2/<run>/` (outside the repo): `run.json` (provenance); per photo
   `<stem>/detect.json`, `card.png`, `picture.png` (and `art.json` for an art run); the derived `corpus/`; the reading
   run's `measurement/` (both strips per photo); `classes.json`, `contact-<n>.png`, `score.md` and `score.json`; for an
@@ -115,12 +129,12 @@ No photo, straightened card, picture, strip, artwork or index is ever committed.
 The split is in `spec/fixtures/card_scanner/phase2_split.json`. A `--half held_out` detect or art run is refused
 unless all of these hold (`CardScannerPhase2::Runs.guard!`):
 
-- `SETTINGS_COMMIT` is set to the settings commit (the freeze, `39cdc6e`);
+- `SETTINGS_COMMIT` is set to the settings commit (the freeze, `39cdc6e`; for the full-index art run, `5ce0238`, which adds only the index's description to `settings.json`);
 - the code is at that commit (`HEAD` equals it);
 - the working tree is clean.
 
-So nothing may be committed between the freeze and the last held-out run, and a failed held-out run is repeated only
-at the same commit (AC-1.5). Every record carries its time, the code commit, the settings commit and whether the tree
+So nothing may be committed between a settings commit and the last held-out run that uses it, and a failed held-out
+run is repeated only at the same commit (AC-1.5). Every record carries its time, the code commit, the settings commit and whether the tree
 was clean. Development runs need none of this; they are biased and labelled so in every table.
 
 ## Tuning log (development half only, biased)
@@ -147,4 +161,6 @@ round 2 because detect-only probes of its other knobs (blur 1/3, work width 360/
 
 Freeze: `39cdc6e` (2026-10-03), chosen detector hand (development top 3 43/52 against 14/52). The held-out runs
 (`held-hand`, `held-opencv`, `held-hand-scaled`, `held-opencv-scaled`, `held-hand-art`) and the replays
-(`dev-*-r1`, `dev-*-r2`) ran at that commit; their results are in `research.md`.
+(`dev-*-r1`, `dev-*-r2`) ran at that commit. Art matching against the full index (50,923 artworks): `dev-hand-3-art-full`
+(development, biased) at code `1d51648`, then the index-metadata settings commit `5ce0238`, then `held-hand-art-full`
+once at that commit, with no fingerprint setting changed. All their results are in `research.md`.
