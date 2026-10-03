@@ -61,3 +61,25 @@ No photo, straightened card, picture, artwork or index is ever committed.
 The split is in `spec/fixtures/card_scanner/phase2_split.json`. A `--half held_out` run is refused unless
 `SETTINGS_COMMIT` is set to the settings commit, the code is at that commit, and the working tree is clean
 (`CardScannerPhase2::Runs.guard!`). Development runs are biased and are labelled so in every table.
+
+## Tuning log (development half only, biased)
+
+Rounds on the 52 development photos (26 Phase 0, 26 new corpus). Classes are by eye from the contact sheets
+(found = the straightened image shows the whole card and nothing else fills it). Top 1 / top 3 are the final
+ranking through the shipped photo path; exact printing is over the 45 M15–ONE and MOM+ photos. Run outputs and
+`score.md` files are under `~/card-scanner-corpus/runs/phase2/<run>/`. The baseline (the shipped photo path on the
+same photos) is top 1 15/52, top 3 16/52, exact 11/45.
+
+| Round | Settings changed | Hand run | found / not_found / wrong_outline | top 1 | top 3 | exact | OpenCV run | found / not_found / wrong_outline | top 1 | top 3 | exact |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0 | pilot-tuned hand; plan's OpenCV | dev-hand-1 | 17 / 5 / 30 | 28 | 28 | 12 | dev-opencv-1 | 1 / 42 / 9 | 1 | 1 | 0 |
+| 1 | hand.edgePercentile 0.85→0.7; opencv.canny 50/150→30/90 | dev-hand-2 | 24 / 1 / 27 | 37 | 39 | 16 | dev-opencv-2 | 5 / 34 / 13 | 4 | 4 | 1 |
+| 2 | hand.edgePercentile 0.7→0.55; opencv.canny →20/60 | dev-hand-3 | 35 / 0 / 17 | 40 | 43 | 20 | dev-opencv-3 | 8 / 28 / 16 | 6 | 6 | 3 |
+| 3 | opencv.blur 5→3, opencv.approxEpsilon 0.02→0.04 (hand unchanged) | — | — | — | (43) | — | dev-opencv-4 | 18 / 21 / 13 | 12 | 13 | 6 |
+| 4 | opencv.workWidth 480→320 (hand unchanged) | — | — | — | (43) | — | dev-opencv-5 | 22 / 12 / 18 | 14 | 14 | 5 |
+
+Stopped after round 4: the hand detector unchanged (0) and OpenCV +1. The hand detector stopped changing after
+round 2 because detect-only probes of its other knobs (blur 1/3, work width 360/640, theta range 3, edge percentile
+0.5) each moved at most two outlines with gains offset by losses. Final development full-size runs: `dev-hand-3`
+(hand) and `dev-opencv-5` (OpenCV). Stand-ins (Phase 0 development photos at 1080×1440, current settings):
+`dev-hand-scaled` 23 / 0 / 3, top 3 24/26; `dev-opencv-scaled` 4 / 7 / 15, top 3 5/26 (baseline 15/26).
