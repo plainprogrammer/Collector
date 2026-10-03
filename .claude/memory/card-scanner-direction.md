@@ -1,6 +1,6 @@
 ---
 name: card-scanner-direction
-description: Card scanner status — Phase 0 (PR #6), Phase 1 (spec 007, PR #8, merged); Phase 2 = spec 008 spike EXECUTED incl. v1.2.0 full-index art matching (branch 008-card-scanner-phase-2-spike; hand-written detector held-out top 3 32/47 vs 10/47; art first 33/47 vs the full 50,923-artwork index, 34/47 vs the subset; ADRs 0005–0007 Proposed) then spec 009 (confirm flow); pending: the maintainer's ruling on 009's scope from research.md §14
+description: Card scanner status — Phase 0 (PR #6), Phase 1 (spec 007, PR #8, merged); Phase 2 = spec 008 spike EXECUTED incl. v1.2.0 full-index art matching (branch 008-card-scanner-phase-2-spike, PR #10 open 2026-10-03, Mode B SPEC-ALIGNED; hand-written detector held-out top 3 32/47 vs 10/47; art first 33/47 vs the full 50,923-artwork index, 34/47 vs the subset; ADRs 0005–0007 Proposed) then spec 009 (confirm flow); pending: the maintainer's ruling on 009's scope from research.md §14
 metadata:
   type: project
 ---
