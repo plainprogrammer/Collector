@@ -15,7 +15,7 @@
 - [Reproduce CI with its seed](reproduce-ci-with-seed.md) — on CI failure, run the full suite with the CI seed as an early reproduction step
 - [Turbo Back navigation quirks](turbo-back-navigation-quirks.md) — frame-advance + Back has two races; filters now plain Drive GET visits + no-cache; wait_for_turbo_idle
 - [PR #5 follow-ups](pr5-open-followups.md) — back-button flake fixed by PR #9 (merged 2026-10-02), watch CI; uncaptured failure
-- [Card scanner direction](card-scanner-direction.md) — Phase 2: spec 008 spike done, PR #10 open (hand detector held-out top 3 32/47 vs 10/47, OpenCV drop; art first 33/47 vs the full 50,923-artwork index; ADRs 0005–0007 Proposed) then 009 (confirm flow); pending: 009 scope ruling from research.md §14
+- [Card scanner direction](card-scanner-direction.md) — 008 spike done (PR #10); RULED 2026-10-03: spec 009 = confirm flow + hand detector on photo path; art matching = own spec after 009, opt-in per instance, artwork ids allowed (FR-3 amended there); next: merge #10, then spec 009
 - [Shipped percentile is upper-middle](shipped-percentile-upper-middle.md) — ScannerFindings.percentile(…, 50) takes the upper middle for even n; use one conventional median helper and state it
 - [Phone LAN dev access](phone-lan-dev-access.md) — 192.168.1.76, high ports open, bind 0.0.0.0; Brave (WebKit); camera HTTPS = self-signed cert + Puma ssl:// bind (Cloudflare tunnel failed); no openssl CLI
 - [Work ahead of human checkpoints](work-ahead-of-human-checkpoints.md) — in sdd-execute, run maintainer-independent units first; record rulings in commit bodies

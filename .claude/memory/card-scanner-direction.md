@@ -1,6 +1,6 @@
 ---
 name: card-scanner-direction
-description: Card scanner status — Phase 0 (PR #6), Phase 1 (spec 007, PR #8, merged); Phase 2 = spec 008 spike EXECUTED incl. v1.2.0 full-index art matching (branch 008-card-scanner-phase-2-spike, PR #10 open 2026-10-03, Mode B SPEC-ALIGNED; hand-written detector held-out top 3 32/47 vs 10/47; art first 33/47 vs the full 50,923-artwork index, 34/47 vs the subset; ADRs 0005–0007 Proposed) then spec 009 (confirm flow); pending: the maintainer's ruling on 009's scope from research.md §14
+description: Card scanner status — Phase 0 (PR #6), Phase 1 (spec 007, PR #8, merged); Phase 2 = spec 008 spike EXECUTED incl. v1.2.0 full-index art matching (branch 008-card-scanner-phase-2-spike, PR #10 open 2026-10-03, Mode B SPEC-ALIGNED; hand-written detector held-out top 3 32/47 vs 10/47; art first 33/47 vs the full 50,923-artwork index, 34/47 vs the subset; ADR 0005 Accepted, 0006–0007 Proposed); RULED 2026-10-03: spec 009 = confirm flow + hand detector (photo path only); art matching = its own spec after 009, opt-in per instance, may send artwork ids (FR-3 amended there)
 metadata:
   type: project
 ---
@@ -46,3 +46,10 @@ Phase 0 found:
 - **Carry into the next spec** (research.md §11): a misread collector line can match a real, different printing and outrank the right name match (AC-3.2); faint foil collector lines; query cleaning can prefer a long noise line.
 
 Related: [[phone-lan-dev-access]], [[sdd-review-model-choice]], [[check-corpus-availability]].
+
+**Spec 009 scope ruling (maintainer, 2026-10-03, recorded in 008 research.md §14 "The maintainer's ruling"):**
+- Spec 009 = the confirm flow (decisions already in the 008 PRD) + the hand-written detector on the **photo-picker path only**. Live capture stays primary; detection on live frames is out of scope. OpenCV.js dropped. ADR 0005 Accepted.
+- **Art matching = its own spec after 009** (not inside 009, narrowing §14's draft). 009 designs its ranking so an art result can join later. The art spec: catalog artwork id (schema change), index build in the catalog refresh, **phone download/search measurement first**, then browser search. ADRs 0006/0007 stay Proposed until then.
+- **Opt-in per instance:** art matching off by default; an instance setting enables the ~700 MB / ~2.6 h artwork fetch and index build; the scanner works on text alone without it.
+- **FR-3:** the page may send matched artwork ids; the art spec amends spec 007 FR-3 to "recognised text and match results — no frame, strip, photo or fingerprint". Don't re-ask any of these.
+- **Next:** merge PR #10, then brainstorm/specify spec 009.
