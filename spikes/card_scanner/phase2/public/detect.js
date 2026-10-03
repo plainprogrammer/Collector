@@ -3,6 +3,8 @@ import { detectHand } from "/hand_detector.js"
 import { loadOpenCV, detectOpenCV } from "/opencv_detector.js"
 import { warp, picture } from "/warp.js"
 import { store } from "/output.js"
+import { fingerprints, fingerprint, hex } from "/fingerprint.js"
+import { loadIndex, search } from "/search.js"
 
 const status = document.getElementById("status")
 const settings = await (await fetch("/settings.json")).json()
@@ -31,9 +33,28 @@ async function run({ path, detector, scale, run: runName, stem, art }) {
     await store(runName, stem, "picture.png", framed)
     result.picture = { width: framed.width, height: framed.height }
     document.getElementById("preview").getContext("2d").drawImage(framed, 0, 0, 330, 440)
+    if (art) {
+      const t2 = performance.now()
+      const hashes = fingerprints(card, settings.fingerprint)
+      result.msFingerprint = performance.now() - t2
+      result.hashes = hashes.map(hex)
+      const index = await loadIndex("/work/index/art_index.bin")
+      const t3 = performance.now()
+      result.art = search(index, hashes, 10)
+      result.msSearch = performance.now() - t3
+      result.indexCount = index.count
+    }
   }
   return result
 }
 
-window.__phase2 = { ready: true, settings, run }
+// The agreement check (AC-4.6): fingerprints a whole artwork image as if it were the card, at the first offset,
+// as the index build does in Ruby.
+async function fingerprintImage({ path }) {
+  const bitmap = await createImageBitmap(await (await fetch(`/work/${path}`)).blob())
+  const source = sourceCanvas(bitmap, null)
+  return { hash: hex(fingerprint(source, settings.fingerprint, settings.fingerprint.offsets[0])) }
+}
+
+window.__phase2 = { ready: true, settings, run, fingerprintImage }
 status.textContent = "Ready"
