@@ -30,12 +30,13 @@ end
 tables = CardScannerPhase2::Scoring.tables(sources)
 misses = CardScannerPhase2::Scoring.misses(records)
 timings = CardScannerPhase2::Scoring.timings(records)
+cell = ->(text) { text.to_s.tr("\r\n|", "  /")[0, 60] }
+miss_table = [ "| File | Expected | Class | Name read | Collector read | Top 3 |", "|---|---|---|---|---|---|",
+  *misses.map { "| #{it["file"]} | #{it["name"]} | #{it["class"]} | #{cell.(it["name_text"])} | #{cell.(it["collector_text"])} | #{Array(it["final_candidates"]).first(3).join("; ")} |" } ].join("\n")
 md = [ "# #{label}", "Run: #{run} · half: #{provenance["half"]} · code: #{provenance["code_commit"]} · settings: #{provenance["settings_commit"]} · tree clean: #{provenance["tree_clean"]}",
   "Catalog: #{Catalog::RefreshRun.where(collectible_type: "mtg", status: "applied").order(:started_at).last&.source_version}",
   "## Both corpora", tables["both"], "## Phase 0", tables["phase0"], "## New corpus", tables["new"],
-  "## Misses (not in the final top 3)", "| File | Expected | Class | Name read | Collector read | Top 3 |", "|---|---|---|---|---|---|",
-  *misses.map { "| #{it["file"]} | #{it["name"]} | #{it["class"]} | #{it["name_text"].to_s.tr("\n|", " /")[0, 60]} | #{it["collector_text"].to_s.tr("\n|", " /")[0, 60]} | #{Array(it["final_candidates"]).join("; ")} |" },
-  "## Timings (desktop)", timings.to_json ].join("\n\n")
+  "## Misses (not in the final top 3)", miss_table, "## Timings (desktop)", timings.to_json ].join("\n\n")
 run_dir.join("score.md").write(md)
 run_dir.join("score.json").write(JSON.pretty_generate("label" => label, "provenance" => provenance, "records" => records, "timings" => timings))
 puts md
