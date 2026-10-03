@@ -9,7 +9,7 @@ art_run, detect_run = ARGV.fetch(0) { abort "usage: art_score.rb <art run> <dete
 art_dir, detect_dir = CardScannerPhase2.runs_dir.join(art_run), CardScannerPhase2.runs_dir.join(detect_run)
 data = CardScannerPhase2::BulkArtworks.load
 index_meta = JSON.parse(CardScannerPhase2::WORK_DIR.join("index/art_index_meta.json").read)
-# The maintainer declined the full fetch, so every rate is against the cached subset, and every heading says so.
+# Every heading names the index: a subset index (its metadata carries `subset`) or the full index (AC-4.10).
 against = index_meta["subset"] ? "against a #{index_meta["count"]}-artwork subset" : "against #{index_meta["count"]} artworks"
 text = JSON.parse(detect_dir.join("score.json").read).fetch("records").to_h { [ it["file"], it ] }
 art = art_dir.glob("*/art.json").map { JSON.parse(it.read) }.to_h { [ it["file"], it ] }
@@ -25,7 +25,7 @@ provenance = CardScannerPhase2::Runs.read(art_dir)
 by_corpus = scored.group_by { it["corpus"] }
 timing = ->(values) { values.compact.then { { "n" => it.size, "median" => it.sort[it.size / 2], "max" => it.max } } }
 md = [ "# Art matching: #{art_run} (#{provenance["half"]}#{provenance["half"] == "development" ? ", biased" : ""}), #{against}",
-  "Index: #{index_meta.slice("count", "image_size", "bulk_version", "settings_commit", "subset")}",
+  "Index: #{index_meta.slice("count", "label", "image_size", "bulk_version", "settings_commit", "subset")}",
   "## Both corpora (#{against})", CardScannerPhase2::ArtScoring.markdown(scored),
   *by_corpus.flat_map { |corpus, rs| [ "## #{corpus} (#{against})", CardScannerPhase2::ArtScoring.markdown(rs) ] },
   "## Misses (right artwork not first, #{against})",
@@ -33,5 +33,6 @@ md = [ "# Art matching: #{art_run} (#{provenance["half"]}#{provenance["half"] ==
     *CardScannerPhase2::ArtScoring.misses(scored).map { "| #{it["file"]} | #{it["name"]} | #{it.dig("art", 0, "id")} | #{it["right_distance"]} | #{it["nearest_wrong_distance"]} | #{it["class"]} |" } ].join("\n"),
   "## Timings (desktop, ms)", { "fingerprint" => timing.call(scored.map { it["msFingerprint"] }), "search_browser" => timing.call(scored.map { it["msSearch"] }) }.to_json ].join("\n\n")
 art_dir.join("art_score.md").write(md)
-art_dir.join("art_score.json").write(JSON.pretty_generate("provenance" => provenance, "against" => against, "records" => scored))
+art_dir.join("art_score.json").write(JSON.pretty_generate("provenance" => provenance, "against" => against,
+  "index" => index_meta.slice("count", "label", "image_size", "bulk_version", "settings_commit", "built_at", "subset"), "records" => scored))
 puts md
