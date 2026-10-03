@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed (2026-10-03, from the spec 008 findings; awaiting the maintainer's ruling on spec 009's scope)
+Accepted (2026-10-03, maintainer ruling on spec 009's scope from the spec 008 findings: build into spec 009 for the photo-picker path only)
 
 **Date:** 2026-10-03
 **Feature:** 008-card-scanner-phase-2-spike

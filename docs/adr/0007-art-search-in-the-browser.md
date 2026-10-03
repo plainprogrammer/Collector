@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed (2026-10-03, from the spec 008 findings; awaiting the maintainer's ruling on spec 009's scope)
+Proposed (2026-10-03, from the spec 008 findings). The maintainer ruled (2026-10-03) that art matching gets its own spec after spec 009, opt-in per instance; this ADR is decided there.
 
 **Date:** 2026-10-03
 **Feature:** 008-card-scanner-phase-2-spike

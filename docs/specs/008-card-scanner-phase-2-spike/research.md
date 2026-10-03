@@ -58,6 +58,8 @@ The full index is 7,332,912 bytes as stored (50,923 × 144) and 6,007,929 bytes 
 
 **Recommendation (§14), for the maintainer's ruling.** Drop the OpenCV.js detector. Build the hand-written detector into spec 009 for the photo-picker path only, with live capture staying the primary path ([ADR 0005](../../adr/0005-hand-written-card-detector-for-the-photo-path.md), Proposed). Build art matching into spec 009, with the index built server-side from the catalog's images during the catalog refresh and searched in the browser ([ADR 0006](../../adr/0006-art-fingerprint-and-index.md) and [ADR 0007](../../adr/0007-art-search-in-the-browser.md), Proposed). Its download and search time on a phone are spec 009's first measurement.
 
+**The maintainer's ruling (2026-10-03, §14).** Spec 009 builds the confirm flow with the hand-written detector on the photo-picker path (ADR 0005 Accepted); OpenCV.js is dropped. Art matching gets its own spec after 009, opt-in per instance, and that spec may send matched artwork ids with FR-3 amended to say so (ADRs 0006 and 0007 stay Proposed until then).
+
 ## 2. Method and apparatus
 
 - **Photos (FR-1).** The 99 photos in the two manifests in `~/card-scanner-corpus/`: Phase 0's 50 (stored 3024×4032, EXIF orientation 1; the card fills 69–77% of the frame height) and the new corpus's 49 in `phase1-live/` (stored 4032×3024, EXIF orientation 6; the card fills about 95%). Every tool applied the EXIF rotation. No photo was taken with the guide.
@@ -1068,7 +1070,7 @@ This is a recommendation. The maintainer rules on spec 009's scope; no pass thre
   - Battle cards (sideways) and steep tilts (more than ±6°) defeat it.
   - Nothing is known about it on a phone or on live frames.
 - *What spec 009 would need:* the bottom-edge weakness and the name strip's position for a detected card (both are reading refinements spec 009 already owns); a phone timing in spec 009's live sitting; and a decision on whether detection also runs on live frames (not measured here).
-- [ADR 0005: Detect and straighten the card with a hand-written detector on the photo path](../../adr/0005-hand-written-card-detector-for-the-photo-path.md) (Proposed).
+- [ADR 0005: Detect and straighten the card with a hand-written detector on the photo path](../../adr/0005-hand-written-card-detector-for-the-photo-path.md) (Accepted 2026-10-03).
 
 ### Art matching — recommended: build with the confirm flow, searched in the browser
 
@@ -1092,6 +1094,15 @@ This is a recommendation. The maintainer rules on spec 009's scope; no pass thre
 - [ADR 0006: Fingerprint the artwork and build the art index from the catalog's images](../../adr/0006-art-fingerprint-and-index.md) (Proposed).
 - [ADR 0007: Search the art index in the browser](../../adr/0007-art-search-in-the-browser.md) (Proposed).
 - **Why build rather than defer.** The subset findings offered two options: defer art matching until a full-index measurement existed (Option A), or build it with that measurement as spec 009's first step and a stop rule if accuracy fell too far (Option B). The measurement now exists. Accuracy at full size is close to the subset's (33/47 against 34/47 first; 40/47 text or art, unchanged), so Option A's precondition is met and Option B's stop rule is answered. The costs that remain are the fetch on every instance (measured) and the index download (its size measured; its time on a phone not).
+
+### The maintainer's ruling (2026-10-03)
+
+Having reviewed this section, the maintainer ruled on spec 009's scope:
+
+- **Card detection:** drop the OpenCV.js detector. Build the hand-written detector into spec 009 for the photo-picker path only. Live capture stays the primary path, and detection on live frames stays out of scope (unmeasured). [ADR 0005](../../adr/0005-hand-written-card-detector-for-the-photo-path.md) is Accepted.
+- **Art matching: its own spec, after 009.** This narrows the recommendation above, which put it in spec 009. Spec 009 ships the confirm flow and the detector, and designs its ranking so that an art result can join it later. The art-matching spec does the catalog's artwork id, the index build and, as its first step, the index's download and search time on a phone, then the search. ADRs [0006](../../adr/0006-art-fingerprint-and-index.md) and [0007](../../adr/0007-art-search-in-the-browser.md) stay Proposed until that spec.
+- **Self-hosting: art matching is opt-in per instance.** It is off by default. An instance setting turns on the artwork fetch (about 700 MB and about 2.6 hours, §7) and the index build. Without it the scanner works on text alone (principle 1, easy to self-host).
+- **Spec 007 FR-3:** the page may send the search's results, the matched artwork ids, to the app. The art-matching spec amends FR-3's wording to cover recognised text and match results. No frame, strip, photo or fingerprint leaves the device.
 
 ### Roadmap assumptions the evidence contradicted
 
