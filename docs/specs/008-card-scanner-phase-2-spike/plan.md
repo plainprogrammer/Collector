@@ -2762,6 +2762,13 @@ CardScannerPhase2::ArtIndex.write!(dir, ids, hashes, meta:)
 - [ ] `git diff origin/main --stat -- Gemfile Gemfile.lock app public vendor config db lib script`. Expect: empty.
 - [ ] No images: `git diff origin/main --name-only | grep -Ei '\.(jpe?g|png|webp|heic|bin)$'`. Expect: no output. And `grep -l "data:image" spec/fixtures/card_scanner/phase2_*.json`. Expect: none.
 - [ ] Held-out provenance (AC-1.2): `bundle exec ruby -e 'require "json"; f = JSON.parse(File.read("spec/fixtures/card_scanner/phase2_results.json")); c = f["settings_commit"]; bad = f["records"].select { |r| r["half"] == "held_out" }.flat_map { |r| r["detectors"].values.flat_map(&:values).flatten.select { |s| s.is_a?(Hash) && s["settings_commit"] } + [ r["art"] ].compact }.reject { |s| s["settings_commit"] == c && s["code_commit"] == c && s["tree_clean"] }; puts bad.size'`. Expect: `0`. And every held-out `recorded_at` is after `git show -s --format=%cI <settings commit>`.
+  - *Note (since Phase 10):* the fixtures' top-level `settings_commit` names the index-metadata settings commit (`5ce0238`), so the check above, which compares every slot with it, reports the frozen runs' slots as mismatches (189). Run the check per slot instead: the detector slots and the `art` slots against the freeze `39cdc6e`, the `art_full` slots against `5ce0238`, each with its commit's settings, code commit, clean tree and a `recorded_at` after that commit:
+
+    ```bash
+    bundle exec ruby -e 'require "json"; require "time"; f = JSON.parse(File.read("spec/fixtures/card_scanner/phase2_results.json")); abort "top-level settings_commit is not 5ce0238" unless f["settings_commit"].start_with?("5ce0238"); at = ->(c) { Time.parse(`git show -s --format=%cI #{c}`) }; slots = f["records"].select { |r| r["half"] == "held_out" }.flat_map { |r| r["detectors"].values.flat_map(&:values).select { |s| s.is_a?(Hash) }.map { [ "39cdc6e", it ] } + [ [ "39cdc6e", r["art"] ], [ "5ce0238", r["art_full"] ] ].select(&:last) }; bad = slots.reject { |c, s| s["settings_commit"].start_with?(c) && s["code_commit"].start_with?(c) && s["tree_clean"] && Time.parse(s["recorded_at"]) > at.(c) }; puts bad.size'
+    ```
+
+    Expect: `0` (236 slots).
 - [ ] The spike page made no third-party request: `grep -c '"ip"' tmp/card_scanner_phase2/logs/requests.jsonl` is not needed (the server logs nothing but policy reports); instead confirm `csp-reports.jsonl` holds only the entries the AC-2.8 step explained, and that no `connect-src` or `img-src` report names an external host.
 - [ ] Every AC-N.M in the spec maps to a phase above (Phases 1–8 headers); list any gap for the implementation review.
 
@@ -2783,3 +2790,4 @@ From a clean checkout of the branch, with `~/card-scanner-corpus/` present:
 |---------|-------|--------|
 | 1.2.0 | Phase 10 | Added: full-index art matching (AC-4.9, AC-4.10, AC-3.9, AC-3.10), run after Phase 8 and before Phase 9 |
 | 1.2.0 | Phase 9 | Diff checks run against `origin/main` (AC-5.6 clarified; local `main` can be stale) |
+| 1.2.1 | Phase 9 | 2026-10-03: the held-out provenance check runs per slot (detector and `art` slots against `39cdc6e`, `art_full` slots against `5ce0238`, the fixtures' top-level `settings_commit` since Phase 10); the spike's medians are the conventional median (the mean of the two middle values for an even count), and the findings report them so |
