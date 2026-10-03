@@ -1,0 +1,18 @@
+{
+  "frozen": "2026-10-03",
+  "chosen_detector": "hand",
+  "art_index": "full: 50923 artworks, small images, bulk default-cards-20261002210553, built 2026-10-03",
+  "development_top3_final": { "hand": "43/52 (dev-hand-3)", "opencv": "14/52 (dev-opencv-5)" },
+  "hand": { "workWidth": 480, "blur": 2, "edgePercentile": 0.55, "thetaRangeDeg": 6, "minSeparation": 0.65, "minArea": 0.15, "aspectRange": [0.5, 0.9] },
+  "opencv": { "workWidth": 320, "blur": 3, "canny": [20, 60], "approxEpsilon": 0.04, "minArea": 0.15, "aspectRange": [0.5, 0.9] },
+  "warp": { "width": 1008, "height": 1408, "fill": "#808080" },
+  "fingerprint": {
+    "box": { "x0": 0.14, "x1": 0.86, "y0": 0.16, "y1": 0.5 },
+    "grid": [17, 16],
+    "offsets": [
+      { "dx": 0, "dy": 0 }, { "dx": 0.02, "dy": 0 }, { "dx": -0.02, "dy": 0 },
+      { "dx": 0, "dy": 0.02 }, { "dx": 0, "dy": -0.02 }, { "dx": 0, "dy": 0, "inset": 0.03 }
+    ],
+    "imageSize": "small"
+  }
+}

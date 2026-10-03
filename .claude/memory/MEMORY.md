@@ -3,7 +3,9 @@
 - [Foundation](foundation.md) — mission and principles, loaded every session
 - [Small incremental commits](small-incremental-commits.md) — one Conventional Commit per step/change
 - [Secret files are user-verified](secret-files-user-verified.md) — agents are read-denied on secrets/storage; ask the user to cat them
-- [SDD review model choice](sdd-review-model-choice.md) — reviews on Fable via subagent; planning on Opus in-session
+- [SDD review model choice](sdd-review-model-choice.md) — reviews as read-only Fable subagents; brainstorm/spec/plan in the main session (Opus or Fable); implementation on Opus
+- [Plan reviews run the code](plan-reviews-run-the-code.md) — brief plan reviewers to extract and run the plan's code blocks; found 2 blocking errors in 008
+- [Dev machine image tools](dev-machine-image-tools.md) — magick 7, Pillow, ffmpeg present; no libvips/ruby-vips here (Dockerfile has libvips); decode via `magick … ppm:-`
 - [Scryfall API access](scryfall-api-access.md) — docs 403 to WebFetch; use curl + User-Agent; bulk JSONL facts
 - [PR screenshots workflow](pr-screenshots-workflow.md) — headless Firefox + magick/ffmpeg; embed in private-repo PRs via blob/<sha>?raw=true
 - [Background servers via task](background-servers-via-task.md) — run_in_background + TaskStop, not &/kill/pkill; 2-hour task limit, restart before device steps
@@ -13,7 +15,8 @@
 - [Reproduce CI with its seed](reproduce-ci-with-seed.md) — on CI failure, run the full suite with the CI seed as an early reproduction step
 - [Turbo Back navigation quirks](turbo-back-navigation-quirks.md) — frame-advance + Back has two races; filters now plain Drive GET visits + no-cache; wait_for_turbo_idle
 - [PR #5 follow-ups](pr5-open-followups.md) — back-button flake fixed by PR #9 (merged 2026-10-02), watch CI; uncaptured failure
-- [Card scanner direction](card-scanner-direction.md) — Phase 1 in PR #8 (spec 007 v2.1.1); live re-measure on new 49 cards done (42/49 first); ruled 2026-10-02: confirm flow next (spec 008); tuning cards biased
+- [Card scanner direction](card-scanner-direction.md) — 008 spike done (PR #10); RULED 2026-10-03: spec 009 = confirm flow + hand detector on photo path; art matching = own spec after 009, opt-in per instance, artwork ids allowed (FR-3 amended there); next: merge #10, then spec 009
+- [Shipped percentile is upper-middle](shipped-percentile-upper-middle.md) — ScannerFindings.percentile(…, 50) takes the upper middle for even n; use one conventional median helper and state it
 - [Phone LAN dev access](phone-lan-dev-access.md) — 192.168.1.76, high ports open, bind 0.0.0.0; Brave (WebKit); camera HTTPS = self-signed cert + Puma ssl:// bind (Cloudflare tunnel failed); no openssl CLI
 - [Work ahead of human checkpoints](work-ahead-of-human-checkpoints.md) — in sdd-execute, run maintainer-independent units first; record rulings in commit bodies
 - [Migrate schema noise](migrate-schema-noise.md) — restore cable/cache/queue schema after db:migrate; rollback needs :primary

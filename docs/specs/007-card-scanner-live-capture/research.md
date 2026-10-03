@@ -3,6 +3,8 @@
 **Spec:** [spec.md](spec.md) (v2.1.1) | **Plan:** [plan.md](plan.md)
 **Measured:** 2026-10-01 and 2026-10-02 | **Branch:** `007-card-scanner-live-capture` | **Settings:** commit `c68ffbd` (frozen)
 
+**Corrected 2026-10-02:** §2 and §7 had the stored size and EXIF orientation of the two photo corpora the wrong way round. Every file in both corpora was checked with `magick identify`. No rate or conclusion changes.
+
 Every rate carries its sample size. Anything not measured is labelled as such. Phase 1 sets no pass threshold: the numbers inform the maintainer's decision on the scan → confirm flow, they don't make it.
 
 ---
@@ -38,7 +40,7 @@ Every rate carries its sample size. Anything not measured is labelled as such. P
 - **Catalog:** Scryfall `default-cards-20260930210545` (106,677 English entries), with 35,946 names indexed.
 - **Device:** the maintainer's iPhone, iOS 18.7, Brave (WebKit; `… Version/26.6.1 Mobile/15E148 Safari/604.1 Brave`). It reached the dev server over HTTPS on the local network, using a self-signed certificate it trusts (`bin/dev-certificate`). The maintainer's Cloudflare tunnel returned 502 and was abandoned.
 - **Tuning cards:** 12 English cards outside the 50-card corpus (`~/card-scanner-corpus/tuning/manifest.csv`): 3 pre-M15, 7 M15–ONE, 2 MOM+, 3 foil. Rounds 1–2 had the first 10 cards; T011–T012 (MOM+) were added for rounds 3–4. Ground truth was built from the catalog (`scanner:ground_truth`): 12 of 12 resolved.
-- **New corpus (AC-6.9):** 49 English cards the maintainer owns, in `~/card-scanner-corpus/phase1-live/` (manifest, ground truth and one 3024×4032 photo per card, outside the repository).
+- **New corpus (AC-6.9):** 49 English cards the maintainer owns, in `~/card-scanner-corpus/phase1-live/` (manifest, ground truth and one photo per card, outside the repository). The photos are stored as 4032×3024 with EXIF orientation 6, so they display as 3024×4032 portrait.
   - None is among Phase 0's 50 cards or the 12 tuning cards. Two rows repeated Phase 0 printings (`hob 225`, `wot 49`) and were dropped before capture, so the corpus is 49 cards, not 50 (maintainer ruling).
   - 16 MOM+, 28 M15–ONE and 5 pre-M15; 11 foil; 12 borderless or showcase.
   - Era follows the printed frame. Three List reprints (`plst`, 1997 and 2003 frames) and one retro-frame `mat` card print no set code, so the manifest gives them `era` pre-M15. The rest take their era from the release date, as before.
@@ -47,7 +49,7 @@ Every rate carries its sample size. Anything not measured is labelled as such. P
   - Live run: 2026-10-02 on the same iPhone and browser, in manifest order, one deliberate shot per card. Afterwards the strips were replayed once on the desktop.
   - Photos: replayed through the photo picker with `script/scanner/photo_run.rb` in headless Firefox 156, as in §3.
 - **Capture protocol (AC-5.4):** one deliberate shot per card with the card filling the guide. A card's first capture is the measured one. Retakes are stored but not counted.
-- **Photo replay (AC-6.2):** the 50 Phase 0 photos (4032×3024, EXIF orientation 6). `script/scanner/photo_run.rb` fed each one to the real photo picker in headless Firefox 156 on the desktop. The shipped code placed the guide as on a live frame, cut and read the strips, matched them, and stored the capture through measurement mode. The cards in these photos fill 69–77% of the frame height and drift by about ±4% (spec 005), against the guide's fixed 80%. That mismatch is why misalignment dominates its misses.
+- **Photo replay (AC-6.2):** the 50 Phase 0 photos (stored as 3024×4032 portrait with EXIF orientation 1, so this replay applied no rotation; the new corpus's photos are the ones that rely on it). `script/scanner/photo_run.rb` fed each one to the real photo picker in headless Firefox 156 on the desktop. The shipped code placed the guide as on a live frame, cut and read the strips, matched them, and stored the capture through measurement mode. The cards in these photos fill 69–77% of the frame height and drift by about ±4% (spec 005), against the guide's fixed 80%. That mismatch is why misalignment dominates its misses.
 - **Scoring:** `bin/rails scanner:findings` (`Collector::ScannerFindings`), using spec 005's definitions. It reproduces Phase 0's committed rates exactly from its fixtures (top 3 26/50, exact printing 7/45). Top 1 and top 3 are reported twice: over the name candidates alone, which is Phase 0's definition, and over the page's final ranking, where a collector-line match comes first.
 
 ## 3. Rates: Phase 0, Phase 0's text with Phase 1's matcher, and the photo replay (AC-6.2, AC-6.3)
@@ -442,7 +444,7 @@ The new corpus's misses, live and photo, are in §5.
 | Cold session including the sign-in page and app assets | 7,353,346 bytes, 37 requests | 1 | |
 | Warm reload of `/scanner` | 11,770 bytes, 1 request (the page; no engine file requested, not even revalidated) | 1 | about 1 KB |
 
-The recognition time per round rises as the strips grew (2× drawing, taller strips, row inversion). It is still well under Phase 0's. The desktop photo replay's recognition times (median 1,057 ms on 4032×3024 photos) are a desktop measure and aren't comparable.
+The recognition time per round rises as the strips grew (2× drawing, taller strips, row inversion). It is still well under Phase 0's. The desktop photo replay's recognition times (median 1,057 ms on 3024×4032 photos) are a desktop measure and aren't comparable.
 
 ## 8. Device checks (AC-6.5)
 
