@@ -3,7 +3,7 @@
 **Spec:** [spec.md](spec.md) | **Plan:** [plan.md](plan.md)
 **Branch:** `008-card-scanner-phase-2-spike`
 
-## Fetch estimate, awaiting approval
+## Fetch estimate and the maintainer's decision
 
 The art index needs one image per artwork. This section estimates the cost of fetching all of them from Scryfall's image host, before any full fetch (AC-4.2). The full fetch waits for the maintainer's approval.
 
@@ -43,4 +43,4 @@ The first printing in the bulk file's order stands for each artwork, and its fro
 
 The 50,361 remaining images include the 36 artworks without an image URL, which will fail without a request. The full fetch would take about 50,361 requests to `cards.scryfall.io`. A background task stops after 2 hours, so it would run in chunks of 90 minutes' worth: `floor(5400 / 0.180)` = 30,006 images per chunk, so two chunks. The cache makes it resumable; nothing is fetched twice.
 
-Approval: pending (maintainer)
+Decision (maintainer, 2026-10-03): the full fetch was declined. The index covers a subset containing the artwork of all 99 corpus cards: the 98 corpus artworks plus the 500 sampled, 598 in all (AC-4.3). Every art-matching rate in these findings is measured against that subset of 598 artworks, not the catalog's 50,959.
