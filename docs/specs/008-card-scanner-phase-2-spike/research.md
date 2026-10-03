@@ -497,6 +497,8 @@ The 50,361 remaining images include the 36 artworks without an image URL, which 
 
 Decision (maintainer, 2026-10-03): the full fetch was declined. The index covers a subset containing the artwork of all 99 corpus cards: the 98 corpus artworks plus the 500 sampled, 598 in all (AC-4.3). Every art-matching rate in these findings is measured against that subset of 598 artworks, not the catalog's 50,959.
 
+Decision revised (maintainer, 2026-10-03): the full fetch is approved, to measure art matching against the full index (spec v1.2.0).
+
 ### Fetch manners (AC-4.7)
 
 `ArtFetcher` sends a descriptive `User-Agent` and `Accept: image/jpeg`, waits at least 100 ms between requests, sets 10 s open and 60 s read timeouts, and backs off on 429 and 5xx (`Retry-After`, else 2 s then 4 s, three attempts). Fetched images are kept in the ignored `tmp/card_scanner_phase2/artwork/<size>/` and a re-run doesn't fetch them again. No 429 was received. Only the scripts contacted Scryfall; the spike page never did.
