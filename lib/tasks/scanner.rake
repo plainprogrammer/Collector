@@ -32,4 +32,16 @@ namespace :scanner do
     puts ranking.comparison(now)
     abort "A right first place or a name-only top 3 place was lost." if ranking.losses(now).any? || ranking.name_losses(now).any?
   end
+
+  desc "Spec 009 AC-5.1: right-first readings, lost first places and the misread cases per strong-name threshold"
+  task strong_sweep: :environment do
+    rows = Collector::ScannerFindings::Ranking.new.sweep((80..100).map { it / 100.0 })
+    puts "| Threshold | Right first | First places lost | Misreads right first |", "|---|---|---|---|"
+    rows.each { puts "| #{it[:threshold]} | #{it[:right_first]} | #{it[:losses]} | #{it[:misreads_fixed] ? "yes" : "no"} |" }
+    eligible = rows.select { it[:losses].zero? && it[:misreads_fixed] }
+    abort "No threshold fixes the three misreads without losing a right first place: ask the maintainer (AC-5.4)." if eligible.empty?
+
+    best = eligible.max_by { [ it[:right_first], it[:threshold] ] }
+    puts "Choose #{best[:threshold]}: the most right-first readings with no loss, ties to the higher threshold."
+  end
 end

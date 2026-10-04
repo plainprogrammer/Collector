@@ -12,7 +12,7 @@ class MTG::Reading
   MAX_TEXT_LENGTH = 2_000
   # The top name candidate is a strong match at this Jaro-Winkler similarity to the cleaned query or above (spec 009
   # AC-5.1). Chosen with `bin/rails scanner:strong_sweep` on the stored text of earlier runs; frozen with the settings.
-  STRONG_NAME_SCORE = 0.9
+  STRONG_NAME_SCORE = 0.96
 
   # evidence: the kinds behind the candidate, from :collector_line, :collector_line_corrected and :name (AC-5.5);
   # name_rank: its place among the name candidates, if any; strong_name: it's the top name candidate, strongly matched.
