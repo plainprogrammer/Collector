@@ -20,7 +20,9 @@ export const INVERT_DARK_ROWS = [ "collector" ]
 // Spec 009's reading refinements (AC-6.2, AC-6.3), applied to a strip after the steps above, so a strip stored by an earlier
 // run can be replayed with them exactly. name.invertBelow inverts the whole name strip when its mean luminance is below it
 // (light names on dark bars); collector.binarize applies an Otsu threshold and collector.scale enlarges further (faint
-// foil lines). Off until the tuning runs choose them; frozen before the live sitting (AC-6.7).
+// foil lines). Frozen before the live sitting (AC-6.7). All off: replaying the 49 stored live strips (2026-10-04), no
+// collector variant raised foil exact printing (4/10 off; binarize 1/10, ×1.5 3/10, both 3/10), and neither name
+// threshold (100, 128) read IMG_6785's name (128 lost one name read, 5/49 → 4/49).
 export const REFINE = { name: { invertBelow: null }, collector: { binarize: false, scale: 1 } }
 
 export function guideRect(viewWidth, viewHeight) {
