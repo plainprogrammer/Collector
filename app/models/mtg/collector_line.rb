@@ -18,7 +18,8 @@ module MTG::CollectorLine
   GLUED_RARITY = /(?<![A-Z0-9])[CURMSLTP]([0-9]#{NUMBERISH}{2,3})(?![A-Z0-9])/
   BARE_NUMBER = /(?<![A-Z0-9])(\d{1,4})(?![A-Z0-9])/
   SET_LINE = /(?<![A-Z0-9])([A-Z0-9]{3,5})[ \t]*(\S{1,2})?[ \t]*(#{LANGUAGES.keys.join("|")})(?![A-Z])/
-  FOIL_MARKERS = %w[★ *].freeze
+  # The separators the stored foil captures show and no stored non-foil does (spec 009 AC-6.5, scanner:foil_markers).
+  FOIL_MARKERS = %w[★ ®].freeze
 
   module_function
 
