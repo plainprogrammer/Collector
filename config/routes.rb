@@ -39,6 +39,7 @@ Rails.application.routes.draw do
     resource :measurement, only: :show do
       scope module: :measurements do
         resources :captures, only: :create
+        resources :events, only: :create
         resources :skips, only: :create
         resource :replay, only: %i[show create]
         resources :strips, only: :show, constraints: { id: /[\w.-]+/ }

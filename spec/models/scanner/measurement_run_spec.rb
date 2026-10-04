@@ -30,4 +30,32 @@ RSpec.describe Scanner::MeasurementRun, type: :model do
     expect(run.photo_path(run.row("IMG_1.jpeg"))).to eq(dir.join("IMG_1.jpeg"))
     expect(run.photo_path(run.row("IMG_2.jpeg"))).to be_nil
   end
+
+  describe "spec 009's capture fields and events (AC-9.2)" do
+    let(:png) { -> { StringIO.new("\x89PNG\r\n\x1A\n".b) } }
+
+    before { dir.join("manifest.csv").write("file,set,number,foil\nS001,mom,123,no\nS002,neo,51,yes\n") }
+
+    def capture(file, key)
+      run.record!(run.row(file), name_text: "Bolt", collector_text: "", ms: 200, user_agent: "iPhone", name_strip: png.call, collector_strip: png.call,
+        extra: { "reading_key" => key, "outline" => "found", "detect_ms" => 180, "warp_ms" => 120, "other" => "dropped" })
+    end
+
+    it "stores the reading key, the outline and the detector's timings with a capture", :aggregate_failures do
+      capture("S001", "a" * 32)
+      expect(run.captures(run.row("S001")).sole).to include("reading_key" => "a" * 32, "outline" => "found", "detect_ms" => 180, "warp_ms" => 120)
+      expect(run.captures(run.row("S001")).sole).not_to have_key("other")
+    end
+
+    it "finds a row by a capture's reading key and keeps its events in order", :aggregate_failures do
+      capture("S002", "b" * 32)
+      row = run.row_for_key("b" * 32)
+      expect(row.file).to eq("S002")
+      expect(run.row_for_key("c" * 32)).to be_nil
+      run.record_event!(row, kind: "add", rank: "2", reading_key: "b" * 32)
+      run.record_event!(row, kind: "undo", rank: nil, reading_key: "b" * 32)
+      expect(run.events(row).map { it.slice("kind", "rank") }).to eq([ { "kind" => "add", "rank" => "2" }, { "kind" => "undo", "rank" => nil } ])
+      expect(run.events(row).first["at"]).to match(/\A\d{4}-\d\d-\d\dT[\d:.]+Z\z/)
+    end
+  end
 end

@@ -33,7 +33,8 @@ RSpec.describe "Scanner measurement mode", type: :request do
       requests = [ -> { get scanner_measurement_path }, -> { capture }, -> { post scanner_measurement_skips_path, params: { file: "IMG_1.jpeg" } },
         -> { get scanner_measurement_replay_path(label: "a") }, -> { post scanner_measurement_replay_path, params: { label: "a", results: [] }, as: :json },
         -> { get scanner_measurement_strip_path("IMG_1.jpeg", strip: "name") },
-        -> { get scanner_measurement_photo_path("IMG_1.jpeg") } ]
+        -> { get scanner_measurement_photo_path("IMG_1.jpeg") },
+        -> { post scanner_measurement_events_path, params: { event: { kind: "add", rank: "1", reading_key: "a" * 32 } } } ]
       expect(requests.map { it.call && response.status }).to all(eq(404))
     end
 
@@ -112,5 +113,24 @@ RSpec.describe "Scanner measurement mode", type: :request do
     expect(response.body).to include("No manifest at")
     get scanner_path
     expect(response).to have_http_status(:ok)
+  end
+
+  describe "events (spec 009 AC-9.2)" do
+    def event(kind: "add", rank: "1", reading_key: "a" * 32) = post(scanner_measurement_events_path, params: { event: { kind:, rank:, reading_key: } })
+
+    it "records an event against the row whose capture carried the key", :aggregate_failures do
+      post scanner_measurement_captures_path, headers: turbo, params: { capture: { file: "IMG_2.jpeg", name_text: "Bolt", collector_text: "", ms: "1",
+        user_agent: "iPhone", name_strip: upload(png), collector_strip: upload(png), reading_key: "a" * 32, outline: "live" } }
+      event
+      expect(response).to have_http_status(:no_content)
+      expect(current.events(current.row("IMG_2.jpeg")).sole).to include("kind" => "add", "rank" => "1")
+    end
+
+    it "answers 404 for an unknown key or kind", :aggregate_failures do
+      event
+      expect(response).to have_http_status(:not_found)
+      event(kind: "nope")
+      expect(response).to have_http_status(:not_found)
+    end
   end
 end

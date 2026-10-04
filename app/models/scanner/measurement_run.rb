@@ -12,6 +12,9 @@ class Scanner::MeasurementRun
   STRIPS = %w[name collector].freeze
   MAX_STRIP_BYTES = 5.megabytes
   PNG_SIGNATURE = "\x89PNG\r\n\x1A\n".b
+  # Spec 009 adds the reading key, the outline ("live", "found" or "not_found") and the detector's timings (AC-9.2, AC-9.3).
+  EXTRA_FIELDS = %w[reading_key outline detect_ms warp_ms].freeze
+  EVENT_KINDS = %w[add undo details].freeze
 
   def self.enabled? = Rails.configuration.x.scanner_measurement.present?
 
@@ -68,7 +71,7 @@ class Scanner::MeasurementRun
 
   # Stores one capture and returns :measured for a row's first, :retake after. The JSON is written last, so a
   # capture interrupted halfway doesn't count.
-  def record!(row, name_text:, collector_text:, ms:, user_agent:, name_strip:, collector_strip:)
+  def record!(row, name_text:, collector_text:, ms:, user_agent:, name_strip:, collector_strip:, extra: {})
     if [ name_text, collector_text ].any? { it.length > MTG::Reading::MAX_TEXT_LENGTH }
       raise InvalidCapture, "That capture's text was too long to store."
     end
@@ -79,14 +82,31 @@ class Scanner::MeasurementRun
     stem = format("capture-%03d", number)
     row_dir(row).mkpath
     images.each { |strip, data| row_dir(row).join("#{stem}-#{strip}.png").binwrite(data) }
-    row_dir(row).join("#{stem}.json").write(JSON.pretty_generate("file" => row.file, "kind" => kind.to_s, "name_text" => name_text,
-      "collector_text" => collector_text, "ms" => ms, "user_agent" => user_agent, "captured_at" => Time.current.utc.iso8601))
+    row_dir(row).join("#{stem}.json").write(JSON.pretty_generate({ "file" => row.file, "kind" => kind.to_s, "name_text" => name_text,
+      "collector_text" => collector_text, "ms" => ms, "user_agent" => user_agent, "captured_at" => Time.current.utc.iso8601 }
+      .merge(extra.to_h.stringify_keys.slice(*EXTRA_FIELDS).compact_blank)))
     kind
   end
 
   def skip!(row)
     row_dir(row).mkpath
     row_dir(row).join("skipped.json").write(JSON.generate("file" => row.file, "skipped_at" => Time.current.utc.iso8601))
+  end
+
+  # The row whose capture carried this reading key (spec 009 AC-9.2), or nil.
+  def row_for_key(key) = key.present? ? rows.find { |row| captures(row).any? { it["reading_key"] == key } } : nil
+
+  # One line per event, with the server's time, so the findings can time each card (AC-9.1, AC-9.2).
+  def record_event!(row, kind:, rank:, reading_key:)
+    row_dir(row).mkpath
+    row_dir(row).join("events.jsonl").open("a") do |file|
+      file.puts(JSON.generate("kind" => kind, "rank" => rank, "reading_key" => reading_key, "at" => Time.current.utc.iso8601(3)))
+    end
+  end
+
+  def events(row)
+    path = row_dir(row).join("events.jsonl")
+    path.file? ? path.readlines.map { JSON.parse(it) } : []
   end
 
   # The measured capture's strip image, for the desktop replay (AC-5.6).
