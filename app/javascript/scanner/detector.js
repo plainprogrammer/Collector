@@ -7,9 +7,10 @@ import { CARD_ASPECT, GUIDE, STAGE_ASPECT } from "scanner/geometry"
 // in the guide's box. Cards are treated as upright. It runs on the device; nothing it makes leaves it (FR-4).
 
 // Frozen in the spike at 39cdc6e (spec 008 settings.json "hand" and "warp"). completeTolerance is spec 009's outline
-// completion (AC-6.6): null is off, as in the spike. Tuned on the development photos and frozen before the live sitting.
+// completion (AC-6.6): null is off, as in the spike. Frozen at 0.08 after the development photos (2026-10-04): exact printing
+// 20/46 → 22/46 with the same top 3 (43/52); combined with DETECTED_STRIPS.name.y, top 3 46/52 (biased, development).
 export const SETTINGS = { workWidth: 480, blur: 2, edgePercentile: 0.55, thetaRangeDeg: 6, minSeparation: 0.65, minArea: 0.15,
-  aspectRange: [ 0.5, 0.9 ], completeTolerance: null }
+  aspectRange: [ 0.5, 0.9 ], completeTolerance: 0.08 }
 export const WARP = { width: 1008, height: 1408, fill: "#808080" }
 
 // { found: true, corners, picture, detectMs, warpMs }, or { found: false, detectMs }. corners are in the photo's pixels

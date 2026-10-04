@@ -10,8 +10,9 @@ export const STRIPS = {
   collector: { x: 0.03, y: 0.89, w: 0.55, h: 0.11 }
 }
 // Strips for a picture the detector straightened (spec 009 AC-6.6): there the card exactly fills the guide, unlike a live
-// frame, where it sits a little inside. Starts equal to STRIPS; tuned on the spike's development photos.
-export const DETECTED_STRIPS = { name: { ...STRIPS.name }, collector: { ...STRIPS.collector } }
+// frame, where it sits a little inside. Frozen after the spike's development photos (2026-10-04): the name strip starts
+// higher (y 0.04; top 3 43/52 → 45/52, biased); a wider name strip (w 0.82) gained nothing, so STRIPS is unchanged.
+export const DETECTED_STRIPS = { name: { ...STRIPS.name, y: 0.04 }, collector: { ...STRIPS.collector } }
 // Strips are drawn at this many times their size before OCR. A tuning setting, frozen before the measured run (AC-6.1).
 export const STRIP_SCALE = 2
 // Strips whose dark pixel rows are inverted before OCR. A tuning setting, frozen before the measured run (AC-6.1).
