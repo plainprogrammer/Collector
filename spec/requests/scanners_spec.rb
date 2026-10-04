@@ -45,6 +45,7 @@ RSpec.describe "Scanner page", type: :request do
       expect(html.css(".c-appbar__nav a[href='#{scanner_path}']").map(&:text)).to eq([ "Scan" ])
       expect(html.css(".c-tabbar a[href='#{scanner_path}']").map { it.text.strip }).to eq([ "Scan" ])
       expect(html.css(".c-pagehead__actions a[href='#{scanner_path}']").map { it.text.strip }).to eq([ "Scan cards" ])
+      expect(html.css("a[href='#{scanner_path}']").map { it["data-turbo-prefetch"] }).to eq(%w[false false false])
       get scanner_path
       html = Nokogiri::HTML5(response.body)
       expect(html.css(".c-appbar__nav a[aria-current=page]").map(&:text)).to eq([ "Scan" ])
