@@ -6,5 +6,6 @@ class ScannersController < ApplicationController
 
   def show
     @sitting = sitting_locals
+    @summary = flash[:sitting_summary]
   end
 end
