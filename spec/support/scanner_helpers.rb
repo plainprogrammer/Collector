@@ -48,13 +48,31 @@ module ScannerHelpers
     })
   JS
 
+  # Adds seeded sensor noise of up to noise levels to a picture, the same on every run.
+  NOISE_JS = <<~JS.freeze
+    window.__addNoise = (context, width, height, noise) => {
+      if (noise <= 0) return
+      const image = context.getImageData(0, 0, width, height)
+      let seed = 1
+      for (let i = 0; i < image.data.length; i += 4) {
+        seed = (seed * 16807) % 2147483647
+        for (let channel = 0; channel < 3; channel++) image.data[i + channel] += (seed % (2 * noise + 1)) - noise
+      }
+      context.putImageData(image, 0, 0)
+    }
+  JS
+
+  # Detection runs on a full-size picture, so the detector specs give their scripts longer than Capybara's default wait.
+  DETECTION_SCRIPT_WAIT = 30
+
   # What the shipped detector finds in a grey photo with a white card-shaped rectangle, optionally tilted. noise adds
   # seeded sensor noise of up to that many levels: on a perfectly flat picture over half the edge strengths are 0, so the
   # detector's edge threshold is 0 and every flat pixel votes for a horizontal line (as in the spike).
   def detect_synthetic(card:, width: 1200, height: 1600, tilt_degrees: 0, noise: 0)
-    page.evaluate_async_script(<<~JS, width, height, card, tilt_degrees, noise)
+    using_wait_time(DETECTION_SCRIPT_WAIT) { page.evaluate_async_script(<<~JS, width, height, card, tilt_degrees, noise) }
       const [ width, height, card, tilt, noise, done ] = arguments
       #{MODULES_JS}
+      #{NOISE_JS}
       window.__modules.then(({ detector }) => {
         const canvas = Object.assign(document.createElement("canvas"), { width, height })
         const context = canvas.getContext("2d")
@@ -63,15 +81,7 @@ module ScannerHelpers
           context.translate(card.x + card.width / 2, card.y + card.height / 2); context.rotate(tilt * Math.PI / 180)
           context.fillStyle = "white"; context.fillRect(-card.width / 2, -card.height / 2, card.width, card.height)
         }
-        if (noise > 0) {
-          const image = context.getImageData(0, 0, width, height)
-          let seed = 1
-          for (let i = 0; i < image.data.length; i += 4) {
-            seed = (seed * 16807) % 2147483647
-            for (let channel = 0; channel < 3; channel++) image.data[i + channel] += (seed % (2 * noise + 1)) - noise
-          }
-          context.putImageData(image, 0, 0)
-        }
+        window.__addNoise(context, width, height, noise)
         const found = detector.findCard(canvas)
         done({ found: found.found, corners: found.corners || null, picture: found.picture ? [ found.picture.width, found.picture.height ] : null })
       })
@@ -79,10 +89,12 @@ module ScannerHelpers
   end
 
   # Picks a photo of a synthetic card drawn anywhere in it (or none), so the detector rather than the guide has to find it.
-  def pick_photo(card: { x: 40, y: 360, width: 859, height: 1200 }, width: 1200, height: 1600, name: "Lightning Bolt", lines: [ "R 0123", "MOM • EN" ])
-    page.evaluate_async_script(<<~JS, width, height, card, name, lines)
-      const [ width, height, card, name, lines, done ] = arguments
+  # noise is detect_synthetic's: a flat photo gives the detector no real edge strengths to threshold on.
+  def pick_photo(card: { x: 40, y: 360, width: 859, height: 1200 }, width: 1200, height: 1600, name: "Lightning Bolt", lines: [ "R 0123", "MOM • EN" ], noise: 0)
+    using_wait_time(DETECTION_SCRIPT_WAIT) { page.evaluate_async_script(<<~JS, width, height, card, name, lines, noise) }
+      const [ width, height, card, name, lines, noise, done ] = arguments
       #{CARD_JS}
+      #{NOISE_JS}
       const canvas = Object.assign(document.createElement("canvas"), { width, height })
       const context = canvas.getContext("2d")
       context.fillStyle = "#555"; context.fillRect(0, 0, width, height)
@@ -94,6 +106,7 @@ module ScannerHelpers
         context.font = `${Math.round(card.height * 0.022)}px sans-serif`
         lines.forEach((line, index) => context.fillText(line, card.x + card.width * 0.06, card.y + card.height * (0.935 + 0.03 * index)))
       }
+      window.__addNoise(context, width, height, noise)
       canvas.toBlob((blob) => {
         const transfer = new DataTransfer()
         transfer.items.add(new File([ blob ], "card.png", { type: "image/png" }))

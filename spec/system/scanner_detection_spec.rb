@@ -33,7 +33,7 @@ RSpec.describe "Detection on the scanner's photo path", type: :system do
   end
 
   it "reads a card the guide would miss, sending only the text and the key (AC-7.1, FR-4)", :aggregate_failures do
-    pick_photo
+    pick_photo(noise: 2)
     expect(page).to have_css(".c-scanner__candidate", text: "Lightning Bolt", wait: 30)
     expect(first(".c-scanner__candidate")).to have_text("Matched by its collector line")
     expect(scanner_sent).to eq([ [ "reading[name_text]", "reading[collector_text]", "reading[key]" ] ])
