@@ -56,10 +56,29 @@ RSpec.describe Catalog::NameIndex, type: :model do
     expect(index.search(" -- ")).to eq([])
   end
 
+  it "finds the right card in the top 3 for IMG_6720's text (AC-6.1)" do
+    create(:mtg_printing, entry: create(:catalog_entry, identity: create(:catalog_identity, name: "Fanged Flames"), name: "Fanged Flames"))
+    create(:mtg_printing, entry: create(:catalog_entry, identity: create(:catalog_identity, name: "Monsoon"), name: "Monsoon"))
+    described_class.new("mtg").rebuild
+    text = "Lp cog Sw pan soon pa B= SR be prea ZN oo Ld\r\nFanged Flames 1\r\n~  _______ \\3"
+    expect(described_class.new("mtg").search(text).map(&:name)).to include("Fanged Flames")
+  end
+
   describe ".clean" do
     it "keeps a short name when nothing longer survives", :aggregate_failures do
       expect(described_class.clean("Ox")).to eq("Ox")
       expect(described_class.clean("A) ae ea i Rd TE NC DORA AA Sa pr\nCosmic Hunger")).to eq("Cosmic Hunger")
+    end
+
+    it "skips a line of short noise tokens for the name below it (spec 009 AC-6.1, IMG_6720)" do
+      text = "Lp cog Sw pan soon pa B= SR be prea ZN oo Ld\r\nFanged Flames 1\r\n~  _______ \\3"
+      expect(described_class.clean(text)).to eq("Fanged Flames")
+    end
+
+    it "keeps spec 007's cases under spec 009's rule", :aggregate_failures do
+      expect(described_class.clean("A) ae ea i Rd TE NC DORA AA Sa pr\nCosmic Hunger")).to eq("Cosmic Hunger")
+      expect(described_class.clean("Ox")).to eq("Ox")
+      expect(described_class.clean("Ox of Agonas")).to eq("Agonas")
     end
   end
 end
