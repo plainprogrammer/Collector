@@ -1,6 +1,6 @@
 # Feature 009: Card Scanner — Confirm and Add, and Detection on the Photo Path
 
-**Status:** Draft
+**Status:** Approved
 **Version:** 1.1.2
 **Created:** 2026-10-03
 **Last Updated:** 2026-10-03
@@ -15,7 +15,7 @@
 | 1.0.0 | 2026-10-03 | Initial draft. Open questions resolved by the maintainer: Undo after an edit (AC-4.4), the Done summary (AC-3.5) |
 | 1.1.0 | 2026-10-03 | Spec review revisions (Fable). **Idempotency:** each reading carries a reading key minted by the page; one sitting entry per key (AC-1.4, AC-1.5, FR-1, FR-2, FR-5). **Strong** is one named rule over the top name candidate, chosen on the stored text and committed with the settings (AC-5.1). **Ground truth** for tuning round 4 and the new corpus is committed as text before the re-score (AC-5.4). **Supersession** list gains spec 007 AC-4.2 and FR-3. **Done summary** is shown only in the response to Done and isn't stored (AC-3.5, AC-3.7). **Maintainer rulings:** the finish is recorded as tapped, including Nonfoil (AC-1.2); a scanner Undo that removes a lot ends the session's bulk-removal Undo (AC-4.1); messages use spec 004's wording plus the finish (AC-1.3, AC-4.1); a retired printing is refused (Error Scenarios). **Also:** a glossary, FR lines for reachability and reading, timing targets measured outside the gating suite, AC-7.3's reference, AC-2.3's tie-break, Undo on an ended sitting, Done with nothing left |
 | 1.1.1 | 2026-10-03 | The live sitting's pile is 35 prepared cards, not about 50 (Goals, AC-9.1) |
-| 1.1.2 | 2026-10-03 | Second spec review (Fable, READY TO PLAN after these fixes). **AC-5.4:** the three misread cases are checked on the live run only. **Replays:** a replayed add answers with its sitting entry's current state, a missing or malformed reading key is refused, and keys are unique within a sitting (AC-1.5, Error Scenarios, NFR Security). **AC-5.3:** only the top name candidate is cross-checked, never when the collector-line printing ranks first, and only digits are edited. **Also:** the sitting count's definition and a list of the newest 10 with Show all (maintainer ruling, AC-3.2); the Done summary's delivery (AC-3.5); Other printings lists only printings that aren't retired (AC-2.2); the rank is sent only in measurement mode (AC-9.2); the re-score covers cleaning and ranking together (AC-5.4); spec 007 AC-3.3 joins the supersession list |
+| 1.1.2 | 2026-10-03 | Approved by the maintainer. Second spec review (Fable, READY TO PLAN after these fixes). **AC-5.4:** the three misread cases are checked on the live run only. **Replays:** a replayed add answers with its sitting entry's current state, a missing or malformed reading key is refused, and keys are unique within a sitting (AC-1.5, Error Scenarios, NFR Security). **AC-5.3:** only the top name candidate is cross-checked, never when the collector-line printing ranks first, and only digits are edited. **Also:** the sitting count's definition and a list of the newest 10 with Show all (maintainer ruling, AC-3.2); the Done summary's delivery (AC-3.5); Other printings lists only printings that aren't retired (AC-2.2); the rank is sent only in measurement mode (AC-9.2); the re-score covers cleaning and ranking together (AC-5.4); spec 007 AC-3.3 joins the supersession list |
 
 ---
 
