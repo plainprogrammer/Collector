@@ -20,7 +20,7 @@
     <% if reading.candidates.empty? %>
       <p class="c-empty">No card matches what was read. Line the card up with the guide and capture it again.</p>
     <% else %>
-      <div class="c-grid"><%= render partial: "scanners/candidate", collection: reading.candidates, as: :candidate %></div>
+      <div class="c-grid"><%= render partial: "scanners/candidate", collection: reading.candidates, as: :candidate, locals: { reading: } %></div>
     <% end %>
     <p class="c-scanner__note">Adding cards from the scanner is coming. For now, open a candidate and add it from its page, or <%= link_to "search the catalog", catalog_entries_path(q: reading.candidates.first&.entry&.name.presence || reading.name_text.presence) %>.</p>
   </section>

@@ -23,6 +23,12 @@ RSpec.describe "Scanner readings", type: :request do
       expect(response.body).to include("Matched one printing", "Matched by its collector line", "MOM · 123", "March of the Machine")
     end
 
+    it "marks a candidate found by its name alone as a guess at the printing (AC-2.1, AC-5.1)", :aggregate_failures do
+      read("Lightning Bolt", "")
+      expect(response.body).to include("Printing not confirmed", "Matched by its name")
+      expect(response.body).not_to include("Matched by its collector line")
+    end
+
     it "says when the collector line matches several printings or none (AC-3.3)", :aggregate_failures do
       create(:mtg_printing, entry: create(:catalog_entry, identity: bolt.identity, name: "Lightning Bolt", set: mom, number: "123"))
       read("Lightning Bolt", "R 0123\nMOM • EN")

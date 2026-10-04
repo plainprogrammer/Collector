@@ -1,4 +1,4 @@
-<%# locals: (candidate:) %>
+<%# locals: (candidate:, reading:) %>
 <% entry = candidate.entry %>
 <div class="c-tilecell c-scanner__candidate">
   <%= link_to catalog_entry_path(entry), class: "c-tile" do %>
@@ -12,7 +12,10 @@
     <div class="c-tile__name"><%= entry.display_name %></div>
     <div class="c-tile__meta"><span class="c-tag"><%= set_number(entry) %></span><span class="c-tag"><%= entry.set.name %></span></div>
   <% end %>
-  <% if candidate.source == :collector_line %>
-    <span class="c-badge c-badge--success"><%= render "icons/check" %>Matched by its collector line</span>
+  <% if candidate.collector_line? %>
+    <span class="c-badge c-badge--success"><%= render "icons/check" %><%= candidate.corrected? ? "Matched by its collector line, one digit corrected" : "Matched by its collector line" %></span>
+  <% else %>
+    <span class="c-badge c-badge--warning"><%= render "icons/alert" %>Printing not confirmed</span>
   <% end %>
+  <% if candidate.name? %><span class="c-scanner__evidence">Matched by its name</span><% end %>
 </div>
