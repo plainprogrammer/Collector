@@ -18,4 +18,18 @@ namespace :scanner do
     puts report.to_markdown
     report.write_fixtures! if ENV["FIXTURES"] == "1"
   end
+
+  desc "Spec 009 AC-5.4: commit the ranking baseline (once, under spec 007's ranking, before spec 009 changes it)"
+  task ranking_baseline: :environment do
+    Collector::ScannerFindings::Ranking.new.write_baseline!
+    puts "Wrote #{Collector::ScannerFindings::Ranking::FIXTURES.join(Collector::ScannerFindings::Ranking::BASELINE)}"
+  end
+
+  desc "Spec 009 AC-5.4, AC-6.1: every earlier run's stored text under the shipped ranking, against the baseline"
+  task ranking: :environment do
+    ranking = Collector::ScannerFindings::Ranking.new
+    now = ranking.rankings
+    puts ranking.comparison(now)
+    abort "A right first place or a name-only top 3 place was lost." if ranking.losses(now).any? || ranking.name_losses(now).any?
+  end
 end
