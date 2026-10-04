@@ -1,7 +1,7 @@
 # Feature 009: Card Scanner — Confirm and Add, and Detection on the Photo Path
 
 **Status:** Draft
-**Version:** 1.0.0
+**Version:** 1.1.0
 **Created:** 2026-10-03
 **Last Updated:** 2026-10-03
 **Branch:** `009-card-scanner-confirm-flow`
@@ -13,6 +13,7 @@
 | Version | Date | Change |
 |---------|------|--------|
 | 1.0.0 | 2026-10-03 | Initial draft. Open questions resolved by the maintainer: Undo after an edit (AC-4.4), the Done summary (AC-3.5) |
+| 1.1.0 | 2026-10-03 | Spec review revisions (Fable). **Idempotency:** each reading carries a reading key minted by the page; one sitting entry per key (AC-1.4, AC-1.5, FR-1, FR-2, FR-5). **Strong** is one named rule over the top name candidate, chosen on the stored text and committed with the settings (AC-5.1). **Ground truth** for tuning round 4 and the new corpus is committed as text before the re-score (AC-5.4). **Supersession** list gains spec 007 AC-4.2 and FR-3. **Done summary** is shown only in the response to Done and isn't stored (AC-3.5, AC-3.7). **Maintainer rulings:** the finish is recorded as tapped, including Nonfoil (AC-1.2); a scanner Undo that removes a lot ends the session's bulk-removal Undo (AC-4.1); messages use spec 004's wording plus the finish (AC-1.3, AC-4.1); a retired printing is refused (Error Scenarios). **Also:** a glossary, FR lines for reachability and reading, timing targets measured outside the gating suite, AC-7.3's reference, AC-2.3's tie-break, Undo on an ended sitting, Done with nothing left |
 
 ---
 
@@ -32,7 +33,9 @@ This feature turns the scanner into a tool for working through a stack of cards.
 >
 > **Supersedes in spec 007:**
 > - AC-1.7 and FR-1's "reachable by URL only": the scanner is now linked (Story 8).
-> - AC-3.2's "a collector-line match is always first" (Story 5).
+> - AC-3.2, under which a collector-line match is always the first candidate (Story 5).
+> - AC-4.2's guide placement on every picked photo: detection runs first, and guide placement is the fallback (AC-7.1, AC-7.2).
+> - FR-3's "only recognised text": the add, Undo and Other printings requests, with the reading key, are sent too (FR-5). Still no frame, strip or photo.
 > - AC-3.10's "no way to add" (Story 1).
 > - FR-1's "Must not create, change or read any tenant data": the scanner now adds lots and keeps a sitting.
 > - FR-4's "Must not infer the finish": the foil marker becomes a hint (AC-6.5).
@@ -71,6 +74,15 @@ This feature turns the scanner into a tool for working through a stack of cards.
 **Usage context:** A collector at a table with a pile of new cards, holding each one under their phone in turn. Mostly a WebKit browser on iOS over HTTPS (the maintainer uses Brave). When the camera isn't available, they pick a photo instead, often one taken without any guide.
 **User mental model:** "Point, tap, add, next." Then: "if it got one wrong, undo it or fix it from the list". And: "the pile I scanned is now in my collection".
 
+**Terms used in this spec:**
+- **Reading:** one capture (or one picked photo) and its result: the recognised text, what was parsed, and the ranked candidates. A new capture starts a new reading.
+- **Reading key:** an opaque random value the page mints for each reading. It is not derived from the read text.
+- **Candidate:** a printing offered for a reading, at most 3 per reading.
+- **Printing:** one catalog entry (`Catalog::Entry`): a card in one set, number and language.
+- **Sitting:** the account's run of scanner adds, open until "Done".
+- **Sitting entry** (or "entry" in Stories 3 and 4): one add recorded in a sitting. It is never a catalog entry.
+- **Strong name match:** see AC-5.1.
+
 ## User Stories
 
 ### Story 1: Add a candidate from the scanner
@@ -82,12 +94,12 @@ This feature turns the scanner into a tool for working through a stack of cards.
 **Acceptance criteria:**
 
 - [ ] **AC-1.1** Given a reading with candidates When the page shows them Then each candidate shows one add button per finish its printing comes in. The buttons are labelled with the collectible's finish names, in its finish order (MTG: Nonfoil, Foil, Etched). A printing with one finish, or with no finish listed in the catalog, shows a single button labelled "Add". Each button's accessible name names the card, set · number and finish (for example "Add Tome Shredder STX 117 Foil").
-- [ ] **AC-1.2** Given a candidate's add button When the collector activates it Then one copy of that printing is added to the account's collection with that finish (none for a single "Add" on a printing with no finish listed), condition unspecified and price paid unspecified. It merges into the lot with the same identity, as the catalog's Add does (spec 004 AC-7.4).
-- [ ] **AC-1.3** Given an add succeeded When the page updates Then it stays on the scanner without a full page load. It announces "Added 1 × ‹name› (‹set · number›, ‹finish›)" in the polite live region, clears the reading and its candidates, and is ready to capture again. On live capture the camera stream that was running is still running, so no new permission prompt appears and the shutter is enabled. On the photo path the photo picker is ready.
+- [ ] **AC-1.2** Given a candidate's add button When the collector activates it Then one copy of that printing is added to the account's collection with condition and price paid unspecified, merging into the lot with the same identity (spec 004 AC-7.4). The finish is recorded as tapped, including Nonfoil. A single "Add" on a one-finish printing records that finish, and only a printing with no finish listed leaves it unspecified. A scanner add therefore merges with lots of the same finish, not with the finish-unspecified lots the catalog's Add makes.
+- [ ] **AC-1.3** Given an add succeeded When the page updates Then it stays on the scanner without a full page load. It announces "Added 1 × ‹name› (‹SET› · ‹number›, ‹finish›) to your collection." in the polite live region (spec 004 AC-7.2's wording with the finish added, or without it when unspecified), clears the reading and its candidates, and is ready to capture again. On live capture the camera stream that was running is still running, so no new permission prompt appears and the shutter is enabled. On the photo path the photo picker is ready.
 - [ ] **AC-1.4** Given a candidate's add button was activated When the add is in flight Then every add button for that reading is disabled until the response arrives. Once the add has succeeded, that reading offers no add button again.
-- [ ] **AC-1.5** Given an add request is submitted twice for the same reading and printing (a retry after a lost response, or a duplicated request) When the app receives the second Then exactly one copy has been added, and the page shows the add as done.
+- [ ] **AC-1.5** Given each reading carries its reading key, and every add request sends it When the app receives a second add with a key the open sitting already has an entry for (a retry after a lost response, a duplicated request, or another add button of the same reading) Then nothing more is added, whatever printing or finish the second request names. The app answers as if the first add had just succeeded, and the page shows that add as done. A sitting holds at most one entry per reading key.
 - [ ] **AC-1.6** Given the lot the add would merge into already holds 9,999 copies When the collector activates an add button Then nothing is added, the reading stays on the page, and the page shows the lot-full message the catalog's Add uses ("You already have the most copies one lot can hold (9,999).").
-- [ ] **AC-1.7** Given the collector wants a second copy of the same card When they scan it again and add it Then a second copy is added (each reading adds at most one copy, AC-1.5; two readings add two).
+- [ ] **AC-1.7** Given the collector wants a second copy of the same card When they scan it again and add it Then a second copy is added: the new reading has a new key, so each reading adds at most one copy (AC-1.5) and two readings add two.
 
 ### Story 2: Choose another printing
 
@@ -99,8 +111,8 @@ This feature turns the scanner into a tool for working through a stack of cards.
 
 - [ ] **AC-2.1** Given a candidate that was not matched by its collector line When it is shown Then it is marked as a guess at the printing (for example "Printing not confirmed") and offers "Other printings". A candidate matched by its collector line, directly or through the cross-check (AC-5.3), is marked as matched by its collector line and also offers "Other printings".
 - [ ] **AC-2.2** Given "Other printings" on a candidate When the collector activates it Then the card's English printings open in place on the scanner page, without a full page load or leaving the scanner. Each printing shows its set name and code, collector number and release date, with its own add buttons per AC-1.1. The camera stream keeps running.
-- [ ] **AC-2.3** Given the reading parsed a set code or a collector number When "Other printings" lists the card's printings Then printings matching what was read come first: the read set and number together, then the read set alone, then the read number alone. All remaining printings follow, newest release first. Ties are broken by set code, then collector number.
-- [ ] **AC-2.4** Given the reading parsed neither a set code nor a number When "Other printings" opens Then printings are newest release first, with the same tie-breaks.
+- [ ] **AC-2.3** Given the reading parsed a set code or a collector number When "Other printings" lists the card's printings Then printings matching what was read come first: the read set and number together, then the read set alone, then the read number alone. All remaining printings follow, newest release first. Ties within each group follow the catalog's newest-first order (release date, then set code, then collector number, then language).
+- [ ] **AC-2.4** Given the reading parsed neither a set code nor a number When "Other printings" opens Then printings follow the catalog's newest-first order.
 - [ ] **AC-2.5** Given a card with more than 20 printings When "Other printings" opens Then the first 20 in AC-2.3's order show, with a control that reveals the rest in place.
 - [ ] **AC-2.6** Given "Other printings" is open When the collector adds one of them Then the add behaves as Story 1 (AC-1.2 to AC-1.6), and the sitting records the printing that was added.
 
@@ -116,9 +128,9 @@ This feature turns the scanner into a tool for working through a stack of cards.
 - [ ] **AC-3.2** Given an open sitting When the scanner page is shown Then it lists the sitting's adds, newest first. Each entry shows the card's name, set · number, finish (or "—" when unspecified) and the time it was added, together with Undo and a link to the copy's details. A heading gives the sitting's count ("This sitting: 12 cards").
 - [ ] **AC-3.3** Given an open sitting with adds When the collector leaves the scanner, signs out and signs in again (on the same or another device), then opens the scanner Then the same sitting and its entries are shown, and further adds join it.
 - [ ] **AC-3.4** Given an entry's details link When the collector follows it Then it opens the copy's existing Edit copy page (spec 004) for the lot the add went into. Saving or cancelling there returns to the scanner, with the sitting still open.
-- [ ] **AC-3.5** Given an open sitting When the collector activates "Done" and confirms Then the sitting ends, its entries are no longer shown or undoable, and the added copies stay in the collection. The scanner shows a short summary in place of the list: "Added ‹n› cards in this sitting", with ‹n› the number of entries not undone, and a link to the collection. The summary disappears on the next add, which opens a new sitting.
+- [ ] **AC-3.5** Given an open sitting When the collector activates "Done" and confirms Then the sitting ends, its entries are discarded and no longer undoable, and the added copies stay in the collection. The response to Done shows a short summary in place of the list: "Added ‹n› cards in this sitting", with ‹n› the number of entries not undone ("Added 0 cards in this sitting" when every add was undone), and a link to the collection. The summary isn't stored, so a reload or another device shows neither list nor summary (AC-3.7). The next add opens a new sitting.
 - [ ] **AC-3.6** Given the lot an entry's add went into has since been removed, or merged into another lot by an edit When the sitting's list is shown Then that entry still shows its card, set · number and finish, is marked "Changed in your collection", and offers neither Undo nor a details link.
-- [ ] **AC-3.7** Given no open sitting When the scanner is shown (other than the summary right after Done, AC-3.5) Then no sitting list or Done control is shown.
+- [ ] **AC-3.7** Given no open sitting When the scanner is shown, other than in the response to Done (AC-3.5) Then no sitting list, summary or Done control is shown.
 - [ ] **AC-3.8** Given two accounts When either account views its scanner Then it sees only its own sitting. A request naming another account's sitting entry (Undo or details) answers 404 and changes nothing.
 
 ### Story 4: Undo an add
@@ -129,7 +141,7 @@ This feature turns the scanner into a tool for working through a stack of cards.
 
 **Acceptance criteria:**
 
-- [ ] **AC-4.1** Given an entry whose lot still exists When the collector activates its Undo Then one copy is removed from that lot (the lot is removed if that was its last copy), the entry leaves the list, and the page announces "Removed 1 × ‹name› (‹set · number›, ‹finish›)". This happens without leaving the scanner or a full page load.
+- [ ] **AC-4.1** Given an entry whose lot still exists When the collector activates its Undo Then one copy is removed from that lot (the lot is removed if that was its last copy), the entry leaves the list, and the page announces "Removed 1 × ‹name› (‹SET› · ‹number›, ‹finish›) from your collection." This happens without leaving the scanner or a full page load. An Undo that removes the lot ends the session's pending bulk-removal Undo, as any single-lot removal does (spec 006 AC-7.6).
 - [ ] **AC-4.2** Given an entry has already been undone When an Undo request for it arrives again (a replay or a second tab) Then nothing changes and the app answers 422. The page shows that the entry was already undone.
 - [ ] **AC-4.3** Given two entries in the sitting added copies to the same lot When both are undone Then two copies are removed in total, one per entry.
 - [ ] **AC-4.4** Given an entry whose lot was edited since the add (condition, price paid, finish or quantity changed), but not removed or merged into another lot When its Undo is activated Then one copy is removed from that lot as in AC-4.1, and the lot is removed if that was its last copy. Undo refuses only when the lot was removed or merged away (AC-3.6). Then it answers 422, and the page says the copy changed in the collection.
@@ -142,14 +154,15 @@ This feature turns the scanner into a tool for working through a stack of cards.
 
 **Acceptance criteria:**
 
-- [ ] **AC-5.1** Given a reading whose collector line identifies exactly one printing, and whose name match is strong for a different card When candidates are ranked Then the name match's card ranks first and the collector-line printing ranks second. The findings define "strong", using the stored text of earlier runs (AC-5.4). Each candidate shows what it was matched by: its collector line, its name, or both.
+- [ ] **AC-5.1** Given a reading whose collector line identifies exactly one printing, and whose name match is strong for a different card When candidates are ranked Then the name match's card ranks first and the collector-line printing ranks second. Each candidate shows what it was matched by: its collector line, its name, or both. "Strong" is one named rule over the top name candidate. The plan fixes its form, for example a similarity score at or above a threshold, possibly with an exact normalised-name shortcut. Its threshold is chosen on the AC-5.4 fixtures and committed with the settings (AC-6.7), and the findings state the rule and the threshold.
 - [ ] **AC-5.2** Given a reading whose collector line identifies exactly one printing, and the name match is not strong for a different card When candidates are ranked Then the collector-line printing ranks first, as in spec 007.
 - [ ] **AC-5.3** Given a strong name match whose card differs from the collector line's printing, or a collector line that parses but matches no printing When the named card has exactly one English printing in the read set whose collector number is one edit from the read number (one digit added, dropped or changed, ignoring leading zeros) Then that printing is the candidate for the named card, marked as matched by its collector line ("Matched by its collector line, one digit corrected"). The new corpus's three cases resolve this way: `STX 17` → Tome Shredder STX 117, `AFR 202` → Grand Master of Flowers AFR 282, `FRA 5` → Cast Away Doubt FRA 51.
-- [ ] **AC-5.4** Given the stored text of every earlier run (Phase 0 `ocr_results.json`, the Phase 1 photo replay, tuning round 4, the new corpus live and photo runs, all in `spec/fixtures/card_scanner/`) When it is re-scored with this feature's ranking Then:
+- [ ] **AC-5.4** Given the stored text of every earlier run (Phase 0 `ocr_results.json`, the Phase 1 photo replay, tuning round 4, the new corpus live and photo runs, all in `spec/fixtures/card_scanner/`) When it is re-scored with this feature's ranking, with the expected card of each reading taken from committed ground truth Then:
   - IMG_6765, IMG_6769 and IMG_6792 have the right card first.
   - No reading whose right card was first under spec 007's ranking loses that place.
   - The findings list every reading whose first candidate changed, with both rankings.
   - The findings state that "strong" was chosen on these same readings, so its result on them is biased upwards. The live sitting (Story 9) is the unbiased check.
+  - Before the re-score, ground truth for tuning round 4 (`~/card-scanner-corpus/tuning/`) and for the new corpus (`~/card-scanner-corpus/phase1-live/`) is committed as text next to `ground_truth.json`, in its format, keyed by manifest `file`. No image is committed.
 - [ ] **AC-5.5** Given the ranking When a candidate's support is recorded Then it is expressed as one or more named kinds of evidence (collector line, collector line corrected, name), and the order between candidates follows a single rule over those kinds. Adding a kind of evidence later (an art match) needs a new kind and a change to that one rule. The plan names the rule and where it lives.
 
 ### Story 6: Reading refinements
@@ -178,7 +191,7 @@ This feature turns the scanner into a tool for working through a stack of cards.
 
 - [ ] **AC-7.1** Given a picked photo When it is processed Then its orientation metadata is applied and the card is detected on the device. When a card outline is found, the card is straightened and placed in the guide's position, and the shipped strips, recognition, parsing and matching run on that image (spec 007 Stories 2 and 3, with this feature's refinements). Nothing but recognised text leaves the device.
 - [ ] **AC-7.2** Given a picked photo in which no card outline is found When it is processed Then the guide is placed on the photo as in spec 007 AC-4.2 and reading continues. The page says no card edge was found and shows the framing advice (AC-7.4).
-- [ ] **AC-7.3** Given the shipped detector at the spike's frozen settings (`spikes/card_scanner/phase2/settings.json` at `39cdc6e`), before AC-6.6's refinements When it runs on the spike's 99 photos Then each photo's outcome (found or not, and the outline's corners within one pixel at work resolution) matches the spike detector's. The comparison is a recorded check in the findings, not a suite test.
+- [ ] **AC-7.3** Given the shipped detector at the spike's frozen settings (`spikes/card_scanner/phase2/settings.json` at `39cdc6e`), before AC-6.6's refinements When it runs on the spike's 99 photos Then each photo's outcome (found or not, and the outline's corners within one pixel at work resolution) matches the spike detector's. The reference is the spike detector re-run at `39cdc6e` on the same photos, since the committed spike results record no corners. The comparison is a recorded check in the findings, not a suite test.
 - [ ] **AC-7.4** Given the photo picker is offered (spec 007 AC-4.1, AC-4.3) When it is shown Then copy tells the collector to photograph the whole card, upright, filling most of the photo as the live guide does, on a plain background.
 - [ ] **AC-7.5** Given the detector is added When the scanner page is served Then its Content Security Policy is unchanged from spec 007 AC-2.4, and the page loads no third-party library for detection.
 - [ ] **AC-7.6** Given live capture When the shutter is used Then no detection runs on the frame. Live capture cuts its strips at the guide as in spec 007 AC-1.3.
@@ -220,7 +233,9 @@ This feature turns the scanner into a tool for working through a stack of cards.
 ### FR-1: Adding from the scanner
 
 **Must:**
-- Add exactly one copy per reading and printing (AC-1.5), through the same rules as the catalog's Add: merging into the lot with the same identity and respecting the 9,999 cap (spec 004).
+- Add exactly one copy per reading (AC-1.5), identified by its reading key, through the same rules as the catalog's Add: merging into the lot with the same identity and respecting the 9,999 cap (spec 004).
+- Refuse an add for a printing that isn't in the catalog or is retired.
+- Link the scanner from the main navigation and the collection page (Story 8), replacing spec 007 FR-1's "reachable by URL only".
 - Offer only the finishes the printing comes in, named and ordered by the collectible's finish vocabulary. The core stays collectible-agnostic, and MTG finish names and the foil marker live in the MTG extension.
 - Keep the collector on the scanner: adds, Undo and Other printings update the page in place, and the camera keeps running.
 
@@ -232,7 +247,7 @@ This feature turns the scanner into a tool for working through a stack of cards.
 
 **Must:**
 - Be stored by the app as tenant-owned data (`account_id`), with at most one open sitting per account. It persists across sign-out and devices until "Done".
-- Record, per entry, the printing, the finish, the time, and the lot the copy went into.
+- Record, per entry, the printing, the finish, the time, the lot the copy went into, and the reading key (an opaque value, not what the camera read).
 - Discard an ended sitting's entries. They are workflow state, not collection data, and are not part of the collection export.
 - Scope every sitting read and write through the current account (multi-tenancy rules), with a request spec proving another account's entry answers 404.
 
@@ -245,6 +260,7 @@ This feature turns the scanner into a tool for working through a stack of cards.
 - Rank by named kinds of evidence under one rule (AC-5.5). Kinds today: collector line, collector line corrected, name.
 - Rank a strong name match above a disagreeing collector-line printing (AC-5.1), and correct a one-edit collector number against the named card's printings in the read set (AC-5.3).
 - Keep showing at most 3 candidates, with Other printings for more.
+- Apply the reading refinements of Story 6 (query cleaning, faint foil lines, light names on dark bars, long names, the foil marker as a hint, and the detector's bottom edge and name-strip position) at settings committed before the live sitting (AC-6.7).
 - Keep the collector-line parser, set-code rules, foil marker and number correction inside the MTG extension. Name matching stays collectible-agnostic core (spec 007 FR-4).
 
 **Must not:**
@@ -263,7 +279,7 @@ This feature turns the scanner into a tool for working through a stack of cards.
 ### FR-5: Privacy and measurement
 
 **Must:**
-- Keep spec 007 FR-3: only recognised text, plus the add, Undo and Other printings requests (printing ids and finishes), is sent to the app in normal use.
+- Keep spec 007 FR-3, extended: in normal use the app receives only recognised text, plus the add, Undo and Other printings requests (printing ids, finishes and the reading key).
 - Keep measurement mode development-only and off by default in production and test (spec 007 FR-6), with its stored files outside the repository and `storage/`.
 
 ### FR-6: Design system
@@ -275,8 +291,9 @@ This feature turns the scanner into a tool for working through a stack of cards.
 
 ### Performance
 
-- An add, from tap to the "Added" announcement, takes a median of no more than 500 ms on the development machine in a system test against a seeded catalog. The findings report it on the iPhone.
+- An add, from tap to the "Added" announcement, takes a median of no more than 500 ms on the development machine against a seeded catalog. The findings report it on the iPhone.
 - Other printings for a card with 100 printings answers in under 300 ms at the 95th percentile on the development machine.
+- These targets are measured by a non-gating script and reported in the findings. Suite tests assert the behaviour, not the time.
 - Detection and straightening add no more than 1 s per picked photo on the iPhone (median). The findings report the measured figure; if it is higher, that is reported, not hidden.
 - The scanner's cold-load download grows by no more than 20 KB compressed over spec 007's, the findings report the figure, and nothing new is fetched from another host.
 
@@ -309,6 +326,9 @@ This feature turns the scanner into a tool for working through a stack of cards.
 | The finish named isn't one the printing comes in | Answer 422; nothing is added |
 | Undo on an entry already undone | 422, nothing changes, the page says it was already undone (AC-4.2) |
 | Undo or details for another account's entry | 404, nothing changes (AC-3.8) |
+| Undo or details for an entry of a sitting that has ended (for example from a second tab after Done) | 404, nothing changes |
+| The printing was retired by a catalog refresh between the reading and the add | Answer 422; the page says the card couldn't be added and to scan again; nothing is added |
+| Done when every add in the sitting was undone | The sitting ends and the summary reads "Added 0 cards in this sitting" (AC-3.5) |
 | An entry's lot was removed or merged away | The entry shows "Changed in your collection", with no Undo or details (AC-3.6) |
 | "Done" activated by mistake | A confirmation step precedes ending the sitting (AC-3.5) |
 | No card outline in a picked photo | Fall back to guide placement, say no edge was found, show the framing advice (AC-7.2) |
@@ -329,6 +349,7 @@ Decided while specifying (2026-10-03, maintainer):
 - The live sitting uses about 50 unseen cards the maintainer has at hand.
 - Undo after the entry's lot was edited still removes one copy from that lot. It refuses only when the lot was removed or merged away (AC-4.4, AC-3.6).
 - "Done" shows a short summary with a link to the collection (AC-3.5).
+- After the spec review: the finish is recorded as tapped, including Nonfoil (AC-1.2); a scanner Undo that removes a lot ends the pending bulk-removal Undo (AC-4.1); messages use spec 004's wording plus the finish (AC-1.3, AC-4.1); a printing retired since the reading is refused (Error Scenarios).
 - The performance targets in the Non-Functional Requirements, 20 printings at a time in Other printings, ended sittings discarded and left out of the export, and one copy per reading were proposed while specifying and accepted.
 - Carried from spec 008's PRD and not re-asked: the stack-sitting flow, one add button per finish, Other printings in place with read set and number first, a stored list with Undo and details, the strong-name ranking rule, the photo picker kept as the fallback, and the reading refinements.
 
