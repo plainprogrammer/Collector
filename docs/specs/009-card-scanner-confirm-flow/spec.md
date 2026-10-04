@@ -1,7 +1,7 @@
 # Feature 009: Card Scanner — Confirm and Add, and Detection on the Photo Path
 
 **Status:** Draft
-**Version:** 1.1.0
+**Version:** 1.1.1
 **Created:** 2026-10-03
 **Last Updated:** 2026-10-03
 **Branch:** `009-card-scanner-confirm-flow`
@@ -14,6 +14,7 @@
 |---------|------|--------|
 | 1.0.0 | 2026-10-03 | Initial draft. Open questions resolved by the maintainer: Undo after an edit (AC-4.4), the Done summary (AC-3.5) |
 | 1.1.0 | 2026-10-03 | Spec review revisions (Fable). **Idempotency:** each reading carries a reading key minted by the page; one sitting entry per key (AC-1.4, AC-1.5, FR-1, FR-2, FR-5). **Strong** is one named rule over the top name candidate, chosen on the stored text and committed with the settings (AC-5.1). **Ground truth** for tuning round 4 and the new corpus is committed as text before the re-score (AC-5.4). **Supersession** list gains spec 007 AC-4.2 and FR-3. **Done summary** is shown only in the response to Done and isn't stored (AC-3.5, AC-3.7). **Maintainer rulings:** the finish is recorded as tapped, including Nonfoil (AC-1.2); a scanner Undo that removes a lot ends the session's bulk-removal Undo (AC-4.1); messages use spec 004's wording plus the finish (AC-1.3, AC-4.1); a retired printing is refused (Error Scenarios). **Also:** a glossary, FR lines for reachability and reading, timing targets measured outside the gating suite, AC-7.3's reference, AC-2.3's tie-break, Undo on an ended sitting, Done with nothing left |
+| 1.1.1 | 2026-10-03 | The live sitting's pile is 35 prepared cards, not about 50 (Goals, AC-9.1) |
 
 ---
 
@@ -52,7 +53,7 @@ This feature turns the scanner into a tool for working through a stack of cards.
 - A photo picked from the library or the camera app is found, straightened and read, instead of being cut at the guide's fixed position.
 - The scanner can be reached from the main navigation and from the collection page.
 - The ranking is designed so a later art-matching result can join it as another kind of evidence.
-- Findings report the flow on the maintainer's iPhone, on about 50 cards the scanner has never seen. No pass threshold is set.
+- Findings report the flow on the maintainer's iPhone, on 35 cards the scanner has never seen. No pass threshold is set.
 
 ## Non-Goals
 
@@ -217,7 +218,7 @@ This feature turns the scanner into a tool for working through a stack of cards.
 
 **Acceptance criteria:**
 
-- [ ] **AC-9.1** Given a pile of about 50 English cards the maintainer owns, including foils, none of them among Phase 0's cards, the tuning cards or the new corpus of spec 007, listed in a manifest of spec 007's format (`file,set,number,foil[,era]`) with each card's finish, and ground truth built from it against the catalog When the maintainer scans each card once through the live flow on the iPhone, at the frozen settings (AC-6.7), and adds it Then the findings report:
+- [ ] **AC-9.1** Given a pile of 35 English cards the maintainer owns and has prepared, including any foils among them (the findings report how many), none of them among Phase 0's cards, the tuning cards or the new corpus of spec 007, listed in a manifest of spec 007's format (`file,set,number,foil[,era]`) with each card's finish, and ground truth built from it against the catalog When the maintainer scans each card once through the live flow on the iPhone, at the frozen settings (AC-6.7), and adds it Then the findings report:
   - how many cards ended in the sitting as the right printing and the right finish
   - how many needed a correction, by kind: a candidate other than the first, Other printings, Undo and re-add, or details edited
   - how many couldn't be added from the scanner at all
@@ -346,7 +347,7 @@ Decided while specifying (2026-10-03, maintainer):
 - Condition and price paid stay unspecified when adding. The copy merges into the matching lot.
 - A sitting lasts until "Done", across sign-out and devices. Opening the scanner resumes it.
 - The scanner is linked from the main navigation and the collection page.
-- The live sitting uses about 50 unseen cards the maintainer has at hand.
+- The live sitting uses 35 unseen cards the maintainer has prepared (first estimated at about 50).
 - Undo after the entry's lot was edited still removes one copy from that lot. It refuses only when the lot was removed or merged away (AC-4.4, AC-3.6).
 - "Done" shows a short summary with a link to the collection (AC-3.5).
 - After the spec review: the finish is recorded as tapped, including Nonfoil (AC-1.2); a scanner Undo that removes a lot ends the pending bulk-removal Undo (AC-4.1); messages use spec 004's wording plus the finish (AC-1.3, AC-4.1); a printing retired since the reading is refused (Error Scenarios).
