@@ -1,4 +1,4 @@
-<%# locals: (candidate:, reading:) %>
+<%# locals: (candidate:, reading:, key:, rank:) %>
 <% entry = candidate.entry %>
 <div class="c-tilecell c-scanner__candidate">
   <%= link_to catalog_entry_path(entry), class: "c-tile" do %>
@@ -18,4 +18,5 @@
     <span class="c-badge c-badge--warning"><%= render "icons/alert" %>Printing not confirmed</span>
   <% end %>
   <% if candidate.name? %><span class="c-scanner__evidence">Matched by its name</span><% end %>
+  <%= render "scanners/add_buttons", printing: entry, key:, finish_hint: reading.finish_hint, rank: %>
 </div>

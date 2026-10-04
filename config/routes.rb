@@ -23,10 +23,16 @@ Rails.application.routes.draw do
   end
   resource :more, only: :show
 
-  # The card scanner (spec 007): reachable by URL only until adding from the scanner ships.
+  # The card scanner (spec 007; spec 009 adds the sitting and Other printings, and links it from the navigation).
   resource :scanner, only: :show
   namespace :scanner do
     resources :readings, only: :create
+    resource :sitting, only: [] do
+      resources :entries, only: :create, module: :sittings do
+        resource :undo, only: :create, module: :entries
+      end
+      resource :ending, only: %i[new create], module: :sittings
+    end
 
     # Development-only measurement mode (spec 007 Story 5); every action answers 404 when it's off.
     resource :measurement, only: :show do

@@ -11,6 +11,7 @@
     <nav class="c-appbar__nav" aria-label="Main">
       <%= link_to "Collection", collection_path, "aria-current": ("page" if section == :collection) %>
       <%= link_to "Search", catalog_entries_path, "aria-current": ("page" if section == :search) %>
+      <%= link_to "Scan", scanner_path, "aria-current": ("page" if section == :scanner) %>
     </nav>
     <div class="c-appbar__actions">
       <% unless detail %>

@@ -34,7 +34,7 @@ RSpec.describe "Collection table", type: :request do
     own("Opt", quantity: 2)
     get collection_path(view: "table", q: "bolt")
     expect(response.body).to include("5 items · 2 unique", "3 of 5 items")
-    expect(page_html.at_css(".c-pagehead__actions a")["href"]).to eq(catalog_entries_path)
+    expect(page_html.at_css(".c-pagehead__actions a.c-btn--primary")["href"]).to eq(catalog_entries_path)
     expect(rows.size).to eq(1)
   end
 

@@ -2,6 +2,7 @@
   <nav class="c-tabbar" id="tabbar" aria-label="Main">
     <%= link_to collection_path, "aria-current": ("page" if section == :collection) do %><span class="c-tabbar__icon"><%= render "icons/collection" %></span>Collection<% end %>
     <%= link_to catalog_entries_path, "aria-current": ("page" if section == :search) do %><span class="c-tabbar__icon"><%= render "icons/search" %></span>Search<% end %>
+    <%= link_to scanner_path, "aria-current": ("page" if section == :scanner) do %><span class="c-tabbar__icon"><%= render "icons/scan" %></span>Scan<% end %>
     <%= link_to more_path do %><span class="c-tabbar__icon"><%= render "icons/more" %></span>More<% end %>
   </nav>
 <% end %>

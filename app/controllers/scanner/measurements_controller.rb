@@ -3,8 +3,10 @@
 class Scanner::MeasurementsController < ApplicationController
   include MeasurementMode
   include ScannerPage
+  include ScannerSitting
 
   def show
+    @sitting = sitting_locals
     @panel = panel_locals
   rescue Scanner::MeasurementRun::ManifestError => error
     @manifest_problem = error.message

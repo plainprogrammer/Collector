@@ -5,7 +5,7 @@ import { loadEngine, readStrips } from "scanner/recognition"
 
 // Turns a captured frame or a picked photo into what the card says (spec 007 Stories 2–4). It cuts the
 // strips, reads them on the device, sends only the text, and shows the Turbo Stream answer. One reading at
-// a time. Dispatches card-reader:read ({ nameText, collectorText, ms, strips }) for measurement mode.
+// a time. Dispatches card-reader:read ({ nameText, collectorText, ms, key, strips }) for measurement mode.
 const REASONS = {
   insecure: "The live camera needs this page to be served over HTTPS. You can use a photo instead.",
   denied: "The camera is blocked for this site. Allow it in your browser's settings, or use a photo instead.",
@@ -92,7 +92,7 @@ export default class extends Controller {
     this.say("Reading the card…")
     try {
       const strips = cropStrips(image, card)
-      const reading = await readStrips(this.enginePathValue, strips)
+      const reading = { ...(await readStrips(this.enginePathValue, strips)), key: readingKey() }
       if (!this.element.isConnected) return
       this.dispatch("read", { detail: { ...reading, strips } })
       this.lastReading = reading
@@ -109,11 +109,12 @@ export default class extends Controller {
     if (this.lastReading) this.send(this.lastReading)
   }
 
-  async send({ nameText, collectorText }) {
+  async send({ nameText, collectorText, key }) {
     this.failureTarget.hidden = true
     const body = new FormData()
     body.append("reading[name_text]", nameText)
     body.append("reading[collector_text]", collectorText)
+    body.append("reading[key]", key)
     let response
     try {
       response = await fetch(this.readingsUrlValue, { method: "POST", body, redirect: "manual",
@@ -150,4 +151,10 @@ export default class extends Controller {
   get camera() {
     return this.application.getControllerForElementAndIdentifier(this.element, "camera")
   }
+}
+
+// An opaque key for one reading (spec 009 AC-1.5): random, never derived from the text. getRandomValues also works where
+// the page isn't a secure context (the photo path over plain HTTP), unlike randomUUID.
+function readingKey() {
+  return Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, "0")).join("")
 }

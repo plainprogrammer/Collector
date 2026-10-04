@@ -1,0 +1,24 @@
+<%# locals: (sitting:, entries:) %>
+<%# The open sitting's adds, newest first: the 10 newest, the rest behind "Show all" (spec 009 AC-3.2). Always present,
+    so an add's Turbo Stream can replace it; hidden while there's no sitting (AC-3.7). %>
+<% if sitting %>
+  <section id="scanner_sitting" class="c-scanner__sitting" aria-labelledby="scanner-sitting-heading">
+    <div class="c-section__head">
+      <h2 class="c-section__title" id="scanner-sitting-heading">This sitting: <%= pluralize(entries.size, "card") %></h2>
+      <span class="c-section__actions"><%= link_to "Done", new_scanner_sitting_ending_path, class: "c-btn c-btn--secondary c-btn--sm" %></span>
+    </div>
+    <% if entries.empty? %>
+      <p class="c-empty">Everything added in this sitting was undone.</p>
+    <% else %>
+      <ul class="c-list"><%= render partial: "scanners/sitting_entry", collection: entries.first(Scanner::Sitting::SHOWN), as: :entry %></ul>
+      <% if entries.size > Scanner::Sitting::SHOWN %>
+        <details class="c-scanner__more">
+          <summary class="c-btn c-btn--ghost c-btn--sm">Show all <%= entries.size %></summary>
+          <ul class="c-list"><%= render partial: "scanners/sitting_entry", collection: entries.drop(Scanner::Sitting::SHOWN), as: :entry %></ul>
+        </details>
+      <% end %>
+    <% end %>
+  </section>
+<% else %>
+  <section id="scanner_sitting" hidden></section>
+<% end %>

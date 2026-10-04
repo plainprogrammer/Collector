@@ -39,10 +39,16 @@ RSpec.describe "Scanner page", type: :request do
       end
     end
 
-    it "isn't linked from any page (AC-1.7)" do
-      entry = create(:mtg_printing).entry
-      pages = [ collection_path, catalog_entries_path(q: entry.name), catalog_entry_path(entry), more_path, admin_users_path ]
-      expect(pages.map { get(it) && response.body }).to all(satisfy { !it.include?(%(href="#{scanner_path}")) })
+    it "is linked from the main navigation and the collection page, marked current on the scanner (AC-8.1, AC-8.2)", :aggregate_failures do
+      get collection_path
+      html = Nokogiri::HTML5(response.body)
+      expect(html.css(".c-appbar__nav a[href='#{scanner_path}']").map(&:text)).to eq([ "Scan" ])
+      expect(html.css(".c-tabbar a[href='#{scanner_path}']").map { it.text.strip }).to eq([ "Scan" ])
+      expect(html.css(".c-pagehead__actions a[href='#{scanner_path}']").map { it.text.strip }).to eq([ "Scan cards" ])
+      get scanner_path
+      html = Nokogiri::HTML5(response.body)
+      expect(html.css(".c-appbar__nav a[aria-current=page]").map(&:text)).to eq([ "Scan" ])
+      expect(html.css(".c-tabbar a[aria-current=page]").map { it.text.strip }).to eq([ "Scan" ])
     end
   end
 end

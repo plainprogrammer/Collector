@@ -27,6 +27,8 @@ RSpec.describe "Collection views", type: :system do
     page.execute_script("window.__prefetches = 0; document.addEventListener('turbo:before-prefetch', () => window.__prefetches++)")
     find(".c-appbar__nav a", text: "Search").hover
     expect(prefetches_after_half_a_second).to be > 0
+    find(".c-pagehead__actions a", text: "Add items").hover # beside the switch, so the pointer crosses no other link on its way
+    prefetches_after_half_a_second
     page.execute_script("window.__prefetches = 0")
     find(".c-seg button", text: "Table").hover
     expect(prefetches_after_half_a_second).to eq(0)

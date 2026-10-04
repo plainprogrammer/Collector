@@ -1,0 +1,18 @@
+<%# locals: (printing:, key:, finish_hint:, rank:) %>
+<%# One add button per finish the printing comes in; a single "Add" for one finish or none listed (spec 009 AC-1.1).
+    The foil marker read off the card marks its button's visible label and nothing more (AC-6.5); the accessible name
+    stays "Add ‹card› ‹SET · number› ‹finish›", so it never depends on how the separator was read. %>
+<% vocabulary = Catalog.collecting_for(printing.collectible_type) %>
+<% finishes = vocabulary.finishes_for(printing).presence || [ nil ] %>
+<div class="c-scanner__adds">
+  <% finishes.each do |finish| %>
+    <% name = finish && vocabulary.finish_label(finish) %>
+    <% hinted = finish.present? && finish == finish_hint %>
+    <% label = hinted ? "#{name} · read from the card" : (finishes.one? ? "Add" : name) %>
+    <%= button_to scanner_sitting_entries_path, params: { entry: { printing: printing.external_key, finish: finish.to_s, reading_key: key } },
+          class: "c-btn c-btn--secondary c-btn--sm", form: { class: "c-scanner__add", data: { scanner_event: "add", rank: } },
+          "aria-label": [ "Add", printing.name, set_number(printing), name ].compact.join(" ") do %>
+      <%= render "icons/plus" %><%= label %>
+    <% end %>
+  <% end %>
+</div>

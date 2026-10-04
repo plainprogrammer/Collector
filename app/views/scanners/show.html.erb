@@ -3,6 +3,6 @@
 <%= render "layouts/appbar", section: :scanner %>
 <main class="c-main c-page">
   <div class="c-pagehead"><div><h1 class="c-pagehead__title">Scan a card</h1></div></div>
-  <%= render "scanners/scanner" %>
+  <%= render "scanners/scanner", **@sitting %>
 </main>
 <%= render "layouts/tabbar", section: :scanner %>
