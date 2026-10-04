@@ -12,7 +12,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
-| 1.0.0 | 2026-10-03 | Initial draft |
+| 1.0.0 | 2026-10-03 | Initial draft. Open questions resolved by the maintainer: Undo after an edit (AC-4.4), the Done summary (AC-3.5) |
 
 ---
 
@@ -116,9 +116,9 @@ This feature turns the scanner into a tool for working through a stack of cards.
 - [ ] **AC-3.2** Given an open sitting When the scanner page is shown Then it lists the sitting's adds, newest first. Each entry shows the card's name, set · number, finish (or "—" when unspecified) and the time it was added, together with Undo and a link to the copy's details. A heading gives the sitting's count ("This sitting: 12 cards").
 - [ ] **AC-3.3** Given an open sitting with adds When the collector leaves the scanner, signs out and signs in again (on the same or another device), then opens the scanner Then the same sitting and its entries are shown, and further adds join it.
 - [ ] **AC-3.4** Given an entry's details link When the collector follows it Then it opens the copy's existing Edit copy page (spec 004) for the lot the add went into. Saving or cancelling there returns to the scanner, with the sitting still open.
-- [ ] **AC-3.5** Given an open sitting When the collector activates "Done" and confirms Then the sitting ends, its entries are no longer shown or undoable, and the added copies stay in the collection. The scanner then shows no list until the next add opens a new sitting.
+- [ ] **AC-3.5** Given an open sitting When the collector activates "Done" and confirms Then the sitting ends, its entries are no longer shown or undoable, and the added copies stay in the collection. The scanner shows a short summary in place of the list: "Added ‹n› cards in this sitting", with ‹n› the number of entries not undone, and a link to the collection. The summary disappears on the next add, which opens a new sitting.
 - [ ] **AC-3.6** Given the lot an entry's add went into has since been removed, or merged into another lot by an edit When the sitting's list is shown Then that entry still shows its card, set · number and finish, is marked "Changed in your collection", and offers neither Undo nor a details link.
-- [ ] **AC-3.7** Given no open sitting When the scanner is shown Then no sitting list or Done control is shown.
+- [ ] **AC-3.7** Given no open sitting When the scanner is shown (other than the summary right after Done, AC-3.5) Then no sitting list or Done control is shown.
 - [ ] **AC-3.8** Given two accounts When either account views its scanner Then it sees only its own sitting. A request naming another account's sitting entry (Undo or details) answers 404 and changes nothing.
 
 ### Story 4: Undo an add
@@ -132,7 +132,7 @@ This feature turns the scanner into a tool for working through a stack of cards.
 - [ ] **AC-4.1** Given an entry whose lot still exists When the collector activates its Undo Then one copy is removed from that lot (the lot is removed if that was its last copy), the entry leaves the list, and the page announces "Removed 1 × ‹name› (‹set · number›, ‹finish›)". This happens without leaving the scanner or a full page load.
 - [ ] **AC-4.2** Given an entry has already been undone When an Undo request for it arrives again (a replay or a second tab) Then nothing changes and the app answers 422. The page shows that the entry was already undone.
 - [ ] **AC-4.3** Given two entries in the sitting added copies to the same lot When both are undone Then two copies are removed in total, one per entry.
-- [ ] **AC-4.4** Given an entry whose lot was edited since the add (condition, price paid, finish or quantity changed) but not removed or merged When its Undo is activated Then the behaviour follows Open Question 1's resolution. [NEEDS CLARIFICATION: see Open Questions 1]
+- [ ] **AC-4.4** Given an entry whose lot was edited since the add (condition, price paid, finish or quantity changed), but not removed or merged into another lot When its Undo is activated Then one copy is removed from that lot as in AC-4.1, and the lot is removed if that was its last copy. Undo refuses only when the lot was removed or merged away (AC-3.6). Then it answers 422, and the page says the copy changed in the collection.
 
 ### Story 5: Ranking when the name and the collector line disagree
 
@@ -318,8 +318,7 @@ This feature turns the scanner into a tool for working through a stack of cards.
 
 ## Open Questions
 
-1. [NEEDS CLARIFICATION: Undo after the entry's lot was edited (AC-4.4). **Recommendation:** Undo still removes one copy from that lot, since the copy is still in it, and refuses only when the lot was removed or merged away (AC-3.6). The alternative is to refuse whenever the lot changed after the add, which blocks the common "add, fix the condition, then notice it's the wrong card" path.]
-2. [NEEDS CLARIFICATION: what "Done" shows. **Recommendation:** after the confirmation, a short summary on the scanner ("Added 47 cards in this sitting", with a link to the collection) that disappears on the next add. The alternative is to end the sitting with only a status message.]
+None.
 
 Decided while specifying (2026-10-03, maintainer):
 
@@ -328,6 +327,9 @@ Decided while specifying (2026-10-03, maintainer):
 - A sitting lasts until "Done", across sign-out and devices. Opening the scanner resumes it.
 - The scanner is linked from the main navigation and the collection page.
 - The live sitting uses about 50 unseen cards the maintainer has at hand.
+- Undo after the entry's lot was edited still removes one copy from that lot. It refuses only when the lot was removed or merged away (AC-4.4, AC-3.6).
+- "Done" shows a short summary with a link to the collection (AC-3.5).
+- The performance targets in the Non-Functional Requirements, 20 printings at a time in Other printings, ended sittings discarded and left out of the export, and one copy per reading were proposed while specifying and accepted.
 - Carried from spec 008's PRD and not re-asked: the stack-sitting flow, one add button per finish, Other printings in place with read set and number first, a stored list with Undo and details, the strong-name ranking rule, the photo picker kept as the fallback, and the reading refinements.
 
 ## Out of Scope (Future Considerations)
