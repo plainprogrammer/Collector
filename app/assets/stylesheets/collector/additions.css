@@ -163,3 +163,4 @@
 .c-scanner__more > summary::-webkit-details-marker { display:none; }
 .c-scanner__printings .c-list li { flex-wrap:wrap; }
 .c-scanner__printings .c-list__end { font-family:var(--font-sans); }
+.c-scanner__hint { margin:0; font:400 14px/20px var(--font-sans); color:var(--ink-muted); }

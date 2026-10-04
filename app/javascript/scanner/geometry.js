@@ -9,6 +9,9 @@ export const STRIPS = {
   name: { x: 0.05, y: 0.055, w: 0.75, h: 0.11 },
   collector: { x: 0.03, y: 0.89, w: 0.55, h: 0.11 }
 }
+// Strips for a picture the detector straightened (spec 009 AC-6.6): there the card exactly fills the guide, unlike a live
+// frame, where it sits a little inside. Starts equal to STRIPS; tuned on the spike's development photos.
+export const DETECTED_STRIPS = { name: { ...STRIPS.name }, collector: { ...STRIPS.collector } }
 // Strips are drawn at this many times their size before OCR. A tuning setting, frozen before the measured run (AC-6.1).
 export const STRIP_SCALE = 2
 // Strips whose dark pixel rows are inverted before OCR. A tuning setting, frozen before the measured run (AC-6.1).
@@ -34,8 +37,8 @@ export function guideInFrame(frameWidth, frameHeight, viewWidth, viewHeight) {
   return { x: offsetX + guide.x / scale, y: offsetY + guide.y / scale, width: guide.width / scale, height: guide.height / scale }
 }
 
-export function cropStrips(image, card) {
-  return Object.fromEntries(Object.entries(STRIPS).map(([ key, strip ]) => {
+export function cropStrips(image, card, layout = STRIPS) {
+  return Object.fromEntries(Object.entries(layout).map(([ key, strip ]) => {
     const width = Math.round(card.width * strip.w)
     const height = Math.round(card.height * strip.h)
     const canvas = document.createElement("canvas")

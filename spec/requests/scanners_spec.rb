@@ -31,6 +31,12 @@ RSpec.describe "Scanner page", type: :request do
       expect(csp["script-src"].last).not_to eq("'nonce-#{nonce}'")
     end
 
+    it "serves the detector from this app under the unchanged policy (AC-7.5)", :aggregate_failures do
+      get scanner_path
+      expect(response.body).to match(%r{"scanner/detector": "/assets/scanner/detector-[0-9a-f]+\.js"})
+      expect(csp["script-src"].first(2)).to eq([ "'self'", "'wasm-unsafe-eval'" ])
+    end
+
     it "keeps the policy off every other page and the engine with it (AC-2.3)", :aggregate_failures do
       [ collection_path, catalog_entries_path(q: "bolt"), more_path ].each do |path|
         get path

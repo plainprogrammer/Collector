@@ -17,6 +17,7 @@
     <label class="c-btn c-btn--ghost c-scanner__photo">Use a photo<input type="file" accept="image/*" class="c-sr" data-card-reader-target="picker" data-action="change->card-reader#pick" disabled></label>
     <button type="button" class="c-btn c-btn--secondary" data-card-reader-target="engineRetry" data-action="card-reader#retryEngine" hidden>Load the scanner again</button>
   </div>
+  <p class="c-scanner__hint">Using a photo? Take the whole card, upright, filling most of the photo as the live guide does, on a plain background.</p>
   <div class="c-scanner__failure" data-card-reader-target="failure" hidden>
     <p class="c-status__message c-status__message--alert" data-card-reader-target="failureMessage"></p>
     <dl class="c-scanner__read">
