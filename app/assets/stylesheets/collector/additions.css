@@ -161,3 +161,5 @@
 .c-scanner__entry-actions { display:flex; gap:var(--space-2); font-family:var(--font-sans); }
 .c-scanner__more > summary { list-style:none; width:max-content; margin-top:var(--space-2); }
 .c-scanner__more > summary::-webkit-details-marker { display:none; }
+.c-scanner__printings .c-list li { flex-wrap:wrap; }
+.c-scanner__printings .c-list__end { font-family:var(--font-sans); }

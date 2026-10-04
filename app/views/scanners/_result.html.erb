@@ -25,6 +25,7 @@
           <%= render "scanners/candidate", candidate:, reading:, key:, rank: %>
         <% end %>
       </div>
+      <%= turbo_frame_tag "scanner_printings" %>
     <% end %>
   </section>
 <% end %>

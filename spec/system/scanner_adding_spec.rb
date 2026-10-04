@@ -74,4 +74,25 @@ RSpec.describe "Adding from the scanner", type: :system do
     expect(page).to have_css("#{foil_button}:not([disabled])")
     expect(page.evaluate_script("window.__marker")).to eq("still here")
   end
+
+  it "opens Other printings in place and adds the one chosen (AC-2.2, AC-2.6)", :aggregate_failures do
+    m10 = create(:catalog_set, code: "m10", name: "Magic 2010", released_on: Date.new(2009, 7, 17))
+    older = create(:mtg_printing, finishes: %w[nonfoil foil], entry: create(:catalog_entry, identity: Catalog::Identity.sole, name: "Lightning Bolt", set: m10, number: "146")).entry
+    read_card
+    page.execute_script("window.__marker = 'still here'")
+    click_on "Other printings"
+    expect(page).to have_css("#status", text: "Other printings of Lightning Bolt are below.")
+    within("turbo-frame#scanner_printings") { find("button[aria-label='Add Lightning Bolt M10 · 146 Nonfoil']").click }
+    expect(page).to have_css("#status", text: "Added 1 × Lightning Bolt (M10 · 146, Nonfoil) to your collection.")
+    expect(page.evaluate_script("window.__marker")).to eq("still here")
+    expect(user.account.scanner_sitting.entries.sole.printing).to eq(older)
+  end
+
+  it "says so in place when Other printings can't load (Error Scenarios)", :aggregate_failures, :server_error do
+    read_card
+    allow(Scanner::OtherPrintings).to receive(:new).and_raise(StandardError, "boom")
+    click_on "Other printings"
+    expect(page).to have_css("turbo-frame#scanner_printings", text: "Other printings couldn't be loaded.")
+    expect(page).to have_css(".c-scanner__candidate", text: "Lightning Bolt")
+  end
 end

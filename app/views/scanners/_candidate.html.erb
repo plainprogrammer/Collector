@@ -19,4 +19,6 @@
   <% end %>
   <% if candidate.name? %><span class="c-scanner__evidence">Matched by its name</span><% end %>
   <%= render "scanners/add_buttons", printing: entry, key:, finish_hint: reading.finish_hint, rank: %>
+  <%= link_to "Other printings", scanner_printings_path(card: entry.identity.external_key, key:, set: reading.collector_line.set_code,
+        number: reading.collector_line.number, finish_hint: reading.finish_hint), class: "c-btn c-btn--ghost c-btn--sm", data: { turbo_frame: "scanner_printings" } %>
 </div>

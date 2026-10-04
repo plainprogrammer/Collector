@@ -20,11 +20,17 @@ export default class extends Controller {
     if (success === false) this.buttons.forEach((button) => { button.disabled = false })
   }
 
-  // A server error's HTML page would otherwise replace the scanner, camera and all.
+  // A server error's HTML page would otherwise replace the scanner, camera and all. For Other printings, a server error
+  // whose body isn't HTML would otherwise leave the frame silently empty.
   inspect(event) {
-    if (!event.target.matches?.(".c-scanner__add") || !event.detail.fetchResponse.serverError) return
-    event.preventDefault()
-    this.announce(ADD_FAILED, { alert: true })
+    if (!event.detail.fetchResponse.serverError) return
+    if (event.target.matches?.(".c-scanner__add")) {
+      event.preventDefault()
+      this.announce(ADD_FAILED, { alert: true })
+    } else if (event.target.id === "scanner_printings") {
+      event.preventDefault()
+      this.printingsFailed(event.target)
+    }
   }
 
   printingsMissing(event) {

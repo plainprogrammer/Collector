@@ -27,6 +27,7 @@ Rails.application.routes.draw do
   resource :scanner, only: :show
   namespace :scanner do
     resources :readings, only: :create
+    resources :printings, only: :index
     resource :sitting, only: [] do
       resources :entries, only: :create, module: :sittings do
         resource :undo, only: :create, module: :entries

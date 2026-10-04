@@ -1,0 +1,36 @@
+# A card's English printings for "Other printings" on the scanner (spec 009 Story 2), retired ones left out. Those matching
+# what was read come first (set and number, then set, then number), each group in the catalog's newest-first order.
+class Scanner::OtherPrintings
+  SHOWN = 20
+
+  def self.plain_number(number) = number.to_s.sub(/\A0+(?=\d)/, "").downcase.presence
+
+  def initialize(identity:, set_code: nil, number: nil)
+    @identity = identity
+    @set_code = set_code.to_s.downcase.presence
+    @number = self.class.plain_number(number)
+  end
+
+  def entries
+    @entries ||= begin
+      all = Catalog::Entry.searchable.where(catalog_identity_id: @identity.id, language: "en").newest_first.includes(:set).to_a
+      Catalog::Entry.preload_extensions(all)
+      all.each_with_index.sort_by { |entry, index| [ group(entry), index ] }.map(&:first)
+    end
+  end
+
+  def shown = entries.first(SHOWN)
+
+  def rest = entries.drop(SHOWN)
+
+  private
+    def group(entry)
+      set = @set_code && entry.set.code.casecmp?(@set_code)
+      number = @number && self.class.plain_number(entry.number) == @number
+      if set && number then 0
+      elsif set then 1
+      elsif number then 2
+      else 3
+      end
+    end
+end

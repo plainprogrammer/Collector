@@ -1,0 +1,6 @@
+<%# locals: (printing:, key:, finish_hint:) %>
+<li>
+  <span class="is-data"><%= set_number(printing) %></span>
+  <span class="c-list__meta"><%= printing.set.name %> · <%= printing.released_on ? l(printing.released_on, format: :long) : "Release date unknown" %></span>
+  <span class="c-list__end"><%= render "scanners/add_buttons", printing:, key:, finish_hint:, rank: "other" %></span>
+</li>

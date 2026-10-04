@@ -57,6 +57,13 @@ RSpec.describe "Scanner readings", type: :request do
       expect(Nokogiri::HTML5(response.body).css("form.c-scanner__add button").map { it.text.strip }).to eq([ "Add" ])
     end
 
+    it "offers Other printings on every candidate, with what was read (AC-2.1)", :aggregate_failures do
+      read("Lightning Bolt", "R 0123\nMOM • EN")
+      link = Nokogiri::HTML5(response.body).at_css("a[data-turbo-frame=scanner_printings]")
+      expect(link.text).to eq("Other printings")
+      expect(Rack::Utils.parse_query(URI(link["href"]).query)).to include("card" => bolt.identity.external_key, "key" => key, "set" => "MOM", "number" => "123")
+    end
+
     it "marks the Foil button when the separator reads as the foil marker, adding nothing by itself (AC-6.5)", :aggregate_failures do
       read("Lightning Bolt", "R 0123\nMOM ★ EN")
       labels = Nokogiri::HTML5(response.body).css("form.c-scanner__add button").map { it.text.strip }
