@@ -50,5 +50,29 @@ RSpec.describe Collector::ScannerFindings do
       expect(truth["photos"].sole).to include("file" => "IMG_1.jpeg", "name" => "Lightning Bolt", "name_bar" => "Lightning Bolt", "foil" => true, "era" => "M15–ONE")
       expect(truth["errors"].sole).to include("file" => "IMG_2.jpeg", "problem" => "none")
     end
+
+    it "records each card's finish in ground truth, from a finish column or the foil column (spec 009 AC-9.1)" do
+      truth = described_class.ground_truth("file,set,number,foil,era,finish\nIMG_1.jpeg,mom,123,yes,,\nIMG_3.jpeg,mom,123,no,,etched\n")
+      expect(truth["photos"].map { it["finish"] }).to eq(%w[foil etched])
+    end
+
+    it "lists cards already used by earlier corpora (spec 009 AC-9.1)" do
+      fresh = [ { "file" => "S001", "name" => "Lightning Bolt", "external_key" => "x" }, { "file" => "S002", "name" => "Opt", "external_key" => "y" } ]
+      earlier = { "Phase 0" => [ { "file" => "IMG_1.jpeg", "name" => "Lightning Bolt", "external_key" => "z" } ] }
+      expect(described_class.overlaps(fresh, earlier)).to eq([ "S001 Lightning Bolt is Phase 0 IMG_1.jpeg (another printing)" ])
+    end
+  end
+
+  describe ".headline (spec 009 tuning)" do
+    it "gives right first, top 3, exact printing by foil, name read and outlines found, each with its sample size" do
+      records = [
+        { "name" => "A", "name_bar" => "A", "name_text" => "A", "final_candidates" => %w[A], "era" => "MOM+", "foil" => true, "external_key" => "k1",
+          "lookup" => { "status" => "one", "external_keys" => [ "k1" ] }, "outline" => "found" },
+        { "name" => "B", "name_bar" => "B", "name_text" => "x", "final_candidates" => %w[C B], "era" => "pre-M15", "foil" => false, "external_key" => "k2",
+          "lookup" => { "status" => "none", "external_keys" => [] }, "outline" => "not_found" }
+      ]
+      expect(described_class.headline(records)).to eq("right card first 1/2 (50.0%); top 3 2/2 (100.0%); exact printing 1/1 (100.0%) " \
+        "(foils 1/1 (100.0%), non-foils 0/0 (n/a)); name read 1/2 (50.0%); outline found 1/2 (50.0%)")
+    end
   end
 end

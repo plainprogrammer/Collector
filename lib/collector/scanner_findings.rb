@@ -67,11 +67,53 @@ module Collector
         started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         reading = MTG::Reading.new(name_text: result["name_text"].to_s, collector_text: result["collector_text"].to_s).resolve
         lookup_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started) * 1000).round(2)
-        truth[result["file"]].merge(result.slice("file", "name_text", "collector_text", "ms", "user_agent", "captured_at"),
+        truth[result["file"]].merge(result.slice("file", "name_text", "collector_text", "ms", "user_agent", "captured_at", "outline", "detect_ms", "warp_ms"),
           "parsed" => reading.collector_line.to_h.to_h { |key, value| [ key.to_s, value.is_a?(Symbol) ? value.to_s : value ] },
           "lookup" => { "status" => LOOKUP_STATUSES.fetch(reading.collector_status), "external_keys" => reading.collector_entries.map(&:external_key) },
           "lookup_ms" => lookup_ms, "name_candidates" => identity_names(reading.name_candidates.map(&:identity_id)),
           "final_candidates" => reading.candidates.map { it.entry.name })
+      end
+    end
+
+    # One line of the rates spec 009's tuning compares (AC-6.2–AC-6.4, AC-6.6), each with its sample size.
+    def headline(records)
+      set_line = records.select { SET_LINE_ERAS.include?(it["era"]) }
+      foils, plain = set_line.partition { it["foil"] }
+      found = records.select { it.key?("outline") }
+      [ "right card first #{rate(records) { in_top?(it, "final_candidates", 1) }}", "top 3 #{rate(records) { in_top?(it, "final_candidates", 3) }}",
+        "exact printing #{rate(set_line) { printing_identified?(it) }} (foils #{rate(foils) { printing_identified?(it) }}, " \
+        "non-foils #{rate(plain) { printing_identified?(it) }})", "name read #{rate(records) { name_read?(it) }}",
+        ("outline found #{rate(found) { it["outline"] == "found" }}" if found.any?) ].compact.join("; ")
+    end
+
+    def rate(rows, &) = Rate.new(hits: rows.count(&), total: rows.size)
+
+    # [gained, lost]: files whose raw name strip read the name in one run and not in the other (AC-6.4).
+    def name_read_changes(before, after)
+      was = before.to_h { [ it["file"], name_read?(it) ] }
+      now = after.to_h { [ it["file"], name_read?(it) ] }
+      [ now.select { |file, read| read && !was[file] }.keys, now.select { |file, read| !read && was[file] }.keys ]
+    end
+
+    # Spec 009 AC-6.5: the separator read between set code and language, tallied by the card's real finish.
+    def foil_markers(results, truth)
+      known = Catalog::Set.where(collectible_type: "mtg").pluck(:code).to_set(&:upcase)
+      results.filter_map do |result|
+        next unless (record = truth[result["file"]])
+
+        line = MTG::CollectorLine.set_line(result["collector_text"].to_s.unicode_normalize(:nfkc).upcase, known)
+        [ record["foil"] ? "foil" : "non-foil", line ? line[:marker].to_s.presence || "(none)" : "(no set line)" ]
+      end.tally
+    end
+
+    # Spec 009 AC-9.1: the live sitting's cards that an earlier corpus already used, by card name.
+    def overlaps(fresh, earlier)
+      fresh.flat_map do |card|
+        earlier.flat_map do |label, photos|
+          photos.select { it["name"] == card["name"] }.map do |old|
+            "#{card["file"]} #{card["name"]} is #{label} #{old["file"]} (#{old["external_key"] == card["external_key"] ? "the same printing" : "another printing"})"
+          end
+        end
       end
     end
 
@@ -99,6 +141,7 @@ module Collector
       { "file" => row["file"], "name" => entry.name, "name_bar" => printing.faces.first.fetch("name"), "set_code" => entry.set.code,
         "collector_number" => entry.number, "external_key" => entry.external_key,
         "era" => row["era"].presence || era_for(entry.released_on || entry.set.released_on), "foil" => row["foil"].to_s.casecmp?("yes"),
+        "finish" => row["finish"].presence || (row["foil"].to_s.casecmp?("yes") ? "foil" : "nonfoil"),
         "borderless_or_showcase" => printing.border_color == "borderless" || printing.variant_tags.include?("showcase") }
     end
 

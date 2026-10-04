@@ -4,8 +4,9 @@
 class Collector::ScannerFindings::Report
   FIXTURES = Rails.root.join("spec/fixtures/card_scanner")
 
-  def initialize(run:, ground_truth: FIXTURES.join("ground_truth.json"), output: FIXTURES, label: "Phase 1 live", prefix: "phase1")
+  def initialize(run:, ground_truth: FIXTURES.join("ground_truth.json"), output: FIXTURES, label: "Phase 1 live", prefix: "phase1", format_version: 2)
     @run = run
+    @format_version = format_version
     @label = label
     @prefix = prefix
     @truth = JSON.parse(Pathname(ground_truth).expand_path.read).fetch("photos").to_h { [ it["file"], it ] }
@@ -16,9 +17,9 @@ class Collector::ScannerFindings::Report
 
   # The scored run as text-only fixtures beside Phase 0's, keyed by manifest file (AC-6.6).
   def write_fixtures!
-    @output.join("#{@prefix}_ocr_results.json").write(JSON.pretty_generate("format_version" => 2, "run" => @label,
-      "results" => live.map { it.slice("file", "name_text", "collector_text", "ms", "user_agent", "captured_at", "parsed", "lookup") }))
-    @output.join("#{@prefix}_name_matches.json").write(JSON.pretty_generate("format_version" => 2, "run" => @label,
+    @output.join("#{@prefix}_ocr_results.json").write(JSON.pretty_generate("format_version" => @format_version, "run" => @label,
+      "results" => live.map { it.slice("file", "name_text", "collector_text", "ms", "user_agent", "captured_at", "parsed", "lookup", *(@format_version >= 3 ? %w[outline detect_ms warp_ms] : [])) }))
+    @output.join("#{@prefix}_name_matches.json").write(JSON.pretty_generate("format_version" => @format_version, "run" => @label,
       "matches" => live.map { it.slice("file", "lookup_ms", "name_candidates", "final_candidates").merge("query" => it["name_text"]) }))
   end
 
@@ -62,7 +63,16 @@ class Collector::ScannerFindings::Report
       lookups = live.map { it["lookup_ms"] }
       "Recognition on the device: median #{findings.percentile(ms, 50)} ms, slowest #{ms.max} ms (n=#{ms.size}). " \
         "Candidate lookup on this machine: median #{findings.percentile(lookups, 50)} ms, p95 #{findings.percentile(lookups, 95)} ms (n=#{lookups.size}). " \
-        "Devices: #{live.map { it["user_agent"] }.tally.map { |agent, count| "#{agent} (#{count})" }.join("; ")}."
+        "#{detection_timing}Devices: #{live.map { it["user_agent"] }.tally.map { |agent, count| "#{agent} (#{count})" }.join("; ")}."
+    end
+
+    def detection_timing
+      detect = live.filter_map { it["detect_ms"] }
+      warp = live.filter_map { it["warp_ms"] }
+      return "" if detect.empty?
+
+      "Detection on the device: median #{findings.percentile(detect, 50)} ms, slowest #{detect.max} ms (n=#{detect.size}); straightening: " \
+        "median #{findings.percentile(warp, 50)} ms, slowest #{warp.max || "n/a"} ms (n=#{warp.size}). "
     end
 
     def coverage
