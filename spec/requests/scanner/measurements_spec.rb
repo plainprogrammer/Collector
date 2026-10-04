@@ -89,6 +89,13 @@ RSpec.describe "Scanner measurement mode", type: :request do
     expect(response).to have_http_status(:not_found)
   end
 
+  it "tells the replay page to re-apply spec 009's refinements only when asked (AC-6.2, AC-6.3)", :aggregate_failures do
+    get scanner_measurement_replay_path(label: "p9-a", refine: "1")
+    expect(response.body).to include('data-replay-refine-value="true"')
+    get scanner_measurement_replay_path(label: "p9-a")
+    expect(response.body).to include('data-replay-refine-value="false"')
+  end
+
   it "serves a manifest row's photo to this machine only, for the photo replay", :aggregate_failures do
     jpeg = "\xFF\xD8\xFF\xE0photo".b
     corpus.join("IMG_1.jpeg").binwrite(jpeg)

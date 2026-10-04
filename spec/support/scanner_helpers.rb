@@ -88,6 +88,28 @@ module ScannerHelpers
     JS
   end
 
+  # Runs the page's refineStrip on fresh 40×10 strips (20 grey with a 200 block): the name strip with invertBelow 128, the
+  # collector strip binarized at twice the size (spec 009 AC-6.2, AC-6.3).
+  def refine_synthetic_strips
+    page.evaluate_async_script(<<~JS)
+      const done = arguments[0]
+      #{MODULES_JS}
+      window.__modules.then(({ geometry }) => {
+        const strip = () => {
+          const canvas = Object.assign(document.createElement("canvas"), { width: 40, height: 10 })
+          const context = canvas.getContext("2d")
+          context.fillStyle = "rgb(20,20,20)"; context.fillRect(0, 0, 40, 10)
+          context.fillStyle = "rgb(200,200,200)"; context.fillRect(5, 3, 10, 4)
+          return canvas
+        }
+        const inverted = geometry.refineStrip("name", strip(), { invertBelow: 128 })
+        const flat = geometry.refineStrip("collector", strip(), { binarize: true, scale: 2 })
+        const pixel = (canvas, x, y) => canvas.getContext("2d").getImageData(x, y, 1, 1).data[0]
+        done({ background: pixel(inverted, 0, 0), text: pixel(inverted, 6, 4), size: [ flat.width, flat.height ], levels: [ pixel(flat, 0, 0), pixel(flat, 12, 8) ] })
+      })
+    JS
+  end
+
   # Picks a photo of a synthetic card drawn anywhere in it (or none), so the detector rather than the guide has to find it.
   # noise is detect_synthetic's: a flat photo gives the detector no real edge strengths to threshold on.
   def pick_photo(card: { x: 40, y: 360, width: 859, height: 1200 }, width: 1200, height: 1600, name: "Lightning Bolt", lines: [ "R 0123", "MOM • EN" ], noise: 0)

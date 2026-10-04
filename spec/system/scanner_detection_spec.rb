@@ -55,4 +55,8 @@ RSpec.describe "Detection on the scanner's photo path", type: :system do
   it "tells the collector how to take a photo (AC-7.4)" do
     expect(page).to have_text("Using a photo? Take the whole card, upright, filling most of the photo as the live guide does, on a plain background.")
   end
+
+  it "inverts a mostly dark name strip and binarizes a collector strip when told to (AC-6.2, AC-6.3)" do
+    expect(refine_synthetic_strips).to include("background" => 235, "text" => 55, "size" => [ 80, 20 ], "levels" => [ 0, 255 ])
+  end
 end

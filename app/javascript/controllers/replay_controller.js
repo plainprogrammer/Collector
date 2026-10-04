@@ -1,11 +1,12 @@
 import { Controller } from "@hotwired/stimulus"
 import { readStrips } from "scanner/recognition"
+import { refineStrip } from "scanner/geometry"
 
 // Replays a measured run's stored strips through the page's own recognition code (spec 007 AC-5.6), then
 // stores what it read. script/scanner/replay.rb drives it in headless Firefox and waits on window.__replay.
 export default class extends Controller {
   static targets = [ "status" ]
-  static values = { enginePath: String, files: Array, stripUrl: String, resultsUrl: String, label: String }
+  static values = { enginePath: String, files: Array, stripUrl: String, resultsUrl: String, label: String, refine: Boolean }
 
   async connect() {
     window.__replay = { done: false, error: null, count: 0 }
@@ -13,6 +14,7 @@ export default class extends Controller {
       const results = []
       for (const file of this.filesValue) {
         const strips = { name: await this.strip(file, "name"), collector: await this.strip(file, "collector") }
+        if (this.refineValue) Object.keys(strips).forEach((key) => { strips[key] = refineStrip(key, strips[key]) })
         const { nameText, collectorText } = await readStrips(this.enginePathValue, strips)
         results.push({ file, name_text: nameText, collector_text: collectorText })
         window.__replay.count = results.length
