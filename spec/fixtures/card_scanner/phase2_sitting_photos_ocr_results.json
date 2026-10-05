@@ -1,0 +1,228 @@
+{
+  "format_version": 3,
+  "run": "Spec 009 phone photos",
+  "results": [
+    {
+      "file": "IMG_6806.jpeg",
+      "name_text": "raven ramiliar\r\n\\ | : Q Ne ae / ; . He . : i : ha",
+      "collector_text": "| DOLLOIIl O1 yOUul 11DId4al'y 111 all\r\nmma",
+      "ms": 320,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T01:09:55Z",
+      "parsed": {
+        "set_code": "MMA",
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      },
+      "outline": "found",
+      "detect_ms": 126,
+      "warp_ms": 32
+    },
+    {
+      "file": "IMG_6807.jpeg",
+      "name_text": "MY 3 5 A \" y § ke sche dd ‘. he. RAE Rrsetlp eS 8 0 NG A MI BANA AIA tt .\r\nhi § a - \\ or a : A LL SE i ' \"i 5 & 48 ] #'\r\n4 | pop AERO nile Ch 5 J AVE yl\r\nRE I af a> FE BY 2a 0 3 a iy AJ ; 4\r\nRa L§ <¥ A Rl #5 | OU —y 2 3 4 eWwWo be v W\r\nx i { A Ly el Ra a Lp el fe. C5 7 i i\r\nSyeb SEIN Rte AR MT dae BC Tre a id\r\n\" TEE He et pA Fa IF PORT con II holy J Aha .\r\nhas; Na, Sk PRENE OR INA ly hi enti 7\r\nood H ; TO BE ee REET Ty col 0 tH\r\nSEE. hp RECS EY SERIA\r\nNER LIRA | se RET nt a\r\n4 Ta be i ha oii Hie She Sy il wg a tig Fh Lak\r\nLi HR Bt EL ote oo el NE Wh 1",
+      "collector_text": "leh Tain of IRR, SUNS a\r\nlong as seven or more c\r\nyour graveyard.)",
+      "ms": 1374,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T01:10:21Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      },
+      "outline": "found",
+      "detect_ms": 102,
+      "warp_ms": 33
+    },
+    {
+      "file": "IMG_6808.jpeg",
+      "name_text": "( Plains",
+      "collector_text": "Y",
+      "ms": 71,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T01:10:44Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      },
+      "outline": "found",
+      "detect_ms": 104,
+      "warp_ms": 28
+    },
+    {
+      "file": "IMG_6809.jpeg",
+      "name_text": "oporiagon vircle. gg",
+      "collector_text": "AFR + EN % Chris CoLp",
+      "ms": 138,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T01:11:09Z",
+      "parsed": {
+        "set_code": "AFR",
+        "number": null,
+        "language": "en",
+        "foil": false,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      },
+      "outline": "found",
+      "detect_ms": 97,
+      "warp_ms": 27
+    },
+    {
+      "file": "IMG_6810.jpeg",
+      "name_text": "| 1ranquil Cove",
+      "collector_text": "b e: Add # or ¢é to yo",
+      "ms": 107,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T01:11:38Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      },
+      "outline": "found",
+      "detect_ms": 101,
+      "warp_ms": 31
+    },
+    {
+      "file": "IMG_6811.jpeg",
+      "name_text": "gt Sian Lanes, AM sta Cia Ee a d\r\n: PN Tet Nera RES /\r\n§ if SER SUE de 95 i’\r\nAS A a ET ERR Ve FEE\r\n\"de ee NY BRR ee\r\n; a HATE ae Ae iB Ee\r\n- i i: ER i, it a EE i\r\n- : EJ FT el JE JES ee SR\r\n/ Tg A i ei RE Re EER rR er er",
+      "collector_text": "Toe BIN FOAM BURLEY",
+      "ms": 945,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T01:12:21Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      },
+      "outline": "found",
+      "detect_ms": 101,
+      "warp_ms": 28
+    },
+    {
+      "file": "IMG_6812.jpeg",
+      "name_text": "Qa) Extus, Oriq Overlord 1 &",
+      "collector_text": "149/275 M Story Spotlight vali\r\nSTX + EN ¥% CHASE STONE",
+      "ms": 157,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T01:12:49Z",
+      "parsed": {
+        "set_code": "STX",
+        "number": "149",
+        "language": "en",
+        "foil": false,
+        "format": "slash"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "ba09360a-067e-48a5-bdc5-a19fd066a785"
+        ]
+      },
+      "outline": "found",
+      "detect_ms": 101,
+      "warp_ms": 30
+    },
+    {
+      "file": "IMG_6813.jpeg",
+      "name_text": "\\ sees A EG | a sempre a if remem. oer TT\r\n\r\nF Sling oh sy eT Em of AT : ma wkd\r\nFast ; Rh et a A ALE rl ed bd Li ddl iti treme ets pee\r\n\r\nARR Woo : ;\r\n\r\noc .\r\n\r\n& Odric, Blood-Cursed oe\r\n\"B .. 4 Bi do RAL BIN nOK 1 ab TF Regd A, Vidi Jj\r\nSRE TR TE OR ME SPL L553 JOR , S\r\n\r\nBRN lee A oy py poisson : \\ gg",
+      "collector_text": "I ability only once.)\r\n1d oly\r\nVOW REN We ANNA PAYLELYA",
+      "ms": 783,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T01:13:04Z",
+      "parsed": {
+        "set_code": "VOW",
+        "number": null,
+        "language": "en",
+        "foil": false,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      },
+      "outline": "found",
+      "detect_ms": 105,
+      "warp_ms": 35
+    },
+    {
+      "file": "IMG_6814.jpeg",
+      "name_text": "Jpsiaian rireneart\r\nBF a A Wy",
+      "collector_text": "at’ Nl ATVI VY A WT WT VN WYE WF VWYA Ba\r\nBec Raymond Swanland® 5\r\nRa 0 1005 2000 Sv fbi ER 1 10",
+      "ms": 404,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T01:13:20Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      },
+      "outline": "found",
+      "detect_ms": 114,
+      "warp_ms": 28
+    },
+    {
+      "file": "IMG_6815.jpeg",
+      "name_text": "he Ln © EN TRC NP TR Ta ad bh Ty LC\r\nNR : Ee BLE BR RS NEE CC Ne\r\nat Rt i er BOR RL BT ks in a file 1 i\r\nERE 3 RES I A ge TL : eA) — Ww EER\r\nBR. 3 Retin ag a EE VCR rere RE hs aan aa\r\nSRNR Se Ee SEE RE Bh Gal Ba\r\nA) RY y \\ ERR i EN TE RR ge, VA Beitrag\r\nN - SN Rowe Yay RELA\r\nNS Fa Eee TR a A; A)\r\n& Bouma oh A ee a A A A 4 CA Rate UU . § BSS ~\r\nEY SN NRE ea ah es APE SRE\r\n8 4 NS TR Se BENE Ry Ri, The, ORE UN ™N itd i\r\nR So ERT ee nL ee, Sal A a a : E TEL E> ARs\r\n5 bs er x Ala = Tel Fag SRESEIR IN,\r\nLU. WE RE EN RERCRRR~..  NEE CEEE oN el)",
+      "collector_text": "U 0240\r\nMOMEEN Ww NICHOLAS GREGORY",
+      "ms": 1546,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T01:13:37Z",
+      "parsed": {
+        "set_code": null,
+        "number": "240",
+        "language": null,
+        "foil": null,
+        "format": "rarity_first"
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      },
+      "outline": "found",
+      "detect_ms": 105,
+      "warp_ms": 32
+    }
+  ]
+}

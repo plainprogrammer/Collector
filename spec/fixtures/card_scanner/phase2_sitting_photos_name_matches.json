@@ -1,0 +1,156 @@
+{
+  "format_version": 3,
+  "run": "Spec 009 phone photos",
+  "matches": [
+    {
+      "file": "IMG_6806.jpeg",
+      "lookup_ms": 199.36,
+      "name_candidates": [
+        "Raven Familiar",
+        "Drake Familiar",
+        "Tyrant's Familiar"
+      ],
+      "final_candidates": [
+        "Raven Familiar",
+        "Drake Familiar",
+        "Tyrant's Familiar"
+      ],
+      "query": "raven ramiliar\r\n\\ | : Q Ne ae / ; . He . : i : ha"
+    },
+    {
+      "file": "IMG_6807.jpeg",
+      "lookup_ms": 46.6,
+      "name_candidates": [
+        "Kasmina, Enigmatic Mentor",
+        "Serene Heart",
+        "Thassa's Intervention"
+      ],
+      "final_candidates": [
+        "Kasmina, Enigmatic Mentor",
+        "Serene Heart",
+        "Thassa's Intervention"
+      ],
+      "query": "MY 3 5 A \" y § ke sche dd ‘. he. RAE Rrsetlp eS 8 0 NG A MI BANA AIA tt .\r\nhi § a - \\ or a : A LL SE i ' \"i 5 & 48 ] #'\r\n4 | pop AERO nile Ch 5 J AVE yl\r\nRE I af a> FE BY 2a 0 3 a iy AJ ; 4\r\nRa L§ <¥ A Rl #5 | OU —y 2 3 4 eWwWo be v W\r\nx i { A Ly el Ra a Lp el fe. C5 7 i i\r\nSyeb SEIN Rte AR MT dae BC Tre a id\r\n\" TEE He et pA Fa IF PORT con II holy J Aha .\r\nhas; Na, Sk PRENE OR INA ly hi enti 7\r\nood H ; TO BE ee REET Ty col 0 tH\r\nSEE. hp RECS EY SERIA\r\nNER LIRA | se RET nt a\r\n4 Ta be i ha oii Hie She Sy il wg a tig Fh Lak\r\nLi HR Bt EL ote oo el NE Wh 1"
+    },
+    {
+      "file": "IMG_6808.jpeg",
+      "lookup_ms": 69.65,
+      "name_candidates": [
+        "Plains",
+        "Plain Walker",
+        "Painsmith"
+      ],
+      "final_candidates": [
+        "Plains",
+        "Plain Walker",
+        "Painsmith"
+      ],
+      "query": "( Plains"
+    },
+    {
+      "file": "IMG_6809.jpeg",
+      "lookup_ms": 41.52,
+      "name_candidates": [
+        "Teleportation Circle",
+        "Coalition Victory",
+        "Prismatic Circle"
+      ],
+      "final_candidates": [
+        "Teleportation Circle",
+        "Coalition Victory",
+        "Prismatic Circle"
+      ],
+      "query": "oporiagon vircle. gg"
+    },
+    {
+      "file": "IMG_6810.jpeg",
+      "lookup_ms": 41.39,
+      "name_candidates": [
+        "Tranquil Cove",
+        "Tranquil Grove",
+        "Tranquil Thicket"
+      ],
+      "final_candidates": [
+        "Tranquil Cove",
+        "Tranquil Grove",
+        "Tranquil Thicket"
+      ],
+      "query": "| 1ranquil Cove"
+    },
+    {
+      "file": "IMG_6811.jpeg",
+      "lookup_ms": 44.09,
+      "name_candidates": [
+        "Nessian Asp",
+        "Nessian Wilds Ravager",
+        "Ramosian Captain"
+      ],
+      "final_candidates": [
+        "Nessian Asp",
+        "Nessian Wilds Ravager",
+        "Ramosian Captain"
+      ],
+      "query": "gt Sian Lanes, AM sta Cia Ee a d\r\n: PN Tet Nera RES /\r\n§ if SER SUE de 95 i’\r\nAS A a ET ERR Ve FEE\r\n\"de ee NY BRR ee\r\n; a HATE ae Ae iB Ee\r\n- i i: ER i, it a EE i\r\n- : EJ FT el JE JES ee SR\r\n/ Tg A i ei RE Re EER rR er er"
+    },
+    {
+      "file": "IMG_6812.jpeg",
+      "lookup_ms": 66.57,
+      "name_candidates": [
+        "Extus, Oriq Overlord // Awaken the Blood Avatar",
+        "Ultron, Machine Overlord",
+        "Abhorrent Overlord"
+      ],
+      "final_candidates": [
+        "Extus, Oriq Overlord // Awaken the Blood Avatar",
+        "Ultron, Machine Overlord",
+        "Abhorrent Overlord"
+      ],
+      "query": "Qa) Extus, Oriq Overlord 1 &"
+    },
+    {
+      "file": "IMG_6813.jpeg",
+      "lookup_ms": 47.02,
+      "name_candidates": [
+        "Fast // Furious",
+        "Fast // Furious",
+        "At Least It's a Dry Heat"
+      ],
+      "final_candidates": [
+        "Fast // Furious",
+        "Fast // Furious",
+        "At Least It's a Dry Heat"
+      ],
+      "query": "\\ sees A EG | a sempre a if remem. oer TT\r\n\r\nF Sling oh sy eT Em of AT : ma wkd\r\nFast ; Rh et a A ALE rl ed bd Li ddl iti treme ets pee\r\n\r\nARR Woo : ;\r\n\r\noc .\r\n\r\n& Odric, Blood-Cursed oe\r\n\"B .. 4 Bi do RAL BIN nOK 1 ab TF Regd A, Vidi Jj\r\nSRE TR TE OR ME SPL L553 JOR , S\r\n\r\nBRN lee A oy py poisson : \\ gg"
+    },
+    {
+      "file": "IMG_6814.jpeg",
+      "lookup_ms": 41.86,
+      "name_candidates": [
+        "Siren Reaver",
+        "Obsidian Fireheart",
+        "Foriysian Brigade"
+      ],
+      "final_candidates": [
+        "Siren Reaver",
+        "Obsidian Fireheart",
+        "Foriysian Brigade"
+      ],
+      "query": "Jpsiaian rireneart\r\nBF a A Wy"
+    },
+    {
+      "file": "IMG_6815.jpeg",
+      "lookup_ms": 59.18,
+      "name_candidates": [
+        "La Forge, Perceptive Engineer",
+        "Emcee",
+        "Reverse Engineer"
+      ],
+      "final_candidates": [
+        "La Forge, Perceptive Engineer",
+        "Emcee",
+        "Reverse Engineer"
+      ],
+      "query": "he Ln © EN TRC NP TR Ta ad bh Ty LC\r\nNR : Ee BLE BR RS NEE CC Ne\r\nat Rt i er BOR RL BT ks in a file 1 i\r\nERE 3 RES I A ge TL : eA) — Ww EER\r\nBR. 3 Retin ag a EE VCR rere RE hs aan aa\r\nSRNR Se Ee SEE RE Bh Gal Ba\r\nA) RY y \\ ERR i EN TE RR ge, VA Beitrag\r\nN - SN Rowe Yay RELA\r\nNS Fa Eee TR a A; A)\r\n& Bouma oh A ee a A A A 4 CA Rate UU . § BSS ~\r\nEY SN NRE ea ah es APE SRE\r\n8 4 NS TR Se BENE Ry Ri, The, ORE UN ™N itd i\r\nR So ERT ee nL ee, Sal A a a : E TEL E> ARs\r\n5 bs er x Ala = Tel Fag SRESEIR IN,\r\nLU. WE RE EN RERCRRR~..  NEE CEEE oN el)"
+    }
+  ]
+}

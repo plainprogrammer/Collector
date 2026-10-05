@@ -1,0 +1,750 @@
+{
+  "format_version": 3,
+  "run": "Spec 009 sitting",
+  "results": [
+    {
+      "file": "IMG_6806.jpeg",
+      "name_text": "———— ERR ii ee\r\nRaven Familiar\r\n-",
+      "collector_text": "me ee ———— ——————\r\n_ L- ALTE Ja. wy\r\nTu mpl",
+      "ms": 350,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T00:34:56Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      },
+      "outline": "live"
+    },
+    {
+      "file": "IMG_6807.jpeg",
+      "name_text": "Treacherous Werewolf .\r\nws aL, Cea\r\nEL TTR RCA Ty",
+      "collector_text": "yo x\r\n“a Lu INds. Mark’\r\nm - IM &¢ 1993-2002 Wizards of t",
+      "ms": 246,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T00:35:17Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      },
+      "outline": "live"
+    },
+    {
+      "file": "IMG_6808.jpeg",
+      "name_text": "J Plains",
+      "collector_text": "J ea, woe FO\r\np— oy TO Ey\r\n\r\n«== Ryan Pancoast -\r\n\r\nBae & nn: aR. ends the Const 1PLEC SE",
+      "ms": 211,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T00:35:42Z",
+      "parsed": {
+        "set_code": "WOE",
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      },
+      "outline": "live"
+    },
+    {
+      "file": "IMG_6809.jpeg",
+      "name_text": "(i Teleportation Circle\r\nWN",
+      "collector_text": "364 R a8\r\nAFR + EN %& Curis Corp",
+      "ms": 101,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T00:36:57Z",
+      "parsed": {
+        "set_code": "AFR",
+        "number": "364",
+        "language": "en",
+        "foil": false,
+        "format": "before_set_line"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "77dc13fd-8e08-4846-87ef-0562bdd3ba93"
+        ]
+      },
+      "outline": "live"
+    },
+    {
+      "file": "IMG_6810.jpeg",
+      "name_text": "Tranquil Cove",
+      "collector_text": "AE LEE\r\n034/080 C\r\nDDQ + EN dw JOHN AVON",
+      "ms": 146,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T00:37:22Z",
+      "parsed": {
+        "set_code": "DDQ",
+        "number": "34",
+        "language": "en",
+        "foil": false,
+        "format": "slash"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "6b403e68-4696-4c8a-bb25-68dc7f98e5e4"
+        ]
+      },
+      "outline": "live"
+    },
+    {
+      "file": "IMG_6811.jpeg",
+      "name_text": "Cryptic Spires\r\n| ANE",
+      "collector_text": "332 L\r\n2X2 » EN % SAM BURLEY",
+      "ms": 115,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T00:37:45Z",
+      "parsed": {
+        "set_code": "2X2",
+        "number": "332",
+        "language": "en",
+        "foil": false,
+        "format": "before_set_line"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "309a6684-ecb3-491c-899a-3aa15a51130b"
+        ]
+      },
+      "outline": "live"
+    },
+    {
+      "file": "IMG_6812.jpeg",
+      "name_text": "AJR Orlq ercit es\r\n[| fs 2",
+      "collector_text": "TEENY a\r\n149/275 M Story Spotlight (¥ 3\r\nSTX « EN % CHASE STONE\r\n\r\nDEE oF | dae",
+      "ms": 262,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T00:38:04Z",
+      "parsed": {
+        "set_code": "STX",
+        "number": "149",
+        "language": "en",
+        "foil": false,
+        "format": "slash"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "ba09360a-067e-48a5-bdc5-a19fd066a785"
+        ]
+      },
+      "outline": "live"
+    },
+    {
+      "file": "IMG_6813.jpeg",
+      "name_text": "\"4 - -",
+      "collector_text": "a wo\r\nSOW *EN de ANNA PAVLEEVA\r\na dae. EE",
+      "ms": 165,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T00:38:27Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      },
+      "outline": "live"
+    },
+    {
+      "file": "IMG_6814.jpeg",
+      "name_text": "De te ea —- re - ad . -\r\ndl Obsidian Fireheart J",
+      "collector_text": "Obsidian Fireheart has le\r\na Soda CT cv JBN\r\nRAYONG Swaniano A\r\nLRT Aer ET 4: Sah",
+      "ms": 346,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T00:39:14Z",
+      "parsed": {
+        "set_code": "AER",
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      },
+      "outline": "live"
+    },
+    {
+      "file": "IMG_6815.jpeg",
+      "name_text": "6] 9 V1:\r\n» AT SS",
+      "collector_text": "C ASNEENEET TY\r\nyu 0240\r\nMOM*EN % NICHOLAS GREGORY",
+      "ms": 192,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T00:39:59Z",
+      "parsed": {
+        "set_code": "MOM",
+        "number": "240",
+        "language": "en",
+        "foil": false,
+        "format": "before_set_line"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "50180fda-6d67-41e9-8b2b-2e7c5876b8ab"
+        ]
+      },
+      "outline": "live"
+    },
+    {
+      "file": "IMG_6816.jpeg",
+      "name_text": "E>. [Fm\r\nA) | Ca ~",
+      "collector_text": "U 0235\r\nMOM «EN % JOHANN BODIN",
+      "ms": 146,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T00:40:17Z",
+      "parsed": {
+        "set_code": "MOM",
+        "number": "235",
+        "language": "en",
+        "foil": false,
+        "format": "rarity_first"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "a7ac3a39-b6a6-4647-bb6e-e82057704f8b"
+        ]
+      },
+      "outline": "live"
+    },
+    {
+      "file": "IMG_6817.jpeg",
+      "name_text": "{ Seething Landscape",
+      "collector_text": "4 card, 0rd? d cdrd.)\r\nC 0225\r\nMH3 + EN » P1OTR DURA",
+      "ms": 126,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T00:40:35Z",
+      "parsed": {
+        "set_code": "MH3",
+        "number": "225",
+        "language": "en",
+        "foil": false,
+        "format": "rarity_first"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "661fc907-7003-45c6-820c-9616e9a71c30"
+        ]
+      },
+      "outline": "live"
+    },
+    {
+      "file": "IMG_6818.jpeg",
+      "name_text": "a 1. ¥F",
+      "collector_text": "MH3 «EN KEY WALKER",
+      "ms": 93,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T00:40:51Z",
+      "parsed": {
+        "set_code": "MH3",
+        "number": null,
+        "language": "en",
+        "foil": false,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      },
+      "outline": "live"
+    },
+    {
+      "file": "IMG_6819.jpeg",
+      "name_text": "v - an",
+      "collector_text": "SN .\r\n’ 9) L\r\n\" » EN w= lonas DE Ro",
+      "ms": 101,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T00:41:35Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      },
+      "outline": "live"
+    },
+    {
+      "file": "IMG_6820.jpeg",
+      "name_text": "Demon's Due",
+      "collector_text": "5/281 C\r\nLC * EN > SLAWOMIR MANIAK",
+      "ms": 84,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T00:42:26Z",
+      "parsed": {
+        "set_code": null,
+        "number": "5",
+        "language": null,
+        "foil": null,
+        "format": "slash"
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      },
+      "outline": "live"
+    },
+    {
+      "file": "IMG_6821.jpeg",
+      "name_text": "(Pegasus Guardian",
+      "collector_text": "6/361 C\r\nCL» EN » LEANNA CROSSAN\r\nER RR RR RRR. ET Ta",
+      "ms": 189,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T00:42:58Z",
+      "parsed": {
+        "set_code": null,
+        "number": "6",
+        "language": null,
+        "foil": null,
+        "format": "slash"
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      },
+      "outline": "live"
+    },
+    {
+      "file": "IMG_6822.jpeg",
+      "name_text": "\\ Young Blue Dragon",
+      "collector_text": "106/361 C\r\nCLB + EN » Tuan DuonG Civ",
+      "ms": 104,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T00:44:00Z",
+      "parsed": {
+        "set_code": "CLB",
+        "number": "106",
+        "language": "en",
+        "foil": false,
+        "format": "slash"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "56b0f66b-dca9-4a01-9394-20a513c2b225"
+        ]
+      },
+      "outline": "live"
+    },
+    {
+      "file": "IMG_6823.jpeg",
+      "name_text": "Past in Flames",
+      "collector_text": "P 0565 -\r\nNHO*EN we BBC STUDIOS\r\nhe",
+      "ms": 163,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T00:45:57Z",
+      "parsed": {
+        "set_code": null,
+        "number": "565",
+        "language": null,
+        "foil": null,
+        "format": "rarity_first"
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      },
+      "outline": "live"
+    },
+    {
+      "file": "IMG_6824.jpeg",
+      "name_text": "\\Moss Diamond ______\r\n|\r\n| a",
+      "collector_text": "327/361 C 3\r\nCMR + EN % LINDSEY LOOK",
+      "ms": 112,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T00:46:39Z",
+      "parsed": {
+        "set_code": "CMR",
+        "number": "327",
+        "language": "en",
+        "foil": false,
+        "format": "slash"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "ec8ea247-5529-4948-8c81-0f413aedc82e"
+        ]
+      },
+      "outline": "live"
+    },
+    {
+      "file": "IMG_6825.jpeg",
+      "name_text": "| Ancestral Katana\r\nAFR cc BEE OY",
+      "collector_text": "a oY CUTER T UL. ad Kad) 4 vreey |\r\n001/302 ¢\r\nNEO + EN % DANIEL LIUNGGREN\r\n\r\n— £ pr.",
+      "ms": 238,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T00:46:58Z",
+      "parsed": {
+        "set_code": "NEO",
+        "number": "1",
+        "language": "en",
+        "foil": false,
+        "format": "slash"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "d9b1ed43-ee6c-43a2-ba94-5bf71c63e070"
+        ]
+      },
+      "outline": "live"
+    },
+    {
+      "file": "IMG_6826.jpeg",
+      "name_text": "Eowyn, Lady of Rohan\r\nlout EAR 3",
+      "collector_text": "tO acuvate. \\\r\nU 0010\r\nLTR *« EN SEAN Yo",
+      "ms": 151,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T00:47:18Z",
+      "parsed": {
+        "set_code": "LTR",
+        "number": "10",
+        "language": "en",
+        "foil": false,
+        "format": "rarity_first"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "e59710c4-24de-419e-a8a0-e8392d450c23"
+        ]
+      },
+      "outline": "live"
+    },
+    {
+      "file": "IMG_6827.jpeg",
+      "name_text": "SOMMMgRE™ ©. I\r\n( Imperial Subduer\r\nBEE",
+      "collector_text": "TeeEeee———mihivers\r\n310 Cc\r\nNEO * EN DE 5, /YUNOMACHI.",
+      "ms": 276,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T00:47:37Z",
+      "parsed": {
+        "set_code": "NEO",
+        "number": "310",
+        "language": "en",
+        "foil": false,
+        "format": "before_set_line"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "41e7420e-55d0-4f4b-84bb-e5b86616cbb3"
+        ]
+      },
+      "outline": "live"
+    },
+    {
+      "file": "IMG_6828.jpeg",
+      "name_text": "Clarion Cathars\r\na ny... pa",
+      "collector_text": "i someone 1s there lo stand\r\n014/277 C\r\nMID * EN Mw LEANNA CROSSAN",
+      "ms": 149,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T00:48:00Z",
+      "parsed": {
+        "set_code": "MID",
+        "number": "14",
+        "language": "en",
+        "foil": false,
+        "format": "slash"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "89f8ea28-7de1-4908-8e2d-b1aeff651015"
+        ]
+      },
+      "outline": "live"
+    },
+    {
+      "file": "IMG_6829.jpeg",
+      "name_text": "i Mana Geyser\r\n1 pr",
+      "collector_text": "id NC ——————————————————\r\nBe ~~ < F ud = ai _&\r\nmw. me o Martina Fucerova\r\nECF\" 3 KF 2014 Wizards of the Goast 3472 |\r\na -— ~ - ~ Cn ”\r\nBREF on LGN oo TRE TE a Be 8. ac To Ril",
+      "ms": 401,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T00:48:20Z",
+      "parsed": {
+        "set_code": "LGN",
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      },
+      "outline": "live"
+    },
+    {
+      "file": "IMG_6830.jpeg",
+      "name_text": "om into Takenuma",
+      "collector_text": "eR SE Ss © SN iC\r\n\r\n—=Patles Tan, y: J]\r\n\r\nv ™ & © 19932005 Wizards of te Coast, Inc\" 89\r\nR",
+      "ms": 219,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T00:49:33Z",
+      "parsed": {
+        "set_code": null,
+        "number": null,
+        "language": null,
+        "foil": null,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      },
+      "outline": "live"
+    },
+    {
+      "file": "IMG_6831.jpeg",
+      "name_text": "Lightning Bolt\r\n2 A {",
+      "collector_text": "A uU\r\nA25 +» EN % CHRISTOPHER MOELLER",
+      "ms": 109,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T00:50:10Z",
+      "parsed": {
+        "set_code": "A25",
+        "number": null,
+        "language": "en",
+        "foil": false,
+        "format": null
+      },
+      "lookup": {
+        "status": "none",
+        "external_keys": []
+      },
+      "outline": "live"
+    },
+    {
+      "file": "IMG_6832.jpeg",
+      "name_text": "[ Fey Steed \\",
+      "collector_text": "you may draw a card\r\n274 R ’d SC\r\nAFC + EN JONATHAN KUO",
+      "ms": 117,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T00:50:28Z",
+      "parsed": {
+        "set_code": "AFC",
+        "number": "274",
+        "language": "en",
+        "foil": false,
+        "format": "before_set_line"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "bde3cd31-ccb8-4242-b893-0cbd12f6ae86"
+        ]
+      },
+      "outline": "live"
+    },
+    {
+      "file": "IMG_6833.jpeg",
+      "name_text": "Dueling Coach",
+      "collector_text": "3 . aT . ES Wr VS KNAL ANNA ANSAAL AL»\r\n015/275 U\r\nSTX « EN % CA10 MONTEIRO",
+      "ms": 139,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T00:50:44Z",
+      "parsed": {
+        "set_code": "STX",
+        "number": "15",
+        "language": "en",
+        "foil": false,
+        "format": "slash"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "45b3dbb0-0d68-4351-bfc9-a09c50454bf7"
+        ]
+      },
+      "outline": "live"
+    },
+    {
+      "file": "IMG_6834.jpeg",
+      "name_text": "{ Draconic (nierventic \\\r\nmn — emi — . -\r\npd | ’",
+      "collector_text": "5 LLALIC 171 dCO111I0 111001 VOLIUIU\r\n096/275 R Story Spotlight\r\nSTX » EN % JOHAN GRENIER",
+      "ms": 230,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T00:51:07Z",
+      "parsed": {
+        "set_code": "STX",
+        "number": "96",
+        "language": "en",
+        "foil": false,
+        "format": "slash"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "657de246-b9fc-47b1-b932-091e9500bb82"
+        ]
+      },
+      "outline": "live"
+    },
+    {
+      "file": "IMG_6835.jpeg",
+      "name_text": "—————————————————————————————————— APR\r\nGreen Dragon 4",
+      "collector_text": "a ——— ree\r\n295 uv\r\nAFR * EN % CAMPBELL WHITE",
+      "ms": 228,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T00:51:25Z",
+      "parsed": {
+        "set_code": "AFR",
+        "number": "295",
+        "language": "en",
+        "foil": false,
+        "format": "before_set_line"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "8798c207-c9cf-48c5-a5cd-0cf7d392115a"
+        ]
+      },
+      "outline": "live"
+    },
+    {
+      "file": "IMG_6836.jpeg",
+      "name_text": "Wizard Class",
+      "collector_text": "CL ———— ———— - i\r\nos1/281 VU\r\nAFR * EN % MARTA NALL",
+      "ms": 117,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T00:51:46Z",
+      "parsed": {
+        "set_code": "AFR",
+        "number": "51",
+        "language": "en",
+        "foil": false,
+        "format": "slash"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "b9784c97-3839-4a4b-ae8a-965844dbeb70"
+        ]
+      },
+      "outline": "live"
+    },
+    {
+      "file": "IMG_6837.jpeg",
+      "name_text": "vy I a SS —\r\n- “oN \\o\r\n(3\r\n\r\nPr",
+      "collector_text": "; &VU | OLVly J.\r\n306 Cc\r\nAFR +» EN % PEDRO POTIER",
+      "ms": 162,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T00:52:05Z",
+      "parsed": {
+        "set_code": "AFR",
+        "number": "306",
+        "language": "en",
+        "foil": false,
+        "format": "before_set_line"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "ab7cd8c3-8365-4e40-a089-02bc9b93581a"
+        ]
+      },
+      "outline": "live"
+    },
+    {
+      "file": "IMG_6838.jpeg",
+      "name_text": "F cen ’ cy »\r\nI'rickster's Talisman\r\n[\r\nT pre - “ »> &",
+      "collector_text": "079/281 V\r\nAFR * EN & Sam Waite",
+      "ms": 136,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T00:52:24Z",
+      "parsed": {
+        "set_code": "AFR",
+        "number": "79",
+        "language": "en",
+        "foil": false,
+        "format": "slash"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "33cb9973-c9ce-48f1-9972-651092624751"
+        ]
+      },
+      "outline": "live"
+    },
+    {
+      "file": "IMG_6839.jpeg",
+      "name_text": "Was",
+      "collector_text": "a made many clever ones.\r\nC 0100\r\nHOB + EN % Jason KANG",
+      "ms": 140,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T00:52:54Z",
+      "parsed": {
+        "set_code": "HOB",
+        "number": "100",
+        "language": "en",
+        "foil": false,
+        "format": "rarity_first"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "ccff7382-8609-494c-aeee-cd1436456dd0"
+        ]
+      },
+      "outline": "live"
+    },
+    {
+      "file": "IMG_6840.jpeg",
+      "name_text": "f Bolg's Company",
+      "collector_text": "eT ry vw eye ey ho\r\nR 0149 os\r\nHOB * EN »% MICHELE GIORGI\r\n\r\nTT EE— ——",
+      "ms": 259,
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1 Brave",
+      "captured_at": "2026-10-05T00:53:12Z",
+      "parsed": {
+        "set_code": "HOB",
+        "number": "149",
+        "language": "en",
+        "foil": false,
+        "format": "rarity_first"
+      },
+      "lookup": {
+        "status": "one",
+        "external_keys": [
+          "ea3f5644-f7e3-40de-ada5-cea2e9113cfb"
+        ]
+      },
+      "outline": "live"
+    }
+  ]
+}
