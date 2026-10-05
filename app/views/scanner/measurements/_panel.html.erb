@@ -1,12 +1,14 @@
-<%# locals: (run:, next_row:, expected:, notice: nil, alert: false) %>
+<%# locals: (run:, next_row:, expected:, keep_frames: false, notice: nil, alert: false) %>
 <section id="measurement_panel" aria-labelledby="measurement-heading" data-controller="measurement"
          data-measurement-captures-url-value="<%= scanner_measurement_captures_path %>" data-measurement-events-url-value="<%= scanner_measurement_events_path %>"
+         data-measurement-keep-frames-value="<%= keep_frames %>"
          data-action="card-reader:read@window->measurement#store turbo:submit-end@document->measurement#submitted click@document->measurement#clicked">
   <div class="c-section__head">
     <h2 class="c-section__title" id="measurement-heading">Measured run</h2>
     <span class="c-section__count"><%= run.counts.fetch(:captured, 0) %> of <%= run.rows.size %> captured · <%= run.counts.fetch(:skipped, 0) %> skipped · <%= pluralize(run.retakes, "retake") %></span>
   </div>
   <p class="c-field__hint">Stored in <%= run.dir %>. Take one deliberate shot per card: a card's first capture is the one that counts.</p>
+  <% if keep_frames %><p class="c-field__hint">Keeping each live capture's full frame (spec 010), up to 32 MB.</p><% end %>
   <p class="c-status__message<%= " c-status__message--alert" if alert %>" data-measurement-target="status" <%= "hidden" unless notice %>><%= notice %></p>
   <label class="c-field"><span class="c-field__label">Card to capture</span>
     <%= select_tag :file, options_for_select(run.rows.map { |row| [ "#{row.file} · #{row.set.upcase} #{row.number} (#{run.status(row)})", row.file ] }, next_row&.file),

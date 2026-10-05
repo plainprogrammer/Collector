@@ -58,4 +58,46 @@ RSpec.describe Scanner::MeasurementRun, type: :model do
       expect(run.events(row).first["at"]).to match(/\A\d{4}-\d\d-\d\dT[\d:.]+Z\z/)
     end
   end
+
+  describe "frames (spec 010 Story 3)" do
+    let(:png) { ->(width = 4, height = 3) { StringIO.new("\x89PNG\r\n\x1A\n".b + [ 13 ].pack("N") + "IHDR" + [ width, height ].pack("NN") + "\x08\x06\x00\x00\x00".b) } }
+    let(:guide) { { "x" => 1.5, "y" => 2.25, "width" => 10.0, "height" => 14.0 } }
+
+    before { dir.join("manifest.csv").write("file,set,number,foil\nS001,mom,123,no\n") }
+
+    def capture(frame:, guide: self.guide)
+      run.record!(run.row("S001"), name_text: "Bolt", collector_text: "", ms: 200, user_agent: "iPhone", name_strip: png.call, collector_strip: png.call,
+        frame:, guide:)
+    end
+
+    it "stores the frame beside the strips, with the guide rect and the frame's size (AC-3.1)", :aggregate_failures do
+      capture(frame: png.call(1080, 1920))
+      expect(dir.join("runs/live/S001/capture-001-frame.png")).to exist
+      expect(run.captures(run.row("S001")).sole).to include("guide" => guide, "frame_width" => 1080, "frame_height" => 1920)
+    end
+
+    it "refuses the whole capture for a frame that isn't a PNG or is over the limit (AC-3.2)", :aggregate_failures do
+      expect { capture(frame: StringIO.new("not a png")) }.to raise_error(described_class::InvalidCapture, /frame wasn't a PNG of at most 32 MB/)
+      stub_const("Scanner::MeasurementRun::MAX_FRAME_BYTES", 20)
+      expect { capture(frame: png.call) }.to raise_error(described_class::InvalidCapture)
+      expect(dir.join("runs/live/S001")).not_to exist
+    end
+
+    it "refuses a frame without a whole guide rect" do
+      expect { capture(frame: png.call, guide: { "x" => 1 }) }.to raise_error(described_class::InvalidCapture, /guide rect/)
+    end
+
+    it "stores no frame keys when no frame comes" do
+      capture(frame: nil, guide: nil)
+      expect(run.captures(run.row("S001")).sole.keys).not_to include("guide", "frame_width")
+    end
+  end
+
+  it "keeps frames only when the measurement config says so (AC-3.1)", :aggregate_failures do
+    expect(described_class).not_to be_keep_frames
+    Rails.configuration.x.scanner_measurement = { manifest: "m", dir: "d", keep_frames: true }
+    expect(described_class).to be_keep_frames
+  ensure
+    Rails.configuration.x.scanner_measurement = nil
+  end
 end

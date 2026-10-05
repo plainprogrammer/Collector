@@ -7,8 +7,8 @@ import { loadEngine, readStrips } from "scanner/recognition"
 // Turns a captured frame or a picked photo into what the card says (spec 007 Stories 2–4). A picked photo is first searched
 // for the card, which is straightened into the guide's box (spec 009 Story 7); live frames aren't (AC-7.6). It cuts the
 // strips, reads them on the device, sends only the text and a reading key, and shows the Turbo Stream answer. One reading at
-// a time. Dispatches card-reader:read ({ nameText, collectorText, ms, key, outline, detectMs, warpMs, strips }) for
-// measurement mode, where outline is "live", "found" or "not_found".
+// a time. Dispatches card-reader:read ({ nameText, collectorText, ms, key, outline, detectMs, warpMs, strips, frame }) for
+// measurement mode, where outline is "live", "found" or "not_found". frame is { image, guide } for live captures, else null.
 const REASONS = {
   insecure: "The live camera needs this page to be served over HTTPS. You can use a photo instead.",
   denied: "The camera is blocked for this site. Allow it in your browser's settings, or use a photo instead.",
@@ -106,7 +106,9 @@ export default class extends Controller {
       const strips = cropStrips(image, card, layout)
       const reading = { ...(await readStrips(this.enginePathValue, strips)), key: readingKey(), ...source }
       if (!this.element.isConnected) return
-      this.dispatch("read", { detail: { ...reading, strips } })
+      // Spec 010: a live capture's frame and guide rect travel with the event, in memory, for measurement mode only.
+      const frame = source.outline === "live" ? { image, guide: card } : null
+      this.dispatch("read", { detail: { ...reading, strips, frame } })
       this.lastReading = reading
       if (await this.send(reading) && reading.outline === "not_found") this.say(NO_EDGE)
     } catch {

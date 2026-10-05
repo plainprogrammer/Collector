@@ -56,4 +56,16 @@ RSpec.describe "Scanner measurement mode", type: :system do
     expect(events.map { it.values_at("kind", "rank") }).to eq([ %w[add 1], [ "undo", nil ] ])
     expect(events.map { it["reading_key"] }).to all(eq(capture["reading_key"]))
   end
+
+  it "keeps the live frame and its guide rect, and still sends only the text and key for the reading (spec 010 AC-3.1, AC-5.5)", :aggregate_failures do
+    Rails.configuration.x.scanner_measurement = Rails.configuration.x.scanner_measurement.merge(keep_frames: true)
+    capture_lightning_bolt
+    capture = Scanner::MeasurementRun.current.captures(Scanner::MeasurementRun.current.row("IMG_1.jpeg")).sole
+    expect(capture).to include("frame_width" => 900, "frame_height" => 1200, "guide" => include("width" => be > 0))
+    expect(corpus.join("runs/live/IMG_1.jpeg/capture-001-frame.png")).to exist
+    expect(scanner_sent).to include([ "reading[name_text]", "reading[collector_text]", "reading[key]" ])
+    frames = scanner_sent.select { it.include?("capture[frame]:file") } # file fields are recorded as "<name>:file"
+    expect(frames.size).to eq(1)
+    expect(frames.sole).to include("capture[guide]", "capture[name_strip]:file")
+  end
 end
