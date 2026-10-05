@@ -396,7 +396,9 @@ Beside the file's top-level `capture` helper (not inside a `describe`, so the of
     expect(capture).to include("frame_width" => 900, "frame_height" => 1200, "guide" => include("width" => be > 0))
     expect(corpus.join("runs/live/IMG_1.jpeg/capture-001-frame.png")).to exist
     expect(scanner_sent).to include([ "reading[name_text]", "reading[collector_text]", "reading[key]" ])
-    expect(scanner_sent.select { it.include?("capture[frame]") }).to all(include("capture[guide]", "capture[name_strip]"))
+    frames = scanner_sent.select { it.include?("capture[frame]:file") } # file fields are recorded as "<name>:file"
+    expect(frames.size).to eq(1)
+    expect(frames.sole).to include("capture[guide]", "capture[name_strip]:file")
   end
 ```
 
@@ -420,6 +422,7 @@ Beside the file's top-level `capture` helper (not inside a `describe`, so the of
 
     images = { "name" => png!(name_strip), "collector" => png!(collector_strip) }
     frame_data = frame && png!(frame, limit: MAX_FRAME_BYTES, what: "frame")
+    raise InvalidCapture, "The frame was too short to be a PNG, so nothing was stored." if frame_data && frame_data.bytesize < 24
     raise InvalidCapture, "The frame's guide rect was missing, so nothing was stored." if frame_data && !whole_guide?(guide)
 
     number = captures(row).size + 1
