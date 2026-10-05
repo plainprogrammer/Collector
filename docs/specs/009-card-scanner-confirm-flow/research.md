@@ -44,6 +44,24 @@ Every rate carries its sample size. Rates on readings or photos that chose a set
 
 - The first candidate changed for 12 of 210 readings. Six became right: IMG_6704 (Enlightened Tutor), IMG_6720 (Fanged Flames), T007 (Honored Heirloom), and the three misread cases IMG_6765 (Tome Shredder), IMG_6769 (Grand Master of Flowers) and IMG_6792 (Cast Away Doubt). The other six were wrong before and after: IMG_6737, IMG_6716, IMG_6717, IMG_6744 and IMG_6787 changed one wrong first candidate for another, and IMG_6762 (Moonhold, a new-corpus photo) now gets no candidate at all, where it had three wrong ones.
 - No right first place was lost, and no right card left the name-only top 3.
+
+Every reading whose first candidate changed (`bin/rails scanner:ranking`, AC-5.4):
+
+| Run | File | Expected | Spec 007 top 3 | Spec 009 top 3 |
+|---|---|---|---|---|
+| Phase 0 | IMG_6737.jpeg | Leyline of the Guildpact | Keiga, the Tide Star; See the Truth; Picklock Prankster // Free the Fae | Metastatic Evangel; Overt Operative; Rhys, the Evermore |
+| Phase 1 photo replay | IMG_6704.jpeg | Enlightened Tutor | Divine Sacrament; Enlightened Tutor; Enlightened Ascetic | Enlightened Tutor; Divine Sacrament; Enlightened Ascetic |
+| Phase 1 photo replay | IMG_6716.jpeg | Blessed Ghoul | Belisarius Cawl; Obelisk of Alara; Felisa, Fang of Silverquill | View from Above; Viewpoint Synchronization; Towering Viewpoint |
+| Phase 1 photo replay | IMG_6717.jpeg | Campus Crier | Might Makes Right; Gavel of the Righteous; The Mana Rig | Pako, Arcane Retriever; Peak Eruption; Most Decrepit Old Bird // Speak Secrets |
+| Phase 1 photo replay | IMG_6720.jpeg | Fanged Flames | Monsoon; Harpoon Sniper; Horned Loch-Whale // Lagoon Breach | Fanged Flames; Fanning the Flames; Spreading Flames |
+| Phase 1 photo replay | IMG_6744.jpeg | Gluttonous Hellkite | Geyser Leaper; Tiger Claws; Tiger-Dillo | Far // Away |
+| Tuning round 4 | T007 | Honored Heirloom | Welcoming Vampire; Honored Heirloom; Hero's Heirloom | Honored Heirloom; Welcoming Vampire; Hero's Heirloom |
+| New corpus live | IMG_6765.jpeg | Tome Shredder | Elite Spellbinder; Tome Shredder; Bone Shredder | Tome Shredder; Elite Spellbinder; Bone Shredder |
+| New corpus live | IMG_6769.jpeg | Grand Master of Flowers | Ranger Class; Grand Master of Flowers; Grand Melee | Grand Master of Flowers; Ranger Class; Grand Melee |
+| New corpus live | IMG_6792.jpeg | Cast Away Doubt | Enlightened Confidant; Cast Away Doubt; Cast Out | Cast Away Doubt; Enlightened Confidant; Cast Out |
+| New corpus photos | IMG_6762.jpeg | Moonhold | Possessed Aven; Proposal; Ormos, Archive Keeper | (none) |
+| New corpus photos | IMG_6787.jpeg | Terramorphic Expanse | Raise the Alarm; Make a Wish; Tangle Wire | Headstone; Heal; Head Games |
+
 - **Bias.** The threshold and the cleaning were chosen on these same 210 readings, so their results here are biased upwards. The live sitting (§8) is the unbiased check.
 
 ## 3. Query cleaning (AC-6.1)
@@ -103,6 +121,7 @@ Caveat from the synthetic specs: on a perfectly flat picture the frozen edge thr
 
 - Outline completion (`completeTolerance` 0.08) extends an outline that stops above the card's bottom edge; it raised non-foil exact printings (17/35 to 20/35) and cost one foil (3/11 to 2/11).
 - The long-name refinement as a wider strip (v2) held one more name in full (IMG_6714) but lost three, so it was not shipped. Moving the detected name strip up (`DETECTED_STRIPS` name y 0.04) read six names in full that were cut before (IMG_6706, IMG_6710, IMG_6739, IMG_6741, IMG_6755, IMG_6798) and lost four (IMG_6716, IMG_6771, IMG_6783, IMG_6802).
+- So AC-6.4's long-name refinement was evaluated (v2) and not shipped, as it gained nothing: long names such as IMG_6761's can still be cut off at the name strip's right edge on live capture.
 
 **Held out, once, at `7afed14`** (the spike's 47 held-out photos, desktop):
 
@@ -160,6 +179,8 @@ Right first: IMG_6806 Raven Familiar, IMG_6808 Plains, IMG_6809 Teleportation Ci
 | Cold-load growth ≤ 20 KB compressed (20,480 B) | +8,013 B gzip -9 | `script/scanner/asset_growth.rb`; nothing fetched from another host |
 
 The add round trip wasn't measured separately on the phone; the sitting's time per card (§8) includes handling. Growth by file: detector.js +4,321, scanner_reading_controller.js +1,163, geometry.js +1,073, card_reader_controller.js +689, measurement_controller.js +490, additions.css +207, replay_controller.js +70.
+
+**Reliability (NFR Reliability).** The four scanner system spec files (`scanner_spec`, `scanner_adding_spec`, `scanner_sitting_spec`, `scanner_detection_spec`; 27 examples) passed 10 runs in a row at `0731e5c` (seeds 59809, 33083, 40164, 54421, 31352, 15882, 40965, 51026, 62022, 21996).
 
 **Touch targets.** The spec's 44×44 px minimum names only the add, Undo and Done buttons. The "Other printings" ghost link and "Show N more" have no 44 px minimum; a later spec may want one on the phone.
 
