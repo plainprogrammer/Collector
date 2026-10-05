@@ -4,7 +4,7 @@
 - [Small incremental commits](small-incremental-commits.md) — one Conventional Commit per step/change
 - [Secret files are user-verified](secret-files-user-verified.md) — agents are read-denied on secrets/storage; ask the user to cat them
 - [SDD review model choice](sdd-review-model-choice.md) — reviews as read-only Fable subagents; brainstorm/spec/plan in the main session (Opus or Fable); implementation on Opus
-- [Plan reviews run the code](plan-reviews-run-the-code.md) — brief plan reviewers to extract and run the plan's code blocks; found 2 blocking errors in 008
+- [Plan reviews run the code](plan-reviews-run-the-code.md) — trace plan code against the files it edits; read-only Fable by default (spec 009), run the code only on request
 - [Dev machine image tools](dev-machine-image-tools.md) — magick 7, Pillow, ffmpeg present; no libvips/ruby-vips here (Dockerfile has libvips); decode via `magick … ppm:-`
 - [Scryfall API access](scryfall-api-access.md) — docs 403 to WebFetch; use curl + User-Agent; bulk JSONL facts
 - [PR screenshots workflow](pr-screenshots-workflow.md) — headless Firefox + magick/ffmpeg; embed in private-repo PRs via blob/<sha>?raw=true
@@ -23,4 +23,6 @@
 - [Brakeman --ensure-latest](brakeman-ensure-latest.md) — a new Brakeman release breaks hooks/CI; bump the gem in a chore(deps) commit
 - [Search spec CI flake](search-spec-ci-flake.md) — open: catalog_search_spec.rb:4 times out opening a card page on GitHub CI only; cause unknown
 - [Check corpus availability](check-corpus-availability.md) — confirm physical items (cards) will be at hand before specifying a re-measure on them
-- [Verify corpus manifests](verify-corpus-manifests.md) — resolve, check overlap, plst `PCY-132` numbers, era override for frames without set codes; a clean-reading miss may be a manifest error
+- [Verify corpus manifests](verify-corpus-manifests.md) — resolve, check overlap, plst `PCY-132` numbers, era override for frames without set codes, foil ★ vs the foil column; a clean-reading miss may be a manifest error
+- [ExitPlanMode for SDD plans](exitplanmode-for-sdd-plans.md) — long plans: summarise in chat and take the go-ahead there, not via the approval dialog
+- [Device sitting account check](device-sitting-account-check.md) — find which account holds the sitting (by reading keys) before scoring or resetting
