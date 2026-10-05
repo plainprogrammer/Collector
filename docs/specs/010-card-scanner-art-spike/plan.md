@@ -44,7 +44,7 @@ It runs on spec 009's 35 cards, against their text-only results.
 **Plan decisions:**
 
 - **Where the spike lives.** A new folder, `spikes/card_scanner/phase3/`, holds spec 010's apparatus (`CardScannerPhase3`). It reuses `CardScannerPhase2`'s art units by `require_relative`.
-- **Spec 008's tools gain two settings, and nothing else in them changes:**
+- **Spec 008's tools gain three settings, and nothing else in them changes:**
   - **`CARD_SCANNER_WORK_DIR`** overrides `WORK_DIR`. Every spec 010 command runs with it set to `~/card-scanner-corpus/art-cache`, so the cache, index and truth live outside the repo and survive worktree removal (spec AC-1.3).
   - **`CARD_SCANNER_TRUTH_CORPORA`** lists the truth corpora (`sitting` here), so the corpus fetch, the index build's report and the agreement check use spec 009's 35 cards.
 
@@ -86,7 +86,7 @@ It runs on spec 009's 35 cards, against their text-only results.
 Measured findings (`research.md`, `phase3_*` fixtures, updated ADRs 0006 and 0007) on the art index on the iPhone and on art accuracy for spec 009's 35 cards along three paths, for the maintainer's ruling on spec 011.
 
 **Components (Simplicity Gate: 3):**
-1. Spec 008's art tools with two settings and `parseIndex`.
+1. Spec 008's art tools with three settings and `parseIndex`.
 2. Spike phase 3: the server, the timing and replay pages, the scripts, and `CardScannerPhase3::{Estimate, ArtworkOwners, ArtFindings, PhoneFindings}`.
 3. The app's measurement mode, with frame keeping.
 
@@ -355,14 +355,22 @@ puts JSON.pretty_generate(estimate)
 
 - [ ] Add failing examples to `spec/requests/scanner/measurements_spec.rb` (top level):
 
+Beside the file's top-level `capture` helper (not inside a `describe`, so the off-mode context can call it too), add the two helpers. The frame comes from a method rather than a `let`, keeping the file within RuboCop's five memoised helpers:
+
+```ruby
+  def frame_png = "\x89PNG\r\n\x1A\n".b + [ 13 ].pack("N") + "IHDR" + [ 900, 1200 ].pack("NN") + "\x08\x06\x00\x00\x00".b
+
+  def capture_with_frame
+    post scanner_measurement_captures_path, headers: turbo, params: { capture: { file: "IMG_1.jpeg", name_text: "Bolt", collector_text: "", ms: "1",
+      user_agent: "iPhone", name_strip: upload(png), collector_strip: upload(png), outline: "live", frame: upload(frame_png),
+      guide: { x: 1.5, y: 2, width: 10, height: 14 }.to_json } }
+  end
+```
+
+  Then add the examples at the top level:
+
 ```ruby
   describe "frames (spec 010)" do
-    def capture_with_frame
-      post scanner_measurement_captures_path, headers: turbo, params: { capture: { file: "IMG_1.jpeg", name_text: "Bolt", collector_text: "", ms: "1",
-        user_agent: "iPhone", name_strip: upload(png), collector_strip: upload(png), outline: "live", frame: upload(frame_png),
-        guide: { x: 1.5, y: 2, width: 10, height: 14 }.to_json } }
-    end
-
     it "stores the frame and guide rect when frame keeping is on (AC-3.1)", :aggregate_failures do
       Rails.configuration.x.scanner_measurement = Rails.configuration.x.scanner_measurement.merge(keep_frames: true)
       capture_with_frame
@@ -377,11 +385,7 @@ puts JSON.pretty_generate(estimate)
   end
 ```
 
-  Define `capture_with_frame` at the top level of the file, beside `capture`, rather than inside the `describe` block, so the off-mode list can use it: add `-> { capture_with_frame }` to that list of 404 requests (AC-3.3). Its frame comes from a method, not a `let`, which keeps the file within RuboCop's five memoised helpers:
-
-```ruby
-  def frame_png = "\x89PNG\r\n\x1A\n".b + [ 13 ].pack("N") + "IHDR" + [ 900, 1200 ].pack("NN") + "\x08\x06\x00\x00\x00".b
-```
+  And add `-> { capture_with_frame }` to the off-mode list of 404 requests in `context "when measurement mode is off"` (AC-3.3).
 - [ ] Add a failing system example to `spec/system/scanner_measurement_spec.rb`:
 
 ```ruby
@@ -392,6 +396,7 @@ puts JSON.pretty_generate(estimate)
     expect(capture).to include("frame_width" => 900, "frame_height" => 1200, "guide" => include("width" => be > 0))
     expect(corpus.join("runs/live/IMG_1.jpeg/capture-001-frame.png")).to exist
     expect(scanner_sent).to include([ "reading[name_text]", "reading[collector_text]", "reading[key]" ])
+    expect(scanner_sent.select { it.include?("capture[frame]") }).to all(include("capture[guide]", "capture[name_strip]"))
   end
 ```
 
@@ -478,7 +483,7 @@ puts JSON.pretty_generate(estimate)
   - add `data-measurement-keep-frames-value="<%= keep_frames %>"` to the section tag
   - add `<% if keep_frames %><p class="c-field__hint">Keeping each live capture's full frame (spec 010), up to 32 MB.</p><% end %>` after the storage hint
 - [ ] In `config/environments/development.rb`, add `keep_frames: ENV["COLLECTOR_SCANNER_KEEP_FRAMES"] == "1"` to the `config.x.scanner_measurement` hash, with the comment `# Spec 010: COLLECTOR_SCANNER_KEEP_FRAMES=1 also keeps each live capture's full frame.`
-- [ ] In `app/javascript/controllers/card_reader_controller.js#read`, replace the line `this.dispatch("read", { detail: { ...reading, strips } })` with:
+- [ ] In `app/javascript/controllers/card_reader_controller.js`, change the header comment's event list to `({ nameText, collectorText, ms, key, outline, detectMs, warpMs, strips, frame })` and add `frame is { image, guide } for live captures, else null.` after "where outline is "live", "found" or "not_found"." Then in `#read`, replace the line `this.dispatch("read", { detail: { ...reading, strips } })` with:
 
 ```js
       // Spec 010: a live capture's frame and guide rect travel with the event, in memory, for measurement mode only.
@@ -598,6 +603,10 @@ RSpec.describe CardScannerPhase3::Server do
     end
   end
 
+  it "ignores a forwarded header claiming loopback (FR-2)" do
+    expect(get("/corpus/phase2-sitting/IMG_9.jpeg", lan.merge("HTTP_X_FORWARDED_FOR" => "127.0.0.1")).status).to eq(403)
+  end
+
   it "accepts the timing page's results on one path from the LAN, and nothing else", :aggregate_failures do
     response = Rack::MockRequest.new(app).post("/phone/results", lan.merge(input: { "mode" => "cold" }.to_json))
     expect(response.status).to eq(201)
@@ -631,7 +640,7 @@ module CardScannerPhase3
     LOOPBACK = %w[127.0.0.1 ::1].freeze
     IMMUTABLE = "public, max-age=31536000, immutable"
     MAX_RESULTS = 1_000_000
-    POLICY = [ "default-src 'self'", "script-src 'self'", "connect-src 'self'", "img-src 'self' blob:", "style-src 'self'", "object-src 'none'",
+    POLICY = [ "default-src 'self'", "script-src 'self'", "connect-src 'self'", "img-src 'self'", "style-src 'self'", "object-src 'none'",
                "base-uri 'self'", "frame-ancestors 'none'", "report-uri /csp-report" ].join("; ")
     PHONE_MODULES = %w[search.js fingerprint.js].freeze
 
@@ -682,7 +691,8 @@ module CardScannerPhase3
         end
       end
 
-      def local(request) = LOOPBACK.include?(request.ip) ? yield : text(403, "Forbidden")
+      # The socket's own address: Rack's request.ip trusts X-Forwarded-For from private addresses, which a LAN client could forge.
+      def local(request) = LOOPBACK.include?(request.get_header("REMOTE_ADDR")) ? yield : text(403, "Forbidden")
 
       def delegate(files, request, path) = files.call(request.env.merge("PATH_INFO" => path))
 
@@ -849,7 +859,8 @@ async function run(mode) {
     search: { n: searches.length, medianMs: median(searches.map((s) => s.ms)), slowestMs: Math.max(...searches.map((s) => s.ms)), tops: searches.map(({ file, top }) => ({ file, top })) },
     responsive: { searches: 100, maxGapMs: gap, completed: true },
     fingerprint: { n: cards.length, medianMs: median(cards.map((c) => c.ms)), slowestMs: Math.max(...cards.map((c) => c.ms)), maxBits: Math.max(...cards.map((c) => c.maxBits)), cards },
-    memory: { decodedBytes: index.bytes, wordsBytes: index.words.byteLength, ids: index.count }
+    // AC-2.5: what the page holds. The ids' bytes are an upper bound (36 UTF-16 code units each); WebKit gives no heap figure.
+    memory: { decodedBytes: index.bytes, wordsBytes: index.words.byteLength, ids: index.count, idsBytes: index.ids.reduce((n, id) => n + id.length * 2, 0) }
   }
   const saved = await fetch("/phone/results", { method: "POST", body: JSON.stringify(result), headers: { "Content-Type": "application/json" } })
   out.textContent = JSON.stringify({ ...result, search: { ...result.search, tops: `${result.search.tops.length} tops` } }, null, 2)
@@ -1025,7 +1036,7 @@ RSpec.describe CardScannerPhase3::PhoneFindings do
       "search" => { "n" => 2, "medianMs" => 150.0, "slowestMs" => 210.0, "tops" => [ { "file" => "A", "top" => { "id" => "x" } }, { "file" => "B", "top" => { "id" => "y" } } ] },
       "responsive" => { "searches" => 100, "maxGapMs" => 400.0, "completed" => true },
       "fingerprint" => { "n" => 12, "medianMs" => 90.0, "slowestMs" => 130.0, "maxBits" => 0 },
-      "memory" => { "decodedBytes" => 7_200_000, "wordsBytes" => 6_400_000, "ids" => 50_000 } }
+      "memory" => { "decodedBytes" => 7_200_000, "wordsBytes" => 6_400_000, "ids" => 50_000, "idsBytes" => 3_600_000 } }
   end
   let(:desktop) { phone.merge("userAgent" => "Firefox", "search" => phone["search"].merge("tops" => [ { "file" => "A", "top" => { "id" => "x" } }, { "file" => "B", "top" => { "id" => "z" } } ])) }
 
@@ -1035,6 +1046,7 @@ RSpec.describe CardScannerPhase3::PhoneFindings do
     expect(markdown).to include("50 Mbit/s: 0.9 s", "10 Mbit/s: 4.7 s", "2 Mbit/s: 23.6 s", "arithmetic, not measured")
     expect(markdown).to include("Tops that differ from the desktop's: B (phone y, desktop z)")
     expect(markdown).to include("iPhone OS 18_7", "measured over the LAN")
+    expect(markdown).to include("Memory held (cold): index 7,200,000 bytes, words 6,400,000 bytes, 50,000 ids in at most 3,600,000 bytes")
   end
 end
 ```
@@ -1070,6 +1082,7 @@ module CardScannerPhase3
         "Fingerprint slowest ms | Fingerprint max bits | Longest gap ms (100 searches) | Completed |", "|---|---|---|---|---|---|---|---|---|---|---|---|", *rows, "",
         "Cold download at slower links (arithmetic, not measured): #{links}.", "",
         "Tops that differ from the desktop's: #{diffs.empty? ? "none" : diffs.join(", ")}.", "",
+        *@results.map { memory_line(it) }, "",
         "Device and browser: #{@results.map { it["userAgent"] }.uniq.join("; ")}; measured over the LAN." ].join("\n")
     end
 
@@ -1082,6 +1095,13 @@ module CardScannerPhase3
       end
 
       def num(value) = value.to_s.reverse.scan(/\d{1,3}/).join(",").reverse
+
+      # AC-2.5: what the page holds; WebKit exposes no heap measure.
+      def memory_line(load)
+        memory = load["memory"]
+        "Memory held (#{load["mode"]}): index #{num(memory["decodedBytes"])} bytes, words #{num(memory["wordsBytes"])} bytes, " \
+          "#{num(memory["ids"])} ids in at most #{num(memory["idsBytes"])} bytes (no heap figure in WebKit)."
+      end
   end
 end
 ```
@@ -1095,11 +1115,11 @@ end
 require "bundler/setup"
 require "selenium-webdriver"
 
-options = Selenium::WebDriver::Firefox::Options.new(args: [ "-headless" ], accept_insecure_certs: true)
+options = Selenium::WebDriver::Firefox::Options.new(args: [ "-headless" ])
 driver = Selenium::WebDriver.for(:firefox, options:)
 driver.manage.timeouts.script_timeout = 600
 begin
-  driver.navigate.to("https://127.0.0.1:#{ENV.fetch("SPIKE_PORT", 4300)}/phone/timing.html")
+  driver.navigate.to("http://127.0.0.1:#{ENV.fetch("SPIKE_LOCAL_PORT", 4301)}/phone/timing.html") # the loopback bind: same page, no certificate
   Selenium::WebDriver::Wait.new(timeout: 60).until { driver.execute_script("return Boolean(window.__phase3Timing)") }
   result = driver.execute_async_script("const done = arguments[0]; window.__phase3Timing.run('cold').then((r) => done({ ok: r.search.n }), (e) => done({ failure: String(e) }))")
   abort result["failure"] if result["failure"]
@@ -1125,7 +1145,7 @@ puts findings.to_markdown
 CardScannerPhase3::FIXTURE_DIR.join("phase3_phone_timings.json").write(JSON.pretty_generate(findings.to_h)) if ENV["FIXTURES"] == "1"
 ```
 
-- [ ] Start the phase 3 server as a background task: `CARD_SCANNER_WORK_DIR=… bundle exec puma -C spikes/card_scanner/phase3/puma.rb`. Check that `curl -sk https://192.168.1.76:4300/phone/timing.html` returns the page, and that `curl -sk -o /dev/null -w "%{http_code}" https://192.168.1.76:4300/corpus/phase2-sitting/IMG_6806.jpeg` gives `403`. Then run `desktop_timing.rb`.
+- [ ] Start the phase 3 server as a background task: `CARD_SCANNER_WORK_DIR=… bundle exec puma -C spikes/card_scanner/phase3/puma.rb`. Check that `curl -sk https://192.168.1.76:4300/phone/timing.html` returns the page, and that `curl -sk -o /dev/null -w "%{http_code}" https://192.168.1.76:4300/corpus/phase2-sitting/IMG_6806.jpeg` gives `403`. Then run `mkdir -p tmp/spec010` and `desktop_timing.rb`.
 - [ ] **Checkpoint (the maintainer, about 5 minutes).** On the iPhone, open `https://192.168.1.76:4300/phone/timing.html`. Tap **Run cold**, wait for "results saved", then tap **Run warm**. If the page reloads or crashes, record how far it got (Error Scenarios).
 - [ ] Stop the server. Run `FIXTURES=1 bundle exec ruby spikes/card_scanner/phase3/script/phone_findings.rb | tee tmp/spec010/phone.md`. If there are any CSP reports, record them from `runs/phase3/phone/csp-reports.jsonl`. Commit the fixture and the code: `test(findings): record the art index on the iPhone (010)`.
 
@@ -1217,7 +1237,9 @@ RSpec.describe CardScannerPhase3::ArtFindings do
       "detected" => { "IMG_6808.jpeg" => { "found" => false, "top" => [], "rightDistance" => nil },
                       "IMG_6821.jpeg" => { "found" => true, "top" => [ { "id" => "art-pegasus", "distance" => 120 } ], "rightDistance" => 120 } } }
   end
-  let(:findings) { described_class.new(results:, truth:, entries:, owners:, text:) }
+
+  # A method, not a let: the group already has five memoised helpers (RSpec/MultipleMemoizedHelpers).
+  def findings(**changes) = described_class.new(results:, truth:, entries:, owners:, text:, **changes)
 
   it "scores right artwork first, right card first by art and the top 3 per path (AC-4.4)", :aggregate_failures do
     plains, pegasus = findings.scored("guide").values_at(0, 1)
@@ -1237,6 +1259,19 @@ RSpec.describe CardScannerPhase3::ArtFindings do
 
   it "names spec 009's misses with their distances and whether the artwork is unique to the printing (AC-4.6)" do
     expect(findings.to_markdown).to include("| IMG_6808.jpeg | Plains (M10 · 233) | guide: card first, right 230, nearest wrong 210, unique to its printing | detected: no outline |")
+  end
+
+  it "leaves a card without an artwork id out of the rates, and lists it (Error Scenarios)", :aggregate_failures do
+    lost = { "file" => "IMG_6899.jpeg", "name" => "Lost Card", "external_key" => "no-art", "foil" => false, "set_code" => "xyz", "collector_number" => "1" }
+    without = findings(truth: truth.merge("IMG_6899.jpeg" => lost))
+    expect(without.rates("guide")["all"]["art_first"]).to eq("1/2 (50.0%)")
+    expect(without.comparison("guide")["text_top3"]).to eq("2/2 (100.0%)")
+    expect(without.to_markdown).to include("Left out (no artwork id): IMG_6899.jpeg Lost Card")
+  end
+
+  it "notes a right artwork missing from the index (Error Scenarios)" do
+    missing = results.merge("detected" => results["detected"].merge("IMG_6821.jpeg" => { "found" => true, "top" => [ { "id" => "art-x", "distance" => 300 } ], "rightDistance" => nil }))
+    expect(findings(results: missing).to_markdown).to include("| IMG_6821.jpeg | Pegasus Guardian | art-x | — | 300 | missing image |")
   end
 end
 ```
@@ -1308,13 +1343,16 @@ module CardScannerPhase3
       end
     end
 
+    # Cards whose printing has no artwork id in the bulk file are left out of every rate and listed (Error Scenarios).
+    def rated(path) = scored(path).reject { it["missing_artwork"] }
+
     def rates(path)
-      groups = { "all" => scored(path), "foil" => scored(path).select { it["foil"] }, "non-foil" => scored(path).reject { it["foil"] } }
+      groups = { "all" => rated(path), "foil" => rated(path).select { it["foil"] }, "non-foil" => rated(path).reject { it["foil"] } }
       groups.transform_values { |rows| %w[art_first card_first art_top3].to_h { |key| [ key, rate(rows) { it[key] } ] } }
     end
 
     def comparison(path, text = @text)
-      rows = scored(path)
+      rows = rated(path)
       text_top3 = ->(r) { Array(text.dig(r["file"], "top3")).first(3).include?(r["name"]) }
       missed = rows.select { |r| printing_missed?(r["file"], text) }
       { "text_top3" => rate(rows, &text_top3), "text_or_art" => rate(rows) { text_top3.call(it) || it["card_first"] }, "printing_missed" => missed.size,
@@ -1327,15 +1365,17 @@ module CardScannerPhase3
       sections = paths.map do |path|
         r, c = rates(path), comparison(path)
         same = @same.empty? ? "" : "\n\nSame-capture text: #{comparison(path, @same).to_json}"
-        scored_rows = scored(path)
+        scored_rows = rated(path)
         right = scored_rows.filter_map { it["right_distance"] }
         wrong = scored_rows.filter_map { it["nearest_wrong"] }
-        misses = scored_rows.reject { it["art_first"] }.map { "| #{it["file"]} | #{it["name"]} | #{it["first"] || "—"} | #{it["right_distance"] || "—"} | #{it["nearest_wrong"] || "—"} | #{it["found"] ? "" : "no outline"} |" }
+        misses = scored_rows.reject { it["art_first"] }.map { "| #{it["file"]} | #{it["name"]} | #{it["first"] || "—"} | #{it["right_distance"] || "—"} | #{it["nearest_wrong"] || "—"} | #{note(it)} |" }
+        left_out = scored(path).select { it["missing_artwork"] }.map { "#{it["file"]} #{it["name"]}" }
         [ "### #{PATHS[path]}", "| Group | Right artwork first | Right card first by art | Right artwork in top 3 |", "|---|---|---|---|",
           *r.map { |group, v| "| #{group} | #{v["art_first"]} | #{v["card_first"]} | #{v["art_top3"]} |" }, "",
           "Text top 3 #{c["text_top3"]}; text or art #{c["text_or_art"]}; printings the text missed #{c["printing_missed"]}, of which art names the printing #{c["art_names_printing"]}.#{same}", "",
           "Median distance: right #{median(right)}, nearest wrong #{median(wrong)} (n=#{right.size}, #{wrong.size}).", "",
-          "| File | Card | First artwork | Right distance | Nearest wrong | Note |", "|---|---|---|---|---|---|", *misses ].join("\n")
+          "| File | Card | First artwork | Right distance | Nearest wrong | Note |", "|---|---|---|---|---|---|", *misses, "",
+          "Left out (no artwork id): #{left_out.empty? ? "none" : left_out.join(", ")}." ].join("\n")
       end
       named = NAMED.filter_map do |file|
         truth = @truth[file] or next
@@ -1346,6 +1386,14 @@ module CardScannerPhase3
     end
 
     private
+      # "no outline" (detected paths), "missing image" (the right artwork isn't in the index, so no distance was measured).
+      def note(row)
+        if !row["found"] then "no outline"
+        elsif row["right_distance"].nil? then "missing image"
+        else ""
+        end
+      end
+
       def printing_missed?(file, text)
         lookup = text.dig(file, "lookup") || {}
         !(lookup["status"] == "one" && lookup["external_keys"] == [ @truth.dig(file, "external_key") ])
@@ -1468,7 +1516,7 @@ end
   2. **The index rebuild:** the estimate, the ruling, the fetch, the build, and agreement from `phase3_index_build.json` (AC-1.1–AC-1.6).
   3. **The index on the iPhone,** from `tmp/spec010/phone.md` (AC-2.1–AC-2.7).
   4. **The live session:** frames, size, retakes and device (AC-3.5).
-  5. **Art on the three paths,** from `tmp/spec010/art.md` (AC-4.1–AC-4.5). The likely cause of each miss is filled in by viewing the frame or photo: framing, glare or foil, a shared artwork, or a missing image (AC-4.7).
+  5. **Art on the three paths,** from `tmp/spec010/art.md` (AC-4.1–AC-4.5). The likely cause of each miss is filled in by viewing the frame or photo: framing, glare or foil, a shared artwork, or a missing image (AC-4.7). Beside the "right card first by art" rate, note that for a basic land (IMG_6808 Plains) the right card is nearly automatic, since every Plains artwork names Plains (AC-4.4).
   6. **Spec 009's misses and corrections** (AC-4.6).
   7. **Determinism** (AC-4.8).
   8. **Recommendations for spec 011:** which paths get art, where the search runs, art evidence in the ranking grouped by card, and the opt-in fetch's cost to an instance (AC-5.2).
