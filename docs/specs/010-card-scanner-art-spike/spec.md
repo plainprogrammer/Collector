@@ -1,7 +1,7 @@
 # Feature 010: Card Scanner Art Spike — The Index on a Phone, and Art on Live Captures
 
 **Status:** Draft
-**Version:** 1.0.0
+**Version:** 1.1.0
 **Created:** 2026-10-05
 **Last Updated:** 2026-10-05
 **Branch:** `010-card-scanner-art-spike`
@@ -13,6 +13,7 @@
 | Version | Date | Change |
 |---------|------|--------|
 | 1.0.0 | 2026-10-05 | Initial draft, from the approved [PRD](prd.md) |
+| 1.1.0 | 2026-10-05 | Spec review revisions (Fable). **Distances:** the right artwork's distance is measured directly, not only within the top 10 (AC-4.8). **App change:** the read event carries the frame and guide rect in memory; storing them stays in measurement mode (AC-5.5). **Guide-box crop:** native pixels, rounded outward, no resize (AC-4.1). **Terms defined:** right artwork, right card by art, exact printing not identified, which rate "first by art" means (AC-4.4, AC-4.5). **Phone page:** spec 008's committed held-out query fingerprints and straightened cards, so Story 2 doesn't wait on Story 4 (maintainer ruling); the spike server serves the phone over HTTPS on the LAN (FR-2); encoded and decoded bytes, and what "ready" spans (AC-2.1, AC-2.2); fingerprint agreement on the phone reported in bits (AC-2.4). **Index:** agreement on 100 or more images including the 35 cards' artworks (AC-1.6); the tools take folders, bulk file and corpus as settings (FR-1); the index records its build. **On decline:** Stories 3–4 run against a subset index; only Story 2 isn't measured (maintainer ruling). **Also:** the new sitting's run folder and protocol (AC-3.4), the frame limit and switch (AC-3.1, AC-3.2), new error rows, no catalog refresh during the spike |
 
 ---
 
@@ -95,7 +96,7 @@ This spike measures both. The maintainer then rules on spec 011, which builds ar
 
 **Acceptance criteria:**
 
-- [ ] **AC-1.1** Given the current catalog's bulk file When the artworks are listed Then the list holds one artwork per distinct front-face artwork id among the catalog's entries with an image (spec 008 AC-4.1's definition). The findings report the count and the bulk file it came from, which must be the development catalog's (`default-cards-20261003210542`), or else the one its refresh replaced it with, named.
+- [ ] **AC-1.1** Given the development catalog's bulk file (`default-cards-20261003210542`) When the artworks are listed Then the list holds every distinct front-face artwork id among the catalog's entries (spec 008 AC-4.1's definition: English paper entries). The findings report the count and name the bulk file. The catalog isn't refreshed during the spike.
 - [ ] **AC-1.2** Given no artwork is cached When the fetch is about to start Then an estimate is committed first: artworks to fetch, bytes, and hours at the throttled rate, from spec 008's measured bytes and time per artwork. No artwork beyond the 35 cards' own is fetched until the maintainer approves it.
 - [ ] **AC-1.3** Given the maintainer's approval When the artworks are fetched Then every request:
   - carries a descriptive `User-Agent` and an `Accept` header
@@ -105,12 +106,12 @@ This spike measures both. The maintainer then rules on spec 011, which builds ar
 
   The fetch is resumable and never fetches an image twice. Images are cached in `~/card-scanner-corpus/art-cache/`, outside the repository and every worktree.
 - [ ] **AC-1.4** Given an image that can't be fetched after the retries When the index is built Then its artwork is left out, and the findings report how many were left out and why.
-- [ ] **AC-1.5** Given every cached image When the index is built at the fingerprint settings frozen at `39cdc6e` Then it holds one record per artwork with an image, in spec 008's format (a 16-byte artwork id and a 128-byte fingerprint). The findings report:
+- [ ] **AC-1.5** Given every cached image When the index is built at the fingerprint settings frozen at `39cdc6e` Then it holds one record per listed artwork that has an image, in spec 008's format (a 16-byte artwork id and a 128-byte fingerprint). The index's metadata names the bulk file, the settings commit and the build time. The findings report:
   - the record count
   - the size, stored and compressed
   - the fetch's images, bytes and time
   - the fingerprinting time
-- [ ] **AC-1.6** Given the index build and the browser fingerprint images with different code When at least 50 cached images are fingerprinted by both Then the findings report the largest difference in bits between them. It must be 0 for the index to be used.
+- [ ] **AC-1.6** Given the index build and the browser fingerprint images with different code When at least 100 cached images are fingerprinted by both, including the artwork of every one of the 35 cards' ground-truth printings, Then the findings report the median and the largest difference in bits. The largest must be 0 for the index to be used.
 
 ### Story 2: The index on the iPhone
 
@@ -121,13 +122,13 @@ This spike measures both. The maintainer then rules on spec 011, which builds ar
 **Acceptance criteria:**
 
 - [ ] **AC-2.1** Given the rebuilt index When the maintainer opens the spike's timing page on the iPhone, served over HTTPS from the dev machine Then the page:
-  - loads the index from its own origin and nowhere else
+  - loads the index from its own origin and nowhere else, served compressed (`Content-Encoding: gzip`, as the app would serve a static file)
   - runs under a Content Security Policy that allows connections only to its own origin
-  - reports the bytes transferred and the download time
-- [ ] **AC-2.2** Given the download When it completes Then the page reports the time to make the index ready to search, separately from the download.
-- [ ] **AC-2.3** Given at least 20 query fingerprints When the page searches the full index with each Then it reports the search time, median and slowest. The queries are the six offset fingerprints per query, as spec 008 searched, taken from the desktop replay of the live frames (Story 4). Each search's top artwork is the same as the desktop's for the same query.
-- [ ] **AC-2.4** Given at least 10 straightened cards from the desktop replay When the page fingerprints them on the phone Then it reports the fingerprint time, median and slowest, and the fingerprints are identical to the desktop's.
-- [ ] **AC-2.5** Given WebKit exposes no heap size When memory is reported Then the findings give the index's size in memory as the page holds it. They also say whether the page stayed responsive through 100 consecutive searches: no reload, no crash, and no gap of more than 1 second between progress updates.
+  - reports the bytes transferred (encoded, cross-checked against the server's file size), the decoded bytes, and the download time
+- [ ] **AC-2.2** Given the download When it completes Then the page reports the time to make the index ready to search, separately from the download. That time runs from the end of the download until the index is held in the arrays the search uses, including any decompression the page does itself.
+- [ ] **AC-2.3** Given spec 008's committed held-out query fingerprints (`phase2_results.json`, `art_full.hashes`, six offsets per photo, 43 photos), searched against the rebuilt index on the desktop for reference (maintainer ruling, so Story 2 doesn't wait on Story 4) When the page searches the full index with each Then it reports the search time, median and slowest (n=43). Each search's top artwork is compared with the desktop's for the same query, and any difference is listed.
+- [ ] **AC-2.4** Given the straightened cards spec 008's held-out run left on disk (`~/card-scanner-corpus/runs/phase2/held-hand/*/card.png`, at least 10), served to the phone as PNGs without a colour profile, When the page fingerprints them Then it reports the fingerprint time, median and slowest. It also reports the largest difference in bits from the desktop's fingerprints of the same cards (0 expected).
+- [ ] **AC-2.5** Given WebKit exposes no heap size When memory is reported Then the findings give the index's size in memory as the page holds it: the raw bytes, the fingerprint words (records × 128 bytes) and the artwork ids. They also say whether the page stayed responsive through 100 consecutive searches cycling through AC-2.3's queries: no reload, no crash, and no gap of more than 1 second between progress updates.
 - [ ] **AC-2.6** Given the page is loaded once with an empty cache and once with the index cached When the findings are written Then they report both loads. They also give the cold download's time at 50, 10 and 2 Mbit/s, computed from the bytes and labelled as arithmetic, not measured.
 - [ ] **AC-2.7** Given the measurement When the findings are written Then they name the device, the iOS version and the browser (from the user agent), and say that the download was measured over the LAN.
 
@@ -139,10 +140,13 @@ This spike measures both. The maintainer then rules on spec 011, which builds ar
 
 **Acceptance criteria:**
 
-- [ ] **AC-3.1** Given measurement mode is on (development only) and frame keeping is enabled for the run When a live capture is stored Then its full frame is stored losslessly (PNG) beside the capture's strips and text, outside the repository and `storage/`. Beside it go the guide rect the page used (x, y, width and height in frame pixels) and the frame's size.
-- [ ] **AC-3.2** Given a frame larger than the strips' 5 MB limit When it is stored Then a frame limit large enough for a full camera frame applies instead, with the limit stated. A file that isn't a PNG, or is over that limit, is refused with the existing "nothing was stored" message, and the capture doesn't count.
+- [ ] **AC-3.1** Given measurement mode is on (development only) and frame keeping is switched on for the run by a documented setting When a live capture is stored Then its full frame is stored losslessly (PNG) beside the capture's strips and text, outside the repository and `storage/`. Beside it go the guide rect the page used (x, y, width and height in frame pixels, as floats) and the frame's width and height.
+- [ ] **AC-3.2** Given a frame larger than the strips' 5 MB limit When it is stored Then a separate frame limit of 32 MB applies, stated in measurement mode's message and in the findings. A file that isn't a PNG, or is over that limit, is refused with the existing "nothing was stored" message, and the capture doesn't count.
 - [ ] **AC-3.3** Given measurement mode is off (production, test by default) When any frame upload is attempted Then it answers 404, as every measurement route does today. Normal scanning never sends a frame.
-- [ ] **AC-3.4** Given the 35-card manifest When the maintainer captures each card live once Then the first capture is the scored one. A retake is allowed only when the first capture is unusable, as in spec 007's protocol, and retakes are reported. Each capture's text reading is stored as in spec 009.
+- [ ] **AC-3.4** Given the 35-card manifest and a run folder of the sitting's own When the maintainer captures each card live once Then:
+  - the first capture is the scored one; a retake is allowed only when the first capture is unusable, as in spec 007's protocol, and retakes are reported
+  - captures only: no add is required, and any add isn't scored
+  - the reading chain runs at spec 009's frozen settings (`7afed14`), unchanged, and each capture's text is stored as spec 009 AC-9.2 stores it
 - [ ] **AC-3.5** Given the live session When the findings are written Then they report:
   - frames stored, skipped rows and retakes
   - the frame size the iPhone delivered
@@ -156,18 +160,22 @@ This spike measures both. The maintainer then rules on spec 011, which builds ar
 
 **Acceptance criteria:**
 
-- [ ] **AC-4.1** Given each stored live frame and its guide rect When the guide-box path runs on the desktop Then the guide rect is taken as the card, and its art box (spec 008's x 0.14–0.86, y 0.16–0.50) is fingerprinted at the six offsets and searched against the full index.
-- [ ] **AC-4.2** Given each stored live frame When the detected path runs on the desktop Then the shipped detector looks for the card in the frame. If it finds one, the straightened card is fingerprinted and searched as on the photo path. If it finds none, the frame counts as a miss for that path, and the findings report how many outlines were found.
-- [ ] **AC-4.3** Given the 35 cards' unguided photos When the photo path runs on the desktop Then each photo goes through the shipped detector, and the straightened card is fingerprinted and searched. A photo without an outline counts as a miss.
+- [ ] **AC-4.1** Given each stored live frame and its guide rect When the guide-box path runs on the desktop Then:
+  - the guide rect is rounded outward to whole frame pixels and cropped from the frame at native resolution, with no resizing
+  - the crop is taken as the card; spec 008's art box (x 0.14–0.86, y 0.16–0.50) and its six offsets are applied to it
+  - the fingerprints are searched against the full index
+  - the replay records the crop rectangle used
+- [ ] **AC-4.2** Given each stored live frame When the detected path runs on the desktop Then the shipped detector looks for the card in the frame. If it finds one, the straightened card is fingerprinted and searched as on the photo path. If it finds none, the frame counts as a miss for that path, and the findings report how many outlines were found. The detector is the shipped one, including spec 009's outline completion, and the findings label the path so.
+- [ ] **AC-4.3** Given the 35 cards' unguided photos When the photo path runs on the desktop Then each photo goes through the shipped detector, and the straightened card is fingerprinted and searched. A photo without an outline counts as a miss. This runs on the desktop only; spec 009's 10-photo phone run isn't repeated.
 - [ ] **AC-4.4** Given each path's results When the rates are computed Then, for each path, they report:
-  - **right artwork first:** the top artwork is the artwork of the card's ground-truth printing
-  - **right card first by art:** the top artwork belongs to the card, whichever printing
+  - **right artwork first:** the top artwork is the right artwork, meaning the front-face artwork id of the bulk-file card whose id is the ground truth's printing
+  - **right card first by art:** some English paper entry carrying the top artwork has the ground-truth card's name, whichever printing
   - **right artwork in the top 3**
 
-  Each comes with its sample size, overall and split into foils and non-foils.
+  Each comes with its sample size, overall and split into foils and non-foils. Only front faces are indexed and scored, including for the three double-faced cards (IMG_6812, IMG_6815, IMG_6816). For a basic land (IMG_6808 Plains), "right card" is nearly automatic, so the findings say so beside that rate.
 - [ ] **AC-4.5** Given spec 009's committed text results for the same cards (`phase2_sitting_*`) When the comparison is written Then, for each path, it reports:
-  - the right card in the text's top 3 or first by art, against the text's top 3 alone
-  - the cards whose exact printing the text didn't identify, and for how many of them the top artwork belongs to exactly one English printing and that printing is the right one
+  - **text or art:** the right card in the text's top 3, or first by art (right card first by art, AC-4.4), against the text's top 3 alone
+  - **printings the text missed:** the cards whose exact printing the text didn't identify (the fixture's `lookup.status` isn't `one`, or its `external_keys` isn't exactly the ground truth's printing), with that baseline count. For each, whether the right artwork is first and belongs to exactly one printing among the catalog's English paper entries, so that art names the printing
 
   A secondary table repeats both against the text read in the same new capture. Rescoring it uses the shipped matcher at spec 009's frozen settings.
 - [ ] **AC-4.6** Given spec 009's misses and corrections (IMG_6808, IMG_6829, IMG_6821, IMG_6814 and IMG_6823) When the findings are written Then each is named with:
@@ -179,7 +187,7 @@ This spike measures both. The maintainer then rules on spec 011, which builds ar
   - glare or foil
   - an artwork shared with another printing
   - a missing image
-- [ ] **AC-4.8** Given the replays When they run Then they run on the desktop with the browser's fingerprint and search code, from the stored frames and photos. The same frame gives the same fingerprints on two runs, and the findings report any difference.
+- [ ] **AC-4.8** Given the replays When they run Then they run on the desktop with the browser's fingerprint and search code, from the stored frames and photos. Besides the 10 nearest artworks, each search measures the right artwork's distance directly against its own index record, so AC-4.6 and AC-4.7 always have it. The same frame gives the same fingerprints on two runs, and the findings report any difference.
 
 ### Story 5: Findings, ADR updates and reusable data
 
@@ -200,12 +208,13 @@ This spike measures both. The maintainer then rules on spec 011, which builds ar
 - [ ] **AC-5.3** Given ADRs 0006 and 0007 When the findings are published Then each ADR's Consequences gain the phone and live-frame figures. Their references to spec 009 are corrected: spec 010 measures, spec 011 builds and decides. Both stay Proposed.
 - [ ] **AC-5.4** Given the runs When the spike is complete Then their results are committed as JSON text fixtures under `spec/fixtures/card_scanner/`, prefixed `phase3_`, keyed by manifest `file`:
   - the phone timings
-  - per card and path: the top artworks, their distances, outline found
+  - per card and path: the six query fingerprints, the 10 nearest artworks and their distances, the right artwork's distance, the crop or outline used
   - the index build's figures
 
   No image, frame, fingerprint index or cached artwork is committed.
 - [ ] **AC-5.5** Given the spike is complete When the branch's changes are inspected Then:
-  - the app's code changes are confined to development-only measurement mode (Story 3), with tests
+  - the only app change outside measurement mode is that the `card-reader:read` event also carries the captured frame and its guide rect, in memory. Nothing new is sent in normal use: a request spec and a system spec show the readings request still carries only the text and the reading key
+  - storing frames (the upload, its limit, and the 404 when measurement mode is off) is confined to measurement mode, with tests
   - the timing page and replay tools live under `spikes/`
   - `bin/ci` passes at every commit
 
@@ -217,6 +226,8 @@ This spike measures both. The maintainer then rules on spec 011, which builds ar
 - Use the fingerprint settings frozen at `39cdc6e` and spec 008's index format, unchanged.
 - Fetch only after the maintainer approves the committed estimate, following the project's Scryfall etiquette, and cache outside the repository and every worktree.
 - Show 0 bits of difference between the build's fingerprints and the browser's before the index is used.
+- Change spec 008's scripts only to take a cache folder, an index folder, the bulk file and the 35-card corpus as settings. The fingerprint, the resampling and the index writer stay as they are, and the findings show the diff.
+- On decline of the full fetch (maintainer ruling), build a subset index of the 35 cards' artworks plus distractors, and label every rate measured against it.
 
 **Must not:**
 - Tune or change any fingerprint setting.
@@ -225,7 +236,7 @@ This spike measures both. The maintainer then rules on spec 011, which builds ar
 ### FR-2: The phone measurement
 
 **Must:**
-- Serve the timing page and the index from the dev machine over HTTPS, under a policy allowing connections to its own origin only.
+- Serve the timing page and the index from the dev machine over HTTPS on the LAN (spec 007's certificate), under a policy allowing connections to its own origin only. The spike server gains that bind, serves the page, the compressed index, the query fingerprints and the straightened cards to the phone, and accepts the page's results from the LAN. It serves no corpus photo or frame to the LAN.
 - Report every figure in Story 2, with the device and browser named.
 
 **Must not:**
@@ -281,7 +292,11 @@ This spike measures both. The maintainer then rules on spec 011, which builds ar
 
 | Scenario | Expected Behavior |
 |----------|-------------------|
-| The maintainer declines the full fetch | No index beyond the 35 cards' artworks is built. The spike stops after Story 1, and the findings say so, with the estimate |
+| The maintainer declines the full fetch | Story 2 isn't measured. Stories 3–4 run against a subset index (the 35 cards' artworks plus distractors), with every rate labelled as measured against it (maintainer ruling) |
+| A ground-truth printing has no artwork id in the bulk file | It's left out of the art rates and listed |
+| The phone's top artwork differs from the desktop's for a query (AC-2.3) | The findings list the query and both results |
+| The phone's fingerprint of a straightened card differs from the desktop's (AC-2.4) | The findings report the largest difference and its likely cause (colour management). The search timings still stand, since they use the desktop's query fingerprints |
+| The timing page violates its policy (a CSP report) | Recorded, and the load is repeated after the fix |
 | An artwork image can't be fetched after retries | It's left out of the index; the findings count it (AC-1.4) |
 | Scryfall answers 429 or 5xx | The fetch backs off and resumes; nothing already cached is fetched again |
 | The bulk file isn't the development catalog's | The findings name the bulk file used, and every count uses it |
