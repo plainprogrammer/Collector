@@ -1,6 +1,6 @@
 # Feature 010: Card Scanner Art Spike — The Index on a Phone, and Art on Live Captures
 
-**Status:** Draft
+**Status:** Approved
 **Version:** 1.1.2
 **Created:** 2026-10-05
 **Last Updated:** 2026-10-05
@@ -15,7 +15,7 @@
 | 1.0.0 | 2026-10-05 | Initial draft, from the approved [PRD](prd.md) |
 | 1.1.0 | 2026-10-05 | Spec review revisions (Fable). **Distances:** the right artwork's distance is measured directly, not only within the top 10 (AC-4.8). **App change:** the read event carries the frame and guide rect in memory; storing them stays in measurement mode (AC-5.5). **Guide-box crop:** native pixels, rounded outward, no resize (AC-4.1). **Terms defined:** right artwork, right card by art, exact printing not identified, which rate "first by art" means (AC-4.4, AC-4.5). **Phone page:** spec 008's committed held-out query fingerprints and straightened cards, so Story 2 doesn't wait on Story 4 (maintainer ruling); the spike server serves the phone over HTTPS on the LAN (FR-2); encoded and decoded bytes, and what "ready" spans (AC-2.1, AC-2.2); fingerprint agreement on the phone reported in bits (AC-2.4). **Index:** agreement on 100 or more images including the 35 cards' artworks (AC-1.6); the tools take folders, bulk file and corpus as settings (FR-1); the index records its build. **On decline:** Stories 3–4 run against a subset index; only Story 2 isn't measured (maintainer ruling). **Also:** the new sitting's run folder and protocol (AC-3.4), the frame limit and switch (AC-3.1, AC-3.2), new error rows, no catalog refresh during the spike |
 | 1.1.1 | 2026-10-05 | Second spec review (Fable, READY TO PLAN after these fixes). **Decline fallback:** the distractor sample (spec 008's rule) needs the maintainer's approval, and "the index" is defined as the full index or, on decline, the labelled subset (Inputs, AC-1.2, FR-1, Goals, AC-4.1). **Also:** AC-2.3 and AC-2.4 name their desktop references; AC-2.4 names the straightened cards' run; AC-2.5's memory figures; AC-4.5 names both fixtures; the detector is the branch's (with `8a6c712`'s fix); frames only for live captures; one dedicated path for the timing page's results; the Story 2 inputs supersede PRD Goal 1's wording |
-| 1.1.2 | 2026-10-05 | Third spec review (Fable, READY TO PLAN; four minor wording fixes). AC-1.6 counts only artworks with a cached image; a refused frame refuses the whole capture (AC-3.2); the held-out cards are pixel-identical, not byte-identical (AC-2.4); the `8a6c712` detector clause moves from AC-3.4 to AC-4.2 |
+| 1.1.2 | 2026-10-05 | Approved by the maintainer. Third spec review (Fable, READY TO PLAN; four minor wording fixes). AC-1.6 counts only artworks with a cached image; a refused frame refuses the whole capture (AC-3.2); the held-out cards are pixel-identical, not byte-identical (AC-2.4); the `8a6c712` detector clause moves from AC-3.4 to AC-4.2 |
 
 ---
 
