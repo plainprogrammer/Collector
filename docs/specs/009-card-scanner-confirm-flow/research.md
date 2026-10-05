@@ -107,6 +107,8 @@ The new corpus's 49 stored live strips (10 foils with a set line), replayed on t
 
 Caveat from the synthetic specs: on a perfectly flat picture the frozen edge threshold is 0, and the shipped detector behaves as the spike's did. A noisy picture with no card can still yield a phantom outline, so the no-outline fallback (guide placement) may rarely trigger on real photos.
 
+Flat-picture fix (after the caveat above): CI on PR #11 failed on the two picked-photo system specs (`scanner_spec.rb:78`, `scanner_adding_spec.rb:51`), whose flat synthetic card found no candidate on Ubuntu 24.04. Root cause: with the edge threshold at 0, `hough` counted every zero-gradient pixel as an edge, and with gx = gy = 0 as a horizontal one, so the card's top and bottom were misplaced (about 6° of slant); local runs read the misframed picture by luck. `hough` now skips pixels with no gradient, the one change from the spike's arithmetic, and two detection specs cover flat pictures. Parity re-run after the fix: **99 of 99 match** (95 found, 4 not found, drift 0.000 px), so real photos are unaffected.
+
 ## 7. Detected photos (AC-6.4, AC-6.6)
 
 **Development, biased** (the spike's 52 development photos, desktop):
