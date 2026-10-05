@@ -56,6 +56,14 @@ RSpec.describe MTG::CollectorLine do
       expect(parse("0123/0281 M\nDMU ★ EN").foil).to be(true)
     end
 
+    it "reads the foil marker the stored foil captures show and no non-foil does (AC-6.5)" do
+      expect(described_class.parse("R 0123\nMOM ® EN", known_set_codes: %w[mom]).foil).to be(true)
+    end
+
+    it "doesn't read an asterisk as a foil marker, which stored non-foil captures show too (AC-6.5)" do
+      expect(described_class.parse("R 0123\nMOM * EN", known_set_codes: %w[mom]).foil).to be(false)
+    end
+
     it "accepts a bullet misread as a guillemet" do
       expect(parse("051/302 R\nNEO « EN")).to have_attributes(language: "en", foil: false)
     end

@@ -12,6 +12,7 @@ class Scanner::Measurements::ReplaysController < ApplicationController
     @label = params.expect(:label)
     return head(:not_found) unless @label.match?(LABEL)
 
+    @refine = params[:refine] == "1"
     @files = measurement_run.measured_rows.map(&:file)
   end
 

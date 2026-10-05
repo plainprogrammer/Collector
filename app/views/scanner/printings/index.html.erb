@@ -1,0 +1,15 @@
+<%= turbo_frame_tag "scanner_printings" do %>
+  <section class="c-scanner__printings" aria-labelledby="scanner-printings-heading">
+    <div class="c-section__head">
+      <h2 class="c-section__title" id="scanner-printings-heading">Other printings of <%= @identity.name %></h2>
+      <span class="c-section__count"><%= pluralize(@printings.entries.size, "printing") %></span>
+    </div>
+    <ul class="c-list"><%= render partial: "scanner/printings/printing", collection: @printings.shown, as: :printing, locals: { key: @key, finish_hint: @finish_hint } %></ul>
+    <% if @printings.rest.any? %>
+      <details class="c-scanner__more">
+        <summary class="c-btn c-btn--ghost c-btn--sm">Show <%= @printings.rest.size %> more</summary>
+        <ul class="c-list"><%= render partial: "scanner/printings/printing", collection: @printings.rest, as: :printing, locals: { key: @key, finish_hint: @finish_hint } %></ul>
+      </details>
+    <% end %>
+  </section>
+<% end %>

@@ -2,7 +2,7 @@
 # `NNN/TTT`; M15–ONE `NNN/TTT R` then `SET • EN`; MOM and later `R NNNN` then `SET • EN`. OCR glues the
 # rarity to the number, drops the slash and misreads the bullet, so the number is tried against several
 # patterns in turn and the set line accepts any one- or two-character mark before a known language.
-# The foil mark is reported as read, but the scanner never uses it for the finish (FR-4).
+# The foil mark is reported as read; the scanner shows it as a hint for the finish, never a choice (spec 009 AC-6.5).
 module MTG::CollectorLine
   Result = Data.define(:set_code, :number, :language, :foil, :format)
 
@@ -18,7 +18,8 @@ module MTG::CollectorLine
   GLUED_RARITY = /(?<![A-Z0-9])[CURMSLTP]([0-9]#{NUMBERISH}{2,3})(?![A-Z0-9])/
   BARE_NUMBER = /(?<![A-Z0-9])(\d{1,4})(?![A-Z0-9])/
   SET_LINE = /(?<![A-Z0-9])([A-Z0-9]{3,5})[ \t]*(\S{1,2})?[ \t]*(#{LANGUAGES.keys.join("|")})(?![A-Z])/
-  FOIL_MARKERS = %w[★ *].freeze
+  # The separators the stored foil captures show and no stored non-foil does (spec 009 AC-6.5, scanner:foil_markers).
+  FOIL_MARKERS = %w[★ ®].freeze
 
   module_function
 

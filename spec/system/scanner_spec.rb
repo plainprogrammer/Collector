@@ -18,7 +18,7 @@ RSpec.describe "Card scanner", type: :system do
     expect(page).to have_css(".c-scanner__candidate", text: "Lightning Bolt", wait: 30)
     expect(first(".c-scanner__candidate")).to have_text("Matched by its collector line")
     expect(page.evaluate_script("window.__cameraRequests[0]")).to include("audio" => false, "video" => include("facingMode" => { "ideal" => "environment" }))
-    expect(scanner_sent).to eq([ [ "reading[name_text]", "reading[collector_text]" ] ])
+    expect(scanner_sent).to eq([ [ "reading[name_text]", "reading[collector_text]", "reading[key]" ] ])
   end
 
   it "reads one card at a time (AC-2.6)", :aggregate_failures do
@@ -80,7 +80,7 @@ RSpec.describe "Card scanner", type: :system do
     expect(page).to have_field("Use a photo", type: "file", visible: :all, disabled: false)
     pick_synthetic_photo
     expect(page).to have_css(".c-scanner__candidate", text: "Lightning Bolt", wait: 30)
-    expect(scanner_sent).to eq([ [ "reading[name_text]", "reading[collector_text]" ] ])
+    expect(scanner_sent).to eq([ [ "reading[name_text]", "reading[collector_text]", "reading[key]" ] ])
   end
 
   it "asks you to sign in again when your session has ended" do

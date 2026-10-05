@@ -1,0 +1,13 @@
+<% content_for :title, "End this sitting? · Collector" %>
+<%= render "layouts/appbar", section: :scanner, detail: true, back_path: scanner_path %>
+<main class="c-main c-page">
+  <section class="c-confirm">
+    <h1 class="c-pagehead__title">End this sitting?</h1>
+    <p>You added <%= pluralize(@count, "card") %> in this sitting. They stay in your collection; the list of adds and its Undo buttons go.</p>
+    <div class="c-form__actions">
+      <%= button_to "End sitting", scanner_sitting_ending_path, class: "c-btn c-btn--danger", form: { data: { turbo: false } } %>
+      <%= link_to "Cancel", scanner_path, class: "c-btn c-btn--secondary" %>
+    </div>
+  </section>
+</main>
+<%= render "layouts/tabbar", section: :scanner %>

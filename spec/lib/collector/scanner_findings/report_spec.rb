@@ -73,4 +73,9 @@ RSpec.describe Collector::ScannerFindings::Report do
       expect(dir.join("phase1_ocr_results.json")).not_to exist
     end
   end
+
+  it "writes format version 3 with the outline and the detector's timings (spec 009 AC-9.4)" do
+    described_class.new(run:, output: dir, format_version: 3).write_fixtures!
+    expect(JSON.parse(dir.join("phase1_ocr_results.json").read)).to include("format_version" => 3)
+  end
 end

@@ -9,15 +9,25 @@ class Catalog::NameIndex
   SHORTLIST = 50
   SHORT_QUERY = 5
   MIN_TOKEN = 3
+  # A line is a query only if at least this share of its characters sit in tokens of MIN_TOKEN or more (spec 009
+  # AC-6.1): a line of short noise tokens no longer beats the name. A tuning setting, frozen before the live sitting.
+  LONG_TOKEN_SHARE = 0.5
   BATCH_SIZE = 1_000
 
-  # The longest line in which at least half the non-space characters are letters, once tokens shorter
-  # than MIN_TOKEN are dropped from every line; if no such line is left, the longest such line as read,
-  # so a short name like "Ox" is still a query (AC-3.4).
+  # The longest mostly-alphabetic line, once tokens shorter than MIN_TOKEN are dropped, among lines mostly made of
+  # such tokens; failing that, among every line as before; failing that, the longest such line as read, so a short name
+  # like "Ox" is still a query (spec 007 AC-3.4).
   def self.clean(text)
     lines = text.to_s.lines.map(&:strip)
     trimmed = lines.map { |line| line.split.select { |token| token.length >= MIN_TOKEN }.join(" ") }
-    longest_alphabetic(trimmed) || longest_alphabetic(lines) || ""
+    worded = trimmed.select.with_index { |_, index| long_token_share(lines[index]) >= LONG_TOKEN_SHARE }
+    longest_alphabetic(worded) || longest_alphabetic(trimmed) || longest_alphabetic(lines) || ""
+  end
+
+  def self.long_token_share(line)
+    tokens = line.split
+    total = tokens.sum(&:length)
+    total.zero? ? 0 : tokens.select { it.length >= MIN_TOKEN }.sum(&:length).fdiv(total)
   end
 
   def self.longest_alphabetic(lines) = lines.select { |line| alphabetic?(line) }.max_by(&:length)

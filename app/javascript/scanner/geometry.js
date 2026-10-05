@@ -9,11 +9,22 @@ export const STRIPS = {
   name: { x: 0.05, y: 0.055, w: 0.75, h: 0.11 },
   collector: { x: 0.03, y: 0.89, w: 0.55, h: 0.11 }
 }
+// Strips for a picture the detector straightened (spec 009 AC-6.6): there the card exactly fills the guide, unlike a live
+// frame, where it sits a little inside. Frozen after the spike's development photos (2026-10-04): the name strip starts
+// higher (y 0.04; top 3 43/52 → 45/52, biased); a wider name strip (w 0.82) gained nothing, so STRIPS is unchanged.
+export const DETECTED_STRIPS = { name: { ...STRIPS.name, y: 0.04 }, collector: { ...STRIPS.collector } }
 // Strips are drawn at this many times their size before OCR. A tuning setting, frozen before the measured run (AC-6.1).
 export const STRIP_SCALE = 2
 // Strips whose dark pixel rows are inverted before OCR. A tuning setting, frozen before the measured run (AC-6.1).
 // Collector lines are light text on the black border; inverting the name strip too hurt name matching (round 3).
 export const INVERT_DARK_ROWS = [ "collector" ]
+// Spec 009's reading refinements (AC-6.2, AC-6.3), applied to a strip after the steps above, so a strip stored by an earlier
+// run can be replayed with them exactly. name.invertBelow inverts the whole name strip when its mean luminance is below it
+// (light names on dark bars); collector.binarize applies an Otsu threshold and collector.scale enlarges further (faint
+// foil lines). Frozen before the live sitting (AC-6.7). All off: replaying the 49 stored live strips (2026-10-04), no
+// collector variant raised foil exact printing (4/10 off; binarize 1/10, ×1.5 3/10, both 3/10), and neither name
+// threshold (100, 128) read IMG_6785's name (128 lost one name read, 5/49 → 4/49).
+export const REFINE = { name: { invertBelow: null }, collector: { binarize: false, scale: 1 } }
 
 export function guideRect(viewWidth, viewHeight) {
   let height = viewHeight * GUIDE.height
@@ -34,8 +45,8 @@ export function guideInFrame(frameWidth, frameHeight, viewWidth, viewHeight) {
   return { x: offsetX + guide.x / scale, y: offsetY + guide.y / scale, width: guide.width / scale, height: guide.height / scale }
 }
 
-export function cropStrips(image, card) {
-  return Object.fromEntries(Object.entries(STRIPS).map(([ key, strip ]) => {
+export function cropStrips(image, card, layout = STRIPS) {
+  return Object.fromEntries(Object.entries(layout).map(([ key, strip ]) => {
     const width = Math.round(card.width * strip.w)
     const height = Math.round(card.height * strip.h)
     const canvas = document.createElement("canvas")
@@ -46,7 +57,7 @@ export function cropStrips(image, card) {
       width, height, 0, 0, canvas.width, canvas.height)
     stretchContrast(context, canvas.width, canvas.height)
     if (INVERT_DARK_ROWS.includes(key)) invertDarkRows(context, canvas.width, canvas.height)
-    return [ key, canvas ]
+    return [ key, refineStrip(key, canvas) ]
   }))
 }
 
@@ -83,5 +94,54 @@ function invertDarkRows(context, width, height) {
       pixels[i] = 255 - pixels[i]; pixels[i + 1] = 255 - pixels[i + 1]; pixels[i + 2] = 255 - pixels[i + 2]
     }
   }
+  context.putImageData(image, 0, 0)
+}
+
+export function refineStrip(key, canvas, settings = REFINE[key]) {
+  let strip = canvas
+  if (settings.scale && settings.scale !== 1) {
+    strip = Object.assign(document.createElement("canvas"), { width: Math.round(canvas.width * settings.scale), height: Math.round(canvas.height * settings.scale) })
+    strip.getContext("2d", { willReadFrequently: true }).drawImage(canvas, 0, 0, strip.width, strip.height)
+  }
+  const context = strip.getContext("2d", { willReadFrequently: true })
+  if (settings.invertBelow != null && meanLuminance(context, strip.width, strip.height) < settings.invertBelow) invertAll(context, strip.width, strip.height)
+  if (settings.binarize) binarize(context, strip.width, strip.height)
+  return strip
+}
+
+function meanLuminance(context, width, height) {
+  const pixels = context.getImageData(0, 0, width, height).data
+  let sum = 0
+  for (let i = 0; i < pixels.length; i += 4) sum += 0.299 * pixels[i] + 0.587 * pixels[i + 1] + 0.114 * pixels[i + 2]
+  return sum / (width * height)
+}
+
+function invertAll(context, width, height) {
+  const image = context.getImageData(0, 0, width, height)
+  const pixels = image.data
+  for (let i = 0; i < pixels.length; i += 4) { pixels[i] = 255 - pixels[i]; pixels[i + 1] = 255 - pixels[i + 1]; pixels[i + 2] = 255 - pixels[i + 2] }
+  context.putImageData(image, 0, 0)
+}
+
+// Otsu's threshold on the (already grey) strip: every pixel becomes black or white.
+function binarize(context, width, height) {
+  const image = context.getImageData(0, 0, width, height)
+  const pixels = image.data
+  const histogram = new Array(256).fill(0)
+  for (let i = 0; i < pixels.length; i += 4) histogram[pixels[i]]++
+  const total = width * height
+  let sum = 0
+  for (let t = 0; t < 256; t++) sum += t * histogram[t]
+  let background = 0, backgroundSum = 0, best = -1, threshold = 127
+  for (let t = 0; t < 256; t++) {
+    background += histogram[t]
+    if (background === 0) continue
+    const foreground = total - background
+    if (foreground === 0) break
+    backgroundSum += t * histogram[t]
+    const between = background * foreground * (backgroundSum / background - (sum - backgroundSum) / foreground) ** 2
+    if (between > best) { best = between; threshold = t }
+  }
+  for (let i = 0; i < pixels.length; i += 4) { const value = pixels[i] > threshold ? 255 : 0; pixels[i] = pixels[i + 1] = pixels[i + 2] = value }
   context.putImageData(image, 0, 0)
 }

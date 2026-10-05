@@ -7,7 +7,7 @@
     <p class="c-status__message c-status__message--alert"><%= @manifest_problem %> Measurement mode can't start. The scanner itself is unaffected.</p>
   <% else %>
     <%= render "scanner/measurements/panel", @panel %>
-    <%= render "scanners/scanner" %>
+    <%= render "scanners/scanner", **@sitting %>
   <% end %>
 </main>
 <%= render "layouts/tabbar", section: :scanner %>

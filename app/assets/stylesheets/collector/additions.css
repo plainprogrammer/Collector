@@ -150,3 +150,17 @@
 .c-scanner__result { display:flex; flex-direction:column; gap:var(--space-6); }
 .c-scanner__note { margin:var(--space-3) 0 0; font:400 14px/20px var(--font-sans); color:var(--ink-muted); }
 @media (prefers-reduced-motion: reduce) { .c-scanner * { transition:none; animation:none; } }
+
+/* Scanner confirm flow (spec 009): evidence on a candidate, add buttons per finish, Other printings and the sitting. */
+.c-scanner__candidate { display:flex; flex-direction:column; align-items:flex-start; gap:var(--space-2); }
+.c-scanner__evidence { font:400 13px/18px var(--font-sans); color:var(--ink-muted); }
+.c-scanner__adds { display:flex; flex-wrap:wrap; gap:var(--space-2); }
+.c-scanner__add, .c-scanner__undo { margin:0; }
+.c-scanner__add .c-btn, .c-scanner__undo .c-btn, .c-scanner__sitting .c-btn { min-height:44px; min-width:44px; }
+.c-scanner__sitting .c-list li { flex-wrap:wrap; }
+.c-scanner__entry-actions { display:flex; gap:var(--space-2); font-family:var(--font-sans); }
+.c-scanner__more > summary { list-style:none; width:max-content; margin-top:var(--space-2); }
+.c-scanner__more > summary::-webkit-details-marker { display:none; }
+.c-scanner__printings .c-list li { flex-wrap:wrap; }
+.c-scanner__printings .c-list__end { font-family:var(--font-sans); }
+.c-scanner__hint { margin:0; font:400 14px/20px var(--font-sans); color:var(--ink-muted); }

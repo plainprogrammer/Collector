@@ -4,7 +4,7 @@
 - [Small incremental commits](small-incremental-commits.md) — one Conventional Commit per step/change
 - [Secret files are user-verified](secret-files-user-verified.md) — agents are read-denied on secrets/storage; ask the user to cat them
 - [SDD review model choice](sdd-review-model-choice.md) — reviews as read-only Fable subagents; brainstorm/spec/plan in the main session (Opus or Fable); implementation on Opus
-- [Plan reviews run the code](plan-reviews-run-the-code.md) — brief plan reviewers to extract and run the plan's code blocks; found 2 blocking errors in 008
+- [Plan reviews run the code](plan-reviews-run-the-code.md) — trace plan code against the files it edits; read-only Fable by default (spec 009), run the code only on request
 - [Dev machine image tools](dev-machine-image-tools.md) — magick 7, Pillow, ffmpeg present; no libvips/ruby-vips here (Dockerfile has libvips); decode via `magick … ppm:-`
 - [Scryfall API access](scryfall-api-access.md) — docs 403 to WebFetch; use curl + User-Agent; bulk JSONL facts
 - [PR screenshots workflow](pr-screenshots-workflow.md) — headless Firefox + magick/ffmpeg; embed in private-repo PRs via blob/<sha>?raw=true
@@ -15,7 +15,7 @@
 - [Reproduce CI with its seed](reproduce-ci-with-seed.md) — on CI failure, run the full suite with the CI seed as an early reproduction step
 - [Turbo Back navigation quirks](turbo-back-navigation-quirks.md) — frame-advance + Back has two races; filters now plain Drive GET visits + no-cache; wait_for_turbo_idle
 - [PR #5 follow-ups](pr5-open-followups.md) — back-button flake fixed by PR #9 (merged 2026-10-02), watch CI; uncaptured failure
-- [Card scanner direction](card-scanner-direction.md) — 008 spike done (PR #10); RULED 2026-10-03: spec 009 = confirm flow + hand detector on photo path; art matching = own spec after 009, opt-in per instance, artwork ids allowed (FR-3 amended there); next: merge #10, then spec 009
+- [Card scanner direction](card-scanner-direction.md) — spec 009 (confirm flow + photo-path detector) executed, findings in its research.md (sitting 30/35 right first time); art matching = own spec next, opt-in per instance, artwork ids allowed (FR-3 amended there)
 - [Shipped percentile is upper-middle](shipped-percentile-upper-middle.md) — ScannerFindings.percentile(…, 50) takes the upper middle for even n; use one conventional median helper and state it
 - [Phone LAN dev access](phone-lan-dev-access.md) — 192.168.1.76, high ports open, bind 0.0.0.0; Brave (WebKit); camera HTTPS = self-signed cert + Puma ssl:// bind (Cloudflare tunnel failed); no openssl CLI
 - [Work ahead of human checkpoints](work-ahead-of-human-checkpoints.md) — in sdd-execute, run maintainer-independent units first; record rulings in commit bodies
@@ -23,4 +23,6 @@
 - [Brakeman --ensure-latest](brakeman-ensure-latest.md) — a new Brakeman release breaks hooks/CI; bump the gem in a chore(deps) commit
 - [Search spec CI flake](search-spec-ci-flake.md) — open: catalog_search_spec.rb:4 times out opening a card page on GitHub CI only; cause unknown
 - [Check corpus availability](check-corpus-availability.md) — confirm physical items (cards) will be at hand before specifying a re-measure on them
-- [Verify corpus manifests](verify-corpus-manifests.md) — resolve, check overlap, plst `PCY-132` numbers, era override for frames without set codes; a clean-reading miss may be a manifest error
+- [Verify corpus manifests](verify-corpus-manifests.md) — resolve, check overlap, plst `PCY-132` numbers, era override for frames without set codes, foil ★ vs the foil column; a clean-reading miss may be a manifest error
+- [ExitPlanMode for SDD plans](exitplanmode-for-sdd-plans.md) — long plans: summarise in chat and take the go-ahead there, not via the approval dialog
+- [Device sitting account check](device-sitting-account-check.md) — find which account holds the sitting (by reading keys) before scoring or resetting

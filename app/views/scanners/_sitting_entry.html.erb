@@ -1,0 +1,16 @@
+<%# locals: (entry:) %>
+<% copy = scanner_copy(entry.printing, entry.finish) %>
+<li>
+  <span><%= entry.printing.name %></span>
+  <span class="c-list__meta"><%= set_number(entry.printing) %> · <%= scanner_finish(entry.printing, entry.finish) || "—" %> · Added <%= time_tag entry.created_at, "#{time_ago_in_words(entry.created_at)} ago" %></span>
+  <span class="c-list__end c-scanner__entry-actions">
+    <% if entry.state == :changed %>
+      <span class="c-tag">Changed in your collection</span>
+    <% else %>
+      <%= link_to "Details", edit_lot_path(entry.lot_id, return_to: scanner_path), class: "c-btn c-btn--ghost c-btn--sm",
+            "aria-label": "Details of #{copy}", data: { scanner_event: "details", reading_key: entry.reading_key, turbo_prefetch: false } %>
+      <%= button_to "Undo", scanner_sitting_entry_undo_path(entry), class: "c-btn c-btn--secondary c-btn--sm", "aria-label": "Undo #{copy}",
+            form: { class: "c-scanner__undo", data: { scanner_event: "undo", reading_key: entry.reading_key } } %>
+    <% end %>
+  </span>
+</li>

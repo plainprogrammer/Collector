@@ -1,0 +1,5 @@
+<%# locals: (count:) %>
+<%# Shown once, in the response to Done, in place of the list (spec 009 AC-3.5). The next add replaces it with a new sitting. %>
+<section id="scanner_sitting" class="c-scanner__sitting">
+  <p class="c-status__message">Added <%= pluralize(count, "card") %> in this sitting. <%= link_to "Open your collection", collection_path %></p>
+</section>

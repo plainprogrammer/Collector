@@ -1,4 +1,4 @@
-<%# locals: (reading:) %>
+<%# locals: (reading:, key:) %>
 <% if !reading.catalog_ready? %>
   <p class="c-status__message c-status__message--alert">The card catalog isn't ready yet. Once it has loaded, scan the card again.</p>
 <% elsif reading.nothing_read? %>
@@ -20,8 +20,12 @@
     <% if reading.candidates.empty? %>
       <p class="c-empty">No card matches what was read. Line the card up with the guide and capture it again.</p>
     <% else %>
-      <div class="c-grid"><%= render partial: "scanners/candidate", collection: reading.candidates, as: :candidate %></div>
+      <div class="c-grid">
+        <% reading.candidates.each.with_index(1) do |candidate, rank| %>
+          <%= render "scanners/candidate", candidate:, reading:, key:, rank: %>
+        <% end %>
+      </div>
+      <%= turbo_frame_tag "scanner_printings" %>
     <% end %>
-    <p class="c-scanner__note">Adding cards from the scanner is coming. For now, open a candidate and add it from its page, or <%= link_to "search the catalog", catalog_entries_path(q: reading.candidates.first&.entry&.name.presence || reading.name_text.presence) %>.</p>
   </section>
 <% end %>

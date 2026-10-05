@@ -1,0 +1,512 @@
+{
+  "format_version": 3,
+  "run": "Spec 009 sitting",
+  "matches": [
+    {
+      "file": "IMG_6806.jpeg",
+      "lookup_ms": 198.59,
+      "name_candidates": [
+        "Raven Familiar",
+        "Drake Familiar",
+        "Tyrant's Familiar"
+      ],
+      "final_candidates": [
+        "Raven Familiar",
+        "Drake Familiar",
+        "Tyrant's Familiar"
+      ],
+      "query": "———— ERR ii ee\r\nRaven Familiar\r\n-"
+    },
+    {
+      "file": "IMG_6807.jpeg",
+      "lookup_ms": 45.11,
+      "name_candidates": [
+        "Treacherous Werewolf",
+        "Treacherous Greed",
+        "Treacherous Pit-Dweller"
+      ],
+      "final_candidates": [
+        "Treacherous Werewolf",
+        "Treacherous Greed",
+        "Treacherous Pit-Dweller"
+      ],
+      "query": "Treacherous Werewolf .\r\nws aL, Cea\r\nEL TTR RCA Ty"
+    },
+    {
+      "file": "IMG_6808.jpeg",
+      "lookup_ms": 69.9,
+      "name_candidates": [
+        "Plains",
+        "Plain Walker",
+        "Painsmith"
+      ],
+      "final_candidates": [
+        "Plains",
+        "Plain Walker",
+        "Painsmith"
+      ],
+      "query": "J Plains"
+    },
+    {
+      "file": "IMG_6809.jpeg",
+      "lookup_ms": 74.09,
+      "name_candidates": [
+        "Teleportation Circle",
+        "Teleportal",
+        "Teleport"
+      ],
+      "final_candidates": [
+        "Teleportation Circle",
+        "Teleportal",
+        "Teleport"
+      ],
+      "query": "(i Teleportation Circle\r\nWN"
+    },
+    {
+      "file": "IMG_6810.jpeg",
+      "lookup_ms": 69.63,
+      "name_candidates": [
+        "Tranquil Cove",
+        "Tranquil Grove",
+        "Tranquil Thicket"
+      ],
+      "final_candidates": [
+        "Tranquil Cove",
+        "Tranquil Grove",
+        "Tranquil Thicket"
+      ],
+      "query": "Tranquil Cove"
+    },
+    {
+      "file": "IMG_6811.jpeg",
+      "lookup_ms": 68.75,
+      "name_candidates": [
+        "Cryptic Spires",
+        "Cryptic Cruiser",
+        "Cryptic Serpent"
+      ],
+      "final_candidates": [
+        "Cryptic Spires",
+        "Cryptic Cruiser",
+        "Cryptic Serpent"
+      ],
+      "query": "Cryptic Spires\r\n| ANE"
+    },
+    {
+      "file": "IMG_6812.jpeg",
+      "lookup_ms": 64.25,
+      "name_candidates": [
+        "War Oracle",
+        "Survivor of Korlis",
+        "Commercial District"
+      ],
+      "final_candidates": [
+        "Extus, Oriq Overlord // Awaken the Blood Avatar",
+        "War Oracle",
+        "Survivor of Korlis"
+      ],
+      "query": "AJR Orlq ercit es\r\n[| fs 2"
+    },
+    {
+      "file": "IMG_6813.jpeg",
+      "lookup_ms": 18.72,
+      "name_candidates": [],
+      "final_candidates": [],
+      "query": "\"4 - -"
+    },
+    {
+      "file": "IMG_6814.jpeg",
+      "lookup_ms": 43.41,
+      "name_candidates": [
+        "Obsidian Fireheart",
+        "Obsidian Giant",
+        "Obsidian Acolyte"
+      ],
+      "final_candidates": [
+        "Obsidian Fireheart",
+        "Obsidian Giant",
+        "Obsidian Acolyte"
+      ],
+      "query": "De te ea —- re - ad . -\r\ndl Obsidian Fireheart J"
+    },
+    {
+      "file": "IMG_6815.jpeg",
+      "lookup_ms": 72.2,
+      "name_candidates": [
+        "Fat Ass",
+        "Gnat Miser",
+        "Heat Stroke"
+      ],
+      "final_candidates": [
+        "Invasion of Pyrulea // Gargantuan Slabhorn",
+        "Fat Ass",
+        "Gnat Miser"
+      ],
+      "query": "6] 9 V1:\r\n» AT SS"
+    },
+    {
+      "file": "IMG_6816.jpeg",
+      "lookup_ms": 91.82,
+      "name_candidates": [
+        "The Fearsome Flock",
+        "Advice from the Fae",
+        "Ice Flan"
+      ],
+      "final_candidates": [
+        "Invasion of Kylem // Valor's Reach Tag Team",
+        "The Fearsome Flock",
+        "Advice from the Fae"
+      ],
+      "query": "E>. [Fm\r\nA) | Ca ~"
+    },
+    {
+      "file": "IMG_6817.jpeg",
+      "lookup_ms": 71.2,
+      "name_candidates": [
+        "Seething Landscape",
+        "Seething Anger",
+        "Sheltering Landscape"
+      ],
+      "final_candidates": [
+        "Seething Landscape",
+        "Seething Anger",
+        "Sheltering Landscape"
+      ],
+      "query": "{ Seething Landscape"
+    },
+    {
+      "file": "IMG_6818.jpeg",
+      "lookup_ms": 18.73,
+      "name_candidates": [],
+      "final_candidates": [],
+      "query": "a 1. ¥F"
+    },
+    {
+      "file": "IMG_6819.jpeg",
+      "lookup_ms": 44.47,
+      "name_candidates": [
+        "V.A.T.S.",
+        "Fire Ants",
+        "Sylvan Anthem"
+      ],
+      "final_candidates": [
+        "V.A.T.S.",
+        "Fire Ants",
+        "Sylvan Anthem"
+      ],
+      "query": "v - an"
+    },
+    {
+      "file": "IMG_6820.jpeg",
+      "lookup_ms": 39.23,
+      "name_candidates": [
+        "Demon's Due",
+        "Demons",
+        "Demon's Disciple"
+      ],
+      "final_candidates": [
+        "Demon's Due",
+        "Demons",
+        "Demon's Disciple"
+      ],
+      "query": "Demon's Due"
+    },
+    {
+      "file": "IMG_6821.jpeg",
+      "lookup_ms": 47.04,
+      "name_candidates": [
+        "Pegasus Guardian // Rescue the Foal",
+        "Pegasus Refuge",
+        "Pegasus Charger"
+      ],
+      "final_candidates": [
+        "Pegasus Guardian // Rescue the Foal",
+        "Pegasus Refuge",
+        "Pegasus Charger"
+      ],
+      "query": "(Pegasus Guardian"
+    },
+    {
+      "file": "IMG_6822.jpeg",
+      "lookup_ms": 67.89,
+      "name_candidates": [
+        "Young Blue Dragon // Sand Augury",
+        "Young Red Dragon // Bathe in Gold",
+        "Fang Dragon // Forktail Sweep"
+      ],
+      "final_candidates": [
+        "Young Blue Dragon // Sand Augury",
+        "Young Red Dragon // Bathe in Gold",
+        "Fang Dragon // Forktail Sweep"
+      ],
+      "query": "\\ Young Blue Dragon"
+    },
+    {
+      "file": "IMG_6823.jpeg",
+      "lookup_ms": 40.69,
+      "name_candidates": [
+        "Past in Flames",
+        "Spit Flame",
+        "Smaug, the Great Calamity // Spew Flame"
+      ],
+      "final_candidates": [
+        "Past in Flames",
+        "Spit Flame",
+        "Smaug, the Great Calamity // Spew Flame"
+      ],
+      "query": "Past in Flames"
+    },
+    {
+      "file": "IMG_6824.jpeg",
+      "lookup_ms": 63.68,
+      "name_candidates": [
+        "Moss Diamond",
+        "Mox Diamond",
+        "Moss Kami"
+      ],
+      "final_candidates": [
+        "Moss Diamond",
+        "Mox Diamond",
+        "Moss Kami"
+      ],
+      "query": "\\Moss Diamond ______\r\n|\r\n| a"
+    },
+    {
+      "file": "IMG_6825.jpeg",
+      "lookup_ms": 68.39,
+      "name_candidates": [
+        "Ancestral Katana",
+        "Ancestral Anger",
+        "Ancestral Mask"
+      ],
+      "final_candidates": [
+        "Ancestral Katana",
+        "Ancestral Anger",
+        "Ancestral Mask"
+      ],
+      "query": "| Ancestral Katana\r\nAFR cc BEE OY"
+    },
+    {
+      "file": "IMG_6826.jpeg",
+      "lookup_ms": 62.44,
+      "name_candidates": [
+        "Éowyn, Lady of Rohan",
+        "Éowyn, Shieldmaiden",
+        "Elder Owyn Lyons"
+      ],
+      "final_candidates": [
+        "Éowyn, Lady of Rohan",
+        "Éowyn, Shieldmaiden",
+        "Elder Owyn Lyons"
+      ],
+      "query": "Eowyn, Lady of Rohan\r\nlout EAR 3"
+    },
+    {
+      "file": "IMG_6827.jpeg",
+      "lookup_ms": 65.61,
+      "name_candidates": [
+        "Imperial Subduer",
+        "Imperial Seal",
+        "Imperial Outrider"
+      ],
+      "final_candidates": [
+        "Imperial Subduer",
+        "Imperial Seal",
+        "Imperial Outrider"
+      ],
+      "query": "SOMMMgRE™ ©. I\r\n( Imperial Subduer\r\nBEE"
+    },
+    {
+      "file": "IMG_6828.jpeg",
+      "lookup_ms": 67.13,
+      "name_candidates": [
+        "Clarion Cathars",
+        "Clarion Spirit",
+        "Clarion Conqueror"
+      ],
+      "final_candidates": [
+        "Clarion Cathars",
+        "Clarion Spirit",
+        "Clarion Conqueror"
+      ],
+      "query": "Clarion Cathars\r\na ny... pa"
+    },
+    {
+      "file": "IMG_6829.jpeg",
+      "lookup_ms": 41.09,
+      "name_candidates": [
+        "Mana Geyser",
+        "Mana Geode",
+        "Mana Screw"
+      ],
+      "final_candidates": [
+        "Mana Geyser",
+        "Mana Geode",
+        "Mana Screw"
+      ],
+      "query": "i Mana Geyser\r\n1 pr"
+    },
+    {
+      "file": "IMG_6830.jpeg",
+      "lookup_ms": 38.28,
+      "name_candidates": [
+        "Into the Flood Maw",
+        "Into the Night",
+        "Into the North"
+      ],
+      "final_candidates": [
+        "Into the Flood Maw",
+        "Into the Night",
+        "Into the North"
+      ],
+      "query": "om into Takenuma"
+    },
+    {
+      "file": "IMG_6831.jpeg",
+      "lookup_ms": 64.57,
+      "name_candidates": [
+        "Lightning Bolt",
+        "Emeritus of Conflict // Lightning Bolt",
+        "Lightning Colt"
+      ],
+      "final_candidates": [
+        "Lightning Bolt",
+        "Emeritus of Conflict // Lightning Bolt",
+        "Lightning Colt"
+      ],
+      "query": "Lightning Bolt\r\n2 A {"
+    },
+    {
+      "file": "IMG_6832.jpeg",
+      "lookup_ms": 63.22,
+      "name_candidates": [
+        "Fey Steed",
+        "Chrome Steed",
+        "Noble Steeds"
+      ],
+      "final_candidates": [
+        "Fey Steed",
+        "Chrome Steed",
+        "Noble Steeds"
+      ],
+      "query": "[ Fey Steed \\"
+    },
+    {
+      "file": "IMG_6833.jpeg",
+      "lookup_ms": 67.25,
+      "name_candidates": [
+        "Dueling Coach",
+        "Dueling Rapier",
+        "Dueling Grounds"
+      ],
+      "final_candidates": [
+        "Dueling Coach",
+        "Dueling Rapier",
+        "Dueling Grounds"
+      ],
+      "query": "Dueling Coach"
+    },
+    {
+      "file": "IMG_6834.jpeg",
+      "lookup_ms": 70.07,
+      "name_candidates": [
+        "Draconic Intervention",
+        "Draconic Visitor",
+        "Draconic Disciple"
+      ],
+      "final_candidates": [
+        "Draconic Intervention",
+        "Draconic Visitor",
+        "Draconic Disciple"
+      ],
+      "query": "{ Draconic (nierventic \\\r\nmn — emi — . -\r\npd | ’"
+    },
+    {
+      "file": "IMG_6835.jpeg",
+      "lookup_ms": 68.76,
+      "name_candidates": [
+        "Green Dragon",
+        "Green Ward",
+        "Fire Dragon"
+      ],
+      "final_candidates": [
+        "Green Dragon",
+        "Green Ward",
+        "Fire Dragon"
+      ],
+      "query": "—————————————————————————————————— APR\r\nGreen Dragon 4"
+    },
+    {
+      "file": "IMG_6836.jpeg",
+      "lookup_ms": 68.55,
+      "name_candidates": [
+        "Wizard Class",
+        "Wizards",
+        "Wizards' School"
+      ],
+      "final_candidates": [
+        "Wizard Class",
+        "Clever Conjurer",
+        "Wizards"
+      ],
+      "query": "Wizard Class"
+    },
+    {
+      "file": "IMG_6837.jpeg",
+      "lookup_ms": 61.66,
+      "name_candidates": [
+        "Ow"
+      ],
+      "final_candidates": [
+        "Djinni Windseer",
+        "Ow"
+      ],
+      "query": "vy I a SS —\r\n- “oN \\o\r\n(3\r\n\r\nPr"
+    },
+    {
+      "file": "IMG_6838.jpeg",
+      "lookup_ms": 70.97,
+      "name_candidates": [
+        "Trickster's Talisman",
+        "Blisterstick Shaman",
+        "Pristine Talisman"
+      ],
+      "final_candidates": [
+        "Trickster's Talisman",
+        "Blisterstick Shaman",
+        "Pristine Talisman"
+      ],
+      "query": "F cen ’ cy »\r\nI'rickster's Talisman\r\n[\r\nT pre - “ »> &"
+    },
+    {
+      "file": "IMG_6839.jpeg",
+      "lookup_ms": 64.24,
+      "name_candidates": [
+        "Wastes",
+        "Wash Out",
+        "Wash Away"
+      ],
+      "final_candidates": [
+        "Goblin-town Flunkies",
+        "Wastes",
+        "Wash Out"
+      ],
+      "query": "Was"
+    },
+    {
+      "file": "IMG_6840.jpeg",
+      "lookup_ms": 61.73,
+      "name_candidates": [
+        "Bolg's Company",
+        "Bard's Company",
+        "Dáin's Company"
+      ],
+      "final_candidates": [
+        "Bolg's Company",
+        "Bard's Company",
+        "Dáin's Company"
+      ],
+      "query": "f Bolg's Company"
+    }
+  ]
+}

@@ -1,0 +1,2718 @@
+{
+  "format_version": 1,
+  "spec": "009",
+  "ranking": "spec 007",
+  "catalog": "default-cards-20261003210542",
+  "runs": {
+    "Phase 0": [
+      {
+        "file": "IMG_6688.jpeg",
+        "expected": "Mountain",
+        "final": [
+          "Nicol Bolas, the Ravager // Nicol Bolas, the Arisen",
+          "Archon of the Triumvirate",
+          "Break the Ice"
+        ],
+        "name": [
+          "Nicol Bolas, the Ravager // Nicol Bolas, the Arisen",
+          "Archon of the Triumvirate",
+          "Break the Ice"
+        ]
+      },
+      {
+        "file": "IMG_6689.jpeg",
+        "expected": "Galea, Kindler of Hope",
+        "final": [
+          "Maddening Hex",
+          "Glissa Sunseeker",
+          "Glissa Sunslayer"
+        ],
+        "name": [
+          "Glissa Sunseeker",
+          "Glissa Sunslayer",
+          "Dispersal Shield"
+        ]
+      },
+      {
+        "file": "IMG_6690.jpeg",
+        "expected": "Sally Pride, Lioness Leader",
+        "final": [
+          "Sally Pride, Lioness Leader",
+          "Romana II",
+          "Brain in a Jar"
+        ],
+        "name": [
+          "Romana II",
+          "Brain in a Jar",
+          "Emeria Captain"
+        ]
+      },
+      {
+        "file": "IMG_6691.jpeg",
+        "expected": "Wedding Ring",
+        "final": [
+          "Wedding Ring",
+          "The Wedding of River Song",
+          "Aladdin"
+        ],
+        "name": [
+          "The Wedding of River Song",
+          "Aladdin",
+          "Dawning Purist"
+        ]
+      },
+      {
+        "file": "IMG_6692.jpeg",
+        "expected": "Minimus Containment",
+        "final": [
+          "Minimus Containment",
+          "Bontu's Monument",
+          "Mind Control"
+        ],
+        "name": [
+          "Minimus Containment",
+          "Bontu's Monument",
+          "Mind Control"
+        ]
+      },
+      {
+        "file": "IMG_6702.jpeg",
+        "expected": "Dogmeat, Ever Loyal",
+        "final": [
+          "Dogmeat, Ever Loyal",
+          "Threads of Disloyalty",
+          "Morcant's Loyalist"
+        ],
+        "name": [
+          "Dogmeat, Ever Loyal",
+          "Threads of Disloyalty",
+          "Morcant's Loyalist"
+        ]
+      },
+      {
+        "file": "IMG_6703.jpeg",
+        "expected": "Dogmeat, Ever Loyal",
+        "final": [
+          "Dogmeat, Ever Loyal",
+          "Threads of Disloyalty",
+          "Morcant's Loyalist"
+        ],
+        "name": [
+          "Dogmeat, Ever Loyal",
+          "Threads of Disloyalty",
+          "Morcant's Loyalist"
+        ]
+      },
+      {
+        "file": "IMG_6704.jpeg",
+        "expected": "Enlightened Tutor",
+        "final": [
+          "Enlightened Tutor",
+          "Enlightened Ascetic",
+          "Enlightened Confidant"
+        ],
+        "name": [
+          "Enlightened Tutor",
+          "Enlightened Ascetic",
+          "Enlightened Confidant"
+        ]
+      },
+      {
+        "file": "IMG_6705.jpeg",
+        "expected": "Cloudsteel Kirin",
+        "final": [],
+        "name": []
+      },
+      {
+        "file": "IMG_6706.jpeg",
+        "expected": "Fighter Class",
+        "final": [
+          "Fighter Class",
+          "Tiger Claws",
+          "Rogue Class"
+        ],
+        "name": [
+          "Fighter Class",
+          "Tiger Claws",
+          "Rogue Class"
+        ]
+      },
+      {
+        "file": "IMG_6707.jpeg",
+        "expected": "Tarrian's Soulcleaver",
+        "final": [
+          "Tarrian's Soulcleaver",
+          "Tarrian's Journal // The Tomb of Aclazotz",
+          "Orcrist, Goblin-cleaver"
+        ],
+        "name": [
+          "Tarrian's Soulcleaver",
+          "Tarrian's Journal // The Tomb of Aclazotz",
+          "Orcrist, Goblin-cleaver"
+        ]
+      },
+      {
+        "file": "IMG_6708.jpeg",
+        "expected": "Reyav, Master Smith",
+        "final": [
+          "Mascot Exhibition",
+          "Mascot Interception",
+          "Protect // Serve"
+        ],
+        "name": [
+          "Mascot Exhibition",
+          "Mascot Interception",
+          "Protect // Serve"
+        ]
+      },
+      {
+        "file": "IMG_6709.jpeg",
+        "expected": "Sword of the Animist",
+        "final": [
+          "Sword of the Animist",
+          "Sword of the Paruns",
+          "Halvar, God of Battle // Sword of the Realms"
+        ],
+        "name": [
+          "Sword of the Animist",
+          "Sword of the Paruns",
+          "Halvar, God of Battle // Sword of the Realms"
+        ]
+      },
+      {
+        "file": "IMG_6710.jpeg",
+        "expected": "Sheltered Thicket",
+        "final": [
+          "Sheltered Thicket",
+          "Sheltered Aerie",
+          "Shelter"
+        ],
+        "name": [
+          "Sheltered Thicket",
+          "Sheltered Aerie",
+          "Shelter"
+        ]
+      },
+      {
+        "file": "IMG_6711.jpeg",
+        "expected": "Kodama's Reach",
+        "final": [
+          "Kodama's Reach"
+        ],
+        "name": []
+      },
+      {
+        "file": "IMG_6712.jpeg",
+        "expected": "Lightning Greaves",
+        "final": [
+          "Lightning Greaves",
+          "Lightning Reaver",
+          "Lightning Mare"
+        ],
+        "name": [
+          "Lightning Greaves",
+          "Lightning Reaver",
+          "Lightning Mare"
+        ]
+      },
+      {
+        "file": "IMG_6713.jpeg",
+        "expected": "Lizard Blades",
+        "final": [
+          "Lizard Blades",
+          "Lizard Warrior",
+          "Wizard Class"
+        ],
+        "name": [
+          "Lizard Blades",
+          "Lizard Warrior",
+          "Wizard Class"
+        ]
+      },
+      {
+        "file": "IMG_6714.jpeg",
+        "expected": "Genji Glove",
+        "final": [
+          "Genji Glove",
+          "Narcomoeba",
+          "Very Cryptic Command"
+        ],
+        "name": [
+          "Narcomoeba",
+          "Very Cryptic Command",
+          "Very Cryptic Command"
+        ]
+      },
+      {
+        "file": "IMG_6715.jpeg",
+        "expected": "Mjölnir, Hammer of Thor",
+        "final": [
+          "Repentance",
+          "Repel the Vile",
+          "Repel the Darkness"
+        ],
+        "name": [
+          "Repentance",
+          "Repel the Vile",
+          "Repel the Darkness"
+        ]
+      },
+      {
+        "file": "IMG_6716.jpeg",
+        "expected": "Blessed Ghoul",
+        "final": [
+          "Blessed Ghoul",
+          "Blessed Wind",
+          "Blessed Wine"
+        ],
+        "name": [
+          "Blessed Ghoul",
+          "Blessed Wind",
+          "Blessed Wine"
+        ]
+      },
+      {
+        "file": "IMG_6717.jpeg",
+        "expected": "Campus Crier",
+        "final": [
+          "From Under the Floorboards",
+          "Gyome, Master Chef",
+          "Rebuke"
+        ],
+        "name": [
+          "From Under the Floorboards",
+          "Gyome, Master Chef",
+          "Rebuke"
+        ]
+      },
+      {
+        "file": "IMG_6718.jpeg",
+        "expected": "Leyline Immersion",
+        "final": [
+          "Don't Worry About It",
+          "Energy Arc",
+          "Nick Fury, Agent of S.H.I.E.L.D."
+        ],
+        "name": [
+          "Don't Worry About It",
+          "Energy Arc",
+          "Nick Fury, Agent of S.H.I.E.L.D."
+        ]
+      },
+      {
+        "file": "IMG_6719.jpeg",
+        "expected": "Folk Hero",
+        "final": [
+          "Folk Hero",
+          "Folk of the Pines",
+          "Folk Medicine"
+        ],
+        "name": [
+          "Folk Hero",
+          "Folk of the Pines",
+          "Folk Medicine"
+        ]
+      },
+      {
+        "file": "IMG_6720.jpeg",
+        "expected": "Fanged Flames",
+        "final": [
+          "Fanged Flames",
+          "Fanning the Flames",
+          "Spreading Flames"
+        ],
+        "name": [
+          "Fanged Flames",
+          "Fanning the Flames",
+          "Spreading Flames"
+        ]
+      },
+      {
+        "file": "IMG_6721.jpeg",
+        "expected": "Hammer of Purphoros",
+        "final": [
+          "Hammer of Purphoros",
+          "Hammer Dropper",
+          "Hammer Helper"
+        ],
+        "name": [
+          "Hammer of Purphoros",
+          "Hammer Dropper",
+          "Hammer Helper"
+        ]
+      },
+      {
+        "file": "IMG_6722.jpeg",
+        "expected": "Shared Animosity",
+        "final": [
+          "Root-Kin Ally",
+          "Volcano Imp",
+          "Forbidden Alchemy"
+        ],
+        "name": [
+          "Root-Kin Ally",
+          "Volcano Imp",
+          "Forbidden Alchemy"
+        ]
+      },
+      {
+        "file": "IMG_6723.jpeg",
+        "expected": "Invasion of Tarkir // Defiant Thundermaw",
+        "final": [
+          "Invasion of Tarkir // Defiant Thundermaw",
+          "B-I-N-G-O",
+          "A.I.M. Bot"
+        ],
+        "name": [
+          "B-I-N-G-O",
+          "A.I.M. Bot",
+          "Fear of Going 0-2 Drop"
+        ]
+      },
+      {
+        "file": "IMG_6724.jpeg",
+        "expected": "Nine Lives",
+        "final": [
+          "Lily Bowen, Raging Grandma",
+          "Flailing Drake",
+          "Demonmail Hauberk"
+        ],
+        "name": [
+          "Lily Bowen, Raging Grandma",
+          "Flailing Drake",
+          "Demonmail Hauberk"
+        ]
+      },
+      {
+        "file": "IMG_6725.jpeg",
+        "expected": "Dire-Strain Rampage",
+        "final": [
+          "Dire-Strain Rampage",
+          "Tireless Hauler // Dire-Strain Brawler",
+          "Volatile Arsonist // Dire-Strain Anarchist"
+        ],
+        "name": [
+          "Dire-Strain Rampage",
+          "Tireless Hauler // Dire-Strain Brawler",
+          "Volatile Arsonist // Dire-Strain Anarchist"
+        ]
+      },
+      {
+        "file": "IMG_6726.jpeg",
+        "expected": "Desert Were-Worm",
+        "final": [
+          "Desert Were-Worm",
+          "Desert Warfare",
+          "Desert"
+        ],
+        "name": [
+          "Desert Were-Worm",
+          "Desert Warfare",
+          "Desert"
+        ]
+      },
+      {
+        "file": "IMG_6727.jpeg",
+        "expected": "Desert Were-Worm",
+        "final": [
+          "Desert Were-Worm",
+          "Desert Warfare",
+          "Desert"
+        ],
+        "name": [
+          "Desert Were-Worm",
+          "Desert Warfare",
+          "Desert"
+        ]
+      },
+      {
+        "file": "IMG_6728.jpeg",
+        "expected": "Crux of Fate",
+        "final": [
+          "Crux of Fate",
+          "Cruel Fate",
+          "Just Fate"
+        ],
+        "name": [
+          "Crux of Fate",
+          "Cruel Fate",
+          "Just Fate"
+        ]
+      },
+      {
+        "file": "IMG_6729.jpeg",
+        "expected": "Herd Heirloom",
+        "final": [],
+        "name": []
+      },
+      {
+        "file": "IMG_6730.jpeg",
+        "expected": "Cosmic Hunger",
+        "final": [
+          "Cosmic Hunger",
+          "Cosmic Cube",
+          "Cosmic Horror"
+        ],
+        "name": [
+          "Cosmic Hunger",
+          "Cosmic Cube",
+          "Cosmic Horror"
+        ]
+      },
+      {
+        "file": "IMG_6731.jpeg",
+        "expected": "Broodcaller Scourge",
+        "final": [
+          "Broodcaller Scourge",
+          "Brood",
+          "Boneyard Scourge"
+        ],
+        "name": [
+          "Broodcaller Scourge",
+          "Brood",
+          "Boneyard Scourge"
+        ]
+      },
+      {
+        "file": "IMG_6732.jpeg",
+        "expected": "Balefire Dragon",
+        "final": [
+          "Balefire Dragon",
+          "Red Dragon",
+          "Hunted Dragon"
+        ],
+        "name": [
+          "Red Dragon",
+          "Hunted Dragon",
+          "Black Dragon"
+        ]
+      },
+      {
+        "file": "IMG_6733.jpeg",
+        "expected": "Primevals' Glorious Rebirth",
+        "final": [],
+        "name": []
+      },
+      {
+        "file": "IMG_6734.jpeg",
+        "expected": "Elixir of Immortality",
+        "final": [
+          "Minds Aglow",
+          "Norn's Annex",
+          "Belbe's Armor"
+        ],
+        "name": [
+          "Minds Aglow",
+          "Norn's Annex",
+          "Belbe's Armor"
+        ]
+      },
+      {
+        "file": "IMG_6735.jpeg",
+        "expected": "Fracture",
+        "final": [
+          "Bat-"
+        ],
+        "name": [
+          "Bat-"
+        ]
+      },
+      {
+        "file": "IMG_6736.jpeg",
+        "expected": "Crystal Grotto",
+        "final": [],
+        "name": []
+      },
+      {
+        "file": "IMG_6737.jpeg",
+        "expected": "Leyline of the Guildpact",
+        "final": [
+          "Keiga, the Tide Star",
+          "See the Truth",
+          "Picklock Prankster // Free the Fae"
+        ],
+        "name": [
+          "Keiga, the Tide Star",
+          "See the Truth",
+          "Picklock Prankster // Free the Fae"
+        ]
+      },
+      {
+        "file": "IMG_6738.jpeg",
+        "expected": "Darksteel Citadel",
+        "final": [],
+        "name": []
+      },
+      {
+        "file": "IMG_6739.jpeg",
+        "expected": "Plains",
+        "final": [
+          "Plains",
+          "Plain Walker",
+          "Painsmith"
+        ],
+        "name": [
+          "Plains",
+          "Plain Walker",
+          "Painsmith"
+        ]
+      },
+      {
+        "file": "IMG_6740.jpeg",
+        "expected": "Stormcarved Coast",
+        "final": [
+          "Stormcarved Coast",
+          "Seachrome Coast",
+          "Stormchaser Drake"
+        ],
+        "name": [
+          "Stormcarved Coast",
+          "Seachrome Coast",
+          "Stormchaser Drake"
+        ]
+      },
+      {
+        "file": "IMG_6741.jpeg",
+        "expected": "Kodama's Reach",
+        "final": [
+          "Kodama's Reach",
+          "Altar's Reap",
+          "Rydia's Return"
+        ],
+        "name": [
+          "Kodama's Reach",
+          "Altar's Reap",
+          "Rydia's Return"
+        ]
+      },
+      {
+        "file": "IMG_6742.jpeg",
+        "expected": "Abundant Harvest",
+        "final": [
+          "Abundant Harvest",
+          "Bountiful Harvest",
+          "Viridian Harvest"
+        ],
+        "name": [
+          "Abundant Harvest",
+          "Bountiful Harvest",
+          "Viridian Harvest"
+        ]
+      },
+      {
+        "file": "IMG_6743.jpeg",
+        "expected": "Lathliss, Dragon Queen",
+        "final": [
+          "Ajani's Last Stand",
+          "Militia Rallier",
+          "Unyielding Krumar"
+        ],
+        "name": [
+          "Militia Rallier",
+          "Unyielding Krumar",
+          "Alien Invasion"
+        ]
+      },
+      {
+        "file": "IMG_6744.jpeg",
+        "expected": "Gluttonous Hellkite",
+        "final": [
+          "Gluttonous Hellkite",
+          "Gluttonous Slime",
+          "Gluttonous Troll"
+        ],
+        "name": [
+          "Gluttonous Hellkite",
+          "Gluttonous Slime",
+          "Gluttonous Troll"
+        ]
+      },
+      {
+        "file": "IMG_6745.jpeg",
+        "expected": "Kazandu Refuge",
+        "final": [
+          "Kazandu Refuge",
+          "Kazandu Mammoth // Kazandu Valley",
+          "Kazandu Stomper"
+        ],
+        "name": [
+          "Kazandu Refuge",
+          "Kazandu Mammoth // Kazandu Valley",
+          "Kazandu Stomper"
+        ]
+      },
+      {
+        "file": "IMG_6746.jpeg",
+        "expected": "Tiamat",
+        "final": [
+          "Tiamat",
+          "Tiamat's Fanatics",
+          "Tamanoa"
+        ],
+        "name": [
+          "Tiamat",
+          "Tiamat's Fanatics",
+          "Tamanoa"
+        ]
+      }
+    ],
+    "Phase 1 photo replay": [
+      {
+        "file": "IMG_6688.jpeg",
+        "expected": "Mountain",
+        "final": [
+          "Anticipate",
+          "Celestine, the Living Saint",
+          "Hewed Stone Retainers"
+        ],
+        "name": [
+          "Anticipate",
+          "Celestine, the Living Saint",
+          "Hewed Stone Retainers"
+        ]
+      },
+      {
+        "file": "IMG_6689.jpeg",
+        "expected": "Galea, Kindler of Hope",
+        "final": [
+          "Galea, Kindler of Hope",
+          "Galerider Sliver",
+          "Eater of Hope"
+        ],
+        "name": [
+          "Galea, Kindler of Hope",
+          "Galerider Sliver",
+          "Eater of Hope"
+        ]
+      },
+      {
+        "file": "IMG_6690.jpeg",
+        "expected": "Sally Pride, Lioness Leader",
+        "final": [
+          "Liliana's Caress",
+          "Titania's Chosen",
+          "Illusionist's Stratagem"
+        ],
+        "name": [
+          "Liliana's Caress",
+          "Titania's Chosen",
+          "Illusionist's Stratagem"
+        ]
+      },
+      {
+        "file": "IMG_6691.jpeg",
+        "expected": "Wedding Ring",
+        "final": [
+          "Joined Researchers // Secret Rendezvous",
+          "Peer Pressure",
+          "Grim Reaper's Sprint"
+        ],
+        "name": [
+          "Joined Researchers // Secret Rendezvous",
+          "Peer Pressure",
+          "Grim Reaper's Sprint"
+        ]
+      },
+      {
+        "file": "IMG_6692.jpeg",
+        "expected": "Minimus Containment",
+        "final": [
+          "Minimus Containment",
+          "Bontu's Monument",
+          "Mind Control"
+        ],
+        "name": [
+          "Minimus Containment",
+          "Bontu's Monument",
+          "Mind Control"
+        ]
+      },
+      {
+        "file": "IMG_6702.jpeg",
+        "expected": "Dogmeat, Ever Loyal",
+        "final": [
+          "Dogmeat, Ever Loyal",
+          "Threads of Disloyalty",
+          "Morcant's Loyalist"
+        ],
+        "name": [
+          "Dogmeat, Ever Loyal",
+          "Threads of Disloyalty",
+          "Morcant's Loyalist"
+        ]
+      },
+      {
+        "file": "IMG_6703.jpeg",
+        "expected": "Dogmeat, Ever Loyal",
+        "final": [
+          "Dogmeat, Ever Loyal",
+          "Threads of Disloyalty",
+          "Morcant's Loyalist"
+        ],
+        "name": [
+          "Dogmeat, Ever Loyal",
+          "Threads of Disloyalty",
+          "Morcant's Loyalist"
+        ]
+      },
+      {
+        "file": "IMG_6704.jpeg",
+        "expected": "Enlightened Tutor",
+        "final": [
+          "Divine Sacrament",
+          "Enlightened Tutor",
+          "Enlightened Ascetic"
+        ],
+        "name": [
+          "Enlightened Tutor",
+          "Enlightened Ascetic",
+          "Enlightened Confidant"
+        ]
+      },
+      {
+        "file": "IMG_6705.jpeg",
+        "expected": "Cloudsteel Kirin",
+        "final": [
+          "Aardvark Sloth",
+          "Aarakocra Sneak",
+          "Aardwolf's Advantage"
+        ],
+        "name": [
+          "Aardvark Sloth",
+          "Aarakocra Sneak",
+          "Aardwolf's Advantage"
+        ]
+      },
+      {
+        "file": "IMG_6706.jpeg",
+        "expected": "Fighter Class",
+        "final": [
+          "Fighter Class",
+          "Artificer Class",
+          "Cleric Class"
+        ],
+        "name": [
+          "Fighter Class",
+          "Artificer Class",
+          "Cleric Class"
+        ]
+      },
+      {
+        "file": "IMG_6707.jpeg",
+        "expected": "Tarrian's Soulcleaver",
+        "final": [
+          "Tarrian's Soulcleaver",
+          "Tarrian's Journal // The Tomb of Aclazotz",
+          "Orcrist, Goblin-cleaver"
+        ],
+        "name": [
+          "Tarrian's Soulcleaver",
+          "Tarrian's Journal // The Tomb of Aclazotz",
+          "Orcrist, Goblin-cleaver"
+        ]
+      },
+      {
+        "file": "IMG_6708.jpeg",
+        "expected": "Reyav, Master Smith",
+        "final": [
+          "Reyav, Master Smith",
+          "Krang, Master Mind",
+          "Snaremaster Sprite"
+        ],
+        "name": [
+          "Reyav, Master Smith",
+          "Krang, Master Mind",
+          "Snaremaster Sprite"
+        ]
+      },
+      {
+        "file": "IMG_6709.jpeg",
+        "expected": "Sword of the Animist",
+        "final": [
+          "Sword of the Animist",
+          "Sword of the Paruns",
+          "Halvar, God of Battle // Sword of the Realms"
+        ],
+        "name": [
+          "Sword of the Animist",
+          "Sword of the Paruns",
+          "Halvar, God of Battle // Sword of the Realms"
+        ]
+      },
+      {
+        "file": "IMG_6710.jpeg",
+        "expected": "Sheltered Thicket",
+        "final": [
+          "Sheltered Thicket",
+          "Ceti Eel",
+          "Black Widow, Agile Avenger"
+        ],
+        "name": [
+          "Ceti Eel",
+          "Black Widow, Agile Avenger",
+          "Iname, Life Aspect"
+        ]
+      },
+      {
+        "file": "IMG_6711.jpeg",
+        "expected": "Kodama's Reach",
+        "final": [
+          "Yahenni's Expertise",
+          "Yahenni, Undying Partisan",
+          "Fa'adiyah Seer"
+        ],
+        "name": [
+          "Yahenni's Expertise",
+          "Yahenni, Undying Partisan",
+          "Fa'adiyah Seer"
+        ]
+      },
+      {
+        "file": "IMG_6712.jpeg",
+        "expected": "Lightning Greaves",
+        "final": [
+          "Lightning Greaves",
+          "Lightning Reaver",
+          "Lightning Mare"
+        ],
+        "name": [
+          "Lightning Greaves",
+          "Lightning Reaver",
+          "Lightning Mare"
+        ]
+      },
+      {
+        "file": "IMG_6713.jpeg",
+        "expected": "Lizard Blades",
+        "final": [
+          "Lizard Blades",
+          "Lizard Warrior",
+          "Wizard Class"
+        ],
+        "name": [
+          "Lizard Blades",
+          "Lizard Warrior",
+          "Wizard Class"
+        ]
+      },
+      {
+        "file": "IMG_6714.jpeg",
+        "expected": "Genji Glove",
+        "final": [
+          "Genji Glove",
+          "Blind with Anger",
+          "Chocobo Camp"
+        ],
+        "name": [
+          "Blind with Anger",
+          "Chocobo Camp",
+          "Do or Die"
+        ]
+      },
+      {
+        "file": "IMG_6715.jpeg",
+        "expected": "Mjölnir, Hammer of Thor",
+        "final": [
+          "Mjölnir, Hammer of Thor",
+          "Animal",
+          "Animate Land"
+        ],
+        "name": [
+          "Animal",
+          "Animate Land",
+          "Cranial Ram"
+        ]
+      },
+      {
+        "file": "IMG_6716.jpeg",
+        "expected": "Blessed Ghoul",
+        "final": [
+          "Belisarius Cawl",
+          "Obelisk of Alara",
+          "Felisa, Fang of Silverquill"
+        ],
+        "name": [
+          "Belisarius Cawl",
+          "Obelisk of Alara",
+          "Felisa, Fang of Silverquill"
+        ]
+      },
+      {
+        "file": "IMG_6717.jpeg",
+        "expected": "Campus Crier",
+        "final": [
+          "Might Makes Right",
+          "Gavel of the Righteous",
+          "The Mana Rig"
+        ],
+        "name": [
+          "Might Makes Right",
+          "Gavel of the Righteous",
+          "The Mana Rig"
+        ]
+      },
+      {
+        "file": "IMG_6718.jpeg",
+        "expected": "Leyline Immersion",
+        "final": [
+          "Lay Bare",
+          "Toy Boat",
+          "My Deck is About a Seven"
+        ],
+        "name": [
+          "Lay Bare",
+          "Toy Boat",
+          "My Deck is About a Seven"
+        ]
+      },
+      {
+        "file": "IMG_6719.jpeg",
+        "expected": "Folk Hero",
+        "final": [
+          "Folk Hero"
+        ],
+        "name": []
+      },
+      {
+        "file": "IMG_6720.jpeg",
+        "expected": "Fanged Flames",
+        "final": [
+          "Monsoon",
+          "Harpoon Sniper",
+          "Horned Loch-Whale // Lagoon Breach"
+        ],
+        "name": [
+          "Monsoon",
+          "Harpoon Sniper",
+          "Horned Loch-Whale // Lagoon Breach"
+        ]
+      },
+      {
+        "file": "IMG_6721.jpeg",
+        "expected": "Hammer of Purphoros",
+        "final": [],
+        "name": []
+      },
+      {
+        "file": "IMG_6722.jpeg",
+        "expected": "Shared Animosity",
+        "final": [
+          "C.A.M.P.",
+          "Spy Eye",
+          "V.A.T.S."
+        ],
+        "name": [
+          "C.A.M.P.",
+          "Spy Eye",
+          "V.A.T.S."
+        ]
+      },
+      {
+        "file": "IMG_6723.jpeg",
+        "expected": "Invasion of Tarkir // Defiant Thundermaw",
+        "final": [
+          "Invasion of Tarkir // Defiant Thundermaw",
+          "Summon Undead",
+          "Here Comes a New Hero!"
+        ],
+        "name": [
+          "Summon Undead",
+          "Here Comes a New Hero!",
+          "Moon Heron"
+        ]
+      },
+      {
+        "file": "IMG_6724.jpeg",
+        "expected": "Nine Lives",
+        "final": [
+          "Nine Lives",
+          "Molten-Core Maestro",
+          "Canyon Jerboa"
+        ],
+        "name": [
+          "Molten-Core Maestro",
+          "Canyon Jerboa",
+          "Skyclave Aerialist // Skyclave Invader"
+        ]
+      },
+      {
+        "file": "IMG_6725.jpeg",
+        "expected": "Dire-Strain Rampage",
+        "final": [
+          "Dire-Strain Rampage",
+          "Tireless Hauler // Dire-Strain Brawler",
+          "Volatile Arsonist // Dire-Strain Anarchist"
+        ],
+        "name": [
+          "Dire-Strain Rampage",
+          "Tireless Hauler // Dire-Strain Brawler",
+          "Volatile Arsonist // Dire-Strain Anarchist"
+        ]
+      },
+      {
+        "file": "IMG_6726.jpeg",
+        "expected": "Desert Were-Worm",
+        "final": [
+          "Acidic Soil",
+          "Oil-Gorger Troll",
+          "Toil // Trouble"
+        ],
+        "name": [
+          "Acidic Soil",
+          "Oil-Gorger Troll",
+          "Toil // Trouble"
+        ]
+      },
+      {
+        "file": "IMG_6727.jpeg",
+        "expected": "Desert Were-Worm",
+        "final": [],
+        "name": []
+      },
+      {
+        "file": "IMG_6728.jpeg",
+        "expected": "Crux of Fate",
+        "final": [
+          "Crux of Fate",
+          "Cruel Fate",
+          "Just Fate"
+        ],
+        "name": [
+          "Crux of Fate",
+          "Cruel Fate",
+          "Just Fate"
+        ]
+      },
+      {
+        "file": "IMG_6729.jpeg",
+        "expected": "Herd Heirloom",
+        "final": [
+          "Thawing Glaciers"
+        ],
+        "name": []
+      },
+      {
+        "file": "IMG_6730.jpeg",
+        "expected": "Cosmic Hunger",
+        "final": [
+          "Cosmic Hunger",
+          "Journey to Eternity // Atzal, Cave of Eternity",
+          "Trystan, Callous Cultivator // Trystan, Penitent Culler"
+        ],
+        "name": [
+          "Journey to Eternity // Atzal, Cave of Eternity",
+          "Trystan, Callous Cultivator // Trystan, Penitent Culler",
+          "The Misty Mountains Cold"
+        ]
+      },
+      {
+        "file": "IMG_6731.jpeg",
+        "expected": "Broodcaller Scourge",
+        "final": [
+          "Broodcaller Scourge",
+          "Spartan Veteran",
+          "Uvilda, Dean of Perfection // Nassari, Dean of Expression"
+        ],
+        "name": [
+          "Spartan Veteran",
+          "Uvilda, Dean of Perfection // Nassari, Dean of Expression",
+          "Barbarian Class"
+        ]
+      },
+      {
+        "file": "IMG_6732.jpeg",
+        "expected": "Balefire Dragon",
+        "final": [
+          "Bury in Books",
+          "By Force",
+          "Guy in the Chair"
+        ],
+        "name": [
+          "Bury in Books",
+          "By Force",
+          "Guy in the Chair"
+        ]
+      },
+      {
+        "file": "IMG_6733.jpeg",
+        "expected": "Primevals' Glorious Rebirth",
+        "final": [],
+        "name": []
+      },
+      {
+        "file": "IMG_6734.jpeg",
+        "expected": "Elixir of Immortality",
+        "final": [
+          "Missy",
+          "Mesa Lynx",
+          "Messenger Hawk"
+        ],
+        "name": [
+          "Missy",
+          "Mesa Lynx",
+          "Messenger Hawk"
+        ]
+      },
+      {
+        "file": "IMG_6735.jpeg",
+        "expected": "Fracture",
+        "final": [],
+        "name": []
+      },
+      {
+        "file": "IMG_6736.jpeg",
+        "expected": "Crystal Grotto",
+        "final": [
+          "Crystal Grotto"
+        ],
+        "name": []
+      },
+      {
+        "file": "IMG_6737.jpeg",
+        "expected": "Leyline of the Guildpact",
+        "final": [],
+        "name": []
+      },
+      {
+        "file": "IMG_6738.jpeg",
+        "expected": "Darksteel Citadel",
+        "final": [
+          "Akoum Warrior // Akoum Teeth",
+          "Jalum Tome",
+          "Dream Strix"
+        ],
+        "name": [
+          "Akoum Warrior // Akoum Teeth",
+          "Jalum Tome",
+          "Dream Strix"
+        ]
+      },
+      {
+        "file": "IMG_6739.jpeg",
+        "expected": "Plains",
+        "final": [
+          "Sram's Expertise",
+          "Sam's Desperate Rescue",
+          "Samite Elder"
+        ],
+        "name": [
+          "Sram's Expertise",
+          "Sam's Desperate Rescue",
+          "Samite Elder"
+        ]
+      },
+      {
+        "file": "IMG_6740.jpeg",
+        "expected": "Stormcarved Coast",
+        "final": [],
+        "name": []
+      },
+      {
+        "file": "IMG_6741.jpeg",
+        "expected": "Kodama's Reach",
+        "final": [
+          "Sea of Clouds",
+          "Plea for Power",
+          "Sea God's Scorn"
+        ],
+        "name": [
+          "Sea of Clouds",
+          "Plea for Power",
+          "Sea God's Scorn"
+        ]
+      },
+      {
+        "file": "IMG_6742.jpeg",
+        "expected": "Abundant Harvest",
+        "final": [],
+        "name": []
+      },
+      {
+        "file": "IMG_6743.jpeg",
+        "expected": "Lathliss, Dragon Queen",
+        "final": [
+          "Lathliss, Dragon Queen",
+          "Off Balance",
+          "Gryff Vanguard"
+        ],
+        "name": [
+          "Off Balance",
+          "Gryff Vanguard",
+          "Sheriff of Safe Passage"
+        ]
+      },
+      {
+        "file": "IMG_6744.jpeg",
+        "expected": "Gluttonous Hellkite",
+        "final": [
+          "Geyser Leaper",
+          "Tiger Claws",
+          "Tiger-Dillo"
+        ],
+        "name": [
+          "Geyser Leaper",
+          "Tiger Claws",
+          "Tiger-Dillo"
+        ]
+      },
+      {
+        "file": "IMG_6745.jpeg",
+        "expected": "Kazandu Refuge",
+        "final": [
+          "X",
+          "_____",
+          "______"
+        ],
+        "name": [
+          "X",
+          "_____",
+          "______"
+        ]
+      },
+      {
+        "file": "IMG_6746.jpeg",
+        "expected": "Tiamat",
+        "final": [
+          "Tiamat",
+          "Tiamat's Fanatics",
+          "Tamanoa"
+        ],
+        "name": [
+          "Tiamat",
+          "Tiamat's Fanatics",
+          "Tamanoa"
+        ]
+      }
+    ],
+    "Tuning round 4": [
+      {
+        "file": "T001",
+        "expected": "Exploration",
+        "final": [
+          "Terra, Magical Adept // Esper Terra",
+          "Ogre Errant",
+          "Serra Redeemer"
+        ],
+        "name": [
+          "Terra, Magical Adept // Esper Terra",
+          "Ogre Errant",
+          "Serra Redeemer"
+        ]
+      },
+      {
+        "file": "T002",
+        "expected": "Capture Sphere",
+        "final": [
+          "Capture Sphere",
+          "Captured Sunlight",
+          "Captured by the Consulate"
+        ],
+        "name": [
+          "Capture Sphere",
+          "Captured Sunlight",
+          "Captured by the Consulate"
+        ]
+      },
+      {
+        "file": "T003",
+        "expected": "Universal Solvent",
+        "final": [
+          "Universal Solvent",
+          "Universal Surveillance",
+          "Universal Automaton"
+        ],
+        "name": [
+          "Universal Solvent",
+          "Universal Surveillance",
+          "Universal Automaton"
+        ]
+      },
+      {
+        "file": "T004",
+        "expected": "Raging Swordtooth",
+        "final": [
+          "Raging Swordtooth",
+          "Raging Spirit",
+          "Raging Kronch"
+        ],
+        "name": [
+          "Raging Swordtooth",
+          "Raging Spirit",
+          "Raging Kronch"
+        ]
+      },
+      {
+        "file": "T005",
+        "expected": "Hornet Sting",
+        "final": [
+          "Hornet Sting",
+          "Hornet Nest",
+          "Hornet Harasser"
+        ],
+        "name": [
+          "Hornet Sting",
+          "Hornet Nest",
+          "Hornet Harasser"
+        ]
+      },
+      {
+        "file": "T006",
+        "expected": "Loathsome Catoblepas",
+        "final": [
+          "Loathsome Catoblepas",
+          "Loathsome Curator",
+          "Loathsome Troll"
+        ],
+        "name": [
+          "Loathsome Catoblepas",
+          "Loathsome Curator",
+          "Loathsome Troll"
+        ]
+      },
+      {
+        "file": "T007",
+        "expected": "Honored Heirloom",
+        "final": [
+          "Welcoming Vampire",
+          "Honored Heirloom",
+          "Hero's Heirloom"
+        ],
+        "name": [
+          "Honored Heirloom",
+          "Hero's Heirloom",
+          "Honored Hierarch"
+        ]
+      },
+      {
+        "file": "T008",
+        "expected": "Goreclaw, Terror of Qal Sisma",
+        "final": [
+          "Goreclaw, Terror of Qal Sisma",
+          "Wave of Terror",
+          "Runeclaw Bear"
+        ],
+        "name": [
+          "Goreclaw, Terror of Qal Sisma",
+          "Wave of Terror",
+          "Runeclaw Bear"
+        ]
+      },
+      {
+        "file": "T009",
+        "expected": "Vrondiss, Rage of Ancients",
+        "final": [
+          "Vrondiss, Rage of Ancients",
+          "Indomitable Ancients",
+          "Timberland Ancient"
+        ],
+        "name": [
+          "Vrondiss, Rage of Ancients",
+          "Indomitable Ancients",
+          "Timberland Ancient"
+        ]
+      },
+      {
+        "file": "T010",
+        "expected": "Miirym, Sentinel Wyrm",
+        "final": [
+          "Miirym, Sentinel Wyrm",
+          "Maze Sentinel",
+          "Sentinel"
+        ],
+        "name": [
+          "Miirym, Sentinel Wyrm",
+          "Maze Sentinel",
+          "Sentinel"
+        ]
+      },
+      {
+        "file": "T011",
+        "expected": "Way of the Mentor",
+        "final": [
+          "Give // Take",
+          "Taeko, the Patient Avalanche",
+          "Touch of Vitae"
+        ],
+        "name": [
+          "Give // Take",
+          "Taeko, the Patient Avalanche",
+          "Touch of Vitae"
+        ]
+      },
+      {
+        "file": "T012",
+        "expected": "Ghalta the Immovable",
+        "final": [
+          "Ghalta the Immovable",
+          "Ghalta the Unstoppable",
+          "Ghalta and Mavren"
+        ],
+        "name": [
+          "Ghalta the Immovable",
+          "Ghalta the Unstoppable",
+          "Ghalta and Mavren"
+        ]
+      }
+    ],
+    "New corpus live": [
+      {
+        "file": "IMG_6755.jpeg",
+        "expected": "Gandalf, Friend of the Shire",
+        "final": [
+          "Gandalf, Friend of the Shire",
+          "Gandalf, White Rider",
+          "Gandalf of the Secret Fire"
+        ],
+        "name": [
+          "Gandalf, Friend of the Shire",
+          "Gandalf, White Rider",
+          "Gandalf of the Secret Fire"
+        ]
+      },
+      {
+        "file": "IMG_6756.jpeg",
+        "expected": "Indatha Crystal",
+        "final": [
+          "Indatha Crystal",
+          "Indatha Triome",
+          "The Wind Crystal"
+        ],
+        "name": [
+          "Indatha Crystal",
+          "Indatha Triome",
+          "The Wind Crystal"
+        ]
+      },
+      {
+        "file": "IMG_6757.jpeg",
+        "expected": "Invasion of Muraganda // Primordial Plasm",
+        "final": [
+          "Invasion of Muraganda // Primordial Plasm",
+          "Spike-Tailed Ceratops",
+          "Kurbis, Harvest Celebrant"
+        ],
+        "name": [
+          "Spike-Tailed Ceratops",
+          "Kurbis, Harvest Celebrant",
+          "The Celestus"
+        ]
+      },
+      {
+        "file": "IMG_6758.jpeg",
+        "expected": "Minsc, Beloved Ranger",
+        "final": [
+          "Minsc, Beloved Ranger",
+          "Shoreline Ranger",
+          "Kelsinko Ranger"
+        ],
+        "name": [
+          "Minsc, Beloved Ranger",
+          "Shoreline Ranger",
+          "Kelsinko Ranger"
+        ]
+      },
+      {
+        "file": "IMG_6759.jpeg",
+        "expected": "Repurposed Enforcer",
+        "final": [
+          "Repurposed Enforcer",
+          "Thieves' Guild Enforcer",
+          "Perimeter Enforcer"
+        ],
+        "name": [
+          "Repurposed Enforcer",
+          "Thieves' Guild Enforcer",
+          "Perimeter Enforcer"
+        ]
+      },
+      {
+        "file": "IMG_6760.jpeg",
+        "expected": "Vintara Snapper",
+        "final": [
+          "Vintara Snapper",
+          "Vintara Elephant",
+          "Vine Snare"
+        ],
+        "name": [
+          "Vintara Snapper",
+          "Vintara Elephant",
+          "Vine Snare"
+        ]
+      },
+      {
+        "file": "IMG_6761.jpeg",
+        "expected": "Orzhova, the Church of Deals",
+        "final": [
+          "Join the Dead",
+          "Poison the Cup",
+          "Anowon, the Ruin Thief"
+        ],
+        "name": [
+          "Join the Dead",
+          "Poison the Cup",
+          "Anowon, the Ruin Thief"
+        ]
+      },
+      {
+        "file": "IMG_6762.jpeg",
+        "expected": "Moonhold",
+        "final": [
+          "Moonhold",
+          "Moonshadow",
+          "Moon Heron"
+        ],
+        "name": [
+          "Moonhold",
+          "Moonshadow",
+          "Moon Heron"
+        ]
+      },
+      {
+        "file": "IMG_6763.jpeg",
+        "expected": "Leyline Immersion",
+        "final": [
+          "Leyline Immersion",
+          "Invasion of Shandalar // Leyline Surge",
+          "Leyline Dowser"
+        ],
+        "name": [
+          "Leyline Immersion",
+          "Invasion of Shandalar // Leyline Surge",
+          "Leyline Dowser"
+        ]
+      },
+      {
+        "file": "IMG_6764.jpeg",
+        "expected": "Tormod's Crypt",
+        "final": [
+          "Rad Rascal",
+          "Radstorm",
+          "Bad Ass"
+        ],
+        "name": [
+          "Rad Rascal",
+          "Radstorm",
+          "Bad Ass"
+        ]
+      },
+      {
+        "file": "IMG_6765.jpeg",
+        "expected": "Tome Shredder",
+        "final": [
+          "Elite Spellbinder",
+          "Tome Shredder",
+          "Bone Shredder"
+        ],
+        "name": [
+          "Tome Shredder",
+          "Bone Shredder",
+          "Tome Raider"
+        ]
+      },
+      {
+        "file": "IMG_6766.jpeg",
+        "expected": "Gray Merchant of Alphabet",
+        "final": [
+          "Gray Merchant of Alphabet",
+          "Gray Merchant of Asphodel",
+          "Oracle of the Alpha"
+        ],
+        "name": [
+          "Gray Merchant of Alphabet",
+          "Gray Merchant of Asphodel",
+          "Oracle of the Alpha"
+        ]
+      },
+      {
+        "file": "IMG_6767.jpeg",
+        "expected": "Trigger Happy",
+        "final": [
+          "Trigger Happy",
+          "Strider Harness",
+          "Courier Hawk"
+        ],
+        "name": [
+          "Trigger Happy",
+          "Strider Harness",
+          "Courier Hawk"
+        ]
+      },
+      {
+        "file": "IMG_6768.jpeg",
+        "expected": "Den of the Bugbear",
+        "final": [
+          "Den of the Bugbear",
+          "Warden of the Eye",
+          "Warden of the Wall"
+        ],
+        "name": [
+          "Den of the Bugbear",
+          "Warden of the Eye",
+          "Warden of the Wall"
+        ]
+      },
+      {
+        "file": "IMG_6769.jpeg",
+        "expected": "Grand Master of Flowers",
+        "final": [
+          "Ranger Class",
+          "Grand Master of Flowers",
+          "Grand Melee"
+        ],
+        "name": [
+          "Grand Master of Flowers",
+          "Grand Melee",
+          "Grand Marshal Macie"
+        ]
+      },
+      {
+        "file": "IMG_6770.jpeg",
+        "expected": "Ajani Unrelenting",
+        "final": [
+          "Ajani Unrelenting",
+          "Ajani Unyielding",
+          "Ajani's Influence"
+        ],
+        "name": [
+          "Ajani Unrelenting",
+          "Ajani Unyielding",
+          "Ajani's Influence"
+        ]
+      },
+      {
+        "file": "IMG_6771.jpeg",
+        "expected": "Flourishing Grapple",
+        "final": [
+          "Flourishing Grapple",
+          "Flourishing Strike",
+          "Flourishing Hunter"
+        ],
+        "name": [
+          "Flourishing Grapple",
+          "Flourishing Strike",
+          "Flourishing Hunter"
+        ]
+      },
+      {
+        "file": "IMG_6772.jpeg",
+        "expected": "Kasla, the Broken Halo",
+        "final": [
+          "Kasla, the Broken Halo",
+          "Fain, the Broker",
+          "Gisela, the Broken Blade"
+        ],
+        "name": [
+          "Kasla, the Broken Halo",
+          "Fain, the Broker",
+          "Gisela, the Broken Blade"
+        ]
+      },
+      {
+        "file": "IMG_6773.jpeg",
+        "expected": "Flameskull",
+        "final": [
+          "Flameskull"
+        ],
+        "name": []
+      },
+      {
+        "file": "IMG_6774.jpeg",
+        "expected": "Merry, Esquire of Rohan",
+        "final": [
+          "Merry, Esquire of Rohan",
+          "Merry-Go-Round",
+          "Xerex Squire"
+        ],
+        "name": [
+          "Merry, Esquire of Rohan",
+          "Merry-Go-Round",
+          "Xerex Squire"
+        ]
+      },
+      {
+        "file": "IMG_6776.jpeg",
+        "expected": "Shock",
+        "final": [
+          "Shock",
+          "Shocker",
+          "Shock Troops"
+        ],
+        "name": [
+          "Shock",
+          "Shocker",
+          "Shock Troops"
+        ]
+      },
+      {
+        "file": "IMG_6777.jpeg",
+        "expected": "Ritual Guardian",
+        "final": [],
+        "name": []
+      },
+      {
+        "file": "IMG_6778.jpeg",
+        "expected": "Evolving Wilds",
+        "final": [
+          "Evolving Wilds",
+          "Evolving Door",
+          "Evolving Adaptive"
+        ],
+        "name": [
+          "Evolving Wilds",
+          "Evolving Door",
+          "Evolving Adaptive"
+        ]
+      },
+      {
+        "file": "IMG_6780.jpeg",
+        "expected": "Ghalta and Mavren",
+        "final": [
+          "Ghalta and Mavren",
+          "Ghalta, Stampede Tyrant",
+          "Ghalta, Primal Hunger"
+        ],
+        "name": [
+          "Ghalta and Mavren",
+          "Ghalta, Stampede Tyrant",
+          "Ghalta, Primal Hunger"
+        ]
+      },
+      {
+        "file": "IMG_6781.jpeg",
+        "expected": "Mountain",
+        "final": [
+          "Mountain",
+          "Mountain Goat",
+          "Mountain Yeti"
+        ],
+        "name": [
+          "Mountain",
+          "Mountain Goat",
+          "Mountain Yeti"
+        ]
+      },
+      {
+        "file": "IMG_6782.jpeg",
+        "expected": "Sunblade Samurai",
+        "final": [
+          "Sunblade Samurai"
+        ],
+        "name": []
+      },
+      {
+        "file": "IMG_6783.jpeg",
+        "expected": "Lucky Offering",
+        "final": [
+          "Lucky Offering",
+          "Lucky Clover",
+          "Dark Offering"
+        ],
+        "name": [
+          "Lucky Offering",
+          "Lucky Clover",
+          "Dark Offering"
+        ]
+      },
+      {
+        "file": "IMG_6784.jpeg",
+        "expected": "Sungold Sentinel",
+        "final": [
+          "Sungold Sentinel",
+          "Surging Sentinels",
+          "Sun Sentinel"
+        ],
+        "name": [
+          "Sungold Sentinel",
+          "Surging Sentinels",
+          "Sun Sentinel"
+        ]
+      },
+      {
+        "file": "IMG_6785.jpeg",
+        "expected": "Dunland Crebain",
+        "final": [
+          "Bribe Taker",
+          "Lobe Lobber",
+          "Robe of Stars"
+        ],
+        "name": [
+          "Bribe Taker",
+          "Lobe Lobber",
+          "Robe of Stars"
+        ]
+      },
+      {
+        "file": "IMG_6786.jpeg",
+        "expected": "Great Ugly-Looking Goblin // Clap! Snap!",
+        "final": [
+          "Great Ugly-Looking Goblin // Clap! Snap!",
+          "Great Goblin, Foul-Hearted",
+          "Ultimate Green Goblin"
+        ],
+        "name": [
+          "Great Ugly-Looking Goblin // Clap! Snap!",
+          "Great Goblin, Foul-Hearted",
+          "Ultimate Green Goblin"
+        ]
+      },
+      {
+        "file": "IMG_6787.jpeg",
+        "expected": "Terramorphic Expanse",
+        "final": [
+          "Terramorphic Expanse",
+          "Terramorph",
+          "Terrarion"
+        ],
+        "name": [
+          "Terramorphic Expanse",
+          "Terramorph",
+          "Terrarion"
+        ]
+      },
+      {
+        "file": "IMG_6788.jpeg",
+        "expected": "Ascendant Packleader",
+        "final": [
+          "Ascendant Packleader",
+          "Ascendant Dustspeaker",
+          "Ascendant Acolyte"
+        ],
+        "name": [
+          "Ascendant Packleader",
+          "Ascendant Dustspeaker",
+          "Ascendant Acolyte"
+        ]
+      },
+      {
+        "file": "IMG_6789.jpeg",
+        "expected": "Illithid Harvester // Plant Tadpoles",
+        "final": [
+          "Illithid Harvester // Plant Tadpoles",
+          "Reaper of Night // Harvest Fear",
+          "Harvest Pyre"
+        ],
+        "name": [
+          "Reaper of Night // Harvest Fear",
+          "Harvest Pyre",
+          "Harvester Druid"
+        ]
+      },
+      {
+        "file": "IMG_6790.jpeg",
+        "expected": "Storvald, Frost Giant Jarl",
+        "final": [
+          "Storvald, Frost Giant Jarl",
+          "Scab-Clan Giant",
+          "Frost Giant"
+        ],
+        "name": [
+          "Storvald, Frost Giant Jarl",
+          "Scab-Clan Giant",
+          "Frost Giant"
+        ]
+      },
+      {
+        "file": "IMG_6791.jpeg",
+        "expected": "Way of the Deathbringer",
+        "final": [
+          "Way of the Deathbringer",
+          "Sarevok, Deathbringer",
+          "Azor, the Lawbringer"
+        ],
+        "name": [
+          "Way of the Deathbringer",
+          "Sarevok, Deathbringer",
+          "Azor, the Lawbringer"
+        ]
+      },
+      {
+        "file": "IMG_6792.jpeg",
+        "expected": "Cast Away Doubt",
+        "final": [
+          "Enlightened Confidant",
+          "Cast Away Doubt",
+          "Cast Out"
+        ],
+        "name": [
+          "Cast Away Doubt",
+          "Cast Out",
+          "Cast Down"
+        ]
+      },
+      {
+        "file": "IMG_6793.jpeg",
+        "expected": "Coronation of Chaos",
+        "final": [
+          "Coronation of Chaos",
+          "Keeper of the Crown // Coronation of the Wilds",
+          "Fire Nation Occupation"
+        ],
+        "name": [
+          "Coronation of Chaos",
+          "Keeper of the Crown // Coronation of the Wilds",
+          "Fire Nation Occupation"
+        ]
+      },
+      {
+        "file": "IMG_6794.jpeg",
+        "expected": "Devious Cover-Up",
+        "final": [
+          "Devious Cover-Up",
+          "V.A.T.S.",
+          "A-Town"
+        ],
+        "name": [
+          "V.A.T.S.",
+          "A-Town",
+          "Altaïr Ibn-La'Ahad"
+        ]
+      },
+      {
+        "file": "IMG_6795.jpeg",
+        "expected": "Daring Demolition",
+        "final": [
+          "Daring Demolition",
+          "Pure Intentions",
+          "Ojutai Interceptor"
+        ],
+        "name": [
+          "Pure Intentions",
+          "Ojutai Interceptor",
+          "Elite Instructor"
+        ]
+      },
+      {
+        "file": "IMG_6796.jpeg",
+        "expected": "Die Young",
+        "final": [
+          "Die Young",
+          "Speed, Young Avenger",
+          "Meddling Youths"
+        ],
+        "name": [
+          "Die Young",
+          "Speed, Young Avenger",
+          "Meddling Youths"
+        ]
+      },
+      {
+        "file": "IMG_6797.jpeg",
+        "expected": "Vengeant Earth",
+        "final": [
+          "Vengeant Earth",
+          "Vengeant Vampire",
+          "Vengeance"
+        ],
+        "name": [
+          "Vengeant Earth",
+          "Vengeant Vampire",
+          "Vengeance"
+        ]
+      },
+      {
+        "file": "IMG_6798.jpeg",
+        "expected": "Vanquish the Weak",
+        "final": [
+          "Vanquish the Weak",
+          "Vanquish the Horde",
+          "Vanquish the Foul"
+        ],
+        "name": [
+          "Vanquish the Weak",
+          "Vanquish the Horde",
+          "Vanquish the Foul"
+        ]
+      },
+      {
+        "file": "IMG_6799.jpeg",
+        "expected": "+2 Mace",
+        "final": [
+          "+2 Mace",
+          "Macetail Hystrodon",
+          "Mace of the Valiant"
+        ],
+        "name": [
+          "+2 Mace",
+          "Macetail Hystrodon",
+          "Mace of the Valiant"
+        ]
+      },
+      {
+        "file": "IMG_6800.jpeg",
+        "expected": "Secrets of the Key",
+        "final": [
+          "Secrets of the Key",
+          "Secrets of the Dead",
+          "Secrets of the Golden City"
+        ],
+        "name": [
+          "Secrets of the Key",
+          "Secrets of the Dead",
+          "Secrets of the Golden City"
+        ]
+      },
+      {
+        "file": "IMG_6801.jpeg",
+        "expected": "Renegade's Getaway",
+        "final": [
+          "Renegade's Getaway",
+          "Renegade Silent",
+          "Renegade Map"
+        ],
+        "name": [
+          "Renegade's Getaway",
+          "Renegade Silent",
+          "Renegade Map"
+        ]
+      },
+      {
+        "file": "IMG_6802.jpeg",
+        "expected": "Stuffed Bear",
+        "final": [
+          "Stuffed Bear",
+          "Striped Bears",
+          "Shield Bearer"
+        ],
+        "name": [
+          "Stuffed Bear",
+          "Striped Bears",
+          "Shield Bearer"
+        ]
+      },
+      {
+        "file": "IMG_6803.jpeg",
+        "expected": "Thriving Rats",
+        "final": [
+          "Thriving Rats",
+          "Thriving Grubs",
+          "Thriving Heath"
+        ],
+        "name": [
+          "Thriving Rats",
+          "Thriving Grubs",
+          "Thriving Heath"
+        ]
+      },
+      {
+        "file": "IMG_6804.jpeg",
+        "expected": "Now for Wrath, Now for Ruin!",
+        "final": [
+          "Now for Wrath, Now for Ruin!",
+          "Hold for Ransom",
+          "Down for Repairs"
+        ],
+        "name": [
+          "Now for Wrath, Now for Ruin!",
+          "Hold for Ransom",
+          "Down for Repairs"
+        ]
+      },
+      {
+        "file": "IMG_6805.jpeg",
+        "expected": "Treason of Isengard",
+        "final": [
+          "Treason of Isengard",
+          "Treasonous Ogre",
+          "Treasure"
+        ],
+        "name": [
+          "Treason of Isengard",
+          "Treasonous Ogre",
+          "Treasure"
+        ]
+      }
+    ],
+    "New corpus photos": [
+      {
+        "file": "IMG_6755.jpeg",
+        "expected": "Gandalf, Friend of the Shire",
+        "final": [
+          "Gandalf, Friend of the Shire",
+          "Mikey & Mona, Mutant Sitters",
+          "Instant Ramen"
+        ],
+        "name": [
+          "Mikey & Mona, Mutant Sitters",
+          "Instant Ramen",
+          "Constant Mists"
+        ]
+      },
+      {
+        "file": "IMG_6756.jpeg",
+        "expected": "Indatha Crystal",
+        "final": [
+          "Zap"
+        ],
+        "name": [
+          "Zap"
+        ]
+      },
+      {
+        "file": "IMG_6757.jpeg",
+        "expected": "Invasion of Muraganda // Primordial Plasm",
+        "final": [
+          "Moonshae Pixie // Pixie Dust",
+          "Vow of Duty",
+          "Vassal's Duty"
+        ],
+        "name": [
+          "Moonshae Pixie // Pixie Dust",
+          "Vow of Duty",
+          "Vassal's Duty"
+        ]
+      },
+      {
+        "file": "IMG_6758.jpeg",
+        "expected": "Minsc, Beloved Ranger",
+        "final": [
+          "Hyena Pack",
+          "Mana Prism",
+          "Affa Protector"
+        ],
+        "name": [
+          "Hyena Pack",
+          "Mana Prism",
+          "Affa Protector"
+        ]
+      },
+      {
+        "file": "IMG_6759.jpeg",
+        "expected": "Repurposed Enforcer",
+        "final": [],
+        "name": []
+      },
+      {
+        "file": "IMG_6760.jpeg",
+        "expected": "Vintara Snapper",
+        "final": [
+          "Sea of Clouds",
+          "Nyssa of Traken",
+          "Nissa, Worldwaker"
+        ],
+        "name": [
+          "Sea of Clouds",
+          "Nyssa of Traken",
+          "Nissa, Worldwaker"
+        ]
+      },
+      {
+        "file": "IMG_6761.jpeg",
+        "expected": "Orzhova, the Church of Deals",
+        "final": [],
+        "name": []
+      },
+      {
+        "file": "IMG_6762.jpeg",
+        "expected": "Moonhold",
+        "final": [
+          "Possessed Aven",
+          "Proposal",
+          "Ormos, Archive Keeper"
+        ],
+        "name": [
+          "Possessed Aven",
+          "Proposal",
+          "Ormos, Archive Keeper"
+        ]
+      },
+      {
+        "file": "IMG_6763.jpeg",
+        "expected": "Leyline Immersion",
+        "final": [],
+        "name": []
+      },
+      {
+        "file": "IMG_6764.jpeg",
+        "expected": "Tormod's Crypt",
+        "final": [
+          "Animal Attendant",
+          "Shambling Attendants",
+          "Krosan Avenger"
+        ],
+        "name": [
+          "Animal Attendant",
+          "Shambling Attendants",
+          "Krosan Avenger"
+        ]
+      },
+      {
+        "file": "IMG_6765.jpeg",
+        "expected": "Tome Shredder",
+        "final": [
+          "Ow"
+        ],
+        "name": [
+          "Ow"
+        ]
+      },
+      {
+        "file": "IMG_6766.jpeg",
+        "expected": "Gray Merchant of Alphabet",
+        "final": [
+          "Gray Merchant of Alphabet",
+          "Yeah Nah // Nah Yeah",
+          "Frostpeak Yeti"
+        ],
+        "name": [
+          "Yeah Nah // Nah Yeah",
+          "Frostpeak Yeti",
+          "Face Yourself"
+        ]
+      },
+      {
+        "file": "IMG_6767.jpeg",
+        "expected": "Trigger Happy",
+        "final": [
+          "Lady Orca",
+          "Hardy Outlander",
+          "Body Dropper"
+        ],
+        "name": [
+          "Lady Orca",
+          "Hardy Outlander",
+          "Body Dropper"
+        ]
+      },
+      {
+        "file": "IMG_6768.jpeg",
+        "expected": "Den of the Bugbear",
+        "final": [
+          "Adventure Awaits",
+          "Adventurous Eater // Have a Bite",
+          "Adventurer Beguiler"
+        ],
+        "name": [
+          "Adventure Awaits",
+          "Adventurous Eater // Have a Bite",
+          "Adventurer Beguiler"
+        ]
+      },
+      {
+        "file": "IMG_6769.jpeg",
+        "expected": "Grand Master of Flowers",
+        "final": [
+          "Tarmogoyf Nest",
+          "Staggering Size",
+          "Staggershock"
+        ],
+        "name": [
+          "Tarmogoyf Nest",
+          "Staggering Size",
+          "Staggershock"
+        ]
+      },
+      {
+        "file": "IMG_6770.jpeg",
+        "expected": "Ajani Unrelenting",
+        "final": [
+          "Nether Horror",
+          "Colfenor, the Last Yew",
+          "Nether Spirit"
+        ],
+        "name": [
+          "Nether Horror",
+          "Colfenor, the Last Yew",
+          "Nether Spirit"
+        ]
+      },
+      {
+        "file": "IMG_6771.jpeg",
+        "expected": "Flourishing Grapple",
+        "final": [
+          "Annex",
+          "Annul",
+          "Arlinn, the Pack's Hope // Arlinn, the Moon's Fury"
+        ],
+        "name": [
+          "Annex",
+          "Annul",
+          "Arlinn, the Pack's Hope // Arlinn, the Moon's Fury"
+        ]
+      },
+      {
+        "file": "IMG_6772.jpeg",
+        "expected": "Kasla, the Broken Halo",
+        "final": [
+          "Fire Tempest",
+          "Raze the Effigy",
+          "Hope Tender"
+        ],
+        "name": [
+          "Fire Tempest",
+          "Raze the Effigy",
+          "Hope Tender"
+        ]
+      },
+      {
+        "file": "IMG_6773.jpeg",
+        "expected": "Flameskull",
+        "final": [],
+        "name": []
+      },
+      {
+        "file": "IMG_6774.jpeg",
+        "expected": "Merry, Esquire of Rohan",
+        "final": [
+          "Atarka Efreet",
+          "Mana Echoes",
+          "Maha, Its Feathers Night"
+        ],
+        "name": [
+          "Atarka Efreet",
+          "Mana Echoes",
+          "Maha, Its Feathers Night"
+        ]
+      },
+      {
+        "file": "IMG_6776.jpeg",
+        "expected": "Shock",
+        "final": [
+          "Learned Learner",
+          "Returned",
+          "Wilderness Elemental"
+        ],
+        "name": [
+          "Learned Learner",
+          "Returned",
+          "Wilderness Elemental"
+        ]
+      },
+      {
+        "file": "IMG_6777.jpeg",
+        "expected": "Ritual Guardian",
+        "final": [
+          "Ichthyomorphosis"
+        ],
+        "name": [
+          "Ichthyomorphosis"
+        ]
+      },
+      {
+        "file": "IMG_6778.jpeg",
+        "expected": "Evolving Wilds",
+        "final": [
+          "Adventure Awaits",
+          "Adventurous Eater // Have a Bite",
+          "Adventurer's Airship"
+        ],
+        "name": [
+          "Adventure Awaits",
+          "Adventurous Eater // Have a Bite",
+          "Adventurer's Airship"
+        ]
+      },
+      {
+        "file": "IMG_6780.jpeg",
+        "expected": "Ghalta and Mavren",
+        "final": [],
+        "name": []
+      },
+      {
+        "file": "IMG_6781.jpeg",
+        "expected": "Mountain",
+        "final": [
+          "X",
+          "_____",
+          "______"
+        ],
+        "name": [
+          "X",
+          "_____",
+          "______"
+        ]
+      },
+      {
+        "file": "IMG_6782.jpeg",
+        "expected": "Sunblade Samurai",
+        "final": [
+          "Rags // Riches",
+          "Relic's Roar",
+          "Arms Race"
+        ],
+        "name": [
+          "Rags // Riches",
+          "Relic's Roar",
+          "Arms Race"
+        ]
+      },
+      {
+        "file": "IMG_6783.jpeg",
+        "expected": "Lucky Offering",
+        "final": [
+          "Aang",
+          "Karplusan Yeti",
+          "Sylvan Yeti"
+        ],
+        "name": [
+          "Aang",
+          "Karplusan Yeti",
+          "Sylvan Yeti"
+        ]
+      },
+      {
+        "file": "IMG_6784.jpeg",
+        "expected": "Sungold Sentinel",
+        "final": [
+          "Nature's Way",
+          "Harm's Way",
+          "Curator's Ward"
+        ],
+        "name": [
+          "Nature's Way",
+          "Harm's Way",
+          "Curator's Ward"
+        ]
+      },
+      {
+        "file": "IMG_6785.jpeg",
+        "expected": "Dunland Crebain",
+        "final": [
+          "Urza, Planeswalker",
+          "Urza, Prince of Kroog",
+          "Mana Prism"
+        ],
+        "name": [
+          "Urza, Planeswalker",
+          "Urza, Prince of Kroog",
+          "Mana Prism"
+        ]
+      },
+      {
+        "file": "IMG_6786.jpeg",
+        "expected": "Great Ugly-Looking Goblin // Clap! Snap!",
+        "final": [
+          "Bosh, Iron Golem",
+          "Death in Heaven",
+          "Sautekh Immortal"
+        ],
+        "name": [
+          "Bosh, Iron Golem",
+          "Death in Heaven",
+          "Sautekh Immortal"
+        ]
+      },
+      {
+        "file": "IMG_6787.jpeg",
+        "expected": "Terramorphic Expanse",
+        "final": [
+          "Raise the Alarm",
+          "Make a Wish",
+          "Tangle Wire"
+        ],
+        "name": [
+          "Raise the Alarm",
+          "Make a Wish",
+          "Tangle Wire"
+        ]
+      },
+      {
+        "file": "IMG_6788.jpeg",
+        "expected": "Ascendant Packleader",
+        "final": [],
+        "name": []
+      },
+      {
+        "file": "IMG_6789.jpeg",
+        "expected": "Illithid Harvester // Plant Tadpoles",
+        "final": [
+          "Fry"
+        ],
+        "name": [
+          "Fry"
+        ]
+      },
+      {
+        "file": "IMG_6790.jpeg",
+        "expected": "Storvald, Frost Giant Jarl",
+        "final": [
+          "Ori, Plate Stacker",
+          "Lutri, Pauper Otter",
+          "Wild Pair"
+        ],
+        "name": [
+          "Ori, Plate Stacker",
+          "Lutri, Pauper Otter",
+          "Wild Pair"
+        ]
+      },
+      {
+        "file": "IMG_6791.jpeg",
+        "expected": "Way of the Deathbringer",
+        "final": [
+          "Liliana's Caress",
+          "Olivia's Wrath",
+          "Nature's Wrath"
+        ],
+        "name": [
+          "Liliana's Caress",
+          "Olivia's Wrath",
+          "Nature's Wrath"
+        ]
+      },
+      {
+        "file": "IMG_6792.jpeg",
+        "expected": "Cast Away Doubt",
+        "final": [
+          "Reenact the Crime",
+          "Three Tree Scribe",
+          "Campus Crier"
+        ],
+        "name": [
+          "Reenact the Crime",
+          "Three Tree Scribe",
+          "Campus Crier"
+        ]
+      },
+      {
+        "file": "IMG_6793.jpeg",
+        "expected": "Coronation of Chaos",
+        "final": [
+          "S.N.E.A.K. Dispatcher",
+          "T.A.P.P.E.R.",
+          "Stone of Erech"
+        ],
+        "name": [
+          "S.N.E.A.K. Dispatcher",
+          "T.A.P.P.E.R.",
+          "Stone of Erech"
+        ]
+      },
+      {
+        "file": "IMG_6794.jpeg",
+        "expected": "Devious Cover-Up",
+        "final": [],
+        "name": []
+      },
+      {
+        "file": "IMG_6795.jpeg",
+        "expected": "Daring Demolition",
+        "final": [
+          "Serenity",
+          "Protect // Serve",
+          "Seraph"
+        ],
+        "name": [
+          "Serenity",
+          "Protect // Serve",
+          "Seraph"
+        ]
+      },
+      {
+        "file": "IMG_6796.jpeg",
+        "expected": "Die Young",
+        "final": [],
+        "name": []
+      },
+      {
+        "file": "IMG_6797.jpeg",
+        "expected": "Vengeant Earth",
+        "final": [],
+        "name": []
+      },
+      {
+        "file": "IMG_6798.jpeg",
+        "expected": "Vanquish the Weak",
+        "final": [
+          "Curious Herd",
+          "Victory's Herald",
+          "Aurochs Herd"
+        ],
+        "name": [
+          "Curious Herd",
+          "Victory's Herald",
+          "Aurochs Herd"
+        ]
+      },
+      {
+        "file": "IMG_6799.jpeg",
+        "expected": "+2 Mace",
+        "final": [
+          "Auriok Salvagers",
+          "Dakmor Salvage",
+          "Dark Salvation"
+        ],
+        "name": [
+          "Auriok Salvagers",
+          "Dakmor Salvage",
+          "Dark Salvation"
+        ]
+      },
+      {
+        "file": "IMG_6800.jpeg",
+        "expected": "Secrets of the Key",
+        "final": [
+          "Canopy Claws",
+          "Dairy Cow",
+          "Ivory Cup"
+        ],
+        "name": [
+          "Canopy Claws",
+          "Dairy Cow",
+          "Ivory Cup"
+        ]
+      },
+      {
+        "file": "IMG_6801.jpeg",
+        "expected": "Renegade's Getaway",
+        "final": [
+          "X",
+          "_____",
+          "______"
+        ],
+        "name": [
+          "X",
+          "_____",
+          "______"
+        ]
+      },
+      {
+        "file": "IMG_6802.jpeg",
+        "expected": "Stuffed Bear",
+        "final": [
+          "Ward of Bones",
+          "Herd Gnarr",
+          "Lord Magnus"
+        ],
+        "name": [
+          "Ward of Bones",
+          "Herd Gnarr",
+          "Lord Magnus"
+        ]
+      },
+      {
+        "file": "IMG_6803.jpeg",
+        "expected": "Thriving Rats",
+        "final": [],
+        "name": []
+      },
+      {
+        "file": "IMG_6804.jpeg",
+        "expected": "Now for Wrath, Now for Ruin!",
+        "final": [
+          "Surge to Victory",
+          "Broken Visage",
+          "Start Your Engines"
+        ],
+        "name": [
+          "Surge to Victory",
+          "Broken Visage",
+          "Start Your Engines"
+        ]
+      },
+      {
+        "file": "IMG_6805.jpeg",
+        "expected": "Treason of Isengard",
+        "final": [
+          "Finest Hour",
+          "Warthog",
+          "Sunlit Hoplite"
+        ],
+        "name": [
+          "Finest Hour",
+          "Warthog",
+          "Sunlit Hoplite"
+        ]
+      }
+    ]
+  }
+}

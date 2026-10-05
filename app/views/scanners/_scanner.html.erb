@@ -1,3 +1,4 @@
+<%# locals: (sitting:, entries:, summary: nil) %>
 <div class="c-scanner" data-controller="card-reader camera"
      data-card-reader-readings-url-value="<%= scanner_readings_path %>" data-card-reader-engine-path-value="<%= ocr_engine_path %>"
      data-action="camera:ready->card-reader#cameraReady camera:stopped->card-reader#cameraStopped camera:unavailable->card-reader#cameraUnavailable">
@@ -16,6 +17,7 @@
     <label class="c-btn c-btn--ghost c-scanner__photo">Use a photo<input type="file" accept="image/*" class="c-sr" data-card-reader-target="picker" data-action="change->card-reader#pick" disabled></label>
     <button type="button" class="c-btn c-btn--secondary" data-card-reader-target="engineRetry" data-action="card-reader#retryEngine" hidden>Load the scanner again</button>
   </div>
+  <p class="c-scanner__hint">Using a photo? Take the whole card, upright, filling most of the photo as the live guide does, on a plain background.</p>
   <div class="c-scanner__failure" data-card-reader-target="failure" hidden>
     <p class="c-status__message c-status__message--alert" data-card-reader-target="failureMessage"></p>
     <dl class="c-scanner__read">
@@ -25,6 +27,12 @@
     <button type="button" class="c-btn c-btn--secondary" data-card-reader-target="resend" data-action="card-reader#resend">Send again</button>
     <%= link_to "Sign in", new_session_path, class: "c-btn c-btn--primary", data: { card_reader_target: "signIn", turbo: false }, hidden: true %>
   </div>
-  <div id="scanner_result" class="c-scanner__result" data-card-reader-target="result"></div>
+  <div id="scanner_result" class="c-scanner__result" data-card-reader-target="result" data-controller="scanner-reading"
+       data-action="turbo:submit-start->scanner-reading#lock turbo:submit-end->scanner-reading#unlock turbo:before-fetch-response->scanner-reading#inspect turbo:frame-missing->scanner-reading#printingsMissing turbo:fetch-request-error->scanner-reading#printingsErrored turbo:frame-load->scanner-reading#printingsLoaded"></div>
+  <% if summary %>
+    <%= render "scanners/summary", count: summary %>
+  <% else %>
+    <%= render "scanners/sitting", sitting:, entries: %>
+  <% end %>
   <noscript><p class="c-status__message c-status__message--alert">The scanner needs JavaScript. <%= link_to "Search the catalog", catalog_entries_path %> instead.</p></noscript>
 </div>

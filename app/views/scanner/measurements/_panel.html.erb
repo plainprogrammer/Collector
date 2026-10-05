@@ -1,6 +1,7 @@
 <%# locals: (run:, next_row:, expected:, notice: nil, alert: false) %>
 <section id="measurement_panel" aria-labelledby="measurement-heading" data-controller="measurement"
-         data-measurement-captures-url-value="<%= scanner_measurement_captures_path %>" data-action="card-reader:read@window->measurement#store">
+         data-measurement-captures-url-value="<%= scanner_measurement_captures_path %>" data-measurement-events-url-value="<%= scanner_measurement_events_path %>"
+         data-action="card-reader:read@window->measurement#store turbo:submit-end@document->measurement#submitted click@document->measurement#clicked">
   <div class="c-section__head">
     <h2 class="c-section__title" id="measurement-heading">Measured run</h2>
     <span class="c-section__count"><%= run.counts.fetch(:captured, 0) %> of <%= run.rows.size %> captured · <%= run.counts.fetch(:skipped, 0) %> skipped · <%= pluralize(run.retakes, "retake") %></span>
