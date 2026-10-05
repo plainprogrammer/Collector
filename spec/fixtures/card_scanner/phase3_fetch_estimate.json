@@ -1,0 +1,21 @@
+{
+  "artworks": 50960,
+  "with_image_url": 50924,
+  "cached": 34,
+  "to_fetch": 50890,
+  "per_image": {
+    "bytes": 13902.5,
+    "seconds": 0.1856
+  },
+  "bytes": 707496912,
+  "hours": 2.623,
+  "basis": "spec 008 research.md §7: 50923 images, 707955694 bytes, 9448.8 s",
+  "bulk_version": "default-cards-20261003210542",
+  "counts": {
+    "artworks": 50960,
+    "entries": 106698,
+    "with_artwork": 105935,
+    "without_artwork": 763
+  },
+  "at": "2026-10-05T18:48:49Z"
+}
