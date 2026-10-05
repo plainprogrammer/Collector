@@ -4,7 +4,8 @@ import { CARD_ASPECT, GUIDE, STAGE_ASPECT } from "scanner/geometry"
 // hand-written detector (spikes/card_scanner/phase2/public/hand_detector.js and warp.js at 39cdc6e), moved onto page
 // canvases, plus outline completion (AC-6.6). It takes the two strongest near-horizontal and near-vertical edge lines in a
 // downscaled copy of the photo, intersects them for the corners, and maps the card onto a 3:4 picture with the card exactly
-// in the guide's box. Cards are treated as upright. It runs on the device; nothing it makes leaves it (FR-4).
+// in the guide's box. Cards are treated as upright. It runs on the device; nothing it makes leaves it (FR-4). The one
+// change from the spike's arithmetic: hough skips pixels with no gradient (see there), which only flat pictures have.
 
 // Frozen in the spike at 39cdc6e (spec 008 settings.json "hand" and "warp"). completeTolerance is spec 009's outline
 // completion (AC-6.6): null is off, as in the spike. Frozen at 0.08 after the development photos (2026-10-04): exact printing
@@ -93,7 +94,9 @@ export function hough(mag, gx, gy, w, h, threshold, direction, rangeDeg) {
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const i = y * w + x
-      if (mag[i] < threshold) continue
+      // A pixel with no gradient is never an edge. With a percentile threshold of 0 (a perfectly flat picture) the spike
+      // counted every flat pixel, and with gx = gy = 0 as a horizontal edge, swamping the card's top and bottom.
+      if (mag[i] === 0 || mag[i] < threshold) continue
       const horizontalEdge = Math.abs(gy[i]) >= Math.abs(gx[i])
       if ((direction === "horizontal") !== horizontalEdge) continue
       for (let t = 0; t < thetas.length; t++) {

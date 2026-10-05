@@ -28,6 +28,18 @@ RSpec.describe "Detection on the scanner's photo path", type: :system do
     result["corners"].zip(corners_of(card, 3)).each { |found, real| expect(found.zip(real).map { |a, b| (a - b).abs }.max).to be <= 15 }
   end
 
+  it "finds a card's corners in a perfectly flat photo, where most pixels have no gradient (AC-7.1)", :aggregate_failures do
+    card = { x: 170, y: 200, width: 859, height: 1200 }
+    result = detect_synthetic(card:)
+    expect(result["found"]).to be(true)
+    result["corners"].zip(corners_of(card, 0)).each { |found, real| expect(found.zip(real).map { |a, b| (a - b).abs }.max).to be <= 15 }
+  end
+
+  it "finds the card in the guide in a flat picked photo, as the picked-photo specs use (AC-7.1)", :aggregate_failures do
+    result = detect_guide_card
+    result["corners"].zip(corners_of(result["card"].symbolize_keys, 0)).each { |found, real| expect(found.zip(real).map { |a, b| (a - b).abs }.max).to be <= 15 }
+  end
+
   it "finds no card in a photo without one (AC-7.2)" do
     expect(detect_synthetic(card: nil)["found"]).to be(false)
   end

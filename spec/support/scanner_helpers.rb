@@ -66,8 +66,8 @@ module ScannerHelpers
   DETECTION_SCRIPT_WAIT = 30
 
   # What the shipped detector finds in a grey photo with a white card-shaped rectangle, optionally tilted. noise adds
-  # seeded sensor noise of up to that many levels: on a perfectly flat picture over half the edge strengths are 0, so the
-  # detector's edge threshold is 0 and every flat pixel votes for a horizontal line (as in the spike).
+  # seeded sensor noise of up to that many levels; with none, over half the edge strengths are 0, so the detector's edge
+  # threshold is 0 (the spike then counted every flat pixel as a horizontal edge; the shipped detector skips them).
   def detect_synthetic(card:, width: 1200, height: 1600, tilt_degrees: 0, noise: 0)
     using_wait_time(DETECTION_SCRIPT_WAIT) { page.evaluate_async_script(<<~JS, width, height, card, tilt_degrees, noise) }
       const [ width, height, card, tilt, noise, done ] = arguments
@@ -84,6 +84,19 @@ module ScannerHelpers
         window.__addNoise(context, width, height, noise)
         const found = detector.findCard(canvas)
         done({ found: found.found, corners: found.corners || null, picture: found.picture ? [ found.picture.width, found.picture.height ] : null })
+      })
+    JS
+  end
+
+  # What the shipped detector finds in pick_synthetic_photo's picture (a flat card in the guide), with the guide's box.
+  def detect_guide_card
+    using_wait_time(DETECTION_SCRIPT_WAIT) { page.evaluate_async_script(<<~JS) }
+      const done = arguments[0]
+      #{CARD_JS}
+      #{MODULES_JS}
+      Promise.all([ window.__syntheticCard("Lightning Bolt", [ "R 0123", "MOM • EN" ]), window.__modules ]).then(([ { canvas }, { geometry, detector } ]) => {
+        const card = geometry.guideRect(canvas.width, canvas.height)
+        done({ corners: detector.findCard(canvas).corners || null, card: { x: card.x, y: card.y, width: card.width, height: card.height } })
       })
     JS
   end
