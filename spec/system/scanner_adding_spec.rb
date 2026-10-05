@@ -64,6 +64,13 @@ RSpec.describe "Adding from the scanner", type: :system do
     expect(page).to have_button("Sign in")
   end
 
+  it "sends you to sign in when your session ended before Other printings (Error Scenarios)" do
+    read_card
+    page.driver.browser.manage.delete_cookie("session_id")
+    click_on "Other printings"
+    expect(page).to have_button("Sign in")
+  end
+
   it "keeps the reading and offers the retry when the add fails on the server (Error Scenarios)", :aggregate_failures, :server_error do
     read_card
     page.execute_script("window.__marker = 'still here'")

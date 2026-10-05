@@ -7,6 +7,7 @@ import { Controller } from "@hotwired/stimulus"
 // Accessibility).
 const ADD_FAILED = "That card wasn't added. Check your connection, then tap its add button again."
 const PRINTINGS_FAILED = "Other printings couldn't be loaded. Tap “Other printings” again."
+const SIGN_IN_PATH = "/session/new"
 
 export default class extends Controller {
   lock({ target }) {
@@ -33,10 +34,14 @@ export default class extends Controller {
     }
   }
 
+  // An ended session answers Other printings with the sign-in page, which has no frame: show it, as an add would (Error
+  // Scenarios, AC-3.3).
   printingsMissing(event) {
     if (event.target.id !== "scanner_printings") return
+    const { response, visit } = event.detail
     event.preventDefault()
-    this.printingsFailed(event.target)
+    if (response.redirected && new URL(response.url).pathname === SIGN_IN_PATH) visit(response)
+    else this.printingsFailed(event.target)
   }
 
   printingsErrored({ target }) {
