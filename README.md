@@ -66,7 +66,7 @@ automatic setup stays off; run `bin/setup` in each new worktree yourself.
 `bin/setup` also runs `bin/fetch-ocr-engine`, which downloads the card scanner's OCR engine (about 15 MB) from
 `registry.npmjs.org`, checks every file against a pinned SHA-256 and keeps it in `vendor/ocr/` (ignored by git).
 
-The scanner is at `/scanner`; nothing links to it yet. Browsers only allow a live camera on HTTPS (or on
+The scanner is at `/scanner` ("Scan" in the navigation). Browsers only allow a live camera on HTTPS (or on
 `localhost`), so to use it from a phone on your network, serve the dev server over HTTPS with a self-signed
 certificate that the phone trusts:
 
@@ -99,7 +99,9 @@ strip images under `COLLECTOR_SCANNER_RUN_DIR` (default `~/card-scanner-corpus/r
 repository. `bin/rails scanner:findings` scores a run; `bundle exec ruby script/scanner/replay.rb <label>`
 re-reads its strips on the desktop (`SCANNER_URL=https://127.0.0.1:<port>` points it at an HTTPS server).
 `SCANNER_EMAIL=… SCANNER_PASSWORD=… bundle exec ruby script/scanner/photo_run.rb` replays the photos beside the
-manifest through the scanner's photo picker, storing each as a capture.
+manifest through the scanner's photo picker, storing each as a capture. For a sitting scanned and added in
+measurement mode, `SCANNER_EMAIL=… GROUND_TRUTH=… bin/rails scanner:sitting_findings` scores what each card ended as
+(run it before pressing Done).
 `COLLECTOR_REQUEST_LOG=1` logs each response's size to `log/requests.jsonl`.
 
 ## Testing and CI
@@ -192,12 +194,15 @@ Queue runs inside Puma (`SOLID_QUEUE_IN_PUMA`).
 
 ### Card scanner
 
-The card scanner (`/scanner`, not linked yet while it's being measured) reads a card with the camera of the phone
-it runs on. Photos never leave the phone: only the text read from the card is sent to your instance. The image
+The card scanner ("Scan" in the navigation, at `/scanner`) reads a card with the camera of the phone it runs on, or
+from a photo, which it finds and straightens first. You confirm the printing and finish and add the card to your
+collection with one tap; the sitting's adds are listed with Undo until you press Done. Photos never leave the phone:
+only the text read from the card and your add, Undo and printing choices are sent to your instance. The image
 build downloads the scanner's OCR engine from `registry.npmjs.org` and checks each file against a pinned
 SHA-256; your instance serves it from `/ocr/v7.0.0/`, so phones fetch it from you, not from a third party.
 
-Browsers only allow a live camera on HTTPS. Without HTTPS, only the photo picker works.
+Browsers only allow a live camera on HTTPS; that is the only part that needs it. Without HTTPS,
+only the photo picker works, and adding cards from photos works the same way.
 
 - **Docker Compose:** put an HTTPS reverse proxy in front of the app (see **HTTPS** under Docker Compose) and set
   `COLLECTOR_HTTPS=true`.

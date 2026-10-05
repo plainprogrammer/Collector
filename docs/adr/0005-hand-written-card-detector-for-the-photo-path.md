@@ -70,6 +70,10 @@ Option B is rejected on the evidence: it is less accurate, larger by three order
 - The photo picker becomes useful without the guide, but stays well below live capture; the confirm step remains the safety net.
 - Spec 009 owns the weaknesses the spike found: the outline stopping above the bottom edge of a card that fills the frame, and the name strip sitting below the name bar of a card that exactly fills the guide. Both are reading refinements spec 009 already plans; neither is solved by this ADR.
 - Battle cards (sideways) and steep tilts are not handled; the confirm step or a typed search covers them.
-- Phone timing and accuracy on the phone must be measured in spec 009's live sitting before this ADR is accepted as more than a desktop result.
+- Phone timing and accuracy on the phone must be measured in spec 009's live sitting before this ADR is accepted as more than a desktop result. **Measured in spec 009** ([research.md](../specs/009-card-scanner-confirm-flow/research.md) §7, §9, settings `7afed14`):
+  - On the iPhone (Brave, WebKit), on 10 unguided photos of the sitting's cards: detection median 103 ms (slowest 126 ms), straightening median 30.5 ms (slowest 35 ms), well under the 1 s target. Outline found 10/10, right card first 5/10, top 3 6/10, exact printing 1/6, name read 1/10. A small sample, below the desktop held-out result and well below live capture of the same cards.
+  - Desktop, held out once at the freeze (n=47), with spec 009's two refinements: right card first 33/47, top 3 33/47, exact printing 15/43 (foils 3/8, non-foils 12/35), outline found 43/47, against the spike's frozen 27/47, 32/47 and 13/43.
+  - The outline completion (`completeTolerance` 0.08, extending an outline that stops above the card's bottom edge) raised development exact printings from 20/46 to 22/46 (non-foils 17/35 to 20/35, foils 3/11 to 2/11; development, biased). Moving the detected name strip up (y 0.04) raised development right-first from 42/52 to 43/52 alone, and 44/52 with the completion.
+  - The shipped detector matches the spike's on all 99 photos at the spike's settings (0.000 px drift).
 - Whether detection also runs on live frames (to correct careless framing) is not decided here; the spike didn't measure it.
 - The OpenCV.js build is not added to the app, and `vendor/` gains nothing.
