@@ -55,6 +55,12 @@ RSpec.describe CardScannerPhase3::ArtFindings do
       .to include("Same-capture text: text top 3 1/2 (50.0%); text or art 2/2 (100.0%); printings the text missed 2, of which art names the printing 0.")
   end
 
+  it "keeps the same-capture comparison per path in the fixture hash (AC-4.5)", :aggregate_failures do
+    same = { "IMG_6808.jpeg" => text["IMG_6808.jpeg"], "IMG_6821.jpeg" => { "top3" => [], "lookup" => { "status" => "none" } } }
+    expect(findings(same_capture_text: same).to_h.dig("paths", "guide", "same_capture_comparison")).to include("text_top3" => "1/2 (50.0%)", "printing_missed" => 2)
+    expect(findings.to_h.dig("paths", "guide")).not_to have_key("same_capture_comparison")
+  end
+
   it "leaves a card without an artwork id out of the rates, and lists it (Error Scenarios)", :aggregate_failures do
     lost = { "file" => "IMG_6899.jpeg", "name" => "Lost Card", "external_key" => "no-art", "foil" => false, "set_code" => "xyz", "collector_number" => "1" }
     without = findings(truth: truth.merge("IMG_6899.jpeg" => lost))

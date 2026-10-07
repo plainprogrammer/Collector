@@ -41,7 +41,12 @@ module CardScannerPhase3
         "art_names_printing" => missed.count { it["art_first"] && it["unique_printing"] } }
     end
 
-    def to_h = { "paths" => paths.to_h { [ it, { "rates" => rates(it), "comparison" => comparison(it), "records" => scored(it) } ] } }
+    def to_h
+      { "paths" => paths.to_h do |path|
+        same = @same.empty? ? {} : { "same_capture_comparison" => comparison(path, @same) }
+        [ path, { "rates" => rates(path), "comparison" => comparison(path), **same, "records" => scored(path) } ]
+      end }
+    end
 
     def to_markdown
       sections = paths.map do |path|

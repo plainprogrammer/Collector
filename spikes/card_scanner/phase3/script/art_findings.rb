@@ -24,7 +24,7 @@ if second
   puts "", "Determinism (#{label} vs #{second}): #{diffs.empty? ? "identical fingerprints for every job" : diffs.join(", ")}"
 end
 if ENV["FIXTURES"] == "1"
-  records = replay["results"].transform_values { |files| files.transform_values { it.slice("hashes", "top", "rightDistance", "crop", "found", "corners") } }
+  records = replay["results"].transform_values { |files| files.transform_values { it.slice("hashes", "top", "rightDistance", "crop", "found", "corners", "searchMs") } }
   fixtures.join("phase3_art_results.json").write(JSON.pretty_generate("format_version" => 1, "spec" => "010", "index" => replay["index"], "code_commit" => replay["code_commit"],
     "replay" => records, "scored" => findings.to_h))
 end
