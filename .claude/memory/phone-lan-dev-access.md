@@ -16,6 +16,7 @@ metadata:
   - The machine has **no `openssl` CLI**, so generate certificates with Ruby's `OpenSSL` stdlib.
   - Serve only the `.crt` (never the key) as `application/x-x509-ca-cert` on a separate high port for the phone to download.
 - **The Cloudflare tunnel failed** with a 502 for `collector.thomps.onl`. No request ever reached Rails, although the maintainer's other hosts work through the same setup, and the cause wasn't found. Don't default to it.
+- **The user agent's iOS version is frozen:** Brave on iOS reports "iPhone OS 18_7" even on iOS 26.6.1 (spec 010, 2026-10-05). Read the real version from `Version/…` in the user agent (`Version/26.6.1`), and report both.
 - **Desktop Brave with the iPhone as a Continuity Camera webcam** works for scanning. It doesn't count as the on-phone device checks.
 
 **Why:** these were found by probing during the Phase 0 iPhone timing run. The plan's `firewall-cmd` step turned out to be unnecessary.
