@@ -46,7 +46,7 @@ module CardScannerPhase3
     def to_markdown
       sections = paths.map do |path|
         r, c = rates(path), comparison(path)
-        same = @same.empty? ? "" : "\n\nSame-capture text: #{comparison(path, @same).to_json}"
+        same = @same.empty? ? "" : "\n\nSame-capture text: #{prose(comparison(path, @same))}"
         scored_rows = rated(path)
         right = scored_rows.filter_map { it["right_distance"] }
         wrong = scored_rows.filter_map { it["nearest_wrong"] }
@@ -54,7 +54,7 @@ module CardScannerPhase3
         left_out = scored(path).select { it["missing_artwork"] }.map { "#{it["file"]} #{it["name"]}" }
         [ "### #{PATHS[path]}", "| Group | Right artwork first | Right card first by art | Right artwork in top 3 |", "|---|---|---|---|",
           *r.map { |group, v| "| #{group} | #{v["art_first"]} | #{v["card_first"]} | #{v["art_top3"]} |" }, "",
-          "Text top 3 #{c["text_top3"]}; text or art #{c["text_or_art"]}; printings the text missed #{c["printing_missed"]}, of which art names the printing #{c["art_names_printing"]}.#{same}", "",
+          "#{prose(c).capitalize}#{same}", "",
           "Median distance: right #{median(right)}, nearest wrong #{median(wrong)} (n=#{right.size}, #{wrong.size}).", "",
           "| File | Card | First artwork | Right distance | Nearest wrong | Note |", "|---|---|---|---|---|---|", *misses, "",
           "Left out (no artwork id): #{left_out.empty? ? "none" : left_out.join(", ")}." ].join("\n")
@@ -64,10 +64,15 @@ module CardScannerPhase3
         cells = paths.map { |path| "#{path}: #{outcome(scored(path).find { it["file"] == file })}" }
         "| #{file} | #{truth["name"]} (#{truth["set_code"].to_s.upcase} · #{truth["collector_number"]}) | #{cells.join(" | ")} |"
       end
-      [ *sections, "### Spec 009's misses and corrections", "| File | Card | #{paths.join(" | ")} |", "|---|---|#{"---|" * paths.size}", *named ].join("\n\n")
+      table = [ "| File | Card | #{paths.join(" | ")} |", "|---|---|#{"---|" * paths.size}", *named ].join("\n")
+      [ *sections, "### Spec 009's misses and corrections", table ].join("\n\n")
     end
 
     private
+      def prose(c)
+        "text top 3 #{c["text_top3"]}; text or art #{c["text_or_art"]}; printings the text missed #{c["printing_missed"]}, of which art names the printing #{c["art_names_printing"]}."
+      end
+
       # "no outline" (detected paths), "missing image" (the right artwork isn't in the index, so no distance was measured).
       def note(row)
         if !row["found"] then "no outline"

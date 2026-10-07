@@ -45,6 +45,16 @@ RSpec.describe CardScannerPhase3::ArtFindings do
     expect(findings.to_markdown).to include("| IMG_6808.jpeg | Plains (M10 · 233) | guide: card first, right 230, nearest wrong 210, unique to its printing | detected: no outline |")
   end
 
+  it "renders the named table as one table, rows separated by single newlines (AC-4.6)" do
+    expect(findings.to_markdown).to include("| File | Card | guide | detected |\n|---|---|---|---|\n| IMG_6808.jpeg | Plains")
+  end
+
+  it "renders the same-capture comparison as prose (AC-4.5)" do
+    same = { "IMG_6808.jpeg" => text["IMG_6808.jpeg"], "IMG_6821.jpeg" => { "top3" => [], "lookup" => { "status" => "none" } } }
+    expect(findings(same_capture_text: same).to_markdown)
+      .to include("Same-capture text: text top 3 1/2 (50.0%); text or art 2/2 (100.0%); printings the text missed 2, of which art names the printing 0.")
+  end
+
   it "leaves a card without an artwork id out of the rates, and lists it (Error Scenarios)", :aggregate_failures do
     lost = { "file" => "IMG_6899.jpeg", "name" => "Lost Card", "external_key" => "no-art", "foil" => false, "set_code" => "xyz", "collector_number" => "1" }
     without = findings(truth: truth.merge("IMG_6899.jpeg" => lost))
