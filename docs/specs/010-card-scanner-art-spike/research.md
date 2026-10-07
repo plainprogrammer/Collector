@@ -208,3 +208,18 @@ The maintainer rules on these; none is a decision, and there is no pass threshol
 5. **Ranking: group art evidence by artwork, then by card.** Art names the printing only when the artwork belongs to one printing (4 of the 14 printings spec 009's text missed). Otherwise it confirms the card and narrows it to the printings sharing the artwork, and the collector line, the frame's era or Other printings decide among them. On these cards the four unique artworks were exactly the ones a better collector-line read also got (§5), so art's main gain is the right card, not the printing.
 6. **The opt-in build's cost on this catalog:** about 708 MB of `small` images and about 2.6 h of fetching at Scryfall etiquette (9,467.4 s measured), about 48 min of fingerprinting on the desktop (2,901.1 s; spec 008 measured 1,066.6 s), and a 7.3 MB index (6.0 MB gzip). The build must choose, for each artwork, a printing that has an image: under spec 008's choice (the first printing in bulk-file order) 36 artworks have none, IMG_6812's among them, so the build should fall back to another printing of the same artwork where one has an image.
 7. **A confidence margin can be set from the guide-path distances** (right artwork median 189 bits, n=34; nearest wrong median 341, n=35, with the closest wrong first at 320–323 bits), measured on more cards before it is fixed.
+
+### The maintainer's ruling (2026-10-07)
+
+Having reviewed this section, the maintainer accepted the recommendations and ruled on spec 011's scope:
+
+- **Live path: art on the guide-box crop, with no detection** (1). Spec 011 builds this.
+- **No shipped detector on whole live frames** (2). Detection on live frames stays out of spec 011.
+- **Photo path: not in spec 011** (3). Its margins are thin and most of its misses come from the outline; it can join later as evidence behind a distance margin.
+- **Search in the browser** (4). [ADR 0007](../../adr/0007-art-search-in-the-browser.md) is Accepted.
+- **Index built on the server from `small` images** (6). [ADR 0006](../../adr/0006-art-fingerprint-and-index.md) is Accepted, revised so that an artwork whose first printing has no image falls back to another printing of the same artwork that has one. ImageMagick or `ruby-vips` is spec 011's plan's choice, and the chosen decoder must agree with the browser to 0 bits before its index is used.
+- **Ranking: group art evidence by artwork, then by card** (5). **Art wins over a name match:** when a confident art match and a strong name match point to different cards, the art match ranks first and the name match second. This changes spec 009's order, where a strong name match ranked first. Among the printings that share the artwork, the collector line, the frame's era or Other printings decide.
+- **Confidence margin** (7): spec 011 sets a provisional margin from the guide-path distances above and confirms it with a closing measurement on cards the maintainer has at hand.
+- **Opt-in:** an instance turns art matching on with an environment variable (like `COLLECTOR_MTG_LANGUAGES`), as there is no admin interface. Off by default; without it the scanner works on text alone.
+
+The rulings of 2026-10-03 still stand: opt-in per instance, the artwork id in the MTG extension, and spec 007 FR-3 amended to "recognised text and match results — no frame, strip, photo or fingerprint".

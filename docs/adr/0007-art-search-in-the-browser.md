@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed (2026-10-03, from the spec 008 findings). The maintainer ruled (2026-10-03) that art matching gets its own spec after spec 009, opt-in per instance. Spec 010 (an art spike) measured the index on the iPhone; spec 011 builds art matching and decides this ADR.
+Accepted (2026-10-07, maintainer ruling on the spec 010 findings, [research.md](../specs/010-card-scanner-art-spike/research.md) §8: spec 011 searches the index in the browser, on the live path's guide-box crop). Proposed 2026-10-03 from the spec 008 findings.
 
 **Date:** 2026-10-03
 **Feature:** 008-card-scanner-phase-2-spike
@@ -58,7 +58,7 @@ Spec 007 FR-3 says the scanner must "send only recognised text to the app in nor
 
 ## Decision
 
-**Proposed: Option A.** The scanner page downloads the art index from the app's own origin and searches it in the browser, with the fingerprint computed there too.
+**Accepted: Option A.** The scanner page downloads the art index from the app's own origin and searches it in the browser, with the fingerprint computed there too.
 
 - The index is served as a static, compressed file from the app (so the scanner page's `connect-src 'self'` covers it), fetched only by scanner pages, cached by the browser, and named by the catalog version it was built from, so a refresh that changes the index changes its URL.
 - The page loads the index after the scanner starts, so the camera and text recognition don't wait for it; until it has loaded, the scanner works on text alone.
@@ -68,8 +68,8 @@ Option B is rejected: about 2.7 seconds of a Puma thread per scan on the desktop
 
 ## Consequences
 
-- Spec 007 FR-3's "must not send any frame, strip or photo" holds, and no fingerprint is sent, so the amendment ADR 0004 names isn't needed. The artwork ids the page sends are derived from the picture but aren't recognised text; spec 011 decides whether FR-3's "send only recognised text" covers them or needs a word changed.
-- Each collector's device downloads about 6 MB once per catalog change that alters the index, in addition to the text-recognition engine. Spec 010 measured them on the maintainer's iPhone (below); spec 011 decides on them.
+- Spec 007 FR-3's "must not send any frame, strip or photo" holds, and no fingerprint is sent, so the amendment ADR 0004 names isn't needed. The artwork ids the page sends are derived from the picture but aren't recognised text; the maintainer ruled (2026-10-03) that spec 011 amends FR-3 to "recognised text and match results — no frame, strip, photo or fingerprint".
+- Each collector's device downloads about 6 MB once per catalog change that alters the index, in addition to the text-recognition engine. Spec 010 measured them on the maintainer's iPhone (below), and the maintainer accepted them (2026-10-07).
 - The server does no work per scan for art matching. The index is global catalog data, so it is served without an account and cached without a tenant key.
 - The browser's search code and the index's format (ADR 0006) must stay in step; the index records the fingerprint settings it was built with, and the page refuses an index whose settings differ from its own.
 - If a phone turns out too slow, the fallback is Option C, measured first; Option B would need FR-3 amended.

@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed (2026-10-03, from the spec 008 findings). The maintainer ruled (2026-10-03) that art matching gets its own spec after spec 009, opt-in per instance. Spec 010 (an art spike) measured the rebuilt index on the iPhone and on live captures; spec 011 builds art matching and decides this ADR.
+Accepted (2026-10-07, maintainer ruling on the spec 010 findings, [research.md](../specs/010-card-scanner-art-spike/research.md) §8: spec 011 builds the index as below, with the image fallback added to the Decision). Proposed 2026-10-03 from the spec 008 findings.
 
 **Date:** 2026-10-03
 **Feature:** 008-card-scanner-phase-2-spike
@@ -66,10 +66,10 @@ The browser (canvas) and the Ruby build compute the fingerprint with different c
 
 ## Decision
 
-**Proposed: Option A.** Spec 011 builds the art index on the server from Scryfall's `small` images, with the fingerprint settings frozen at `39cdc6e` (`spikes/card_scanner/phase2/settings.json`):
+**Accepted: Option A.** Spec 011 builds the art index on the server from Scryfall's `small` images, with the fingerprint settings frozen at `39cdc6e` (`spikes/card_scanner/phase2/settings.json`):
 
 - **Fingerprint:** the art box x 0.14–0.86, y 0.16–0.50 of the straightened card (1008×1408); four planes (grey, blue, green, red) area-resampled to 17×16, each cell the mean of the source pixels it covers with fractional edge weights; horizontal neighbour differences, 4 × 256 = 1,024 bits. A query tries six offsets, (0, 0), (±0.02, 0), (0, ±0.02) and the unshifted box inset by 0.03, and keeps each artwork's smallest Hamming distance.
-- **Index:** one record per artwork, a 16-byte artwork id and the 128-byte fingerprint (144 bytes). The image for each artwork is the front face of its first printing in the bulk file's order. Artworks without an image are left out. (Spec 010 found that choice leaves 36 artworks without an image, one of them a sitting card's; spec 011 should pick a printing that has one.)
+- **Index:** one record per artwork, a 16-byte artwork id and the 128-byte fingerprint (144 bytes). The image for each artwork is the front face of its first printing in the bulk file's order. Where that printing has no image, the build falls back to another printing of the same artwork that has one (spec 010 found the first printing alone leaves 36 artworks without an image, one of them a sitting card's). Artworks with no image on any printing are left out.
 - **Build:** in a background job after the catalog refresh, never during a request. Images are fetched with the manners the spike used (a descriptive `User-Agent` and `Accept`, at least 100 ms between requests, timeouts, back-off on 429 and 5xx), cached in `storage/catalog/mtg/` beside the bulk downloads, and never fetched twice; a refresh fetches only new artworks. The decoder is ImageMagick or `ruby-vips`, decided in spec 011's plan; whichever is chosen must show the same 0-bit agreement with the browser before the index is used.
 - **Catalog:** the artwork id joins the catalog in the MTG extension (it is Scryfall's `illustration_id`), not in the collectible-agnostic core.
 
