@@ -24,6 +24,14 @@ RSpec.describe "Scanner measurement mode", type: :request do
       collector_text: "R 0123\nMOM • EN", ms: "640", user_agent: "iPhone", name_strip: upload(strip), collector_strip: upload(strip) } }
   end
 
+  def frame_png = "\x89PNG\r\n\x1A\n".b + [ 13 ].pack("N") + "IHDR" + [ 900, 1200 ].pack("NN") + "\x08\x06\x00\x00\x00".b
+
+  def capture_with_frame
+    post scanner_measurement_captures_path, headers: turbo, params: { capture: { file: "IMG_1.jpeg", name_text: "Bolt", collector_text: "", ms: "1",
+      user_agent: "iPhone", name_strip: upload(png), collector_strip: upload(png), outline: "live", frame: upload(frame_png),
+      guide: { x: 1.5, y: 2, width: 10, height: 14 }.to_json } }
+  end
+
   def current = Scanner::MeasurementRun.current
 
   context "when measurement mode is off (AC-5.1)" do
@@ -34,7 +42,8 @@ RSpec.describe "Scanner measurement mode", type: :request do
         -> { get scanner_measurement_replay_path(label: "a") }, -> { post scanner_measurement_replay_path, params: { label: "a", results: [] }, as: :json },
         -> { get scanner_measurement_strip_path("IMG_1.jpeg", strip: "name") },
         -> { get scanner_measurement_photo_path("IMG_1.jpeg") },
-        -> { post scanner_measurement_events_path, params: { event: { kind: "add", rank: "1", reading_key: "a" * 32 } } } ]
+        -> { post scanner_measurement_events_path, params: { event: { kind: "add", rank: "1", reading_key: "a" * 32 } } },
+        -> { capture_with_frame } ]
       expect(requests.map { it.call && response.status }).to all(eq(404))
     end
 
@@ -138,6 +147,20 @@ RSpec.describe "Scanner measurement mode", type: :request do
       expect(response).to have_http_status(:not_found)
       event(kind: "nope")
       expect(response).to have_http_status(:not_found)
+    end
+  end
+
+  describe "frames (spec 010)" do
+    it "stores the frame and guide rect when frame keeping is on (AC-3.1)", :aggregate_failures do
+      Rails.configuration.x.scanner_measurement = Rails.configuration.x.scanner_measurement.merge(keep_frames: true)
+      capture_with_frame
+      expect(response).to have_http_status(:ok)
+      expect(current.captures(current.row("IMG_1.jpeg")).sole).to include("frame_width" => 900, "guide" => include("x" => 1.5))
+    end
+
+    it "ignores a frame when frame keeping is off" do
+      capture_with_frame
+      expect(current.captures(current.row("IMG_1.jpeg")).sole).not_to have_key("guide")
     end
   end
 end

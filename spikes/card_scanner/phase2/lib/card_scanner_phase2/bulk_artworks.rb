@@ -7,7 +7,12 @@ module CardScannerPhase2
   module BulkArtworks
     module_function
 
-    def latest_bulk_file(dir = REPO.join("storage/catalog/mtg")) = dir.glob("default-cards-*.jsonl.gz").max_by(&:mtime) or raise "no bulk file under #{dir}"
+    # Spec 010 names its bulk file with CARD_SCANNER_BULK_FILE, so a later catalog refresh can't change the input.
+    def latest_bulk_file(dir = REPO.join("storage/catalog/mtg"))
+      return Pathname(File.expand_path(ENV["CARD_SCANNER_BULK_FILE"])) if ENV["CARD_SCANNER_BULK_FILE"]
+
+      dir.glob("default-cards-*.jsonl.gz").max_by(&:mtime) or raise "no bulk file under #{dir}"
+    end
 
     def imported?(card) = card["lang"] == "en" && !card["digital"] && Array(card["games"]).include?("paper")
 

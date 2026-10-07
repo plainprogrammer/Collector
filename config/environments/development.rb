@@ -85,7 +85,9 @@ Rails.application.configure do
   # run directory, outside the repository. Point both somewhere else for a tuning run.
   config.x.scanner_measurement = {
     manifest: ENV.fetch("COLLECTOR_SCANNER_MANIFEST", "~/card-scanner-corpus/manifest.csv"),
-    dir: ENV.fetch("COLLECTOR_SCANNER_RUN_DIR", "~/card-scanner-corpus/runs/live")
+    dir: ENV.fetch("COLLECTOR_SCANNER_RUN_DIR", "~/card-scanner-corpus/runs/live"),
+    # Spec 010: COLLECTOR_SCANNER_KEEP_FRAMES=1 also keeps each live capture's full frame.
+    keep_frames: ENV["COLLECTOR_SCANNER_KEEP_FRAMES"] == "1"
   }
 
   # Response sizes for the scanner's on-device load measurements (spec 007 AC-6.5): COLLECTOR_REQUEST_LOG=1

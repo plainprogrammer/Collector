@@ -5,18 +5,22 @@ let index = null
 
 export async function loadIndex(url) {
   if (index) return index
-  const bytes = new Uint8Array(await (await fetch(url)).arrayBuffer())
+  index = parseIndex(new Uint8Array(await (await fetch(url)).arrayBuffer()))
+  return index
+}
+
+// The flat index's records as the search reads them; exported so spec 010's timing page can time the parse on its own.
+export function parseIndex(bytes) {
   const count = bytes.length / RECORD
   const ids = new Array(count), words = new Uint32Array(count * 32)
-  const view = new DataView(bytes.buffer)
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
   for (let i = 0; i < count; i++) {
     const base = i * RECORD
     const h = Array.from(bytes.subarray(base, base + 16), (b) => b.toString(16).padStart(2, "0")).join("")
     ids[i] = `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`
     for (let w = 0; w < 32; w++) words[i * 32 + w] = view.getUint32(base + 16 + w * 4)
   }
-  index = { count, ids, words, bytes: bytes.length }
-  return index
+  return { count, ids, words, bytes: bytes.length }
 }
 
 function popcount(v) {

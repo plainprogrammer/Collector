@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed (2026-10-03, from the spec 008 findings). The maintainer ruled (2026-10-03) that art matching gets its own spec after spec 009, opt-in per instance; this ADR is decided there.
+Proposed (2026-10-03, from the spec 008 findings). The maintainer ruled (2026-10-03) that art matching gets its own spec after spec 009, opt-in per instance. Spec 010 (an art spike) measured the index on the iPhone; spec 011 builds art matching and decides this ADR.
 
 **Date:** 2026-10-03
 **Feature:** 008-card-scanner-phase-2-spike
@@ -68,8 +68,18 @@ Option B is rejected: about 2.7 seconds of a Puma thread per scan on the desktop
 
 ## Consequences
 
-- Spec 007 FR-3's "must not send any frame, strip or photo" holds, and no fingerprint is sent, so the amendment ADR 0004 names isn't needed. The artwork ids the page sends are derived from the picture but aren't recognised text; spec 009 decides whether FR-3's "send only recognised text" covers them or needs a word changed.
-- Each collector's device downloads about 6 MB once per catalog change that alters the index, in addition to the text-recognition engine. Spec 009 measures the download, the search time and the memory on a phone as its first step, and revisits this ADR if they are too slow or too large.
+- Spec 007 FR-3's "must not send any frame, strip or photo" holds, and no fingerprint is sent, so the amendment ADR 0004 names isn't needed. The artwork ids the page sends are derived from the picture but aren't recognised text; spec 011 decides whether FR-3's "send only recognised text" covers them or needs a word changed.
+- Each collector's device downloads about 6 MB once per catalog change that alters the index, in addition to the text-recognition engine. Spec 010 measured them on the maintainer's iPhone (below); spec 011 decides on them.
 - The server does no work per scan for art matching. The index is global catalog data, so it is served without an account and cached without a tenant key.
 - The browser's search code and the index's format (ADR 0006) must stay in step; the index records the fingerprint settings it was built with, and the page refuses an index whose settings differ from its own.
 - If a phone turns out too slow, the fallback is Option C, measured first; Option B would need FR-3 amended.
+- **Spec 010's figures** ([research.md](../specs/010-card-scanner-art-spike/research.md) §3), the full index (50,924 artworks) on the maintainer's iPhone (iOS 26.6.1, Brave, WebKit), served gzip over HTTPS on the LAN:
+
+  | | iPhone, cold | iPhone, warm | Desktop, headless Firefox 156, cold |
+  |---|---|---|---|
+  | Download | 6,008,050 B gzip in 244 ms | from the browser cache, 11 ms | 51 ms |
+  | Ready to search (parse) | 79 ms | 59 ms | 77 ms |
+  | Search, median / slowest (n=43) | 19 / 29 ms | 18 / 21 ms | 71 / 110 ms |
+  | Fingerprint, median / slowest (n=12) | 14.5 / 29 ms | 14.5 / 19 ms | 54 / 70 ms |
+
+  The phone's first artwork matched the desktop's for 43 of 43 queries, and its fingerprints matched the committed ones to 0 bits. WebKit gives no heap figure; the page holds the decoded index (7,333,056 B), the fingerprint words (6,518,272 B) and 50,924 ids (at most 3,666,528 B), about 17.5 MB, and stayed responsive through 100 searches (longest gap 36 ms). At slower links the cold download would take 1.0 s at 50 Mbit/s, 4.8 s at 10 and 24.0 s at 2 (arithmetic, not measured). The phone searched about 3.7 times faster than the desktop's headless Firefox, so Option C's fallback wasn't needed on this device.

@@ -5,11 +5,12 @@ import { Turbo } from "@hotwired/turbo-rails"
 // detector timings against the manifest row chosen before the shutter, then shows the next row. A capture counts only once
 // stored. For spec 009's live sitting it also records what the collector did with each reading (AC-9.2): adds with the
 // candidate's rank, Undo, and opening a copy's details. The add and Undo requests themselves never carry a rank.
+// With keepFrames (spec 010 Story 3) a live capture also stores its full frame and the guide rect, in the same request.
 export default class extends Controller {
   static targets = [ "row", "status", "retry" ]
-  static values = { capturesUrl: String, eventsUrl: String }
+  static values = { capturesUrl: String, eventsUrl: String, keepFrames: Boolean }
 
-  async store({ detail: { nameText, collectorText, ms, key, outline, detectMs, warpMs, strips } }) {
+  async store({ detail: { nameText, collectorText, ms, key, outline, detectMs, warpMs, strips, frame } }) {
     const body = new FormData()
     body.append("capture[file]", this.rowTarget.value)
     body.append("capture[name_text]", nameText)
@@ -22,6 +23,10 @@ export default class extends Controller {
     body.append("capture[warp_ms]", warpMs ?? "")
     body.append("capture[name_strip]", await png(strips.name), "name.png")
     body.append("capture[collector_strip]", await png(strips.collector), "collector.png")
+    if (this.keepFramesValue && frame) {
+      body.append("capture[frame]", await png(frame.image), "frame.png")
+      body.append("capture[guide]", JSON.stringify(frame.guide))
+    }
     this.pending = body
     await this.post()
   }

@@ -2,7 +2,7 @@
 
 - [Foundation](foundation.md) — mission and principles, loaded every session
 - [Small incremental commits](small-incremental-commits.md) — one Conventional Commit per step/change
-- [Secret files are user-verified](secret-files-user-verified.md) — agents are read-denied on secrets/storage; ask the user to cat them
+- [Secret files are user-verified](secret-files-user-verified.md) — agents are read-denied on secrets/storage; ask the user to cat them; briefs must forbid shell reads (grep/cat) too
 - [SDD review model choice](sdd-review-model-choice.md) — reviews as read-only Fable subagents; brainstorm/spec/plan in the main session (Opus or Fable); implementation on Opus
 - [Plan reviews run the code](plan-reviews-run-the-code.md) — trace plan code against the files it edits; read-only Fable by default (spec 009), run the code only on request
 - [Dev machine image tools](dev-machine-image-tools.md) — magick 7, Pillow, ffmpeg present; no libvips/ruby-vips here (Dockerfile has libvips); decode via `magick … ppm:-`
@@ -17,8 +17,8 @@
 - [PR #5 follow-ups](pr5-open-followups.md) — back-button flake fixed by PR #9 (merged 2026-10-02), watch CI; uncaptured failure
 - [Card scanner direction](card-scanner-direction.md) — spec 009 (confirm flow + photo-path detector) executed, findings in its research.md (sitting 30/35 right first time); art matching = own spec next, opt-in per instance, artwork ids allowed (FR-3 amended there)
 - [Shipped percentile is upper-middle](shipped-percentile-upper-middle.md) — ScannerFindings.percentile(…, 50) takes the upper middle for even n; use one conventional median helper and state it
-- [Phone LAN dev access](phone-lan-dev-access.md) — 192.168.1.76, high ports open, bind 0.0.0.0; Brave (WebKit); camera HTTPS = self-signed cert + Puma ssl:// bind (Cloudflare tunnel failed); no openssl CLI
-- [Work ahead of human checkpoints](work-ahead-of-human-checkpoints.md) — in sdd-execute, run maintainer-independent units first; record rulings in commit bodies
+- [Phone LAN dev access](phone-lan-dev-access.md) — 192.168.1.76, high ports open, bind 0.0.0.0; Brave (WebKit; UA freezes "iPhone OS 18_7", real version in Version/…); camera HTTPS = self-signed cert + Puma ssl:// bind (Cloudflare tunnel failed); no openssl CLI
+- [Work ahead of human checkpoints](work-ahead-of-human-checkpoints.md) — in sdd-execute, run maintainer-independent units first (code ahead, fixtures later); record rulings in commit bodies
 - [Migrate schema noise](migrate-schema-noise.md) — restore cable/cache/queue schema after db:migrate; rollback needs :primary
 - [Brakeman --ensure-latest](brakeman-ensure-latest.md) — a new Brakeman release breaks hooks/CI; bump the gem in a chore(deps) commit
 - [Search spec CI flake](search-spec-ci-flake.md) — open: catalog_search_spec.rb:4 times out opening a card page on GitHub CI only; cause unknown

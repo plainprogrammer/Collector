@@ -36,7 +36,7 @@ meta = { "image_size" => size, "bulk_version" => data["bulk_version"], "settings
 meta["subset"] = label || "cached artworks only" unless full # a partial index names itself; the full index carries no subset field
 CardScannerPhase2::ArtIndex.write!(dir, ids, hashes, meta:)
 raw = dir.join("art_index.bin").size
-corpus_ids = CardScannerPhase2::CORPORA.keys.flat_map do |corpus|
+corpus_ids = CardScannerPhase2.truth_corpora.flat_map do |corpus|
   JSON.parse(CardScannerPhase2::WORK_DIR.join("truth", corpus, "ground_truth.json").read).fetch("photos").map { data["entries"][it["external_key"]] }
 end.compact.uniq
 puts "#{meta["label"]} index: #{ids.size} artworks in #{seconds.round(1)} s; #{missing.size} without a cached image (#{without_image.size} of them without an image URL); index #{raw} bytes raw, #{Zlib::Deflate.deflate(dir.join("art_index.bin").binread, Zlib::BEST_COMPRESSION).bytesize} gzip"

@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed (2026-10-03, from the spec 008 findings). The maintainer ruled (2026-10-03) that art matching gets its own spec after spec 009, opt-in per instance; this ADR is decided there.
+Proposed (2026-10-03, from the spec 008 findings). The maintainer ruled (2026-10-03) that art matching gets its own spec after spec 009, opt-in per instance. Spec 010 (an art spike) measured the rebuilt index on the iPhone and on live captures; spec 011 builds art matching and decides this ADR.
 
 **Date:** 2026-10-03
 **Feature:** 008-card-scanner-phase-2-spike
@@ -66,11 +66,11 @@ The browser (canvas) and the Ruby build compute the fingerprint with different c
 
 ## Decision
 
-**Proposed: Option A.** Spec 009 builds the art index on the server from Scryfall's `small` images, with the fingerprint settings frozen at `39cdc6e` (`spikes/card_scanner/phase2/settings.json`):
+**Proposed: Option A.** Spec 011 builds the art index on the server from Scryfall's `small` images, with the fingerprint settings frozen at `39cdc6e` (`spikes/card_scanner/phase2/settings.json`):
 
 - **Fingerprint:** the art box x 0.14–0.86, y 0.16–0.50 of the straightened card (1008×1408); four planes (grey, blue, green, red) area-resampled to 17×16, each cell the mean of the source pixels it covers with fractional edge weights; horizontal neighbour differences, 4 × 256 = 1,024 bits. A query tries six offsets, (0, 0), (±0.02, 0), (0, ±0.02) and the unshifted box inset by 0.03, and keeps each artwork's smallest Hamming distance.
-- **Index:** one record per artwork, a 16-byte artwork id and the 128-byte fingerprint (144 bytes). The image for each artwork is the front face of its first printing in the bulk file's order. Artworks without an image are left out.
-- **Build:** in a background job after the catalog refresh, never during a request. Images are fetched with the manners the spike used (a descriptive `User-Agent` and `Accept`, at least 100 ms between requests, timeouts, back-off on 429 and 5xx), cached in `storage/catalog/mtg/` beside the bulk downloads, and never fetched twice; a refresh fetches only new artworks. The decoder is ImageMagick or `ruby-vips`, decided in spec 009's plan; whichever is chosen must show the same 0-bit agreement with the browser before the index is used.
+- **Index:** one record per artwork, a 16-byte artwork id and the 128-byte fingerprint (144 bytes). The image for each artwork is the front face of its first printing in the bulk file's order. Artworks without an image are left out. (Spec 010 found that choice leaves 36 artworks without an image, one of them a sitting card's; spec 011 should pick a printing that has one.)
+- **Build:** in a background job after the catalog refresh, never during a request. Images are fetched with the manners the spike used (a descriptive `User-Agent` and `Accept`, at least 100 ms between requests, timeouts, back-off on 429 and 5xx), cached in `storage/catalog/mtg/` beside the bulk downloads, and never fetched twice; a refresh fetches only new artworks. The decoder is ImageMagick or `ruby-vips`, decided in spec 011's plan; whichever is chosen must show the same 0-bit agreement with the browser before the index is used.
 - **Catalog:** the artwork id joins the catalog in the MTG extension (it is Scryfall's `illustration_id`), not in the collectible-agnostic core.
 
 Option B is rejected because nothing about it was measured and it would tie the scanner to a third party's resampling and schedule. Option C costs about seven times the fetch for no measured gain.
@@ -79,9 +79,13 @@ Option B is rejected because nothing about it was measured and it would tie the 
 
 - A self-hosted instance spends about 2.6 hours and about 700 MB of downloads building its first index, in the background, and fetches each new set's artworks on later refreshes. The scanner's art matching isn't available until the first build finishes.
 - `storage/` grows by the cached images (about 708 MB) and the index (about 7.3 MB).
-- The app's image gains ImageMagick (about 3.2 MB installed) or the `ffi` gem; the choice is spec 009's.
+- The app's image gains ImageMagick (about 3.2 MB installed) or the `ffi` gem; the choice is spec 011's.
 - The catalog gains an artwork id, a schema change in the MTG extension. The migration must be safe to run unattended, like every other.
 - The fingerprint's settings become part of the index's format: changing any of them means rebuilding every instance's index, so the index records the settings it was built with.
 - Another printing's artwork of the same card can rank first (the bulk file gives some printings of the same card their own artwork ids; for one held-out photo the nearest artwork, at 163 bits, was another printing's of the same card), so the scanner should group art results by card before showing them.
-- Accuracy on a phone, and on live frames, is unmeasured; spec 009 measures it before this ADR is accepted as more than a desktop result.
+- **Spec 010's figures** ([research.md](../specs/010-card-scanner-art-spike/research.md) §2, §5, §6), against bulk `default-cards-20261003210542` at the same frozen settings:
+  - **Rebuild cost:** 50,924 artworks (of 50,960; 36 have no small image), 50,924 images fetched, 707,970,856 bytes in 9,467.4 s (estimate 707,496,912 bytes, 2.623 h); fingerprinting 2,901.1 s on the desktop; 7,333,056 bytes stored, 6,008,050 gzip.
+  - **Agreement:** 0 bits median and largest between the build and the browser, n=134 (34 sitting artworks and 100 others).
+  - **Live frames and photos,** spec 009's 35 sitting cards captured live on the iPhone, replayed on the desktop against the full index: right artwork first 33/35 from the guide-box crop (median right 189 bits, nearest wrong 341); 5/35 when the shipped detector runs on the whole live frame (its `minSeparation` 0.65 exceeds the card's 0.596 share of the frame; 10 frames without an outline); 20/35 on the unguided photos through the detector (median right 340, nearest wrong 350.5). Text top 3 or art first: 35/35 guide, 31/35 detected, 34/35 photo, against 31/35 for the text alone.
+  - **Printings:** art named the exact printing for 4 of the 14 printings spec 009's text missed (guide path); the other ten share their artwork with another printing. Of spec 009's five misses and corrections the guide path put the right artwork first for all five, but only Past in Flames (WHO 565) has an artwork of its own.
 - Where the index is searched is [ADR 0007](0007-art-search-in-the-browser.md).

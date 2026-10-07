@@ -13,7 +13,7 @@ size, extra = "small", 100
 OptionParser.new { |p| p.on("--size S") { size = it }; p.on("--extra N", Integer) { extra = it } }.parse!
 settings = CardScannerPhase2::Settings.load.fetch("fingerprint")
 data = CardScannerPhase2::BulkArtworks.load
-corpus_ids = CardScannerPhase2::CORPORA.keys.flat_map do |corpus|
+corpus_ids = CardScannerPhase2.truth_corpora.flat_map do |corpus|
   JSON.parse(CardScannerPhase2::WORK_DIR.join("truth", corpus, "ground_truth.json").read).fetch("photos").map { data["entries"][it["external_key"]] }
 end.compact.uniq
 image_dir = CardScannerPhase2::WORK_DIR.join("artwork", size)

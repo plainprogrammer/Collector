@@ -1,0 +1,63 @@
+{
+  "index": {
+    "image_size": "small",
+    "bulk_version": "default-cards-20261003210542",
+    "settings_commit": "5ce0238589f61d40541f2addc8610d921fe77453",
+    "tool": "ImageMagick 7.1.2-31 (P6 decode) + pure Ruby",
+    "fingerprint_seconds": 2901.1,
+    "missing_artworks": 36,
+    "missing_without_image": 36,
+    "label": "full",
+    "count": 50924,
+    "built_at": "2026-10-05T22:19:03Z",
+    "record_bytes": 144
+  },
+  "stored_bytes": 7333056,
+  "gzip_bytes": 6008050,
+  "fetches": [
+    {
+      "size": "small",
+      "fetched": 34,
+      "bytes": 464157,
+      "skipped": 0,
+      "seconds": 6.556074036983773,
+      "mode": "corpus",
+      "selected": 35,
+      "at": "2026-10-05T18:48:43Z",
+      "failed": 1
+    },
+    {
+      "size": "small",
+      "fetched": 30000,
+      "bytes": 415493478,
+      "skipped": 19,
+      "seconds": 5613.8522323590005,
+      "mode": "full",
+      "selected": 50960,
+      "at": "2026-10-05T20:25:58Z",
+      "failed": 32
+    },
+    {
+      "size": "small",
+      "fetched": 20890,
+      "bytes": 292013221,
+      "skipped": 30034,
+      "seconds": 3846.9544407300127,
+      "mode": "full",
+      "selected": 50960,
+      "at": "2026-10-05T21:30:13Z",
+      "failed": 36
+    }
+  ],
+  "fetched_images": 50924,
+  "fetched_bytes": 707970856,
+  "fetch_seconds": 9467.4,
+  "agreement": {
+    "size": "small",
+    "n": 134,
+    "corpus_cards": 34,
+    "median": 0,
+    "max": 0,
+    "settings_commit": "5ce0238589f61d40541f2addc8610d921fe77453"
+  }
+}

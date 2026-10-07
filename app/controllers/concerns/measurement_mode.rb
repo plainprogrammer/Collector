@@ -22,7 +22,8 @@ module MeasurementMode
 
     def panel_locals(notice: nil, alert: false)
       next_row = measurement_run.next_row
-      { run: measurement_run, next_row:, expected: next_row && measurement_run.expected_name(next_row), notice:, alert: }
+      { run: measurement_run, next_row:, expected: next_row && measurement_run.expected_name(next_row),
+        keep_frames: Scanner::MeasurementRun.keep_frames?, notice:, alert: }
     end
 
     def render_panel(notice, alert: false, status: :ok)
