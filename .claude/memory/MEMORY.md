@@ -15,7 +15,7 @@
 - [Reproduce CI with its seed](reproduce-ci-with-seed.md) — on CI failure, run the full suite with the CI seed as an early reproduction step
 - [Turbo Back navigation quirks](turbo-back-navigation-quirks.md) — frame-advance + Back has two races; filters now plain Drive GET visits + no-cache; wait_for_turbo_idle
 - [PR #5 follow-ups](pr5-open-followups.md) — back-button flake fixed by PR #9 (merged 2026-10-02), watch CI; uncaptured failure
-- [Card scanner direction](card-scanner-direction.md) — spec 009 (confirm flow + photo-path detector) executed, findings in its research.md (sitting 30/35 right first time); art matching = own spec next, opt-in per instance, artwork ids allowed (FR-3 amended there)
+- [Card scanner direction](card-scanner-direction.md) — spec 010 ruled 2026-10-07: spec 011 = art on the live guide crop (no photo path), art wins over name match, ADRs 0006/0007 Accepted, opt-in env var; next = brainstorm 011
 - [Shipped percentile is upper-middle](shipped-percentile-upper-middle.md) — ScannerFindings.percentile(…, 50) takes the upper middle for even n; use one conventional median helper and state it
 - [Phone LAN dev access](phone-lan-dev-access.md) — 192.168.1.76, high ports open, bind 0.0.0.0; Brave (WebKit; UA freezes "iPhone OS 18_7", real version in Version/…); camera HTTPS = self-signed cert + Puma ssl:// bind (Cloudflare tunnel failed); no openssl CLI
 - [Work ahead of human checkpoints](work-ahead-of-human-checkpoints.md) — in sdd-execute, run maintainer-independent units first (code ahead, fixtures later); record rulings in commit bodies
