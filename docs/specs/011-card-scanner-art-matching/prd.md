@@ -38,6 +38,7 @@ From 2026-10-07 (spec 010 [research.md](../010-card-scanner-art-spike/research.m
 
 - **The closing measurement re-captures spec 009's 35 cards.** No unseen pile is at hand. The margin is derived from these cards, so the result is biased upwards, and the findings say so.
 - **"Confident" is one absolute threshold:** the nearest artwork's Hamming distance is ≤ 300 bits (of 1,024), provisionally. On spec 010's guide-path results, 32 of 35 cards had the right artwork first within 300 bits and none had a wrong one. The closest a wrong artwork came while ranked first was 320 bits (Extus, whose artwork has no image).
+- **Art wins within a card too.** When the collector line matches a printing of the same card whose artwork differs from the confident art match, the art's artwork decides the printing. This carries the "art wins" ruling through to the printing. The closing measurement reports each time it fires.
 - **Weak art breaks ties.** Above the margin, art can lift a text candidate above another text candidate in the same tier, but it can't add a card, outrank a strong name or a collector-line match, or choose a printing.
 - **The build is its own background job,** enqueued by the catalog refresh when art is on. There is no new rake task and nothing runs on boot.
 - **The confirm step says when art overruled the text** (Option B in the brainstorm), and the scanner page shows a quiet status line for the art index (Option B).
@@ -78,7 +79,7 @@ From 2026-10-07 (spec 010 [research.md](../010-card-scanner-art-spike/research.m
    - `mtg_printings` gains an indexed `illustration_id`, taken from the front face. It is nullable, because some printings have none.
    - The mapper also keeps each face's `small` image URI.
    - Existing instances fill both on their next applied refresh: the content digest changes, so every printing is rewritten once in the existing batches.
-   - A refresh that would skip while printings lack artwork ids applies instead, following the name index's "rebuild if missing" precedent.
+   - While no MTG printing has an `illustration_id` (an instance upgrading to 011), a scheduled refresh that would skip applies instead, downloading the bulk file it would otherwise not fetch. This extends the name index's "rebuild if missing" precedent from a side index to the whole refresh. About 760 printings legitimately have no artwork id, so "any printing without one" is not the condition.
    - All of this lives in the MTG extension. The collectible-agnostic core gains only a generic after-refresh hook on the source, which never names art.
 
 3. **The build.**
@@ -115,20 +116,20 @@ From 2026-10-07 (spec 010 [research.md](../010-card-scanner-art-spike/research.m
    - **On each live capture,** the page fingerprints the art box of the guide crop at the six offsets and searches the index. It sends the 10 nearest artworks as `reading[artworks][]`, an id and a distance each, alongside the text.
    - **When no art is sent:** the photo path, captures made before the index is ready, and an instance with art off.
    - **What is never sent:** a frame, strip, photo or fingerprint.
-   - **Spec 007 FR-3 is amended** to: send only recognised text and match results (artwork ids and their distances) to the app in normal use; must not send any frame, strip, photo or fingerprint outside development measurement mode.
+   - **Spec 007 FR-3 is amended**, as a versioned update to `docs/specs/007-card-scanner-live-capture/spec.md` made within spec 011, to: send only recognised text and match results (artwork ids and their distances) to the app in normal use; must not send any frame, strip, photo or fingerprint outside development measurement mode.
 
 6. **Art evidence in the ranking.**
-   - **Validation.** `MTG::Reading` takes the artworks after validation: at most 10, well-formed ids, distances from 0 to 1024. Invalid art is dropped and the text ranks alone; it is never a 422.
+   - **Validation.** `MTG::Reading` takes the artworks after validation: at most 10, well-formed ids, distances from 0 to 1024. Invalid art is dropped and the text ranks alone; it is never a 422. A well-formed id with no `mtg_artworks` row (a page holding an index from before a refresh, say) is ignored on its own.
    - **Grouping.** Artworks map through `mtg_artworks` and `mtg_printings.illustration_id` to printings and then to cards. Each card keeps its smallest distance.
    - **Confident art (new, first).** The card owning the nearest artwork, when that distance is ≤ 300 bits. At most one card is confident. It joins the candidates even if the text didn't find it.
      - Its printing is the artwork's only printing, if it has just one.
      - Otherwise, among the printings sharing the artwork: the collector-line match if it's one of them, else one in the read set, else the newest.
-     - Art wins over a collector-line match of the same card with a different artwork.
+     - Art wins over a collector-line match of the same card with a different artwork (decided in this brainstorm, above).
    - **Strong name, collector line and name rank** work as in spec 009.
    - **Weak art (new, fourth).** A text candidate whose card owns one of the 10 nearest artworks, above 300 bits. It reorders cards only and never picks a printing.
    - **The rank key** becomes `[confident_art, strong_name, collector_line, weak_art, name_rank]`, still in the one place AC-5.5 named, and the candidates are still the top 3.
    - **The margin** is a named constant beside `STRONG_NAME_SCORE`.
-   - **The tier that decided** is recorded on the reading, for the confirm step and the measurement.
+   - **The tier that decided** is an attribute of the in-memory reading (`MTG::Reading` isn't persisted), for the confirm step's partials and the measurement event. Nothing new is stored on `scanner_sitting_entries`.
 
 7. **The confirm step and the scanner page.** All copy follows the design system's voice and uses the existing `c-*` classes; the spec goes through the `collector-design-system` skill.
 
@@ -166,6 +167,8 @@ From 2026-10-07 (spec 010 [research.md](../010-card-scanner-art-spike/research.m
 
    Turning art off stops serving and referencing the index. Cached images stay, and the README says how to reclaim the space.
 
+   `CLAUDE.md`'s "catalog data changes only through `Catalog::Refresh`" gains the art build job, which writes `mtg_artworks` after a refresh.
+
 9. **The closing measurement.**
    - **The build gate, first.** On the desktop, the shipped Ruby build and the shipped browser fingerprint agree to 0 bits on the 134 artworks spec 010 checked (34 sitting cards and 100 others).
    - **The development index** is built by the shipped job. The plan may seed its image cache from the spike's cache (`~/card-scanner-corpus/art-cache/artwork/small/`, 50,924 files named by artwork id; the plan confirms they are `illustration_id`s), so the job fetches only what's new since that bulk file.
@@ -173,9 +176,9 @@ From 2026-10-07 (spec 010 [research.md](../010-card-scanner-art-spike/research.m
    - **Per card,** the findings report:
      - the outcome: right printing and finish first time, right after a correction, wrong, or not added
      - whether the right card was first
-     - the nearest artwork's distance
+     - the nearest artwork's distance, and the second-nearest's with whether it belongs to another card (the evidence a later gap rule would need)
      - the deciding tier
-     - whether the overrule note showed
+     - whether the overrule note showed, and whether art overruled a collector-line printing of the same card
    - **On the phone,** they report the shipped page's index download, ready and search times.
    - **Compared with** spec 009's text-only sitting (30/35 right first time, 32/35 in the end) and spec 010's guide path (33/35 right artwork first).
    - **The margin check.** Any confident art match on the wrong artwork is a finding, and the maintainer rules on the margin before merge. There is no pass threshold.
@@ -215,7 +218,7 @@ This brainstorm makes no new architecture decision. The two that shape spec 011 
 Decisions kept inline, with the reasons:
 
 - **The ranking order (art above the name).** This is a maintainer ruling. The spec records it as an acceptance criterion, as spec 009 AC-5.5 recorded the current rule.
-- **The decoder.** ADR 0006 leaves it to the plan, which may write an ADR if the choice adds a dependency.
+- **The decoder.** ADR 0006 leaves it to the plan. Either choice adds a dependency (ImageMagick packages in the Dockerfile, or the `ruby-vips` and `ffi` gems), so the plan records it in a new ADR or an amendment to ADR 0006.
 - **The index file's format and naming** follow ADR 0006 and ADR 0007's Consequences.
 
 ## Out of Scope
