@@ -979,7 +979,7 @@ export const hex = (bytes) => Array.from(bytes, (byte) => byte.toString(16).padS
 **Files:** `db/migrate/20261007100002_create_mtg_artworks.rb`, `db/migrate/20261007100003_create_mtg_art_builds.rb`, `db/schema.rb`, `app/models/mtg/artwork.rb`, `app/models/mtg/art_build.rb`, `spec/factories/art.rb`, `spec/models/mtg/artwork_spec.rb`, `spec/models/mtg/art_build_spec.rb`
 **Interfaces:** Consumes: `MTG::Art::Settings.digest` (Phase 3). Produces: `MTG::Artwork` (`illustration_id`, `catalog_entry_id`, `fingerprint` 128 bytes, `settings_digest`; scope `.current`), `MTG::ArtBuild` (`.start!(job_id:, catalog_version:, settings_digest:) → MTG::ArtBuild`, `.latest`, `#beat!(**counts)`, `#finish!(status, message: nil, **counts)`, `#stale?`, `#counts`, `STALE_AFTER = 10.minutes`, `COUNTS`); factories `:mtg_artwork`, `:mtg_art_build`.
 
-- [ ] Write the migrations:
+- [x] Write the migrations:
 
 ```ruby
 # db/migrate/20261007100002_create_mtg_artworks.rb
@@ -1026,8 +1026,8 @@ class CreateMTGArtBuilds < ActiveRecord::Migration[8.1]
 end
 ```
 
-- [ ] Run: `bin/rails db:migrate && bin/rails db:rollback STEP=2 && bin/rails db:migrate && git checkout db/cable_schema.rb db/cache_schema.rb db/queue_schema.rb` — expect: both migrate down and up; `git diff --stat db/` shows only `db/schema.rb` and the two migrations.
-- [ ] Write `spec/factories/art.rb`:
+- [x] Run: `bin/rails db:migrate && bin/rails db:rollback STEP=2 && bin/rails db:migrate && git checkout db/cable_schema.rb db/cache_schema.rb db/queue_schema.rb` — expect: both migrate down and up; `git diff --stat db/` shows only `db/schema.rb` and the two migrations.
+- [x] Write `spec/factories/art.rb`:
 
 ```ruby
 FactoryBot.define do
@@ -1050,7 +1050,7 @@ FactoryBot.define do
 end
 ```
 
-- [ ] Write the failing `spec/models/mtg/artwork_spec.rb`:
+- [x] Write the failing `spec/models/mtg/artwork_spec.rb`:
 
 ```ruby
 require "rails_helper"
@@ -1071,7 +1071,7 @@ RSpec.describe MTG::Artwork, type: :model do
 end
 ```
 
-- [ ] Write the failing `spec/models/mtg/art_build_spec.rb`:
+- [x] Write the failing `spec/models/mtg/art_build_spec.rb`:
 
 ```ruby
 require "rails_helper"
@@ -1129,8 +1129,8 @@ RSpec.describe MTG::ArtBuild, type: :model do
 end
 ```
 
-- [ ] Run: `bin/rspec spec/models/mtg/artwork_spec.rb spec/models/mtg/art_build_spec.rb` — expect: FAIL (uninitialized constants).
-- [ ] Implement `app/models/mtg/artwork.rb`:
+- [x] Run: `bin/rspec spec/models/mtg/artwork_spec.rb spec/models/mtg/art_build_spec.rb` — expect: FAIL (uninitialized constants).
+- [x] Implement `app/models/mtg/artwork.rb`:
 
 ```ruby
 # One artwork's fingerprint (spec 011 AC-3.7): global catalog data keyed by Scryfall's illustration_id, with the printing
@@ -1146,7 +1146,7 @@ class MTG::Artwork < ApplicationRecord
 end
 ```
 
-- [ ] Implement `app/models/mtg/art_build.rb`:
+- [x] Implement `app/models/mtg/art_build.rb`:
 
 ```ruby
 # One attempt to build the art index (spec 011 AC-3.2, AC-3.11): its job, its counts, a heartbeat while it runs, and how
@@ -1193,8 +1193,8 @@ class MTG::ArtBuild < ApplicationRecord
 end
 ```
 
-- [ ] Run: `bin/rspec spec/models/mtg/artwork_spec.rb spec/models/mtg/art_build_spec.rb` — expect: PASS.
-- [ ] Commit: `feat(art): add the artwork and art build tables (011)`
+- [x] Run: `bin/rspec spec/models/mtg/artwork_spec.rb spec/models/mtg/art_build_spec.rb` — expect: PASS.
+- [x] Commit: `feat(art): add the artwork and art build tables (011)`
 
 ---
 
