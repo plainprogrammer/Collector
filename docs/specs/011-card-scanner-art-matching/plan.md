@@ -1465,7 +1465,7 @@ end
 **Files:** `app/models/mtg/art/build.rb`, `spec/models/mtg/art/build_spec.rb`
 **Interfaces:** Consumes: `MTG::Art.enabled?`, `MTG::Art.cache_dir`, `MTG::Art::Settings.digest`, `MTG::Art::Fingerprint.of`, `MTG::Art::Decoder` (`.command`, `.decode`, `::Error`), `MTG::Scryfall::Client#fetch_image`, `MTG::Artwork`, `MTG::ArtBuild`, `MTG::Art::Index.write!`, `Catalog::RefreshRun.for_type("mtg").last_applied`. Produces: `MTG::Art::Build.new(job_id:, client: MTG::Scryfall::Client.new, decoder: MTG::Art::Decoder)#call → MTG::ArtBuild | nil`, `MTG::Art::Build::BATCH`, `MTG::Art::Build::IMAGE_HOSTS`.
 
-- [ ] Write the failing `spec/models/mtg/art/build_spec.rb`:
+- [x] Write the failing `spec/models/mtg/art/build_spec.rb`:
 
 ```ruby
 require "rails_helper"
@@ -1622,8 +1622,8 @@ end
 
   The `:art_matching` hook restores the setting after the last example, so changing it inside one is safe. `not_change` is defined at the top of the file (nothing in `spec/support` defines it). The helper is `run_build`, not `build`, so FactoryBot's `build` stays usable here.
 
-- [ ] Run: `bin/rspec spec/models/mtg/art/build_spec.rb` — expect: FAIL (`uninitialized constant MTG::Art::Build`).
-- [ ] Implement `app/models/mtg/art/build.rb`:
+- [x] Run: `bin/rspec spec/models/mtg/art/build_spec.rb` — expect: FAIL (`uninitialized constant MTG::Art::Build`).
+- [x] Implement `app/models/mtg/art/build.rb`:
 
 ```ruby
 # Builds the art index (spec 011 Story 3; ADR 0006). One fingerprint per artwork among the catalog's English card
@@ -1757,9 +1757,9 @@ class MTG::Art::Build
 end
 ```
 
-- [ ] Run: `bin/rspec spec/models/mtg/art/build_spec.rb` — expect: PASS. If "counts artworks with no small image" reports `total_count` 1, check that `printings` excludes `kind: "art_card"`, `language: "ja"` and retired entries: `Catalog::Entry.searchable` covers kind and retirement, `language: "en"` the rest.
-- [ ] Run: `bin/rubocop app/models/mtg/art spec/models/mtg/art && bin/brakeman --quiet --no-pager --exit-on-warn` — expect: no offenses; no warnings (the SQL fragments are constants passed through `Arel.sql`).
-- [ ] Commit: `feat(art): build the art index from the catalog's small images (011)`
+- [x] Run: `bin/rspec spec/models/mtg/art/build_spec.rb` — expect: PASS. If "counts artworks with no small image" reports `total_count` 1, check that `printings` excludes `kind: "art_card"`, `language: "ja"` and retired entries: `Catalog::Entry.searchable` covers kind and retirement, `language: "en"` the rest.
+- [x] Run: `bin/rubocop app/models/mtg/art spec/models/mtg/art && bin/brakeman --quiet --no-pager --exit-on-warn` — expect: no offenses; no warnings (the SQL fragments are constants passed through `Arel.sql`).
+- [x] Commit: `feat(art): build the art index from the catalog's small images (011)`
 
 ---
 ## Phase 9: Queueing the build, and its status
