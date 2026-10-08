@@ -84,7 +84,7 @@ The supporting documents are written with this plan. This phase commits them so 
 **Files:** `app/models/mtg/art.rb`, `config/initializers/art_matching.rb`, `config/application.rb`, `spec/models/mtg/art_spec.rb`, `spec/support/art_helpers.rb`, `README.md`, `compose.yaml`, `config/deploy.yml`, `spec/readme_spec.rb`
 **Interfaces:** Consumes: nothing. Produces: `MTG::Art::ENV_NAME`, `MTG::Art.enabled_in?(env) → Boolean`, `MTG::Art.enabled? → Boolean` (reads `Rails.configuration.x.mtg_art_matching`), `MTG::Art.root → Pathname` (`<catalog_download_dir>/mtg/art`); the RSpec metadata `:art_matching` (turns art on and empties `MTG::Art.root` around an example).
 
-- [ ] Write the failing spec `spec/models/mtg/art_spec.rb`:
+- [x] Write the failing spec `spec/models/mtg/art_spec.rb`:
 
 ```ruby
 require "rails_helper"
@@ -118,7 +118,7 @@ RSpec.describe MTG::Art, type: :model do
 end
 ```
 
-- [ ] Write `spec/support/art_helpers.rb`:
+- [x] Write `spec/support/art_helpers.rb`:
 
 ```ruby
 # Art matching in specs (spec 011): `:art_matching` turns the instance setting on for one example and empties the art
@@ -136,8 +136,8 @@ RSpec.configure do |config|
 end
 ```
 
-- [ ] Run: `bin/rspec spec/models/mtg/art_spec.rb` — expect: FAIL (`uninitialized constant MTG::Art`).
-- [ ] Implement `app/models/mtg/art.rb`:
+- [x] Run: `bin/rspec spec/models/mtg/art_spec.rb` — expect: FAIL (`uninitialized constant MTG::Art`).
+- [x] Implement `app/models/mtg/art.rb`:
 
 ```ruby
 # Art matching (spec 011): the instance's opt-in setting and where its global files live. Off unless
@@ -156,14 +156,14 @@ module MTG::Art
 end
 ```
 
-- [ ] Add to `config/application.rb`, after the `config.x.scanner_measurement = nil` line:
+- [x] Add to `config/application.rb`, after the `config.x.scanner_measurement = nil` line:
 
 ```ruby
     # Art matching for the card scanner (spec 011): off until config/initializers/art_matching.rb reads the environment.
     config.x.mtg_art_matching = false
 ```
 
-- [ ] Write `config/initializers/art_matching.rb`:
+- [x] Write `config/initializers/art_matching.rb`:
 
 ```ruby
 # Spec 011 AC-1.2: COLLECTOR_MTG_ART_MATCHING is parsed once, into the app's configuration, which every caller reads.
@@ -174,9 +174,9 @@ Rails.application.config.after_initialize do
 end
 ```
 
-- [ ] Run: `bin/rspec spec/models/mtg/art_spec.rb` — expect: PASS (5 examples).
-- [ ] Commit: `feat(art): add the opt-in art matching setting (011)`
-- [ ] Add the failing README expectations to `spec/readme_spec.rb`, before the final `end`:
+- [x] Run: `bin/rspec spec/models/mtg/art_spec.rb` — expect: PASS (5 examples).
+- [x] Commit: `feat(art): add the opt-in art matching setting (011)`
+- [x] Add the failing README expectations to `spec/readme_spec.rb`, before the final `end`:
 
 ```ruby
   it "documents opt-in art matching in the README, Compose and Kamal (spec 011 AC-1.3)", :aggregate_failures do
@@ -189,14 +189,14 @@ end
   end
 ```
 
-- [ ] Run: `bin/rspec spec/readme_spec.rb` — expect: FAIL (1 failure).
-- [ ] Add a row to the README's settings table, after the `COLLECTOR_MTG_LANGUAGES` row:
+- [x] Run: `bin/rspec spec/readme_spec.rb` — expect: FAIL (1 failure).
+- [x] Add a row to the README's settings table, after the `COLLECTOR_MTG_LANGUAGES` row:
 
 ```markdown
 | `COLLECTOR_MTG_ART_MATCHING` | no       | off                   | `true` turns on art matching for the card scanner (see [Card catalog](#card-catalog))                                                 |
 ```
 
-- [ ] Add a bullet to the README's "Card catalog" list, after the **Languages** bullet:
+- [x] Add a bullet to the README's "Card catalog" list, after the **Languages** bullet:
 
 ```markdown
 - **Art matching (optional):** set `COLLECTOR_MTG_ART_MATCHING=true` and the card scanner also
@@ -211,7 +211,7 @@ end
   folder to reclaim the space.
 ```
 
-- [ ] In `compose.yaml`, add a header comment line after the `COLLECTOR_MTG_LANGUAGES` one:
+- [x] In `compose.yaml`, add a header comment line after the `COLLECTOR_MTG_LANGUAGES` one:
 
 ```yaml
 # Optional: COLLECTOR_MTG_ART_MATCHING ("true" turns on art matching for the scanner; first build ~708 MB, ~2.6 h)
@@ -223,7 +223,7 @@ end
       COLLECTOR_MTG_ART_MATCHING: "${COLLECTOR_MTG_ART_MATCHING:-}"
 ```
 
-- [ ] In `config/deploy.yml`, after the `COLLECTOR_MTG_LANGUAGES` comment block, add:
+- [x] In `config/deploy.yml`, after the `COLLECTOR_MTG_LANGUAGES` comment block, add:
 
 ```yaml
 
@@ -231,8 +231,8 @@ end
     # COLLECTOR_MTG_ART_MATCHING: true
 ```
 
-- [ ] Run: `bin/rspec spec/readme_spec.rb` — expect: PASS. (`bin/kamal catalog-refresh` is an existing alias, `config/deploy.yml:80`.)
-- [ ] Commit: `docs(art): document the art matching setting and its cost (011)`
+- [x] Run: `bin/rspec spec/readme_spec.rb` — expect: PASS. (`bin/kamal catalog-refresh` is an existing alias, `config/deploy.yml:80`.)
+- [x] Commit: `docs(art): document the art matching setting and its cost (011)`
 
 ---
 

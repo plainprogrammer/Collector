@@ -35,4 +35,13 @@ RSpec.describe "README" do
     scanner = readme[/^### Card scanner\n.*?(?=^##)/m].to_s
     expect(scanner).to include("HTTPS", "only the photo picker works", "Docker Compose", "Kamal", "ssl: true", "registry.npmjs.org")
   end
+
+  it "documents opt-in art matching in the README, Compose and Kamal (spec 011 AC-1.3)", :aggregate_failures do
+    art = readme[/^- \*\*Art matching \(optional\):\*\*.*?(?=^- \*\*|^## )/m].to_s
+    expect(readme).to include("| `COLLECTOR_MTG_ART_MATCHING`")
+    expect(art).to include("COLLECTOR_MTG_ART_MATCHING", "about 708 MB", "about 2.6 hours", "about 7.3 MB",
+      'bin/rails "catalog:refresh[mtg]"', "storage/catalog/mtg/art", "text alone")
+    expect(Rails.root.join("compose.yaml").read).to include('COLLECTOR_MTG_ART_MATCHING: "${COLLECTOR_MTG_ART_MATCHING:-}"')
+    expect(Rails.root.join("config/deploy.yml").read).to include("# COLLECTOR_MTG_ART_MATCHING: true")
+  end
 end

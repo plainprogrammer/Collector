@@ -49,6 +49,9 @@ env:
     # Extra card languages to ingest from Scryfall, comma-separated (e.g. "ja,de").
     # COLLECTOR_MTG_LANGUAGES: ja   # extra Scryfall languages; English is always included
 
+    # Art matching for the card scanner: downloads one small image per artwork (~708 MB, ~2.6 h) after a refresh.
+    # COLLECTOR_MTG_ART_MATCHING: true
+
     # Currency for the price you paid (ISO 4217 code; see the README for the supported list).
     # COLLECTOR_CURRENCY: USD
 

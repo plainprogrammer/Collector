@@ -150,6 +150,7 @@ the file and start it.
 | `COLLECTOR_PORT`            | no       | `3000`                | Host port the app is published on                                                                                                     |
 | `COLLECTOR_IMAGE`           | no       | `ghcr.io/plainprogrammer/collector:latest` | Image to run; set it to a tag such as `ghcr.io/plainprogrammer/collector:0.1` to pin a release, or to a locally built image |
 | `COLLECTOR_MTG_LANGUAGES`   | no       | English only          | Extra card languages, e.g. `ja,de` (see [Card catalog](#card-catalog))                                                                |
+| `COLLECTOR_MTG_ART_MATCHING` | no       | off                   | `true` turns on art matching for the card scanner (see [Card catalog](#card-catalog))                                                 |
 | `COLLECTOR_CURRENCY`        | no       | `USD`                 | Currency for the price you paid: USD, CAD, AUD, NZD, EUR, GBP, CHF, SEK, NOK, DKK, PLN, CZK, JPY, CNY, KRW, SGD, HKD, BRL, MXN or ZAR |
 | `COLLECTOR_HTTPS`           | no       | `false`               | Set to `true` when Collector is served over HTTPS (secure cookies, redirect to HTTPS)                                                 |
 | `COLLECTOR_TRUSTED_PROXIES` | no       | Rails' private ranges | Extra reverse proxies (IPs or CIDRs, comma-separated) whose `X-Forwarded-For` is trusted                                              |
@@ -275,6 +276,16 @@ bin/rails "catalog:status[mtg]"   # Kamal: bin/kamal catalog-status
   included. Accepted codes: `en es fr de it pt ja ko ru zhs zht he la grc ar sa ph qya`.
   Changes take effect at the next refresh. Printings in a language you remove are retired,
   not deleted. An unsupported code fails the refresh before anything is downloaded.
+- **Art matching (optional):** set `COLLECTOR_MTG_ART_MATCHING=true` and the card scanner also
+  recognises a card by its artwork on live captures. It's off by default because the first
+  build costs about 708 MB of downloads (one small image per artwork from Scryfall),
+  about 2.6 hours of throttled fetching and then fingerprinting, and leaves an index of
+  about 7.3 MB. The build runs in the background after a catalog refresh; to start it now, run
+  `bin/rails "catalog:refresh[mtg]"` (Kamal: `bin/kamal catalog-refresh`), and follow it with
+  `bin/rails "catalog:status[mtg]"`. Later refreshes fetch only new artworks. Until the first
+  build finishes, and whenever art matching is off, the scanner works on text alone. Images
+  are cached in `storage/catalog/mtg/art`; after turning art matching off you can delete that
+  folder to reclaim the space.
 - **Disk:** downloads are kept in `storage/catalog/mtg/` on the persistent volume, and only the
   two newest are kept. English only uses Scryfall's `default_cards` file (about 80 MB each);
   any other language needs the `all_cards` file (about 400 MB each). They can always be
