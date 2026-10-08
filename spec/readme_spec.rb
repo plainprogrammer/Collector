@@ -15,7 +15,19 @@ RSpec.describe "README" do
 
   it "puts the upgrade warning before the upgrade steps" do
     upgrade = readme[/### Upgrading to accounts.*?(?=^## )/m]
-    expect(upgrade.index("Read this before you upgrade")).to be < upgrade.index("1. Pull the new code.")
+    expect(upgrade.index("Read this before you upgrade")).to be < upgrade.index("1. Pull the new image")
+  end
+
+  it "documents the published image for Compose and Kamal (spec 012 AC-5.3, AC-7.3, AC-7.4)", :aggregate_failures do
+    compose = readme[/^### Docker Compose\n.*?(?=^###)/m].to_s
+    expect(compose).to include("COLLECTOR_IMAGE", "ghcr.io/plainprogrammer/collector", "docker compose pull && docker compose up -d",
+                               "docker build -t collector:local .")
+    expect(compose).not_to include("--build")
+    kamal = readme[/^### Kamal\n.*?(?=^###)/m].to_s
+    expect(kamal).to include("bin/kamal deploy --skip-push --version", "a registry you own", "Never run a plain `bin/kamal deploy`")
+    expect(readme[/^### Card scanner\n.*?(?=^##)/m].to_s).to include("The published image already contains it")
+    expect(readme).to include("docs/releasing.md")
+    expect(readme).not_to include("pull the new code")
   end
 
   it "documents the card scanner's HTTPS needs for phones, Compose and Kamal (spec 007 AC-7.1, AC-7.2, AC-7.3)", :aggregate_failures do

@@ -117,4 +117,21 @@ RSpec.describe "Image publishing files" do
         "starting with Magic: The Gathering cards.")
     end
   end
+
+  describe "docs/releasing.md" do
+    let(:doc) { Rails.root.join("docs/releasing.md").read }
+
+    it "records the release procedure and what each trigger publishes (AC-7.1)", :aggregate_failures do
+      expect(doc).to include("git tag -a v", "v0.1.0", "| Tag `vX.Y.Z` |", "| Push to `main` |", "| Pull request |")
+      expect(doc).to include("vX.Y.Z-<suffix>", "Only the newest release's workflow may be re-run")
+    end
+
+    it "orders the go-public checklist and says it cannot be undone (AC-7.2)", :aggregate_failures do
+      positions = [ "Push the first image", "Verify an authenticated pull", "Confirm the package is linked",
+                    "Change the visibility to public", "Verify an anonymous pull" ].map { |step| doc.index(step) }
+      expect(positions).to all(be_a(Integer))
+      expect(positions).to eq(positions.sort)
+      expect(doc).to include("cannot be undone")
+    end
+  end
 end

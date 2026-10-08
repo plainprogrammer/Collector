@@ -12,4 +12,4 @@ See `docs/git-convention.md`.
 [Edit to match reality — e.g. maintainer approval required before merge to main]
 
 ## Release Process
-[Edit to match reality — e.g. tag on main with semantic versioning; every release includes upgrade notes and migrations safe to run from any prior version]
+Tag `main` with an annotated `vX.Y.Z` tag; CI publishes the image (`docs/releasing.md`). Migrations are safe to run from any prior version; breaking changes ship with upgrade notes in the README.
