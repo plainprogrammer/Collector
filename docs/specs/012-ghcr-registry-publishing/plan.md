@@ -3,7 +3,8 @@
 **Spec:** docs/specs/012-ghcr-registry-publishing/spec.md (v1.1.1, Approved, reviewed twice)
 **Decisions:** [ADR 0008](../../adr/0008-public-images-from-the-private-repository.md) (public images from the private repository), [0009](../../adr/0009-image-tags-and-release-channels.md) (tags and release channels), [0010](../../adr/0010-native-multi-architecture-image-builds.md) (native per-architecture builds), all Accepted.
 **Created:** 2026-10-07
-**Approved:** 2026-10-07 (maintainer, as drafted).
+**Revised:** 2026-10-07, after a read-only plan review (Fable, NEEDS REVISION). Blocking fixes: the smoke script creates the admin before the page checks (a fresh instance redirects every page to `/registration/new` until a user exists); `not_include` is not a matcher; the releasing expectation matches the doc's capitalised sentence; the README scanner sentence stays on one line. Also: a `step(id)` helper instead of three memoised helpers (RuboCop limit), `SMOKE_BOOT_ATTEMPTS` for emulated runs, the real `bin/kamal config` output form, the `.kamal/secrets` half of AC-5.4 as a maintainer check, two README replacement targets made precise, the PR body's session line, and the cold-cache note for the first `main` run.
+**Approved:** 2026-10-07 (maintainer, as drafted; revision pending their confirmation).
 
 ## Context
 
@@ -16,8 +17,8 @@ Both self-hosting paths build the `Dockerfile` themselves today, nothing names a
 - **Tag filters:** GitHub's filter patterns support `+` and `[0-9]` ranges; `v[0-9]+.[0-9]+.[0-9]+` is the documented semver example. Two patterns, one for releases and one for pre-releases (`-*`), replace a `v*` catch-all so an off-pattern tag never triggers the build jobs (AC-3.6).
 - **Metadata-action behaviour:** `type=semver,pattern={{major}},enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}` is Docker's own "major version zero" example; pre-release tags only extend `{{version}}`; `latest=auto` adds `latest` for non-pre-release semver tags only; `type=sha` defaults to `sha-` plus 7 characters; `type=edge,branch=main` only fires on pushes to `main`. `type=sha` would also fire on tag pushes, so it is gated with `enable=${{ github.ref == 'refs/heads/main' }}`. The action exports `DOCKER_METADATA_OUTPUT_JSON` for the merge step. The generated `org.opencontainers.image.source` label is what GHCR uses to link a package to its repository, so "link the package" in the checklist is a verification, not an action.
 - **Attestations:** `build-push-action` adds a provenance attestation by default when pushing, which would give the manifest list four entries; `provenance: false` and `sbom: false` keep it at two (AC-2.1).
-- **Kamal 2.12.0:** `bin/kamal config` prints `absolute_image` and `version`; `--version` is a class option; `--skip-push` (`-P`) runs `build:pull` instead of `build:deliver`; the registry validator requires `username` and `password` for any non-`localhost` server; there is no dry run. `config/master.key` is present in this worktree (copied by `.worktreeinclude`), so `bin/kamal config` runs.
-- **Runtime paths** (for the smoke script): `/up` (health), `/session/new` (sign-in, unauthenticated), `/scanner` (redirects to `/session/new` when signed out), `/ocr/v7.0.0/tesseract.min.js` and `/ocr/v7.0.0/lang/eng.traineddata.gz` (unauthenticated, from `Collector::OcrEngine::FILES`). Thruster listens on `HTTP_PORT`; `compose.yaml` uses 8080. `bin/rails "catalog:status[mtg]"` prints `No mtg refresh runs yet.` on a fresh instance; `bin/rails "collector:user[a@b]"` with `COLLECTOR_PASSWORD` prints `Created admin a@b.` (`User::PASSWORD_MINIMUM` is 12).
+- **Kamal 2.12.0:** `bin/kamal config` prints YAML with symbol keys, e.g. `:absolute_image: ghcr.io/plainprogrammer/collector:<version>` and `:version: <git sha, or the --version value>`; `--version` is a class option; `--skip-push` (`-P`) runs `build:pull` instead of `build:deliver`; the registry validator requires `username` and `password` for any non-`localhost` server; there is no dry run. `config/master.key` is present in this worktree (copied by `.worktreeinclude`), so `bin/kamal config` runs.
+- **Runtime paths** (for the smoke script): `/up` (health); until a user exists the `FirstRun` concern redirects every other page to `/registration/new` (200), so the script creates the admin before checking pages; after that `/session/new` (sign-in, unauthenticated) is 200 and `/scanner` redirects to `/session/new` when signed out; `/ocr/v7.0.0/tesseract.min.js` and `/ocr/v7.0.0/lang/eng.traineddata.gz` (unauthenticated, from `Collector::OcrEngine::FILES`). Thruster listens on `HTTP_PORT`; `compose.yaml` uses 8080. `bin/rails "catalog:status[mtg]"` prints `No mtg refresh runs yet.` on a fresh instance; `bin/rails "collector:user[a@b]"` with `COLLECTOR_PASSWORD` prints `Created admin a@b.` (`User::PASSWORD_MINIMUM` is 12).
 - **Nothing the image runs reads the excluded paths.** `lib/collector/scanner_findings/*` and `lib/tasks/scanner.rake` hold `spec/fixtures/card_scanner` paths as constants or inside task bodies; `lib/collector/worktree_setup.rb` names `.githooks` as a string. Eager loading in production defines constants only.
 - **Dockerfile:** `COPY vendor/* ./vendor/` runs before `COPY . .`; `vendor/ocr/` is gitignored, so CI builds always fetch the OCR engine (the "download fails" error row is a real path). `-j 1` bootsnap stays (ADR 0010).
 - **File-shape specs** are an existing pattern: `spec/project_config_spec.rb` parses `orca.yaml` and `.worktreeinclude`; `spec/readme_spec.rb` slices README sections with regexes. Both are excluded from `RSpec/DescribeClass` in `.rubocop.yml`; the new spec file joins that list. `RSpec/ExampleLength` max is 15; multi-expectation examples use `:aggregate_failures`. Psych parses the YAML key `on` as `true`.
@@ -98,6 +99,7 @@ Create the branch, confirm the tools, and write the smoke script. Run it against
   run_flags=("$@")
   cli="${CONTAINER_CLI:-$(command -v docker >/dev/null 2>&1 && echo docker || echo podman)}"
   name="collector-smoke-$$"
+  attempts="${SMOKE_BOOT_ATTEMPTS:-60}" # 2 s each; raise it for emulated runs
 
   cleanup() { "$cli" rm -f "$name" >/dev/null 2>&1 || true; }
   trap cleanup EXIT
@@ -108,22 +110,25 @@ Create the branch, confirm the tools, and write the smoke script. Run it against
   "$cli" run -d --name "$name" "${run_flags[@]}" -p 127.0.0.1::8080 \
     -e SECRET_KEY_BASE=smoke-only-not-a-secret -e HTTP_PORT=8080 -e SOLID_QUEUE_IN_PUMA=true "$image" >/dev/null
   port="$("$cli" port "$name" 8080 | head -n 1 | sed 's/.*://')"
-  for _ in $(seq 1 60); do
+  for _ in $(seq 1 "$attempts"); do
     [ "$(status /up)" = "200" ] && break
     sleep 2
   done
-  [ "$(status /up)" = "200" ] || { "$cli" logs "$name" >&2; fail "/up did not answer 200 within 120 s"; }
+  [ "$(status /up)" = "200" ] || { "$cli" logs "$name" >&2; fail "/up did not answer 200 within $((attempts * 2)) s"; }
 
-  echo "== pages and assets"
-  [ "$(status /session/new)" = "200" ] || fail "sign-in page did not render"
-  [ "$(status /scanner)" = "302" ] || fail "/scanner should redirect to sign-in when signed out"
-  [ "$(status /ocr/v7.0.0/tesseract.min.js)" = "200" ] || fail "OCR engine is not served"
-  [ "$(status /ocr/v7.0.0/lang/eng.traineddata.gz)" = "200" ] || fail "OCR language data is not served"
+  echo "== first run"
+  [ "$(status /registration/new)" = "200" ] || fail "first-run registration page did not render"
 
   echo "== operational tasks"
   "$cli" exec "$name" bin/rails "catalog:status[mtg]" | grep -q "mtg" || fail "catalog:status[mtg]"
   "$cli" exec -e COLLECTOR_PASSWORD=smoke-password-1234 "$name" bin/rails "collector:user[smoke@example.com]" \
     | grep -q "Created admin smoke@example.com." || fail "collector:user"
+
+  echo "== pages and assets (a user exists now, so first-run redirects are over)"
+  [ "$(status /session/new)" = "200" ] || fail "sign-in page did not render"
+  [ "$(status /scanner)" = "302" ] || fail "/scanner should redirect to sign-in when signed out"
+  [ "$(status /ocr/v7.0.0/tesseract.min.js)" = "200" ] || fail "OCR engine is not served"
+  [ "$(status /ocr/v7.0.0/lang/eng.traineddata.gz)" = "200" ] || fail "OCR language data is not served"
 
   echo "== development-only paths and secrets must be absent"
   present="$("$cli" exec "$name" sh -c '
@@ -142,7 +147,7 @@ Create the branch, confirm the tools, and write the smoke script. Run it against
   chmod +x bin/image-smoke
   bin/image-smoke collector:baseline; echo "exit $?"
   ```
-  Expected: `== boot`, `== pages and assets`, `== operational tasks` pass, then `FAIL: present in the image:` listing `docs`, `spikes`, `spec`, `script`, `.claude`, `CLAUDE.md`, `.githooks`, `orca.yaml`, `.worktreeinclude`, and `exit 1`. If an earlier check fails, fix the script's expectation against the real response (the paths and outputs are in Context), not the image.
+  Expected: `== boot`, `== first run`, `== operational tasks`, `== pages and assets` pass, then `FAIL: present in the image:` listing `docs`, `spikes`, `spec`, `script`, `.claude`, `CLAUDE.md`, `.githooks`, `orca.yaml`, `.worktreeinclude`, and `exit 1`. If an earlier check fails, fix the script's expectation against the real response (the paths and outputs are in Context), not the image.
 - [ ] Commit: `test(image): add bin/image-smoke for built Collector images (012)`
 
 ---
@@ -332,7 +337,8 @@ Point Kamal at the published image with active registry credentials, and record 
   bin/kamal config | grep -E "absolute_image|^:?version"
   bin/kamal config --version 0.1.0 | grep -E "absolute_image|^:?version"
   ```
-  Expected: `absolute_image: ghcr.io/plainprogrammer/collector` in both; `version:` is the git SHA in the first and `0.1.0` in the second. Paste both outputs into Phase 7's verification notes.
+  Expected: `:absolute_image: ghcr.io/plainprogrammer/collector:<git sha>` and `:version: <git sha>` from the first; `:absolute_image: ghcr.io/plainprogrammer/collector:0.1.0` and `:version: 0.1.0` from the second. Paste both outputs into Phase 7's verification notes.
+- [ ] Maintainer check for AC-5.4's second half (agents cannot read secret files, and a spec on it would print its contents on failure): the maintainer runs `grep -c KAMAL_REGISTRY_PASSWORD .kamal/secrets` and expects `1`. Record the answer in the commit body.
 - [ ] Commit: `feat(deploy): point Kamal at the published GHCR image (012)`
 
 ---
@@ -360,9 +366,8 @@ Extend `ci.yml` with the two jobs from ADR 0010, shaped by the file-shape exampl
       let(:image_job) { workflow.dig("jobs", "image") }
       let(:publish_job) { workflow.dig("jobs", "publish") }
       let(:steps) { image_job["steps"] }
-      let(:build_step) { steps.find { |step| step["id"] == "build" } }
-      let(:push_step) { steps.find { |step| step["id"] == "push" } }
-      let(:meta_step) { steps.find { |step| step["id"] == "meta" } }
+
+      def step(id) = steps.find { |candidate| candidate["id"] == id }
 
       it "runs on pull requests, pushes to main and release tags only (FR-1, AC-3.6)", :aggregate_failures do
         expect(triggers.keys).to contain_exactly("pull_request", "push")
@@ -387,35 +392,35 @@ Extend `ci.yml` with the two jobs from ADR 0010, shaped by the file-shape exampl
       end
 
       it "never pushes from a pull request and caches only in Actions (AC-4.2, FR-1)", :aggregate_failures do
-        expect(push_step["if"]).to eq("github.event_name != 'pull_request'")
+        expect(step("push")["if"]).to eq("github.event_name != 'pull_request'")
         expect(publish_job["if"]).to eq("github.event_name != 'pull_request'")
-        expect(build_step["with"]).to include("load" => true)
-        expect(build_step["with"]).not_to have_key("outputs")
-        expect(build_step.dig("with", "cache-to")).to start_with("type=gha,")
-        expect(push_step.dig("with", "outputs")).to include("push-by-digest=true", "push=true")
-        expect(push_step["with"]).not_to have_key("cache-to")
+        expect(step("build")["with"]).to include("load" => true)
+        expect(step("build")["with"]).not_to have_key("outputs")
+        expect(step("build").dig("with", "cache-to")).to start_with("type=gha,")
+        expect(step("push").dig("with", "outputs")).to include("push-by-digest=true", "push=true")
+        expect(step("push")["with"]).not_to have_key("cache-to")
       end
 
       it "builds without attestations so a manifest list has two entries (AC-2.1)", :aggregate_failures do
-        expect(build_step["with"]).to include("provenance" => false, "sbom" => false)
-        expect(push_step["with"]).to include("provenance" => false, "sbom" => false)
+        expect(step("build")["with"]).to include("provenance" => false, "sbom" => false)
+        expect(step("push")["with"]).to include("provenance" => false, "sbom" => false)
       end
 
       it "smoke-tests each image between the build and the push (AC-4.3, AC-6.2)" do
-        names = steps.map { |step| step["id"] || step["name"] }
+        names = steps.map { |candidate| candidate["id"] || candidate["name"] }
         expect(names.index("Smoke test")).to be_between(names.index("build"), names.index("push")).exclusive
       end
 
       it "tags releases, main and SHAs per ADR 0009 (FR-2)", :aggregate_failures do
-        rules = meta_step.dig("with", "tags").lines(chomp: true)
+        rules = step("meta").dig("with", "tags").lines(chomp: true)
         expect(rules).to include("type=edge,branch=main", "type=sha,enable=${{ github.ref == 'refs/heads/main' }}")
         expect(rules).to include("type=semver,pattern={{version}}", "type=semver,pattern={{major}}.{{minor}}")
         expect(rules).to include("type=semver,pattern={{major}},enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}")
-        expect(publish_job["steps"].find { |step| step["id"] == "meta" }.dig("with", "tags")).to eq(meta_step.dig("with", "tags"))
+        expect(publish_job["steps"].find { |candidate| candidate["id"] == "meta" }.dig("with", "tags")).to eq(step("meta").dig("with", "tags"))
       end
 
       it "labels the licence and description explicitly (AC-3.5, FR-2)" do
-        expect(meta_step.dig("with", "labels").lines(chomp: true)).to include(
+        expect(step("meta").dig("with", "labels").lines(chomp: true)).to include(
           "org.opencontainers.image.licenses=AGPL-3.0",
           "org.opencontainers.image.description=Self-hostable, multi-tenant web app for tracking collectibles, " \
           "starting with Magic: The Gathering cards.")
@@ -661,7 +666,8 @@ Write the self-hoster's instructions and the maintainer's release procedure, and
       kamal = readme[/^### Kamal\n.*?(?=^###)/m].to_s
       expect(kamal).to include("bin/kamal deploy --skip-push --version", "a registry you own", "Never run a plain `bin/kamal deploy`")
       expect(readme[/^### Card scanner\n.*?(?=^##)/m].to_s).to include("The published image already contains it")
-      expect(readme).to include("docs/releasing.md").and not_include("pull the new code")
+      expect(readme).to include("docs/releasing.md")
+      expect(readme).not_to include("pull the new code")
     end
   ```
 - [ ] Add to `spec/image_publishing_spec.rb`:
@@ -671,7 +677,7 @@ Write the self-hoster's instructions and the maintainer's release procedure, and
 
       it "records the release procedure and what each trigger publishes (AC-7.1)", :aggregate_failures do
         expect(doc).to include("git tag -a v", "v0.1.0", "| Tag `vX.Y.Z` |", "| Push to `main` |", "| Pull request |")
-        expect(doc).to include("vX.Y.Z-<suffix>", "only the newest release")
+        expect(doc).to include("vX.Y.Z-<suffix>", "Only the newest release's workflow may be re-run")
       end
 
       it "orders the go-public checklist and says it cannot be undone (AC-7.2)", :aggregate_failures do
@@ -684,7 +690,7 @@ Write the self-hoster's instructions and the maintainer's release procedure, and
     end
   ```
 - [ ] Run: `bin/rspec spec/readme_spec.rb spec/image_publishing_spec.rb` — expect: 4 failures (the changed upgrade example and the new README example in `readme_spec`; both `docs/releasing.md` examples, which error on the missing file).
-- [ ] Edit `README.md`. Under "Testing and CI", replace the GitHub Actions sentence:
+- [ ] Edit `README.md`. Under "Testing and CI", replace both lines of the last paragraph (the GitHub Actions sentence and the Dependabot sentence) with:
   ```markdown
   GitHub Actions (`.github/workflows/ci.yml`) runs `bin/ci` first, so local and hosted CI are the same; it then
   builds the container image for amd64 and arm64 and, on `main` and release tags, publishes it (see
@@ -731,12 +737,13 @@ Write the self-hoster's instructions and the maintainer's release procedure, and
   registry set to `ghcr.io/plainprogrammer/collector`: it would push a single-architecture `latest`
   over the published image.
   ```
-  In the Card scanner subsection, replace the sentence starting "The image build downloads":
+  In the Card scanner subsection, the sentence "The image build downloads … not from a third party." is wrapped across three lines, starting after "sent to your instance." on the fourth line of the paragraph; replace that wrapped span (keep "sent to your instance." and what precedes it) with:
   ```markdown
   The image build downloads the scanner's OCR engine from `registry.npmjs.org` and checks each file against a pinned
-  SHA-256; your instance serves it from `/ocr/v7.0.0/`, so phones fetch it from you, not from a third party. The
-  published image already contains it.
+  SHA-256; your instance serves it from `/ocr/v7.0.0/`, so phones fetch it from you, not from a third party.
+  The published image already contains it.
   ```
+  ("The published image already contains it." stays on one line: `readme_spec` matches it.)
   Replace the "Upgrading to accounts" steps:
   ```markdown
   1. Pull the new image (`docker compose pull`, or pick the release for Kamal).
@@ -864,6 +871,8 @@ Push the branch, open the pull request, and read the run.
   Verification: this PR's run must show `ci`, `Image (linux/amd64)`, `Image (linux/arm64)` green and `Publish manifest list` skipped.
 
   🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+  https://claude.ai/code/session_01EwMtjviQnh5BJeChaSWF1B
   EOF
   ```
 - [ ] Watch the run: `gh run watch` (pick the PR's run) — expect: `ci` ✓, `Image (linux/amd64)` ✓, `Image (linux/arm64)` ✓, `Publish manifest list` skipped.
@@ -893,7 +902,7 @@ Push the branch, open the pull request, and read the run.
 
 Follow `docs/releasing.md` for the first time, with the extra checks the spec asks for, and record every output.
 
-- [ ] After the merge, watch the `main` run: `gh run watch` — expect: `Publish manifest list` green. Record the duration.
+- [ ] After the merge, watch the `main` run: `gh run watch` — expect: `Publish manifest list` green. Record the duration, noting that the Actions cache is branch-scoped: this first `main` run builds cold; later `main` and pull-request runs reuse `main`'s cache.
 - [ ] AC-4.1: `gh api /user/packages/container/collector/versions --jq '.[].metadata.container.tags'` — expect: `["edge","sha-<7 chars>"]` on one version, and `latest` absent.
 - [ ] Go-public steps 1 to 5 from `docs/releasing.md`, each with its output: `visibility` prints `private`; the authenticated pull and `bin/image-smoke …:edge` pass; the package page shows the repository, the description and the licence; the visibility change is made in the browser; after `podman logout ghcr.io`, the anonymous pull succeeds (AC-1.1 on `edge`; `latest` is re-checked below).
 - [ ] AC-3.6: push an off-pattern tag and confirm no run starts, then delete it:
@@ -927,10 +936,10 @@ Follow `docs/releasing.md` for the first time, with the extra checks the spec as
 - [ ] AC-2.2 (arm64), emulated on the development machine:
   ```sh
   podman pull --platform linux/arm64 ghcr.io/plainprogrammer/collector:latest
-  bin/image-smoke ghcr.io/plainprogrammer/collector:latest --platform linux/arm64
+  SMOKE_BOOT_ATTEMPTS=300 bin/image-smoke ghcr.io/plainprogrammer/collector:latest --platform linux/arm64
   ```
-  Expected: `OK: … passed the smoke test` (slow under emulation; allow several minutes).
-- [ ] AC-5.2: `bin/kamal config --version 0.1.0 | grep -E "absolute_image|version"` — expect `absolute_image: ghcr.io/plainprogrammer/collector` and `version: 0.1.0`. A live deploy is the maintainer's check.
+  Expected: `OK: … passed the smoke test` (slow under emulation; the boot may take minutes, hence 300 attempts).
+- [ ] AC-5.2: `bin/kamal config --version 0.1.0 | grep -E "absolute_image|version"` — expect `:absolute_image: ghcr.io/plainprogrammer/collector:0.1.0` and `:version: 0.1.0`. A live deploy is the maintainer's check.
 - [ ] AC-3.7: re-run the `v0.1.0` workflow (`gh run rerun <id>`), then repeat the `versions`, `manifest inspect` and `inspect … Labels` commands: the same three tags, two platforms, identical `.version` and `.revision`; `edge` and `sha-*` unchanged.
 - [ ] Write `docs/specs/012-ghcr-registry-publishing/verification.md` with every command above and its output, the run URLs and durations (PR, `main`, `v0.1.0`, the re-run), the image sizes from Phase 1, and the `bin/kamal config` outputs from Phase 3. Commit it on `main` (or a one-commit PR): `docs(specs): record the first publish of spec 012`.
 
