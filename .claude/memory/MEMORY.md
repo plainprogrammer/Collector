@@ -26,3 +26,5 @@
 - [Verify corpus manifests](verify-corpus-manifests.md) — resolve, check overlap, plst `PCY-132` numbers, era override for frames without set codes, foil ★ vs the foil column; a clean-reading miss may be a manifest error
 - [ExitPlanMode for SDD plans](exitplanmode-for-sdd-plans.md) — long plans: summarise in chat and take the go-ahead there, not via the approval dialog
 - [Device sitting account check](device-sitting-account-check.md) — find which account holds the sitting (by reading keys) before scoring or resetting
+- [Spec 012 follow-ups](spec-012-followups.md) — issues #17–#21: digest cleanup, ruby-vips, smoke grep, releasing.md lines, evidence owed
+- [GHCR and Actions facts](ghcr-and-actions-facts.md) — visibility one-way, attestations need public repo, arm64 runners, metadata-action v0, kamal config limits
