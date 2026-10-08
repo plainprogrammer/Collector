@@ -30,13 +30,18 @@ changed. Release facts from spec 012 that bear on this are in `docs/releasing.md
 ## Goals
 
 - Delete package versions that are untagged, not referenced by any tagged manifest list, and older than 7 days.
-- Treat an untagged manifest list and the children only it references as one orphan to delete together.
+- Treat an untagged manifest list and the children only it references as one orphan unit, deleted together in
+  the same run; a unit's age is that of its newest member (the list, pushed after its children).
+- "Tagged" means the packages API reports a non-empty `metadata.container.tags`; one version can carry several
+  tags (the release list carries `latest`, `0.1` and `0.1.0`).
 - Never delete a digest that a tagged manifest list references, and never delete a tagged version.
 - Fail closed: if the version list or any tagged manifest cannot be read or understood, delete nothing and fail
   the run.
 - Default to a dry run that prints what would be deleted and why; deleting needs an explicit flag.
-- Run weekly on a schedule and on demand (`workflow_dispatch`, dry run selectable); the deleting job is the only
-  one with `packages: write`.
+- Run weekly on a schedule (deleting) and on demand (`workflow_dispatch`, with a dry-run input defaulting to on).
+  `packages: write` is granted only to the job that deletes; a dry run needs only `packages: read`. Locally, a dry
+  run takes its token from the environment (e.g. `GH_TOKEN="$(gh auth token)"`).
+- If GitHub refuses a delete, stop and fail the run, naming the version.
 - After deleting, check that every remaining tag still resolves to exactly `linux/amd64` and `linux/arm64`.
 - Keep the selection rule in a plain, stdlib-only Ruby class covered by RSpec and run by `bin/ci`.
 
@@ -56,7 +61,7 @@ changed. Release facts from spec 012 that bear on this are in `docs/releasing.md
 - The specs prove that referenced children are kept, orphaned lists are deleted with their children, versions
   younger than 7 days are kept, and an unreadable manifest deletes nothing.
 - A manual dry run against the live package lists exactly the expected orphans (on 2026-10-08:
-  `f03eb827…` and its children `90ceebd5…` and `0f9c9927…`, once older than 7 days) and deletes nothing.
+  `f03eb8274a90…` and its children `90ceeb5c0550…` and `0f9c9927048e…`, once older than 7 days) and deletes nothing.
 
 ## Architecture Decisions
 
@@ -72,7 +77,13 @@ Inline decisions (defaults, not ADR-level):
   the package (packages created by a workflow normally grant it). If deletion is refused, a fine-grained token in
   a repository secret is the fallback; that is checked during implementation.
 - **Manifests:** read from the registry API (`ghcr.io/v2/…`) with a pull token, accepting OCI image index and
-  Docker manifest list media types; anything else under a tag fails closed.
+  Docker manifest list media types; anything else under a tag (e.g. a stray single-architecture tag from a plain
+  `bin/kamal deploy`) fails closed with a message naming the tag that blocked the run.
+- **Endpoints:** `GITHUB_TOKEN` acts as `github-actions[bot]`, so the script uses
+  `/users/plainprogrammer/packages/container/collector/versions` (paginated) and `DELETE …/versions/{id}`, not
+  the `/user/packages/…` endpoints.
+- **Naming:** `Collector::GhcrCleanup` in `lib/collector/ghcr_cleanup.rb` (Zeitwerk-autoloaded `lib/`);
+  `.dockerignore` excludes both it and `bin/ghcr-cleanup`, and `bin/image-smoke` checks they are absent.
 
 ## Out of Scope
 
