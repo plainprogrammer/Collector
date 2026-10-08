@@ -50,4 +50,71 @@ RSpec.describe "Image publishing files" do
       expect(deploy.dig("servers", "web")).to eq([ "192.168.0.1" ])
     end
   end
+
+  describe ".github/workflows/ci.yml" do
+    let(:workflow) { YAML.load_file(Rails.root.join(".github/workflows/ci.yml")) }
+    let(:triggers) { workflow[true] || workflow["on"] } # Psych reads the YAML key `on` as true
+    let(:image_job) { workflow.dig("jobs", "image") }
+    let(:publish_job) { workflow.dig("jobs", "publish") }
+    let(:steps) { image_job["steps"] }
+
+    def step(id) = steps.find { |candidate| candidate["id"] == id }
+
+    it "runs on pull requests, pushes to main and release tags only (FR-1, AC-3.6)", :aggregate_failures do
+      expect(triggers.keys).to contain_exactly("pull_request", "push")
+      expect(triggers.dig("push", "branches")).to eq([ "main" ])
+      expect(triggers.dig("push", "tags")).to eq([ "v[0-9]+.[0-9]+.[0-9]+", "v[0-9]+.[0-9]+.[0-9]+-*" ])
+    end
+
+    it "builds both architectures natively after bin/ci, then publishes (ADR 0010, FR-1)", :aggregate_failures do
+      expect(image_job["needs"]).to eq("ci")
+      expect(image_job["runs-on"]).to eq("${{ matrix.runner }}")
+      expect(image_job.dig("strategy", "matrix", "include")).to contain_exactly(
+        { "platform" => "linux/amd64", "runner" => "ubuntu-latest" },
+        { "platform" => "linux/arm64", "runner" => "ubuntu-24.04-arm" })
+      expect(publish_job["needs"]).to eq("image")
+    end
+
+    it "grants packages: write only to the image and publish jobs (NFR Security)", :aggregate_failures do
+      expect(workflow["permissions"]).to eq("contents" => "read")
+      expect(image_job["permissions"]).to eq("contents" => "read", "packages" => "write")
+      expect(publish_job["permissions"]).to eq("contents" => "read", "packages" => "write")
+      expect(workflow.dig("jobs", "ci")).not_to have_key("permissions")
+    end
+
+    it "never pushes from a pull request and caches only in Actions (AC-4.2, FR-1)", :aggregate_failures do
+      expect(step("push")["if"]).to eq("github.event_name != 'pull_request'")
+      expect(publish_job["if"]).to eq("github.event_name != 'pull_request'")
+      expect(step("build")["with"]).to include("load" => true)
+      expect(step("build")["with"]).not_to have_key("outputs")
+      expect(step("build").dig("with", "cache-to")).to start_with("type=gha,")
+      expect(step("push").dig("with", "outputs")).to include("push-by-digest=true", "push=true")
+      expect(step("push")["with"]).not_to have_key("cache-to")
+    end
+
+    it "builds without attestations so a manifest list has two entries (AC-2.1)", :aggregate_failures do
+      expect(step("build")["with"]).to include("provenance" => false, "sbom" => false)
+      expect(step("push")["with"]).to include("provenance" => false, "sbom" => false)
+    end
+
+    it "smoke-tests each image between the build and the push (AC-4.3, AC-6.2)" do
+      names = steps.map { |candidate| candidate["id"] || candidate["name"] }
+      expect(names.index("Smoke test")).to be_between(names.index("build"), names.index("push")).exclusive
+    end
+
+    it "tags releases, main and SHAs per ADR 0009 (FR-2)", :aggregate_failures do
+      rules = step("meta").dig("with", "tags").lines(chomp: true)
+      expect(rules).to include("type=edge,branch=main", "type=sha,enable=${{ github.ref == 'refs/heads/main' }}")
+      expect(rules).to include("type=semver,pattern={{version}}", "type=semver,pattern={{major}}.{{minor}}")
+      expect(rules).to include("type=semver,pattern={{major}},enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}")
+      expect(publish_job["steps"].find { |candidate| candidate["id"] == "meta" }.dig("with", "tags")).to eq(step("meta").dig("with", "tags"))
+    end
+
+    it "labels the licence and description explicitly (AC-3.5, FR-2)" do
+      expect(step("meta").dig("with", "labels").lines(chomp: true)).to include(
+        "org.opencontainers.image.licenses=AGPL-3.0",
+        "org.opencontainers.image.description=Self-hostable, multi-tenant web app for tracking collectibles, " \
+        "starting with Magic: The Gathering cards.")
+    end
+  end
 end
