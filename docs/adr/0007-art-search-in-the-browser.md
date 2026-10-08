@@ -83,3 +83,13 @@ Option B is rejected: about 2.7 seconds of a Puma thread per scan on the desktop
   | Fingerprint, median / slowest (n=12) | 14.5 / 29 ms | 14.5 / 19 ms | 54 / 70 ms |
 
   The phone's first artwork matched the desktop's for 43 of 43 queries, and its fingerprints matched the committed ones to 0 bits. WebKit gives no heap figure; the page holds the decoded index (7,333,056 B), the fingerprint words (6,518,272 B) and 50,924 ids (at most 3,666,528 B), about 17.5 MB, and stayed responsive through 100 searches (longest gap 36 ms). At slower links the cold download would take 1.0 s at 50 Mbit/s, 4.8 s at 10 and 24.0 s at 2 (arithmetic, not measured). The phone searched about 3.7 times faster than the desktop's headless Firefox, so Option C's fallback wasn't needed on this device.
+- **Spec 011's shipped figures** ([research.md](../specs/011-card-scanner-art-matching/research.md) §6, §8, measured 2026-10-08), the shipped scanner page on the same iPhone and Brave, the development index (48,734 artworks), served gzip over HTTPS on the LAN during the 35-card sitting:
+
+  | iPhone | Shipped | Spec 010 |
+  |---|---|---|
+  | Download, cold | 5,742,930 B gzip in 119 ms | 244 ms |
+  | Ready to search (parse) | 61 ms | 79 ms |
+  | Art per capture (fingerprint and search), median / slowest | 65 / 92 ms (n=35) | search 19 / 29 ms, fingerprint 14.5 / 29 ms |
+  | Warm load | not measured | 11 ms download, 59 ms ready |
+
+  The search cost per capture is within the 100 ms target (spec 011 NFR Performance), though about twice the spike's fingerprint and search added together (the cause wasn't investigated). On the server, art evidence added 4.3 ms to the reading's ranking (median, 8.7 against 13.0 ms, desktop), against a 50 ms target; the server still does no art search.
