@@ -49,3 +49,15 @@
 # Ignore Docker-related files
 /.dockerignore
 /Dockerfile*
+
+# Ignore development-only files: documentation, spikes, the test suite, research scripts and agent/worktree
+# configuration. The published image is public (spec 012), so it carries only what it runs.
+/docs
+/spikes
+/spec
+/script
+/.claude
+/CLAUDE.md
+/.githooks
+/orca.yaml
+/.worktreeinclude
