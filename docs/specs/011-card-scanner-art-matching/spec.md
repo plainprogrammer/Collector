@@ -1,6 +1,6 @@
 # Feature 011: Card Scanner — Art Matching on Live Capture
 
-**Status:** Draft
+**Status:** Approved
 **Version:** 1.1.3
 **Created:** 2026-10-07
 **Last Updated:** 2026-10-07
