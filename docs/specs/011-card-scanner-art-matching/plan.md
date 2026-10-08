@@ -1204,7 +1204,7 @@ end
 **Files:** `app/models/mtg/scryfall/client.rb`, `spec/models/mtg/scryfall/client_spec.rb`
 **Interfaces:** Consumes: nothing new. Produces: `MTG::Scryfall::Client#fetch_image(url) → String` (binary body), raising `Catalog::Sources::TransientError` after 3 attempts or on another error status.
 
-- [ ] Write the failing examples in `spec/models/mtg/scryfall/client_spec.rb` (inside the top-level describe):
+- [x] Write the failing examples in `spec/models/mtg/scryfall/client_spec.rb` (inside the top-level describe):
 
 ```ruby
   describe "#fetch_image (spec 011 AC-3.4)" do
@@ -1248,8 +1248,8 @@ end
   end
 ```
 
-- [ ] Run: `bin/rspec spec/models/mtg/scryfall/client_spec.rb` — expect: FAIL (`undefined method 'fetch_image'`).
-- [ ] Implement in `MTG::Scryfall::Client` — add after `download`:
+- [x] Run: `bin/rspec spec/models/mtg/scryfall/client_spec.rb` — expect: FAIL (`undefined method 'fetch_image'`).
+- [x] Implement in `MTG::Scryfall::Client` — add after `download`:
 
 ```ruby
   # A card image (spec 011 AC-3.4): throttled like API calls, Accept image/jpeg, retried with back-off on 429 and 5xx
@@ -1283,8 +1283,8 @@ end
 ```
 
   The 429 example sleeps `3` (Retry-After) after attempt 0 and `2` (`2**1`) after attempt 1, so `naps` includes both.
-- [ ] Run: `bin/rspec spec/models/mtg/scryfall/client_spec.rb` — expect: PASS.
-- [ ] Commit: `feat(catalog): fetch card images with Scryfall's manners (011)`
+- [x] Run: `bin/rspec spec/models/mtg/scryfall/client_spec.rb` — expect: PASS.
+- [x] Commit: `feat(catalog): fetch card images with Scryfall's manners (011)`
 
 ---
 

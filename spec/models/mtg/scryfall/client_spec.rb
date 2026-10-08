@@ -55,4 +55,44 @@ RSpec.describe MTG::Scryfall::Client, type: :model do
       expect(io.string).to eq("abc")
     end
   end
+
+  describe "#fetch_image (spec 011 AC-3.4)" do
+    let(:url) { "https://cards.scryfall.io/small/front/a/b/art.jpg" }
+
+    it "asks for a JPEG with the app's User-Agent and returns its bytes", :aggregate_failures do
+      stub = stub_request(:get, url).with(headers: { "User-Agent" => %r{\ACollector/}, "Accept" => "image/jpeg" })
+        .to_return(body: "\xFF\xD8jpeg".b)
+
+      expect(client.fetch_image(url)).to eq("\xFF\xD8jpeg".b)
+      expect(stub).to have_been_requested
+    end
+
+    it "waits at least 100 ms between images, as between API calls" do
+      stub_request(:get, url).to_return(body: "x")
+
+      2.times { client.fetch_image(url) }
+
+      expect(naps).to eq([ 0.1 ])
+    end
+
+    it "backs off on 429 (honouring Retry-After) and on 5xx, then succeeds", :aggregate_failures do
+      stub_request(:get, url).to_return({ status: 429, headers: { "Retry-After" => "3" } }, { status: 503 }, { body: "x" })
+
+      expect(client.fetch_image(url)).to eq("x")
+      expect(naps).to include(3, 2)
+    end
+
+    it "gives up after 3 attempts" do
+      stub_request(:get, url).to_return(status: 502)
+
+      expect { client.fetch_image(url) }.to raise_error(Catalog::Sources::TransientError, /after 3 attempts/)
+    end
+
+    it "doesn't retry another error status", :aggregate_failures do
+      stub = stub_request(:get, url).to_return(status: 404)
+
+      expect { client.fetch_image(url) }.to raise_error(Catalog::Sources::TransientError, /404/)
+      expect(stub).to have_been_requested.once
+    end
+  end
 end
