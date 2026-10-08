@@ -48,7 +48,8 @@ is safe and is how `latest` is restored if something else overwrote it.
 
 Images are public although the repository is still private (ADR 0008). The package is created private by the
 first push and is made public by hand, in this order. Changing a package to public **cannot be undone**; the
-only way back is deleting the package.
+only way back is deleting the package. Do not merge to `main` from step 1 until step 5 is done: a merge
+republishes `edge`, so later steps would check a different image from the one verified earlier.
 
 1. Push the first image: merge to `main` so the workflow publishes `edge`. Confirm with
    `gh api /user/packages/container/collector --jq .visibility` (prints `private`).
@@ -71,6 +72,15 @@ only way back is deleting the package.
    ```sh
    podman logout ghcr.io
    podman pull ghcr.io/plainprogrammer/collector:edge
+   ```
+
+   The GitHub packages API needs `gh auth` even for a public package (anonymous requests get a 401); with
+   any account, `gh api /users/plainprogrammer/packages/container/collector --jq .visibility` prints
+   `public`. The registry itself answers anonymously:
+
+   ```sh
+   token=$(curl -s "https://ghcr.io/token?scope=repository:plainprogrammer/collector:pull" | jq -r .token)
+   curl -s -H "Authorization: Bearer $token" https://ghcr.io/v2/plainprogrammer/collector/tags/list
    ```
 
 Then cut `v0.1.0` as above so that `latest` exists for the README's instructions.
