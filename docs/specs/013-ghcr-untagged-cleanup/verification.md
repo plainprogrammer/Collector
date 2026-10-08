@@ -114,25 +114,121 @@ Both `Smoke test` steps print `== development-only paths and secrets must be abs
 the token fallback in `docs/releasing.md` (a classic personal access token with `read:packages` and
 `delete:packages` in a repository secret).
 
-## Maintainer steps after merge
+## Post-merge verification (maintainer)
 
-- [ ] **After the merge:** Actions → **GHCR cleanup** → **Run workflow** with `dry_run` ticked. Expect: only the
-  `dry-run` job runs, green, and its log matches the local dry run (AC-4.2; confirms the workflow token can list the
-  package through the `/users/` endpoint).
-- [ ] **After 2026-10-15T14:42:46Z:** a local dry run lists the three `f03eb827…` unit members as `select`
-  (AC-4.3). Then Actions → **GHCR cleanup** → **Run workflow** with `dry_run` unticked (or wait for the Sunday
-  2026-10-18 06:00 UTC run). Expect: only the `delete` job runs, it prints `deleted` for the three, and it ends
-  green after its post-delete check (AC-1.2, AC-2.4). A refused delete (`answered 403`) answers the Open Question
-  the other way: follow the token fallback in `docs/releasing.md`.
-- [ ] **After that run (AC-2.5):**
+What is still owed, and only the live package can show: the workflow's token can list (AC-4.2) and delete (Open
+Question) package versions, the first real delete leaves every tag intact (AC-1.2, AC-2.4, AC-2.5), and a second
+run finds nothing (AC-1.6). Run the steps in order; each says what to expect and what to record. Commands assume a
+checkout of `main` after the merge, with `gh` logged in as `plainprogrammer`. `gh workflow run` needs the workflow
+file on `main`, so none of this works before the merge.
 
-  ```sh
-  podman logout ghcr.io
-  for tag in latest 0.1.0 edge; do
-    for arch in amd64 arm64; do podman pull --arch "$arch" "ghcr.io/plainprogrammer/collector:$tag"; done
+### Step 1: manual dry run of the workflow (any time after the merge)
+
+```sh
+gh workflow run ghcr-cleanup.yml -f dry_run=true
+sleep 5; run=$(gh run list --workflow ghcr-cleanup.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+gh run watch "$run" --exit-status
+gh run view "$run" --json jobs --jq '.jobs[] | .name + ": " + .conclusion'
+gh run view "$run" --log | grep -E 'Dry run|select|too young|versions:'
+```
+
+(Or Actions → **GHCR cleanup** → **Run workflow**, leaving `dry_run` ticked.)
+
+**Expect:** `dry-run: success` and `delete: skipped`; the log shows `Dry run: nothing is deleted` and a counts line
+summing to the package's version total. Before 2026-10-15T14:42:46Z the `f03eb827…` unit is `too young`. A
+`GET https://api.github.com/users/… answered 401/403` failure means the workflow token cannot list the package:
+stop and follow the token fallback in `docs/releasing.md`.
+
+**Record:** the run URL and its counts line under AC-4.2.
+
+### Step 2: local dry run after the grace period (after 2026-10-15T14:42:46Z)
+
+```sh
+GH_TOKEN="$(gh auth token)" bin/ghcr-cleanup
+```
+
+**Expect:** exit 0; three `select` lines for `sha256:f03eb827…` (orphan manifest list), `sha256:90ceeb5c…` and
+`sha256:0f9c9927…` (unreferenced image), plus any newer orphan units (a re-run or a failed publish since
+2026-10-08 adds some); nothing else selected; the counts sum to the version total.
+
+**Record:** the full output under AC-4.3 (selected half). If anything tagged, or a child of a tagged list, appears
+as `select`, stop: do not run step 3, and open an issue with the output.
+
+### Step 3: the first deleting run
+
+Either wait for the scheduled run (Sunday 2026-10-18 06:00 UTC) or start one:
+
+```sh
+gh workflow run ghcr-cleanup.yml -f dry_run=false
+sleep 5; run=$(gh run list --workflow ghcr-cleanup.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+gh run watch "$run" --exit-status
+gh run view "$run" --json jobs --jq '.jobs[] | .name + ": " + .conclusion'
+gh run view "$run" --log | grep -E 'Deleting|deleted|select|versions:|ghcr-cleanup:'
+```
+
+**Expect:** `dry-run: skipped`, `delete: success`; `deleted sha256:f03eb827…` before `deleted sha256:90ceeb5c…` and
+`deleted sha256:0f9c9927…` (list first); no `ghcr-cleanup:` failure line, which means the post-delete check found
+every tag's children. Then `gh api '/users/plainprogrammer/packages/container/collector/versions?per_page=100'
+--jq 'length'` is three fewer than before.
+
+**If it fails:**
+
+- `DELETE … answered 401` or `answered 403`: the workflow token may not delete (the Open Question's "no"). Nothing
+  after that version was deleted. Follow the token fallback in `docs/releasing.md` (classic PAT, secret
+  `GHCR_CLEANUP_TOKEN`) on a branch, merge it, and repeat this step.
+- `… child sha256:… is missing`: a tag lost an image. Run step 4 at once to see which tags still pull, and open an
+  issue with the log; do not re-run the cleanup until it is understood.
+- Any other `ghcr-cleanup:` line: the run failed closed before or while deleting; the line names the cause.
+  Investigate before re-running (`docs/releasing.md`).
+
+**Record:** the run URL, the `deleted` lines, the version count before and after, under AC-1.2 and AC-2.4; the
+Open Question's answer (yes, or no plus the fallback taken).
+
+### Step 4: anonymous pulls of every published tag on both architectures (AC-2.5)
+
+```sh
+podman logout ghcr.io
+for tag in latest 0.1.0 edge; do
+  for arch in amd64 arm64; do
+    podman pull --quiet --arch "$arch" "ghcr.io/plainprogrammer/collector:$tag" >/dev/null &&
+      echo "$tag $arch $(podman image inspect --format '{{.Os}}/{{.Architecture}}' "ghcr.io/plainprogrammer/collector:$tag")"
   done
-  ```
+done
+```
 
-  Expect: six successful pulls. A second dry run prints `0 selected` (AC-1.6).
-- [ ] Record the workflow run URLs, the pull output and the Open Question's answer in `verification.md`; commit
-  `docs(013): record live cleanup evidence`; close issue #17.
+**Expect:** six lines, each ending in the architecture it asked for (`latest amd64 linux/amd64`, `latest arm64
+linux/arm64`, …), with no pull error. Add any `X.Y.Z` released since 0.1.0 to the list.
+
+**Record:** the six lines under AC-2.5.
+
+### Step 5: a second dry run (AC-1.6)
+
+```sh
+GH_TOKEN="$(gh auth token)" bin/ghcr-cleanup | tail -1
+```
+
+**Expect:** `… 0 selected` (orphans younger than 7 days may show as `too young`).
+
+**Record:** the counts line under AC-1.6.
+
+## Recording the evidence
+
+When steps 1–5 are done (step 1 can be recorded on its own earlier):
+
+1. Create a branch from `main` named per `docs/git-convention.md`, e.g. `013-live-cleanup-evidence`.
+2. In this file:
+   - Add a section `## Live cleanup (post-merge)` after "Pull request CI", with one subsection per step: the date
+     and time (UTC), the run URL where there is one, and the output recorded above, in fenced blocks.
+   - In the acceptance-criteria table, replace each "pending" note with a pointer to that evidence and set the
+     status to ✓: AC-1.2 and AC-2.4 (step 3), AC-1.6 (step 5), AC-2.5 (step 4), AC-4.2 (step 1), AC-4.3
+     (step 2).
+   - Under "Open Question: can GITHUB_TOKEN delete?", replace **Pending.** with **Answered (date): yes** and the
+     step 3 run URL, or **no**, the refused status, and the fallback taken (the PR that switched to
+     `GHCR_CLEANUP_TOKEN`).
+   - Tick the steps above.
+3. If the answer was "no", also update the Open Question in `spec.md` with a PATCH (`sdd-spec-update`).
+4. Commit `docs(013): record live cleanup evidence`, open a PR, and on merge close issue #17 with a link to it.
+   Remove the #17 entry from `.claude/memory/spec-012-followups.md` in the same PR.
+
+If a step's result deviates from its **Expect**, record what happened as it is, mark that AC ⚠ with the
+deviation, and decide the fix before closing #17.
