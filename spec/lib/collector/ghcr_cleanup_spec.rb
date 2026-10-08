@@ -1,4 +1,5 @@
 require "rails_helper"
+require "open3"
 
 RSpec.describe Collector::GhcrCleanup do
   let(:now) { Time.utc(2026, 10, 20, 12) }
@@ -140,6 +141,23 @@ RSpec.describe Collector::GhcrCleanup do
 
     it "fails naming GH_TOKEN when neither is set (AC-3.7)" do
       expect { described_class.token_from({}) }.to raise_error(described_class::Failure, /GH_TOKEN/)
+    end
+  end
+
+  # The subprocess is not under WebMock: every example here must exit before any request.
+  describe "bin/ghcr-cleanup" do
+    let(:command) { Rails.root.join("bin/ghcr-cleanup").to_s }
+
+    it "exits before any request without a token, naming GH_TOKEN (AC-3.7)", :aggregate_failures do
+      _out, err, status = Open3.capture3({ "GH_TOKEN" => nil, "GITHUB_TOKEN" => nil }, command)
+      expect(status).not_to be_success
+      expect(err).to include("GH_TOKEN")
+    end
+
+    it "rejects unknown arguments", :aggregate_failures do
+      _out, err, status = Open3.capture3({ "GH_TOKEN" => "unused" }, command, "--force")
+      expect(status).not_to be_success
+      expect(err).to include("usage: bin/ghcr-cleanup [--delete]")
     end
   end
 end

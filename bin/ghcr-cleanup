@@ -1,0 +1,19 @@
+#!/usr/bin/env ruby
+# Deletes untagged ghcr.io/plainprogrammer/collector versions that no tag needs, once their orphan unit is more
+# than 7 days old (spec 013, docs/releasing.md). A dry run unless --delete. Reads the token from GH_TOKEN, else
+# GITHUB_TOKEN:
+#
+#   GH_TOKEN="$(gh auth token)" bin/ghcr-cleanup   # dry run
+#   bin/ghcr-cleanup --delete                       # what the weekly workflow runs
+require_relative "../lib/collector/ghcr_cleanup"
+
+$stdout.sync = true # keep the deletions before a failure message in the Actions log
+cleanup = Collector::GhcrCleanup
+abort "usage: bin/ghcr-cleanup [--delete]" unless (ARGV - [ "--delete" ]).empty?
+
+begin
+  client = cleanup::Client.new(token: cleanup.token_from(ENV))
+  cleanup::Run.new(client:, out: $stdout, delete: ARGV.include?("--delete")).call
+rescue cleanup::Failure => e
+  abort "ghcr-cleanup: #{e.message}"
+end

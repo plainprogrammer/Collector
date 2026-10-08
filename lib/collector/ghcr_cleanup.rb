@@ -206,5 +206,81 @@ module Collector
         { "Authorization" => "Bearer #{pull_token}", "Accept" => ACCEPT, "User-Agent" => USER_AGENT }
       end
     end
+
+    # One run: read everything, plan, report, and (with delete: true) delete and check every tag afterwards.
+    class Run
+      def initialize(client:, out:, now: Time.now, delete: false)
+        @client, @out, @now, @delete = client, out, now, delete
+      end
+
+      # Returns the plan; raises Failure when the run must fail (nothing deleted, or nothing after the failure).
+      def call
+        versions = @client.versions
+        tagged = versions.select(&:tagged?)
+        referenced = GhcrCleanup.referenced(tagged.to_h { |version| [ version, read(version) ] })
+        candidates = versions.reject { |version| version.tagged? || referenced.include?(version.digest) }
+        manifests = candidates.to_h { |version| [ version.digest, read(version) ] }
+        plan = GhcrCleanup.plan(versions:, referenced:, manifests:, now: @now)
+        report(plan)
+        delete(plan, tagged) if @delete
+        plan
+      end
+
+      private
+
+      def read(version)
+        @client.manifest(version.digest)
+      rescue Failure => e
+        raise Failure, "#{version.label}: #{e.message}"
+      end
+
+      def report(plan)
+        @out.puts(@delete ? "Deleting orphans past the 7-day grace period." : "Dry run: nothing is deleted (pass --delete to delete).")
+        plan.selected.each { |unit| describe(unit, "select") }
+        plan.young.each { |unit| describe(unit, "too young") }
+        counts = plan.counts
+        @out.puts("#{counts.values.sum} versions: #{counts[:tagged]} tagged, #{counts[:referenced]} referenced, " \
+                  "#{counts[:young]} too young, #{counts[:selected]} selected")
+      end
+
+      def describe(unit, verdict)
+        age = GhcrCleanup.duration(unit.age(@now))
+        unit.members.each do |version|
+          kind = unit.lists.include?(version) ? "orphan manifest list" : "unreferenced image"
+          @out.puts("#{verdict} #{version.digest} created #{version.created_at.utc.iso8601} tags (none): #{kind}, unit age #{age}")
+        end
+      end
+
+      def delete(plan, tagged)
+        removed, refusal = delete_all(plan.selected.flat_map(&:members))
+        problems = removed.positive? ? check(tagged) : []
+        raise Failure, [ refusal, *problems ].compact.join("\n") if refusal || problems.any?
+      end
+
+      # Returns [versions removed, failure message or nil]; stops at the first refusal or failed request (AC-3.6),
+      # so the post-delete check still runs when something was removed before it.
+      def delete_all(members)
+        removed = 0
+        members.each do |version|
+          result = @client.delete(version)
+          removed += 1
+          @out.puts("#{result == :gone ? "already deleted" : "deleted"} #{version.digest}")
+        end
+        [ removed, nil ]
+      rescue Failure => e
+        [ removed, e.message ]
+      end
+
+      # AC-2.4: deleting a child leaves its tagged list intact, so check every child is still in the registry.
+      def check(tagged)
+        tagged.flat_map do |version|
+          manifest = read(version)
+          GhcrCleanup.check_tagged!(version, manifest)
+          manifest.children.reject { |child| @client.fetchable?(child) }.map { |child| "#{version.label}: child #{child} is missing" }
+        rescue Failure => e
+          [ e.message ]
+        end
+      end
+    end
   end
 end
