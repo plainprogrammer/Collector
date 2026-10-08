@@ -3436,7 +3436,7 @@ end
 **Files:** `CLAUDE.md`, `docs/specs/007-card-scanner-live-capture/spec.md`, `docs/adr/0006-art-fingerprint-and-index.md`, `script/scanner/art_decoder_fingerprints.rb`
 **Interfaces:** Consumes: everything above. Produces: `script/scanner/art_decoder_fingerprints.rb <art-cache dir>` (one `<id> <hex>` line per agreement artwork).
 
-- [ ] In `CLAUDE.md`'s "Non-obvious Facts", change the catalog bullet's first sentence to:
+- [x] In `CLAUDE.md`'s "Non-obvious Facts", change the catalog bullet's first sentence to:
 
 ```markdown
 - **Catalog data is global** (no `account_id`) and changes only through `Catalog::Refresh` (weekly `config/recurring.yml` schedule + the manual rake task, via `Catalog::RefreshJob`) and, for the MTG art index (spec 011, opt-in `COLLECTOR_MTG_ART_MATCHING`), `MTG::Art::BuildJob`, which the refresh queues and which writes `mtg_artworks`, `mtg_art_builds`, the image cache and the index under `storage/catalog/mtg/art/`.
@@ -3448,7 +3448,7 @@ end
 Art matching (spec 011, ADRs 0006, 0007 and 0011) needs ImageMagick (`magick` or `convert`) for the build and its specs; the page searches `/scanner/art/<index>` on the device.
 ```
 
-- [ ] Add a changelog row and an FR-3 note to `docs/specs/007-card-scanner-live-capture/spec.md` (keep its text as history). Change `**Version:** 2.1.1` to `**Version:** 2.2.0` and `**Last Updated:** 2026-10-02` to `**Last Updated:** 2026-10-07`, and add the row at the end of its changelog table:
+- [x] Add a changelog row and an FR-3 note to `docs/specs/007-card-scanner-live-capture/spec.md` (keep its text as history). Change `**Version:** 2.1.1` to `**Version:** 2.2.0` and `**Last Updated:** 2026-10-02` to `**Last Updated:** 2026-10-07`, and add the row at the end of its changelog table:
 
 ```markdown
 | 2.2.0 | 2026-10-07 | FR-3 amended by spec 011 (art matching): in normal use the page also sends match results (artwork ids and their distances); never a frame, strip, photo or fingerprint |
@@ -3460,16 +3460,16 @@ Art matching (spec 011, ADRs 0006, 0007 and 0011) needs ImageMagick (`magick` or
 > **Amended by [spec 011](../011-card-scanner-art-matching/spec.md) FR-5 (2026-10-07):** "Send only recognised text and match results (artwork ids and their distances) to the app in normal use." Must not send any frame, strip, photo or fingerprint outside development measurement mode.
 ```
 
-- [ ] Amend ADR 0006's Decision **Index** bullet to the shipped rule (AC-9.7, 1.1.0 ruling):
+- [x] Amend ADR 0006's Decision **Index** bullet to the shipped rule (AC-9.7, 1.1.0 ruling):
 
 ```markdown
 - **Index:** one record per artwork, a 16-byte artwork id and the 128-byte fingerprint (144 bytes), after a 28-byte header (`CART`, format version, the settings digest, the record count), compressed, and named by catalog version, settings digest and record count. The image for each artwork is the front face's `small` image of its oldest English card printing that has one (release date, then set code, then number; maintainer ruling 2026-10-07, replacing "first printing in the bulk file's order", which the app doesn't keep after a refresh). Artworks with no image on any printing are left out.
 ```
 
-- [ ] Run the whole gate: `bin/rails zeitwerk:check && bin/ci` — expect: "All is good!" and every CI step passing (RuboCop, Brakeman, bundler-audit, importmap audit, RSpec). Read the RSpec summary: 0 failures; the only pending example is the opt-in agreement spec.
-- [ ] Run the camera page specs 10 times in a row with art on and off (NFR Reliability): `for i in $(seq 10); do bin/rspec spec/system/scanner_art_spec.rb spec/system/scanner_spec.rb spec/system/scanner_adding_spec.rb || break; done` — expect: 10 passing runs.
-- [ ] Commit: `docs(011): record art matching in CLAUDE.md, spec 007 and ADR 0006`
-- [ ] Write `script/scanner/art_decoder_fingerprints.rb` (AC-3.10 for the shipped image: the agreement figures were measured with the desktop's ImageMagick 7, and the image may install version 6):
+- [x] Run the whole gate: `bin/rails zeitwerk:check && bin/ci` — expect: "All is good!" and every CI step passing (RuboCop, Brakeman, bundler-audit, importmap audit, RSpec). Read the RSpec summary: 0 failures; the only pending example is the opt-in agreement spec.
+- [x] Run the camera page specs 10 times in a row with art on and off (NFR Reliability): `for i in $(seq 10); do bin/rspec spec/system/scanner_art_spec.rb spec/system/scanner_spec.rb spec/system/scanner_adding_spec.rb || break; done` — expect: 10 passing runs.
+- [x] Commit: `docs(011): record art matching in CLAUDE.md, spec 007 and ADR 0006`
+- [x] Write `script/scanner/art_decoder_fingerprints.rb` (AC-3.10 for the shipped image: the agreement figures were measured with the desktop's ImageMagick 7, and the image may install version 6):
 
 ```ruby
 # Spec 011 AC-3.10, ADR 0011: the build's zero-offset fingerprints of spec 010's 134 agreement images, one "<id> <hex>"
@@ -3483,15 +3483,15 @@ JSON.parse(dir.join("agreement_small.json").read).fetch("results").each do |resu
 end
 ```
 
-- [ ] **The image's decoder agrees with the desktop's (AC-3.10):**
+- [x] **The image's decoder agrees with the desktop's (AC-3.10):**
   `podman build -t collector:art-check . && bin/rails runner script/scanner/art_decoder_fingerprints.rb ~/card-scanner-corpus/art-cache > tmp/art-fp-desktop.txt && podman run --rm --security-opt label=disable -e SECRET_KEY_BASE_DUMMY=1 -v ~/card-scanner-corpus/art-cache:/art:ro -v "$PWD/script/scanner:/rails/script/scanner:ro" --entrypoint ./bin/rails collector:art-check runner script/scanner/art_decoder_fingerprints.rb /art > tmp/art-fp-image.txt && diff tmp/art-fp-desktop.txt tmp/art-fp-image.txt && wc -l tmp/art-fp-image.txt`
   — expect: no diff output and `134`. The script is mounted because `.dockerignore` keeps `/script` out of the image (spec 012). The stderr lines name each decoder (`magick` or `convert`). If any line differs, stop: the image's decoder doesn't agree, an index built in the image can't be used, and the maintainer rules (ADR 0011 is revisited). Record the decoder and the result in the commit body.
-- [ ] **The index passes through Thruster pre-compressed, once (AC-4.1):** write a one-record index in the test directory, serve it from the image, and read the headers:
+- [x] **The index passes through Thruster pre-compressed, once (AC-4.1):** write a one-record index in the test directory, serve it from the image, and read the headers:
   1. `RAILS_ENV=test bin/rails runner 'puts MTG::Art::Index.write!("check", [ [ "aaaaaaaa-0000-4000-8000-000000000001", "\x00".b * 128 ] ]).basename'` — note the printed name.
   2. Start the container as a background task: `podman run --rm --name art-check -p 3999:8080 -e HTTP_PORT=8080 -e SECRET_KEY_BASE=$(ruby -rsecurerandom -e 'puts SecureRandom.hex(64)') -e COLLECTOR_MTG_ART_MATCHING=true --security-opt label=disable -v "$PWD/tmp/catalog:/rails/storage/catalog:ro" collector:art-check`, and wait until `curl -fsS http://localhost:3999/up` answers.
   3. `curl -s -D tmp/art-check.headers -o tmp/art-check.bin -H "Accept-Encoding: gzip" http://localhost:3999/scanner/art/<name> && grep -ic '^content-encoding: gzip' tmp/art-check.headers && gunzip -c tmp/art-check.bin | wc -c` — expect: `1` (exactly one gzip encoding) and `172` (the 28-byte header and one 144-byte record).
   4. Stop it with `podman stop art-check` (or TaskStop for the background task) and `rm -rf tmp/catalog/mtg/art tmp/art-check.* tmp/art-fp-*.txt`. If the encoding is doubled or missing, stop and record it: Thruster's handling needs a fix before release.
-- [ ] Commit: `chore(scanner): add the decoder fingerprint check script (011)`, with both results in the body.
+- [x] Commit: `chore(scanner): add the decoder fingerprint check script (011)`, with both results in the body.
 
 ---
 
