@@ -15,5 +15,7 @@ Facts verified while building spec 012 (2026-10-07/08):
 - **Actions `permissions:`** accept no expressions, so a job that pushes on `main` also has `packages: write` on pull requests; gate the push steps with `if:` instead.
 - **Tag filters** support `+` and `[0-9]` ranges, e.g. `v[0-9]+.[0-9]+.[0-9]+`.
 - **Kamal 2.12.0:** `bin/kamal config` prints YAML with symbol keys (`:absolute_image:`), does not resolve secrets, and has no dry run; the registry validator requires `username` and `password` for any non-localhost registry, even to pull a public image; `deploy --skip-push --version X` pulls instead of building.
+- **CI triggers:** `.github/workflows/ci.yml` runs on pull requests, pushes to `main` and release tags only. Pushing a branch runs nothing; open a draft PR to exercise CI. Pull requests build and smoke-test both images (amd64, arm64; about 40 s each from cache) without publishing (verified on PR #24, 2026-10-08).
+- **`.dockerignore`** keeps `/script`, `/spec`, `/docs`, `/spikes`, `/.claude` and `/.github` out of the image. A check that runs repository files inside the image must mount them, e.g. `-v "$PWD/script/scanner:/rails/script/scanner:ro"`.
 
 **How to apply:** check these before specifying or planning registry, CI or Kamal work. Related: [[spec-012-followups]].

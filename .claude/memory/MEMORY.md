@@ -15,7 +15,7 @@
 - [Reproduce CI with its seed](reproduce-ci-with-seed.md) — on CI failure, run the full suite with the CI seed as an early reproduction step
 - [Turbo Back navigation quirks](turbo-back-navigation-quirks.md) — frame-advance + Back has two races; filters now plain Drive GET visits + no-cache; wait_for_turbo_idle
 - [PR #5 follow-ups](pr5-open-followups.md) — back-button flake fixed by PR #9 (merged 2026-10-02), watch CI; uncaptured failure
-- [Card scanner direction](card-scanner-direction.md) — spec 011 (art matching on live capture) spec + plan approved 2026-10-08, ADR 0011 Accepted; next = sdd-execute on Opus
+- [Card scanner direction](card-scanner-direction.md) — spec 011 (art matching on live capture) spec + plan approved 2026-10-08, ADR 0011 Accepted (arm64 agreement a known gap); draft PR #24; next = sdd-execute on Opus
 - [Shipped percentile is upper-middle](shipped-percentile-upper-middle.md) — ScannerFindings.percentile(…, 50) takes the upper middle for even n; use one conventional median helper and state it
 - [Phone LAN dev access](phone-lan-dev-access.md) — 192.168.1.76, high ports open, bind 0.0.0.0; Brave (WebKit; UA freezes "iPhone OS 18_7", real version in Version/…); camera HTTPS = self-signed cert + Puma ssl:// bind (Cloudflare tunnel failed); no openssl CLI
 - [Work ahead of human checkpoints](work-ahead-of-human-checkpoints.md) — in sdd-execute, run maintainer-independent units first (code ahead, fixtures later); record rulings in commit bodies
@@ -27,4 +27,5 @@
 - [ExitPlanMode for SDD plans](exitplanmode-for-sdd-plans.md) — long plans: summarise in chat and take the go-ahead there, not via the approval dialog
 - [Device sitting account check](device-sitting-account-check.md) — find which account holds the sitting (by reading keys) before scoring or resetting
 - [Spec 012 follow-ups](spec-012-followups.md) — issues #17–#21: digest cleanup, ruby-vips, smoke grep, releasing.md lines, evidence owed
-- [GHCR and Actions facts](ghcr-and-actions-facts.md) — visibility one-way, attestations need public repo, arm64 runners, metadata-action v0, kamal config limits
+- [GHCR and Actions facts](ghcr-and-actions-facts.md) — visibility one-way, attestations need public repo, arm64 runners, metadata-action v0, kamal config limits; CI runs only on PRs/main (open a draft PR); .dockerignore drops /script, mount it
+- [ADR numbers across branches](adr-numbers-across-branches.md) — check origin/main's docs/adr before numbering; an unmerged ADR takes the next free number on rebase
