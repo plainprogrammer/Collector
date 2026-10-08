@@ -7,7 +7,9 @@ module GitSandbox
     "GIT_CONFIG_GLOBAL" => File::NULL, "GIT_CONFIG_NOSYSTEM" => "1",
     "GIT_DIR" => nil, "GIT_WORK_TREE" => nil, "GIT_INDEX_FILE" => nil, "GIT_COMMON_DIR" => nil,
     "GIT_AUTHOR_NAME" => "Spec", "GIT_AUTHOR_EMAIL" => "spec@example.test",
-    "GIT_COMMITTER_NAME" => "Spec", "GIT_COMMITTER_EMAIL" => "spec@example.test"
+    "GIT_COMMITTER_NAME" => "Spec", "GIT_COMMITTER_EMAIL" => "spec@example.test",
+    # No automatic maintenance: a detached run outlives the command and races the sandbox's removal.
+    "GIT_CONFIG_COUNT" => "1", "GIT_CONFIG_KEY_0" => "maintenance.auto", "GIT_CONFIG_VALUE_0" => "false"
   }.freeze
 
   def git(dir, *args, env: {})
