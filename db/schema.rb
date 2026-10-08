@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_03_100002) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_07_100001) do
   create_table "accounts", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -174,7 +174,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_03_100002) do
     t.string "scryfall_uri", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "illustration_id"
     t.index ["catalog_entry_id"], name: "index_mtg_printings_on_catalog_entry_id", unique: true
+    t.index ["illustration_id"], name: "index_mtg_printings_on_illustration_id"
   end
 
   create_table "scanner_sitting_entries", force: :cascade do |t|
