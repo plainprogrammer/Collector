@@ -1961,7 +1961,7 @@ end
 **Files:** `app/controllers/scanner/art_indexes_controller.rb`, `config/routes.rb`, `config/brakeman.ignore`, `spec/requests/scanner/art_indexes_spec.rb`
 **Interfaces:** Consumes: `MTG::Art.enabled?`, `MTG::Art::Index.path_for`, `.write!` (Phase 7). Produces: `GET /scanner/art/:name` (`scanner_art_index_path(name)`), public, gzip-encoded, immutable.
 
-- [ ] Write the failing `spec/requests/scanner/art_indexes_spec.rb`:
+- [x] Write the failing `spec/requests/scanner/art_indexes_spec.rb`:
 
 ```ruby
 require "rails_helper"
@@ -2019,8 +2019,8 @@ RSpec.describe "Art index file", :art_matching, type: :request do
 end
 ```
 
-- [ ] Run: `bin/rspec spec/requests/scanner/art_indexes_spec.rb` — expect: FAIL (`undefined method 'scanner_art_index_path'`).
-- [ ] Add the route to `config/routes.rb`, after the OCR engine route:
+- [x] Run: `bin/rspec spec/requests/scanner/art_indexes_spec.rb` — expect: FAIL (`undefined method 'scanner_art_index_path'`).
+- [x] Add the route to `config/routes.rb`, after the OCR engine route:
 
 ```ruby
   # The art index for the card scanner's art matching (spec 011 Story 4): global catalog data, public and immutable.
@@ -2028,7 +2028,7 @@ end
     constraints: { name: /art-index-[a-z0-9-]+\.bin\.gz/ }
 ```
 
-- [ ] Implement `app/controllers/scanner/art_indexes_controller.rb`:
+- [x] Implement `app/controllers/scanner/art_indexes_controller.rb`:
 
 ```ruby
 # Serves the art index the build wrote (spec 011 Story 4; ADR 0007): only the current or previous file, by its exact
@@ -2051,9 +2051,9 @@ class Scanner::ArtIndexesController < ApplicationController
 end
 ```
 
-- [ ] Run: `bin/rspec spec/requests/scanner/art_indexes_spec.rb spec/routing` — expect: PASS.
-- [ ] Run: `bin/brakeman --quiet --no-pager --exit-on-warn` — expect: one new Weak "Parameter value used in file name" (SendFile) warning for `scanner/art_indexes_controller.rb`, the same shape Brakeman flags for `OcrAssetsController` (already ignored in `config/brakeman.ignore`). Ignore it with a written justification (`.claude/rules/security.md`): run `bin/brakeman -I`, choose the new warning, and give the note "MTG::Art::Index.path_for returns only the current or previous index, matched by exact name (NAME) among the files in MTG::Art.root/index; any other value is nil and answers 404. The parameter never builds a path." Then `bin/brakeman --quiet --no-pager --exit-on-warn` — expect: no warnings. Commit `config/brakeman.ignore` with the controller.
-- [ ] Commit: `feat(scanner): serve the art index, public and immutable (011)`
+- [x] Run: `bin/rspec spec/requests/scanner/art_indexes_spec.rb spec/routing` — expect: PASS.
+- [x] Run: `bin/brakeman --quiet --no-pager --exit-on-warn` — expect: one new Weak "Parameter value used in file name" (SendFile) warning for `scanner/art_indexes_controller.rb`, the same shape Brakeman flags for `OcrAssetsController` (already ignored in `config/brakeman.ignore`). Ignore it with a written justification (`.claude/rules/security.md`): run `bin/brakeman -I`, choose the new warning, and give the note "MTG::Art::Index.path_for returns only the current or previous index, matched by exact name (NAME) among the files in MTG::Art.root/index; any other value is nil and answers 404. The parameter never builds a path." Then `bin/brakeman --quiet --no-pager --exit-on-warn` — expect: no warnings. Commit `config/brakeman.ignore` with the controller.
+- [x] Commit: `feat(scanner): serve the art index, public and immutable (011)`
 
 ---
 
