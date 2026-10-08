@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Accepted (2026-10-08)
 
 **Date:** 2026-10-08
 **Feature:** 013-ghcr-untagged-cleanup
