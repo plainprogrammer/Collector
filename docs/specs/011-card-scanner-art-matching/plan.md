@@ -242,7 +242,7 @@ end
 **Files:** `db/migrate/20261007100001_add_illustration_id_to_mtg_printings.rb`, `db/schema.rb`, `app/models/mtg/scryfall/mapper.rb`, `app/models/catalog/sources.rb`, `app/models/catalog/refresh.rb`, `app/models/mtg/scryfall/source.rb`, `spec/support/fake_catalog_source.rb`, `spec/models/mtg/scryfall/mapper_spec.rb`, `spec/models/catalog/refresh_spec.rb`, `spec/models/mtg/scryfall/source_spec.rb`
 **Interfaces:** Consumes: nothing. Produces: `mtg_printings.illustration_id` (string, indexed, nullable); each face's `image_uris["small"]` in `mtg_printings.faces`; the optional source hooks `#reapply? → Boolean` (asked before the skip decision) and `#after_refresh(run)` (called after an applied or already-applied skipped run); `MTG::Scryfall::Source#reapply?`.
 
-- [ ] Write the failing mapper examples, inside `describe ".entry_record"` in `spec/models/mtg/scryfall/mapper_spec.rb`:
+- [x] Write the failing mapper examples, inside `describe ".entry_record"` in `spec/models/mtg/scryfall/mapper_spec.rb`:
 
 ```ruby
     it "keeps the front face's artwork id and each face's small image (spec 011 AC-2.1)", :aggregate_failures do
@@ -261,8 +261,8 @@ end
     end
 ```
 
-- [ ] Run: `bin/rspec spec/models/mtg/scryfall/mapper_spec.rb` — expect: FAIL (2 failures).
-- [ ] Write the migration `db/migrate/20261007100001_add_illustration_id_to_mtg_printings.rb`:
+- [x] Run: `bin/rspec spec/models/mtg/scryfall/mapper_spec.rb` — expect: FAIL (2 failures).
+- [x] Write the migration `db/migrate/20261007100001_add_illustration_id_to_mtg_printings.rb`:
 
 ```ruby
 # Spec 011 AC-2.1, AC-2.2: each printing's artwork (Scryfall's front-face illustration_id), filled by the next applied
@@ -275,8 +275,8 @@ class AddIllustrationIdToMTGPrintings < ActiveRecord::Migration[8.1]
 end
 ```
 
-- [ ] Run: `bin/rails db:migrate && git checkout db/cable_schema.rb db/cache_schema.rb db/queue_schema.rb && bin/rails db:rollback && bin/rails db:migrate && git checkout db/cable_schema.rb db/cache_schema.rb db/queue_schema.rb` — expect: the migration runs down and up; `git diff db/schema.rb` shows only the new column, its index and the version.
-- [ ] Change `MTG::Scryfall::Mapper.entry_record`'s extension hash to add the artwork id (keep every other key):
+- [x] Run: `bin/rails db:migrate && git checkout db/cable_schema.rb db/cache_schema.rb db/queue_schema.rb && bin/rails db:rollback && bin/rails db:migrate && git checkout db/cable_schema.rb db/cache_schema.rb db/queue_schema.rb` — expect: the migration runs down and up; `git diff db/schema.rb` shows only the new column, its index and the version.
+- [x] Change `MTG::Scryfall::Mapper.entry_record`'s extension hash to add the artwork id (keep every other key):
 
 ```ruby
       extension: {
@@ -301,9 +301,9 @@ end
   def illustration_id(card) = Array(card["card_faces"]).first&.dig("illustration_id") || card["illustration_id"]
 ```
 
-- [ ] Run: `bin/rspec spec/models/mtg/scryfall/mapper_spec.rb` — expect: PASS.
-- [ ] Commit: `feat(catalog): store each printing's artwork id and small image (011)`
-- [ ] Extend `spec/support/fake_catalog_source.rb`'s `FakeCatalogSource` with the optional hooks (replace the `attr_accessor` line and add two methods):
+- [x] Run: `bin/rspec spec/models/mtg/scryfall/mapper_spec.rb` — expect: PASS.
+- [x] Commit: `feat(catalog): store each printing's artwork id and small image (011)`
+- [x] Extend `spec/support/fake_catalog_source.rb`'s `FakeCatalogSource` with the optional hooks (replace the `attr_accessor` line and add two methods):
 
 ```ruby
   attr_accessor :version, :sets, :entries, :languages_result, :fail_at, :reapply
@@ -321,7 +321,7 @@ end
   def after_refresh(run) = refreshed << [ run.status, run.source_version ]
 ```
 
-- [ ] Write the failing refresh examples at the end of `spec/models/catalog/refresh_spec.rb` (before the last `end`):
+- [x] Write the failing refresh examples at the end of `spec/models/catalog/refresh_spec.rb` (before the last `end`):
 
 ```ruby
   context "with a source's refresh hooks (spec 011 AC-2.3, AC-2.4)" do
@@ -363,8 +363,8 @@ end
   end
 ```
 
-- [ ] Run: `bin/rspec spec/models/catalog/refresh_spec.rb` — expect: FAIL (the re-apply and hook examples).
-- [ ] Change `Catalog::Refresh#call` and add the hook helpers (full methods shown):
+- [x] Run: `bin/rspec spec/models/catalog/refresh_spec.rb` — expect: FAIL (the re-apply and hook examples).
+- [x] Change `Catalog::Refresh#call` and add the hook helpers (full methods shown):
 
 ```ruby
   def call
@@ -406,15 +406,15 @@ end
     def after_refresh = @source.respond_to?(:after_refresh) && @source.after_refresh(@run)
 ```
 
-- [ ] Document the hooks in `app/models/catalog/sources.rb`'s header comment, after the `#each_entry` line:
+- [x] Document the hooks in `app/models/catalog/sources.rb`'s header comment, after the `#each_entry` line:
 
 ```ruby
 #   #reapply?                           optional: true to apply a version again although it was applied (asked before a skip)
 #   #after_refresh(run)                 optional: called after an applied run, or one skipped as already applied
 ```
 
-- [ ] Run: `bin/rspec spec/models/catalog/refresh_spec.rb` — expect: PASS.
-- [ ] Write the failing source example in `spec/models/mtg/scryfall/source_spec.rb` (inside the top-level describe):
+- [x] Run: `bin/rspec spec/models/catalog/refresh_spec.rb` — expect: PASS.
+- [x] Write the failing source example in `spec/models/mtg/scryfall/source_spec.rb` (inside the top-level describe):
 
 ```ruby
   describe "#reapply?" do
@@ -428,8 +428,8 @@ end
   end
 ```
 
-- [ ] Run: `bin/rspec spec/models/mtg/scryfall/source_spec.rb` — expect: FAIL (`undefined method 'reapply?'`).
-- [ ] Add to `MTG::Scryfall::Source`, after `initialize`:
+- [x] Run: `bin/rspec spec/models/mtg/scryfall/source_spec.rb` — expect: FAIL (`undefined method 'reapply?'`).
+- [x] Add to `MTG::Scryfall::Source`, after `initialize`:
 
 ```ruby
   # Spec 011 AC-2.3: an instance upgrading to artwork ids applies its current bulk file once more, art matching on or off,
@@ -437,8 +437,8 @@ end
   def reapply? = MTG::Printing.exists? && !MTG::Printing.where.not(illustration_id: nil).exists?
 ```
 
-- [ ] Run: `bin/rspec spec/models/mtg/scryfall/source_spec.rb spec/models/catalog spec/models/mtg` — expect: PASS.
-- [ ] Commit: `feat(catalog): re-apply once for artwork ids, and let sources hook into a refresh (011)`
+- [x] Run: `bin/rspec spec/models/mtg/scryfall/source_spec.rb spec/models/catalog spec/models/mtg` — expect: PASS.
+- [x] Commit: `feat(catalog): re-apply once for artwork ids, and let sources hook into a refresh (011)`
 
 ---
 

@@ -16,6 +16,10 @@ class MTG::Scryfall::Source
     @bulk_files = {}
   end
 
+  # Spec 011 AC-2.3: an instance upgrading to artwork ids applies its current bulk file once more, art matching on or off,
+  # so every printing gets its artwork id. About 760 printings legitimately have none, so "any without" isn't the test.
+  def reapply? = MTG::Printing.exists? && !MTG::Printing.where.not(illustration_id: nil).exists?
+
   def languages
     requested = @env.fetch(LANGUAGES_ENV, "").split(",").map { |code| code.strip.downcase }.compact_blank
     invalid = requested - LANGUAGES

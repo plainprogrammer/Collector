@@ -14,6 +14,16 @@ RSpec.describe MTG::Scryfall::Source, type: :model do
     expect(described_class::ALLOWED_HOSTS).to include("cards.scryfall.io")
   end
 
+  describe "#reapply?" do
+    it "asks once for a catalog whose printings have no artwork ids yet (spec 011 AC-2.3)", :aggregate_failures do
+      expect(source.reapply?).to be(false) # an empty catalog applies anyway
+      printing = create(:mtg_printing)
+      expect(source.reapply?).to be(true)
+      printing.update!(illustration_id: "art-1")
+      expect(source.reapply?).to be(false)
+    end
+  end
+
   describe "#languages" do
     it "defaults to English" do
       expect(source.languages).to eq([ "en" ])

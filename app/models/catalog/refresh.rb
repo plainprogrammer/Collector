@@ -18,7 +18,7 @@ class Catalog::Refresh
     languages = @source.languages
     version = @source.current_version(languages:)
     @run.update!(source_version: version, languages: languages.join(","))
-    return skip(version) if already_applied?(version)
+    return skip(version) if already_applied?(version) && !reapply?
 
     path = @source.download(version, dir: Rails.configuration.x.catalog_download_dir.join(@collectible_type))
     sync_sets
@@ -26,6 +26,7 @@ class Catalog::Refresh
     retire_unseen
     name_index.rebuild
     @run.finish!(:applied, counts: @counts)
+    after_refresh
     @run
   rescue StandardError => error
     @run.finish!(:failed, message: "#{error.class}: #{error.message}", counts: @counts) if @run&.running?
@@ -42,8 +43,15 @@ class Catalog::Refresh
       rebuilt = name_index.rebuild unless name_index.populated?
       note = "; name index rebuilt with #{rebuilt} #{"name".pluralize(rebuilt)}" if rebuilt
       @run.finish!(:skipped, message: "#{version} already applied#{note}")
+      after_refresh
       @run
     end
+
+    # Optional source hooks (app/models/catalog/sources.rb): a reason to apply an already-applied version again, and a
+    # step after an applied or already-applied run. The core never knows what a source does with them (spec 011 AC-2.4).
+    def reapply? = @source.respond_to?(:reapply?) && @source.reapply?
+
+    def after_refresh = @source.respond_to?(:after_refresh) && @source.after_refresh(@run)
 
     def name_index = @name_index ||= Catalog::NameIndex.new(@collectible_type, source_class: @source.class)
 
