@@ -1,7 +1,7 @@
 # Feature 012: Build and Publish Collector Images
 
 **Status:** Approved
-**Version:** 1.1.0
+**Version:** 1.1.1
 **Created:** 2026-10-07
 **Last Updated:** 2026-10-07
 **Branch:** `012-ghcr-registry-publishing`
@@ -14,6 +14,7 @@
 |---------|------|--------|
 | 1.0.0 | 2026-10-07 | Initial draft from the approved [prd.md](prd.md) and ADRs 0008–0010. Approved by the maintainer |
 | 1.1.0 | 2026-10-07 | Spec review revisions (Fable, Mode A). **Per-architecture pushes:** a build pushes per-architecture digests; a *publish* is the tags. A failed architecture leaves an untagged digest; no tag is published (Terms, AC-2.3, NFR Reliability). **Attestations off** so a manifest list has exactly two entries (AC-2.1, FR-1). **Re-runs:** same tags, a two-architecture list built from the same commit, not byte-identical content; only the newest release may be re-run (AC-3.7, AC-7.1, Error Scenarios). **Token:** `packages: write` on the build and merge jobs; pull requests never push and the cache never goes to the registry (FR-1, NFR Security). **Kamal checks** via `bin/kamal config --version` (AC-5.1, AC-5.2). **Off-pattern tags** do not trigger the build or publish jobs (AC-3.6, FR-1). **Collateral docs** named (FR-6). **Also:** 7-character SHAs, explicit labels, concrete task outputs (AC-6.3), `podman compose` in AC-1.3, the replaced `image:` line (AC-1.5), `scanner:*` tasks as a Non-Goal |
+| 1.1.1 | 2026-10-07 | Second review pass (Fable, READY TO PLAN). Wording: the pre-release suffix is defined (Terms); only the licence and description labels are hard-coded (AC-3.5); PR runs may write the CI cache, never the registry (NFR Security); an off-pattern tag yields no run or a run with only the `ci` job (Error Scenarios); Out of Scope defers to FR-6's named sentences |
 
 ---
 
@@ -25,7 +26,7 @@ This feature publishes ready-made, public, multi-architecture images from CI, so
 
 > **Inputs.** The scope and the decisions come from the approved [prd.md](prd.md) and the accepted ADRs [0008](../../adr/0008-public-images-from-the-private-repository.md) (public images from the private repository), [0009](../../adr/0009-image-tags-and-release-channels.md) (tags and release channels) and [0010](../../adr/0010-native-multi-architecture-image-builds.md) (native per-architecture builds). The registry (GitHub Container Registry, `ghcr.io/plainprogrammer/collector`), the CI service (GitHub Actions, the existing `ci.yml`) and the two deployment paths (Compose, Kamal) are fixed inputs, as spec 001's stack was, so this spec names them. Everything else here is behaviour, not implementation.
 >
-> **Terms.** A *release* is a git tag `vX.Y.Z`, optionally with a pre-release suffix such as `-rc.1`. The *`main` channel* is the image published from every push to `main`. A *manifest list* is one image name that resolves to the right architecture on pull. A *build* produces one per-architecture image and, on `main` and release tags, pushes it to the registry by digest, untagged. *Publish* means creating the tagged manifest list from those digests. Pull requests build without pushing anything.
+> **Terms.** A *release* is a git tag `vX.Y.Z`, optionally with a semver pre-release suffix `-<suffix>` where the suffix matches `[0-9A-Za-z.-]+` (for example `-rc.1`). The *`main` channel* is the image published from every push to `main`. A *manifest list* is one image name that resolves to the right architecture on pull. A *build* produces one per-architecture image and, on `main` and release tags, pushes it to the registry by digest, untagged. *Publish* means creating the tagged manifest list from those digests. Pull requests build without pushing anything.
 
 ## Goals
 
@@ -98,7 +99,7 @@ This feature publishes ready-made, public, multi-architecture images from CI, so
 - [ ] **AC-3.2** Given a release tag `vX.Y.Z` with X ≥ 1 When it is published Then the registry has `X.Y.Z`, `X.Y`, `X` and `latest`.
 - [ ] **AC-3.3** Given a pre-release tag such as `v1.0.0-rc.1` When it is published Then the registry has `1.0.0-rc.1` and `latest`, `1.0` and `1` are not changed.
 - [ ] **AC-3.4** Given a pushed tag on a commit where `bin/ci` fails When the workflow finishes Then nothing is pushed to the registry.
-- [ ] **AC-3.5** Given a published image When `podman inspect` reads its labels Then (set explicitly by the workflow, not inferred from the repository's metadata) `org.opencontainers.image.source` is the repository URL, `.version` is the tag's version (`edge` on the `main` channel), `.revision` is the commit SHA, `.licenses` is `AGPL-3.0` and `.description` is "Self-hostable, multi-tenant web app for tracking collectibles, starting with Magic: The Gathering cards."
+- [ ] **AC-3.5** Given a published image When `podman inspect` reads its labels Then `org.opencontainers.image.source` is the repository URL, `.version` is the tag's version (`edge` on the `main` channel), `.revision` is the commit SHA, and, set explicitly by the workflow rather than taken from the repository's settings, `.licenses` is `AGPL-3.0` and `.description` is "Self-hostable, multi-tenant web app for tracking collectibles, starting with Magic: The Gathering cards."
 - [ ] **AC-3.6** Given any pushed tag When it does not match `vX.Y.Z` or `vX.Y.Z-<suffix>` (for example `v1.2` or `release-1`) Then the build and publish jobs do not run for it and nothing is pushed.
 - [ ] **AC-3.7** Given the newest release already published When its workflow is re-run Then the same tags point at a new two-architecture manifest list built from the same commit (labels `.version` and `.revision` identical, AC-6.1 to AC-6.3 hold), and no tag outside that release's set changes. Byte-identical layers are not required.
 
@@ -233,7 +234,7 @@ The workflow publishes images only after `bin/ci` has passed on the same commit,
 
 ### Security
 
-- `packages: write` is granted only to the build and merge jobs; pull-request runs of those jobs never push (no image push, no cache push) and the merge job does not run for them.
+- `packages: write` is granted only to the build and merge jobs; pull-request runs of those jobs never push an image or a cache to the registry (writing the CI service's own cache is allowed) and the merge job does not run for them.
 - No secret enters the image: `config/master.key`, `.env*`, `.kamal/` and `storage/` stay excluded (AC-6.4). The image needs only `SECRET_KEY_BASE` (Compose) or `RAILS_MASTER_KEY` (Kamal) at runtime, as today.
 - The image runs as the non-root user and exposes the same port as today.
 - The source becomes readable by anyone who pulls the image (ADR 0008); nothing in the repository that must stay private may be inside the build context.
@@ -251,7 +252,7 @@ The workflow publishes images only after `bin/ci` has passed on the same commit,
 | `bin/ci` fails on a tag or on `main` | The build and publish jobs do not run; nothing is pushed; the run is red. |
 | One architecture's build fails | No tag is published for that run; the run is red and names the failing architecture; the other architecture's untagged digest may remain. |
 | The OCR engine download fails during the build (registry unreachable or checksum mismatch) | The build fails and nothing is published; re-running the workflow retries. |
-| A tag that does not match the release pattern is pushed (for example `v1.2` or `release-1`) | The build and publish jobs do not run; nothing is pushed; the run is not red for that reason. |
+| A tag that does not match the release pattern is pushed (for example `v1.2` or `release-1`) | The build and publish jobs do not run; nothing is pushed; there is no run, or a run with only the `ci` job, and it is not red for that reason. |
 | The maintainer runs a plain `bin/kamal deploy` | Not prevented by software; the README says not to, and `docs/releasing.md` repeats it. If it happens, re-running the newest release's workflow restores `latest` (AC-3.7). |
 | An older release's workflow is re-run | `latest`, `X` and `X.Y` move back to it. Forbidden by `docs/releasing.md`; recovered by re-running the newest release's workflow. |
 | An anonymous pull fails with "denied" | The package is still private; the go-public checklist's visibility step has not been done. |
@@ -273,4 +274,4 @@ None. The brainstorm resolved the go-public timing (before the repository), the 
 - A version shown in the app's footer or on `/up`.
 - Dependabot for the base image, and a second registry or mirror.
 - A development image or a devcontainer.
-- Fixing stale README text outside the Self-hosting section (for example, the introduction still says accounts are not built).
+- Fixing stale README text outside the Self-hosting section, other than the sentences FR-6 names (for example, the introduction still says accounts are not built).

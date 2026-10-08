@@ -31,7 +31,7 @@ build. The repository currently has no git tags.
 ## Goals
 
 - Publish `ghcr.io/plainprogrammer/collector` as a public image that runs on `linux/amd64` and `linux/arm64`.
-- Publish from the existing CI workflow (which must also run on `v*` tag pushes), only after `bin/ci` has
+- Publish from the existing CI workflow (which must also run on release-tag pushes), only after `bin/ci` has
   passed on the same commit: pull requests build
   both architectures without pushing; pushes to `main` publish the `edge` channel; `vX.Y.Z` tags publish
   release tags and `latest` (rules in ADR 0009). The workflow publishes on any tag push matching the release pattern.
