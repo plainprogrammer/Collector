@@ -448,7 +448,7 @@ end
 **Files:** `config/art_fingerprint.json`, `app/models/mtg/art/settings.rb`, `app/models/mtg/art/fingerprint.rb`, `app/models/mtg/art/decoder.rb`, `spec/models/mtg/art/settings_spec.rb`, `spec/models/mtg/art/fingerprint_spec.rb`, `spec/models/mtg/art/decoder_spec.rb`, `spec/support/png_helpers.rb`, `Dockerfile`, `.github/workflows/ci.yml`, `bin/setup`
 **Interfaces:** Consumes: nothing. Produces: `MTG::Art::Settings.fingerprint → Hash` (`"box"`, `"grid"`, `"offsets"`, `"imageSize"`), `MTG::Art::Settings.digest → String` (16 lowercase hex), `MTG::Art::Settings.for_page → { "digest", "fingerprint" }`; `MTG::Art::Fingerprint.of(image, offset = MTG::Art::Fingerprint::ZERO) → String` (128 binary bytes); `MTG::Art::Decoder.decode(path) → MTG::Art::Decoder::Image` (`width`, `height`, `rgb(x, y)`), `MTG::Art::Decoder.command → String`, `MTG::Art::Decoder::Error`; spec helper `png_bytes(width, height) { |x, y| [r, g, b] }`.
 
-- [ ] Write `config/art_fingerprint.json` (the `fingerprint` block of `spikes/card_scanner/phase2/settings.json` at `39cdc6e`, unchanged):
+- [x] Write `config/art_fingerprint.json` (the `fingerprint` block of `spikes/card_scanner/phase2/settings.json` at `39cdc6e`, unchanged):
 
 ```json
 {
@@ -462,7 +462,7 @@ end
 }
 ```
 
-- [ ] Write the failing `spec/models/mtg/art/settings_spec.rb`:
+- [x] Write the failing `spec/models/mtg/art/settings_spec.rb`:
 
 ```ruby
 require "rails_helper"
@@ -481,8 +481,8 @@ RSpec.describe MTG::Art::Settings, type: :model do
 end
 ```
 
-- [ ] Run: `bin/rspec spec/models/mtg/art/settings_spec.rb` — expect: FAIL (`uninitialized constant MTG::Art::Settings`).
-- [ ] Implement `app/models/mtg/art/settings.rb`:
+- [x] Run: `bin/rspec spec/models/mtg/art/settings_spec.rb` — expect: FAIL (`uninitialized constant MTG::Art::Settings`).
+- [x] Implement `app/models/mtg/art/settings.rb`:
 
 ```ruby
 # The art fingerprint's settings (ADR 0006), the one source the build and the scanner page share (spec 011 AC-8.1):
@@ -499,8 +499,8 @@ module MTG::Art::Settings
 end
 ```
 
-- [ ] Run: `bin/rspec spec/models/mtg/art/settings_spec.rb` — expect: PASS.
-- [ ] Write `spec/support/png_helpers.rb`:
+- [x] Run: `bin/rspec spec/models/mtg/art/settings_spec.rb` — expect: PASS.
+- [x] Write `spec/support/png_helpers.rb`:
 
 ```ruby
 # A lossless, opaque PNG with no colour profile or gamma chunk, so ImageMagick and the browser see the same pixels
@@ -523,7 +523,7 @@ end
 RSpec.configure { |config| config.include PngHelpers }
 ```
 
-- [ ] Write the failing `spec/models/mtg/art/fingerprint_spec.rb`:
+- [x] Write the failing `spec/models/mtg/art/fingerprint_spec.rb`:
 
 ```ruby
 require "rails_helper"
@@ -552,7 +552,7 @@ RSpec.describe MTG::Art::Fingerprint, type: :model do
 end
 ```
 
-- [ ] Write the failing `spec/models/mtg/art/decoder_spec.rb`:
+- [x] Write the failing `spec/models/mtg/art/decoder_spec.rb`:
 
 ```ruby
 require "rails_helper"
@@ -585,8 +585,8 @@ RSpec.describe MTG::Art::Decoder, type: :model do
 end
 ```
 
-- [ ] Run: `bin/rspec spec/models/mtg/art/fingerprint_spec.rb spec/models/mtg/art/decoder_spec.rb` — expect: FAIL (uninitialized constants).
-- [ ] Implement `app/models/mtg/art/decoder.rb`:
+- [x] Run: `bin/rspec spec/models/mtg/art/fingerprint_spec.rb spec/models/mtg/art/decoder_spec.rb` — expect: FAIL (uninitialized constants).
+- [x] Implement `app/models/mtg/art/decoder.rb`:
 
 ```ruby
 require "open3"
@@ -632,7 +632,7 @@ end
 
   Note: `Open3.capture2` takes `err:` as a spawn option; if RuboCop or Ruby rejects it, use `Open3.capture3` and ignore stderr: `out, _err, status = Open3.capture3(command, path.to_s, "-depth", "8", "ppm:-", binmode: true)`.
 
-- [ ] Implement `app/models/mtg/art/fingerprint.rb` (the spike's arithmetic, loop order unchanged):
+- [x] Implement `app/models/mtg/art/fingerprint.rb` (the spike's arithmetic, loop order unchanged):
 
 ```ruby
 # The art fingerprint (ADR 0006), the same arithmetic and loop order as the scanner page's scanner/art.js: the art box
@@ -705,8 +705,8 @@ end
 
   The spike accumulated `sr`, `sg`, `sb` and `weight` in the same order inside one method; `cell` keeps that order, so the floating-point sums are identical.
 
-- [ ] Run: `bin/rspec spec/models/mtg/art` — expect: PASS (needs `magick` or `convert` on the machine; this dev machine has `magick`).
-- [ ] Add ImageMagick to the image, CI and setup. In the `Dockerfile` base stage, change the `apt-get install` line to:
+- [x] Run: `bin/rspec spec/models/mtg/art` — expect: PASS (needs `magick` or `convert` on the machine; this dev machine has `magick`).
+- [x] Add ImageMagick to the image, CI and setup. In the `Dockerfile` base stage, change the `apt-get install` line to:
 
 ```dockerfile
     apt-get install --no-install-recommends -y curl imagemagick libjemalloc2 libvips sqlite3 && \
@@ -736,9 +736,9 @@ RUN command -v magick || command -v convert
     end
 ```
 
-- [ ] Run: `bin/rubocop config bin/setup app/models/mtg/art spec/models/mtg/art spec/support/png_helpers.rb && bin/rspec spec/models/mtg/art` — expect: no offenses, PASS.
-- [ ] Commit: `feat(art): add the fingerprint settings, the Ruby fingerprint and the ImageMagick decoder (011)`
-- [ ] Build the production image and check the command: `podman build -t collector:art-check . && podman run --rm --entrypoint sh collector:art-check -c 'command -v magick || command -v convert'` — expect: a path such as `/usr/bin/magick` or `/usr/bin/convert`. If neither prints, record it in the commit body as a `Ruling:` and stop to ask: the base image's ImageMagick package name differs.
+- [x] Run: `bin/rubocop config bin/setup app/models/mtg/art spec/models/mtg/art spec/support/png_helpers.rb && bin/rspec spec/models/mtg/art` — expect: no offenses, PASS.
+- [x] Commit: `feat(art): add the fingerprint settings, the Ruby fingerprint and the ImageMagick decoder (011)`
+- [x] Build the production image and check the command: `podman build -t collector:art-check . && podman run --rm --entrypoint sh collector:art-check -c 'command -v magick || command -v convert'` — expect: a path such as `/usr/bin/magick` or `/usr/bin/convert`. If neither prints, record it in the commit body as a `Ruling:` and stop to ask: the base image's ImageMagick package name differs.
 
 ---
 ## Phase 4: The page's art module
