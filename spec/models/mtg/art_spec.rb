@@ -75,4 +75,16 @@ RSpec.describe MTG::Art, type: :model do
       expect(described_class.status_line).to include("failed", "No space left on device", kept.basename.to_s)
     end
   end
+
+  describe ".page_config (spec 011 AC-5.1)" do
+    it "gives the page the current index's name and the settings, only with art on and an index built", :aggregate_failures, :art_matching do
+      expect(described_class.page_config).to be_nil
+      older = MTG::Art::Index.write!("v1", [])
+      FileUtils.touch(older, mtime: 1.minute.ago.to_time)
+      path = MTG::Art::Index.write!("v2", [])
+      expect(described_class.page_config).to eq(name: path.basename.to_s, settings: MTG::Art::Settings.for_page) # the newest (AC-4.3)
+      Rails.configuration.x.mtg_art_matching = false
+      expect(described_class.page_config).to be_nil
+    end
+  end
 end

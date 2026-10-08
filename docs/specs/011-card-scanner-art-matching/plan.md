@@ -2063,7 +2063,7 @@ end
 **Files:** `app/models/mtg/art.rb`, `app/controllers/concerns/scanner_page.rb`, `app/views/scanners/_scanner.html.erb`, `app/javascript/controllers/card_reader_controller.js`, `app/assets/stylesheets/collector/additions.css`, `spec/models/mtg/art_spec.rb`, `spec/system/scanner_art_spec.rb`
 **Interfaces:** Consumes: `scanner/art` (`loadArtIndex`, `matchArtwork`), `MTG::Art::Index.current`, `MTG::Art::Settings.for_page`, `scanner_art_index_path`. Produces: `MTG::Art.page_config → { name:, settings: } | nil`; the helper `scanner_art` (from `ScannerPage`); the card-reader values `artIndexUrl` and `artSettings`, target `artStatus`; the reading fields `reading[artworks][][id]` and `reading[artworks][][distance]`; on the `card-reader:read` event detail, `artworks`, `artMs` and `art` (`{ downloadMs, readyMs }`) and `readyMs`.
 
-- [ ] Add the failing example to `spec/models/mtg/art_spec.rb`:
+- [x] Add the failing example to `spec/models/mtg/art_spec.rb`:
 
 ```ruby
   describe ".page_config (spec 011 AC-5.1)" do
@@ -2079,7 +2079,7 @@ end
   end
 ```
 
-- [ ] Write the failing `spec/system/scanner_art_spec.rb`:
+- [x] Write the failing `spec/system/scanner_art_spec.rb`:
 
 ```ruby
 require "rails_helper"
@@ -2158,8 +2158,8 @@ end
 
   `pick_photo` (ScannerHelpers) installs the request recorder through `CARD_JS`.
 
-- [ ] Run: `bin/rspec spec/models/mtg/art_spec.rb spec/system/scanner_art_spec.rb` — expect: FAIL (`page_config` is undefined; the status line never appears).
-- [ ] Add to `MTG::Art` (`app/models/mtg/art.rb`):
+- [x] Run: `bin/rspec spec/models/mtg/art_spec.rb spec/system/scanner_art_spec.rb` — expect: FAIL (`page_config` is undefined; the status line never appears).
+- [x] Add to `MTG::Art` (`app/models/mtg/art.rb`):
 
 ```ruby
   # What the scanner page needs for art matching (AC-5.1): the current index's name and the fingerprint settings with
@@ -2170,7 +2170,7 @@ end
   end
 ```
 
-- [ ] Add the helper to `ScannerPage` (`app/controllers/concerns/scanner_page.rb`), inside `included do`, after the policy block, and a private method below:
+- [x] Add the helper to `ScannerPage` (`app/controllers/concerns/scanner_page.rb`), inside `included do`, after the policy block, and a private method below:
 
 ```ruby
     helper_method :scanner_art
@@ -2182,7 +2182,7 @@ end
     def scanner_art = defined?(@scanner_art) ? @scanner_art : (@scanner_art = MTG::Art.page_config)
 ```
 
-- [ ] Change the opening tag of `app/views/scanners/_scanner.html.erb` and add the status line after `.c-scanner__controls`:
+- [x] Change the opening tag of `app/views/scanners/_scanner.html.erb` and add the status line after `.c-scanner__controls`:
 
 ```erb
 <%# locals: (sitting:, entries:, summary: nil) %>
@@ -2199,14 +2199,14 @@ end
   <% end %>
 ```
 
-- [ ] Add to `app/assets/stylesheets/collector/additions.css`, after `.c-scanner__hint`:
+- [x] Add to `app/assets/stylesheets/collector/additions.css`, after `.c-scanner__hint`:
 
 ```css
 /* Art matching's status under the scanner's controls (spec 011 AC-5.1): quiet, like the hint. */
 .c-scanner__art { margin:0; font:400 14px/20px var(--font-sans); color:var(--ink-muted); }
 ```
 
-- [ ] Change `app/javascript/controllers/card_reader_controller.js`. Imports and the header comment:
+- [x] Change `app/javascript/controllers/card_reader_controller.js`. Imports and the header comment:
 
 ```js
 import { Controller } from "@hotwired/stimulus"
@@ -2320,9 +2320,9 @@ import { loadArtIndex, matchArtwork } from "scanner/art"
     })
 ```
 
-- [ ] Run: `bin/rspec spec/models/mtg/art_spec.rb spec/system/scanner_art_spec.rb spec/system/scanner_spec.rb spec/system/scanner_adding_spec.rb` — expect: PASS. The existing `scanner_spec` still sees only the three text fields (art matching is off there).
-- [ ] Run the camera page specs 10 times in a row (NFR Reliability): `for i in $(seq 10); do bin/rspec spec/system/scanner_art_spec.rb spec/system/scanner_spec.rb || break; done` — expect: 10 passing runs.
-- [ ] Commit: `feat(scanner): match the live capture's artwork on the device and send the nearest (011)`
+- [x] Run: `bin/rspec spec/models/mtg/art_spec.rb spec/system/scanner_art_spec.rb spec/system/scanner_spec.rb spec/system/scanner_adding_spec.rb` — expect: PASS. The existing `scanner_spec` still sees only the three text fields (art matching is off there).
+- [x] Run the camera page specs 10 times in a row (NFR Reliability): `for i in $(seq 10); do bin/rspec spec/system/scanner_art_spec.rb spec/system/scanner_spec.rb || break; done` — expect: 10 passing runs.
+- [x] Commit: `feat(scanner): match the live capture's artwork on the device and send the nearest (011)`
 
 ---
 

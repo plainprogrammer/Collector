@@ -15,6 +15,13 @@ module MTG::Art
   # Scryfall small images, one per artwork, named <illustration_id>.jpg and never fetched twice (AC-3.4, AC-3.5).
   def self.cache_dir = root.join("small")
 
+  # What the scanner page needs for art matching (AC-5.1): the current index's name and the fingerprint settings with
+  # their digest, or nil with art matching off or no index built yet.
+  def self.page_config
+    index = enabled? && MTG::Art::Index.current
+    { name: index.basename.to_s, settings: MTG::Art::Settings.for_page } if index
+  end
+
   # Spec 011 AC-3.1: one build after an applied refresh, or after one skipped as already applied while that catalog
   # version has no index at the current settings. Nothing with art matching off. Called by the MTG source's hook.
   def self.after_refresh(run)

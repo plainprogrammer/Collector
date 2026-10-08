@@ -164,3 +164,5 @@
 .c-scanner__printings .c-list li { flex-wrap:wrap; }
 .c-scanner__printings .c-list__end { font-family:var(--font-sans); }
 .c-scanner__hint { margin:0; font:400 14px/20px var(--font-sans); color:var(--ink-muted); }
+/* Art matching's status under the scanner's controls (spec 011 AC-5.1): quiet, like the hint. */
+.c-scanner__art { margin:0; font:400 14px/20px var(--font-sans); color:var(--ink-muted); }
