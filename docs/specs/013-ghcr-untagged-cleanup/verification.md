@@ -7,7 +7,7 @@ Evidence for every acceptance criterion. The selection rule, the client and the 
 `spec/lib/collector/ghcr_cleanup_spec.rb`, `spec/lib/collector/ghcr_cleanup/client_spec.rb` and
 `spec/lib/collector/ghcr_cleanup/run_spec.rb`; the workflow, image exclusions and docs by
 `spec/image_publishing_spec.rb`. All four run in `bin/ci`, with WebMock blocking real HTTP. Criteria that need
-the pull request's image builds or the live package are marked pending below.
+the live package are marked pending below.
 
 ## Commits
 
@@ -61,6 +61,22 @@ too young sha256:0f9c9927048e8546dd4a6cd04188cf1c892b41255dec878cddb3733293da28d
   was deleted (AC-4.3, too-young half). The unit is selectable after 2026-10-15T14:42:46Z.
 - Every tagged list passed the AC-3.8 platform check, since the run did not fail closed.
 
+## Pull request CI (AC-5.2 image half)
+
+Run [37854725995](https://github.com/plainprogrammer/Collector/actions/runs/37854725995) on PR
+[#26](https://github.com/plainprogrammer/Collector/pull/26), commit `3d8b15c`, completed 2026-10-08:
+
+| Job | Result |
+|---|---|
+| `ci` (`bin/ci`) | success |
+| Image (linux/amd64) | success |
+| Image (linux/arm64) | success |
+| Publish manifest list | skipped (pull requests never publish) |
+
+Both `Smoke test` steps print `== development-only paths and secrets must be absent` followed by
+`OK: collector:smoke passed the smoke test`; the absent-path list includes `bin/ghcr-cleanup` and
+`lib/collector/ghcr_cleanup.rb`, so neither is in the image on either architecture, and the image still boots.
+
 ## Acceptance criteria
 
 | AC | Evidence | Status |
@@ -89,7 +105,7 @@ too young sha256:0f9c9927048e8546dd4a6cd04188cf1c892b41255dec878cddb3733293da28d
 | AC-4.2 | `image_publishing_spec.rb` `.github/workflows/ghcr-cleanup.yml` "dry-runs by hand by default, without packages: write (AC-4.2, FR-4)" | ✓ (workflow file); live manual dry run pending: maintainer, after merge |
 | AC-4.3 | `run_spec.rb` "reports young units with their ages (AC-4.3)"; live dry run above: the `f03eb827…` unit too young, 0 selected, nothing deleted | ✓ (too-young half); selected half pending: maintainer, after 2026-10-15T14:42:46Z |
 | AC-5.1 | `image_publishing_spec.rb` `docs/releasing.md` "documents the cleanup: rule, grace period, schedule, manual and local runs, failures, token (AC-5.1)" | ✓ |
-| AC-5.2 | `image_publishing_spec.rb` `.dockerignore` "keeps the GHCR cleanup command out of the image and the smoke test checks it (AC-5.2, FR-5)" | ✓ (files); image half pending: PR image builds |
+| AC-5.2 | `image_publishing_spec.rb` `.dockerignore` "keeps the GHCR cleanup command out of the image and the smoke test checks it (AC-5.2, FR-5)" ; PR CI run [37854725995](https://github.com/plainprogrammer/Collector/actions/runs/37854725995) below | ✓ |
 
 ## Open Question: can GITHUB_TOKEN delete?
 
