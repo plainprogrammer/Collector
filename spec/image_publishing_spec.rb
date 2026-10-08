@@ -124,6 +124,7 @@ RSpec.describe "Image publishing files" do
     it "records the release procedure and what each trigger publishes (AC-7.1)", :aggregate_failures do
       expect(doc).to include("git tag -a v", "v0.1.0", "| Tag `vX.Y.Z` |", "| Push to `main` |", "| Pull request |")
       expect(doc).to include("vX.Y.Z-<suffix>", "Only the newest release's workflow may be re-run")
+      expect(doc).to include("The workflow does not check that the tag is annotated or on `main`")
     end
 
     it "orders the go-public checklist and says it cannot be undone (AC-7.2)", :aggregate_failures do

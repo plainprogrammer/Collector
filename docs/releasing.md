@@ -13,7 +13,10 @@ A release is a git tag. CI builds the image for amd64 and arm64, smoke-tests it,
 | Tag `vX.Y.Z-<suffix>` (pre-release, suffix `[0-9A-Za-z.-]+`) | `X.Y.Z-<suffix>` only; `latest` does not move |
 
 The workflow publishes on any tag push matching those two patterns. Any other tag (`v1.2`, `release-1`) runs
-nothing. Every published image carries OCI labels for its source, version, revision, licence and description.
+nothing. The workflow does not check that the tag is annotated or on `main`; that is procedure (step 2 below).
+A pre-release suffix must be valid semver: a tag such as `v1.2.3-rc_1` matches the trigger but publishes
+nothing and fails the run. Every published image carries OCI labels for its source, version, revision, licence
+and description.
 
 ## Cutting a release
 
