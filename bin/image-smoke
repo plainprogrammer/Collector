@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# Smoke-tests a built Collector image (spec 012, AC-6.1 to AC-6.4): boots it, checks the pages and files it must
+# serve, runs the operational rake tasks, then checks that development-only paths and secrets are absent.
+#
+#   bin/image-smoke <image> [extra `run` flags, e.g. --platform linux/arm64]
+#
+# Uses docker when present, else podman (override with CONTAINER_CLI). Exit status 0 means every check passed.
+set -euo pipefail
+
+image="${1:?usage: bin/image-smoke <image> [run flags]}"
+shift
+run_flags=("$@")
+cli="${CONTAINER_CLI:-$(command -v docker >/dev/null 2>&1 && echo docker || echo podman)}"
+name="collector-smoke-$$"
+attempts="${SMOKE_BOOT_ATTEMPTS:-60}" # 2 s each; raise it for emulated runs
+
+cleanup() { "$cli" rm -f "$name" >/dev/null 2>&1 || true; }
+trap cleanup EXIT
+fail() { echo "FAIL: $*" >&2; exit 1; }
+status() { curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:${port}$1"; }
+
+echo "== boot ${image}"
+"$cli" run -d --name "$name" "${run_flags[@]}" -p 127.0.0.1::8080 \
+  -e SECRET_KEY_BASE=smoke-only-not-a-secret -e HTTP_PORT=8080 -e SOLID_QUEUE_IN_PUMA=true "$image" >/dev/null
+port="$("$cli" port "$name" 8080 | head -n 1 | sed 's/.*://')"
+for _ in $(seq 1 "$attempts"); do
+  [ "$(status /up)" = "200" ] && break
+  sleep 2
+done
+[ "$(status /up)" = "200" ] || { "$cli" logs "$name" >&2; fail "/up did not answer 200 within $((attempts * 2)) s"; }
+
+echo "== first run"
+[ "$(status /registration/new)" = "200" ] || fail "first-run registration page did not render"
+
+echo "== operational tasks"
+"$cli" exec "$name" bin/rails "catalog:status[mtg]" | grep -q "mtg" || fail "catalog:status[mtg]"
+"$cli" exec -e COLLECTOR_PASSWORD=smoke-password-1234 "$name" bin/rails "collector:user[smoke@example.com]" \
+  | grep -q "Created admin smoke@example.com." || fail "collector:user"
+
+echo "== pages and assets (a user exists now, so first-run redirects are over)"
+[ "$(status /session/new)" = "200" ] || fail "sign-in page did not render"
+[ "$(status /scanner)" = "302" ] || fail "/scanner should redirect to sign-in when signed out"
+[ "$(status /ocr/v7.0.0/tesseract.min.js)" = "200" ] || fail "OCR engine is not served"
+[ "$(status /ocr/v7.0.0/lang/eng.traineddata.gz)" = "200" ] || fail "OCR language data is not served"
+
+echo "== development-only paths and secrets must be absent"
+present="$("$cli" exec "$name" sh -c '
+  cd /rails
+  for path in docs spikes spec script .claude CLAUDE.md .githooks orca.yaml .worktreeinclude config/master.key .kamal; do
+    [ -e "$path" ] && echo "$path"
+  done
+  ls -d .env* 2>/dev/null
+  exit 0')"
+[ -z "$present" ] || fail "present in the image:"$'\n'"$present"
+
+echo "OK: ${image} passed the smoke test"

@@ -37,11 +37,13 @@ RSpec/Output:
 # The network-isolation spec verifies the test harness (WebMock/VCR), not a
 # class, so a string describe is intentional there, and the project-config spec
 # checks repository files, not a class. The hook spec exercises a git hook
-# script, and the collector rake spec a rake task, not a class.
+# script, and the collector rake spec a rake task, not a class. The image
+# publishing spec checks the publishing files.
 RSpec/DescribeClass:
   Exclude:
     - "spec/design_system_files_spec.rb"
     - "spec/githooks/post_checkout_spec.rb"
+    - "spec/image_publishing_spec.rb"
     - "spec/network_isolation_spec.rb"
     - "spec/project_config_spec.rb"
     - "spec/readme_spec.rb"

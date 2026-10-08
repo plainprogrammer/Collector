@@ -1,5 +1,7 @@
-# Self-host Collector with Docker Compose (or podman compose).
+# Self-host Collector with Docker Compose (or podman compose) from the published image.
 # Required: SECRET_KEY_BASE (generate with: openssl rand -hex 64)
+# Optional: COLLECTOR_IMAGE (image to run, default ghcr.io/plainprogrammer/collector:latest;
+#           e.g. collector:local after `docker build -t collector:local .`)
 # Optional: COLLECTOR_PORT (host port, default 3000)
 # Optional: COLLECTOR_MTG_LANGUAGES (extra card languages, e.g. "ja,de")
 # Optional: COLLECTOR_CURRENCY (currency for the price you paid, default USD)
@@ -7,8 +9,7 @@
 # Optional: COLLECTOR_TRUSTED_PROXIES (extra reverse proxy IPs/CIDRs, comma-separated)
 services:
   web:
-    build: .
-    image: collector:latest
+    image: ${COLLECTOR_IMAGE:-ghcr.io/plainprogrammer/collector:latest}
     restart: unless-stopped
     ports:
       - "${COLLECTOR_PORT:-3000}:8080"

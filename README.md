@@ -125,25 +125,30 @@ naming the steps that failed:
 5. Security: `bin/importmap audit`
 6. Tests: `bin/rspec`
 
-GitHub Actions (`.github/workflows/ci.yml`) runs `bin/ci`, so local and hosted CI are the same.
-Dependabot keeps gems and GitHub Actions up to date.
+GitHub Actions (`.github/workflows/ci.yml`) runs `bin/ci` first, so local and hosted CI are the same; it then
+builds the container image for amd64 and arm64 and, on `main` and release tags, publishes it (see
+[Self-hosting](#self-hosting) and `docs/releasing.md`). Dependabot keeps gems and GitHub Actions up to date.
 
 ## Self-hosting
 
 Two deployment paths are supported: Docker Compose for a single machine, and Kamal for
-deploying to your own servers. Both use the `Dockerfile` in this repository and keep all
-data in SQLite on a persistent volume.
+deploying to your own servers. Both run the published image `ghcr.io/plainprogrammer/collector`
+(built from the `Dockerfile` in this repository for amd64 and arm64) and keep all data in SQLite
+on a persistent volume. `latest` is the newest release; `edge` follows `main`. Releases and their
+tags are described in `docs/releasing.md`.
 
 > **Before you expose Collector:** the first person to reach a new or freshly upgraded instance becomes its admin. Either sign up straight away while the instance is only reachable on your private network, or create the admin from the command line first (see [Accounts](#accounts)).
 
 ### Docker Compose
 
-`compose.yaml` works with both `docker compose` and `podman compose`.
+`compose.yaml` works with both `docker compose` and `podman compose`, and needs no checkout: download
+the file and start it.
 
 | Variable                    | Required | Default               | Purpose                                                                                                                               |
 | --------------------------- | -------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | `SECRET_KEY_BASE`           | yes      | none                  | Secret used to sign and encrypt sessions and cookies                                                                                  |
 | `COLLECTOR_PORT`            | no       | `3000`                | Host port the app is published on                                                                                                     |
+| `COLLECTOR_IMAGE`           | no       | `ghcr.io/plainprogrammer/collector:latest` | Image to run; set it to a tag such as `ghcr.io/plainprogrammer/collector:0.1` to pin a release, or to a locally built image |
 | `COLLECTOR_MTG_LANGUAGES`   | no       | English only          | Extra card languages, e.g. `ja,de` (see [Card catalog](#card-catalog))                                                                |
 | `COLLECTOR_CURRENCY`        | no       | `USD`                 | Currency for the price you paid: USD, CAD, AUD, NZD, EUR, GBP, CHF, SEK, NOK, DKK, PLN, CZK, JPY, CNY, KRW, SGD, HKD, BRL, MXN or ZAR |
 | `COLLECTOR_HTTPS`           | no       | `false`               | Set to `true` when Collector is served over HTTPS (secure cookies, redirect to HTTPS)                                                 |
@@ -172,22 +177,30 @@ The app is then available at `http://localhost:3000` (or your `COLLECTOR_PORT`).
   `collector_storage`, mounted at `/rails/storage`. Back up this volume.
 - **Jobs:** Solid Queue runs inside the web process; no separate worker is needed.
 - **Health:** the container has a healthcheck on `/up`, and runs as a non-root user (uid 1000).
-- **Upgrades:** pull the new code, then run `docker compose up -d --build`. Database migrations
-  run automatically when the container starts.
+- **Upgrades:** `docker compose pull && docker compose up -d`. Database migrations run automatically
+  when the container starts.
+- **Building from source:** `docker build -t collector:local .` in a checkout, then start Compose with
+  `COLLECTOR_IMAGE=collector:local`.
 - **HTTPS:** the Compose setup serves plain HTTP. Signing in over plain HTTP sends your password unencrypted, which is only acceptable on a trusted private network. Put an HTTPS reverse proxy (for example Caddy, nginx, or Traefik) in front of it and set `COLLECTOR_HTTPS=true`.
 
 ### Kamal
 
 Kamal (`bin/kamal`) deploys the same image to servers you control over SSH.
 
-1. Edit `config/deploy.yml`: replace the placeholder server (`192.168.0.1`) and registry
-   (`localhost:5555`) with your own. If your registry needs authentication, set `username`
-   and uncomment the `KAMAL_REGISTRY_PASSWORD` password entry.
-2. Secrets come from `.kamal/secrets`, which reads `RAILS_MASTER_KEY` from
-   `config/master.key` and the registry password from the `KAMAL_REGISTRY_PASSWORD`
-   environment variable.
+1. Edit `config/deploy.yml`: replace the placeholder server (`192.168.0.1`) with your own. The
+   registry is already `ghcr.io` with the published image.
+2. Secrets come from `.kamal/secrets`, which reads `RAILS_MASTER_KEY` from `config/master.key`
+   and the registry password from the `KAMAL_REGISTRY_PASSWORD` environment variable. Kamal
+   needs registry credentials even to pull a public image: use a GitHub token with `read:packages`.
 3. Check the configuration with `bin/kamal config`.
-4. Run `bin/kamal setup` for the first deployment, and `bin/kamal deploy` after that.
+4. Run `bin/kamal setup --skip-push --version X.Y.Z` for the first deployment, and
+   `bin/kamal deploy --skip-push --version X.Y.Z` after that, naming the release to deploy. Kamal
+   pulls that tag; nothing is built or pushed.
+
+To deploy an image you build yourself, change `image` and `registry` in `config/deploy.yml` to
+a registry you own, then run `bin/kamal deploy`. Never run a plain `bin/kamal deploy` with the
+registry set to `ghcr.io/plainprogrammer/collector`: it would push a single-architecture `latest`
+over the published image.
 
 Data is stored in the `collector_storage` volume (mounted at `/rails/storage`), and Solid
 Queue runs inside Puma (`SOLID_QUEUE_IN_PUMA`).
@@ -197,9 +210,10 @@ Queue runs inside Puma (`SOLID_QUEUE_IN_PUMA`).
 The card scanner ("Scan" in the navigation, at `/scanner`) reads a card with the camera of the phone it runs on, or
 from a photo, which it finds and straightens first. You confirm the printing and finish and add the card to your
 collection with one tap; the sitting's adds are listed with Undo until you press Done. Photos never leave the phone:
-only the text read from the card and your add, Undo and printing choices are sent to your instance. The image
-build downloads the scanner's OCR engine from `registry.npmjs.org` and checks each file against a pinned
+only the text read from the card and your add, Undo and printing choices are sent to your instance.
+The image build downloads the scanner's OCR engine from `registry.npmjs.org` and checks each file against a pinned
 SHA-256; your instance serves it from `/ocr/v7.0.0/`, so phones fetch it from you, not from a third party.
+The published image already contains it.
 
 Browsers only allow a live camera on HTTPS; that is the only part that needs it. Without HTTPS,
 only the photo picker works, and adding cards from photos works the same way.
@@ -225,8 +239,8 @@ bin/kamal app exec -i "bin/rails 'collector:user[you@example.com]'"             
 
 **Read this before you upgrade.** An instance upgraded from a version without accounts has no users, and the first person to reach it becomes its admin. If others can reach your instance, stop exposing it (for example, take it off your reverse proxy) before you upgrade, or run the user command straight after the upgrade to create your admin. Then sign in, and only then expose it again.
 
-1. Pull the new code.
-2. Run `docker compose up -d --build` (or `bin/kamal deploy`). Migrations run when the container starts.
+1. Pull the new image (`docker compose pull`, or pick the release for Kamal).
+2. Run `docker compose up -d` (or `bin/kamal deploy --skip-push --version X.Y.Z`). Migrations run when the container starts.
 3. Create or claim the admin account as described above.
 
 ## Card catalog
