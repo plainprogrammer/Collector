@@ -32,4 +32,11 @@ RSpec.describe Scanner::OtherPrintings, type: :model do
     other = described_class.new(identity:)
     expect([ other.shown.size, other.rest.size ]).to eq([ 20, 6 ])
   end
+
+  it "puts the confident artwork's printings first, newest first, then what was read (spec 011 AC-7.5)" do
+    art = "aaaaaaaa-0000-4000-8000-000000000001"
+    [ earlier_core_set, masters_bolt ].each { create(:mtg_printing, entry: it, illustration_id: art) }
+    other = described_class.new(identity:, set_code: "M11", number: "146", artwork: art)
+    expect(other.entries).to eq([ masters_bolt, earlier_core_set, later_core_set_same_number, later_core_set ])
+  end
 end

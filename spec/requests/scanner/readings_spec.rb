@@ -112,6 +112,44 @@ RSpec.describe "Scanner readings", type: :request do
         read_with_art("x")
         expect(response).to have_http_status(:ok)
       end
+
+      def html = Nokogiri::HTML5(response.body)
+
+      it "shows Matched, the art badge on the artwork's only printing, and the note when art overrules (AC-7.1, AC-7.2, AC-7.4)", :aggregate_failures do
+        create(:mtg_printing, entry: create(:catalog_entry, identity: create(:catalog_identity, name: "Shock"), name: "Shock", set: mom, number: "9"))
+        Catalog::NameIndex.new("mtg").rebuild
+        read_with_art([ { id: art, distance: 150 } ], name_text: "Shock")
+
+        expect(html.css(".c-scanner__read dt").map(&:text)).to include("Artwork")
+        expect(html.at_css(".c-scanner__read dt:contains('Artwork') + dd").text).to eq("Matched")
+        expect(html.at_css(".c-scanner__candidate .c-badge--success").text.strip).to eq("Matched by its artwork")
+        expect(response.body).to include("The artwork matches a different card from the one the name suggests.")
+        expect(html.at_css(".c-scanner__candidate a[href*='artwork=#{art}']")).to be_present
+      end
+
+      it "marks a shared artwork's printing as not confirmed, with the art as evidence (AC-7.2)", :aggregate_failures do
+        create(:mtg_printing, illustration_id: art, entry: create(:catalog_entry, identity: bolt.identity, name: "Lightning Bolt", set: create(:catalog_set, code: "m25"), number: "5"))
+        read_with_art([ { id: art, distance: 150 } ], name_text: "")
+
+        candidate = html.at_css(".c-scanner__candidate")
+        expect(candidate.at_css(".c-badge--warning").text).to include("Printing not confirmed")
+        expect(candidate.css(".c-scanner__evidence").map(&:text)).to include("Matched by its artwork")
+      end
+
+      it "shows Looks similar and the weak evidence line, with no art badge (AC-7.1, AC-7.3)", :aggregate_failures do
+        read_with_art([ { id: art, distance: 420 } ], name_text: "Lightning Bolt")
+
+        expect(html.at_css(".c-scanner__read dt:contains('Artwork') + dd").text).to eq("Looks similar")
+        expect(html.css(".c-scanner__evidence").map(&:text)).to include("Artwork looks similar")
+        expect(response.body).not_to include("Matched by its artwork")
+      end
+
+      it "shows No match when no sent artwork is usable, and no Artwork row when none were sent (AC-7.1)", :aggregate_failures do
+        read_with_art([ { id: "bbbbbbbb-0000-4000-8000-000000000002", distance: 10 } ], name_text: "Lightning Bolt")
+        expect(html.at_css(".c-scanner__read dt:contains('Artwork') + dd").text).to eq("No match")
+        read("Lightning Bolt", "")
+        expect(html.css(".c-scanner__read dt").map(&:text)).not_to include("Artwork")
+      end
     end
 
     it "ignores artworks with art matching off (AC-1.1)", :aggregate_failures do

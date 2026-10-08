@@ -13,6 +13,7 @@
       <dt>Number</dt><dd class="c-scanner__mono"><%= reading.collector_line.number || "Not found" %></dd>
       <dt>Language</dt><dd class="c-scanner__mono"><%= reading.collector_line.language&.upcase || "Not found" %></dd>
       <dt>Printing</dt><dd><%= collector_outcome(reading) %></dd>
+      <% if (art = scanner_art_outcome(reading)) %><dt>Artwork</dt><dd><%= art %></dd><% end %>
     </dl>
   </section>
   <section aria-labelledby="scanner-candidates">
@@ -20,6 +21,7 @@
     <% if reading.candidates.empty? %>
       <p class="c-empty">No card matches what was read. Line the card up with the guide and capture it again.</p>
     <% else %>
+      <% if (note = scanner_overrule_note(reading)) %><p class="c-status__message"><%= note %></p><% end %>
       <div class="c-grid">
         <% reading.candidates.each.with_index(1) do |candidate, rank| %>
           <%= render "scanners/candidate", candidate:, reading:, key:, rank: %>

@@ -2886,7 +2886,7 @@ class Scanner::ReadingsController < ApplicationController
 
 Before writing the markup, follow the `collector-design-system` skill: read `docs/design-system/README.md` and `docs/design-system/components/Badge.md`, `StatusMessage.md` and `Scanner.md`. Only existing classes are used: `c-badge c-badge--success`, `c-scanner__evidence`, `c-scanner__read`, `c-status__message`.
 
-- [ ] Write the failing `spec/helpers/scanners_helper_spec.rb`:
+- [x] Write the failing `spec/helpers/scanners_helper_spec.rb`:
 
 ```ruby
 require "rails_helper"
@@ -2919,7 +2919,7 @@ RSpec.describe ScannersHelper, type: :helper do
 end
 ```
 
-- [ ] Add the failing request examples to the `"with art matching on (spec 011)"` context of `spec/requests/scanner/readings_spec.rb` (Phase 12), after its existing examples:
+- [x] Add the failing request examples to the `"with art matching on (spec 011)"` context of `spec/requests/scanner/readings_spec.rb` (Phase 12), after its existing examples:
 
 ```ruby
       def html = Nokogiri::HTML5(response.body)
@@ -2963,7 +2963,7 @@ end
 
   Nokogiri's CSS `:contains()` is supported. These examples sit inside a context that already has 2 memoised helpers from the file (`mom`, `bolt`, `key`) plus `art`: 4, under the limit of 5.
 
-- [ ] Add the failing examples to `spec/requests/scanner/printings_spec.rb`:
+- [x] Add the failing examples to `spec/requests/scanner/printings_spec.rb`:
 
 ```ruby
   it "lists the confident artwork's printings first, newest first, then spec 009's order (spec 011 AC-7.5)", :aggregate_failures do
@@ -2979,8 +2979,8 @@ end
   end
 ```
 
-- [ ] Run: `bin/rspec spec/helpers/scanners_helper_spec.rb spec/requests/scanner` — expect: FAIL (the helpers, the markup and the `artwork` parameter don't exist).
-- [ ] Add to `ScannersHelper` (`app/helpers/scanners_helper.rb`):
+- [x] Run: `bin/rspec spec/helpers/scanners_helper_spec.rb spec/requests/scanner` — expect: FAIL (the helpers, the markup and the `artwork` parameter don't exist).
+- [x] Add to `ScannersHelper` (`app/helpers/scanners_helper.rb`):
 
 ```ruby
   ART_OUTCOMES = { matched: "Matched", similar: "Looks similar", no_match: "No match" }.freeze
@@ -2998,7 +2998,7 @@ end
   end
 ```
 
-- [ ] In `app/views/scanners/_result.html.erb`, add the Artwork row after the Printing row and the note before the grid:
+- [x] In `app/views/scanners/_result.html.erb`, add the Artwork row after the Printing row and the note before the grid:
 
 ```erb
       <dt>Printing</dt><dd><%= collector_outcome(reading) %></dd>
@@ -3011,7 +3011,7 @@ end
       <div class="c-grid">
 ```
 
-- [ ] Replace the badge and evidence lines of `app/views/scanners/_candidate.html.erb` (from `<% if candidate.collector_line? %>` to the "Matched by its name" line) and add the artwork to the Other printings link:
+- [x] Replace the badge and evidence lines of `app/views/scanners/_candidate.html.erb` (from `<% if candidate.collector_line? %>` to the "Matched by its name" line) and add the artwork to the Other printings link:
 
 ```erb
   <% if candidate.collector_line? %>
@@ -3030,7 +3030,7 @@ end
         class: "c-btn c-btn--ghost c-btn--sm", data: { turbo_frame: "scanner_printings" } %>
 ```
 
-- [ ] Change `Scanner::OtherPrintings` (`app/models/scanner/other_printings.rb`):
+- [x] Change `Scanner::OtherPrintings` (`app/models/scanner/other_printings.rb`):
 
 ```ruby
 # A card's English printings for "Other printings" on the scanner (spec 009 Story 2), retired ones left out. With a
@@ -3065,23 +3065,23 @@ class Scanner::OtherPrintings
     end
 ```
 
-- [ ] Change `Scanner::PrintingsController#index`'s `@printings` line:
+- [x] Change `Scanner::PrintingsController#index`'s `@printings` line:
 
 ```ruby
     @printings = Scanner::OtherPrintings.new(identity: @identity, set_code: params[:set], number: params[:number],
       artwork: params[:artwork].to_s[MTG::Art::Sent::ID]) # an invalid or unknown id is ignored (spec 011 AC-7.5)
 ```
 
-- [ ] Run: `bin/rspec spec/helpers spec/requests/scanner spec/models/scanner spec/system/scanner_adding_spec.rb` — expect: PASS.
-- [ ] Add to `docs/design-system/components/Scanner.md`, after the "Candidates are `ItemTile`s" bullet:
+- [x] Run: `bin/rspec spec/helpers spec/requests/scanner spec/models/scanner spec/system/scanner_adding_spec.rb` — expect: PASS.
+- [x] Add to `docs/design-system/components/Scanner.md`, after the "Candidates are `ItemTile`s" bullet:
 
 ```markdown
 - With art matching on (spec 011), a candidate the artwork decided carries a `c-badge--success` with a check, "Matched by its artwork", when the artwork belongs to that printing alone; when several printings share it, "Matched by its artwork" is a muted evidence line beside "Printing not confirmed". A weak art match adds the muted line "Artwork looks similar" and no badge. "What the scanner read" gains an Artwork row ("Matched", "Looks similar" or "No match") when the capture sent artworks. When the artwork overruled the name or the collector line, one `c-status__message` sentence above the candidates says so ("The artwork matches a different card from the one the name suggests. The artwork's match is first.").
 - With art matching on and an index built, `.c-scanner__art` under the controls is a polite status line in muted text: "Loading artwork matching…", then "Artwork matching is on" or "Artwork matching isn't available. The scanner is reading text only."
 ```
 
-- [ ] Check the page by eye per the design-system skill: start `bin/dev` with `COLLECTOR_MTG_ART_MATCHING=true` once an index exists (or render the request spec's HTML), and compare a result with the art badge and the note at 390 px and 1280 px, light and dark. Expect no sideways scroll at 360 px and the shutter still in the bottom third (NFR Accessibility). Note the outcome in the commit body.
-- [ ] Commit: `feat(scanner): show art evidence and the overrule note in the confirm step (011)`
+- [x] Check the page by eye per the design-system skill: start `bin/dev` with `COLLECTOR_MTG_ART_MATCHING=true` once an index exists (or render the request spec's HTML), and compare a result with the art badge and the note at 390 px and 1280 px, light and dark. Expect no sideways scroll at 360 px and the shutter still in the bottom third (NFR Accessibility). Note the outcome in the commit body.
+- [x] Commit: `feat(scanner): show art evidence and the overrule note in the confirm step (011)`
 
 ---
 
