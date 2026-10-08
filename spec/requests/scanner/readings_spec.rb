@@ -169,4 +169,19 @@ RSpec.describe "Scanner readings", type: :request do
     read("Lightning Bolt", "")
     expect(response).to redirect_to(new_session_path)
   end
+
+  it "records each reading's art outcome in measurement mode only (spec 011 AC-9.3, FR-5)", :aggregate_failures do
+    Catalog::NameIndex.new("mtg").rebuild
+    Dir.mktmpdir do |dir|
+      manifest = Pathname(dir).join("manifest.csv")
+      manifest.write("file,set,number\nIMG_1.jpeg,mom,123\n")
+      Rails.configuration.x.scanner_measurement = { manifest: manifest.to_s, dir: Pathname(dir).join("run").to_s }
+      read("Lightning Bolt", "")
+      expect(Scanner::MeasurementRun.current.readings.sole).to include("reading_key" => key, "tier" => "strong_name", "art_status" => nil)
+    ensure
+      Rails.configuration.x.scanner_measurement = nil
+    end
+    read("Lightning Bolt", "")
+    expect(response).to have_http_status(:ok)
+  end
 end

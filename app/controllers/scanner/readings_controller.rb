@@ -13,11 +13,19 @@ class Scanner::ReadingsController < ApplicationController
     if !Scanner::Sitting::KEY_FORMAT.match?(key) then refuse(NO_KEY)
     elsif reading.valid?
       render turbo_stream: turbo_stream.update("scanner_result", partial: "scanners/result", locals: { reading: reading.resolve, key: })
+      record_measurement(key, reading)
     else refuse(TOO_LONG)
     end
   end
 
   private
+    # Development measurement mode only (spec 011 AC-9.3): never fails or changes the answer.
+    def record_measurement(key, reading)
+      Scanner::MeasurementRun.current&.record_reading!(key, reading)
+    rescue StandardError => error
+      Rails.logger.warn("scanner.measurement reading not recorded: #{error.class}: #{error.message}")
+    end
+
     def refuse(message)
       render turbo_stream: turbo_stream.update("scanner_result", partial: "shared/status_message", locals: { message:, alert: true }),
         status: :unprocessable_content
