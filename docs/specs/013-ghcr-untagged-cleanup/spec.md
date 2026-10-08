@@ -1,7 +1,7 @@
 # Feature 013: Clean Up Untagged GHCR Package Versions
 
 **Status:** Approved
-**Version:** 1.1.1
+**Version:** 1.1.2
 **Created:** 2026-10-08
 **Last Updated:** 2026-10-08
 **Branch:** `013-ghcr-untagged-cleanup`
@@ -16,6 +16,7 @@
 | 1.0.0 | 2026-10-08 | Initial draft from the approved [prd.md](prd.md) and ADR [0011](../../adr/0011-own-ghcr-cleanup-script.md). Approved by the maintainer |
 | 1.1.0 | 2026-10-08 | Spec review revisions (Fable, Mode A). **Post-delete check** also confirms every child digest of every tag is still fetchable, because deleting a child leaves its index intact (AC-2.4, FR-4); the check is part of the command. **Manifest reads** specified: by digest, anonymous pull token, `Accept` header, list vs single-image media types (FR-1, AC-3.4, AC-3.5). **Overlapping orphan units** merge; children missing from the version list are ignored; a unit deletes its list first (Terms, FR-1, NFR Reliability). **Pagination** by `page` on the `/users/…` path, not the `Link` header (FR-3, AC-3.2). **Token** variable `GH_TOKEN`, falling back to `GITHUB_TOKEN` (AC-3.7, FR-3). **Workflow** jobs `dry-run` and `delete` with conditions, permissions and a Sunday 06:00 UTC cron (FR-4). **Delete 404** means already deleted and the run continues; other refusals stop it (AC-3.6, maintainer's ruling). **Also:** names (`Collector::GhcrCleanup`), exact grace boundary, disjoint counts, malformed list, platform check on every tagged list before deleting (AC-3.8), AC-4.3 checkable any day, timeouts, preview status of token deletion |
 | 1.1.1 | 2026-10-08 | Second review pass (Fable, READY TO PLAN). Wording: the post-delete check re-reads the run's tagged versions by digest, re-applies AC-3.8 and checks each child with a `HEAD` sending the same `Accept` (AC-2.4); it also runs after a refused delete (AC-3.6); the `delete` job condition is hardened against `null == false`; a failed pull-token request has its own Error Scenario row; a merged unit deletes all its lists first; AC-4.3's boundary is exact |
+| 1.1.2 | 2026-10-08 | Planning fix: GitHub Packages accepts only classic personal access tokens, so the fallback credential is a classic token with `read:packages` and `delete:packages`, not a fine-grained one (Open Questions) |
 
 ---
 
@@ -218,7 +219,7 @@ Most untagged versions are not garbage. Ten of those 13 are the per-architecture
 
 ## Open Questions
 
-- **Can the workflow token delete package versions?** GitHub documents it for packages published by the same repository's workflow, which is this package's case. Verified during implementation with the first manual deleting run. If it is refused, the fallback (already accepted in the PRD) is a fine-grained token with `packages` read and write in a repository secret, and `docs/releasing.md` says how to rotate it. GitHub documents `GITHUB_TOKEN` package deletion as public preview and the `/users/…` list endpoint as being for public packages, so `docs/releasing.md` documents the fallback even if the first run succeeds.
+- **Can the workflow token delete package versions?** GitHub documents it for packages published by the same repository's workflow, which is this package's case. Verified during implementation with the first manual deleting run. If it is refused, the fallback (already accepted in the PRD) is a personal access token (classic) with `read:packages` and `delete:packages` in a repository secret (GitHub Packages does not accept fine-grained tokens), and `docs/releasing.md` says how to rotate it. GitHub documents `GITHUB_TOKEN` package deletion as public preview and the `/users/…` list endpoint as being for public packages, so `docs/releasing.md` documents the fallback even if the first run succeeds.
 
 ## Out of Scope
 
