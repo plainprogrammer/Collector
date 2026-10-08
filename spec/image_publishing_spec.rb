@@ -17,6 +17,11 @@ RSpec.describe "Image publishing files" do
     it "still keeps secrets and data out (AC-6.4)" do
       expect(rules).to include("/config/master.key", "/.env*", "/.kamal", "/storage/*")
     end
+
+    it "keeps the GHCR cleanup command out of the image and the smoke test checks it (AC-5.2, FR-5)", :aggregate_failures do
+      expect(rules).to include("/bin/ghcr-cleanup", "/lib/collector/ghcr_cleanup.rb")
+      expect(Rails.root.join("bin/image-smoke").read).to include("bin/ghcr-cleanup lib/collector/ghcr_cleanup.rb")
+    end
   end
 
   describe "compose.yaml" do
@@ -118,6 +123,40 @@ RSpec.describe "Image publishing files" do
     end
   end
 
+  describe ".github/workflows/ghcr-cleanup.yml" do
+    let(:workflow) { YAML.load_file(Rails.root.join(".github/workflows/ghcr-cleanup.yml")) }
+    let(:triggers) { workflow[true] || workflow["on"] } # Psych reads the YAML key `on` as true
+
+    def job(name) = workflow.dig("jobs", name)
+    def command(name) = job(name)["steps"].find { |candidate| candidate["run"]&.start_with?("bin/ghcr-cleanup") }
+
+    it "runs weekly and by hand, never on pushes or pull requests (AC-1.5, FR-4)", :aggregate_failures do
+      expect(triggers.keys).to contain_exactly("schedule", "workflow_dispatch")
+      expect(triggers["schedule"]).to eq([ { "cron" => "0 6 * * 0" } ])
+      expect(triggers.dig("workflow_dispatch", "inputs", "dry_run")).to include("type" => "boolean", "default" => true)
+    end
+
+    it "dry-runs by hand by default, without packages: write (AC-4.2, FR-4)", :aggregate_failures do
+      expect(job("dry-run")["if"]).to eq("github.event_name == 'workflow_dispatch' && inputs.dry_run")
+      expect(job("dry-run")["permissions"]).to eq("contents" => "read", "packages" => "read")
+      expect(command("dry-run")["run"]).to eq("bin/ghcr-cleanup")
+    end
+
+    it "deletes on the schedule or an unticked dry_run, the only job with packages: write (AC-1.5, FR-4)", :aggregate_failures do
+      expect(job("delete")["if"])
+        .to eq("github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && !inputs.dry_run)")
+      expect(job("delete")["permissions"]).to eq("contents" => "read", "packages" => "write")
+      expect(command("delete")["run"]).to eq("bin/ghcr-cleanup --delete")
+      expect(workflow["permissions"]).to eq("contents" => "read")
+    end
+
+    it "passes the workflow token as GH_TOKEN and uses only GitHub's or ci.yml's actions (FR-4, NFR Security)", :aggregate_failures do
+      expect(%w[dry-run delete].map { |name| command(name).dig("env", "GH_TOKEN") }).to all(eq("${{ secrets.GITHUB_TOKEN }}"))
+      uses = workflow["jobs"].values.flat_map { |each_job| each_job["steps"].filter_map { |candidate| candidate["uses"] } }
+      expect(uses).to all(start_with("actions/").or(start_with("ruby/setup-ruby@")))
+    end
+  end
+
   describe "docs/releasing.md" do
     let(:doc) { Rails.root.join("docs/releasing.md").read }
 
@@ -133,6 +172,13 @@ RSpec.describe "Image publishing files" do
       expect(positions).to all(be_a(Integer))
       expect(positions).to eq(positions.sort)
       expect(doc).to include("cannot be undone")
+    end
+
+    it "documents the cleanup: rule, grace period, schedule, manual and local runs, failures, token (AC-5.1)", :aggregate_failures do
+      expect(doc).to include("## Cleaning up untagged versions", "more than\n  7 days old", "**Never deleted:**")
+      expect(doc).to include("Sundays at 06:00 UTC", "The `dry_run` box is ticked by default")
+      expect(doc).to include('GH_TOKEN="$(gh auth token)" bin/ghcr-cleanup', "**A failed run failed closed:**")
+      expect(doc).to include("Investigate the cause before re-running", "personal access token (classic")
     end
   end
 end

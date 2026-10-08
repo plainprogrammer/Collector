@@ -16,4 +16,10 @@ Facts verified while building spec 012 (2026-10-07/08):
 - **Tag filters** support `+` and `[0-9]` ranges, e.g. `v[0-9]+.[0-9]+.[0-9]+`.
 - **Kamal 2.12.0:** `bin/kamal config` prints YAML with symbol keys (`:absolute_image:`), does not resolve secrets, and has no dry run; the registry validator requires `username` and `password` for any non-localhost registry, even to pull a public image; `deploy --skip-push --version X` pulls instead of building.
 
+Verified while building spec 013 (2026-10-08):
+
+- **Tokens:** GitHub Packages accepts only classic personal access tokens, not fine-grained ones; deleting needs `read:packages` and `delete:packages`. `GITHUB_TOKEN` deletion of a package the repo's workflow published is documented as public preview (live check owed, see [[spec-012-followups]]).
+- **Packages API:** `GITHUB_TOKEN` acts as `github-actions[bot]`, so use `/users/plainprogrammer/packages/container/collector/versions`, not `/user/packages/…`. Its `Link: rel="next"` points at `/user/{id}/…`; page with `?per_page=100&page=N` until a short page instead. The API needs auth even for a public package.
+- **Registry reads:** an anonymous pull token (`ghcr.io/token?scope=repository:plainprogrammer/collector:pull`) reads any version, tagged or not, by digest. GHCR answers 404 `MANIFEST_UNKNOWN` to GET or HEAD unless `Accept` names the manifest's media type (send all four: OCI index/manifest, Docker list/manifest). Index entries can list arm64 before amd64.
+
 **How to apply:** check these before specifying or planning registry, CI or Kamal work. Related: [[spec-012-followups]].
