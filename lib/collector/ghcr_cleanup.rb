@@ -103,5 +103,108 @@ module Collector
       days, rest = seconds.to_i.divmod(86_400)
       "#{days}d #{rest / 3600}h"
     end
+
+    # The packages API and the registry. Error messages name the request, never the token.
+    class Client
+      API = "https://api.github.com/users/plainprogrammer/packages/container/collector/versions".freeze
+      REGISTRY = "https://ghcr.io/v2/plainprogrammer/collector/manifests/".freeze
+      PULL_TOKEN = "https://ghcr.io/token?scope=repository:plainprogrammer/collector:pull".freeze
+      PER_PAGE = 100
+      ACCEPT = (LIST_TYPES + IMAGE_TYPES).join(", ").freeze
+      USER_AGENT = "collector-ghcr-cleanup (+https://github.com/plainprogrammer/Collector)".freeze
+
+      def initialize(token:)
+        @token = token
+      end
+
+      # Every page, by number on the /users/ path; the Link header points at a /user/{id}/ path (FR-3).
+      def versions
+        (1..).each_with_object([]) do |page, all|
+          url = "#{API}?per_page=#{PER_PAGE}&page=#{page}"
+          batch = parse_versions(url, json(request(Net::HTTP::Get, url, github_headers), url))
+          all.concat(batch)
+          break all if batch.size < PER_PAGE
+        end
+      end
+
+      def manifest(digest)
+        url = REGISTRY + digest
+        response = request(Net::HTTP::Get, url, registry_headers)
+        raise Failure, "GET #{url} answered #{response.code}" unless response.code == "200"
+
+        Manifest.parse(response["content-type"], response.body)
+      end
+
+      def fetchable?(digest)
+        url = REGISTRY + digest
+        code = request(Net::HTTP::Head, url, registry_headers).code
+        return code == "200" if %w[200 404].include?(code)
+
+        raise Failure, "HEAD #{url} answered #{code}"
+      end
+
+      # :deleted, or :gone when GitHub answers 404 (already deleted, AC-3.9); raises Refused otherwise.
+      def delete(version)
+        url = "#{API}/#{version.id}"
+        code = request(Net::HTTP::Delete, url, github_headers).code
+        return :deleted if code == "204"
+        return :gone if code == "404"
+
+        raise Refused, "DELETE #{url} (#{version.digest}) answered #{code}"
+      end
+
+      private
+
+      def request(verb, url, headers)
+        uri = URI(url)
+        Net::HTTP.start(uri.host, uri.port, use_ssl: true, open_timeout: 10, read_timeout: 30) do |http|
+          http.request(verb.new(uri, headers))
+        end
+      rescue IOError, SystemCallError, SocketError, Timeout::Error, OpenSSL::SSL::SSLError, Net::ProtocolError,
+             Net::HTTPBadResponse => e
+        raise Failure, "#{verb::METHOD} #{url} failed: #{e.class}"
+      end
+
+      def json(response, url)
+        raise Failure, "GET #{url} answered #{response.code}" unless response.code == "200"
+
+        JSON.parse(response.body)
+      rescue JSON::ParserError
+        raise Failure, "GET #{url} did not return JSON"
+      end
+
+      def parse_versions(url, entries)
+        raise Failure, "GET #{url} did not return a version list" unless entries.is_a?(Array)
+
+        entries.map do |entry|
+          tags = entry.dig("metadata", "container", "tags") if entry.is_a?(Hash)
+          unless tags.is_a?(Array) && entry["id"].is_a?(Integer) && entry["name"].to_s.start_with?("sha256:")
+            raise Failure, "GET #{url} did not return a version list"
+          end
+
+          Version.new(id: entry["id"], digest: entry["name"], created_at: Time.iso8601(entry["created_at"].to_s), tags:)
+        rescue ArgumentError, TypeError
+          raise Failure, "GET #{url} did not return a version list"
+        end
+      end
+
+      def pull_token
+        @pull_token ||= begin
+          body = json(request(Net::HTTP::Get, PULL_TOKEN, { "User-Agent" => USER_AGENT }), PULL_TOKEN)
+          raise Failure, "GET #{PULL_TOKEN} returned no token" unless body.is_a?(Hash) && body["token"].is_a?(String)
+
+          body["token"]
+        end
+      end
+
+      def github_headers
+        { "Authorization" => "Bearer #{@token}", "Accept" => "application/vnd.github+json",
+          "X-GitHub-Api-Version" => "2022-11-28", "User-Agent" => USER_AGENT }
+      end
+
+      def registry_headers
+        { "Authorization" => "Bearer #{pull_token}", "Accept" => ACCEPT, "User-Agent" => USER_AGENT }
+      end
+    end
   end
 end
