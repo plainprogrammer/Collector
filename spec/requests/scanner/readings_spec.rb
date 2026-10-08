@@ -86,6 +86,39 @@ RSpec.describe "Scanner readings", type: :request do
       expect(response).to have_http_status(:unprocessable_content)
       expect(response.body).to include("That reading was too long to use")
     end
+
+    context "with art matching on (spec 011)", :art_matching do
+      let(:art) { "aaaaaaaa-0000-4000-8000-000000000001" }
+
+      before do
+        MTG::Printing.find_by!(catalog_entry_id: bolt.id).update!(illustration_id: art)
+        create(:mtg_artwork, illustration_id: art, entry: bolt)
+      end
+
+      def read_with_art(artworks, name_text: "Lightnlng Bo1t")
+        post scanner_readings_path, params: { reading: { name_text:, collector_text: "", key:, artworks: } },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+      end
+
+      it "ranks with the artworks sent (AC-6.3)", :aggregate_failures do
+        read_with_art([ { id: art, distance: 120 } ], name_text: "")
+        expect(response).to have_http_status(:ok)
+        expect(response.body).to include("Lightning Bolt", "MOM · 123")
+      end
+
+      it "never refuses a reading for its art part (AC-6.1)", :aggregate_failures do
+        read_with_art([ { id: "not-a-uuid", distance: 120 } ])
+        expect(response).to have_http_status(:ok)
+        read_with_art("x")
+        expect(response).to have_http_status(:ok)
+      end
+    end
+
+    it "ignores artworks with art matching off (AC-1.1)", :aggregate_failures do
+      post scanner_readings_path, params: { reading: { name_text: "", collector_text: "", key:, artworks: [ { id: "aaaaaaaa-0000-4000-8000-000000000001", distance: 1 } ] } },
+        headers: { "Accept" => "text/vnd.turbo-stream.html" }
+      expect(response.body).to include("Nothing could be read")
+    end
   end
 
   it "says the catalog isn't ready while the name index is empty (AC-3.8)" do

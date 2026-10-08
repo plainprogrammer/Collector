@@ -1,7 +1,7 @@
 <%# locals: (reading:, key:) %>
 <% if !reading.catalog_ready? %>
   <p class="c-status__message c-status__message--alert">The card catalog isn't ready yet. Once it has loaded, scan the card again.</p>
-<% elsif reading.nothing_read? %>
+<% elsif reading.nothing_read? && reading.candidates.empty? %>
   <p class="c-empty">Nothing could be read. Line the card up with the guide and capture it again.</p>
 <% else %>
   <section aria-labelledby="scanner-read">

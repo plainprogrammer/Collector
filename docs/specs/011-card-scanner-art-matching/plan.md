@@ -2332,7 +2332,7 @@ import { loadArtIndex, matchArtwork } from "scanner/art"
 **Files:** `app/models/mtg/art/sent.rb`, `app/models/mtg/art/evidence.rb`, `app/models/mtg/reading.rb`, `app/controllers/scanner/readings_controller.rb`, `spec/models/mtg/art/sent_spec.rb`, `spec/models/mtg/art/evidence_spec.rb`, `spec/models/mtg/reading_art_spec.rb`, `spec/requests/scanner/readings_spec.rb`
 **Interfaces:** Consumes: `MTG::Art.enabled?`, `MTG::Artwork`, `mtg_printings.illustration_id`. Produces: `MTG::Art::Sent::ID`, `MTG::Art::Sent::Artwork(:id, :distance)`, `MTG::Art::Sent.from_params(params) → [Artwork] | nil`, `MTG::Art::Sent.parse(raw) → [Artwork] | nil`; `MTG::Art::Evidence.new(sent, text_identity_ids:, margin:)` with `#usable → [Usable(:id, :distance, :identity_id, :printings)]`, `#nearest`, `#confident`, `#card_distances → { identity_id => distance }`; `MTG::Reading::ART_MARGIN = 300`, `MTG::Reading#artworks` (accessor), `#ranking → MTG::Reading::Ranking(:candidates, :tier, :overruled, :overruled_scope, :art_status, :art_usable)`, `#ranking_for(score)`, `#tier`, `#overruled` (`:name | :collector_line | nil`), `#overruled_scope` (`:card | :printing | nil`), `#art_status` (`:matched | :similar | :no_match | nil`), `#art_usable`; `Candidate` gains `artwork_id`, `art_unique`, `art_distance`, `#art?`, `#art_weak?`, `#printing_confirmed?`.
 
-- [ ] Write the failing `spec/models/mtg/art/sent_spec.rb`:
+- [x] Write the failing `spec/models/mtg/art/sent_spec.rb`:
 
 ```ruby
 require "rails_helper"
@@ -2362,7 +2362,7 @@ RSpec.describe MTG::Art::Sent, type: :model do
 end
 ```
 
-- [ ] Write the failing `spec/models/mtg/art/evidence_spec.rb`:
+- [x] Write the failing `spec/models/mtg/art/evidence_spec.rb`:
 
 ```ruby
 require "rails_helper"
@@ -2423,7 +2423,7 @@ RSpec.describe MTG::Art::Evidence, type: :model do
 end
 ```
 
-- [ ] Write the failing `spec/models/mtg/reading_art_spec.rb`:
+- [x] Write the failing `spec/models/mtg/reading_art_spec.rb`:
 
 ```ruby
 require "rails_helper"
@@ -2554,8 +2554,8 @@ end
 
   The artwork ids come from a helper method, not a constant in the group (`RSpec/LeakyConstantDeclaration`). The collector-line texts follow `spec/models/mtg/reading_spec.rb`'s format (`"R 0123\nMOM • EN"`): rarity letter, number, then set and language.
 
-- [ ] Run: `bin/rspec spec/models/mtg/art/sent_spec.rb spec/models/mtg/art/evidence_spec.rb spec/models/mtg/reading_art_spec.rb` — expect: FAIL (uninitialized constants; `artworks` unknown).
-- [ ] Implement `app/models/mtg/art/sent.rb`:
+- [x] Run: `bin/rspec spec/models/mtg/art/sent_spec.rb spec/models/mtg/art/evidence_spec.rb spec/models/mtg/reading_art_spec.rb` — expect: FAIL (uninitialized constants; `artworks` unknown).
+- [x] Implement `app/models/mtg/art/sent.rb`:
 
 ```ruby
 # The art part of a reading request (spec 011 AC-6.1): up to 10 artwork ids (lowercase UUIDs, as Scryfall writes
@@ -2593,7 +2593,7 @@ end
 
   `ActionController::Parameters` and `Hash` both answer `key?`; `return` inside the `map` block returns `nil` from `parse`.
 
-- [ ] Implement `app/models/mtg/art/evidence.rb`:
+- [x] Implement `app/models/mtg/art/evidence.rb`:
 
 ```ruby
 # A reading's art evidence (spec 011 Story 6): the usable artworks among those the page sent, nearest first. An artwork
@@ -2645,7 +2645,7 @@ class MTG::Art::Evidence
 end
 ```
 
-- [ ] Change `app/models/mtg/reading.rb`. The header comment, constants, `Candidate`, `Ranking` and the public ranking methods:
+- [x] Change `app/models/mtg/reading.rb`. The header comment, constants, `Candidate`, `Ranking` and the public ranking methods:
 
 ```ruby
 # What the scanner read from one card, and the printings it points to (spec 007 Story 3, spec 009 Story 5, spec 011
@@ -2805,9 +2805,9 @@ class MTG::Reading
   `by_card` is modified while iterating in `add_weak_art`; reassigning an existing key's value during `each` is allowed in Ruby (no new keys are added).
   For the case where art keeps a unique printing that the collector line also matched (`kept` and `artwork.printings.one?`), the candidate carries `%i[collector_line name art]` with `art_unique: true`.
 
-- [ ] Run: `bin/rspec spec/models/mtg` — expect: PASS, including every example in `spec/models/mtg/reading_spec.rb` unchanged (AC-6.8).
-- [ ] Run: `bin/rails runner 'puts Collector::ScannerFindings::Ranking.instance_method(:initialize).arity' && bin/rspec spec/lib` — expect: PASS (the findings tooling still calls `ranked(score)` and `candidates`).
-- [ ] Add the failing request examples to `spec/requests/scanner/readings_spec.rb`, inside `context "when the name index is built"`:
+- [x] Run: `bin/rspec spec/models/mtg` — expect: PASS, including every example in `spec/models/mtg/reading_spec.rb` unchanged (AC-6.8).
+- [x] Run: `bin/rails runner 'puts Collector::ScannerFindings::Ranking.instance_method(:initialize).arity' && bin/rspec spec/lib` — expect: PASS (the findings tooling still calls `ranked(score)` and `candidates`).
+- [x] Add the failing request examples to `spec/requests/scanner/readings_spec.rb`, inside `context "when the name index is built"`:
 
 ```ruby
     context "with art matching on (spec 011)", :art_matching do
@@ -2844,8 +2844,8 @@ class MTG::Reading
     end
 ```
 
-- [ ] Run: `bin/rspec spec/requests/scanner/readings_spec.rb` — expect: FAIL ("ranks with the artworks sent": nothing could be read).
-- [ ] Change `Scanner::ReadingsController#create` (full action and header comment):
+- [x] Run: `bin/rspec spec/requests/scanner/readings_spec.rb` — expect: FAIL ("ranks with the artworks sent": nothing could be read).
+- [x] Change `Scanner::ReadingsController#create` (full action and header comment):
 
 ```ruby
 # Turns what was read off a card into what the page shows (spec 007 Story 3): the candidates, each with an add button per
@@ -2868,14 +2868,14 @@ class Scanner::ReadingsController < ApplicationController
   end
 ```
 
-- [ ] Change the "nothing read" branch of `app/views/scanners/_result.html.erb` so confident art shows (AC-6.3):
+- [x] Change the "nothing read" branch of `app/views/scanners/_result.html.erb` so confident art shows (AC-6.3):
 
 ```erb
 <% elsif reading.nothing_read? && reading.candidates.empty? %>
 ```
 
-- [ ] Run: `bin/rspec spec/requests/scanner spec/models` — expect: PASS. If `params.expect` rejects the nested `artworks` in development or test (it logs unpermitted keys; check `log/test.log`), leave it: logging is the default and nothing raises.
-- [ ] Commit: `feat(scanner): rank by art evidence, confident art first (011)`
+- [x] Run: `bin/rspec spec/requests/scanner spec/models` — expect: PASS. If `params.expect` rejects the nested `artworks` in development or test (it logs unpermitted keys; check `log/test.log`), leave it: logging is the default and nothing raises.
+- [x] Commit: `feat(scanner): rank by art evidence, confident art first (011)`
 
 ---
 ## Phase 13: The confirm step shows art
