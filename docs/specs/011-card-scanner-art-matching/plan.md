@@ -1,12 +1,12 @@
 # Implementation Plan: Card Scanner — Art Matching on Live Capture
 
 **Spec:** docs/specs/011-card-scanner-art-matching/spec.md (v1.1.3, Approved, reviewed three times)
-**Decisions:** [ADR 0004](../../adr/0004-card-recognition-in-the-browser.md), [ADR 0006](../../adr/0006-art-fingerprint-and-index.md), [ADR 0007](../../adr/0007-art-search-in-the-browser.md) (Accepted); [ADR 0008](../../adr/0008-decode-art-images-with-imagemagick.md) (Accepted with this plan, 2026-10-08: the build's image decoder)
+**Decisions:** [ADR 0004](../../adr/0004-card-recognition-in-the-browser.md), [ADR 0006](../../adr/0006-art-fingerprint-and-index.md), [ADR 0007](../../adr/0007-art-search-in-the-browser.md) (Accepted); [ADR 0011](../../adr/0011-decode-art-images-with-imagemagick.md) (Accepted with this plan, 2026-10-08: the build's image decoder)
 **Created:** 2026-10-07
 **Revised:** 2026-10-08, after a read-only plan review (Fable, NEEDS REVISION; design, fingerprint ports and ranking confirmed).
 - **Blocking fixes:** the existing `catalog:status` spec counts the new art line (Phase 9); the index controller's Brakeman SendFile warning is ignored with a justification, like `OcrAssetsController`'s (Phase 10); a missing `:aggregate_failures` (Phase 11).
 - **Other fixes:** the artwork ids in the ranking spec come from a helper, not a constant in the group; tests never read `COLLECTOR_MTG_ART_MATCHING` from the environment; the build spec's helper is `run_build`, and `not_change` is defined in the file; `source_spec`'s existing subject is reused; AC-4.3 is asserted (the page moves to the newest index).
-- **Added checks (Phase 15):** the production image's ImageMagick fingerprints spec 010's 134 agreement images the same as the desktop's (AC-3.10; ADR 0008 now says the image's agreement is unmeasured until then), and the index passes through Thruster gzip-encoded exactly once.
+- **Added checks (Phase 15):** the production image's ImageMagick fingerprints spec 010's 134 agreement images the same as the desktop's (AC-3.10; ADR 0011 now says the image's agreement is unmeasured until then), and the index passes through Thruster gzip-encoded exactly once.
 - **Still needs a run:** ImageMagick reading a PNG saved as `.jpg` in the build specs; headless Firefox's canvas giving a generated PNG's exact pixels; `Open3.capture2` accepting `err:` (a `capture3` fallback is given); the image's ImageMagick version.
 **Approved:** 2026-10-08 (maintainer). **Data model:** [data-model.md](data-model.md). **Contracts:** [contracts/api.md](contracts/api.md).
 
@@ -47,7 +47,7 @@ Ship opt-in art matching on the live scanner: the catalog stores artwork ids, a 
 
 **Plan decisions (not spelled out in the spec):**
 
-- **Decoder: ImageMagick's CLI** ([ADR 0008](../../adr/0008-decode-art-images-with-imagemagick.md)), the spike's measured path. `magick` is preferred, `convert` (ImageMagick 6, as on Ubuntu) accepted. The Dockerfile's base stage installs `imagemagick`; CI installs it with `apt`; `bin/setup` warns when it's missing.
+- **Decoder: ImageMagick's CLI** ([ADR 0011](../../adr/0011-decode-art-images-with-imagemagick.md)), the spike's measured path. `magick` is preferred, `convert` (ImageMagick 6, as on Ubuntu) accepted. The Dockerfile's base stage installs `imagemagick`; CI installs it with `apt`; `bin/setup` warns when it's missing.
 - **One settings source:** `config/art_fingerprint.json`, a copy of the frozen `fingerprint` block. Its digest (the first 16 hex characters of the SHA-256 of its JSON) goes into every stored fingerprint, the index header and the page.
 - **Index file:** `art-index-<catalog version>-<settings digest>-<record count>.bin.gz` in `<catalog dir>/mtg/art/index/`. The count in the name keeps every URL immutable when a later build of the same catalog version adds artworks that failed before. The header is 28 bytes: `CART`, format version 1, three zero bytes, the 16-character digest, the record count (uint32, big-endian); then ADR 0006's 144-byte records, sorted by artwork id.
 - **Build runs** (`mtg_art_builds`) carry the job id and a heartbeat; the stale cutoff is 10 minutes with a heartbeat after every batch of 50 images. Solid Queue's `limits_concurrency` isn't used (a first build outlasts its lock).
@@ -58,7 +58,7 @@ Ship opt-in art matching on the live scanner: the catalog stores artwork ids, a 
 
 **Pre-implementation gates:**
 
-- **Simplicity:** three components: the build (models, job, index file), the page (art module and card-reader changes), the ranking (evidence and reading). One new system dependency (ImageMagick), justified by ADR 0006's server-side build (ADR 0008).
+- **Simplicity:** three components: the build (models, job, index file), the page (art module and card-reader changes), the ranking (evidence and reading). One new system dependency (ImageMagick), justified by ADR 0006's server-side build (ADR 0011).
 - **Anti-abstraction:** Rails features are used directly (`upsert_all`, `send_file`, `after_initialize`, `Data.define`). `MTG::Art::Sent::Artwork` and `MTG::Art::Evidence::Usable` are value objects for one request, not parallel models.
 - **Integration-first:** the request and file contracts are written in Phase 0 (`contracts/api.md`, `data-model.md`) and each phase's request or model spec asserts them before its implementation.
 
@@ -67,14 +67,14 @@ Ship opt-in art matching on the live scanner: the catalog stores artwork ids, a 
 ## Phase 0: Decisions and contracts
 
 **Implements:** FR-2 (decoder) | **Satisfies:** AC-3.10 (decision only)
-**Files:** `docs/adr/0008-decode-art-images-with-imagemagick.md`, `docs/specs/011-card-scanner-art-matching/data-model.md`, `docs/specs/011-card-scanner-art-matching/contracts/api.md`, `docs/adr/README.md` (no change needed; ADRs list themselves)
+**Files:** `docs/adr/0011-decode-art-images-with-imagemagick.md`, `docs/specs/011-card-scanner-art-matching/data-model.md`, `docs/specs/011-card-scanner-art-matching/contracts/api.md`, `docs/adr/README.md` (no change needed; ADRs list themselves)
 **Interfaces:** Consumes: nothing. Produces: the table, file and endpoint shapes every later phase implements.
 
 The supporting documents are written with this plan. This phase commits them so later commits can link them.
 
-- [x] Check the three files exist: `ls docs/adr/0008-decode-art-images-with-imagemagick.md docs/specs/011-card-scanner-art-matching/data-model.md docs/specs/011-card-scanner-art-matching/contracts/api.md` — expect three paths.
-- [x] ADR 0008 was approved with this plan: change its Status line from `Proposed (2026-10-07, …)` to `Accepted (<the plan's approval date>, approved with spec 011's plan)`, and the plan header's "(Proposed with this plan…)" to "(Accepted with this plan…)". The agreement figures join its Consequences in Phase 16.
-- [x] Commit: `docs(011): add the art matching plan, data model, contracts and ADR 0008` (done when the plan was approved, 2026-10-08)
+- [x] Check the three files exist: `ls docs/adr/0011-decode-art-images-with-imagemagick.md docs/specs/011-card-scanner-art-matching/data-model.md docs/specs/011-card-scanner-art-matching/contracts/api.md` — expect three paths.
+- [x] ADR 0011 was approved with this plan: change its Status line from `Proposed (2026-10-07, …)` to `Accepted (<the plan's approval date>, approved with spec 011's plan)`, and the plan header's "(Proposed with this plan…)" to "(Accepted with this plan…)". The agreement figures join its Consequences in Phase 16.
+- [x] Commit: `docs(011): add the art matching plan, data model, contracts and ADR 0008` (done when the plan was approved, 2026-10-08; renumbered ADR 0011 after rebasing onto spec 012's ADRs 0008–0010)
 
 ---
 
@@ -558,7 +558,7 @@ end
 require "rails_helper"
 
 RSpec.describe MTG::Art::Decoder, type: :model do
-  it "decodes a PNG to its exact pixels with ImageMagick (ADR 0008)", :aggregate_failures do
+  it "decodes a PNG to its exact pixels with ImageMagick (ADR 0011)", :aggregate_failures do
     path = Rails.root.join("tmp/decoder-spec.png")
     path.binwrite(png_bytes(3, 2) { |x, y| [ x * 10, y * 20, 255 - x ] })
 
@@ -591,7 +591,7 @@ end
 ```ruby
 require "open3"
 
-# Decodes a cached artwork image to 8-bit RGB with ImageMagick's CLI (ADR 0008), the spikes' path, which agreed with
+# Decodes a cached artwork image to 8-bit RGB with ImageMagick's CLI (ADR 0011), the spikes' path, which agreed with
 # the browser's canvas to 0 bits. `magick` (ImageMagick 7) is preferred; `convert` (ImageMagick 6) is accepted.
 module MTG::Art::Decoder
   COMMANDS = %w[magick convert].freeze
@@ -715,21 +715,21 @@ end
   and after `RUN bin/fetch-ocr-engine` add:
 
 ```dockerfile
-# Art matching decodes Scryfall's small images with ImageMagick (spec 011, ADR 0008).
+# Art matching decodes Scryfall's small images with ImageMagick (spec 011, ADR 0011).
 RUN command -v magick || command -v convert
 ```
 
   In `.github/workflows/ci.yml`, before "Run bin/ci":
 
 ```yaml
-      - name: Install ImageMagick (art matching's decoder, ADR 0008)
+      - name: Install ImageMagick (art matching's decoder, ADR 0011)
         run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends imagemagick
 ```
 
   In `bin/setup`, after the OCR engine step:
 
 ```ruby
-    puts "\n== Checking ImageMagick (art matching, ADR 0008) =="
+    puts "\n== Checking ImageMagick (art matching, ADR 0011) =="
     unless %w[magick convert].any? { |name| system(name, "-version", out: File::NULL, err: File::NULL) }
       puts "ImageMagick isn't installed. Install it (e.g. `sudo dnf install ImageMagick` or `sudo apt install imagemagick`): " \
            "the art matching specs and the art build need it."
@@ -1601,7 +1601,7 @@ RSpec.describe MTG::Art::Build, :art_matching, type: :model do
     expect(MTG::Art::Index.read(path)[:records].map(&:first)).to eq([ art_a ])
   end
 
-  it "fails at once, recorded, when ImageMagick is missing (ADR 0008)", :aggregate_failures do
+  it "fails at once, recorded, when ImageMagick is missing (ADR 0011)", :aggregate_failures do
     decoder = class_double(MTG::Art::Decoder, command: nil)
     allow(decoder).to receive(:command).and_raise(MTG::Art::Decoder::Error, "ImageMagick isn't installed")
 
@@ -1661,7 +1661,7 @@ class MTG::Art::Build
     @run = MTG::ArtBuild.start!(job_id: @job_id, catalog_version: version, settings_digest: MTG::Art::Settings.digest)
     return @run unless @run.running?
 
-    @decoder.command # fails the build at once when ImageMagick is missing (ADR 0008)
+    @decoder.command # fails the build at once when ImageMagick is missing (ADR 0011)
     artworks = representatives
     done = MTG::Artwork.current.pluck(:illustration_id).to_set
     todo = artworks.reject { done.include?(it.id) }
@@ -3445,7 +3445,7 @@ end
   and add one sentence to the card-scanner bullet, after "…scanner specs fail until it's installed.":
 
 ```markdown
-Art matching (spec 011, ADRs 0006–0008) needs ImageMagick (`magick` or `convert`) for the build and its specs; the page searches `/scanner/art/<index>` on the device.
+Art matching (spec 011, ADRs 0006, 0007 and 0011) needs ImageMagick (`magick` or `convert`) for the build and its specs; the page searches `/scanner/art/<index>` on the device.
 ```
 
 - [ ] Add a changelog row and an FR-3 note to `docs/specs/007-card-scanner-live-capture/spec.md` (keep its text as history). Change `**Version:** 2.1.1` to `**Version:** 2.2.0` and `**Last Updated:** 2026-10-02` to `**Last Updated:** 2026-10-07`, and add the row at the end of its changelog table:
@@ -3472,7 +3472,7 @@ Art matching (spec 011, ADRs 0006–0008) needs ImageMagick (`magick` or `conver
 - [ ] Write `script/scanner/art_decoder_fingerprints.rb` (AC-3.10 for the shipped image: the agreement figures were measured with the desktop's ImageMagick 7, and the image may install version 6):
 
 ```ruby
-# Spec 011 AC-3.10, ADR 0008: the build's zero-offset fingerprints of spec 010's 134 agreement images, one "<id> <hex>"
+# Spec 011 AC-3.10, ADR 0011: the build's zero-offset fingerprints of spec 010's 134 agreement images, one "<id> <hex>"
 # line each, so the production image's ImageMagick can be compared with the desktop's.
 #   bin/rails runner script/scanner/art_decoder_fingerprints.rb ~/card-scanner-corpus/art-cache
 dir = Pathname(File.expand_path(ARGV.fetch(0)))
@@ -3484,8 +3484,8 @@ end
 ```
 
 - [ ] **The image's decoder agrees with the desktop's (AC-3.10):**
-  `podman build -t collector:art-check . && bin/rails runner script/scanner/art_decoder_fingerprints.rb ~/card-scanner-corpus/art-cache > tmp/art-fp-desktop.txt && podman run --rm --security-opt label=disable -e SECRET_KEY_BASE_DUMMY=1 -v ~/card-scanner-corpus/art-cache:/art:ro --entrypoint ./bin/rails collector:art-check runner script/scanner/art_decoder_fingerprints.rb /art > tmp/art-fp-image.txt && diff tmp/art-fp-desktop.txt tmp/art-fp-image.txt && wc -l tmp/art-fp-image.txt`
-  — expect: no diff output and `134`. The stderr lines name each decoder (`magick` or `convert`). If any line differs, stop: the image's decoder doesn't agree, an index built in the image can't be used, and the maintainer rules (ADR 0008 is revisited). Record the decoder and the result in the commit body.
+  `podman build -t collector:art-check . && bin/rails runner script/scanner/art_decoder_fingerprints.rb ~/card-scanner-corpus/art-cache > tmp/art-fp-desktop.txt && podman run --rm --security-opt label=disable -e SECRET_KEY_BASE_DUMMY=1 -v ~/card-scanner-corpus/art-cache:/art:ro -v "$PWD/script/scanner:/rails/script/scanner:ro" --entrypoint ./bin/rails collector:art-check runner script/scanner/art_decoder_fingerprints.rb /art > tmp/art-fp-image.txt && diff tmp/art-fp-desktop.txt tmp/art-fp-image.txt && wc -l tmp/art-fp-image.txt`
+  — expect: no diff output and `134`. The script is mounted because `.dockerignore` keeps `/script` out of the image (spec 012). The stderr lines name each decoder (`magick` or `convert`). If any line differs, stop: the image's decoder doesn't agree, an index built in the image can't be used, and the maintainer rules (ADR 0011 is revisited). Record the decoder and the result in the commit body.
 - [ ] **The index passes through Thruster pre-compressed, once (AC-4.1):** write a one-record index in the test directory, serve it from the image, and read the headers:
   1. `RAILS_ENV=test bin/rails runner 'puts MTG::Art::Index.write!("check", [ [ "aaaaaaaa-0000-4000-8000-000000000001", "\x00".b * 128 ] ]).basename'` — note the printed name.
   2. Start the container as a background task: `podman run --rm --name art-check -p 3999:8080 -e HTTP_PORT=8080 -e SECRET_KEY_BASE=$(ruby -rsecurerandom -e 'puts SecureRandom.hex(64)') -e COLLECTOR_MTG_ART_MATCHING=true --security-opt label=disable -v "$PWD/tmp/catalog:/rails/storage/catalog:ro" collector:art-check`, and wait until `curl -fsS http://localhost:3999/up` answers.
@@ -3498,7 +3498,7 @@ end
 ## Phase 16: Closing measurement (needs the maintainer)
 
 **Implements:** — | **Satisfies:** AC-8.2, AC-9.1, AC-9.2, AC-9.3, AC-9.4, AC-9.5, AC-9.6, AC-9.7, AC-5.6, NFR Performance
-**Files:** `spec/fixtures/card_scanner/phase3_shipped_agreement.json`, `spec/fixtures/card_scanner/phase3_shipped_sitting.json`, `spec/fixtures/card_scanner/phase3_shipped_build.json`, `docs/specs/011-card-scanner-art-matching/research.md`, `docs/adr/0006-art-fingerprint-and-index.md`, `docs/adr/0007-art-search-in-the-browser.md`, `docs/adr/0008-decode-art-images-with-imagemagick.md`
+**Files:** `spec/fixtures/card_scanner/phase3_shipped_agreement.json`, `spec/fixtures/card_scanner/phase3_shipped_sitting.json`, `spec/fixtures/card_scanner/phase3_shipped_build.json`, `docs/specs/011-card-scanner-art-matching/research.md`, `docs/adr/0006-art-fingerprint-and-index.md`, `docs/adr/0007-art-search-in-the-browser.md`, `docs/adr/0011-decode-art-images-with-imagemagick.md`
 **Interfaces:** Consumes: everything above, the development catalog, `~/card-scanner-corpus/phase2-sitting/` (manifest, `ground_truth.json`), `~/card-scanner-corpus/art-cache/`. Produces: the findings and the fixtures.
 
 Ask the maintainer for their inputs at the start of execution, in one message (see the work-ahead memory): the device sitting time, permission to refresh this worktree's development catalog, the seed copy below, and a fresh account for the sitting.
@@ -3514,8 +3514,8 @@ Ask the maintainer for their inputs at the start of execution, in one message (s
 - [ ] **Score (AC-9.2–AC-9.4, AC-9.6):** `SCANNER_EMAIL=art011@localhost GROUND_TRUTH=~/card-scanner-corpus/phase2-sitting/ground_truth.json bin/rails scanner:art_sitting_findings` — expect: the markdown report and `phase3_shipped_sitting.json`. Then `bin/rails runner script/scanner/art_reading_time.rb` for the server time (NFR, target ≤ 50 ms more).
 - [ ] **Readiness with art off (NFR Performance):** restart the server without `COLLECTOR_MTG_ART_MATCHING`, with `COLLECTOR_SCANNER_RUN_DIR=~/card-scanner-corpus/runs/spec011/art-off`, and have the maintainer load the measurement page three times, capturing the first card each time. Compare the captures' `ready_ms` with the sitting's first three.
 - [ ] **Findings:** write `docs/specs/011-card-scanner-art-matching/research.md`: environment; agreement (AC-8.2); the build (AC-9.1); the sitting table and rates against spec 009 and spec 010, foils and non-foils separately (AC-9.2); every card not right first time with its read text, art distances and likely cause, and every confident wrong match (AC-9.4); the phone times cold and warm against spec 010's 244 / 79 / 19 ms and the art time per capture against the 100 ms target (AC-9.5, AC-5.6); readiness with art on and off; the server time; the bias statement; no pass threshold; recommendations, including the margin.
-- [ ] **ADRs (AC-9.7):** add the shipped figures (build cost, decoder, phone times) to ADR 0006's and ADR 0007's Consequences; add the agreement result to ADR 0008's Consequences.
-- [ ] Commit the fixtures and the findings separately: `test(findings): record the shipped art build, agreement and sitting (011)` and `docs(011): record the art matching findings and update ADRs 0006–0008`.
+- [ ] **ADRs (AC-9.7):** add the shipped figures (build cost, decoder, phone times) to ADR 0006's and ADR 0007's Consequences; add the agreement result to ADR 0011's Consequences.
+- [ ] Commit the fixtures and the findings separately: `test(findings): record the shipped art build, agreement and sitting (011)` and `docs(011): record the art matching findings and update ADRs 0006, 0007 and 0011`.
 - [ ] **Stop for the maintainer's ruling on the margin (AC-9.4)** before `sdd-review` and merge. Record it in research.md and project memory.
 
 ---
