@@ -38,4 +38,16 @@ RSpec.describe "Image publishing files" do
         "COLLECTOR_HTTPS", "COLLECTOR_TRUSTED_PROXIES")
     end
   end
+
+  describe "config/deploy.yml" do
+    let(:deploy) { YAML.load_file(Rails.root.join("config/deploy.yml")) }
+
+    it "deploys the published image from GHCR with active credentials (AC-5.1, AC-5.4, FR-5)", :aggregate_failures do
+      expect(deploy["image"]).to eq("plainprogrammer/collector")
+      expect(deploy["registry"]).to eq("server" => "ghcr.io", "username" => "plainprogrammer",
+                                       "password" => [ "KAMAL_REGISTRY_PASSWORD" ])
+      expect(deploy.dig("builder", "arch")).to eq("amd64")
+      expect(deploy.dig("servers", "web")).to eq([ "192.168.0.1" ])
+    end
+  end
 end
