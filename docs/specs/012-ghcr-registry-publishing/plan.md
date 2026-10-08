@@ -4,6 +4,7 @@
 **Decisions:** [ADR 0008](../../adr/0008-public-images-from-the-private-repository.md) (public images from the private repository), [0009](../../adr/0009-image-tags-and-release-channels.md) (tags and release channels), [0010](../../adr/0010-native-multi-architecture-image-builds.md) (native per-architecture builds), all Accepted.
 **Created:** 2026-10-07
 **Revised:** 2026-10-07, after a read-only plan review (Fable, NEEDS REVISION). Blocking fixes: the smoke script creates the admin before the page checks (a fresh instance redirects every page to `/registration/new` until a user exists); `not_include` is not a matcher; the releasing expectation matches the doc's capitalised sentence; the README scanner sentence stays on one line. Also: a `step(id)` helper instead of three memoised helpers (RuboCop limit), `SMOKE_BOOT_ATTEMPTS` for emulated runs, the real `bin/kamal config` output form, the `.kamal/secrets` half of AC-5.4 as a maintainer check, two README replacement targets made precise, the PR body's session line, and the cold-cache note for the first `main` run.
+**Second review:** 2026-10-07 (Fable, READY TO EXECUTE): the plan's spec code passes 20/20 against the planned files; two wording nits applied.
 **Approved:** 2026-10-07 (maintainer, as drafted; revision pending their confirmation).
 
 ## Context
@@ -218,7 +219,7 @@ Exclude the development-only paths from the build context and prove the image st
   podman build -t collector:local .
   bin/image-smoke collector:local; echo "exit $?"
   ```
-  Expected: all four sections pass, `OK: collector:local passed the smoke test`, `exit 0`.
+  Expected: all five sections pass, `OK: collector:local passed the smoke test`, `exit 0`.
 - [ ] Compare sizes (recorded in Phase 7's verification notes):
   ```sh
   podman images --format '{{.Repository}}:{{.Tag}} {{.Size}}' | grep -E "collector:(baseline|local)"
@@ -338,7 +339,7 @@ Point Kamal at the published image with active registry credentials, and record 
   bin/kamal config --version 0.1.0 | grep -E "absolute_image|^:?version"
   ```
   Expected: `:absolute_image: ghcr.io/plainprogrammer/collector:<git sha>` and `:version: <git sha>` from the first; `:absolute_image: ghcr.io/plainprogrammer/collector:0.1.0` and `:version: 0.1.0` from the second. Paste both outputs into Phase 7's verification notes.
-- [ ] Maintainer check for AC-5.4's second half (agents cannot read secret files, and a spec on it would print its contents on failure): the maintainer runs `grep -c KAMAL_REGISTRY_PASSWORD .kamal/secrets` and expects `1`. Record the answer in the commit body.
+- [ ] Maintainer check for AC-5.4's second half (agents cannot read secret files, and a spec on it would print its contents on failure): the maintainer runs `grep -c KAMAL_REGISTRY_PASSWORD .kamal/secrets` and expects at least `1` on an uncommented line. Record the answer in the commit body.
 - [ ] Commit: `feat(deploy): point Kamal at the published GHCR image (012)`
 
 ---
