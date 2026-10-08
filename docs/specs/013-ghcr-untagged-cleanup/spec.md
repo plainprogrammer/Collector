@@ -106,9 +106,9 @@ Most untagged versions are not garbage. Ten of those 13 are the per-architecture
 - [ ] **AC-3.4** Given a tagged version whose manifest is a single image (for example one tagged by a plain `bin/kamal deploy`) or has an unknown media type When any run happens Then nothing is deleted and the run exits non-zero naming that tag and its media type.
 - [ ] **AC-3.5** Given an untagged version that is a candidate for deletion whose manifest can't be fetched or has an unknown media type When any run happens Then nothing is deleted and the run exits non-zero naming that digest.
 - [ ] **AC-3.6** Given a deleting run in which GitHub refuses a delete with any status other than 404 (401, 403 including the 5,000-download limit on public versions, 5xx) When the refusal arrives Then no further version is deleted and the run exits non-zero naming the refused version and the response status.
-- [ ] **AC-3.9** Given a deleting run in which a delete returns 404 When the response arrives Then the version is reported as already deleted and the run continues.
 - [ ] **AC-3.7** Given neither `GH_TOKEN` nor `GITHUB_TOKEN` is set When `bin/ghcr-cleanup` starts Then it exits non-zero before any request, naming `GH_TOKEN`.
 - [ ] **AC-3.8** Given a tagged manifest list whose platforms are not exactly `linux/amd64` and `linux/arm64` When any run happens Then nothing is deleted and the run exits non-zero naming the tag and the platforms it found.
+- [ ] **AC-3.9** Given a deleting run in which a delete returns 404 When the response arrives Then the version is reported as already deleted and the run continues.
 
 ### Story 4: Dry runs show what would happen
 
