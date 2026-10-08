@@ -3091,7 +3091,7 @@ class Scanner::OtherPrintings
 **Files:** `app/models/scanner/measurement_run.rb`, `app/controllers/scanner/readings_controller.rb`, `app/controllers/scanner/measurements/captures_controller.rb`, `app/javascript/controllers/measurement_controller.js`, `lib/collector/scanner_findings/art_sitting_report.rb`, `lib/tasks/scanner.rake`, `script/scanner/art_reading_time.rb`, `spec/system/art_agreement_spec.rb`, `spec/models/scanner/measurement_run_spec.rb`, `spec/requests/scanner/readings_spec.rb`, `spec/lib/collector/scanner_findings/art_sitting_report_spec.rb`
 **Interfaces:** Consumes: `MTG::Reading#ranking` fields, `MTG::Art::Sent::Artwork`, `Collector::ScannerFindings::SittingReport#outcomes` (spec 009). Produces: `Scanner::MeasurementRun#record_reading!(key, reading)`, `#readings → [Hash]`; capture extras `art_ms`, `art_download_ms`, `art_ready_ms`, `ready_ms`; `Collector::ScannerFindings::ArtSittingReport.new(run:, account:, ground_truth:)` with `#rows`, `#to_markdown`, `#fixture`; the rake task `scanner:art_sitting_findings`; `script/scanner/art_reading_time.rb`; the opt-in agreement spec (`COLLECTOR_ART_AGREEMENT=<spike art-cache dir>`).
 
-- [ ] Write the failing examples in `spec/models/scanner/measurement_run_spec.rb` (inside the top-level describe; it already builds a run in a temporary directory — use its `run` helper or `let`):
+- [x] Write the failing examples in `spec/models/scanner/measurement_run_spec.rb` (inside the top-level describe; it already builds a run in a temporary directory — use its `run` helper or `let`):
 
 ```ruby
   describe "#record_reading! (spec 011 AC-9.3)" do
@@ -3114,7 +3114,7 @@ class Scanner::OtherPrintings
 
   The spec file's `let(:run)` builds the run on a temporary directory (`dir.join("runs/live")`).
 
-- [ ] Add the failing request example to `spec/requests/scanner/readings_spec.rb` (top level of the describe):
+- [x] Add the failing request example to `spec/requests/scanner/readings_spec.rb` (top level of the describe):
 
 ```ruby
   it "records each reading's art outcome in measurement mode only (spec 011 AC-9.3, FR-5)", :aggregate_failures do
@@ -3133,8 +3133,8 @@ class Scanner::OtherPrintings
   end
 ```
 
-- [ ] Run: `bin/rspec spec/models/scanner/measurement_run_spec.rb spec/requests/scanner/readings_spec.rb` — expect: FAIL (`record_reading!` and `readings` are undefined).
-- [ ] Add to `Scanner::MeasurementRun` (after `events`), and extend `EXTRA_FIELDS`:
+- [x] Run: `bin/rspec spec/models/scanner/measurement_run_spec.rb spec/requests/scanner/readings_spec.rb` — expect: FAIL (`record_reading!` and `readings` are undefined).
+- [x] Add to `Scanner::MeasurementRun` (after `events`), and extend `EXTRA_FIELDS`:
 
 ```ruby
   # Spec 009 adds the reading key, the outline and the detector's timings (AC-9.2, AC-9.3); spec 011 the art search's time,
@@ -3162,7 +3162,7 @@ class Scanner::OtherPrintings
   end
 ```
 
-- [ ] In `Scanner::ReadingsController#create`, after the `render` in the `elsif reading.valid?` branch, record in measurement mode. Replace that branch with:
+- [x] In `Scanner::ReadingsController#create`, after the `render` in the `elsif reading.valid?` branch, record in measurement mode. Replace that branch with:
 
 ```ruby
     elsif reading.valid?
@@ -3181,7 +3181,7 @@ class Scanner::OtherPrintings
     end
 ```
 
-- [ ] In `Scanner::Measurements::CapturesController#create`, permit and keep the new timings:
+- [x] In `Scanner::Measurements::CapturesController#create`, permit and keep the new timings:
 
 ```ruby
     capture = params.expect(capture: %i[file name_text collector_text ms user_agent name_strip collector_strip reading_key outline detect_ms warp_ms
@@ -3193,7 +3193,7 @@ class Scanner::OtherPrintings
               **%i[detect_ms warp_ms art_ms art_download_ms art_ready_ms ready_ms].to_h { [ it.to_s, capture[it].presence&.to_i ] } }
 ```
 
-- [ ] In `app/javascript/controllers/measurement_controller.js`'s `store`, take the new detail fields and send them after `capture[warp_ms]`:
+- [x] In `app/javascript/controllers/measurement_controller.js`'s `store`, take the new detail fields and send them after `capture[warp_ms]`:
 
 ```js
   async store({ detail: { nameText, collectorText, ms, key, outline, detectMs, warpMs, artMs, art, readyMs, strips, frame } }) {
@@ -3206,9 +3206,9 @@ class Scanner::OtherPrintings
     body.append("capture[ready_ms]", readyMs ?? "")
 ```
 
-- [ ] Run: `bin/rspec spec/models/scanner spec/requests/scanner spec/system/scanner_measurement_spec.rb` — expect: PASS.
-- [ ] Commit: `feat(scanner): record art outcomes and timings in measurement mode (011)`
-- [ ] Write the failing `spec/lib/collector/scanner_findings/art_sitting_report_spec.rb`:
+- [x] Run: `bin/rspec spec/models/scanner spec/requests/scanner spec/system/scanner_measurement_spec.rb` — expect: PASS.
+- [x] Commit: `feat(scanner): record art outcomes and timings in measurement mode (011)`
+- [x] Write the failing `spec/lib/collector/scanner_findings/art_sitting_report_spec.rb`:
 
 ```ruby
 require "rails_helper"
@@ -3248,8 +3248,8 @@ RSpec.describe Collector::ScannerFindings::ArtSittingReport, type: :model do
 end
 ```
 
-- [ ] Run: `bin/rspec spec/lib/collector/scanner_findings/art_sitting_report_spec.rb` — expect: FAIL (uninitialized constant).
-- [ ] Implement `lib/collector/scanner_findings/art_sitting_report.rb`:
+- [x] Run: `bin/rspec spec/lib/collector/scanner_findings/art_sitting_report_spec.rb` — expect: FAIL (uninitialized constant).
+- [x] Implement `lib/collector/scanner_findings/art_sitting_report.rb`:
 
 ```ruby
 # Spec 011 Story 9: the art sitting on spec 009's 35 cards, scored. Spec 009's SittingReport gives each card's outcome (the
@@ -3322,7 +3322,7 @@ end
 ```
 
   `Row#to_h` replaces the outcome object with its kind; `Data#to_h` returns symbol keys, turned into strings for JSON.
-- [ ] Add the rake task to `lib/tasks/scanner.rake`, after `sitting_findings`:
+- [x] Add the rake task to `lib/tasks/scanner.rake`, after `sitting_findings`:
 
 ```ruby
   desc "Spec 011 AC-9.2–AC-9.6: score the art sitting (before Done), write its fixture: SCANNER_EMAIL=… GROUND_TRUTH=… bin/rails scanner:art_sitting_findings"
@@ -3336,7 +3336,7 @@ end
   end
 ```
 
-- [ ] Write `script/scanner/art_reading_time.rb` (NFR Performance, non-gating):
+- [x] Write `script/scanner/art_reading_time.rb` (NFR Performance, non-gating):
 
 ```ruby
 # Spec 011 NFR Performance: the reading request's ranking time on the server with and without the art evidence, over the
@@ -3357,7 +3357,7 @@ without, with = pairs.transpose.map { |times| (median.(times) * 1000).round(1) }
 puts "Ranking, median over #{pairs.size} readings: #{without} ms text only, #{with} ms with art (+#{(with - without).round(1)} ms; target ≤ 50 ms)."
 ```
 
-- [ ] Write the opt-in agreement spec `spec/system/art_agreement_spec.rb` (AC-8.2; skipped unless pointed at the spike's cache, so the gating suite never needs Scryfall images):
+- [x] Write the opt-in agreement spec `spec/system/art_agreement_spec.rb` (AC-8.2; skipped unless pointed at the spike's cache, so the gating suite never needs Scryfall images):
 
 ```ruby
 require "rails_helper"
@@ -3424,9 +3424,9 @@ end
   end
 ```
 
-- [ ] Run: `bin/rspec spec/lib/collector/scanner_findings spec/models/mtg/art spec/system/art_agreement_spec.rb` — expect: PASS, with the agreement spec pending ("Set COLLECTOR_ART_AGREEMENT…").
-- [ ] Run: `bin/rubocop lib script/scanner/art_reading_time.rb spec/lib spec/system/art_agreement_spec.rb` — expect: no offenses.
-- [ ] Commit: `feat(findings): add the art sitting report, agreement check and reading-time script (011)`
+- [x] Run: `bin/rspec spec/lib/collector/scanner_findings spec/models/mtg/art spec/system/art_agreement_spec.rb` — expect: PASS, with the agreement spec pending ("Set COLLECTOR_ART_AGREEMENT…").
+- [x] Run: `bin/rubocop lib script/scanner/art_reading_time.rb spec/lib spec/system/art_agreement_spec.rb` — expect: no offenses.
+- [x] Commit: `feat(findings): add the art sitting report, agreement check and reading-time script (011)`
 
 ---
 

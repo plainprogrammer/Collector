@@ -3,6 +3,7 @@
 # of horizontal neighbours, most significant bit first: 1,024 bits as 128 bytes. The index stores the zero offset.
 module MTG::Art::Fingerprint
   ZERO = { "dx" => 0, "dy" => 0 }.freeze
+  POPCOUNT = Array.new(65_536) { it.to_s(2).count("1") }.freeze
 
   module_function
 
@@ -62,5 +63,11 @@ module MTG::Art::Fingerprint
     bits = +""
     rows.times { |j| (cols - 1).times { |i| bits << (plane[j * cols + i + 1] > plane[j * cols + i] ? "1" : "0") } }
     [ bits ].pack("B*")
+  end
+
+  # Bits that differ between two fingerprints (agreement checks; the search itself runs on the page).
+  def hamming(a, b)
+    words_a, words_b = a.unpack("n*"), b.unpack("n*")
+    words_a.each_index.sum { POPCOUNT[words_a[it] ^ words_b[it]] }
   end
 end

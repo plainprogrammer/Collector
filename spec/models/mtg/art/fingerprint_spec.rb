@@ -21,4 +21,8 @@ RSpec.describe MTG::Art::Fingerprint, type: :model do
     expect(described_class.box(1000, 1000, MTG::Art::Settings.fingerprint.fetch("box"), described_class::ZERO))
       .to eq([ 140.0, 160.0, 860.0, 500.0 ])
   end
+
+  it "counts the bits two fingerprints differ by" do
+    expect(described_class.hamming("\xFF".b * 128, "\x0F".b + "\xFF".b * 127)).to eq(4)
+  end
 end
