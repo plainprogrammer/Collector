@@ -84,3 +84,41 @@ republishes `edge`, so later steps would check a different image from the one ve
    ```
 
 Then cut `v0.1.0` as above so that `latest` exists for the README's instructions.
+
+## Cleaning up untagged versions
+
+Every publish leaves untagged versions in the package: the two per-architecture images behind each tagged
+manifest list and, after a re-run, the previous manifest list with its images. The **GHCR cleanup** workflow
+(`.github/workflows/ghcr-cleanup.yml`, spec 013) runs `bin/ghcr-cleanup` to remove the ones nothing needs.
+
+- **Deleted:** untagged versions that no tagged manifest list references, once their orphan unit is more than
+  7 days old. A unit is an untagged manifest list with its unreferenced images, or a lone untagged image; it is
+  deleted together, manifest lists first.
+- **Never deleted:** a tagged version (`latest`, `X.Y.Z`, `X.Y`, `edge`, `sha-*`), or an image that a tagged
+  manifest list references, whatever its age.
+- **Schedule:** Sundays at 06:00 UTC, deleting. After deleting, the run checks that every tag still lists
+  `linux/amd64` and `linux/arm64` and that each of their images is still in the registry.
+
+**Running it by hand:** Actions → **GHCR cleanup** → **Run workflow**. The `dry_run` box is ticked by default:
+the run lists what it would delete and deletes nothing. Untick it to delete.
+
+**Local dry run** (with `gh` logged in):
+
+```sh
+GH_TOKEN="$(gh auth token)" bin/ghcr-cleanup
+```
+
+It prints each version it would delete (`select`) or keeps for now (`too young`) with its unit's age, then
+the counts of tagged, referenced, too young and selected versions. Leave `--delete` to the workflow.
+
+**A failed run failed closed:** it deleted nothing, or nothing after the failure, and its log names the tag,
+digest or request that stopped it: a tag that is not a two-architecture manifest list, a manifest it could
+not read, a refused delete, or a tag whose image went missing. Investigate the cause before re-running, and
+never delete versions by hand to get past it.
+
+**Token:** the workflow uses its own `GITHUB_TOKEN`, which may delete versions of a package that the
+repository's workflow published (GitHub documents this as a public preview). If a delete is refused with
+`answered 401` or `answered 403`, create a personal access token (classic; GitHub Packages does not accept
+fine-grained tokens) with `read:packages` and `delete:packages`, store it as the repository secret
+`GHCR_CLEANUP_TOKEN`, and change both `GH_TOKEN:` lines in the workflow to
+`${{ secrets.GHCR_CLEANUP_TOKEN }}`. Rotate it before it expires by replacing the secret.

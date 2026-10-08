@@ -61,3 +61,7 @@
 /.githooks
 /orca.yaml
 /.worktreeinclude
+
+# The GHCR cleanup command runs only in its workflow and locally (spec 013).
+/bin/ghcr-cleanup
+/lib/collector/ghcr_cleanup.rb
