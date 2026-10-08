@@ -10,6 +10,9 @@ class MTG::Scryfall::Source
   def self.identity_extension_model = MTG::Card
   def self.alternate_names(entries) = MTG::Printing.face_names(entries)
 
+  # Spec 011 AC-3.11: extra lines for `catalog:status[mtg]`.
+  def self.status_lines = [ MTG::Art.status_line ]
+
   def initialize(client: MTG::Scryfall::Client.new, env: ENV)
     @client = client
     @env = env
@@ -19,6 +22,9 @@ class MTG::Scryfall::Source
   # Spec 011 AC-2.3: an instance upgrading to artwork ids applies its current bulk file once more, art matching on or off,
   # so every printing gets its artwork id. About 760 printings legitimately have none, so "any without" isn't the test.
   def reapply? = MTG::Printing.exists? && !MTG::Printing.where.not(illustration_id: nil).exists?
+
+  # Spec 011 AC-3.1: art matching queues its build after a refresh (Catalog::Refresh calls this hook).
+  def after_refresh(run) = MTG::Art.after_refresh(run)
 
   def languages
     requested = @env.fetch(LANGUAGES_ENV, "").split(",").map { |code| code.strip.downcase }.compact_blank

@@ -114,4 +114,12 @@ RSpec.describe MTG::Scryfall::Source, type: :model do
       expect(source.enum_for(:each_set).map(&:code)).to eq(%w[m10 neo])
     end
   end
+
+  describe "#after_refresh and .status_lines (spec 011 AC-3.1, AC-3.11)" do
+    it "hands an applied run to art matching, and reports its status", :aggregate_failures, :art_matching do
+      run = build(:catalog_refresh_run, collectible_type: "mtg", status: "applied", source_version: "default-cards-1")
+      expect { source.after_refresh(run) }.to have_enqueued_job(MTG::Art::BuildJob)
+      expect(described_class.status_lines).to eq([ MTG::Art.status_line ])
+    end
+  end
 end

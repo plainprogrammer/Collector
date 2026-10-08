@@ -1768,7 +1768,7 @@ end
 **Files:** `app/jobs/mtg/art/build_job.rb`, `app/models/mtg/art.rb`, `app/models/mtg/scryfall/source.rb`, `lib/tasks/catalog.rake`, `spec/jobs/mtg/art/build_job_spec.rb`, `spec/models/mtg/art_spec.rb`, `spec/models/mtg/scryfall/source_spec.rb`, `spec/tasks/catalog_rake_spec.rb`
 **Interfaces:** Consumes: `MTG::Art::Build` (Phase 8), `MTG::ArtBuild` (Phase 5), `MTG::Art::Index` (Phase 7), the `after_refresh` hook (Phase 2). Produces: `MTG::Art::BuildJob` (queue `sync`), `MTG::Art.after_refresh(run)`, `MTG::Art.status_line → String`, `MTG::Scryfall::Source#after_refresh(run)`, `MTG::Scryfall::Source.status_lines → [String]` (the optional source hook `catalog:status` prints).
 
-- [ ] Write the failing job spec `spec/jobs/mtg/art/build_job_spec.rb`:
+- [x] Write the failing job spec `spec/jobs/mtg/art/build_job_spec.rb`:
 
 ```ruby
 require "rails_helper"
@@ -1789,7 +1789,7 @@ RSpec.describe MTG::Art::BuildJob, type: :job do
 end
 ```
 
-- [ ] Add the failing examples to `spec/models/mtg/art_spec.rb` (before the final `end`):
+- [x] Add the failing examples to `spec/models/mtg/art_spec.rb` (before the final `end`):
 
 ```ruby
   describe ".after_refresh (spec 011 AC-3.1)" do
@@ -1842,7 +1842,7 @@ end
   end
 ```
 
-- [ ] Add the failing source example to `spec/models/mtg/scryfall/source_spec.rb`:
+- [x] Add the failing source example to `spec/models/mtg/scryfall/source_spec.rb`:
 
 ```ruby
   describe "#after_refresh and .status_lines (spec 011 AC-3.1, AC-3.11)" do
@@ -1854,14 +1854,14 @@ end
   end
 ```
 
-- [ ] In `spec/tasks/catalog_rake_spec.rb`, the existing example "lists the 10 most recent runs, newest first, with counts and messages" counts every printed line; with the art line appended there are 11. Change its `expect(lines.size).to eq(10)` to:
+- [x] In `spec/tasks/catalog_rake_spec.rb`, the existing example "lists the 10 most recent runs, newest first, with counts and messages" counts every printed line; with the art line appended there are 11. Change its `expect(lines.size).to eq(10)` to:
 
 ```ruby
       expect(lines.size).to eq(11) # the 10 runs, then the source's own line (spec 011)
       expect(lines.last).to start_with("Art matching:")
 ```
 
-- [ ] Add the failing rake example to `spec/tasks/catalog_rake_spec.rb`, inside `describe "catalog:status"`:
+- [x] Add the failing rake example to `spec/tasks/catalog_rake_spec.rb`, inside `describe "catalog:status"`:
 
 ```ruby
     it "ends with the source's own status lines, such as art matching (spec 011 AC-3.11)" do
@@ -1869,8 +1869,8 @@ end
     end
 ```
 
-- [ ] Run: `bin/rspec spec/jobs/mtg spec/models/mtg/art_spec.rb spec/models/mtg/scryfall/source_spec.rb spec/tasks/catalog_rake_spec.rb` — expect: FAIL (the job, the hooks and the status line don't exist).
-- [ ] Implement `app/jobs/mtg/art/build_job.rb`:
+- [x] Run: `bin/rspec spec/jobs/mtg spec/models/mtg/art_spec.rb spec/models/mtg/scryfall/source_spec.rb spec/tasks/catalog_rake_spec.rb` — expect: FAIL (the job, the hooks and the status line don't exist).
+- [x] Implement `app/jobs/mtg/art/build_job.rb`:
 
 ```ruby
 # Builds the art index in the background (spec 011 Story 3), queued by the catalog refresh (MTG::Art.after_refresh). Two
@@ -1887,7 +1887,7 @@ class MTG::Art::BuildJob < ApplicationJob
 end
 ```
 
-- [ ] Add to `MTG::Art` (`app/models/mtg/art.rb`), after `cache_dir`:
+- [x] Add to `MTG::Art` (`app/models/mtg/art.rb`), after `cache_dir`:
 
 ```ruby
   # Spec 011 AC-3.1: one build after an applied refresh, or after one skipped as already applied while that catalog
@@ -1922,7 +1922,7 @@ end
   end
 ```
 
-- [ ] Add to `MTG::Scryfall::Source`, after `self.alternate_names`:
+- [x] Add to `MTG::Scryfall::Source`, after `self.alternate_names`:
 
 ```ruby
   # Spec 011 AC-3.11: extra lines for `catalog:status[mtg]`.
@@ -1936,7 +1936,7 @@ end
   def after_refresh(run) = MTG::Art.after_refresh(run)
 ```
 
-- [ ] Change the `catalog:status` task in `lib/tasks/catalog.rake` to print a source's own lines last:
+- [x] Change the `catalog:status` task in `lib/tasks/catalog.rake` to print a source's own lines last:
 
 ```ruby
   desc 'Show the 10 most recent catalog refresh runs (default mtg): bin/rails "catalog:status[mtg]"'
@@ -1950,8 +1950,8 @@ end
   end
 ```
 
-- [ ] Run: `bin/rspec spec/jobs spec/models/mtg spec/models/catalog spec/tasks` — expect: PASS.
-- [ ] Commit: `feat(art): queue the art build after a refresh and report it in catalog:status (011)`. Note in the body that `catalog:status` for an unknown type now raises `ArgumentError` (as `catalog:refresh` does) instead of printing "No … refresh runs yet.".
+- [x] Run: `bin/rspec spec/jobs spec/models/mtg spec/models/catalog spec/tasks` — expect: PASS.
+- [x] Commit: `feat(art): queue the art build after a refresh and report it in catalog:status (011)`. Note in the body that `catalog:status` for an unknown type now raises `ArgumentError` (as `catalog:refresh` does) instead of printing "No … refresh runs yet.".
 
 ---
 
