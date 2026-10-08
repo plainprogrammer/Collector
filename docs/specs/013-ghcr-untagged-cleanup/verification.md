@@ -77,6 +77,37 @@ Both `Smoke test` steps print `== development-only paths and secrets must be abs
 `OK: collector:smoke passed the smoke test`; the absent-path list includes `bin/ghcr-cleanup` and
 `lib/collector/ghcr_cleanup.rb`, so neither is in the image on either architecture, and the image still boots.
 
+## Live cleanup (post-merge)
+
+Main is at `ff43b15` (PRs #26 and #27); `edge` and `sha-ff43b15` were published by CI run
+[37861087603](https://github.com/plainprogrammer/Collector/actions/runs/37861087603), so the package has 21 versions.
+
+### Step 1: manual dry run of the workflow (2026-10-08T23:53Z)
+
+Run [37861909201](https://github.com/plainprogrammer/Collector/actions/runs/37861909201), `workflow_dispatch` on
+`main` with `dry_run=true`, completed with `success`:
+
+| Job | Result |
+|---|---|
+| `dry-run` | success (10 s) |
+| `delete` | skipped |
+
+The `Dry run` step ran `bin/ghcr-cleanup` with `GH_TOKEN: ***` (the workflow's `GITHUB_TOKEN`, masked) and printed:
+
+```
+Dry run: nothing is deleted (pass --delete to delete).
+too young sha256:f03eb8274a903d8a69dc3959da1a59ef4cc3980eb9580573de0008f500bca994 created 2026-10-08T14:42:46Z tags (none): orphan manifest list, unit age 0d 9h
+too young sha256:90ceeb5c0550695d30c9ef61f951a2f90e40fa397937d8013c5aa0693ffe8c63 created 2026-10-08T14:42:15Z tags (none): unreferenced image, unit age 0d 9h
+too young sha256:0f9c9927048e8546dd4a6cd04188cf1c892b41255dec878cddb3733293da28de created 2026-10-08T14:42:03Z tags (none): unreferenced image, unit age 0d 9h
+21 versions: 6 tagged, 12 referenced, 3 too young, 0 selected
+```
+
+This shows that a run started by hand is a dry run by default, carried out by the job without `packages: write`
+(AC-4.2). It also shows that the workflow token can list the package through the `/users/` endpoint and read
+every tagged manifest list. The counts match a local dry run at the same commit
+(`21 versions: 6 tagged, 12 referenced, 3 too young, 0 selected`): the new `edge` list's two images are referenced,
+and the only orphan unit is still `f03eb827…`, too young until 2026-10-15T14:42:46Z.
+
 ## Acceptance criteria
 
 | AC | Evidence | Status |
@@ -102,7 +133,7 @@ Both `Smoke test` steps print `== development-only paths and secrets must be abs
 | AC-3.8 | `ghcr_cleanup_spec.rb` `.referenced` "fails closed on a tagged list without exactly amd64 and arm64 (AC-3.8)" | ✓ |
 | AC-3.9 | `client_spec.rb` `#delete` "deletes by id, and treats a 404 as already deleted (AC-3.9)"; `run_spec.rb` "reports a 404 on delete as already deleted and carries on (AC-3.9)" | ✓ |
 | AC-4.1 | `ghcr_cleanup_spec.rb` `.plan` "counts four disjoint buckets that sum to the version total (AC-4.1)"; `run_spec.rb` "dry-runs by default: deletes nothing and reports each selection and the counts (AC-4.1, FR-3)"; live dry run above | ✓ |
-| AC-4.2 | `image_publishing_spec.rb` `.github/workflows/ghcr-cleanup.yml` "dry-runs by hand by default, without packages: write (AC-4.2, FR-4)" | ✓ (workflow file); live manual dry run pending: maintainer, after merge |
+| AC-4.2 | `image_publishing_spec.rb` `.github/workflows/ghcr-cleanup.yml` "dry-runs by hand by default, without packages: write (AC-4.2, FR-4)"; live: step 1 under "Live cleanup", run [37861909201](https://github.com/plainprogrammer/Collector/actions/runs/37861909201) (`dry-run` success, `delete` skipped) | ✓ |
 | AC-4.3 | `run_spec.rb` "reports young units with their ages (AC-4.3)"; live dry run above: the `f03eb827…` unit too young, 0 selected, nothing deleted | ✓ (too-young half); selected half pending: maintainer, after 2026-10-15T14:42:46Z |
 | AC-5.1 | `image_publishing_spec.rb` `docs/releasing.md` "documents the cleanup: rule, grace period, schedule, manual and local runs, failures, token (AC-5.1)" | ✓ |
 | AC-5.2 | `image_publishing_spec.rb` `.dockerignore` "keeps the GHCR cleanup command out of the image and the smoke test checks it (AC-5.2, FR-5)" ; PR CI run [37854725995](https://github.com/plainprogrammer/Collector/actions/runs/37854725995) below | ✓ |
@@ -122,7 +153,7 @@ run finds nothing (AC-1.6). Run the steps in order; each says what to expect and
 checkout of `main` after the merge, with `gh` logged in as `plainprogrammer`. `gh workflow run` needs the workflow
 file on `main`, so none of this works before the merge.
 
-### Step 1: manual dry run of the workflow (any time after the merge)
+### Step 1: manual dry run of the workflow (any time after the merge) — done 2026-10-08, see "Live cleanup"
 
 ```sh
 gh workflow run ghcr-cleanup.yml -f dry_run=true
