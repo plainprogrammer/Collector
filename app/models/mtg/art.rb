@@ -11,4 +11,7 @@ module MTG::Art
 
   # Global catalog files on the persistent volume: storage/catalog/mtg/art (tmp/catalog/mtg/art in tests).
   def self.root = Rails.configuration.x.catalog_download_dir.join("mtg", "art")
+
+  # Scryfall small images, one per artwork, named <illustration_id>.jpg and never fetched twice (AC-3.4, AC-3.5).
+  def self.cache_dir = root.join("small")
 end

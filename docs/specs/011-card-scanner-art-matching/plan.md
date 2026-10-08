@@ -1294,7 +1294,7 @@ end
 **Files:** `app/models/mtg/art.rb`, `app/models/mtg/art/index.rb`, `spec/models/mtg/art/index_spec.rb`, `spec/system/art_index_spec.rb`
 **Interfaces:** Consumes: `MTG::Art.root`, `MTG::Art::Settings.digest`, the page's `parseIndex`/`search` (Phase 4). Produces: `MTG::Art.cache_dir → Pathname`; `MTG::Art::Index` with `MAGIC`, `FORMAT_VERSION`, `HEADER`, `RECORD`, `KEEP`, `NAME`, `.dir`, `.name_for(catalog_version, count)`, `.files → [Pathname]` (newest first), `.current → Pathname | nil`, `.built_for?(catalog_version) → Boolean`, `.path_for(name) → Pathname | nil` (current or previous only), `.write!(catalog_version, records) → Pathname` (`records`: `[[illustration_id, fingerprint]]`), `.read(path) → { magic:, version:, digest:, count:, records: }`.
 
-- [ ] Write the failing `spec/models/mtg/art/index_spec.rb`:
+- [x] Write the failing `spec/models/mtg/art/index_spec.rb`:
 
 ```ruby
 require "rails_helper"
@@ -1343,15 +1343,15 @@ RSpec.describe MTG::Art::Index, :art_matching, type: :model do
 end
 ```
 
-- [ ] Run: `bin/rspec spec/models/mtg/art/index_spec.rb` — expect: FAIL (`uninitialized constant MTG::Art::Index`).
-- [ ] Add to `MTG::Art` (`app/models/mtg/art.rb`), after `root`:
+- [x] Run: `bin/rspec spec/models/mtg/art/index_spec.rb` — expect: FAIL (`uninitialized constant MTG::Art::Index`).
+- [x] Add to `MTG::Art` (`app/models/mtg/art.rb`), after `root`:
 
 ```ruby
   # Scryfall small images, one per artwork, named <illustration_id>.jpg and never fetched twice (AC-3.4, AC-3.5).
   def self.cache_dir = root.join("small")
 ```
 
-- [ ] Implement `app/models/mtg/art/index.rb`:
+- [x] Implement `app/models/mtg/art/index.rb`:
 
 ```ruby
 require "zlib"
@@ -1416,8 +1416,8 @@ class MTG::Art::Index
 end
 ```
 
-- [ ] Run: `bin/rspec spec/models/mtg/art/index_spec.rb` — expect: PASS.
-- [ ] Write the failing `spec/system/art_index_spec.rb`:
+- [x] Run: `bin/rspec spec/models/mtg/art/index_spec.rb` — expect: PASS.
+- [x] Write the failing `spec/system/art_index_spec.rb`:
 
 ```ruby
 require "rails_helper"
@@ -1454,8 +1454,8 @@ RSpec.describe "Art index on the scanner page", :art_matching, type: :system do
 end
 ```
 
-- [ ] Run: `bin/rspec spec/system/art_index_spec.rb` — expect: PASS (the page's module exists since Phase 4; this proves the two file formats agree).
-- [ ] Commit: `feat(art): write the versioned art index file the page reads (011)`
+- [x] Run: `bin/rspec spec/system/art_index_spec.rb` — expect: PASS (the page's module exists since Phase 4; this proves the two file formats agree).
+- [x] Commit: `feat(art): write the versioned art index file the page reads (011)`
 
 ---
 
