@@ -747,7 +747,7 @@ RUN command -v magick || command -v convert
 **Files:** `app/javascript/scanner/art.js`, `spec/support/art_page_helpers.rb`, `spec/system/art_fingerprint_spec.rb`
 **Interfaces:** Consumes: `MTG::Art::Settings.fingerprint`, `MTG::Art::Decoder.decode`, `MTG::Art::Fingerprint.of`, `png_bytes`/`noisy_png` (Phase 3). Produces: the module `scanner/art` exporting `FORMAT_VERSION`, `box`, `areaResample`, `fingerprint(canvas, settings, offset)`, `fingerprints(canvas, settings) → Uint8Array[]`, `cropGuide(frame, guide) → canvas`, `parseIndex(bytes, digest) → { count, ids, words }`, `loadArtIndex(url, settings) → { index, downloadMs, readyMs }`, `search(index, hashes, limit = 10) → [{ id, distance }]`, `matchArtwork(index, frame, guide, fingerprintSettings, limit = 10)`, `hex(bytes)`; spec helpers `ArtPageHelpers::ART_JS`, `browser_fingerprints(png) → [hex, …]`, `run_art_js(body, *args)`.
 
-- [ ] Write `spec/support/art_page_helpers.rb`:
+- [x] Write `spec/support/art_page_helpers.rb`:
 
 ```ruby
 # Loads the page's own scanner/art module into the WebDriver sandbox, as ScannerHelpers::MODULES_JS loads geometry
@@ -789,7 +789,7 @@ end
 RSpec.configure { |config| config.include ArtPageHelpers, type: :system }
 ```
 
-- [ ] Write the failing `spec/system/art_fingerprint_spec.rb`:
+- [x] Write the failing `spec/system/art_fingerprint_spec.rb`:
 
 ```ruby
 require "rails_helper"
@@ -824,8 +824,8 @@ RSpec.describe "Art fingerprint on the scanner page", type: :system do
 end
 ```
 
-- [ ] Run: `bin/rspec spec/system/art_fingerprint_spec.rb` — expect: FAIL (the module `scanner/art` doesn't exist, so the script times out).
-- [ ] Implement `app/javascript/scanner/art.js`:
+- [x] Run: `bin/rspec spec/system/art_fingerprint_spec.rb` — expect: FAIL (the module `scanner/art` doesn't exist, so the script times out).
+- [x] Implement `app/javascript/scanner/art.js`:
 
 ```js
 // Art matching on the scanner page (spec 011 Story 5; ADR 0006, ADR 0007). A live capture's guide crop is fingerprinted
@@ -967,9 +967,9 @@ export function matchArtwork(index, frame, guide, fingerprintSettings, limit = 1
 export const hex = (bytes) => Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")
 ```
 
-- [ ] Run: `bin/rspec spec/system/art_fingerprint_spec.rb` — expect: PASS (2 examples). If the agreement example differs, compare `browser_fingerprints` with the spike's `fingerprint.js` on the same PNG before touching either implementation: the arithmetic must stay the spike's.
-- [ ] Run: `bin/importmap audit && bin/rubocop spec/support/art_page_helpers.rb spec/system/art_fingerprint_spec.rb` — expect: no vulnerable packages, no offenses.
-- [ ] Commit: `feat(scanner): add the page's art fingerprint, crop and index search (011)`
+- [x] Run: `bin/rspec spec/system/art_fingerprint_spec.rb` — expect: PASS (2 examples). If the agreement example differs, compare `browser_fingerprints` with the spike's `fingerprint.js` on the same PNG before touching either implementation: the arithmetic must stay the spike's.
+- [x] Run: `bin/importmap audit && bin/rubocop spec/support/art_page_helpers.rb spec/system/art_fingerprint_spec.rb` — expect: no vulnerable packages, no offenses.
+- [x] Commit: `feat(scanner): add the page's art fingerprint, crop and index search (011)`
 
 ---
 
