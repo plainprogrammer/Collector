@@ -1,7 +1,7 @@
 # Feature 012: Build and Publish Collector Images
 
 **Status:** Approved
-**Version:** 1.0.0
+**Version:** 1.1.0
 **Created:** 2026-10-07
 **Last Updated:** 2026-10-07
 **Branch:** `012-ghcr-registry-publishing`
@@ -13,6 +13,7 @@
 | Version | Date | Change |
 |---------|------|--------|
 | 1.0.0 | 2026-10-07 | Initial draft from the approved [prd.md](prd.md) and ADRs 0008–0010. Approved by the maintainer |
+| 1.1.0 | 2026-10-07 | Spec review revisions (Fable, Mode A). **Per-architecture pushes:** a build pushes per-architecture digests; a *publish* is the tags. A failed architecture leaves an untagged digest; no tag is published (Terms, AC-2.3, NFR Reliability). **Attestations off** so a manifest list has exactly two entries (AC-2.1, FR-1). **Re-runs:** same tags, a two-architecture list built from the same commit, not byte-identical content; only the newest release may be re-run (AC-3.7, AC-7.1, Error Scenarios). **Token:** `packages: write` on the build and merge jobs; pull requests never push and the cache never goes to the registry (FR-1, NFR Security). **Kamal checks** via `bin/kamal config --version` (AC-5.1, AC-5.2). **Off-pattern tags** do not trigger the build or publish jobs (AC-3.6, FR-1). **Collateral docs** named (FR-6). **Also:** 7-character SHAs, explicit labels, concrete task outputs (AC-6.3), `podman compose` in AC-1.3, the replaced `image:` line (AC-1.5), `scanner:*` tasks as a Non-Goal |
 
 ---
 
@@ -24,13 +25,13 @@ This feature publishes ready-made, public, multi-architecture images from CI, so
 
 > **Inputs.** The scope and the decisions come from the approved [prd.md](prd.md) and the accepted ADRs [0008](../../adr/0008-public-images-from-the-private-repository.md) (public images from the private repository), [0009](../../adr/0009-image-tags-and-release-channels.md) (tags and release channels) and [0010](../../adr/0010-native-multi-architecture-image-builds.md) (native per-architecture builds). The registry (GitHub Container Registry, `ghcr.io/plainprogrammer/collector`), the CI service (GitHub Actions, the existing `ci.yml`) and the two deployment paths (Compose, Kamal) are fixed inputs, as spec 001's stack was, so this spec names them. Everything else here is behaviour, not implementation.
 >
-> **Terms.** A *release* is a git tag `vX.Y.Z`, optionally with a pre-release suffix such as `-rc.1`. The *`main` channel* is the image published from every push to `main`. A *manifest list* is one image name that resolves to the right architecture on pull. *Publish* means pushing tags to the registry; a *build* without a publish pushes nothing.
+> **Terms.** A *release* is a git tag `vX.Y.Z`, optionally with a pre-release suffix such as `-rc.1`. The *`main` channel* is the image published from every push to `main`. A *manifest list* is one image name that resolves to the right architecture on pull. A *build* produces one per-architecture image and, on `main` and release tags, pushes it to the registry by digest, untagged. *Publish* means creating the tagged manifest list from those digests. Pull requests build without pushing anything.
 
 ## Goals
 
 - `ghcr.io/plainprogrammer/collector` is a public, anonymously pullable image that runs on `linux/amd64` and `linux/arm64`.
 - Releases are git tags. `vX.Y.Z` publishes `X.Y.Z`, `X.Y`, `latest`, and `X` once X ≥ 1; a pre-release publishes only its own version. The first release is `v0.1.0`.
-- Every push to `main` publishes `edge` and `sha-<short sha>`; pull requests build both architectures and publish nothing.
+- Every push to `main` publishes `edge` and `sha-<7-character sha>`; pull requests build both architectures and push nothing.
 - Nothing is published unless `bin/ci` has passed on the same commit, and nothing but the workflow pushes to the public image.
 - The image carries only what it runs: the development-only paths named in FR-3 are excluded before the first public push.
 - Self-hosting defaults to the published image: Compose pulls `latest` and upgrades with a pull; Kamal deploys a release by version without building.
@@ -46,6 +47,7 @@ This feature publishes ready-made, public, multi-architecture images from CI, so
 - Dependabot updates for the base image.
 - A development or test image.
 - Making the repository public.
+- Running the `scanner:*` findings tasks inside the image. They are development-only research tools that read `spec/fixtures/card_scanner` and the maintainer's corpus, both excluded (FR-3).
 
 ## Users and Context
 
@@ -68,9 +70,9 @@ This feature publishes ready-made, public, multi-architecture images from CI, so
 
 - [ ] **AC-1.1** Given a machine with Podman or Docker and no registry credentials When `podman pull ghcr.io/plainprogrammer/collector:latest` runs Then the pull succeeds without a login.
 - [ ] **AC-1.2** Given `compose.yaml` with `SECRET_KEY_BASE` set and no checkout of the source When `podman compose up -d` runs Then the `web` service starts from `ghcr.io/plainprogrammer/collector:latest`, migrations run on boot, and the healthcheck on `/up` reports healthy.
-- [ ] **AC-1.3** Given a running instance from the image When a newer `latest` exists and `docker compose pull && docker compose up -d` runs Then the instance restarts on the new image, migrations run on boot, and the data in the `collector_storage` volume is kept. Verified by switching between two images (two local builds via `COLLECTOR_IMAGE`, or `edge` and `latest`) with a user created in between.
+- [ ] **AC-1.3** Given a running instance from the image When a newer `latest` exists and `docker compose pull && docker compose up -d` (or the `podman compose` equivalent) runs Then the instance restarts on the new image, migrations run on boot, and the data in the `collector_storage` volume is kept. Verified by switching between two images (two local builds via `COLLECTOR_IMAGE`, or `edge` and `latest`) with a user created in between.
 - [ ] **AC-1.4** Given an image built locally with `docker build -t collector:local .` When `COLLECTOR_IMAGE=collector:local` is set and `docker compose up -d` runs Then the `web` service runs the local image instead of the published one.
-- [ ] **AC-1.5** Given `compose.yaml` When it is read Then it names no `build:` and its image is `${COLLECTOR_IMAGE:-ghcr.io/plainprogrammer/collector:latest}`, and the rest of the service (ports, environment, volume, healthcheck) is unchanged from before this feature.
+- [ ] **AC-1.5** Given `compose.yaml` When it is read Then it names no `build:`, the former `image: collector:latest` line is replaced by `image: ${COLLECTOR_IMAGE:-ghcr.io/plainprogrammer/collector:latest}`, and the rest of the service (ports, environment, volume, healthcheck) is unchanged from before this feature.
 
 ### Story 2: The image runs on arm64
 
@@ -80,9 +82,9 @@ This feature publishes ready-made, public, multi-architecture images from CI, so
 
 **Acceptance criteria:**
 
-- [ ] **AC-2.1** Given a published tag When `podman manifest inspect ghcr.io/plainprogrammer/collector:<tag>` runs Then the manifest list has exactly two entries, `linux/amd64` and `linux/arm64`.
+- [ ] **AC-2.1** Given a published tag When `podman manifest inspect ghcr.io/plainprogrammer/collector:<tag>` runs Then the manifest list has exactly two entries, `linux/amd64` and `linux/arm64`, and no attestation entries (FR-1).
 - [ ] **AC-2.2** Given an arm64 host When it pulls a published tag and starts the container Then the container boots on arm64 and `/up` reports healthy. Verified on the maintainer's arm64 machine or emulated with `podman run --platform linux/arm64` on the development machine.
-- [ ] **AC-2.3** Given a release tag When one architecture's build fails Then no tag for that release is published, so no tag ever resolves to a single-architecture image.
+- [ ] **AC-2.3** Given a release tag When one architecture's build fails Then no tag for that release is published, so no tag ever resolves to a single-architecture image. The untagged digest from the architecture that succeeded may remain on the registry (cleanup is out of scope).
 
 ### Story 3: Cutting a release
 
@@ -96,9 +98,9 @@ This feature publishes ready-made, public, multi-architecture images from CI, so
 - [ ] **AC-3.2** Given a release tag `vX.Y.Z` with X ≥ 1 When it is published Then the registry has `X.Y.Z`, `X.Y`, `X` and `latest`.
 - [ ] **AC-3.3** Given a pre-release tag such as `v1.0.0-rc.1` When it is published Then the registry has `1.0.0-rc.1` and `latest`, `1.0` and `1` are not changed.
 - [ ] **AC-3.4** Given a pushed tag on a commit where `bin/ci` fails When the workflow finishes Then nothing is pushed to the registry.
-- [ ] **AC-3.5** Given a published image When `podman inspect` reads its labels Then `org.opencontainers.image.source` is the repository URL, `.version` is the tag's version (`edge` on the `main` channel), `.revision` is the commit SHA, `.licenses` is `AGPL-3.0` and `.description` is "Self-hostable, multi-tenant web app for tracking collectibles, starting with Magic: The Gathering cards."
-- [ ] **AC-3.6** Given any pushed tag When it does not match `vX.Y.Z` or `vX.Y.Z-<suffix>` Then the workflow publishes nothing for it.
-- [ ] **AC-3.7** Given a release already published When the workflow is re-run for the same tag Then the same tags point at an image with the same contents, and no other tag changes.
+- [ ] **AC-3.5** Given a published image When `podman inspect` reads its labels Then (set explicitly by the workflow, not inferred from the repository's metadata) `org.opencontainers.image.source` is the repository URL, `.version` is the tag's version (`edge` on the `main` channel), `.revision` is the commit SHA, `.licenses` is `AGPL-3.0` and `.description` is "Self-hostable, multi-tenant web app for tracking collectibles, starting with Magic: The Gathering cards."
+- [ ] **AC-3.6** Given any pushed tag When it does not match `vX.Y.Z` or `vX.Y.Z-<suffix>` (for example `v1.2` or `release-1`) Then the build and publish jobs do not run for it and nothing is pushed.
+- [ ] **AC-3.7** Given the newest release already published When its workflow is re-run Then the same tags point at a new two-architecture manifest list built from the same commit (labels `.version` and `.revision` identical, AC-6.1 to AC-6.3 hold), and no tag outside that release's set changes. Byte-identical layers are not required.
 
 ### Story 4: Running ahead on `main`
 
@@ -108,8 +110,8 @@ This feature publishes ready-made, public, multi-architecture images from CI, so
 
 **Acceptance criteria:**
 
-- [ ] **AC-4.1** Given `bin/ci` passes on a push to `main` When the workflow finishes Then the registry has `edge` and `sha-<short sha>` resolving to the same manifest list, and `latest` is unchanged.
-- [ ] **AC-4.2** Given a pull request When its workflow runs Then both architectures are built and the registry receives nothing: no new tags and no new untagged content.
+- [ ] **AC-4.1** Given `bin/ci` passes on a push to `main` When the workflow finishes Then the registry has `edge` and `sha-<7-character sha>` resolving to the same manifest list, and `latest` is unchanged.
+- [ ] **AC-4.2** Given a pull request When its workflow runs Then both architectures are built and the registry receives nothing: no new tags, no new untagged digests, and no build cache.
 - [ ] **AC-4.3** Given a pull request whose `Dockerfile` or `.dockerignore` change breaks the build When the workflow runs Then the run fails and the failure names the build job, before merge.
 
 ### Story 5: Deploying a release with Kamal
@@ -120,8 +122,8 @@ This feature publishes ready-made, public, multi-architecture images from CI, so
 
 **Acceptance criteria:**
 
-- [ ] **AC-5.1** Given `config/deploy.yml` When `bin/kamal config` runs Then it validates, with the registry server `ghcr.io`, the image `plainprogrammer/collector`, the username `plainprogrammer` and the password read from `KAMAL_REGISTRY_PASSWORD`.
-- [ ] **AC-5.2** Given a published release `X.Y.Z` When `bin/kamal deploy --skip-push --version X.Y.Z` runs Then Kamal pulls `ghcr.io/plainprogrammer/collector:X.Y.Z` on the servers and does not build or push. Verified with `bin/kamal config` and the plan's dry run; a live deploy is the maintainer's check.
+- [ ] **AC-5.1** Given `config/deploy.yml` When `bin/kamal config` runs Then it validates and prints `absolute_image: ghcr.io/plainprogrammer/collector`; the file names the registry server `ghcr.io`, the image `plainprogrammer/collector`, the username `plainprogrammer` and the password `KAMAL_REGISTRY_PASSWORD` (AC-5.4).
+- [ ] **AC-5.2** Given a published release `X.Y.Z` When `bin/kamal deploy --skip-push --version X.Y.Z` runs Then Kamal pulls `ghcr.io/plainprogrammer/collector:X.Y.Z` on the servers and does not build or push. Verified by `bin/kamal config --version X.Y.Z` printing `version: X.Y.Z` with that `absolute_image`; a live deploy is the maintainer's check (Kamal has no dry run).
 - [ ] **AC-5.3** Given the README's Kamal section When it is read Then it documents the `--skip-push --version X.Y.Z` deploy, says a self-hoster who wants Kamal to build their own image changes `image` and `registry` to a registry they own first, and says never to run a plain `bin/kamal deploy` against `ghcr.io/plainprogrammer/collector` because it would overwrite the public `latest` with a single-architecture image.
 - [ ] **AC-5.4** Given the deploy file When it is read Then the registry credentials are active, not commented out, and `.kamal/secrets` still reads the password from `KAMAL_REGISTRY_PASSWORD`.
 
@@ -135,7 +137,7 @@ This feature publishes ready-made, public, multi-architecture images from CI, so
 
 - [ ] **AC-6.1** Given the built image When its filesystem is listed Then none of these exist under `/rails`: `docs/`, `spikes/`, `spec/`, `script/`, `.claude/`, `CLAUDE.md`, `.githooks/`, `orca.yaml`, `.worktreeinclude`.
 - [ ] **AC-6.2** Given the built image When it starts with a `SECRET_KEY_BASE` Then it boots, migrates, serves the home page, serves `/scanner` to a signed-in user, and serves the OCR engine files under `/ocr/v7.0.0/`.
-- [ ] **AC-6.3** Given the built image When `bin/rails "catalog:status[mtg]"` and `bin/rails "collector:user[you@example.com]"` run in it Then both complete as they do today.
+- [ ] **AC-6.3** Given the built image When `bin/rails "catalog:status[mtg]"` and `bin/rails "collector:user[you@example.com]"` run in it Then `catalog:status` prints its status (`No mtg refresh runs yet.` on a fresh instance) and `collector:user`, with `COLLECTOR_PASSWORD` set, prints that it created the admin.
 - [ ] **AC-6.4** Given the built image When `config/master.key`, `.env*`, `storage/` and `.kamal/` are checked Then none are present (unchanged from today's `.dockerignore`, re-asserted because the image is now public).
 
 ### Story 7: Releasing and going public are written down
@@ -146,7 +148,7 @@ This feature publishes ready-made, public, multi-architecture images from CI, so
 
 **Acceptance criteria:**
 
-- [ ] **AC-7.1** Given `docs/releasing.md` When it is read Then it says a release is an annotated `vX.Y.Z` tag on `main` pushed to the repository, that the first release is `v0.1.0`, what each trigger publishes (the table from ADR 0009), and that the workflow publishes on any matching `v*` tag push while "annotated, on `main`" is procedure.
+- [ ] **AC-7.1** Given `docs/releasing.md` When it is read Then it says a release is an annotated `vX.Y.Z` tag on `main` pushed to the repository, that the first release is `v0.1.0`, what each trigger publishes (the table from ADR 0009), that the workflow publishes on any tag push matching `vX.Y.Z` or `vX.Y.Z-<suffix>` while "annotated, on `main`" is procedure, and that only the newest release's workflow may be re-run, because re-running an older one would move `latest`, `X` and `X.Y` back.
 - [ ] **AC-7.2** Given `docs/releasing.md` When it is read Then it has the go-public checklist in this order: push the first image, verify an authenticated pull, link the package to the repository, change the package's visibility to public, verify an anonymous pull; and it says the change cannot be undone.
 - [ ] **AC-7.3** Given the README's Self-hosting section When it is read Then the Compose subsection describes the first run from the image (no checkout), the `COLLECTOR_IMAGE` variable in its table, the upgrade as `docker compose pull && docker compose up -d`, and building from source as the alternative; the "Upgrading to accounts" steps say to pull the image, not the code; and the Kamal subsection describes the image-based deploy (AC-5.3) so neither path still documents building as the default.
 - [ ] **AC-7.4** Given the README's Card scanner subsection When it is read Then the sentence about the image build downloading the OCR engine still holds for the published image, and says the published image already contains it.
@@ -158,21 +160,24 @@ This feature publishes ready-made, public, multi-architecture images from CI, so
 The workflow publishes images only after `bin/ci` has passed on the same commit, and only for pushes to `main` and tags matching `vX.Y.Z` or `vX.Y.Z-<suffix>`.
 
 **Must:**
-- Run `bin/ci` on tag pushes as well as on pull requests and pushes to `main`, and make the publish depend on it.
+- Run `bin/ci` on matching tag pushes as well as on pull requests and pushes to `main`, and make the build and publish jobs depend on it.
 - Build both architectures on pull requests, pushes to `main` and release tags.
-- Publish nothing on pull requests, on failed `bin/ci`, on a failed build of either architecture, or for tags that do not match the release pattern.
-- Authenticate to the registry with the workflow's own token, with write access to packages only on the jobs that push.
+- Push nothing on pull requests and on failed `bin/ci`; publish no tag when either architecture's build fails.
+- Not run the build or publish jobs for tags that do not match `vX.Y.Z` or `vX.Y.Z-<suffix>`.
+- Authenticate to the registry with the workflow's own token; grant `packages: write` only to the build and merge jobs.
+- Build each per-architecture image without provenance or SBOM attestations, so every manifest list has exactly two entries.
 
 **Must not:**
-- Publish a manifest that lacks either architecture.
+- Publish a manifest list that lacks either architecture.
 - Push from anywhere but the workflow (the maintainer's Kamal deploys use `--skip-push`).
+- Send build cache to the registry; the cache lives in the CI service's own cache.
 
 ### FR-2: Tags and labels
 
 **Must:**
-- Follow ADR 0009's table: `vX.Y.Z` → `X.Y.Z`, `X.Y`, `latest`, and `X` when X ≥ 1; `vX.Y.Z-<suffix>` → `X.Y.Z-<suffix>` only; push to `main` → `edge`, `sha-<short sha>`.
+- Follow ADR 0009's table: `vX.Y.Z` → `X.Y.Z`, `X.Y`, `latest`, and `X` when X ≥ 1; `vX.Y.Z-<suffix>` → `X.Y.Z-<suffix>` only; push to `main` → `edge`, `sha-<7-character sha>`.
 - Make all tags of one run resolve to one manifest list.
-- Set the OCI labels named in AC-3.5 on every published image.
+- Set the OCI labels named in AC-3.5 on every per-architecture image, with the licence and description given explicitly rather than taken from the repository's settings.
 
 **Must not:**
 - Publish a `0` tag for `0.y.z` releases.
@@ -213,7 +218,8 @@ The workflow publishes images only after `bin/ci` has passed on the same commit,
 **Must:**
 - Add `docs/releasing.md` with the release procedure, the publish table and the go-public checklist (AC-7.1, AC-7.2).
 - Update the README's Self-hosting section for both paths together (AC-7.3, AC-7.4, AC-5.3), and the Compose header comment.
-- Keep the README's statement that Dependabot keeps GitHub Actions up to date true for the new actions.
+- Keep the README's statement that Dependabot keeps GitHub Actions up to date true for the new actions (the `github-actions` ecosystem is already configured).
+- Update the sentences this feature makes stale: `CLAUDE.md` ("GitHub Actions runs only `bin/ci`" and Kamal's "placeholder server/registry"), the README's Testing and CI sentence ("runs `bin/ci`, so local and hosted CI are the same") and Self-hosting introduction ("Both use the `Dockerfile` in this repository"), `.claude/memory/steering/tech-stack.md` (both paths build the `Dockerfile`; CI runs `bin/ci`), and the Release Process placeholder in `.claude/memory/steering/team-practices.md`, which points at `docs/releasing.md`.
 
 **Must not:**
 - Leave any README instruction that says to pull the source and rebuild as the upgrade path.
@@ -223,19 +229,19 @@ The workflow publishes images only after `bin/ci` has passed on the same commit,
 ### Performance
 
 - A pull-request run (`bin/ci` plus both builds) and a publish run each complete within 30 minutes on the repository's standard runners. The plan records the first measured durations; if a run is slower, that is reported, not hidden.
-- Layer caching is used so that a run with no `Gemfile.lock` change does not reinstall gems from scratch.
+- Layer caching, held in the CI service's cache rather than the registry, is used so that a run with no `Gemfile.lock` change does not reinstall gems from scratch.
 
 ### Security
 
-- The workflow's token has `packages: write` only on jobs that push; pull-request runs have read-only access to packages.
+- `packages: write` is granted only to the build and merge jobs; pull-request runs of those jobs never push (no image push, no cache push) and the merge job does not run for them.
 - No secret enters the image: `config/master.key`, `.env*`, `.kamal/` and `storage/` stay excluded (AC-6.4). The image needs only `SECRET_KEY_BASE` (Compose) or `RAILS_MASTER_KEY` (Kamal) at runtime, as today.
 - The image runs as the non-root user and exposes the same port as today.
 - The source becomes readable by anyone who pulls the image (ADR 0008); nothing in the repository that must stay private may be inside the build context.
 
 ### Reliability
 
-- A publish is all-or-nothing: either every tag of the run points at a complete two-architecture manifest list, or nothing is pushed.
-- Re-running the workflow for the same commit is safe: it produces the same tags with the same content (AC-3.7).
+- A publish is all-or-nothing: either every tag of the run points at a complete two-architecture manifest list, or no tag is published (an untagged per-architecture digest may remain).
+- Re-running the newest release's workflow is safe: it produces the same tags on a list built from the same commit (AC-3.7). Re-running an older release's workflow is forbidden by `docs/releasing.md`.
 - If arm64 hosted runners become unavailable to the repository, the build falls back to emulation on the amd64 runner without changing tags or documentation (ADR 0010); this is a plan change, not a spec change.
 
 ## Error Scenarios
@@ -243,10 +249,11 @@ The workflow publishes images only after `bin/ci` has passed on the same commit,
 | Scenario | Expected Behavior |
 |----------|-------------------|
 | `bin/ci` fails on a tag or on `main` | The build and publish jobs do not run; nothing is pushed; the run is red. |
-| One architecture's build fails | No tag is published for that run; the run is red and names the failing architecture. |
+| One architecture's build fails | No tag is published for that run; the run is red and names the failing architecture; the other architecture's untagged digest may remain. |
 | The OCR engine download fails during the build (registry unreachable or checksum mismatch) | The build fails and nothing is published; re-running the workflow retries. |
-| A tag that does not match the release pattern is pushed (for example `v1.2` or `release-1`) | `bin/ci` may run; nothing is published. |
-| The maintainer runs a plain `bin/kamal deploy` | Not prevented by software; the README says not to, and `docs/releasing.md` repeats it. If it happens, re-running the workflow for the latest release restores `latest` (AC-3.7). |
+| A tag that does not match the release pattern is pushed (for example `v1.2` or `release-1`) | The build and publish jobs do not run; nothing is pushed; the run is not red for that reason. |
+| The maintainer runs a plain `bin/kamal deploy` | Not prevented by software; the README says not to, and `docs/releasing.md` repeats it. If it happens, re-running the newest release's workflow restores `latest` (AC-3.7). |
+| An older release's workflow is re-run | `latest`, `X` and `X.Y` move back to it. Forbidden by `docs/releasing.md`; recovered by re-running the newest release's workflow. |
 | An anonymous pull fails with "denied" | The package is still private; the go-public checklist's visibility step has not been done. |
 | The package is made public before the hygiene change lands | It cannot be made private again; the package is deleted and re-published after the fix. `docs/releasing.md` orders the steps to avoid this. |
 | arm64 runners are unavailable to the private repository | The run fails on the arm64 job; the fallback in ADR 0010 is applied as a plan change. |

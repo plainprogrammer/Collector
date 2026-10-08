@@ -34,7 +34,7 @@ build. The repository currently has no git tags.
 - Publish from the existing CI workflow (which must also run on `v*` tag pushes), only after `bin/ci` has
   passed on the same commit: pull requests build
   both architectures without pushing; pushes to `main` publish the `edge` channel; `vX.Y.Z` tags publish
-  release tags and `latest` (rules in ADR 0009). The workflow publishes on any `v*` tag push.
+  release tags and `latest` (rules in ADR 0009). The workflow publishes on any tag push matching the release pattern.
 - Keep development-only paths out of the image before the first public push: `docs/`, `spikes/`, `spec/`,
   `.claude/`, `CLAUDE.md`, `.githooks/`, `orca.yaml`, `.worktreeinclude`, and `script/`. The image must still
   boot, migrate on start, serve the scanner pages and OCR assets, and run the operational rake tasks
@@ -52,7 +52,7 @@ build. The repository currently has no git tags.
   release `v0.1.0`), what each trigger publishes, and the one-time go-public checklist (push the first image,
   verify an authenticated pull, link the package to the repository, change its visibility to public, verify an
   anonymous pull). The visibility change is manual because it cannot be undone. "Annotated, on `main`" is
-  release procedure recorded there; the workflow publishes on any `v*` tag push.
+  release procedure recorded there; the workflow publishes on any tag push matching the release pattern.
 - Update the README's Docker Compose and Kamal sections together: first run from the image, upgrade with
   `docker compose pull && docker compose up -d`, and the build-from-source alternative.
 

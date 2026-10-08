@@ -64,8 +64,8 @@ Publishing a GitHub Release triggers the push; release notes live on the release
 
 We chose Option A because the PRD wants both in-place upgrades for self-hosters and a way to run the latest
 `main`, and because `X.Y.Z` tags double as Kamal versions. The first release is `v0.1.0`, publishing `0.1.0`,
-`0.1` and `latest`. The workflow publishes on any `v*` tag push; tagging an annotated tag on `main` is release
-procedure in `docs/releasing.md`, not something the workflow checks.
+`0.1` and `latest`. The workflow publishes on any tag push matching `vX.Y.Z` or `vX.Y.Z-<suffix>`; tagging an annotated tag on
+`main` is release procedure in `docs/releasing.md`, not something the workflow checks.
 
 Tag rules in full:
 
