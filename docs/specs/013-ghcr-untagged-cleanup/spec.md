@@ -1,7 +1,7 @@
 # Feature 013: Clean Up Untagged GHCR Package Versions
 
 **Status:** Approved
-**Version:** 1.1.0
+**Version:** 1.1.1
 **Created:** 2026-10-08
 **Last Updated:** 2026-10-08
 **Branch:** `013-ghcr-untagged-cleanup`
@@ -15,6 +15,7 @@
 |---------|------|--------|
 | 1.0.0 | 2026-10-08 | Initial draft from the approved [prd.md](prd.md) and ADR [0011](../../adr/0011-own-ghcr-cleanup-script.md). Approved by the maintainer |
 | 1.1.0 | 2026-10-08 | Spec review revisions (Fable, Mode A). **Post-delete check** also confirms every child digest of every tag is still fetchable, because deleting a child leaves its index intact (AC-2.4, FR-4); the check is part of the command. **Manifest reads** specified: by digest, anonymous pull token, `Accept` header, list vs single-image media types (FR-1, AC-3.4, AC-3.5). **Overlapping orphan units** merge; children missing from the version list are ignored; a unit deletes its list first (Terms, FR-1, NFR Reliability). **Pagination** by `page` on the `/users/…` path, not the `Link` header (FR-3, AC-3.2). **Token** variable `GH_TOKEN`, falling back to `GITHUB_TOKEN` (AC-3.7, FR-3). **Workflow** jobs `dry-run` and `delete` with conditions, permissions and a Sunday 06:00 UTC cron (FR-4). **Delete 404** means already deleted and the run continues; other refusals stop it (AC-3.6, maintainer's ruling). **Also:** names (`Collector::GhcrCleanup`), exact grace boundary, disjoint counts, malformed list, platform check on every tagged list before deleting (AC-3.8), AC-4.3 checkable any day, timeouts, preview status of token deletion |
+| 1.1.1 | 2026-10-08 | Second review pass (Fable, READY TO PLAN). Wording: the post-delete check re-reads the run's tagged versions by digest, re-applies AC-3.8 and checks each child with a `HEAD` sending the same `Accept` (AC-2.4); it also runs after a refused delete (AC-3.6); the `delete` job condition is hardened against `null == false`; a failed pull-token request has its own Error Scenario row; a merged unit deletes all its lists first; AC-4.3's boundary is exact |
 
 ---
 
@@ -89,7 +90,7 @@ Most untagged versions are not garbage. Ten of those 13 are the per-architecture
 - [ ] **AC-2.1** Given a tagged version of any age, including one with several tags When a deleting run happens Then it is kept.
 - [ ] **AC-2.2** Given an untagged version created more than 7 days ago that a tagged manifest list references When a deleting run happens Then it is kept.
 - [ ] **AC-2.3** Given an untagged manifest list older than 7 days that shares a child digest with a tagged manifest list When a deleting run happens Then the untagged list is deleted and the shared child is kept.
-- [ ] **AC-2.4** Given a deleting run that deleted at least one version When it finishes deleting Then it checks that every tag still resolves to a manifest list with exactly `linux/amd64` and `linux/arm64` and that every child digest each list names is still fetchable from the registry; the run fails, naming the tag and the missing digest, if any is not.
+- [ ] **AC-2.4** Given a deleting run that deleted at least one version When it finishes deleting Then it re-reads each tagged version from the run's tagged set by digest, re-applies the AC-3.8 platform rule, and checks that every child digest each list names is still fetchable from the registry (a `HEAD` sending the same `Accept` as FR-1); the run fails, naming the tag and the missing digest, if any is not.
 - [ ] **AC-2.5** Given the first deleting run against the live package When it has finished Then an anonymous `podman pull` of `latest`, `0.1.0` and `edge` succeeds for both `linux/amd64` and `linux/arm64` (the maintainer's check, recorded in `verification.md`).
 
 ### Story 3: The cleanup fails closed
@@ -105,7 +106,7 @@ Most untagged versions are not garbage. Ten of those 13 are the per-architecture
 - [ ] **AC-3.3** Given a tagged version whose manifest can't be fetched When any run happens Then nothing is deleted and the run exits non-zero naming that tag.
 - [ ] **AC-3.4** Given a tagged version whose manifest is a single image (for example one tagged by a plain `bin/kamal deploy`) or has an unknown media type When any run happens Then nothing is deleted and the run exits non-zero naming that tag and its media type.
 - [ ] **AC-3.5** Given an untagged version that is a candidate for deletion whose manifest can't be fetched or has an unknown media type When any run happens Then nothing is deleted and the run exits non-zero naming that digest.
-- [ ] **AC-3.6** Given a deleting run in which GitHub refuses a delete with any status other than 404 (401, 403 including the 5,000-download limit on public versions, 5xx) When the refusal arrives Then no further version is deleted and the run exits non-zero naming the refused version and the response status.
+- [ ] **AC-3.6** Given a deleting run in which GitHub refuses a delete with any status other than 404 (401, 403 including the 5,000-download limit on public versions, 5xx) When the refusal arrives Then no further version is deleted, the post-delete check (AC-2.4) still runs if anything was deleted, and the run exits non-zero naming the refused version and the response status, plus any post-delete finding.
 - [ ] **AC-3.7** Given neither `GH_TOKEN` nor `GITHUB_TOKEN` is set When `bin/ghcr-cleanup` starts Then it exits non-zero before any request, naming `GH_TOKEN`.
 - [ ] **AC-3.8** Given a tagged manifest list whose platforms are not exactly `linux/amd64` and `linux/arm64` When any run happens Then nothing is deleted and the run exits non-zero naming the tag and the platforms it found.
 - [ ] **AC-3.9** Given a deleting run in which a delete returns 404 When the response arrives Then the version is reported as already deleted and the run continues.
@@ -120,7 +121,7 @@ Most untagged versions are not garbage. Ten of those 13 are the per-architecture
 
 - [ ] **AC-4.1** Given `bin/ghcr-cleanup` is run without the delete flag When it finishes Then it deletes nothing and prints, for each version it would delete, the digest, its creation time, its tags (none) and why it is selected; and it prints the counts of versions in four disjoint buckets, assigned in this order: tagged, referenced (untagged), too young, selected; the four counts sum to the number of versions.
 - [ ] **AC-4.2** Given the workflow is started by hand When its dry-run input is left at its default Then the run is a dry run, and the job doing it has no `packages: write` permission.
-- [ ] **AC-4.3** Given the live package on the day of verification When a dry run is made from the development machine with the maintainer's `gh` token Then its selection is exactly the orphan units that are past the grace period, the orphan units inside it are reported as too young with their ages, and nothing is deleted. On 2026-10-08 the only orphan unit was `f03eb8274a90…` with its children `90ceeb5c0550…` and `0f9c9927048e…`: too young until 2026-10-15, selected after.
+- [ ] **AC-4.3** Given the live package on the day of verification When a dry run is made from the development machine with the maintainer's `gh` token Then its selection is exactly the orphan units that are past the grace period, the orphan units inside it are reported as too young with their ages, and nothing is deleted. On 2026-10-08 the only orphan unit was `f03eb8274a90…` with its children `90ceeb5c0550…` and `0f9c9927048e…`: too young until 2026-10-15T14:42:46Z (its creation plus 7 × 86,400 s), selected after.
 
 ### Story 5: Documented, and kept out of the image
 
@@ -143,7 +144,7 @@ Most untagged versions are not garbage. Ten of those 13 are the per-architecture
 - Read the manifest of every tagged version, require a manifest list with exactly `linux/amd64` and `linux/arm64` (AC-3.4, AC-3.8), and treat its child digests as referenced, whether or not they are in the version list.
 - Read the manifest of every candidate (untagged, unreferenced). A manifest list forms an orphan unit with its children as the Terms define; a single image is a unit on its own unless a list's unit already holds it; merge units that share a member.
 - Select an orphan unit when it is past the grace period; select all its members together.
-- Delete a unit's manifest list before its children, so an interrupted run leaves only standalone children, which a later run selects as their own units.
+- Delete all of a unit's manifest lists before its children, so an interrupted run leaves only standalone children, which a later run selects as their own units.
 
 **Must not:**
 - Select a tagged version.
@@ -157,7 +158,6 @@ Most untagged versions are not garbage. Ten of those 13 are the per-architecture
 - Stop deleting at the first delete refused with a status other than 404; exit non-zero naming the version and the response status.
 - Exit non-zero before any request when the token is missing.
 - Set explicit timeouts on every request: 10 seconds to open, 30 seconds to read.
-
 - Treat a 404 on delete as already deleted: report it and continue (AC-3.9).
 
 **Must not:**
@@ -175,7 +175,7 @@ Most untagged versions are not garbage. Ten of those 13 are the per-architecture
 
 **Must:**
 - Run on a weekly schedule, Sundays at 06:00 UTC, as a deleting run, and on `workflow_dispatch` with a boolean `dry_run` input defaulting to `true`.
-- Have two jobs with exclusive conditions: `dry-run` (`if: github.event_name == 'workflow_dispatch' && inputs.dry_run`, permissions `contents: read`, `packages: read`) and `delete` (`if: github.event_name == 'schedule' || inputs.dry_run == false`, permissions `contents: read`, `packages: write`).
+- Have two jobs with exclusive conditions: `dry-run` (`if: github.event_name == 'workflow_dispatch' && inputs.dry_run`, permissions `contents: read`, `packages: read`) and `delete` (`if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && !inputs.dry_run)`, permissions `contents: read`, `packages: write`).
 - Pass the token to the command as `GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}` on the step.
 - Leave the post-delete check (AC-2.4) to the command; the workflow adds no check of its own.
 - Use only actions already used in `ci.yml` or published by GitHub.
@@ -202,6 +202,7 @@ Most untagged versions are not garbage. Ten of those 13 are the per-architecture
 
 | Scenario | Expected behaviour |
 |---|---|
+| The pull-token request fails | Nothing deleted; exit non-zero naming the request (no manifest can be read, AC-3.3) |
 | Version list returns 401/403/5xx or malformed JSON | Nothing deleted; exit non-zero naming the request (AC-3.1) |
 | A tagged manifest returns 404/5xx | Nothing deleted; exit non-zero naming the tag (AC-3.3) |
 | A tag points at a single-architecture image or unknown media type | Nothing deleted; exit non-zero naming the tag and media type (AC-3.4) |
