@@ -44,8 +44,9 @@ Each step follows `docs/releasing.md`.
 5. **Verify an anonymous pull (AC-1.1).** After `podman logout ghcr.io`, `podman pull …:edge` succeeded, and
    the registry issued an anonymous pull token.
 
-The maintainer's `.kamal/secrets` fix (`63596c6`) then published `edge` and `sha-63596c6`. `sha-7b1b1c9` kept
-its manifest list.
+The maintainer's `.kamal/secrets` fix (`63596c6`) was pushed while steps 2 to 5 were under way. Its run published
+`edge` and `sha-63596c6` at 14:10:57Z. The step 3 labels were read from the `7b1b1c9` image pulled in step 2, and
+`sha-7b1b1c9` kept its manifest list.
 
 ## Release `v0.1.0`
 
@@ -61,10 +62,15 @@ its manifest list.
 
 ## Running the published image
 
-- **AC-2.2 (emulated arm64):** `SMOKE_BOOT_ATTEMPTS=300 bin/image-smoke ghcr.io/plainprogrammer/collector:edge
-  --platform linux/arm64` on the arm64 variant of `edge` (commit `63596c6`, the same commit as `latest`) passed
-  all five sections. A native arm64 host is the maintainer's to try.
-- **AC-1.2, AC-1.3, AC-6.2:** with the default `compose.yaml` under project `collector012`:
+- **AC-2.2 (arm64):** evidenced two ways.
+  - Emulated: `SMOKE_BOOT_ATTEMPTS=300 bin/image-smoke ghcr.io/plainprogrammer/collector:edge --platform linux/arm64`
+    passed all five sections. `edge` is built from the same commit as `latest` (`63596c6`), but it is a
+    separate build with its own arm64 digest.
+  - Native: every workflow run smoke-tests the arm64 image on `ubuntu-24.04-arm` before pushing it, including the
+    re-run that produced the current `latest`.
+  - A native arm64 host is the maintainer's to try.
+- **AC-1.2, AC-1.3, AC-6.2:** with the default `compose.yaml` under project `collector012`. The commands ran in the
+  checkout, but only `compose.yaml` was used from it; the image carries no source tree.
   - `COLLECTOR_IMAGE=…:edge` booted, `/up` answered 200, and `collector:user` printed `Created admin upgrade@example.com.`
   - `podman compose pull && podman compose up -d` switched to `ghcr.io/plainprogrammer/collector:latest`, which
     reported `Up 12 seconds (healthy)`.
