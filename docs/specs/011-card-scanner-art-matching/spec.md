@@ -1,7 +1,7 @@
 # Feature 011: Card Scanner — Art Matching on Live Capture
 
 **Status:** Draft
-**Version:** 1.1.1
+**Version:** 1.1.2
 **Created:** 2026-10-07
 **Last Updated:** 2026-10-07
 **Branch:** `011-card-scanner-art-matching`
@@ -15,6 +15,7 @@
 | 1.0.0 | 2026-10-07 | Initial draft from the approved [PRD](prd.md) |
 | 1.1.0 | 2026-10-07 | Spec review revisions (Fable, NEEDS REVISION, nothing blocking). **Maintainer rulings:** each artwork's image is its oldest English card printing's with a `small` image, since bulk-file order isn't kept after a refresh (AC-3.3); the overrule note names what it overruled, the name or the collector line (AC-7.4). **Also:** two generic source hooks, one before the skip decision and one after a run (AC-2.3, AC-2.4); an artwork's printings are active, English, card printings, with a rule for an artwork two cards share (glossary, AC-6.2); "text alone" is spec 009's ranking on the same reading (AC-6.7); a displaced collector-line printing loses its collector-line evidence (AC-6.4); a persisted build run guards concurrency and feeds `catalog:status`, with a Failed line (AC-3.2, AC-3.11); measurement records art on the server by reading key (AC-9.3); the decoder is a development and CI dependency (NFR Reliability); the image fetch extends the Scryfall client (AC-3.4); failed images are retried each build (AC-3.6); the art parameter's shape (AC-6.1); weak art per card (glossary); the live crop pinned to spec 010's (AC-5.3); the opt-in accessor (AC-1.2); the supersession list completed; AC-9.1's cache naming confirmed |
 | 1.1.1 | 2026-10-07 | Second spec review (Fable, NEEDS REVISION, nothing blocking). **Fixes:** AC-6.4's language parenthetical removed (English only, as the glossary says); unknown, printing-less and card-less artworks are filtered out before "nearest" is taken, and give no weak art (glossary, AC-6.3); what art overruled is the collector line whenever the text's first candidate carries collector-line evidence, else the name (AC-6.7); the corrected printing is only the one spec 009's ranking already produced (AC-6.4); build runs keep a heartbeat and a short staleness cutoff so a restarted job carries on (AC-3.2, AC-3.8, AC-3.11). **Also:** "oldest" ordering with an undated printing last (AC-3.3); the opt-in read through app configuration that tests set (AC-1.2); the art cache and index under the configured catalog directory (AC-3.4, AC-3.9); the artwork id's form and lenient reading of the art part (AC-6.1); no Artwork row when the art part was dropped (AC-7.1); AC-7.2's badge wording; "tier" defined (AC-6.7); spec 009 AC-2.1 and AC-2.3/2.4 added to Supersedes; a second identical build records only its run (AC-3.8); ADR 0006's representative rule in AC-9.7; the artwork id on the Other printings link (AC-7.5) |
+| 1.1.2 | 2026-10-07 | **Maintainer ruling:** weak art is widened. Any text candidate's card, other than the confident-art card, that owns one of the 10 nearest usable artworks holds weak art, whatever its distance. This replaces the PRD's "above 300 bits", under which a second card at or below 300 bits got no art evidence while a card at 400 bits did (glossary, AC-6.5). Still only a tie-break |
 
 ---
 
@@ -54,7 +55,7 @@ The scanner (specs 007 and 009) identifies a card from its name and collector li
 - **The art index:** one record per artwork (its id and its fingerprint), built by the app from the catalog and downloaded by the scanner page.
 - **The margin:** 300 bits. A named, provisional value (AC-6.2).
 - **Confident art:** the nearest usable artwork's distance is at or below the margin.
-- **Weak art:** a card's own smallest distance among the 10 nearest artworks is above the margin. This holds per card, whether or not another card is confident.
+- **Weak art:** a text candidate's card, other than the confident-art card, owns one of the 10 nearest usable artworks, whatever its distance (maintainer, 2026-10-07, widening the PRD's "above 300 bits"). This holds per card, whether or not another card is confident.
 - **Art matching on:** the instance's opt-in setting is set (Story 1).
 - **Tier:** the first part of AC-6.6's order on which a candidate qualifies: confident art, strong name, collector line, weak art, or name rank.
 
@@ -205,7 +206,7 @@ The scanner (specs 007 and 009) identifies a card from its name and collector li
   - otherwise, among the artwork's printings: the collector line's printing if it is one of them (including the one-digit-corrected printing spec 009's ranking already produced for this card, when it is its top name candidate; no new cross-check runs), else the newest in the set the collector line read, else the newest, marked "Printing not confirmed"
 
   A collector-line printing of the same card with a different artwork is not chosen. The art's artwork decides (decided 2026-10-07). The candidate's evidence is then art, plus name if the name matched the card. It doesn't carry collector-line evidence, because the line didn't match the printing shown.
-- [ ] **AC-6.5** Given no confident art When candidates are ranked Then the order is spec 009's, except that among candidates equal on strong name and collector line, a card holding weak art ranks above one without. Between two candidates both holding weak art, or both without, name rank decides, as before. Weak art never adds a card, never outranks a strong name or a collector-line match, and never changes a candidate's printing.
+- [ ] **AC-6.5** Given any reading When the candidates other than a confident-art candidate are ranked Then their order is spec 009's, except that among candidates equal on strong name and collector line, a card holding weak art ranks above one without. Between two candidates both holding weak art, or both without, name rank decides, as before. Weak art never adds a card, never outranks a strong name or a collector-line match, and never changes a candidate's printing.
 - [ ] **AC-6.6** Given the ranking When a candidate's support is recorded Then it is a set of named evidence kinds: collector line, collector line corrected, name, art, art weak. The order follows the one rule spec 009 AC-5.5 named, now confident art, then strong name, then collector line, then weak art, then name rank. The candidates are still the top 3.
 - [ ] **AC-6.7** Given a ranked reading When the confirm step or measurement mode needs to know what decided the order Then the reading exposes, in memory only:
   - the tier of its first candidate
