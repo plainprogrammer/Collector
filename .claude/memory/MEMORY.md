@@ -29,3 +29,5 @@
 - [Spec 012 follow-ups](spec-012-followups.md) — issues #17–#21: digest cleanup (spec 013, PR #26, live delete owed after Oct 15), ruby-vips, smoke grep, releasing.md lines, evidence owed
 - [GHCR and Actions facts](ghcr-and-actions-facts.md) — visibility one-way, attestations need public repo, arm64 runners, metadata-action v0, kamal config limits; classic PATs only, /users/ paging, Accept or 404; CI runs only on PRs/main (open a draft PR); .dockerignore drops /script, mount it
 - [ADR numbers across branches](adr-numbers-across-branches.md) — check origin/main's docs/adr before numbering; an unmerged ADR takes the next free number on rebase
+- [Bulk file copy](bulk-file-copy.md) — find … -exec cp -n -t dest {} + for big caches; a glob hits "Argument list too long"
+- [Sitting capture alignment](sitting-capture-alignment.md) — check each row's first-capture name vs the expected card (re-scans shift rows; CAPTURES override); brief "scan and add" explicitly
