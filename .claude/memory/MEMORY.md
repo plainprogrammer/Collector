@@ -4,7 +4,7 @@
 - [Small incremental commits](small-incremental-commits.md) — one Conventional Commit per step/change
 - [Secret files are user-verified](secret-files-user-verified.md) — agents are read-denied on secrets/storage; ask the user to cat them; briefs must forbid shell reads (grep/cat) too
 - [SDD review model choice](sdd-review-model-choice.md) — reviews as read-only Fable subagents; brainstorm/spec/plan in the main session (Opus or Fable); implementation on Opus
-- [Plan reviews run the code](plan-reviews-run-the-code.md) — trace plan code against the files it edits; read-only Fable by default (spec 009), run the code only on request
+- [Plan reviews run the code](plan-reviews-run-the-code.md) — trace plan code against the files it edits; read-only Fable by default (spec 009); planner runs the code in scratch first (spec 013)
 - [Dev machine image tools](dev-machine-image-tools.md) — magick 7, Pillow, ffmpeg present; no libvips/ruby-vips here (Dockerfile has libvips); decode via `magick … ppm:-`
 - [Scryfall API access](scryfall-api-access.md) — docs 403 to WebFetch; use curl + User-Agent; bulk JSONL facts
 - [PR screenshots workflow](pr-screenshots-workflow.md) — headless Firefox + magick/ffmpeg; embed in private-repo PRs via blob/<sha>?raw=true
@@ -26,6 +26,6 @@
 - [Verify corpus manifests](verify-corpus-manifests.md) — resolve, check overlap, plst `PCY-132` numbers, era override for frames without set codes, foil ★ vs the foil column; a clean-reading miss may be a manifest error
 - [ExitPlanMode for SDD plans](exitplanmode-for-sdd-plans.md) — long plans: summarise in chat and take the go-ahead there, not via the approval dialog
 - [Device sitting account check](device-sitting-account-check.md) — find which account holds the sitting (by reading keys) before scoring or resetting
-- [Spec 012 follow-ups](spec-012-followups.md) — issues #17–#21: digest cleanup, ruby-vips, smoke grep, releasing.md lines, evidence owed
-- [GHCR and Actions facts](ghcr-and-actions-facts.md) — visibility one-way, attestations need public repo, arm64 runners, metadata-action v0, kamal config limits; CI runs only on PRs/main (open a draft PR); .dockerignore drops /script, mount it
+- [Spec 012 follow-ups](spec-012-followups.md) — issues #17–#21: digest cleanup (spec 013, PR #26, live delete owed after Oct 15), ruby-vips, smoke grep, releasing.md lines, evidence owed
+- [GHCR and Actions facts](ghcr-and-actions-facts.md) — visibility one-way, attestations need public repo, arm64 runners, metadata-action v0, kamal config limits; classic PATs only, /users/ paging, Accept or 404; CI runs only on PRs/main (open a draft PR); .dockerignore drops /script, mount it
 - [ADR numbers across branches](adr-numbers-across-branches.md) — check origin/main's docs/adr before numbering; an unmerged ADR takes the next free number on rebase

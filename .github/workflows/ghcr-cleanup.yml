@@ -1,0 +1,54 @@
+name: GHCR cleanup
+
+# Deletes untagged ghcr.io/plainprogrammer/collector versions that no tag needs, once their orphan unit is more
+# than 7 days old (spec 013, ADR 0011, docs/releasing.md). The weekly run deletes; a run started by hand is a dry
+# run unless dry_run is unticked. bin/ghcr-cleanup checks every tag after deleting.
+on:
+  schedule:
+    - cron: "0 6 * * 0" # Sundays 06:00 UTC
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Report what would be deleted and delete nothing
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  dry-run:
+    if: github.event_name == 'workflow_dispatch' && inputs.dry_run
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+
+      - name: Dry run
+        run: bin/ghcr-cleanup
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  delete:
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && !inputs.dry_run)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+
+      - name: Delete orphans
+        run: bin/ghcr-cleanup --delete
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

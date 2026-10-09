@@ -46,7 +46,7 @@ echo "== pages and assets (a user exists now, so first-run redirects are over)"
 echo "== development-only paths and secrets must be absent"
 present="$("$cli" exec "$name" sh -c '
   cd /rails
-  for path in docs spikes spec script .claude CLAUDE.md .githooks orca.yaml .worktreeinclude config/master.key .kamal; do
+  for path in docs spikes spec script .claude CLAUDE.md .githooks orca.yaml .worktreeinclude config/master.key .kamal bin/ghcr-cleanup lib/collector/ghcr_cleanup.rb; do
     [ -e "$path" ] && echo "$path"
   done
   ls -d .env* 2>/dev/null
