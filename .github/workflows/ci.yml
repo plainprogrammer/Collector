@@ -28,6 +28,9 @@ jobs:
         with:
           bundler-cache: true
 
+      - name: Install ImageMagick (art matching's decoder, ADR 0012)
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends imagemagick
+
       - name: Run bin/ci
         run: bin/ci
 

@@ -50,5 +50,8 @@ module Collector
 
     # Card scanner measurement mode (spec 007 Story 5): off unless an environment sets it.
     config.x.scanner_measurement = nil
+
+    # Art matching for the card scanner (spec 011): off until config/initializers/art_matching.rb reads the environment.
+    config.x.mtg_art_matching = false
   end
 end

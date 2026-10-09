@@ -4,13 +4,19 @@ class FakeCatalogSource
   def self.entry_extension_model = nil
   def self.identity_extension_model = nil
 
-  attr_accessor :version, :sets, :entries, :languages_result, :fail_at
-  attr_reader :downloads
+  attr_accessor :version, :sets, :entries, :languages_result, :fail_at, :reapply
+  attr_reader :downloads, :refreshed
 
-  def initialize(version: "v1", sets: [], entries: [], languages: [ "en" ], fail_at: nil)
-    @version, @sets, @entries, @languages_result, @fail_at = version, sets, entries, languages, fail_at
+  def initialize(version: "v1", sets: [], entries: [], languages: [ "en" ], fail_at: nil, reapply: false)
+    @version, @sets, @entries, @languages_result, @fail_at, @reapply = version, sets, entries, languages, fail_at, reapply
     @downloads = []
+    @refreshed = []
   end
+
+  # Spec 011 AC-2.4: the optional hooks a source may implement.
+  def reapply? = reapply
+
+  def after_refresh(run) = refreshed << [ run.status, run.source_version ]
 
   def languages
     raise languages_result if languages_result.is_a?(Exception)

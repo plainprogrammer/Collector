@@ -14,8 +14,10 @@ class Scanner::MeasurementRun
   MAX_FRAME_BYTES = 32.megabytes
   GUIDE_KEYS = %w[x y width height].freeze
   PNG_SIGNATURE = "\x89PNG\r\n\x1A\n".b
-  # Spec 009 adds the reading key, the outline ("live", "found" or "not_found") and the detector's timings (AC-9.2, AC-9.3).
-  EXTRA_FIELDS = %w[reading_key outline detect_ms warp_ms].freeze
+  # Spec 009 adds the reading key, the outline ("live", "found" or "not_found") and the detector's timings (AC-9.2, AC-9.3);
+  # spec 011 the art search's time, the index's download and parse times, and when the scanner was ready, in ms since the
+  # page loaded (AC-9.5).
+  EXTRA_FIELDS = %w[reading_key outline detect_ms warp_ms art_ms art_download_ms art_ready_ms ready_ms].freeze
   EVENT_KINDS = %w[add undo details].freeze
 
   def self.enabled? = Rails.configuration.x.scanner_measurement.present?
@@ -116,6 +118,24 @@ class Scanner::MeasurementRun
 
   def events(row)
     path = row_dir(row).join("events.jsonl")
+    path.file? ? path.readlines.map { JSON.parse(it) } : []
+  end
+
+  # Spec 011 AC-9.3: what the ranking decided for each reading, one line per reading for the whole run (the capture's row
+  # may not exist yet: the page sends the capture and the reading at the same time). Joined to captures by reading key.
+  def record_reading!(key, reading)
+    first, second = reading.art_usable.first(2)
+    line = { "reading_key" => key, "at" => Time.current.utc.iso8601(3), "artworks" => reading.artworks&.map { it.to_h.stringify_keys },
+             "tier" => reading.tier, "overruled" => reading.overruled, "overruled_scope" => reading.overruled_scope,
+             "art_status" => reading.art_status, "candidates" => reading.candidates.map { it.entry.external_key },
+             "nearest" => first&.distance, "second" => second&.distance,
+             "second_other_card" => second && second.identity_id != first.identity_id }
+    @dir.mkpath
+    @dir.join("readings.jsonl").open("a") { |file| file.puts(JSON.generate(line)) }
+  end
+
+  def readings
+    path = @dir.join("readings.jsonl")
     path.file? ? path.readlines.map { JSON.parse(it) } : []
   end
 

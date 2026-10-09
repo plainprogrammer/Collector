@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_03_100002) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_07_100003) do
   create_table "accounts", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -146,6 +146,40 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_03_100002) do
     t.check_constraint "quantity BETWEEN 1 AND 9999", name: "lots_quantity_range"
   end
 
+  create_table "mtg_art_builds", force: :cascade do |t|
+    t.string "status", null: false
+    t.string "job_id"
+    t.string "catalog_version"
+    t.string "settings_digest"
+    t.string "index_file"
+    t.integer "total_count", default: 0, null: false
+    t.integer "without_image_count", default: 0, null: false
+    t.integer "fetched_count", default: 0, null: false
+    t.integer "fingerprinted_count", default: 0, null: false
+    t.integer "failed_count", default: 0, null: false
+    t.integer "indexed_count", default: 0, null: false
+    t.text "message"
+    t.datetime "started_at", null: false
+    t.datetime "heartbeat_at", null: false
+    t.datetime "finished_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["job_id"], name: "index_mtg_art_builds_on_job_id"
+    t.index ["status", "started_at"], name: "index_mtg_art_builds_on_status_and_started_at"
+  end
+
+  create_table "mtg_artworks", force: :cascade do |t|
+    t.string "illustration_id", null: false
+    t.integer "catalog_entry_id", null: false
+    t.binary "fingerprint", null: false
+    t.string "settings_digest", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["catalog_entry_id"], name: "index_mtg_artworks_on_catalog_entry_id"
+    t.index ["illustration_id"], name: "index_mtg_artworks_on_illustration_id", unique: true
+    t.index ["settings_digest"], name: "index_mtg_artworks_on_settings_digest"
+  end
+
   create_table "mtg_cards", force: :cascade do |t|
     t.integer "catalog_identity_id", null: false
     t.string "mana_cost"
@@ -174,7 +208,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_03_100002) do
     t.string "scryfall_uri", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "illustration_id"
     t.index ["catalog_entry_id"], name: "index_mtg_printings_on_catalog_entry_id", unique: true
+    t.index ["illustration_id"], name: "index_mtg_printings_on_illustration_id"
   end
 
   create_table "scanner_sitting_entries", force: :cascade do |t|
@@ -234,6 +270,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_03_100002) do
   add_foreign_key "catalog_names", "catalog_identities"
   add_foreign_key "lots", "accounts"
   add_foreign_key "lots", "catalog_entries"
+  add_foreign_key "mtg_artworks", "catalog_entries"
   add_foreign_key "mtg_cards", "catalog_identities"
   add_foreign_key "mtg_printings", "catalog_entries"
   add_foreign_key "scanner_sitting_entries", "accounts", on_delete: :cascade

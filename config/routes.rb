@@ -65,6 +65,10 @@ Rails.application.routes.draw do
   # The self-hosted OCR engine for the card scanner (spec 007, ADR 0001).
   get "ocr/:version/*path", to: "ocr_assets#show", as: :ocr_asset, format: false, constraints: { version: /v\d+\.\d+\.\d+/ }
 
+  # The art index for the card scanner's art matching (spec 011 Story 4): global catalog data, public and immutable.
+  get "scanner/art/:name", to: "scanner/art_indexes#show", as: :scanner_art_index, format: false,
+    constraints: { name: /art-index-[a-z0-9-]+\.bin\.gz/ }
+
   namespace :admin do
     resources :users, except: :show do
       resource :deletion, only: :new, module: :users

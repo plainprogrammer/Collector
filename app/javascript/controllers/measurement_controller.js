@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 import { Turbo } from "@hotwired/turbo-rails"
 
 // Measurement mode (spec 007 Story 5, development only): stores each capture's text, strip images, reading key, outline and
-// detector timings against the manifest row chosen before the shutter, then shows the next row. A capture counts only once
+// detector timings (and spec 011's art and readiness timings) against the manifest row chosen before the shutter, then shows the next row. A capture counts only once
 // stored. For spec 009's live sitting it also records what the collector did with each reading (AC-9.2): adds with the
 // candidate's rank, Undo, and opening a copy's details. The add and Undo requests themselves never carry a rank.
 // With keepFrames (spec 010 Story 3) a live capture also stores its full frame and the guide rect, in the same request.
@@ -10,7 +10,7 @@ export default class extends Controller {
   static targets = [ "row", "status", "retry" ]
   static values = { capturesUrl: String, eventsUrl: String, keepFrames: Boolean }
 
-  async store({ detail: { nameText, collectorText, ms, key, outline, detectMs, warpMs, strips, frame } }) {
+  async store({ detail: { nameText, collectorText, ms, key, outline, detectMs, warpMs, artMs, art, readyMs, strips, frame } }) {
     const body = new FormData()
     body.append("capture[file]", this.rowTarget.value)
     body.append("capture[name_text]", nameText)
@@ -21,6 +21,10 @@ export default class extends Controller {
     body.append("capture[outline]", outline || "")
     body.append("capture[detect_ms]", detectMs ?? "")
     body.append("capture[warp_ms]", warpMs ?? "")
+    body.append("capture[art_ms]", artMs ?? "")
+    body.append("capture[art_download_ms]", art?.downloadMs ?? "")
+    body.append("capture[art_ready_ms]", art?.readyMs ?? "")
+    body.append("capture[ready_ms]", readyMs ?? "")
     body.append("capture[name_strip]", await png(strips.name), "name.png")
     body.append("capture[collector_strip]", await png(strips.collector), "collector.png")
     if (this.keepFramesValue && frame) {

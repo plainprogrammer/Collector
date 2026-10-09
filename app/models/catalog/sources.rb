@@ -11,6 +11,8 @@
 #   #download(version, dir:)            Pathname of the verified local copy (IntegrityError, TransientError)
 #   #each_set { |SetRecord| }
 #   #each_entry(path, languages:) { |EntryRecord or Malformed| }   streamed, filtered to languages
+#   #reapply?                           optional: true to apply a version again although it was applied (asked before a skip)
+#   #after_refresh(run)                 optional: called after an applied run, or one skipped as already applied
 module Catalog::Sources
   SetRecord = Data.define(:code, :name, :released_on, :parent_code) do
     def digest = Catalog::Sources.digest(to_h)

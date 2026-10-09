@@ -206,4 +206,42 @@ RSpec.describe Catalog::Refresh, type: :model do
       expect { refresh(trigger: "scheduled") }.not_to(change { Catalog::Name.pluck(:id) })
     end
   end
+
+  context "with a source's refresh hooks (spec 011 AC-2.3, AC-2.4)" do
+    it "applies an already-applied version again when the source asks before the skip decision", :aggregate_failures do
+      refresh(trigger: "scheduled")
+      source.reapply = true
+
+      run = refresh(trigger: "scheduled")
+
+      expect(run).to have_attributes(status: "applied", source_version: "v1")
+      expect(source.downloads).to eq(%w[v1 v1])
+    end
+
+    it "skips an already-applied scheduled version when the source doesn't ask" do
+      refresh(trigger: "scheduled")
+
+      expect(refresh(trigger: "scheduled")).to have_attributes(status: "skipped")
+    end
+
+    it "tells the source after an applied run and after an already-applied skip" do
+      refresh(trigger: "scheduled")
+      refresh(trigger: "scheduled")
+
+      expect(source.refreshed).to eq([ %w[applied v1], %w[skipped v1] ])
+    end
+
+    it "doesn't tell the source when the refresh was skipped because another one is running", :aggregate_failures do
+      create(:catalog_refresh_run, collectible_type: "fake", status: "running", finished_at: nil, started_at: 1.minute.ago)
+
+      expect(refresh).to have_attributes(status: "skipped", message: "already running")
+      expect(source.refreshed).to be_empty
+    end
+
+    it "works with a source that implements neither hook" do
+      plain = Class.new(FakeCatalogSource) { undef_method :reapply?, :after_refresh }.new(sets: [ set_record("lea") ], entries: [ entry_record("a") ])
+
+      expect(described_class.new("fake", trigger: "manual", source: plain).call).to have_attributes(status: "applied")
+    end
+  end
 end

@@ -127,4 +127,17 @@ namespace :scanner do
     account = User.find_by!(email_address: ENV.fetch("SCANNER_EMAIL")).account
     puts Collector::ScannerFindings::SittingReport.new(run:, account:, ground_truth: ENV.fetch("GROUND_TRUTH")).to_markdown
   end
+
+  desc "Spec 011 AC-9.2–AC-9.6: score the art sitting (before Done), write its fixture: SCANNER_EMAIL=… GROUND_TRUTH=… " \
+    "[CAPTURES=IMG_6835.jpeg=2,…] bin/rails scanner:art_sitting_findings"
+  task art_sitting_findings: :environment do
+    run = Scanner::MeasurementRun.current
+    abort "Measurement mode is off; run this in development." unless run
+    account = User.find_by!(email_address: ENV.fetch("SCANNER_EMAIL")).account
+    # CAPTURES scores a row on another capture (file=number, comma-separated); unset, every row uses its first.
+    captures = Collector::ScannerFindings::ArtSittingReport.parse_captures(ENV["CAPTURES"])
+    report = Collector::ScannerFindings::ArtSittingReport.new(run:, account:, ground_truth: ENV.fetch("GROUND_TRUTH"), captures:)
+    Rails.root.join("spec/fixtures/card_scanner/phase3_shipped_sitting.json").write(JSON.pretty_generate(report.fixture) + "\n")
+    puts report.to_markdown
+  end
 end

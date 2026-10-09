@@ -1,6 +1,8 @@
 <%# locals: (sitting:, entries:, summary: nil) %>
+<% art = scanner_art %>
 <div class="c-scanner" data-controller="card-reader camera"
      data-card-reader-readings-url-value="<%= scanner_readings_path %>" data-card-reader-engine-path-value="<%= ocr_engine_path %>"
+     <% if art %>data-card-reader-art-index-url-value="<%= scanner_art_index_path(art[:name]) %>" data-card-reader-art-settings-value="<%= art[:settings].to_json %>"<% end %>
      data-action="camera:ready->card-reader#cameraReady camera:stopped->card-reader#cameraStopped camera:unavailable->card-reader#cameraUnavailable">
   <p class="c-scanner__status" role="status" aria-live="polite" data-card-reader-target="status">Loading the scanner…</p>
   <div class="c-scanner__stage" data-camera-target="stage" hidden>
@@ -17,6 +19,9 @@
     <label class="c-btn c-btn--ghost c-scanner__photo">Use a photo<input type="file" accept="image/*" class="c-sr" data-card-reader-target="picker" data-action="change->card-reader#pick" disabled></label>
     <button type="button" class="c-btn c-btn--secondary" data-card-reader-target="engineRetry" data-action="card-reader#retryEngine" hidden>Load the scanner again</button>
   </div>
+  <% if art %>
+    <p class="c-scanner__art" role="status" aria-live="polite" data-card-reader-target="artStatus">Loading artwork matching…</p>
+  <% end %>
   <p class="c-scanner__hint">Using a photo? Take the whole card, upright, filling most of the photo as the live guide does, on a plain background.</p>
   <div class="c-scanner__failure" data-card-reader-target="failure" hidden>
     <p class="c-status__message c-status__message--alert" data-card-reader-target="failureMessage"></p>

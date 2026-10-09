@@ -39,8 +39,8 @@ RSpec.describe "Image publishing files" do
       expect(service["volumes"]).to eq([ "collector_storage:/rails/storage" ])
       expect(service.dig("healthcheck", "test")).to eq([ "CMD", "curl", "-fsS", "http://localhost:8080/up" ])
       expect(service["environment"].keys).to contain_exactly(
-        "SECRET_KEY_BASE", "SOLID_QUEUE_IN_PUMA", "HTTP_PORT", "COLLECTOR_MTG_LANGUAGES", "COLLECTOR_CURRENCY",
-        "COLLECTOR_HTTPS", "COLLECTOR_TRUSTED_PROXIES")
+        "SECRET_KEY_BASE", "SOLID_QUEUE_IN_PUMA", "HTTP_PORT", "COLLECTOR_MTG_LANGUAGES", "COLLECTOR_MTG_ART_MATCHING",
+        "COLLECTOR_CURRENCY", "COLLECTOR_HTTPS", "COLLECTOR_TRUSTED_PROXIES")
     end
   end
 

@@ -86,6 +86,77 @@ RSpec.describe "Scanner readings", type: :request do
       expect(response).to have_http_status(:unprocessable_content)
       expect(response.body).to include("That reading was too long to use")
     end
+
+    context "with art matching on (spec 011)", :art_matching do
+      let(:art) { "aaaaaaaa-0000-4000-8000-000000000001" }
+
+      before do
+        MTG::Printing.find_by!(catalog_entry_id: bolt.id).update!(illustration_id: art)
+        create(:mtg_artwork, illustration_id: art, entry: bolt)
+      end
+
+      def read_with_art(artworks, name_text: "Lightnlng Bo1t")
+        post scanner_readings_path, params: { reading: { name_text:, collector_text: "", key:, artworks: } },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+      end
+
+      it "ranks with the artworks sent (AC-6.3)", :aggregate_failures do
+        read_with_art([ { id: art, distance: 120 } ], name_text: "")
+        expect(response).to have_http_status(:ok)
+        expect(response.body).to include("Lightning Bolt", "MOM · 123")
+      end
+
+      it "never refuses a reading for its art part (AC-6.1)", :aggregate_failures do
+        read_with_art([ { id: "not-a-uuid", distance: 120 } ])
+        expect(response).to have_http_status(:ok)
+        read_with_art("x")
+        expect(response).to have_http_status(:ok)
+      end
+
+      def html = Nokogiri::HTML5(response.body)
+
+      it "shows Matched, the art badge on the artwork's only printing, and the note when art overrules (AC-7.1, AC-7.2, AC-7.4)", :aggregate_failures do
+        create(:mtg_printing, entry: create(:catalog_entry, identity: create(:catalog_identity, name: "Shock"), name: "Shock", set: mom, number: "9"))
+        Catalog::NameIndex.new("mtg").rebuild
+        read_with_art([ { id: art, distance: 150 } ], name_text: "Shock")
+
+        expect(html.css(".c-scanner__read dt").map(&:text)).to include("Artwork")
+        expect(html.at_css(".c-scanner__read dt:contains('Artwork') + dd").text).to eq("Matched")
+        expect(html.at_css(".c-scanner__candidate .c-badge--success").text.strip).to eq("Matched by its artwork")
+        expect(response.body).to include("The artwork matches a different card from the one the name suggests.")
+        expect(html.at_css(".c-scanner__candidate a[href*='artwork=#{art}']")).to be_present
+      end
+
+      it "marks a shared artwork's printing as not confirmed, with the art as evidence (AC-7.2)", :aggregate_failures do
+        create(:mtg_printing, illustration_id: art, entry: create(:catalog_entry, identity: bolt.identity, name: "Lightning Bolt", set: create(:catalog_set, code: "m25"), number: "5"))
+        read_with_art([ { id: art, distance: 150 } ], name_text: "")
+
+        candidate = html.at_css(".c-scanner__candidate")
+        expect(candidate.at_css(".c-badge--warning").text).to include("Printing not confirmed")
+        expect(candidate.css(".c-scanner__evidence").map(&:text)).to include("Matched by its artwork")
+      end
+
+      it "shows Looks similar and the weak evidence line, with no art badge (AC-7.1, AC-7.3)", :aggregate_failures do
+        read_with_art([ { id: art, distance: 420 } ], name_text: "Lightning Bolt")
+
+        expect(html.at_css(".c-scanner__read dt:contains('Artwork') + dd").text).to eq("Looks similar")
+        expect(html.css(".c-scanner__evidence").map(&:text)).to include("Artwork looks similar")
+        expect(response.body).not_to include("Matched by its artwork")
+      end
+
+      it "shows No match when no sent artwork is usable, and no Artwork row when none were sent (AC-7.1)", :aggregate_failures do
+        read_with_art([ { id: "bbbbbbbb-0000-4000-8000-000000000002", distance: 10 } ], name_text: "Lightning Bolt")
+        expect(html.at_css(".c-scanner__read dt:contains('Artwork') + dd").text).to eq("No match")
+        read("Lightning Bolt", "")
+        expect(html.css(".c-scanner__read dt").map(&:text)).not_to include("Artwork")
+      end
+    end
+
+    it "ignores artworks with art matching off (AC-1.1)", :aggregate_failures do
+      post scanner_readings_path, params: { reading: { name_text: "", collector_text: "", key:, artworks: [ { id: "aaaaaaaa-0000-4000-8000-000000000001", distance: 1 } ] } },
+        headers: { "Accept" => "text/vnd.turbo-stream.html" }
+      expect(response.body).to include("Nothing could be read")
+    end
   end
 
   it "says the catalog isn't ready while the name index is empty (AC-3.8)" do
@@ -97,5 +168,20 @@ RSpec.describe "Scanner readings", type: :request do
     delete session_path
     read("Lightning Bolt", "")
     expect(response).to redirect_to(new_session_path)
+  end
+
+  it "records each reading's art outcome in measurement mode only (spec 011 AC-9.3, FR-5)", :aggregate_failures do
+    Catalog::NameIndex.new("mtg").rebuild
+    Dir.mktmpdir do |dir|
+      manifest = Pathname(dir).join("manifest.csv")
+      manifest.write("file,set,number\nIMG_1.jpeg,mom,123\n")
+      Rails.configuration.x.scanner_measurement = { manifest: manifest.to_s, dir: Pathname(dir).join("run").to_s }
+      read("Lightning Bolt", "")
+      expect(Scanner::MeasurementRun.current.readings.sole).to include("reading_key" => key, "tier" => "strong_name", "art_status" => nil)
+    ensure
+      Rails.configuration.x.scanner_measurement = nil
+    end
+    read("Lightning Bolt", "")
+    expect(response).to have_http_status(:ok)
   end
 end

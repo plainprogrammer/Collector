@@ -13,5 +13,7 @@ namespace :catalog do
     runs = Catalog::RefreshRun.for_type(collectible_type).recent.limit(10)
     puts "No #{collectible_type} refresh runs yet." if runs.none?
     runs.each { |run| puts run.status_line }
+    source = Catalog.source_class(collectible_type)
+    source.status_lines.each { |line| puts line } if source.respond_to?(:status_lines)
   end
 end
