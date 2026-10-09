@@ -72,6 +72,14 @@ RSpec.describe MTG::Reading, type: :model do
       expect(reading.overruled).to be_nil
     end
 
+    it "keeps spec 009's one-digit-corrected printing when it's one of them, confirmed", :aggregate_failures do
+      reading = read(name_text: "Plains", collector_text: "C 0278\nMOM • EN", art: { shared: 150 })
+
+      expect(reading.candidates.first).to have_attributes(entry: plains_mom, evidence: %i[name collector_line_corrected art], art_unique: false)
+      expect(reading.candidates.first).to be_printing_confirmed
+      expect(reading.overruled).to be_nil
+    end
+
     it "takes the newest in the read set, else the newest, unconfirmed", :aggregate_failures do
       expect(read(name_text: "Plains", collector_text: "C 0999\nMOM • EN", art: { shared: 150 }).candidates.first.entry).to eq(plains_mom)
       newest = read(name_text: "Plains", art: { shared: 150 }).candidates.first
