@@ -3524,9 +3524,9 @@ Ask the maintainer for their inputs at the start of execution, in one message (s
 
 **Implements:** All FRs | **Satisfies:** All ACs
 
-- [ ] `bin/rails zeitwerk:check && bin/ci` — expect: every step green, 0 failures, 1 pending (the opt-in agreement spec).
-- [ ] The camera page specs pass 10 times in a row (Phase 15).
-- [ ] Every AC maps to a passing spec or a findings section (Phase 16); `sdd-review` (Mode B, read-only Fable) checks the coverage matrix.
+- [x] `bin/rails zeitwerk:check && bin/ci` — expect: every step green, 0 failures, 1 pending (the opt-in agreement spec).
+- [x] The camera page specs pass 10 times in a row (Phase 15).
+- [x] Every AC maps to a passing spec or a findings section (Phase 16); `sdd-review` (Mode B, read-only Fable) checks the coverage matrix.
 
 ---
 

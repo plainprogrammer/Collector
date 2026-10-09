@@ -44,6 +44,7 @@ The shipped job built the development index after `bin/rails "catalog:refresh[mt
 | Decoder | `magick` |
 
 - **Fetch and fingerprint times** weren't recorded separately; the run keeps one start and one finish. With 51 images fetched (about 5 s at the 100 ms throttle, arithmetic), the 1,743.9 s is fingerprinting. Spec 010's fingerprinting took 2,901.1 s for 50,924 artworks on the same machine; the plan's estimate was about 48 minutes.
+- **Ruling (review follow-up, 2026-10-08):** AC-9.1's fetch and fingerprint times are reported as one total. The build run records only a start and a finish, so the two can't be separated after the fact; 51 fetches at 100 ms or more take about 5 s, so fingerprinting dominates the total. Per-phase timing is left as a follow-up if a future build needs it. Cost if wrong: one AC-9.1 sub-figure is missing.
 - **Fewer artworks than spec 010** (48,734 against 50,924, on a newer bulk file): the difference wasn't investigated. The shipped build counts only artworks with an active, English, ordinary card printing (spec glossary), where the spike counted every front-face artwork in the bulk file, which likely accounts for most of it. Every artwork the build counted had an image under the oldest-English-printing rule (AC-3.3).
 - **A first build without a seed** fetches every image: spec 010 measured about 708 MB and 2.6 h for 50,924 images. That cost wasn't re-measured here.
 
@@ -120,6 +121,7 @@ The page loaded once for the whole sitting, so there is one index load. The art 
 
 - **Art on:** text recognition was ready 585 ms after the page started (one load). The page starts loading the index after the scanner starts (ADR 0007); its download (119 ms) and parse (61 ms) are in §6. Whether loading it delayed the camera or text recognition can't be told from one load without the art-off comparison.
 - **Art off: not measured.** **Ruling (maintainer, 2026-10-08):** skip the three art-off loads and record the comparison as unmeasured. So the NFR's "with and without art matching on" has only the art-on half.
+- **Camera start time: not recorded.** The measurement keeps only text readiness (585 ms, above), not when the camera started, so whether the index load delayed the camera isn't measured. Same ruling as art-off readiness: recorded as unmeasured.
 
 ## 8. Server time (NFR Performance)
 
