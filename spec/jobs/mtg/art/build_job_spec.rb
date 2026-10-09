@@ -13,4 +13,15 @@ RSpec.describe MTG::Art::BuildJob, type: :job do
 
     expect(MTG::Art::Build).to have_received(:new).with(job_id: job.job_id)
   end
+
+  # The build marks its run failed and re-raises; the retry keeps the job id, so MTG::ArtBuild.start! carries on (AC-3.2).
+  [ SQLite3::BusyException, ActiveRecord::StatementTimeout ].each do |error|
+    it "retries under the same job id when the database is busy (#{error})", :aggregate_failures do
+      job = described_class.new
+      allow(MTG::Art::Build).to receive(:new).and_raise(error, "database is locked")
+
+      expect { job.perform_now }.to have_enqueued_job(described_class).exactly(:once)
+      expect(ActiveJob::Base.queue_adapter.enqueued_jobs.last["job_id"]).to eq(job.job_id)
+    end
+  end
 end
