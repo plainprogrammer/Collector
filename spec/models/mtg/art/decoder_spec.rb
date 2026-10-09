@@ -1,7 +1,7 @@
 require "rails_helper"
 
 RSpec.describe MTG::Art::Decoder, type: :model do
-  it "decodes a PNG to its exact pixels with ImageMagick (ADR 0011)", :aggregate_failures do
+  it "decodes a PNG to its exact pixels with ImageMagick (ADR 0012)", :aggregate_failures do
     path = Rails.root.join("tmp/decoder-spec.png")
     path.binwrite(png_bytes(3, 2) { |x, y| [ x * 10, y * 20, 255 - x ] })
 

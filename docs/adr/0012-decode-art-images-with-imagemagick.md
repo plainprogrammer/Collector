@@ -1,8 +1,8 @@
-# 0011: Decode art images with ImageMagick's command line
+# 0012: Decode art images with ImageMagick's command line
 
 ## Status
 
-Accepted (2026-10-08, approved with spec 011's plan; written as 0008 and renumbered 0011 before merge, since spec 012's ADRs took 0008–0010). ADR 0006 left the build's image decoder to spec 011's plan. The production image's agreement is checked in that plan's Phase 15 (Consequences).
+Accepted (2026-10-08, approved with spec 011's plan; written as 0008, renumbered 0011 since spec 012's ADRs took 0008–0010, then 0012 when main's ADR 0011 (GHCR cleanup) was merged in). ADR 0006 left the build's image decoder to spec 011's plan. The production image's agreement is checked in that plan's Phase 15 (Consequences).
 
 **Date:** 2026-10-07
 **Feature:** 011-card-scanner-art-matching

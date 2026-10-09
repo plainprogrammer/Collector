@@ -20,9 +20,9 @@ Every figure carries its sample size. Desktop and phone figures are labelled as 
 
 **Desktop (AC-8.2).** The shipped build (`MTG::Art::Decoder`, ImageMagick) and the shipped scanner page (canvas) fingerprinted spec 010's 134 agreement images (its 34 sitting artworks and 100 others): median 0 bits, largest 0 bits, n=134, decoder `magick`, settings digest `aa574ad30218cd69`. The development index was used for the sitting only after this.
 
-**The production image against the desktop (AC-3.10, Phase 15, `0d2ad58`).** `script/scanner/art_decoder_fingerprints.rb` printed the build's fingerprint of each of the 134 images on the desktop (ImageMagick 7.1.2-32) and in the amd64 production image (ImageMagick 7.1.1-43): all 134 identical. The image installs ImageMagick 7, so the `convert` fallback ADR 0011 allows for wasn't needed. One Rails boot notice ("Generating image variants with libvips requires the ruby-vips gem", issue #18) was filtered out of the image's output before the diff; no fingerprint line differed.
+**The production image against the desktop (AC-3.10, Phase 15, `0d2ad58`).** `script/scanner/art_decoder_fingerprints.rb` printed the build's fingerprint of each of the 134 images on the desktop (ImageMagick 7.1.2-32) and in the amd64 production image (ImageMagick 7.1.1-43): all 134 identical. The image installs ImageMagick 7, so the `convert` fallback ADR 0012 allows for wasn't needed. One Rails boot notice ("Generating image variants with libvips requires the ruby-vips gem", issue #18) was filtered out of the image's output before the diff; no fingerprint line differed.
 
-**Not measured:** the arm64 image's decoder. ADR 0011 records it as a known gap.
+**Not measured:** the arm64 image's decoder. ADR 0012 records it as a known gap.
 
 **Serving (AC-4.1, Phase 15).** A one-record index served by the image through Thruster came back with exactly one `Content-Encoding: gzip` header and a body that gunzips once to 172 bytes (the 28-byte header and one 144-byte record).
 

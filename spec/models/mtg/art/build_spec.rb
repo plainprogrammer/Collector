@@ -131,7 +131,7 @@ RSpec.describe MTG::Art::Build, :art_matching, type: :model do
     expect(MTG::Art::Index.read(path)[:records].map(&:first)).to eq([ art_a ])
   end
 
-  it "fails at once, recorded, when ImageMagick is missing (ADR 0011)", :aggregate_failures do
+  it "fails at once, recorded, when ImageMagick is missing (ADR 0012)", :aggregate_failures do
     decoder = class_double(MTG::Art::Decoder, command: nil)
     allow(decoder).to receive(:command).and_raise(MTG::Art::Decoder::Error, "ImageMagick isn't installed")
 

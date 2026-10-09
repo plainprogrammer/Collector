@@ -33,7 +33,7 @@ class MTG::Art::Build
     @run = MTG::ArtBuild.start!(job_id: @job_id, catalog_version: version, settings_digest: MTG::Art::Settings.digest)
     return @run unless @run.running?
 
-    @decoder.command # fails the build at once when ImageMagick is missing (ADR 0011)
+    @decoder.command # fails the build at once when ImageMagick is missing (ADR 0012)
     artworks = representatives
     done = MTG::Artwork.current.pluck(:illustration_id).to_set
     todo = artworks.reject { done.include?(it.id) }

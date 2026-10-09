@@ -1,6 +1,6 @@
 require "open3"
 
-# Decodes a cached artwork image to 8-bit RGB with ImageMagick's CLI (ADR 0011), the spikes' path, which agreed with
+# Decodes a cached artwork image to 8-bit RGB with ImageMagick's CLI (ADR 0012), the spikes' path, which agreed with
 # the browser's canvas to 0 bits. `magick` (ImageMagick 7) is preferred; `convert` (ImageMagick 6) is accepted.
 module MTG::Art::Decoder
   COMMANDS = %w[magick convert].freeze

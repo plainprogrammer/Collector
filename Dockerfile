@@ -50,7 +50,7 @@ COPY . .
 # Fetch and verify the pinned OCR engine for the card scanner (spec 007, ADR 0001).
 RUN bin/fetch-ocr-engine
 
-# Art matching decodes Scryfall's small images with ImageMagick (spec 011, ADR 0011).
+# Art matching decodes Scryfall's small images with ImageMagick (spec 011, ADR 0012).
 RUN command -v magick || command -v convert
 
 # Precompile bootsnap code for faster boot times.

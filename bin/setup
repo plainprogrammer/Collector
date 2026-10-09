@@ -23,7 +23,7 @@ FileUtils.chdir APP_ROOT do
     puts "\n== Installing the OCR engine =="
     system! "bin/fetch-ocr-engine"
 
-    puts "\n== Checking ImageMagick (art matching, ADR 0011) =="
+    puts "\n== Checking ImageMagick (art matching, ADR 0012) =="
     unless %w[magick convert].any? { |name| system(name, "-version", out: File::NULL, err: File::NULL) }
       puts "ImageMagick isn't installed. Install it (e.g. `sudo dnf install ImageMagick` or `sudo apt install imagemagick`): " \
            "the art matching specs and the art build need it."
