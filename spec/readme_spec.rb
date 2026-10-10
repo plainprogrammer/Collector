@@ -8,6 +8,12 @@ RSpec.describe "README" do
     expect(readme).to include("only acceptable on a trusted private network", "doesn't convert prices you've already entered")
   end
 
+  it "lists libvips and ImageMagick with their packages (spec 014 AC-4.1)", :aggregate_failures do
+    requirements = readme[/^## Requirements\n.*?(?=^## )/m].to_s
+    expect(requirements).to include("libvips", "sudo dnf install vips", "sudo apt install libvips")
+    expect(requirements).to include("ImageMagick", "sudo dnf install ImageMagick", "sudo apt install imagemagick")
+  end
+
   it "warns about the first-run admin before the deployment steps", :aggregate_failures do
     expect(readme).to match(/first person to reach .* becomes its admin/i)
     expect(readme.index("Before you expose Collector")).to be < readme.index("### Docker Compose")

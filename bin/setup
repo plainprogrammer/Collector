@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 require "fileutils"
 require_relative "../lib/collector/dev_port"
+require_relative "../lib/collector/libvips_check"
 require_relative "../lib/collector/worktree_setup"
 
 APP_ROOT = File.expand_path("..", __dir__)
@@ -28,6 +29,10 @@ FileUtils.chdir APP_ROOT do
       puts "ImageMagick isn't installed. Install it (e.g. `sudo dnf install ImageMagick` or `sudo apt install imagemagick`): " \
            "the art matching specs and the art build need it."
     end
+
+    puts "\n== Checking libvips (Active Storage variants, ADR 0013) =="
+    libvips_hint = Collector::LibvipsCheck.new.hint
+    puts libvips_hint if libvips_hint
 
     puts "\n== Configuring #{checkout.checkout_label} =="
     (checkout.copy_included_files + checkout.enable_worktree_hooks).each { |line| puts line }

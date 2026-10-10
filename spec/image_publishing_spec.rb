@@ -24,6 +24,14 @@ RSpec.describe "Image publishing files" do
     end
   end
 
+  describe "bin/image-smoke" do
+    it "checks that Active Storage variants use libvips without a warning (spec 014 AC-1.3, FR-2)" do
+      expect(Rails.root.join("bin/image-smoke").read).to include(
+        "bin/rails runner 'puts ActiveStorage.variant_transformer'", "requires the (ruby-vips gem|libvips library)",
+        "ActiveStorage::Transformers::Vips")
+    end
+  end
+
   describe "compose.yaml" do
     let(:compose) { Rails.root.join("compose.yaml") }
     let(:service) { YAML.load_file(compose).dig("services", "web") }
@@ -78,6 +86,14 @@ RSpec.describe "Image publishing files" do
         { "platform" => "linux/amd64", "runner" => "ubuntu-latest" },
         { "platform" => "linux/arm64", "runner" => "ubuntu-24.04-arm" })
       expect(publish_job["needs"]).to eq("image")
+    end
+
+    it "installs libvips and ImageMagick before bin/ci (spec 014 AC-2.3, FR-3)", :aggregate_failures do
+      ci_steps = workflow.dig("jobs", "ci", "steps")
+      install = ci_steps.index { |candidate| candidate["run"].to_s.include?("apt-get install") }
+      expect(install).not_to be_nil
+      expect(ci_steps[install]["run"].split).to include("libvips", "imagemagick")
+      expect(install).to be < ci_steps.index { |candidate| candidate["run"] == "bin/ci" }
     end
 
     it "grants packages: write only to the image and publish jobs (NFR Security)", :aggregate_failures do

@@ -37,6 +37,12 @@ echo "== operational tasks"
 "$cli" exec -e COLLECTOR_PASSWORD=smoke-password-1234 "$name" bin/rails "collector:user[smoke@example.com]" \
   | grep -q "Created admin smoke@example.com." || fail "collector:user"
 
+echo "== Active Storage variants use libvips (spec 014)"
+vips="$("$cli" exec "$name" bin/rails runner 'puts ActiveStorage.variant_transformer' 2>&1)" || fail "vips: bin/rails runner exited $?:"$'\n'"$vips"
+if grep -qE "requires the (ruby-vips gem|libvips library)" <<<"$vips" || ! grep -qx "ActiveStorage::Transformers::Vips" <<<"$vips"; then
+  fail "vips: variants can't use libvips:"$'\n'"$vips"
+fi
+
 echo "== pages and assets (a user exists now, so first-run redirects are over)"
 [ "$(status /session/new)" = "200" ] || fail "sign-in page did not render"
 [ "$(status /scanner)" = "302" ] || fail "/scanner should redirect to sign-in when signed out"

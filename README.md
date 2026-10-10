@@ -15,6 +15,10 @@ Cable, all backed by SQLite.
 - Ruby 4.0.7 (see `.ruby-version`)
 - SQLite is provided by the `sqlite3` gem; no separate database server is needed
 - Firefox, for the system specs (run headless)
+- libvips, for Active Storage image variants (ADR 0013): `sudo dnf install vips` on Fedora,
+  `sudo apt install libvips` on Debian or Ubuntu. `bin/setup` says so when it's missing
+- ImageMagick, for the card scanner's art index build (ADR 0012): `sudo dnf install ImageMagick`
+  on Fedora, `sudo apt install imagemagick` on Debian or Ubuntu
 
 ## Development
 
