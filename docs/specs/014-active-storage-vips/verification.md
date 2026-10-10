@@ -147,7 +147,7 @@ Draft PR [#30](https://github.com/plainprogrammer/Collector/pull/30), run on 202
 
 Both image builds installed `libvips42t64 8.16.1-1+deb13u1`. The spec and evidence commits pushed after `31b36e9`
 change only `docs/`, which `.dockerignore` keeps out of the image.
-Nothing has been run on arm64 so far.
+Nothing has been run on arm64 locally; the arm64 evidence is the workflow job above.
 
 ## Acceptance criteria
 
