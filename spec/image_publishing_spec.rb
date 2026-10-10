@@ -24,6 +24,14 @@ RSpec.describe "Image publishing files" do
     end
   end
 
+  describe "bin/image-smoke" do
+    it "checks that Active Storage variants use libvips without a warning (spec 014 AC-1.3, FR-2)" do
+      expect(Rails.root.join("bin/image-smoke").read).to include(
+        "bin/rails runner 'puts ActiveStorage.variant_transformer'", "requires the (ruby-vips gem|libvips library)",
+        "ActiveStorage::Transformers::Vips")
+    end
+  end
+
   describe "compose.yaml" do
     let(:compose) { Rails.root.join("compose.yaml") }
     let(:service) { YAML.load_file(compose).dig("services", "web") }
