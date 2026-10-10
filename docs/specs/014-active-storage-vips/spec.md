@@ -1,7 +1,7 @@
 # Feature 014: Active Storage Variants with vips
 
 **Status:** Approved
-**Version:** 1.1.0
+**Version:** 1.1.1
 **Created:** 2026-10-09
 **Last Updated:** 2026-10-09
 **Branch:** `014-active-storage-vips`
@@ -15,6 +15,7 @@
 |---------|------|--------|
 | 1.0.0 | 2026-10-09 | Initial draft from the approved [prd.md](prd.md) and ADR [0013](../../adr/0013-active-storage-variants-with-vips.md) (libvips through `ruby-vips`, not auto-required). Approved by the maintainer |
 | 1.1.0 | 2026-10-09 | Spec review revisions (Fable, Mode A). **Testability** NFR: which ACs are suite examples, which are file-shape specs and which are evidence in `verification.md`. **AC-1.4** names a pinned image (`0.1.0`), since `edge` moves. **libvips check** extracted to `Collector::LibvipsCheck` in `lib/collector/` with an injectable probe (maintainer's choice), probing with `bundle exec ruby -e 'require "ruby-vips"'` because `bin/setup` doesn't run under Bundler (AC-3.1, AC-3.2, AC-3.4, FR-3). **Debian/Ubuntu package** named the same in the hint, README and `ci.yml` (AC-3.2, AC-4.1). **Fixture** under `spec/fixtures/files/`; dimensions read inside the transformer's block (AC-2.1). Closing #18 and memory housekeeping moved from FR-4 to Delivery. Second pass (READY TO PLAN): the fixture may be committed or generated; AC-3.5's two sentences are tagged by how they're checked |
+| 1.1.1 | 2026-10-09 | PATCH, from the verification run. **Image size** NFR: the two gems measure about 2.7 MB in the built image (`ruby-vips` 2.3.0 644 KB, `ffi` 1.17.4 2,056 KB), not "under 1 MB". The maintainer accepts the growth. No behaviour changes |
 
 ---
 
@@ -157,7 +158,7 @@ The `Dockerfile` already installs libvips in both stages and doesn't change.
 - **Testability:** AC-2.1, AC-2.2, AC-3.1–AC-3.4 and AC-4.1 are suite examples run by `bin/ci`. The `ci.yml` install step (it names libvips and precedes `bin/ci`), `bin/image-smoke`'s vips check and `bin/setup`'s use of the check (AC-3.5) are also file-shape specs, in the style of `spec/image_publishing_spec.rb`. AC-1.1–AC-1.4, AC-2.3, AC-2.4 and AC-3.5's run on this machine are evidence, recorded in `verification.md`: a local `bin/image-smoke` run on the new image (amd64), the same against `0.1.0` (AC-1.4), this PR's workflow run (both architectures, AC-1.3, AC-2.3), and the output of `bin/ci` and `bin/setup --skip-server`.
 - **Security:** variants keep Active Storage's default `Vips.block_untrusted(true)`. Nothing re-enables blocked loaders. Active Storage raises at boot if libvips is older than 8.13, and every target is newer: the image has 8.16.1, the development machine 8.18.3 and Ubuntu 24.04 8.15.1.
 - **Portability:** the image still builds and passes `bin/image-smoke` on both `linux/amd64` and `linux/arm64` (spec 012, ADR 0010).
-- **Image size:** the image grows by at most the `ruby-vips` and `ffi` gems (under 1 MB, per spec 008 `research.md` §7).
+- **Image size:** the image grows by at most the `ruby-vips` and `ffi` gems: about 2.7 MB, measured in the built amd64 image (`ruby-vips` 2.3.0 644 KB, `ffi` 1.17.4 2,056 KB; see `verification.md`). Spec 008 `research.md` §7 estimated under 1 MB.
 - **Boot:** the app boots where libvips isn't available. Active Storage then logs the "requires the libvips library" warning, which is expected in that case.
 
 ## Error Scenarios

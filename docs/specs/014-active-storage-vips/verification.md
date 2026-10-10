@@ -1,13 +1,13 @@
 # Verification: Active Storage Variants with vips (spec 014)
 
-**Spec:** [spec.md](spec.md) v1.1.0 · **Plan:** [plan.md](plan.md) Phase 5 · **Recorded:** 2026-10-09 ·
+**Spec:** [spec.md](spec.md) v1.1.1 · **Plan:** [plan.md](plan.md) Phase 5 · **Recorded:** 2026-10-09 ·
 **Branch:** `014-active-storage-vips`
 
 Evidence for every acceptance criterion. The suite examples are in
 `spec/config/active_storage_variant_transformer_spec.rb`, `spec/lib/collector/libvips_check_spec.rb`,
 `spec/image_publishing_spec.rb` and `spec/readme_spec.rb`; all four run in `bin/ci`. The image criteria are shown
 by local runs on an amd64 build. Two criteria need this PR's GitHub Actions run and are marked pending. The image
-size NFR is not met as worded; see [Image size](#image-size).
+size measurement corrected the spec's figure (1.1.1); see [Image size](#image-size).
 
 ## Commits
 
@@ -187,20 +187,21 @@ FR-1 "must" lines seen in the same session: `Gemfile:41` keeps `gem "image_proce
 | Testability | The suite examples, file-shape examples and evidence listed in the NFR are the rows above | ✓, except the workflow run (pending) |
 | Security | libvips versions seen: 8.16.1 in the image (`libvips42t64:amd64 8.16.1-1+deb13u1`, from `dpkg -l` in `collector:vips`) and 8.18.3 on this machine. Both are newer than 8.13. Ubuntu 24.04's version was not checked here. No code on this branch touches `Vips.block_untrusted`; that default was not tested directly | partly checked |
 | Portability | amd64: local build and smoke run. arm64: nothing yet | pending: the PR's workflow run |
-| Image size | See below | ⚠ not met as worded |
+| Image size | The two gems add about 2.7 MB; see below | ✓ (figure corrected in spec 1.1.1) |
 | Boot | AC-3.3's example shows `Bundler.require` doesn't load `ruby-vips`. The app was not booted on a machine without libvips | shown by the spec only |
 
 ### Image size
 
-The NFR says the image grows by at most the `ruby-vips` and `ffi` gems, under 1 MB. Measured in `collector:vips`
-with `du -sk` on each gem's `bundle info --path`:
+The NFR says the image grows by at most the `ruby-vips` and `ffi` gems. Spec 1.1.0 put that under 1 MB, an
+estimate from spec 008. Measured in `collector:vips` with `du -sk` on each gem's `bundle info --path`:
 
 ```text
 644	/usr/local/bundle/ruby/4.0.0/gems/ruby-vips-2.3.0
 2056	/usr/local/bundle/ruby/4.0.0/gems/ffi-1.17.4-x86_64-linux-gnu
 ```
 
-The two gems take 2,700 KB on disk, about 2.7 MB, so the "under 1 MB" figure does not hold. Neither gem is in
+The two gems take 2,700 KB on disk, about 2.7 MB, so the "under 1 MB" estimate was wrong. The maintainer accepted
+the growth on 2026-10-09, and spec 1.1.1 states the measured figure. Neither gem is in
 `0.1.0`'s bundle (its `Gemfile.lock` has no `ffi` entry). `du -sk /usr/local/bundle` is 170,940 KB in
 `collector:vips` and 168,232 KB in `0.1.0`: a difference of 2,708 KB, which matches the two gems.
 
@@ -219,7 +220,8 @@ differ in other ways:
   and `/rails/vendor/v7.0.0`; `0.1.0` has only the first. The worktree holds the ignored `vendor/ocr/v7.0.0`
   (installed by `bin/setup`), and `Dockerfile:39` (`COPY vendor/* ./vendor/`) copies the contents of `vendor/ocr`
   into `/rails/vendor`. The `Dockerfile` is unchanged on this branch, so this comes from building in a set-up
-  worktree, not from this feature. Whether a CI build (a fresh checkout) has the duplicate was not checked.
+  worktree, not from this feature. `0.1.0` was built by CI from a fresh checkout and has no duplicate. Tracked in
+  [#31](https://github.com/plainprogrammer/Collector/issues/31).
 - **ImageMagick**, added to the `Dockerfile`'s packages after `0.1.0` (spec 011). Its size was not measured
   separately. `du -sk /usr` grew by 5,112 KB, which includes the 2,708 KB of gems.
 - **App code** from specs 011 and 013: `/rails/app`, `config`, `lib` and `db` are each slightly larger.
@@ -230,7 +232,5 @@ No comparison was made against an image built from `main` at `ff06ebd`, which wo
 
 1. The PR's workflow run: record it under "Pull request CI", then set AC-1.3, AC-2.3 and the Portability NFR
    to ✓ (or ⚠ with what happened).
-2. The image size NFR: the maintainer decides whether to correct the figure in the spec (the gems are about
-   2.7 MB) or to treat it as a deviation.
-3. The duplicate `/rails/vendor/v7.0.0` in locally built images is outside this feature. It needs its own issue
-   if the maintainer wants it fixed.
+2. The duplicate `/rails/vendor/v7.0.0` in locally built images is outside this feature:
+   [#31](https://github.com/plainprogrammer/Collector/issues/31).
