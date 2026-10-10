@@ -13,6 +13,9 @@
 #   #each_entry(path, languages:) { |EntryRecord or Malformed| }   streamed, filtered to languages
 #   #reapply?                           optional: true to apply a version again although it was applied (asked before a skip)
 #   #after_refresh(run)                 optional: called after an applied run, or one skipped as already applied
+#   #progress=(callable)                optional: the refresh sets it; the source calls it with (done, total) while it
+#                                       downloads (bytes received, expected size) and while each_entry reads (bytes of the
+#                                       file read, its size), so the run can show a percentage (spec 015 FR-2)
 module Catalog::Sources
   SetRecord = Data.define(:code, :name, :released_on, :parent_code) do
     def digest = Catalog::Sources.digest(to_h)

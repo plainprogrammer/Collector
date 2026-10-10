@@ -208,6 +208,57 @@ RSpec.describe Catalog::Refresh, type: :model do
     end
   end
 
+  describe "stage and progress (spec 015 FR-1)" do
+    # Every write of the run's progress, in order, as [stage, done, total, seen so far].
+    def progress_writes
+      writes = []
+      allow_any_instance_of(Catalog::RefreshRun).to receive(:progress!).and_wrap_original do |original, **progress| # rubocop:disable RSpec/AnyInstance -- the run is created inside the refresh
+        writes << [ progress[:stage], progress[:done], progress[:total], progress[:counts][:seen] ]
+        original.call(**progress)
+      end
+      writes
+    end
+
+    it "passes through the four stages in order and keeps the last one (AC-2.4)", :aggregate_failures do
+      writes = progress_writes
+
+      run = refresh
+
+      expect(writes.map(&:first)).to eq(%w[download sync retire index])
+      expect(run).to have_attributes(status: "applied", stage: "index")
+    end
+
+    it "keeps the stage reached when the run fails (AC-3.1)", :aggregate_failures do
+      source.fail_at = 1
+
+      expect { refresh }.to raise_error(RuntimeError)
+      expect(Catalog::RefreshRun.recent.first).to have_attributes(status: "failed", stage: "sync", seen_count: 1)
+    end
+
+    context "with a source that reports how far it is" do
+      let(:source) { ReportingCatalogSource.new(sets: [ set_record("lea") ], entries: [ entry_record("a"), entry_record("b") ]) }
+      let(:now) { [ 0.0 ] }
+      let(:clock) { -> { now[0] += 3 } } # every look at the clock is 3 seconds later, so every report is due
+
+      it "records bytes of the download and of the file, with the counts so far (AC-2.5, AC-2.6)", :aggregate_failures do
+        writes = progress_writes
+
+        described_class.new("fake", trigger: "manual", source:, clock:).call
+
+        expect(writes).to include([ "download", 50, 100, 0 ], [ "download", 100, 100, 0 ], [ "sync", 1, 2, 0 ], [ "sync", 2, 2, 1 ])
+        expect(writes.last).to eq([ "index", nil, nil, 2 ])
+      end
+    end
+
+    it "works with a source that reports nothing: stages and counts only (AC-2.8)" do
+      writes = progress_writes
+
+      refresh
+
+      expect(writes.map { |_stage, done, total, _seen| [ done, total ] }.uniq).to eq([ [ nil, nil ] ])
+    end
+  end
+
   describe "the name index (spec 007 AC-3.9)" do
     def names(text) = Catalog::NameIndex.new("fake", source_class: FakeCatalogSource).search(text).map(&:name)
 

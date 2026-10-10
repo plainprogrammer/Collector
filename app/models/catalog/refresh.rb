@@ -1,14 +1,17 @@
 # Applies a catalog source's current data: writes only changed rows in short
 # batches, retires entries the source no longer lists (only after a complete
-# pass), restores ones that come back, and records a Catalog::RefreshRun.
+# pass), restores ones that come back, and records a Catalog::RefreshRun. While it works it records the run's stage
+# and progress (spec 015 FR-1): download, sync, retire, index.
 class Catalog::Refresh
   BATCH_SIZE = 1_000
 
-  def initialize(collectible_type, trigger:, source: Catalog.source_for(collectible_type), job_id: nil)
+  def initialize(collectible_type, trigger:, source: Catalog.source_for(collectible_type), job_id: nil,
+    clock: Progress::CLOCK)
     @collectible_type = collectible_type
     @trigger = trigger
     @source = source
     @job_id = job_id
+    @clock = clock
     @counts = Hash.new(0)
   end
 
@@ -16,15 +19,20 @@ class Catalog::Refresh
     @run = Catalog::RefreshRun.start!(@collectible_type, trigger: @trigger, job_id: @job_id)
     return @run unless @run.running?
 
+    track_progress
+    @progress.stage("download")
     languages = @source.languages
     version = @source.current_version(languages:)
     @run.update!(source_version: version, languages: languages.join(","))
     return skip(version) if already_applied?(version) && !reapply?
 
     path = @source.download(version, dir: Rails.configuration.x.catalog_download_dir.join(@collectible_type))
+    @progress.stage("sync")
     sync_sets
     sync_entries(path, languages)
+    @progress.stage("retire")
     retire_unseen
+    @progress.stage("index")
     name_index.rebuild
     @run.finish!(:applied, counts: @counts)
     after_refresh
@@ -35,6 +43,13 @@ class Catalog::Refresh
   end
 
   private
+    # Optional source hook (app/models/catalog/sources.rb): a source that can say how far through a download or a file
+    # it is takes a callable and calls it with (done, total). One that can't is still tracked by stage and counts.
+    def track_progress
+      @progress = Progress.new(@run, @counts, clock: @clock)
+      @source.progress = @progress.method(:at) if @source.respond_to?(:progress=)
+    end
+
     def already_applied?(version)
       @trigger == "scheduled" &&
         Catalog::RefreshRun.applied?(@collectible_type, source_version: version, languages: @run.languages)
@@ -75,18 +90,23 @@ class Catalog::Refresh
       @pending_identities = []
 
       @source.each_entry(path, languages:) do |record|
-        next record_malformed(record) if record.is_a?(Catalog::Sources::Malformed)
-        next if @seen.include?(record.external_key) # duplicate line in the source
-
-        @counts[:seen] += 1
-        @seen << record.external_key
-        queue_identity(record.identity)
-        queue_entry(record)
-        flush if @pending_entries.size >= BATCH_SIZE || @pending_identities.size >= BATCH_SIZE
+        sync_entry(record)
+        @progress.seen # outside the batch's transaction, which flush has closed by now
       end
       flush
       # An unreadable file must not look like "everything was removed upstream".
       raise Catalog::Sources::Error, "no valid records (#{@counts[:malformed]} malformed)" if @counts[:seen].zero?
+    end
+
+    def sync_entry(record)
+      return record_malformed(record) if record.is_a?(Catalog::Sources::Malformed)
+      return if @seen.include?(record.external_key) # duplicate line in the source
+
+      @counts[:seen] += 1
+      @seen << record.external_key
+      queue_identity(record.identity)
+      queue_entry(record)
+      flush if @pending_entries.size >= BATCH_SIZE || @pending_identities.size >= BATCH_SIZE
     end
 
     def queue_identity(identity)

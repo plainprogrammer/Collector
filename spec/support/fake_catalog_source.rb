@@ -42,6 +42,25 @@ class FakeCatalogSource
   end
 end
 
+# A source with the optional progress hook (spec 015 FR-2): it says how far through the download and the file it is.
+class ReportingCatalogSource < FakeCatalogSource
+  attr_writer :progress
+
+  def download(version, dir:)
+    @progress&.call(50, 100)
+    @progress&.call(100, 100)
+    super
+  end
+
+  def each_entry(path, languages:)
+    index = 0
+    super do |record|
+      @progress&.call(index += 1, entries.size)
+      yield record
+    end
+  end
+end
+
 module CatalogRecordHelpers
   def identity_record(key = "bolt", name: "Lightning Bolt", extension: {})
     Catalog::Sources::IdentityRecord.new(external_key: key, name:, extension:)
