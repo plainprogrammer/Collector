@@ -1,0 +1,42 @@
+<% content_for :title, "#{@job.class_name} · Jobs · Collector" %>
+<%= render "layouts/appbar", section: nil, detail: true, back_path: admin_jobs_path %>
+<%= tag.main class: "c-main c-page", data: { controller: ("poll" if @live) } do %>
+  <ol class="c-crumbs"><li><%= link_to "Jobs", admin_jobs_path %></li><li><%= @job.class_name %></li></ol>
+  <div class="c-pagehead">
+    <div><h1 class="c-pagehead__title c-job__title"><%= @job.class_name %></h1><p class="c-pagehead__stats"><%= @job.state_label %></p></div>
+  </div>
+
+  <% if @job.failed? %>
+    <div class="c-form__actions c-job__actions">
+      <%= button_to "Retry", admin_job_retry_path(@job), class: "c-btn c-btn--primary" %>
+      <%= link_to "Discard…", new_admin_job_discard_path(@job), class: "c-btn c-btn--danger" %>
+    </div>
+  <% end %>
+
+  <section class="c-job__section">
+    <dl class="c-details">
+      <div><dt>Queue</dt><dd class="is-data"><%= @job.queue_name %></dd></div>
+      <div><dt>Priority</dt><dd class="is-data"><%= @job.priority %></dd></div>
+      <div><dt>Attempts</dt><dd class="is-data"><%= @job.attempts %></dd></div>
+      <div><dt>Queued</dt><dd><%= utc_time_with_relative(@job.queued_at) %></dd></div>
+      <% if @job.due_at %><div><dt>Due</dt><dd><%= utc_time_with_relative(@job.due_at) %></dd></div><% end %>
+      <% if @job.started_at %><div><dt>Started</dt><dd><%= utc_time_with_relative(@job.started_at) %></dd></div><% end %>
+      <% if @job.failed_at %><div><dt>Failed</dt><dd><%= utc_time_with_relative(@job.failed_at) %></dd></div><% end %>
+      <% if @job.finished_at %><div><dt>Finished</dt><dd><%= utc_time_with_relative(@job.finished_at) %></dd></div><% end %>
+    </dl>
+  </section>
+
+  <section class="c-job__section">
+    <div class="c-section__head"><h2 class="c-section__title">Arguments</h2></div>
+    <pre class="c-pre"><%= @job.arguments_text %></pre>
+  </section>
+
+  <% if @job.failed? %>
+    <section class="c-job__section">
+      <div class="c-section__head"><h2 class="c-section__title">Error</h2></div>
+      <p class="c-job__error"><strong><%= @job.error_class %></strong>: <%= @job.error_message %></p>
+      <% if @job.backtrace.any? %><pre class="c-pre"><%= @job.backtrace.join("\n") %></pre><% end %>
+    </section>
+  <% end %>
+<% end %>
+<%= render "layouts/tabbar", section: nil %>
