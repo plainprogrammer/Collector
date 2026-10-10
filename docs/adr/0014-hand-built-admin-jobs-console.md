@@ -1,15 +1,15 @@
-# 0013: Hand-build the admin jobs console on Solid Queue's models
+# 0014: Hand-build the admin jobs console on Solid Queue's models
 
 ## Status
 
-Accepted (2026-10-09, approved with spec 014's PRD)
+Accepted (2026-10-09, approved with spec 015's PRD; written as 0013, renumbered 0014 because the Active Storage variants ADR on another branch took 0013)
 
 **Date:** 2026-10-09
-**Feature:** 014-admin-catalog-and-jobs
+**Feature:** 015-admin-catalog-and-jobs
 
 ## Context
 
-Spec 014's [PRD](../specs/014-admin-catalog-and-jobs/prd.md) gives admins a jobs page next to the catalog page: queued, running, scheduled and failed jobs, the error and backtrace of a failed job, and **retry and discard** for failed jobs. The maintainer ruled out pausing queues and running recurring tasks on demand, and "retry all" for now. The page is expected to grow with more catalog types and job types.
+Spec 015's [PRD](../specs/015-admin-catalog-and-jobs/prd.md) gives admins a jobs page next to the catalog page: queued, running, scheduled and failed jobs, the error and backtrace of a failed job, and **retry and discard** for failed jobs. The maintainer ruled out pausing queues and running recurring tasks on demand, and "retry all" for now. The page is expected to grow with more catalog types and job types.
 
 Constraints that bear on it:
 

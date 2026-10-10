@@ -1,7 +1,7 @@
 # PRD: Admin Catalog Operations and Jobs
 
 **Date:** 2026-10-09
-**Feature:** 014-admin-catalog-and-jobs
+**Feature:** 015-admin-catalog-and-jobs
 **Issue:** [#29](https://github.com/plainprogrammer/Collector/issues/29), "Add admin UI for initial catalog refresh, image indexing, and progress of status"
 
 ## Problem
@@ -30,10 +30,10 @@ It touches:
 ## Goals
 
 1. **An admin catalog page** (`/admin/catalog`) with one panel per catalog type: health (entry count, last applied refresh and its source version, next scheduled run from Solid Queue's recurring task, or "not scheduled" where none exists, as in development), a "Refresh now" button, the type's extra operations (for MTG, "Build art index"), the running operation's stages with progress, and recent runs.
-2. **Live progress while work runs.** For the refresh, a stage checklist (download, sync cards, retire missing cards, rebuild name index) with a real percentage on the running stage: bytes received against the file size while downloading, bytes read from the bulk file against its size while syncing, plus running counts (seen, inserted, updated). For the art build, its existing counts (artworks fingerprinted of total, images fetched, failed). The page updates by itself while anything is queued or running and stops when nothing is ([ADR 0014](../../adr/0014-admin-progress-by-polling.md)).
+2. **Live progress while work runs.** For the refresh, a stage checklist (download, sync cards, retire missing cards, rebuild name index) with a real percentage on the running stage: bytes received against the file size while downloading, bytes read from the bulk file against its size while syncing, plus running counts (seen, inserted, updated). For the art build, its existing counts (artworks fingerprinted of total, images fetched, failed). The page updates by itself while anything is queued or running and stops when nothing is ([ADR 0015](../../adr/0015-admin-progress-by-polling.md)).
 3. **Starting operations from the page.** The button queues the same job the rake task does; it's disabled while that operation is queued or running, from the moment it's clicked. Starting never bypasses the existing guards (`Catalog::RefreshRun.start!`, `MTG::ArtBuild.start!`).
 4. **A collectible-agnostic page.** The core knows only "catalog operations" (title, state, stages with done/total, summary lines, how to start). The refresh is the core's own operation; a catalog type adds others through an optional source hook. The core never mentions art, Scryfall or MTG. A new catalog type gets its panel without changing the page.
-5. **An admin jobs page** (`/admin/jobs`): filters for Failed, Running, Queued and Scheduled with counts, where Queued includes jobs waiting on a concurrency limit (Solid Queue's blocked executions, e.g. a second refresh while one runs), marked as waiting; a list per filter; a page per job with its class, arguments, queue, attempts, timestamps and, for a failed job, the error and backtrace. **Retry** and **Discard** for failed jobs, with Discard confirmed on a confirm page. Retry and Discard apply only to failed jobs ([ADR 0013](../../adr/0013-hand-built-admin-jobs-console.md)).
+5. **An admin jobs page** (`/admin/jobs`): filters for Failed, Running, Queued and Scheduled with counts, where Queued includes jobs waiting on a concurrency limit (Solid Queue's blocked executions, e.g. a second refresh while one runs), marked as waiting; a list per filter; a page per job with its class, arguments, queue, attempts, timestamps and, for a failed job, the error and backtrace. **Retry** and **Discard** for failed jobs, with Discard confirmed on a confirm page. Retry and Discard apply only to failed jobs ([ADR 0014](../../adr/0014-hand-built-admin-jobs-console.md)).
 6. **A first-run prompt.** While a catalog type has no entries, admins see a notice linking to `/admin/catalog` on catalog search, the scanner and the More page; members see that the catalog isn't loaded yet and to ask their admin. The first refresh is never started automatically: the download is the admin's choice (about 79 MB for English, about 393 MB with `COLLECTOR_MTG_LANGUAGES` adding languages, as of 2026-09-29), made after they've set languages or art matching.
 7. **Navigation.** The More page links "Catalog" and "Jobs" for admins, beside "Users and sign-up".
 8. **The design system throughout:** existing `c-*` components and tokens, a doc under `docs/design-system/components/` for any new pattern, phone width included.
@@ -46,8 +46,8 @@ It touches:
 - Progress for job types other than the catalog's operations.
 - Changing the refresh schedule, languages or art matching from the UI (they stay environment settings).
 - Starting the first refresh automatically.
-- Live updates by broadcast (ADR 0014).
-- Mission Control – Jobs or any other jobs-dashboard gem (ADR 0013).
+- Live updates by broadcast (ADR 0015).
+- Mission Control – Jobs or any other jobs-dashboard gem (ADR 0014).
 - Replacing the rake tasks; `catalog:refresh` and `catalog:status` keep working.
 
 ## Success Criteria
@@ -62,8 +62,8 @@ It touches:
 
 ## Architecture Decisions
 
-- [0013: Hand-build the admin jobs console on Solid Queue's models](../../adr/0013-hand-built-admin-jobs-console.md): our own design-system pages calling Solid Queue's `retry` and `discard`, instead of mounting Mission Control – Jobs, whose UI is outside the design system and whose queue controls were excluded.
-- [0014: Show live progress on admin pages by polling with Turbo morph refreshes](../../adr/0014-admin-progress-by-polling.md): a Stimulus controller, present only while work is in flight, morph-refreshes the page every ~2 seconds from progress rows the jobs already write, instead of Turbo Stream broadcasts.
+- [0014: Hand-build the admin jobs console on Solid Queue's models](../../adr/0014-hand-built-admin-jobs-console.md): our own design-system pages calling Solid Queue's `retry` and `discard`, instead of mounting Mission Control – Jobs, whose UI is outside the design system and whose queue controls were excluded.
+- [0015: Show live progress on admin pages by polling with Turbo morph refreshes](../../adr/0015-admin-progress-by-polling.md): a Stimulus controller, present only while work is in flight, morph-refreshes the page every ~2 seconds from progress rows the jobs already write, instead of Turbo Stream broadcasts.
 
 Decisions made inline (no ADR; trivial or following existing patterns):
 
@@ -79,7 +79,7 @@ Decisions made inline (no ADR; trivial or following existing patterns):
 
 Discussed and excluded:
 
-- A general jobs console with queue control (scope C of the first question); it may come back later, under ADR 0013's revisit note.
+- A general jobs console with queue control (scope C of the first question); it may come back later, under ADR 0014's revisit note.
 - Retry all failed jobs (deferred by the maintainer).
 - An automatic first refresh on sign-up or on boot (rejected for the download's size and to let admins set languages first).
 - One overall progress bar without stages (rejected: stages say where a failure happened).

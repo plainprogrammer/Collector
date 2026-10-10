@@ -1,10 +1,10 @@
-# Feature 014: Admin Catalog Operations and Jobs
+# Feature 015: Admin Catalog Operations and Jobs
 
 **Status:** Approved
-**Version:** 1.1.1
+**Version:** 1.1.2
 **Created:** 2026-10-09
 **Last Updated:** 2026-10-09
-**Branch:** `014-admin-catalog-and-jobs`
+**Branch:** `015-admin-catalog-and-jobs`
 **Issue:** [#29](https://github.com/plainprogrammer/Collector/issues/29)
 
 ---
@@ -13,9 +13,10 @@
 
 | Version | Date | Change |
 |---------|------|--------|
-| 1.0.0 | 2026-10-09 | Initial draft from the approved [prd.md](prd.md) and the accepted ADRs [0013](../../adr/0013-hand-built-admin-jobs-console.md) (hand-built jobs pages on Solid Queue's models) and [0014](../../adr/0014-admin-progress-by-polling.md) (live progress by polling with morph refreshes) |
+| 1.0.0 | 2026-10-09 | Initial draft from the approved [prd.md](prd.md) and the accepted ADRs [0014](../../adr/0014-hand-built-admin-jobs-console.md) (hand-built jobs pages on Solid Queue's models) and [0015](../../adr/0015-admin-progress-by-polling.md) (live progress by polling with morph refreshes) |
 | 1.1.0 | 2026-10-09 | Spec review revisions (Fable, Mode A, NEEDS REVISION; maintainer approved all fixes). **Restart and retry:** a run records its job's id, and a job that starts again closes its own running run as interrupted and proceeds, as the art build does (glossary, AC-3.3, AC-3.4, FR-1, Error Scenarios). **In flight** is per catalog type whatever the trigger (glossary). **The job's 6-hour concurrency lock is unchanged;** the 15-minute stall threshold applies only to run records (FR-1). **Maintainer rulings:** a stalled run whose job is still claimed shows as running with "no progress for N minutes", not interrupted (AC-3.6); times are absolute UTC with a relative form for last progress (FR-8); two queued manual refreshes both apply (Error Scenarios). **Also:** which run the operation shows (AC-2.16); a failed run awaiting its retry (AC-3.7); search adopts the per-type loaded rule; tests use the queue's tables for in-flight states too; jobs page lists every queue, orders per state, renders finished and class-less jobs; retry and discard never touch run records; performance targets are manual benchmarks; AC-1.5 keeps only its testable half; AC-4.1, AC-5.4 and AC-7.4 wording |
 | 1.1.1 | 2026-10-09 | Second review pass (Fable, READY TO PLAN). Wording: the operation shows the most recent run not skipped as already running (AC-2.16); the job-id rule needs a job id (AC-3.3); `catalog:status` prints a stalled run as the page does (AC-3.5); a hung worker's recovery (Error Scenarios); the restart sentence (NFR Reliability); the jobs pages don't poll for scheduled-only jobs (AC-6.10); AC-6.11 renumbered after AC-6.10 |
+| 1.1.2 | 2026-10-09 | Renumbered from feature 014 to 015, and its ADRs from 0013 and 0014 to 0014 and 0015: a spec 014 (Active Storage variants) with ADR 0013 already exists on another branch. No requirement changed |
 
 ---
 
@@ -23,7 +24,7 @@
 
 Collector's catalog changes only through background jobs: the catalog refresh (weekly, or `bin/rails "catalog:refresh[mtg]"`) and, with art matching on, the art index build that the refresh queues. An admin can start and watch them only from a shell. A new instance's catalog stays empty until the first weekly run unless the self-hoster runs a rake task inside the container. A running refresh records nothing until it ends, the art build's progress is visible only as a line printed by `catalog:status`, and a failed job can be found and retried only from a Rails console. Admins, often not Rails users, need to start, watch and recover these jobs from the app.
 
-> **Inputs.** Scope and decisions come from the approved [prd.md](prd.md) and the accepted ADRs [0013](../../adr/0013-hand-built-admin-jobs-console.md) and [0014](../../adr/0014-admin-progress-by-polling.md). The job queue (Solid Queue), the existing jobs (`Catalog::RefreshJob`, `MTG::Art::BuildJob`), their run records (`Catalog::RefreshRun`, `MTG::ArtBuild`), the source contract (`Catalog::Sources`), the admin guard (`AdminOnly`) and the design system are fixed inputs, so this spec names them. Paths `/admin/catalog` and `/admin/jobs` are user-facing and named here too.
+> **Inputs.** Scope and decisions come from the approved [prd.md](prd.md) and the accepted ADRs [0014](../../adr/0014-hand-built-admin-jobs-console.md) and [0015](../../adr/0015-admin-progress-by-polling.md). The job queue (Solid Queue), the existing jobs (`Catalog::RefreshJob`, `MTG::Art::BuildJob`), their run records (`Catalog::RefreshRun`, `MTG::ArtBuild`), the source contract (`Catalog::Sources`), the admin guard (`AdminOnly`) and the design system are fixed inputs, so this spec names them. Paths `/admin/catalog` and `/admin/jobs` are user-facing and named here too.
 
 ### Glossary
 
@@ -55,7 +56,7 @@ Collector's catalog changes only through background jobs: the catalog refresh (w
 - Progress for jobs other than catalog operations.
 - Changing the refresh schedule, languages or art matching from the app.
 - Starting the first refresh automatically.
-- Live updates pushed by broadcast (ADR 0014); a jobs-dashboard gem (ADR 0013).
+- Live updates pushed by broadcast (ADR 0015); a jobs-dashboard gem (ADR 0014).
 - Removing or changing the `catalog:refresh` and `catalog:status` rake tasks (beyond `catalog:status` also reflecting the new stall rule).
 
 ## Users and Context
@@ -287,7 +288,7 @@ Collector's catalog changes only through background jobs: the catalog refresh (w
 
 - Pages render correctly whatever state jobs and runs are in, including runs left running by a crash, jobs whose class no longer exists, and an empty queue.
 - A restart of the app during a refresh or a build leaves the page showing the run as interrupted or already re-run (AC-3.2, AC-3.3), not a refresh blocked for hours.
-- The test suite exercises the jobs pages, and the catalog page's queued and in-flight states, against the queue's real tables with jobs queued through the queue's own adapter and never performed by a worker in tests, not stubs (ADR 0013's consequence).
+- The test suite exercises the jobs pages, and the catalog page's queued and in-flight states, against the queue's real tables with jobs queued through the queue's own adapter and never performed by a worker in tests, not stubs (ADR 0014's consequence).
 
 ### Accessibility
 
@@ -322,7 +323,7 @@ None. Decisions made in drafting and review, for the maintainer to confirm at ap
 
 ## Out of Scope (Future Considerations)
 
-- A general jobs console with queue control (pause, recurring tasks on demand); revisit ADR 0013 if the scope grows to that.
+- A general jobs console with queue control (pause, recurring tasks on demand); revisit ADR 0014 if the scope grows to that.
 - Retry all failed jobs.
 - Job filtering and search.
 - An automatic first refresh.

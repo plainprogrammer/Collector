@@ -1,19 +1,19 @@
-# 0014: Show live progress on admin pages by polling with Turbo morph refreshes
+# 0015: Show live progress on admin pages by polling with Turbo morph refreshes
 
 ## Status
 
-Accepted (2026-10-09, approved with spec 014's PRD)
+Accepted (2026-10-09, approved with spec 015's PRD; written as 0014, renumbered 0015 with ADR 0014)
 
 **Date:** 2026-10-09
-**Feature:** 014-admin-catalog-and-jobs
+**Feature:** 015-admin-catalog-and-jobs
 
 ## Context
 
-Spec 014's [PRD](../specs/014-admin-catalog-and-jobs/prd.md) asks the admin catalog page to show a running refresh's stages and percentage, and the art index build's progress, while they run, instead of logs or a status line. The issue (#29) asks for progress "rather than just logs or static status reporting".
+Spec 015's [PRD](../specs/015-admin-catalog-and-jobs/prd.md) asks the admin catalog page to show a running refresh's stages and percentage, and the art index build's progress, while they run, instead of logs or a status line. The issue (#29) asks for progress "rather than just logs or static status reporting".
 
 What the app has:
 
-- **Progress is already in the database.** `MTG::ArtBuild` records counts and a heartbeat after every batch of 50 artworks; spec 014 adds `stage`, `stage_done` and `stage_total` to `catalog_refresh_runs`, written every few thousand records seen or every few seconds, whichever comes first.
+- **Progress is already in the database.** `MTG::ArtBuild` records counts and a heartbeat after every batch of 50 artworks; spec 015 adds `stage`, `stage_done` and `stage_total` to `catalog_refresh_runs`, written every few thousand records seen or every few seconds, whichever comes first.
 - **Turbo morphing is on app-wide** (`turbo_refreshes_with method: :morph, scroll: :preserve` in the layout), so a refresh of the same page replaces only what changed.
 - **Solid Cable is configured but unused.** No view subscribes to a stream and no model broadcasts.
 - **Jobs run inside Puma** on SQLite (`SOLID_QUEUE_IN_PUMA`), and restarts interrupt them; the art build can run for hours.
