@@ -36,7 +36,7 @@ module MTG::Art
     return "Art matching: off (set #{ENV_NAME}=true to turn it on)" unless enabled?
 
     run = MTG::ArtBuild.latest
-    return "Art matching: on; no build has run yet (it starts after the next catalog refresh)" unless run
+    return "Art matching: on; no build has run yet (it starts after the next catalog refresh, or from the admin catalog page)" unless run
 
     progress = "#{run.fetched_count} images fetched, #{run.fingerprinted_count} of #{run.total_count} artworks fingerprinted"
     if run.running? && run.stale?

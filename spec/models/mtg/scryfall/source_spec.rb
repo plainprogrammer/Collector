@@ -152,6 +152,13 @@ RSpec.describe MTG::Scryfall::Source, type: :model do
     end
   end
 
+  describe ".title and .operations (spec 015 FR-2)" do
+    it "names the catalog and offers the art index as its one extra operation", :aggregate_failures do
+      expect(described_class.title).to eq("Magic: The Gathering")
+      expect(described_class.operations("mtg").map(&:key)).to eq([ "art_index" ])
+    end
+  end
+
   describe "#each_set" do
     it "yields a record per set" do
       stub_scryfall(cards: [], sets: [ scryfall_set, scryfall_set("code" => "neo", "name" => "Kamigawa") ])

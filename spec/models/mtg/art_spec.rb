@@ -51,7 +51,8 @@ RSpec.describe MTG::Art, type: :model do
     end
 
     it "says when no build has run yet", :art_matching do
-      expect(described_class.status_line).to eq("Art matching: on; no build has run yet (it starts after the next catalog refresh)")
+      expect(described_class.status_line)
+        .to eq("Art matching: on; no build has run yet (it starts after the next catalog refresh, or from the admin catalog page)")
     end
 
     it "reports a running build's progress", :art_matching do

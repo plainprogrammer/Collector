@@ -18,6 +18,14 @@ RSpec.describe Catalog::RefreshJob, type: :job do
     expect(Catalog::Refresh).to have_received(:new).with("mtg", trigger: "scheduled", job_id: job.job_id)
   end
 
+  it "is followed by the art build when it applies with art matching on, as a scheduled refresh is (spec 015 AC-4.9)", :art_matching do
+    stub_scryfall(cards: [ scryfall_card ])
+
+    expect { described_class.perform_now("mtg", "manual") }.to have_enqueued_job(MTG::Art::BuildJob).once
+  ensure
+    FileUtils.rm_rf(Rails.configuration.x.catalog_download_dir)
+  end
+
   it "retries transient source errors" do
     allow(Catalog::Refresh).to receive(:new).and_raise(Catalog::Sources::TransientError, "timeout")
 

@@ -13,6 +13,10 @@ class MTG::Scryfall::Source
   # Spec 011 AC-3.11: extra lines for `catalog:status[mtg]`.
   def self.status_lines = [ MTG::Art.status_line ]
 
+  # Spec 015 FR-2: the name the admin catalog page gives this catalog, and what it can start besides the refresh.
+  def self.title = "Magic: The Gathering"
+  def self.operations(collectible_type) = [ MTG::Art::Operation.new(collectible_type) ]
+
   # Spec 015 FR-2: a callable the refresh sets; called with (done, total) bytes of the download, then of the file read.
   attr_writer :progress
 
