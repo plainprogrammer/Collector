@@ -74,6 +74,17 @@ Rails.application.routes.draw do
       resource :deletion, only: :new, module: :users
     end
     resource :sign_up_setting, only: :update
+
+    # Catalog operations and background jobs (spec 015).
+    resource :catalog, only: :show do
+      resources :operation_starts, only: :create, module: :catalogs
+    end
+    resources :jobs, only: %i[index show] do
+      scope module: :jobs do
+        resource :retry, only: :create
+        resource :discard, only: %i[new create]
+      end
+    end
   end
 
   # Defines the root path route ("/")

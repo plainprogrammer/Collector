@@ -177,10 +177,102 @@ RSpec.describe Catalog::Refresh, type: :model do
   end
 
   it "records a skip without touching the catalog while another run is in progress", :aggregate_failures do
-    create(:catalog_refresh_run, collectible_type: "fake", status: "running", started_at: 1.hour.ago, finished_at: nil)
+    create(:catalog_refresh_run, :running, collectible_type: "fake")
 
     expect(refresh).to be_skipped
     expect(Catalog::Entry.count).to eq(0)
+  end
+
+  describe "the job running it (spec 015 FR-1)" do
+    it "records the job running it, and closes that job's own running run when it starts again (AC-3.3)", :aggregate_failures do
+      left = create(:catalog_refresh_run, :running, collectible_type: "fake", job_id: "job-1")
+
+      run = described_class.new("fake", trigger: "manual", source:, job_id: "job-1").call
+
+      expect(run).to have_attributes(status: "applied", job_id: "job-1")
+      expect(left.reload).to have_attributes(status: "failed", message: "interrupted")
+    end
+
+    it "gives the same catalog when a job runs again after being interrupted partway (AC-3.8)", :aggregate_failures do
+      source.entries = [ entry_record("a"), entry_record("b"), entry_record("c") ]
+      source.fail_at = 2
+      expect { described_class.new("fake", trigger: "manual", source:, job_id: "job-1").call }.to raise_error(RuntimeError)
+      Catalog::RefreshRun.recent.first.update!(status: "running", finished_at: nil) # as a killed worker leaves it
+      source.fail_at = nil
+
+      run = described_class.new("fake", trigger: "manual", source:, job_id: "job-1").call
+
+      expect(run).to have_attributes(status: "applied", seen_count: 3)
+      expect(Catalog::Entry.active.pluck(:external_key)).to contain_exactly("a", "b", "c")
+      expect(Catalog::RefreshRun.where(status: "running")).to be_empty
+    end
+  end
+
+  describe "stage and progress (spec 015 FR-1)" do
+    # Every write of the run's progress, in order, as [stage, done, total, seen so far], or as what the block makes
+    # of it at the moment of the write.
+    def progress_writes(&observe)
+      observe ||= ->(progress) { [ progress[:stage], progress[:done], progress[:total], progress[:counts][:seen] ] }
+      writes = []
+      allow_any_instance_of(Catalog::RefreshRun).to receive(:progress!).and_wrap_original do |original, **progress| # rubocop:disable RSpec/AnyInstance -- the run is created inside the refresh
+        writes << observe.call(progress)
+        original.call(**progress)
+      end
+      writes
+    end
+
+    it "passes through the four stages in order and keeps the last one (AC-2.4)", :aggregate_failures do
+      writes = progress_writes
+
+      run = refresh
+
+      expect(writes.map(&:first)).to eq(%w[download sync retire index])
+      expect(run).to have_attributes(status: "applied", stage: "index")
+    end
+
+    it "keeps the stage reached when the run fails (AC-3.1)", :aggregate_failures do
+      source.fail_at = 1
+
+      expect { refresh }.to raise_error(RuntimeError)
+      expect(Catalog::RefreshRun.recent.first).to have_attributes(status: "failed", stage: "sync", seen_count: 1)
+    end
+
+    context "with a source that reports how far it is" do
+      let(:source) { ReportingCatalogSource.new(sets: [ set_record("lea") ], entries: [ entry_record("a"), entry_record("b") ]) }
+      let(:now) { [ 0.0 ] }
+      let(:clock) { -> { now[0] += 3 } } # every look at the clock is 3 seconds later, so every report is due
+
+      it "records bytes of the download and of the file, with the counts so far (AC-2.5, AC-2.6)", :aggregate_failures do
+        writes = progress_writes
+
+        described_class.new("fake", trigger: "manual", source:, clock:).call
+
+        expect(writes).to include([ "download", 50, 100, 0 ], [ "download", 100, 100, 0 ], [ "sync", 1, 2, 0 ], [ "sync", 2, 2, 1 ])
+        expect(writes.last).to eq([ "index", nil, nil, 2 ])
+      end
+
+      it "never writes progress inside a batch's write transaction (spec 015 FR-1 must not)", :aggregate_failures do
+        stub_const("Catalog::Refresh::BATCH_SIZE", 2) # a batch is written every two records, between writes of progress
+        source.entries = %w[a b c d e].map { |key| entry_record(key) }
+        connection = ActiveRecord::Base.connection
+        outside = connection.open_transactions # the example's own transaction, and nothing else
+        writes = progress_writes { |progress| [ progress[:stage], progress[:counts][:inserted], connection.open_transactions ] }
+
+        described_class.new("fake", trigger: "manual", source:, clock:).call
+
+        expect(writes.map(&:last).uniq).to eq([ outside ])
+        # Progress was written before, between and after the batches, so a write inside one would have been seen.
+        expect(writes.filter_map { |stage, inserted, _open| inserted if stage == "sync" }.uniq).to eq([ 0, 2, 4 ])
+      end
+    end
+
+    it "works with a source that reports nothing: stages and counts only (AC-2.8)" do
+      writes = progress_writes
+
+      refresh
+
+      expect(writes.map { |_stage, done, total, _seen| [ done, total ] }.uniq).to eq([ [ nil, nil ] ])
+    end
   end
 
   describe "the name index (spec 007 AC-3.9)" do

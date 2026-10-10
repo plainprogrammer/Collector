@@ -1,0 +1,38 @@
+<%# locals: (operation:, catalog:) %>
+<%# One operation of a catalog type (Catalog::Operation): its state in a sentence, its start button, and how far it is. %>
+<section class="c-operation" id="<%= catalog.collectible_type %>_<%= operation.key %>">
+  <div class="c-operation__head">
+    <h3 class="c-operation__title"><%= operation.title %></h3>
+    <% if operation.start_label %>
+      <%# The refresh is the page's primary action while the catalog isn't loaded (AC-1.4). %>
+      <%= button_to operation.start_label, admin_catalog_operation_starts_path,
+            params: { collectible_type: catalog.collectible_type, operation: operation.key }, disabled: !operation.startable?,
+            class: class_names("c-btn", !catalog.loaded? && operation == catalog.refresh ? "c-btn--primary" : "c-btn--secondary"),
+            form: { class: "c-operation__start" } %>
+    <% end %>
+  </div>
+  <p class="c-operation__summary"><%= operation.summary %></p>
+  <% if operation.failed_job? %><p class="c-operation__summary"><%= link_to "See its failed job", admin_jobs_path(status: "failed") %></p><% end %>
+
+  <% if operation.stages.any? %>
+    <ol class="c-stages">
+      <% operation.stages.each do |stage| %>
+        <%= tag.li class: "c-stages__stage", aria: { current: ("step" if stage.state == :current) } do %>
+          <span class="c-stages__label"><%= stage.label %></span>
+          <span class="c-stages__state"><%= stage_word(stage) %></span>
+          <% if stage.meter %><%= render "admin/catalogs/meter", meter: stage.meter %><% end %>
+          <% if stage.note %><span class="c-stages__note"><%= stage.note %></span><% end %>
+        <% end %>
+      <% end %>
+    </ol>
+  <% end %>
+  <% if operation.meter %><%= render "admin/catalogs/meter", meter: operation.meter %><% end %>
+
+  <% if operation.facts.any? %>
+    <dl class="c-details">
+      <% operation.facts.each do |fact| %>
+        <div><dt><%= fact.label %></dt><dd><%= fact_value(fact) %></dd></div>
+      <% end %>
+    </dl>
+  <% end %>
+</section>

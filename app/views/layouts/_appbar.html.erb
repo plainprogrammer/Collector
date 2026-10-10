@@ -20,7 +20,7 @@
       <details class="c-menu" data-controller="menu">
         <summary class="c-avatar" aria-label="Account: <%= Current.user.name %>"><%= Current.user.initial %></summary>
         <div class="c-menu__list">
-          <% if Current.user.admin? %><%= link_to "Users and sign-up", admin_users_path, class: "c-menu__item" %><div class="c-menu__sep"></div><% end %>
+          <% if Current.user.admin? %><%= link_to "Users and sign-up", admin_users_path, class: "c-menu__item" %><%= link_to "Catalog", admin_catalog_path, class: "c-menu__item" %><%= link_to "Jobs", admin_jobs_path, class: "c-menu__item" %><div class="c-menu__sep"></div><% end %>
           <%= button_to "Sign out", session_path, method: :delete, class: "c-menu__item", form: { class: "c-menu__form" } %>
         </div>
       </details>

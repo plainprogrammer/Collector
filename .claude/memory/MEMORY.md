@@ -7,8 +7,8 @@
 - [Plan reviews run the code](plan-reviews-run-the-code.md) — trace plan code against the files it edits; read-only Fable by default (spec 009); planner runs the code in scratch first (spec 013)
 - [Dev machine image tools](dev-machine-image-tools.md) — magick 7, Pillow, ffmpeg, libvips 8.18.3 present (no `vips` command); ruby-vips in the bundle; decode via `magick … ppm:-`
 - [Scryfall API access](scryfall-api-access.md) — docs 403 to WebFetch; use curl + User-Agent; bulk JSONL facts
-- [PR screenshots workflow](pr-screenshots-workflow.md) — headless Firefox + magick/ffmpeg; embed in private-repo PRs via blob/<sha>?raw=true
-- [Background servers via task](background-servers-via-task.md) — run_in_background + TaskStop, not &/kill/pkill; 2-hour task limit, restart before device steps
+- [PR screenshots workflow](pr-screenshots-workflow.md) — headless Firefox + magick/ffmpeg; embed in private-repo PRs via blob/<sha>?raw=true; pause 0.6s after a theme switch
+- [Background servers via task](background-servers-via-task.md) — run_in_background + TaskStop, not &/kill/pkill; 2-hour task limit, restart before device steps; TaskStop is a crash for running jobs
 - [Branch naming convention](branch-naming-convention.md) — NNN-descriptive-slug per docs/git-convention.md; rename the worktree branch at the start, never use the plainprogrammer/ prefix
 - [Headless Firefox narrow frame](headless-firefox-narrow-frame.md) — windows can't go below 500px; test/screenshot phone widths in a fixed-width iframe
 - [Pre-commit hook staging](precommit-hook-staging.md) — hook reads the command text for `git add` / `commit -a`; stage separately to be safe
@@ -34,3 +34,6 @@
 - [Session-wrap before PR review](session-wrap-before-pr-review.md) — wrap and commit memories/lessons before marking a PR ready; offer post-merge housekeeping then too
 - [Local image builds duplicate OCR](local-image-builds-duplicate-ocr.md) — issue #31: set-up checkouts build images ~14 MB larger; measure paths with `du`, not total sizes
 - [Subagent commit trailers](subagent-commit-trailers.md) — subagents use their own session's trailer; don't name one in briefs
+- [SDD execute with exact plans](sdd-execute-exact-plans.md) — subagents read their phase's line range and apply blocks by script; diff against the prototype branch before deleting it
+- [PR exists and conflicts check](pr-exists-and-conflicts-check.md) — `gh pr list --head` before creating; a conflicting PR gets no CI run, merge main and push
+- [Spec 015 follow-ups](spec-015-followups.md) — PR #32 draft, CI green; unchecked: graceful restart, art matching on, focus rings; later spec: "Running." after a crash, "Attempts 0"

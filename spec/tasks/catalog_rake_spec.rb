@@ -31,6 +31,20 @@ RSpec.describe "catalog rake tasks", type: :task do # rubocop:disable RSpec/Desc
       expect(lines.second).to include("v10", "applied", "scheduled")
     end
 
+    it "marks a run with no progress for 15 minutes interrupted (spec 015 AC-3.5)" do
+      create(:catalog_refresh_run, :running, started_at: 1.hour.ago, heartbeat_at: 20.minutes.ago, job_id: "job-1")
+
+      expect { Rake::Task["catalog:status"].invoke("mtg") }.to output(/  interrupted  manual/).to_stdout
+    end
+
+    it "prints a stalled run whose job a worker still holds as running, as the page does (AC-3.5, AC-3.6)", :solid_queue do
+      create(:catalog_refresh_run, :running, started_at: 1.hour.ago, heartbeat_at: 20.minutes.ago, job_id: "job-1")
+      claim_job(queue_job(Catalog::RefreshJob, "mtg", "manual")).update!(active_job_id: "job-1")
+
+      expect { Rake::Task["catalog:status"].invoke("mtg") }
+        .to output(/  running \(no progress for 20 minutes\)  manual/).to_stdout
+    end
+
     it "says when there are no runs" do
       expect { Rake::Task["catalog:status"].invoke("mtg") }.to output(/No mtg refresh runs yet/).to_stdout
     end

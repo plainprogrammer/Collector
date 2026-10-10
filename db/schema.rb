@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_07_100003) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_09_100001) do
   create_table "accounts", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -109,6 +109,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_100003) do
     t.datetime "finished_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "stage"
+    t.bigint "stage_done"
+    t.bigint "stage_total"
+    t.string "job_id"
+    t.datetime "heartbeat_at"
     t.index ["collectible_type", "status", "started_at"], name: "idx_on_collectible_type_status_started_at_ed4a804a4c"
   end
 

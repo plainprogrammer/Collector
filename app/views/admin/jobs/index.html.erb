@@ -1,0 +1,56 @@
+<% content_for :title, "Jobs · Collector" %>
+<%= render "layouts/appbar", section: nil %>
+<%# The page keeps itself current only while a job is running or queued (spec 015 AC-6.10). %>
+<%= tag.main class: "c-main", data: { controller: ("poll" if @list.live?) } do %>
+  <div class="c-pagehead">
+    <div><h1 class="c-pagehead__title">Jobs</h1><p class="c-pagehead__stats"><%= pluralize(@list.counts.fetch("failed"), "failed job") %></p></div>
+    <div class="c-pagehead__actions"><%= link_to "Catalog", admin_catalog_path, class: "c-btn c-btn--secondary" %></div>
+  </div>
+  <p><%= link_to "Catalog", admin_catalog_path, class: "c-btn c-btn--secondary c-admin__add" %></p>
+
+  <%= form_with url: admin_jobs_path, method: :get, class: "c-jobs__filters" do %>
+    <% BackgroundJobs::List::STATES.each do |state| %>
+      <%= button_tag name: "status", value: state, class: "c-filter", aria: { pressed: state == @list.state } do %><%= state.humanize %> <span class="c-jobs__count"><%= number_with_delimiter(@list.counts.fetch(state)) %></span><% end %>
+    <% end %>
+  <% end %>
+
+  <% if @list.entries.empty? %>
+    <p class="c-empty">No <%= @list.state %> jobs.</p>
+  <% else %>
+    <div class="c-collection">
+      <table class="c-table c-jobs">
+        <thead><tr><th>Job</th><th class="is-opt">Queue</th><th class="is-opt"><%= admin_jobs_time_heading(@list.state) %></th><th><span class="c-sr">Actions</span></th></tr></thead>
+        <tbody>
+          <% @list.entries.each do |job| %>
+            <tr>
+              <td class="c-jobs__job">
+                <div class="c-table__item"><div>
+                  <%= link_to job.class_name, admin_job_path(job) %>
+                  <% if job.list_note %><span class="c-jobs__detail"><%= job.list_note %></span><% end %>
+                  <% if job.failed? %><span class="c-jobs__detail"><%= job.error_line %></span><% end %>
+                  <span class="c-table__sub"><%= job.queue_name %> · <%= utc_time_with_relative(job.listed_at) %></span>
+                </div></div>
+              </td>
+              <td class="is-opt is-data"><%= job.queue_name %></td>
+              <td class="is-opt"><%= utc_time_with_relative(job.listed_at) %></td>
+              <td class="c-table__actions">
+                <% if job.failed? %>
+                  <details class="c-menu" data-controller="menu">
+                    <summary class="c-btn c-btn--ghost c-btn--sm c-btn--icon" aria-label="Actions for <%= job.class_name %> <%= job.id %>"><%= render "icons/more" %></summary>
+                    <div class="c-menu__list">
+                      <%= button_to "Retry", admin_job_retry_path(job), class: "c-menu__item", form: { class: "c-menu__form" } %>
+                      <div class="c-menu__sep"></div>
+                      <%= link_to "Discard…", new_admin_job_discard_path(job), class: "c-menu__item c-menu__item--danger" %>
+                    </div>
+                  </details>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <%= render "catalog/pagination", pagination: @list.pagination, link_params: { status: @list.state } %>
+  <% end %>
+<% end %>
+<%= render "layouts/tabbar", section: nil %>

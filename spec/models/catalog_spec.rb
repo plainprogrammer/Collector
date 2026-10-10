@@ -21,4 +21,18 @@ RSpec.describe Catalog, type: :model do
   it "allows images and links only from registered sources' hosts" do
     expect(described_class.allowed_hosts).to contain_exactly("scryfall.com", "cards.scryfall.io", "svgs.scryfall.io")
   end
+
+  describe ".title_for and .unloaded_titles (spec 015 glossary)" do
+    it "names a type by its source's title", :other_catalog do
+      expect(described_class.title_for("other")).to eq("Pocket Monsters")
+    end
+
+    it "lists the types with no applied refresh, by title", :aggregate_failures, :other_catalog do
+      create(:catalog_refresh_run, collectible_type: "other", status: "failed")
+      expect(described_class.unloaded_titles).to eq([ described_class.title_for("mtg"), "Pocket Monsters" ])
+
+      create(:catalog_refresh_run, collectible_type: "other", status: "applied")
+      expect(described_class.unloaded_titles).to eq([ described_class.title_for("mtg") ])
+    end
+  end
 end

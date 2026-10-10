@@ -54,6 +54,16 @@ RSpec.describe MTG::Scryfall::Client, type: :model do
 
       expect(io.string).to eq("abc")
     end
+
+    it "yields the bytes received so far to a block (spec 015 FR-2)", :aggregate_failures do
+      stub_request(:get, "https://data.scryfall.io/f.jsonl.gz").to_return(body: "abcde")
+      received = []
+
+      client.download("https://data.scryfall.io/f.jsonl.gz", to: StringIO.new) { |bytes| received << bytes }
+
+      expect(received).to eq(received.sort)
+      expect(received.last).to eq(5)
+    end
   end
 
   describe "#fetch_image (spec 011 AC-3.4)" do

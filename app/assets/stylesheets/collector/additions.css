@@ -167,3 +167,51 @@
 .c-scanner__hint { margin:0; font:400 14px/20px var(--font-sans); color:var(--ink-muted); }
 /* Art matching's status under the scanner's controls (spec 011 AC-5.1): quiet, like the hint. */
 .c-scanner__art { margin:0; font:400 14px/20px var(--font-sans); color:var(--ink-muted); }
+
+/* ---------- Admin jobs (spec 015): state filters over the jobs table, and one job's page ---------- */
+.c-jobs__filters { display:flex; flex-wrap:wrap; gap:var(--space-2); margin:var(--space-6) 0 var(--space-4); }
+.c-jobs__count { font-family:var(--font-mono); color:var(--ink-muted); }
+.c-jobs td.c-jobs__job { white-space:normal; overflow-wrap:anywhere; }
+.c-jobs__detail { display:block; font:400 12px/16px var(--font-mono); color:var(--ink-muted); }
+.c-job__title { overflow-wrap:anywhere; }
+.c-job__actions { margin:var(--space-4) 0; }
+.c-job__section { margin-top:var(--space-6); }
+.c-job__error { margin:0 0 var(--space-2); font:400 15px/22px var(--font-sans); color:var(--ink); overflow-wrap:anywhere; }
+.c-job__note { overflow-wrap:anywhere; } /* a sentence quoting a job's arguments, which may be one long unbroken string */
+.c-pre { margin:0; padding:var(--space-3); overflow-x:auto; background:var(--surface-sunken); border-radius:var(--radius-md);
+  font:400 12px/16px var(--font-mono); color:var(--ink); }
+
+/* ---------- Admin catalog (spec 015): a panel per catalog type, holding its facts and its operations ---------- */
+.c-panel { display:flex; flex-direction:column; gap:var(--space-4); margin-top:var(--space-6); padding:var(--space-4);
+  background:var(--surface-raised); border:1px solid var(--line); border-radius:var(--radius-md); }
+.c-panel .c-empty { margin:0; }
+.c-panel > .c-section__title { white-space:normal; overflow-wrap:anywhere; } /* a long catalog name wraps */
+.c-operation { display:flex; flex-direction:column; gap:var(--space-2); padding-top:var(--space-4); border-top:1px solid var(--line); }
+.c-operation__head { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:var(--space-2); }
+.c-operation__title { margin:0; font:600 16px/24px var(--font-sans); color:var(--ink); }
+.c-operation__summary { margin:0; font:400 15px/22px var(--font-sans); color:var(--ink); overflow-wrap:anywhere; }
+.c-operation__summary a { color:var(--brand); font-weight:600; text-decoration:none; }
+.c-operation__summary a:hover { text-decoration:underline; }
+.c-operation__summary a:focus-visible { outline:2px solid var(--focus); outline-offset:2px; border-radius:var(--radius-sm); }
+.c-operation__start { display:flex; }
+.c-runs li { flex-wrap:wrap; }
+
+/* ---------- Stage list (spec 015): the steps of an operation in order, each with its state in a word ---------- */
+.c-stages { display:flex; flex-direction:column; gap:var(--space-2); margin:0; padding:0; list-style:none; }
+.c-stages__stage { display:grid; grid-template-columns:minmax(0, 1fr) auto; gap:var(--space-1) var(--space-3);
+  font:400 14px/20px var(--font-sans); color:var(--ink-muted); }
+.c-stages__stage[aria-current] { color:var(--ink); font-weight:600; }
+.c-stages__state { font:400 13px/18px var(--font-mono); }
+.c-stages__stage .c-meter, .c-stages__note { grid-column:1 / -1; }
+.c-stages__note { font:400 13px/18px var(--font-mono); color:var(--ink-muted); }
+
+/* ---------- Progress meter (spec 015): a bar with its percentage and, where there are any, the amounts in words ---------- */
+.c-meter { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-2); font:400 13px/18px var(--font-mono); color:var(--ink-muted); }
+.c-meter__bar { flex:1 1 160px; min-width:0; height:var(--space-2); accent-color:var(--brand); }
+/* c-meter__value, c-meter__text and c-stages__label take the styles above as they are: they are named for the docs and
+   for specs, not for rules of their own. */
+
+/* ---------- Links inside a status message use the brand link colour (spec 015: the not-loaded notice) ---------- */
+.c-status__message a { color:var(--brand); font-weight:600; text-decoration:none; }
+.c-status__message a:hover { text-decoration:underline; }
+.c-status__message a:focus-visible { outline:2px solid var(--focus); outline-offset:2px; border-radius:var(--radius-sm); }

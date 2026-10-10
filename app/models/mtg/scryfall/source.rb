@@ -13,6 +13,13 @@ class MTG::Scryfall::Source
   # Spec 011 AC-3.11: extra lines for `catalog:status[mtg]`.
   def self.status_lines = [ MTG::Art.status_line ]
 
+  # Spec 015 FR-2: the name the admin catalog page gives this catalog, and what it can start besides the refresh.
+  def self.title = "Magic: The Gathering"
+  def self.operations(collectible_type) = [ MTG::Art::Operation.new(collectible_type) ]
+
+  # Spec 015 FR-2: a callable the refresh sets; called with (done, total) bytes of the download, then of the file read.
+  attr_writer :progress
+
   def initialize(client: MTG::Scryfall::Client.new, env: ENV)
     @client = client
     @env = env
@@ -50,7 +57,11 @@ class MTG::Scryfall::Source
     expected = Integer(file.fetch("compressed_size"))
     path = dir.join("#{version}.jsonl.gz")
     dir.mkpath
-    fetch(file.fetch("jsonl_download_uri"), path, expected) unless path.exist? && path.size == expected
+    if path.exist? && path.size == expected
+      @progress&.call(expected, expected)
+    else
+      fetch(file.fetch("jsonl_download_uri"), path, expected)
+    end
     prune(dir)
     path
   end
@@ -66,10 +77,14 @@ class MTG::Scryfall::Source
 
   def each_entry(path, languages:)
     allowed = languages.to_set
-    Zlib::GzipReader.open(path) do |gzip|
-      gzip.each_line do |line|
-        record = entry_or_malformed(line, allowed)
-        yield record if record
+    size = File.size(path)
+    File.open(path, "rb") do |file|
+      Zlib::GzipReader.wrap(file) do |gzip|
+        gzip.each_line do |line|
+          @progress&.call(file.pos, size) # compressed bytes read so far: the reader takes the file in blocks
+          record = entry_or_malformed(line, allowed)
+          yield record if record
+        end
       end
     end
   end
@@ -77,7 +92,9 @@ class MTG::Scryfall::Source
   private
     def fetch(url, path, expected)
       partial = Pathname("#{path}.part")
-      File.open(partial, "wb") { |io| @client.download(url, to: io) }
+      File.open(partial, "wb") do |io|
+        @client.download(url, to: io) { |received| @progress&.call(received, expected) }
+      end
       return partial.rename(path) if partial.size == expected
 
       actual = partial.size

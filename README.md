@@ -254,8 +254,13 @@ Card data comes from [Scryfall](https://scryfall.com)'s bulk data files, which t
 downloads in a background job and caches in its own database. Pages are rendered only from
 that local copy; the app never calls Scryfall while rendering a page.
 
-**The catalog is empty until the first refresh.** After the first deployment, queue a manual
-refresh:
+**The catalog is empty until the first refresh.** After the first deployment, sign in as an
+admin and open **Catalog** (in the account menu, or under More on a phone). Press
+**Refresh now** and the page shows the download and the sync as they go, without reloading.
+Until then, search and the scanner say that the catalog hasn't been loaded. Nothing downloads
+until you start it, so set the languages below first if you want more than English.
+
+You can also queue the refresh from a shell:
 
 ```sh
 bin/rails "catalog:refresh[mtg]"                          # locally
@@ -271,6 +276,14 @@ any error message:
 bin/rails "catalog:status[mtg]"   # Kamal: bin/kamal catalog-status
 ```
 
+- **Catalog page:** `/admin/catalog` shows each catalog's cards, its last applied refresh, when
+  the next one is scheduled, the running refresh's stage and progress, and its recent runs. A
+  refresh that stops making progress for 15 minutes is shown as interrupted (after a restart,
+  for example); pressing **Refresh now** then starts it again.
+- **Jobs page:** `/admin/jobs` lists the app's background jobs that failed, are running, are
+  queued or are scheduled. A failed job shows its error and backtrace, and can be retried or
+  discarded there. Both pages are for admins only.
+
 - **Schedule:** in production the catalog refreshes weekly, on Mondays at 03:15 server time
   (`config/recurring.yml`). A scheduled run is skipped when the same Scryfall file and
   language set were already applied; a manual run always applies. Only one refresh per
@@ -284,7 +297,8 @@ bin/rails "catalog:status[mtg]"   # Kamal: bin/kamal catalog-status
   recognises a card by its artwork on live captures. It's off by default because the first
   build costs about 708 MB of downloads (one small image per artwork from Scryfall),
   about 2.6 hours of throttled fetching and then fingerprinting, and leaves an index of
-  about 7.3 MB. The build runs in the background after a catalog refresh; to start it now, run
+  about 7.3 MB. The build runs in the background after a catalog refresh; to start it now, press
+  **Build art index** on the Catalog page, which also shows its progress, or run
   `bin/rails "catalog:refresh[mtg]"` (Kamal: `bin/kamal catalog-refresh`), and follow it with
   `bin/rails "catalog:status[mtg]"`. Later refreshes fetch only new artworks. Until the first
   build finishes, and whenever art matching is off, the scanner works on text alone. Images

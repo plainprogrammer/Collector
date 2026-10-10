@@ -38,9 +38,11 @@ RSpec/Output:
 # class, so a string describe is intentional there, and the project-config spec
 # checks repository files, not a class. The hook spec exercises a git hook
 # script, and the collector rake spec a rake task, not a class. The image
-# publishing spec checks the publishing files.
+# publishing spec checks the publishing files, and the admin catalog core spec
+# the files of a page.
 RSpec/DescribeClass:
   Exclude:
+    - "spec/admin_catalog_core_spec.rb"
     - "spec/design_system_files_spec.rb"
     - "spec/githooks/post_checkout_spec.rb"
     - "spec/image_publishing_spec.rb"
