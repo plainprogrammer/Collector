@@ -6,7 +6,7 @@
 Evidence for every acceptance criterion. The suite examples are in
 `spec/config/active_storage_variant_transformer_spec.rb`, `spec/lib/collector/libvips_check_spec.rb`,
 `spec/image_publishing_spec.rb` and `spec/readme_spec.rb`; all four run in `bin/ci`. The image criteria are shown
-by local runs on an amd64 build. Two criteria need this PR's GitHub Actions run and are marked pending. The image
+by local runs on an amd64 build. Two criteria needed this PR's GitHub Actions run, which passed; see [Pull request CI](#pull-request-ci-ac-13-ac-23). The image
 size measurement corrected the spec's figure (1.1.1); see [Image size](#image-size).
 
 ## Commits
@@ -133,19 +133,20 @@ ActiveStorage::Transformers::Vips
 
 ## Pull request CI (AC-1.3, AC-2.3)
 
-**Pending: the PR's workflow run.** No workflow run exists for this branch yet.
+Draft PR [#30](https://github.com/plainprogrammer/Collector/pull/30), run on 2026-10-10 (UTC).
 
-- Run URL: _to be added_
-- Commit: _to be added_
+- Run URL: https://github.com/plainprogrammer/Collector/actions/runs/38017148420
+- Commit: `31b36e9`
+- Conclusion: success. `Publish manifest list` was skipped, as it is on every PR.
 
 | Job | Result |
 |---|---|
-| `ci` (`bin/ci`, after the libvips install step) | pending |
-| Image (linux/amd64), `Smoke test` step | pending |
-| Image (linux/arm64), `Smoke test` step | pending |
+| [`ci`](https://github.com/plainprogrammer/Collector/actions/runs/38017148420/job/114109856067) (`bin/ci`, after the libvips install step) | ✓ The install step set up `libvips42t64:amd64 (8.15.1-1.1build4)`. `bin/ci`: `925 examples, 0 failures, 1 pending`, `Continuous Integration passed in 2m20.79s` |
+| [Image (linux/amd64)](https://github.com/plainprogrammer/Collector/actions/runs/38017148420/job/114110419246), `Smoke test` step | ✓ `== Active Storage variants use libvips (spec 014)`, then `OK: collector:smoke passed the smoke test` |
+| [Image (linux/arm64)](https://github.com/plainprogrammer/Collector/actions/runs/38017148420/job/114110419241), `Smoke test` step | ✓ the same two lines |
 
-To record: the run URL, the commit, each job's conclusion, and for both `Smoke test` steps the
-`== Active Storage variants use libvips (spec 014)` line followed by `OK: collector:smoke passed the smoke test`.
+Both image builds installed `libvips42t64 8.16.1-1+deb13u1`. The spec and evidence commits pushed after `31b36e9`
+change only `docs/`, which `.dockerignore` keeps out of the image.
 Nothing has been run on arm64 so far.
 
 ## Acceptance criteria
@@ -154,11 +155,11 @@ Nothing has been run on arm64 so far.
 |---|---|---|
 | AC-1.1 | Local `bin/image-smoke collector:vips` passes its vips check, which fails on either warning. The `bin/rails runner` output above has one line and neither warning | ✓ (amd64, local build) |
 | AC-1.2 | `bin/rails runner 'puts ActiveStorage.variant_transformer'` in `collector:vips` prints `ActiveStorage::Transformers::Vips` | ✓ (amd64, local build) |
-| AC-1.3 | File shape: `image_publishing_spec.rb` `bin/image-smoke` "checks that Active Storage variants use libvips without a warning (spec 014 AC-1.3, FR-2)". amd64: the local smoke run above. arm64: nothing yet | pending: the PR's workflow run (both architectures) |
+| AC-1.3 | File shape: `image_publishing_spec.rb` `bin/image-smoke` "checks that Active Storage variants use libvips without a warning (spec 014 AC-1.3, FR-2)". amd64: the local smoke run above. Both architectures: the PR's workflow run, where each `Smoke test` step printed the vips heading and passed | ✓ |
 | AC-1.4 | `bin/image-smoke ghcr.io/plainprogrammer/collector:0.1.0` exits 1 with `FAIL: vips: variants can't use libvips:` and the ruby-vips warning | ✓ |
 | AC-2.1 | `active_storage_variant_transformer_spec.rb` "resizes an image with libvips (AC-2.1)" | ✓ |
 | AC-2.2 | `active_storage_variant_transformer_spec.rb` "is the vips transformer (AC-2.2)" | ✓ |
-| AC-2.3 | File shape: `image_publishing_spec.rb` `.github/workflows/ci.yml` "installs libvips and ImageMagick before bin/ci (spec 014 AC-2.3, FR-3)" | pending: the PR's workflow run |
+| AC-2.3 | File shape: `image_publishing_spec.rb` `.github/workflows/ci.yml` "installs libvips and ImageMagick before bin/ci (spec 014 AC-2.3, FR-3)". Run: the `ci` job installed `libvips42t64` before `bin/ci`, which passed with 0 failures | ✓ |
 | AC-2.4 | `bin/ci` above: 925 examples, 0 failures on this machine, which has libvips 8.18.3 | ✓ |
 | AC-3.1 | `libvips_check_spec.rb` `#hint` "is nil when the probe succeeds (AC-3.1)" | ✓ |
 | AC-3.2 | `libvips_check_spec.rb` `#hint` "names libvips and both packages when the probe fails, exits non-zero or can't run (AC-3.2)" | ✓ |
@@ -184,9 +185,9 @@ FR-1 "must" lines seen in the same session: `Gemfile:41` keeps `gem "image_proce
 
 | NFR | Evidence | Status |
 |---|---|---|
-| Testability | The suite examples, file-shape examples and evidence listed in the NFR are the rows above | ✓, except the workflow run (pending) |
-| Security | libvips versions seen: 8.16.1 in the image (`libvips42t64:amd64 8.16.1-1+deb13u1`, from `dpkg -l` in `collector:vips`) and 8.18.3 on this machine. Both are newer than 8.13. Ubuntu 24.04's version was not checked here. No code on this branch touches `Vips.block_untrusted`; that default was not tested directly | partly checked |
-| Portability | amd64: local build and smoke run. arm64: nothing yet | pending: the PR's workflow run |
+| Testability | The suite examples, file-shape examples and evidence listed in the NFR are the rows above | ✓ |
+| Security | libvips versions seen: 8.16.1 in the image (`libvips42t64:amd64 8.16.1-1+deb13u1`, from `dpkg -l` in `collector:vips`) and 8.18.3 on this machine. All are newer than 8.13. Ubuntu 24.04 installed 8.15.1 in the PR's `ci` job. No code on this branch touches `Vips.block_untrusted`; that default was not tested directly | partly checked |
+| Portability | amd64: local build and smoke run. amd64 and arm64: both image jobs built and passed `Smoke test` in the PR's workflow run | ✓ |
 | Image size | The two gems add about 2.7 MB; see below | ✓ (figure corrected in spec 1.1.1) |
 | Boot | AC-3.3's example shows `Bundler.require` doesn't load `ruby-vips`. The app was not booted on a machine without libvips | shown by the spec only |
 
@@ -230,7 +231,5 @@ No comparison was made against an image built from `main` at `ff06ebd`, which wo
 
 ## Still owed
 
-1. The PR's workflow run: record it under "Pull request CI", then set AC-1.3, AC-2.3 and the Portability NFR
-   to ✓ (or ⚠ with what happened).
-2. The duplicate `/rails/vendor/v7.0.0` in locally built images is outside this feature:
+1. The duplicate `/rails/vendor/v7.0.0` in locally built images is outside this feature:
    [#31](https://github.com/plainprogrammer/Collector/issues/31).
