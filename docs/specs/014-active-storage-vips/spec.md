@@ -1,7 +1,7 @@
 # Feature 014: Active Storage Variants with vips
 
 **Status:** Approved
-**Version:** 1.0.0
+**Version:** 1.1.0
 **Created:** 2026-10-09
 **Last Updated:** 2026-10-09
 **Branch:** `014-active-storage-vips`
@@ -14,6 +14,7 @@
 | Version | Date | Change |
 |---------|------|--------|
 | 1.0.0 | 2026-10-09 | Initial draft from the approved [prd.md](prd.md) and ADR [0013](../../adr/0013-active-storage-variants-with-vips.md) (libvips through `ruby-vips`, not auto-required). Approved by the maintainer |
+| 1.1.0 | 2026-10-09 | Spec review revisions (Fable, Mode A). **Testability** NFR: which ACs are suite examples, which are file-shape specs and which are evidence in `verification.md`. **AC-1.4** names a pinned image (`0.1.0`), since `edge` moves. **libvips check** extracted to `Collector::LibvipsCheck` in `lib/collector/` with an injectable probe (maintainer's choice), probing with `bundle exec ruby -e 'require "ruby-vips"'` because `bin/setup` doesn't run under Bundler (AC-3.1, AC-3.2, AC-3.4, FR-3). **Debian/Ubuntu package** named the same in the hint, README and `ci.yml` (AC-3.2, AC-4.1). **Fixture** under `spec/fixtures/files/`; dimensions read inside the transformer's block (AC-2.1). Closing #18 and memory housekeeping moved from FR-4 to Delivery. Second pass (READY TO PLAN): the fixture may be committed or generated; AC-3.5's two sentences are tagged by how they're checked |
 
 ---
 
@@ -59,7 +60,8 @@ Self-hosters see what looks like a fault on every command. Maintainers filter th
 - `.github/workflows/ci.yml`, whose test job installs system packages.
 - `bin/image-smoke`.
 - `README.md`'s Requirements.
-- A new spec and a small image fixture under `spec/`.
+- A new class `Collector::LibvipsCheck` in `lib/collector/libvips_check.rb`, which `bin/setup` uses (`require_relative`, like `WorktreeSetup`).
+- New specs (the variant, the bundle entry, the libvips check) and, if committed rather than generated, a small image fixture under `spec/fixtures/files/`.
 
 The `Dockerfile` already installs libvips in both stages and doesn't change.
 
@@ -76,7 +78,7 @@ The `Dockerfile` already installs libvips in both stages and doesn't change.
 - [ ] **AC-1.1** Given the built production image When `bin/rails runner` runs a command in it Then the combined output contains neither of the vips warnings.
 - [ ] **AC-1.2** Given the built production image When `bin/rails runner` prints `ActiveStorage.variant_transformer` Then it prints `ActiveStorage::Transformers::Vips`.
 - [ ] **AC-1.3** Given the image built for `linux/amd64` and the one built for `linux/arm64` When `bin/image-smoke` runs against each (as `ci.yml` does) Then it checks AC-1.1 and AC-1.2 and passes.
-- [ ] **AC-1.4** Given an image whose bundle lacks `ruby-vips` (for example, the image built from `main` before this feature) When `bin/image-smoke` runs against it Then it fails, and the failure names the vips check.
+- [ ] **AC-1.4** Given the published image `ghcr.io/plainprogrammer/collector:0.1.0`, whose bundle lacks `ruby-vips` When the new `bin/image-smoke` runs against it Then it fails, and the failure names the vips check.
 
 ### Story 2: Variants work
 
@@ -86,7 +88,7 @@ The `Dockerfile` already installs libvips in both stages and doesn't change.
 
 **Acceptance criteria:**
 
-- [ ] **AC-2.1** Given a small image fixture under `spec/fixtures/` (for example, a 40×20 PNG) When the test suite runs `ActiveStorage.variant_transformer` with `resize_to_limit: [10, 10]` on it, with no blob and no database tables Then the output is an image of 10×5 pixels.
+- [ ] **AC-2.1** Given a 40×20 PNG (a committed fixture under `spec/fixtures/files/`, or one generated with `PngHelpers#png_bytes`) When the test suite runs `ActiveStorage.variant_transformer.new(resize_to_limit: [10, 10]).transform(file, format: "png")`, with no blob and no database tables Then the output is a 10×5 image. The dimensions are read inside the block, because the transformer deletes its output file afterwards.
 - [ ] **AC-2.2** Given the test environment When the suite checks `ActiveStorage.variant_transformer` Then it is the vips transformer.
 - [ ] **AC-2.3** Given a run of the `ci.yml` workflow When its test job runs `bin/ci` Then libvips is installed before the suite starts, and AC-2.1 and AC-2.2 pass.
 - [ ] **AC-2.4** Given a development machine where libvips is available When `bin/ci` runs Then AC-2.1 and AC-2.2 pass.
@@ -99,10 +101,11 @@ The `Dockerfile` already installs libvips in both stages and doesn't change.
 
 **Acceptance criteria:**
 
-- [ ] **AC-3.1** Given a machine where libvips is available When `bin/setup --skip-server` runs Then it prints no libvips hint and completes.
-- [ ] **AC-3.2** Given a machine where libvips isn't available When `bin/setup --skip-server` runs Then it prints a hint naming libvips and the install commands for Fedora (`sudo dnf install vips`) and Debian/Ubuntu, then carries on and completes.
+- [ ] **AC-3.1** Given the libvips check with a probe that succeeds When it runs Then it reports nothing.
+- [ ] **AC-3.2** Given the libvips check with a probe that fails (whether by a non-zero exit or by raising) When it runs Then it reports one hint naming libvips, the Fedora package (`sudo dnf install vips`) and the Debian/Ubuntu package that `ci.yml` installs, and it does not raise.
 - [ ] **AC-3.3** Given the bundle When Rails boots Then `Bundler.require` doesn't load `ruby-vips`: its Gemfile entry is not auto-required, and a spec asserts this from Bundler's dependency list.
-- [ ] **AC-3.4** Given `bin/setup`'s libvips check When it decides whether libvips is available Then it uses the definition in Terms (whether `ruby-vips` loads in the bundle), not whether a `vips` command exists.
+- [ ] **AC-3.4** Given the libvips check's default probe When it decides whether libvips is available Then it runs `bundle exec ruby -e 'require "ruby-vips"'` with its output discarded and uses the exit status (the definition in Terms). It doesn't look for a `vips` command, and it doesn't `require` the gem in `bin/setup`'s own process, which isn't under Bundler and could load a copy of the gem from outside the bundle.
+- [ ] **AC-3.5** Given `bin/setup` When it reaches its dependency checks Then it runs the libvips check beside the ImageMagick check, prints any hint, and carries on whatever the result (file-shape spec). On this development machine, which has libvips, `bin/setup --skip-server` prints no libvips hint (evidence).
 
 ### Story 4: Requirements are documented
 
@@ -112,7 +115,7 @@ The `Dockerfile` already installs libvips in both stages and doesn't change.
 
 **Acceptance criteria:**
 
-- [ ] **AC-4.1** Given `README.md`'s Requirements section When it is read Then it lists libvips (for Active Storage image variants) and ImageMagick (for the card scanner's art index build, ADR 0012), with the Fedora and Debian/Ubuntu package names.
+- [ ] **AC-4.1** Given `README.md`'s Requirements section When it is read Then it lists libvips (for Active Storage image variants) and ImageMagick (for the card scanner's art index build, ADR 0012), with the Fedora package names and the Debian/Ubuntu package names that `ci.yml` installs.
 
 ## Functional Requirements
 
@@ -137,9 +140,9 @@ The `Dockerfile` already installs libvips in both stages and doesn't change.
 ### FR-3: Development and CI
 
 **Must:**
-- Add a libvips check to `bin/setup` beside its ImageMagick check. It prints a hint when libvips isn't available and never fails the setup run.
-- Install libvips in `ci.yml`'s test job, in the step that installs ImageMagick. The exact Ubuntu package name is confirmed in the plan.
-- Add the variant spec (AC-2.1, AC-2.2) and the bundle spec (AC-3.3) to the suite that `bin/ci` runs, with a committed image fixture of a few hundred bytes.
+- Add `Collector::LibvipsCheck` (`lib/collector/libvips_check.rb`), with a probe passed in (default: AC-3.4's command) and the hint of AC-3.2. The file loads without side effects. `bin/setup` uses it beside its ImageMagick check (AC-3.5), and a missing libvips never fails the setup run.
+- Install libvips in `ci.yml`'s test job, in the step that installs ImageMagick, before `bin/ci`. The plan confirms the exact Ubuntu package name (`libvips42t64` on 24.04, or a name that resolves to it), and the hint (AC-3.2) and README (AC-4.1) use the same name.
+- Add the variant spec (AC-2.1, AC-2.2), the bundle spec (AC-3.3) and the libvips check spec (AC-3.1, AC-3.2, AC-3.4) to the suite that `bin/ci` runs. The image fixture is a few hundred bytes, either committed or generated with `spec/support/png_helpers.rb`.
 
 **Must not:**
 - Skip or tag out the variant spec when libvips is missing. It fails, so a misconfigured CI or machine shows up.
@@ -148,10 +151,10 @@ The `Dockerfile` already installs libvips in both stages and doesn't change.
 
 **Must:**
 - Update `README.md`'s Requirements (AC-4.1).
-- Close issue #18 with the change, and remove the ruby-vips item from the spec 012 follow-ups memory once it merges.
 
 ## Non-Functional Requirements
 
+- **Testability:** AC-2.1, AC-2.2, AC-3.1–AC-3.4 and AC-4.1 are suite examples run by `bin/ci`. The `ci.yml` install step (it names libvips and precedes `bin/ci`), `bin/image-smoke`'s vips check and `bin/setup`'s use of the check (AC-3.5) are also file-shape specs, in the style of `spec/image_publishing_spec.rb`. AC-1.1–AC-1.4, AC-2.3, AC-2.4 and AC-3.5's run on this machine are evidence, recorded in `verification.md`: a local `bin/image-smoke` run on the new image (amd64), the same against `0.1.0` (AC-1.4), this PR's workflow run (both architectures, AC-1.3, AC-2.3), and the output of `bin/ci` and `bin/setup --skip-server`.
 - **Security:** variants keep Active Storage's default `Vips.block_untrusted(true)`. Nothing re-enables blocked loaders. Active Storage raises at boot if libvips is older than 8.13, and every target is newer: the image has 8.16.1, the development machine 8.18.3 and Ubuntu 24.04 8.15.1.
 - **Portability:** the image still builds and passes `bin/image-smoke` on both `linux/amd64` and `linux/arm64` (spec 012, ADR 0010).
 - **Image size:** the image grows by at most the `ruby-vips` and `ffi` gems (under 1 MB, per spec 008 `research.md` §7).
@@ -162,6 +165,7 @@ The `Dockerfile` already installs libvips in both stages and doesn't change.
 | Scenario | Expected behaviour |
 |----------|--------------------|
 | libvips isn't available on a development machine | Rails boots and logs the "requires the libvips library" warning. `bin/setup` prints its hint and completes. The variant spec fails. |
+| The libvips probe can't run (the command is missing, or an injected probe raises) | The check treats that as unavailable, prints the hint, and doesn't raise (AC-3.2). Through `bin/setup` this can't happen in practice, because `bundle check`/`bundle install` run first. |
 | libvips isn't installed in CI (a broken install step) | The test job fails: the install step fails, or the variant spec does. |
 | A future image drops `ruby-vips` or libvips | `bin/image-smoke` fails on the vips check (AC-1.4), so the image isn't published. |
 | libvips older than 8.13 | Active Storage raises at boot. No target has one, and the spec doesn't guard against it. |
@@ -171,6 +175,8 @@ The `Dockerfile` already installs libvips in both stages and doesn't change.
 None. The CI package name (`libvips42t64` on Ubuntu 24.04, or a name that resolves to it) is a planning detail. FR-3 leaves it to the plan.
 
 ## Out of Scope
+
+**Delivery (not requirements):** the PR closes issue #18. After it merges, the ruby-vips item comes out of `.claude/memory/spec-012-followups.md`, and `.claude/memory/dev-machine-image-tools.md` is corrected: this machine now has libvips 8.18.3, and the lock has `image_processing` 2.2.0.
 
 - Disabling variants and dropping libvips to shrink the image (ADR 0013, Option B).
 - ImageMagick for variants through `mini_magick` (ADR 0013, Option C).
