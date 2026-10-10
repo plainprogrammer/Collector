@@ -1,6 +1,6 @@
 # Feature 014: Admin Catalog Operations and Jobs
 
-**Status:** Draft
+**Status:** Approved
 **Version:** 1.1.1
 **Created:** 2026-10-09
 **Last Updated:** 2026-10-09
