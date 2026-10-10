@@ -209,11 +209,13 @@ RSpec.describe Catalog::Refresh, type: :model do
   end
 
   describe "stage and progress (spec 015 FR-1)" do
-    # Every write of the run's progress, in order, as [stage, done, total, seen so far].
-    def progress_writes
+    # Every write of the run's progress, in order, as [stage, done, total, seen so far], or as what the block makes
+    # of it at the moment of the write.
+    def progress_writes(&observe)
+      observe ||= ->(progress) { [ progress[:stage], progress[:done], progress[:total], progress[:counts][:seen] ] }
       writes = []
       allow_any_instance_of(Catalog::RefreshRun).to receive(:progress!).and_wrap_original do |original, **progress| # rubocop:disable RSpec/AnyInstance -- the run is created inside the refresh
-        writes << [ progress[:stage], progress[:done], progress[:total], progress[:counts][:seen] ]
+        writes << observe.call(progress)
         original.call(**progress)
       end
       writes
@@ -247,6 +249,20 @@ RSpec.describe Catalog::Refresh, type: :model do
 
         expect(writes).to include([ "download", 50, 100, 0 ], [ "download", 100, 100, 0 ], [ "sync", 1, 2, 0 ], [ "sync", 2, 2, 1 ])
         expect(writes.last).to eq([ "index", nil, nil, 2 ])
+      end
+
+      it "never writes progress inside a batch's write transaction (spec 015 FR-1 must not)", :aggregate_failures do
+        stub_const("Catalog::Refresh::BATCH_SIZE", 2) # a batch is written every two records, between writes of progress
+        source.entries = %w[a b c d e].map { |key| entry_record(key) }
+        connection = ActiveRecord::Base.connection
+        outside = connection.open_transactions # the example's own transaction, and nothing else
+        writes = progress_writes { |progress| [ progress[:stage], progress[:counts][:inserted], connection.open_transactions ] }
+
+        described_class.new("fake", trigger: "manual", source:, clock:).call
+
+        expect(writes.map(&:last).uniq).to eq([ outside ])
+        # Progress was written before, between and after the batches, so a write inside one would have been seen.
+        expect(writes.filter_map { |stage, inserted, _open| inserted if stage == "sync" }.uniq).to eq([ 0, 2, 4 ])
       end
     end
 
