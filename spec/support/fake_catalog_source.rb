@@ -61,6 +61,40 @@ class ReportingCatalogSource < FakeCatalogSource
   end
 end
 
+# A test-only catalog type with a name of its own and one extra operation (spec 015 AC-5.3): registered for one
+# example with `:other_catalog`, as the type "other".
+class OtherCatalogSource < FakeCatalogSource
+  def self.title = "Pocket Monsters"
+  def self.operations(collectible_type) = [ OtherCatalogOperation.new(collectible_type) ]
+end
+
+class OtherCatalogOperation < Catalog::Operation
+  def key = "price_sync"
+  def title = "Price sync"
+  def start_label = "Sync prices"
+  def queued_notice = "Price sync queued."
+  def in_flight_notice = "A price sync is already queued or running."
+  def job_class = OtherCatalogJob
+  def job_arguments = [ collectible_type ]
+  def queue_argument = collectible_type
+  def summary = "Never synced."
+  def record_running? = false
+  def meter = Meter.new(label: "Prices", done: 1, total: 4, text: "1 of 4 prices")
+end
+
+class OtherCatalogJob < ApplicationJob
+  def perform(_collectible_type) = nil
+end
+
+RSpec.configure do |config|
+  config.around(:each, :other_catalog) do |example|
+    Catalog.sources["other"] = "OtherCatalogSource"
+    example.run
+  ensure
+    Catalog.sources.delete("other")
+  end
+end
+
 module CatalogRecordHelpers
   def identity_record(key = "bolt", name: "Lightning Bolt", extension: {})
     Catalog::Sources::IdentityRecord.new(external_key: key, name:, extension:)
