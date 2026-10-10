@@ -1,0 +1,31 @@
+<%# locals: (catalog:) %>
+<section class="c-panel" id="catalog_<%= catalog.collectible_type %>" aria-labelledby="catalog_<%= catalog.collectible_type %>_title">
+  <h2 class="c-section__title" id="catalog_<%= catalog.collectible_type %>_title"><%= catalog.title %></h2>
+  <% unless catalog.loaded? || catalog.in_flight? %>
+    <p class="c-empty">No cards are loaded yet. The first refresh downloads the source's card data and may take several minutes. Languages: <%= catalog.languages %>.</p>
+  <% end %>
+  <dl class="c-details">
+    <div><dt>Cards</dt><dd class="is-data"><%= number_with_delimiter(catalog.entries_count) %></dd></div>
+    <div><dt>Last applied refresh</dt>
+      <dd><% if catalog.last_applied %><%= utc_time(catalog.last_applied.finished_at) %> <span class="c-tag"><%= catalog.last_applied.source_version %></span><% else %>None yet<% end %></dd></div>
+    <div><dt>Next scheduled refresh</dt>
+      <dd><% if (next_refresh_at = catalog.next_refresh_at) %><%= utc_time(next_refresh_at) %><% else %>Not scheduled<% end %></dd></div>
+  </dl>
+
+  <%= render partial: "admin/catalogs/operation", collection: catalog.operations, as: :operation, locals: { catalog: } %>
+
+  <% if catalog.recent_runs.any? %>
+    <section class="c-operation">
+      <h3 class="c-operation__title">Recent refreshes</h3>
+      <ul class="c-list c-runs">
+        <% catalog.recent_runs.each do |run| %>
+          <li>
+            <span><%= utc_time(run.started_at) %></span>
+            <span class="c-list__meta"><%= run.trigger %> · <%= catalog.refresh.status_label(run) %></span>
+            <span class="c-list__end"><%= refresh_run_outcome(run) %></span>
+          </li>
+        <% end %>
+      </ul>
+    </section>
+  <% end %>
+</section>

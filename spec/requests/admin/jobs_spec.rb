@@ -229,6 +229,12 @@ RSpec.describe "Admin jobs pages", :solid_queue, type: :request do
         expect(response).to have_http_status(:not_found)
       end
     end
+
+    it "links to the catalog page" do
+      get admin_jobs_path
+
+      expect(page.at_css(".c-pagehead__actions a")["href"]).to eq(admin_catalog_path)
+    end
   end
 
   it "is invisible to a member: 404 everywhere, and nothing changes (AC-7.1)", :aggregate_failures do

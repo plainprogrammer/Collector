@@ -1,0 +1,9 @@
+<%# locals: (meter:) %>
+<%# How far through something is (Catalog::Operation::Meter): a bar with its percentage when there is a total, then the words. %>
+<div class="c-meter">
+  <% if meter.percent %>
+    <progress class="c-meter__bar" max="100" value="<%= meter.percent %>" aria-label="<%= meter.label %>"></progress>
+    <span class="c-meter__value"><%= meter.percent %>%</span>
+  <% end %>
+  <% if meter.text %><span class="c-meter__text"><%= meter.text %></span><% end %>
+</div>

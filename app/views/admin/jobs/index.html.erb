@@ -4,7 +4,9 @@
 <%= tag.main class: "c-main", data: { controller: ("poll" if @list.live?) } do %>
   <div class="c-pagehead">
     <div><h1 class="c-pagehead__title">Jobs</h1><p class="c-pagehead__stats"><%= pluralize(@list.counts.fetch("failed"), "failed job") %></p></div>
+    <div class="c-pagehead__actions"><%= link_to "Catalog", admin_catalog_path, class: "c-btn c-btn--secondary" %></div>
   </div>
+  <p><%= link_to "Catalog", admin_catalog_path, class: "c-btn c-btn--secondary c-admin__add" %></p>
 
   <%= form_with url: admin_jobs_path, method: :get, class: "c-jobs__filters" do %>
     <% BackgroundJobs::List::STATES.each do |state| %>

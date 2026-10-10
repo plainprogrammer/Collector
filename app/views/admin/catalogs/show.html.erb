@@ -1,0 +1,13 @@
+<% content_for :title, "Catalog · Collector" %>
+<%= render "layouts/appbar", section: nil %>
+<%# The page keeps itself current only while something is queued or running (spec 015 FR-4). %>
+<%= tag.main class: "c-main", data: { controller: ("poll" if @catalogs.any?(&:in_flight?)) } do %>
+  <div class="c-pagehead">
+    <div><h1 class="c-pagehead__title">Catalog</h1><p class="c-pagehead__stats"><%= pluralize(@catalogs.size, "catalog") %></p></div>
+    <div class="c-pagehead__actions"><%= link_to "Jobs", admin_jobs_path, class: "c-btn c-btn--secondary" %></div>
+  </div>
+  <p><%= link_to "Jobs", admin_jobs_path, class: "c-btn c-btn--secondary c-admin__add" %></p>
+
+  <%= render partial: "admin/catalogs/catalog", collection: @catalogs, as: :catalog %>
+<% end %>
+<%= render "layouts/tabbar", section: nil %>

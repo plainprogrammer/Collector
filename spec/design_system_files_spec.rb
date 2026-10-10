@@ -18,7 +18,7 @@ RSpec.describe "Design system files" do
     new_patterns = %w[StatusMessage Form AuthPage ConfirmPage SearchResults TileAdd FinishBadge FilterSelect Pager EmptyState
       Details SingleStat MorePage AdminUsers TableActions SystemLogo
       SortHeader StatusAction BulkConfirmPage ChoicePage BulkForm ViewSwitchForm TableItemLink Scanner
-      AdminJobs]
+      AdminJobs AdminCatalog StageList ProgressMeter]
     readme = root.join("docs/design-system/README.md").read
     new_patterns.each do |name|
       expect(root.join("docs/design-system/components/#{name}.md")).to exist

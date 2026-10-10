@@ -75,7 +75,10 @@ Rails.application.routes.draw do
     end
     resource :sign_up_setting, only: :update
 
-    # Background jobs (spec 015).
+    # Catalog operations and background jobs (spec 015).
+    resource :catalog, only: :show do
+      resources :operation_starts, only: :create, module: :catalogs
+    end
     resources :jobs, only: %i[index show] do
       scope module: :jobs do
         resource :retry, only: :create

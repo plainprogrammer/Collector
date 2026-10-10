@@ -2,7 +2,7 @@
 
 The admin's jobs pages (spec 015): the background jobs by state, one job in full, and the confirmation before a failed job is discarded.
 
-**Markup, the list** — a `c-pagehead`, a GET form of `Chip` filter chips with each state's count, then a `c-table c-jobs` inside `.c-collection`, a `Pager`, or an `EmptyState`.
+**Markup, the list** — a `c-pagehead` with a link to Catalog (repeated as a `c-admin__add` button for phones), a GET form of `Chip` filter chips with each state's count, then a `c-table c-jobs` inside `.c-collection`, a `Pager`, or an `EmptyState`.
 
 ```html
 <form class="c-jobs__filters" action="/admin/jobs" method="get">
