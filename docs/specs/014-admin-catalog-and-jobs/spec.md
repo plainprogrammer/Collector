@@ -1,7 +1,7 @@
 # Feature 014: Admin Catalog Operations and Jobs
 
 **Status:** Draft
-**Version:** 1.1.0
+**Version:** 1.1.1
 **Created:** 2026-10-09
 **Last Updated:** 2026-10-09
 **Branch:** `014-admin-catalog-and-jobs`
@@ -15,6 +15,7 @@
 |---------|------|--------|
 | 1.0.0 | 2026-10-09 | Initial draft from the approved [prd.md](prd.md) and the accepted ADRs [0013](../../adr/0013-hand-built-admin-jobs-console.md) (hand-built jobs pages on Solid Queue's models) and [0014](../../adr/0014-admin-progress-by-polling.md) (live progress by polling with morph refreshes) |
 | 1.1.0 | 2026-10-09 | Spec review revisions (Fable, Mode A, NEEDS REVISION; maintainer approved all fixes). **Restart and retry:** a run records its job's id, and a job that starts again closes its own running run as interrupted and proceeds, as the art build does (glossary, AC-3.3, AC-3.4, FR-1, Error Scenarios). **In flight** is per catalog type whatever the trigger (glossary). **The job's 6-hour concurrency lock is unchanged;** the 15-minute stall threshold applies only to run records (FR-1). **Maintainer rulings:** a stalled run whose job is still claimed shows as running with "no progress for N minutes", not interrupted (AC-3.6); times are absolute UTC with a relative form for last progress (FR-8); two queued manual refreshes both apply (Error Scenarios). **Also:** which run the operation shows (AC-2.16); a failed run awaiting its retry (AC-3.7); search adopts the per-type loaded rule; tests use the queue's tables for in-flight states too; jobs page lists every queue, orders per state, renders finished and class-less jobs; retry and discard never touch run records; performance targets are manual benchmarks; AC-1.5 keeps only its testable half; AC-4.1, AC-5.4 and AC-7.4 wording |
+| 1.1.1 | 2026-10-09 | Second review pass (Fable, READY TO PLAN). Wording: the operation shows the most recent run not skipped as already running (AC-2.16); the job-id rule needs a job id (AC-3.3); `catalog:status` prints a stalled run as the page does (AC-3.5); a hung worker's recovery (Error Scenarios); the restart sentence (NFR Reliability); the jobs pages don't poll for scheduled-only jobs (AC-6.10); AC-6.11 renumbered after AC-6.10 |
 
 ---
 
@@ -105,7 +106,7 @@ Collector's catalog changes only through background jobs: the catalog refresh (w
 - [ ] **AC-2.13** Given a refresh that finishes as applied When the panel is rendered Then it shows the run as applied with its counts (seen, inserted, updated, retired, restored, malformed), its source version and its finish time, and the type's health shows the new entry count and last applied refresh.
 - [ ] **AC-2.14** Given a refresh that ends as skipped (already running, or the version already applied) When the panel is rendered Then the run is shown as skipped with its message.
 - [ ] **AC-2.15** Given the start of a refresh from the page When the job runs Then it passes through the same guards as a scheduled or rake-started refresh (`Catalog::RefreshRun.start!` and the job's concurrency limit), so two refreshes for a type never apply at once.
-- [ ] **AC-2.16** Given a type with refresh runs and nothing in flight When its panel is rendered Then the refresh operation shows the most recent run, or the one before it when the most recent was skipped as already running; the recent-runs list shows every run, skipped ones included.
+- [ ] **AC-2.16** Given a type with refresh runs and nothing in flight When its panel is rendered Then the refresh operation shows the most recent run that wasn't skipped as already running; the recent-runs list shows every run, skipped ones included.
 
 ### Story 3: See a refresh fail or stall
 
@@ -117,9 +118,9 @@ Collector's catalog changes only through background jobs: the catalog refresh (w
 
 - [ ] **AC-3.1** Given a refresh that failed When its panel is rendered Then it shows the run as failed, the stage it failed in, the message recorded, and, when its job is under Failed, a link to the jobs page's Failed list.
 - [ ] **AC-3.2** Given a refresh run still marked running whose last recorded progress is older than 15 minutes and whose job is no longer claimed by a worker When its panel is rendered Then it is shown as interrupted, with the time of its last progress and the stage it was in, and "Refresh now" is enabled unless a refresh job for the type is still unfinished in the queue.
-- [ ] **AC-3.3** Given a refresh run still marked running whose last progress is older than 15 minutes, or whose job id is the starting job's own (the queue re-ran it after a restart, or an admin retried it) When a refresh starts (from the page, the rake task, the schedule, a re-run or a retry) Then that run is closed as failed with the message "interrupted" and the new run proceeds, rather than being skipped as already running.
+- [ ] **AC-3.3** Given a refresh run still marked running whose last progress is older than 15 minutes, or whose job id is the starting job's own (the queue re-ran it after a restart, or an admin retried it) When a refresh starts (from the page, the rake task, the schedule, a re-run or a retry) Then that run is closed as failed with the message "interrupted" and the new run proceeds, rather than being skipped as already running. The job-id rule applies only when the starting refresh has a job id: a refresh started without a job, and runs recorded before this feature, have none and never match each other.
 - [ ] **AC-3.4** Given a refresh run still marked running whose last progress is within 15 minutes and whose job id is not the starting job's own When a new refresh starts Then the new run is skipped as already running (today's behaviour).
-- [ ] **AC-3.5** Given an interrupted refresh run When `bin/rails "catalog:status[mtg]"` runs Then its status line marks it interrupted.
+- [ ] **AC-3.5** Given an interrupted refresh run When `bin/rails "catalog:status[mtg]"` runs Then its status line marks it interrupted; given a stalled run Then it reads as running with "no progress for N minutes", by the same rule as the page (AC-3.6).
 - [ ] **AC-3.6** Given a stalled refresh run (no progress for more than 15 minutes, its job still claimed by a worker) When its panel is rendered Then it is shown as running with the note "no progress for N minutes", and "Refresh now" stays disabled.
 - [ ] **AC-3.7** Given a refresh run that failed and whose job is scheduled to retry When its panel is rendered Then the run is shown as failed with its stage and message, the operation is shown as queued with "retrying at <time>", "Refresh now" is disabled, and no link to the Failed list is shown (the job isn't failed).
 - [ ] **AC-3.8** Given a refresh job that is re-run or retried after its run was left running When it finishes as applied Then the catalog holds the same entries as an uninterrupted refresh of that version would give.
@@ -174,8 +175,8 @@ Collector's catalog changes only through background jobs: the catalog refresh (w
 - [ ] **AC-6.7** Given a failed job When an admin chooses "Discard…" Then a confirm page names the job and says it will be removed and not run again; confirming removes the job, it no longer appears in any list, and the admin is redirected to the Failed list with the notice "Discarded <job class>."; cancelling returns to the list with the job unchanged.
 - [ ] **AC-6.8** Given a job that isn't failed (running, queued, scheduled or already gone) When a retry or discard request is submitted for it Then nothing changes and the admin is redirected to the jobs page with the alert "That job isn't failed any more." (or 404 when the job doesn't exist).
 - [ ] **AC-6.9** Given a job that isn't failed When its page or row is rendered Then no Retry or Discard action is offered.
+- [ ] **AC-6.10** Given `/admin/jobs` or a job page open while any job is running or queued When jobs change state Then the page shows the change within 5 seconds without reloading, and stops requesting updates once no job is running or queued. Jobs that are only scheduled don't keep the page updating; a scheduled job that comes due shows on the next visit or update.
 - [ ] **AC-6.11** Given a failed catalog refresh or art build job When it is retried or discarded Then no refresh run or art build record is changed by the retry or discard itself (a retried job changes them only when it runs).
-- [ ] **AC-6.10** Given `/admin/jobs` or a job page open while any job is running or queued When jobs change state Then the page shows the change within 5 seconds without reloading, and stops requesting updates once no job is running or queued.
 
 ### Story 7: Admins only, and easy to find
 
@@ -285,7 +286,7 @@ Collector's catalog changes only through background jobs: the catalog refresh (w
 ### Reliability
 
 - Pages render correctly whatever state jobs and runs are in, including runs left running by a crash, jobs whose class no longer exists, and an empty queue.
-- A restart of the app during a refresh or a build leaves the page showing the run as interrupted (after the stall threshold) and a start possible (AC-3.2, AC-3.3), not a refresh blocked for hours.
+- A restart of the app during a refresh or a build leaves the page showing the run as interrupted or already re-run (AC-3.2, AC-3.3), not a refresh blocked for hours.
 - The test suite exercises the jobs pages, and the catalog page's queued and in-flight states, against the queue's real tables with jobs queued through the queue's own adapter and never performed by a worker in tests, not stubs (ADR 0013's consequence).
 
 ### Accessibility
@@ -303,6 +304,7 @@ Collector's catalog changes only through background jobs: the catalog refresh (w
 | The app restarts during an art build | As spec 011: the build's own stall rule (10 minutes) and job-id rule mark it interrupted; the section shows it (AC-4.1). |
 | Two admins press "Refresh now" at once | The second start is refused (AC-2.3). If both requests pass the check and both jobs are queued, the second waits on the queue's concurrency limit (listed as Queued, waiting), runs after the first and, being manual, applies the same version again: the download is already kept and the sync changes nothing. They never apply at once (AC-2.15). |
 | A source reports no download progress and the download takes more than 15 minutes | The run is stalled, not interrupted: shown as running with "no progress for N minutes" while its job is claimed (AC-3.6). |
+| A worker hangs: its job stays claimed and never progresses | The run stays stalled and "Refresh now" stays disabled (a running job can't be discarded). Restarting the app releases the job, which closes its own run as interrupted and starts again (AC-3.3). |
 | A retry or discard targets a job another admin already handled | No change; alert "That job isn't failed any more." (AC-6.8). |
 | A job's class no longer exists (removed in an upgrade) | It is listed with its recorded class name; its page renders; it can be discarded. |
 | ImageMagick missing with art matching on | The art build fails as spec 011 says; the section shows the failure message (AC-4.8). |
