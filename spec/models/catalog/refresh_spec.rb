@@ -177,10 +177,35 @@ RSpec.describe Catalog::Refresh, type: :model do
   end
 
   it "records a skip without touching the catalog while another run is in progress", :aggregate_failures do
-    create(:catalog_refresh_run, collectible_type: "fake", status: "running", started_at: 1.hour.ago, finished_at: nil)
+    create(:catalog_refresh_run, :running, collectible_type: "fake")
 
     expect(refresh).to be_skipped
     expect(Catalog::Entry.count).to eq(0)
+  end
+
+  describe "the job running it (spec 015 FR-1)" do
+    it "records the job running it, and closes that job's own running run when it starts again (AC-3.3)", :aggregate_failures do
+      left = create(:catalog_refresh_run, :running, collectible_type: "fake", job_id: "job-1")
+
+      run = described_class.new("fake", trigger: "manual", source:, job_id: "job-1").call
+
+      expect(run).to have_attributes(status: "applied", job_id: "job-1")
+      expect(left.reload).to have_attributes(status: "failed", message: "interrupted")
+    end
+
+    it "gives the same catalog when a job runs again after being interrupted partway (AC-3.8)", :aggregate_failures do
+      source.entries = [ entry_record("a"), entry_record("b"), entry_record("c") ]
+      source.fail_at = 2
+      expect { described_class.new("fake", trigger: "manual", source:, job_id: "job-1").call }.to raise_error(RuntimeError)
+      Catalog::RefreshRun.recent.first.update!(status: "running", finished_at: nil) # as a killed worker leaves it
+      source.fail_at = nil
+
+      run = described_class.new("fake", trigger: "manual", source:, job_id: "job-1").call
+
+      expect(run).to have_attributes(status: "applied", seen_count: 3)
+      expect(Catalog::Entry.active.pluck(:external_key)).to contain_exactly("a", "b", "c")
+      expect(Catalog::RefreshRun.where(status: "running")).to be_empty
+    end
   end
 
   describe "the name index (spec 007 AC-3.9)" do

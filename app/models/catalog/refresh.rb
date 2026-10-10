@@ -4,15 +4,16 @@
 class Catalog::Refresh
   BATCH_SIZE = 1_000
 
-  def initialize(collectible_type, trigger:, source: Catalog.source_for(collectible_type))
+  def initialize(collectible_type, trigger:, source: Catalog.source_for(collectible_type), job_id: nil)
     @collectible_type = collectible_type
     @trigger = trigger
     @source = source
+    @job_id = job_id
     @counts = Hash.new(0)
   end
 
   def call
-    @run = Catalog::RefreshRun.start!(@collectible_type, trigger: @trigger)
+    @run = Catalog::RefreshRun.start!(@collectible_type, trigger: @trigger, job_id: @job_id)
     return @run unless @run.running?
 
     languages = @source.languages
