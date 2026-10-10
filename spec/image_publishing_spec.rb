@@ -80,6 +80,14 @@ RSpec.describe "Image publishing files" do
       expect(publish_job["needs"]).to eq("image")
     end
 
+    it "installs libvips and ImageMagick before bin/ci (spec 014 AC-2.3, FR-3)", :aggregate_failures do
+      ci_steps = workflow.dig("jobs", "ci", "steps")
+      install = ci_steps.index { |candidate| candidate["run"].to_s.include?("apt-get install") }
+      expect(install).not_to be_nil
+      expect(ci_steps[install]["run"].split).to include("libvips", "imagemagick")
+      expect(install).to be < ci_steps.index { |candidate| candidate["run"] == "bin/ci" }
+    end
+
     it "grants packages: write only to the image and publish jobs (NFR Security)", :aggregate_failures do
       expect(workflow["permissions"]).to eq("contents" => "read")
       expect(image_job["permissions"]).to eq("contents" => "read", "packages" => "write")
