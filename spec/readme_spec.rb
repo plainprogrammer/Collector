@@ -36,6 +36,12 @@ RSpec.describe "README" do
     expect(scanner).to include("HTTPS", "only the photo picker works", "Docker Compose", "Kamal", "ssl: true", "registry.npmjs.org")
   end
 
+  it "documents the admin catalog and jobs pages (spec 015)", :aggregate_failures do
+    catalog = readme[/^## Card catalog\n.*?(?=^## )/m].to_s
+    expect(catalog).to include("Refresh now", "/admin/catalog", "/admin/jobs", "interrupted", "retried or", "Build art index")
+    expect(catalog.index("Refresh now")).to be < catalog.index('bin/rails "catalog:refresh[mtg]"')
+  end
+
   it "documents opt-in art matching in the README, Compose and Kamal (spec 011 AC-1.3)", :aggregate_failures do
     art = readme[/^- \*\*Art matching \(optional\):\*\*.*?(?=^- \*\*|^## )/m].to_s
     expect(readme).to include("| `COLLECTOR_MTG_ART_MATCHING`")
