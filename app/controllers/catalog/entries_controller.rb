@@ -5,6 +5,8 @@ class Catalog::EntriesController < ApplicationController
     @owned = Lot.owned_quantities(Current.account, @groups.flat_map(&:entries).map(&:id))
     @sets = Catalog::Set.with_searchable_entries.newest_first.to_a
     @last_refresh = Catalog::RefreshRun.last_applied
+    @unloaded_catalogs = Catalog.unloaded_titles
+    @catalogs_named = Catalog.sources.many?
   end
 
   def show

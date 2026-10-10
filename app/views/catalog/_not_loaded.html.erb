@@ -1,0 +1,16 @@
+<%# locals: (titles:, named:) %>
+<%# Spec 015 FR-6: while a catalog has no applied refresh, say so where people look for cards. Admins get the way to
+    load it; members are told who can. An instance with one catalog type calls it "the card catalog"; with more than
+    one (named), each unloaded type is named. %>
+<% if titles.any? %>
+  <p id="catalog_not_loaded" class="c-status__message c-status__message--alert">
+    <% if !named %>The card catalog hasn't been loaded yet.
+    <% elsif titles.one? %>The <%= titles.first %> catalog hasn't been loaded yet.
+    <% else %>The <%= titles.to_sentence %> catalogs haven't been loaded yet.<% end %>
+    <% if Current.user.admin? %>
+      <%= link_to "Go to the catalog page", admin_catalog_path %> to load <%= titles.one? ? "it" : "them" %>.
+    <% else %>
+      Ask an admin to load <%= titles.one? ? "it" : "them" %>.
+    <% end %>
+  </p>
+<% end %>

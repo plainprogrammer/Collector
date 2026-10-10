@@ -3,6 +3,7 @@
 <%= render "layouts/appbar", section: :scanner %>
 <main class="c-main c-page">
   <div class="c-pagehead"><div><h1 class="c-pagehead__title">Scan a card</h1></div></div>
+  <%= render "catalog/not_loaded", titles: @unloaded_catalogs, named: @catalogs_named %>
   <%= render "scanners/scanner", **@sitting, summary: @summary %>
 </main>
 <%= render "layouts/tabbar", section: :scanner %>

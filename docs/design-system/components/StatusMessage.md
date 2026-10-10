@@ -16,11 +16,13 @@ A one-line message under the header that confirms what just happened ("Added 1 �
 
 ```html
 <p class="c-status__message c-status__message--alert">This printing is no longer present in the upstream source.</p>
-<p class="c-status__message c-status__message--alert">The card catalog hasn't been loaded yet.</p>
+<p class="c-status__message c-status__message--alert">The card catalog hasn't been loaded yet. Ask an admin to load it.</p>
+<p class="c-status__message c-status__message--alert">The card catalog hasn't been loaded yet. <a href="/admin/catalog">Go to the catalog page</a> to load it.</p>
 ```
 
 - There is one live region per page (`#status`), always present so screen readers register it before it changes; `c-status:empty` hides it when there is no message.
-- Messages are one plain sentence that says exactly what happened, with exact numbers: "Removed 3 × Opt (XLN · 65) from your collection.", "Saved.", never "Success!".
+- Messages are one plain sentence that says exactly what happened, with exact numbers: "Removed 3 × Opt (XLN · 65) from your collection.", "Saved.", never "Success!". An inline notice may add one more short sentence saying what to do about the state it describes.
 - A redirect carries the message in the flash (`notice` or `alert`); an answer that leaves the page as it was updates `#status` with a Turbo Stream (`turbo_stream.update("status", …)`).
+- A link inside a message is a brand link: `brand` colour, semibold, underlined on hover, with the `focus` ring. The catalog notice (spec 015) gives admins the link and tells everyone else who to ask.
 - Use the inline notice only for a state the page is in; never put action results outside the live region, or they won't be announced.
 - Padding follows the page gutter: `space-8` on wide screens, `space-4` below 640px.

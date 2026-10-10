@@ -210,3 +210,8 @@
 .c-meter__bar { flex:1 1 160px; min-width:0; height:var(--space-2); accent-color:var(--brand); }
 /* c-meter__value, c-meter__text and c-stages__label take the styles above as they are: they are named for the docs and
    for specs, not for rules of their own. */
+
+/* ---------- Links inside a status message use the brand link colour (spec 015: the not-loaded notice) ---------- */
+.c-status__message a { color:var(--brand); font-weight:600; text-decoration:none; }
+.c-status__message a:hover { text-decoration:underline; }
+.c-status__message a:focus-visible { outline:2px solid var(--focus); outline-offset:2px; border-radius:var(--radius-sm); }
