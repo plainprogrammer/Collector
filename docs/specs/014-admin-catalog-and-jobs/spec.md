@@ -1,7 +1,7 @@
 # Feature 014: Admin Catalog Operations and Jobs
 
 **Status:** Draft
-**Version:** 1.0.0
+**Version:** 1.1.0
 **Created:** 2026-10-09
 **Last Updated:** 2026-10-09
 **Branch:** `014-admin-catalog-and-jobs`
@@ -14,6 +14,7 @@
 | Version | Date | Change |
 |---------|------|--------|
 | 1.0.0 | 2026-10-09 | Initial draft from the approved [prd.md](prd.md) and the accepted ADRs [0013](../../adr/0013-hand-built-admin-jobs-console.md) (hand-built jobs pages on Solid Queue's models) and [0014](../../adr/0014-admin-progress-by-polling.md) (live progress by polling with morph refreshes) |
+| 1.1.0 | 2026-10-09 | Spec review revisions (Fable, Mode A, NEEDS REVISION; maintainer approved all fixes). **Restart and retry:** a run records its job's id, and a job that starts again closes its own running run as interrupted and proceeds, as the art build does (glossary, AC-3.3, AC-3.4, FR-1, Error Scenarios). **In flight** is per catalog type whatever the trigger (glossary). **The job's 6-hour concurrency lock is unchanged;** the 15-minute stall threshold applies only to run records (FR-1). **Maintainer rulings:** a stalled run whose job is still claimed shows as running with "no progress for N minutes", not interrupted (AC-3.6); times are absolute UTC with a relative form for last progress (FR-8); two queued manual refreshes both apply (Error Scenarios). **Also:** which run the operation shows (AC-2.16); a failed run awaiting its retry (AC-3.7); search adopts the per-type loaded rule; tests use the queue's tables for in-flight states too; jobs page lists every queue, orders per state, renders finished and class-less jobs; retry and discard never touch run records; performance targets are manual benchmarks; AC-1.5 keeps only its testable half; AC-4.1, AC-5.4 and AC-7.4 wording |
 
 ---
 
@@ -27,12 +28,13 @@ Collector's catalog changes only through background jobs: the catalog refresh (w
 
 - **Catalog type:** a kind of collectible with a catalog source (today only `mtg`).
 - **Operation:** something an admin can start for a catalog type and watch: the **refresh** (every type) and any **extra operation** the type's source adds (for `mtg`, the **art index** build).
-- **Loaded:** a catalog type is loaded once it has at least one applied refresh run. (This is the condition catalog search already uses for "The card catalog hasn't been loaded yet.")
-- **In flight:** an operation is in flight while its job is unfinished in the queue (waiting, waiting on a concurrency limit, scheduled for a retry, or running) or its run record is running and not interrupted.
+- **Loaded:** a catalog type is loaded once it has at least one applied refresh run. (Catalog search's notice today uses the equivalent condition across all types; it adopts this per-type one.)
+- **In flight:** an operation is in flight while any unfinished job of its job class for this catalog type, whatever its trigger or who queued it (the page, the rake task or the schedule), is in the queue (ready, blocked by a concurrency limit, scheduled including retry back-offs, or claimed), or its run record is running and not interrupted.
 - **Queued (operation state):** in flight with no running run record yet.
-- **Interrupted:** a run record still marked running whose last progress is older than the **stall threshold**. The refresh's stall threshold is 15 minutes; the art index keeps its own (`MTG::ArtBuild::STALE_AFTER`, 10 minutes).
+- **Interrupted:** a run record still marked running whose last progress is older than the **stall threshold** and whose job is no longer claimed by a worker, or one still marked running when the same job (by job id) starts again. The refresh's stall threshold is 15 minutes; the art index keeps its own rules (`MTG::ArtBuild`, 10 minutes, spec 011 AC-3.2).
+- **Stalled:** a run record still marked running whose last progress is older than the stall threshold while its job is still claimed by a worker. It is shown as running, not interrupted.
 - **Stages of a refresh:** *download*, *sync cards*, *retire missing cards*, *rebuild name index*, in that order.
-- **Job states on the jobs page:** **Failed** (failed and not retried or discarded), **Running** (claimed by a worker), **Queued** (ready to run, or blocked by a concurrency limit; blocked ones are marked "waiting"), **Scheduled** (due at a later time, including retry back-offs).
+- **Job states on the jobs page** (every job in every queue, including the queue's own maintenance jobs): **Failed** (failed and not retried or discarded), **Running** (claimed by a worker), **Queued** (ready to run, or blocked by a concurrency limit; blocked ones are marked "waiting"), **Scheduled** (due at a later time, including retry back-offs).
 - **Admin / member:** a signed-in user with or without `admin`.
 
 ## Goals
@@ -78,7 +80,7 @@ Collector's catalog changes only through background jobs: the catalog refresh (w
 - [ ] **AC-1.2** Given a catalog type that isn't loaded When a member opens catalog search or the scanner Then an inline notice says the card catalog hasn't been loaded yet and to ask an admin, with no link to `/admin/catalog`.
 - [ ] **AC-1.3** Given a loaded catalog When an admin or member opens catalog search, the scanner or the More page Then no not-loaded notice is shown.
 - [ ] **AC-1.4** Given a catalog type that isn't loaded and no operation in flight When an admin opens `/admin/catalog` Then the type's panel shows an empty state saying no cards are loaded yet, that the first refresh downloads the source's card data and may take several minutes, and which languages are configured, with "Refresh now" as its primary action. (Download sizes are not shown before the refresh: nothing calls the source during a render.)
-- [ ] **AC-1.5** Given a fresh instance with no applied refresh When the app boots or the first admin signs up Then no refresh job is queued.
+- [ ] **AC-1.5** Given a fresh instance with no applied refresh When the first admin signs up Then no refresh job is queued.
 
 ### Story 2: Start a refresh and watch it
 
@@ -88,7 +90,7 @@ Collector's catalog changes only through background jobs: the catalog refresh (w
 
 **Acceptance criteria:**
 
-- [ ] **AC-2.1** Given no refresh in flight for a type When an admin presses "Refresh now" Then one refresh job is queued for that type with the manual trigger, the admin is redirected back to `/admin/catalog` with the notice "Refresh queued.", and the panel shows the refresh as queued.
+- [ ] **AC-2.1** Given no refresh in flight for a type When an admin presses "Refresh now" Then one refresh job is queued for that type with the manual trigger, the admin is redirected back to `/admin/catalog` with the notice "Refresh queued." (shown until the page's next update), and the panel shows the refresh as queued.
 - [ ] **AC-2.2** Given a refresh in flight for a type (queued, running, or retrying) When an admin opens `/admin/catalog` Then that type's "Refresh now" is disabled with the reason shown (queued or running).
 - [ ] **AC-2.3** Given a refresh in flight When an admin submits a start request for it anyway (a stale page or a second tab) Then no second job is queued and the admin is redirected with the notice "A refresh is already queued or running."
 - [ ] **AC-2.4** Given a running refresh When its panel is rendered Then it lists the four stages in order, each marked done, current or pending, and shows when the run started and its trigger.
@@ -102,7 +104,8 @@ Collector's catalog changes only through background jobs: the catalog refresh (w
 - [ ] **AC-2.12** Given `/admin/catalog` open with nothing in flight When time passes Then the page requests no updates.
 - [ ] **AC-2.13** Given a refresh that finishes as applied When the panel is rendered Then it shows the run as applied with its counts (seen, inserted, updated, retired, restored, malformed), its source version and its finish time, and the type's health shows the new entry count and last applied refresh.
 - [ ] **AC-2.14** Given a refresh that ends as skipped (already running, or the version already applied) When the panel is rendered Then the run is shown as skipped with its message.
-- [ ] **AC-2.15** Given the start of a refresh from the page When the job runs Then it passes through the same guards as a scheduled or rake-started refresh (`Catalog::RefreshRun.start!`), so two refreshes for a type never apply at once.
+- [ ] **AC-2.15** Given the start of a refresh from the page When the job runs Then it passes through the same guards as a scheduled or rake-started refresh (`Catalog::RefreshRun.start!` and the job's concurrency limit), so two refreshes for a type never apply at once.
+- [ ] **AC-2.16** Given a type with refresh runs and nothing in flight When its panel is rendered Then the refresh operation shows the most recent run, or the one before it when the most recent was skipped as already running; the recent-runs list shows every run, skipped ones included.
 
 ### Story 3: See a refresh fail or stall
 
@@ -112,11 +115,14 @@ Collector's catalog changes only through background jobs: the catalog refresh (w
 
 **Acceptance criteria:**
 
-- [ ] **AC-3.1** Given a refresh that failed When its panel is rendered Then it shows the run as failed, the stage it failed in, the message recorded, and a link to the jobs page's Failed list.
-- [ ] **AC-3.2** Given a refresh run still marked running whose last recorded progress is older than 15 minutes When its panel is rendered Then it is shown as interrupted, with the time of its last progress and the stage it was in, and "Refresh now" is enabled unless a refresh job is still unfinished in the queue.
-- [ ] **AC-3.3** Given an interrupted refresh run When a new refresh starts (from the page, the rake task or the schedule) Then the interrupted run is closed as failed with the message "interrupted" and the new run proceeds, rather than being skipped as already running.
-- [ ] **AC-3.4** Given a refresh run still marked running whose last progress is within 15 minutes When a new refresh starts Then the new run is skipped as already running (today's behaviour).
+- [ ] **AC-3.1** Given a refresh that failed When its panel is rendered Then it shows the run as failed, the stage it failed in, the message recorded, and, when its job is under Failed, a link to the jobs page's Failed list.
+- [ ] **AC-3.2** Given a refresh run still marked running whose last recorded progress is older than 15 minutes and whose job is no longer claimed by a worker When its panel is rendered Then it is shown as interrupted, with the time of its last progress and the stage it was in, and "Refresh now" is enabled unless a refresh job for the type is still unfinished in the queue.
+- [ ] **AC-3.3** Given a refresh run still marked running whose last progress is older than 15 minutes, or whose job id is the starting job's own (the queue re-ran it after a restart, or an admin retried it) When a refresh starts (from the page, the rake task, the schedule, a re-run or a retry) Then that run is closed as failed with the message "interrupted" and the new run proceeds, rather than being skipped as already running.
+- [ ] **AC-3.4** Given a refresh run still marked running whose last progress is within 15 minutes and whose job id is not the starting job's own When a new refresh starts Then the new run is skipped as already running (today's behaviour).
 - [ ] **AC-3.5** Given an interrupted refresh run When `bin/rails "catalog:status[mtg]"` runs Then its status line marks it interrupted.
+- [ ] **AC-3.6** Given a stalled refresh run (no progress for more than 15 minutes, its job still claimed by a worker) When its panel is rendered Then it is shown as running with the note "no progress for N minutes", and "Refresh now" stays disabled.
+- [ ] **AC-3.7** Given a refresh run that failed and whose job is scheduled to retry When its panel is rendered Then the run is shown as failed with its stage and message, the operation is shown as queued with "retrying at <time>", "Refresh now" is disabled, and no link to the Failed list is shown (the job isn't failed).
+- [ ] **AC-3.8** Given a refresh job that is re-run or retried after its run was left running When it finishes as applied Then the catalog holds the same entries as an uninterrupted refresh of that version would give.
 
 ### Story 4: Build the art index from the page
 
@@ -126,7 +132,7 @@ Collector's catalog changes only through background jobs: the catalog refresh (w
 
 **Acceptance criteria:**
 
-- [ ] **AC-4.1** Given art matching on When `/admin/catalog` is rendered Then the MTG panel shows an "Art index" section with its state: never built, building, ready, failed or interrupted, matching what `catalog:status` reports.
+- [ ] **AC-4.1** Given art matching on When `/admin/catalog` is rendered Then the MTG panel shows an "Art index" section with its state: never built, building, ready, failed or interrupted, agreeing with what `catalog:status` reports (whose never-built wording may now also mention this page).
 - [ ] **AC-4.2** Given a running art build When its section is rendered Then it shows artworks fingerprinted of the total as a percentage bar, images fetched, failed images and the last heartbeat time.
 - [ ] **AC-4.3** Given art matching on, a loaded MTG catalog and no art build in flight When an admin presses "Build art index" Then one art build job is queued, the admin is redirected back with the notice "Art index build queued.", and the section shows it as queued.
 - [ ] **AC-4.4** Given an art build in flight When `/admin/catalog` is rendered Then "Build art index" is disabled with the reason; a start request submitted anyway queues nothing and redirects with the notice "An art index build is already queued or running."
@@ -147,8 +153,8 @@ Collector's catalog changes only through background jobs: the catalog refresh (w
 - [ ] **AC-5.1** Given the registered catalog types When `/admin/catalog` is rendered Then there is one panel per type, titled with the type's display name, showing: entry count (cards not retired), last applied refresh (finish time and source version), next scheduled refresh, the refresh operation, any extra operations, and the 5 most recent refresh runs.
 - [ ] **AC-5.2** Given a type whose source defines no extra operations When its panel is rendered Then it shows only the refresh operation, without error.
 - [ ] **AC-5.3** Given a test-only catalog type whose source defines one extra operation When `/admin/catalog` is rendered Then that operation appears in the type's panel with its title, state and start button, with no change to the admin controllers or views.
-- [ ] **AC-5.4** Given the core's admin catalog code (controllers, views, core models) When it is read Then it names no specific collectible type, source or operation (no MTG, Scryfall or art).
-- [ ] **AC-5.5** Given a recurring refresh scheduled for a type When its panel is rendered Then "next scheduled refresh" shows its next run time; given none (as in development) Then it shows "Not scheduled".
+- [ ] **AC-5.4** Given the core's admin catalog code (controllers, views, core models) When it is read Then it names no specific collectible type, source or operation: none of the whole words `MTG`, `Scryfall` or `Art` (in any case) appears.
+- [ ] **AC-5.5** Given a recurring refresh scheduled for a type When its panel is rendered Then "next scheduled refresh" shows its next run time, whatever the task's trigger argument; given none (as in development) Then it shows "Not scheduled".
 - [ ] **AC-5.6** Given a start request naming an unknown catalog type or an operation the type doesn't have When it is submitted Then the response is 404 and nothing is queued.
 
 ### Story 6: See and recover jobs
@@ -160,14 +166,15 @@ Collector's catalog changes only through background jobs: the catalog refresh (w
 **Acceptance criteria:**
 
 - [ ] **AC-6.1** Given jobs in each state When an admin opens `/admin/jobs` Then filter chips for Failed, Running, Queued and Scheduled show each state's count, and the Failed list is shown by default.
-- [ ] **AC-6.2** Given a filter is chosen When the list renders Then it shows that state's jobs, newest first, 25 per page, each with its job class, a short form of its arguments, its queue, and the time relevant to the state (failed at, started at, queued at, or due at). Queued jobs blocked by a concurrency limit are marked "waiting".
+- [ ] **AC-6.2** Given a filter is chosen When the list renders Then it shows that state's jobs, 25 per page, each with its job class, a short form of its arguments (the arguments the job was queued with, not the queue's envelope around them), its queue, and the time relevant to the state, ordered by that time: Failed by failed at, newest first; Running by started at, newest first; Queued by queued at, oldest first; Scheduled by due at, soonest first. Queued jobs blocked by a concurrency limit are marked "waiting".
 - [ ] **AC-6.3** Given a failed job When it is listed Then the row also shows the exception class and the first line of its message.
 - [ ] **AC-6.4** Given a state with no jobs When its filter is chosen Then an empty state says there are no jobs in that state.
-- [ ] **AC-6.5** Given a job When an admin opens its page Then it shows its class, full arguments, queue, priority, attempts (executions), when it was queued, scheduled, started and finished as applicable, its current state, and for a failed job the exception class, message and backtrace.
+- [ ] **AC-6.5** Given a job When an admin opens its page Then it shows its class, full arguments, queue, priority, attempts (executions), when it was queued, scheduled, started and finished as applicable, its current state, and for a failed job the exception class, message and backtrace. A finished job still in the queue's records shows as finished with its finish time and no actions; a job whose class no longer exists shows its recorded class name and renders without error.
 - [ ] **AC-6.6** Given a failed job When an admin chooses Retry Then the job is queued to run again, it no longer appears under Failed, and the admin is redirected to the Failed list with the notice "Retrying <job class>."
 - [ ] **AC-6.7** Given a failed job When an admin chooses "Discard…" Then a confirm page names the job and says it will be removed and not run again; confirming removes the job, it no longer appears in any list, and the admin is redirected to the Failed list with the notice "Discarded <job class>."; cancelling returns to the list with the job unchanged.
 - [ ] **AC-6.8** Given a job that isn't failed (running, queued, scheduled or already gone) When a retry or discard request is submitted for it Then nothing changes and the admin is redirected to the jobs page with the alert "That job isn't failed any more." (or 404 when the job doesn't exist).
 - [ ] **AC-6.9** Given a job that isn't failed When its page or row is rendered Then no Retry or Discard action is offered.
+- [ ] **AC-6.11** Given a failed catalog refresh or art build job When it is retried or discarded Then no refresh run or art build record is changed by the retry or discard itself (a retried job changes them only when it runs).
 - [ ] **AC-6.10** Given `/admin/jobs` or a job page open while any job is running or queued When jobs change state Then the page shows the change within 5 seconds without reloading, and stops requesting updates once no job is running or queued.
 
 ### Story 7: Admins only, and easy to find
@@ -181,7 +188,7 @@ Collector's catalog changes only through background jobs: the catalog refresh (w
 - [ ] **AC-7.1** Given a member When they request any `/admin/catalog` or `/admin/jobs` page or action Then the response is 404 and nothing is queued, retried or discarded.
 - [ ] **AC-7.2** Given a visitor who isn't signed in When they request any of those pages or actions Then they are sent to sign in, as for every other page.
 - [ ] **AC-7.3** Given an admin When they open the More page Then it links "Catalog" (`/admin/catalog`) and "Jobs" (`/admin/jobs`) beside "Users and sign-up"; given a member Then neither link is shown.
-- [ ] **AC-7.4** Given `/admin/catalog` and `/admin/jobs` When rendered at phone width (375 px) and desktop width Then all content and actions are reachable without horizontal page scrolling, using only design-system components and tokens.
+- [ ] **AC-7.4** Given `/admin/catalog` and `/admin/jobs` When rendered at phone width (375 px, checked the way the suite's existing narrow-page specs do) and desktop width Then all content and actions are reachable without horizontal page scrolling, using only design-system components and tokens.
 
 ## Functional Requirements
 
@@ -191,7 +198,9 @@ Collector's catalog changes only through background jobs: the catalog refresh (w
 - Record on each refresh run its current stage (one of the four), the stage's done and total quantities (where the source reports them), and the running counts, while the run is running.
 - Record progress on the cadence of AC-2.9, measured in records seen and elapsed time, independent of how many rows changed.
 - Keep the stage reached when a run fails, so the failure's stage can be shown.
-- Treat a run's last recorded progress as its heartbeat for the stall rule (AC-3.2 to AC-3.5), using a 15-minute stall threshold for both display and the start guard.
+- Record on each run the id of the job running it, and close a running run with the starting job's own id as interrupted (AC-3.3).
+- Treat a run's last recorded progress as its heartbeat for the stall rule (AC-3.2 to AC-3.6), using a 15-minute stall threshold for both display and the start guard.
+- Keep the refresh job's queue concurrency lock at its current 6 hours: the 15-minute threshold applies only to run records, never to the lock, so a waiting refresh job can't start while another's job is still running.
 
 **Must not:**
 - Write progress inside the refresh's batch write transactions or in a way that lengthens them.
@@ -242,7 +251,7 @@ Collector's catalog changes only through background jobs: the catalog refresh (w
 
 **Must:**
 - Show the notices of AC-1.1 and AC-1.2 while any catalog type is not loaded, and name the type when there is more than one.
-- Never queue a refresh except from an admin's start request, the schedule or the rake task.
+- Never queue a refresh except from an admin's start request, the schedule or the rake task; in particular, not when the app boots and not on sign-up.
 
 ### FR-7: Access and navigation
 
@@ -254,13 +263,18 @@ Collector's catalog changes only through background jobs: the catalog refresh (w
 **Must not:**
 - Accept a job class, queue or method name from the request beyond the job's id, the catalog type and the operation's key, each checked against what exists.
 
+### FR-8: Times
+
+**Must:**
+- Show absolute times in UTC in the form `9 Oct 2026 03:15 UTC`.
+- Show a run's last progress or heartbeat, and a job's failed, started and queued times in lists, in a relative form as well ("2 minutes ago").
+
 ## Non-Functional Requirements
 
 ### Performance
 
-- `/admin/catalog` and `/admin/jobs` render in under 300 ms on the development machine with a loaded MTG catalog and 1,000 finished, 100 failed and 100 scheduled jobs in the queue.
-- Progress recording adds no more than 5% to a refresh's wall-clock time, measured on a re-run that changes nothing.
-- While polling, each update request does no more than a constant number of queries per panel (no query per job or per run listed).
+- Manual benchmarks, recorded once in the feature's research notes and not run in CI: `/admin/catalog` and `/admin/jobs` render in under 300 ms on the development machine with a loaded MTG catalog and 1,000 finished, 100 failed and 100 scheduled jobs in the queue; progress recording adds no more than 5% to a refresh's wall-clock time, measured on a re-run that changes nothing.
+- While polling, each update request does no more than a constant number of queries per panel (no query per job or per run listed); the test suite checks this by counting queries.
 
 ### Security
 
@@ -272,7 +286,7 @@ Collector's catalog changes only through background jobs: the catalog refresh (w
 
 - Pages render correctly whatever state jobs and runs are in, including runs left running by a crash, jobs whose class no longer exists, and an empty queue.
 - A restart of the app during a refresh or a build leaves the page showing the run as interrupted (after the stall threshold) and a start possible (AC-3.2, AC-3.3), not a refresh blocked for hours.
-- The test suite exercises the jobs pages against real queue tables, not stubs (ADR 0013's consequence).
+- The test suite exercises the jobs pages, and the catalog page's queued and in-flight states, against the queue's real tables with jobs queued through the queue's own adapter and never performed by a worker in tests, not stubs (ADR 0013's consequence).
 
 ### Accessibility
 
@@ -285,9 +299,10 @@ Collector's catalog changes only through background jobs: the catalog refresh (w
 |----------|-------------------|
 | The Scryfall download fails mid-way | The run is failed in the download stage with the error message (AC-3.1); the job's retry rules apply as today; a final failure lists under Failed. |
 | The bulk file is unreadable (no valid records) | The run is failed in the sync stage with today's message ("no valid records …"). |
-| The app restarts during a refresh | After 15 minutes without progress the run shows as interrupted; the queue re-runs the job or the admin starts a new refresh, which closes the interrupted run (AC-3.3). |
+| The app restarts during a refresh | A graceful restart puts the job back in the queue at once; a crash fails it after about 5 minutes (the queue notices its worker is gone) and it lists under Failed. In both cases the next run of that job closes its own run as interrupted and proceeds, so an admin's Retry works immediately (AC-3.3). A run nobody re-runs shows as interrupted after 15 minutes (AC-3.2). |
 | The app restarts during an art build | As spec 011: the build's own stall rule (10 minutes) and job-id rule mark it interrupted; the section shows it (AC-4.1). |
-| Two admins press "Refresh now" at once | At most one job runs the refresh; the other start is refused (AC-2.3) or, if both are queued, the second is skipped as already running (AC-2.15). |
+| Two admins press "Refresh now" at once | The second start is refused (AC-2.3). If both requests pass the check and both jobs are queued, the second waits on the queue's concurrency limit (listed as Queued, waiting), runs after the first and, being manual, applies the same version again: the download is already kept and the sync changes nothing. They never apply at once (AC-2.15). |
+| A source reports no download progress and the download takes more than 15 minutes | The run is stalled, not interrupted: shown as running with "no progress for N minutes" while its job is claimed (AC-3.6). |
 | A retry or discard targets a job another admin already handled | No change; alert "That job isn't failed any more." (AC-6.8). |
 | A job's class no longer exists (removed in an upgrade) | It is listed with its recorded class name; its page renders; it can be discarded. |
 | ImageMagick missing with art matching on | The art build fails as spec 011 says; the section shows the failure message (AC-4.8). |
@@ -295,11 +310,13 @@ Collector's catalog changes only through background jobs: the catalog refresh (w
 
 ## Open Questions
 
-None. Decisions made in drafting, for the maintainer to confirm at approval:
+None. Decisions made in drafting and review, for the maintainer to confirm at approval:
 
-- **Loaded** means "has an applied refresh run", the condition catalog search already uses.
-- The refresh's **stall threshold is 15 minutes**, and it also changes the start guard: an interrupted refresh no longer blocks new ones for 6 hours (AC-3.3). Today, a refresh interrupted by a restart blocks the next for up to 6 hours.
+- **Loaded** means "has an applied refresh run", per catalog type.
+- The refresh's **stall threshold is 15 minutes**, and it changes the start guard but not the job's 6-hour concurrency lock: an interrupted refresh no longer blocks new ones for 6 hours (AC-3.3), and a re-run or retried job resumes at once by closing its own run.
+- **No download size** is shown before the first refresh.
 - Lists show **5 recent runs** per type and **25 jobs** per page; updates every **~2 seconds**, shown within **5 seconds**.
+- Maintainer rulings of 2026-10-09: a stalled run with a live job shows as running (AC-3.6); times are UTC with a relative form (FR-8); two queued manual refreshes both apply (Error Scenarios).
 
 ## Out of Scope (Future Considerations)
 
