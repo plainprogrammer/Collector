@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Accepted (2026-10-09, approved with spec 014's PRD)
 
 **Date:** 2026-10-09
 **Feature:** 014-admin-catalog-and-jobs
