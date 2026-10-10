@@ -31,13 +31,18 @@ class MTG::Scryfall::Client
     raise Catalog::Sources::TransientError, "GET #{uri} still rate limited after #{MAX_ATTEMPTS} attempts"
   end
 
+  # Streams the body into the given IO. With a block, yields the bytes received so far after each chunk (spec 015 FR-2).
   def download(url, to:)
     uri = URI(url)
+    received = 0
     request(uri) do |http, request|
       http.request(request) do |response|
         raise Catalog::Sources::TransientError, "GET #{uri} returned #{response.code}" unless response.is_a?(Net::HTTPSuccess)
 
-        response.read_body { |chunk| to.write(chunk) }
+        response.read_body do |chunk|
+          to.write(chunk)
+          yield received += chunk.bytesize if block_given?
+        end
       end
     end
   end

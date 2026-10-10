@@ -107,6 +107,51 @@ RSpec.describe MTG::Scryfall::Source, type: :model do
     end
   end
 
+  describe "progress (spec 015 FR-2)" do
+    let(:reports) { [] }
+
+    before { source.progress = ->(done, total) { reports << [ done, total ] } }
+
+    it "reports bytes received of the published size while downloading (AC-2.5)", :aggregate_failures do
+      stub_scryfall(cards: [ scryfall_card ])
+      version = source.current_version(languages: [ "en" ])
+
+      size = source.download(version, dir:).size
+
+      expect(reports.last).to eq([ size, size ])
+      expect(reports.map(&:first)).to eq(reports.map(&:first).sort)
+    end
+
+    it "reports the whole size at once for a file it already has" do
+      stub_scryfall(cards: [ scryfall_card ])
+      version = source.current_version(languages: [ "en" ])
+      size = source.download(version, dir:).size
+      reports.clear
+
+      source.download(version, dir:)
+
+      expect(reports).to eq([ [ size, size ] ])
+    end
+
+    it "reports compressed bytes read of the file's size for every line, kept or not (AC-2.6)", :aggregate_failures do
+      path = dir.join("f.jsonl.gz")
+      path.binwrite(gzip_jsonl([ scryfall_card("id" => "en-1"), scryfall_card("id" => "de-1", "lang" => "de"), "{not json" ]))
+
+      source.each_entry(path, languages: [ "en" ]) { |_record| nil }
+
+      expect(reports.size).to eq(3)
+      expect(reports).to all(eq([ path.size, path.size ])) # a small file is read in one block
+    end
+
+    it "reads without a progress callable, as before" do
+      path = dir.join("f.jsonl.gz")
+      path.binwrite(gzip_jsonl([ scryfall_card("id" => "en-1") ]))
+      source.progress = nil
+
+      expect { |block| source.each_entry(path, languages: [ "en" ], &block) }.to yield_control.once
+    end
+  end
+
   describe "#each_set" do
     it "yields a record per set" do
       stub_scryfall(cards: [], sets: [ scryfall_set, scryfall_set("code" => "neo", "name" => "Kamigawa") ])
