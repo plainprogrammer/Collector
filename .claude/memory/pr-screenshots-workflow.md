@@ -14,3 +14,5 @@ metadata:
 - **Embed:** the repo `plainprogrammer/Collector` is **private**. Use `https://github.com/plainprogrammer/Collector/blob/<commit-sha>/<path>?raw=true`, pinned to a SHA so the links survive merge and branch deletion. `gh` cannot upload images.
 
 **How to apply:** when a PR needs UX evidence, follow this pipeline; spec 002's PR #3 is the worked example. Run the server as in [[background-servers-via-task]].
+
+**Theme switches (spec 015, 2026-10-10):** `c-btn` transitions its background over 0.12s. A shot taken right after setting `data-theme` by script shows pale buttons that look like a dark-mode bug. Pause about 0.6s after each switch, in the page and inside the narrow frame. Set `$stdout.sync = true` in capture scripts, or a background run shows no output until it ends.
