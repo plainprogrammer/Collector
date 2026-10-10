@@ -12,6 +12,12 @@
 - memory housekeeping moved to after the merge, as the spec says
 - the check's comment narrowed to a direct `bin/setup`
 
+**Revised again:** 2026-10-09, after a second read-only review of the committed file (Fable, READY TO EXECUTE; 38 examples green with every edit applied in scratch). Corrected:
+- Phase 1's lock-diff check also filters `logger`
+- the blank line after the libvips heading in `bin/setup`'s output (Phase 2, Quickstart)
+- a scope on Phase 3's commit
+- the stale `MEMORY.md` description in the post-merge housekeeping
+
 ## Global Constraints
 
 - `gem "ruby-vips", "~> 2.3", require: false`; keep `image_processing` (`~> 2.2`) and the `load_defaults` variant processor (`:vips`); never set `config.active_storage.variant_processor` (FR-1).
@@ -123,7 +129,7 @@ gem "image_processing", "~> 2.2"
 gem "ruby-vips", "~> 2.3", require: false
 ```
 
-- [ ] Run: `bundle install`. Expect `Gemfile.lock` to gain exactly the entries listed under Facts: `ruby-vips (2.3.0)`, six `ffi (1.17.4-…)` platform entries, `ruby-vips (~> 2.3)` under DEPENDENCIES, and their checksums. Check with `git diff --stat Gemfile.lock` and `git diff Gemfile.lock | grep '^[+-] ' | grep -v -E 'ffi|ruby-vips'`, which should print nothing.
+- [ ] Run: `bundle install`. Expect `Gemfile.lock` to gain exactly the entries listed under Facts: `ruby-vips (2.3.0)`, six `ffi (1.17.4-…)` platform entries, `ruby-vips (~> 2.3)` under DEPENDENCIES, and their checksums. Check with `git diff --stat Gemfile.lock` and `git diff Gemfile.lock | grep '^[+-] ' | grep -v -E 'ffi|ruby-vips|logger'`, which should print nothing (`logger` is `ruby-vips`'s dependency line; the gem itself is already locked).
 - [ ] Run: `bin/rspec spec/config/active_storage_variant_transformer_spec.rb`. Expect `3 examples, 0 failures`.
 - [ ] Run: `bin/bundler-audit`. Expect `No vulnerabilities found`.
 - [ ] Commit (stage first, then commit separately; the pre-commit hook reads the command):
@@ -231,7 +237,7 @@ require_relative "../lib/collector/worktree_setup"
 
 - [ ] Run: `bin/rspec spec/lib/collector/libvips_check_spec.rb`. Expect `5 examples, 0 failures`.
 - [ ] Run: `bin/rails zeitwerk:check`. Expect `All is good!`.
-- [ ] Run: `bin/setup --skip-server`. Expect `== Checking libvips (Active Storage variants, ADR 0013) ==` followed directly by the next `==` heading, with no hint between them (AC-3.5's evidence). Keep the output for `verification.md`.
+- [ ] Run: `bin/setup --skip-server`. Expect `== Checking libvips (Active Storage variants, ADR 0013) ==`, a blank line, then the `== Configuring …` heading, with no hint between them (AC-3.5's evidence). Keep the output for `verification.md`.
 - [ ] Commit:
   - `git add lib/collector/libvips_check.rb spec/lib/collector/libvips_check_spec.rb bin/setup`
   - `feat(setup): report a missing libvips in bin/setup (014)`
@@ -289,7 +295,7 @@ require_relative "../lib/collector/worktree_setup"
 - [ ] Run: `bin/rspec spec/image_publishing_spec.rb spec/readme_spec.rb`. Expect 0 failures.
 - [ ] Commit:
   - `git add .github/workflows/ci.yml README.md spec/image_publishing_spec.rb spec/readme_spec.rb`
-  - `ci: install libvips for the test job and list system libraries in the README (014)`
+  - `ci(test): install libvips for the test job and list system libraries in the README (014)`
 
 ---
 
@@ -355,7 +361,7 @@ fi
   - `docs(014): link the CI run evidence`
 - [ ] **After the PR merges** (the spec's Delivery note), memory housekeeping:
   - remove the ruby-vips item from `.claude/memory/spec-012-followups.md`, noting it's done by spec 014, and drop "ruby-vips" from that memory's description in `MEMORY.md`. The index entry stays.
-  - correct `.claude/memory/dev-machine-image-tools.md`: libvips 8.18.3 is installed, and `ruby-vips` and `ffi` are in the bundle with `image_processing` 2.2.0
+  - correct `.claude/memory/dev-machine-image-tools.md`: libvips 8.18.3 is installed, and `ruby-vips` and `ffi` are in the bundle with `image_processing` 2.2.0. Fix its description in `MEMORY.md` too, which still says "no libvips/ruby-vips here".
   - commit: `git add .claude/memory/spec-012-followups.md .claude/memory/dev-machine-image-tools.md .claude/memory/MEMORY.md`, then `chore(memory): record spec 014's vips follow-up as done`
 
 ---
@@ -365,7 +371,7 @@ fi
 ```sh
 bundle install
 bin/rspec spec/config/active_storage_variant_transformer_spec.rb spec/lib/collector/libvips_check_spec.rb
-bin/setup --skip-server | grep -A1 "Checking libvips"        # the next line is a "==" heading, not a hint
+bin/setup --skip-server | grep -A2 "Checking libvips"        # a blank line, then the next "==" heading; no hint
 podman build -t collector:vips . && bin/image-smoke collector:vips   # ends "OK: collector:vips passed the smoke test"
 bin/ci
 ```
