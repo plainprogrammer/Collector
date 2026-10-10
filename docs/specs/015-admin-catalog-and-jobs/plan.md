@@ -7,10 +7,11 @@
 - **Blocking fix:** Phase 9's first benchmark script passed JSON strings for columns Solid Queue already serializes, which would have made `/admin/jobs` raise; it now passes hashes.
 - **Other fixes:** `Catalog::Refresh::Progress` no longer fails on a report that comes before any stage; the queue lookup and the job entry pass over a row whose arguments aren't a job's envelope (an example for each); the cadence examples step by exact binary fractions; Phase 1's stated failure names the right example; looking at the pages (Phase 7) is on the maintainer's list; the second benchmark says to turn art matching off.
 - **Renumbered** from feature 014 (and ADRs 0013, 0014): a spec 014 with ADR 0013 exists on another branch.
+**Revised again:** 2026-10-10, after a second read-only plan review (Fable, READY TO EXECUTE, nothing blocking; all 101 blocks byte-identical to the phase commits). Its recommendations, all applied: the discard confirmation's sentence wraps (`c-job__note`) and the narrow-page spec uses a job with one long unbroken argument; a panel's title wraps; the not-loaded partial takes `named:` from its controllers and asks the catalog nothing; `AdminJobs.md` says why the filter chips carry no check icon; `StatusMessage.md` allows an inline notice a second sentence; a comment on the meter and stage hooks that have no rules of their own; the second benchmark says what to do when a run reads skipped; the research notes record the upgrade case; `docs/adr/README.md` records how a number taken on a parallel branch is handled.
 **Approved:** 2026-10-10 (maintainer).
 **Data model:** [data-model.md](data-model.md). **Contracts:** [contracts/api.md](contracts/api.md).
 
-**How this plan was made.** Every code block below was written, run and linted before the plan was: the feature was prototyped on a throwaway local branch, then replayed as one commit per phase (`015-plan-phases`, commits `7b6af35` to `81a6237`), with that phase's specs and RuboCop green at each commit and the whole suite, Brakeman and RuboCop green at the last (1,107 examples, 0 failures). The blocks are rendered from those commits by script, so a new file is shown whole and a changed file as the exact diff. That branch is local only and is deleted once this plan is executed.
+**How this plan was made.** Every code block below was written, run and linted before the plan was: the feature was prototyped on a throwaway local branch, then replayed as one commit per phase (`015-plan-phases`, commits `e53bf85` to `238f54f`), with that phase's specs and RuboCop green at each commit and the whole suite, Brakeman and RuboCop green at the last (1,107 examples, 0 failures). The blocks are rendered from those commits by script, so a new file is shown whole and a changed file as the exact diff. That branch is local only and is deleted once this plan is executed.
 
 ## Global Constraints
 
@@ -3399,7 +3400,7 @@ end
 <main class="c-main c-page">
   <section class="c-confirm">
     <h1 class="c-pagehead__title c-job__title">Discard <%= @job.class_name %>?</h1>
-    <p>This removes the failed job (<%= @job.short_arguments %>) from the queue. It won't run again, and it can't be undone.</p>
+    <p class="c-job__note">This removes the failed job (<%= @job.short_arguments %>) from the queue. It won't run again, and it can't be undone.</p>
     <div class="c-form__actions">
       <%= button_to "Discard #{@job.class_name}", admin_job_discard_path(@job), class: "c-btn c-btn--danger" %>
       <%= link_to "Cancel", admin_jobs_path(status: "failed"), class: "c-btn c-btn--secondary" %>
@@ -3442,7 +3443,7 @@ export default class extends Controller {
 ```diff
 --- a/app/assets/stylesheets/collector/additions.css
 +++ b/app/assets/stylesheets/collector/additions.css
-@@ -167,3 +167,15 @@
+@@ -167,3 +167,16 @@
  .c-scanner__hint { margin:0; font:400 14px/20px var(--font-sans); color:var(--ink-muted); }
  /* Art matching's status under the scanner's controls (spec 011 AC-5.1): quiet, like the hint. */
  .c-scanner__art { margin:0; font:400 14px/20px var(--font-sans); color:var(--ink-muted); }
@@ -3456,6 +3457,7 @@ export default class extends Controller {
 +.c-job__actions { margin:var(--space-4) 0; }
 +.c-job__section { margin-top:var(--space-6); }
 +.c-job__error { margin:0 0 var(--space-2); font:400 15px/22px var(--font-sans); color:var(--ink); overflow-wrap:anywhere; }
++.c-job__note { overflow-wrap:anywhere; } /* a sentence quoting a job's arguments, which may be one long unbroken string */
 +.c-pre { margin:0; padding:var(--space-3); overflow-x:auto; background:var(--surface-sunken); border-radius:var(--radius-md);
 +  font:400 12px/16px var(--font-mono); color:var(--ink); }
 ```
@@ -3498,11 +3500,12 @@ The admin's jobs pages (spec 015): the background jobs by state, one job in full
 
 **Markup, one job** — a detail page (`c-main c-page`, `c-appbar--detail`, `c-crumbs`): the job's class as the title with its state under it, "Retry" and "Discard…" for a failed job, a `Details` list, then its arguments and, for a failed job, the error and backtrace in `pre.c-pre`.
 
-- The filters are a GET form, so the state is in the URL (`?status=failed`) and works without scripting. The pressed chip is the state on show; "Failed" is the default.
+- The filters are a GET form, so the state is in the URL (`?status=failed`) and works without scripting. The pressed chip is the state on show; "Failed" is the default. Each chip ends with its count, which stands where `Chip`'s check icon would: exactly one chip is always pressed, and `brand-tint`, the `brand` border and the semibold label mark it.
 - The time column is the one that matters to the state (Failed, Started, Queued, Due) and its heading says which. Times are absolute UTC with the relative form in brackets.
 - The job cell wraps (`c-jobs__job`), so a long error never forces sideways scrolling; `c-jobs__detail` lines are mono and `ink-muted`. Queue and time are `is-opt` columns that drop on phones and reappear in the `c-table__sub` line.
 - A queued job held back by a concurrency limit says "waiting" after its arguments.
 - Only a failed job has actions. "Retry" acts at once and is announced in the status message ("Retrying Catalog::RefreshJob."). "Discard…" leads to a `ConfirmPage` that names the job and says it won't run again.
+- The confirmation's sentence quotes the job's arguments, so it carries `c-job__note` and wraps anywhere.
 - An empty state names the state: "No failed jobs."
 - `pre.c-pre` is `surface-sunken`, mono, and scrolls sideways inside itself.
 - While any job is running or queued, `<main>` carries `data-controller="poll"`: the page refreshes itself about every 2 seconds with a Turbo morph, keeping the scroll position, and stops when no job is running or queued. The refresh waits while a row's menu is open. Nothing on the page needs the script: reloading shows the same thing.
@@ -4003,7 +4006,7 @@ RSpec.describe "Admin catalog and jobs pages on a phone", :art_matching, :solid_
     create(:catalog_refresh_run, source_version: "default-cards-20261005090555", started_at: 2.days.ago, finished_at: 2.days.ago)
     create(:catalog_refresh_run, :running, stage: "sync", stage_done: 61, stage_total: 100, seen_count: 66_140)
     create(:mtg_art_build, status: "running", finished_at: nil, heartbeat_at: Time.current, total_count: 31_904, fingerprinted_count: 7_976)
-    failed = fail_job(queue_job(Catalog::RefreshJob, "mtg", "manual"), RuntimeError.new(long_error))
+    failed = fail_job(queue_job(Catalog::RefreshJob, "x" * 200, "manual"), RuntimeError.new(long_error)) # one long unbroken argument
     queue_job(MTG::Art::BuildJob)
     system_sign_in_as(create(:admin))
 
@@ -4286,8 +4289,8 @@ end
 ```diff
 --- a/app/assets/stylesheets/collector/additions.css
 +++ b/app/assets/stylesheets/collector/additions.css
-@@ -179,3 +179,30 @@
- .c-job__error { margin:0 0 var(--space-2); font:400 15px/22px var(--font-sans); color:var(--ink); overflow-wrap:anywhere; }
+@@ -180,3 +180,33 @@
+ .c-job__note { overflow-wrap:anywhere; } /* a sentence quoting a job's arguments, which may be one long unbroken string */
  .c-pre { margin:0; padding:var(--space-3); overflow-x:auto; background:var(--surface-sunken); border-radius:var(--radius-md);
    font:400 12px/16px var(--font-mono); color:var(--ink); }
 +
@@ -4295,6 +4298,7 @@ end
 +.c-panel { display:flex; flex-direction:column; gap:var(--space-4); margin-top:var(--space-6); padding:var(--space-4);
 +  background:var(--surface-raised); border:1px solid var(--line); border-radius:var(--radius-md); }
 +.c-panel .c-empty { margin:0; }
++.c-panel > .c-section__title { white-space:normal; overflow-wrap:anywhere; } /* a long catalog name wraps */
 +.c-operation { display:flex; flex-direction:column; gap:var(--space-2); padding-top:var(--space-4); border-top:1px solid var(--line); }
 +.c-operation__head { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:var(--space-2); }
 +.c-operation__title { margin:0; font:600 16px/24px var(--font-sans); color:var(--ink); }
@@ -4317,6 +4321,8 @@ end
 +/* ---------- Progress meter (spec 015): a bar with its percentage and, where there are any, the amounts in words ---------- */
 +.c-meter { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-2); font:400 13px/18px var(--font-mono); color:var(--ink-muted); }
 +.c-meter__bar { flex:1 1 160px; min-width:0; height:var(--space-2); accent-color:var(--brand); }
++/* c-meter__value, c-meter__text and c-stages__label take the styles above as they are: they are named for the docs and
++   for specs, not for rules of their own. */
 ```
 
 - [ ] Create `docs/design-system/components/AdminCatalog.md`:
@@ -4356,7 +4362,7 @@ The admin's catalog page (spec 015): a panel per catalog type with its facts, wh
 </section>
 ```
 
-- A panel is `surface-raised` with a `line` border and `radius-md`; its parts are `space-4` apart and each operation starts with a `line` rule.
+- A panel is `surface-raised` with a `line` border and `radius-md`; its parts are `space-4` apart and each operation starts with a `line` rule. Its title wraps, so a long catalog name never forces sideways scrolling.
 - An operation's summary is one sentence that begins with its state in a word ("Queued.", "Running.", "Applied.", "Failed while syncing cards: …"), so the state never depends on colour. A failed run whose job is in the failed list adds a brand link, "See its failed job".
 - Each operation has at most one button, named for what it starts ("Refresh now", "Build art index"). It is `c-btn--secondary`, and disabled while the operation is queued or running or can't run yet; the summary says why. "Refresh now" is `c-btn--primary` only while the catalog has no cards, when it is the page's one next step. An operation that is switched off shows no button, and its summary says how to switch it on.
 - While the catalog has no cards and nothing is in flight, the panel opens with an `EmptyState` that says what the first refresh does and which languages are set.
@@ -4460,7 +4466,7 @@ How far through something is: a bar with its percentage, and the amounts in word
 
 **Implements:** FR-6, FR-7 | **Satisfies:** AC-1.1, AC-1.2, AC-1.3, AC-1.5, AC-5.4, AC-7.3
 **Files:** `app/views/catalog/_not_loaded.html.erb`, `app/controllers/catalog/entries_controller.rb`, `app/controllers/scanners_controller.rb`, `app/controllers/mores_controller.rb`, `app/views/catalog/entries/index.html.erb`, `app/views/scanners/show.html.erb`, `app/views/mores/show.html.erb`, `app/views/layouts/_appbar.html.erb`, `app/assets/stylesheets/collector/additions.css`, `docs/design-system/components/StatusMessage.md`, `docs/design-system/components/MorePage.md`, `.rubocop.yml`, `spec/requests/catalog_not_loaded_spec.rb`, `spec/requests/admin/navigation_spec.rb`, `spec/system/catalog_not_loaded_spec.rb`, `spec/admin_catalog_core_spec.rb`
-**Interfaces:** Consumes: `Catalog.unloaded_titles` (Phase 4); `admin_catalog_path`, `admin_jobs_path` (Phases 6, 7); the `:other_catalog` tag. Produces: the partial `catalog/not_loaded` (local `titles:`), with the element id `catalog_not_loaded`; `@unloaded_catalogs` in the three controllers.
+**Interfaces:** Consumes: `Catalog.unloaded_titles` (Phase 4); `admin_catalog_path`, `admin_jobs_path` (Phases 6, 7); the `:other_catalog` tag. Produces: the partial `catalog/not_loaded` (locals `titles:` and `named:`), with the element id `catalog_not_loaded`; `@unloaded_catalogs` and `@catalogs_named` (true when more than one catalog type is registered) in the three controllers.
 
 Search, the scanner and (for admins) the More page say when a catalog has no applied refresh: admins get the link, members are told who to ask. Admins find the two pages beside user administration. A file-content spec keeps the core's admin catalog code free of any collectible's name.
 
@@ -4644,13 +4650,13 @@ end
 - [ ] Create `app/views/catalog/_not_loaded.html.erb`:
 
 ```erb
-<%# locals: (titles:) %>
+<%# locals: (titles:, named:) %>
 <%# Spec 015 FR-6: while a catalog has no applied refresh, say so where people look for cards. Admins get the way to
     load it; members are told who can. An instance with one catalog type calls it "the card catalog"; with more than
-    one, each unloaded type is named. %>
+    one (named), each unloaded type is named. %>
 <% if titles.any? %>
   <p id="catalog_not_loaded" class="c-status__message c-status__message--alert">
-    <% if Catalog.sources.one? %>The card catalog hasn't been loaded yet.
+    <% if !named %>The card catalog hasn't been loaded yet.
     <% elsif titles.one? %>The <%= titles.first %> catalog hasn't been loaded yet.
     <% else %>The <%= titles.to_sentence %> catalogs haven't been loaded yet.<% end %>
     <% if Current.user.admin? %>
@@ -4667,11 +4673,12 @@ end
 ```diff
 --- a/app/controllers/catalog/entries_controller.rb
 +++ b/app/controllers/catalog/entries_controller.rb
-@@ -5,6 +5,7 @@ class Catalog::EntriesController < ApplicationController
+@@ -5,6 +5,8 @@ class Catalog::EntriesController < ApplicationController
      @owned = Lot.owned_quantities(Current.account, @groups.flat_map(&:entries).map(&:id))
      @sets = Catalog::Set.with_searchable_entries.newest_first.to_a
      @last_refresh = Catalog::RefreshRun.last_applied
 +    @unloaded_catalogs = Catalog.unloaded_titles
++    @catalogs_named = Catalog.sources.many?
    end
  
    def show
@@ -4682,11 +4689,12 @@ end
 ```diff
 --- a/app/controllers/scanners_controller.rb
 +++ b/app/controllers/scanners_controller.rb
-@@ -7,5 +7,6 @@ class ScannersController < ApplicationController
+@@ -7,5 +7,7 @@ class ScannersController < ApplicationController
    def show
      @sitting = sitting_locals
      @summary = flash[:sitting_summary]
 +    @unloaded_catalogs = Catalog.unloaded_titles
++    @catalogs_named = Catalog.sources.many?
    end
  end
 ```
@@ -4696,11 +4704,12 @@ end
 ```diff
 --- a/app/controllers/mores_controller.rb
 +++ b/app/controllers/mores_controller.rb
-@@ -1,4 +1,6 @@
+@@ -1,4 +1,7 @@
  class MoresController < ApplicationController
    def show
 +    # Only admins can act on an unloaded catalog from here (spec 015 AC-1.1); members see the notice where they search.
 +    @unloaded_catalogs = Current.user.admin? ? Catalog.unloaded_titles : []
++    @catalogs_named = Catalog.sources.many?
    end
  end
 ```
@@ -4717,7 +4726,7 @@ end
 -    <% if @last_refresh.nil? %>
 -      <p class="c-status__message c-status__message--alert">The card catalog hasn't been loaded yet.</p>
 -    <% end %>
-+    <%= render "catalog/not_loaded", titles: @unloaded_catalogs %>
++    <%= render "catalog/not_loaded", titles: @unloaded_catalogs, named: @catalogs_named %>
      <% if !@search.active? %>
        <p class="c-empty">Type part of a card name to search.</p>
      <% elsif @groups.empty? %>
@@ -4732,7 +4741,7 @@ end
  <%= render "layouts/appbar", section: :scanner %>
  <main class="c-main c-page">
    <div class="c-pagehead"><div><h1 class="c-pagehead__title">Scan a card</h1></div></div>
-+  <%= render "catalog/not_loaded", titles: @unloaded_catalogs %>
++  <%= render "catalog/not_loaded", titles: @unloaded_catalogs, named: @catalogs_named %>
    <%= render "scanners/scanner", **@sitting, summary: @summary %>
  </main>
  <%= render "layouts/tabbar", section: :scanner %>
@@ -4747,7 +4756,7 @@ end
        <h1 class="c-pagehead__title">More</h1>
      </div>
    </div>
-+  <%= render "catalog/not_loaded", titles: @unloaded_catalogs %>
++  <%= render "catalog/not_loaded", titles: @unloaded_catalogs, named: @catalogs_named %>
    <ul class="c-list c-more">
      <li><span>Signed in as <strong><%= Current.user.name %></strong></span><span class="c-list__meta"><%= Current.user.email_address %></span></li>
 -    <% if Current.user.admin? %><li><%= link_to "Users and sign-up", admin_users_path %></li><% end %>
@@ -4782,10 +4791,10 @@ end
 ```diff
 --- a/app/assets/stylesheets/collector/additions.css
 +++ b/app/assets/stylesheets/collector/additions.css
-@@ -206,3 +206,8 @@
- /* ---------- Progress meter (spec 015): a bar with its percentage and, where there are any, the amounts in words ---------- */
- .c-meter { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-2); font:400 13px/18px var(--font-mono); color:var(--ink-muted); }
+@@ -210,3 +210,8 @@
  .c-meter__bar { flex:1 1 160px; min-width:0; height:var(--space-2); accent-color:var(--brand); }
+ /* c-meter__value, c-meter__text and c-stages__label take the styles above as they are: they are named for the docs and
+    for specs, not for rules of their own. */
 +
 +/* ---------- Links inside a status message use the brand link colour (spec 015: the not-loaded notice) ---------- */
 +.c-status__message a { color:var(--brand); font-weight:600; text-decoration:none; }
@@ -4808,7 +4817,8 @@ end
  ```
  
  - There is one live region per page (`#status`), always present so screen readers register it before it changes; `c-status:empty` hides it when there is no message.
- - Messages are one plain sentence that says exactly what happened, with exact numbers: "Removed 3 × Opt (XLN · 65) from your collection.", "Saved.", never "Success!".
+-- Messages are one plain sentence that says exactly what happened, with exact numbers: "Removed 3 × Opt (XLN · 65) from your collection.", "Saved.", never "Success!".
++- Messages are one plain sentence that says exactly what happened, with exact numbers: "Removed 3 × Opt (XLN · 65) from your collection.", "Saved.", never "Success!". An inline notice may add one more short sentence saying what to do about the state it describes.
  - A redirect carries the message in the flash (`notice` or `alert`); an answer that leaves the page as it was updates `#status` with a Turbo Stream (`turbo_stream.update("status", …)`).
 +- A link inside a message is a brand link: `brand` colour, semibold, underlined on hover, with the `focus` ring. The catalog notice (spec 015) gives admins the link and tells everyone else who to ask.
  - Use the inline notice only for a state the page is in; never put action results outside the live region, or they won't be announced.
@@ -4983,8 +4993,8 @@ bin/rails runner '
   time.call("without progress writes")'
 ```
 
-  Expect three applied runs. The target: "with progress" is no more than 5% slower than "without progress writes".
-- [ ] Write `docs/specs/015-admin-catalog-and-jobs/research.md` with both benchmarks: the date, the machine, the catalog's size, the five times per page, the two refresh times and their ratio, and whether each target was met. A missed target is recorded as missed and raised with the maintainer; it doesn't fail the build. Add one note for a later spec: a run whose job crashed less than 15 minutes ago still reads "Running." with no pointer to the failed job until the stall threshold passes, which is what the spec asks.
+  Expect three applied runs. If one reads `skipped`, a run of this type is still marked running: wait 15 minutes, or start the server once so the next refresh closes it, then run the script again. The target: "with progress" is no more than 5% slower than "without progress writes".
+- [ ] Write `docs/specs/015-admin-catalog-and-jobs/research.md` with both benchmarks: the date, the machine, the catalog's size, the five times per page, the two refresh times and their ratio, and whether each target was met. A missed target is recorded as missed and raised with the maintainer; it doesn't fail the build. Add one note for a later spec: a run whose job crashed less than 15 minutes ago still reads "Running." with no pointer to the failed job until the stall threshold passes, which is what the spec asks. Add a second note for the upgrade notes: a refresh interrupted by the upgrade to this version isn't resumed by its re-queued job, because a run recorded before the upgrade has no job id; it reads as running for up to 15 minutes, then as interrupted, and "Refresh now" then works.
 - [ ] Watch a real refresh (needs the maintainer's go-ahead for the development server). Start `bin/dev` as a background task, sign in as an admin, open `/admin/catalog`, press "Refresh now", and check against the spec: the button disables at once; the stages advance by themselves; the download and sync show a rising percentage; the counts rise; the run ends as applied with its counts; the page stops asking (no further requests in the server log). With `COLLECTOR_MTG_ART_MATCHING=true`, check the art index section starts building after the refresh.
 - [ ] Restart mid-refresh: press "Refresh now", stop the server while the sync runs, start it again. Expect the job to run again by itself, the earlier run to be listed as failed with "interrupted" in Recent refreshes, and the new run to proceed (AC-3.3). Stop the server task when done.
 - [ ] Open `/admin/jobs`: the filters show counts, a finished refresh isn't listed, and the page for any job renders.
