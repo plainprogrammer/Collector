@@ -5,7 +5,7 @@
 - [Secret files are user-verified](secret-files-user-verified.md) — agents are read-denied on secrets/storage; ask the user to cat them; briefs must forbid shell reads (grep/cat) too
 - [SDD review model choice](sdd-review-model-choice.md) — every PRD, spec and plan gets a read-only Fable review by default before moving on; drafting in the main session; implementation on Opus
 - [Plan reviews run the code](plan-reviews-run-the-code.md) — trace plan code against the files it edits; read-only Fable by default (spec 009); planner runs the code in scratch first (spec 013)
-- [Dev machine image tools](dev-machine-image-tools.md) — magick 7, Pillow, ffmpeg present; no libvips/ruby-vips here (Dockerfile has libvips); decode via `magick … ppm:-`
+- [Dev machine image tools](dev-machine-image-tools.md) — magick 7, Pillow, ffmpeg, libvips 8.18.3 present (no `vips` command); ruby-vips in the bundle; decode via `magick … ppm:-`
 - [Scryfall API access](scryfall-api-access.md) — docs 403 to WebFetch; use curl + User-Agent; bulk JSONL facts
 - [PR screenshots workflow](pr-screenshots-workflow.md) — headless Firefox + magick/ffmpeg; embed in private-repo PRs via blob/<sha>?raw=true
 - [Background servers via task](background-servers-via-task.md) — run_in_background + TaskStop, not &/kill/pkill; 2-hour task limit, restart before device steps
@@ -26,8 +26,11 @@
 - [Verify corpus manifests](verify-corpus-manifests.md) — resolve, check overlap, plst `PCY-132` numbers, era override for frames without set codes, foil ★ vs the foil column; a clean-reading miss may be a manifest error
 - [ExitPlanMode for SDD plans](exitplanmode-for-sdd-plans.md) — long plans: summarise in chat and take the go-ahead there, not via the approval dialog
 - [Device sitting account check](device-sitting-account-check.md) — find which account holds the sitting (by reading keys) before scoring or resetting
-- [Spec 012 follow-ups](spec-012-followups.md) — issues #17–#21: digest cleanup (spec 013, PR #26, live delete owed after Oct 15), ruby-vips, smoke grep, releasing.md lines, evidence owed
+- [Spec 012 follow-ups](spec-012-followups.md) — issues #17, #19–#21: digest cleanup (spec 013, PR #26, live delete owed after Oct 15), smoke grep, releasing.md lines, evidence owed
 - [GHCR and Actions facts](ghcr-and-actions-facts.md) — visibility one-way, attestations need public repo, arm64 runners, metadata-action v0, kamal config limits; classic PATs only, /users/ paging, Accept or 404; CI runs only on PRs/main (open a draft PR); .dockerignore drops /script, mount it
 - [ADR numbers across branches](adr-numbers-across-branches.md) — check origin/main's docs/adr before numbering; an unmerged ADR takes the next free number on rebase
 - [Bulk file copy](bulk-file-copy.md) — find … -exec cp -n -t dest {} + for big caches; a glob hits "Argument list too long"
 - [Sitting capture alignment](sitting-capture-alignment.md) — check each row's first-capture name vs the expected card (re-scans shift rows; CAPTURES override); brief "scan and add" explicitly
+- [Session-wrap before PR review](session-wrap-before-pr-review.md) — wrap and commit memories/lessons before marking a PR ready; offer post-merge housekeeping then too
+- [Local image builds duplicate OCR](local-image-builds-duplicate-ocr.md) — issue #31: set-up checkouts build images ~14 MB larger; measure paths with `du`, not total sizes
+- [Subagent commit trailers](subagent-commit-trailers.md) — subagents use their own session's trailer; don't name one in briefs
