@@ -1,6 +1,6 @@
 # Verification: Active Storage Variants with vips (spec 014)
 
-**Spec:** [spec.md](spec.md) v1.1.1 · **Plan:** [plan.md](plan.md) Phase 5 · **Recorded:** 2026-10-09 ·
+**Spec:** [spec.md](spec.md) v1.1.2 · **Plan:** [plan.md](plan.md) Phase 5 · **Recorded:** 2026-10-09 ·
 **Branch:** `014-active-storage-vips`
 
 Evidence for every acceptance criterion. The suite examples are in
@@ -189,7 +189,7 @@ FR-1 "must" lines seen in the same session: `Gemfile:41` keeps `gem "image_proce
 | Security | libvips versions seen: 8.16.1 in the image (`libvips42t64:amd64 8.16.1-1+deb13u1`, from `dpkg -l` in `collector:vips`) and 8.18.3 on this machine. All are newer than 8.13. Ubuntu 24.04 installed 8.15.1 in the PR's `ci` job. No code on this branch touches `Vips.block_untrusted`; that default was not tested directly | partly checked |
 | Portability | amd64: local build and smoke run. amd64 and arm64: both image jobs built and passed `Smoke test` in the PR's workflow run | ✓ |
 | Image size | The two gems add about 2.7 MB; see below | ✓ (figure corrected in spec 1.1.1) |
-| Boot | AC-3.3's example shows `Bundler.require` doesn't load `ruby-vips`. The app was not booted on a machine without libvips | shown by the spec only |
+| Boot | AC-3.3's example shows `Bundler.require` doesn't load `ruby-vips`. The implementation review simulated a missing libvips (a shim making `ruby-vips` raise FFI's `LoadError`): `bin/rails runner` booted and exited 0, the transformer was `nil`, and the log gained the "requires the ruby-vips gem" line (spec 1.1.2). The app was not booted on a machine that really lacks libvips | ✓ by simulation |
 
 ### Image size
 

@@ -66,7 +66,7 @@ Option B is rejected because the maintainer expects uploads and prefers the proc
 
 - The warning goes away, and `ActiveStorage.variant_transformer` is the vips transformer in every environment that has libvips.
 - The image keeps both toolkits: libvips for Active Storage variants, ImageMagick for the art build (ADR 0012). Neither replaces the other without a new ADR.
-- Developers need libvips: `vips` on Fedora, `libvips42t64` on Ubuntu 24.04. Without it Rails still boots, but logs "Using vips to process variants requires the libvips library", and the variant spec fails.
+- Developers need libvips: `vips` on Fedora, `libvips` on Debian or Ubuntu. Without it Rails still boots, but logs "Generating image variants with libvips requires the ruby-vips gem", and the variant spec fails. It names the gem although the gem is bundled, because `image_processing` rewrites the load error.
 - The first feature that accepts uploads still owes upload validation: content type and size ([security rule](../../.claude/rules/security.md)) and pixel limits. Active Storage 8.1 and `image_processing` 2.2 already call `Vips.block_untrusted(true)`, which blocks the unfuzzed loaders (e.g. the ImageMagick-backed `magickload`). That feature decides whether any of them should be re-enabled.
 - Active Storage raises at boot if libvips is older than 8.13 (no `block_untrusted`). The image has 8.16.1, the development machine 8.18.3, and Ubuntu 24.04 has 8.15.1.
 - If the project later drops variants altogether, Option B becomes the way to shrink the image, through an ADR that supersedes this one.

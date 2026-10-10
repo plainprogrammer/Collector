@@ -1,7 +1,7 @@
 # Feature 014: Active Storage Variants with vips
 
 **Status:** Approved
-**Version:** 1.1.1
+**Version:** 1.1.2
 **Created:** 2026-10-09
 **Last Updated:** 2026-10-09
 **Branch:** `014-active-storage-vips`
@@ -16,6 +16,7 @@
 | 1.0.0 | 2026-10-09 | Initial draft from the approved [prd.md](prd.md) and ADR [0013](../../adr/0013-active-storage-variants-with-vips.md) (libvips through `ruby-vips`, not auto-required). Approved by the maintainer |
 | 1.1.0 | 2026-10-09 | Spec review revisions (Fable, Mode A). **Testability** NFR: which ACs are suite examples, which are file-shape specs and which are evidence in `verification.md`. **AC-1.4** names a pinned image (`0.1.0`), since `edge` moves. **libvips check** extracted to `Collector::LibvipsCheck` in `lib/collector/` with an injectable probe (maintainer's choice), probing with `bundle exec ruby -e 'require "ruby-vips"'` because `bin/setup` doesn't run under Bundler (AC-3.1, AC-3.2, AC-3.4, FR-3). **Debian/Ubuntu package** named the same in the hint, README and `ci.yml` (AC-3.2, AC-4.1). **Fixture** under `spec/fixtures/files/`; dimensions read inside the transformer's block (AC-2.1). Closing #18 and memory housekeeping moved from FR-4 to Delivery. Second pass (READY TO PLAN): the fixture may be committed or generated; AC-3.5's two sentences are tagged by how they're checked |
 | 1.1.1 | 2026-10-09 | PATCH, from the verification run. **Image size** NFR: the two gems measure about 2.7 MB in the built image (`ruby-vips` 2.3.0 644 KB, `ffi` 1.17.4 2,056 KB), not "under 1 MB". The maintainer accepts the growth. No behaviour changes |
+| 1.1.2 | 2026-10-09 | PATCH, from the implementation review (Fable, SPEC-ALIGNED). **Boot** NFR and the first **Error Scenarios** row: without libvips, Rails logs the "requires the ruby-vips gem" warning, not the "requires the libvips library" one, because `image_processing` rewrites the load error (activestorage 8.1.4, `image_processing` 2.2.0). No behaviour changes; `bin/image-smoke` still checks for both lines |
 
 ---
 
@@ -159,13 +160,13 @@ The `Dockerfile` already installs libvips in both stages and doesn't change.
 - **Security:** variants keep Active Storage's default `Vips.block_untrusted(true)`. Nothing re-enables blocked loaders. Active Storage raises at boot if libvips is older than 8.13, and every target is newer: the image has 8.16.1, the development machine 8.18.3 and Ubuntu 24.04 8.15.1.
 - **Portability:** the image still builds and passes `bin/image-smoke` on both `linux/amd64` and `linux/arm64` (spec 012, ADR 0010).
 - **Image size:** the image grows by at most the `ruby-vips` and `ffi` gems: about 2.7 MB, measured in the built amd64 image (`ruby-vips` 2.3.0 644 KB, `ffi` 1.17.4 2,056 KB; see `verification.md`). Spec 008 `research.md` §7 estimated under 1 MB.
-- **Boot:** the app boots where libvips isn't available. Active Storage then logs the "requires the libvips library" warning, which is expected in that case.
+- **Boot:** the app boots where libvips isn't available. Active Storage then logs the "requires the ruby-vips gem" warning (although the gem is bundled: `image_processing` rewrites the load error, so the "requires the libvips library" line never appears), which is expected in that case.
 
 ## Error Scenarios
 
 | Scenario | Expected behaviour |
 |----------|--------------------|
-| libvips isn't available on a development machine | Rails boots and logs the "requires the libvips library" warning. `bin/setup` prints its hint and completes. The variant spec fails. |
+| libvips isn't available on a development machine | Rails boots and logs the "requires the ruby-vips gem" warning (see the Boot NFR). `bin/setup` prints its hint and completes. The variant spec fails. |
 | The libvips probe can't run (the command is missing, or an injected probe raises) | The check treats that as unavailable, prints the hint, and doesn't raise (AC-3.2). Through `bin/setup` this can't happen in practice, because `bundle check`/`bundle install` run first. |
 | libvips isn't installed in CI (a broken install step) | The test job fails: the install step fails, or the variant spec does. |
 | A future image drops `ruby-vips` or libvips | `bin/image-smoke` fails on the vips check (AC-1.4), so the image isn't published. |
