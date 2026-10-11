@@ -62,6 +62,7 @@ RSpec.describe "Admin catalog page", :solid_queue, type: :request do
       end
 
       it "lists the 5 most recent runs with their trigger, status and outcome (AC-5.1)", :aggregate_failures do
+        travel_to Time.utc(2026, 10, 9, 3, 25)
         6.times { |n| create(:catalog_refresh_run, started_at: (n + 2).days.ago, seen_count: 100, updated_count: n) }
         create(:catalog_refresh_run, status: "skipped", message: "already running", trigger: "manual", started_at: Time.utc(2026, 10, 9, 3, 15))
 

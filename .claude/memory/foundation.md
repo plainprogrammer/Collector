@@ -5,6 +5,9 @@
 ## Mission
 Collector is a self-hostable, multi-tenant web application for tracking collectibles, starting with Magic: The Gathering cards.
 
+## Direction
+The goal, the 1.0 test and the rules each spec is checked against are in `docs/north-star.md`; the order of work is in `docs/roadmap.md`.
+
 ## Principles
 1. **Easy to self-host, painless to upgrade.** Anyone can stand up an instance with minimal setup and no required proprietary services. Every release upgrades in place: migrations are reversible or forward-safe, never lose data, and breaking changes ship with a documented upgrade path.
 2. **Users own their data.** Collections are fully exportable and importable in open, documented formats. Nothing about a user's data is locked into this app or any third party.
