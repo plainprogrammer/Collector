@@ -1,7 +1,7 @@
 # Feature 018: Content Notice Footer
 
 **Status:** Draft
-**Version:** 1.0.0
+**Version:** 1.1.0
 **Created:** 2026-10-11
 **Last Updated:** 2026-10-11
 **Branch:** `018-content-notice-footer`
@@ -14,6 +14,7 @@
 | Version | Date | Change |
 |---------|------|--------|
 | 1.0.0 | 2026-10-11 | Initial draft from issue #34 and [research 016](../016-scryfall-hosting-terms/research.md) (sections 4 and 7, rulings 27–28) |
+| 1.1.0 | 2026-10-11 | Spec review revisions (Fable, Mode A, NEEDS REVISION, nothing blocking). **Scanner policy:** the nonce differs per request, so AC-4.2 compares directives and sources, and AC-4.1 asserts the footer's applied style instead of a violation report. **Short pages:** the footer sits directly after the content, not pushed to the viewport's bottom (AC-3.3). **Lines:** a type supplies its lines in display order; they render one per paragraph with no heading, and a repeated line stays with the first type (FR-1, FR-2, AC-2.1, AC-2.4). **Pages:** the rule is every response rendered with the application layout, including re-rendered forms; a frame answer is one requested with a `Turbo-Frame` header (glossary, AC-1.1, AC-1.3, AC-1.6, AC-1.8). **Also:** ADR 0018's consequence is updated (FR-3); the text style is named (FR-4); a hook that raises isn't rescued (Error Scenarios) |
 
 ---
 
@@ -25,9 +26,9 @@ Wizards of the Coast's Fan Content Policy asks every piece of Fan Content to car
 
 ### Glossary
 
-- **Page:** an HTML document the app renders for a browser with the application layout: every signed-in page, the sign-in and first-run registration pages, the admin pages and the scanner pages (measurement mode included).
+- **Page:** any response rendered with the application layout: every signed-in page, the sign-in page, the sign-up page (first-run or open), the admin pages and the scanner pages (measurement mode included), and a form re-rendered after a failed submission (422 or 429).
 - **Catalog type:** a kind of collectible with a registered catalog source (today only `mtg`).
-- **Content notice:** the text a catalog type supplies for the footer. It has two kinds of line: a **rights notice** (what the content's owner asks to be shown) and a **source attribution** (who provides the data).
+- **Content notice:** the lines of plain text a catalog type supplies for the footer, in the order they are shown. For `mtg` they are a rights notice (what the content's owner asks to be shown) and a source attribution (who provides the data).
 - **Core:** code outside a collectible's namespace (ADR 0018).
 
 ## Goals
@@ -65,14 +66,14 @@ Wizards of the Coast's Fan Content Policy asks every piece of Fan Content to car
 
 **Acceptance criteria:**
 
-- [ ] **AC-1.1** Given the `mtg` catalog type is registered When a signed-in collector opens the collection page (grid or table), catalog search, a card page, an identity page, the scanner page, the More page, or a lot's add, edit or removal page Then the page contains, in a footer landmark after the page's main content, the text "Collector is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC."
+- [ ] **AC-1.1** Given the `mtg` catalog type is registered When a signed-in collector opens the collection page (grid or table), catalog search, a card page, an identity page, the scanner page, the More page, or a lot's add, edit or removal page (a representative list; the rule is every page, as the glossary defines it) Then the page contains, in a footer landmark after the page's main content, the text "Collector is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC."
 - [ ] **AC-1.2** Given the same When any of those pages is opened Then the same footer contains the text "Card data and images provided by Scryfall."
-- [ ] **AC-1.3** Given a signed-out visitor When they open the sign-in page, or the first-run registration page on a new instance Then the footer is present with both texts.
+- [ ] **AC-1.3** Given a signed-out visitor When they open the sign-in page, or the sign-up page (first-run on a new instance, or open sign-up) Then the footer is present with both texts.
 - [ ] **AC-1.4** Given a signed-in admin When they open the admin users, admin catalog or admin jobs pages Then the footer is present with both texts.
 - [ ] **AC-1.5** Given the `mtg` catalog has never been loaded (no applied refresh run) When any page is opened Then the footer is present with both texts.
-- [ ] **AC-1.6** Given any page When it is rendered Then the footer appears exactly once, and each line of the notice appears exactly once in it.
+- [ ] **AC-1.6** Given any page, including a form re-rendered with 422 or 429 When it is rendered Then the footer appears exactly once, and each line of the notice appears exactly once in it.
 - [ ] **AC-1.7** Given a card page When it is opened Then "Card data and images provided by Scryfall." appears once on the page, in the footer, and no longer in the card's body.
-- [ ] **AC-1.8** Given a request that answers with something other than a full page (a Turbo Frame or Turbo Stream answer, the health check) When it is rendered Then the response contains no footer.
+- [ ] **AC-1.8** Given a request that isn't answered with the application layout (a request carrying a `Turbo-Frame` header, a Turbo Stream answer, the health check) When it is rendered Then the response contains no footer. The same address requested without the `Turbo-Frame` header is a page and carries it.
 
 ### Story 2: The notice belongs to the collectible type
 
@@ -82,10 +83,10 @@ Wizards of the Coast's Fan Content Policy asks every piece of Fan Content to car
 
 **Acceptance criteria:**
 
-- [ ] **AC-2.1** Given a second catalog type is registered whose source supplies a rights notice and a source attribution When any page is opened Then the footer shows the `mtg` type's lines and the second type's lines, grouped by type, in the order the types are registered.
+- [ ] **AC-2.1** Given a second catalog type is registered whose source supplies two lines When any page is opened Then the footer shows the `mtg` type's lines and then the second type's lines: types in the order they are registered, each type's lines in the order it supplies them.
 - [ ] **AC-2.2** Given a registered catalog type whose source supplies no content notice When any page is opened Then the footer shows the other types' lines and nothing for that type, and the page renders without error.
 - [ ] **AC-2.3** Given no registered catalog type supplies a content notice When any page is opened Then the page has no footer element at all (no empty landmark).
-- [ ] **AC-2.4** Given two registered catalog types supply an identical line When any page is opened Then that line appears once.
+- [ ] **AC-2.4** Given two registered catalog types supply an identical line When any page is opened Then that line appears once, in the position of the first type that supplies it.
 - [ ] **AC-2.5** Given the core's footer code (the layout, the footer's partial, and whatever helper or model collects the notices) When it is searched for "mtg", "magic", "wizards", "scryfall" and "fan content", case-insensitively Then none is found. An automated check enforces this, as `spec/admin_catalog_core_spec.rb` does for the admin catalog page.
 - [ ] **AC-2.6** Given `app/views/catalog/entries/show.html.erb` When it is searched for the attribution sentence Then it is not found. (The page's "View on Scryfall" menu link is a known exception recorded in ADR 0018 and is not changed here.)
 
@@ -99,7 +100,7 @@ Wizards of the Coast's Fan Content Policy asks every piece of Fan Content to car
 
 - [ ] **AC-3.1** Given a viewport 390px wide, where the tab bar is fixed to the bottom When a page with the tab bar is scrolled to its end Then the whole footer is visible above the tab bar, with none of its text under the bar.
 - [ ] **AC-3.2** Given a viewport 360px wide When any page is opened Then the footer's text wraps inside the page gutter with no horizontal scrolling.
-- [ ] **AC-3.3** Given a viewport 1280px wide When a page whose content is shorter than the viewport is opened (the sign-in page) Then the footer follows the content in normal flow; it is not fixed or sticky and never overlaps content on any page.
+- [ ] **AC-3.3** Given a viewport 1280px wide When a page whose content is shorter than the viewport is opened (the sign-in page) Then the footer sits directly after the content, not pushed to the bottom of the viewport; it is never fixed or sticky and never overlaps content on any page.
 - [ ] **AC-3.4** Given the light theme and the dark theme When the footer is rendered Then its text holds at least 4.5:1 contrast against its background in both.
 - [ ] **AC-3.5** Given the footer When it is rendered Then it contains text only: no image, logo, icon, set symbol or other mark of Wizards of the Coast or Scryfall, and no interactive element.
 - [ ] **AC-3.6** Given the collection page with its sticky filter bar, and the collection table in bulk mode with its bulk bar When the page is scrolled to its end Then the footer is fully visible and neither bar overlaps it.
@@ -113,20 +114,20 @@ Wizards of the Coast's Fan Content Policy asks every piece of Fan Content to car
 
 **Acceptance criteria:**
 
-- [ ] **AC-4.1** Given the scanner page, which sends a Content-Security-Policy When it is opened in a browser Then the footer is displayed with both texts, styled as on other pages, and the browser reports no Content-Security-Policy violation.
-- [ ] **AC-4.2** Given the scanner page When its response is compared with today's Then its Content-Security-Policy header is unchanged: the footer adds no source, directive or nonce use.
-- [ ] **AC-4.3** Given measurement mode is enabled (development only) When the measurement page or its replay page, the other two pages that send the scanner's policy, is opened Then the footer is present with both texts and the policy header is unchanged.
+- [ ] **AC-4.1** Given the scanner page, which sends a Content-Security-Policy When it is opened in a browser Then the footer is displayed with both texts and its stylesheet rule applied (its computed colour is the `ink-muted` token's), and its markup carries no inline style, script or external resource.
+- [ ] **AC-4.2** Given the scanner page When it is requested Then its Content-Security-Policy has exactly the directives and sources spec 007 AC-2.4 lists (the nonce's value differs per request): the footer adds no directive, source or nonce use.
+- [ ] **AC-4.3** Given measurement mode is enabled (development only) When the measurement page or its replay page, the other two pages that send the scanner's policy, is opened Then the footer is present with both texts and the policy is as AC-4.2 states.
 - [ ] **AC-4.4** Given a phone-width viewport on the scanner page with the camera view and the sitting list showing When the page is scrolled to its end Then the footer is visible above the tab bar and overlaps neither the camera view nor the scanner's controls.
 
 ## Functional Requirements
 
 ### FR-1: A content notice per catalog type
 
-A catalog type's source may supply a content notice: zero or more rights-notice lines and zero or more source-attribution lines, as plain text. Supplying one is optional, like the source contract's other optional hooks.
+A catalog type's source may supply a content notice: zero or more lines of plain text, in the order they are shown. Supplying one is optional, like the source contract's other optional hooks. The core doesn't know what kind of line each is.
 
 **Must:**
-- The `mtg` type supplies one rights notice, the Fan Content Policy's wording with "Collector" as the title, exactly: "Collector is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC."
-- The `mtg` type supplies one source attribution, exactly: "Card data and images provided by Scryfall."
+- The `mtg` type supplies two lines. First, the Fan Content Policy's wording with "Collector" as the title, exactly: "Collector is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC."
+- Second, the source attribution, exactly: "Card data and images provided by Scryfall."
 - The notice is the same for every request: it doesn't depend on the account, the user, whether the catalog is loaded, or instance settings.
 - The contract's documentation (`app/models/catalog/sources.rb`) describes the hook.
 
@@ -141,8 +142,9 @@ The application layout renders one footer on every page, collecting the content 
 
 **Must:**
 - Sit after the page's main content, as the page's footer landmark (`contentinfo`).
-- Group lines by catalog type in registration order; within a type, rights notices come before source attributions.
-- Show each distinct line once.
+- Show types in registration order and each type's lines in the order it supplies them.
+- Render one line per paragraph, with no heading and no type name; grouping is only the order.
+- Show each distinct line once, where the first type that supplies it puts it.
 - Be absent (no element) when no type supplies a notice.
 - Render with no JavaScript, and be unaffected by Turbo navigation between pages (present after a Drive visit, a morph refresh and a restored Back visit).
 
@@ -156,6 +158,7 @@ The application layout renders one footer on every page, collecting the content 
 **Must:**
 - Remove the attribution line from the card page's body (AC-1.7, AC-2.6).
 - Remove the `c-attribution` rule from `collector/additions.css` if nothing else uses it once the line is gone, or reuse it for the footer; either way no unused rule is left.
+- Update ADR 0018's consequence: the card page's attribution is no longer a core exception, and the footer's check (AC-2.5) joins `spec/admin_catalog_core_spec.rb` as a guard. The "View on Scryfall" link remains the exception.
 
 **Must not:**
 - Change anything else on the card page. Its image rules belong to spec 019.
@@ -164,7 +167,7 @@ The application layout renders one footer on every page, collecting the content 
 
 **Must:**
 - Use only design-system tokens and `c-*` classes; new rules go in `collector/additions.css` in one block of their own for this spec.
-- Read as small print: `ink-muted` text at caption size, set apart from the content above it by space or a `line` divider, aligned to the page gutter (`space-8` wide, `space-4` below 640px).
+- Read as small print: `ink-muted` text at the size of the line it replaces (12px on a 16px line, IBM Plex Sans 400), set apart from the content above it by space or a `line` divider, aligned to the page gutter (`space-8` wide, `space-4` below 640px).
 - Follow the app shell's viewport breakpoint, since the footer is part of the shell.
 - Have a component document and a README entry (AC-3.7).
 
@@ -217,6 +220,7 @@ The application layout renders one footer on every page, collecting the content 
 | No catalog type is registered at all | No footer element; pages render as today |
 | The catalog isn't loaded, or its last refresh failed | The footer is unchanged (AC-1.5); it never depends on catalog data |
 | A notice line contains `<`, `&` or quotes | It is shown as text, escaped |
+| A source's hook raises | It is a bug in that source. The core doesn't rescue it, and the page fails as any view error does |
 | A page is rendered inside the scanner's policy | The footer renders and the policy is unchanged (AC-4.1, AC-4.2) |
 
 ## Open Questions
