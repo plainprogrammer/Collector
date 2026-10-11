@@ -77,7 +77,7 @@ Most of this feature is a document, so some criteria can only be checked by read
 - [ ] **AC-1.1** Given the valid examples When every field name that appears in them is looked up in the format document Then each one appears there by name.
 - [ ] **AC-1.2** **(review)** Given the format document When any field's entry is read Then it gives the field's meaning, whether it may be `null`, and the values it may take, and price paid is described as the price of one copy.
 - [ ] **AC-1.3** Given a lot in a valid example When it is read without a catalog Then it gives the entry's name, set code, collector number and language alongside the entry identity.
-- [ ] **AC-1.4** Given any valid example When its field names are searched Then none is `id`, `admin`, `password` or `session`, and none ends in `_id`, `_digest` or `_key`.
+- [ ] **AC-1.4** Given any valid example When its field names are searched Then none is `admin`, `password` or `session`, none ends in `_digest`, and the only field that holds an identifier of any record is the entry's source id.
 - [ ] **AC-1.5** **(review)** Given the format document When a collector reads its opening section Then it says in plain words that the file contains their name and email address, and that it contains everything needed to rebuild their collection.
 
 ### Story 2: A builder works from the format alone
