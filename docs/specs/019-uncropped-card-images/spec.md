@@ -1,7 +1,7 @@
 # Feature 019: Fit Card Images Without Cropping
 
-**Status:** Draft
-**Version:** 1.2.0
+**Status:** Approved
+**Version:** 1.2.1
 **Created:** 2026-10-11
 **Last Updated:** 2026-10-11
 **Branch:** `019-uncropped-card-images`
@@ -16,6 +16,7 @@
 | 1.0.0 | 2026-10-11 | Initial draft from issue #35 and [research 016](../016-scryfall-hosting-terms/research.md) (sections 4 and 7, ruling 28) |
 | 1.1.0 | 2026-10-11 | Spec review revisions (Fable, Mode A). The thumbnail's two boxes differ today (34px with an image, about 33.5px without), so **FR-2** lets the image box take the empty slot's height (AC-3.3). **Testability** says the plan settles how the browser gets test images without the network, with a fallback. **AC-1.4** is a markup check, not a second browser example. **Goal 4**, **AC-4.3** and **AC-4.5** reworded; *shown whole* may be established from natural size, box and computed fit |
 | 1.2.0 | 2026-10-11 | The maintainer's ruling on the open question: the thumbnail keeps its 2px corner as exported (decision 3). No open questions remain |
+| 1.2.1 | 2026-10-11 | Approved by the maintainer as it stands: decisions 1 to 3 confirmed. The thumbnail stretch was reasoned, not measured, so the plan measures it in a browser before and after. The unowned fade stays out of scope |
 
 ---
 
@@ -62,7 +63,7 @@ The thumbnail's empty slot (a `span`, shown when there is no image) has no heigh
 
 ## Decisions
 
-These are the choices issue #35 asks the spec to make. Each is the maintainer's to overrule at approval.
+These are the choices issue #35 asks the spec to make. The maintainer confirmed all three on 2026-10-11.
 
 ### 1. An override in `additions.css`, not a re-export
 
