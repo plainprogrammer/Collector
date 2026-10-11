@@ -1,7 +1,7 @@
 # Feature 019: Fit Card Images Without Cropping
 
 **Status:** Draft
-**Version:** 1.1.0
+**Version:** 1.2.0
 **Created:** 2026-10-11
 **Last Updated:** 2026-10-11
 **Branch:** `019-uncropped-card-images`
@@ -15,6 +15,7 @@
 |---------|------|--------|
 | 1.0.0 | 2026-10-11 | Initial draft from issue #35 and [research 016](../016-scryfall-hosting-terms/research.md) (sections 4 and 7, ruling 28) |
 | 1.1.0 | 2026-10-11 | Spec review revisions (Fable, Mode A). The thumbnail's two boxes differ today (34px with an image, about 33.5px without), so **FR-2** lets the image box take the empty slot's height (AC-3.3). **Testability** says the plan settles how the browser gets test images without the network, with a fallback. **AC-1.4** is a markup check, not a second browser example. **Goal 4**, **AC-4.3** and **AC-4.5** reworded; *shown whole* may be established from natural size, box and computed fit |
+| 1.2.0 | 2026-10-11 | The maintainer's ruling on the open question: the thumbnail keeps its 2px corner as exported (decision 3). No open questions remain |
 
 ---
 
@@ -82,7 +83,7 @@ The slot keeps its 63:88 shape and the image is scaled to fit inside it, centred
 
 ### 3. The rounded corners stay
 
-`radius-card` is 4.75% of the slot's width, the corner of a physical card, so the tile and card-page slots round off only what lies outside the card's own printed corner. The thumbnail's 2px corner is larger in proportion (8.3% of 24px) and trims under one pixel of the card's border at each corner; it stays as it is. No copyright line or artist name is near a corner arc. See the open question.
+`radius-card` is 4.75% of the slot's width, the corner of a physical card, so the tile and card-page slots round off only what lies outside the card's own printed corner. The thumbnail's 2px corner is larger in proportion (8.3% of 24px) and trims under one pixel of the card's border at each corner; it stays as exported, by the maintainer's ruling of 2026-10-11. No copyright line or artist name is near a corner arc.
 
 ## Users and Context
 
@@ -233,7 +234,7 @@ The slot keeps its 63:88 shape and the image is scaled to fit inside it, centred
 
 ## Open Questions
 
-- [NEEDS CLARIFICATION: is the thumbnail's 2px corner acceptable? At 24px wide it rounds 8.3% of the width against the card's own 4.75%, trimming under one pixel of border at each corner. The draft keeps it (decision 3). The alternative is to give the thumbnail the card's own corner, a visible change to an exported style.]
+None. The one question raised in the draft, whether the thumbnail's 2px corner is acceptable, was ruled on by the maintainer on 2026-10-11: it stays as exported (decision 3).
 
 ## Out of Scope (Future Considerations)
 
