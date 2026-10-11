@@ -21,5 +21,5 @@ SQLite is the only database, in production too. There are separate files for the
 - An instance runs on one host. The files can't sit on a network filesystem or be shared across hosts.
 - No Postgres-only features are used (`jsonb` operators, arrays, `DISTINCT ON`, advisory locks).
 - Write transactions stay short, and only one Solid Queue supervisor may run against the queue file.
-- Backup and restore is a file-level operation on the primary database. The mechanism is undecided and is the [roadmap](../roadmap.md)'s item 6, which gets its own ADR.
+- Backup and restore is a file-level operation on the primary database. The catalog downloads and the art index under `storage/catalog/` are files outside the databases and can be rebuilt (the art index in about 2.6 hours); The mechanism, and whether a backup includes those files, is undecided: it is the [roadmap](../roadmap.md)'s item 6, which gets its own ADR.
 - A hosted service at a scale one host can't carry would need an ADR that supersedes this one. Nothing in 1.0 is designed around that.

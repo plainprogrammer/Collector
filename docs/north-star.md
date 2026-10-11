@@ -34,7 +34,7 @@ Every spec is checked against these four rules, so that a hosted service stays p
 Notes on applying them:
 
 - A setting that decides what the global catalog ingests, or what it costs the operator to build, is an operator's choice and may stay an instance setting. `COLLECTOR_MTG_LANGUAGES` and `COLLECTOR_MTG_ART_MATCHING` are of this kind.
-- Currency is a collector's choice stored as an instance setting (spec 004). It is the one known breach, listed in the roadmap's housekeeping lane.
+- Two known breaches come from spec 004, and both are listed in the roadmap's housekeeping lane. Currency is a collector's choice stored as an instance setting (rule 3). The admin users page shows each account's copy count, and deleting a user deletes their collection (rule 2).
 - Scryfall's terms haven't been checked against the first rule yet. That check is the roadmap's first item.
 
 ## Spec rules
@@ -51,7 +51,7 @@ Notes on applying them:
 - Personal and household collections side by side. Family members start on separate private accounts. No ownership model is decided early; an export format bump and migrations are accepted when its turn comes ([ADR 0017](adr/0017-row-level-tenancy-one-user-per-account.md)).
 - Importing files from other tools.
 - Art matching on the scanner's photo path, and native apps.
-- Hosted-service features: billing, plans or limits, hardened public sign-up, email (including password reset), operator backups.
+- Hosted-service features: billing, plans or limits, hardened public sign-up, email (including password reset), and backups that a hosting operator runs for its customers. The self-hoster's own backup and restore is in 1.0 (roadmap item 6).
 
 ## Changing this document
 

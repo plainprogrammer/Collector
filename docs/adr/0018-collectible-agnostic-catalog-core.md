@@ -13,7 +13,7 @@ Foundation principle 3 asks for a core that is independent of any single collect
 
 ## Decision
 
-`Catalog::` holds entries, sets, names and refresh runs for any collectible type. A type registers a source adapter that implements the `Catalog::Sources` contract, and its collecting vocabulary (finishes, conditions), in `config/initializers/catalog.rb`. A type keeps its own tables and code under its namespace (`MTG::`). Core code never names a collectible.
+`Catalog::` holds entries, identities, sets, names and refresh runs for any collectible type. A type registers a source adapter that implements the `Catalog::Sources` contract, and its collecting vocabulary (finishes, conditions), in `config/initializers/catalog.rb`. A type keeps its own tables and code under its namespace (`MTG::`). Core code isn't meant to name a collectible.
 
 Catalog data is global. It changes only through a refresh that runs in a background job from the source's bulk data, and it is never fetched during a page render.
 
@@ -22,5 +22,5 @@ Catalog data is global. It changes only through a refresh that runs in a backgro
 - A new type is added by writing an adapter, a vocabulary and its own tables, without changing the core.
 - Pages work fully from the local copy when a source is down.
 - The boundary has been exercised by one type only. Comics, whenever built, is its first real test, and the core may need to change when it meets a source shaped unlike Scryfall.
-- `spec/admin_catalog_core_spec.rb` is the only automated guard that the core names no collectible, and it covers the admin catalog code only.
+- `spec/admin_catalog_core_spec.rb` is the only automated guard that the core names no collectible, and it covers the admin catalog code and the not-loaded notice only. The rest of the core has known exceptions: comments in `Catalog::Entry` and `Catalog::Identity`, and the card page's Scryfall link and attribution.
 - A source must also pass the north star's "source terms allow hosting" rule before it is adopted.

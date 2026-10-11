@@ -26,26 +26,27 @@ Foundation principle 2. Spec 004 named export and import as the next priority; s
 
 The design system's "where is it" ([docs/design-system/README.md](design-system/README.md)). The comics research findings feed this design.
 
-9. Create, rename and remove locations.
+9. Manage locations (create, rename, remove).
 10. Put a lot in a location. **Expected ADR:** how a lot sits in more than one place ([ADR 0019](adr/0019-lot-as-the-unit-of-ownership.md) names the question).
-11. Show the location on tiles and rows, and filter by it.
-12. Move many lots at once (the "Move to…" deferred in spec 006).
-13. Decks as locations.
-14. "Free to use" on the card page.
-15. Choose a location during typed entry.
+11. Show the location on tiles and rows.
+12. Filter the collection by location.
+13. Move many lots at once (the "Move to…" deferred in spec 006).
+14. Decks as locations.
+15. "Free to use" on the card page.
+16. Choose a location during typed entry.
 
 ### Theme D: Scanner bulk entry
 
-The scanner as built (specs 005–011) stays as it is until this theme. The spikes may run earlier as measurement only.
+The scanner as built (specs 005 and 007–011) stays as it is until this theme. The spikes may run earlier as measurement only.
 
-16. Spike: the art margin on unseen cards (the 300-bit threshold, kept by ruling in spec 011).
-17. Spike: detection on live frames. A build spec follows if the maintainer rules for it.
-18. Spike: continuous capture (trigger, duplicates, rate). The build spec follows.
-19. Spike: recognising Japanese cards. The build spec follows.
-20. Sitting-wide choices, one spec each. This reverses spec 009's deferral of sitting-wide defaults.
-    - 20a. Scan a sitting into a location.
-    - 20b. Set a condition for a sitting.
-    - 20c. Set a language for a sitting.
+17. Spike: the art margin on unseen cards (the 300-bit threshold, kept by ruling in spec 011).
+18. Spike: detection on live frames. A build spec follows if the maintainer rules for it.
+19. Spike: continuous capture (trigger, duplicates, rate). The build spec follows.
+20. Spike: recognising Japanese cards. The build spec follows.
+21. Sitting-wide choices, one spec each. This reverses spec 009's deferral of sitting-wide defaults.
+    - 21a. Scan a sitting into a location.
+    - 21b. Set a condition for a sitting.
+    - 21c. Set a language for a sitting.
 
 ### Theme E: Comics
 
@@ -56,7 +57,7 @@ Last on the line, so that it can leave 1.0 without reordering anything. Its cand
 Runs beside the main line.
 
 - **Comics source research** ([issue #23](https://github.com/plainprogrammer/Collector/issues/23)), starting now. It reports the candidate sources, their terms against hosted-door rule 1, and what the data supports for reading state and barcodes.
-- Theme D's spikes (items 16–19).
+- Theme D's spikes (items 17–20).
 
 ## Housekeeping lane
 
@@ -69,6 +70,7 @@ Taken between specs.
 - The catalog search system spec that times out on GitHub CI only.
 - The README introduction still says accounts and collections aren't built.
 - Currency is an instance setting and should be a per-account one (hosted-door rule 3).
+- Spec 004's admin user management shows each account's copy count and deletes a user's collection with the user (hosted-door rule 2).
 
 ## Parked until after 1.0
 
@@ -99,12 +101,12 @@ Rulings by the maintainer. Later planning builds on these and doesn't ask them a
 |---|---|---|
 | 1 | What outcome means success in a year? | The maintainer's own and family's collection hosted in Collector, and a hosted offering available. |
 | 2 | What form does the hosted offering take? | Undecided. Keep the door open; no commitment to paid, free or invite-only. |
-| 3 | What must exist before the family's real collection moves in? | Data safety, locations, comics. Market value is not a blocker. (Comics made conditional by ruling 16.) |
-| 4 | In what order? | Data safety, then locations, with the comics source research alongside. |
+| 3 | What must exist before the family's real collection moves in? | Data safety, locations, comics. Market value is not a blocker. (Comics made conditional by ruling 18.) |
+| 4 | In what order? | Data safety, then locations, with the comics source research alongside. (Typed entry placed between them by ruling 16.) |
 | 5 | How do family members' collections relate? | Both personal collections and a shared household one. |
 | 6 | When does that land? | After 1.0, with no early decision on the ownership model. A format bump and migrations are accepted then. |
 | 7 | Where does the scanner stand? | The scanner as built is parked. Bulk entry is the 1.0 need. |
-| 8 | Which bulk entry paths are needed for 1.0? | Continuous scanning and fast typed entry. Not importing other tools' files. (Sitting-wide defaults reversed by ruling 18.) |
+| 8 | Which bulk entry paths are needed for 1.0? | Continuous scanning and fast typed entry. Not importing other tools' files. (Sitting-wide defaults reversed by ruling 20.) |
 | 9 | What does comics in 1.0 include? | It depends on the research; the maintainer rules on the scope from its findings. |
 | 10 | Which rules keep a hosted service possible? | All four hosted-door rules in the north star. |
 | 11 | What marks 1.0? | The three checks of the 1.0 test. No date. |

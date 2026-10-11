@@ -13,14 +13,14 @@ Collector is multi-tenant: several collectors share one instance. [Spec 004](../
 
 ## Decision
 
-Every collector-owned table carries `account_id`. A request resolves `Current.account` once and fails closed when there is none, and every query on collector-owned data is scoped through it. Jobs and broadcasts carry and restore the account. Catalog data is global and has no `account_id`.
+Every collector-owned table carries `account_id`. A request resolves `Current.account` once and fails closed when there is none, and every query on collector-owned data is scoped through it. Jobs and broadcasts must carry and restore the account; this is a rule so far, since no account-scoped job or broadcast exists yet. Catalog data is global and has no `account_id`.
 
 An account has exactly one user (`users.account_id` has a unique index), and a user sees only their own account's data.
 
 ## Consequences
 
 - Isolation is one rule that a request spec can prove per resource: another account's record returns 404.
-- The admin flag is on the user and governs the instance's operations. It gives no view of another account's collection, which is also the north star's "the operator is not the user" rule.
-- Family members start on separate private accounts. Nobody can see or edit another person's collection.
+- The admin flag is on the user and governs the instance's operations. It gives no view of the items in another account's collection. The admin users page does show each account's copy count, and deleting a user deletes their collection (spec 004 AC-5.1, AC-5.4); the north star lists both as a known breach of its "the operator is not the user" rule.
+- Family members start on separate private accounts. No collector can see or edit another's collection.
 - Personal and household collections side by side will supersede the one-user half of this decision. The export format will need a version bump and the schema will need migrations then. The maintainer accepted that cost on 2026-10-11 in preference to deciding the model before the export format is designed.
 - Until then, specs shouldn't assume that an account will always have one user where it costs nothing to avoid it, but they aren't required to design for more.

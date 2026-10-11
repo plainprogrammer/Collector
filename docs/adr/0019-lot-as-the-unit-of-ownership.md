@@ -20,5 +20,5 @@ A collector owns lots, not individual copies. A lot is a quantity (1 to 9,999) o
 - Thousands of identical copies are a handful of rows, and the collection's counts are sums of quantities.
 - A single copy has no identity of its own. Nothing can be recorded about one copy of a lot without splitting the lot.
 - **Open question for locations.** The design system says a physical copy is in exactly one place at a time. Four copies of one printing in two binders means either the location joins the lot's identity, so the lot splits by place, or a lot's quantity is divided among places in another table. The [roadmap](../roadmap.md)'s item 10 decides this in its own ADR.
-- Anything else that later distinguishes copies (a language, a sitting, an owner within a household) meets the same question.
+- Anything else that later distinguishes copies (a sitting, an owner within a household) meets the same question.
 - The export format (roadmap item 2) describes lots, so a change to a lot's identity is a change to the format.
