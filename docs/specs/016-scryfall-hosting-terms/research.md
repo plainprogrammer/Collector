@@ -110,4 +110,4 @@ Given on 2026-10-11 and recorded in the [roadmap's decision log](../../roadmap.m
 - **Recommendation 2 is accepted** as two pieces of work: a footer notice on every page ([#34](https://github.com/plainprogrammer/Collector/issues/34)) and the image-fit fix ([#35](https://github.com/plainprogrammer/Collector/issues/35)).
 - **Recommendation 3 is replaced.** Anonymous card pages aren't parked: opening search has to include the card page, because the card page holds the card's text, which is the same data. It is one housekeeping candidate, "browse the catalog without signing in".
 - The third open question (permission or legal advice for a paid plan) stays open. Nothing is needed before 1.0.
-
+- **Added the same day (ruling 30):** the open catalog is an operator setting, off by default. A hosted instance turns it on; a private instance may keep its catalog behind sign-in.

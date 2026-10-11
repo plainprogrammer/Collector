@@ -65,7 +65,7 @@ Taken between specs.
 
 - [#34](https://github.com/plainprogrammer/Collector/issues/34): show the unofficial-content notice and the source attribution in a footer on every page (research 016).
 - [#35](https://github.com/plainprogrammer/Collector/issues/35): fit card images without cropping (research 016).
-- Browse the catalog without signing in: search and card pages open to everyone, with the collection parts shown only to a signed-in collector (ruling 27). Required before any hosted instance.
+- Browse the catalog without signing in: search and card pages open to everyone, with the collection parts shown only to a signed-in collector (ruling 27). It is an operator setting, off by default (ruling 30), and a hosted instance turns it on.
 - [#19](https://github.com/plainprogrammer/Collector/issues/19): tighten `bin/image-smoke`'s `catalog:status` check.
 - [#21](https://github.com/plainprogrammer/Collector/issues/21): record the remaining spec 012 evidence.
 - [#31](https://github.com/plainprogrammer/Collector/issues/31): local image builds contain the OCR engine twice.
@@ -130,3 +130,4 @@ Rulings by the maintainer. Later planning builds on these and doesn't ask them a
 | 27 | Does Scryfall pass the "source terms allow hosting" rule? | Yes for a free hosted service. For a paid one: any Wizards of the Coast or Scryfall data is publicly accessible on a hosted instance, with search open to everyone including unauthenticated visitors, and no paid plan is built until Wizards' position is settled. |
 | 28 | What about the notice, attribution and image-fit gaps? | A footer notice on every page (issue #34), and the image-fit fix (issue #35). |
 | 29 | Are anonymous card pages parked with the hosted-service features? | No. Ruling 27 covers them: card pages are opened with search, as one housekeeping candidate. |
+| 30 | Is the catalog open to visitors on every instance? | No. It is an operator setting, off by default; a hosted instance turns it on. |
