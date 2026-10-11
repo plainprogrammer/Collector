@@ -1,7 +1,7 @@
 # Feature 019: Fit Card Images Without Cropping
 
 **Status:** Approved
-**Version:** 1.2.1
+**Version:** 1.3.0
 **Created:** 2026-10-11
 **Last Updated:** 2026-10-11
 **Branch:** `019-uncropped-card-images`
@@ -17,6 +17,7 @@
 | 1.1.0 | 2026-10-11 | Spec review revisions (Fable, Mode A). The thumbnail's two boxes differ today (34px with an image, about 33.5px without), so **FR-2** lets the image box take the empty slot's height (AC-3.3). **Testability** says the plan settles how the browser gets test images without the network, with a fallback. **AC-1.4** is a markup check, not a second browser example. **Goal 4**, **AC-4.3** and **AC-4.5** reworded; *shown whole* may be established from natural size, box and computed fit |
 | 1.2.0 | 2026-10-11 | The maintainer's ruling on the open question: the thumbnail keeps its 2px corner as exported (decision 3). No open questions remain |
 | 1.2.1 | 2026-10-11 | Approved by the maintainer as it stands: decisions 1 to 3 confirmed. The thumbnail stretch was reasoned, not measured, so the plan measures it in a browser before and after. The unowned fade stays out of scope |
+| 1.3.0 | 2026-10-11 | From planning, where each slot was measured in the suite's browser. **Ruling (maintainer, fix-here):** the card page's missing-image fallback is placed against the whole image column today, not its slot, and lies over another face's image; it is put inside its own slot here (decision 4, FR-1, AC-2.5 holds as written). **Measured, no longer reasoned:** the thumbnail's stretch and the two thumbnail heights. *In its own proportions* is now equal scale in both directions, since one device pixel would hide the thumbnail's stretch. **FR-2:** a table row with an image becomes half a pixel shorter, to match a row without. **Testability** names how the browser gets its test pictures |
 
 ---
 
@@ -32,17 +33,19 @@ The damage today is under a pixel, because Scryfall's images are within 0.3% of 
 > - A *card image* is a catalog entry's image as served by its source (for Magic, a Scryfall image).
 > - A *slot* is the box a page reserves for a card image. There are three: the tile's (`c-tile__media`), the card page's (`c-item__image`, one per face) and the table thumbnail's (`c-table__thumb`).
 > - *Shown whole* means every pixel row and column of the image is painted inside the slot. An example may establish this from the image's natural size, the slot's box and the fit the browser computed, without sampling what was painted.
-> - *In its own proportions* means the painted image's width divided by its height equals the image file's, within one device pixel.
+> - *In its own proportions* means the image is scaled by the same factor across and down, within 0.1%. (One device pixel was the first tolerance; at the thumbnail's size it would hide the 1.7% stretch this spec removes, which is 0.56px.)
 
-**What the rules do today** (read from `components.css`; the plan measures each in a browser before changing it):
+**What the rules do today** (measured in headless Firefox 157 on 2026-10-11, at 1280px wide; figures in [plan.md](plan.md)):
 
 | Slot | Where it appears | Rule today | Effect when the image isn't 63:88 |
 |---|---|---|---|
-| `c-tile__media` | Collection grid, search results, scanner candidates | `object-fit: cover` (line 88) | Cropped |
+| `c-tile__media` | Collection grid, search results, scanner candidates | `object-fit: cover` (line 88) | Cropped: a square picture is painted 219.9px wide in a 157.4px slot. Scryfall's 488×680 loses 0.19px from each side |
 | `c-item__image` | Card page, one per face | `object-fit: cover` (line 249) | Cropped |
-| `c-table__thumb` | Collection table | None. The tag's `width="24" height="34"` fix the box at 24×34 (0.706); the image is 0.718 | Stretched about 1.7% taller |
+| `c-table__thumb` | Collection table | None. The tag's `width="24" height="34"` fix the box at 24×34 (0.706); the image is 0.718 | Stretched: any picture is painted 24×34, so Scryfall's 488×680 is 1.67% too tall |
 
-The thumbnail's empty slot (a `span`, shown when there is no image) has no height hint, so it follows 63:88 and is about 33.5px tall: half a pixel shorter than the slot with an image.
+The thumbnail's empty slot (a `span`, shown when there is no image) has no height hint, so it follows 63:88 and measures 24×33.52: half a pixel shorter than the slot with an image. Their table rows measure 52.52px and 53px.
+
+The card page's missing-image fallback (`c-tile__missing`) is placed against the whole image column, because `c-item__image` has no position of its own: 300×466 for one face against the slot's 298×416, and 300×892 for two faces, where it lies over the other face's image.
 
 ## Goals
 
@@ -56,6 +59,7 @@ The thumbnail's empty slot (a `span`, shown when there is no image) has no heigh
 - Changing which image a slot loads (`small`, `normal`, `large`) or its `width` and `height` hints, beyond what stopping the stretch needs (FR-2 names the one size that changes).
 - Changing the slot's size or shape per image. Slots stay 63:88 (decision 2).
 - Changing the rounded corners (decision 3).
+- Changing what the missing-image fallback looks like or says. Only where the card page places it changes (decision 4).
 - The attribution line and the unofficial-content notice ([#34](https://github.com/plainprogrammer/Collector/issues/34), spec 018).
 - The scanner's camera view (`c-scanner__video`), which fills its stage by design and isn't a card image.
 - Publishing a change to the design system or re-exporting it (decision 1).
@@ -85,6 +89,10 @@ The slot keeps its 63:88 shape and the image is scaled to fit inside it, centred
 ### 3. The rounded corners stay
 
 `radius-card` is 4.75% of the slot's width, the corner of a physical card, so the tile and card-page slots round off only what lies outside the card's own printed corner. The thumbnail's 2px corner is larger in proportion (8.3% of 24px) and trims under one pixel of the card's border at each corner; it stays as exported, by the maintainer's ruling of 2026-10-11. No copyright line or artist name is near a corner arc.
+
+### 4. The card page's fallback sits in its own slot
+
+Ruled by the maintainer on 2026-10-11, from a finding made while planning. On the card page the missing-image fallback is placed against the whole image column, so for a card with one face's image and no image for the other, the second face's name is drawn across the column and over the first face's image. That covers a card image, which the same Scryfall guideline forbids. The fallback is placed inside its own slot, by one rule in this spec's block.
 
 ## Users and Context
 
@@ -126,7 +134,7 @@ The slot keeps its 63:88 shape and the image is scaled to fit inside it, centred
 - [ ] **AC-2.2** Given the same entry When its card page is rendered at 390px wide Then the image is shown whole and in its own proportions, and the page doesn't scroll sideways
 - [ ] **AC-2.3** Given an entry with two face images of different proportions When its card page is rendered Then each face's image is shown whole and in its own proportions in its own slot
 - [ ] **AC-2.4** Given a card page whose image leaves part of the slot empty When the page is in the light theme and when it is in the dark theme Then the empty part shows that theme's `surface-sunken`
-- [ ] **AC-2.5** Given an entry with no image When its card page is rendered Then the fallback (the face's name on `surface-sunken`) fills the slot as it does today
+- [ ] **AC-2.5** Given an entry with a face that has no image When its card page is rendered Then that face's fallback (the face's name on `surface-sunken`) fills that face's own slot and lies over no other face's image
 
 ### Story 3: The table thumbnail isn't stretched
 
@@ -136,7 +144,7 @@ The slot keeps its 63:88 shape and the image is scaled to fit inside it, centred
 
 **Acceptance criteria:**
 
-- [ ] **AC-3.1** Given a lot whose entry's image is 488×680 (Scryfall's `normal` size) When the collection table is rendered Then the thumbnail's painted image is in the image's own proportions, within one device pixel
+- [ ] **AC-3.1** Given a lot whose entry's image is 488×680 (Scryfall's `normal` size) When the collection table is rendered Then the thumbnail's painted image is in the image's own proportions
 - [ ] **AC-3.2** Given a lot whose entry's image isn't 63:88 When the collection table is rendered Then the thumbnail shows the image whole and in its own proportions inside the thumbnail's slot
 - [ ] **AC-3.3** Given table rows whose images have different proportions, and a row with no image When the table is rendered at 1280px and at 390px wide Then every thumbnail slot, with or without an image, has the same width and height, and the rows keep one height
 - [ ] **AC-3.4** Given a thumbnail whose image leaves part of the slot empty When the page is in the light theme and when it is in the dark theme Then the empty part shows that theme's `surface-sunken`
@@ -168,13 +176,14 @@ The slot keeps its 63:88 shape and the image is scaled to fit inside it, centred
 **Must not:**
 - Crop, clip, stretch or squash a card image.
 - Draw anything over a card image that isn't drawn there today.
+- Draw a face's missing-image fallback outside that face's own slot.
 
 ### FR-2: Keep the slots as they are
 
 **Must:**
 - Keep every slot at 63:88 and at its present size, border and corner radius, with one exception: the thumbnail's image box takes the empty slot's height (63:88 of 24px) in place of its 34px hint, so the two match (AC-3.3).
-- Keep the missing-image fallbacks, the quantity badge, the unowned fade, the hover lift and the focus ring unchanged.
-- Keep the grid's columns and the table's row height unchanged.
+- Keep the missing-image fallbacks, the quantity badge, the unowned fade, the hover lift and the focus ring unchanged, except where the card page places its fallback (decision 4).
+- Keep the grid's columns unchanged, and the table's row height unchanged but for the half pixel a row with an image loses when its thumbnail takes the empty slot's height (53px to 52.52px, measured).
 
 **Must not:**
 - Size a slot from its image.
@@ -218,6 +227,7 @@ The slot keeps its 63:88 shape and the image is scaled to fit inside it, centred
 
 - AC-1.1 to AC-3.4 are system examples in a real browser, since fitting is decided by the browser's layout: they measure the slot and what the image paints in it, using test images of other proportions (a square one and a 1:2 one). The suite makes no real HTTP request for them.
 - These are the first examples to load a card image in the suite's browser. WebMock stops Ruby's requests, not Firefox's, and `catalog_url` passes only `https` addresses on a source's allowed hosts. The plan decides how Firefox receives the test images without the network and proves it in its first task. If no way works, the examples derive the painted rectangle from the image's natural size, the slot's box and the computed fit.
+- Decided in the plan: a test entry's image address is `https` on `127.0.0.1` at a port Firefox refuses to open, so the page renders the image tag and nothing leaves the machine; the example then gives the tag a generated picture as a `data:` address. The painted rectangle is derived from the loaded picture's natural size, the slot's box and the computed fit, and was checked once against screenshot pixels.
 - AC-1.4 is a markup check in a request example, since a browser example would need a scan and adds nothing to AC-1.3.
 - 390px-wide examples run in a fixed-width frame, since headless Firefox windows can't be narrower than 500px.
 - AC-4.1 to AC-4.3 are file-shape examples. AC-4.4's second half is shown once in the plan's red step. AC-4.5 is evidence in the pull request.
