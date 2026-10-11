@@ -1,6 +1,6 @@
 # Feature 018: Content Notice Footer
 
-**Status:** Draft
+**Status:** Approved
 **Version:** 1.2.1
 **Created:** 2026-10-11
 **Last Updated:** 2026-10-11
@@ -17,6 +17,7 @@
 | 1.1.0 | 2026-10-11 | Spec review revisions (Fable, Mode A, NEEDS REVISION, nothing blocking). **Scanner policy:** the nonce differs per request, so AC-4.2 compares directives and sources, and AC-4.1 asserts the footer's applied style instead of a violation report. **Short pages:** the footer sits directly after the content, not pushed to the viewport's bottom (AC-3.3). **Lines:** a type supplies its lines in display order; they render one per paragraph with no heading, and a repeated line stays with the first type (FR-1, FR-2, AC-2.1, AC-2.4). **Pages:** the rule is every response rendered with the application layout, including re-rendered forms; a frame answer is one requested with a `Turbo-Frame` header (glossary, AC-1.1, AC-1.3, AC-1.6, AC-1.8). **Also:** ADR 0018's consequence is updated (FR-3); the text style is named (FR-4); a hook that raises isn't rescued (Error Scenarios) |
 | 1.2.0 | 2026-10-11 | Maintainer rulings, relayed by the coordinator. **Links:** "Fan Content Policy" links to Wizards' policy page and "Scryfall" to scryfall.com, so a notice line carries link data (glossary, AC-1.9, AC-1.10, AC-2.7, AC-3.5, AC-3.8, AC-4.1, FR-1, FR-2, FR-4, Accessibility, Security, Error Scenarios). The core still names no collectible, there is still no logo, and the wording doesn't change. **`README.md`** is left out of this PR (Out of Scope). Open Questions is now empty |
 | 1.2.1 | 2026-10-11 | Second review pass (Fable, Mode A, NEEDS REVISION, nothing blocking; wording only). A link's phrase is matched exactly, occurs once and overlaps no other, and its address is an absolute `https` URI (FR-1, Security, Error Scenarios); how two lines compare as identical (AC-2.4); the system example asserts a link's `href` and doesn't follow it (AC-4.1); a footer link is a brand link at the line's own weight with no `target` (AC-3.8); inline links keep the line's height (FR-4); `rel="noopener"` is kept only for parity (FR-2); AC-3.8 moved below AC-3.7; tab stops per type (Accessibility) |
+| 1.2.1 | 2026-10-11 | **Approved by the maintainer** as it stands, including the three review-driven choices: the footer directly under the content, lines in order with no type heading, and the links at the line's own weight. No requirement changed |
 
 ---
 
