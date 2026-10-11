@@ -1,7 +1,7 @@
 # Feature 019: Fit Card Images Without Cropping
 
 **Status:** Draft
-**Version:** 1.0.0
+**Version:** 1.1.0
 **Created:** 2026-10-11
 **Last Updated:** 2026-10-11
 **Branch:** `019-uncropped-card-images`
@@ -14,6 +14,7 @@
 | Version | Date | Change |
 |---------|------|--------|
 | 1.0.0 | 2026-10-11 | Initial draft from issue #35 and [research 016](../016-scryfall-hosting-terms/research.md) (sections 4 and 7, ruling 28) |
+| 1.1.0 | 2026-10-11 | Spec review revisions (Fable, Mode A). The thumbnail's two boxes differ today (34px with an image, about 33.5px without), so **FR-2** lets the image box take the empty slot's height (AC-3.3). **Testability** says the plan settles how the browser gets test images without the network, with a fallback. **AC-1.4** is a markup check, not a second browser example. **Goal 4**, **AC-4.3** and **AC-4.5** reworded; *shown whole* may be established from natural size, box and computed fit |
 
 ---
 
@@ -28,7 +29,7 @@ The damage today is under a pixel, because Scryfall's images are within 0.3% of 
 > **Terms.**
 > - A *card image* is a catalog entry's image as served by its source (for Magic, a Scryfall image).
 > - A *slot* is the box a page reserves for a card image. There are three: the tile's (`c-tile__media`), the card page's (`c-item__image`, one per face) and the table thumbnail's (`c-table__thumb`).
-> - *Shown whole* means every pixel row and column of the image is painted inside the slot.
+> - *Shown whole* means every pixel row and column of the image is painted inside the slot. An example may establish this from the image's natural size, the slot's box and the fit the browser computed, without sampling what was painted.
 > - *In its own proportions* means the painted image's width divided by its height equals the image file's, within one device pixel.
 
 **What the rules do today** (read from `components.css`; the plan measures each in a browser before changing it):
@@ -39,16 +40,18 @@ The damage today is under a pixel, because Scryfall's images are within 0.3% of 
 | `c-item__image` | Card page, one per face | `object-fit: cover` (line 249) | Cropped |
 | `c-table__thumb` | Collection table | None. The tag's `width="24" height="34"` fix the box at 24×34 (0.706); the image is 0.718 | Stretched about 1.7% taller |
 
+The thumbnail's empty slot (a `span`, shown when there is no image) has no height hint, so it follows 63:88 and is about 33.5px tall: half a pixel shorter than the slot with an image.
+
 ## Goals
 
 - In all three slots, a card image is shown whole and in its own proportions, whatever its proportions are.
 - That holds in the light and dark themes, at 1280px and at 390px wide.
 - The rule survives a re-export of the design system: replacing `components.css` doesn't bring the cropping back, and the suite fails if it does.
-- The design system's docs state the rule once, so new image slots follow it.
+- The design system's docs name the override and the three slots it covers, so new image slots follow it.
 
 ## Non-Goals
 
-- Changing which image a slot loads (`small`, `normal`, `large`) or its `width` and `height` hints, beyond what stopping the stretch needs.
+- Changing which image a slot loads (`small`, `normal`, `large`) or its `width` and `height` hints, beyond what stopping the stretch needs (FR-2 names the one size that changes).
 - Changing the slot's size or shape per image. Slots stay 63:88 (decision 2).
 - Changing the rounded corners (decision 3).
 - The attribution line and the unofficial-content notice ([#34](https://github.com/plainprogrammer/Collector/issues/34), spec 018).
@@ -103,7 +106,7 @@ The slot keeps its 63:88 shape and the image is scaled to fit inside it, centred
 - [ ] **AC-1.1** Given a lot whose entry's image is wider in proportion than 63:88 (a square image) When the collection grid is rendered Then the tile shows the image whole and in its own proportions, centred in the slot, and the slot is still 63:88
 - [ ] **AC-1.2** Given a lot whose entry's image is taller in proportion than 63:88 (a 1:2 image) When the collection grid is rendered Then the tile shows the image whole and in its own proportions, centred in the slot, and the slot is still 63:88
 - [ ] **AC-1.3** Given an entry whose image isn't 63:88 When it appears in catalog search results Then its tile shows the image whole and in its own proportions
-- [ ] **AC-1.4** Given a scan whose candidate's image isn't 63:88 When the scanner's result is rendered Then the candidate's tile shows the image whole and in its own proportions
+- [ ] **AC-1.4** Given a scan whose candidate's image isn't 63:88 When the scanner's result is rendered Then the candidate's image sits in the tile slot (`c-tile__media`) with no class or style of its own, so AC-1.3's rule applies to it
 - [ ] **AC-1.5** Given a tile whose image leaves part of the slot empty When the page is in the light theme and when it is in the dark theme Then the empty part shows that theme's `surface-sunken`
 - [ ] **AC-1.6** Given a collection grid of tiles whose images have different proportions When it is rendered Then every tile's slot has the same width and height as its neighbours in the row
 - [ ] **AC-1.7** Given an entry with no image When its tile is rendered Then the missing-image fallback (name and set number on `surface-sunken`) fills the slot as it does today
@@ -146,9 +149,9 @@ The slot keeps its 63:88 shape and the image is scaled to fit inside it, centred
 
 - [ ] **AC-4.1** Given the repository When `docs/design-system/components/` is listed Then it holds a doc for the image-fitting pattern that names the three slots, states that a card image is shown whole and in its own proportions with the leftover on `surface-sunken`, and says the pattern overrides the export until it is upstreamed
 - [ ] **AC-4.2** Given `docs/design-system/README.md` When its app additions are read Then a line for spec 019 names the pattern and says to upstream it
-- [ ] **AC-4.3** Given `additions.css` When it is read Then the fitting rules sit in one block of their own under a heading comment that names spec 019, and use no hard-coded colour, spacing or font
+- [ ] **AC-4.3** Given `additions.css` When it is read Then the fitting rules sit in one block of their own under a heading comment that names spec 019, and use no colour literal and no font name, only token variables for both
 - [ ] **AC-4.4** Given `components.css` as exported, unchanged by this feature When the suite runs Then the examples for AC-1.1, AC-2.1 and AC-3.2 pass; and when the override block is removed they fail
-- [ ] **AC-4.5** Given the pull request When it is opened Then it shows the collection grid, a card page and the collection table with an image that isn't 63:88, each in the light and dark themes at 1280px and 390px wide
+- [ ] **AC-4.5** Given the pull request When it is opened Then it shows the collection grid, a card page and the collection table with an image that isn't 63:88, each in the light and dark themes at 1280px and 390px wide, from screenshots committed under this spec's `screenshots/`
 
 ## Functional Requirements
 
@@ -167,7 +170,7 @@ The slot keeps its 63:88 shape and the image is scaled to fit inside it, centred
 ### FR-2: Keep the slots as they are
 
 **Must:**
-- Keep every slot at 63:88 and at its present size, border and corner radius.
+- Keep every slot at 63:88 and at its present size, border and corner radius, with one exception: the thumbnail's image box takes the empty slot's height (63:88 of 24px) in place of its 34px hint, so the two match (AC-3.3).
 - Keep the missing-image fallbacks, the quantity badge, the unowned fade, the hover lift and the focus ring unchanged.
 - Keep the grid's columns and the table's row height unchanged.
 
@@ -212,6 +215,8 @@ The slot keeps its 63:88 shape and the image is scaled to fit inside it, centred
 ### Testability
 
 - AC-1.1 to AC-3.4 are system examples in a real browser, since fitting is decided by the browser's layout: they measure the slot and what the image paints in it, using test images of other proportions (a square one and a 1:2 one). The suite makes no real HTTP request for them.
+- These are the first examples to load a card image in the suite's browser. WebMock stops Ruby's requests, not Firefox's, and `catalog_url` passes only `https` addresses on a source's allowed hosts. The plan decides how Firefox receives the test images without the network and proves it in its first task. If no way works, the examples derive the painted rectangle from the image's natural size, the slot's box and the computed fit.
+- AC-1.4 is a markup check in a request example, since a browser example would need a scan and adds nothing to AC-1.3.
 - 390px-wide examples run in a fixed-width frame, since headless Firefox windows can't be narrower than 500px.
 - AC-4.1 to AC-4.3 are file-shape examples. AC-4.4's second half is shown once in the plan's red step. AC-4.5 is evidence in the pull request.
 
