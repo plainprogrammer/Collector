@@ -10,7 +10,7 @@ The roadmap has one main line, built in order, with a research lane and a housek
 
 Foundation principle 2. Spec 004 named export and import as the next priority; specs 007–015 went elsewhere.
 
-1. Record whether Scryfall's terms permit a public, possibly paid, instance (research note; hosted-door rule 1).
+1. Record whether Scryfall's terms permit a public, possibly paid, instance (research note; hosted-door rule 1). **Findings written 2026-10-11, awaiting the maintainer's ruling:** [research 016](specs/016-scryfall-hosting-terms/research.md).
 2. Define the export format: versioned, keyed by external ids (enabling slice). **Expected ADR:** the export format.
 3. Export a collection as a file.
 4. Preview an import: per-row errors, nothing written.
@@ -24,7 +24,7 @@ Foundation principle 2. Spec 004 named export and import as the next priority; s
 
 ### Theme C: Locations
 
-The design system's "where is it" ([docs/design-system/README.md](design-system/README.md)). The comics research findings feed this design.
+The design system's "where is it" ([docs/design-system/README.md](design-system/README.md)). The comics research findings feed this design if the research has run by then; it is deferred (ruling 26), and locations don't wait for it.
 
 9. Manage locations (create, rename, remove).
 10. Put a lot in a location. **Expected ADR:** how a lot sits in more than one place ([ADR 0019](adr/0019-lot-as-the-unit-of-ownership.md) names the question).
@@ -54,9 +54,9 @@ Last on the line, so that it can leave 1.0 without reordering anything. Its cand
 
 ## Research lane
 
-Runs beside the main line.
+Runs beside the main line, when the maintainer starts it.
 
-- **Comics source research** ([issue #23](https://github.com/plainprogrammer/Collector/issues/23)), starting now. It reports the candidate sources, their terms against hosted-door rule 1, and what the data supports for reading state and barcodes.
+- **Comics source research** ([issue #23](https://github.com/plainprogrammer/Collector/issues/23)), **deferred on 2026-10-11** (ruling 26); no start is set. It will report the candidate sources, their terms against hosted-door rule 1, and what the data supports for reading state and barcodes.
 - Theme D's spikes (items 17–20).
 
 ## Housekeeping lane
@@ -123,3 +123,4 @@ Rulings by the maintainer. Later planning builds on these and doesn't ask them a
 | 23 | Spec 004's admin users page shows copy counts and deletes collections with their users. Is that a breach of "the operator is not the user"? | No. The rule is narrowed to the items in a collection: an admin page never shows or edits them. Account management and aggregate counts are allowed. |
 | 24 | Does the goal name the hosted offering? | Yes, as an outcome wanted after 1.0, kept open and not scheduled. |
 | 25 | What does issue #23's research produce? | Findings and a recommendation. The maintainer rules on them before any comics spec is written; the issue was updated to say so. |
+| 26 | When does the comics source research start? | Deferred for now, with no start set. This replaces "alongside" in rulings 4 and 18; theme C doesn't wait for it. |
