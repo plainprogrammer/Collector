@@ -3,6 +3,7 @@
 **Spec:** docs/specs/019-uncropped-card-images/spec.md (v1.3.0, Approved)
 **Decisions:** no ADR. The spec's decisions 1 to 4 are the maintainer's rulings: an override in `additions.css` and no re-export; the whole image inside the fixed 63:88 slot on `surface-sunken`; the thumbnail keeps its 2px corner; the card page's fallback sits in its own slot.
 **Created:** 2026-10-11
+**Reviewed:** 2026-10-11, read-only plan review (Fable): READY TO EXECUTE, nothing blocking or important. It found all 13 code blocks byte-identical to the phase trees and traced the counts, the helper's arithmetic, the cascade and the regexes. Applied: the two scratch scripts no longer name a RuboCop cop this project doesn't have; the coverage table says what holds "no layout shift" and that a failed image's alternative text isn't asserted. Not applied: asserting `complete` as well as `naturalWidth` in Phase 0's first example (a pending request can't cause a false pass, and the helper's listeners are added before the new `src`).
 **Issue:** [#35](https://github.com/plainprogrammer/Collector/issues/35)
 
 **How this plan was made.** Every code block below was written, run and linted before the plan was. The change was applied to this worktree phase by phase, uncommitted: each phase's examples were run red against the styles before it and green after, RuboCop passed on the changed files, and the whole suite, RuboCop and Brakeman passed on the final state (1,133 examples, 0 failures, 1 pending; the suite has 1,119 before this plan). The worktree was then restored to `HEAD`. The blocks are rendered by script from the tree of each phase, so a new file is shown whole and a changed file as its exact diff. Nothing was committed or pushed.
@@ -787,7 +788,7 @@ RSpec.describe "Card image fit screenshots", :card_images, type: :system do
     find("h1").hover # off the tiles, so none is shot in its hover lift
     %w[light dark].each do |theme|
       page.execute_script("document.documentElement.dataset.theme = arguments[0]", theme)
-      sleep 0.6 # rubocop:disable Capybara/RSpec/NoSleep -- a screenshot script waiting out a CSS transition, not a spec
+      sleep 0.6 # a screenshot script waiting out a CSS transition; not a spec
       page.save_screenshot(out.join("#{name}-1280-#{theme}.png").to_s)
     end
   end
@@ -801,7 +802,7 @@ RSpec.describe "Card image fit screenshots", :card_images, type: :system do
     page.current_window.resize_to(1280, height + 200)
     %w[light dark].each do |theme|
       within_narrow_frame { page.execute_script("document.documentElement.dataset.theme = arguments[0]", theme) }
-      sleep 0.6 # rubocop:disable Capybara/RSpec/NoSleep -- as above
+      sleep 0.6 # as above
       find("#narrow").native.save_screenshot(out.join("#{name}-390-#{theme}.png").to_s)
     end
   end
@@ -871,5 +872,5 @@ end
 | AC-4.3 | 3 |
 | AC-4.4 | 1, 2, 3 (each red step), Quickstart step 2 |
 | AC-4.5 | 5 |
-| Error scenarios: failed image, no image, landscape, smaller than the slot | 0 (failed image, no image), 1 (the 40×20 and 40×40 pictures), 2 (failed thumbnail) |
-| Performance (no layout shift), Reliability (no JavaScript; WebKit) | 0 and 2 (slot sizes before and after a picture loads); 5 (maintainer step) |
+| Error scenarios: failed image, no image, landscape, smaller than the slot | 0 (failed image, no image), 1 (the 40×20 and 40×40 pictures), 2 (failed thumbnail). A failed image's alternative text is the browser's own rendering and isn't asserted |
+| Performance (no layout shift), Reliability (no JavaScript; WebKit) | 2 (the thumbnail's box before and after a picture loads); tiles and the card page by construction (width from the layout, height from `aspect-ratio`, checked at 63:88 before a picture in 0 and after one in 1); 5 (maintainer step) |
