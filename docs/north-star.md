@@ -8,6 +8,8 @@ This document says what Collector is being built towards and the rules every fut
 
 Collector holds the maintainer's and their family's real collection on an instance the maintainer runs, and nothing about how it is built rules out offering it as a hosted service later.
 
+A hosted offering is an outcome the maintainer wants after 1.0. It is kept open and isn't scheduled.
+
 - **The family instance sets the priorities.** A feature is in 1.0 because the family's collection can't move in without it.
 - **The hosted service is a constraint, with no commitment to a form.** Whether it is paid, free or invite-only is undecided. No hosted-service feature is built before 1.0; the [hosted-door rules](#hosted-door-rules) apply now.
 - **Magic: The Gathering cards are the first collectible type. Comics are the second.** Whether comics are in 1.0 is decided by the maintainer's ruling on the comics source research ([roadmap, theme E](roadmap.md#theme-e-comics)).
@@ -27,14 +29,15 @@ Every spec is checked against these four rules, so that a hosted service stays p
 | Rule | A spec fails it when |
 |---|---|
 | **Source terms allow hosting** | It adopts a catalog source whose licence or terms forbid a public, possibly paid, instance. |
-| **The operator is not the user** | An admin page or task shows or changes a collector's data. |
+| **The operator is not the user** | An admin page or task shows or edits the items in a collector's collection. |
 | **Collector choices are stored per account or user** | It adds an instance setting or environment variable for something a collector would choose. |
 | **Bounded cost per account** | It doesn't state what the feature costs per account in storage and background work. |
 
 Notes on applying them:
 
 - A setting that decides what the global catalog ingests, or what it costs the operator to build, is an operator's choice and may stay an instance setting. `COLLECTOR_MTG_LANGUAGES` and `COLLECTOR_MTG_ART_MATCHING` are of this kind.
-- Two known breaches come from spec 004, and both are listed in the roadmap's housekeeping lane. Currency is a collector's choice stored as an instance setting (rule 3). The admin users page shows each account's copy count, and deleting a user deletes their collection (rule 2).
+- An operator manages accounts, so the second rule allows it: creating and deleting an account (deleting a user deletes their collection), changing a user's name, email or password, and showing each account's copy count, as spec 004's admin users page does. It doesn't allow listing, opening or editing what a collection holds.
+- Currency is a collector's choice stored as an instance setting (spec 004). It is the one known breach, of the third rule, and is listed in the roadmap's housekeeping lane.
 - Scryfall's terms haven't been checked against the first rule yet. That check is the roadmap's first item.
 
 ## Spec rules

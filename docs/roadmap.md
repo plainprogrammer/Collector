@@ -70,7 +70,6 @@ Taken between specs.
 - The catalog search system spec that times out on GitHub CI only.
 - The README introduction still says accounts and collections aren't built.
 - Currency is an instance setting and should be a per-account one (hosted-door rule 3).
-- Spec 004's admin user management shows each account's copy count and deletes a user's collection with the user (hosted-door rule 2).
 
 ## Parked until after 1.0
 
@@ -121,3 +120,6 @@ Rulings by the maintainer. Later planning builds on these and doesn't ask them a
 | 20 | What does a sitting set once? | Location, condition and language. |
 | 21 | Which language does the non-English spike target? | Japanese. |
 | 22 | What about the milestone titled "MTG & Comics"? | Renamed on 2026-10-11 to drop comics; they are added back if the ruling puts them in. |
+| 23 | Spec 004's admin users page shows copy counts and deletes collections with their users. Is that a breach of "the operator is not the user"? | No. The rule is narrowed to the items in a collection: an admin page never shows or edits them. Account management and aggregate counts are allowed. |
+| 24 | Does the goal name the hosted offering? | Yes, as an outcome wanted after 1.0, kept open and not scheduled. |
+| 25 | What does issue #23's research produce? | Findings and a recommendation. The maintainer rules on them before any comics spec is written; the issue was updated to say so. |
