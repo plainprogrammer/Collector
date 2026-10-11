@@ -10,7 +10,7 @@ The roadmap has one main line, built in order, with a research lane and a housek
 
 Foundation principle 2. Spec 004 named export and import as the next priority; specs 007–015 went elsewhere.
 
-1. Record whether Scryfall's terms permit a public, possibly paid, instance (research note; hosted-door rule 1). **Findings written 2026-10-11, awaiting the maintainer's ruling:** [research 016](specs/016-scryfall-hosting-terms/research.md).
+1. Record whether Scryfall's terms permit a public, possibly paid, instance (research note; hosted-door rule 1). **Done 2026-10-11:** [research 016](specs/016-scryfall-hosting-terms/research.md), ruled on in decision log 27–29.
 2. Define the export format: versioned, keyed by external ids (enabling slice). **Expected ADR:** the export format.
 3. Export a collection as a file.
 4. Preview an import: per-row errors, nothing written.
@@ -63,6 +63,9 @@ Runs beside the main line, when the maintainer starts it.
 
 Taken between specs.
 
+- [#34](https://github.com/plainprogrammer/Collector/issues/34): show the unofficial-content notice and the source attribution in a footer on every page (research 016).
+- [#35](https://github.com/plainprogrammer/Collector/issues/35): fit card images without cropping (research 016).
+- Browse the catalog without signing in: search and card pages open to everyone, with the collection parts shown only to a signed-in collector (ruling 27). Required before any hosted instance.
 - [#19](https://github.com/plainprogrammer/Collector/issues/19): tighten `bin/image-smoke`'s `catalog:status` check.
 - [#21](https://github.com/plainprogrammer/Collector/issues/21): record the remaining spec 012 evidence.
 - [#31](https://github.com/plainprogrammer/Collector/issues/31): local image builds contain the OCR engine twice.
@@ -124,3 +127,6 @@ Rulings by the maintainer. Later planning builds on these and doesn't ask them a
 | 24 | Does the goal name the hosted offering? | Yes, as an outcome wanted after 1.0, kept open and not scheduled. |
 | 25 | What does issue #23's research produce? | Findings and a recommendation. The maintainer rules on them before any comics spec is written; the issue was updated to say so. |
 | 26 | When does the comics source research start? | Deferred for now, with no start set. This replaces "alongside" in rulings 4 and 18; theme C doesn't wait for it. |
+| 27 | Does Scryfall pass the "source terms allow hosting" rule? | Yes for a free hosted service. For a paid one: any Wizards of the Coast or Scryfall data is publicly accessible on a hosted instance, with search open to everyone including unauthenticated visitors, and no paid plan is built until Wizards' position is settled. |
+| 28 | What about the notice, attribution and image-fit gaps? | A footer notice on every page (issue #34), and the image-fit fix (issue #35). |
+| 29 | Are anonymous card pages parked with the hosted-service features? | No. Ruling 27 covers them: card pages are opened with search, as one housekeeping candidate. |

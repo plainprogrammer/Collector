@@ -38,7 +38,7 @@ Notes on applying them:
 - A setting that decides what the global catalog ingests, or what it costs the operator to build, is an operator's choice and may stay an instance setting. `COLLECTOR_MTG_LANGUAGES` and `COLLECTOR_MTG_ART_MATCHING` are of this kind.
 - An operator manages accounts, so the second rule allows it: creating and deleting an account (deleting a user deletes their collection), changing a user's name, email or password, and showing each account's copy count, as spec 004's admin users page does. It doesn't allow listing, opening or editing what a collection holds.
 - Currency is a collector's choice stored as an instance setting (spec 004). It is the one known breach, of the third rule, and is listed in the roadmap's housekeeping lane.
-- Scryfall's terms were read against the first rule on 2026-10-11 ([research 016](specs/016-scryfall-hosting-terms/research.md)). The findings await the maintainer's ruling.
+- Scryfall passes the first rule for a free hosted service ([research 016](specs/016-scryfall-hosting-terms/research.md), ruled 2026-10-11). For a paid one there are two conditions. Any Wizards of the Coast or Scryfall data is publicly accessible on a hosted instance: catalog search and card pages are open to everyone, signed in or not. No paid plan is built until Wizards' position on charging is settled in writing or by legal advice.
 
 ## Spec rules
 

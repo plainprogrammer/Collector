@@ -1,6 +1,6 @@
 # Research 016: Do Scryfall's Terms Permit a Hosted Instance?
 
-**Status:** Findings, awaiting the maintainer's ruling
+**Status:** Findings, ruled on 2026-10-11 ([section 7](#7-the-maintainers-ruling))
 **Date:** 2026-10-11
 **Roadmap:** [item 1](../../roadmap.md#theme-a-data-safety), for the [north star](../../north-star.md#hosted-door-rules)'s first hosted-door rule ("source terms allow hosting")
 
@@ -101,3 +101,13 @@ What already complies:
 - Is recommendation 1's wording the ruling to record against the hosted-door rule?
 - Should the notice-and-attribution spec (recommendation 2) be taken before theme A continues, or between specs as housekeeping?
 - If a paid plan is ever wanted: ask Wizards for permission, or take legal advice? Nothing is needed before 1.0.
+
+## 7. The maintainer's ruling
+
+Given on 2026-10-11 and recorded in the [roadmap's decision log](../../roadmap.md#decision-log) (rulings 27–29).
+
+- **Recommendation 1 is accepted, with an addition.** Scryfall passes the rule for a free hosted service. Any Wizards of the Coast or Scryfall data will be publicly accessible on a hosted instance: search is open to everyone, including unauthenticated visitors. No paid plan is built until Wizards' position on charging is settled.
+- **Recommendation 2 is accepted** as two pieces of work: a footer notice on every page ([#34](https://github.com/plainprogrammer/Collector/issues/34)) and the image-fit fix ([#35](https://github.com/plainprogrammer/Collector/issues/35)).
+- **Recommendation 3 is replaced.** Anonymous card pages aren't parked: opening search has to include the card page, because the card page holds the card's text, which is the same data. It is one housekeeping candidate, "browse the catalog without signing in".
+- The third open question (permission or legal advice for a paid plan) stays open. Nothing is needed before 1.0.
+
