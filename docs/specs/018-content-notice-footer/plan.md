@@ -3,8 +3,9 @@
 **Spec:** docs/specs/018-content-notice-footer/spec.md (v1.2.1, Approved, reviewed twice)
 **Decisions:** [ADR 0018](../../adr/0018-collectible-agnostic-catalog-core.md) (collectible-agnostic catalog core), Accepted. No new ADR: the footer uses the source contract's existing pattern of optional hooks.
 **Created:** 2026-10-11
+**Revised:** 2026-10-11, after a read-only plan review (Fable, READY TO EXECUTE, nothing blocking; all blocks byte-identical to the phase commits, Phases 0 and 1 run from scratch copies, the rest traced by hand). Its findings, applied to the phase commits and re-run: the phone test frame is 320px tall, not 480px, so the More page scrolls with room to spare; the card page block's comment in `additions.css` no longer says "attribution"; a link phrase or address a source marked `html_safe` is still plain text (`String.new`), with an example; following a footer link from the scanner mid-sitting is listed with what no example covers and is in the quickstart. Considered and not taken: giving the footer the tab bar's clearance only on pages that have a tab bar (pages without one keep the band `c-main` already left there today), and collecting the lines through a helper instead of the layout calling `Catalog::ContentNotice.lines`.
 
-**How this plan was made.** Every code block below was written, run and linted before the plan was. The feature was prototyped in the worktree, then replayed as one commit per phase on a local branch (`018-plan-phases`, commits `b7dd1a6` to `38ee40a`, on top of `8e89c3d`). At each phase's commit that phase's specs and RuboCop were green, and each phase's specs were first run against the previous commit to record how they fail. At the last commit the whole suite, RuboCop, Brakeman and `zeitwerk:check` were green (1,177 examples, 0 failures, 1 pending). The blocks are rendered from those commits by script: a new file is shown whole, a changed file as the exact diff. That branch is local only, was never pushed, and is deleted once this plan is executed.
+**How this plan was made.** Every code block below was written, run and linted before the plan was. The feature was prototyped in the worktree, then replayed as one commit per phase on a local branch (`018-plan-phases`, commits `db94f89` to `0e7e3ca`, on top of `8e89c3d`). At each phase's commit that phase's specs and RuboCop were green, and each phase's specs were first run against the previous commit to record how they fail. At the last commit the whole suite, RuboCop, Brakeman and `zeitwerk:check` were green (1,178 examples, 0 failures, 1 pending). The blocks are rendered from those commits by script: a new file is shown whole, a changed file as the exact diff. That branch is local only, was never pushed, and is deleted once this plan is executed.
 
 ## Global Constraints
 
@@ -34,7 +35,7 @@ Every page rendered with the application layout ends with one footer carrying th
 
 - Every view puts its app header and tab bar into `content_for` (`layouts/_appbar`, `layouts/_tabbar`) and renders its own `<main>` as the layout's `yield`. A footer rendered between `yield` and `yield :tabbar` is therefore the element straight after `<main>` on every page, and before the tab bar's `<nav>` (asserted in Phase 2).
 - A request with a `Turbo-Frame` header is rendered by turbo-rails without the application layout, so it gets no footer with no code of ours; the same address without the header is a page and gets one (AC-1.8, asserted in Phase 2).
-- Below 640px `components.css` gives `c-main` `80px + env(safe-area-inset-bottom)` of bottom padding to clear the fixed tab bar. With a footer after it, that padding would sit between the content and the footer, and the footer itself would end under the bar. The footer's block moves the clearance: the footer takes it and `c-main` gives it up, through `.c-shell:has(> .c-footer) > .c-main`. This is the first `:has()` in the stylesheets (Firefox 121, Safari 15.4, Chrome 105 and later). A browser without it shows a taller gap above the footer and nothing worse. Both rules were proved by removing each once: Phase 3's phone examples fail without either.
+- Below 640px `components.css` gives `c-main` `80px + env(safe-area-inset-bottom)` of bottom padding to clear the fixed tab bar. With a footer after it, that padding would sit between the content and the footer, and the footer itself would end under the bar. The footer's block moves the clearance: the footer takes it and `c-main` gives it up, through `.c-shell:has(> .c-footer) > .c-main`. This is the first `:has()` in the stylesheets (Firefox 121, Safari 15.4, Chrome 105 and later). A browser without it shows a taller gap above the footer and nothing worse. Both rules were proved by removing each once: Phase 3's phone examples fail without either. Pages with no tab bar (sign-in, sign-up) keep the same empty band at their end below 640px that `c-main` leaves there today.
 - `<body>` has the browser's default 8px margin today (nothing resets it), so the page's real gutter is 8px wider than the token. The system spec measures the footer against `c-main`'s own content edge, not against a number.
 - The scanner page's policy sets `frame-src 'none'`, so the phone-width test frame can't be opened from the scanner page itself. The spec opens it from the collection page.
 - The scanner page grows while the camera starts. Measuring the scanner and the footer in two separate script calls raced once in a full-suite run; the spec measures both in one call.
@@ -234,6 +235,12 @@ RSpec.describe Catalog::ContentNotice, type: :model do
       expect(notice_line("Zeta", "Zeta" => "https://zeta.test")).not_to eq(notice_line("Zeta"))
       expect(notice_line("Zeta", Zeta: "https://zeta.test")).to eq(notice_line("Zeta", "Zeta" => "https://zeta.test"))
     end
+
+    it "keeps a phrase plain text even when a source marked it html_safe" do
+      phrase, address = notice_line("Zeta".html_safe, "Zeta".html_safe => "https://zeta.test".html_safe).parts.first
+
+      expect([ phrase, address ].map(&:html_safe?)).to eq([ false, false ])
+    end
   end
 end
 ```
@@ -249,7 +256,8 @@ module Catalog::ContentNotice
   # One line of a notice: plain text, and the phrases of it that are links ({ "phrase" => "https://…" }).
   Line = Data.define(:text, :links) do
     def initialize(text:, links: {})
-      super(text: text.to_s.strip, links: links.to_h.to_h { |phrase, address| [ phrase.to_s, address.to_s ] }.freeze)
+      # String.new: a phrase a source marked html_safe is still plain text here, so the view escapes it.
+      super(text: text.to_s.strip, links: links.to_h.to_h { |phrase, address| [ String.new(phrase.to_s), String.new(address.to_s) ] }.freeze)
     end
 
     # The line in reading order as [text, address] parts, the address nil where the text isn't a link. A line with a
@@ -296,7 +304,7 @@ module Catalog::ContentNotice
 end
 ```
 
-- [ ] Run: `bin/rspec spec/models/catalog/content_notice_spec.rb spec/models/catalog_spec.rb` — expect: PASS, `31 examples, 0 failures`
+- [ ] Run: `bin/rspec spec/models/catalog/content_notice_spec.rb spec/models/catalog_spec.rb` — expect: PASS, `32 examples, 0 failures`
 - [ ] Run: `bin/rails zeitwerk:check` — expect: `All is good!`
 - [ ] Run: `bin/rubocop` — expect: `no offenses detected`
 - [ ] Commit: `feat(catalog): collect each source's content notice`
@@ -368,7 +376,7 @@ index 702039f..4335c0a 100644
  
 ```
 
-- [ ] Run: `bin/rspec spec/models/mtg/scryfall/source_spec.rb spec/models/catalog/content_notice_spec.rb` — expect: PASS, `43 examples, 0 failures`
+- [ ] Run: `bin/rspec spec/models/mtg/scryfall/source_spec.rb spec/models/catalog/content_notice_spec.rb` — expect: PASS, `44 examples, 0 failures`
 - [ ] Run: `bin/rubocop` — expect: `no offenses detected`
 - [ ] Commit: `feat(mtg): supply the Fan Content notice and the Scryfall attribution`
 
@@ -763,13 +771,22 @@ index 1e04c14..441e328 100644
  </main>
 ```
 
-- [ ] Remove its rule from `app/assets/stylesheets/collector/additions.css` (nothing else uses `c-attribution`):
+- [ ] Remove its rule from `app/assets/stylesheets/collector/additions.css` (nothing else uses `c-attribution`), and the word from that block's comment:
 
 ```diff
 diff --git a/app/assets/stylesheets/collector/additions.css b/app/assets/stylesheets/collector/additions.css
-index 851ab7f..0ccb7c1 100644
+index 851ab7f..2250523 100644
 --- a/app/assets/stylesheets/collector/additions.css
 +++ b/app/assets/stylesheets/collector/additions.css
+@@ -80,7 +80,7 @@
+ .c-empty { margin:var(--space-6) 0; padding:var(--space-6); text-align:center; background:var(--surface-sunken);
+   border-radius:var(--radius-md); font:400 15px/22px var(--font-sans); color:var(--ink); }
+ 
+-/* ---------- Card page: details list, single stat, faces, attribution ---------- */
++/* ---------- Card page: details list, single stat, faces ---------- */
+ .c-details { display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:var(--space-3) var(--space-4); margin:0; }
+ .c-details dt { font:600 12px/16px var(--font-sans); color:var(--ink-muted); }
+ .c-details dd { margin:var(--space-1) 0 0; font:400 14px/20px var(--font-sans); color:var(--ink); }
 @@ -90,7 +90,6 @@
  .c-list li.is-unowned { color:var(--ink-muted); }
  .c-list .is-data { font-family:var(--font-mono); white-space:nowrap; }
@@ -793,7 +810,7 @@ index 851ab7f..0ccb7c1 100644
 **Files:** `spec/system/footer_spec.rb` (new), `app/assets/stylesheets/collector/additions.css` (new block at the end), `spec/design_system_files_spec.rb`, `docs/design-system/components/Footer.md` (new), `docs/design-system/README.md`
 **Interfaces:** Consumes: the markup of Phase 2 (`body > footer.c-footer > p`, with `a` inside), and the existing shell classes `c-shell`, `c-main`, `c-tabbar`. Produces: the `Footer` pattern (`.c-footer`), documented.
 
-Small print under a divider, on the page gutter, with brand links at the line's own weight. Below 640px the footer takes over the tab bar's clearance from `c-main` (see the facts above). The system spec measures the page after scrolling to its end: each line's box, whether the footer is what is drawn at each line (nothing covers it), and the fixed tab bar's top. Phone pages load in a 480px-tall frame so that every one of them scrolls.
+Small print under a divider, on the page gutter, with brand links at the line's own weight. Below 640px the footer takes over the tab bar's clearance from `c-main` (see the facts above). The system spec measures the page after scrolling to its end: each line's box, whether the footer is what is drawn at each line (nothing covers it), and the fixed tab bar's top. Phone pages load in a 320px-tall frame so that every one of them scrolls.
 
 - [ ] Write `spec/system/footer_spec.rb`:
 
@@ -828,9 +845,9 @@ RSpec.describe "The footer", type: :system do
     JS
   end
 
-  # A frame shorter than any page, so that each one scrolls and its end sits under the fixed tab bar.
+  # A frame much shorter than any page, so that each one scrolls and its end sits under the fixed tab bar.
   def measure_at(path, width:, ready: "body > footer.c-footer")
-    fits = open_in_narrow_frame(path, width:, height: 480, ready:)
+    fits = open_in_narrow_frame(path, width:, height: 320, ready:)
     [ fits, within_narrow_frame { measure } ]
   end
 
@@ -987,7 +1004,7 @@ end
 
 ```diff
 diff --git a/app/assets/stylesheets/collector/additions.css b/app/assets/stylesheets/collector/additions.css
-index 0ccb7c1..cc4f5cf 100644
+index 2250523..ae570ee 100644
 --- a/app/assets/stylesheets/collector/additions.css
 +++ b/app/assets/stylesheets/collector/additions.css
 @@ -214,3 +214,17 @@
@@ -1133,7 +1150,7 @@ index 7cab6b5..6775234 100644
 
 **Implements:** All FRs | **Satisfies:** All ACs
 
-- [ ] Run the whole of local CI: `bin/ci` — expect: every step green (1,177 examples, 0 failures, 1 pending at the plan's last commit).
+- [ ] Run the whole of local CI: `bin/ci` — expect: every step green (1,178 examples, 0 failures, 1 pending at the plan's last commit).
 - [ ] Run the system specs under three seeds, since two of the footer's examples once depended on the window an earlier example left: `bin/rspec spec/system --seed 54457`, `--seed 1`, `--seed 2` — expect: `105 examples, 0 failures, 1 pending` each.
 - [ ] Take screenshots for the PR into `docs/specs/018-content-notice-footer/screenshots/` (headless Firefox, phone widths in a 390px frame, a 0.6s pause after a theme switch): the sign-in page at 1280px; a card page at 1280px, scrolled to its end; a card page and the scanner page at 390px, scrolled to their end; the collection page at 1280px and at 390px in the dark theme. Look at each: the footer is small print under a divider on the page gutter, its two links are the brand colour, nothing overlaps it, and its last line is above the tab bar.
 - [ ] Check each acceptance criterion against the table below, and say in the PR which were checked by eye.
@@ -1166,7 +1183,7 @@ index 7cab6b5..6775234 100644
 | FR-2: no query, Turbo | `footer_spec.rb` "runs no query"; `system/footer_spec.rb` "is there once after a Turbo visit and after going back" |
 | Error Scenarios | `content_notice_spec.rb` (`Line#parts` faults, blank lines, a hook that raises, the same text with different links); `footer_spec.rb` "shows a line as escaped text, and as text alone when its link is unsafe" |
 
-**Not covered by an example, and why:** a morph refresh (FR-2) replaces the body like any Turbo render and the footer has no state or id to lose; the admin catalog page morph-refreshes while it polls and its system specs pass with the footer present. Touch targets can't be tested in headless Firefox; the component document states the rule the links follow. On a real phone the `env(safe-area-inset-bottom)` part of the clearance is not zero: check one page on the maintainer's phone before merging.
+**Not covered by an example, and why:** a morph refresh (FR-2) replaces the body like any Turbo render and the footer has no state or id to lose; the admin catalog page morph-refreshes while it polls and its system specs pass with the footer present. Following a footer link from the scanner mid-sitting (Error Scenarios) is spec 009 AC-3.3's behaviour, unchanged here: the camera stops on `pagehide` and the sitting is kept on the server; it is checked by eye in the quickstart. Touch targets can't be tested in headless Firefox; the component document states the rule the links follow. On a real phone the `env(safe-area-inset-bottom)` part of the clearance is not zero: check one page on the maintainer's phone before merging.
 
 ---
 
@@ -1175,7 +1192,7 @@ index 7cab6b5..6775234 100644
 1. `bin/setup --skip-server`, then `bin/dev`, and open the port it prints.
 2. On the sign-in page, before signing in: the footer is directly under the form, with both lines. "Fan Content Policy" and "Scryfall" are links in the brand colour; each underlines on hover and shows the focus ring with Tab.
 3. Sign in. The collection, search, a card page, the scanner, More and the admin pages each end with the same footer, once. On a card page the attribution appears only in the footer.
-4. Follow "Scryfall": it opens `https://scryfall.com` in the same tab. Back returns to the page.
+4. Follow "Scryfall": it opens `https://scryfall.com` in the same tab. Back returns to the page. Do the same from `/scanner` with a card added to the sitting: on return the camera starts again and the sitting still lists the card.
 5. Narrow the window below 640px (or use a phone): scroll any page to its end. The footer's last line is above the tab bar, with no wide empty band between the content and the footer.
 6. Open `/scanner`: the footer is there and styled, and the browser console shows no Content-Security-Policy report.
 7. In a Rails console, `Catalog::ContentNotice.lines.map(&:text)` prints the two lines; `grep -rniE "mtg|magic|wizards|scryfall|fan content" app/views/layouts app/models/catalog/content_notice.rb` prints nothing.
