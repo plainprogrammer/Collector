@@ -1,6 +1,7 @@
 # Memory Index
 
 - [Foundation](foundation.md) — mission and principles, loaded every session
+- North star and roadmap — `docs/north-star.md`, `docs/roadmap.md` (rulings of 2026-10-11 in the roadmap's decision log); steering/roadmap.md loads them into the SDD skills
 - [Small incremental commits](small-incremental-commits.md) — one Conventional Commit per step/change
 - [Secret files are user-verified](secret-files-user-verified.md) — agents are read-denied on secrets/storage; ask the user to cat them; briefs must forbid shell reads (grep/cat) too
 - [SDD review model choice](sdd-review-model-choice.md) — every PRD, spec and plan gets a read-only Fable review by default before moving on; drafting in the main session; implementation on Opus
