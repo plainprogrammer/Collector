@@ -1,7 +1,7 @@
 # Feature 017: Export Format
 
 **Status:** Draft
-**Version:** 1.1.0
+**Version:** 1.1.1
 **Created:** 2026-10-11
 **Last Updated:** 2026-10-11
 **Branch:** `017-export-format`
@@ -14,7 +14,8 @@
 | Version | Date | Change |
 |---------|------|--------|
 | 1.0.0 | 2026-10-11 | Initial draft from the outline the maintainer agreed on 2026-10-11 (file shape, entry reference, contents, deliverables, and eight proposals, listed under [Decisions](#decisions)) |
-| 1.1.0 | 2026-10-11 | Spec review revisions (Fable, Mode A, NEEDS REVISION), awaiting the maintainer's approval. **Finish is not a per-type list:** the application has a condition vocabulary per type, but a finish is whatever the source lists for that printing (FR-5, FR-6, FR-8, AC-4.2). **Not recorded is `null`:** finish, condition and price paid are always present, `null` when not recorded, never an empty string (FR-5, Error Scenarios). **Price paid is per copy** and has one written form with no leading zeros (FR-5). **Times have one written form** (FR-2, FR-5). **The coverage guard has a unit:** tables that belong to an account or a user, each exported or left out, with the columns an exported table leaves out (FR-9, AC-3.4); sign-in sessions and the dates an account and user were created join the left-out list. **Comparisons are exact** (FR-7). **Retired entries** are resolvable (Error Scenarios). **Which name** the descriptive field carries (FR-6). **ACs checked by reading** are marked, and FR-10 lists the automated ones; AC-1.3 names what it searches for; AC-4.4 (a restatement of AC-2.1 and AC-2.2) is dropped and AC-4.5 renumbered. **Proposed, reverses part of decision 6:** a new field that holds collector-owned data raises the version (FR-8; see Open Questions) |
+| 1.1.0 | 2026-10-11 | Spec review revisions (Fable, Mode A, NEEDS REVISION), awaiting the maintainer's approval. **Finish is not a per-type list:** the application has a condition vocabulary per type, but a finish is whatever the source lists for that printing (FR-5, FR-6, FR-8, AC-4.2). **Not recorded is `null`:** finish, condition and price paid are always present, `null` when not recorded, never an empty string (FR-5, Error Scenarios). **Price paid is per copy** and has one written form with no leading zeros (FR-5). **Times have one written form** (FR-2, FR-5). **The coverage guard has a unit:** tables that belong to an account or a user, each exported or left out, with the columns an exported table leaves out (FR-9, AC-3.4); sign-in sessions and the dates an account and user were created join the left-out list. **Comparisons are exact** (FR-7). **Retired entries** are resolvable (Error Scenarios). **Which name** the descriptive field carries (FR-6). **ACs checked by reading** are marked, and FR-10 lists the automated ones; AC-1.3 names what it searches for; AC-4.4 (a restatement of AC-2.1 and AC-2.2) is dropped and AC-4.5 renumbered. **Proposed, reverses part of decision 6:** a new field that holds collector-owned data raises the version (FR-8) |
+| 1.1.1 | 2026-10-11 | Maintainer ruling, relayed by the coordinator: FR-8's narrowed rule stands. A new field that holds collector-owned data raises `format_version`; only information-only fields are free. Recorded as decision 14 and removed from Open Questions |
 
 ---
 
@@ -311,7 +312,6 @@ These are properties of a file. What a reader shows a person for each is import'
 
 None block planning. These were settled while writing or in review and go beyond the outline the maintainer agreed; each stands unless the maintainer changes it at approval.
 
-- **A new field that holds collector-owned data raises the version** (FR-8). This narrows decision 6, which said new optional fields never raise it. The review found the hole: a version-1 reader ignores unknown fields, so if locations arrived as a new optional field, that reader would drop every location without a word and call the result the same collection. The cost is that the spec which puts a lot in a location (#45) raises the format to version 2 whichever way its ADR goes.
 - **Times are written to the second**, in one form (FR-2). The application stores finer times. Whole seconds keep a file readable and make FR-7's comparison exact; a restored lot's times equal the file's.
 - **Descriptive fields are required** on every lot's entry (name, set code, collector number, language), so Story 1 holds for every well-formed file. A tool that knows only ids can't write a well-formed file; files from other tools are parked.
 - **Finish, condition and price paid are always present and `null` when not recorded** (FR-5). One written form for "not recorded" keeps lot identity decidable from the file alone.
@@ -320,7 +320,7 @@ None block planning. These were settled while writing or in review and go beyond
 
 ## Decisions
 
-Agreed by the maintainer on 2026-10-11, before this spec was written. ADR 0020 records the format decision itself.
+Agreed by the maintainer on 2026-10-11: 1 to 13 before this spec was written, 14 after its review. ADR 0020 records the format decision itself.
 
 | # | Question | Ruling |
 |---|---|---|
@@ -329,7 +329,7 @@ Agreed by the maintainer on 2026-10-11, before this spec was written. ADR 0020 r
 | 3 | What does the file hold besides lots? | The currency of price paid, when each lot was added and last changed, and the collector's profile and preferences. |
 | 4 | What does this slice deliver? | The document, ADR 0020, a schema and examples, checked in CI. |
 | 5 | How is price paid written? | A two-place decimal string, or not recorded. |
-| 6 | How is the version written, and what raises it? | A whole number from 1. It rises when a version-1 reader would misread the file; new optional fields don't raise it and readers ignore unknown fields. (FR-8 proposes one narrowing; see Open Questions.) |
+| 6 | How is the version written, and what raises it? | A whole number from 1. It rises when a version-1 reader would misread the file; new optional fields don't raise it and readers ignore unknown fields. Narrowed by decision 14. |
 | 7 | What are finish and condition values? | The collectible type's own values, described per type. (Review: for Magic, finish comes from the printing, not a type-wide list.) |
 | 8 | Two lots with one identity in a file? | Not well-formed. |
 | 9 | Does lot order matter? | No. |
@@ -337,6 +337,7 @@ Agreed by the maintainer on 2026-10-11, before this spec was written. ADR 0020 r
 | 11 | What does the format say about restoring a profile? | Only what the fields mean; applying them is #40's. |
 | 12 | Where does the document live? | In the repository's documentation, linked from the README, with the schema and examples beside it. |
 | 13 | Currency per file or per lot? | Per file; today the instance's setting, unchanged in meaning after #64. |
+| 14 | Does a new optional field ever raise the version? (Asked after the review: a version-1 reader that ignores unknown fields would drop later data, such as locations, without a word.) | Yes, when it holds collector-owned data. Only information-only fields are free. The spec that puts a lot in a location (#45) therefore raises the format to version 2. |
 
 ## Out of Scope (Future Considerations)
 
