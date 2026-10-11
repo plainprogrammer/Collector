@@ -5,6 +5,11 @@
 **Issue:** [#37](https://github.com/plainprogrammer/Collector/issues/37)
 **Created:** 2026-10-11
 **Status:** Draft, awaiting the maintainer's approval.
+**Revised:** 2026-10-11, after a read-only plan review (Fable, READY TO EXECUTE). The reviewer extracted every block, matched all 32 checksums, reproduced each red and green count, found every edit anchor exactly once, and probed the rules with its own inputs: none raised. Applied:
+- a file of a higher version fails version 1's schema but isn't called malformed: its own example, and a sentence in the document
+- `generator` is any string, so it can never be a reason to refuse a file (FR-2)
+- additions 5 and 6 below, which the first draft made without listing
+- ADR 0020's status names decision 20; the profile's name and dates wording; a comment on `same_collection?`
 
 ## Global Constraints
 
@@ -24,9 +29,9 @@
 **Facts established during planning (2026-10-11):**
 
 - **The plan's code was run before it was written down.** Every file below was drafted in the session scratchpad, and the code blocks in this plan were rendered from those files by a script, not retyped. The two spec files ran from the worktree with `bin/rspec` (the real `rails_helper`, test database and RuboCop config) against scratch copies of the planned files, with `Rails.root` pointed at the copy. `json_schemer` was locked and installed in a scratch copy of the `Gemfile` (`BUNDLE_GEMFILE=<scratch>/Gemfile`), so the worktree stayed untouched.
-  - All files in place: **26 examples, 0 failures** (15 in the examples spec, 11 in the document spec).
-  - Phase 1's red state: the examples spec with no rules module gives **15 examples, 15 failures**, each a `NameError: uninitialized constant ExportFormatRules`.
-  - Phase 1's green state needs no format document: the examples spec alone gives 15 examples, 0 failures.
+  - All files in place: **27 examples, 0 failures** (16 in the examples spec, 11 in the document spec).
+  - Phase 1's red state: the examples spec with no rules module gives **16 examples, 16 failures**, each a `NameError: uninitialized constant ExportFormatRules`.
+  - Phase 1's green state needs no format document: the examples spec alone gives 16 examples, 0 failures.
   - Phase 2's red state: the document spec (its first nine examples) with no document gives **9 failures**, each an `Errno::ENOENT`.
   - Phase 3's red state: the two new examples fail against today's `README.md` and `docs/adr/README.md`.
   - RuboCop reports one offense per spec file, `RSpec/DescribeClass`, which Phase 1's exclusion removes. The rules module and the generator have none.
@@ -87,12 +92,16 @@
 2. **A time must be a real moment** (rule `not_a_time`). `2026-02-30T18:02:11Z` has FR-2's form and names no moment. The spec says only "isn't in FR-2's form". Files: the document's "Times", `examples/invalid/time-not-a-moment.json`.
 3. **`accounts` is in the coverage table**, marked "Nothing to export" with its three columns left out. The spec's FR-9 says only that the document mentions it. Listing its columns means that a column added to `accounts` fails the guard, which is exactly what #64 (currency per account) will do.
 4. **`generator` names any program**, not only Collector's version (FR-2 says "the Collector version that wrote the file"). A file written by another tool can then say so.
+5. **No byte order mark.** A file that starts with one isn't JSON to a strict parser (rule `not_json`). The spec's FR-1 says only "encoded as UTF-8".
+6. **`collection_view` is required and not blank**, like the name and the email address. FR-3 says the file carries it; the Error Scenarios list only the other two as required.
+
+One clarification needs no ruling: the document says a `null` finish or condition is always resolvable. The spec's glossary doesn't say so, and the app already treats it that way (`Lot#finish_offered` skips a blank finish).
 
 **Changes outside the spec's list of deliverables:** a decision-log row (32) and a note on item 10 in `docs/roadmap.md`, and an automated check of FR-6 (the core names no collectible), which no acceptance criterion asks for.
 
 ### Pre-implementation gates
 
-- **Simplicity:** one test-support module, two spec files, one test-only gem. No application code, migration, route or setting. Nothing beyond the spec except the four additions above.
+- **Simplicity:** one test-support module, two spec files, one test-only gem. No application code, migration, route or setting. Nothing beyond the spec except the six additions above.
 - **Anti-abstraction:** `json_schemer` is called directly. The module exists because the suite needs the rules a schema can't state and FR-7's comparison in one place.
 - **Integration-first:** each phase starts with its failing spec. The schema and examples (the contract) come before the prose that describes them.
 
@@ -110,17 +119,18 @@ A documented, versioned export format (document, schema, examples and ADR 0020) 
 **Files:** `docs/specs/017-export-format/spec.md`
 **Interfaces:** Consumes: nothing. Produces: spec 1.2.0, which the later phases' rule names and coverage rows match.
 
-The maintainer approved the four additions with this plan. The spec is the source of truth, so it says them before any file does.
+The maintainer approved the six additions with this plan. The spec is the source of truth, so it says them before any file does.
 
 - [ ] In `spec.md`, set `**Version:** 1.2.0` and add this changelog row after the 1.1.2 row:
 
 ```markdown
-| 1.2.0 | 2026-10-11 | Plan additions, approved by the maintainer with the plan (decision 20). **A repeated key** in one object makes a file not well-formed (FR-1, Error Scenarios). **A time must be a real moment** (FR-2, Error Scenarios). **Accounts** join the coverage table as nothing to export, with each column left out, so a column added later fails the guard (FR-9, AC-3.5). **The writer's name:** the optional header field names any program and its version (FR-2). The field names are fixed by the plan and the format document |
+| 1.2.0 | 2026-10-11 | Plan additions, approved by the maintainer with the plan (decision 20). **A repeated key** in one object makes a file not well-formed (FR-1, Error Scenarios). **A time must be a real moment** (FR-2, Error Scenarios). **Accounts** join the coverage table as nothing to export, with each column left out, so a column added later fails the guard (FR-9, AC-3.5). **The writer's name:** the optional header field names any program and its version (FR-2). **No byte order mark** (FR-1). **The collection view** is required and not blank (Error Scenarios). The field names are fixed by the plan and the format document |
 ```
 
-- [ ] In FR-1's **Must** list, add after "Be a single JSON document, encoded as UTF-8.":
+- [ ] In FR-1's **Must** list, replace "Be a single JSON document, encoded as UTF-8." with:
 
 ```markdown
+- Be a single JSON document, encoded as UTF-8 with no byte order mark.
 - Hold no key twice in one object.
 ```
 
@@ -130,7 +140,7 @@ The maintainer approved the four additions with this plan. The spec is the sourc
 - Allow, but not require, the name and version of the program that wrote the file. It is information only.
 ```
 
-  and in the same list, after the bullet that ends "A writer drops the fraction; it doesn't round.", add a new bullet:
+  and in the same list, after the sentence "A writer drops the fraction; it doesn't round.", add a new bullet:
 
 ```markdown
 - Require every time to be a real moment: 30 February isn't one.
@@ -145,7 +155,19 @@ The maintainer approved the four additions with this plan. The spec is the sourc
 
 - [ ] In AC-3.5, replace "lots and users are marked exported, with the left-out columns of FR-9," with "lots and users are marked exported, with the left-out columns of FR-9, accounts is marked nothing to export with every column left out,".
 
-- [ ] In Error Scenarios, add after the row "The file isn't JSON, or isn't UTF-8":
+- [ ] In Error Scenarios, replace the row "The profile's name or email address is missing, or empty after trimming" with:
+
+```markdown
+| The profile's name, email address or collection view is missing, or empty after trimming | Not well-formed |
+```
+
+- [ ] In Error Scenarios, replace the row "The file isn't JSON, or isn't UTF-8" with:
+
+```markdown
+| The file isn't JSON, isn't UTF-8, or starts with a byte order mark | Not well-formed |
+```
+
+  and add after it:
 
 ```markdown
 | An object in the file holds the same key twice | Not well-formed |
@@ -160,7 +182,7 @@ The maintainer approved the four additions with this plan. The spec is the sourc
 - [ ] In Decisions, change the lead sentence's "and 15 to 19 with its approval." to "15 to 19 with its approval, and 20 with the plan's." and add this row after row 19:
 
 ```markdown
-| 20 | Does the plan's reading of the format stand? | Yes: the field names in the format document; a repeated key and a time that is no real moment are not well-formed; accounts are in the coverage table; the writer's name may be any program's. |
+| 20 | Does the plan's reading of the format stand? | Yes: the field names in the format document; a repeated key and a time that is no real moment are not well-formed; accounts are in the coverage table; the writer's name may be any program's; no byte order mark; the collection view is required. |
 ```
 
 - [ ] Commit: `docs(017): record the plan's additions in the spec`
@@ -195,7 +217,7 @@ group :test do
 end
 ```
 
-- [ ] Run: `bundle install` — expect `Gemfile.lock` to gain exactly `json_schemer (2.5.0)` (depending on `bigdecimal`, `hana (~> 1.3)`, `regexp_parser (~> 2.0)`, `simpleidn (~> 0.2)`), `hana (1.3.7)`, `simpleidn (0.3.0)`, the `json_schemer (~> 2.4)` dependency line and three checksum lines. Check with `git diff --stat Gemfile.lock` (11 insertions, 0 deletions). If a newer 2.x resolves, keep it and note the version in the commit body.
+- [ ] Run: `bundle install` — expect `Gemfile.lock` to gain exactly `json_schemer (2.5.0)` (depending on `bigdecimal`, `hana (~> 1.3)`, `regexp_parser (~> 2.0)`, `simpleidn (~> 0.2)`), `hana (1.3.7)`, `simpleidn (0.3.0)`, the `json_schemer (~> 2.4)` dependency line and three checksum lines. Check with `git diff --stat Gemfile.lock` (10 insertions, 0 deletions). If a newer 2.x resolves, keep it and note the version in the commit body.
 - [ ] Run: `bin/bundler-audit` — expect: `No vulnerabilities found`
 - [ ] Commit: `chore(deps): add json_schemer to the test group`
 
@@ -253,7 +275,6 @@ RSpec.describe "The export format's examples" do
       [ %w[profile], :absent ] => %w[required /profile],
       [ %w[currency], :absent ] => %w[required /currency],
       [ %w[format_version], 0 ] => %w[const /format_version],
-      [ %w[format_version], 2 ] => %w[const /format_version],
       [ %w[profile email_address], :absent ] => %w[required /profile/email_address],
       [ %w[profile email_address], "" ] => %w[pattern /profile/email_address],
       [ %w[currency], "US" ] => %w[pattern /currency],
@@ -331,9 +352,13 @@ RSpec.describe "The export format's examples" do
     end
   end
 
+  it "fails version 1's schema for a file of another version, which a reader refuses before it checks (FR-8)" do
+    expect(problems_of(changed(%w[format_version], 2))).to eq([ { "rule" => "const", "at" => "/format_version" } ])
+  end
+
   it "accepts the values at the edges of each rule", :aggregate_failures do
     {
-      %w[generator] => :absent, %w[profile collection_view] => "gallery", %w[currency] => "XTS",
+      %w[generator] => :absent, %w[profile collection_view] => "gallery", [ "lots", 0, "price_paid" ] => nil, %w[currency] => "XTS",
       [ "lots", 0, "quantity" ] => 9_999, [ "lots", 0, "price_paid" ] => "0.00", [ "lots", 0, "finish" ] => "glossy",
       [ "lots", 0, "changed_at" ] => "2026-09-30T18:02:11Z", [ "lots", 0, "entry", "collectible_type" ] => "comics",
       %w[lots] => []
@@ -398,7 +423,7 @@ RSpec.describe "The export format's examples" do
 end
 ```
 
-- [ ] Run: `bin/rspec spec/export_format_examples_spec.rb` — expect: FAIL, `15 examples, 15 failures`, each `NameError: uninitialized constant ExportFormatRules`
+- [ ] Run: `bin/rspec spec/export_format_examples_spec.rb` — expect: FAIL, `16 examples, 16 failures`, each `NameError: uninitialized constant ExportFormatRules`
 
 - [ ] Write the rules, `spec/support/export_format_rules.rb`:
 
@@ -450,7 +475,8 @@ module ExportFormatRules
     lot.fetch("entry").values_at("collectible_type", "source_id") + lot.values_at("finish", "condition", "price_paid")
   end
 
-  # Whether two well-formed files of one version hold the same collection (spec 017 FR-7).
+  # Whether two well-formed files of one version hold the same collection (spec 017 FR-7). Callers check
+  # .problems first: a file that isn't well-formed may raise here.
   def self.same_collection?(one, other)
     raise ArgumentError, "the files have different format versions" unless one["format_version"] == other["format_version"]
 
@@ -531,7 +557,7 @@ end
     "format": { "const": "collector-export" },
     "format_version": { "const": 1 },
     "exported_at": { "$ref": "#/$defs/time" },
-    "generator": { "$ref": "#/$defs/text" },
+    "generator": { "type": "string" },
     "profile": {
       "type": "object",
       "required": ["name", "email_address", "collection_view"],
@@ -1004,7 +1030,7 @@ a656bd154dc00bfd81427edcc32cb1bc5794ee05feb7fc9ecfd880e5f4a1f506  comparison/dif
 }
 ```
 
-- [ ] Run: `bin/rspec spec/export_format_examples_spec.rb` — expect: PASS, `15 examples, 0 failures`
+- [ ] Run: `bin/rspec spec/export_format_examples_spec.rb` — expect: PASS, `16 examples, 0 failures`
 - [ ] Run: `bin/rubocop spec/export_format_examples_spec.rb spec/support/export_format_rules.rb` — expect: `no offenses detected`
 - [ ] Commit: `docs(export-format): define version 1 in a schema with checked examples`
 
@@ -1014,7 +1040,7 @@ a656bd154dc00bfd81427edcc32cb1bc5794ee05feb7fc9ecfd880e5f4a1f506  comparison/dif
 
 **Implements:** FR-1 to FR-9 | **Satisfies:** AC-1.1, AC-3.4, AC-3.5, AC-4.1, AC-4.2, AC-4.3; by reading: AC-1.2, AC-1.5, AC-2.4, AC-2.6, AC-3.1, AC-3.2, AC-3.3
 **Files:** `spec/export_format_document_spec.rb`, `docs/export-format/README.md`
-**Interfaces:** Consumes: `ExportFormatRules.document`, `.version`, `.schema_file`, `.schema`, `.examples("valid")`, `.field_names(data)`, `.section(title)`, `.table(text, heading)` from Phase 1; `Catalog.collecting` and `Catalog.collecting_for(type).conditions` (the application's registered conditions); `Collector::Currency::SYMBOLS`. Produces: `docs/export-format/README.md`, with a `**Format version:** N` line, `## ` sections titled "Currency", "Versions", "Collectible types" and "Coverage", a `### ` heading per collectible type that ends with the type's key in backticks and parentheses, each with a table headed "Condition", and coverage tables headed "Table" and "Column".
+**Interfaces:** Consumes: `ExportFormatRules.document`, `.version`, `.schema_file`, `.schema`, `.examples("valid")`, `.field_names(data)`, `.section(title)`, `.table(text, heading)` from Phase 1; `Catalog.collecting` and `Catalog.collecting_for(type).conditions` (the application's registered conditions); `Collector::Currency::SYMBOLS`. Produces: `docs/export-format/README.md`, with a `**Format version:** N` line, `## ` sections titled "Currency", "Versions", "Collectible types" and "Coverage", a `### … (`type`)` heading per collectible type with a table headed "Condition", and coverage tables headed "Table" and "Column".
 
 The prose, checked against the schema, the examples and the application. The seven criteria marked (review) in the spec are met by the sections named in Phase 4's table.
 
@@ -1146,12 +1172,14 @@ A file describes exactly one account's collection at one moment. It needs no oth
 | `format` | The string `collector-export` | Says that the file is a Collector export. A reader refuses a file with any other value. |
 | `format_version` | A whole number | The version of this format that the file follows. This document defines version 1. See [Versions](#versions). |
 | `exported_at` | A [time](#times) | When the file was written. Information only. |
-| `generator` | A string that isn't blank; may be left out | The program that wrote the file, and its version (`Collector 0.2.1`). Information only. |
+| `generator` | A string; may be left out | The program that wrote the file, and its version (`Collector 0.2.1`). Information only. |
 | `profile` | An object | The collector. See [Profile](#profile). |
 | `currency` | A string | The currency of every price in the file. See [Currency](#currency). |
 | `lots` | A list | The collection. See [Lots](#lots). It may be empty, and its order has no meaning. |
 
 A reader never behaves differently because of `exported_at` or `generator`.
+
+A whole number may be written with a zero fraction: `1.0` is the same number as `1`.
 
 A collection with nothing in it is a complete file:
 
@@ -1188,7 +1216,7 @@ A collector may leave a lot's finish, condition or price blank. The file writes 
 
 | Field | Value | Meaning |
 |---|---|---|
-| `name` | A string that isn't blank | The collector's name, as they entered it. |
+| `name` | A string that isn't blank | The collector's name, without spaces around it. |
 | `email_address` | A string that isn't blank | The collector's email address. Collector writes it in lower case. |
 | `collection_view` | A string that isn't blank | How the collector likes to see their collection: `grid` or `table` today. |
 
@@ -1196,7 +1224,7 @@ A collector may leave a lot's finish, condition or price blank. The file writes 
 
 The format says what these fields mean. It doesn't say what a reader does with them: whether an import changes a name or an email address is the import's decision.
 
-A file never carries a password in any form, a role on the instance, sign-in sessions, or the dates an account was created.
+A file never carries a password in any form, a role on the instance, sign-in sessions, or the dates an account or its user were created.
 
 ## Currency
 
@@ -1281,6 +1309,8 @@ A file can be wrong in two different ways, and the format keeps them apart.
 - every time is a real moment
 - no lot's `changed_at` is earlier than its `added_at`
 - no two lots have the same [identity](#lot-identity)
+
+The schema and these rules are version 1's. A reader looks at `format_version` first: a file whose version is higher than it knows is refused as newer than it can read, not as malformed.
 
 A field that this document doesn't define doesn't make a file malformed. A reader ignores it.
 
@@ -1474,7 +1504,7 @@ A `rule` is the schema keyword that fails (`required`, `const`, `pattern`, `mini
 | `duplicate_lot` | A lot has the same identity as an earlier lot in the file. |
 `````
 
-- [ ] Run: `bin/rspec spec/export_format_document_spec.rb spec/export_format_examples_spec.rb` — expect: PASS, `24 examples, 0 failures`
+- [ ] Run: `bin/rspec spec/export_format_document_spec.rb spec/export_format_examples_spec.rb` — expect: PASS, `25 examples, 0 failures`
 - [ ] Run: `bin/rubocop spec/export_format_document_spec.rb` — expect: `no offenses detected`
 - [ ] Commit: `docs(export-format): add the format document`
 
@@ -1517,7 +1547,7 @@ The decision record, and the places a reader starts from: the README, the ADR in
 
 ## Status
 
-Accepted (2026-10-11; the maintainer ruled on each point in spec 017, decisions 1 to 19).
+Accepted (2026-10-11; the maintainer ruled on each point in spec 017: decisions 1 to 19 with the spec and 20 with the plan).
 
 **Date:** 2026-10-11
 **Feature:** 017-export-format
@@ -1670,7 +1700,7 @@ and see, retry and discard background jobs at `/admin/jobs` (spec 015). The expo
 **Implements:** All FRs | **Satisfies:** All ACs
 
 - [ ] Run: `bin/rubocop` — expect: `no offenses detected`
-- [ ] Run: `bin/rspec` — expect: 0 failures, with 26 examples more than `main` has
+- [ ] Run: `bin/rspec` — expect: 0 failures, with 27 examples more than `main` has
 - [ ] Run: `bin/ci` — expect: every step green
 - [ ] Run: `git status --short` — expect: clean. In particular, the generator isn't in the repository.
 - [ ] Read the format document against the seven criteria the spec marks (review), and write `docs/specs/017-export-format/verification.md`. Fill the "Found" column with what the document says, quoted; a row that can't be filled is a defect to fix before the commit:
@@ -1716,7 +1746,7 @@ After this phase: `sdd-superpowers:sdd-review` (Mode B, read-only Fable) checks 
 ## Quickstart Validation
 
 ```sh
-bin/rspec spec/export_format_examples_spec.rb spec/export_format_document_spec.rb   # 26 examples, 0 failures
+bin/rspec spec/export_format_examples_spec.rb spec/export_format_document_spec.rb   # 27 examples, 0 failures
 bin/rubocop                                                                          # no offenses detected
 ls docs/export-format                                                                # README.md  examples  v1.schema.json
 find docs/export-format/examples -type f | wc -l                                     # 32
@@ -1724,4 +1754,4 @@ grep -n "Format version" docs/export-format/README.md                           
 grep -n "0020" docs/adr/README.md                                                    # the index line
 ```
 
-To see a guard fail: delete the `` | `sessions` | `` row from the document's Coverage table and run the document spec. Two examples fail, and RSpec names `["sessions"]` as the missing element. Restore the row with `git checkout docs/export-format/README.md`.
+To see a guard fail: delete the `` | `sessions` | `` row from the document's Coverage table and run the document spec. Four examples fail, and RSpec names `["sessions"]` as the missing element. Restore the row with `git checkout docs/export-format/README.md`.
