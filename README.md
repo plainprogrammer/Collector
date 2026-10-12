@@ -278,8 +278,8 @@ bin/rails "catalog:status[mtg]"   # Kamal: bin/kamal catalog-status
 
 - **Catalog page:** `/admin/catalog` shows each catalog's cards, its last applied refresh, when
   the next one is scheduled, the running refresh's stage and progress, and its recent runs. A
-  refresh whose job has failed without ending the run (after a crash, for example), or that
-  stops making progress for 15 minutes, is shown as interrupted; pressing **Refresh now** then
+  refresh whose job has failed or left the queue without ending the run (after a crash, for
+  example), or that stops making progress for 15 minutes, is shown as interrupted; pressing **Refresh now** then
   starts it again.
 - **Jobs page:** `/admin/jobs` lists the app's background jobs that failed, are running, are
   queued or are scheduled. A failed job shows its error and backtrace, and can be retried or
