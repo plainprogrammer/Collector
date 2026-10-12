@@ -1,6 +1,6 @@
 ---
 name: plan-reviews-run-the-code
-description: Plan reviews trace the plan's code against the code it edits; default to a read-only Fable review, run the code (in a worktree) only when the maintainer asks
+description: Plan reviews trace the plan's code against the code it edits; default to a read-only review (on Opus since 2026-10-12, see sdd-review-model-choice), run the code (in a worktree) only when the maintainer asks
 metadata:
   type: feedback
 ---

@@ -4,8 +4,8 @@
 - North star and roadmap — `docs/north-star.md`, `docs/roadmap.md` (rulings of 2026-10-11 in the roadmap's decision log); steering/roadmap.md loads them into the SDD skills
 - [Small incremental commits](small-incremental-commits.md) — one Conventional Commit per step/change
 - [Secret files are user-verified](secret-files-user-verified.md) — agents are read-denied on secrets/storage; ask the user to cat them; briefs must forbid shell reads (grep/cat) too
-- [SDD review model choice](sdd-review-model-choice.md) — every PRD, spec and plan gets a read-only Fable review by default before moving on; drafting in the main session; implementation on Opus
-- [Plan reviews run the code](plan-reviews-run-the-code.md) — trace plan code against the files it edits; read-only Fable by default (spec 009); planner runs the code in scratch first (spec 013)
+- [SDD review model choice](sdd-review-model-choice.md) — every PRD, spec and plan gets a read-only review by default before moving on, on Opus since 2026-10-12 (Fable only when named); drafting in the main session; implementation on Opus
+- [Plan reviews run the code](plan-reviews-run-the-code.md) — trace plan code against the files it edits; read-only by default (spec 009; Opus since 2026-10-12); planner runs the code in scratch first (spec 013)
 - [Dev machine image tools](dev-machine-image-tools.md) — magick 7, Pillow, ffmpeg, libvips 8.18.3 present (no `vips` command); ruby-vips in the bundle; decode via `magick … ppm:-`
 - [Scryfall API access](scryfall-api-access.md) — docs 403 to WebFetch; use curl + User-Agent; bulk JSONL facts
 - [PR screenshots workflow](pr-screenshots-workflow.md) — headless Firefox + magick/ffmpeg; embed in private-repo PRs via blob/<sha>?raw=true; pause 0.6s after a theme switch
