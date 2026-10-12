@@ -70,6 +70,7 @@
 /* Overrides the export until the published design system fits images this way; then delete this block. Any leftover
    shows the slot's surface-sunken ground. */
 .c-tile__media img, .c-item__image img { object-fit:contain; } /* the export crops with cover */
+img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches: the tag's height="34" beats aspect-ratio */
 
 /* ---------- Select inside the filter bar ---------- */
 .c-select select { height:28px; max-width:220px; padding:0 var(--space-2); background:var(--surface-raised); color:var(--ink);

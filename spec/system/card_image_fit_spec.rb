@@ -124,4 +124,52 @@ RSpec.describe "Card image fit", :card_images, type: :system do
       end
     end
   end
+
+  describe "the table thumbnail" do
+    let(:images) { "img.c-table__thumb" }
+
+    it "shows a Scryfall-sized image in its own proportions (AC-3.1)", :aggregate_failures do
+      owned_with_image("Bolt")
+      visit collection_path(view: "table")
+      expect(page).to have_css(images, count: 1)
+
+      expect(card_image_fits(images, pictures: [ card_picture(488, 680) ]).flat_map(&:faults)).to be_empty
+    end
+
+    it "shows images of any proportions whole, in slots and rows of one size, in both themes (AC-3.2, AC-3.3, AC-3.4)", :aggregate_failures do
+      %w[Bolt Opt].each { |name| owned_with_image(name) }
+      owned_printing("Shock", account: user.account)
+      visit collection_path(view: "table")
+      expect(page).to have_css(".c-table__thumb", count: 3)
+
+      # The two images have failed to load at this point, and still take the empty slot's size.
+      expect(card_slot_boxes(".c-table__thumb").pluck("box").uniq.size).to eq(1)
+      fits = card_image_fits(images, pictures: [ square, tall ])
+      expect(fits.flat_map(&:faults)).to be_empty
+      thumbs = card_slot_boxes(".c-table__thumb")
+      expect(thumbs.pluck("tag")).to contain_exactly("img", "img", "span")
+      expect(thumbs.pluck("box").uniq.size).to eq(1)
+      expect(thumbs.pluck("row").uniq.size).to eq(1)
+
+      use_dark_theme
+      dark = card_image_fits(images)
+      expect(dark.flat_map(&:faults)).to be_empty
+      expect(dark.first.ground).not_to eq(fits.first.ground)
+    end
+
+    it "keeps slots and rows of one size at phone width (AC-3.2, AC-3.3)", :aggregate_failures do
+      %w[Bolt Opt].each { |name| owned_with_image(name) }
+      owned_printing("Shock", account: user.account)
+      visit collection_path(view: "table")
+
+      expect(open_in_narrow_frame(collection_path(view: "table"), width: 390, height: 844, ready: "table.c-table")).to eq([ 390, true ])
+      within_narrow_frame do
+        expect(card_image_fits(images, pictures: [ tall, wide ]).flat_map(&:faults)).to be_empty
+        thumbs = card_slot_boxes(".c-table__thumb")
+        expect(thumbs.size).to eq(3)
+        expect(thumbs.pluck("box").uniq.size).to eq(1)
+        expect(thumbs.pluck("row").uniq.size).to eq(1)
+      end
+    end
+  end
 end
