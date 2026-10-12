@@ -1,7 +1,7 @@
 # Feature 020: An Accurate README
 
 **Status:** Approved
-**Version:** 1.3.1
+**Version:** 1.4.0
 **Created:** 2026-10-12
 **Last Updated:** 2026-10-12
 **Branch:** `020-readme-introduction`
@@ -19,6 +19,7 @@
 | 1.3.0 | 2026-10-12 | Maintainer rulings. **`spec/readme_spec.rb` is removed** in this PR, with its RuboCop exclusion: a spec that tests a README's wording is without precedent in the maintainer's experience (decision 3 rewritten, Goals, Story 4, FR-5, AC-3.6, FR-2, Security, Reliability, Testability, Error Scenarios). Its two expectations that read `compose.yaml` and `config/deploy.yml`, not the README, are kept in `spec/image_publishing_spec.rb`. **Decision 5 accepted:** `CLAUDE.md` gets the README corrections it repeats. The rest of 1.2.0 is approved as it stands |
 | 1.3.1 | 2026-10-12 | Second review pass (Opus, Mode A, NEEDS REVISION, two blocking; wording only, no decision reopened). **Moved expectations:** neither string is asserted today, so two examples are added to `spec/image_publishing_spec.rb` and the counts are stated (AC-4.2, AC-4.3, Testability). **Not refuted** is a result, not a kind of claim, and a refuted claim is stale (glossary, FR-2, AC-3.3). **Also:** comparisons are against `origin/main...HEAD`, since a local `main` can be behind (AC-2.7 to AC-2.9, AC-4.3); what a correction may do to wrapping and to aligned code comments (AC-2.7, FR-2); the `CLAUDE.md` sentence is given verbatim (AC-2.9, FR-4); how a repeat in `CLAUDE.md` is found (FR-4, AC-3.2); the safety warnings get their own record entry (AC-3.8); true claims are recorded per section (AC-3.1); FR-5's ordering line is removed; the places that say what the PR touches now name the spec files and `.rubocop.yml` |
 | 1.3.1 | 2026-10-12 | **Approved by the maintainer**: the 1.2.0 revisions, decision 5 and the removal of `spec/readme_spec.rb`, with a second review asked for after the edits. That review's fixes are the row above and change no decision |
+| 1.4.0 | 2026-10-12 | Maintainer ruling, made while planning: "I think it's odd to check documents outside code from RSpec. So, please apply my ruling more broadly." Asked how broadly and where, the maintainer chose **prose documents only**, **inside this spec** (decision 7). Besides `spec/readme_spec.rb`, the suite loses its examples about `docs/releasing.md`, the design system's documents, `CLAUDE.md`, the agent skill file and the ADR index, and the example that the README links the export format. The export format's own checks, the configuration checks and the checks of code files stay. `.claude/rules/testing.md` gains the rule (Story 4 rewritten, FR-5, Goals, Non-Goals, Reliability, Error Scenarios, Out of Scope, One outcome) |
 
 ---
 
@@ -28,9 +29,9 @@
 
 The introduction went stale because specs since 004 added to the sections below it and none returned to the top. The same can have happened anywhere in the file: one example is already known (`bin/rspec spec/requests/home_spec.rb:5` names a spec file that no longer exists, in both `README.md` and `CLAUDE.md`).
 
-The suite also pins phrases and section order of the README in `spec/readme_spec.rb` (eight examples, added by the plans of specs 004, 007, 011, 012, 014 and 015). The maintainer doesn't want a spec of a README's wording (decision 3).
+The suite also pins phrases and section order of the README in `spec/readme_spec.rb` (eight examples, added by the plans of specs 004, 007, 011, 012, 014 and 015). Other spec files do the same to other prose documents: `docs/releasing.md`, the design system's documents, `CLAUDE.md`, the ADR index. The maintainer finds it odd to check documents outside code from RSpec (decisions 3 and 7), and each such example is one more thing a correction to a document has to satisfy.
 
-> **Inputs.** This spec is about one file, its repeats in a second and the spec file that pins it, so it names them, with `spec/image_publishing_spec.rb` and `.rubocop.yml`. Comparisons "with `origin/main`" mean with the merge base, `origin/main...HEAD`. The roadmap ([docs/roadmap.md](../../roadmap.md)), the north star ([docs/north-star.md](../../north-star.md)) and the repository at the PR's head are the fixed inputs.
+> **Inputs.** This spec is about one file, its repeats in a second and the spec file that pins it, so it names them, with the four spec files Story 4 changes, `.rubocop.yml` and `.claude/rules/testing.md`. Comparisons "with `origin/main`" mean with the merge base, `origin/main...HEAD`. The roadmap ([docs/roadmap.md](../../roadmap.md)), the north star ([docs/north-star.md](../../north-star.md)) and the repository at the PR's head are the fixed inputs.
 
 ### Glossary
 
@@ -47,10 +48,11 @@ The suite also pins phrases and section order of the README in `spec/readme_spec
 
 1. **The whole README is checked.** The issue names the introduction; the maintainer widened it to every section (2026-10-12).
 2. **Pre-1.0, with a link.** The introduction says Collector is pre-1.0 and links the roadmap. It doesn't list what is missing, so it doesn't go stale as each spec lands (maintainer, 2026-10-12).
-3. **Checked by hand and recorded; the README has no spec.** No behaviour changes, so no test is added. `spec/readme_spec.rb`, which pins phrases and section order in the README, is removed in this PR: a spec that tests a README's wording is without precedent in the maintainer's experience (maintainer, 2026-10-12). This is the one statement of the reason; the rest of the spec cites it. Past specs' README criteria lose their automated evidence, and their `plan.md` and `verification.md` files still name the file, as a record of what was true then. Its last example also reads `compose.yaml` and `config/deploy.yml`; those two expectations check configuration, not the README, and neither string is asserted anywhere else (`spec/image_publishing_spec.rb` checks only that the Compose key is present), so they are kept as two new examples in `spec/image_publishing_spec.rb`. Other spec files that read `README.md` for one fact (`spec/export_format_document_spec.rb` checks that it links the export format) are not README specs and stay.
+3. **Checked by hand and recorded; the README has no spec.** No behaviour changes, so no test is added. `spec/readme_spec.rb`, which pins phrases and section order in the README, is removed in this PR: a spec that tests a README's wording is without precedent in the maintainer's experience (maintainer, 2026-10-12). This is the one statement of the reason; the rest of the spec cites it. Past specs' README criteria lose their automated evidence, and their `plan.md` and `verification.md` files still name the file, as a record of what was true then. Its last example also reads `compose.yaml` and `config/deploy.yml`; those two expectations check configuration, not the README, and neither string is asserted anywhere else (`spec/image_publishing_spec.rb` checks only that the Compose key is present), so they are kept as two new examples in `spec/image_publishing_spec.rb`. Decision 7 widens this to the other prose documents.
 4. **`CLAUDE.md`'s phrase is fixed here.** The stale "public card search proof-of-concept" phrase in `CLAUDE.md`'s Project Status is corrected in the same PR. The rest of that file is not swept (maintainer, 2026-10-12).
 5. **A README correction that `CLAUDE.md` repeats is made there too.** `CLAUDE.md`'s Commands list holds the same stale `home_spec.rb` example. Fixing one copy and knowingly leaving the other makes the two files disagree, so where the sweep corrects a README claim and `CLAUDE.md` states the same claim, `CLAUDE.md` gets the same correction. This is still not a sweep of `CLAUDE.md` (proposed from review; accepted by the maintainer, 2026-10-12).
 6. **Gaps are recorded, not filed.** This PR opens no issue and doesn't change `docs/roadmap.md`: a new housekeeping issue is a new roadmap candidate, and the roadmap changes with its issues. The maintainer decides from the record which gaps become candidates. The roadmap's line for #63 is left as it is, as specs 018 and 019 left theirs (from review).
+7. **No RSpec example checks a prose document.** The maintainer widened decision 3 while planning: "I think it's odd to check documents outside code from RSpec." Asked how far, they chose prose documents only; asked where, they chose this spec and this PR, knowing it adds a second outcome to it (maintainer, 2026-10-12). A **prose document** is a file written for a person or an agent to read: `README.md`, `CLAUDE.md`, an agent skill file, and the Markdown under `docs/`. What goes: `spec/readme_spec.rb`; the `docs/releasing.md` examples in `spec/image_publishing_spec.rb`; the examples and expectations about the design system's documents, the skill file and `CLAUDE.md` in `spec/design_system_files_spec.rb`; the README-link and ADR-index examples in `spec/export_format_document_spec.rb`. What stays, by the same ruling: the export format's document checked against its schema, its examples and the application's tables (the guard that a new collector-owned column reaches the format), the schema and example files' checks, the checks of configuration files (`compose.yaml`, `config/deploy.yml`, the workflows, `.dockerignore`, `orca.yaml`, `.worktreeinclude`) and the checks of code files (stylesheets, the core's views and models).
 
 ## Goals
 
@@ -58,7 +60,7 @@ The suite also pins phrases and section order of the README in `spec/readme_spec
 - The introduction makes no claim that something existing isn't built, and no claim that a page is public when it needs sign-in.
 - Every checkable claim in `README.md` is true of the repository at the PR's head, except one the record lists as left stale with its reason (AC-3.5).
 - `CLAUDE.md` no longer calls catalog search public, and doesn't disagree with a correction made to the README.
-- The suite no longer tests the README's wording.
+- No example in the suite checks the wording, order, links or existence of a prose document, the export format's document excepted (decision 7).
 - What was checked, what was corrected and what couldn't be checked is on record.
 
 ## Non-Goals
@@ -67,7 +69,8 @@ The suite also pins phrases and section order of the README in `spec/readme_spec
 - Restructuring the README: no section is added, removed, renamed or reordered.
 - Rewording claims that are true, including two true claims that name one thing differently ("avatar menu" and "account menu"). Those are recorded.
 - Changing the application, its commands or its configuration to match the README. (`.rubocop.yml` loses one line, FR-5.)
-- Changing any spec file other than the two named in Story 4.
+- Changing any spec file other than the four named in Story 4.
+- Removing the export format's checks, the configuration checks or the checks of code files (decision 7).
 - A user guide, screenshots or badges.
 - Checking the rest of `CLAUDE.md` against the repository.
 - Any other document under `docs/` (the roadmap, the design system, the ADRs), except this spec's own folder.
@@ -135,18 +138,21 @@ The suite also pins phrases and section order of the README in `spec/readme_spec
 - [ ] **AC-3.7** Given the PR When its description is read Then it closes issue #63.
 - [ ] **AC-3.8** Given the PR When the record is read Then it lists the README's three safety warnings (the first person to reach an instance becomes its admin, in Self-hosting and in Upgrading to accounts; signing in over plain HTTP; never running a plain `bin/kamal deploy` against the published registry) and states for each that its text and its position are unchanged from `origin/main`. A warning that is itself stale goes to the maintainer (Error Scenarios, second row).
 
-### Story 4: The README has no spec
+### Story 4: The suite checks no prose document
 
 **As the** maintainer
-**I want** the suite to stop testing the README's wording
-**So that** the README is kept true by review, not by pinned phrases (decision 3)
+**I want** the suite to stop checking prose documents
+**So that** documents are kept true by review, not by pinned phrases (decisions 3 and 7)
 
 **Acceptance criteria:**
 
 - [ ] **AC-4.1** Given the PR's head When `git ls-files spec/readme_spec.rb` and `grep readme_spec .rubocop.yml` are run Then both print nothing.
-- [ ] **AC-4.2** Given the PR's head When `bin/rspec spec/image_publishing_spec.rb` is run Then it reports 25 examples and 0 failures: its 23 existing examples, unchanged, and two new ones. One, under `describe "compose.yaml"`, expects the file's text to include `COLLECTOR_MTG_ART_MATCHING: "${COLLECTOR_MTG_ART_MATCHING:-}"`. One, under `describe "config/deploy.yml"`, expects the file's text to include `# COLLECTOR_MTG_ART_MATCHING: true`.
-- [ ] **AC-4.3** Given `git diff --stat origin/main...HEAD -- spec` When it is read Then it lists exactly `spec/readme_spec.rb` (deleted) and `spec/image_publishing_spec.rb` (insertions only), and the suite has six fewer examples than at the merge base (eight removed, two added).
-- [ ] **AC-4.4** Given the PR's head When `spec/export_format_document_spec.rb` is run Then its "is linked from the README" example is unchanged and passes.
+- [ ] **AC-4.2** Given the PR's head When `bin/rspec spec/image_publishing_spec.rb` is run Then it reports 22 examples and 0 failures: `describe "docs/releasing.md"` and its three examples are gone, the other 20 existing examples are unchanged, and there are two new ones. One, under `describe "compose.yaml"`, expects the file's text to include `COLLECTOR_MTG_ART_MATCHING: "${COLLECTOR_MTG_ART_MATCHING:-}"`. One, under `describe "config/deploy.yml"`, expects the file's text to include `# COLLECTOR_MTG_ART_MATCHING: true`.
+- [ ] **AC-4.3** Given the PR's head When `bin/rspec spec/design_system_files_spec.rb` is run Then it reports 4 examples and 0 failures. The examples "documents every new pattern and lists it in the README" and "documents the pattern, its three slots and that it overrides the export (AC-4.1, AC-4.2)" are gone. The first example is named "installs the export's stylesheets, fonts and logos" and keeps only its expectations about the stylesheets, the fonts and the logo images; its expectations about `docs/design-system/`, the skill file and `CLAUDE.md` are gone. The other three examples are unchanged.
+- [ ] **AC-4.4** Given the PR's head When `bin/rspec spec/export_format_document_spec.rb spec/export_format_examples_spec.rb` is run Then it reports 25 examples and 0 failures: `describe "the repository around it (AC-4.4)"` and its two examples are gone from the first file, its other nine examples are unchanged, and the second file is unchanged.
+- [ ] **AC-4.5** Given `git diff --stat origin/main...HEAD -- spec` When it is read Then it lists exactly `spec/readme_spec.rb` (deleted), `spec/image_publishing_spec.rb`, `spec/design_system_files_spec.rb` and `spec/export_format_document_spec.rb`, and the suite has 13 fewer examples than at the merge base (15 removed, 2 added; 1,219 becomes 1,206).
+- [ ] **AC-4.6** Given the PR's head When `grep -rnE 'README\.md|CLAUDE\.md|SKILL\.md|releasing\.md|docs/(adr|design-system)' spec` is run Then every line it prints is either in `spec/export_format_document_spec.rb`, `spec/export_format_examples_spec.rb` or `spec/support/export_format_rules.rb` and is about the export format's document, or is the `.dockerignore` rule list in `spec/image_publishing_spec.rb`, which names `/CLAUDE.md` as a path kept out of the image and reads no document.
+- [ ] **AC-4.7** Given the PR's head When `.claude/rules/testing.md` is read Then its list has one new line: "✗ Don't check prose documents (`README.md`, `CLAUDE.md`, skill files, the Markdown under `docs/`) from RSpec; a document criterion is verified by reading and recorded in the spec's `verification.md`. The export format's document is the one exception (spec 020, decision 7)." Nothing else in that file changes.
 
 ## Functional Requirements
 
@@ -214,18 +220,23 @@ The stale phrase in `CLAUDE.md`'s Project Status is corrected, and a README corr
 - Call the search public or a proof-of-concept.
 - Change anything in `CLAUDE.md` that isn't one of those corrections.
 
-### FR-5: The README spec is removed
+### FR-5: The prose-document checks are removed
 
-`spec/readme_spec.rb` is deleted, and what it checked that wasn't the README is kept.
+The examples that check a prose document are removed, and what they checked that wasn't a document is kept.
 
 **Must:**
 - Delete `spec/readme_spec.rb` and its line in `.rubocop.yml`.
 - Keep its two expectations about `compose.yaml` and `config/deploy.yml` as two new examples in `spec/image_publishing_spec.rb`, asserting the same strings against each file's text (AC-4.2).
+- Remove `describe "docs/releasing.md"` from `spec/image_publishing_spec.rb` (AC-4.2).
+- Remove the two document examples from `spec/design_system_files_spec.rb`, and from its first example the expectations about documents, keeping the ones about stylesheets, fonts and logo images (AC-4.3).
+- Remove `describe "the repository around it (AC-4.4)"` from `spec/export_format_document_spec.rb` (AC-4.4).
+- Add the rule to `.claude/rules/testing.md`, so later plans don't add such examples again (AC-4.7).
 
 **Must not:**
-- Replace it with another check of the README's wording, links or structure.
-- Change a past spec's `plan.md` or `verification.md` that names the file; they record what was true then.
-- Remove or change an existing example in any spec file, `spec/image_publishing_spec.rb`'s 23 included.
+- Replace any of them with another check of a document's wording, links, structure or existence.
+- Change a past spec's `plan.md` or `verification.md` that names a removed example; they record what was true then.
+- Remove or change any other example: the export format's nine and sixteen, the configuration checks and the checks of code files stay as they are.
+- Change the documents those examples read (`docs/releasing.md`, the design system's documents, the ADR index).
 
 ## Non-Functional Requirements
 
@@ -236,22 +247,23 @@ The stale phrase in `CLAUDE.md`'s Project Status is corrected, and a README corr
 ### Security
 
 - Neither file gains a secret, a real host name, a real email address or a credential. Examples keep their placeholders (`you@example.com`, `X.Y.Z`, `192.168.0.1`).
-- The safety warnings already in the README (the first person to reach an instance becomes its admin; signing in over plain HTTP; never running a plain `bin/kamal deploy` against the published registry) keep their meaning and their prominence. No test pins them once `spec/readme_spec.rb` is gone, so the record states for each that its text and position are unchanged (AC-3.8).
+- The safety warnings already in the README (the first person to reach an instance becomes its admin; signing in over plain HTTP; never running a plain `bin/kamal deploy` against the published registry) keep their meaning and their prominence. No test pins them once `spec/readme_spec.rb` is gone (decision 3), so the record states for each that its text and position are unchanged (AC-3.8).
 - The sweep reads no off-limits file.
 
 ### Reliability
 
-- The published image is unaffected. After this PR `bin/ci` reads `README.md` only through `spec/export_format_document_spec.rb` (the link to the export format) and `CLAUDE.md` through `spec/design_system_files_spec.rb`; both keep passing.
+- The published image is unaffected. After this PR no example reads `README.md` or `CLAUDE.md`, so no edit to either can fail `bin/ci`.
+- Past specs' document criteria (in specs 004, 007, 011, 012, 013, 014, 015, 017 and 019) lose their automated evidence. Their documents are not changed here, and nothing in the suite keeps them as they are from now on.
 
 ### Testability
 
-- No example is added for the README; the evidence is the sweep record and a passing `bin/ci`. Foundation principle 5 ("new or changed behavior ships with tests") is met because no behaviour changes, and the examples removed tested a document's wording, not behaviour (decision 3).
+- No example is added for the README; the evidence is the sweep record and a passing `bin/ci`. Foundation principle 5 ("new or changed behavior ships with tests") is met because no behaviour changes, and the examples removed tested documents, not behaviour (decisions 3 and 7).
 - Each of the two new examples (AC-4.2) is shown to fail by a temporary working-tree edit, reverted afterwards: the Compose value changed to `"true"`, the `deploy.yml` comment line deleted. The failure output is in `verification.md`.
 
 ### Roadmap rules
 
 - **Hosted-door rules:** none applies. The spec adopts no source, adds no admin page, adds no setting, and costs an account nothing in storage or background work.
-- **One outcome, one PR:** the outcome is "the README says what Collector is today". The `CLAUDE.md` changes are the same false claims in a second file, and the README's spec goes with them by the maintainer's ruling (decision 3). The PR closes #63.
+- **One outcome, one PR:** the outcome is "the README says what Collector is today". The `CLAUDE.md` changes are the same false claims in a second file, The removal of the prose-document checks is a second outcome, which the spec rules would split into its own spec; the maintainer ruled that it is done here (decision 7). The PR closes #63.
 - **Export covers it:** no collector-owned data is added, so the export format doesn't change.
 
 ## Error Scenarios
@@ -261,10 +273,11 @@ The stale phrase in `CLAUDE.md`'s Project Status is corrected, and a README corr
 | The README and the code disagree, and the code is what's wrong (a spec or ADR states the behaviour the README describes; without one, the next row applies) | The README is left as it is and the record lists the claim as left stale, with the evidence. The maintainer decides whether it becomes an issue |
 | A correction would need a decision (two readings are possible, the claim is true but misleading by where it sits, or the true text would contradict a ruling in the roadmap) | The claim is left unchanged and put to the maintainer before the PR is marked ready. The record carries the ruling, and the correction if one was ruled |
 | A claim can't be checked, or is about an off-limits file | It is left unchanged and listed in the record with the reason |
-| A correction changes the sentence that `spec/export_format_document_spec.rb` expects (the link to `docs/export-format/README.md`) | The link's address is kept as it is, so the example keeps passing; that spec file is not changed |
+| An example mixes a document expectation with one about code, configuration or assets (the design system's first example) | Only the document expectations are removed; the example keeps the rest and is renamed to say what it still checks |
+| Removing an example leaves a `let`, helper or `require` unused in its file | The unused definition is removed with it, and nothing else in the file changes |
 | Something exists and the README doesn't mention it | It is listed in the record as a gap. The README is not extended and no issue is opened |
 | A section link's target heading doesn't exist | The link is corrected to the existing heading it meant; no heading is renamed to fit the link |
-| The sweep finds nothing stale beyond what this spec already names | The record says so, section by section. The PR changes the introduction, the single-spec example in both files, the `CLAUDE.md` sentence, the two spec files and `.rubocop.yml` (Story 4), and adds this spec's `plan.md` and `verification.md` |
+| The sweep finds nothing stale beyond what this spec already names | The record says so, section by section. The PR changes the introduction, the single-spec example in both files, the `CLAUDE.md` sentence, the four spec files, `.rubocop.yml` and `.claude/rules/testing.md` (Story 4), and adds this spec's `plan.md` and `verification.md` |
 
 ## Open Questions
 
@@ -274,7 +287,7 @@ None.
 
 - A sweep of `CLAUDE.md` like the README's (decision 4).
 - A "Using Collector" section (the collection page, adding a card, lots). The README has never had one; the sweep records it as a gap.
-- An automated check of the README's wording, links or section anchors (decision 3).
-- The other file-shape specs (`spec/image_publishing_spec.rb`, `spec/project_config_spec.rb`, `spec/design_system_files_spec.rb`, the export format's). They check configuration and documents that the app or its tooling depends on, and are not touched beyond AC-4.2.
+- An automated check of any prose document's wording, links or section anchors (decisions 3 and 7).
+- The checks that stay (decision 7): the export format's document, schema and examples; the configuration files; the code files. Whether the export format's document should also leave the suite was put to the maintainer, who kept it.
 - Making "avatar menu" and "account menu" one name across the README.
 - Updating the introduction when catalog search opens to visitors (issue #59) or when export and import land (issues #38 to #40). Those specs change the README themselves.
