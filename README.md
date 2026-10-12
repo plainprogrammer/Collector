@@ -261,7 +261,7 @@ that local copy; the app never calls Scryfall while rendering a page.
 admin and open **Catalog** (in the account menu, or under More on a phone). Press
 **Refresh now** and the page shows the download and the sync as they go, without reloading.
 Until then, search and the scanner say that the catalog hasn't been loaded. Nothing downloads
-until you start it, so set the languages below first if you want more than English.
+until you start it or the weekly schedule first runs, so set the languages below first if you want more than English.
 
 You can also queue the refresh from a shell:
 
