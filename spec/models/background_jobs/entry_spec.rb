@@ -105,6 +105,17 @@ RSpec.describe BackgroundJobs::Entry, :solid_queue, type: :model do
       expect(entry(finish_job(job)).attempts).to eq(1)
     end
 
+    # A worker that shuts down gracefully hands its claimed jobs back to the queue (SolidQueue::ClaimedExecution#release)
+    # with the queue's record as it was, so nothing is left of the run it cut short.
+    it "doesn't count again a run cut short by a graceful shutdown", :aggregate_failures do
+      job = claim_job(queue_job(MTG::Art::BuildJob))
+      expect(entry(job)).to have_attributes(state: :running, attempts: 1)
+
+      job.claimed_execution.process.deregister
+      expect(entry(job)).to have_attributes(state: :queued, attempts: 0)
+      expect(entry(claim_job(job))).to have_attributes(state: :running, attempts: 1)
+    end
+
     context "with a job that retries itself" do
       before do
         stub_const("RetryingJob", Class.new(ApplicationJob) do
