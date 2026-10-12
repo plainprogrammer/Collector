@@ -36,4 +36,17 @@ RSpec.describe "Design system files" do
   it "removes feature 002's ad-hoc catalog styles" do
     expect(root.join("app/assets/stylesheets/application.css").read).not_to include(".catalog")
   end
+
+  describe "the image fit override (spec 019)" do
+    let(:additions) { root.join("app/assets/stylesheets/collector/additions.css").read }
+    let(:block) { additions[%r{/\* -+ Image fit \(spec 019\).*?(?=\n\n/\* -|\z)}m] }
+
+    it "keeps the rules in one block of their own, with no colour literal or font (AC-4.3)", :aggregate_failures do
+      expect(additions.scan("spec 019").size).to eq(1)
+      expect(block).to include(".c-tile__media img, .c-item__image img { object-fit:contain; }",
+        "img.c-table__thumb { height:auto; object-fit:contain; }", ".c-item__image { position:relative; }")
+      expect(block.scan(/^[^\s\/].*\{/).size).to eq(3)
+      expect(block).not_to match(/#\h{3,8}\b|rgba?\(|hsla?\(|font/i)
+    end
+  end
 end

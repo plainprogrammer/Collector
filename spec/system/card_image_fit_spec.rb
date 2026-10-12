@@ -123,6 +123,22 @@ RSpec.describe "Card image fit", :card_images, type: :system do
         expect(fits.flat_map(&:faults)).to be_empty
       end
     end
+
+    it "keeps the fallback inside its own 63:88 slot, clear of another face's image (AC-2.5)", :aggregate_failures do
+      user
+      printing = create(:mtg_printing)
+      printing.update!(faces: [ { "name" => "Front", "image_uris" => { "normal" => card_image_address("front") } },
+        { "name" => "Back", "image_uris" => {} } ])
+      visit catalog_entry_path(printing.entry)
+      expect(page).to have_css(".c-item__image", count: 2)
+
+      slots = card_slot_boxes(".c-item__image")
+      fallback = card_slot_boxes(".c-item__image .c-tile__missing").sole
+      expect(slots.pluck("box").uniq.size).to eq(1)
+      expect(slots.last["box"][1]).to be_within(0.1).of(slots.last["box"][0] * 88 / 63.0)
+      expect(fallback["outer"]).to eq(slots.last["box"])
+      expect(fallback["top"]).to be_within(0.01).of(slots.last["top"] + 1) # inside the slot's 1px border
+    end
   end
 
   describe "the table thumbnail" do

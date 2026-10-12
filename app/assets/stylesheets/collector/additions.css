@@ -71,6 +71,7 @@
    shows the slot's surface-sunken ground. */
 .c-tile__media img, .c-item__image img { object-fit:contain; } /* the export crops with cover */
 img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches: the tag's height="34" beats aspect-ratio */
+.c-item__image { position:relative; } /* holds the missing-image fallback inside its own slot */
 
 /* ---------- Select inside the filter bar ---------- */
 .c-select select { height:28px; max-width:220px; padding:0 var(--space-2); background:var(--surface-raised); color:var(--ink);
