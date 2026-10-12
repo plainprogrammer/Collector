@@ -1,7 +1,7 @@
 # Feature 017: Export Format
 
 **Status:** Approved
-**Version:** 1.1.2
+**Version:** 1.2.0
 **Created:** 2026-10-11
 **Last Updated:** 2026-10-11
 **Branch:** `017-export-format`
@@ -17,6 +17,7 @@
 | 1.1.0 | 2026-10-11 | Spec review revisions (Fable, Mode A, NEEDS REVISION), awaiting the maintainer's approval. **Finish is not a per-type list:** the application has a condition vocabulary per type, but a finish is whatever the source lists for that printing (FR-5, FR-6, FR-8, AC-4.2). **Not recorded is `null`:** finish, condition and price paid are always present, `null` when not recorded, never an empty string (FR-5, Error Scenarios). **Price paid is per copy** and has one written form with no leading zeros (FR-5). **Times have one written form** (FR-2, FR-5). **The coverage guard has a unit:** tables that belong to an account or a user, each exported or left out, with the columns an exported table leaves out (FR-9, AC-3.4); sign-in sessions and the dates an account and user were created join the left-out list. **Comparisons are exact** (FR-7). **Retired entries** are resolvable (Error Scenarios). **Which name** the descriptive field carries (FR-6). **ACs checked by reading** are marked, and FR-10 lists the automated ones; AC-1.3 names what it searches for; AC-4.4 (a restatement of AC-2.1 and AC-2.2) is dropped and AC-4.5 renumbered. **Proposed, reverses part of decision 6:** a new field that holds collector-owned data raises the version (FR-8) |
 | 1.1.1 | 2026-10-11 | Maintainer ruling, relayed by the coordinator: FR-8's narrowed rule stands. A new field that holds collector-owned data raises `format_version`; only information-only fields are free. Recorded as decision 14 and removed from Open Questions |
 | 1.1.2 | 2026-10-11 | Approved by the maintainer as it stands, relayed by the coordinator, including every item that was under Open Questions (now decisions 15 to 19). No requirement changed |
+| 1.2.0 | 2026-10-11 | Plan additions, approved by the maintainer with the plan (decision 20). **A repeated key** in one object makes a file not well-formed (FR-1, Error Scenarios). **A time must be a real moment** (FR-2, Error Scenarios). **Accounts** join the coverage table as nothing to export, with each column left out, so a column added later fails the guard (FR-9, AC-3.5). **The writer's name:** the optional header field names any program and its version (FR-2). **No byte order mark** (FR-1). **The collection view** is required and not blank (Error Scenarios). The field names are fixed by the plan and the format document |
 
 ---
 
@@ -109,7 +110,7 @@ Most of this feature is a document, so some criteria can only be checked by read
 - [ ] **AC-3.2** **(review)** Given the format document When an author looks for how to extend the format Then it lists the steps a spec takes in its own PR: describe the new data in the document, add it to the schema and the examples, add it to the coverage table (FR-9), apply the versioning rule, and record a version bump in the document's version history.
 - [ ] **AC-3.3** **(review)** Given the format document When its version history is read Then it has an entry for version 1 with its date, and names the two changes already expected: locations, and shared collections (which will raise the version, per ADR 0017).
 - [ ] **AC-3.4** Given the application's database schema When a table that belongs to an account or to a user is missing from the format document's coverage table, or an exported table has a column that the table neither maps to the format nor lists as left out Then CI fails and names the table or column.
-- [ ] **AC-3.5** Given the coverage table When it is read Then lots and users are marked exported, with the left-out columns of FR-9, and scanner sittings, scanner sitting entries, bulk selections, bulk selection marks, bulk removals and sessions are marked left out, each with its reason.
+- [ ] **AC-3.5** Given the coverage table When it is read Then lots and users are marked exported, with the left-out columns of FR-9, accounts is marked nothing to export with every column left out, and scanner sittings, scanner sitting entries, bulk selections, bulk selection marks, bulk removals and sessions are marked left out, each with its reason.
 
 ### Story 4: The format can't drift from its document
 
@@ -129,7 +130,8 @@ Most of this feature is a document, so some criteria can only be checked by read
 ### FR-1: One file, one account's collection
 
 **Must:**
-- Be a single JSON document, encoded as UTF-8.
+- Be a single JSON document, encoded as UTF-8 with no byte order mark.
+- Hold no key twice in one object.
 - Describe exactly one account's collection at one moment.
 - Be valid with no lots.
 
@@ -143,8 +145,9 @@ Most of this feature is a document, so some criteria can only be checked by read
 - Carry a fixed format name that identifies the file as a Collector export, so that a reader can refuse any other JSON.
 - Carry `format_version`, a whole number. This spec defines version 1.
 - Carry the moment of export, in the time form below.
-- Allow, but not require, the Collector version that wrote the file. It is information only.
+- Allow, but not require, the name and version of the program that wrote the file. It is information only.
 - Write every time in the file in one form: RFC 3339 in UTC with a `Z` suffix and no fraction of a second (`2026-10-11T12:34:56Z`). An offset, a fraction of a second or any other form is not well-formed. A writer drops the fraction; it doesn't round.
+- Require every time to be a real moment: 30 February isn't one.
 
 **Must not:**
 - Give a reader any reason to behave differently on the export time or the writer's version.
@@ -239,7 +242,8 @@ The format document carries a coverage table: one row for every table in the app
 - Bulk removals (a short-lived way to undo; the lots they would restore aren't in the collection).
 - Sessions (sign-in state on one instance).
 
-The accounts table has no data of its own beyond its id and dates; the document says so.
+**Must** mark as nothing to export:
+- **Accounts.** The table has no data of its own beyond its id and dates. Each of its columns is listed as left out, so a column added later fails the guard.
 
 ### FR-10: Deliverables
 
@@ -285,12 +289,13 @@ These are properties of a file. What a reader shows a person for each is import'
 
 | Scenario | Classification |
 |----------|----------------|
-| The file isn't JSON, or isn't UTF-8 | Not well-formed |
+| The file isn't JSON, isn't UTF-8, or starts with a byte order mark | Not well-formed |
+| An object in the file holds the same key twice | Not well-formed |
 | The format name is missing or is another name | Not well-formed |
 | `format_version` is missing, or isn't a whole number of 1 or more | Not well-formed |
 | `format_version` is higher than the reader knows | The reader can't judge the file and refuses it (FR-8) |
 | The export time, profile, currency or list of lots is missing | Not well-formed |
-| The profile's name or email address is missing, or empty after trimming | Not well-formed |
+| The profile's name, email address or collection view is missing, or empty after trimming | Not well-formed |
 | The currency isn't three uppercase letters | Not well-formed |
 | A lot has no entry, or its entry has no collectible type or no id | Not well-formed |
 | A lot's entry lacks a descriptive field, or has an empty one | Not well-formed |
@@ -298,6 +303,7 @@ These are properties of a file. What a reader shows a person for each is import'
 | A lot's finish, condition or price paid is left out, or is an empty or whitespace-only string | Not well-formed |
 | A lot's price paid isn't in FR-5's form (`12.5`, `"12.5"`, `"012.50"`, `"-1.00"`, `"$3.00"`, `"1,200.00"`) | Not well-formed |
 | A time isn't in FR-2's form (an offset, a fraction of a second, a date alone) | Not well-formed |
+| A time has FR-2's form but is no real moment (30 February, hour 24) | Not well-formed |
 | A lot's time last changed is earlier than its time added | Not well-formed |
 | Two lots have the same lot identity | Not well-formed |
 | The file holds a field the format doesn't define | Well-formed; the field is ignored |
@@ -315,7 +321,7 @@ None. The points settled while writing and in review were approved with the spec
 
 ## Decisions
 
-Agreed by the maintainer on 2026-10-11: 1 to 13 before this spec was written, 14 after its review, and 15 to 19 with its approval. ADR 0020 records the format decision itself.
+Agreed by the maintainer on 2026-10-11: 1 to 13 before this spec was written, 14 after its review, 15 to 19 with its approval, and 20 with the plan's. ADR 0020 records the format decision itself.
 
 | # | Question | Ruling |
 |---|---|---|
@@ -338,6 +344,7 @@ Agreed by the maintainer on 2026-10-11: 1 to 13 before this spec was written, 14
 | 17 | How is "not recorded" written? | Finish, condition and price paid are always present and `null` when not recorded (FR-5). |
 | 18 | Is the coverage table and its CI guard part of this slice? | Yes (FR-9, AC-3.4). It checks names, not meaning; it is how "export covers it" is enforced on later specs. |
 | 19 | Are the dates an account and user were created exported? | No. They are facts about the instance (FR-3, FR-9). |
+| 20 | Does the plan's reading of the format stand? | Yes: the field names in the format document; a repeated key and a time that is no real moment are not well-formed; accounts are in the coverage table; the writer's name may be any program's; no byte order mark; the collection view is required. |
 
 ## Out of Scope (Future Considerations)
 
