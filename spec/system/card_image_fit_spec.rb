@@ -17,6 +17,12 @@ RSpec.describe "Card image fit", :card_images, type: :system do
     owned_printing(name, account: user.account, **attributes).tap { |lot| lot.entry.update!(image_url: card_image_address) }
   end
 
+  def two_faced_entry
+    create(:mtg_printing).tap do |printing|
+      printing.update!(faces: %w[front back].map { |face| { "name" => face.capitalize, "image_uris" => { "normal" => card_image_address(face) } } })
+    end.entry
+  end
+
   describe "tiles" do
     let(:images) { ".c-grid .c-tile__media img" }
 
@@ -27,6 +33,43 @@ RSpec.describe "Card image fit", :card_images, type: :system do
       expect(page).to have_css("#{images}[src='#{card_image_address}']", count: 1)
       expect(page.evaluate_script("document.querySelector(#{images.to_json}).naturalWidth")).to eq(0)
       expect(card_image_fits(images, pictures: [ wide ]).sole.natural).to eq([ 40.0, 20.0 ])
+    end
+
+    it "shows images of any proportions whole, in equal 63:88 slots, in both themes (AC-1.1, AC-1.2, AC-1.5, AC-1.6)", :aggregate_failures do
+      %w[Bolt Opt Shock].each { |name| owned_with_image(name) }
+      visit collection_path(view: "grid")
+      expect(page).to have_css(images, count: 3)
+
+      fits = card_image_fits(images, pictures: [ square, tall, wide ])
+      expect(fits.flat_map(&:faults)).to be_empty
+      expect(fits.map(&:slot).uniq.size).to eq(1)
+
+      use_dark_theme
+      dark = card_image_fits(images)
+      expect(dark.flat_map(&:faults)).to be_empty
+      expect(dark.first.ground).not_to eq(fits.first.ground)
+    end
+
+    it "shows the whole image in search results, faded for a card you don't own (AC-1.3, AC-1.8)", :aggregate_failures do
+      user
+      create(:mtg_printing, entry: create(:catalog_entry, name: "Lightning Bolt", image_url: card_image_address))
+      visit catalog_entries_path(q: "bolt")
+      expect(page).to have_css(images, count: 1)
+
+      expect(card_image_fits(images, pictures: [ square ]).flat_map(&:faults)).to be_empty
+      expect(page.evaluate_script("getComputedStyle(document.querySelector(#{images.to_json})).opacity")).to eq("0.45")
+    end
+
+    it "shows the whole image at phone width (AC-1.1, AC-1.2)", :aggregate_failures do
+      %w[Bolt Opt].each { |name| owned_with_image(name) }
+      visit collection_path(view: "grid")
+
+      expect(open_in_narrow_frame(collection_path(view: "grid"), width: 390, height: 844, ready: ".c-grid")).to eq([ 390, true ])
+      within_narrow_frame do
+        fits = card_image_fits(images, pictures: [ square, tall ])
+        expect(fits.size).to eq(2)
+        expect(fits.flat_map(&:faults)).to be_empty
+      end
     end
 
     it "keeps the fallback, the quantity badge and the slot's shape (AC-1.7, AC-1.8)", :aggregate_failures do
@@ -47,6 +90,38 @@ RSpec.describe "Card image fit", :card_images, type: :system do
           return [ badge.top - slot.top, slot.right - badge.right ] })()
       JS
       expect(badge).to eq([ 5, 5 ])
+    end
+  end
+
+  describe "the card page" do
+    let(:images) { ".c-item__image img" }
+
+    it "shows each face's image whole in its own 63:88 slot, in both themes (AC-2.1, AC-2.3, AC-2.4)", :aggregate_failures do
+      user
+      visit catalog_entry_path(two_faced_entry)
+      expect(page).to have_css(images, count: 2)
+      expect(page.evaluate_script("window.innerWidth")).to eq(1280)
+
+      fits = card_image_fits(images, pictures: [ square, tall ])
+      expect(fits.flat_map(&:faults)).to be_empty
+
+      use_dark_theme
+      dark = card_image_fits(images)
+      expect(dark.flat_map(&:faults)).to be_empty
+      expect(dark.first.ground).not_to eq(fits.first.ground)
+    end
+
+    it "shows the whole image at phone width, with no sideways scroll (AC-2.2)", :aggregate_failures do
+      user
+      entry = two_faced_entry
+      visit catalog_entry_path(entry)
+
+      expect(open_in_narrow_frame(catalog_entry_path(entry), width: 390, height: 844, ready: ".c-item")).to eq([ 390, true ])
+      within_narrow_frame do
+        fits = card_image_fits(images, pictures: [ wide, tall ])
+        expect(fits.size).to eq(2)
+        expect(fits.flat_map(&:faults)).to be_empty
+      end
     end
   end
 end

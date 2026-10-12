@@ -31,6 +31,14 @@ RSpec.describe "Scanner readings", type: :request do
       expect(response.body).not_to include("Matched by its collector line")
     end
 
+    it "puts a candidate's image in the tile slot, with no class or style of its own (spec 019 AC-1.4)", :aggregate_failures do
+      bolt.update!(image_url: "https://cards.scryfall.io/normal/front/b/o/bolt.jpg")
+      read("Lightning Bolt", "")
+      image = Nokogiri::HTML5(response.body).at_css(".c-scanner__candidate .c-tile__media > img")
+      expect(image&.[]("src")).to eq(bolt.image_url)
+      expect([ image["class"], image["style"] ]).to eq([ nil, nil ])
+    end
+
     it "says when the collector line matches several printings or none (AC-3.3)", :aggregate_failures do
       create(:mtg_printing, entry: create(:catalog_entry, identity: bolt.identity, name: "Lightning Bolt", set: mom, number: "123"))
       read("Lightning Bolt", "R 0123\nMOM • EN")
