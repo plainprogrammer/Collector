@@ -42,6 +42,26 @@ RSpec.describe Catalog::Operation::Queue, :solid_queue, type: :model do
     expect(queue.claimed?("another-job")).to be(false)
   end
 
+  it "knows when no unfinished job has an Active Job id any more: finished, discarded or never queued", :aggregate_failures do
+    finished = finish_job(queue_job(Catalog::RefreshJob, "mtg", "manual"))
+    failed = fail_job(queue_job(Catalog::RefreshJob, "mtg", "manual"))
+    waiting = queue_job(Catalog::RefreshJob, "mtg", "manual")
+
+    expect(queue.gone?(finished.active_job_id)).to be(true)
+    expect(queue.gone?("never-queued")).to be(true)
+    expect(queue.gone?(failed.active_job_id)).to be(false)
+    expect(queue.gone?(waiting.active_job_id)).to be(false)
+    expect(queue.job_ids).to contain_exactly(failed.active_job_id, waiting.active_job_id)
+  end
+
+  it "reads the queue once, when asked to or first asked about it, and says when", :aggregate_failures do
+    freeze_time { expect(queue.load.read_at).to eq(Time.current) }
+    expect(queue.load).to be(queue)
+    queue_job(Catalog::RefreshJob, "mtg", "manual")
+
+    expect(queue).not_to be_any
+  end
+
   it "gives the time a job waiting to retry is due" do
     freeze_time do
       queue_job(Catalog::RefreshJob, "mtg", "manual", wait: 5.minutes)

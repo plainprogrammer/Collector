@@ -16,10 +16,19 @@ class Catalog::RefreshOperation < Catalog::Operation
   def job_arguments = [ collectible_type, "manual" ]
   def queue_argument = collectible_type
 
+  # Read after the queue (as every run this judges is): a job's row is finished only after its run is closed, so a run
+  # still marked running whose job the queue no longer held was left behind, not finished between the two reads.
   def run
     return @run if defined?(@run)
 
+    queue.load
     @run = Catalog::RefreshRun.for_type(collectible_type).attempted.recent.first
+  end
+
+  # The type's latest runs, skipped ones included, for #status_label and #status_line.
+  def recent_runs(limit)
+    queue.load
+    Catalog::RefreshRun.for_type(collectible_type).recent.limit(limit).to_a
   end
 
   # :never, :queued, :running, :stalled, :interrupted, :applied, :skipped or :failed.
@@ -38,8 +47,8 @@ class Catalog::RefreshOperation < Catalog::Operation
   def failed_job? = (state == :failed && super) || (state == :interrupted && job_failed?(run))
 
   # What `catalog:status` and the recent-runs list call a run: a stalled one is interrupted unless its job is still
-  # claimed by a worker, and a running one is interrupted once the queue has failed its job (spec 015 AC-3.2, AC-3.5,
-  # AC-3.6).
+  # claimed by a worker, and a running one is interrupted once the queue has failed its job or no longer holds it
+  # (spec 015 AC-3.2, AC-3.5, AC-3.6).
   def status_label(run) = run.status_label(**job_state(run))
 
   def status_line(run) = run.status_line(**job_state(run))
@@ -83,15 +92,20 @@ class Catalog::RefreshOperation < Catalog::Operation
 
   private
     # A worker that dies never closes its run, and the queue then fails the job it held: that run is interrupted at
-    # once, without waiting for it to stall.
+    # once, without waiting for it to stall. So is one whose job has left the queue (the failed job was discarded).
     def running_state
-      return :interrupted if job_failed?(run)
+      return :interrupted if job_ended?(run)
       return :running unless run.stalled?
 
       job_claimed?(run) ? :stalled : :interrupted
     end
 
-    def job_state(run) = { job_claimed: job_claimed?(run), job_failed: job_failed?(run) }
+    def job_state(run) = { job_claimed: job_claimed?(run), job_ended: job_ended?(run) }
+
+    def job_ended?(run) = job_failed?(run) || job_gone?(run)
+
+    # Only a run that started before the queue was read is judged by that reading.
+    def job_gone?(run) = run.job_id.present? && run.started_at <= queue.read_at && queue.gone?(run.job_id)
 
     def job_claimed?(run) = run.job_id.present? && queue.claimed?(run.job_id)
 

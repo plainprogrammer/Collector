@@ -156,10 +156,80 @@ RSpec.describe Catalog::RefreshOperation, :solid_queue, type: :model do
     end
 
     it "is still running when the failed job is another run's", :aggregate_failures do
-      crashed.update!(job_id: "job-2")
+      crashed.update!(job_id: claim_job(queue_job(Catalog::RefreshJob, "mtg", "manual")).active_job_id)
 
       expect(operation).to have_attributes(state: :running, startable?: false, failed_job?: false)
       expect(operation.status_label(crashed)).to eq("running")
+    end
+  end
+
+  # Its failed job was discarded, say: nothing will close the run, and nothing is working on it (issue #60).
+  context "when a running run's job is no longer in the queue" do
+    let!(:left) { running(stage: "sync", started_at: 8.minutes.ago, heartbeat_at: 7.minutes.ago, job_id: "job-1") }
+
+    it "is interrupted at once, with no failed job to point at, and can start again", :aggregate_failures do
+      expect(operation).to have_attributes(state: :interrupted, summary: "Interrupted while syncing cards.", failed_job?: false)
+      expect(operation).not_to be_in_flight
+      expect(operation).to be_startable
+      expect(operation.status_label(left)).to eq("interrupted")
+    end
+
+    it "is interrupted when the queue's record of the job says it finished" do
+      left.update!(job_id: finish_job(claim_job(queue_job(Catalog::RefreshJob, "mtg", "manual"))).active_job_id)
+
+      expect(operation.state).to eq(:interrupted)
+    end
+
+    it "is still running while its job waits in the queue to run again, as after a graceful restart" do
+      left.update!(job_id: queue_job(Catalog::RefreshJob, "mtg", "manual").active_job_id)
+
+      expect(operation).to have_attributes(state: :running, startable?: false)
+    end
+
+    it "keeps the 15-minute rule for a run that recorded no job", :aggregate_failures do
+      left.update!(job_id: nil)
+
+      expect(operation).to have_attributes(state: :running, startable?: false)
+      expect(operation.status_label(left)).to eq("running")
+    end
+  end
+
+  # A job's row is finished only after its run is closed, so the queue is read before the run: a run still marked
+  # running after that read was left behind, never one whose job ended between the two reads.
+  context "when the job ends normally while the page is being put together" do
+    let(:job) { claim_job(queue_job(Catalog::RefreshJob, "mtg", "manual")) }
+    let!(:run) { running(stage: "index", job_id: job.active_job_id) }
+
+    it "never calls a run interrupted that it read before its job finished", :aggregate_failures do
+      operation.run
+      run.finish!(:applied)
+      finish_job(job)
+
+      expect(operation.state).to eq(:running)
+      expect(operation.status_label(operation.run)).to eq("running")
+    end
+
+    it "shows the run as it ended when the job finished before the queue was read" do
+      run.finish!(:applied)
+      finish_job(job)
+
+      expect(operation.state).to eq(:applied)
+    end
+
+    it "judges the recent runs by the queue as it was before they were read", :aggregate_failures do
+      recent = operation.recent_runs(5)
+      run.finish!(:applied)
+      finish_job(job)
+
+      expect(recent).to eq([ run ])
+      expect(operation.status_label(recent.first)).to eq("running")
+    end
+
+    it "doesn't judge a run that started after the queue was read by that reading" do
+      operation.queue.load
+      later = running(job_id: "queued-since", started_at: 1.second.from_now)
+
+      expect(operation).to have_attributes(run: later, state: :running)
     end
   end
 

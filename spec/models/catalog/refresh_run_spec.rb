@@ -60,6 +60,23 @@ RSpec.describe Catalog::RefreshRun, type: :model do
       expect(other.reload).to be_running
     end
 
+    it "closes a running run whose job is no longer in the queue at once and proceeds (issue #60)", :aggregate_failures do
+      gone = create(:catalog_refresh_run, :running, started_at: 2.minutes.ago, heartbeat_at: 1.minute.ago, job_id: "job-1")
+
+      run = described_class.start!("mtg", trigger: "manual", job_id: "job-2", queued_job_ids: [ "job-2" ])
+
+      expect(gone.reload).to have_attributes(status: "failed", message: "interrupted")
+      expect(run).to be_running
+    end
+
+    it "skips while the running run's job is still in the queue, or the run recorded no job (AC-3.4)", :aggregate_failures do
+      create(:catalog_refresh_run, :running, started_at: 2.minutes.ago, heartbeat_at: 1.minute.ago, job_id: "job-1")
+      expect(described_class.start!("mtg", trigger: "manual", job_id: "job-2", queued_job_ids: %w[job-1 job-2])).to be_skipped
+
+      described_class.running.sole.update!(job_id: nil)
+      expect(described_class.start!("mtg", trigger: "manual", job_id: "job-3", queued_job_ids: [ "job-3" ])).to be_skipped
+    end
+
     it "never matches runs without a job id to a refresh started without one (AC-3.3)" do
       create(:catalog_refresh_run, :running, started_at: 2.minutes.ago, heartbeat_at: 1.minute.ago, job_id: nil)
 
@@ -125,12 +142,12 @@ RSpec.describe Catalog::RefreshRun, type: :model do
       expect(run.status_label(job_claimed: true)).to eq("running (no progress for 20 minutes)")
     end
 
-    it "is interrupted for a running run whose job the queue has failed, stalled or not (issue #60)", :aggregate_failures do
+    it "is interrupted for a running run whose job ended without closing it, stalled or not (issue #60)", :aggregate_failures do
       fresh = create(:catalog_refresh_run, :running, heartbeat_at: 1.minute.ago)
 
-      expect(fresh.status_label(job_failed: true)).to eq("interrupted")
-      expect(fresh.status_line(job_failed: true)).to include("  interrupted  ")
-      expect(create(:catalog_refresh_run, status: "applied").status_label(job_failed: true)).to eq("applied")
+      expect(fresh.status_label(job_ended: true)).to eq("interrupted")
+      expect(fresh.status_line(job_ended: true)).to include("  interrupted  ")
+      expect(create(:catalog_refresh_run, status: "applied").status_label(job_ended: true)).to eq("applied")
     end
 
     it "prints the label in the status line" do
