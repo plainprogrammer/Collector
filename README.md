@@ -1,10 +1,13 @@
 # Collector
 
 Collector is a self-hostable, multi-tenant web app for tracking collectibles, starting with
-Magic: The Gathering. It is at an early stage: alongside the stack, tests, CI, and deployment
-setup, it has a card catalog fed from Scryfall's bulk data and a public card search page at
-`/catalog/entries` (see [Card catalog](#card-catalog)). Accounts and collections are not built
-yet.
+Magic: The Gathering. Each person signs in to their own account and keeps their own collection.
+Cards come from a catalog fed from Scryfall's bulk data (see [Card catalog](#card-catalog)): you
+find a card by searching the catalog, or by reading it with the [card scanner](#card-scanner) on
+a phone, and add it to your collection. An admin manages users and sign-up (see
+[Accounts](#accounts)), starts and watches the catalog's refreshes, and sees, retries and
+discards background jobs. Collector is pre-1.0; the [roadmap](docs/roadmap.md) says what is
+built next.
 
 Built with Rails 8.1, SQLite, and Hotwire (Turbo + Stimulus via importmap and Propshaft; no
 Node.js). Background jobs, caching, and Action Cable use Solid Queue, Solid Cache, and Solid
