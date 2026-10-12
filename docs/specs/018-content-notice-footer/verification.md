@@ -73,7 +73,7 @@ this branch `spec/system` ran twice more (once alone, once in `bin/ci`), green b
 
 | Criterion | Result | Evidence |
 |---|---|---|
-| AC-1.1, AC-1.2, AC-1.9, AC-1.10 | Met | `requests/footer_spec.rb` "is on every page, after the main content" (13 pages); wording and addresses in `source_spec.rb` |
+| AC-1.1, AC-1.2, AC-1.9, AC-1.10 | Met | `requests/footer_spec.rb` "is on every page, after the main content" (12 pages); wording and addresses in `source_spec.rb` |
 | AC-1.3 | Met | "is on the first-run sign-up page", "is on the sign-in page and on open sign-up" |
 | AC-1.4 | Met | "is on the admin pages" (users, new user, edit user, catalog, jobs) |
 | AC-1.5 | Met | "is there while the catalog isn't loaded" |
@@ -130,6 +130,19 @@ blank card). Phone shots are a 390 × 844 frame scrolled to the end of the page.
   by script, which is what the suite's theme spec doesn't do (it uses the OS preference); both paths are covered
   between them.
 - Nothing else differs: no requirement, wording, file or commit message beyond the plan's.
+
+## Implementation review
+
+A read-only Fable review (sdd-review Mode B) of `8e89c3d..3507443` found the implementation **spec-aligned**, with
+nothing blocking: the code is byte-identical to the plan's blocks, and its own runs gave `99 examples, 0 failures`
+for the eight feature files, `1178 examples, 0 failures, 1 pending` for the whole suite (seed 9544) and no RuboCop
+offense. Its minor notes:
+
+- This document said 13 pages for AC-1.1; the example visits 12. Corrected above.
+- FR-2's "runs no query" example counts queries at the model (`Catalog::ContentNotice.lines` and each line's
+  parts), not around a page render. The partial and the layout's two lines make no database call, so the
+  requirement holds; the example would not catch a query added to the partial later. Left as it is, and recorded.
+- The red-then-green table and the three-seed runs are records of runs, which a read-only review can't repeat.
 
 ## Owed
 
