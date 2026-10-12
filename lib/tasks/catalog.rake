@@ -12,7 +12,8 @@ namespace :catalog do
     collectible_type = args[:collectible_type] || "mtg"
     source = Catalog.source_class(collectible_type)
     # A run reads as the admin catalog page words it: a stalled one interrupted, or still running when its job is
-    # (spec 015 AC-3.5); one whose job the queue has failed, or no longer holds, interrupted.
+    # (spec 015 AC-3.5); one whose job the queue has failed, or no longer holds, interrupted once it has made no
+    # progress for 2 minutes (AC-3.9).
     operation = Catalog::RefreshOperation.new(collectible_type)
     runs = operation.recent_runs(10)
     puts "No #{collectible_type} refresh runs yet." if runs.none?

@@ -47,13 +47,20 @@ RSpec.describe "catalog rake tasks", type: :task do # rubocop:disable RSpec/Desc
 
     it "marks a running run whose job the queue has failed interrupted, as the page does (issue #60)", :solid_queue do
       job = fail_job(claim_job(queue_job(Catalog::RefreshJob, "mtg", "manual")))
-      create(:catalog_refresh_run, :running, started_at: 2.minutes.ago, heartbeat_at: 1.minute.ago, job_id: job.active_job_id)
+      create(:catalog_refresh_run, :running, started_at: 5.minutes.ago, heartbeat_at: 3.minutes.ago, job_id: job.active_job_id)
 
       expect { Rake::Task["catalog:status"].invoke("mtg") }.to output(/  interrupted  manual/).to_stdout
     end
 
+    it "keeps such a run running while it recorded progress in the last 2 minutes, as the page does (issue #60)", :solid_queue do
+      job = fail_job(claim_job(queue_job(Catalog::RefreshJob, "mtg", "manual")))
+      create(:catalog_refresh_run, :running, started_at: 5.minutes.ago, heartbeat_at: 1.minute.ago, job_id: job.active_job_id)
+
+      expect { Rake::Task["catalog:status"].invoke("mtg") }.to output(/  running  manual/).to_stdout
+    end
+
     it "marks a running run whose job is no longer in the queue interrupted, as the page does (issue #60)" do
-      create(:catalog_refresh_run, :running, started_at: 2.minutes.ago, heartbeat_at: 1.minute.ago, job_id: "job-1")
+      create(:catalog_refresh_run, :running, started_at: 5.minutes.ago, heartbeat_at: 3.minutes.ago, job_id: "job-1")
 
       expect { Rake::Task["catalog:status"].invoke("mtg") }.to output(/  interrupted  manual/).to_stdout
     end

@@ -191,9 +191,23 @@ RSpec.describe "Admin catalog page", :solid_queue, type: :request do
         expect(page.at_css("[data-controller~='poll']")).to be_nil
       end
 
+      # The queue also fails the job of a worker it lost sight of (a suspended host) that then carries on.
+      it "keeps a run whose job the queue has failed running, and polling, while it recorded progress in the last 2 minutes", :aggregate_failures do
+        job = fail_job(claim_job(queue_job(Catalog::RefreshJob, "mtg", "manual")), SolidQueue::Processes::ProcessPrunedError.new(6.minutes.ago))
+        running(stage: "sync", started_at: 8.minutes.ago, heartbeat_at: 30.seconds.ago, job_id: job.active_job_id)
+
+        get admin_catalog_path
+
+        expect(text(section("refresh").at_css(".c-operation__summary"))).to eq("Running.")
+        expect(section("refresh").at_css("a")).to be_nil
+        expect(section("refresh").at_css("button")["disabled"]).to be_present
+        expect(text(panel.at_css(".c-runs li"))).to include("manual · running")
+        expect(page.at_css("main")["data-controller"]).to eq("poll")
+      end
+
       it "queues a refresh started while the crashed run is still marked running", :aggregate_failures do
         job = fail_job(claim_job(queue_job(Catalog::RefreshJob, "mtg", "manual")))
-        running(stage: "sync", job_id: job.active_job_id)
+        running(stage: "sync", started_at: 8.minutes.ago, heartbeat_at: 7.minutes.ago, job_id: job.active_job_id)
 
         expect { start("refresh") }.to change(SolidQueue::Job, :count).by(1)
         expect(flash[:notice]).to eq("Refresh queued.")
@@ -201,7 +215,7 @@ RSpec.describe "Admin catalog page", :solid_queue, type: :request do
 
       it "keeps the crashed run interrupted once its failed job is discarded, and lets a refresh start", :aggregate_failures do
         job = fail_job(claim_job(queue_job(Catalog::RefreshJob, "mtg", "manual")))
-        running(stage: "sync", job_id: job.active_job_id)
+        running(stage: "sync", started_at: 8.minutes.ago, heartbeat_at: 7.minutes.ago, job_id: job.active_job_id)
         job.failed_execution.discard
 
         get admin_catalog_path

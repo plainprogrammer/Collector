@@ -43,8 +43,8 @@ RSpec.describe Catalog::RefreshRun, type: :model do
       expect(run).to be_running
     end
 
-    it "closes a running run whose job the queue has failed at once and proceeds (issue #60)", :aggregate_failures do
-      crashed = create(:catalog_refresh_run, :running, started_at: 2.minutes.ago, heartbeat_at: 1.minute.ago, job_id: "job-1", stage: "sync")
+    it "closes a running run whose job the queue has failed, without waiting for it to stall, and proceeds (issue #60)", :aggregate_failures do
+      crashed = create(:catalog_refresh_run, :running, started_at: 5.minutes.ago, heartbeat_at: 3.minutes.ago, job_id: "job-1", stage: "sync")
 
       run = described_class.start!("mtg", trigger: "manual", job_id: "job-2", failed_job_ids: [ "job-1" ])
 
@@ -52,16 +52,36 @@ RSpec.describe Catalog::RefreshRun, type: :model do
       expect(run).to be_running
     end
 
+    # The queue fails the job of a worker it lost sight of (a suspended host, a paused container) while that worker may
+    # still be working: a run that recorded progress in the last 2 minutes is not judged by its job.
+    it "skips, leaving alone a run whose job the queue has failed but that recorded progress in the last 2 minutes (issue #60)", :aggregate_failures do
+      live = create(:catalog_refresh_run, :running, started_at: 5.minutes.ago, heartbeat_at: 1.minute.ago, job_id: "job-1")
+
+      run = described_class.start!("mtg", trigger: "manual", job_id: "job-2", failed_job_ids: [ "job-1" ])
+
+      expect(live.reload).to be_running
+      expect(run).to have_attributes(status: "skipped", message: "already running")
+    end
+
+    it "skips, leaving alone a run whose job is no longer in the queue but that recorded progress in the last 2 minutes (issue #60)", :aggregate_failures do
+      live = create(:catalog_refresh_run, :running, started_at: 5.minutes.ago, heartbeat_at: 1.minute.ago, job_id: "job-1")
+
+      run = described_class.start!("mtg", trigger: "manual", job_id: "job-2", queued_job_ids: [ "job-2" ])
+
+      expect(live.reload).to be_running
+      expect(run).to have_attributes(status: "skipped", message: "already running")
+    end
+
     it "leaves another type's run alone whatever job ids the queue has failed" do
-      other = create(:catalog_refresh_run, :running, collectible_type: "other", job_id: "job-1")
+      other = create(:catalog_refresh_run, :running, collectible_type: "other", started_at: 5.minutes.ago, job_id: "job-1")
 
       described_class.start!("mtg", trigger: "manual", job_id: "job-2", failed_job_ids: [ "job-1" ])
 
       expect(other.reload).to be_running
     end
 
-    it "closes a running run whose job is no longer in the queue at once and proceeds (issue #60)", :aggregate_failures do
-      gone = create(:catalog_refresh_run, :running, started_at: 2.minutes.ago, heartbeat_at: 1.minute.ago, job_id: "job-1")
+    it "closes a running run whose job is no longer in the queue, without waiting for it to stall, and proceeds (issue #60)", :aggregate_failures do
+      gone = create(:catalog_refresh_run, :running, started_at: 5.minutes.ago, heartbeat_at: 3.minutes.ago, job_id: "job-1")
 
       run = described_class.start!("mtg", trigger: "manual", job_id: "job-2", queued_job_ids: [ "job-2" ])
 
@@ -78,11 +98,15 @@ RSpec.describe Catalog::RefreshRun, type: :model do
       expect(run).to be_skipped
     end
 
-    it "skips while the running run's job is still in the queue, or the run recorded no job (AC-3.4)", :aggregate_failures do
-      create(:catalog_refresh_run, :running, started_at: 2.minutes.ago, heartbeat_at: 1.minute.ago, job_id: "job-1")
-      expect(described_class.start!("mtg", trigger: "manual", job_id: "job-2", queued_job_ids: %w[job-1 job-2])).to be_skipped
+    it "skips while the running run's job is still in the queue (AC-3.4)" do
+      create(:catalog_refresh_run, :running, started_at: 5.minutes.ago, heartbeat_at: 3.minutes.ago, job_id: "job-1")
 
-      described_class.running.sole.update!(job_id: nil)
+      expect(described_class.start!("mtg", trigger: "manual", job_id: "job-2", queued_job_ids: %w[job-1 job-2])).to be_skipped
+    end
+
+    it "skips while the running run recorded no job, whatever the queue holds (AC-3.4)" do
+      create(:catalog_refresh_run, :running, started_at: 5.minutes.ago, heartbeat_at: 3.minutes.ago, job_id: nil)
+
       expect(described_class.start!("mtg", trigger: "manual", job_id: "job-3", queued_job_ids: [ "job-3" ])).to be_skipped
     end
 
@@ -152,11 +176,18 @@ RSpec.describe Catalog::RefreshRun, type: :model do
     end
 
     it "is interrupted for a running run whose job ended without closing it, stalled or not (issue #60)", :aggregate_failures do
-      fresh = create(:catalog_refresh_run, :running, heartbeat_at: 1.minute.ago)
+      quiet = create(:catalog_refresh_run, :running, started_at: 5.minutes.ago, heartbeat_at: 3.minutes.ago)
 
-      expect(fresh.status_label(job_ended: true)).to eq("interrupted")
-      expect(fresh.status_line(job_ended: true)).to include("  interrupted  ")
+      expect(quiet.status_label(job_ended: true)).to eq("interrupted")
+      expect(quiet.status_line(job_ended: true)).to include("  interrupted  ")
       expect(create(:catalog_refresh_run, status: "applied").status_label(job_ended: true)).to eq("applied")
+    end
+
+    it "is still running for a run whose job ended but that recorded progress in the last 2 minutes (issue #60)", :aggregate_failures do
+      live = create(:catalog_refresh_run, :running, started_at: 5.minutes.ago, heartbeat_at: 1.minute.ago)
+
+      expect(live.status_label(job_ended: true)).to eq("running")
+      expect(live.status_line(job_ended: true)).to include("  running  ")
     end
 
     it "prints the label in the status line" do

@@ -155,6 +155,17 @@ RSpec.describe Catalog::RefreshOperation, :solid_queue, type: :model do
       expect { operation.start }.to change(SolidQueue::Job, :count).by(1)
     end
 
+    # The queue also fails the job of a worker it lost sight of while the host was suspended; that worker carries on.
+    it "is still running, and in flight, while the run recorded progress in the last 2 minutes", :aggregate_failures do
+      crashed.update!(heartbeat_at: 1.minute.ago)
+
+      expect(operation).to have_attributes(state: :running, summary: "Running.", failed_job?: false)
+      expect(operation.stages.map(&:state)).to eq(%i[done current pending pending])
+      expect(operation).to be_in_flight
+      expect(operation).not_to be_startable
+      expect(operation.status_label(crashed)).to eq("running")
+    end
+
     it "is still running when the failed job is another run's", :aggregate_failures do
       crashed.update!(job_id: claim_job(queue_job(Catalog::RefreshJob, "mtg", "manual")).active_job_id)
 
@@ -172,6 +183,14 @@ RSpec.describe Catalog::RefreshOperation, :solid_queue, type: :model do
       expect(operation).not_to be_in_flight
       expect(operation).to be_startable
       expect(operation.status_label(left)).to eq("interrupted")
+    end
+
+    it "is still running, and in flight, while the run recorded progress in the last 2 minutes", :aggregate_failures do
+      left.update!(heartbeat_at: 1.minute.ago)
+
+      expect(operation).to have_attributes(state: :running, summary: "Running.")
+      expect(operation).to be_in_flight
+      expect(operation.status_label(left)).to eq("running")
     end
 
     it "is interrupted when the queue's record of the job says it finished" do

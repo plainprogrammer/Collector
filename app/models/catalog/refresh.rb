@@ -46,7 +46,8 @@ class Catalog::Refresh
   private
     # The type's refresh jobs as the queue holds them, read before the runs are. A worker that died holding one never
     # closed its run: the queue has failed that job, or no longer holds it once the failed job is discarded, so this
-    # refresh closes the run instead of being skipped as already running.
+    # refresh closes the run, once it has been quiet for Catalog::RefreshRun::JOB_ENDED_GRACE, instead of being skipped
+    # as already running.
     def job_queue = @job_queue ||= Catalog::Operation::Queue.new(Catalog::RefreshJob, @collectible_type)
 
     # Optional source hook (app/models/catalog/sources.rb): a source that can say how far through a download or a file

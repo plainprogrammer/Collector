@@ -47,8 +47,8 @@ class Catalog::RefreshOperation < Catalog::Operation
   def failed_job? = (state == :failed && super) || (state == :interrupted && job_failed?(run))
 
   # What `catalog:status` and the recent-runs list call a run: a stalled one is interrupted unless its job is still
-  # claimed by a worker, and a running one is interrupted once the queue has failed its job or no longer holds it
-  # (spec 015 AC-3.2, AC-3.5, AC-3.6).
+  # claimed by a worker, and a running one is interrupted once the queue has failed its job or no longer holds it and
+  # the run has made no progress for 2 minutes (spec 015 AC-3.2, AC-3.5, AC-3.6, AC-3.9).
   def status_label(run) = run.status_label(**job_state(run))
 
   def status_line(run) = run.status_line(**job_state(run))
@@ -91,8 +91,8 @@ class Catalog::RefreshOperation < Catalog::Operation
   end
 
   private
-    # A worker that dies never closes its run, and the queue then fails the job it held: that run is interrupted at
-    # once, without waiting for it to stall. So is one whose job has left the queue (the failed job was discarded).
+    # A worker that dies never closes its run, and the queue then fails the job it held: that run is interrupted
+    # without waiting for it to stall. So is one whose job has left the queue (the failed job was discarded).
     def running_state
       return :interrupted if job_ended?(run)
       return :running unless run.stalled?
@@ -102,7 +102,9 @@ class Catalog::RefreshOperation < Catalog::Operation
 
     def job_state(run) = { job_claimed: job_claimed?(run), job_ended: job_ended?(run) }
 
-    def job_ended?(run) = job_failed?(run) || job_gone?(run)
+    # The queue also fails the job of a worker it lost sight of that is still working, so a run is judged by its job
+    # only once it has been quiet for Catalog::RefreshRun::JOB_ENDED_GRACE; until then it is running, and the page polls.
+    def job_ended?(run) = run.quiet? && (job_failed?(run) || job_gone?(run))
 
     # Only a run that started before the queue was read is judged by that reading.
     def job_gone?(run) = run.job_id.present? && run.started_at <= queue.read_at && queue.gone?(run.job_id)
