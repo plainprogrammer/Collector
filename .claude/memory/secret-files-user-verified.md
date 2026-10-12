@@ -18,3 +18,8 @@ metadata:
 - A masked check works for user verification: `grep -n NAME file | sed -E 's/=.*/=<masked>/'`, or an anchored count `grep -c '^NAME=' file`.
 - `.kamal/secrets` assigned `KAMAL_REGISTRY_PASSWORD` only in commented examples until the maintainer's fix `63596c6`; a substring `grep -c` returned 4 and hid it.
 - Don't commit a file you can't read; ask the maintainer to commit it.
+
+**Update (2026-10-12, spec 020):** `.kamal/secrets` is a tracked file, so `git grep` and `git ls-files` reach it without naming it. A draft plan's lookup (`git grep -l -w <NAME>` across the tree) made a plan reviewer's git search the file; it filtered the name out of the output and saw no content. The next reviewer's `git ls-files .kamal` printed the file's name. From then on:
+- Every `git grep` in a plan, brief or command ends with the pathspec `':!.kamal/secrets'`, and no recursive `grep -r` runs from the repository root without explicit directories.
+- A path check (`test -e`, `ls`) skips `.kamal/secrets`, `config/master.key`, `.env*` and `storage/…`; a README claim about one of them is recorded as off-limits, not checked.
+- Say both in every subagent brief, and ask the subagent to report any accidental touch. Related: [[plan-reviews-run-the-code]].
