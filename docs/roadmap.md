@@ -13,7 +13,7 @@ The roadmap has one main line, built in order, with a research lane and a housek
 Foundation principle 2. Spec 004 named export and import as the next priority; specs 007–015 went elsewhere.
 
 1. Record whether Scryfall's terms permit a public, possibly paid, instance (research note; hosted-door rule 1). **Done 2026-10-11:** [research 016](specs/016-scryfall-hosting-terms/research.md), ruled on in decision log 27–29.
-2. [#37](https://github.com/plainprogrammer/Collector/issues/37) Define the export format: versioned, keyed by external ids (enabling slice). **Expected ADR:** the export format.
+2. [#37](https://github.com/plainprogrammer/Collector/issues/37) Define the export format: versioned, keyed by external ids (enabling slice). **Done 2026-10-11:** [the format](export-format/README.md), [ADR 0020](adr/0020-export-format.md) and [spec 017](specs/017-export-format/spec.md), ruled on in decision log 32.
 3. [#38](https://github.com/plainprogrammer/Collector/issues/38) Export a collection as a file.
 4. [#39](https://github.com/plainprogrammer/Collector/issues/39) Preview an import: per-row errors, nothing written.
 5. [#40](https://github.com/plainprogrammer/Collector/issues/40) Apply an import: all or nothing, idempotent, with a round-trip test.
@@ -29,7 +29,7 @@ Foundation principle 2. Spec 004 named export and import as the next priority; s
 The design system's "where is it" ([docs/design-system/README.md](design-system/README.md)). The comics research findings feed this design if the research has run by then; it is deferred (ruling 26), and locations don't wait for it.
 
 9. [#44](https://github.com/plainprogrammer/Collector/issues/44) Manage locations (create, rename, remove).
-10. [#45](https://github.com/plainprogrammer/Collector/issues/45) Put a lot in a location. **Expected ADR:** how a lot sits in more than one place ([ADR 0019](adr/0019-lot-as-the-unit-of-ownership.md) names the question).
+10. [#45](https://github.com/plainprogrammer/Collector/issues/45) Put a lot in a location. **Expected ADR:** how a lot sits in more than one place ([ADR 0019](adr/0019-lot-as-the-unit-of-ownership.md) names the question). It raises the export format to version 2 ([ADR 0020](adr/0020-export-format.md)).
 11. [#46](https://github.com/plainprogrammer/Collector/issues/46) Show the location on tiles and rows.
 12. [#47](https://github.com/plainprogrammer/Collector/issues/47) Filter the collection by location.
 13. [#48](https://github.com/plainprogrammer/Collector/issues/48) Move many lots at once (the "Move to…" deferred in spec 006).
@@ -135,3 +135,9 @@ Rulings by the maintainer. Later planning builds on these and doesn't ask them a
 | 29 | Are anonymous card pages parked with the hosted-service features? | No. Ruling 27 covers them: card pages are opened with search, as one housekeeping candidate. |
 | 30 | Is the catalog open to visitors on every instance? | No. It is an operator setting, off by default; a hosted instance turns it on. |
 | 31 | How is the backlog tracked ahead of 1.0? | In GitHub issues on the 1.0 milestone and in this roadmap: one issue per candidate, created on 2026-10-11 (#37–#64, with #19, #21, #31, #34 and #35). |
+
+### 2026-10-11: export format (spec 017)
+
+| # | Question | Ruling |
+|---|---|---|
+| 32 | What is the export format? | One JSON document per account, keyed by the catalog source's ids, holding the profile, one currency and the lots. Its version is a whole number that rises when an older reader would misread a file or lose the collector's data from it, so locations will make version 2. The rulings are decisions 1 to 20 of [spec 017](specs/017-export-format/spec.md), recorded in [ADR 0020](adr/0020-export-format.md). |

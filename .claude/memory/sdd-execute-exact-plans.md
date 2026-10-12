@@ -23,3 +23,12 @@ For a long plan whose blocks are byte-exact (written, run and replayed on a prot
 **Update (2026-10-11, spec 019):** two variations worked, with no code deviation over five phases. This too is the controller's reading; the maintainer didn't comment on the method.
 - *No prototype branch.* When a planning task may not commit code, replay each phase in the worktree uncommitted (examples red, then the code, then green), save a tree per phase with `git add -A`, `git write-tree`, `git reset -q`, and restore the worktree at the end. Render the plan's blocks from the trees (`git show <tree>:<path>`, `git diff <treeA> <treeB> -- <path>`), give the tree ids to the plan reviewer, and after each executed phase check `git diff --stat <tree> HEAD -- app spec docs/design-system` is empty.
 - *Brief files.* For a short plan, extract each phase's text (with the Global Constraints) by script into one file per implementer and point the subagent at that file. It applies the blocks exactly as it does from a line range.
+
+**Without a prototype branch (spec 017, 2026-10-11):** the plan was mostly documents and two spec files, so its files were drafted in the session scratchpad instead.
+- A new gem was locked and installed in a scratch copy of the `Gemfile` (`BUNDLE_GEMFILE=<scratch>/Gemfile`), and the specs ran from the worktree with `bin/rspec` against scratch copies, with `Rails.root` replaced by the scratch root.
+- `plan.md` was rendered from those files by a template script (`{{indent:path}}` includes), never retyped.
+- After each phase the committed files were compared with the scratch files (`cmp`); all were identical.
+- Many near-identical fixture files went into the plan as a generator plus a checksum list, not as 1,100 lines of JSON.
+
+**Pitfall:** a fix made in the rendered plan and not in the template is lost on the next render. The plan still says `Gemfile.lock` gains 10 lines; it gains 11. Fix the template, then render.
+

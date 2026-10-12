@@ -1,0 +1,12 @@
+{
+  "format": "collector-export",
+  "format_version": 1,
+  "exported_at": "2026-10-11T12:34:56Z",
+  "generator": "Collector 0.2.1",
+  "profile": {
+    "name": "Ada Example",
+    "email_address": "ada@example.test",
+    "collection_view": "table"
+  },
+  "currency": "USD"
+}

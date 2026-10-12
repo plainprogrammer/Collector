@@ -41,3 +41,6 @@
 - [CSS shell state by class](css-shell-state-by-class.md) — maintainer chose a layout-set class (`c-shell--footed`) over `:has()` (spec 018); a new body class breaks exact class-string assertions
 - [Browser spec image and window gotchas](browser-spec-image-and-window-gotchas.md) — card images via 127.0.0.1:9 + data: pictures (`spec/support/card_images.rb`); decode() vs load; around runs before driven_by; saved collection view; float noise
 - [Spec 019 follow-ups](spec-019-followups.md) — PR #66 draft (closes #35); owed: WebKit phone check; fade is #65; ImageFit to upstream; conflicts expected with the spec 018 PR
+- [Orca supervised stages](orca-supervised-stages.md) — as a dispatched worker: `orca orchestration ask` for decisions, a background heartbeat loop stopped before `worker_done`, one SDD stage per Task
+- [Spec 017 follow-ups](spec-017-followups.md) — PR #68 draft, owed: rendered-doc read, checks, ADR 0020 and log row 32 at merge; import reads `format_version` first; locations make version 2
+
