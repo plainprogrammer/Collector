@@ -87,6 +87,12 @@ The whole change outside this spec's directory, `git diff --stat main -- app spe
 
 No view, and none of `components.css`, `tokens.css`, `ItemTile.md`, `ItemPage.md` or `CollectionTable.md`, is changed. Each phase's files were compared with the tree the plan was rendered from and were identical.
 
+`bin/ci` was run again on `5f6711a`, after the screenshots and this file were added: `1133 examples, 0 failures, 1 pending`, every step passed.
+
+## Implementation review
+
+A read-only review against the spec (`sdd-review`, Mode B, Fable) returned SPEC-ALIGNED: every criterion maps to an example that asserts it, the committed files match the plan's blocks, and all 12 screenshots show what AC-4.5 asks. It ran no spec. Its one correction, to the sentence on co-author trailers below, is applied. It also noted that AC-2.5's example checks the fallback's size and top edge but not its left edge, and judged that sufficient because the faces stack in one column; left as it is.
+
 ## Commits
 
 `git log --oneline main..HEAD` at the time of recording:
@@ -109,7 +115,7 @@ cc3c8b1 docs(019): add the implementation plan
 534e3e2 docs(019): draft the spec for uncropped card images
 ```
 
-The four `fix(design)`/`docs(design)` commits after the first and the measurement commit carry a `Claude Sonnet 5.5` co-author trailer: the implementer subagents ran on that model.
+Commits `ebe3659` and `3c84098` through `f071b4e` carry a `Claude Sonnet 5.5` co-author trailer, the model those commits were made on; the others carry `Claude Opus 5.5`.
 
 ## Phone browser
 
