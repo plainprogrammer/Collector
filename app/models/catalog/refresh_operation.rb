@@ -94,11 +94,15 @@ class Catalog::RefreshOperation < Catalog::Operation
     # A worker that dies never closes its run, and the queue then fails the job it held: that run is interrupted
     # without waiting for it to stall. So is one whose job has left the queue (the failed job was discarded).
     def running_state
-      return :interrupted if job_ended?(run)
+      return left_behind_state if job_ended?(run)
       return :running unless run.stalled?
 
-      job_claimed?(run) ? :stalled : :interrupted
+      job_claimed?(run) ? :stalled : left_behind_state
     end
+
+    # A run nothing is working on any more is interrupted, until a refresh job is in flight: that one is queued, and
+    # closes the run when it starts (spec 015 AC-2.2, AC-3.3).
+    def left_behind_state = queue.any? ? :queued : :interrupted
 
     def job_state(run) = { job_claimed: job_claimed?(run), job_ended: job_ended?(run) }
 

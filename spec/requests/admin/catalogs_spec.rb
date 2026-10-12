@@ -205,12 +205,18 @@ RSpec.describe "Admin catalog page", :solid_queue, type: :request do
         expect(page.at_css("main")["data-controller"]).to eq("poll")
       end
 
-      it "queues a refresh started while the crashed run is still marked running", :aggregate_failures do
+      it "queues a refresh started while the crashed run is still marked running, and shows it queued (AC-2.1, AC-2.2)", :aggregate_failures do
         job = fail_job(claim_job(queue_job(Catalog::RefreshJob, "mtg", "manual")))
         running(stage: "sync", started_at: 8.minutes.ago, heartbeat_at: 7.minutes.ago, job_id: job.active_job_id)
 
         expect { start("refresh") }.to change(SolidQueue::Job, :count).by(1)
         expect(flash[:notice]).to eq("Refresh queued.")
+        follow_redirect!
+        expect(text(section("refresh").at_css(".c-operation__summary"))).to eq("Queued.")
+        expect(section("refresh").at_css(".c-stages")).to be_nil
+        expect(section("refresh").at_css("button")["disabled"]).to be_present
+        expect(text(panel.at_css(".c-runs li"))).to include("manual · interrupted")
+        expect(page.at_css("main")["data-controller"]).to eq("poll")
       end
 
       it "keeps the crashed run interrupted once its failed job is discarded, and lets a refresh start", :aggregate_failures do

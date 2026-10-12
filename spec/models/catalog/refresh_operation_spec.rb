@@ -109,10 +109,12 @@ RSpec.describe Catalog::RefreshOperation, :solid_queue, type: :model do
       expect(operation.status_label(stalled)).to eq("interrupted")
     end
 
-    it "stays closed to a new start while a refresh job for the type is still unfinished in the queue (AC-3.2)" do
+    it "is queued, not interrupted, while another refresh job for the type is in flight (AC-2.2, AC-3.2)", :aggregate_failures do
       queue_job(Catalog::RefreshJob, "mtg", "manual")
 
-      expect(operation).to have_attributes(state: :interrupted, startable?: false)
+      expect(operation).to have_attributes(state: :queued, summary: "Queued.", stages: [], facts: [], startable?: false)
+      expect(operation).to be_in_flight
+      expect(operation.status_label(stalled)).to eq("interrupted")
     end
 
     it "is still running, with the minutes, while a worker holds its job (AC-3.6)", :aggregate_failures do
@@ -124,10 +126,10 @@ RSpec.describe Catalog::RefreshOperation, :solid_queue, type: :model do
       expect(operation.status_label(stalled)).to eq("running (no progress for 20 minutes)")
     end
 
-    it "isn't kept running by a worker holding another job" do
+    it "isn't kept running by a worker holding another job: that one is the queued refresh" do
       claim_job(queue_job(Catalog::RefreshJob, "mtg", "manual"))
 
-      expect(operation.state).to eq(:interrupted)
+      expect(operation.state).to eq(:queued)
     end
   end
 
@@ -153,6 +155,15 @@ RSpec.describe Catalog::RefreshOperation, :solid_queue, type: :model do
 
     it "queues a refresh when started" do
       expect { operation.start }.to change(SolidQueue::Job, :count).by(1)
+    end
+
+    it "is queued once another refresh job waits in the queue, as after \"Refresh now\" (AC-2.1, AC-2.2)", :aggregate_failures do
+      queue_job(Catalog::RefreshJob, "mtg", "manual")
+
+      expect(operation).to have_attributes(state: :queued, summary: "Queued.", stages: [], facts: [], failed_job?: false)
+      expect(operation).to be_in_flight
+      expect(operation).not_to be_startable
+      expect(operation.status_label(crashed)).to eq("interrupted")
     end
 
     # The queue also fails the job of a worker it lost sight of while the host was suspended; that worker carries on.
@@ -191,6 +202,12 @@ RSpec.describe Catalog::RefreshOperation, :solid_queue, type: :model do
       expect(operation).to have_attributes(state: :running, summary: "Running.")
       expect(operation).to be_in_flight
       expect(operation.status_label(left)).to eq("running")
+    end
+
+    it "is queued once another refresh job waits in the queue (AC-2.2)" do
+      queue_job(Catalog::RefreshJob, "mtg", "manual")
+
+      expect(operation).to have_attributes(state: :queued, summary: "Queued.", startable?: false)
     end
 
     it "is interrupted when the queue's record of the job says it finished" do
