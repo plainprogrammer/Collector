@@ -1,7 +1,7 @@
 # Feature 020: An Accurate README
 
 **Status:** Approved
-**Version:** 1.4.1
+**Version:** 1.4.2
 **Created:** 2026-10-12
 **Last Updated:** 2026-10-12
 **Branch:** `020-readme-introduction`
@@ -21,6 +21,7 @@
 | 1.3.1 | 2026-10-12 | **Approved by the maintainer**: the 1.2.0 revisions, decision 5 and the removal of `spec/readme_spec.rb`, with a second review asked for after the edits. That review's fixes are the row above and change no decision |
 | 1.4.0 | 2026-10-12 | Maintainer ruling, made while planning: "I think it's odd to check documents outside code from RSpec. So, please apply my ruling more broadly." Asked how broadly and where, the maintainer chose **prose documents only**, **inside this spec** (decision 7). Besides `spec/readme_spec.rb`, the suite loses its examples about `docs/releasing.md`, the design system's documents, `CLAUDE.md`, the agent skill file and the ADR index, and the example that the README links the export format. The export format's own checks, the configuration checks and the checks of code files stay. `.claude/rules/testing.md` gains the rule (Story 4 rewritten, FR-5, Goals, Non-Goals, Reliability, Error Scenarios, Out of Scope, One outcome) |
 | 1.4.1 | 2026-10-12 | Third review pass (Opus, Mode A, on the 1.4.0 change only: READY TO PLAN, nothing blocking; wording). A prose document is defined by who reads it, not by its extension, so the design system's `tokens.json` and previews count and the export format's schema and examples don't (decision 7, AC-4.7); AC-4.6 uses a wider search with its expected output listed; the list of past specs is replaced by the rule that produces it (Reliability); the PR description names the second outcome (AC-3.7); where the rule line goes (AC-4.7); the new `config/deploy.yml` example reads the file's text (AC-4.2). The maintainer's rulings of 1.4.0 stand; approval of the whole is recorded when given |
+| 1.4.2 | 2026-10-12 | From the plan's second review: the PR also carries the session wrap's lessons under `docs/lessons/`, as every spec's PR does (Non-Goals). No requirement changed |
 
 ---
 
@@ -74,7 +75,7 @@ The suite also pins phrases and section order of the README in `spec/readme_spec
 - Removing the export format's checks, the configuration checks or the checks of code files (decision 7).
 - A user guide, screenshots or badges.
 - Checking the rest of `CLAUDE.md` against the repository.
-- Any other document under `docs/` (the roadmap, the design system, the ADRs), except this spec's own folder.
+- Any other document under `docs/` (the roadmap, the design system, the ADRs), except this spec's own folder and the lessons the session wrap adds under `docs/lessons/`, as every spec's PR carries.
 - Opening issues.
 
 ## Users and Context

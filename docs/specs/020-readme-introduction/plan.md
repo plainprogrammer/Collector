@@ -1,10 +1,10 @@
 # Implementation Plan: An Accurate README
 
-**Spec:** docs/specs/020-readme-introduction/spec.md (v1.4.1, Approved, reviewed three times)
+**Spec:** docs/specs/020-readme-introduction/spec.md (v1.4.2, Approved, reviewed three times)
 **Decisions:** no ADR. The spec's decisions 1 to 7 are the maintainer's rulings of 2026-10-12.
 **Created:** 2026-10-12
 **Status:** Draft, awaiting the maintainer's go-ahead.
-**Revised:** 2026-10-12, after a read-only plan review (Opus, NEEDS REVISION, nothing blocking). The reviewer applied the Phase 0 diffs to scratch copies and ran them (25 then 22, 4, 9 and 25 examples, 0 failures; RuboCop clean apart from the path-based exclusion), ran the Phase 1 and Phase 3 check commands, and checked the introduction's claims against the app. Its findings, all applied: the environment-variable lookup searched `.kamal/secrets` and counted documents as readers; `tail -3` didn't show the example count; two diff hunks were cut two context lines short; the safety-warning check could false-alarm; the path check would have probed off-limits paths; the action table lacked three rows; four ordering slips.
+**Revised:** 2026-10-12, after a read-only plan review (Opus, NEEDS REVISION, nothing blocking). The reviewer applied the Phase 0 diffs to scratch copies and ran them (25 then 22, 4, 9 and 25 examples, 0 failures; RuboCop clean apart from the path-based exclusion), ran the Phase 1 and Phase 3 check commands, and checked the introduction's claims against the app. Its findings, all applied: the environment-variable lookup searched `.kamal/secrets` and counted documents as readers; `tail -3` didn't show the example count; two diff hunks were cut two context lines short; the safety-warning check could false-alarm; the path check would have probed off-limits paths; the action table lacked three rows; four ordering slips. A second pass (Opus, READY TO EXECUTE, nothing blocking) re-applied the diffs with `git apply --check` and re-ran every check from the plan's raw text; its findings, all applied: the `/ocr/v7.0.0/` route check false-alarmed on a pattern route; the safety-warning check covered one line of the three-line Kamal warning; "Claims checked" counted unchecked claims; `session-wrap` ran after the last file check; what to do while waiting for rulings was unstated.
 
 **How this plan was made.** The three spec-file edits of Phase 0 were made on scratch copies and run from the worktree with the real `rails_helper`: `image_publishing_spec.rb` 22 examples, `design_system_files_spec.rb` 4, `export_format_document_spec.rb` 9, all `0 failures`. RuboCop reported only `RSpec/DescribeClass` on them, which is the path-based exclusion not matching a scratch path. The diffs below are those files' diffs. The introduction's text was counted (97 words) and its three section links checked against the README's headings. The sweep itself (Phase 3) is not done ahead: it is the work.
 
@@ -21,6 +21,7 @@
 - No application code, configuration, other document under `docs/`, issue or roadmap line changes (Non-Goals, decision 6).
 - Comparisons are against the merge base: `origin/main...HEAD` (`3ab9864` today). Run `git fetch origin` first.
 - `bin/ci` passes at every commit. Commits are Conventional Commits, one per step that says "Commit", with the attribution trailer. Stage and commit in separate commands (the pre-commit hook reads the command text).
+- `git checkout -- <file>` (the two fail-first reverts) and `git push` may prompt for permission; neither is on the allow list.
 
 ---
 
@@ -51,6 +52,7 @@
 
 This phase comes first so that no later README correction is shaped by a pinned phrase. The two configuration expectations are moved before the file that holds them is deleted, so they are never unasserted.
 
+- [ ] Run: `git fetch origin; mkdir -p tmp/020`.
 - [ ] Add the two examples to `spec/image_publishing_spec.rb` (apply exactly):
 
 ```diff
@@ -95,7 +97,7 @@ This phase comes first so that no later README correction is shaped by a pinned 
 - [ ] Remove the `docs/releasing.md` examples from `spec/image_publishing_spec.rb` (apply exactly; the line numbers are the file's after the first step; the file then ends with the `ghcr-cleanup.yml` describe's `end` and the outer `end`):
 
 ```diff
-@@ -172,29 +180,4 @@
+@@ -180,29 +180,4 @@
        expect(uses).to all(start_with("actions/").or(start_with("ruby/setup-ruby@")))
      end
    end
@@ -218,7 +220,7 @@ This phase comes first so that no later README correction is shaped by a pinned 
 - [ ] Verify the phase:
   - `git diff --name-status origin/main...HEAD -- spec` — expect exactly: `D spec/readme_spec.rb`, `M spec/design_system_files_spec.rb`, `M spec/export_format_document_spec.rb`, `M spec/image_publishing_spec.rb` (AC-4.5).
   - `bin/rspec --dry-run | grep -E '^[0-9]+ examples'` — expect: `1206 examples, 0 failures` (AC-4.5).
-  - `git diff --stat origin/main...HEAD -- .claude/rules/testing.md` — expect: one insertion, no deletions (AC-4.7).
+  - `git diff --stat origin/main...HEAD -- .claude/rules/testing.md` — expect: one insertion, no deletions (AC-4.7). `tail -1 .claude/rules/testing.md` — expect: the new line.
   - `grep -rnE '\.md\b|docs/' spec --include='*.rb'` — expect only the lines AC-4.6 lists: the header comments of the image publishing and two export format specs, the `.dockerignore` rule list, `research.md §3` in `spec/models/mtg/collector_line_spec.rb`, and three lines of `spec/support/export_format_rules.rb`.
   - `bin/ci` — expect: every step passes.
 
@@ -245,9 +247,10 @@ built next.
 
 - [ ] Check it, and keep each output for `verification.md`:
   - First sentence (AC-1.1): `ruby -e 'puts File.read("README.md").split(/\n\n/)[1].tr("\n", " ").start_with?("Collector is a self-hostable, multi-tenant web app for tracking collectibles, starting with Magic: The Gathering. ")'` — expect: `true`.
-  - Read it against AC-1.2 to AC-1.4: "their own account and … their own collection"; "a catalog fed from Scryfall's bulk data", found "by searching" or "with the card scanner" and added; an admin "manages users and sign-up", "the catalog's refreshes" and "background jobs".
+  - Read it against AC-1.2 to AC-1.4: "their own account and … their own collection"; "a catalog fed from Scryfall's bulk data", found "by searching" or "with the card scanner" and added; an admin "manages users and sign-up", "the catalog's refreshes" and "background jobs". No sentence says accounts, collections, catalog search, the scanner or the admin pages are missing (AC-1.5).
   - Word count (AC-1.7): `ruby -e 'p File.read("README.md").split(/\n\n/)[1].gsub(/\[([^\]]+)\]\([^)]+\)/, "\\1").split.size'` — expect: `97` (at most 130).
   - Banned words (AC-1.5): `ruby -e 'p File.read("README.md").split(/\n\n/)[1].scan(/not built|public/i)'` — expect: `[]`.
+  - Pre-1.0 and the roadmap link (AC-1.6): `grep -c 'pre-1\.0; the \[roadmap\](docs/roadmap\.md)' README.md` — expect: `1`.
   - Links (AC-2.6): `grep -c -E '^## Card catalog$|^### Card scanner$|^### Accounts$' README.md` — expect: `3`; `test -f docs/roadmap.md && echo ok` — expect: `ok`.
   - Roadmap candidates (AC-1.6): read the paragraph against `docs/roadmap.md`'s open items; it names none (search, the scanner, accounts and the admin pages are built; exporting, importing, locations, typed entry, the open catalog and comics are not named).
   - What it says Collector does, and where (AC-1.8): accounts → `### Accounts`, `/session/new`, `/registration/new`; the collection → `/collection`; the catalog → `## Card catalog`; search → `/catalog/entries`; adding a card → `/catalog/entries/:entry_external_key/lots/new` and `POST /catalog/entries/:entry_external_key/quick_add`; the scanner → `### Card scanner`, `/scanner`; users and sign-up → `/admin/users`; refreshes → `/admin/catalog`; jobs → `/admin/jobs`. Confirm each route with `bin/rails routes -g 'session|registration|collection|catalog|scanner|lots|admin'`.
@@ -270,15 +273,16 @@ bin/rspec spec/requests/health_check_spec.rb:5  # a single file or example
 
 - [ ] In `CLAUDE.md`'s Commands list, replace `bin/rspec spec/requests/home_spec.rb:5` with `bin/rspec spec/requests/health_check_spec.rb:5` (decision 5, AC-2.10).
 - [ ] Run: `bin/rspec spec/requests/health_check_spec.rb:5` — expect: `1 example, 0 failures`.
+- [ ] Run: `grep -c 'bin/rspec spec/requests/health_check_spec.rb:5' README.md CLAUDE.md` — expect: `1` for each; `grep -c home_spec README.md CLAUDE.md` — expect: `0` for each (AC-2.5, AC-2.10).
 - [ ] Commit: `docs: name a spec file that exists in the single-spec example`.
-- [ ] In `CLAUDE.md`'s Project Status, in the sentence beginning "Feature 002 added", replace `and a public card search proof-of-concept at \`/catalog/entries\`.` with exactly:
+- [ ] In `CLAUDE.md`'s Project Status, in the sentence beginning "Feature 002 added", replace ``and a public card search proof-of-concept at `/catalog/entries`.`` with exactly:
 
 ```markdown
 and a card search at `/catalog/entries`, which has needed sign-in since accounts (spec 004).
 ```
 
 - [ ] Commit: `docs(claude): say catalog search needs sign-in`.
-- [ ] Run: `git diff --word-diff origin/main...HEAD -- CLAUDE.md` — expect changed words only in that sentence and in the Commands example (AC-2.9).
+- [ ] Run: `git diff --word-diff origin/main...HEAD -- CLAUDE.md` — expect changed words only in that sentence and in the Commands example (AC-2.9). Run: ``grep -c -F 'and a card search at `/catalog/entries`, which has needed sign-in since accounts (spec 004).' CLAUDE.md`` — expect: `1`.
 
 ---
 
@@ -295,7 +299,7 @@ and a card search at `/catalog/entries`, which has needed sign-in since accounts
 | True | none | counted in its section's row |
 | Not refuted (says something never happens or always holds; no counter-example found) | none | Not refuted list, with what it was checked against |
 | Stale, and the smallest true wording is plain | change only that claim's words; don't re-flow | Corrections list: old text, new text, evidence |
-| Stale, but a spec or ADR states the behaviour the README describes (the code is wrong) | none | Left stale list, with that spec or ADR |
+| Stale, but a spec or ADR states the behaviour the README describes (the code is wrong); with no spec or ADR, the next row applies | none | Left stale list, with that spec or ADR |
 | Stale or misleading, and the fix needs a choice | none yet; add it to the questions for the maintainer | Left stale list with the ruling, or Corrections list if a correction is ruled |
 | Not checkable | none | Not checkable list, with the reason |
 | Off-limits | none | Off-limits list |
@@ -305,7 +309,7 @@ and a card search at `/catalog/entries`, which has needed sign-in since accounts
 | A safety warning is itself stale | none; put it to the maintainer | Left stale list with the ruling, or Corrections list if a correction is ruled |
 | A never-or-always claim, and a counter-example is found | treat it as stale (the three stale rows above) | as for stale |
 
-In the record, for every section: Claims checked = True + Not refuted + Corrected + Left stale + Not checkable + Off-limits. Gaps and differing names are not claims.
+In the record, for every section: Claims = Claims checked + Not checkable + Off-limits, and Claims checked = True + Not refuted + Corrected + Left stale. Gaps and differing names are not claims.
 
 After each correction, search `CLAUDE.md` for the corrected command, path, variable or phrase (`grep -n -F '<term>' CLAUDE.md`). Record the term and the result. Change `CLAUDE.md` only where it makes the same claim.
 
@@ -329,21 +333,23 @@ After each correction, search `CLAUDE.md` for the corrected command, path, varia
 | 14 | Your data | `docs/export-format/README.md`, `docs/export-format/v1.schema.json`, `docs/export-format/examples/`; no export or import route in `config/routes.rb` |
 | 15 | License | `LICENSE` |
 
+These are starting points. Follow each claim to the code that decides it, and record what was actually read. Also likely: `config/puma.rb`, `.gitignore`, `app/models/scanner/measurement_run.rb` and `app/views/layouts/_appbar.html.erb` for section 5; `lib/collector/dev_port.rb` for section 3; `app/models/catalog/refresh.rb`, `app/models/catalog/refresh/` and `app/views/catalog/_not_loaded.html.erb` for section 13.
+
 **Mechanical checks, run once over the whole file before reading section by section:**
 
 - [ ] Scripts exist: `grep -oE '\bbin/[a-z-]+' README.md | sort -u | while read f; do test -e "$f" || echo "MISSING $f"; done` — expect: no output. This proves only that the `bin/` names exist; the two `script/scanner/` files and each command's arguments are checked by reading, in their sections (AC-2.2).
 - [ ] Rake tasks exist: `bin/rails -AT | grep -E 'collector:user|catalog:refresh|catalog:status|scanner:findings|scanner:sitting_findings'` — expect: five lines.
 - [ ] Kamal subcommands: `grep -oE 'bin/kamal [a-z-]+' README.md | sort -u` — for each that isn't `config`, `setup`, `deploy` or `app`, expect a key under `aliases:` in `config/deploy.yml`.
 - [ ] Environment variables: `grep -oE '\b[A-Z][A-Z0-9]+(_[A-Z0-9]+)+\b' README.md | sort -u`, plus `PORT` and `HOME`, which the pattern misses (no underscore). For each: `git grep -l -w "<NAME>" -- ':!README.md' ':!CLAUDE.md' ':!docs' ':!spec' ':!spikes' ':!.claude' ':!.kamal/secrets'`. A name with no reader in the repository is checked against Rails, Puma, Kamal or the shell, and the record cites which (AC-2.4). Expected: every name has a tracked reader except `HOME` (the shell); `KAMAL_REGISTRY_PASSWORD` is only named in `config/deploy.yml`, and its reader is off-limits.
-- [ ] Paths and routes: list the paths with ``grep -oE '`[^` ]*[/.][^` ]*`' README.md | sort -u``. Do not `test -e` `.kamal/secrets`, `config/master.key`, `.env` or anything under `storage/`: record the first three as off-limits, and check each `storage/…` path, and every other run-time path, against the code that writes it (AC-2.3). For the rest, `test -e`. For each URL path (`/scanner`, `/scanner/measurement`, `/admin/catalog`, `/admin/jobs`, `/catalog/entries`, `/up`, `/ocr/v7.0.0/`), `bin/rails routes -g '<path>'`.
+- [ ] Paths and routes: list the paths with ``grep -oE '`[^` ]*[/.][^` ]*`' README.md | sort -u``. Do not `test -e` `.kamal/secrets`, `config/master.key`, `.env` or anything under `storage/`: record the first three as off-limits, and check each `storage/…` path, and every other run-time path, against the code that writes it (AC-2.3). For the rest, `test -e`, skipping what isn't a repository path (addresses, hosts, image names, git settings, the container path `/rails/storage`, `~/…` paths). The grep misses spans with a space, `Dockerfile` and the code blocks; those are checked by reading, in their sections. For each URL path (`/scanner`, `/scanner/measurement`, `/admin/catalog`, `/admin/jobs`, `/catalog/entries`, `/up`), `bin/rails routes -g '<path>'`. `/ocr/v7.0.0/` is served by a pattern route: run `bin/rails routes -g ocr` (expect `ocr_asset GET /ocr/:version/*path ocr_assets#show`) and check `v7.0.0` against the version `bin/fetch-ocr-engine` installs.
 - [ ] Links (AC-2.6): `ruby -e 'r = File.read("README.md"); heads = r.gsub(/^```.*?^```/m, "").scan(/^#+ (.+)$/).flatten.map { |h| h.downcase.gsub(/[^a-z0-9 -]/, "").tr(" ", "-") }; r.scan(/\]\(([^)]+)\)/).flatten.uniq.each { |l| ok = l.start_with?("http") || (l.start_with?("#") ? heads.include?(l[1..]) : File.exist?(l)); puts "#{ok ? "ok  " : "BAD "} #{l}" }'` — expect: every line `ok`.
 
 **Then the sweep:**
 
 - [ ] Create `verification.md` with the skeleton in Phase 4 and fill the section table and lists as each section is swept.
 - [ ] Sweep sections 1 to 15 in order by the method above. Commit each README correction on its own (`docs(readme): <what was corrected>`), with its `CLAUDE.md` repeat in the same commit when there is one.
-- [ ] Put the questions that need a ruling to the maintainer in one message, each with the claim, the evidence and a recommended correction. Known already: `COLLECTOR_PASSWORD` in the Compose variable table. Apply the rulings, one commit each.
-- [ ] Record the safety warnings (AC-3.8): `diff <(git show origin/main:README.md | grep -E 'first person to reach|only acceptable on a trusted private network|Never run a plain') <(grep -E 'first person to reach|only acceptable on a trusted private network|Never run a plain' README.md)` — expect: no output (the four lines are whole and unchanged; the first-run warning appears twice). Record each line's number at the merge base and at `HEAD`, and its position: "Before you expose Collector" is before `### Docker Compose`; the **HTTPS** bullet is the last bullet before `### Kamal`; the "Never run a plain" paragraph is between Kamal's step 4 and "Data is stored in"; "Read this before you upgrade" is before "1. Pull the new image". A warning that is itself stale goes to the maintainer.
+- [ ] When sections 1 to 15 are swept, put every question that needs a ruling to the maintainer in one message (a stale safety warning included), each with the claim, the evidence and a recommended correction. Known already: `COLLECTOR_PASSWORD` in the Compose variable table. While waiting, run the checks below and fill the record, with each open question's Ruling cell "pending". Do not run Integration Verification or commit the record until every question has a ruling. Then apply the rulings, one commit each, and re-run the diff checks.
+- [ ] Record the safety warnings (AC-3.8): `diff <(git show origin/main:README.md | grep -E 'first person to reach|only acceptable on a trusted private network|Never run a plain|registry set to .ghcr\.io/plainprogrammer/collector|^over the published image') <(grep -E 'first person to reach|only acceptable on a trusted private network|Never run a plain|registry set to .ghcr\.io/plainprogrammer/collector|^over the published image' README.md)` — expect: no output (six lines per side: the first-run warning twice, the plain HTTP bullet, and the Kamal warning on three lines). Record each line's number at the merge base and at `HEAD`, and its position: "Before you expose Collector" is before `### Docker Compose`; the **HTTPS** bullet is the last bullet before `### Kamal`; the "Never run a plain" paragraph is between Kamal's step 4 and "Data is stored in"; "Read this before you upgrade" is before "1. Pull the new image". A warning that is itself stale goes to the maintainer.
 - [ ] Check the diff (AC-2.7): `git diff --word-diff origin/main...HEAD -- README.md` and `git diff origin/main...HEAD -- README.md` — every changed word and line outside the introduction belongs to a correction in the record.
 - [ ] Check the headings (AC-2.8): `diff <(git show origin/main:README.md | ruby -e 'puts STDIN.read.gsub(/^```.*?^```/m, "").scan(/^#+ .+$/)') <(ruby -e 'puts File.read("README.md").gsub(/^```.*?^```/m, "").scan(/^#+ .+$/)')` — expect: no output.
 - [ ] Check `CLAUDE.md` (AC-2.9): `git diff --word-diff origin/main...HEAD -- CLAUDE.md` — every changed word is in the Project Status sentence or a recorded repeat.
@@ -362,7 +368,7 @@ After each correction, search `CLAUDE.md` for the corrected command, path, varia
 ```markdown
 # Verification: An Accurate README (spec 020)
 
-**Spec:** [spec.md](spec.md) v1.4.1 · **Plan:** [plan.md](plan.md) · **Recorded:** <date> ·
+**Spec:** [spec.md](spec.md) v1.4.2 · **Plan:** [plan.md](plan.md) · **Recorded:** <date> ·
 **Branch:** `020-readme-introduction` · **Issue:** [#63](https://github.com/plainprogrammer/Collector/issues/63)
 
 ## Commits
@@ -375,25 +381,26 @@ After each correction, search `CLAUDE.md` for the corrected command, path, varia
 <the paragraph; word count; banned-word search; each thing it says Collector does with its README section or route>
 
 ## The sweep, by section
-| Section | Claims checked | Checked against | True | Not refuted | Corrected | Left stale | Not checkable | Off-limits |
+| Section | Claims | Claims checked | Checked against | True | Not refuted | Corrected | Left stale | Not checkable | Off-limits |
 
 ## Corrections
+<includes Phase 2's: the single-spec example in both files (searched `home_spec.rb`: repeated, corrected) and the Project Status sentence>
 | # | File and line | Old text | New text | Evidence | Searched in `CLAUDE.md` for | Result |
 
 ## Not refuted
-| Claim | Checked against |
+| README line | Claim | Checked against |
 
 ## Not checkable
-| Claim | Reason |
+| README line | Claim | Reason |
 
 ## Off-limits
-| Claim | File |
+| README line | Claim | File |
 
 ## Questions and rulings
 | Claim | Evidence | Recommendation | Ruling |
 
 ## Left stale
-| Claim | Evidence it is stale | Reason (spec or ADR, or the maintainer's ruling) |
+| README line | Claim | Evidence it is stale | Reason (spec or ADR, or the maintainer's ruling) |
 
 ## Gaps
 <entries, or "none"; includes the missing "Using Collector" section>
@@ -422,10 +429,10 @@ After each correction, search `CLAUDE.md` for the corrected command, path, varia
 ## Integration Verification
 
 - [ ] Run: `git fetch origin && bin/ci` — expect: every step passes (AC-3.6). Put the summary in the record.
-- [ ] Run: `git diff --name-status origin/main...HEAD` — expect only: `README.md`, `CLAUDE.md`, `.rubocop.yml`, `.claude/rules/testing.md`, the four spec files, `.claude/memory/` entries, and `docs/specs/020-readme-introduction/`. `docs/roadmap.md` is not listed (AC-3.4).
+- [ ] Run: `git diff --name-status origin/main...HEAD` — expect only: `README.md`, `CLAUDE.md`, `.rubocop.yml`, `.claude/rules/testing.md`, the four spec files, `.claude/memory/` entries, `docs/lessons/` entries from the session wrap, and `docs/specs/020-readme-introduction/`. `docs/roadmap.md` is not listed (AC-3.4).
 - [ ] Commit: `docs(020): record the sweep and its evidence`.
-- [ ] Run `sdd-superpowers:sdd-review` in implementation mode with a read-only Opus reviewer, then `sdd-superpowers:session-wrap`, before the PR is marked ready.
-- [ ] Open the PR. Its description closes #63 (`Closes #63`), names the removal of the prose-document checks as a second outcome (decision 7), and lists the questions ruled on during the sweep (AC-3.7).
+- [ ] Run `sdd-superpowers:sdd-review` in implementation mode with a read-only Opus reviewer, then `sdd-superpowers:session-wrap`, before the PR is marked ready. Memory entries under `.claude/memory/` and lessons under `docs/lessons/` are committed on this branch, as for every earlier spec (`chore(memory): …`, `docs(lessons): …`). If either step changes a tracked file, re-run `bin/ci` and the `git diff --name-status` check, and update the record's `bin/ci` and Commits sections before the PR is opened.
+- [ ] Push the branch (the pre-push hook runs `bin/ci` again and the push asks for approval) and open the PR. Its description closes #63 (`Closes #63`), names the removal of the prose-document checks as a second outcome (decision 7), and lists the questions ruled on during the sweep (AC-3.7). Check: `gh pr view --json body -q .body | grep -E 'Closes #63|decision 7'` — expect: both.
 
 ## Quickstart Validation
 
