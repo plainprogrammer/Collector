@@ -43,9 +43,11 @@ class BackgroundJobs::Entry
   # Under the job's name in a list: its arguments when it has any, and that it waits on a concurrency limit.
   def list_note = [ (short_arguments if arguments.any?), ("waiting" if state == :waiting) ].compact.join(" · ").presence
 
-  # How many times the job has run since it was queued, the run in progress included. The queue's record holds only the
-  # runs before this row was queued (each of a job's own retries is queued as a new row), and the queue sets it back
-  # to nothing when a failed job is retried, so the count starts again there (issue #61).
+  # The runs the job has started, the one in progress included (issue #61). The count carries across the job's own
+  # retries (retry_on): each is queued as a new row whose record holds the runs before it, and this row's run is added
+  # here. The queue sets its record back to nothing when an admin retries a failed job, so the count starts again
+  # there. It leaves the record as it was when a worker's graceful shutdown puts a running job back in the queue, so
+  # the run that was cut short counts only while it is in progress.
   def attempts = envelope["executions"].to_i + (STARTED.include?(state) ? 1 : 0)
 
   def queued_at = job.created_at
