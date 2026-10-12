@@ -10,10 +10,16 @@ changed four lines in place and removed one table row, so every line below that 
 
 ## Commits
 
-`git log --oneline origin/main..HEAD`, before the record's own commit. This list is refreshed before the PR is
-opened; it does not yet show the record's commit or the commits that followed the implementation review.
+`git log --oneline origin/main..HEAD` at `ac13459`, before the commit that records the final CI run:
 
 ```
+ac13459 docs(lessons): add four lessons from spec 020
+e395a1f chore(memory): note that .kamal/secrets is tracked and git grep reaches it
+1329e76 docs(020): record the review's two corrections
+6948ce7 docs(020): remove a repeated sentence from the spec's inputs note
+0d5bf2d docs(readme): say art matching sends the artworks' distances too
+4a6de47 docs(readme): say a scheduled refresh applies once more after the artwork upgrade
+5f1c158 docs(020): record the sweep and its evidence
 63703d2 docs(readme): drop COLLECTOR_PASSWORD from the Compose variable table
 e2155b2 docs(readme): say art matching sends the closest artworks' ids
 ef46056 docs(readme): say the weekly schedule also starts the first download
@@ -437,44 +443,51 @@ and removed no line, so no line number in this record moved; the three ranges th
 
 ## `bin/ci`
 
-This section is refreshed by a final run before the PR is opened; the run below predates the record's commit and the
-commits that followed the implementation review.
-
-Run at `63703d2` on 2026-10-12, after `git fetch origin`; exit status 0.
+Run at `ac13459` on 2026-10-12, after `git fetch origin` (merge base still `3ab9864`); exit status 0. Only this
+record changes after it.
 
 ```
-✅ Setup passed in 6.07s
-✅ Style: Ruby passed in 1.75s                          (460 files inspected, no offenses detected)
-✅ Security: Brakeman code analysis passed in 6.53s     (No warnings found)
-✅ Security: Gem audit passed in 0.77s                  (No vulnerabilities found)
-✅ Security: Importmap vulnerability audit passed in 1.81s (No vulnerable packages found)
-✅ Tests: RSpec passed in 3m10.24s                      (1206 examples, 0 failures, 1 pending; seed 44272)
-✅ Continuous Integration passed in 3m27.18s
+✅ Setup passed in 4.94s
+✅ Style: Ruby passed in 1.37s                          (460 files inspected, no offenses detected)
+✅ Security: Brakeman code analysis passed in 5.56s     (No warnings found)
+✅ Security: Gem audit passed in 0.52s                  (No vulnerabilities found)
+✅ Security: Importmap vulnerability audit passed in 1.40s (No vulnerable packages found)
+✅ Tests: RSpec passed in 2m53.77s                      (1206 examples, 0 failures, 1 pending; seed 22126)
+✅ Continuous Integration passed in 3m7.57s
 ```
 
 The one pending example is `spec/system/art_agreement_spec.rb:16`, which needs `COLLECTOR_ART_AGREEMENT` set, as at
-the baseline.
+the baseline. An earlier run at `63703d2`, before the record and the review's corrections, also passed with the
+same count.
 
-`git diff --name-status origin/main...HEAD`, before the record's commit (also refreshed before the PR is opened):
+`git diff --name-status origin/main...HEAD` at `ac13459`:
 
 ```
 M	.claude/memory/MEMORY.md
-A	.claude/memory/no-readme-wording-specs.md
-M	.claude/memory/plan-reviews-run-the-code.md
-M	.claude/memory/sdd-review-model-choice.md
-M	.claude/rules/testing.md
-M	.rubocop.yml
-M	CLAUDE.md
-M	README.md
-A	docs/specs/020-readme-introduction/plan.md
-A	docs/specs/020-readme-introduction/spec.md
-M	spec/design_system_files_spec.rb
-M	spec/export_format_document_spec.rb
-M	spec/image_publishing_spec.rb
-D	spec/readme_spec.rb
+  A	.claude/memory/no-readme-wording-specs.md
+  M	.claude/memory/plan-reviews-run-the-code.md
+  M	.claude/memory/sdd-review-model-choice.md
+  M	.claude/memory/secret-files-user-verified.md
+  M	.claude/rules/testing.md
+  M	.rubocop.yml
+  M	CLAUDE.md
+  M	README.md
+  A	docs/lessons/2026-10-12-a-hand-sweep-needs-an-independent-sample.md
+  A	docs/lessons/2026-10-12-one-row-per-claim-in-a-sweep.md
+  A	docs/lessons/2026-10-12-run-a-plans-check-commands-from-its-raw-text.md
+  A	docs/lessons/2026-10-12-search-spec-for-tests-that-pin-a-document.md
+  A	docs/specs/020-readme-introduction/plan.md
+  A	docs/specs/020-readme-introduction/spec.md
+  A	docs/specs/020-readme-introduction/verification.md
+  M	spec/design_system_files_spec.rb
+  M	spec/export_format_document_spec.rb
+  M	spec/image_publishing_spec.rb
+  D	spec/readme_spec.rb
 ```
 
-Only the expected files; `docs/roadmap.md` is not listed.
+Only the expected files: the two documents, `.rubocop.yml`, the testing rule, the four spec files (three changed, one
+deleted), memory entries under `.claude/memory/`, four lessons under `docs/lessons/`, and this spec's three files.
+`docs/roadmap.md` is not listed, and no other path under `docs/` is.
 
 ## Implementation review
 
@@ -511,7 +524,7 @@ under the sweep table about Corrections row 1 (M3) and a repeated sentence in th
 | AC-3.3 | Not refuted, Not checkable, Off-limits; Diff checks (the lists) | pass: 22 not refuted, 32 not checkable and 2 off-limits claims are listed, and none of their words changed (two share line 291 with the R5 correction; see Diff checks, the lists). The 23rd not-refuted claim, "never stored in logs", went with the row R2 removed (noted under Not refuted) |
 | AC-3.4 | Gaps (with the missing "Using Collector" section); Differing names ("avatar menu", "account menu"); `docs/roadmap.md` is not in `git diff --name-status`; no issue was opened | pass |
 | AC-3.5 | Left stale: one row, with the evidence and ruling R3 | pass |
-| AC-3.6 | `bin/ci` | pass at `63703d2` (the head before the record's commit, which adds only this file) |
+| AC-3.6 | `bin/ci` | pass at `ac13459`: every step passed, `1206 examples, 0 failures, 1 pending` (the commit after it changes only this record) |
 | AC-3.7 | The PR description | pending: PR not opened |
 | AC-3.8 | Safety warnings: four rows, text and position unchanged | pass |
 | AC-4.1 | The suite: `git ls-files spec/readme_spec.rb` and `grep readme_spec .rubocop.yml` print nothing | pass |
