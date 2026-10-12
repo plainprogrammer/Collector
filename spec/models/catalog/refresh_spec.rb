@@ -212,6 +212,21 @@ RSpec.describe Catalog::Refresh, type: :model do
       expect(left.reload).to have_attributes(status: "failed", message: "interrupted")
     end
 
+    # Another refresh's job is queued, claimed and records its run between this one reading the queue and reading the runs.
+    it "leaves alone a run whose job was queued and started after it read the queue (issue #60)", :aggregate_failures, :solid_queue do
+      later = nil
+      allow(Catalog::RefreshRun).to receive(:start!).and_wrap_original do |start, *arguments, **options|
+        job = claim_job(queue_job(Catalog::RefreshJob, "fake", "manual"))
+        later = create(:catalog_refresh_run, :running, collectible_type: "fake", job_id: job.active_job_id, started_at: Time.current)
+        start.call(*arguments, **options)
+      end
+
+      run = described_class.new("fake", trigger: "manual", source:, job_id: "job-2").call
+
+      expect(later.reload).to be_running
+      expect(run).to have_attributes(status: "skipped", message: "already running")
+    end
+
     it "is skipped while the job of the run left running still waits in the queue (AC-3.4)", :aggregate_failures, :solid_queue do
       waiting = queue_job(Catalog::RefreshJob, "fake", "manual")
       left = create(:catalog_refresh_run, :running, collectible_type: "fake", job_id: waiting.active_job_id)

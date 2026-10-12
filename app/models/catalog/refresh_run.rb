@@ -27,15 +27,16 @@ class Catalog::RefreshRun < ApplicationRecord
   # progress for STALL_AFTER, or when it belongs to the job that is starting now (the queue re-ran the job after a
   # restart, or an admin retried it), or to a job the queue has failed (failed_job_ids: its worker died before it
   # could close the run), or to a job that is no longer in the queue at all (one not among queued_job_ids, the
-  # unfinished jobs as read before this call; nil when the queue wasn't read). Any other running run makes this
-  # attempt a skip, and so does one that recorded no job until it stalls.
-  def self.start!(collectible_type, trigger:, job_id: nil, failed_job_ids: [], queued_job_ids: nil)
+  # unfinished jobs as read before this call, at queue_read_at; nil when the queue wasn't read). That reading says
+  # nothing about a run that started after it: its job was queued since. Any other running run makes this attempt a
+  # skip, and so does one that recorded no job until it stalls.
+  def self.start!(collectible_type, trigger:, job_id: nil, failed_job_ids: [], queued_job_ids: nil, queue_read_at: nil)
     transaction do
       runs = for_type(collectible_type)
       left_behind = runs.stalled
       ended_job_ids = [ job_id, *failed_job_ids ].compact_blank
       left_behind = left_behind.or(runs.running.where(job_id: ended_job_ids)) if ended_job_ids.any?
-      left_behind = left_behind.or(runs.running.where.not(job_id: [ nil, *queued_job_ids ])) if queued_job_ids
+      left_behind = left_behind.or(job_gone(runs, queued_job_ids, queue_read_at)) if queued_job_ids
       left_behind.find_each { |run| run.finish!(:failed, message: INTERRUPTED) }
 
       already_running = runs.running.exists?
@@ -45,6 +46,12 @@ class Catalog::RefreshRun < ApplicationRecord
       run
     end
   end
+
+  def self.job_gone(runs, queued_job_ids, queue_read_at)
+    gone = runs.running.where.not(job_id: [ nil, *queued_job_ids ])
+    queue_read_at ? gone.where(started_at: ..queue_read_at) : gone
+  end
+  private_class_method :job_gone
 
   def self.applied?(collectible_type, source_version:, languages:)
     for_type(collectible_type).applied.exists?(source_version:, languages:)

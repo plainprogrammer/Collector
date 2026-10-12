@@ -69,6 +69,15 @@ RSpec.describe Catalog::RefreshRun, type: :model do
       expect(run).to be_running
     end
 
+    it "leaves a run that started after the queue was read alone: that reading can't say its job is gone (issue #60)", :aggregate_failures do
+      later = create(:catalog_refresh_run, :running, started_at: 5.minutes.ago, heartbeat_at: 5.minutes.ago, job_id: "job-1")
+
+      run = described_class.start!("mtg", trigger: "manual", job_id: "job-2", queued_job_ids: [ "job-2" ], queue_read_at: 10.minutes.ago)
+
+      expect(later.reload).to be_running
+      expect(run).to be_skipped
+    end
+
     it "skips while the running run's job is still in the queue, or the run recorded no job (AC-3.4)", :aggregate_failures do
       create(:catalog_refresh_run, :running, started_at: 2.minutes.ago, heartbeat_at: 1.minute.ago, job_id: "job-1")
       expect(described_class.start!("mtg", trigger: "manual", job_id: "job-2", queued_job_ids: %w[job-1 job-2])).to be_skipped
