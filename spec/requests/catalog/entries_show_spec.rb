@@ -103,11 +103,20 @@ RSpec.describe "Card page", type: :request do
     expect(media.css("img")).to be_empty
   end
 
-  it "links to Scryfall with attribution, to the card's printings and back to search" do
+  it "links to Scryfall, to the card's printings and back to search" do
     get catalog_entry_path(entry)
 
-    expect(response.body).to include('href="https://scryfall.com/card/neo/172/ja/azusa"', "provided by Scryfall",
+    expect(response.body).to include('href="https://scryfall.com/card/neo/172/ja/azusa"',
       catalog_identity_path(identity), %(<li><a href="#{catalog_entries_path}">Search</a></li>))
+  end
+
+  # Spec 018 AC-1.7: the attribution is the footer's, and the card's own body no longer repeats it.
+  it "leaves the source's attribution to the page's footer", :aggregate_failures do
+    get catalog_entry_path(entry)
+    page = Nokogiri::HTML5(response.body)
+
+    expect(page.at_css("main").text).not_to include("provided by")
+    expect(page.css("body > footer.c-footer p").map(&:text)).to include("Card data and images provided by Scryfall.")
   end
 
   it "renders a retired printing with a notice", :aggregate_failures do

@@ -10,7 +10,7 @@ RSpec.describe "Design system assets", type: :request do
     tokens = body.index("collector/tokens")
     expect(tokens).to be < body.index("collector/components")
     expect(body.index("collector/components")).to be < body.index("collector/additions")
-    expect(body).to include('class="c-shell"', "viewport-fit=cover")
+    expect(body).to include('<body class="c-shell c-shell--footed">', "viewport-fit=cover")
   end
 
   it "serves every font file" do
