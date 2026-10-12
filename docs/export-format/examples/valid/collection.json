@@ -1,0 +1,142 @@
+{
+  "format": "collector-export",
+  "format_version": 1,
+  "exported_at": "2026-10-11T12:34:56Z",
+  "generator": "Collector 0.2.1",
+  "profile": {
+    "name": "Ada Example",
+    "email_address": "ada@example.test",
+    "collection_view": "table"
+  },
+  "currency": "USD",
+  "lots": [
+    {
+      "entry": {
+        "collectible_type": "mtg",
+        "source_id": "00000000-0000-4000-8000-000000000001",
+        "name": "Serra Angel",
+        "set_code": "dmr",
+        "collector_number": "27",
+        "language": "en"
+      },
+      "quantity": 4,
+      "finish": "foil",
+      "condition": "near_mint",
+      "price_paid": "12.50",
+      "added_at": "2026-09-30T18:02:11Z",
+      "changed_at": "2026-10-02T09:15:00Z"
+    },
+    {
+      "entry": {
+        "collectible_type": "mtg",
+        "source_id": "00000000-0000-4000-8000-000000000001",
+        "name": "Serra Angel",
+        "set_code": "dmr",
+        "collector_number": "27",
+        "language": "en"
+      },
+      "quantity": 1,
+      "finish": "nonfoil",
+      "condition": "near_mint",
+      "price_paid": "12.50",
+      "added_at": "2026-09-30T18:03:40Z",
+      "changed_at": "2026-09-30T18:03:40Z"
+    },
+    {
+      "entry": {
+        "collectible_type": "mtg",
+        "source_id": "00000000-0000-4000-8000-000000000001",
+        "name": "Serra Angel",
+        "set_code": "dmr",
+        "collector_number": "27",
+        "language": "en"
+      },
+      "quantity": 2,
+      "finish": "foil",
+      "condition": "lightly_played",
+      "price_paid": "12.50",
+      "added_at": "2026-10-01T07:45:09Z",
+      "changed_at": "2026-10-01T07:45:09Z"
+    },
+    {
+      "entry": {
+        "collectible_type": "mtg",
+        "source_id": "00000000-0000-4000-8000-000000000001",
+        "name": "Serra Angel",
+        "set_code": "dmr",
+        "collector_number": "27",
+        "language": "en"
+      },
+      "quantity": 1,
+      "finish": "foil",
+      "condition": "near_mint",
+      "price_paid": "10.00",
+      "added_at": "2026-10-01T07:46:30Z",
+      "changed_at": "2026-10-01T07:46:30Z"
+    },
+    {
+      "entry": {
+        "collectible_type": "mtg",
+        "source_id": "00000000-0000-4000-8000-000000000002",
+        "name": "Lightning Bolt",
+        "set_code": "2xm",
+        "collector_number": "117",
+        "language": "en"
+      },
+      "quantity": 1,
+      "finish": null,
+      "condition": null,
+      "price_paid": null,
+      "added_at": "2026-10-03T20:11:02Z",
+      "changed_at": "2026-10-03T20:11:02Z"
+    },
+    {
+      "entry": {
+        "collectible_type": "mtg",
+        "source_id": "00000000-0000-4000-8000-000000000003",
+        "name": "Forest",
+        "set_code": "blb",
+        "collector_number": "280",
+        "language": "en"
+      },
+      "quantity": 9999,
+      "finish": "nonfoil",
+      "condition": null,
+      "price_paid": null,
+      "added_at": "2026-10-04T10:00:00Z",
+      "changed_at": "2026-10-09T16:20:45Z"
+    },
+    {
+      "entry": {
+        "collectible_type": "mtg",
+        "source_id": "00000000-0000-4000-8000-000000000004",
+        "name": "Llanowar Elves",
+        "set_code": "fdn",
+        "collector_number": "227",
+        "language": "en"
+      },
+      "quantity": 3,
+      "finish": null,
+      "condition": "near_mint",
+      "price_paid": "0.00",
+      "added_at": "2026-10-05T12:00:00Z",
+      "changed_at": "2026-10-05T12:00:00Z"
+    },
+    {
+      "entry": {
+        "collectible_type": "mtg",
+        "source_id": "00000000-0000-4000-8000-000000000005",
+        "name": "Counterspell",
+        "set_code": "sta",
+        "collector_number": "78",
+        "language": "ja"
+      },
+      "quantity": 1,
+      "finish": "etched",
+      "condition": "near_mint",
+      "price_paid": "1200.00",
+      "added_at": "2026-10-06T08:30:00Z",
+      "changed_at": "2026-10-06T08:30:00Z"
+    }
+  ]
+}

@@ -1,0 +1,107 @@
+{
+  "invalid/not-json.json": {
+    "why": "The file isn't JSON: the last brace is missing.",
+    "rule": "not_json",
+    "at": ""
+  },
+  "invalid/not-utf8.json": {
+    "why": "The file isn't UTF-8: the name holds a Latin-1 byte.",
+    "rule": "not_utf8",
+    "at": ""
+  },
+  "invalid/repeated-key.json": {
+    "why": "An object holds the same key twice, so its finish can't be told.",
+    "rule": "not_json",
+    "at": ""
+  },
+  "invalid/format-missing.json": {
+    "why": "The format name is missing.",
+    "rule": "required",
+    "at": "/format"
+  },
+  "invalid/format-other.json": {
+    "why": "The format name is another name.",
+    "rule": "const",
+    "at": "/format"
+  },
+  "invalid/format-version-missing.json": {
+    "why": "The format version is missing.",
+    "rule": "required",
+    "at": "/format_version"
+  },
+  "invalid/format-version-not-a-number.json": {
+    "why": "The format version is a string, not a whole number.",
+    "rule": "const",
+    "at": "/format_version"
+  },
+  "invalid/lots-missing.json": {
+    "why": "The list of lots is missing.",
+    "rule": "required",
+    "at": "/lots"
+  },
+  "invalid/profile-name-blank.json": {
+    "why": "The profile's name is empty after trimming.",
+    "rule": "pattern",
+    "at": "/profile/name"
+  },
+  "invalid/currency-lower-case.json": {
+    "why": "The currency isn't three upper-case letters.",
+    "rule": "pattern",
+    "at": "/currency"
+  },
+  "invalid/entry-missing.json": {
+    "why": "A lot has no entry.",
+    "rule": "required",
+    "at": "/lots/0/entry"
+  },
+  "invalid/entry-source-id-missing.json": {
+    "why": "A lot's entry has no source id.",
+    "rule": "required",
+    "at": "/lots/0/entry/source_id"
+  },
+  "invalid/entry-name-missing.json": {
+    "why": "A lot's entry lacks a descriptive field.",
+    "rule": "required",
+    "at": "/lots/0/entry/name"
+  },
+  "invalid/quantity-zero.json": {
+    "why": "A lot's quantity is 0.",
+    "rule": "minimum",
+    "at": "/lots/0/quantity"
+  },
+  "invalid/finish-left-out.json": {
+    "why": "A lot's finish is left out; not recorded is written as null.",
+    "rule": "required",
+    "at": "/lots/0/finish"
+  },
+  "invalid/condition-empty.json": {
+    "why": "A lot's condition is an empty string; not recorded is written as null.",
+    "rule": "pattern",
+    "at": "/lots/0/condition"
+  },
+  "invalid/price-one-place.json": {
+    "why": "A lot's price paid has one decimal place.",
+    "rule": "pattern",
+    "at": "/lots/0/price_paid"
+  },
+  "invalid/time-with-offset.json": {
+    "why": "A time is written with an offset, not with Z.",
+    "rule": "pattern",
+    "at": "/lots/0/added_at"
+  },
+  "invalid/time-not-a-moment.json": {
+    "why": "A time has the right form but is no real moment: 30 February.",
+    "rule": "not_a_time",
+    "at": "/lots/0/added_at"
+  },
+  "invalid/changed-before-added.json": {
+    "why": "A lot was last changed before it was added.",
+    "rule": "changed_before_added",
+    "at": "/lots/0/changed_at"
+  },
+  "invalid/duplicate-lot.json": {
+    "why": "Two lots have the same lot identity; only their quantities differ.",
+    "rule": "duplicate_lot",
+    "at": "/lots/1"
+  }
+}
