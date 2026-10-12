@@ -4,13 +4,14 @@
 **Branch:** `020-readme-introduction` · **Issue:** [#63](https://github.com/plainprogrammer/Collector/issues/63)
 
 Comparisons "with `origin/main`" are with the merge base, `3ab9864` (`origin/main...HEAD`). README line numbers are
-the file's at the head this record was written against, `63703d2`, unless a row says otherwise. The sweep itself was
-read against `9070ad4`; the four corrections made after it changed three lines in place and removed one table row,
-so every line below that row is one lower than in the sweep.
+the file's at `0d5bf2d` (the last commit that changed it), unless a row says otherwise. The sweep itself was
+read against `9070ad4`; the four corrections made after it and the two that followed the implementation review
+changed four lines in place and removed one table row, so every line below that row is one lower than in the sweep.
 
 ## Commits
 
-`git log --oneline origin/main..HEAD`, before the record's own commit:
+`git log --oneline origin/main..HEAD`, before the record's own commit. This list is refreshed before the PR is
+opened; it does not yet show the record's commit or the commits that followed the implementation review.
 
 ```
 63703d2 docs(readme): drop COLLECTOR_PASSWORD from the Compose variable table
@@ -139,8 +140,9 @@ What it says Collector does, and where (routes from `bin/rails routes -g 'sessio
 ## The sweep, by section
 
 Every section was read claim by claim against the repository at `9070ad4` by four checkers, who changed nothing. The
-counts are of the README as it was swept. "Corrected" counts the two stale claims with a plain correction and the two
-claims corrected by ruling (R1, R2); "Left stale" is the one claim left by ruling (R3). True claims are not listed.
+counts are of the README as it was swept. "Corrected" counts the two stale claims with a plain correction and the
+three claims corrected by ruling (R1, R2, and R5, which the implementation review found after the sweep had read it
+as true); "Left stale" is the one claim left by ruling (R3). True claims are not listed.
 
 | Section | Claims | Claims checked | Checked against | True | Not refuted | Corrected | Left stale | Not checkable | Off-limits |
 |---|---|---|---|---|---|---|---|---|---|
@@ -156,13 +158,16 @@ claims corrected by ruling (R1, R2); "Left stale" is the one claim left by rulin
 | Card scanner (under Self-hosting) | 21 | 20 | `config/routes.rb`, `bin/rails routes -g scanner` and `-g ocr`, `app/controllers/ocr_assets_controller.rb`, `lib/collector/ocr_engine.rb`, `Dockerfile`, `.github/workflows/ci.yml`, `app/helpers/scanners_helper.rb`, `app/views/scanners/`, `app/controllers/concerns/scanner_page.rb`, `app/javascript/scanner/{recognition,detector}.js`, `app/javascript/controllers/{card_reader,camera,measurement}_controller.js`, `app/controllers/scanner/{readings,printings}_controller.rb`, `app/controllers/scanner/sittings/`, `app/models/mtg/art/sent.rb`, `config/deploy.yml`, `config/environments/production.rb`, `compose.yaml` | 16 | 3 | 1 | 0 | 1 | 0 |
 | Accounts | 17 | 16 | `lib/tasks/collector.rake`, `app/models/user/command.rb`, `app/models/user.rb`, `app/models/registration.rb`, `app/controllers/registrations_controller.rb`, `app/controllers/admin/users_controller.rb`, `app/controllers/admin/sign_up_settings_controller.rb`, `app/views/admin/users/index.html.erb`, `app/views/layouts/_appbar.html.erb`, `app/views/layouts/_tabbar.html.erb`, `app/views/mores/show.html.erb`, `app/assets/stylesheets/collector/components.css`, `compose.yaml` (service `web`); routes `admin/users`, `registration` | 16 | 0 | 0 | 0 | 1 | 0 |
 | Upgrading to accounts | 8 | 8 | `app/controllers/concerns/first_run.rb`, `app/models/registration.rb`, `app/models/user/command.rb`, `db/migrate/20260930000003_create_accounts_users_sessions.rb`, `bin/docker-entrypoint`, `Dockerfile` (CMD), `config/deploy.yml`, `docs/releasing.md` | 8 | 0 | 0 | 0 | 0 | 0 |
-| Card catalog | 78 | 72 | `lib/tasks/catalog.rake`, `config/deploy.yml` (aliases), `compose.yaml`, `config/recurring.yml`, `config/puma.rb`, `config/application.rb`, solid_queue 1.7.0 (`engine.rb`, `recurring_task.rb`), `app/jobs/catalog/refresh_job.rb`, `app/models/catalog/{refresh,refresh_run,refresh_operation,operation,health}.rb`, `app/models/background_jobs/list.rb`, `app/models/mtg/scryfall/{source,client}.rb`, `app/models/mtg/art.rb`, `app/models/mtg/art/{build,operation}.rb`, `config/initializers/art_matching.rb`, `app/controllers/concerns/admin_only.rb`, `app/controllers/admin/` (catalogs, operation starts, jobs, retries, discards), views `admin/catalogs/*`, `admin/jobs/show`, `layouts/_appbar`, `layouts/_tabbar`, `mores/show`, `catalog/_not_loaded`, `catalog/entries/index`, `scanners/show`, `app/javascript/controllers/poll_controller.js`; `bin/rails routes -g admin` and `-g catalog`; spec 015 line 25 | 63 | 6 | 2 | 1 | 6 | 0 |
+| Card catalog | 78 | 72 | `lib/tasks/catalog.rake`, `config/deploy.yml` (aliases), `compose.yaml`, `config/recurring.yml`, `config/puma.rb`, `config/application.rb`, solid_queue 1.7.0 (`engine.rb`, `recurring_task.rb`), `app/jobs/catalog/refresh_job.rb`, `app/models/catalog/{refresh,refresh_run,refresh_operation,operation,health}.rb`, `app/models/background_jobs/list.rb`, `app/models/mtg/scryfall/{source,client}.rb`, `app/models/mtg/art.rb`, `app/models/mtg/art/{build,operation}.rb`, `config/initializers/art_matching.rb`, `app/controllers/concerns/admin_only.rb`, `app/controllers/admin/` (catalogs, operation starts, jobs, retries, discards), views `admin/catalogs/*`, `admin/jobs/show`, `layouts/_appbar`, `layouts/_tabbar`, `mores/show`, `catalog/_not_loaded`, `catalog/entries/index`, `scanners/show`, `app/javascript/controllers/poll_controller.js`; `bin/rails routes -g admin` and `-g catalog`; spec 015 line 25 | 62 | 6 | 3 | 1 | 6 | 0 |
 | Your data | 11 | 11 | `docs/export-format/README.md`, `docs/export-format/v1.schema.json`, `docs/export-format/examples/`, ADR 0020; `bin/rails routes -g 'export\|import'` (no routes) | 9 | 2 | 0 | 0 | 0 | 0 |
 | License | 2 | 2 | `LICENSE` | 2 | 0 | 0 | 0 | 0 | 0 |
-| **Total** | **372** | **338** | | **310** | **23** | **4** | **1** | **32** | **2** |
+| **Total** | **372** | **338** | | **309** | **23** | **5** | **1** | **32** | **2** |
 
 The arithmetic holds in every row and in the totals: Claims = Claims checked + Not checkable + Off-limits (372 = 338 +
-32 + 2), and Claims checked = True + Not refuted + Corrected + Left stale (338 = 310 + 23 + 4 + 1).
+32 + 2), and Claims checked = True + Not refuted + Corrected + Left stale (338 = 309 + 23 + 5 + 1).
+
+Corrections row 1 (the single-spec example, Phase 2) was made before the sweep, which read that line as true, so the
+Corrected column counts only the sweep's corrections and the one the review added: Corrections rows 4 to 8.
 
 A note on the counts: the Docker Compose row counts the `COLLECTOR_PASSWORD` table row as swept: one claim corrected
 (R2, the row's place in the table) and one not refuted ("never stored in logs"). R2 removed the row, so that
@@ -178,14 +183,15 @@ and a note.
 | 3 | `CLAUDE.md` line 7, Project Status (Phase 2, `9070ad4`) | "and a public card search proof-of-concept at `/catalog/entries`." | "and a card search at `/catalog/entries`, which has needed sign-in since accounts (spec 004)." | `Catalog::EntriesController` inherits `ApplicationController`, which includes `Authentication` (`before_action :require_authentication`), and does not call `allow_unauthenticated_access` | n/a (spec decision 4) | The sentence is otherwise as at the merge base |
 | 4 | `README.md` line 289, Card catalog, **Schedule** (`58fa06b`) | "on Mondays at 03:15 server time" | "on Mondays at 03:15 UTC" | `config/recurring.yml` has `schedule: every monday at 3:15am` with no zone; `config/application.rb:38` leaves `config.time_zone` commented out, so Rails' default `"UTC"` applies; solid_queue 1.7.0 `lib/solid_queue/engine.rb:19-21` sets `SolidQueue.time_zone = app.config.time_zone`, and `app/models/solid_queue/recurring_task.rb:182-184` applies it to a schedule with no zone | `server time`; `03:15` | Not repeated (no match for either) |
 | 5 | `README.md` line 263, Card catalog (`ef46056`) | "Nothing downloads until you start it," (the changed words: "until you start it,") | "Nothing downloads until you start it or the weekly schedule first runs," (the line was not re-wrapped and runs past the wrap column) | `config/recurring.yml:16-20` queues `Catalog::RefreshJob` with `[ "mtg", "scheduled" ]` every Monday in production; `app/models/catalog/refresh.rb:27` and `:53-54` skip a scheduled run only when the same version and languages were already applied, so on an empty catalog the first scheduled run downloads and applies it | `Nothing downloads` | Not repeated (no match) |
-| 6 | `README.md` line 220, Self-hosting → Card scanner (`e2155b2`; ruling R1) | "only the text read from the card and your add, Undo and printing choices are sent to your instance." | "only the text read from the card (and, with art matching on, the ids of the closest artworks) and your add, Undo and printing choices are sent to your instance." | `app/javascript/controllers/card_reader_controller.js:163-174` (sends the text, the reading key and a live capture's nearest artworks, "never the outline, timings or a fingerprint"); `app/models/mtg/art/sent.rb:1-3` (up to 10 artwork ids with distances, nil unless `MTG::Art.enabled?`); `app/controllers/scanner/readings_controller.rb:2-4` | `sent to your instance`; `Photos never leave` | Not repeated (no match for either) |
+| 6 | `README.md` line 220, Self-hosting → Card scanner (`e2155b2`, `0d5bf2d`; rulings R1 and R6) | "only the text read from the card and your add, Undo and printing choices are sent to your instance." | "only the text read from the card (and, with art matching on, the ids and distances of the closest artworks) and your add, Undo and printing choices are sent to your instance." The clause was first written "the ids of the closest artworks" (`e2155b2`) and refined to "the ids and distances" by ruling R6 after the implementation review (`0d5bf2d`); it is one correction of one claim | `app/javascript/controllers/card_reader_controller.js:163-174` (sends the text, the reading key and a live capture's nearest artworks, "never the outline, timings or a fingerprint"); `card_reader_controller.js:171-173` appends each artwork's `id` and `distance`; `app/models/mtg/art/sent.rb:1-3` (up to 10 artwork ids with whole-number distances, nil unless `MTG::Art.enabled?`); `app/controllers/scanner/readings_controller.rb:2-4` | `sent to your instance`; `Photos never leave` | Not repeated (no match for either) |
 | 7 | `README.md`, Docker Compose variable table: the row that was line 164 at `9070ad4`, after the `COLLECTOR_TRUSTED_PROXIES` row (now line 163) (`63703d2`; ruling R2) | ``\| `COLLECTOR_PASSWORD` \| no \| none \| Password for the user command below; never stored in logs \|`` | (row removed) | `compose.yaml:16-23` passes eight variables to the container and has no `COLLECTOR_PASSWORD` and no `env_file:`; `lib/tasks/collector.rake:3` reads `ENV["COLLECTOR_PASSWORD"]` in the process that runs the task, which it reaches only through `docker compose exec -e COLLECTOR_PASSWORD='…'`, as the Accounts section shows (lines 237 and 241, unchanged) | `COLLECTOR_PASSWORD` | Not repeated (no match) |
+| 8 | `README.md` line 291, Card catalog, **Schedule** (`4a6de47`; ruling R5, found by the implementation review) | "A scheduled run is skipped when the same Scryfall file and language set were already applied;" (the changed words: "were already applied;") | "A scheduled run is skipped when the same Scryfall file and language set were already applied (except once, after an upgrade that adds artwork ids);" (the line was not re-wrapped and runs past the wrap column) | `app/models/catalog/refresh.rb:27` skips only when `already_applied?(version) && !reapply?`; `app/models/mtg/scryfall/source.rb:43` makes `reapply?` true while printings exist and none has an `illustration_id`, so an instance upgraded from before artwork ids applies its current file once more on a scheduled run (spec 011 AC-2.3, cited in that file's comment) | `skipped`; `already applied` | Not repeated (no match for either) |
 
 The removed row's clause "never stored in logs" went with the row. It had been checked and not refuted
 (`lib/tasks/collector.rake` prints a password only when it generated one, to stdout; `app/models/user/command.rb`
 does no logging). No other row of the table changed and none was re-aligned.
 
-`CLAUDE.md` was not changed by any of rows 4 to 7.
+`CLAUDE.md` was not changed by any of rows 4 to 8.
 
 ## Not refuted
 
@@ -198,8 +204,8 @@ does no logging). No other row of the table changed and none was re-aligned.
 | 66 | "A missing key only warns" | `lib/collector/worktree_setup.rb` `missing_warning`, after which `bin/setup` goes on; Rails 8.1.4 returns empty credentials when the key is missing and falls back to `tmp/local_secret.txt` in development and test (`railties` `application/configuration.rb:523-533`); `config/environments/production.rb` has no `require_master_key`. Read as being about worktree setup and development |
 | 94 | "Only the certificate is ever served; the key never leaves your machine." | `lib/collector/dev_certificate.rb:39-56` (`serve` reads only the certificate path); `bin/dev-certificate:36-44` passes only the certificate to `serve` |
 | 97 | "Puma ends TLS itself, so Rails sees real HTTPS and needs no other setting." | `config/environments/development.rb:100` (`assume_ssl` only from `COLLECTOR_HTTPS`; no `force_ssl`, no `config.hosts` line), `config/application.rb`, `bin/dev`, `config/puma.rb` |
-| 123 | "WebMock and VCR block all real HTTP from specs" | `spec/support/http_stubbing.rb` (`WebMock.disable_net_connect!(allow_localhost: true)`, `config.ignore_localhost = true`); `spec/network_isolation_spec.rb`. Localhost is allowed because the system specs' browser needs it; the maintainer reads "real HTTP" as traffic leaving the machine (ruling R4) |
-| 151 | "needs no checkout: download the file and start it" | `compose.yaml`: one service from `image:`, no `build:`, no bind mount, no `env_file:`, only the named volume |
+| 122-123 | "WebMock and VCR block all real HTTP from specs" | `spec/support/http_stubbing.rb` (`WebMock.disable_net_connect!(allow_localhost: true)`, `config.ignore_localhost = true`); `spec/network_isolation_spec.rb`. Localhost is allowed because the system specs' browser needs it; the maintainer reads "real HTTP" as traffic leaving the machine (ruling R4) |
+| 151-152 | "needs no checkout: download the file and start it" | `compose.yaml`: one service from `image:`, no `build:`, no bind mount, no `env_file:`, only the named volume |
 | 165 | "Changing `COLLECTOR_CURRENCY` later doesn't convert prices you've already entered; they're shown with the new symbol" | `db/schema.rb:144` (`price_paid_cents` is the only price column; no currency column on `lots`), `app/helpers/lots_helper.rb:16`, `app/views/lots/_form.html.erb:26-27`, `git grep x.currency` (no conversion code) |
 | 185 | "Solid Queue runs inside the web process; no separate worker is needed" | `compose.yaml` (one service, `SOLID_QUEUE_IN_PUMA: "true"`), `config/puma.rb:41` |
 | 219 | "Photos never leave the phone" | Every `fetch` and `FormData` in `app/javascript/controllers/*.js` and `app/javascript/scanner/*.js`; `app/controllers/scanner/readings_controller.rb`, `scanner/sittings/entries_controller.rb`, `undos_controller.rb`, `printings_controller.rb`, `endings_controller.rb` (ids and short strings only); the one file input is read on the device (`card_reader_controller.js:124`). Measurement mode, which stores strip images and can keep frames, is off outside development (`config/application.rb:52`, `app/controllers/concerns/measurement_mode.rb:11-13`) and the README's measurement paragraph says what it stores |
@@ -217,6 +223,10 @@ does no logging). No other row of the table changed and none was re-aligned.
 22 rows. The 23rd not-refuted claim, "never stored in logs", was in the `COLLECTOR_PASSWORD` table row that ruling R2
 removed (Corrections, row 7); it is the only claim counted as not refuted that is no longer in the README.
 
+Two of the rows, "a manual run always applies" (291) and "Only one refresh per collectible type runs at a time."
+(291-292), share line 291 with the claim corrected by R5. Their own words are unchanged, as the word diff under Diff
+checks shows; the line changed only in the words "were already applied;".
+
 ## Not checkable
 
 | README line | Claim | Reason |
@@ -225,7 +235,7 @@ removed (Corrections, row 7); it is the only claim counted as not refuted that i
 | 46 | "and Orca worktrees (local or remote)" | Orca's behaviour (`orca.yaml`'s setup script is checked and true) |
 | 64 | "a remote Orca runtime has no copy of your local `config/master.key`" | A fact about another machine's contents |
 | 73 | "(about 15 MB)" | A download size; the code pins digests, not sizes |
-| 76 | "Browsers only allow a live camera on HTTPS (or on `localhost`)" | Browser behaviour |
+| 76-77 | "Browsers only allow a live camera on HTTPS (or on `localhost`)" | Browser behaviour |
 | 88 | "allow the profile" (Safari, after opening the URL; the URL is checked) | iPhone and Safari behaviour |
 | 89 | "Settings → General → VPN & Device Management: install the profile." | iPhone Settings steps |
 | 90 | "Settings → General → About → Certificate Trust Settings: turn on full trust for the certificate." | iPhone Settings steps |
@@ -267,7 +277,8 @@ Neither file was read, searched, listed or tested for by any step of this work.
 
 ## Questions and rulings
 
-Put to the maintainer in one message when the sweep was done; ruled on 2026-10-12.
+R1 to R4 were put to the maintainer in one message when the sweep was done; R5 and R6 came from the implementation
+review. All were ruled on 2026-10-12.
 
 | Claim | Evidence | Recommendation | Ruling |
 |---|---|---|---|
@@ -275,6 +286,8 @@ Put to the maintainer in one message when the sweep was done; ruled on 2026-10-1
 | **R2.** Docker Compose variable table: the `COLLECTOR_PASSWORD` row | `compose.yaml:16-23` does not pass the variable and has no `env_file:`, so setting it in the shell or in `.env` does nothing; `lib/tasks/collector.rake:3` reads it in the process that runs the task. The row's place in a table of variables Compose passes on is what misleads | The checker recommended rewording the row's Purpose; deleting the row was the second option | Delete the row. Corrected (Corrections, row 7). The Accounts section still documents the variable |
 | **R3.** Card catalog, **Catalog page**: "A refresh that stops making progress for 15 minutes is shown as interrupted (after a restart, for example); pressing **Refresh now** then starts it again." | `Catalog::RefreshRun::STALL_AFTER = 15.minutes` is right. `RefreshRun#status_label` shows "interrupted" only when no worker still holds the job; while one does, the page says "Running, no progress for N minutes" and **Refresh now** stays disabled (`Catalog::RefreshOperation#running_state`) | Leave it: the parenthesis names the case where the job died | Leave it as it is. "(after a restart, for example)" already implies the job died. Listed under Left stale |
 | **R4.** Testing and CI: "WebMock and VCR block all real HTTP from specs" | `spec/support/http_stubbing.rb` has `WebMock.disable_net_connect!(allow_localhost: true)`; localhost is allowed because the system specs' browser needs it | Leave it | Leave it. The maintainer reads "real HTTP" as traffic leaving the machine. Listed under Not refuted, with the exception noted |
+| **R5.** Card catalog, **Schedule**: "A scheduled run is skipped when the same Scryfall file and language set were already applied" (read as true by the sweep; found by the implementation review) | `app/models/catalog/refresh.rb:27` skips only when `already_applied?(version) && !reapply?`; `app/models/mtg/scryfall/source.rb:43` returns true for `reapply?` while printings exist and none has an `illustration_id`, so on an instance upgraded from before artwork ids a scheduled run with the same file and languages applies once more (spec 011 AC-2.3) | The review gave two options: leave the sentence, or add the exception | Add the exception. Corrected (Corrections, row 8) |
+| **R6.** Card scanner (Self-hosting): the clause R1 added, "the ids of the closest artworks" (the review's finding M1) | `app/javascript/controllers/card_reader_controller.js:171-173` and `app/models/mtg/art/sent.rb:1-2`: each artwork is sent with its id and a whole-number distance | Name the distances too | "ids and distances". Corrected (Corrections, row 6) |
 
 ## Left stale
 
@@ -385,15 +398,16 @@ variable table, by −1 (the removed row). None of the three warnings is stale (
 ```
 bin/rspec [-spec/requests/home_spec.rb:5-]{+spec/requests/health_check_spec.rb:5+}  # a single file or example
 [-| `COLLECTOR_PASSWORD`        | no       | none                  | Password for the user command below; never stored in logs  … |-]
-only the text read from the card {+(and, with art matching on, the ids of the closest artworks)+} and your add, Undo and printing choices are sent to your instance.
+only the text read from the card {+(and, with art matching on, the ids and distances of the closest artworks)+} and your add, Undo and printing choices are sent to your instance.
 until you start [-it,-]{+it or the weekly schedule first runs,+} so set the languages below first if you want more than English.
 - **Schedule:** in production the catalog refreshes weekly, on Mondays at 03:15 [-server time-]{+UTC+}
+  language set were already [-applied;-]{+applied (except once, after an upgrade that adds artwork ids);+} a manual run always applies. Only one refresh per
 ```
 
-These are Corrections rows 1, 7, 6, 5 and 4. The plain diff has six hunks: the introduction (lines 4 to 10), the two
-command lines 117 and 118 (118 is row 1; 117 changed only in the padding before its `#` comment, the allowed
-exception), the removed table row (row 7), line 220 (row 6), line 263 (row 5) and line 289 (row 4). No other line
-changed, no paragraph was re-wrapped and no other table row was re-aligned.
+These are Corrections rows 1, 7, 6, 5, 4 and 8. The plain diff has seven hunks: the introduction (lines 4 to 10), the
+two command lines 117 and 118 (118 is row 1; 117 changed only in the padding before its `#` comment, the allowed
+exception), the removed table row (row 7), line 220 (row 6), line 263 (row 5), line 289 (row 4) and line 291 (row 8).
+No other line changed, no paragraph was re-wrapped and no other table row was re-aligned.
 
 **Headings:** the comparison of the headings outside fenced code at the merge base and at the head prints nothing:
 the same 15 headings in the same order.
@@ -408,12 +422,23 @@ the same 15 headings in the same order.
 The first is the Project Status sentence (Corrections, row 3); the second is the repeat of the single-spec example
 (row 2). `CLAUDE.md` is unchanged since `9070ad4`.
 
-**The lists:** the lines changed in `git diff origin/main...HEAD -- README.md` are 4 to 10, 117, 118, 220, 263 and
-289 at the head, plus the removed row. No line of a claim in the Not refuted, Not checkable or Off-limits lists is
-among them (the nearest are 219, "Photos never leave the phone", and 256-257). The one listed claim that changed is
-the removed row's "never stored in logs", noted under Not refuted.
+**The lists:** the lines changed in `git diff origin/main...HEAD -- README.md` are 4 to 10, 117, 118, 220, 263, 289
+and 291 at the head, plus the removed row. No claim in the Not refuted, Not checkable or Off-limits lists had its
+words changed, and none is on a changed line except two: "a manual run always applies" and "Only one refresh per
+collectible type runs at a time." are on line 291, which R5 changed in the words before them ("were already
+applied;"); the word diff above shows their own words untouched. The one listed claim that is gone is the removed
+row's "never stored in logs", noted under Not refuted.
+
+**Re-run after R5 and R6** (at `0d5bf2d`): the safety-warning comparison prints nothing (six lines a side, at 147,
+191, 208 to 210 and 247, as in the table above); the heading comparison prints nothing; and every changed line
+outside the introduction in the plain diff belongs to a listed correction (the seven hunks above). R5 and R6 added
+and removed no line, so no line number in this record moved; the three ranges the review found one line short
+(Not refuted 122-123 and 151-152, Not checkable 76-77) were corrected against the README.
 
 ## `bin/ci`
+
+This section is refreshed by a final run before the PR is opened; the run below predates the record's commit and the
+commits that followed the implementation review.
 
 Run at `63703d2` on 2026-10-12, after `git fetch origin`; exit status 0.
 
@@ -430,7 +455,7 @@ Run at `63703d2` on 2026-10-12, after `git fetch origin`; exit status 0.
 The one pending example is `spec/system/art_agreement_spec.rb:16`, which needs `COLLECTOR_ART_AGREEMENT` set, as at
 the baseline.
 
-`git diff --name-status origin/main...HEAD`, before the record's commit:
+`git diff --name-status origin/main...HEAD`, before the record's commit (also refreshed before the PR is opened):
 
 ```
 M	.claude/memory/MEMORY.md
@@ -451,6 +476,14 @@ D	spec/readme_spec.rb
 
 Only the expected files; `docs/roadmap.md` is not listed.
 
+## Implementation review
+
+Read-only, by Opus, of the branch at `5f1c158`. Verdict: INCOMPLETE (AC-2.1 partial, AC-3.7 pending). No drift from
+the spec or the plan. The reviewer spot-checked 34 claims independently of the sweep; 33 held. The one miss, the
+scheduled-run sentence, was corrected by ruling R5 (Corrections, row 8). Its finding M1 refined the R1 clause, by
+ruling R6 (Corrections, row 6). Its other findings were applied: the three line ranges one line short (M2), the note
+under the sweep table about Corrections row 1 (M3) and a repeated sentence in the spec's Inputs note (M5, `6948ce7`).
+
 ## Acceptance criteria
 
 | AC | Evidence | Result |
@@ -463,7 +496,7 @@ Only the expected files; `docs/roadmap.md` is not listed.
 | AC-1.6 | The introduction: "pre-1.0" once, one link to `docs/roadmap.md`, no roadmap candidate named | pass |
 | AC-1.7 | The introduction: one paragraph, 97 words | pass |
 | AC-1.8 | The introduction: the table of sections and routes | pass |
-| AC-2.1 | The sweep, by section; Corrections; Left stale (one claim, by ruling R3) | pass, on the four checkers' findings |
+| AC-2.1 | The sweep, by section; Corrections; Left stale (one claim, by ruling R3); Implementation review | pass, on the four checkers' findings and the review's 34 spot-checks, one of which found R5 |
 | AC-2.2 | Diff checks (scripts, rake tasks, Kamal subcommands); the sweep (arguments, the two `script/scanner/` files); Corrections row 1 (`:5` is inside an example) | pass |
 | AC-2.3 | Diff checks (paths, routes) | pass |
 | AC-2.4 | Diff checks (environment variables); defaults and accepted values in the sweep (Docker Compose, Card catalog, Card scanner on a phone) | pass |
@@ -474,8 +507,8 @@ Only the expected files; `docs/roadmap.md` is not listed.
 | AC-2.9 | Corrections rows 2 and 3; Diff checks (the word diff of `CLAUDE.md`); the exact sentence is present once | pass |
 | AC-2.10 | Corrections row 2; `CLAUDE.md` line 20 | pass |
 | AC-3.1 | The sweep, by section: 15 rows, each with its count and what it was checked against | pass |
-| AC-3.2 | Corrections: seven rows, each with old text, new text, evidence, and for the README rows the term and the result | pass |
-| AC-3.3 | Not refuted, Not checkable, Off-limits; Diff checks (the lists) | pass: 22 not refuted, 32 not checkable and 2 off-limits claims are listed, and none of their lines changed. The 23rd not-refuted claim, "never stored in logs", went with the row R2 removed (noted under Not refuted) |
+| AC-3.2 | Corrections: eight rows, each with old text, new text, evidence, and for the README rows the term and the result | pass |
+| AC-3.3 | Not refuted, Not checkable, Off-limits; Diff checks (the lists) | pass: 22 not refuted, 32 not checkable and 2 off-limits claims are listed, and none of their words changed (two share line 291 with the R5 correction; see Diff checks, the lists). The 23rd not-refuted claim, "never stored in logs", went with the row R2 removed (noted under Not refuted) |
 | AC-3.4 | Gaps (with the missing "Using Collector" section); Differing names ("avatar menu", "account menu"); `docs/roadmap.md` is not in `git diff --name-status`; no issue was opened | pass |
 | AC-3.5 | Left stale: one row, with the evidence and ruling R3 | pass |
 | AC-3.6 | `bin/ci` | pass at `63703d2` (the head before the record's commit, which adds only this file) |
