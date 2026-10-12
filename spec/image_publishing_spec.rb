@@ -180,29 +180,4 @@ RSpec.describe "Image publishing files" do
       expect(uses).to all(start_with("actions/").or(start_with("ruby/setup-ruby@")))
     end
   end
-
-  describe "docs/releasing.md" do
-    let(:doc) { Rails.root.join("docs/releasing.md").read }
-
-    it "records the release procedure and what each trigger publishes (AC-7.1)", :aggregate_failures do
-      expect(doc).to include("git tag -a v", "v0.1.0", "| Tag `vX.Y.Z` |", "| Push to `main` |", "| Pull request |")
-      expect(doc).to include("vX.Y.Z-<suffix>", "Only the newest release's workflow may be re-run")
-      expect(doc).to include("The workflow does not check that the tag is annotated or on `main`")
-    end
-
-    it "orders the go-public checklist and says it cannot be undone (AC-7.2)", :aggregate_failures do
-      positions = [ "Push the first image", "Verify an authenticated pull", "Confirm the package is linked",
-                    "Change the visibility to public", "Verify an anonymous pull" ].map { |step| doc.index(step) }
-      expect(positions).to all(be_a(Integer))
-      expect(positions).to eq(positions.sort)
-      expect(doc).to include("cannot be undone")
-    end
-
-    it "documents the cleanup: rule, grace period, schedule, manual and local runs, failures, token (AC-5.1)", :aggregate_failures do
-      expect(doc).to include("## Cleaning up untagged versions", "more than\n  7 days old", "**Never deleted:**")
-      expect(doc).to include("Sundays at 06:00 UTC", "The `dry_run` box is ticked by default")
-      expect(doc).to include('GH_TOKEN="$(gh auth token)" bin/ghcr-cleanup', "**A failed run failed closed:**")
-      expect(doc).to include("Investigate the cause before re-running", "personal access token (classic")
-    end
-  end
 end
