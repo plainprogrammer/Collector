@@ -1,7 +1,7 @@
 # Feature 017: Export Format
 
 **Status:** Approved
-**Version:** 1.2.0
+**Version:** 1.2.1
 **Created:** 2026-10-11
 **Last Updated:** 2026-10-11
 **Branch:** `017-export-format`
@@ -18,6 +18,7 @@
 | 1.1.1 | 2026-10-11 | Maintainer ruling, relayed by the coordinator: FR-8's narrowed rule stands. A new field that holds collector-owned data raises `format_version`; only information-only fields are free. Recorded as decision 14 and removed from Open Questions |
 | 1.1.2 | 2026-10-11 | Approved by the maintainer as it stands, relayed by the coordinator, including every item that was under Open Questions (now decisions 15 to 19). No requirement changed |
 | 1.2.0 | 2026-10-11 | Plan additions, approved by the maintainer with the plan (decision 20). **A repeated key** in one object makes a file not well-formed (FR-1, Error Scenarios). **A time must be a real moment** (FR-2, Error Scenarios). **Accounts** join the coverage table as nothing to export, with each column left out, so a column added later fails the guard (FR-9, AC-3.5). **The writer's name:** the optional header field names any program and its version (FR-2). **No byte order mark** (FR-1). **The collection view** is required and not blank (Error Scenarios). The field names are fixed by the plan and the format document |
+| 1.2.1 | 2026-10-11 | Implementation review (Fable, Mode B, SPEC-ALIGNED): four sentences that version 1.2.0 left stale. FR-3 names the collection view among the fields that can't be blank; FR-9's lead names the third mark, nothing to export; Open Questions names decision 20; the glossary says a `null` finish or condition is always resolvable, as the application already treats it. No requirement changed |
 
 ---
 
@@ -35,7 +36,7 @@ Foundation principle 2 says collectors own their data, in open, documented forma
 - **Example**: a file kept in the repository that the format's rules are checked against. A valid example must pass; an invalid example must fail for the reason it names.
 - **Writer / reader**: any program that produces or consumes a file. Collector's export and import are the first of each; neither is built here.
 - **Well-formed**: a property of the file alone, checkable with no catalog and no instance. The schema and the rules in FR-1 to FR-6 decide it.
-- **Resolvable**: a property of a file against one instance's catalog: every lot's entry is in that catalog (retired or not), its finish is one the catalog lists for that entry, and its condition is in the type's vocabulary. A well-formed file may be unresolvable on some instance. Import (#39) decides what happens then; the format only names the distinction.
+- **Resolvable**: a property of a file against one instance's catalog: every lot's entry is in that catalog (retired or not), its finish is `null` or one the catalog lists for that entry, and its condition is `null` or in the type's vocabulary. A well-formed file may be unresolvable on some instance. Import (#39) decides what happens then; the format only names the distinction.
 - **Not recorded**: the collector gave no finish, no condition or no price for a lot. The application has one such state for each (a blank is stored as nothing), and so does the format: `null`.
 - **Entry identity**: the collectible type and the source's own id for the entry. For Magic, the Scryfall card id.
 - **Lot identity**: the entry identity, finish, condition and price paid (ADR 0019).
@@ -156,7 +157,7 @@ Most of this feature is a document, so some criteria can only be checked by read
 
 **Must:**
 - Carry the collector's name, their email address, and their choice of collection view (grid or table).
-- Require the name and the email address to be non-empty after trimming.
+- Require the name, the email address and the collection view to be non-empty after trimming.
 - Treat the collection view as a preference: a reader that doesn't know the value uses its own default, and that isn't an error.
 
 **Must not:**
@@ -230,7 +231,7 @@ This is the meaning of "matched" in the 1.0 test's second check. It follows that
 
 ### FR-9: Coverage
 
-The format document carries a coverage table: one row for every table in the application's database schema that belongs to an account or to a user. Each row says **exported** or **left out**. An exported row maps the table's columns to the format and lists the columns it leaves out, each with a reason; a left-out row gives the reason for the whole table.
+The format document carries a coverage table: one row for every table in the application's database schema that belongs to an account or to a user. Each row says **exported**, **left out** or **nothing to export**. An exported row maps the table's columns to the format and lists the columns it leaves out, each with a reason; a left-out row gives the reason for the whole table.
 
 **Must** mark as exported:
 - **Lots.** Left out: the internal ids, and the stored lot key (derived from finish, condition and price paid).
@@ -317,7 +318,7 @@ These are properties of a file. What a reader shows a person for each is import'
 
 ## Open Questions
 
-None. The points settled while writing and in review were approved with the spec on 2026-10-11 and are decisions 15 to 19.
+None. The points settled while writing and in review were approved with the spec on 2026-10-11 and are decisions 15 to 19; the plan's additions are decision 20.
 
 ## Decisions
 
