@@ -16,7 +16,7 @@ class Catalog::Refresh
   end
 
   def call
-    @run = Catalog::RefreshRun.start!(@collectible_type, trigger: @trigger, job_id: @job_id)
+    @run = Catalog::RefreshRun.start!(@collectible_type, trigger: @trigger, job_id: @job_id, failed_job_ids:)
     return @run unless @run.running?
 
     track_progress
@@ -43,6 +43,10 @@ class Catalog::Refresh
   end
 
   private
+    # The refresh jobs for this type that the queue has failed. A worker that died holding one never closed its run, so
+    # this refresh closes it instead of being skipped as already running.
+    def failed_job_ids = Catalog::Operation::Queue.new(Catalog::RefreshJob, @collectible_type).failed_job_ids
+
     # Optional source hook (app/models/catalog/sources.rb): a source that can say how far through a download or a file
     # it is takes a callable and calls it with (done, total). One that can't is still tracked by stage and counts.
     def track_progress

@@ -193,6 +193,16 @@ RSpec.describe Catalog::Refresh, type: :model do
       expect(left.reload).to have_attributes(status: "failed", message: "interrupted")
     end
 
+    it "runs, rather than skipping, when the queue has failed the job of the run left running (issue #60)", :aggregate_failures, :solid_queue do
+      failed = fail_job(claim_job(queue_job(Catalog::RefreshJob, "fake", "manual")))
+      left = create(:catalog_refresh_run, :running, collectible_type: "fake", job_id: failed.active_job_id)
+
+      run = described_class.new("fake", trigger: "manual", source:, job_id: "job-2").call
+
+      expect(run).to have_attributes(status: "applied", job_id: "job-2")
+      expect(left.reload).to have_attributes(status: "failed", message: "interrupted")
+    end
+
     it "gives the same catalog when a job runs again after being interrupted partway (AC-3.8)", :aggregate_failures do
       source.entries = [ entry_record("a"), entry_record("b"), entry_record("c") ]
       source.fail_at = 2
