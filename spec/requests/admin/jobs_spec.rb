@@ -113,12 +113,29 @@ RSpec.describe "Admin jobs pages", :solid_queue, type: :request do
         travel_to(Time.utc(2026, 10, 9, 3, 25)) { get admin_job_path(job.id) }
 
         main = text(page.at_css("main"))
-        expect(main).to include("Catalog::RefreshJob Failed", "Queue sync", "Priority 0", "Attempts 0",
+        expect(main).to include("Catalog::RefreshJob Failed", "Queue sync", "Priority 0", "Attempts since queued 1",
           "Queued 9 Oct 2026 03:15 UTC (10 minutes ago)", "Failed 9 Oct 2026 03:15 UTC (10 minutes ago)", 'Arguments ["mtg","manual"]',
           "Catalog::Sources::TransientError : GET /bulk-data returned <503>", "app/models/example.rb:1:in 'call'")
         expect(response.body).to include("returned &lt;503&gt;")
         expect(page.at_css("main form")["action"]).to eq(admin_job_retry_path(job.id))
         expect(page.at_css("main a.c-btn--danger")["href"]).to eq(new_admin_job_discard_path(job.id))
+      end
+
+      # Issue #61: the page said "Attempts 0" for a job that had failed, and still did once an admin's retry had run.
+      it "counts a failed job's run, and starts the count again when an admin retries it", :aggregate_failures do
+        job = failed_refresh
+        attempts = lambda do
+          get admin_job_path(job.id)
+          [ text(page.at_css(".c-pagehead__stats")), page.xpath("//dl[@class='c-details']/div[dt='Attempts since queued']/dd").text ]
+        end
+
+        expect(attempts.call).to eq(%w[Failed 1])
+        post admin_job_retry_path(job.id)
+        expect(attempts.call).to eq(%w[Queued 0])
+        claim_job(job)
+        expect(attempts.call).to eq(%w[Running 1])
+        finish_job(job)
+        expect(attempts.call).to eq(%w[Finished 1])
       end
 
       it "shows a running, a scheduled and a finished job without actions (AC-6.5, AC-6.9)", :aggregate_failures do
