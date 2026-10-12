@@ -5,7 +5,7 @@ metadata:
   type: feedback
 ---
 
-Don't add RSpec examples that check the wording, order, links or existence of a prose document: `README.md`, `CLAUDE.md`, an agent skill file, or Markdown under `docs/` (`docs/releasing.md`, the design system's documents, the ADR index). Plans for specs 004, 007, 011 to 015, 017 and 019 each added such examples; spec 020 removes them.
+Don't add RSpec examples that check the wording, order, links or existence of a prose document: `README.md`, `CLAUDE.md`, an agent skill file, or Markdown under `docs/` (`docs/releasing.md`, the design system's documents, the ADR index). The design system's reference files beside its Markdown (`tokens.json`, `previews/`) count too: the line is who reads the file, not its extension. Plans for about eleven specs between 004 and 019 added such examples; spec 020 removes them.
 
 **Why:** on 2026-10-12, approving spec 020 (issue #63), the maintainer said: "I want to drop the README RSpec. It is without precedence in my experience to have such a spec." I first read that as the one file. They corrected me the same day: "I mean more broadly regarding the README spec. I think it's odd to check documents outside code from RSpec. So, please apply my ruling more broadly."
 
