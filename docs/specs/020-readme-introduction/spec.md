@@ -1,7 +1,7 @@
 # Feature 020: An Accurate README
 
-**Status:** Draft
-**Version:** 1.3.0
+**Status:** Approved
+**Version:** 1.3.1
 **Created:** 2026-10-12
 **Last Updated:** 2026-10-12
 **Branch:** `020-readme-introduction`
@@ -15,8 +15,10 @@
 |---------|------|--------|
 | 1.0.0 | 2026-10-12 | Initial draft from issue #63. Three maintainer choices made while specifying: the whole of `README.md` is checked, not only its introduction (decision 1); the introduction says Collector is pre-1.0 and links the roadmap, with no list of unbuilt features (decision 2); the result is checked by hand and recorded, with no automated test (decision 3) |
 | 1.1.0 | 2026-10-12 | Maintainer ruling: the same stale phrase in `CLAUDE.md` ("a public card search proof-of-concept") is corrected in this PR (decision 4, Goals, Non-Goals, AC-2.9, FR-4, AC-3.2, Out of Scope). The rest of `CLAUDE.md` is not swept |
-| 1.2.0 | 2026-10-12 | Spec review revisions (Opus, Mode A, NEEDS REVISION, three blocking). **Existing test:** `spec/readme_spec.rb` already pins README phrases; it stays, and an expectation is edited only where a correction changes the phrase it pins (decision 3, FR-2, AC-3.6, Testability, Error Scenarios). **Statements left stale:** a statement the code contradicts, or that needs a ruling, may stay and is recorded (Goals, AC-2.1, AC-3.5, FR-3). **Gaps:** recorded only; this PR opens no issue and doesn't change the roadmap (glossary, AC-3.4, decision 6). **Sorting rules:** "claim", "checkable", "not refuted" and "off-limits" are defined so two people sort alike (glossary, FR-2). **`CLAUDE.md`:** a README correction that `CLAUDE.md` repeats is made there too, which covers its copy of the stale `home_spec.rb` example (decision 5, proposed; AC-2.9, FR-4). **Also:** diffs are read as word diffs (AC-2.7, AC-2.9); AC-2.5 is folded into AC-2.2 with the replacement named; AC-1.8 is folded into AC-2.6; AC-2.2 and AC-2.4 cover Kamal aliases, other tools' commands and variables read outside the app; the opening sentence is fixed verbatim (AC-1.1) |
+| 1.2.0 | 2026-10-12 | Spec review revisions (Opus, Mode A, NEEDS REVISION, three blocking). **Existing test:** `spec/readme_spec.rb` already pins README phrases; it stays, and an expectation is edited only where a correction changes the phrase it pins (decision 3, FR-2, AC-3.6, Testability, Error Scenarios). **Statements left stale:** a statement the code contradicts, or that needs a ruling, may stay and is recorded (Goals, AC-2.1, AC-3.5, FR-3). **Gaps:** recorded only; this PR opens no issue and doesn't change the roadmap (glossary, AC-3.4, decision 6). **Sorting rules:** "claim", "checkable", "not refuted" and "off-limits" are defined so two people sort alike (glossary, FR-2). **`CLAUDE.md`:** a README correction that `CLAUDE.md` repeats is made there too, which covers its copy of the stale `home_spec.rb` example (decision 5, proposed; AC-2.9, FR-4). **Also:** diffs are read as word diffs (AC-2.7, AC-2.9); AC-2.5 names the replacement; AC-1.8 is folded into AC-2.6; AC-2.2 and AC-2.4 cover Kamal aliases, other tools' commands and variables read outside the app; the opening sentence is fixed verbatim (AC-1.1) |
 | 1.3.0 | 2026-10-12 | Maintainer rulings. **`spec/readme_spec.rb` is removed** in this PR, with its RuboCop exclusion: a spec that tests a README's wording is without precedent in the maintainer's experience (decision 3 rewritten, Goals, Story 4, FR-5, AC-3.6, FR-2, Security, Reliability, Testability, Error Scenarios). Its two expectations that read `compose.yaml` and `config/deploy.yml`, not the README, are kept in `spec/image_publishing_spec.rb`. **Decision 5 accepted:** `CLAUDE.md` gets the README corrections it repeats. The rest of 1.2.0 is approved as it stands |
+| 1.3.1 | 2026-10-12 | Second review pass (Opus, Mode A, NEEDS REVISION, two blocking; wording only, no decision reopened). **Moved expectations:** neither string is asserted today, so two examples are added to `spec/image_publishing_spec.rb` and the counts are stated (AC-4.2, AC-4.3, Testability). **Not refuted** is a result, not a kind of claim, and a refuted claim is stale (glossary, FR-2, AC-3.3). **Also:** comparisons are against `origin/main...HEAD`, since a local `main` can be behind (AC-2.7 to AC-2.9, AC-4.3); what a correction may do to wrapping and to aligned code comments (AC-2.7, FR-2); the `CLAUDE.md` sentence is given verbatim (AC-2.9, FR-4); how a repeat in `CLAUDE.md` is found (FR-4, AC-3.2); the safety warnings get their own record entry (AC-3.8); true claims are recorded per section (AC-3.1); FR-5's ordering line is removed; the places that say what the PR touches now name the spec files and `.rubocop.yml` |
+| 1.3.1 | 2026-10-12 | **Approved by the maintainer**: the 1.2.0 revisions, decision 5 and the removal of `spec/readme_spec.rb`, with a second review asked for after the edits. That review's fixes are the row above and change no decision |
 
 ---
 
@@ -26,16 +28,18 @@
 
 The introduction went stale because specs since 004 added to the sections below it and none returned to the top. The same can have happened anywhere in the file: one example is already known (`bin/rspec spec/requests/home_spec.rb:5` names a spec file that no longer exists, in both `README.md` and `CLAUDE.md`).
 
-> **Inputs.** This spec is about one file and its repeats in a second, so it names them. The roadmap ([docs/roadmap.md](../../roadmap.md)), the north star ([docs/north-star.md](../../north-star.md)) and the repository at the PR's head are the fixed inputs.
+The suite also pins phrases and section order of the README in `spec/readme_spec.rb` (eight examples, added by the plans of specs 004, 007, 011, 012, 014 and 015). The maintainer doesn't want a spec of a README's wording (decision 3).
+
+> **Inputs.** This spec is about one file, its repeats in a second and the spec file that pins it, so it names them, with `spec/image_publishing_spec.rb` and `.rubocop.yml`. Comparisons "with `origin/main`" mean with the merge base, `origin/main...HEAD`. The roadmap ([docs/roadmap.md](../../roadmap.md)), the north star ([docs/north-star.md](../../north-star.md)) and the repository at the PR's head are the fixed inputs.
 
 ### Glossary
 
 - **Introduction:** the first paragraph of `README.md`, between the `# Collector` heading and the paragraph that begins "Built with Rails".
 - **Claim:** one thing `README.md` says about the application, its commands, files, paths, routes, settings, defaults or behaviour. A sentence, list item, table row, command or code comment is split into its claims, and each is sorted separately.
-- **Checkable:** a claim that can be confirmed or refuted by reading tracked files, or by running a command in a checkout with no network, no container runtime and no phone. A figure that a document under `docs/` merely repeats (a download size, a duration) is not checkable. The behaviour of another tool, a browser, a registry or a device is not checkable; the parts of such a claim that name things in this repository are.
+- **Checkable:** a claim that can be confirmed or refuted by reading tracked files, or by running a command in a checkout with no network, no container runtime and no phone. A command is checked by reading its source; it is run only if it writes nothing outside `tmp/` and reads no off-limits file. A figure that a document under `docs/` merely repeats (a download size, a duration) is not checkable. The behaviour of another tool, a browser, a registry or a device is not checkable; the parts of such a claim that name things in this repository are.
 - **Stale:** a checkable claim that isn't true of the repository at the PR's head.
-- **Not refuted:** the result for a "never", "only" or "nothing" claim (for example "Photos never leave the phone"). It is checked against the code or spec the record names, and recorded as not refuted, not as true.
-- **Off-limits:** a tracked file that agents may not read (`.kamal/secrets`). A claim about it is recorded as unchecked for that reason, unless the maintainer checks it.
+- **Not refuted:** the result recorded for a checkable claim that says something never happens or always holds, whatever its wording (for example "Photos never leave the phone"), when the code or spec named in the record shows no counter-example. It is not recorded as true. If a counter-example is found, the claim is stale and is treated as any other stale claim.
+- **Off-limits:** a file that agents may not read (`.kamal/secrets`, `config/master.key`). A claim about it is recorded as unchecked for that reason, unless the maintainer checks it.
 - **Gap:** something an operator or contributor would need and can't find in the README, noticed while checking a claim. No reverse sweep of the repository is made to find gaps.
 - **Sweep record:** the list, in this spec's `verification.md`, of what was checked and what was found, for `README.md` and for the `CLAUDE.md` changes.
 
@@ -43,7 +47,7 @@ The introduction went stale because specs since 004 added to the sections below 
 
 1. **The whole README is checked.** The issue names the introduction; the maintainer widened it to every section (2026-10-12).
 2. **Pre-1.0, with a link.** The introduction says Collector is pre-1.0 and links the roadmap. It doesn't list what is missing, so it doesn't go stale as each spec lands (maintainer, 2026-10-12).
-3. **Checked by hand and recorded; the README has no spec.** No behaviour changes, so no test is added. `spec/readme_spec.rb`, which pins phrases and section order in the README, is removed in this PR: a spec that tests a README's wording is without precedent in the maintainer's experience (maintainer, 2026-10-12). Its last example also reads `compose.yaml` and `config/deploy.yml`; those two expectations check configuration, not the README, and are kept in `spec/image_publishing_spec.rb`, which already checks those files' shape. Other spec files that read `README.md` for one fact (`spec/export_format_document_spec.rb` checks that it links the export format) are not README specs and stay.
+3. **Checked by hand and recorded; the README has no spec.** No behaviour changes, so no test is added. `spec/readme_spec.rb`, which pins phrases and section order in the README, is removed in this PR: a spec that tests a README's wording is without precedent in the maintainer's experience (maintainer, 2026-10-12). This is the one statement of the reason; the rest of the spec cites it. Past specs' README criteria lose their automated evidence, and their `plan.md` and `verification.md` files still name the file, as a record of what was true then. Its last example also reads `compose.yaml` and `config/deploy.yml`; those two expectations check configuration, not the README, and neither string is asserted anywhere else (`spec/image_publishing_spec.rb` checks only that the Compose key is present), so they are kept as two new examples in `spec/image_publishing_spec.rb`. Other spec files that read `README.md` for one fact (`spec/export_format_document_spec.rb` checks that it links the export format) are not README specs and stay.
 4. **`CLAUDE.md`'s phrase is fixed here.** The stale "public card search proof-of-concept" phrase in `CLAUDE.md`'s Project Status is corrected in the same PR. The rest of that file is not swept (maintainer, 2026-10-12).
 5. **A README correction that `CLAUDE.md` repeats is made there too.** `CLAUDE.md`'s Commands list holds the same stale `home_spec.rb` example. Fixing one copy and knowingly leaving the other makes the two files disagree, so where the sweep corrects a README claim and `CLAUDE.md` states the same claim, `CLAUDE.md` gets the same correction. This is still not a sweep of `CLAUDE.md` (proposed from review; accepted by the maintainer, 2026-10-12).
 6. **Gaps are recorded, not filed.** This PR opens no issue and doesn't change `docs/roadmap.md`: a new housekeeping issue is a new roadmap candidate, and the roadmap changes with its issues. The maintainer decides from the record which gaps become candidates. The roadmap's line for #63 is left as it is, as specs 018 and 019 left theirs (from review).
@@ -62,7 +66,8 @@ The introduction went stale because specs since 004 added to the sections below 
 - Documenting features the README doesn't mention today. A gap is recorded, not filled.
 - Restructuring the README: no section is added, removed, renamed or reordered.
 - Rewording claims that are true, including two true claims that name one thing differently ("avatar menu" and "account menu"). Those are recorded.
-- Changing the application, its commands or its configuration to match the README.
+- Changing the application, its commands or its configuration to match the README. (`.rubocop.yml` loses one line, FR-5.)
+- Changing any spec file other than the two named in Story 4.
 - A user guide, screenshots or badges.
 - Checking the rest of `CLAUDE.md` against the repository.
 - Any other document under `docs/` (the roadmap, the design system, the ADRs), except this spec's own folder.
@@ -91,8 +96,8 @@ The introduction went stale because specs since 004 added to the sections below 
 - [ ] **AC-1.4** Given the same When the introduction is read Then it says an admin manages users and sign-up, the catalog's refreshes and the background jobs.
 - [ ] **AC-1.5** Given the same When the introduction is searched, case-insensitively Then it contains neither "not built" nor "public", and no sentence says that accounts, collections, catalog search, the scanner or the admin pages are missing.
 - [ ] **AC-1.6** Given the same When the introduction is read Then it contains the words "pre-1.0" and a link to `docs/roadmap.md`, and it names nothing that is an open candidate in `docs/roadmap.md` (for example exporting or importing a collection, locations, typed entry, the open catalog, comics).
-- [ ] **AC-1.7** Given the same When the introduction's rendered text is counted (link text, not addresses) Then it is one paragraph of at most 130 words.
-- [ ] **AC-1.8** Given the same When the introduction is read Then everything it says Collector does has a section further down the README or a page in the application.
+- [ ] **AC-1.7** Given the same When the introduction's rendered text is counted (link text, not addresses) Then it is one paragraph of at most 130 whitespace-separated words.
+- [ ] **AC-1.8** Given the same When the introduction is read Then everything it says Collector does has a section further down the README or a page in the application, and the record names that section or route for each.
 
 ### Story 2: Every claim in the README is true
 
@@ -103,14 +108,14 @@ The introduction went stale because specs since 004 added to the sections below 
 **Acceptance criteria:**
 
 - [ ] **AC-2.1** Given the README at the PR's head When each checkable claim is compared with the repository Then none is stale, except a claim the record lists as left stale (AC-3.5).
-- [ ] **AC-2.2** Given a command the README tells the reader to run When it is looked up Then a `bin/` script, rake task or `script/` file exists under that name and takes the arguments shown; a path argument names an existing file, and a `:N` suffix a line inside an example; a `bin/kamal <alias>` is defined under `aliases:` in `config/deploy.yml`. For a command from another tool (`docker compose`, `podman`, `openssl`), only the parts that name things in this repository (a service, a file, a task) are checked.
+- [ ] **AC-2.2** Given a command the README tells the reader to run When it is looked up Then a `bin/` script, rake task or `script/` file exists under that name and takes the arguments shown; a path argument names an existing file, and a `:N` suffix a line inside an example; a `bin/kamal` subcommand that isn't Kamal's own is defined under `aliases:` in `config/deploy.yml`. For a command from another tool (`docker compose`, `podman`, `openssl`), only the parts that name things in this repository (a service, a file, a task) are checked.
 - [ ] **AC-2.3** Given a file, directory, route or URL path the README names When it is looked up Then it exists in the repository or is served by a route in `config/routes.rb`. A path that is created at run time (under `storage/`, `tmp/`, `log/`, `vendor/ocr/` or the reader's home directory) is checked against the code that writes it.
 - [ ] **AC-2.4** Given an environment variable the README names When it is looked up Then something tracked in the repository reads or names it, or the record cites the framework or tool that reads it (Rails, Puma, Kamal); and the default and accepted values the README gives are the ones the code uses.
 - [ ] **AC-2.5** Given the README's example of running a single spec When it is read Then it is `bin/rspec spec/requests/health_check_spec.rb:5`.
 - [ ] **AC-2.6** Given every link in `README.md`, the introduction's included When it is followed Then a section link lands on an existing heading and a relative link names an existing file.
-- [ ] **AC-2.7** Given `git diff --word-diff main -- README.md` When it is read Then outside the introduction every changed word belongs to a correction listed in the record, and no paragraph is re-wrapped.
-- [ ] **AC-2.8** Given the README at the PR's head When its headings are compared with `main`'s Then they are the same headings in the same order.
-- [ ] **AC-2.9** Given `CLAUDE.md` at the PR's head When its Project Status is read Then the sentence beginning "Feature 002 added" no longer contains "public" or "proof-of-concept", and says the card search at `/catalog/entries` is for signed-in users. When `git diff --word-diff main -- CLAUDE.md` is read Then every changed word is inside that sentence or belongs to a README correction that `CLAUDE.md` repeats (decision 5), each listed in the record.
+- [ ] **AC-2.7** Given `git diff --word-diff origin/main...HEAD -- README.md` When it is read Then outside the introduction every changed word belongs to a correction listed in the record. Given the same diff without `--word-diff` Then every changed line outside the introduction contains a listed correction: a corrected line may run past the wrap column and is not re-flowed. The one exception is the padding before a trailing `#` comment in a code block, which may change on neighbouring lines to keep the comments aligned.
+- [ ] **AC-2.8** Given the README at the PR's head When its headings (lines beginning `#` outside fenced code) are compared with `origin/main`'s Then they are the same headings in the same order.
+- [ ] **AC-2.9** Given `CLAUDE.md` at the PR's head When its Project Status is read Then the sentence beginning "Feature 002 added" ends "Scryfall bulk-data ingestion via a background refresh, and a card search at `/catalog/entries`, which has needed sign-in since accounts (spec 004)." and is otherwise as on `origin/main`. When `git diff --word-diff origin/main...HEAD -- CLAUDE.md` is read Then every changed word is inside that sentence or belongs to a README correction that `CLAUDE.md` repeats (decision 5), each listed in the record.
 - [ ] **AC-2.10** Given the stale `home_spec.rb` example When `CLAUDE.md`'s Commands list is read Then its single-spec example is the README's (AC-2.5).
 
 ### Story 3: The check is on record
@@ -121,25 +126,26 @@ The introduction went stale because specs since 004 added to the sections below 
 
 **Acceptance criteria:**
 
-- [ ] **AC-3.1** Given the PR When `docs/specs/020-readme-introduction/verification.md` is read Then it lists the text before the first `##` and every `##` and `###` section of the README, and for each one what its claims were checked against.
-- [ ] **AC-3.2** Given the same When the record is read Then every correction, in `README.md` and in `CLAUDE.md`, is listed with its old text, its new text and the evidence (a file, a route, a task) that the new text is true.
-- [ ] **AC-3.3** Given the same When the record is read Then every claim that isn't checkable or is off-limits is listed with the reason, every "never", "only" or "nothing" claim is listed as not refuted with what it was checked against, and all of them are unchanged in the README.
-- [ ] **AC-3.4** Given the same When the record is read Then every gap noticed is listed, and so is every pair of true claims that name one thing differently. No issue is opened and `docs/roadmap.md` is unchanged.
-- [ ] **AC-3.5** Given the same When the record is read Then every claim left stale is listed with its text, the evidence that it is stale, and the reason: the code is what's wrong, or the maintainer's ruling on it.
+- [ ] **AC-3.1** Given the PR When `docs/specs/020-readme-introduction/verification.md` is read Then it lists the text before the first `##` and every `##` and `###` section of the README, and for each one the number of claims checked and the files, routes or tasks they were checked against. True claims are not listed one by one.
+- [ ] **AC-3.2** Given the same When the record is read Then every correction, in `README.md` and in `CLAUDE.md`, is listed with its old text, its new text and the evidence (a file, a route, a task) that the new text is true. For each README correction it gives the term searched for in `CLAUDE.md` and the result, "not repeated" included.
+- [ ] **AC-3.3** Given the same When the record is read Then every claim that isn't checkable or is off-limits is listed with the reason, every claim recorded as not refuted is listed with what it was checked against, and every claim on those lists is unchanged in the README.
+- [ ] **AC-3.4** Given the same When the record is read Then it has a Gaps list and a Differing names list, each with entries or "none". They include at least the missing "Using Collector" section and the "avatar menu" and "account menu" pair. No issue is opened and `docs/roadmap.md` is unchanged.
+- [ ] **AC-3.5** Given the same When the record is read Then every claim left stale is listed with its text, the evidence that it is stale, and the reason: the code is what's wrong, with the spec or ADR that states the intended behaviour, or the maintainer's ruling on it.
 - [ ] **AC-3.6** Given the PR's head When `bin/ci` is run Then it passes.
 - [ ] **AC-3.7** Given the PR When its description is read Then it closes issue #63.
+- [ ] **AC-3.8** Given the PR When the record is read Then it lists the README's three safety warnings (the first person to reach an instance becomes its admin, in Self-hosting and in Upgrading to accounts; signing in over plain HTTP; never running a plain `bin/kamal deploy` against the published registry) and states for each that its text and its position are unchanged from `origin/main`. A warning that is itself stale goes to the maintainer (Error Scenarios, second row).
 
 ### Story 4: The README has no spec
 
 **As the** maintainer
 **I want** the suite to stop testing the README's wording
-**So that** an honest edit to the README never fails CI, and the README is kept true by review
+**So that** the README is kept true by review, not by pinned phrases (decision 3)
 
 **Acceptance criteria:**
 
-- [ ] **AC-4.1** Given the PR's head When the repository is searched Then `spec/readme_spec.rb` doesn't exist, and `.rubocop.yml` no longer names it.
-- [ ] **AC-4.2** Given the PR's head When `spec/image_publishing_spec.rb` is run Then it has an example that fails if `compose.yaml` stops passing `COLLECTOR_MTG_ART_MATCHING` to the container, or if `config/deploy.yml` loses its commented `COLLECTOR_MTG_ART_MATCHING: true` line: the two expectations `spec/readme_spec.rb` held about those files, with the same strings.
-- [ ] **AC-4.3** Given the PR's head When the suite's example count is compared with `main`'s Then it is lower by the README-only examples removed (seven, and the eighth's README expectations), and no example outside `spec/readme_spec.rb` and `spec/image_publishing_spec.rb` is added, removed or changed.
+- [ ] **AC-4.1** Given the PR's head When `git ls-files spec/readme_spec.rb` and `grep readme_spec .rubocop.yml` are run Then both print nothing.
+- [ ] **AC-4.2** Given the PR's head When `bin/rspec spec/image_publishing_spec.rb` is run Then it reports 25 examples and 0 failures: its 23 existing examples, unchanged, and two new ones. One, under `describe "compose.yaml"`, expects the file's text to include `COLLECTOR_MTG_ART_MATCHING: "${COLLECTOR_MTG_ART_MATCHING:-}"`. One, under `describe "config/deploy.yml"`, expects the file's text to include `# COLLECTOR_MTG_ART_MATCHING: true`.
+- [ ] **AC-4.3** Given `git diff --stat origin/main...HEAD -- spec` When it is read Then it lists exactly `spec/readme_spec.rb` (deleted) and `spec/image_publishing_spec.rb` (insertions only), and the suite has six fewer examples than at the merge base (eight removed, two added).
 - [ ] **AC-4.4** Given the PR's head When `spec/export_format_document_spec.rb` is run Then its "is linked from the README" example is unchanged and passes.
 
 ## Functional Requirements
@@ -170,7 +176,8 @@ Every claim in `README.md` is sorted and compared with the repository at the PR'
 - Sort each claim as checkable, not checkable, or off-limits, by the glossary.
 - Correct each stale claim with the smallest change that makes it true, changing only the words of that claim.
 - Leave a claim that isn't checkable or is off-limits unchanged, and record it.
-- Leave true claims, the headings, their order and the line wrapping of untouched paragraphs unchanged.
+- Record each checkable claim's result as true, stale or not refuted.
+- Leave true claims, the headings, their order and the line wrapping unchanged; a corrected line is not re-flowed (AC-2.7).
 
 **Must not:**
 - Add documentation for something the README doesn't mention.
@@ -186,7 +193,9 @@ Every claim in `README.md` is sorted and compared with the repository at the PR'
 - List each correction with old text, new text and evidence.
 - List each claim that is not checkable, off-limits or not refuted, with its reason or what it was checked against.
 - List each claim left stale, with the evidence and the reason.
-- List each gap and each pair of inconsistent names.
+- List each gap and each pair of differing names.
+- List the three safety warnings, each with its text and position confirmed unchanged.
+- Give, for each README correction, the term searched for in `CLAUDE.md` and the result.
 
 **Must not:**
 - Record a section as checked without naming what it was checked against.
@@ -196,10 +205,10 @@ Every claim in `README.md` is sorted and compared with the repository at the PR'
 The stale phrase in `CLAUDE.md`'s Project Status is corrected, and a README correction that `CLAUDE.md` repeats is made there too.
 
 **Must:**
-- Say the card search at `/catalog/entries` is for signed-in users, without rewriting history: feature 002's search was public when it was added, and accounts (spec 004) put it behind sign-in.
+- End the Project Status sentence that begins "Feature 002 added" with "and a card search at `/catalog/entries`, which has needed sign-in since accounts (spec 004)." Feature 002's search was public when it was added, so the sentence doesn't say feature 002 built it for signed-in users.
 - Keep the rest of the sentence's facts (the catalog core, the MTG extension, the Scryfall ingestion) as they are.
 - Replace the single-spec example in the Commands list with the README's corrected one.
-- Apply any other README correction to the same claim where `CLAUDE.md` states it.
+- For each other README correction, search `CLAUDE.md` for the corrected command, path, variable or phrase, and change only an occurrence that makes the same claim. This search is not a sweep: nothing else in `CLAUDE.md` is checked.
 
 **Must not:**
 - Call the search public or a proof-of-concept.
@@ -211,13 +220,12 @@ The stale phrase in `CLAUDE.md`'s Project Status is corrected, and a README corr
 
 **Must:**
 - Delete `spec/readme_spec.rb` and its line in `.rubocop.yml`.
-- Keep its two expectations about `compose.yaml` and `config/deploy.yml` in `spec/image_publishing_spec.rb`, asserting the same strings.
-- Be done before any README correction, so no correction is made to satisfy it.
+- Keep its two expectations about `compose.yaml` and `config/deploy.yml` as two new examples in `spec/image_publishing_spec.rb`, asserting the same strings against each file's text (AC-4.2).
 
 **Must not:**
 - Replace it with another check of the README's wording, links or structure.
 - Change a past spec's `plan.md` or `verification.md` that names the file; they record what was true then.
-- Remove or change any other spec file's examples.
+- Remove or change an existing example in any spec file, `spec/image_publishing_spec.rb`'s 23 included.
 
 ## Non-Functional Requirements
 
@@ -228,7 +236,7 @@ The stale phrase in `CLAUDE.md`'s Project Status is corrected, and a README corr
 ### Security
 
 - Neither file gains a secret, a real host name, a real email address or a credential. Examples keep their placeholders (`you@example.com`, `X.Y.Z`, `192.168.0.1`).
-- The safety warnings already in the README (the first person to reach an instance becomes its admin; signing in over plain HTTP; never running a plain `bin/kamal deploy` against the published registry) keep their meaning and their prominence. No test pins them once `spec/readme_spec.rb` is gone, so the record states for each that its words are unchanged (AC-2.7's word diff shows it).
+- The safety warnings already in the README (the first person to reach an instance becomes its admin; signing in over plain HTTP; never running a plain `bin/kamal deploy` against the published registry) keep their meaning and their prominence. No test pins them once `spec/readme_spec.rb` is gone, so the record states for each that its text and position are unchanged (AC-3.8).
 - The sweep reads no off-limits file.
 
 ### Reliability
@@ -238,26 +246,25 @@ The stale phrase in `CLAUDE.md`'s Project Status is corrected, and a README corr
 ### Testability
 
 - No example is added for the README; the evidence is the sweep record and a passing `bin/ci`. Foundation principle 5 ("new or changed behavior ships with tests") is met because no behaviour changes, and the examples removed tested a document's wording, not behaviour (decision 3).
-- The one example moved (AC-4.2) is shown to fail first: against a copy of `compose.yaml` or `config/deploy.yml` without the line, before it is trusted.
+- Each of the two new examples (AC-4.2) is shown to fail by a temporary working-tree edit, reverted afterwards: the Compose value changed to `"true"`, the `deploy.yml` comment line deleted. The failure output is in `verification.md`.
 
 ### Roadmap rules
 
 - **Hosted-door rules:** none applies. The spec adopts no source, adds no admin page, adds no setting, and costs an account nothing in storage or background work.
-- **One outcome, one PR:** the outcome is "the README says what Collector is today". The `CLAUDE.md` changes are the same false claims in a second file, and removing the README's spec is what lets the README be corrected by review alone. The PR closes #63.
+- **One outcome, one PR:** the outcome is "the README says what Collector is today". The `CLAUDE.md` changes are the same false claims in a second file, and the README's spec goes with them by the maintainer's ruling (decision 3). The PR closes #63.
 - **Export covers it:** no collector-owned data is added, so the export format doesn't change.
 
 ## Error Scenarios
 
 | Scenario | Expected Behavior |
 |----------|-------------------|
-| The README and the code disagree, and the code is what's wrong (the README states the intended behaviour) | The README is left as it is and the record lists the claim as left stale, with the evidence. The maintainer decides whether it becomes an issue |
+| The README and the code disagree, and the code is what's wrong (a spec or ADR states the behaviour the README describes; without one, the next row applies) | The README is left as it is and the record lists the claim as left stale, with the evidence. The maintainer decides whether it becomes an issue |
 | A correction would need a decision (two readings are possible, the claim is true but misleading by where it sits, or the true text would contradict a ruling in the roadmap) | The claim is left unchanged and put to the maintainer before the PR is marked ready. The record carries the ruling, and the correction if one was ruled |
 | A claim can't be checked, or is about an off-limits file | It is left unchanged and listed in the record with the reason |
 | A correction changes the sentence that `spec/export_format_document_spec.rb` expects (the link to `docs/export-format/README.md`) | The link's address is kept as it is, so the example keeps passing; that spec file is not changed |
-| `spec/image_publishing_spec.rb` already asserts one of the two moved strings | It isn't asserted twice; the record says where it is covered |
 | Something exists and the README doesn't mention it | It is listed in the record as a gap. The README is not extended and no issue is opened |
 | A section link's target heading doesn't exist | The link is corrected to the existing heading it meant; no heading is renamed to fit the link |
-| The sweep finds nothing stale beyond what this spec already names | The record says so, section by section. The PR changes the introduction, the single-spec example in both files and the `CLAUDE.md` sentence |
+| The sweep finds nothing stale beyond what this spec already names | The record says so, section by section. The PR changes the introduction, the single-spec example in both files, the `CLAUDE.md` sentence, the two spec files and `.rubocop.yml` (Story 4), and adds this spec's `plan.md` and `verification.md` |
 
 ## Open Questions
 
