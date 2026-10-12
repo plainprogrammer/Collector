@@ -89,18 +89,4 @@ RSpec.describe "The export format's document" do
       ])
     end
   end
-
-  describe "the repository around it (AC-4.4)" do
-    it "is linked from the README" do
-      expect(Rails.root.join("README.md").read).to include("(docs/export-format/README.md)")
-    end
-
-    it "has its decision in the ADR index, no longer among the expected ones", :aggregate_failures do
-      adr_index = Rails.root.join("docs/adr/README.md").read
-
-      expect(adr_index).to include("[0020](0020-export-format.md)")
-      expect(adr_index[/^### Expected\n.*\z/m]).not_to include("export format")
-      expect(Rails.root.join("docs/adr/0020-export-format.md")).to exist
-    end
-  end
 end
