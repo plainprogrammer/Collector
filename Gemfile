@@ -68,6 +68,8 @@ group :development do
 end
 
 group :test do
+  # Checks the export format's examples against its JSON Schema (spec 017); never loaded by the running app.
+  gem "json_schemer", "~> 2.4", require: false
   gem "capybara"
   gem "selenium-webdriver"
   gem "webmock"
