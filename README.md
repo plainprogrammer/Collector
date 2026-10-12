@@ -217,7 +217,7 @@ Queue runs inside Puma (`SOLID_QUEUE_IN_PUMA`).
 The card scanner ("Scan" in the navigation, at `/scanner`) reads a card with the camera of the phone it runs on, or
 from a photo, which it finds and straightens first. You confirm the printing and finish and add the card to your
 collection with one tap; the sitting's adds are listed with Undo until you press Done. Photos never leave the phone:
-only the text read from the card (and, with art matching on, the ids of the closest artworks) and your add, Undo and printing choices are sent to your instance.
+only the text read from the card (and, with art matching on, the ids and distances of the closest artworks) and your add, Undo and printing choices are sent to your instance.
 The image build downloads the scanner's OCR engine from `registry.npmjs.org` and checks each file against a pinned
 SHA-256; your instance serves it from `/ocr/v7.0.0/`, so phones fetch it from you, not from a third party.
 The published image already contains it.
