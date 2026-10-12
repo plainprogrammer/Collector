@@ -55,8 +55,8 @@ RSpec.describe Catalog::Operation::Queue, :solid_queue, type: :model do
   end
 
   it "reads the queue once, when asked to or first asked about it, and says when", :aggregate_failures do
-    freeze_time { expect(queue.load.read_at).to eq(Time.current) }
-    expect(queue.load).to be(queue)
+    freeze_time { expect(queue.read.read_at).to eq(Time.current) }
+    expect(queue.read).to be(queue)
     queue_job(Catalog::RefreshJob, "mtg", "manual")
 
     expect(queue).not_to be_any

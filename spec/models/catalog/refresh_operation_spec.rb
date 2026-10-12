@@ -226,7 +226,7 @@ RSpec.describe Catalog::RefreshOperation, :solid_queue, type: :model do
     end
 
     it "doesn't judge a run that started after the queue was read by that reading" do
-      operation.queue.load
+      operation.queue.read
       later = running(job_id: "queued-since", started_at: 1.second.from_now)
 
       expect(operation).to have_attributes(run: later, state: :running)

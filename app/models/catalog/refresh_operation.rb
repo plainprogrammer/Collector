@@ -21,13 +21,13 @@ class Catalog::RefreshOperation < Catalog::Operation
   def run
     return @run if defined?(@run)
 
-    queue.load
+    queue.read
     @run = Catalog::RefreshRun.for_type(collectible_type).attempted.recent.first
   end
 
   # The type's latest runs, skipped ones included, for #status_label and #status_line.
   def recent_runs(limit)
-    queue.load
+    queue.read
     Catalog::RefreshRun.for_type(collectible_type).recent.limit(limit).to_a
   end
 

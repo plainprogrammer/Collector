@@ -9,7 +9,7 @@ class Catalog::Operation::Queue
 
   # Reads the queue now rather than when first asked about it, so that what is read next can be judged by it: a job's
   # row is finished only after the job's own record of its work is closed.
-  def load = jobs && self
+  def read = jobs && self
 
   # When the queue was read, reading it now if it hasn't been.
   def read_at = jobs && @read_at
