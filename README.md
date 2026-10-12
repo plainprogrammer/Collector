@@ -287,7 +287,7 @@ bin/rails "catalog:status[mtg]"   # Kamal: bin/kamal catalog-status
   queued or are scheduled. A failed job shows its error and backtrace, and can be retried or
   discarded there. Both pages are for admins only.
 
-- **Schedule:** in production the catalog refreshes weekly, on Mondays at 03:15 server time
+- **Schedule:** in production the catalog refreshes weekly, on Mondays at 03:15 UTC
   (`config/recurring.yml`). A scheduled run is skipped when the same Scryfall file and
   language set were already applied; a manual run always applies. Only one refresh per
   collectible type runs at a time.
