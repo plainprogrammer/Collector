@@ -25,12 +25,14 @@ class Catalog::RefreshRun < ApplicationRecord
 
   # Records a new attempt. A run still marked running is closed as failed ("interrupted") when it has made no
   # progress for STALL_AFTER, or when it belongs to the job that is starting now (the queue re-ran the job after a
-  # restart, or an admin retried it). Any other running run makes this attempt a skip.
-  def self.start!(collectible_type, trigger:, job_id: nil)
+  # restart, or an admin retried it), or to a job the queue has failed (failed_job_ids: its worker died before it
+  # could close the run). Any other running run makes this attempt a skip.
+  def self.start!(collectible_type, trigger:, job_id: nil, failed_job_ids: [])
     transaction do
       runs = for_type(collectible_type)
       left_behind = runs.stalled
-      left_behind = left_behind.or(runs.running.where(job_id:)) if job_id.present?
+      ended_job_ids = [ job_id, *failed_job_ids ].compact_blank
+      left_behind = left_behind.or(runs.running.where(job_id: ended_job_ids)) if ended_job_ids.any?
       left_behind.find_each { |run| run.finish!(:failed, message: INTERRUPTED) }
 
       already_running = runs.running.exists?
@@ -68,15 +70,17 @@ class Catalog::RefreshRun < ApplicationRecord
   def stalled_minutes = ((Time.current - last_progress_at) / 60).floor
 
   # The status as the catalog page and `catalog:status` word it. A stalled run is interrupted unless its job is still
-  # claimed by a worker (job_claimed), which only the queue knows (spec 015 AC-3.2, AC-3.5, AC-3.6).
-  def status_label(job_claimed: false)
+  # claimed by a worker (job_claimed), and a running one is interrupted at once when the queue has failed its job
+  # (job_failed); only the queue knows either (spec 015 AC-3.2, AC-3.5, AC-3.6).
+  def status_label(job_claimed: false, job_failed: false)
+    return INTERRUPTED if running? && job_failed
     return status unless stalled?
 
     job_claimed ? "running (no progress for #{stalled_minutes} minutes)" : INTERRUPTED
   end
 
-  def status_line(job_claimed: false)
-    [ started_at.utc.iso8601, finished_at&.utc&.iso8601 || "-", status_label(job_claimed:), trigger, source_version || "-",
+  def status_line(job_claimed: false, job_failed: false)
+    [ started_at.utc.iso8601, finished_at&.utc&.iso8601 || "-", status_label(job_claimed:, job_failed:), trigger, source_version || "-",
       counts.map { |name, value| "#{name}=#{value}" }.join(" "), message ].compact.join("  ")
   end
 
