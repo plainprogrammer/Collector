@@ -176,6 +176,29 @@ RSpec.describe "Admin catalog page", :solid_queue, type: :request do
         expect(page.at_css("[data-controller~='poll']")).to be_nil
       end
 
+      # After a crash the queue fails the job its worker died holding, and nothing closes the run (issue #60).
+      it "shows a running run whose job the queue has failed as interrupted at once, with its failed job", :aggregate_failures do
+        job = fail_job(claim_job(queue_job(Catalog::RefreshJob, "mtg", "manual")), SolidQueue::Processes::ProcessPrunedError.new(6.minutes.ago))
+        running(stage: "sync", started_at: 8.minutes.ago, heartbeat_at: 7.minutes.ago, job_id: job.active_job_id)
+
+        get admin_catalog_path
+
+        expect(text(section("refresh").at_css(".c-operation__summary"))).to eq("Interrupted while syncing cards.")
+        expect(section("refresh").css(".c-stages__state").map { |state| text(state) }).to eq([ "Done", "Stopped here", "Waiting", "Waiting" ])
+        expect(section("refresh").at_css("a")["href"]).to eq(admin_jobs_path(status: "failed"))
+        expect(section("refresh").at_css("button")["disabled"]).to be_nil
+        expect(text(panel.at_css(".c-runs li"))).to include("manual · interrupted")
+        expect(page.at_css("[data-controller~='poll']")).to be_nil
+      end
+
+      it "queues a refresh started while the crashed run is still marked running", :aggregate_failures do
+        job = fail_job(claim_job(queue_job(Catalog::RefreshJob, "mtg", "manual")))
+        running(stage: "sync", job_id: job.active_job_id)
+
+        expect { start("refresh") }.to change(SolidQueue::Job, :count).by(1)
+        expect(flash[:notice]).to eq("Refresh queued.")
+      end
+
       it "shows it as running with the minutes while a worker still holds its job (AC-3.6)", :aggregate_failures do
         running(stage: "sync", started_at: 1.hour.ago, heartbeat_at: 20.minutes.ago, job_id: "job-1")
         claim_job(queue_job(Catalog::RefreshJob, "mtg", "manual")).update!(active_job_id: "job-1")

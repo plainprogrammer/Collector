@@ -131,6 +131,47 @@ RSpec.describe Catalog::RefreshOperation, :solid_queue, type: :model do
     end
   end
 
+  # A worker that dies never closes its run; the queue fails the job it held (issue #60).
+  context "when the queue has failed a running run's job" do
+    let(:job) { fail_job(claim_job(queue_job(Catalog::RefreshJob, "mtg", "manual")), SolidQueue::Processes::ProcessPrunedError.new(6.minutes.ago)) }
+    let!(:crashed) { running(stage: "sync", started_at: 8.minutes.ago, heartbeat_at: 7.minutes.ago, job_id: job.active_job_id) }
+
+    it "is interrupted at once, not running, and can start again", :aggregate_failures do
+      expect(operation).to have_attributes(state: :interrupted, summary: "Interrupted while syncing cards.")
+      expect(operation.stages.map(&:state)).to eq(%i[done stopped pending pending])
+      expect(operation).not_to be_in_flight
+      expect(operation).to be_startable
+    end
+
+    it "points at the failed job" do
+      expect(operation).to be_failed_job
+    end
+
+    it "calls the run interrupted in the recent-runs list too" do
+      expect(operation.status_label(crashed)).to eq("interrupted")
+    end
+
+    it "queues a refresh when started" do
+      expect { operation.start }.to change(SolidQueue::Job, :count).by(1)
+    end
+
+    it "is still running when the failed job is another run's", :aggregate_failures do
+      crashed.update!(job_id: "job-2")
+
+      expect(operation).to have_attributes(state: :running, startable?: false, failed_job?: false)
+      expect(operation.status_label(crashed)).to eq("running")
+    end
+  end
+
+  context "when a stalled run's job is in the queue's failed list" do
+    it "points at the failed job (issue #60)" do
+      job = fail_job(queue_job(Catalog::RefreshJob, "mtg", "manual"))
+      running(stage: "sync", started_at: 1.hour.ago, heartbeat_at: 20.minutes.ago, job_id: job.active_job_id)
+
+      expect(operation).to have_attributes(state: :interrupted, failed_job?: true)
+    end
+  end
+
   context "when the last run ended" do
     it "shows an applied run's counts, version and finish time (AC-2.13)", :aggregate_failures do
       run(status: "applied", source_version: "v7", seen_count: 106_636, updated_count: 12, stage: "index")

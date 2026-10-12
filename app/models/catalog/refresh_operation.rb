@@ -33,12 +33,16 @@ class Catalog::RefreshOperation < Catalog::Operation
 
   def record_running? = %i[running stalled].include?(state)
 
-  # The page links to the failed list only for the failed run on show (spec 015 AC-3.1).
-  def failed_job? = state == :failed && super
+  # The page links to the failed list only for the run on show: a failed one (spec 015 AC-3.1), or an interrupted one
+  # whose own job is there.
+  def failed_job? = (state == :failed && super) || (state == :interrupted && job_failed?(run))
 
   # What `catalog:status` and the recent-runs list call a run: a stalled one is interrupted unless its job is still
-  # claimed by a worker (spec 015 AC-3.2, AC-3.5, AC-3.6).
-  def status_label(run) = run.status_label(job_claimed: job_claimed?(run))
+  # claimed by a worker, and a running one is interrupted once the queue has failed its job (spec 015 AC-3.2, AC-3.5,
+  # AC-3.6).
+  def status_label(run) = run.status_label(**job_state(run))
+
+  def status_line(run) = run.status_line(**job_state(run))
 
   def summary
     case state
@@ -78,13 +82,20 @@ class Catalog::RefreshOperation < Catalog::Operation
   end
 
   private
+    # A worker that dies never closes its run, and the queue then fails the job it held: that run is interrupted at
+    # once, without waiting for it to stall.
     def running_state
+      return :interrupted if job_failed?(run)
       return :running unless run.stalled?
 
       job_claimed?(run) ? :stalled : :interrupted
     end
 
+    def job_state(run) = { job_claimed: job_claimed?(run), job_failed: job_failed?(run) }
+
     def job_claimed?(run) = run.job_id.present? && queue.claimed?(run.job_id)
+
+    def job_failed?(run) = run.job_id.present? && queue.failed?(run.job_id)
 
     # A failed run whose job waits to run again (spec 015 AC-3.7).
     def retrying? = state == :queued && queue.retry_at.present? && run&.failed?
