@@ -86,7 +86,7 @@ A file is well-formed with any three upper-case letters. A file written by Colle
 
 `USD`, `CAD`, `AUD`, `NZD`, `EUR`, `GBP`, `CHF`, `SEK`, `NOK`, `DKK`, `PLN`, `CZK`, `JPY`, `CNY`, `KRW`, `SGD`, `HKD`, `BRL`, `MXN`, `ZAR`
 
-The code is the currency in force for the collector when the file is written. Today that is the instance's setting. When it becomes each collector's own choice, the field keeps its meaning.
+The code is the currency in force for the collector when the file is written. Today that is the instance's setting. When it becomes each collector's own choice, the field keeps its meaning and the version doesn't change.
 
 ## Lots
 
@@ -350,7 +350,7 @@ A `rule` is the schema keyword that fails (`required`, `const`, `pattern`, `mini
 | Rule | Meaning |
 |---|---|
 | `not_utf8` | The file isn't UTF-8. |
-| `not_json` | The file isn't JSON, or an object holds the same key twice. |
+| `not_json` | The file isn't JSON, starts with a byte order mark, or has an object that holds the same key twice. |
 | `not_a_time` | A time has the right form but isn't a real moment. |
 | `changed_before_added` | A lot's `changed_at` is earlier than its `added_at`. |
 | `duplicate_lot` | A lot has the same identity as an earlier lot in the file. |

@@ -24,6 +24,8 @@ RSpec.describe "The export format's examples" do
       [ %w[format_version], 0 ] => %w[const /format_version],
       [ %w[profile email_address], :absent ] => %w[required /profile/email_address],
       [ %w[profile email_address], "" ] => %w[pattern /profile/email_address],
+      [ %w[profile collection_view], :absent ] => %w[required /profile/collection_view],
+      [ %w[profile collection_view], "" ] => %w[pattern /profile/collection_view],
       [ %w[currency], "US" ] => %w[pattern /currency],
       [ %w[currency], "USDX" ] => %w[pattern /currency],
       [ [ "lots", 0, "entry", "collectible_type" ], :absent ] => %w[required /lots/0/entry/collectible_type],
@@ -69,7 +71,7 @@ RSpec.describe "The export format's examples" do
 
   it "has valid, invalid and comparison examples", :aggregate_failures do
     expect(valid.keys).to eq(%w[valid/collection.json valid/empty.json])
-    expect(invalid.size).to eq(21)
+    expect(invalid.size).to eq(22)
     expect(comparison.size).to eq(8)
   end
 
@@ -106,7 +108,7 @@ RSpec.describe "The export format's examples" do
   it "accepts the values at the edges of each rule", :aggregate_failures do
     {
       %w[generator] => :absent, %w[profile collection_view] => "gallery", [ "lots", 0, "price_paid" ] => nil, %w[currency] => "XTS",
-      [ "lots", 0, "quantity" ] => 9_999, [ "lots", 0, "price_paid" ] => "0.00", [ "lots", 0, "finish" ] => "glossy",
+      [ "lots", 0, "quantity" ] => 9_999, [ "lots", 0, "price_paid" ] => "0.00", [ "lots", 0, "finish" ] => "glossy", [ "lots", 0, "condition" ] => "mint",
       [ "lots", 0, "changed_at" ] => "2026-09-30T18:02:11Z", [ "lots", 0, "entry", "collectible_type" ] => "comics",
       %w[lots] => []
     }.each do |path, value|

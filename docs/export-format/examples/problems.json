@@ -9,6 +9,11 @@
     "rule": "not_utf8",
     "at": ""
   },
+  "invalid/byte-order-mark.json": {
+    "why": "The file starts with a byte order mark.",
+    "rule": "not_json",
+    "at": ""
+  },
   "invalid/repeated-key.json": {
     "why": "An object holds the same key twice, so its finish can't be told.",
     "rule": "not_json",
