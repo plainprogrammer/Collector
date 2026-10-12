@@ -17,7 +17,7 @@ Ruby 4.0.7, Rails 8.1.4, SQLite in every environment (including production), Hot
 - Setup: `bin/setup` (idempotent; works in clones and worktrees, copies `.worktreeinclude` files from the main checkout, enables `.githooks/` auto-setup; starts the server afterwards, `--skip-server` to not)
 - Run: `bin/dev` (just `bin/rails server`; port 3000, or the worktree's port printed by `bin/setup`)
 - All specs: `bin/rspec`
-- Single spec file / example: `bin/rspec spec/requests/home_spec.rb:5`
+- Single spec file / example: `bin/rspec spec/requests/health_check_spec.rb:5`
 - Lint (autocorrect): `bin/rubocop -a`
 - Security: `bin/brakeman`, `bin/bundler-audit`, `bin/importmap audit`
 - Local CI (single CI definition, `config/ci.rb`): `bin/ci` — setup, RuboCop, Brakeman, bundler-audit, importmap audit, RSpec. GitHub Actions runs `bin/ci`, then builds the container image for amd64 and arm64 (smoke-tested with `bin/image-smoke`) and publishes it to `ghcr.io/plainprogrammer/collector` on `main` (`edge`) and release tags (spec 012, `docs/releasing.md`). Change CI steps in `config/ci.rb`.

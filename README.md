@@ -114,8 +114,8 @@ measurement mode, `SCANNER_EMAIL=… GROUND_TRUTH=… bin/rails scanner:sitting_
 ## Testing and CI
 
 ```sh
-bin/rspec                               # full suite
-bin/rspec spec/requests/home_spec.rb:5  # a single file or example
+bin/rspec                                       # full suite
+bin/rspec spec/requests/health_check_spec.rb:5  # a single file or example
 ```
 
 The suite uses RSpec, FactoryBot, and Capybara. System specs run in headless Firefox; on the
