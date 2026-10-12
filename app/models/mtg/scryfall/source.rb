@@ -17,6 +17,16 @@ class MTG::Scryfall::Source
   def self.title = "Magic: The Gathering"
   def self.operations(collectible_type) = [ MTG::Art::Operation.new(collectible_type) ]
 
+  # Spec 018 FR-1: this catalog's lines in every page's footer. First the notice Wizards of the Coast's Fan Content
+  # Policy asks for, word for word with the app as its title; then where the data comes from.
+  def self.content_notice
+    [ Catalog::ContentNotice::Line.new(
+        text: "Collector is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. " \
+          "Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC.",
+        links: { "Fan Content Policy" => "https://company.wizards.com/en/legal/fancontentpolicy" }),
+      Catalog::ContentNotice::Line.new(text: "Card data and images provided by Scryfall.", links: { "Scryfall" => "https://scryfall.com" }) ]
+  end
+
   # Spec 015 FR-2: a callable the refresh sets; called with (done, total) bytes of the download, then of the file read.
   attr_writer :progress
 
