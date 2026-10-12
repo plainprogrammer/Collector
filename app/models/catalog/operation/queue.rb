@@ -9,7 +9,13 @@ class Catalog::Operation::Queue
 
   def any? = in_flight.any?
 
-  def failed? = jobs.any?(&:failed?)
+  # True when one of the jobs is in the failed list; with an Active Job id, when that job is.
+  def failed?(active_job_id = nil)
+    jobs.any? { |job| job.failed? && (active_job_id.nil? || job.active_job_id == active_job_id) }
+  end
+
+  # The Active Job ids of the jobs in the failed list.
+  def failed_job_ids = jobs.select(&:failed?).filter_map(&:active_job_id)
 
   # True when a worker holds one of the jobs; with an Active Job id, when it holds that job.
   def claimed?(active_job_id = nil)

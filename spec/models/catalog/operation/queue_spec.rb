@@ -56,4 +56,15 @@ RSpec.describe Catalog::Operation::Queue, :solid_queue, type: :model do
     expect(queue).to be_failed
     expect(queue).not_to be_any
   end
+
+  it "knows which jobs are in the failed list, by Active Job id (issue #60)", :aggregate_failures do
+    failed = fail_job(queue_job(Catalog::RefreshJob, "mtg", "manual"))
+    waiting = queue_job(Catalog::RefreshJob, "mtg", "manual")
+    fail_job(queue_job(Catalog::RefreshJob, "other", "manual"))
+
+    expect(queue.failed?(failed.active_job_id)).to be(true)
+    expect(queue.failed?(waiting.active_job_id)).to be(false)
+    expect(queue.failed?("another-job")).to be(false)
+    expect(queue.failed_job_ids).to eq([ failed.active_job_id ])
+  end
 end
