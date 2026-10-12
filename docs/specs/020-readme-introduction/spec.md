@@ -34,7 +34,7 @@ The introduction went stale because specs since 004 added to the sections below 
 
 The suite also pins phrases and section order of the README in `spec/readme_spec.rb` (eight examples, added by the plans of specs 004, 007, 011, 012, 014 and 015). Other spec files do the same to other prose documents: `docs/releasing.md`, the design system's documents, `CLAUDE.md`, an agent skill file, the ADR index. The maintainer finds it odd to check documents outside code from RSpec (decisions 3 and 7), and each such example is one more thing a correction to a document has to satisfy.
 
-> **Inputs.** This spec is about one file and its repeats in a second, and about the examples that check prose documents, so it names them: the four spec files Story 4 changes, `.rubocop.yml` and `.claude/rules/testing.md`. The roadmap ([docs/roadmap.md](../../roadmap.md)), the north star ([docs/north-star.md](../../north-star.md)) and the repository at the PR's head are the fixed inputs. Comparisons "with `origin/main`" mean with the merge base, `origin/main...HEAD`. The roadmap ([docs/roadmap.md](../../roadmap.md)), the north star ([docs/north-star.md](../../north-star.md)) and the repository at the PR's head are the fixed inputs.
+> **Inputs.** This spec is about one file and its repeats in a second, and about the examples that check prose documents, so it names them: the four spec files Story 4 changes, `.rubocop.yml` and `.claude/rules/testing.md`. The roadmap ([docs/roadmap.md](../../roadmap.md)), the north star ([docs/north-star.md](../../north-star.md)) and the repository at the PR's head are the fixed inputs. Comparisons "with `origin/main`" mean with the merge base, `origin/main...HEAD`.
 
 ### Glossary
 
