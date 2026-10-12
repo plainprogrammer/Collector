@@ -22,5 +22,5 @@ Catalog data is global. It changes only through a refresh that runs in a backgro
 - A new type is added by writing an adapter, a vocabulary and its own tables, without changing the core.
 - Pages work fully from the local copy when a source is down.
 - The boundary has been exercised by one type only. Comics, whenever built, is its first real test, and the core may need to change when it meets a source shaped unlike Scryfall.
-- `spec/admin_catalog_core_spec.rb` is the only automated guard that the core names no collectible, and it covers the admin catalog code and the not-loaded notice only. The rest of the core has known exceptions: comments in `Catalog::Entry` and `Catalog::Identity`, and the card page's Scryfall link and attribution.
+- Two automated guards check that core code names no collectible: `spec/admin_catalog_core_spec.rb` covers the admin catalog code and the not-loaded notice, and `spec/footer_core_spec.rb` (spec 018) covers the footer's layout, partial and model, whose notices come from each source's optional `.content_notice` hook. The rest of the core has known exceptions: comments in `Catalog::Entry` and `Catalog::Identity`, and the card page's Scryfall link. The card page's attribution was one until spec 018 moved it into the footer.
 - A source must also pass the north star's "source terms allow hosting" rule before it is adopted.

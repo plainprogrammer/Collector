@@ -110,3 +110,30 @@ module CatalogRecordHelpers
 end
 
 RSpec.configure { |config| config.include CatalogRecordHelpers }
+
+# Catalog types for the content notice's specs (spec 018). `register_notice_catalog("zeta", line, …)` adds a type,
+# after the app's own, whose source supplies those lines; `with_catalog_sources("other" => "OtherCatalogSource") { … }`
+# swaps the whole registry for a block. Both are undone after the example.
+module NoticeCatalogHelpers
+  def register_notice_catalog(type, *lines, &hook)
+    name = "#{type.camelize}NoticeSource"
+    stub_const(name, Class.new(FakeCatalogSource) { define_singleton_method(:content_notice, &(hook || -> { lines })) })
+    (@notice_catalogs ||= []) << type
+    Catalog.sources[type] = name
+  end
+
+  def with_catalog_sources(sources)
+    registered = Catalog.sources
+    Catalog.sources = sources
+    yield
+  ensure
+    Catalog.sources = registered
+  end
+
+  def notice_line(text, links = {}) = Catalog::ContentNotice::Line.new(text:, links:)
+end
+
+RSpec.configure do |config|
+  config.include NoticeCatalogHelpers
+  config.after { @notice_catalogs&.each { |type| Catalog.sources.delete(type) } }
+end

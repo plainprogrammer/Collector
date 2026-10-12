@@ -18,6 +18,10 @@
 #                                       file read, its size), so the run can show a percentage (spec 015 FR-2)
 #   .title                              optional: what the admin catalog page calls this catalog ("Magic: The Gathering")
 #   .operations(collectible_type)       optional: extra Catalog::Operation objects for the admin catalog page
+#   .content_notice                     optional: the Catalog::ContentNotice::Line objects every page's footer shows for
+#                                       this type, in order: what the content's owner asks to be said, and who provides
+#                                       the data. Plain text, with the phrases that link out and their https addresses.
+#                                       It is the same for every request and reads nothing (spec 018 FR-1)
 module Catalog::Sources
   SetRecord = Data.define(:code, :name, :released_on, :parent_code) do
     def digest = Catalog::Sources.digest(to_h)

@@ -14,6 +14,20 @@ RSpec.describe MTG::Scryfall::Source, type: :model do
     expect(described_class::ALLOWED_HOSTS).to include("cards.scryfall.io")
   end
 
+  # Spec 018 FR-1: the Fan Content Policy's wording with "Collector" as the title, and the attribution, each with its link.
+  it "supplies the unofficial-content notice and the source attribution for the footer", :aggregate_failures do
+    notice, attribution = described_class.content_notice
+
+    expect(notice.text).to eq("Collector is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. " \
+      "Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC.")
+    expect(notice.links).to eq("Fan Content Policy" => "https://company.wizards.com/en/legal/fancontentpolicy")
+    expect(attribution.text).to eq("Card data and images provided by Scryfall.")
+    expect(attribution.links).to eq("Scryfall" => "https://scryfall.com")
+    expect(described_class.content_notice.size).to eq(2)
+    expect(described_class.content_notice.flat_map(&:parts).filter_map(&:last))
+      .to eq([ "https://company.wizards.com/en/legal/fancontentpolicy", "https://scryfall.com" ])
+  end
+
   describe "#reapply?" do
     it "asks once for a catalog whose printings have no artwork ids yet (spec 011 AC-2.3)", :aggregate_failures do
       expect(source.reapply?).to be(false) # an empty catalog applies anyway

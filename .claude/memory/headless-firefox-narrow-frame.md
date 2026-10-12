@@ -12,3 +12,9 @@ Headless Firefox (Selenium, system specs and screenshot scripts) clamps the wind
 - Separately named drivers (`options: { name: :firefox_dark }`) are still needed for different Firefox prefs, e.g. the dark theme, because Capybara reuses sessions by driver name.
 
 Related: [[pr-screenshots-workflow]].
+
+**Additions from spec 018 (2026-10-11):**
+- The frame can't be opened from a scanner page: its Content-Security-Policy sets `frame-src 'none'`, so the frame stays empty and the `ready` selector is never found. Visit another page first (the collection), then open the scanner in the frame.
+- To test anything about the end of a page under the fixed tab bar, use a frame much shorter than the page (320px tall) and assert `scrollY > 0` after scrolling to the end. In an 844px frame a short page never scrolls, and "the last line is above the tab bar" then proves nothing. A frame only just shorter than the page (480px for the More page) passes by a few pixels of font metrics.
+- An element screenshot of the frame (`find("#narrow").native.save_screenshot`) is cut off at the window's edge. Resize the window taller than the frame first (`page.current_window.resize_to(1280, 1000)` for an 844px frame).
+- Measure related boxes in one script call. Two calls raced on the scanner page, which grows while the camera starts.

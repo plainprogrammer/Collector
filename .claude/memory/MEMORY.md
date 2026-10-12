@@ -11,7 +11,7 @@
 - [PR screenshots workflow](pr-screenshots-workflow.md) — headless Firefox + magick/ffmpeg; embed in private-repo PRs via blob/<sha>?raw=true; pause 0.6s after a theme switch
 - [Background servers via task](background-servers-via-task.md) — run_in_background + TaskStop, not &/kill/pkill; 2-hour task limit, restart before device steps; TaskStop is a crash for running jobs
 - [Branch naming convention](branch-naming-convention.md) — NNN-descriptive-slug per docs/git-convention.md; rename the worktree branch at the start, never use the plainprogrammer/ prefix
-- [Headless Firefox narrow frame](headless-firefox-narrow-frame.md) — windows can't go below 500px; test/screenshot phone widths in a fixed-width iframe
+- [Headless Firefox narrow frame](headless-firefox-narrow-frame.md) — windows can't go below 500px; test/screenshot phone widths in a fixed-width iframe; not from a scanner page (frame-src none); short frame to force scrolling
 - [Pre-commit hook staging](precommit-hook-staging.md) — hook reads the command text for `git add` / `commit -a`; stage separately to be safe
 - [Reproduce CI with its seed](reproduce-ci-with-seed.md) — on CI failure, run the full suite with the CI seed as an early reproduction step
 - [Turbo Back navigation quirks](turbo-back-navigation-quirks.md) — frame-advance + Back has two races; filters now plain Drive GET visits + no-cache; wait_for_turbo_idle
@@ -35,6 +35,7 @@
 - [Session-wrap before PR review](session-wrap-before-pr-review.md) — wrap and commit memories/lessons before marking a PR ready; offer post-merge housekeeping then too
 - [Local image builds duplicate OCR](local-image-builds-duplicate-ocr.md) — issue #31: set-up checkouts build images ~14 MB larger; measure paths with `du`, not total sizes
 - [Subagent commit trailers](subagent-commit-trailers.md) — subagents use their own session's trailer; don't name one in briefs
-- [SDD execute with exact plans](sdd-execute-exact-plans.md) — subagents read their phase's line range and apply blocks by script; diff against the prototype branch before deleting it
+- [SDD execute with exact plans](sdd-execute-exact-plans.md) — one subagent per phase even for a small plan (maintainer, 2026-10-11); apply blocks by script; diff against the prototype branch; building and revising that branch
 - [PR exists and conflicts check](pr-exists-and-conflicts-check.md) — `gh pr list --head` before creating; a conflicting PR gets no CI run, merge main and push
 - [Spec 015 follow-ups](spec-015-followups.md) — PR #32 draft, CI green; unchecked: graceful restart, art matching on, focus rings; later spec: "Running." after a crash, "Attempts 0"
+- [CSS shell state by class](css-shell-state-by-class.md) — maintainer chose a layout-set class (`c-shell--footed`) over `:has()` (spec 018); a new body class breaks exact class-string assertions
