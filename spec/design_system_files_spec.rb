@@ -41,6 +41,12 @@ RSpec.describe "Design system files" do
     let(:additions) { root.join("app/assets/stylesheets/collector/additions.css").read }
     let(:block) { additions[%r{/\* -+ Image fit \(spec 019\).*?(?=\n\n/\* -|\z)}m] }
 
+    it "documents the pattern, its three slots and that it overrides the export (AC-4.1, AC-4.2)", :aggregate_failures do
+      expect(root.join("docs/design-system/components/ImageFit.md").read).to include("`c-tile__media`", "`c-item__image`",
+        "`c-table__thumb`", "whole and in its own proportions", "`surface-sunken`", "overrides the export", "Upstream it")
+      expect(root.join("docs/design-system/README.md").read).to match(/^App additions \(spec 019, .*`ImageFit`.*Upstream it/)
+    end
+
     it "keeps the rules in one block of their own, with no colour literal or font (AC-4.3)", :aggregate_failures do
       expect(additions.scan("spec 019").size).to eq(1)
       expect(block).to include(".c-tile__media img, .c-item__image img { object-fit:contain; }",
