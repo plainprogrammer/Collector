@@ -222,7 +222,7 @@ RSpec.describe "Admin catalog page", :solid_queue, type: :request do
       it "keeps the crashed run interrupted once its failed job is discarded, and lets a refresh start", :aggregate_failures do
         job = fail_job(claim_job(queue_job(Catalog::RefreshJob, "mtg", "manual")))
         running(stage: "sync", started_at: 8.minutes.ago, heartbeat_at: 7.minutes.ago, job_id: job.active_job_id)
-        job.failed_execution.discard
+        post admin_job_discard_path(job.id)
 
         get admin_catalog_path
 
