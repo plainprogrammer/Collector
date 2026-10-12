@@ -44,3 +44,4 @@
 - [Orca supervised stages](orca-supervised-stages.md) — as a dispatched worker: `orca orchestration ask` for decisions, a background heartbeat loop stopped before `worker_done`, one SDD stage per Task
 - [Spec 017 follow-ups](spec-017-followups.md) — PR #68 draft, owed: rendered-doc read, checks, ADR 0020 and log row 32 at merge; import reads `format_version` first; locations make version 2
 
+- [No README wording specs](no-readme-wording-specs.md) — no RSpec examples for README.md prose or order; spec/readme_spec.rb removed in spec 020; verify README criteria by reading
