@@ -66,7 +66,7 @@ All endpoints answer HTML to a signed-in admin. A signed-in member gets **404** 
 
 ### Response 200
 
-Class, state, queue, priority, attempts, the times that apply (Queued, Due, Started, Failed, Finished), its arguments, and for a failed job the exception class, message and backtrace, with "Retry" and "Discard…". No actions for any other state.
+Class, state, queue, priority, attempts since queued, the times that apply (Queued, Due, Started, Failed, Finished), its arguments, and for a failed job the exception class, message and backtrace, with "Retry" and "Discard…". No actions for any other state.
 
 ### Error Responses
 
