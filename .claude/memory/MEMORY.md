@@ -14,7 +14,7 @@
 - [Headless Firefox narrow frame](headless-firefox-narrow-frame.md) — windows can't go below 500px; test/screenshot phone widths in a fixed-width iframe; not from a scanner page (frame-src none); short frame to force scrolling
 - [Pre-commit hook staging](precommit-hook-staging.md) — hook reads the command text for `git add` / `commit -a`; stage separately to be safe
 - [Reproduce CI with its seed](reproduce-ci-with-seed.md) — on CI failure, run the full suite with the CI seed as an early reproduction step
-- [Turbo Back navigation quirks](turbo-back-navigation-quirks.md) — frame-advance + Back has two races; filters now plain Drive GET visits + no-cache; wait_for_turbo_idle
+- [Turbo Back navigation quirks](turbo-back-navigation-quirks.md) — frame-advance has two races (the late visit cancels Back or a click, issue #62); filters now plain Drive GET visits + no-cache; stuck full-width progress bar = cancelled visit; wait_for_turbo_idle
 - [PR #5 follow-ups](pr5-open-followups.md) — back-button flake fixed by PR #9 (merged 2026-10-02), watch CI; uncaptured failure
 - [Card scanner direction](card-scanner-direction.md) — spec 011 executed 2026-10-08 (34/35 right card first, margin 300 kept by ruling); next = sdd-review Mode B, then finishing
 - [Shipped percentile is upper-middle](shipped-percentile-upper-middle.md) — ScannerFindings.percentile(…, 50) takes the upper middle for even n; use one conventional median helper and state it
@@ -22,7 +22,6 @@
 - [Work ahead of human checkpoints](work-ahead-of-human-checkpoints.md) — in sdd-execute, run maintainer-independent units first (code ahead, fixtures later); record rulings in commit bodies
 - [Migrate schema noise](migrate-schema-noise.md) — restore cable/cache/queue schema after db:migrate; rollback needs :primary
 - [Brakeman --ensure-latest](brakeman-ensure-latest.md) — a new Brakeman release breaks hooks/CI; bump the gem in a chore(deps) commit
-- [Search spec CI flake](search-spec-ci-flake.md) — open: catalog_search_spec.rb:4 times out opening a card page on GitHub CI only; cause unknown
 - [Check corpus availability](check-corpus-availability.md) — confirm physical items (cards) will be at hand before specifying a re-measure on them
 - [Verify corpus manifests](verify-corpus-manifests.md) — resolve, check overlap, plst `PCY-132` numbers, era override for frames without set codes, foil ★ vs the foil column; a clean-reading miss may be a manifest error
 - [ExitPlanMode for SDD plans](exitplanmode-for-sdd-plans.md) — long plans: summarise in chat and take the go-ahead there, not via the approval dialog
