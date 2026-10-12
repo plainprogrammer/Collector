@@ -288,7 +288,7 @@ bin/rails "catalog:status[mtg]"   # Kamal: bin/kamal catalog-status
 
 - **Schedule:** in production the catalog refreshes weekly, on Mondays at 03:15 UTC
   (`config/recurring.yml`). A scheduled run is skipped when the same Scryfall file and
-  language set were already applied; a manual run always applies. Only one refresh per
+  language set were already applied (except once, after an upgrade that adds artwork ids); a manual run always applies. Only one refresh per
   collectible type runs at a time.
 - **Languages:** set `COLLECTOR_MTG_LANGUAGES` to a comma-separated, case-insensitive list of
   extra languages (for example `ja,de`). The default is English only, and English is always
