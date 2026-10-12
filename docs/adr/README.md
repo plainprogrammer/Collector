@@ -49,6 +49,10 @@ Add a line here with each new ADR. All are Accepted unless the line says otherwi
 - [0014](0014-hand-built-admin-jobs-console.md): Hand-build the admin jobs console on Solid Queue's models
 - [0015](0015-admin-progress-by-polling.md): Show live progress on admin pages by polling with Turbo morph refreshes
 
+### Data safety
+
+- [0020](0020-export-format.md): The export format is one versioned JSON document keyed by source ids
+
 ### Expected
 
-Named by the [roadmap](../roadmap.md) and written with their specs: the export format (item 2), the backup mechanism (item 6), lots in locations (item 10).
+Named by the [roadmap](../roadmap.md) and written with their specs: the backup mechanism (item 6), lots in locations (item 10).

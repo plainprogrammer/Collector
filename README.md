@@ -311,6 +311,15 @@ bin/rails "catalog:status[mtg]"   # Kamal: bin/kamal catalog-status
 - **Attribution:** card data and images are © Wizards of the Coast and are provided by
   Scryfall. Collector follows Scryfall's API guidelines.
 
+## Your data
+
+A collector's data has a documented, versioned format: one JSON file that holds their profile,
+the currency of their prices and every lot in their collection, keyed by the catalog source's
+own ids and never by this instance's. It is defined in
+[docs/export-format/README.md](docs/export-format/README.md), with a JSON Schema and example
+files beside it. Exporting and importing a collection are built against that format; neither is
+in the app yet.
+
 ## License
 
 Collector is licensed under the GNU Affero General Public License v3.0. See [LICENSE](LICENSE).
