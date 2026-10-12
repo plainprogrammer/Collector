@@ -4,7 +4,7 @@
 **Decisions:** ADR 0020, "The export format is one versioned JSON document keyed by source ids". It is a deliverable of this plan (spec FR-10) and its full text is in Phase 3.
 **Issue:** [#37](https://github.com/plainprogrammer/Collector/issues/37)
 **Created:** 2026-10-11
-**Status:** Draft, awaiting the maintainer's approval.
+**Status:** Approved by the maintainer on 2026-10-11, in full, relayed by the coordinator: the field names as listed, the six additions beyond spec v1.1.2, the test-only `json_schemer` gem, and the format living under `docs/` (import, #39, decides where an in-app copy of the rules lives).
 **Revised:** 2026-10-11, after a read-only plan review (Fable, READY TO EXECUTE). The reviewer extracted every block, matched all 32 checksums, reproduced each red and green count, found every edit anchor exactly once, and probed the rules with its own inputs: none raised. Applied:
 - a file of a higher version fails version 1's schema but isn't called malformed: its own example, and a sentence in the document
 - `generator` is any string, so it can never be a reason to refuse a file (FR-2)
