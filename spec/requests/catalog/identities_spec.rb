@@ -36,6 +36,18 @@ RSpec.describe "Card printings", type: :request do
     expect(response.body).to include(">×2<", 'aria-label="Add 1 × Forest (ABC · 7)"')
   end
 
+  it "marks the printings you don't own as not owned (spec 021 AC-1.5)", :aggregate_failures do
+    owned = create(:catalog_entry, identity: forest)
+    create(:lot, account: user.account, entry: owned)
+    unowned = create(:catalog_entry, identity: forest)
+
+    get catalog_identity_path(forest)
+
+    tiles = [ owned, unowned ].map { |entry| Nokogiri::HTML5(response.body).at_css("##{ActionView::RecordIdentifier.dom_id(entry, :tile)}") }
+    expect(tiles.map { |tile| tile.css("a.c-tile > .c-tile__meta:last-child > .c-tag").map(&:text) == [ "Not owned" ] }).to eq([ false, true ])
+    expect(tiles.map { |tile| tile.css(".c-tile__qty").map(&:text) }).to eq([ [ "×1" ], [] ])
+  end
+
   it "returns 404 for an unknown card" do
     get "/catalog/identities/nope"
 

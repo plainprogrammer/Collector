@@ -1,6 +1,8 @@
 <%# locals: (entry:, owned:, return_to:, link_params: {}) %>
+<%# A card you don't own keeps its image as supplied and says so in words under it (spec 021, UnownedTile.md). %>
+<% unowned = owned.to_i.zero? %>
 <div class="c-tilecell" id="<%= dom_id(entry, :tile) %>">
-  <%= link_to catalog_entry_path(entry, **link_params), class: class_names("c-tile", "c-tile--owned-none": owned.to_i.zero?) do %>
+  <%= link_to catalog_entry_path(entry, **link_params), class: class_names("c-tile", "c-tile--owned-none": unowned) do %>
     <div class="c-tile__media">
       <% if (image = catalog_url(entry.image_url)) %>
         <%= image_tag image, alt: entry.name, loading: "lazy", width: 146, height: 204 %>
@@ -11,6 +13,7 @@
     </div>
     <div class="c-tile__name"><%= entry.display_name %></div>
     <div class="c-tile__meta"><span class="c-tag"><%= set_number(entry) %></span><span class="c-tag"><%= entry.language.upcase %></span></div>
+    <% if unowned %><div class="c-tile__meta"><span class="c-tag">Not owned</span></div><% end %>
   <% end %>
   <%= quick_add_button(entry, return_to:) %>
 </div>
