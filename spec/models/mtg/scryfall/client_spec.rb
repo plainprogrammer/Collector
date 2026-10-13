@@ -6,6 +6,9 @@ RSpec.describe MTG::Scryfall::Client, type: :model do
   let(:naps) { [] }
   let(:now) { 100.0 }
 
+  # The waits before a retry: every nap but the 100 ms between requests.
+  def back_offs = naps - [ 0.1 ]
+
   describe "#get_json" do
     it "sends a descriptive User-Agent and Accept header", :aggregate_failures do
       stub = stub_request(:get, "https://api.scryfall.com/sets")
@@ -36,6 +39,116 @@ RSpec.describe MTG::Scryfall::Client, type: :model do
       stub_request(:get, "https://api.scryfall.com/sets").to_return(status: 429)
 
       expect { client.get_json("/sets") }.to raise_error(Catalog::Sources::TransientError, /rate limited/)
+    end
+
+    it "says it is rate limited after its 3 attempts, without waiting after the last (issue #74)", :aggregate_failures do
+      stub = stub_request(:get, "https://api.scryfall.com/sets").to_return(status: 429)
+
+      expect { client.get_json("/sets") }.to raise_error(Catalog::Sources::RateLimitedError,
+        "GET https://api.scryfall.com/sets still rate limited after 3 attempts")
+      expect(back_offs).to eq([ 1, 2 ])
+      expect(stub).to have_been_requested.times(3)
+    end
+
+    it "waits 60 seconds at most in one call: the longest wait, before each of its 2 retries (issue #74)", :aggregate_failures do
+      stub_request(:get, "https://api.scryfall.com/sets").to_return(status: 429, headers: { "Retry-After" => "30" })
+
+      expect { client.get_json("/sets") }.to raise_error(Catalog::Sources::RateLimitedError, /after 3 attempts/)
+      expect(back_offs).to eq([ 30, 30 ])
+    end
+
+    it "waits the 30 seconds a Retry-After asks for, the longest it waits (issue #74)", :aggregate_failures do
+      stub_request(:get, "https://api.scryfall.com/sets")
+        .to_return({ status: 429, headers: { "Retry-After" => "30" } }, json_response("ok" => true))
+
+      expect(client.get_json("/sets")).to eq("ok" => true)
+      expect(back_offs).to eq([ 30 ])
+    end
+
+    it "ends the call at once, without waiting, when Retry-After asks for more than 30 seconds (issue #74)", :aggregate_failures do
+      stub = stub_request(:get, "https://api.scryfall.com/sets").to_return(status: 429, headers: { "Retry-After" => "31" })
+
+      expect { client.get_json("/sets") }.to raise_error(Catalog::Sources::RateLimitedError,
+        "GET https://api.scryfall.com/sets returned 429 and asked for 31 seconds before a retry; the client waits at most 30")
+      expect(naps).to be_empty
+      expect(stub).to have_been_requested.once
+    end
+
+    it "ends the call on a later attempt too, having waited only what the earlier one asked (issue #74)", :aggregate_failures do
+      stub = stub_request(:get, "https://api.scryfall.com/sets")
+        .to_return({ status: 429, headers: { "Retry-After" => "2" } }, { status: 429, headers: { "Retry-After" => "600" } })
+
+      expect { client.get_json("/sets") }.to raise_error(Catalog::Sources::RateLimitedError, /asked for 600 seconds/)
+      expect(back_offs).to eq([ 2 ])
+      expect(stub).to have_been_requested.twice
+    end
+
+    # The caller comes back no sooner than this (Catalog::RateLimitRetry).
+    it "tells its caller how long the server asked for, or nil when it never said", :aggregate_failures do
+      stub_request(:get, "https://api.scryfall.com/sets").to_return(status: 429, headers: { "Retry-After" => "600" })
+      stub_request(:get, "https://api.scryfall.com/bulk-data").to_return(status: 429, headers: { "Retry-After" => "7" })
+      stub_request(:get, "https://api.scryfall.com/cards").to_return(status: 429)
+
+      expect { client.get_json("/sets") }.to raise_error(Catalog::Sources::RateLimitedError) { |error| expect(error.retry_after).to eq(600) }
+      expect { client.get_json("/bulk-data") }.to raise_error(/after 3 attempts/) { |error| expect(error.retry_after).to eq(7) }
+      expect { client.get_json("/cards") }.to raise_error(/after 3 attempts/) { |error| expect(error.retry_after).to be_nil }
+    end
+
+    it "never waits for an absurd Retry-After", :aggregate_failures do
+      stub_request(:get, "https://api.scryfall.com/sets").to_return(status: 429, headers: { "Retry-After" => "9" * 30 })
+
+      expect { client.get_json("/sets") }.to raise_error(Catalog::Sources::RateLimitedError, /asked for 9{30} seconds/)
+      expect(naps).to be_empty
+    end
+
+    context "when Retry-After isn't a plain number of seconds (issue #74)" do
+      def rate_limited_once(retry_after)
+        stub_request(:get, "https://api.scryfall.com/sets")
+          .to_return({ status: 429, headers: { "Retry-After" => retry_after } }, json_response("ok" => true))
+      end
+
+      it "retries at once when it is zero", :aggregate_failures do
+        rate_limited_once("0")
+
+        expect(client.get_json("/sets")).to eq("ok" => true)
+        expect(back_offs).to eq([ 0 ])
+      end
+
+      [ "-5", "soon", "1.5", "0x1F", "1_0", "" ].each do |value|
+        it "waits its usual second when it is #{value.inspect}, as when there is none", :aggregate_failures do
+          rate_limited_once(value)
+
+          expect(client.get_json("/sets")).to eq("ok" => true)
+          expect(back_offs).to eq([ 1 ])
+        end
+      end
+
+      it "waits until an HTTP date, to the next whole second", :aggregate_failures do
+        travel_to Time.utc(2026, 10, 13, 12, 0, 0, 500_000), with_usec: true do
+          rate_limited_once("Tue, 13 Oct 2026 12:00:20 GMT")
+
+          expect(client.get_json("/sets")).to eq("ok" => true)
+          expect(back_offs).to eq([ 20 ])
+        end
+      end
+
+      it "ends the call when an HTTP date is more than 30 seconds away", :aggregate_failures do
+        travel_to Time.utc(2026, 10, 13, 12, 0, 0) do
+          rate_limited_once("Tue, 13 Oct 2026 12:10:00 GMT")
+
+          expect { client.get_json("/sets") }.to raise_error(Catalog::Sources::RateLimitedError, /asked for 600 seconds/)
+          expect(naps).to be_empty
+        end
+      end
+
+      it "waits its usual second when an HTTP date has passed", :aggregate_failures do
+        travel_to Time.utc(2026, 10, 13, 12, 0, 0) do
+          rate_limited_once("Tue, 13 Oct 2026 11:59:00 GMT")
+
+          expect(client.get_json("/sets")).to eq("ok" => true)
+          expect(back_offs).to eq([ 1 ])
+        end
+      end
     end
 
     it "raises a transient error on timeouts" do
@@ -92,10 +205,36 @@ RSpec.describe MTG::Scryfall::Client, type: :model do
       expect(naps).to include(3, 2)
     end
 
-    it "gives up after 3 attempts" do
+    it "ends the call at once, without waiting, when Retry-After asks for more than 30 seconds (issue #74)", :aggregate_failures do
+      stub = stub_request(:get, url).to_return(status: 429, headers: { "Retry-After" => "600" })
+
+      expect { client.fetch_image(url) }.to raise_error(Catalog::Sources::RateLimitedError,
+        "GET #{url} returned 429 and asked for 600 seconds before a retry; the client waits at most 30")
+      expect(naps).to be_empty
+      expect(stub).to have_been_requested.once
+    end
+
+    it "gives up after 3 attempts", :aggregate_failures do
       stub_request(:get, url).to_return(status: 502)
 
-      expect { client.fetch_image(url) }.to raise_error(Catalog::Sources::TransientError, /after 3 attempts/)
+      expect { client.fetch_image(url) }.to raise_error(Catalog::Sources::TransientError, /still failing after 3 attempts/) { |error|
+        expect(error).not_to be_a(Catalog::Sources::RateLimitedError) # the image failed; nothing asked the client to stay away
+      }
+      expect(back_offs).to eq([ 1, 2 ])
+    end
+
+    it "says it is rate limited when its 3 attempts end on a 429 (issue #74)", :aggregate_failures do
+      stub_request(:get, url).to_return({ status: 503 }, { status: 429, headers: { "Retry-After" => "30" } }, { status: 429 })
+
+      expect { client.fetch_image(url) }.to raise_error(Catalog::Sources::RateLimitedError, "GET #{url} still rate limited after 3 attempts")
+      expect(back_offs).to eq([ 1, 30 ])
+    end
+
+    it "says how long a 5xx asked for too, even on the last attempt (issue #74)", :aggregate_failures do
+      stub_request(:get, url).to_return({ status: 503 }, { status: 503 }, { status: 503, headers: { "Retry-After" => "600" } })
+
+      expect { client.fetch_image(url) }.to raise_error(Catalog::Sources::RateLimitedError, /returned 503 and asked for 600 seconds/)
+      expect(back_offs).to eq([ 1, 2 ])
     end
 
     it "doesn't retry another error status", :aggregate_failures do

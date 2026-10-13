@@ -2,13 +2,15 @@
 # printings that aren't retired, from Scryfall's small image of the artwork's oldest printing that has one (AC-3.3),
 # fetched once into the art cache (AC-3.4, AC-3.5). Incremental: only artworks without a fingerprint at the current
 # settings are fingerprinted (AC-3.7). Resumable: the cache and the table survive an interruption (AC-3.8). A failed
-# image is recorded and tried again next time (AC-3.6). Recorded as an MTG::ArtBuild with a heartbeat per batch, and
-# between images once BEAT_EVERY has passed since the last one; the index file is written last (AC-3.9).
+# image is recorded and tried again next time (AC-3.6). A rate limit the client gave up on isn't a failed image: the
+# build stops there, failed, and the next one carries on (issue #74). Recorded as an MTG::ArtBuild with a heartbeat per
+# batch, and between images once BEAT_EVERY has passed since the last one; the index file is written last (AC-3.9).
 class MTG::Art::Build
   BATCH = 50
   # The build also beats between the images of a batch once its last beat is this old, so a slow batch (rate-limited
   # or hung requests) never leaves a working build quiet for MTG::ArtBuild::JOB_ENDED_GRACE: only one image that
-  # itself takes longer than the grace less this can (issue #73).
+  # itself takes longer than the grace less this can (issue #73). An image's waits for a rate limit come to 60
+  # seconds at most (issue #74), so they can't by themselves.
   BEAT_EVERY = 30.seconds
   FAILURES_SHOWN = 20
   IMAGE_HOSTS = %w[cards.scryfall.io].freeze
@@ -102,6 +104,8 @@ class MTG::Art::Build
       partial.rename(path)
       @counts[:fetched] += 1
       path
+    rescue Catalog::Sources::RateLimitedError
+      raise # not this image's failure: the host is turning requests away, so the build stops here (issue #74)
     rescue Catalog::Sources::Error, URI::InvalidURIError => error
       failed(artwork, error)
     end
