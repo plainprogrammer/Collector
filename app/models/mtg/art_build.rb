@@ -57,7 +57,7 @@ class MTG::ArtBuild < ApplicationRecord
   def counts = COUNTS.index_with { |name| public_send(:"#{name}_count") }
 
   private
-    def quiet? = running? && heartbeat_at <= JOB_ENDED_GRACE.ago
+    def quiet? = running? && heartbeat_at < JOB_ENDED_GRACE.ago
 
     # The queue has failed the build's job, or holds no unfinished job with its id any more (the failed job was
     # discarded, or it never was in the queue: MTG::Art::BuildJob.perform_now in a console). A reading of the queue says

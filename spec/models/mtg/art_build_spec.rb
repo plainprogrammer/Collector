@@ -72,8 +72,70 @@ RSpec.describe MTG::ArtBuild, type: :model do
     expect(stale.reload).to have_attributes(status: "failed", message: "interrupted")
   end
 
+  # A retry backing off is an unfinished job: it closes its own build when it starts.
+  it "is skipped while the running build's job is scheduled to run again", :aggregate_failures, :solid_queue do
+    job = queue_job(MTG::Art::BuildJob, wait: 5.minutes)
+    waiting = running(started_at: 8.minutes.ago, heartbeat_at: 7.minutes.ago, job_id: job.active_job_id)
+
+    expect(start("job-b")).to have_attributes(status: "skipped", message: "already running")
+    expect(waiting.reload).to be_running
+  end
+
+  it "is skipped while a build whose job never was in the queue beat in the last 2 minutes", :aggregate_failures do
+    live = running(started_at: 8.minutes.ago, heartbeat_at: 1.minute.ago, job_id: "from-a-console")
+
+    expect(start("job-b")).to have_attributes(status: "skipped", message: "already running")
+    expect(live.reload).to be_running
+  end
+
+  it "is skipped while a build that recorded no job beat in the last 10 minutes", :aggregate_failures do
+    live = running(started_at: 8.minutes.ago, heartbeat_at: 7.minutes.ago, job_id: nil)
+
+    expect(start("job-b")).to have_attributes(status: "skipped", message: "already running")
+    expect(live.reload).to be_running
+  end
+
+  # Another build's job is queued, and records its build, between this one reading the queue and reading the builds.
+  it "leaves alone a build that started after it read the queue", :aggregate_failures do
+    later = nil
+    allow(described_class).to receive(:job_queue).and_wrap_original do |job_queue|
+      job_queue.call.read.tap { later = running(started_at: 1.second.from_now, heartbeat_at: 3.minutes.ago, job_id: "queued-since") }
+    end
+
+    expect(start("job-b")).to have_attributes(status: "skipped", message: "already running")
+    expect(later.reload).to be_running
+  end
+
   describe "#left_behind?" do
     let(:queue) { described_class.job_queue }
+
+    it "counts a heartbeat as stopped only when it is older than 2 minutes, with its job ended", :aggregate_failures do
+      freeze_time do
+        build = running(started_at: 8.minutes.ago, heartbeat_at: 2.minutes.ago, job_id: "job-a")
+
+        expect(build.left_behind?(queue)).to be(false)
+        travel 1.second
+        expect(build.left_behind?(queue)).to be(true)
+      end
+    end
+
+    it "counts a heartbeat as stale only when it is older than 10 minutes, with its job held", :aggregate_failures, :solid_queue do
+      job = claim_job(queue_job(MTG::Art::BuildJob))
+      freeze_time do
+        build = running(started_at: 1.hour.ago, heartbeat_at: 10.minutes.ago, job_id: job.active_job_id)
+
+        expect(build.left_behind?(queue)).to be(false)
+        travel 1.second
+        expect(build.left_behind?(queue)).to be(true)
+      end
+    end
+
+    it "keeps the 10-minute rule for a build that recorded no job", :aggregate_failures do
+      build = running(started_at: 1.hour.ago, heartbeat_at: 9.minutes.ago, job_id: nil)
+
+      expect(build.left_behind?(queue)).to be(false)
+      travel(2.minutes) { expect(build.left_behind?(queue)).to be(true) }
+    end
 
     it "is true once the queue has failed its job and it hasn't beaten for 2 minutes (issue #73)", :aggregate_failures, :solid_queue do
       job = fail_job(claim_job(queue_job(MTG::Art::BuildJob)))
