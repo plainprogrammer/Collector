@@ -74,6 +74,26 @@ RSpec.describe MTG::Scryfall::Client, type: :model do
       expect(stub).to have_been_requested.once
     end
 
+    it "ends the call on a later attempt too, having waited only what the earlier one asked (issue #74)", :aggregate_failures do
+      stub = stub_request(:get, "https://api.scryfall.com/sets")
+        .to_return({ status: 429, headers: { "Retry-After" => "2" } }, { status: 429, headers: { "Retry-After" => "600" } })
+
+      expect { client.get_json("/sets") }.to raise_error(Catalog::Sources::RateLimitedError, /asked for 600 seconds/)
+      expect(back_offs).to eq([ 2 ])
+      expect(stub).to have_been_requested.twice
+    end
+
+    # The caller comes back no sooner than this (Catalog::RateLimitRetry).
+    it "tells its caller how long the server asked for, or nil when it never said", :aggregate_failures do
+      stub_request(:get, "https://api.scryfall.com/sets").to_return(status: 429, headers: { "Retry-After" => "600" })
+      stub_request(:get, "https://api.scryfall.com/bulk-data").to_return(status: 429, headers: { "Retry-After" => "7" })
+      stub_request(:get, "https://api.scryfall.com/cards").to_return(status: 429)
+
+      expect { client.get_json("/sets") }.to raise_error(Catalog::Sources::RateLimitedError) { |error| expect(error.retry_after).to eq(600) }
+      expect { client.get_json("/bulk-data") }.to raise_error(/after 3 attempts/) { |error| expect(error.retry_after).to eq(7) }
+      expect { client.get_json("/cards") }.to raise_error(/after 3 attempts/) { |error| expect(error.retry_after).to be_nil }
+    end
+
     it "never waits for an absurd Retry-After", :aggregate_failures do
       stub_request(:get, "https://api.scryfall.com/sets").to_return(status: 429, headers: { "Retry-After" => "9" * 30 })
 

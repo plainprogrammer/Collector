@@ -5,7 +5,8 @@ require "net/http"
 #
 # The back-off is bounded (issue #74). A retry waits what Retry-After asks for, or 1 and then 2 seconds without one,
 # and never more than MAX_BACK_OFF: a longer wait, or a 429 on the last of MAX_ATTEMPTS requests, ends the call with
-# Catalog::Sources::RateLimitedError and leaves coming back to the caller. So one call sleeps 60 seconds at most.
+# Catalog::Sources::RateLimitedError, which carries the wait asked for, and leaves coming back to the caller (the jobs
+# do, no sooner than that: Catalog::RateLimitRetry). So one call sleeps 60 seconds at most.
 class MTG::Scryfall::Client
   API_ROOT = "https://api.scryfall.com"
   USER_AGENT = "Collector/1.0 (+https://github.com/plainprogrammer/Collector)"
@@ -88,8 +89,9 @@ class MTG::Scryfall::Client
     def back_off(uri, response, attempt)
       wait = retry_after(response) || 2**attempt
       if wait > MAX_BACK_OFF
-        raise Catalog::Sources::RateLimitedError,
-          "GET #{uri} returned #{response.code} and asked for #{wait} seconds before a retry; the client waits at most #{MAX_BACK_OFF}"
+        raise Catalog::Sources::RateLimitedError.new(
+          "GET #{uri} returned #{response.code} and asked for #{wait} seconds before a retry; the client waits at most #{MAX_BACK_OFF}",
+          retry_after: wait)
       end
       raise out_of_attempts(uri, response) if attempt + 1 == MAX_ATTEMPTS
 
@@ -98,7 +100,8 @@ class MTG::Scryfall::Client
 
     def out_of_attempts(uri, response)
       if response.is_a?(Net::HTTPTooManyRequests)
-        Catalog::Sources::RateLimitedError.new("GET #{uri} still rate limited after #{MAX_ATTEMPTS} attempts")
+        Catalog::Sources::RateLimitedError.new("GET #{uri} still rate limited after #{MAX_ATTEMPTS} attempts",
+          retry_after: retry_after(response))
       else
         Catalog::Sources::TransientError.new("GET #{uri} still failing after #{MAX_ATTEMPTS} attempts")
       end
