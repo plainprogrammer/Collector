@@ -33,7 +33,11 @@ echo "== first run"
 [ "$(status /registration/new)" = "200" ] || fail "first-run registration page did not render"
 
 echo "== operational tasks"
-"$cli" exec "$name" bin/rails "catalog:status[mtg]" | grep -q "mtg" || fail "catalog:status[mtg]"
+# Captured first, then tested, so no pipe can end early under pipefail. A fresh instance prints this line and then
+# the source's own lines (the art line, spec 011), so the line is matched whole, not the output.
+catalog_status="$("$cli" exec "$name" bin/rails "catalog:status[mtg]" 2>&1)" || fail "catalog:status[mtg] exited $?:"$'\n'"$catalog_status"
+grep -qxF "No mtg refresh runs yet." <<<"$catalog_status" \
+  || fail "catalog:status[mtg] did not print the line 'No mtg refresh runs yet.' (AC-6.3); it printed:"$'\n'"$catalog_status"
 "$cli" exec -e COLLECTOR_PASSWORD=smoke-password-1234 "$name" bin/rails "collector:user[smoke@example.com]" \
   | grep -q "Created admin smoke@example.com." || fail "collector:user"
 

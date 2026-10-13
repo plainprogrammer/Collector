@@ -30,6 +30,13 @@ RSpec.describe "Image publishing files" do
         "bin/rails runner 'puts ActiveStorage.variant_transformer'", "requires the (ruby-vips gem|libvips library)",
         "ActiveStorage::Transformers::Vips")
     end
+
+    it "asserts the exact line catalog:status prints on a fresh instance, from captured output (AC-6.3, issue #19)", :aggregate_failures do
+      script = Rails.root.join("bin/image-smoke").read
+      expect(script).to include(%(catalog_status="$("$cli" exec "$name" bin/rails "catalog:status[mtg]" 2>&1)"),
+                                %(grep -qxF "No mtg refresh runs yet." <<<"$catalog_status"))
+      expect(script).not_to include('grep -q "mtg"')
+    end
   end
 
   describe "compose.yaml" do
