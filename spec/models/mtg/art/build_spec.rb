@@ -85,6 +85,60 @@ RSpec.describe MTG::Art::Build, :art_matching, type: :model do
     expect(missing).to have_been_requested.twice
   end
 
+  it "records an image that answers 5xx to its last attempt as failed, and goes on (AC-3.6)", :aggregate_failures do
+    printing(art_a, released_on: Date.new(2005, 1, 1))
+    printing(art_b, released_on: Date.new(2006, 1, 1), name: "Shock")
+    broken = stub_request(:get, small("#{art_a}-2005-1")).to_return(status: 503)
+    serve("#{art_b}-2006-1")
+
+    expect(run_build).to have_attributes(status: "finished", failed_count: 1, indexed_count: 1, message: include(art_a))
+    expect(broken).to have_been_requested.times(3)
+  end
+
+  # A rate limit isn't one image's failure. Counting it as one and going on would send a request for every image
+  # left, 100 ms apart, to a host that asked the build to stay away, and record each of them as failed.
+  context "when the image host rate limits the build (issue #74)" do
+    def first = small("#{art_a}-2005-1")
+    def second = small("#{art_b}-2006-1")
+
+    before do
+      printing(art_a, released_on: Date.new(2005, 1, 1))
+      printing(art_b, released_on: Date.new(2006, 1, 1), name: "Shock")
+    end
+
+    it "stops at an image asked to wait longer than the client does, requesting no image after it", :aggregate_failures do
+      limited = stub_request(:get, first).to_return(status: 429, headers: { "Retry-After" => "600" })
+      later = stub_request(:get, second).to_return(body: noisy_png)
+
+      expect { run_build }.to raise_error(Catalog::Sources::RateLimitedError, /asked for 600 seconds/)
+      expect(MTG::ArtBuild.sole).to have_attributes(status: "failed", failed_count: 0, fetched_count: 0,
+        message: include("RateLimitedError", "asked for 600 seconds"))
+      expect(limited).to have_been_requested.once
+      expect(later).not_to have_been_requested
+      expect(naps).to be_empty
+    end
+
+    it "stops at an image still rate limited after its 3 attempts", :aggregate_failures do
+      limited = stub_request(:get, first).to_return(status: 429, headers: { "Retry-After" => "30" })
+      later = stub_request(:get, second).to_return(body: noisy_png)
+
+      expect { run_build }.to raise_error(Catalog::Sources::RateLimitedError, /still rate limited after 3 attempts/)
+      expect(MTG::ArtBuild.sole).to have_attributes(status: "failed", failed_count: 0, message: include("still rate limited"))
+      expect(limited).to have_been_requested.times(3)
+      expect(later).not_to have_been_requested
+    end
+
+    it "keeps the images it fetched, and the next build carries on from them (AC-3.8)", :aggregate_failures do
+      fetched = stub_request(:get, first).to_return(body: noisy_png)
+      stub_request(:get, second).to_return({ status: 429, headers: { "Retry-After" => "600" } }, { body: noisy_png })
+
+      expect { run_build }.to raise_error(Catalog::Sources::RateLimitedError)
+      expect(MTG::ArtBuild.sole).to have_attributes(status: "failed", fetched_count: 1, failed_count: 0)
+      expect(run_build(job_id: "job-2")).to have_attributes(status: "finished", fetched_count: 1, failed_count: 0, indexed_count: 2)
+      expect(fetched).to have_been_requested.once
+    end
+  end
+
   it "records an image it can't decode as failed and drops it from the cache, so it's fetched again", :aggregate_failures do
     printing(art_a, released_on: Date.new(2005, 1, 1))
     serve("#{art_a}-2005-1", png: "not an image")

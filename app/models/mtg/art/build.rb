@@ -2,8 +2,9 @@
 # printings that aren't retired, from Scryfall's small image of the artwork's oldest printing that has one (AC-3.3),
 # fetched once into the art cache (AC-3.4, AC-3.5). Incremental: only artworks without a fingerprint at the current
 # settings are fingerprinted (AC-3.7). Resumable: the cache and the table survive an interruption (AC-3.8). A failed
-# image is recorded and tried again next time (AC-3.6). Recorded as an MTG::ArtBuild with a heartbeat per batch, and the
-# index file is written last (AC-3.9).
+# image is recorded and tried again next time (AC-3.6). A rate limit the client gave up on isn't a failed image: the
+# build stops there, failed, and the next one carries on (issue #74). Recorded as an MTG::ArtBuild with a heartbeat per
+# batch, and the index file is written last (AC-3.9).
 class MTG::Art::Build
   BATCH = 50
   FAILURES_SHOWN = 20
@@ -96,6 +97,8 @@ class MTG::Art::Build
       partial.rename(path)
       @counts[:fetched] += 1
       path
+    rescue Catalog::Sources::RateLimitedError
+      raise # not this image's failure: the host is turning requests away, so the build stops here (issue #74)
     rescue Catalog::Sources::Error, URI::InvalidURIError => error
       failed(artwork, error)
     end
