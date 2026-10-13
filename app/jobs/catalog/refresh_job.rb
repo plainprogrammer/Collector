@@ -12,6 +12,9 @@ class Catalog::RefreshJob < ApplicationJob
   limits_concurrency to: 1, key: ->(collectible_type, *) { collectible_type }, duration: LOCK_FOR
 
   retry_on Catalog::Sources::TransientError, ActiveRecord::StatementTimeout, wait: :polynomially_longer, attempts: 3
+  # After retry_on, so that it is tried first: a rate-limited source is a TransientError too, but the refresh comes
+  # back when the source asked, not seconds later (issue #74).
+  include Catalog::RateLimitRetry
 
   def perform(collectible_type, trigger = "manual")
     Catalog::Refresh.new(collectible_type, trigger:, job_id:).call
