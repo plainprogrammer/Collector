@@ -8,9 +8,10 @@ class MTG::ArtBuild < ApplicationRecord
   # old (issue #73), the rule and the length a refresh run has (Catalog::RefreshRun::JOB_ENDED_GRACE). The queue also
   # fails the job of a worker it lost sight of while that worker lives (a suspended host, a paused container), and such
   # a build goes on beating. The length is this build's own, set by how often it beats: after every batch of 50
-  # artworks (MTG::Art::Build::BATCH), about 9 seconds of throttled fetching at the rate spec 010 measured (2.6 hours
-  # for 50,924 images), and one hung image request lasts at most about 70 seconds. Two minutes is above a batch with
-  # one of those, not above a batch with several (spec 015, Error Scenarios).
+  # artworks and, within a batch, between images once 30 seconds have passed (MTG::Art::Build::BEAT_EVERY). So a
+  # working build is quiet this long only when one image by itself takes more than 90 seconds: its requests (at most
+  # 3, each with a 10-second open and a 60-second read timeout; one that times out isn't retried), the waits a rate
+  # limit or a server error asks for between them, and its decoding (spec 015, Error Scenarios).
   JOB_ENDED_GRACE = 2.minutes
   COUNTS = %i[total without_image fetched fingerprinted failed indexed].freeze
 

@@ -140,6 +140,27 @@ RSpec.describe MTG::Art::Build, :art_matching, type: :model do
     expect(live.reload).to be_running
   end
 
+  # A batch can outlast MTG::ArtBuild::JOB_ENDED_GRACE (slow or rate-limited images); a live build must not go quiet in it.
+  it "beats between the images of a batch once 30 seconds have passed since the last beat (issue #73)", :aggregate_failures do
+    arts = %w[1 2 3].map { "cccccccc-0000-4000-8000-00000000000#{it}" }
+    arts.each_with_index { |art, n| printing(art, released_on: Date.new(2005, 1, 1), name: "Card #{n}", number: n.to_s) }
+    serve(*arts.each_with_index.map { |art, n| "#{art}-2005-#{n}" })
+    example = self
+    quiet_for = []
+    slow = Module.new
+    slow.define_singleton_method(:command) { MTG::Art::Decoder.command }
+    slow.define_singleton_method(:decode) do |path|
+      quiet_for << (Time.current - MTG::ArtBuild.sole.heartbeat_at)
+      example.travel(40.seconds)
+      MTG::Art::Decoder.decode(path)
+    end
+
+    run = described_class.new(job_id: "job-1", client:, decoder: slow).call
+
+    expect(quiet_for.map { it < described_class::BEAT_EVERY }).to eq([ true, true, true ])
+    expect(run).to have_attributes(status: "finished", indexed_count: 3)
+  end
+
   it "writes the index last, and a second complete build records only its run (AC-3.8, AC-3.9)", :aggregate_failures do
     printing(art_a, released_on: Date.new(2005, 1, 1))
     serve("#{art_a}-2005-1")
