@@ -65,17 +65,25 @@ Runs beside the main line, when the maintainer starts it.
 
 Taken between specs.
 
-- [#34](https://github.com/plainprogrammer/Collector/issues/34): show the unofficial-content notice and the source attribution in a footer on every page (research 016).
-- [#35](https://github.com/plainprogrammer/Collector/issues/35): fit card images without cropping (research 016).
+- [#34](https://github.com/plainprogrammer/Collector/issues/34): show the unofficial-content notice and the source attribution in a footer on every page (research 016). **Done 2026-10-12:** [spec 018](specs/018-content-notice-footer/spec.md), [PR #67](https://github.com/plainprogrammer/Collector/pull/67).
+- [#35](https://github.com/plainprogrammer/Collector/issues/35): fit card images without cropping (research 016). **Done 2026-10-12:** [spec 019](specs/019-uncropped-card-images/spec.md), [PR #66](https://github.com/plainprogrammer/Collector/pull/66).
 - [#59](https://github.com/plainprogrammer/Collector/issues/59): browse the catalog without signing in: search and card pages open to everyone, with the collection parts shown only to a signed-in collector (ruling 27). It is an operator setting, off by default (ruling 30), and a hosted instance turns it on.
 - [#19](https://github.com/plainprogrammer/Collector/issues/19): tighten `bin/image-smoke`'s `catalog:status` check.
 - [#21](https://github.com/plainprogrammer/Collector/issues/21): record the remaining spec 012 evidence.
 - [#31](https://github.com/plainprogrammer/Collector/issues/31): local image builds contain the OCR engine twice.
-- [#60](https://github.com/plainprogrammer/Collector/issues/60): the catalog page reads "Running." after a crash until a retry or 15 minutes pass (noted in spec 015).
-- [#61](https://github.com/plainprogrammer/Collector/issues/61): a retried job shows "Attempts 0" (noted in spec 015).
-- [#62](https://github.com/plainprogrammer/Collector/issues/62): the catalog search system spec that times out on GitHub CI only.
-- [#63](https://github.com/plainprogrammer/Collector/issues/63): the README introduction still says accounts and collections aren't built.
+- [#60](https://github.com/plainprogrammer/Collector/issues/60): the catalog page reads "Running." after a crash until a retry or 15 minutes pass (noted in spec 015). **Done 2026-10-13:** [PR #69](https://github.com/plainprogrammer/Collector/pull/69).
+- [#61](https://github.com/plainprogrammer/Collector/issues/61): a retried job shows "Attempts 0" (noted in spec 015). **Done 2026-10-13:** [PR #70](https://github.com/plainprogrammer/Collector/pull/70).
+- [#62](https://github.com/plainprogrammer/Collector/issues/62): the catalog search system spec that times out on GitHub CI only. **Done 2026-10-13:** [PR #71](https://github.com/plainprogrammer/Collector/pull/71).
+- [#63](https://github.com/plainprogrammer/Collector/issues/63): the README introduction still says accounts and collections aren't built. **Done 2026-10-13:** [spec 020](specs/020-readme-introduction/spec.md), [PR #72](https://github.com/plainprogrammer/Collector/pull/72).
 - [#64](https://github.com/plainprogrammer/Collector/issues/64): currency is an instance setting and should be a per-account one (hosted-door rule 3).
+- [#65](https://github.com/plainprogrammer/Collector/issues/65): decide whether fading the tiles of unowned cards fits Scryfall's image guidelines, and mark them another way if it doesn't (found while specifying #35; research 016 didn't examine it). It waits for the maintainer's ruling.
+- [#73](https://github.com/plainprogrammer/Collector/issues/73): the art index reads "Building." after a crashed build until the build goes stale (issue #60's flaw in the art operation; found while fixing #60). **Done 2026-10-13:** [PR #75](https://github.com/plainprogrammer/Collector/pull/75).
+- [#74](https://github.com/plainprogrammer/Collector/issues/74): the Scryfall client sleeps for whatever `Retry-After` says, with no upper bound (found while fixing #60). **Done 2026-10-13:** [PR #76](https://github.com/plainprogrammer/Collector/pull/76).
+- [#77](https://github.com/plainprogrammer/Collector/issues/77): an admin can't start a refresh or build, or cancel the wait, while a rate-limited job waits to retry (review of PR #76).
+- [#78](https://github.com/plainprogrammer/Collector/issues/78): a second refresh can ask the source while another waits out a rate limit (review of PR #76).
+- [#79](https://github.com/plainprogrammer/Collector/issues/79): a hung art build reads "Interrupted" with a disabled button, where a refresh reads as stalled (review of PR #75).
+- [#80](https://github.com/plainprogrammer/Collector/issues/80): the art index panel reads plain "Queued." while its retry waits, with no reason and no time (reviews of PR #76).
+- [#81](https://github.com/plainprogrammer/Collector/issues/81): after a 429 with no usable `Retry-After`, the Scryfall client retries inside the 30 seconds the rate limit lasts (noted by the author of PR #76).
 
 ## Parked until after 1.0
 
