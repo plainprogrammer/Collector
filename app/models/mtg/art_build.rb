@@ -52,9 +52,18 @@ class MTG::ArtBuild < ApplicationRecord
 
   def stale? = running? && heartbeat_at < STALE_AFTER.ago
 
+  # Stale while a worker still holds the build's own job: hung, or far slower than a build is (issue #79). The art
+  # index's panel and the art line of `catalog:status` call it building with no heartbeat for #stalled_minutes, not
+  # interrupted, since nothing can be started while the job is held. It is #left_behind? all the same, which is what
+  # a build job that does start goes by.
+  def stalled?(queue) = stale? && job_id.present? && queue.claimed?(job_id)
+
+  def stalled_minutes = ((Time.current - heartbeat_at) / 60).floor
+
   # Still marked running with nothing working on it: the heartbeat is older than STALE_AFTER, or it is older than
   # JOB_ENDED_GRACE and the build's own job ended without closing it (its worker died). The art index's panel, the art
-  # line of `catalog:status` and .start! all judge a running build by this, with the queue (.job_queue) read before it.
+  # line of `catalog:status` and .start! all judge a running build by this, with the queue (.job_queue) read before it;
+  # the first two ask #stalled? before it.
   def left_behind?(queue) = stale? || (quiet? && job_ended?(queue))
 
   def counts = COUNTS.index_with { |name| public_send(:"#{name}_count") }
