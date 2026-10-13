@@ -54,6 +54,13 @@ RSpec.describe "Image publishing files" do
                                 %(grep -qxF "No mtg refresh runs yet." <<<"$catalog_status"))
       expect(script).not_to include('grep -q "mtg"')
     end
+
+    it "asserts the line collector:user prints for a new admin, from captured output (AC-6.3, issue #19)", :aggregate_failures do
+      script = Rails.root.join("bin/image-smoke").read
+      expect(script).to include('"$name" bin/rails "collector:user[smoke@example.com]" 2>&1)"',
+                                'grep -qxF "Created admin smoke@example.com." <<<"$user_task"')
+      expect(script).not_to match(/\| *grep -q/)
+    end
   end
 
   describe "compose.yaml" do
