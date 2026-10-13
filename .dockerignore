@@ -62,6 +62,10 @@
 /orca.yaml
 /.worktreeinclude
 
+# The OCR engine a set-up checkout holds (bin/setup). The build runs bin/fetch-ocr-engine, so the image always gets
+# the copy it downloads and checksum-verifies itself, and a local build matches a CI build (issue #31).
+/vendor/ocr
+
 # The GHCR cleanup command runs only in its workflow and locally (spec 013).
 /bin/ghcr-cleanup
 /lib/collector/ghcr_cleanup.rb

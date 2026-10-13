@@ -22,6 +22,19 @@ RSpec.describe "Image publishing files" do
       expect(rules).to include("/bin/ghcr-cleanup", "/lib/collector/ghcr_cleanup.rb")
       expect(Rails.root.join("bin/image-smoke").read).to include("bin/ghcr-cleanup lib/collector/ghcr_cleanup.rb")
     end
+
+    it "keeps the checkout's OCR engine out of the build context, so the image gets the copy its build fetches (issue #31)" do
+      expect(rules).to include("/vendor/ocr")
+    end
+  end
+
+  describe "Dockerfile" do
+    let(:instructions) { Rails.root.join("Dockerfile").readlines(chomp: true).map(&:strip) }
+
+    it "copies nothing from vendor/ with a wildcard, which would flatten its subdirectories (issue #31)", :aggregate_failures do
+      expect(instructions.grep(/\ACOPY\s.*vendor\/\*/)).to be_empty
+      expect(instructions).to include("COPY . .", "RUN bin/fetch-ocr-engine")
+    end
   end
 
   describe "bin/image-smoke" do
@@ -29,6 +42,17 @@ RSpec.describe "Image publishing files" do
       expect(Rails.root.join("bin/image-smoke").read).to include(
         "bin/rails runner 'puts ActiveStorage.variant_transformer'", "requires the (ruby-vips gem|libvips library)",
         "ActiveStorage::Transformers::Vips")
+    end
+
+    it "fails an image whose /rails/vendor holds anything besides .keep, javascript and ocr (issue #31)" do
+      expect(Rails.root.join("bin/image-smoke").read).to include("ls -A /rails/vendor", "grep -vxE '\\.keep|javascript|ocr'")
+    end
+
+    it "asserts the exact line catalog:status prints on a fresh instance, from captured output (AC-6.3, issue #19)", :aggregate_failures do
+      script = Rails.root.join("bin/image-smoke").read
+      expect(script).to include(%(catalog_status="$("$cli" exec "$name" bin/rails "catalog:status[mtg]" 2>&1)"),
+                                %(grep -qxF "No mtg refresh runs yet." <<<"$catalog_status"))
+      expect(script).not_to include('grep -q "mtg"')
     end
   end
 
