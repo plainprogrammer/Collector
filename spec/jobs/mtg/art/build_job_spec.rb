@@ -24,4 +24,13 @@ RSpec.describe MTG::Art::BuildJob, type: :job do
       expect(ActiveJob::Base.queue_adapter.enqueued_jobs.last["job_id"]).to eq(job.job_id)
     end
   end
+
+  # The build has stopped and recorded why. A retry's wait can't be told how long the host asked for, and coming back
+  # sooner is what the host forbade, so the job fails: an admin starts the build again, or the next refresh does.
+  it "doesn't retry a build the image host rate limited: the job fails (issue #74)", :aggregate_failures do
+    allow(MTG::Art::Build).to receive(:new).and_raise(Catalog::Sources::RateLimitedError, "asked for 600 seconds")
+
+    expect { expect { described_class.perform_now }.to raise_error(Catalog::Sources::RateLimitedError) }
+      .not_to have_enqueued_job(described_class)
+  end
 end

@@ -31,4 +31,12 @@ RSpec.describe Catalog::RefreshJob, type: :job do
 
     expect { described_class.perform_now("mtg") }.to have_enqueued_job(described_class).with("mtg")
   end
+
+  # The source's client no longer sleeps through a long Retry-After: it raises, and the queue holds the retry instead
+  # of a worker (issue #74).
+  it "retries a rate-limited source as a transient error, instead of a worker waiting it out" do
+    allow(Catalog::Refresh).to receive(:new).and_raise(Catalog::Sources::RateLimitedError, "asked for 600 seconds")
+
+    expect { described_class.perform_now("mtg") }.to have_enqueued_job(described_class).with("mtg")
+  end
 end

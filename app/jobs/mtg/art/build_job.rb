@@ -2,7 +2,11 @@
 # builds never work at once: MTG::ArtBuild.start! guards it, keyed on the run record and this job's id, rather than a
 # queue concurrency lock that a first build (hours) would outlast (AC-3.2). A missing ImageMagick fails the build run,
 # which says so; retrying wouldn't help. A busy SQLite database is transient: the build has already marked its run
-# failed and re-raised, and the retry keeps this job's id, so MTG::ArtBuild.start! closes that run and carries on.
+# failed and re-raised, and the retry keeps this job's id, so MTG::ArtBuild.start! closes that run and carries on. A
+# rate limit from the image host (Catalog::Sources::RateLimitedError, issue #74) is deliberately not retried: the build
+# has stopped and its run says why, a retry's wait can't be told how long the host asked for, and coming back sooner is
+# what the host forbade. The job fails; the build is started again from the admin pages or by the next refresh, and
+# carries on from the images already cached.
 class MTG::Art::BuildJob < ApplicationJob
   queue_as :sync
 
