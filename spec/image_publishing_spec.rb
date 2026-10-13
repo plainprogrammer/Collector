@@ -22,6 +22,10 @@ RSpec.describe "Image publishing files" do
       expect(rules).to include("/bin/ghcr-cleanup", "/lib/collector/ghcr_cleanup.rb")
       expect(Rails.root.join("bin/image-smoke").read).to include("bin/ghcr-cleanup lib/collector/ghcr_cleanup.rb")
     end
+
+    it "keeps the checkout's OCR engine out of the build context, so the image gets the copy its build fetches (issue #31)" do
+      expect(rules).to include("/vendor/ocr")
+    end
   end
 
   describe "bin/image-smoke" do
