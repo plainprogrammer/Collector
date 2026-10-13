@@ -373,6 +373,24 @@ RSpec.describe "Admin catalog page", :solid_queue, type: :request do
         expect(page.at_css("main")["data-controller"]).to eq("poll")
       end
 
+      # The retried job is the build's own: it waits in the queue, and closes the build when it starts (spec 011 AC-3.2).
+      it "shows the crashed build as building again once an admin retries its failed job, which then carries on", :aggregate_failures, :art_matching do
+        create(:catalog_refresh_run)
+        job = fail_job(claim_job(queue_job(MTG::Art::BuildJob)))
+        crashed = create(:mtg_art_build, status: "running", finished_at: nil, started_at: 8.minutes.ago, heartbeat_at: 7.minutes.ago,
+          job_id: job.active_job_id)
+        post admin_job_retry_path(job.id)
+
+        get admin_catalog_path
+
+        expect(text(section("art_index").at_css(".c-operation__summary"))).to eq("Building.")
+        expect(section("art_index").at_css("a")).to be_nil
+        expect(section("art_index").at_css("button")["disabled"]).to be_present
+        expect(page.at_css("main")["data-controller"]).to eq("poll")
+        expect(MTG::ArtBuild.start!(job_id: job.active_job_id, catalog_version: "default-cards-1", settings_digest: "digest")).to be_running
+        expect(crashed.reload).to have_attributes(status: "failed", message: "interrupted")
+      end
+
       it "keeps the crashed build interrupted once its failed job is discarded, and lets a build start", :aggregate_failures, :art_matching do
         create(:catalog_refresh_run)
         job = fail_job(claim_job(queue_job(MTG::Art::BuildJob)))
