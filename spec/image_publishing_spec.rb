@@ -44,7 +44,7 @@ RSpec.describe "Image publishing files" do
         "ActiveStorage::Transformers::Vips")
     end
 
-    it "fails an image whose /rails/vendor holds anything besides .keep, javascript and ocr (issue #31)" do
+    it "fails an image with anything in /rails/vendor besides .keep, javascript and ocr (issue #31)" do
       expect(Rails.root.join("bin/image-smoke").read).to include("ls -A /rails/vendor", "grep -vxE '\\.keep|javascript|ocr'")
     end
 
