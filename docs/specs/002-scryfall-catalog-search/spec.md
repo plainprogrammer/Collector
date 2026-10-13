@@ -1,9 +1,9 @@
 # Feature 002: Scryfall Catalog Ingestion and Card Search
 
 **Status:** Approved
-**Version:** 1.1.1
+**Version:** 1.2.0
 **Created:** 2026-09-29
-**Last Updated:** 2026-09-29
+**Last Updated:** 2026-10-13
 **Branch:** `feat/002-scryfall-catalog-search`
 
 ---
@@ -15,6 +15,7 @@
 | 1.0.0 | 2026-09-29 | Initial approved spec |
 | 1.1.0 | 2026-09-29 | Spec review revisions: a run applies when the source version *or* the language set changed (AC-4.3, AC-6.2/6.3, FR-4); concurrent-refresh semantics and interrupted runs (AC-4.4–4.6, FR-4); result groups capped at 10 printings with a per-card printings page (AC-1.4, new Story 10, FR-10); groups list every printing of a matching card (AC-1.4, FR-7); literal wildcard matching (AC-1.13); detail URLs keyed by Scryfall ID (AC-3.4, FR-8); Scryfall adapter under `MTG::Scryfall` behind a core `Catalog::Sources` interface (AC-9.2/9.3, FR-3, FR-9); FR-9 covers root `CLAUDE.md`; bulk-format spike (FR-3); clarified sort tie-breakers, blank/invalid input, last-refresh definition, count semantics, artist per face, localized names on multi-face printings, allowed hosts |
 | 1.1.1 | 2026-09-29 | Wording clarifications from the implementation review (no behaviour change): AC-8.1 "seen" counts valid records and malformed ones are counted separately; FR-3 allows the English-only `default_cards` file; AC-3.5 link shown only when the card has searchable printings |
+| 1.2.0 | 2026-10-13 | [Issue #74](https://github.com/plainprogrammer/Collector/issues/74): on a 429 the adapter slept for whatever `Retry-After` said, with no upper bound, so a long one held a worker and stalled the refresh with no progress recorded. **The back-off is bounded:** a wait before a retry is at most 30 seconds, there is none after the last attempt, and so one call waits 60 seconds at most. A longer wait asked for ends the call at once as a transient error that says how long was asked, and the job system holds the retry instead of a worker (FR-3, Error Scenarios) |
 
 ---
 
@@ -237,7 +238,7 @@ The adapter lives at `MTG::Scryfall` and implements a collectible-agnostic `Cata
 - Filter out printings whose language is not configured and printings that are digital-only before they are persisted.
 - Map each record to the core entry and MTG extension attributes; skip records that fail validation, count them as skipped-malformed, and log their Scryfall ID.
 - Load set data from Scryfall's sets listing. A set without a release date is stored without one. A printing referencing a set absent from the listing gets a set created from the printing's own set code and set name.
-- Follow Scryfall's API terms: a descriptive user agent and accept header, at least 100 ms between API calls, back-off on HTTP 429, and explicit connect and read timeouts.
+- Follow Scryfall's API terms: a descriptive user agent and accept header, at least 100 ms between API calls, back-off on HTTP 429, and explicit connect and read timeouts. The back-off is bounded: before a retry the adapter waits what `Retry-After` asks for (a number of seconds or an HTTP date), or 1 and then 2 seconds when it gives no usable wait, and never more than 30 seconds, the time Scryfall says a 429 limits access for. It doesn't wait after its last attempt (3 in all), so one call waits 60 seconds at most. A `Retry-After` asking for more than 30 seconds ends the call at once, without waiting, as a transient rate-limit error that says how long was asked.
 
 **Must not:**
 - Be called during a web request.
@@ -340,7 +341,8 @@ The adapter lives at `MTG::Scryfall` and implements a collectible-agnostic `Cata
 | Scenario | Expected Behavior |
 |----------|-------------------|
 | Scryfall bulk-data index unreachable or times out | Run recorded as failed with the error; retried with back-off by the job system; catalog unchanged |
-| Scryfall returns HTTP 429 | Adapter backs off and retries; if retries are exhausted, run recorded as failed |
+| Scryfall returns HTTP 429 | Adapter waits what `Retry-After` asks for, at most 30 seconds, and retries; if retries are exhausted, run recorded as failed; retried with back-off by the job system |
+| Scryfall returns HTTP 429 with a `Retry-After` of more than 30 seconds | Adapter doesn't wait; run recorded as failed at once with the wait that was asked for; retried with back-off by the job system, so no worker sleeps through it |
 | Downloaded file fails its integrity check | File discarded, run recorded as failed naming the check that failed; catalog unchanged |
 | Downloaded file cannot be decoded or parsed | Run recorded as failed; no retirements; catalog otherwise unchanged by that run |
 | Single malformed record in an otherwise valid file | Record skipped and logged by Scryfall ID; counted as skipped-malformed; run continues |
