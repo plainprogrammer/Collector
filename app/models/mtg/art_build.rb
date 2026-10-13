@@ -9,7 +9,8 @@ class MTG::ArtBuild < ApplicationRecord
   # fails the job of a worker it lost sight of while that worker lives (a suspended host, a paused container), and such
   # a build goes on beating. The length is this build's own, set by how often it beats: after every batch of 50
   # artworks (MTG::Art::Build::BATCH), about 9 seconds of throttled fetching at the rate spec 010 measured (2.6 hours
-  # for 50,924 images), and one hung image request lasts at most about 70 seconds.
+  # for 50,924 images), and one hung image request lasts at most about 70 seconds. Two minutes is above a batch with
+  # one of those, not above a batch with several (spec 015, Error Scenarios).
   JOB_ENDED_GRACE = 2.minutes
   COUNTS = %i[total without_image fetched fingerprinted failed indexed].freeze
 
