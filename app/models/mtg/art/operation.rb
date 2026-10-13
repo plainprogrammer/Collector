@@ -54,13 +54,13 @@ class MTG::Art::Operation < Catalog::Operation
   def summary
     case state
     when :off then OFF
-    when :queued then "Queued."
+    when :queued then retrying? ? "Queued to retry. The last build #{failed_summary.downcase_first}" : "Queued."
     when :building then "Building."
     when :stalled then "Building, no heartbeat for #{build.stalled_minutes} minutes. #{STALLED_ADVICE}"
     when :interrupted then "Interrupted. Build it again to carry on from where it stopped."
     when :never then catalog_loaded? ? "No build has run yet. One starts after the next catalog refresh, or you can start it here." : NEEDS_CATALOG
     when :ready then "Ready."
-    when :failed then "Failed: #{build.message}"
+    when :failed then failed_summary
     end
   end
 
@@ -71,16 +71,18 @@ class MTG::Art::Operation < Catalog::Operation
       text: "#{delimited(build.fingerprinted_count)} of #{delimited(build.total_count)} artworks fingerprinted")
   end
 
+  # While a job of its waits for a later time, when that is due comes first, as on the refresh (issue #80).
   def facts
     case state
+    when :queued
+      [ (fact("Retrying at", queue.retry_at) if queue.retry_at), *(failed_facts if retrying?) ].compact
     when :building, :stalled, :interrupted
       [ fact("Started", build.started_at), fact("Images fetched", build.fetched_count), fact("Failed images", build.failed_count),
         fact("Last heartbeat", build.heartbeat_at, relative: true) ]
     when :ready
       [ fact("Finished", build.finished_at), fact("Artworks indexed", build.indexed_count),
         fact("Without an image", build.without_image_count), fact("Failed images", build.failed_count) ]
-    when :failed
-      [ fact("Finished", build.finished_at), fact("Index in use", MTG::Art::Index.current&.basename&.to_s || "none") ]
+    when :failed then failed_facts
     else []
     end
   end
@@ -95,6 +97,19 @@ class MTG::Art::Operation < Catalog::Operation
       return :building unless build.left_behind?(queue)
 
       queue.any? ? :queued : :interrupted
+    end
+
+    # A failed build whose own job waits to run again: turned away by the image host (Catalog::RateLimitRetry), or by
+    # a busy database (MTG::Art::BuildJob's retry_on). The retry keeps the job's id, which is how a build queued fresh
+    # behind another job's failure is told apart: that one is plain "Queued.".
+    def retrying?
+      state == :queued && build&.failed? && build.job_id.present? && queue.retry_at(build.job_id).present?
+    end
+
+    def failed_summary = "Failed: #{build.message}"
+
+    def failed_facts
+      [ fact("Finished", build.finished_at), fact("Index in use", MTG::Art::Index.current&.basename&.to_s || "none") ]
     end
 
     def catalog_loaded?

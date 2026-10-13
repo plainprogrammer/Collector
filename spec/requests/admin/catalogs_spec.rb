@@ -437,6 +437,34 @@ RSpec.describe "Admin catalog page", :solid_queue, type: :request do
         expect { start("art_index") }.to change(SolidQueue::Job, :count).by(1)
       end
 
+      # The build closed its run as failed, and its job waits in the queue to run again (issue #80).
+      it "shows a failed build whose job waits to retry as queued to retry, with the reason and the time (AC-4.12)", :aggregate_failures, :art_matching do
+        create(:catalog_refresh_run)
+        travel_to(Time.utc(2026, 10, 9, 3, 15)) do
+          job = queue_job(MTG::Art::BuildJob, wait: 10.minutes)
+          create(:mtg_art_build, status: "failed", job_id: job.active_job_id, finished_at: Time.current,
+            message: "Catalog::Sources::RateLimitedError: GET https://cards.scryfall.io/small/a.jpg still rate limited after 3 attempts")
+          get admin_catalog_path
+        end
+
+        expect(text(section("art_index"))).to eq("Art index Build art index Queued to retry. The last build failed: " \
+          "Catalog::Sources::RateLimitedError: GET https://cards.scryfall.io/small/a.jpg still rate limited after 3 attempts " \
+          "Retrying at 9 Oct 2026 03:25 UTC Finished 9 Oct 2026 03:15 UTC Index in use none")
+        expect(section("art_index").at_css("a")).to be_nil
+        expect(section("art_index").at_css("button")["disabled"]).to be_present
+        expect(page.at_css("main")["data-controller"]).to eq("poll")
+      end
+
+      it "shows a build queued fresh behind a failed one as plain queued", :aggregate_failures, :art_matching do
+        create(:catalog_refresh_run)
+        create(:mtg_art_build, status: "failed", job_id: "job-1", message: "boom")
+        queue_job(MTG::Art::BuildJob)
+
+        get admin_catalog_path
+
+        expect(text(section("art_index"))).to eq("Art index Build art index Queued.")
+      end
+
       it "shows a finished build's counts (AC-4.7) and a failed one's message and index (AC-4.8)", :aggregate_failures, :art_matching do
         create(:catalog_refresh_run)
         build = create(:mtg_art_build, indexed_count: 31_904, without_image_count: 12, failed_count: 3, finished_at: Time.utc(2026, 10, 9, 5, 0))
