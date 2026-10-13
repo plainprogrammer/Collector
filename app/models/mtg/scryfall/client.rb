@@ -2,6 +2,10 @@ require "net/http"
 
 # Minimal Scryfall HTTP client following https://scryfall.com/docs/api:
 # descriptive headers, >= 100 ms between API calls, back-off on 429, timeouts.
+#
+# The back-off is bounded (issue #74). A retry waits what Retry-After asks for, or 1 and then 2 seconds without one,
+# and never more than MAX_BACK_OFF: a longer wait, or a 429 on the last of MAX_ATTEMPTS requests, ends the call with
+# Catalog::Sources::RateLimitedError and leaves coming back to the caller. So one call sleeps 60 seconds at most.
 class MTG::Scryfall::Client
   API_ROOT = "https://api.scryfall.com"
   USER_AGENT = "Collector/1.0 (+https://github.com/plainprogrammer/Collector)"
@@ -20,7 +24,7 @@ class MTG::Scryfall::Client
     @last_request_at = nil
   end
 
-  # Accepts an API path ("/sets") or a full API URL (a "next_page" link).
+  # Accepts an API path ("/sets") or a full API URL (a "next_page" link). Retried on 429 only, with the bounded back-off.
   def get_json(path_or_url)
     uri = URI.join(API_ROOT, path_or_url)
     MAX_ATTEMPTS.times do |attempt|
@@ -29,9 +33,8 @@ class MTG::Scryfall::Client
       return JSON.parse(response.body) if response.is_a?(Net::HTTPSuccess)
       raise Catalog::Sources::TransientError, "GET #{uri} returned #{response.code}" unless response.is_a?(Net::HTTPTooManyRequests)
 
-      @sleeper.call(back_off(uri, response, attempt))
+      back_off(uri, response, attempt)
     end
-    raise Catalog::Sources::TransientError, "GET #{uri} still rate limited after #{MAX_ATTEMPTS} attempts"
   end
 
   # Streams the body into the given IO. With a block, yields the bytes received so far after each chunk (spec 015 FR-2).
@@ -50,8 +53,10 @@ class MTG::Scryfall::Client
     end
   end
 
-  # A card image (spec 011 AC-3.4): throttled like API calls, Accept image/jpeg, retried with back-off on 429 and 5xx
-  # (Retry-After when given, else 1, 2 s), at most MAX_ATTEMPTS requests. Returns the body's bytes.
+  # A card image (spec 011 AC-3.4): throttled like API calls, Accept image/jpeg, retried with the bounded back-off on
+  # 429 and 5xx (Retry-After when given and no more than MAX_BACK_OFF, else 1, 2 s), at most MAX_ATTEMPTS requests.
+  # Returns the body's bytes. Raises RateLimitedError when it ends on a 429 or on a wait too long to sit out, and a
+  # plain TransientError when the image itself failed (5xx to the end, another status, the network).
   def fetch_image(url)
     uri = URI(url)
     MAX_ATTEMPTS.times do |attempt|
@@ -60,9 +65,8 @@ class MTG::Scryfall::Client
       return response.body.to_s.b if response.is_a?(Net::HTTPSuccess)
       raise Catalog::Sources::TransientError, "GET #{uri} returned #{response.code}" unless retryable?(response)
 
-      @sleeper.call(back_off(uri, response, attempt)) if attempt < MAX_ATTEMPTS - 1
+      back_off(uri, response, attempt)
     end
-    raise Catalog::Sources::TransientError, "GET #{uri} still failing after #{MAX_ATTEMPTS} attempts"
   end
 
   private
@@ -76,14 +80,28 @@ class MTG::Scryfall::Client
 
     def retryable?(response) = response.is_a?(Net::HTTPTooManyRequests) || response.is_a?(Net::HTTPServerError)
 
-    # The seconds to wait before the next attempt: what Retry-After asks for, else 1, 2, … A wait longer than
-    # MAX_BACK_OFF ends the call instead, so a worker never sleeps for as long as a header says (issue #74).
+    # After a response worth a retry: waits what its Retry-After asks for, else 1, then 2 seconds, so that the next
+    # attempt can follow. Or ends the call by raising (issue #74), so every attempt's loop ends in a return or here:
+    # - a wait longer than MAX_BACK_OFF is never slept, so a worker can't be held for as long as a header says;
+    # - after the last attempt nothing is slept either, since a wait only serves a retry.
+    # One call therefore waits (MAX_ATTEMPTS - 1) * MAX_BACK_OFF seconds at most, besides the time its requests take.
     def back_off(uri, response, attempt)
       wait = retry_after(response) || 2**attempt
-      return wait if wait <= MAX_BACK_OFF
+      if wait > MAX_BACK_OFF
+        raise Catalog::Sources::RateLimitedError,
+          "GET #{uri} returned #{response.code} and asked for #{wait} seconds before a retry; the client waits at most #{MAX_BACK_OFF}"
+      end
+      raise out_of_attempts(uri, response) if attempt + 1 == MAX_ATTEMPTS
 
-      raise Catalog::Sources::RateLimitedError,
-        "GET #{uri} returned #{response.code} and asked for #{wait} seconds before a retry; the client waits at most #{MAX_BACK_OFF}"
+      @sleeper.call(wait)
+    end
+
+    def out_of_attempts(uri, response)
+      if response.is_a?(Net::HTTPTooManyRequests)
+        Catalog::Sources::RateLimitedError.new("GET #{uri} still rate limited after #{MAX_ATTEMPTS} attempts")
+      else
+        Catalog::Sources::TransientError.new("GET #{uri} still failing after #{MAX_ATTEMPTS} attempts")
+      end
     end
 
     # Retry-After in seconds, from a count of seconds or an HTTP date (RFC 9110). Nil when the header is missing, is
