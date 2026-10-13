@@ -17,7 +17,7 @@
     <dl class="c-details">
       <div><dt>Queue</dt><dd class="is-data"><%= @job.queue_name %></dd></div>
       <div><dt>Priority</dt><dd class="is-data"><%= @job.priority %></dd></div>
-      <div><dt>Attempts</dt><dd class="is-data"><%= @job.attempts %></dd></div>
+      <div><dt>Attempts since queued</dt><dd class="is-data"><%= @job.attempts %></dd></div>
       <div><dt>Queued</dt><dd><%= utc_time_with_relative(@job.queued_at) %></dd></div>
       <% if @job.due_at %><div><dt>Due</dt><dd><%= utc_time_with_relative(@job.due_at) %></dd></div><% end %>
       <% if @job.started_at %><div><dt>Started</dt><dd><%= utc_time_with_relative(@job.started_at) %></dd></div><% end %>

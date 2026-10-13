@@ -69,6 +69,86 @@ RSpec.describe BackgroundJobs::Entry, :solid_queue, type: :model do
     end
   end
 
+  # The queue's record counts only the runs before the row was queued, and an admin's retry sets it back to nothing
+  # (issue #61), so the entry adds the row's own run and the count starts again at a retry.
+  describe "#attempts (AC-6.5)" do
+    # As a worker runs a claimed job: the job's own code, then the queue's record of how it ended.
+    def run_job(job)
+      begin
+        claim_job(job).claimed_execution.perform
+      rescue ArgumentError
+        # the queue has recorded the failure; a worker carries on
+      end
+      job.reload
+    end
+
+    it "is nothing for a job that hasn't started", :aggregate_failures do
+      waiting = queue_job(Catalog::RefreshJob, "mtg", "manual") && entry(queue_job(Catalog::RefreshJob, "mtg", "manual"))
+
+      expect(entry(queue_job(MTG::Art::BuildJob)).attempts).to eq(0)
+      expect(waiting).to have_attributes(state: :waiting, attempts: 0)
+      expect(entry(queue_job(MTG::Art::BuildJob, wait: 5.minutes)).attempts).to eq(0)
+    end
+
+    it "counts the run in progress, the run that failed and the run that finished", :aggregate_failures do
+      expect(entry(claim_job(queue_job(MTG::Art::BuildJob))).attempts).to eq(1)
+      expect(entry(fail_job(queue_job(MTG::Art::BuildJob))).attempts).to eq(1)
+      expect(entry(finish_job(queue_job(MTG::Art::BuildJob))).attempts).to eq(1)
+    end
+
+    it "starts again when an admin retries a failed job", :aggregate_failures do
+      job = fail_job(queue_job(MTG::Art::BuildJob))
+      entry(job).retry
+
+      expect(entry(job)).to have_attributes(state: :queued, attempts: 0)
+      expect(entry(claim_job(job)).attempts).to eq(1)
+      expect(entry(finish_job(job)).attempts).to eq(1)
+    end
+
+    # A worker that shuts down gracefully hands its claimed jobs back to the queue (SolidQueue::ClaimedExecution#release)
+    # with the queue's record as it was, so nothing is left of the run it cut short.
+    it "doesn't count again a run cut short by a graceful shutdown", :aggregate_failures do
+      job = claim_job(queue_job(MTG::Art::BuildJob))
+      expect(entry(job)).to have_attributes(state: :running, attempts: 1)
+
+      job.claimed_execution.process.deregister
+      expect(entry(job)).to have_attributes(state: :queued, attempts: 0)
+      expect(entry(claim_job(job))).to have_attributes(state: :running, attempts: 1)
+    end
+
+    context "with a job that retries itself" do
+      before do
+        stub_const("RetryingJob", Class.new(ApplicationJob) do
+          retry_on ArgumentError, wait: 0, attempts: 3
+
+          def perform = raise(ArgumentError, "not yet")
+        end)
+      end
+
+      def rows = SolidQueue::Job.order(:id).map { |job| entry(job) }
+
+      it "counts each of the job's own retries, which the queue records as a new job", :aggregate_failures do
+        run_job(queue_job(RetryingJob))
+        expect(rows.map { |row| [ row.state, row.attempts ] }).to eq([ [ :finished, 1 ], [ :queued, 1 ] ])
+
+        run_job(SolidQueue::Job.last)
+        expect(rows.last(2).map { |row| [ row.state, row.attempts ] }).to eq([ [ :finished, 2 ], [ :queued, 2 ] ])
+        expect(entry(claim_job(SolidQueue::Job.last)).attempts).to eq(3)
+
+        run_job(SolidQueue::Job.last)
+        expect(rows.last).to have_attributes(state: :failed, error_class: "ArgumentError", attempts: 3)
+      end
+
+      it "starts again when an admin retries it after its own retries ran out", :aggregate_failures do
+        3.times { run_job(SolidQueue::Job.last || queue_job(RetryingJob)) }
+        rows.last.retry
+
+        expect(rows.last).to have_attributes(state: :queued, attempts: 0)
+        expect(entry(run_job(SolidQueue::Job.last)).attempts).to eq(1)
+      end
+    end
+  end
+
   it "refuses to retry or discard a job that isn't failed, changing nothing (AC-6.8)", :aggregate_failures do
     queued = queue_job(MTG::Art::BuildJob)
     running = claim_job(queue_job(MTG::Art::BuildJob))
