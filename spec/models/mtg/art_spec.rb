@@ -65,6 +65,39 @@ RSpec.describe MTG::Art, type: :model do
       expect(described_class.status_line).to include("interrupted", "3 of 10", 'bin/rails "catalog:refresh[mtg]"')
     end
 
+    # A worker that dies never closes its build; the queue fails the job it held (issue #73).
+    it "reports a running build whose job the queue has failed as interrupted before it goes stale, as the page does", :art_matching, :solid_queue do
+      job = fail_job(claim_job(queue_job(MTG::Art::BuildJob)))
+      create(:mtg_art_build, status: "running", finished_at: nil, heartbeat_at: 3.minutes.ago, job_id: job.active_job_id, total_count: 10, fingerprinted_count: 3)
+      expect(described_class.status_line).to include("interrupted", "3 of 10", 'bin/rails "catalog:refresh[mtg]"')
+    end
+
+    it "reports a running build whose job is no longer in the queue as interrupted before it goes stale, as the page does", :art_matching do
+      create(:mtg_art_build, status: "running", finished_at: nil, heartbeat_at: 3.minutes.ago, job_id: "job-1")
+      expect(described_class.status_line).to start_with("Art matching: interrupted")
+    end
+
+    it "reports a build whose job the queue has failed as building while it beat in the last 2 minutes, as the page does", :art_matching, :solid_queue do
+      job = fail_job(claim_job(queue_job(MTG::Art::BuildJob)))
+      create(:mtg_art_build, status: "running", finished_at: nil, heartbeat_at: 1.minute.ago, job_id: job.active_job_id)
+      expect(described_class.status_line).to start_with("Art matching: building")
+    end
+
+    it "reports a build whose job a worker holds as building, though it hasn't beaten for some minutes", :art_matching, :solid_queue do
+      job = claim_job(queue_job(MTG::Art::BuildJob))
+      create(:mtg_art_build, status: "running", finished_at: nil, heartbeat_at: 9.minutes.ago, job_id: job.active_job_id)
+      expect(described_class.status_line).to start_with("Art matching: building")
+    end
+
+    # A job's row is finished only after its build is closed, so the queue is read before the build.
+    it "never calls a build interrupted whose job finishes after the build was read", :art_matching, :solid_queue do
+      job = claim_job(queue_job(MTG::Art::BuildJob))
+      create(:mtg_art_build, status: "running", finished_at: nil, heartbeat_at: 3.minutes.ago, job_id: job.active_job_id)
+      allow(MTG::ArtBuild).to receive(:latest).and_wrap_original { |latest| latest.call.tap { finish_job(job) } }
+
+      expect(described_class.status_line).to start_with("Art matching: building")
+    end
+
     it "reports a finished build's counts and index", :art_matching do
       create(:mtg_art_build, indexed_count: 9, without_image_count: 1, failed_count: 2, index_file: "art-index-v1-0123456789abcdef-9.bin.gz")
       expect(described_class.status_line).to include("ready", "9 artworks indexed", "1 without an image", "2 failed images", "art-index-v1-0123456789abcdef-9.bin.gz")
