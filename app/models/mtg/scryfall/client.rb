@@ -7,6 +7,9 @@ class MTG::Scryfall::Client
   USER_AGENT = "Collector/1.0 (+https://github.com/plainprogrammer/Collector)"
   MIN_INTERVAL = 0.1
   MAX_ATTEMPTS = 3
+  # The longest wait before a retry, in seconds. Scryfall limits access for 30 seconds after a 429
+  # (https://scryfall.com/docs/api/rate-limits), so a wait it asks for should fit; a longer one isn't slept through.
+  MAX_BACK_OFF = 30
   OPEN_TIMEOUT = 10
   READ_TIMEOUT = 60
   NETWORK_ERRORS = [ Timeout::Error, SocketError, SystemCallError, OpenSSL::SSL::SSLError, Net::HTTPBadResponse, EOFError ].freeze
@@ -26,7 +29,7 @@ class MTG::Scryfall::Client
       return JSON.parse(response.body) if response.is_a?(Net::HTTPSuccess)
       raise Catalog::Sources::TransientError, "GET #{uri} returned #{response.code}" unless response.is_a?(Net::HTTPTooManyRequests)
 
-      @sleeper.call(Integer(response["Retry-After"].to_s, exception: false) || 2**attempt)
+      @sleeper.call(back_off(uri, response, attempt))
     end
     raise Catalog::Sources::TransientError, "GET #{uri} still rate limited after #{MAX_ATTEMPTS} attempts"
   end
@@ -57,7 +60,7 @@ class MTG::Scryfall::Client
       return response.body.to_s.b if response.is_a?(Net::HTTPSuccess)
       raise Catalog::Sources::TransientError, "GET #{uri} returned #{response.code}" unless retryable?(response)
 
-      @sleeper.call(Integer(response["Retry-After"].to_s, exception: false) || 2**attempt) if attempt < MAX_ATTEMPTS - 1
+      @sleeper.call(back_off(uri, response, attempt)) if attempt < MAX_ATTEMPTS - 1
     end
     raise Catalog::Sources::TransientError, "GET #{uri} still failing after #{MAX_ATTEMPTS} attempts"
   end
@@ -72,6 +75,16 @@ class MTG::Scryfall::Client
     end
 
     def retryable?(response) = response.is_a?(Net::HTTPTooManyRequests) || response.is_a?(Net::HTTPServerError)
+
+    # The seconds to wait before the next attempt: what Retry-After asks for, else 1, 2, … A wait longer than
+    # MAX_BACK_OFF ends the call instead, so a worker never sleeps for as long as a header says (issue #74).
+    def back_off(uri, response, attempt)
+      wait = Integer(response["Retry-After"].to_s, exception: false) || 2**attempt
+      return wait if wait <= MAX_BACK_OFF
+
+      raise Catalog::Sources::RateLimitedError,
+        "GET #{uri} returned #{response.code} and asked for #{wait} seconds before a retry; the client waits at most #{MAX_BACK_OFF}"
+    end
 
     def throttle
       if @last_request_at

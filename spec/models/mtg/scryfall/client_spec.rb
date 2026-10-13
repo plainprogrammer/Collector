@@ -6,6 +6,9 @@ RSpec.describe MTG::Scryfall::Client, type: :model do
   let(:naps) { [] }
   let(:now) { 100.0 }
 
+  # The waits before a retry: every nap but the 100 ms between requests.
+  def back_offs = naps - [ 0.1 ]
+
   describe "#get_json" do
     it "sends a descriptive User-Agent and Accept header", :aggregate_failures do
       stub = stub_request(:get, "https://api.scryfall.com/sets")
@@ -36,6 +39,30 @@ RSpec.describe MTG::Scryfall::Client, type: :model do
       stub_request(:get, "https://api.scryfall.com/sets").to_return(status: 429)
 
       expect { client.get_json("/sets") }.to raise_error(Catalog::Sources::TransientError, /rate limited/)
+    end
+
+    it "waits the 30 seconds a Retry-After asks for, the longest it waits (issue #74)", :aggregate_failures do
+      stub_request(:get, "https://api.scryfall.com/sets")
+        .to_return({ status: 429, headers: { "Retry-After" => "30" } }, json_response("ok" => true))
+
+      expect(client.get_json("/sets")).to eq("ok" => true)
+      expect(back_offs).to eq([ 30 ])
+    end
+
+    it "ends the call at once, without waiting, when Retry-After asks for more than 30 seconds (issue #74)", :aggregate_failures do
+      stub = stub_request(:get, "https://api.scryfall.com/sets").to_return(status: 429, headers: { "Retry-After" => "31" })
+
+      expect { client.get_json("/sets") }.to raise_error(Catalog::Sources::RateLimitedError,
+        "GET https://api.scryfall.com/sets returned 429 and asked for 31 seconds before a retry; the client waits at most 30")
+      expect(naps).to be_empty
+      expect(stub).to have_been_requested.once
+    end
+
+    it "never waits for an absurd Retry-After", :aggregate_failures do
+      stub_request(:get, "https://api.scryfall.com/sets").to_return(status: 429, headers: { "Retry-After" => "9" * 30 })
+
+      expect { client.get_json("/sets") }.to raise_error(Catalog::Sources::RateLimitedError, /asked for 9{30} seconds/)
+      expect(naps).to be_empty
     end
 
     it "raises a transient error on timeouts" do
@@ -90,6 +117,15 @@ RSpec.describe MTG::Scryfall::Client, type: :model do
 
       expect(client.fetch_image(url)).to eq("x")
       expect(naps).to include(3, 2)
+    end
+
+    it "ends the call at once, without waiting, when Retry-After asks for more than 30 seconds (issue #74)", :aggregate_failures do
+      stub = stub_request(:get, url).to_return(status: 429, headers: { "Retry-After" => "600" })
+
+      expect { client.fetch_image(url) }.to raise_error(Catalog::Sources::RateLimitedError,
+        "GET #{url} returned 429 and asked for 600 seconds before a retry; the client waits at most 30")
+      expect(naps).to be_empty
+      expect(stub).to have_been_requested.once
     end
 
     it "gives up after 3 attempts" do
