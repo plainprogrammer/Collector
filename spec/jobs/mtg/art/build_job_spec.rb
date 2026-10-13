@@ -53,6 +53,16 @@ RSpec.describe MTG::Art::BuildJob, type: :job do
         .not_to have_enqueued_job(described_class)
     end
 
+    it "fails the fourth time it is rate limited, counting its 3 retries in the queued job", :aggregate_failures do
+      allow(MTG::Art::Build).to receive(:new).and_raise(rate_limited(60))
+      queued = -> { ActiveJob::Base.queue_adapter.enqueued_jobs }
+      described_class.perform_now
+
+      expect { 2.times { ActiveJob::Base.execute(queued.call.last) } }.to change { queued.call.size }.by(2)
+      expect { expect { ActiveJob::Base.execute(queued.call.last) }.to raise_error(Catalog::Sources::RateLimitedError) }
+        .not_to change { queued.call.size }
+    end
+
     # Two artworks in an applied catalog, oldest first, and a client that doesn't really sleep. Returns the image URLs.
     def two_artworks
       create(:catalog_refresh_run, collectible_type: "mtg", source_version: "default-cards-1")

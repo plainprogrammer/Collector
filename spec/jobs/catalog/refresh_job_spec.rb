@@ -74,6 +74,27 @@ RSpec.describe Catalog::RefreshJob, type: :job do
       expect { expect { job.perform_now }.to raise_error(Catalog::Sources::RateLimitedError) }.not_to have_enqueued_job(described_class)
     end
 
+    # As a worker runs them: each retry is the queued job's data, so the count has to travel with the job.
+    it "keeps count of its retries in the queued job: the fourth, run from the queue, fails", :aggregate_failures do
+      allow(Catalog::Refresh).to receive(:new).and_raise(rate_limited(60))
+      queued = -> { ActiveJob::Base.queue_adapter.enqueued_jobs }
+      described_class.perform_now("mtg")
+
+      expect { 2.times { ActiveJob::Base.execute(queued.call.last) } }.to change { queued.call.size }.by(2)
+      expect { expect { ActiveJob::Base.execute(queued.call.last) }.to raise_error(Catalog::Sources::RateLimitedError) }
+        .not_to change { queued.call.size }
+    end
+
+    it "counts rate limits and other transient errors each on their own", :aggregate_failures do
+      errors = [ rate_limited(60), rate_limited(60), rate_limited(60) ] + Array.new(3) { Catalog::Sources::TransientError.new("timeout") }
+      allow(Catalog::Refresh).to receive(:new) { raise errors.shift }
+      job = described_class.new("mtg")
+
+      # 3 retries for the rate limits, then the transient rule's own 2 of its 3 attempts.
+      expect { 5.times { job.perform_now } }.to have_enqueued_job(described_class).exactly(5).times
+      expect { job.perform_now }.to raise_error(Catalog::Sources::TransientError, "timeout")
+    end
+
     it "leaves a run that says how long Scryfall asked for, and is queued to run again then", :aggregate_failures do
       stub_request(:get, "https://api.scryfall.com/bulk-data").to_return(status: 429, headers: { "Retry-After" => "600" })
 
