@@ -1,10 +1,13 @@
 # Collector
 
 Collector is a self-hostable, multi-tenant web app for tracking collectibles, starting with
-Magic: The Gathering. It is at an early stage: alongside the stack, tests, CI, and deployment
-setup, it has a card catalog fed from Scryfall's bulk data and a public card search page at
-`/catalog/entries` (see [Card catalog](#card-catalog)). Accounts and collections are not built
-yet.
+Magic: The Gathering. Each person signs in to their own account and keeps their own collection.
+Cards come from a catalog fed from Scryfall's bulk data (see [Card catalog](#card-catalog)): you
+find a card by searching the catalog, or by reading it with the [card scanner](#card-scanner) on
+a phone, and add it to your collection. An admin manages users and sign-up (see
+[Accounts](#accounts)), starts and watches the catalog's refreshes, and sees, retries and
+discards background jobs. Collector is pre-1.0; the [roadmap](docs/roadmap.md) says what is
+built next.
 
 Built with Rails 8.1, SQLite, and Hotwire (Turbo + Stimulus via importmap and Propshaft; no
 Node.js). Background jobs, caching, and Action Cable use Solid Queue, Solid Cache, and Solid
@@ -111,8 +114,8 @@ measurement mode, `SCANNER_EMAIL=… GROUND_TRUTH=… bin/rails scanner:sitting_
 ## Testing and CI
 
 ```sh
-bin/rspec                               # full suite
-bin/rspec spec/requests/home_spec.rb:5  # a single file or example
+bin/rspec                                       # full suite
+bin/rspec spec/requests/health_check_spec.rb:5  # a single file or example
 ```
 
 The suite uses RSpec, FactoryBot, and Capybara. System specs run in headless Firefox; on the
@@ -158,7 +161,6 @@ the file and start it.
 | `COLLECTOR_CURRENCY`        | no       | `USD`                 | Currency for the price you paid: USD, CAD, AUD, NZD, EUR, GBP, CHF, SEK, NOK, DKK, PLN, CZK, JPY, CNY, KRW, SGD, HKD, BRL, MXN or ZAR |
 | `COLLECTOR_HTTPS`           | no       | `false`               | Set to `true` when Collector is served over HTTPS (secure cookies, redirect to HTTPS)                                                 |
 | `COLLECTOR_TRUSTED_PROXIES` | no       | Rails' private ranges | Extra reverse proxies (IPs or CIDRs, comma-separated) whose `X-Forwarded-For` is trusted                                              |
-| `COLLECTOR_PASSWORD`        | no       | none                  | Password for the user command below; never stored in logs                                                                             |
 
 Changing `COLLECTOR_CURRENCY` later doesn't convert prices you've already entered; they're shown with the new symbol. An unsupported code stops the app at boot, naming the setting.
 
@@ -215,7 +217,7 @@ Queue runs inside Puma (`SOLID_QUEUE_IN_PUMA`).
 The card scanner ("Scan" in the navigation, at `/scanner`) reads a card with the camera of the phone it runs on, or
 from a photo, which it finds and straightens first. You confirm the printing and finish and add the card to your
 collection with one tap; the sitting's adds are listed with Undo until you press Done. Photos never leave the phone:
-only the text read from the card and your add, Undo and printing choices are sent to your instance.
+only the text read from the card (and, with art matching on, the ids and distances of the closest artworks) and your add, Undo and printing choices are sent to your instance.
 The image build downloads the scanner's OCR engine from `registry.npmjs.org` and checks each file against a pinned
 SHA-256; your instance serves it from `/ocr/v7.0.0/`, so phones fetch it from you, not from a third party.
 The published image already contains it.
@@ -258,7 +260,7 @@ that local copy; the app never calls Scryfall while rendering a page.
 admin and open **Catalog** (in the account menu, or under More on a phone). Press
 **Refresh now** and the page shows the download and the sync as they go, without reloading.
 Until then, search and the scanner say that the catalog hasn't been loaded. Nothing downloads
-until you start it, so set the languages below first if you want more than English.
+until you start it or the weekly schedule first runs, so set the languages below first if you want more than English.
 
 You can also queue the refresh from a shell:
 
@@ -278,15 +280,16 @@ bin/rails "catalog:status[mtg]"   # Kamal: bin/kamal catalog-status
 
 - **Catalog page:** `/admin/catalog` shows each catalog's cards, its last applied refresh, when
   the next one is scheduled, the running refresh's stage and progress, and its recent runs. A
-  refresh that stops making progress for 15 minutes is shown as interrupted (after a restart,
-  for example); pressing **Refresh now** then starts it again.
+  refresh whose job has failed or left the queue without ending the run (after a crash, for
+  example) is shown as interrupted once it has made no progress for 2 minutes, and so is one
+  that stops making progress for 15 minutes; pressing **Refresh now** then starts it again.
 - **Jobs page:** `/admin/jobs` lists the app's background jobs that failed, are running, are
   queued or are scheduled. A failed job shows its error and backtrace, and can be retried or
   discarded there. Both pages are for admins only.
 
-- **Schedule:** in production the catalog refreshes weekly, on Mondays at 03:15 server time
+- **Schedule:** in production the catalog refreshes weekly, on Mondays at 03:15 UTC
   (`config/recurring.yml`). A scheduled run is skipped when the same Scryfall file and
-  language set were already applied; a manual run always applies. Only one refresh per
+  language set were already applied (except once, after an upgrade that adds artwork ids); a manual run always applies. Only one refresh per
   collectible type runs at a time.
 - **Languages:** set `COLLECTOR_MTG_LANGUAGES` to a comma-separated, case-insensitive list of
   extra languages (for example `ja,de`). The default is English only, and English is always
