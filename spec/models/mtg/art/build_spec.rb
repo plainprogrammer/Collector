@@ -119,6 +119,27 @@ RSpec.describe MTG::Art::Build, :art_matching, type: :model do
     expect(stubs).to all(have_been_requested.once)
   end
 
+  # The worker died holding the first build's job; the queue failed that job, and nothing closed the build (issue #73).
+  it "runs, rather than being skipped, when the queue has failed the job of the build left running", :aggregate_failures, :solid_queue do
+    failed = fail_job(claim_job(queue_job(MTG::Art::BuildJob)), SolidQueue::Processes::ProcessPrunedError.new(6.minutes.ago))
+    left = create(:mtg_art_build, status: "running", finished_at: nil, started_at: 8.minutes.ago, heartbeat_at: 7.minutes.ago,
+      job_id: failed.active_job_id)
+    printing(art_a, released_on: Date.new(2005, 1, 1))
+    serve("#{art_a}-2005-1")
+
+    expect(run_build(job_id: "job-2")).to have_attributes(status: "finished", job_id: "job-2", indexed_count: 1)
+    expect(left.reload).to have_attributes(status: "failed", message: "interrupted")
+  end
+
+  it "is skipped while a worker holds the job of the build left running (AC-3.2)", :aggregate_failures, :solid_queue do
+    held = claim_job(queue_job(MTG::Art::BuildJob))
+    live = create(:mtg_art_build, status: "running", finished_at: nil, started_at: 8.minutes.ago, heartbeat_at: 7.minutes.ago,
+      job_id: held.active_job_id)
+
+    expect(run_build(job_id: "job-2")).to have_attributes(status: "skipped", message: "already running")
+    expect(live.reload).to be_running
+  end
+
   it "writes the index last, and a second complete build records only its run (AC-3.8, AC-3.9)", :aggregate_failures do
     printing(art_a, released_on: Date.new(2005, 1, 1))
     serve("#{art_a}-2005-1")
