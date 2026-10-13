@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Smoke-tests a built Collector image (spec 012, AC-6.1 to AC-6.4): boots it, checks the pages and files it must
-# serve, runs the operational rake tasks, then checks that development-only paths and secrets are absent.
+# serve, runs the operational rake tasks, then checks that /rails/vendor holds nothing unexpected and that
+# development-only paths and secrets are absent.
 #
 #   bin/image-smoke <image> [extra `run` flags, e.g. --platform linux/arm64]
 #
@@ -52,6 +53,11 @@ echo "== pages and assets (a user exists now, so first-run redirects are over)"
 [ "$(status /scanner)" = "302" ] || fail "/scanner should redirect to sign-in when signed out"
 [ "$(status /ocr/v7.0.0/tesseract.min.js)" = "200" ] || fail "OCR engine is not served"
 [ "$(status /ocr/v7.0.0/lang/eng.traineddata.gz)" = "200" ] || fail "OCR language data is not served"
+
+echo "== /rails/vendor holds only .keep, javascript and ocr (issue #31)"
+vendor="$("$cli" exec "$name" sh -c 'ls -A /rails/vendor' 2>&1)" || fail "vendor: listing /rails/vendor exited $?:"$'\n'"$vendor"
+stray="$(grep -vxE '\.keep|javascript|ocr' <<<"$vendor" || true)"
+[ -z "$stray" ] || fail "unexpected in /rails/vendor:"$'\n'"$stray"
 
 echo "== development-only paths and secrets must be absent"
 present="$("$cli" exec "$name" sh -c '

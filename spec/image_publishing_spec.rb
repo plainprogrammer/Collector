@@ -44,6 +44,10 @@ RSpec.describe "Image publishing files" do
         "ActiveStorage::Transformers::Vips")
     end
 
+    it "fails an image whose /rails/vendor holds anything besides .keep, javascript and ocr (issue #31)" do
+      expect(Rails.root.join("bin/image-smoke").read).to include("ls -A /rails/vendor", "grep -vxE '\\.keep|javascript|ocr'")
+    end
+
     it "asserts the exact line catalog:status prints on a fresh instance, from captured output (AC-6.3, issue #19)", :aggregate_failures do
       script = Rails.root.join("bin/image-smoke").read
       expect(script).to include(%(catalog_status="$("$cli" exec "$name" bin/rails "catalog:status[mtg]" 2>&1)"),
