@@ -1,9 +1,9 @@
 # Feature 011: Card Scanner — Art Matching on Live Capture
 
 **Status:** Approved
-**Version:** 1.1.3
+**Version:** 1.2.0
 **Created:** 2026-10-07
-**Last Updated:** 2026-10-07
+**Last Updated:** 2026-10-13
 **Branch:** `011-card-scanner-art-matching`
 
 ---
@@ -17,6 +17,7 @@
 | 1.1.1 | 2026-10-07 | Second spec review (Fable, NEEDS REVISION, nothing blocking). **Fixes:** AC-6.4's language parenthetical removed (English only, as the glossary says); unknown, printing-less and card-less artworks are filtered out before "nearest" is taken, and give no weak art (glossary, AC-6.3); what art overruled is the collector line whenever the text's first candidate carries collector-line evidence, else the name (AC-6.7); the corrected printing is only the one spec 009's ranking already produced (AC-6.4); build runs keep a heartbeat and a short staleness cutoff so a restarted job carries on (AC-3.2, AC-3.8, AC-3.11). **Also:** "oldest" ordering with an undated printing last (AC-3.3); the opt-in read through app configuration that tests set (AC-1.2); the art cache and index under the configured catalog directory (AC-3.4, AC-3.9); the artwork id's form and lenient reading of the art part (AC-6.1); no Artwork row when the art part was dropped (AC-7.1); AC-7.2's badge wording; "tier" defined (AC-6.7); spec 009 AC-2.1 and AC-2.3/2.4 added to Supersedes; a second identical build records only its run (AC-3.8); ADR 0006's representative rule in AC-9.7; the artwork id on the Other printings link (AC-7.5) |
 | 1.1.2 | 2026-10-07 | **Maintainer ruling:** weak art is widened. Any text candidate's card, other than the confident-art card, that owns one of the 10 nearest usable artworks holds weak art, whatever its distance. This replaces the PRD's "above 300 bits", under which a second card at or below 300 bits got no art evidence while a card at 400 bits did (glossary, AC-6.5). Still only a tie-break |
 | 1.1.3 | 2026-10-07 | Third spec review (Fable, one Important item). **A queue re-run after a restart** finds its own run by job id, marks it interrupted and carries on at once, instead of being skipped by its own fresh heartbeat (AC-3.2, AC-3.8, Error Scenarios); `catalog:status` shows a run with a stale heartbeat as Interrupted (AC-3.11). **Also:** a reading with no text but confident art shows the art candidate rather than "Nothing could be read" (AC-6.3, AC-7.1); the measurement event goes to a run-level file joined by reading key (AC-9.3) |
+| 1.2.0 | 2026-10-13 | [Issue #74](https://github.com/plainprogrammer/Collector/issues/74): on a 429 or 5xx the image request slept for whatever `Retry-After` said, with no upper bound, so a long one held a worker and could keep the build from its heartbeat for as long as the header said. **The back-off is bounded:** a wait before a retry is at most 30 seconds, there is none after the last attempt, and so one image waits 60 seconds at most; a longer wait asked for ends the request at once as rate limited (AC-3.4). **A rate limit stops the build** instead of counting as that image's failure: carrying on would send a request for every image left to a host that asked the build to stay away, and record each as failed. The run is marked failed and says why, the job isn't retried, and the next build carries on from the cache (AC-3.6, Reliability, Error Scenarios) |
 
 ---
 
@@ -138,12 +139,13 @@ The scanner (specs 007 and 009) identifies a card from its name and collector li
   - sends the app's descriptive `User-Agent` and `Accept: image/jpeg`
   - waits at least 100 ms after the previous image request
   - has open and read timeouts
-  - backs off and retries on 429 (honouring `Retry-After`) and on 5xx, up to 3 attempts in all
+  - backs off and retries on 429 and on 5xx, up to 3 attempts in all. Before a retry it waits what `Retry-After` asks for (a number of seconds or an HTTP date), or 1 and then 2 seconds when the answer gives no usable wait, and never more than 30 seconds. It doesn't wait after its last attempt, so one image waits 60 seconds at most
+  - ends at once as rate limited, without waiting, when an answer's `Retry-After` asks for more than 30 seconds, and ends as rate limited when its last attempt is answered 429 (AC-3.6 says what the build does then)
   - goes only to the source's allowed image host
 
   The source's existing client sends `Accept: application/json` only, retries only on 429 and doesn't retry downloads, so the plan extends it or adds an image client beside it, keeping its `User-Agent` and its injectable clock and sleep. The image is written to the art cache under the catalog download directory's `mtg/` folder (`storage/catalog/mtg/` in production and development; the test environment's own directory in tests) through a partial file renamed into place, so a partial download is never taken for an image.
 - [ ] **AC-3.5** Given an image is already cached When any later build needs it Then it isn't fetched again.
-- [ ] **AC-3.6** Given an image fails after the retries, or can't be decoded When the build continues Then that artwork is recorded as failed in the build run and left out of the index, and the build goes on. A failed artwork is tried again on the next build (about 30 requests a build, by spec 010's count). Only an error outside a single image (the catalog unreadable, the disk full) fails the build.
+- [ ] **AC-3.6** Given an image fails after the retries, or can't be decoded When the build continues Then that artwork is recorded as failed in the build run and left out of the index, and the build goes on. A failed artwork is tried again on the next build (about 30 requests a build, by spec 010's count). Only an error outside a single image (the catalog unreadable, the disk full, a rate limit) fails the build. A fetch that ends as rate limited (AC-3.4) isn't that image's failure: the build stops there without requesting another image, counts no artwork as failed for it, and its run is recorded as failed, saying that the image was still rate limited after its attempts or how long the host asked it to wait. The build job isn't retried for it, since a retry's wait takes no account of what the host asked; the next build (an admin starts it, or the next refresh does) carries on from the cached images (AC-3.8).
 - [ ] **AC-3.7** Given an artwork without a fingerprint at the current settings digest When the build fingerprints its cached image Then the fingerprint is stored in a global artwork table (no `account_id`) with the printing AC-3.3 chose and the settings digest. The image cache is keyed by artwork id, so a cache seeded from elsewhere (AC-9.1) supplies that artwork's image whichever printing it was taken from. A later build fingerprints only artworks that lack a fingerprint at the current digest.
 - [ ] **AC-3.8** Given a build interrupted at any point (the process stopped, the job retried) When the next build runs Then it carries on from the cached images and stored fingerprints, and its result is the same as an uninterrupted build's. This holds when the queue re-runs the job after a restart (AC-3.2's own-job-id rule lets it proceed at once), and when a crashed build's job isn't re-run (the next build job, from the next refresh or a manual `catalog:refresh[mtg]`, finds the run stale and proceeds). Running a complete build twice changes nothing the second time beyond recording the second build run.
 - [ ] **AC-3.9** Given every artwork with a usable image has a fingerprint When the build writes the index Then:
@@ -379,7 +381,7 @@ The scanner (specs 007 and 009) identifies a card from its name and collector li
 
 - Migrations are reversible and safe for unattended `db:prepare` from any prior version, with an index on every foreign key and lookup column.
 - A failed or interrupted build never removes or corrupts the index in use (AC-3.9), and the scanner works on text alone whenever no usable index is available.
-- The build job retries transient errors with back-off and is discarded on a permanent error with the failure logged. Single-image failures never fail the build (AC-3.6).
+- The build job retries transient errors with back-off and is discarded on a permanent error with the failure logged. Single-image failures never fail the build (AC-3.6). A rate limit from the image host is neither: the build stops and its job fails without a retry (AC-3.6).
 - The camera page tests (ADR 0002), with art on and off, pass 10 times in a row locally.
 - The build's image decoder is a development and CI dependency as well as a production one: `bin/setup`, the CI workflow and the `Dockerfile` all provide it, and the plan's decoder ADR records this.
 
@@ -397,7 +399,9 @@ The scanner (specs 007 and 009) identifies a card from its name and collector li
 | The index download fails or is cut off on the phone | The status line reads "Artwork matching isn't available. The scanner is reading text only."; captures send no art |
 | The index header's settings digest or format version differs from the page's | As for a failed download; the index is ignored |
 | A refresh changes the index while a page holds the old one | The page keeps searching the old index; ids no longer in the artwork table are ignored (AC-6.1); the next page load uses the new index |
-| Scryfall answers 429 or 5xx for an image | Back off and retry up to the fixed attempts; then record the artwork as failed and go on (AC-3.6) |
+| Scryfall answers 5xx for an image | Back off and retry up to the fixed attempts; then record the artwork as failed and go on (AC-3.6) |
+| Scryfall answers 429 for an image | Wait what `Retry-After` asks for, at most 30 seconds, and retry up to the fixed attempts. If the last attempt is answered 429 too, the build stops: its run is marked failed and says the image was still rate limited, no artwork is counted as failed, and the previous index stays in use. The next build carries on from the cache (AC-3.4, AC-3.6) |
+| Scryfall answers 429 or 5xx with a `Retry-After` of more than 30 seconds | No wait and no retry: the build stops as for a 429 on the last attempt, and its run's message says how long the host asked for (AC-3.4, AC-3.6) |
 | An image can't be decoded | Record the artwork as failed and go on |
 | The build is interrupted (deploy, restart, crash) | The next build resumes from the cache and stored fingerprints (AC-3.8); the previous index stays in use meanwhile |
 | The disk fills during the build | The build run is marked failed and logged; `catalog:status[mtg]` shows Failed; the previous index stays in use; the partial file is never served |
