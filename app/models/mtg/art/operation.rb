@@ -1,10 +1,13 @@
 # The art index build as the admin catalog page shows it (spec 015 Story 4): MTG's one extra operation, offered through
 # the source's .operations hook. It judges a running build as the art line of `catalog:status` does (MTG::Art.status_line,
-# both by MTG::ArtBuild#left_behind?). The two differ only while a build job waits in the queue: the page then says
-# "Queued.", and the status line still describes the latest build (interrupted, ready or failed).
+# both by MTG::ArtBuild#stalled? and #left_behind?). The two differ only while a build job waits in the queue: the page
+# then says "Queued." or "Queued to retry.", and the status line still describes the latest build (interrupted, ready
+# or failed).
 class MTG::Art::Operation < Catalog::Operation
   OFF = "Art matching is off. Set #{MTG::Art::ENV_NAME}=true to turn it on.".freeze
   NEEDS_CATALOG = "Refresh the catalog first: the art index is built from its cards.".freeze
+  # Restarting releases the job a hung worker holds; the queue runs it again, and it closes its own build and carries on.
+  STALLED_ADVICE = "If it stays that way, restart the app: the build then carries on from where it stopped.".freeze
 
   def key = "art_index"
   def title = "Art index"
@@ -29,9 +32,10 @@ class MTG::Art::Operation < Catalog::Operation
     @build = MTG::ArtBuild.latest
   end
 
-  # :off, :queued, :building, :interrupted, :never, :ready or :failed. A build still marked running that nothing is
-  # working on any more is interrupted: its heartbeat stopped 10 minutes ago, or 2 minutes ago and the queue has failed
-  # its job or no longer holds it (issue #73).
+  # :off, :queued, :building, :stalled, :interrupted, :never, :ready or :failed. A build still marked running that
+  # nothing is working on any more is interrupted: its heartbeat stopped 10 minutes ago, or 2 minutes ago and the queue
+  # has failed its job or no longer holds it (issue #73). One whose heartbeat stopped 10 minutes ago while a worker
+  # still holds its job is stalled instead (issue #79).
   def state
     @state ||=
       if !MTG::Art.enabled? then :off
@@ -42,7 +46,7 @@ class MTG::Art::Operation < Catalog::Operation
       end
   end
 
-  def record_running? = state == :building
+  def record_running? = %i[building stalled].include?(state)
 
   # The page links to the failed list for the build on show: a failed one, or an interrupted one whose own job is there.
   def failed_job? = (state == :failed && super) || (state == :interrupted && build.job_id.present? && queue.failed?(build.job_id))
@@ -52,6 +56,7 @@ class MTG::Art::Operation < Catalog::Operation
     when :off then OFF
     when :queued then "Queued."
     when :building then "Building."
+    when :stalled then "Building, no heartbeat for #{build.stalled_minutes} minutes. #{STALLED_ADVICE}"
     when :interrupted then "Interrupted. Build it again to carry on from where it stopped."
     when :never then catalog_loaded? ? "No build has run yet. One starts after the next catalog refresh, or you can start it here." : NEEDS_CATALOG
     when :ready then "Ready."
@@ -60,7 +65,7 @@ class MTG::Art::Operation < Catalog::Operation
   end
 
   def meter
-    return unless %i[building interrupted].include?(state)
+    return unless %i[building stalled interrupted].include?(state)
 
     Meter.new(label: "Artworks fingerprinted", done: build.fingerprinted_count, total: build.total_count,
       text: "#{delimited(build.fingerprinted_count)} of #{delimited(build.total_count)} artworks fingerprinted")
@@ -68,7 +73,7 @@ class MTG::Art::Operation < Catalog::Operation
 
   def facts
     case state
-    when :building, :interrupted
+    when :building, :stalled, :interrupted
       [ fact("Started", build.started_at), fact("Images fetched", build.fetched_count), fact("Failed images", build.failed_count),
         fact("Last heartbeat", build.heartbeat_at, relative: true) ]
     when :ready
@@ -83,10 +88,11 @@ class MTG::Art::Operation < Catalog::Operation
   private
     # A build nothing is working on any more is interrupted, until a build job waits to start: that one is queued, and
     # closes the build when it starts (spec 015 AC-4.3), as a refresh queued behind an interrupted run is. A worker
-    # that still holds the job of a build whose heartbeat stopped queues nothing: that build stays interrupted.
+    # that still holds the job of a build whose heartbeat stopped keeps the button disabled, whatever else waits in the
+    # queue: that build is stalled, as a refresh run is (spec 015 AC-4.11), and the page goes on polling.
     def running_state
+      return :stalled if build.stalled?(queue)
       return :building unless build.left_behind?(queue)
-      return :interrupted if build.job_id.present? && queue.claimed?(build.job_id)
 
       queue.any? ? :queued : :interrupted
     end

@@ -86,12 +86,58 @@ RSpec.describe MTG::Art::Operation, :solid_queue, type: :model do
       expect(operation).to be_in_flight
     end
 
-    # Nothing is queued then: the worker that holds the job is hung or slow, and the build reads as it did before.
-    it "stays interrupted while a worker still holds the job of the build whose heartbeat stopped", :aggregate_failures do
-      loaded
-      build(status: "running", finished_at: nil, heartbeat_at: 11.minutes.ago, job_id: claim_job(queue_job(MTG::Art::BuildJob)).active_job_id)
+    # A worker that still holds the job is hung or slow, and nothing can be started while it does (issue #79).
+    context "when a worker still holds the job of the build whose heartbeat stopped" do
+      let(:job) { claim_job(queue_job(MTG::Art::BuildJob)) }
 
-      expect(operation).to have_attributes(state: :interrupted, startable?: false)
+      def stalled_build(**attributes)
+        build(status: "running", finished_at: nil, started_at: 1.hour.ago, heartbeat_at: 11.minutes.ago, job_id: job.active_job_id, **attributes)
+      end
+
+      it "is stalled, not interrupted: it says what to do and never to build it again", :aggregate_failures do
+        loaded
+        stalled_build
+
+        expect(operation).to have_attributes(state: :stalled, startable?: false, record_running?: true, failed_job?: false,
+          summary: "Building, no heartbeat for 11 minutes. If it stays that way, restart the app: the build then carries on from where it stopped.")
+        expect(operation).to be_in_flight
+      end
+
+      it "shows the progress, counts and heartbeat a building one does", :aggregate_failures do
+        loaded
+        freeze_time do
+          stalled_build(total_count: 10, fingerprinted_count: 3, fetched_count: 4, failed_count: 1)
+
+          expect(operation.meter).to have_attributes(percent: 30, text: "3 of 10 artworks fingerprinted")
+          expect(operation.facts.map { |fact| [ fact.label, fact.value, fact.relative ] }).to eq([ [ "Started", 1.hour.ago, false ],
+            [ "Images fetched", 4, false ], [ "Failed images", 1, false ], [ "Last heartbeat", 11.minutes.ago, true ] ])
+        end
+      end
+
+      it "stays stalled when another build job waits in the queue" do
+        loaded
+        stalled_build
+        queue_job(MTG::Art::BuildJob)
+
+        expect(operation.state).to eq(:stalled)
+      end
+
+      it "is interrupted, and can be built again, once the queue has failed that job", :aggregate_failures do
+        loaded
+        stalled_build
+        fail_job(job)
+
+        expect(operation).to have_attributes(state: :interrupted, startable?: true, failed_job?: true,
+          summary: "Interrupted. Build it again to carry on from where it stopped.")
+      end
+
+      it "is interrupted, and can be built again, once that job has left the queue", :aggregate_failures do
+        loaded
+        stalled_build
+        finish_job(job)
+
+        expect(operation).to have_attributes(state: :interrupted, startable?: true, failed_job?: false)
+      end
     end
 
     it "is still building while a worker holds its job, though it hasn't beaten for some minutes", :aggregate_failures do
