@@ -354,6 +354,10 @@ RSpec.describe "Admin catalog page", :solid_queue, type: :request do
         expect(page.at_css("[data-controller~='poll']")).to be_nil
         expect { start("art_index") }.to change(SolidQueue::Job, :count).by(1)
         expect(flash[:notice]).to eq("Art index build queued.")
+        follow_redirect!
+        expect(text(section("art_index").at_css(".c-operation__summary"))).to eq("Queued.")
+        expect(section("art_index").at_css("button")["disabled"]).to be_present
+        expect(page.at_css("main")["data-controller"]).to eq("poll")
       end
 
       # The queue also fails the job of a worker it lost sight of (a suspended host) that then carries on.

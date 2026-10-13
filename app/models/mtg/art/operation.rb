@@ -33,7 +33,7 @@ class MTG::Art::Operation < Catalog::Operation
   def state
     @state ||=
       if !MTG::Art.enabled? then :off
-      elsif build&.running? then build.left_behind?(queue) ? :interrupted : :building
+      elsif build&.running? then running_state
       elsif queue.any? then :queued
       elsif build.nil? then :never
       else build.finished? ? :ready : :failed
@@ -78,6 +78,16 @@ class MTG::Art::Operation < Catalog::Operation
   end
 
   private
+    # A build nothing is working on any more is interrupted, until a build job waits to start: that one is queued, and
+    # closes the build when it starts (spec 015 AC-4.3), as a refresh queued behind an interrupted run is. A worker
+    # that still holds the job of a build whose heartbeat stopped queues nothing: that build stays interrupted.
+    def running_state
+      return :building unless build.left_behind?(queue)
+      return :interrupted if build.job_id.present? && queue.claimed?(build.job_id)
+
+      queue.any? ? :queued : :interrupted
+    end
+
     def catalog_loaded?
       return @catalog_loaded if defined?(@catalog_loaded)
 

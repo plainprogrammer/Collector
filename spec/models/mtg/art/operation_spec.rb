@@ -77,6 +77,23 @@ RSpec.describe MTG::Art::Operation, :solid_queue, type: :model do
       expect(operation.meter.percent).to eq(30)
     end
 
+    it "is queued, not interrupted, once a build job waits behind the build whose heartbeat stopped (AC-4.3)", :aggregate_failures do
+      loaded
+      build(status: "running", finished_at: nil, heartbeat_at: 11.minutes.ago, job_id: "job-1")
+      queue_job(MTG::Art::BuildJob)
+
+      expect(operation).to have_attributes(state: :queued, summary: "Queued.", startable?: false)
+      expect(operation).to be_in_flight
+    end
+
+    # Nothing is queued then: the worker that holds the job is hung or slow, and the build reads as it did before.
+    it "stays interrupted while a worker still holds the job of the build whose heartbeat stopped", :aggregate_failures do
+      loaded
+      build(status: "running", finished_at: nil, heartbeat_at: 11.minutes.ago, job_id: claim_job(queue_job(MTG::Art::BuildJob)).active_job_id)
+
+      expect(operation).to have_attributes(state: :interrupted, startable?: false)
+    end
+
     it "is still building while a worker holds its job, though it hasn't beaten for some minutes", :aggregate_failures do
       loaded
       quiet_build(claim_job(queue_job(MTG::Art::BuildJob)).active_job_id)
@@ -104,6 +121,16 @@ RSpec.describe MTG::Art::Operation, :solid_queue, type: :model do
         quiet_build(job.active_job_id)
 
         expect { operation.start }.to change(SolidQueue::Job, :count).by(1)
+      end
+
+      # That job closes the build when it starts (MTG::ArtBuild.start!), so the build is no longer the news.
+      it "is queued once another build job waits in the queue, as after \"Build art index\" (AC-4.3)", :aggregate_failures do
+        loaded
+        quiet_build(job.active_job_id, total_count: 10, fingerprinted_count: 3)
+        queue_job(MTG::Art::BuildJob)
+
+        expect(operation).to have_attributes(state: :queued, summary: "Queued.", meter: nil, facts: [], startable?: false)
+        expect(operation).to be_in_flight
       end
 
       # The queue also fails the job of a worker it lost sight of while the host was suspended; that worker carries on.
