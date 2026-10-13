@@ -7,6 +7,11 @@ RSpec.describe MTG::Art::Operation, :solid_queue, type: :model do
 
   def build(**attributes) = create(:mtg_art_build, **attributes)
 
+  # A build still marked running that last beat 7 minutes ago: not stale yet.
+  def quiet_build(job_id, **attributes)
+    build(status: "running", finished_at: nil, started_at: 8.minutes.ago, heartbeat_at: 7.minutes.ago, job_id:, **attributes)
+  end
+
   context "with art matching off" do
     it "says how to turn it on and offers no button (spec 015 AC-4.6)", :aggregate_failures do
       loaded
@@ -70,6 +75,110 @@ RSpec.describe MTG::Art::Operation, :solid_queue, type: :model do
       expect(operation).to have_attributes(state: :interrupted, startable?: true,
         summary: "Interrupted. Build it again to carry on from where it stopped.")
       expect(operation.meter.percent).to eq(30)
+    end
+
+    it "is still building while a worker holds its job, though it hasn't beaten for some minutes", :aggregate_failures do
+      loaded
+      quiet_build(claim_job(queue_job(MTG::Art::BuildJob)).active_job_id)
+
+      expect(operation).to have_attributes(state: :building, summary: "Building.", startable?: false)
+      expect(operation).to be_in_flight
+    end
+
+    # A worker that dies never closes its build; the queue fails the job it held (issue #73).
+    context "when the queue has failed a running build's job" do
+      let(:job) { fail_job(claim_job(queue_job(MTG::Art::BuildJob)), SolidQueue::Processes::ProcessPrunedError.new(6.minutes.ago)) }
+
+      it "is interrupted before it goes stale, not building, and can be built again", :aggregate_failures do
+        loaded
+        quiet_build(job.active_job_id, total_count: 10, fingerprinted_count: 3)
+
+        expect(operation).to have_attributes(state: :interrupted, summary: "Interrupted. Build it again to carry on from where it stopped.")
+        expect(operation.meter.percent).to eq(30)
+        expect(operation).not_to be_in_flight
+        expect(operation).to be_startable
+      end
+
+      it "queues a build when started" do
+        loaded
+        quiet_build(job.active_job_id)
+
+        expect { operation.start }.to change(SolidQueue::Job, :count).by(1)
+      end
+
+      # The queue also fails the job of a worker it lost sight of while the host was suspended; that worker carries on.
+      it "is still building, and in flight, while the build beat in the last 2 minutes", :aggregate_failures do
+        loaded
+        quiet_build(job.active_job_id, heartbeat_at: 1.minute.ago)
+
+        expect(operation).to have_attributes(state: :building, summary: "Building.", startable?: false)
+        expect(operation).to be_in_flight
+      end
+
+      it "is still building when the failed job is another build's", :aggregate_failures do
+        loaded
+        job
+        quiet_build(claim_job(queue_job(MTG::Art::BuildJob)).active_job_id)
+
+        expect(operation).to have_attributes(state: :building, startable?: false)
+      end
+    end
+
+    # Its failed job was discarded, say: nothing will close the build, and nothing is working on it (issue #73).
+    context "when a running build's job is no longer in the queue" do
+      it "is interrupted before it goes stale, and can be built again", :aggregate_failures do
+        loaded
+        quiet_build("job-1")
+
+        expect(operation).to have_attributes(state: :interrupted, startable?: true)
+        expect(operation).not_to be_in_flight
+      end
+
+      it "is still building, and in flight, while the build beat in the last 2 minutes", :aggregate_failures do
+        loaded
+        quiet_build("job-1", heartbeat_at: 1.minute.ago)
+
+        expect(operation).to have_attributes(state: :building, startable?: false)
+        expect(operation).to be_in_flight
+      end
+
+      it "is interrupted when the queue's record of the job says it finished" do
+        loaded
+        quiet_build(finish_job(claim_job(queue_job(MTG::Art::BuildJob))).active_job_id)
+
+        expect(operation.state).to eq(:interrupted)
+      end
+
+      it "is still building while its job waits in the queue to run again, as after a graceful restart" do
+        loaded
+        quiet_build(queue_job(MTG::Art::BuildJob).active_job_id)
+
+        expect(operation).to have_attributes(state: :building, startable?: false)
+      end
+    end
+
+    # A job's row is finished only after its build is closed, so the queue is read before the build: a build still
+    # marked running after that read was left behind, never one whose job ended between the two reads.
+    context "when the job ends normally while the page is being put together" do
+      let(:job) { claim_job(queue_job(MTG::Art::BuildJob)) }
+
+      it "never calls a build interrupted that it read before its job finished" do
+        loaded
+        running = quiet_build(job.active_job_id)
+        operation.build
+        running.finish!(:finished)
+        finish_job(job)
+
+        expect(operation.state).to eq(:building)
+      end
+
+      it "shows the build as it ended when the job finished before the queue was read" do
+        loaded
+        quiet_build(job.active_job_id).finish!(:finished)
+        finish_job(job)
+
+        expect(operation.state).to eq(:ready)
+      end
     end
 
     it "shows a finished build's counts and finish time (AC-4.7)", :aggregate_failures do

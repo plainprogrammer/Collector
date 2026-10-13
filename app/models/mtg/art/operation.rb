@@ -19,17 +19,21 @@ class MTG::Art::Operation < Catalog::Operation
     NEEDS_CATALOG unless catalog_loaded?
   end
 
+  # Read after the queue, which judges it (MTG::ArtBuild.job_queue says why).
   def build
     return @build if defined?(@build)
 
+    queue.read
     @build = MTG::ArtBuild.latest
   end
 
-  # :off, :queued, :building, :interrupted, :never, :ready or :failed.
+  # :off, :queued, :building, :interrupted, :never, :ready or :failed. A build still marked running that nothing is
+  # working on any more is interrupted: its heartbeat stopped 10 minutes ago, or 2 minutes ago and the queue has failed
+  # its job or no longer holds it (issue #73).
   def state
     @state ||=
       if !MTG::Art.enabled? then :off
-      elsif build&.running? then build.stale? ? :interrupted : :building
+      elsif build&.running? then build.left_behind?(queue) ? :interrupted : :building
       elsif queue.any? then :queued
       elsif build.nil? then :never
       else build.finished? ? :ready : :failed
