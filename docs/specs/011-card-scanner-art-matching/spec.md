@@ -403,7 +403,7 @@ The scanner (specs 007 and 009) identifies a card from its name and collector li
 | The build is interrupted (deploy, restart, crash) | The next build resumes from the cache and stored fingerprints (AC-3.8); the previous index stays in use meanwhile |
 | The disk fills during the build | The build run is marked failed and logged; `catalog:status[mtg]` shows Failed; the previous index stays in use; the partial file is never served |
 | The queue re-runs a build job after a restart | The job finds its own run (same job id), marks it failed as interrupted and carries on at once (AC-3.2) |
-| A build crashes and its job isn't re-run | `catalog:status[mtg]` shows Interrupted once the queue has failed the job and the heartbeat is 2 minutes old, or once the heartbeat is past the cutoff whatever became of the job; the next build job (next refresh, `catalog:refresh[mtg]`, or "Build art index" on the admin catalog page) marks the run interrupted and proceeds (AC-3.2) |
+| A build crashes and its job isn't re-run | `catalog:status[mtg]` shows Interrupted once the queue has failed the job and the heartbeat is older than 2 minutes, or once the heartbeat is past the cutoff whatever became of the job; the next build job (next refresh, `catalog:refresh[mtg]`, or "Build art index" on the admin catalog page) marks the run interrupted and proceeds (AC-3.2) |
 | A reading's art part is malformed, too long, or out of range | The art part is dropped; the text ranks alone; the reading is not refused |
 | Art matching is turned off with an index on disk | The index is not served or referenced; cached images and fingerprints stay |
 | The index URL names a file that isn't the current or previous index | 404 |

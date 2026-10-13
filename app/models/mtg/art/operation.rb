@@ -1,5 +1,7 @@
 # The art index build as the admin catalog page shows it (spec 015 Story 4): MTG's one extra operation, offered through
-# the source's .operations hook. Its state agrees with the art line of `catalog:status` (MTG::Art.status_line).
+# the source's .operations hook. It judges a running build as the art line of `catalog:status` does (MTG::Art.status_line,
+# both by MTG::ArtBuild#left_behind?). The two differ only while a build job waits in the queue: the page then says
+# "Queued.", and the status line still describes the latest build (interrupted, ready or failed).
 class MTG::Art::Operation < Catalog::Operation
   OFF = "Art matching is off. Set #{MTG::Art::ENV_NAME}=true to turn it on.".freeze
   NEEDS_CATALOG = "Refresh the catalog first: the art index is built from its cards.".freeze
