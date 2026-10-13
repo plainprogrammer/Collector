@@ -28,6 +28,15 @@ RSpec.describe "Image publishing files" do
     end
   end
 
+  describe "Dockerfile" do
+    let(:instructions) { Rails.root.join("Dockerfile").readlines(chomp: true).map(&:strip) }
+
+    it "copies nothing from vendor/ with a wildcard, which would flatten its subdirectories (issue #31)", :aggregate_failures do
+      expect(instructions.grep(/\ACOPY\s.*vendor\/\*/)).to be_empty
+      expect(instructions).to include("COPY . .", "RUN bin/fetch-ocr-engine")
+    end
+  end
+
   describe "bin/image-smoke" do
     it "checks that Active Storage variants use libvips without a warning (spec 014 AC-1.3, FR-2)" do
       expect(Rails.root.join("bin/image-smoke").read).to include(
