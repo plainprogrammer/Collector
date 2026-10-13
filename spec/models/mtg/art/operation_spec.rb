@@ -123,6 +123,23 @@ RSpec.describe MTG::Art::Operation, :solid_queue, type: :model do
         expect { operation.start }.to change(SolidQueue::Job, :count).by(1)
       end
 
+      it "points at the failed job, as an interrupted refresh does, until another build is queued", :aggregate_failures do
+        loaded
+        quiet_build(job.active_job_id)
+
+        expect(operation).to be_failed_job
+        queue_job(MTG::Art::BuildJob)
+        expect(described_class.new("mtg")).to have_attributes(state: :queued, failed_job?: false)
+      end
+
+      it "doesn't point at another build's failed job" do
+        loaded
+        job
+        quiet_build("job-1")
+
+        expect(operation).to have_attributes(state: :interrupted, failed_job?: false)
+      end
+
       # That job closes the build when it starts (MTG::ArtBuild.start!), so the build is no longer the news.
       it "is queued once another build job waits in the queue, as after \"Build art index\" (AC-4.3)", :aggregate_failures do
         loaded

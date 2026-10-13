@@ -349,14 +349,14 @@ RSpec.describe "Admin catalog page", :solid_queue, type: :request do
         get admin_catalog_path
 
         expect(text(section("art_index"))).to start_with("Art index Build art index Interrupted. Build it again to carry on from where it " \
-          "stopped. 25% 7,976 of 31,904 artworks fingerprinted")
+          "stopped. See its failed job 25% 7,976 of 31,904 artworks fingerprinted")
+        expect(section("art_index").at_css("a")["href"]).to eq(admin_jobs_path(status: "failed"))
         expect(section("art_index").at_css("button")["disabled"]).to be_nil
         expect(page.at_css("[data-controller~='poll']")).to be_nil
         expect { start("art_index") }.to change(SolidQueue::Job, :count).by(1)
         expect(flash[:notice]).to eq("Art index build queued.")
         follow_redirect!
-        expect(text(section("art_index").at_css(".c-operation__summary"))).to eq("Queued.")
-        expect(section("art_index").at_css("button")["disabled"]).to be_present
+        expect(text(section("art_index"))).to eq("Art index Build art index Queued.")
         expect(page.at_css("main")["data-controller"]).to eq("poll")
       end
 

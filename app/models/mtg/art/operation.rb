@@ -42,7 +42,8 @@ class MTG::Art::Operation < Catalog::Operation
 
   def record_running? = state == :building
 
-  def failed_job? = state == :failed && super
+  # The page links to the failed list for the build on show: a failed one, or an interrupted one whose own job is there.
+  def failed_job? = (state == :failed && super) || (state == :interrupted && build.job_id.present? && queue.failed?(build.job_id))
 
   def summary
     case state
