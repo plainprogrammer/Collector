@@ -193,6 +193,61 @@ RSpec.describe Catalog::Refresh, type: :model do
       expect(left.reload).to have_attributes(status: "failed", message: "interrupted")
     end
 
+    it "runs, rather than skipping, when the queue has failed the job of the run left running (issue #60)", :aggregate_failures, :solid_queue do
+      failed = fail_job(claim_job(queue_job(Catalog::RefreshJob, "fake", "manual")))
+      left = create(:catalog_refresh_run, :running, collectible_type: "fake", started_at: 5.minutes.ago, job_id: failed.active_job_id)
+
+      run = described_class.new("fake", trigger: "manual", source:, job_id: "job-2").call
+
+      expect(run).to have_attributes(status: "applied", job_id: "job-2")
+      expect(left.reload).to have_attributes(status: "failed", message: "interrupted")
+    end
+
+    it "runs, rather than skipping, when the job of the run left running is no longer in the queue (issue #60)", :aggregate_failures do
+      left = create(:catalog_refresh_run, :running, collectible_type: "fake", started_at: 5.minutes.ago, job_id: "job-1")
+
+      run = described_class.new("fake", trigger: "manual", source:, job_id: "job-2").call
+
+      expect(run).to have_attributes(status: "applied", job_id: "job-2")
+      expect(left.reload).to have_attributes(status: "failed", message: "interrupted")
+    end
+
+    # Another refresh's job is queued, claimed and records its run between this one reading the queue and reading the runs.
+    it "leaves alone a run whose job was queued and started after it read the queue (issue #60)", :aggregate_failures, :solid_queue do
+      later = nil
+      allow(Catalog::RefreshRun).to receive(:start!).and_wrap_original do |start, *arguments, **options|
+        job = claim_job(queue_job(Catalog::RefreshJob, "fake", "manual"))
+        later = create(:catalog_refresh_run, :running, collectible_type: "fake", job_id: job.active_job_id, started_at: Time.current)
+        start.call(*arguments, **options)
+      end
+
+      run = described_class.new("fake", trigger: "manual", source:, job_id: "job-2").call
+
+      expect(later.reload).to be_running
+      expect(run).to have_attributes(status: "skipped", message: "already running")
+    end
+
+    it "is skipped while a run whose job the queue has failed recorded progress in the last 2 minutes (issue #60)", :aggregate_failures, :solid_queue do
+      failed = fail_job(claim_job(queue_job(Catalog::RefreshJob, "fake", "manual")))
+      live = create(:catalog_refresh_run, :running, collectible_type: "fake", started_at: 5.minutes.ago, heartbeat_at: 30.seconds.ago,
+        job_id: failed.active_job_id)
+
+      run = described_class.new("fake", trigger: "manual", source:, job_id: "job-2").call
+
+      expect(run).to have_attributes(status: "skipped", message: "already running")
+      expect(live.reload).to be_running
+    end
+
+    it "is skipped while the job of the run left running still waits in the queue (AC-3.4)", :aggregate_failures, :solid_queue do
+      waiting = queue_job(Catalog::RefreshJob, "fake", "manual")
+      left = create(:catalog_refresh_run, :running, collectible_type: "fake", job_id: waiting.active_job_id)
+
+      run = described_class.new("fake", trigger: "manual", source:, job_id: "job-2").call
+
+      expect(run).to have_attributes(status: "skipped", message: "already running")
+      expect(left.reload).to be_running
+    end
+
     it "gives the same catalog when a job runs again after being interrupted partway (AC-3.8)", :aggregate_failures do
       source.entries = [ entry_record("a"), entry_record("b"), entry_record("c") ]
       source.fail_at = 2

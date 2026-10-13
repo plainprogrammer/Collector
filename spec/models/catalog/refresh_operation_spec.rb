@@ -109,10 +109,12 @@ RSpec.describe Catalog::RefreshOperation, :solid_queue, type: :model do
       expect(operation.status_label(stalled)).to eq("interrupted")
     end
 
-    it "stays closed to a new start while a refresh job for the type is still unfinished in the queue (AC-3.2)" do
+    it "is queued, not interrupted, while another refresh job for the type is in flight (AC-2.2, AC-3.2)", :aggregate_failures do
       queue_job(Catalog::RefreshJob, "mtg", "manual")
 
-      expect(operation).to have_attributes(state: :interrupted, startable?: false)
+      expect(operation).to have_attributes(state: :queued, summary: "Queued.", stages: [], facts: [], startable?: false)
+      expect(operation).to be_in_flight
+      expect(operation.status_label(stalled)).to eq("interrupted")
     end
 
     it "is still running, with the minutes, while a worker holds its job (AC-3.6)", :aggregate_failures do
@@ -124,10 +126,155 @@ RSpec.describe Catalog::RefreshOperation, :solid_queue, type: :model do
       expect(operation.status_label(stalled)).to eq("running (no progress for 20 minutes)")
     end
 
-    it "isn't kept running by a worker holding another job" do
+    it "isn't kept running by a worker holding another job: that one is the queued refresh" do
       claim_job(queue_job(Catalog::RefreshJob, "mtg", "manual"))
 
+      expect(operation.state).to eq(:queued)
+    end
+  end
+
+  # A worker that dies never closes its run; the queue fails the job it held (issue #60).
+  context "when the queue has failed a running run's job" do
+    let(:job) { fail_job(claim_job(queue_job(Catalog::RefreshJob, "mtg", "manual")), SolidQueue::Processes::ProcessPrunedError.new(6.minutes.ago)) }
+    let!(:crashed) { running(stage: "sync", started_at: 8.minutes.ago, heartbeat_at: 7.minutes.ago, job_id: job.active_job_id) }
+
+    it "is interrupted at once, not running, and can start again", :aggregate_failures do
+      expect(operation).to have_attributes(state: :interrupted, summary: "Interrupted while syncing cards.")
+      expect(operation.stages.map(&:state)).to eq(%i[done stopped pending pending])
+      expect(operation).not_to be_in_flight
+      expect(operation).to be_startable
+    end
+
+    it "points at the failed job" do
+      expect(operation).to be_failed_job
+    end
+
+    it "calls the run interrupted in the recent-runs list too" do
+      expect(operation.status_label(crashed)).to eq("interrupted")
+    end
+
+    it "queues a refresh when started" do
+      expect { operation.start }.to change(SolidQueue::Job, :count).by(1)
+    end
+
+    it "is queued once another refresh job waits in the queue, as after \"Refresh now\" (AC-2.1, AC-2.2)", :aggregate_failures do
+      queue_job(Catalog::RefreshJob, "mtg", "manual")
+
+      expect(operation).to have_attributes(state: :queued, summary: "Queued.", stages: [], facts: [], failed_job?: false)
+      expect(operation).to be_in_flight
+      expect(operation).not_to be_startable
+      expect(operation.status_label(crashed)).to eq("interrupted")
+    end
+
+    # The queue also fails the job of a worker it lost sight of while the host was suspended; that worker carries on.
+    it "is still running, and in flight, while the run recorded progress in the last 2 minutes", :aggregate_failures do
+      crashed.update!(heartbeat_at: 1.minute.ago)
+
+      expect(operation).to have_attributes(state: :running, summary: "Running.", failed_job?: false)
+      expect(operation.stages.map(&:state)).to eq(%i[done current pending pending])
+      expect(operation).to be_in_flight
+      expect(operation).not_to be_startable
+      expect(operation.status_label(crashed)).to eq("running")
+    end
+
+    it "is still running when the failed job is another run's", :aggregate_failures do
+      crashed.update!(job_id: claim_job(queue_job(Catalog::RefreshJob, "mtg", "manual")).active_job_id)
+
+      expect(operation).to have_attributes(state: :running, startable?: false, failed_job?: false)
+      expect(operation.status_label(crashed)).to eq("running")
+    end
+  end
+
+  # Its failed job was discarded, say: nothing will close the run, and nothing is working on it (issue #60).
+  context "when a running run's job is no longer in the queue" do
+    let!(:left) { running(stage: "sync", started_at: 8.minutes.ago, heartbeat_at: 7.minutes.ago, job_id: "job-1") }
+
+    it "is interrupted at once, with no failed job to point at, and can start again", :aggregate_failures do
+      expect(operation).to have_attributes(state: :interrupted, summary: "Interrupted while syncing cards.", failed_job?: false)
+      expect(operation).not_to be_in_flight
+      expect(operation).to be_startable
+      expect(operation.status_label(left)).to eq("interrupted")
+    end
+
+    it "is still running, and in flight, while the run recorded progress in the last 2 minutes", :aggregate_failures do
+      left.update!(heartbeat_at: 1.minute.ago)
+
+      expect(operation).to have_attributes(state: :running, summary: "Running.")
+      expect(operation).to be_in_flight
+      expect(operation.status_label(left)).to eq("running")
+    end
+
+    it "is queued once another refresh job waits in the queue (AC-2.2)" do
+      queue_job(Catalog::RefreshJob, "mtg", "manual")
+
+      expect(operation).to have_attributes(state: :queued, summary: "Queued.", startable?: false)
+    end
+
+    it "is interrupted when the queue's record of the job says it finished" do
+      left.update!(job_id: finish_job(claim_job(queue_job(Catalog::RefreshJob, "mtg", "manual"))).active_job_id)
+
       expect(operation.state).to eq(:interrupted)
+    end
+
+    it "is still running while its job waits in the queue to run again, as after a graceful restart" do
+      left.update!(job_id: queue_job(Catalog::RefreshJob, "mtg", "manual").active_job_id)
+
+      expect(operation).to have_attributes(state: :running, startable?: false)
+    end
+
+    it "keeps the 15-minute rule for a run that recorded no job", :aggregate_failures do
+      left.update!(job_id: nil)
+
+      expect(operation).to have_attributes(state: :running, startable?: false)
+      expect(operation.status_label(left)).to eq("running")
+    end
+  end
+
+  # A job's row is finished only after its run is closed, so the queue is read before the run: a run still marked
+  # running after that read was left behind, never one whose job ended between the two reads.
+  context "when the job ends normally while the page is being put together" do
+    let(:job) { claim_job(queue_job(Catalog::RefreshJob, "mtg", "manual")) }
+    let!(:run) { running(stage: "index", job_id: job.active_job_id) }
+
+    it "never calls a run interrupted that it read before its job finished", :aggregate_failures do
+      operation.run
+      run.finish!(:applied)
+      finish_job(job)
+
+      expect(operation.state).to eq(:running)
+      expect(operation.status_label(operation.run)).to eq("running")
+    end
+
+    it "shows the run as it ended when the job finished before the queue was read" do
+      run.finish!(:applied)
+      finish_job(job)
+
+      expect(operation.state).to eq(:applied)
+    end
+
+    it "judges the recent runs by the queue as it was before they were read", :aggregate_failures do
+      recent = operation.recent_runs(5)
+      run.finish!(:applied)
+      finish_job(job)
+
+      expect(recent).to eq([ run ])
+      expect(operation.status_label(recent.first)).to eq("running")
+    end
+
+    it "doesn't judge a run that started after the queue was read by that reading" do
+      operation.queue.read
+      later = running(job_id: "queued-since", started_at: 1.second.from_now)
+
+      expect(operation).to have_attributes(run: later, state: :running)
+    end
+  end
+
+  context "when a stalled run's job is in the queue's failed list" do
+    it "points at the failed job (issue #60)" do
+      job = fail_job(queue_job(Catalog::RefreshJob, "mtg", "manual"))
+      running(stage: "sync", started_at: 1.hour.ago, heartbeat_at: 20.minutes.ago, job_id: job.active_job_id)
+
+      expect(operation).to have_attributes(state: :interrupted, failed_job?: true)
     end
   end
 

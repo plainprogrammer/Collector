@@ -57,5 +57,5 @@ class Catalog::Health
 
   def in_flight? = operations.any?(&:in_flight?)
 
-  def recent_runs = @recent_runs ||= Catalog::RefreshRun.for_type(collectible_type).recent.limit(RECENT_RUNS).to_a
+  def recent_runs = @recent_runs ||= refresh.recent_runs(RECENT_RUNS)
 end
