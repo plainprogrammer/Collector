@@ -525,7 +525,7 @@ under the sweep table about Corrections row 1 (M3) and a repeated sentence in th
 | AC-3.4 | Gaps (with the missing "Using Collector" section); Differing names ("avatar menu", "account menu"); `docs/roadmap.md` is not in `git diff --name-status`; no issue was opened | pass |
 | AC-3.5 | Left stale: one row, with the evidence and ruling R3 | pass |
 | AC-3.6 | `bin/ci` | pass at `ac13459`: every step passed, `1206 examples, 0 failures, 1 pending` (the commit after it changes only this record) |
-| AC-3.7 | The PR description | pending: PR not opened |
+| AC-3.7 | [PR #72](https://github.com/plainprogrammer/Collector/pull/72): `gh pr view 72 --json body -q .body \| grep -cE 'Closes #63\|decision 7'` prints `2`; the description closes #63 and names the removal of the prose-document checks as a second outcome | pass |
 | AC-3.8 | Safety warnings: four rows, text and position unchanged | pass |
 | AC-4.1 | The suite: `git ls-files spec/readme_spec.rb` and `grep readme_spec .rubocop.yml` print nothing | pass |
 | AC-4.2 | The suite: `22 examples, 0 failures`; the two fail-first outputs | pass |
