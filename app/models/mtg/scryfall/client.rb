@@ -79,11 +79,23 @@ class MTG::Scryfall::Client
     # The seconds to wait before the next attempt: what Retry-After asks for, else 1, 2, … A wait longer than
     # MAX_BACK_OFF ends the call instead, so a worker never sleeps for as long as a header says (issue #74).
     def back_off(uri, response, attempt)
-      wait = Integer(response["Retry-After"].to_s, exception: false) || 2**attempt
+      wait = retry_after(response) || 2**attempt
       return wait if wait <= MAX_BACK_OFF
 
       raise Catalog::Sources::RateLimitedError,
         "GET #{uri} returned #{response.code} and asked for #{wait} seconds before a retry; the client waits at most #{MAX_BACK_OFF}"
+    end
+
+    # Retry-After in seconds, from a count of seconds or an HTTP date (RFC 9110). Nil when the header is missing, is
+    # neither, or names a time already past: there is then nothing to honour, and sleep refuses a negative.
+    def retry_after(response)
+      value = response["Retry-After"].to_s.strip
+      return value.to_i if value.match?(/\A\d+\z/)
+
+      seconds = (Time.httpdate(value) - Time.current).ceil
+      seconds unless seconds.negative?
+    rescue ArgumentError
+      nil
     end
 
     def throttle

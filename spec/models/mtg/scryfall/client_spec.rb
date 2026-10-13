@@ -65,6 +65,56 @@ RSpec.describe MTG::Scryfall::Client, type: :model do
       expect(naps).to be_empty
     end
 
+    context "when Retry-After isn't a plain number of seconds (issue #74)" do
+      def rate_limited_once(retry_after)
+        stub_request(:get, "https://api.scryfall.com/sets")
+          .to_return({ status: 429, headers: { "Retry-After" => retry_after } }, json_response("ok" => true))
+      end
+
+      it "retries at once when it is zero", :aggregate_failures do
+        rate_limited_once("0")
+
+        expect(client.get_json("/sets")).to eq("ok" => true)
+        expect(back_offs).to eq([ 0 ])
+      end
+
+      [ "-5", "soon", "1.5", "0x1F", "1_0", "" ].each do |value|
+        it "waits its usual second when it is #{value.inspect}, as when there is none", :aggregate_failures do
+          rate_limited_once(value)
+
+          expect(client.get_json("/sets")).to eq("ok" => true)
+          expect(back_offs).to eq([ 1 ])
+        end
+      end
+
+      it "waits until an HTTP date, to the next whole second", :aggregate_failures do
+        travel_to Time.utc(2026, 10, 13, 12, 0, 0, 500_000), with_usec: true do
+          rate_limited_once("Tue, 13 Oct 2026 12:00:20 GMT")
+
+          expect(client.get_json("/sets")).to eq("ok" => true)
+          expect(back_offs).to eq([ 20 ])
+        end
+      end
+
+      it "ends the call when an HTTP date is more than 30 seconds away", :aggregate_failures do
+        travel_to Time.utc(2026, 10, 13, 12, 0, 0) do
+          rate_limited_once("Tue, 13 Oct 2026 12:10:00 GMT")
+
+          expect { client.get_json("/sets") }.to raise_error(Catalog::Sources::RateLimitedError, /asked for 600 seconds/)
+          expect(naps).to be_empty
+        end
+      end
+
+      it "waits its usual second when an HTTP date has passed", :aggregate_failures do
+        travel_to Time.utc(2026, 10, 13, 12, 0, 0) do
+          rate_limited_once("Tue, 13 Oct 2026 11:59:00 GMT")
+
+          expect(client.get_json("/sets")).to eq("ok" => true)
+          expect(back_offs).to eq([ 1 ])
+        end
+      end
+    end
+
     it "raises a transient error on timeouts" do
       stub_request(:get, "https://api.scryfall.com/sets").to_timeout
 
