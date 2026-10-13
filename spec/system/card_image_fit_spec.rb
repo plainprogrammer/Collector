@@ -50,14 +50,14 @@ RSpec.describe "Card image fit", :card_images, type: :system do
       expect(dark.first.ground).not_to eq(fits.first.ground)
     end
 
-    it "shows the whole image in search results, faded for a card you don't own (AC-1.3, AC-1.8)", :aggregate_failures do
+    it "shows the whole image in search results, at full opacity for a card you don't own (AC-1.3; spec 021 replaced AC-1.8's fade)", :aggregate_failures do
       user
       create(:mtg_printing, entry: create(:catalog_entry, name: "Lightning Bolt", image_url: card_image_address))
       visit catalog_entries_path(q: "bolt")
       expect(page).to have_css(images, count: 1)
 
       expect(card_image_fits(images, pictures: [ square ]).flat_map(&:faults)).to be_empty
-      expect(page.evaluate_script("getComputedStyle(document.querySelector(#{images.to_json})).opacity")).to eq("0.45")
+      expect(page.evaluate_script("getComputedStyle(document.querySelector(#{images.to_json})).opacity")).to eq("1")
     end
 
     it "shows the whole image at phone width (AC-1.1, AC-1.2)", :aggregate_failures do

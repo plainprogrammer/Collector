@@ -31,4 +31,23 @@ RSpec.describe "Design system files" do
       expect(block).not_to match(/#\h{3,8}\b|rgba?\(|hsla?\(|font/i)
     end
   end
+
+  describe "the unowned tile override (spec 021)" do
+    let(:additions) { root.join("app/assets/stylesheets/collector/additions.css").read }
+    let(:block) { additions[%r{/\* -+ Unowned tile \(spec 021\).*?(?=\n\n/\* -|\z)}m] }
+
+    it "keeps the rules in one block of their own, with no colour literal or font (AC-3.2)", :aggregate_failures do
+      expect(additions.scan("spec 021").size).to eq(1)
+      expect(block).to include(".c-tile--owned-none .c-tile__media > img, .c-tile--owned-none .c-tile__missing { opacity:1; }",
+        ".c-tilecell > .c-tile__add { margin-top:auto; }")
+      expect(block.scan(/^[^\s\/].*\{/).size).to eq(2)
+      expect(block).not_to match(/#\h{3,8}\b|rgba?\(|hsla?\(|font/i)
+    end
+
+    it "is the only rule in the app's stylesheets that fades, filters or blends anything on a tile (FR-3)" do
+      rules = root.glob("app/assets/stylesheets/**/*.css").flat_map { |path| path.read.scan(/^[^\n{}]*c-tile[^\n{}]*\{[^}]*\}/) }
+      treating = rules.grep(/opacity|filter|mix-blend-mode/)
+      expect(treating.map { |rule| rule[/\{.*\}/m].delete(" ") }.sort).to eq([ "{opacity:.45;}", "{opacity:1;}" ])
+    end
+  end
 end
