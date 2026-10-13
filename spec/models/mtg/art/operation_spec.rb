@@ -102,6 +102,42 @@ RSpec.describe MTG::Art::Operation, :solid_queue, type: :model do
       expect(operation).to be_in_flight
     end
 
+    # A build the image host rate limited closes its own run as failed, and its job waits in the queue to run again when
+    # the host asked (issue #74, Catalog::RateLimitRetry). Nothing was left behind, so issue #73's rule for a running
+    # build whose job ended doesn't apply, however old the heartbeat.
+    context "when a rate-limited build's job waits to run again" do
+      let(:job) { MTG::Art::BuildJob.new }
+
+      before do
+        loaded
+        allow(MTG::Art::Build).to receive(:new) do # as the build does: it closes its run, then raises
+          build(status: "failed", job_id: job.job_id, message: "Catalog::Sources::RateLimitedError: asked for 600 seconds")
+          raise Catalog::Sources::RateLimitedError.new("asked for 600 seconds", retry_after: 600)
+        end
+        job.perform_now
+      end
+
+      it "is queued, not interrupted and not failed, long after the build's last heartbeat", :aggregate_failures do
+        travel 9.minutes do
+          expect(SolidQueue::Job.sole).to have_attributes(active_job_id: job.job_id, scheduled_at: be_within(1.second).of(1.minute.from_now))
+          expect(operation).to have_attributes(state: :queued, summary: "Queued.", failed_job?: false, startable?: false)
+          expect(operation).to be_in_flight
+        end
+      end
+
+      it "opens a new run when the retry starts, leaving the failed one as it ended", :aggregate_failures do
+        failed = MTG::ArtBuild.sole
+
+        travel 10.minutes do
+          run = MTG::ArtBuild.start!(job_id: job.job_id, catalog_version: "default-cards-1", settings_digest: MTG::Art::Settings.digest)
+
+          expect(run).to have_attributes(status: "running", job_id: job.job_id)
+          expect(run.id).not_to eq(failed.id)
+          expect(failed.reload).to have_attributes(status: "failed", message: include("asked for 600 seconds"))
+        end
+      end
+    end
+
     # A worker that dies never closes its build; the queue fails the job it held (issue #73).
     context "when the queue has failed a running build's job" do
       let(:job) { fail_job(claim_job(queue_job(MTG::Art::BuildJob)), SolidQueue::Processes::ProcessPrunedError.new(6.minutes.ago)) }
