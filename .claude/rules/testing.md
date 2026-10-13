@@ -11,3 +11,4 @@
 - ✗ Don't use `let!`/`before` chains that create unused records; avoid deep nesting and `any_instance_of`.
 - ✗ Don't `sleep` in system specs; rely on Capybara's waiting matchers.
 - ✗ Don't mock the object under test or stub ActiveRecord internals.
+- ✗ Don't check prose documents (`README.md`, `CLAUDE.md`, the files under `.claude/`, the Markdown and reference files under `docs/`) from RSpec; a document criterion is verified by reading and recorded in the spec's `verification.md`. The export format's document is the one exception (spec 020, decision 7).

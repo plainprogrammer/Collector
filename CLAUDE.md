@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status
 
-Collector is a self-hostable, multi-tenant web app for tracking collectibles, starting with Magic: The Gathering cards. The Rails app skeleton exists (stack, RSpec, `bin/ci`, Compose and Kamal deployment). Feature 002 added a collectible-agnostic catalog core (`app/models/catalog/`) with an MTG extension (`app/models/mtg/`), Scryfall bulk-data ingestion via a background refresh, and a public card search proof-of-concept at `/catalog/entries`. Accounts (row-level tenancy through `Current.account`) and collections of lots (spec 004, list view spec 006) exist, and the card scanner (specs 005, 007–009) adds scanned cards to the collection through its confirm flow. Admins start and watch catalog refreshes and art index builds at `/admin/catalog`, and see, retry and discard background jobs at `/admin/jobs` (spec 015). The export format for a collector's data is defined in `docs/export-format/` (spec 017, ADR 0020); export and import aren't built yet. License: AGPL-3.0.
+Collector is a self-hostable, multi-tenant web app for tracking collectibles, starting with Magic: The Gathering cards. The Rails app skeleton exists (stack, RSpec, `bin/ci`, Compose and Kamal deployment). Feature 002 added a collectible-agnostic catalog core (`app/models/catalog/`) with an MTG extension (`app/models/mtg/`), Scryfall bulk-data ingestion via a background refresh, and a card search at `/catalog/entries`, which has needed sign-in since accounts (spec 004). Accounts (row-level tenancy through `Current.account`) and collections of lots (spec 004, list view spec 006) exist, and the card scanner (specs 005, 007–009) adds scanned cards to the collection through its confirm flow. Admins start and watch catalog refreshes and art index builds at `/admin/catalog`, and see, retry and discard background jobs at `/admin/jobs` (spec 015). The export format for a collector's data is defined in `docs/export-format/` (spec 017, ADR 0020); export and import aren't built yet. License: AGPL-3.0.
 
 Mission and principles: `.claude/memory/foundation.md`. Goal and spec rules: `docs/north-star.md`. Order of work: `docs/roadmap.md`. Decisions: `docs/adr/` (index in its README). Detailed coding rules: `.claude/rules/`. Feature specs: `docs/specs/`.
 
@@ -17,7 +17,7 @@ Ruby 4.0.7, Rails 8.1.4, SQLite in every environment (including production), Hot
 - Setup: `bin/setup` (idempotent; works in clones and worktrees, copies `.worktreeinclude` files from the main checkout, enables `.githooks/` auto-setup; starts the server afterwards, `--skip-server` to not)
 - Run: `bin/dev` (just `bin/rails server`; port 3000, or the worktree's port printed by `bin/setup`)
 - All specs: `bin/rspec`
-- Single spec file / example: `bin/rspec spec/requests/home_spec.rb:5`
+- Single spec file / example: `bin/rspec spec/requests/health_check_spec.rb:5`
 - Lint (autocorrect): `bin/rubocop -a`
 - Security: `bin/brakeman`, `bin/bundler-audit`, `bin/importmap audit`
 - Local CI (single CI definition, `config/ci.rb`): `bin/ci` — setup, RuboCop, Brakeman, bundler-audit, importmap audit, RSpec. GitHub Actions runs `bin/ci`, then builds the container image for amd64 and arm64 (smoke-tested with `bin/image-smoke`) and publishes it to `ghcr.io/plainprogrammer/collector` on `main` (`edge`) and release tags (spec 012, `docs/releasing.md`). Change CI steps in `config/ci.rb`.
