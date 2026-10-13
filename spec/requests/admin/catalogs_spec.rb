@@ -339,6 +339,72 @@ RSpec.describe "Admin catalog page", :solid_queue, type: :request do
         expect(page.at_css("main")["data-controller"]).to eq("poll")
       end
 
+      # After a crash the queue fails the job its worker died holding, and nothing closes the build (issue #73).
+      it "shows a running build whose job the queue has failed as interrupted before it goes stale, and lets a build start", :aggregate_failures, :art_matching do
+        create(:catalog_refresh_run)
+        job = fail_job(claim_job(queue_job(MTG::Art::BuildJob)), SolidQueue::Processes::ProcessPrunedError.new(6.minutes.ago))
+        create(:mtg_art_build, status: "running", finished_at: nil, started_at: 8.minutes.ago, heartbeat_at: 7.minutes.ago,
+          job_id: job.active_job_id, total_count: 31_904, fingerprinted_count: 7_976)
+
+        get admin_catalog_path
+
+        expect(text(section("art_index"))).to start_with("Art index Build art index Interrupted. Build it again to carry on from where it " \
+          "stopped. See its failed job 25% 7,976 of 31,904 artworks fingerprinted")
+        expect(section("art_index").at_css("a")["href"]).to eq(admin_jobs_path(status: "failed"))
+        expect(section("art_index").at_css("button")["disabled"]).to be_nil
+        expect(page.at_css("[data-controller~='poll']")).to be_nil
+        expect { start("art_index") }.to change(SolidQueue::Job, :count).by(1)
+        expect(flash[:notice]).to eq("Art index build queued.")
+        follow_redirect!
+        expect(text(section("art_index"))).to eq("Art index Build art index Queued.")
+        expect(page.at_css("main")["data-controller"]).to eq("poll")
+      end
+
+      # The queue also fails the job of a worker it lost sight of (a suspended host) that then carries on.
+      it "keeps a build whose job the queue has failed building, and polling, while it beat in the last 2 minutes", :aggregate_failures, :art_matching do
+        create(:catalog_refresh_run)
+        job = fail_job(claim_job(queue_job(MTG::Art::BuildJob)), SolidQueue::Processes::ProcessPrunedError.new(6.minutes.ago))
+        create(:mtg_art_build, status: "running", finished_at: nil, started_at: 8.minutes.ago, heartbeat_at: 30.seconds.ago, job_id: job.active_job_id)
+
+        get admin_catalog_path
+
+        expect(text(section("art_index").at_css(".c-operation__summary"))).to eq("Building.")
+        expect(section("art_index").at_css("button")["disabled"]).to be_present
+        expect(page.at_css("main")["data-controller"]).to eq("poll")
+      end
+
+      # The retried job is the build's own: it waits in the queue, and closes the build when it starts (spec 011 AC-3.2).
+      it "shows the crashed build as building again once an admin retries its failed job, which then carries on", :aggregate_failures, :art_matching do
+        create(:catalog_refresh_run)
+        job = fail_job(claim_job(queue_job(MTG::Art::BuildJob)))
+        crashed = create(:mtg_art_build, status: "running", finished_at: nil, started_at: 8.minutes.ago, heartbeat_at: 7.minutes.ago,
+          job_id: job.active_job_id)
+        post admin_job_retry_path(job.id)
+
+        get admin_catalog_path
+
+        expect(text(section("art_index").at_css(".c-operation__summary"))).to eq("Building.")
+        expect(section("art_index").at_css("a")).to be_nil
+        expect(section("art_index").at_css("button")["disabled"]).to be_present
+        expect(page.at_css("main")["data-controller"]).to eq("poll")
+        expect(MTG::ArtBuild.start!(job_id: job.active_job_id, catalog_version: "default-cards-1", settings_digest: "digest")).to be_running
+        expect(crashed.reload).to have_attributes(status: "failed", message: "interrupted")
+      end
+
+      it "keeps the crashed build interrupted once its failed job is discarded, and lets a build start", :aggregate_failures, :art_matching do
+        create(:catalog_refresh_run)
+        job = fail_job(claim_job(queue_job(MTG::Art::BuildJob)))
+        create(:mtg_art_build, status: "running", finished_at: nil, started_at: 8.minutes.ago, heartbeat_at: 7.minutes.ago, job_id: job.active_job_id)
+        post admin_job_discard_path(job.id)
+
+        get admin_catalog_path
+
+        expect(text(section("art_index").at_css(".c-operation__summary"))).to eq("Interrupted. Build it again to carry on from where it stopped.")
+        expect(section("art_index").at_css("button")["disabled"]).to be_nil
+        expect(page.at_css("[data-controller~='poll']")).to be_nil
+        expect { start("art_index") }.to change(SolidQueue::Job, :count).by(1)
+      end
+
       it "shows a finished build's counts (AC-4.7) and a failed one's message and index (AC-4.8)", :aggregate_failures, :art_matching do
         create(:catalog_refresh_run)
         build = create(:mtg_art_build, indexed_count: 31_904, without_image_count: 12, failed_count: 3, finished_at: Time.utc(2026, 10, 9, 5, 0))

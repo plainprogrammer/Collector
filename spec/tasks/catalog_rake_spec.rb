@@ -72,6 +72,20 @@ RSpec.describe "catalog rake tasks", type: :task do # rubocop:disable RSpec/Desc
     it "ends with the source's own status lines, such as art matching (spec 011 AC-3.11)" do
       expect { Rake::Task["catalog:status"].invoke("mtg") }.to output(/Art matching: off/).to_stdout
     end
+
+    it "marks an art build whose job the queue has failed interrupted, as the page does (issue #73)", :art_matching, :solid_queue do
+      job = fail_job(claim_job(queue_job(MTG::Art::BuildJob)))
+      create(:mtg_art_build, status: "running", finished_at: nil, started_at: 5.minutes.ago, heartbeat_at: 3.minutes.ago, job_id: job.active_job_id)
+
+      expect { Rake::Task["catalog:status"].invoke("mtg") }.to output(/^Art matching: interrupted/).to_stdout
+    end
+
+    it "keeps such an art build building while it beat in the last 2 minutes, as the page does (issue #73)", :art_matching, :solid_queue do
+      job = fail_job(claim_job(queue_job(MTG::Art::BuildJob)))
+      create(:mtg_art_build, status: "running", finished_at: nil, started_at: 5.minutes.ago, heartbeat_at: 1.minute.ago, job_id: job.active_job_id)
+
+      expect { Rake::Task["catalog:status"].invoke("mtg") }.to output(/^Art matching: building/).to_stdout
+    end
   end
 
   def capture_stdout
