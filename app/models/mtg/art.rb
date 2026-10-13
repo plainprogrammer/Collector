@@ -31,15 +31,18 @@ module MTG::Art
     MTG::Art::BuildJob.perform_later
   end
 
-  # The art line `catalog:status[mtg]` prints (AC-3.11), from the latest build run that wasn't skipped.
+  # The art line `catalog:status[mtg]` prints (AC-3.11), from the latest build run that wasn't skipped. A build still
+  # marked running reads as the admin catalog page words it (MTG::Art::Operation): interrupted once nothing is working
+  # on it (MTG::ArtBuild#left_behind?), judged by the queue as it was read before the build.
   def self.status_line
     return "Art matching: off (set #{ENV_NAME}=true to turn it on)" unless enabled?
 
+    queue = MTG::ArtBuild.job_queue.read
     run = MTG::ArtBuild.latest
     return "Art matching: on; no build has run yet (it starts after the next catalog refresh, or from the admin catalog page)" unless run
 
     progress = "#{run.fetched_count} images fetched, #{run.fingerprinted_count} of #{run.total_count} artworks fingerprinted"
-    if run.running? && run.stale?
+    if run.left_behind?(queue)
       "Art matching: interrupted (last heartbeat #{run.heartbeat_at.utc.iso8601}) after #{progress}. " \
         'Run bin/rails "catalog:refresh[mtg]" to resume.'
     elsif run.running?

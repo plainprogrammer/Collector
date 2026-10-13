@@ -119,6 +119,48 @@ RSpec.describe MTG::Art::Build, :art_matching, type: :model do
     expect(stubs).to all(have_been_requested.once)
   end
 
+  # The worker died holding the first build's job; the queue failed that job, and nothing closed the build (issue #73).
+  it "runs, rather than being skipped, when the queue has failed the job of the build left running", :aggregate_failures, :solid_queue do
+    failed = fail_job(claim_job(queue_job(MTG::Art::BuildJob)), SolidQueue::Processes::ProcessPrunedError.new(6.minutes.ago))
+    left = create(:mtg_art_build, status: "running", finished_at: nil, started_at: 8.minutes.ago, heartbeat_at: 7.minutes.ago,
+      job_id: failed.active_job_id)
+    printing(art_a, released_on: Date.new(2005, 1, 1))
+    serve("#{art_a}-2005-1")
+
+    expect(run_build(job_id: "job-2")).to have_attributes(status: "finished", job_id: "job-2", indexed_count: 1)
+    expect(left.reload).to have_attributes(status: "failed", message: "interrupted")
+  end
+
+  it "is skipped while a worker holds the job of the build left running (AC-3.2)", :aggregate_failures, :solid_queue do
+    held = claim_job(queue_job(MTG::Art::BuildJob))
+    live = create(:mtg_art_build, status: "running", finished_at: nil, started_at: 8.minutes.ago, heartbeat_at: 7.minutes.ago,
+      job_id: held.active_job_id)
+
+    expect(run_build(job_id: "job-2")).to have_attributes(status: "skipped", message: "already running")
+    expect(live.reload).to be_running
+  end
+
+  # A batch can outlast MTG::ArtBuild::JOB_ENDED_GRACE (slow or rate-limited images); a live build must not go quiet in it.
+  it "beats between the images of a batch once 30 seconds have passed since the last beat (issue #73)", :aggregate_failures do
+    arts = %w[1 2 3].map { "cccccccc-0000-4000-8000-00000000000#{it}" }
+    arts.each_with_index { |art, n| printing(art, released_on: Date.new(2005, 1, 1), name: "Card #{n}", number: n.to_s) }
+    serve(*arts.each_with_index.map { |art, n| "#{art}-2005-#{n}" })
+    example = self
+    quiet_for = []
+    slow = Module.new
+    slow.define_singleton_method(:command) { MTG::Art::Decoder.command }
+    slow.define_singleton_method(:decode) do |path|
+      quiet_for << (Time.current - MTG::ArtBuild.sole.heartbeat_at)
+      example.travel(40.seconds)
+      MTG::Art::Decoder.decode(path)
+    end
+
+    run = described_class.new(job_id: "job-1", client:, decoder: slow).call
+
+    expect(quiet_for.map { it < described_class::BEAT_EVERY }).to eq([ true, true, true ])
+    expect(run).to have_attributes(status: "finished", indexed_count: 3)
+  end
+
   it "writes the index last, and a second complete build records only its run (AC-3.8, AC-3.9)", :aggregate_failures do
     printing(art_a, released_on: Date.new(2005, 1, 1))
     serve("#{art_a}-2005-1")

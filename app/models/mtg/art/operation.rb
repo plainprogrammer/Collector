@@ -1,5 +1,7 @@
 # The art index build as the admin catalog page shows it (spec 015 Story 4): MTG's one extra operation, offered through
-# the source's .operations hook. Its state agrees with the art line of `catalog:status` (MTG::Art.status_line).
+# the source's .operations hook. It judges a running build as the art line of `catalog:status` does (MTG::Art.status_line,
+# both by MTG::ArtBuild#left_behind?). The two differ only while a build job waits in the queue: the page then says
+# "Queued.", and the status line still describes the latest build (interrupted, ready or failed).
 class MTG::Art::Operation < Catalog::Operation
   OFF = "Art matching is off. Set #{MTG::Art::ENV_NAME}=true to turn it on.".freeze
   NEEDS_CATALOG = "Refresh the catalog first: the art index is built from its cards.".freeze
@@ -19,17 +21,21 @@ class MTG::Art::Operation < Catalog::Operation
     NEEDS_CATALOG unless catalog_loaded?
   end
 
+  # Read after the queue, which judges it (MTG::ArtBuild.job_queue says why).
   def build
     return @build if defined?(@build)
 
+    queue.read
     @build = MTG::ArtBuild.latest
   end
 
-  # :off, :queued, :building, :interrupted, :never, :ready or :failed.
+  # :off, :queued, :building, :interrupted, :never, :ready or :failed. A build still marked running that nothing is
+  # working on any more is interrupted: its heartbeat stopped 10 minutes ago, or 2 minutes ago and the queue has failed
+  # its job or no longer holds it (issue #73).
   def state
     @state ||=
       if !MTG::Art.enabled? then :off
-      elsif build&.running? then build.stale? ? :interrupted : :building
+      elsif build&.running? then running_state
       elsif queue.any? then :queued
       elsif build.nil? then :never
       else build.finished? ? :ready : :failed
@@ -38,7 +44,8 @@ class MTG::Art::Operation < Catalog::Operation
 
   def record_running? = state == :building
 
-  def failed_job? = state == :failed && super
+  # The page links to the failed list for the build on show: a failed one, or an interrupted one whose own job is there.
+  def failed_job? = (state == :failed && super) || (state == :interrupted && build.job_id.present? && queue.failed?(build.job_id))
 
   def summary
     case state
@@ -74,6 +81,16 @@ class MTG::Art::Operation < Catalog::Operation
   end
 
   private
+    # A build nothing is working on any more is interrupted, until a build job waits to start: that one is queued, and
+    # closes the build when it starts (spec 015 AC-4.3), as a refresh queued behind an interrupted run is. A worker
+    # that still holds the job of a build whose heartbeat stopped queues nothing: that build stays interrupted.
+    def running_state
+      return :building unless build.left_behind?(queue)
+      return :interrupted if build.job_id.present? && queue.claimed?(build.job_id)
+
+      queue.any? ? :queued : :interrupted
+    end
+
     def catalog_loaded?
       return @catalog_loaded if defined?(@catalog_loaded)
 

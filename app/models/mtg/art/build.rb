@@ -2,10 +2,14 @@
 # printings that aren't retired, from Scryfall's small image of the artwork's oldest printing that has one (AC-3.3),
 # fetched once into the art cache (AC-3.4, AC-3.5). Incremental: only artworks without a fingerprint at the current
 # settings are fingerprinted (AC-3.7). Resumable: the cache and the table survive an interruption (AC-3.8). A failed
-# image is recorded and tried again next time (AC-3.6). Recorded as an MTG::ArtBuild with a heartbeat per batch, and the
-# index file is written last (AC-3.9).
+# image is recorded and tried again next time (AC-3.6). Recorded as an MTG::ArtBuild with a heartbeat per batch, and
+# between images once BEAT_EVERY has passed since the last one; the index file is written last (AC-3.9).
 class MTG::Art::Build
   BATCH = 50
+  # The build also beats between the images of a batch once its last beat is this old, so a slow batch (rate-limited
+  # or hung requests) never leaves a working build quiet for MTG::ArtBuild::JOB_ENDED_GRACE: only one image that
+  # itself takes longer than the grace less this can (issue #73).
+  BEAT_EVERY = 30.seconds
   FAILURES_SHOWN = 20
   IMAGE_HOSTS = %w[cards.scryfall.io].freeze
   COLLECTIBLE_TYPE = "mtg"
@@ -40,7 +44,7 @@ class MTG::Art::Build
     @counts.merge!(total: artworks.size, fingerprinted: artworks.size - todo.size)
     @run.beat!(**@counts)
     todo.each_slice(BATCH) do |batch|
-      store(batch.filter_map { fingerprint(it) })
+      store(batch.filter_map { |artwork| fingerprint(artwork).tap { beat_if_due } })
       @run.beat!(**@counts)
     end
     @run.update!(index_file: write_index(version, artworks).basename.to_s)
@@ -52,6 +56,8 @@ class MTG::Art::Build
   end
 
   private
+    def beat_if_due = (@run.beat!(**@counts) if @run.heartbeat_at <= BEAT_EVERY.ago)
+
     def representatives
       chosen = {}
       seen = ::Set.new

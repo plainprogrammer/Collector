@@ -1,9 +1,18 @@
 # One attempt to build the art index (spec 011 AC-3.2, AC-3.11): its job, its counts, a heartbeat while it runs, and how
 # it ended. A build that finds another running ends at once as skipped. A run left running by the same job (the queue
-# re-ran it after a restart), or whose heartbeat is older than STALE_AFTER (a crash), is marked failed as interrupted
-# first, so the guard never relies on the job queue's concurrency lock, which a first build can outlast.
+# re-ran it after a restart), or that nothing is working on any more (#left_behind?: a crash), is marked failed as
+# interrupted first, so the guard never relies on the job queue's concurrency lock, which a first build can outlast.
 class MTG::ArtBuild < ApplicationRecord
   STALE_AFTER = 10.minutes
+  # A build whose job the queue has failed, or no longer holds, is taken as left behind only once its heartbeat is this
+  # old (issue #73), the rule and the length a refresh run has (Catalog::RefreshRun::JOB_ENDED_GRACE). The queue also
+  # fails the job of a worker it lost sight of while that worker lives (a suspended host, a paused container), and such
+  # a build goes on beating. The length is this build's own, set by how often it beats: after every batch of 50
+  # artworks and, within a batch, between images once 30 seconds have passed (MTG::Art::Build::BEAT_EVERY). So a
+  # working build is quiet this long only when one image by itself takes more than 90 seconds: its requests (at most
+  # 3, each with a 10-second open and a 60-second read timeout; one that times out isn't retried), the waits a rate
+  # limit or a server error asks for between them, and its decoding (spec 015, Error Scenarios).
+  JOB_ENDED_GRACE = 2.minutes
   COUNTS = %i[total without_image fetched fingerprinted failed indexed].freeze
 
   enum :status, { running: "running", finished: "finished", failed: "failed", skipped: "skipped" }, validate: true
@@ -12,10 +21,15 @@ class MTG::ArtBuild < ApplicationRecord
 
   scope :recent, -> { order(started_at: :desc, id: :desc) }
 
+  # The build jobs as the queue holds them, to judge running builds by (#left_behind?). Read it before the builds: a
+  # job's row is finished only after its build is closed, so a build still marked running whose job that reading no
+  # longer held was left behind, not finished between the two reads.
+  def self.job_queue = Catalog::Operation::Queue.new(MTG::Art::BuildJob)
+
   def self.start!(job_id:, catalog_version:, settings_digest:)
+    queue = job_queue.read
     transaction do
-      running.where(job_id:).or(running.where(heartbeat_at: ..STALE_AFTER.ago))
-        .find_each { |run| run.finish!(:failed, message: "interrupted") }
+      running.find_each { |run| run.finish!(:failed, message: "interrupted") if run.job_id == job_id || run.left_behind?(queue) }
       live = running.exists?
       now = Time.current
       run = create!(status: :running, job_id:, catalog_version:, settings_digest:, started_at: now, heartbeat_at: now)
@@ -35,8 +49,22 @@ class MTG::ArtBuild < ApplicationRecord
 
   def stale? = running? && heartbeat_at < STALE_AFTER.ago
 
+  # Still marked running with nothing working on it: the heartbeat is older than STALE_AFTER, or it is older than
+  # JOB_ENDED_GRACE and the build's own job ended without closing it (its worker died). The art index's panel, the art
+  # line of `catalog:status` and .start! all judge a running build by this, with the queue (.job_queue) read before it.
+  def left_behind?(queue) = stale? || (quiet? && job_ended?(queue))
+
   def counts = COUNTS.index_with { |name| public_send(:"#{name}_count") }
 
   private
+    def quiet? = running? && heartbeat_at < JOB_ENDED_GRACE.ago
+
+    # The queue has failed the build's job, or holds no unfinished job with its id any more (the failed job was
+    # discarded, or it never was in the queue: MTG::Art::BuildJob.perform_now in a console). A reading of the queue says
+    # nothing about a build that started after it: its job was queued since.
+    def job_ended?(queue)
+      job_id.present? && (queue.failed?(job_id) || (started_at <= queue.read_at && queue.gone?(job_id)))
+    end
+
     def count_columns(counts) = counts.transform_keys { |name| :"#{name}_count" }
 end
