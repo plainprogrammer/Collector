@@ -64,8 +64,10 @@ RSpec.describe "A visitor's catalog", :public_catalog, type: :system do
   end
 
   it "gives up the tab bar's clearance on a footed shell with no tab bar, and keeps it for a collector (AC-5.7)", :aggregate_failures do
+    InstanceSetting.current.update!(sign_up_open: true)
     visit catalog_entries_path
-    { catalog_entries_path(q: "bolt") => ".c-group", new_session_path => "form" }.each do |path, ready|
+    pages = { catalog_entries_path(q: "bolt") => ".c-group", new_session_path => "form", new_registration_path => "form" }
+    pages.each do |path, ready|
       shell = clearance_at(path, ready:)
       expect(shell["scrolled"]).to be_positive, "#{path}: nothing to scroll"
       expect(px(shell["footer"])).to be < 80, "#{path}: the footer keeps the tab bar's clearance"

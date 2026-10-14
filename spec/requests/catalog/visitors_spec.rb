@@ -256,6 +256,14 @@ RSpec.describe "The catalog for visitors", type: :request do
       expect(response).to redirect_to(catalog_entry_path(printing))
     end
 
+    it "returns a visitor to the card page with its query string when they sign in (AC-3.5, plan amendment 7)" do
+      get catalog_entry_path(printing, from: "collection")
+
+      sign_in_as(collector)
+
+      expect(response).to redirect_to(catalog_entry_path(printing, from: "collection"))
+    end
+
     it "doesn't let a prefetch change where a visitor returns to (AC-3.5, decision 4)", :aggregate_failures do
       get catalog_entry_path(printing)
       get catalog_entry_path(other_printing), headers: { "X-Sec-Purpose" => "prefetch" }

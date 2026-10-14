@@ -63,6 +63,19 @@ After Phase 5 the full suite: **1455 examples, 0 failures, 1 pending** (seed 133
 
 **Phase 6, documents (`8bf7a5d`).** Verified by reading (below).
 
+**Review follow-up (spec-alignment review).** Two examples were added for code that already worked: the kept query string (amendment 7) and the sign-up page's clearance (AC-5.7). Each was proved by breaking the code once, then the file was restored and `git diff` showed it clean:
+
+```text
+OpenCatalog#remember_visited_page storing request.path instead of request.fullpath:
+  visitors_spec:259   Expected response to be a redirect to <http://www.example.com/catalog/entries/bolt-a?from=collection>
+                      but was a redirect to <http://www.example.com/catalog/entries/bolt-a>.
+"Untabbed shell (spec 023)" block deleted from additions.css:
+  visitor_catalog_spec:66   Got 3 failures: "/catalog/entries?q=bolt: the footer keeps the tab bar's clearance",
+                            "/session/new: …" and "/registration/new: the footer keeps the tab bar's clearance"
+```
+
+After it the full suite: **1456 examples, 0 failures, 1 pending** (seed 12618), the same pending example.
+
 ## Acceptance criteria
 
 `visitors_spec` is `spec/requests/catalog/visitors_spec.rb`; `visitor_catalog_spec` is `spec/system/visitor_catalog_spec.rb`.
@@ -76,26 +89,26 @@ After Phase 5 the full suite: **1455 examples, 0 failures, 1 pending** (seed 133
 | AC-2.1 | `visitors_spec:47` "sends a visitor to sign in, and back to the page they asked for afterwards (AC-2.1)" (all three pages) |
 | AC-2.2 | `visitors_spec:114` "renders a collector's catalog pages identically with the setting off and on (AC-2.2)" (amendment 2: bodies equal after masking the CSRF token); `:104` sign-in and sign-up unchanged in their prefetch meta with the setting off; the existing catalog request and system specs pass unchanged in the full run. The one existing spec edited, `quick_adds_spec.rb`, only gained AC-6.2's two expectations |
 | AC-2.3 | `visitors_spec:75` "sends anyone to sign-up with the setting off (AC-2.3)", `:82` "… with the setting on (AC-2.3)" |
-| AC-2.4 | `visitors_spec:58` "sends a visitor whose session no longer exists to sign in (AC-2.4)" (off); `:293` "gives a visitor whose session no longer exists the visitor's page (AC-2.4)" (on: 200, no `.c-avatar`) |
+| AC-2.4 | `visitors_spec:58` "sends a visitor whose session no longer exists to sign in (AC-2.4)" (off); `:301` "gives a visitor whose session no longer exists the visitor's page (AC-2.4)" (on: 200, no `.c-avatar`) |
 | AC-3.1 | `visitors_spec:141` "shows a visitor the same search results, set filter, freshness line and pager as a collector (AC-3.1)" (with and without a query, a set filter, page 2; compared part by part with a collector's) |
 | AC-3.2 | `visitors_spec:157` "shows a visitor the card page (AC-3.2)" (image, `h1`, details, rules text, legality, two printings, "View on Scryfall") |
 | AC-3.3 | `visitors_spec:170` "shows a visitor all printings, with and without a set, with its pager (AC-3.3)" |
 | AC-3.4 | `visitors_spec:184` "answers 404 for a missing card and for an identity with no searchable printing (AC-3.4)" |
-| AC-3.5 | `visitors_spec:251` "returns a visitor to the catalog page they were on when they sign in (AC-3.5)"; `:259` "doesn't let a prefetch change where a visitor returns to (AC-3.5, decision 4)" (`X-Sec-Purpose` and `Sec-Purpose`); `:270` "writes no return path for a collector's catalog request (AC-3.5)"; through Turbo from the header: `visitor_catalog_spec:120` "comes back to the card after signing in from it (decision 4)" (hover, click, Sign in, back on the card) |
+| AC-3.5 | `visitors_spec:251` "returns a visitor to the catalog page they were on when they sign in (AC-3.5)"; `:267` "doesn't let a prefetch change where a visitor returns to (AC-3.5, decision 4)" (`X-Sec-Purpose` and `Sec-Purpose`); `:259` "returns a visitor to the card page with its query string when they sign in (AC-3.5, plan amendment 7)" (`?from=collection` kept); `:278` "writes no return path for a collector's catalog request (AC-3.5)"; through Turbo from the header: `visitor_catalog_spec:122` "comes back to the card after signing in from it (decision 4)" (hover, click, Sign in, back on the card) |
 | AC-3.6 | `visitor_catalog_spec:42` "searches by name and opens a card without signing in (AC-3.6)" (search "bolt", open the result, no `.c-avatar`, no "Add a copy", the footer's notice and "Sign in" on both pages) |
-| AC-3.7 | `visitors_spec:280` "lands a visitor who signs up in their collection, then and after signing in again (AC-3.7)" |
+| AC-3.7 | `visitors_spec:288` "lands a visitor who signs up in their collection, then and after signing in again (AC-3.7)" |
 | AC-4.1 | `visitors_spec:194` "shows a visitor no collection part and no tenant data (AC-4.1)" (another account's 3 copies in 2 lots; every selector and phrase in the criterion, and the owner's name and email, on all three pages) |
 | AC-4.2 | `visitors_spec:207` "runs no query against lots for a visitor (AC-4.2)" (the SQL issued, from `sql.active_record`) |
 | AC-4.3 | `visitors_spec:215` "still sends a visitor to sign in for quick add, a new lot, the collection, the scanner and More (AC-4.3)" (`Lot.count` unchanged) |
 | AC-4.4 | `visitors_spec:226` "gives a visitor the search context even from a collection link (AC-4.4)" (crumbs, back arrow, printings links with no `from`) |
 | AC-4.5 | `visitors_spec:236` "keeps every catalog response private for a visitor and a collector (AC-4.5)" |
-| AC-5.1 | `visitors_spec:355` "gives a visitor the brand, Search and Sign in, and nothing that needs an account (AC-5.1)"; the detail form: `:374` "keeps the detail header, with its back link to search, on a visitor's card page (decision 3)" |
-| AC-5.2, AC-5.3 | `visitors_spec:325` "has no tab bar, and the footer's content notice, for a visitor (AC-5.2, AC-5.3)"; the notice in the browser: `visitor_catalog_spec:42` |
-| AC-5.4 | `visitors_spec:333` "tells a visitor only that the catalog hasn't been loaded (AC-5.4)" (exact text, no link) |
+| AC-5.1 | `visitors_spec:363` "gives a visitor the brand, Search and Sign in, and nothing that needs an account (AC-5.1)"; the detail form: `:382` "keeps the detail header, with its back link to search, on a visitor's card page (decision 3)" |
+| AC-5.2, AC-5.3 | `visitors_spec:333` "has no tab bar, and the footer's content notice, for a visitor (AC-5.2, AC-5.3)"; the notice in the browser: `visitor_catalog_spec:42` |
+| AC-5.4 | `visitors_spec:341` "tells a visitor only that the catalog hasn't been loaded (AC-5.4)" (exact text, no link) |
 | AC-5.5 | `visitor_catalog_spec:57` "fits the search and card pages on a 390px phone, with Sign in in view (AC-5.5)" (390px frame: no sideways scroll, "Sign in" visible); the eight screenshots below, looked at |
 | AC-5.6 | By reading: `docs/design-system/components/VisitorHeader.md` (markup, when it shows, the phone and detail forms, "No tab bar, and the untabbed shell", "For a visitor"); the design system README's "App additions (spec 023, in `collector/additions.css`): `VisitorHeader`" line; `AuthPage.md`'s "nothing else is reachable before signing in, except the open catalog's pages …" and "The brand stays unlinked even then … (accepted, spec 023)"; `Footer.md`'s clearance line naming the `c-shell--untabbed` exception |
-| AC-5.7 | Markup: `visitors_spec:342` "marks the shell untabbed for a visitor and not for a collector (AC-5.7)"; `:104` and `:108` the sign-in and sign-up pages untabbed, setting off and on. Browser, 390px: `visitor_catalog_spec:66` "gives up the tab bar's clearance on a footed shell with no tab bar, and keeps it for a collector (AC-5.7)" (visitor's search and sign-in: footer under 80px, `c-main` 16px; collector: footer 80px or more); `:84` "… on an unfooted shell …" (`c-main` under 80px for a visitor, 80px or more for a collector). The block's shape: `spec/design_system_files_spec.rb:61` "keeps the rules in one block of their own, after the footer's, with no colour literal or font (AC-5.7)" |
-| AC-6.1 | `visitors_spec:304` "shows a collector every collection part (AC-6.1)" (setting on: `×3`, the unowned frame, add forms, avatar, tab bar on search and all printings; "Owned" 3, two copies, add buttons, new-lot link on the card page) |
+| AC-5.7 | Markup: `visitors_spec:350` "marks the shell untabbed for a visitor and not for a collector (AC-5.7)"; `:104` and `:108` the sign-in and sign-up pages untabbed, setting off and on. Browser, 390px: `visitor_catalog_spec:66` "gives up the tab bar's clearance on a footed shell with no tab bar, and keeps it for a collector (AC-5.7)" (visitor's search, sign-in and sign-up, with sign-up open: footer under 80px, `c-main` 16px; collector: footer 80px or more); `:86` "… on an unfooted shell …" (`c-main` under 80px for a visitor, 80px or more for a collector). The block's shape: `spec/design_system_files_spec.rb:61` "keeps the rules in one block of their own, after the footer's, with no colour literal or font (AC-5.7)" |
+| AC-6.1 | `visitors_spec:312` "shows a collector every collection part (AC-6.1)" (setting on: `×3`, the unowned frame, add forms, avatar, tab bar on search and all printings; "Owned" 3, two copies, add buttons, new-lot link on the card page) |
 | AC-6.2 | `spec/requests/catalog/quick_adds_spec.rb:42` "answers an over-cap add without scripting with the card page at 422" (the "Owned" stat and `.c-avatar` stay; red with `collector?` forced false, above) |
 
 ### Functional requirements
@@ -115,14 +128,14 @@ After Phase 5 the full suite: **1455 examples, 0 failures, 1 pending** (seed 133
 | 1. Phase 3 in three commits | `95af0ba` (3a), `d075e70` (3b), `2ef6ec6` (3c), in that order, each with its guard or red run above |
 | 2. Off means today, proven | `visitors_spec:114` (AC-2.2) |
 | 3. "For a visitor" in `VisitorHeader.md` | By reading: the section names the plain `c-tile` with no `UnownedTile` marker, quantity badge or `TileAdd`; no "Owned", "Your copies" or "Add a copy"; "N known" with no muted rows |
-| 4. Deterministic prefetch proof | `visitor_catalog_spec:103` "doesn't prefetch a hovered result for a visitor" (`#settled` then no `#prefetched`); red with the meta removed (above). The flow check is `:120` |
-| 5. Unfooted shell on search without a query | `visitor_catalog_spec:84`, under `with_catalog_sources("other" => "OtherCatalogSource")`, measuring `c-main` on `catalog_entries_path` |
+| 4. Deterministic prefetch proof | `visitor_catalog_spec:105` "doesn't prefetch a hovered result for a visitor" (`#settled` then no `#prefetched`); red with the meta removed (above). The flow check is `:122` |
+| 5. Unfooted shell on search without a query | `visitor_catalog_spec:86`, under `with_catalog_sources("other" => "OtherCatalogSource")`, measuring `c-main` on `catalog_entries_path` |
 | 6. Interim brand link to search | By reading `d075e70`'s `_appbar`: the visitor branch links the brand to `catalog_entries_path` |
-| 7. The return path keeps the query | By reading `OpenCatalog#remember_visited_page` (`request.fullpath`); spec v1.2.1's decision 4 notes it. No example signs in from a `from=collection` page |
+| 7. The return path keeps the query | `visitors_spec:259` "returns a visitor to the card page with its query string when they sign in (AC-3.5, plan amendment 7)": a visitor opens `catalog_entry_path(printing, from: "collection")`, signs in and is sent back to that path with its query; red with `request.path` in place of `request.fullpath` (above) |
 | 8. Explicit spec types | `visitors_spec` is `type: :request`, `visitor_catalog_spec` is `type: :system`; multi-expectation examples carry `:aggregate_failures` |
 | 9. The initializer's comment | By reading `config/initializers/public_catalog.rb` (see AC-1.2) |
 
-**Verified only by reading:** AC-1.2's initializer half, AC-1.3's two comment lines, AC-1.4, AC-5.6, FR-1, FR-5, amendments 3, 6, 7 and 9, and `docs/roadmap.md`'s #59 line, which now names spec 023 and the branch ("**In progress:** spec 023, branch `023-signed-out-catalog-browsing`"; the PR isn't open yet). Not tried: a real phone (the 390px frame stands in for it) and a deployed instance with the variable set in Compose or Kamal (the file checks and the parser's examples stand in for it).
+**Verified only by reading:** AC-1.2's initializer half, AC-1.3's two comment lines, AC-1.4, AC-5.6, FR-1, FR-5, amendments 3, 6 and 9, and `docs/roadmap.md`'s #59 line, which now names spec 023 and the branch ("**In progress:** spec 023, branch `023-signed-out-catalog-browsing`"; the PR isn't open yet). Not tried: a real phone (the 390px frame stands in for it) and a deployed instance with the variable set in Compose or Kamal (the file checks and the parser's examples stand in for it).
 
 ## Screenshots
 
