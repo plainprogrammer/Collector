@@ -68,9 +68,9 @@ Taken between specs.
 - [#34](https://github.com/plainprogrammer/Collector/issues/34): show the unofficial-content notice and the source attribution in a footer on every page (research 016). **Done 2026-10-12:** [spec 018](specs/018-content-notice-footer/spec.md), [PR #67](https://github.com/plainprogrammer/Collector/pull/67).
 - [#35](https://github.com/plainprogrammer/Collector/issues/35): fit card images without cropping (research 016). **Done 2026-10-12:** [spec 019](specs/019-uncropped-card-images/spec.md), [PR #66](https://github.com/plainprogrammer/Collector/pull/66).
 - [#59](https://github.com/plainprogrammer/Collector/issues/59): browse the catalog without signing in: search and card pages open to everyone, with the collection parts shown only to a signed-in collector (ruling 27). It is an operator setting, off by default (ruling 30), and a hosted instance turns it on.
-- [#19](https://github.com/plainprogrammer/Collector/issues/19): tighten `bin/image-smoke`'s `catalog:status` check.
+- [#19](https://github.com/plainprogrammer/Collector/issues/19): tighten `bin/image-smoke`'s `catalog:status` check. **Done 2026-10-13:** [PR #82](https://github.com/plainprogrammer/Collector/pull/82).
 - [#21](https://github.com/plainprogrammer/Collector/issues/21): record the remaining spec 012 evidence.
-- [#31](https://github.com/plainprogrammer/Collector/issues/31): local image builds contain the OCR engine twice.
+- [#31](https://github.com/plainprogrammer/Collector/issues/31): local image builds contain the OCR engine twice. **Done 2026-10-13:** [PR #82](https://github.com/plainprogrammer/Collector/pull/82).
 - [#60](https://github.com/plainprogrammer/Collector/issues/60): the catalog page reads "Running." after a crash until a retry or 15 minutes pass (noted in spec 015). **Done 2026-10-13:** [PR #69](https://github.com/plainprogrammer/Collector/pull/69).
 - [#61](https://github.com/plainprogrammer/Collector/issues/61): a retried job shows "Attempts 0" (noted in spec 015). **Done 2026-10-13:** [PR #70](https://github.com/plainprogrammer/Collector/pull/70).
 - [#62](https://github.com/plainprogrammer/Collector/issues/62): the catalog search system spec that times out on GitHub CI only. **Done 2026-10-13:** [PR #71](https://github.com/plainprogrammer/Collector/pull/71).
@@ -84,6 +84,8 @@ Taken between specs.
 - [#79](https://github.com/plainprogrammer/Collector/issues/79): a hung art build reads "Interrupted" with a disabled button, where a refresh reads as stalled (review of PR #75).
 - [#80](https://github.com/plainprogrammer/Collector/issues/80): the art index panel reads plain "Queued." while its retry waits, with no reason and no time (reviews of PR #76).
 - [#81](https://github.com/plainprogrammer/Collector/issues/81): after a 429 with no usable `Retry-After`, the Scryfall client retries inside the 30 seconds the rate limit lasts (noted by the author of PR #76).
+- [#84](https://github.com/plainprogrammer/Collector/issues/84): the admin catalog shows raw exception classes when a refresh or build fails (found in the review of the fix for #79 and #80).
+- [#86](https://github.com/plainprogrammer/Collector/issues/86): rate-limit retries count over a job's whole life, so a long build can run out (found in the review of the fix for #81).
 
 ## Parked until after 1.0
 
