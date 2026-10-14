@@ -18,7 +18,13 @@ Finished in 10.48 seconds (files took 1.06 seconds to load)
 31 examples, 0 failures
 ```
 
-The plan's steps 1.2, 2.2 and 3.2 ran each new example red before its code; their output isn't kept here.
+The plan's steps 1.2, 2.2 and 3.2 ran each new example red before its code. The implementers reported these lines:
+
+| Step | Red | Green |
+|---|---|---|
+| 1.2 / 1.4 | `0 examples, 0 failures, 1 error occurred outside of examples` (`NameError: uninitialized constant CollectionExport`) | `12 examples, 0 failures` |
+| 2.2 / 2.4 | `8 examples, 7 failures` (`NameError` on `collection_export_path`; the core spec `Errno::ENOENT`). "answers no format suffix" passed before the route existed; with the route present and `format: false` removed it fails (200, not 404), so it guards FR-4a | `20 examples, 0 failures` |
+| 3.2 / 3.4 | `11 examples, 5 failures` (no link; the system example `Capybara::ElementNotFound`) | `11 examples, 0 failures`; `spec/system` 121 examples, 0 failures, 1 pending (the opt-in art agreement); `spec/requests` 383 examples, 0 failures |
 
 ## Acceptance criteria
 
