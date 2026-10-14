@@ -5,7 +5,7 @@
 **Created:** 2026-10-14
 **Issue:** [#78](https://github.com/plainprogrammer/Collector/issues/78)
 
-**How this plan was made.** The whole change was applied to this worktree uncommitted. The new examples were run without the code change (10 failures, each for the reason its phase names; the issue's probe failed with "GET https://api.scryfall.com/bulk-data was not expected to execute but it executed 2 times") and with it (`bin/rspec spec/models/catalog spec/jobs spec/models/mtg spec/tasks spec/requests/admin spec/admin_catalog_core_spec.rb`: 623 examples, 0 failures; RuboCop clean). Execution replays it phase by phase, red then green.
+**How this plan was made.** The whole change was applied to this worktree uncommitted. The new examples were run without the code change (11 failures with Phase 2's added `.start!` example, each for the reason its phase names; the issue's probe failed with "GET https://api.scryfall.com/bulk-data was not expected to execute but it executed 2 times") and with it (`bin/rspec spec/models/catalog spec/jobs spec/models/mtg spec/tasks spec/requests/admin spec/admin_catalog_core_spec.rb`: 623 examples, 0 failures; RuboCop clean). Execution replays it phase by phase, red then green.
 
 ## Global Constraints
 
@@ -39,10 +39,11 @@
 - `spec/jobs/catalog/refresh_job_spec.rb`, context "when another refresh for the type waits to run again (issue #78)", `:solid_queue` (the issue's probe, AC-1.1, AC-1.2): a refresh job for `mtg` queued with `wait: 10.minutes`; `/bulk-data` stubbed to answer 429 with `Retry-After: 600`; `perform_now("mtg", "scheduled")` and `perform_now("mtg", "manual")`. Expect the stub not requested, two runs `skipped` with `waiting for another job's retry` (one per trigger), and one unfinished refresh job in the queue (one retry chain).
 - `spec/models/catalog/refresh_spec.rb`, under "the job running it", with `FakeCatalogSource`:
   - skipped while another `fake` job waits, with `languages_result` set to an error so asking the source would raise; no download, `after_refresh` not called (AC-1.1, AC-1.3);
-  - applied when only an `other` job waits (AC-1.4);
-  - applied when the waiting job is its own (`job_id:` the queued job's `active_job_id`, AC-1.5);
+  - applied when only an `other` job waits (AC-1.4; a guard, passes before the change);
+  - applied when the waiting job is its own (`job_id:` the queued job's `active_job_id`, AC-1.5; a guard, passes before);
   - a stalled running run closed as `interrupted`, then skipped for the waiting retry (AC-1.7);
-  - a running run with a claimed job plus a waiting retry gives `already running` (AC-1.8).
+  - a running run with a claimed job plus a waiting retry gives `already running` (AC-1.8; a guard, passes before).
+- `spec/models/catalog/refresh_run_spec.rb`, `.start!`: with `retry_waiting: true` and no run running, the new run is skipped with `waiting for another job's retry`; with it false, running.
 - `spec/models/catalog/refresh_run_spec.rb`, `.attempted`: also leaves out a run skipped with `waiting for another job's retry`.
 - `spec/models/catalog/refresh_operation_spec.rb`: a failed run, its job queued with `wait: 3.minutes`, and a later skipped `waiting for another job's retry` run: state `:queued`, summary "Queued to retry. The last run failed while downloading: …" (AC-1.6).
 
@@ -65,7 +66,7 @@
 
 **Red.**
 - `spec/models/mtg/art/build_spec.rb` (AC-2.1, the probe for the build): a build job queued with `wait: 10.minutes`, its build failed; one printing and its image stubbed; `run_build(job_id: "job-2")` is `skipped` with `waiting for another job's retry` and the image isn't requested.
-- `spec/models/mtg/art_build_spec.rb`: `start!` skipped with that message while another build job waits and no build runs, the failed build left as it was; running when the waiting job is its own (AC-2.2).
+- `spec/models/mtg/art_build_spec.rb`: `start!` skipped with that message while another build job waits and no build runs, the failed build left as it was; running when the waiting job is its own (AC-2.2; a guard, passes before).
 - `spec/models/mtg/art/operation_spec.rb`, in "when a rate-limited build's job waits to run again": a second `start!` (`job-b`) is skipped and the summary is still "Queued to retry. The last build failed: …" (AC-2.3).
 
 **Green.** `MTG::ArtBuild`: `WAITING_FOR_RETRY = "waiting for another job's retry".freeze`; in `start!`, with the queue it already reads:
@@ -83,10 +84,12 @@ The header comment gains the sentence on the skip. `MTG::Art::BuildJob` is uncha
 ## Phase 4: The documents (Story 3)
 
 - `app/jobs/catalog/rate_limit_retry.rb` header: "That holds for this job only. … nothing here stops that." becomes "While its retry waits it holds no concurrency lock, so another job of its class (the schedule's, or one started by hand) can be queued meanwhile; the operation's start guard skips that one while this one waits (`Catalog::Operation::Queue#waiting_to_retry?`, issue #78)." This core file names no collectible's class.
-- Spec 002 (v1.4.0 changelog line): the requirement at line 260 ends "…it holds for every refresh of the type: one that starts while this job's retry waits is skipped and asks the source nothing (issue #78, spec 024)"; the two Error Scenarios rows' parentheses become "(a refresh started meanwhile is skipped, spec 024)".
+- Spec 002: header to `**Version:** 1.4.0` and Last Updated 2026-10-14, with a changelog line. In the requirement at line 260, "It holds for the waiting job only: no lock is held while it waits, so a refresh the schedule or an operator starts meanwhile asks the source at once." is replaced by "It holds for every refresh of the type: no lock is held while the job waits, so one the schedule or an operator starts meanwhile is skipped (\"waiting for another job's retry\") and asks the source nothing (issue #78, spec 024)." The concurrency bullet at line 255 names the new skip beside "already running". The two Error Scenarios rows' parentheses (lines 347, 348) become "(a refresh started meanwhile is skipped, spec 024)".
 - `CLAUDE.md`, "Admin catalog and jobs": after the `Catalog::RateLimitRetry` sentence, add "A refresh or art build that starts while another job of the same operation waits in the queue to run again is skipped (`waiting for another job's retry`, `Catalog::Operation::Queue#waiting_to_retry?`, issue #78), manual or scheduled."
 
 **Commit:** `docs: say a refresh or build waits out another's rate limit`.
+
+Spec 015's AC-2.16 ("the most recent run that wasn't skipped as already running") is now incomplete; spec 015 is outside this branch's documents, so the pull request notes it for the maintainer rather than editing it.
 
 ## Phase 5: Verification
 
