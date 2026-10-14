@@ -1,6 +1,6 @@
 # Verification: Mark Unowned Tiles Without Fading the Card Image (spec 021)
 
-**Spec:** [spec.md](spec.md) v1.0.0 · **Plan:** [plan.md](plan.md) · **Branch:** `021-unowned-tile-marker` · **Issue:** [#65](https://github.com/plainprogrammer/Collector/issues/65)
+**Spec:** [spec.md](spec.md) v1.1.0 · **Plan:** [plan.md](plan.md) · **Branch:** `021-unowned-tile-marker` · **Issue:** [#65](https://github.com/plainprogrammer/Collector/issues/65)
 
 ## Red runs
 
@@ -49,11 +49,11 @@ The figures were the same in the light and the dark theme. On the printings page
 
 ## Screenshots
 
-[screenshots/](screenshots/): search results `before` and `after`, each at `1280` and `390`, each `light` and `dark` (8 images), and `after-printings-1280-light`. The 390px shots are of a fixed-width frame, since headless Firefox won't open a window that narrow. Every one was looked at:
+[screenshots/](screenshots/), six images, about 440 KB in all: search results `after` at `1280` and `390`, each `light` and `dark`, and `before` at `1280` in both themes. Each is cut to the part that shows the tiles (at 1280px the first group and the mixed row under it; at 390px three rows of the second group, two of them mixed, with the placeholder) and saved as JPEG at quality 40. The full-page captures, the 390px `before` pair and a shot of the printings page were looked at and are not kept: at this weight the 1280px pair shows the fade well enough, and the printings page is covered by its request example and the measurement above. The 390px shots are of a fixed-width frame, since headless Firefox won't open a window that narrow. Every kept image was looked at again after recompressing; the "Not owned" tags, set codes and quantities read clearly in each.
 
 - **Before:** unowned images are washed out against the page in both themes; the placeholder's name and set number are faint.
-- **After:** every image is at full strength; each unowned tile has a dashed frame and a "Not owned" tag on its own line under the set and language tags, readable in both themes; owned tiles show `×4`, `×1`, `×2` and no tag; the placeholder ("Lightning Bolt", "SLD · 2579") is readable and tagged. In the mixed rows (the second and third at 1280px; three of the rows at 390px) the Add buttons are level, with an empty line under an owned tile's tags. Nothing is cut off and nothing scrolls sideways at 390px.
-- In each 1280px shot the third tile of the first row sits 2px high: the pointer rested on it after the sign-in click, and that is the tile's hover lift (the export's `a.c-tile:hover`), there before and after.
+- **After:** every image is at full strength; each unowned tile has a dashed frame and a "Not owned" tag on its own line under the set and language tags, readable in both themes; owned tiles show `×4`, `×1`, `×2` and no tag; the placeholder ("Lightning Bolt", "SLD · 2579") is readable and tagged. In the mixed rows (the second at 1280px; the first and third shown at 390px) the Add buttons are level, with an empty line under an owned tile's tags. Nothing is cut off and nothing scrolls sideways at 390px.
+- In each 1280px shot, before and after, the third tile of the first row sits 2px high: the pointer rested on it after the sign-in click, and that is the tile's hover lift (the export's `a.c-tile:hover`), there before and after.
 
 ## Acceptance criteria
 
@@ -62,16 +62,16 @@ The figures were the same in the light and the dark theme. On the printings page
 | AC-1.1 | `spec/system/unowned_tile_spec.rb`, "shows the image and the placeholder as supplied, in both themes" (computed style of the element and its ancestors, pseudo-elements, one child in the slot); the request example "marks a printing you don't own that has no image, and lays nothing over an image"; the measurement above with real images |
 | AC-1.2, AC-1.3 | `spec/requests/catalog/entries_search_spec.rb`, "shows owned quantities and marks printings you don't own as not owned"; the browser example "says Not owned under the tile, in the link's name, and nothing on an owned tile" |
 | AC-1.4 | The first browser example (placeholder at `1 none normal none`) and the second request example |
-| AC-1.5 | `spec/requests/catalog/identities_spec.rb`, "marks the printings you don't own as not owned"; `after-printings-1280-light.jpg` |
+| AC-1.5 | `spec/requests/catalog/identities_spec.rb`, "marks the printings you don't own as not owned"; the printings page's measurement above |
 | AC-1.6 | The second browser example: Firefox's computed accessible name of the link ends with "Not owned" (it read "Lightning Bolt Lightning Bolt S108 · 117 JA" before) |
-| AC-1.7 | The third browser example (390px frame: no sideways scroll, marker not cut off) and the eight screenshots |
+| AC-1.7 | The third browser example (390px frame: no sideways scroll, marker not cut off) and the four `after` screenshots |
 | AC-1.8 | `spec/system/quick_add_spec.rb`, "adds a copy without reloading the page and announces it": the marker is there before the add; after it the tile shows `×1` and no marker |
 | AC-2.1 | The third browser example, at 1280px (owned, unowned, unowned, owned in one row) and in the 390px frame (each row asserted mixed); the measurement and screenshots above |
 | AC-2.2 | By reading: `scanners/_candidate.html.erb` and `scanners/_add_buttons.html.erb` render `c-scanner__adds` and `c-scanner__add`, never `c-tile__add`. The scanner's system specs pass unchanged |
 | AC-3.1 | `git diff --stat origin/main -- app/assets/stylesheets/collector/components.css app/assets/stylesheets/collector/tokens.css` prints nothing |
 | AC-3.2 | `spec/design_system_files_spec.rb`, "the unowned tile override (spec 021)" (two examples) |
 | AC-3.3 | The second red run above |
-| AC-3.4 | By reading: `docs/design-system/components/UnownedTile.md` and the README's "App additions (spec 021…)" line |
+| AC-3.4 | By reading: `docs/design-system/components/UnownedTile.md`, the README's "App additions (spec 021…)" line, and `TileAdd.md`'s marker row and foot-of-cell bullet |
 
 **How "no shipped rule fades or filters a tile's card image" was checked.** Three ways: computed style in the browser on test pictures (the suite, every run); computed style in the browser on real Scryfall images in all four views (above, once); and a text check in `spec/design_system_files_spec.rb` that the only rules naming `c-tile` with `opacity`, `filter` or `mix-blend-mode` in the app's stylesheets are the export's fade and this block's override. The other `opacity` in the shipped CSS is the disabled button's (`components.css:21`).
 
@@ -79,17 +79,17 @@ The figures were the same in the light and the dark theme. On the printings page
 
 ## Local gate
 
-`bin/ci` on `0f8fd38` (the last commit before this file; the commit after it adds only this file):
+`bin/ci` on `455f7c7` (the last commit before this file's update; the commit after it changes only this file):
 
 ```text
-✅ Setup passed in 8.13s
-✅ Style: Ruby passed in 2.49s
-✅ Security: Brakeman code analysis passed in 8.38s
-✅ Security: Gem audit passed in 0.96s
-✅ Security: Importmap vulnerability audit passed in 2.61s
+✅ Setup passed in 5.31s
+✅ Style: Ruby passed in 1.53s
+✅ Security: Brakeman code analysis passed in 5.86s
+✅ Security: Gem audit passed in 0.62s
+✅ Security: Importmap vulnerability audit passed in 1.53s
 1354 examples, 0 failures, 1 pending
-✅ Tests: RSpec passed in 4m44.66s
-✅ Continuous Integration passed in 5m7.23s
+✅ Tests: RSpec passed in 3m7.57s
+✅ Continuous Integration passed in 3m22.42s
 ```
 
 The one pending example is `spec/system/art_agreement_spec.rb`, which needs the art spike's cache (`COLLECTOR_ART_AGREEMENT`), as on `main`.
@@ -105,11 +105,18 @@ A read-only review of the branch (an Opus subagent, 2026-10-13) found nothing bl
 
 After those changes the examples were broken once more on purpose (the add-button rule removed, a fading rule added inside a media query): the block's shape, the stylesheet check (`got: ["{opacity:.45;}", "{opacity:.6;}", "{opacity:1;}"]`) and the row check (`got: [[2, 2], [2, 2]]` for `[[2, 1], [2, 1]]`) each failed.
 
+A second review, by the coordinator, found no code defect and confirmed the after screenshots against the chosen look. Its points, taken in `4c231a6` to `455f7c7`: `TileAdd.md` is the app's own document and never described the fade (a mistake carried from the brief), so the spec, plan and `UnownedTile.md` are corrected and `TileAdd.md` now documents the add control's place; the stylesheet check reads declarations only, so a comment can't fail it; a block variable no longer shadows a `let`; the screenshots went from 2.1 MB to about 440 KB; the spec's status says what is approved.
+
 Not taken: editing spec 019's own document to point here (it is another spec's approved text; this spec states the replacement instead).
 
 ## Commits
 
 ```text
+455f7c7 docs(021): say what is approved and correct TileAdd's ownership (spec v1.1.0)
+869319d docs(021): document the add control's place in TileAdd, the app's own document
+c1a4477 test(021): read declarations only in the fade check; rename a shadowing variable
+4c231a6 docs(021): cut the screenshots to the tiles and recompress them
+2fb226b docs(021): record the verification
 0f8fd38 docs(021): take the review's points on the spec, plan and pattern
 5bdece6 test(021): fix the row order, widen the fade check, cover the marker after an add
 5004e22 docs(021): add before and after screenshots of search results
@@ -120,10 +127,11 @@ b9fd4ba docs(021): plan the unowned tile's marker
 76e62fe docs(021): specify the unowned tile's marker (#65)
 ```
 
-Then this file. Nothing is pushed.
+Then this file's update. The branch is pushed; the pull request is the coordinator's to open.
 
 ## Left for the maintainer
 
+- Decisions 2 to 8, put to the maintainer in the pull request.
 - The pull request, and the roadmap's housekeeping note for #65 (the coordinator adds it; PR #83 edits that lane).
 - Upstreaming: the published design system's `ItemTile` should drop the fade at its next export.
 - The open question on the `×N` badge (spec, Open Questions).
