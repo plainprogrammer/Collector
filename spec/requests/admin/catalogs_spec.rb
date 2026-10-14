@@ -278,6 +278,24 @@ RSpec.describe "Admin catalog page", :solid_queue, type: :request do
         expect(section("refresh").at_css("button")["disabled"]).to be_nil
       end
 
+      # End to end: the client's error, the job's retry and the page (issue #81). 45 seconds on from 03:15:20.
+      it "shows a refresh that a 429 with no Retry-After turned away as queued to retry, with its time", :aggregate_failures do
+        stub_request(:get, "https://api.scryfall.com/bulk-data").to_return(status: 429)
+        travel_to(Time.utc(2026, 10, 9, 3, 15, 20)) do
+          Catalog::RefreshJob.perform_now("mtg", "manual")
+          get admin_catalog_path
+        end
+
+        refresh = section("refresh")
+        expect(text(refresh.at_css(".c-operation__summary")))
+          .to eq("Queued to retry. The last run failed while downloading: Catalog::Sources::RateLimitedError: " \
+                 "GET https://api.scryfall.com/bulk-data returned 429 with no usable Retry-After; Scryfall limits access for " \
+                 "30 seconds after a 429, so the client doesn't ask again in this call")
+        expect(text(refresh.at_css(".c-details"))).to start_with("Retrying at 9 Oct 2026 03:16 UTC")
+        expect(refresh.at_css("a")).to be_nil
+        expect(refresh.at_css("button")["disabled"]).to be_present
+      end
+
       it "shows a failed run whose job waits to retry as queued, without the failed link (AC-3.7)", :aggregate_failures do
         create(:catalog_refresh_run, status: "failed", stage: "download", message: "Catalog::Sources::TransientError: 503")
         travel_to(Time.utc(2026, 10, 9, 3, 15)) do
