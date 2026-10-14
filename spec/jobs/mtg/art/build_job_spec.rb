@@ -40,10 +40,10 @@ RSpec.describe MTG::Art::BuildJob, type: :job do
       expect(ActiveJob::Base.queue_adapter.enqueued_jobs.last["job_id"]).to eq(job.job_id)
     end
 
-    it "waits 30 seconds when the host never said how long" do
+    it "waits 45 seconds when the host never said how long" do
       allow(MTG::Art::Build).to receive(:new).and_raise(rate_limited(nil))
 
-      expect { described_class.perform_now }.to have_enqueued_job(described_class).at(30.seconds.from_now)
+      expect { described_class.perform_now }.to have_enqueued_job(described_class).at(45.seconds.from_now)
     end
 
     it "fails instead of waiting when asked for more than an hour", :aggregate_failures do
@@ -76,15 +76,15 @@ RSpec.describe MTG::Art::BuildJob, type: :job do
     end
 
     # One 429 that names no wait stops the build: the host isn't asked again inside the 30 seconds Scryfall limits
-    # access for, and the job's retry, 30 seconds later, is the next request (issue #81).
-    it "stops at one 429 with no Retry-After, and its retry 30 seconds later finishes the build without fetching an image twice",
+    # access for, and the job's retry, 45 seconds later, is the next request (issue #81).
+    it "stops at one 429 with no Retry-After, and its retry 45 seconds later finishes the build without fetching an image twice",
       :aggregate_failures, :art_matching do
       images = two_artworks
       first = stub_request(:get, images.first).to_return(body: noisy_png)
       second = stub_request(:get, images.last).to_return({ status: 429 }, { body: noisy_png })
       job = described_class.new
 
-      expect { job.perform_now }.to have_enqueued_job(described_class).at(30.seconds.from_now)
+      expect { job.perform_now }.to have_enqueued_job(described_class).at(45.seconds.from_now)
       expect(MTG::ArtBuild.sole).to have_attributes(status: "failed", job_id: job.job_id, fetched_count: 1, failed_count: 0,
         message: include("returned 429 with no usable Retry-After"))
       expect(second).to have_been_requested.once

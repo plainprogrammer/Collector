@@ -45,12 +45,19 @@ RSpec.describe Catalog::RefreshJob, type: :job do
       expect { described_class.perform_now("mtg") }.to have_enqueued_job(described_class).with("mtg").at(600.seconds.from_now)
     end
 
-    [ nil, 0, 5 ].each do |asked|
-      it "waits 30 seconds at least, when the source asked for #{asked.inspect}" do
+    # The 30 seconds Scryfall says a 429 limits access for, and a margin: the wait runs from when the error is handled.
+    [ nil, 0, 5, 30, 44 ].each do |asked|
+      it "waits 45 seconds at least, when the source asked for #{asked.inspect}" do
         allow(Catalog::Refresh).to receive(:new).and_raise(rate_limited(asked))
 
-        expect { described_class.perform_now("mtg") }.to have_enqueued_job(described_class).at(30.seconds.from_now)
+        expect { described_class.perform_now("mtg") }.to have_enqueued_job(described_class).at(45.seconds.from_now)
       end
+    end
+
+    it "waits what the source asked for once that is more than 45 seconds" do
+      allow(Catalog::Refresh).to receive(:new).and_raise(rate_limited(46))
+
+      expect { described_class.perform_now("mtg") }.to have_enqueued_job(described_class).at(46.seconds.from_now)
     end
 
     it "waits as long as an hour when asked" do
@@ -105,12 +112,12 @@ RSpec.describe Catalog::RefreshJob, type: :job do
     end
 
     # Scryfall limits access for 30 seconds after a 429, and may not say so in a Retry-After. The refresh then asks
-    # nothing more in that run, and its job is the next to ask, 30 seconds later (issue #81).
-    it "asks Scryfall once when a 429 gives no Retry-After, and is queued to run again 30 seconds later", :aggregate_failures do
+    # nothing more in that run, and its job is the next to ask, 45 seconds later (issue #81).
+    it "asks Scryfall once when a 429 gives no Retry-After, and is queued to run again 45 seconds later", :aggregate_failures do
       limited = stub_request(:get, "https://api.scryfall.com/bulk-data").to_return({ status: 429 }, { status: 429 }, { status: 429 })
       allow(MTG::Scryfall::Client).to receive(:new).and_return(MTG::Scryfall::Client.new(sleeper: ->(_) { }, clock: -> { 0.0 }))
 
-      expect { described_class.perform_now("mtg") }.to have_enqueued_job(described_class).with("mtg").at(30.seconds.from_now)
+      expect { described_class.perform_now("mtg") }.to have_enqueued_job(described_class).with("mtg").at(45.seconds.from_now)
       expect(limited).to have_been_requested.once
       expect(Catalog::RefreshRun.sole).to have_attributes(status: "failed",
         message: "Catalog::Sources::RateLimitedError: GET https://api.scryfall.com/bulk-data returned 429 with no usable Retry-After; " \

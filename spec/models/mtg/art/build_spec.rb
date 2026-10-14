@@ -129,7 +129,7 @@ RSpec.describe MTG::Art::Build, :art_matching, type: :model do
     end
 
     # The least that stops a build: one 429 that names no wait. Nothing is asked inside the 30 seconds Scryfall limits
-    # access for after it; the build's job comes back 30 seconds later (issue #81).
+    # access for after it; the build's job comes back 45 seconds later (issue #81).
     it "stops at the first 429 with no Retry-After, without waiting or asking for that image again", :aggregate_failures do
       limited = stub_request(:get, first).to_return({ status: 429 }, { body: noisy_png })
       later = stub_request(:get, second).to_return(body: noisy_png)
