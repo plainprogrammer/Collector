@@ -128,14 +128,17 @@ RSpec.describe MTG::Art::Build, :art_matching, type: :model do
       expect(later).not_to have_been_requested
     end
 
-    # The shortest burst that stops a build: 3 answers within 3 seconds. Its job comes back 30 seconds later.
-    it "stops at an image answered 429 three times with no Retry-After, having waited 1 and 2 seconds", :aggregate_failures do
-      stub_request(:get, first).to_return(status: 429)
+    # The least that stops a build: one 429 that names no wait. Nothing is asked inside the 30 seconds Scryfall limits
+    # access for after it; the build's job comes back 45 seconds later (issue #81).
+    it "stops at the first 429 with no Retry-After, without waiting or asking for that image again", :aggregate_failures do
+      limited = stub_request(:get, first).to_return({ status: 429 }, { body: noisy_png })
       later = stub_request(:get, second).to_return(body: noisy_png)
 
       expect { run_build }.to raise_error(Catalog::Sources::RateLimitedError) { |error| expect(error.retry_after).to be_nil }
-      expect(MTG::ArtBuild.sole).to have_attributes(status: "failed", failed_count: 0, message: include("still rate limited"))
-      expect(naps - [ 0.1 ]).to eq([ 1, 2 ])
+      expect(MTG::ArtBuild.sole).to have_attributes(status: "failed", failed_count: 0, fetched_count: 0,
+        message: include("returned 429 with no usable Retry-After"))
+      expect(naps).to be_empty
+      expect(limited).to have_been_requested.once
       expect(later).not_to have_been_requested
     end
 

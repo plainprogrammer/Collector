@@ -7,13 +7,16 @@
 # come before a rule for Catalog::Sources::TransientError, whose few seconds are sooner than a source asks.
 #
 # - The wait is what the source asked for (the error's #retry_after), and SHORTEST_WAIT at least: that covers a source
-#   that never said, and one whose last answer asked for less than its own rate limit lasts.
+#   that never said, and one whose last answer asked for less than its own rate limit lasts. SHORTEST_WAIT is the 30
+#   seconds for which the one source so far says a "too many requests" answer limits access, plus a margin of 15: the
+#   wait runs from when the error is handled, a little after the answer, on this host's clock, so 30 exactly would
+#   leave the next request clear of that window only by however long the queue takes to dispatch the job.
 # - A source that asks for more than LONGEST_WAIT isn't waited for: the job fails, and shows under Failed.
 # - So does a job turned away again after MAX_RETRIES such retries.
 module Catalog::RateLimitRetry
   extend ActiveSupport::Concern
 
-  SHORTEST_WAIT = 30.seconds
+  SHORTEST_WAIT = 45.seconds
   LONGEST_WAIT = 1.hour
   MAX_RETRIES = 3
   # Where the job keeps its count of these retries; Active Job serializes exception_executions with the job.
