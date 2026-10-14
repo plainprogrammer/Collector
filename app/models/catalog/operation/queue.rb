@@ -35,8 +35,11 @@ class Catalog::Operation::Queue
     in_flight.any? { |job| job.claimed? && (active_job_id.nil? || job.active_job_id == active_job_id) }
   end
 
-  # When the earliest job waiting for a later time (a retry backing off) is due, or nil when none is.
-  def retry_at = in_flight.select(&:scheduled?).filter_map(&:scheduled_at).min
+  # When the earliest job waiting for a later time (a retry backing off) is due, or nil when none is; with an Active
+  # Job id, when that job is.
+  def retry_at(active_job_id = nil)
+    in_flight.select { |job| job.scheduled? && (active_job_id.nil? || job.active_job_id == active_job_id) }.filter_map(&:scheduled_at).min
+  end
 
   private
     def in_flight = jobs.reject(&:failed?)

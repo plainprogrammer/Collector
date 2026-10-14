@@ -32,8 +32,9 @@ module MTG::Art
   end
 
   # The art line `catalog:status[mtg]` prints (AC-3.11), from the latest build run that wasn't skipped. A build still
-  # marked running reads as the admin catalog page words it (MTG::Art::Operation): interrupted once nothing is working
-  # on it (MTG::ArtBuild#left_behind?), judged by the queue as it was read before the build.
+  # marked running reads as the admin catalog page words it (MTG::Art::Operation): building with no heartbeat while a
+  # worker holds the job of a build that stopped beating (MTG::ArtBuild#stalled?), interrupted once nothing is working
+  # on it (MTG::ArtBuild#left_behind?), both judged by the queue as it was read before the build.
   def self.status_line
     return "Art matching: off (set #{ENV_NAME}=true to turn it on)" unless enabled?
 
@@ -42,7 +43,10 @@ module MTG::Art
     return "Art matching: on; no build has run yet (it starts after the next catalog refresh, or from the admin catalog page)" unless run
 
     progress = "#{run.fetched_count} images fetched, #{run.fingerprinted_count} of #{run.total_count} artworks fingerprinted"
-    if run.left_behind?(queue)
+    if run.stalled?(queue)
+      "Art matching: building (no heartbeat for #{run.stalled_minutes} minutes) since #{run.started_at.utc.iso8601}; #{progress}, " \
+        "#{run.failed_count} failed (last heartbeat #{run.heartbeat_at.utc.iso8601}). Restart the app if it stays that way; the build then carries on, or reads interrupted."
+    elsif run.left_behind?(queue)
       "Art matching: interrupted (last heartbeat #{run.heartbeat_at.utc.iso8601}) after #{progress}. " \
         'Run bin/rails "catalog:refresh[mtg]" to resume.'
     elsif run.running?

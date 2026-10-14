@@ -373,6 +373,39 @@ RSpec.describe "Admin catalog page", :solid_queue, type: :request do
         expect(page.at_css("main")["data-controller"]).to eq("poll")
       end
 
+      # A hung build: its worker still holds the job, so nothing can be started and there is nothing failed to see (issue #79).
+      it "shows a build whose heartbeat stopped while a worker holds its job as stalled, disabled and polling", :aggregate_failures, :art_matching do
+        create(:catalog_refresh_run)
+        job = claim_job(queue_job(MTG::Art::BuildJob))
+        create(:mtg_art_build, status: "running", finished_at: nil, started_at: 1.hour.ago, heartbeat_at: 11.minutes.ago,
+          job_id: job.active_job_id, total_count: 31_904, fingerprinted_count: 7_976)
+
+        get admin_catalog_path
+
+        expect(text(section("art_index"))).to start_with("Art index Build art index Building, no heartbeat for 11 minutes. If it stays that " \
+          "way, restart the app. The build then carries on from where it stopped, or reads interrupted and can be built again. " \
+          "25% 7,976 of 31,904 artworks fingerprinted Started")
+        expect(text(section("art_index"))).to include("Last heartbeat").and include("(11 minutes ago)")
+        expect(section("art_index").at_css("a")).to be_nil
+        expect(section("art_index").at_css("button")["disabled"]).to be_present
+        expect(page.at_css("main")["data-controller"]).to eq("poll")
+        start("art_index")
+        expect(flash[:notice]).to eq("An art index build is already queued or running.")
+      end
+
+      it "shows that build as interrupted once the queue has failed its job, and lets a build start", :aggregate_failures, :art_matching do
+        create(:catalog_refresh_run)
+        job = fail_job(claim_job(queue_job(MTG::Art::BuildJob)))
+        create(:mtg_art_build, status: "running", finished_at: nil, started_at: 1.hour.ago, heartbeat_at: 11.minutes.ago, job_id: job.active_job_id)
+
+        get admin_catalog_path
+
+        expect(text(section("art_index"))).to start_with("Art index Build art index Interrupted. Build it again to carry on from where it " \
+          "stopped. See its failed job")
+        expect(section("art_index").at_css("button")["disabled"]).to be_nil
+        expect(page.at_css("[data-controller~='poll']")).to be_nil
+      end
+
       # The retried job is the build's own: it waits in the queue, and closes the build when it starts (spec 011 AC-3.2).
       it "shows the crashed build as building again once an admin retries its failed job, which then carries on", :aggregate_failures, :art_matching do
         create(:catalog_refresh_run)
@@ -403,6 +436,34 @@ RSpec.describe "Admin catalog page", :solid_queue, type: :request do
         expect(section("art_index").at_css("button")["disabled"]).to be_nil
         expect(page.at_css("[data-controller~='poll']")).to be_nil
         expect { start("art_index") }.to change(SolidQueue::Job, :count).by(1)
+      end
+
+      # The build closed its run as failed, and its job waits in the queue to run again (issue #80).
+      it "shows a failed build whose job waits to retry as queued to retry, with the reason and the time (AC-4.12)", :aggregate_failures, :art_matching do
+        create(:catalog_refresh_run)
+        travel_to(Time.utc(2026, 10, 9, 3, 15)) do
+          job = queue_job(MTG::Art::BuildJob, wait: 10.minutes)
+          create(:mtg_art_build, status: "failed", job_id: job.active_job_id, finished_at: Time.current,
+            message: "Catalog::Sources::RateLimitedError: GET https://cards.scryfall.io/small/a.jpg still rate limited after 3 attempts")
+          get admin_catalog_path
+        end
+
+        expect(text(section("art_index"))).to eq("Art index Build art index Queued to retry. The last build failed: " \
+          "Catalog::Sources::RateLimitedError: GET https://cards.scryfall.io/small/a.jpg still rate limited after 3 attempts " \
+          "Retrying at 9 Oct 2026 03:25 UTC Finished 9 Oct 2026 03:15 UTC Index in use none")
+        expect(section("art_index").at_css("a")).to be_nil
+        expect(section("art_index").at_css("button")["disabled"]).to be_present
+        expect(page.at_css("main")["data-controller"]).to eq("poll")
+      end
+
+      it "shows a build queued fresh behind a failed one as plain queued", :aggregate_failures, :art_matching do
+        create(:catalog_refresh_run)
+        create(:mtg_art_build, status: "failed", job_id: "job-1", message: "boom")
+        queue_job(MTG::Art::BuildJob)
+
+        get admin_catalog_path
+
+        expect(text(section("art_index"))).to eq("Art index Build art index Queued.")
       end
 
       it "shows a finished build's counts (AC-4.7) and a failed one's message and index (AC-4.8)", :aggregate_failures, :art_matching do
