@@ -136,6 +136,14 @@ RSpec.describe CollectionExport, type: :model do
     expect(writes).to eq([])
   end
 
+  it "leaves the caller's time in its own zone", :aggregate_failures do
+    local = Time.new(2026, 10, 14, 23, 30, 0, "-05:00")
+    written = described_class.new(account:, at: local)
+
+    expect([ written.filename, JSON.parse(written.to_json)["exported_at"] ]).to eq([ "collector-export-2026-10-15.json", "2026-10-15T04:30:00Z" ])
+    expect(local.utc_offset).to eq(-5 * 3600)
+  end
+
   it "names the file by the export's UTC date" do
     expect(described_class.new(account:, at: Time.new(2026, 10, 14, 23, 30, 0, "-05:00")).filename).to eq("collector-export-2026-10-15.json")
   end

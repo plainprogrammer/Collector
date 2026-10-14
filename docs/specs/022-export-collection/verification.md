@@ -44,7 +44,7 @@ The plan's steps 1.2, 2.2 and 3.2 ran each new example red before its code. The 
 | AC-2.3 | "writes exactly the fields the format defines": `ExportFormatRules.field_names` of the file equals that of `docs/export-format/examples/valid/collection.json` without `generator` |
 | AC-3.1 | `spec/requests/shell_spec.rb`, "links the account menu and More to the export, outside Turbo and never prefetched" (`data-turbo="false"`, `data-turbo-prefetch="false"`, no `download`, on the collection page and More) and "puts the export in the account menu for a collector who isn't an admin"; `spec/requests/admin/navigation_spec.rb`, "links Catalog and Jobs for an admin, on the More page and in the avatar menu" and "shows a member only the export, neither admin link" (the whole menu and More lists, in order, for each) |
 | AC-3.2 | The first shell example: More's second row is "Export collection", after "Signed in as" |
-| AC-3.3 | `spec/system/collection_export_spec.rb`, "downloads the collection from the account menu": Firefox saves `collector-export-<UTC date>.json` to `tmp/downloads` (waited for with `synchronize`, no sleep), it passes `ExportFormatRules.problems` and holds the one lot, and "My collection" is still shown |
+| AC-3.3 | `spec/system/collection_export_spec.rb`, "downloads the collection from the account menu": Firefox saves `collector-export-<UTC date>.json` to `tmp/downloads` (waited for with `page.document.synchronize(10)`: bounded at 10 seconds, as the approved plan set it, rather than the spec's `Capybara.default_max_wait_time` (2 s, never set in this suite), and never a sleep), it passes `ExportFormatRules.problems` and holds the one lot, and "My collection" is still shown |
 | AC-3.4 | The screenshots below |
 | AC-3.5 | By reading, below |
 

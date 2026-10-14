@@ -21,10 +21,11 @@ RSpec.describe "Collection export", type: :system do
   it "downloads the collection from the account menu", :aggregate_failures do
     create(:lot, account: user.account, entry: create(:mtg_printing).entry, finish: "foil")
     visit collection_path
+    name = "collector-export-#{Time.current.utc.to_date.iso8601}.json"
     find(".c-avatar").click
     click_on "Export collection"
 
-    file = downloaded("collector-export-#{Time.current.utc.to_date.iso8601}.json")
+    file = downloaded(name)
     expect(ExportFormatRules.problems(file.binread)).to eq([])
     expect(JSON.parse(file.read)["lots"].size).to eq(1)
     expect(page).to have_css("h1", text: "My collection")

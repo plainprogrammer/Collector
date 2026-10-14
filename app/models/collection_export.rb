@@ -24,7 +24,7 @@ class CollectionExport
 
   def to_json(*) = JSON.generate(to_h)
 
-  def filename = "collector-export-#{@at.utc.to_date.iso8601}.json"
+  def filename = "collector-export-#{@at.getutc.to_date.iso8601}.json"
 
   private
     def lots
@@ -41,5 +41,5 @@ class CollectionExport
     def price(cents) = cents && format("%.2f", cents / 100r)
 
     # RFC 3339 in UTC with the fraction dropped, not rounded.
-    def time(value) = value.utc.iso8601
+    def time(value) = value.getutc.iso8601
 end
