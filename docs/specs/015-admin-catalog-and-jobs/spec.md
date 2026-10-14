@@ -1,9 +1,9 @@
 # Feature 015: Admin Catalog Operations and Jobs
 
 **Status:** Approved
-**Version:** 1.3.0
+**Version:** 1.3.1
 **Created:** 2026-10-09
-**Last Updated:** 2026-10-13
+**Last Updated:** 2026-10-14
 **Branch:** `015-admin-catalog-and-jobs`
 **Issue:** [#29](https://github.com/plainprogrammer/Collector/issues/29)
 
@@ -23,6 +23,7 @@
 | 1.2.3 | 2026-10-13 | [Issue #73](https://github.com/plainprogrammer/Collector/issues/73): issue #60's flaw in the art index. After a crash the section read "Building." with "Build art index" disabled while the job already sat under Failed, until the build's heartbeat was 10 minutes old, and a build started then was skipped as already running. An art build still marked running whose own job is in the queue's failed list, or is no longer in the queue as an unfinished job, is now interrupted once its heartbeat is older than 2 minutes, on the page and in `catalog:status`, and a build that starts then closes it and proceeds. The queue is read before the build. A build queued behind an interrupted one shows as queued, and an interrupted one whose job is under Failed links to the Failed list. So that a working build is never quiet for 2 minutes inside one slow batch, the build also records a heartbeat between images once 30 seconds have passed since its last. The 10-minute rule and the own-job rule are unchanged (glossary, new AC-4.10, Error Scenarios; spec 011 AC-3.2, AC-3.8, AC-3.11) |
 | 1.2.4 | 2026-10-13 | [Issue #74](https://github.com/plainprogrammer/Collector/issues/74): the waits a rate limit or a server error asks for between an image's requests are bounded, 30 seconds each and 60 in all for one image, and a longer one stops the build. Error Scenarios' residual for an art build that is still working says so: those waits alone can no longer take a build past 2 minutes without a heartbeat. No requirement of this spec changed |
 | 1.3.0 | 2026-10-13 | Issues [#79](https://github.com/plainprogrammer/Collector/issues/79) and [#80](https://github.com/plainprogrammer/Collector/issues/80): two things the art index section said. **Stalled:** an art build whose last heartbeat is older than 10 minutes while a worker still holds its own job read "Interrupted. Build it again to carry on from where it stopped." beside a disabled button. It is now stalled, as a refresh run is: shown as building with "no heartbeat for N minutes" and the advice to restart the app, "Build art index" disabled, the page requesting updates, no link to the Failed list, and `catalog:status` words it the same way. One whose job is failed or gone stays interrupted. What a starting build job does is unchanged: it closes any build whose heartbeat is older than 10 minutes (glossary, AC-4.1, new AC-4.11, FR-2, Error Scenarios; spec 011 AC-3.11). **Queued to retry:** while a failed build's own job waited in the queue to run again (after a rate limit or a busy database), the section read plain "Queued." It now says it is queued to retry, why the last build failed and when the retry is due, as the refresh does (new AC-4.12, Error Scenarios) |
+| 1.3.1 | 2026-10-14 | [Issue #78](https://github.com/plainprogrammer/Collector/issues/78), [spec 024](../024-refresh-rate-limit-wait/spec.md): a refresh can also be skipped as "waiting for another job's retry"; the operation passes over such a run as it does one skipped as already running (AC-2.16) |
 
 ---
 
@@ -113,7 +114,7 @@ Collector's catalog changes only through background jobs: the catalog refresh (w
 - [ ] **AC-2.13** Given a refresh that finishes as applied When the panel is rendered Then it shows the run as applied with its counts (seen, inserted, updated, retired, restored, malformed), its source version and its finish time, and the type's health shows the new entry count and last applied refresh.
 - [ ] **AC-2.14** Given a refresh that ends as skipped (already running, or the version already applied) When the panel is rendered Then the run is shown as skipped with its message.
 - [ ] **AC-2.15** Given the start of a refresh from the page When the job runs Then it passes through the same guards as a scheduled or rake-started refresh (`Catalog::RefreshRun.start!` and the job's concurrency limit), so two refreshes for a type never apply at once.
-- [ ] **AC-2.16** Given a type with refresh runs and nothing in flight When its panel is rendered Then the refresh operation shows the most recent run that wasn't skipped as already running; the recent-runs list shows every run, skipped ones included.
+- [ ] **AC-2.16** Given a type with refresh runs and nothing in flight When its panel is rendered Then the refresh operation shows the most recent run that wasn't skipped as already running or as waiting for another job's retry (spec 024); the recent-runs list shows every run, skipped ones included.
 
 ### Story 3: See a refresh fail or stall
 

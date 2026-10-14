@@ -1,7 +1,7 @@
 # What a job does when its source turned it away (Catalog::Sources::RateLimitedError, issue #74): it runs again no
-# sooner than the source asked, so the queue holds the wait instead of a worker. That holds for this job only. While
-# its retry waits it holds no concurrency lock, so another job of its class (the schedule's, or one started by hand)
-# can start meanwhile and ask the source at once; nothing here stops that.
+# sooner than the source asked, so the queue holds the wait instead of a worker. While its retry waits it holds no
+# concurrency lock, so another job of its class (the schedule's, or one started by hand) can be queued meanwhile; the
+# operation's start guard skips that one while this one waits (Catalog::Operation::Queue#waiting_to_retry?, issue #78).
 #
 # Include it after the job's own retry_on lines: Active Job tries the handler declared last first, and this one must
 # come before a rule for Catalog::Sources::TransientError, whose few seconds are sooner than a source asks.
