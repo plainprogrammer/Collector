@@ -1,7 +1,7 @@
 # Implementation Plan: Browse the Catalog Without Signing In
 
 **Spec:** [spec.md](spec.md) (v1.2.0, approved with changes on 2026-10-14)
-**Reviews:** read-only Opus plan review on 2026-10-14 (two blocking findings: Turbo's prefetch reuse, and the clearance check on a footed shell; both taken, with its should-fix items)
+**Reviews:** read-only Opus plan review on 2026-10-14 (two blocking findings: Turbo's prefetch reuse, and the clearance check on a footed shell; both taken, with its should-fix items); read-only Fable plan review on 2026-10-14, approved with changes by the maintainer: see [Amendments](#amendments-from-the-fable-plan-review), which override the phases where they differ
 **Decisions:** no ADR. Decisions 1 and 2 and the untabbed rule of decision 3 are the maintainer's rulings of 2026-10-14; the rest are the spec's.
 
 **How this plan was made.** Its two framework assumptions were run in scratch first (see Risks). Each phase's examples are run red before its change and green after; the red runs are quoted in `verification.md`.
@@ -207,3 +207,20 @@ Screenshots for AC-5.5: search and card page at 1280px and 390px (frame), light 
 ## Risks
 
 - **Conditional `skip_before_action`.** Rails evaluates the `if:` per request, so turning the setting on in an example takes effect without reloading the controller; the request specs prove it. Checked in scratch on 2026-10-14 (Rails 8.1.4): `skip_before_action :a, if:` leaves `:a` in the chain with one `unless` condition. The bundled Turbo sets `X-Sec-Purpose: prefetch` on its prefetch requests.
+
+## Amendments from the Fable plan review
+
+Approved with changes by the maintainer on 2026-10-14. These override the phases above where they differ.
+
+1. **Phase 3 is three commits**, in this order:
+   - (3a) `refactor(023): lift prefetch? to ApplicationController`. The collection's prefetch examples (spec 006 AC-1.10) are the guard.
+   - (3b) `refactor(023): decide collection parts with collector?`. This covers `ApplicationHelper#collector?`, the gating in `_tile`, `show`, `_printings`, `_not_loaded`, `_appbar` and `_tabbar`, and `CardOverview#lots` returning `[]` with no account. The guards are the existing catalog request and system specs and the quick add's full-lot example (AC-6.2). This step is behaviour-neutral, since every page that renders these views is still behind sign-in.
+   - (3c) `feat(023): open catalog search and card pages to visitors`. This covers `OpenCatalog`, the prefetch meta, sign-up clearing the return path, and the red `visitors_spec.rb`.
+2. **Off means today, proven.** A guard in `visitors_spec.rb` has a collector GET search (with a query), a card page and all printings, once with the setting off and once with it on. The two bodies must be equal after masking the CSRF token (the `csrf-token` meta and every `authenticity_token` input) (AC-2.2, Goals).
+3. **A design-system record for the visitor's catalog parts.** `VisitorHeader.md` gets a "For a visitor" section. It says the tile is the plain `c-tile`, with no "Not owned" marker (`UnownedTile`), no quantity badge and no add control (`TileAdd`). It also says the card page has no "Owned" stat, no "Your copies" and no "Add a copy", and that the printings list's count reads "N known" with no muted rows.
+4. **The prefetch meta's proof is deterministic.** The system example adds a `turbo:before-fetch-request` listener that appends `#prefetched` to the body when a request carries `X-Sec-Purpose: prefetch`. It hovers a result tile, then asserts `have_no_css("#prefetched")` with the meta in place. The red is recorded once with the meta removed, by a bounded positive wait for `#prefetched`. The hover → click → sign in → card page example stays as the flow check.
+5. **The unfooted-shell example uses the search page without a query**, under `with_catalog_sources("other" => …)`, and measures `c-main` there. Tile images would fall back, because `OtherCatalogSource::ALLOWED_HOSTS` is `example.test`.
+6. **Phase 3's interim brand link** already points to `catalog_entries_path`, so a visitor clicking it before Phase 4 never reaches `/collection` and overwrites the return path.
+7. **The return path keeps the query.** A visitor who followed a `from=collection` link signs in and lands on `…?from=collection`, where `card_context` is then `:collection`. This is consistent with decision 6, and the spec's decision 4 notes it (v1.2.1).
+8. **Spec types are explicit.** `visitors_spec.rb` is `type: :request` and `visitor_catalog_spec.rb` is `type: :system`. Examples with several expectations take `:aggregate_failures`.
+9. **`config/initializers/public_catalog.rb` carries `art_matching.rb`'s comment**: why it runs after initialize, and why tests never read the environment.

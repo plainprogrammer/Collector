@@ -1,7 +1,7 @@
 # Feature 023: Browse the Catalog Without Signing In
 
 **Status:** Approved with changes by the maintainer on 2026-10-14, after a read-only Fable review; the changes are in v1.2.0
-**Version:** 1.2.0
+**Version:** 1.2.1
 **Created:** 2026-10-14
 **Last Updated:** 2026-10-14
 **Branch:** `023-signed-out-catalog-browsing`
@@ -16,6 +16,7 @@
 | 1.0.0 | 2026-10-14 | Written from issue #59, the north star's hosted-door notes and rulings 27, 29 and 30 |
 | 1.1.0 | 2026-10-14 | From the read-only Opus spec review: ruling 27 restated as written; decision 1's reasons corrected and the environment variable versus `InstanceSetting` put to the maintainer; a parser and an initializer named (AC-1.1, AC-1.2); the compose spec named (AC-1.3); an empty instance (AC-2.3) and a stale session cookie (AC-2.4) covered; one signed-in test per request (FR-4); decision 4 says when the key is written and that sign-up still goes to the collection; AC-4.1 checks structure; caching (AC-4.5); the brand's label and the detail header on phones |
 | 1.2.0 | 2026-10-14 | The maintainer's rulings (decision 1: the environment variable; decision 2: all printings opens) and approval with changes, from the read-only Fable review: `collector?` is a helper every page reads, so the quick add's full-lot re-render keeps the collection parts (FR-4, AC-6.2); a shell with no tab bar drops its clearance (`c-shell--untabbed`, decision 3, AC-5.7, ruled by the maintainer); a prefetch is recognised as `CollectionsController#prefetch?` does, lifted to a shared place (decision 4); sign-up clears the return path (decision 4, AC-3.7); the README advises a rate limit at the proxy (AC-1.4); AC-1.2's initializer half and AC-4.3's CSRF note corrected; the sign-in page's unlinked brand accepted (AC-5.6); the return path isn't an open redirect (Security) |
+| 1.2.1 | 2026-10-14 | From the Fable plan review: decision 4 notes that the return path keeps the page's query, so a card opened from a `from=collection` link is returned to with it |
 
 ---
 
@@ -80,7 +81,7 @@ Below 640px the shell keeps 80px at the foot of the page clear for the tab bar (
 
 ### 4. Signing in from a catalog page comes back to it
 
-A visitor who opens a catalog page and then signs in returns to the last catalog page they opened, through the same session key a refused page uses today (`return_to_after_authenticating`). Without it a visitor who signs in to add the card in front of them lands in their collection and has to search again. The key is written only when a visitor's GET of a catalog page renders it, and not for a prefetch, which is a page they hovered, not one they saw. A prefetch is recognised as `CollectionsController#prefetch?` recognises one today (`Sec-Purpose`, `X-Sec-Purpose`, `X-Moz` or `Purpose` naming it), lifted to a place both controllers share. A collector's request never writes it. A refused page visited later overwrites it, as today. Sign-up still lands in the collection (a non-goal), and clears the key, so a visitor who browses a card, signs up, and later signs out and in again doesn't land on that card.
+A visitor who opens a catalog page and then signs in returns to the last catalog page they opened, through the same session key a refused page uses today (`return_to_after_authenticating`). Without it a visitor who signs in to add the card in front of them lands in their collection and has to search again. The key is written only when a visitor's GET of a catalog page renders it, and not for a prefetch, which is a page they hovered, not one they saw. A prefetch is recognised as `CollectionsController#prefetch?` recognises one today (`Sec-Purpose`, `X-Sec-Purpose`, `X-Moz` or `Purpose` naming it), lifted to a place both controllers share. A collector's request never writes it. A refused page visited later overwrites it, as today. The path is the page's full path with its query, so a visitor who followed a `from=collection` link comes back to it with that parameter, and, now signed in, sees the collection's crumbs (consistent with decision 6). Sign-up still lands in the collection (a non-goal), and clears the key, so a visitor who browses a card, signs up, and later signs out and in again doesn't land on that card.
 
 ### 5. Collection parts are left out, not shown empty
 
