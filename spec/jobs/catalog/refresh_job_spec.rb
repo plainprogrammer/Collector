@@ -103,5 +103,18 @@ RSpec.describe Catalog::RefreshJob, type: :job do
         message: "Catalog::Sources::RateLimitedError: GET https://api.scryfall.com/bulk-data returned 429 and asked for 600 seconds " \
                  "before a retry; the client waits at most 30")
     end
+
+    # Scryfall limits access for 30 seconds after a 429, and may not say so in a Retry-After. The refresh then asks
+    # nothing more in that run, and its job is the next to ask, 30 seconds later (issue #81).
+    it "asks Scryfall once when a 429 gives no Retry-After, and is queued to run again 30 seconds later", :aggregate_failures do
+      limited = stub_request(:get, "https://api.scryfall.com/bulk-data").to_return({ status: 429 }, { status: 429 }, { status: 429 })
+      allow(MTG::Scryfall::Client).to receive(:new).and_return(MTG::Scryfall::Client.new(sleeper: ->(_) { }, clock: -> { 0.0 }))
+
+      expect { described_class.perform_now("mtg") }.to have_enqueued_job(described_class).with("mtg").at(30.seconds.from_now)
+      expect(limited).to have_been_requested.once
+      expect(Catalog::RefreshRun.sole).to have_attributes(status: "failed",
+        message: "Catalog::Sources::RateLimitedError: GET https://api.scryfall.com/bulk-data returned 429 with no usable Retry-After; " \
+                 "Scryfall limits access for 30 seconds after a 429, so the client doesn't ask again in this call")
+    end
   end
 end
