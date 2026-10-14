@@ -150,7 +150,7 @@ The header and footer sit about 8px in from the window's edges. That inset preda
 
 ## Local gate
 
-bin/ci: TBD
+`bin/ci` at `9cd4907` (2026-10-14): passed in 3m27s. RuboCop, Brakeman, bundler-audit and the importmap audit clean; RSpec 1456 examples, 0 failures, 1 pending (the art-agreement skip), seed 43984.
 
 ## Notes
 
