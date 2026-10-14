@@ -45,9 +45,12 @@ RSpec.describe "Design system files" do
     end
 
     it "leaves the export's fade and its override as the only rules that fade, filter or blend anything on a tile (FR-3)" do
-      rules = root.glob("app/assets/stylesheets/**/*.css").flat_map { |path| path.read.scan(/[^{}]*c-tile[^{}]*\{[^}]*\}/) }
-      treating = rules.grep(/opacity|filter|mix-blend-mode/)
-      expect(treating.map { |rule| rule[/\{.*\}/m].delete(" ") }.sort).to eq([ "{opacity:.45;}", "{opacity:1;}" ])
+      # Comments are dropped first, so only a rule's own declarations are read. The first of the two is the export's
+      # (components.css); an export that drops the fade removes it, and this expectation is edited then.
+      rules = root.glob("app/assets/stylesheets/**/*.css")
+        .flat_map { |path| path.read.gsub(%r{/\*.*?\*/}m, "").scan(/([^{}]*c-tile[^{}]*)(\{[^}]*\})/) }
+      treating = rules.map(&:last).grep(/opacity|filter|mix-blend-mode/)
+      expect(treating.map { |declarations| declarations.delete(" ") }.sort).to eq([ "{opacity:.45;}", "{opacity:1;}" ])
     end
   end
 end

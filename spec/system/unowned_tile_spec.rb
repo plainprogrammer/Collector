@@ -80,7 +80,7 @@ RSpec.describe "Unowned tiles", :card_images, type: :system do
   it "keeps a mixed row's add buttons level at 1280px and at phone width (AC-1.7, AC-2.1)", :aggregate_failures do
     # One set and numbers in order, so the results come owned, unowned, unowned, owned whatever the factories' sequences hold.
     set = create(:catalog_set)
-    [ { owned: 1 }, {}, { image: false }, { owned: 2 } ].each_with_index { |tile, index| printing(set:, number: (index + 1).to_s, **tile) }
+    [ { owned: 1 }, {}, { image: false }, { owned: 2 } ].each_with_index { |options, index| printing(set:, number: (index + 1).to_s, **options) }
     visit catalog_entries_path(q: "bolt")
     expect(page).to have_css(".c-grid .c-tile__add", count: 4)
 
