@@ -74,6 +74,15 @@ RSpec.describe "Admin catalog page", :solid_queue, type: :request do
         expect(rows.second).to end_with("scheduled · applied 100 seen · 0 changed")
       end
 
+      it "says why a listed run failed in plain words, not its error (issue #84)" do
+        create(:catalog_refresh_run, status: "failed", message: "SQLite3::BusyException: database is locked")
+
+        get admin_catalog_path
+
+        expect(text(panel.at_css(".c-runs li")))
+          .to end_with("scheduled · failed The database was busy and didn't answer in time. This usually passes by itself.")
+      end
+
       it "shows a second type with its own title and extra operation, and starts it (AC-5.3)", :aggregate_failures, :other_catalog do
         get admin_catalog_path
 
@@ -266,14 +275,17 @@ RSpec.describe "Admin catalog page", :solid_queue, type: :request do
         expect(text(section("refresh").at_css(".c-operation__summary"))).to eq("Skipped: default-cards-7 already applied.")
       end
 
-      it "shows a failed run's stage and message, and links to its failed job (AC-3.1)", :aggregate_failures do
+      it "shows a failed run's stage and why, with its error as the detail, and links to its failed job (AC-3.1, issue #84)",
+        :aggregate_failures do
         create(:catalog_refresh_run, status: "failed", stage: "sync", message: "Catalog::Sources::Error: no valid records (3 malformed)")
         fail_job(queue_job(Catalog::RefreshJob, "mtg", "manual"))
 
         get admin_catalog_path
 
         expect(text(section("refresh").at_css(".c-operation__summary")))
-          .to eq("Failed while syncing cards: Catalog::Sources::Error: no valid records (3 malformed)")
+          .to eq("Failed while syncing cards. An unexpected error stopped it.")
+        expect(text(section("refresh").at_css(".c-details")))
+          .to end_with("Technical detail Catalog::Sources::Error: no valid records (3 malformed)")
         expect(section("refresh").at_css("a")["href"]).to eq(admin_jobs_path(status: "failed"))
         expect(section("refresh").at_css("button")["disabled"]).to be_nil
       end
@@ -288,10 +300,11 @@ RSpec.describe "Admin catalog page", :solid_queue, type: :request do
 
         refresh = section("refresh")
         expect(text(refresh.at_css(".c-operation__summary")))
-          .to eq("Queued to retry. The last run failed while downloading: Catalog::Sources::RateLimitedError: " \
-                 "GET https://api.scryfall.com/bulk-data returned 429 with no usable Retry-After; Scryfall limits access for " \
-                 "30 seconds after a 429, so the client doesn't ask again in this call")
+          .to eq("Queued to retry. The last run failed while downloading. #{Catalog::FailureReason::REASONS.fetch("Catalog::Sources::RateLimitedError")}")
         expect(text(refresh.at_css(".c-details"))).to start_with("Retrying at 9 Oct 2026 03:16 UTC")
+        expect(text(refresh.at_css(".c-details"))).to end_with("Technical detail Catalog::Sources::RateLimitedError: " \
+          "GET https://api.scryfall.com/bulk-data returned 429 with no usable Retry-After; Scryfall limits access for " \
+          "30 seconds after a 429, so the client doesn't ask again in this call")
         expect(refresh.at_css("a")).to be_nil
         expect(refresh.at_css("button")["disabled"]).to be_present
       end
@@ -305,7 +318,7 @@ RSpec.describe "Admin catalog page", :solid_queue, type: :request do
 
         refresh = section("refresh")
         expect(text(refresh.at_css(".c-operation__summary")))
-          .to eq("Queued to retry. The last run failed while downloading: Catalog::Sources::TransientError: 503")
+          .to eq("Queued to retry. The last run failed while downloading. #{Catalog::FailureReason::REASONS.fetch("Catalog::Sources::TransientError")}")
         expect(text(refresh.at_css(".c-details"))).to start_with("Retrying at 9 Oct 2026 03:18 UTC")
         expect(refresh.at_css("a")).to be_nil
         expect(refresh.at_css("button")["disabled"]).to be_present

@@ -97,7 +97,7 @@ img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches:
 /* ---------- Card page: details list, single stat, faces ---------- */
 .c-details { display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:var(--space-3) var(--space-4); margin:0; }
 .c-details dt { font:600 12px/16px var(--font-sans); color:var(--ink-muted); }
-.c-details dd { margin:var(--space-1) 0 0; font:400 14px/20px var(--font-sans); color:var(--ink); }
+.c-details dd { margin:var(--space-1) 0 0; font:400 14px/20px var(--font-sans); color:var(--ink); overflow-wrap:anywhere; } /* a value may be one long unbroken string, such as an error naming a URL */
 .c-details .is-data { font-family:var(--font-mono); }
 .c-stats--single { grid-template-columns:minmax(0, 1fr); max-width:240px; }
 .c-face { display:flex; flex-direction:column; gap:var(--space-2); }

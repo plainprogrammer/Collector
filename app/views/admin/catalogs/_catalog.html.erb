@@ -22,7 +22,7 @@
           <li>
             <span><%= utc_time(run.started_at) %></span>
             <span class="c-list__meta"><%= run.trigger %> · <%= catalog.refresh.status_label(run) %></span>
-            <span class="c-list__end"><%= refresh_run_outcome(run) %></span>
+            <span class="c-list__end"><%= refresh_run_outcome(run, catalog.refresh) %></span>
           </li>
         <% end %>
       </ul>
