@@ -11,9 +11,10 @@ require "net/http"
 # Without a usable Retry-After the two retryable answers part ways (issue #81). A 5xx (images only) is retried after 1
 # and then 2 seconds. A 429 isn't retried in the call at all: Scryfall limits access for RATE_LIMITED_FOR seconds after
 # one, so a retry sooner can't succeed and counts as going on overloading it. The call ends at once with a
-# RateLimitedError that carries no wait, and the job's retry, SHORTEST_WAIT (30 seconds) later, is the next request.
-# Scryfall's pages don't say whether its 429 carries Retry-After, and none has been observed, so this may be the path
-# every rate limit takes; a 429 that does carry a usable one is waited for as it asks.
+# RateLimitedError that carries no wait, and the job's retry, SHORTEST_WAIT (45 seconds) later, is the next request.
+# A Retry-After of zero on a 429 counts as none. Scryfall's pages don't say whether its 429 carries Retry-After, and
+# none has been observed, so this may be the path every rate limit takes; a 429 that carries a wait of a second or
+# more, up to MAX_BACK_OFF, is waited for as it asks.
 class MTG::Scryfall::Client
   API_ROOT = "https://api.scryfall.com"
   USER_AGENT = "Collector/1.0 (+https://github.com/plainprogrammer/Collector)"
@@ -96,13 +97,15 @@ class MTG::Scryfall::Client
     # After a response worth a retry: waits what its Retry-After asks for, or, after a 5xx without one, 1 and then 2
     # seconds, so that the next attempt can follow. Or ends the call by raising, so every attempt's loop ends in a
     # return or here:
-    # - a 429 with no usable Retry-After is never retried here, whichever attempt it answers (issue #81);
+    # - a 429 with no usable Retry-After is never retried here, whichever attempt it answers (issue #81). A wait of
+    #   zero is no wait: obeyed, it would put all MAX_ATTEMPTS requests inside the window, MIN_INTERVAL apart. A 5xx
+    #   that asks for zero is retried at once, as it asks;
     # - a wait longer than MAX_BACK_OFF is never slept, so a worker can't be held for as long as a header says (#74);
     # - after the last attempt nothing is slept either, since a wait only serves a retry.
     # One call therefore waits (MAX_ATTEMPTS - 1) * MAX_BACK_OFF seconds at most, besides the time its requests take.
     def back_off(uri, response, attempt)
       wait = retry_after(response)
-      raise limited_with_no_wait(uri) if wait.nil? && response.is_a?(Net::HTTPTooManyRequests)
+      raise limited_with_no_wait(uri) if response.is_a?(Net::HTTPTooManyRequests) && !wait&.positive?
 
       wait ||= 2**attempt
       if wait > MAX_BACK_OFF

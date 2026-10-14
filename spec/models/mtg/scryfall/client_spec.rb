@@ -11,7 +11,7 @@ RSpec.describe MTG::Scryfall::Client, type: :model do
 
   # Scryfall limits access for 30 seconds after a 429 (https://scryfall.com/docs/api/rate-limits), and its pages don't
   # say whether a 429 carries Retry-After. With none to go by, the call ends where it is: the next request is the job's
-  # retry, 30 seconds later at the soonest (Catalog::RateLimitRetry), never one of this call's own (issue #81).
+  # retry, 45 seconds later at the soonest (Catalog::RateLimitRetry), never one of this call's own (issue #81).
   # Include with `url` and `call` (the request under test) defined.
   shared_examples "a call that doesn't ask again after a 429 with no usable Retry-After (issue #81)" do
     let(:asked_to_wait) { { status: 429, headers: { "Retry-After" => "2" } } }
@@ -44,7 +44,8 @@ RSpec.describe MTG::Scryfall::Client, type: :model do
       expect(stub).to have_been_requested.times(3)
     end
 
-    [ "-5", "soon", "1.5", "0x1F", "1_0", "", "Tue, 13 Oct 2026 11:59:00 GMT" ].each do |value|
+    # Zero, and a date that is now, name no wait either: obeyed, they would put all 3 requests within about 0.2 seconds.
+    [ "-5", "soon", "1.5", "0x1F", "1_0", "", "   ", "0", "00", "Tue, 13 Oct 2026 11:59:00 GMT", "Tue, 13 Oct 2026 12:00:00 GMT" ].each do |value|
       it "takes a Retry-After of #{value.inspect} as none: no wait, no second request", :aggregate_failures do
         travel_to Time.utc(2026, 10, 13, 12, 0, 0) do
           stub = stub_request(:get, url).to_return({ status: 429, headers: { "Retry-After" => value } }, { body: "{}" })
@@ -161,13 +162,6 @@ RSpec.describe MTG::Scryfall::Client, type: :model do
           .to_return({ status: 429, headers: { "Retry-After" => retry_after } }, json_response("ok" => true))
       end
 
-      it "retries at once when it is zero", :aggregate_failures do
-        rate_limited_once("0")
-
-        expect(client.get_json("/sets")).to eq("ok" => true)
-        expect(back_offs).to eq([ 0 ])
-      end
-
       it "waits until an HTTP date, to the next whole second", :aggregate_failures do
         travel_to Time.utc(2026, 10, 13, 12, 0, 0, 500_000), with_usec: true do
           rate_limited_once("Tue, 13 Oct 2026 12:00:20 GMT")
@@ -239,6 +233,15 @@ RSpec.describe MTG::Scryfall::Client, type: :model do
         expect(back_offs).to eq([ 1, 2 ])
         expect(stub).to have_been_requested.times(3)
       end
+    end
+
+    it "retries a 5xx at once when its Retry-After is zero, as it asks", :aggregate_failures do
+      stub = stub_request(:get, url).to_return({ status: 503, headers: { "Retry-After" => "0" } }, { status: 503, headers: { "Retry-After" => "0" } },
+        { body: "x" })
+
+      expect(client.fetch_image(url)).to eq("x")
+      expect(naps - [ 0.1 ]).to eq([ 0, 0 ])
+      expect(stub).to have_been_requested.times(3)
     end
 
     it "waits 60 seconds at most in one call, as an API call does (issue #74)", :aggregate_failures do
