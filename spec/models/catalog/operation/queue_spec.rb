@@ -70,6 +70,17 @@ RSpec.describe Catalog::Operation::Queue, :solid_queue, type: :model do
     end
   end
 
+  it "says when one job's retry is due, by Active Job id (issue #80)", :aggregate_failures do
+    freeze_time do
+      retrying = queue_job(Catalog::RefreshJob, "mtg", "manual", wait: 5.minutes)
+      ready = queue_job(Catalog::RefreshJob, "mtg", "manual")
+
+      expect(queue.retry_at(retrying.active_job_id)).to eq(5.minutes.from_now)
+      expect(queue.retry_at(ready.active_job_id)).to be_nil
+      expect(queue.retry_at("job-gone")).to be_nil
+    end
+  end
+
   it "reports a failed job as failed, not in flight", :aggregate_failures do
     fail_job(queue_job(Catalog::RefreshJob, "mtg", "manual"))
 

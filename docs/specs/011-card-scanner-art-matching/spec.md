@@ -1,7 +1,7 @@
 # Feature 011: Card Scanner — Art Matching on Live Capture
 
 **Status:** Approved
-**Version:** 1.2.0
+**Version:** 1.2.1
 **Created:** 2026-10-07
 **Last Updated:** 2026-10-13
 **Branch:** `011-card-scanner-art-matching`
@@ -19,6 +19,7 @@
 | 1.1.3 | 2026-10-07 | Third spec review (Fable, one Important item). **A queue re-run after a restart** finds its own run by job id, marks it interrupted and carries on at once, instead of being skipped by its own fresh heartbeat (AC-3.2, AC-3.8, Error Scenarios); `catalog:status` shows a run with a stale heartbeat as Interrupted (AC-3.11). **Also:** a reading with no text but confident art shows the art candidate rather than "Nothing could be read" (AC-6.3, AC-7.1); the measurement event goes to a run-level file joined by reading key (AC-9.3) |
 | 1.1.4 | 2026-10-13 | [Issue #73](https://github.com/plainprogrammer/Collector/issues/73): a build run still marked running whose own job the queue has failed, or no longer holds, is interrupted once its heartbeat is older than 2 minutes, without waiting for the staleness cutoff: the next build job closes it and proceeds, and `catalog:status` shows it as Interrupted (AC-3.2, AC-3.8, AC-3.11, Error Scenarios). The rule is spec 015's AC-4.10, which the admin catalog page follows too |
 | 1.2.0 | 2026-10-13 | [Issue #74](https://github.com/plainprogrammer/Collector/issues/74): on a 429 or 5xx the image request slept for whatever `Retry-After` said, with no upper bound, so a long one held a worker and could keep the build from its heartbeat for as long as the header said. **The back-off is bounded:** a wait before a retry is at most 30 seconds, there is none after the last attempt, and so one image waits 60 seconds at most; a longer wait asked for ends the request at once as rate limited (AC-3.4). **A rate limit stops the build** instead of counting as that image's failure: carrying on would send a request for every image left to a host that asked the build to stay away, and record each as failed. The run is marked failed and says why, and the build job runs again no sooner than the host asked (30 seconds at least, an hour at most, 3 such retries at most), under the same job id, so the new run carries on from the cache (AC-3.6, Reliability, Error Scenarios) |
+| 1.2.1 | 2026-10-13 | [Issue #79](https://github.com/plainprogrammer/Collector/issues/79): `catalog:status` printed a hung build (its heartbeat past the cutoff while a worker still holds its job) as Interrupted with the advice to run `catalog:refresh[mtg]`, which can't resume it. It prints it as Building with "no heartbeat for N minutes" and the advice to restart the app, as the admin catalog page shows it (spec 015 AC-4.11). What a starting build job does with a stale run is unchanged (AC-3.11, Error Scenarios) |
 
 ---
 
@@ -157,10 +158,10 @@ The scanner (specs 007 and 009) identifies a card from its name and collector li
 - [ ] **AC-3.10** Given the build's decoder (the plan's choice, ADR 0006) When it fingerprints images Then its fingerprints agree with the scanner page's to 0 bits (Story 8) before its index is used.
 - [ ] **AC-3.11** Given `bin/rails "catalog:status[mtg]"` When it runs Then it prints an art line:
   - **Off** when art matching is off
-  - **Building**, with the images fetched and fingerprinted against the total, while a build is in progress
+  - **Building**, with the images fetched and fingerprinted against the total, while a build is in progress; with "no heartbeat for N minutes" and the advice to restart the app when the run's heartbeat is past the cutoff while a worker still holds its job (spec 015 AC-4.11)
   - **Ready**, with the artworks indexed, the artworks without an image, the failed images, and the index file in use
   - **Failed**, with the time and message of the last failed build, and the index still in use if any
-  - **Interrupted**, for a run still marked running whose heartbeat is past the cutoff, or older than 2 minutes when the queue has failed its job or no longer holds it (AC-3.2), with its last heartbeat time and counts, and the advice to run `catalog:refresh[mtg]` to resume
+  - **Interrupted**, for a run still marked running whose heartbeat is past the cutoff and whose job no worker holds, or older than 2 minutes when the queue has failed its job or no longer holds it (AC-3.2), with its last heartbeat time and counts, and the advice to run `catalog:refresh[mtg]` to resume
 
   When no build has run yet, it says so. The line reflects the most recent build run that wasn't skipped, read from the build runs (AC-3.2) and the artwork table; "Building" shows the running run's latest counts.
 
@@ -407,7 +408,7 @@ The scanner (specs 007 and 009) identifies a card from its name and collector li
 | The build is interrupted (deploy, restart, crash) | The next build resumes from the cache and stored fingerprints (AC-3.8); the previous index stays in use meanwhile |
 | The disk fills during the build | The build run is marked failed and logged; `catalog:status[mtg]` shows Failed; the previous index stays in use; the partial file is never served |
 | The queue re-runs a build job after a restart | The job finds its own run (same job id), marks it failed as interrupted and carries on at once (AC-3.2) |
-| A build crashes and its job isn't re-run | `catalog:status[mtg]` shows Interrupted once the queue has failed the job and the heartbeat is older than 2 minutes, or once the heartbeat is past the cutoff whatever became of the job; the next build job (next refresh, `catalog:refresh[mtg]`, or "Build art index" on the admin catalog page) marks the run interrupted and proceeds (AC-3.2) |
+| A build crashes and its job isn't re-run | `catalog:status[mtg]` shows Interrupted once the queue has failed the job and the heartbeat is older than 2 minutes, or once the heartbeat is past the cutoff unless a worker still holds the job (it then shows Building with "no heartbeat for N minutes", AC-3.11); the next build job (next refresh, `catalog:refresh[mtg]`, or "Build art index" on the admin catalog page) marks the run interrupted and proceeds (AC-3.2) |
 | A reading's art part is malformed, too long, or out of range | The art part is dropped; the text ranks alone; the reading is not refused |
 | Art matching is turned off with an index on disk | The index is not served or referenced; cached images and fingerprints stay |
 | The index URL names a file that isn't the current or previous index | 404 |

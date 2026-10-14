@@ -86,12 +86,69 @@ RSpec.describe MTG::Art::Operation, :solid_queue, type: :model do
       expect(operation).to be_in_flight
     end
 
-    # Nothing is queued then: the worker that holds the job is hung or slow, and the build reads as it did before.
-    it "stays interrupted while a worker still holds the job of the build whose heartbeat stopped", :aggregate_failures do
-      loaded
-      build(status: "running", finished_at: nil, heartbeat_at: 11.minutes.ago, job_id: claim_job(queue_job(MTG::Art::BuildJob)).active_job_id)
+    # A worker that still holds the job is hung or slow, and nothing can be started while it does (issue #79).
+    context "when a worker still holds the job of the build whose heartbeat stopped" do
+      let(:job) { claim_job(queue_job(MTG::Art::BuildJob)) }
 
-      expect(operation).to have_attributes(state: :interrupted, startable?: false)
+      def stalled_build(**attributes)
+        build(status: "running", finished_at: nil, started_at: 1.hour.ago, heartbeat_at: 11.minutes.ago, job_id: job.active_job_id, **attributes)
+      end
+
+      it "is stalled, not interrupted: it says what to do and never to build it again", :aggregate_failures do
+        loaded
+        stalled_build
+
+        expect(operation).to have_attributes(state: :stalled, startable?: false, record_running?: true, failed_job?: false,
+          summary: "Building, no heartbeat for 11 minutes. If it stays that way, restart the app. The build then carries on from where " \
+                   "it stopped, or reads interrupted and can be built again.")
+        expect(operation).to be_in_flight
+      end
+
+      it "shows the progress, counts and heartbeat a building one does", :aggregate_failures do
+        loaded
+        freeze_time do
+          stalled_build(total_count: 10, fingerprinted_count: 3, fetched_count: 4, failed_count: 1)
+
+          expect(operation.meter).to have_attributes(percent: 30, text: "3 of 10 artworks fingerprinted")
+          expect(operation.facts.map { |fact| [ fact.label, fact.value, fact.relative ] }).to eq([ [ "Started", 1.hour.ago, false ],
+            [ "Images fetched", 4, false ], [ "Failed images", 1, false ], [ "Last heartbeat", 11.minutes.ago, true ] ])
+        end
+      end
+
+      it "stays stalled when another build job waits in the queue" do
+        loaded
+        stalled_build
+        queue_job(MTG::Art::BuildJob)
+
+        expect(operation.state).to eq(:stalled)
+      end
+
+      # That job closes the stalled build when it opens its own (MTG::ArtBuild.start!); until then the hung one is the news.
+      it "stays stalled while a worker holds a second build job too", :aggregate_failures do
+        loaded
+        stalled_build
+        claim_job(queue_job(MTG::Art::BuildJob))
+
+        expect(operation).to have_attributes(state: :stalled, startable?: false, failed_job?: false)
+        expect(operation).to be_in_flight
+      end
+
+      it "is interrupted, and can be built again, once the queue has failed that job", :aggregate_failures do
+        loaded
+        stalled_build
+        fail_job(job)
+
+        expect(operation).to have_attributes(state: :interrupted, startable?: true, failed_job?: true,
+          summary: "Interrupted. Build it again to carry on from where it stopped.")
+      end
+
+      it "is interrupted, and can be built again, once that job has left the queue", :aggregate_failures do
+        loaded
+        stalled_build
+        finish_job(job)
+
+        expect(operation).to have_attributes(state: :interrupted, startable?: true, failed_job?: false)
+      end
     end
 
     it "is still building while a worker holds its job, though it hasn't beaten for some minutes", :aggregate_failures do
@@ -120,9 +177,17 @@ RSpec.describe MTG::Art::Operation, :solid_queue, type: :model do
       it "is queued, not interrupted and not failed, long after the build's last heartbeat", :aggregate_failures do
         travel 9.minutes do
           expect(SolidQueue::Job.sole).to have_attributes(active_job_id: job.job_id, scheduled_at: be_within(1.second).of(1.minute.from_now))
-          expect(operation).to have_attributes(state: :queued, summary: "Queued.", failed_job?: false, startable?: false)
+          expect(operation).to have_attributes(state: :queued, failed_job?: false, startable?: false, record_running?: false)
           expect(operation).to be_in_flight
         end
+      end
+
+      it "says it is queued to retry, why the last build failed and when the retry is due (issue #80)", :aggregate_failures do
+        expect(operation).to have_attributes(meter: nil,
+          summary: "Queued to retry. The last build failed: Catalog::Sources::RateLimitedError: asked for 600 seconds")
+        expect(operation.facts.map { |fact| [ fact.label, fact.value, fact.relative ] }).to eq([
+          [ "Retrying at", SolidQueue::Job.sole.scheduled_at, false ], [ "Finished", MTG::ArtBuild.sole.finished_at, false ],
+          [ "Index in use", "none", false ] ])
       end
 
       it "opens a new run when the retry starts, leaving the failed one as it ended", :aggregate_failures do
@@ -135,6 +200,73 @@ RSpec.describe MTG::Art::Operation, :solid_queue, type: :model do
           expect(run.id).not_to eq(failed.id)
           expect(failed.reload).to have_attributes(status: "failed", message: include("asked for 600 seconds"))
         end
+      end
+    end
+
+    # Any scheduled retry of the build's own job reads this way (issue #80). The build marks its run failed with the
+    # error before the job's retry_on puts it back in the queue (MTG::Art::BuildJob).
+    context "when a failed build's job waits to run again" do
+      it "says so for a busy database, with the database's own message", :aggregate_failures do
+        loaded
+        freeze_time do
+          job = queue_job(MTG::Art::BuildJob, wait: 18.seconds)
+          build(status: "failed", job_id: job.active_job_id, message: "SQLite3::BusyException: database is locked")
+
+          expect(operation).to have_attributes(state: :queued, startable?: false,
+            summary: "Queued to retry. The last build failed: SQLite3::BusyException: database is locked")
+          expect(operation.facts.first).to have_attributes(label: "Retrying at", value: 18.seconds.from_now)
+        end
+      end
+
+      # The reason and the time belong to the same job (spec 015 AC-4.12).
+      it "gives its own job's time, not an earlier one another scheduled build job has", :aggregate_failures do
+        loaded
+        freeze_time do
+          job = queue_job(MTG::Art::BuildJob, wait: 10.minutes)
+          queue_job(MTG::Art::BuildJob, wait: 1.minute)
+          build(status: "failed", job_id: job.active_job_id, message: "boom")
+
+          expect(operation.summary).to eq("Queued to retry. The last build failed: boom")
+          expect(operation.facts.first).to have_attributes(label: "Retrying at", value: 10.minutes.from_now)
+        end
+      end
+
+      it "is plain queued once the retry is due, with nothing left to say about when", :aggregate_failures do
+        loaded
+        build(status: "failed", job_id: queue_job(MTG::Art::BuildJob).active_job_id, message: "boom")
+
+        expect(operation).to have_attributes(state: :queued, summary: "Queued.", facts: [])
+      end
+    end
+
+    # A build queued fresh has no failed build of its own behind it, whatever the latest build was (issue #80).
+    context "when a build job is queued fresh" do
+      it "is plain queued behind another job's failed build", :aggregate_failures do
+        loaded
+        build(status: "failed", job_id: "job-1", message: "boom")
+        queue_job(MTG::Art::BuildJob)
+
+        expect(operation).to have_attributes(state: :queued, summary: "Queued.", facts: [], failed_job?: false)
+      end
+
+      # A retry that never opened a build of its own: the database was busy before MTG::ArtBuild.start! could.
+      it "doesn't give another job's failure as the reason a scheduled job waits, but still says when it is due", :aggregate_failures do
+        loaded
+        freeze_time do
+          build(status: "failed", job_id: "job-1", message: "boom")
+          queue_job(MTG::Art::BuildJob, wait: 3.minutes)
+
+          expect(operation).to have_attributes(state: :queued, summary: "Queued.")
+          expect(operation.facts.map { |fact| [ fact.label, fact.value ] }).to eq([ [ "Retrying at", 3.minutes.from_now ] ])
+        end
+      end
+
+      it "is plain queued behind a finished build" do
+        loaded
+        build
+        queue_job(MTG::Art::BuildJob)
+
+        expect(operation).to have_attributes(state: :queued, summary: "Queued.", facts: [])
       end
     end
 

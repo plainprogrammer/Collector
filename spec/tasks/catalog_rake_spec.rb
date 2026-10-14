@@ -86,6 +86,13 @@ RSpec.describe "catalog rake tasks", type: :task do # rubocop:disable RSpec/Desc
 
       expect { Rake::Task["catalog:status"].invoke("mtg") }.to output(/^Art matching: building/).to_stdout
     end
+
+    it "prints an art build whose heartbeat stopped while a worker holds its job as building, as the page does (issue #79)", :art_matching, :solid_queue do
+      job = claim_job(queue_job(MTG::Art::BuildJob))
+      create(:mtg_art_build, status: "running", finished_at: nil, started_at: 1.hour.ago, heartbeat_at: 11.minutes.ago, job_id: job.active_job_id)
+
+      expect { Rake::Task["catalog:status"].invoke("mtg") }.to output(/^Art matching: building \(no heartbeat for 11 minutes\) since /).to_stdout
+    end
   end
 
   def capture_stdout

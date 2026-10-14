@@ -191,6 +191,32 @@ RSpec.describe MTG::ArtBuild, type: :model do
     expect(run.counts).to include(total: 3, fetched: 1, indexed: 3)
   end
 
+  describe "#stalled?" do
+    let(:queue) { described_class.job_queue }
+
+    it "is true once the heartbeat is older than 10 minutes while a worker still holds the build's job", :aggregate_failures, :solid_queue do
+      job = claim_job(queue_job(MTG::Art::BuildJob))
+      build = running(heartbeat_at: 9.minutes.ago, job_id: job.active_job_id)
+
+      expect(build.stalled?(queue)).to be(false)
+      travel(2.minutes + 1.second) do # travel drops the fraction of the second
+        expect(build.stalled?(queue)).to be(true)
+        expect(build.stalled_minutes).to eq(11)
+      end
+    end
+
+    it "is false when the job is failed, waiting, gone or another build's, and for a build that ended", :aggregate_failures, :solid_queue do
+      held = claim_job(queue_job(MTG::Art::BuildJob))
+      failed = fail_job(claim_job(queue_job(MTG::Art::BuildJob)))
+      waiting = queue_job(MTG::Art::BuildJob)
+
+      [ failed.active_job_id, waiting.active_job_id, "job-gone", nil ].each do |job_id|
+        expect(running(heartbeat_at: 11.minutes.ago, job_id:).stalled?(queue)).to be(false)
+      end
+      expect(create(:mtg_art_build, heartbeat_at: 11.minutes.ago, job_id: held.active_job_id).stalled?(queue)).to be(false)
+    end
+  end
+
   it "is stale only while running with an old heartbeat", :aggregate_failures do
     run = start
     expect(run).not_to be_stale
