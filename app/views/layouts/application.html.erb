@@ -9,6 +9,9 @@
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
     <%= turbo_refreshes_with method: :morph, scroll: :preserve %>
+    <%# Spec 023 decision 4: Turbo reuses a prefetched page without asking the server again, so a visitor's catalog visit
+        would never be remembered for sign-in. Visitors get no prefetch. %>
+    <% unless collector? %><meta name="turbo-prefetch" content="false"><% end %>
     <%= yield :head %>
 
     <link rel="icon" href="<%= asset_path("collector/collector-mark.svg") %>" type="image/svg+xml">
