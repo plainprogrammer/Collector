@@ -124,6 +124,13 @@ local `podman build`).
   so an empty listing would pass. The OCR files the script fetches under `/ocr/v7.0.0/` show that `ocr` is there.
 - **Where these ran:** every image run above was on the dev machine with podman, on amd64. Docker and arm64
   were not run locally.
+- **In CI (issues #19 and #31):** [PR #82](https://github.com/plainprogrammer/Collector/pull/82)'s run
+  [38475164995](https://github.com/plainprogrammer/Collector/actions/runs/38475164995), on head `921c631`,
+  passed `ci`, `Image (linux/amd64)` and `Image (linux/arm64)`; `Publish manifest list` was skipped, as on every
+  pull request. Each image job builds from a fresh checkout and runs `bin/image-smoke` with the exact
+  `catalog:status` line and the `/rails/vendor` check. That run doesn't cover the three commits made after it
+  (the `collector:user` capture, the vendor check's wording and these notes); their CI is the follow-up pull
+  request's run.
 
 ## Not yet evidenced
 
