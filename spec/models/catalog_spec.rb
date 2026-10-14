@@ -35,4 +35,34 @@ RSpec.describe Catalog, type: :model do
       expect(described_class.unloaded_titles).to eq([ described_class.title_for("mtg") ])
     end
   end
+
+  describe ".public_in? (spec 023 AC-1.1)" do
+    it "is on for 1, true, yes and on, in any case and with surrounding spaces" do
+      values = [ "1", "true", "yes", "on", "TRUE", " On ", " TRUE " ]
+      expect(values.map { described_class.public_in?(described_class::PUBLIC_ENV => it) }).to all(be(true))
+    end
+
+    it "is off when unset, empty or anything else" do
+      envs = [ {}, "", "0", "false", "maybe" ].map { it.is_a?(Hash) ? it : { described_class::PUBLIC_ENV => it } }
+      expect(envs.map { described_class.public_in?(it) }).to all(be(false))
+    end
+  end
+
+  describe ".public? (spec 023 AC-1.2)" do
+    it "is off in tests unless an example turns it on" do
+      expect(described_class).not_to be_public
+    end
+
+    it "reads the app's configuration", :public_catalog do
+      expect(described_class).to be_public
+    end
+
+    it "is off when the configuration is anything but true" do
+      previous = Rails.configuration.x.public_catalog
+      Rails.configuration.x.public_catalog = "true"
+      expect(described_class).not_to be_public
+    ensure
+      Rails.configuration.x.public_catalog = previous
+    end
+  end
 end
