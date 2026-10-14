@@ -1,4 +1,5 @@
 <% content_for :title, "#{@identity.name} printings · Collector" %>
+<%= render "catalog/visitor_head" %>
 <%= render "layouts/appbar", section: :search %>
 <main class="c-main">
   <ol class="c-crumbs"><li><%= link_to "Search", catalog_entries_path(q: @identity.name) %></li><li><%= @identity.name %></li></ol>

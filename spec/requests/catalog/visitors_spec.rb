@@ -87,6 +87,29 @@ RSpec.describe "The catalog for visitors", type: :request do
     end
   end
 
+  # The sign-in and sign-up pages, which have never had a tab bar (decision 3).
+  def auth_pages = [ new_session_path, new_registration_path ]
+
+  def body_classes = html.at_css("body")["class"].split
+
+  describe "the sign-in and sign-up pages" do
+    # Each page's status, whether its shell is untabbed and whether it turns Turbo's prefetch off.
+    def auth_page_shells
+      auth_pages.map do |path|
+        get path
+        [ path, response.status, body_classes.include?("c-shell--untabbed"), html.at_css("meta[name='turbo-prefetch']").present? ]
+      end
+    end
+
+    it "mark the shell untabbed and keep Turbo's prefetch with the setting off (AC-5.7, AC-2.2)" do
+      expect(auth_page_shells).to eq(auth_pages.map { [ it, 200, true, false ] })
+    end
+
+    it "mark the shell untabbed and keep Turbo's prefetch with the setting on (AC-5.7, decision 4)", :public_catalog do
+      expect(auth_page_shells).to eq(auth_pages.map { [ it, 200, true, false ] })
+    end
+  end
+
   # Amendment 2 of the plan: for a collector, the setting changes not one byte of a catalog page.
   it "renders a collector's catalog pages identically with the setting off and on (AC-2.2)", :aggregate_failures do
     sign_in_as(owner)
@@ -314,6 +337,52 @@ RSpec.describe "The catalog for visitors", type: :request do
 
         expect(html.at_css("#catalog_not_loaded").text.squish).to eq("The card catalog hasn't been loaded yet.")
         expect(html.at_css("#catalog_not_loaded a")).to be_nil
+      end
+
+      it "marks the shell untabbed for a visitor and not for a collector (AC-5.7)", :aggregate_failures do
+        pages.each do |path|
+          get path
+          expect(body_classes).to include("c-shell", "c-shell--footed", "c-shell--untabbed"), path
+        end
+
+        sign_in_as(collector)
+        pages.each do |path|
+          get path
+          expect(html.at_css("body")["class"]).to eq("c-shell c-shell--footed"), path
+        end
+      end
+
+      it "gives a visitor the brand, Search and Sign in, and nothing that needs an account (AC-5.1)",
+        :aggregate_failures do
+        pages.each do |path|
+          get path
+          header = html.at_css("body > header.c-appbar#appbar")
+          brand = header.at_css("a.c-appbar__brand")
+          expect([ brand["href"], brand["aria-label"] ]).to eq([ catalog_entries_path, "Collector search" ]), path
+          nav = header.css("nav.c-appbar__nav > *").map { [ it.name, it.text, it["href"], it["aria-current"] ] }
+          expect(nav).to eq([ [ "a", "Search", catalog_entries_path, "page" ] ]), path
+          actions = header.css(".c-appbar__actions > *").map { [ it.name, it.text, it["href"], it["class"] ] }
+          expect(actions).to eq([ [ "a", "Sign in", new_session_path, "c-btn c-btn--secondary c-btn--sm" ] ]), path
+          expect(html.css(".c-appbar__add")).to be_empty, path
+          expect(html.text).not_to include("Sign out"), path
+          [ admin_users_path, admin_catalog_path, admin_jobs_path ].each do |admin|
+            expect(html.css("a[href='#{admin}']")).to be_empty, "#{path}: #{admin}"
+          end
+        end
+      end
+
+      it "keeps the detail header, with its back link to search, on a visitor's card page (decision 3)",
+        :aggregate_failures do
+        get catalog_entry_path(printing)
+
+        header = html.at_css("header#appbar")
+        expect(header["class"].split).to eq(%w[c-appbar c-appbar--detail])
+        expect(header.at_css("a.c-appbar__back")["href"]).to eq(catalog_entries_path)
+        expect(header.at_css("a.c-appbar__brand")["href"]).to eq(catalog_entries_path)
+
+        get catalog_entries_path(q: "Bolt")
+        expect(html.at_css("header#appbar")["class"]).to eq("c-appbar")
+        expect(html.at_css("a.c-appbar__back")).to be_nil
       end
 
       it "turns Turbo's prefetch off for a visitor only (decision 4)", :aggregate_failures do

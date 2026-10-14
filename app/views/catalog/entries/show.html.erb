@@ -1,4 +1,5 @@
 <% content_for :title, "#{@entry.name} · Collector" %>
+<%= render "catalog/visitor_head" %>
 <% crumb_path = card_context == :collection ? collection_path : catalog_entries_path %>
 <%= render "layouts/appbar", section: card_context, detail: true, back_path: crumb_path %>
 <main class="c-main c-page">
