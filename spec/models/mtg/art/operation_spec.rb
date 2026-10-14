@@ -123,6 +123,16 @@ RSpec.describe MTG::Art::Operation, :solid_queue, type: :model do
         expect(operation.state).to eq(:stalled)
       end
 
+      # That job closes the stalled build when it opens its own (MTG::ArtBuild.start!); until then the hung one is the news.
+      it "stays stalled while a worker holds a second build job too", :aggregate_failures do
+        loaded
+        stalled_build
+        claim_job(queue_job(MTG::Art::BuildJob))
+
+        expect(operation).to have_attributes(state: :stalled, startable?: false, failed_job?: false)
+        expect(operation).to be_in_flight
+      end
+
       it "is interrupted, and can be built again, once the queue has failed that job", :aggregate_failures do
         loaded
         stalled_build
