@@ -75,21 +75,25 @@ RSpec.describe MTG::Art::BuildJob, type: :job do
       end
     end
 
-    it "stops at a short burst of 429s, and its retry finishes the build without fetching an image twice", :aggregate_failures, :art_matching do
+    # One 429 that names no wait stops the build: the host isn't asked again inside the 30 seconds Scryfall limits
+    # access for, and the job's retry, 30 seconds later, is the next request (issue #81).
+    it "stops at one 429 with no Retry-After, and its retry 30 seconds later finishes the build without fetching an image twice",
+      :aggregate_failures, :art_matching do
       images = two_artworks
       first = stub_request(:get, images.first).to_return(body: noisy_png)
-      second = stub_request(:get, images.last).to_return({ status: 429 }, { status: 429 }, { status: 429 }, { body: noisy_png })
+      second = stub_request(:get, images.last).to_return({ status: 429 }, { body: noisy_png })
       job = described_class.new
 
       expect { job.perform_now }.to have_enqueued_job(described_class).at(30.seconds.from_now)
       expect(MTG::ArtBuild.sole).to have_attributes(status: "failed", job_id: job.job_id, fetched_count: 1, failed_count: 0,
-        message: include("still rate limited after 3 attempts"))
+        message: include("returned 429 with no usable Retry-After"))
+      expect(second).to have_been_requested.once
 
       ActiveJob::Base.execute(ActiveJob::Base.queue_adapter.enqueued_jobs.last) # the queued retry, as a worker runs it
 
       expect(MTG::ArtBuild.recent.first).to have_attributes(status: "finished", job_id: job.job_id, fetched_count: 1, failed_count: 0, indexed_count: 2)
       expect(first).to have_been_requested.once
-      expect(second).to have_been_requested.times(4)
+      expect(second).to have_been_requested.twice
     end
   end
 end
