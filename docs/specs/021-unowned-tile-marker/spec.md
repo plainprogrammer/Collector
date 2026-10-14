@@ -1,7 +1,7 @@
 # Feature 021: Mark Unowned Tiles Without Fading the Card Image
 
-**Status:** Approved (direction ruled by the maintainer on 2026-10-13; decisions 2 to 8 are this spec's own and await the branch review)
-**Version:** 1.0.0
+**Status:** Direction approved by the maintainer's ruling of 2026-10-13 (decision 1). Decisions 2 to 8 are the implementer's and are put to the maintainer in the pull request
+**Version:** 1.1.0
 **Created:** 2026-10-13
 **Last Updated:** 2026-10-13
 **Branch:** `021-unowned-tile-marker`
@@ -14,6 +14,7 @@
 | Version | Date | Change |
 |---------|------|--------|
 | 1.0.0 | 2026-10-13 | Written from issue #65 and the maintainer's ruling of 2026-10-13 (decision 1) |
+| 1.1.0 | 2026-10-13 | From the branch review. `TileAdd.md` is the app's own document (spec 004), not the export's, and never described the fade: only `ItemTile.md` is exported and does. The Inputs, Non-Goals, decision 7, FR-4, AC-3.4 and Open Questions say so, and `TileAdd.md` now documents the add control's place at the foot of its cell. The status line says what is approved and what is still put to the maintainer |
 
 ---
 
@@ -27,7 +28,7 @@ Scryfall's image guidelines say: "Do not blur, sharpen, desaturate, or color-shi
 
 (`app/assets/stylesheets/collector/components.css:104`). Spec 019 left it out of scope and issue #65 asked for a ruling.
 
-> **Inputs.** The design system and its export arrangement are fixed inputs, as in spec 019: `components.css`, `tokens.css` and the exported documents under `docs/design-system/` are replaced wholesale on re-export, and app patterns live in `app/assets/stylesheets/collector/additions.css` with a document each.
+> **Inputs.** The design system and its export arrangement are fixed inputs, as in spec 019: `components.css`, `tokens.css` and the exported documents under `docs/design-system/` are replaced wholesale on re-export, and app patterns live in `app/assets/stylesheets/collector/additions.css` with a document each. Of the two documents that describe these tiles, `ItemTile.md` is the export's and describes the fade ("`c-tile--owned-none` fades an item you don't own"); `TileAdd.md` is the app's own (spec 004) and doesn't mention it.
 >
 > **Terms.**
 > - An *unowned tile* is a tile rendered by `catalog/entries/_tile` for an entry the signed-in account owns no copy of (`c-tile--owned-none`). That partial is the only place the class is used.
@@ -54,7 +55,7 @@ The card page's printings are rows (`c-list li.is-unowned`), and the collection 
 ## Non-Goals
 
 - Changing owned tiles, the collection grid, the table or list rows, or the scanner's candidates.
-- Editing `components.css`, `tokens.css`, or the exported documents `ItemTile.md` and `TileAdd.md` (which still describe the fade).
+- Editing `components.css`, `tokens.css`, or the exported document `ItemTile.md` (which still describes the fade).
 - Publishing a change to the design system or re-exporting it.
 - The `×N` quantity badge (see Open Questions).
 
@@ -88,7 +89,7 @@ The marker is plain text inside the tile's `<a>`, after the name, the set tag an
 
 ### 7. The add button goes to the foot of its cell
 
-An unowned tile is one line taller (the tag's 18px and the tile's 8px gap). A grid row stretches its cells to one height, so in a mixed row the owned tiles' add buttons would sit a line higher. The add form takes `margin-top:auto` inside `c-tilecell`. The mock-up stretched the tile's link instead (`flex:1`); the outcome on screen is the same, but the margin leaves the link's box, and so its click area, the size of its content, and the selector (`.c-tilecell > .c-tile__add`) can't match a scanner candidate, which shares `c-tilecell` and has no such form.
+An unowned tile is one line taller (the tag's 18px and the tile's 8px gap). A grid row stretches its cells to one height, so in a mixed row the owned tiles' add buttons would sit a line higher. The add form takes `margin-top:auto` inside `c-tilecell`. The mock-up stretched the tile's link instead (`flex:1`); the outcome on screen is the same, but the margin leaves the link's box, and so its click area, the size of its content, and the selector (`.c-tilecell > .c-tile__add`) can't match a scanner candidate, which shares `c-tilecell` and has no such form. Where the add control sits is `TileAdd`'s behaviour, so `TileAdd.md` documents it and it outlives this override.
 
 ### 8. An override in `additions.css`, not a re-export
 
@@ -121,14 +122,14 @@ As spec 019's decision 1, for the same reasons. One block, headed `Unowned tile 
 - [ ] **AC-3.1** `components.css` and `tokens.css` are byte-for-byte unchanged
 - [ ] **AC-3.2** The rules are in one block of `additions.css` headed `Unowned tile (spec 021)`, with no colour literal and no font
 - [ ] **AC-3.3** With the block removed, the browser examples for AC-1.1, AC-1.4 and AC-2.1 fail
-- [ ] **AC-3.4** `docs/design-system/components/UnownedTile.md` documents the pattern, says it overrides the export and that the published `ItemTile` should drop the fade; the README's app additions list it (verified by reading)
+- [ ] **AC-3.4** `docs/design-system/components/UnownedTile.md` documents the pattern, says it overrides the export and that the published `ItemTile` should drop the fade; the README's app additions list it; `TileAdd.md` shows the marker row and says the add control sits at the foot of its cell (verified by reading)
 
 ## Functional Requirements
 
 - **FR-1** `catalog/entries/_tile` renders, for an unowned entry only, `<div class="c-tile__meta"><span class="c-tag">Not owned</span></div>` as the last child of the tile's link.
 - **FR-2** `additions.css` sets `opacity:1` on the two selectors the export fades, and puts the add form at the foot of its cell.
 - **FR-3** No shipped rule reduces the opacity of, filters or blends a card image on a tile.
-- **FR-4** The pattern is documented beside the exported documents, which are not edited.
+- **FR-4** The pattern is documented in `UnownedTile.md`, and the add control's place in the app's own `TileAdd.md`. The exported `ItemTile.md` is not edited.
 
 ## Non-Functional Requirements
 
@@ -139,7 +140,7 @@ As spec 019's decision 1, for the same reasons. One block, headed `Unowned tile 
 ## Open Questions
 
 - **The `×N` quantity badge sits on the image's top right corner.** Whether a badge laid over a card image counts as a "stamp" under the same guideline has not been ruled on. Not acted on here.
-- **`ItemTile.md` and `TileAdd.md` still describe the fade** until the published design system changes and is re-exported. `UnownedTile.md` says which document wins.
+- **`ItemTile.md` still describes the fade** until the published design system changes and is re-exported. `UnownedTile.md` says which document holds.
 
 ## Out of Scope
 

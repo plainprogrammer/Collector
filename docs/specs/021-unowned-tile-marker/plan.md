@@ -1,6 +1,6 @@
 # Implementation Plan: Mark Unowned Tiles Without Fading the Card Image
 
-**Spec:** [spec.md](spec.md) (v1.0.0; direction ruled by the maintainer on 2026-10-13)
+**Spec:** [spec.md](spec.md) (v1.1.0; direction ruled by the maintainer on 2026-10-13)
 **Decisions:** no ADR. Decision 1 is the maintainer's ruling; decisions 2 to 8 are the spec's.
 **Created:** 2026-10-13
 **Issue:** [#65](https://github.com/plainprogrammer/Collector/issues/65)
@@ -9,7 +9,7 @@
 
 ## Global Constraints
 
-- `components.css` and `tokens.css` stay byte-for-byte as exported. `ItemTile.md` and `TileAdd.md` aren't edited.
+- `components.css` and `tokens.css` stay byte-for-byte as exported. The exported `ItemTile.md` isn't edited. `TileAdd.md` is the app's own (spec 004) and is.
 - Every style change is in one block of `additions.css`, headed `Unowned tile (spec 021)`, placed after the `Image fit (spec 019)` block. Token variables and `c-*` classes only.
 - One view changes: `app/views/catalog/entries/_tile.html.erb`. No controller, model, helper, JavaScript, gem, setting or migration.
 - Nothing from the mock-up branch `065-unowned-tile-options` is merged: no `?unowned=` switch, no looks B or C.
@@ -55,14 +55,15 @@ The first repeats the export's selectors, so it wins by source order: the layout
 
 ## Phase 3: The design system documents the pattern (AC-3.4)
 
-- `docs/design-system/components/UnownedTile.md`: markup, the rules, that it overrides the export, and that the published `ItemTile` should drop the fade at its next export (and `TileAdd`'s markup gain the marker row).
+- `docs/design-system/components/UnownedTile.md`: markup, the rules, that it overrides the export, and that the published `ItemTile` should drop the fade at its next export.
+- `docs/design-system/components/TileAdd.md` (the app's own): its example gains the marker row, and a bullet says the add control sits at the foot of its cell, so that rule stays documented if `UnownedTile.md` is retired.
 - `docs/design-system/README.md`: one line under the app additions, as spec 019's.
 
 **Commit:** `docs(021): document the unowned tile pattern`.
 
 ## Phase 4: Verification
 
-- Screenshots of search results before (on `origin/main`'s stylesheet and partial) and after: 1280px and 390px, light and dark, from a dev server seeded with real cards by the mock-up's `seed.rb` (through the app's own refresh), captured with its `capture.rb` cut down to one look. Each is looked at. Saved as JPEG under `screenshots/`.
+- Screenshots of search results before (on `origin/main`'s stylesheet and partial) and after: 1280px and 390px, light and dark, from a dev server seeded with real cards by the mock-up's `seed.rb` (through the app's own refresh), captured with its `capture.rb` cut down to one look. Each is looked at. The ones kept are cut to the tiles and saved as JPEG under `screenshots/`, at about the weight of spec 019's.
 - In the same dev pages, with real Scryfall images: the computed opacity, filter and blending of every tile image, and the add buttons' top edges per row.
 - `bin/ci`, and `git diff --stat origin/main -- app/assets/stylesheets/collector/components.css app/assets/stylesheets/collector/tokens.css` printing nothing (AC-3.1).
 - A read-only review of the branch against the spec.
