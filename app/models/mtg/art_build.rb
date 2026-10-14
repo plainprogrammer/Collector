@@ -10,11 +10,13 @@ class MTG::ArtBuild < ApplicationRecord
   # a build goes on beating. The length is this build's own, set by how often it beats: after every batch of 50
   # artworks and, within a batch, between images once 30 seconds have passed (MTG::Art::Build::BEAT_EVERY). So a
   # working build is quiet this long only when one image by itself takes more than 90 seconds: its requests (at most
-  # 3, each with a 10-second open and a 60-second read timeout; one that times out isn't retried), the waits a rate
-  # limit or a server error asks for between them, and its decoding (spec 015, Error Scenarios). Those waits are
-  # bounded (issue #74): 30 seconds each, 60 in all for one image (MTG::Scryfall::Client::MAX_BACK_OFF), and a longer
-  # one asked for stops the build instead. So the waits alone leave at most 30 + 60 = 90 seconds between heartbeats,
-  # inside the grace; it takes slow requests or a slow decode on top of them to pass it.
+  # 3, each with a 10-second open and a 60-second read timeout; one that times out isn't retried), the waits between
+  # them, and its decoding (spec 015, Error Scenarios). Those waits are bounded (issue #74): what a Retry-After asks
+  # for, 30 seconds each and 60 in all for one image (MTG::Scryfall::Client::MAX_BACK_OFF), and a longer one asked
+  # for stops the build instead. Without a Retry-After they are shorter still (issue #81): 1 and then 2 seconds after
+  # a server error, and none after a 429, which stops the build at once. So the waits alone leave at most
+  # 30 + 60 = 90 seconds between heartbeats, inside the grace; it takes slow requests or a slow decode on top of them
+  # to pass it.
   JOB_ENDED_GRACE = 2.minutes
   COUNTS = %i[total without_image fetched fingerprinted failed indexed].freeze
 

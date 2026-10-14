@@ -40,10 +40,11 @@ module Catalog::Sources
 
   class Error < StandardError; end
   class TransientError < Error; end
-  # The source is turning requests away for now: it kept answering "too many requests", or asked for a longer wait
-  # than its client sits out. Transient, but what was being fetched hasn't failed, so a caller working through many
-  # requests stops instead of going on to the next. #retry_after is the wait the source last asked for, in seconds,
-  # or nil when it never said; a job comes back no sooner than that (Catalog::RateLimitRetry).
+  # The source is turning requests away for now: it answered "too many requests" and named no wait, or did so to its
+  # client's last attempt, or asked for a longer wait than its client sits out. Transient, but what was being fetched
+  # hasn't failed, so a caller working through many requests stops instead of going on to the next. #retry_after is
+  # the wait the source last asked for, in seconds, or nil when it never said; a job comes back no sooner than that
+  # (Catalog::RateLimitRetry).
   class RateLimitedError < TransientError
     attr_reader :retry_after
 

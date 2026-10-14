@@ -9,8 +9,9 @@ class MTG::Art::Build
   BATCH = 50
   # The build also beats between the images of a batch once its last beat is this old, so a slow batch (rate-limited
   # or hung requests) never leaves a working build quiet for MTG::ArtBuild::JOB_ENDED_GRACE: only one image that
-  # itself takes longer than the grace less this can (issue #73). An image's waits for a rate limit come to 60
-  # seconds at most (issue #74), so they can't by themselves.
+  # itself takes longer than the grace less this can (issue #73). An image's waits before its retries come to 60
+  # seconds at most, when each Retry-After asks for the 30 the client will sit out (issue #74); without one they are
+  # 3 seconds after server errors and none after a 429, which stops the build (issue #81). So they can't by themselves.
   BEAT_EVERY = 30.seconds
   FAILURES_SHOWN = 20
   IMAGE_HOSTS = %w[cards.scryfall.io].freeze
