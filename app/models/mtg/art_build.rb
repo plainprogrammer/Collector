@@ -1,7 +1,9 @@
 # One attempt to build the art index (spec 011 AC-3.2, AC-3.11): its job, its counts, a heartbeat while it runs, and how
 # it ended. A build that finds another running ends at once as skipped. A run left running by the same job (the queue
 # re-ran it after a restart), or that nothing is working on any more (#left_behind?: a crash), is marked failed as
-# interrupted first, so the guard never relies on the job queue's concurrency lock, which a first build can outlast.
+# interrupted first, so the guard never relies on the job queue's concurrency lock, which a first build can outlast. With
+# none running, a build is skipped too while another build's job waits in the queue to run again (a rate limit, issue
+# #78): that job will do the work, and fetching before then could land inside the wait the image host asked for.
 class MTG::ArtBuild < ApplicationRecord
   STALE_AFTER = 10.minutes
   # A build whose job the queue has failed, or no longer holds, is taken as left behind only once its heartbeat is this
@@ -19,6 +21,7 @@ class MTG::ArtBuild < ApplicationRecord
   # to pass it.
   JOB_ENDED_GRACE = 2.minutes
   COUNTS = %i[total without_image fetched fingerprinted failed indexed].freeze
+  WAITING_FOR_RETRY = "waiting for another job's retry".freeze
 
   enum :status, { running: "running", finished: "finished", failed: "failed", skipped: "skipped" }, validate: true
 
@@ -35,10 +38,10 @@ class MTG::ArtBuild < ApplicationRecord
     queue = job_queue.read
     transaction do
       running.find_each { |run| run.finish!(:failed, message: "interrupted") if run.job_id == job_id || run.left_behind?(queue) }
-      live = running.exists?
+      skip = ("already running" if running.exists?) || (WAITING_FOR_RETRY if queue.waiting_to_retry?(except: job_id))
       now = Time.current
       run = create!(status: :running, job_id:, catalog_version:, settings_digest:, started_at: now, heartbeat_at: now)
-      run.finish!(:skipped, message: "already running") if live
+      run.finish!(:skipped, message: skip) if skip
       run
     end
   end
