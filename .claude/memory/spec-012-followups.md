@@ -13,4 +13,4 @@ Follow-ups from spec 012 (GHCR publishing, merged and released as `v0.1.0` on 20
 
 **Why:** the maintainer asked (2026-10-08) to keep these for a future spec; the final Mode B review listed them as observations, not gaps.
 
-**How to apply:** each item is tracked as a GitHub issue (#17, #20, #21; #18, ruby-vips, was done by spec 014 in PR #30, and #19, the exact `catalog:status` line in `bin/image-smoke`, on branch `031-image-vendor-and-smoke-check`); the issues are the source of truth for status. When planning the next release, deploy or image work, offer the open ones as brainstorm input, and remove items here as their issues close. Related: [[ghcr-and-actions-facts]].
+**How to apply:** each item is tracked as a GitHub issue (#17, #20, #21; #18, ruby-vips, was done by spec 014 in PR #30, and #19, the exact `catalog:status` line in `bin/image-smoke`, in PR [#82](https://github.com/plainprogrammer/Collector/pull/82)); the issues are the source of truth for status. When planning the next release, deploy or image work, offer the open ones as brainstorm input, and remove items here as their issues close. Related: [[ghcr-and-actions-facts]].
