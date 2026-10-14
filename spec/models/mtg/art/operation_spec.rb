@@ -208,6 +208,19 @@ RSpec.describe MTG::Art::Operation, :solid_queue, type: :model do
         end
       end
 
+      # The reason and the time belong to the same job (spec 015 AC-4.12).
+      it "gives its own job's time, not an earlier one another scheduled build job has", :aggregate_failures do
+        loaded
+        freeze_time do
+          job = queue_job(MTG::Art::BuildJob, wait: 10.minutes)
+          queue_job(MTG::Art::BuildJob, wait: 1.minute)
+          build(status: "failed", job_id: job.active_job_id, message: "boom")
+
+          expect(operation.summary).to eq("Queued to retry. The last build failed: boom")
+          expect(operation.facts.first).to have_attributes(label: "Retrying at", value: 10.minutes.from_now)
+        end
+      end
+
       it "is plain queued once the retry is due, with nothing left to say about when", :aggregate_failures do
         loaded
         build(status: "failed", job_id: queue_job(MTG::Art::BuildJob).active_job_id, message: "boom")

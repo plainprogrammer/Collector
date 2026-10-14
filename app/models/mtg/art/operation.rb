@@ -74,11 +74,12 @@ class MTG::Art::Operation < Catalog::Operation
       text: "#{delimited(build.fingerprinted_count)} of #{delimited(build.total_count)} artworks fingerprinted")
   end
 
-  # While a job of its waits for a later time, when that is due comes first, as on the refresh (issue #80).
+  # While a job of its waits for a later time, when that is due comes first, as on the refresh (issue #80): the failed
+  # build's own job when that is the one retrying, so the reason and the time are one job's, else the earliest.
   def facts
     case state
     when :queued
-      [ (fact("Retrying at", queue.retry_at) if queue.retry_at), *(failed_facts if retrying?) ].compact
+      retrying? ? [ fact("Retrying at", queue.retry_at(build.job_id)), *failed_facts ] : [ (fact("Retrying at", queue.retry_at) if queue.retry_at) ].compact
     when :building, :stalled, :interrupted
       [ fact("Started", build.started_at), fact("Images fetched", build.fetched_count), fact("Failed images", build.failed_count),
         fact("Last heartbeat", build.heartbeat_at, relative: true) ]
