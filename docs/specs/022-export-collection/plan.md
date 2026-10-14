@@ -1,7 +1,7 @@
 # Plan 022: Export a Collection as a File
 
-**Spec:** [spec.md](spec.md) (1.2.0, approved with changes 2026-10-14) · **Issue:** [#38](https://github.com/plainprogrammer/Collector/issues/38) · **Branch:** `022-export-collection`
-**Status:** Draft, for the maintainer's approval (through a read-only Opus plan review that ran the code; its findings are applied, then updated for spec 1.2.0)
+**Spec:** [spec.md](spec.md) (1.2.1, approved with changes 2026-10-14) · **Issue:** [#38](https://github.com/plainprogrammer/Collector/issues/38) · **Branch:** `022-export-collection`
+**Status:** Approved with changes by the maintainer (2026-10-14), after a read-only Opus plan review and a read-only Fable plan review, both of which ran the plan's code; all findings are applied
 **Rulings (maintainer, 2026-10-14):** decision 1, in the request with no job (bar: 10 s or 300 MB at 50,000 lots); decision 6, the account menu plus a row on More.
 
 ## Global Constraints
@@ -9,7 +9,7 @@
 - Format version 1, its schema, examples and Coverage tables are not edited. The writer's output is checked with `ExportFormatRules` (`spec/support/export_format_rules.rb`, test only).
 - The writer is collectible-agnostic: it reads core columns only and never asks the catalog registry about a type.
 - Tenant data is reached only through `Current.account` and its associations.
-- TDD: each phase writes its failing examples first, runs them red, then the code, then green. One Conventional Commit per step, `git add` separate from `git commit`, each ending `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
+- TDD: each phase writes its failing examples first, runs them red, then the code, then green. One Conventional Commit per step, `git add` separate from `git commit`, each ending with the session's attribution line.
 - UI follows `collector-design-system`: existing `c-menu__item` and `c-list` only, no new CSS.
 - Measured in scratch before planning (prototype of Phase 1's writer, test env): 50,000 lots → 1.28 s, a 16.0 MB file, process RSS +68 MB.
 
@@ -23,8 +23,8 @@ Branch `022-export-collection` on `origin/main` 7bf56d7; `bin/setup --skip-serve
 
 ## Phase 1: The writer
 
-**Implements:** FR-1, FR-2, FR-3, FR-6, decisions 4, 5, 7, 8 | **Satisfies:** AC-1.2, AC-1.3, AC-1.4, AC-1.5, AC-1.6, AC-2.1 (model half), AC-2.2, AC-2.3
-**Files:** `spec/models/collection_export_spec.rb` (new), `spec/collection_export_core_spec.rb` (new), `.rubocop.yml` (`RSpec/DescribeClass` exclude gains `spec/collection_export_core_spec.rb`, beside the other `*_core_spec.rb`), `app/models/collection_export.rb` (new), `spec/support/export_format_rules.rb` (comment only)
+**Implements:** FR-1, FR-2, FR-3, decisions 4, 5, 7, 8 | **Satisfies:** AC-1.2, AC-1.3, AC-1.4, AC-1.5, AC-1.6, AC-2.1 (model half), AC-2.2, AC-2.3
+**Files:** `spec/models/collection_export_spec.rb` (new), `app/models/collection_export.rb` (new), `spec/support/export_format_rules.rb` (comment only)
 **Interfaces:** `CollectionExport.new(account:, at:)`, `#to_h` → Hash with string keys, `#to_json` → String, `#filename` → `"collector-export-YYYY-MM-DD.json"`
 
 ### Step 1.1: Failing model examples
@@ -148,7 +148,8 @@ RSpec.describe CollectionExport, type: :model do
     statements = lambda do
       sql = []
       counter = ->(*, payload) { sql << payload[:sql] unless payload[:cached] || %w[SCHEMA TRANSACTION].include?(payload[:name]) }
-      ActiveSupport::Notifications.subscribed(counter, "sql.active_record") { described_class.new(account: account.reload, at:).to_json }
+      fresh = account.reload
+      ActiveSupport::Notifications.subscribed(counter, "sql.active_record") { described_class.new(account: fresh, at:).to_json }
       sql
     end
     2.times { create(:lot, account:, entry: printing) }
@@ -175,29 +176,9 @@ RSpec.describe CollectionExport, type: :model do
 end
 ```
 
-`spec/collection_export_core_spec.rb`:
-
-```ruby
-require "rails_helper"
-
-# Spec 022 FR-6: the export's writer and controller name no collectible type or source, and never ask the catalog's
-# registry about a type, so a lot of any type, registered or not, exports.
-RSpec.describe "The collection export's code" do
-  let(:files) { [ Rails.root.join("app/models/collection_export.rb"), Rails.root.join("app/controllers/collections/exports_controller.rb") ] }
-
-  it "never names a collectible type, a source or the registry" do
-    offenders = files.select { |file| file.read.match?(/\b(mtg|scryfall)\b|collecting_for|source_class|preload_extensions/i) }
-
-    expect(offenders.map { |file| file.relative_path_from(Rails.root).to_s }).to be_empty
-  end
-end
-```
-
-(The core spec fails until both files exist; it goes green at the end of Phase 2.)
-
 ### Step 1.2: Run red
 
-`bin/rspec spec/models/collection_export_spec.rb` → `NameError: uninitialized constant CollectionExport` for every example.
+`bin/rspec spec/models/collection_export_spec.rb` → `0 examples, 0 failures, 1 error occurred outside of examples` (`NameError: uninitialized constant CollectionExport` while loading the file).
 
 ### Step 1.3: The writer
 
@@ -257,7 +238,7 @@ end
 
 ### Step 1.4: Run green
 
-`bin/rspec spec/models/collection_export_spec.rb` → `12 examples, 0 failures`. (`spec/collection_export_core_spec.rb` is still red: the controller file doesn't exist.)
+`bin/rspec spec/models/collection_export_spec.rb` → `12 examples, 0 failures`.
 
 ### Step 1.5: Commit
 
@@ -265,8 +246,8 @@ end
 
 ## Phase 2: The download
 
-**Implements:** FR-4, FR-4a, decisions 2, 3, 9 | **Satisfies:** AC-1.1, AC-1.7, AC-1.8, AC-2.1 (request)
-**Files:** `spec/requests/collection_exports_spec.rb` (new), `config/routes.rb`, `app/controllers/collections/exports_controller.rb` (new)
+**Implements:** FR-4, FR-4a, FR-6, decisions 2, 3, 9 | **Satisfies:** AC-1.1, AC-1.7, AC-1.8, AC-2.1 (request)
+**Files:** `spec/requests/collection_exports_spec.rb` (new), `spec/collection_export_core_spec.rb` (new), `.rubocop.yml` (`RSpec/DescribeClass` exclude gains `spec/collection_export_core_spec.rb`, beside the other `*_core_spec.rb`), `config/routes.rb`, `app/controllers/collections/exports_controller.rb` (new)
 **Interfaces:** `GET /collection/export` → `collection_export_path`
 
 ### Step 2.1: Failing request examples
@@ -326,17 +307,11 @@ RSpec.describe "Collection export", type: :request do
     end
 
     it "runs as many queries for 30 lots as for 2" do
-      queries = lambda do
-        count = 0
-        counter = ->(*, payload) { count += 1 unless payload[:cached] || %w[SCHEMA TRANSACTION].include?(payload[:name]) }
-        ActiveSupport::Notifications.subscribed(counter, "sql.active_record") { get collection_export_path }
-        count
-      end
       2.times { create(:lot, account: user.account, entry: printing) }
-      few = queries.call
+      few = count_queries { get collection_export_path }
       28.times { create(:lot, account: user.account, entry: printing) }
 
-      expect(queries.call).to eq(few)
+      expect(count_queries { get collection_export_path }).to eq(few)
     end
   end
 
@@ -350,13 +325,42 @@ RSpec.describe "Collection export", type: :request do
       sign_in_as(user)
       expect(response).to redirect_to(collection_path)
     end
+
+    it "keeps a page an earlier request stored as the one to return to" do
+      user
+      get catalog_entries_path
+      get collection_export_path
+
+      sign_in_as(user)
+      expect(response).to redirect_to(catalog_entries_path)
+    end
   end
 end
 ```
 
+`spec/collection_export_core_spec.rb`:
+
+```ruby
+require "rails_helper"
+
+# Spec 022 FR-6: the export's writer and controller name no collectible type or source, and never ask the catalog's
+# registry about a type, so a lot of any type, registered or not, exports.
+RSpec.describe "The collection export's code" do
+  let(:files) { [ Rails.root.join("app/models/collection_export.rb"), Rails.root.join("app/controllers/collections/exports_controller.rb") ] }
+
+  it "never names a collectible type, a source or the registry" do
+    offenders = files.select { |file| file.read.match?(/\b(mtg|scryfall)\b|collecting_for|source_class|preload_extensions/i) }
+
+    expect(offenders.map { |file| file.relative_path_from(Rails.root).to_s }).to be_empty
+  end
+end
+```
+
+(It is red until the controller file exists: `Errno::ENOENT`.)
+
 ### Step 2.2: Run red
 
-`bin/rspec spec/requests/collection_exports_spec.rb` → `NameError: undefined local variable or method 'collection_export_path'`.
+`bin/rspec spec/requests/collection_exports_spec.rb spec/collection_export_core_spec.rb` → the request examples fail with `NameError: undefined local variable or method 'collection_export_path'`, the core example with `Errno::ENOENT`.
 
 ### Step 2.3: Route and controller
 
@@ -387,7 +391,7 @@ end
 
 ### Step 2.4: Run green
 
-`bin/rspec spec/requests/collection_exports_spec.rb spec/collection_export_core_spec.rb spec/models/collection_export_spec.rb` → `19 examples, 0 failures`.
+`bin/rspec spec/requests/collection_exports_spec.rb spec/collection_export_core_spec.rb spec/models/collection_export_spec.rb` → `20 examples, 0 failures`.
 
 ### Step 2.5: Commit
 
@@ -487,11 +491,12 @@ RSpec.describe "Collection export", type: :system do
     FileUtils.mkdir_p(DOWNLOADS)
   end
 
-  # Capybara has no download matcher; its own waiting retries until the file is complete.
+  # Capybara has no download matcher; its own waiting retries until the file is complete, bounded at 10 seconds and
+  # never a sleep (AC-3.3), as spec/system/scanner_measurement_spec.rb waits for its events.
   def downloaded(name)
     file = DOWNLOADS.join(name)
     part = DOWNLOADS.join("#{name}.part")
-    page.document.synchronize { raise Capybara::ExpectationNotMet, "no #{name}" unless file.exist? && file.size.positive? && !part.exist? }
+    page.document.synchronize(10) { raise Capybara::ExpectationNotMet, "no #{name}" unless file.exist? && file.size.positive? && !part.exist? }
     file
   end
 
@@ -542,7 +547,11 @@ At 1280px with the account menu open, and the More page at 390px (in the fixed-w
 
 ### Step 3.6: Commit
 
-`feat(export): link the export from the account menu and More` (views, specs, support, MorePage.md, screenshots).
+Three commits:
+
+1. `feat(export): link the export from the account menu and More` (views, shell and admin navigation specs, MorePage.md).
+2. `test(export): download the file in the browser` (`spec/support/system.rb` preferences, the system spec).
+3. `docs(export): screenshots of the export link at 1280 and 390`.
 
 ## Phase 4: Cost, documents, verification
 
@@ -557,12 +566,13 @@ A throwaway `bench_spec.rb` outside the repo (the scratch prototype, pointed at 
 ### Step 4.2: Documents
 
 - `docs/roadmap.md` theme A item 3: `[#38](…) Export a collection as a file. **Done 2026-10-NN:** [spec 022](specs/022-export-collection/spec.md).` (the date it merges; written as the PR's date).
+- `README.md`, "Your data": "Exporting and importing a collection are built against that format; neither is in the app yet." becomes "Export is built against it: a collector downloads their collection as one file from the account menu or More. Import isn't in the app yet."
 - `CLAUDE.md`: the status line's "export and import aren't built yet" becomes "a collector downloads their collection as an export file from the account menu or More (`CollectionExport`, `/collection/export`, spec 022); import isn't built yet"; the export-format fact's "Nothing in the app reads or writes it yet" becomes "`CollectionExport` writes it (spec 022); nothing reads it yet".
 - `spec.md`: acceptance boxes ticked as `verification.md` records them.
 
 ### Step 4.3: Verification
 
-`verification.md` lists each AC with its evidence (example names, screenshots, the measurement, documents read). `bin/ci` → green; its output summary recorded. Read-only Opus spec-alignment review (sdd-review Mode B) before asking to push.
+`verification.md` lists each AC with its evidence (example names, screenshots, the measurement, documents read), and notes that `Rack::ETag` still digests the body (it skips only `no-cache`, not `no-store`): one extra MD5 pass per export, harmless at the measured sizes. `bin/ci` → green; its output summary recorded. Read-only Opus spec-alignment review (sdd-review Mode B) before asking to push.
 
 ### Step 4.4: Commit
 
@@ -570,6 +580,6 @@ A throwaway `bench_spec.rb` outside the repo (the scratch prototype, pointed at 
 
 ## Self-review
 
-- FR-1 → Phase 1; FR-2 → Phase 1 (one-statement read, query-count example); FR-3 → Phase 1 (no writes, no jobs); FR-4 → Phase 2; FR-4a → Phase 2 (`answers no format suffix`); FR-5 → Phase 3; FR-6 → Phase 1 core spec (green after Phase 2).
+- FR-1 → Phase 1; FR-2 → Phase 1 (one-statement read, query-count example); FR-3 → Phase 1 (no writes, no jobs); FR-4 → Phase 2; FR-4a → Phase 2 (`answers no format suffix`); FR-5 → Phase 3; FR-6 → Phase 2 core spec.
 - AC-1.1 → 2.1; AC-1.2 → 1.1; AC-1.3 → 1.1; AC-1.4 → 1.1 (`11.999` stored with `with_usec: true`, and `0.5`, both dropped); AC-1.5 → 1.1, 2.1; AC-1.6 → 1.1; AC-1.7 → 2.1; AC-1.8 → 2.1 (and 1.1); AC-1.9 → 4.1; AC-2.1 → 1.1, 2.1; AC-2.2 → 1.1; AC-2.3 → 1.1; AC-3.1 → 3.1 (shell and admin navigation examples); AC-3.2 → 3.1; AC-3.3 → 3.2; AC-3.4 → 3.5; AC-3.5 → 3.3, 4.3.
 - Gates: two new components (writer, controller), no new dependency, no wrapper, no DTO (the Hash is the format).

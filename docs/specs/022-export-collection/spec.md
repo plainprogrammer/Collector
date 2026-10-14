@@ -1,7 +1,7 @@
 # Feature 022: Export a Collection as a File
 
 **Status:** Approved with changes by the maintainer (2026-10-14), with rulings on decisions 1 and 6; the changes are applied in 1.2.0
-**Version:** 1.2.0
+**Version:** 1.2.1
 **Created:** 2026-10-14
 **Last Updated:** 2026-10-14
 **Branch:** `022-export-collection`
@@ -16,6 +16,7 @@
 | 1.0.0 | 2026-10-14 | Written from issue #38, roadmap theme A item 3, and the export format (spec 017, ADR 0020) |
 | 1.1.0 | 2026-10-14 | From the spec review. Lots are read in one statement, so the file is one consistent snapshot (decision 8); order by `id`; the fixture gains an unregistered type, a non-card kind and a localized name; the link has no `download` attribute and no prefetch; after signing in from the export, the collector lands on the collection; the system spec reads Firefox's download folder; the cost is stated without an unmeasured time; criteria tightened (AC-1.1, AC-2.1, AC-2.3, FR-6) |
 | 1.2.0 | 2026-10-14 | The maintainer's approval with changes, from a second review (Fable). Decisions 1 and 6 ruled; AC-1.9 holds the 10 s / 300 MB bar as a criterion; the unregistered type's lot has no finish or condition; AC-2.1 uses distinctive values; decision 8 says the writer formats times and prices itself; FR-4 names the override of `request_authentication`; both menu orders stated; the download wait and the Firefox preferences named; AC-2.3's reference set; the documents that change listed; the route takes no format suffix; `id` order after a merge |
+| 1.2.1 | 2026-10-14 | From the plan review: `README.md`'s "Your data" paragraph joins Documents that change |
 
 ---
 
@@ -193,6 +194,7 @@ A signed-out request for the export is sent to sign in like any page. The export
 ## Documents that change
 
 - `CLAUDE.md`: the status line ("export and import aren't built yet") and the export format fact ("Nothing in the app reads or writes it yet").
+- `README.md`: the "Your data" paragraph ("Exporting and importing a collection are built against that format; neither is in the app yet").
 - `docs/roadmap.md`: theme A item 3 is marked done, as items 1 and 2 are.
 - `docs/design-system/components/MorePage.md`: the new row.
 - `spec/support/export_format_rules.rb`: its header comment ("the app has no export or import yet").
