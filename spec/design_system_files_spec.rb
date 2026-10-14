@@ -31,4 +31,26 @@ RSpec.describe "Design system files" do
       expect(block).not_to match(/#\h{3,8}\b|rgba?\(|hsla?\(|font/i)
     end
   end
+
+  describe "the unowned tile override (spec 021)" do
+    let(:additions) { root.join("app/assets/stylesheets/collector/additions.css").read }
+    let(:block) { additions[%r{/\* -+ Unowned tile \(spec 021\).*?(?=\n\n/\* -|\z)}m] }
+
+    it "keeps the rules in one block of their own, with no colour literal or font (AC-3.2)", :aggregate_failures do
+      expect(additions.scan("spec 021").size).to eq(1)
+      expect(block).to include(".c-tile--owned-none .c-tile__media > img, .c-tile--owned-none .c-tile__missing { opacity:1; }",
+        ".c-tilecell > .c-tile__add { margin-top:auto; }")
+      expect(block.scan(/^[^\s\/].*\{/).size).to eq(2)
+      expect(block).not_to match(/#\h{3,8}\b|rgba?\(|hsla?\(|font/i)
+    end
+
+    it "leaves the export's fade and its override as the only rules that fade, filter or blend anything on a tile (FR-3)" do
+      # Comments are dropped first, so only a rule's own declarations are read. The first of the two is the export's
+      # (components.css); an export that drops the fade removes it, and this expectation is edited then.
+      rules = root.glob("app/assets/stylesheets/**/*.css")
+        .flat_map { |path| path.read.gsub(%r{/\*.*?\*/}m, "").scan(/([^{}]*c-tile[^{}]*)(\{[^}]*\})/) }
+      treating = rules.map(&:last).grep(/opacity|filter|mix-blend-mode/)
+      expect(treating.map { |declarations| declarations.delete(" ") }.sort).to eq([ "{opacity:.45;}", "{opacity:1;}" ])
+    end
+  end
 end

@@ -6,7 +6,10 @@ A tile in search results or a card's printings with an add button beside its lin
 
 ```html
 <div class="c-tilecell" id="tile_catalog_entry_1">
-  <a class="c-tile c-tile--owned-none" href="/catalog/entries/…">…ItemTile content…</a>
+  <a class="c-tile c-tile--owned-none" href="/catalog/entries/…">
+    …ItemTile content…
+    <div class="c-tile__meta"><span class="c-tag">Not owned</span></div>
+  </a>
   <form class="c-tile__add" method="post" action="/catalog/entries/…/quick_add">
     <button class="c-btn c-btn--ghost c-btn--sm" aria-label="Add 1 × Lightning Bolt (M10 · 146)" type="submit"><svg …/>Add</button>
     <input type="hidden" name="return_to" value="/catalog/entries?q=bolt">
@@ -17,5 +20,6 @@ A tile in search results or a card's printings with an add button beside its lin
 - The button is outside the link: nested interactive elements are invalid and unusable by keyboard.
 - Its accessible name says exactly what is added: quantity, card name and `SET · number`.
 - It posts a form (works without JavaScript) and returns to the same URL; Turbo morphs the page so scroll and focus stay.
-- Owned tiles show `c-tile__qty`; tiles you don't own use `c-tile--owned-none` and no quantity.
+- Owned tiles show `c-tile__qty`; tiles you don't own use `c-tile--owned-none`, no quantity and the "Not owned" row (see `UnownedTile`).
 - The button spans the cell's width with its label at the start; in a `c-list` row (the card page's printings) it keeps its natural width.
+- Inside `c-tilecell` the add control sits at the foot of the cell (`margin-top:auto`). Tiles in a grid row can differ in height (an unowned tile has one more line), and the row's buttons stay level.

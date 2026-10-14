@@ -11,6 +11,10 @@ RSpec.describe "Card search", type: :request do
 
   def search(**params) = get(catalog_entries_path(params))
 
+  def tile(entry) = Nokogiri::HTML5(response.body).at_css("##{ActionView::RecordIdentifier.dom_id(entry, :tile)}")
+
+  def set_number(entry) = "#{entry.set.code.upcase} · #{entry.number}"
+
   it "finds cards by part of the name, ignoring case", :aggregate_failures do
     printing("Lightning Bolt")
     printing("Lightning Helix")
@@ -61,7 +65,7 @@ RSpec.describe "Card search", type: :request do
       %(href="#{catalog_entry_path(entry)}"))
   end
 
-  it "shows owned quantities and fades printings you don't own", :aggregate_failures do
+  it "shows owned quantities and marks printings you don't own as not owned (spec 021 AC-1.2, AC-1.3)", :aggregate_failures do
     owned = printing("Lightning Bolt")
     create(:lot, account: user.account, entry: owned, quantity: 3)
     create(:lot, entry: owned, quantity: 7) # someone else's copies
@@ -69,9 +73,27 @@ RSpec.describe "Card search", type: :request do
 
     search(q: "bolt")
 
-    expect(response.body).to include(">×3<")
     expect(response.body).not_to include(">×7<", ">×10<")
-    expect(response.body).to match(/class="c-tile c-tile--owned-none" href="#{Regexp.escape(catalog_entry_path(unowned))}"/)
+    expect(tile(owned).css(".c-tile__qty").map(&:text)).to eq([ "×3" ])
+    expect(tile(owned).at_css("a.c-tile")["class"]).to eq("c-tile")
+    expect(tile(owned).text).not_to include("Not owned")
+    expect(tile(unowned).at_css("a.c-tile")["class"]).to eq("c-tile c-tile--owned-none")
+    expect(tile(unowned).css(".c-tile__qty")).to be_empty
+    # The marker is the link's last row, after the set and language row, so it is part of the link's name.
+    expect(tile(unowned).css("a.c-tile > .c-tile__meta").map { |row| row.css("> .c-tag").map(&:text) })
+      .to eq([ [ set_number(unowned), "JA" ], [ "Not owned" ] ])
+    expect(tile(unowned).at_css("a.c-tile > :last-child").text).to eq("Not owned")
+  end
+
+  it "marks a printing you don't own that has no image, and lays nothing over an image (spec 021 AC-1.1, AC-1.4)", :aggregate_failures do
+    pictured = printing("Lightning Bolt", image_url: "https://cards.scryfall.io/normal/front/a/b/bolt.jpg")
+    bare = printing("Lightning Bolt", identity: pictured.identity, language: "ja")
+
+    search(q: "bolt")
+
+    expect(tile(pictured).css(".c-tile__media > *").map(&:name)).to eq([ "img" ])
+    expect(tile(bare).css(".c-tile__media > *").map { |node| node["class"] }).to eq([ "c-tile__missing" ])
+    expect([ pictured, bare ].map { |entry| tile(entry).at_css("a.c-tile > :last-child").text }).to eq([ "Not owned", "Not owned" ])
   end
 
   it "counts matching cards on the line under the filter bar" do
