@@ -320,8 +320,8 @@ A collector's data has a documented, versioned format: one JSON file that holds 
 the currency of their prices and every lot in their collection, keyed by the catalog source's
 own ids and never by this instance's. It is defined in
 [docs/export-format/README.md](docs/export-format/README.md), with a JSON Schema and example
-files beside it. Exporting and importing a collection are built against that format; neither is
-in the app yet.
+files beside it. Export is built against it: a collector downloads their collection as one file
+from the account menu or More. Import isn't in the app yet.
 
 ## License
 

@@ -141,15 +141,15 @@ A signed-out request for the export is sent to sign in like any page. The export
 **I want** to download my whole collection as one file
 **So that** I hold my data outside Collector and can restore it elsewhere
 
-- [ ] **AC-1.1** Given a signed-in collector When they request `GET /collection/export` Then the response is 200, its media type `application/json`, `Content-Disposition: attachment` with the filename `collector-export-<UTC date>.json`, and `Cache-Control: no-store`
-- [ ] **AC-1.2** Given a fixture collection that holds every shape a lot can take (finish, condition and price each set and each `null`; a price of `"0.00"`; a price over 1,000 with cents that a float would lose, such as 1,000.05; a quantity of 9,999; a non-English printing whose `localized_name` differs from its `name`; a printing whose entry is retired; an entry of a collectible type the instance hasn't registered, whose lot has a `null` finish and condition (a lot of an unknown type can't be saved with either: `Lot` validates them against the type's vocabulary); an entry whose kind isn't `card`) When it is exported Then the file is well-formed: `v1.schema.json` passes and the format's four further rules hold (checked with `spec/support/export_format_rules.rb`)
-- [ ] **AC-1.3** Given the same fixture Then the file's `profile`, `currency` and each lot's seven fields equal the values in the source table of decision 4, and the file holds exactly one lot per lot row
-- [ ] **AC-1.4** Given a lot created and updated at times with a fraction of a second When exported Then `added_at` and `changed_at` are those times in UTC with the fraction dropped, not rounded
-- [ ] **AC-1.5** Given a collector with no lots When they export Then the file is well-formed with `"lots": []`
-- [ ] **AC-1.6** Given an unchanged collection exported twice Then the two files are identical apart from `exported_at` (and the same collection by the format's definition)
-- [ ] **AC-1.7** Given a signed-out visitor When they request the export Then they are sent to sign in and receive no file, and after signing in they land on the collection page (decision 9)
-- [ ] **AC-1.8** Given a collection of 2 lots and one of 30 lots When each is exported Then the export runs the same number of queries
-- [ ] **AC-1.9** Measured at 50,000 lots outside the suite (a throwaway spec that inserts the fixture with `insert_all`): the request completes in under 10 seconds and grows the process's RSS by under 300 MB; both numbers and the method are recorded in `verification.md`
+- [x] **AC-1.1** Given a signed-in collector When they request `GET /collection/export` Then the response is 200, its media type `application/json`, `Content-Disposition: attachment` with the filename `collector-export-<UTC date>.json`, and `Cache-Control: no-store`
+- [x] **AC-1.2** Given a fixture collection that holds every shape a lot can take (finish, condition and price each set and each `null`; a price of `"0.00"`; a price over 1,000 with cents that a float would lose, such as 1,000.05; a quantity of 9,999; a non-English printing whose `localized_name` differs from its `name`; a printing whose entry is retired; an entry of a collectible type the instance hasn't registered, whose lot has a `null` finish and condition (a lot of an unknown type can't be saved with either: `Lot` validates them against the type's vocabulary); an entry whose kind isn't `card`) When it is exported Then the file is well-formed: `v1.schema.json` passes and the format's four further rules hold (checked with `spec/support/export_format_rules.rb`)
+- [x] **AC-1.3** Given the same fixture Then the file's `profile`, `currency` and each lot's seven fields equal the values in the source table of decision 4, and the file holds exactly one lot per lot row
+- [x] **AC-1.4** Given a lot created and updated at times with a fraction of a second When exported Then `added_at` and `changed_at` are those times in UTC with the fraction dropped, not rounded
+- [x] **AC-1.5** Given a collector with no lots When they export Then the file is well-formed with `"lots": []`
+- [x] **AC-1.6** Given an unchanged collection exported twice Then the two files are identical apart from `exported_at` (and the same collection by the format's definition)
+- [x] **AC-1.7** Given a signed-out visitor When they request the export Then they are sent to sign in and receive no file, and after signing in they land on the collection page (decision 9)
+- [x] **AC-1.8** Given a collection of 2 lots and one of 30 lots When each is exported Then the export runs the same number of queries
+- [x] **AC-1.9** Measured at 50,000 lots outside the suite (a throwaway spec that inserts the fixture with `insert_all`): the request completes in under 10 seconds and grows the process's RSS by under 300 MB; both numbers and the method are recorded in `verification.md`
 
 ### Story 2: Only my collection
 
@@ -157,9 +157,9 @@ A signed-out request for the export is sent to sign in like any page. The export
 **I want** the file to hold only my account's data
 **So that** nobody else's collection or profile leaves with mine
 
-- [ ] **AC-2.1** Given two accounts with lots, including lots of the same printing When the first collector exports Then the file's profile is the first user's, its lots equal the first account's lots as a set, and no parsed lot has the quantity 8888 or the price `"777.77"`, which only a second-account lot holds; the second user's name and email address, chosen so that no other value in the file contains them, appear nowhere in the response body
-- [ ] **AC-2.2** Given a collector with an open scanner sitting (spec 009) When they export Then the file's fields are exactly those the format defines (no sitting, reading key or sitting entry), and the lots the sitting added are in the file as lots
-- [ ] **AC-2.3** Given the file Then the set of field names at every depth (`ExportFormatRules.field_names`) equals `ExportFormatRules.field_names` of `docs/export-format/examples/valid/collection.json` without `generator`: no password digest, admin flag, session, internal id or the user's or account's dates
+- [x] **AC-2.1** Given two accounts with lots, including lots of the same printing When the first collector exports Then the file's profile is the first user's, its lots equal the first account's lots as a set, and no parsed lot has the quantity 8888 or the price `"777.77"`, which only a second-account lot holds; the second user's name and email address, chosen so that no other value in the file contains them, appear nowhere in the response body
+- [x] **AC-2.2** Given a collector with an open scanner sitting (spec 009) When they export Then the file's fields are exactly those the format defines (no sitting, reading key or sitting entry), and the lots the sitting added are in the file as lots
+- [x] **AC-2.3** Given the file Then the set of field names at every depth (`ExportFormatRules.field_names`) equals `ExportFormatRules.field_names` of `docs/export-format/examples/valid/collection.json` without `generator`: no password digest, admin flag, session, internal id or the user's or account's dates
 
 ### Story 3: Reach it from the account menu and More
 
@@ -167,11 +167,11 @@ A signed-out request for the export is sent to sign in like any page. The export
 **I want** an "Export collection" link where the app keeps account things
 **So that** I don't have to know the address
 
-- [ ] **AC-3.1** Given any page with the header, the collection page included, Then the account menu holds a `c-menu__item` link "Export collection" to `/collection/export` with `data-turbo="false"` and `data-turbo-prefetch="false"` and no `download` attribute, for admins and non-admins alike
-- [ ] **AC-3.2** Given the More page Then it holds a row with the same link, after the "Signed in as" row
-- [ ] **AC-3.3** Given a collector in the browser When they open the account menu on the collection page and click "Export collection" Then a file `collector-export-<UTC date>.json` lands in the browser's download folder and parses as a well-formed file, and the collection page stays shown (system spec; it waits for the file with Capybara's own retrying wait, `synchronize`, bounded by `Capybara.default_max_wait_time`, never a sleep). The suite's Firefox gets a download folder under `tmp/` through preferences in `spec/support/system.rb` (`browser.download.folderList` = 2 and `browser.download.dir`, plus any preference the plan finds needed to save JSON without a dialog); they apply to every system spec, which otherwise never downloads
-- [ ] **AC-3.4** Given the account menu open at 1280px and the More page at 390px, in both themes Then the link is shown in full and nothing scrolls sideways (screenshots in `verification.md`)
-- [ ] **AC-3.5** `MorePage.md` shows the new row, and the documents listed under Documents that change say what is built (verified by reading)
+- [x] **AC-3.1** Given any page with the header, the collection page included, Then the account menu holds a `c-menu__item` link "Export collection" to `/collection/export` with `data-turbo="false"` and `data-turbo-prefetch="false"` and no `download` attribute, for admins and non-admins alike
+- [x] **AC-3.2** Given the More page Then it holds a row with the same link, after the "Signed in as" row
+- [x] **AC-3.3** Given a collector in the browser When they open the account menu on the collection page and click "Export collection" Then a file `collector-export-<UTC date>.json` lands in the browser's download folder and parses as a well-formed file, and the collection page stays shown (system spec; it waits for the file with Capybara's own retrying wait, `synchronize`, bounded by `Capybara.default_max_wait_time`, never a sleep). The suite's Firefox gets a download folder under `tmp/` through preferences in `spec/support/system.rb` (`browser.download.folderList` = 2 and `browser.download.dir`, plus any preference the plan finds needed to save JSON without a dialog); they apply to every system spec, which otherwise never downloads
+- [x] **AC-3.4** Given the account menu open at 1280px and the More page at 390px, in both themes Then the link is shown in full and nothing scrolls sideways (screenshots in `verification.md`)
+- [x] **AC-3.5** `MorePage.md` shows the new row, and the documents listed under Documents that change say what is built (verified by reading)
 
 ## Functional Requirements
 
