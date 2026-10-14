@@ -99,7 +99,8 @@ RSpec.describe MTG::Art::Operation, :solid_queue, type: :model do
         stalled_build
 
         expect(operation).to have_attributes(state: :stalled, startable?: false, record_running?: true, failed_job?: false,
-          summary: "Building, no heartbeat for 11 minutes. If it stays that way, restart the app: the build then carries on from where it stopped.")
+          summary: "Building, no heartbeat for 11 minutes. If it stays that way, restart the app. The build then carries on from where " \
+                   "it stopped, or reads interrupted and can be built again.")
         expect(operation).to be_in_flight
       end
 

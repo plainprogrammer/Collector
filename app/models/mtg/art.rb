@@ -45,7 +45,7 @@ module MTG::Art
     progress = "#{run.fetched_count} images fetched, #{run.fingerprinted_count} of #{run.total_count} artworks fingerprinted"
     if run.stalled?(queue)
       "Art matching: building (no heartbeat for #{run.stalled_minutes} minutes) since #{run.started_at.utc.iso8601}; #{progress}, " \
-        "#{run.failed_count} failed (last heartbeat #{run.heartbeat_at.utc.iso8601}). Restart the app if it stays that way."
+        "#{run.failed_count} failed (last heartbeat #{run.heartbeat_at.utc.iso8601}). Restart the app if it stays that way; the build then carries on, or reads interrupted."
     elsif run.left_behind?(queue)
       "Art matching: interrupted (last heartbeat #{run.heartbeat_at.utc.iso8601}) after #{progress}. " \
         'Run bin/rails "catalog:refresh[mtg]" to resume.'

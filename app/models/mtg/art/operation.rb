@@ -6,8 +6,11 @@
 class MTG::Art::Operation < Catalog::Operation
   OFF = "Art matching is off. Set #{MTG::Art::ENV_NAME}=true to turn it on.".freeze
   NEEDS_CATALOG = "Refresh the catalog first: the art index is built from its cards.".freeze
-  # Restarting releases the job a hung worker holds; the queue runs it again, and it closes its own build and carries on.
-  STALLED_ADVICE = "If it stays that way, restart the app: the build then carries on from where it stopped.".freeze
+  # A restart that stops the worker in good order releases the job it holds: the queue runs it again, and it closes its
+  # own build and carries on. After a crash or a kill the job stays held until the queue notices its worker is gone
+  # (some minutes) and fails it; the build is then interrupted, and nothing carries on until it is built again.
+  STALLED_ADVICE = "If it stays that way, restart the app. The build then carries on from where it stopped, or reads " \
+                   "interrupted and can be built again.".freeze
 
   def key = "art_index"
   def title = "Art index"

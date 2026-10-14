@@ -95,8 +95,8 @@ RSpec.describe MTG::Art, type: :model do
       create(:mtg_art_build, status: "running", finished_at: nil, heartbeat_at: 11.minutes.ago, job_id: job.active_job_id, total_count: 10, fingerprinted_count: 3)
 
       expect(described_class.status_line).to start_with("Art matching: building (no heartbeat for 11 minutes) since ")
-      expect(described_class.status_line).to include("3 of 10 artworks fingerprinted").and end_with("Restart the app if it stays that way.")
-      expect(described_class.status_line).not_to include("interrupted", "catalog:refresh")
+      expect(described_class.status_line).to include("3 of 10 artworks fingerprinted").and end_with("Restart the app if it stays that way; the build then carries on, or reads interrupted.")
+      expect(described_class.status_line).not_to include("Art matching: interrupted", "catalog:refresh")
     end
 
     it "reports that build as interrupted once the queue has failed its job", :art_matching, :solid_queue do

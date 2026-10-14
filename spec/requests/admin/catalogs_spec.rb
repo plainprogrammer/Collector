@@ -383,7 +383,8 @@ RSpec.describe "Admin catalog page", :solid_queue, type: :request do
         get admin_catalog_path
 
         expect(text(section("art_index"))).to start_with("Art index Build art index Building, no heartbeat for 11 minutes. If it stays that " \
-          "way, restart the app: the build then carries on from where it stopped. 25% 7,976 of 31,904 artworks fingerprinted Started")
+          "way, restart the app. The build then carries on from where it stopped, or reads interrupted and can be built again. " \
+          "25% 7,976 of 31,904 artworks fingerprinted Started")
         expect(text(section("art_index"))).to include("Last heartbeat").and include("(11 minutes ago)")
         expect(section("art_index").at_css("a")).to be_nil
         expect(section("art_index").at_css("button")["disabled"]).to be_present
