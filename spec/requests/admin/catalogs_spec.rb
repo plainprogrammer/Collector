@@ -479,9 +479,10 @@ RSpec.describe "Admin catalog page", :solid_queue, type: :request do
           get admin_catalog_path
         end
 
-        expect(text(section("art_index"))).to eq("Art index Build art index Queued to retry. The last build failed: " \
-          "Catalog::Sources::RateLimitedError: GET https://cards.scryfall.io/small/a.jpg still rate limited after 3 attempts " \
-          "Retrying at 9 Oct 2026 03:25 UTC Finished 9 Oct 2026 03:15 UTC Index in use none")
+        expect(text(section("art_index"))).to eq("Art index Build art index Queued to retry. The last build failed. " \
+          "The source was turning requests away for a while (rate limiting). Nothing is wrong on your side. " \
+          "Retrying at 9 Oct 2026 03:25 UTC Finished 9 Oct 2026 03:15 UTC Index in use none Technical detail " \
+          "Catalog::Sources::RateLimitedError: GET https://cards.scryfall.io/small/a.jpg still rate limited after 3 attempts")
         expect(section("art_index").at_css("a")).to be_nil
         expect(section("art_index").at_css("button")["disabled"]).to be_present
         expect(page.at_css("main")["data-controller"]).to eq("poll")
@@ -506,8 +507,8 @@ RSpec.describe "Admin catalog page", :solid_queue, type: :request do
 
         build.update!(status: "failed", message: "Errno::ENOSPC: No space left on device")
         get admin_catalog_path
-        expect(text(section("art_index"))).to eq("Art index Build art index Failed: Errno::ENOSPC: No space left on device " \
-          "Finished 9 Oct 2026 05:00 UTC Index in use none")
+        expect(text(section("art_index"))).to eq("Art index Build art index Failed. An unexpected error stopped it. " \
+          "Finished 9 Oct 2026 05:00 UTC Index in use none Technical detail Errno::ENOSPC: No space left on device")
       end
     end
 

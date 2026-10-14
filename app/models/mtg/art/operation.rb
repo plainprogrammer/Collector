@@ -111,10 +111,14 @@ class MTG::Art::Operation < Catalog::Operation
       state == :queued && build&.failed? && build.job_id.present? && queue.retry_at(build.job_id).present?
     end
 
-    def failed_summary = "Failed: #{build.message}"
+    # Why the build failed in plain words, with the error it stored as the detail (issue #84).
+    def failure = Catalog::FailureReason.for(build.message, collectible_type)
+
+    def failed_summary = "Failed. #{failure.sentence}"
 
     def failed_facts
-      [ fact("Finished", build.finished_at), fact("Index in use", MTG::Art::Index.current&.basename&.to_s || "none") ]
+      [ fact("Finished", build.finished_at), fact("Index in use", MTG::Art::Index.current&.basename&.to_s || "none"),
+        (fact("Technical detail", failure.detail) if failure.detail) ].compact
     end
 
     def catalog_loaded?
