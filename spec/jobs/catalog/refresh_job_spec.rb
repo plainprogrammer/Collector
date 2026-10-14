@@ -26,6 +26,22 @@ RSpec.describe Catalog::RefreshJob, type: :job do
     FileUtils.rm_rf(Rails.configuration.x.catalog_download_dir)
   end
 
+  # The waiting retry holds no concurrency lock, so the schedule or `catalog:refresh` can queue another refresh meanwhile
+  # (issue #78). The issue's probe: that refresh must not ask the source inside the window it asked us to stay out of.
+  context "when another refresh for the type waits to run again (issue #78)", :solid_queue do
+    it "asks the source nothing, whoever started it, and leaves the work to the waiting job", :aggregate_failures do
+      queue_job(described_class, "mtg", "manual", wait: 10.minutes)
+      bulk_data = stub_request(:get, "https://api.scryfall.com/bulk-data").to_return(status: 429, headers: { "Retry-After" => "600" })
+
+      %w[scheduled manual].each { |trigger| described_class.perform_now("mtg", trigger) }
+
+      expect(bulk_data).not_to have_been_requested
+      expect(Catalog::RefreshRun.pluck(:trigger, :status, :message)).to contain_exactly(
+        [ "scheduled", "skipped", "waiting for another job's retry" ], [ "manual", "skipped", "waiting for another job's retry" ])
+      expect(SolidQueue::Job.where(class_name: described_class.name, finished_at: nil).count).to eq(1) # one retry chain
+    end
+  end
+
   it "retries transient source errors" do
     allow(Catalog::Refresh).to receive(:new).and_raise(Catalog::Sources::TransientError, "timeout")
 
