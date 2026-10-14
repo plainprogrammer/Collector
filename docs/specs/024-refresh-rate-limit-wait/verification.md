@@ -16,7 +16,7 @@ and the art build's (`spec/models/mtg/art/build_spec.rb`, "fetches nothing while
 
 ## Green after
 
-`bin/ci` on the branch rebased onto #84's (`084-plain-failure-messages`, PR #95), at this commit: see the pull request for the run. Before the rebase, on `main`: Setup, RuboCop, Brakeman, bundler-audit, importmap audit passed; RSpec 1427 examples, 0 failures, 1 pending (the pending one predates this branch).
+`bin/ci` on the branch rebased onto #84's (`084-plain-failure-messages`, PR #95), at `0df5cee`: every step passed; RSpec 1440 examples, 0 failures, 1 pending. Two of this branch's examples were brought to #84's wording for the summaries, in the commits that added them. Before the rebase, on `main`: Setup, RuboCop, Brakeman, bundler-audit, importmap audit passed; RSpec 1427 examples, 0 failures, 1 pending (the pending one predates this branch).
 
 **With #84.** A skip's message never goes through `Catalog::FailureReason`: the refresh panel passes over a run skipped as `waiting for another job's retry` (`attempted`), a skipped build shows nowhere, and the recent-runs list prints a skip's message as it is, as it does "already running".
 
