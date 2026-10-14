@@ -79,11 +79,15 @@ RSpec.describe "Image publishing files" do
       expect(service.dig("healthcheck", "test")).to eq([ "CMD", "curl", "-fsS", "http://localhost:8080/up" ])
       expect(service["environment"].keys).to contain_exactly(
         "SECRET_KEY_BASE", "SOLID_QUEUE_IN_PUMA", "HTTP_PORT", "COLLECTOR_MTG_LANGUAGES", "COLLECTOR_MTG_ART_MATCHING",
-        "COLLECTOR_CURRENCY", "COLLECTOR_HTTPS", "COLLECTOR_TRUSTED_PROXIES")
+        "COLLECTOR_PUBLIC_CATALOG", "COLLECTOR_CURRENCY", "COLLECTOR_HTTPS", "COLLECTOR_TRUSTED_PROXIES")
     end
 
     it "passes the art matching setting to the container, empty unless it is set (spec 011 AC-1.3)" do
       expect(compose.read).to include('COLLECTOR_MTG_ART_MATCHING: "${COLLECTOR_MTG_ART_MATCHING:-}"')
+    end
+
+    it "passes the open catalog setting to the container, empty unless it is set (spec 023 AC-1.3)" do
+      expect(compose.read).to include('COLLECTOR_PUBLIC_CATALOG: "${COLLECTOR_PUBLIC_CATALOG:-}"')
     end
   end
 
@@ -100,6 +104,10 @@ RSpec.describe "Image publishing files" do
 
     it "offers art matching as a commented-out setting (spec 011 AC-1.3)" do
       expect(Rails.root.join("config/deploy.yml").read).to include("# COLLECTOR_MTG_ART_MATCHING: true")
+    end
+
+    it "offers the open catalog as a commented-out setting (spec 023 AC-1.3)" do
+      expect(Rails.root.join("config/deploy.yml").read).to include("# COLLECTOR_PUBLIC_CATALOG: true")
     end
   end
 
