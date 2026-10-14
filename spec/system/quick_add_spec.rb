@@ -10,11 +10,13 @@ RSpec.describe "Quick add from search", type: :system do
   it "adds a copy without reloading the page and announces it", :aggregate_failures do
     system_sign_in_as(create(:user))
     visit catalog_entries_path(q: "bolt")
+    expect(page).to have_css("#{tile} .c-tag", text: "Not owned")
     page.execute_script("window.__marker = 'still here'")
     within(tile) { click_button "Add" }
 
     expect(page).to have_css("[role=status]", text: "Added 1 × Lightning Bolt")
     expect(page).to have_css("#{tile} .c-tile__qty", text: "×1")
+    expect(page).to have_no_css("#{tile} .c-tag", text: "Not owned") # spec 021 AC-1.8
     expect(page.evaluate_script("window.__marker")).to eq("still here")
     expect(page).to have_current_path(catalog_entries_path(q: "bolt"))
   end

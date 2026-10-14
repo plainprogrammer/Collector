@@ -44,8 +44,8 @@ RSpec.describe "Design system files" do
       expect(block).not_to match(/#\h{3,8}\b|rgba?\(|hsla?\(|font/i)
     end
 
-    it "is the only rule in the app's stylesheets that fades, filters or blends anything on a tile (FR-3)" do
-      rules = root.glob("app/assets/stylesheets/**/*.css").flat_map { |path| path.read.scan(/^[^\n{}]*c-tile[^\n{}]*\{[^}]*\}/) }
+    it "leaves the export's fade and its override as the only rules that fade, filter or blend anything on a tile (FR-3)" do
+      rules = root.glob("app/assets/stylesheets/**/*.css").flat_map { |path| path.read.scan(/[^{}]*c-tile[^{}]*\{[^}]*\}/) }
       treating = rules.grep(/opacity|filter|mix-blend-mode/)
       expect(treating.map { |rule| rule[/\{.*\}/m].delete(" ") }.sort).to eq([ "{opacity:.45;}", "{opacity:1;}" ])
     end

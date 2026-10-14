@@ -37,8 +37,12 @@ RSpec.describe "Unowned tiles", :card_images, type: :system do
     end
   end
 
-  def add_button_tops
-    page.evaluate_script("[ ...document.querySelectorAll('.c-grid .c-tile__add') ].map((form) => Math.round(form.getBoundingClientRect().top * 100) / 100)")
+  # Each tile cell in the grid, in order: whether it is unowned, and its add form's top edge.
+  def add_buttons
+    page.evaluate_script(<<~JS)
+      [ ...document.querySelectorAll(".c-grid .c-tilecell") ].map((cell) => [ !!cell.querySelector(".c-tile--owned-none"),
+        Math.round(cell.querySelector(".c-tile__add").getBoundingClientRect().top * 100) / 100 ])
+    JS
   end
 
   def marker_cut_off?(selector)
@@ -74,20 +78,19 @@ RSpec.describe "Unowned tiles", :card_images, type: :system do
   end
 
   it "keeps a mixed row's add buttons level at 1280px and at phone width (AC-1.7, AC-2.1)", :aggregate_failures do
-    printing(owned: 1)
-    printing(language: "ja")
-    printing(image: false, language: "de")
-    printing(owned: 2, language: "fr")
+    # One set and numbers in order, so the results come owned, unowned, unowned, owned whatever the factories' sequences hold.
+    set = create(:catalog_set)
+    [ { owned: 1 }, {}, { image: false }, { owned: 2 } ].each_with_index { |tile, index| printing(set:, number: (index + 1).to_s, **tile) }
     visit catalog_entries_path(q: "bolt")
     expect(page).to have_css(".c-grid .c-tile__add", count: 4)
 
-    expect(add_button_tops.uniq.size).to eq(1)
+    expect(add_buttons.map(&:first)).to eq([ false, true, true, false ])
+    expect(add_buttons.map(&:last).uniq.size).to eq(1)
 
     expect(open_in_narrow_frame(catalog_entries_path(q: "bolt"), width: 390, height: 844, ready: ".c-grid")).to eq([ 390, true ])
     within_narrow_frame do
-      tops = add_button_tops
-      expect(tops.size).to eq(4)
-      expect(tops.each_slice(2).map { |row| row.uniq.size }).to eq([ 1, 1 ]) # two columns: owned beside unowned in each row
+      # Two columns: each row holds an owned and an unowned tile, with one top edge for its two add buttons.
+      expect(add_buttons.each_slice(2).map { |row| row.transpose.map { |values| values.uniq.size } }).to eq([ [ 2, 1 ], [ 2, 1 ] ])
       expect(marker_cut_off?(".c-tile--owned-none .c-tile__meta:last-child .c-tag")).to be(false)
     end
   end
