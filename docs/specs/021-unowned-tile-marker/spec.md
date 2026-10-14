@@ -58,6 +58,8 @@ The card page's printings are rows (`c-list li.is-unowned`), and the collection 
 - Publishing a change to the design system or re-exporting it.
 - The `×N` quantity badge (see Open Questions).
 
+**Spec 019.** Its AC-1.8 asserted that an unowned tile "is faded, as today". This spec replaces that half of the criterion; the example that held it (`spec/system/card_image_fit_spec.rb`) now expects full opacity. Spec 019's document is not edited.
+
 ## Decisions
 
 ### 1. Look D: the image as supplied, with a visible "Not owned" marker below it (ruled)
@@ -82,7 +84,7 @@ The placeholder is not a card image, so the guideline doesn't reach it. It is sh
 
 ### 6. A screen reader hears the marker as part of the tile's link
 
-The marker is plain text inside the tile's `<a>`, after the name, the set tag and the language tag, so it is part of the link's accessible name: "Lightning Bolt Lightning Bolt M10 · 146 EN Not owned". No `aria-label`, no hidden text. An owned tile's name carries "×3" as it does today.
+The marker is plain text inside the tile's `<a>`, after the name, the set tag and the language tag, so it is part of the link's accessible name, which ends with it: for example "Lightning Bolt Lightning Bolt M10 · 146 EN Not owned" (the image's alternative text, the name, the two tags, the marker). No `aria-label`, no hidden text. An owned tile's name carries "×3" as it does today.
 
 ### 7. The add button goes to the foot of its cell
 
@@ -107,7 +109,7 @@ As spec 019's decision 1, for the same reasons. One block, headed `Unowned tile 
 - [ ] **AC-1.5** Given an unowned entry When the card's printings page ("Show all N printings") is rendered Then its tile carries the marker, and an owned one doesn't
 - [ ] **AC-1.6** Given an unowned tile Then its link's accessible name, as the browser computes it, ends with "Not owned"
 - [ ] **AC-1.7** Given search results with owned and unowned tiles When rendered at 1280px and at 390px, in the light and the dark theme Then the marker is shown in full (not cut off), and the page doesn't scroll sideways (screenshots)
-- [ ] **AC-1.8** Given a copy of an unowned card is added with the tile's add button Then the tile shows `×1` and no marker (the existing quick-add flow, unchanged)
+- [ ] **AC-1.8** Given a copy of an unowned card is added with the tile's add button Then the tile shows `×1` and no marker (the existing quick-add flow; its example gains the marker's before and after)
 
 ### Story 2: Rows stay level
 
