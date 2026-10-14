@@ -9,7 +9,7 @@
 #   queued_notice       said after it was queued ("Refresh queued.")
 #   in_flight_notice    said when it was already queued or running
 #   job_class           the job that does the work, and job_arguments for it
-#   summary             where it stands, starting with its state in a word: one sentence, and a second only for what
+#   summary             where it stands, starting with its state in a word: one sentence, and more only for what
 #                       the state leaves unsaid (why a retry waits, what the admin can do)
 #   record_running?     true while its own run record says it is working
 # and may provide queue_argument, stages, meter, facts and unavailable_reason.
