@@ -6,6 +6,7 @@
 **Last Updated:** 2026-10-15
 **Branch:** `027-architecture-area-docs`
 **Issue:** [#102](https://github.com/plainprogrammer/Collector/issues/102)
+**Plan:** retired in `c1ef5f0138c6898ab171fe6315281e6fed5c86c2`; read it with `git show c1ef5f0138c6898ab171fe6315281e6fed5c86c2^:docs/specs/027-architecture-area-docs/plan.md`
 
 ---
 
