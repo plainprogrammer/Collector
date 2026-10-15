@@ -42,6 +42,9 @@ gem "image_processing", "~> 2.2"
 # Loaded by Active Storage when it sets up vips variants, so the app boots without libvips (ADR 0013)
 gem "ruby-vips", "~> 2.3", require: false
 
+# Checks export files against the format's JSON Schema, in the app (spec 025, ADR 0021) and in the suite (spec 017).
+gem "json_schemer", "~> 2.4", require: false
+
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
@@ -68,8 +71,6 @@ group :development do
 end
 
 group :test do
-  # Checks the export format's examples against its JSON Schema (spec 017); never loaded by the running app.
-  gem "json_schemer", "~> 2.4", require: false
   gem "capybara"
   gem "selenium-webdriver"
   gem "webmock"
