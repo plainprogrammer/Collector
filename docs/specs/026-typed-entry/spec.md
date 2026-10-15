@@ -1,7 +1,7 @@
 # Feature 026: Add Cards from a Set by Collector Number
 
 **Status:** Approved by the maintainer (2026-10-15), with rulings on decisions 3, 4 and 7
-**Version:** 1.2.2
+**Version:** 1.2.3
 **Created:** 2026-10-15
 **Last Updated:** 2026-10-15
 **Branch:** `026-typed-entry`
@@ -14,6 +14,7 @@
 | Version | Date | Change |
 |---------|------|--------|
 | 1.0.0 | 2026-10-15 | Written from issue #43 (roadmap theme B, item 8) |
+| 1.2.3 | 2026-10-15 | Merged with spec 025 (PR #113): More's rows are Export collection, Import collection (spec 025 decision 14), then Add by number (coordinator's instruction for the merge); no behaviour of number entry changes |
 | 1.2.2 | 2026-10-15 | The maintainer's ruling on More's order: "Add by number" comes after "Export collection"; the account menu doesn't change |
 | 1.2.1 | 2026-10-15 | Records what this spec supersedes in earlier specs and ADRs (frozen-specs ruling of 2026-10-15); no behaviour changes |
 | 1.2.0 | 2026-10-15 | Approved by the maintainer. Decisions 3, 4 and 7 ruled as recommended |
@@ -141,7 +142,7 @@ Earlier specs are frozen (maintainer ruling, 2026-10-15). What this spec changes
 |---|---|---|
 | [Spec 004](../004-design-system-collection/spec.md) | AC-11.6 | The empty collection's sentence becomes "No cards in your collection yet. Search for a card or add cards by number to start adding.", with "add cards by number" linking to number entry (decision 1). Its link to search stays. |
 | [Spec 004](../004-design-system-collection/spec.md), [spec 009](../009-card-scanner-confirm-flow/spec.md) | Spec 004's collection page head; spec 009 AC-8.2 | The collection page's head gains a secondary "Add by number" action before "Scan cards" and "Add items" (decision 1). "Scan cards" stays as AC-8.2 says. |
-| [Spec 022](../022-export-collection/spec.md) | Decision 6 (More's rows, in order) | More gains an "Add by number" row right after "Export collection" (ruling, 2026-10-15): Signed in as, Export collection, Add by number, then the admin links for an admin, then Sign out. The account menu doesn't gain it, so on this one row More holds more than the account menu (`MorePage.md` says so). |
+| [Spec 022](../022-export-collection/spec.md) | Decision 6 (More's rows, in order) | More gains an "Add by number" row after "Export collection" (ruling, 2026-10-15) and, since spec 025 merged, after its "Import collection" (v1.2.3): Signed in as, Export collection, Import collection, Add by number, then the admin links for an admin, then Sign out. The account menu doesn't gain it, so on this one row More holds more than the account menu (`MorePage.md` says so). |
 | [ADR 0015](../../adr/0015-admin-progress-by-polling.md) | "Turbo morphing is on app-wide" | Morph stays every page's refresh method, except that a page may ask for another one; number entry asks for `replace`, so the focus moves after each add (plan, Phase 4). |
 
 ## User Stories

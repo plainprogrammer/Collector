@@ -31,7 +31,7 @@ RSpec.describe "Number entry", type: :request do
         expect(response.body).to include(%(<a class="c-btn c-btn--secondary" href="#{collection_number_entry_path}">Add by number</a>))
         expect(response.body).to include(%(No cards in your collection yet. Search for a card or <a href="#{collection_number_entry_path}">add cards by number</a> to start adding.))
         get more_path
-        expect(Nokogiri::HTML5(response.body).at_css(".c-more li:nth-child(3) a")&.text).to eq("Add by number")
+        expect(Nokogiri::HTML5(response.body).at_css(".c-more li:nth-child(4) a")&.text).to eq("Add by number")
         expect(response.body).to include(%(<a href="#{collection_number_entry_path}">Add by number</a>))
       end
     end

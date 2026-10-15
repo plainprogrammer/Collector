@@ -16,6 +16,7 @@ Rails.application.routes.draw do
     scope module: :collections do
       resource :selection, only: %i[create update]
       resource :export, only: :show, format: false
+      resource :import_preview, only: %i[new create]
       resource :condition_change, only: %i[new create]
       resources :bulk_removals, only: %i[new create] do
         resource :undo, only: :create, module: :bulk_removals

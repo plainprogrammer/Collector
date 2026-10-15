@@ -34,6 +34,11 @@ RSpec.describe Catalog, type: :model do
       create(:catalog_refresh_run, collectible_type: "other", status: "applied")
       expect(described_class.unloaded_titles).to eq([ described_class.title_for("mtg") ])
     end
+
+    it "lists only the unloaded types it is asked about, ignoring types it doesn't know (spec 025 AC-2.6)", :aggregate_failures, :other_catalog do
+      expect(described_class.unloaded_titles(%w[other comics])).to eq([ "Pocket Monsters" ])
+      expect(described_class.unloaded_titles([])).to eq([])
+    end
   end
 
   describe ".public_in? (spec 023 AC-1.1)" do

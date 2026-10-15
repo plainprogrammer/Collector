@@ -253,6 +253,16 @@ img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches:
   .c-shell--untabbed > .c-footer { padding-bottom:calc(var(--space-4) + env(safe-area-inset-bottom)); }
 }
 
+/* ---------- Import preview (spec 025): the upload's file field, and the preview's sections and lists ---------- */
+.c-file { max-width:100%; font:400 14px/20px var(--font-sans); color:var(--ink); }
+.c-file:focus-visible { outline:2px solid var(--focus); outline-offset:2px; }
+.c-import { display:flex; flex-direction:column; gap:var(--space-6); margin-top:var(--space-6); }
+.c-import__list li { flex-wrap:wrap; overflow-wrap:anywhere; }
+.c-import__number { font:400 13px/18px var(--font-mono); color:var(--ink-muted); }
+.c-import__reasons { flex-basis:100%; display:flex; flex-direction:column; gap:var(--space-1); }
+.c-import__reasons p { margin:0; font:600 13px/18px var(--font-sans); color:var(--danger); }
+.c-import__note, .c-import__more { margin:0; font:400 14px/20px var(--font-sans); color:var(--ink-muted); }
+
 /* ---------- Number entry (spec 026): the chosen set, one line's fields in a row, a choice between matches, the list ---------- */
 .c-numentry { display:flex; flex-direction:column; gap:var(--space-6); margin-top:var(--space-6); }
 .c-numentry__set { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-2) var(--space-4); }

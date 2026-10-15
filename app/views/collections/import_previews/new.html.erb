@@ -1,0 +1,24 @@
+<% content_for :title, "Import collection · Collector" %>
+<%= render "layouts/appbar", section: nil %>
+<main class="c-main c-page">
+  <div class="c-pagehead">
+    <div>
+      <h1 class="c-pagehead__title">Import collection</h1>
+    </div>
+  </div>
+  <%= form_with url: collection_import_preview_path, multipart: true, class: "c-form", data: { turbo: false } do |form| %>
+    <% refusal = @import&.refusal %>
+    <div class="c-field<%= " c-field--invalid" if refusal %>">
+      <%= form.label :export_file, "Export file", class: "c-field__label" %>
+      <%= form.file_field :export_file, accept: ".json,application/json", required: true, class: "c-file",
+            "aria-describedby": refusal ? "export_file_error" : "export_file_hint" %>
+      <p class="c-field__hint" id="export_file_hint">A .json file from Export collection, at most 32 MB. Previewing shows what importing it would do and changes nothing.</p>
+      <% if refusal %><p class="c-field__error" id="export_file_error"><%= refusal.reason %></p><% end %>
+    </div>
+    <div class="c-form__actions">
+      <%= form.submit "Preview import", class: "c-btn c-btn--primary" %>
+      <%= link_to "Cancel", collection_path, class: "c-btn c-btn--secondary" %>
+    </div>
+  <% end %>
+</main>
+<%= render "layouts/tabbar", section: nil %>

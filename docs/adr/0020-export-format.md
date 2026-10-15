@@ -67,6 +67,6 @@ The document, the schema and the examples are checked against each other and aga
 - The spec that puts a lot in a location raises the format to version 2, whichever way its own ADR decides ADR 0019's open question.
 - A file can only be written by a program that knows the descriptive fields. A tool that knows only source ids can't write a well-formed file. Importing files from other tools is parked until after 1.0.
 - Times lose their fraction of a second. A restored lot's times equal the file's, not the original instance's to the microsecond.
-- The format, the schema and the examples live under `docs/`, which the published image leaves out. The suite checks the schema with `json_schemer`, a test-only gem. An import that validates files inside the running app has to decide where its copy of the rules lives.
+- The format, the schema and the examples live under `docs/`, which the published image leaves out. The suite checks the schema with `json_schemer`, a test-only gem. An import that validates files inside the running app has to decide where its copy of the rules lives. [ADR 0021](0021-export-format-rules-in-the-app.md) decides it: `json_schemer` in the app and a byte-identical copy of the schema.
 - The coverage check compares names, not meaning. It catches a table or column that nobody accounted for; it can't tell whether the account given is right.
 - A source that retires or replaces an id still leaves a lot that doesn't resolve. The descriptive fields let a person repair it; nothing does so automatically.
