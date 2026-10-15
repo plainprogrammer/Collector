@@ -1,7 +1,7 @@
 # Feature 025: Preview an Import
 
-**Status:** Approved by the maintainer (2026-10-15), with rulings on decisions 1–7, 11 and 12
-**Version:** 1.4.0
+**Status:** Approved by the maintainer (2026-10-15), with rulings on decisions 1–7 and 11–14
+**Version:** 1.5.0
 **Created:** 2026-10-15
 **Last Updated:** 2026-10-15
 **Branch:** `025-import-preview`
@@ -17,6 +17,8 @@
 | 1.1.0 | 2026-10-15 | From the spec review (Opus). A held lot that a row with problems names is *held by a problem row*, never removed (decision 1); the round trip holds when every lot resolves (AC-1.3); a hard cap on request bodies in front of Rails (decision 6); long lists show their first 100 rows with counts by reason (decision 11, proposed); ADR 0013's debt stays with the first Active Storage upload; changed copies defined; refusals carry rule and place; whole numbers with a zero fraction; documents that change completed |
 | 1.2.0 | 2026-10-15 | The maintainer ruled decisions 1–7 as proposed |
 | 1.3.0 | 2026-10-15 | Approved by the maintainer: decision 11 accepted, the 40 MB server cap (decision 6) and "held by a problem row" (decisions 1 and 2) accepted as written |
+| 1.4.1 | 2026-10-15 | From the plan review: a stray header row removed from decision 10's table |
+| 1.5.0 | 2026-10-15 | The maintainer's plan approval: the memory bar is 500 MB (decision 13); Import collection supersedes spec 022 decision 6's menu order, and spec 022 isn't edited (decision 14) |
 | 1.4.0 | 2026-10-15 | From the second spec review (Fable). Outcomes partition the held lots (decision 1); the hard cap at every layer that receives the body (decision 6); the catalog checks' order and each row problem's rule and place (decision 9); each refusal's rule and place (decision 10); a tie-break for removed lots (decision 11); AC-2.7 checks the well-formedness model; the preview's time bar is 30 seconds, ruled by the maintainer (decision 12); the file field is filtered from the logs; FR-9 names its files |
 
 ---
@@ -51,7 +53,7 @@ This spec builds the first half of import. A signed-in collector uploads an expo
 
 ## Decisions
 
-Decisions 1 to 7, 11 and 12 were ruled by the maintainer on 2026-10-15, each as proposed, with the alternatives named here put to them.
+Decisions 1 to 7 and 11 to 14 were ruled by the maintainer on 2026-10-15, each as proposed, with the alternatives named here put to them.
 
 ### 1. Applying replaces the collection (ruled)
 
@@ -103,7 +105,7 @@ The alternatives not chosen: a hand-written validator with no gem at run time; s
 - **Size:** a file over 32 MB is refused with the reason before it is parsed. An export of 50,000 lots is about 16 MB (spec 022).
 - **Hard cap:** every layer that receives the request body refuses one over 40 MB before it is kept, so a huge upload never fills the disk with a temporary copy: Puma (`http_content_length_limit`, in every environment), Thruster in the published image (`MAX_REQUEST_BODY`, which is unlimited by default), and kamal-proxy in a Kamal deployment (`proxy.buffering.max_request_body`, which buffers up to 1 GB to disk by default). Past 40 MB the collector sees a plain "413 Payload Too Large" or, when the server closes the connection mid-upload, the browser's own failed-request page; between 32 and 40 MB they see decision 10's reason. Nothing else in the app sends a body near that size.
 - **Content:** the file is judged by what it holds (UTF-8 JSON that is an export), never by the type or name the browser declares. The file field asks the browser for `.json` files, as a convenience only.
-- **Cost bar:** a 50,000-row file previews in under 30 seconds and grows the process by under 300 MB, measured and recorded in `verification.md` (AC-1.10). Decision 12 changed the time from spec 022's 10 seconds.
+- **Cost bar:** a 50,000-row file previews in under 30 seconds and grows the process by under 500 MB, measured and recorded in `verification.md` (AC-1.10). Decision 12 changed the time from spec 022's 10 seconds, and decision 13 the memory from its 300 MB.
 
 The alternative not chosen: store the upload so #40 can apply it without a second upload. That is writing; #40 decides it.
 
@@ -160,8 +162,6 @@ A well-formed row is checked against the catalog in this order:
 
 The upload page is shown again (422) with one reason, and no rows:
 
-| The file | Reason shown |
-|---|---|
 | The file | Reason shown | Rule and place |
 |---|---|---|
 | No file chosen, empty, or a form field that isn't an upload | "Choose an export file to preview." | `no_file`, `""` |
@@ -182,7 +182,24 @@ A fresh instance with no catalog loaded makes every row of a large file a proble
 
 ### 12. The preview's time bar is 30 seconds (ruled)
 
-Checking a 50,000-row file against the whole schema with `json_schemer` takes 6 to 8.4 seconds on the development machine (measured while specifying: 8.35 s for `valid?`, 7.07 s for `validate`; parsing takes about 0.16 s), most of a 10-second bar before the file is resolved, compared or shown. The maintainer kept decision 5 as it is (the schema over the whole file, no hand-written lot checks) and set the preview's bar at 50,000 rows in under 30 seconds. The memory bar stays at 300 MB. The alternatives not chosen: hand-written checks for the lot rows, proved equal to the schema by the suite, keeping 10 seconds; keeping 10 seconds at 10,000 rows; measuring with no threshold.
+Checking a 50,000-row file against the whole schema with `json_schemer` takes 6 to 8.4 seconds on the development machine (measured while specifying: 8.35 s for `valid?`, 7.07 s for `validate`; parsing takes about 0.16 s), most of a 10-second bar before the file is resolved, compared or shown. The maintainer kept decision 5 as it is (the schema over the whole file, no hand-written lot checks) and set the preview's bar at 50,000 rows in under 30 seconds. The memory bar stayed at 300 MB until decision 13. The alternatives not chosen: hand-written checks for the lot rows, proved equal to the schema by the suite, keeping 10 seconds; keeping 10 seconds at 10,000 rows; measuring with no threshold.
+
+### 13. The preview's memory bar is 500 MB (ruled)
+
+The plan review found that `json_schemer` keeps a tree of results for every lot it checks, so a 50,000-row file may grow the process by more than spec 022's 300 MB. When approving the plan, the maintainer set the bar at under 500 MB of RSS growth for a 50,000-row preview; the time bar stays at 30 seconds (decision 12). If the measurement misses 500 MB, the plan's fallback (still `json_schemer`, with the header and each lot checked separately against the schema's own `$defs/lot`) needs the maintainer's ruling before it is applied.
+
+### 14. Import collection supersedes spec 022 decision 6's menu order (ruled)
+
+Spec 022 decision 6 says "Export collection" is followed by a `c-menu__sep`, and gives the menu's and More's order. "Import collection" (decision 7) now sits between "Export collection" and that separator, and between "Export collection" and the admin links on More:
+
+| Who | The account menu, in order |
+|---|---|
+| An admin | Export collection, Import collection, separator, Users and sign-up, Catalog, Jobs, separator, Sign out |
+| Any other collector | Export collection, Import collection, separator, Sign out |
+
+More, in order: Signed in as, Export collection, Import collection, then the admin links for an admin, then Sign out.
+
+This supersedes spec 022 decision 6 in that respect. Spec 022 isn't edited: a shipped spec stays as it was approved (the maintainer's practice from 2026-10-15).
 
 ## Users and Context
 
@@ -207,7 +224,7 @@ Checking a 50,000-row file against the whole schema with `json_schemer` takes 6 
 - [ ] **AC-1.7** Given a file whose `collection_view` is the other known view Then the preview says the view would change to it; given a `collection_view` the instance doesn't know, or the collector's own Then no view line is shown and it isn't a problem; given a file whose name or email address differs Then the preview shows the file's value and says applying won't change it; given a profile that agrees Then no profile line is shown
 - [ ] **AC-1.8** Given a preview of any file Then no row in any table of the primary database is created, changed or deleted (row counts, and `updated_at` maxima where the column exists, compared before and after) and no job is enqueued
 - [ ] **AC-1.9** Given two files of 2 rows and 30 rows, all resolvable When each is previewed Then both previews run the same number of queries
-- [ ] **AC-1.10** Measured outside the suite: each of three 50,000-row files (all resolvable; all unresolvable; all not well-formed, a bad price on every row) previews, the whole request, in under 30 seconds with under 300 MB RSS growth (decision 12); the measurements and the method are recorded in `verification.md`
+- [ ] **AC-1.10** Measured outside the suite: each of three 50,000-row files (all resolvable; all unresolvable; all not well-formed, a bad price on every row) previews, the whole request, in under 30 seconds with under 500 MB RSS growth (decisions 12 and 13); the measurements and the method are recorded in `verification.md`
 - [ ] **AC-1.11** Given a held lot and a problem row with the same identity (its `added_at` not a real moment) Then the lot is counted as held by a problem row, not removed; given a row whose `entry` is missing Then it matches no lot
 
 ### Story 2: See every row that can't be applied
@@ -272,7 +289,7 @@ Checking a 50,000-row file against the whole schema with `json_schemer` takes 6 
 
 ## Non-Functional Requirements
 
-- **Cost per account (hosted-door rule 4).** Storage: none; the file is never kept beyond the request's temporary copy. Background work: none. Per preview: one request that reads at most 32 MB (40 MB at the server), parses it, and reads the account's lots and the matching catalog entries in a bounded number of statements. AC-1.10 holds a 50,000-row file to under 30 seconds and 300 MB (decision 12). A rate limit on previews is a hosted-service feature (north star, Not before 1.0).
+- **Cost per account (hosted-door rule 4).** Storage: none; the file is never kept beyond the request's temporary copy. Background work: none. Per preview: one request that reads at most 32 MB (40 MB at the server), parses it, and reads the account's lots and the matching catalog entries in a bounded number of statements. AC-1.10 holds a 50,000-row file to under 30 seconds and 500 MB (decisions 12 and 13). A rate limit on previews is a hosted-service feature (north star, Not before 1.0).
 - **Hosted-door rules.** Rule 1: no source is adopted. Rule 2: a collector previews into their own collection only; no admin page reads a file or a collection. Rule 3: no setting is added (the size limits are constants, not settings). Rule 4: as above.
 - **Security.** The file holds a name and an email address; it is never stored, logged or echoed beyond what the preview shows its owner (the file's own name and email address only when they differ, decision 4). Responses carry `Cache-Control: no-store`. The upload is a CSRF-protected form. JSON is parsed with duplicate keys refused and the parser's default nesting limit. Brakeman stays clean.
 - **Format.** Version 1, unchanged. No collector-owned data is added, so the format and its Coverage tables don't change.
@@ -297,7 +314,7 @@ Each is verified by reading.
 
 ## Open Questions
 
-None. Decisions 1 to 7, 11 and 12 are ruled.
+None. Decisions 1 to 7 and 11 to 14 are ruled.
 
 ## Out of Scope
 
