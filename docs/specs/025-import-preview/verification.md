@@ -197,3 +197,7 @@ The coverage matrix finds evidence for every criterion; AC-3.1 is exercised thro
 - `spec/config/request_body_limit_spec.rb` and `spec/collection_import_core_spec.rb` carry no `type:`, like the other core specs.
 
 #40 isn't blocked: the reader exposes each row's outcome, the held lot it names, the removed lots, the lots held by problem rows and the view change. It doesn't keep each row's resolved catalog entry; #40 looks it up again or adds an accessor.
+
+## Distillation
+
+`distill-feature`, 2026-10-15, before the merge. Spec 025's areas, data portability and (for decision 6's 40 MB request body limit) release and deploy, have no area doc yet (`docs/architecture/README.md`), so nothing was written into one: spec 027's follow-ups distil them (#108 data portability, #109 release and deploy), and spec 025 is listed among the specs each covers. The index row's Plan reads "retirement owed"; the plan is retired after this feature's pull request merges. No new ADR is proposed: the lasting decision, where the format's rules live and how they are checked, is ADR 0021.
