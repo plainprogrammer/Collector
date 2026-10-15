@@ -5,6 +5,7 @@
 **Created:** 2026-09-29
 **Last Updated:** 2026-10-14
 **Branch:** `feat/002-scryfall-catalog-search`
+**Frozen:** the current rules are in [`catalog-operations.md`](../../architecture/catalog-operations.md) (parts: FR-3–FR-6 and their Error Scenarios rows); see the [specs index](../README.md)
 
 ---
 
