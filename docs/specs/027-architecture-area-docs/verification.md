@@ -432,6 +432,20 @@ Commits: `10bf892` chore(skills): add the distill-feature skill; `a22362d` docs(
 - Ruling: the own-plan link search is `git grep -n -E "\]\((\./)?plan\.md"`, so links with an anchor or `./` are caught too, and the skill says a path in quoted command output isn't a link (AC-5.3) — cost if wrong: a broken link survives a retirement.
 - Ruling: the Distillation log row names the pull request by number once opened, otherwise "spec NNN's pull request" (as the pilot's row does), since state 2 runs before `gh pr create` — cost if wrong: none beyond a later edit of the cell.
 - Ruling: when `gh` can't answer, the skill asks the maintainer instead of guessing; state 1 asks before creating a housekeeping branch — cost if wrong: an extra question.
+
 ## Phase 6: Plan retirement
+
+Commits: `6c4dd4fb5c247d6aeb5739e3ae9e096345309d0e` docs(specs): retire the plan of spec 015 (`<sha015>`); `0b16288741818b786e069d2a0e1617f26945dd98` docs(specs): retire the plan of spec 024 (`<sha024>`); `366ba40` docs(specs): point to the retired plans of specs 015 and 024 (spec 027 D4).
+
+- **Merge step:** skipped. The controller's fetch found `origin/main` still at `df61132`, the merge base, already in the branch. From here on the branch is never rebased (D7).
+- **Before editing:** `git grep -n -E "\*\*Frozen:\*\*|\]\((\./)?plan\.md" -- docs/specs/015-admin-catalog-and-jobs docs/specs/024-refresh-rate-limit-wait ':!.kamal/secrets'` gave three lines: `015…/spec.md:9` and `024…/spec.md:9` (the `**Frozen:**` lines of Phase 3) and `024…/verification.md:3` (`**Plan:** [plan.md](plan.md)`). No other own-plan link form (`./plan.md`, anchors) was in either folder. The index's 015 and 024 Plan cells read "present". `.claude/skills/distill-feature/SKILL.md` lines 18 and 41 give the retired cell as ``retired in `<sha>`; `git show <sha>^:docs/specs/NNN-<slug>/plan.md` ``, the same as this phase's form, and line 38 gives the spec pointer as this phase does.
+- **Pointers:** spec 015 line 10 and spec 024 line 10, directly under the `**Frozen:**` line: ``**Plan:** retired in `<sha>`; read it with `git show <sha>^:<path>` ``. Spec 024's `verification.md` line 3 now reads ``**Plan:** plan (retired in `0b16288…`; read it with `git show 0b16288…^:docs/specs/024-refresh-rate-limit-wait/plan.md`) · **Date:** 2026-10-14``, the rest of the line unchanged. The index's two Plan cells hold the retired form with each spec's own sha and path. Nothing else in either spec changed (`git show --stat 366ba40`: the two specs +1 each, 024's `verification.md` and `docs/specs/README.md`).
+- **AC-5.2:** `git show <sha015>^:docs/specs/015-admin-catalog-and-jobs/plan.md > <scratchpad>/015-retired.md` and `git show df61132:… > <scratchpad>/015-base.md`, then `cmp`: no output, exit 0 (5,021 lines). The same for 024: no output, exit 0 (104 lines).
+- **AC-5.3:** `git grep -n "](plan.md)" -- docs/specs/015-admin-catalog-and-jobs docs/specs/024-refresh-rate-limit-wait ':!.kamal/secrets'`: no output (exit 1). The wider `git grep -n -E "\]\((\./)?plan\.md" -- …` after the pointer commit: no output (exit 1). Neither folder holds a `plan.md` (`ls`: 015 has `contracts`, `data-model.md`, `prd.md`, `research.md`, `screenshots`, `spec.md`; 024 has `spec.md`, `verification.md`).
+- **AC-5.4:** `git show --stat 6c4dd4f`: `docs/specs/015-admin-catalog-and-jobs/plan.md | 5021 -----`, "1 file changed, 5021 deletions(-)". `git show --stat 0b16288`: `docs/specs/024-refresh-rate-limit-wait/plan.md | 104 -----`, "1 file changed, 104 deletions(-)". `git status --short` before each commit showed only that one `D` line.
+
+### Rulings (corrections to the draft)
+
+- Ruling: the pointers and index cells use the full 40-character sha, not a short one — a pointer is meant to resolve forever, and a short sha can become ambiguous as history grows — cost if wrong: longer cells, shortened in a later D4 commit.
 ## Phase 7: Roadmap, ADR index and issues
 ## Phase 8: Integration verification
