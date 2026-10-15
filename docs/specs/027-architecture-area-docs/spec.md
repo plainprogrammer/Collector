@@ -1,7 +1,7 @@
 # Feature 027: Area Docs Hold the Current Architecture, Starting with Catalog Operations
 
-**Status:** Approved by the maintainer on 2026-10-15, with rulings on open decisions OD1–OD6
-**Version:** 1.2.0
+**Status:** Approved by the maintainer on 2026-10-15, with rulings on open decisions OD1–OD6, and on the plan review's questions P1–P3
+**Version:** 1.3.0
 **Created:** 2026-10-15
 **Last Updated:** 2026-10-15
 **Branch:** `027-architecture-area-docs`
@@ -16,6 +16,7 @@
 | 1.0.0 | 2026-10-15 | Initial draft from the maintainer's rulings of 2026-10-15 (R1–R7) and the documentation survey of the same day. Splits the work into three slices and specifies the first (decision D1); YARD is slice B |
 | 1.1.0 | 2026-10-15 | From the spec review (Fable, read-only; APPROVE WITH CHANGES, nothing blocking), and the maintainer's ruling R8 (specs 025 and 026 record their supersessions instead of editing earlier specs, the first use of freezing). **Skill states:** a third, "feature not finished, nothing to do", and how the skill tells the three apart (D6, AC-4.4). **Integrations:** rows for both `session-wrap` and `sdd-superpowers:session-wrap`, and the hook's firing recorded once (AC-4.5). **Squash recovery:** `git show <squash sha>^:<path>`; a rebase before merge invalidates a pointer (Error Scenarios, AC-5.1). **Index:** a "retirement owed" plan state; 027's own row reads Approved in its PR (FR-3, AC-3.6). **Open issues:** found with `gh issue list --state open` (AC-1.7). **Memory:** `edit-specs-your-change-makes-stale` is rewritten to "record the supersession in the new spec, update the area doc" (AC-4.6, FR-6). **Corrections:** which skill files mention `loaded-by` (D6); spec 002 FR-9's area (D2); the own-plan link inventory (AC-5.3). **Open decisions:** OD1 and OD3 updated with the review's points; OD5 (Distillation log scope) and OD6 (issues for slice C) added |
 | 1.2.0 | 2026-10-15 | Approved by the maintainer, with rulings on OD1–OD6 (Open Questions). OD3 drops the development environment area: specs 001 (stack, CI, hooks), 003 and 014 keep their facts in CLAUDE.md under R5 and freeze with the release and deploy slice, so slice C is C1–C6 with six issues (D1, D2, AC-6.1, FR-9, Out of Scope). OD1, OD2 and OD5 are written into FR-5, Non-Goals and AC-5.2 |
+| 1.3.0 | 2026-10-15 | Spec update from the plan review (Fable, read-only), maintainer rulings P1–P3. **P1:** `distill-feature` is named in `.claude/CLAUDE.md`'s session-end instruction, not in integrations rows, which can't fire (D6, FR-6; AC-4.5 withdrawn, AC-4.7 added). **P2:** 027's own row reads "retirement owed" (AC-3.6). **P3:** the repository allows merge commits only; the after-merge state checks pointers with `git cat-file -e` (D6, D7, AC-5.1, Error Scenarios). **Also:** state 2 needs no open pull request and asks the maintainer when `verification.md` has no `## Implementation review` verdict, or doesn't exist (D6, AC-4.4); the rule file names that heading (AC-4.8); opening an issue for code that contradicts every source needs the maintainer's go-ahead (Error Scenarios) |
 
 ---
 
@@ -100,21 +101,21 @@ Nothing else: no typo fixes, no "superseded" notes, no version bump. Supersessio
 
 **D5. Area doc shape.** Every area doc has these sections, in this order, and leaves a section out only by saying "None." under its heading: **Scope** (what the area covers and where its edges are, naming neighbouring areas); **Glossary**; **Invariants** (statements that always hold); **States and transitions** (for each stateful thing: its states, what moves it between them, what a reader sees); **Named constants** (a table of name, value, where it is defined, and why that value, each row with its source); **Decisions not in an ADR** (each with its source); **Sources** (every spec part, ADR and issue the doc distils, with links); **Distillation log** (one row per distillation: date, what was distilled, the pull request). Each statement that came from a spec criterion, ADR or issue names it inline (for example "(spec 015 AC-2.16; #60)"), so code comments that cite spec criteria lead to the area doc through the index and back.
 
-**D6. Where the distillation step lives: a project skill, offered after `session-wrap` through the integrations manifest.** `session-wrap` is a plugin skill and can't be edited here. Of the three places R6 allows:
+**D6. Where the distillation step lives: a project skill, named in `.claude/CLAUDE.md`'s session-end instruction.** `session-wrap` is a plugin skill and can't be edited here. Of the places R6 allows:
 
 - A **steering file** doesn't reach it: `session-wrap`'s skill file has no steering step (checked 2026-10-15: the `reference.md` files of `sdd-brainstorm`, `sdd-specify`, `sdd-plan`, `sdd-review`, `sdd-execute` and `using-git` load `loaded-by` files, and `sdd-init` writes them).
-- An **`sdd-integrations` row** is the plugin's own mechanism for "when this SDD skill completes, offer that custom skill" (`.claude/integrations.md`, empty today), but a row needs a skill to name.
-- So: a project skill, `.claude/skills/distill-feature/SKILL.md`, holding the step, and rows in `.claude/integrations.md` with `session-wrap` as the trigger. The plugin's hook matches the trigger against the invoked skill's name exactly, and whether it sees `session-wrap` or `sdd-superpowers:session-wrap` is unverified, so there is one row for each name, and `verification.md` records the offer appearing once after a real `session-wrap` (AC-4.5). `session-wrap` runs at the end of every session, so the skill has three states, told apart from the current branch, its spec folder, the index's plan states and the pull requests' states (`gh pr list --head <branch> --state all`). The after-merge check runs first, because it can apply on any branch:
+- An **`sdd-integrations` row** can't fire here (ruling P1): the plugin's hook reads `.tool_input.skill_name`, while this harness's Skill tool input is `skill`, and a typed `/session-wrap` makes no Skill tool call at all. No rows are added.
+- So: a project skill, `.claude/skills/distill-feature/SKILL.md`, holding the step, and one line in `.claude/CLAUDE.md`'s "At session end" instruction, which every session loads: invoke `sdd-superpowers:session-wrap`, then `distill-feature` (AC-4.7). `session-wrap` runs at the end of every session, so the skill has three states, told apart from the current branch, its spec folder and `verification.md`, the index's plan states, and the merged pull requests (`gh pr list --head <branch> --state merged`). The after-merge check runs first, because it can apply on any branch:
 
-1. **Nothing to do:** no spec in the index has the plan state "retirement owed" with a merged pull request, and either the branch names no spec (no `NNN-` prefix matching a `docs/specs/NNN-*` folder), or its feature isn't finished (its `verification.md` records no implementation review as aligned, or no pull request is open for the branch), or the index already shows it distilled. The skill says so in one line and stops.
-2. **Before the merge:** the branch's feature is finished (its `verification.md` records the implementation review as aligned, and a pull request is open and not merged) and the index doesn't show it distilled. The skill distils it into area docs (and proposes ADRs), marks the parts frozen in the index, and sets the plan state to "retirement owed".
-3. **After the merge:** the index shows a spec whose plan state is "retirement owed" and whose pull request has merged. The skill retires the plan (decision D7), on whichever branch the session is on (a housekeeping branch, Open Decision 1).
+1. **Nothing to do:** no spec in the index has the plan state "retirement owed" with a merged pull request, and either the branch names no spec (no `NNN-` prefix matching a `docs/specs/NNN-*` folder), or the maintainer says its feature isn't finished, or the index already shows it distilled. The skill says so in one line and stops.
+2. **Before the merge:** the branch has a spec folder, the index doesn't show it distilled, and its feature is finished: its `verification.md` has a `## Implementation review` section whose verdict is aligned. With no such section, or no `verification.md` at all (only 11 of the 24 spec folders have one), the skill asks the maintainer whether the feature is finished. No pull request needs to exist: the wrap runs before `gh pr create` (OD1). The skill distils the feature into area docs (and proposes ADRs), marks the parts frozen in the index, and sets the plan state to "retirement owed".
+3. **After the merge:** the index shows a spec whose plan state is "retirement owed" and whose pull request has merged. The skill retires the plan (decision D7), on whichever branch the session is on (a housekeeping branch, OD1). It also checks every retirement pointer in the index (`git cat-file -e <sha>` for each) and warns about any that fails (ruling P3). A spec with nothing to distil (spec 027 itself) is retired the same way (ruling P2).
 
-The skill is readable by any agent, and the row makes the offer automatic without editing the plugin.
+The skill is readable by any agent, and the session-end line makes it run after every wrap without editing the plugin.
 
 The steering file is still added for the skills that do load steering (FR-6), so that brainstorm, specify, plan and review read the area docs first.
 
-**D7. Retiring a plan takes two commits.** The pointer names the commit that deleted the plan, so it can't be in that commit: the first commit deletes `plan.md` (and nothing else), the second adds the pointer to the spec and the index and rewrites the folder's links to the plan (D4). Both land through a pull request that is merged with a merge commit, so the deleting commit stays in `main`'s history and `git show <sha>^:…` keeps working; a squash or rebase merge would lose the sha, which is why R6 depends on merge commits. Rebasing the branch before it merges rewrites the deleting commit's sha too, so a pointer is written (or rewritten) after the branch's last rebase.
+**D7. Retiring a plan takes two commits.** The pointer names the commit that deleted the plan, so it can't be in that commit: the first commit deletes `plan.md` (and nothing else), the second adds the pointer to the spec and the index and rewrites the folder's links to the plan (D4). Both land through a pull request that is merged with a merge commit, so the deleting commit stays in `main`'s history and `git show <sha>^:…` keeps working; a squash or rebase merge would lose the sha, which is why R6 depends on merge commits, and why the repository allows merge commits only (the maintainer disables the other two in GitHub's settings, ruling P3). Rebasing the branch before it merges rewrites the deleting commit's sha too, so a pointer is written (or rewritten) after the branch's last rebase.
 
 **D8. No RSpec check of the area docs.** `.claude/rules/testing.md` forbids checking prose documents from RSpec; the export format is the one exception because it is a contract with files outside the app. An area doc describes the code rather than binding it, so its constants and statements are verified by reading against the code at the pull request's head and recorded in `verification.md` (AC-1.3). A checked constants table was considered and rejected for that reason; a later spec may argue it as a second exception.
 
@@ -124,7 +125,7 @@ The steering file is still added for the skills that do load steering (FR-6), so
 
 - `docs/architecture/catalog-operations.md` states the current rules of catalog operations completely enough that CLAUDE.md's 714-word "Admin catalog and jobs" bullet becomes a pointer of at most 60 words.
 - Every spec folder appears in `docs/specs/README.md` with its status, areas, plan state and supersession links in both directions.
-- The rules for area docs, frozen specs and plan retirement are written where agents and the SDD skills read them, and the distillation step is offered after every `session-wrap`.
+- The rules for area docs, frozen specs and plan retirement are written where agents and the SDD skills read them, and the session-end instruction runs the distillation step after every `session-wrap`.
 - The merge-commit rule is written in `docs/git-convention.md`.
 
 ## Non-Goals
@@ -187,12 +188,12 @@ All criteria are verified by reading at the pull request's head and recorded in 
 - [ ] **AC-3.3** Given every "superseded by" entry in the index When the superseding spec's row is read Then it has the matching "supersedes" entry, naming the same part, and the reverse holds too
 - [ ] **AC-3.4** Given spec 002's row When it is read Then it records that its public search (Non-Goals, FR-7) is superseded by spec 004 (sign-in) and spec 023 (the operator setting), and that its FR-3–FR-6 are frozen by the catalog operations area doc
 - [ ] **AC-3.5** Given the index When its introduction is read Then it states the status vocabulary, the freezing rule (R3, D3, D4), and the retirement pointer's form, and links `docs/architecture/README.md`
-- [ ] **AC-3.6** Given the index at this pull request's head When spec 027's row is read Then its status is "Approved" and its plan state is "present"; the distillation step's after-merge state (D6) later sets it to "Shipped" and records the plan's retirement
+- [ ] **AC-3.6** Given the index at this pull request's head When spec 027's row is read Then its status is "Approved" and its plan state is "retirement owed" (it has nothing to distil); the distillation step's after-merge state (D6) later retires its plan like any other and sets the row to "Shipped" (ruling P2)
 
 ### Story 4: The rules reach every author
 
 **As an** author of the next feature or issue fix
-**I want** to be told, wherever I start, to update the area doc and not a frozen spec, and to be offered the distillation step when I wrap up
+**I want** to be told, wherever I start, to update the area doc and not a frozen spec, and to be told to run the distillation step when I wrap up
 **So that** the area docs stay current without the maintainer reminding anyone
 
 **Acceptance criteria:**
@@ -200,9 +201,11 @@ All criteria are verified by reading at the pull request's head and recorded in 
 - [ ] **AC-4.1** Given `docs/architecture/README.md` When it is read Then it states the purpose of area docs, the D5 shape, the area list with one row per D2 area (marked "not written yet" where no doc exists), when an area doc is updated (FR-5), and links the specs index
 - [ ] **AC-4.2** Given `.claude/rules/` at the head When it is read Then one rule file states: change an area doc in the same pull request as a change to its area; don't edit a shipped spec, frozen or not, except as D4 allows; a change that supersedes part of an earlier spec records the supersession in its own spec and in the index, and updates the area doc where one covers that part (R3, R8); and name the distillation step
 - [ ] **AC-4.3** Given `.claude/memory/steering/` at the head When its files' `loaded-by` front matter is read Then one file is loaded by `sdd-brainstorm`, `sdd-specify`, `sdd-plan` and `sdd-review` and tells them to read the area docs of the areas a feature touches before writing, and to name in a spec or plan the area docs it will change
-- [ ] **AC-4.4** Given `.claude/skills/distill-feature/SKILL.md` When it is read Then it describes the three states of D6 and the checks that tell them apart, with the after-merge check first (nothing to do: say so in one line and stop; before the merge: distil into area docs, propose ADRs, mark parts frozen in the index, set the plan state to "retirement owed"; after the merge: retire the plan in the two commits of D7), and it says it must not change a spec beyond D4
-- [ ] **AC-4.5** Given `.claude/integrations.md` When it is read Then it has two rows with custom skill `distill-feature`, one with trigger skill `session-wrap` and one with `sdd-superpowers:session-wrap`, with no `|` character inside any cell value; and `verification.md` records one real `session-wrap` run after the rows are committed, with the trigger name the offer came from (or, if no offer appeared, that fact and an issue opened for it)
+- [ ] **AC-4.4** Given `.claude/skills/distill-feature/SKILL.md` When it is read Then it describes the three states of D6 and the checks that tell them apart, with the after-merge check first (nothing to do: say so in one line and stop; before the merge: distil into area docs, propose ADRs, mark parts frozen in the index, set the plan state to "retirement owed"; after the merge: retire the plan in the two commits of D7 and check every retirement pointer with `git cat-file -e`, warning on a failure), that state 2 reads the `## Implementation review` section of `verification.md`, expects that no `verification.md` may exist, asks the maintainer when no verdict is recorded, and needs no open pull request; and it says it must not change a spec beyond D4
+- [ ] **AC-4.5** *Withdrawn in v1.3.0 (ruling P1): the integrations rows can't fire in this harness. AC-4.7 replaces it; the number is kept so no criterion moves.*
 - [ ] **AC-4.6** Given `.claude/memory/edit-specs-your-change-makes-stale.md` and its line in `.claude/memory/MEMORY.md` When they are read Then they no longer tell an agent to edit an earlier spec; they say instead: record the supersession in the new spec (and in the index), and update the area doc where one covers the part, naming R3, R8 and specs 025 and 026 as the first uses; the memory keeps its 2026-10-14 history as history
+- [ ] **AC-4.7** Given `.claude/CLAUDE.md` at the head When its "At session end" instruction is read Then it says to invoke `sdd-superpowers:session-wrap` and then `distill-feature`; and `.claude/integrations.md` is unchanged from the merge base (ruling P1)
+- [ ] **AC-4.8** Given `.claude/rules/documentation.md` When it is read Then it says a feature's `verification.md` records the implementation review under a `## Implementation review` heading with its verdict, which the distillation step reads
 
 ### Story 5: Retired plans can be read back
 
@@ -212,7 +215,7 @@ All criteria are verified by reading at the pull request's head and recorded in 
 
 **Acceptance criteria:**
 
-- [ ] **AC-5.1** Given `docs/git-convention.md` at the head When it is read Then a section states that pull requests are merged with merge commits, never squashed or rebased, that retired plans depend on it (R6), and that rebasing a branch before it merges changes the sha of every commit on it, so a retirement pointer is written after the branch's last rebase (D7)
+- [ ] **AC-5.1** Given `docs/git-convention.md` at the head When it is read Then a section states that pull requests are merged with merge commits, never squashed or rebased, that the repository allows merge commits only (ruling P3), that retired plans depend on it (R6), and that rebasing a branch before it merges changes the sha of every commit on it, so a retirement pointer is written after the branch's last rebase (D7)
 - [ ] **AC-5.2** Given the plans of specs 015 and 024, which this pull request retires (ruling OD2) When `git show <sha>^:<path>` from its retirement pointer is run Then it prints the plan as it was at the merge base, byte for byte (compared with `git show <merge-base>:<path>`, recorded in `verification.md`)
 - [ ] **AC-5.3** Given the folders of the plans this pull request retires When their Markdown is searched for links to their own `plan.md` (a Markdown link whose target is `plan.md`; a path in quoted command output, such as `020/verification.md:479`'s `git` status line, is not a link) Then none is left as a link; each names the retirement pointer instead (D4). At the merge base the only such link in the pilot's folders is `024-refresh-rate-limit-wait/verification.md` line 3 (spec 015's folder has none); `011-card-scanner-art-matching/research.md` line 3 waits for 011's plan to retire in slice C
 - [ ] **AC-5.4** Given the commits of this pull request When the commit that deletes a plan is read with `git show --stat` Then it deletes that `plan.md` and changes nothing else (D7)
@@ -291,11 +294,12 @@ Stated in `docs/architecture/README.md` and the rule file (AC-4.2).
 ### FR-6: Reaching agents and the SDD skills
 
 **Must:**
-- Add a rule file under `.claude/rules/` (AC-4.2), a steering file (AC-4.3), the `distill-feature` project skill (AC-4.4) and its integrations row (AC-4.5).
+- Add a rule file under `.claude/rules/` (AC-4.2, AC-4.8), a steering file (AC-4.3), and the `distill-feature` project skill (AC-4.4), and name the skill in `.claude/CLAUDE.md`'s "At session end" instruction (AC-4.7).
 - Rewrite the memory that conflicts with R3 and R8, `.claude/memory/edit-specs-your-change-makes-stale.md`, and its `MEMORY.md` line, to "record the supersession in the new spec, update the area doc" (AC-4.6).
 
 **Must not:**
 - Edit plugin files, or any skill other than the new one.
+- Add rows to `.claude/integrations.md` (ruling P1).
 
 ### FR-7: CLAUDE.md
 
@@ -352,12 +356,12 @@ Stated in `docs/architecture/README.md` and the rule file (AC-4.2).
 |----------|-------------------|
 | A statement in CLAUDE.md's bullet is no longer true at the head | The area doc states the current behaviour; `verification.md` records the stale statement; CLAUDE.md loses it with the bullet |
 | Two sources disagree (for example a spec criterion and a later issue fix) | The code at the head decides; the area doc states it with both sources; `verification.md` records the disagreement |
-| The code contradicts every source | The area doc states the code's behaviour, marked as having no spec source, and an issue is opened for the maintainer to rule on; the area doc doesn't wait for the ruling |
-| A plan retirement's pull request is squash-merged by mistake | The pointer's sha is unreachable from `main`. The squash commit deleted the plan, so its parent still has it: the next distillation step replaces each such pointer with one naming the squash commit (`git show <squash sha>^:<path>`), and that step's `verification.md` records it |
+| The code contradicts every source | The area doc states the code's behaviour, marked as having no spec source; `verification.md` records it, and an issue is opened for the maintainer to rule on, with their go-ahead; the area doc doesn't wait for the ruling |
+| A retirement pointer's sha is unreachable (a squash or rebase merge got through despite the repository's settings) | The after-merge state's pointer check (`git cat-file -e`) warns. The deleting commit's parent still has the plan, so the pointer is rewritten to name the commit that removed it from `main` (for a squash, `git show <squash sha>^:<path>`), and that step's `verification.md` records it (ruling P3) |
 | A branch carrying a retirement is rebased after its pointer was written | The pointer's sha no longer exists on the branch; the pointer commit is redone after the last rebase (D7, AC-5.1), and AC-5.2 is rerun |
 | A later feature changes catalog operations but its author doesn't update the area doc | Its implementation review (`sdd-review` Mode B) finds the gap through the steering file and rule file, as it finds a missing test today |
 | Another ADR merges as 0023 before slice B | Slice B's ADR takes the next free number and updates `docs/adr/README.md`'s Expected line |
-| The integrations row isn't offered after `session-wrap` (a plugin change) | The rule file and steering file still name the step; the author runs `distill-feature` by name |
+| A session ends without `distill-feature` being run | The next session's wrap runs it; its after-merge state retires any plan still owed, and a feature not yet distilled is found by its implementation review (the steering file) |
 
 ## Open Questions
 
@@ -371,6 +375,14 @@ None open. The maintainer ruled on all six on 2026-10-15, approving the spec:
 | OD4 | The jobs pages are covered by the catalog operations area doc. |
 | OD5 | A Distillation log row only for whole-feature distillations. |
 | OD6 | Six slice C issues, one per area (seven were asked for before OD3 dropped one area). |
+
+Rulings on the plan review's questions (maintainer, 2026-10-15):
+
+| # | Ruling |
+|---|---|
+| P1 | The integrations hook can't fire (it reads `.tool_input.skill_name`; the Skill tool's input here is `skill`, and a typed `/session-wrap` makes no Skill call). `distill-feature` is named in `.claude/CLAUDE.md`'s session-end instruction instead; no integrations rows (D6, AC-4.5 withdrawn, AC-4.7). |
+| P2 | Spec 027's own row reads Approved with plan state "retirement owed" in its pull request; with nothing to distil, the after-merge state retires its plan like any other (AC-3.6). |
+| P3 | The maintainer disables squash and rebase merges in GitHub's settings; the git convention says the repository allows merge commits only. The after-merge state still checks each retirement pointer with `git cat-file -e` and warns on a failure (D6, D7, AC-5.1). |
 
 The questions as they were put, with the recommendations:
 
