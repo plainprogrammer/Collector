@@ -136,7 +136,7 @@ SPEC-ALIGNED (`sdd-review` Mode B, 2026-10-15, read-only on Opus, against spec v
 
 - Every criterion (AC-1.1 to AC-5.1), FR-1 to FR-5 and the NFRs map to code, and the citations above were spot-checked against the examples they name.
 - Tenancy, strong parameters, the export's Coverage (`number_entries` and `number_entry_lines` left out), the type-agnostic core, the migrations and the design-system pattern were checked; no gaps.
-- Minor notes, acted on in `633db96`: AC-1.11's case of a linked set whose entries are all retired gained a request example (`spec/requests/number_entries_spec.rb:95`), and NFR Performance gained a query-count example for a number matched without its leading zeros (`:360`). The roadmap's PR link is added once the pull request exists.
+- Minor notes, acted on in `633db96`: AC-1.11's case of a linked set whose entries are all retired gained a request example (`spec/requests/number_entries_spec.rb:95`), and NFR Performance gained a query-count example for a number matched without its leading zeros (`:360`). The roadmap links the pull request, [PR #114](https://github.com/plainprogrammer/Collector/pull/114).
 - Minor notes left as they are: decision 2's catalog-title label has no example while one type is registered; the timing used a synthetic catalog (Measurement above); the head's "Add by number" button has no icon, which the spec doesn't ask for.
 
 ## Distillation
