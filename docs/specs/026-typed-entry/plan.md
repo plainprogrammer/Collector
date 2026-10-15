@@ -3,7 +3,7 @@
 **Spec:** docs/specs/026-typed-entry/spec.md (1.2.0, approved 2026-10-15)
 **Decisions:** none new; builds on ADRs 0017 (tenancy), 0018 (catalog core), 0019 (lots), 0020 (export format). No ADR 0022 is needed: the list follows the scanner sitting's pattern (spec 009) and nothing here is a new architectural choice.
 **Created:** 2026-10-15
-**Status:** Draft
+**Status:** Draft (revised from the plan review)
 
 ## Global Constraints
 
@@ -28,7 +28,7 @@ A signed-in collector opens "Add by number", chooses a set and a language, and a
 ## Phase 1: The list and its lines
 
 **Implements:** FR-3 (recording, idempotency), FR-4 (Undo, Done at the model), FR-5 | **Satisfies:** AC-2.11, AC-2.12, AC-3.2, AC-3.3, AC-3.4, AC-3.5, AC-3.9, AC-4.4 (model level)
-**Files:** `db/migrate/20261015100001_create_number_entries.rb`, `db/migrate/20261015100002_create_number_entry_lines.rb`, `db/schema.rb`, `app/models/number_entry.rb`, `app/models/number_entry/line.rb`, `app/models/account.rb`, `docs/export-format/README.md`, `spec/models/number_entry_spec.rb`, `spec/models/number_entry/line_spec.rb`
+**Files:** `db/migrate/20261015100001_create_number_entries.rb`, `db/migrate/20261015100002_create_number_entry_lines.rb`, `db/schema.rb`, `app/models/number_entry.rb`, `app/models/number_entry/line.rb`, `app/models/account.rb`, `docs/export-format/README.md`, `spec/export_format_document_spec.rb`, `spec/models/number_entry_spec.rb`, `spec/models/number_entry/line_spec.rb`
 **Interfaces:** Consumes: `Lot.add!(account:, entry:, quantity:, finish:)`. Produces: `NumberEntry` (table `number_entries`; `NumberEntry::KEY_FORMAT`, `NumberEntry::SHOWN = 10`, `NumberEntry.new_line_key`, `NumberEntry.add!(account:, entry:, quantity:, finish:, line_key:) → NumberEntry::Added(line:, replayed:)`, `#kept_lines`), `NumberEntry::Line` (table `number_entry_lines`; `#undoable?`, `#undo! → removed lot?`, `NumberEntry::Line::NotUndoable`, scopes `kept`, `newest_first`), `Account#number_entry`.
 
 The data a list needs, modelled on the scanner's sitting (spec 009): one list per account, one line per add with its lot (nulled when the lot goes), quantity, finish and line key, and `undone_at`, so a replayed key never adds again after an Undo.
@@ -288,13 +288,17 @@ The data a list needs, modelled on the scanner's sitting (spec 009): one list pe
   ```
 - [ ] Run: `bin/rspec spec/models/number_entry_spec.rb spec/models/number_entry/line_spec.rb` — expect: PASS.
 - [ ] Run: `bin/rspec spec/export_format_document_spec.rb` — expect: FAIL (the Coverage tables don't list `number_entries` and `number_entry_lines`).
+- [ ] In `spec/export_format_document_spec.rb`, "marks each table as the spec rules (AC-3.5)", add the two tables to the "Left out" list:
+  ```ruby
+        .to match_array(%w[bulk_removals bulk_selection_marks bulk_selections number_entries number_entry_lines scanner_sitting_entries scanner_sittings sessions])
+  ```
 - [ ] In `docs/export-format/README.md`'s Coverage table, after the `bulk_selections` row, add:
   ```markdown
   | `number_entries` | Left out | Working state of one run of adding cards by number. What it adds is already in the lots. |
   | `number_entry_lines` | Left out | Working state of one run of adding cards by number. What it adds is already in the lots. |
   ```
 - [ ] Run: `bin/rspec spec/export_format_document_spec.rb spec/export_format_examples_spec.rb` — expect: PASS.
-- [ ] Commit: `feat(number-entry): add the per-account list and its lines` (migrations, schema, models, account, Coverage rows, specs).
+- [ ] Commit: `feat(number-entry): add the per-account list and its lines` (migrations, schema, models, account, Coverage rows, the document spec's list, specs).
 
 ---
 
@@ -366,7 +370,6 @@ The data a list needs, modelled on the scanner's sitting (spec 009): one list pe
         expect(described_class.new(text: "mh3").language).to eq("ja")
         entry(set: mh3, language: "de")
         entry(set: mh3, language: "de")
-        entry(set: mh3, language: "ja")
         expect(described_class.new(text: "mh3").language).to eq("de")
       end
 
@@ -396,6 +399,20 @@ The data a list needs, modelled on the scanner's sitting (spec 009): one list pe
   end
   ```
 - [ ] Run: `bin/rspec spec/models/number_entry/set_choice_spec.rb` — expect: FAIL (`uninitialized constant NumberEntry::SetChoice`).
+- [ ] Add to the spec, in `describe "resolving the typed set (AC-1.4)"`:
+  ```ruby
+      it "finds the page's own link without loading the offered sets", :aggregate_failures do
+        choice = described_class.new(text: "mh3", type: "mtg", language: "en")
+        expect(choice.set).to eq(mh3)
+        expect(choice.instance_variable_get(:@sets)).to be_nil
+      end
+
+      it "leaves a linked set whose entries are all retired unchosen" do
+        retired = create(:catalog_set, code: "old")
+        entry(set: retired, retired_at: 1.day.ago)
+        expect(described_class.new(text: "old", type: "mtg")).to have_attributes(chosen?: false)
+      end
+  ```
 - [ ] Implement `app/models/number_entry/set_choice.rb`:
   ```ruby
   # The set and language number entry adds from (spec 026 decision 2): the sets on offer, the typed text resolved to one
@@ -411,11 +428,13 @@ The data a list needs, modelled on the scanner's sitting (spec 009): one list pe
     def self.offered = Catalog::Set.where(id: Catalog::Entry.active.select(:catalog_set_id)).newest_first
 
     def initialize(text:, type: nil, language: nil)
-      @sets = self.class.offered.to_a
       @text = text.to_s.strip
       @set = find_set(type.presence)
       @language = pick_language(language.to_s) if @set
     end
+
+    # Loaded only when asked for (the set form, or resolving typed text), so a line's add never loads them all.
+    def sets = @sets ||= self.class.offered.to_a
 
     def asked? = text.present?
     def chosen? = set.present? && language.present?
@@ -435,8 +454,13 @@ The data a list needs, modelled on the scanner's sitting (spec 009): one list pe
     def unmatched_message = "No set matches “#{text}”. Type a set code or choose a set from the list."
 
     private
+      # The page's own link names the type and the exact code: one lookup, and #languages is empty for a set with no
+      # active entry, which leaves it unchosen. Typed text is matched against the offered sets.
       def find_set(type)
         return if text.empty?
+
+        linked = Catalog::Set.find_by(collectible_type: type, code: text) if type
+        return linked if linked
 
         candidates = type ? sets.select { it.collectible_type == type } : sets
         labelled = LABELLED.match(text)
@@ -526,6 +550,7 @@ The data a list needs, modelled on the scanner's sitting (spec 009): one list pe
         expect(line("0049", pick: picked.external_key)).to be_valid
         expect(line("0049", pick: picked.external_key).entry).to eq(picked)
         expect(line("0049", pick: elsewhere.external_key)).not_to be_valid
+        expect(line("0049", pick: printing("50").external_key)).not_to be_valid
       end
 
       it "never matches a retired entry", :aggregate_failures do
@@ -685,10 +710,12 @@ The data a list needs, modelled on the scanner's sitting (spec 009): one list pe
 ## Phase 4: The page, choosing a set, and the ways in
 
 **Implements:** FR-1 | **Satisfies:** AC-1.1 (request), AC-1.2, AC-1.3, AC-1.4, AC-1.5, AC-1.7, AC-1.8, AC-1.9, AC-1.10, AC-1.11
-**Files:** `config/routes.rb`, `app/controllers/concerns/number_entry_page.rb`, `app/controllers/collections/number_entries_controller.rb`, `app/helpers/number_entries_helper.rb`, `app/views/collections/number_entries/show.html.erb`, `app/views/collections/number_entries/_set_form.html.erb`, `app/views/collections/number_entries/_chosen_set.html.erb`, `app/views/collections/number_entries/_line_form.html.erb`, `app/views/collections/number_entries/_choice.html.erb`, `app/views/collections/number_entries/_list.html.erb`, `app/views/collections/number_entries/_line.html.erb`, `app/views/collections/show.html.erb`, `app/views/mores/show.html.erb`, `spec/requests/number_entries_spec.rb`, `spec/requests/collections_spec.rb`
+**Files:** `config/routes.rb`, `app/views/layouts/application.html.erb`, `app/controllers/concerns/number_entry_page.rb`, `app/controllers/collections/number_entries_controller.rb`, `app/helpers/number_entries_helper.rb`, `app/views/collections/number_entries/show.html.erb`, `app/views/collections/number_entries/_set_form.html.erb`, `app/views/collections/number_entries/_chosen_set.html.erb`, `app/views/collections/number_entries/_line_form.html.erb`, `app/views/collections/number_entries/_choice.html.erb`, `app/views/collections/number_entries/_list.html.erb`, `app/views/collections/number_entries/_line.html.erb`, `app/views/collections/show.html.erb`, `app/views/mores/show.html.erb`, `spec/requests/number_entries_spec.rb`, `spec/requests/collections_spec.rb`
 **Interfaces:** Consumes: `NumberEntry::SetChoice`, `NumberEntry::LineForm`, `NumberEntry#kept_lines`, `NumberEntry::SHOWN`, `NumberEntry.new_line_key`. Produces: routes `collection_number_entry_path` (GET), `collection_number_entry_lines_path` (POST), `collection_number_entry_line_undo_path(line)` (POST), `collection_number_entry_ending_path` (POST); concern `NumberEntryPage` (`set_choice`, `render_page(status:)`, `page_path(finish:)`); helpers `number_entry_copy(line)`, `number_entry_finish(line)`; every partial of the page (Phases 5–6 add the controllers that post to it).
 
-Every partial is written here, so later phases only add controllers and tests. The page renders without scripting; Turbo Drive renders each answer, honouring `autofocus`.
+Every partial is written here, so later phases only add controllers and tests. The page renders without scripting.
+
+The layout turns morph refreshes on for every page (`turbo_refreshes_with method: :morph`). An add redirects back to the URL the page is on, and a rejected line answers 422 on it, so Turbo treats both as page refreshes and morphs them; the morphing renderer never autofocuses, and a morphed input never reconnects its Stimulus target. Number entry's whole keyboard flow rests on the focus moving after each answer, so this page asks for `replace` refreshes, which render with Turbo's page renderer and honour `autofocus`. The layout keeps morph as every other page's method.
 
 - [ ] Write the failing request spec `spec/requests/number_entries_spec.rb` (Phases 5 and 6 add to it):
   ```ruby
@@ -779,6 +806,14 @@ Every partial is written here, so later phases only add controllers and tests. T
           expect(response.body).to include('id="number_entry_set"', "This list: 1 line, 1 card", "Flare")
         end
 
+        it "replaces the page on a refresh, where other pages morph", :aggregate_failures do
+          printing("1")
+          get collection_number_entry_path(**page_params)
+          expect(response.body).to include('<meta name="turbo-refresh-method" content="replace">')
+          get collection_path
+          expect(response.body).to include('<meta name="turbo-refresh-method" content="morph">')
+        end
+
         it "says when the catalog has no sets, showing no form", :aggregate_failures do
           get collection_number_entry_path
           expect(response.body).to include("The card catalog hasn't been loaded yet.")
@@ -805,6 +840,11 @@ Every partial is written here, so later phases only add controllers and tests. T
   expect(response.body).to include("My collection", "No cards in your collection yet. Search for a card or")
   ```
 - [ ] Run: `bin/rspec spec/requests/number_entries_spec.rb spec/requests/collections_spec.rb` — expect: FAIL (`undefined local variable or method 'collection_number_entry_path'`).
+- [ ] Let a page choose its refresh method. In `app/views/layouts/application.html.erb`, the refresh line becomes:
+  ```erb
+      <%# A page may ask for another refresh method (number entry asks for replace, so autofocus works; spec 026). %>
+      <%= turbo_refreshes_with method: content_for(:turbo_refresh_method).presence&.to_sym || :morph, scroll: :preserve %>
+  ```
 - [ ] Add the routes. In `config/routes.rb`, inside `resource :collection … scope module: :collections do`, after `resources :bulk_removals …`:
   ```ruby
       # Number entry (spec 026): add cards from a set by collector number.
@@ -865,7 +905,7 @@ Every partial is written here, so later phases only add controllers and tests. T
 - [ ] Write `app/helpers/number_entries_helper.rb`:
   ```ruby
   module NumberEntriesHelper
-    # "Psychic Frog (MH3 · 47, Foil)": a line's card, set and number, and finish (spec 026).
+    # "Psychic Frog (MH3 · 47, <finish label>)": a line's card, set and number, and finish (spec 026).
     def number_entry_copy(line)
       "#{line.entry.name} (#{[ set_number(line.entry), number_entry_finish_label(line) ].compact.join(", ")})"
     end
@@ -890,6 +930,8 @@ Every partial is written here, so later phases only add controllers and tests. T
   <% content_for :title, "Add by number · Collector" %>
   <%# Back refetches the page, so it never restores a typed number or a stale list. %>
   <% content_for :head, tag.meta(name: "turbo-cache-control", content: "no-cache") %>
+  <%# Each answer comes back to this URL; replace (not morph) lets the focus move to the field that needs it. %>
+  <% content_for :turbo_refresh_method, "replace" %>
   <%= render "layouts/appbar", section: :collection, detail: true, back_path: collection_path %>
   <main class="c-main c-page">
     <div class="c-pagehead"><div><h1 class="c-pagehead__title">Add by number</h1></div></div>
@@ -918,7 +960,7 @@ Every partial is written here, so later phases only add controllers and tests. T
   <%= form_with url: collection_number_entry_path, method: :get, class: "c-form" do %>
     <div class="c-field<%= " c-field--invalid" if unmatched %>">
       <label class="c-field__label" for="number_entry_set">Set</label>
-      <label class="c-input"><%= text_field_tag :set, choice.text, id: "number_entry_set", list: "number_entry_sets", autocomplete: "off",
+      <label class="c-input"><%= text_field_tag :set, choice.text, id: "number_entry_set", list: "number_entry_sets",
             required: true, autofocus: true, "aria-describedby": (unmatched ? "number_entry_set_error" : "number_entry_set_hint") %></label>
       <% if unmatched %>
         <p class="c-field__error" id="number_entry_set_error"><%= choice.unmatched_message %></p>
@@ -944,8 +986,8 @@ Every partial is written here, so later phases only add controllers and tests. T
         <%= hidden_field_tag :type, choice.set.collectible_type, id: nil %>
         <%= hidden_field_tag :set, choice.set.code, id: nil %>
         <%= hidden_field_tag :finish, finish, id: nil %>
-        <label class="c-field__label" for="number_entry_language">Language</label>
-        <%= select_tag :language, options_for_select(choice.languages.keys.sort.map { [ it.upcase, it ] }, choice.language), id: "number_entry_language" %>
+        <label class="c-select"><span class="c-field__label">Language</span><%= select_tag :language,
+              options_for_select(choice.languages.keys.sort.map { [ it.upcase, it ] }, choice.language), id: "number_entry_language" %></label>
         <%= submit_tag "Change language", name: nil, class: "c-btn c-btn--secondary c-btn--sm" %>
       <% end %>
     <% else %>
@@ -961,7 +1003,8 @@ Every partial is written here, so later phases only add controllers and tests. T
   <%# One line (spec 026 decision 3): number, quantity and finish, in tab order; Enter adds it. The first field with an
       error takes the focus, the number otherwise, unless a choice between matches is showing (it takes the focus). %>
   <% focus = (%i[number quantity finish] & line.errors.attribute_names).first || :number %>
-  <%= form_with url: collection_number_entry_lines_path, class: "c-numentry__line", data: { controller: "number-entry" } do %>
+  <%# novalidate: the server's messages (AC-4.2) show, not the browser's own bubbles. %>
+  <%= form_with url: collection_number_entry_lines_path, class: "c-numentry__line", html: { novalidate: true }, data: { controller: "number-entry" } do %>
     <% choice.to_params.each do |name, value| %><%= hidden_field_tag name, value, id: nil %><% end %>
     <%= hidden_field_tag "line[line_key]", line_key, id: nil %>
     <% line.errors[:base].each do |message| %><p class="c-field__error"><%= message %></p><% end %>
@@ -1307,12 +1350,17 @@ Every partial is written here, so later phases only add controllers and tests. T
           expect(user.account.lots.sole.quantity).to eq(3)
         end
 
-        it "answers 404 for a cleared line or another account's (AC-3.8)", :aggregate_failures do
+        it "answers 404 for a cleared line, an undone one or another account's (AC-3.8)", :aggregate_failures do
+          list_line(printing("46"))
           theirs = NumberEntry.add!(account: create(:user).account, entry: printing("47"), quantity: 1, finish: "nonfoil", line_key: "a" * 32).line
           post collection_number_entry_line_undo_path(theirs), params: page_params
           expect(response).to have_http_status(:not_found)
           expect(response.body).to include("That line is no longer in your list.")
           expect(theirs.lot.reload.quantity).to eq(1)
+          undone = list_line(printing("45"))
+          undone.undo!
+          post collection_number_entry_line_undo_path(undone), params: page_params
+          expect(response).to have_http_status(:not_found)
           mine = list_line(printing("48"))
           post collection_number_entry_ending_path
           post collection_number_entry_line_undo_path(mine), params: page_params
@@ -1353,24 +1401,23 @@ Every partial is written here, so later phases only add controllers and tests. T
 - [ ] Run: `bin/rspec spec/requests/number_entries_spec.rb` — expect: FAIL (the undo and ending controllers don't exist).
 - [ ] Implement `app/controllers/collections/number_entries/lines/undos_controller.rb`:
   ```ruby
-  # Undoes one line of number entry: its copies leave the lot they went into (spec 026 decision 5, Story 3). Another
-  # account's line, or one of a list that Done cleared, is not found (AC-3.8).
+  # Undoes one line of number entry: its copies leave the lot they went into (spec 026 decision 5, Story 3). An undone
+  # line has left the list; it, another account's line, or one of a list that Done cleared, is not found (AC-3.8).
   class Collections::NumberEntries::Lines::UndosController < ApplicationController
     include NumberEntryPage
 
     GONE = "That line is no longer in your list.".freeze
     CHANGED = "Those copies have changed in your collection, so they can't be undone here.".freeze
-    UNDONE = "That line was already undone.".freeze
 
     def create
-      line = Current.account.number_entry&.lines&.includes(:entry)&.find_by(id: params[:line_id])
+      line = Current.account.number_entry&.lines&.kept&.includes(:entry)&.find_by(id: params[:line_id])
       return refuse(GONE, status: :not_found) unless line
 
       # A removed lot can't come back through a bulk removal's Undo any more, as with the scanner's Undo (spec 009).
       BulkRemoval.supersede!(Current.session) if line.undo!
       redirect_to page_path, status: :see_other, notice: "Undid #{line.quantity} × #{line.entry.name}."
     rescue NumberEntry::Line::NotUndoable
-      refuse(line.undone_at ? UNDONE : CHANGED, status: :unprocessable_content)
+      refuse(CHANGED, status: :unprocessable_content)
     end
 
     private
@@ -1398,7 +1445,7 @@ Every partial is written here, so later phases only add controllers and tests. T
 ## Phase 7: Keyboard, look and phone width
 
 **Implements:** FR-1 (design system), decision 3 (Enter on the finish) | **Satisfies:** AC-1.1, AC-1.2 (phone), AC-1.4, AC-2.2, AC-2.4, AC-2.13, AC-4.1 (selection), NFR Accessibility (360px)
-**Files:** `app/javascript/controllers/number_entry_controller.js`, `app/assets/stylesheets/collector/additions.css`, `docs/design-system/components/NumberEntry.md`, `docs/design-system/README.md`, `spec/system/number_entry_spec.rb`
+**Files:** `app/javascript/controllers/number_entry_controller.js`, `app/assets/stylesheets/collector/additions.css`, `docs/design-system/components/NumberEntry.md`, `docs/design-system/components/EmptyState.md`, `docs/design-system/README.md`, `spec/system/number_entry_spec.rb`
 **Interfaces:** Consumes: the page's markup (`data-controller="number-entry"`, `data-number-entry-target="number"`, `data-select`, `keydown.enter->number-entry#submit`; classes `c-numentry`, `c-numentry__set`, `c-numentry__setname`, `c-numentry__data`, `c-numentry__language`, `c-numentry__line`, `c-numentry__add`, `c-numentry__choice`, `c-numentry__prompt`, `c-numentry__list`, `c-numentry__more`). Produces: the Stimulus controller `number-entry` and the `NumberEntry` design-system pattern.
 
 - [ ] Write the failing system spec `spec/system/number_entry_spec.rb`:
@@ -1429,7 +1476,8 @@ Every partial is written here, so later phases only add controllers and tests. T
 
     it "adds three lines from the keyboard alone, the number focused after each (AC-1.4, AC-2.2, AC-2.4, AC-2.13)", :aggregate_failures do
       visit collection_number_entry_path
-      find_field("Set").send_keys("MH3", :enter)
+      fill_in "Set", with: "MH3"
+      find_field("Set").send_keys(:escape, :enter) # close the suggestions first
       expect(page).to have_css(".c-numentry__setname", text: "Modern Horizons 3")
       expect(page).to have_css("#line_number:focus")
       find_field("Number").send_keys("12", :enter)
@@ -1505,6 +1553,7 @@ Every partial is written here, so later phases only add controllers and tests. T
   .c-numentry__add { padding-top:var(--space-6); }
   .c-numentry__prompt { margin:0 0 var(--space-2); }
   .c-numentry__choice .c-list li { border:0; padding:var(--space-1) 0; }
+  .c-numentry__choice .c-btn { white-space:normal; height:auto; min-height:44px; text-align:left; }
   .c-numentry__list .c-list li { flex-wrap:wrap; }
   .c-numentry__list .c-btn { min-height:44px; min-width:44px; }
   @container page (max-width: 639px) {
@@ -1550,6 +1599,7 @@ Every partial is written here, so later phases only add controllers and tests. T
   - The list shows the 10 newest lines; the rest are behind "Show all N" in a `<details>` (`c-numentry__more`).
   - Everything works without scripting. The `number-entry` Stimulus controller selects a rejected number and lets Enter on the finish select add the line.
   ```
+- [ ] In `docs/design-system/components/EmptyState.md`, update the quoted empty-collection sentence to the new one ("No cards in your collection yet. Search for a card or add cards by number to start adding.").
 - [ ] In `docs/design-system/README.md`, after the spec 023 app-additions paragraph, add:
   ```markdown
   App additions (spec 026, in `collector/additions.css`): `NumberEntry`. Upstream it into the published design system before the next export replaces this folder.
@@ -1597,14 +1647,17 @@ Every partial is written here, so later phases only add controllers and tests. T
 - [ ] Measure an add against the full English catalog in development, rolled back, and record the time in `verification.md`:
   ```sh
   bin/rails runner 'ActiveRecord::Base.transaction do
-    set = Catalog::Set.find_by!(code: "mh3"); account = Account.create!
-    form = NumberEntry::LineForm.new(set:, language: "en", number: "47", quantity: "1", line_key: NumberEntry.new_line_key)
-    puts Benchmark.realtime { form.valid?; NumberEntry.add!(account:, **form.add_attributes) }.round(4)
+    account = Account.create!
+    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    choice = NumberEntry::SetChoice.new(text: "mh3", type: "mtg", language: "en")
+    form = NumberEntry::LineForm.new(set: choice.set, language: choice.language, number: "47", quantity: "1", line_key: NumberEntry.new_line_key)
+    form.valid? && NumberEntry.add!(account:, **form.add_attributes)
+    puts (Process.clock_gettime(Process::CLOCK_MONOTONIC) - started).round(4)
     raise ActiveRecord::Rollback
   end'
   ```
-  If the development catalog isn't loaded, say so in `verification.md` and record the query-count spec's result instead.
-- [ ] Write `docs/specs/026-typed-entry/verification.md`: each AC with the spec example or screenshot that proves it, the `bin/ci` result, the measurement, and the hosted-door check (rule 2: no admin page shows lines; rule 3: no instance setting added; rule 4: one ~100-byte row per added line until Done, no background work).
+  (This times what an add's request does with the database: the set lookup, the match, the add. If the development catalog isn't loaded, say so in `verification.md` and record the query-count spec's result instead.)
+- [ ] Write `docs/specs/026-typed-entry/verification.md`: each AC with the spec example or screenshot that proves it (AC-2.13's focus ring by the Phase 7 screenshots of each focused field), the `bin/ci` result, the measurement, and the hosted-door check (rule 2: no admin page shows lines; rule 3: no instance setting added; rule 4: one ~100-byte row per added line until Done, no background work).
 - [ ] Commit: `docs(number-entry): verification, CLAUDE.md and the core boundary spec`, then push and open the PR (draft), closing #43; fill the roadmap line's PR number in a following commit.
 
 ---
