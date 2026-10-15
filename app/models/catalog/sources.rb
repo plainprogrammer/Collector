@@ -22,6 +22,9 @@
 #                                       this type, in order: what the content's owner asks to be said, and who provides
 #                                       the data. Plain text, with the phrases that link out and their https addresses.
 #                                       It is the same for every request and reads nothing (spec 018 FR-1)
+#   .failure_reasons                    optional: { error class name => plain sentence } for the source's own errors, which
+#                                       the admin catalog page shows for a failed refresh or for a failed operation of the
+#                                       source's, in place of the error (Catalog::FailureReason, issue #84)
 module Catalog::Sources
   SetRecord = Data.define(:code, :name, :released_on, :parent_code) do
     def digest = Catalog::Sources.digest(to_h)

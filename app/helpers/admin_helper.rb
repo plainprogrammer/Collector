@@ -30,8 +30,10 @@ module AdminHelper
 
   def stage_word(stage) = STAGE_WORDS.fetch(stage.state)
 
-  # What a finished refresh run did, in a few words, for the recent-runs list.
-  def refresh_run_outcome(run)
+  # What a finished refresh run did, in a few words, for the recent-runs list: a failed one says why in plain words
+  # (Catalog::RefreshOperation#failure, issue #84).
+  def refresh_run_outcome(run, refresh)
+    return refresh.failure(run).sentence if run.failed?
     return run.message.to_s unless run.applied?
 
     changed = run.inserted_count + run.updated_count + run.retired_count + run.restored_count
