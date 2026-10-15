@@ -1,34 +1,16 @@
 ---
 name: sdd-execute-exact-plans
-description: Executing a plan whose code blocks were pre-run — one subagent per phase even for a small plan (maintainer, 2026-10-11); subagents read their phase's line range and apply blocks by script; how to build and revise the prototype branch
+description: Executing a plan — one subagent per phase even for a small plan (maintainer, 2026-10-11); plan code isn't pre-run (ruled 2026-10-15), so implementers treat blocks as strong drafts, see red then green, and record deviations as rulings; the prototype-branch method is dropped
 metadata:
   type: feedback
 ---
 
-For a long plan whose blocks are byte-exact (written, run and replayed on a prototype branch first, as spec 015's 5,000-line plan was), give each implementer subagent its phase's line range of `plan.md` plus the header lines, and tell it to extract the blocks by script and `git apply` the diffs, never to retype them. Pasting the phase into the prompt only copies the file.
+Execute a plan with one implementer subagent per phase, as `sdd-execute` prescribes, even for a small plan. Give each subagent its phase's line range of `plan.md` plus the header lines (Global Constraints), rather than pasting the phase into the prompt.
 
-**Why:** in spec 015 (2026-10-10) ten phases landed this way with no code deviation, each subagent still seeing the stated failing run before the implementation. The only slips were extraction ranges (one diff applied twice, caught and reset by the subagent). This is the controller's reading of what worked; the maintainer didn't comment on the method.
+**Why:** maintainer's feedback (2026-10-11, spec 018, relayed by the Orca coordinator at the session wrap). In spec 018 the five phases were executed in the main session instead, by checking out prototype commits phase by phase. The code came out byte-identical to the plan, but that wasn't an approved method. A brief that allows reusing prepared code doesn't waive the subagent per phase.
 
-**How to apply:** brief each subagent with the line range, "apply exactly", "take care that no diff is applied twice", and a whole-suite run at the end. After the last phase, check `git diff <prototype-branch> HEAD -- . ':!docs/specs' ':!docs/adr'` is empty before deleting the prototype branch. Related: [[subagent-commit-trailers]], [[plan-reviews-run-the-code]], [[work-ahead-of-human-checkpoints]].
+**Plans aren't pre-run (2026-10-15):** the maintainer dropped running a plan's code before execution, for the planner and for the plan reviewer: "This sounds like it duplicates work under the guise of verification, and ahead of time." See [[plan-reviews-run-the-code]]. A plan's blocks are therefore not byte-exact.
 
-**Maintainer's feedback (2026-10-11, spec 018, relayed by the Orca coordinator at the session wrap):** use one subagent per phase as `sdd-execute` prescribes, even for a small plan. In spec 018 the five phases were executed in the main session instead: each phase's spec files were checked out from the prototype commit, seen red, then its implementation files, seen green, and committed. The code came out byte-identical to the plan, but that is what happened there, not an approved method. Don't repeat it: a brief that allows reusing prototype commits doesn't waive the subagent per phase.
+**How to apply:** brief each implementer that the phase's blocks are a strong draft and may be wrong. It runs the phase's examples and sees them fail for the stated reason before the implementation, then sees them pass. A fix must keep the spec's behaviour and is recorded as a ruling in the commit body. Run the whole suite at the end of the last phase. Related: [[subagent-commit-trailers]], [[work-ahead-of-human-checkpoints]].
 
-**Building the prototype branch (spec 018, 2026-10-11; my method, not commented on by the maintainer):**
-- Prototype in the worktree, then replay it as one local commit per phase on a scratch branch (`NNN-plan-phases`), never pushed.
-- Fold a review fix into its phase with `git commit --fixup=<phase commit>`, then `GIT_SEQUENCE_EDITOR=true git rebase --autosquash <base>`. The phase commits get new ids, so the plan is rendered again afterwards.
-- Record each phase's true red: check out the previous phase's commit, `git checkout <phase> -- <its spec files>`, run them, then undo with `git restore --source=HEAD --staged --worktree -- <those files>`. `git reset --hard` and `git clean` are denied by `.claude/settings.json`, and a command containing them is refused whole.
-- Render the plan from the commits by script: a new file whole (`git show <commit>:<path>`), a changed file as `git diff <commit>^ <commit> -- <path>`. Keep the template and the script in the scratchpad so a revision is one more render.
-- After any fold, run the whole suite again before rendering. Related: [[css-shell-state-by-class]].
-
-**Update (2026-10-11, spec 019):** two variations worked, with no code deviation over five phases. This too is the controller's reading; the maintainer didn't comment on the method.
-- *No prototype branch.* When a planning task may not commit code, replay each phase in the worktree uncommitted (examples red, then the code, then green), save a tree per phase with `git add -A`, `git write-tree`, `git reset -q`, and restore the worktree at the end. Render the plan's blocks from the trees (`git show <tree>:<path>`, `git diff <treeA> <treeB> -- <path>`), give the tree ids to the plan reviewer, and after each executed phase check `git diff --stat <tree> HEAD -- app spec docs/design-system` is empty.
-- *Brief files.* For a short plan, extract each phase's text (with the Global Constraints) by script into one file per implementer and point the subagent at that file. It applies the blocks exactly as it does from a line range.
-
-**Without a prototype branch (spec 017, 2026-10-11):** the plan was mostly documents and two spec files, so its files were drafted in the session scratchpad instead.
-- A new gem was locked and installed in a scratch copy of the `Gemfile` (`BUNDLE_GEMFILE=<scratch>/Gemfile`), and the specs ran from the worktree with `bin/rspec` against scratch copies, with `Rails.root` replaced by the scratch root.
-- `plan.md` was rendered from those files by a template script (`{{indent:path}}` includes), never retyped.
-- After each phase the committed files were compared with the scratch files (`cmp`); all were identical.
-- Many near-identical fixture files went into the plan as a generator plus a checksum list, not as 1,100 lines of JSON.
-
-**Pitfall:** a fix made in the rendered plan and not in the template is lost on the next render. The plan still says `Gemfile.lock` gains 10 lines; it gains 11. Fix the template, then render.
-
+**History (dropped 2026-10-15):** specs 013–019 built a prototype first (a never-pushed `NNN-plan-phases` branch, uncommitted trees per phase, or scratch files), rendered `plan.md` from it by script, had implementers apply the blocks by script and `git apply`, and checked the result was byte-identical to the prototype. Spec 015's ten phases and spec 019's five landed with no code deviation this way. Don't build a prototype branch or render plans from tested files anymore.
