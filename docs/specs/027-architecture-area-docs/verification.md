@@ -121,7 +121,7 @@ The bullet at the base (`bullet-base.md`), split at each sentence and semicolon-
 | 31 | `catalog:status` and the log print the stored text unchanged | same invariant |
 | 32 | "In flight" and the jobs pages (`BackgroundJobs::List`, `BackgroundJobs::Entry`) read Solid Queue's own tables | Glossary "In flight" (`Catalog::Operation::Queue`); Invariants "The jobs pages read Solid Queue's own tables"; Scope |
 | 33 | Pages poll with the `poll` Stimulus controller only while work is in flight | Invariants "Pages poll only while work is in flight"; States, Polling |
-| 34 | In specs, Solid Queue's tables are loaded into the test database (`spec/support/solid_queue.rb`) | Left out: kept in CLAUDE.md (Phase 3); it is a test-setup fact an agent needs before it knows where to look (R5), not a rule of the area |
+| 34 | In specs, Solid Queue's tables are loaded into the test database (`spec/support/solid_queue.rb`) | Left out: CLAUDE.md keeps the fact in "Dev mirrors prod" (line 30, "Solid Queue's tables are loaded into that one database for the admin pages' specs"); the path `spec/support/solid_queue.rb` left CLAUDE.md with the bullet (corrected after the implementation review); it is a test-setup fact an agent needs before it knows where to look (R5), not a rule of the area |
 | 35 | tag an example `:solid_queue` to queue through Solid Queue (no worker runs) and move jobs with `queue_job`, `claim_job`, `fail_job`, `finish_job` | Left out: kept in CLAUDE.md (Phase 3), as 34 |
 
 No statement of the bullet is untrue at the head. Two needed care against the draft: 22 (the draft's `#left_behind?` said "unless a worker still holds its job", which is `#stalled?`'s display rule, not the start guard's; corrected, see Corrections) and 10 (the draft said a console run had no job id; corrected).
@@ -367,7 +367,7 @@ Commit: `3775b2d` (`docs/specs/README.md`, new).
 
 - **AC-3.1** `ls docs/specs` at the head, without `README.md` and `.gitkeep`: `001-rails-app-skeleton`, `002-scryfall-catalog-search`, `003-worktree-environment-setup`, `004-design-system-collection`, `005-card-scanner-phase-0`, `006-collection-list-view`, `007-card-scanner-live-capture`, `008-card-scanner-phase-2-spike`, `009-card-scanner-confirm-flow`, `010-card-scanner-art-spike`, `011-card-scanner-art-matching`, `012-ghcr-registry-publishing`, `013-ghcr-untagged-cleanup`, `014-active-storage-vips`, `015-admin-catalog-and-jobs`, `016-scryfall-hosting-terms`, `017-export-format`, `018-content-notice-footer`, `019-uncropped-card-images`, `020-readme-introduction`, `021-unowned-tile-marker`, `022-export-collection`, `023-signed-out-catalog-browsing`, `024-refresh-rate-limit-wait`, `027-architecture-area-docs` (25). The index's rows link the same 25 folders, one row each, in that order (25 rows, each with 6 columns). Specs 025 and 026 have not merged; `git ls-tree --name-only origin/main docs/specs/` lists 001–024 only, so 001–024 are Shipped (or frozen) and 027 is the only unmerged one.
 - **AC-3.2** Every row has number and linked title, status, areas, plan, supersedes, superseded by. Titles are each spec's own title line (`# Feature NNN: …`; 016's `# Research 016: …`). Plan: every folder but 016 holds `plan.md` ("present"); 016 holds only `research.md` ("none"); 027 "retirement owed". Areas follow D2 and the area table of `docs/architecture/README.md`; catalog operations is linked wherever named; the other areas have no doc yet and are unlinked; 001 (stack, CI, hooks), 003 and 014 read "CLAUDE.md (R5)". Statuses: 002 and 011 "Frozen in part" naming the frozen lines' parts, 015 and 024 "Frozen", matching the Phase 3 frozen lines; spikes 005, 008, 010 and research 016 are Shipped (findings ruled on: 008 research §14, 010 research §8, 016 §7; 005's go decision is spec 007, which builds on its findings).
-- **AC-3.4** Spec 002's row, Superseded by: "Non-Goals and FR-7, public search: 004 (sign-in), 023 (an operator setting)"; Status: "Frozen in part: FR-3–FR-6 and their Error Scenarios rows, by [catalog operations](../architecture/catalog-operations.md)".
+- **AC-3.4** Spec 002's row, Superseded by: "Non-Goals and FR-7, public search: 004 (sign-in), 023 (an operator setting)"; Status: "Frozen in part: FR-3–FR-6 and their Error Scenarios rows, by `[catalog operations](../architecture/catalog-operations.md)`".
 - **AC-3.5** The introduction states the freezing rule ("Freezing": Frozen and Frozen in part, no shipped spec edited, the three D4 lines), the retirement pointer's form ("Plan retired in `<sha>`; read it with `git show <sha>^:docs/specs/NNN-<slug>/plan.md`"), the status and plan vocabularies ("Status and plan words"), and links [`../architecture/README.md`](../../architecture/README.md) ("area doc").
 - **AC-3.6** Spec 027's row: Status "Approved", Plan "retirement owed". The Plan cells of 015 and 024 read "present" (Phase 6 changes them).
 - **Links** Every relative link target in the index was tested with `[ -e ]` from `docs/specs/`: the 25 spec and research files, `../architecture/catalog-operations.md`, `../architecture/README.md`, `../design-system/README.md`, `../git-convention.md`; all exist. `../git-convention.md#merging`: `docs/git-convention.md` has the heading `## Merging` (line 31).
@@ -466,7 +466,7 @@ Commits: `60313cc9b185ef864512bd7b002c27ba083aa025` docs(roadmap): add spec 027 
 
 - **Drafts checked before editing:** the roadmap's `## Housekeeping lane` existed with `#86` as its last bullet (line 88), and its bullets have the form ``- [#N](https://github.com/plainprogrammer/Collector/issues/N): <text>.`` with optional bold **In progress:**/**Done …:** tails; `**Expected ADR:**` is the main line's existing form (items 6 and 10). The ADR README's Expected sentence existed verbatim (line 58). Spec 027's `**Issue:** none yet; opened with the pull request (FR-9)` existed verbatim (line 8). All three drafts fitted and were applied unchanged, with the numbers above.
 - **AC-6.1:** `docs/roadmap.md` lines 89–96, in the housekeeping lane directly after `#86`, are eight lines: #102 (this spec, **In progress:** linking spec 027), #103 (slice B, **Expected ADR:** YARD (0023)), and #104–#109 (slices C1–C6: catalog core, collection and lots, tenancy and accounts, the scanner, data portability, release and deploy). Each links its issue; each issue is on the 1.0 milestone with `housekeeping` (table above). `git diff --stat 431808a HEAD -- docs/roadmap.md`: 8 insertions, no deletions, so the main line and the decision log are unchanged (FR-9 must-not); `grep -n "^## \|^### " docs/roadmap.md` lists the same 13 headings as before the edit, those after the housekeeping lane each moved down 8 lines.
-- **AC-6.2:** `docs/adr/README.md` line 58 now reads: "Named by the [roadmap](../roadmap.md) and written with their specs: the backup mechanism (item 6), lots in locations (item 10), and adopting YARD as 0023 (spec 027 slice B), which takes the next free number if another ADR merges first." The highest ADR in `docs/adr/` is 0020.
+- **AC-6.2:** `docs/adr/README.md` line 58 now reads: "Named by the `[roadmap](../roadmap.md)` and written with their specs: the backup mechanism (item 6), lots in locations (item 10), and adopting YARD as 0023 (spec 027 slice B), which takes the next free number if another ADR merges first." The highest ADR in `docs/adr/` is 0020.
 - **Spec header:** `docs/specs/027-architecture-area-docs/spec.md` line 8 now reads `**Issue:** [#102](https://github.com/plainprogrammer/Collector/issues/102)`. The pull request is to close #102 (controller's note).
 - `git diff --stat 431808a HEAD`: `docs/adr/README.md` (1 line changed), `docs/roadmap.md` (+8), `spec.md` (1 line changed); nothing else.
 
@@ -474,3 +474,68 @@ Commits: `60313cc9b185ef864512bd7b002c27ba083aa025` docs(roadmap): add spec 027 
 
 - Ruling: `docs/specs/README.md` is left alone; no issue number goes into the specs index — neither Phase 4 nor Phase 7 of the plan puts issue numbers in it, and its columns are Spec, Status, Areas, Plan, Supersedes, Superseded by, with no issue column, so "the index as the plan says" means no change, and inventing a column would go beyond the plan — cost if wrong: one later edit adding the numbers in whatever form the maintainer names.
 ## Phase 8: Integration verification
+
+Run by the controller, 2026-10-15.
+
+- **Main:** `git fetch -q origin`; `origin/main` is still `df61132`, already merged (merge commit `88ddf34`). Specs 025 and 026 have not merged, so the index needs no rows for them (AC-3.1 and AC-3.3 stand as Phase 4 recorded them).
+- **Pull request:** draft [#110](https://github.com/plainprogrammer/Collector/pull/110), opened with `gh pr create --draft`; its body says "Closes #102." The area doc's Distillation log row now links it (commit `851bad7`).
+- **Application untouched:** `git diff --stat df61132 -- app lib config bin db spec script` prints nothing.
+- **Trailers:** `git log --format='%h %(trailers:key=Co-Authored-By,valueonly)' df61132..HEAD`: every commit carries `Claude Opus 5.5 <noreply@anthropic.com>` except the merge commit `88ddf34`, which has none.
+- **Links (NFR Reliability):** every relative Markdown link outside fenced code in the 21 files `git diff --name-only df61132` lists (the two deleted plans aside) was resolved against the head, file and `#anchor`, by a scratch script: 187 links, 8 flagged. All 8 are templates or quoted cell forms, not links a reader follows. Four are in code spans in `.claude/skills/distill-feature/SKILL.md` (lines 17 and 66: `../architecture/<doc>.md` and the frozen line's form); one is `spec.md` line 96's template `[`<area doc>`](…)`; one is a `[…]` placeholder in this file. Two quotes in this file (AC-3.4 and AC-6.2 above) rendered as links that resolve from the quoted file but not from here; they are now in code spans. Every other link resolves.
+- **`bin/ci`** at `851bad7` (2026-10-15): "1507 examples, 0 failures, 1 pending" (the opt-in art agreement spec, `COLLECTOR_ART_AGREEMENT` unset), seed 36295; "✅ Continuous Integration passed in 4m16.83s", exit 0.
+
+### Acceptance criteria
+
+| AC | Phase | Evidence |
+|---|---|---|
+| AC-1.1 | 2 | Phase 2, "AC-1.1: headings": the eight D5 headings in order |
+| AC-1.2 | 2 | Phase 2, "AC-1.2": 35 statements of the base bullet, each located in the area doc; the `:solid_queue` helpers kept in CLAUDE.md |
+| AC-1.3 | 2 | Phase 2, "AC-1.3: constants": 24 rows, name, value and file:line match; the ten named constants present with reasons |
+| AC-1.4 | 2 | Phase 2, "AC-1.4": every item of specs 015, 024, 002 FR-3–FR-6 and 011 FR-2, stated, changed since, or not in this area |
+| AC-1.5 | 2, 8 | Phase 2, "AC-1.5"; `../specs/README.md`, then missing, exists since Phase 4 |
+| AC-1.6 | 2 | Phase 2, "AC-1.6": 45 hits read, none in a statement about `Catalog::` code |
+| AC-1.7 | 0, 2 | Baseline (#41, #77, #86); Phase 2, "AC-1.7": each a known limit with its link |
+| AC-2.1 | 3 | Phase 3, AC-2.1: 54 words, the link, the tag and helpers kept |
+| AC-2.2 | 3 | Phase 3, AC-2.2 |
+| AC-2.3 | 3 | Phase 3, AC-2.3: two hunks only |
+| AC-3.1 | 4, 8 | Phase 4, AC-3.1: 25 folders, 25 rows; unchanged at Phase 8 (025, 026 unmerged) |
+| AC-3.2 | 4 | Phase 4, AC-3.2 |
+| AC-3.3 | 4 | Phase 4, "AC-3.3: pairs" |
+| AC-3.4 | 4 | Phase 4, AC-3.4 |
+| AC-3.5 | 4 | Phase 4, AC-3.5 |
+| AC-3.6 | 4, 6 | Phase 4, AC-3.6; Phase 6 left 027's row as "Approved", "retirement owed" |
+| AC-4.1 | 1 | Phase 1, AC-4.1 |
+| AC-4.2 | 1 | Phase 1, AC-4.2 |
+| AC-4.3 | 1 | Phase 1, AC-4.3 |
+| AC-4.4 | 5 | Phase 5, AC-4.4 |
+| AC-4.5 | — | Withdrawn in spec v1.3.0 (ruling P1); nothing to verify |
+| AC-4.6 | 1 | Phase 1, AC-4.6 |
+| AC-4.7 | 5 | Phase 5, AC-4.7: the session-end line; `git diff df61132 -- .claude/integrations.md` empty |
+| AC-4.8 | 1 | Phase 1, AC-4.8 |
+| AC-5.1 | 1 | Phase 1, AC-5.1 |
+| AC-5.2 | 6 | Phase 6, AC-5.2: `cmp` silent for both plans |
+| AC-5.3 | 6 | Phase 6, AC-5.3: no own-plan link left |
+| AC-5.4 | 6 | Phase 6, AC-5.4: one file deleted per commit |
+| AC-6.1 | 7 | Phase 7, AC-6.1: #102–#109 on the 1.0 milestone with `housekeeping` |
+| AC-6.2 | 7 | Phase 7, AC-6.2 |
+
+NFR Performance: CLAUDE.md 2,312 → 1,661 words (Phase 3). NFR Security: no step read a forbidden path; every `git grep` ended with `':!.kamal/secrets'`. NFR Compatibility: the area docs and both READMEs have no front matter.
+
+### Rulings (Phase 8)
+
+- Ruling: no issue opened for the `poll` controller's skipping while the tab is hidden, Turbo is busy or a menu is open, which the area doc marks "no spec source" — the Error Scenario that calls for an issue covers code that contradicts every source, and this contradicts none — cost if wrong: one issue opened later.
+- Ruling: #41 kept among the open issues (Phase 0) — AC-1.7 selects every issue whose body names the art index, and #41's does — cost if wrong: one bullet in the area doc's limits.
+- Ruling (after the implementation review): `.claude/skills/distill-feature/SKILL.md`'s before-merge step 5 now leaves a spec's Plan as "none" when no plan was written, instead of always setting "retirement owed" — FR-3's plan words keep "none" for a spec with no plan, and the skill's own state 1 already assumed it — cost if wrong: one clause.
+
+## Implementation review
+
+SPEC-ALIGNED
+
+Read-only review (`sdd-superpowers:sdd-review` Mode B, Opus subagent, 2026-10-15) at `851bad7` plus this file's Phase 8 section. It checked every criterion itself at the head: ✓ for AC-1.1 to AC-6.2, with AC-4.5 withdrawn. It also checked D4 (the diffs of the shipped specs), FR-6's must-not, the untouched application and the links.
+
+Findings, none blocking:
+
+1. `bin/ci`'s evidence was a forward reference. **Fixed:** recorded under Phase 8.
+2. AC-1.2 statement 34's reason said the test-setup fact was kept in the new bullet. CLAUDE.md keeps it in "Dev mirrors prod" (line 30), and the path `spec/support/solid_queue.rb` left with the bullet. **Fixed:** the row now says so. The optional addition of the path to the bullet was not made, so CLAUDE.md stays as Phase 3 verified it.
+
+Observations: the skill's Plan word for a spec with no plan (**fixed**, ruling above); the spec headers' pointer reads "**Plan:** retired in …" where the Glossary says "Plan retired in …", which is the same meaning; and one pointer commit (`366ba40`) serves both retirements, which the reviewer read as allowed by D7, since it names D4.
