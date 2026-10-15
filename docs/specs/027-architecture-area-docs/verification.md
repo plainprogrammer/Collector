@@ -448,4 +448,29 @@ Commits: `6c4dd4fb5c247d6aeb5739e3ae9e096345309d0e` docs(specs): retire the plan
 
 - Ruling: the pointers and index cells use the full 40-character sha, not a short one — a pointer is meant to resolve forever, and a short sha can become ambiguous as history grows — cost if wrong: longer cells, shortened in a later D4 commit.
 ## Phase 7: Roadmap, ADR index and issues
+
+Commits: `60313cc9b185ef864512bd7b002c27ba083aa025` docs(roadmap): add spec 027 and its follow-up slices; `a9a949fb6726eeea556191c233c1f940ea9f8d87` docs(adr): expect ADR 0023 for YARD; `d5d733cb0fd9aeed2cc91b86385bd6b6ec1feb21` docs(027): link the spec's issue.
+
+- **Issues:** created by the controller with the maintainer's go-ahead (not by this phase's subagent). `gh issue view <n> --json number,title,milestone,labels,state`, one call each; every one is OPEN, on milestone "1.0 — First Major Release", with the single label `housekeeping`, and its title is the plan's:
+
+  | Placeholder | Number | Title |
+  |---|---|---|
+  | `<i027>` | #102 | Area docs hold the current architecture, starting with catalog operations |
+  | `<iB>` | #103 | Adopt YARD for Ruby documentation |
+  | `<iC1>` | #104 | Area doc: catalog core |
+  | `<iC2>` | #105 | Area doc: collection and lots |
+  | `<iC3>` | #106 | Area doc: tenancy and accounts |
+  | `<iC4>` | #107 | Area doc: scanner |
+  | `<iC5>` | #108 | Area doc: data portability |
+  | `<iC6>` | #109 | Area doc: release and deploy |
+
+- **Drafts checked before editing:** the roadmap's `## Housekeeping lane` existed with `#86` as its last bullet (line 88), and its bullets have the form ``- [#N](https://github.com/plainprogrammer/Collector/issues/N): <text>.`` with optional bold **In progress:**/**Done …:** tails; `**Expected ADR:**` is the main line's existing form (items 6 and 10). The ADR README's Expected sentence existed verbatim (line 58). Spec 027's `**Issue:** none yet; opened with the pull request (FR-9)` existed verbatim (line 8). All three drafts fitted and were applied unchanged, with the numbers above.
+- **AC-6.1:** `docs/roadmap.md` lines 89–96, in the housekeeping lane directly after `#86`, are eight lines: #102 (this spec, **In progress:** linking spec 027), #103 (slice B, **Expected ADR:** YARD (0023)), and #104–#109 (slices C1–C6: catalog core, collection and lots, tenancy and accounts, the scanner, data portability, release and deploy). Each links its issue; each issue is on the 1.0 milestone with `housekeeping` (table above). `git diff --stat 431808a HEAD -- docs/roadmap.md`: 8 insertions, no deletions, so the main line and the decision log are unchanged (FR-9 must-not); `grep -n "^## \|^### " docs/roadmap.md` lists the same 13 headings as before the edit, those after the housekeeping lane each moved down 8 lines.
+- **AC-6.2:** `docs/adr/README.md` line 58 now reads: "Named by the [roadmap](../roadmap.md) and written with their specs: the backup mechanism (item 6), lots in locations (item 10), and adopting YARD as 0023 (spec 027 slice B), which takes the next free number if another ADR merges first." The highest ADR in `docs/adr/` is 0020.
+- **Spec header:** `docs/specs/027-architecture-area-docs/spec.md` line 8 now reads `**Issue:** [#102](https://github.com/plainprogrammer/Collector/issues/102)`. The pull request is to close #102 (controller's note).
+- `git diff --stat 431808a HEAD`: `docs/adr/README.md` (1 line changed), `docs/roadmap.md` (+8), `spec.md` (1 line changed); nothing else.
+
+### Rulings
+
+- Ruling: `docs/specs/README.md` is left alone; no issue number goes into the specs index — neither Phase 4 nor Phase 7 of the plan puts issue numbers in it, and its columns are Spec, Status, Areas, Plan, Supersedes, Superseded by, with no issue column, so "the index as the plan says" means no change, and inventing a column would go beyond the plan — cost if wrong: one later edit adding the numbers in whatever form the maintainer names.
 ## Phase 8: Integration verification
