@@ -5,7 +5,7 @@
 - [Small incremental commits](small-incremental-commits.md) — one Conventional Commit per step/change
 - [Secret files are user-verified](secret-files-user-verified.md) — agents are read-denied on secrets/storage; ask the user to cat them; briefs must forbid shell reads (grep/cat) too; .kamal/secrets is tracked, so every git grep ends with ':!.kamal/secrets'
 - [SDD review model choice](sdd-review-model-choice.md) — every PRD, spec and plan gets a read-only review by default before moving on, on Opus since 2026-10-12 (Fable only when named); drafting in the main session; implementation on Opus
-- [Plan reviews run the code](plan-reviews-run-the-code.md) — trace plan code against the files it edits; read-only by default (spec 009; Opus since 2026-10-12); the planner doesn't run plan code first (dropped 2026-10-15)
+- [Plan reviews are read-only](plan-reviews-run-the-code.md) — trace plan code against the files it edits, run nothing (Opus since 2026-10-12); neither planner nor reviewer runs plan code before execution (ruled 2026-10-15)
 - [Dev machine image tools](dev-machine-image-tools.md) — magick 7, Pillow, ffmpeg, libvips 8.18.3 present (no `vips` command); ruby-vips in the bundle; decode via `magick … ppm:-`
 - [Scryfall API access](scryfall-api-access.md) — docs 403 to WebFetch; use curl + User-Agent; bulk JSONL facts
 - [PR screenshots workflow](pr-screenshots-workflow.md) — headless Firefox + magick/ffmpeg; embed in private-repo PRs via blob/<sha>?raw=true; pause 0.6s after a theme switch
