@@ -5,7 +5,7 @@
 **Created:** 2026-10-15
 **Last Updated:** 2026-10-15
 **Branch:** `027-architecture-area-docs`
-**Issue:** none yet; opened with the pull request (FR-9)
+**Issue:** [#102](https://github.com/plainprogrammer/Collector/issues/102)
 
 ---
 
