@@ -12,7 +12,7 @@
       <%= submit_tag "Change language", name: nil, class: "c-btn c-btn--secondary c-btn--sm" %>
     <% end %>
   <% else %>
-    <p class="c-numentry__data">Language: <%= choice.language.upcase %></p>
+    <p>Language: <span class="c-numentry__data"><%= choice.language.upcase %></span></p>
   <% end %>
   <%= link_to "Change set", collection_number_entry_path, class: "c-btn c-btn--ghost c-btn--sm" %>
 </div>

@@ -69,7 +69,7 @@ RSpec.describe "Number entry", type: :request do
       it "states a set's one language with no field (AC-1.7)", :aggregate_failures do
         printing("1")
         get collection_number_entry_path(**page_params)
-        expect(response.body).to include("Language: EN")
+        expect(response.parsed_body.at_css(".c-numentry__set").text.squish).to include("Language: EN")
         expect(response.body).not_to include('id="number_entry_language"')
       end
 

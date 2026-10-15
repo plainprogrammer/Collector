@@ -252,3 +252,26 @@ img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches:
   .c-shell--untabbed.c-shell--footed > .c-main { padding-bottom:var(--space-4); }
   .c-shell--untabbed > .c-footer { padding-bottom:calc(var(--space-4) + env(safe-area-inset-bottom)); }
 }
+
+/* ---------- Number entry (spec 026): the chosen set, one line's fields in a row, a choice between matches, the list ---------- */
+.c-numentry { display:flex; flex-direction:column; gap:var(--space-6); margin-top:var(--space-6); }
+.c-numentry__set { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-2) var(--space-4); }
+.c-numentry__setname, .c-numentry__set > p { margin:0; }
+.c-numentry__data { font-family:var(--font-mono); }
+.c-numentry__language { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-2); }
+.c-numentry__line { display:grid; grid-template-columns:minmax(0, 10rem) minmax(0, 7rem) minmax(0, 12rem) auto; align-items:start; gap:var(--space-3); }
+.c-numentry__line > .c-field__error { grid-column:1 / -1; margin:0; }
+.c-input .c-numentry__data-input { font-family:var(--font-mono); }
+/* The label (16px line) and the field's gap (space-1) above the inputs, so Add lines up with them, not the labels. */
+.c-numentry__add { padding-top:calc(var(--space-4) + var(--space-1)); }
+.c-numentry__prompt { margin:0 0 var(--space-2); }
+.c-numentry__choice .c-list { border:0; }
+.c-numentry__choice .c-list li { border:0; padding:var(--space-1) 0; }
+.c-numentry__choice .c-btn { white-space:normal; height:auto; min-height:44px; text-align:left; }
+.c-numentry__list .c-list li { flex-wrap:wrap; }
+.c-numentry__list .c-btn { min-height:44px; min-width:44px; }
+@container page (max-width: 639px) {
+  .c-numentry__line { grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); }
+  .c-numentry__add { grid-column:1 / -1; padding-top:0; }
+  .c-numentry__add .c-btn { width:100%; }
+}
