@@ -21,6 +21,8 @@ Feature 002. The approved spec and the approved plan were each reviewed by a sep
 
 For features of this size, run a spec review and a plan review (with the reviewer executing the plan's code in a scratch copy) before `sdd-execute`, and verify external data formats live during planning.
 
+**Superseded in part (2026-10-15):** plan reviews are now read-only and run nothing ([[plan-reviews-run-the-code]]). The spec review and the plan review before `sdd-execute` still stand.
+
 ## Signals to watch for
 
 A plan with full code for many phases; a spec with interacting rules (skip conditions, caps, filters); an external data source whose format is known only from secondhand docs.
