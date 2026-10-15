@@ -20,6 +20,16 @@ Rails.application.routes.draw do
       resources :bulk_removals, only: %i[new create] do
         resource :undo, only: :create, module: :bulk_removals
       end
+
+      # Number entry (spec 026): add cards from a set by collector number.
+      resource :number_entry, only: :show do
+        scope module: :number_entries do
+          resources :lines, only: :create do
+            resource :undo, only: :create, module: :lines
+          end
+          resource :ending, only: :create
+        end
+      end
     end
   end
   resource :more, only: :show

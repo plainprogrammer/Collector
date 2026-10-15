@@ -1,6 +1,7 @@
 require "rails_helper"
 
-# Spec 015 AC-7.3: admins find the catalog and jobs pages where they find user administration.
+# Spec 015 AC-7.3: admins find the catalog and jobs pages where they find user administration. More also holds "Add by
+# number" after the export, which the avatar menu doesn't (spec 026, superseding spec 022 decision 6).
 RSpec.describe "Admin navigation", type: :request do
   def links(selector) = Nokogiri::HTML5(response.body).css("#{selector} a").map { |link| [ link.text.squish, link["href"] ] }
 
@@ -9,10 +10,9 @@ RSpec.describe "Admin navigation", type: :request do
 
     get more_path
 
-    expected = [ [ "Export collection", collection_export_path ], [ "Users and sign-up", admin_users_path ],
-      [ "Catalog", admin_catalog_path ], [ "Jobs", admin_jobs_path ] ]
-    expect(links(".c-more")).to eq(expected)
-    expect(links(".c-appbar .c-menu__list")).to eq(expected)
+    admin = [ [ "Users and sign-up", admin_users_path ], [ "Catalog", admin_catalog_path ], [ "Jobs", admin_jobs_path ] ]
+    expect(links(".c-more")).to eq([ [ "Export collection", collection_export_path ], [ "Add by number", collection_number_entry_path ], *admin ])
+    expect(links(".c-appbar .c-menu__list")).to eq([ [ "Export collection", collection_export_path ], *admin ])
   end
 
   it "shows a member only the export, neither admin link", :aggregate_failures do
@@ -20,7 +20,7 @@ RSpec.describe "Admin navigation", type: :request do
 
     get more_path
 
-    expect(links(".c-more")).to eq([ [ "Export collection", collection_export_path ] ])
+    expect(links(".c-more")).to eq([ [ "Export collection", collection_export_path ], [ "Add by number", collection_number_entry_path ] ])
     expect(links(".c-appbar .c-menu__list")).to eq([ [ "Export collection", collection_export_path ] ])
   end
 end

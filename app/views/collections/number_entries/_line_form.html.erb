@@ -1,0 +1,34 @@
+<%# locals: (choice:, line:, line_key:) %>
+<%# One line (spec 026 decision 3): number, quantity and finish, in tab order; Enter adds it. The first field with an
+    error takes the focus, the number otherwise, unless a choice between matches is showing (it takes the focus). %>
+<% focus = (%i[number quantity finish] & line.errors.attribute_names).first || :number %>
+<%# novalidate: the server's messages (AC-4.2) show, not the browser's own bubbles. %>
+<%= form_with url: collection_number_entry_lines_path, class: "c-numentry__line", html: { novalidate: true }, data: { controller: "number-entry" } do %>
+  <% choice.to_params.each do |name, value| %><%= hidden_field_tag name, value, id: nil %><% end %>
+  <%= hidden_field_tag "line[line_key]", line_key, id: nil %>
+  <% line.errors[:base].each do |message| %><p class="c-field__error"><%= message %></p><% end %>
+  <div class="c-field<%= " c-field--invalid" if line.errors[:number].any? %>">
+    <label class="c-field__label" for="line_number">Number</label>
+    <label class="c-input"><%= text_field_tag "line[number]", line.number, id: "line_number", class: "c-numentry__data-input", autocomplete: "off", spellcheck: false,
+          autofocus: (focus == :number && !line.choice?), "aria-describedby": ("line_number_error" if line.errors[:number].any?),
+          data: { number_entry_target: "number", select: line.errors[:number].any? } %></label>
+    <% line.errors[:number].each do |message| %><p class="c-field__error" id="line_number_error"><%= message %></p><% end %>
+  </div>
+  <div class="c-field<%= " c-field--invalid" if line.errors[:quantity].any? %>">
+    <label class="c-field__label" for="line_quantity">Quantity</label>
+    <label class="c-input"><%= number_field_tag "line[quantity]", line.quantity, id: "line_quantity", class: "c-numentry__data-input", min: 1, max: Lot::MAX_QUANTITY, step: 1,
+          inputmode: "numeric", required: true, autofocus: focus == :quantity,
+          "aria-describedby": ("line_quantity_error" if line.errors[:quantity].any?) %></label>
+    <% lot_error_messages(line, :quantity).each do |message| %><p class="c-field__error" id="line_quantity_error"><%= message %></p><% end %>
+  </div>
+  <% if line.finishes.any? %>
+    <div class="c-field<%= " c-field--invalid" if line.errors[:finish].any? %>">
+      <label class="c-field__label" for="line_finish">Finish</label>
+      <%= select_tag "line[finish]", options_for_select(line.finishes.map { [ line.vocabulary.finish_label(it), it ] }, line.finish),
+            id: "line_finish", autofocus: focus == :finish, "aria-describedby": ("line_finish_error" if line.errors[:finish].any?),
+            data: { action: "keydown.enter->number-entry#submit" } %>
+      <% lot_error_messages(line, :finish).each do |message| %><p class="c-field__error" id="line_finish_error"><%= message %></p><% end %>
+    </div>
+  <% end %>
+  <div class="c-numentry__add"><%= submit_tag "Add", name: nil, class: "c-btn c-btn--primary" %></div>
+<% end %>

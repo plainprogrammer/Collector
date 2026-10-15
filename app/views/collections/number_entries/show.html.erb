@@ -1,0 +1,22 @@
+<% content_for :title, "Add by number · Collector" %>
+<%# Back refetches the page, so it never restores a typed number or a stale list. %>
+<% content_for :head, tag.meta(name: "turbo-cache-control", content: "no-cache") %>
+<%# Each answer comes back to this URL; replace (not morph) lets the focus move to the field that needs it. %>
+<% content_for :turbo_refresh_method, "replace" %>
+<%= render "layouts/appbar", section: :collection, detail: true, back_path: collection_path %>
+<main class="c-main c-page">
+  <div class="c-pagehead"><div><h1 class="c-pagehead__title">Add by number</h1></div></div>
+  <%= render "catalog/not_loaded", titles: @unloaded_catalogs, named: @catalogs_named %>
+  <div class="c-numentry">
+    <% if @choice.chosen? %>
+      <%= render "collections/number_entries/chosen_set", choice: @choice, finish: @line.finish %>
+      <%= render "collections/number_entries/choice", choice: @choice, line: @line, line_key: @line_key if @line.choice? %>
+      <%= render "collections/number_entries/line_form", choice: @choice, line: @line, line_key: @line_key %>
+    <% elsif @choice.sets.any? %>
+      <%= render "collections/number_entries/set_form", choice: @choice, named: @catalogs_named %>
+    <% end %>
+    <%= render "collections/number_entries/list", lines: @lines,
+          page_params: @choice.chosen? ? { **@choice.to_params, finish: @line.finish } : {} %>
+  </div>
+</main>
+<%= render "layouts/tabbar", section: :collection %>

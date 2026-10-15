@@ -10,6 +10,7 @@
   <ul class="c-list c-more">
     <li><span>Signed in as <strong><%= Current.user.name %></strong></span><span class="c-list__meta"><%= Current.user.email_address %></span></li>
     <li><%= link_to "Export collection", collection_export_path, data: { turbo: false, turbo_prefetch: false } %></li>
+    <li><%= link_to "Add by number", collection_number_entry_path %></li>
     <% if Current.user.admin? %>
       <li><%= link_to "Users and sign-up", admin_users_path %></li>
       <li><%= link_to "Catalog", admin_catalog_path %></li>
