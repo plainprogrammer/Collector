@@ -27,6 +27,8 @@ The review found none of these. They surfaced only when the code ran.
 
 Treat a plan's code as a strong draft. Brief implementers that blocks may be wrong, and that a fix must keep the spec's behaviour and be recorded as a ruling. When a plan review can run code, ask it to load each new class and run the new spec files at least once ([[plan-reviews-run-the-code]]).
 
+**Superseded in part (2026-10-15):** plan reviews are now read-only and run nothing. The first run of a plan's code is its execution, tests first, so the strong-draft briefing above matters more.
+
 ## Signals to watch for
 
 - Endless methods (`def x = …`) with a trailing modifier.
