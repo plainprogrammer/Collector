@@ -33,14 +33,15 @@
 - [Sitting capture alignment](sitting-capture-alignment.md) — check each row's first-capture name vs the expected card (re-scans shift rows; CAPTURES override); brief "scan and add" explicitly
 - [Session-wrap before PR review](session-wrap-before-pr-review.md) — wrap and commit memories/lessons before marking a PR ready; offer post-merge housekeeping then too
 - [Local image builds duplicate OCR](local-image-builds-duplicate-ocr.md) — issue #31: set-up checkouts build images ~14 MB larger; measure paths with `du`, not total sizes
-- [Subagent commit trailers](subagent-commit-trailers.md) — subagents use their own session's trailer; don't name one in briefs
+- [Subagent commit trailers](subagent-commit-trailers.md) — trailers aren't stable (own reminder, or a mid-run switch to Sonnet); name it in briefs, check the log per unit, never rewrite history; the maintainer keeps mixed trailers
 - [SDD execute with exact plans](sdd-execute-exact-plans.md) — one subagent per phase even for a small plan (maintainer, 2026-10-11); apply blocks by script; diff against the prototype branch; building and revising that branch
 - [PR exists and conflicts check](pr-exists-and-conflicts-check.md) — `gh pr list --head` before creating; a conflicting PR gets no CI run, merge main and push
 - [Spec 015 follow-ups](spec-015-followups.md) — PR #32 draft, CI green; unchecked: graceful restart, art matching on, focus rings; later spec: "Running." after a crash, "Attempts 0"
 - [CSS shell state by class](css-shell-state-by-class.md) — maintainer chose a layout-set class (`c-shell--footed`) over `:has()` (spec 018); a new body class breaks exact class-string assertions
 - [Browser spec image and window gotchas](browser-spec-image-and-window-gotchas.md) — card images via 127.0.0.1:9 + data: pictures (`spec/support/card_images.rb`); decode() vs load; around runs before driven_by; saved collection view; float noise
 - [Spec 019 follow-ups](spec-019-followups.md) — PR #66 draft (closes #35); owed: WebKit phone check; fade is #65; ImageFit to upstream; conflicts expected with the spec 018 PR
-- [Orca supervised stages](orca-supervised-stages.md) — as a dispatched worker: `orca orchestration ask` for decisions, a background heartbeat loop stopped before `worker_done`, one SDD stage per Task
+- [Orca supervised stages](orca-supervised-stages.md) — as a dispatched worker: `orca orchestration ask` for decisions (30-minute cap: `--resume`, never re-ask; `check --ack`), a Task may span spec to PR, heartbeat loop ended by a stop file, no orchestration messages for a pasted wrap
 - [Spec 017 follow-ups](spec-017-followups.md) — PR #68 draft, owed: rendered-doc read, checks, ADR 0020 and log row 32 at merge; import reads `format_version` first; locations make version 2
 
 - [No prose-document specs](no-readme-wording-specs.md) — no RSpec examples for README.md, CLAUDE.md, skill files or docs/ Markdown (spec 020, decision 7); export format document, config and code checks stay; verify document criteria by reading
+- [Orca coordinator loop](orca-coordinator-loop.md) — workers block silently at permission prompts: read their terminals after each empty inbox wait, answer "1" only for approved actions; heartbeat-only batches; `claude --continue` to resume a released worker
