@@ -410,6 +410,28 @@ Each "Superseded by" entry naming a spec, with the "Supersedes" entry in that sp
 - Ruling: 002's Areas cell links catalog operations, as its Status cell does — AC-3.2 says areas are linked where the area doc exists — cost if wrong: none beyond a duplicate link.
 
 ## Phase 5: The distillation step
+
+Commits: `10bf892` chore(skills): add the distill-feature skill; `a22362d` docs(claude): run distill-feature after session-wrap.
+
+- **AC-4.4** `.claude/skills/distill-feature/SKILL.md` (front matter `name`/`description`, as `.claude/skills/collector-design-system/SKILL.md`) checked against D6 clause by clause:
+  - Three states, checked in order with the after-merge one first ("the after-merge check comes first because it can apply on any branch"): **1. After the merge**, **2. Before the merge**, **3. Nothing to do**.
+  - State 1: first checks every "retired in `<sha>`" cell with `git cat-file -e <sha>`, one call each, and warns on a failure naming squash/rebase merges or a shallow clone and the rewrite to the commit that removed the plan from `main` (`git show <squash sha>^:<path>`), as the Error Scenarios row says; then retires each "retirement owed" row whose pull request merged in the two commits of D7 (delete only `plan.md`; then pointer under `**Frozen:**`, index Plan cell, Status Approved → Shipped, own-plan links rewritten as plain text; commit names spec 027 D4), and checks `git show <sha>^:…`. A spec with nothing to distil (027) is retired the same way (P2).
+  - State 2: reads `## Implementation review` in `verification.md` with an aligned verdict on its first line; says many folders have no `verification.md`; asks the maintainer when the section, the file or a clear verdict is missing; "A pull request needn't exist yet: the wrap runs before `gh pr create`". It distils into area docs, proposes ADRs (not written without the go-ahead), marks the row Frozen / Frozen in part, sets Plan to "retirement owed", and adds the frozen line.
+  - State 3: "say 'distill-feature: nothing to do' with the reason in one line, and stop", covering no spec on the branch, the maintainer saying unfinished, or the row already showing it distilled (D6 state 1).
+  - D4: "**Never change a shipped spec beyond spec 027 D4:** its `**Frozen:**` line, its retirement pointer, and plain-text replacements of its links to its own retired plan, each in a commit whose message names 'spec 027 D4'", plus "Don't edit any other spec".
+- **Spec 027 on its own branch before merge (AC-3.6, P2)** walked through the skill: state 1 — 027's row is "retirement owed" but `gh pr list --head 027-architecture-area-docs --state merged` is empty, so it doesn't qualify; 015 and 024 read "present" until Phase 6 retires them on this branch, and "retired" after, so neither qualifies. State 2 — 027's row Plan "retirement owed" shows it distilled, so it doesn't apply. State 3 — "nothing to do", with the skill's own example for this case.
+- **Index match (Phase 4)**: the skill lists the columns `Spec`, `Status`, `Areas`, `Plan`, `Supersedes`, `Superseded by`, the status words (Draft, Approved, Shipped, Frozen in part, Frozen) and their cell forms (`Frozen, by [catalog operations](…)`, `Frozen in part: <parts>, by […]`), the plan words (present, retirement owed, retired, none) and Phase 6's retired cell form; the frozen line's form is Phase 3's (spec 015 line 9, spec 002 line 7).
+- **AC-4.7** `.claude/CLAUDE.md` line 20 at the head: "**At session end:** Before closing a conversation, invoke `sdd-superpowers:session-wrap`, then the `distill-feature` skill (area docs and plan retirement, spec 027)." The line was found verbatim before the edit; the lines after it are unchanged. `git diff df61132 -- .claude/integrations.md`: no output.
+
+### Rulings (corrections to the draft)
+
+- Ruling: the merged pull request is found from the spec's `**Branch:**` header line (or the current branch), not `--head <NNN-slug>` — spec 002's branch is `feat/002-scryfall-catalog-search`, so the folder name misses it — cost if wrong: a merged plan is never retired.
+- Ruling: the index's retired Plan cell uses Phase 6's form (``retired in `<sha>`; `git show <sha>^:<path>` ``), not the spec's line without `**Plan:**` — every retired row then reads alike — cost if wrong: two pointer forms in one column.
+- Ruling: "shows it distilled" is spelled out (Plan retirement owed or retired; for a plan-less spec, Status Frozen or Frozen in part), and a row qualifies for retirement only when its pull request merged and its `plan.md` still exists on the branch; an open pull request already retiring it is skipped — so 027 gets "nothing to do" on its own branch and no plan is retired twice — cost if wrong: state 1 or 2 acts on 027 before its merge.
+- Ruling: in state 2 the frozen line goes in a commit of its own naming spec 027 D4 (as Phase 3 did), after the distillation commit, instead of inside it — D4 wants each such line in its own commit — cost if wrong: one extra commit per distillation.
+- Ruling: the own-plan link search is `git grep -n -E "\]\((\./)?plan\.md"`, so links with an anchor or `./` are caught too, and the skill says a path in quoted command output isn't a link (AC-5.3) — cost if wrong: a broken link survives a retirement.
+- Ruling: the Distillation log row names the pull request by number once opened, otherwise "spec NNN's pull request" (as the pilot's row does), since state 2 runs before `gh pr create` — cost if wrong: none beyond a later edit of the cell.
+- Ruling: when `gh` can't answer, the skill asks the maintainer instead of guessing; state 1 asks before creating a housekeeping branch — cost if wrong: an extra question.
 ## Phase 6: Plan retirement
 ## Phase 7: Roadmap, ADR index and issues
 ## Phase 8: Integration verification
