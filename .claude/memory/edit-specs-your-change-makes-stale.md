@@ -1,12 +1,14 @@
 ---
 name: edit-specs-your-change-makes-stale
-description: When a change makes another (already shipped) spec's acceptance criterion incomplete, edit that spec in the same PR with a patch version bump and changelog line; don't just flag it (maintainer, 2026-10-14)
+description: When a change makes part of a shipped spec stale, record the supersession in the new spec and the specs index and update the area doc; never edit the earlier spec (rulings R3 and R8 of 2026-10-15, spec 027). Replaces the 2026-10-14 practice of editing it with a version bump
 metadata:
   type: feedback
 ---
 
-Spec 024's plan said spec 015's AC-2.16 ("the most recent run that wasn't skipped as already running") would become incomplete. That spec is outside the branch's documents, so the plan said the PR would only note it. When approving the plan on 2026-10-14, the maintainer said: "Also edit spec 015's AC-2.16 wording in this PR so it covers the new 'waiting for another job's retry' skip (bump its version per house style)." Spec 015 went to v1.3.1 with a changelog line, in the same docs commit as spec 002's update.
+When a change makes an acceptance criterion or requirement of a shipped spec incomplete or wrong, don't edit that spec. Record the supersession in the new spec ("supersedes spec NNN AC-x: …"), add it to `docs/specs/README.md` in both directions, and update the area doc under `docs/architecture/` where one covers that part.
 
-**Why:** an approved spec that no longer describes the code misleads the next reader, and a note in a PR body gets lost once the PR merges.
+**Why:** on 2026-10-15 the maintainer ruled that specs freeze as historical records once an area doc covers them (spec 027, R3), and that freezing applies already (R8): spec 025's plan was told not to edit spec 022 and to record the supersession in spec 025, and spec 026 got the same instruction. Specs 002 and 015 had been amended in place for issues #60–#81, which hid what each promised when it shipped.
 
-**How to apply:** while planning, grep `docs/specs/` for the behaviour, scope or message you change (here, `already running`). For each acceptance criterion or requirement the change makes incomplete or wrong, plan an edit to that spec in the same PR: a patch version bump for a wording fix (minor if a requirement changes), Last Updated, a changelog line naming the issue, and a line in your own `verification.md`. Ask only if the edit changes what that spec promised, not just how it is worded. Related: [[sdd-review-model-choice]].
+**History:** from 2026-10-14 (spec 024) to 2026-10-15 the practice was the opposite. Spec 024's plan said spec 015's AC-2.16 would become incomplete and that the PR would only note it; approving the plan on 2026-10-14, the maintainer said: "Also edit spec 015's AC-2.16 wording in this PR so it covers the new 'waiting for another job's retry' skip (bump its version per house style)." Spec 015 went to v1.3.1 with a changelog line, in the same docs commit as spec 002's update. Those edits stay as they are.
+
+**How to apply:** while specifying or planning, grep `docs/specs/` and `docs/architecture/` for the behaviour, scope or message you change. For each part of a shipped spec it makes stale, write the supersession into your spec, plan the index rows and the area doc edit, and record them in your `verification.md`. Only a spec's frozen line, retirement pointer and links to its retired plan may be added to it (spec 027 D4). Related: [[sdd-review-model-choice]].

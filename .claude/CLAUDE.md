@@ -17,7 +17,7 @@ Memory lives in `.claude/memory/` — see `.claude/memory/MEMORY.md` for the ind
 Project identity is in `.claude/memory/foundation.md`.
 Steering files in `.claude/memory/steering/` are loaded by skills when relevant.
 
-**At session end:** Before closing a conversation, invoke `sdd-superpowers:session-wrap`.
+**At session end:** Before closing a conversation, invoke `sdd-superpowers:session-wrap`, then the `distill-feature` skill (area docs and plan retirement, spec 027).
 It scans the session for memory candidates (feedback, project, user, reference) and
 lesson candidates (decisions, surprises, failed approaches), then writes approved entries
 to `.claude/memory/` and `docs/lessons/`. Takes under 5 minutes; saves what a fresh
