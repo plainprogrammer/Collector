@@ -360,5 +360,17 @@ RSpec.describe Catalog::RefreshOperation, :solid_queue, type: :model do
         expect(operation.stages.first.state).to eq(:stopped)
       end
     end
+
+    it "still shows the failed run, queued to retry, after another refresh was skipped for it (issue #78)", :aggregate_failures do
+      freeze_time do
+        run(status: "failed", stage: "download", message: "Catalog::Sources::TransientError: 503", started_at: 2.minutes.ago)
+        queue_job(Catalog::RefreshJob, "mtg", "manual", wait: 3.minutes)
+        run(status: "skipped", message: "waiting for another job's retry", started_at: 1.minute.ago)
+
+        expect(operation).to have_attributes(state: :queued,
+          summary: "Queued to retry. The last run failed while downloading. The source couldn't be reached, or answered " \
+                   "with an error. This usually passes by itself.")
+      end
+    end
   end
 end

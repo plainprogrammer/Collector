@@ -248,6 +248,47 @@ RSpec.describe Catalog::Refresh, type: :model do
       expect(left.reload).to be_running
     end
 
+    it "is skipped, asking the source nothing, while another job for the type waits to run again (issue #78)", :aggregate_failures, :solid_queue do
+      queue_job(Catalog::RefreshJob, "fake", "manual", wait: 10.minutes)
+      source.languages_result = RuntimeError.new("the source was asked")
+
+      run = described_class.new("fake", trigger: "scheduled", source:, job_id: "job-2").call
+
+      expect(run).to have_attributes(status: "skipped", message: "waiting for another job's retry", job_id: "job-2")
+      expect(source.downloads).to be_empty
+      expect(source.refreshed).to be_empty # so no art build is queued (AC-1.3)
+    end
+
+    it "runs while only another type's job waits to run again (issue #78)", :solid_queue do
+      queue_job(Catalog::RefreshJob, "other", "manual", wait: 10.minutes)
+
+      expect(described_class.new("fake", trigger: "manual", source:, job_id: "job-2").call).to have_attributes(status: "applied")
+    end
+
+    it "runs when the job held for later is its own (issue #78)", :solid_queue do
+      waiting = queue_job(Catalog::RefreshJob, "fake", "manual", wait: 10.minutes)
+
+      expect(described_class.new("fake", trigger: "manual", source:, job_id: waiting.active_job_id).call).to have_attributes(status: "applied")
+    end
+
+    it "closes a run left behind before it is skipped for another job's waiting retry (issue #78)", :aggregate_failures, :solid_queue do
+      queue_job(Catalog::RefreshJob, "fake", "manual", wait: 10.minutes)
+      left = create(:catalog_refresh_run, :running, collectible_type: "fake", started_at: 20.minutes.ago, heartbeat_at: 20.minutes.ago)
+
+      run = described_class.new("fake", trigger: "manual", source:, job_id: "job-2").call
+
+      expect(left.reload).to have_attributes(status: "failed", message: "interrupted")
+      expect(run).to have_attributes(status: "skipped", message: "waiting for another job's retry")
+    end
+
+    it "is skipped as already running while a run is running, whether or not another job waits to run again (issue #78)", :solid_queue do
+      claimed = claim_job(queue_job(Catalog::RefreshJob, "fake", "manual"))
+      create(:catalog_refresh_run, :running, collectible_type: "fake", job_id: claimed.active_job_id)
+      queue_job(Catalog::RefreshJob, "fake", "manual", wait: 10.minutes)
+
+      expect(described_class.new("fake", trigger: "manual", source:, job_id: "job-2").call).to have_attributes(message: "already running")
+    end
+
     it "gives the same catalog when a job runs again after being interrupted partway (AC-3.8)", :aggregate_failures do
       source.entries = [ entry_record("a"), entry_record("b"), entry_record("c") ]
       source.fail_at = 2

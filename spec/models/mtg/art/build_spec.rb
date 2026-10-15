@@ -199,6 +199,18 @@ RSpec.describe MTG::Art::Build, :art_matching, type: :model do
     expect(left.reload).to have_attributes(status: "failed", message: "interrupted")
   end
 
+  # A rate-limited build closed its run as failed, and its job waits in the queue to run again when the host asked. A
+  # build queued meanwhile (by a refresh that applied) must leave the host alone until then (issue #78).
+  it "fetches nothing while another build's job waits to run again", :aggregate_failures, :solid_queue do
+    job = queue_job(MTG::Art::BuildJob, wait: 10.minutes)
+    create(:mtg_art_build, status: "failed", job_id: job.active_job_id, message: "rate limited")
+    printing(art_a, released_on: Date.new(2005, 1, 1))
+    image, = serve("#{art_a}-2005-1")
+
+    expect(run_build(job_id: "job-2")).to have_attributes(status: "skipped", message: "waiting for another job's retry")
+    expect(image).not_to have_been_requested
+  end
+
   it "is skipped while a worker holds the job of the build left running (AC-3.2)", :aggregate_failures, :solid_queue do
     held = claim_job(queue_job(MTG::Art::BuildJob))
     live = create(:mtg_art_build, status: "running", finished_at: nil, started_at: 8.minutes.ago, heartbeat_at: 7.minutes.ago,

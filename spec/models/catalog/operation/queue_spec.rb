@@ -81,6 +81,24 @@ RSpec.describe Catalog::Operation::Queue, :solid_queue, type: :model do
     end
   end
 
+  it "knows when a job other than a given one waits to run again (issue #78)", :aggregate_failures do
+    retrying = queue_job(Catalog::RefreshJob, "mtg", "manual", wait: 5.minutes)
+    queue_job(Catalog::RefreshJob, "mtg", "manual")
+
+    expect(queue).to be_waiting_to_retry
+    expect(queue.waiting_to_retry?(except: "another-job")).to be(true)
+    expect(queue.waiting_to_retry?(except: retrying.active_job_id)).to be(false)
+    expect(described_class.new(Catalog::RefreshJob, "other")).not_to be_waiting_to_retry
+  end
+
+  it "doesn't count a ready job, a held one or a failed one as waiting to run again", :aggregate_failures do
+    queue_job(Catalog::RefreshJob, "mtg", "manual")
+    claim_job(queue_job(Catalog::RefreshJob, "mtg", "manual"))
+    fail_job(queue_job(Catalog::RefreshJob, "mtg", "manual"))
+
+    expect(queue).not_to be_waiting_to_retry
+  end
+
   it "reports a failed job as failed, not in flight", :aggregate_failures do
     fail_job(queue_job(Catalog::RefreshJob, "mtg", "manual"))
 

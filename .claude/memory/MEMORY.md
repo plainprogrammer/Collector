@@ -36,7 +36,7 @@
 - [Local image builds duplicate OCR](local-image-builds-duplicate-ocr.md) — issue #31: set-up checkouts build images ~14 MB larger; measure paths with `du`, not total sizes
 - [Subagent commit trailers](subagent-commit-trailers.md) — subagents use their own session's trailer; don't name one in briefs
 - [SDD execute with exact plans](sdd-execute-exact-plans.md) — one subagent per phase even for a small plan (maintainer, 2026-10-11); apply blocks by script; diff against the prototype branch; building and revising that branch
-- [PR exists and conflicts check](pr-exists-and-conflicts-check.md) — `gh pr list --head` before creating; a conflicting PR gets no CI run, merge main and push
+- [PR exists and conflicts check](pr-exists-and-conflicts-check.md) — `gh pr list --head` before creating; a conflicting PR gets no CI run, merge main and push; stacked PRs on an unmerged sibling
 - [Spec 015 follow-ups](spec-015-followups.md) — PR #32 draft, CI green; unchecked: graceful restart, art matching on, focus rings; later spec: "Running." after a crash, "Attempts 0"
 - [CSS shell state by class](css-shell-state-by-class.md) — maintainer chose a layout-set class (`c-shell--footed`) over `:has()` (spec 018); a new body class breaks exact class-string assertions
 - [Browser spec image and window gotchas](browser-spec-image-and-window-gotchas.md) — card images via 127.0.0.1:9 + data: pictures (`spec/support/card_images.rb`); decode() vs load; around runs before driven_by; saved collection view; float noise
@@ -45,3 +45,5 @@
 - [Spec 017 follow-ups](spec-017-followups.md) — PR #68 draft, owed: rendered-doc read, checks, ADR 0020 and log row 32 at merge; import reads `format_version` first; locations make version 2
 
 - [No prose-document specs](no-readme-wording-specs.md) — no RSpec examples for README.md, CLAUDE.md, skill files or docs/ Markdown (spec 020, decision 7); export format document, config and code checks stay; verify document criteria by reading
+- [Spec 024 follow-ups](spec-024-followups.md) — PR #96 draft stacked on #95: merge #95 first, retarget #96 to main; #77 must discard or run the waiting job first
+- [Edit specs your change makes stale](edit-specs-your-change-makes-stale.md) — another spec's AC made incomplete → edit it in the same PR, patch bump + changelog (maintainer, 2026-10-14)

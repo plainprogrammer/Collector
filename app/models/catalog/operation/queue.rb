@@ -41,6 +41,10 @@ class Catalog::Operation::Queue
     in_flight.select { |job| job.scheduled? && (active_job_id.nil? || job.active_job_id == active_job_id) }.filter_map(&:scheduled_at).min
   end
 
+  # True when an unfinished job other than the one with this Active Job id waits for a later time: a retry backing off
+  # (issue #78). The job retrying will do the work, so another one starting meanwhile leaves it alone.
+  def waiting_to_retry?(except: nil) = in_flight.any? { |job| job.scheduled? && job.active_job_id != except }
+
   private
     def in_flight = jobs.reject(&:failed?)
 

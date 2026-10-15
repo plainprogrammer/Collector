@@ -6,6 +6,12 @@ RSpec.describe Catalog::RefreshRun, type: :model do
       expect(described_class.start!("mtg", trigger: "manual")).to be_running
     end
 
+    it "is skipped, with nothing running, while another job for the type waits to run again (issue #78)", :aggregate_failures do
+      expect(described_class.start!("mtg", trigger: "manual", retry_waiting: true))
+        .to have_attributes(status: "skipped", message: "waiting for another job's retry")
+      expect(described_class.start!("mtg", trigger: "manual", retry_waiting: false)).to be_running
+    end
+
     it "records the job running it and starts the heartbeat (spec 015 FR-1)", :aggregate_failures do
       freeze_time do
         run = described_class.start!("mtg", trigger: "manual", job_id: "job-1")
@@ -131,10 +137,11 @@ RSpec.describe Catalog::RefreshRun, type: :model do
   end
 
   describe ".attempted (spec 015 AC-2.16)" do
-    it "leaves out runs skipped because another was running, and only those" do
+    it "leaves out runs skipped because another was running or waiting to retry, and only those" do
       applied = create(:catalog_refresh_run, started_at: 3.hours.ago)
       already_applied = create(:catalog_refresh_run, status: "skipped", message: "v1 already applied", started_at: 2.hours.ago)
       create(:catalog_refresh_run, status: "skipped", message: "already running", started_at: 1.hour.ago)
+      create(:catalog_refresh_run, status: "skipped", message: "waiting for another job's retry", started_at: 30.minutes.ago)
 
       expect(described_class.attempted.recent).to eq([ already_applied, applied ])
     end

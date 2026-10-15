@@ -202,6 +202,15 @@ RSpec.describe MTG::Art::Operation, :solid_queue, type: :model do
           expect(failed.reload).to have_attributes(status: "failed", message: include("asked for 600 seconds"))
         end
       end
+
+      # A build queued meanwhile (by a refresh that applied) is skipped and leaves the panel as it was (issue #78).
+      it "still says it is queued to retry after another build was skipped for it", :aggregate_failures do
+        second = MTG::ArtBuild.start!(job_id: "job-b", catalog_version: "default-cards-1", settings_digest: MTG::Art::Settings.digest)
+
+        expect(second).to have_attributes(status: "skipped", message: "waiting for another job's retry")
+        expect(operation.summary)
+          .to eq("Queued to retry. The last build failed. #{Catalog::FailureReason::REASONS.fetch("Catalog::Sources::RateLimitedError")}")
+      end
     end
 
     # Any scheduled retry of the build's own job reads this way (issue #80). The build marks its run failed with the

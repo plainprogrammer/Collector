@@ -1,9 +1,9 @@
 # Feature 002: Scryfall Catalog Ingestion and Card Search
 
 **Status:** Approved
-**Version:** 1.3.0
+**Version:** 1.4.0
 **Created:** 2026-09-29
-**Last Updated:** 2026-10-13
+**Last Updated:** 2026-10-14
 **Branch:** `feat/002-scryfall-catalog-search`
 
 ---
@@ -17,6 +17,7 @@
 | 1.1.1 | 2026-09-29 | Wording clarifications from the implementation review (no behaviour change): AC-8.1 "seen" counts valid records and malformed ones are counted separately; FR-3 allows the English-only `default_cards` file; AC-3.5 link shown only when the card has searchable printings |
 | 1.2.0 | 2026-10-13 | [Issue #74](https://github.com/plainprogrammer/Collector/issues/74): on a 429 the adapter slept for whatever `Retry-After` said, with no upper bound, so a long one held a worker and stalled the refresh with no progress recorded. **The back-off is bounded:** a wait before a retry is at most 30 seconds, there is none after the last attempt, and so one call waits 60 seconds at most. A longer wait asked for ends the call at once as a rate-limit error that says how long was asked. **The refresh job comes back when asked:** it runs again after that wait (30 seconds at least, an hour at most, 3 such retries at most), not after a transient error's few seconds, so the queue holds the wait instead of a worker; beyond those bounds the job fails (FR-3, FR-4, Error Scenarios) |
 | 1.3.0 | 2026-10-13 | [Issue #81](https://github.com/plainprogrammer/Collector/issues/81): after a 429 with no usable `Retry-After` the adapter retried after 1 and then 2 seconds, so all 3 attempts landed inside the 30 seconds Scryfall says a 429 limits access for. **A 429 with no usable `Retry-After` is not retried in the call:** it ends the call at once, on whichever attempt, as a rate-limit error that carries no wait, and the job's retry is the next request to Scryfall. A `Retry-After` of zero on a 429 counts as none: obeyed, it put all 3 requests about 0.2 seconds apart. **The job's shortest wait is 45 seconds, not 30:** the wait runs from when the error is handled, so 30 left the next request clear of Scryfall's 30 seconds only by the queue's dispatch delay. A 429 with a `Retry-After` of 1 to 30 seconds is waited for as before. Scryfall's documentation doesn't say whether its 429 carries `Retry-After`, and none has been observed, so both cases are specified (FR-3, FR-4, Error Scenarios) |
+| 1.4.0 | 2026-10-14 | [Issue #78](https://github.com/plainprogrammer/Collector/issues/78), [spec 024](../024-refresh-rate-limit-wait/spec.md): "no sooner than the source asked" held for the waiting job only, so a refresh the schedule or an operator started while a retry waited asked the source at once. **A refresh that starts while another job for its type waits in the queue to run again is skipped** ("waiting for another job's retry") and asks the source nothing, manual or scheduled (Must, Error Scenarios) |
 
 ---
 
@@ -252,12 +253,12 @@ The adapter lives at `MTG::Scryfall` and implements a collectible-agnostic `Cata
 - Record each run: collectible type, source version, trigger (scheduled/manual), status (running/applied/skipped/failed), start and finish times, counts (seen, inserted, updated, retired, restored, skipped-malformed), and error message on failure.
 - Skip, recorded as skipped, a scheduled run whose source version has already been applied with the same (sorted) language set; never skip a manual run for that reason.
 - Create one run record per attempt, including retries by the job system.
-- Allow at most one refresh per collectible type at a time: a second waits its turn; if a run is recorded as running and younger than 6 hours, a new run records itself as skipped ("already running"); if older, the old run is marked failed with error "interrupted" and the new run proceeds.
+- Allow at most one refresh per collectible type at a time: a second waits its turn; if a run is recorded as running and younger than 6 hours, a new run records itself as skipped ("already running"), as it does while another job for the type waits in the queue to run again ("waiting for another job's retry", spec 024); if older, the old run is marked failed with error "interrupted" and the new run proceeds.
 - Write only printings, sets, and card identities whose stored attributes changed; leave unchanged rows untouched.
 - Retire printings not present in a completely processed source file; restore retired printings that reappear.
 - Retire only after the full source file has been processed successfully.
 - Keep each write transaction short enough that search stays available during a refresh.
-- When the source rate limits a refresh (the adapter's rate-limit error, FR-3), run the job again no sooner than the source asked: after the wait the error carries, and 45 seconds at least, which also covers an answer that gave no wait. The 45 are the 30 seconds Scryfall says a 429 limits access for plus a margin of 15, since the wait runs from when the job handles the error, a little after the answer. So after a 429 with no usable `Retry-After` this retry is the next request that job makes to the source. Don't schedule a wait of more than an hour, or more than 3 such retries of one job: beyond either the job fails. This rule comes before the job's retry of other transient errors, whose waits are a few seconds. It holds for the waiting job only: no lock is held while it waits, so a refresh the schedule or an operator starts meanwhile asks the source at once.
+- When the source rate limits a refresh (the adapter's rate-limit error, FR-3), run the job again no sooner than the source asked: after the wait the error carries, and 45 seconds at least, which also covers an answer that gave no wait. The 45 are the 30 seconds Scryfall says a 429 limits access for plus a margin of 15, since the wait runs from when the job handles the error, a little after the answer. So after a 429 with no usable `Retry-After` this retry is the next request that job makes to the source. Don't schedule a wait of more than an hour, or more than 3 such retries of one job: beyond either the job fails. This rule comes before the job's retry of other transient errors, whose waits are a few seconds. It holds for every refresh of the type: no lock is held while the job waits, so one the schedule or an operator starts meanwhile is skipped ("waiting for another job's retry") and asks the source nothing (issue #78, spec 024).
 
 **Must not:**
 - Delete catalog entries, sets, or card identities.
@@ -344,8 +345,8 @@ The adapter lives at `MTG::Scryfall` and implements a collectible-agnostic `Cata
 |----------|-------------------|
 | Scryfall bulk-data index unreachable or times out | Run recorded as failed with the error; retried with back-off by the job system; catalog unchanged |
 | Scryfall returns HTTP 429 with a `Retry-After` of 1 to 30 seconds | Adapter waits what it asks for and retries; if its 3 attempts are exhausted, run recorded as failed, and the job runs again after the wait last asked for, 45 seconds at least |
-| Scryfall returns HTTP 429 with no usable `Retry-After`, or one of zero | Adapter doesn't wait or ask again; run recorded as failed at once, saying the 429 named no wait; the job runs again 45 seconds later, and that is its next request to Scryfall (another refresh started meanwhile would ask sooner). Until then the admin catalog page shows the refresh as queued to retry, with the time |
-| Scryfall returns HTTP 429 with a `Retry-After` of more than 30 seconds | Adapter doesn't wait; run recorded as failed at once with the wait that was asked for; the job runs again after that wait, so no worker sleeps through it and that job doesn't ask Scryfall again sooner (another refresh started meanwhile would). Until then the admin catalog page shows the refresh as queued to retry, with the time |
+| Scryfall returns HTTP 429 with no usable `Retry-After`, or one of zero | Adapter doesn't wait or ask again; run recorded as failed at once, saying the 429 named no wait; the job runs again 45 seconds later, and that is its next request to Scryfall (a refresh started meanwhile is skipped, spec 024). Until then the admin catalog page shows the refresh as queued to retry, with the time |
+| Scryfall returns HTTP 429 with a `Retry-After` of more than 30 seconds | Adapter doesn't wait; run recorded as failed at once with the wait that was asked for; the job runs again after that wait, so no worker sleeps through it and that job doesn't ask Scryfall again sooner (a refresh started meanwhile is skipped, spec 024). Until then the admin catalog page shows the refresh as queued to retry, with the time |
 | Scryfall asks for a wait of more than an hour, or rate limits the same job a fourth time | No further retry: the job fails and shows under Failed; the next scheduled refresh, or an admin, starts another |
 | Downloaded file fails its integrity check | File discarded, run recorded as failed naming the check that failed; catalog unchanged |
 | Downloaded file cannot be decoded or parsed | Run recorded as failed; no retirements; catalog otherwise unchanged by that run |

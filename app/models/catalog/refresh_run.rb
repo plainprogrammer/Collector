@@ -15,6 +15,9 @@ class Catalog::RefreshRun < ApplicationRecord
   COUNTS = %i[seen inserted updated retired restored malformed].freeze
   STAGES = %w[download sync retire index].freeze
   ALREADY_RUNNING = "already running".freeze
+  # Another job for the type waits in the queue to run again (a rate limit, issue #78): it will do the work, and asking
+  # the source before then could land inside the wait the source asked for.
+  WAITING_FOR_RETRY = "waiting for another job's retry".freeze
   INTERRUPTED = "interrupted".freeze
   LAST_PROGRESS = Arel.sql("COALESCE(heartbeat_at, started_at)")
 
@@ -29,8 +32,9 @@ class Catalog::RefreshRun < ApplicationRecord
   scope :stalled, -> { running.where(LAST_PROGRESS.lteq(STALL_AFTER.ago)) }
   # Running without progress for JOB_ENDED_GRACE: quiet long enough to be judged by what became of its job.
   scope :quiet, -> { running.where(LAST_PROGRESS.lteq(JOB_ENDED_GRACE.ago)) }
-  # Every run but the ones skipped because another was running: what the catalog page shows as "the" run (AC-2.16).
-  scope :attempted, -> { where.not(status: :skipped, message: ALREADY_RUNNING) }
+  # Every run but the ones skipped because another was running or waiting to retry: what the catalog page shows as "the"
+  # run (AC-2.16).
+  scope :attempted, -> { where.not(status: :skipped, message: [ ALREADY_RUNNING, WAITING_FOR_RETRY ]) }
 
   # Records a new attempt. A run still marked running is closed as failed ("interrupted") when it has made no
   # progress for STALL_AFTER, or when it belongs to the job that is starting now (the queue re-ran the job after a
@@ -38,8 +42,10 @@ class Catalog::RefreshRun < ApplicationRecord
   # failed (failed_job_ids: its worker died before it could close the run) or to a job that is no longer in the queue
   # at all (one not among queued_job_ids, the unfinished jobs as read before this call, at queue_read_at; nil when the
   # queue wasn't read). That reading says nothing about a run that started after it: its job was queued since. Any
-  # other running run makes this attempt a skip, and so does one that recorded no job until it stalls.
-  def self.start!(collectible_type, trigger:, job_id: nil, failed_job_ids: [], queued_job_ids: nil, queue_read_at: nil)
+  # other running run makes this attempt a skip, and so does one that recorded no job until it stalls. With none
+  # running, so does another job for the type waiting in the queue to run again (retry_waiting, issue #78).
+  def self.start!(collectible_type, trigger:, job_id: nil, failed_job_ids: [], queued_job_ids: nil, queue_read_at: nil,
+    retry_waiting: false)
     transaction do
       runs = for_type(collectible_type)
       left_behind = runs.stalled
@@ -49,10 +55,10 @@ class Catalog::RefreshRun < ApplicationRecord
       left_behind = left_behind.or(job_gone(runs, queued_job_ids, queue_read_at)) if queued_job_ids
       left_behind.find_each { |run| run.finish!(:failed, message: INTERRUPTED) }
 
-      already_running = runs.running.exists?
+      skip = (ALREADY_RUNNING if runs.running.exists?) || (WAITING_FOR_RETRY if retry_waiting)
       now = Time.current
       run = create!(collectible_type:, trigger:, job_id:, status: :running, started_at: now, heartbeat_at: now)
-      run.finish!(:skipped, message: ALREADY_RUNNING) if already_running
+      run.finish!(:skipped, message: skip) if skip
       run
     end
   end
