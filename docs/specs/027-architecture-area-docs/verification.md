@@ -339,6 +339,28 @@ Command at the head: `gh issue list --state open --limit 200 --json number,title
 No behaviour was found that every source contradicts.
 
 ## Phase 3: CLAUDE.md and the frozen lines
+
+Commits: `fc50021` (CLAUDE.md), `3a85ae4` (spec 002 frozen line), `cbb9c2e` (spec 011), `5abfb32` (spec 015), `ad8afa4` (spec 024). Old state checked before each edit: CLAUDE.md line 35 began `- **Admin catalog and jobs (spec 015, ADRs 0014 and 0015):**` (one match), line 9 held ``Detailed coding rules: `.claude/rules/`. Feature specs: `docs/specs/`.`` verbatim, and `wc -w CLAUDE.md` gave 2312; none of the four specs contained "Frozen". The plan's drafts were used as written; no ruling was needed.
+
+- **AC-2.1** The bullet (CLAUDE.md line 35) was copied to `<scratchpad>/bullet-head.md`; `wc -w` output: `54 …/bullet-head.md` (at most 60). It links [`docs/architecture/catalog-operations.md`](../../architecture/catalog-operations.md), and keeps the `:solid_queue` tag and the helpers `queue_job`, `claim_job`, `fail_job`, `finish_job` (each defined in `spec/support/solid_queue.rb`, lines 17, 23, 31, 40).
+- **AC-2.2** Line 9 now reads ``Current rules per subsystem: `docs/architecture/` (area docs). Detailed coding rules: `.claude/rules/`. Feature specs: `docs/specs/` (index: `docs/specs/README.md`).`` It names `docs/architecture/` as the current rules per subsystem and `docs/specs/README.md` as the specs index (that file arrives in Phase 4).
+- **NFR Performance** `wc -w CLAUDE.md` output: `1661 CLAUDE.md`, 651 fewer than 2,312 (at least 630 required). The bullet went from 714 words to 54; the opening list gained 9 words (2,312 − 714 + 54 + 9 = 1,661; at most 20 allowed).
+- **AC-2.3** `git diff df61132 -- CLAUDE.md`: `1 file changed, 2 insertions(+), 2 deletions(-)` in two hunks, `@@ -6,7 +6,7 @@` (line 9, the opening list of documents) and `@@ -32,7 +32,7 @@` (line 35, the bullet). Nothing else changed.
+- **Frozen lines (FR-4, D4)** Each line is the last line of its spec's header block, after `**Branch:**` (specs 002, 011) or `**Issue:**` (specs 015, 024) and before the blank line and `---`. `git diff df61132 -- docs/specs/002-scryfall-catalog-search/spec.md docs/specs/011-card-scanner-art-matching/spec.md docs/specs/015-admin-catalog-and-jobs/spec.md docs/specs/024-refresh-rate-limit-wait/spec.md` shows exactly four added lines, one per file, and no removed line:
+
+  ```
+  docs/specs/002-scryfall-catalog-search/spec.md  @@ -5,6 +5,7 @@
+  +**Frozen:** the current rules are in [`catalog-operations.md`](../../architecture/catalog-operations.md) (parts: FR-3–FR-6 and their Error Scenarios rows); see the [specs index](../README.md)
+  docs/specs/011-card-scanner-art-matching/spec.md  @@ -5,6 +5,7 @@
+  +**Frozen:** the current rules are in [`catalog-operations.md`](../../architecture/catalog-operations.md) (parts: FR-2, the art build's run); see the [specs index](../README.md)
+  docs/specs/015-admin-catalog-and-jobs/spec.md  @@ -6,6 +6,7 @@
+  +**Frozen:** the current rules are in [`catalog-operations.md`](../../architecture/catalog-operations.md) (whole spec); see the [specs index](../README.md)
+  docs/specs/024-refresh-rate-limit-wait/spec.md  @@ -6,6 +6,7 @@
+  +**Frozen:** the current rules are in [`catalog-operations.md`](../../architecture/catalog-operations.md) (whole spec); see the [specs index](../README.md)
+  ```
+
+  No version, changelog row or other text changed. The `../README.md` link resolves once Phase 4 adds the specs index.
+
 ## Phase 4: The specs index
 ## Phase 5: The distillation step
 ## Phase 6: Plan retirement
