@@ -9,7 +9,7 @@ metadata:
 
 **Why:** Protects credentials and SQLite data; approved at project init (2026-09-29). In feature 001 the AC "Kamal secrets contain no literal values" had to be verified by the user.
 
-**How to apply:** When a check needs those files' contents, ask the user to run `! cat <file>` — never work around the rule (no alternate commands, git show, or copies). Listing file names with `ls` is fine; reading contents is not.
+**How to apply:** When a check needs those files' contents, ask the user to run `! cat <file>` — never work around the rule (no alternate commands, git show, or copies). Don't name these paths in any command, `ls` and `test -e` included; the deny rule refuses the whole call (see the updates below).
 
 **Subagents too, including through the shell:** say in every subagent brief that `grep`, `cat`, `head`, `zcat` and the like on these paths are off-limits, not only the Read tool. Scripts the plan runs may read the bulk file under `storage/catalog/`; the agent itself may not. In spec 010 (2026-10-06) a subagent ran `grep -c` on the bulk file under `storage/` to check one artwork. That was a slip, despite a brief that forbade "reading" `storage/`.
 
@@ -23,3 +23,5 @@ metadata:
 - Every `git grep` in a plan, brief or command ends with the pathspec `':!.kamal/secrets'`, and no recursive `grep -r` runs from the repository root without explicit directories.
 - A path check (`test -e`, `ls`) skips `.kamal/secrets`, `config/master.key`, `.env*` and `storage/…`; a README claim about one of them is recorded as off-limits, not checked.
 - Say both in every subagent brief, and ask the subagent to report any accidental touch. Related: [[plan-reviews-run-the-code]].
+
+**Update (2026-10-14, issue #84):** `ls config/master.key vendor/ocr`, chained with `cat` of two memory files, was refused as a whole by the deny rule, so the unrelated reads in the same call were lost too. To learn whether a worktree has the key, read `bin/setup`'s output: it warns when `config/master.key` is missing.

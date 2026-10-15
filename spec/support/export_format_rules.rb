@@ -1,8 +1,8 @@
 require "json_schemer"
 
 # The export format's rules as the suite applies them (spec 017, docs/export-format/README.md): what makes a file
-# well-formed, what identifies a lot, and when two files hold the same collection. Test support only: the app has
-# no export or import yet, and json_schemer is never loaded outside the suite.
+# well-formed, what identifies a lot, and when two files hold the same collection. Test support only: the app writes
+# the format (CollectionExport, spec 022) but has no import yet, and json_schemer is never loaded outside the suite.
 module ExportFormatRules
   Problem = Data.define(:rule, :at)
 

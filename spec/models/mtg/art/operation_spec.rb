@@ -184,10 +184,11 @@ RSpec.describe MTG::Art::Operation, :solid_queue, type: :model do
 
       it "says it is queued to retry, why the last build failed and when the retry is due (issue #80)", :aggregate_failures do
         expect(operation).to have_attributes(meter: nil,
-          summary: "Queued to retry. The last build failed: Catalog::Sources::RateLimitedError: asked for 600 seconds")
+          summary: "Queued to retry. The last build failed. #{Catalog::FailureReason::REASONS.fetch("Catalog::Sources::RateLimitedError")}")
         expect(operation.facts.map { |fact| [ fact.label, fact.value, fact.relative ] }).to eq([
           [ "Retrying at", SolidQueue::Job.sole.scheduled_at, false ], [ "Finished", MTG::ArtBuild.sole.finished_at, false ],
-          [ "Index in use", "none", false ] ])
+          [ "Index in use", "none", false ],
+          [ "Technical detail", "Catalog::Sources::RateLimitedError: asked for 600 seconds", false ] ])
       end
 
       it "opens a new run when the retry starts, leaving the failed one as it ended", :aggregate_failures do
@@ -201,19 +202,28 @@ RSpec.describe MTG::Art::Operation, :solid_queue, type: :model do
           expect(failed.reload).to have_attributes(status: "failed", message: include("asked for 600 seconds"))
         end
       end
+
+      # A build queued meanwhile (by a refresh that applied) is skipped and leaves the panel as it was (issue #78).
+      it "still says it is queued to retry after another build was skipped for it", :aggregate_failures do
+        second = MTG::ArtBuild.start!(job_id: "job-b", catalog_version: "default-cards-1", settings_digest: MTG::Art::Settings.digest)
+
+        expect(second).to have_attributes(status: "skipped", message: "waiting for another job's retry")
+        expect(operation.summary)
+          .to eq("Queued to retry. The last build failed. #{Catalog::FailureReason::REASONS.fetch("Catalog::Sources::RateLimitedError")}")
+      end
     end
 
     # Any scheduled retry of the build's own job reads this way (issue #80). The build marks its run failed with the
     # error before the job's retry_on puts it back in the queue (MTG::Art::BuildJob).
     context "when a failed build's job waits to run again" do
-      it "says so for a busy database, with the database's own message", :aggregate_failures do
+      it "says so for a busy database, in plain words (issue #84)", :aggregate_failures do
         loaded
         freeze_time do
           job = queue_job(MTG::Art::BuildJob, wait: 18.seconds)
           build(status: "failed", job_id: job.active_job_id, message: "SQLite3::BusyException: database is locked")
 
           expect(operation).to have_attributes(state: :queued, startable?: false,
-            summary: "Queued to retry. The last build failed: SQLite3::BusyException: database is locked")
+            summary: "Queued to retry. The last build failed. #{Catalog::FailureReason::REASONS.fetch("SQLite3::BusyException")}")
           expect(operation.facts.first).to have_attributes(label: "Retrying at", value: 18.seconds.from_now)
         end
       end
@@ -226,7 +236,7 @@ RSpec.describe MTG::Art::Operation, :solid_queue, type: :model do
           queue_job(MTG::Art::BuildJob, wait: 1.minute)
           build(status: "failed", job_id: job.active_job_id, message: "boom")
 
-          expect(operation.summary).to eq("Queued to retry. The last build failed: boom")
+          expect(operation.summary).to eq("Queued to retry. The last build failed. Boom.")
           expect(operation.facts.first).to have_attributes(label: "Retrying at", value: 10.minutes.from_now)
         end
       end
@@ -402,12 +412,21 @@ RSpec.describe MTG::Art::Operation, :solid_queue, type: :model do
         .to include("Artworks indexed" => 31_904, "Without an image" => 12, "Failed images" => 3, "Finished" => be_a(Time))
     end
 
-    it "shows a failed build's message and the index still in use (AC-4.8)", :aggregate_failures do
+    it "shows why a build failed, its error as the detail, and the index still in use (AC-4.8, issue #84)", :aggregate_failures do
       loaded
       build(status: "failed", message: "Errno::ENOSPC: No space left on device")
 
-      expect(operation).to have_attributes(state: :failed, summary: "Failed: Errno::ENOSPC: No space left on device")
-      expect(operation.facts.to_h { |fact| [ fact.label, fact.value ] }).to include("Index in use" => "none")
+      expect(operation).to have_attributes(state: :failed, summary: "Failed. An unexpected error stopped it.")
+      expect(operation.facts.to_h { |fact| [ fact.label, fact.value ] })
+        .to include("Index in use" => "none", "Technical detail" => "Errno::ENOSPC: No space left on device")
+    end
+
+    it "says ImageMagick is missing in plain words, as the source words it (issue #84)" do
+      loaded
+      build(status: "failed", message: "MTG::Art::Decoder::Error: ImageMagick isn't installed: art matching needs the magick " \
+                                       "(or convert) command")
+
+      expect(operation.summary).to eq("Failed. #{MTG::Scryfall::Source.failure_reasons.fetch("MTG::Art::Decoder::Error")}")
     end
 
     it "names the index a failed build left in use (AC-4.8)" do

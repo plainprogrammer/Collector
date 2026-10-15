@@ -17,7 +17,8 @@ class Catalog::Refresh
 
   def call
     @run = Catalog::RefreshRun.start!(@collectible_type, trigger: @trigger, job_id: @job_id,
-      failed_job_ids: job_queue.failed_job_ids, queued_job_ids: job_queue.job_ids, queue_read_at: job_queue.read_at)
+      failed_job_ids: job_queue.failed_job_ids, queued_job_ids: job_queue.job_ids, queue_read_at: job_queue.read_at,
+      retry_waiting: job_queue.waiting_to_retry?(except: @job_id))
     return @run unless @run.running?
 
     track_progress

@@ -44,6 +44,7 @@ RSpec/Output:
 RSpec/DescribeClass:
   Exclude:
     - "spec/admin_catalog_core_spec.rb"
+    - "spec/collection_export_core_spec.rb"
     - "spec/design_system_files_spec.rb"
     - "spec/export_format_document_spec.rb"
     - "spec/export_format_examples_spec.rb"

@@ -14,5 +14,7 @@ Found by running, while planning spec 019 (2026-10-11, headless Firefox 157). Th
 - **`getBoundingClientRect` sizes carry float noise** (33.51666 against 33.51667). Round before comparing sizes for equality.
 - **`owned_printing` returns a lot whose `entry.extension` isn't loaded.** Set faces on the `MTG::Printing` itself.
 - **A sub-pixel change doesn't show in a screenshot.** Compare boxes and computed styles.
+- **Downloads (spec 022):** `spec/support/system.rb` sets `browser.download.folderList` = 2 and `browser.download.dir` to `DOWNLOADS` (`tmp/downloads`, git-ignored). On headless Firefox 157 those two alone save an attachment without a dialog. `browser.helperApps.neverAsk.saveToDisk` is a legacy preference and isn't needed. Wait for the file with `page.document.synchronize(10) { raise Capybara::ExpectationNotMet … }` until it exists, isn't empty and has no `.part` beside it. Work out its name before the click.
+- **The suite never sets `Capybara.default_max_wait_time`,** so a bare `synchronize` or matcher waits Capybara's default of 2 s. Pass a bound (`synchronize(10)`, `wait: 30`) when the browser does real work.
 
 Related: [[headless-firefox-narrow-frame]], [[pr-screenshots-workflow]].
