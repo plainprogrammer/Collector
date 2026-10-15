@@ -129,3 +129,12 @@ The lot held 5 copies afterwards; after the rollback the catalog was empty again
 - `focus-{number,quantity,finish,add}-1280-light.png`: the focus ring on each field and Add in tab order (AC-2.13).
 
 The 390px shots are a 390px iframe, since headless Firefox won't open a window that narrow. Checked by eye against the design system: the line's fields sit in one row at 1280px with Add level with the inputs, and in two columns at 390px with Add full width; nothing scrolls sideways; the focus ring shows on every field and button in both themes; error text is `danger` on the page surface.
+
+## Implementation review
+
+SPEC-ALIGNED (`sdd-review` Mode B, 2026-10-15, read-only on Opus, against spec v1.2.2 and the branch at `03529d9`).
+
+- Every criterion (AC-1.1 to AC-5.1), FR-1 to FR-5 and the NFRs map to code, and the citations above were spot-checked against the examples they name.
+- Tenancy, strong parameters, the export's Coverage (`number_entries` and `number_entry_lines` left out), the type-agnostic core, the migrations and the design-system pattern were checked; no gaps.
+- Minor notes, acted on in `633db96`: AC-1.11's case of a linked set whose entries are all retired gained a request example (`spec/requests/number_entries_spec.rb:95`), and NFR Performance gained a query-count example for a number matched without its leading zeros (`:360`). The roadmap's PR link is added once the pull request exists.
+- Minor notes left as they are: decision 2's catalog-title label has no example while one type is registered; the timing used a synthetic catalog (Measurement above); the head's "Add by number" button has no icon, which the spec doesn't ask for.
