@@ -85,6 +85,80 @@ RSpec.describe ExportFormat::Rules, type: :model do
     expect(problems_of(data)).to eq([ %w[type /lots/0], %w[not_a_time /lots/1/added_at] ])
   end
 
+  # The maintainer's ruling of 2026-10-15 (spec 025 decision 13): the whole-file pass held a result tree for every lot
+  # at once, so the lots are checked one at a time against $defs/lot. These pin that it finds what the whole-file pass
+  # found, in the same order, without the root schema ever seeing a lot.
+  describe "checking each lot on its own" do
+    # The whole-file pass the rules made before the ruling: the whole schema over the whole file, mapped the same way,
+    # then the rules a schema can't state (rule_problems is private; called here as the reference, not stubbed).
+    def whole_file_problems(bytes)
+      data, problem = described_class.parse(bytes)
+      return [ problem ] if problem
+
+      found = JSONSchemer.schema(described_class.schema, regexp_resolver: "ecma").validate(data).flat_map do |error|
+        missing = error.dig("details", "missing_keys")
+        next missing.map { |key| described_class::Problem.new("required", "#{error["data_pointer"]}/#{key}") } if missing
+
+        [ described_class::Problem.new(described_class::JSON_TYPES.include?(error["type"]) ? "type" : error["type"], error["data_pointer"]) ]
+      end
+      found + described_class.send(:rule_problems, data, found.to_set(&:at))
+    end
+
+    def bad_lots
+      data = base
+      lots = data["lots"]
+      lots[0]["entry"] = 5
+      lots[1]["shine"] = "glossy"
+      lots << lots[1].except("quantity", "shine").merge("entry" => lots[1]["entry"].merge("source_id" => 7))
+      lots << "a lot"
+      lots << lots[0].merge("entry" => base["lots"][0]["entry"].except("name"), "price_paid" => "1.5", "added_at" => "2026-02-30T00:00:00Z")
+      lots << base["lots"][1]
+      data
+    end
+
+    def variants
+      header = bad_lots.except("currency").merge("profile" => { "name" => 3 }, "exported_at" => "2026-10-11")
+      {
+        "bad lots" => bad_lots,
+        "bad lots and header" => header,
+        "no lots and a bad header" => header.merge("lots" => []),
+        "lots not an array" => base.merge("lots" => { "0" => base["lots"][0] }),
+        "lots missing" => base.except("lots"),
+        "lots missing and a bad header" => header.except("lots"),
+        "data an array" => [ base ],
+        "data a string" => "collector-export",
+        "data null" => nil
+      }.transform_values { |data| JSON.generate(data) }
+    end
+
+    it "finds the same problems, in the same order, as the whole-file pass on every example and variant", :aggregate_failures do
+      files = examples("valid").merge(examples("invalid"), examples("comparison"), variants)
+
+      files.each do |name, bytes|
+        expect(described_class.problems(bytes)).to eq(whole_file_problems(bytes)), name
+      end
+      expect(described_class.problems(variants["bad lots and header"]).map(&:at)).to include("/lots/3", "/lots/2/entry/source_id", "/currency")
+    end
+
+    it "checks a lot against $defs/lot, whose errors prefixed with the lot's place are the whole schema's" do
+      data = bad_lots
+      whole = described_class.schemer.validate(data).map { |error| [ error["type"], error["data_pointer"] ] }
+      alone = data["lots"].each_with_index.flat_map do |lot, index|
+        described_class.lot_schemer.validate(lot).map { |error| [ error["type"], "/lots/#{index}#{error["data_pointer"]}" ] }
+      end
+
+      expect(alone).to eq(whole)
+    end
+
+    it "never gives the root schema a lot" do
+      allow(described_class.schemer).to receive(:validate).and_call_original
+
+      described_class.problems_in(bad_lots)
+
+      expect(described_class.schemer).to have_received(:validate).once.with(bad_lots.merge("lots" => []))
+    end
+  end
+
   describe ".identity_readable?" do
     let(:lot) { base["lots"][0] }
 
