@@ -31,10 +31,12 @@ module Catalog
     source.respond_to?(:title) ? source.title : collectible_type.to_s.humanize
   end
 
-  # The titles of the catalog types with no applied refresh yet (spec 015 glossary, "Loaded"), in one query.
-  def self.unloaded_titles
-    loaded = Catalog::RefreshRun.applied.where(collectible_type: sources.keys).distinct.pluck(:collectible_type)
-    (sources.keys - loaded).sort.map { |collectible_type| title_for(collectible_type) }
+  # The titles of the catalog types with no applied refresh yet (spec 015 glossary, "Loaded"), in one query; only
+  # those +among+ the given types when asked (spec 025: the types an import file names).
+  def self.unloaded_titles(among = sources.keys)
+    types = sources.keys & among
+    loaded = Catalog::RefreshRun.applied.where(collectible_type: types).distinct.pluck(:collectible_type)
+    (types - loaded).sort.map { |collectible_type| title_for(collectible_type) }
   end
 
   def self.allowed_hosts = sources.values.flat_map { |name| name.constantize::ALLOWED_HOSTS }.uniq
