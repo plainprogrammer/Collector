@@ -6,6 +6,8 @@
 **Last Updated:** 2026-10-14
 **Branch:** `024-refresh-rate-limit-wait`
 **Issue:** [#78](https://github.com/plainprogrammer/Collector/issues/78)
+**Frozen:** the current rules are in [`catalog-operations.md`](../../architecture/catalog-operations.md) (whole spec); see the [specs index](../README.md)
+**Plan:** retired in `0b16288741818b786e069d2a0e1617f26945dd98`; read it with `git show 0b16288741818b786e069d2a0e1617f26945dd98^:docs/specs/024-refresh-rate-limit-wait/plan.md`
 
 ---
 

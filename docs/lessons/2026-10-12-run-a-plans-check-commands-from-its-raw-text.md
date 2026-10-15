@@ -20,6 +20,8 @@ None of these was wrong about the work. Each would have stopped an executor or, 
 
 Run every command in a plan before the plan is presented, from the text as written, and paste the observed output as the expectation. For a check that should print nothing, also run it against a case where it should print something. Ask the plan reviewer to do the same from the raw file and to say what each command actually proves.
 
+**Superseded (2026-10-15):** neither the planner nor the plan reviewer runs a plan's code or commands before execution anymore ([[plan-reviews-run-the-code]]). A read-only reviewer still checks each command against the signals below, and execution runs them.
+
 ## Signals to watch for
 
 - An expected output written from memory.
