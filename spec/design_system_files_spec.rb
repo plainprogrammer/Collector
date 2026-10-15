@@ -53,4 +53,20 @@ RSpec.describe "Design system files" do
       expect(treating.map { |declarations| declarations.delete(" ") }.sort).to eq([ "{opacity:.45;}", "{opacity:1;}" ])
     end
   end
+
+  describe "the untabbed shell (spec 023)" do
+    let(:additions) { root.join("app/assets/stylesheets/collector/additions.css").read }
+    let(:block) { additions[%r{/\* -+ Untabbed shell \(spec 023\).*?(?=\n\n/\* -|\z)}m] }
+
+    it "keeps the rules in one block of their own, after the footer's, with no colour literal or font (AC-5.7)",
+      :aggregate_failures do
+      expect(additions.scan("spec 023").size).to eq(1)
+      expect(additions.index("Untabbed shell (spec 023)")).to be > additions.index("Footer (spec 018)")
+      expect(block).to include(".c-shell--untabbed > .c-main { padding-bottom:calc(var(--space-6) + env(safe-area-inset-bottom)); }",
+        ".c-shell--untabbed.c-shell--footed > .c-main { padding-bottom:var(--space-4); }",
+        ".c-shell--untabbed > .c-footer { padding-bottom:calc(var(--space-4) + env(safe-area-inset-bottom)); }")
+      expect(block.scan(/^\s*[^\s\/@].*\{/).size).to eq(3)
+      expect(block).not_to match(/#\h{3,8}\b|rgba?\(|hsla?\(|font/i)
+    end
+  end
 end

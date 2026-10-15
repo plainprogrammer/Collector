@@ -53,5 +53,8 @@ module Collector
 
     # Art matching for the card scanner (spec 011): off until config/initializers/art_matching.rb reads the environment.
     config.x.mtg_art_matching = false
+
+    # The open catalog (spec 023): off until config/initializers/public_catalog.rb reads the environment.
+    config.x.public_catalog = false
   end
 end

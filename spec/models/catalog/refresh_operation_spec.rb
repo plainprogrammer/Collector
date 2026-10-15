@@ -302,18 +302,35 @@ RSpec.describe Catalog::RefreshOperation, :solid_queue, type: :model do
       expect(operation.run.source_version).to eq("v7")
     end
 
-    it "shows a failed run with the stage it failed in and its message (AC-3.1)", :aggregate_failures do
+    it "shows a failed run with the stage it failed in and why, in plain words (AC-3.1, issue #84)", :aggregate_failures do
       run(status: "failed", stage: "sync", message: "RuntimeError: source exploded")
 
-      expect(operation).to have_attributes(state: :failed, summary: "Failed while syncing cards: RuntimeError: source exploded")
+      expect(operation).to have_attributes(state: :failed, summary: "Failed while syncing cards. An unexpected error stopped it.")
+      expect(operation.facts.last).to have_attributes(label: "Technical detail", value: "RuntimeError: source exploded")
       expect(operation.stages.map(&:state)).to eq(%i[done stopped pending pending])
       expect(operation).not_to be_failed_job
     end
 
     it "words a failure recorded before stages without one" do
-      run(status: "failed", stage: nil, message: "IntegrityError: short file")
+      run(status: "failed", stage: nil, message: "Catalog::Sources::IntegrityError: short file")
 
-      expect(operation).to have_attributes(summary: "Failed: IntegrityError: short file", stages: [])
+      expect(operation).to have_attributes(summary: "Failed. #{Catalog::FailureReason::REASONS.fetch("Catalog::Sources::IntegrityError")}",
+        stages: [])
+    end
+
+    it "words a source's own error as the source does (issue #84)" do
+      source = Class.new { def self.failure_reasons = { "Zeta::Error" => "Example broke." } }
+      allow(Catalog).to receive(:source_class).with("mtg").and_return(source)
+      run(status: "failed", stage: "download", message: "Zeta::Error: boom")
+
+      expect(operation.summary).to eq("Failed while downloading. Example broke.")
+    end
+
+    it "keeps a failure that isn't an error's, with no technical detail", :aggregate_failures do
+      run(status: "failed", stage: nil, message: "interrupted")
+
+      expect(operation.summary).to eq("Failed. Interrupted.")
+      expect(operation.facts.map(&:label)).not_to include("Technical detail")
     end
 
     it "knows when the failed run's job is in the queue's failed list (AC-3.1)" do
@@ -336,9 +353,23 @@ RSpec.describe Catalog::RefreshOperation, :solid_queue, type: :model do
         queue_job(Catalog::RefreshJob, "mtg", "manual", wait: 3.minutes)
 
         expect(operation).to have_attributes(state: :queued, startable?: false, failed_job?: false,
-          summary: "Queued to retry. The last run failed while downloading: Catalog::Sources::TransientError: 503")
+          summary: "Queued to retry. The last run failed while downloading. The source couldn't be reached, or answered " \
+                   "with an error. This usually passes by itself.")
         expect(operation.facts.first).to have_attributes(label: "Retrying at", value: 3.minutes.from_now)
+        expect(operation.facts.last).to have_attributes(label: "Technical detail", value: "Catalog::Sources::TransientError: 503")
         expect(operation.stages.first.state).to eq(:stopped)
+      end
+    end
+
+    it "still shows the failed run, queued to retry, after another refresh was skipped for it (issue #78)", :aggregate_failures do
+      freeze_time do
+        run(status: "failed", stage: "download", message: "Catalog::Sources::TransientError: 503", started_at: 2.minutes.ago)
+        queue_job(Catalog::RefreshJob, "mtg", "manual", wait: 3.minutes)
+        run(status: "skipped", message: "waiting for another job's retry", started_at: 1.minute.ago)
+
+        expect(operation).to have_attributes(state: :queued,
+          summary: "Queued to retry. The last run failed while downloading. The source couldn't be reached, or answered " \
+                   "with an error. This usually passes by itself.")
       end
     end
   end

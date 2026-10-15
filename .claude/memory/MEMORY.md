@@ -13,6 +13,7 @@
 - [Branch naming convention](branch-naming-convention.md) — NNN-descriptive-slug per docs/git-convention.md; rename the worktree branch at the start, never use the plainprogrammer/ prefix
 - [Headless Firefox narrow frame](headless-firefox-narrow-frame.md) — windows can't go below 500px; test/screenshot phone widths in a fixed-width iframe; not from a scanner page (frame-src none); short frame to force scrolling
 - [Pre-commit hook staging](precommit-hook-staging.md) — hook reads the command text for `git add` / `commit -a`; stage separately to be safe
+- [Worktree isolation command guard](worktree-isolation-command-guard.md) — isolated agents' Bash calls are refused when a chain mentions git or is too complex; one git op per call, edit with Edit, partial commits via a scratchpad copy
 - [Reproduce CI with its seed](reproduce-ci-with-seed.md) — on CI failure, run the full suite with the CI seed as an early reproduction step
 - [Turbo Back navigation quirks](turbo-back-navigation-quirks.md) — frame-advance has two races (the late visit cancels Back or a click, issue #62); filters now plain Drive GET visits + no-cache; stuck full-width progress bar = cancelled visit; wait_for_turbo_idle
 - [PR #5 follow-ups](pr5-open-followups.md) — back-button flake fixed by PR #9 (merged 2026-10-02), watch CI; uncaptured failure
@@ -35,13 +36,17 @@
 - [Local image builds duplicate OCR](local-image-builds-duplicate-ocr.md) — issue #31: set-up checkouts build images ~14 MB larger; measure paths with `du`, not total sizes
 - [Subagent commit trailers](subagent-commit-trailers.md) — trailers aren't stable (own reminder, or a mid-run switch to Sonnet); name it in briefs, check the log per unit, never rewrite history; the maintainer keeps mixed trailers
 - [SDD execute with exact plans](sdd-execute-exact-plans.md) — one subagent per phase even for a small plan (maintainer, 2026-10-11); apply blocks by script; diff against the prototype branch; building and revising that branch
-- [PR exists and conflicts check](pr-exists-and-conflicts-check.md) — `gh pr list --head` before creating; a conflicting PR gets no CI run, merge main and push
+- [PR exists and conflicts check](pr-exists-and-conflicts-check.md) — `gh pr list --head` before creating; a conflicting PR gets no CI run, merge main and push; stacked PRs on an unmerged sibling
 - [Spec 015 follow-ups](spec-015-followups.md) — PR #32 draft, CI green; unchecked: graceful restart, art matching on, focus rings; later spec: "Running." after a crash, "Attempts 0"
 - [CSS shell state by class](css-shell-state-by-class.md) — maintainer chose a layout-set class (`c-shell--footed`) over `:has()` (spec 018); a new body class breaks exact class-string assertions
-- [Browser spec image and window gotchas](browser-spec-image-and-window-gotchas.md) — card images via 127.0.0.1:9 + data: pictures (`spec/support/card_images.rb`); decode() vs load; around runs before driven_by; saved collection view; float noise
+- [Browser spec image and window gotchas](browser-spec-image-and-window-gotchas.md) — card images via 127.0.0.1:9 + data: pictures (`spec/support/card_images.rb`); decode() vs load; around runs before driven_by; saved collection view; float noise; downloads to tmp/downloads (two Firefox prefs, synchronize(10)); default Capybara wait is 2 s
 - [Spec 019 follow-ups](spec-019-followups.md) — PR #66 draft (closes #35); owed: WebKit phone check; fade is #65; ImageFit to upstream; conflicts expected with the spec 018 PR
 - [Orca supervised stages](orca-supervised-stages.md) — as a dispatched worker: `orca orchestration ask` for decisions (30-minute cap: `--resume`, never re-ask; `check --ack`), a Task may span spec to PR, heartbeat loop ended by a stop file, no orchestration messages for a pasted wrap
 - [Spec 017 follow-ups](spec-017-followups.md) — PR #68 draft, owed: rendered-doc read, checks, ADR 0020 and log row 32 at merge; import reads `format_version` first; locations make version 2
+- [Spec 022 follow-ups](spec-022-followups.md) — export merged (PR #97, 2026-10-15); open: More focus ring, menu stays open after download; import inherits no `generator`, id order, times without fraction
 
 - [No prose-document specs](no-readme-wording-specs.md) — no RSpec examples for README.md, CLAUDE.md, skill files or docs/ Markdown (spec 020, decision 7); export format document, config and code checks stay; verify document criteria by reading
+- [Worktree shared test DB](worktree-shared-test-db.md) — bin/ci and subagents in one worktree share one SQLite test DB; parallel subagents get "don't run RSpec" while CI runs
+- [Spec 024 follow-ups](spec-024-followups.md) — skip-while-a-retry-waits merged (PR #96, 2026-10-15); #77 must discard or run the waiting job first; accepted limits
+- [Edit specs your change makes stale](edit-specs-your-change-makes-stale.md) — another spec's AC made incomplete → edit it in the same PR, patch bump + changelog (maintainer, 2026-10-14)
 - [Orca coordinator loop](orca-coordinator-loop.md) — workers block silently at permission prompts: read their terminals after each empty inbox wait, answer "1" only for approved actions; heartbeat-only batches; `claude --continue` to resume a released worker

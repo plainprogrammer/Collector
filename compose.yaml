@@ -5,6 +5,7 @@
 # Optional: COLLECTOR_PORT (host port, default 3000)
 # Optional: COLLECTOR_MTG_LANGUAGES (extra card languages, e.g. "ja,de")
 # Optional: COLLECTOR_MTG_ART_MATCHING ("true" turns on art matching for the scanner; first build ~708 MB, ~2.6 h)
+# Optional: COLLECTOR_PUBLIC_CATALOG ("true" opens catalog search and card pages to visitors who aren't signed in; default off)
 # Optional: COLLECTOR_CURRENCY (currency for the price you paid, default USD)
 # Optional: COLLECTOR_HTTPS ("true" when served over HTTPS, e.g. behind a TLS proxy; default false)
 # Optional: COLLECTOR_TRUSTED_PROXIES (extra reverse proxy IPs/CIDRs, comma-separated)
@@ -20,6 +21,7 @@ services:
       HTTP_PORT: "8080"
       COLLECTOR_MTG_LANGUAGES: "${COLLECTOR_MTG_LANGUAGES:-}"
       COLLECTOR_MTG_ART_MATCHING: "${COLLECTOR_MTG_ART_MATCHING:-}"
+      COLLECTOR_PUBLIC_CATALOG: "${COLLECTOR_PUBLIC_CATALOG:-}"
       COLLECTOR_CURRENCY: "${COLLECTOR_CURRENCY:-USD}"
       COLLECTOR_HTTPS: "${COLLECTOR_HTTPS:-false}"
       COLLECTOR_TRUSTED_PROXIES: "${COLLECTOR_TRUSTED_PROXIES:-}"

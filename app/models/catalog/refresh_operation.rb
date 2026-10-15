@@ -86,9 +86,14 @@ class Catalog::RefreshOperation < Catalog::Operation
       (fact("Last progress", shown_run.last_progress_at, relative: true) if shown_run.running?),
       (fact("Finished", shown_run.finished_at) if shown_run.finished_at),
       (fact("Source version", shown_run.source_version) if shown_run.source_version),
-      (fact("Counts", counts_text(Catalog::RefreshRun::COUNTS)) if shown_run.applied?)
+      (fact("Counts", counts_text(Catalog::RefreshRun::COUNTS)) if shown_run.applied?),
+      (fact("Technical detail", failure(shown_run).detail) if shown_run.failed? && failure(shown_run).detail)
     ].compact
   end
+
+  # Why a failed run failed, in plain words, with the error it stored as the detail (issue #84). The recent-runs list
+  # shows the sentence; `catalog:status` keeps the stored text.
+  def failure(run) = Catalog::FailureReason.for(run.message, collectible_type)
 
   private
     # A worker that dies never closes its run, and the queue then fails the job it held: that run is interrupted
@@ -125,7 +130,7 @@ class Catalog::RefreshOperation < Catalog::Operation
 
     def doing = DOING[run.stage]
 
-    def failed_summary = [ "Failed", doing ].compact.join(" while ") + ": #{run.message}"
+    def failed_summary = [ "Failed", doing ].compact.join(" while ") + ". #{failure(run).sentence}"
 
     def stage_state(index, reached)
       return :done if index < reached

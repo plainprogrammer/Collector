@@ -52,6 +52,9 @@ env:
     # Art matching for the card scanner: downloads one small image per artwork (~708 MB, ~2.6 h) after a refresh.
     # COLLECTOR_MTG_ART_MATCHING: true
 
+    # Open catalog search and card pages to visitors who aren't signed in (a hosted instance; see the README).
+    # COLLECTOR_PUBLIC_CATALOG: true
+
     # Currency for the price you paid (ISO 4217 code; see the README for the supported list).
     # COLLECTOR_CURRENCY: USD
 

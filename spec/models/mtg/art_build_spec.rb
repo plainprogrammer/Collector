@@ -81,6 +81,20 @@ RSpec.describe MTG::ArtBuild, type: :model do
     expect(waiting.reload).to be_running
   end
 
+  it "is skipped while another build's job waits to run again, with no build running (issue #78)", :aggregate_failures, :solid_queue do
+    job = queue_job(MTG::Art::BuildJob, wait: 5.minutes)
+    failed = create(:mtg_art_build, status: "failed", job_id: job.active_job_id, message: "rate limited")
+
+    expect(start("job-b")).to have_attributes(status: "skipped", message: "waiting for another job's retry")
+    expect(failed.reload).to have_attributes(status: "failed", message: "rate limited")
+  end
+
+  it "runs when the build job held for later is its own (issue #78)", :solid_queue do
+    job = queue_job(MTG::Art::BuildJob, wait: 5.minutes)
+
+    expect(start(job.active_job_id)).to be_running
+  end
+
   it "is skipped while a build whose job never was in the queue beat in the last 2 minutes", :aggregate_failures do
     live = running(started_at: 8.minutes.ago, heartbeat_at: 1.minute.ago, job_id: "from-a-console")
 

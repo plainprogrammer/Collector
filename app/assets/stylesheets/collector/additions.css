@@ -97,7 +97,7 @@ img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches:
 /* ---------- Card page: details list, single stat, faces ---------- */
 .c-details { display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:var(--space-3) var(--space-4); margin:0; }
 .c-details dt { font:600 12px/16px var(--font-sans); color:var(--ink-muted); }
-.c-details dd { margin:var(--space-1) 0 0; font:400 14px/20px var(--font-sans); color:var(--ink); }
+.c-details dd { margin:var(--space-1) 0 0; font:400 14px/20px var(--font-sans); color:var(--ink); overflow-wrap:anywhere; } /* a value may be one long unbroken string, such as an error naming a URL */
 .c-details .is-data { font-family:var(--font-mono); }
 .c-stats--single { grid-template-columns:minmax(0, 1fr); max-width:240px; }
 .c-face { display:flex; flex-direction:column; gap:var(--space-2); }
@@ -242,4 +242,13 @@ img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches:
 @media (max-width: 639px) {
   .c-footer { padding:var(--space-4) var(--space-4) calc(80px + env(safe-area-inset-bottom)); }
   .c-shell--footed > .c-main { padding-bottom:var(--space-4); }
+}
+
+/* ---------- Untabbed shell (spec 023) ----------
+   Below bp-narrow c-main (or, on a footed shell, the footer) keeps 80px clear for the fixed tab bar. A page with no tab
+   bar (a visitor's catalog page, sign-in, sign-up) is marked c-shell--untabbed and gives that clearance up. */
+@media (max-width: 639px) {
+  .c-shell--untabbed > .c-main { padding-bottom:calc(var(--space-6) + env(safe-area-inset-bottom)); }
+  .c-shell--untabbed.c-shell--footed > .c-main { padding-bottom:var(--space-4); }
+  .c-shell--untabbed > .c-footer { padding-bottom:calc(var(--space-4) + env(safe-area-inset-bottom)); }
 }

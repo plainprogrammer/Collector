@@ -17,6 +17,14 @@ class MTG::Scryfall::Source
   def self.title = "Magic: The Gathering"
   def self.operations(collectible_type) = [ MTG::Art::Operation.new(collectible_type) ]
 
+  # Issue #84: the plain words the admin catalog page gives this catalog's own failures (Catalog::FailureReason). A
+  # build fails with a decoder error only when ImageMagick is missing: a single image that can't be decoded is
+  # counted as a failed image, not a failed build (MTG::Art::Build).
+  def self.failure_reasons
+    { "MTG::Art::Decoder::Error" => "ImageMagick isn't installed, and the art index needs it to read card images. " \
+                                    "Install it on the server (the magick or convert command), then build again." }
+  end
+
   # Spec 018 FR-1: this catalog's lines in every page's footer. First the notice Wizards of the Coast's Fan Content
   # Policy asks for, word for word with the app as its title; then where the data comes from.
   def self.content_notice

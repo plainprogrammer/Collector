@@ -12,6 +12,8 @@ class RegistrationsController < ApplicationController
     @registration = Registration.new(registration_params)
     if (user = @registration.save)
       start_new_session_for(user)
+      # Sign-up lands in the collection; a catalog page a visitor opened first isn't where a later sign-in goes (spec 023).
+      session.delete(:return_to_after_authenticating)
       redirect_to collection_path, status: :see_other
     else
       @first_user = !User.exists? && !@registration.closed?

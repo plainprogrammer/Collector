@@ -35,7 +35,8 @@ The sign-in and sign-up page: the brand-only header, a heading and one `Form`, c
 ```
 
 - The column is at most 480px wide and centred; its parts are spaced with `space-6`.
-- The header shows only the brand: nothing else is reachable before signing in. Its logo images carry `alt="Collector"`, since there is no link text.
+- The header shows only the brand: nothing else is reachable before signing in, except the open catalog's pages when the instance's operator has opened them to visitors (see `VisitorHeader`). The brand stays unlinked even then, so a visitor who opens sign-in from the catalog goes back with the browser (accepted, spec 023). Its logo images carry `alt="Collector"`, since there is no link text.
+- Below 640px the page has no tab bar, so the shell is marked `c-shell--untabbed` and keeps no clearance for one (see `VisitorHeader`).
 - The first-run page is titled "Set up Collector" and says in one sentence that this account becomes the instance's admin; its button says "Create admin account".
 - Use the right `autocomplete` values (`username`, `current-password`, `new-password`) so password managers work.
 - A failed sign-in says so in the status region without saying which of email or password was wrong.
