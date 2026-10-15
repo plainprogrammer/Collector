@@ -1,7 +1,7 @@
 # Feature 026: Add Cards from a Set by Collector Number
 
-**Status:** Draft
-**Version:** 1.1.0
+**Status:** Approved by the maintainer (2026-10-15), with rulings on decisions 3, 4 and 7
+**Version:** 1.2.0
 **Created:** 2026-10-15
 **Last Updated:** 2026-10-15
 **Branch:** `026-typed-entry`
@@ -14,6 +14,7 @@
 | Version | Date | Change |
 |---------|------|--------|
 | 1.0.0 | 2026-10-15 | Written from issue #43 (roadmap theme B, item 8) |
+| 1.2.0 | 2026-10-15 | Approved by the maintainer. Decisions 3, 4 and 7 ruled as recommended |
 | 1.1.0 | 2026-10-15 | From the spec review (Opus). Reached from More on a phone, and from the empty collection; the finish defaults to the type's first finish, as the scanner's adds do, so the two paths fill the same lots (decision 3, open); an exact number match comes first and only a tie asks the collector, by the entry's external key, checked on the server; languages show as their codes, as everywhere else in the app; the line key is defined; undone lines leave the list; "Changed" is worked out when the page is shown; the list goes with the account; sets of every kind are offered (decision 9); the cross-type code collision is dropped (the type is in the URL); performance stated as queries, measured in `verification.md`; the cost isn't called bounded |
 
 ---
@@ -51,7 +52,7 @@ Every printed card carries its set and its collector number. This spec lets a si
 
 ## Decisions
 
-Each decision is the recommendation put to the maintainer. A decision marked *(open)* needs a ruling before the spec is approved.
+Each decision is the recommendation put to the maintainer. Decisions 3, 4 and 7 were open and are ruled; the others were approved with the spec.
 
 ### 1. The page and its entry points
 
@@ -69,7 +70,9 @@ Once a set is chosen, a language field offers the languages the set's active ent
 
 The chosen set (its type and code) and language are in the page's URL, so a reload or Back keeps them, and "Change set" returns to the set field.
 
-### 3. A line is number, quantity and finish; the finish defaults to the type's first *(open)*
+### 3. A line is number, quantity and finish; the finish defaults to the type's first (ruled)
+
+**Ruling (maintainer, 2026-10-15).** As recommended: the finish defaults to the type's first finish (Nonfoil for Magic cards) and carries over from the previous line.
 
 A line has three fields, in tab order: number, quantity (default 1) and finish. Enter in any field submits the line.
 
@@ -81,7 +84,9 @@ Why not "Not specified", as Quick add does: the scanner adds every copy with a f
 
 Alternatives put to the maintainer: (a) a "Not specified" default, as Quick add; (b) the finish resets to the default on every line, so a foil is never added by accident after a run of foils. The recommendation carries the choice over, because a sorted box usually keeps its foils together, and the added line shows the finish as a badge.
 
-### 4. Each line adds at once *(open)*
+### 4. Each line adds at once (ruled)
+
+**Ruling (maintainer, 2026-10-15).** As recommended: each line adds at once.
 
 A line is added when it is submitted: its copies merge into the collector's lots, the list shows it at the top, and the cursor returns to an empty number field (quantity back to 1, finish kept). Nothing waits for a final "Save".
 
@@ -99,7 +104,9 @@ Done ends the list: it deletes the list and its lines and returns to the collect
 
 The list is stored per account, as the scanner's sitting is (spec 009), so it survives a reload and works without scripting. It is working state: what it added is already in the lots. The export format's Coverage tables list its tables as "Left out", with the reason, and the format and its version don't change (ADR 0020). Deleting an account deletes its list.
 
-### 7. No live preview of the match *(open)*
+### 7. No live preview of the match (ruled)
+
+**Ruling (maintainer, 2026-10-15).** As recommended: no live preview.
 
 The page doesn't look up the number while the collector types. The added line names the card, its set and number, its quantity and its finish, which is where the collector checks the match, and Undo corrects a wrong one.
 
@@ -304,9 +311,7 @@ The line form carries a line key: a random token the server puts in the form and
 
 ## Open Questions
 
-- Decision 3 *(open)*: does the finish default to the type's first finish (recommended), or to "Not specified" as Quick add? Does it carry over from the previous line (recommended), or reset on every line?
-- Decision 4 *(open)*: does each line add at once (recommended), or do lines collect in a draft added all at once?
-- Decision 7 *(open)*: no live preview of the match (recommended), or a preview of the card name while typing?
+None. Decisions 3, 4 and 7 were ruled on 2026-10-15, as recommended.
 
 ## Out of Scope (Future Considerations)
 
