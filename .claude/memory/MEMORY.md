@@ -44,3 +44,4 @@
 - [Spec 017 follow-ups](spec-017-followups.md) — PR #68 draft, owed: rendered-doc read, checks, ADR 0020 and log row 32 at merge; import reads `format_version` first; locations make version 2
 
 - [No prose-document specs](no-readme-wording-specs.md) — no RSpec examples for README.md, CLAUDE.md, skill files or docs/ Markdown (spec 020, decision 7); export format document, config and code checks stay; verify document criteria by reading
+- [Worktree shared test DB](worktree-shared-test-db.md) — bin/ci and subagents in one worktree share one SQLite test DB; parallel subagents get "don't run RSpec" while CI runs
