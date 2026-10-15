@@ -13,7 +13,7 @@ All by the maintainer, 2026-10-15:
 
 ## The commits
 
-`git log --oneline origin/main..HEAD`, oldest first: `181a700` spec, `36d1e79` plan and ADR 0021, `d27855e`/`e2baa23` the format's rules in the app (Phase 1), `08d2e98`/`df21a5c` the reader (Phase 2), `decb755`/`6c6c228` the pages and links (Phase 3), `f1fb396`/`7191f45` the request body limit (Phase 4), `37939ee` documents (Phase 5), `f38451e` screenshots, `f8ca320`/`861f076` the per-lot schema pass (Phase 6, ruled fallback). Each `test` commit ran red before its `feat` or `perf` commit.
+`git log --oneline --no-merges 6b422d1..HEAD -- . ':!docs/specs/027*'`, this feature's commits, oldest first: `181a700` spec, `36d1e79` plan and ADR 0021, `d27855e`/`e2baa23` the format's rules in the app (Phase 1), `08d2e98`/`df21a5c` the reader (Phase 2), `decb755`/`6c6c228` the pages and links (Phase 3), `f1fb396`/`7191f45` the request body limit (Phase 4), `37939ee` documents (Phase 5), `f38451e` screenshots, `f8ca320`/`861f076` the per-lot schema pass (Phase 6, ruled fallback), `823a7c9` this record, then a merge of `origin/main` at `a0eeaab` (spec 027's area docs and specs index) and `af5cff0` spec 025's row in `docs/specs/README.md`. Each `test` commit ran red before its `feat` or `perf` commit.
 
 ## Acceptance criteria
 
@@ -153,7 +153,7 @@ The preview page isn't in the 360px system spec (`spec/system/narrow_pages_spec.
 
 ## Documents (verified by reading)
 
-Read in `git diff origin/main...HEAD` (against the merge base `6b422d1`):
+Read in this feature's own commits (`git diff 6b422d1..861f076`, `6b422d1` being the branch's base before `origin/main` was merged in at `a0eeaab`):
 
 - `CLAUDE.md`: the status line says a collector previews importing a file (`CollectionImport`, `/collection/import_preview/new`, spec 025) and applying isn't built; the Active Storage fact says no Active Storage upload exists and ADR 0013's owed validation stays with the first one; the export format fact names `CollectionImport`, `ExportFormat::Rules`, the schema's copy and `json_schemer` in the app's bundle; a new Import preview fact gives the routes, the 32 MB refusal and the 40 MB limits at Puma, Thruster and kamal-proxy.
 - `README.md`: Compose gains an "Upload limit" bullet (40 MB at Puma and Thruster, above the 32 MB file limit; keep a reverse proxy's at 40 MB or more); Kamal gains a sentence on `buffering: max_request_body: 40_000_000`; the Kamal HTTPS step now says to uncomment `ssl: true` under `proxy:`, matching `config/deploy.yml`, whose `proxy:` is now uncommented; "Your data" says a collector can preview an import from the account menu or More and applying isn't in the app yet.
@@ -165,6 +165,7 @@ Read in `git diff origin/main...HEAD` (against the merge base `6b422d1`):
 - `docs/design-system/components/MorePage.md`: the "Import collection" row after "Export collection" in the markup, and a bullet saying it follows export and opens the upload page. `AppHeader.md` lists no menu items (only "import/export … live in the avatar menu"), so it isn't changed.
 - `spec/support/export_format_rules.rb`: the header comment says well-formedness and lot identity are the app's (`ExportFormat::Rules`, ADR 0021) and the module passes them through.
 - AC-5.5: the views use only `c-*` classes that exist in `components.css` or `additions.css`, and no inline styles; the new rules in `collector/additions.css` (`c-file`, `c-import`, `c-import__*`) use only token variables for colour, spacing and font family.
+- `docs/specs/README.md`: spec 025's row (Approved, data portability, plan present, supersedes 022 decision 6's menu order) and, on spec 022's row, "Superseded by" naming spec 025's decision 14, as `.claude/rules/documentation.md` asks.
 - `docs/export-format/` is unchanged (`git diff origin/main...HEAD --stat -- docs/export-format/` prints nothing).
 - Spec 022 is unchanged (decision 14).
 - The plan's stale-statement grep (`nothing reads`, `import isn't`, `no upload feature`) finds only the two new "applying … isn't" lines.
@@ -173,7 +174,7 @@ Read in `git diff origin/main...HEAD` (against the merge base `6b422d1`):
 
 - `bin/ci` at `7191f45`: every step passed (Setup, RuboCop, Brakeman, bundler-audit, importmap audit); RSpec 1580 examples, 0 failures, 1 pending, seed 33583.
 - `bin/rspec` at `861f076`: 1583 examples, 0 failures, 1 pending, seed 49764.
-- **bin/ci at <SHA>: to be recorded**
+- `bin/ci` at `861f076`, the last commit that changes code: every step passed (Setup, RuboCop, Brakeman, bundler-audit, importmap audit); RSpec 1583 examples, 0 failures, 1 pending, seed 22429. The commits after it change documents only; the pre-push hook runs `bin/ci` again on the pushed head.
 
 The pending example predates this branch.
 
@@ -182,3 +183,17 @@ The pending example predates this branch.
 - Thruster and kamal-proxy refusing a 41 MB body in a running image or deployment (configured and read only).
 - A real phone (the 390px frame stands in for it) and a browser other than Firefox.
 - The preview at 50,000 rows behind a reverse proxy with a short timeout: at about 11 s, a proxy timeout under that would cut it off.
+
+## Implementation review
+
+SPEC-ALIGNED (sdd-review Mode B, read-only, Opus, 2026-10-15, at `af5cff0`).
+
+The coverage matrix finds evidence for every criterion; AC-3.1 is exercised through five requests and the rest of its cases in the model, as stated above. No Critical findings. Its two Important findings were this record's own: the CI line was a placeholder and this heading was missing; both are fixed here, with the stale merge base and commit list. Its Minor findings, none applied in this feature:
+
+- **The problem-counts list has no cap** (`app/models/collection_import.rb`, `problem_counts`). A summary that repeats the file's own value ("This printing doesn't come in X", "This instance doesn't collect T") makes one count per distinct value, so a file with a different bad finish on every row lists that many counts. The spec asks for this as written (decision 11 caps the lists, not the counts), so changing it needs a spec change: a follow-up.
+- **Prices too large to store.** The schema puts no upper bound on `price_paid`, so a price whose cents exceed a 64-bit integer previews as applicable; applying (#40) would fail. A row problem for it belongs with #40.
+- `MTG::Collecting.finishes_for` queries again for an entry whose MTG extension row is missing; unreachable for MTG data, where every entry has a printing.
+- The controller reads `params[:export_file]` rather than `params.expect`, so that any non-upload value is the `no_file` refusal (decision 10) rather than a 400; nothing is mass-assigned.
+- `spec/config/request_body_limit_spec.rb` and `spec/collection_import_core_spec.rb` carry no `type:`, like the other core specs.
+
+#40 isn't blocked: the reader exposes each row's outcome, the held lot it names, the removed lots, the lots held by problem rows and the view change. It doesn't keep each row's resolved catalog entry; #40 looks it up again or adds an accessor.
