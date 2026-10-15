@@ -14,4 +14,6 @@ Seen while coordinating issues #38, #59 and #78 as supervised Orca workers on 20
 - **After `worker_done`:** `worker-release` closes the agent terminal (the worktree stays). A worker whose resource is user-owned reports `retained` instead.
 - **A later task for a released worker** (a session wrap): its setup shell terminal is still open in the worktree. `orca terminal send --text "claude --continue --model claude-opus-5-5" --enter` resumes its session with full context, then paste the task.
 
-Related: [[orca-supervised-stages]], [[background-servers-via-task]].
+- **The memory-file hook reads the main checkout.** After a Write to a memory file in another worktree, the PostToolUse hook checked `/home/james/orca/projects/Collector/.claude/memory/MEMORY.md`, not the edited worktree's. With the main checkout behind (2026-10-15), it reported "slug … not found in MEMORY.md" for an entry the branch's index had. Check the index in the worktree you edit (`grep -c <slug>.md <worktree>/.claude/memory/MEMORY.md`), and say a mismatch is a false positive rather than adding a duplicate line.
+
+Related: [[orca-supervised-stages]], [[background-servers-via-task]], [[worktree-cleanup]].

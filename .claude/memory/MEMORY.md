@@ -32,7 +32,7 @@
 - [ADR numbers across branches](adr-numbers-across-branches.md) — check origin/main's docs/adr before numbering; an unmerged ADR takes the next free number on rebase
 - [Bulk file copy](bulk-file-copy.md) — find … -exec cp -n -t dest {} + for big caches; a glob hits "Argument list too long"
 - [Sitting capture alignment](sitting-capture-alignment.md) — check each row's first-capture name vs the expected card (re-scans shift rows; CAPTURES override); brief "scan and add" explicitly
-- [Session-wrap before PR review](session-wrap-before-pr-review.md) — wrap and commit memories/lessons before marking a PR ready; offer post-merge housekeeping then too
+- [Session-wrap before PR review](session-wrap-before-pr-review.md) — wrap and commit memories/lessons before marking a PR ready; offer post-merge housekeeping then too; after merges, rewrite follow-ups that name merged PRs
 - [Local image builds duplicate OCR](local-image-builds-duplicate-ocr.md) — issue #31: set-up checkouts build images ~14 MB larger; measure paths with `du`, not total sizes
 - [Subagent commit trailers](subagent-commit-trailers.md) — trailers aren't stable (own reminder, or a mid-run switch to Sonnet); name it in briefs, check the log per unit, never rewrite history; the maintainer keeps mixed trailers
 - [SDD execute with exact plans](sdd-execute-exact-plans.md) — one subagent per phase even for a small plan (maintainer, 2026-10-11); apply blocks by script; diff against the prototype branch; building and revising that branch
@@ -49,4 +49,5 @@
 - [Worktree shared test DB](worktree-shared-test-db.md) — bin/ci and subagents in one worktree share one SQLite test DB; parallel subagents get "don't run RSpec" while CI runs
 - [Spec 024 follow-ups](spec-024-followups.md) — skip-while-a-retry-waits merged (PR #96, 2026-10-15); #77 must discard or run the waiting job first; accepted limits
 - [Edit specs your change makes stale](edit-specs-your-change-makes-stale.md) — another spec's AC made incomplete → edit it in the same PR, patch bump + changelog (maintainer, 2026-10-14)
-- [Orca coordinator loop](orca-coordinator-loop.md) — workers block silently at permission prompts: read their terminals after each empty inbox wait, answer "1" only for approved actions; heartbeat-only batches; `claude --continue` to resume a released worker
+- [Orca coordinator loop](orca-coordinator-loop.md) — workers block silently at permission prompts: read their terminals after each empty inbox wait, answer "1" only for approved actions; heartbeat-only batches; `claude --continue` to resume a released worker; the memory hook reads the main checkout's index (false 'not found' from other worktrees)
+- [Worktree cleanup](worktree-cleanup.md) — check dirty / head in origin/main / PR merged; `orca worktree rm` for Orca's, `git worktree remove` otherwise; `-D` after the ancestor check; ask before deleting unpushed scratch commits
