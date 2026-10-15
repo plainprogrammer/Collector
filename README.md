@@ -190,6 +190,7 @@ The app is then available at `http://localhost:3000` (or your `COLLECTOR_PORT`).
 - **Building from source:** `docker build -t collector:local .` in a checkout, then start Compose with
   `COLLECTOR_IMAGE=collector:local`.
 - **HTTPS:** the Compose setup serves plain HTTP. Signing in over plain HTTP sends your password unencrypted, which is only acceptable on a trusted private network. Put an HTTPS reverse proxy (for example Caddy, nginx, or Traefik) in front of it and set `COLLECTOR_HTTPS=true`.
+- **Upload limit:** the app refuses a request body over 40 MB (Puma and Thruster), which is more than the largest export file it imports (32 MB). A reverse proxy in front may set a lower limit of its own; keep it at 40 MB or more.
 
 ### Kamal
 
@@ -204,6 +205,8 @@ Kamal (`bin/kamal`) deploys the same image to servers you control over SSH.
 4. Run `bin/kamal setup --skip-push --version X.Y.Z` for the first deployment, and
    `bin/kamal deploy --skip-push --version X.Y.Z` after that, naming the release to deploy. Kamal
    pulls that tag; nothing is built or pushed.
+
+`config/deploy.yml`'s `proxy:` sets `buffering: max_request_body: 40_000_000`, so kamal-proxy refuses request bodies over 40 MB, as the app does, instead of buffering up to 1 GB to disk.
 
 To deploy an image you build yourself, change `image` and `registry` in `config/deploy.yml` to
 a registry you own, then run `bin/kamal deploy`. Never run a plain `bin/kamal deploy` with the
@@ -228,7 +231,7 @@ only the photo picker works, and adding cards from photos works the same way.
 
 - **Docker Compose:** put an HTTPS reverse proxy in front of the app (see **HTTPS** under Docker Compose) and set
   `COLLECTOR_HTTPS=true`.
-- **Kamal:** enable the proxy's certificate in `config/deploy.yml` (uncomment `proxy:` with `ssl: true` and set
+- **Kamal:** enable the proxy's certificate in `config/deploy.yml` (uncomment `ssl: true` under `proxy:` and set
   your `host:`), and uncomment `COLLECTOR_HTTPS: true` under `env: clear:`.
 
 ### Open catalog

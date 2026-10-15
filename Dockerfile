@@ -74,6 +74,9 @@ USER 1000:1000
 COPY --chown=rails:rails --from=build "${BUNDLE_PATH}" "${BUNDLE_PATH}"
 COPY --chown=rails:rails --from=build /rails /rails
 
+# Thruster refuses request bodies over 40 MB, as Puma does (spec 025 decision 6).
+ENV MAX_REQUEST_BODY="40000000"
+
 # Entrypoint prepares the database.
 ENTRYPOINT ["/rails/bin/docker-entrypoint"]
 
