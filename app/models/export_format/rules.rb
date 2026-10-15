@@ -22,6 +22,9 @@ module ExportFormat
 
     def self.schemer = @schemer ||= JSONSchemer.schema(schema, regexp_resolver: "ecma")
 
+    # The schema of one lot, $defs/lot, whose own $refs resolve against the whole schema.
+    def self.lot_schemer = @lot_schemer ||= schemer.ref("#/$defs/lot")
+
     # The file as data, or the problem that stops it being read: [data, nil] or [nil, problem]. JSON's error message
     # quotes the file, so it is dropped (spec 025 FR-6). A number too large for a float reads as Infinity, which no
     # JSON text can mean and json_schemer's integer check can't take (FloatDomainError), so it isn't readable JSON.
@@ -59,12 +62,29 @@ module ExportFormat
       lot.is_a?(Hash) && !failed.include?(at) && IDENTITY_FIELDS.none? { |field| failed.include?("#{at}/#{field}") }
     end
 
+    # The schema's problems, in the order a whole-file pass gives them. The lots are checked one at a time against
+    # $defs/lot, each lot's errors mapped before the next lot's: json_schemer holds a result tree for everything it
+    # validates in one call, and on a 50,000-lot file that grew the process by 850 MB to 1 GB against spec 025 decision
+    # 13's bar of 500 MB (the maintainer's ruling of 2026-10-15). The rest of the file is checked with no lots; its
+    # errors at the root (a missing key) follow the lots', as json_schemer reports what "properties" finds before
+    # the root's own "required". Data that isn't an object, or whose lots aren't an array, is checked whole: no
+    # lot is checked then, so its tree is small.
     def self.schema_problems(data)
-      schemer.validate(data).flat_map do |error|
-        missing = error.dig("details", "missing_keys")
-        next missing.map { |key| Problem.new("required", "#{error["data_pointer"]}/#{key}") } if missing
+      return problems_from(schemer.validate(data)) unless data.is_a?(Hash) && data["lots"].is_a?(Array)
 
-        [ Problem.new(JSON_TYPES.include?(error["type"]) ? "type" : error["type"], error["data_pointer"]) ]
+      root, header = schemer.validate(data.merge("lots" => [])).partition { |error| error["data_pointer"].empty? }
+      lots = data["lots"].each_with_index.flat_map { |lot, index| problems_from(lot_schemer.validate(lot), "/lots/#{index}") }
+      problems_from(header) + lots + problems_from(root)
+    end
+
+    # Schema errors as problems, their pointers under +at+. A missing key is a problem at the key.
+    def self.problems_from(errors, at = "")
+      errors.flat_map do |error|
+        pointer = "#{at}#{error["data_pointer"]}"
+        missing = error.dig("details", "missing_keys")
+        next missing.map { |key| Problem.new("required", "#{pointer}/#{key}") } if missing
+
+        [ Problem.new(JSON_TYPES.include?(error["type"]) ? "type" : error["type"], pointer) ]
       end
     end
 
@@ -102,6 +122,6 @@ module ExportFormat
       Date.valid_date?(year, month, day) && hour < 24 && minute < 60 && second < 60
     end
 
-    private_class_method :non_finite?, :schema_problems, :rule_problems, :changed_before_added?, :moment?
+    private_class_method :non_finite?, :schema_problems, :problems_from, :rule_problems, :changed_before_added?, :moment?
   end
 end

@@ -61,9 +61,12 @@ The app reads the schema from `docs/` at run time, with `json_schemer` as in Opt
 
 The time the schema check takes is accepted: the maintainer set the import preview's bar at 50,000 rows in under 30 seconds (spec 025 decision 12) rather than hand-write the lot checks.
 
+**Amendment (2026-10-15, the maintainer's ruling under spec 025 decision 13).** Checked in one call, `json_schemer` holds a tree of results for the whole file: on a 50,000-lot file that grew the process by about 850 MB to 1 GB, against a bar of 500 MB. So `ExportFormat::Rules` checks the file with its lots left empty, then each lot on its own against the schema's `$defs/lot` (`ExportFormat::Rules.lot_schemer`), with each lot's pointers prefixed `/lots/<i>`, and maps a lot's errors to problems before it checks the next. It is still the one schema, checked by `json_schemer`; the suite proves that this finds the same problems, in the same order, as a check of the whole file.
+
 ## Consequences
 
 - The schema's copy and its original change together. A new format version adds `v<N>.schema.json` in both places, and the identity spec fails until it does.
 - The well-formedness rules are now app code, so they are covered by the app's own specs as well as the examples.
+- No result tree for the whole file is held: the schema check's memory is that of one lot at a time (amendment above). The schema has to keep the lot as `$defs/lot`, the target of `properties.lots.items`; a later version that changes that shape changes this check too.
 - A very large file takes seconds to check. The upload limit of 32 MB (spec 025 decision 6) bounds how long.
 - Option B stays available: if the bar is ever missed, hand-written lot checks proved against the schema can replace the per-lot schema pass, through an ADR that supersedes this one.
