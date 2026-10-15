@@ -1,6 +1,6 @@
 # Implementation Plan: Area Docs Hold the Current Architecture, Starting with Catalog Operations
 
-**Spec:** [spec.md](spec.md) v1.2.0 (Approved 2026-10-15, rulings OD1–OD6)
+**Spec:** [spec.md](spec.md) v1.3.0 (Approved 2026-10-15, rulings OD1–OD6 and, from this plan's review, P1–P3)
 **Decisions:** none new. The spec's D1–D9 and rulings R1–R8 and OD1–OD6 bind this plan; ADR 0023 (YARD) is only named as expected (slice B).
 **Created:** 2026-10-15
 **Branch:** `027-architecture-area-docs`
@@ -30,7 +30,7 @@ Copied from the spec; every phase is bound by them.
 
 ## Pre-implementation gates
 
-- **Simplicity:** three kinds of output: the docs (area doc, two READMEs), the agent process (rule, steering, skill, integrations rows, memory), and the record (CLAUDE.md, frozen lines, retirement, roadmap). No dependency is added.
+- **Simplicity:** three kinds of output: the docs (area doc, two READMEs), the agent process (rule, steering, skill, the session-end line, memory), and the record (CLAUDE.md, frozen lines, retirement, roadmap). No dependency is added.
 - **Anti-abstraction:** no generator, script or check is written; the index and the area doc are written by hand (D8 rules out an automated check).
 - **Integration-first:** there is no API. Its counterpart here is Phase 0, which records the baseline facts (merge base, word counts, link inventory, open issues) every later phase is checked against, before any document changes.
 - **Test-first:** not applicable to prose (D8). Each phase ends with its reading checks written into `verification.md`, and the controller reads them before the next phase starts.
@@ -67,7 +67,7 @@ Record the facts every check is measured from, before anything changes.
 ````markdown
 # Verification: Spec 027
 
-**Spec:** [spec.md](spec.md) v1.2.0 · **Plan:** [plan.md](plan.md) · **Branch:** `027-architecture-area-docs`
+**Spec:** [spec.md](spec.md) v1.3.0 · **Plan:** [plan.md](plan.md) · **Branch:** `027-architecture-area-docs`
 
 Every criterion of spec 027 is a prose criterion, verified by reading at the head and recorded here (`.claude/rules/testing.md`; spec D8). Comparisons "with the base" are with the merge base below.
 
@@ -95,7 +95,7 @@ Every criterion of spec 027 is a prose criterion, verified by reading at the hea
 
 ## Phase 1: Rules and process docs
 
-**Implements:** FR-1, FR-5, FR-6 (rule file, steering file, memory), FR-8 (git convention) | **Satisfies:** AC-4.1, AC-4.2, AC-4.3, AC-4.6, AC-5.1
+**Implements:** FR-1, FR-5, FR-6 (rule file, steering file, memory), FR-8 (git convention) | **Satisfies:** AC-4.1, AC-4.2, AC-4.3, AC-4.6, AC-4.8, AC-5.1
 **Files:** `docs/architecture/README.md` (new), `.claude/rules/documentation.md` (new), `.claude/memory/steering/architecture.md` (new), `.claude/memory/edit-specs-your-change-makes-stale.md`, `.claude/memory/MEMORY.md`, `docs/git-convention.md`, `verification.md`
 **Interfaces:** Consumes: nothing. Produces: the area list and D5 section names that Phases 2 and 4 use verbatim (`Scope`, `Glossary`, `Invariants`, `States and transitions`, `Named constants`, `Decisions not in an ADR`, `Sources`, `Distillation log`); the plan-state words of FR-3 (`present`, `retirement owed`, `retired`, `none`) and status words (`Draft`, `Approved`, `Shipped`, `Frozen in part`, `Frozen`) that Phases 4 and 5 use verbatim.
 
@@ -142,7 +142,7 @@ Each statement that came from a spec criterion, ADR or issue names it inline, fo
 ## When an area doc changes
 
 - A pull request that changes the behaviour, a constant or a rule of an area that has an area doc updates the doc in the same pull request. An issue fix adds its issue to Sources; only a whole feature's distillation adds a Distillation log row.
-- A feature is distilled into its area docs in its own pull request, after `session-wrap` on the feature branch and before the pull request is marked ready for review. Its plan is retired after the merge. The `distill-feature` skill (`.claude/skills/distill-feature/SKILL.md`) does both, and is offered after every `session-wrap`.
+- A feature is distilled into its area docs in its own pull request, after `session-wrap` on the feature branch and before the pull request is marked ready for review. Its plan is retired after the merge. The `distill-feature` skill (`.claude/skills/distill-feature/SKILL.md`) does both; `.claude/CLAUDE.md`'s session-end instruction runs it after every `session-wrap`.
 - A change that supersedes part of a shipped spec records the supersession in its own spec and in the specs index, and updates the area doc where one covers that part. It doesn't edit the earlier spec.
 ````
 
@@ -154,7 +154,8 @@ Each statement that came from a spec criterion, ADR or issue names it inline, fo
 - ✓ The current rules of a subsystem are in its area doc under `docs/architecture/` (list and shape in its README). Read the area docs of the areas you touch before changing them.
 - ✓ A change to the behaviour, a constant or a rule of an area that has an area doc updates that doc in the same pull request, with the source of each new statement (spec criterion, ADR or issue) inline. An issue fix adds its issue to the doc's Sources.
 - ✓ A change that supersedes part of a shipped spec records the supersession in its own spec ("supersedes spec NNN FR-x: …") and in `docs/specs/README.md`, both directions, and updates the area doc where one covers that part.
-- ✓ When a feature is finished, distil it with the `distill-feature` skill after `session-wrap`: before the merge it writes the area docs and marks the index; after the merge it retires the plan.
+- ✓ At every session end, run `sdd-superpowers:session-wrap`, then the `distill-feature` skill (`.claude/CLAUDE.md`): for a finished feature, before the merge, it writes the area docs and marks the index; after the merge it retires the plan.
+- ✓ Record a feature's implementation review (`sdd-review` Mode B) in its `verification.md` under a `## Implementation review` heading, with the verdict (for example "SPEC-ALIGNED") on its first line. `distill-feature` reads that heading to know the feature is finished.
 - ✓ Keep `docs/specs/README.md` current: a new spec adds its row when it is written; the distillation step changes rows as specs freeze and plans retire.
 - ✗ Don't edit a shipped spec, frozen or not, except for its frozen line, its retirement pointer and its links to its own retired plan, each in a commit of its own that names spec 027 D4. Typos stay; supersessions go in the new spec and the index.
 - ✗ Don't renumber or rename a spec, a criterion or an ADR; code and tests cite them.
@@ -211,12 +212,12 @@ When a change makes an acceptance criterion or requirement of a shipped spec inc
 
 ## Merging
 
-Pull requests are merged with a merge commit, never squashed or rebased (maintainer, 2026-10-15). A retired plan is read back from the commit that deleted it (`git show <sha>^:docs/specs/NNN-…/plan.md`, [spec 027](specs/027-architecture-area-docs/spec.md) D7), so that commit must stay in `main`'s history as it was written.
+Pull requests are merged with a merge commit, never squashed or rebased (maintainer, 2026-10-15); the repository's settings allow merge commits only. A retired plan is read back from the commit that deleted it (`git show <sha>^:docs/specs/NNN-…/plan.md`, [spec 027](specs/027-architecture-area-docs/spec.md) D7), so that commit must stay in `main`'s history as it was written.
 
 Rebasing a branch before it merges changes the sha of every commit on it. On a branch that retires a plan, write the retirement pointer after the branch's last rebase, and bring `main` in with a merge from then on.
 ````
 
-- [ ] Fill `## Phase 1` of `verification.md`: for AC-4.1, AC-4.2, AC-4.3, AC-4.6 and AC-5.1, one line each quoting the sentence or heading that meets it, with the file and line.
+- [ ] Fill `## Phase 1` of `verification.md`: for AC-4.1, AC-4.2, AC-4.3, AC-4.6, AC-4.8 and AC-5.1, one line each quoting the sentence or heading that meets it, with the file and line.
 - [ ] Commit each file group separately (each `git add`, then `git commit`, in its own call):
   1. `docs(architecture): add the area docs README` (`docs/architecture/README.md`)
   2. `docs(rules): add the documentation rule for area docs and frozen specs` (`.claude/rules/documentation.md`)
@@ -268,8 +269,8 @@ How the catalog changes, and how admins start, watch and recover that work: the 
 - **Last progress / heartbeat:** a refresh run's last recorded progress (`heartbeat_at`, or `started_at` before any), an art build's `heartbeat_at`.
 - **Stalled:** running, last progress older than the stall threshold, and its job still claimed by a worker. Shown as running or building, never as interrupted (spec 015 AC-3.6, AC-4.11; #79).
 - **Interrupted / left behind:** a run still marked running that nothing works on any more: see States and transitions (spec 015 AC-3.2, AC-3.3, AC-3.9, AC-4.10; #60, #73).
-- **Waiting retry:** an unfinished job of the same operation (for a refresh, of the same type), other than the starting one, that the queue holds for a later time (spec 024 Terms).
-- **Starting job:** the job whose `Catalog::Refresh#call` or `MTG::Art::Build#call` is running the start guard (spec 024 Terms).
+- **Waiting retry:** an unfinished job of the same operation (for a refresh, of the same type), other than the starting one, that the queue holds for a later time (spec 024 Problem Statement, decisions 3 and 5).
+- **Starting job:** the job whose `Catalog::Refresh#call` or `MTG::Art::Build#call` is running the start guard (spec 024 Problem Statement, decision 5).
 - **Stages of a refresh:** download, sync, retire, index, in that order (`Catalog::RefreshRun::STAGES`; spec 015 Glossary).
 - **Job states on the jobs pages:** Failed, Running (claimed), Queued (ready, or blocked by a concurrency limit, marked "waiting"), Scheduled (due later, including retry waits) (spec 015 Glossary).
 
@@ -416,6 +417,7 @@ Filters Failed (the default), Running, Queued, Scheduled, each with its count; 2
 - [ ] Walk spec 015's Glossary, FR-1–FR-8 and Error Scenarios rows, spec 024's decisions 1–6 and FR-1–FR-5, spec 002's FR-3–FR-6 and its Error Scenarios rows about the refresh, and spec 011's FR-2 bullets about the build's run (AC-1.4). For each, record "stated" (with the doc section), "changed since" (with the issue or spec, and the doc's changed form), or "not in this area" (with the area it belongs to). Known "changed since" at plan time: spec 002 FR-4 and its Error Scenarios rows "Process killed or deployed mid-refresh" and "Refresh triggered while one is already running" still say 6 hours; the current rule is spec 015's 15-minute stall and 2-minute job rule (#60). Add any statement the walk shows missing to the doc.
 - [ ] Check AC-1.6: `git grep -n -w -i -e MTG -e Scryfall -e Art -- docs/architecture/catalog-operations.md ':!.kamal/secrets'`, and confirm by reading that every hit is in a statement about `MTG::` code, the Scryfall client, or the art build, never in a statement about `Catalog::` code. Record the hits.
 - [ ] Check AC-1.5: every link in Sources resolves (file paths exist at the head; issue numbers exist, `gh issue view <n> --json number`). Check AC-1.7: every issue in Phase 0's list appears under "Accepted limits and open issues". Record both.
+- [ ] Code that contradicts every source (spec Error Scenarios): if the walks above find behaviour in the code that no spec, ADR or issue states, or that they all contradict, state the code's behaviour in the area doc marked "(no spec source; see verification.md)", and record it in `verification.md` with the file and line. Don't open an issue yourself: list it for the controller, who opens one only with the maintainer's go-ahead.
 - [ ] Check AC-1.1: the doc's `##` headings, in order, are exactly the D5 eight. Record them.
 - [ ] Commit (`git add`, then commit in separate calls): `docs(architecture): distil catalog operations into an area doc`; then `docs(027): record phase 2 verification`.
 
@@ -460,7 +462,7 @@ Point CLAUDE.md at the area doc, and mark the four specs as covered.
     ```text
     **Frozen:** the current rules are in [`catalog-operations.md`](../../architecture/catalog-operations.md) (parts: FR-2, the art build's run); see the [specs index](../README.md)
     ```
-  - `docs/specs/015-admin-catalog-and-jobs/spec.md` and `docs/specs/024-refresh-rate-limit-wait/spec.md`:
+  - `docs/specs/015-admin-catalog-and-jobs/spec.md` and `docs/specs/024-refresh-rate-limit-wait/spec.md` ("(whole spec)" is D4's form for a spec covered in whole, where a partly covered spec names its parts):
 
     ```text
     **Frozen:** the current rules are in [`catalog-operations.md`](../../architecture/catalog-operations.md) (whole spec); see the [specs index](../README.md)
@@ -528,10 +530,10 @@ A plan is deleted from the tree in a commit of its own after its feature's pull 
 | [022 Export a collection as a file](022-export-collection/spec.md) | Shipped | Data portability | present | | |
 | [023 Browse the catalog without signing in](023-signed-out-catalog-browsing/spec.md) | Shipped | Catalog core | present | 002 Non-Goals and FR-7: public search becomes an operator setting | |
 | [024 A second refresh or build waits out another's rate limit](024-refresh-rate-limit-wait/spec.md) | Frozen, by [catalog operations](../architecture/catalog-operations.md) | Catalog operations | present | 002 FR-4's rate-limit rule; 015 AC-2.16 (both amended in place) | |
-| [027 Area docs hold the current architecture](027-architecture-area-docs/spec.md) | Approved | All (the documentation process) | present | | |
+| [027 Area docs hold the current architecture](027-architecture-area-docs/spec.md) | Approved | All (the documentation process) | retirement owed | | |
 ````
 
-  Phase 6 changes the Plan cells of 015 and 024. Spec 027's row stays "Approved" and "present" in this pull request (AC-3.6); the `distill-feature` skill's after-merge state sets it to Shipped and retires its plan.
+  Phase 6 changes the Plan cells of 015 and 024. Spec 027's row reads "Approved" and "retirement owed" in this pull request (AC-3.6, ruling P2): it has nothing to distil, so the `distill-feature` skill's after-merge state retires its plan like any other and sets it to Shipped.
 - [ ] Check AC-3.1: compare `ls docs/specs` (excluding `README.md` and `.gitkeep`) with the index's rows; record both lists. Check AC-3.3: for every "Superseded by" entry, record the matching "Supersedes" entry in the other row, and the reverse; fix any one-sided entry. Check AC-3.4, AC-3.5 and AC-3.6 by quoting the cells and sentences. Check that every link resolves.
 - [ ] Commit: `docs(specs): add the specs index`; then `docs(027): record phase 4 verification`.
 
@@ -539,29 +541,31 @@ A plan is deleted from the tree in a commit of its own after its feature's pull 
 
 ## Phase 5: The distillation step
 
-**Implements:** FR-6 (skill, integrations rows), D6 | **Satisfies:** AC-4.4, AC-4.5 (rows; the firing record is Phase 8)
-**Files:** `.claude/skills/distill-feature/SKILL.md` (new), `.claude/integrations.md`, `verification.md`
-**Interfaces:** Consumes: the status and plan words (Phase 1, in Global Constraints) and the index's columns (Phase 4: `Spec`, `Status`, `Areas`, `Plan`, `Supersedes`, `Superseded by`). Produces: the skill name `distill-feature`, used verbatim in the integrations rows.
+**Implements:** FR-6 (skill, session-end line), D6, rulings P1–P3 | **Satisfies:** AC-4.4, AC-4.7 (AC-4.5 is withdrawn)
+**Files:** `.claude/skills/distill-feature/SKILL.md` (new), `.claude/CLAUDE.md`, `verification.md`
+**Interfaces:** Consumes: the status and plan words (Phase 1, in Global Constraints), the `## Implementation review` heading (Phase 1's rule file), and the index's columns (Phase 4: `Spec`, `Status`, `Areas`, `Plan`, `Supersedes`, `Superseded by`). Produces: the skill name `distill-feature`, used verbatim in `.claude/CLAUDE.md`.
 
-The spec says the skill tells "finished" from a recorded aligned implementation review, but `verification.md` files record it inconsistently (only specs 017 and 019 contain "ALIGNED"). The skill therefore looks for the review result and, when it finds none, asks the maintainer whether the feature is finished instead of guessing (plan decision; spec D6 state 1 still holds when the answer is no).
+Only 11 of the 24 spec folders have a `verification.md`, and only those of 017, 018, 019 and 020 have a `## Implementation review` section. The rule file (Phase 1) makes that heading the record from now on; the skill reads it, expects that it or the whole file may be missing, and then asks the maintainer whether the feature is finished instead of guessing. No pull request needs to exist: the wrap runs before `gh pr create` (OD1).
 
 - [ ] Create `.claude/skills/distill-feature/SKILL.md`:
 
 ````markdown
 ---
 name: distill-feature
-description: Use after session-wrap, at the end of a session, to distil a finished feature into its area docs before its pull request is ready, or to retire the plan of a feature whose pull request has merged. Says "nothing to do" otherwise.
+description: Use at the end of every session, right after sdd-superpowers:session-wrap, to distil a finished feature into its area docs before its pull request is ready, or to retire the plan of a feature whose pull request has merged. Says "nothing to do" otherwise.
 ---
 
 # Distil a feature
 
-Keeps `docs/architecture/` current and retires plans (spec 027; rules in `.claude/rules/documentation.md`). Run it after `session-wrap`. It has three states. Check them in this order and act on the first that applies.
+Keeps `docs/architecture/` current and retires plans (spec 027; rules in `.claude/rules/documentation.md`). `.claude/CLAUDE.md`'s session-end instruction runs it after `session-wrap`. It has three states. Check them in this order and act on the first that applies.
 
 Never read `.kamal/secrets`, `config/master.key`, `.env*` or `storage/`; end every `git grep` with `':!.kamal/secrets'`. In an isolated worktree, run one git operation per Bash call.
 
 ## 1. After the merge: retire owed plans
 
-Read `docs/specs/README.md`. For each row whose Plan is "retirement owed", find its feature's pull request (`gh pr list --head <NNN-slug> --state merged --json number,mergeCommit`). For each one that has merged:
+First check the pointers already there: for each sha in a "retired in `<sha>`" cell of `docs/specs/README.md`, run `git cat-file -e <sha>` (one call each). If one fails, warn the maintainer: the commit that deleted that plan isn't in this clone's history (a squash or rebase merge got through, or the clone is shallow), and the pointer needs rewriting to the commit that removed the plan from `main` (spec 027 Error Scenarios). Carry on with the rest.
+
+Then, for each row whose Plan is "retirement owed", find its feature's pull request (`gh pr list --head <NNN-slug> --state merged --json number,mergeCommit`). For each one that has merged (a spec with nothing to distil, such as 027, is retired the same way):
 
 1. Make sure the branch you are on will merge into `main` with a merge commit and won't be rebased afterwards (`docs/git-convention.md`, Merging). A housekeeping branch from `origin/main` is the usual place.
 2. Delete `docs/specs/NNN-<slug>/plan.md` in a commit that changes nothing else: `git rm docs/specs/NNN-<slug>/plan.md`, then `git commit -m "docs(specs): retire the plan of spec NNN"` with the session's Co-Authored-By trailer.
@@ -572,14 +576,16 @@ Read `docs/specs/README.md`. For each row whose Plan is "retirement owed", find 
    **Plan:** retired in `<sha>`; read it with `git show <sha>^:docs/specs/NNN-<slug>/plan.md`
    ```
 
-   Set the index row's Plan to the same pointer (without `**Plan:**`), and its Status to Shipped if it was Approved. Replace every Markdown link to `plan.md` in the spec's folder (`git grep -n "](plan.md)" -- docs/specs/NNN-<slug> ':!.kamal/secrets'`) with the plain text ``plan (retired in `<sha>`)``. Change nothing else in the spec. Commit: `docs(specs): point to the retired plan of spec NNN (spec 027 D4)`.
+   Set the index row's Plan to the same pointer (without `**Plan:**`), and its Status to Shipped if it was Approved. Replace every Markdown link to `plan.md` in the spec's folder (`git grep -n "](plan.md)" -- docs/specs/NNN-<slug> ':!.kamal/secrets'`) with the plain text ``plan (retired in `<sha>`; read it with `git show <sha>^:docs/specs/NNN-<slug>/plan.md`)``. Change nothing else in the spec. Commit: `docs(specs): point to the retired plan of spec NNN (spec 027 D4)`.
 5. Check: `git show <sha>^:docs/specs/NNN-<slug>/plan.md` prints the plan.
 
 If no row qualifies, go to 2.
 
 ## 2. Before the merge: distil the branch's feature
 
-Applies when the current branch is `NNN-<slug>` with a folder `docs/specs/NNN-*`, its pull request is open and not merged (`gh pr list --head <branch> --state open`), its index row's Plan is "present", and the feature is finished: its `verification.md` records the implementation review (`sdd-review` Mode B) as aligned. If the record is missing or unclear, ask the maintainer whether the feature is finished; if not, go to 3.
+Applies when the current branch is `NNN-<slug>` with a folder `docs/specs/NNN-*`, its pull request hasn't merged, its index row's Plan is "present", and the feature is finished. A pull request needn't exist yet: the wrap runs before `gh pr create`.
+
+The feature is finished when `docs/specs/NNN-<slug>/verification.md` has a `## Implementation review` section whose verdict says aligned (for example "SPEC-ALIGNED"). Many spec folders have no `verification.md`, and older ones have no such section. If the section is missing, the file is missing, or the verdict is unclear, ask the maintainer whether the feature is finished; if not, go to 3.
 
 1. Read the spec, the plan, the `verification.md`, and the area docs of every area the index lists for the spec (`docs/architecture/README.md` for the list).
 2. For each area with a doc: write into it what the feature established or changed, in the doc's own sections (its shape is in `docs/architecture/README.md`), each statement with its source inline (spec NNN AC-x, ADR, issue). Remove or rewrite statements the feature made untrue. Add the spec to Sources and one Distillation log row (date, what was distilled, this pull request).
@@ -596,21 +602,21 @@ Don't edit any other spec (`.claude/rules/documentation.md`).
 Applies when neither 1 nor 2 does: no plan is owed a retirement, and the branch names no spec, or its feature isn't finished, or it is already distilled. Say "distill-feature: nothing to do" with the reason in one line, and stop.
 ````
 
-- [ ] Replace `.claude/integrations.md` with (Read it first; it has the header and no rows at plan time):
+- [ ] In `.claude/CLAUDE.md`, replace the line (line 20 at plan time)
 
-````markdown
-# Custom Integrations
+  ```text
+  **At session end:** Before closing a conversation, invoke `sdd-superpowers:session-wrap`.
+  ```
 
-| Trigger Skill | Custom Skill | Purpose |
-|---|---|---|
-| session-wrap | distill-feature | Distil a finished feature into its area docs, or retire a merged feature's plan (spec 027) |
-| sdd-superpowers:session-wrap | distill-feature | Distil a finished feature into its area docs, or retire a merged feature's plan (spec 027) |
-````
+  with
 
-- [ ] Check: no `|` inside a cell value (each row has exactly four `|`); the skill's three states match D6 and run after-merge first (AC-4.4); the skill says it must not change a spec beyond D4. Record in `verification.md`.
-- [ ] Commit: `chore(skills): add the distill-feature skill` (the skill); `chore: offer distill-feature after session-wrap` (`.claude/integrations.md`); `docs(027): record phase 5 verification`.
+  ```text
+  **At session end:** Before closing a conversation, invoke `sdd-superpowers:session-wrap`, then the `distill-feature` skill (area docs and plan retirement, spec 027).
+  ```
 
-> **Risk noted for Phase 8:** the plugin's hook (`scripts/hooks/post-skill-integration-check.sh`) matches `.tool_input.skill_name`, while the Skill tool's input field in this harness is `skill`. If the field differs, the hook never fires for either row. Phase 8 records what actually happens.
+  Leave the lines after it as they are. Don't touch `.claude/integrations.md` (ruling P1: its hook reads `.tool_input.skill_name`, this harness's Skill input is `skill`, and a typed `/session-wrap` makes no Skill call).
+- [ ] Check: the skill's three states match D6 and run after-merge first, with the pointer check; state 2 reads `## Implementation review`, expects no `verification.md`, asks when there's no verdict, and needs no pull request; the skill says it must not change a spec beyond D4 (AC-4.4). `.claude/CLAUDE.md` names `distill-feature` after `session-wrap` (AC-4.7), and `git diff <base> -- .claude/integrations.md` (one git operation) prints nothing. Record in `verification.md`.
+- [ ] Commit: `chore(skills): add the distill-feature skill` (the skill); `docs(claude): run distill-feature after session-wrap` (`.claude/CLAUDE.md`); `docs(027): record phase 5 verification`.
 
 ---
 
@@ -638,7 +644,11 @@ Retire the plans of specs 015 and 024 in two commits each, and prove they read b
     ```text
     **Plan:** retired in `<sha024>`; read it with `git show <sha024>^:docs/specs/024-refresh-rate-limit-wait/plan.md`
     ```
-  - In `docs/specs/024-refresh-rate-limit-wait/verification.md` line 3, replace `[plan.md](plan.md)` with ``plan (retired in `<sha024>`)``, leaving the rest of the line as it is.
+  - In `docs/specs/024-refresh-rate-limit-wait/verification.md` line 3, replace `[plan.md](plan.md)` with the text below, leaving the rest of the line as it is:
+
+    ```text
+    plan (retired in `<sha024>`; read it with `git show <sha024>^:docs/specs/024-refresh-rate-limit-wait/plan.md`)
+    ```
   - In `docs/specs/README.md`, set the Plan cell of 015 to the text below, and 024's likewise with its own sha and path:
 
     ```text
@@ -702,7 +712,7 @@ The issues are public: **the controller asks the maintainer for the go-ahead bef
 
 ## Phase 8: Integration verification
 
-**Implements:** All FRs | **Satisfies:** All ACs; AC-4.5's firing record; NFR Reliability
+**Implements:** All FRs | **Satisfies:** All ACs (AC-4.5 withdrawn); NFR Reliability
 **Files:** `docs/architecture/catalog-operations.md` (Distillation log PR link only), `verification.md`
 
 Run by the controller, not a subagent.
@@ -712,8 +722,7 @@ Run by the controller, not a subagent.
 - [ ] Links: for every file added or changed (`git diff --name-only <base>`), check each relative link resolves to a file at the head; record the list (NFR Reliability).
 - [ ] Application untouched: `git diff --stat <base> -- app lib config bin db spec script` prints nothing.
 - [ ] Run `bin/ci` once (the controller only); record its last lines.
-- [ ] Walk every AC of spec 027 (AC-1.1 to AC-6.2) and record, per AC, the phase that met it and the evidence line in this file.
-- [ ] Hook record (AC-4.5): at the end of this session, after `session-wrap` runs, record whether the hook offered `distill-feature`, and under which trigger name. If no offer appeared, record that and open an issue (with the maintainer's go-ahead) noting the hook reads `.tool_input.skill_name`, so the step is run by name until it's fixed (spec Error Scenarios).
+- [ ] Walk every AC of spec 027 (AC-1.1 to AC-6.2; AC-4.5 is withdrawn, record it as such) and record, per AC, the phase that met it and the evidence line in this file.
 - [ ] Commit: `docs(027): record integration verification`.
 
 ---
@@ -723,7 +732,7 @@ Run by the controller, not a subagent.
 1. Open `docs/architecture/catalog-operations.md`: it reads as the current rules of the refresh, the art build, rate limits and the admin pages, each statement with a source.
 2. Open CLAUDE.md: the "Admin catalog and jobs" bullet is one short pointer; `wc -w CLAUDE.md` is at most 1,682.
 3. Open `docs/specs/README.md`: every folder has a row; 015 and 024 read Frozen with a retirement pointer; `git show <sha015>^:docs/specs/015-admin-catalog-and-jobs/plan.md | head -5` prints the old plan's title.
-4. Run `session-wrap`, then confirm the `distill-feature` offer appears (or is recorded as missing, Phase 8).
+4. Read `.claude/CLAUDE.md`'s "At session end" line: it names `session-wrap`, then `distill-feature`.
 5. Invoke `distill-feature` on a branch with no spec: it says "nothing to do" in one line.
 
 ## Spec coverage
@@ -735,15 +744,16 @@ Run by the controller, not a subagent.
 | FR-3 | 4, 6 |
 | FR-4 | 3 |
 | FR-5 | 1 (README, rule) |
-| FR-6 | 1 (rule, steering, memory), 5 (skill, rows) |
+| FR-6 | 1 (rule, steering, memory), 5 (skill, session-end line) |
 | FR-7 | 3 |
 | FR-8 | 1 (git convention), 7 (ADR index) |
 | FR-9 | 7 |
 | AC-1.1–AC-1.7 | 2 |
 | AC-2.1–AC-2.3 | 3 |
 | AC-3.1–AC-3.6 | 4 (3.6 also 6, which keeps 027's row unchanged) |
-| AC-4.1–AC-4.3, AC-4.6 | 1 |
-| AC-4.4, AC-4.5 | 5, 8 |
+| AC-4.1–AC-4.3, AC-4.6, AC-4.8 | 1 |
+| AC-4.4, AC-4.7 | 5 |
+| AC-4.5 | withdrawn (ruling P1) |
 | AC-5.1 | 1 |
 | AC-5.2–AC-5.4 | 6 |
 | AC-6.1, AC-6.2 | 7 |
