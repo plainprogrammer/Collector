@@ -3,7 +3,7 @@
 **Spec:** docs/specs/026-typed-entry/spec.md (1.2.0, approved 2026-10-15)
 **Decisions:** none new; builds on ADRs 0017 (tenancy), 0018 (catalog core), 0019 (lots), 0020 (export format). No ADR 0022 is needed: the list follows the scanner sitting's pattern (spec 009) and nothing here is a new architectural choice.
 **Created:** 2026-10-15
-**Status:** Draft (revised from the plan review)
+**Status:** Approved by the maintainer (2026-10-15)
 
 ## Global Constraints
 
