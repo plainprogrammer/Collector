@@ -54,39 +54,39 @@ Request examples are in `spec/requests/number_entries_spec.rb`, model examples i
 | AC-1.6 | `spec/models/number_entry/set_choice_spec.rb:71` |
 | AC-1.7 | `spec/requests/number_entries_spec.rb:69` |
 | AC-1.8 | `spec/requests/number_entries_spec.rb:76`; `spec/models/number_entry/set_choice_spec.rb:30` |
-| AC-1.9 | `spec/requests/number_entries_spec.rb:95` |
-| AC-1.10 | `spec/requests/number_entries_spec.rb:356`, `:361` (`:public_catalog`) |
-| AC-1.11 | `spec/requests/number_entries_spec.rb:89`; `spec/models/number_entry/set_choice_spec.rb:80` |
-| AC-2.1 | `spec/requests/number_entries_spec.rb:117`; `spec/models/number_entry_spec.rb:13` |
-| AC-2.2 | `spec/requests/number_entries_spec.rb:117`; `spec/system/number_entry_spec.rb:32` (number focused after each add) |
-| AC-2.3 | `spec/requests/number_entries_spec.rb:127`; `spec/system/number_entry_spec.rb:32` (47, Tab, 4, Enter) |
-| AC-2.4 | `spec/requests/number_entries_spec.rb:133`; `spec/system/number_entry_spec.rb:32` (Tab, Tab, `f`, Enter on the select; Foil kept) |
-| AC-2.5 | `spec/requests/number_entries_spec.rb:141` |
-| AC-2.6 | `spec/requests/number_entries_spec.rb:148`; `spec/models/number_entry/line_form_spec.rb:24` |
-| AC-2.7 | `spec/requests/number_entries_spec.rb:148`; `spec/models/number_entry/line_form_spec.rb:32` |
+| AC-1.9 | `spec/requests/number_entries_spec.rb:103` |
+| AC-1.10 | `spec/requests/number_entries_spec.rb:373`, `:378` (`:public_catalog`) |
+| AC-1.11 | `spec/requests/number_entries_spec.rb:89` (a language the set lacks), `:95` (a linked set whose entries are all retired); `spec/models/number_entry/set_choice_spec.rb:54`, `:80` |
+| AC-2.1 | `spec/requests/number_entries_spec.rb:125`; `spec/models/number_entry_spec.rb:13` |
+| AC-2.2 | `spec/requests/number_entries_spec.rb:125`; `spec/system/number_entry_spec.rb:32` (number focused after each add) |
+| AC-2.3 | `spec/requests/number_entries_spec.rb:135`; `spec/system/number_entry_spec.rb:32` (47, Tab, 4, Enter) |
+| AC-2.4 | `spec/requests/number_entries_spec.rb:141`; `spec/system/number_entry_spec.rb:32` (Tab, Tab, `f`, Enter on the select; Foil kept) |
+| AC-2.5 | `spec/requests/number_entries_spec.rb:149` |
+| AC-2.6 | `spec/requests/number_entries_spec.rb:156`; `spec/models/number_entry/line_form_spec.rb:24` |
+| AC-2.7 | `spec/requests/number_entries_spec.rb:156`; `spec/models/number_entry/line_form_spec.rb:32` |
 | AC-2.8 | `spec/models/number_entry/line_form_spec.rb:38` |
-| AC-2.9 | `spec/requests/number_entries_spec.rb:156`; `spec/models/number_entry/line_form_spec.rb:44`, `:53`; the first choice focused in `choice-*.png` |
-| AC-2.10 | `spec/requests/number_entries_spec.rb:167`; `spec/models/number_entry/line_form_spec.rb:53` |
-| AC-2.11 | `spec/requests/number_entries_spec.rb:177`; `spec/models/number_entry_spec.rb:20` |
-| AC-2.12 | `spec/requests/number_entries_spec.rb:177`; `spec/models/number_entry_spec.rb:28` |
+| AC-2.9 | `spec/requests/number_entries_spec.rb:164`; `spec/models/number_entry/line_form_spec.rb:44`, `:53`; the first choice focused in `choice-*.png` |
+| AC-2.10 | `spec/requests/number_entries_spec.rb:175`; `spec/models/number_entry/line_form_spec.rb:53` |
+| AC-2.11 | `spec/requests/number_entries_spec.rb:185`; `spec/models/number_entry_spec.rb:20` |
+| AC-2.12 | `spec/requests/number_entries_spec.rb:185`; `spec/models/number_entry_spec.rb:28` |
 | AC-2.13 | `spec/system/number_entry_spec.rb:32` (three lines from the keyboard alone); the focus ring on each field and button by `focus-number-1280-light.png`, `focus-quantity-1280-light.png`, `focus-finish-1280-light.png`, `focus-add-1280-light.png` |
-| AC-2.14 | `spec/requests/number_entries_spec.rb:187` |
-| AC-2.15 | `spec/requests/number_entries_spec.rb:194`; `spec/models/number_entry/line_form_spec.rb:120` |
-| AC-3.1 | `spec/requests/number_entries_spec.rb:255` |
-| AC-3.2 | `spec/requests/number_entries_spec.rb:265`; `spec/models/number_entry/line_spec.rb:10` |
-| AC-3.3 | `spec/requests/number_entries_spec.rb:276`; `spec/models/number_entry/line_spec.rb:17` |
-| AC-3.4 | `spec/requests/number_entries_spec.rb:282`; `spec/models/number_entry/line_spec.rb:28`, `:35`, `:42`; the "Changed in your collection" tag in `rejected-*.png` |
+| AC-2.14 | `spec/requests/number_entries_spec.rb:195` |
+| AC-2.15 | `spec/requests/number_entries_spec.rb:202`; `spec/models/number_entry/line_form_spec.rb:120` |
+| AC-3.1 | `spec/requests/number_entries_spec.rb:263` |
+| AC-3.2 | `spec/requests/number_entries_spec.rb:273`; `spec/models/number_entry/line_spec.rb:10` |
+| AC-3.3 | `spec/requests/number_entries_spec.rb:284`; `spec/models/number_entry/line_spec.rb:17` |
+| AC-3.4 | `spec/requests/number_entries_spec.rb:290`; `spec/models/number_entry/line_spec.rb:28`, `:35`, `:42`; the "Changed in your collection" tag in `rejected-*.png` |
 | AC-3.5 | `spec/models/number_entry/line_spec.rb:22` |
-| AC-3.6 | `spec/requests/number_entries_spec.rb:294` |
-| AC-3.7 | `spec/requests/number_entries_spec.rb:301`; `spec/models/number_entry_spec.rb:64` |
-| AC-3.8 | `spec/requests/number_entries_spec.rb:309` |
+| AC-3.6 | `spec/requests/number_entries_spec.rb:302` |
+| AC-3.7 | `spec/requests/number_entries_spec.rb:309`; `spec/models/number_entry_spec.rb:64` |
+| AC-3.8 | `spec/requests/number_entries_spec.rb:317` |
 | AC-3.9 | `spec/models/number_entry_spec.rb:57` |
-| AC-4.1 | `spec/requests/number_entries_spec.rb:202`; `spec/models/number_entry/line_form_spec.rb:74`; `spec/system/number_entry_spec.rb:46` (focused, text selected `[0, 3]`, typing replaces it) |
-| AC-4.2 | `spec/requests/number_entries_spec.rb:213`; `spec/models/number_entry/line_form_spec.rb:80` |
-| AC-4.3 | `spec/requests/number_entries_spec.rb:223`; `spec/models/number_entry/line_form_spec.rb:89` |
-| AC-4.4 | `spec/requests/number_entries_spec.rb:230`; `spec/models/number_entry_spec.rb:35` |
-| AC-4.5 | `spec/requests/number_entries_spec.rb:240`; `spec/models/number_entry/line_form_spec.rb:101` |
-| AC-5.1 | `spec/requests/number_entries_spec.rb:327` (full page loads, no scripting) |
+| AC-4.1 | `spec/requests/number_entries_spec.rb:210`; `spec/models/number_entry/line_form_spec.rb:74`; `spec/system/number_entry_spec.rb:46` (focused, text selected `[0, 3]`, typing replaces it) |
+| AC-4.2 | `spec/requests/number_entries_spec.rb:221`; `spec/models/number_entry/line_form_spec.rb:80` |
+| AC-4.3 | `spec/requests/number_entries_spec.rb:231`; `spec/models/number_entry/line_form_spec.rb:89` |
+| AC-4.4 | `spec/requests/number_entries_spec.rb:238`; `spec/models/number_entry_spec.rb:35` |
+| AC-4.5 | `spec/requests/number_entries_spec.rb:248`; `spec/models/number_entry/line_form_spec.rb:101` |
+| AC-5.1 | `spec/requests/number_entries_spec.rb:335` (full page loads, no scripting) |
 
 ## Requirements
 
@@ -94,7 +94,7 @@ Request examples are in `spec/requests/number_entries_spec.rb`, model examples i
 |---|---|
 | FR-1 (core code) | `spec/number_entry_core_spec.rb:12` (the 18 files: 4 models, 4 controllers, the concern, the helper, 7 views and the Stimulus controller) and `:16` (none names `mtg`, `scryfall`, `magic`, `foil`, `nonfoil` or `etched`) |
 | FR-5 | `docs/export-format/README.md` Coverage: `number_entries` and `number_entry_lines` "Left out"; `spec/export_format_document_spec.rb:62`, `:72`; AC-3.9's example. The format, schema, examples and version are unchanged |
-| NFR Performance | `spec/requests/number_entries_spec.rb:343` (the same query count for a set of 1 entry and of 41); the measurement below |
+| NFR Performance | `spec/requests/number_entries_spec.rb:351` (the same query count for a set of 1 entry and of 41), `:360` (the same for a number matched only without its leading zeros); the measurement below |
 | NFR Security | AC-3.8's example (another account's line answers 404); the line form carries no `account_id` or lot id, only the entry's external key on a choice, checked by AC-2.10's examples |
 | NFR Accessibility (360px) | `spec/system/number_entry_spec.rb:56`: the page with 12 lines fits a 360px frame without sideways scrolling |
 

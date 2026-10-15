@@ -92,6 +92,14 @@ RSpec.describe "Number entry", type: :request do
         expect(response.body).to include("No set matches “mh3”. Type a set code or choose a set from the list.")
       end
 
+      it "says no set matches for a linked set whose entries are all retired (AC-1.11)", :aggregate_failures do
+        printing("1")
+        printing("1", set: create(:catalog_set, code: "old"), retired_at: 1.day.ago)
+        get collection_number_entry_path(type: "mtg", set: "old")
+        expect(response.body).to include("No set matches “old”. Type a set code or choose a set from the list.")
+        expect(response.body).not_to include('id="line_number"')
+      end
+
       it "shows the list under the set field after Change set (AC-1.9)", :aggregate_failures do
         NumberEntry.add!(account: user.account, entry: printing("1", "Flare"), quantity: 1, finish: "nonfoil", line_key: "a" * 32)
         get collection_number_entry_path
@@ -346,6 +354,15 @@ RSpec.describe "Number entry", type: :request do
       small = count_queries { add("1") }
       40.times { printing((it + 2).to_s) }
       large = count_queries { add("1") }
+      expect(large).to eq(small)
+    end
+
+    it "adds a number matched only without its leading zeros with the same number of queries in a small set and a large one (NFR Performance)" do
+      printing("7")
+      add("007") # opens the list and the lot, so both measured adds merge
+      small = count_queries { add("007") }
+      40.times { printing((it + 10).to_s) }
+      large = count_queries { add("007") }
       expect(large).to eq(small)
     end
   end
