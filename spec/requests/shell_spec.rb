@@ -42,4 +42,20 @@ RSpec.describe "App shell", type: :request do
     get more_path
     expect(response.body).to include('<div class="c-pagehead">')
   end
+
+  it "links the account menu and More to the export, outside Turbo and never prefetched", :aggregate_failures do
+    [ collection_path, more_path ].each do |path|
+      get path
+      link = Nokogiri::HTML5(response.body).css("a[href='#{collection_export_path}']")
+      expect(link.map(&:text)).to include("Export collection")
+      expect(link.map { |a| [ a["data-turbo"], a["data-turbo-prefetch"], a["download"] ] }.uniq).to eq([ [ "false", "false", nil ] ])
+    end
+    expect(Nokogiri::HTML5(response.body).at_css(".c-more li:nth-child(2) a")&.text).to eq("Export collection")
+  end
+
+  it "puts the export in the account menu for a collector who isn't an admin" do
+    get collection_path
+
+    expect(Nokogiri::HTML5(response.body).at_css(".c-appbar .c-menu__list a.c-menu__item[href='#{collection_export_path}']")&.text).to eq("Export collection")
+  end
 end
