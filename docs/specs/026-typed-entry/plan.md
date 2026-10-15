@@ -13,6 +13,7 @@
 - The list's tables are "Left out" of the export; the format, schema, examples and version don't change.
 - No JavaScript is needed for any step; one small Stimulus controller enhances focus and Enter on the finish select.
 - Copy: sentence case, "you", no "we", no exclamation marks; quantities as `×4`, set and number as `MH3 · 47`, languages as their codes in capitals.
+- The add's status message, "Added N × <name> (<SET · number>, <finish>) to your collection.", isn't in the spec's copy; it is there for parity with the scanner's add message (spec 009 AC-1.3), and the spec's ACs don't forbid it.
 - Exact copy (from the spec): "Add by number"; "No set matches “<text>”. Type a set code or choose a set from the list."; "No card numbered <number> in <set name> (<LANGUAGE>)."; "must be a whole number from 1 to 9,999"; "isn't available for this printing"; "One lot can hold at most 9,999 copies."; "This list: N lines, M cards"; "Show all N"; "Changed in your collection"; "Undid N × <name>."; "Those copies have changed in your collection, so they can't be undone here."; "That line is no longer in your list."; the empty collection's "No cards in your collection yet. Search for a card or add cards by number to start adding."
 - Small commits: one Conventional Commit per step that changes files. Stage with `git add <paths>` in its own command, then commit (pre-commit hook reads the command text).
 - After `bin/rails db:migrate`, restore the cable, cache and queue schema files if the migration rewrote them (`git checkout -- db/cable_schema.rb db/cache_schema.rb db/queue_schema.rb`), keeping only `db/schema.rb`'s change.
@@ -262,9 +263,10 @@ The data a list needs, modelled on the scanner's sitting (spec 009): one list pe
     scope :kept, -> { where(undone_at: nil) }
     scope :newest_first, -> { order(created_at: :desc, id: :desc) }
 
-    # Its copies can come back out while it isn't undone and its lot exists and holds at least as many (decision 5,
-    # AC-3.4). A lot edited without a merge still counts: the copies come out of it as it now is (AC-3.5).
-    def undoable? = undone_at.nil? && lot.present? && lot.quantity >= quantity
+    # Its copies can come back out while it isn't undone and its lot exists, is the account's, and holds at least as
+    # many (decision 5, AC-3.4). A lot edited without a merge still counts: the copies come out of it as it now is
+    # (AC-3.5). The list preloads the lots, so showing it asks this per line without a query.
+    def undoable? = undone_at.nil? && lot.present? && lot.account_id == account_id && lot.quantity >= quantity
 
     # Takes the line's copies out of its lot, removing the lot when none are left (AC-3.2, AC-3.3), and returns whether
     # the lot went. Raises NotUndoable when it was undone already or its copies changed (AC-3.4).
@@ -273,12 +275,14 @@ The data a list needs, modelled on the scanner's sitting (spec 009): one list pe
         reload
         raise NotUndoable unless undoable?
 
+        lot = account.lots.find(lot_id) # the write goes through the account (multi-tenancy rule)
         removed = lot.quantity == quantity
         removed ? lot.destroy! : lot.update!(quantity: lot.quantity - quantity)
         update!(undone_at: Time.current)
         removed
       end
     end
+
   end
   ```
 
@@ -347,6 +351,10 @@ The data a list needs, modelled on the scanner's sitting (spec 009): one list pe
 
       it "asks nothing for empty text" do
         expect(described_class.new(text: "")).to have_attributes(set: nil, asked?: false, chosen?: false)
+      end
+
+      it "ignores a type or text that isn't a string (a forged parameter)" do
+        expect(described_class.new(text: "mh3", type: { "a" => "b" }).set).to eq(mh3)
       end
 
       it "narrows to the type when one is given" do
@@ -429,7 +437,7 @@ The data a list needs, modelled on the scanner's sitting (spec 009): one list pe
 
     def initialize(text:, type: nil, language: nil)
       @text = text.to_s.strip
-      @set = find_set(type.presence)
+      @set = find_set(type.to_s.presence)
       @language = pick_language(language.to_s) if @set
     end
 
@@ -653,18 +661,7 @@ The data a list needs, modelled on the scanner's sitting (spec 009): one list pe
 
     # The active entries of the set and language this number matches: those equal to the trimmed text, or only if there
     # are none, those equal to it ignoring case and leading zeros (decision 8).
-    def matches
-      @matches ||= begin
-        candidates = Catalog::Entry.active.where(catalog_set_id: set.id, language:)
-        typed = number.to_s.strip
-        exact = candidates.where(number: typed).includes(:set).to_a
-        next exact if exact.any?
-
-        wanted = self.class.normalize(typed)
-        ids = candidates.pluck(:id, :number).filter_map { |id, printed| id if self.class.normalize(printed) == wanted }
-        ids.empty? ? [] : candidates.where(id: ids).includes(:set).order(:number).to_a
-      end
-    end
+    def matches = @matches ||= find_matches
 
     # The one entry the line adds: the only match, or the picked one among the matches (AC-2.10).
     def entry
@@ -676,6 +673,17 @@ The data a list needs, modelled on the scanner's sitting (spec 009): one list pe
     def add_attributes = { entry:, quantity: parsed_quantity, finish: (finish if entry_finishes.any?), line_key: }
 
     private
+      def find_matches
+        candidates = Catalog::Entry.active.where(catalog_set_id: set.id, language:)
+        typed = number.to_s.strip
+        exact = candidates.where(number: typed).includes(:set).to_a
+        return exact if exact.any?
+
+        wanted = self.class.normalize(typed)
+        ids = candidates.pluck(:id, :number).filter_map { |id, printed| id if self.class.normalize(printed) == wanted }
+        ids.empty? ? [] : candidates.where(id: ids).includes(:set).order(:number).to_a
+      end
+
       def parsed_quantity = Integer(quantity.to_s.strip, 10, exception: false)
 
       def entry_finishes = @entry_finishes ||= vocabulary.finishes_for(entry)
@@ -792,6 +800,12 @@ The layout turns morph refreshes on for every page (`turbo_refreshes_with method
           get collection_number_entry_path(set: "zzz")
           expect(response.body).to include("No set matches “zzz”. Type a set code or choose a set from the list.", 'value="zzz"')
           expect(response.body).not_to include('id="line_number"')
+        end
+
+        it "answers a forged type parameter without an error" do
+          printing("1")
+          get collection_number_entry_path(set: "mh3", type: { a: "b" })
+          expect(response).to redirect_to(collection_number_entry_path(**page_params))
         end
 
         it "says so for a language the set lacks (AC-1.11)" do
@@ -1010,14 +1024,14 @@ The layout turns morph refreshes on for every page (`turbo_refreshes_with method
     <% line.errors[:base].each do |message| %><p class="c-field__error"><%= message %></p><% end %>
     <div class="c-field<%= " c-field--invalid" if line.errors[:number].any? %>">
       <label class="c-field__label" for="line_number">Number</label>
-      <label class="c-input"><%= text_field_tag "line[number]", line.number, id: "line_number", autocomplete: "off", spellcheck: false,
+      <label class="c-input"><%= text_field_tag "line[number]", line.number, id: "line_number", class: "c-numentry__data-input", autocomplete: "off", spellcheck: false,
             autofocus: (focus == :number && !line.choice?), "aria-describedby": ("line_number_error" if line.errors[:number].any?),
             data: { number_entry_target: "number", select: line.errors[:number].any? } %></label>
       <% line.errors[:number].each do |message| %><p class="c-field__error" id="line_number_error"><%= message %></p><% end %>
     </div>
     <div class="c-field<%= " c-field--invalid" if line.errors[:quantity].any? %>">
       <label class="c-field__label" for="line_quantity">Quantity</label>
-      <label class="c-input"><%= number_field_tag "line[quantity]", line.quantity, id: "line_quantity", min: 1, max: Lot::MAX_QUANTITY, step: 1,
+      <label class="c-input"><%= number_field_tag "line[quantity]", line.quantity, id: "line_quantity", class: "c-numentry__data-input", min: 1, max: Lot::MAX_QUANTITY, step: 1,
             inputmode: "numeric", required: true, autofocus: focus == :quantity,
             "aria-describedby": ("line_quantity_error" if line.errors[:quantity].any?) %></label>
       <% lot_error_messages(line, :quantity).each do |message| %><p class="c-field__error" id="line_quantity_error"><%= message %></p><% end %>
@@ -1549,7 +1563,7 @@ The layout turns morph refreshes on for every page (`turbo_refreshes_with method
   .c-numentry__language { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-2); }
   .c-numentry__line { display:grid; grid-template-columns:minmax(0, 10rem) minmax(0, 7rem) minmax(0, 12rem) auto; align-items:start; gap:var(--space-3); }
   .c-numentry__line > .c-field__error { grid-column:1 / -1; margin:0; }
-  .c-numentry__line #line_number, .c-numentry__line #line_quantity { font-family:var(--font-mono); }
+  .c-numentry__data-input { font-family:var(--font-mono); }
   .c-numentry__add { padding-top:var(--space-6); }
   .c-numentry__prompt { margin:0 0 var(--space-2); }
   .c-numentry__choice .c-list li { border:0; padding:var(--space-1) 0; }
@@ -1597,6 +1611,8 @@ The layout turns morph refreshes on for every page (`turbo_refreshes_with method
   - When a number matches more than one printing, `c-numentry__choice` lists one secondary button per match above the line form, the first focused.
   - A line whose copies changed in the collection shows a `c-tag` ("Changed in your collection") in place of Undo.
   - The list shows the 10 newest lines; the rest are behind "Show all N" in a `<details>` (`c-numentry__more`).
+  - The page uses `.c-main.c-page`, the detail-page container (`c-page`, from `ItemPage`), so its parts respond to the page's width below 640px.
+  - The number and quantity inputs take the `data` face through `c-numentry__data-input`.
   - Everything works without scripting. The `number-entry` Stimulus controller selects a rejected number and lets Enter on the finish select add the line.
   ```
 - [ ] In `docs/design-system/components/EmptyState.md`, update the quoted empty-collection sentence to the new one ("No cards in your collection yet. Search for a card or add cards by number to start adding.").
@@ -1657,7 +1673,7 @@ The layout turns morph refreshes on for every page (`turbo_refreshes_with method
   end'
   ```
   (This times what an add's request does with the database: the set lookup, the match, the add. If the development catalog isn't loaded, say so in `verification.md` and record the query-count spec's result instead.)
-- [ ] Write `docs/specs/026-typed-entry/verification.md`: each AC with the spec example or screenshot that proves it (AC-2.13's focus ring by the Phase 7 screenshots of each focused field), the `bin/ci` result, the measurement, and the hosted-door check (rule 2: no admin page shows lines; rule 3: no instance setting added; rule 4: one ~100-byte row per added line until Done, no background work).
+- [ ] Write `docs/specs/026-typed-entry/verification.md`: note that decision 2's catalog-title label on the suggestions has no test while only one type is registered; then each AC with the spec example or screenshot that proves it (AC-2.13's focus ring by the Phase 7 screenshots of each focused field), the `bin/ci` result, the measurement, and the hosted-door check (rule 2: no admin page shows lines; rule 3: no instance setting added; rule 4: one ~100-byte row per added line until Done, no background work).
 - [ ] Commit: `docs(number-entry): verification, CLAUDE.md and the core boundary spec`, then push and open the PR (draft), closing #43; fill the roadmap line's PR number in a following commit.
 
 ---

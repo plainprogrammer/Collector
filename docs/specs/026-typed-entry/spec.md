@@ -1,7 +1,7 @@
 # Feature 026: Add Cards from a Set by Collector Number
 
 **Status:** Approved by the maintainer (2026-10-15), with rulings on decisions 3, 4 and 7
-**Version:** 1.2.0
+**Version:** 1.2.1
 **Created:** 2026-10-15
 **Last Updated:** 2026-10-15
 **Branch:** `026-typed-entry`
@@ -14,6 +14,7 @@
 | Version | Date | Change |
 |---------|------|--------|
 | 1.0.0 | 2026-10-15 | Written from issue #43 (roadmap theme B, item 8) |
+| 1.2.1 | 2026-10-15 | Records what this spec supersedes in earlier specs and ADRs (frozen-specs ruling of 2026-10-15); no behaviour changes |
 | 1.2.0 | 2026-10-15 | Approved by the maintainer. Decisions 3, 4 and 7 ruled as recommended |
 | 1.1.0 | 2026-10-15 | From the spec review (Opus). Reached from More on a phone, and from the empty collection; the finish defaults to the type's first finish, as the scanner's adds do, so the two paths fill the same lots (decision 3, open); an exact number match comes first and only a tie asks the collector, by the entry's external key, checked on the server; languages show as their codes, as everywhere else in the app; the line key is defined; undone lines leave the list; "Changed" is worked out when the page is shown; the list goes with the account; sets of every kind are offered (decision 9); the cross-type code collision is dropped (the type is in the URL); performance stated as queries, measured in `verification.md`; the cost isn't called bounded |
 
@@ -130,6 +131,17 @@ The offered sets are those with any active entry, and a number matches entries o
 ### 10. The line key
 
 The line form carries a line key: a random token the server puts in the form and renews after every add. Adding is idempotent per key within the list: a second request with a key already in the list adds nothing and answers as the first did. Two lines typed one after another carry different keys and both add, even when they are the same number.
+
+## Supersedes
+
+Earlier specs are frozen (maintainer ruling, 2026-10-15). What this spec changes in them is recorded here, not there.
+
+| Earlier document | Item | What changes |
+|---|---|---|
+| [Spec 004](../004-design-system-collection/spec.md) | AC-11.6 | The empty collection's sentence becomes "No cards in your collection yet. Search for a card or add cards by number to start adding.", with "add cards by number" linking to number entry (decision 1). Its link to search stays. |
+| [Spec 004](../004-design-system-collection/spec.md), [spec 009](../009-card-scanner-confirm-flow/spec.md) | Spec 004's collection page head; spec 009 AC-8.2 | The collection page's head gains a secondary "Add by number" action before "Scan cards" and "Add items" (decision 1). "Scan cards" stays as AC-8.2 says. |
+| [Spec 022](../022-export-collection/spec.md) | Decision 6 (More's rows, in order) | More gains an "Add by number" row (decision 1). Its place in More's order, and whether the account menu gains it too, await the maintainer's ruling. |
+| [ADR 0015](../../adr/0015-admin-progress-by-polling.md) | "Turbo morphing is on app-wide" | Morph stays every page's refresh method, except that a page may ask for another one; number entry asks for `replace`, so the focus moves after each add (plan, Phase 4). |
 
 ## User Stories
 
