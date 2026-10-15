@@ -6,6 +6,7 @@
 **Last Updated:** 2026-10-14
 **Branch:** `015-admin-catalog-and-jobs`
 **Issue:** [#29](https://github.com/plainprogrammer/Collector/issues/29)
+**Frozen:** the current rules are in [`catalog-operations.md`](../../architecture/catalog-operations.md) (whole spec); see the [specs index](../README.md)
 
 ---
 
