@@ -39,12 +39,13 @@ RSpec/Output:
 # checks repository files, not a class. The hook spec exercises a git hook
 # script, and the collector rake spec a rake task, not a class. The image
 # publishing spec checks the publishing files, and the admin catalog core and
-# footer core specs the files of a page. The export format specs check the
-# format's document, schema and example files.
+# footer core specs and the import preview's core spec the files of a page. The
+# export format specs check the format's document, schema and example files.
 RSpec/DescribeClass:
   Exclude:
     - "spec/admin_catalog_core_spec.rb"
     - "spec/collection_export_core_spec.rb"
+    - "spec/collection_import_core_spec.rb"
     - "spec/design_system_files_spec.rb"
     - "spec/export_format_document_spec.rb"
     - "spec/export_format_examples_spec.rb"
