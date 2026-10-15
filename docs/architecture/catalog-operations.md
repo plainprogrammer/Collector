@@ -139,7 +139,7 @@ Filter chips Failed (the default), Running, Queued and Scheduled, each with its 
 
 ### Polling
 
-`/admin/catalog` polls while any operation of any type is in flight; `/admin/jobs` and job pages poll while any job is running or queued, not for jobs that are only scheduled (spec 015 AC-2.10–AC-2.12, AC-6.10). The `poll` controller is rendered only then, and asks Turbo to refresh the page every `interval`; the layout's morph refresh keeps the scroll position, and the page's next render without the controller stops it (spec 015 FR-4; ADR 0015). It skips a tick while the tab is hidden, Turbo is busy or a menu is open (no spec source; see `verification.md`).
+`/admin/catalog` polls while any operation of any type is in flight; `/admin/jobs` and job pages poll while any job is running or queued, not for jobs that are only scheduled (spec 015 AC-2.10–AC-2.12, AC-6.10). The `poll` controller is rendered only then, and asks Turbo to refresh the page every `interval`; the layout's morph refresh keeps the scroll position, and the page's next render without the controller stops it (spec 015 FR-4; ADR 0015). It skips a tick while the tab is hidden, Turbo is busy or a menu is open (no spec source; open for a ruling in [#111](https://github.com/plainprogrammer/Collector/issues/111)).
 
 ## Named constants
 
@@ -190,6 +190,7 @@ Filter chips Failed (the default), Running, Queued and Scheduled, each with its 
 - A skipped manual refresh behind a scheduled job's retry may end as "already applied"; and if the waiting retry later fails for good, the skipped work waits for the next weekly refresh or an admin (spec 024 decision 1).
 - [#77](https://github.com/plainprogrammer/Collector/issues/77): an admin can't start a refresh or build, or cancel the wait, while a rate-limited job waits to retry.
 - [#86](https://github.com/plainprogrammer/Collector/issues/86): rate-limit retries count over a job's whole life (`MAX_RETRIES`), so a long build that is rate limited four times fails, though it did work between them.
+- [#111](https://github.com/plainprogrammer/Collector/issues/111): the `poll` controller's pauses (hidden tab, busy Turbo, open menu) have no spec source; whether they are a rule waits for the maintainer's ruling.
 - [#41](https://github.com/plainprogrammer/Collector/issues/41): backup and restore of an instance isn't built; whether a backup holds the catalog downloads and the art index under `storage/catalog/`, which can be rebuilt, is left to its ADR.
 
 ## Sources
@@ -200,7 +201,7 @@ Filter chips Failed (the default), Running, Queued and Scheduled, each with its 
 - [Spec 024](../specs/024-refresh-rate-limit-wait/spec.md): all.
 - [Spec 023](../specs/023-signed-out-catalog-browsing/spec.md) decision 7, for the visitor's not-loaded notice only.
 - ADRs [0014](../adr/0014-hand-built-admin-jobs-console.md), [0015](../adr/0015-admin-progress-by-polling.md), [0018](../adr/0018-collectible-agnostic-catalog-core.md).
-- Issues [#60](https://github.com/plainprogrammer/Collector/issues/60), [#61](https://github.com/plainprogrammer/Collector/issues/61), [#73](https://github.com/plainprogrammer/Collector/issues/73), [#74](https://github.com/plainprogrammer/Collector/issues/74), [#78](https://github.com/plainprogrammer/Collector/issues/78), [#79](https://github.com/plainprogrammer/Collector/issues/79), [#80](https://github.com/plainprogrammer/Collector/issues/80), [#81](https://github.com/plainprogrammer/Collector/issues/81), [#84](https://github.com/plainprogrammer/Collector/issues/84); open: [#41](https://github.com/plainprogrammer/Collector/issues/41), [#77](https://github.com/plainprogrammer/Collector/issues/77), [#86](https://github.com/plainprogrammer/Collector/issues/86).
+- Issues [#60](https://github.com/plainprogrammer/Collector/issues/60), [#61](https://github.com/plainprogrammer/Collector/issues/61), [#73](https://github.com/plainprogrammer/Collector/issues/73), [#74](https://github.com/plainprogrammer/Collector/issues/74), [#78](https://github.com/plainprogrammer/Collector/issues/78), [#79](https://github.com/plainprogrammer/Collector/issues/79), [#80](https://github.com/plainprogrammer/Collector/issues/80), [#81](https://github.com/plainprogrammer/Collector/issues/81), [#84](https://github.com/plainprogrammer/Collector/issues/84); open: [#41](https://github.com/plainprogrammer/Collector/issues/41), [#77](https://github.com/plainprogrammer/Collector/issues/77), [#86](https://github.com/plainprogrammer/Collector/issues/86), [#111](https://github.com/plainprogrammer/Collector/issues/111).
 
 ## Distillation log
 
