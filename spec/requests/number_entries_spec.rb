@@ -11,6 +11,12 @@ RSpec.describe "Number entry", type: :request do
     entry
   end
 
+  # A request and the redirect after it: one full page load, as a browser without scripting makes it.
+  def loaded
+    yield
+    follow_redirect!
+  end
+
   def add(number, quantity: "1", finish: nil, line_key: SecureRandom.hex(16), pick: nil, **context)
     post collection_number_entry_lines_path,
       params: { **page_params, **context, line: { number:, quantity:, finish:, line_key:, pick: }.compact }
@@ -239,6 +245,108 @@ RSpec.describe "Number entry", type: :request do
         expect(response.body).to match(/<input[^>]*id="line_number"[^>]*autofocus/)
         expect(user.account.lots).to be_empty
       end
+    end
+
+    describe "the list" do
+      def list_line(entry, quantity: 1, key: SecureRandom.hex(16))
+        NumberEntry.add!(account: user.account, entry:, quantity:, finish: "nonfoil", line_key: key).line
+      end
+
+      it "counts lines and cards, shows the 10 newest first and the rest behind Show all (AC-3.1)", :aggregate_failures do
+        entries = Array.new(25) { printing((it + 1).to_s, "Card #{it + 1}") }
+        entries.each_with_index { |entry, index| travel_to(index.minutes.from_now) { list_line(entry, quantity: index < 6 ? 2 : 1) } }
+        get collection_number_entry_path(**page_params)
+        expect(response.body).to include("This list: 25 lines, 31 cards", "Show all 25")
+        shown = response.body[/<ul class="c-list">.*?<\/ul>/m]
+        expect(shown.scan(/<li>/).size).to eq(10)
+        expect(shown.index("Card 25")).to be < shown.index("Card 16")
+      end
+
+      it "undoes a line, leaving the rest of the lot (AC-3.2)", :aggregate_failures do
+        line = list_line(printing("47", "Psychic Frog"), quantity: 4)
+        line.lot.update!(quantity: 6)
+        post collection_number_entry_line_undo_path(line), params: page_params
+        expect(response).to redirect_to(collection_number_entry_path(**page_params))
+        expect(line.lot.reload.quantity).to eq(2)
+        follow_redirect!
+        expect(response.body).to include("Undid 4 × Psychic Frog.")
+        expect(response.body).not_to include("This list:")
+      end
+
+      it "removes the lot when the line held all its copies (AC-3.3)" do
+        line = list_line(printing("47"), quantity: 4)
+        post collection_number_entry_line_undo_path(line), params: page_params
+        expect(user.account.lots).to be_empty
+      end
+
+      it "marks a changed line and refuses its undo (AC-3.4)", :aggregate_failures do
+        line = list_line(printing("47"), quantity: 4)
+        line.lot.update!(quantity: 3)
+        get collection_number_entry_path(**page_params)
+        expect(response.body).to include("Changed in your collection")
+        expect(response.body).not_to include("Undo 4 ×")
+        post collection_number_entry_line_undo_path(line), params: page_params
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.body).to include("Those copies have changed in your collection, so they can&#39;t be undone here.")
+        expect(line.lot.reload.quantity).to eq(3)
+      end
+
+      it "keeps the list across visits (AC-3.6)" do
+        list_line(printing("47", "Psychic Frog"))
+        get collection_path
+        get collection_number_entry_path(**page_params)
+        expect(response.body).to include("This list: 1 line, 1 card", "Psychic Frog")
+      end
+
+      it "clears the list with Done, keeping the copies (AC-3.7)", :aggregate_failures do
+        list_line(printing("47"), quantity: 3)
+        post collection_number_entry_ending_path
+        expect(response).to redirect_to(collection_path)
+        expect(user.account.reload.number_entry).to be_nil
+        expect(user.account.lots.sole.quantity).to eq(3)
+      end
+
+      it "answers 404 for a cleared line, an undone one or another account's (AC-3.8)", :aggregate_failures do
+        list_line(printing("46"))
+        theirs = NumberEntry.add!(account: create(:user).account, entry: printing("47"), quantity: 1, finish: "nonfoil", line_key: "a" * 32).line
+        post collection_number_entry_line_undo_path(theirs), params: page_params
+        expect(response).to have_http_status(:not_found)
+        expect(response.body).to include("That line is no longer in your list.")
+        expect(theirs.lot.reload.quantity).to eq(1)
+        undone = list_line(printing("45"))
+        undone.undo!
+        post collection_number_entry_line_undo_path(undone), params: page_params
+        expect(response).to have_http_status(:not_found)
+        mine = list_line(printing("48"))
+        post collection_number_entry_ending_path
+        post collection_number_entry_line_undo_path(mine), params: page_params
+        expect(response).to have_http_status(:not_found)
+      end
+    end
+
+    it "works through full page loads with no scripting (AC-5.1)", :aggregate_failures do
+      printing("47", "Psychic Frog")
+      printing("12", "Flare")
+      loaded { get collection_number_entry_path(set: "MH3") }
+      loaded { add("47", finish: "foil") }
+      expect(response.body).to include('<option selected="selected" value="foil">Foil</option>')
+      expect(response.body).to match(/<input[^>]*id="line_number"[^>]*autofocus/)
+      loaded { add("12", finish: "foil") }
+      line = user.account.number_entry.lines.find_by!(entry: Catalog::Entry.find_by!(number: "12"))
+      loaded { post collection_number_entry_line_undo_path(line), params: { **page_params, finish: "foil" } }
+      expect(response.body).to include("This list: 1 line, 1 card", '<option selected="selected" value="foil">Foil</option>')
+      loaded { post collection_number_entry_ending_path }
+      expect(response.body).to include("My collection")
+      expect(user.account.lots.sole).to have_attributes(quantity: 1, finish: "foil")
+    end
+
+    it "adds with the same number of queries in a small set and a large one (NFR Performance)" do
+      printing("1")
+      add("1") # opens the list and the lot, so both measured adds merge
+      small = count_queries { add("1") }
+      40.times { printing((it + 2).to_s) }
+      large = count_queries { add("1") }
+      expect(large).to eq(small)
     end
   end
 
