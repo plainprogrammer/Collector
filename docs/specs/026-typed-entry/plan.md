@@ -754,6 +754,7 @@ The layout turns morph refreshes on for every page (`turbo_refreshes_with method
           expect(response.body).to include(%(<a class="c-btn c-btn--secondary" href="#{collection_number_entry_path}">Add by number</a>))
           expect(response.body).to include(%(No cards in your collection yet. Search for a card or <a href="#{collection_number_entry_path}">add cards by number</a> to start adding.))
           get more_path
+          expect(Nokogiri::HTML5(response.body).at_css(".c-more li:nth-child(3) a")&.text).to eq("Add by number")
           expect(response.body).to include(%(<a href="#{collection_number_entry_path}">Add by number</a>))
         end
       end
@@ -1113,7 +1114,7 @@ The layout turns morph refreshes on for every page (`turbo_refreshes_with method
     <p class="c-empty">No cards in your collection yet. Search for a card or <%= link_to "add cards by number", collection_number_entry_path %> to start adding. <%= link_to "Search cards", catalog_entries_path %></p>
   ```
 
-  `app/views/mores/show.html.erb`: before the "Export collection" item, add
+  `app/views/mores/show.html.erb`: right after the "Export collection" item (ruling, 2026-10-15), add
   ```erb
     <li><%= link_to "Add by number", collection_number_entry_path %></li>
   ```
@@ -1459,7 +1460,7 @@ The layout turns morph refreshes on for every page (`turbo_refreshes_with method
 ## Phase 7: Keyboard, look and phone width
 
 **Implements:** FR-1 (design system), decision 3 (Enter on the finish) | **Satisfies:** AC-1.1, AC-1.2 (phone), AC-1.4, AC-2.2, AC-2.4, AC-2.13, AC-4.1 (selection), NFR Accessibility (360px)
-**Files:** `app/javascript/controllers/number_entry_controller.js`, `app/assets/stylesheets/collector/additions.css`, `docs/design-system/components/NumberEntry.md`, `docs/design-system/components/EmptyState.md`, `docs/design-system/README.md`, `spec/system/number_entry_spec.rb`
+**Files:** `app/javascript/controllers/number_entry_controller.js`, `app/assets/stylesheets/collector/additions.css`, `docs/design-system/components/NumberEntry.md`, `docs/design-system/components/EmptyState.md`, `docs/design-system/components/MorePage.md`, `docs/design-system/README.md`, `spec/system/number_entry_spec.rb`
 **Interfaces:** Consumes: the page's markup (`data-controller="number-entry"`, `data-number-entry-target="number"`, `data-select`, `keydown.enter->number-entry#submit`; classes `c-numentry`, `c-numentry__set`, `c-numentry__setname`, `c-numentry__data`, `c-numentry__language`, `c-numentry__line`, `c-numentry__add`, `c-numentry__choice`, `c-numentry__prompt`, `c-numentry__list`, `c-numentry__more`). Produces: the Stimulus controller `number-entry` and the `NumberEntry` design-system pattern.
 
 - [ ] Write the failing system spec `spec/system/number_entry_spec.rb`:
@@ -1615,6 +1616,7 @@ The layout turns morph refreshes on for every page (`turbo_refreshes_with method
   - The number and quantity inputs take the `data` face through `c-numentry__data-input`.
   - Everything works without scripting. The `number-entry` Stimulus controller selects a rejected number and lets Enter on the finish select add the line.
   ```
+- [ ] In `docs/design-system/components/MorePage.md`, add the row to the markup after "Export collection" (`<li><a href="/collection/number_entry">Add by number</a></li>`), and change the first rule to: "It holds what the header's account menu holds on wide screens, so phones reach everything from the tab bar, plus "Add by number", which wide screens reach from the collection page's head (spec 026)."
 - [ ] In `docs/design-system/components/EmptyState.md`, update the quoted empty-collection sentence to the new one ("No cards in your collection yet. Search for a card or add cards by number to start adding.").
 - [ ] In `docs/design-system/README.md`, after the spec 023 app-additions paragraph, add:
   ```markdown
