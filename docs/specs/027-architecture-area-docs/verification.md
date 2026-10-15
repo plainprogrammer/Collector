@@ -362,6 +362,53 @@ Commits: `fc50021` (CLAUDE.md), `3a85ae4` (spec 002 frozen line), `cbb9c2e` (spe
   No version, changelog row or other text changed. The `../README.md` link resolves once Phase 4 adds the specs index.
 
 ## Phase 4: The specs index
+
+Commit: `3775b2d` (`docs/specs/README.md`, new).
+
+- **AC-3.1** `ls docs/specs` at the head, without `README.md` and `.gitkeep`: `001-rails-app-skeleton`, `002-scryfall-catalog-search`, `003-worktree-environment-setup`, `004-design-system-collection`, `005-card-scanner-phase-0`, `006-collection-list-view`, `007-card-scanner-live-capture`, `008-card-scanner-phase-2-spike`, `009-card-scanner-confirm-flow`, `010-card-scanner-art-spike`, `011-card-scanner-art-matching`, `012-ghcr-registry-publishing`, `013-ghcr-untagged-cleanup`, `014-active-storage-vips`, `015-admin-catalog-and-jobs`, `016-scryfall-hosting-terms`, `017-export-format`, `018-content-notice-footer`, `019-uncropped-card-images`, `020-readme-introduction`, `021-unowned-tile-marker`, `022-export-collection`, `023-signed-out-catalog-browsing`, `024-refresh-rate-limit-wait`, `027-architecture-area-docs` (25). The index's rows link the same 25 folders, one row each, in that order (25 rows, each with 6 columns). Specs 025 and 026 have not merged; `git ls-tree --name-only origin/main docs/specs/` lists 001–024 only, so 001–024 are Shipped (or frozen) and 027 is the only unmerged one.
+- **AC-3.2** Every row has number and linked title, status, areas, plan, supersedes, superseded by. Titles are each spec's own title line (`# Feature NNN: …`; 016's `# Research 016: …`). Plan: every folder but 016 holds `plan.md` ("present"); 016 holds only `research.md` ("none"); 027 "retirement owed". Areas follow D2 and the area table of `docs/architecture/README.md`; catalog operations is linked wherever named; the other areas have no doc yet and are unlinked; 001 (stack, CI, hooks), 003 and 014 read "CLAUDE.md (R5)". Statuses: 002 and 011 "Frozen in part" naming the frozen lines' parts, 015 and 024 "Frozen", matching the Phase 3 frozen lines; spikes 005, 008, 010 and research 016 are Shipped (findings ruled on: 008 research §14, 010 research §8, 016 §7; 005's go decision is spec 007, which builds on its findings).
+- **AC-3.4** Spec 002's row, Superseded by: "Non-Goals and FR-7, public search: 004 (sign-in), 023 (an operator setting)"; Status: "Frozen in part: FR-3–FR-6 and their Error Scenarios rows, by [catalog operations](../architecture/catalog-operations.md)".
+- **AC-3.5** The introduction states the freezing rule ("Freezing": Frozen and Frozen in part, no shipped spec edited, the three D4 lines), the retirement pointer's form ("Plan retired in `<sha>`; read it with `git show <sha>^:docs/specs/NNN-<slug>/plan.md`"), the status and plan vocabularies ("Status and plan words"), and links [`../architecture/README.md`](../../architecture/README.md) ("area doc").
+- **AC-3.6** Spec 027's row: Status "Approved", Plan "retirement owed". The Plan cells of 015 and 024 read "present" (Phase 6 changes them).
+- **Links** Every relative link target in the index was tested with `[ -e ]` from `docs/specs/`: the 25 spec and research files, `../architecture/catalog-operations.md`, `../architecture/README.md`, `../design-system/README.md`, `../git-convention.md`; all exist. `../git-convention.md#merging`: `docs/git-convention.md` has the heading `## Merging` (line 31).
+
+### Supersession sweep
+
+One `git grep -n -i -E "spec 0[0-9]{2}"` per spec (widened to "feature 0NN", "specs 0NN" and "supersed", since 004 and 006 write "feature 002"/"feature 004"), plus each spec's Changelog, Problem Statement, Inputs and Supersedes lists. Places where one spec changes what an earlier one promised (→ means "superseded by"):
+
+1. 002 Non-Goals and FR-7, public search → 004 (FR-2) and 023 (draft).
+2. 002 AC-1.5, AC-1.7, AC-1.8 and AC-1.11's messages, AC-10.1, FR-8's search link → 004 (AC-6.5, AC-8.2). Added.
+3. 002 AC-3.2 and 004 AC-8.2, the card page's Scryfall attribution → 018 FR-3 (moved to the footer). Added.
+4. 002 AC-1.11 and 004 AC-6.5, the not-loaded notice → 015 AC-1.1, AC-1.2 and the glossary's per-type "Loaded". Added.
+5. 002 FR-4, the 6-hour "already running" rule → 015 AC-3.3, AC-3.4 (draft).
+6. 002 FR-4 and its two 429 Error Scenarios rows → 024, amended in place (002 v1.4.0) (draft).
+7. 004 FR-2, sign-in for search, card and printings pages → 023 (operator setting). Added.
+8. 004 AC-6.3 and 019 AC-1.8, unowned tiles faded → 021 (019 AC-1.8 named in 021's "**Spec 019.**" paragraph; 004 AC-6.3 found by reading). Added.
+9. 004 AC-11.7, FR-10's filter bar, AC-2.7/AC-10.1/AC-10.4 return target, AC-10.4 and bulk Undo → 006 AC-1.7. Added.
+10. 007 AC-1.7, FR-1 (twice), AC-3.2, AC-3.3, AC-3.10, AC-4.2, FR-3, FR-4 → 009 (its Supersedes list). Added.
+11. 007 FR-3 (amended in place, 007 v2.2.0) and FR-6 → 011. Added.
+12. 009 AC-2.1, AC-2.3, AC-2.4, AC-5.1, AC-5.2, AC-5.5, FR-3, FR-5 → 011 (its Supersedes list). Added.
+13. 015 AC-2.16 → 024, amended in place (015 v1.3.1) (draft).
+14. 015 AC-3.3 and AC-4.10 ("the new run/build proceeds") → 024 AC-1.7, AC-2.1 when another job's retry waits; 015 was not edited for it. Added (split from the draft's "the start guard").
+15. 011 AC-3.2, a build job that starts while another build job's retry waits → 024 AC-2.1; 011 was not edited for it. Added.
+
+Specs with no supersession found: 001, 003, 005, 008, 010, 012, 013 (says 012 AC-6.2 unchanged), 014, 016, 017, 020, 022, 027. 009 AC-4.1 follows 006 AC-7.6 rather than changing it; 023 decision 7 adds a visitor case to 015's notice rather than changing it; 019 changes the design system's `object-fit`, which no spec promised.
+
+In-place amendments for issues, with no later spec (recorded under "Superseded by" as "amended in place"): 002 FR-3, FR-4, Error Scenarios for #74, #81 (v1.2.0, v1.3.0); 011 AC-3.2, AC-3.4, AC-3.6, AC-3.8, AC-3.11 for #73, #74, #79, #81 (v1.1.4–v1.3.0); 015 glossary, AC-3.2, AC-3.3, AC-3.4, AC-3.9, AC-4.1, AC-4.10, AC-4.11, AC-4.12, AC-6.5, FR-1, FR-2, Error Scenarios for #60, #61, #73, #74, #79, #80 (v1.2.0–v1.3.0). These have no "Supersedes" pair, since no spec superseded them.
+
+### AC-3.3: pairs
+
+Each "Superseded by" entry naming a spec, with the "Supersedes" entry in that spec's row: 002 → 004 (public search; AC-1.5 … FR-8) ↔ 004 row items 1 and 2; 002 → 018 (AC-3.2) ↔ 018 row; 002 → 015 (AC-1.11; FR-4 6-hour) ↔ 015 row items 2 and 1; 002 → 024 (FR-4 and 429 rows) ↔ 024 row item 1; 002 → 023 ↔ 023 row item 1; 004 → 023 (FR-2) ↔ 023 row item 2; 004 → 015 (AC-6.5) ↔ 015 row item 2; 004 → 021 (AC-6.3) ↔ 021 row item 1; 004 → 018 (AC-8.2) ↔ 018 row; 004 → 006 ↔ 006 row; 007 → 009 ↔ 009 row; 007 → 011 (FR-3, FR-6) ↔ 011 row items 1 and 2; 009 → 011 ↔ 011 row item 3; 011 → 024 (AC-3.2) ↔ 024 row item 4; 015 → 024 (AC-2.16; AC-3.3 and AC-4.10) ↔ 024 row items 2 and 3; 019 → 021 (AC-1.8) ↔ 021 row item 2. The reverse: every "Supersedes" entry (rows 004, 006, 009, 011, 015, 018, 021, 023, 024) is matched above; none is one-sided.
+
+### Rulings (corrections to the draft)
+
+- Ruling: titles are each spec's own title line, not the draft's short forms (016 uses its research note's title) — AC-3.2 asks for the spec's linked title and a reader matches it against the file — cost if wrong: longer cells, fixed by shortening them.
+- Ruling: the sweep's additions above (items 2–4, 7–12, 14, 15) are recorded in both rows — the plan asks for every place a spec changes an earlier promise — cost if wrong: a row names a supersession a reader need not follow.
+- Ruling: the draft's pair "011 AC-3.2's stale-build rule → 015 AC-4.10, AC-4.11 (#73, #79)" is removed; 011's row records it as amended in place for #73, #74, #79 and #81 (v1.1.4–v1.3.0), stating 015's criteria — 015 shipped following 011 AC-3.2 (its glossary), and both specs were edited in place for the same issues (011 v1.1.4, v1.2.1; 015 v1.2.3, v1.3.0, where AC-4.10 and AC-4.11 are "new") — cost if wrong: one supersession pair to restore.
+- Ruling: 015's "AC-2.16 and the start guard: 024 (amended in place, v1.3.1)" is split into AC-2.16 amended in place (v1.3.1) and AC-3.3, AC-4.10 superseded without an edit — 015 v1.3.1's changelog names only AC-2.16 — cost if wrong: one cell reworded.
+- Ruling: in-place amendments for issues sit under "Superseded by" as "amended in place for #N (vX)" for 002, 011 and 015, with one sentence in the introduction saying so — the draft did this for 002, and a reader needs to know the text at the head is not as shipped — cost if wrong: unpaired notes in a paired column, movable to another column.
+- Ruling: 002's Areas cell links catalog operations, as its Status cell does — AC-3.2 says areas are linked where the area doc exists — cost if wrong: none beyond a duplicate link.
+
 ## Phase 5: The distillation step
 ## Phase 6: Plan retirement
 ## Phase 7: Roadmap, ADR index and issues
