@@ -1,11 +1,11 @@
 ---
 name: spec-022-followups
-description: Spec 022 (export a collection, #38): PR #97 draft; open UI nits; what import (#39, #40) inherits from the writer
+description: Spec 022 (export a collection, #38): merged (PR #97, 2026-10-15); open UI nits; what import (#39, #40) inherits from the writer
 metadata:
   type: project
 ---
 
-Spec 022 built the export: `CollectionExport` and `GET /collection/export`, with "Export collection" in the account menu and on More. PR #97 was opened as a draft on 2026-10-14 and closes #38. `bin/ci` was green locally (1437 examples). GitHub reported no checks on the PR right after it was opened.
+Spec 022 built the export: `CollectionExport` and `GET /collection/export`, with "Export collection" in the account menu and on More. PR #97 merged on 2026-10-15 and closed #38. Spec 023 (PR #98, merged after it) split the header into a collector form and a visitor form; the export item is in the collector form's menu only.
 
 **Rulings (maintainer, 2026-10-14):**
 - The file is built in the request, with no job. The bar is under 10 s and under 300 MB at 50,000 lots; measured 1.23–1.27 s and +60–66 MB.
