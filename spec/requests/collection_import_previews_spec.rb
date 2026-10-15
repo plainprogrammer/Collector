@@ -158,9 +158,10 @@ RSpec.describe "Import preview", type: :request do
     it "writes nothing and queues nothing (AC-1.8)", :aggregate_failures do
       entry = printing
       create(:lot, account: user.account, entry:, quantity: 2)
+      data = file([ row(entry, quantity: 5), row(printing), stranger ])
       before = snapshot
 
-      expect { preview(file([ row(entry, quantity: 5), row(printing), stranger ])) }.not_to have_enqueued_job
+      expect { preview(data) }.not_to have_enqueued_job
       expect(snapshot).to eq(before)
     end
 
