@@ -15,7 +15,7 @@ Foundation principle 2. Spec 004 named export and import as the next priority; s
 1. Record whether Scryfall's terms permit a public, possibly paid, instance (research note; hosted-door rule 1). **Done 2026-10-11:** [research 016](specs/016-scryfall-hosting-terms/research.md), ruled on in decision log 27–29.
 2. [#37](https://github.com/plainprogrammer/Collector/issues/37) Define the export format: versioned, keyed by external ids (enabling slice). **Done 2026-10-11:** [the format](export-format/README.md), [ADR 0020](adr/0020-export-format.md) and [spec 017](specs/017-export-format/spec.md), ruled on in decision log 32.
 3. [#38](https://github.com/plainprogrammer/Collector/issues/38) Export a collection as a file. **Done 2026-10-14:** [spec 022](specs/022-export-collection/spec.md), [PR #97](https://github.com/plainprogrammer/Collector/pull/97).
-4. [#39](https://github.com/plainprogrammer/Collector/issues/39) Preview an import: per-row errors, nothing written.
+4. [#39](https://github.com/plainprogrammer/Collector/issues/39) Preview an import: per-row errors, nothing written. **Done 2026-10-15:** [spec 025](specs/025-import-preview/spec.md), [ADR 0021](adr/0021-export-format-rules-in-the-app.md).
 5. [#40](https://github.com/plainprogrammer/Collector/issues/40) Apply an import: all or nothing, idempotent, with a round-trip test.
 6. [#41](https://github.com/plainprogrammer/Collector/issues/41) Back up and restore an instance, documented and tested. **Expected ADR:** the backup mechanism.
 7. [#42](https://github.com/plainprogrammer/Collector/issues/42) Prove an upgrade from the previous release in CI (supports the 1.0 test's third check).

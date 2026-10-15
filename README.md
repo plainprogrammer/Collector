@@ -342,7 +342,9 @@ the currency of their prices and every lot in their collection, keyed by the cat
 own ids and never by this instance's. It is defined in
 [docs/export-format/README.md](docs/export-format/README.md), with a JSON Schema and example
 files beside it. Export is built against it: a collector downloads their collection as one file
-from the account menu or More. Import isn't in the app yet.
+from the account menu or More. A collector can preview importing a file from the account menu or
+More: the app says what applying it would do and which rows it can't apply, and changes nothing.
+Applying an import isn't in the app yet.
 
 ## License
 

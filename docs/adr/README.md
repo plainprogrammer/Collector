@@ -52,6 +52,7 @@ Add a line here with each new ADR. All are Accepted unless the line says otherwi
 ### Data safety
 
 - [0020](0020-export-format.md): The export format is one versioned JSON document keyed by source ids
+- [0021](0021-export-format-rules-in-the-app.md): The app checks export files with `json_schemer` and its own copy of the schema
 
 ### Expected
 
