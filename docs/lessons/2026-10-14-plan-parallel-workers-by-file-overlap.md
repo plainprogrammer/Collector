@@ -16,10 +16,13 @@ On 2026-10-14 the maintainer asked for three issues to be supervised in parallel
 - **Numbers were reserved before anyone started.** Specs 022, 023 and 024 were assigned in the briefs, and ADR 0021 was given to #38 only, with any other worker told to ask. No worker took another's number (compare [[adr-numbers-across-branches]], where it happened).
 - **The overlapping pair was stacked, not merged later.** At the push gate the maintainer had #78 rebased onto #84's branch and opened as a draft PR based on it (#96 on #95), so the conflict was resolved once, by the worker that knew both changes, before review.
 - **The shared documents still conflict.** Every branch adds a line to `docs/roadmap.md` and most change `CLAUDE.md`; the session-wrap memories went into a separate memory PR so that `.claude/memory/` files edited by three workers didn't become three conflicting versions.
+- **One code overlap was missed.** #38 added "Export collection" to the account menu and #59 split the header into a collector form and a visitor form; both edited `app/views/layouts/_appbar.html.erb`. Neither issue named the layout, and the overlap check worked from issue bodies, which name models and pages. It was #98's only real conflict after #97 merged (2026-10-15): git couldn't place the menu item, so it went by hand into the collector form's menu, the visitor form keeping no account menu, and the specs that pin the menu (`spec/requests/shell_spec.rb`, `spec/requests/admin/navigation_spec.rb`) and the full suite confirmed it.
 
 ## What to do next time
 
 - Before choosing parallel work, list the files each candidate will change (from the issue bodies and a grep) and pick a set with no shared code files. Hold back the rest, however ready.
+- Count `app/views/layouts/*` and the navigation partials as shared files for every candidate that adds a link, a menu item or a header control, whether or not its issue names them.
+- When one branch restructures a file the other only adds to, resolve by placing the addition in the new structure, then run the specs that pin it.
 - Reserve spec and ADR numbers in the briefs.
 - Where two chosen items share files, decide the merge order up front, and stack the later one on the earlier at its first push.
 - Expect trivial conflicts in the roadmap and CLAUDE.md, and collect memories several workers want to edit into one memory PR.
