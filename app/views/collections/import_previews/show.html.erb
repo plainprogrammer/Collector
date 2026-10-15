@@ -1,0 +1,81 @@
+<% content_for :title, "Import preview · Collector" %>
+<%= render "layouts/appbar", section: nil %>
+<main class="c-main c-page">
+  <div class="c-pagehead">
+    <div>
+      <h1 class="c-pagehead__title">Import preview</h1>
+      <p class="c-pagehead__stats">Exported <%= @import.exported_at.strftime("%Y-%m-%d %H:%M UTC") %> · <%= pluralize(number_with_delimiter(@import.rows.size), "row") %> · <%= @import.currency %></p>
+    </div>
+  </div>
+  <div class="c-import">
+    <% if @import.applicable? %>
+      <p class="c-status__message">This file can be applied. Previewing changed nothing.</p>
+    <% else %>
+      <p class="c-status__message c-status__message--alert">This file can't be applied: <%= pluralize(number_with_delimiter(@import.problem_rows.size), "row") %> <%= @import.problem_rows.one? ? "has" : "have" %> problems. Previewing changed nothing.</p>
+    <% end %>
+    <%= render "catalog/not_loaded", titles: @unloaded_catalogs, named: @catalogs_named %>
+    <dl class="c-stats">
+      <div class="c-stat"><dt>Lots added</dt><dd><%= number_with_delimiter(@import.added.lots) %></dd><small><%= import_copies(@import.added.copies) %></small></div>
+      <div class="c-stat"><dt>Lots changed</dt><dd><%= number_with_delimiter(@import.changed.lots) %></dd><small><%= import_change(@import.changed) %></small></div>
+      <div class="c-stat"><dt>Lots unchanged</dt><dd><%= number_with_delimiter(@import.unchanged.lots) %></dd><small><%= import_copies(@import.unchanged.copies) %></small></div>
+      <div class="c-stat"><dt>Lots removed</dt><dd><%= number_with_delimiter(@import.removed.lots) %></dd><small><%= import_copies(@import.removed.copies) %></small></div>
+    </dl>
+    <p class="c-import__note" id="held_lots">Held by rows with problems: <%= pluralize(number_with_delimiter(@import.held.lots), "lot") %>, <%= import_copies(@import.held.copies) %>.</p>
+    <% if @import.view_change || @import.other_name || @import.other_email_address %>
+      <section>
+        <div class="c-section__head"><h2 class="c-section__title">Profile</h2></div>
+        <ul class="c-list c-import__list" id="profile_notes">
+          <% if @import.view_change %><li>Your collection view would change to <%= @import.view_change %>.</li><% end %>
+          <% if @import.other_name %><li>The file's name is <%= @import.other_name %>. Importing won't change yours.</li><% end %>
+          <% if @import.other_email_address %><li>The file's email address is <%= @import.other_email_address %>. Importing won't change yours.</li><% end %>
+        </ul>
+      </section>
+    <% end %>
+    <% if @import.removed.lots.positive? %>
+      <section>
+        <div class="c-section__head"><h2 class="c-section__title">Lots removed</h2><span class="c-section__count"><%= pluralize(number_with_delimiter(@import.removed.lots), "lot") %> · <%= import_copies(@import.removed.copies) %></span></div>
+        <ul class="c-list c-import__list" id="removed_lots">
+          <% @import.removed_lots.each do |lot| %>
+            <li>
+              <span><%= lot.name %> <span class="c-list__meta"><%= import_lot_line(**lot.described) %></span></span>
+              <span class="c-list__end">×<%= number_with_delimiter(lot.quantity) %></span>
+            </li>
+          <% end %>
+        </ul>
+        <% if @import.more_removed_lots.positive? %><p class="c-import__more">and <%= number_with_delimiter(@import.more_removed_lots) %> more</p><% end %>
+      </section>
+    <% end %>
+    <% if @import.problem_rows.any? %>
+      <section>
+        <div class="c-section__head"><h2 class="c-section__title">Rows with problems</h2><span class="c-section__count"><%= pluralize(number_with_delimiter(@import.problem_rows.size), "row") %></span></div>
+        <ul class="c-list c-import__list" id="problem_counts">
+          <% @import.problem_counts.each do |summary, count| %>
+            <li>
+              <span><%= summary %></span>
+              <span class="c-list__end"><%= pluralize(number_with_delimiter(count), "row") %></span>
+            </li>
+          <% end %>
+        </ul>
+        <ol class="c-list c-import__list c-import__rows" id="problem_rows">
+          <% @import.listed_problem_rows.each do |row| %>
+            <li>
+              <span class="c-import__number">Row <%= number_with_delimiter(row.number) %></span>
+              <span><%= row.name %> <span class="c-list__meta"><%= import_lot_line(**row.described) %></span></span>
+              <div class="c-import__reasons">
+                <% row.problems.each do |problem| %>
+                  <p><%= problem.reason %></p>
+                <% end %>
+              </div>
+            </li>
+          <% end %>
+        </ol>
+        <% if @import.more_problem_rows.positive? %><p class="c-import__more">and <%= number_with_delimiter(@import.more_problem_rows) %> more</p><% end %>
+      </section>
+    <% end %>
+    <div class="c-form__actions">
+      <%= link_to "Choose another file", new_collection_import_preview_path, class: "c-btn c-btn--secondary" %>
+      <%= link_to "Back to your collection", collection_path, class: "c-btn c-btn--secondary" %>
+    </div>
+  </div>
+</main>
+<%= render "layouts/tabbar", section: nil %>

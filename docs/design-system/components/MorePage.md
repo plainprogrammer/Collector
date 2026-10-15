@@ -10,6 +10,7 @@ The page behind the tab bar's "More" tab: who is signed in, account links, and s
   <ul class="c-list c-more">
     <li><span>Signed in as <strong>Sam</strong></span><span class="c-list__meta">sam@example.com</span></li>
     <li><a href="/collection/export" data-turbo="false" data-turbo-prefetch="false">Export collection</a></li>
+    <li><a href="/collection/import_preview/new">Import collection</a></li>
     <li><a href="/admin/users">Users and sign-up</a></li>
     <li><a href="/admin/catalog">Catalog</a></li>
     <li><a href="/admin/jobs">Jobs</a></li>
@@ -21,5 +22,6 @@ The page behind the tab bar's "More" tab: who is signed in, account links, and s
 - It holds what the header's account menu holds on wide screens, so phones reach everything from the tab bar.
 - No section is marked current in the header or tab bar on this page.
 - Export collection is a plain download link, outside Turbo and never prefetched; it is for every collector, so it comes before the admin links.
+- Import collection follows it and opens the import preview's upload page (spec 025).
 - Sign out is a form (`button_to`, DELETE), never a link, and ends only this session.
 - Rows may wrap on narrow screens (`flex-wrap`), so a long email address never forces sideways scrolling.

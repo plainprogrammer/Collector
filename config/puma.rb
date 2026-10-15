@@ -33,6 +33,10 @@ threads threads_count, threads_count
 require_relative "../lib/collector/dev_port"
 port Collector::DevPort.resolve(root: File.expand_path("..", __dir__))
 
+# Refuse a request body over 40 MB (413) before reading it, so an upload never fills the disk: an export file is at
+# most 32 MB (spec 025 decision 6). Thruster (Dockerfile) and kamal-proxy (config/deploy.yml) set the same limit.
+http_content_length_limit 40_000_000
+
 # Allow puma to be restarted by `bin/rails restart` command.
 plugin :tmp_restart
 

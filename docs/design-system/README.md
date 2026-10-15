@@ -104,6 +104,8 @@ App additions (spec 021, in `collector/additions.css`): `UnownedTile`. It overri
 
 App additions (spec 023, in `collector/additions.css`): `VisitorHeader`. It is `AppHeader`'s signed-out form, and marks a shell with no `TabBar` `c-shell--untabbed`. Upstream it into the published design system before the next export replaces this folder.
 
+App additions (spec 025, in `collector/additions.css`): `ImportPreview`. Upstream it into the published design system before the next export replaces this folder.
+
 ## Logo
 
 - The mark is three fanned cards, the front one vault teal with a foil diamond: a collection, one piece of which is special. It is deliberately game-neutral so it grows past trading cards.
