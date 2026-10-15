@@ -1,6 +1,6 @@
 # Verification: Spec 024
 
-**Spec:** [spec.md](spec.md) v1.1.0 · **Plan:** [plan.md](plan.md) · **Date:** 2026-10-14
+**Spec:** [spec.md](spec.md) v1.1.0 · **Plan:** plan (retired in `0b16288741818b786e069d2a0e1617f26945dd98`; read it with `git show 0b16288741818b786e069d2a0e1617f26945dd98^:docs/specs/024-refresh-rate-limit-wait/plan.md`) · **Date:** 2026-10-14
 
 ## Red before the change
 

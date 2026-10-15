@@ -5,6 +5,7 @@
 **Created:** 2026-10-07
 **Last Updated:** 2026-10-13
 **Branch:** `011-card-scanner-art-matching`
+**Frozen:** the current rules are in [`catalog-operations.md`](../../architecture/catalog-operations.md) (parts: FR-2, the art build's run); see the [specs index](../README.md)
 
 ---
 
