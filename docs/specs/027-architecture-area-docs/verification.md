@@ -1,6 +1,6 @@
 # Verification: Spec 027
 
-**Spec:** [spec.md](spec.md) v1.3.0 · **Plan:** [plan.md](plan.md) · **Branch:** `027-architecture-area-docs`
+**Spec:** [spec.md](spec.md) v1.3.0 · **Plan:** plan (retired in `c1ef5f0138c6898ab171fe6315281e6fed5c86c2`; read it with `git show c1ef5f0138c6898ab171fe6315281e6fed5c86c2^:docs/specs/027-architecture-area-docs/plan.md`) · **Branch:** `027-architecture-area-docs`
 
 Every criterion of spec 027 is a prose criterion, verified by reading at the head and recorded here (`.claude/rules/testing.md`; spec D8). Comparisons "with the base" are with the merge base below.
 
