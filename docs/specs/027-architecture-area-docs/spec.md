@@ -1,7 +1,7 @@
 # Feature 027: Area Docs Hold the Current Architecture, Starting with Catalog Operations
 
-**Status:** Draft
-**Version:** 1.1.0
+**Status:** Approved by the maintainer on 2026-10-15, with rulings on open decisions OD1–OD6
+**Version:** 1.2.0
 **Created:** 2026-10-15
 **Last Updated:** 2026-10-15
 **Branch:** `027-architecture-area-docs`
@@ -15,6 +15,7 @@
 |---------|------|--------|
 | 1.0.0 | 2026-10-15 | Initial draft from the maintainer's rulings of 2026-10-15 (R1–R7) and the documentation survey of the same day. Splits the work into three slices and specifies the first (decision D1); YARD is slice B |
 | 1.1.0 | 2026-10-15 | From the spec review (Fable, read-only; APPROVE WITH CHANGES, nothing blocking), and the maintainer's ruling R8 (specs 025 and 026 record their supersessions instead of editing earlier specs, the first use of freezing). **Skill states:** a third, "feature not finished, nothing to do", and how the skill tells the three apart (D6, AC-4.4). **Integrations:** rows for both `session-wrap` and `sdd-superpowers:session-wrap`, and the hook's firing recorded once (AC-4.5). **Squash recovery:** `git show <squash sha>^:<path>`; a rebase before merge invalidates a pointer (Error Scenarios, AC-5.1). **Index:** a "retirement owed" plan state; 027's own row reads Approved in its PR (FR-3, AC-3.6). **Open issues:** found with `gh issue list --state open` (AC-1.7). **Memory:** `edit-specs-your-change-makes-stale` is rewritten to "record the supersession in the new spec, update the area doc" (AC-4.6, FR-6). **Corrections:** which skill files mention `loaded-by` (D6); spec 002 FR-9's area (D2); the own-plan link inventory (AC-5.3). **Open decisions:** OD1 and OD3 updated with the review's points; OD5 (Distillation log scope) and OD6 (issues for slice C) added |
+| 1.2.0 | 2026-10-15 | Approved by the maintainer, with rulings on OD1–OD6 (Open Questions). OD3 drops the development environment area: specs 001 (stack, CI, hooks), 003 and 014 keep their facts in CLAUDE.md under R5 and freeze with the release and deploy slice, so slice C is C1–C6 with six issues (D1, D2, AC-6.1, FR-9, Out of Scope). OD1, OD2 and OD5 are written into FR-5, Non-Goals and AC-5.2 |
 
 ---
 
@@ -63,13 +64,13 @@ These are settled and not re-asked.
 |---|---|
 | **A (this spec, 027)** | A reader finds the current rules of catalog operations in one area doc, and the index, the freezing rule and the distillation step keep every later feature's docs current the same way. |
 | **B: adopt YARD** | A developer generates browsable API documentation for the Ruby code, with the area docs (and the ADRs, if its spec so decides) linked in, without anything generated being committed or shipped in the image; ADR 0023 records the choice. |
-| **C1–C7: back-fill one area per PR** | Each remaining area (decision D2) gets its area doc, its CLAUDE.md paragraphs become pointers, the specs it covers freeze in the index, and the plans of specs that are now wholly frozen are retired. One candidate per area: catalog core, collection and lots, tenancy and accounts, scanner, data portability, release and deploy, development environment. |
+| **C1–C6: back-fill one area per PR** | Each remaining area (decision D2) gets its area doc, its CLAUDE.md paragraphs become pointers, the specs it covers freeze in the index, and the plans of specs that are now wholly frozen are retired. One candidate and one issue per area (ruling OD6): catalog core, collection and lots, tenancy and accounts, scanner, data portability, release and deploy. |
 
 Why YARD is not in slice A: it is a separate outcome (a reader of the Ruby API, not of the architecture) with its own gem, configuration, binstub, ignore rules and ADR, and it needs a code review and a `bin/ci` decision that the documentation rules don't. Area docs are useful on GitHub and in an editor without it, and the value of linking them into YARD grows with the number of area docs, which slice C supplies. Slice A only has to keep the door open: area docs are plain Markdown with relative links and no front matter that YARD would render (NFR "Compatibility"). The shape slice B should start from is under Out of Scope.
 
 Why slice A isn't split further: the index, the freezing rule and the distillation step are only checkable when one area doc exists to freeze specs against and one plan exists to retire, and the pilot is only safe to write when the rules saying how later changes reach it exist. Each part alone leaves `main` with a rule nobody follows or a doc nobody maintains.
 
-**D2. The area list.** R2's six candidates, plus two the survey of `docs/specs/` needs, with the initial assignment of every spec. The index (FR-3) is built from this table; the author of each slice C may move a spec between areas by editing the index and saying so in that slice's spec.
+**D2. The area list.** R2's six candidates, plus data portability (ruling OD3), with the initial assignment of every spec. The index (FR-3) is built from this table; the author of each slice C may move a spec between areas by editing the index and saying so in that slice's spec.
 
 | Area (file) | Specs, or parts of them | Existing reference doc it links to |
 |---|---|---|
@@ -80,7 +81,8 @@ Why slice A isn't split further: the index, the freezing rule and the distillati
 | Scanner (`scanner.md`) | 005; 007; 008; 009; 010; 011 (all but its FR-2's art build run) | none |
 | Data portability (`data-portability.md`) | 017; 022 | `docs/export-format/README.md` |
 | Release and deploy (`release-and-deploy.md`) | 001 (container, Compose, Kamal); 012; 013; 020 | `docs/releasing.md` |
-| Development environment (`development-environment.md`) | 001 (stack, CI, hooks); 003; 014 | none |
+
+**No area doc (ruling OD3):** spec 001's stack, CI and hooks parts, spec 003 and spec 014 describe the development environment, whose facts R5 keeps in CLAUDE.md ("Dev mirrors prod", "Worktrees", "Active Storage variants", the commands). The index names "CLAUDE.md (R5)" as their area. For freezing (D3) and plan retirement, a part whose current facts CLAUDE.md keeps counts as covered once CLAUDE.md states them; specs 001, 003 and 014 are frozen, and their plans retired, in the release and deploy slice, which covers 001's other part.
 
 Spec 002 FR-9 ("Conventions update") is a change to the repository's conventions (CLAUDE.md, `.claude/rules/`, steering), not catalog behaviour. It sits under catalog core because the convention it wrote down is the catalog core's extension boundary: `MTG` as the namespace, and source adapters as `Catalog::Sources` implementations in their collectible's namespace (ADR 0018). Its words now live in the rules and steering files, which stay their home; the catalog core area doc links them rather than restating them.
 
@@ -129,7 +131,7 @@ The steering file is still added for the skills that do load steering (FR-6), so
 
 - Adopting YARD (slice B).
 - Area docs for any area other than catalog operations, or moving any CLAUDE.md bullet other than "Admin catalog and jobs" (slice C).
-- Retiring plans other than those the pilot freezes whole (Open Decision 2).
+- Retiring plans other than those of specs 015 and 024, which the pilot freezes whole (ruling OD2).
 - Changing any application code, test or configuration. This is a documentation and agent-process change only.
 - Renumbering or renaming any spec, criterion or ADR, or editing the code comments that cite them.
 
@@ -211,7 +213,7 @@ All criteria are verified by reading at the pull request's head and recorded in 
 **Acceptance criteria:**
 
 - [ ] **AC-5.1** Given `docs/git-convention.md` at the head When it is read Then a section states that pull requests are merged with merge commits, never squashed or rebased, that retired plans depend on it (R6), and that rebasing a branch before it merges changes the sha of every commit on it, so a retirement pointer is written after the branch's last rebase (D7)
-- [ ] **AC-5.2** Given every plan this pull request retires (Open Decision 2) When `git show <sha>^:<path>` from its retirement pointer is run Then it prints the plan as it was at the merge base, byte for byte (compared with `git show <merge-base>:<path>`, recorded in `verification.md`)
+- [ ] **AC-5.2** Given the plans of specs 015 and 024, which this pull request retires (ruling OD2) When `git show <sha>^:<path>` from its retirement pointer is run Then it prints the plan as it was at the merge base, byte for byte (compared with `git show <merge-base>:<path>`, recorded in `verification.md`)
 - [ ] **AC-5.3** Given the folders of the plans this pull request retires When their Markdown is searched for links to their own `plan.md` (a Markdown link whose target is `plan.md`; a path in quoted command output, such as `020/verification.md:479`'s `git` status line, is not a link) Then none is left as a link; each names the retirement pointer instead (D4). At the merge base the only such link in the pilot's folders is `024-refresh-rate-limit-wait/verification.md` line 3 (spec 015's folder has none); `011-card-scanner-art-matching/research.md` line 3 waits for 011's plan to retire in slice C
 - [ ] **AC-5.4** Given the commits of this pull request When the commit that deletes a plan is read with `git show --stat` Then it deletes that `plan.md` and changes nothing else (D7)
 
@@ -223,7 +225,7 @@ All criteria are verified by reading at the pull request's head and recorded in 
 
 **Acceptance criteria:**
 
-- [ ] **AC-6.1** Given `docs/roadmap.md` at the head When its housekeeping lane is read Then it has a line for this spec and one per follow-up slice of D1 (B and C1–C7), each linking its GitHub issue on the 1.0 milestone with the `housekeeping` label
+- [ ] **AC-6.1** Given `docs/roadmap.md` at the head When its housekeeping lane is read Then it has a line for this spec and one per follow-up slice of D1 (B and C1–C6, one issue each per ruling OD6), each linking its GitHub issue on the 1.0 milestone with the `housekeeping` label
 - [ ] **AC-6.2** Given `docs/adr/README.md` at the head When its "Expected" paragraph is read Then it names the YARD adoption (slice B) as expected ADR 0023, subject to the next-free-number rule
 
 ## Functional Requirements
@@ -279,9 +281,9 @@ All criteria are verified by reading at the pull request's head and recorded in 
 Stated in `docs/architecture/README.md` and the rule file (AC-4.2).
 
 **Must:**
-- A pull request that changes the behaviour, a constant or a rule of an area with an area doc updates that doc in the same pull request; whether it also adds a Distillation log row is Open Decision 5 (recommended: only whole-feature distillations add one).
+- A pull request that changes the behaviour, a constant or a rule of an area with an area doc updates that doc in the same pull request; only a whole-feature distillation adds a Distillation log row (ruling OD5); an issue fix that changes the doc adds its issue to Sources.
 - A change that supersedes part of a shipped spec records the supersession in its own spec and in the index (R8).
-- A feature's spec and plan are distilled before its pull request is marked ready for review (Open Decision 1), after `session-wrap`.
+- A feature's spec and plan are distilled before its pull request is marked ready for review, after `session-wrap` on the feature branch (ruling OD1); the plan is retired after the merge.
 
 **Must not:**
 - Edit a shipped spec, frozen or not, except as D4 allows (R3, R8).
@@ -312,7 +314,7 @@ Stated in `docs/architecture/README.md` and the rule file (AC-4.2).
 ### FR-9: Roadmap and issues
 
 **Must:**
-- Add housekeeping lane lines for this spec and for slices B and C1–C7 (AC-6.1), with an issue for each, opened before the pull request is marked ready for review, on the 1.0 milestone with the `housekeeping` label; this spec's header then links its issue.
+- Add housekeeping lane lines for this spec and for slices B and C1–C6 (AC-6.1), with an issue for each, opened before the pull request is marked ready for review, on the 1.0 milestone with the `housekeeping` label; this spec's header then links its issue.
 
 **Must not:**
 - Change the main line or the decision log, except to record a new ruling with its date if the maintainer makes one while reviewing this spec.
@@ -359,7 +361,18 @@ Stated in `docs/architecture/README.md` and the rule file (AC-4.2).
 
 ## Open Questions
 
-Decisions for the maintainer, each with a recommendation. None blocks planning; the plan follows the recommendation unless ruled otherwise.
+None open. The maintainer ruled on all six on 2026-10-15, approving the spec:
+
+| # | Ruling |
+|---|---|
+| OD1 | Distil in the feature's own pull request, after `session-wrap` on the feature branch and before it is marked ready for review; retire the plan after the merge (option a). |
+| OD2 | This pull request retires the plans of specs 015 and 024. |
+| OD3 | Keep the data portability area. Drop the development environment area: the facts of specs 001 (stack, CI, hooks), 003 and 014 stay in CLAUDE.md under R5 (D2). |
+| OD4 | The jobs pages are covered by the catalog operations area doc. |
+| OD5 | A Distillation log row only for whole-feature distillations. |
+| OD6 | Six slice C issues, one per area (seven were asked for before OD3 dropped one area). |
+
+The questions as they were put, with the recommendations:
 
 1. **When is a feature distilled?** (a) In the feature's own pull request, after `session-wrap` and before it is marked ready for review, with the plan retired after the merge in the next housekeeping pull request (as the session-learnings pull requests #99 and #100 were); (b) both distillation and retirement after the merge, in a housekeeping pull request. **Recommendation: (a).** The feature's reviewer then reviews the area doc change with the code that made it true, `main` never holds code whose area doc is stale, and it matches how CLAUDE.md is edited in feature pull requests today. Only retirement needs the merge (R6). The cost: (a) needs `session-wrap` to run on the feature branch before the pull request is ready, as `.claude/memory/session-wrap-before-pr-review.md` asks, whereas the recent wraps ran in separate post-merge pull requests (#99, #100). Under (a) those post-merge pull requests keep only memory and plan retirement; under (b) the wrap stays post-merge and the feature pull request merges with a stale area doc until it lands.
 2. **Does this pull request retire the plans of specs 015 and 024?** Both features merged long ago and the pilot freezes both specs whole. **Recommendation: yes,** as the first run of D7 and the check of AC-5.2–AC-5.4. Spec 002's and 011's plans wait for catalog core and scanner (slice C). If no, Story 5 keeps only AC-5.1, and AC-5.2–AC-5.4 move to slice C.
@@ -370,7 +383,7 @@ Decisions for the maintainer, each with a recommendation. None blocks planning; 
 ## Out of Scope (Future Considerations)
 
 - **Slice B: adopt YARD** (D1). A starting shape for its spec, not decided here: the `yard` gem in the development group with `require: false`; a `.yardopts` that reads `app` and `lib` and adds `docs/architecture/*.md` (and the ADRs, if decided) with `--files`; a `bin/yard` binstub; output in `doc/`, added to `.gitignore` and `.dockerignore`; `bin/ci` checking that documentation builds without warnings, but not coverage, at first; existing comments citing "spec NNN AC-x" kept as they are, with new ones written as `@see` tags pointing at the specs index or an area doc. ADR 0023 records the choice.
-- **Slices C1–C7: one area per pull request** (D1, D2), each moving its CLAUDE.md bullets, freezing its specs and retiring the plans of the specs it leaves wholly frozen (the 21 plans not retired here, or 23 if Open Decision 2 is no).
+- **Slices C1–C6: one area per pull request** (D1, D2), each moving its CLAUDE.md bullets, freezing its specs and retiring the plans of the specs it leaves wholly frozen (the 21 plans not retired here).
 - Checking area docs automatically against the code (D8).
 - Distilling `docs/lessons/` or `.claude/memory/` into area docs; `session-wrap` keeps them.
 - Changing the SDD plugin's skills.
