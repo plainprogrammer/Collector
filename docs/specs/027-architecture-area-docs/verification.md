@@ -523,7 +523,7 @@ NFR Performance: CLAUDE.md 2,312 → 1,661 words (Phase 3). NFR Security: no ste
 
 ### Rulings (Phase 8)
 
-- Ruling: no issue opened for the `poll` controller's skipping while the tab is hidden, Turbo is busy or a menu is open, which the area doc marks "no spec source" — the Error Scenario that calls for an issue covers code that contradicts every source, and this contradicts none — cost if wrong: one issue opened later.
+- Ruling: no issue opened for the `poll` controller's skipping while the tab is hidden, Turbo is busy or a menu is open, which the area doc marks "no spec source" — the Error Scenario that calls for an issue covers code that contradicts every source, and this contradicts none — cost if wrong: one issue opened later. **Overruled by the maintainer (2026-10-15):** the issue is [#111](https://github.com/plainprogrammer/Collector/issues/111); see Implementation review.
 - Ruling: #41 kept among the open issues (Phase 0) — AC-1.7 selects every issue whose body names the art index, and #41's does — cost if wrong: one bullet in the area doc's limits.
 - Ruling (after the implementation review): `.claude/skills/distill-feature/SKILL.md`'s before-merge step 5 now leaves a spec's Plan as "none" when no plan was written, instead of always setting "retirement owed" — FR-3's plan words keep "none" for a spec with no plan, and the skill's own state 1 already assumed it — cost if wrong: one clause.
 
@@ -539,3 +539,9 @@ Findings, none blocking:
 2. AC-1.2 statement 34's reason said the test-setup fact was kept in the new bullet. CLAUDE.md keeps it in "Dev mirrors prod" (line 30), and the path `spec/support/solid_queue.rb` left with the bullet. **Fixed:** the row now says so. The optional addition of the path to the bullet was not made, so CLAUDE.md stays as Phase 3 verified it.
 
 Observations: the skill's Plan word for a spec with no plan (**fixed**, ruling above); the spec headers' pointer reads "**Plan:** retired in …" where the Glossary says "Plan retired in …", which is the same meaning; and one pointer commit (`366ba40`) serves both retirements, which the reviewer read as allowed by D7, since it names D4.
+
+**Code with no spec source:** the review confirmed the one behaviour Phase 2 found with no source: the `poll` controller pauses while the tab is hidden, while Turbo is busy, and while a menu is open (`app/javascript/controllers/poll_controller.js:6`, `:19-20`; tested by `spec/system/admin_jobs_spec.rb:96`, which cites spec 015 FR-4, though FR-4 doesn't state it). The maintainer ruled that an issue be opened (2026-10-15): [#111](https://github.com/plainprogrammer/Collector/issues/111) says what the controller does, why no spec covers it, and what needs deciding. The area doc states the behaviour, links #111 from Polling, and lists #111 under "Accepted limits and open issues" and in Sources. #111 names the admin pages, so AC-1.7's selection at the head is now #41, #77, #86 and #111.
+
+## distill-feature
+
+Run on this branch on 2026-10-15, after the integration verification. The after-merge state checked the pointers: `git cat-file -e` succeeded for both retirement shas in the index, `6c4dd4fb5c247d6aeb5739e3ae9e096345309d0e` (015) and `0b16288741818b786e069d2a0e1617f26945dd98` (024). Spec 027 is the only row whose Plan reads "retirement owed", and its pull request (#110) hasn't merged, so there was nothing to retire. In the before-merge state, 027's row already reads "retirement owed", which counts as distilled (it has nothing to distil, AC-3.6). Result: "distill-feature: nothing to do" (D6 state 3). After #110 merges, a later session's after-merge state retires 027's plan and sets its row to Shipped (ruling P2).
