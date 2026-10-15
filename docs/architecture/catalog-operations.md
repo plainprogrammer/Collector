@@ -206,4 +206,4 @@ Filter chips Failed (the default), Running, Queued and Scheduled, each with its 
 
 | Date | Distilled | Pull request |
 |---|---|---|
-| 2026-10-15 | Specs 002 (FR-3–FR-6 and their Error Scenarios rows), 011 (FR-2's build run), 015 and 024; issues #60, #61, #73, #74, #78–#81 and #84, and the open #41, #77 and #86; and CLAUDE.md's "Admin catalog and jobs" bullet | spec 027's pull request |
+| 2026-10-15 | Specs 002 (FR-3–FR-6 and their Error Scenarios rows), 011 (FR-2's build run), 015 and 024; issues #60, #61, #73, #74, #78–#81 and #84, and the open #41, #77 and #86; and CLAUDE.md's "Admin catalog and jobs" bullet | [#110](https://github.com/plainprogrammer/Collector/pull/110) |
