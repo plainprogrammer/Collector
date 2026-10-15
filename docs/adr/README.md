@@ -55,4 +55,4 @@ Add a line here with each new ADR. All are Accepted unless the line says otherwi
 
 ### Expected
 
-Named by the [roadmap](../roadmap.md) and written with their specs: the backup mechanism (item 6), lots in locations (item 10).
+Named by the [roadmap](../roadmap.md) and written with their specs: the backup mechanism (item 6), lots in locations (item 10), and adopting YARD as 0023 (spec 027 slice B), which takes the next free number if another ADR merges first.
