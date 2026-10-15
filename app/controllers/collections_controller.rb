@@ -24,8 +24,4 @@ class CollectionsController < ApplicationController
 
       Current.user.update!(collection_view: requested_view)
     end
-
-    def prefetch?
-      %w[Sec-Purpose X-Sec-Purpose X-Moz Purpose].any? { |header| request.headers[header].to_s.include?("prefetch") }
-    end
 end

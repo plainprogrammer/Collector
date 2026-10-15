@@ -46,5 +46,6 @@
 - [Spec 022 follow-ups](spec-022-followups.md) — PR #97 draft (closes #38); rulings: in the request, account menu + More; open: More focus ring, menu stays open; import inherits no `generator`, id order, times without fraction
 
 - [No prose-document specs](no-readme-wording-specs.md) — no RSpec examples for README.md, CLAUDE.md, skill files or docs/ Markdown (spec 020, decision 7); export format document, config and code checks stay; verify document criteria by reading
+- [Worktree shared test DB](worktree-shared-test-db.md) — bin/ci and subagents in one worktree share one SQLite test DB; parallel subagents get "don't run RSpec" while CI runs
 - [Spec 024 follow-ups](spec-024-followups.md) — PR #96 draft stacked on #95: merge #95 first, retarget #96 to main; #77 must discard or run the waiting job first
 - [Edit specs your change makes stale](edit-specs-your-change-makes-stale.md) — another spec's AC made incomplete → edit it in the same PR, patch bump + changelog (maintainer, 2026-10-14)

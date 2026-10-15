@@ -158,6 +158,7 @@ the file and start it.
 | `COLLECTOR_IMAGE`           | no       | `ghcr.io/plainprogrammer/collector:latest` | Image to run; set it to a tag such as `ghcr.io/plainprogrammer/collector:0.1` to pin a release, or to a locally built image |
 | `COLLECTOR_MTG_LANGUAGES`   | no       | English only          | Extra card languages, e.g. `ja,de` (see [Card catalog](#card-catalog))                                                                |
 | `COLLECTOR_MTG_ART_MATCHING` | no       | off                   | `true` turns on art matching for the card scanner (see [Card catalog](#card-catalog))                                                 |
+| `COLLECTOR_PUBLIC_CATALOG`  | no       | off                   | `true` lets people who aren't signed in search the catalog and open card pages (see [Open catalog](#open-catalog))                   |
 | `COLLECTOR_CURRENCY`        | no       | `USD`                 | Currency for the price you paid: USD, CAD, AUD, NZD, EUR, GBP, CHF, SEK, NOK, DKK, PLN, CZK, JPY, CNY, KRW, SGD, HKD, BRL, MXN or ZAR |
 | `COLLECTOR_HTTPS`           | no       | `false`               | Set to `true` when Collector is served over HTTPS (secure cookies, redirect to HTTPS)                                                 |
 | `COLLECTOR_TRUSTED_PROXIES` | no       | Rails' private ranges | Extra reverse proxies (IPs or CIDRs, comma-separated) whose `X-Forwarded-For` is trusted                                              |
@@ -229,6 +230,26 @@ only the photo picker works, and adding cards from photos works the same way.
   `COLLECTOR_HTTPS=true`.
 - **Kamal:** enable the proxy's certificate in `config/deploy.yml` (uncomment `proxy:` with `ssl: true` and set
   your `host:`), and uncomment `COLLECTOR_HTTPS: true` under `env: clear:`.
+
+### Open catalog
+
+By default the catalog needs sign-in, like the rest of the app. Set `COLLECTOR_PUBLIC_CATALOG` to `true` (or `1`,
+`yes`, `on`) and people who aren't signed in can search the catalog, open a card's page and see all of a card's
+printings ("Show all N printings").
+Everything else still needs sign-in: collections, the card scanner, admin pages, and every add or change. A visitor's
+catalog pages show no owned counts, no "Not owned" markers and no add buttons, and nothing from anyone's collection.
+The header offers "Sign in", which brings them back to the page they were on.
+
+It's off by default, and a hosted instance turns it on: for a paid hosted service, Scryfall's terms ask that the card
+data it shows be publicly accessible, with search open to people who aren't signed in (research 016, ruling 27 in
+`docs/roadmap.md`).
+
+- **Docker Compose:** set `COLLECTOR_PUBLIC_CATALOG=true` in the environment you start Compose with.
+- **Kamal:** uncomment `COLLECTOR_PUBLIC_CATALOG: true` under `env: clear:` in `config/deploy.yml`.
+
+The setting is read at boot, so restart the app after changing it. Every search runs a name match against the whole
+catalog, limited only by the query's length (100 characters), so when you open the catalog, rate-limit requests at
+your reverse proxy.
 
 ### Accounts
 

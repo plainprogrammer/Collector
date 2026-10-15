@@ -243,3 +243,12 @@ img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches:
   .c-footer { padding:var(--space-4) var(--space-4) calc(80px + env(safe-area-inset-bottom)); }
   .c-shell--footed > .c-main { padding-bottom:var(--space-4); }
 }
+
+/* ---------- Untabbed shell (spec 023) ----------
+   Below bp-narrow c-main (or, on a footed shell, the footer) keeps 80px clear for the fixed tab bar. A page with no tab
+   bar (a visitor's catalog page, sign-in, sign-up) is marked c-shell--untabbed and gives that clearance up. */
+@media (max-width: 639px) {
+  .c-shell--untabbed > .c-main { padding-bottom:calc(var(--space-6) + env(safe-area-inset-bottom)); }
+  .c-shell--untabbed.c-shell--footed > .c-main { padding-bottom:var(--space-4); }
+  .c-shell--untabbed > .c-footer { padding-bottom:calc(var(--space-4) + env(safe-area-inset-bottom)); }
+}

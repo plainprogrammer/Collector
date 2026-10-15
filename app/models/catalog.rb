@@ -5,6 +5,14 @@ module Catalog
   # Collecting vocabulary per collectible type (finishes, conditions); see config/initializers/catalog.rb.
   mattr_accessor :collecting, default: {}
 
+  # Spec 023: the operator's choice to open catalog search and card pages to visitors. Off unless
+  # COLLECTOR_PUBLIC_CATALOG is 1, true, yes or on (decision 1); parsed once at boot (config/initializers/public_catalog.rb).
+  PUBLIC_ENV = "COLLECTOR_PUBLIC_CATALOG"
+  TRUE_VALUES = %w[1 true yes on].freeze
+
+  def self.public_in?(env) = TRUE_VALUES.include?(env.fetch(PUBLIC_ENV, "").to_s.strip.downcase)
+  def self.public? = Rails.configuration.x.public_catalog == true
+
   def self.table_name_prefix = "catalog_"
 
   def self.source_class(collectible_type)

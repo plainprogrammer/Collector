@@ -1,0 +1,226 @@
+# Implementation Plan: Browse the Catalog Without Signing In
+
+**Spec:** [spec.md](spec.md) (v1.2.0, approved with changes on 2026-10-14)
+**Reviews:** read-only Opus plan review on 2026-10-14 (two blocking findings: Turbo's prefetch reuse, and the clearance check on a footed shell; both taken, with its should-fix items); read-only Fable plan review on 2026-10-14, approved with changes by the maintainer: see [Amendments](#amendments-from-the-fable-plan-review), which override the phases where they differ
+**Decisions:** no ADR. Decisions 1 and 2 and the untabbed rule of decision 3 are the maintainer's rulings of 2026-10-14; the rest are the spec's.
+
+**How this plan was made.** Its two framework assumptions were run in scratch first (see Risks). Each phase's examples are run red before its change and green after; the red runs are quoted in `verification.md`.
+**Created:** 2026-10-14
+**Issue:** [#59](https://github.com/plainprogrammer/Collector/issues/59)
+
+## Global Constraints
+
+- One test of the setting, `Catalog.public?` (FR-1). Views never ask it; they ask `collector?` (FR-4).
+- Only `Catalog::EntriesController` and `Catalog::IdentitiesController` change their access. Quick add, lots, the scanner, More, sessions and admin controllers are untouched. Two small touches outside them, both from the approved spec: `CollectionsController#prefetch?` moves to `ApplicationController` unchanged (decision 4), and `RegistrationsController#create` clears the return path (decision 4).
+- No migration, no gem, no JavaScript. The visitor header is built from existing `c-*` classes; the only CSS is one `additions.css` block, `Untabbed shell (spec 023)`. `components.css`, `tokens.css` and the exported documents stay as they are.
+- Each phase's examples are seen to fail before its change and pass after; each phase is one Conventional Commit (scope `023`), staged and committed in separate commands. Nothing is pushed without the coordinator's permission.
+- Out of scope: `/`, the sign-in and sign-up pages, registration's redirect, rate limiting, the export format.
+
+## How the pieces fit
+
+```
+ApplicationController
+  before_action :require_first_user      (FirstRun, unchanged: an empty instance still goes to sign-up, AC-2.3)
+  before_action :require_authentication  (Authentication, unchanged)
+Catalog::EntriesController / Catalog::IdentitiesController
+  include OpenCatalog
+    skip_before_action :require_authentication, if: -> { Catalog.public? }
+    before_action :resume_session                          (one sessions lookup; Current.session set or nil)
+    after_action  :remember_visited_page                   (visitor, GET, not prefetch?: the sign-in return path)
+    owned_quantities(ids) -> {} with no account, no query  (FR-3)
+Views
+  collector? (ApplicationHelper) = Current.user.present?   (reads what the controller resolved; no query)
+  every controller resolves Current before rendering (require_authentication, or OpenCatalog's resume_session),
+  so the quick add's full-lot re-render of the card page reads collector? as true (AC-6.2)
+Layout
+  body.c-shell--untabbed unless content_for?(:tabbar)     (decision 3; the views render before the layout)
+  <meta name="turbo-prefetch" content="false"> unless collector?
+```
+
+**Why visitors get no prefetch.** Turbo prefetches a hovered link (`X-Sec-Purpose: prefetch`) and, on the click, reuses that response without a second request (`turbo.js` `#tryToUsePrefetchedRequest`). The server would never see the visit it must remember, so a visitor who hovers a tile, clicks it and signs in would land on the search page. Without prefetch every visit is a plain GET and decision 4 holds; a hovered-only page is still never recorded because there is no request. (`CollectionsController#remember_view` has the mirror image, outside this spec.)
+
+`resume_session` is `Current.session ||= find_session_by_cookie`. For a stale cookie it returns nil and isn't memoised, so the views must never call `authenticated?`: `collector?` reads `Current.user`, which the before_action already resolved (AC-2.4, FR-4).
+
+## Phase 1: The setting (AC-1.1, AC-1.2)
+
+**Red.** `spec/models/catalog_spec.rb` gains `.public_in?` (true for `1`, `true`, `yes`, `on`, `TRUE`, ` On `, ` TRUE `; false for `{}`, `""`, `0`, `false`, `maybe`) and `.public?` (false in tests by default; true under a `:public_catalog` example; false when the configuration is anything but `true`, e.g. `"true"`). A new `spec/support/public_catalog.rb` adds the `:public_catalog` tag (around hook, restores the previous value), in the shape of `spec/support/art_helpers.rb`.
+
+**Green.**
+
+```ruby
+# app/models/catalog.rb
+  # Spec 023: the operator's choice to open catalog search and card pages to visitors. Off unless
+  # COLLECTOR_PUBLIC_CATALOG is 1, true, yes or on (decision 1); parsed once at boot (config/initializers/public_catalog.rb).
+  PUBLIC_ENV = "COLLECTOR_PUBLIC_CATALOG"
+  TRUE_VALUES = %w[1 true yes on].freeze
+
+  def self.public_in?(env) = TRUE_VALUES.include?(env.fetch(PUBLIC_ENV, "").to_s.strip.downcase)
+  def self.public? = Rails.configuration.x.public_catalog == true
+```
+
+`config/application.rb`: `config.x.public_catalog = false` with a one-line comment. `config/initializers/public_catalog.rb`, as `art_matching.rb`:
+
+```ruby
+Rails.application.config.after_initialize do
+  Rails.configuration.x.public_catalog = !Rails.env.test? && Catalog.public_in?(ENV)
+end
+```
+
+**Commit:** `feat(023): add the COLLECTOR_PUBLIC_CATALOG operator setting`.
+
+## Phase 2: Deployment files (AC-1.3)
+
+**Red.** `spec/image_publishing_spec.rb`: the compose key list gains `COLLECTOR_PUBLIC_CATALOG`; new examples `include('COLLECTOR_PUBLIC_CATALOG: "${COLLECTOR_PUBLIC_CATALOG:-}"')` for compose and `include("# COLLECTOR_PUBLIC_CATALOG: true")` for `config/deploy.yml`.
+
+**Green.** `compose.yaml`: header comment `# Optional: COLLECTOR_PUBLIC_CATALOG ("true" opens catalog search and card pages to visitors who aren't signed in; default off)` and the environment line. `config/deploy.yml`: a comment and `# COLLECTOR_PUBLIC_CATALOG: true` after the art matching entry.
+
+**Commit:** `feat(023): pass COLLECTOR_PUBLIC_CATALOG through Compose and Kamal`.
+
+## Phase 3: Open the catalog actions, without tenant data (AC-2.1–2.4, AC-3.1–3.5, AC-4.1–4.5, AC-6.1)
+
+**Red.** A new `spec/requests/catalog/visitors_spec.rb`, with one fixture: a set, an identity with two printings (one with an image, one without), another account owning 3 copies of the first printing in 2 lots (user "Morgan Owner", `morgan@example.com`).
+
+- *Setting off* (default): a visitor's GET of search, the card page and all printings redirects to `new_session_path`; signing in afterwards lands on the requested page (AC-2.1). A stale cookie (sign in, `Session.delete_all`) redirects too (AC-2.4).
+- *Setting on* (`:public_catalog`):
+  - search (AC-3.1): for the same `q`, `set` and `page`, a visitor's `.c-results__meta` text, set options, group headings and pager equal a collector's;
+  - card page (AC-3.2): 200 with the face image, `h1`, the details and rules text, the legality table, `#printings` and the "View on Scryfall" link;
+  - all printings (AC-3.3): 200 with its tiles and pager, with and without `set`;
+  - a missing card and an identity with no searchable entry answer 404 (AC-3.4);
+  - the structural absences of AC-4.1 on all three pages, with Nokogiri (`.c-avatar`, `.c-tile__qty`, `.c-tile__add`, `form[action*="quick_add"]`, `a[href*="/lots/new"]`, `#copies`, `.c-stat`, `.c-tile--owned-none`, `li.is-unowned`), and the text absences ("Not owned", "Your copies", "Add a copy", " owned", "Morgan Owner", `morgan@example.com`);
+  - each of the three requests answers 200 and runs no SQL statement naming `"lots"` (AC-4.2, `sql.active_record` subscriber; the 200 makes it red before the change, when the visitor is redirected);
+  - a quick-add POST, a new-lot GET, the collection, the scanner and More redirect to sign in, and `Lot.count` doesn't change (AC-4.3);
+  - `from=collection` on the card page: crumbs and back arrow go to `catalog_entries_path`, and printings links carry no `from=` (AC-4.4);
+  - `Cache-Control` contains `private` and not `public`, for a visitor and a collector (AC-4.5);
+  - sign-in after a visitor's card page lands on it; a prefetch GET of a second card page in between (once with `X-Sec-Purpose: prefetch`, once with `Sec-Purpose: prefetch`) doesn't change that;
+  - a visitor opens a card page, signs up, signs out and in: lands in the collection both times (AC-3.7); a collector's catalog GET leaves `session[:return_to_after_authenticating]` unset, checked by signing out then in and landing in the collection (AC-3.5);
+  - a stale cookie gets the visitor's page (AC-2.4);
+  - a collector sees every collection part on all three pages (AC-6.1): `×3`, the stat, `#copies`, quick-add forms.
+- *No users* (`User.delete_all` before the request, setting on and off): redirects to `new_registration_path` (AC-2.3).
+- *Shell parts that Phase 3 must already change* (red now, since a visitor page raises on `Current.user`): no `#tabbar`; `.c-footer` with the content notice (AC-5.3); with no applied refresh the not-loaded notice's `.text.squish` is exactly "The card catalog hasn't been loaded yet." (AC-5.4); a visitor page carries `meta[name="turbo-prefetch"][content="false"]` and a collector's doesn't.
+
+**Guards, not reds.** The setting-off examples (AC-2.1, AC-2.4 off), the collector's-request-writes-no-return-path example (AC-3.5) and AC-6.2 pass before and after; they hold today's behaviour. `verification.md` lists them as guards.
+
+`spec/requests/catalog/quick_adds_spec.rb`'s full-lot example (without scripting) also expects the "Owned" stat and `.c-avatar` (AC-6.2); it passes before and after (a guard, not a red).
+
+**Green.**
+
+```ruby
+# app/controllers/concerns/open_catalog.rb
+# Spec 023: with the operator's setting on (Catalog.public?), catalog pages answer visitors too. A visitor gets no
+# tenant data (FR-3); views tell the two apart with collector? (FR-4). Signing in from a catalog page returns to it.
+module OpenCatalog
+  extend ActiveSupport::Concern
+
+  included do
+    allow_unauthenticated_access if: -> { Catalog.public? }
+    before_action :resume_session
+    after_action :remember_visited_page, unless: -> { Current.user }
+  end
+
+  private
+    def owned_quantities(entry_ids) = Current.account ? Lot.owned_quantities(Current.account, entry_ids) : {}
+
+    # GET only: a HEAD isn't a page someone saw (request_authentication also stores HEADs; harmless either way).
+    def remember_visited_page
+      return unless request.get? && !prefetch?
+
+      session[:return_to_after_authenticating] = request.fullpath
+    end
+end
+```
+
+`prefetch?` moves from `CollectionsController` to `ApplicationController`'s private methods, unchanged (`Sec-Purpose`, `X-Sec-Purpose`, `X-Moz`, `Purpose`); the collection's prefetch examples (spec 006 AC-1.10) keep it honest. `RegistrationsController#create` deletes `session[:return_to_after_authenticating]` after a successful sign-up (AC-3.7). Both controllers `include OpenCatalog` and call `owned_quantities(...)` instead of `Lot.owned_quantities(Current.account, ...)`. `Catalog::CardOverview#lots` returns `[]` when `@account` is nil. `CardContext#card_context` becomes `params[:from] == "collection" && Current.user ? :collection : :search`. `ApplicationHelper#collector?` is `Current.user.present?`.
+
+Views (each change gated on `collector?`):
+
+| File | Visitor |
+|---|---|
+| `catalog/entries/_tile` | plain `c-tile`, no `×N`, no marker, no quick add |
+| `catalog/entries/show` | no "Add a copy", no `c-stats`, no `_copies` |
+| `catalog/entries/_printings` | count "N known"; no `is-unowned`; no `c-list__end` |
+| `catalog/_not_loaded` | first sentence only (AC-5.4) |
+| `layouts/_appbar` | visitor form (Phase 4) |
+| `layouts/_tabbar` | not rendered (Phase 4) |
+
+Phase 3 makes `_appbar` and `_tabbar` safe for a visitor (they would raise on `Current.user.name`). Its minimal visitor branch in `_appbar` is exactly today's header element with the brand only (linked to `root_path` as today, no nav, no actions); `_tabbar` puts `<% if collector? %>` outside its `content_for`; `_not_loaded` drops its second sentence for a visitor; the layout adds the prefetch meta. Phase 4 then finishes the header, so its examples are red.
+
+**Commit:** `feat(023): open catalog search and card pages to visitors when the operator allows`.
+
+## Phase 4: The visitor shell (AC-5.1–5.4, AC-5.6, AC-5.7 markup)
+
+**Red.** In `visitors_spec.rb`: the body has `c-shell--untabbed` for a visitor and on sign-in and sign-up, and not for a collector; the header's brand links to `catalog_entries_path` with `aria-label="Collector search"`; the nav holds exactly one link, "Search", `aria-current="page"`; the actions hold exactly one element, a "Sign in" link to `new_session_path` with `c-btn c-btn--secondary c-btn--sm`; no `.c-appbar__add`, no "Sign out", no link to `admin_users_path`, `admin_catalog_path` or `admin_jobs_path`; on the card page the header is `c-appbar--detail` with a back link to search.
+
+**Green.** `_appbar`:
+
+```erb
+<% if collector? %> … today's header … <% else %>
+  <header class="c-appbar<%= " c-appbar--detail" if detail %>" id="appbar">
+    <% if detail && local_assigns[:back_path] %>…back link…<% end %>
+    <%= link_to catalog_entries_path, class: "c-appbar__brand", "aria-label": "Collector search" do %>…logos…<% end %>
+    <nav class="c-appbar__nav" aria-label="Main"><%= link_to "Search", catalog_entries_path, "aria-current": "page" %></nav>
+    <div class="c-appbar__actions"><%= link_to "Sign in", new_session_path, class: "c-btn c-btn--secondary c-btn--sm" %></div>
+  </header>
+<% end %>
+```
+
+The shared logos move into a small partial `layouts/_appbar_logos` so the two forms don't repeat them. `_tabbar` wraps its body in `<% if collector? %>`. The layout's body class becomes `class_names("c-shell", "c-shell--footed": notice_lines.any?, "c-shell--untabbed": !content_for?(:tabbar))` (the exact `c-shell c-shell--footed` assertions in `design_system_spec.rb` and `footer_spec.rb` are on collector pages and still hold).
+
+`additions.css`, a block after `Footer (spec 018)`:
+
+```css
+/* ---------- Untabbed shell (spec 023) ----------
+   Below bp-narrow c-main (or, on a footed shell, the footer) keeps 80px clear for the fixed tab bar. A page with no tab
+   bar (a visitor's catalog page, sign-in, sign-up) is marked c-shell--untabbed and gives that clearance up. */
+@media (max-width: 639px) {
+  .c-shell--untabbed > .c-main { padding-bottom:calc(var(--space-6) + env(safe-area-inset-bottom)); }
+  .c-shell--untabbed.c-shell--footed > .c-main { padding-bottom:var(--space-4); }
+  .c-shell--untabbed > .c-footer { padding-bottom:calc(var(--space-4) + env(safe-area-inset-bottom)); }
+}
+```
+
+`spec/design_system_files_spec.rb` gains the block's shape check as spec 021's (one block, its heading, no colour literal, no font).
+
+Documents: the design system README's exported Mobile line ("Phones get a compact header and a bottom tab bar") isn't edited; `VisitorHeader.md` states the exception. `Footer.md`'s line on the tab bar's clearance names the `c-shell--untabbed` exception; `AppHeader.md` is exported and isn't edited, so `VisitorHeader.md` says it is the signed-out form of `AppHeader`; `docs/design-system/components/VisitorHeader.md` (markup, when it shows, no tab bar and the untabbed shell, the phone and detail forms); the design system README's additions gain a spec 023 line naming `VisitorHeader` in `collector/additions.css`; `AuthPage.md`'s "nothing else is reachable before signing in" names the open catalog as the exception and says the auth pages' brand stays unlinked (accepted).
+
+**Commit:** `feat(023): give the header a visitor form and drop the tab bar for visitors`.
+
+## Phase 5: The visitor's flow in the browser (AC-3.6, AC-5.5, AC-5.7)
+
+**Red → green.** `spec/system/visitor_catalog_spec.rb`, `:public_catalog`: without signing in, visit search, fill "Card name" with "bolt", click Search, click the result, see the card page's `h1`, no `.c-avatar`, no "Add a copy", the footer's notice on both pages, and "Sign in" in the header; then a narrow-frame check (`spec/support/narrow_frame.rb`) at 390px of the search and card pages: no horizontal overflow, "Sign in" visible; and, at 390px in a 320px-tall frame scrolled to the end (AC-5.7): on a footed shell the footer's computed `padding-bottom` is under 80px on a visitor's page and on sign-in, and 80px or more on a collector's page, while `c-main`'s is 16px (`space-4`) on both; on an unfooted shell (no registered content notice, `with_catalog_sources` as in `footer_spec.rb`) `c-main`'s is under 80px for a visitor and 80px or more for a collector. Red: the block deleted once, those examples fail. A further example hovers a result tile, clicks it, signs in from the header and lands on the card page (decision 4 through Turbo). Red is shown by running it with the setting off (redirect to sign-in).
+
+Screenshots for AC-5.5: search and card page at 1280px and 390px (frame), light and dark, from a dev server on this worktree's port with the setting on, cut and compressed into `screenshots/` as spec 021 did. Each is looked at.
+
+**Commit:** `test(023): a visitor searches and opens a card in the browser`, then `docs(023): screenshots of the visitor's pages`.
+
+## Phase 6: Documents (AC-1.4, FR-5)
+
+- `README.md`: the Compose table gains `COLLECTOR_PUBLIC_CATALOG | no | off | true opens catalog search and card pages to visitors (see [Open catalog](#open-catalog))`; a short "Open catalog" section (what opens, what stays private, that a hosted instance turns it on per the Scryfall research, how to set it for Compose and Kamal, and one sentence advising a rate limit at the reverse proxy, since every search runs a name match).
+- `CLAUDE.md`: the status line's "which has needed sign-in since accounts (spec 004)" gains "unless the operator opens it with `COLLECTOR_PUBLIC_CATALOG` (spec 023)", plus a Non-obvious Facts line on `OpenCatalog` and `collector?`.
+- `docs/roadmap.md`: the #59 line says spec 023 and the PR, once open.
+
+**Commit:** `docs(023): document the open catalog setting`.
+
+## Phase 7: Verification
+
+`bin/ci` green; `verification.md` maps every AC to its example or reading, with the red runs quoted; read-only Opus review of the branch; fixes from it in their own commits.
+
+## Risks
+
+- **Conditional `skip_before_action`.** Rails evaluates the `if:` per request, so turning the setting on in an example takes effect without reloading the controller; the request specs prove it. Checked in scratch on 2026-10-14 (Rails 8.1.4): `skip_before_action :a, if:` leaves `:a` in the chain with one `unless` condition. The bundled Turbo sets `X-Sec-Purpose: prefetch` on its prefetch requests.
+
+## Amendments from the Fable plan review
+
+Approved with changes by the maintainer on 2026-10-14. These override the phases above where they differ.
+
+1. **Phase 3 is three commits**, in this order:
+   - (3a) `refactor(023): lift prefetch? to ApplicationController`. The collection's prefetch examples (spec 006 AC-1.10) are the guard.
+   - (3b) `refactor(023): decide collection parts with collector?`. This covers `ApplicationHelper#collector?`, the gating in `_tile`, `show`, `_printings`, `_not_loaded`, `_appbar` and `_tabbar`, and `CardOverview#lots` returning `[]` with no account. The guards are the existing catalog request and system specs and the quick add's full-lot example (AC-6.2). This step is behaviour-neutral, since every page that renders these views is still behind sign-in.
+   - (3c) `feat(023): open catalog search and card pages to visitors`. This covers `OpenCatalog`, the prefetch meta, sign-up clearing the return path, and the red `visitors_spec.rb`.
+2. **Off means today, proven.** A guard in `visitors_spec.rb` has a collector GET search (with a query), a card page and all printings, once with the setting off and once with it on. The two bodies must be equal after masking the CSRF token (the `csrf-token` meta and every `authenticity_token` input) (AC-2.2, Goals).
+3. **A design-system record for the visitor's catalog parts.** `VisitorHeader.md` gets a "For a visitor" section. It says the tile is the plain `c-tile`, with no "Not owned" marker (`UnownedTile`), no quantity badge and no add control (`TileAdd`). It also says the card page has no "Owned" stat, no "Your copies" and no "Add a copy", and that the printings list's count reads "N known" with no muted rows.
+4. **The prefetch meta's proof is deterministic.** The system example adds a `turbo:before-fetch-request` listener that appends `#prefetched` to the body when a request carries `X-Sec-Purpose: prefetch`. It hovers a result tile, then asserts `have_no_css("#prefetched")` with the meta in place. The red is recorded once with the meta removed, by a bounded positive wait for `#prefetched`. The hover → click → sign in → card page example stays as the flow check.
+5. **The unfooted-shell example uses the search page without a query**, under `with_catalog_sources("other" => …)`, and measures `c-main` there. Tile images would fall back, because `OtherCatalogSource::ALLOWED_HOSTS` is `example.test`.
+6. **Phase 3's interim brand link** already points to `catalog_entries_path`, so a visitor clicking it before Phase 4 never reaches `/collection` and overwrites the return path.
+7. **The return path keeps the query.** A visitor who followed a `from=collection` link signs in and lands on `…?from=collection`, where `card_context` is then `:collection`. This is consistent with decision 6, and the spec's decision 4 notes it (v1.2.1).
+8. **Spec types are explicit.** `visitors_spec.rb` is `type: :request` and `visitor_catalog_spec.rb` is `type: :system`. Examples with several expectations take `:aggregate_failures`.
+9. **`config/initializers/public_catalog.rb` carries `art_matching.rb`'s comment**: why it runs after initialize, and why tests never read the environment.
