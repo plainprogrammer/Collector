@@ -1,6 +1,6 @@
 # Verification: Preview an Import (spec 025)
 
-**Spec:** [spec.md](spec.md) v1.5.0 · **Plan:** [plan.md](plan.md) · **ADR:** [0021](../../adr/0021-export-format-rules-in-the-app.md) · **Branch:** `025-import-preview` · **Issue:** [#39](https://github.com/plainprogrammer/Collector/issues/39)
+**Spec:** [spec.md](spec.md) v1.5.0 · **Plan:** plan (retired in `f62edb57955f78aca0836e16b3129e9cb29219ea`; read it with `git show f62edb57955f78aca0836e16b3129e9cb29219ea^:docs/specs/025-import-preview/plan.md`) · **ADR:** [0021](../../adr/0021-export-format-rules-in-the-app.md) · **Branch:** `025-import-preview` · **Issue:** [#39](https://github.com/plainprogrammer/Collector/issues/39)
 
 ## Rulings
 
