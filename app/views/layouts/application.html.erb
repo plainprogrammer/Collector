@@ -8,7 +8,8 @@
     <meta name="mobile-web-app-capable" content="yes">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
-    <%= turbo_refreshes_with method: :morph, scroll: :preserve %>
+    <%# A page may ask for another refresh method (number entry asks for replace, so autofocus works; spec 026). %>
+    <%= turbo_refreshes_with method: content_for(:turbo_refresh_method).presence&.to_sym || :morph, scroll: :preserve %>
     <%= yield :head %>
 
     <link rel="icon" href="<%= asset_path("collector/collector-mark.svg") %>" type="image/svg+xml">

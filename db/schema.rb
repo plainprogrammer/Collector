@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_09_100001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_15_100002) do
   create_table "accounts", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -218,6 +218,31 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_09_100001) do
     t.index ["illustration_id"], name: "index_mtg_printings_on_illustration_id"
   end
 
+  create_table "number_entries", force: :cascade do |t|
+    t.integer "account_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_number_entries_on_account_id", unique: true
+  end
+
+  create_table "number_entry_lines", force: :cascade do |t|
+    t.integer "number_entry_id", null: false
+    t.integer "account_id", null: false
+    t.integer "catalog_entry_id", null: false
+    t.integer "lot_id"
+    t.integer "quantity", null: false
+    t.string "finish"
+    t.string "line_key", null: false
+    t.datetime "undone_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_number_entry_lines_on_account_id"
+    t.index ["catalog_entry_id"], name: "index_number_entry_lines_on_catalog_entry_id"
+    t.index ["lot_id"], name: "index_number_entry_lines_on_lot_id"
+    t.index ["number_entry_id", "line_key"], name: "index_number_entry_lines_on_number_entry_id_and_line_key", unique: true
+    t.check_constraint "quantity BETWEEN 1 AND 9999", name: "number_entry_lines_quantity_range"
+  end
+
   create_table "scanner_sitting_entries", force: :cascade do |t|
     t.integer "scanner_sitting_id", null: false
     t.integer "account_id", null: false
@@ -278,6 +303,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_09_100001) do
   add_foreign_key "mtg_artworks", "catalog_entries"
   add_foreign_key "mtg_cards", "catalog_identities"
   add_foreign_key "mtg_printings", "catalog_entries"
+  add_foreign_key "number_entries", "accounts", on_delete: :cascade
+  add_foreign_key "number_entry_lines", "accounts", on_delete: :cascade
+  add_foreign_key "number_entry_lines", "catalog_entries"
+  add_foreign_key "number_entry_lines", "lots", on_delete: :nullify
+  add_foreign_key "number_entry_lines", "number_entries", on_delete: :cascade
   add_foreign_key "scanner_sitting_entries", "accounts", on_delete: :cascade
   add_foreign_key "scanner_sitting_entries", "catalog_entries"
   add_foreign_key "scanner_sitting_entries", "lots", on_delete: :nullify

@@ -3,6 +3,7 @@ class Account < ApplicationRecord
   has_one :user, dependent: nil
   has_many :lots, dependent: :delete_all
   has_one :scanner_sitting, class_name: "Scanner::Sitting", dependent: :destroy
+  has_one :number_entry, dependent: :destroy
 
   def copies_count = lots.sum(:quantity)
 end

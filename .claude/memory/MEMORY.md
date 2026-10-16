@@ -46,7 +46,7 @@
 - [Spec 022 follow-ups](spec-022-followups.md) — export merged (PR #97, 2026-10-15); open: More focus ring, menu stays open after download; import inherits no `generator`, id order, times without fraction
 
 - [No prose-document specs](no-readme-wording-specs.md) — no RSpec examples for README.md, CLAUDE.md, skill files or docs/ Markdown (spec 020, decision 7); export format document, config and code checks stay; verify document criteria by reading
-- [Worktree shared test DB](worktree-shared-test-db.md) — bin/ci and subagents in one worktree share one SQLite test DB; parallel subagents get "don't run RSpec" while CI runs
+- [Worktree shared test DB](worktree-shared-test-db.md) — bin/ci and subagents in one worktree share one SQLite test DB; parallel subagents get "don't run RSpec" while CI runs (not even single files: spec 026's stalled 1.5h on the lock); check background subagents after ~10 min
 - [Spec 024 follow-ups](spec-024-followups.md) — skip-while-a-retry-waits merged (PR #96, 2026-10-15); #77 must discard or run the waiting job first; accepted limits
 - [Edit specs your change makes stale](edit-specs-your-change-makes-stale.md) — a shipped spec made stale → record the supersession in the new spec and the index, update the area doc; never edit the old spec (R3, R8, 2026-10-15; first used by specs 025, 026)
 - [No spec source gets an issue](no-spec-source-gets-an-issue.md) — distilling finds code behaviour no spec/ADR/issue states → open an issue for a ruling even if nothing contradicts it; area doc marks and links it (maintainer, 2026-10-15, #111)

@@ -22,7 +22,7 @@ Foundation principle 2. Spec 004 named export and import as the next priority; s
 
 ### Theme B: Typed entry
 
-8. [#43](https://github.com/plainprogrammer/Collector/issues/43) Enter cards from a set by collector number and quantity, keyboard only. Nothing in it is specific to one collectible type.
+8. [#43](https://github.com/plainprogrammer/Collector/issues/43) Enter cards from a set by collector number and quantity, keyboard only. Nothing in it is specific to one collectible type. **Done 2026-10-15:** [spec 026](specs/026-typed-entry/spec.md), [PR #114](https://github.com/plainprogrammer/Collector/pull/114).
 
 ### Theme C: Locations
 

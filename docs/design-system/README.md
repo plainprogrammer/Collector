@@ -106,6 +106,8 @@ App additions (spec 023, in `collector/additions.css`): `VisitorHeader`. It is `
 
 App additions (spec 025, in `collector/additions.css`): `ImportPreview`. Upstream it into the published design system before the next export replaces this folder.
 
+App additions (spec 026, in `collector/additions.css`): `NumberEntry`. Upstream it into the published design system before the next export replaces this folder.
+
 ## Logo
 
 - The mark is three fanned cards, the front one vault teal with a foil diamond: a collection, one piece of which is special. It is deliberately game-neutral so it grows past trading cards.

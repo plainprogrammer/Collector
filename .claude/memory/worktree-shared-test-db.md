@@ -14,4 +14,9 @@ In spec 023 (2026-10-14) a background `bin/ci` (3.5 minutes) ran alongside a sub
 - A subagent that must run specs (TDD units, mutation proofs) runs alone. Run CI after it commits.
 - A document commit that lands after the CI run doesn't need a re-run. Record the SHA CI ran at.
 
+In spec 026 (2026-10-15) the brief for a review follow-up subagent said "don't run full bin/ci, only the spec files you touch", while a background `bin/ci` was running. The subagent's `bin/rspec` hit the lock and sat at "retrying after lock" for about 1.5 hours, unnoticed, until the coordinator asked. Its edits were done but never committed; the session finished them itself.
+
+- "Only the files you touch" still uses the test database: a subagent that runs any spec waits until CI has finished.
+- Check on a background subagent after about 10 minutes. If its status shows a lock wait, stop it and finish the work in-session.
+
 Related: [[background-servers-via-task]], [[orca-supervised-stages]].

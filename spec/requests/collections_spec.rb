@@ -7,7 +7,7 @@ RSpec.describe "Collection", type: :request do
 
   it "shows the empty state without a filter bar", :aggregate_failures do
     get collection_path
-    expect(response.body).to include("My collection", "No cards in your collection yet. Search for a card to start adding.")
+    expect(response.body).to include("My collection", "No cards in your collection yet. Search for a card or")
     expect(response.body).not_to include("c-filterbar")
   end
 

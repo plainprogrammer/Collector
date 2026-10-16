@@ -1,0 +1,20 @@
+<%# locals: (choice:, named:) %>
+<%# Spec 026 decision 2: one text field with the offered sets as native suggestions, so typing filters them without
+    scripting; the server resolves a code, a name or the "Name (CODE)" label. %>
+<% unmatched = choice.asked? && !choice.chosen? %>
+<%= form_with url: collection_number_entry_path, method: :get, class: "c-form" do %>
+  <div class="c-field<%= " c-field--invalid" if unmatched %>">
+    <label class="c-field__label" for="number_entry_set">Set</label>
+    <label class="c-input"><%= text_field_tag :set, choice.text, id: "number_entry_set", list: "number_entry_sets",
+          required: true, autofocus: true, "aria-describedby": (unmatched ? "number_entry_set_error" : "number_entry_set_hint") %></label>
+    <% if unmatched %>
+      <p class="c-field__error" id="number_entry_set_error"><%= choice.unmatched_message %></p>
+    <% else %>
+      <p class="c-field__hint" id="number_entry_set_hint">Type a set code or name.</p>
+    <% end %>
+    <datalist id="number_entry_sets">
+      <% choice.sets.each do |set| %><%= tag.option(value: choice.label(set), label: (Catalog.title_for(set.collectible_type) if named)) %><% end %>
+    </datalist>
+  </div>
+  <div class="c-form__actions"><%= submit_tag "Choose set", name: nil, class: "c-btn c-btn--primary" %></div>
+<% end %>

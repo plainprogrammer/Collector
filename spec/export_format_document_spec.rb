@@ -74,7 +74,7 @@ RSpec.describe "The export format's document" do
 
       expect(status).to include("lots" => "Exported", "users" => "Exported", "accounts" => "Nothing to export")
       expect(status.select { |_table, mark| mark == "Left out" }.keys)
-        .to match_array(%w[bulk_removals bulk_selection_marks bulk_selections scanner_sitting_entries scanner_sittings sessions])
+        .to match_array(%w[bulk_removals bulk_selection_marks bulk_selections number_entries number_entry_lines scanner_sitting_entries scanner_sittings sessions])
       expect(covered_tables.map { |row| row["Why"] }).to all(match(/\S/))
     end
 
