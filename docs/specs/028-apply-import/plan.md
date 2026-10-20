@@ -1,8 +1,8 @@
 # Implementation Plan: Apply an Import
 
-**Spec:** docs/specs/028-apply-import/spec.md (v1.3.1, Approved)
+**Spec:** docs/specs/028-apply-import/spec.md (v1.3.3, Approved)
 **Decisions:** docs/adr/0022-stored-import-upload-retention.md (drafted with this plan, revised by [plan-review.md](plan-review.md)); ADR 0013, 0016, 0017, 0020, 0021 apply
-**Created:** 2026-10-20 · **Revised:** 2026-10-20 against two independent reviews (spec 1.3.2); see [plan-review.md](plan-review.md)
+**Created:** 2026-10-20 · **Revised:** 2026-10-20 against three independent reviews (spec 1.3.3); see [plan-review.md](plan-review.md)
 **Supporting:** [data-model.md](data-model.md), [contracts/api.md](contracts/api.md)
 
 ## Global Constraints
@@ -12,7 +12,7 @@ Copied from the spec; each applies to every phase.
 - Replace semantics of spec 025 decision 1; a file with problem rows, a refused file, or one with nothing to change is never stored and never applied (decisions 1, 4, 12).
 - The order of an apply's checks is decision 13's: no upload or expired (422) → stored file unreadable (422) → refused or problem rows (422) → nothing to change (422) → fingerprints not all equal (409) → removal unconfirmed (422).
 - Applying is one all-or-nothing write transaction; parse and resolve before it; its bar is **under 4 s for 50,000 rows**; the whole request under 30 s and 500 MB RSS growth (decision 3, AC-1.10).
-- The stored upload: one per account, `application/json` by content, at most `CollectionImport::MAX_BYTES` (32 MB), `ImportUpload::EXPIRES_IN` = 1 hour; created analyzed; every removal purges synchronously, outside the write transaction; the sweep (every 15 minutes, `default`, development and production) only calls `purge`, never walks `storage/`; orphan = marked blob, no attachment, older than 10 minutes (decisions 8, 9).
+- The stored upload: one per account, `application/json` by content, at most `CollectionImport::MAX_BYTES` (32 MB), `ImportUpload::EXPIRES_IN` = 1 hour; created analyzed; every removal releases the blob synchronously, file first and then the row, outside the write transaction; the sweep (every 15 minutes, `default`, development and production) only releases blobs that way, touches no disk path except through that release, and never walks `storage/`; orphan = marked blob, no attachment, older than 10 minutes (decisions 8, 9).
 - Active Storage routes stay drawn but gated: sign-in plus ownership of original blobs; direct-upload creation and the disk service's upload PUT answer 404, signed in or not, until a feature needs them (decision 8, spec 1.3.2).
 - Every removal of an upload goes through `ImportUpload#remove!`: row and attachment destroyed, then after the commit the blob released inside `begin/rescue` (log the class only); a failure never fails the request and leaves a marked unattached blob for the sweep (decision 9).
 - Presence and expiry are checked once early (an optimisation) and once inside the transaction, which is authoritative (decision 13, spec 1.3.2).
@@ -621,7 +621,8 @@ RSpec.describe CollectionImport::Plan, type: :model do
 
     it "is equal for two previews of the same file and collection", :aggregate_failures do
       lot = held_lot(account, a, quantity: 2)
-      expect(fingerprint).to eq(fingerprint)
+      first = fingerprint
+      expect(fingerprint).to eq(first)
       expect(lot).to be_persisted
     end
 
@@ -698,7 +699,6 @@ end
   # replaces the memoized plan and outcomes, so that the page an apply renders afterwards shows what the apply decided.
   def replan
     user.reload
-    @removed_lots = nil
     @outcomes = outcomes_for(held_lots)
     @plan = Plan.new(@outcomes, view_change)
   end
@@ -915,7 +915,7 @@ end
 
 Two checks of presence and expiry, on purpose (maintainer ruling 2026-10-20, spec 1.3.2 decision 13): the one before the stored file is read avoids reading 32 MB for an upload that is gone or expired and gives the same answer; the one inside the transaction is authoritative, and AC-5.6 tests the inside one.
 
-All Ruby work that is not a write happens before the transaction: reading and parsing, resolving, and building every attribute hash of the upsert (time parsing, price, lot key). Inside the transaction there are the re-check, one read of the account's lots and the user (`replan`), the fingerprint comparison, and the statements (maintainer ruling 5).
+Ruby work that can be done before the lock is: reading and parsing, resolving, and building every attribute hash of the upsert (time parsing, price, lot key). What stays inside the transaction is the re-check, `replan` (one read of the account's lots and the user, then the outcomes of every row and the fingerprint's JSON and SHA-256), the comparison, and the statements. `replan` is most of the Ruby cost left inside the lock (50,000 `HeldLot` objects with two `iso8601(6)` calls each, `outcomes_for`, the digest), so **the first spike result is the real test of that cost**, not of the writes alone (maintainer ruling 5).
 
 - [ ] Write the failing spec (each example cites its criterion; `ExampleLength` and `MultipleMemoizedHelpers` are excluded for this file in `.rubocop.yml` by Phase 0, because each example is a scenario of collection, file and upload):
 
@@ -1182,22 +1182,21 @@ RSpec.describe CollectionImport::Apply, type: :model do
   end
 
   describe "bounded statements (FR-4)" do
+    include QueryCounting # spec/support/query_counting.rb, which includes itself for request specs only
+
     def statements_for(size)
       other = create(:user)
-      entries = Array.new(size) { import_printing }
-      upload = store_import!(account: other.account, data: import_file(other, entries.map { |entry| import_row(entry) }))
-      queries = 0
-      counter = ->(*, payload) { queries += 1 unless payload[:name] == "SCHEMA" || payload[:sql].match?(/\ASAVEPOINT|\ARELEASE/) }
-      ActiveSupport::Notifications.subscribed(counter, "sql.active_record") { apply(upload, for_account: other.account) }
-      queries
+      upload = store_import!(account: other.account, data: import_file(other, Array.new(size) { import_row(import_printing) }))
+      count_queries { apply(upload, for_account: other.account) }
     end
 
-    it "runs as many statements for 30 rows as for 2 within one batch, and one more per batch past it", :aggregate_failures do
+    it "runs the same statements within one batch, and the same number more for each batch past it", :aggregate_failures do
       stub_const("CollectionImport::BATCH_SIZE", 10)
-      small = statements_for(2)
+      one, two, three = [ 9, 15, 25 ].map { |size| statements_for(size) } # one, two and three batches
 
-      expect(statements_for(9)).to eq(small)
-      expect(statements_for(25)).to eq(small + 2) # two more upserts
+      expect(statements_for(2)).to eq(one)
+      expect(two).to be > one
+      expect(three - two).to eq(two - one) # linear in the number of batches, never in the number of rows
     end
   end
 
@@ -1412,10 +1411,15 @@ end
 - [ ] Run the spec — expect PASS. Allowed adjustments inside this phase: the `Time.iso8601` rows are built for every non-problem row (50,000 hashes, held in memory until the transaction ends); if `returning: false` is refused with `update_only` on this Rails, drop it and keep the rest.
 - [ ] Run `bin/rspec spec/models` — expect PASS; `bin/rubocop -a app/models spec/models`.
 - [ ] Commit: `feat(028): apply a stored import in one transaction`
-- [ ] **Spike: measure the transaction now, before building on it (maintainer ruling 5).** With the method of Phase 11 (a throwaway `bin/rails runner` script in the session scratchpad, never committed; data for cases (a), (b) and (c) of AC-1.10), call `CollectionImport::Apply.new(...).call` in-process and take the transaction's time from `ActiveSupport::Notifications.subscribe("transaction.active_record")` (its `duration` for the outermost transaction), plus a `Benchmark` of each stage for diagnosis. Record the three numbers in a note for `verification.md`.
+- [ ] **Spike: measure the transaction now, before building on it (maintainer ruling 5).** Run a throwaway `bin/rails runner` script in the session scratchpad (never committed) against the worktree's **development** database, with the data of cases (a), (b) and (c) of AC-1.10 as Phase 11 describes them. Call `CollectionImport::Apply.new(...).call` in-process and take the transaction's time from `ActiveSupport::Notifications.subscribe("transaction.active_record")` (its `duration` for the outermost transaction), plus a `Benchmark` of each stage (the lots read, `outcomes_for`, the fingerprint, the deletes, the upserts) for diagnosis. Record the three numbers for `verification.md`. Delete every inserted row (set, identities, entries, printings, users, lots, uploads) when the spike ends, as spec 025's verification did.
   - **Under 4 s for all three:** continue with Phase 6.
-  - **Over 4 s:** first profile the stages. If the read of the lots, the outcomes or the fingerprint dominate, the author may rework the fingerprint over raw `lots` columns with one lean read, with no visible change: `account.lots.pluck(:id, :catalog_entry_id, :lot_key, :quantity, :created_at, :updated_at)`, no joins; the lot's identity is `(catalog_entry_id, lot_key)`, matched to the file's rows through `entry_id(row)` and `Lot.key_for`; the same function computes the preview's fingerprint, so the values agree; names and set codes for the pages are read in the preview only. Re-measure.
+  - **Over 4 s:** profile the stages first. If `replan` (the read, the outcomes or the fingerprint) dominates, apply the **lean-read rung** (the author may, before any fallback reaches the maintainer, because it changes what runs inside the lock and not what the collector sees):
+    1. Inside the transaction, compute a **lean fingerprint** from one read without joins, `account.lots.pluck(:id, :catalog_entry_id, :lot_key, :quantity, :created_at, :updated_at)` (the times at full precision), combined with the stored file's checksum and the view change; the preview computes the same function, so the stored and form values agree. A lot's identity is `(catalog_entry_id, lot_key)`, matched to the file's rows through `entry_id(row)` and `Lot.key_for`.
+    2. **Fingerprints match** (form = stored = lean): the collection is as the preview found it, so the plan built **before `BEGIN`** (the full `replan`, done outside the lock against the lots as they were) is current. Use it for the writes and for the confirmation check. "Nothing to change" cannot hold, because an upload is stored only for a file that had something to change and the collection has not moved.
+    3. **Fingerprints differ:** leave the transaction (it wrote nothing), build the full `replan` outside it, and decide between nothing to change (remove the upload, 422) and stale (store the new fingerprint, 409) with decision 13's order; both branches write only the upload row, in a short transaction of their own.
+    4. The names and set codes for the pages are read in the full plan only. Re-measure.
   - **Still over 4 s after that:** stop and ask the maintainer through the coordinator (`orca orchestration ask`) for the fallback decision 3 names (a job on the stored upload). Do not choose it.
+
 ---
 
 ## Phase 6: The preview stores the upload and offers the apply
@@ -1443,7 +1447,7 @@ end
         expect(form.at_css("input[type=submit]")["value"]).to eq("Apply import")
         expect(form.at_css("input[name=confirm_removal]")).to be_present # a lot is removed
         expect(html.at_css("a[href='#{collection_export_path}']")).to be_present
-        expect(response.body).to match(/removes 1 lot/).and match(/can't be undone/).and match(/kept for an hour/)
+        expect(response.body).to include("removes 1 lot", "can't be undone", "kept for an hour")
       end
 
       it "puts the CSRF token in the apply form (FR-5)" do
@@ -1542,7 +1546,7 @@ class Collections::ImportPreviewsController < ApplicationController
 
   private
     def keep(file)
-      file.rewind
+      file.rewind # reads the upload a second time; Phase 11 measures the preview's memory with it (N-m8), and only if it misses 500 MB does CollectionImport expose the bytes it already holds
       ImportUpload.store!(account: Current.account, bytes: file.read, plan: @import.plan)
     rescue ActiveStorage::Error, SystemCallError, ActiveRecord::ActiveRecordError => error
       Rails.logger.error("The previewed import file was not kept: #{error.class}")
@@ -1863,7 +1867,7 @@ end
 **Files:** `spec/models/collection_import/round_trip_spec.rb`
 **Interfaces:** Consumes: `CollectionExport`, `CollectionImport`, `Apply`, `ExportFormatRules.same_collection?`. Produces: the round-trip evidence.
 
-- [ ] Write the spec (it fails only if applying does not restore the collection; it is written before any adjustment, so a first red here is a bug to fix in Phases 4–5):
+- [ ] Write the spec (it fails only if applying does not restore the collection; it is written before any adjustment, so a first red here is a bug to fix in Phases 3 and 5):
 
 ```ruby
 # spec/models/collection_import/round_trip_spec.rb
@@ -1949,6 +1953,8 @@ RSpec.describe "Export and import round trip", type: :model do
       expect(user.account.lots.count).to eq(data["lots"].size)
     end
   end
+end
+```
 
 - [ ] `empty.json` is a different case: its currency is EUR, so it is refused unless the instance uses EUR, and an example that skips that proves nothing. Add to `spec/requests/collection_import_previews_spec.rb`:
 
@@ -1966,7 +1972,7 @@ RSpec.describe "Export and import round trip", type: :model do
     end
 ```
 
-- [ ] Run `bin/rspec spec/models/collection_import/round_trip_spec.rb spec/requests/collection_import_previews_spec.rb` — expect PASS once Phases 4–5 hold; any red is a defect there (fix, then rerun). If `Catalog::Set` is named differently, use the constant `spec/factories/catalog.rb` builds; the instance currency is USD, as the examples' (`docs/export-format/examples/valid/*.json` `"currency"`).
+- [ ] Run `bin/rspec spec/models/collection_import/round_trip_spec.rb spec/requests/collection_import_previews_spec.rb` — expect PASS once Phases 3 and 5 hold; any red is a defect there (fix, then rerun). If `Catalog::Set` is named differently, use the constant `spec/factories/catalog.rb` builds; the instance currency is USD, as the examples' (`docs/export-format/examples/valid/*.json` `"currency"`).
 - [ ] Commit: `test(028): export and import round trip`
 ---
 
@@ -2074,6 +2080,7 @@ end
 The transaction's bar was first measured in Phase 5's spike. This phase measures the whole request and the other checks, with the final code.
 
 - [ ] Method: reuse spec 025's (`docs/specs/025-import-preview/verification.md`, AC-1.10): a throwaway `bin/rails runner` script inserts one set, 50,000 identities, entries and `mtg_printings`; a verify user; writes the files **(a)** 50,000 resolvable rows; **(b)** the same file with every row changed (quantities +1); **(c)** an empty file with 50,000 held lots. For each: a fresh `bin/dev` server; sign in with curl; preview the file; read `VmRSS`/`VmHWM`; `curl` the apply with the form's `fingerprint`, `confirm_removal=1` for (c); read RSS again. Record the preview's time and RSS for (a) as well (P3).
+- [ ] The preview reads the upload twice (`CollectionImport`, then `keep`); this measurement includes that. Only if the preview of (a) misses 500 MB does `CollectionImport` expose the bytes it already holds and `keep` pass them on.
 - [ ] Bars: whole request < 30 s, RSS growth < 500 MB, **write transaction < 4 s** (re-timed with `transaction.active_record`, as in the spike); the preview of (a) with the store still < 30 s / 500 MB.
 - [ ] If the transaction bar is missed here after passing in the spike, or after the spike's lean-read rework: stop and **ask the maintainer through the coordinator** for the fallback (decision 3). Do not choose it.
 - [ ] AC-2.3 by hand (the examples simulate the lost upload; only two real connections show "neither answers 500"): preview a file, then post the form twice at once (`curl … & curl … & wait`). Expect exactly one 303 and the other a 422 "Preview the file again." (or 409), no 500, and the collection equal to the file. Repeat ten times with fresh previews.
@@ -2119,7 +2126,7 @@ No test: prose documents are verified by reading (`.claude/rules/testing.md`), r
 
 1. **The 4 s transaction bar (decision 3).** The read of 50,000 held lots, the comparison, 50,000 deletes (with the cascade to `bulk_selection_marks`) and the upserts sit in it. Mitigations, in order: all Ruby work that is not a write is done before `BEGIN`; `returning: false`; Phase 5's spike measures it before anything is built on it; if missed, the author may rework the fingerprint over raw `lots` columns with one lean read (no visible change); only if it is still missed does the maintainer rule the fallback.
 2. **Parse and resolve time.** Spec 025 measured the preview at about 10.6 s for 50,000 rows; the apply repeats that work, plus the store, inside the 30 s request bar and kamal-proxy's 30 s default timeout. Measured in Phase 11 (P3).
-3. **The Active Storage gate authorises original blobs only.** Variant records and preview images hang off records without an `account_id`, so the gate serves them to no one. The first image feature must extend ownership to variant records and preview images before its variants can be served; nothing of variants is built here (ADR 0022). The gate also depends on Active Storage's controller internals; a Rails upgrade that renames `signed_id`/`encoded_key` breaks it, and AC-1.12's examples fail first. Direct-upload creation and the disk PUT answer 404 until a feature needs them; that feature defines its owner rule, quota and clean-up.
+3. **The Active Storage gate authorises original blobs only.** The representation route passes the gate for an owner (it carries the original blob's signed id) and then redirects to the variant file's disk URL, which the gate refuses, because a variant record has no `account_id`; preview images hang off records without one too. So variants are not served until the first image feature extends ownership. The first image feature must extend ownership to variant records and preview images before its variants can be served; nothing of variants is built here (ADR 0022). The gate also depends on Active Storage's controller internals; a Rails upgrade that renames `signed_id`/`encoded_key` breaks it, and AC-1.12's examples fail first. Direct-upload creation and the disk PUT answer 404 until a feature needs them; that feature defines its owner rule, quota and clean-up.
 4. **A blob release that fails** (the file delete raises after commit) leaves a marked, unattached blob row, which the sweep finds after 10 minutes; the request still succeeds. If the row delete itself keeps failing, the sweep logs and retries every 15 minutes.
 5. **`Lot.upsert_all` skips validations and callbacks** (FR-3, ruled). AC-2.4's example and the round trip check the rows against `Lot`; a later `Lot` validation needs the apply updated (the round trip fails first).
 6. **Memory.** The stored file is read whole and parsed whole (32 MB cap), and the apply holds one attribute hash per row until the transaction ends. Inside the 500 MB bar by measurement only.

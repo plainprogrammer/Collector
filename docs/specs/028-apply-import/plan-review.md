@@ -56,6 +56,26 @@ They overlap heavily. The 41 findings (21 from S, 20 from O) are resolved below 
 | 33 | O-m11 | **Resolved.** `narrow_pages_spec.rb` lists GET paths and the apply form's page is a POST result, so it is not added there; AC-7.3 stays with the screenshots (Phase 9). |
 | 34 | O-m13 (ADR limit, Q3), O-Q4 | **Resolved.** See rows 3 and 6: the limit is dropped and the variants consequence is stated. |
 
+## Second Sonnet review (r2), at `e945f7e`
+
+A re-review of the revised plan: **NEEDS REVISION**, 0 critical, 3 major (N-M1a, N-M1b, N-M2), 1 further major-sized item (N-M3, listed as minor) and 8 minor (N-m1 to N-m8). All 12 are resolved; the reviewer confirmed the 34 rows above except rows 16 and 27, which these rows close. Spec 028 became **1.3.3** (PATCH via `sdd-spec-update`).
+
+| # | Finding | Resolution |
+|---|---|---|
+| r2-1 | N-M1a (also row 27): the FR-4 example expected `small + 2`, but the entry lookup is sliced by `BATCH_SIZE` too | **Resolved.** The example now asserts linearity: with `BATCH_SIZE` stubbed to 10, `one`, `two` and `three` are the statement counts for 9, 15 and 25 rows (one, two and three batches); it expects `statements_for(2) == one`, `two > one`, and `three - two == two - one`. It counts with `QueryCounting#count_queries` (`spec/support/query_counting.rb`), included in the describe because the support file includes it for request specs only. |
+| r2-2 | N-M1b: `RSpec/IdenticalEqualityAssertion` (plan spec) and `RSpec/MatchWithSimpleRegex` (previews spec) | **Resolved.** `first = fingerprint; expect(fingerprint).to eq(first)`; `include("removes 1 lot", "can't be undone", "kept for an hour")`. RuboCop run on the changed snippets through `bin/rubocop --stdin`: the apply and plan snippets show only `MultipleMemoizedHelpers` and `ExampleLength`, which Phase 0's `.rubocop.yml` exclusions cover; the previews and round-trip snippets are clean. |
+| r2-3 | N-M2: Phase 8 round-trip snippet missing its closing `end` and fence | **Resolved.** The outer `end` and the closing fence are added; the whole snippet passes RuboCop on stdin. |
+| r2-4 | N-M3: the lean-read rung did not serve decision 13's order or `write!`; `replan`'s cost sat inside the lock unmentioned | **Resolved (maintainer ruling 2).** The rung is written as the reviewer describes: a lean fingerprint over one join-free read inside the transaction; on a match, the plan built before `BEGIN` serves the writes and the confirmation check (nothing to change cannot hold, since the upload exists only for a file that had something to change); on a mismatch, leave the transaction and build the full `replan` outside it to decide nothing to change (422) versus stale (409). It is applied before any job fallback reaches the maintainer. Phase 5's opening now says plainly that `replan`'s cost inside the lock is what the first spike tests, and corrects "all Ruby work … before the transaction". |
+| r2-5 | N-m1 and question 1: spec and plan say the sweep "only calls `purge`" | **Resolved (maintainer ruling 1).** Spec 1.3.3: decision 9 (removals release the blob file first, then the row, "the effect of `purge`, in the safe order"; the sweep touches no disk path except through that release), AC-5.4, and FR-2's "purged" wording, with a changelog entry. The plan's Global Constraints say "release". |
+| r2-6 | N-m2: ADR 0022 contradicts itself on the orphan bound | **Resolved.** "How long" now says the sweep removes an orphan once it is more than 10 minutes old, within 25 minutes of creation. |
+| r2-7 | N-m3: plan header names spec 1.3.1 | **Resolved.** The header names 1.3.3, and the revision line names three reviews. |
+| r2-8 | N-m4: the spike has no data-safety instruction | **Resolved.** It runs against the worktree's development database and deletes every inserted row at its end. |
+| r2-9 | N-m5: stale "Phases 4–5" references in Phase 8 | **Resolved.** "Phases 3 and 5". |
+| r2-10 | N-m6: dead `@removed_lots = nil` in `replan` | **Resolved.** The line is deleted. |
+| r2-11 | N-m7: "served to no one" is wider than the behaviour | **Resolved.** ADR 0022's consequence, Risk 3 and the gate's Complexity note say the representation route passes for an owner and the variant file behind it is refused until the first image feature extends ownership. |
+| r2-12 | N-m8: `keep` reads the 32 MB upload a second time | **Left for Phase 11 to measure, by choice.** The two-line `bytes` accessor is not added now; the preview's re-measure (P3) includes the second read, and only if it misses 500 MB does `CollectionImport` expose the bytes it holds. Noted in `keep` and in Phase 11. |
+| r2-13 | Question 3: an account removed by raw SQL leaves an attachment row the sweep never sees | **Accepted (maintainer ruling 3).** Recorded as an accepted limit in ADR 0022's consequences. |
+
 ## Awaiting the maintainer
 
 Nothing blocks execution. Two things to see at plan review:
