@@ -26,7 +26,8 @@ class CollectionImport
   end
 
   # A lot of the collection, as the file would write it, with its id for applying (#40).
-  HeldLot = Data.define(:id, :identity, :quantity, :added_at, :changed_at, :name, :set_code, :collector_number, :language) do
+  HeldLot = Data.define(:id, :identity, :quantity, :added_at, :changed_at, :name, :set_code, :collector_number, :language,
+    :created_exact, :updated_exact) do
     def described
       { set_code:, collector_number:, language:, finish: identity[2], condition: identity[3], price_paid: identity[4] }
     end
@@ -61,11 +62,27 @@ class CollectionImport
   # +file+ is the upload: anything that answers #read and #size. Anything else is no file.
   def initialize(account:, file:)
     @account = account
+    @entry_ids = {}
     @refusal = read(file)
     @rows = refused? ? [] : read_rows
   end
 
   def refused? = !refusal.nil?
+
+  # The catalog entry a row that isn't a problem row resolved to (for applying, spec 028).
+  def entry_id(row) = @entry_ids.fetch(row.number)
+
+  # What applying would do to the collection as it was when this was first asked (the preview's view, spec 028).
+  def plan = @plan ||= Plan.new(outcomes, view_change)
+
+  # The same, against the collection as it is now: one read of the lots and of the user, no parsing (spec 028 FR-2). It
+  # replaces the memoized plan and outcomes, so that the page an apply renders afterwards shows what the apply decided.
+  def replan
+    user.reload
+    @removed_lots = nil # memoized from the outcomes below by #removed_lots
+    @outcomes = outcomes_for(held_lots)
+    @plan = Plan.new(@outcomes, view_change)
+  end
 
   def applicable? = !refused? && problem_rows.empty?
 
@@ -230,6 +247,7 @@ class CollectionImport
         vocabulary = Catalog.collecting_for(type)
         entries = entries_for(type, group.map { |lot, _index| lot["entry"]["source_id"] })
         group.each do |lot, index|
+          @entry_ids[index + 1] = entries[lot["entry"]["source_id"]]&.id
           list = entry_problems(lot, index, entries[lot["entry"]["source_id"]], vocabulary)
           found[index] = list if list.any?
         end
@@ -263,29 +281,31 @@ class CollectionImport
     def held_lots
       @account.lots.joins(entry: :set).pluck(*LOT_COLUMNS).map do |id, type, source_id, finish, condition, cents, quantity, added, changed, name, set_code, number, language|
         HeldLot.new(id:, identity: [ type, source_id, finish, condition, cents && format("%.2f", cents / 100r) ], quantity:,
-          added_at: added.getutc.iso8601, changed_at: changed.getutc.iso8601, name:, set_code:, collector_number: number, language:)
+          added_at: added.getutc.iso8601, changed_at: changed.getutc.iso8601, name:, set_code:, collector_number: number, language:,
+          created_exact: added.getutc.iso8601(6), updated_exact: changed.getutc.iso8601(6))
       end
     end
 
     # Decision 1: each row that isn't a problem row is added, changed or unchanged; each held lot is matched by such a
     # row, else held by a problem row that names it, else removed.
-    def outcomes
-      @outcomes ||= begin
-        held = held_lots.index_by(&:identity)
-        good = rows.reject(&:problem?)
-        matched = good.select { |row| held.key?(row.identity) }.index_by(&:identity)
-        changed, unchanged = matched.values.partition { |row| !row.same_as?(held[row.identity]) }
-        named = problem_rows.filter_map(&:identity).to_set
-        kept, removed = held.values.reject { |lot| matched.key?(lot.identity) }.partition { |lot| named.include?(lot.identity) }
-        added = good.reject { |row| held.key?(row.identity) }
-        row_outcomes = [ [ added, :added ], [ changed, :changed ], [ unchanged, :unchanged ] ]
-          .flat_map { |list, outcome| list.map { |row| [ row.number, outcome ] } }.to_h
-        { added: tally(added), unchanged: tally(unchanged),
-          changed: Tally.new(lots: changed.size, copies: changed.sum { |row| held[row.identity].quantity },
-                             copies_after: changed.sum { |row| row.quantity.to_i }),
-          held: tally(kept), removed: tally(removed), row_outcomes:, held_by_problem_rows: kept, removed_lots: removed,
-          matched_lots: matched.transform_values { |row| held[row.identity] } }
-      end
+    def outcomes = @outcomes ||= outcomes_for(held_lots)
+
+    def outcomes_for(held_list)
+      held = held_list.index_by(&:identity)
+      good = rows.reject(&:problem?)
+      matched = good.select { |row| held.key?(row.identity) }.index_by(&:identity)
+      changed, unchanged = matched.values.partition { |row| !row.same_as?(held[row.identity]) }
+      named = problem_rows.filter_map(&:identity).to_set
+      kept, removed = held.values.reject { |lot| matched.key?(lot.identity) }.partition { |lot| named.include?(lot.identity) }
+      added = good.reject { |row| held.key?(row.identity) }
+      row_outcomes = [ [ added, :added ], [ changed, :changed ], [ unchanged, :unchanged ] ]
+        .flat_map { |list, outcome| list.map { |row| [ row.number, outcome ] } }.to_h
+      { added: tally(added), unchanged: tally(unchanged),
+        changed: Tally.new(lots: changed.size, copies: changed.sum { |row| held[row.identity].quantity },
+                           copies_after: changed.sum { |row| row.quantity.to_i }),
+        held: tally(kept), removed: tally(removed), row_outcomes:, held_by_problem_rows: kept, removed_lots: removed,
+        matched_lots: matched.transform_values { |row| held[row.identity] },
+        added_rows: added, changed_rows: changed }
     end
 
     def tally(items) = Tally.new(lots: items.size, copies: items.sum { |item| item.quantity.to_i })
