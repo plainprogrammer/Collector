@@ -1,6 +1,6 @@
 # Verification: Add Cards from a Set by Collector Number (spec 026)
 
-**Spec:** [spec.md](spec.md) v1.2.2 · **Plan:** [plan.md](plan.md) · **Branch:** `026-typed-entry` · **Issue:** [#43](https://github.com/plainprogrammer/Collector/issues/43)
+**Spec:** [spec.md](spec.md) v1.2.2 · **Plan:** plan (retired in `6b18cd6bf263afe0761e78b43f48772a362fafed`; read it with `git show 6b18cd6bf263afe0761e78b43f48772a362fafed^:docs/specs/026-typed-entry/plan.md`) · **Branch:** `026-typed-entry` · **Issue:** [#43](https://github.com/plainprogrammer/Collector/issues/43)
 
 ## Rulings
 
