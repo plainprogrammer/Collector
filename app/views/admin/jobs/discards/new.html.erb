@@ -1,0 +1,13 @@
+<% content_for :title, "Discard #{@job.class_name} · Collector" %>
+<%= render "layouts/appbar", section: nil %>
+<main class="c-main c-page">
+  <section class="c-confirm">
+    <h1 class="c-pagehead__title c-job__title">Discard <%= @job.class_name %>?</h1>
+    <p class="c-job__note">This removes the failed job (<%= @job.short_arguments %>) from the queue. It won't run again, and it can't be undone.</p>
+    <div class="c-form__actions">
+      <%= button_to "Discard #{@job.class_name}", admin_job_discard_path(@job), class: "c-btn c-btn--danger" %>
+      <%= link_to "Cancel", admin_jobs_path(status: "failed"), class: "c-btn c-btn--secondary" %>
+    </div>
+  </section>
+</main>
+<%= render "layouts/tabbar", section: nil %>

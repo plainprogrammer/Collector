@@ -25,13 +25,73 @@ RSpec.describe "catalog rake tasks", type: :task do # rubocop:disable RSpec/Desc
 
       lines = capture_stdout { Rake::Task["catalog:status"].invoke("mtg") }.lines
 
-      expect(lines.size).to eq(10)
+      expect(lines.size).to eq(11) # the 10 runs, then the source's own line (spec 011)
+      expect(lines.last).to start_with("Art matching:")
       expect(lines.first).to include("failed", "IntegrityError: short file", "seen=0", "malformed=0")
       expect(lines.second).to include("v10", "applied", "scheduled")
     end
 
+    it "marks a run with no progress for 15 minutes interrupted (spec 015 AC-3.5)" do
+      create(:catalog_refresh_run, :running, started_at: 1.hour.ago, heartbeat_at: 20.minutes.ago, job_id: "job-1")
+
+      expect { Rake::Task["catalog:status"].invoke("mtg") }.to output(/  interrupted  manual/).to_stdout
+    end
+
+    it "prints a stalled run whose job a worker still holds as running, as the page does (AC-3.5, AC-3.6)", :solid_queue do
+      create(:catalog_refresh_run, :running, started_at: 1.hour.ago, heartbeat_at: 20.minutes.ago, job_id: "job-1")
+      claim_job(queue_job(Catalog::RefreshJob, "mtg", "manual")).update!(active_job_id: "job-1")
+
+      expect { Rake::Task["catalog:status"].invoke("mtg") }
+        .to output(/  running \(no progress for 20 minutes\)  manual/).to_stdout
+    end
+
+    it "marks a running run whose job the queue has failed interrupted, as the page does (issue #60)", :solid_queue do
+      job = fail_job(claim_job(queue_job(Catalog::RefreshJob, "mtg", "manual")))
+      create(:catalog_refresh_run, :running, started_at: 5.minutes.ago, heartbeat_at: 3.minutes.ago, job_id: job.active_job_id)
+
+      expect { Rake::Task["catalog:status"].invoke("mtg") }.to output(/  interrupted  manual/).to_stdout
+    end
+
+    it "keeps such a run running while it recorded progress in the last 2 minutes, as the page does (issue #60)", :solid_queue do
+      job = fail_job(claim_job(queue_job(Catalog::RefreshJob, "mtg", "manual")))
+      create(:catalog_refresh_run, :running, started_at: 5.minutes.ago, heartbeat_at: 1.minute.ago, job_id: job.active_job_id)
+
+      expect { Rake::Task["catalog:status"].invoke("mtg") }.to output(/  running  manual/).to_stdout
+    end
+
+    it "marks a running run whose job is no longer in the queue interrupted, as the page does (issue #60)" do
+      create(:catalog_refresh_run, :running, started_at: 5.minutes.ago, heartbeat_at: 3.minutes.ago, job_id: "job-1")
+
+      expect { Rake::Task["catalog:status"].invoke("mtg") }.to output(/  interrupted  manual/).to_stdout
+    end
+
     it "says when there are no runs" do
       expect { Rake::Task["catalog:status"].invoke("mtg") }.to output(/No mtg refresh runs yet/).to_stdout
+    end
+
+    it "ends with the source's own status lines, such as art matching (spec 011 AC-3.11)" do
+      expect { Rake::Task["catalog:status"].invoke("mtg") }.to output(/Art matching: off/).to_stdout
+    end
+
+    it "marks an art build whose job the queue has failed interrupted, as the page does (issue #73)", :art_matching, :solid_queue do
+      job = fail_job(claim_job(queue_job(MTG::Art::BuildJob)))
+      create(:mtg_art_build, status: "running", finished_at: nil, started_at: 5.minutes.ago, heartbeat_at: 3.minutes.ago, job_id: job.active_job_id)
+
+      expect { Rake::Task["catalog:status"].invoke("mtg") }.to output(/^Art matching: interrupted/).to_stdout
+    end
+
+    it "keeps such an art build building while it beat in the last 2 minutes, as the page does (issue #73)", :art_matching, :solid_queue do
+      job = fail_job(claim_job(queue_job(MTG::Art::BuildJob)))
+      create(:mtg_art_build, status: "running", finished_at: nil, started_at: 5.minutes.ago, heartbeat_at: 1.minute.ago, job_id: job.active_job_id)
+
+      expect { Rake::Task["catalog:status"].invoke("mtg") }.to output(/^Art matching: building/).to_stdout
+    end
+
+    it "prints an art build whose heartbeat stopped while a worker holds its job as building, as the page does (issue #79)", :art_matching, :solid_queue do
+      job = claim_job(queue_job(MTG::Art::BuildJob))
+      create(:mtg_art_build, status: "running", finished_at: nil, started_at: 1.hour.ago, heartbeat_at: 11.minutes.ago, job_id: job.active_job_id)
+
+      expect { Rake::Task["catalog:status"].invoke("mtg") }.to output(/^Art matching: building \(no heartbeat for 11 minutes\) since /).to_stdout
     end
   end
 

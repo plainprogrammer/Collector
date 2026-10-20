@@ -46,4 +46,16 @@ RSpec.describe "Scanner other printings", type: :request do
     get scanner_printings_path(card: "unknown", key:)
     expect(response).to have_http_status(:not_found)
   end
+
+  it "lists the confident artwork's printings first, newest first, then spec 009's order (spec 011 AC-7.5)", :aggregate_failures do
+    art = "aaaaaaaa-0000-4000-8000-000000000001"
+    m11 = Catalog::Entry.joins(:set).find_by!(catalog_sets: { code: "m11" })
+    MTG::Printing.find_by!(catalog_entry_id: m11.id).update!(illustration_id: art)
+
+    other_printings(set: "m10", number: "146", artwork: art)
+    expect(Nokogiri::HTML5(response.body).css("li .is-data").map(&:text)).to eq([ "M11 · 146", "M10 · 146" ])
+
+    other_printings(set: "m10", number: "146", artwork: "not-an-artwork")
+    expect(Nokogiri::HTML5(response.body).css("li .is-data").map(&:text)).to eq([ "M10 · 146", "M11 · 146" ])
+  end
 end

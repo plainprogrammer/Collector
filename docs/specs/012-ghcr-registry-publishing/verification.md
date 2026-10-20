@@ -101,6 +101,37 @@ After the re-run, `latest` still lists `linux/amd64` and `linux/arm64`, with ver
 The trimmed image is 550 MB, against 560 MB before `.dockerignore` excluded the development-only paths (Phase 1,
 local `podman build`).
 
+## Later changes to the smoke test and the build context (issues #19 and #31, 2026-10-13)
+
+- **AC-6.3:** `bin/image-smoke` asserts the whole line `No mtg refresh runs yet.` in the captured output of
+  `bin/rails "catalog:status[mtg]"`, where it used to accept any output holding `mtg` (issue #19). A fresh
+  instance prints that line and then the art line (`Art matching: off (set COLLECTOR_MTG_ART_MATCHING=true to
+  turn it on)`), so the line is matched and not the whole output. The failure path was shown with a stand-in
+  container CLI (set through `CONTAINER_CLI`) that passed every call to podman and rewrote that one line to a
+  run's line: the script failed and printed what the task gave. No image was made to print anything else.
+- **AC-6.3, `collector:user`:** that check is captured and tested the same way, against the whole line
+  `Created admin smoke@example.com.`, so nothing in the script pipes into `grep -q` now. It passed against the
+  published `0.2.1` image, and failed, showing the output, when the same kind of stand-in CLI rewrote the line
+  to the one for a user who already exists.
+- **`/rails/vendor` (issue #31):** an image built with `podman build` in a set-up checkout, before the change,
+  listed `.keep`, `javascript`, `ocr` and `v7.0.0` there, with `/rails/vendor/v7.0.0` and
+  `/rails/vendor/ocr/v7.0.0` at 14,496 KB each. After `/vendor/ocr` went into `.dockerignore` and
+  `COPY vendor/* ./vendor/` left the `Dockerfile`, the same build listed `.keep`, `javascript` and `ocr`, with
+  `/rails/vendor/ocr/v7.0.0` at 14,496 KB, and its log showed `bin/fetch-ocr-engine` installing the engine. The
+  images were 557 MB and 542 MB.
+- **The guard:** `bin/image-smoke` passed on the second image and failed on the first with `unexpected in
+  /rails/vendor: v7.0.0`. It rejects anything else in `/rails/vendor`; it does not require the three names,
+  so an empty listing would pass. The OCR files the script fetches under `/ocr/v7.0.0/` show that `ocr` is there.
+- **Where these ran:** every image run above was on the dev machine with podman, on amd64. Docker and arm64
+  were not run locally.
+- **In CI (issues #19 and #31):** [PR #82](https://github.com/plainprogrammer/Collector/pull/82)'s run
+  [38475164995](https://github.com/plainprogrammer/Collector/actions/runs/38475164995), on head `921c631`,
+  passed `ci`, `Image (linux/amd64)` and `Image (linux/arm64)`; `Publish manifest list` was skipped, as on every
+  pull request. Each image job builds from a fresh checkout and runs `bin/image-smoke` with the exact
+  `catalog:status` line and the `/rails/vendor` check. That run doesn't cover the three commits made after it
+  (the `collector:user` capture, the vendor check's wording and these notes); their CI is the follow-up pull
+  request's run.
+
 ## Not yet evidenced
 
 - **AC-3.2:** the `X` tag is only published from release `1.0.0` on. The rule is in `ci.yml` and asserted by the spec.

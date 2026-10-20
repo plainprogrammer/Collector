@@ -1,0 +1,46 @@
+{
+  "format": "collector-export",
+  "format_version": 1,
+  "exported_at": "2026-10-11T12:34:56Z",
+  "generator": "Collector 0.2.1",
+  "profile": {
+    "name": "Ada Example",
+    "email_address": "ada@example.test",
+    "collection_view": "table"
+  },
+  "currency": "USD",
+  "lots": [
+    {
+      "entry": {
+        "collectible_type": "mtg",
+        "source_id": "00000000-0000-4000-8000-000000000001",
+        "name": "Serra Angel",
+        "set_code": "dmr",
+        "collector_number": "27",
+        "language": "en"
+      },
+      "quantity": 4,
+      "finish": "foil",
+      "condition": "near_mint",
+      "price_paid": "12.50",
+      "added_at": "2026-09-30T18:02:11Z",
+      "changed_at": "2026-10-02T09:15:01Z"
+    },
+    {
+      "entry": {
+        "collectible_type": "mtg",
+        "source_id": "00000000-0000-4000-8000-000000000002",
+        "name": "Lightning Bolt",
+        "set_code": "2xm",
+        "collector_number": "117",
+        "language": "en"
+      },
+      "quantity": 1,
+      "finish": null,
+      "condition": null,
+      "price_paid": null,
+      "added_at": "2026-10-03T20:11:02Z",
+      "changed_at": "2026-10-03T20:11:02Z"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "format_version": 1,
+  "spec": "011",
+  "catalog_version": "default-cards-20261008210545",
+  "index_file": "art-index-default-cards-20261008210545-aa574ad30218cd69-48734.bin.gz",
+  "counts": {
+    "total": 48734,
+    "without_image": 0,
+    "fetched": 51,
+    "fingerprinted": 48734,
+    "failed": 0,
+    "indexed": 48734
+  },
+  "seconds": 1743.9,
+  "stored_bytes": 7017724,
+  "gzip_bytes": 5742930,
+  "decoder": "magick"
+}

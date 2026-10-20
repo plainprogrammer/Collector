@@ -1,4 +1,5 @@
 <% content_for :title, "#{@entry.name} · Collector" %>
+<%= render "catalog/visitor_head" %>
 <% crumb_path = card_context == :collection ? collection_path : catalog_entries_path %>
 <%= render "layouts/appbar", section: card_context, detail: true, back_path: crumb_path %>
 <main class="c-main c-page">
@@ -30,7 +31,9 @@
           <p class="c-item__type"><span class="c-chip c-chip--cards"><span class="c-chip__dot"></span><%= @overview.vocabulary.category_name %></span></p>
         </div>
         <div class="c-item__actions">
-          <%= link_to new_catalog_entry_lot_path(@entry, **card_params), class: "c-btn c-btn--primary" do %><%= render "icons/plus" %>Add a copy<% end %>
+          <% if collector? %>
+            <%= link_to new_catalog_entry_lot_path(@entry, **card_params), class: "c-btn c-btn--primary" do %><%= render "icons/plus" %>Add a copy<% end %>
+          <% end %>
           <% if (scryfall = catalog_url(@entry.extension&.scryfall_uri)) %>
             <details class="c-menu" data-controller="menu">
               <summary class="c-btn c-btn--secondary c-btn--icon" aria-label="More actions"><%= render "icons/more" %></summary>
@@ -41,13 +44,14 @@
       </div>
       <%= render_catalog_extension @entry, :head %>
       <%= render_catalog_extension @entry, :details %>
-      <dl class="c-stats c-stats--single">
-        <div class="c-stat"><dt>Owned</dt><dd><%= number_with_delimiter(@overview.owned_count) %></dd><small><%= pluralize(@overview.printings_owned, "printing") %></small></div>
-      </dl>
-      <%= render "catalog/entries/copies", overview: @overview %>
+      <% if collector? %>
+        <dl class="c-stats c-stats--single">
+          <div class="c-stat"><dt>Owned</dt><dd><%= number_with_delimiter(@overview.owned_count) %></dd><small><%= pluralize(@overview.printings_owned, "printing") %></small></div>
+        </dl>
+        <%= render "catalog/entries/copies", overview: @overview %>
+      <% end %>
       <%= render "catalog/entries/printings", overview: @overview %>
       <%= render_catalog_extension @entry, :legality %>
-      <p class="c-attribution">Card data and images provided by Scryfall.</p>
     </div>
   </div>
 </main>

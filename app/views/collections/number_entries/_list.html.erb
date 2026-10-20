@@ -1,0 +1,17 @@
+<%# locals: (lines:, page_params:) %>
+<%# The account's list (spec 026 Story 3): the 10 newest lines, the rest behind "Show all", and Done. %>
+<% if lines.any? %>
+  <section id="number_entry_list" class="c-numentry__list" aria-labelledby="number-entry-list-heading">
+    <div class="c-section__head">
+      <h2 class="c-section__title" id="number-entry-list-heading">This list: <%= pluralize(lines.size, "line") %>, <%= pluralize(lines.sum(&:quantity), "card") %></h2>
+      <span class="c-section__actions"><%= button_to "Done", collection_number_entry_ending_path, class: "c-btn c-btn--secondary c-btn--sm" %></span>
+    </div>
+    <ul class="c-list"><%= render partial: "collections/number_entries/line", collection: lines.first(NumberEntry::SHOWN), as: :line, locals: { page_params: } %></ul>
+    <% if lines.size > NumberEntry::SHOWN %>
+      <details class="c-numentry__more">
+        <summary class="c-btn c-btn--ghost c-btn--sm">Show all <%= lines.size %></summary>
+        <ul class="c-list"><%= render partial: "collections/number_entries/line", collection: lines.drop(NumberEntry::SHOWN), as: :line, locals: { page_params: } %></ul>
+      </details>
+    <% end %>
+  </section>
+<% end %>

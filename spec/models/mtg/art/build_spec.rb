@@ -1,0 +1,272 @@
+require "rails_helper"
+
+RSpec::Matchers.define_negated_matcher :not_change, :change
+
+RSpec.describe MTG::Art::Build, :art_matching, type: :model do
+  let(:naps) { [] }
+  let(:client) { MTG::Scryfall::Client.new(sleeper: ->(seconds) { naps << seconds }, clock: -> { 0.0 }) }
+  let(:art_a) { "aaaaaaaa-0000-4000-8000-000000000001" }
+  let(:art_b) { "bbbbbbbb-0000-4000-8000-000000000002" }
+
+  before { create(:catalog_refresh_run, collectible_type: "mtg", source_version: "default-cards-1") }
+
+  def small(name) = "https://cards.scryfall.io/small/front/a/b/#{name}.jpg"
+
+  # A printing of an artwork; small: false leaves its face without a small image.
+  def printing(art, released_on:, name: "Lightning Bolt", small: true, set_code: nil, number: "1", **entry)
+    set = create(:catalog_set, released_on:, **(set_code ? { code: set_code } : {}))
+    image_uris = small ? { "small" => small("#{art}-#{released_on.year}-#{number}") } : {}
+    printing = create(:mtg_printing, illustration_id: art, faces: [ { "name" => name, "image_uris" => image_uris } ],
+      entry: create(:catalog_entry, set:, number:, released_on:, **entry))
+    printing.entry
+  end
+
+  def serve(*names, png: noisy_png) = names.map { stub_request(:get, small(it)).to_return(body: png) }
+
+  def run_build(job_id: "job-1") = described_class.new(job_id:, client:).call
+
+  it "fingerprints each artwork from its oldest printing with a small image, passing over those without (AC-3.3)", :aggregate_failures do
+    printing(art_a, released_on: Date.new(1999, 1, 1), small: false)
+    chosen = printing(art_a, released_on: Date.new(2005, 1, 1))
+    printing(art_a, released_on: Date.new(2020, 1, 1))
+    serve("#{art_a}-2005-1")
+
+    run = run_build
+
+    expect(run).to have_attributes(status: "finished", total_count: 1, without_image_count: 0, fetched_count: 1, indexed_count: 1)
+    expect(MTG::Artwork.sole).to have_attributes(illustration_id: art_a, catalog_entry_id: chosen.id, settings_digest: MTG::Art::Settings.digest)
+    expect(MTG::Artwork.sole.fingerprint.bytesize).to eq(128)
+  end
+
+  it "counts artworks with no small image on any printing, and ignores tokens, art cards, other languages and retired printings", :aggregate_failures do
+    printing(art_a, released_on: Date.new(2005, 1, 1), small: false)
+    printing(art_b, released_on: Date.new(2005, 1, 1), kind: "art_card")
+    printing(art_b, released_on: Date.new(2006, 1, 1), language: "ja")
+    printing(art_b, released_on: Date.new(2007, 1, 1), retired_at: 1.day.ago)
+
+    expect(run_build).to have_attributes(status: "finished", total_count: 0, without_image_count: 1, indexed_count: 0)
+  end
+
+  it "fetches only from Scryfall's image host and caches each image under its artwork id (AC-3.4)", :aggregate_failures do
+    printing(art_a, released_on: Date.new(2005, 1, 1))
+    serve("#{art_a}-2005-1")
+    run_build
+
+    expect(MTG::Art.cache_dir.join("#{art_a}.jpg")).to exist
+    expect(MTG::Art.cache_dir.glob("*.part")).to be_empty
+  end
+
+  it "records an image on another host as failed without requesting it" do
+    entry = printing(art_a, released_on: Date.new(2005, 1, 1))
+    MTG::Printing.find_by!(catalog_entry_id: entry.id).update!(faces: [ { "image_uris" => { "small" => "https://evil.test/x.jpg" } } ])
+
+    expect(run_build).to have_attributes(status: "finished", failed_count: 1, indexed_count: 0)
+  end
+
+  it "never fetches a cached image again (AC-3.5)" do
+    printing(art_a, released_on: Date.new(2005, 1, 1))
+    stub = serve("#{art_a}-2005-1").first
+    run_build
+    MTG::Artwork.delete_all # force a second fingerprint from the cache
+
+    run_build(job_id: "job-2")
+
+    expect(stub).to have_been_requested.once
+  end
+
+  it "records a failed image, goes on, and tries it again on the next build (AC-3.6)", :aggregate_failures do
+    printing(art_a, released_on: Date.new(2005, 1, 1))
+    printing(art_b, released_on: Date.new(2005, 1, 1), name: "Shock", number: "2")
+    serve("#{art_a}-2005-1")
+    missing = stub_request(:get, small("#{art_b}-2005-2")).to_return(status: 404)
+
+    expect(run_build).to have_attributes(status: "finished", failed_count: 1, indexed_count: 1, message: include(art_b))
+    expect(run_build(job_id: "job-2")).to have_attributes(failed_count: 1)
+    expect(missing).to have_been_requested.twice
+  end
+
+  it "records an image that answers 5xx to its last attempt as failed, and goes on (AC-3.6)", :aggregate_failures do
+    printing(art_a, released_on: Date.new(2005, 1, 1))
+    printing(art_b, released_on: Date.new(2006, 1, 1), name: "Shock")
+    broken = stub_request(:get, small("#{art_a}-2005-1")).to_return(status: 503)
+    serve("#{art_b}-2006-1")
+
+    expect(run_build).to have_attributes(status: "finished", failed_count: 1, indexed_count: 1, message: include(art_a))
+    expect(broken).to have_been_requested.times(3)
+  end
+
+  # A rate limit isn't one image's failure. Counting it as one and going on would send a request for every image
+  # left, 100 ms apart, to a host that asked the build to stay away, and record each of them as failed.
+  context "when the image host rate limits the build (issue #74)" do
+    def first = small("#{art_a}-2005-1")
+    def second = small("#{art_b}-2006-1")
+
+    before do
+      printing(art_a, released_on: Date.new(2005, 1, 1))
+      printing(art_b, released_on: Date.new(2006, 1, 1), name: "Shock")
+    end
+
+    it "stops at an image asked to wait longer than the client does, requesting no image after it", :aggregate_failures do
+      limited = stub_request(:get, first).to_return(status: 429, headers: { "Retry-After" => "600" })
+      later = stub_request(:get, second).to_return(body: noisy_png)
+
+      expect { run_build }.to raise_error(Catalog::Sources::RateLimitedError, /asked for 600 seconds/)
+      expect(MTG::ArtBuild.sole).to have_attributes(status: "failed", failed_count: 0, fetched_count: 0,
+        message: include("RateLimitedError", "asked for 600 seconds"))
+      expect(limited).to have_been_requested.once
+      expect(later).not_to have_been_requested
+      expect(naps).to be_empty
+    end
+
+    it "stops at an image still rate limited after its 3 attempts", :aggregate_failures do
+      limited = stub_request(:get, first).to_return(status: 429, headers: { "Retry-After" => "30" })
+      later = stub_request(:get, second).to_return(body: noisy_png)
+
+      expect { run_build }.to raise_error(Catalog::Sources::RateLimitedError, /still rate limited after 3 attempts/)
+      expect(MTG::ArtBuild.sole).to have_attributes(status: "failed", failed_count: 0, message: include("still rate limited"))
+      expect(limited).to have_been_requested.times(3)
+      expect(later).not_to have_been_requested
+    end
+
+    # The least that stops a build: one 429 that names no wait. Nothing is asked inside the 30 seconds Scryfall limits
+    # access for after it; the build's job comes back 45 seconds later (issue #81).
+    it "stops at the first 429 with no Retry-After, without waiting or asking for that image again", :aggregate_failures do
+      limited = stub_request(:get, first).to_return({ status: 429 }, { body: noisy_png })
+      later = stub_request(:get, second).to_return(body: noisy_png)
+
+      expect { run_build }.to raise_error(Catalog::Sources::RateLimitedError) { |error| expect(error.retry_after).to be_nil }
+      expect(MTG::ArtBuild.sole).to have_attributes(status: "failed", failed_count: 0, fetched_count: 0,
+        message: include("returned 429 with no usable Retry-After"))
+      expect(naps).to be_empty
+      expect(limited).to have_been_requested.once
+      expect(later).not_to have_been_requested
+    end
+
+    it "keeps the images it fetched, and the next build carries on from them (AC-3.8)", :aggregate_failures do
+      fetched = stub_request(:get, first).to_return(body: noisy_png)
+      stub_request(:get, second).to_return({ status: 429, headers: { "Retry-After" => "600" } }, { body: noisy_png })
+
+      expect { run_build }.to raise_error(Catalog::Sources::RateLimitedError)
+      expect(MTG::ArtBuild.sole).to have_attributes(status: "failed", fetched_count: 1, failed_count: 0)
+      expect(run_build(job_id: "job-2")).to have_attributes(status: "finished", fetched_count: 1, failed_count: 0, indexed_count: 2)
+      expect(fetched).to have_been_requested.once
+    end
+  end
+
+  it "records an image it can't decode as failed and drops it from the cache, so it's fetched again", :aggregate_failures do
+    printing(art_a, released_on: Date.new(2005, 1, 1))
+    serve("#{art_a}-2005-1", png: "not an image")
+
+    expect(run_build).to have_attributes(failed_count: 1, indexed_count: 0)
+    expect(MTG::Art.cache_dir.join("#{art_a}.jpg")).not_to exist
+  end
+
+  it "fingerprints only artworks without a current fingerprint (AC-3.7)", :aggregate_failures do
+    entry = printing(art_a, released_on: Date.new(2005, 1, 1))
+    create(:mtg_artwork, illustration_id: art_a, entry:)
+    stub = serve("#{art_a}-2005-1").first
+
+    expect(run_build).to have_attributes(status: "finished", fetched_count: 0, fingerprinted_count: 1, indexed_count: 1)
+    expect(stub).not_to have_been_requested
+  end
+
+  it "carries on after an interruption with the same result as an uninterrupted build (AC-3.8)", :aggregate_failures do
+    printing(art_a, released_on: Date.new(2005, 1, 1))
+    printing(art_b, released_on: Date.new(2005, 1, 1), name: "Shock", number: "2")
+    stubs = serve("#{art_a}-2005-1", "#{art_b}-2005-2")
+    full_disk = Module.new do # an error outside a single image, after the images were fetched and cached
+      def self.command = MTG::Art::Decoder.command
+      def self.decode(_path) = raise(Errno::ENOSPC)
+    end
+
+    expect { described_class.new(job_id: "job-1", client:, decoder: full_disk).call }.to raise_error(Errno::ENOSPC)
+    expect(MTG::ArtBuild.sole).to have_attributes(status: "failed", message: include("ENOSPC"))
+
+    # The first image was fetched and cached before the failure; only the second is fetched now.
+    expect(run_build(job_id: "job-1")).to have_attributes(status: "finished", fetched_count: 1, indexed_count: 2)
+    expect(stubs).to all(have_been_requested.once)
+  end
+
+  # The worker died holding the first build's job; the queue failed that job, and nothing closed the build (issue #73).
+  it "runs, rather than being skipped, when the queue has failed the job of the build left running", :aggregate_failures, :solid_queue do
+    failed = fail_job(claim_job(queue_job(MTG::Art::BuildJob)), SolidQueue::Processes::ProcessPrunedError.new(6.minutes.ago))
+    left = create(:mtg_art_build, status: "running", finished_at: nil, started_at: 8.minutes.ago, heartbeat_at: 7.minutes.ago,
+      job_id: failed.active_job_id)
+    printing(art_a, released_on: Date.new(2005, 1, 1))
+    serve("#{art_a}-2005-1")
+
+    expect(run_build(job_id: "job-2")).to have_attributes(status: "finished", job_id: "job-2", indexed_count: 1)
+    expect(left.reload).to have_attributes(status: "failed", message: "interrupted")
+  end
+
+  # A rate-limited build closed its run as failed, and its job waits in the queue to run again when the host asked. A
+  # build queued meanwhile (by a refresh that applied) must leave the host alone until then (issue #78).
+  it "fetches nothing while another build's job waits to run again", :aggregate_failures, :solid_queue do
+    job = queue_job(MTG::Art::BuildJob, wait: 10.minutes)
+    create(:mtg_art_build, status: "failed", job_id: job.active_job_id, message: "rate limited")
+    printing(art_a, released_on: Date.new(2005, 1, 1))
+    image, = serve("#{art_a}-2005-1")
+
+    expect(run_build(job_id: "job-2")).to have_attributes(status: "skipped", message: "waiting for another job's retry")
+    expect(image).not_to have_been_requested
+  end
+
+  it "is skipped while a worker holds the job of the build left running (AC-3.2)", :aggregate_failures, :solid_queue do
+    held = claim_job(queue_job(MTG::Art::BuildJob))
+    live = create(:mtg_art_build, status: "running", finished_at: nil, started_at: 8.minutes.ago, heartbeat_at: 7.minutes.ago,
+      job_id: held.active_job_id)
+
+    expect(run_build(job_id: "job-2")).to have_attributes(status: "skipped", message: "already running")
+    expect(live.reload).to be_running
+  end
+
+  # A batch can outlast MTG::ArtBuild::JOB_ENDED_GRACE (slow or rate-limited images); a live build must not go quiet in it.
+  it "beats between the images of a batch once 30 seconds have passed since the last beat (issue #73)", :aggregate_failures do
+    arts = %w[1 2 3].map { "cccccccc-0000-4000-8000-00000000000#{it}" }
+    arts.each_with_index { |art, n| printing(art, released_on: Date.new(2005, 1, 1), name: "Card #{n}", number: n.to_s) }
+    serve(*arts.each_with_index.map { |art, n| "#{art}-2005-#{n}" })
+    example = self
+    quiet_for = []
+    slow = Module.new
+    slow.define_singleton_method(:command) { MTG::Art::Decoder.command }
+    slow.define_singleton_method(:decode) do |path|
+      quiet_for << (Time.current - MTG::ArtBuild.sole.heartbeat_at)
+      example.travel(40.seconds)
+      MTG::Art::Decoder.decode(path)
+    end
+
+    run = described_class.new(job_id: "job-1", client:, decoder: slow).call
+
+    expect(quiet_for.map { it < described_class::BEAT_EVERY }).to eq([ true, true, true ])
+    expect(run).to have_attributes(status: "finished", indexed_count: 3)
+  end
+
+  it "writes the index last, and a second complete build records only its run (AC-3.8, AC-3.9)", :aggregate_failures do
+    printing(art_a, released_on: Date.new(2005, 1, 1))
+    serve("#{art_a}-2005-1")
+    path = MTG::Art::Index.dir.join(MTG::Art::Index.name_for("default-cards-1", 1))
+
+    expect(run_build).to have_attributes(index_file: path.basename.to_s)
+    written = path.mtime
+    expect { run_build(job_id: "job-2") }.to change(MTG::ArtBuild, :count).by(1).and(not_change(MTG::Artwork, :count))
+    expect(path.mtime).to eq(written)
+    expect(MTG::Art::Index.read(path)[:records].map(&:first)).to eq([ art_a ])
+  end
+
+  it "fails at once, recorded, when ImageMagick is missing (ADR 0012)", :aggregate_failures do
+    decoder = class_double(MTG::Art::Decoder, command: nil)
+    allow(decoder).to receive(:command).and_raise(MTG::Art::Decoder::Error, "ImageMagick isn't installed")
+
+    expect { described_class.new(job_id: "job-1", client:, decoder:).call }.to raise_error(MTG::Art::Decoder::Error)
+    expect(MTG::ArtBuild.sole).to have_attributes(status: "failed", message: include("ImageMagick isn't installed"))
+  end
+
+  it "does nothing with art matching off, or before any refresh has applied", :aggregate_failures do
+    Rails.configuration.x.mtg_art_matching = false
+    expect(run_build).to be_nil
+    Rails.configuration.x.mtg_art_matching = true
+    Catalog::RefreshRun.delete_all
+    expect(run_build).to be_nil
+    expect(MTG::ArtBuild.count).to eq(0)
+  end
+end

@@ -1,4 +1,5 @@
 <% content_for :title, "Search · Collector" %>
+<%= render "catalog/visitor_head" %>
 <%# Back refetches this page instead of restoring a snapshot, so it never shows typed filter values or a stale busy state. %>
 <% content_for :head, tag.meta(name: "turbo-cache-control", content: "no-cache") %>
 <%= render "layouts/appbar", section: :search %>
@@ -17,9 +18,7 @@
     <% end %>
 
     <div class="c-results__meta"><% if @search.active? %><span class="c-filterbar__count"><%= pluralize(@search.pagination.total_count, "card") %></span><% end %><% if @last_refresh %><span class="c-results__freshness">Catalog updated <%= l(@last_refresh.finished_at.to_date, format: :long) %></span><% end %></div>
-    <% if @last_refresh.nil? %>
-      <p class="c-status__message c-status__message--alert">The card catalog hasn't been loaded yet.</p>
-    <% end %>
+    <%= render "catalog/not_loaded", titles: @unloaded_catalogs, named: @catalogs_named %>
     <% if !@search.active? %>
       <p class="c-empty">Type part of a card name to search.</p>
     <% elsif @groups.empty? %>

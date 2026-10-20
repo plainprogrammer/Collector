@@ -15,16 +15,21 @@ servers:
   #     - 192.168.0.1
   #   cmd: bin/jobs
 
-# Enable SSL auto certification via Let's Encrypt and allow for multiple apps on a single web server.
+# SSL (the `ssl:` and `host:` lines under `proxy:`): Enable SSL auto certification via Let's Encrypt and allow for multiple apps on a single web server.
 # If used with Cloudflare, set encryption mode in SSL/TLS setting to "Full" to enable CF-to-app encryption.
 #
 # Using an SSL proxy like this requires turning on config.assume_ssl and config.force_ssl in production.rb!
 #
 # Don't use this when deploying to multiple web servers (then you have to terminate SSL at your load balancer).
 #
-# proxy:
-#   ssl: true
-#   host: app.example.com
+proxy:
+  # To enable SSL, uncomment these two lines (see the comments above about SSL).
+  # ssl: true
+  # host: app.example.com
+  # Refuse request bodies over 40 MB instead of buffering up to 1 GB to disk (spec 025 decision 6). Keep this
+  # whatever the SSL setting.
+  buffering:
+    max_request_body: 40_000_000
 
 # Where you keep your container images.
 registry:
@@ -48,6 +53,12 @@ env:
 
     # Extra card languages to ingest from Scryfall, comma-separated (e.g. "ja,de").
     # COLLECTOR_MTG_LANGUAGES: ja   # extra Scryfall languages; English is always included
+
+    # Art matching for the card scanner: downloads one small image per artwork (~708 MB, ~2.6 h) after a refresh.
+    # COLLECTOR_MTG_ART_MATCHING: true
+
+    # Open catalog search and card pages to visitors who aren't signed in (a hosted instance; see the README).
+    # COLLECTOR_PUBLIC_CATALOG: true
 
     # Currency for the price you paid (ISO 4217 code; see the README for the supported list).
     # COLLECTOR_CURRENCY: USD

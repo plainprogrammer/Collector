@@ -3,12 +3,15 @@ import { Turbo } from "@hotwired/turbo-rails"
 import { cropStrips, guideInFrame, DETECTED_STRIPS, STAGE_ASPECT, STRIPS } from "scanner/geometry"
 import { findCard } from "scanner/detector"
 import { loadEngine, readStrips } from "scanner/recognition"
+import { loadArtIndex, matchArtwork } from "scanner/art"
 
 // Turns a captured frame or a picked photo into what the card says (spec 007 Stories 2–4). A picked photo is first searched
 // for the card, which is straightened into the guide's box (spec 009 Story 7); live frames aren't (AC-7.6). It cuts the
 // strips, reads them on the device, sends only the text and a reading key, and shows the Turbo Stream answer. One reading at
-// a time. Dispatches card-reader:read ({ nameText, collectorText, ms, key, outline, detectMs, warpMs, strips, frame }) for
-// measurement mode, where outline is "live", "found" or "not_found". frame is { image, guide } for live captures, else null.
+// a time. With art matching on (spec 011 Story 5) it loads the art index once the scanner has started, and a live capture
+// also sends its 10 nearest artworks (ids and distances, never a fingerprint). Dispatches card-reader:read ({ nameText,
+// collectorText, ms, key, outline, detectMs, warpMs, artworks, artMs, art, readyMs, strips, frame }) for measurement mode,
+// where outline is "live", "found" or "not_found". frame is { image, guide } for live captures, else null.
 const REASONS = {
   insecure: "The live camera needs this page to be served over HTTPS. You can use a photo instead.",
   denied: "The camera is blocked for this site. Allow it in your browser's settings, or use a photo instead.",
@@ -20,8 +23,8 @@ const NO_EDGE = "No card edge was found, so the photo was read as if framed like
 
 export default class extends Controller {
   static targets = [ "status", "shutter", "picker", "result", "unavailable", "reason", "retry", "engineRetry",
-    "failure", "failureMessage", "failureName", "failureCollector", "signIn", "resend" ]
-  static values = { readingsUrl: String, enginePath: String }
+    "failure", "failureMessage", "failureName", "failureCollector", "signIn", "resend", "artStatus" ]
+  static values = { readingsUrl: String, enginePath: String, artIndexUrl: String, artSettings: Object }
 
   connect() {
     this.cameraLive = false
@@ -37,6 +40,8 @@ export default class extends Controller {
     try {
       await loadEngine(this.enginePathValue)
       this.engineReady = true
+      this.readyMs = Math.round(performance.now())
+      this.loadArt()
       this.say(this.cameraLive ? "Ready. Line the card up with the guide, then capture." : "Ready.")
     } catch {
       this.engineRetryTarget.hidden = false
@@ -49,6 +54,36 @@ export default class extends Controller {
 
   retryEngine() {
     this.startEngine()
+  }
+
+  // Spec 011 AC-5.2: the art index loads once the scanner has started, never delaying the camera or text recognition.
+  async loadArt() {
+    if (!this.artIndexUrlValue || this.artLoading) return
+    this.artLoading = true
+    try {
+      const { index, downloadMs, readyMs } = await loadArtIndex(this.artIndexUrlValue, this.artSettingsValue)
+      this.artIndex = index
+      this.artTimings = { downloadMs, readyMs }
+      this.sayArt("Artwork matching is on")
+    } catch {
+      this.sayArt("Artwork matching isn't available. The scanner is reading text only.")
+    }
+  }
+
+  // A live capture's nearest artworks (AC-5.3), or null before the index is ready, after it failed, or on error.
+  matchArt(image, card) {
+    if (!this.artIndex) return null
+    const started = performance.now()
+    try {
+      const artworks = matchArtwork(this.artIndex, image, card, this.artSettingsValue.fingerprint)
+      return { artworks, artMs: Math.round(performance.now() - started) }
+    } catch {
+      return null
+    }
+  }
+
+  sayArt(message) {
+    if (this.hasArtStatusTarget) this.artStatusTarget.textContent = message
   }
 
   cameraReady() {
@@ -103,12 +138,14 @@ export default class extends Controller {
     this.say("Reading the card…")
     try {
       const { image, card, layout, ...source } = await prepare()
+      // Spec 011: art runs on live captures only (AC-5.4), before OCR, about 35 ms on the phone.
+      const art = source.outline === "live" ? this.matchArt(image, card) : null
       const strips = cropStrips(image, card, layout)
-      const reading = { ...(await readStrips(this.enginePathValue, strips)), key: readingKey(), ...source }
+      const reading = { ...(await readStrips(this.enginePathValue, strips)), key: readingKey(), ...source, ...(art || {}) }
       if (!this.element.isConnected) return
       // Spec 010: a live capture's frame and guide rect travel with the event, in memory, for measurement mode only.
       const frame = source.outline === "live" ? { image, guide: card } : null
-      this.dispatch("read", { detail: { ...reading, strips, frame } })
+      this.dispatch("read", { detail: { ...reading, strips, frame, art: this.artTimings || null, readyMs: this.readyMs } })
       this.lastReading = reading
       if (await this.send(reading) && reading.outline === "not_found") this.say(NO_EDGE)
     } catch {
@@ -123,13 +160,18 @@ export default class extends Controller {
     if (this.lastReading) this.send(this.lastReading)
   }
 
-  // Sends the text and the reading key (spec 009 FR-5), never the outline or timings; true when the answer was shown.
-  async send({ nameText, collectorText, key }) {
+  // Sends the text, the reading key (spec 009 FR-5) and a live capture's nearest artworks (spec 011 FR-5), never the
+  // outline, timings or a fingerprint; true when the answer was shown.
+  async send({ nameText, collectorText, key, artworks }) {
     this.failureTarget.hidden = true
     const body = new FormData()
     body.append("reading[name_text]", nameText)
     body.append("reading[collector_text]", collectorText)
     body.append("reading[key]", key)
+    ;(artworks || []).forEach(({ id, distance }) => {
+      body.append("reading[artworks][][id]", id)
+      body.append("reading[artworks][][distance]", String(distance))
+    })
     let response
     try {
       response = await fetch(this.readingsUrlValue, { method: "POST", body, redirect: "manual",

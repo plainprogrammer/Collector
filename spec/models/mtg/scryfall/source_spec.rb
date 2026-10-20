@@ -14,6 +14,30 @@ RSpec.describe MTG::Scryfall::Source, type: :model do
     expect(described_class::ALLOWED_HOSTS).to include("cards.scryfall.io")
   end
 
+  # Spec 018 FR-1: the Fan Content Policy's wording with "Collector" as the title, and the attribution, each with its link.
+  it "supplies the unofficial-content notice and the source attribution for the footer", :aggregate_failures do
+    notice, attribution = described_class.content_notice
+
+    expect(notice.text).to eq("Collector is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. " \
+      "Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC.")
+    expect(notice.links).to eq("Fan Content Policy" => "https://company.wizards.com/en/legal/fancontentpolicy")
+    expect(attribution.text).to eq("Card data and images provided by Scryfall.")
+    expect(attribution.links).to eq("Scryfall" => "https://scryfall.com")
+    expect(described_class.content_notice.size).to eq(2)
+    expect(described_class.content_notice.flat_map(&:parts).filter_map(&:last))
+      .to eq([ "https://company.wizards.com/en/legal/fancontentpolicy", "https://scryfall.com" ])
+  end
+
+  describe "#reapply?" do
+    it "asks once for a catalog whose printings have no artwork ids yet (spec 011 AC-2.3)", :aggregate_failures do
+      expect(source.reapply?).to be(false) # an empty catalog applies anyway
+      printing = create(:mtg_printing)
+      expect(source.reapply?).to be(true)
+      printing.update!(illustration_id: "art-1")
+      expect(source.reapply?).to be(false)
+    end
+  end
+
   describe "#languages" do
     it "defaults to English" do
       expect(source.languages).to eq([ "en" ])
@@ -97,11 +121,71 @@ RSpec.describe MTG::Scryfall::Source, type: :model do
     end
   end
 
+  describe "progress (spec 015 FR-2)" do
+    let(:reports) { [] }
+
+    before { source.progress = ->(done, total) { reports << [ done, total ] } }
+
+    it "reports bytes received of the published size while downloading (AC-2.5)", :aggregate_failures do
+      stub_scryfall(cards: [ scryfall_card ])
+      version = source.current_version(languages: [ "en" ])
+
+      size = source.download(version, dir:).size
+
+      expect(reports.last).to eq([ size, size ])
+      expect(reports.map(&:first)).to eq(reports.map(&:first).sort)
+    end
+
+    it "reports the whole size at once for a file it already has" do
+      stub_scryfall(cards: [ scryfall_card ])
+      version = source.current_version(languages: [ "en" ])
+      size = source.download(version, dir:).size
+      reports.clear
+
+      source.download(version, dir:)
+
+      expect(reports).to eq([ [ size, size ] ])
+    end
+
+    it "reports compressed bytes read of the file's size for every line, kept or not (AC-2.6)", :aggregate_failures do
+      path = dir.join("f.jsonl.gz")
+      path.binwrite(gzip_jsonl([ scryfall_card("id" => "en-1"), scryfall_card("id" => "de-1", "lang" => "de"), "{not json" ]))
+
+      source.each_entry(path, languages: [ "en" ]) { |_record| nil }
+
+      expect(reports.size).to eq(3)
+      expect(reports).to all(eq([ path.size, path.size ])) # a small file is read in one block
+    end
+
+    it "reads without a progress callable, as before" do
+      path = dir.join("f.jsonl.gz")
+      path.binwrite(gzip_jsonl([ scryfall_card("id" => "en-1") ]))
+      source.progress = nil
+
+      expect { |block| source.each_entry(path, languages: [ "en" ], &block) }.to yield_control.once
+    end
+  end
+
+  describe ".title and .operations (spec 015 FR-2)" do
+    it "names the catalog and offers the art index as its one extra operation", :aggregate_failures do
+      expect(described_class.title).to eq("Magic: The Gathering")
+      expect(described_class.operations("mtg").map(&:key)).to eq([ "art_index" ])
+    end
+  end
+
   describe "#each_set" do
     it "yields a record per set" do
       stub_scryfall(cards: [], sets: [ scryfall_set, scryfall_set("code" => "neo", "name" => "Kamigawa") ])
 
       expect(source.enum_for(:each_set).map(&:code)).to eq(%w[m10 neo])
+    end
+  end
+
+  describe "#after_refresh and .status_lines (spec 011 AC-3.1, AC-3.11)" do
+    it "hands an applied run to art matching, and reports its status", :aggregate_failures, :art_matching do
+      run = build(:catalog_refresh_run, collectible_type: "mtg", status: "applied", source_version: "default-cards-1")
+      expect { source.after_refresh(run) }.to have_enqueued_job(MTG::Art::BuildJob)
+      expect(described_class.status_lines).to eq([ MTG::Art.status_line ])
     end
   end
 end

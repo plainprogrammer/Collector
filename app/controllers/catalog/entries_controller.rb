@@ -1,10 +1,14 @@
 class Catalog::EntriesController < ApplicationController
+  include OpenCatalog
+
   def index
     @search = Catalog::Search.new(query: search_params[:q], set_code: search_params[:set], page: search_params[:page])
     @groups = @search.groups
-    @owned = Lot.owned_quantities(Current.account, @groups.flat_map(&:entries).map(&:id))
+    @owned = owned_quantities(@groups.flat_map(&:entries).map(&:id))
     @sets = Catalog::Set.with_searchable_entries.newest_first.to_a
     @last_refresh = Catalog::RefreshRun.last_applied
+    @unloaded_catalogs = Catalog.unloaded_titles
+    @catalogs_named = Catalog.sources.many?
   end
 
   def show

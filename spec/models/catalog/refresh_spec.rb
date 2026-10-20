@@ -177,10 +177,198 @@ RSpec.describe Catalog::Refresh, type: :model do
   end
 
   it "records a skip without touching the catalog while another run is in progress", :aggregate_failures do
-    create(:catalog_refresh_run, collectible_type: "fake", status: "running", started_at: 1.hour.ago, finished_at: nil)
+    create(:catalog_refresh_run, :running, collectible_type: "fake")
 
     expect(refresh).to be_skipped
     expect(Catalog::Entry.count).to eq(0)
+  end
+
+  describe "the job running it (spec 015 FR-1)" do
+    it "records the job running it, and closes that job's own running run when it starts again (AC-3.3)", :aggregate_failures do
+      left = create(:catalog_refresh_run, :running, collectible_type: "fake", job_id: "job-1")
+
+      run = described_class.new("fake", trigger: "manual", source:, job_id: "job-1").call
+
+      expect(run).to have_attributes(status: "applied", job_id: "job-1")
+      expect(left.reload).to have_attributes(status: "failed", message: "interrupted")
+    end
+
+    it "runs, rather than skipping, when the queue has failed the job of the run left running (issue #60)", :aggregate_failures, :solid_queue do
+      failed = fail_job(claim_job(queue_job(Catalog::RefreshJob, "fake", "manual")))
+      left = create(:catalog_refresh_run, :running, collectible_type: "fake", started_at: 5.minutes.ago, job_id: failed.active_job_id)
+
+      run = described_class.new("fake", trigger: "manual", source:, job_id: "job-2").call
+
+      expect(run).to have_attributes(status: "applied", job_id: "job-2")
+      expect(left.reload).to have_attributes(status: "failed", message: "interrupted")
+    end
+
+    it "runs, rather than skipping, when the job of the run left running is no longer in the queue (issue #60)", :aggregate_failures do
+      left = create(:catalog_refresh_run, :running, collectible_type: "fake", started_at: 5.minutes.ago, job_id: "job-1")
+
+      run = described_class.new("fake", trigger: "manual", source:, job_id: "job-2").call
+
+      expect(run).to have_attributes(status: "applied", job_id: "job-2")
+      expect(left.reload).to have_attributes(status: "failed", message: "interrupted")
+    end
+
+    # Another refresh's job is queued, claimed and records its run between this one reading the queue and reading the runs.
+    it "leaves alone a run whose job was queued and started after it read the queue (issue #60)", :aggregate_failures, :solid_queue do
+      later = nil
+      allow(Catalog::RefreshRun).to receive(:start!).and_wrap_original do |start, *arguments, **options|
+        job = claim_job(queue_job(Catalog::RefreshJob, "fake", "manual"))
+        later = create(:catalog_refresh_run, :running, collectible_type: "fake", job_id: job.active_job_id, started_at: Time.current)
+        start.call(*arguments, **options)
+      end
+
+      run = described_class.new("fake", trigger: "manual", source:, job_id: "job-2").call
+
+      expect(later.reload).to be_running
+      expect(run).to have_attributes(status: "skipped", message: "already running")
+    end
+
+    it "is skipped while a run whose job the queue has failed recorded progress in the last 2 minutes (issue #60)", :aggregate_failures, :solid_queue do
+      failed = fail_job(claim_job(queue_job(Catalog::RefreshJob, "fake", "manual")))
+      live = create(:catalog_refresh_run, :running, collectible_type: "fake", started_at: 5.minutes.ago, heartbeat_at: 30.seconds.ago,
+        job_id: failed.active_job_id)
+
+      run = described_class.new("fake", trigger: "manual", source:, job_id: "job-2").call
+
+      expect(run).to have_attributes(status: "skipped", message: "already running")
+      expect(live.reload).to be_running
+    end
+
+    it "is skipped while the job of the run left running still waits in the queue (AC-3.4)", :aggregate_failures, :solid_queue do
+      waiting = queue_job(Catalog::RefreshJob, "fake", "manual")
+      left = create(:catalog_refresh_run, :running, collectible_type: "fake", job_id: waiting.active_job_id)
+
+      run = described_class.new("fake", trigger: "manual", source:, job_id: "job-2").call
+
+      expect(run).to have_attributes(status: "skipped", message: "already running")
+      expect(left.reload).to be_running
+    end
+
+    it "is skipped, asking the source nothing, while another job for the type waits to run again (issue #78)", :aggregate_failures, :solid_queue do
+      queue_job(Catalog::RefreshJob, "fake", "manual", wait: 10.minutes)
+      source.languages_result = RuntimeError.new("the source was asked")
+
+      run = described_class.new("fake", trigger: "scheduled", source:, job_id: "job-2").call
+
+      expect(run).to have_attributes(status: "skipped", message: "waiting for another job's retry", job_id: "job-2")
+      expect(source.downloads).to be_empty
+      expect(source.refreshed).to be_empty # so no art build is queued (AC-1.3)
+    end
+
+    it "runs while only another type's job waits to run again (issue #78)", :solid_queue do
+      queue_job(Catalog::RefreshJob, "other", "manual", wait: 10.minutes)
+
+      expect(described_class.new("fake", trigger: "manual", source:, job_id: "job-2").call).to have_attributes(status: "applied")
+    end
+
+    it "runs when the job held for later is its own (issue #78)", :solid_queue do
+      waiting = queue_job(Catalog::RefreshJob, "fake", "manual", wait: 10.minutes)
+
+      expect(described_class.new("fake", trigger: "manual", source:, job_id: waiting.active_job_id).call).to have_attributes(status: "applied")
+    end
+
+    it "closes a run left behind before it is skipped for another job's waiting retry (issue #78)", :aggregate_failures, :solid_queue do
+      queue_job(Catalog::RefreshJob, "fake", "manual", wait: 10.minutes)
+      left = create(:catalog_refresh_run, :running, collectible_type: "fake", started_at: 20.minutes.ago, heartbeat_at: 20.minutes.ago)
+
+      run = described_class.new("fake", trigger: "manual", source:, job_id: "job-2").call
+
+      expect(left.reload).to have_attributes(status: "failed", message: "interrupted")
+      expect(run).to have_attributes(status: "skipped", message: "waiting for another job's retry")
+    end
+
+    it "is skipped as already running while a run is running, whether or not another job waits to run again (issue #78)", :solid_queue do
+      claimed = claim_job(queue_job(Catalog::RefreshJob, "fake", "manual"))
+      create(:catalog_refresh_run, :running, collectible_type: "fake", job_id: claimed.active_job_id)
+      queue_job(Catalog::RefreshJob, "fake", "manual", wait: 10.minutes)
+
+      expect(described_class.new("fake", trigger: "manual", source:, job_id: "job-2").call).to have_attributes(message: "already running")
+    end
+
+    it "gives the same catalog when a job runs again after being interrupted partway (AC-3.8)", :aggregate_failures do
+      source.entries = [ entry_record("a"), entry_record("b"), entry_record("c") ]
+      source.fail_at = 2
+      expect { described_class.new("fake", trigger: "manual", source:, job_id: "job-1").call }.to raise_error(RuntimeError)
+      Catalog::RefreshRun.recent.first.update!(status: "running", finished_at: nil) # as a killed worker leaves it
+      source.fail_at = nil
+
+      run = described_class.new("fake", trigger: "manual", source:, job_id: "job-1").call
+
+      expect(run).to have_attributes(status: "applied", seen_count: 3)
+      expect(Catalog::Entry.active.pluck(:external_key)).to contain_exactly("a", "b", "c")
+      expect(Catalog::RefreshRun.where(status: "running")).to be_empty
+    end
+  end
+
+  describe "stage and progress (spec 015 FR-1)" do
+    # Every write of the run's progress, in order, as [stage, done, total, seen so far], or as what the block makes
+    # of it at the moment of the write.
+    def progress_writes(&observe)
+      observe ||= ->(progress) { [ progress[:stage], progress[:done], progress[:total], progress[:counts][:seen] ] }
+      writes = []
+      allow_any_instance_of(Catalog::RefreshRun).to receive(:progress!).and_wrap_original do |original, **progress| # rubocop:disable RSpec/AnyInstance -- the run is created inside the refresh
+        writes << observe.call(progress)
+        original.call(**progress)
+      end
+      writes
+    end
+
+    it "passes through the four stages in order and keeps the last one (AC-2.4)", :aggregate_failures do
+      writes = progress_writes
+
+      run = refresh
+
+      expect(writes.map(&:first)).to eq(%w[download sync retire index])
+      expect(run).to have_attributes(status: "applied", stage: "index")
+    end
+
+    it "keeps the stage reached when the run fails (AC-3.1)", :aggregate_failures do
+      source.fail_at = 1
+
+      expect { refresh }.to raise_error(RuntimeError)
+      expect(Catalog::RefreshRun.recent.first).to have_attributes(status: "failed", stage: "sync", seen_count: 1)
+    end
+
+    context "with a source that reports how far it is" do
+      let(:source) { ReportingCatalogSource.new(sets: [ set_record("lea") ], entries: [ entry_record("a"), entry_record("b") ]) }
+      let(:now) { [ 0.0 ] }
+      let(:clock) { -> { now[0] += 3 } } # every look at the clock is 3 seconds later, so every report is due
+
+      it "records bytes of the download and of the file, with the counts so far (AC-2.5, AC-2.6)", :aggregate_failures do
+        writes = progress_writes
+
+        described_class.new("fake", trigger: "manual", source:, clock:).call
+
+        expect(writes).to include([ "download", 50, 100, 0 ], [ "download", 100, 100, 0 ], [ "sync", 1, 2, 0 ], [ "sync", 2, 2, 1 ])
+        expect(writes.last).to eq([ "index", nil, nil, 2 ])
+      end
+
+      it "never writes progress inside a batch's write transaction (spec 015 FR-1 must not)", :aggregate_failures do
+        stub_const("Catalog::Refresh::BATCH_SIZE", 2) # a batch is written every two records, between writes of progress
+        source.entries = %w[a b c d e].map { |key| entry_record(key) }
+        connection = ActiveRecord::Base.connection
+        outside = connection.open_transactions # the example's own transaction, and nothing else
+        writes = progress_writes { |progress| [ progress[:stage], progress[:counts][:inserted], connection.open_transactions ] }
+
+        described_class.new("fake", trigger: "manual", source:, clock:).call
+
+        expect(writes.map(&:last).uniq).to eq([ outside ])
+        # Progress was written before, between and after the batches, so a write inside one would have been seen.
+        expect(writes.filter_map { |stage, inserted, _open| inserted if stage == "sync" }.uniq).to eq([ 0, 2, 4 ])
+      end
+    end
+
+    it "works with a source that reports nothing: stages and counts only (AC-2.8)" do
+      writes = progress_writes
+
+      refresh
+
+      expect(writes.map { |_stage, done, total, _seen| [ done, total ] }.uniq).to eq([ [ nil, nil ] ])
+    end
   end
 
   describe "the name index (spec 007 AC-3.9)" do
@@ -204,6 +392,44 @@ RSpec.describe Catalog::Refresh, type: :model do
     it "leaves a populated index alone when a scheduled run is skipped" do
       refresh(trigger: "scheduled")
       expect { refresh(trigger: "scheduled") }.not_to(change { Catalog::Name.pluck(:id) })
+    end
+  end
+
+  context "with a source's refresh hooks (spec 011 AC-2.3, AC-2.4)" do
+    it "applies an already-applied version again when the source asks before the skip decision", :aggregate_failures do
+      refresh(trigger: "scheduled")
+      source.reapply = true
+
+      run = refresh(trigger: "scheduled")
+
+      expect(run).to have_attributes(status: "applied", source_version: "v1")
+      expect(source.downloads).to eq(%w[v1 v1])
+    end
+
+    it "skips an already-applied scheduled version when the source doesn't ask" do
+      refresh(trigger: "scheduled")
+
+      expect(refresh(trigger: "scheduled")).to have_attributes(status: "skipped")
+    end
+
+    it "tells the source after an applied run and after an already-applied skip" do
+      refresh(trigger: "scheduled")
+      refresh(trigger: "scheduled")
+
+      expect(source.refreshed).to eq([ %w[applied v1], %w[skipped v1] ])
+    end
+
+    it "doesn't tell the source when the refresh was skipped because another one is running", :aggregate_failures do
+      create(:catalog_refresh_run, collectible_type: "fake", status: "running", finished_at: nil, started_at: 1.minute.ago)
+
+      expect(refresh).to have_attributes(status: "skipped", message: "already running")
+      expect(source.refreshed).to be_empty
+    end
+
+    it "works with a source that implements neither hook" do
+      plain = Class.new(FakeCatalogSource) { undef_method :reapply?, :after_refresh }.new(sets: [ set_record("lea") ], entries: [ entry_record("a") ])
+
+      expect(described_class.new("fake", trigger: "manual", source: plain).call).to have_attributes(status: "applied")
     end
   end
 end

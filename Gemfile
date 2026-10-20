@@ -39,6 +39,11 @@ gem "thruster", require: false
 
 # Use Active Storage variants [https://guides.rubyonrails.org/active_storage_overview.html#transforming-images]
 gem "image_processing", "~> 2.2"
+# Loaded by Active Storage when it sets up vips variants, so the app boots without libvips (ADR 0013)
+gem "ruby-vips", "~> 2.3", require: false
+
+# Checks export files against the format's JSON Schema, in the app (spec 025, ADR 0021) and in the suite (spec 017).
+gem "json_schemer", "~> 2.4", require: false
 
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem

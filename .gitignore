@@ -42,3 +42,6 @@
 
 # The OCR engine, fetched and verified by bin/fetch-ocr-engine (spec 007).
 /vendor/ocr/
+
+# Brainstorm visual companion sessions
+/.superpowers/

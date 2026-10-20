@@ -6,7 +6,8 @@ module CardContext
   included { helper_method :card_context, :card_params, :lot_return_path, :lot_return_params }
 
   private
-    def card_context = params[:from] == "collection" ? :collection : :search
+    # A visitor has no collection, so their context is always Search (spec 023 decision 6).
+    def card_context = params[:from] == "collection" && Current.user ? :collection : :search
 
     def card_params = card_context == :collection ? { from: "collection" } : {}
 

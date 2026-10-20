@@ -66,6 +66,20 @@
 .c-tile__add { display:flex; }
 .c-tile__add .c-btn { width:100%; justify-content:flex-start; }
 
+/* ---------- Image fit (spec 019): a card image is shown whole and in its own proportions inside its 63:88 slot ---------- */
+/* Overrides the export until the published design system fits images this way; then delete this block. Any leftover
+   shows the slot's surface-sunken ground. */
+.c-tile__media img, .c-item__image img { object-fit:contain; } /* the export crops with cover */
+img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches: the tag's height="34" beats aspect-ratio */
+.c-item__image { position:relative; } /* holds the missing-image fallback inside its own slot */
+
+/* ---------- Unowned tile (spec 021): a card you don't own keeps its image as supplied and is marked in words ---------- */
+/* Overrides the export, which fades the image and the missing-image fallback to 45%; once an export drops that fade,
+   delete the first rule. The marker is a c-tag on a second c-tile__meta row, so the tile is one line taller: the add
+   control goes to the foot of its cell and a row that mixes owned and unowned tiles keeps its buttons level. */
+.c-tile--owned-none .c-tile__media > img, .c-tile--owned-none .c-tile__missing { opacity:1; }
+.c-tilecell > .c-tile__add { margin-top:auto; }
+
 /* ---------- Select inside the filter bar ---------- */
 .c-select select { height:28px; max-width:220px; padding:0 var(--space-2); background:var(--surface-raised); color:var(--ink);
   border:1px solid var(--line-strong); border-radius:var(--radius-md); font:400 13px/18px var(--font-sans); }
@@ -80,17 +94,16 @@
 .c-empty { margin:var(--space-6) 0; padding:var(--space-6); text-align:center; background:var(--surface-sunken);
   border-radius:var(--radius-md); font:400 15px/22px var(--font-sans); color:var(--ink); }
 
-/* ---------- Card page: details list, single stat, faces, attribution ---------- */
+/* ---------- Card page: details list, single stat, faces ---------- */
 .c-details { display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:var(--space-3) var(--space-4); margin:0; }
 .c-details dt { font:600 12px/16px var(--font-sans); color:var(--ink-muted); }
-.c-details dd { margin:var(--space-1) 0 0; font:400 14px/20px var(--font-sans); color:var(--ink); }
+.c-details dd { margin:var(--space-1) 0 0; font:400 14px/20px var(--font-sans); color:var(--ink); overflow-wrap:anywhere; } /* a value may be one long unbroken string, such as an error naming a URL */
 .c-details .is-data { font-family:var(--font-mono); }
 .c-stats--single { grid-template-columns:minmax(0, 1fr); max-width:240px; }
 .c-face { display:flex; flex-direction:column; gap:var(--space-2); }
 .c-list li.is-unowned { color:var(--ink-muted); }
 .c-list .is-data { font-family:var(--font-mono); white-space:nowrap; }
 .c-list .c-tile__add .c-btn { width:auto; }
-.c-attribution { margin:0; font:400 12px/16px var(--font-sans); color:var(--ink-muted); }
 @container page (max-width: 639px) { .c-stats--single { grid-template-columns:minmax(0, 1fr); max-width:none; } }
 
 /* ---------- Sortable table header (spec 006): a link, or a bulk-form button, with the order's arrow ---------- */
@@ -154,6 +167,7 @@
 /* Scanner confirm flow (spec 009): evidence on a candidate, add buttons per finish, Other printings and the sitting. */
 .c-scanner__candidate { display:flex; flex-direction:column; align-items:flex-start; gap:var(--space-2); }
 .c-scanner__evidence { font:400 13px/18px var(--font-sans); color:var(--ink-muted); }
+.c-scanner__result .c-status__message + .c-grid { margin-top:var(--space-3); } /* the art overrule note above the candidates (spec 011) */
 .c-scanner__adds { display:flex; flex-wrap:wrap; gap:var(--space-2); }
 .c-scanner__add, .c-scanner__undo { margin:0; }
 .c-scanner__add .c-btn, .c-scanner__undo .c-btn, .c-scanner__sitting .c-btn { min-height:44px; min-width:44px; }
@@ -164,3 +178,110 @@
 .c-scanner__printings .c-list li { flex-wrap:wrap; }
 .c-scanner__printings .c-list__end { font-family:var(--font-sans); }
 .c-scanner__hint { margin:0; font:400 14px/20px var(--font-sans); color:var(--ink-muted); }
+/* Art matching's status under the scanner's controls (spec 011 AC-5.1): quiet, like the hint. */
+.c-scanner__art { margin:0; font:400 14px/20px var(--font-sans); color:var(--ink-muted); }
+
+/* ---------- Admin jobs (spec 015): state filters over the jobs table, and one job's page ---------- */
+.c-jobs__filters { display:flex; flex-wrap:wrap; gap:var(--space-2); margin:var(--space-6) 0 var(--space-4); }
+.c-jobs__count { font-family:var(--font-mono); color:var(--ink-muted); }
+.c-jobs td.c-jobs__job { white-space:normal; overflow-wrap:anywhere; }
+.c-jobs__detail { display:block; font:400 12px/16px var(--font-mono); color:var(--ink-muted); }
+.c-job__title { overflow-wrap:anywhere; }
+.c-job__actions { margin:var(--space-4) 0; }
+.c-job__section { margin-top:var(--space-6); }
+.c-job__error { margin:0 0 var(--space-2); font:400 15px/22px var(--font-sans); color:var(--ink); overflow-wrap:anywhere; }
+.c-job__note { overflow-wrap:anywhere; } /* a sentence quoting a job's arguments, which may be one long unbroken string */
+.c-pre { margin:0; padding:var(--space-3); overflow-x:auto; background:var(--surface-sunken); border-radius:var(--radius-md);
+  font:400 12px/16px var(--font-mono); color:var(--ink); }
+
+/* ---------- Admin catalog (spec 015): a panel per catalog type, holding its facts and its operations ---------- */
+.c-panel { display:flex; flex-direction:column; gap:var(--space-4); margin-top:var(--space-6); padding:var(--space-4);
+  background:var(--surface-raised); border:1px solid var(--line); border-radius:var(--radius-md); }
+.c-panel .c-empty { margin:0; }
+.c-panel > .c-section__title { white-space:normal; overflow-wrap:anywhere; } /* a long catalog name wraps */
+.c-operation { display:flex; flex-direction:column; gap:var(--space-2); padding-top:var(--space-4); border-top:1px solid var(--line); }
+.c-operation__head { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:var(--space-2); }
+.c-operation__title { margin:0; font:600 16px/24px var(--font-sans); color:var(--ink); }
+.c-operation__summary { margin:0; font:400 15px/22px var(--font-sans); color:var(--ink); overflow-wrap:anywhere; }
+.c-operation__summary a { color:var(--brand); font-weight:600; text-decoration:none; }
+.c-operation__summary a:hover { text-decoration:underline; }
+.c-operation__summary a:focus-visible { outline:2px solid var(--focus); outline-offset:2px; border-radius:var(--radius-sm); }
+.c-operation__start { display:flex; }
+.c-runs li { flex-wrap:wrap; }
+
+/* ---------- Stage list (spec 015): the steps of an operation in order, each with its state in a word ---------- */
+.c-stages { display:flex; flex-direction:column; gap:var(--space-2); margin:0; padding:0; list-style:none; }
+.c-stages__stage { display:grid; grid-template-columns:minmax(0, 1fr) auto; gap:var(--space-1) var(--space-3);
+  font:400 14px/20px var(--font-sans); color:var(--ink-muted); }
+.c-stages__stage[aria-current] { color:var(--ink); font-weight:600; }
+.c-stages__state { font:400 13px/18px var(--font-mono); }
+.c-stages__stage .c-meter, .c-stages__note { grid-column:1 / -1; }
+.c-stages__note { font:400 13px/18px var(--font-mono); color:var(--ink-muted); }
+
+/* ---------- Progress meter (spec 015): a bar with its percentage and, where there are any, the amounts in words ---------- */
+.c-meter { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-2); font:400 13px/18px var(--font-mono); color:var(--ink-muted); }
+.c-meter__bar { flex:1 1 160px; min-width:0; height:var(--space-2); accent-color:var(--brand); }
+/* c-meter__value, c-meter__text and c-stages__label take the styles above as they are: they are named for the docs and
+   for specs, not for rules of their own. */
+
+/* ---------- Links inside a status message use the brand link colour (spec 015: the not-loaded notice) ---------- */
+.c-status__message a { color:var(--brand); font-weight:600; text-decoration:none; }
+.c-status__message a:hover { text-decoration:underline; }
+.c-status__message a:focus-visible { outline:2px solid var(--focus); outline-offset:2px; border-radius:var(--radius-sm); }
+
+/* ---------- Footer (spec 018): the content notices of the registered catalog types, on every page ---------- */
+.c-footer { display:flex; flex-direction:column; gap:var(--space-1); padding:var(--space-4) var(--space-8) var(--space-6);
+  border-top:1px solid var(--line); font:400 12px/16px var(--font-sans); color:var(--ink-muted); }
+.c-footer p { margin:0; overflow-wrap:anywhere; }
+.c-footer a { color:var(--brand); text-decoration:none; }
+.c-footer a:hover { text-decoration:underline; }
+.c-footer a:focus-visible { outline:2px solid var(--focus); outline-offset:2px; border-radius:var(--radius-sm); }
+/* Below bp-narrow the tab bar is fixed over the end of the page. The footer scrolls with the content, and takes the
+   clearance c-main carries for the bar (80px, as in components.css), so its last line stops above it. The layout
+   marks the shell c-shell--footed when it renders a footer, and c-main then gives that clearance up. */
+@media (max-width: 639px) {
+  .c-footer { padding:var(--space-4) var(--space-4) calc(80px + env(safe-area-inset-bottom)); }
+  .c-shell--footed > .c-main { padding-bottom:var(--space-4); }
+}
+
+/* ---------- Untabbed shell (spec 023) ----------
+   Below bp-narrow c-main (or, on a footed shell, the footer) keeps 80px clear for the fixed tab bar. A page with no tab
+   bar (a visitor's catalog page, sign-in, sign-up) is marked c-shell--untabbed and gives that clearance up. */
+@media (max-width: 639px) {
+  .c-shell--untabbed > .c-main { padding-bottom:calc(var(--space-6) + env(safe-area-inset-bottom)); }
+  .c-shell--untabbed.c-shell--footed > .c-main { padding-bottom:var(--space-4); }
+  .c-shell--untabbed > .c-footer { padding-bottom:calc(var(--space-4) + env(safe-area-inset-bottom)); }
+}
+
+/* ---------- Import preview (spec 025): the upload's file field, and the preview's sections and lists ---------- */
+.c-file { max-width:100%; font:400 14px/20px var(--font-sans); color:var(--ink); }
+.c-file:focus-visible { outline:2px solid var(--focus); outline-offset:2px; }
+.c-import { display:flex; flex-direction:column; gap:var(--space-6); margin-top:var(--space-6); }
+.c-import__list li { flex-wrap:wrap; overflow-wrap:anywhere; }
+.c-import__number { font:400 13px/18px var(--font-mono); color:var(--ink-muted); }
+.c-import__reasons { flex-basis:100%; display:flex; flex-direction:column; gap:var(--space-1); }
+.c-import__reasons p { margin:0; font:600 13px/18px var(--font-sans); color:var(--danger); }
+.c-import__note, .c-import__more { margin:0; font:400 14px/20px var(--font-sans); color:var(--ink-muted); }
+
+/* ---------- Number entry (spec 026): the chosen set, one line's fields in a row, a choice between matches, the list ---------- */
+.c-numentry { display:flex; flex-direction:column; gap:var(--space-6); margin-top:var(--space-6); }
+.c-numentry__set { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-2) var(--space-4); }
+.c-numentry__setname, .c-numentry__set > p { margin:0; }
+.c-numentry__data { font-family:var(--font-mono); }
+.c-numentry__language { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-2); }
+.c-numentry__line { display:grid; grid-template-columns:minmax(0, 10rem) minmax(0, 7rem) minmax(0, 12rem) auto; align-items:start; gap:var(--space-3); }
+.c-numentry__line > .c-field__error { grid-column:1 / -1; margin:0; }
+.c-input .c-numentry__data-input { font-family:var(--font-mono); }
+/* The label (16px line) and the field's gap (space-1) above the inputs, so Add lines up with them, not the labels. */
+.c-numentry__add { padding-top:calc(var(--space-4) + var(--space-1)); }
+.c-numentry__prompt { margin:0 0 var(--space-2); }
+.c-numentry__choice .c-list { border:0; }
+.c-numentry__choice .c-list li { border:0; padding:var(--space-1) 0; }
+.c-numentry__choice .c-btn { white-space:normal; height:auto; min-height:44px; text-align:left; }
+.c-numentry__list .c-list li { flex-wrap:wrap; }
+.c-numentry__list .c-btn { min-height:44px; min-width:44px; }
+@container page (max-width: 639px) {
+  .c-numentry__line { grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); }
+  .c-numentry__add { grid-column:1 / -1; padding-top:0; }
+  .c-numentry__add .c-btn { width:100%; }
+}

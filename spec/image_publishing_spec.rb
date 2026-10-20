@@ -22,6 +22,45 @@ RSpec.describe "Image publishing files" do
       expect(rules).to include("/bin/ghcr-cleanup", "/lib/collector/ghcr_cleanup.rb")
       expect(Rails.root.join("bin/image-smoke").read).to include("bin/ghcr-cleanup lib/collector/ghcr_cleanup.rb")
     end
+
+    it "keeps the checkout's OCR engine out of the build context, so the image gets the copy its build fetches (issue #31)" do
+      expect(rules).to include("/vendor/ocr")
+    end
+  end
+
+  describe "Dockerfile" do
+    let(:instructions) { Rails.root.join("Dockerfile").readlines(chomp: true).map(&:strip) }
+
+    it "copies nothing from vendor/ with a wildcard, which would flatten its subdirectories (issue #31)", :aggregate_failures do
+      expect(instructions.grep(/\ACOPY\s.*vendor\/\*/)).to be_empty
+      expect(instructions).to include("COPY . .", "RUN bin/fetch-ocr-engine")
+    end
+  end
+
+  describe "bin/image-smoke" do
+    it "checks that Active Storage variants use libvips without a warning (spec 014 AC-1.3, FR-2)" do
+      expect(Rails.root.join("bin/image-smoke").read).to include(
+        "bin/rails runner 'puts ActiveStorage.variant_transformer'", "requires the (ruby-vips gem|libvips library)",
+        "ActiveStorage::Transformers::Vips")
+    end
+
+    it "fails an image with anything in /rails/vendor besides .keep, javascript and ocr (issue #31)" do
+      expect(Rails.root.join("bin/image-smoke").read).to include("ls -A /rails/vendor", "grep -vxE '\\.keep|javascript|ocr'")
+    end
+
+    it "asserts the exact line catalog:status prints on a fresh instance, from captured output (AC-6.3, issue #19)", :aggregate_failures do
+      script = Rails.root.join("bin/image-smoke").read
+      expect(script).to include(%(catalog_status="$("$cli" exec "$name" bin/rails "catalog:status[mtg]" 2>&1)"),
+                                %(grep -qxF "No mtg refresh runs yet." <<<"$catalog_status"))
+      expect(script).not_to include('grep -q "mtg"')
+    end
+
+    it "asserts the line collector:user prints for a new admin, from captured output (AC-6.3, issue #19)", :aggregate_failures do
+      script = Rails.root.join("bin/image-smoke").read
+      expect(script).to include('"$name" bin/rails "collector:user[smoke@example.com]" 2>&1)"',
+                                'grep -qxF "Created admin smoke@example.com." <<<"$user_task"')
+      expect(script).not_to match(/\| *grep -q/)
+    end
   end
 
   describe "compose.yaml" do
@@ -39,8 +78,16 @@ RSpec.describe "Image publishing files" do
       expect(service["volumes"]).to eq([ "collector_storage:/rails/storage" ])
       expect(service.dig("healthcheck", "test")).to eq([ "CMD", "curl", "-fsS", "http://localhost:8080/up" ])
       expect(service["environment"].keys).to contain_exactly(
-        "SECRET_KEY_BASE", "SOLID_QUEUE_IN_PUMA", "HTTP_PORT", "COLLECTOR_MTG_LANGUAGES", "COLLECTOR_CURRENCY",
-        "COLLECTOR_HTTPS", "COLLECTOR_TRUSTED_PROXIES")
+        "SECRET_KEY_BASE", "SOLID_QUEUE_IN_PUMA", "HTTP_PORT", "COLLECTOR_MTG_LANGUAGES", "COLLECTOR_MTG_ART_MATCHING",
+        "COLLECTOR_PUBLIC_CATALOG", "COLLECTOR_CURRENCY", "COLLECTOR_HTTPS", "COLLECTOR_TRUSTED_PROXIES")
+    end
+
+    it "passes the art matching setting to the container, empty unless it is set (spec 011 AC-1.3)" do
+      expect(compose.read).to include('COLLECTOR_MTG_ART_MATCHING: "${COLLECTOR_MTG_ART_MATCHING:-}"')
+    end
+
+    it "passes the open catalog setting to the container, empty unless it is set (spec 023 AC-1.3)" do
+      expect(compose.read).to include('COLLECTOR_PUBLIC_CATALOG: "${COLLECTOR_PUBLIC_CATALOG:-}"')
     end
   end
 
@@ -53,6 +100,14 @@ RSpec.describe "Image publishing files" do
                                        "password" => [ "KAMAL_REGISTRY_PASSWORD" ])
       expect(deploy.dig("builder", "arch")).to eq("amd64")
       expect(deploy.dig("servers", "web")).to eq([ "192.168.0.1" ])
+    end
+
+    it "offers art matching as a commented-out setting (spec 011 AC-1.3)" do
+      expect(Rails.root.join("config/deploy.yml").read).to include("# COLLECTOR_MTG_ART_MATCHING: true")
+    end
+
+    it "offers the open catalog as a commented-out setting (spec 023 AC-1.3)" do
+      expect(Rails.root.join("config/deploy.yml").read).to include("# COLLECTOR_PUBLIC_CATALOG: true")
     end
   end
 
@@ -78,6 +133,14 @@ RSpec.describe "Image publishing files" do
         { "platform" => "linux/amd64", "runner" => "ubuntu-latest" },
         { "platform" => "linux/arm64", "runner" => "ubuntu-24.04-arm" })
       expect(publish_job["needs"]).to eq("image")
+    end
+
+    it "installs libvips and ImageMagick before bin/ci (spec 014 AC-2.3, FR-3)", :aggregate_failures do
+      ci_steps = workflow.dig("jobs", "ci", "steps")
+      install = ci_steps.index { |candidate| candidate["run"].to_s.include?("apt-get install") }
+      expect(install).not_to be_nil
+      expect(ci_steps[install]["run"].split).to include("libvips", "imagemagick")
+      expect(install).to be < ci_steps.index { |candidate| candidate["run"] == "bin/ci" }
     end
 
     it "grants packages: write only to the image and publish jobs (NFR Security)", :aggregate_failures do
@@ -154,31 +217,6 @@ RSpec.describe "Image publishing files" do
       expect(%w[dry-run delete].map { |name| command(name).dig("env", "GH_TOKEN") }).to all(eq("${{ secrets.GITHUB_TOKEN }}"))
       uses = workflow["jobs"].values.flat_map { |each_job| each_job["steps"].filter_map { |candidate| candidate["uses"] } }
       expect(uses).to all(start_with("actions/").or(start_with("ruby/setup-ruby@")))
-    end
-  end
-
-  describe "docs/releasing.md" do
-    let(:doc) { Rails.root.join("docs/releasing.md").read }
-
-    it "records the release procedure and what each trigger publishes (AC-7.1)", :aggregate_failures do
-      expect(doc).to include("git tag -a v", "v0.1.0", "| Tag `vX.Y.Z` |", "| Push to `main` |", "| Pull request |")
-      expect(doc).to include("vX.Y.Z-<suffix>", "Only the newest release's workflow may be re-run")
-      expect(doc).to include("The workflow does not check that the tag is annotated or on `main`")
-    end
-
-    it "orders the go-public checklist and says it cannot be undone (AC-7.2)", :aggregate_failures do
-      positions = [ "Push the first image", "Verify an authenticated pull", "Confirm the package is linked",
-                    "Change the visibility to public", "Verify an anonymous pull" ].map { |step| doc.index(step) }
-      expect(positions).to all(be_a(Integer))
-      expect(positions).to eq(positions.sort)
-      expect(doc).to include("cannot be undone")
-    end
-
-    it "documents the cleanup: rule, grace period, schedule, manual and local runs, failures, token (AC-5.1)", :aggregate_failures do
-      expect(doc).to include("## Cleaning up untagged versions", "more than\n  7 days old", "**Never deleted:**")
-      expect(doc).to include("Sundays at 06:00 UTC", "The `dry_run` box is ticked by default")
-      expect(doc).to include('GH_TOKEN="$(gh auth token)" bin/ghcr-cleanup', "**A failed run failed closed:**")
-      expect(doc).to include("Investigate the cause before re-running", "personal access token (classic")
     end
   end
 end

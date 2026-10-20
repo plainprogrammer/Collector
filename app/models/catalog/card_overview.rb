@@ -12,7 +12,10 @@ class Catalog::CardOverview
   def identity = entry.identity
   def vocabulary = Catalog.collecting_for(entry.collectible_type)
 
+  # A visitor (no account) holds nothing, and nothing is queried (spec 023 FR-3).
   def lots
+    return [] unless @account
+
     @lots ||= @account.lots.joins(:entry).where(catalog_entries: { catalog_identity_id: identity.id })
       .includes(entry: :set).merge(Catalog::Entry.newest_first).order(:finish, :condition, :price_paid_cents).to_a
   end

@@ -1,0 +1,38 @@
+# What a job does when its source turned it away (Catalog::Sources::RateLimitedError, issue #74): it runs again no
+# sooner than the source asked, so the queue holds the wait instead of a worker. While its retry waits it holds no
+# concurrency lock, so another job of its class (the schedule's, or one started by hand) can be queued meanwhile; the
+# operation's start guard skips that one while this one waits (Catalog::Operation::Queue#waiting_to_retry?, issue #78).
+#
+# Include it after the job's own retry_on lines: Active Job tries the handler declared last first, and this one must
+# come before a rule for Catalog::Sources::TransientError, whose few seconds are sooner than a source asks.
+#
+# - The wait is what the source asked for (the error's #retry_after), and SHORTEST_WAIT at least: that covers a source
+#   that never said, and one whose last answer asked for less than its own rate limit lasts. SHORTEST_WAIT is the 30
+#   seconds for which the one source so far says a "too many requests" answer limits access, plus a margin of 15: the
+#   wait runs from when the error is handled, a little after the answer, on this host's clock, so 30 exactly would
+#   leave the next request clear of that window only by however long the queue takes to dispatch the job.
+# - A source that asks for more than LONGEST_WAIT isn't waited for: the job fails, and shows under Failed.
+# - So does a job turned away again after MAX_RETRIES such retries.
+module Catalog::RateLimitRetry
+  extend ActiveSupport::Concern
+
+  SHORTEST_WAIT = 45.seconds
+  LONGEST_WAIT = 1.hour
+  MAX_RETRIES = 3
+  # Where the job keeps its count of these retries; Active Job serializes exception_executions with the job.
+  COUNTED_AS = "[Catalog::Sources::RateLimitedError]".freeze
+
+  included do
+    rescue_from(Catalog::Sources::RateLimitedError) { |error| retry_when_asked(error) }
+  end
+
+  private
+    def retry_when_asked(error)
+      wait = [ error.retry_after.to_i.seconds, SHORTEST_WAIT ].max
+      retries = exception_executions[COUNTED_AS].to_i
+      raise error if wait > LONGEST_WAIT || retries >= MAX_RETRIES
+
+      exception_executions[COUNTED_AS] = retries + 1
+      retry_job(wait:, error:)
+    end
+end

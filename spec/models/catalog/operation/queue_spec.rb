@@ -1,0 +1,119 @@
+require "rails_helper"
+
+RSpec.describe Catalog::Operation::Queue, :solid_queue, type: :model do
+  subject(:queue) { described_class.new(Catalog::RefreshJob, "mtg") }
+
+  it "holds nothing when no job is queued", :aggregate_failures do
+    expect(queue).not_to be_any
+    expect(queue).not_to be_failed
+    expect(queue).not_to be_claimed
+    expect(queue.retry_at).to be_nil
+  end
+
+  it "counts a job for the type whatever its trigger, ready or waiting on the concurrency limit (spec 015 glossary)", :aggregate_failures do
+    queue_job(Catalog::RefreshJob, "mtg", "scheduled")
+    expect(described_class.new(Catalog::RefreshJob, "mtg")).to be_any
+
+    waiting = queue_job(Catalog::RefreshJob, "mtg", "manual")
+    expect(waiting.blocked_execution).to be_present
+    expect(described_class.new(Catalog::RefreshJob, "mtg")).to be_any
+  end
+
+  it "ignores jobs of another type, of another class, and finished ones", :aggregate_failures do
+    queue_job(Catalog::RefreshJob, "other", "manual")
+    queue_job(MTG::Art::BuildJob)
+    finish_job(queue_job(Catalog::RefreshJob, "mtg", "manual"))
+
+    expect(queue).not_to be_any
+    expect(described_class.new(MTG::Art::BuildJob)).to be_any
+  end
+
+  it "passes over a row whose arguments aren't a job's envelope" do
+    queue_job(Catalog::RefreshJob, "mtg", "manual").update_columns(arguments: "not an envelope") # rubocop:disable Rails/SkipsModelValidations -- a row nothing in the app would write
+
+    expect(queue).not_to be_any
+  end
+
+  it "knows when a worker holds a job, and which one", :aggregate_failures do
+    job = claim_job(queue_job(Catalog::RefreshJob, "mtg", "manual"))
+
+    expect(queue).to be_claimed
+    expect(queue.claimed?(job.active_job_id)).to be(true)
+    expect(queue.claimed?("another-job")).to be(false)
+  end
+
+  it "knows when no unfinished job has an Active Job id any more: finished, discarded or never queued", :aggregate_failures do
+    finished = finish_job(queue_job(Catalog::RefreshJob, "mtg", "manual"))
+    failed = fail_job(queue_job(Catalog::RefreshJob, "mtg", "manual"))
+    waiting = queue_job(Catalog::RefreshJob, "mtg", "manual")
+
+    expect(queue.gone?(finished.active_job_id)).to be(true)
+    expect(queue.gone?("never-queued")).to be(true)
+    expect(queue.gone?(failed.active_job_id)).to be(false)
+    expect(queue.gone?(waiting.active_job_id)).to be(false)
+    expect(queue.job_ids).to contain_exactly(failed.active_job_id, waiting.active_job_id)
+  end
+
+  it "reads the queue once, when asked to or first asked about it, and says when", :aggregate_failures do
+    freeze_time { expect(queue.read.read_at).to eq(Time.current) }
+    expect(queue.read).to be(queue)
+    queue_job(Catalog::RefreshJob, "mtg", "manual")
+
+    expect(queue).not_to be_any
+  end
+
+  it "gives the time a job waiting to retry is due" do
+    freeze_time do
+      queue_job(Catalog::RefreshJob, "mtg", "manual", wait: 5.minutes)
+
+      expect(queue).to be_any.and have_attributes(retry_at: 5.minutes.from_now)
+    end
+  end
+
+  it "says when one job's retry is due, by Active Job id (issue #80)", :aggregate_failures do
+    freeze_time do
+      retrying = queue_job(Catalog::RefreshJob, "mtg", "manual", wait: 5.minutes)
+      ready = queue_job(Catalog::RefreshJob, "mtg", "manual")
+
+      expect(queue.retry_at(retrying.active_job_id)).to eq(5.minutes.from_now)
+      expect(queue.retry_at(ready.active_job_id)).to be_nil
+      expect(queue.retry_at("job-gone")).to be_nil
+    end
+  end
+
+  it "knows when a job other than a given one waits to run again (issue #78)", :aggregate_failures do
+    retrying = queue_job(Catalog::RefreshJob, "mtg", "manual", wait: 5.minutes)
+    queue_job(Catalog::RefreshJob, "mtg", "manual")
+
+    expect(queue).to be_waiting_to_retry
+    expect(queue.waiting_to_retry?(except: "another-job")).to be(true)
+    expect(queue.waiting_to_retry?(except: retrying.active_job_id)).to be(false)
+    expect(described_class.new(Catalog::RefreshJob, "other")).not_to be_waiting_to_retry
+  end
+
+  it "doesn't count a ready job, a held one or a failed one as waiting to run again", :aggregate_failures do
+    queue_job(Catalog::RefreshJob, "mtg", "manual")
+    claim_job(queue_job(Catalog::RefreshJob, "mtg", "manual"))
+    fail_job(queue_job(Catalog::RefreshJob, "mtg", "manual"))
+
+    expect(queue).not_to be_waiting_to_retry
+  end
+
+  it "reports a failed job as failed, not in flight", :aggregate_failures do
+    fail_job(queue_job(Catalog::RefreshJob, "mtg", "manual"))
+
+    expect(queue).to be_failed
+    expect(queue).not_to be_any
+  end
+
+  it "knows which jobs are in the failed list, by Active Job id (issue #60)", :aggregate_failures do
+    failed = fail_job(queue_job(Catalog::RefreshJob, "mtg", "manual"))
+    waiting = queue_job(Catalog::RefreshJob, "mtg", "manual")
+    fail_job(queue_job(Catalog::RefreshJob, "other", "manual"))
+
+    expect(queue.failed?(failed.active_job_id)).to be(true)
+    expect(queue.failed?(waiting.active_job_id)).to be(false)
+    expect(queue.failed?("another-job")).to be(false)
+    expect(queue.failed_job_ids).to eq([ failed.active_job_id ])
+  end
+end

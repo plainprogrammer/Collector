@@ -38,12 +38,14 @@ RSpec.describe Scanner::MeasurementRun, type: :model do
 
     def capture(file, key)
       run.record!(run.row(file), name_text: "Bolt", collector_text: "", ms: 200, user_agent: "iPhone", name_strip: png.call, collector_strip: png.call,
-        extra: { "reading_key" => key, "outline" => "found", "detect_ms" => 180, "warp_ms" => 120, "other" => "dropped" })
+        extra: { "reading_key" => key, "outline" => "found", "detect_ms" => 180, "warp_ms" => 120, "art_ms" => 31,
+          "art_download_ms" => 244, "art_ready_ms" => 79, "ready_ms" => 900, "other" => "dropped" })
     end
 
-    it "stores the reading key, the outline and the detector's timings with a capture", :aggregate_failures do
+    it "stores the reading key, the outline, the detector's timings and the art timings (spec 011 AC-9.5) with a capture", :aggregate_failures do
       capture("S001", "a" * 32)
-      expect(run.captures(run.row("S001")).sole).to include("reading_key" => "a" * 32, "outline" => "found", "detect_ms" => 180, "warp_ms" => 120)
+      expect(run.captures(run.row("S001")).sole).to include("reading_key" => "a" * 32, "outline" => "found", "detect_ms" => 180, "warp_ms" => 120,
+        "art_ms" => 31, "art_download_ms" => 244, "art_ready_ms" => 79, "ready_ms" => 900)
       expect(run.captures(run.row("S001")).sole).not_to have_key("other")
     end
 
@@ -99,5 +101,22 @@ RSpec.describe Scanner::MeasurementRun, type: :model do
     expect(described_class).to be_keep_frames
   ensure
     Rails.configuration.x.scanner_measurement = nil
+  end
+
+  describe "#record_reading! (spec 011 AC-9.3)" do
+    it "appends what the ranking decided to a file for the whole run, keyed by the reading key", :aggregate_failures do
+      reading = instance_double(MTG::Reading, artworks: [ MTG::Art::Sent::Artwork.new(id: "a" * 8 + "-0000-4000-8000-000000000001", distance: 189) ],
+        tier: :art, overruled: :name, overruled_scope: :printing, art_status: :matched,
+        candidates: [ MTG::Reading::Candidate.new(entry: build_stubbed(:catalog_entry, external_key: "p1"), evidence: %i[art], name_rank: nil, strong_name: false) ],
+        art_usable: [ MTG::Art::Evidence::Usable.new(id: "x", distance: 189, identity_id: 1, printings: []),
+                      MTG::Art::Evidence::Usable.new(id: "y", distance: 341, identity_id: 2, printings: []) ])
+
+      run.record_reading!("f" * 32, reading)
+
+      expect(run.readings).to match([ hash_including("reading_key" => "f" * 32, "tier" => "art", "overruled" => "name",
+        "overruled_scope" => "printing", "art_status" => "matched", "candidates" => [ "p1" ], "nearest" => 189, "second" => 341,
+        "second_other_card" => true, "artworks" => [ { "id" => "a" * 8 + "-0000-4000-8000-000000000001", "distance" => 189 } ]) ])
+      expect(run.dir.join("readings.jsonl")).to exist
+    end
   end
 end

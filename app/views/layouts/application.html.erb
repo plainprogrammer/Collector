@@ -8,7 +8,8 @@
     <meta name="mobile-web-app-capable" content="yes">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
-    <%= turbo_refreshes_with method: :morph, scroll: :preserve %>
+    <%# A page may ask for another refresh method (number entry asks for replace, so autofocus works; spec 026). %>
+    <%= turbo_refreshes_with method: content_for(:turbo_refresh_method).presence&.to_sym || :morph, scroll: :preserve %>
     <%= yield :head %>
 
     <link rel="icon" href="<%= asset_path("collector/collector-mark.svg") %>" type="image/svg+xml">
@@ -18,10 +19,13 @@
     <%= javascript_importmap_tags %>
   </head>
 
-  <body class="c-shell">
+  <% notice_lines = Catalog::ContentNotice.lines %>
+  <%# A page with no tab bar (a visitor's catalog page, sign-in, sign-up) gives up the bar's clearance (spec 023). %>
+  <body class="<%= class_names("c-shell", "c-shell--footed": notice_lines.any?, "c-shell--untabbed": !content_for?(:tabbar)) %>">
     <%= yield :appbar %>
     <div id="status" class="c-status" role="status" aria-live="polite"><% if (message = flash[:alert] || flash[:notice]) %><%= render "shared/status_message", message:, alert: flash[:alert].present?, undo: (flash[:undo] unless flash[:alert]) %><% end %></div>
     <%= yield %>
+    <%= render "layouts/footer", lines: notice_lines %>
     <%= yield :tabbar %>
   </body>
 </html>

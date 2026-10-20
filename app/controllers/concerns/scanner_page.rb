@@ -20,5 +20,11 @@ module ScannerPage
       policy.form_action :self
       policy.frame_ancestors :self
     end
+
+    helper_method :scanner_art
   end
+
+  private
+    # The art index and settings for this scanner page (spec 011 AC-5.1), or nil.
+    def scanner_art = defined?(@scanner_art) ? @scanner_art : (@scanner_art = MTG::Art.page_config)
 end

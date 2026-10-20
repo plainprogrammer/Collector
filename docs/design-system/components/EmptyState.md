@@ -5,7 +5,7 @@ What a page or section shows when it has nothing to list: one sentence on why, a
 **Markup** — the consumer provides the sentence and, where there is one, a link to the next step.
 
 ```html
-<p class="c-empty">No cards in your collection yet. Search for a card to start adding. <a href="/catalog/entries">Search cards</a></p>
+<p class="c-empty">No cards in your collection yet. Search for a card or <a href="/collection/number_entry">add cards by number</a> to start adding. <a href="/catalog/entries">Search cards</a></p>
 <p class="c-empty">No cards match "zzz". Check the spelling or try part of the name.</p>
 <p class="c-empty">You don't have this card yet. <a href="/catalog/entries/…/lots/new">Add a copy</a></p>
 ```

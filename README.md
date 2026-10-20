@@ -1,10 +1,13 @@
 # Collector
 
 Collector is a self-hostable, multi-tenant web app for tracking collectibles, starting with
-Magic: The Gathering. It is at an early stage: alongside the stack, tests, CI, and deployment
-setup, it has a card catalog fed from Scryfall's bulk data and a public card search page at
-`/catalog/entries` (see [Card catalog](#card-catalog)). Accounts and collections are not built
-yet.
+Magic: The Gathering. Each person signs in to their own account and keeps their own collection.
+Cards come from a catalog fed from Scryfall's bulk data (see [Card catalog](#card-catalog)): you
+find a card by searching the catalog, or by reading it with the [card scanner](#card-scanner) on
+a phone, and add it to your collection. An admin manages users and sign-up (see
+[Accounts](#accounts)), starts and watches the catalog's refreshes, and sees, retries and
+discards background jobs. Collector is pre-1.0; the [roadmap](docs/roadmap.md) says what is
+built next.
 
 Built with Rails 8.1, SQLite, and Hotwire (Turbo + Stimulus via importmap and Propshaft; no
 Node.js). Background jobs, caching, and Action Cable use Solid Queue, Solid Cache, and Solid
@@ -15,6 +18,10 @@ Cable, all backed by SQLite.
 - Ruby 4.0.7 (see `.ruby-version`)
 - SQLite is provided by the `sqlite3` gem; no separate database server is needed
 - Firefox, for the system specs (run headless)
+- libvips, for Active Storage image variants (ADR 0013): `sudo dnf install vips` on Fedora,
+  `sudo apt install libvips` on Debian or Ubuntu. `bin/setup` says so when it's missing
+- ImageMagick, for the card scanner's art index build (ADR 0012): `sudo dnf install ImageMagick`
+  on Fedora, `sudo apt install imagemagick` on Debian or Ubuntu
 
 ## Development
 
@@ -107,8 +114,8 @@ measurement mode, `SCANNER_EMAIL=… GROUND_TRUTH=… bin/rails scanner:sitting_
 ## Testing and CI
 
 ```sh
-bin/rspec                               # full suite
-bin/rspec spec/requests/home_spec.rb:5  # a single file or example
+bin/rspec                                       # full suite
+bin/rspec spec/requests/health_check_spec.rb:5  # a single file or example
 ```
 
 The suite uses RSpec, FactoryBot, and Capybara. System specs run in headless Firefox; on the
@@ -150,10 +157,11 @@ the file and start it.
 | `COLLECTOR_PORT`            | no       | `3000`                | Host port the app is published on                                                                                                     |
 | `COLLECTOR_IMAGE`           | no       | `ghcr.io/plainprogrammer/collector:latest` | Image to run; set it to a tag such as `ghcr.io/plainprogrammer/collector:0.1` to pin a release, or to a locally built image |
 | `COLLECTOR_MTG_LANGUAGES`   | no       | English only          | Extra card languages, e.g. `ja,de` (see [Card catalog](#card-catalog))                                                                |
+| `COLLECTOR_MTG_ART_MATCHING` | no       | off                   | `true` turns on art matching for the card scanner (see [Card catalog](#card-catalog))                                                 |
+| `COLLECTOR_PUBLIC_CATALOG`  | no       | off                   | `true` lets people who aren't signed in search the catalog and open card pages (see [Open catalog](#open-catalog))                   |
 | `COLLECTOR_CURRENCY`        | no       | `USD`                 | Currency for the price you paid: USD, CAD, AUD, NZD, EUR, GBP, CHF, SEK, NOK, DKK, PLN, CZK, JPY, CNY, KRW, SGD, HKD, BRL, MXN or ZAR |
 | `COLLECTOR_HTTPS`           | no       | `false`               | Set to `true` when Collector is served over HTTPS (secure cookies, redirect to HTTPS)                                                 |
 | `COLLECTOR_TRUSTED_PROXIES` | no       | Rails' private ranges | Extra reverse proxies (IPs or CIDRs, comma-separated) whose `X-Forwarded-For` is trusted                                              |
-| `COLLECTOR_PASSWORD`        | no       | none                  | Password for the user command below; never stored in logs                                                                             |
 
 Changing `COLLECTOR_CURRENCY` later doesn't convert prices you've already entered; they're shown with the new symbol. An unsupported code stops the app at boot, naming the setting.
 
@@ -182,6 +190,7 @@ The app is then available at `http://localhost:3000` (or your `COLLECTOR_PORT`).
 - **Building from source:** `docker build -t collector:local .` in a checkout, then start Compose with
   `COLLECTOR_IMAGE=collector:local`.
 - **HTTPS:** the Compose setup serves plain HTTP. Signing in over plain HTTP sends your password unencrypted, which is only acceptable on a trusted private network. Put an HTTPS reverse proxy (for example Caddy, nginx, or Traefik) in front of it and set `COLLECTOR_HTTPS=true`.
+- **Upload limit:** the app refuses a request body over 40 MB (Puma and Thruster), which is more than the largest export file it imports (32 MB). A reverse proxy in front may set a lower limit of its own; keep it at 40 MB or more.
 
 ### Kamal
 
@@ -197,6 +206,8 @@ Kamal (`bin/kamal`) deploys the same image to servers you control over SSH.
    `bin/kamal deploy --skip-push --version X.Y.Z` after that, naming the release to deploy. Kamal
    pulls that tag; nothing is built or pushed.
 
+`config/deploy.yml`'s `proxy:` sets `buffering: max_request_body: 40_000_000`, so kamal-proxy refuses request bodies over 40 MB, as the app does, instead of buffering up to 1 GB to disk.
+
 To deploy an image you build yourself, change `image` and `registry` in `config/deploy.yml` to
 a registry you own, then run `bin/kamal deploy`. Never run a plain `bin/kamal deploy` with the
 registry set to `ghcr.io/plainprogrammer/collector`: it would push a single-architecture `latest`
@@ -210,7 +221,7 @@ Queue runs inside Puma (`SOLID_QUEUE_IN_PUMA`).
 The card scanner ("Scan" in the navigation, at `/scanner`) reads a card with the camera of the phone it runs on, or
 from a photo, which it finds and straightens first. You confirm the printing and finish and add the card to your
 collection with one tap; the sitting's adds are listed with Undo until you press Done. Photos never leave the phone:
-only the text read from the card and your add, Undo and printing choices are sent to your instance.
+only the text read from the card (and, with art matching on, the ids and distances of the closest artworks) and your add, Undo and printing choices are sent to your instance.
 The image build downloads the scanner's OCR engine from `registry.npmjs.org` and checks each file against a pinned
 SHA-256; your instance serves it from `/ocr/v7.0.0/`, so phones fetch it from you, not from a third party.
 The published image already contains it.
@@ -220,8 +231,28 @@ only the photo picker works, and adding cards from photos works the same way.
 
 - **Docker Compose:** put an HTTPS reverse proxy in front of the app (see **HTTPS** under Docker Compose) and set
   `COLLECTOR_HTTPS=true`.
-- **Kamal:** enable the proxy's certificate in `config/deploy.yml` (uncomment `proxy:` with `ssl: true` and set
+- **Kamal:** enable the proxy's certificate in `config/deploy.yml` (uncomment `ssl: true` under `proxy:` and set
   your `host:`), and uncomment `COLLECTOR_HTTPS: true` under `env: clear:`.
+
+### Open catalog
+
+By default the catalog needs sign-in, like the rest of the app. Set `COLLECTOR_PUBLIC_CATALOG` to `true` (or `1`,
+`yes`, `on`) and people who aren't signed in can search the catalog, open a card's page and see all of a card's
+printings ("Show all N printings").
+Everything else still needs sign-in: collections, the card scanner, admin pages, and every add or change. A visitor's
+catalog pages show no owned counts, no "Not owned" markers and no add buttons, and nothing from anyone's collection.
+The header offers "Sign in", which brings them back to the page they were on.
+
+It's off by default, and a hosted instance turns it on: for a paid hosted service, Scryfall's terms ask that the card
+data it shows be publicly accessible, with search open to people who aren't signed in (research 016, ruling 27 in
+`docs/roadmap.md`).
+
+- **Docker Compose:** set `COLLECTOR_PUBLIC_CATALOG=true` in the environment you start Compose with.
+- **Kamal:** uncomment `COLLECTOR_PUBLIC_CATALOG: true` under `env: clear:` in `config/deploy.yml`.
+
+The setting is read at boot, so restart the app after changing it. Every search runs a name match against the whole
+catalog, limited only by the query's length (100 characters), so when you open the catalog, rate-limit requests at
+your reverse proxy.
 
 ### Accounts
 
@@ -249,8 +280,13 @@ Card data comes from [Scryfall](https://scryfall.com)'s bulk data files, which t
 downloads in a background job and caches in its own database. Pages are rendered only from
 that local copy; the app never calls Scryfall while rendering a page.
 
-**The catalog is empty until the first refresh.** After the first deployment, queue a manual
-refresh:
+**The catalog is empty until the first refresh.** After the first deployment, sign in as an
+admin and open **Catalog** (in the account menu, or under More on a phone). Press
+**Refresh now** and the page shows the download and the sync as they go, without reloading.
+Until then, search and the scanner say that the catalog hasn't been loaded. Nothing downloads
+until you start it or the weekly schedule first runs, so set the languages below first if you want more than English.
+
+You can also queue the refresh from a shell:
 
 ```sh
 bin/rails "catalog:refresh[mtg]"                          # locally
@@ -266,21 +302,52 @@ any error message:
 bin/rails "catalog:status[mtg]"   # Kamal: bin/kamal catalog-status
 ```
 
-- **Schedule:** in production the catalog refreshes weekly, on Mondays at 03:15 server time
+- **Catalog page:** `/admin/catalog` shows each catalog's cards, its last applied refresh, when
+  the next one is scheduled, the running refresh's stage and progress, and its recent runs. A
+  refresh whose job has failed or left the queue without ending the run (after a crash, for
+  example) is shown as interrupted once it has made no progress for 2 minutes, and so is one
+  that stops making progress for 15 minutes; pressing **Refresh now** then starts it again.
+- **Jobs page:** `/admin/jobs` lists the app's background jobs that failed, are running, are
+  queued or are scheduled. A failed job shows its error and backtrace, and can be retried or
+  discarded there. Both pages are for admins only.
+
+- **Schedule:** in production the catalog refreshes weekly, on Mondays at 03:15 UTC
   (`config/recurring.yml`). A scheduled run is skipped when the same Scryfall file and
-  language set were already applied; a manual run always applies. Only one refresh per
+  language set were already applied (except once, after an upgrade that adds artwork ids); a manual run always applies. Only one refresh per
   collectible type runs at a time.
 - **Languages:** set `COLLECTOR_MTG_LANGUAGES` to a comma-separated, case-insensitive list of
   extra languages (for example `ja,de`). The default is English only, and English is always
   included. Accepted codes: `en es fr de it pt ja ko ru zhs zht he la grc ar sa ph qya`.
   Changes take effect at the next refresh. Printings in a language you remove are retired,
   not deleted. An unsupported code fails the refresh before anything is downloaded.
+- **Art matching (optional):** set `COLLECTOR_MTG_ART_MATCHING=true` and the card scanner also
+  recognises a card by its artwork on live captures. It's off by default because the first
+  build costs about 708 MB of downloads (one small image per artwork from Scryfall),
+  about 2.6 hours of throttled fetching and then fingerprinting, and leaves an index of
+  about 7.3 MB. The build runs in the background after a catalog refresh; to start it now, press
+  **Build art index** on the Catalog page, which also shows its progress, or run
+  `bin/rails "catalog:refresh[mtg]"` (Kamal: `bin/kamal catalog-refresh`), and follow it with
+  `bin/rails "catalog:status[mtg]"`. Later refreshes fetch only new artworks. Until the first
+  build finishes, and whenever art matching is off, the scanner works on text alone. Images
+  are cached in `storage/catalog/mtg/art`; after turning art matching off you can delete that
+  folder to reclaim the space.
 - **Disk:** downloads are kept in `storage/catalog/mtg/` on the persistent volume, and only the
   two newest are kept. English only uses Scryfall's `default_cards` file (about 80 MB each);
   any other language needs the `all_cards` file (about 400 MB each). They can always be
   downloaded again, so they don't need backing up.
 - **Attribution:** card data and images are © Wizards of the Coast and are provided by
   Scryfall. Collector follows Scryfall's API guidelines.
+
+## Your data
+
+A collector's data has a documented, versioned format: one JSON file that holds their profile,
+the currency of their prices and every lot in their collection, keyed by the catalog source's
+own ids and never by this instance's. It is defined in
+[docs/export-format/README.md](docs/export-format/README.md), with a JSON Schema and example
+files beside it. Export is built against it: a collector downloads their collection as one file
+from the account menu or More. A collector can preview importing a file from the account menu or
+More: the app says what applying it would do and which rows it can't apply, and changes nothing.
+Applying an import isn't in the app yet.
 
 ## License
 

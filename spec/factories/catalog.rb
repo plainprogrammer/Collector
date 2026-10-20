@@ -50,5 +50,13 @@ FactoryBot.define do
     status { "applied" }
     started_at { 1.hour.ago }
     finished_at { 30.minutes.ago }
+
+    trait :running do
+      status { "running" }
+      trigger { "manual" }
+      started_at { 2.minutes.ago }
+      heartbeat_at { started_at }
+      finished_at { nil }
+    end
   end
 end

@@ -4,13 +4,19 @@ class FakeCatalogSource
   def self.entry_extension_model = nil
   def self.identity_extension_model = nil
 
-  attr_accessor :version, :sets, :entries, :languages_result, :fail_at
-  attr_reader :downloads
+  attr_accessor :version, :sets, :entries, :languages_result, :fail_at, :reapply
+  attr_reader :downloads, :refreshed
 
-  def initialize(version: "v1", sets: [], entries: [], languages: [ "en" ], fail_at: nil)
-    @version, @sets, @entries, @languages_result, @fail_at = version, sets, entries, languages, fail_at
+  def initialize(version: "v1", sets: [], entries: [], languages: [ "en" ], fail_at: nil, reapply: false)
+    @version, @sets, @entries, @languages_result, @fail_at, @reapply = version, sets, entries, languages, fail_at, reapply
     @downloads = []
+    @refreshed = []
   end
+
+  # Spec 011 AC-2.4: the optional hooks a source may implement.
+  def reapply? = reapply
+
+  def after_refresh(run) = refreshed << [ run.status, run.source_version ]
 
   def languages
     raise languages_result if languages_result.is_a?(Exception)
@@ -36,6 +42,59 @@ class FakeCatalogSource
   end
 end
 
+# A source with the optional progress hook (spec 015 FR-2): it says how far through the download and the file it is.
+class ReportingCatalogSource < FakeCatalogSource
+  attr_writer :progress
+
+  def download(version, dir:)
+    @progress&.call(50, 100)
+    @progress&.call(100, 100)
+    super
+  end
+
+  def each_entry(path, languages:)
+    index = 0
+    super do |record|
+      @progress&.call(index += 1, entries.size)
+      yield record
+    end
+  end
+end
+
+# A test-only catalog type with a name of its own and one extra operation (spec 015 AC-5.3): registered for one
+# example with `:other_catalog`, as the type "other".
+class OtherCatalogSource < FakeCatalogSource
+  def self.title = "Pocket Monsters"
+  def self.operations(collectible_type) = [ OtherCatalogOperation.new(collectible_type) ]
+end
+
+class OtherCatalogOperation < Catalog::Operation
+  def key = "price_sync"
+  def title = "Price sync"
+  def start_label = "Sync prices"
+  def queued_notice = "Price sync queued."
+  def in_flight_notice = "A price sync is already queued or running."
+  def job_class = OtherCatalogJob
+  def job_arguments = [ collectible_type ]
+  def queue_argument = collectible_type
+  def summary = "Never synced."
+  def record_running? = false
+  def meter = Meter.new(label: "Prices", done: 1, total: 4, text: "1 of 4 prices")
+end
+
+class OtherCatalogJob < ApplicationJob
+  def perform(_collectible_type) = nil
+end
+
+RSpec.configure do |config|
+  config.around(:each, :other_catalog) do |example|
+    Catalog.sources["other"] = "OtherCatalogSource"
+    example.run
+  ensure
+    Catalog.sources.delete("other")
+  end
+end
+
 module CatalogRecordHelpers
   def identity_record(key = "bolt", name: "Lightning Bolt", extension: {})
     Catalog::Sources::IdentityRecord.new(external_key: key, name:, extension:)
@@ -51,3 +110,30 @@ module CatalogRecordHelpers
 end
 
 RSpec.configure { |config| config.include CatalogRecordHelpers }
+
+# Catalog types for the content notice's specs (spec 018). `register_notice_catalog("zeta", line, …)` adds a type,
+# after the app's own, whose source supplies those lines; `with_catalog_sources("other" => "OtherCatalogSource") { … }`
+# swaps the whole registry for a block. Both are undone after the example.
+module NoticeCatalogHelpers
+  def register_notice_catalog(type, *lines, &hook)
+    name = "#{type.camelize}NoticeSource"
+    stub_const(name, Class.new(FakeCatalogSource) { define_singleton_method(:content_notice, &(hook || -> { lines })) })
+    (@notice_catalogs ||= []) << type
+    Catalog.sources[type] = name
+  end
+
+  def with_catalog_sources(sources)
+    registered = Catalog.sources
+    Catalog.sources = sources
+    yield
+  ensure
+    Catalog.sources = registered
+  end
+
+  def notice_line(text, links = {}) = Catalog::ContentNotice::Line.new(text:, links:)
+end
+
+RSpec.configure do |config|
+  config.include NoticeCatalogHelpers
+  config.after { @notice_catalogs&.each { |type| Catalog.sources.delete(type) } }
+end

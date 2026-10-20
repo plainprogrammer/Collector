@@ -68,6 +68,29 @@
         22
       ],
       "note": "The path never comes from raw request input: Scanner::MeasurementRun#row returns only a manifest row whose file name matches FILE_NAME (no slashes, no leading dot), and #photo_path joins that file name to the manifest's own folder and returns nil when no such file exists, which the action answers with 404. The route is development-only and local-only (spec 007 AC-5.1, AC-6.2)."
+    },
+    {
+      "warning_type": "File Access",
+      "warning_code": 16,
+      "fingerprint": "4223cd7d08b3434d533cae159c233aed1bf041c127709af0fc73bc76bb4f0dcf",
+      "check_name": "SendFile",
+      "message": "Model attribute used in file name",
+      "file": "app/controllers/scanner/art_indexes_controller.rb",
+      "line": 16,
+      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
+      "code": "send_file((MTG::Art::Index.path_for(params[:name]) or nil), :type => \"application/octet-stream\", :disposition => :inline)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Scanner::ArtIndexesController",
+        "method": "show"
+      },
+      "user_input": "MTG::Art::Index.path_for(params[:name])",
+      "confidence": "Medium",
+      "cwe_id": [
+        22
+      ],
+      "note": "MTG::Art::Index.path_for returns only the current or previous index, matched by exact name (NAME) among the files in MTG::Art.root/index; any other value is nil and answers 404. The parameter never builds a path."
     }
   ],
   "brakeman_version": "8.0.6"

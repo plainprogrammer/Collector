@@ -1,4 +1,8 @@
 module ApplicationHelper
+  # Whether someone is signed in, so the page shows the collection parts (spec 023 FR-4). It reads what the controller's
+  # before-actions resolved (Current.user), never the session cookie again, and never the open catalog setting.
+  def collector? = Current.user.present?
+
   # One id per error message ("email_address-error", "email_address-error-2", …), so a
   # control can reference every message under it without repeating an id on the page.
   def field_error_ids(id, messages)

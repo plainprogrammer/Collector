@@ -11,6 +11,20 @@
 #   #download(version, dir:)            Pathname of the verified local copy (IntegrityError, TransientError)
 #   #each_set { |SetRecord| }
 #   #each_entry(path, languages:) { |EntryRecord or Malformed| }   streamed, filtered to languages
+#   #reapply?                           optional: true to apply a version again although it was applied (asked before a skip)
+#   #after_refresh(run)                 optional: called after an applied run, or one skipped as already applied
+#   #progress=(callable)                optional: the refresh sets it; the source calls it with (done, total) while it
+#                                       downloads (bytes received, expected size) and while each_entry reads (bytes of the
+#                                       file read, its size), so the run can show a percentage (spec 015 FR-2)
+#   .title                              optional: what the admin catalog page calls this catalog ("Magic: The Gathering")
+#   .operations(collectible_type)       optional: extra Catalog::Operation objects for the admin catalog page
+#   .content_notice                     optional: the Catalog::ContentNotice::Line objects every page's footer shows for
+#                                       this type, in order: what the content's owner asks to be said, and who provides
+#                                       the data. Plain text, with the phrases that link out and their https addresses.
+#                                       It is the same for every request and reads nothing (spec 018 FR-1)
+#   .failure_reasons                    optional: { error class name => plain sentence } for the source's own errors, which
+#                                       the admin catalog page shows for a failed refresh or for a failed operation of the
+#                                       source's, in place of the error (Catalog::FailureReason, issue #84)
 module Catalog::Sources
   SetRecord = Data.define(:code, :name, :released_on, :parent_code) do
     def digest = Catalog::Sources.digest(to_h)
@@ -29,6 +43,19 @@ module Catalog::Sources
 
   class Error < StandardError; end
   class TransientError < Error; end
+  # The source is turning requests away for now: it answered "too many requests" and named no wait, or did so to its
+  # client's last attempt, or asked for a longer wait than its client sits out. Transient, but what was being fetched
+  # hasn't failed, so a caller working through many requests stops instead of going on to the next. #retry_after is
+  # the wait the source last asked for, in seconds, or nil when it never said; a job comes back no sooner than that
+  # (Catalog::RateLimitRetry).
+  class RateLimitedError < TransientError
+    attr_reader :retry_after
+
+    def initialize(message = nil, retry_after: nil)
+      super(message)
+      @retry_after = retry_after
+    end
+  end
   class IntegrityError < Error; end
   class ConfigurationError < Error; end
 

@@ -1,9 +1,9 @@
 # Feature 007: Card Scanner Phase 1 — Live Capture and Re-measure
 
 **Status:** Approved
-**Version:** 2.1.1
+**Version:** 2.2.0
 **Created:** 2026-09-30
-**Last Updated:** 2026-10-02
+**Last Updated:** 2026-10-07
 **Branch:** `007-card-scanner-live-capture`
 
 ---
@@ -18,6 +18,7 @@
 | 2.0.0 | 2026-10-01 | **The measured run is a photo replay** (maintainer ruling): the 50 corpus cards were borrowed and returned, so they couldn't be re-captured live. The 50 Phase 0 photos are replayed on the desktop through the shipped photo-picker path instead (AC-6.2–AC-6.6, Goals, Problem Statement, Users and Context, Story 6). The tuning rounds' live captures on the iPhone are reported as the only live-alignment evidence, labelled as biased because the settings were tuned on those cards (new AC-6.8). AC-6.5's on-device recognition times come from the tuning rounds, and its download sizes from a load test on the iPhone. Story 5's evidence (retakes, skips, desktop replay) comes from the tuning runs. Nothing else changes; no FR changes |
 | 2.1.0 | 2026-10-02 | **A live re-measure on a new corpus** (maintainer ruling on research.md's options, §12 then, §13 now): 50 cards the maintainer owns, none among Phase 0's 50 or the 12 tuning cards, are captured live on the iPhone at the frozen settings, and one unguided photo of each is replayed through the photo-picker path, so live and photo results are scored on the same cards (new AC-6.9). AC-6.1 holds the settings frozen through it; AC-6.4–AC-6.6 cover both new runs; AC-6.7's options drop "re-measure"; AC-6.8 no longer calls the tuning captures the only live evidence. Goals, Problem Statement, Users and Context and Open Questions updated to match. No FR changes, no pass threshold |
 | 2.1.1 | 2026-10-02 | AC-6.9: the new corpus is 49 cards, not 50. Two of the maintainer's rows repeated Phase 0 printings and were dropped (maintainer ruling); cards whose frame prints no set code (List reprints, retro frames) take the pre-M15 era from the manifest. Clarification only |
+| 2.2.0 | 2026-10-07 | FR-3 amended by spec 011 (art matching): in normal use the page also sends match results (artwork ids and their distances); never a frame, strip, photo or fingerprint |
 
 ---
 
@@ -209,6 +210,8 @@ The roadmap's real premise, that the user lines the card up with a guide they ca
 **Must not:**
 - Send any frame, strip or photo to the app outside development measurement mode, or to any other host at all.
 - Load the engine on any page except the scanner.
+
+> **Amended by [spec 011](../011-card-scanner-art-matching/spec.md) FR-5 (2026-10-07):** "Send only recognised text and match results (artwork ids and their distances) to the app in normal use." Must not send any frame, strip, photo or fingerprint outside development measurement mode.
 
 ### FR-4: Parsing and matching
 

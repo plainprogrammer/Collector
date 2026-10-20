@@ -50,6 +50,21 @@ RSpec.describe MTG::Scryfall::Mapper, type: :model do
     it "raises KeyError when a required field is missing" do
       expect { described_class.entry_record(scryfall_card.except("set")) }.to raise_error(KeyError)
     end
+
+    it "keeps the front face's artwork id and each face's small image (spec 011 AC-2.1)", :aggregate_failures do
+      card = scryfall_card("illustration_id" => "art-1",
+        "image_uris" => { "small" => "https://cards.scryfall.io/small/front/a/b/x.jpg", "normal" => "n", "large" => "l" })
+      record = described_class.entry_record(card)
+
+      expect(record.extension[:illustration_id]).to eq("art-1")
+      expect(record.extension[:faces].first["image_uris"]).to eq("small" => "https://cards.scryfall.io/small/front/a/b/x.jpg", "normal" => "n", "large" => "l")
+    end
+
+    it "takes a multi-face printing's artwork id from its front face, and stores none when there is none", :aggregate_failures do
+      faces = [ { "name" => "Front", "illustration_id" => "front-art" }, { "name" => "Back", "illustration_id" => "back-art" } ]
+      expect(described_class.entry_record(scryfall_card("card_faces" => faces, "illustration_id" => nil)).extension[:illustration_id]).to eq("front-art")
+      expect(described_class.entry_record(scryfall_card).extension[:illustration_id]).to be_nil
+    end
   end
 
   describe ".paper?" do

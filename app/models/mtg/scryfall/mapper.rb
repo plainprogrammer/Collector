@@ -33,7 +33,8 @@ module MTG::Scryfall::Mapper
         rarity: card.fetch("rarity"), finishes: card.fetch("finishes").sort, layout: card.fetch("layout"),
         frame: card["frame"], border_color: card["border_color"], security_stamp: card["security_stamp"],
         variant_tags: variant_tags(card), legalities: card.fetch("legalities", {}),
-        external_ids: card.slice(*EXTERNAL_IDS), faces:, scryfall_uri: card.fetch("scryfall_uri")
+        external_ids: card.slice(*EXTERNAL_IDS), faces:, scryfall_uri: card.fetch("scryfall_uri"),
+        illustration_id: illustration_id(card)
       }
     )
   end
@@ -53,9 +54,12 @@ module MTG::Scryfall::Mapper
 
   def faces(card)
     (card["card_faces"].presence || [ card ]).map do |face|
-      face.slice(*FACE_FIELDS).merge("image_uris" => (face["image_uris"] || card["image_uris"] || {}).slice("normal", "large"))
+      face.slice(*FACE_FIELDS).merge("image_uris" => (face["image_uris"] || card["image_uris"] || {}).slice("small", "normal", "large"))
     end
   end
+
+  # The front face's artwork (spec 011 AC-2.1): a multi-face printing's first face, else the card's own.
+  def illustration_id(card) = Array(card["card_faces"]).first&.dig("illustration_id") || card["illustration_id"]
 
   def joined(card, faces, field) = card[field] || faces.filter_map { |face| face[field].presence }.join(" // ").presence
 

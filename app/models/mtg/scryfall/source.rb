@@ -10,11 +10,46 @@ class MTG::Scryfall::Source
   def self.identity_extension_model = MTG::Card
   def self.alternate_names(entries) = MTG::Printing.face_names(entries)
 
+  # Spec 011 AC-3.11: extra lines for `catalog:status[mtg]`.
+  def self.status_lines = [ MTG::Art.status_line ]
+
+  # Spec 015 FR-2: the name the admin catalog page gives this catalog, and what it can start besides the refresh.
+  def self.title = "Magic: The Gathering"
+  def self.operations(collectible_type) = [ MTG::Art::Operation.new(collectible_type) ]
+
+  # Issue #84: the plain words the admin catalog page gives this catalog's own failures (Catalog::FailureReason). A
+  # build fails with a decoder error only when ImageMagick is missing: a single image that can't be decoded is
+  # counted as a failed image, not a failed build (MTG::Art::Build).
+  def self.failure_reasons
+    { "MTG::Art::Decoder::Error" => "ImageMagick isn't installed, and the art index needs it to read card images. " \
+                                    "Install it on the server (the magick or convert command), then build again." }
+  end
+
+  # Spec 018 FR-1: this catalog's lines in every page's footer. First the notice Wizards of the Coast's Fan Content
+  # Policy asks for, word for word with the app as its title; then where the data comes from.
+  def self.content_notice
+    [ Catalog::ContentNotice::Line.new(
+        text: "Collector is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. " \
+          "Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC.",
+        links: { "Fan Content Policy" => "https://company.wizards.com/en/legal/fancontentpolicy" }),
+      Catalog::ContentNotice::Line.new(text: "Card data and images provided by Scryfall.", links: { "Scryfall" => "https://scryfall.com" }) ]
+  end
+
+  # Spec 015 FR-2: a callable the refresh sets; called with (done, total) bytes of the download, then of the file read.
+  attr_writer :progress
+
   def initialize(client: MTG::Scryfall::Client.new, env: ENV)
     @client = client
     @env = env
     @bulk_files = {}
   end
+
+  # Spec 011 AC-2.3: an instance upgrading to artwork ids applies its current bulk file once more, art matching on or off,
+  # so every printing gets its artwork id. About 760 printings legitimately have none, so "any without" isn't the test.
+  def reapply? = MTG::Printing.exists? && !MTG::Printing.where.not(illustration_id: nil).exists?
+
+  # Spec 011 AC-3.1: art matching queues its build after a refresh (Catalog::Refresh calls this hook).
+  def after_refresh(run) = MTG::Art.after_refresh(run)
 
   def languages
     requested = @env.fetch(LANGUAGES_ENV, "").split(",").map { |code| code.strip.downcase }.compact_blank
@@ -40,7 +75,11 @@ class MTG::Scryfall::Source
     expected = Integer(file.fetch("compressed_size"))
     path = dir.join("#{version}.jsonl.gz")
     dir.mkpath
-    fetch(file.fetch("jsonl_download_uri"), path, expected) unless path.exist? && path.size == expected
+    if path.exist? && path.size == expected
+      @progress&.call(expected, expected)
+    else
+      fetch(file.fetch("jsonl_download_uri"), path, expected)
+    end
     prune(dir)
     path
   end
@@ -56,10 +95,14 @@ class MTG::Scryfall::Source
 
   def each_entry(path, languages:)
     allowed = languages.to_set
-    Zlib::GzipReader.open(path) do |gzip|
-      gzip.each_line do |line|
-        record = entry_or_malformed(line, allowed)
-        yield record if record
+    size = File.size(path)
+    File.open(path, "rb") do |file|
+      Zlib::GzipReader.wrap(file) do |gzip|
+        gzip.each_line do |line|
+          @progress&.call(file.pos, size) # compressed bytes read so far: the reader takes the file in blocks
+          record = entry_or_malformed(line, allowed)
+          yield record if record
+        end
       end
     end
   end
@@ -67,7 +110,9 @@ class MTG::Scryfall::Source
   private
     def fetch(url, path, expected)
       partial = Pathname("#{path}.part")
-      File.open(partial, "wb") { |io| @client.download(url, to: io) }
+      File.open(partial, "wb") do |io|
+        @client.download(url, to: io) { |received| @progress&.call(received, expected) }
+      end
       return partial.rename(path) if partial.size == expected
 
       actual = partial.size

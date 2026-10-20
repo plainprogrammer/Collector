@@ -1,0 +1,21 @@
+---
+name: orca-supervised-stages
+description: Working as an Orca worker under a coordinator — questions go through `orca orchestration ask` (30-minute cap, resume, never re-ask), heartbeats from a background loop ended by a stop file; a Task may be one SDD stage or a whole issue gated by asks; a pasted "new task" after `worker_done` gets no orchestration messages
+metadata:
+  type: reference
+---
+
+When a brief says "You are a dispatched worker" with a coordinator handle, the maintainer isn't watching the terminal. The coordinator relays to them.
+
+- **Questions:** never `AskUserQuestion` or `ExitPlanMode`. Use `orca orchestration ask` with one question, its options and a recommendation, and wait for the reply. A reversal of something the maintainer already ruled on is worth an `ask`; points that can wait go into `worker_done` as "for the maintainer to rule on".
+- **`ask` waits 30 minutes at most.** In spec 023 (2026-10-14) `--timeout-ms 3600000` still ended after 1,800,000 ms with exit 1: "ask timeout after 1800000ms; question is still pending (messageId: msg_…). Resume waiting; do not ask again". Run the command it prints (`orca orchestration ask --from <handle> --resume <messageId> --timeout-ms 1800000`). Don't ask the question again. Run long `ask`s with `run_in_background` from the start and redirect the output to a scratch file, because a blocking `ask` also outlasts Bash's 10-minute limit.
+- **The reply may come "as a separate message".** The `ask` output then only points to it. Read it with `orca orchestration check --unread --json`. `check` returns the same delivery until it is acknowledged: take `deliveryId` from the result and pass `--ack <deliveryId>` on the next `check`. The output can hold more than one JSON object, so parse it with `json.JSONDecoder().raw_decode`.
+- **How much one Task covers:** read the brief. In spec 017 (2026-10-11), spec, plan, execution, push and PR, and session wrap each came as their own Task, each ending with one `worker_done`. In specs 022, 023 and 024 (2026-10-14), one Task covered the whole issue, spec to draft PR, with an `ask` at each gate: open decisions, spec approval, plan approval, permission to push. Answers came back as "Maintainer (date): …" replies, sometimes with extra work (edit another spec, rebase onto a sibling branch first). Don't start a stage the brief doesn't cover; where it does cover one, an `ask` is the gate, not a stop.
+- **A second review on the coordinator's side:** in specs 022 and 023, after the worker's read-only Opus review of the spec and again of the plan, the maintainer ran a read-only Fable review and replied "approved with changes" with numbered findings, saying not to start a review of your own. Meanwhile work ahead only on what doesn't depend on it, and keep drafts uncommitted.
+- **While an `ask` waits:** keep working on things that don't depend on the answer (spec 024 ran its spec review and a trial implementation while its rulings `ask` was open).
+- **Heartbeats while waiting:** a background review or a `bin/ci` run outlasts the five-minute heartbeat. Start a background Bash loop (`for i in $(seq 1 30); do orca orchestration send … --type heartbeat …; sleep 240; done`, `run_in_background`). End it with a stop file rather than `TaskStop`: have the loop check `[ -f <scratchpad>/heartbeat.stop ] && exit 0` before and after each sleep, and `touch` the file before `worker_done`, or the loop keeps reporting a settled Task as alive.
+- **Before `worker_done`:** run `orca orchestration check` once more, and confirm `git status` is clean.
+- **`worker_done` body:** the brief says three sentences, but the acceptance line lists what it must carry (commit range, counts, deviations, what is owed). Carry all of it.
+- **After `worker_done`:** stay idle. A later paste marked "New task from the coordinator (not part of your settled orchestration task)", such as a session wrap, is done in the terminal with no `worker_done`, heartbeat or other orchestration message. Reply in the terminal in the form it asks for.
+
+This is my reading of four sessions' briefs; the maintainer didn't comment on the method. The coordinator's side is in [[orca-coordinator-loop]]. Related: [[sdd-review-model-choice]], [[exitplanmode-for-sdd-plans]], [[background-servers-via-task]].

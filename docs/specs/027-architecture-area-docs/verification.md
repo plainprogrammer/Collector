@@ -1,0 +1,547 @@
+# Verification: Spec 027
+
+**Spec:** [spec.md](spec.md) v1.3.0 · **Plan:** plan (retired in `c1ef5f0138c6898ab171fe6315281e6fed5c86c2`; read it with `git show c1ef5f0138c6898ab171fe6315281e6fed5c86c2^:docs/specs/027-architecture-area-docs/plan.md`) · **Branch:** `027-architecture-area-docs`
+
+Every criterion of spec 027 is a prose criterion, verified by reading at the head and recorded here (`.claude/rules/testing.md`; spec D8). Comparisons "with the base" are with the merge base below.
+
+## Baseline
+
+- Merge base: `df611326b79a3907f3bb06e4ffca4c433e74a469` (`df61132`; `git merge-base origin/main HEAD`, 2026-10-15). The plan named `6b422d1`; `origin/main` was merged into the branch after the plan was written (PR #101, memory-only changes), which moved the merge base.
+- CLAUDE.md at the base: 2,312 words (`git show df61132:CLAUDE.md`, then `wc -w`); its "Admin catalog and jobs" bullet (line 35, one line): 714 words.
+- Own-plan Markdown links in the pilot's folders at the base (`git grep -n "](plan.md)" -- docs/specs/002-scryfall-catalog-search docs/specs/011-card-scanner-art-matching docs/specs/015-admin-catalog-and-jobs docs/specs/024-refresh-rate-limit-wait ':!.kamal/secrets'`), output:
+
+  ```
+  docs/specs/011-card-scanner-art-matching/research.md:3:**Spec:** [spec.md](spec.md) (v1.1.3) | **Plan:** [plan.md](plan.md)
+  docs/specs/024-refresh-rate-limit-wait/verification.md:3:**Spec:** [spec.md](spec.md) v1.1.0 · **Plan:** [plan.md](plan.md) · **Date:** 2026-10-14
+  ```
+
+  That is `011-card-scanner-art-matching/research.md:3` and `024-refresh-rate-limit-wait/verification.md:3`, nothing else. `020-readme-introduction/verification.md:479` is a path in quoted `git` output, not a link, and is outside the pilot.
+- Open issues bearing on catalog operations (`gh issue list --state open --limit 200 --json number,title,body`, 2026-10-15; 25 open issues, each title and body read):
+  - [#77](https://github.com/plainprogrammer/Collector/issues/77) No way to start or cancel while a rate-limited job waits to retry: names the catalog refresh, the art build, `/admin/catalog` and `/admin/jobs`.
+  - [#86](https://github.com/plainprogrammer/Collector/issues/86) Rate-limit retries count over a job's whole life, so a long build can run out: names the art index build and the catalog refresh.
+  - [#41](https://github.com/plainprogrammer/Collector/issues/41) Back up and restore an instance: its body names the art index, saying the backup ADR decides whether the catalog downloads and the art index under `storage/catalog/` are included, since they can be rebuilt. Selected because AC-1.7 takes every issue whose body names the art index; it bears on catalog operations only through what a backup holds.
+
+  No other open issue names the catalog refresh, the art build or art index, the admin catalog page or the jobs pages. #52 (the art margin on unseen cards) is about the scanner's match threshold, not the art build, and #23 (a comics catalog source) names no catalog operation.
+
+## Phase 1: Rules and process docs
+
+Commits: `198f39d` (area docs README), `c0ac6b0` (rule file), `8e86ff8` (steering file), `bc5d1ca` (memory and `MEMORY.md`), `e42f591` (git convention). Old state checked before each edit: `docs/architecture/`, `.claude/rules/documentation.md` and `.claude/memory/steering/architecture.md` didn't exist; the memory said "edit that spec in the same PR" and its `MEMORY.md` line (51) said "patch bump + changelog"; `docs/git-convention.md` had no `## Merging` heading.
+
+- **AC-4.1** `docs/architecture/README.md`: purpose at line 3 ("One area doc per subsystem holds the current truth about it …"); area list `## Areas` lines 7–17, one row per D2 area, six marked "not written yet", and line 19 for specs 001, 003 and 014 ("CLAUDE.md", no area doc); the D5 shape `## The shape of an area doc` lines 21–32, the eight sections in order; when an area doc is updated `## When an area doc changes` lines 36–40 (FR-5: same pull request, Sources for an issue fix, Distillation log for a whole feature only, distilled before ready for review and retired after the merge, supersessions in the new spec and the index); links the specs index (lines 3 and 34), the ADR index (line 5) and the reference docs D2 names (design system, export format, releasing; lines 13, 16, 17). The links to `catalog-operations.md` and `../specs/README.md` resolve once Phases 2 and 4 add those files.
+- **AC-4.2** `.claude/rules/documentation.md`: line 4 "A change to the behaviour, a constant or a rule of an area that has an area doc updates that doc in the same pull request"; line 9 "Don't edit a shipped spec, frozen or not, except for its frozen line, its retirement pointer and its links to its own retired plan, each in a commit of its own that names spec 027 D4"; line 5 "A change that supersedes part of a shipped spec records the supersession in its own spec … and in `docs/specs/README.md`, both directions, and updates the area doc where one covers that part"; line 6 names the distillation step ("then the `distill-feature` skill").
+- **AC-4.3** `.claude/memory/steering/architecture.md` line 3: `loaded-by: sdd-brainstorm, sdd-specify, sdd-plan, sdd-review` (same front matter form as `steering/roadmap.md`); line 10 "**Before writing** a PRD, spec or plan, read the area docs of the areas the feature touches"; line 11 "**In a spec or plan,** name the area docs the feature will change".
+- **AC-4.6** `.claude/memory/edit-specs-your-change-makes-stale.md` line 8 "don't edit that spec. Record the supersession in the new spec … add it to `docs/specs/README.md` in both directions, and update the area doc"; line 10 names R3, R8 and specs 025 and 026; line 12 keeps the 2026-10-14 history (the maintainer's quote, spec 015 v1.3.1) as history. `MEMORY.md` line 51: "a shipped spec made stale → record the supersession in the new spec and the index, update the area doc; never edit the old spec (R3, R8, 2026-10-15; first used by specs 025, 026)". Neither tells an agent to edit an earlier spec.
+- **AC-4.8** `.claude/rules/documentation.md` line 7: "Record a feature's implementation review (`sdd-review` Mode B) in its `verification.md` under a `## Implementation review` heading, with the verdict … on its first line. `distill-feature` reads that heading to know the feature is finished."
+- **AC-5.1** `docs/git-convention.md` `## Merging` (line 31, after the front matter): line 33 "Pull requests are merged with a merge commit, never squashed or rebased …; the repository's settings allow merge commits only", and retired plans depend on it ("A retired plan is read back from the commit that deleted it …, spec 027 R6 and D7"); line 35 "Rebasing a branch before it merges changes the sha of every commit on it. On a branch that retires a plan, write the retirement pointer after the branch's last rebase".
+
+Rulings:
+
+- Ruling: the README's catalog operations row names 002 FR-3–FR-6 "and their Error Scenarios rows" — spec D2 and FR-4 include those rows and the draft dropped them — cost if wrong: one extra phrase in a table cell.
+- Ruling: the README says "in the feature's own pull request", not "in its own pull request" — the draft could be read as a separate pull request, while FR-5 (ruling OD1) puts the distillation in the feature's pull request before it is marked ready — cost if wrong: none; the meaning is the spec's.
+- Ruling: the memory's History paragraph keeps the maintainer's 2026-10-14 quote and the spec 015 v1.3.1 detail — AC-4.6 says the memory keeps its 2026-10-14 history as history, and the draft's summary dropped the quoted ruling — cost if wrong: two extra sentences in a memory file.
+- Ruling: the git convention cites spec 027 "R6 and D7", not D7 alone — AC-5.1 asks that the section say retired plans depend on merge commits (R6) — cost if wrong: two words.
+- Checked and unchanged: the `MEMORY.md` line to replace existed verbatim (line 51); the git convention's insertion point (end of the `### Commit messages` examples, after the front matter) exists; the steering front matter matches the other steering files (`scope`, `loaded-by`); `MEMORY.md` doesn't list steering files one by one, so the new steering file needs no index line.
+## Phase 2: The catalog operations area doc
+
+Commit: `5ae87d0` (`docs/architecture/catalog-operations.md`, new). Sources read in full or in the parts the plan names: spec 015 (all), spec 024 (all), spec 002 FR-3–FR-6 with Stories 4–8 and its Error Scenarios, spec 011 FR-1, FR-2, Story 3, Reliability and Error Scenarios, the bullet saved at the base (`bullet-base.md`, 714 words), ADR 0015, and every file the doc's Scope names (`app/models/catalog/{refresh,refresh_run,refresh/progress,operation,operation/queue,refresh_operation,health,failure_reason,sources}.rb`, `app/models/catalog.rb`, `app/jobs/catalog/*.rb`, `app/jobs/mtg/art/build_job.rb`, `app/models/mtg/{art,art_build}.rb`, `app/models/mtg/art/{build,operation,decoder}.rb`, `app/models/mtg/scryfall/{client,source}.rb`, the admin controllers and views, `app/helpers/admin_helper.rb`, `app/models/background_jobs/*.rb`, `app/javascript/controllers/poll_controller.js`, `lib/tasks/catalog.rake`, `config/recurring.yml`, `config/initializers/catalog.rb`, `spec/admin_catalog_core_spec.rb`).
+
+### AC-1.1: headings
+
+`grep -n "^## " docs/architecture/catalog-operations.md`: Scope (5), Glossary (22), Invariants (40), States and transitions (58), Named constants (144), Decisions not in an ADR (173), Sources (195), Distillation log (205). The D5 eight, in the D5 order, each with content; none is "None.". "Accepted limits and open issues" is a bold label inside Decisions not in an ADR, as `docs/architecture/README.md` item 6 says.
+
+### AC-1.3: constants
+
+Each row read against its definition at the head (`5ae87d0`).
+
+| Constant | Value in the doc | Definition at the head | Match |
+|---|---|---|---|
+| `Catalog::RefreshRun::STALL_AFTER` | 15 minutes | `app/models/catalog/refresh_run.rb:6` `15.minutes` | yes |
+| `Catalog::RefreshRun::JOB_ENDED_GRACE` | 2 minutes | `app/models/catalog/refresh_run.rb:13` `2.minutes` | yes |
+| `Catalog::RefreshJob::LOCK_FOR` | 6 hours | `app/jobs/catalog/refresh_job.rb:7` `6.hours` | yes |
+| `Catalog::Refresh::BATCH_SIZE` | 1,000 | `app/models/catalog/refresh.rb:6` `1_000` | yes |
+| `Catalog::Refresh::Progress::EVERY_RECORDS` | 5,000 | `app/models/catalog/refresh/progress.rb:5` `5_000` | yes |
+| `Catalog::Refresh::Progress::EVERY_SECONDS` | 2 | `app/models/catalog/refresh/progress.rb:6` `2` | yes |
+| `Catalog::Refresh::Progress::AT_MOST_EVERY_SECONDS` | 1 | `app/models/catalog/refresh/progress.rb:7` `1` | yes |
+| `Catalog::Health::RECENT_RUNS` | 5 | `app/models/catalog/health.rb:4` `5` | yes |
+| `Catalog::RateLimitRetry::SHORTEST_WAIT` | 45 seconds | `app/jobs/catalog/rate_limit_retry.rb:19` `45.seconds` | yes |
+| `Catalog::RateLimitRetry::LONGEST_WAIT` | 1 hour | `app/jobs/catalog/rate_limit_retry.rb:20` `1.hour` | yes |
+| `Catalog::RateLimitRetry::MAX_RETRIES` | 3 | `app/jobs/catalog/rate_limit_retry.rb:21` `3` | yes |
+| `MTG::ArtBuild::STALE_AFTER` | 10 minutes | `app/models/mtg/art_build.rb:8` `10.minutes` | yes |
+| `MTG::ArtBuild::JOB_ENDED_GRACE` | 2 minutes | `app/models/mtg/art_build.rb:22` `2.minutes` | yes |
+| `MTG::Art::Build::BATCH` | 50 | `app/models/mtg/art/build.rb:9` `50` | yes |
+| `MTG::Art::Build::BEAT_EVERY` | 30 seconds | `app/models/mtg/art/build.rb:15` `30.seconds` | yes |
+| `MTG::Art::Build::IMAGE_HOSTS` | `cards.scryfall.io` | `app/models/mtg/art/build.rb:17` `%w[cards.scryfall.io]` | yes |
+| `MTG::Scryfall::Client::MIN_INTERVAL` | 0.1 | `app/models/mtg/scryfall/client.rb:21` `0.1` | yes |
+| `MTG::Scryfall::Client::MAX_ATTEMPTS` | 3 | `app/models/mtg/scryfall/client.rb:22` `3` | yes |
+| `MTG::Scryfall::Client::MAX_BACK_OFF` | 30 | `app/models/mtg/scryfall/client.rb:25` `30` | yes |
+| `MTG::Scryfall::Client::RATE_LIMITED_FOR` | 30 | `app/models/mtg/scryfall/client.rb:28` `30` | yes |
+| `MTG::Scryfall::Client::OPEN_TIMEOUT`, `READ_TIMEOUT` | 10, 60 | `app/models/mtg/scryfall/client.rb:29`, `:30` `10`, `60` | yes |
+| `MTG::Scryfall::Source::KEEP_DOWNLOADS` | 2 | `app/models/mtg/scryfall/source.rb:7` `2` | yes |
+| `BackgroundJobs::List::PER_PAGE` | 25 | `app/models/background_jobs/list.rb:6` `25` | yes |
+| `poll` controller `interval` | 2,000 ms | `app/javascript/controllers/poll_controller.js:8` `default: 2000` | yes |
+
+Every constant AC-1.3 names is a row, each with its reason. No mismatch. The reasons were checked against the comments at the definitions (`refresh_run.rb:4-13`, `refresh_job.rb:4-6`, `rate_limit_retry.rb:9-15`, `art_build.rb:9-21`, `build.rb:10-14`, `client.rb:23-28`) and the specs cited.
+
+### AC-1.2: the bullet, statement by statement
+
+The bullet at the base (`bullet-base.md`), split at each sentence and semicolon-separated clause.
+
+| # | Statement at the base | Where the area doc states it |
+|---|---|---|
+| 1 | "Admin catalog and jobs (spec 015, ADRs 0014 and 0015)" | Sources (spec 015; ADRs 0014, 0015) |
+| 2 | `/admin/catalog` renders `Catalog::Health` (one per registered type) and its `Catalog::Operation`s: the core's `Catalog::RefreshOperation`, plus whatever a source's optional `.operations` hook adds (`MTG::Art::Operation`) | Glossary "Operation"; States, refresh panel paragraph ("The page has one panel per registered type (`Catalog::Health.all`) … holding the refresh and then whatever the source's `.operations` hook adds") |
+| 3 | the core code never names a collectible (`spec/admin_catalog_core_spec.rb`) | Invariants "The core never names a collectible" |
+| 4 | A refresh run records its stage, progress, heartbeat and job id (`Catalog::Refresh::Progress`) | Glossary "Run", "Last progress / heartbeat"; States, refresh run, Running ("each write is also the heartbeat") |
+| 5 | 15 minutes without progress is a stall (`Catalog::RefreshRun::STALL_AFTER`) | Glossary "Stalled"; Start step 1; panel table; Named constants |
+| 6 | a running run whose own job the queue has failed, or no longer holds, is interrupted once it has made no progress for 2 minutes (`JOB_ENDED_GRACE`, issue #60) | Start step 1; panel row "Running, its job failed or gone …"; Named constants |
+| 7 | `Catalog::RefreshOperation` reads the queue before the runs | Invariants "The queue is read before the runs" ("`Catalog::Refresh#call` and `Catalog::RefreshOperation` read it first") |
+| 8 | and `Catalog::Refresh#call` reads Solid Queue's tables too, before it starts its run | same invariant; Start ("called by `Catalog::Refresh#call` with the queue it read first") |
+| 9 | both are separate from the job's 6-hour queue lock (`Catalog::RefreshJob::LOCK_FOR`) | Decisions "The stall threshold is not the lock"; Named constants `LOCK_FOR` |
+| 10 | A refresh run with a job id outside the queue (`Catalog::RefreshJob.perform_now` in a console) is judged the same way: it reads as interrupted, and a refresh that starts closes it, once it goes 2 minutes without progress | Start step 1 ("A run whose job id is outside the queue … reads interrupted, and a refresh that starts closes it") |
+| 11 | The art build follows the same rule in its own code (issue #73): a running `MTG::ArtBuild` is left behind once its heartbeat is older than 10 minutes (`STALE_AFTER`), or older than 2 minutes (`MTG::ArtBuild::JOB_ENDED_GRACE`, its own constant, set by how often the build beats) when the queue has failed its job or no longer holds it | States, art build, Start (`#left_behind?`); Named constants `STALE_AFTER`, `JOB_ENDED_GRACE` ("The build's own constant, set by how often it beats") |
+| 12 | The build beats after every batch of 50 artworks and, inside a batch, after an image once 30 seconds have passed (`MTG::Art::Build::BEAT_EVERY`) | States, art build, Running; Named constants `BATCH`, `BEAT_EVERY` |
+| 13 | so only one image that takes more than 90 seconds by itself leaves a working build quiet that long | Named constants `BEAT_EVERY` ("only one image that by itself takes more than 90 seconds can") and `MTG::ArtBuild::JOB_ENDED_GRACE` (30 + 60 = 90); Accepted limits (a working build "while one image takes more than 90 seconds") |
+| 14 | The Scryfall client's waits for a rate limit can't do that alone: a wait before a retry is 30 seconds at most (`MTG::Scryfall::Client::MAX_BACK_OFF`, issue #74) | A rate-limited job, step 1; Named constants `MAX_BACK_OFF`, `MTG::ArtBuild::JOB_ENDED_GRACE` |
+| 15 | so one call sleeps 60 seconds at most | A rate-limited job, step 1 |
+| 16 | and a longer wait asked for, a 429 on the last of 3 attempts, or a 429 with no usable `Retry-After` on any attempt (issue #81: it isn't retried in the call; a `Retry-After` of zero counts as none) raises `Catalog::Sources::RateLimitedError` | A rate-limited job, step 1 |
+| 17 | That error stops the art build (its run fails; no image is counted as failed) | States, art build, Ends |
+| 18 | and `Catalog::RateLimitRetry` makes `Catalog::RefreshJob` and `MTG::Art::BuildJob` run again no sooner than the source asked (45 seconds at least, which is the 30 Scryfall says a 429 limits access for plus a margin; an hour at most, 3 such retries, then the job fails) | A rate-limited job, step 2; Named constants `SHORTEST_WAIT`, `LONGEST_WAIT`, `MAX_RETRIES` |
+| 19 | `MTG::ArtBuild#left_behind?` is the one statement of it, asked by `MTG::Art::Operation`, `MTG::Art.status_line` and `MTG::ArtBuild.start!`, each of which reads the queue's build jobs before the build | States, art build, the paragraph after Ends; Invariants "The queue is read before the runs" |
+| 20 | The panel and the status line ask `MTG::ArtBuild#stalled?` first (issue #79) | same paragraph |
+| 21 | a build whose heartbeat is older than 10 minutes while a worker still holds its own job is stalled, not interrupted, and reads "Building, no heartbeat for N minutes" with the advice to restart the app, the button disabled and the page polling, as a stalled refresh does | Glossary "Stalled"; art section table, row "Heartbeat older than `STALE_AFTER`, its job still claimed"; Decisions "Stalled is not interrupted" |
+| 22 | a build job that starts closes it all the same | States, art build ("A build job that starts closes a stalled build all the same"); Start ("whether or not a worker holds its job") |
+| 23 | While a failed build's own job waits in the queue to run again (a rate limit, a busy database), the panel reads "Queued to retry. The last build failed. …" with a "Retrying at" fact (issue #80) | art section table, row "Failed build whose own job is scheduled to run again" |
+| 24 | `Catalog::Operation::Queue#retry_at` takes the job's id | same row ("`Catalog::Operation::Queue#retry_at` takes the job's id") |
+| 25 | and a build queued fresh reads "Queued." | art section table, row "A build job in the queue that isn't a failed build's own retry" |
+| 26 | A refresh or art build that starts while another job of the same operation (for a refresh, of the same type) waits in the queue to run again is skipped, manual or scheduled (`waiting for another job's retry`, `Catalog::Operation::Queue#waiting_to_retry?`, issue #78) | Glossary "Waiting retry"; refresh Start step 3; art build Start; A rate-limited job, step 3; Decisions "Skip, not defer" |
+| 27 | it asks the source nothing, and the waiting job does the work | refresh Start step 3; A rate-limited job, step 3 |
+| 28 | A failed refresh or build says why in a plain sentence, never an error's class name (issue #84): `Catalog::FailureReason` derives it at display time from the stored `"<error class>: <message>"` | Invariants "A failure is shown as a plain sentence" |
+| 29 | (the core words `Catalog::Sources` errors and a busy database; a source words its own through the optional `.failure_reasons` hook, as `MTG::Scryfall::Source` does for ImageMagick missing) | same invariant (the MTG sentence is its own, per AC-1.6) |
+| 30 | and the panel keeps the stored text as a "Technical detail" fact | same invariant; panel tables |
+| 31 | `catalog:status` and the log print the stored text unchanged | same invariant |
+| 32 | "In flight" and the jobs pages (`BackgroundJobs::List`, `BackgroundJobs::Entry`) read Solid Queue's own tables | Glossary "In flight" (`Catalog::Operation::Queue`); Invariants "The jobs pages read Solid Queue's own tables"; Scope |
+| 33 | Pages poll with the `poll` Stimulus controller only while work is in flight | Invariants "Pages poll only while work is in flight"; States, Polling |
+| 34 | In specs, Solid Queue's tables are loaded into the test database (`spec/support/solid_queue.rb`) | Left out: CLAUDE.md keeps the fact in "Dev mirrors prod" (line 30, "Solid Queue's tables are loaded into that one database for the admin pages' specs"); the path `spec/support/solid_queue.rb` left CLAUDE.md with the bullet (corrected after the implementation review); it is a test-setup fact an agent needs before it knows where to look (R5), not a rule of the area |
+| 35 | tag an example `:solid_queue` to queue through Solid Queue (no worker runs) and move jobs with `queue_job`, `claim_job`, `fail_job`, `finish_job` | Left out: kept in CLAUDE.md (Phase 3), as 34 |
+
+No statement of the bullet is untrue at the head. Two needed care against the draft: 22 (the draft's `#left_behind?` said "unless a worker still holds its job", which is `#stalled?`'s display rule, not the start guard's; corrected, see Corrections) and 10 (the draft said a console run had no job id; corrected).
+
+### AC-1.4: the sources, item by item
+
+"Stated" names the doc section; "changed since" gives the change and its source, and the doc states the changed form; "not in this area" names the area.
+
+**Spec 015 Glossary**
+
+| Item | Result |
+|---|---|
+| Catalog type | stated (Glossary) |
+| Operation (refresh, extra operation) | stated (Glossary) |
+| Loaded (per type; search adopts it) | stated (Glossary; Decisions "Loaded means an applied run"); search's use is catalog core |
+| In flight | stated (Glossary) |
+| Queued (operation state) | stated (Glossary; panel tables) |
+| Interrupted (stall, own job, failed or gone after 2 minutes; art build's own record and threshold) | stated (Glossary "Left behind / interrupted"; refresh and art Start) |
+| Stalled (shown as running; art build with its 10-minute threshold; a starting job closes it all the same) | stated (Glossary; art paragraph after Ends; refresh Start step 1) |
+| Stages of a refresh | stated (Glossary) |
+| Job states on the jobs page | stated (Glossary) |
+| Admin / member | stated (Glossary) |
+
+**Spec 015 FR-1 – FR-8**
+
+| Item | Result |
+|---|---|
+| FR-1 record stage, done/total, counts | stated (refresh Running) |
+| FR-1 cadence of AC-2.9, by records and time, not rows changed | stated (refresh Running; Invariants "Progress is written outside…") |
+| FR-1 keep the stage reached on failure | stated (refresh Ends) |
+| FR-1 record the job id; close a run with the starting job's own id | stated (refresh Start step 1) |
+| FR-1 judge by job after 2 minutes; queue read before the runs | stated (Start step 1; Invariants) |
+| FR-1 15-minute stall for display and start guard | stated (Start step 1; Named constants) |
+| FR-1 keep the 6-hour lock | stated (Decisions; Named constants) |
+| FR-1 must not: progress inside batch transactions | stated (Invariants) |
+| FR-1 must not: change finished counts or the already-applied skip | stated (refresh Running, Ends: unchanged rules) |
+| FR-2 optional download and sync progress; sources without it keep working | stated (refresh Running; source section) |
+| FR-2 optional extra operations with title, state, progress, summary, startable, how to queue | stated (Glossary "Operation"; panel paragraph; Scope `Catalog::Operation`) |
+| FR-2 implement both for MTG | stated (source section, `#progress=`; art section) |
+| FR-2 must not: core knows a source by name | stated (Invariants "The core never names a collectible") |
+| FR-3 queue the existing job with the same arguments | stated (Invariants "Starting from the page bypasses no guard") |
+| FR-3 refuse in flight or unavailable, and say so | stated (panel paragraph; art paragraph after the table) |
+| FR-3 redirect (see other) with a notice | stated in substance (the notices); the status code is a Rails convention (`.claude/rules/hotwire.md`) |
+| FR-3 must not: run inline, call the source in a request or render | stated (Invariants) |
+| FR-3 must not: bypass the start guards | stated (Invariants) |
+| FR-4 keep pages current by re-rendering, about 2 seconds | stated (Polling; Named constants `interval`) |
+| FR-4 stop when nothing is in flight | stated (Polling) |
+| FR-4 must not: broadcast from jobs | stated (Invariants) |
+| FR-5 read the queue's own records | stated (Invariants; Jobs pages) |
+| FR-5 retry and discard failed jobs only, through the queue's operations | stated (Invariants; Jobs pages) |
+| FR-5 confirm a discard on its own page | stated (Jobs pages) |
+| FR-5 must not: pause, bulk, act on non-failed | stated in its current form (only failed jobs have actions; Jobs pages); pause and bulk don't exist |
+| FR-5 must not: more than 25 per page | stated (Named constants `PER_PAGE`) |
+| FR-6 not-loaded notices, naming types when more than one | stated (Not-loaded notice); changed since for visitors by spec 023 decision 7 (first sentence only), stated in that form |
+| FR-6 never queue a refresh except start request, schedule, rake | stated (Invariants "Nothing queues a refresh by itself") |
+| FR-7 admin guard, 404 for members | stated (Invariants "Admins only") |
+| FR-7 link from the More page for admins | stated (Jobs pages, last sentence) |
+| FR-7 design-system components; document new patterns | not in this area: the UI rule in CLAUDE.md and `docs/design-system/` |
+| FR-7 must not: accept class, queue or method names | stated (Invariants "The jobs pages read…") |
+| FR-8 absolute UTC times | stated (Decisions "Times") |
+| FR-8 relative form | stated (Decisions "Times") |
+
+**Spec 015 Error Scenarios**
+
+| Row | Result |
+|---|---|
+| Scryfall download fails mid-way | stated (refresh Ends: failed with the stage; the job's retry rules; Jobs pages) |
+| Bulk file unreadable | stated (refresh Ends, `no valid records`) |
+| App restarts during a refresh | stated (Decisions "A graceful restart re-runs, a crash fails"; Start step 1) |
+| Queue fails the job of a refresh still working | stated (Accepted limits, second item) |
+| App restarts during an art build | stated (Decisions, graceful restart; art Start) |
+| Queue fails the job of a still-working art build, or `perform_now` | stated (art Start, console sentence; Accepted limits; Named constants `JOB_ENDED_GRACE`, `BEAT_EVERY`) |
+| Two admins press "Refresh now" at once | stated (panel paragraph, AC-2.3; Decisions "Two queued manual refreshes both apply") |
+| No download progress and more than 15 minutes | stated (panel row, stalled) |
+| A worker hangs (refresh) | stated (Decisions "Stalled is not interrupted") |
+| A worker hangs during an art build | stated (art table, stalled row; Decisions) |
+| Image host rate limits, or a busy database | stated (art Ends; art table "Queued to retry"; Accepted limits, third item) |
+| Retry or discard of a job already handled | stated (Jobs pages) |
+| A job's class no longer exists | stated (Jobs pages) |
+| ImageMagick missing | stated (art Ends; Invariants, failure sentence) |
+| Expected download size unknown | stated (panel row "Running…", no percentage) |
+
+**Spec 024**
+
+| Item | Result |
+|---|---|
+| Decision 1, skip not defer (ruled), and what skip gives up | stated (refresh Start step 3; Decisions; Accepted limits, fourth item) |
+| Decision 2, manual as scheduled (ruled) | stated (Start step 3; Decisions) |
+| Decision 3, any waiting retry counts, however far off | stated (Decisions) |
+| Decision 4, the check in the start guard after closing left-behind runs; its own message; not "the" run; a skipped build shows nowhere; a running run wins; the art build's window | stated (Start steps 1–3; panel paragraph; art Start; Accepted limits, first item) |
+| Decision 5, the starting job's own retry doesn't count | stated (Start step 3; Glossary; Decisions) |
+| Decision 6, two waiting retries | stated (Decisions) |
+| FR-1 `Queue` answers "held for later, other than this id" | stated (Glossary "Waiting retry") |
+| FR-2 `RefreshRun.start!` records `WAITING_FOR_RETRY` after closing left-behind runs, a running one still gives "already running" | stated (Start steps 2–3) |
+| FR-3 `attempted` leaves out both skips | stated (panel paragraph) |
+| FR-4 `ArtBuild.start!` makes the same check, its own constant | stated (art Start) |
+| FR-5 retry rules unchanged | stated (A rate-limited job, step 2: the rules as they stand) |
+
+**Spec 002 FR-3 – FR-6**
+
+| Item | Result |
+|---|---|
+| FR-3 adapter behind `Catalog::Sources` | stated (Scope; Invariants, hooks) |
+| FR-3 discover the bulk file, its version; `default_cards` for English only | stated (source section) |
+| FR-3 download in the background, verify, keep two | stated (source section; Named constants `KEEP_DOWNLOADS`); the check at the head compares the size Scryfall publishes |
+| FR-3 read record by record | stated (source section) |
+| FR-3 filter languages and digital-only | stated (source section) |
+| FR-3 map records; skip and count malformed, log their id | stated (refresh Running); the mapping itself is catalog core |
+| FR-3 load sets; a missing set made from the printing's code and name | stated (refresh Running) |
+| FR-3 API terms: headers, 100 ms, bounded back-off, timeouts, no-wait 429 | stated (source section; A rate-limited job, step 1; Named constants) |
+| FR-3 must not: called during a request | stated (Invariants) |
+| FR-3 must not: per-card API requests in a refresh | stated (source section) |
+| FR-4 background, at most one per type | stated (Invariants "Two refreshes of one type never apply at once") |
+| FR-4 record type, version, trigger, status, times, counts, error | stated (Glossary "Run", "Trigger"; refresh Ends) |
+| FR-4 skip a scheduled already-applied run; never a manual one | stated (refresh Running) |
+| FR-4 one run per attempt | stated (refresh statuses line) |
+| FR-4 "younger than 6 hours … skipped; older … interrupted" | changed since: spec 015 AC-3.3 and #60 (15-minute stall, own-job rule, 2-minute job rule); the doc states the current rule and the change (Start steps 1–2). Its waiting-retry clause (spec 024) is stated (step 3) |
+| FR-4 write only changed rows | stated (Invariants "A refresh writes only what changed") |
+| FR-4 retire after a complete file; restore | stated (same invariant) |
+| FR-4 retire only after full processing | stated (same invariant) |
+| FR-4 short write transactions | stated (same invariant; Named constants `BATCH_SIZE`) |
+| FR-4 rate-limit retry: 45 s floor, 1 hour, 3 retries, before transient retries, holds for every refresh of the type | stated (A rate-limited job, steps 2–3; Named constants) |
+| FR-4 must not: delete; change an entry's identity | stated (same invariant) |
+| FR-5 weekly refresh in production | stated (Glossary "Trigger"; Invariants, first item; Scope) |
+| FR-5 command to queue a manual refresh | stated (panel paragraph, `catalog:refresh`) |
+| FR-5 command printing the 10 most recent runs | stated (panel paragraph, `catalog:status`) |
+| FR-5 one structured log entry per finished run | stated (refresh Ends, `catalog.refresh.finished`) |
+| FR-6 a documented setting, English always | stated (source section) |
+| FR-6 default English only | stated (source section) |
+| FR-6 reject unknown codes before download | stated (source section) |
+
+**Spec 002 Error Scenarios**
+
+| Row | Result |
+|---|---|
+| Bulk-data index unreachable or times out | stated (A rate-limited job, step 1: an API call raises at once; refresh Ends: the job's retry rules) |
+| 429 with a `Retry-After` of 1 to 30 seconds | stated (A rate-limited job, steps 1–2) |
+| 429 with no usable `Retry-After`, or zero | stated (steps 1–3; refresh panel "Queued to retry") |
+| 429 with a `Retry-After` over 30 seconds | stated (steps 1–3) |
+| More than an hour, or a fourth rate limit | stated (step 2) |
+| File fails its integrity check | stated (source section) |
+| File can't be decoded or parsed | stated (refresh Ends, `no valid records`, no retirements) |
+| One malformed record | stated (refresh Running) |
+| Process killed or deployed mid-refresh ("6+ hours later") | changed since: spec 015 AC-3.3, Error Scenarios and #60; stated in its current form (Start step 1; Decisions, graceful restart) |
+| Refresh triggered while one is running ("younger than 6 hours") | changed since: spec 015 AC-3.3, AC-3.4 and #60; stated in its current form (Invariants; Start steps 1–2) |
+| Invalid language code | stated (source section) |
+| Unknown printing, unknown card's printings page, page number, unknown set code | not in this area: catalog core (search and card pages) |
+| Catalog never loaded ("Search page shows 'not loaded yet'") | changed since: spec 015 FR-6 (search, scanner and the More page, by role) and spec 023 decision 7 (visitors); stated in that form (Not-loaded notice) |
+
+**Spec 011 FR-2 (the build's run) and Story 3**
+
+| Item | Result |
+|---|---|
+| FR-2 store artwork id and `small` URI in the MTG extension; artwork table, build runs, cache global | not in this area: scanner (the columns and the table) and CLAUDE.md "Catalog data is global" (global data) |
+| FR-2 reach the MTG extension only through the two generic source steps of AC-2.4 | stated (Invariants, hooks `#reapply?`, `#after_refresh`; refresh Running) |
+| FR-2 write artwork data only through the build job, after a refresh, in batches | stated (Invariants, first item; art build) |
+| FR-2 idempotent, resumable, incremental | stated (art Running) |
+| FR-2 external data rules for images | stated (source section; A rate-limited job, step 1; Named constants `IMAGE_HOSTS`, `MIN_INTERVAL`) |
+| FR-2 update CLAUDE.md's "only through `Catalog::Refresh`" note | stated as the rule it added (Invariants, first item) |
+| FR-2 must not: fetch in a request, on boot, or with art matching off | stated (Invariants, first item) |
+| FR-2 must not: art concepts in the core | stated (Invariants, core) |
+| AC-3.1 when a build is queued | stated (art build intro) |
+| AC-3.2 the guard, job id, heartbeat, staleness, own-job and job-ended rules | stated (art Start, Running) |
+| AC-3.4 the image request | stated (source section; A rate-limited job, step 1) |
+| AC-3.5, AC-3.7, AC-3.8 cache, fingerprints, resume | stated (art Running) |
+| AC-3.6 failed images; a rate limit stops the build; the job's retry | stated (art Running, Ends; A rate-limited job) |
+| AC-3.9 the index written last, previous kept | stated in part (art Ends; "never removes the index in use"); the file's format is scanner |
+| AC-3.3, AC-3.10 which image, decoder agreement | not in this area: scanner |
+| AC-3.11 `catalog:status`'s art line | stated (art paragraph after the table) |
+
+### AC-1.5: Sources and their links
+
+Sources links specs 002 (FR-3, FR-4, FR-5, FR-6, Error Scenarios), 011 (FR-2 and Story 3, the build's run), 015 (all) and 024 (all), spec 023 (decision 7 only), ADRs 0014, 0015 and 0018, and issues #60, #61, #73, #74, #78, #79, #80, #81, #84 and the open #41, #77, #86. Every relative link in the doc was checked with `test -e` from `docs/architecture/`: the four spec files, spec 023's, the three ADRs and `../design-system/components/MorePage.md` exist; `../specs/README.md` resolves once Phase 4 adds it. Each issue checked with `gh issue view <n> --json number,state,title` (2026-10-15): #60, #61, #73, #74, #78, #79, #80, #81, #84 exist (closed); #41, #77, #86 exist (open).
+
+### AC-1.6: no collectible in a statement about the core
+
+`git grep -n -w -i -e MTG -e Scryfall -e Art -- docs/architecture/catalog-operations.md ':!.kamal/secrets'` at `5ae87d0`: 45 lines (3, 10, 12, 13, 24, 25, 27, 31, 35, 42, 44, 47, 48, 55, 91, 93, 95, 97, 99, 101, 105, 106, 116, 118, 120, 121, 123, 128, 129, 159–169, 179, 187, 193, 197, 198). Each read:
+
+- 3 (intro): names the MTG art index build as one of the area's subjects; no statement about `Catalog::` code.
+- 10, 12, 13 (Scope): the items naming `MTG::Scryfall::*`, `MTG::Art*`, `MTG::Art::Operation`; the `Catalog::` classes in item 13's list are listed, not described.
+- 24 (Glossary "Catalog type"): `config/initializers/catalog.rb` registers `mtg`; a statement about the configuration, not `Catalog::` code.
+- 25, 27, 31, 35 (Glossary): the sentences naming `MTG::Art::Operation`, `MTG::ArtBuild`, an art build's heartbeat, `MTG::Art::Build#call`; the `Catalog::` part of each is a separate clause naming no collectible.
+- 42, 44, 47, 48, 55 (Invariants): each hit is in its own sentence about `MTG::Art::BuildJob`, `MTG::ArtBuild.start!`, `MTG::Art::Operation`, `MTG::Art.status_line` or `MTG::Scryfall::Source`; the draft sentences that named both (42, 44, 48) were split for this check, and 55's is its own sentence.
+- 91–116 (States, art build): every hit is about `MTG::ArtBuild`, `MTG::Art::*` or art matching.
+- 118–123 (States, the source): about `MTG::Scryfall::Source` and Scryfall's bulk data.
+- 128, 129 (A rate-limited job): step 1 is about `MTG::Scryfall::Client`; in step 2 the hit is the separate sentence "… and so does `MTG::Art::BuildJob`"; the sentences about `Catalog::RateLimitRetry` name no collectible ("the source").
+- 159–169 (Named constants): the `MTG::` rows and their reasons; the `Catalog::RateLimitRetry::SHORTEST_WAIT` row says "the one source so far", as its definition does.
+- 179 (Decisions): an art build and a refresh don't wait out each other's limit; about the art build.
+- 187 (#41): the art index under `storage/catalog/`.
+- 193, 197, 198: link paths (`002-scryfall-catalog-search`, `011-card-scanner-art-matching`) and the Distillation log; no statement about `Catalog::` code.
+
+No statement about `Catalog::` code names a collectible. The "core never names a collectible" invariant says "no collectible's, source's or operation's name" rather than quoting the three checked words.
+
+### AC-1.7: open issues
+
+Command at the head: `gh issue list --state open --limit 200 --json number,title,body`, 2026-10-15: 33 open issues. Since the Baseline (25), #102–#109 were opened for this feature (#102 its tracking issue, #103 YARD, #104–#109 the slice C area docs); their bodies were searched for refresh, art, build, admin and jobs and name none of the catalog operations. A filter over every title and body for `refresh|art build|art index|admin/catalog|admin catalog|/admin/jobs|jobs page` (case-insensitive) selects #86, #77 and #41, the Baseline's list. All three are under "Accepted limits and open issues", each with its link, and in Sources' open issues. #41 is stated only as what it says about catalog operations' data (whether a backup holds the catalog downloads and the art index, which can be rebuilt); the doc adds no behaviour any of the three would add (#77's start or cancel, #86's progress-based count, #41's backup).
+
+### Corrections to the draft (FR-2: the code at the head decides)
+
+1. **Art build left behind.** Draft: "`#left_behind?`: heartbeat older than `STALE_AFTER` unless a worker still holds its job". Code: `app/models/mtg/art_build.rb:58`, `:72` (`left_behind? = stale? || (quiet? && job_ended?)`) and `:40` (`.start!` closes any build that is `left_behind?`): a stale build is left behind whether or not a worker holds its job; "unless a worker holds" is `#stalled?` (`:64`), the display rule. Spec 015 Glossary "Stalled" agrees ("a refresh or an art build job that starts closes a run past its threshold whether or not a worker holds its job"). Corrected in States, art build, Start.
+2. **Console refresh runs.** Draft: "A run with no job id (a refresh run in a console with `perform_now`) is judged the same way". Code: `perform_now` gives the run a job id that no queue row holds, so `Catalog::RefreshRun.job_gone` (`refresh_run.rb:66-68`) and `RefreshOperation#job_gone?` (`refresh_operation.rb:119`) judge it by the 2-minute job rule; a run with no job id is excluded (`where.not(job_id: [nil, …])`) and judged only by `STALL_AFTER`. The bullet (statement 10) and spec 015 AC-3.3 agree. Corrected in Start step 1.
+3. **Core boundary.** Draft: "`app/models/catalog/`, `app/jobs/catalog/` and the admin catalog controllers and views contain no whole word `MTG`, `Scryfall` or `Art`". At the head `git grep -n -w -i -e MTG -e Scryfall -e Art -- app/models/catalog app/jobs/catalog ':!.kamal/secrets'` finds four comments: `app/jobs/catalog/refresh_job.rb:2` (the rake task's example `catalog:refresh[mtg]`), `app/models/catalog/entry.rb:1`, `:8`, `app/models/catalog/identity.rb:1` and `app/models/catalog/sources.rb:2` (examples of a source and its records). `spec/admin_catalog_core_spec.rb:6-10` checks 15 named files (the page's controllers and views, `operation`, `operation/*`, `refresh_operation`, `health`, `refresh/progress`, `failure_reason`, the not-loaded partial, `AdminHelper`, the `poll` controller), and none of them names one. Sources disagree: spec 015 AC-5.4 is about the admin catalog code; spec 024's NFR "Core boundary" says `app/models/catalog/` and `app/jobs/catalog/` name no collectible. The code decides: the invariant states what is checked, and that elsewhere in those folders only comments name a collectible, as an example. No code logic in those folders names one.
+4. **"Queued to retry" wording.** Draft: "Queued to retry. The last build failed: …"; spec 015 AC-4.12 and spec 024's Goals quote `failed: <message>`. Code: `MTG::Art::Operation#summary` (`art/operation.rb:61`, `:117`) reads `Queued to retry. The last build failed. <sentence>` since #84; the bullet says the same. Corrected, with "changed by #84".
+5. **Spec 002 FR-3–FR-6 belong here.** The draft's Neighbours gave "what a refresh writes … the source contract's data methods" to catalog core. Spec 027 D2 (and `docs/architecture/README.md`) assigns 002 FR-3–FR-6 to catalog operations and FR-1, FR-2, FR-7–FR-10 to catalog core. The doc now states FR-3's download, filtering and request rules (new section "What the source does for a refresh"), FR-4's write rules (Invariants), FR-5's tasks and log, and FR-6's languages; Neighbours keeps the records, the name index, the mapping and search in catalog core.
+6. **Missing from the draft, added after the AC-1.4 walk:** the hooks `#reapply?` (spec 011 AC-2.3; `refresh.rb:76`) and `.status_lines` (spec 011 AC-3.11; `catalog.rake:21`); the not-loaded notice (spec 015 FR-6, AC-1.1–AC-1.3; spec 023 decision 7; `_not_loaded.html.erb`, shown on the More page to admins only, `mores_controller.rb:4`); admin-only access (FR-7); per-type panels and 404s (AC-5.1–AC-5.6); the jobs pages' notices and finished or class-less jobs (AC-6.5–AC-6.7); the empty, never, skipped and applied panel rows (AC-1.4, AC-2.13, AC-2.14); the build job recording nothing with art matching off or before the first applied refresh (`art/build.rb:35-38`); the start notices (AC-2.3, AC-4.4); and the constants `BATCH_SIZE`, `IMAGE_HOSTS`, `MIN_INTERVAL`, `RATE_LIMITED_FOR` and `KEEP_DOWNLOADS`.
+7. **Refresh panel text.** The panel's failed and interrupted summaries read `Failed while <doing>. <sentence>` and `Interrupted while <doing>.` (`refresh_operation.rb:62`, `:133`, `DOING` at `:6`); the "Queued to retry" form is `The last run failed while <doing>. <sentence>` (`:59`). The draft's "The last run failed …" is kept in that fuller form.
+8. **Failed-list link on a failed run or build.** `failed_job?` for a failed run or build asks whether any job of the operation is under Failed (`operation.rb:53`, `refresh_operation.rb:47`, `art/operation.rb:56`), not that run's own job; only an interrupted one is judged by its own job. The doc says "when a refresh job for the type is there" / "when a build job is there" for the failed rows.
+9. **#41** added under "Accepted limits and open issues" and to Sources (controller ruling; AC-1.7).
+10. **Distillation log** row names the open issues too; its PR cell stays "spec 027's pull request" until Phase 8 (controller ruling).
+
+### Code with no spec source
+
+- `app/javascript/controllers/poll_controller.js:6`, `:19-20`: the `poll` controller skips a tick while the tab is hidden, while Turbo is busy (`aria-busy`) and while a menu (`details[open]`) is open. No spec, ADR or issue states it (spec 015 FR-4 and ADR 0015 describe only the interval and stopping). Stated in the doc's Polling section marked "(no spec source; see `verification.md`)". Listed for the controller; no issue opened.
+
+No behaviour was found that every source contradicts.
+
+## Phase 3: CLAUDE.md and the frozen lines
+
+Commits: `fc50021` (CLAUDE.md), `3a85ae4` (spec 002 frozen line), `cbb9c2e` (spec 011), `5abfb32` (spec 015), `ad8afa4` (spec 024). Old state checked before each edit: CLAUDE.md line 35 began `- **Admin catalog and jobs (spec 015, ADRs 0014 and 0015):**` (one match), line 9 held ``Detailed coding rules: `.claude/rules/`. Feature specs: `docs/specs/`.`` verbatim, and `wc -w CLAUDE.md` gave 2312; none of the four specs contained "Frozen". The plan's drafts were used as written; no ruling was needed.
+
+- **AC-2.1** The bullet (CLAUDE.md line 35) was copied to `<scratchpad>/bullet-head.md`; `wc -w` output: `54 …/bullet-head.md` (at most 60). It links [`docs/architecture/catalog-operations.md`](../../architecture/catalog-operations.md), and keeps the `:solid_queue` tag and the helpers `queue_job`, `claim_job`, `fail_job`, `finish_job` (each defined in `spec/support/solid_queue.rb`, lines 17, 23, 31, 40).
+- **AC-2.2** Line 9 now reads ``Current rules per subsystem: `docs/architecture/` (area docs). Detailed coding rules: `.claude/rules/`. Feature specs: `docs/specs/` (index: `docs/specs/README.md`).`` It names `docs/architecture/` as the current rules per subsystem and `docs/specs/README.md` as the specs index (that file arrives in Phase 4).
+- **NFR Performance** `wc -w CLAUDE.md` output: `1661 CLAUDE.md`, 651 fewer than 2,312 (at least 630 required). The bullet went from 714 words to 54; the opening list gained 9 words (2,312 − 714 + 54 + 9 = 1,661; at most 20 allowed).
+- **AC-2.3** `git diff df61132 -- CLAUDE.md`: `1 file changed, 2 insertions(+), 2 deletions(-)` in two hunks, `@@ -6,7 +6,7 @@` (line 9, the opening list of documents) and `@@ -32,7 +32,7 @@` (line 35, the bullet). Nothing else changed.
+- **Frozen lines (FR-4, D4)** Each line is the last line of its spec's header block, after `**Branch:**` (specs 002, 011) or `**Issue:**` (specs 015, 024) and before the blank line and `---`. `git diff df61132 -- docs/specs/002-scryfall-catalog-search/spec.md docs/specs/011-card-scanner-art-matching/spec.md docs/specs/015-admin-catalog-and-jobs/spec.md docs/specs/024-refresh-rate-limit-wait/spec.md` shows exactly four added lines, one per file, and no removed line:
+
+  ```
+  docs/specs/002-scryfall-catalog-search/spec.md  @@ -5,6 +5,7 @@
+  +**Frozen:** the current rules are in [`catalog-operations.md`](../../architecture/catalog-operations.md) (parts: FR-3–FR-6 and their Error Scenarios rows); see the [specs index](../README.md)
+  docs/specs/011-card-scanner-art-matching/spec.md  @@ -5,6 +5,7 @@
+  +**Frozen:** the current rules are in [`catalog-operations.md`](../../architecture/catalog-operations.md) (parts: FR-2, the art build's run); see the [specs index](../README.md)
+  docs/specs/015-admin-catalog-and-jobs/spec.md  @@ -6,6 +6,7 @@
+  +**Frozen:** the current rules are in [`catalog-operations.md`](../../architecture/catalog-operations.md) (whole spec); see the [specs index](../README.md)
+  docs/specs/024-refresh-rate-limit-wait/spec.md  @@ -6,6 +6,7 @@
+  +**Frozen:** the current rules are in [`catalog-operations.md`](../../architecture/catalog-operations.md) (whole spec); see the [specs index](../README.md)
+  ```
+
+  No version, changelog row or other text changed. The `../README.md` link resolves once Phase 4 adds the specs index.
+
+## Phase 4: The specs index
+
+Commit: `3775b2d` (`docs/specs/README.md`, new).
+
+- **AC-3.1** `ls docs/specs` at the head, without `README.md` and `.gitkeep`: `001-rails-app-skeleton`, `002-scryfall-catalog-search`, `003-worktree-environment-setup`, `004-design-system-collection`, `005-card-scanner-phase-0`, `006-collection-list-view`, `007-card-scanner-live-capture`, `008-card-scanner-phase-2-spike`, `009-card-scanner-confirm-flow`, `010-card-scanner-art-spike`, `011-card-scanner-art-matching`, `012-ghcr-registry-publishing`, `013-ghcr-untagged-cleanup`, `014-active-storage-vips`, `015-admin-catalog-and-jobs`, `016-scryfall-hosting-terms`, `017-export-format`, `018-content-notice-footer`, `019-uncropped-card-images`, `020-readme-introduction`, `021-unowned-tile-marker`, `022-export-collection`, `023-signed-out-catalog-browsing`, `024-refresh-rate-limit-wait`, `027-architecture-area-docs` (25). The index's rows link the same 25 folders, one row each, in that order (25 rows, each with 6 columns). Specs 025 and 026 have not merged; `git ls-tree --name-only origin/main docs/specs/` lists 001–024 only, so 001–024 are Shipped (or frozen) and 027 is the only unmerged one.
+- **AC-3.2** Every row has number and linked title, status, areas, plan, supersedes, superseded by. Titles are each spec's own title line (`# Feature NNN: …`; 016's `# Research 016: …`). Plan: every folder but 016 holds `plan.md` ("present"); 016 holds only `research.md` ("none"); 027 "retirement owed". Areas follow D2 and the area table of `docs/architecture/README.md`; catalog operations is linked wherever named; the other areas have no doc yet and are unlinked; 001 (stack, CI, hooks), 003 and 014 read "CLAUDE.md (R5)". Statuses: 002 and 011 "Frozen in part" naming the frozen lines' parts, 015 and 024 "Frozen", matching the Phase 3 frozen lines; spikes 005, 008, 010 and research 016 are Shipped (findings ruled on: 008 research §14, 010 research §8, 016 §7; 005's go decision is spec 007, which builds on its findings).
+- **AC-3.4** Spec 002's row, Superseded by: "Non-Goals and FR-7, public search: 004 (sign-in), 023 (an operator setting)"; Status: "Frozen in part: FR-3–FR-6 and their Error Scenarios rows, by `[catalog operations](../architecture/catalog-operations.md)`".
+- **AC-3.5** The introduction states the freezing rule ("Freezing": Frozen and Frozen in part, no shipped spec edited, the three D4 lines), the retirement pointer's form ("Plan retired in `<sha>`; read it with `git show <sha>^:docs/specs/NNN-<slug>/plan.md`"), the status and plan vocabularies ("Status and plan words"), and links [`../architecture/README.md`](../../architecture/README.md) ("area doc").
+- **AC-3.6** Spec 027's row: Status "Approved", Plan "retirement owed". The Plan cells of 015 and 024 read "present" (Phase 6 changes them).
+- **Links** Every relative link target in the index was tested with `[ -e ]` from `docs/specs/`: the 25 spec and research files, `../architecture/catalog-operations.md`, `../architecture/README.md`, `../design-system/README.md`, `../git-convention.md`; all exist. `../git-convention.md#merging`: `docs/git-convention.md` has the heading `## Merging` (line 31).
+
+### Supersession sweep
+
+One `git grep -n -i -E "spec 0[0-9]{2}"` per spec (widened to "feature 0NN", "specs 0NN" and "supersed", since 004 and 006 write "feature 002"/"feature 004"), plus each spec's Changelog, Problem Statement, Inputs and Supersedes lists. Places where one spec changes what an earlier one promised (→ means "superseded by"):
+
+1. 002 Non-Goals and FR-7, public search → 004 (FR-2) and 023 (draft).
+2. 002 AC-1.5, AC-1.7, AC-1.8 and AC-1.11's messages, AC-10.1, FR-8's search link → 004 (AC-6.5, AC-8.2). Added.
+3. 002 AC-3.2 and 004 AC-8.2, the card page's Scryfall attribution → 018 FR-3 (moved to the footer). Added.
+4. 002 AC-1.11 and 004 AC-6.5, the not-loaded notice → 015 AC-1.1, AC-1.2 and the glossary's per-type "Loaded". Added.
+5. 002 FR-4, the 6-hour "already running" rule → 015 AC-3.3, AC-3.4 (draft).
+6. 002 FR-4 and its two 429 Error Scenarios rows → 024, amended in place (002 v1.4.0) (draft).
+7. 004 FR-2, sign-in for search, card and printings pages → 023 (operator setting). Added.
+8. 004 AC-6.3 and 019 AC-1.8, unowned tiles faded → 021 (019 AC-1.8 named in 021's "**Spec 019.**" paragraph; 004 AC-6.3 found by reading). Added.
+9. 004 AC-11.7, FR-10's filter bar, AC-2.7/AC-10.1/AC-10.4 return target, AC-10.4 and bulk Undo → 006 AC-1.7. Added.
+10. 007 AC-1.7, FR-1 (twice), AC-3.2, AC-3.3, AC-3.10, AC-4.2, FR-3, FR-4 → 009 (its Supersedes list). Added.
+11. 007 FR-3 (amended in place, 007 v2.2.0) and FR-6 → 011. Added.
+12. 009 AC-2.1, AC-2.3, AC-2.4, AC-5.1, AC-5.2, AC-5.5, FR-3, FR-5 → 011 (its Supersedes list). Added.
+13. 015 AC-2.16 → 024, amended in place (015 v1.3.1) (draft).
+14. 015 AC-3.3 and AC-4.10 ("the new run/build proceeds") → 024 AC-1.7, AC-2.1 when another job's retry waits; 015 was not edited for it. Added (split from the draft's "the start guard").
+15. 011 AC-3.2, a build job that starts while another build job's retry waits → 024 AC-2.1; 011 was not edited for it. Added.
+
+Specs with no supersession found: 001, 003, 005, 008, 010, 012, 013 (says 012 AC-6.2 unchanged), 014, 016, 017, 020, 022, 027. 009 AC-4.1 follows 006 AC-7.6 rather than changing it; 023 decision 7 adds a visitor case to 015's notice rather than changing it; 019 changes the design system's `object-fit`, which no spec promised.
+
+In-place amendments for issues, with no later spec (recorded under "Superseded by" as "amended in place"): 002 FR-3, FR-4, Error Scenarios for #74, #81 (v1.2.0, v1.3.0); 011 AC-3.2, AC-3.4, AC-3.6, AC-3.8, AC-3.11 for #73, #74, #79, #81 (v1.1.4–v1.3.0); 015 glossary, AC-3.2, AC-3.3, AC-3.4, AC-3.9, AC-4.1, AC-4.10, AC-4.11, AC-4.12, AC-6.5, FR-1, FR-2, Error Scenarios for #60, #61, #73, #74, #79, #80 (v1.2.0–v1.3.0). These have no "Supersedes" pair, since no spec superseded them.
+
+### AC-3.3: pairs
+
+Each "Superseded by" entry naming a spec, with the "Supersedes" entry in that spec's row: 002 → 004 (public search; AC-1.5 … FR-8) ↔ 004 row items 1 and 2; 002 → 018 (AC-3.2) ↔ 018 row; 002 → 015 (AC-1.11; FR-4 6-hour) ↔ 015 row items 2 and 1; 002 → 024 (FR-4 and 429 rows) ↔ 024 row item 1; 002 → 023 ↔ 023 row item 1; 004 → 023 (FR-2) ↔ 023 row item 2; 004 → 015 (AC-6.5) ↔ 015 row item 2; 004 → 021 (AC-6.3) ↔ 021 row item 1; 004 → 018 (AC-8.2) ↔ 018 row; 004 → 006 ↔ 006 row; 007 → 009 ↔ 009 row; 007 → 011 (FR-3, FR-6) ↔ 011 row items 1 and 2; 009 → 011 ↔ 011 row item 3; 011 → 024 (AC-3.2) ↔ 024 row item 4; 015 → 024 (AC-2.16; AC-3.3 and AC-4.10) ↔ 024 row items 2 and 3; 019 → 021 (AC-1.8) ↔ 021 row item 2. The reverse: every "Supersedes" entry (rows 004, 006, 009, 011, 015, 018, 021, 023, 024) is matched above; none is one-sided.
+
+### Rulings (corrections to the draft)
+
+- Ruling: titles are each spec's own title line, not the draft's short forms (016 uses its research note's title) — AC-3.2 asks for the spec's linked title and a reader matches it against the file — cost if wrong: longer cells, fixed by shortening them.
+- Ruling: the sweep's additions above (items 2–4, 7–12, 14, 15) are recorded in both rows — the plan asks for every place a spec changes an earlier promise — cost if wrong: a row names a supersession a reader need not follow.
+- Ruling: the draft's pair "011 AC-3.2's stale-build rule → 015 AC-4.10, AC-4.11 (#73, #79)" is removed; 011's row records it as amended in place for #73, #74, #79 and #81 (v1.1.4–v1.3.0), stating 015's criteria — 015 shipped following 011 AC-3.2 (its glossary), and both specs were edited in place for the same issues (011 v1.1.4, v1.2.1; 015 v1.2.3, v1.3.0, where AC-4.10 and AC-4.11 are "new") — cost if wrong: one supersession pair to restore.
+- Ruling: 015's "AC-2.16 and the start guard: 024 (amended in place, v1.3.1)" is split into AC-2.16 amended in place (v1.3.1) and AC-3.3, AC-4.10 superseded without an edit — 015 v1.3.1's changelog names only AC-2.16 — cost if wrong: one cell reworded.
+- Ruling: in-place amendments for issues sit under "Superseded by" as "amended in place for #N (vX)" for 002, 011 and 015, with one sentence in the introduction saying so — the draft did this for 002, and a reader needs to know the text at the head is not as shipped — cost if wrong: unpaired notes in a paired column, movable to another column.
+- Ruling: 002's Areas cell links catalog operations, as its Status cell does — AC-3.2 says areas are linked where the area doc exists — cost if wrong: none beyond a duplicate link.
+
+## Phase 5: The distillation step
+
+Commits: `10bf892` chore(skills): add the distill-feature skill; `a22362d` docs(claude): run distill-feature after session-wrap.
+
+- **AC-4.4** `.claude/skills/distill-feature/SKILL.md` (front matter `name`/`description`, as `.claude/skills/collector-design-system/SKILL.md`) checked against D6 clause by clause:
+  - Three states, checked in order with the after-merge one first ("the after-merge check comes first because it can apply on any branch"): **1. After the merge**, **2. Before the merge**, **3. Nothing to do**.
+  - State 1: first checks every "retired in `<sha>`" cell with `git cat-file -e <sha>`, one call each, and warns on a failure naming squash/rebase merges or a shallow clone and the rewrite to the commit that removed the plan from `main` (`git show <squash sha>^:<path>`), as the Error Scenarios row says; then retires each "retirement owed" row whose pull request merged in the two commits of D7 (delete only `plan.md`; then pointer under `**Frozen:**`, index Plan cell, Status Approved → Shipped, own-plan links rewritten as plain text; commit names spec 027 D4), and checks `git show <sha>^:…`. A spec with nothing to distil (027) is retired the same way (P2).
+  - State 2: reads `## Implementation review` in `verification.md` with an aligned verdict on its first line; says many folders have no `verification.md`; asks the maintainer when the section, the file or a clear verdict is missing; "A pull request needn't exist yet: the wrap runs before `gh pr create`". It distils into area docs, proposes ADRs (not written without the go-ahead), marks the row Frozen / Frozen in part, sets Plan to "retirement owed", and adds the frozen line.
+  - State 3: "say 'distill-feature: nothing to do' with the reason in one line, and stop", covering no spec on the branch, the maintainer saying unfinished, or the row already showing it distilled (D6 state 1).
+  - D4: "**Never change a shipped spec beyond spec 027 D4:** its `**Frozen:**` line, its retirement pointer, and plain-text replacements of its links to its own retired plan, each in a commit whose message names 'spec 027 D4'", plus "Don't edit any other spec".
+- **Spec 027 on its own branch before merge (AC-3.6, P2)** walked through the skill: state 1 — 027's row is "retirement owed" but `gh pr list --head 027-architecture-area-docs --state merged` is empty, so it doesn't qualify; 015 and 024 read "present" until Phase 6 retires them on this branch, and "retired" after, so neither qualifies. State 2 — 027's row Plan "retirement owed" shows it distilled, so it doesn't apply. State 3 — "nothing to do", with the skill's own example for this case.
+- **Index match (Phase 4)**: the skill lists the columns `Spec`, `Status`, `Areas`, `Plan`, `Supersedes`, `Superseded by`, the status words (Draft, Approved, Shipped, Frozen in part, Frozen) and their cell forms (`Frozen, by [catalog operations](…)`, `Frozen in part: <parts>, by […]`), the plan words (present, retirement owed, retired, none) and Phase 6's retired cell form; the frozen line's form is Phase 3's (spec 015 line 9, spec 002 line 7).
+- **AC-4.7** `.claude/CLAUDE.md` line 20 at the head: "**At session end:** Before closing a conversation, invoke `sdd-superpowers:session-wrap`, then the `distill-feature` skill (area docs and plan retirement, spec 027)." The line was found verbatim before the edit; the lines after it are unchanged. `git diff df61132 -- .claude/integrations.md`: no output.
+
+### Rulings (corrections to the draft)
+
+- Ruling: the merged pull request is found from the spec's `**Branch:**` header line (or the current branch), not `--head <NNN-slug>` — spec 002's branch is `feat/002-scryfall-catalog-search`, so the folder name misses it — cost if wrong: a merged plan is never retired.
+- Ruling: the index's retired Plan cell uses Phase 6's form (``retired in `<sha>`; `git show <sha>^:<path>` ``), not the spec's line without `**Plan:**` — every retired row then reads alike — cost if wrong: two pointer forms in one column.
+- Ruling: "shows it distilled" is spelled out (Plan retirement owed or retired; for a plan-less spec, Status Frozen or Frozen in part), and a row qualifies for retirement only when its pull request merged and its `plan.md` still exists on the branch; an open pull request already retiring it is skipped — so 027 gets "nothing to do" on its own branch and no plan is retired twice — cost if wrong: state 1 or 2 acts on 027 before its merge.
+- Ruling: in state 2 the frozen line goes in a commit of its own naming spec 027 D4 (as Phase 3 did), after the distillation commit, instead of inside it — D4 wants each such line in its own commit — cost if wrong: one extra commit per distillation.
+- Ruling: the own-plan link search is `git grep -n -E "\]\((\./)?plan\.md"`, so links with an anchor or `./` are caught too, and the skill says a path in quoted command output isn't a link (AC-5.3) — cost if wrong: a broken link survives a retirement.
+- Ruling: the Distillation log row names the pull request by number once opened, otherwise "spec NNN's pull request" (as the pilot's row does), since state 2 runs before `gh pr create` — cost if wrong: none beyond a later edit of the cell.
+- Ruling: when `gh` can't answer, the skill asks the maintainer instead of guessing; state 1 asks before creating a housekeeping branch — cost if wrong: an extra question.
+
+## Phase 6: Plan retirement
+
+Commits: `6c4dd4fb5c247d6aeb5739e3ae9e096345309d0e` docs(specs): retire the plan of spec 015 (`<sha015>`); `0b16288741818b786e069d2a0e1617f26945dd98` docs(specs): retire the plan of spec 024 (`<sha024>`); `366ba40` docs(specs): point to the retired plans of specs 015 and 024 (spec 027 D4).
+
+- **Merge step:** skipped. The controller's fetch found `origin/main` still at `df61132`, the merge base, already in the branch. From here on the branch is never rebased (D7).
+- **Before editing:** `git grep -n -E "\*\*Frozen:\*\*|\]\((\./)?plan\.md" -- docs/specs/015-admin-catalog-and-jobs docs/specs/024-refresh-rate-limit-wait ':!.kamal/secrets'` gave three lines: `015…/spec.md:9` and `024…/spec.md:9` (the `**Frozen:**` lines of Phase 3) and `024…/verification.md:3` (`**Plan:** [plan.md](plan.md)`). No other own-plan link form (`./plan.md`, anchors) was in either folder. The index's 015 and 024 Plan cells read "present". `.claude/skills/distill-feature/SKILL.md` lines 18 and 41 give the retired cell as ``retired in `<sha>`; `git show <sha>^:docs/specs/NNN-<slug>/plan.md` ``, the same as this phase's form, and line 38 gives the spec pointer as this phase does.
+- **Pointers:** spec 015 line 10 and spec 024 line 10, directly under the `**Frozen:**` line: ``**Plan:** retired in `<sha>`; read it with `git show <sha>^:<path>` ``. Spec 024's `verification.md` line 3 now reads ``**Plan:** plan (retired in `0b16288…`; read it with `git show 0b16288…^:docs/specs/024-refresh-rate-limit-wait/plan.md`) · **Date:** 2026-10-14``, the rest of the line unchanged. The index's two Plan cells hold the retired form with each spec's own sha and path. Nothing else in either spec changed (`git show --stat 366ba40`: the two specs +1 each, 024's `verification.md` and `docs/specs/README.md`).
+- **AC-5.2:** `git show <sha015>^:docs/specs/015-admin-catalog-and-jobs/plan.md > <scratchpad>/015-retired.md` and `git show df61132:… > <scratchpad>/015-base.md`, then `cmp`: no output, exit 0 (5,021 lines). The same for 024: no output, exit 0 (104 lines).
+- **AC-5.3:** `git grep -n "](plan.md)" -- docs/specs/015-admin-catalog-and-jobs docs/specs/024-refresh-rate-limit-wait ':!.kamal/secrets'`: no output (exit 1). The wider `git grep -n -E "\]\((\./)?plan\.md" -- …` after the pointer commit: no output (exit 1). Neither folder holds a `plan.md` (`ls`: 015 has `contracts`, `data-model.md`, `prd.md`, `research.md`, `screenshots`, `spec.md`; 024 has `spec.md`, `verification.md`).
+- **AC-5.4:** `git show --stat 6c4dd4f`: `docs/specs/015-admin-catalog-and-jobs/plan.md | 5021 -----`, "1 file changed, 5021 deletions(-)". `git show --stat 0b16288`: `docs/specs/024-refresh-rate-limit-wait/plan.md | 104 -----`, "1 file changed, 104 deletions(-)". `git status --short` before each commit showed only that one `D` line.
+
+### Rulings (corrections to the draft)
+
+- Ruling: the pointers and index cells use the full 40-character sha, not a short one — a pointer is meant to resolve forever, and a short sha can become ambiguous as history grows — cost if wrong: longer cells, shortened in a later D4 commit.
+## Phase 7: Roadmap, ADR index and issues
+
+Commits: `60313cc9b185ef864512bd7b002c27ba083aa025` docs(roadmap): add spec 027 and its follow-up slices; `a9a949fb6726eeea556191c233c1f940ea9f8d87` docs(adr): expect ADR 0023 for YARD; `d5d733cb0fd9aeed2cc91b86385bd6b6ec1feb21` docs(027): link the spec's issue.
+
+- **Issues:** created by the controller with the maintainer's go-ahead (not by this phase's subagent). `gh issue view <n> --json number,title,milestone,labels,state`, one call each; every one is OPEN, on milestone "1.0 — First Major Release", with the single label `housekeeping`, and its title is the plan's:
+
+  | Placeholder | Number | Title |
+  |---|---|---|
+  | `<i027>` | #102 | Area docs hold the current architecture, starting with catalog operations |
+  | `<iB>` | #103 | Adopt YARD for Ruby documentation |
+  | `<iC1>` | #104 | Area doc: catalog core |
+  | `<iC2>` | #105 | Area doc: collection and lots |
+  | `<iC3>` | #106 | Area doc: tenancy and accounts |
+  | `<iC4>` | #107 | Area doc: scanner |
+  | `<iC5>` | #108 | Area doc: data portability |
+  | `<iC6>` | #109 | Area doc: release and deploy |
+
+- **Drafts checked before editing:** the roadmap's `## Housekeeping lane` existed with `#86` as its last bullet (line 88), and its bullets have the form ``- [#N](https://github.com/plainprogrammer/Collector/issues/N): <text>.`` with optional bold **In progress:**/**Done …:** tails; `**Expected ADR:**` is the main line's existing form (items 6 and 10). The ADR README's Expected sentence existed verbatim (line 58). Spec 027's `**Issue:** none yet; opened with the pull request (FR-9)` existed verbatim (line 8). All three drafts fitted and were applied unchanged, with the numbers above.
+- **AC-6.1:** `docs/roadmap.md` lines 89–96, in the housekeeping lane directly after `#86`, are eight lines: #102 (this spec, **In progress:** linking spec 027), #103 (slice B, **Expected ADR:** YARD (0023)), and #104–#109 (slices C1–C6: catalog core, collection and lots, tenancy and accounts, the scanner, data portability, release and deploy). Each links its issue; each issue is on the 1.0 milestone with `housekeeping` (table above). `git diff --stat 431808a HEAD -- docs/roadmap.md`: 8 insertions, no deletions, so the main line and the decision log are unchanged (FR-9 must-not); `grep -n "^## \|^### " docs/roadmap.md` lists the same 13 headings as before the edit, those after the housekeeping lane each moved down 8 lines.
+- **AC-6.2:** `docs/adr/README.md` line 58 now reads: "Named by the `[roadmap](../roadmap.md)` and written with their specs: the backup mechanism (item 6), lots in locations (item 10), and adopting YARD as 0023 (spec 027 slice B), which takes the next free number if another ADR merges first." The highest ADR in `docs/adr/` is 0020.
+- **Spec header:** `docs/specs/027-architecture-area-docs/spec.md` line 8 now reads `**Issue:** [#102](https://github.com/plainprogrammer/Collector/issues/102)`. The pull request is to close #102 (controller's note).
+- `git diff --stat 431808a HEAD`: `docs/adr/README.md` (1 line changed), `docs/roadmap.md` (+8), `spec.md` (1 line changed); nothing else.
+
+### Rulings
+
+- Ruling: `docs/specs/README.md` is left alone; no issue number goes into the specs index — neither Phase 4 nor Phase 7 of the plan puts issue numbers in it, and its columns are Spec, Status, Areas, Plan, Supersedes, Superseded by, with no issue column, so "the index as the plan says" means no change, and inventing a column would go beyond the plan — cost if wrong: one later edit adding the numbers in whatever form the maintainer names.
+## Phase 8: Integration verification
+
+Run by the controller, 2026-10-15.
+
+- **Main:** `git fetch -q origin`; `origin/main` is still `df61132`, already merged (merge commit `88ddf34`). Specs 025 and 026 have not merged, so the index needs no rows for them (AC-3.1 and AC-3.3 stand as Phase 4 recorded them).
+- **Pull request:** draft [#110](https://github.com/plainprogrammer/Collector/pull/110), opened with `gh pr create --draft`; its body says "Closes #102." The area doc's Distillation log row now links it (commit `851bad7`).
+- **Application untouched:** `git diff --stat df61132 -- app lib config bin db spec script` prints nothing.
+- **Trailers:** `git log --format='%h %(trailers:key=Co-Authored-By,valueonly)' df61132..HEAD`: every commit carries `Claude Opus 5.5 <noreply@anthropic.com>` except the merge commit `88ddf34`, which has none.
+- **Links (NFR Reliability):** every relative Markdown link outside fenced code in the 21 files `git diff --name-only df61132` lists (the two deleted plans aside) was resolved against the head, file and `#anchor`, by a scratch script: 187 links, 8 flagged. All 8 are templates or quoted cell forms, not links a reader follows. Four are in code spans in `.claude/skills/distill-feature/SKILL.md` (lines 17 and 66: `../architecture/<doc>.md` and the frozen line's form); one is `spec.md` line 96's template `[`<area doc>`](…)`; one is a `[…]` placeholder in this file. Two quotes in this file (AC-3.4 and AC-6.2 above) rendered as links that resolve from the quoted file but not from here; they are now in code spans. Every other link resolves.
+- **`bin/ci`** at `851bad7` (2026-10-15): "1507 examples, 0 failures, 1 pending" (the opt-in art agreement spec, `COLLECTOR_ART_AGREEMENT` unset), seed 36295; "✅ Continuous Integration passed in 4m16.83s", exit 0.
+
+### Acceptance criteria
+
+| AC | Phase | Evidence |
+|---|---|---|
+| AC-1.1 | 2 | Phase 2, "AC-1.1: headings": the eight D5 headings in order |
+| AC-1.2 | 2 | Phase 2, "AC-1.2": 35 statements of the base bullet, each located in the area doc; the `:solid_queue` helpers kept in CLAUDE.md |
+| AC-1.3 | 2 | Phase 2, "AC-1.3: constants": 24 rows, name, value and file:line match; the ten named constants present with reasons |
+| AC-1.4 | 2 | Phase 2, "AC-1.4": every item of specs 015, 024, 002 FR-3–FR-6 and 011 FR-2, stated, changed since, or not in this area |
+| AC-1.5 | 2, 8 | Phase 2, "AC-1.5"; `../specs/README.md`, then missing, exists since Phase 4 |
+| AC-1.6 | 2 | Phase 2, "AC-1.6": 45 hits read, none in a statement about `Catalog::` code |
+| AC-1.7 | 0, 2 | Baseline (#41, #77, #86); Phase 2, "AC-1.7": each a known limit with its link |
+| AC-2.1 | 3 | Phase 3, AC-2.1: 54 words, the link, the tag and helpers kept |
+| AC-2.2 | 3 | Phase 3, AC-2.2 |
+| AC-2.3 | 3 | Phase 3, AC-2.3: two hunks only |
+| AC-3.1 | 4, 8 | Phase 4, AC-3.1: 25 folders, 25 rows; unchanged at Phase 8 (025, 026 unmerged) |
+| AC-3.2 | 4 | Phase 4, AC-3.2 |
+| AC-3.3 | 4 | Phase 4, "AC-3.3: pairs" |
+| AC-3.4 | 4 | Phase 4, AC-3.4 |
+| AC-3.5 | 4 | Phase 4, AC-3.5 |
+| AC-3.6 | 4, 6 | Phase 4, AC-3.6; Phase 6 left 027's row as "Approved", "retirement owed" |
+| AC-4.1 | 1 | Phase 1, AC-4.1 |
+| AC-4.2 | 1 | Phase 1, AC-4.2 |
+| AC-4.3 | 1 | Phase 1, AC-4.3 |
+| AC-4.4 | 5 | Phase 5, AC-4.4 |
+| AC-4.5 | — | Withdrawn in spec v1.3.0 (ruling P1); nothing to verify |
+| AC-4.6 | 1 | Phase 1, AC-4.6 |
+| AC-4.7 | 5 | Phase 5, AC-4.7: the session-end line; `git diff df61132 -- .claude/integrations.md` empty |
+| AC-4.8 | 1 | Phase 1, AC-4.8 |
+| AC-5.1 | 1 | Phase 1, AC-5.1 |
+| AC-5.2 | 6 | Phase 6, AC-5.2: `cmp` silent for both plans |
+| AC-5.3 | 6 | Phase 6, AC-5.3: no own-plan link left |
+| AC-5.4 | 6 | Phase 6, AC-5.4: one file deleted per commit |
+| AC-6.1 | 7 | Phase 7, AC-6.1: #102–#109 on the 1.0 milestone with `housekeeping` |
+| AC-6.2 | 7 | Phase 7, AC-6.2 |
+
+NFR Performance: CLAUDE.md 2,312 → 1,661 words (Phase 3). NFR Security: no step read a forbidden path; every `git grep` ended with `':!.kamal/secrets'`. NFR Compatibility: the area docs and both READMEs have no front matter.
+
+### Rulings (Phase 8)
+
+- Ruling: no issue opened for the `poll` controller's skipping while the tab is hidden, Turbo is busy or a menu is open, which the area doc marks "no spec source" — the Error Scenario that calls for an issue covers code that contradicts every source, and this contradicts none — cost if wrong: one issue opened later. **Overruled by the maintainer (2026-10-15):** the issue is [#111](https://github.com/plainprogrammer/Collector/issues/111); see Implementation review.
+- Ruling: #41 kept among the open issues (Phase 0) — AC-1.7 selects every issue whose body names the art index, and #41's does — cost if wrong: one bullet in the area doc's limits.
+- Ruling (after the implementation review): `.claude/skills/distill-feature/SKILL.md`'s before-merge step 5 now leaves a spec's Plan as "none" when no plan was written, instead of always setting "retirement owed" — FR-3's plan words keep "none" for a spec with no plan, and the skill's own state 1 already assumed it — cost if wrong: one clause.
+
+## Implementation review
+
+SPEC-ALIGNED
+
+Read-only review (`sdd-superpowers:sdd-review` Mode B, Opus subagent, 2026-10-15) at `851bad7` plus this file's Phase 8 section. It checked every criterion itself at the head: ✓ for AC-1.1 to AC-6.2, with AC-4.5 withdrawn. It also checked D4 (the diffs of the shipped specs), FR-6's must-not, the untouched application and the links.
+
+Findings, none blocking:
+
+1. `bin/ci`'s evidence was a forward reference. **Fixed:** recorded under Phase 8.
+2. AC-1.2 statement 34's reason said the test-setup fact was kept in the new bullet. CLAUDE.md keeps it in "Dev mirrors prod" (line 30), and the path `spec/support/solid_queue.rb` left with the bullet. **Fixed:** the row now says so. The optional addition of the path to the bullet was not made, so CLAUDE.md stays as Phase 3 verified it.
+
+Observations: the skill's Plan word for a spec with no plan (**fixed**, ruling above); the spec headers' pointer reads "**Plan:** retired in …" where the Glossary says "Plan retired in …", which is the same meaning; and one pointer commit (`366ba40`) serves both retirements, which the reviewer read as allowed by D7, since it names D4.
+
+**Code with no spec source:** the review confirmed the one behaviour Phase 2 found with no source: the `poll` controller pauses while the tab is hidden, while Turbo is busy, and while a menu is open (`app/javascript/controllers/poll_controller.js:6`, `:19-20`; tested by `spec/system/admin_jobs_spec.rb:96`, which cites spec 015 FR-4, though FR-4 doesn't state it). The maintainer ruled that an issue be opened (2026-10-15): [#111](https://github.com/plainprogrammer/Collector/issues/111) says what the controller does, why no spec covers it, and what needs deciding. The area doc states the behaviour, links #111 from Polling, and lists #111 under "Accepted limits and open issues" and in Sources. #111 names the admin pages, so AC-1.7's selection at the head is now #41, #77, #86 and #111.
+
+## distill-feature
+
+Run on this branch on 2026-10-15, after the integration verification. The after-merge state checked the pointers: `git cat-file -e` succeeded for both retirement shas in the index, `6c4dd4fb5c247d6aeb5739e3ae9e096345309d0e` (015) and `0b16288741818b786e069d2a0e1617f26945dd98` (024). Spec 027 is the only row whose Plan reads "retirement owed", and its pull request (#110) hasn't merged, so there was nothing to retire. In the before-merge state, 027's row already reads "retirement owed", which counts as distilled (it has nothing to distil, AC-3.6). Result: "distill-feature: nothing to do" (D6 state 3). After #110 merges, a later session's after-merge state retires 027's plan and sets its row to Shipped (ruling P2).

@@ -15,9 +15,21 @@ Rails.application.routes.draw do
   resource :collection, only: :show do
     scope module: :collections do
       resource :selection, only: %i[create update]
+      resource :export, only: :show, format: false
+      resource :import_preview, only: %i[new create]
       resource :condition_change, only: %i[new create]
       resources :bulk_removals, only: %i[new create] do
         resource :undo, only: :create, module: :bulk_removals
+      end
+
+      # Number entry (spec 026): add cards from a set by collector number.
+      resource :number_entry, only: :show do
+        scope module: :number_entries do
+          resources :lines, only: :create do
+            resource :undo, only: :create, module: :lines
+          end
+          resource :ending, only: :create
+        end
       end
     end
   end
@@ -65,11 +77,26 @@ Rails.application.routes.draw do
   # The self-hosted OCR engine for the card scanner (spec 007, ADR 0001).
   get "ocr/:version/*path", to: "ocr_assets#show", as: :ocr_asset, format: false, constraints: { version: /v\d+\.\d+\.\d+/ }
 
+  # The art index for the card scanner's art matching (spec 011 Story 4): global catalog data, public and immutable.
+  get "scanner/art/:name", to: "scanner/art_indexes#show", as: :scanner_art_index, format: false,
+    constraints: { name: /art-index-[a-z0-9-]+\.bin\.gz/ }
+
   namespace :admin do
     resources :users, except: :show do
       resource :deletion, only: :new, module: :users
     end
     resource :sign_up_setting, only: :update
+
+    # Catalog operations and background jobs (spec 015).
+    resource :catalog, only: :show do
+      resources :operation_starts, only: :create, module: :catalogs
+    end
+    resources :jobs, only: %i[index show] do
+      scope module: :jobs do
+        resource :retry, only: :create
+        resource :discard, only: %i[new create]
+      end
+    end
   end
 
   # Defines the root path route ("/")
