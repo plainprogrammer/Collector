@@ -1,0 +1,371 @@
+require "rails_helper"
+
+# Spec 028: applying the account's stored upload, all or nothing.
+RSpec.describe CollectionImport::Apply, type: :model do
+  let(:user) { create(:user, name: "Grace", email_address: "grace@example.test") }
+  let(:account) { user.account }
+  let(:a) { import_printing }
+  let(:b) { import_printing }
+  let(:c) { import_printing }
+  let(:d) { import_printing }
+  let(:e) { import_printing }
+  let(:service) { ActiveStorage::Blob.service }
+
+  def preview!(lots, **fields) = store_import!(account:, data: import_file(user, lots, **fields))
+
+  def apply(upload = account.reload.import_upload, confirmed: true, fingerprint: upload&.fingerprint, for_account: account)
+    described_class.new(account: for_account.reload, fingerprint:, confirmed:).call
+  end
+
+  def lots_state = account.lots.order(:id).map(&:attributes)
+
+  # Every table's rows, except the upload's own (a refusal may keep or remove it).
+  def snapshot
+    connection = ActiveRecord::Base.connection
+    skipped = %w[schema_migrations ar_internal_metadata active_storage_blobs active_storage_attachments import_uploads]
+    (connection.tables - skipped).sort.to_h do |table|
+      [ table, connection.select_rows("SELECT * FROM #{connection.quote_table_name(table)} ORDER BY 1") ]
+    end
+  end
+
+  def working_state_for(lot)
+    NumberEntry.create!(account:).lines.create!(account:, entry: lot.entry, lot:, quantity: 1, finish: nil, line_key: SecureRandom.hex(16))
+    Scanner::Sitting.create!(account:).entries.create!(account:, printing: lot.entry, lot:, finish: nil, reading_key: SecureRandom.hex(16))
+    session = user.sessions.create!
+    BulkSelection.for(session).marks.create!(account:, lot:)
+    BulkRemoval.create!(session:, account:, copies: 1, lots_data: [ { "catalog_entry_id" => lot.catalog_entry_id, "quantity" => 1 } ])
+  end
+
+  describe "replacing the collection (AC-1.2 to AC-1.4, FR-9)" do
+    it "makes the collection hold exactly the file's lots, keeping the changed lot's id", :aggregate_failures do
+      held_a = held_lot(account, a, quantity: 3)
+      held_b = held_lot(account, b, quantity: 2)
+      held_c = held_lot(account, c, quantity: 4)
+      held_lot(account, d, quantity: 7)
+      preview!([ import_row(a, quantity: 3), import_row(b, quantity: 5, changed_at: "2026-10-02T10:00:00Z"), import_row(c, quantity: 4),
+                 import_row(e, quantity: 6, finish: "foil", condition: "near_mint", price_paid: "12.50",
+                   added_at: "2026-09-01T00:00:00Z", changed_at: "2026-09-02T00:00:00Z") ])
+      untouched = [ held_a, held_c ].map { |lot| lot.reload.attributes }
+
+      expect(apply.outcome).to eq(:applied)
+
+      expect(account.lots.count).to eq(4)
+      expect([ held_a, held_c ].map { |lot| lot.reload.attributes }).to eq(untouched)
+      expect(held_b.reload).to have_attributes(quantity: 5, updated_at: Time.iso8601("2026-10-02T10:00:00Z"))
+      expect(account.lots.find_by!(catalog_entry_id: e.id)).to have_attributes(quantity: 6, finish: "foil", condition: "near_mint",
+        price_paid_cents: 1250, created_at: Time.iso8601("2026-09-01T00:00:00Z"), updated_at: Time.iso8601("2026-09-02T00:00:00Z"))
+      expect(account.lots.where(catalog_entry_id: d.id)).to be_empty
+    end
+
+    it "fills an empty account (AC-1.3)", :aggregate_failures do
+      preview!([ import_row(a), import_row(b, finish: "foil"), import_row(c, quantity: 9) ])
+
+      expect(apply.outcome).to eq(:applied)
+      expect(account.lots.count).to eq(3)
+    end
+
+    it "empties an account for a file with no lots (AC-1.4)", :aggregate_failures do
+      held_lot(account, a, quantity: 1)
+      held_lot(account, b, quantity: 2)
+      preview!([])
+
+      expect(apply.outcome).to eq(:applied)
+      expect(account.lots.count).to eq(0)
+    end
+  end
+
+  describe "afterwards (AC-1.5, AC-1.7, AC-1.9)" do
+    it "previews as nothing to change, and no lot is written again", :aggregate_failures do
+      held_lot(account, d, quantity: 7)
+      preview!([ import_row(a, quantity: 2), import_row(b) ])
+      apply
+      state = lots_state
+
+      again = CollectionImport.new(account:, file: import_io(import_file(user, [ import_row(a, quantity: 2), import_row(b) ])))
+
+      expect(again.plan.nothing_to_change?).to be(true)
+      expect(lots_state).to eq(state)
+    end
+
+    it "does not write a lot with fractional times that a row matches, while writing the others (AC-1.7)", :aggregate_failures do
+      fractional = held_lot(account, a, quantity: 3)
+      fractional.update_columns(created_at: Time.iso8601("2026-10-01T10:00:00Z") + 0.25, updated_at: Time.iso8601("2026-10-01T10:00:00Z") + 0.75)
+      before = fractional.reload.attributes
+      preview!([ import_row(a, quantity: 3), import_row(b) ])
+
+      apply
+
+      expect(fractional.reload.attributes).to eq(before)
+      expect(account.lots.count).to eq(2)
+    end
+
+    it "removes the upload, its blob and its file, and queues no job; a second apply finds nothing (AC-1.9)", :aggregate_failures do
+      upload = preview!([ import_row(a) ])
+      key = upload.file.blob.key
+      first = upload.fingerprint
+
+      expect { apply(upload) }.not_to have_enqueued_job
+      expect([ ImportUpload.count, service.exist?(key) ]).to eq([ 0, false ])
+      expect(apply(nil, fingerprint: first).outcome).to eq(:missing)
+    end
+
+    it "still applies when the file can't be deleted afterwards, leaving a marked orphan for the sweep", :aggregate_failures do
+      upload = preview!([ import_row(a) ])
+      blob = upload.file.blob
+      allow(service).to receive(:delete).and_raise(Errno::EIO)
+
+      expect(apply(upload).outcome).to eq(:applied)
+      expect(account.lots.count).to eq(1)
+      expect(ActiveStorage::Blob.find(blob.id).attachments).to be_empty
+    end
+  end
+
+  describe "the profile (AC-1.6)" do
+    def profile(view) = { "name" => "Other Name", "email_address" => "other@example.test", "collection_view" => view }
+
+    it "sets a known view with a lot change, and never the name or email address", :aggregate_failures do
+      preview!([ import_row(a) ], profile: profile("table"))
+
+      expect(apply.outcome).to eq(:applied)
+      expect(user.reload).to have_attributes(collection_view: "table", name: "Grace", email_address: "grace@example.test")
+    end
+
+    it "leaves the view alone for one the instance doesn't know, and for the collector's own", :aggregate_failures do
+      preview!([ import_row(a) ], profile: profile("gallery"))
+      expect(apply.outcome).to eq(:applied)
+      expect(user.reload.collection_view).to eq("grid")
+
+      other = create(:user)
+      store_import!(account: other.account, data: import_file(other, [ import_row(b) ], profile: profile("grid")))
+      expect(apply(other.account.import_upload, for_account: other.account).outcome).to eq(:applied)
+      expect(other.reload.collection_view).to eq("grid")
+    end
+  end
+
+  describe "working state (decision 7, AC-1.8)" do
+    it "clears the lists that point at lots when the apply writes", :aggregate_failures do
+      removal = working_state_for(held_lot(account, d, quantity: 3))
+      preview!([ import_row(a) ])
+
+      apply
+
+      expect(NumberEntry.count + Scanner::Sitting.count + BulkSelection.count + BulkSelection::Mark.count).to eq(0)
+      expect(NumberEntry::Line.count + Scanner::SittingEntry.count).to eq(0)
+      expect(removal.reload).not_to be_undoable
+    end
+
+    it "clears nothing when the apply is refused as stale, unconfirmed or nothing to change", :aggregate_failures do
+      lot = held_lot(account, a, quantity: 3)
+      working_state_for(held_lot(account, d, quantity: 1))
+      stale = preview!([ import_row(a, quantity: 4) ])
+      lot.update_columns(quantity: 9)
+      before = snapshot
+      expect(apply(stale).outcome).to eq(:stale)
+      expect(snapshot).to eq(before)
+
+      unconfirmed = preview!([ import_row(a, quantity: 9) ]) # removes lot d, so needs the confirmation
+      expect(apply(unconfirmed, confirmed: false).outcome).to eq(:unconfirmed)
+      expect(snapshot).to eq(before)
+
+      empty = preview!([ import_row(a, quantity: 2) ])
+      lot.update_columns(quantity: 2)
+      account.lots.where.not(id: lot.id).delete_all
+      expect(apply(empty).outcome).to eq(:nothing_to_change)
+      expect(NumberEntry.count).to eq(1)
+    end
+  end
+
+  describe "all or nothing (AC-2.1, AC-2.2)" do
+    it "rolls everything back when a write fails after the lots were written, keeping the upload", :aggregate_failures do
+      held_lot(account, d, quantity: 3)
+      held_lot(account, a, quantity: 1)
+      upload = preview!([ import_row(a, quantity: 2), import_row(b) ])
+      before = snapshot
+      allow(CollectionImport::WorkingState).to receive(:clear!).and_raise(RuntimeError, "disk full")
+
+      expect { apply(upload) }.to raise_error(RuntimeError, "disk full")
+      expect(snapshot).to eq(before)
+      expect(account.reload.import_upload).to eq(upload)
+      expect(upload.read).to be_present
+
+      allow(CollectionImport::WorkingState).to receive(:clear!).and_call_original
+      expect(apply(upload).outcome).to eq(:applied)
+    end
+
+    it "refuses a second apply of a file already applied as nothing to change, changing nothing", :aggregate_failures do
+      upload = preview!([ import_row(a, quantity: 2) ])
+      first = upload.fingerprint
+      apply(upload)
+      state = lots_state
+      store_import!(account:, data: import_file(user, [ import_row(a, quantity: 2) ]), forced: true).update_columns(fingerprint: first) # kept by the spec
+      before = snapshot
+
+      result = apply(account.reload.import_upload, fingerprint: first)
+
+      expect(result.outcome).to eq(:nothing_to_change)
+      expect(lots_state).to eq(state)
+      expect(snapshot).to eq(before)
+    end
+  end
+
+  describe "a lost race (AC-2.3, AC-2.5, AC-5.6)" do
+    def remove_after_reading(upload)
+      allow(CollectionImport).to receive(:new).and_wrap_original do |original, **args|
+        original.call(**args).tap { yield upload }
+      end
+    end
+
+    it "answers :missing when the upload was removed after it was read, writing nothing", :aggregate_failures do
+      held_lot(account, d, quantity: 3)
+      upload = preview!([ import_row(a) ])
+      before = lots_state
+      remove_after_reading(upload) { |stored| ImportUpload.where(id: stored.id).delete_all }
+
+      expect(apply(upload).outcome).to eq(:missing)
+      expect(lots_state).to eq(before)
+    end
+
+    it "judges expiry inside the transaction, whatever the sweep's timing (AC-5.6)", :aggregate_failures do
+      upload = preview!([ import_row(a) ])
+      remove_after_reading(upload) { |stored| stored.update_columns(expires_at: 1.minute.ago) }
+
+      expect(apply(upload).outcome).to eq(:expired)
+      expect(account.lots).to be_empty
+    end
+
+    it "answers :unreadable for a stored file that is gone", :aggregate_failures do
+      upload = preview!([ import_row(a) ])
+      service.delete(upload.file.blob.key)
+
+      expect(apply(upload).outcome).to eq(:unreadable)
+      expect(account.lots).to be_empty
+    end
+  end
+
+  describe "valid lots (AC-2.4, FR-3)" do
+    it "writes lots that Lot would accept, with the key Lot gives and the identity of their row", :aggregate_failures do
+      rows = [ import_row(a, quantity: 9_999, finish: "foil", condition: "near_mint", price_paid: "0.05"), import_row(b, finish: nil) ]
+      preview!(rows)
+      apply
+
+      account.lots.each do |lot|
+        expect(lot).to be_valid
+        expect(lot.lot_key).to eq(Lot.key_for(lot.finish, lot.condition, lot.price_paid_cents))
+      end
+      identities = CollectionImport.new(account:, file: import_io(import_file(user, rows))).rows.map(&:identity)
+      held = CollectionImport.new(account:, file: import_io(import_file(user, rows))).send(:held_lots).map(&:identity)
+      expect(held).to match_array(identities)
+    end
+  end
+
+  describe "bounded statements (FR-4)" do
+    include QueryCounting # spec/support/query_counting.rb, which includes itself for request specs only
+
+    def statements_for(size)
+      other = create(:user)
+      upload = store_import!(account: other.account, data: import_file(other, Array.new(size) { import_row(import_printing) }))
+      count_queries { apply(upload, for_account: other.account) }
+    end
+
+    it "runs the same statements within one batch, and the same number more for each batch past it", :aggregate_failures do
+      stub_const("CollectionImport::BATCH_SIZE", 10)
+      one, two, three = [ 9, 15, 25 ].map { |size| statements_for(size) } # one, two and three batches
+
+      expect(statements_for(2)).to eq(one)
+      expect(two).to be > one
+      expect(three - two).to eq(two - one) # linear in the number of batches, never in the number of rows
+    end
+  end
+
+  describe "what was previewed is what is applied (AC-3.1 to AC-3.6)" do
+    it "refuses a changed collection as stale, with the new fingerprint stored and returned (AC-3.1)", :aggregate_failures do
+      lot = held_lot(account, a, quantity: 2)
+      upload = preview!([ import_row(a, quantity: 5) ])
+      old = upload.fingerprint
+      lot.update!(quantity: 3)
+      before = lots_state
+
+      result = apply(upload)
+
+      expect(result.outcome).to eq(:stale)
+      expect(lots_state).to eq(before)
+      expect(result.fingerprint).not_to eq(old)
+      expect(result.upload.fingerprint).to eq(result.fingerprint)
+      expect(upload.reload.fingerprint).to eq(result.fingerprint)
+    end
+
+    it "refuses a form from a replaced upload as stale (AC-3.2)", :aggregate_failures do
+      old = preview!([ import_row(a) ]).fingerprint
+      preview!([ import_row(b) ])
+
+      result = apply(account.reload.import_upload, fingerprint: old)
+
+      expect(result.outcome).to eq(:stale)
+      expect(account.lots).to be_empty
+    end
+
+    it "says missing or expired when there is no upload or it has expired (AC-3.3)", :aggregate_failures do
+      expect(apply(nil, fingerprint: "x").outcome).to eq(:missing)
+      upload = preview!([ import_row(a) ])
+      travel_to(ImportUpload::EXPIRES_IN.from_now + 1.minute) { expect(apply(upload).outcome).to eq(:expired) }
+    end
+
+    it "refuses a stored file the catalog no longer resolves and removes it (AC-3.4)", :aggregate_failures do
+      upload = preview!([ import_row(a) ])
+      Catalog::Entry.find(a.id).update_columns(external_key: "moved")
+      key = upload.file.blob.key
+
+      expect(apply(upload).outcome).to eq(:refused)
+      expect([ ImportUpload.count, service.exist?(key) ]).to eq([ 0, false ])
+    end
+
+    it "needs the removal confirmed, and only when lots are removed (AC-3.5)", :aggregate_failures do
+      held_lot(account, d, quantity: 1)
+      upload = preview!([ import_row(a) ])
+      expect(apply(upload, confirmed: false).outcome).to eq(:unconfirmed)
+      expect(account.lots.count).to eq(1)
+      expect(account.reload.import_upload).to eq(upload)
+      expect(apply(upload, confirmed: true).outcome).to eq(:applied)
+
+      other = create(:user)
+      store_import!(account: other.account, data: import_file(other, [ import_row(b) ]))
+      stored = other.account.import_upload
+      expect(apply(stored, confirmed: false, for_account: other.account).outcome).to eq(:applied)
+    end
+
+    it "gives decision 13's response for combined causes (AC-3.6)", :aggregate_failures do
+      lot = held_lot(account, d, quantity: 1)
+      upload = preview!([ import_row(a) ])
+      lot.update_columns(quantity: 2)
+      expect(apply(upload, confirmed: false).outcome).to eq(:stale) # stale and unconfirmed: the 409
+
+      other = create(:user)
+      held = held_lot(other.account, a, quantity: 1)
+      stored = store_import!(account: other.account, data: import_file(other, [ import_row(a, quantity: 2) ]))
+      held.update_columns(quantity: 2) # the file's change was made some other way
+      expect(apply(stored, for_account: other.account).outcome).to eq(:nothing_to_change)
+
+      refused = create(:user)
+      kept = store_import!(account: refused.account, data: import_file(refused, [ import_row(c) ]))
+      Catalog::Entry.find(c.id).update_columns(external_key: "gone")
+      held_lot(refused.account, import_printing, quantity: 1) # also makes the plan stale
+      expect(apply(kept, for_account: refused.account).outcome).to eq(:refused)
+    end
+  end
+
+  describe "only this account (AC-4.1)" do
+    it "leaves every other account's rows as they were", :aggregate_failures do
+      stranger = create(:user)
+      held_lot(stranger.account, a, quantity: 5)
+      store_import!(account: stranger.account, data: import_file(stranger, [ import_row(b) ]))
+      working_state_for(held_lot(account, c, quantity: 1))
+      upload = preview!([ import_row(a, quantity: 9) ])
+      theirs = [ stranger.account.lots.map(&:attributes), stranger.account.import_upload.attributes, stranger.attributes, stranger.sessions.map(&:attributes) ]
+
+      apply(upload)
+
+      expect([ stranger.account.lots.reload.map(&:attributes), stranger.account.reload.import_upload.attributes, stranger.reload.attributes,
+               stranger.sessions.reload.map(&:attributes) ]).to eq(theirs)
+    end
+  end
+end
