@@ -1,6 +1,6 @@
 # Contracts: Apply an Import
 
-**Spec:** [spec.md](spec.md) v1.3.1 (decisions 11, 13) · **Plan:** [plan.md](plan.md)
+**Spec:** [spec.md](spec.md) v1.3.2 (decisions 11, 13) · **Plan:** [plan.md](plan.md)
 
 ## POST /collection/import_preview (spec 025; changed by this spec)
 
@@ -29,13 +29,13 @@ Form fields `fingerprint` (string), `confirm_removal` ("1" or absent). CSRF toke
 | 422 | no upload; expired; stored file missing or unreadable | `import_previews/new` with "Preview the file again." or "Your preview has expired. Choose the file again." |
 | 422 | stored file now refused or with problem rows | `new` (refused) or `show` (problem rows) with the preview's reasons; upload removed |
 | 422 | plan has nothing to change | `show`, "This file has nothing to change"; upload removed |
-| 409 | form, stored and recomputed fingerprints not all equal | `show` for the stored file against the collection now, new fingerprint stored and in the form, "The collection or the file changed since you looked." |
+| 409 | form, stored and recomputed fingerprints not all equal | `show` for the stored file against the collection now; the **new** fingerprint is stored with the upload and is the one in the form; "The collection or the file changed since you looked." |
 | 422 | plan removes lots and `confirm_removal` is not "1" | `show`, "Confirm the removal to apply this file" |
 | 500 | an exception after writes began | `imports/failed`: "Nothing was changed. You can try again."; upload stays |
 | 302 to sign in | signed out | |
 
-Order of checks: decision 13. Responses carry `Cache-Control: no-store`.
+Order of checks: decision 13. Every response, the 303 included, carries `Cache-Control: no-store`. A failure to delete the stored file after the commit never changes the response (the 303 stays a 303).
 
 ## Active Storage routes (gated app-wide)
 
-`/rails/active_storage/...` (blobs, representations, disk): signed out → 302 to sign in; signed in, blob not owned by `Current.account` → 404; owner → as Active Storage. Direct uploads (`POST /rails/active_storage/direct_uploads`, disk `PUT`): sign-in only. **Spec requirement:** decision 8; AC-1.12.
+`/rails/active_storage/...` (blobs, representations, disk `GET`): signed out → 302 to sign in; signed in, blob not an original blob held by a record of `Current.account` → 404 (variant records and preview images are not authorised yet); owner → as Active Storage. Direct uploads (`POST /rails/active_storage/direct_uploads`) and the disk service's upload (`PUT /rails/active_storage/disk/:token`): 404, signed in or not, until a feature needs them. **Spec requirement:** decision 8; AC-1.12.

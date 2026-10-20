@@ -1,6 +1,6 @@
 # Data Model: Apply an Import
 
-**Spec:** [spec.md](spec.md) v1.3.1 · **Plan:** [plan.md](plan.md)
+**Spec:** [spec.md](spec.md) v1.3.2 · **Plan:** [plan.md](plan.md)
 
 ## Entities
 
@@ -17,7 +17,7 @@ One account's previewed export file, kept so that it can be applied (decisions 1
 | `created_at`, `updated_at` | datetime | no | |
 
 **Indexes:** unique `[account_id]` (at most one per account); `[expires_at]` (the sweep).
-**Relationships:** `belongs_to :account`; `has_one_attached :file, dependent: :purge` (the blob: `application/json`, created analyzed, with metadata marker `import_upload`); `Account has_one :import_upload, dependent: :destroy`.
+**Relationships:** `belongs_to :account`; `has_one_attached :file, dependent: false` (the blob: `application/json`, created analyzed, with metadata marker `import_upload`); every removal is `ImportUpload#remove!`, which destroys the row and attachment and, after the commit, releases the blob (file first, then row) inside `begin/rescue`; `Account has_one :import_upload, dependent: :destroy`.
 **Spec requirement:** decisions 1, 2, 8, 9; FR-10; AC-4.4, AC-5.1, AC-5.2.
 
 ### Active Storage tables (new, the framework's install migration)
