@@ -1,6 +1,7 @@
 # Implementation Plan: Apply an Import
 
 **Spec:** docs/specs/028-apply-import/spec.md (v1.3.3, Approved)
+**Status:** Approved by the maintainer (2026-10-20); approving it accepts ADR 0022
 **Decisions:** docs/adr/0022-stored-import-upload-retention.md (drafted with this plan, revised by [plan-review.md](plan-review.md)); ADR 0013, 0016, 0017, 0020, 0021 apply
 **Created:** 2026-10-20 · **Revised:** 2026-10-20 against three independent reviews (spec 1.3.3); see [plan-review.md](plan-review.md)
 **Supporting:** [data-model.md](data-model.md), [contracts/api.md](contracts/api.md)
