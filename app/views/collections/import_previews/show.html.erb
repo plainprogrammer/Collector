@@ -9,9 +9,12 @@
   </div>
   <div class="c-import">
     <% if @import.applicable? %>
-      <p class="c-status__message">This file can be applied. Previewing changed nothing.</p>
+      <p class="c-status__message">This file can be applied. Previewing changed nothing in your collection.</p>
     <% else %>
-      <p class="c-status__message c-status__message--alert">This file can't be applied: <%= pluralize(number_with_delimiter(@import.problem_rows.size), "row") %> <%= @import.problem_rows.one? ? "has" : "have" %> problems. Previewing changed nothing.</p>
+      <p class="c-status__message c-status__message--alert">This file can't be applied: <%= pluralize(number_with_delimiter(@import.problem_rows.size), "row") %> <%= @import.problem_rows.one? ? "has" : "have" %> problems. Previewing changed nothing in your collection.</p>
+    <% end %>
+    <% if @import.applicable? && @import.plan.nothing_to_change? %>
+      <p class="c-status__message">This file has nothing to change: your collection already holds what it describes.</p>
     <% end %>
     <%= render "catalog/not_loaded", titles: @unloaded_catalogs, named: @catalogs_named %>
     <dl class="c-stats">
@@ -21,6 +24,7 @@
       <div class="c-stat"><dt>Lots removed</dt><dd><%= number_with_delimiter(@import.removed.lots) %></dd><small><%= import_copies(@import.removed.copies) %></small></div>
     </dl>
     <p class="c-import__note" id="held_lots">Held by rows with problems: <%= pluralize(number_with_delimiter(@import.held.lots), "lot") %>, <%= import_copies(@import.held.copies) %>.</p>
+    <%= render "collections/import_previews/apply", import: @import, upload: @upload, store_failed: @store_failed if @import.applicable? && !@import.plan.nothing_to_change? %>
     <% if @import.view_change || @import.other_name || @import.other_email_address %>
       <section>
         <div class="c-section__head"><h2 class="c-section__title">Profile</h2></div>

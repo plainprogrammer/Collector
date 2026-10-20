@@ -1,0 +1,18 @@
+<% plan = import.plan %>
+<% if upload %>
+  <%= form_with url: collection_import_path, class: "c-form", data: { turbo: false } do |form| %>
+    <%= hidden_field_tag :fingerprint, upload.fingerprint %>
+    <% if plan.removes? %>
+      <p class="c-import__note">Applying removes <%= pluralize(number_with_delimiter(plan.removed_lots.size), "lot") %> (<%= pluralize(number_with_delimiter(import.removed.copies), "copy") %>) and can't be undone. <%= link_to "Download your current collection first", collection_export_path %>.</p>
+      <div class="c-field">
+        <label class="c-check"><%= check_box_tag :confirm_removal, "1", false, required: true %> I understand this removes <%= pluralize(number_with_delimiter(plan.removed_lots.size), "lot") %></label>
+      </div>
+    <% else %>
+      <p class="c-import__note">Applying can't be undone. <%= link_to "Download your current collection first", collection_export_path %>.</p>
+    <% end %>
+    <p class="c-import__note">This preview is kept for an hour.</p>
+    <div class="c-form__actions"><%= form.submit "Apply import", class: "c-btn c-btn--primary" %></div>
+  <% end %>
+<% elsif store_failed %>
+  <p class="c-status__message c-status__message--alert">This file couldn't be kept, so it can't be applied. Choose it again.</p>
+<% end %>
