@@ -1,7 +1,7 @@
 # Feature 028: Apply an Import
 
-**Status:** Draft
-**Version:** 1.1.1
+**Status:** Approved by the maintainer (2026-10-20), with rulings on decisions 1, 3, 6, 7, 9 and 10 and the error scenario for a failed store; decisions 2, 4, 5 and 8 confirmed
+**Version:** 1.2.0
 **Created:** 2026-10-20
 **Last Updated:** 2026-10-20
 **Branch:** `028-apply-import`
@@ -15,6 +15,7 @@
 | Version | Date | Change |
 |---------|------|--------|
 | 1.0.0 | 2026-10-20 | Written from issue #40, roadmap theme A item 5, spec 025 (the preview), the export format (spec 017, ADR 0020) and the export (spec 022) |
+| 1.2.0 | 2026-10-20 | Approved by the maintainer: decisions 6, 7, 9 and 10 and the error scenario "Storing the preview's file fails" ruled as recommended; decisions 2, 4, 5 and 8 confirmed. No open questions remain |
 | 1.1.1 | 2026-10-20 | Mode A review fixes (verdict in `review.md`): the form carries the fingerprint, so an apply from a page whose upload was replaced is refused (decision 2, AC-3.2); AC-3.3, AC-5.6 and the error rows made exact; the open marker removed |
 | 1.1.0 | 2026-10-20 | The maintainer ruled decisions 1 and 3 (through the coordinator): the previewed upload is stored briefly with Active Storage and applied with one click; applying runs in the request in one short write transaction. Added the stored upload (decisions 1, 8, 9), its retention and sweep (decision 9) and ADR 0013's owed validation (decision 8), the supersession of spec 025's "never stored" (decision 10), and the Coverage line |
 
@@ -53,7 +54,7 @@ This spec builds the second half of import. A signed-in collector who has previe
 
 ## Decisions
 
-Decisions 1 and 3 were ruled by the maintainer on 2026-10-20, through the coordinator. The others are proposed, with the recommendation written; decisions 2, 4 and 5 follow from spec 025 and issue #40.
+Decisions 1, 3, 6, 7, 9 and 10 were ruled by the maintainer on 2026-10-20, through the coordinator, 6, 7, 9 and 10 as recommended; decisions 2, 4, 5 and 8, which follow from spec 025, issue #40 and ADR 0013, were confirmed with them.
 
 ### 1. The previewed upload is stored briefly and applied with one click (ruled)
 
@@ -64,7 +65,7 @@ Spec 025 left open how the file reaches the apply step. The maintainer ruled: th
 - An account has at most one stored upload. A new preview that stores a file replaces the account's earlier one, which is removed. A preview that doesn't store one leaves the earlier one alone.
 - The alternative not chosen: ask the collector to choose the file again at the apply, with the fingerprint carried in the form. It stores nothing but costs a second file choice, and spec 025's preview is where the collector looked.
 
-### 2. What is applied is what was previewed: the fingerprint (proposed)
+### 2. What is applied is what was previewed: the fingerprint (confirmed)
 
 The stored upload carries the fingerprint of the plan the preview showed, and the apply form carries the same fingerprint in a hidden field. Applying recomputes the plan inside its write transaction (decision 3) and writes only when the form's fingerprint, the stored one and the recomputed one are all equal. Otherwise nothing is written: the collector is shown the preview of the stored file against the collection as it is now (with a new fingerprint, stored with the upload and put in the new form), and a line saying that the collection or the stored file changed since they looked. A request whose upload is missing, expired or already applied is treated as in AC-3.3.
 
@@ -80,11 +81,11 @@ The maintainer ruled: in the request, parse and resolve outside the transaction,
 - **Bar:** a 50,000-row file applies, the whole request, in under 30 seconds, of which the write transaction is under 10 seconds, with under 500 MB of RSS growth (spec 025 decisions 12 and 13), measured outside the suite and recorded in `verification.md` (AC-1.10). 30 seconds is also kamal-proxy's default response timeout, so the bar is a limit, not a goal.
 - **Writers are serialised.** SQLite's IMMEDIATE transactions allow one writer; another request writing to the account's lots while the apply's transaction runs waits (the busy timeout) and then proceeds against the applied collection.
 
-### 4. A file with problem rows can't be applied; held lots stay (from spec 025 decision 2)
+### 4. A file with problem rows can't be applied; held lots stay (from spec 025 decision 2; confirmed)
 
 Spec 025 decision 2 says a file with a problem row can't be applied. This spec makes that true of the apply: no upload is stored for such a file, no apply button is shown, and an apply whose stored file now has problem rows (the catalog changed in between) is refused (422) with the preview's reasons, nothing written. So the *held by a problem row* outcome exists only in a preview; it never reaches the apply, and a lot held by a problem row is never removed. The collector fixes the file, or the catalog (a refresh that loads the missing printings), and previews again.
 
-### 5. Replace, exactly (from spec 025 decision 1)
+### 5. Replace, exactly (from spec 025 decision 1; confirmed)
 
 Applying a file that can be applied, to the collection as the preview found it:
 
@@ -100,11 +101,11 @@ Afterwards the account's lots are in one-to-one correspondence with the file's r
 
 Applying replaces the collection and has no undo, so the page leads the collector to the safeguard the product already has. The page states in words how many lots and copies applying removes and links to "Export collection" ("Download your current collection first"). When the plan removes any lot, the apply button is replaced by a form with a checkbox, "I understand this removes N lots", which must be checked to apply; with nothing to remove there is no checkbox. The alternatives not chosen: a link with no checkbox; a forced export (a download can't be required).
 
-### 7. Working state that points at lots is cleared (proposed)
+### 7. Working state that points at lots is cleared (ruled)
 
 Four kinds of per-account working state refer to lots, and a replaced collection makes them wrong: an Undo on a number-entry line or a scanner sitting entry subtracts copies from a lot that now holds the file's quantity; a bulk removal's undo would bring back lots that clash with the imported ones; a bulk selection holds lot ids that may be deleted. Applying therefore, in the same transaction, ends every bulk removal's chance to undo, deletes the account's bulk selections, and clears the account's number-entry list and scanner sitting (the effect of "Done", specs 026 and 009), whatever the plan. Nothing the collector owns is lost: what those lists added is already in the lots. The alternative not chosen: leave them and let Undo fail where it must.
 
-### 8. The stored upload is validated and private (ADR 0013's owed validation; proposed)
+### 8. The stored upload is validated and private (ADR 0013's owed validation; confirmed)
 
 ADR 0013 and `.claude/rules/security.md` owe validation to the first Active Storage upload. For the stored upload:
 
@@ -114,9 +115,9 @@ ADR 0013 and `.claude/rules/security.md` owe validation to the first Active Stor
 - **Tenant-scoped, never served:** the stored upload belongs to its account and is reached only as `Current.account`'s. No page, response, header or link includes its URL, key or signed id, and the app's Active Storage routes can't be used to fetch it (AC-1.12). There is no permanent or public blob URL.
 - **Disk:** it is stored by the configured Active Storage service (the disk under `storage/` in every deployment, on the persistent volume).
 
-### 9. Retention, replacement and the sweep (proposed)
+### 9. Retention, replacement and the sweep (ruled)
 
-- **Expiry:** a stored upload expires 1 hour after it was stored (`ImportUpload::EXPIRES_IN`; the value is a recommendation for the maintainer's ruling). An expired one is never applied: the apply says the preview has expired and asks the collector to choose the file again.
+- **Expiry:** a stored upload expires 1 hour after it was stored (`ImportUpload::EXPIRES_IN`, ruled). An expired one is never applied: the apply says the preview has expired and asks the collector to choose the file again.
 - **Removed when:** applied (after the transaction commits), replaced by a newer preview, expired, or its account is deleted.
 - **The sweep:** a recurring job (`config/recurring.yml`, queue `default`, every 15 minutes) removes every expired stored upload with its file and any stored file whose upload record is gone. It is idempotent and takes no argument.
 - **A failed apply** (the transaction rolled back) leaves the stored upload until it expires, so the collector can try again without choosing the file again.
@@ -124,7 +125,7 @@ ADR 0013 and `.claude/rules/security.md` owe validation to the first Active Stor
 - **Coverage:** the stored upload's table has `account_id`, so the export format's Coverage table (a rule of the format, not a version change) gets a line for it: "Left out: transient working state; the file it holds is the collector's own export, already restored into the lots by applying it." `docs/export-format/README.md` changes only by that line; the version, the schema and the examples don't. The suite fails until it is there.
 - **Expected ADR:** upload retention (what is stored, how long, where, and the sweep). It is written with the plan, and takes the next free number on `origin/main`'s `docs/adr` when written.
 
-### 10. This supersedes spec 025's "never stored" (proposed)
+### 10. This supersedes spec 025's "never stored" (ruled)
 
 Spec 025 decision 6 says the file is "read in the request and never stored", its goals say "Nothing is written: no lot, user, account or other row, no stored file, no job", AC-1.8 checks it, FR-6 says previewing creates, changes and deletes no row and writes no file, and its security and cost notes repeat it. After this spec the preview of a file that can be applied stores the upload (decision 1), and only that. Spec 025 isn't edited; this spec records the supersession here and in `docs/specs/README.md`, and the preview's specs are updated by this spec's plan:
 
@@ -269,7 +270,7 @@ Spec 025 decision 6 says the file is "read in the request and never stored", its
 | No upload, expired, or already applied | 422, the upload page, nothing written (AC-1.9, AC-3.3, AC-5.6) |
 | Removal not confirmed | 422, nothing written, the upload stays (AC-3.5) |
 | A write fails (constraint, disk, busy timeout past its wait) | The transaction rolls back; an error page says nothing was changed and the collector may try again; the upload stays (AC-2.1) |
-| Storing the preview's file fails | The preview shows the counts but no apply button, and says the file couldn't be kept; nothing else is written (open question 5 asks whether to fail the whole preview instead) |
+| Storing the preview's file fails | The preview shows the counts but no apply button, and says the file couldn't be kept; nothing else is written (ruled 2026-10-20; failing the whole preview instead was not chosen) |
 | The catalog is refreshed during an apply | Entries are never deleted (retired instead), so a row still resolves. A finish a refresh stops listing between resolving and writing is accepted: the lot is written, and later edits to it meet the usual finish check (accepted limit) |
 | A scanner or number-entry add lands in the account during the apply | It waits for the write transaction and then runs against the applied collection |
 | Two browser tabs apply | One commits and removes the upload; the other gets 422 (AC-2.3) |
@@ -295,17 +296,7 @@ Each is verified by reading.
 
 ## Open Questions
 
-Ruled by the maintainer (2026-10-20): decision 1 (the upload is stored briefly with Active Storage and applied with one click) and decision 3 (in the request, one short write transaction, the measured bar, a fallback ruled if the bar is missed).
-
-Awaiting the maintainer's ruling, each with this spec's recommendation:
-
-1. **Decision 6:** a confirmation checkbox when the plan removes lots (recommended), or a link to the export only.
-2. **Decision 7:** applying clears the account's working state that points at lots (recommended), or leaves it and lets Undo fail where it must.
-3. **Decision 9:** the stored upload expires after 1 hour and the sweep runs every 15 minutes (recommended), with one stored upload per account; or another expiry.
-4. **Decision 10:** that the preview now writes the upload, superseding spec 025's "never stored" in the way recorded (recommended; it follows from decision 1).
-5. **Error Scenarios, "Storing the preview's file fails":** show the counts without an apply button (recommended), or fail the whole preview.
-
-Decisions 2, 4, 5 and 8 follow from spec 025, issue #40 and ADR 0013 and are put for confirmation with the spec.
+None. The maintainer ruled on 2026-10-20: decisions 1, 3, 6, 7, 9 and 10, and the error scenario for a failed store (show the counts without an apply button); and confirmed decisions 2, 4, 5 and 8.
 
 ## Out of Scope
 
