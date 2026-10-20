@@ -97,7 +97,7 @@ Applying a file that can be applied, to the collection as the preview found it:
 
 Afterwards the account's lots are in one-to-one correspondence with the file's rows by lot identity. Every lot written is one `Lot` would accept (AC-2.4).
 
-### 6. Before applying, the collector can export what they have (proposed)
+### 6. Before applying, the collector can export what they have (ruled)
 
 Applying replaces the collection and has no undo, so the page leads the collector to the safeguard the product already has. The page states in words how many lots and copies applying removes and links to "Export collection" ("Download your current collection first"). When the plan removes any lot, the apply button is replaced by a form with a checkbox, "I understand this removes N lots", which must be checked to apply; with nothing to remove there is no checkbox. The alternatives not chosen: a link with no checkbox; a forced export (a download can't be required).
 

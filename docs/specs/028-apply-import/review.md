@@ -1,6 +1,6 @@
 # Spec 028 review (sdd-review Mode A, 2026-10-20)
 
-**Verdict: READY TO PLAN**, once the maintainer rules the five open questions in the spec (none changes the plan's shape; decisions 1 and 3 are already ruled). Reviewed by the drafting session against the Mode A checklist: completeness, ambiguity scan, feasibility.
+**Verdict: READY TO PLAN.** The maintainer ruled every open question on 2026-10-20 (spec v1.2.0). Reviewed by the drafting session against the Mode A checklist: completeness, ambiguity scan, feasibility.
 
 ## Found and fixed (spec v1.1.1)
 
@@ -23,4 +23,4 @@
 
 ## Left for the maintainer
 
-Decisions 6, 7, 9 and 10 and open question 5 (see the spec's Open Questions). The upload-retention ADR is expected with the plan.
+Nothing: all ruled in spec v1.2.0. The upload-retention ADR is expected with the plan.
