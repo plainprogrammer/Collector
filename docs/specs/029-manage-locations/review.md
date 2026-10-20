@@ -85,3 +85,12 @@ The rulings are in: decisions 1–4 ruled, 5–9 and 12 confirmed, Open Question
 ## Mode A, third pass (inline, after the revision)
 
 READY TO PLAN once spec 028 has merged. Checked: no criterion depends on an unranked decision; AC-7.8 makes the model/schema agreement testable; every proposed detail (P1–P8) has a default and is listed in Open Questions; no `[NEEDS CLARIFICATION]` remains. Citations of spec 028 use its numbering at `87308d5`.
+
+---
+
+## Update 2026-10-20 (spec version 1.3.0): the maintainer ruled P1–P8
+
+- **M3's resolution changed in one part.** The Opus review asked that the model and the schema agree on every name. P1 had proposed refusing a name not in NFC in a file (`name_not_nfc`). The maintainer took the lenient alternative: such a name is well-formed, and the preview and apply normalise names on read (decision 5's function, used for typing too) before matching, comparing, judging duplicates and storing. The relation in decision 9 is now (a) every stored name is a well-formed name as written, and (b) every well-formed name's normalised form is accepted by the model, with one accepted exception (a few characters, such as U+0344, decompose to two, so a 60-code-point name can normalise to 61; the preview and apply refuse it as a whole). AC-7.8 tests (a), (b) and that every stored name exports well-formed; the `name_not_nfc` rule, its refusal and its error row are gone.
+- **Duplicates and "the same collection".** Duplicates are judged after normalisation and case folding, so an NFC and an NFD spelling of one name in one file are a `duplicate_location` (AC-7.3). "The same collection" compares names as written, exactly, without normalising (decision 9): a file is judged as it is, and Collector writes NFC, so for its own files it is the plain comparison. M2's resolution stands.
+- **P2–P8** are ruled as proposed. Their "proposed" labels are removed and Open Questions is empty. m3's refusal copy loses the non-NFC sentence (the other three stand).
+- Mode A re-checked: no criterion depends on an unranked choice; READY TO PLAN once spec 028 has merged.
