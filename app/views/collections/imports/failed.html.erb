@@ -1,0 +1,8 @@
+<% content_for :title, "Import failed · Collector" %>
+<%= render "layouts/appbar", section: nil %>
+<main class="c-main c-page">
+  <div class="c-pagehead"><div><h1 class="c-pagehead__title">The import didn't finish</h1></div></div>
+  <p class="c-status__message c-status__message--alert">Nothing was changed. Your collection is as it was, and the preview is still kept, so you can try again.</p>
+  <div class="c-form__actions"><%= link_to "Back to your collection", collection_path, class: "c-btn c-btn--secondary" %></div>
+</main>
+<%= render "layouts/tabbar", section: nil %>
