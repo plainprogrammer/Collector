@@ -53,7 +53,8 @@ Add a line here with each new ADR. All are Accepted unless the line says otherwi
 
 - [0020](0020-export-format.md): The export format is one versioned JSON document keyed by source ids
 - [0021](0021-export-format-rules-in-the-app.md): The app checks export files with `json_schemer` and its own copy of the schema
+- [0022](0022-stored-import-upload-retention.md): A previewed import file is stored for an hour, privately, and swept
 
 ### Expected
 
-Named by the [roadmap](../roadmap.md) and written with their specs: the backup mechanism (item 6), lots in locations (item 10), and adopting YARD as 0023 (spec 027 slice B), which takes the next free number if another ADR merges first.
+Named by the [roadmap](../roadmap.md) and written with their specs: the backup mechanism (item 6), lots in locations (item 10), and adopting YARD as 0023 (spec 027 slice B), which takes the next free number if another ADR merges first. The upload-retention ADR expected by spec 028 is 0022 above.
