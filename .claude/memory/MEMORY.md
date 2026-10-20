@@ -27,7 +27,7 @@
 - [Verify corpus manifests](verify-corpus-manifests.md) — resolve, check overlap, plst `PCY-132` numbers, era override for frames without set codes, foil ★ vs the foil column; a clean-reading miss may be a manifest error
 - [ExitPlanMode for SDD plans](exitplanmode-for-sdd-plans.md) — long plans: summarise in chat and take the go-ahead there, not via the approval dialog
 - [Device sitting account check](device-sitting-account-check.md) — find which account holds the sitting (by reading keys) before scoring or resetting
-- [Spec 012 follow-ups](spec-012-followups.md) — issues #17, #20, #21: digest cleanup (spec 013, PR #26, live delete owed after Oct 15), releasing.md lines, evidence owed
+- [Spec 012 follow-ups](spec-012-followups.md) — issues #20, #21: releasing.md lines, evidence owed (#17 digest cleanup done, spec 013)
 - [GHCR and Actions facts](ghcr-and-actions-facts.md) — visibility one-way, attestations need public repo, arm64 runners, metadata-action v0, kamal config limits; classic PATs only, /users/ paging, Accept or 404; CI runs only on PRs/main (open a draft PR); .dockerignore drops /script, mount it
 - [ADR numbers across branches](adr-numbers-across-branches.md) — check origin/main's docs/adr before numbering; an unmerged ADR takes the next free number on rebase
 - [Bulk file copy](bulk-file-copy.md) — find … -exec cp -n -t dest {} + for big caches; a glob hits "Argument list too long"
