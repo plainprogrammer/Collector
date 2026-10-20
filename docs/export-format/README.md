@@ -302,6 +302,7 @@ Every table in Collector's database that belongs to an account or to a user is l
 | `bulk_removals` | Left out | A short-lived way to undo a bulk removal. The lots it would restore aren't in the collection. |
 | `bulk_selection_marks` | Left out | Working state that lasts for one bulk edit. |
 | `bulk_selections` | Left out | Working state that lasts for one bulk edit. |
+| `import_uploads` | Left out | Transient working state: the previewed file, kept for an hour so it can be applied. The file is the collector's own export, already restored into the lots by applying it. |
 | `number_entries` | Left out | Working state of one run of adding cards by number. What it adds is already in the lots. |
 | `number_entry_lines` | Left out | Working state of one run of adding cards by number. What it adds is already in the lots. |
 | `scanner_sitting_entries` | Left out | Working state of one sitting at the scanner. What a sitting adds is already in the lots. |
