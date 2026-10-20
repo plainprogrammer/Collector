@@ -51,3 +51,5 @@ Source: the independent read-only review (6 major, 10 minor), verdict NEEDS REVI
 | Rulings check: decision 3's figure | Replaced by the hard 4 s bar (M1) |
 
 **Rejected:** none. One reading adjusted: the reviewer's M3 fix said to "refuse a plan with nothing to change" after the fingerprint check; the spec puts it before (decision 13) because a plan emptied by an earlier apply would otherwise get a stale 409 instead of the truthful "nothing to change".
+
+**Update (2026-10-20, version 1.3.1):** the maintainer confirmed the four proposed items (P1 to P4); they are marked ruled in the spec and Open Questions is empty.
