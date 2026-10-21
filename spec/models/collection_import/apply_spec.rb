@@ -233,6 +233,14 @@ RSpec.describe CollectionImport::Apply, type: :model do
       expect(account.lots).to be_empty
     end
 
+    it "answers :unreadable, removing the row, for an upload that has lost its attachment (maintainer ruling 2026-10-21)", :aggregate_failures do
+      upload = preview!([ import_row(a) ])
+      ActiveStorage::Attachment.where(record: upload).delete_all
+
+      expect(apply(upload).outcome).to eq(:unreadable)
+      expect([ account.lots.count, ImportUpload.count ]).to eq([ 0, 0 ])
+    end
+
     it "answers :unreadable for a stored file that is gone", :aggregate_failures do
       upload = preview!([ import_row(a) ])
       service.delete(upload.file.blob.key)
@@ -317,6 +325,13 @@ RSpec.describe CollectionImport::Apply, type: :model do
 
       expect(apply(upload).outcome).to eq(:refused)
       expect([ ImportUpload.count, service.exist?(key) ]).to eq([ 0, false ])
+    end
+
+    it "refuses a stored file with a price that doesn't fit, and removes it (spec 028 1.3.4)", :aggregate_failures do
+      upload = store_import!(account:, data: import_file(user, [ import_row(a, price_paid: "92233720368547758.08") ]), forced: true)
+
+      expect(apply(upload).outcome).to eq(:refused)
+      expect([ account.lots.count, ImportUpload.count ]).to eq([ 0, 0 ])
     end
 
     it "needs the removal confirmed, and only when lots are removed (AC-3.5)", :aggregate_failures do

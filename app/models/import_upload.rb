@@ -59,7 +59,8 @@ class ImportUpload < ApplicationRecord
 
   def expired? = expires_at <= Time.current
 
-  def checksum = file.blob.checksum
+  # nil when nothing is attached (a row left without its file): the apply treats that as an unreadable file.
+  def checksum = (file.blob.checksum if file.attached?)
 
   # The stored file's bytes, or nil when it can't be read (removed by the sweep, a newer preview or a fault).
   def read

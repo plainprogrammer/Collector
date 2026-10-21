@@ -7,7 +7,8 @@ class Collections::ImportsController < ApplicationController
     result = CollectionImport::Apply.new(account: Current.account, fingerprint: params[:fingerprint], confirmed: params[:confirm_removal] == "1").call
     respond_to_result(result)
   rescue StandardError => error
-    Rails.logger.error("Applying an import failed: #{error.class}")
+    # The class and the top of the backtrace, never the message: it can carry the file's content (FR-6).
+    Rails.logger.error("Applying an import failed: #{error.class} at #{error.backtrace&.first(5)&.join(" | ")}")
     render :failed, status: :internal_server_error
   end
 

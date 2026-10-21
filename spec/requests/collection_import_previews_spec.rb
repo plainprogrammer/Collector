@@ -56,6 +56,20 @@ RSpec.describe "Import preview", type: :request do
       expect(form.at_css("label[for=export_file]").text).to eq("Export file")
     end
 
+    it "refuses an impossible date and a price that doesn't fit, offering no apply (spec 028 1.3.4)", :aggregate_failures do
+      impossible = file([ row(printing, changed_at: "2026-13-45T00:00:00Z") ])
+      huge = file([ row(printing, price_paid: "92233720368547758.08") ])
+
+      [ impossible, huge ].each do |data|
+        preview(data)
+
+        expect(html.at_css(".c-import .c-status__message--alert").text).to include("can't be applied")
+        expect(html.css("form[action='#{collection_import_path}']")).to be_empty
+      end
+      expect(response.body).to include("price_paid is too large to record")
+      expect(ImportUpload.count).to eq(0)
+    end
+
     it "puts the CSRF token in the upload form (AC-1.1)" do
       ActionController::Base.allow_forgery_protection = true
       get new_collection_import_preview_path
@@ -198,8 +212,16 @@ RSpec.describe "Import preview", type: :request do
         expect(form.at_css("input[name=fingerprint]")["value"]).to eq(user.account.import_upload.fingerprint)
         expect(form.at_css("input[type=submit]")["value"]).to eq("Apply import")
         expect(form.at_css("input[name=confirm_removal]")).to be_present # a lot is removed
-        expect(html.at_css("a[href='#{collection_export_path}']")).to be_present
+        expect(form.at_css("a[href='#{collection_export_path}']")).to be_present
         expect(response.body).to include("removes 1 lot", "can't be undone", "kept for an hour")
+      end
+
+      it "puts the apply form below the counts and above the profile notes (AC-7.1)" do
+        profile = { "name" => user.name, "email_address" => user.email_address, "collection_view" => "table" }
+        preview(file([ row(entry) ], profile:))
+
+        sequence = html.css("dl.c-stats, #held_lots, form[action='#{collection_import_path}'], #profile_notes").map { |node| node["id"] || node.name }
+        expect(sequence).to eq(%w[dl held_lots form profile_notes])
       end
 
       it "puts the CSRF token in the apply form (FR-5)" do

@@ -17,6 +17,9 @@ class CollectionImport
   NO_VERSION = "This file doesn't say which version of the export format it follows.".freeze
   DUPLICATE_OF = "Same card, finish, condition and price as row %d".freeze
   DUPLICATE = "Same card, finish, condition and price as an earlier row".freeze
+  # The largest price in cents the lots table records (a SQLite integer is 64 bits); spec 028 1.3.4.
+  MAX_PRICE_CENTS = (2**63) - 1
+  PRICE_TOO_LARGE = "price_paid is too large to record".freeze
 
   Refusal = Data.define(:rule, :at, :reason)
   # One reason a row can't be applied; +summary+ is the reason without what belongs to that row alone.
@@ -218,7 +221,13 @@ class CollectionImport
       end
       first_row = {}
       identities.each_with_index { |identity, index| first_row[identity] ||= index + 1 if identity }
-      resolved = resolution_problems(lots.each_with_index.reject { |_lot, index| found.key?(index) })
+      candidates = lots.each_with_index.reject { |_lot, index| found.key?(index) }
+      resolved = resolution_problems(candidates)
+      candidates.each do |lot, index|
+        next unless price_too_large?(lot)
+
+        resolved[index] = resolved.fetch(index, []) + [ problem("price_too_large", "/lots/#{index}/price_paid", PRICE_TOO_LARGE) ]
+      end
       lots.each_with_index.map do |lot, index|
         problems = found.fetch(index, []).map { |problem| describe(problem, first_row[identities[index]]) } + resolved.fetch(index, [])
         Row.new(number: index + 1, lot:, identity: identities[index], problems:)
@@ -267,6 +276,9 @@ class CollectionImport
     end
 
     def problem(rule, at, reason) = Problem.new(rule:, at:, reason:, summary: reason)
+
+    # A well-formed price is digits, a point and two decimals; in cents it must fit the column (spec 028 1.3.4).
+    def price_too_large?(lot) = lot["price_paid"].is_a?(String) && lot["price_paid"].delete(".").to_i > MAX_PRICE_CENTS
 
     def registered?(type) = Catalog.collecting.key?(type) && Catalog.sources.key?(type)
 

@@ -14,10 +14,10 @@ class CollectionImport::Apply
   def call
     upload = ImportUpload.find_by(account_id: @account.id)
     return result(:missing) unless upload
-    return result(:expired, upload:) if upload.expired?
+    return remove(upload, result(:expired, upload:)) if upload.expired?
 
     bytes = upload.read
-    return result(:unreadable, upload:) unless bytes
+    return remove(upload, result(:unreadable, upload:)) unless bytes
 
     import = CollectionImport.new(account: @account, file: StringIO.new(bytes))
     return refuse(upload, import) unless import.applicable?
@@ -32,10 +32,13 @@ class CollectionImport::Apply
         next result(:missing) unless current&.id == upload.id
         next result(:expired, upload: current) if current.expired?
 
+        checksum = current.checksum
+        next remove(current, result(:unreadable, upload: current)) unless checksum
+
         plan = import.replan
         next remove(current, result(:nothing_to_change, import:, plan:)) if plan.nothing_to_change?
 
-        now = plan.fingerprint(current.checksum)
+        now = plan.fingerprint(checksum)
         next stale(current, import, plan, now) unless @fingerprint == now && current.fingerprint == now
         next result(:unconfirmed, import:, plan:, upload: current, fingerprint: now) if plan.removes? && !@confirmed
 
