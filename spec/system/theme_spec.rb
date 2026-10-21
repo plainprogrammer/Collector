@@ -3,6 +3,7 @@ require "rails_helper"
 RSpec.describe "Theme", type: :system do
   it "follows the OS dark preference for tokens and the logo, with Turbo loaded", :aggregate_failures do
     driven_by :selenium, using: :headless_firefox, screen_size: [ 1280, 900 ], options: { name: :firefox_dark } do |options|
+      FirefoxBinary.pin(options)
       options.add_preference("ui.systemUsesDarkTheme", 1)
       options.add_preference("layout.css.prefers-color-scheme.content-override", 0) # 0 = dark
     end
