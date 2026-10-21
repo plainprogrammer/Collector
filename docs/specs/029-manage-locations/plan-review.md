@@ -47,3 +47,17 @@ None.
 - Open point for the executor, not a finding: the Phase 0 Coverage mapping relies on `name` already being a field in the version 1 valid examples (it is: a profile's and an entry's `name`); if the mapping example disagrees when run, fix it in Phase 0.
 
 Commits: spec PATCH `e7285b1`; plan revision `c7947b4`.
+
+## Second round (2026-10-21)
+
+A second independent read-only review (Sonnet, `1cef07c`) returned **APPROVE WITH NITS** (0 critical, 0 major, 5 minor). It found M1 to M4 and m1 to m12 fixed except m4 and m5, which were partly fixed (N-2, N-3 below). The maintainer approved the plan on 2026-10-21 with these nits folded in and chose Sonnet for execution; the plan's Status line records it. ADR 0023 is accepted in Phase 6, as the plan says.
+
+| # | Finding | Fix | Where |
+|---|---|---|---|
+| N-1 | Phase 2's Files omitted the two specs it edits | `spec/models/collection_import_spec.rb` and `spec/requests/collection_import_previews_spec.rb` added | Phase 2 Files |
+| N-2 (finishes m4) | The 44px and focus-ring `targets` included controls not rendered at some widths (header link below 640px, back button from 640px) | `targets` filters to `el.getClientRects().length > 0` | Phase 1 system spec |
+| N-3 (finishes m5) | The NFD request example created the held "Café" after the preview | The location is created before `preview(...)` | Phase 4 previews request spec |
+| N-4 | Between Phases 4 and 5 a locations-only file is storable but its locations are not yet written | Taken as the review says: nothing to change in the plan; the Phase 4 commit body states it | Phase 4 commit |
+| N-5 | The system spec's `text:` is a substring match, so a final period would pass | `exact_text:` | Phase 5 system spec |
+
+Not taken: none.

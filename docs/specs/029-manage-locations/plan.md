@@ -1,7 +1,7 @@
 # Implementation Plan: Manage Locations
 
 **Spec:** docs/specs/029-manage-locations/spec.md (v1.3.2, Approved)
-**Status:** Revised for the independent review and the maintainer's rulings of 2026-10-21 (each finding and its fix in [plan-review.md](plan-review.md)); awaiting the maintainer's approval, which accepts ADR 0023
+**Status:** Approved by the maintainer on 2026-10-21, after its two independent reviews (the first NEEDS REVISION, the second APPROVE WITH NITS, each finding and its fix in [plan-review.md](plan-review.md)) with the second review's nits folded in; the maintainer chose Sonnet to execute it. ADR 0023 is accepted in Phase 6
 **Decisions:** docs/adr/0023-locations-make-export-format-version-2.md (Proposed, written with this plan); ADR 0016, 0017, 0019, 0020, 0021, 0022 apply
 **Created:** 2026-10-21 (on `origin/main` at `acb6e3c`, after spec 028 merged in PR #120 and its plan was retired in PR #121)
 **Supporting:** [data-model.md](data-model.md), [contracts/api.md](contracts/api.md), [research.md](research.md), [plan-review.md](plan-review.md)
@@ -1056,6 +1056,7 @@ RSpec.describe "Locations", type: :system do
   # Every control on the page, as the pointer sees it: a field is its label (the `c-input` wrapper), a link or button itself.
   def targets = <<~JS
     [...document.querySelectorAll("main a, main button, main input:not([type=hidden]), .c-appbar a[href='/locations'], .c-appbar__back")]
+      .filter((el) => el.getClientRects().length > 0) // only what is rendered at this width: the header link from 640px, the back button below it
       .map((el) => el.closest("label.c-input") || el)
   JS
 
@@ -1103,7 +1104,7 @@ end
 ## Phase 2: Export format version 2: the schema, the rules, the examples and the document
 
 **Implements:** FR-4, decisions 1, 5, 9, 10 (the reader's rules) | **Satisfies:** AC-7.1 to AC-7.8
-**Files:** `docs/export-format/v2.schema.json`, `app/models/export_format/v2.schema.json`, `app/models/export_format/rules.rb`, `docs/export-format/README.md`, `docs/export-format/examples/{valid,invalid,comparison}/*.json` (new files only), `docs/export-format/examples/problems.json`, `spec/support/export_format_rules.rb`, `spec/export_format_document_spec.rb`, `spec/export_format_examples_spec.rb`, `spec/models/export_format/rules_spec.rb`, `spec/models/location/name_parity_spec.rb`
+**Files:** `docs/export-format/v2.schema.json`, `app/models/export_format/v2.schema.json`, `app/models/export_format/rules.rb`, `docs/export-format/README.md`, `docs/export-format/examples/{valid,invalid,comparison}/*.json` (new files only), `docs/export-format/examples/problems.json`, `spec/support/export_format_rules.rb`, `spec/export_format_document_spec.rb`, `spec/export_format_examples_spec.rb`, `spec/models/export_format/rules_spec.rb`, `spec/models/location/name_parity_spec.rb`, `spec/models/collection_import_spec.rb`, `spec/requests/collection_import_previews_spec.rb`
 **Interfaces:** Consumes: `Location::Name.normalise`, `.key`, `.fault`, `Location::Name::MAX_LENGTH` (Phase 0). Produces: `ExportFormat::Rules::VERSIONS` (`[1, 2]`), `VERSION` (2, the newest), `RULES` (gains `duplicate_location`), `SCHEMA_DIRECTORY`, `.schema_file(version = VERSION)`, `.schema(version = VERSION)`, `.schemer(version = VERSION)`, `.lot_schemer(version = VERSION)`, `.schema_version(data)` (the version whose schema judges the data: its own if this instance reads it, else the oldest, so a file with a missing or unreadable version keeps exactly the one problem version 1 gave it), `.whole_number(value)`, and `.problems` / `.problems_in` that judge each file against its own version's schema and add `duplicate_location` at `/locations/<i>`; `ExportFormatRules.schema(version = nil)`, `.schema_file_for(version)`, `.versions`; the examples of version 2.
 
 Version 1 never changes: `v1.schema.json`, its examples and its meaning stay byte for byte. `SCHEMA_FILE` goes (one constant for one file); nothing but `rules.rb` and `rules_spec.rb` used it.
@@ -2098,8 +2099,8 @@ end
       end
 
       it "shows a name in NFD as its NFC spelling, matched to the held location (AC-9.18)", :aggregate_failures do
+        create(:location, account: user.account, name: "Café") # held before the preview, so it reads the file's NFD name as a rename of it
         preview(file_v2([ row(entry) ], locations: [ "CAFE\u0301", "Trade binder", "box", "Old crate" ]))
-        create(:location, account: user.account, name: "Café")
 
         expect(html.css("#renamed_locations li").map { |item| item.text.squish }).to eq([ "Café → CAFÉ" ]) # NFC, as the page shows and the apply writes
         expect(locations_stat("Locations unchanged")).to eq("3")
@@ -2782,7 +2783,7 @@ The seams spec 028's plan left (`Plan`, `Apply#write!`) are the only two places 
     check "I understand this removes 1 location"
     click_on "Apply import"
 
-    expect(page).to have_css("#status", text: "Imported: 0 lots added, 0 changed, 0 removed; 1 location added, 1 removed")
+    expect(page).to have_css("#status", exact_text: "Imported: 0 lots added, 0 changed, 0 removed; 1 location added, 1 removed")
     visit locations_path
     expect(page).to have_css(".c-locations__name", text: "Blue binder")
     expect(page).to have_no_css(".c-locations__name", text: "Old crate")
