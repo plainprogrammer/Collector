@@ -16,4 +16,12 @@ RSpec.describe "Apply an import, core code", type: :config do
 
     expect(named).to be_empty
   end
+
+  it "exists, every file of it" do
+    expect(files.reject { |file| Rails.root.join(file).exist? }).to be_empty
+  end
+
+  it "keeps the uploaded file out of the logs" do
+    expect(Rails.application.config.filter_parameters).to include(:export_file)
+  end
 end
