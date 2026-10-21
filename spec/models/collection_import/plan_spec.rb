@@ -94,4 +94,71 @@ RSpec.describe CollectionImport::Plan, type: :model do
 
     expect(parsed.entry_id(parsed.rows.first)).to eq(a.id)
   end
+
+  describe "locations (spec 029)" do
+    def import_v2(lots, locations: [], **fields) = CollectionImport.new(account:, file: import_io(import_file_v2(user, lots, locations:, **fields)))
+
+    it "has something to change for a file whose only change is a location, and nothing for one that matches (AC-9.4)", :aggregate_failures do
+      held_lot(account, a, quantity: 3)
+      create(:location, account:, name: "Box")
+
+      expect(import_v2([ import_row(a, quantity: 3) ], locations: [ "Box" ]).plan.nothing_to_change?).to be(true)
+      plan = import_v2([ import_row(a, quantity: 3) ], locations: [ "Box", "Crate" ]).plan
+      expect([ plan.nothing_to_change?, plan.writes_lots?, plan.removes? ]).to eq([ false, false, false ])
+      expect(import_v2([ import_row(a, quantity: 3) ], locations: [ "BOX" ]).plan.nothing_to_change?).to be(false) # a change of case alone
+    end
+
+    it "removes when it removes lots or locations, and writes lots only when a lot changes (AC-9.10, AC-9.17)", :aggregate_failures do
+      held_lot(account, a, quantity: 3)
+      create(:location, account:, name: "Old crate")
+      only_locations = import_v2([ import_row(a, quantity: 3) ], locations: [])
+      only_view = import_v2([ import_row(a, quantity: 3) ], locations: [ "Old crate" ], profile: { "name" => user.name, "email_address" => user.email_address, "collection_view" => "table" })
+      lots = import_v2([ import_row(a, quantity: 4) ], locations: [ "Old crate" ])
+
+      expect([ only_locations.plan.removes?, only_locations.plan.writes_lots? ]).to eq([ true, false ])
+      expect([ only_view.plan.nothing_to_change?, only_view.plan.writes_lots? ]).to eq([ false, false ])
+      expect([ lots.plan.removes?, lots.plan.writes_lots? ]).to eq([ false, true ])
+    end
+
+    it "leaves a version 1 file's plan and fingerprint to the lots (AC-9.3)", :aggregate_failures do
+      create(:location, account:, name: "Box")
+      plan = import([ import_row(a) ]).plan
+
+      expect(plan.locations.counted?).to be(false)
+      expect(plan.fingerprint("sum")).to eq(import([ import_row(a) ]).plan.fingerprint("sum"))
+    end
+
+    describe "#fingerprint (AC-9.9)" do
+      def fingerprint(*names, lots: [ import_row(a) ]) = import_v2(lots, locations: names).plan.fingerprint("sum")
+
+      it "is equal for two previews of one file and account, and differs for a location added, removed or respelled", :aggregate_failures do
+        box = create(:location, account:, name: "box")
+        baseline = fingerprint("Box", "New")
+
+        expect(fingerprint("Box", "New")).to eq(baseline)
+        create(:location, account:, name: "New") # added by another tab
+        expect(fingerprint("Box", "New")).not_to eq(baseline)
+        Location.where(name: "New").destroy_all
+        box.update!(name: "Box") # respelled, so the rename became unchanged
+        expect(fingerprint("Box", "New")).not_to eq(baseline)
+        box.update!(name: "box")
+        expect(fingerprint("Box", "New")).to eq(baseline)
+        box.destroy!
+        expect(fingerprint("Box", "New")).not_to eq(baseline)
+      end
+
+      it "differs for another file, and holds no id: a renamed, a removed and an unchanged location deleted and added again with the same spelling change nothing (AC-9.9, ruled 2026-10-21)", :aggregate_failures do
+        [ "box", "Old crate", "Same" ].each { |name| create(:location, account:, name:) } # "box" is renamed to Box, "Old crate" is removed
+        baseline = fingerprint("Box", "Same", "Other")
+
+        expect(fingerprint("Box", "Same", "Another")).not_to eq(baseline)
+        account.locations.each do |location|
+          name = location.name
+          location.destroy!
+          create(:location, account:, name:) # a new id each, the same plan
+        end
+        expect(fingerprint("Box", "Same", "Other")).to eq(baseline)
+      end
+    end
+  end
 end

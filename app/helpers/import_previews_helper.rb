@@ -14,4 +14,21 @@ module ImportPreviewsHelper
 
   # "6 copies become 9", "1 copy becomes 2".
   def import_change(tally) = "#{import_copies(tally.copies)} #{tally.copies == 1 ? "becomes" : "become"} #{number_with_delimiter(tally.copies_after)}"
+
+  # What an apply removes, in words: "3 lots (12 copies) and 2 locations" (spec 028 decision 6, spec 029 decision 11).
+  def import_removals(import)
+    plan = import.plan
+    parts = []
+    parts << "#{pluralize(number_with_delimiter(plan.removed_lots.size), "lot")} (#{import_copies(import.removed.copies)})" if plan.removed_lots.any?
+    parts << pluralize(number_with_delimiter(plan.locations.removed.size), "location") if plan.locations.removes?
+    parts.to_sentence
+  end
+
+  # The counts in the checkbox's label: "1 lot", "3 lots and 2 locations".
+  def import_removed_counts(plan)
+    parts = []
+    parts << pluralize(number_with_delimiter(plan.removed_lots.size), "lot") if plan.removed_lots.any?
+    parts << pluralize(number_with_delimiter(plan.locations.removed.size), "location") if plan.locations.removes?
+    parts.to_sentence
+  end
 end

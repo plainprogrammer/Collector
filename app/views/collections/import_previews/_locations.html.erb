@@ -1,0 +1,27 @@
+<%# locals: (import:) %>
+<% locations = import.locations %>
+<% if locations.counted? %>
+  <section id="locations">
+    <div class="c-section__head"><h2 class="c-section__title">Locations</h2></div>
+    <dl class="c-stats">
+      <div class="c-stat"><dt>Locations added</dt><dd><%= number_with_delimiter(locations.added.size) %></dd></div>
+      <div class="c-stat"><dt>Locations renamed</dt><dd><%= number_with_delimiter(locations.renamed.size) %></dd></div>
+      <div class="c-stat"><dt>Locations unchanged</dt><dd><%= number_with_delimiter(locations.unchanged) %></dd></div>
+      <div class="c-stat"><dt>Locations removed</dt><dd><%= number_with_delimiter(locations.removed.size) %></dd></div>
+    </dl>
+    <% if locations.renamed.any? %>
+      <ul class="c-list c-import__list" id="renamed_locations">
+        <% locations.listed_renamed.each do |renamed| %><li><span><%= renamed.held.name %> → <%= renamed.name %></span></li><% end %>
+      </ul>
+      <% if locations.more_renamed.positive? %><p class="c-import__more">and <%= number_with_delimiter(locations.more_renamed) %> more</p><% end %>
+    <% end %>
+    <% if locations.removed.any? %>
+      <ul class="c-list c-import__list" id="removed_locations">
+        <% locations.listed_removed.each do |location| %><li><span><%= location.name %></span></li><% end %>
+      </ul>
+      <% if locations.more_removed.positive? %><p class="c-import__more">and <%= number_with_delimiter(locations.more_removed) %> more</p><% end %>
+    <% end %>
+  </section>
+<% else %>
+  <p class="c-import__note" id="locations_stay">This file was written before locations existed, so your locations would stay as they are.</p>
+<% end %>

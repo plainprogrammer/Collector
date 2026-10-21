@@ -49,6 +49,7 @@
         <% if @import.more_removed_lots.positive? %><p class="c-import__more">and <%= number_with_delimiter(@import.more_removed_lots) %> more</p><% end %>
       </section>
     <% end %>
+    <%= render "collections/import_previews/locations", import: @import %>
     <% if @import.problem_rows.any? %>
       <section>
         <div class="c-section__head"><h2 class="c-section__title">Rows with problems</h2><span class="c-section__count"><%= pluralize(number_with_delimiter(@import.problem_rows.size), "row") %></span></div>
