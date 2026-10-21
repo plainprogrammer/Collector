@@ -56,6 +56,24 @@ RSpec.describe "Collection export", type: :request do
 
       expect(count_queries { get collection_export_path }).to eq(few)
     end
+
+    it "sends this account's locations and no other account's (AC-6.7)", :aggregate_failures do
+      create(:location, account: user.account, name: "Blue binder")
+      create(:location, name: "Zebulon's crate")
+
+      get collection_export_path
+
+      expect(JSON.parse(response.body)["locations"]).to eq([ { "name" => "Blue binder" } ])
+      expect(response.body).not_to include("Zebulon")
+    end
+
+    it "runs as many queries for 30 locations as for 2 (NFR)" do
+      2.times { create(:location, account: user.account) }
+      few = count_queries { get collection_export_path }
+      28.times { create(:location, account: user.account) }
+
+      expect(count_queries { get collection_export_path }).to eq(few)
+    end
   end
 
   context "when signed out" do

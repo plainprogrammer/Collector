@@ -58,8 +58,16 @@ RSpec.describe "Export and import round trip", type: :model do
     expect(CollectionImport.new(account: source.account, file: StringIO.new(JSON.generate(original))).plan.nothing_to_change?).to be(true)
   end
 
-  describe "the format's valid example with lots (AC-6.4)" do
-    # One entry and printing per source id (collection.json repeats ids across lots), with the finishes of its lots.
+  # An export of this instance is version 2. A version 1 example is compared as the version 2 file it becomes with no
+  # locations, and each location name as the export writes it: in NFC (decision 5), which a valid example in NFD isn't
+  # (ruled 2026-10-21: AC-9.15 holds for the example once its names are normalised).
+  def as_version_two(data)
+    data = data.merge("format_version" => 2, "locations" => []) unless data["format_version"] == 2
+    data.merge("locations" => data["locations"].map { |location| { "name" => Location::Name.normalise(location["name"]) } })
+  end
+
+  describe "every valid example of the format (AC-6.4, AC-9.15)" do
+    # One entry and printing per source id (the examples repeat ids across lots), with the finishes of its lots.
     def build_catalog(data)
       data["lots"].group_by { |lot| lot.dig("entry", "source_id") }.each_value do |lots|
         entry = lots.first["entry"]
@@ -69,15 +77,23 @@ RSpec.describe "Export and import round trip", type: :model do
       end
     end
 
-    it "applies collection.json to an empty account and exports the same collection", :aggregate_failures do
-      bytes = ExportFormatRules.examples("valid").fetch("valid/collection.json")
-      data = JSON.parse(bytes)
-      build_catalog(data)
-      user = create(:user, name: data.dig("profile", "name"), email_address: data.dig("profile", "email_address"))
+    # Version 1 only until Phase 5 reads locations; that phase removes the filter.
+    ExportFormatRules.examples("valid").select { |_name, bytes| JSON.parse(bytes)["format_version"] == 1 }.each_key do |name|
+      it "applies #{name} to an empty account and exports the same collection, or has nothing to change", :aggregate_failures do
+        data = JSON.parse(ExportFormatRules.examples("valid").fetch(name))
+        allow(Rails.configuration.x).to receive(:currency).and_return(Collector::Currency.fetch!(data["currency"]))
+        build_catalog(data)
+        user = create(:user, name: data.dig("profile", "name"), email_address: data.dig("profile", "email_address"))
 
-      expect(apply!(user, data).outcome).to eq(:applied)
-      expect(same_collection?(data, export(user))).to be(true)
-      expect(user.account.lots.count).to eq(data["lots"].size)
+        if data["lots"].empty?
+          import = CollectionImport.new(account: user.account, file: StringIO.new(JSON.generate(data)))
+          expect([ import.refused?, import.plan.nothing_to_change? ]).to eq([ false, true ])
+        else
+          expect(apply!(user, data).outcome).to eq(:applied)
+          expect(same_collection?(as_version_two(data), export(user))).to be(true)
+          expect(user.account.lots.count).to eq(data["lots"].size)
+        end
+      end
     end
   end
 end
