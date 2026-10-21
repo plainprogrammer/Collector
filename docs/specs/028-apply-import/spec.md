@@ -6,7 +6,7 @@
 **Last Updated:** 2026-10-20
 **Branch:** `028-apply-import`
 **Issue:** [#40](https://github.com/plainprogrammer/Collector/issues/40)
-**Plan:** [plan.md](plan.md)
+**Plan:** retired in `ee4c4fa40e2223e2d81299885f8a0cabe7771956`; read it with `git show ee4c4fa40e2223e2d81299885f8a0cabe7771956^:docs/specs/028-apply-import/plan.md`
 
 ---
 

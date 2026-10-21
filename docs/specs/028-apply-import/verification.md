@@ -1,6 +1,6 @@
 # Verification: spec 028, Apply an Import
 
-**Spec:** [spec.md](spec.md) v1.3.3 · **Plan:** [plan.md](plan.md) (approved 2026-10-20) · **Branch:** `plainprogrammer/028-apply-import`
+**Spec:** [spec.md](spec.md) v1.3.3 · **Plan:** plan (retired in `ee4c4fa40e2223e2d81299885f8a0cabe7771956`; read it with `git show ee4c4fa40e2223e2d81299885f8a0cabe7771956^:docs/specs/028-apply-import/plan.md`) (approved 2026-10-20) · **Branch:** `plainprogrammer/028-apply-import`
 
 How to read this: each criterion names the example that holds it (`file`, "example title"). Phases 8, 9 and 10 add tests but no code, so those tests passed when written (characterization tests, listed at the end); every other example was run red first for the reason named in its phase (an uninitialised constant, a missing method, or the ungated route).
 
