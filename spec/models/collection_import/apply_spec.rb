@@ -266,6 +266,246 @@ RSpec.describe CollectionImport::Apply, type: :model do
     end
   end
 
+  describe "locations (spec 029 decisions 10 and 11)" do
+    def preview_v2!(lots, locations: [], **fields) = store_import!(account:, data: import_file_v2(user, lots, locations:, **fields))
+
+    def location_rows = account.locations.order(:id).pluck(:id, :name, :name_key, :created_at, :updated_at)
+
+    def location_statements
+      statements = []
+      counter = ->(*, payload) { statements << payload[:sql] if payload[:sql].match?(/\b(INSERT INTO|UPDATE|DELETE FROM) "locations"/) }
+      ActiveSupport::Notifications.subscribed(counter, "sql.active_record") { yield }
+      statements.size
+    end
+
+    it "makes the account's locations the file's, keeping a renamed one's id and not writing an unchanged one (AC-9.1)", :aggregate_failures do
+      trade, box = travel_to(Time.utc(2026, 10, 1)) { [ create(:location, account:, name: "Trade binder"), create(:location, account:, name: "box") ] }
+      create(:location, account:, name: "Old crate")
+      trade_before = trade.reload.attributes
+      preview_v2!([ import_row(a) ], locations: [ "Blue binder", "Box", "Trade binder" ])
+
+      expect(apply.outcome).to eq(:applied)
+
+      expect(account.locations.ordered.pluck(:name)).to eq([ "Blue binder", "Box", "Trade binder" ])
+      expect(box.reload.name).to eq("Box")
+      expect(box.name_key).to eq("box")
+      expect(box.updated_at).to be > Time.utc(2026, 10, 1)
+      expect(trade.reload.attributes).to eq(trade_before)
+    end
+
+    it "fills an empty account with the file's lots and locations and nothing else (AC-9.2)", :aggregate_failures do
+      preview_v2!([ import_row(a), import_row(b, quantity: 2), import_row(c) ], locations: [ "Blue binder", "Box", "Crate" ])
+
+      expect(apply.outcome).to eq(:applied)
+      expect(account.lots.count).to eq(3)
+      expect(account.locations.ordered.pluck(:name)).to eq(%w[Blue\ binder Box Crate])
+      expect(Location.where.not(account_id: account.id)).to be_empty
+    end
+
+    it "leaves the account's locations as they were for a version 1 file, with the same ids and times (AC-9.3)", :aggregate_failures do
+      travel_to(Time.utc(2026, 10, 1)) { create(:location, account:, name: "Box") }
+      before = location_rows
+      preview!([ import_row(a) ])
+
+      expect(apply.outcome).to eq(:applied)
+      expect(location_rows).to eq(before)
+    end
+
+    it "applies a file whose only change is a location, changing no lot and clearing no working state (AC-9.4, AC-9.17)", :aggregate_failures do
+      lot = held_lot(account, a, quantity: 2)
+      removal = working_state_for(lot)
+      create(:location, account:, name: "Old crate")
+      preview_v2!([ import_row(a, quantity: 2) ], locations: [ "Blue binder" ])
+      lots_before = lots_state
+
+      expect(apply.outcome).to eq(:applied)
+      expect(account.locations.pluck(:name)).to eq([ "Blue binder" ])
+      expect(lots_state).to eq(lots_before)
+      expect([ NumberEntry.count, Scanner::Sitting.count, BulkSelection.count, BulkSelection::Mark.count ]).to eq([ 1, 1, 1, 1 ])
+      expect(removal.reload).to be_undoable
+    end
+
+    it "clears the working state when a lot is written, and leaves it for a change of view alone (AC-9.17)", :aggregate_failures do
+      lot = held_lot(account, a, quantity: 2)
+      removal = working_state_for(lot)
+      profile = { "name" => user.name, "email_address" => user.email_address, "collection_view" => "table" }
+      preview_v2!([ import_row(a, quantity: 2) ], locations: [], profile:)
+
+      expect(apply.outcome).to eq(:applied)
+      expect(user.reload.collection_view).to eq("table")
+      expect(NumberEntry.count + Scanner::Sitting.count + BulkSelection.count).to eq(3) # a view change writes no lot
+      expect(removal.reload).to be_undoable # the fourth kind of working state (plan review m8)
+
+      preview_v2!([ import_row(a, quantity: 5) ], locations: [], profile:)
+      expect(apply.outcome).to eq(:applied)
+      expect(NumberEntry.count + Scanner::Sitting.count + BulkSelection.count).to eq(0)
+    end
+
+    it "writes nothing the second time, and the same file then previews as nothing to change (AC-9.7)", :aggregate_failures do
+      create(:location, account:, name: "box")
+      upload = preview_v2!([ import_row(a) ], locations: [ "Box", "Crate" ])
+      first = apply(upload)
+      after = location_rows
+
+      expect(first.outcome).to eq(:applied)
+      import = CollectionImport.new(account: account.reload, file: StringIO.new(JSON.generate(import_file_v2(user, [ import_row(a) ], locations: [ "Box", "Crate" ]))))
+      expect(import.plan.nothing_to_change?).to be(true)
+      expect(import.locations.unchanged).to eq(2)
+      forced = store_import!(account:, data: import_file_v2(user, [ import_row(a) ], locations: [ "Box", "Crate" ]), forced: true)
+      expect(apply(forced).outcome).to eq(:nothing_to_change)
+      expect(location_rows).to eq(after)
+    end
+
+    it "rolls everything back when a location can't be written after the lots were, keeping the upload (AC-9.8)", :aggregate_failures do
+      create(:location, account:, name: "Old crate")
+      held_lot(account, d, quantity: 3)
+      upload = preview_v2!([ import_row(a) ], locations: [ "Blue binder" ])
+      before = snapshot
+      allow(CollectionImport::LocationChanges).to receive(:write!).and_raise(RuntimeError, "disk full")
+
+      expect { apply(upload) }.to raise_error(RuntimeError, "disk full")
+      expect(snapshot).to eq(before)
+      expect(account.reload.import_upload).to eq(upload)
+
+      allow(CollectionImport::LocationChanges).to receive(:write!).and_call_original
+      expect(apply(upload).outcome).to eq(:applied)
+      expect(account.locations.pluck(:name)).to eq([ "Blue binder" ])
+    end
+
+    describe "a location changed after the preview (AC-9.9)" do
+      let!(:box) { create(:location, account:, name: "box") }
+      let!(:upload) { preview_v2!([ import_row(a) ], locations: [ "Box", "Same" ]) }
+
+      it "is refused as stale when one was added, writing nothing", :aggregate_failures do
+        create(:location, account:, name: "Late")
+        before = snapshot
+
+        expect(apply(upload).outcome).to eq(:stale)
+        expect(snapshot).to eq(before)
+        expect(account.locations.pluck(:name)).to match_array(%w[box Late])
+      end
+
+      it "is refused as stale when one was respelled, with the fresh plan showing it (a change of case alone)", :aggregate_failures do
+        box.update!(name: "Box") # the rename became unchanged
+        before = snapshot
+
+        result = apply(upload)
+
+        expect(result.outcome).to eq(:stale)
+        expect(result.import.locations.counts).to eq(added: 1, renamed: 0, unchanged: 1, removed: 0)
+        expect(snapshot).to eq(before)
+      end
+
+      it "is refused as stale when one was removed, writing nothing", :aggregate_failures do
+        box.destroy!
+        before = snapshot
+
+        expect(apply(upload).outcome).to eq(:stale)
+        expect(snapshot).to eq(before)
+      end
+    end
+
+    it "applies after a renamed, a removed and an unchanged location were each deleted and added again with the same spelling (AC-9.9, ruled 2026-10-21)", :aggregate_failures do
+      box, crate, same = [ "box", "Old crate", "Same" ].map { |name| create(:location, account:, name:) } # box is renamed, Old crate removed
+      upload = preview_v2!([ import_row(a) ], locations: [ "Box", "Same", "New" ])
+      recreated = [ box, crate, same ].map do |location|
+        name = location.name
+        location.destroy!
+        create(:location, account:, name:) # new ids, the same names
+      end
+
+      expect(apply(upload).outcome).to eq(:applied)
+      expect(account.locations.ordered.pluck(:name)).to eq(%w[Box New Same])
+      expect(account.locations.find_by!(name: "Box").id).to eq(recreated.first.id) # the apply wrote by the ids it read inside its transaction
+    end
+
+    it "needs the confirmation only when it removes lots or locations (AC-9.10)", :aggregate_failures do
+      create(:location, account:, name: "Old crate")
+      removes = preview_v2!([ import_row(a) ], locations: [])
+
+      expect(apply(removes, confirmed: false).outcome).to eq(:unconfirmed)
+      expect(account.locations.count).to eq(1)
+      expect(apply(removes, confirmed: true).outcome).to eq(:applied)
+      expect(account.locations.count).to eq(0)
+
+      create(:location, account:, name: "Old crate")
+      renames = preview_v2!([ import_row(a) ], locations: [ "OLD CRATE", "New" ])
+      expect(apply(renames, confirmed: false).outcome).to eq(:applied) # only additions and renames: no checkbox
+      expect(account.locations.pluck(:name)).to contain_exactly("OLD CRATE", "New")
+    end
+
+    it "removes a location without touching a lot (AC-9.11)", :aggregate_failures do
+      held_lot(account, a, quantity: 4)
+      create(:location, account:, name: "Old crate")
+      upload = preview_v2!([ import_row(a, quantity: 4) ], locations: [])
+      lots_before = lots_state
+
+      expect(apply(upload).outcome).to eq(:applied)
+      expect(lots_state).to eq(lots_before)
+      expect(account.locations.count).to eq(0)
+    end
+
+    it "replaces 500 held locations with the file's 500 others, with no failure from the limit (AC-9.12)", :aggregate_failures do
+      Location.insert_all!(Array.new(500) { |index| { account_id: account.id, name: "Place #{index}", name_key: "place #{index}" } })
+      names = Array.new(500) { |index| "Other #{index}" }
+      upload = preview_v2!([ import_row(a) ], locations: names)
+
+      expect(apply(upload).outcome).to eq(:applied)
+      expect(account.locations.pluck(:name)).to match_array(names)
+    end
+
+    it "touches only this account's locations (AC-9.13)", :aggregate_failures do
+      other = create(:user)
+      create(:location, account:, name: "Box")
+      create(:location, account: other.account, name: "Box")
+      theirs = other.account.locations.order(:id).pluck(:id, :name, :updated_at)
+      upload = preview_v2!([ import_row(a) ], locations: [ "Blue binder" ])
+
+      expect(apply(upload).outcome).to eq(:applied)
+      expect(other.account.locations.order(:id).pluck(:id, :name, :updated_at)).to eq(theirs)
+    end
+
+    it "writes locations that Location would accept, with the key it gives (FR-3 of spec 028, for locations)", :aggregate_failures do
+      create(:location, account:, name: "box")
+      preview_v2!([ import_row(a) ], locations: [ "Box", "Straße", "Café", "日本語のバインダー" ])
+
+      apply
+
+      account.locations.each do |location|
+        expect(location).to be_valid, location.name
+        expect(location.name_key).to eq(Location::Name.key(location.name))
+        expect(location.name).to eq(Location::Name.normalise(location.name))
+      end
+      expect(account.locations.pluck(:name)).to include("Café")
+    end
+
+    it "reads a name in NFD as its NFC spelling: unchanged against a held one, added as NFC without one, renamed when only the case differs (AC-9.18)", :aggregate_failures do
+      held = create(:location, account:, name: "Café")
+      before = held.reload.attributes
+      preview_v2!([ import_row(a) ], locations: [ "Café", "Straße" ])
+      expect(apply.outcome).to eq(:applied)
+      expect(held.reload.attributes).to eq(before)
+      expect(account.locations.pluck(:name)).to contain_exactly("Café", "Straße")
+
+      preview_v2!([ import_row(a) ], locations: [ "CAFÉ", "Straße" ])
+      expect(apply.outcome).to eq(:applied)
+      expect(held.reload.name).to eq("CAFÉ")
+    end
+
+    it "writes the locations in as many statements for 150 changes of each kind as for one (NFR)", :aggregate_failures do
+      create(:location, account:, name: "box")
+      create(:location, account:, name: "Old crate")
+      few = preview_v2!([ import_row(a) ], locations: [ "Box", "New" ])
+      few_statements = location_statements { apply(few) }
+
+      Location.where(account_id: account.id).delete_all
+      Location.insert_all!((1..300).map { |number| { account_id: account.id, name: format("old %03d", number), name_key: format("old %03d", number) } })
+      many = preview_v2!([ import_row(a, quantity: 2) ], locations: (1..150).map { |number| format("OLD %03d", number) } + (1..150).map { |number| format("new %03d", number) })
+
+      expect(location_statements { apply(many) }).to eq(few_statements)
+    end
+  end
+
   describe "bounded statements (FR-4)" do
     include QueryCounting # spec/support/query_counting.rb, which includes itself for request specs only
 

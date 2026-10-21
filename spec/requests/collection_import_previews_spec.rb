@@ -412,6 +412,17 @@ RSpec.describe "Import preview", type: :request do
       expect(html.css("form[action='#{collection_import_path}']")).to be_empty
       expect(ImportUpload.count).to eq(0)
     end
+
+    it "previews each empty example, version 1 and version 2, in its own currency, as nothing to change (AC-9.15)", :aggregate_failures do
+      %w[valid/empty.json valid/empty-v2.json].each do |name|
+        allow(Rails.configuration.x).to receive(:currency).and_return(Collector::Currency.fetch!("EUR"))
+        post collection_import_preview_path, params: { export_file: import_upload_file(ExportFormatRules.examples("valid").fetch(name)) }
+
+        expect(response).to have_http_status(:ok), name
+        expect(response.body).to include("nothing to change"), name
+        expect(ImportUpload.count).to eq(0)
+      end
+    end
   end
 
   context "when signed out" do

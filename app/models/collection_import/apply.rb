@@ -83,14 +83,17 @@ class CollectionImport::Apply
 
     # One statement per BATCH_SIZE lots, never one per lot (FR-4). The upsert is on the lot's identity, so a changed
     # lot keeps its id (FR-9); the rows were validated by the reader. The bulk statements skip Lot's callbacks and
-    # validations on purpose (spec 028 FR-3, ruled 2026-10-20; AC-2.4 checks the rows against Lot).
+    # validations on purpose (spec 028 FR-3, ruled 2026-10-20; AC-2.4 checks the rows against Lot). Then the locations
+    # (spec 029) and the view.
     def write!(plan, rows)
       plan.removed_lots.map(&:id).each_slice(CollectionImport::BATCH_SIZE) { |ids| @account.lots.where(id: ids).delete_all }
       (plan.added_rows + plan.changed_rows).each_slice(CollectionImport::BATCH_SIZE) do |slice|
         Lot.upsert_all(slice.map { |row| rows.fetch(row.number) }, unique_by: %i[account_id catalog_entry_id lot_key],
           update_only: %i[quantity created_at updated_at], record_timestamps: false, returning: false)
       end
-      CollectionImport::WorkingState.clear!(@account)
+      # Only a written lot makes the lists that point at lots wrong (spec 029 decision 11, AC-9.17).
+      CollectionImport::WorkingState.clear!(@account) if plan.writes_lots?
+      CollectionImport::LocationChanges.write!(@account, plan.locations)
       @account.user.update!(collection_view: plan.view_change) if plan.view_change
     end
 end
