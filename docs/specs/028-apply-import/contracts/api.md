@@ -1,6 +1,6 @@
 # Contracts: Apply an Import
 
-**Spec:** [spec.md](spec.md) v1.3.2 (decisions 11, 13) · **Plan:** [plan.md](plan.md)
+**Spec:** [spec.md](spec.md) v1.3.2 (decisions 11, 13) · **Plan:** plan (retired in `ee4c4fa40e2223e2d81299885f8a0cabe7771956`; read it with `git show ee4c4fa40e2223e2d81299885f8a0cabe7771956^:docs/specs/028-apply-import/plan.md`)
 
 ## POST /collection/import_preview (spec 025; changed by this spec)
 
