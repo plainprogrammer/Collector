@@ -1,6 +1,6 @@
 # Plan review: spec 028 (apply an import)
 
-**Plan reviewed:** commit `a13fca5` (`plan.md`, `data-model.md`, `contracts/api.md`, ADR 0022), against spec 1.3.1.
+**Plan reviewed:** commit `80af395` (`plan.md`, `data-model.md`, `contracts/api.md`, ADR 0022), against spec 1.3.1.
 **Reviews:** two independent, read-only reviews of that plan, both **NEEDS REVISION** (0 critical, 7 major each):
 - **S** — Sonnet 5.5: 7 major (S-M1 to S-M7), 14 minor (S-m1 to S-m14).
 - **O** — Opus: 7 major (O-M1 to O-M7), 13 minor (O-m1 to O-m13).
@@ -56,7 +56,7 @@ They overlap heavily. The 41 findings (21 from S, 20 from O) are resolved below 
 | 33 | O-m11 | **Resolved.** `narrow_pages_spec.rb` lists GET paths and the apply form's page is a POST result, so it is not added there; AC-7.3 stays with the screenshots (Phase 9). |
 | 34 | O-m13 (ADR limit, Q3), O-Q4 | **Resolved.** See rows 3 and 6: the limit is dropped and the variants consequence is stated. |
 
-## Second Sonnet review (r2), at `e945f7e`
+## Second Sonnet review (r2), at `7dac386`
 
 A re-review of the revised plan: **NEEDS REVISION**, 0 critical, 3 major (N-M1a, N-M1b, N-M2), 1 further major-sized item (N-M3, listed as minor) and 8 minor (N-m1 to N-m8). All 12 are resolved; the reviewer confirmed the 34 rows above except rows 16 and 27, which these rows close. Spec 028 became **1.3.3** (PATCH via `sdd-spec-update`).
 

@@ -128,9 +128,9 @@ Specs run for this round (no system specs, no `bin/ci`, as another worker is usi
 
 ## bin/ci
 
-Run by the coordinator on 2026-10-21 at `7b2e796` (this branch merged with `origin/main`, which includes #119, "pin system specs to the light theme"), in Light mode with ImageMagick and libvips installed. Verbatim result: every step passed (Setup, RuboCop, Brakeman, bundler-audit, importmap audit) and RSpec ran **1757 examples, 0 failures, 1 pending** (`art_agreement_spec`, which needs `COLLECTOR_ART_AGREEMENT`).
+Run by the coordinator on 2026-10-21 on this branch after it was rebased onto `main` (which includes #119, "pin system specs to the light theme"), at `aa162da`, by the pre-push hook when the branch was pushed for pull request #120; the same result was recorded first at the pre-rebase merge `7b2e796` (that commit is no longer in the branch). Light mode with ImageMagick and libvips installed. Verbatim result: every step passed (Setup, RuboCop, Brakeman, bundler-audit, importmap audit) and RSpec ran **1757 examples, 0 failures, 1 pending** (`art_agreement_spec`, which needs `COLLECTOR_ART_AGREEMENT`).
 
-The earlier run on this branch (`65d9fa4`, 1752 examples, 10 failures) is superseded. Its failures were the machine, not the change: ImageMagick and libvips were not installed (`active_storage_variant_transformer_spec` ×2, `libvips_check_spec`), and the machine was in macOS Dark appearance, which failed the system specs that assume the light theme (`footer_spec` ×3, `theme_spec`, `card_image_fit_spec` ×3). Installing the libraries and #119 removed them. Its other failure, an order-dependent example of this feature that compared `config.filter_parameters` literally, was fixed in `91b734b` (it now checks the filter's behaviour).
+The earlier run on this branch (`6ccf660`, 1752 examples, 10 failures) is superseded. Its failures were the machine, not the change: ImageMagick and libvips were not installed (`active_storage_variant_transformer_spec` ×2, `libvips_check_spec`), and the machine was in macOS Dark appearance, which failed the system specs that assume the light theme (`footer_spec` ×3, `theme_spec`, `card_image_fit_spec` ×3). Installing the libraries and #119 removed them. Its other failure, an order-dependent example of this feature that compared `config.filter_parameters` literally, was fixed in `3f764d2` (it now checks the filter's behaviour).
 
 ## Implementation review
 
@@ -140,24 +140,28 @@ SPEC-ALIGNED (independent Sonnet review 2026-10-21, after fixes)
 
 | Finding | Resolution | Commit |
 |---|---|---|
-| M1, impossible dates | Rejected: `ExportFormat::Rules` already refuses them (`not_a_time`). A preview-level example (`2026-13-45T00:00:00Z`) proves it. | `3b13920` |
-| M1, price | Fixed: the reader refuses a `price_paid` over the cents column as a problem row (`price_too_large`); tests at reader, preview and apply levels. Spec 1.3.4 records it and the supersession of spec 025 decision 9 on this point (both rows of `docs/specs/README.md`). | `3b13920` (code, tests), `0bc004a` (spec 1.3.4, index) |
-| M2, upload without its file | Fixed: `ImportUpload#checksum` is nil without an attachment; `Apply` answers unreadable (422) and removes the row. | `3b13920` |
-| m1 CLAUDE.md "Nothing is written" | Fixed. | `3b13920` |
+| M1, impossible dates | Rejected: `ExportFormat::Rules` already refuses them (`not_a_time`). A preview-level example (`2026-13-45T00:00:00Z`) proves it. | `1f6020b` |
+| M1, price | Fixed: the reader refuses a `price_paid` over the cents column as a problem row (`price_too_large`); tests at reader, preview and apply levels. Spec 1.3.4 records it and the supersession of spec 025 decision 9 on this point (both rows of `docs/specs/README.md`). | `1f6020b` (code, tests), `47942d5` (spec 1.3.4, index) |
+| M2, upload without its file | Fixed: `ImportUpload#checksum` is nil without an attachment; `Apply` answers unreadable (422) and removes the row. | `1f6020b` |
+| m1 CLAUDE.md "Nothing is written" | Fixed. | `1f6020b` |
 | m2 verdict pre-empted | Closed by this section, after a clean `bin/ci`. | this commit |
-| m3 export link, form position | Fixed: asserted inside the form; position asserted (the review's claim that the link was untested was rejected: it was asserted page-wide). | `3b13920` |
-| m4 controller log | Fixed: the class and the first five backtrace lines, never the message. | `3b13920` |
-| m5 expired or unreadable upload | Fixed: removed when the apply finds it. | `3b13920` |
+| m3 export link, form position | Fixed: asserted inside the form; position asserted (the review's claim that the link was untested was rejected: it was asserted page-wide). | `1f6020b` |
+| m4 controller log | Fixed: the class and the first five backtrace lines, never the message. | `1f6020b` |
+| m5 expired or unreadable upload | Fixed: removed when the apply finds it. | `1f6020b` |
 | m6 `.rubocop.yml` exclusions | Rejected: file-scoped to the three scenario specs, with a comment. | none |
 | m7 second read of the upload | Left: measured (+408 MB, under the 500 MB bar); exposing the bytes is the plan's fallback. | none |
-| m8 install migration | Fixed: `if_not_exists: true`. | `3b13920` |
-| Q1, the 4 s bar | Ruled (2026-10-21) a development-machine bar: a note in README "Your data" and `docs/releasing.md` that very large imports on slow hardware may briefly hold other writes. | `0bc004a` |
-| Q5, AC-6.5 | Accepted for merge as one instance; the maintainer's own restore of their real collection on their NAS is a release check (`docs/releasing.md`). | `0bc004a` |
+| m8 install migration | Fixed: `if_not_exists: true`. | `1f6020b` |
+| Q1, the 4 s bar | Ruled (2026-10-21) a development-machine bar: a note in README "Your data" and `docs/releasing.md` that very large imports on slow hardware may briefly hold other writes. | `47942d5` |
+| Q5, AC-6.5 | Accepted for merge as one instance; the maintainer's own restore of their real collection on their NAS is a release check (`docs/releasing.md`). | `47942d5` |
 
-**Fresh verification evidence:** the `bin/ci` result above, at `7b2e796`, after all of these fixes.
+**Fresh verification evidence:** the `bin/ci` result above, at `aa162da`, after all of these fixes.
 
 ### Author's self-review (superseded)
 
 Written before the independent review, kept as history:
 
 > SPEC-ALIGNED, by the author's own coverage matrix above (every AC and FR has an example, a measurement or a reading; the two measured bars pass), not by an independent reviewer. An independent `sdd-review` Mode B pass before the merge is recommended; the CI caveats above should be re-checked on a machine in light mode with libvips installed.
+
+## Distillation (2026-10-21)
+
+`distill-feature` ran before the merge, on pull request #120. Spec 028's areas, data portability and release and deploy, have no area doc yet, so nothing was written into `docs/architecture/`; their slices (#108, #109) will distil spec 028 with the rest of each area, and the spec does not freeze yet. The specs index row's Plan now reads "retirement owed" (`78545b5`), so the plan is retired after the merge. Spec 028's supersessions of spec 025 (decisions 6 and 9) were already recorded in both index rows. CLAUDE.md already describes the shipped behaviour (Phase 12) and restates no area doc's rules, since none exists. Commit SHAs cited in this file and in `plan-review.md` were rewritten to the commits on the rebased branch.
