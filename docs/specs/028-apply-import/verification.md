@@ -106,7 +106,7 @@ Each is small and was found by running the plan's own code:
 
 ## Findings of the independent implementation review (Sonnet, 2026-10-21) and how they were closed
 
-Spec 028 became 1.3.4 (a PATCH: the price rule below, with its supersession of spec 025's decision 9 on that point recorded in `docs/specs/README.md`, both rows). This section was added after the review; the verdict under "Implementation review" is rewritten separately, after a clean `bin/ci`.
+Spec 028 became 1.3.4 (a PATCH: the price rule below, with its supersession of spec 025's decision 9 on that point recorded in `docs/specs/README.md`, both rows). This section was added after the review; the verdict is under "Implementation review", after the clean `bin/ci` run.
 
 | Finding | Resolution |
 |---|---|
@@ -114,7 +114,7 @@ Spec 028 became 1.3.4 (a PATCH: the price rule below, with its supersession of s
 | M1, price | **Fixed (ruled by the maintainer, 2026-10-21).** The reader refuses a well-formed row whose `price_paid`, in cents, exceeds 9,223,372,036,854,775,807 (the lots column is a 64-bit SQLite integer): a problem row, rule `price_too_large`, at `/lots/N/price_paid`, "price_paid is too large to record", so the preview offers no apply. Tests first, red then green: `collection_import_spec` ("refuses a price that doesn't fit the cents column"), the preview example above, and `apply_spec` ("refuses a stored file with a price that doesn't fit, and removes it"). `CollectionImport::MAX_PRICE_CENTS`. |
 | M2 | **Fixed.** `ImportUpload#checksum` returns nil when nothing is attached; `Apply` treats that as `:unreadable` (422 "Preview the file again.") and removes the row, both before reading and inside the transaction. `apply_spec`, "answers :unreadable, removing the row, for an upload that has lost its attachment". |
 | m1 | **Fixed.** `CLAUDE.md`: "No lot, user or account is written." |
-| m2 | **Open by design.** The verdict is rewritten after a clean `bin/ci`. |
+| m2 | **Closed.** The verdict below was rewritten after the clean `bin/ci` run recorded in the next section. |
 | m3 | **Partly rejected.** The link to "Export collection" was asserted (page-wide); it is now asserted inside the form. AC-7.1's position is now asserted too: the apply form sits after the counts and the held-lots line and before the profile notes. |
 | m4 | **Fixed.** The controller's rescue logs the class and the first five backtrace lines, never the message (it can carry file content). The rescue stays broad: the page must answer 500 for any failure after the lock. |
 | m5 | **Fixed.** An expired or unreadable upload is removed when the apply finds it. |
@@ -128,15 +128,36 @@ Specs run for this round (no system specs, no `bin/ci`, as another worker is usi
 
 ## bin/ci
 
-Run twice at the end, `bin/ci` in this worktree: Setup, RuboCop (525 files, no offenses), Brakeman (no warnings), bundler-audit and importmap audit pass. **RSpec: 1752 examples, 10 failures, 1 pending.** The first run had an 11th failure of this feature's own, an order-dependent example that compared `config.filter_parameters` literally (Rails compiles it after the first request); it now checks the filter's behaviour and passes in any order. The ten that remain are the development machine, not this change:
+Run by the coordinator on 2026-10-21 at `7b2e796` (this branch merged with `origin/main`, which includes #119, "pin system specs to the light theme"), in Light mode with ImageMagick and libvips installed. Verbatim result: every step passed (Setup, RuboCop, Brakeman, bundler-audit, importmap audit) and RSpec ran **1757 examples, 0 failures, 1 pending** (`art_agreement_spec`, which needs `COLLECTOR_ART_AGREEMENT`).
 
-| Failing examples | Cause |
-|---|---|
-| `footer_spec` ×3, `theme_spec`, `card_image_fit_spec` ×3 | The machine is in macOS Dark appearance (`defaults read -g AppleInterfaceStyle` → `Dark`, at 22:27), so headless Firefox reports `prefers-color-scheme: dark` and the examples that expect the light theme's colours get the dark ones (for example `rgb(170, 162, 152)` where `rgb(95, 90, 82)` is expected). The first full run of this branch, in the afternoon, did not show them. |
-| `active_storage_variant_transformer_spec` ×2, `libvips_check_spec` | libvips isn't installed (`Could not open library 'libvips.42.dylib'`), as `CLAUDE.md` says development needs it. |
-
-The one pending example is `art_agreement_spec` ("Set COLLECTOR_ART_AGREEMENT to the spike's art-cache directory"), as before. I did not re-run these ten on `main`; their causes are shown above and none touches code this feature changed.
+The earlier run on this branch (`65d9fa4`, 1752 examples, 10 failures) is superseded. Its failures were the machine, not the change: ImageMagick and libvips were not installed (`active_storage_variant_transformer_spec` ×2, `libvips_check_spec`), and the machine was in macOS Dark appearance, which failed the system specs that assume the light theme (`footer_spec` ×3, `theme_spec`, `card_image_fit_spec` ×3). Installing the libraries and #119 removed them. Its other failure, an order-dependent example of this feature that compared `config.filter_parameters` literally, was fixed in `91b734b` (it now checks the filter's behaviour).
 
 ## Implementation review
 
-SPEC-ALIGNED, by the author's own coverage matrix above (every AC and FR has an example, a measurement or a reading; the two measured bars pass), not by an independent reviewer. An independent `sdd-review` Mode B pass before the merge is recommended; the CI caveats above should be re-checked on a machine in light mode with libvips installed.
+SPEC-ALIGNED (independent Sonnet review 2026-10-21, after fixes)
+
+**The review.** A read-only Mode B review by Sonnet 5.5 of `1ace7f8..65d9fa4` against spec 1.3.3 found 0 critical, 2 major and 8 minor issues, and issued DRIFT DETECTED (minor) until they were closed. Each was resolved or rejected as below; the table "Findings of the independent implementation review" above has the detail.
+
+| Finding | Resolution | Commit |
+|---|---|---|
+| M1, impossible dates | Rejected: `ExportFormat::Rules` already refuses them (`not_a_time`). A preview-level example (`2026-13-45T00:00:00Z`) proves it. | `3b13920` |
+| M1, price | Fixed: the reader refuses a `price_paid` over the cents column as a problem row (`price_too_large`); tests at reader, preview and apply levels. Spec 1.3.4 records it and the supersession of spec 025 decision 9 on this point (both rows of `docs/specs/README.md`). | `3b13920` (code, tests), `0bc004a` (spec 1.3.4, index) |
+| M2, upload without its file | Fixed: `ImportUpload#checksum` is nil without an attachment; `Apply` answers unreadable (422) and removes the row. | `3b13920` |
+| m1 CLAUDE.md "Nothing is written" | Fixed. | `3b13920` |
+| m2 verdict pre-empted | Closed by this section, after a clean `bin/ci`. | this commit |
+| m3 export link, form position | Fixed: asserted inside the form; position asserted (the review's claim that the link was untested was rejected: it was asserted page-wide). | `3b13920` |
+| m4 controller log | Fixed: the class and the first five backtrace lines, never the message. | `3b13920` |
+| m5 expired or unreadable upload | Fixed: removed when the apply finds it. | `3b13920` |
+| m6 `.rubocop.yml` exclusions | Rejected: file-scoped to the three scenario specs, with a comment. | none |
+| m7 second read of the upload | Left: measured (+408 MB, under the 500 MB bar); exposing the bytes is the plan's fallback. | none |
+| m8 install migration | Fixed: `if_not_exists: true`. | `3b13920` |
+| Q1, the 4 s bar | Ruled (2026-10-21) a development-machine bar: a note in README "Your data" and `docs/releasing.md` that very large imports on slow hardware may briefly hold other writes. | `0bc004a` |
+| Q5, AC-6.5 | Accepted for merge as one instance; the maintainer's own restore of their real collection on their NAS is a release check (`docs/releasing.md`). | `0bc004a` |
+
+**Fresh verification evidence:** the `bin/ci` result above, at `7b2e796`, after all of these fixes.
+
+### Author's self-review (superseded)
+
+Written before the independent review, kept as history:
+
+> SPEC-ALIGNED, by the author's own coverage matrix above (every AC and FR has an example, a measurement or a reading; the two measured bars pass), not by an independent reviewer. An independent `sdd-review` Mode B pass before the merge is recommended; the CI caveats above should be re-checked on a machine in light mode with libvips installed.
