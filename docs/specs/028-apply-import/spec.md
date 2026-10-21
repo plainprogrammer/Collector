@@ -1,7 +1,7 @@
 # Feature 028: Apply an Import
 
-**Status:** Approved by the maintainer (2026-10-20), with rulings on decisions 1, 3, 6, 7, 9 and 10 and the error scenario for a failed store; decisions 2, 4, 5 and 8 confirmed; revised after the independent review with the rulings of 2026-10-20 on M1, M3, M4, Q4 and Q5 (version 1.3.3)
-**Version:** 1.3.3
+**Status:** Approved by the maintainer (2026-10-20), with rulings on decisions 1, 3, 6, 7, 9 and 10 and the error scenario for a failed store; decisions 2, 4, 5 and 8 confirmed; revised after the independent review with the rulings of 2026-10-20 on M1, M3, M4, Q4 and Q5 (version 1.3.4)
+**Version:** 1.3.4
 **Created:** 2026-10-20
 **Last Updated:** 2026-10-20
 **Branch:** `028-apply-import`
@@ -15,6 +15,7 @@
 | Version | Date | Change |
 |---------|------|--------|
 | 1.0.0 | 2026-10-20 | Written from issue #40, roadmap theme A item 5, spec 025 (the preview), the export format (spec 017, ADR 0020) and the export (spec 022) |
+| 1.3.4 | 2026-10-21 | PATCH, a clarification ruled by the maintainer (2026-10-21) after the implementation review, superseding one point of spec 025's reader rules. A well-formed row whose `price_paid`, in cents, does not fit the lots table's integer column (more than 9,223,372,036,854,775,807 cents) is a problem row ("price_paid is too large to record", rule `price_too_large`, at `/lots/N/price_paid`), so the preview offers no apply and a stored file that now has one is refused at the apply (decision 4, FR-3: the rows written are the ones the reader checked). Impossible calendar dates were already refused by the reader (`not_a_time`) and are unchanged. A stored upload that has lost its file is an unreadable file (422 "Preview the file again.") and its row is removed |
 | 1.3.3 | 2026-10-20 | PATCH, a wording clarification ruled by the maintainer (2026-10-20), no change of behaviour. Decision 9 and AC-5.4: stored files are released file first, then row (the effect of `purge`, in the safe order), and the sweep touches no disk path except through that release |
 | 1.3.2 | 2026-10-20 | PATCH, clarifications only, after the independent plan reviews (`plan-review.md`); no behaviour of the spec changes. Decision 2: the fingerprint covers each changed and removed lot's `created_at` as well as its `updated_at`, which AC-3.7 already required. Decision 8 and AC-1.12: direct-upload creation and the disk service's upload `PUT` answer 404 until a feature needs them (maintainer, 2026-10-20). Decision 13: an early presence and expiry check is allowed; the one inside the transaction is authoritative. The `Plan:` line points at `plan.md` |
 | 1.3.1 | 2026-10-20 | The maintainer ruled P1 to P4 (2026-10-20): the order of an apply's checks (decision 13, nothing to change before the fingerprint), the fingerprint's full-precision `updated_at` (decision 2), AC-1.10's removal-heavy case and preview re-measure, and the 10-minute orphan grace (decision 9). Marked ruled, Open Questions emptied; no other change |
@@ -297,6 +298,7 @@ Each request is judged in this order, and the first that applies decides the res
 ## Supersedes
 
 - Spec 025 decision 6 ("read in the request and never stored"), its Goal "Nothing is written … no stored file", AC-1.8, FR-6's "writes no file" and its Security and Cost notes on never storing, for a file that can be applied and has something to change (decision 10). Spec 025 is not edited; this line and the row in [`docs/specs/README.md`](../README.md) carry it.
+- Spec 025 decision 9 (what makes a well-formed row resolvable), in one point: a `price_paid` whose cents do not fit the lots table's integer column makes the row a problem row (1.3.4). Spec 025 is not edited; this line and the two rows of [`docs/specs/README.md`](../README.md) carry it.
 
 ## Documents that change
 

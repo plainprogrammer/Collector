@@ -37,7 +37,8 @@ and description.
 
    Both `amd64` and `arm64` appear, with `linux`.
 
-4. Deploy with Kamal by version: `bin/kamal deploy --skip-push --version 0.1.0`. Never run a plain
+4. Before announcing a release that touches import or export, restore the maintainer's own real collection from its export into a fresh instance (their NAS) through the pages and compare the new export with the old (spec 028 AC-6.5; the suite and `verification.md` only show it on one instance with a seeded catalog).
+5. Deploy with Kamal by version: `bin/kamal deploy --skip-push --version 0.1.0`. Never run a plain
    `bin/kamal deploy` against the public image.
 
 **Re-runs.** Only the newest release's workflow may be re-run: a re-run moves `latest`, `X` and `X.Y` to the
@@ -48,7 +49,7 @@ is safe and is how `latest` is restored if something else overwrote it.
 
 Notes an operator needs when upgrading, newest first. `bin/docker-entrypoint` runs `bin/rails db:prepare` on boot, so every migration listed here runs unattended.
 
-- **Applying an import (spec 028).** Two migrations run on boot: Active Storage's tables and `import_uploads`. The app now keeps a previewed import file under `storage/` (on the persistent volume) for at most an hour, one per account and at most 32 MB, and a recurring job (`config/recurring.yml`, every 15 minutes) removes expired ones; an orphaned file is removed within 25 minutes. Nothing is required of the operator. Active Storage's routes are now gated behind sign-in, and its direct-upload routes answer 404 (ADR 0022).
+- **Applying an import (spec 028).** Two migrations run on boot: Active Storage's tables and `import_uploads`. The app now keeps a previewed import file under `storage/` (on the persistent volume) for at most an hour, one per account and at most 32 MB, and a recurring job (`config/recurring.yml`, every 15 minutes) removes expired ones; an orphaned file is removed within 25 minutes. Nothing is required of the operator. Active Storage's routes are now gated behind sign-in, and its direct-upload routes answer 404 (ADR 0022). The write transaction of an import is under 4 seconds for 50,000 lots on the development machine; on slower hardware a very large import may briefly hold other writes, so import while nothing else is writing.
 
 ## Going public (one time)
 

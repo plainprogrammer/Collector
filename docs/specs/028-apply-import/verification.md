@@ -104,6 +104,28 @@ Each is small and was found by running the plan's own code:
 - Plan spec fixes: `update_columns` on a record, not a relation; lets created before a snapshot; held-lot times that make "nothing to change" true; a `X-CSRF-Token` header (a per-form token did not verify in a request spec); a warm-up preview so the query-count example compares like with like.
 - No subagents: the phases were executed in this session (sdd-execute's per-task dispatch was not used).
 
+## Findings of the independent implementation review (Sonnet, 2026-10-21) and how they were closed
+
+Spec 028 became 1.3.4 (a PATCH: the price rule below, with its supersession of spec 025's decision 9 on that point recorded in `docs/specs/README.md`, both rows). This section was added after the review; the verdict under "Implementation review" is rewritten separately, after a clean `bin/ci`.
+
+| Finding | Resolution |
+|---|---|
+| M1, impossible dates | **Rejected: the reader already refuses them.** `ExportFormat::Rules` returns `not_a_time` for a moment that isn't real (`rules.rb`, `rule_problems`), and `collection_import_spec` already held "2026-02-30" as a problem row. The review's premise (the schema pattern alone decides) missed that second pass. Added a preview-level example that proves it end to end: `collection_import_previews_spec`, "refuses an impossible date and a price that doesn't fit, offering no apply" (a `changed_at` of `2026-13-45T00:00:00Z`: "can't be applied", no form, nothing stored). It passed on first run. |
+| M1, price | **Fixed (ruled by the maintainer, 2026-10-21).** The reader refuses a well-formed row whose `price_paid`, in cents, exceeds 9,223,372,036,854,775,807 (the lots column is a 64-bit SQLite integer): a problem row, rule `price_too_large`, at `/lots/N/price_paid`, "price_paid is too large to record", so the preview offers no apply. Tests first, red then green: `collection_import_spec` ("refuses a price that doesn't fit the cents column"), the preview example above, and `apply_spec` ("refuses a stored file with a price that doesn't fit, and removes it"). `CollectionImport::MAX_PRICE_CENTS`. |
+| M2 | **Fixed.** `ImportUpload#checksum` returns nil when nothing is attached; `Apply` treats that as `:unreadable` (422 "Preview the file again.") and removes the row, both before reading and inside the transaction. `apply_spec`, "answers :unreadable, removing the row, for an upload that has lost its attachment". |
+| m1 | **Fixed.** `CLAUDE.md`: "No lot, user or account is written." |
+| m2 | **Open by design.** The verdict is rewritten after a clean `bin/ci`. |
+| m3 | **Partly rejected.** The link to "Export collection" was asserted (page-wide); it is now asserted inside the form. AC-7.1's position is now asserted too: the apply form sits after the counts and the held-lots line and before the profile notes. |
+| m4 | **Fixed.** The controller's rescue logs the class and the first five backtrace lines, never the message (it can carry file content). The rescue stays broad: the page must answer 500 for any failure after the lock. |
+| m5 | **Fixed.** An expired or unreadable upload is removed when the apply finds it. |
+| m6 | **Rejected.** The `.rubocop.yml` exclusions are file-scoped to the three scenario specs, with a comment; the examples are scenarios, and splitting them would hide the before/after reading. |
+| m7 | **Left, with the measurement.** The second read of the upload is measured (preview +408 MB, under the 500 MB bar); exposing `CollectionImport`'s bytes is the plan's fallback, not needed. |
+| m8 | **Fixed.** The install migration uses `if_not_exists: true` on its three `create_table` calls (rolled back and migrated again here; `db/schema.rb` unchanged). |
+| Q1, the 4 s bar | **Ruled (2026-10-21): a development-machine bar.** README "Your data", `docs/releasing.md`'s upgrade note say that on slow hardware a very large import may briefly hold other writes, so import while nothing else is writing. There is no data-portability area doc yet (`distill-feature` writes it); it must carry this note. |
+| Q5, AC-6.5 | **Accepted for merge** as one instance with a seeded catalog (above). The maintainer's own restore of their real collection on their NAS is part of the release check (`docs/releasing.md`, "Cutting a release", step 4). |
+
+Specs run for this round (no system specs, no `bin/ci`, as another worker is using the machine): `spec/models`, `spec/requests`, `spec/config`, `spec/lib` and the files touched; results are in the commit messages.
+
 ## bin/ci
 
 Run twice at the end, `bin/ci` in this worktree: Setup, RuboCop (525 files, no offenses), Brakeman (no warnings), bundler-audit and importmap audit pass. **RSpec: 1752 examples, 10 failures, 1 pending.** The first run had an 11th failure of this feature's own, an order-dependent example that compared `config.filter_parameters` literally (Rails compiles it after the first request); it now checks the filter's behaviour and passes in any order. The ten that remain are the development machine, not this change:

@@ -350,7 +350,7 @@ More: the app says what applying it would do and which rows it can't apply, and 
 the collection. A file that can be applied is kept privately for an hour, so a collector applies it
 with one click: the collection then holds exactly the file's lots, all or nothing, with no undo, so
 the page leads to a download of the current collection first. A removal needs a confirmation, and an
-apply whose collection changed since the preview is shown again instead of applied.
+apply whose collection changed since the preview is shown again instead of applied. Applying writes in one short transaction (under 4 seconds for 50,000 lots on the development machine); on slow hardware a very large import may briefly hold other writes (a scanner add, a lot edit), so import while nothing else is writing.
 
 ## License
 
