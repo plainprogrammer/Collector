@@ -273,6 +273,18 @@ RSpec.describe "Import preview", type: :request do
         expect([ ImportUpload.count, ActiveStorage::Blob.count ]).to eq([ 0, 0 ])
       end
     end
+
+    it "previews the format's empty example, in its own currency, as nothing to change with no apply offered (AC-6.4)", :aggregate_failures do
+      allow(Rails.configuration.x).to receive(:currency).and_return(Collector::Currency.fetch!("EUR"))
+      bytes = ExportFormatRules.examples("valid").fetch("valid/empty.json")
+
+      post collection_import_preview_path, params: { export_file: import_upload_file(bytes) }
+
+      expect(response).to have_http_status(:ok) # not refused as another currency
+      expect(response.body).to include("nothing to change")
+      expect(html.css("form[action='#{collection_import_path}']")).to be_empty
+      expect(ImportUpload.count).to eq(0)
+    end
   end
 
   context "when signed out" do
