@@ -1,10 +1,10 @@
 # Implementation Plan: Back Up and Restore an Instance
 
 **Spec:** docs/specs/030-backup-restore/spec.md (v1.2.1, Approved by the maintainer on 2026-10-21)
-**Status:** Draft, awaiting the maintainer's approval at the plan gate. Written without running anything: it was traced against the files it edits and the gem sources (`research.md`). Not reviewed yet; the project default is a read-only Opus review before execution.
+**Status:** Draft revision 2, awaiting the maintainer's approval at the plan gate. Written without running anything: it was traced against the files it edits and the gem sources (`research.md`). Revised after the independent read-only Opus review (NEEDS REVISION: 1 critical, 3 major, 13 minor) and the maintainer's rulings of 2026-10-21; every finding, its fix and the rulings are in [plan-review.md](plan-review.md). The revised plan has not been reviewed again.
 **Decisions:** docs/adr/0024-backup-with-vacuum-into.md (Proposed, written with this plan); ADRs 0016, 0017, 0019, 0020, 0022 apply
 **Created:** 2026-10-21 (on `d67554b`, spec 1.2.0, then the approval commit; `origin/main` at `acb6e3c`)
-**Supporting:** [data-model.md](data-model.md), [contracts/tasks.md](contracts/tasks.md), [contracts/archive.md](contracts/archive.md), [research.md](research.md), [issue-art-index-ready.md](issue-art-index-ready.md)
+**Supporting:** [data-model.md](data-model.md), [contracts/tasks.md](contracts/tasks.md), [contracts/archive.md](contracts/archive.md), [research.md](research.md), [plan-review.md](plan-review.md), [issue-art-index-ready.md](issue-art-index-ready.md)
 
 ## Global Constraints
 
@@ -13,16 +13,16 @@ Copied from the spec; each applies to every phase.
 - One pull request: the library and the two tasks, the suite, `bin/backup-smoke` and its CI step, the documents and the ADR (decision 15). No migration, no table, no column, no setting, no route, no controller, no view (spec NFRs, AC-6.2).
 - The commands: `bin/rails "backup:create[DIRECTORY]"` and `bin/rails "backup:restore[FILE]"`; the directory and the file are required arguments; no default under `storage/` (decision 4). Neither runs a job, a request or a process; neither calls the network (FR-3).
 - A backup is `collector-backup-YYYYMMDDTHHMMSSZ.tar.gz` (UTC, no colon): a gzip'd tar of `manifest.json` then `primary.sqlite3`, mode 0600, written under a `.partial` name created 0600, fsynced, read back, then hard-linked to its final name, never replacing a file (decisions 5 and 7). It holds the primary database only; no secret, no Active Storage file (decisions 2 and 3).
-- A restore needs a fresh volume (none of the four databases, no `-wal`, `-shm` or `-journal`), places the snapshot through a temporary file it renames after every check, never opens a connection to the primary's path, ends every session with foreign keys on (cascading to the bulk removals, selections and marks), and migrates nothing (decisions 6, 7, 10; FR-2, FR-3, FR-8).
+- A restore needs a fresh volume (none of the four databases, no `-wal`, `-shm` or `-journal`), places the snapshot through a temporary file it links into place after every check, never opens a connection to the primary's path, ends every session with foreign keys on (cascading to the bulk removals, selections and marks), and migrates nothing (decisions 6, 7, 10; FR-2, FR-3, FR-8).
 - Snapshots are opened with `SQLite3::Database` only, never Active Record (decision 6).
-- A refusal is two plain sentences (what is wrong, what to do), no exception class, no backtrace, exit status 1; it leaves the volume as it was (FR-4, AC-3.8).
+- A refusal is two plain sentences (what is wrong, what to do), no exception class, no backtrace, exit status 1; it leaves the volume as it was (FR-4, AC-3.8). That includes the slips decision 4's ownership rules invite: a file or a volume the container's user can't read or write is a named refusal, and a system or SQLite error nothing else names ends in the same two lines (`Backup.run`'s last rescue).
 - Core code names no collectible: the new files contain neither `MTG` nor `Scryfall` (FR-5).
 - No secret is written into a backup, printed or logged; the output holds file names, paths, sizes, counts of accounts, users and lots, the schema version and times, never a name or an address (FR-10, AC-1.7).
 - The tasks don't depend on `:environment` (research.md 1, 2): they initialize nothing, read no `secret_key_base` and open no Active Record connection. The library is in `lib/collector/backup/`, required by path and not autoloaded (`config/application.rb`, Phase 0). `SECRET_KEY_BASE_DUMMY=1` stays in the documented Kamal one-off and in `bin/backup-smoke` as the maintainer ruled.
 - Every phase ends green: its last step is the whole `bin/rspec` passing, with RuboCop and Brakeman clean; each phase adds files and edits no expectation of an existing spec except where its own step says so (`.claude/rules/testing.md`).
 - TDD is the hard gate: every implementation step has a failing test before it. Prose documents are verified by reading and recorded in `verification.md`, never by RSpec (`.claude/rules/testing.md`).
 - Plans here are not executed before approval: this plan was traced, not run (research.md 8 lists what each phase's first failing test confirms).
-- Commits: Conventional Commits, one per step or change, ending with `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`; stage by name; one git operation per call (the project's hooks read the command text).
+- Commits: Conventional Commits, one per step or change, ending with the executing model's attribution line (the one the session's system reminder gives; execution is by the maintainer's choice of agent); stage by name; one git operation per call (the project's hooks read the command text).
 
 ---
 
@@ -78,7 +78,7 @@ The maintainer's ruling asks the plan to confirm that a production boot of the r
 
 - **A booted application does read it eagerly.** `active_storage.verifier` (`activestorage-8.1.4/lib/active_storage/engine.rb:175`) calls `app.message_verifier` in `after_initialize`, and `RotationCoordinator#[]` builds the verifier at once, calling the generator that reads `config.secret_key_base` (`railties-8.1.4/lib/rails/application.rb:208`); Active Record's `generated_token_verifier` does the same. Without `SECRET_KEY_BASE`, `SECRET_KEY_BASE_DUMMY` or readable credentials, production raises `Missing secret_key_base`. **`SECRET_KEY_BASE_DUMMY=1` is enough**: the configuration then returns a locally generated secret (`configuration.rb:525`), the way `RUN SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile` already boots the image's build.
 - **The tasks don't boot the application.** Rake initializes only inside its `:environment` task (`application.rb:562`); `RakeCommand` loads the Rakefile and runs the requested task. `backup:create` and `backup:restore` don't depend on `:environment`, so they read no secret and need no dummy; they also can't open an Active Record connection (FR-8's guarantee becomes structural). The library is therefore required by path and not autoloaded.
-- **How the plan tests it** (Phase 5, `spec/backup_boot_spec.rb`): a child production process with no secret, no dummy and a wrong master key runs `backup:restore` and `backup:create` and gets only the tasks' own refusal; the control shows `bin/rails runner` in the same environment failing for want of a secret, and passing with the dummy; every child is given a scratch `DATABASE_URL` and the examples assert no file appeared in `storage/`. `bin/backup-smoke` restores once with the dummy (the maintainer's command) and once with neither variable set.
+- **How the plan tests it** (Phase 5, `spec/backup_boot_spec.rb`): a child production process with no secret, no dummy and a wrong master key runs `backup:restore` and `backup:create` and gets only the tasks' own refusal (the wrong key is safe there: the tasks read no credentials); an in-process example shows the two tasks' prerequisites exclude `environment` (the structural guarantee). The control and the dummy example run `bin/rails runner` **without any master key**, and are skipped, with the reason, when a `config/master.key` file exists (CI has none): with a wrong key every production boot raises `InvalidMessage` before `secret_key_base` is read, because `config/storage.yml`'s commented-out ERB reads credentials when Active Storage's blob loads, so the control would pass for the wrong reason and the dummy example could not pass (plan-review M1, research.md 1). The control's regex is `/secret_key_base/` only. Every child is given a scratch `DATABASE_URL` and the examples assert no file appeared in `storage/`. `bin/backup-smoke` restores once with the dummy (the maintainer's command) and once with neither variable set. **The confirmation therefore rests on the tasks' structure plus the dummy example run where no key exists (CI and the image), not on a boot with a wrong key**; `verification.md` records it that way.
 - **What stays as ruled:** the documented Kamal one-off and the smoke script's first restore keep `-e SECRET_KEY_BASE_DUMMY=1`. It costs nothing and keeps the command working if a later change adds `:environment`; the README says it stands for a secret the restore doesn't read.
 
 ## Decision 12's separate issue
@@ -120,24 +120,24 @@ Every criterion, requirement and decision → its phase → its first failing te
 | AC-3.5 | 4 | `restore_spec` "refuses a newer release's backup…" |
 | AC-3.6 | 5 | `backup_upgrade_spec` |
 | AC-3.7 | 2, 4 | `snapshot_spec` "#verify!"; `restore_spec` "refuses a snapshot with an unreadable page, and one with an orphan row…" |
-| AC-3.8 | 4 | `restore_spec` `expect_refused` (plain-sentence check on every refusal); `backup_restore_rake_spec` "prints each refusal as two lines…" |
+| AC-3.8 | 0, 4 | `restore_spec` `expect_refused` (plain-sentence check on every refusal, including an unreadable file and an unwritable volume); `backup_restore_rake_spec` "prints each refusal as two lines…"; `run_spec` (an unnamed system or SQLite error ends in two plain lines) |
 | AC-4.1 | 3 | `create_spec` "is private and holds no secret or setting…" |
 | AC-4.2 | 6 | script (`verify_restored`, different `SECRET_KEY_BASE`), first CI run |
-| AC-4.3 | 0 | `backup_guards_spec` "uses no Active Record encryption…" |
+| AC-4.3 | 0 | `backup_guards_spec` "uses no Active Record encryption…" (no model `encrypts`; no key in `config.active_record.encryption`) |
 | AC-4.4 | 7 | reading (README "What to keep outside the backup") |
 | AC-5.1 | 7 | reading |
 | AC-5.2 | 6 | script, first CI run |
 | AC-5.3 | 6 | `image_publishing_spec` "runs bin/backup-smoke after bin/image-smoke…", and the first run |
 | AC-5.4 | 0 to 5 | the support layer (Phase 0) and every non-container example; `bin/ci` |
-| AC-5.5 | 0 | `backup_guards_spec` "knows every collector-owned attachment…", "knows exactly the four production databases", with a negative control |
+| AC-5.5 | 0 | `backup_guards_spec` "knows every collector-owned attachment…" with a negative control, and "knows exactly the four production databases" (an exact match, no control) |
 | AC-5.6 | 8 | the maintainer's NAS restore, recorded in `verification.md` |
 | AC-5.7 | 7 | reading (`docs/releasing.md` step 5) |
 | AC-6.1 | 7 | reading (both links resolve) |
 | AC-6.2 | 5 | `backup_guards_spec` "has no route, controller or view named for a backup…" |
 | FR-1 | 3 | `create_spec` (all) |
-| FR-2 | 1, 4 | `archive_spec`; `restore_spec` (the order is the order of the examples' refusals: volume, kind, version, checksum, room, checks, schema) |
+| FR-2 | 1, 4 | `archive_spec` (including the `on_manifest` callback); `restore_spec` (the order is the order of the examples' refusals: volume, kind, incomplete, version, **room, then checksum** (maintainer's ruling m3: the room is checked as soon as the manifest is parsed, inside `Archive.read`'s first pass), checks, schema) |
 | FR-3 | 4 | `restore_spec` "places the snapshot…" compares every other table; Phase 4 step 4.5 |
-| FR-4 | 0, 3, 4 | `refusal_spec`; every refusal example |
+| FR-4 | 0, 3, 4 | `refusal_spec`; `run_spec` "prints a system error as two plain lines…"; every refusal example |
 | FR-5 | 5 | `backup_guards_spec` "keeps core code free of any collectible…" |
 | FR-6 | 3, 4 | `create_spec` "removes a .partial file more than a day old…"; `restore_spec` "…the next restore succeeds and cleans up"; Phase 4 step 4.5 (grep) |
 | FR-7 | 1, 7 | `archive_spec` (system `tar` reads it); reading of `docs/backup-restore.md` |
@@ -170,13 +170,13 @@ Every criterion, requirement and decision → its phase → its first failing te
 **Files:**
 - Create: `lib/collector/backup.rb`, `lib/collector/backup/refusal.rb`, `lib/collector/backup/databases.rb`, `lib/collector/backup/free_space.rb`
 - Edit: `config/application.rb` (one line: `autoload_lib` ignores the backup library)
-- Create: `spec/support/backup_helpers.rb`, `spec/lib/collector/backup/refusal_spec.rb`, `spec/lib/collector/backup/databases_spec.rb`, `spec/lib/collector/backup/free_space_spec.rb`, `spec/backup_guards_spec.rb`
+- Create: `spec/support/backup_helpers.rb`, `spec/lib/collector/backup/refusal_spec.rb`, `spec/lib/collector/backup/run_spec.rb`, `spec/lib/collector/backup/databases_spec.rb`, `spec/lib/collector/backup/free_space_spec.rb`, `spec/backup_guards_spec.rb`
 
 **Interfaces:**
 - `Collector::Backup::Refusal.new(problem, advice)` → `#problem`, `#advice`, `#message` ("problem advice")
 - `Collector::Backup::Databases.configured(env: Rails.env)` → `Databases`; `Databases.new({ "primary" => path, … })`; `#primary` → `Pathname`, `#directory` → `Pathname`, `#names` → `Array<String>`, `#occupied` → `Array<Pathname>` (every file of the four databases and their `-wal`, `-shm`, `-journal` that exists)
 - `Collector::Backup::FreeSpace.bytes(path)` → `Integer` or `nil`
-- `Collector::Backup` module functions (this phase): `.argument(args, name, usage)`, `.run { }`, `.size_phrase(bytes)`, `.counts_phrase(counts)`, `.create_private(path)`, `.remove(path)`, `.fsync_file(path)`, `.fsync_directory(path)`, `.publish(from, to) { on_clash }`, `.release_schema_versions(root = Rails.root)`; constants `FORMAT_VERSIONS`, `FORMAT_VERSION`, `BUSY_TIMEOUT_MS`, `STALE_PARTIAL_SECONDS`
+- `Collector::Backup` module functions (this phase): `.argument(args, name, usage)`, `.run { }` (a `Refusal` prints its two sentences; a `SystemCallError` or `SQLite3::Exception` that nothing named ends in two plain lines too; both exit 1), `.size_phrase(bytes)`, `.counts_phrase(counts)`, `.create_private(path)`, `.remove(path)`, `.fsync_file(path)`, `.fsync_directory(path)`, `.publish(from, to) { on_clash }`, `.release_schema_versions(root = Rails.root)`; constants `FORMAT_VERSIONS`, `FORMAT_VERSION`, `BUSY_TIMEOUT_MS`, `STALE_PARTIAL_SECONDS`
 - Spec support: `BackupHelpers` (below)
 
 **Complexity Tracking:** the library lives in `lib/collector/backup/` and is not autoloaded, which departs from "plain Ruby objects under `app/models/`" (`.claude/rules/models.md`). The two tasks must not initialize the application (research.md 1 and 2; ADR 0024 decision 5), and autoloading exists only after initialization. The simplicity gate holds: three components (the file, the database operations, the two commands), each of a few small files, no gem.
@@ -194,6 +194,36 @@ RSpec.describe Collector::Backup::Refusal, :backup do
 
     expect(refusal).to have_attributes(problem: "The volume isn't empty.", advice: "Restore onto a new volume.",
       message: "The volume isn't empty. Restore onto a new volume.")
+  end
+end
+```
+
+`spec/lib/collector/backup/run_spec.rb` (plan-review M3: the slips decision 4's ownership rules invite must not end in a backtrace):
+
+```ruby
+require "rails_helper"
+
+RSpec.describe Collector::Backup, ".run", :backup do
+  it "prints a refusal as its two sentences and exits 1", :aggregate_failures do
+    out, err, status = captured_streams { described_class.run { raise Collector::Backup::Refusal.new("It is wrong.", "Do this.") } }
+
+    expect([ out, err, status ]).to eq([ "", "It is wrong.\nDo this.\n", 1 ])
+  end
+
+  it "prints a system error nothing else names as two plain lines without its class or its frames, and exits 1", :aggregate_failures do
+    out, err, status = captured_streams { described_class.run { raise Errno::EACCES, "/rails/storage/production.sqlite3" } }
+
+    expect([ out, status ]).to eq([ "", 1 ])
+    expect(err.lines.size).to eq(2)
+    expect(err.lines.first).to eq("The command stopped: Permission denied.\n")
+    expect(err.lines.last).to start_with("Nothing was changed; check that")
+    expect(err).not_to match(/Errno|EACCES|Exception|Error|\.rb:\d+/)
+  end
+
+  it "does the same for a SQLite error", :aggregate_failures do
+    _out, err, status = captured_streams { described_class.run { raise SQLite3::IOException, "disk I/O error" } }
+
+    expect([ status, err.lines.first, err.lines.size ]).to eq([ 1, "The command stopped: Disk I/O error.\n", 2 ])
   end
 end
 ```
@@ -515,12 +545,24 @@ module Collector
       value
     end
 
-    # A task's body: a refusal prints its two sentences on stderr and exits 1, the only failure status (AC-3.8, FR-4).
+    # A task's body: a refusal prints its two sentences on stderr and exits 1, the only failure status (AC-3.8, FR-4). A
+    # system or SQLite error that no command named (an unreadable file or an unwritable volume the commands didn't check,
+    # a failing disk) ends the same way: what stopped it, and that nothing was changed (each command removes its own
+    # temporary files and places nothing until every check has passed), never the exception class or its frames.
     def self.run
       yield
     rescue Refusal => refusal
       warn refusal.problem, refusal.advice
       exit 1
+    rescue SystemCallError, SQLite3::Exception => error
+      warn "The command stopped: #{stopped_text(error)}.",
+        "Nothing was changed; check that the directories and files involved are readable and writable by the user Collector runs as (uid #{Process.uid}) and have room, then run it again."
+      exit 1
+    end
+
+    # An error's own words without Ruby's "@ rb_sysopen - /path" tail, capitalised: "Permission denied".
+    def self.stopped_text(error)
+      error.message.split(/ [@-] /).first.to_s.strip.sub(/\A./, &:upcase)
     end
 
     def self.size_phrase(bytes)
@@ -724,15 +766,20 @@ RSpec.describe "what a backup holds (spec 030 decisions 2 and 3)", :backup, type
 
   it "uses no Active Record encryption, so no secret protects any data in the database (AC-4.3)", :aggregate_failures do
     encrypting = application_models.select { it.respond_to?(:encrypted_attributes) && it.encrypted_attributes.present? }
+    # config.active_record.encryption is not blank under load_defaults 8.1 (the 7.1 defaults set hash_digest_class and
+    # support_sha1_for_non_deterministic_encryption), so check what AC-4.3 names: the keys. Credentials are never read here.
+    keys = Rails.application.config.active_record.encryption.to_h.slice(:primary_key, :deterministic_key, :key_derivation_salt)
+    declaring = Dir[Rails.root.join("app/**/*.rb").to_s].select { File.read(it).match?(/^\s*encrypts\s/) }
 
     expect(encrypting.map(&:name)).to be_empty,
       "Spec 030 decision 3: a model that encrypts needs the procedure's secrets section and decision 3 to say what the secret then protects"
-    expect(Rails.application.config.active_record.encryption).to be_blank
+    expect(declaring).to be_empty
+    expect(keys).to be_empty
   end
 end
 ```
 
-- [ ] **Step 0.7: Run, then the whole suite and the linters.** Run `bin/rails zeitwerk:check` — expect `All is good!`. Run `bin/rspec spec/lib/collector/backup spec/backup_guards_spec.rb` — expect all examples pass (the guards are meant to pass today; the negative control proves they would fail). Run `bin/rspec` — expect 0 failures. Run `bin/rubocop` — expect no offenses. Run `bin/brakeman --quiet --no-pager --exit-on-warn --exit-on-error` — expect no warnings.
+- [ ] **Step 0.7: Run, then the whole suite and the linters.** Run `bin/rails zeitwerk:check` — expect `All is good!` (the library is in `autoload_lib`'s ignore list, so Zeitwerk doesn't manage it; the check passes because of the ignore, and the files are loaded by path everywhere). Run `bin/rspec spec/lib/collector/backup spec/backup_guards_spec.rb` — expect all examples pass (the guards are meant to pass today; the negative control proves the attachment guard would fail). Run `bin/rspec` — expect 0 failures. Run `bin/rubocop` — expect no offenses. Run `bin/brakeman --quiet --no-pager --exit-on-warn --exit-on-error` — expect no warnings.
 
 - [ ] **Step 0.8: Commit** `feat(backup): add the backup namespace, the volume's definition and the suite's guards` (stage `lib/collector/backup.rb`, `lib/collector/backup/`, `config/application.rb`, `spec/support/backup_helpers.rb`, `spec/lib/collector/backup/`, `spec/backup_guards_spec.rb`; one `git add` call, then the commit, as the pre-commit hook reads the command text).
 
@@ -754,7 +801,7 @@ end
 **Interfaces:**
 - `Manifest = Data.define(:backup_format_version, :taken_at, :schema_version, :snapshot_bytes, :snapshot_sha256, :counts)`; `Manifest.for(snapshot, taken_at:)` (Phase 2 supplies `Snapshot`); `Manifest.parse(text)` → `Manifest`, raising `Manifest::UnknownVersion` (`#version`) or `Manifest::Invalid`; `#to_json` → pretty JSON
 - `Archive.write(path, manifest:, snapshot:)` → creates `path` (0600, `EXCL`), writes, fsyncs, closes
-- `Archive.read(path) { |chunk| }` → `Archive::Result(manifest, sha256, bytes)`; reads the whole file once, yields each chunk of the snapshot, writes nothing; raises `Refusal` for each case of the classification
+- `Archive.read(path, allow_partial: false, on_manifest: nil) { |chunk| }` → `Archive::Result(manifest, sha256, bytes)`; reads the whole file once, yields each chunk of the snapshot, writes nothing; raises `Refusal` for each case of the classification. A name ending in `.partial` is refused as incomplete unless `allow_partial: true` (only `Create`'s own read-back of the archive it just wrote, under its `.partial` name, passes it: plan-review C1). `on_manifest` is called with the parsed `Manifest` of a version this release restores, as soon as it is parsed and before the snapshot is read or its checksum computed (FR-2 lists the room before the checksum: `Restore` checks the room there, maintainer's ruling m3); anything it raises (a `Refusal`) propagates
 
 - [ ] **Step 1.1: Write the failing specs.**
 
@@ -877,6 +924,47 @@ RSpec.describe Collector::Backup::Archive, :backup do
       partial = scratch("partial").join("#{archive.basename}.0123456789abcdef.partial").tap { it.binwrite(archive.binread) }
 
       expect(refusal_of { described_class.read(partial) }.problem).to include("is incomplete")
+    end
+
+    it "reads an intact *.partial file when it is told the file is its own (Create's read-back, plan-review C1)", :aggregate_failures do
+      partial = scratch("partial").join("#{archive.basename}.0123456789abcdef.partial").tap { it.binwrite(archive.binread) }
+      chunks = []
+      result = described_class.read(partial, allow_partial: true) { chunks << it }
+
+      expect(chunks.join.b).to eq(payload.b)
+      expect(result.sha256).to eq(fields[:snapshot_sha256])
+    end
+
+    it "still calls a cut-short *.partial file incomplete when it is told the file is its own" do
+      partial = scratch("partial").join("#{archive.basename}.0123456789abcdef.partial").tap { it.binwrite(archive.binread[0...-100]) }
+
+      expect(refusal_of { described_class.read(partial, allow_partial: true) }.problem).to include("is incomplete")
+    end
+
+    it "hands the manifest to on_manifest before it reads the snapshot or checks the checksum (FR-2: the room before the checksum)", :aggregate_failures do
+      altered = scratch("altered").join("collector-backup-20261021T142100Z.tar.gz").tap do
+        described_class.write(it, manifest:, snapshot: scratch_path("changed.sqlite3").tap { |file| file.binwrite(payload.dup.tap { |bytes| bytes.setbyte(1000, bytes.getbyte(1000) ^ 1) }) })
+      end
+      seen = nil
+      chunks = []
+      no_room = lambda do |read|
+        seen = read
+        raise Collector::Backup::Refusal.new("No room.", "Make some.")
+      end
+      refusal = refusal_of { described_class.read(altered, on_manifest: no_room) { chunks << it } }
+
+      expect(refusal.problem).to eq("No room.") # not the checksum refusal the same file gets without the callback
+      expect(seen).to eq(manifest)
+      expect(chunks).to be_empty
+    end
+
+    it "does not call on_manifest for a file that isn't a backup or names an unknown version", :aggregate_failures do
+      future = raw_archive([ "manifest.json", JSON.generate("backup_format_version" => 2) ], [ "primary.sqlite3", "x" ], name: "v2.tar.gz")
+      text = scratch_path("note.txt").tap { it.write("hello") }
+      calls = []
+      [ future, text ].each { |file| refusal_of { described_class.read(file, on_manifest: ->(read) { calls << read }) } }
+
+      expect(calls).to be_empty
     end
 
     it "calls a changed snapshot a checksum failure, not an incomplete file (AC-3.2)", :aggregate_failures do
@@ -1024,7 +1112,10 @@ module Collector
 
       # Reads the whole archive once and writes nothing, so a refusal is decided before the volume is touched (FR-2). The
       # block, when given, gets each chunk of the snapshot (Restore's second pass writes them to its temporary file).
-      def self.read(path, &sink)
+      # +allow_partial+ lets Create read back the archive it wrote under its own .partial name; for anyone else a .partial
+      # name means the run that made the file didn't finish. +on_manifest+ is called with the manifest of a known version
+      # as soon as it is parsed, before the snapshot is read (Restore checks the room there, as FR-2 orders).
+      def self.read(path, allow_partial: false, on_manifest: nil, &sink)
         name = File.basename(path.to_s)
         File.open(path, "rb") do |file|
           raise not_a_backup(file, name) unless file.read(2) == GZIP_MAGIC
@@ -1035,20 +1126,21 @@ module Collector
           rescue Zlib::Error
             raise not_a_backup(file, name)
           end
-          read_entries(gzip, name, &sink)
+          read_entries(gzip, name, allow_partial:, on_manifest:, &sink)
         end
       rescue Zlib::Error
         raise incomplete(name)
       end
 
-      def self.read_entries(gzip, name, &sink)
+      def self.read_entries(gzip, name, allow_partial:, on_manifest:, &sink)
         manifest_size = entry_size(gzip, MANIFEST, name)
-        raise incomplete(name) if File.extname(name) == ".partial" # it starts as a backup; the run that made it didn't finish
+        raise incomplete(name) if !allow_partial && File.extname(name) == ".partial" # it starts as a backup; the run that made it didn't finish
         raise not_a_backup(nil, name) if manifest_size > MANIFEST_LIMIT
 
         manifest_text = read_exactly(gzip, manifest_size, name)
         skip_padding(gzip, manifest_size, name)
         manifest, unknown = parse_manifest(manifest_text, name)
+        on_manifest&.call(manifest) if manifest
         snapshot_size = entry_size(gzip, SNAPSHOT, name)
         digest = Digest::SHA256.new
         remaining = snapshot_size
@@ -1314,9 +1406,11 @@ module Collector
       end
 
       # SQLite's integrity check, then its foreign-key check (decision 7). Proves this file sound, not the file it was
-      # copied from: VACUUM INTO rebuilds indexes (decision 7).
+      # copied from: VACUUM INTO rebuilds indexes (decision 7). foreign_keys is set explicitly because SQLite's default is
+      # off (decision 6), though foreign_key_check reports violations either way.
       def verify!
         with(readonly: true) do |database|
+          database.execute("PRAGMA foreign_keys = ON")
           problems = database.execute("PRAGMA integrity_check").flatten
           raise Damaged, problems.first(3).join("; ") unless problems == [ "ok" ]
 
@@ -1462,7 +1556,7 @@ RSpec.describe Collector::Backup::Create, :backup, :committed do
     end
 
     # Two writers on their own connections: a pair of related rows in one transaction (an account and its user, as a
-    # sign-up writes them), and the app's own lot add.
+    # sign-up writes them), and the app's own lot add (Lot.add!, an IMMEDIATE transaction, app/models/lot.rb).
     def start_writers(stop)
       pairs = Thread.new do
         ActiveRecord::Base.connection_pool.with_connection do
@@ -1481,7 +1575,7 @@ RSpec.describe Collector::Backup::Create, :backup, :committed do
           entries.each do |entry|
             break if stop.true?
 
-            timed { Lot.create!(account: seed.user.account, entry:, quantity: 1) }
+            timed { Lot.add!(account: seed.user.account, entry:) }
           end
         end
       end
@@ -1489,6 +1583,14 @@ RSpec.describe Collector::Backup::Create, :backup, :committed do
     end
 
     def drain(queue) = Array.new(queue.size) { queue.pop }
+
+    # Accounts without a user, and users without an account: a half-written pair would show here, which totals could hide.
+    def unpaired(path)
+      sqlite(path, readonly: true) do |database|
+        [ database.get_first_value("SELECT COUNT(*) FROM accounts a LEFT JOIN users u ON u.account_id = a.id WHERE u.id IS NULL"),
+          database.get_first_value("SELECT COUNT(*) FROM users u LEFT JOIN accounts a ON a.id = u.account_id WHERE a.id IS NULL") ]
+      end
+    end
 
     before do
       entries
@@ -1519,7 +1621,8 @@ RSpec.describe Collector::Backup::Create, :backup, :committed do
         counts = snapshot.counts
 
         expect { snapshot.verify! }.not_to raise_error
-        expect(counts.fetch("accounts")).to eq(counts.fetch("users")) # a pair is both rows or neither
+        expect(unpaired(snapshot.path)).to eq([ 0, 0 ]) # a pair is both rows or neither, in every snapshot
+        expect(counts.fetch("users")).to be_positive
       end
       first = sqlite(unpack_snapshot(results.first.path, "first.sqlite3"), readonly: true) { |database| database.execute("SELECT id FROM accounts").flatten }
       expect(first).to include(*committed_before)
@@ -1548,15 +1651,16 @@ RSpec.describe Collector::Backup::Create, :backup, :committed do
 
   it "removes a .partial file more than a day old on the next run and leaves a younger one (AC-1.6)", :aggregate_failures do
     old = directory.join("collector-backup-20260101T000000Z.tar.gz.0123456789abcdef.partial").tap { it.write("x") }
+    old_sidecars = %w[-journal -wal -shm].map { |suffix| directory.join("collector-backup-20260101T000000Z.sqlite3.0123456789abcdef.partial#{suffix}").tap { it.write("s") } }
     young = directory.join("collector-backup-20260102T000000Z.sqlite3.fedcba9876543210.partial").tap { it.write("y") }
+    young_sidecar = directory.join("collector-backup-20260102T000000Z.sqlite3.fedcba9876543210.partial-shm").tap { it.write("t") }
     other = directory.join("notes.partial").tap { it.write("z") }
-    File.utime(26.hours.ago, 26.hours.ago, old)
+    [ old, *old_sidecars ].each { File.utime(26.hours.ago, 26.hours.ago, it) }
 
     run
 
-    expect(old).not_to exist
-    expect(young).to exist
-    expect(other).to exist
+    expect([ old, *old_sidecars ]).to all(satisfy { !it.exist? }) # a killed run's sidecars go with it
+    expect([ young, young_sidecar, other ]).to all(exist)
   end
 
   it "never replaces a file with the name it would use, and leaves no .partial (AC-1.9)", :aggregate_failures do
@@ -1694,8 +1798,9 @@ module Collector
         end
       end
 
-      # Both temporary names: collector-backup-<time>.(tar.gz|sqlite3).<16 hex>.partial (contracts/archive.md).
-      PARTIAL = /\Acollector-backup-\d{8}T\d{6}Z\.(?:tar\.gz|sqlite3)\.\h{16}\.partial\z/
+      # Both temporary names, and the sidecars SQLite may leave beside one a killed run was using:
+      # collector-backup-<time>.(tar.gz|sqlite3).<16 hex>.partial[-journal|-wal|-shm] (contracts/archive.md).
+      PARTIAL = /\Acollector-backup-\d{8}T\d{6}Z\.(?:tar\.gz|sqlite3)\.\h{16}\.partial(?:-journal|-wal|-shm)?\z/
 
       def initialize(directory:, source: Databases.configured.primary, clock: Time, free_space: FreeSpace.method(:bytes),
         checkpoint: ->(_step) {})
@@ -1755,8 +1860,8 @@ module Collector
           Snapshot.take(source: @source, into: snapshot_file)
           @checkpoint.call(:snapshot_written)
           snapshot = Snapshot.new(snapshot_file)
+          snapshot.rollback_journal! # before verify!: a WAL header would make verify!'s open leave -shm and -wal beside the file
           snapshot.verify!
-          snapshot.rollback_journal!
           manifest = Manifest.for(snapshot, taken_at:)
           Archive.write(archive_file, manifest:, snapshot: snapshot_file)
           read_back(archive_file)
@@ -1771,8 +1876,9 @@ module Collector
         end
 
         # The archive is read back whole before it counts as a backup: one that can't be restored is never reported as made.
+        # It is still under its .partial name, which Archive.read refuses for anyone else (plan-review C1).
         def read_back(archive_file)
-          Archive.read(archive_file)
+          Archive.read(archive_file, allow_partial: true)
         rescue Refusal
           raise Refusal.new("The backup file just written doesn't read back, so no backup was made.", "Run it again; if it keeps failing, check the disk.")
         end
@@ -1845,7 +1951,7 @@ Add `require_relative "backup/create"` to `lib/collector/backup.rb`. The `restor
 - Create: `lib/collector/backup/restore.rb`, `spec/lib/collector/backup/restore_spec.rb`, `spec/tasks/backup_restore_rake_spec.rb`
 - Edit: `lib/collector/backup.rb` (one `require_relative`), `lib/tasks/backup.rake` (the second task)
 
-**Interfaces:** `Restore.new(file:, databases: Databases.configured, release_versions: Backup.release_schema_versions, free_space: FreeSpace.method(:bytes), checkpoint: ->(_step) {})` → `#call` → `Restore::Result(file, volume, manifest)` with `#report`; raises `Refusal`. Checkpoint: `:snapshot_ready` (the snapshot is closed, checked and fsynced; the rename is next). `Restore::TEMPORARY = "collector-restore.partial"`.
+**Interfaces:** `Restore.new(file:, databases: Databases.configured, release_versions: Backup.release_schema_versions, free_space: FreeSpace.method(:bytes), checkpoint: ->(_step) {})` → `#call` → `Restore::Result(file, volume, manifest)` with `#report`; raises `Refusal`. Checkpoint: `:snapshot_ready` (the snapshot is closed, checked and fsynced; linking it into place is next). `Restore::TEMPORARY = "collector-restore.partial"`.
 
 - [ ] **Step 4.1: Write the failing specs.**
 
@@ -1858,7 +1964,8 @@ RSpec.describe Collector::Backup::Restore, :backup, :committed do
   let(:volume) { scratch("volume") }
   let!(:seed) { seed_instance }
 
-  # A refusal that changes nothing in the volume and reads as two plain sentences (AC-3.8).
+  # A refusal that changes nothing in the volume and reads as two plain sentences (AC-3.8): each starts with a capital or
+  # with the file's name (collector-backup-….tar.gz, note.txt) and ends with a full stop.
   def expect_refused(path, problem, advice = nil)
     before = checksums(volume)
     refusal = refusal_of { restore_backup(path, volume:) }
@@ -1866,7 +1973,7 @@ RSpec.describe Collector::Backup::Restore, :backup, :committed do
     expect(refusal&.problem).to eq(problem)
     expect(refusal.advice).to eq(advice) if advice
     [ refusal.problem, refusal.advice ].each do |sentence|
-      expect(sentence).to match(/\A[A-Z].*\.\z/)
+      expect(sentence).to match(/\A\S.*\.\z/)
       expect(sentence).not_to match(/Exception|Error|Collector::|SQLite3|\.rb\b/)
     end
     expect(checksums(volume)).to eq(before)
@@ -1990,6 +2097,30 @@ RSpec.describe Collector::Backup::Restore, :backup, :committed do
 
       expect(refusal.problem).to match(/\AThe volume at #{Regexp.escape(volume.to_s)} has 1 byte free; the snapshot needs .*\.\z/)
       expect(volume.children).to be_empty
+    end
+
+    it "checks the room before the checksum, as FR-2 lists them (maintainer's ruling m3)", :aggregate_failures do
+      original = unpack_snapshot(create_backup)
+      changed = scratch_path("changed.sqlite3").tap { it.binwrite(original.binread.tap { |bytes| bytes.setbyte(bytes.bytesize - 1, bytes.getbyte(bytes.bytesize - 1) ^ 1) }) }
+      altered = scratch("altered").join("collector-backup-20261021T142100Z.tar.gz").tap { Collector::Backup::Archive.write(it, manifest: manifest_for(original), snapshot: changed) }
+
+      expect(refusal_of { restore_backup(altered, volume:, free_space: ->(_path) { 1 }) }.problem).to start_with("The volume at #{volume} has 1 byte free")
+      expect_refused(altered, "#{altered.basename} doesn't match its checksum; it was changed or damaged after it was made.", "Use another copy of the backup.")
+    end
+
+    it "refuses a file the user can't read and a volume it can't write, naming the fix and changing nothing (plan-review M3)", :aggregate_failures do
+      skip "root reads and writes anything" if Process.uid.zero?
+      path = create_backup
+      path.chmod(0o000)
+
+      expect_refused(path, "#{path} can't be read by the user Collector runs as (uid #{Process.uid}).",
+        "Give it to that user (chown 1000:1000), as the README's restore steps do, then run this again. Nothing was changed.")
+
+      path.chmod(0o600)
+      volume.chmod(0o500)
+
+      expect_refused(path, "The volume at #{volume} isn't writable by the user Collector runs as (uid #{Process.uid}).",
+        "Give the volume to that user (chown 1000:1000), then run this again. Nothing was changed.")
     end
   end
 
@@ -2168,8 +2299,14 @@ module Collector
         refuse_unless_fresh
         raise Refusal.new("There is no file at #{@file}.", "Check the path as the container sees it; copy the backup in first.") unless @file.file?
 
-        read = Archive.read(@file) # the kind, completeness, version and checksum, decided before anything is written
-        refuse_without_room(volume, read.manifest)
+        # docker cp makes root-owned files and the backup is 0600 (decision 4): a file or a volume the user can't use is the
+        # slip to expect, so it is named here and not left to an Errno::EACCES (plan-review M3).
+        raise unreadable unless @file.readable?
+        raise unwritable(volume) unless volume.writable? && volume.executable?
+
+        # The kind, completeness and version, then the room as soon as the manifest is read (FR-2 lists it before the
+        # checksum, which the same pass computes), then the checksum: all decided before anything is written.
+        read = Archive.read(@file, on_manifest: ->(manifest) { refuse_without_room(volume, manifest) })
         temporary = volume.join(TEMPORARY)
         Backup.remove(temporary) # a stopped run's leftover and its journal (FR-6)
         placed = false
@@ -2191,6 +2328,16 @@ module Collector
       private
         def refuse_unless_fresh
           raise not_fresh if @databases.occupied.any?
+        end
+
+        def unreadable
+          Refusal.new("#{@file} can't be read by the user Collector runs as (uid #{Process.uid}).",
+            "Give it to that user (chown 1000:1000), as the README's restore steps do, then run this again. Nothing was changed.")
+        end
+
+        def unwritable(volume)
+          Refusal.new("The volume at #{volume} isn't writable by the user Collector runs as (uid #{Process.uid}).",
+            "Give the volume to that user (chown 1000:1000), then run this again. Nothing was changed.")
         end
 
         def not_fresh
@@ -2465,21 +2612,38 @@ RSpec.describe "restoring a backup from an older release (AC-3.6)", :backup, :co
 end
 ```
 
-`spec/backup_boot_spec.rb` (the D4 ruling; research.md 1). The children are production processes: `DATABASE_URL` points any connection at a scratch file, and the examples assert that no file appeared in `storage/`:
+`spec/backup_boot_spec.rb` (the D4 ruling; research.md 1). The children are production processes: `DATABASE_URL` points any connection at a scratch file, and the examples assert that no file appeared in `storage/`. Two kinds of child, because a wrong `RAILS_MASTER_KEY` is safe for the tasks (they read no credentials) but breaks every production *boot*: `config/storage.yml` holds ERB inside YAML comments (lines 12-13, `Rails.application.credentials.dig(:aws, …)`), `ActiveSupport::ConfigurationFile#parse` renders any file that contains `<%` (`configuration_file.rb:21`) when Active Storage's blob loads at eager load, and `EncryptedConfiguration#read` rescues only `MissingContentError`, so a wrong key raises `InvalidMessage` before `secret_key_base` is ever read (plan-review M1). The boot examples therefore run with **no** key and are skipped where a developer's `config/master.key` exists (testing that the file exists reads nothing); CI and the image have none:
 
 ```ruby
 require "rails_helper"
+require "rake"
 
 RSpec.describe "the tasks need no secret (spec 030 decision 4, research.md 1)", :backup, type: :task do
-  # No SECRET_KEY_BASE, no dummy, and a wrong master key, so that neither the environment nor a developer's real
-  # config/master.key can supply a secret_key_base, and reading credentials would raise.
+  # No SECRET_KEY_BASE, no dummy. The tasks read no credentials, so a wrong master key is harmless to them and keeps a
+  # developer's real config/master.key from supplying a secret_key_base. A boot is different: see boot below.
   def production(*command, environment: {})
     env = { "RAILS_ENV" => "production", "SECRET_KEY_BASE" => nil, "SECRET_KEY_BASE_DUMMY" => nil, "RAILS_MASTER_KEY" => "0" * 32,
       "DATABASE_URL" => "sqlite3:#{scratch_path("boot.sqlite3")}" }.merge(environment)
     Open3.capture3(env, Rails.root.join("bin/rails").to_s, *command, chdir: Rails.root.to_s)
   end
 
+  # A production boot with no master key at all: credentials come back empty (EncryptedFile#read raises
+  # MissingContentError, which EncryptedConfiguration rescues), as in the image, which has no key file.
+  def boot(*command, environment: {})
+    skip "config/master.key exists on this machine; the boot examples need an environment without a key (CI has none)" if Rails.root.join("config/master.key").exist?
+
+    production(*command, environment: { "RAILS_MASTER_KEY" => nil }.merge(environment))
+  end
+
   def storage_files = Dir[Rails.root.join("storage/production*").to_s].sort
+
+  it "gives neither task a dependency on :environment, so neither initializes the application (the structural guarantee)", :aggregate_failures do
+    Rails.application.load_tasks unless Rake::Task.task_defined?("backup:create")
+
+    %w[backup:create backup:restore].each do |name|
+      expect(Rake::Task[name].all_prerequisite_tasks.map(&:name)).not_to include("environment"), name
+    end
+  end
 
   it "runs backup:restore in production and answers its own refusal, without a secret", :aggregate_failures do
     before = storage_files
@@ -2500,16 +2664,16 @@ RSpec.describe "the tasks need no secret (spec 030 decision 4, research.md 1)", 
 
   it "would fail if they booted the application, which reads secret_key_base eagerly (the control)", :aggregate_failures do
     before = storage_files
-    _out, err, status = production("runner", "puts :booted")
+    _out, err, status = boot("runner", "puts :booted")
 
     expect(status.exitstatus).not_to eq(0)
-    expect(err).to match(/secret_key_base|InvalidMessage|InvalidKey/i)
+    expect(err).to match(/secret_key_base/) # not a credentials error: that would prove nothing about the secret
     expect(storage_files).to eq(before)
   end
 
   it "boots with the dummy, which is enough, as the documented one-off passes it", :aggregate_failures do
     before = storage_files
-    out, err, status = production("runner", "puts :booted", environment: { "SECRET_KEY_BASE_DUMMY" => "1" })
+    out, err, status = boot("runner", "puts :booted", environment: { "SECRET_KEY_BASE_DUMMY" => "1" })
 
     expect(status).to be_success, err
     expect(out).to include("booted")
@@ -2542,7 +2706,7 @@ Add to `spec/backup_guards_spec.rb` (AC-6.2 and FR-5):
 
 - [ ] **Step 5.5: Commit** `test(backup): prove the restored instance, the upgrade, the boot and the guards` (stage the six spec files and the helper).
 
-**Phase 5 verification:** AC-2.2, AC-2.4, AC-2.8, AC-2.9, AC-2.10, AC-3.6 and AC-6.2 each have a passing example; the boot examples answer D4: with `SECRET_KEY_BASE_DUMMY` the application boots, without a secret it doesn't, and the tasks run in production with neither.
+**Phase 5 verification:** AC-2.2, AC-2.4, AC-2.8, AC-2.9, AC-2.10, AC-3.6 and AC-6.2 each have a passing example; the boot examples answer D4: with `SECRET_KEY_BASE_DUMMY` the application boots, without a secret it doesn't, and the tasks run in production with neither and depend on no `:environment`. On a machine with a `config/master.key` the two boot examples are skipped; `verification.md` records the CI run where they ran (or the run in an environment without a key).
 
 ---
 
@@ -2590,7 +2754,7 @@ In `describe ".github/workflows/ci.yml"` add:
     end
 ```
 
-Run `bin/rspec spec/image_publishing_spec.rb` — expect the four new examples to fail.
+Run `bin/rspec spec/image_publishing_spec.rb` — expect the three new examples to fail.
 
 - [ ] **Step 6.2: Write `bin/backup-smoke`.**
 
@@ -2791,11 +2955,12 @@ The seed's lot count is 1 (one `Lot.create!`), so the restore's line reads "1 ac
 
 ```yaml
   # Backups (spec 030, README "Backup and restore"): create the directory on the server first, owned by uid 1000
-  # (sudo install -d -o 1000 -g 1000 /srv/collector-backups), then uncomment this line and deploy:
+  # (sudo install -d -o 1000 -g 1000 /srv/collector-backups), then uncomment this line and deploy. It stays commented
+  # because Docker creates a missing bind-mount source owned by root, which the container's user could not write to:
   # - "/srv/collector-backups:/backups"
 ```
 
-- [ ] **Step 6.6: Run what can run here.** `bin/rspec spec/image_publishing_spec.rb` — the four new examples pass. `bash -n bin/backup-smoke` — expect no output (syntax). `bin/rspec`, `bin/rubocop` — clean. The script itself needs a container engine and a built image: it is proven by the first CI run on both architectures (AC-5.3's "first run") and, when an engine is at hand, by `bin/backup-smoke collector:local`. The plan's author did not run it. The assumptions its first run settles are in research.md 8 (`docker cp` out of a bind mount, `docker create` + `cp` + `chown`, the sign-in markup). Where a step fails for a reason of the engine, fix the script's step, never loosen a check.
+- [ ] **Step 6.6: Run what can run here.** `bin/rspec spec/image_publishing_spec.rb` — the three new examples pass. `bash -n bin/backup-smoke` — expect no output (syntax). `bin/rspec`, `bin/rubocop` — clean. The script itself needs a container engine and a built image: it is proven by the first CI run on both architectures (AC-5.3's "first run") and, when an engine is at hand, by `bin/backup-smoke collector:local`. The plan's author did not run it. The assumptions its first run settles are in research.md 8 (`docker cp` out of a bind mount, `docker create` + `cp` + `chown`, the sign-in markup). Where a step fails for a reason of the engine, fix the script's step, never loosen a check.
 
 - [ ] **Step 6.7: Commit** `test(backup): add bin/backup-smoke and run it in CI after the image smoke test` (stage the script, the workflow, `config/deploy.yml`, `.dockerignore`, `bin/image-smoke`, the spec). The pre-push hook runs `bin/ci`, which doesn't run the script: that is the first CI run's job.
 
@@ -2883,10 +3048,11 @@ mkdir backups && sudo chown 1000:1000 backups
 docker compose run --rm -v "$PWD/backups:/backups" web bin/rails "backup:create[/backups]"
 ```
 
-**Kamal:** add a backup directory to the server and deploy once. In `config/deploy.yml` uncomment the `/srv/collector-backups:/backups` volume line; the `backup` alias is already there.
+**Kamal:** the `backup` alias is already in `config/deploy.yml`; the directory it writes to is a volume you add once. First create the directory on the server, owned by uid 1000; only then uncomment the `/srv/collector-backups:/backups` line under `volumes:` and deploy. The line is commented out in the stock file because Docker creates a missing bind-mount directory owned by root, which the container's user (uid 1000) could not write to, and the alias would then refuse.
 
 ```sh
 ssh root@192.168.0.1 'install -d -o 1000 -g 1000 /srv/collector-backups'
+# now uncomment the /srv/collector-backups:/backups line in config/deploy.yml, then:
 bin/kamal deploy --skip-push --version 0.1.0     # mounts the directory
 bin/kamal backup                                 # backup:create[/backups] in the running container
 scp root@192.168.0.1:/srv/collector-backups/collector-backup-20261021T142100Z.tar.gz .
@@ -2945,6 +3111,7 @@ docker run --rm -u 1000 -v collector_collector_storage:/rails/storage ghcr.io/pl
 
 ```sh
 bin/kamal server bootstrap
+ssh root@192.168.0.1 'install -d -o 1000 -g 1000 /srv/collector-backups'    # a freshly bootstrapped server doesn't have it
 scp collector-backup-20261021T142100Z.tar.gz root@192.168.0.1:/srv/collector-backups/
 ssh root@192.168.0.1 'chown 1000:1000 /srv/collector-backups/collector-backup-20261021T142100Z.tar.gz && docker run --rm -u 1000 \
   -v collector_storage:/rails/storage -v /srv/collector-backups:/backups:ro -e SECRET_KEY_BASE_DUMMY=1 \
@@ -2972,7 +3139,7 @@ How the backup file made by `bin/rails "backup:create[DIRECTORY]"` is laid out, 
 
 ## The file
 
-`collector-backup-YYYYMMDDTHHMMSSZ.tar.gz`: the UTC time the backup started, to the second, with no colon (a colon breaks `docker cp`, `scp` and Windows shares). While it is being made it has a `.partial` name ending in a random part; only a finished, verified backup has the final name, and a final name is never overwritten.
+`collector-backup-YYYYMMDDTHHMMSSZ.tar.gz`: the UTC time the backup started, to the second, with no colon (a colon breaks `docker cp`, `scp` and Windows shares). While it is being made it has a `.partial` name ending in a random part; only a finished, verified backup is linked to the final name, and a final name is never replaced.
 
 It is a gzip-compressed tar of two files, in this order, each mode 0600:
 
@@ -2996,7 +3163,7 @@ Nothing else is in it: no secret, no setting, no queue, cache or cable database,
 
 ## What a restore checks
 
-In this order, before it changes the volume: the volume is empty (none of the four databases and no `-wal`, `-shm` or `-journal` file); the file is a Collector backup, and complete; its format version is known; its checksum matches; the volume has room. Then, on a temporary file in the volume: SQLite's integrity check and foreign-key check, that no migration is newer than the release's, then every session is ended (which cascades to the bulk removals and selections), the counts agree with the manifest, and the file is renamed into place. A restore that stops anywhere leaves no primary database.
+In this order, before it changes the volume: the volume is empty (none of the four databases and no `-wal`, `-shm` or `-journal` file); the file is a Collector backup and isn't named `*.partial`; its format version is known; the volume has room (checked as soon as the manifest is read); then the file is read to its end, which finds a cut-short file and checks the checksum. Then, on a temporary file in the volume: SQLite's integrity check and foreign-key check, that no migration is newer than the release's, then every session is ended (which cascades to the bulk removals and selections), the counts agree with the manifest, and the file is linked to its final name, never replacing a file. A restore that stops anywhere leaves no primary database.
 
 ## Manual recovery with `tar` and `sqlite3`
 
@@ -3051,23 +3218,52 @@ In "Upgrade notes", add at the top (newest first):
 - [ ] **Step 8.1: Write `script/backup/measure.rb`:**
 
 ```ruby
-# AC-1.10, decision 13 (spec 030): times a backup and a restore of an instance with the English catalog and 50,000 lots,
-# and the longest wait of a write made while the backup runs. Run it outside the suite and never on the real database: it
-# adds 50,000 lots to whatever DATABASE_URL names, so give it a COPY of the development database, which must hold the
-# English catalog (bin/rails "catalog:refresh[mtg]" in development first):
+# AC-1.10, decision 13 (spec 030): times a backup and a restore of a SEEDED instance (a catalog of English-catalog size and
+# 50,000 lots) and the longest wait of a write made while the backup runs. It builds its own database under tmp/ and never
+# reads or writes storage/ or the maintainer's instance, so it needs nobody's database and no agent reads one. Run it in the
+# test environment, whose only database is the primary, pointed at a scratch file:
 #
-#   mkdir -p tmp/measure && sqlite3 storage/development.sqlite3 "VACUUM INTO 'tmp/measure/primary.sqlite3'"
-#   DATABASE_URL=sqlite3:$PWD/tmp/measure/primary.sqlite3 bin/rails runner script/backup/measure.rb
+#   mkdir -p tmp/measure && rm -f tmp/measure/primary.sqlite3*
+#   export RAILS_ENV=test DATABASE_URL=sqlite3:$PWD/tmp/measure/primary.sqlite3
+#   bin/rails db:schema:load
+#   bin/rails runner script/backup/measure.rb
+#
+# The numbers are a seeded database's, not a real instance's: its rows are synthetic and their size is an estimate (the
+# catalog is MEASURE_ENTRIES printings, default 100,000; the real Scryfall count isn't known to the plan). Record the
+# printed counts and sizes beside the result. AC-5.6 (the maintainer's own restore) is the real-data check.
 require Rails.root.join("lib/collector/backup").to_s
 require "tmpdir"
 
-abort "Give it a copy of the development database: DATABASE_URL=sqlite3:/path/to/copy." unless ENV["DATABASE_URL"].to_s.start_with?("sqlite3:")
-entry_ids = Catalog::Entry.where(retired_at: nil).limit(50_000).pluck(:id)
-abort "The catalog holds #{Catalog::Entry.count} entries; refresh it first." if Catalog::Entry.count < 100_000 || entry_ids.size < 50_000
+abort "Run it against a scratch database under tmp/measure (see the header)." unless Rails.env.test? && ENV["DATABASE_URL"].to_s.include?("/tmp/measure/")
 
-account = Account.first || User.create!(name: "Measure", email_address: "measure@example.test", password: "correct horse battery").account
+LOTS = 50_000
+entries = Integer(ENV.fetch("MEASURE_ENTRIES", 100_000))
 now = Time.current
-Lot.insert_all(entry_ids.map { |id| { account_id: account.id, catalog_entry_id: id, quantity: 1, lot_key: Lot.key_for(nil, nil, nil), created_at: now, updated_at: now } })
+digest = "d" * 64
+legalities = %w[standard pioneer modern legacy vintage commander pauper brawl historic explorer].index_with { "legal" }
+
+Catalog::Set.insert_all(Array.new(400) { |index| { id: index + 1, collectible_type: "mtg", code: "s#{index}", name: "Seeded set #{index}", content_digest: digest, created_at: now, updated_at: now } })
+(1..entries).each_slice(5_000) do |ids|
+  Catalog::Identity.insert_all(ids.map { |id| { id:, collectible_type: "mtg", external_key: "seed-identity-#{id}", name: "Seeded Card #{id}", content_digest: digest, created_at: now, updated_at: now } })
+  Catalog::Entry.insert_all(ids.map do |id|
+    { id:, collectible_type: "mtg", external_key: "seed-entry-#{id}", catalog_set_id: id % 400 + 1, catalog_identity_id: id, number: (id % 400).to_s, language: "en",
+      name: "Seeded Card #{id}", kind: "card", content_digest: digest, created_at: now, updated_at: now }
+  end)
+  MTG::Printing.insert_all(ids.map do |id|
+    { catalog_entry_id: id, rarity: "common", finishes: %w[nonfoil foil], layout: "normal", legalities:, external_ids: { "scryfall" => "seed-#{id}" },
+      faces: [ { "name" => "Seeded Card #{id}", "mana_cost" => "{1}{R}", "type_line" => "Instant", "oracle_text" => "Deals 3 damage to any target. " * 6, "artist" => "A. Painter", "image_uris" => {} } ],
+      scryfall_uri: "https://scryfall.com/card/s#{id % 400}/#{id}", created_at: now, updated_at: now }
+  end)
+end
+
+unretired = Catalog::Entry.where(retired_at: nil).count
+abort "The catalog holds #{unretired} unretired entries; the gate is 50,000." if unretired < LOTS
+
+# The account is made before the clock starts: User.create! hashes a password with bcrypt, which the timed writes must not include.
+account = User.create!(name: "Measure", email_address: "measure@example.test", password: "correct horse battery").account
+ids = Catalog::Entry.where(retired_at: nil).order(:id).pluck(:id)
+Lot.insert_all(ids.first(LOTS).map { |id| { account_id: account.id, catalog_entry_id: id, quantity: 1, lot_key: Lot.key_for(nil, nil, nil), created_at: now, updated_at: now } })
+writer_ids = ids.drop(LOTS).first(2_000).presence || ids.first(2_000)
 
 clock = -> { Process.clock_gettime(Process::CLOCK_MONOTONIC) }
 primary = Collector::Backup::Databases.configured.primary
@@ -3081,8 +3277,9 @@ Dir.mktmpdir("collector-measure") do |dir|
     ActiveRecord::Base.connection_pool.with_connection do
       index = 0
       until stop
+        entry = Catalog::Entry.find(writer_ids[index % writer_ids.size])
         began = clock.call
-        User.create!(name: "Writer #{index}", email_address: "writer#{index}@example.test", password: "correct horse battery")
+        Lot.add!(account:, entry:) # the app's own write path, with no password hash in the timing
         waits << clock.call - began
         index += 1
         sleep 0.05
@@ -3105,18 +3302,22 @@ Dir.mktmpdir("collector-measure") do |dir|
 
   manifest = Collector::Backup::Archive.read(result.path).manifest
   puts "| Measure | Value | Bar |", "|---|---|---|"
-  puts "| Primary database | #{Collector::Backup.size_phrase(database_bytes)} (#{Catalog::Entry.count} entries, #{Lot.count} lots) | |"
+  puts "| Seeded database | #{Collector::Backup.size_phrase(database_bytes)} (#{Catalog::Entry.count} entries, #{unretired} unretired, #{Lot.count} lots) | gate: 50,000 unretired |"
   puts "| Backup file / snapshot | #{Collector::Backup.size_phrase(result.bytes)} / #{Collector::Backup.size_phrase(manifest.snapshot_bytes)} | |"
   puts "| Backup, verification included | #{format("%.1f", backup_seconds)} s | under 300 s: #{backup_seconds < 300 ? "met" : "MISSED"} |"
-  puts "| Writes during the backup | #{waited.size}, longest wait #{format("%.3f", waited.max.to_f)} s | under 5 s: #{waited.max.to_f < 5 ? "met" : "MISSED"} |"
+  puts "| Writes during the backup (Lot.add!, no password hash) | #{waited.size}, longest wait #{format("%.3f", waited.max.to_f)} s | under 5 s: #{waited.max.to_f < 5 ? "met" : "MISSED"} |"
   puts "| Restore | #{format("%.1f", restore_seconds)} s | under 300 s: #{restore_seconds < 300 ? "met" : "MISSED"} |"
   puts "| Write-ahead log after the run | #{Collector::Backup.size_phrase(File.size("#{primary}-wal"))} | recorded |" if File.exist?("#{primary}-wal")
 end
 ```
 
-- [ ] **Step 8.2: Take the measurement** on the development machine, with the English catalog loaded in development (`bin/rails "catalog:refresh[mtg]"`, which downloads Scryfall's `default_cards`), following the header's two commands. Paste the table into `verification.md` under `## Measurements (AC-1.10)` with the machine, the date, the catalog's version (`bin/rails "catalog:status[mtg]"`) and the file sizes. If a bar is missed: the plan's fallback order is (1) `quick_check` instead of `integrity_check` in `Snapshot#verify!`, then (2) the default compression level (`Zlib::DEFAULT_COMPRESSION` is slower, so this only if the size matters more than the time); the maintainer rules which, and a change is a spec 030 amendment (decision 13), not a silent edit.
+- [ ] **Step 8.2: Take the measurement** on the development machine with the three commands of the script's header (no catalog refresh, no copy of any instance, nothing from `storage/`: the executor needs no one's help). Paste the table into `verification.md` under `## Measurements (AC-1.10)` with the machine, the date, the real entry, unretired-entry and lot counts the table prints, the file sizes, and the sentence **"These numbers come from a seeded database (synthetic rows, `MEASURE_ENTRIES` printings), not from the maintainer's instance."** If a bar is missed: the plan's fallback order is (1) `quick_check` instead of `integrity_check` in `Snapshot#verify!`, then (2) the default compression level (`Zlib::DEFAULT_COMPRESSION` is slower, so this only if the size matters more than the time); the maintainer rules which, and a change is a spec 030 amendment (decision 13), not a silent edit.
 
-- [ ] **Step 8.3: Write `verification.md`** with: a table of every AC and FR with its evidence (the example's file and name, the document and the line read, or the CI run), the Phase 7 reading, the Phase 4 FR-8 trace, the measurements, the first CI run's link (AC-5.2, AC-5.3, AC-2.3, AC-4.2), and the `bin/ci` result with the seed, run twice. Keep it factual: what was run and what it printed.
+- [ ] **Step 8.3: Write `verification.md`** with: a table of every AC and FR with its evidence (the example's file and name, the document and the line read, or the CI run), the Phase 7 reading, the Phase 4 FR-8 trace, the measurements (with the seeded-database sentence of step 8.2), the first CI run's link (AC-5.2, AC-5.3, AC-2.3, AC-4.2), and the `bin/ci` result with the seed, run twice. Keep it factual: what was run and what it printed. Also record these notes, each with its reason:
+  - **AC-3.6's construction** (maintainer's ruling m6, 2026-10-21, no spec change): the criterion says the older snapshot is "built in the spec by migrating a scratch database to that version"; `spec/backup_upgrade_spec.rb` instead seeds an instance, backs it up and rolls the newest migration back on the copy, because that keeps the seeded rows, which the criterion's "no row is lost" needs, and an empty scratch database proves nothing about rows. It relies on the newest migration being reversible (a rule: `.claude/rules/sqlite-and-migrations.md`); the example fails with that message otherwise.
+  - **The D4 confirmation** (plan-review M1): which examples ran and where; the two boot examples are skipped on a machine with a `config/master.key`, so cite the CI run (or an environment without a key) where they ran.
+  - **FR-2's order** (ruling m3): the room is checked as soon as the manifest is read, inside `Archive.read`'s first pass, so a cut-short file on a volume without room is refused for the room (a cut-short file is told apart only by reading it to its end); every other pair of FR-2's checks is in FR-2's order.
+  - **Kamal's volume** (ruling m5): decision 4's "stated addition" is read as the `backup` alias live plus the documents' `install -d -o 1000 -g 1000` step and the volume line to uncomment, which stays commented in the stock file.
 
 - [ ] **Step 8.4: The maintainer's step (AC-5.6, decision 14)**, done by the maintainer, not an agent, on their NAS, once, before the spec ships: build the image from this branch (`docker build -t collector:local .`; a released image has no `backup:create`), run the NAS instance (Compose) on it with `COLLECTOR_IMAGE=collector:local`, back it up, restore that file onto a fresh Compose project of the same image the README's way, start it, sign in, and compare the printed counts and an export of each (the same collection, `docs/export-format/README.md`). The steps, counts, timings and result go into `verification.md` under `## NAS restore (AC-5.6)`.
 
@@ -3145,17 +3346,17 @@ A new operator reads only the README's "Backup and restore" section and, on a sc
 ## Self-review (sdd-plan, Step 5)
 
 - **Spec coverage:** every FR (1 to 10), every acceptance criterion (AC-1.1 to AC-6.2) and every decision (1 to 15) is in the Requirement Map with a phase and a first failing test. The criteria with no suite test say how they are proven: AC-1.10 (the measurement script, Phase 8), AC-2.3 and AC-4.2 (the smoke script, Phase 6, first CI run), AC-4.4, AC-5.1, AC-5.7 and AC-6.1 (reading, Phase 7), AC-5.6 (the maintainer, Phase 8). No gaps.
-- **Placeholder scan:** no "TBD", "TODO", "implement later" or "similar to Phase N"; every code step shows its code. Two places name a thing the first run settles, and say what: research.md 8 lists the assumptions each phase's first failing test confirms (`VACUUM INTO ?` with a bound path, the header bytes after `journal_mode = DELETE`, `GzipReader`'s errors, `df`'s columns, `docker cp` ownership); Phase 5's step 5.3 says the restored-instance examples are the first run of text and models the plan could only read.
-- **Type consistency:** `Refusal#problem/#advice`, `Databases#primary/#directory/#names/#occupied`, `Snapshot#verify!/#counts/#schema_versions/#end_sessions!/#rollback_journal!`, `Archive.write/.read` and `Archive::Result`, `Manifest.for/.parse/#to_json`, `Create#call → Result#report`, `Restore#call → Result#report`, the checkpoints (`:snapshot_written`, `:archive_written`, `:snapshot_ready`) and the helpers (`create_backup`, `restore_backup`, `archive_of`, `manifest_for`, `copy_of_instance`, `unpack_snapshot`, `run_killed_at`, `app_command`, `with_restored_instance`) are spelled the same in every phase that uses them.
+- **Placeholder scan:** no "TBD", "TODO", "implement later" or "similar to Phase N"; every code step shows its code. Two places name a thing the first run settles, and say what: research.md 8 lists the assumptions each phase's first failing test confirms (`VACUUM INTO ?` with a bound path, the header bytes after `journal_mode = DELETE`, `GzipReader`'s errors, `df`'s columns, `docker cp` ownership, the control boot failing on `secret_key_base`); Phase 5's step 5.3 says the restored-instance examples are the first run of text and models the plan could only read.
+- **Type consistency:** `Refusal#problem/#advice`, `Databases#primary/#directory/#names/#occupied`, `Snapshot#verify!/#counts/#schema_versions/#end_sessions!/#rollback_journal!`, `Archive.write/.read(path, allow_partial:, on_manifest:)` and `Archive::Result`, `Manifest.for/.parse/#to_json`, `Create#call → Result#report`, `Restore#call → Result#report`, the checkpoints (`:snapshot_written`, `:archive_written`, `:snapshot_ready`) and the helpers (`create_backup`, `restore_backup`, `archive_of`, `manifest_for`, `copy_of_instance`, `unpack_snapshot`, `run_killed_at`, `app_command`, `with_restored_instance`) are spelled the same in every phase that uses them.
 - **Traceability:** every decision in a phase traces to a spec requirement; the three choices the spec leaves to the plan are below.
 
 ## Choices the plan makes that the spec leaves open (no spec change needed)
 
 1. **The tasks don't depend on `:environment`** (and so the library lives in `lib/collector/backup/`, required by path). The spec asks the plan to confirm the secret question (D4) and says "a rake task"; this answers it by not booting. It also makes FR-8 structural. The ruled `SECRET_KEY_BASE_DUMMY=1` stays in the documented one-off and the smoke script.
 2. **The release's migrations are read as file names** (`db/migrate/**/[0-9]*_*.rb`), not through `ActiveRecord::MigrationContext`, whose `#migrations` is `:nodoc:` and whose constructor evaluates a connection pool. FR-8 says "from the migration files without connecting"; this is that.
-3. **The restore reads the archive twice**: once to classify and check the checksum (writing nothing, so a refusal changes nothing), once to extract. FR-2 says the checks come before any write and lists the temporary file after them; two passes are the cost of that order.
-4. **`compose.yaml` is unchanged.** The Compose documents use `/tmp` plus `cp`, or a `run -v` one-off with a host directory; adding a bind mount would need a path or a variable, and the spec adds no setting (hosted-door rule 3). `config/deploy.yml` gets the `backup` alias and a commented volume line: the alias works once the directory is mounted, and a placeholder mount that docker would create root-owned would break the alias for everyone who doesn't read the README.
-5. **The older snapshot of AC-3.6 is made by rolling back the newest migration** on a copy of a seeded backup, in a child process with `SCHEMA` pointing away from `db/schema.rb`, instead of migrating an empty scratch database up to N-1: it keeps rows, which "no row is lost" needs. It relies on every migration being reversible, which `.claude/rules/sqlite-and-migrations.md` requires; an irreversible newest migration fails the example with that message.
+3. **The restore reads the archive twice**: once to classify, check the room and check the checksum (writing nothing, so a refusal changes nothing), once to extract. FR-2 says the checks come before any write and lists the temporary file after them; two passes are the cost of that order. The room is checked from `Archive.read`'s `on_manifest` callback, as soon as the manifest is parsed, because FR-2 lists it before the checksum and the checksum is only known at the end of the first pass (maintainer's ruling m3).
+4. **`compose.yaml` is unchanged.** The Compose documents use `/tmp` plus `cp`, or a `run -v` one-off with a host directory; adding a bind mount would need a path or a variable, and the spec adds no setting (hosted-door rule 3). `config/deploy.yml` gets the `backup` alias live and the volume line commented out: the alias works once the directory is mounted, and a live placeholder mount that docker would create root-owned would break the deploy's backups for everyone who doesn't read the README. **Reading of decision 4's "stated addition"** (maintainer's ruling m5, 2026-10-21): the addition is the alias plus the documents' steps (`install -d -o 1000 -g 1000 /srv/collector-backups` on the server, then uncomment the volume line and deploy); the line itself stays commented in the stock file.
+5. **The older snapshot of AC-3.6 is made by rolling back the newest migration** on a copy of a seeded backup, in a child process with `SCHEMA` pointing away from `db/schema.rb`, instead of migrating an empty scratch database up to N-1: it keeps rows, which "no row is lost" needs. It relies on every migration being reversible, which `.claude/rules/sqlite-and-migrations.md` requires; an irreversible newest migration fails the example with that message. The maintainer accepted this construction for AC-3.6 on 2026-10-21 (ruling m6, no spec change); `verification.md` records the departure and its reason (step 8.3).
 
 ## Open items awaiting the maintainer
 
@@ -3163,4 +3364,4 @@ A new operator reads only the README's "Backup and restore" section and, on a sc
 - **Acceptance of ADR 0024** (Proposed), with the plan; it records the `lib/collector/backup` placement and the no-`:environment` decision (decision 5 of the ADR) beside the spec's rulings.
 - **AC-5.6, the NAS restore** (Phase 8, step 8.4): the maintainer's, with the image built from the branch.
 - **The separate issue of decision 12** is drafted in [issue-art-index-ready.md](issue-art-index-ready.md) for the coordinator to file; it is not filed.
-- **Not yet reviewed.** Project default: a read-only Opus review of this plan, tracing it against the files, before execution.
+- **Revised after the review, not reviewed again.** The independent read-only Opus review (NEEDS REVISION: 1 critical, 3 major, 13 minor) and its resolution are in [plan-review.md](plan-review.md), with the maintainer's four rulings of 2026-10-21 (m3, m5, m6, m7). A second review of the revised plan is the maintainer's call.

@@ -11,9 +11,11 @@ Temporary names, in the destination directory only, each with a random part so t
 | Piece | Name | Mode | Removed |
 |---|---|---|---|
 | The snapshot while it is written and verified | `collector-backup-<time>.sqlite3.<16 hex>.partial` | 0600 from creation | by the run, always |
-| The archive while it is written | `collector-backup-<time>.tar.gz.<16 hex>.partial` | 0600 from creation | by the run on failure; renamed away on success |
+| The archive while it is written | `collector-backup-<time>.tar.gz.<16 hex>.partial` | 0600 from creation | by the run on failure; linked to its final name and unlinked on success (a rename only where a share can't link), never replacing a file |
 
-Pattern for both (the sweep of AC-1.6 and the restore's refusal of `*.partial`): `\Acollector-backup-\d{8}T\d{6}Z\.(?:tar\.gz|sqlite3)\.\h{16}\.partial\z`. The sweep removes a file of this pattern whose modification time is more than 24 hours old, and nothing else.
+The run puts the snapshot in rollback-journal mode before it verifies it, so a normal run leaves no `-wal` or `-shm`; if a killed run does, the sidecars carry the snapshot's name plus `-journal`, `-wal` or `-shm`.
+
+Pattern for both, with the sidecars a killed run may leave (the sweep of AC-1.6): `\Acollector-backup-\d{8}T\d{6}Z\.(?:tar\.gz|sqlite3)\.\h{16}\.partial(?:-journal|-wal|-shm)?\z`. The sweep removes a file of this pattern whose modification time is more than 24 hours old, and nothing else. The restore's refusal of `*.partial` is by extension (`File.extname == ".partial"`), whatever the rest of the name; `Create`'s own read-back of the archive it just wrote passes `allow_partial: true` (plan-review C1).
 
 ## Layout
 
@@ -59,7 +61,7 @@ A reader that doesn't know `backup_format_version` refuses before it looks at an
 | 3 | manifest names a `backup_format_version` this release doesn't restore | unknown version | names the versions it restores |
 | 4 | the snapshot's SHA-256 or size differs from the manifest's | changed | "checksum doesn't match" |
 
-A gzip stream that ends early before its first tar block is classified 2 (it claims to be gzip and stops), not 1. The classification reads the whole archive once and writes nothing (Phase 4 reads it twice: once to classify and check the checksum, once to extract).
+A gzip stream that ends early before its first tar block is classified 2 (it claims to be gzip and stops), not 1. The classification reads the whole archive once and writes nothing (Phase 4 reads it twice: once to classify, check the room and check the checksum, once to extract). `Archive.read` takes an `on_manifest` callback, called with the manifest of a known version as soon as it is parsed and before the snapshot is read: `Restore` checks the room there, so FR-2's room check comes before the checksum (maintainer's ruling m3). A file cut short after its manifest is therefore found after the room check, because it is told apart only by reading it to its end.
 
 ## Manual recovery (documented in `docs/backup-restore.md`, tested in Phase 1)
 
