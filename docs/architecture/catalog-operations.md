@@ -6,7 +6,7 @@ How the catalog changes, and how admins start, watch and recover that work: the 
 
 **Covers:**
 
-- The refresh's run and its lifecycle: `Catalog::Refresh`, `Catalog::RefreshRun`, `Catalog::Refresh::Progress`, `Catalog::RefreshJob`, the weekly schedule (`config/recurring.yml`), the `catalog:refresh` and `catalog:status` tasks (`lib/tasks/catalog.rake`), and the source contract's optional hooks (`app/models/catalog/sources.rb`).
+- The refresh's run and its lifecycle: `Catalog::Refresh`, `Catalog::RefreshRun`, `Catalog::Refresh::Progress`, `Catalog::RefreshJob`, the weekly schedule (`config/recurring.yml`, which also schedules the import upload sweep, `ImportUpload::SweepJob`, every 15 minutes in development and production, spec 028 AC-5.5, [ADR 0022](../adr/0022-stored-import-upload-retention.md); it shows on `/admin/jobs` like any job), the `catalog:refresh` and `catalog:status` tasks (`lib/tasks/catalog.rake`), and the source contract's optional hooks (`app/models/catalog/sources.rb`).
 - What a source does for a refresh, for the one source so far: `MTG::Scryfall::Source` (the bulk file, its check, kept downloads, the language setting) and the waits and timeouts of `MTG::Scryfall::Client`.
 - Rate limits: `Catalog::RateLimitRetry`.
 - The art index build's run and lifecycle: `MTG::Art::BuildJob`, `MTG::Art::Build`, `MTG::ArtBuild`, `MTG::Art.after_refresh`, `MTG::Art.status_line`, and `MTG::Art::Decoder` as far as a missing ImageMagick fails a build.

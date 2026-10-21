@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed (2026-10-20, written with the plan for spec 028; the decisions it records were ruled by the maintainer in spec 028 v1.3.2 and in the rulings on the plan's reviews, 2026-10-20). It becomes Accepted when the plan is approved.
+Accepted (2026-10-20). Written with the plan for spec 028; the decisions it records were ruled by the maintainer in spec 028 v1.3.3 and in the rulings on the plan's reviews, and the maintainer approved the plan, and with it this ADR, the same day.
 
 **Date:** 2026-10-20
 **Feature:** 028-apply-import

@@ -346,8 +346,11 @@ own ids and never by this instance's. It is defined in
 [docs/export-format/README.md](docs/export-format/README.md), with a JSON Schema and example
 files beside it. Export is built against it: a collector downloads their collection as one file
 from the account menu or More. A collector can preview importing a file from the account menu or
-More: the app says what applying it would do and which rows it can't apply, and changes nothing.
-Applying an import isn't in the app yet.
+More: the app says what applying it would do and which rows it can't apply, and changes nothing in
+the collection. A file that can be applied is kept privately for an hour, so a collector applies it
+with one click: the collection then holds exactly the file's lots, all or nothing, with no undo, so
+the page leads to a download of the current collection first. A removal needs a confirmation, and an
+apply whose collection changed since the preview is shown again instead of applied.
 
 ## License
 

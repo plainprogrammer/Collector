@@ -44,6 +44,12 @@ and description.
 commit it builds, so re-running an older release would point them backwards. A re-run of the newest release
 is safe and is how `latest` is restored if something else overwrote it.
 
+## Upgrade notes
+
+Notes an operator needs when upgrading, newest first. `bin/docker-entrypoint` runs `bin/rails db:prepare` on boot, so every migration listed here runs unattended.
+
+- **Applying an import (spec 028).** Two migrations run on boot: Active Storage's tables and `import_uploads`. The app now keeps a previewed import file under `storage/` (on the persistent volume) for at most an hour, one per account and at most 32 MB, and a recurring job (`config/recurring.yml`, every 15 minutes) removes expired ones; an orphaned file is removed within 25 minutes. Nothing is required of the operator. Active Storage's routes are now gated behind sign-in, and its direct-upload routes answer 404 (ADR 0022).
+
 ## Going public (one time)
 
 Images are public although the repository is still private (ADR 0008). The package is created private by the
