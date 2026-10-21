@@ -1,7 +1,7 @@
 # Feature 030: Back Up and Restore an Instance
 
-**Status:** Draft. Decisions 1 to 15 ruled by the maintainer (2026-10-21, through the coordinator); awaiting the maintainer's approval of the spec
-**Version:** 1.2.0
+**Status:** Approved by the maintainer (2026-10-21), with rulings on decisions 1 to 15 (decisions 1 to 3 as recommended; 4 to 15 confirmed as recommended in 1.1.0, except decision 4's Kamal restore sequence, ruled as option (a)); both Mode A reviews' findings fixed (version 1.2.1)
+**Version:** 1.2.1
 **Created:** 2026-10-21
 **Last Updated:** 2026-10-21
 **Branch:** `030-backup-restore`
@@ -14,6 +14,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.2.1 | 2026-10-21 | Approved by the maintainer. Status and the Open Questions line only; no requirement, criterion or decision changes (PATCH) |
 | 1.2.0 | 2026-10-21 | Revised after the second Mode A review (`review.md`, round 2) and the maintainer's rulings of 2026-10-21 (decisions 1 to 3 as ruled before; 4 to 15 confirmed as recommended in 1.1.0, except decision 4's Kamal restore sequence, ruled as option (a): `kamal server bootstrap`, a one-off `docker run` of the exact release on the host, then `kamal setup`). The Kamal sequence no longer needs an app boot (decision 4); the copy-in and its ownership are named for each engine (decision 4, AC-5.2); AC-1.5 is split into the cases that can happen (decision 7); FR-2 classifies a file as not a backup before it calls it incomplete (AC-3.1, AC-3.3); snapshots are opened without Active Record (decision 6, decision 7); temporary files are 0600 and fsynced; the file name's time format is fixed (decision 5); and the minor items of the review |
 | 1.1.0 | 2026-10-21 | Revised after the independent Mode A review (`review.md`): the session clearing's cascade to Undos and selections (decision 3), a stricter definition of a fresh volume and a restore that never opens the primary's path (decisions 6, FR-8), a verification pre-ship check on the branch's image (decision 14), ownership and the Kamal sequence (decision 4), what the suite and the smoke script each can prove (decision 9), free-space, counts and the other items of the review |
 | 1.0.0 | 2026-10-21 | Written from issue #41, roadmap theme A item 6, the north star (the 1.0 test, the hosted-door rules), ADR 0016 (which database needs backing up), ADR 0022 (stored import uploads), the Compose and Kamal deployment files and specs 012, 025 and 028 as style models |
@@ -337,7 +338,7 @@ Each is verified by reading, except the workflow and the script, which the first
 
 ## Open Questions
 
-None. The maintainer ruled on 2026-10-21: decision 1 option A, decisions 2 and 3, and decisions 4 to 15 as recommended in 1.1.0, except decision 4's Kamal restore sequence, ruled as option (a) (`kamal server bootstrap`, a one-off `docker run` of the exact release over `ssh`, then `kamal setup`; the plan confirms that a production boot of the rake task doesn't read `secret_key_base` eagerly). No Kamal host is available to the maintainer, which is why the Kamal path is documented and not exercised through Kamal itself (decision 4). Decision 15 stands: backup and restore are one outcome, one spec. The spec awaits the maintainer's approval.
+None. The maintainer ruled on 2026-10-21: decision 1 option A, decisions 2 and 3, and decisions 4 to 15 as recommended in 1.1.0, except decision 4's Kamal restore sequence, ruled as option (a) (`kamal server bootstrap`, a one-off `docker run` of the exact release over `ssh`, then `kamal setup`; the plan confirms that a production boot of the rake task doesn't read `secret_key_base` eagerly). No Kamal host is available to the maintainer, which is why the Kamal path is documented and not exercised through Kamal itself (decision 4). Decision 15 stands: backup and restore are one outcome, one spec. The maintainer approved the spec on 2026-10-21.
 
 ## Out of Scope
 
