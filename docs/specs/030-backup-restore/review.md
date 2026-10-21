@@ -36,3 +36,35 @@ All addressed: "one Collector command"; AC-2.4's wording; AC-2.10's expiry; mtim
 ## Confirmed complete (by the reviewer, against the code)
 
 `lots` → `catalog_entries` foreign key; `sqlite3` in the image; no `encrypts` or message verifiers beyond `ActiveStorageGate`; `collector:user` deletes sessions; `ImportUpload` is the only attachment and a missing file gives 422 "Preview the file again."; `docker-entrypoint` runs `db:prepare` only for the server; `db:prepare` creates missing queue, cache and cable databases; boot initializers don't touch the database; the test database is a file; hosted-door rules 1, 3 and 4 are stated and met and rule 2's argument holds; non-goals match the north star's "Not before 1.0"; one outcome and no plan or code.
+
+---
+
+# Round 2 (Mode A, second review, Opus, 2026-10-21)
+
+**Reviewed:** spec version 1.1.0 (commit `ff0ab48`), read-only. **Verdict on 1.1.0:** NEEDS REVISION (0 critical, 4 major, 11 minor); every first-round critical finding was confirmed fixed (I7 partly, I6 partly, resolved by M1 and M2 below).
+**State of 1.2.0:** every finding is addressed, and none is declined. The revised spec has not been reviewed a third time; the plan's first review reads it with this list. The maintainer's rulings of 2026-10-21 are recorded in the spec (decision headings "(ruled)", changelog 1.2.0, Open Questions).
+
+## Major
+
+| # | Finding | Fix in 1.2.0 |
+|---|---|---|
+| M1 | The Kamal restore (`kamal app exec` before first boot) fails on a fresh host: no env file, no `kamal` network, no `latest` tag | Ruling, option (a): decision 4's Kamal sequence is `kamal server bootstrap`, an `ssh` one-off `docker run --rm -u 1000 -v collector_storage:/rails/storage -v <dir>:/backups:ro -e SECRET_KEY_BASE_DUMMY=1 ghcr.io/plainprogrammer/collector:X.Y.Z bin/rails "backup:restore[…]"`, then `kamal setup`/`deploy`; the exact version is required (releases deploy with `--skip-push --version`); the plan confirms the rake task doesn't read `secret_key_base` eagerly; documented, not exercised through Kamal (no host); AC-5.1 and the Open Questions say the same |
+| M2 | The copy-in before the first start has no mechanism or ownership step | Decision 4's table names, for each engine, the preferred read-only bind mount of a host directory `chown`ed to 1000 (rootless Podman `:U` or `--userns=keep-id`) and the `create` + `cp` + `-u 0` `chown` alternative; says where the input file may live (the mounted directory, or inside the volume); AC-5.1 lists them; AC-5.2 runs both and asserts the restore succeeds from a file copied in the documented way |
+| M3 | AC-1.5 is mostly unconstructible: `VACUUM INTO` repairs index damage and fails on b-tree damage | Decision 7 explains it and states the verification proves the snapshot, not the source; AC-1.5 is now `VACUUM INTO` failing (simulated `SQLITE_CORRUPT` or a damaged page), new AC-1.12 is the foreign-key case; AC-3.7 builds its damaged snapshots directly, not through `backup:create`; error table split |
+| M4 | FR-2's order calls a text file or an export "incomplete" instead of "not a backup" | FR-2 defines the classification order: (1) not a backup (not gzip, or first tar entry not `manifest.json`, including a JSON export), (2) incomplete (starts as a backup and ends early, CRC or length, `*.partial`), (3) unknown format version; AC-3.1 and AC-3.3 say so (and a tar.gz without `manifest.json` is added to AC-3.3) |
+
+## Minor
+
+| # | Finding | Fix in 1.2.0 |
+|---|---|---|
+| m1 | `.backup` comparison overstates the restart problem | Decision 1 says the incremental API as the `sqlite3` command runs it restarts; a single step doesn't; the conclusion stands |
+| m2 | Long read transaction holds the WAL; the cron can collide with the Monday refresh | Decision 8 and AC-5.1: the cron line avoids Monday 03:00 to 05:00; decision 13 and the Cost NFR state the WAL growth |
+| m3 | Temporary files are readable while the run lasts | Decision 7 and FR-1: the `.partial` snapshot is pre-created empty 0600 and the archive 0600 from creation; AC-1.6 asserts the mode, AC-1.8 refers to it |
+| m4 | Verification must not reopen the snapshot through Active Record | Decision 6 and FR-1: `SQLite3::Database` directly, `foreign_keys = ON` set; AC-1.4 and AC-2.1 assert header bytes 18 and 19 equal 1 and no sidecar |
+| m5 | The restore's temporary file can leave a `-journal` | FR-2 and FR-6: its own temporary file and that file's `-journal`, ignored by name by the freshness test; AC-2.6 |
+| m6 | FR-1 doesn't say a failed run removes its `.partial` files | FR-1 and AC-1.5 |
+| m7 | Durability of the rename is not stated | Decision 7: `fsync` of the archive before the rename and of the directory after it, and of the placed primary in the restore (FR-2) |
+| m8 | The file name's time format is not fixed | Decision 5 and AC-1.1: `collector-backup-YYYYMMDDTHHMMSSZ.tar.gz`, pattern checked |
+| m9 | The foreign-key refusal needs its rationale and a way out | Decision 7 gives the rationale; the failure message points to each collector's export (AC-1.12) |
+| m10 | "The instance keeps answering requests throughout" has no check | Removed from AC-1.1; `bin/backup-smoke` polls `/up` during the backup (AC-5.2, decision 9); AC-1.3's concurrent writer covers the rest |
+| m11 | Nits: one README "Back up this volume" bullet; migrations read without a connection | "Documents that change" says one Compose bullet and a pointer in the Kamal part; FR-8 names `ActiveRecord::MigrationContext#migrations` and bars the connection's `migration_context` |
