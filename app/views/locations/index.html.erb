@@ -1,0 +1,35 @@
+<% content_for :title, "Locations · Collector" %>
+<%= render "layouts/appbar", section: :locations %>
+<main class="c-main c-page c-locations">
+  <div class="c-pagehead">
+    <div>
+      <h1 class="c-pagehead__title">Locations</h1>
+      <p class="c-pagehead__stats"><%= pluralize(@locations.size, "location") %></p>
+    </div>
+  </div>
+  <% messages = @location.errors.messages_for(:name) %>
+  <%= form_with model: @location, url: locations_path, class: "c-form c-locations__add" do |form| %>
+    <div class="c-field<%= " c-field--invalid" if messages.any? %>">
+      <%= form.label :name, "Name", class: "c-field__label" %>
+      <label class="c-input"><%= form.text_field :name, value: @location.typed, autocomplete: "off", "aria-describedby": field_error_describedby("location_name-error", messages) %></label>
+      <%= render "shared/field_errors", messages:, id: "location_name-error" %>
+    </div>
+    <div class="c-form__actions"><%= form.submit "Add location", class: "c-btn c-btn--primary" %></div>
+  <% end %>
+  <% if @locations.empty? %>
+    <p class="c-empty">No locations yet. Add a binder or a box to start recording where things are kept.</p>
+  <% else %>
+    <ul class="c-list c-locations__list">
+      <% @locations.each do |location| %>
+        <li>
+          <span class="c-locations__name"><%= location.name %></span>
+          <span class="c-list__end c-locations__actions">
+            <%= link_to edit_location_path(location), class: "c-btn c-btn--ghost c-btn--sm" do %>Rename<span class="c-sr"> <%= location.name %></span><% end %>
+            <%= link_to new_location_removal_path(location), class: "c-btn c-btn--ghost c-btn--sm" do %>Remove<span class="c-sr"> <%= location.name %></span><% end %>
+          </span>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+</main>
+<%= render "layouts/tabbar", section: nil %>

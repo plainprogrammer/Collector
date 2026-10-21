@@ -1,0 +1,13 @@
+<% content_for :title, "Remove location · Collector" %>
+<%= render "layouts/appbar", section: :locations, detail: true, back_path: locations_path %>
+<main class="c-main c-page c-locations">
+  <section class="c-confirm">
+    <h1 class="c-pagehead__title">Remove <%= @location.name %>?</h1>
+    <p>This removes the location from your list. No lot or copy in your collection is removed or changed.</p>
+    <div class="c-form__actions">
+      <%= button_to "Remove", location_path(@location), method: :delete, class: "c-btn c-btn--danger" %>
+      <%= link_to "Cancel", locations_path, class: "c-btn c-btn--secondary" %>
+    </div>
+  </section>
+</main>
+<%= render "layouts/tabbar", section: nil %>

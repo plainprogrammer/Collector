@@ -50,7 +50,7 @@ RSpec.describe "App shell", type: :request do
       expect(link.map(&:text)).to include("Export collection")
       expect(link.map { |a| [ a["data-turbo"], a["data-turbo-prefetch"], a["download"] ] }.uniq).to eq([ [ "false", "false", nil ] ])
     end
-    expect(Nokogiri::HTML5(response.body).at_css(".c-more li:nth-child(2) a")&.text).to eq("Export collection")
+    expect(Nokogiri::HTML5(response.body).at_css(".c-more li:nth-child(3) a")&.text).to eq("Export collection")
   end
 
   it "puts the import right after the export, in the account menu and on More (spec 025 AC-5.1, AC-5.2)", :aggregate_failures do
@@ -58,7 +58,7 @@ RSpec.describe "App shell", type: :request do
     page = Nokogiri::HTML5(response.body)
 
     expect(page.css(".c-appbar .c-menu__list a.c-menu__item").map(&:text).first(2)).to eq([ "Export collection", "Import collection" ])
-    expect(page.at_css(".c-more li:nth-child(3) a")&.then { |link| [ link.text, link["href"] ] })
+    expect(page.at_css(".c-more li:nth-child(4) a")&.then { |link| [ link.text, link["href"] ] })
       .to eq([ "Import collection", new_collection_import_preview_path ])
   end
 

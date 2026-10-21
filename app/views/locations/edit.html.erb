@@ -1,0 +1,23 @@
+<% content_for :title, "Rename #{@location.name_was} · Collector" %>
+<%= render "layouts/appbar", section: :locations, detail: true, back_path: locations_path %>
+<main class="c-main c-page c-locations">
+  <div class="c-pagehead">
+    <div>
+      <h1 class="c-pagehead__title">Rename location</h1>
+      <p class="c-pagehead__stats"><%= @location.name_was %></p>
+    </div>
+  </div>
+  <% messages = @location.errors.messages_for(:name) %>
+  <%= form_with model: @location, url: location_path(@location), method: :patch, class: "c-form c-locations__add" do |form| %>
+    <div class="c-field<%= " c-field--invalid" if messages.any? %>">
+      <%= form.label :name, "Name", class: "c-field__label" %>
+      <label class="c-input"><%= form.text_field :name, value: @location.typed, autocomplete: "off", "aria-describedby": field_error_describedby("location_name-error", messages) %></label>
+      <%= render "shared/field_errors", messages:, id: "location_name-error" %>
+    </div>
+    <div class="c-form__actions">
+      <%= form.submit "Save", class: "c-btn c-btn--primary" %>
+      <%= link_to "Cancel", locations_path, class: "c-btn c-btn--secondary" %>
+    </div>
+  <% end %>
+</main>
+<%= render "layouts/tabbar", section: nil %>
