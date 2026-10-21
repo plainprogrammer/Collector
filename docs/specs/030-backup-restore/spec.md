@@ -6,7 +6,7 @@
 **Last Updated:** 2026-10-21
 **Branch:** `030-backup-restore`
 **Issue:** [#41](https://github.com/plainprogrammer/Collector/issues/41)
-**Plan:** none yet
+**Plan:** [plan.md](plan.md)
 
 ---
 
