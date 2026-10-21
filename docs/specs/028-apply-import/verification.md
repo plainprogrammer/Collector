@@ -103,3 +103,18 @@ Each is small and was found by running the plan's own code:
 - The test Disk cleanup keeps `tmp/storage/.keep` (the repository tracks it).
 - Plan spec fixes: `update_columns` on a record, not a relation; lets created before a snapshot; held-lot times that make "nothing to change" true; a `X-CSRF-Token` header (a per-form token did not verify in a request spec); a warm-up preview so the query-count example compares like with like.
 - No subagents: the phases were executed in this session (sdd-execute's per-task dispatch was not used).
+
+## bin/ci
+
+Run twice at the end, `bin/ci` in this worktree: Setup, RuboCop (525 files, no offenses), Brakeman (no warnings), bundler-audit and importmap audit pass. **RSpec: 1752 examples, 10 failures, 1 pending.** The first run had an 11th failure of this feature's own, an order-dependent example that compared `config.filter_parameters` literally (Rails compiles it after the first request); it now checks the filter's behaviour and passes in any order. The ten that remain are the development machine, not this change:
+
+| Failing examples | Cause |
+|---|---|
+| `footer_spec` ×3, `theme_spec`, `card_image_fit_spec` ×3 | The machine is in macOS Dark appearance (`defaults read -g AppleInterfaceStyle` → `Dark`, at 22:27), so headless Firefox reports `prefers-color-scheme: dark` and the examples that expect the light theme's colours get the dark ones (for example `rgb(170, 162, 152)` where `rgb(95, 90, 82)` is expected). The first full run of this branch, in the afternoon, did not show them. |
+| `active_storage_variant_transformer_spec` ×2, `libvips_check_spec` | libvips isn't installed (`Could not open library 'libvips.42.dylib'`), as `CLAUDE.md` says development needs it. |
+
+The one pending example is `art_agreement_spec` ("Set COLLECTOR_ART_AGREEMENT to the spike's art-cache directory"), as before. I did not re-run these ten on `main`; their causes are shown above and none touches code this feature changed.
+
+## Implementation review
+
+SPEC-ALIGNED, by the author's own coverage matrix above (every AC and FR has an example, a measurement or a reading; the two measured bars pass), not by an independent reviewer. An independent `sdd-review` Mode B pass before the merge is recommended; the CI caveats above should be re-checked on a machine in light mode with libvips installed.
