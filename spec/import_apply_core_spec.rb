@@ -22,6 +22,8 @@ RSpec.describe "Apply an import, core code", type: :config do
   end
 
   it "keeps the uploaded file out of the logs" do
-    expect(Rails.application.config.filter_parameters).to include(:export_file)
+    filter = ActiveSupport::ParameterFilter.new(Rails.application.config.filter_parameters)
+
+    expect(filter.filter("export_file" => "the file's content")).to eq("export_file" => "[FILTERED]")
   end
 end
