@@ -18,7 +18,12 @@ module ExportFormatRules
   # The schema of the newest version: v<N>.schema.json.
   def self.schema_file = directory.glob("v*.schema.json").max_by { |file| file.basename.to_s[/\d+/].to_i }
 
-  def self.schema = JSON.parse(schema_file.read)
+  # Every version this instance reads (ExportFormat::Rules), and the schema file of one.
+  def self.versions = ExportFormat::Rules::VERSIONS
+
+  def self.schema_file_for(version) = directory.join("v#{version}.schema.json")
+
+  def self.schema(version = nil) = JSON.parse((version ? schema_file_for(version) : schema_file).read)
 
   # The examples of one kind ("valid", "invalid", "comparison"), as bytes keyed by their path under examples/.
   def self.examples(kind)
@@ -66,7 +71,8 @@ module ExportFormatRules
 
   def self.compared(file)
     [ file.fetch("profile").slice("name", "email_address", "collection_view"), file["currency"],
-      file.fetch("lots").to_h { |lot| [ identity(lot), lot.values_at("quantity", "added_at", "changed_at") ] } ]
+      file.fetch("lots").to_h { |lot| [ identity(lot), lot.values_at("quantity", "added_at", "changed_at") ] },
+      file["locations"]&.map { |location| location["name"] }&.to_set ]
   end
 
   private_class_method :compared, :cells

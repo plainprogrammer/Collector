@@ -148,7 +148,7 @@ RSpec.describe "Import preview", type: :request do
       {
         nil => "Choose an export file to preview.",
         "{" => "This file isn't a Collector export: it isn't readable JSON.",
-        file([], format_version: 2) => "This file was written by a newer version of Collector (format version 2). This instance reads version 1.",
+        file([], format_version: 3) => "This file was written by a newer version of Collector (format version 3). This instance reads version 2.",
         file([], currency: "EUR") => "This file's prices are in EUR. This instance uses USD."
       }.each do |data, reason|
         data.nil? ? post(collection_import_preview_path, params: { export_file: "a pasted file" }) : preview(data)

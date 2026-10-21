@@ -12,9 +12,9 @@ RSpec.describe ExportFormat::Rules, type: :model do
 
   it "keeps a byte-identical copy of every documented schema (ADR 0021)", :aggregate_failures do
     documented = Rails.root.glob("docs/export-format/v*.schema.json")
-    copies = documented.map { |file| described_class::SCHEMA_FILE.dirname.join(file.basename) }
+    copies = documented.map { |file| described_class::SCHEMA_DIRECTORY.join(file.basename) }
 
-    expect(documented.map(&:basename).map(&:to_s)).to include("v1.schema.json")
+    expect(documented.map(&:basename).map(&:to_s)).to include("v1.schema.json", "v2.schema.json")
     expect(copies.map { |copy| copy.exist? && copy.binread }).to eq(documented.map(&:binread))
   end
 
@@ -95,7 +95,7 @@ RSpec.describe ExportFormat::Rules, type: :model do
       data, problem = described_class.parse(bytes)
       return [ problem ] if problem
 
-      found = JSONSchemer.schema(described_class.schema, regexp_resolver: "ecma").validate(data).flat_map do |error|
+      found = JSONSchemer.schema(described_class.schema(described_class.schema_version(data)), regexp_resolver: "ecma").validate(data).flat_map do |error|
         missing = error.dig("details", "missing_keys")
         next missing.map { |key| described_class::Problem.new("required", "#{error["data_pointer"]}/#{key}") } if missing
 
@@ -142,20 +142,66 @@ RSpec.describe ExportFormat::Rules, type: :model do
 
     it "checks a lot against $defs/lot, whose errors prefixed with the lot's place are the whole schema's" do
       data = bad_lots
-      whole = described_class.schemer.validate(data).map { |error| [ error["type"], error["data_pointer"] ] }
+      whole = described_class.schemer(1).validate(data).map { |error| [ error["type"], error["data_pointer"] ] }
       alone = data["lots"].each_with_index.flat_map do |lot, index|
-        described_class.lot_schemer.validate(lot).map { |error| [ error["type"], "/lots/#{index}#{error["data_pointer"]}" ] }
+        described_class.lot_schemer(1).validate(lot).map { |error| [ error["type"], "/lots/#{index}#{error["data_pointer"]}" ] }
       end
 
       expect(alone).to eq(whole)
     end
 
     it "never gives the root schema a lot" do
-      allow(described_class.schemer).to receive(:validate).and_call_original
+      allow(described_class.schemer(1)).to receive(:validate).and_call_original
 
       described_class.problems_in(bad_lots)
 
-      expect(described_class.schemer).to have_received(:validate).once.with(bad_lots.merge("lots" => []))
+      expect(described_class.schemer(1)).to have_received(:validate).once.with(bad_lots.merge("lots" => []))
+    end
+  end
+
+  describe "version 2 (spec 029)" do
+    def v2 = JSON.parse(Rails.root.join("docs/export-format/examples/comparison/v2-base.json").read)
+
+    def locations(*names) = v2.merge("locations" => names.map { |name| { "name" => name } })
+
+    it "judges a file against the schema of its own version", :aggregate_failures do
+      expect(described_class.schema_version(base)).to eq(1)
+      expect(described_class.schema_version(v2)).to eq(2)
+      expect(described_class.schema_version(v2.merge("format_version" => 2.0))).to eq(2)
+      expect(described_class.schema_version(v2.merge("format_version" => 3))).to eq(1) # a version it doesn't read: the oldest names the version
+      expect(described_class.schema_version(base.except("format_version"))).to eq(1)
+      expect(described_class.schema_version(base.merge("format_version" => "1"))).to eq(1)
+      expect(described_class.schema_version([ v2 ])).to eq(1) # not an object: the oldest judges it, as it always did
+      expect(problems_of(v2)).to eq([])
+      expect(problems_of(base.merge("format_version" => 2))).to eq([ %w[required /locations] ])
+      expect(problems_of(base.except("format_version"))).to eq([ %w[required /format_version] ]) # the version 1 invalid examples keep their one problem
+      expect(problems_of(base.merge("format_version" => "1"))).to eq([ %w[const /format_version] ])
+      expect(problems_of(v2.merge("format_version" => 3))).to eq([ %w[const /format_version] ])
+      expect(problems_of(v2.merge("format_version" => 1))).to eq([]) # an unknown field is ignored by version 1
+    end
+
+    it "finds a location problem under its pointer and checks the lots too", :aggregate_failures do
+      data = locations("Blue binder", "a  b", "")
+      data["lots"][0]["quantity"] = 0
+
+      expect(problems_of(data)).to eq([ %w[pattern /locations/1/name], %w[minLength /locations/2/name], %w[minimum /lots/0/quantity] ])
+    end
+
+    it "finds a repeated key at the later location, by case, case folding and normalisation form (AC-7.3)", :aggregate_failures do
+      expect(problems_of(locations("box", "Box"))).to eq([ %w[duplicate_location /locations/1] ])
+      expect(problems_of(locations("Straße", "STRASSE"))).to eq([ %w[duplicate_location /locations/1] ])
+      expect(problems_of(locations("Café", "Cafe\u0301", "CAFE\u0301"))).to eq([ %w[duplicate_location /locations/1], %w[duplicate_location /locations/2] ])
+      expect(problems_of(locations("Cafe\u0301"))).to eq([]) # a name in NFD is well-formed
+    end
+
+    it "compares no location whose name fails the schema, as it compares no lot with an unreadable identity" do
+      expect(problems_of(locations("a  b", "a  b"))).to eq([ %w[pattern /locations/0/name], %w[pattern /locations/1/name] ])
+    end
+
+    it "reports a location that isn't an object and checks the others" do
+      data = v2.merge("locations" => [ 5, { "name" => "Box" }, { "name" => "box" } ])
+
+      expect(problems_of(data)).to eq([ %w[type /locations/0], %w[duplicate_location /locations/2] ])
     end
   end
 

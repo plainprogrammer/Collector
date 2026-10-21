@@ -77,9 +77,9 @@ RSpec.describe CollectionImport, type: :model do
     end
 
     it "refuses a newer version as newer, before the schema (AC-3.2)", :aggregate_failures do
-      expect(refusal_of(file([], format_version: 2).except("lots", "profile"))).to eq(
-        [ "newer_version", "/format_version", "This file was written by a newer version of Collector (format version 2). This instance reads version 1." ])
-      expect(refusal_of(file([], format_version: 2.0)).first).to eq("newer_version")
+      expect(refusal_of(file([], format_version: 3).except("lots", "profile"))).to eq(
+        [ "newer_version", "/format_version", "This file was written by a newer version of Collector (format version 3). This instance reads version 2." ])
+      expect(refusal_of(file([], format_version: 3.0)).first).to eq("newer_version")
       expect(import(file([], format_version: 1.0))).not_to be_refused
     end
 
