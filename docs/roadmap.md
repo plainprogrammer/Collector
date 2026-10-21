@@ -94,6 +94,7 @@ Taken between specs.
 - [#107](https://github.com/plainprogrammer/Collector/issues/107): area doc for the scanner (spec 027 slice C).
 - [#108](https://github.com/plainprogrammer/Collector/issues/108): area doc for data portability (spec 027 slice C).
 - [#109](https://github.com/plainprogrammer/Collector/issues/109): area doc for release and deploy (spec 027 slice C).
+- [#118](https://github.com/plainprogrammer/Collector/issues/118): system specs follow the host's dark mode, so light-theme examples fail; the default driver is pinned to light, and the dark drivers take the first driver's Firefox binary (found while running `bin/ci` for spec 028). **Done 2026-10-20.**
 
 ## Parked until after 1.0
 

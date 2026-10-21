@@ -132,6 +132,7 @@ RSpec.describe "The footer", type: :system do
 
   it "holds its contrast in the dark theme (AC-3.4)", :aggregate_failures do
     driven_by :selenium, using: :headless_firefox, screen_size: [ 1280, 900 ], options: { name: :firefox_dark } do |options|
+      FirefoxBinary.pin(options)
       options.add_preference("ui.systemUsesDarkTheme", 1)
       options.add_preference("layout.css.prefers-color-scheme.content-override", 0) # 0 = dark
     end
