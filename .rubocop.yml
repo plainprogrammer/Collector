@@ -55,11 +55,22 @@ RSpec/DescribeClass:
     - "spec/footer_core_spec.rb"
     - "spec/githooks/post_checkout_spec.rb"
     - "spec/image_publishing_spec.rb"
+    - "spec/import_apply_core_spec.rb"
     - "spec/network_isolation_spec.rb"
     - "spec/number_entry_core_spec.rb"
     - "spec/project_config_spec.rb"
     - "spec/tasks/collector_rake_spec.rb"
 
 # Integration-style examples need setup → act → assert; the default 5 lines is too tight.
+# The apply, plan and round-trip specs of spec 028 are scenarios (a collection, a file, a stored upload, an apply, then
+# the collection again); their examples and helpers are longer and more numerous than the integration default.
 RSpec/ExampleLength:
   Max: 15
+  Exclude:
+    - "spec/models/collection_import/apply_spec.rb"
+    - "spec/models/collection_import/plan_spec.rb"
+    - "spec/models/collection_import/round_trip_spec.rb"
+RSpec/MultipleMemoizedHelpers:
+  Exclude:
+    - "spec/models/collection_import/apply_spec.rb"
+    - "spec/models/collection_import/round_trip_spec.rb"

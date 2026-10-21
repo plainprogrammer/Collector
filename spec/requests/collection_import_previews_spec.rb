@@ -56,6 +56,20 @@ RSpec.describe "Import preview", type: :request do
       expect(form.at_css("label[for=export_file]").text).to eq("Export file")
     end
 
+    it "refuses an impossible date and a price that doesn't fit, offering no apply (spec 028 1.3.4)", :aggregate_failures do
+      impossible = file([ row(printing, changed_at: "2026-13-45T00:00:00Z") ])
+      huge = file([ row(printing, price_paid: "92233720368547758.08") ])
+
+      [ impossible, huge ].each do |data|
+        preview(data)
+
+        expect(html.at_css(".c-import .c-status__message--alert").text).to include("can't be applied")
+        expect(html.css("form[action='#{collection_import_path}']")).to be_empty
+      end
+      expect(response.body).to include("price_paid is too large to record")
+      expect(ImportUpload.count).to eq(0)
+    end
+
     it "puts the CSRF token in the upload form (AC-1.1)" do
       ActionController::Base.allow_forgery_protection = true
       get new_collection_import_preview_path
@@ -75,7 +89,7 @@ RSpec.describe "Import preview", type: :request do
       expect(response.headers["Cache-Control"]).to include("no-store")
       expect(html.at_css("h1").text).to eq("Import preview")
       expect(html.at_css(".c-pagehead__stats").text.squish).to eq("Exported 2026-10-15 09:00 UTC · 4 rows · USD")
-      expect(html.at_css(".c-import .c-status__message").text.squish).to eq("This file can be applied. Previewing changed nothing.")
+      expect(html.at_css(".c-import .c-status__message").text.squish).to eq("This file can be applied. Previewing changed nothing in your collection.")
       expect([ stat("Lots added"), stat("Lots changed"), stat("Lots unchanged"), stat("Lots removed") ])
         .to eq([ [ "1", "6 copies" ], [ "2", "6 copies become 9" ], [ "1", "3 copies" ], [ "1", "7 copies" ] ])
       expect(html.css("#removed_lots li").map { |item| item.text.squish }).to eq([ "#{d.name} #{d.set.code.upcase} · #{d.number} · EN ×7" ])
@@ -88,7 +102,7 @@ RSpec.describe "Import preview", type: :request do
       preview(file([ row(known, finish: "etched", condition: "mint", price_paid: "12.50"), stranger ]))
 
       expect(html.at_css(".c-import .c-status__message--alert").text.squish)
-        .to eq("This file can't be applied: 2 rows have problems. Previewing changed nothing.")
+        .to eq("This file can't be applied: 2 rows have problems. Previewing changed nothing in your collection.")
       expect(html.css("#problem_rows > li").first.text.squish)
         .to eq("Row 1 Serra Angel DMR · 27 · EN · Etched · Mint · $12.50 This printing doesn't come in etched mint isn't a condition this instance knows")
       expect(html.css("#problem_counts li").map { |item| item.text.squish })
@@ -155,7 +169,7 @@ RSpec.describe "Import preview", type: :request do
       expect(response).to have_http_status(:unprocessable_content)
     end
 
-    it "writes nothing and queues nothing (AC-1.8)", :aggregate_failures do
+    it "still writes nothing and queues nothing for a file with problem rows (AC-1.8, narrowed by spec 028 decision 10)", :aggregate_failures do
       entry = printing
       create(:lot, account: user.account, entry:, quantity: 2)
       data = file([ row(entry, quantity: 5), row(printing), stranger ])
@@ -168,6 +182,7 @@ RSpec.describe "Import preview", type: :request do
     it "runs as many queries for 30 rows as for 2 (AC-1.9)" do
       few = Array.new(2) { row(printing) }
       many = Array.new(30) { row(printing) }
+      preview(file(few)) # an earlier stored upload exists for both counted previews, which replace it
 
       expect(count_queries { preview(file(many)) }).to eq(count_queries { preview(file(few)) })
     end
@@ -181,6 +196,116 @@ RSpec.describe "Import preview", type: :request do
 
       expect([ stat("Lots added").first, stat("Lots removed").first ]).to eq(%w[1 0])
       expect(response.body).not_to include("7,919", "79.19", "Zebulon Otherperson", "zebulon.otherperson@example.test")
+    end
+
+    describe "the stored upload and the apply form (spec 028)" do
+      let(:entry) { printing }
+
+      def form = html.at_css("form[action='#{collection_import_path}']")
+
+      it "offers the apply for a file with something to change, outside Turbo, with the fingerprint (AC-1.1, AC-7.1)", :aggregate_failures do
+        create(:lot, account: user.account, entry: printing(name: "Held"), quantity: 7)
+        preview(file([ row(entry, quantity: 2) ]))
+
+        expect(form["data-turbo"]).to eq("false")
+        expect(form.at_css("input[type=file]")).to be_nil
+        expect(form.at_css("input[name=fingerprint]")["value"]).to eq(user.account.import_upload.fingerprint)
+        expect(form.at_css("input[type=submit]")["value"]).to eq("Apply import")
+        expect(form.at_css("input[name=confirm_removal]")).to be_present # a lot is removed
+        expect(form.at_css("a[href='#{collection_export_path}']")).to be_present
+        expect(response.body).to include("removes 1 lot", "can't be undone", "kept for an hour")
+      end
+
+      it "puts the apply form below the counts and above the profile notes (AC-7.1)" do
+        profile = { "name" => user.name, "email_address" => user.email_address, "collection_view" => "table" }
+        preview(file([ row(entry) ], profile:))
+
+        sequence = html.css("dl.c-stats, #held_lots, form[action='#{collection_import_path}'], #profile_notes").map { |node| node["id"] || node.name }
+        expect(sequence).to eq(%w[dl held_lots form profile_notes])
+      end
+
+      it "puts the CSRF token in the apply form (FR-5)" do
+        ActionController::Base.allow_forgery_protection = true
+        get new_collection_import_preview_path
+        token = html.at_css("meta[name=csrf-token]")["content"]
+        post collection_import_preview_path, params: { export_file: upload(file([ row(entry) ])) }, headers: { "X-CSRF-Token" => token }
+
+        expect(form.at_css("input[name=authenticity_token]")).to be_present
+      ensure
+        ActionController::Base.allow_forgery_protection = false
+      end
+
+      it "needs no checkbox when nothing is removed (AC-3.5)" do
+        preview(file([ row(entry) ]))
+
+        expect(form.at_css("input[name=confirm_removal]")).to be_nil
+      end
+
+      it "stores nothing for a file with problems, a refused file or a file with nothing to change (AC-1.1, AC-1.11)", :aggregate_failures do
+        create(:lot, account: user.account, entry:, quantity: 1, created_at: Time.utc(2026, 10, 1, 10), updated_at: Time.utc(2026, 10, 1, 10))
+        [ file([ row(entry, quantity: 1) ]), file([ stranger ]), "not json" ].each do |data|
+          before = snapshot
+          expect { preview(data) }.not_to have_enqueued_job
+          expect(html.css("form[action='#{collection_import_path}']")).to be_empty
+          expect(snapshot).to eq(before)
+        end
+        expect(ImportUpload.count + ActiveStorage::Blob.count).to eq(0)
+        preview(file([ row(entry, quantity: 1) ]))
+        expect(response.body).to include("nothing to change")
+      end
+
+      it "writes only the upload, its blob and its attachment (AC-1.11)", :aggregate_failures do
+        data = file([ row(entry) ])
+        before = snapshot
+        expect { preview(data) }.not_to have_enqueued_job
+        changed = snapshot.reject { |table, rows| before[table] == rows }
+
+        expect(changed.keys).to match_array(%w[import_uploads active_storage_blobs active_storage_attachments])
+      end
+
+      it "stores the file as application/json by content, one per account, replacing the earlier (AC-5.1, AC-5.2)", :aggregate_failures do
+        preview(file([ row(entry) ]), type: "image/png", name: "cards.txt")
+        first = user.account.reload.import_upload
+        expect(first.file.blob.content_type).to eq("application/json")
+        expect(first.expires_at).to be_within(1.minute).of(ImportUpload::EXPIRES_IN.from_now)
+
+        preview(file([ row(entry, quantity: 4) ]))
+        expect(ImportUpload.count).to eq(1)
+        expect(ImportUpload.first.id).not_to eq(first.id)
+        preview(file([ stranger ]))
+        expect(ImportUpload.count).to eq(1) # a preview that stores nothing leaves the earlier one
+      end
+
+      it "shows the counts and no apply when the store fails (spec 028 error scenarios)", :aggregate_failures do
+        allow(ImportUpload).to receive(:store!).and_raise(Errno::ENOSPC)
+        preview(file([ row(entry) ]))
+
+        expect(response).to have_http_status(:ok)
+        expect(response.body).to include("couldn't be kept")
+        expect(form).to be_nil
+      end
+
+      it "stores nothing over 32 MB or that isn't an export (AC-5.3)", :aggregate_failures do
+        preview("not json")
+        expect(ImportUpload.count).to eq(0)
+
+        stub_const("CollectionImport::MAX_BYTES", 10)
+        preview(file([ row(entry) ]))
+        expect(response).to have_http_status(:unprocessable_content)
+        expect([ ImportUpload.count, ActiveStorage::Blob.count ]).to eq([ 0, 0 ])
+      end
+    end
+
+    it "previews the format's empty example, in its own currency, as nothing to change with no apply offered (AC-6.4)", :aggregate_failures do
+      allow(Rails.configuration.x).to receive(:currency).and_return(Collector::Currency.fetch!("EUR"))
+      bytes = ExportFormatRules.examples("valid").fetch("valid/empty.json")
+
+      post collection_import_preview_path, params: { export_file: import_upload_file(bytes) }
+
+      expect(response).to have_http_status(:ok) # not refused as another currency
+      expect(response.body).to include("nothing to change")
+      expect(html.css("form[action='#{collection_import_path}']")).to be_empty
+      expect(ImportUpload.count).to eq(0)
     end
   end
 

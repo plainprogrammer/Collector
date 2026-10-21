@@ -43,3 +43,21 @@ The upload page for an export file and the preview of what importing it would do
 - A row with problems shows its number (mono), what the file says it is, and each reason on its own line in `danger` with the words carrying the meaning.
 - Each list shows its first 100 entries and then "and N more" (`c-import__more`); the counts above it cover them all.
 - Rows wrap (`flex-wrap`, `overflow-wrap:anywhere`), so a long name or email address never scrolls the page sideways at 360px.
+
+## Apply form (spec 028)
+
+A file that can be applied and has something to change also shows the apply form, below the held-lots line and above the profile notes. It is an ordinary `c-form`, submitted without Turbo Drive; no new class is needed.
+
+```html
+<form class="c-form" action="/collection/import" method="post" data-turbo="false">
+  <input type="hidden" name="fingerprint" value="…">
+  <p class="c-import__note">Applying removes 1 lot (2 copies) and can't be undone. <a href="/collection/export">Download your current collection first</a>.</p>
+  <div class="c-field"><label class="c-check"><input type="checkbox" name="confirm_removal" value="1" required> I understand this removes 1 lot</label></div>
+  <p class="c-import__note">This preview is kept for an hour.</p>
+  <div class="c-form__actions"><input type="submit" class="c-btn c-btn--primary" value="Apply import"></div>
+</form>
+```
+
+- The checkbox appears only when lots are removed. With nothing to remove, the note says only that applying can't be undone.
+- A file with nothing to change says so in the notice and shows no form. A file that couldn't be stored shows an alert notice ("This file couldn't be kept, so it can't be applied. Choose it again.") and no form.
+- The stale-plan page (409) and a refused apply (422) are this same page with an alert notice above it (`c-status` shows the message); a stale page carries the new fingerprint in its form.

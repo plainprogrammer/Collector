@@ -12,7 +12,7 @@
       <%= form.label :export_file, "Export file", class: "c-field__label" %>
       <%= form.file_field :export_file, accept: ".json,application/json", required: true, class: "c-file",
             "aria-describedby": refusal ? "export_file_error" : "export_file_hint" %>
-      <p class="c-field__hint" id="export_file_hint">A .json file from Export collection, at most 32 MB. Previewing shows what importing it would do and changes nothing.</p>
+      <p class="c-field__hint" id="export_file_hint">A .json file from Export collection, at most 32 MB. Previewing shows what importing it would do and changes nothing in your collection.</p>
       <% if refusal %><p class="c-field__error" id="export_file_error"><%= refusal.reason %></p><% end %>
     </div>
     <div class="c-form__actions">

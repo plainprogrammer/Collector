@@ -230,6 +230,17 @@ RSpec.describe CollectionImport, type: :model do
       expect(preview.added.lots).to eq(1)
     end
 
+    it "refuses a price that doesn't fit the cents column, as a problem row naming the field (spec 028 1.3.4)", :aggregate_failures do
+      fits = row(printing, price_paid: "92233720368547758.07")
+      too_big = row(printing, price_paid: "92233720368547758.08")
+      preview = import(file([ fits, too_big, row(printing, price_paid: "999999999999999999999999.99") ]))
+
+      expect(preview).not_to be_applicable
+      expect(reasons(preview)).to eq(2 => [ "price_paid is too large to record" ], 3 => [ "price_paid is too large to record" ])
+      expect(preview.problem_rows.first.problems.first).to have_attributes(rule: "price_too_large", at: "/lots/1/price_paid")
+      expect(preview.added.lots).to eq(1)
+    end
+
     it "checks the catalog in order: the type, then the entry, then finish and condition", :aggregate_failures do
       known = printing
       preview = import(file([ stranger(type: "comics", condition: "mint"), stranger(finish: "etched", condition: "mint"),
