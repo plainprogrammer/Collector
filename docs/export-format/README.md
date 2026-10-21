@@ -298,6 +298,7 @@ Every table in Collector's database that belongs to an account or to a user is l
 |---|---|---|
 | `accounts` | Nothing to export | It holds only its id and its dates; see the columns below. |
 | `lots` | Exported | The collection. |
+| `locations` | Exported | From version 2: the collector's named places. |
 | `users` | Exported | The collector's profile. |
 | `bulk_removals` | Left out | A short-lived way to undo a bulk removal. The lots it would restore aren't in the collection. |
 | `bulk_selection_marks` | Left out | Working state that lasts for one bulk edit. |
@@ -324,6 +325,12 @@ Every table in Collector's database that belongs to an account or to a user is l
 | `lots.lot_key` | Left out | Derived from the finish, the condition and the price paid. |
 | `lots.created_at` | `added_at` | |
 | `lots.updated_at` | `changed_at` | |
+| `locations.id` | Left out | An internal id. |
+| `locations.account_id` | Left out | An internal id. A file is one account's collection. |
+| `locations.name` | `name` | |
+| `locations.name_key` | Left out | Derived from the name. |
+| `locations.created_at` | Left out | A fact about the instance, not about the collection. |
+| `locations.updated_at` | Left out | A fact about the instance, not about the collection. |
 | `users.id` | Left out | An internal id. |
 | `users.account_id` | Left out | An internal id. |
 | `users.name` | `name` | |

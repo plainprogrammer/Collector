@@ -72,7 +72,7 @@ RSpec.describe "The export format's document" do
     it "marks each table as the spec rules (AC-3.5)", :aggregate_failures do
       status = covered_tables.to_h { |row| [ row["Table"], row["In the export"] ] }
 
-      expect(status).to include("lots" => "Exported", "users" => "Exported", "accounts" => "Nothing to export")
+      expect(status).to include("lots" => "Exported", "users" => "Exported", "locations" => "Exported", "accounts" => "Nothing to export")
       expect(status.select { |_table, mark| mark == "Left out" }.keys)
         .to match_array(%w[bulk_removals bulk_selection_marks bulk_selections import_uploads number_entries number_entry_lines scanner_sitting_entries scanner_sittings sessions])
       expect(covered_tables.map { |row| row["Why"] }).to all(match(/\S/))
@@ -84,7 +84,9 @@ RSpec.describe "The export format's document" do
       expect(left_out.map { |row| row["Why left out"] }).to all(match(/\S/))
       expect(mapped.map { |row| row["In the file"] } - fields).to be_empty
       expect(left_out.map { |row| row["Column"] }).to match_array(%w[
-        accounts.id accounts.created_at accounts.updated_at lots.id lots.account_id lots.lot_key
+        accounts.id accounts.created_at accounts.updated_at
+        locations.id locations.account_id locations.name_key locations.created_at locations.updated_at
+        lots.id lots.account_id lots.lot_key
         users.id users.account_id users.password_digest users.admin users.created_at users.updated_at
       ])
     end
