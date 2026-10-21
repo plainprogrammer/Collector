@@ -1,10 +1,10 @@
 # Implementation Plan: Manage Locations
 
-**Spec:** docs/specs/029-manage-locations/spec.md (v1.3.1, Approved)
-**Status:** Draft for the maintainer's approval; approving it accepts ADR 0023
+**Spec:** docs/specs/029-manage-locations/spec.md (v1.3.2, Approved)
+**Status:** Revised for the independent review and the maintainer's rulings of 2026-10-21 (each finding and its fix in [plan-review.md](plan-review.md)); awaiting the maintainer's approval, which accepts ADR 0023
 **Decisions:** docs/adr/0023-locations-make-export-format-version-2.md (Proposed, written with this plan); ADR 0016, 0017, 0019, 0020, 0021, 0022 apply
 **Created:** 2026-10-21 (on `origin/main` at `acb6e3c`, after spec 028 merged in PR #120 and its plan was retired in PR #121)
-**Supporting:** [data-model.md](data-model.md), [contracts/api.md](contracts/api.md), [research.md](research.md)
+**Supporting:** [data-model.md](data-model.md), [contracts/api.md](contracts/api.md), [research.md](research.md), [plan-review.md](plan-review.md)
 
 ## Global Constraints
 
@@ -24,6 +24,7 @@ Copied from the spec; each applies to every phase.
 - No migration edits to released migrations; no application models in migrations; the migration is safe to run unattended (`.claude/rules/sqlite-and-migrations.md`).
 - Core code names no collectible type: the new files contain neither `MTG` nor `Scryfall` (FR-2).
 - UI uses only design-system tokens and `c-*` classes; a new pattern is in `collector/additions.css` with a doc under `docs/design-system/components/` and a line in the README's app additions.
+- Every phase ends green (plan review M3): its last step is the whole `bin/rspec` passing, and an expectation of an existing spec that the phase makes false is changed in that phase, never in a later one. A phase's own run list is for speed while working, not for the end.
 - TDD is the hard gate: every implementation step has a failing test before it. Prose documents are verified by reading and recorded in `verification.md`, never by RSpec (`.claude/rules/testing.md`); the export format's document is the one exception.
 - Plans here are not executed before approval: this plan was traced against the files it edits and a read-only probe of Ruby's Unicode functions and `json_schemer` (research.md); an executor runs every step.
 
@@ -88,6 +89,7 @@ Every story → phase → the first failing test.
 |---|---|---|
 | FR-1 (locations), AC-1.5 to 1.11, 1.13, 2.3, 2.4, 3.5 | 0 | `name_spec` ".normalise"/".fault"; `location_spec` "refuses…", "caps at 500" |
 | AC-4.6 | 0 | `location_spec` "goes with its account" |
+| Coverage of `locations` (spec 017 AC-3.4, AC-3.5) | 0 | `export_format_document_spec` "accounts for every table…" (fails the moment the table exists) |
 | FR-2, Story 1 (AC-1.1 to 1.4, 1.12, 1.14), Story 2, Story 3 | 1 | `locations_spec` "shows the empty state", "adds…", "renames…", "removes…" |
 | Story 4 (AC-4.1 to 4.5) | 1 | `locations_spec` "tenancy", "admin pages" |
 | Story 5 (AC-5.1 to 5.5) | 1 | `locations_spec` "links Locations…"; system "fits 360px, 640px" |
@@ -102,7 +104,7 @@ Every story → phase → the first failing test.
 
 ## Spec 028 references
 
-Spec 029 cites spec 028 "as approved at `87308d5`" and "as 028 states them when it merges". Re-checked against `docs/specs/028-apply-import/spec.md` v1.3.4 (the plan, retired in `ee4c4fa40e2223e2d81299885f8a0cabe7771956`, read with `git show ee4c4fa40e2223e2d81299885f8a0cabe7771956^:docs/specs/028-apply-import/plan.md`), ADR 0022, and the code at `origin/main` `acb6e3c`. **Still true** = no change to what 029 requires; **changed** = the merged form differs, with how; **now concrete** = the class, method, constant or number behind the citation. One PATCH (spec 029 v1.3.1, `ef08c5c`) corrected the citations that were stale; it changes no behaviour. No question is awaiting the maintainer.
+Spec 029 cites spec 028 "as approved at `87308d5`" and "as 028 states them when it merges". Re-checked against `docs/specs/028-apply-import/spec.md` v1.3.4 (the plan, retired in `ee4c4fa40e2223e2d81299885f8a0cabe7771956`, read with `git show ee4c4fa40e2223e2d81299885f8a0cabe7771956^:docs/specs/028-apply-import/plan.md`), ADR 0022, and the code at `origin/main` `acb6e3c`. **Still true** = no change to what 029 requires; **changed** = the merged form differs, with how; **now concrete** = the class, method, constant or number behind the citation. One PATCH (spec 029 v1.3.1, `ef08c5c`) corrected the citations that were stale; it changes no behaviour. Rows 23 and 24 were rulings the maintainer made on 2026-10-21 after the plan review, recorded as PATCH v1.3.2 (`e7285b1`). No question is awaiting the maintainer.
 
 | # | Spec 029 says (where) | Status | What 028 is as merged |
 |---|---|---|---|
@@ -112,31 +114,30 @@ Spec 029 cites spec 028 "as approved at `87308d5`" and "as 028 states them when 
 | 4 | "Nothing to change … now means a plan with no added, changed or removed lot, no added, renamed or removed location, and no view change" (decision 10) | **Still true; now concrete** | `CollectionImport::Plan#nothing_to_change?` (lots and view only today). The preview page (`show.html.erb`), `Collections::ImportPreviewsController#create` (the store condition) and `Apply#decide` (`:nothing_to_change`) all read that one method, so extending it extends all three (Phase 5). |
 | 5 | The plan and fingerprint "cover locations" (decision 11) | **Still true; now concrete** | `Plan#fingerprint(file_checksum)` hashes `[checksum, added rows, changed rows with each held lot's id/quantity/exact times, removed lots by id, view_change]`; `ImportUpload.store!` calls it with `blob.checksum`; `Apply#stale` stores the new one. Phase 5 appends a locations part only for a version 2 file. |
 | 6 | 029 "builds on 028's `POST /collection/import`, its stored upload, its single all-or-nothing write transaction and its plan fingerprint" (decision 11) | **Still true; now concrete** | `Collections::ImportsController#create`; `ImportUpload` (one per account, `EXPIRES_IN` 1 hour, `remove!`); `ImportUpload.transaction` in `Apply#decide`; `Apply#write!`; `Plan#fingerprint`. |
-| 7 | "The parse and the resolve of the file stay outside" the transaction (decision 11) | **Still true; now concrete** | `Apply#call` reads and judges (`CollectionImport.new`, `rows_to_write`) before `decide`; inside, only `import.replan` (one read of the lots and the user), the fingerprint comparison and the writes. Locations follow it: `CollectionImport::Locations` is built at construction (outside), and `replan` rebuilds it with one read of at most 500 rows (inside). |
+| 7 | "The parse and the resolve of the file stay outside" the transaction (decision 11) | **Still true; now concrete** | `Apply#call` reads and judges (`CollectionImport.new`, `rows_to_write`) before `decide`; inside, only `import.replan` (one read of the lots and the user), the fingerprint comparison and the writes. Locations follow it: `CollectionImport#locations` is memoized on first use, so in the apply it is first read inside `replan`, in one statement of at most 500 rows, which is within 028 FR-2 (one read of the lots, the locations and the user, no parsing); a preview reads it once in the request. |
 | 8 | The checkbox "I understand this removes N lots" becomes "…N lots and M locations" (decision 11, AC-9.10) | **Still true; now concrete** | `_apply.html.erb` writes "I understand this removes #{pluralize(plan.removed_lots.size, "lot")}" inside `if plan.removes?`; the controller reads `params[:confirm_removal] == "1"`; `Apply#decide` answers `:unconfirmed` (422 "Confirm the removal to apply this file") when `plan.removes? && !@confirmed`. `Plan#removes?` is extended; the label comes from a helper. |
 | 9 | 028 decision 7 clears the lists "whenever the apply writes" and 029 narrows 028's "whatever the plan" (decision 11, Supersedes, AC-9.17) | **Changed** (quote stale; requirement unchanged) | Merged decision 7 reads "whenever the apply writes", and `Apply#write!` calls `CollectionImport::WorkingState.clear!(@account)` unconditionally, so a view-only apply clears today. 029 requires clearing only when a lot is written: Phase 5 makes it `clear! if plan.writes_lots?`. **PATCH 1.3.1** corrected the quotations (decision 11, Supersedes row). No 028 spec example depends on the view-only clearing (`apply_spec` "working state" uses a lot change). |
 | 10 | "Spec 028's round-trip specs (its Story 6) gain locations" (decision 11, AC-9.5, AC-9.6) | **Still true; now concrete** | `spec/models/collection_import/round_trip_spec.rb`: helpers `export`, `same_collection?` (profile name and email apart) and `apply!`; examples "has nothing to change for the collection that was exported" (AC-6.1), "restores an export into an empty account" (6.2), "restores a changed collection" (6.3), and the `collection.json` example (6.4). Phase 5 extends them. |
 | 11 | A failure "raised while a location is written, after the lots were written (injected in the spec)" (AC-9.8; 028 AC-2.1) | **Now concrete** | 028's AC-2.1 example stubs `CollectionImport::WorkingState.clear!` to raise after the lot writes (`allow(...).to receive(:clear!).and_raise`). Phase 5 adds the collaborator `CollectionImport::LocationChanges.write!`, called after the lot writes, and stubs it the same way. |
-| 12 | Each valid example "that resolves against the catalog the spec builds applies to an empty account" (AC-9.15; 028 AC-6.4) | **Still true; now concrete** | `round_trip_spec.rb` "the format's valid example with lots": `build_catalog(data)` creates one entry and printing per source id; `empty.json` is previewed in `collection_import_previews_spec` "previews the format's empty example, in its own currency, as nothing to change". Phase 5 loops over every valid example of both versions; a version 1 example exports as version 2, so the comparison adds the version and empty `locations` (a helper). |
+| 12 | Each valid example "that resolves against the catalog the spec builds applies to an empty account" (AC-9.15; 028 AC-6.4) | **Still true; now concrete** | `round_trip_spec.rb` "the format's valid example with lots": `build_catalog(data)` creates one entry and printing per source id; `empty.json` is previewed in `collection_import_previews_spec` "previews the format's empty example, in its own currency, as nothing to change". Phase 3 keeps the version 1 examples in that loop and Phase 5 widens it to every valid example of both versions. A version 1 example exports as version 2, so the comparison adds the version and the empty `locations`; each location name in the example passes through `Location::Name.normalise` first, because the export writes NFC and `valid/locations-nfd.json` holds an NFD name (ruled 2026-10-21, AC-9.15; a deviation noted in `verification.md`). |
 | 13 | AC-8.8: "what spec 028 AC-1.11 allows (the account's one stored upload)" | **Still true; now concrete** | `ImportUpload` row, its `ActiveStorage::Blob` and attachment; `collection_import_previews_spec` "writes only the upload, its blob and its attachment". |
 | 14 | AC-9.16: 028's bars "as 028 states them when it merges" | **Now concrete** | Whole request under **30 s**, write transaction under **4 s** (hard; a development-machine bar, ruled 2026-10-21, with a note in README and `docs/releasing.md`), under **500 MB** RSS growth (028 decisions 3 and AC-1.10). 028 measured: transaction (a) 2.39 s, (b) 3.21 s (margin 0.79 s), (c) 0.93 s; whole request 6.72 s, 7.56 s, 0.91 s; preview RSS growth +408 MB for (a) (margin 92 MB, from reading the upload twice). 029 adds at most 500 rows read and two statements, so the plan must not read the upload a third time or hold more than the 500 names (Phase 6 re-measures). |
 | 15 | AC-4.4: a write with no session cookie "fails forgery protection first (422), as spec 025 and spec 028 say" | **Still true** | 028's error table, last row; `collection_imports_spec` "refuses a post without the CSRF token" sets `ActionController::Base.allow_forgery_protection = true` and resets it in `ensure`. |
 | 16 | 028 decision 5 "replace, exactly: lots and the profile only" extended by locations | **Still true; now concrete** | `Apply#write!`: delete removed lots, `Lot.upsert_all` added and changed, clear working state, set `collection_view`. Phase 5 inserts the locations write after the lots and before the view. |
-| 17 | The notice "Imported: 3 lots added, 2 changed, 1 removed" (AC-9.14) | **Still true; now concrete** | `Collections::ImportsController#notice_for(counts)`: `"Imported: #{helpers.pluralize(counts[:added], "lot")} added, #{counts[:changed]} changed, #{counts[:removed]} removed"`, no final period; zero lot parts are kept. The locations part follows the spec's example literally (Phase 5). |
+| 17 | The notice "Imported: 3 lots added, 2 changed, 1 removed" (AC-9.14) | **Still true; now concrete** | `Collections::ImportsController#notice_for(counts)`: `"Imported: #{helpers.pluralize(counts[:added], "lot")} added, #{counts[:changed]} changed, #{counts[:removed]} removed"`, no final period; zero lot parts are kept. The locations part follows after "; " with no final period either (row 24, ruled; Phase 5). |
 | 18 | The list limit "the first 100 and then 'and N more'" (decision 10, P3; spec 025 decision 11) | **Now concrete** | `CollectionImport::LIST_LIMIT = 100`; the pages print "and N more" in `p.c-import__more`. |
 | 19 | 028's "Seams for spec 029" (its plan): the plan, `Apply#write!`, `lot_attributes` | **Still true** | `Plan` is the one place that lists what an apply writes, `Apply#write!` the one place that writes it, `lot_attributes(row, import)` maps a row to a lot. 029 extends the first two and leaves `lot_attributes` alone. |
 | 20 | "Spec 028's plan and code … the apply it introduced is extended, not rewritten" (Documents that change) | **Still true** | The plan is retired; 029 reads the code and `git show` of the retired plan. |
 | 21 | 028 "its stored upload, expiry, sweep, … stand" (Supersedes row) | **Still true** | `ImportUpload::SweepJob` (every 15 minutes, `config/recurring.yml`) only releases expired uploads and marked orphan blobs; it never touches the `locations` table. Nothing in 029 changes it. |
 | 22 | Spec 028 1.3.4's price rule (not cited by 029) | **No effect** | Version 2 files go through the same row reading (`price_too_large`), unchanged. |
-| 23 | AC-9.9: "a held location deleted and added again with the same spelling … fingerprints are equal, and the apply goes ahead" | **Still true, for an unchanged location** | The fingerprint holds, for renamed and removed locations, their **id** (decision 11). Re-created with another id, a *removed or renamed* location changes the fingerprint, as a lot's id does in 028; an *unchanged* location is not in the fingerprint, so deleting and re-adding it changes nothing. The spec example (Phase 5) uses an unchanged location, which is the case the sentence's own reason ("the plan doesn't change") covers. |
-| 24 | AC-9.14: "each part left out when it is zero" | **Interpreted** | Read as the *locations* parts (the lots part is "as spec 028 does", zeros kept), so a location-only apply reads "Imported: 0 lots added, 0 changed, 0 removed; 1 location added." The noun goes on the first part that is not zero. If the maintainer prefers the lots part dropped as well, it is one line in `notice_for`. |
-
+| 23 | AC-9.9: "a held location deleted and added again with the same spelling … fingerprints are equal, and the apply goes ahead" | **Interpreted → resolved by the maintainer's ruling of 2026-10-21 (spec 1.3.2)** | The plan review (M4) found that decision 11 ("its id") and AC-9.9 (unconditional) disagree for a renamed or a removed location, whose re-created row has a new id. Ruled: the fingerprint holds no id. It holds, for a renamed location, `[current name, file's name]`, and for a removed location, `[name]`; an unchanged location is not in it. The apply re-reads the held locations inside its transaction (`replan`) and writes by the ids it finds, so an id adds no safety. AC-9.9 now holds as written for every case. Phase 4 changes `fingerprint_part`; Phase 4 and Phase 5 test a renamed, a removed and an unchanged location deleted and re-created with the same spelling (equal fingerprint, apply goes ahead). |
+| 24 | AC-9.14: "each part left out when it is zero" | **Interpreted → resolved by the maintainer's ruling of 2026-10-21 (spec 1.3.2)** | Ruled: the notice never ends with a period, for any file, as 028's has none; a location part whose count is zero is left out (and the whole part when all three are zero); a lot count that is zero stays, as in 028. So a location-only apply reads "Imported: 0 lots added, 0 changed, 0 removed; 1 location added", and a version 1 file reads "Imported: 1 lot added, 0 changed, 0 removed". The noun goes on the first location part that is not zero. Phase 5 changes `notice_for` and its examples. |
 ---
 
 ## Phase 0: The locations table, its model and the name function
 
-**Implements:** FR-1, decisions 4, 5, 7; Reliability | **Satisfies:** AC-1.5 to AC-1.11, AC-1.13 (the cap in the creating transaction), AC-2.3, AC-2.4, AC-3.5, AC-4.6
-**Files:** `db/migrate/20261021100001_create_locations.rb`, `db/schema.rb`, `app/models/location.rb`, `app/models/location/name.rb`, `app/models/account.rb`, `spec/factories/locations.rb`, `spec/models/location/name_spec.rb`, `spec/models/location_spec.rb`
+**Implements:** FR-1, decisions 4, 5, 7; Reliability | **Satisfies:** AC-1.5 to AC-1.11, AC-1.13 (the cap in the creating transaction), AC-2.3, AC-2.4, AC-3.5, AC-4.6, and spec 017 AC-3.4 and AC-3.5 (the new table is listed in Coverage in the phase that adds it)
+**Files:** `db/migrate/20261021100001_create_locations.rb`, `db/schema.rb`, `app/models/location.rb`, `app/models/location/name.rb`, `app/models/account.rb`, `spec/factories/locations.rb`, `spec/models/location/name_spec.rb`, `spec/models/location_spec.rb`, `docs/export-format/README.md` (Coverage only), `spec/export_format_document_spec.rb`
 **Interfaces:** Consumes: nothing. Produces: `Location::Name.normalise(text) -> String`, `Location::Name.key(normalised) -> String`, `Location::Name.fault(normalised) -> :blank | :control | :too_long | nil`, `Location::Name::MAX_LENGTH` (60); `Location` (`account`, `name`, `name_key`, `typed`, `Location.ordered`, `Location::MAX_PER_ACCOUNT` (500), `Location::MESSAGES`, `#save` that answers false with the duplicate message when the unique index refuses); `Account#locations`; factory `:location`.
 
 The name function is one module because the model, the reader of a file and the schema must agree (AC-7.8). The table is the uniqueness rule's home (the key, not `COLLATE NOCASE`).
@@ -472,13 +473,15 @@ end
 
 ```ruby
 # app/models/account.rb: add beside has_many :lots
-  has_many :locations, dependent: :delete_all # the foreign key cascades too (spec 029 AC-4.6)
+  has_many :locations, dependent: :delete_all # the foreign key cascades too, as for `import_uploads` and `number_entries` (spec 029 AC-4.6)
 ```
 
 - [ ] Run `bin/rails db:migrate`, then `git diff db/schema.rb`: expect only the `locations` table, its foreign key line (`add_foreign_key "locations", "accounts", on_delete: :cascade`) and the version bump to `2026_10_21_100001`. If the cache, queue or cable tables appear, or the primary tables vanish (known noise, `migrate-schema-noise`), run `git checkout db/schema.rb` and re-apply those three hunks by hand. Check reversibility: `bin/rails db:rollback:primary`, confirm `locations` is gone from `db/schema.rb`, then `bin/rails db:migrate` again.
 - [ ] Run `bin/rspec spec/models/location/name_spec.rb spec/models/location_spec.rb` — expect: PASS
+- [ ] Run `bin/rspec spec/export_format_document_spec.rb` — expect: FAIL ("accounts for every table that belongs to an account or a user" and the column example: `locations` has an `account_id`, and Coverage doesn't list it yet). In `spec/export_format_document_spec.rb`, in "marks each table as the spec rules (AC-3.5)": `expect(status).to include("lots" => "Exported", "users" => "Exported", "locations" => "Exported", "accounts" => "Nothing to export")`; in "maps each column to a field…": the left-out list gains `locations.id locations.account_id locations.name_key locations.created_at locations.updated_at`. Then, in `docs/export-format/README.md` "Coverage" (only that section; the rest of the document is Phase 2): the table of tables gains ``| `locations` | Exported | From version 2: the collector's named places. |`` after `lots`, and the table of columns gains the six rows of data-model.md after `lots.updated_at`: `locations.id` and `locations.account_id` (left out: internal ids), `locations.name` → `name`, `locations.name_key` (left out: derived from the name), `locations.created_at` and `locations.updated_at` (left out: facts about the instance). `name` is already a field of the valid examples (a profile's and an entry's), which the mapping example reads, so `locations.name → name` passes before version 2's examples exist. Run `bin/rspec spec/export_format_document_spec.rb` — expect: PASS
+- [ ] Run `bin/rspec` — expect: PASS (the whole suite; the phase ends green)
 - [ ] Run `bin/rubocop -a app/models/location.rb app/models/location spec/models/location_spec.rb spec/models/location spec/factories/locations.rb db/migrate/20261021100001_create_locations.rb` — expect: no offenses
-- [ ] Commit: `feat(locations): add the locations table, its model and the name function` (stage `db/migrate`, `db/schema.rb`, `app/models`, `spec`)
+- [ ] Commit: `feat(locations): add the locations table, its model and the name function` (stage `db/migrate`, `db/schema.rb`, `app/models`, `spec`, `docs/export-format/README.md`)
 
 ---
 
@@ -755,12 +758,21 @@ RSpec.describe "Locations", type: :request do
   describe "when signed out (AC-4.4, AC-5.4)" do
     let!(:location) { create(:location, name: "Hidden") }
 
-    it "sends a visitor to sign in from every page and shows nothing, with the catalog open or not", :aggregate_failures do
+    def visitor_is_sent_to_sign_in
       [ locations_path, edit_location_path(location), new_location_removal_path(location) ].each do |path|
         get path
         expect(response).to redirect_to(new_session_path), path
       end
       expect(response.body).not_to include("Hidden")
+    end
+
+    it "sends a visitor to sign in from every page and shows nothing", :aggregate_failures do
+      visitor_is_sent_to_sign_in
+    end
+
+    # The OpenCatalog concern opens the catalog's pages only (CLAUDE.md, Open catalog); the locations pages stay closed.
+    it "does the same with the catalog open (AC-4.4, FR-1 Must not)", :public_catalog, :aggregate_failures do
+      visitor_is_sent_to_sign_in
     end
 
     it "sends a write with an ended session to sign in and writes nothing", :aggregate_failures do
@@ -813,7 +825,7 @@ end
 - [ ] Update the three existing specs that count More's rows (Locations is now the second row, so Export, Import and Add by number move down by one):
   - `spec/requests/shell_spec.rb`: `.c-more li:nth-child(2) a` → `.c-more li:nth-child(3) a` ("Export collection"), and `.c-more li:nth-child(3) a` → `.c-more li:nth-child(4) a` ("Import collection").
   - `spec/requests/number_entries_spec.rb`: `.c-more li:nth-child(4) a` → `.c-more li:nth-child(5) a` ("Add by number").
-  - `spec/requests/admin/navigation_spec.rb`: the More expectation becomes `expect(links(".c-more")).to eq([ [ "Locations", locations_path ], *menu, [ "Add by number", collection_number_entry_path ], *admin ])`, and its header comment gains "(spec 029 adds Locations before the export)". The avatar-menu expectation is unchanged.
+  - `spec/requests/admin/navigation_spec.rb` has two examples that list More's links exactly, and both change (plan review m1): the admin example (`:15`) becomes `expect(links(".c-more")).to eq([ [ "Locations", locations_path ], *menu, [ "Add by number", collection_number_entry_path ], *admin ])`, and the member example (`:25`) becomes `expect(links(".c-more")).to eq([ [ "Locations", locations_path ], *menu, [ "Add by number", collection_number_entry_path ] ])`; the header comment gains "(spec 029 adds Locations before the export)". The avatar-menu expectations are unchanged (the account menu doesn't list Locations, AC-5.3).
 - [ ] Run `bin/rspec spec/requests/locations_spec.rb spec/requests/query_counts_spec.rb spec/requests/shell_spec.rb spec/requests/number_entries_spec.rb spec/requests/admin/navigation_spec.rb` — expect: FAIL (no route `locations_path`; the three updated specs fail on the old rows)
 - [ ] Add the routes (after `resource :more, only: :show`):
 
@@ -1041,7 +1053,13 @@ RSpec.describe "Locations", type: :system do
     expect(fits).to eq([ 4, 1, true, true ])
   end
 
-  it "never scrolls sideways at 360px, 640px and a 1200px desktop frame in both themes, with 44px targets (AC-5.5)", :aggregate_failures do
+  # Every control on the page, as the pointer sees it: a field is its label (the `c-input` wrapper), a link or button itself.
+  def targets = <<~JS
+    [...document.querySelectorAll("main a, main button, main input:not([type=hidden]), .c-appbar a[href='/locations'], .c-appbar__back")]
+      .map((el) => el.closest("label.c-input") || el)
+  JS
+
+  it "never scrolls sideways at 360px, 640px and a 1200px desktop frame in both themes, with 44px targets and a focus ring (AC-5.5)", :aggregate_failures do
     long = create(:location, account: user.account, name: "A very long name for a binder of cards")
     create(:location, account: user.account, name: "Box")
     paths = [ locations_path, edit_location_path(long), new_location_removal_path(long) ]
@@ -1051,15 +1069,32 @@ RSpec.describe "Locations", type: :system do
       within_narrow_frame do
         page.execute_script("document.documentElement.setAttribute('data-theme', arguments[0])", theme)
         expect(page.evaluate_script("document.documentElement.scrollWidth <= window.innerWidth")).to be(true), "#{path} at #{width}px, #{theme}"
-        small = page.evaluate_script("[...document.querySelectorAll('.c-locations .c-btn')].filter((el) => parseFloat(getComputedStyle(el).minHeight) < 44 || parseFloat(getComputedStyle(el).minWidth) < 44).length")
-        expect(small).to eq(0), "#{path}: a target under 44px"
+        # Measured, not declared: the box each target really has (plan review m4).
+        small = page.evaluate_script("#{targets}.filter((el) => { const box = el.getBoundingClientRect(); return box.height < 44 || box.width < 44 }).map((el) => el.outerHTML.slice(0, 60))")
+        expect(small).to eq([]), "#{path} at #{width}px, #{theme}: a target under 44px"
       end
+    end
+  end
+
+  it "shows a focus ring on every control the keyboard reaches, on each page (AC-5.5)", :aggregate_failures do
+    long = create(:location, account: user.account, name: "Box")
+
+    [ locations_path, edit_location_path(long), new_location_removal_path(long) ].each do |path|
+      visit path
+      stops = page.evaluate_script("#{targets}.length")
+      rings = []
+      (stops + 6).times do
+        page.driver.browser.action.send_keys(:tab).perform
+        rings << page.evaluate_script("(() => { const el = document.activeElement; const style = getComputedStyle(el); return !el.matches('main *, .c-appbar *') || (el.matches(':focus-visible') && style.outlineStyle !== 'none' && parseFloat(style.outlineWidth) > 0) })()")
+      end
+      expect(rings).to all(be(true)), path
     end
   end
 end
 ```
 
-- [ ] Run `bin/rspec spec/system/locations_spec.rb` — expect: PASS
+- [ ] Run `bin/rspec spec/system/locations_spec.rb` — expect: PASS. **If the 640px header example fails** (AC-5.1 is a stated criterion, so a miss is a decision, not a CSS tweak in passing): stop, record the measured values (`nav.right`, `actions.left`, the four links' widths) and take them to the maintainer, as the plan does for the 4 s bar. The remedies to put to the maintainer are: a shorter label for the link, or moving it into More only at that width (decision 8 would change); the executor chooses neither. If a *header* target other than the Locations link and the back button measures under 44px, that is the design system's own header, not this spec's: record the sizes in `verification.md` and do not change them here.
+- [ ] Run `bin/rspec` — expect: PASS (the whole suite; the phase ends green)
 - [ ] Run `bin/rubocop -a` on the new controllers, specs and `config/routes.rb` — expect: no offenses
 - [ ] Commit: `feat(locations): add the locations pages, the header link and the More row`
 
@@ -1069,7 +1104,7 @@ end
 
 **Implements:** FR-4, decisions 1, 5, 9, 10 (the reader's rules) | **Satisfies:** AC-7.1 to AC-7.8
 **Files:** `docs/export-format/v2.schema.json`, `app/models/export_format/v2.schema.json`, `app/models/export_format/rules.rb`, `docs/export-format/README.md`, `docs/export-format/examples/{valid,invalid,comparison}/*.json` (new files only), `docs/export-format/examples/problems.json`, `spec/support/export_format_rules.rb`, `spec/export_format_document_spec.rb`, `spec/export_format_examples_spec.rb`, `spec/models/export_format/rules_spec.rb`, `spec/models/location/name_parity_spec.rb`
-**Interfaces:** Consumes: `Location::Name.normalise`, `.key`, `.fault`, `Location::Name::MAX_LENGTH` (Phase 0). Produces: `ExportFormat::Rules::VERSIONS` (`[1, 2]`), `VERSION` (2, the newest), `RULES` (gains `duplicate_location`), `SCHEMA_DIRECTORY`, `.schema_file(version = VERSION)`, `.schema(version = VERSION)`, `.schemer(version = VERSION)`, `.lot_schemer(version = VERSION)`, `.schema_version(data)` (the version whose schema judges the data: its own if read, else the newest), `.whole_number(value)`, and `.problems` / `.problems_in` that judge each file against its own version's schema and add `duplicate_location` at `/locations/<i>`; `ExportFormatRules.schema(version = nil)`, `.schema_file_for(version)`, `.versions`; the examples of version 2.
+**Interfaces:** Consumes: `Location::Name.normalise`, `.key`, `.fault`, `Location::Name::MAX_LENGTH` (Phase 0). Produces: `ExportFormat::Rules::VERSIONS` (`[1, 2]`), `VERSION` (2, the newest), `RULES` (gains `duplicate_location`), `SCHEMA_DIRECTORY`, `.schema_file(version = VERSION)`, `.schema(version = VERSION)`, `.schemer(version = VERSION)`, `.lot_schemer(version = VERSION)`, `.schema_version(data)` (the version whose schema judges the data: its own if this instance reads it, else the oldest, so a file with a missing or unreadable version keeps exactly the one problem version 1 gave it), `.whole_number(value)`, and `.problems` / `.problems_in` that judge each file against its own version's schema and add `duplicate_location` at `/locations/<i>`; `ExportFormatRules.schema(version = nil)`, `.schema_file_for(version)`, `.versions`; the examples of version 2.
 
 Version 1 never changes: `v1.schema.json`, its examples and its meaning stay byte for byte. `SCHEMA_FILE` goes (one constant for one file); nothing but `rules.rb` and `rules_spec.rb` used it.
 
@@ -1165,10 +1200,15 @@ end
       expect(described_class.schema_version(base)).to eq(1)
       expect(described_class.schema_version(v2)).to eq(2)
       expect(described_class.schema_version(v2.merge("format_version" => 2.0))).to eq(2)
-      expect(described_class.schema_version(v2.merge("format_version" => 3))).to eq(2) # the newest names the version
+      expect(described_class.schema_version(v2.merge("format_version" => 3))).to eq(1) # a version it doesn't read: the oldest names the version
+      expect(described_class.schema_version(base.except("format_version"))).to eq(1)
+      expect(described_class.schema_version(base.merge("format_version" => "1"))).to eq(1)
       expect(described_class.schema_version([ v2 ])).to eq(2)
       expect(problems_of(v2)).to eq([])
       expect(problems_of(base.merge("format_version" => 2))).to eq([ %w[required /locations] ])
+      expect(problems_of(base.except("format_version"))).to eq([ %w[required /format_version] ]) # the version 1 invalid examples keep their one problem
+      expect(problems_of(base.merge("format_version" => "1"))).to eq([ %w[const /format_version] ])
+      expect(problems_of(v2.merge("format_version" => 3))).to eq([ %w[const /format_version] ])
       expect(problems_of(v2.merge("format_version" => 1))).to eq([]) # an unknown field is ignored by version 1
     end
 
@@ -1201,12 +1241,12 @@ end
   Then `spec/export_format_examples_spec.rb`:
   - `"has valid, invalid and comparison examples"`: `expect(valid.keys).to match_array(%w[valid/collection-v2.json valid/collection.json valid/empty-v2.json valid/empty.json valid/location-name-60.json valid/locations-500.json valid/locations-nfd.json])`, `expect(invalid.size).to eq(40)`, `expect(comparison.size).to eq(13)`.
   - `"is defined by a schema that is itself valid"`: `ExportFormatRules.versions.each { |version| expect(JSONSchemer.valid_schema?(ExportFormatRules.schema(version))).to be(true), "v#{version}" }`.
-  - delete the `[ %w[format_version], 0 ] => %w[const /format_version]` line of `malformed_variants` (version 0 is judged against the newest schema now; below), and replace the example "fails version 1's schema for a file of another version…" with:
+  - keep the `[ %w[format_version], 0 ] => %w[const /format_version]` line of `malformed_variants` as it is (version 0 is judged by version 1's schema, so it still has the one problem), and replace the example "fails version 1's schema for a file of another version…" with:
 
 ```ruby
-  it "judges a file of a version this instance doesn't read against the newest schema, which names the version (FR-8)", :aggregate_failures do
-    expect(problems_of(changed(%w[format_version], 0))).to eq([ { "rule" => "const", "at" => "/format_version" }, { "rule" => "required", "at" => "/locations" } ])
-    expect(problems_of(changed(%w[format_version], 3))).to include({ "rule" => "const", "at" => "/format_version" })
+  it "judges a file of a version this instance doesn't read by version 1's schema, which names the version, and a version 2 file by its own (FR-8, AC-7.4)", :aggregate_failures do
+    expect(problems_of(changed(%w[format_version], 0))).to eq([ { "rule" => "const", "at" => "/format_version" } ])
+    expect(problems_of(changed(%w[format_version], 3))).to eq([ { "rule" => "const", "at" => "/format_version" } ])
     expect(problems_of(changed(%w[format_version], 2))).to eq([ { "rule" => "required", "at" => "/locations" } ])
   end
 ```
@@ -1287,9 +1327,9 @@ end
   end
 ```
 
-  - in "marks each table as the spec rules (AC-3.5)": `expect(status).to include("lots" => "Exported", "users" => "Exported", "locations" => "Exported", "accounts" => "Nothing to export")`.
-  - in "maps each column to a field…": the left-out list gains `locations.id locations.account_id locations.name_key locations.created_at locations.updated_at`.
-- [ ] Run `bin/rspec spec/export_format_document_spec.rb spec/export_format_examples_spec.rb spec/models/export_format spec/models/location/name_parity_spec.rb` — expect: FAIL (no `v2.schema.json`, no `schema_version`, no `v2` examples)
+  - (the Coverage expectations for `locations` were changed in Phase 0, where the table appears.)
+  Then the two examples about the newer version, which `VERSION = 2` makes false, change in this phase (plan review M3). In `spec/models/collection_import_spec.rb`, "refuses a newer version as newer, before the schema (AC-3.2)" uses version 3 and the sentence "(format version 3). This instance reads version 2.", `format_version: 3.0` for the float, and keeps `expect(import(file([], format_version: 1.0))).not_to be_refused`. In `spec/requests/collection_import_previews_spec.rb`, the newer-version row (`:151`) becomes `file([], format_version: 3) => "This file was written by a newer version of Collector (format version 3). This instance reads version 2."` (AC-8.6). `CollectionImport#newer` builds its sentence from `ExportFormat::Rules::VERSION`, so no code changes for this.
+- [ ] Run `bin/rspec spec/export_format_document_spec.rb spec/export_format_examples_spec.rb spec/models/export_format spec/models/location/name_parity_spec.rb spec/models/collection_import_spec.rb spec/requests/collection_import_previews_spec.rb` — expect: FAIL (no `v2.schema.json`, no `schema_version`, no `v2` examples)
 - [ ] Write the schema, `docs/export-format/v2.schema.json` (version 1's, with the version, the required `locations`, the list and the name's definition; the name's pattern lets the empty string through so that `minLength` alone fails it and a lone space fails the pattern alone, research.md 2; it does not use `\s`, which `json_schemer` translates without U+0085 and U+2028, research.md 1):
 
 ```json
@@ -1417,11 +1457,13 @@ module ExportFormat
     # The schema of one lot, $defs/lot, whose own $refs resolve against the whole schema of its version.
     def self.lot_schemer(version = VERSION) = (@lot_schemers ||= {})[version] ||= schemer(version).ref("#/$defs/lot")
 
-    # The version whose schema judges +data+: its own when this instance reads it, else the newest, whose schema then
-    # names the version (const).
+    # The version whose schema judges +data+: its own when this instance reads it, else the oldest. A file with a missing,
+    # unreadable or unknown version is then judged as it always was: by version 1's schema, which names the version
+    # (required or const at /format_version) and has no locations to miss (plan review M1; spec 029 AC-7.4: every
+    # version 1 invalid example keeps exactly its one problem).
     def self.schema_version(data)
       version = data.is_a?(Hash) ? whole_number(data["format_version"]) : nil
-      VERSIONS.include?(version) ? version : VERSION
+      VERSIONS.include?(version) ? version : VERSIONS.min
     end
 
     # A whole number (a zero fraction is allowed, spec 017), or nil.
@@ -1491,8 +1533,7 @@ end
 ```
 
   Keep `problems_from` (unchanged, private) and the other lot-level methods exactly as in the file today; `private_class_method` then lists `:non_finite?, :schema_problems, :problems_from, :rule_problems, :repeated_locations, :changed_before_added?, :moment?`.
-- [ ] Run `bin/rspec spec/models/export_format/rules_spec.rb spec/models/location/name_parity_spec.rb` — expect: the rules examples that don't need the v2 examples PASS (`version 2` examples that read `comparison/v2-base.json` still FAIL until the examples exist); the parity example PASS. If the parity example reports a disagreement, fix the pattern or `Location::Name` until it reports none; the pattern and the function are the two halves of one definition.
-- [ ] Commit: `feat(format): read export format version 2: the schema, the rules and the name parity proof`
+- [ ] Run `bin/rspec spec/models/export_format/rules_spec.rb spec/models/location/name_parity_spec.rb` — expect: the rules examples that don't need the v2 examples PASS (`version 2` examples that read `comparison/v2-base.json` still FAIL until the examples exist, next step); the parity example PASS. If the parity example reports a disagreement, fix the pattern or `Location::Name` until it reports none; the pattern and the function are the two halves of one definition. Do not commit yet: this phase is one commit, so that no commit of it is red.
 - [ ] Generate the examples. One command writes every new file; `v1` files and `collection.json`, `empty.json`, `base.json`, `same.json` are only read. Invisible characters are written as `\u` escapes so a person can read and review the files:
 
 ```sh
@@ -1600,6 +1641,8 @@ A well-formed name:
 
 Any other character is allowed, in any script.
 
+`v2.schema.json` states these rules as one pattern that uses Unicode property escapes (`\\p{Cc}`, `\\p{Cf}`), which is ECMA-262 syntax with the `u` flag. A program that validates with a regular expression engine without them (Python's `re`, for one) can't compile the pattern as it stands; the rules in words above are the definition, and the pattern is their statement for a validator that can read it.
+
 A writer writes a name in Unicode normalisation form NFC, as Collector does. A name in another form is still well-formed, because a schema can't state the form. A reader **normalises each name on read**: it makes it NFC, then removes White_Space at both ends and makes each run of White_Space inside the name one U+0020, before it matches, compares, judges duplicates or stores the name. For a well-formed name the second step changes nothing.
 
 ### Location identity
@@ -1609,22 +1652,23 @@ A location is identified by its **comparison key**: the Unicode full case foldin
 The key is for matching and for the duplicate rule only. It is never written in a file.
 ```
 
-  6. "Well-formed and resolvable": the first sentence of the well-formed paragraph becomes "A file is well-formed when it passes the schema of its own version ([`v1.schema.json`](v1.schema.json) or [`v2.schema.json`](v2.schema.json)) and the rules that a schema can't state:"; add the bullet "- from version 2, no two locations have the same [identity](#location-identity)"; and "The schema and these rules are version 1's." becomes "Each version has its own schema; the rules are the same for both, with the rule about locations from version 2."
+  6. "Well-formed and resolvable": the paragraph gains a sentence: "A file whose version this document doesn't define (a version above the newest, or a version that is missing or isn't a whole number) is judged by the schema of version 1, which names the version as the problem." Then the first sentence of the well-formed paragraph becomes "A file is well-formed when it passes the schema of its own version ([`v1.schema.json`](v1.schema.json) or [`v2.schema.json`](v2.schema.json)) and the rules that a schema can't state:"; add the bullet "- from version 2, no two locations have the same [identity](#location-identity)"; and "The schema and these rules are version 1's." becomes "Each version has its own schema; the rules are the same for both, with the rule about locations from version 2."
   7. "The same collection": "Two well-formed files of the same version hold the same collection when all of these are true:" gains a last bullet: "- From version 2, their locations are equal as sets of names, compared exactly, character for character, as written in the files, without normalising either. \"box\" and \"Box\" are different locations here, although a reader treats them as one when it matches locations (see [Location identity](#location-identity)); the order of the locations never counts."
   8. "Versions": the table gets the row ``| 2 | <date of the commit> | Locations: the required top-level list `locations`, with the rule `duplicate_location`. Lots are unchanged. |``; the paragraph "Two changes are already expected…" becomes: "Two changes are already expected. Putting a lot in a location will add where each lot is kept, which is the collector's data, so it will raise the version to 3 ([ADR 0023](../adr/0023-locations-make-export-format-version-2.md)). Collections shared by a household will change who owns a lot and will raise it again ([ADR 0017](../adr/0017-row-level-tenancy-one-user-per-account.md))."
-  9. "Coverage": the table of tables gains ``| `locations` | Exported | The collector's named places. |`` (after `lots`); the table of columns gains the six rows of data-model.md, after `lots.updated_at`: `locations.id`, `locations.account_id` (internal ids), `locations.name` → `name`, `locations.name_key` (left out: derived from the name), `locations.created_at` and `locations.updated_at` (facts about the instance).
-  10. "Examples": the opening sentence of the table says the folders hold files of both versions (version 1's examples are unchanged); the rules table gains ``| `duplicate_location` | A location has the same comparison key as an earlier location in the file. |``, and the rule list in the paragraph above it gains `minLength`, `maxLength` and `maxItems`.
+  9. "Coverage": already done in Phase 0 (the `locations` rows); here only the sentence of its "Why" for `locations` loses "From version 2:" if the Versions row now says it.
+  10. "Examples": the opening sentence of the table says the folders hold files of both versions (version 1's examples are unchanged); a sentence describes `valid/locations-nfd.json`: "A location named in NFD (`Cafe` and a combining acute accent): well-formed, because a reader normalises names on read. Collector exports it as `Café` in NFC, so a collection restored from this file exports a file whose name is the NFC spelling, not this one's" (ruled 2026-10-21, AC-9.15); the rules table gains ``| `duplicate_location` | A location has the same comparison key as an earlier location in the file. |``, and the rule list in the paragraph above it gains `minLength`, `maxLength` and `maxItems`.
   11. The document must not name a collectible type outside "Collectible types" (the suite checks it): the new text above says "binder" and "box", never a game.
-- [ ] Run `bin/rspec spec/export_format_document_spec.rb spec/export_format_examples_spec.rb spec/models/export_format spec/models/location` — expect: PASS
+- [ ] Run `bin/rspec spec/export_format_document_spec.rb spec/export_format_examples_spec.rb spec/models/export_format spec/models/location spec/models/collection_import_spec.rb spec/requests/collection_import_previews_spec.rb` — expect: PASS. The examples spec runs the two version 1 invalid examples that have no version or a non-numeric one (`invalid/format-version-missing.json`, `invalid/format-version-not-a-number.json`) and finds each wrong for the one reason `problems.json` names, now that `schema_version` judges them by version 1's schema (M1, AC-7.4).
+- [ ] Run `bin/rspec` — expect: PASS (the whole suite; the phase ends green)
 - [ ] Run `bin/rubocop -a` on the changed specs and `app/models/export_format/rules.rb` — expect: no offenses
-- [ ] Commit: `feat(format): add export format version 2: the document, examples and Coverage`
+- [ ] Commit: `feat(format): read and define export format version 2: the schema, the rules, the examples and the document`
 
 ---
 
 ## Phase 3: The export writes version 2
 
 **Implements:** FR-3, decision 2 | **Satisfies:** AC-6.1 to AC-6.8
-**Files:** `app/models/collection_export.rb`, `spec/models/collection_export_spec.rb`, `spec/requests/collection_exports_spec.rb`
+**Files:** `app/models/collection_export.rb`, `spec/models/collection_export_spec.rb`, `spec/requests/collection_exports_spec.rb`, `spec/models/collection_import/round_trip_spec.rb`
 **Interfaces:** Consumes: `Account#locations`, `Location.ordered` (Phase 0); `ExportFormatRules.problems`, `.same_collection?` (Phase 2). Produces: `CollectionExport::FORMAT_VERSION == 2`; `CollectionExport#to_h` with `"locations" => [ { "name" => String }, … ]` (one extra query).
 
 The export always writes the newest version, with `locations` present and empty for an account with none. Only the name is written; no id, account or time (AC-6.5).
@@ -1710,7 +1754,50 @@ The export always writes the newest version, with `locations` present and empty 
     end
 ```
 
-- [ ] Run `bin/rspec spec/models/collection_export_spec.rb spec/requests/collection_exports_spec.rb` — expect: FAIL (the header is version 1, no `locations`)
+- [ ] Update `spec/models/collection_import/round_trip_spec.rb` for the export now being version 2 (plan review M3; `same_collection?` raises on files of different versions, `spec/support/export_format_rules.rb:37`). Add the helper beside `same_collection?`, and replace the describe "the format's valid example with lots (AC-6.4)" (it applied `collection.json` alone) with one that loops over the version 1 valid examples; Phase 5 widens the loop to both versions:
+
+```ruby
+  # An export of this instance is version 2. A version 1 example is compared as the version 2 file it becomes with no
+  # locations, and each location name as the export writes it: in NFC (decision 5), which a valid example in NFD isn't
+  # (ruled 2026-10-21: AC-9.15 holds for the example once its names are normalised).
+  def as_version_two(data)
+    data = data.merge("format_version" => 2, "locations" => []) unless data["format_version"] == 2
+    data.merge("locations" => data["locations"].map { |location| { "name" => Location::Name.normalise(location["name"]) } })
+  end
+
+  describe "every valid example of the format (AC-6.4, AC-9.15)" do
+    # One entry and printing per source id (the examples repeat ids across lots), with the finishes of its lots.
+    def build_catalog(data)
+      data["lots"].group_by { |lot| lot.dig("entry", "source_id") }.each_value do |lots|
+        entry = lots.first["entry"]
+        set = Catalog::Set.find_by(collectible_type: entry["collectible_type"], code: entry["set_code"]) || create(:catalog_set, code: entry["set_code"])
+        created = create(:catalog_entry, external_key: entry["source_id"], set:, number: entry["collector_number"], language: entry["language"], name: entry["name"])
+        create(:mtg_printing, entry: created, finishes: (%w[nonfoil foil etched] + lots.filter_map { |lot| lot["finish"] }).uniq)
+      end
+    end
+
+    # Version 1 only until Phase 5 reads locations; that phase removes the filter.
+    ExportFormatRules.examples("valid").select { |_name, bytes| JSON.parse(bytes)["format_version"] == 1 }.each_key do |name|
+      it "applies #{name} to an empty account and exports the same collection, or has nothing to change", :aggregate_failures do
+        data = JSON.parse(ExportFormatRules.examples("valid").fetch(name))
+        allow(Rails.configuration.x).to receive(:currency).and_return(Collector::Currency.fetch!(data["currency"]))
+        build_catalog(data)
+        user = create(:user, name: data.dig("profile", "name"), email_address: data.dig("profile", "email_address"))
+
+        if data["lots"].empty?
+          import = CollectionImport.new(account: user.account, file: StringIO.new(JSON.generate(data)))
+          expect([ import.refused?, import.plan.nothing_to_change? ]).to eq([ false, true ])
+        else
+          expect(apply!(user, data).outcome).to eq(:applied)
+          expect(same_collection?(as_version_two(data), export(user))).to be(true)
+          expect(user.account.lots.count).to eq(data["lots"].size)
+        end
+      end
+    end
+  end
+```
+
+- [ ] Run `bin/rspec spec/models/collection_export_spec.rb spec/requests/collection_exports_spec.rb spec/models/collection_import/round_trip_spec.rb` — expect: FAIL (the header is version 1, no `locations`; the round trip compares a version 1 example with a version 2 export)
 - [ ] Change `app/models/collection_export.rb`: the first comment line reads "format version 2 (spec 022, spec 029, docs/export-format/README.md)", `FORMAT_VERSION = 2` (the newest version, written literally: a version is a decision about a file's shape, not a constant to bump), `to_h` writes `"locations" => locations` between `"currency"` and `"lots"`, and:
 
 ```ruby
@@ -1719,7 +1806,8 @@ The export always writes the newest version, with `locations` present and empty 
     def locations = @account.locations.ordered.pluck(:name).map { |name| { "name" => name } }
 ```
 
-- [ ] Run `bin/rspec spec/models/collection_export_spec.rb spec/requests/collection_exports_spec.rb spec/system/collection_export_spec.rb spec/collection_export_core_spec.rb` — expect: PASS
+- [ ] Run `bin/rspec spec/models/collection_export_spec.rb spec/requests/collection_exports_spec.rb spec/system/collection_export_spec.rb spec/collection_export_core_spec.rb spec/models/collection_import` — expect: PASS
+- [ ] Run `bin/rspec` — expect: PASS (the whole suite; the phase ends green)
 - [ ] Commit: `feat(export): write export format version 2 with the collector's locations`
 
 ---
@@ -1728,7 +1816,7 @@ The export always writes the newest version, with `locations` present and empty 
 
 **Implements:** FR-5 (reading, the plan's "nothing to change", the preview page), decision 10 | **Satisfies:** AC-8.1 to AC-8.9, AC-9.3 (the preview side), AC-9.4 (the preview side), AC-9.9 (the fingerprint, plan side), AC-9.10 (the label), AC-9.18 (the preview side)
 **Files:** `app/models/collection_import.rb`, `app/models/collection_import/locations.rb`, `app/models/collection_import/plan.rb`, `app/views/collections/import_previews/{show,_apply,_locations}.html.erb`, `app/helpers/import_previews_helper.rb`, `spec/support/import_helpers.rb`, `spec/models/collection_import/locations_spec.rb`, `spec/models/collection_import/plan_spec.rb`, `spec/models/collection_import_spec.rb`, `spec/requests/collection_import_previews_spec.rb`
-**Interfaces:** Consumes: `ExportFormat::Rules.whole_number`, `.problems_in`, `VERSION`; `Location::Name` (Phases 0, 2); `CollectionImport::LIST_LIMIT`, `Plan`. Produces: `CollectionImport#locations -> CollectionImport::Locations` (`counted?`, `added` (names), `renamed` (`Renamed(held:, name:)`), `removed` (`Held(id:, name:, key:)`), `unchanged` (Integer), `counts`, `nothing_to_change?`, `removes?`, `listed_renamed`, `more_renamed`, `listed_removed`, `more_removed`, `fingerprint_part`); `CollectionImport::Plan#locations`, `#writes_lots?`, and `#nothing_to_change?`, `#removes?`, `#fingerprint` extended; `ImportHelpers#import_file_v2`; `import_removals(import)` and `import_removed_counts(plan)` helpers.
+**Interfaces:** Consumes: `ExportFormat::Rules.whole_number`, `.problems_in`, `VERSION`; `Location::Name` (Phases 0, 2); `CollectionImport::LIST_LIMIT`, `Plan`. Produces: `CollectionImport#locations -> CollectionImport::Locations` (`counted?`, `added` (names), `renamed` (`Renamed(held:, name:)`), `removed` (`Held(id:, name:, key:)`), `unchanged` (Integer), `counts`, `nothing_to_change?`, `removes?`, `listed_renamed`, `more_renamed`, `listed_removed`, `more_removed`, `fingerprint_part`, by name); `CollectionImport::Plan#locations`, `#writes_lots?`, and `#nothing_to_change?`, `#removes?`, `#fingerprint` extended; `ImportHelpers#import_file_v2`; `import_removals(import)` and `import_removed_counts(plan)` helpers.
 
 What applying would do with locations is a replace by comparison key (decision 10). `CollectionImport::Locations` is built from the account's locations (one read of at most 500 rows) and the file's normalised names; for a version 1 file it is "not counted" and says nothing. The plan, its "nothing to change" test, its confirmation and its fingerprint read it, so everything that already reads the plan (the store condition, the apply form, `Apply#decide`) follows.
 
@@ -1805,15 +1893,17 @@ RSpec.describe CollectionImport::Locations, type: :model do
     expect(result.more_removed).to eq(50)
   end
 
-  it "gives the part of a fingerprint from what changes, by id, and nothing for unchanged ones (decision 11)", :aggregate_failures do
+  it "gives the part of a fingerprint from what changes, by name and holding no id, and nothing for unchanged ones (decision 11, ruled 2026-10-21)", :aggregate_failures do
     part = outcomes([ "box", "Old crate", "Same" ], %w[Box Same New]).fingerprint_part
 
-    expect(part).to eq([ [ "New" ], [ [ 1, "box", "Box" ] ], [ [ 2, "Old crate" ] ] ])
+    expect(part).to eq([ [ "New" ], [ %w[box Box] ], [ [ "Old crate" ] ] ])
+    expect(outcomes([ "box", "Old crate", "Same" ], %w[Box Same New]).fingerprint_part).to eq(
+      CollectionImport::Locations.new([ held(7, "box"), held(8, "Old crate"), held(9, "Same") ], %w[Box Same New]).fingerprint_part) # other ids, the same part
   end
 end
 ```
 
-  The reader's examples, added to `spec/models/collection_import_spec.rb` inside "a file refused as a whole" and in a new describe; first change the two examples about versions: in "refuses a newer version as newer, before the schema (AC-3.2)" use version 3 and the sentence "(format version 3). This instance reads version 2.", `format_version: 3.0` for the float, and keep `file([], format_version: 1.0)` plus add `expect(import(file_v2([], format_version: 2.0))).not_to be_refused` (below).
+  The reader's examples, added to `spec/models/collection_import_spec.rb` in a new describe (the two examples about the newer version were changed in Phase 2):
 
 ```ruby
   # A version 2 file: the same, with its locations by name (spec 029).
@@ -1939,20 +2029,23 @@ end
         expect(fingerprint("Box", "New")).not_to eq(baseline)
       end
 
-      it "differs for another file, and is unchanged when an unchanged location is deleted and added again", :aggregate_failures do
-        same = create(:location, account:, name: "Same")
-        baseline = fingerprint("Same", "Other")
+      it "differs for another file, and holds no id: a renamed, a removed and an unchanged location deleted and added again with the same spelling change nothing (AC-9.9, ruled 2026-10-21)", :aggregate_failures do
+        [ "box", "Old crate", "Same" ].each { |name| create(:location, account:, name:) } # "box" is renamed to Box, "Old crate" is removed
+        baseline = fingerprint("Box", "Same", "Other")
 
-        expect(fingerprint("Same", "Another")).not_to eq(baseline)
-        same.destroy!
-        create(:location, account:, name: "Same") # a new id, but an unchanged location is not in the fingerprint
-        expect(fingerprint("Same", "Other")).to eq(baseline)
+        expect(fingerprint("Box", "Same", "Another")).not_to eq(baseline)
+        account.locations.each do |location|
+          name = location.name
+          location.destroy!
+          create(:location, account:, name:) # a new id each, the same plan
+        end
+        expect(fingerprint("Box", "Same", "Other")).to eq(baseline)
       end
     end
   end
 ```
 
-  `spec/requests/collection_import_previews_spec.rb`: first change the newer-version row to `file([], format_version: 3) => "This file was written by a newer version of Collector (format version 3). This instance reads version 2."` (AC-8.6); add a `def file_v2(lots, locations: [], **fields) = file(lots, format_version: 2, locations: locations.map { |name| { "name" => name } }, **fields)` helper and, inside the signed-in context:
+  `spec/requests/collection_import_previews_spec.rb` (its newer-version row was changed in Phase 2): add a `def file_v2(lots, locations: [], **fields) = file(lots, format_version: 2, locations: locations.map { |name| { "name" => name } }, **fields)` helper and, inside the signed-in context:
 
 ```ruby
     describe "locations (spec 029)" do
@@ -2004,6 +2097,14 @@ end
         end
       end
 
+      it "shows a name in NFD as its NFC spelling, matched to the held location (AC-9.18)", :aggregate_failures do
+        preview(file_v2([ row(entry) ], locations: [ "CAFE\u0301", "Trade binder", "box", "Old crate" ]))
+        create(:location, account: user.account, name: "Café")
+
+        expect(html.css("#renamed_locations li").map { |item| item.text.squish }).to eq([ "Café → CAFÉ" ]) # NFC, as the page shows and the apply writes
+        expect(locations_stat("Locations unchanged")).to eq("3")
+      end
+
       it "counts all and lists the first 100 of each, with the rest counted (AC-8.9)", :aggregate_failures do
         Location.where(account_id: user.account.id).delete_all
         Location.insert_all!((1..300).map { |number| { account_id: user.account.id, name: format("old %03d", number), name_key: format("old %03d", number) } })
@@ -2050,7 +2151,7 @@ end
     end
 ```
 
-- [ ] Run `bin/rspec spec/models/collection_import spec/models/collection_import_spec.rb spec/requests/collection_import_previews_spec.rb` — expect: FAIL (`uninitialized constant CollectionImport::Locations`; the newer-version examples fail until the version is read)
+- [ ] Run `bin/rspec spec/models/collection_import spec/models/collection_import_spec.rb spec/requests/collection_import_previews_spec.rb` — expect: FAIL (`uninitialized constant CollectionImport::Locations`)
 - [ ] Add `app/models/collection_import/locations.rb`:
 
 ```ruby
@@ -2105,11 +2206,13 @@ class CollectionImport::Locations
 
   def more_removed = removed.size - listed_removed.size
 
-  # What the plan's fingerprint takes from the locations (decision 11): the name of each added one; the id, current
-  # name and the file's name of each renamed one; the id and name of each removed one. An unchanged one isn't in it.
+  # What the plan's fingerprint takes from the locations (decision 11, ruled 2026-10-21): the name of each added one; the
+  # current name and the file's name of each renamed one; the name of each removed one. No id, and an unchanged one isn't
+  # in it, so a location deleted and added again with the same spelling changes nothing (AC-9.9). The lists are already in
+  # the order of the comparison key then the name, which is unique per account, so the part is the same every time. The
+  # apply writes by the ids `replan` reads inside its transaction, so the fingerprint needs none.
   def fingerprint_part
-    [ added, renamed.sort_by { |item| item.held.id }.map { |item| [ item.held.id, item.held.name, item.name ] },
-      removed.sort_by(&:id).map { |location| [ location.id, location.name ] } ]
+    [ added, renamed.map { |item| [ item.held.name, item.name ] }, removed.map { |location| [ location.name ] } ]
   end
 end
 ```
@@ -2240,7 +2343,7 @@ end
       </div>
 ```
 
-- [ ] Add `app/views/collections/import_previews/_locations.html.erb` and render it in `show.html.erb` after the held-lots note and before the apply form (`<%= render "collections/import_previews/locations", import: @import %>`):
+- [ ] Add `app/views/collections/import_previews/_locations.html.erb` and render it in `show.html.erb` after the "Lots removed" section and before "Rows with problems" (`<%= render "collections/import_previews/locations", import: @import %>`), so that the Locations section sits with the lots' outcomes and its lists come after the apply form as the lots' lists do (decision 10, "shown as the lots' lists are"; plan review m11). The counts of added, renamed, unchanged and removed locations are therefore below the apply form, as the removed lots' list is:
 
 ```erb
 <%# locals: (import:) %>
@@ -2273,6 +2376,7 @@ end
 ```
 
 - [ ] Run `bin/rspec spec/models/collection_import spec/models/collection_import_spec.rb spec/requests/collection_import_previews_spec.rb spec/models/export_format spec/export_format_examples_spec.rb` — expect: PASS. The "reports the rule and place problems.json names for each example refused as a whole (AC-2.7)" example of `collection_import_spec.rb` now also reads the 18 invalid version 2 examples through the reader and must match their `problems.json` entries; if one does not, the reader's refusal order or the example is wrong, not the example's entry.
+- [ ] Run `bin/rspec` — expect: PASS (the whole suite; the phase ends green)
 - [ ] Run `bin/rubocop -a` on the files of this phase; run `bin/rspec spec/import_apply_core_spec.rb spec/collection_import_core_spec.rb` — expect: PASS (the new files name no collectible type; add `app/models/collection_import/locations.rb`, `app/models/collection_import/location_changes.rb` (Phase 5), `app/models/location.rb`, `app/models/location/name.rb`, `app/controllers/locations_controller.rb`, `app/views/locations/index.html.erb` and `app/views/collections/import_previews/_locations.html.erb` to the file list in `spec/import_apply_core_spec.rb`, whose "exists, every file of it" example then also proves they exist; `location_changes.rb` is added in Phase 5)
 - [ ] Commit: `feat(import): read export format version 2 in the preview, with a Locations section`
 
@@ -2350,13 +2454,14 @@ The seams spec 028's plan left (`Plan`, `Apply#write!`) are the only two places 
 
     it "clears the working state when a lot is written, and leaves it for a change of view alone (AC-9.17)", :aggregate_failures do
       lot = held_lot(account, a, quantity: 2)
-      working_state_for(lot)
+      removal = working_state_for(lot)
       profile = { "name" => user.name, "email_address" => user.email_address, "collection_view" => "table" }
       preview_v2!([ import_row(a, quantity: 2) ], locations: [], profile:)
 
       expect(apply.outcome).to eq(:applied)
       expect(user.reload.collection_view).to eq("table")
       expect(NumberEntry.count + Scanner::Sitting.count + BulkSelection.count).to eq(3) # a view change writes no lot
+      expect(removal.reload).to be_undoable # the fourth kind of working state (plan review m8)
 
       preview_v2!([ import_row(a, quantity: 5) ], locations: [], profile:)
       expect(apply.outcome).to eq(:applied)
@@ -2427,14 +2532,18 @@ The seams spec 028's plan left (`Plan`, `Apply#write!`) are the only two places 
       end
     end
 
-    it "applies after an unchanged location was deleted and added again with the same spelling (AC-9.9)", :aggregate_failures do
-      same = create(:location, account:, name: "Same")
-      upload = preview_v2!([ import_row(a) ], locations: [ "Same", "New" ])
-      same.destroy!
-      create(:location, account:, name: "Same")
+    it "applies after a renamed, a removed and an unchanged location were each deleted and added again with the same spelling (AC-9.9, ruled 2026-10-21)", :aggregate_failures do
+      box, crate, same = [ "box", "Old crate", "Same" ].map { |name| create(:location, account:, name:) } # box is renamed, Old crate removed
+      upload = preview_v2!([ import_row(a) ], locations: [ "Box", "Same", "New" ])
+      recreated = [ box, crate, same ].map do |location|
+        name = location.name
+        location.destroy!
+        create(:location, account:, name:) # new ids, the same names
+      end
 
       expect(apply(upload).outcome).to eq(:applied)
-      expect(account.locations.ordered.pluck(:name)).to eq(%w[New Same])
+      expect(account.locations.ordered.pluck(:name)).to eq(%w[Box New Same])
+      expect(account.locations.find_by!(name: "Box").id).to eq(recreated.first.id) # the apply wrote by the ids it read inside its transaction
     end
 
     it "needs the confirmation only when it removes lots or locations (AC-9.10)", :aggregate_failures do
@@ -2532,9 +2641,6 @@ The seams spec 028's plan left (`Plan`, `Apply#write!`) are the only two places 
 
   def names(user) = user.account.locations.order(:id).pluck(:name)
 
-  # An export of this instance is version 2. A version 1 example is compared as the version 2 file it becomes with no locations.
-  def as_version_two(data) = data["format_version"] == 2 ? data : data.merge("format_version" => 2, "locations" => [])
-
   it "restores an export's locations by name, exactly spelled, into an empty account (AC-9.5)", :aggregate_failures do
     locations(source, "Blue binder", "Trade binder", "box")
     original = export(source)
@@ -2548,7 +2654,7 @@ The seams spec 028's plan left (`Plan`, `Apply#write!`) are the only two places 
   end
 
   it "restores a changed set of locations from the file, and then has nothing to change (AC-9.6)", :aggregate_failures do
-    renamed, = locations(source, "Blue binder", "Trade binder", "Old crate")
+    blue, = locations(source, "Blue binder", "Trade binder", "Old crate")
     original = export(source)
     source.account.locations.find_by!(name: "Blue binder").update!(name: "Green binder")
     source.account.locations.find_by!(name: "Old crate").destroy!
@@ -2559,7 +2665,8 @@ The seams spec 028's plan left (`Plan`, `Apply#write!`) are the only two places 
     expect(names(source)).to match_array([ "Blue binder", "Trade binder", "Old crate" ])
     expect(same_collection?(original, export(source))).to be(true)
     expect(CollectionImport.new(account: source.account, file: StringIO.new(JSON.generate(original))).plan.nothing_to_change?).to be(true)
-    expect(renamed).to be_persisted
+    expect(Location.exists?(blue.id)).to be(false) # the respelled "Green binder" went
+    expect(source.account.locations.find_by!(name: "Blue binder").id).not_to eq(blue.id) # and "Blue binder" came back as a new row
   end
 
   it "previews the exported collection, locations and all, as nothing to change (AC-6.1 of spec 028, with locations)", :aggregate_failures do
@@ -2571,44 +2678,12 @@ The seams spec 028's plan left (`Plan`, `Apply#write!`) are the only two places 
     expect(ImportUpload.count).to eq(0)
   end
 
-  describe "every valid example of the format, version 1 and version 2 (AC-9.15)" do
-    # One entry and printing per source id, with the finishes of its lots (as the version 1 example's does).
-    def build_catalog(data)
-      data["lots"].group_by { |lot| lot.dig("entry", "source_id") }.each_value do |lots|
-        entry = lots.first["entry"]
-        set = Catalog::Set.find_by(collectible_type: entry["collectible_type"], code: entry["set_code"]) || create(:catalog_set, code: entry["set_code"])
-        created = create(:catalog_entry, external_key: entry["source_id"], set:, number: entry["collector_number"], language: entry["language"], name: entry["name"])
-        create(:mtg_printing, entry: created, finishes: (%w[nonfoil foil etched] + lots.filter_map { |lot| lot["finish"] }).uniq)
-      end
-    end
-
-    ExportFormatRules.examples("valid").each_key do |name|
-      it "applies #{name} to an empty account and exports the same collection, or has nothing to change", :aggregate_failures do
-        data = JSON.parse(ExportFormatRules.examples("valid").fetch(name))
-        allow(Rails.configuration.x).to receive(:currency).and_return(Collector::Currency.fetch!(data["currency"]))
-        build_catalog(data)
-        user = create(:user, name: data.dig("profile", "name"), email_address: data.dig("profile", "email_address"))
-
-        if data["lots"].empty? && data.fetch("locations", []).empty?
-          import = CollectionImport.new(account: user.account, file: StringIO.new(JSON.generate(data)))
-          expect([ import.refused?, import.plan.nothing_to_change? ]).to eq([ false, true ])
-        else
-          expect(apply!(user, data).outcome).to eq(:applied)
-          expect(same_collection?(as_version_two(data), export(user))).to be(true)
-          expect(user.account.lots.count).to eq(data["lots"].size)
-          expect(user.account.locations.count).to eq(data.fetch("locations", []).size)
-        end
-      end
-    end
-  end
-```
-
-  The existing "the format's valid example with lots (AC-6.4)" describe is replaced by this one (it applied `collection.json` alone); keep its `build_catalog` helper in the new describe as written above.
+  The describe "every valid example of the format (AC-6.4, AC-9.15)" that Phase 3 added (with `as_version_two`, which passes each location name through `Location::Name.normalise`, and its `build_catalog`) is widened here to both versions: remove the `.select { … format_version == 1 }` from its `each_key` loop (and its comment), change the empty branch's condition to `data["lots"].empty? && data.fetch("locations", []).empty?`, and add after the lots count `expect(user.account.locations.count).to eq(data.fetch("locations", []).size)`. For `valid/locations-nfd.json` the comparison holds because the expected file has "Cafe\u0301" as "Café" (NFC), which is what the apply stored and the export wrote; the example's own bytes differ from the export's, and the example says so in the format document. `verification.md` records this as the reading of AC-9.15 that the maintainer ruled (2026-10-21, spec 1.3.2).
 
   In `spec/requests/collection_imports_spec.rb` add (inside the signed-in context; `preview!` there builds version 1, so add `def preview_v2!(lots, locations: []) = store_import!(account:, data: import_file_v2(user, lots, locations:))`):
 
 ```ruby
-    it "adds the locations to the notice, leaving out the parts that are zero (AC-9.14)", :aggregate_failures do
+    it "adds the locations to the notice, with no final period (AC-9.14)", :aggregate_failures do
       create(:location, account:, name: "box")
       create(:location, account:, name: "Old crate")
       preview_v2!([ import_row(a) ], locations: [ "Box", "Blue binder", "Trade binder" ])
@@ -2616,16 +2691,17 @@ The seams spec 028's plan left (`Plan`, `Apply#write!`) are the only two places 
       apply
       follow_redirect!
 
-      expect(response.body).to include("Imported: 1 lot added, 0 changed, 0 removed; 2 locations added, 1 renamed, 1 removed.")
+      expect(response.body).to include("Imported: 1 lot added, 0 changed, 0 removed; 2 locations added, 1 renamed, 1 removed")
+      expect(html.at_css("#status").text.strip).not_to end_with(".") # never a final period (ruled 2026-10-21)
     end
 
-    it "names only the location parts that apply, after a version 2 file that changes only locations (AC-9.14)", :aggregate_failures do
+    it "names only the location parts that are not zero, but keeps the zero lot parts, after a version 2 file that changes only locations (AC-9.14)", :aggregate_failures do
       create(:location, account:, name: "Old crate")
       preview_v2!([], locations: [])
 
       apply
       follow_redirect!
-      expect(response.body).to include("Imported: 0 lots added, 0 changed, 0 removed; 1 location removed.")
+      expect(html.at_css("#status").text.strip).to eq("Imported: 0 lots added, 0 changed, 0 removed; 1 location removed")
     end
 
     it "says nothing about locations after a version 1 file (AC-9.14)", :aggregate_failures do
@@ -2635,8 +2711,7 @@ The seams spec 028's plan left (`Plan`, `Apply#write!`) are the only two places 
       apply
       follow_redirect!
 
-      expect(response.body).to include("Imported: 1 lot added, 0 changed, 0 removed")
-      expect(html.at_css("#status").text).not_to include("location")
+      expect(html.at_css("#status").text.strip).to eq("Imported: 1 lot added, 0 changed, 0 removed")
     end
 
     it "answers 409 with a fresh preview, locations included, when a location changed after the preview (AC-9.9)", :aggregate_failures do
@@ -2707,7 +2782,7 @@ The seams spec 028's plan left (`Plan`, `Apply#write!`) are the only two places 
     check "I understand this removes 1 location"
     click_on "Apply import"
 
-    expect(page).to have_css("#status", text: "Imported: 0 lots added, 0 changed, 0 removed; 1 location added, 1 removed.")
+    expect(page).to have_css("#status", text: "Imported: 0 lots added, 0 changed, 0 removed; 1 location added, 1 removed")
     visit locations_path
     expect(page).to have_css(".c-locations__name", text: "Blue binder")
     expect(page).to have_no_css(".c-locations__name", text: "Old crate")
@@ -2763,11 +2838,12 @@ end
       counts = plan.counts
       lots = "Imported: #{helpers.pluralize(counts[:added], "lot")} added, #{counts[:changed]} changed, #{counts[:removed]} removed"
       locations = location_sentence(plan.locations)
-      locations ? "#{lots}; #{locations}." : lots
+      locations ? "#{lots}; #{locations}" : lots
     end
 
     # "2 locations added, 1 renamed, 1 removed": the noun on the first part that isn't zero, the zero parts left out; nil
-    # for a version 1 file and when no location changes (spec 029 AC-9.14).
+    # for a version 1 file and when no location changes. The notice never ends with a period, as 028's has none (spec 029
+    # AC-9.14, ruled 2026-10-21).
     def location_sentence(locations)
       return unless locations.counted?
 
@@ -2781,6 +2857,7 @@ end
 - [ ] Add `app/models/collection_import/location_changes.rb` and `app/models/collection_import/locations.rb` to the file list in `spec/import_apply_core_spec.rb` (they name no collectible type; its "exists, every file of it" example proves they exist)
 - [ ] Run `bin/rspec spec/models/collection_import spec/models/collection_import_spec.rb spec/requests/collection_imports_spec.rb spec/requests/collection_import_previews_spec.rb spec/models/import_upload_spec.rb spec/import_apply_core_spec.rb` — expect: PASS
 - [ ] Run `bin/rspec spec/system/collection_import_apply_spec.rb spec/system/collection_import_preview_spec.rb` — expect: PASS
+- [ ] Run `bin/rspec` — expect: PASS (the whole suite; the phase ends green)
 - [ ] Run `bin/rubocop -a` on the files of this phase — expect: no offenses
 - [ ] Commit: `feat(import): apply the locations of a version 2 file in the apply's one transaction`
 
@@ -2804,9 +2881,9 @@ end
   - `docs/adr/0020-export-format.md`: its Status line gains "The consequence about a lot in a location raising the format to version 2 is superseded by [ADR 0023](0023-locations-make-export-format-version-2.md)." (the one edit the spec calls for); `docs/adr/0023-…md`: Status becomes "Accepted (<date of approval>)" when the maintainer approves this plan.
   - `docs/specs/README.md`: the 029 row's status moves to "Approved (028 merged; plan: …)" and its Plan cell to "plan.md"; both directions of the supersessions of spec 029's table are in the index (the 017, 022, 025 and 028 rows' "Superseded by" cells gain 029 where they name the item). Spec 028's own row and spec 028 are not edited beyond the "Superseded by" cell the index owns.
   - `.rubocop.yml`: nothing, unless `spec/models/collection_import/apply_spec.rb` or `round_trip_spec.rb` now exceed an existing scenario exclusion (they are already excluded by name).
-- [ ] Write `docs/specs/029-manage-locations/verification.md`: every AC and FR → the example that holds it (file and title), the measurements above, the screenshots, the documents verified by reading (AC-7.1 on the format document: version 2, `locations`, `duplicate_location`, version 1's definitions as they were, the version-history row), and the deviations from this plan.
+- [ ] Write `docs/specs/029-manage-locations/verification.md`: every AC and FR → the example that holds it (file and title), the measurements above, the screenshots, the documents verified by reading (AC-7.1 on the format document: version 2, `locations`, `duplicate_location`, version 1's definitions as they were, the version-history row), and the deviations from this plan. Notes it must carry: (1) AC-9.15 is held for `valid/locations-nfd.json` once the example's names are normalised to NFC, as ruled on 2026-10-21 (spec 1.3.2); (2) the measured sizes of any header target other than the Locations link and the back button, if under 44px (not changed here); (3) the 640px header measurements (AC-5.1); (4) the run time of the parity example.
 - [ ] Run the full local CI: `bin/ci` — expect: every step passes (setup, RuboCop, Brakeman, bundler-audit, importmap audit, RSpec). If RSpec fails, reproduce with the CI seed first (`reproduce-ci-with-seed`). `git diff --stat db/schema.rb` shows only the `locations` table.
-- [ ] Run `sdd-superpowers:sdd-review` (Mode B, an independent implementation review, read-only) against spec 1.3.1 and record its verdict in `verification.md` under `## Implementation review` with the verdict on its first line; then `distill-feature` before the merge (CLAUDE.md, `.claude/CLAUDE.md`).
+- [ ] Run `sdd-superpowers:sdd-review` (Mode B, an independent implementation review, read-only) against spec 1.3.2 and record its verdict in `verification.md` under `## Implementation review` with the verdict on its first line; then `distill-feature` before the merge (CLAUDE.md, `.claude/CLAUDE.md`).
 - [ ] Commit: `docs(029): record the measurements, the screenshots and the verification of spec 029`
 
 ---
@@ -2827,7 +2904,7 @@ end
 
 1. `bin/setup --skip-server`, `bin/rails db:prepare`, `bin/dev`, sign in.
 2. Open More, then Locations. Add "Blue binder", then "  blue   BINDER ": the second is refused with "You already have a location called “blue BINDER”.". Rename "Blue binder" to "blue binder" (allowed). Remove it through its confirmation page.
-3. Add "Trade binder" and "box". Open Export collection: the file's `format_version` is 2 and its `locations` are `[{"name": "Trade binder"}, {"name": "box"}]`.
-4. Rename "box" to "Box" and add "Old crate". Open Import collection and choose the exported file: the Locations section says 1 renamed (Box → box) and 1 removed (Old crate); the apply form asks "I understand this removes 1 location". Check it and apply: the notice reads "Imported: 0 lots added, 0 changed, 0 removed; 1 location renamed, 1 removed." and the locations page lists "box" and "Trade binder".
+3. Add "Trade binder" and "box". Open Export collection: the file's `format_version` is 2 and its `locations` are `[{"name": "box"}, {"name": "Trade binder"}]` (by comparison key, so "box" first).
+4. Rename "box" to "Box" and add "Old crate". Open Import collection and choose the exported file: the Locations section says 1 renamed (Box → box) and 1 removed (Old crate); the apply form asks "I understand this removes 1 location". Check it and apply: the notice reads "Imported: 0 lots added, 0 changed, 0 removed; 1 location renamed, 1 removed" (no final period) and the locations page lists "box" and "Trade binder".
 5. Choose the same file again: the preview says there is nothing to change and offers no apply.
 6. Open the format document and the examples under `docs/export-format/`: version 2 is defined next to version 1, and `bin/rspec spec/export_format_document_spec.rb spec/export_format_examples_spec.rb` passes.

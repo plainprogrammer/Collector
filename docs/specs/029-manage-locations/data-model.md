@@ -16,7 +16,7 @@ A named place the collector keeps part of their collection. One row per location
 | updated_at | datetime | not null | Not touched by an apply when the location is unchanged (AC-9.1) |
 
 **Indexes:** unique `[account_id, name_key]` (the uniqueness rule in the database, not `COLLATE NOCASE`, which folds ASCII only; Reliability). It also serves the page's order (`ORDER BY name_key, name`, SQLite's binary collation on UTF-8 is code-point order, decision 2) and covers the `account_id` foreign key, so no separate index.
-**Relationships:** `Account has_many :locations, dependent: :delete_all` (the foreign key cascades too, as for `lots`); `Location belongs_to :account`. No lot refers to a location in this spec (#45).
+**Relationships:** `Account has_many :locations, dependent: :delete_all` (the foreign key cascades too, as for `import_uploads` and `number_entries`); `Location belongs_to :account`. No lot refers to a location in this spec (#45).
 **Spec requirement:** FR-1; decisions 4, 5, 7, 9; Reliability; AC-1.x, AC-2.x, AC-3.x, AC-4.6.
 
 Not stored: a kind, notes, order, a count of lots (decision 4, Non-Goals).
