@@ -156,7 +156,7 @@
           {
             "type": "command",
             "timeout": 900,
-            "command": "command -v jq >/dev/null || exit 0; c=$(jq -r '.tool_input.command // empty'); printf '%s' \"$c\" | grep -Eq '(^|[;&|[:space:]])git([[:space:]]+-C[[:space:]]+[^[:space:]]+)?[[:space:]]+push' || exit 0; cd \"$CLAUDE_PROJECT_DIR\" 2>/dev/null || exit 0; [ -x bin/ci ] || exit 0; bin/ci >&2 || { echo 'Pre-push: bin/ci failed. Fix the failing step before pushing.' >&2; exit 2; }"
+            "command": "command -v jq >/dev/null || exit 0; in=$(cat); c=$(printf '%s' \"$in\" | jq -r '.tool_input.command // empty'); printf '%s' \"$c\" | grep -Eq '(^|[;&|[:space:]])git([[:space:]]+-C[[:space:]]+[^[:space:]]+)?[[:space:]]+push' || exit 0; d=$(printf '%s' \"$in\" | jq -r '.cwd // empty'); cd \"${d:-$CLAUDE_PROJECT_DIR}\" 2>/dev/null || exit 0; t=$(printf '%s' \"$c\" | sed -nE 's/^[[:space:]]*cd[[:space:]]+\"?([^\";&|[:space:]]+)\"?.*/\\1/p'); if [ -n \"$t\" ]; then cd \"$t\" 2>/dev/null || exit 0; fi; t=$(printf '%s' \"$c\" | sed -nE 's/.*git[[:space:]]+-C[[:space:]]+\"?([^\"[:space:]]+)\"?[[:space:]]+push.*/\\1/p'); if [ -n \"$t\" ]; then cd \"$t\" 2>/dev/null || exit 0; fi; r=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; cd \"$r\" || exit 0; [ -x bin/ci ] || exit 0; echo \"Pre-push: running bin/ci in $r\" >&2; bin/ci >&2 || { echo \"Pre-push: bin/ci failed in $r. Fix the failing step before pushing.\" >&2; exit 2; }"
           }
         ]
       }
