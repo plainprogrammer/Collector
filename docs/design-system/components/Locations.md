@@ -29,7 +29,7 @@ The page where a collector names the places their collection is kept in, and the
 </main>
 ```
 
-- Every part is an existing component; `collector/additions.css` adds only what these pages need: a 560px limit on the add form (`c-locations__add`), wrapping rows (`c-locations__list li`), names that wrap anywhere (`c-locations__name`, so a 60-character name never scrolls the page sideways at 360px), the actions' gap, and the 44px floor below.
+- Every part is an existing component; `collector/additions.css` adds only what these pages need: a 560px limit on the add form (`c-locations__add`), wrapping rows (`c-locations__list li`), names that wrap anywhere (`c-locations__name`, so a 60-character name never scrolls the page sideways at 360px), the actions' gap, and the 44px floor below (`--touch-floor`, declared in `additions.css` because `tokens.css` has no variable for the design system's 44px touch-target floor).
 - Every control on these pages, and the header's back button on the detail pages, is at least 44px by 44px on every pointer, not only on touch (the `c-btn--sm` actions and the `c-input` field are raised inside `.c-locations`). A field's focus ring is on its `c-input` wrapper.
 - The list is in the order of the names' comparison key, then the name, both in code-point order, as the export writes them; there is no hand ordering.
 - A failed add or rename answers 422 with the reason as the field's `c-field__error` and the typed text kept. The page works without scripting.
