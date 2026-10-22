@@ -194,6 +194,37 @@ RSpec.describe ExportFormat::Rules, type: :model do
       expect(problems_of(locations("Cafe\u0301"))).to eq([]) # a name in NFD is well-formed
     end
 
+    describe "a list over the limit (spec 029 review M1)" do
+      let(:limit) { JSON.parse(Rails.root.join("docs/export-format/v2.schema.json").read).dig("properties", "locations", "maxItems") }
+
+      it "keeps the limit in step with the schema's maxItems and the account's cap" do
+        expect(limit).to eq(Location::MAX_PER_ACCOUNT)
+      end
+
+      it "reports maxItems without validating or case-folding the items past the limit", :aggregate_failures do
+        long = locations(*Array.new(limit + 1_500) { |index| "Binder #{index}" })
+        long["locations"][limit + 10] = { "name" => "a  b" } # fails the schema, but lies past the limit
+
+        allow(Location::Name).to receive(:key).and_call_original
+        expect(problems_of(long)).to eq([ %w[maxItems /locations] ])
+        expect(Location::Name).not_to have_received(:key)
+      end
+
+      it "still lists the problems of the first items in a list over the limit" do
+        long = locations("a  b", *Array.new(limit) { |index| "Binder #{index}" })
+
+        expect(problems_of(long)).to eq([ %w[pattern /locations/0/name], %w[maxItems /locations] ])
+      end
+
+      it "keeps the problems of a list at the limit as they were, and lists no duplicate once the list is refused", :aggregate_failures do
+        names = Array.new(limit) { |index| "Binder #{index}" }
+
+        expect(problems_of(locations(*names))).to eq([])
+        expect(problems_of(locations(*names, "binder 0"))).to eq([ %w[maxItems /locations] ]) # a refused list needs no duplicate listing
+        expect(problems_of(locations(*names.first(limit - 1), "binder 0"))).to eq([ [ "duplicate_location", "/locations/#{limit - 1}" ] ])
+      end
+    end
+
     it "compares no location whose name fails the schema, as it compares no lot with an unreadable identity" do
       expect(problems_of(locations("a  b", "a  b"))).to eq([ %w[pattern /locations/0/name], %w[pattern /locations/1/name] ])
     end

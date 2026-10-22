@@ -13,6 +13,8 @@ module ExportFormat
     # the highest a reader accepts (spec 029 decision 10).
     VERSIONS = [ 1, 2 ].freeze
     VERSION = VERSIONS.max
+    # Keep in step with v2.schema.json's maxItems for locations (a spec checks it).
+    MAX_LOCATIONS = Location::MAX_PER_ACCOUNT
     # The rules a schema can't state, and the two that apply before a schema can.
     RULES = %w[not_utf8 not_json not_a_time changed_before_added duplicate_lot duplicate_location].freeze
     SCHEMA_DIRECTORY = Pathname(__dir__)
@@ -94,9 +96,18 @@ module ExportFormat
     def self.schema_problems(data, version)
       return problems_from(schemer(version).validate(data)) unless data.is_a?(Hash) && data["lots"].is_a?(Array)
 
+      over = locations_over_limit?(data, version)
+      data = data.merge("locations" => data["locations"].first(MAX_LOCATIONS)) if over
       root, header = schemer(version).validate(data.merge("lots" => [])).partition { |error| error["data_pointer"].empty? }
       lots = data["lots"].each_with_index.flat_map { |lot, index| problems_from(lot_schemer(version).validate(lot), "/lots/#{index}") }
-      problems_from(header) + lots + problems_from(root)
+      problems_from(header) + (over ? [ Problem.new("maxItems", "/locations") ] : []) + lots + problems_from(root)
+    end
+
+    # A version 2 list longer than the schema's maxItems is reported at once and only its first MAX_LOCATIONS items are
+    # checked, so what a hostile file costs doesn't grow with the list (spec 029 review M1; the validator holds a result
+    # tree, and every name would be case-folded).
+    def self.locations_over_limit?(data, version)
+      version >= 2 && data["locations"].is_a?(Array) && data["locations"].size > MAX_LOCATIONS
     end
 
     # Schema errors as problems, their pointers under +at+. A missing key is a problem at the key.
@@ -130,7 +141,7 @@ module ExportFormat
     # normalisation and case folding. A name that fails the schema has no key to compare, as a lot whose identity can't
     # be read isn't compared.
     def self.repeated_locations(data, failed)
-      return [] unless data["locations"].is_a?(Array)
+      return [] unless data["locations"].is_a?(Array) && !failed.include?("/locations")
 
       seen = Set.new
       data["locations"].each_with_index.filter_map do |location, index|
@@ -159,6 +170,6 @@ module ExportFormat
       Date.valid_date?(year, month, day) && hour < 24 && minute < 60 && second < 60
     end
 
-    private_class_method :non_finite?, :schema_problems, :problems_from, :rule_problems, :repeated_locations, :changed_before_added?, :moment?
+    private_class_method :non_finite?, :schema_problems, :locations_over_limit?, :problems_from, :rule_problems, :repeated_locations, :changed_before_added?, :moment?
   end
 end
