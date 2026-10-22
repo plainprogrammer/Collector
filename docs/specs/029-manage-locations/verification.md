@@ -192,7 +192,7 @@ Found by running the plan's own code, each fixed in its phase with the test that
 
 ## Deferred / follow-ups
 
-- **`ExportFormat::Rules` validates all locations before reporting `maxItems`.** The automated security review noted that for a file with more than 500 locations the reader validates the header and every location, and case-folds every name, before it reports that `maxItems` is exceeded. It is bounded by the 32 MB cap on a file and by sign-in (as the lots are), so it is not a denial-of-service concern worth blocking the merge. Possible hardening: check the count first and validate the header with `locations: []`; it may change which problems are listed for such a file, so it needs its own decision and a spec 025 note.
+- ~~`ExportFormat::Rules` validates all locations before reporting `maxItems`.~~ Fixed after the implementation review (M1, below).
 - The area docs for collection and lots and for data portability are not written yet (slices #108 and #109); `distill-feature` carries spec 029 into them.
 - The maintainer's own check of a real export restored on a fresh instance (spec 028's release check) now also covers locations.
 
@@ -209,4 +209,46 @@ Randomized with seed 6325
 ✅ Continuous Integration passed in 2m42.39s
 ```
 
-The one pending example is `art_agreement_spec`, which needs `COLLECTOR_ART_AGREEMENT` (as in spec 028's run). `git diff` of `db/schema.rb` since the plan's base shows only the `locations` table (schema version 2026_10_21_100001). No `## Implementation review` is recorded here: the coordinator runs it.
+The one pending example is `art_agreement_spec`, which needs `COLLECTOR_ART_AGREEMENT` (as in spec 028's run). `git diff` of `db/schema.rb` since the plan's base shows only the `locations` table (schema version 2026_10_21_100001).
+
+## Implementation review
+
+SPEC-ALIGNED (independent Sonnet review 2026-10-21, after fixes)
+
+The review (sdd-review Mode B, spec 029 v1.3.2 at `74afc27`) said NEEDS FIXES: 0 critical, 1 major, 3 minor. Every AC, FR and error scenario traced to code and a test; its own `bin/rspec` run matched the 1893 examples above. Each finding is fixed in its own commit:
+
+| Finding | Fix commit |
+|---|---|
+| **M1** A version 2 file with a very long `locations` list was validated and case-folded in full before `maxItems` was reported. | `0f3de14` fix(export-format): a list over 500 is reported at once (`maxItems` at `/locations`) and only its first 500 items are checked; a refused list lists no `duplicate_location`. A list at or under 500, and version 1, give the problems they gave. Specs: nothing past the limit is validated or passed to `Location::Name.key`, the first items' problems still show, the limit equals the schema's `maxItems` and `Location::MAX_PER_ACCOUNT`. |
+| **m1** `save!`, `update!` and `create!` didn't turn a unique-index race into a refusal. | `217c1e4` fix(locations): `save!` raises `RecordInvalid` with the same message `save` gives (spec: `save!` on a new and a renamed location). |
+| **m2** Literal 44px in the new CSS. | `22f4464` fix(design-system): no token exists, so `additions.css` declares `--touch-floor` once and the Locations rules use it; `components/Locations.md` says why. The 560px matches `.c-confirm`, as the review allowed. |
+| **m3** The roadmap said "Done" before the merge. | `793809a` docs(roadmap): "Built 2026-10-21, done when its pull request merges". |
+
+### M1 measurements
+
+`ExportFormat::Rules.problems` on a version 2 file of 500,000 `{"name":"L<n>"}` locations (9,389,751 bytes), one `bin/rails runner` per row in the test environment, no database, before = `74afc27`'s `rules.rb`, after = `0f3de14` (scratchpad `many_locations_rules.rb`, Apple M1):
+
+| | Time | RSS before → after the call | Peak RSS of the process |
+|---|---|---|---|
+| Before | 8.62 s | 274 → 2,176 MB (+1.9 GB) | 2,282 MB |
+| After | 0.38 s | 268 → 335 MB (+67 MB) | 351 MB |
+| 500 locations (reference) | 0.06 s | 138 → 148 MB | 156 MB |
+
+Both give the one problem `maxItems` at `/locations`. What remains after the fix is the parse of the file itself (spec 025 decision 13). The review measured +1.6 GB with json_schemer alone; this run measured the whole call.
+
+### bin/ci
+
+Run on 2026-10-21 in this worktree at `793809a` plus the uncommitted `Gemfile.lock` change. Every step passed; final lines:
+
+```
+1898 examples, 0 failures, 1 pending
+
+✅ Tests: RSpec passed in 2m34.29s
+✅ Continuous Integration passed in 2m45.16s
+```
+
+The one pending example is `art_agreement_spec` (needs `COLLECTOR_ART_AGREEMENT`).
+
+### Not verified by the review
+
+AC-9.16's timings and the screenshots (taken from the sections above), AC-1.13 as a true concurrent race, and whether other regexp engines accept the schema's `\p{…}` pattern (the format document states the caveat). The review's question 3 (a second, explicit character list in the format document) is left to the maintainer.
