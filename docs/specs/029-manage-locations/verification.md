@@ -193,7 +193,7 @@ Found by running the plan's own code, each fixed in its phase with the test that
 ## Deferred / follow-ups
 
 - ~~`ExportFormat::Rules` validates all locations before reporting `maxItems`.~~ Fixed after the implementation review (M1, below).
-- The area docs for collection and lots and for data portability are not written yet (slices #108 and #109); `distill-feature` carries spec 029 into them.
+- The area docs for collection and lots and for data portability are not written yet (slices #105 and #108); `distill-feature` carries spec 029 into them.
 - The maintainer's own check of a real export restored on a fresh instance (spec 028's release check) now also covers locations.
 
 ## bin/ci
@@ -251,4 +251,8 @@ The one pending example is `art_agreement_spec` (needs `COLLECTOR_ART_AGREEMENT`
 
 ### Not verified by the review
 
-AC-9.16's timings and the screenshots (taken from the sections above), AC-1.13 as a true concurrent race, and whether other regexp engines accept the schema's `\p{…}` pattern (the format document states the caveat). The review's question 3 (a second, explicit character list in the format document) is left to the maintainer.
+AC-9.16's timings and the screenshots (taken from the sections above), AC-1.13 as a true concurrent race, and whether other regexp engines accept the schema's `\p{…}` pattern (the format document states the caveat). The review's question 3 (a second, explicit character list in the format document): the maintainer ruled on 2026-10-21 that the documented caveat is enough.
+
+## Distillation
+
+`distill-feature` ran on 2026-10-21 before the pull request (`473ac88`). Spec 029's areas are collection and lots and data portability, which have no area doc yet (#105, #108), so nothing was written to `docs/architecture/`; the design system's docs were updated with the feature (`e568fb5`). The index row's Plan is "retirement owed"; the plan is retired after the merge. The supersessions were already recorded in both directions (Phase 6).
