@@ -12,6 +12,7 @@ require_relative "backup/databases"
 require_relative "backup/free_space"
 require_relative "backup/manifest"
 require_relative "backup/archive"
+require_relative "backup/snapshot"
 
 module Collector
   # Back up and restore an instance (spec 030, ADR 0024, docs/backup-restore.md). The operator's two commands,
