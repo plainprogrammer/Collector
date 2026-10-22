@@ -1,0 +1,177 @@
+#!/usr/bin/env bash
+# Smoke-tests backup and restore against a built Collector image (spec 030, AC-5.2): boots a container with a volume,
+# seeds a catalog entry, an admin and a lot, backs it up while polling /up, throws the container and its volume away,
+# restores the file into a new volume the two documented ways (README, "Backup and restore"), and starts a second
+# container with a different SECRET_KEY_BASE: the databases are as a fresh instance's but the collection, the admin's
+# password works, a session cookie from the first instance doesn't (AC-2.3, AC-4.2).
+#
+#   bin/backup-smoke <image> [<restore-image>] [-- extra `run` flags, e.g. --platform linux/arm64]
+#
+# With a <restore-image> the backup is taken from <image> and restored into <restore-image> (issue #42 reuses this with the
+# previous release as <image>). Uses docker when present, else podman (override with CONTAINER_CLI). Exit status 0 means
+# every check passed; a failure names its step.
+set -euo pipefail
+
+image="${1:?usage: bin/backup-smoke <image> [<restore-image>] [-- run flags]}"
+shift
+restore_image="$image"
+if [ $# -gt 0 ] && [ "$1" != "--" ]; then restore_image="$1"; shift; fi
+if [ "${1:-}" = "--" ]; then shift; fi
+run_flags=("$@")
+cli="${CONTAINER_CLI:-$(command -v docker >/dev/null 2>&1 && echo docker || echo podman)}"
+attempts="${SMOKE_BOOT_ATTEMPTS:-60}" # 2 s each; raise it for emulated runs
+work="$(mktemp -d)"
+tag="$$"
+password="smoke-password-1234"
+containers=()
+volumes=()
+
+cleanup() {
+  for container in ${containers[@]+"${containers[@]}"}; do "$cli" rm -f "$container" >/dev/null 2>&1 || true; done
+  for volume in ${volumes[@]+"${volumes[@]}"}; do "$cli" volume rm -f "$volume" >/dev/null 2>&1 || true; done
+  # What the container's user (uid 1000) made can't be removed by the invoking user: remove it as root, in a one-off.
+  "$cli" run --rm -u 0 -v "$work:/work" "$image" rm -rf /work/backups /work/restore >/dev/null 2>&1 || true
+  rm -rf "$work" 2>/dev/null || true
+}
+trap cleanup EXIT
+fail() { echo "FAIL: $*" >&2; exit 1; }
+status() { curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$1$2"; }
+
+# Makes a host directory belong to the container's user, as the documents' `chown 1000:1000` does; where the engine can't
+# (rootless podman maps ids differently) it is made world-writable instead, which is all the smoke test needs.
+own() { "$cli" run --rm -u 0 -v "$1:/dir" "$image" chown 1000:1000 /dir >/dev/null 2>&1 || chmod 0777 "$1"; }
+
+# start <name> <volume> <secret> <image> [extra run args]: runs a container, sets PORT once /up answers 200.
+start() {
+  local name="$1" volume="$2" secret="$3" img="$4"
+  shift 4
+  containers+=("$name")
+  "$cli" run -d --name "$name" ${run_flags[@]+"${run_flags[@]}"} -p 127.0.0.1::8080 -v "$volume:/rails/storage" "$@" \
+    -e SECRET_KEY_BASE="$secret" -e HTTP_PORT=8080 -e SOLID_QUEUE_IN_PUMA=true "$img" >/dev/null
+  PORT="$("$cli" port "$name" 8080 | head -n 1 | sed 's/.*://')"
+  for _ in $(seq 1 "$attempts"); do
+    [ "$(status "$PORT" /up)" = "200" ] && return 0
+    sleep 2
+  done
+  "$cli" logs "$name" >&2
+  fail "$name: /up did not answer 200 within $((attempts * 2)) s"
+}
+
+# sign_in <port> <cookie jar>: the sign-in form as a browser submits it, with its CSRF token.
+sign_in() {
+  local token code
+  token="$(curl -s -c "$2" -b "$2" "http://127.0.0.1:$1/session/new" | sed -n 's/.*name="csrf-token" content="\([^"]*\)".*/\1/p' | head -n 1)"
+  [ -n "$token" ] || return 1
+  code="$(curl -s -o /dev/null -w '%{http_code}' -c "$2" -b "$2" --data-urlencode "authenticity_token=$token" \
+    --data-urlencode "email_address=smoke@example.com" --data-urlencode "password=$password" "http://127.0.0.1:$1/session")"
+  [ "$code" = "302" ] || [ "$code" = "303" ]
+}
+
+seed_ruby='
+set = Catalog::Set.create!(collectible_type: "mtg", code: "smk", name: "Smoke Set", released_on: Date.new(2020, 1, 1), content_digest: "smoke")
+identity = Catalog::Identity.create!(collectible_type: "mtg", external_key: "smoke-identity", name: "Smoke Dragon", content_digest: "smoke")
+entry = Catalog::Entry.create!(collectible_type: "mtg", external_key: "smoke-entry", set: set, identity: identity, number: "1", language: "en", name: "Smoke Dragon", kind: "card", released_on: set.released_on, content_digest: "smoke")
+MTG::Printing.create!(entry: entry, rarity: "common", finishes: %w[nonfoil foil], layout: "normal", scryfall_uri: "https://scryfall.com/card/smk/1", faces: [ { "name" => "Smoke Dragon", "mana_cost" => "{R}", "type_line" => "Creature", "oracle_text" => "Smoke.", "artist" => "Nobody", "image_uris" => {} } ])
+user, = User::Command.call(email: "smoke@example.com", password: "smoke-password-1234")
+Lot.create!(account: user.account, entry: entry, quantity: 2)
+Catalog::RefreshJob.set(wait: 1.year).perform_later("mtg", "smoke-marker")
+Rails.cache.write("smoke-marker", "1")
+puts "seeded"
+'
+
+# What the queue and cache held before the backup must not be there after it (AC-2.3): a scheduled job with a marker
+# argument, and a cache entry.
+marker_ruby='puts [ SolidQueue::Job.where("arguments LIKE ?", "%smoke-marker%").count, Rails.cache.read("smoke-marker").inspect ].join(",")'
+
+# The four databases exist, the marker job and cache entry are gone, the recurring tasks of config/recurring.yml are
+# registered, and the collection came back (AC-2.3).
+state_ruby='
+require "yaml"
+storage = Rails.root.join("storage")
+files = %w[production production_cache production_queue production_cable].all? { |name| storage.join("#{name}.sqlite3").exist? }
+expected = YAML.load_file(Rails.root.join("config/recurring.yml"), aliases: true).fetch("production").keys.sort
+puts [ files, SolidQueue::Job.where("arguments LIKE ?", "%smoke-marker%").count, Rails.cache.read("smoke-marker").inspect,
+  SolidQueue::RecurringTask.pluck(:key).sort == expected, Lot.count, User.count ].join(",")
+'
+
+# verify_restored <container> <port> <label>: AC-2.3 and AC-4.2 on a started, restored instance.
+verify_restored() {
+  local name="$1" port="$2" label="$3" state=""
+  for _ in $(seq 1 30); do # the scheduler registers the recurring tasks a few seconds after /up
+    state="$("$cli" exec "$name" bin/rails runner "$state_ruby" 2>&1 | tail -n 1)" || true
+    [ "$state" = "true,0,nil,true,1,1" ] && break
+    sleep 2
+  done
+  [ "$state" = "true,0,nil,true,1,1" ] || fail "$label: the restored instance's databases weren't a fresh instance's with the collection (AC-2.3); got: $state"
+  sign_in "$port" "$work/jar-$label" || fail "$label: the admin couldn't sign in with their password under a different SECRET_KEY_BASE (AC-4.2)"
+  curl -s -b "$work/jar-$label" "http://127.0.0.1:$port/collection" | grep -q "Smoke Dragon" || fail "$label: the lot isn't on the collection page"
+  [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$work/jar-a" "http://127.0.0.1:$port/collection")" = "302" ] \
+    || fail "$label: a session cookie from the first instance was accepted (AC-4.2)"
+}
+
+echo "== boot the first instance and seed it"
+mkdir -p "$work/backups" "$work/out" "$work/restore"
+own "$work/backups"
+volume_a="collector-backup-smoke-a-$tag"
+volumes+=("$volume_a")
+start "backup-smoke-a-$tag" "$volume_a" "secret-of-the-first-instance-0001" "$image" -v "$work/backups:/backups"
+a="backup-smoke-a-$tag"
+port_a="$PORT"
+seeded="$("$cli" exec "$a" bin/rails runner "$seed_ruby" 2>&1)" || fail "seeding exited $?:"$'\n'"$seeded"
+grep -qx "seeded" <<<"$seeded" || fail "seeding didn't finish; it printed:"$'\n'"$seeded"
+[ "$("$cli" exec "$a" bin/rails runner "$marker_ruby" 2>&1 | tail -n 1)" = '1,"1"' ] || fail "the marker job and cache entry weren't seeded"
+sign_in "$port_a" "$work/jar-a" || fail "the admin couldn't sign in on the first instance"
+
+echo "== back up while /up is polled (AC-5.2)"
+( "$cli" exec "$a" bin/rails "backup:create[/backups]" >"$work/backup.out" 2>&1; echo $? >"$work/backup.status" ) &
+background=$!
+samples=0
+while kill -0 "$background" 2>/dev/null; do
+  [ "$(status "$port_a" /up)" = "200" ] || fail "/up stopped answering while the backup ran"
+  samples=$((samples + 1))
+  sleep 0.2
+done
+wait "$background" || true
+[ "$(cat "$work/backup.status")" = "0" ] || fail "backup:create failed:"$'\n'"$(cat "$work/backup.out")"
+[ "$samples" -ge 1 ] || fail "the backup finished before /up could be polled"
+grep -q "^Backup written: /backups/collector-backup-" "$work/backup.out" || fail "backup:create didn't print its file:"$'\n'"$(cat "$work/backup.out")"
+file="$("$cli" exec "$a" sh -c 'ls /backups')"
+[ "$(wc -l <<<"$file" | tr -d ' ')" = "1" ] || fail "the backup directory should hold exactly one file; it holds: $file"
+"$cli" cp "$a:/backups/$file" "$work/out/$file"
+"$cli" rm -f "$a" >/dev/null
+"$cli" volume rm -f "$volume_a" >/dev/null
+
+echo "== restore from a host directory owned by uid 1000, mounted read-only, with SECRET_KEY_BASE_DUMMY (decision 4)"
+own "$work/restore"
+"$cli" run --rm -u 0 -v "$work/out:/in:ro" -v "$work/restore:/dest" "$image" \
+  sh -c "cp /in/$file /dest/$file && chown 1000:1000 /dest/$file && chmod 0600 /dest/$file" >/dev/null || fail "placing the file in the host directory failed"
+volume_b="collector-backup-smoke-b-$tag"
+volumes+=("$volume_b")
+"$cli" volume create "$volume_b" >/dev/null
+restored="$("$cli" run --rm -u 1000 ${run_flags[@]+"${run_flags[@]}"} -v "$volume_b:/rails/storage" -v "$work/restore:/backups:ro" -e SECRET_KEY_BASE_DUMMY=1 \
+  "$restore_image" bin/rails "backup:restore[/backups/$file]" 2>&1)" || fail "backup:restore (host directory) exited $?:"$'\n'"$restored"
+grep -q "^Restored $file into /rails/storage\." <<<"$restored" || fail "backup:restore didn't say it restored; it printed:"$'\n'"$restored"
+grep -q "it holds 1 account, 1 user and 1 lot\." <<<"$restored" || fail "backup:restore's counts are not the seeded instance's:"$'\n'"$restored"
+
+echo "== start the second instance under a different SECRET_KEY_BASE (AC-2.3, AC-4.2)"
+b="backup-smoke-b-$tag"
+start "$b" "$volume_b" "a-different-secret-of-the-second-instance-0002" "$restore_image"
+verify_restored "$b" "$PORT" b
+
+echo "== restore the copied-in way: create, cp, a root chown one-off, and no secret at all (decision 4)"
+volume_c="collector-backup-smoke-c-$tag"
+volumes+=("$volume_c")
+holder="backup-smoke-holder-$tag"
+containers+=("$holder")
+"$cli" create --name "$holder" -v "$volume_c:/rails/storage" "$restore_image" >/dev/null
+"$cli" cp "$work/out/$file" "$holder:/rails/storage/$file"
+"$cli" rm -f "$holder" >/dev/null
+"$cli" run --rm -u 0 -v "$volume_c:/rails/storage" "$restore_image" chown 1000:1000 "/rails/storage/$file" >/dev/null || fail "the root chown one-off failed"
+restored="$("$cli" run --rm -u 1000 ${run_flags[@]+"${run_flags[@]}"} -v "$volume_c:/rails/storage" "$restore_image" bin/rails "backup:restore[/rails/storage/$file]" 2>&1)" \
+  || fail "backup:restore (copied in) exited $?:"$'\n'"$restored"
+grep -q "^Restored $file into /rails/storage\." <<<"$restored" || fail "backup:restore (copied in) didn't say it restored:"$'\n'"$restored"
+c="backup-smoke-c-$tag"
+start "$c" "$volume_c" "a-third-secret-of-the-third-instance-000003" "$restore_image"
+verify_restored "$c" "$PORT" c
+
+echo "OK: ${image} was backed up and restored into ${restore_image} the documented ways"
