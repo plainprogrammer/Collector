@@ -456,7 +456,7 @@ docker cp collector-backup-20261021T142100Z.tar.gz collector-restore:/rails/stor
 docker rm collector-restore
 docker run --rm -u 0 -v collector_collector_storage:/rails/storage ghcr.io/plainprogrammer/collector:0.1.0 \
   chown 1000:1000 /rails/storage/collector-backup-20261021T142100Z.tar.gz
-docker run --rm -u 1000 -v collector_collector_storage:/rails/storage ghcr.io/plainprogrammer/collector:0.1.0 \
+docker run --rm -u 1000 -v collector_collector_storage:/rails/storage -e SECRET_KEY_BASE_DUMMY=1 ghcr.io/plainprogrammer/collector:0.1.0 \
   bin/rails "backup:restore[/rails/storage/collector-backup-20261021T142100Z.tar.gz]"
 ```
 

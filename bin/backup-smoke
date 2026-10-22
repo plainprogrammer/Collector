@@ -158,7 +158,7 @@ b="backup-smoke-b-$tag"
 start "$b" "$volume_b" "a-different-secret-of-the-second-instance-0002" "$restore_image"
 verify_restored "$b" "$PORT" b
 
-echo "== restore the copied-in way: create, cp, a root chown one-off, and no secret at all (decision 4)"
+echo "== restore the copied-in way: create, cp, a root chown one-off, and SECRET_KEY_BASE_DUMMY (decision 4)"
 volume_c="collector-backup-smoke-c-$tag"
 volumes+=("$volume_c")
 holder="backup-smoke-holder-$tag"
@@ -167,7 +167,7 @@ containers+=("$holder")
 "$cli" cp "$work/out/$file" "$holder:/rails/storage/$file"
 "$cli" rm -f "$holder" >/dev/null
 "$cli" run --rm -u 0 -v "$volume_c:/rails/storage" "$restore_image" chown 1000:1000 "/rails/storage/$file" >/dev/null || fail "the root chown one-off failed"
-restored="$("$cli" run --rm -u 1000 ${run_flags[@]+"${run_flags[@]}"} -v "$volume_c:/rails/storage" "$restore_image" bin/rails "backup:restore[/rails/storage/$file]" 2>&1)" \
+restored="$("$cli" run --rm -u 1000 ${run_flags[@]+"${run_flags[@]}"} -v "$volume_c:/rails/storage" -e SECRET_KEY_BASE_DUMMY=1 "$restore_image" bin/rails "backup:restore[/rails/storage/$file]" 2>&1)" \
   || fail "backup:restore (copied in) exited $?:"$'\n'"$restored"
 grep -q "^Restored $file into /rails/storage\." <<<"$restored" || fail "backup:restore (copied in) didn't say it restored:"$'\n'"$restored"
 c="backup-smoke-c-$tag"
