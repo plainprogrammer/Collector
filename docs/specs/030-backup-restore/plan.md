@@ -1,8 +1,8 @@
 # Implementation Plan: Back Up and Restore an Instance
 
 **Spec:** docs/specs/030-backup-restore/spec.md (v1.2.1, Approved by the maintainer on 2026-10-21)
-**Status:** Draft revision 2, awaiting the maintainer's approval at the plan gate. Written without running anything: it was traced against the files it edits and the gem sources (`research.md`). Revised after the independent read-only Opus review (NEEDS REVISION: 1 critical, 3 major, 13 minor) and the maintainer's rulings of 2026-10-21; every finding, its fix and the rulings are in [plan-review.md](plan-review.md). The revised plan has not been reviewed again.
-**Decisions:** docs/adr/0024-backup-with-vacuum-into.md (Proposed, written with this plan); ADRs 0016, 0017, 0019, 0020, 0022 apply
+**Status:** Approved by the maintainer on 2026-10-21, after two independent read-only reviews (Opus: NEEDS REVISION, 1 critical, 3 major, 13 minor; Sonnet: APPROVE WITH NITS, 4 minor) with the second review's nits folded in. The maintainer accepted ADR 0024 (its Status changes in Phase 8, step 8.5) and chose Sonnet for execution. Written without running anything: it was traced against the files it edits and the gem sources (`research.md`). Every finding, its fix and the rulings are in [plan-review.md](plan-review.md).
+**Decisions:** docs/adr/0024-backup-with-vacuum-into.md (Proposed, written with this plan; accepted by the maintainer 2026-10-21, status changed in Phase 8); ADRs 0016, 0017, 0019, 0020, 0022 apply
 **Created:** 2026-10-21 (on `d67554b`, spec 1.2.0, then the approval commit; `origin/main` at `acb6e3c`)
 **Supporting:** [data-model.md](data-model.md), [contracts/tasks.md](contracts/tasks.md), [contracts/archive.md](contracts/archive.md), [research.md](research.md), [plan-review.md](plan-review.md), [issue-art-index-ready.md](issue-art-index-ready.md)
 
@@ -135,7 +135,7 @@ Every criterion, requirement and decision → its phase → its first failing te
 | AC-6.1 | 7 | reading (both links resolve) |
 | AC-6.2 | 5 | `backup_guards_spec` "has no route, controller or view named for a backup…" |
 | FR-1 | 3 | `create_spec` (all) |
-| FR-2 | 1, 4 | `archive_spec` (including the `on_manifest` callback); `restore_spec` (the order is the order of the examples' refusals: volume, kind, incomplete, version, **room, then checksum** (maintainer's ruling m3: the room is checked as soon as the manifest is parsed, inside `Archive.read`'s first pass), checks, schema) |
+| FR-2 | 1, 4 | `archive_spec` (including the `on_manifest` callback); `restore_spec` (the order is the order of the examples' refusals: volume, kind, incomplete, version, **room, then checksum** (maintainer's ruling m3: the room is checked as soon as the manifest is parsed, inside `Archive.read`'s first pass), checks, schema; a file damaged after its manifest, on a volume without room, is refused for the room: ruling m3) |
 | FR-3 | 4 | `restore_spec` "places the snapshot…" compares every other table; Phase 4 step 4.5 |
 | FR-4 | 0, 3, 4 | `refusal_spec`; `run_spec` "prints a system error as two plain lines…"; every refusal example |
 | FR-5 | 5 | `backup_guards_spec` "keeps core code free of any collectible…" |
@@ -216,7 +216,7 @@ RSpec.describe Collector::Backup, ".run", :backup do
     expect([ out, status ]).to eq([ "", 1 ])
     expect(err.lines.size).to eq(2)
     expect(err.lines.first).to eq("The command stopped: Permission denied.\n")
-    expect(err.lines.last).to start_with("Nothing was changed; check that")
+    expect(err.lines.last).to start_with("It left nothing half-made; check that")
     expect(err).not_to match(/Errno|EACCES|Exception|Error|\.rb:\d+/)
   end
 
@@ -547,8 +547,9 @@ module Collector
 
     # A task's body: a refusal prints its two sentences on stderr and exits 1, the only failure status (AC-3.8, FR-4). A
     # system or SQLite error that no command named (an unreadable file or an unwritable volume the commands didn't check,
-    # a failing disk) ends the same way: what stopped it, and that nothing was changed (each command removes its own
-    # temporary files and places nothing until every check has passed), never the exception class or its frames.
+    # a failing disk) ends the same way: what stopped it, and that it left nothing half-made (each command removes its own
+    # temporary files and places nothing until every check has passed; an error after the database was placed, such as
+    # the directory fsync, must not claim "nothing was changed"), never the exception class or its frames.
     def self.run
       yield
     rescue Refusal => refusal
@@ -556,7 +557,7 @@ module Collector
       exit 1
     rescue SystemCallError, SQLite3::Exception => error
       warn "The command stopped: #{stopped_text(error)}.",
-        "Nothing was changed; check that the directories and files involved are readable and writable by the user Collector runs as (uid #{Process.uid}) and have room, then run it again."
+        "It left nothing half-made; check that the directories and files involved are readable and writable by the user Collector runs as (uid #{Process.uid}) and have room, then run it again."
       exit 1
     end
 
@@ -1964,8 +1965,8 @@ RSpec.describe Collector::Backup::Restore, :backup, :committed do
   let(:volume) { scratch("volume") }
   let!(:seed) { seed_instance }
 
-  # A refusal that changes nothing in the volume and reads as two plain sentences (AC-3.8): each starts with a capital or
-  # with the file's name (collector-backup-….tar.gz, note.txt) and ends with a full stop.
+  # A refusal that changes nothing in the volume and reads as two plain sentences (AC-3.8): each starts with a capital, a path
+  # or the file's name (collector-backup-….tar.gz, note.txt) and ends with a full stop.
   def expect_refused(path, problem, advice = nil)
     before = checksums(volume)
     refusal = refusal_of { restore_backup(path, volume:) }
@@ -1973,7 +1974,7 @@ RSpec.describe Collector::Backup::Restore, :backup, :committed do
     expect(refusal&.problem).to eq(problem)
     expect(refusal.advice).to eq(advice) if advice
     [ refusal.problem, refusal.advice ].each do |sentence|
-      expect(sentence).to match(/\A\S.*\.\z/)
+      expect(sentence).to match(/\A(?:[A-Z]|\/|collector-backup-|[\w.-]+\.(?:gz|txt|json) ).*\.\z/)
       expect(sentence).not_to match(/Exception|Error|Collector::|SQLite3|\.rb\b/)
     end
     expect(checksums(volume)).to eq(before)
@@ -2706,7 +2707,7 @@ Add to `spec/backup_guards_spec.rb` (AC-6.2 and FR-5):
 
 - [ ] **Step 5.5: Commit** `test(backup): prove the restored instance, the upgrade, the boot and the guards` (stage the six spec files and the helper).
 
-**Phase 5 verification:** AC-2.2, AC-2.4, AC-2.8, AC-2.9, AC-2.10, AC-3.6 and AC-6.2 each have a passing example; the boot examples answer D4: with `SECRET_KEY_BASE_DUMMY` the application boots, without a secret it doesn't, and the tasks run in production with neither and depend on no `:environment`. On a machine with a `config/master.key` the two boot examples are skipped; `verification.md` records the CI run where they ran (or the run in an environment without a key).
+**Phase 5 verification:** AC-2.2, AC-2.4, AC-2.8, AC-2.9, AC-2.10, AC-3.6 and AC-6.2 each have a passing example; the boot examples answer D4: with `SECRET_KEY_BASE_DUMMY` the application boots, without a secret it doesn't, and the tasks run in production with neither and depend on no `:environment`. On a machine with a `config/master.key` the two boot examples are skipped; `verification.md` records the CI run where they ran (or the run in an environment without a key). Those two examples first run in the first CI run, after Phase 6; an unexpected result there (the control not failing on `secret_key_base`, the dummy not booting) is a reason to reopen research.md 8's row for the control boot, not to loosen the example.
 
 ---
 
@@ -3316,7 +3317,7 @@ end
 - [ ] **Step 8.3: Write `verification.md`** with: a table of every AC and FR with its evidence (the example's file and name, the document and the line read, or the CI run), the Phase 7 reading, the Phase 4 FR-8 trace, the measurements (with the seeded-database sentence of step 8.2), the first CI run's link (AC-5.2, AC-5.3, AC-2.3, AC-4.2), and the `bin/ci` result with the seed, run twice. Keep it factual: what was run and what it printed. Also record these notes, each with its reason:
   - **AC-3.6's construction** (maintainer's ruling m6, 2026-10-21, no spec change): the criterion says the older snapshot is "built in the spec by migrating a scratch database to that version"; `spec/backup_upgrade_spec.rb` instead seeds an instance, backs it up and rolls the newest migration back on the copy, because that keeps the seeded rows, which the criterion's "no row is lost" needs, and an empty scratch database proves nothing about rows. It relies on the newest migration being reversible (a rule: `.claude/rules/sqlite-and-migrations.md`); the example fails with that message otherwise.
   - **The D4 confirmation** (plan-review M1): which examples ran and where; the two boot examples are skipped on a machine with a `config/master.key`, so cite the CI run (or an environment without a key) where they ran.
-  - **FR-2's order** (ruling m3): the room is checked as soon as the manifest is read, inside `Archive.read`'s first pass, so a cut-short file on a volume without room is refused for the room (a cut-short file is told apart only by reading it to its end); every other pair of FR-2's checks is in FR-2's order.
+  - **FR-2's order** (ruling m3): the room is checked as soon as the manifest is read, inside `Archive.read`'s first pass, so a file damaged after its manifest (cut short, a wrong gzip CRC, trailing damage, a snapshot that doesn't match its checksum) on a volume without room is refused for the room (such a file is told apart only by reading it to its end); every other pair of FR-2's checks is in FR-2's order.
   - **Kamal's volume** (ruling m5): decision 4's "stated addition" is read as the `backup` alias live plus the documents' `install -d -o 1000 -g 1000` step and the volume line to uncomment, which stays commented in the stock file.
 
 - [ ] **Step 8.4: The maintainer's step (AC-5.6, decision 14)**, done by the maintainer, not an agent, on their NAS, once, before the spec ships: build the image from this branch (`docker build -t collector:local .`; a released image has no `backup:create`), run the NAS instance (Compose) on it with `COLLECTOR_IMAGE=collector:local`, back it up, restore that file onto a fresh Compose project of the same image the README's way, start it, sign in, and compare the printed counts and an export of each (the same collection, `docs/export-format/README.md`). The steps, counts, timings and result go into `verification.md` under `## NAS restore (AC-5.6)`.
@@ -3354,7 +3355,7 @@ A new operator reads only the README's "Backup and restore" section and, on a sc
 
 1. **The tasks don't depend on `:environment`** (and so the library lives in `lib/collector/backup/`, required by path). The spec asks the plan to confirm the secret question (D4) and says "a rake task"; this answers it by not booting. It also makes FR-8 structural. The ruled `SECRET_KEY_BASE_DUMMY=1` stays in the documented one-off and the smoke script.
 2. **The release's migrations are read as file names** (`db/migrate/**/[0-9]*_*.rb`), not through `ActiveRecord::MigrationContext`, whose `#migrations` is `:nodoc:` and whose constructor evaluates a connection pool. FR-8 says "from the migration files without connecting"; this is that.
-3. **The restore reads the archive twice**: once to classify, check the room and check the checksum (writing nothing, so a refusal changes nothing), once to extract. FR-2 says the checks come before any write and lists the temporary file after them; two passes are the cost of that order. The room is checked from `Archive.read`'s `on_manifest` callback, as soon as the manifest is parsed, because FR-2 lists it before the checksum and the checksum is only known at the end of the first pass (maintainer's ruling m3).
+3. **The restore reads the archive twice**: once to classify, check the room and check the checksum (writing nothing, so a refusal changes nothing), once to extract. FR-2 says the checks come before any write and lists the temporary file after them; two passes are the cost of that order. The room is checked from `Archive.read`'s `on_manifest` callback, as soon as the manifest is parsed, because FR-2 lists it before the checksum and the checksum is only known at the end of the first pass (maintainer's ruling m3). The residue: a file damaged after its manifest (cut short, a wrong gzip CRC, trailing damage, or a snapshot whose checksum doesn't match) on a volume without room is refused for the room, because it is told apart only by reading it to its end, which comes after the room check; "incomplete" therefore follows the room for that case, a departure from FR-2's order that the ruling accepted.
 4. **`compose.yaml` is unchanged.** The Compose documents use `/tmp` plus `cp`, or a `run -v` one-off with a host directory; adding a bind mount would need a path or a variable, and the spec adds no setting (hosted-door rule 3). `config/deploy.yml` gets the `backup` alias live and the volume line commented out: the alias works once the directory is mounted, and a live placeholder mount that docker would create root-owned would break the deploy's backups for everyone who doesn't read the README. **Reading of decision 4's "stated addition"** (maintainer's ruling m5, 2026-10-21): the addition is the alias plus the documents' steps (`install -d -o 1000 -g 1000 /srv/collector-backups` on the server, then uncomment the volume line and deploy); the line itself stays commented in the stock file.
 5. **The older snapshot of AC-3.6 is made by rolling back the newest migration** on a copy of a seeded backup, in a child process with `SCHEMA` pointing away from `db/schema.rb`, instead of migrating an empty scratch database up to N-1: it keeps rows, which "no row is lost" needs. It relies on every migration being reversible, which `.claude/rules/sqlite-and-migrations.md` requires; an irreversible newest migration fails the example with that message. The maintainer accepted this construction for AC-3.6 on 2026-10-21 (ruling m6, no spec change); `verification.md` records the departure and its reason (step 8.3).
 

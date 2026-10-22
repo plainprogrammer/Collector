@@ -50,3 +50,18 @@ None. Every finding was fixed as the review proposed or as the maintainer ruled.
 - Everything above was traced, not run. The first failing runs most likely to move something are in research.md §8: the control boot's message (`secret_key_base`), the sweep's sidecar pattern, and `Zeitwerk` with the ignore list.
 - `spec/lib/collector/backup/run_spec.rb` is a new Phase 0 file; it uses `captured_streams` from the support layer.
 - The two boot examples (control, dummy) are skipped on a machine with `config/master.key`; run them in CI or a clean checkout, and cite that run in `verification.md`.
+
+## Second review (Sonnet, read-only, 2026-10-21)
+
+**Verdict: APPROVE WITH NITS**: 0 critical, 0 major, 4 minor, all new. Every finding of the first review was confirmed fixed and the four rulings carried as written. The four nits are folded into the plan below.
+
+| # | Nit | Resolution |
+|---|---|---|
+| N1 | The two boot examples (control, dummy) are skipped on a machine with `config/master.key`, so Phase 5's "green" for them is deferred to CI | **Folded in.** Phase 5's verification now says they first run in the first CI run, after Phase 6, and that an unexpected result there reopens research.md 8's row for the control boot rather than loosening the example. |
+| N2 | The catch-all's second line says "Nothing was changed", which is false for an error after the database was placed (the directory fsync) | **Folded in.** The line is now "It left nothing half-made; check that …"; the `run_spec` example, `Backup.run`'s comment and contracts/tasks.md ("An error nothing names") follow. The refusals keep "Nothing was changed", which is true for them. |
+| N3 | `expect_refused`'s `/\A\S.*\.\z/` accepts any non-space start | **Folded in.** The check keeps the capital rule and allows a path or a file name: `/\A(?:[A-Z]|\/|collector-backup-|[\w.-]+\.(?:gz|txt|json) ).*\.\z/`, full stop unchanged; its comment says so. |
+| N4 | The m3 residue is wider than its wording and missing from the Requirement Map's FR-2 row and from choice 3 | **Folded in.** The FR-2 row, choice 3 and step 8.3's note name the wider set (cut short, wrong gzip CRC, trailing damage, a snapshot that doesn't match its checksum) refused for the room on a volume without one; `verification.md` carries the list. |
+
+## Approval
+
+The maintainer approved the plan on 2026-10-21 after its two reviews, with the four nits folded in, accepted ADR 0024, and chose Sonnet for execution. ADR 0024's Status changes to Accepted in Phase 8, step 8.5, where the plan puts it.

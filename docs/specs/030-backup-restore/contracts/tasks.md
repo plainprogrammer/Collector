@@ -64,7 +64,7 @@ Both run in the operator's shell inside the Collector container (or a one-off of
 
 ### An error nothing names (both tasks)
 
-A `SystemCallError` or `SQLite3::Exception` that no command rescued (`Errno::EACCES` from a directory ACL, a failing disk) is caught by `Backup.run` and printed as two lines, exit 1, with no class and no frames: "The command stopped: <the error's own words, without Ruby's `@ rb_sysopen - path` tail>." / "Nothing was changed; check that the directories and files involved are readable and writable by the user Collector runs as (uid <n>) and have room, then run it again." Each command removes its own temporary files and places nothing until every check has passed, so "nothing was changed" holds.
+A `SystemCallError` or `SQLite3::Exception` that no command rescued (`Errno::EACCES` from a directory ACL, a failing disk) is caught by `Backup.run` and printed as two lines, exit 1, with no class and no frames: "The command stopped: <the error's own words, without Ruby's `@ rb_sysopen - path` tail>." / "It left nothing half-made; check that the directories and files involved are readable and writable by the user Collector runs as (uid <n>) and have room, then run it again." Each command removes its own temporary files and places nothing until every check has passed, so it leaves nothing half-made; the line does not say "nothing was changed", because an error after the database was placed (the directory fsync) is still possible.
 
 Every refusal leaves the volume as it was (AC-2.5, AC-2.6): checked by checksum of every file before and after, and by the absence of `production.sqlite3` and its sidecars.
 
