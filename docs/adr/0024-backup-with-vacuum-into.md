@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed (2026-10-21). Written with the plan for spec 030; the maintainer ruled decisions 1 to 3 of the spec on 2026-10-21 (and confirmed 4 to 15) when approving spec 030 1.2.1, and accepts this ADR with the plan. It was numbered 0024 because 0023 is taken by the unmerged `029-manage-locations` branch (ADR 0023, locations make export-format version 2); a branch that merges first takes the number, and this ADR takes the next free one when it is rebased.
+Accepted (2026-10-21). Written with the plan for spec 030; the maintainer ruled decisions 1 to 3 of the spec on 2026-10-21 (and confirmed 4 to 15) when approving spec 030 1.2.1, and accepted this ADR with the plan on 2026-10-21. It was numbered 0024 because 0023 is taken by the unmerged `029-manage-locations` branch (ADR 0023, locations make export-format version 2); a branch that merges first takes the number, and this ADR takes the next free one when it is rebased.
 
 **Date:** 2026-10-21
 **Feature:** 030-backup-restore
