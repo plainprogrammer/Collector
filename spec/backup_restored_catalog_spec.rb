@@ -8,7 +8,7 @@ RSpec.describe "a restored instance's catalog page and stored import", :backup, 
   def page = Nokogiri::HTML5(response.body)
 
   it "reads a refresh recorded as running as interrupted, and lets a refresh start (AC-2.9)", :aggregate_failures do
-    create(:catalog_refresh_run, :running, stage: "sync", started_at: 1.hour.ago, heartbeat_at: 20.minutes.ago, job_id: "job-1")
+    create(:catalog_refresh_run, :running, stage: "sync", started_at: 1.hour.ago, heartbeat_at: 5.minutes.ago, job_id: "job-1") # older than JOB_ENDED_GRACE, younger than STALL_AFTER: only the missing job reads it as interrupted
     restore_backup(create_backup, volume:)
 
     with_restored_instance(restored) do
