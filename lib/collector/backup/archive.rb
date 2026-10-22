@@ -8,6 +8,7 @@ module Collector
       MANIFEST = "manifest.json".freeze
       SNAPSHOT = "primary.sqlite3".freeze
       GZIP_MAGIC = "\x1F\x8B".b.freeze
+      GZIP_HEADER_BYTES = 10 # the fixed part of a gzip header; a file shorter than this was cut inside it
       BLOCK = 512
       CHUNK = 1024 * 1024
       MANIFEST_LIMIT = 64 * 1024
@@ -44,7 +45,8 @@ module Collector
           gzip = begin
             Zlib::GzipReader.new(file)
           rescue Zlib::Error
-            raise not_a_backup(file, name)
+            # It starts like gzip: a file that ends inside the 10-byte header claims to be one and stops (contracts/archive.md).
+            raise(file.size < GZIP_HEADER_BYTES ? incomplete(name) : not_a_backup(file, name))
           end
           read_entries(gzip, name, allow_partial:, on_manifest:, &sink)
         end

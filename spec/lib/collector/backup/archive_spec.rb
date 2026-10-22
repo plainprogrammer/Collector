@@ -51,6 +51,14 @@ RSpec.describe Collector::Backup::Archive, :backup do
       expect(refusal.advice).to eq("Take the backup again, or copy it again.")
     end
 
+    it "calls a file cut inside the gzip header incomplete, not something else (AC-3.1)", :aggregate_failures do
+      [ 2, 5, 9 ].each do |bytes|
+        cut = scratch("head-#{bytes}").join(archive.basename).tap { it.binwrite(archive.binread[0, bytes]) }
+
+        expect(refusal_of { described_class.read(cut) }.problem).to eq("#{cut.basename} is incomplete; it was cut short or is still being written.")
+      end
+    end
+
     it "calls a file whose gzip checksum fails incomplete (AC-3.1)" do
       damaged = archive.binread
       damaged.setbyte(-8, damaged.getbyte(-8) ^ 0xFF) # the gzip footer's CRC
