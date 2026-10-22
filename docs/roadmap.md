@@ -28,7 +28,7 @@ Foundation principle 2. Spec 004 named export and import as the next priority; s
 
 The design system's "where is it" ([docs/design-system/README.md](design-system/README.md)). The comics research findings feed this design if the research has run by then; it is deferred (ruling 26), and locations don't wait for it.
 
-9. [#44](https://github.com/plainprogrammer/Collector/issues/44) Manage locations (create, rename, remove). **Done 2026-10-21:** [spec 029](specs/029-manage-locations/spec.md), [ADR 0023](adr/0023-locations-make-export-format-version-2.md): locations make the export format version 2 (the pull request is recorded here when it merges).
+9. [#44](https://github.com/plainprogrammer/Collector/issues/44) Manage locations (create, rename, remove). **Built 2026-10-21, done when its pull request merges:** [spec 029](specs/029-manage-locations/spec.md), [ADR 0023](adr/0023-locations-make-export-format-version-2.md): locations make the export format version 2 (the pull request is recorded here when it merges).
 10. [#45](https://github.com/plainprogrammer/Collector/issues/45) Put a lot in a location. **Expected ADR:** how a lot sits in more than one place ([ADR 0019](adr/0019-lot-as-the-unit-of-ownership.md) names the question). It raises the export format to version 3 (locations alone made version 2, [ADR 0023](adr/0023-locations-make-export-format-version-2.md), superseding [ADR 0020](adr/0020-export-format.md)'s consequence).
 11. [#46](https://github.com/plainprogrammer/Collector/issues/46) Show the location on tiles and rows.
 12. [#47](https://github.com/plainprogrammer/Collector/issues/47) Filter the collection by location.
