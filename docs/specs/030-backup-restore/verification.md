@@ -10,7 +10,7 @@
 - **AC-5.6, the maintainer's NAS restore, is OWED.** It is the maintainer's step (plan step 8.4), not an agent's. Nothing below claims it.
 - **No CI run exists yet** (nothing is pushed). The second architecture (amd64; the local smoke test ran on linux/arm64) and the boot examples in a keyless environment have their further evidence in the first CI run; see the AC-5.2, AC-5.3, AC-2.3 and AC-4.2 rows and the D4 note.
 - `bin/ci` is run by the coordinator; its result goes under `## bin/ci`.
-- The implementation review (`sdd-review` Mode B) is not part of this file yet.
+- The implementation review (`sdd-review` Mode B) is recorded at the end of this file.
 
 Evidence cells name a spec file and the example's wording (all under `spec/` unless a path says otherwise), a document location, or a run. "restore_spec" is `spec/lib/collector/backup/restore_spec.rb`, "create_spec" is `spec/lib/collector/backup/create_spec.rb`, "archive_spec", "snapshot_spec", "manifest_spec", "run_spec", "refusal_spec" and "databases_spec" are beside them; "create rake spec" and "restore rake spec" are `spec/tasks/backup_create_rake_spec.rb` and `spec/tasks/backup_restore_rake_spec.rb`.
 
@@ -19,8 +19,8 @@ Evidence cells name a spec file and the example's wording (all under `spec/` unl
 | Item | Evidence |
 |---|---|
 | AC-1.1 | create_spec "writes one file named by the UTC second and returns its facts (AC-1.1)"; create rake spec "prints the file's path, size, schema version, counts and time, and exits 0 (AC-1.1)" |
-| AC-1.2 | create_spec, `describe "while the app writes (AC-1.2, AC-1.3)"`, "holds both rows of every pair or neither, passes its checks, and makes every write complete within the busy timeout" |
-| AC-1.3 | The same example (the app's own write path and the pair writer; every write completes within the busy timeout). Also measured on a large database: Measurements, "Writes during the backup" |
+| AC-1.2 | create_spec, `describe "while the app writes (AC-1.2, AC-1.3)"`, "holds both rows of every pair or neither, passes its checks, and lets writes commit while VACUUM INTO runs" (writers in two child processes; commits counted between the `:snapshot_starting` and `:snapshot_written` checkpoints, review minor 1) |
+| AC-1.3 | The same example (a pair writer and a lot writer in child processes; no write fails, none waits as long as the busy timeout, and commits land inside the `VACUUM INTO`'s own window). Also measured on a large database: Measurements, "Writes during the backup" |
 | AC-1.4 | archive_spec `.write` "makes a private gzip'd tar of manifest.json then primary.sqlite3 and nothing else that the system tar reads (AC-1.4)"; snapshot_spec `#rollback_journal!` "turns a WAL file into a rollback-journal file with no sidecar, whatever its header said first (AC-1.4)"; create_spec "holds the manifest and a rollback-journal snapshot that agrees with it, and no sidecar (AC-1.4)"; manifest_spec "writes exactly the six members of AC-1.4 and reads them back" |
 | AC-1.5 | snapshot_spec `.take` "calls a source with a page it can't read damaged (AC-1.5)"; create_spec "refuses a damaged database with a plain message and leaves nothing behind (AC-1.5)" |
 | AC-1.6 | create_spec "leaves at worst a private .partial file when it is killed with the snapshot written (AC-1.6)" and "removes a .partial file more than a day old on the next run and leaves a younger one (AC-1.6)" |
@@ -104,7 +104,7 @@ Checked against the code: lib/collector/backup.rb, backup/{archive,manifest,crea
 
 | Criterion | What was read / checked |
 |---|---|
-| AC-5.1 | README "Backup and restore": Compose, Podman (`podman cp collector_web_1`, name lookup via `podman ps`), Kamal (alias, directory created and owned by uid 1000 before the commented volume line is enabled, scp); copy-in both ways (host directory chowned, mounted :ro; create + cp + `-u 0` chown one-off) with `:U` / `--userns=keep-id` for rootless Podman; Kamal restore sequence (`server bootstrap`, install -d, scp, plain `docker run` of the exact release over ssh, `kamal setup --skip-push --version`) with the "exact tag" and "hasn't been run through Kamal itself" sentences; comma and quoting; what to keep outside; schedule and cron line at 02:17 avoiding Monday 03:00-05:00; after-restore checklist; which release to restore onto; what a backup doesn't hold; sensitivity; alternatives B, C, D untested; link to the layout and manual recovery. Every container command matches bin/backup-smoke apart from volume names, image tag and mounts (smoke: `-u 1000`, `-v dir:/backups:ro`, `-e SECRET_KEY_BASE_DUMMY=1`, `bin/rails "backup:restore[/backups/<file>]"`; copy-in: create, cp, rm, `-u 0` chown, `-u 1000` restore with no secret). |
+| AC-5.1 | README "Backup and restore": Compose, Podman (`podman cp collector_web_1`, name lookup via `podman ps`), Kamal (alias, directory created and owned by uid 1000 before the commented volume line is enabled, scp); copy-in both ways (host directory chowned, mounted :ro; create + cp + `-u 0` chown one-off) with `:U` / `--userns=keep-id` for rootless Podman; Kamal restore sequence (`server bootstrap`, install -d, scp, plain `docker run` of the exact release over ssh, `kamal setup --skip-push --version`) with the "exact tag" and "hasn't been run through Kamal itself" sentences; comma and quoting; what to keep outside; schedule and cron line at 02:17 avoiding Monday 03:00-05:00; after-restore checklist; which release to restore onto; what a backup doesn't hold; sensitivity; alternatives B, C, D untested; link to the layout and manual recovery. Every container command matches bin/backup-smoke apart from volume names, image tag and mounts (smoke: `-u 1000`, `-v dir:/backups:ro`, `-e SECRET_KEY_BASE_DUMMY=1`, `bin/rails "backup:restore[/backups/<file>]"`; copy-in: create, cp, rm, `-u 0` chown, `-u 1000` restore with `-e SECRET_KEY_BASE_DUMMY=1`). |
 | AC-4.4 | README "What to keep outside the backup": SECRET_KEY_BASE, RAILS_MASTER_KEY, COLLECTOR_* settings, compose.yaml / deploy.yml; "a lost or changed secret costs only the signed-in sessions". Matches the code (no secret in the archive; `end_sessions!`). |
 | AC-6.1 | README "Your data" ends with a pointer to #backup-and-restore; "Backup and restore" has the comparison table (decision 11) and links back to #your-data. Anchors exist (`## Backup and restore`, `## Your data`). docs/backup-restore.md links to ../README.md#backup-and-restore; the README's last paragraph links to docs/backup-restore.md#manual-recovery-with-tar-and-sqlite3 (heading exists). Link targets (ADR 0024, spec, export-format/README.md) exist. |
 | AC-5.7 | docs/releasing.md step 5 (old 5 renumbered 6) and an Upgrade-notes entry at the top. NAS restore result (AC-5.6) is left owed for Phase 8 / verification.md. |
@@ -134,7 +134,7 @@ Steps printed:
 2. Back up while `/up` is polled (AC-5.2).
 3. Restore from a read-only host directory owned by uid 1000, with `SECRET_KEY_BASE_DUMMY`.
 4. Start a second instance under a different `SECRET_KEY_BASE` (AC-2.3, AC-4.2).
-5. Copied-in restore, with a root `chown` one-off and no secret.
+5. Copied-in restore, with a root `chown` one-off and `SECRET_KEY_BASE_DUMMY` (before the review's fix 4 this pass ran with no variable at all).
 
 CI on amd64 and arm64 is the further evidence. No CI run exists yet (nothing is pushed).
 
@@ -194,3 +194,35 @@ Where the steps are carried: `docs/releasing.md` step 5 carries the recurring re
 | Backup time / restore time | |
 | Export comparison | |
 | Result | |
+
+## Implementation review
+
+SPEC-ALIGNED (independent Sonnet review 2026-10-22, after fixes)
+
+Independent `sdd-review` Mode B by Sonnet 5.5 at `def47ed` against spec 1.2.1: SPEC-ALIGNED, 0 critical, 0 major, 7 minor. Everything below was fixed or ruled, test first, one commit each.
+
+| Finding | Resolution | Commit |
+|---|---|---|
+| Minor 1, AC-1.2/1.3 example too weak | Writers are two child processes (pairs, lots) with their own connections; `Create` gets a `:snapshot_starting` checkpoint and the example counts commits finishing between it and `:snapshot_written` (about 1,900 in four 40 ms windows on the first run; a blocking backup would give 0). `script/backup/measure.rb` keeps its thread writer: the recorded measurement stands and was not re-run (ruling Q1 names the example). | b5a740b |
+| Minor 2, AC-2.9 passed by the stall rule | Heartbeat 5 minutes old: past `JOB_ENDED_GRACE`, inside `STALL_AFTER`, so only the missing job reads "Interrupted". | 0c33c31 |
+| Minor 3, FR-2 room-before-incomplete residue | Informational (ruling m3). Residue: a file cut short, with a bad gzip CRC or with trailing damage, on a volume without room is refused for the room, not as incomplete (note 3 above). The spec is not edited. | none |
+| Minor 4, copied-in pass without `SECRET_KEY_BASE_DUMMY` | Added to `bin/backup-smoke`'s copied-in pass and the README's copied-in command (ruling Q2). | 2c32a90 |
+| Minor 5, no guard for foreign keys to `sessions` | `spec/backup_guards_spec.rb`: every such key must cascade on delete, naming decision 3, with a negative control (ruling Q5). | 0288c3b |
+| Minor 6, 2–9-byte prefix called "not a backup" | A gzip-magic file shorter than the 10-byte header is incomplete (`archive_spec`: 2, 5, 9 bytes). | 6a21b5a |
+| Minor 7, `Backup.remove` wider than FR-6 | Suffixes are an argument; the restore passes `""` and `-journal` only (`spec/lib/collector/backup/remove_spec.rb`). | d69036b |
+
+Rulings (maintainer, 2026-10-22):
+
+- Q1 and Q2: as above.
+- Q3: the art-index issue is filed as #122; `issue-art-index-ready.md` is now a one-line pointer to it (897560f). The approved spec and plan are untouched.
+- Q4: ADR 0024 keeps its number (029, PR #123, holds 0023).
+- Q5: as above.
+- Q6: the PR's CI is the amd64 evidence; nothing was done here.
+
+The review's TOCTOU judgement (Security review note above) agrees with the executor: not exploitable beyond the operator's trust boundary. A later automated scan questioned the narrower `RESTORE_SUFFIXES`; it does not apply. FR-6 and ruling m7 name only the `-journal`, the temporary file is put in rollback-journal mode, and SQLite ignores (and on open removes) a stray `-wal` or `-shm` beside such a file, as the first draft of the Minor 7 example showed.
+
+Results after the fixes (2026-10-22, the Gemfile.lock platform change uncommitted):
+
+- `bin/ci`: `1865 examples, 0 failures, 1 pending` (seed 121); `✅ Tests: RSpec passed in 3m3.14s`; `✅ Continuous Integration passed in 3m23.10s`. The pending example is the same `art_agreement_spec` as before.
+- `bin/backup-smoke`, run again locally with podman (linux/arm64) on an image built from a `git archive` of `897560f`: exit 0, last line `OK: localhost/collector:local was backed up and restored into localhost/collector:local the documented ways`, with the copied-in pass now carrying `SECRET_KEY_BASE_DUMMY`.
+- Still owed or unconfirmed: AC-5.6 (the maintainer's NAS restore) and the first CI run on amd64.
