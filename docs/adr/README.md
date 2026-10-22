@@ -54,7 +54,7 @@ Add a line here with each new ADR. All are Accepted unless the line says otherwi
 - [0020](0020-export-format.md): The export format is one versioned JSON document keyed by source ids
 - [0021](0021-export-format-rules-in-the-app.md): The app checks export files with `json_schemer` and its own copy of the schema
 - [0022](0022-stored-import-upload-retention.md): A previewed import file is stored for an hour, privately, and swept
-- [0023](0023-locations-make-export-format-version-2.md): Locations make the export format version 2; putting lots in them makes version 3 (proposed)
+- [0023](0023-locations-make-export-format-version-2.md): Locations make the export format version 2; putting lots in them makes version 3
 
 ### Expected
 

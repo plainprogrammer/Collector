@@ -49,6 +49,7 @@ is safe and is how `latest` is restored if something else overwrote it.
 
 Notes an operator needs when upgrading, newest first. `bin/docker-entrypoint` runs `bin/rails db:prepare` on boot, so every migration listed here runs unattended.
 
+- **Locations (spec 029).** One new migration, `locations`, runs on boot; it adds a table and changes nothing else. Exports written by this release are export format version 2 (they carry the collector's `locations`), and an earlier release refuses one as written by a newer version of Collector, so upgrade every instance an export is restored on before restoring. This release reads export files of version 1 and version 2 (a version 1 file leaves the account's locations as they are). Nothing is required of the operator.
 - **Applying an import (spec 028).** Two migrations run on boot: Active Storage's tables and `import_uploads`. The app now keeps a previewed import file under `storage/` (on the persistent volume) for at most an hour, one per account and at most 32 MB, and a recurring job (`config/recurring.yml`, every 15 minutes) removes expired ones; an orphaned file is removed within 25 minutes. Nothing is required of the operator. Active Storage's routes are now gated behind sign-in, and its direct-upload routes answer 404 (ADR 0022). The write transaction of an import is under 4 seconds for 50,000 lots on the development machine; on slower hardware a very large import may briefly hold other writes, so import while nothing else is writing.
 
 ## Going public (one time)

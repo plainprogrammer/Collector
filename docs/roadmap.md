@@ -28,8 +28,8 @@ Foundation principle 2. Spec 004 named export and import as the next priority; s
 
 The design system's "where is it" ([docs/design-system/README.md](design-system/README.md)). The comics research findings feed this design if the research has run by then; it is deferred (ruling 26), and locations don't wait for it.
 
-9. [#44](https://github.com/plainprogrammer/Collector/issues/44) Manage locations (create, rename, remove).
-10. [#45](https://github.com/plainprogrammer/Collector/issues/45) Put a lot in a location. **Expected ADR:** how a lot sits in more than one place ([ADR 0019](adr/0019-lot-as-the-unit-of-ownership.md) names the question). It raises the export format to version 2 ([ADR 0020](adr/0020-export-format.md)).
+9. [#44](https://github.com/plainprogrammer/Collector/issues/44) Manage locations (create, rename, remove). **Done 2026-10-21:** [spec 029](specs/029-manage-locations/spec.md), [ADR 0023](adr/0023-locations-make-export-format-version-2.md): locations make the export format version 2 (the pull request is recorded here when it merges).
+10. [#45](https://github.com/plainprogrammer/Collector/issues/45) Put a lot in a location. **Expected ADR:** how a lot sits in more than one place ([ADR 0019](adr/0019-lot-as-the-unit-of-ownership.md) names the question). It raises the export format to version 3 (locations alone made version 2, [ADR 0023](adr/0023-locations-make-export-format-version-2.md), superseding [ADR 0020](adr/0020-export-format.md)'s consequence).
 11. [#46](https://github.com/plainprogrammer/Collector/issues/46) Show the location on tiles and rows.
 12. [#47](https://github.com/plainprogrammer/Collector/issues/47) Filter the collection by location.
 13. [#48](https://github.com/plainprogrammer/Collector/issues/48) Move many lots at once (the "Move to…" deferred in spec 006).
@@ -166,3 +166,9 @@ Rulings by the maintainer. Later planning builds on these and doesn't ask them a
 | # | Question | Ruling |
 |---|---|---|
 | 33 | Does fading the tile of an unowned card fit Scryfall's image guidelines? | The fade goes. The card image is shown as supplied, with nothing over it, and an unowned tile carries a visible "Not owned" marker under the image. Chosen from four rendered looks at desktop and phone width in both themes ([#65](https://github.com/plainprogrammer/Collector/issues/65), [spec 021](specs/021-unowned-tile-marker/spec.md)). Whether the quantity badge on the image counts as a "stamp" under the same guideline is not ruled on. |
+
+### 2026-10-21: locations (spec 029)
+
+| # | Question | Ruling |
+|---|---|---|
+| 34 | Do locations make the export format version 2, as ruling 32 says? | Yes: ruling 32 stands for the locations list (the places themselves, [spec 029](specs/029-manage-locations/spec.md) decision 1, [ADR 0023](adr/0023-locations-make-export-format-version-2.md)). Putting a lot in a location (item 10) is a further change to data the collector owns and raises the format to version 3. |
