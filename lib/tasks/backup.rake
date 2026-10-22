@@ -11,4 +11,12 @@ namespace :backup do
       puts Collector::Backup::Create.new(directory:).call.report
     end
   end
+
+  desc %(Restore a backup onto a fresh volume, before Collector's first start: bin/rails "backup:restore[/backups/collector-backup-20261021T142100Z.tar.gz]")
+  task :restore, [ :file ] do |_task, args|
+    Collector::Backup.run do
+      file = Collector::Backup.argument(args, :file, 'bin/rails "backup:restore[/path/to/collector-backup.tar.gz]"')
+      puts Collector::Backup::Restore.new(file:).call.report
+    end
+  end
 end
