@@ -226,3 +226,7 @@ Results after the fixes (2026-10-22, the Gemfile.lock platform change uncommitte
 - `bin/ci`: `1865 examples, 0 failures, 1 pending` (seed 121); `✅ Tests: RSpec passed in 3m3.14s`; `✅ Continuous Integration passed in 3m23.10s`. The pending example is the same `art_agreement_spec` as before.
 - `bin/backup-smoke`, run again locally with podman (linux/arm64) on an image built from a `git archive` of `897560f`: exit 0, last line `OK: localhost/collector:local was backed up and restored into localhost/collector:local the documented ways`, with the copied-in pass now carrying `SECRET_KEY_BASE_DUMMY`.
 - Still owed or unconfirmed: AC-5.6 (the maintainer's NAS restore) and the first CI run on amd64.
+
+## Distillation
+
+`distill-feature` ran on 2026-10-22 before the pull request (`f9caae1`). Spec 030's areas are release and deploy and data portability, which have no area doc yet (#109, #108), so nothing was written to `docs/architecture/`. The spec supersedes nothing in a shipped spec. The index row's Plan is "retirement owed"; the plan is retired after the merge. The maintainer's NAS restore (AC-5.6) is still owed and is the spec's release check.
