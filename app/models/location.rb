@@ -28,12 +28,19 @@ class Location < ApplicationRecord
   def typed = @typed || name.to_s
 
   # Two requests that race to add one name leave one location and one clean error: the unique index refuses the
-  # second save, which answers false like a failed validation.
+  # second save, which answers false like a failed validation; save!, update! and create! raise RecordInvalid.
   def save(**)
     super
   rescue ActiveRecord::RecordNotUnique
     errors.add(:name, taken)
     false
+  end
+
+  def save!(**)
+    super
+  rescue ActiveRecord::RecordNotUnique
+    errors.add(:name, taken)
+    raise ActiveRecord::RecordInvalid, self
   end
 
   private

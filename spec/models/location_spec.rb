@@ -110,6 +110,18 @@ RSpec.describe Location, type: :model do
       expect(account.locations.count).to eq(1)
     end
 
+    it "raises RecordInvalid with the duplicate message from save!, update! and create! when the unique index refuses (race)", :aggregate_failures do
+      described_class.insert!({ account_id: account.id, name: "box", name_key: "box" }) # another request won the race
+      lost = account.locations.new(name: "Box")
+      renamed = account.locations.create!(name: "Other")
+      renamed.name = "Box"
+
+      expect { lost.save!(validate: false) }.to raise_error(ActiveRecord::RecordInvalid, /You already have a location called “Box”/)
+      expect { renamed.save!(validate: false) }.to raise_error(ActiveRecord::RecordInvalid, /You already have a location called “Box”/)
+      expect(reasons(lost)).to eq([ "You already have a location called “Box”." ])
+      expect(account.locations.pluck(:name)).to contain_exactly("box", "Other")
+    end
+
     it "refuses a name outside 1 to 60 characters, and an empty key, at the table", :aggregate_failures do
       expect { described_class.insert!({ account_id: account.id, name: "", name_key: "x" }) }.to raise_error(ActiveRecord::StatementInvalid)
       expect { described_class.insert!({ account_id: account.id, name: "a" * 61, name_key: "x" }) }.to raise_error(ActiveRecord::StatementInvalid)
