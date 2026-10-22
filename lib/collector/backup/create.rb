@@ -70,6 +70,7 @@ module Collector
           archive_file = @directory.join("#{final.basename}.#{token}.partial")
           published = false
           Backup.create_private(snapshot_file).close
+          @checkpoint.call(:snapshot_starting)
           Snapshot.take(source: @source, into: snapshot_file)
           @checkpoint.call(:snapshot_written)
           snapshot = Snapshot.new(snapshot_file)

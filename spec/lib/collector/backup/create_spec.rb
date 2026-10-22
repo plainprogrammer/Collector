@@ -48,47 +48,28 @@ RSpec.describe Collector::Backup::Create, :backup, :committed do
   end
 
   describe "while the app writes (AC-1.2, AC-1.3)" do
-    let(:entries) { Array.new(300) { create(:mtg_printing, entry: create(:catalog_entry)).entry } }
-    let(:stats) { { pairs: Queue.new, waits: Queue.new, commits: Queue.new, errors: Queue.new } }
+    let(:log) { scratch_path("writers.log") }
+    let(:stop) { scratch_path("writers.stop") }
+    let!(:writers) { start_writers }
 
-    def timed
-      started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      yield
-      finished = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      stats[:waits] << finished - started
-      stats[:commits] << finished
-    rescue StandardError => error
-      stats[:errors] << error
+    def start_writers
+      FileUtils.touch(log)
+      %w[pairs lots].map do |kind|
+        Process.spawn(RbConfig.ruby, "-e", BackupHelpers::WRITER, instance_database.to_s, log.to_s, stop.to_s, kind, seed.user.account_id.to_s, *seed.entries.map { it.id.to_s },
+          chdir: Rails.root.to_s, out: File::NULL, err: File::NULL)
+      end
     end
 
-    # Two writers on their own connections: a pair of related rows in one transaction (an account and its user, as a
-    # sign-up writes them), and the app's own lot add (Lot.add!, an IMMEDIATE transaction, app/models/lot.rb).
-    def start_writers(stop)
-      pairs = Thread.new do
-        ActiveRecord::Base.connection_pool.with_connection do
-          index = 0
-          until stop.true?
-            timed do
-              user = User.create!(name: "Pair #{index}", email_address: "pair#{index}@example.test", password: "correct horse battery")
-              stats[:pairs] << user.account_id
-            end
-            index += 1
-          end
-        end
-      end
-      lots = Thread.new do
-        ActiveRecord::Base.connection_pool.with_connection do
-          entries.each do |entry|
-            break if stop.true?
+    def commits = log.readlines(chomp: true).map(&:split)
 
-            timed { Lot.add!(account: seed.user.account, entry:) }
-          end
-        end
+    def stop_writers(pids)
+      FileUtils.touch(stop)
+      pids.each do |pid|
+        Process.wait(pid)
+      rescue Errno::ECHILD
+        nil # already reaped
       end
-      [ pairs, lots ]
     end
-
-    def drain(queue) = Array.new(queue.size) { queue.pop }
 
     # Accounts without a user, and users without an account: a half-written pair would show here, which totals could hide.
     def unpaired(path)
@@ -99,39 +80,39 @@ RSpec.describe Collector::Backup::Create, :backup, :committed do
     end
 
     before do
-      entries
       # A database big enough for a backup to take a moment.
       Catalog::Identity.insert_all(Array.new(50_000) { |index| { collectible_type: "mtg", external_key: "filler-#{index}", name: "Filler #{index}", content_digest: "d" } })
     end
 
-    it "holds both rows of every pair or neither, passes its checks, and makes every write complete within the busy timeout", :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- a concurrency scenario: writers, four backups, then every snapshot read back
-      stop = Concurrent::AtomicBoolean.new(false)
-      writers = start_writers(stop)
-      Timeout.timeout(30) { sleep 0.01 until (stats[:commits].size >= 20 && stats[:pairs].size.positive?) || stats[:errors].size.positive? }
-      committed_before = drain(stats[:pairs])
+    after { stop_writers(writers) } # a failed example must not leave the children writing
+
+    it "holds both rows of every pair or neither, passes its checks, and lets writes commit while VACUUM INTO runs", :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- a concurrency scenario: writers, four backups, then every snapshot read back
+      Timeout.timeout(60) { sleep 0.05 until commits.count { it.first == "pairs" } >= 3 && commits.count { it.first == "lots" } >= 3 }
+      committed_before = commits.select { it.first == "pairs" }.map(&:last)
       windows = []
       results = Array.new(4) do |index|
-        started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        described_class.new(directory: scratch("out#{index}"), source: instance_database, clock: clock_at(Time.utc(2026, 10, 21, 14, 21, index))).call.tap do
-          windows << (started..Process.clock_gettime(Process::CLOCK_MONOTONIC))
+        marks = {}
+        checkpoint = ->(step) { marks[step] = Process.clock_gettime(Process::CLOCK_REALTIME) }
+        described_class.new(directory: scratch("out#{index}"), source: instance_database, clock: clock_at(Time.utc(2026, 10, 21, 14, 21, index)), checkpoint:).call.tap do
+          windows << (marks.fetch(:snapshot_starting)..marks.fetch(:snapshot_written)) # the VACUUM INTO and nothing else
         end
       end
-      stop.make_true
-      writers.each(&:join)
+      stop_writers(writers)
+      written = commits
 
-      expect(drain(stats[:errors])).to be_empty
-      expect(drain(stats[:waits]).max).to be < Collector::Backup::BUSY_TIMEOUT_MS / 1000.0
-      expect(drain(stats[:commits]).count { |time| windows.any? { it.cover?(time) } }).to be_positive # writes landed while a backup ran
+      expect(written.select { it.first == "error" }).to be_empty
+      expect(written.reject { it.first == "error" }.map { it[2].to_f - it[1].to_f }.max).to be < Collector::Backup::BUSY_TIMEOUT_MS / 1000.0
+      during = written.count { |_kind, _started, finished, _account| windows.any? { it.cover?(finished.to_f) } }
+      expect(during).to be_positive, "no write committed while VACUUM INTO ran; the backup blocked the app's writers" # AC-1.3
       results.each_with_index do |result, index|
         snapshot = Collector::Backup::Snapshot.new(unpack_snapshot(result.path, "snapshot-#{index}.sqlite3"))
-        counts = snapshot.counts
 
         expect { snapshot.verify! }.not_to raise_error
         expect(unpaired(snapshot.path)).to eq([ 0, 0 ]) # a pair is both rows or neither, in every snapshot
-        expect(counts.fetch("users")).to be_positive
+        expect(snapshot.counts.fetch("users")).to be_positive
       end
       first = sqlite(unpack_snapshot(results.first.path, "first.sqlite3"), readonly: true) { |database| database.execute("SELECT id FROM accounts").flatten }
-      expect(first).to include(*committed_before)
+      expect(first).to include(*committed_before.map(&:to_i))
     end
   end
 

@@ -13,6 +13,44 @@ module BackupHelpers
   SECRETS = { "SECRET_KEY_BASE" => "sk-recognisable-secret-key-base-value-30303",
     "RAILS_MASTER_KEY" => "mk-recognisable-master-key-value-40404",
     "COLLECTOR_TRUSTED_PROXIES" => "198.51.100.77" }.freeze
+  # The app's writers for AC-1.2 and AC-1.3, as a script for a child process with a connection of its own, so that nothing of
+  # the backup's process (its Ruby threads, its Active Record pool) can stand in for contention. Each commit is logged as
+  # "kind started finished account_id" in wall-clock seconds, and a file's appearance stops it.
+  WRITER = <<~'RUBY'.freeze
+    require "bundler/setup"
+    require "sqlite3"
+    database_path, log_path, stop_path, kind, account_id, *entry_ids = ARGV
+    database = SQLite3::Database.new(database_path)
+    database.busy_timeout = 5_000
+    database.execute("PRAGMA foreign_keys = ON")
+    log = File.open(log_path, "a")
+    log.sync = true
+    now = -> { Process.clock_gettime(Process::CLOCK_REALTIME) }
+    index = 0
+    until File.exist?(stop_path)
+      started = now.call
+      stamp = "2026-10-21 14:21:00"
+      created = nil
+      begin
+        database.transaction(:immediate) do
+          if kind == "pairs"
+            database.execute("INSERT INTO accounts (created_at, updated_at) VALUES (?, ?)", [ stamp, stamp ])
+            created = database.last_insert_row_id
+            database.execute("INSERT INTO users (account_id, name, email_address, password_digest, created_at, updated_at) VALUES (?, ?, ?, 'x', ?, ?)",
+              [ created, "Pair #{index}", "pair#{index}@example.test", stamp, stamp ])
+          else
+            created = account_id
+            database.execute("INSERT INTO lots (account_id, catalog_entry_id, quantity, lot_key, created_at, updated_at) VALUES (?, ?, 1, ?, ?, ?)",
+              [ account_id, entry_ids[index % entry_ids.size], "writer-#{index}", stamp, stamp ])
+          end
+        end
+        log.puts "#{kind} #{started} #{now.call} #{created}"
+      rescue SQLite3::Exception => error
+        log.puts "error #{error.class}"
+      end
+      index += 1
+    end
+  RUBY
   Seed = Data.define(:user, :entries, :lots, :values)
 
   def scratch_root = (@scratch_root ||= Pathname(Dir.mktmpdir("collector-backup-spec")))
