@@ -182,7 +182,8 @@ docker compose up -d     # or: podman compose up -d
 The app is then available at `http://localhost:3000` (or your `COLLECTOR_PORT`).
 
 - **Data:** all four production SQLite databases live in the named volume
-  `collector_storage`, mounted at `/rails/storage`. Back up this volume.
+  `collector_storage`, mounted at `/rails/storage`. Back it up with Collector's own command, not by copying
+  the files of a running instance: see [Backup and restore](#backup-and-restore).
 - **Jobs:** Solid Queue runs inside the web process; no separate worker is needed.
 - **Health:** the container has a healthcheck on `/up`, and runs as a non-root user (uid 1000).
 - **Upgrades:** `docker compose pull && docker compose up -d`. Database migrations run automatically
@@ -214,7 +215,7 @@ registry set to `ghcr.io/plainprogrammer/collector`: it would push a single-arch
 over the published image.
 
 Data is stored in the `collector_storage` volume (mounted at `/rails/storage`), and Solid
-Queue runs inside Puma (`SOLID_QUEUE_IN_PUMA`).
+Queue runs inside Puma (`SOLID_QUEUE_IN_PUMA`). How to back it up and restore it is in [Backup and restore](#backup-and-restore).
 
 ### Card scanner
 
@@ -352,6 +353,138 @@ the collection. A file that can be applied is kept privately for an hour, so a c
 with one click: the collection then holds exactly the file's lots and, for a version 2 file, exactly its locations, all or nothing, with no undo, so
 the page leads to a download of the current collection first. A removal needs a confirmation, and an
 apply whose collection changed since the preview is shown again instead of applied. Applying writes in one short transaction (under 4 seconds for 50,000 lots on the development machine); on slow hardware a very large import may briefly hold other writes (a scanner add, a lot edit), so import while nothing else is writing. Exports are format version 2; an instance older than the release that added locations reads one as newer than it can read, while this release reads files of versions 1 and 2 (a version 1 file leaves the locations alone).
+
+A collector's export is not a backup of the instance, and a backup is not a collector's export: [Backup and restore](#backup-and-restore) says which to use for what and how to restore an instance.
+
+## Backup and restore
+
+Everything a collector owns, and the card catalog, is in one SQLite file on your instance's `storage/` volume. A **backup** is one file, made while Collector keeps running, that holds that file as it was at one moment: every account, user, lot and setting, and the catalog. A **restore** puts it onto a new, empty volume before Collector's first start. The backup is yours to keep wherever you like. Collector doesn't schedule, rotate or upload it.
+
+### Export or backup?
+
+| | Export (a collector, in the app) | Backup (you, the operator) |
+|---|---|---|
+| Whose | One collector's collection | The whole instance: every account, user and setting, and the catalog |
+| Made by | The collector, from the account menu or More | The operator, with a command on the host |
+| Holds | Profile, currency and lots, keyed by the card source's ids | The primary database as it is |
+| Restores into | Any instance of any release, even one with another catalog build; replaces that collector's lots | A new, empty instance of the same release or a newer one |
+| Doesn't hold | Passwords, other users, settings, the catalog | Secrets, `COLLECTOR_*` settings, queued jobs, the art index file, downloads |
+| Use it for | Moving a collection between instances, a collector's own safety copy, a file they can read ([Your data](#your-data)) | Recovering the instance after a failed disk, moving it to new hardware, a copy before an upgrade |
+
+### What to keep outside the backup
+
+The backup holds no secret, so keep these yourself, apart from the backup file: `SECRET_KEY_BASE` (and, under Kamal, `RAILS_MASTER_KEY`), your `COLLECTOR_*` settings (a restored instance run with another `COLLECTOR_CURRENCY` shows the same prices with another symbol), and your `compose.yaml` or `config/deploy.yml`. Nothing in the database is encrypted with the secrets, so **a lost or changed secret costs only the signed-in sessions**: everyone signs in again with their password.
+
+The file is **sensitive**: it holds every user's password hash and every collection. Collector writes it readable by its owner only; store it privately.
+
+### Back up
+
+Run the command in the running container, with a directory the container's user (uid 1000) can write. Quote the argument for your shell (it can't contain a comma). It prints the file, its size, the schema version, the counts of accounts, users and lots, and how long it took; it stops with a plain message when the directory is missing, isn't writable, has less than twice the database's size free, or the database fails its checks.
+
+**Docker Compose** (the stock `compose.yaml`; `/tmp` is writable in the container):
+
+```sh
+docker compose exec web bin/rails "backup:create[/tmp]"
+docker compose cp web:/tmp/collector-backup-20261021T142100Z.tar.gz .     # use the name the command printed
+docker compose exec web rm /tmp/collector-backup-20261021T142100Z.tar.gz
+```
+
+**Podman** (`podman compose` has no `cp`; the container's name differs by tool, so look it up):
+
+```sh
+podman compose exec web bin/rails "backup:create[/tmp]"
+podman ps --format '{{.Names}}'                    # for example collector_web_1 under podman-compose, collector-web-1 under Compose v2
+podman cp collector_web_1:/tmp/collector-backup-20261021T142100Z.tar.gz .
+podman compose exec web rm /tmp/collector-backup-20261021T142100Z.tar.gz
+```
+
+**With a host directory instead** (Compose; no copy out): make the directory belong to uid 1000 once, then mount it for a one-off run. Rootless Podman shows a bind mount to the container as root-owned unless the mount has `:U` (`-v "$PWD/backups:/backups:U"`) or the container has `--userns=keep-id`.
+
+```sh
+mkdir backups && sudo chown 1000:1000 backups
+docker compose run --rm -v "$PWD/backups:/backups" web bin/rails "backup:create[/backups]"
+```
+
+**Kamal:** the `backup` alias is already in `config/deploy.yml`; the directory it writes to is a volume you add once. First create the directory on the server, owned by uid 1000; only then uncomment the `/srv/collector-backups:/backups` line under `volumes:` and deploy. The line is commented out in the stock file because Docker creates a missing bind-mount directory owned by root, which the container's user (uid 1000) could not write to, and the alias would then refuse.
+
+```sh
+ssh root@192.168.0.1 'install -d -o 1000 -g 1000 /srv/collector-backups'
+# now uncomment the /srv/collector-backups:/backups line in config/deploy.yml, then:
+bin/kamal deploy --skip-push --version 0.1.0     # mounts the directory
+bin/kamal backup                                 # backup:create[/backups] in the running container
+scp root@192.168.0.1:/srv/collector-backups/collector-backup-20261021T142100Z.tar.gz .
+```
+
+The file is mode 0600 and owned by uid 1000 on the server; Kamal logs in as root by default (`ssh:` in `config/deploy.yml`), which can read it. Any other login needs `sudo`.
+
+**When to back up:** before every upgrade, and at least daily for a collection that changes daily. From a host's cron, for example (02:17 every day, clear of Monday 03:00 to 05:00 in the container's time zone, UTC unless you set one, when the weekly catalog refresh writes the most and a backup would hold the database's write-ahead log back):
+
+```cron
+17 2 * * * cd /srv/collector && docker compose run --rm -T -v /srv/collector-backups:/backups web bin/rails "backup:create[/backups]" >> /var/log/collector-backup.log 2>&1
+```
+
+Keep several, and delete old ones yourself.
+
+### Restore
+
+A restore needs a **new, empty volume** and runs **before the instance's first start**, as a one-off command in a container of the image you will run. It refuses a volume that already holds a Collector database (or the `-wal`, `-shm` or `-journal` file of one, or the queue, cache or cable database) and changes nothing: to restore over a running instance, restore onto a new volume and switch to it. It restores a backup taken by the same release or an older one, which the first start then migrates as any upgrade does; a backup from a newer release is refused. Use the image tag you run (`COLLECTOR_IMAGE`), and a release that has `backup:restore`.
+
+A restore ends every session (everyone signs in again) and drops pending bulk-removal Undos and selections; no collection is lost. It leaves the art index file behind: with art matching on, press **Build art index** on the admin catalog page afterwards, which needs no downloads.
+
+**Docker Compose.** Create the volume without starting Collector, and find its real name (Compose prefixes the project's name; a different project name is a different, empty volume):
+
+```sh
+docker compose up --no-start
+docker volume ls | grep collector_storage          # for example collector_collector_storage
+```
+
+Then get the file in readable by uid 1000, the preferred way (a host directory that belongs to uid 1000, mounted read-only):
+
+```sh
+sudo install -d -o 1000 -g 1000 backups-in
+sudo cp collector-backup-20261021T142100Z.tar.gz backups-in/ && sudo chown 1000:1000 backups-in/collector-backup-20261021T142100Z.tar.gz
+docker run --rm -u 1000 -v collector_collector_storage:/rails/storage -v "$PWD/backups-in:/backups:ro" \
+  -e SECRET_KEY_BASE_DUMMY=1 ghcr.io/plainprogrammer/collector:0.1.0 \
+  bin/rails "backup:restore[/backups/collector-backup-20261021T142100Z.tar.gz]"
+```
+
+or, without a host directory (`docker cp` makes root-owned files, and uid 1000 can't give a file to itself, so one root one-off fixes the owner):
+
+```sh
+docker create --name collector-restore -v collector_collector_storage:/rails/storage ghcr.io/plainprogrammer/collector:0.1.0
+docker cp collector-backup-20261021T142100Z.tar.gz collector-restore:/rails/storage/
+docker rm collector-restore
+docker run --rm -u 0 -v collector_collector_storage:/rails/storage ghcr.io/plainprogrammer/collector:0.1.0 \
+  chown 1000:1000 /rails/storage/collector-backup-20261021T142100Z.tar.gz
+docker run --rm -u 1000 -v collector_collector_storage:/rails/storage ghcr.io/plainprogrammer/collector:0.1.0 \
+  bin/rails "backup:restore[/rails/storage/collector-backup-20261021T142100Z.tar.gz]"
+```
+
+(The restore never moves or deletes the file you give it; delete it from the volume yourself afterwards.) Then `docker compose up -d`. `SECRET_KEY_BASE_DUMMY=1` stands in for a secret: the restore reads none.
+
+**Podman** is the same with `podman` for `docker` and `podman compose up --no-start`, the root `chown` one-off included. Under rootless Podman give the host directory `:U` (or run with `--userns=keep-id`) as above.
+
+**Kamal.** A restore can't use `kamal app exec` before the first boot: its one-off container needs the role's env file, which only an app boot writes, and the `kamal` network, which only the proxy boot creates. So restore with a plain `docker run` of the exact release over SSH, then deploy that same release:
+
+```sh
+bin/kamal server bootstrap
+ssh root@192.168.0.1 'install -d -o 1000 -g 1000 /srv/collector-backups'    # a freshly bootstrapped server doesn't have it
+scp collector-backup-20261021T142100Z.tar.gz root@192.168.0.1:/srv/collector-backups/
+ssh root@192.168.0.1 'chown 1000:1000 /srv/collector-backups/collector-backup-20261021T142100Z.tar.gz && docker run --rm -u 1000 \
+  -v collector_storage:/rails/storage -v /srv/collector-backups:/backups:ro -e SECRET_KEY_BASE_DUMMY=1 \
+  ghcr.io/plainprogrammer/collector:0.1.0 bin/rails "backup:restore[/backups/collector-backup-20261021T142100Z.tar.gz]"'
+bin/kamal setup --skip-push --version 0.1.0
+```
+
+Give the exact release as the tag: releases deploy by version, so no `latest` tag is on the server. This path is documented and its container command is tested in CI, but it hasn't been run through Kamal itself.
+
+**After a restore**, before you hand the instance back: compare the counts the command printed (accounts, users, lots) with what you expect; start it; sign in; with art matching on press **Build art index**; check your settings (`COLLECTOR_*`) and your secret.
+
+**A damaged, cut-short or wrong file is refused** with a plain message and the volume is left as it was: a file still being copied, a file from another tool, a collector's export (use **Import collection** for that), a backup of a newer release, a snapshot that fails SQLite's integrity or foreign-key check.
+
+### What Collector doesn't do
+
+It doesn't back up for you (no schedule, no retention, no upload), encrypt the file, restore one account out of a backup, merge a backup into an instance, or restore onto an older release. Other ways to protect the volume exist and Collector doesn't test them: stopping the app and copying the volume, Litestream, and ZFS, LVM or btrfs snapshots. The file's layout, and how to open it with `tar` and `sqlite3` without Collector, are in [docs/backup-restore.md](docs/backup-restore.md#manual-recovery-with-tar-and-sqlite3).
 
 ## License
 
