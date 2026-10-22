@@ -41,6 +41,23 @@ RSpec.describe "what a backup holds (spec 030 decisions 2 and 3)", :backup, type
     expect(names).to match_array(%w[primary queue cache cable]), advice
   end
 
+  def uncascaded_session_keys
+    connection = ActiveRecord::Base.connection
+    connection.tables.flat_map { |table| connection.foreign_keys(table).select { it.to_table == "sessions" && it.on_delete != :cascade }.map { [ table, it.column ] } }
+  end
+
+  it "cascades every foreign key to sessions, which the restore's DELETE FROM sessions relies on (decision 3)" do
+    expect(uncascaded_session_keys).to be_empty,
+      "Spec 030 decision 3: a table whose foreign key to sessions doesn't cascade on delete makes backup:restore stop on its sessions step; " \
+      "give the key on_delete: :cascade (or decide what the restore does with the table's rows, and update decision 3's list of cleared tables)"
+  end
+
+  it "would notice a foreign key to sessions that doesn't cascade (a negative control for the guard above)" do
+    ActiveRecord::Base.connection.create_table(:cover_session_notes) { it.references :session, foreign_key: true }
+
+    expect(uncascaded_session_keys).to eq([ [ "cover_session_notes", "session_id" ] ])
+  end
+
   it "uses no Active Record encryption, so no secret protects any data in the database (AC-4.3)", :aggregate_failures do
     encrypting = application_models.select { it.respond_to?(:encrypted_attributes) && it.encrypted_attributes.present? }
     # config.active_record.encryption is not blank under load_defaults 8.1 (the 7.1 defaults set hash_digest_class and
