@@ -78,6 +78,19 @@ module BackupHelpers
     into.join(name).tap { Collector::Backup::Archive.write(it, manifest: manifest_for(snapshot_path, **changes), snapshot: snapshot_path) }
   end
 
+  # A .tar.gz built by hand from [name, bytes] pairs, for the files AC-3.3 and AC-3.4 refuse.
+  def raw_archive(*entries, into: scratch("archives"), name: "collector-backup-20261021T142100Z.tar.gz")
+    into.join(name).tap do |path|
+      File.open(path, "wb") do |file|
+        gzip = Zlib::GzipWriter.new(file)
+        tar = Gem::Package::TarWriter.new(gzip)
+        entries.each { |entry_name, bytes| tar.add_file_simple(entry_name, 0o600, bytes.bytesize) { it.write(bytes) } }
+        tar.close
+        gzip.finish
+      end
+    end
+  end
+
   # A copy of the test database (schema, and the rows committed so far), made with VACUUM INTO as a backup does.
   def copy_of_instance(name = "copy.sqlite3")
     scratch_path(name).tap { |path| Collector::Backup::Snapshot.take(source: instance_database, into: path) }

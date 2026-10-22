@@ -10,6 +10,8 @@ require "rubygems/package"
 require_relative "backup/refusal"
 require_relative "backup/databases"
 require_relative "backup/free_space"
+require_relative "backup/manifest"
+require_relative "backup/archive"
 
 module Collector
   # Back up and restore an instance (spec 030, ADR 0024, docs/backup-restore.md). The operator's two commands,
@@ -78,7 +80,8 @@ module Collector
 
     # A new, empty file readable by its owner only from the moment it exists (decision 7). Returns it open for writing.
     def self.create_private(path)
-      File.open(path, File::WRONLY | File::CREAT | File::EXCL | File::BINARY, TEMPORARY_MODE)
+      # binmode: File::BINARY alone leaves the IO's encodings alone, and Rails' default_internal would then transcode bytes.
+      File.open(path, File::WRONLY | File::CREAT | File::EXCL | File::BINARY, TEMPORARY_MODE).tap(&:binmode)
     end
 
     # Removes one of the commands' own temporary files and the sidecars SQLite may have made beside it (FR-6).
