@@ -53,4 +53,18 @@ RSpec.describe "what a backup holds (spec 030 decisions 2 and 3)", :backup, type
     expect(declaring).to be_empty
     expect(keys).to be_empty
   end
+
+  it "has no route, controller or view named for a backup, and no route runs the tasks (AC-6.2)", :aggregate_failures do
+    routes = Rails.application.routes.routes.map { |route| [ route.path.spec.to_s, route.defaults[:controller], route.defaults[:action], route.name ].join(" ") }
+
+    expect(routes.grep(/backup/i)).to be_empty
+    expect(Dir[Rails.root.join("app/{controllers,views}/**/*backup*").to_s]).to be_empty
+  end
+
+  it "keeps core code free of any collectible: the backup's files name neither MTG nor Scryfall (FR-5)", :aggregate_failures do
+    files = Dir[Rails.root.join("lib/collector/backup.rb").to_s, Rails.root.join("lib/collector/backup/*.rb").to_s, Rails.root.join("lib/tasks/backup.rake").to_s]
+
+    expect(files.size).to eq(10)
+    expect(files.select { File.read(it).match?(/MTG|Scryfall/) }).to be_empty
+  end
 end

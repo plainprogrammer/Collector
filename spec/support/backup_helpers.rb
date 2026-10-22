@@ -192,6 +192,18 @@ module BackupHelpers
     $stdout, $stderr = original
   end
 
+  # Points Active Record at a restored file for the block, as an instance started on that volume would be, then back at the
+  # test database. Requests made in the block meet that file's rows only (AC-2.2, AC-2.4, AC-2.8 to AC-2.10).
+  def with_restored_instance(path)
+    original = ActiveRecord::Base.connection_db_config
+    ActiveRecord::Base.connection_pool.disconnect!
+    ActiveRecord::Base.establish_connection(original.configuration_hash.merge(database: path.to_s))
+    yield
+  ensure
+    ActiveRecord::Base.connection_pool.disconnect!
+    ActiveRecord::Base.establish_connection(original)
+  end
+
   # What Rails logged while the block ran (the commands log nothing, AC-1.7).
   def captured_log
     io = StringIO.new
