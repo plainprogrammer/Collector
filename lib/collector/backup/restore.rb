@@ -6,6 +6,7 @@ module Collector
     # db:prepare takes for a blank instance (research.md 2). Nothing is migrated here: the first boot's db:prepare does it.
     class Restore
       TEMPORARY = "collector-restore.partial".freeze
+      RESTORE_SUFFIXES = [ "", "-journal" ].freeze # the temporary file is in rollback-journal mode: no -wal, no -shm (FR-6)
       MARGIN = 16 * 1024 * 1024 # room for the delete's journal and the rename, beyond the snapshot's own size
 
       Result = Data.define(:file, :volume, :manifest) do
@@ -46,7 +47,7 @@ module Collector
         # checksum, which the same pass computes), then the checksum: all decided before anything is written.
         read = Archive.read(@file, on_manifest: ->(manifest) { refuse_without_room(volume, manifest) })
         temporary = volume.join(TEMPORARY)
-        Backup.remove(temporary) # a stopped run's leftover and its journal (FR-6)
+        Backup.remove(temporary, RESTORE_SUFFIXES) # a stopped run's leftover and its journal (FR-6)
         placed = false
         begin
           extract(temporary, read.manifest)
@@ -57,7 +58,7 @@ module Collector
           Backup.fsync_directory(volume)
           Result.new(file: @file, volume:, manifest: read.manifest)
         ensure
-          Backup.remove(temporary) unless placed
+          Backup.remove(temporary, RESTORE_SUFFIXES) unless placed
         end
       rescue SQLite3::FullException, Errno::ENOSPC
         raise Refusal.new("The volume filled up while the backup was restored.", "Free some space or use a larger volume, then run this again. Nothing was changed.")

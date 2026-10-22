@@ -87,9 +87,10 @@ module Collector
       File.open(path, File::WRONLY | File::CREAT | File::EXCL | File::BINARY, TEMPORARY_MODE).tap(&:binmode)
     end
 
-    # Removes one of the commands' own temporary files and the sidecars SQLite may have made beside it (FR-6).
-    def self.remove(path)
-      [ "", "-journal", "-wal", "-shm" ].each { |suffix| FileUtils.rm_f("#{path}#{suffix}") }
+    # Removes one of the commands' own temporary files and the sidecars named by +suffixes+ beside it (FR-6): the create's
+    # files may have all of SQLite's, the restore's has only a rollback journal.
+    def self.remove(path, suffixes = [ "", "-journal", "-wal", "-shm" ])
+      suffixes.each { |suffix| FileUtils.rm_f("#{path}#{suffix}") }
     end
 
     def self.fsync_file(path)
