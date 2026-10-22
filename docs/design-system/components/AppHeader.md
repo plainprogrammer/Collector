@@ -19,6 +19,7 @@ The top bar on every page: logo, main navigation and the account menu; on phones
 ```
 
 - Default sections: Collection, Decks, Locations, Wishlist. Collectors will be able to choose and reorder them; whatever they pick appears in the same order in the `TabBar` on phones, so the app has one navigation model at every width.
+- The collector's links today are Collection, Search, Scan and Locations, in that order (spec 029); Decks and Wishlist join when those sections exist. At 640px, where the nav first appears, the four links share one line with the account menu.
 - The current section gets a 2px `brand` underline and `ink` text; the others are `ink-muted`.
 - Profile, settings, import/export and sign-out live in the avatar menu, never in the main nav.
 - The logo swaps light/dark with `data-theme`; the wordmark shows on wide screens, the mark alone on phones.

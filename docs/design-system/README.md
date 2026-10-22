@@ -76,7 +76,7 @@ It should feel like a well-kept archive that gets used: warm paper, deep ink, on
 
 ## Navigation
 
-- The default sections, in this order: Collection, Decks, Locations, Wishlist. Each collector will be able to choose and reorder their own sections; design for any four, and never hard-code a section's position. Wide screens show them in the `AppHeader`; phones show them in a native-style bottom `TabBar` with a fifth tab, More.
+- The default sections, in this order: Collection, Decks, Locations, Wishlist (today's header for a collector links Collection, Search, Scan and Locations, spec 029; Decks and Wishlist don't exist yet). Each collector will be able to choose and reorder their own sections; design for any four, and never hard-code a section's position. Wide screens show them in the `AppHeader`; phones show them in a native-style bottom `TabBar` with a fifth tab, More.
 - Profile, settings and import/export live in the avatar menu (wide) or More (phone), never in the main navigation.
 - The tab bar holds five tabs at most. A new section starts in More.
 - Detail pages (a single card, a deck) use `c-appbar--detail`: on phones a back arrow replaces the logo and breadcrumbs.
@@ -107,6 +107,8 @@ App additions (spec 023, in `collector/additions.css`): `VisitorHeader`. It is `
 App additions (spec 025, in `collector/additions.css`): `ImportPreview`. Upstream it into the published design system before the next export replaces this folder.
 
 App additions (spec 026, in `collector/additions.css`): `NumberEntry`. Upstream it into the published design system before the next export replaces this folder.
+
+App additions (spec 029, in `collector/additions.css`): `Locations`. Upstream it into the published design system before the next export replaces this folder.
 
 ## Logo
 
