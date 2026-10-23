@@ -1,4 +1,4 @@
-# An export file read against one account's collection and this instance's catalog (spec 025): either a refusal of
+# An export file read against one account's collection and this instance's catalog (spec 025; spec 029 reads version 2): either a refusal of
 # the whole file (decision 10), or each row's problems and what applying the file would do (decisions 1, 2, 4, 9, 11).
 # It writes nothing. Collectible-agnostic: a type's entries and vocabulary are reached through the catalog registry.
 class CollectionImport
@@ -76,16 +76,21 @@ class CollectionImport
   def entry_id(row) = @entry_ids.fetch(row.number)
 
   # What applying would do to the collection as it was when this was first asked (the preview's view, spec 028).
-  def plan = @plan ||= Plan.new(outcomes, view_change)
+  def plan = @plan ||= Plan.new(outcomes, view_change, locations)
 
-  # The same, against the collection as it is now: one read of the lots and of the user, no parsing (spec 028 FR-2). It
-  # replaces the memoized plan and outcomes, so that the page an apply renders afterwards shows what the apply decided.
+  # The same, against the collection as it is now: one read of the lots, of the locations and of the user, no parsing
+  # (spec 028 FR-2, spec 029 decision 11). It replaces the memoized plan, outcomes and locations, so that the page an apply
+  # renders afterwards shows what the apply decided.
   def replan
     user.reload
     @removed_lots = nil # memoized from the outcomes below by #removed_lots
+    @locations = nil
     @outcomes = outcomes_for(held_lots)
-    @plan = Plan.new(@outcomes, view_change)
+    @plan = Plan.new(@outcomes, view_change, locations)
   end
+
+  # What applying would do with the collector's locations: nothing counted for a version 1 file (spec 029 decision 10).
+  def locations = @locations ||= Locations.new(held_locations, @version >= 2 ? file_location_names : nil)
 
   def applicable? = !refused? && problem_rows.empty?
 
@@ -168,14 +173,25 @@ class CollectionImport
       return refuse("const", "/format", NOT_AN_EXPORT) unless @data["format"] == ExportFormat::Rules::FORMAT
       return refuse("required", "/format_version", NO_VERSION) unless @data.key?("format_version")
 
-      version = whole_number(@data["format_version"])
-      return refuse("const", "/format_version", NO_VERSION) unless version&.positive?
-      return refuse("newer_version", "/format_version", newer(version)) if version > ExportFormat::Rules::VERSION
+      @version = ExportFormat::Rules.whole_number(@data["format_version"])
+      return refuse("const", "/format_version", NO_VERSION) unless @version&.positive?
+      return refuse("newer_version", "/format_version", newer(@version)) if @version > ExportFormat::Rules::VERSION
 
       @problems = ExportFormat::Rules.problems_in(@data)
       outside = @problems.reject { |problem| ROW.match?(problem.at) }
       first = outside.min_by { |problem| [ position(problem.at), outside.index(problem) ] }
-      first && refuse(first.rule, first.at, "This file isn't a well-formed export: #{field_reason(first.rule, field_name(first.at))}.")
+      return refuse(first.rule, first.at, "This file isn't a well-formed export: #{field_reason(first.rule, field_name(first.at))}.") if first
+
+      long_location
+    end
+
+    # A well-formed name whose NFC form is over 60 code points (U+0344 decomposes to two) can't be stored, so the file is
+    # refused as a whole (spec 029 decision 9, an accepted limit).
+    def long_location
+      return unless @version >= 2
+
+      index = @data["locations"].index { |location| Location::Name.normalise(location["name"]).length > Location::Name::MAX_LENGTH }
+      index && refuse("maxLength", "/locations/#{index}/name", "This file isn't a well-formed export: #{field_reason("maxLength", "locations.#{index}.name")}.")
     end
 
     def currency_refusal
@@ -183,13 +199,6 @@ class CollectionImport
       return if @data["currency"] == code
 
       refuse("other_currency", "/currency", "This file's prices are in #{@data["currency"]}. This instance uses #{code}.")
-    end
-
-    def whole_number(value)
-      case value
-      when Integer then value
-      when Float then value.to_i if value.finite? && value == value.floor
-      end
     end
 
     def newer(version)
@@ -206,8 +215,16 @@ class CollectionImport
       case rule
       when "required" then "#{field} is missing"
       when "not_a_time" then "#{field} isn't a real moment"
+      when "duplicate_location" then "#{field} has the same name as an earlier location, ignoring case"
       else "#{field} isn't valid"
       end
+    end
+
+    def file_location_names = @data["locations"].map { |location| Location::Name.normalise(location["name"]) }
+
+    # The account's locations, in one statement (at most 500 rows).
+    def held_locations
+      @account.locations.pluck(:id, :name, :name_key).map { |id, name, key| Locations::Held.new(id:, name:, key:) }
     end
 
     def read_rows

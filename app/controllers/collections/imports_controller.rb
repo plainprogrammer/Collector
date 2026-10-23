@@ -15,7 +15,7 @@ class Collections::ImportsController < ApplicationController
   private
     def respond_to_result(result)
       case result.outcome
-      when :applied then redirect_to collection_path, notice: notice_for(result.plan.counts), status: :see_other
+      when :applied then redirect_to collection_path, notice: notice_for(result.plan), status: :see_other
       when :missing, :unreadable then upload_page(PREVIEW_AGAIN)
       when :expired then upload_page("Your preview has expired. Choose the file again.")
       when :refused then refused(result.import)
@@ -25,8 +25,23 @@ class Collections::ImportsController < ApplicationController
       end
     end
 
-    def notice_for(counts)
-      "Imported: #{helpers.pluralize(counts[:added], "lot")} added, #{counts[:changed]} changed, #{counts[:removed]} removed"
+    def notice_for(plan)
+      counts = plan.counts
+      lots = "Imported: #{helpers.pluralize(counts[:added], "lot")} added, #{counts[:changed]} changed, #{counts[:removed]} removed"
+      locations = location_sentence(plan.locations)
+      locations ? "#{lots}; #{locations}" : lots
+    end
+
+    # "2 locations added, 1 renamed, 1 removed": the noun on the first part that isn't zero, the zero parts left out; nil
+    # for a version 1 file and when no location changes. The notice never ends with a period, as 028's has none (spec 029
+    # AC-9.14, ruled 2026-10-21).
+    def location_sentence(locations)
+      return unless locations.counted?
+
+      parts = locations.counts.slice(:added, :renamed, :removed).reject { |_verb, count| count.zero? }
+      return if parts.empty?
+
+      parts.map.with_index { |(verb, count), index| index.zero? ? "#{helpers.pluralize(count, "location")} #{verb}" : "#{count} #{verb}" }.join(", ")
     end
 
     def upload_page(message)

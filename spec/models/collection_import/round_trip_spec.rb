@@ -58,8 +58,57 @@ RSpec.describe "Export and import round trip", type: :model do
     expect(CollectionImport.new(account: source.account, file: StringIO.new(JSON.generate(original))).plan.nothing_to_change?).to be(true)
   end
 
-  describe "the format's valid example with lots (AC-6.4)" do
-    # One entry and printing per source id (collection.json repeats ids across lots), with the finishes of its lots.
+  def locations(user, *names) = names.map { |name| create(:location, account: user.account, name:) }
+
+  def names(user) = user.account.locations.order(:id).pluck(:name)
+
+  it "restores an export's locations by name, exactly spelled, into an empty account (AC-9.5)", :aggregate_failures do
+    locations(source, "Blue binder", "Trade binder", "box")
+    original = export(source)
+
+    expect(apply!(target, original).outcome).to eq(:applied)
+
+    expect(names(target)).to contain_exactly("Blue binder", "Trade binder", "box")
+    expect(same_collection?(original, export(target))).to be(true)
+    expect(export(target)["locations"]).to eq(original["locations"])
+    expect(ExportFormatRules.problems(JSON.generate(export(target)))).to be_empty
+  end
+
+  it "restores a changed set of locations from the file, and then has nothing to change (AC-9.6)", :aggregate_failures do
+    blue, = locations(source, "Blue binder", "Trade binder", "Old crate")
+    original = export(source)
+    source.account.locations.find_by!(name: "Blue binder").update!(name: "Green binder")
+    source.account.locations.find_by!(name: "Old crate").destroy!
+    create(:location, account: source.account, name: "New box")
+
+    expect(apply!(source, original).outcome).to eq(:applied)
+
+    expect(names(source)).to contain_exactly("Blue binder", "Trade binder", "Old crate")
+    expect(same_collection?(original, export(source))).to be(true)
+    expect(CollectionImport.new(account: source.account, file: StringIO.new(JSON.generate(original))).plan.nothing_to_change?).to be(true)
+    expect(Location.exists?(blue.id)).to be(false) # the respelled "Green binder" went
+    expect(source.account.locations.find_by!(name: "Blue binder").id).not_to eq(blue.id) # and "Blue binder" came back as a new row
+  end
+
+  it "previews the exported collection, locations and all, as nothing to change (AC-6.1 of spec 028, with locations)", :aggregate_failures do
+    locations(source, "Blue binder", "box")
+    import = CollectionImport.new(account: source.account, file: StringIO.new(JSON.generate(export(source))))
+
+    expect(import.locations.unchanged).to eq(2)
+    expect(import.plan.nothing_to_change?).to be(true)
+    expect(ImportUpload.count).to eq(0)
+  end
+
+  # An export of this instance is version 2. A version 1 example is compared as the version 2 file it becomes with no
+  # locations, and each location name as the export writes it: in NFC (decision 5), which a valid example in NFD isn't
+  # (ruled 2026-10-21: AC-9.15 holds for the example once its names are normalised).
+  def as_version_two(data)
+    data = data.merge("format_version" => 2, "locations" => []) unless data["format_version"] == 2
+    data.merge("locations" => data["locations"].map { |location| { "name" => Location::Name.normalise(location["name"]) } })
+  end
+
+  describe "every valid example of the format (AC-6.4, AC-9.15)" do
+    # One entry and printing per source id (the examples repeat ids across lots), with the finishes of its lots.
     def build_catalog(data)
       data["lots"].group_by { |lot| lot.dig("entry", "source_id") }.each_value do |lots|
         entry = lots.first["entry"]
@@ -69,15 +118,23 @@ RSpec.describe "Export and import round trip", type: :model do
       end
     end
 
-    it "applies collection.json to an empty account and exports the same collection", :aggregate_failures do
-      bytes = ExportFormatRules.examples("valid").fetch("valid/collection.json")
-      data = JSON.parse(bytes)
-      build_catalog(data)
-      user = create(:user, name: data.dig("profile", "name"), email_address: data.dig("profile", "email_address"))
+    ExportFormatRules.examples("valid").each_key do |name|
+      it "applies #{name} to an empty account and exports the same collection, or has nothing to change", :aggregate_failures do
+        data = JSON.parse(ExportFormatRules.examples("valid").fetch(name))
+        allow(Rails.configuration.x).to receive(:currency).and_return(Collector::Currency.fetch!(data["currency"]))
+        build_catalog(data)
+        user = create(:user, name: data.dig("profile", "name"), email_address: data.dig("profile", "email_address"))
 
-      expect(apply!(user, data).outcome).to eq(:applied)
-      expect(same_collection?(data, export(user))).to be(true)
-      expect(user.account.lots.count).to eq(data["lots"].size)
+        if data["lots"].empty? && data.fetch("locations", []).empty?
+          import = CollectionImport.new(account: user.account, file: StringIO.new(JSON.generate(data)))
+          expect([ import.refused?, import.plan.nothing_to_change? ]).to eq([ false, true ])
+        else
+          expect(apply!(user, data).outcome).to eq(:applied)
+          expect(same_collection?(as_version_two(data), export(user))).to be(true)
+          expect(user.account.lots.count).to eq(data["lots"].size)
+          expect(user.account.locations.count).to eq(data.fetch("locations", []).size)
+        end
+      end
     end
   end
 end

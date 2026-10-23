@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_20_100002) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_21_100001) do
   create_table "accounts", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -171,6 +171,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_100002) do
     t.boolean "sign_up_open", default: false, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+  end
+
+  create_table "locations", force: :cascade do |t|
+    t.integer "account_id", null: false
+    t.string "name", null: false
+    t.string "name_key", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "name_key"], name: "index_locations_on_account_id_and_name_key", unique: true
+    t.check_constraint "length(name) BETWEEN 1 AND 60", name: "locations_name_length"
+    t.check_constraint "length(name_key) >= 1", name: "locations_name_key_present"
   end
 
   create_table "lots", force: :cascade do |t|
@@ -339,6 +350,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_100002) do
   add_foreign_key "catalog_entries", "catalog_sets"
   add_foreign_key "catalog_names", "catalog_identities"
   add_foreign_key "import_uploads", "accounts", on_delete: :cascade
+  add_foreign_key "locations", "accounts", on_delete: :cascade
   add_foreign_key "lots", "accounts"
   add_foreign_key "lots", "catalog_entries"
   add_foreign_key "mtg_artworks", "catalog_entries"

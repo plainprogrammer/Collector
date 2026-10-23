@@ -9,6 +9,7 @@
   <%= render "catalog/not_loaded", titles: @unloaded_catalogs, named: @catalogs_named %>
   <ul class="c-list c-more">
     <li><span>Signed in as <strong><%= Current.user.name %></strong></span><span class="c-list__meta"><%= Current.user.email_address %></span></li>
+    <li><%= link_to "Locations", locations_path %></li>
     <li><%= link_to "Export collection", collection_export_path, data: { turbo: false, turbo_prefetch: false } %></li>
     <li><%= link_to "Import collection", new_collection_import_preview_path %></li>
     <li><%= link_to "Add by number", collection_number_entry_path %></li>

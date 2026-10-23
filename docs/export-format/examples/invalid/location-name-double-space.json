@@ -1,0 +1,17 @@
+{
+  "format": "collector-export",
+  "format_version": 2,
+  "exported_at": "2026-10-11T12:34:56Z",
+  "profile": {
+    "name": "Grace Example",
+    "email_address": "grace@example.test",
+    "collection_view": "grid"
+  },
+  "currency": "EUR",
+  "locations": [
+    {
+      "name": "Blue  binder"
+    }
+  ],
+  "lots": []
+}

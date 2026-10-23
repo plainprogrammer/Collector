@@ -77,9 +77,9 @@ RSpec.describe CollectionImport, type: :model do
     end
 
     it "refuses a newer version as newer, before the schema (AC-3.2)", :aggregate_failures do
-      expect(refusal_of(file([], format_version: 2).except("lots", "profile"))).to eq(
-        [ "newer_version", "/format_version", "This file was written by a newer version of Collector (format version 2). This instance reads version 1." ])
-      expect(refusal_of(file([], format_version: 2.0)).first).to eq("newer_version")
+      expect(refusal_of(file([], format_version: 3).except("lots", "profile"))).to eq(
+        [ "newer_version", "/format_version", "This file was written by a newer version of Collector (format version 3). This instance reads version 2." ])
+      expect(refusal_of(file([], format_version: 3.0)).first).to eq("newer_version")
       expect(import(file([], format_version: 1.0))).not_to be_refused
     end
 
@@ -344,5 +344,72 @@ RSpec.describe CollectionImport, type: :model do
 
     expect { import(data).then { |preview| [ preview.added, preview.removed_lots, preview.problem_counts ] } }
       .not_to(change { [ Lot.count, Lot.maximum(:updated_at), Catalog::Entry.count, User.maximum(:updated_at) ] })
+  end
+
+  # A version 2 file: the same, with its locations by name (spec 029).
+  def file_v2(lots, locations: [], **fields) = file(lots, format_version: 2, locations: locations.map { |name| { "name" => name } }, **fields)
+
+  def location_names(preview) = [ preview.locations.added, preview.locations.renamed.map(&:name), preview.locations.removed.map(&:name) ]
+
+  describe "version 2 (spec 029 decision 10)" do
+    it "reads version 1 and version 2, each against its own schema (AC-8.1)", :aggregate_failures do
+      expect(import(file([]))).not_to be_refused
+      expect(import(file_v2([]))).not_to be_refused
+      expect(import(file_v2([], format_version: 2.0))).not_to be_refused
+      expect(refusal_of(file([]).merge("format_version" => 2))).to eq([ "required", "/locations", "This file isn't a well-formed export: locations is missing." ])
+    end
+
+    it "refuses a bad locations list whole, naming the field and the reason (AC-8.5, P6)", :aggregate_failures do
+      expect(refusal_of(file_v2([]).except("locations"))).to eq([ "required", "/locations", "This file isn't a well-formed export: locations is missing." ])
+      expect(refusal_of(file_v2([]).merge("locations" => "Box")).last).to eq("This file isn't a well-formed export: locations isn't valid.")
+      expect(refusal_of(file_v2([], locations: [ "Box", "a  b" ]))).to eq([ "pattern", "/locations/1/name", "This file isn't a well-formed export: locations.1.name isn't valid." ])
+      expect(refusal_of(file_v2([], locations: [ "Box", "box" ]))).to eq(
+        [ "duplicate_location", "/locations/1", "This file isn't a well-formed export: locations.1 has the same name as an earlier location, ignoring case." ])
+      expect(refusal_of(file_v2([], locations: [ "Café", "Cafe\u0301" ])).first).to eq("duplicate_location")
+      expect(refusal_of(file_v2([], locations: Array.new(501) { |index| "Binder #{index}" })).first(2)).to eq([ "maxItems", "/locations" ])
+    end
+
+    it "refuses a name whose normal form is over 60 code points, as a whole (AC-8.5)", :aggregate_failures do
+      name = "#{"本" * 59}\u0344" # well-formed as written (60 code points); NFC is 61 (a CJK character composes with nothing)
+      expect(ExportFormat::Rules.problems(JSON.generate(file_v2([], locations: [ name ])))).to eq([])
+
+      expect(refusal_of(file_v2([], locations: [ name ]))).to eq(
+        [ "maxLength", "/locations/0/name", "This file isn't a well-formed export: locations.0.name isn't valid." ])
+    end
+
+    it "reads a name in NFD as its NFC spelling, matching a held location of that name (AC-9.18)", :aggregate_failures do
+      create(:location, account:, name: "Café")
+      create(:location, account:, name: "Old crate")
+      preview = import(file_v2([], locations: [ "Cafe\u0301", "Straße" ]))
+
+      expect(preview.locations.unchanged).to eq(1)
+      expect(location_names(preview)).to eq([ [ "Straße" ], [], [ "Old crate" ] ])
+    end
+
+    it "judges the lots of a version 2 file as it does a version 1 file's (AC-8.7)", :aggregate_failures do
+      a = printing
+      held(a, quantity: 3)
+      one = import(file([ row(a, quantity: 5), stranger ]))
+      two = import(file_v2([ row(a, quantity: 5), stranger ], locations: [ "Box" ]))
+
+      expect(two.problem_rows.map(&:number)).to eq(one.problem_rows.map(&:number))
+      expect([ two.added, two.changed, two.unchanged, two.removed, two.held ]).to eq([ one.added, one.changed, one.unchanged, one.removed, one.held ])
+    end
+
+    it "has no outcomes for locations in a version 1 file, whatever the account holds (AC-8.4, AC-9.3)", :aggregate_failures do
+      create(:location, account:, name: "Box")
+      preview = import(file([]))
+
+      expect(preview.locations.counted?).to be(false)
+      expect(preview.plan.nothing_to_change?).to be(true)
+    end
+
+    it "reads the locations from the account only (AC-9.13)", :aggregate_failures do
+      create(:location, name: "Elsewhere")
+      create(:location, account:, name: "Mine")
+
+      expect(location_names(import(file_v2([], locations: [ "Mine" ])))).to eq([ [], [], [] ])
+      expect(location_names(import(file_v2([], locations: [])))).to eq([ [], [], [ "Mine" ] ])
+    end
   end
 end

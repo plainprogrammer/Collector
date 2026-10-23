@@ -3,9 +3,9 @@
   <%= form_with url: collection_import_path, class: "c-form", data: { turbo: false } do |form| %>
     <%= hidden_field_tag :fingerprint, upload.fingerprint %>
     <% if plan.removes? %>
-      <p class="c-import__note">Applying removes <%= pluralize(number_with_delimiter(plan.removed_lots.size), "lot") %> (<%= pluralize(number_with_delimiter(import.removed.copies), "copy") %>) and can't be undone. <%= link_to "Download your current collection first", collection_export_path %>.</p>
+      <p class="c-import__note">Applying removes <%= import_removals(import) %> and can't be undone. <%= link_to "Download your current collection first", collection_export_path %>.</p>
       <div class="c-field">
-        <label class="c-check"><%= check_box_tag :confirm_removal, "1", false, required: true %> I understand this removes <%= pluralize(number_with_delimiter(plan.removed_lots.size), "lot") %></label>
+        <label class="c-check"><%= check_box_tag :confirm_removal, "1", false, required: true %> I understand this removes <%= import_removed_counts(plan) %></label>
       </div>
     <% else %>
       <p class="c-import__note">Applying can't be undone. <%= link_to "Download your current collection first", collection_export_path %>.</p>

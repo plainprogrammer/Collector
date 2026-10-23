@@ -66,13 +66,13 @@ RSpec.describe "The export format's examples" do
   let(:comparison) { ExportFormatRules.examples("comparison") }
 
   it "is defined by a schema that is itself valid" do
-    expect(JSONSchemer.valid_schema?(ExportFormatRules.schema)).to be(true)
+    ExportFormatRules.versions.each { |version| expect(JSONSchemer.valid_schema?(ExportFormatRules.schema(version))).to be(true), "v#{version}" }
   end
 
   it "has valid, invalid and comparison examples", :aggregate_failures do
-    expect(valid.keys).to eq(%w[valid/collection.json valid/empty.json])
-    expect(invalid.size).to eq(22)
-    expect(comparison.size).to eq(8)
+    expect(valid.keys).to match_array(%w[valid/collection-v2.json valid/collection.json valid/empty-v2.json valid/empty.json valid/location-name-60.json valid/locations-500.json valid/locations-nfd.json])
+    expect(invalid.size).to eq(40)
+    expect(comparison.size).to eq(13)
   end
 
   it "finds nothing wrong with any valid or comparison example (AC-2.1)" do
@@ -101,8 +101,10 @@ RSpec.describe "The export format's examples" do
     end
   end
 
-  it "fails version 1's schema for a file of another version, which a reader refuses before it checks (FR-8)" do
-    expect(problems_of(changed(%w[format_version], 2))).to eq([ { "rule" => "const", "at" => "/format_version" } ])
+  it "judges a file of a version this instance doesn't read by version 1's schema, which names the version, and a version 2 file by its own (FR-8, AC-7.4)", :aggregate_failures do
+    expect(problems_of(changed(%w[format_version], 0))).to eq([ { "rule" => "const", "at" => "/format_version" } ])
+    expect(problems_of(changed(%w[format_version], 3))).to eq([ { "rule" => "const", "at" => "/format_version" } ])
+    expect(problems_of(changed(%w[format_version], 2))).to eq([ { "rule" => "required", "at" => "/locations" } ])
   end
 
   it "accepts the values at the edges of each rule", :aggregate_failures do
@@ -167,6 +169,61 @@ RSpec.describe "The export format's examples" do
 
     it "is only defined for files of one version" do
       expect { ExportFormatRules.same_collection?(original, original.merge("format_version" => 2)) }.to raise_error(ArgumentError)
+    end
+  end
+
+  describe "version 2 (spec 029)" do
+    def v2base = comparison.fetch("comparison/v2-base.json")
+
+    def v2changed(path, value)
+      data = JSON.parse(v2base)
+      *parents, last = path
+      target = parents.empty? ? data : data.dig(*parents)
+      value == :absent ? target.delete(last) : target[last] = value
+      JSON.generate(data)
+    end
+
+    it "finds each listed variant of a malformed locations value (AC-7.2)", :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- a table of variants
+      {
+        [ %w[locations], :absent ] => %w[required /locations],
+        [ %w[locations], {} ] => %w[type /locations],
+        [ %w[locations], "Box" ] => %w[type /locations],
+        [ %w[locations], Array.new(501) { |index| { "name" => "Binder #{index}" } } ] => %w[maxItems /locations],
+        [ [ "locations", 0, "name" ], :absent ] => %w[required /locations/0/name],
+        [ [ "locations", 0, "name" ], "" ] => %w[minLength /locations/0/name],
+        [ [ "locations", 0, "name" ], " " ] => %w[pattern /locations/0/name],
+        [ [ "locations", 0, "name" ], "本" * 61 ] => %w[maxLength /locations/0/name],
+        [ [ "locations", 0, "name" ], " Blue binder" ] => %w[pattern /locations/0/name],
+        [ [ "locations", 0, "name" ], "Blue binder\n" ] => %w[pattern /locations/0/name],
+        [ [ "locations", 0, "name" ], "Blue  binder" ] => %w[pattern /locations/0/name],
+        [ [ "locations", 0, "name" ], 5 ] => %w[type /locations/0/name]
+      }.each do |(path, value), (rule, at)|
+        expect(problems_of(v2changed(path, value))).to eq([ { "rule" => rule, "at" => at } ]), "#{path.join('/')} = #{value.inspect}"
+      end
+    end
+
+    it "accepts the values at the edges of each rule", :aggregate_failures do
+      [
+        [ %w[locations], [] ], [ [ "locations", 0, "name" ], "本" * 60 ],
+        [ %w[locations], Array.new(500) { |index| { "name" => "Binder #{index}" } } ]
+      ].each { |path, value| expect(problems_of(v2changed(path, value))).to be_empty, path.join("/") }
+      expect(problems_of(v2changed([ "locations", 0, "name" ], "Cafe\u0301"))).to be_empty
+    end
+
+    it "holds the same collection for the same names in another order and what the rule ignores (AC-6.6, AC-7.4)", :aggregate_failures do
+      original = JSON.parse(v2base)
+      same = JSON.parse(comparison.fetch("comparison/v2-same.json"))
+
+      expect(same["locations"]).to eq(original["locations"].reverse)
+      expect(ExportFormatRules.same_collection?(original, same)).to be(true)
+    end
+
+    it "differs in the case of a name and in the set of names (AC-6.8, AC-7.4)", :aggregate_failures do
+      original = JSON.parse(v2base)
+      different = parsed(comparison).select { |name, _file| name.start_with?("comparison/v2-different-") }
+
+      expect(different.keys.map { |name| name[/v2-different-(.+)\.json/, 1] }).to eq(%w[location-case location-missing locations])
+      different.each { |name, file| expect(ExportFormatRules.same_collection?(original, file)).to be(false), name }
     end
   end
 end

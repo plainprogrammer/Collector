@@ -30,6 +30,14 @@ RSpec.describe "Page query counts", type: :request do
     expect(queries_for(collection_path)).to eq(few)
   end
 
+  it "keeps the locations page's queries independent of the number of locations (spec 029 NFR)" do
+    create(:location, account: user.account)
+    few = queries_for(locations_path)
+    29.times { create(:location, account: user.account) }
+
+    expect(queries_for(locations_path)).to eq(few)
+  end
+
   it "keeps search's queries independent of the number of result groups" do
     own(printing)
     printing(identity: Catalog::Identity.sole)

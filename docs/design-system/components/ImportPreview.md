@@ -61,3 +61,25 @@ A file that can be applied and has something to change also shows the apply form
 - The checkbox appears only when lots are removed. With nothing to remove, the note says only that applying can't be undone.
 - A file with nothing to change says so in the notice and shows no form. A file that couldn't be stored shows an alert notice ("This file couldn't be kept, so it can't be applied. Choose it again.") and no form.
 - The stale-plan page (409) and a refused apply (422) are this same page with an alert notice above it (`c-status` shows the message); a stale page carries the new fingerprint in its form.
+
+## Locations section (spec 029)
+
+A version 2 file adds a Locations section after the lots' sections: the same `c-section__head`, a `c-stats` of Locations added, renamed, unchanged and removed, and the names of the renamed ("box → Box") and the removed, each in a `c-list c-import__list` of the first 100 with "and N more" (`c-import__more`). A version 1 file shows one `c-import__note` instead: "This file was written before locations existed, so your locations would stay as they are." A file whose locations are not well-formed is refused as a whole (422) with the field named, and shows no lots.
+
+```html
+<section id="locations">
+  <div class="c-section__head"><h2 class="c-section__title">Locations</h2></div>
+  <dl class="c-stats">
+    <div class="c-stat"><dt>Locations added</dt><dd>1</dd></div>
+    <div class="c-stat"><dt>Locations renamed</dt><dd>1</dd></div>
+    <div class="c-stat"><dt>Locations unchanged</dt><dd>0</dd></div>
+    <div class="c-stat"><dt>Locations removed</dt><dd>2</dd></div>
+  </dl>
+  <ul class="c-list c-import__list" id="renamed_locations"><li><span>box → Box</span></li></ul>
+  <ul class="c-list c-import__list" id="removed_locations"><li><span>Old box</span></li><li><span>Old crate</span></li></ul>
+</section>
+```
+
+- The apply form's removal wording covers both: "Applying removes 1 lot (2 copies) and 2 locations and can't be undone." and the checkbox "I understand this removes 1 lot and 2 locations" (or only the part that applies). The checkbox appears when the plan removes a lot or a location; a plan that only adds or renames locations needs none.
+- A file whose only change is a location is applicable and shows the apply form; a file with nothing to change in lots, locations or view shows none.
+- No new class is needed.

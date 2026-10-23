@@ -1,15 +1,15 @@
 # Collector export format
 
 **Format name:** `collector-export`
-**Format version:** 1
+**Format version:** 2
 
-An export is one file that holds one collector's data: their profile, the currency their prices are in, and every lot in their collection.
+An export is one file that holds one collector's data: their profile, the currency their prices are in, the locations they keep their collection in, and every lot in their collection.
 
 - **It is personal.** The file contains your name and your email address. It never contains your password.
 - **It is complete.** The file contains everything needed to rebuild your collection on another Collector instance.
 - **It is yours.** It is plain JSON, and it names every item so that a person can read it without Collector.
 
-This document defines the format. Export and import are built against it, and so is the check that a restored collection matches the one exported. The decision and the alternatives it rejected are in [ADR 0020](../adr/0020-export-format.md). [`v1.schema.json`](v1.schema.json) states the same rules for a program, and [`examples/`](examples/) holds files that the test suite checks against both.
+This document defines the format. Export and import are built against it, and so is the check that a restored collection matches the one exported. The decision and the alternatives it rejected are in [ADR 0020](../adr/0020-export-format.md). [`v1.schema.json`](v1.schema.json) and [`v2.schema.json`](v2.schema.json) state the same rules for a program, one for each version, and [`examples/`](examples/) holds files that the test suite checks against both. Locations and the version 2 are the decision of [ADR 0023](../adr/0023-locations-make-export-format-version-2.md).
 
 Two words are used throughout. A **writer** is any program that produces a file, and a **reader** is any program that consumes one.
 
@@ -22,11 +22,12 @@ A file describes exactly one account's collection at one moment. It needs no oth
 | Field | Value | Meaning |
 |---|---|---|
 | `format` | The string `collector-export` | Says that the file is a Collector export. A reader refuses a file with any other value. |
-| `format_version` | A whole number | The version of this format that the file follows. This document defines version 1. See [Versions](#versions). |
+| `format_version` | A whole number | The version of this format that the file follows: 1 or 2. See [Versions](#versions). |
 | `exported_at` | A [time](#times) | When the file was written. Information only. |
 | `generator` | A string; may be left out | The program that wrote the file, and its version (`Collector 0.2.1`). Information only. |
 | `profile` | An object | The collector. See [Profile](#profile). |
 | `currency` | A string | The currency of every price in the file. See [Currency](#currency). |
+| `locations` | A list | Version 2 only: the places the collection is kept. See [Locations](#locations). It may be empty, and its order has no meaning. A version 1 file has no `locations`. |
 | `lots` | A list | The collection. See [Lots](#lots). It may be empty, and its order has no meaning. |
 
 A reader never behaves differently because of `exported_at` or `generator`.
@@ -38,7 +39,7 @@ A collection with nothing in it is a complete file:
 ```json
 {
   "format": "collector-export",
-  "format_version": 1,
+  "format_version": 2,
   "exported_at": "2026-10-11T12:34:56Z",
   "profile": {
     "name": "Grace Example",
@@ -46,6 +47,7 @@ A collection with nothing in it is a complete file:
     "collection_view": "grid"
   },
   "currency": "EUR",
+  "locations": [],
   "lots": []
 }
 ```
@@ -135,6 +137,36 @@ The other four are **descriptive fields**. They are information only, so that a 
 
 A file carries no other catalog data: no images, rules text or market prices.
 
+## Locations
+
+A **location** is a named place the collector keeps part of their collection: a binder, a box. A version 2 file carries the collector's set of locations. A version 1 file says nothing about them, and a reader must not read that as "none".
+
+| Field | Value | Meaning |
+|---|---|---|
+| `name` | A string of 1 to 60 Unicode code points, as [Names](#names) says | The location's name. |
+
+The list has at most 500 elements. A file carries no id for a location, and in version 2 a lot carries no reference to one.
+
+### Names
+
+A well-formed name:
+
+- is 1 to 60 Unicode code points long (a character made of several code points counts each);
+- has no character of general category Cc (control) or Cf (format): U+0000, U+0007, U+200B, U+200E, U+FEFF and the rest of those two categories;
+- has no character with the Unicode White_Space property other than U+0020 (a tab, a line feed, U+00A0, U+0085, U+2028, U+3000 and the rest of that property), and no U+0020 at its start or its end or beside another U+0020.
+
+Any other character is allowed, in any script.
+
+`v2.schema.json` states these rules as one pattern that uses Unicode property escapes (`\p{Cc}`, `\p{Cf}`), which is ECMA-262 syntax with the `u` flag. A program that validates with a regular expression engine without them (Python's `re`, for one) can't compile the pattern as it stands; the rules in words above are the definition, and the pattern is their statement for a validator that can read it.
+
+A writer writes a name in Unicode normalisation form NFC, as Collector does. A name in another form is still well-formed, because a schema can't state the form. A reader **normalises each name on read**: it makes it NFC, then removes White_Space at both ends and makes each run of White_Space inside the name one U+0020, before it matches, compares, judges duplicates or stores the name. For a well-formed name the second step changes nothing.
+
+### Location identity
+
+A location is identified by its **comparison key**: the Unicode full case folding of its name after normalisation. "Blue binder" and "blue binder" are one name, and so are "Straße" and "STRASSE", and "Café" written in NFC and in NFD. A file never holds two locations with the same identity.
+
+The key is for matching and for the duplicate rule only. It is never written in a file.
+
 ## Lot identity
 
 A lot is identified by five values:
@@ -155,14 +187,15 @@ A file never holds two lots with the same identity. Copies that share all five v
 
 A file can be wrong in two different ways, and the format keeps them apart.
 
-**Well-formed** is a property of the file alone. It never depends on a catalog or on an instance. A file is well-formed when it passes [`v1.schema.json`](v1.schema.json) and the rules that a schema can't state:
+**Well-formed** is a property of the file alone. It never depends on a catalog or on an instance. A file is well-formed when it passes the schema of its own version ([`v1.schema.json`](v1.schema.json) or [`v2.schema.json`](v2.schema.json)) and the rules that a schema can't state:
 
 - it is UTF-8 JSON, and no object holds the same key twice
 - every time is a real moment
 - no lot's `changed_at` is earlier than its `added_at`
 - no two lots have the same [identity](#lot-identity)
+- from version 2, no two locations have the same [identity](#location-identity)
 
-The schema and these rules are version 1's. A reader looks at `format_version` first: a file whose version is higher than it knows is refused as newer than it can read, not as malformed.
+Each version has its own schema; the rules are the same for both, with the rule about locations from version 2. A reader looks at `format_version` first: a file whose version is higher than it knows is refused as newer than it can read, not as malformed. A file whose version this document doesn't define (a version above the newest, or a version that is missing or isn't a whole number) is judged by the schema of version 1, which names the version as the problem.
 
 A field that this document doesn't define doesn't make a file malformed. A reader ignores it.
 
@@ -190,6 +223,7 @@ Two well-formed files of the same version hold the same collection when all of t
 - Their profiles are equal: `name`, `email_address` and `collection_view`.
 - Their currencies are equal.
 - Their lots are equal as sets. Each lot in one file has exactly one lot in the other with the same [identity](#lot-identity), and those two have the same `quantity`, `added_at` and `changed_at`.
+- From version 2, their locations are equal as sets of names, compared exactly, character for character, as written in the files, without normalising either. "box" and "Box" are different locations here, although a reader treats them as one when it matches locations (see [Location identity](#location-identity)); the order of the locations never counts.
 
 Every comparison is exact, character for character. A writer writes each value as the instance stores it: the email address in lower case, the name and the email address without spaces around them, the currency in upper case.
 
@@ -226,8 +260,9 @@ The meaning of a version never changes once it has been released.
 | Version | Date | Change |
 |---|---|---|
 | 1 | 2026-10-11 | The first version: profile, currency and lots. |
+| 2 | 2026-10-21 | Locations: the required top-level list `locations`, with the rule `duplicate_location`. Lots are unchanged. |
 
-Two changes are already expected. Locations will add where each lot is kept, which is the collector's data, so they will raise the version to 2. Collections shared by a household will change who owns a lot and will raise it again ([ADR 0017](../adr/0017-row-level-tenancy-one-user-per-account.md)).
+Two changes are already expected. Putting a lot in a location will add where each lot is kept, which is the collector's data, so it will raise the version to 3 ([ADR 0023](../adr/0023-locations-make-export-format-version-2.md)). Collections shared by a household will change who owns a lot and will raise it again ([ADR 0017](../adr/0017-row-level-tenancy-one-user-per-account.md)).
 
 ## Extending the format
 
@@ -298,6 +333,7 @@ Every table in Collector's database that belongs to an account or to a user is l
 |---|---|---|
 | `accounts` | Nothing to export | It holds only its id and its dates; see the columns below. |
 | `lots` | Exported | The collection. |
+| `locations` | Exported | The collector's named places. |
 | `users` | Exported | The collector's profile. |
 | `bulk_removals` | Left out | A short-lived way to undo a bulk removal. The lots it would restore aren't in the collection. |
 | `bulk_selection_marks` | Left out | Working state that lasts for one bulk edit. |
@@ -324,6 +360,12 @@ Every table in Collector's database that belongs to an account or to a user is l
 | `lots.lot_key` | Left out | Derived from the finish, the condition and the price paid. |
 | `lots.created_at` | `added_at` | |
 | `lots.updated_at` | `changed_at` | |
+| `locations.id` | Left out | An internal id. |
+| `locations.account_id` | Left out | An internal id. A file is one account's collection. |
+| `locations.name` | `name` | |
+| `locations.name_key` | Left out | Derived from the name. |
+| `locations.created_at` | Left out | A fact about the instance, not about the collection. |
+| `locations.updated_at` | Left out | A fact about the instance, not about the collection. |
 | `users.id` | Left out | An internal id. |
 | `users.account_id` | Left out | An internal id. |
 | `users.name` | `name` | |
@@ -342,13 +384,15 @@ Every table in Collector's database that belongs to an account or to a user is l
 
 | Folder | Holds |
 |---|---|
-| [`examples/valid/`](examples/valid/) | Well-formed files: a collection that shows every shape a lot can take, and an empty one. |
+| [`examples/valid/`](examples/valid/) | Well-formed files: a collection that shows every shape a lot can take, and an empty one, for each version. |
 | [`examples/invalid/`](examples/invalid/) | Files that aren't well-formed, each with one thing wrong. |
 | [`examples/comparison/`](examples/comparison/) | A base file, a file that holds the same collection, and files that each differ from the base in one thing that counts. |
 
+The folders hold files of both versions; version 1's examples are unchanged. A location named in NFD (`Cafe` and a combining acute accent) is in `valid/locations-nfd.json`: well-formed, because a reader normalises names on read. Collector exports it as `Café` in NFC, so a collection restored from this file exports a file whose name is the NFC spelling, not this one's.
+
 [`examples/problems.json`](examples/problems.json) names, for each invalid file, why it isn't well-formed (`why`), the rule it breaks (`rule`) and where (`at`, a [JSON Pointer](https://www.rfc-editor.org/rfc/rfc6901) into the file, empty for the whole file).
 
-A `rule` is the schema keyword that fails (`required`, `const`, `pattern`, `minimum`, `maximum`, `type`), or one of these:
+A `rule` is the schema keyword that fails (`required`, `const`, `pattern`, `minimum`, `maximum`, `minLength`, `maxLength`, `maxItems`, `type`), or one of these:
 
 | Rule | Meaning |
 |---|---|
@@ -357,3 +401,4 @@ A `rule` is the schema keyword that fails (`required`, `const`, `pattern`, `mini
 | `not_a_time` | A time has the right form but isn't a real moment. |
 | `changed_before_added` | A lot's `changed_at` is earlier than its `added_at`. |
 | `duplicate_lot` | A lot has the same identity as an earlier lot in the file. |
+| `duplicate_location` | A location has the same comparison key as an earlier location in the file. |

@@ -341,16 +341,17 @@ bin/rails "catalog:status[mtg]"   # Kamal: bin/kamal catalog-status
 ## Your data
 
 A collector's data has a documented, versioned format: one JSON file that holds their profile,
-the currency of their prices and every lot in their collection, keyed by the catalog source's
-own ids and never by this instance's. It is defined in
+the currency of their prices, their locations (the named places a collection is kept, managed at
+`/locations` from the header or More) and every lot in their collection, keyed by the catalog
+source's own ids and never by this instance's. It is defined in
 [docs/export-format/README.md](docs/export-format/README.md), with a JSON Schema and example
 files beside it. Export is built against it: a collector downloads their collection as one file
 from the account menu or More. A collector can preview importing a file from the account menu or
 More: the app says what applying it would do and which rows it can't apply, and changes nothing in
 the collection. A file that can be applied is kept privately for an hour, so a collector applies it
-with one click: the collection then holds exactly the file's lots, all or nothing, with no undo, so
+with one click: the collection then holds exactly the file's lots and, for a version 2 file, exactly its locations, all or nothing, with no undo, so
 the page leads to a download of the current collection first. A removal needs a confirmation, and an
-apply whose collection changed since the preview is shown again instead of applied. Applying writes in one short transaction (under 4 seconds for 50,000 lots on the development machine); on slow hardware a very large import may briefly hold other writes (a scanner add, a lot edit), so import while nothing else is writing.
+apply whose collection changed since the preview is shown again instead of applied. Applying writes in one short transaction (under 4 seconds for 50,000 lots on the development machine); on slow hardware a very large import may briefly hold other writes (a scanner add, a lot edit), so import while nothing else is writing. Exports are format version 2; an instance older than the release that added locations reads one as newer than it can read, while this release reads files of versions 1 and 2 (a version 1 file leaves the locations alone).
 
 ## License
 

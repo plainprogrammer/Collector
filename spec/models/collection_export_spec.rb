@@ -1,6 +1,6 @@
 require "rails_helper"
 
-# Spec 022: the collection export writes one account's collection as a format-v1 file (docs/export-format/README.md).
+# Spec 022: the collection export writes one account's collection as a format-v2 file (docs/export-format/README.md).
 RSpec.describe CollectionExport, type: :model do
   let(:user) { create(:user, name: "Grace Example", email_address: "grace@example.test") }
   let(:account) { user.account }
@@ -38,8 +38,8 @@ RSpec.describe CollectionExport, type: :model do
 
   it "writes the header, the profile and the currency", :aggregate_failures do
     file = parsed
-    expect(file.except("lots")).to eq(
-      "format" => "collector-export", "format_version" => 1, "exported_at" => "2026-10-14T12:34:56Z",
+    expect(file.except("lots", "locations")).to eq(
+      "format" => "collector-export", "format_version" => 2, "exported_at" => "2026-10-14T12:34:56Z",
       "profile" => { "name" => "Grace Example", "email_address" => "grace@example.test", "collection_view" => "grid" },
       "currency" => Rails.configuration.x.currency.code)
     expect(file).not_to have_key("generator")
@@ -105,7 +105,7 @@ RSpec.describe CollectionExport, type: :model do
   it "writes exactly the fields the format defines" do
     fixture_collection
 
-    reference = JSON.parse(ExportFormatRules.directory.join("examples/valid/collection.json").read)
+    reference = JSON.parse(ExportFormatRules.directory.join("examples/valid/collection-v2.json").read)
 
     expect(ExportFormatRules.field_names(parsed)).to match_array(ExportFormatRules.field_names(reference) - [ "generator" ])
   end
@@ -146,5 +146,60 @@ RSpec.describe CollectionExport, type: :model do
 
   it "names the file by the export's UTC date" do
     expect(described_class.new(account:, at: Time.new(2026, 10, 14, 23, 30, 0, "-05:00")).filename).to eq("collector-export-2026-10-15.json")
+  end
+
+  describe "locations (spec 029)" do
+    def locations(*names) = names.each { |name| create(:location, account:, name:) }
+
+    it "writes version 2 with the names only, in order, and a well-formed file (AC-6.1, AC-6.4, AC-6.5)", :aggregate_failures do
+      locations("Trade binder", "Blue binder")
+      fixture_collection
+      file = parsed
+
+      expect(file["format_version"]).to eq(2)
+      expect(file["locations"]).to eq([ { "name" => "Blue binder" }, { "name" => "Trade binder" } ])
+      expect(file["locations"].flat_map(&:keys).uniq).to eq([ "name" ])
+      expect(file["lots"].size).to eq(7)
+      expect(ExportFormatRules.problems(export.to_json)).to eq([])
+    end
+
+    it "writes an empty list for an account with none (AC-6.2)", :aggregate_failures do
+      expect(parsed["format_version"]).to eq(2)
+      expect(parsed["locations"]).to eq([])
+      expect(ExportFormatRules.problems(export.to_json)).to eq([])
+    end
+
+    it "orders by comparison key then name, in code-point order (AC-6.3)" do
+      locations("box", "Binder 2", "Binder 10", "Éclair", "eclair")
+
+      expect(parsed["locations"].map { |location| location["name"] }).to eq([ "Binder 10", "Binder 2", "box", "eclair", "Éclair" ])
+    end
+
+    it "writes none of another account's (AC-6.7)", :aggregate_failures do
+      locations("Blue binder")
+      create(:location, name: "Zebulon's crate")
+
+      expect(parsed["locations"]).to eq([ { "name" => "Blue binder" } ])
+      expect(export.to_json).not_to include("Zebulon")
+    end
+
+    it "writes the same file twice for an unchanged collection, apart from exported_at (AC-6.6)", :aggregate_failures do
+      locations("Blue binder", "Trade binder")
+      later = described_class.new(account:, at: at + 1.hour)
+
+      expect(JSON.parse(later.to_json).except("exported_at")).to eq(parsed.except("exported_at"))
+      expect(ExportFormatRules.same_collection?(parsed, JSON.parse(later.to_json))).to be(true)
+    end
+
+    it "holds a different collection when a name differs in case, and the same one when the order does (AC-6.8)", :aggregate_failures do
+      box = create(:location, account:, name: "box")
+      create(:location, account:, name: "Binder")
+      first = parsed
+      box.update!(name: "Box")
+
+      expect(ExportFormatRules.same_collection?(first, parsed)).to be(false)
+      swapped = parsed.merge("locations" => parsed["locations"].reverse)
+      expect(ExportFormatRules.same_collection?(parsed, swapped)).to be(true)
+    end
   end
 end

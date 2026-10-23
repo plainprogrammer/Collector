@@ -108,5 +108,95 @@
     "why": "Two lots have the same lot identity; only their quantities differ.",
     "rule": "duplicate_lot",
     "at": "/lots/1"
+  },
+  "invalid/locations-missing.json": {
+    "why": "The locations list is missing from a version 2 file.",
+    "rule": "required",
+    "at": "/locations"
+  },
+  "invalid/locations-not-a-list.json": {
+    "why": "The locations are an object, not a list.",
+    "rule": "type",
+    "at": "/locations"
+  },
+  "invalid/locations-501.json": {
+    "why": "The list holds 501 locations; at most 500 are allowed.",
+    "rule": "maxItems",
+    "at": "/locations"
+  },
+  "invalid/location-name-missing.json": {
+    "why": "A location has no name.",
+    "rule": "required",
+    "at": "/locations/0/name"
+  },
+  "invalid/location-name-empty.json": {
+    "why": "A location's name is empty.",
+    "rule": "minLength",
+    "at": "/locations/0/name"
+  },
+  "invalid/location-name-61.json": {
+    "why": "A location's name is 61 code points long; at most 60 are allowed.",
+    "rule": "maxLength",
+    "at": "/locations/0/name"
+  },
+  "invalid/location-name-padded.json": {
+    "why": "A location's name has a space at its start and at its end.",
+    "rule": "pattern",
+    "at": "/locations/0/name"
+  },
+  "invalid/location-name-double-space.json": {
+    "why": "A location's name has two spaces in a row.",
+    "rule": "pattern",
+    "at": "/locations/0/name"
+  },
+  "invalid/location-name-tab.json": {
+    "why": "A location's name has a tab between its words, a White_Space character other than a space.",
+    "rule": "pattern",
+    "at": "/locations/0/name"
+  },
+  "invalid/location-name-no-break-space.json": {
+    "why": "A location's name has a no-break space (U+00A0) between its words.",
+    "rule": "pattern",
+    "at": "/locations/0/name"
+  },
+  "invalid/location-name-ideographic-space.json": {
+    "why": "A location's name has an ideographic space (U+3000) between its words.",
+    "rule": "pattern",
+    "at": "/locations/0/name"
+  },
+  "invalid/location-name-next-line.json": {
+    "why": "A location's name has a next line character (U+0085) between its words.",
+    "rule": "pattern",
+    "at": "/locations/0/name"
+  },
+  "invalid/location-name-line-separator.json": {
+    "why": "A location's name has a line separator (U+2028) between its words.",
+    "rule": "pattern",
+    "at": "/locations/0/name"
+  },
+  "invalid/location-name-control.json": {
+    "why": "A location's name has a control character (U+0007).",
+    "rule": "pattern",
+    "at": "/locations/0/name"
+  },
+  "invalid/location-name-format.json": {
+    "why": "A location's name has a zero width space (U+200B), a format character.",
+    "rule": "pattern",
+    "at": "/locations/0/name"
+  },
+  "invalid/location-duplicate-case.json": {
+    "why": "Two locations have names that differ only in case.",
+    "rule": "duplicate_location",
+    "at": "/locations/1"
+  },
+  "invalid/location-duplicate-fold.json": {
+    "why": "Two locations have names that differ only by full case folding (ß and SS).",
+    "rule": "duplicate_location",
+    "at": "/locations/1"
+  },
+  "invalid/location-duplicate-nfd.json": {
+    "why": "Two locations hold the same name in NFC and in NFD.",
+    "rule": "duplicate_location",
+    "at": "/locations/1"
   }
 }

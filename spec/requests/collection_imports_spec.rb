@@ -8,6 +8,7 @@ RSpec.describe "Apply an import", type: :request do
   let(:b) { import_printing }
 
   def preview!(lots) = store_import!(account:, data: import_file(user, lots))
+  def preview_v2!(lots, locations: []) = store_import!(account:, data: import_file_v2(user, lots, locations:))
   def apply(upload = account.reload.import_upload, **params) = post(collection_import_path, params: { fingerprint: upload&.fingerprint, confirm_removal: "1" }.merge(params))
   def html = Nokogiri::HTML5(response.body)
   def no_store? = response.headers["Cache-Control"].to_s.include?("no-store")
@@ -161,6 +162,75 @@ RSpec.describe "Apply an import", type: :request do
       expect(account.lots).to be_empty
     ensure
       ActionController::Base.allow_forgery_protection = false
+    end
+
+    it "adds the locations to the notice, with no final period (AC-9.14)", :aggregate_failures do
+      create(:location, account:, name: "box")
+      create(:location, account:, name: "Old crate")
+      preview_v2!([ import_row(a) ], locations: [ "Box", "Blue binder", "Trade binder" ])
+
+      apply
+      follow_redirect!
+
+      expect(response.body).to include("Imported: 1 lot added, 0 changed, 0 removed; 2 locations added, 1 renamed, 1 removed")
+      expect(html.at_css("#status").text.strip).not_to end_with(".") # never a final period (ruled 2026-10-21)
+    end
+
+    it "names only the location parts that are not zero, but keeps the zero lot parts, after a version 2 file that changes only locations (AC-9.14)", :aggregate_failures do
+      create(:location, account:, name: "Old crate")
+      preview_v2!([], locations: [])
+
+      apply
+      follow_redirect!
+      expect(html.at_css("#status").text.strip).to eq("Imported: 0 lots added, 0 changed, 0 removed; 1 location removed")
+    end
+
+    it "says nothing about locations after a version 1 file (AC-9.14)", :aggregate_failures do
+      create(:location, account:, name: "Box")
+      preview!([ import_row(a) ])
+
+      apply
+      follow_redirect!
+
+      expect(html.at_css("#status").text.strip).to eq("Imported: 1 lot added, 0 changed, 0 removed")
+    end
+
+    it "answers 409 with a fresh preview, locations included, when a location changed after the preview (AC-9.9)", :aggregate_failures do
+      upload = preview_v2!([ import_row(a) ], locations: [ "Blue binder" ])
+      create(:location, account:, name: "Late")
+
+      apply(upload)
+
+      expect(response).to have_http_status(:conflict)
+      expect(html.at_css("#locations")).to be_present
+      expect(html.css("#removed_locations li").map { |item| item.text.squish }).to eq([ "Late" ])
+      expect(html.at_css("input[name=fingerprint]")["value"]).not_to eq(upload.fingerprint)
+      expect(account.locations.pluck(:name)).to eq([ "Late" ])
+    end
+
+    it "asks for the confirmation when only locations are removed, and writes nothing without it (AC-9.10)", :aggregate_failures do
+      create(:location, account:, name: "Old crate")
+      upload = preview_v2!([ import_row(a) ], locations: [])
+
+      apply(upload, confirm_removal: "0")
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.body).to include("Confirm the removal to apply this file", "I understand this removes 1 location")
+      expect(account.locations.count).to eq(1)
+    end
+
+    it "shows nothing of another account's locations in any response (AC-9.13)", :aggregate_failures do
+      create(:location, name: "Zebulon's crate")
+      create(:location, account:, name: "Mine")
+      upload = preview_v2!([ import_row(a) ], locations: [ "Mine", "New" ])
+      create(:location, account:, name: "Late")
+
+      apply(upload) # 409
+      conflict = response.body
+      apply(account.reload.import_upload) # 303
+      follow_redirect!
+
+      [ conflict, response.body ].each { |body| expect(body).not_to include("Zebulon") }
     end
   end
 

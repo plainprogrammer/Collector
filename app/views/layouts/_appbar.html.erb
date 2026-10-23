@@ -12,6 +12,7 @@
         <%= link_to "Collection", collection_path, "aria-current": ("page" if section == :collection) %>
         <%= link_to "Search", catalog_entries_path, "aria-current": ("page" if section == :search) %>
         <%= link_to "Scan", scanner_path, "aria-current": ("page" if section == :scanner), data: { turbo_prefetch: false } %>
+        <%= link_to "Locations", locations_path, "aria-current": ("page" if section == :locations) %>
       </nav>
       <div class="c-appbar__actions">
         <% unless detail %>

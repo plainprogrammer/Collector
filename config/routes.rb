@@ -36,6 +36,11 @@ Rails.application.routes.draw do
   end
   resource :more, only: :show
 
+  # Locations (spec 029): the named places a collector keeps part of their collection.
+  resources :locations, only: %i[index create edit update destroy] do
+    resource :removal, only: :new, module: :locations
+  end
+
   # The card scanner (spec 007; spec 009 adds the sitting and Other printings, and links it from the navigation).
   resource :scanner, only: :show
   namespace :scanner do

@@ -18,6 +18,11 @@ module ImportHelpers
       "currency" => "USD", "lots" => lots }.merge(fields.stringify_keys)
   end
 
+  # A version 2 file (spec 029): the same, with its locations by name.
+  def import_file_v2(user, lots, locations: [], **fields)
+    import_file(user, lots, format_version: 2, locations: locations.map { |name| { "name" => name } }, **fields)
+  end
+
   def import_io(data) = StringIO.new(data.is_a?(String) ? data : JSON.generate(data))
 
   def import_upload_file(data, type: "application/json", name: "export.json")

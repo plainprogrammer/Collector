@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (2026-10-11; the maintainer ruled on each point in spec 017: decisions 1 to 19 with the spec and 20 with the plan).
+Accepted (2026-10-11; the maintainer ruled on each point in spec 017: decisions 1 to 19 with the spec and 20 with the plan). The consequence about a lot in a location raising the format to version 2 is superseded by [ADR 0023](0023-locations-make-export-format-version-2.md).
 
 **Date:** 2026-10-11
 **Feature:** 017-export-format

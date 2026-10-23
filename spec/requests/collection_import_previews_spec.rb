@@ -21,6 +21,8 @@ RSpec.describe "Import preview", type: :request do
       "currency" => "USD", "lots" => lots }.merge(fields.stringify_keys)
   end
 
+  def file_v2(lots, locations: [], **fields) = file(lots, format_version: 2, locations: locations.map { |name| { "name" => name } }, **fields)
+
   def upload(data, type: "application/json", name: "export.json")
     Rack::Test::UploadedFile.new(StringIO.new(data.is_a?(String) ? data : JSON.generate(data)), type, original_filename: name)
   end
@@ -43,6 +45,109 @@ RSpec.describe "Import preview", type: :request do
 
   context "when signed in" do
     before { sign_in_as(user) }
+
+    describe "locations (spec 029)" do
+      let!(:entry) { printing }
+
+      before do
+        create(:location, account: user.account, name: "Trade binder")
+        create(:location, account: user.account, name: "box")
+        create(:location, account: user.account, name: "Old crate")
+      end
+
+      def locations_stat(label) = html.css("#locations .c-stat").find { |stat| stat.at_css("dt").text == label }&.at_css("dd")&.text
+
+      it "reads the collector's own version 2 export and shows what happens to the locations (AC-8.1, AC-8.2)", :aggregate_failures do
+        preview(file_v2([ row(entry) ], locations: [ "Blue binder", "Box", "Trade binder" ]))
+
+        expect(response).to have_http_status(:ok)
+        expect([ "Locations added", "Locations renamed", "Locations unchanged", "Locations removed" ].map { |label| locations_stat(label) }).to eq(%w[1 1 1 1])
+        expect(html.css("#renamed_locations li").map { |item| item.text.squish }).to eq([ "box → Box" ])
+        expect(html.css("#removed_locations li").map { |item| item.text.squish }).to eq([ "Old crate" ])
+        expect(Location.pluck(:name)).to contain_exactly("Trade binder", "box", "Old crate") # nothing is written
+      end
+
+      it "says all would be removed for an empty list (AC-8.3)", :aggregate_failures do
+        preview(file_v2([ row(entry) ], locations: []))
+
+        expect(locations_stat("Locations removed")).to eq("3")
+        expect(html.css("#removed_locations li").map { |item| item.text.squish }).to eq([ "box", "Old crate", "Trade binder" ])
+      end
+
+      it "says a version 1 file leaves them alone, and shows no removed locations (AC-8.4)", :aggregate_failures do
+        preview(file([ row(entry) ]))
+
+        expect(html.at_css("#locations_stay").text).to eq("This file was written before locations existed, so your locations would stay as they are.")
+        expect(html.at_css("#locations, #removed_locations")).to be_nil
+      end
+
+      it "refuses a version 2 file whose locations are not well-formed, as a whole, with the reason (AC-8.5, P6)", :aggregate_failures do
+        {
+          file_v2([ row(entry) ]).except("locations") => "locations is missing",
+          file_v2([ row(entry) ], locations: [ "Box", "box" ]) => "locations.1 has the same name as an earlier location, ignoring case",
+          file_v2([ row(entry) ], locations: [ "a\u200Bb" ]) => "locations.0.name isn't valid"
+        }.each do |data, reason|
+          preview(data)
+
+          expect(response).to have_http_status(:unprocessable_content)
+          expect(html.at_css(".c-field--invalid .c-field__error")&.text).to include(reason)
+          expect(html.at_css(".c-stats, #problem_rows")).to be_nil
+        end
+      end
+
+      it "shows a name in NFD as its NFC spelling, matched to the held location (AC-9.18)", :aggregate_failures do
+        create(:location, account: user.account, name: "Café") # held before the preview, so it reads the file's NFD name as a rename of it
+        preview(file_v2([ row(entry) ], locations: [ "CAFE\u0301", "Trade binder", "box", "Old crate" ]))
+
+        expect(html.css("#renamed_locations li").map { |item| item.text.squish }).to eq([ "Café → CAFÉ" ]) # NFC, as the page shows and the apply writes
+        expect(locations_stat("Locations unchanged")).to eq("3")
+      end
+
+      it "counts all and lists the first 100 of each, with the rest counted (AC-8.9)", :aggregate_failures do
+        Location.where(account_id: user.account.id).delete_all
+        Location.insert_all!((1..300).map { |number| { account_id: user.account.id, name: format("old %03d", number), name_key: format("old %03d", number) } })
+
+        preview(file_v2([ row(entry) ], locations: (1..150).map { |number| format("OLD %03d", number) }))
+
+        expect([ locations_stat("Locations renamed"), locations_stat("Locations removed") ]).to eq(%w[150 150])
+        expect(html.css("#renamed_locations li").size).to eq(100)
+        expect(html.css("#removed_locations li").size).to eq(100)
+        expect(html.css(".c-import__more").map(&:text)).to eq([ "and 50 more", "and 50 more" ])
+      end
+
+      it "offers the apply, and stores the file, when the only change is a location (AC-9.4)", :aggregate_failures do
+        held_lot(user.account, entry, quantity: 1)
+        preview(file_v2([ row(entry) ], locations: [ "Trade binder", "box", "Old crate", "Crate" ]))
+
+        expect(html.at_css("form[action='#{collection_import_path}']")).to be_present
+        expect(user.account.reload.import_upload).to be_present
+        expect(html.at_css("form[action='#{collection_import_path}'] label.c-check")).to be_nil # nothing is removed: no checkbox
+      end
+
+      it "words the confirmation for the lots and the locations that would go (AC-9.10)", :aggregate_failures do
+        held_lot(user.account, printing, quantity: 2) # the file doesn't name this lot's entry, so it is removed
+        preview(file_v2([ row(entry) ], locations: [ "Trade binder" ]))
+
+        expect(html.at_css("label.c-check").text.squish).to eq("I understand this removes 1 lot and 2 locations")
+        expect(html.at_css("form[action='#{collection_import_path}'] .c-import__note").text).to include("removes 1 lot (2 copies) and 2 locations and can't be undone")
+      end
+
+      it "words it for locations alone when no lot goes (AC-9.10)", :aggregate_failures do
+        held_lot(user.account, entry, quantity: 1)
+        preview(file_v2([ row(entry) ], locations: [ "Trade binder", "box" ]))
+
+        expect(html.at_css("label.c-check").text.squish).to eq("I understand this removes 1 location")
+        expect(html.at_css("form[action='#{collection_import_path}'] .c-import__note").text).to include("removes 1 location and can't be undone")
+      end
+
+      it "writes only the upload, its blob and its attachment for a version 2 file (AC-8.8)" do
+        before = snapshot
+        preview(file_v2([ row(entry) ], locations: [ "Blue binder" ]))
+
+        expect(snapshot.reject { |table, rows| before[table] == rows }.keys).to match_array(%w[import_uploads active_storage_blobs active_storage_attachments])
+      end
+    end
+
 
     it "offers the upload form, outside Turbo (AC-1.1)", :aggregate_failures do
       get new_collection_import_preview_path
@@ -148,7 +253,7 @@ RSpec.describe "Import preview", type: :request do
       {
         nil => "Choose an export file to preview.",
         "{" => "This file isn't a Collector export: it isn't readable JSON.",
-        file([], format_version: 2) => "This file was written by a newer version of Collector (format version 2). This instance reads version 1.",
+        file([], format_version: 3) => "This file was written by a newer version of Collector (format version 3). This instance reads version 2.",
         file([], currency: "EUR") => "This file's prices are in EUR. This instance uses USD."
       }.each do |data, reason|
         data.nil? ? post(collection_import_preview_path, params: { export_file: "a pasted file" }) : preview(data)
@@ -306,6 +411,17 @@ RSpec.describe "Import preview", type: :request do
       expect(response.body).to include("nothing to change")
       expect(html.css("form[action='#{collection_import_path}']")).to be_empty
       expect(ImportUpload.count).to eq(0)
+    end
+
+    it "previews each empty example, version 1 and version 2, in its own currency, as nothing to change (AC-9.15)", :aggregate_failures do
+      %w[valid/empty.json valid/empty-v2.json].each do |name|
+        allow(Rails.configuration.x).to receive(:currency).and_return(Collector::Currency.fetch!("EUR"))
+        post collection_import_preview_path, params: { export_file: import_upload_file(ExportFormatRules.examples("valid").fetch(name)) }
+
+        expect(response).to have_http_status(:ok), name
+        expect(response.body).to include("nothing to change"), name
+        expect(ImportUpload.count).to eq(0)
+      end
     end
   end
 
