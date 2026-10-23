@@ -142,7 +142,7 @@ RSpec.describe Collector::Backup::Archive, :backup do
     end
 
     it "tells a Collector export file where it belongs (AC-3.3)", :aggregate_failures do
-      export = scratch_path("collector-export-2026-10-21.json").tap { it.write(JSON.generate("format" => "collector-export", "format_version" => 1, "lots" => [])) }
+      export = scratch_path("collector-export-2026-10-21.json").tap { it.write(JSON.generate("format" => "collector-export", "format_version" => 2, "locations" => [], "lots" => [])) }
       refusal = refusal_of { described_class.read(export) }
 
       expect(refusal.problem).to eq("#{export.basename} is a Collector export file, not a backup.")

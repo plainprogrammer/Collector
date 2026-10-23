@@ -366,8 +366,8 @@ Everything a collector owns, and the card catalog, is in one SQLite file on your
 |---|---|---|
 | Whose | One collector's collection | The whole instance: every account, user and setting, and the catalog |
 | Made by | The collector, from the account menu or More | The operator, with a command on the host |
-| Holds | Profile, currency and lots, keyed by the card source's ids | The primary database as it is |
-| Restores into | Any instance of any release, even one with another catalog build; replaces that collector's lots | A new, empty instance of the same release or a newer one |
+| Holds | Profile, currency, locations and lots, keyed by the card source's ids | The primary database as it is |
+| Restores into | Any instance of a release that reads the file's format version (this one reads versions 1 and 2), even one with another catalog build; replaces that collector's lots and, for a version 2 file, locations | A new, empty instance of the same release or a newer one |
 | Doesn't hold | Passwords, other users, settings, the catalog | Secrets, `COLLECTOR_*` settings, queued jobs, the art index file, downloads |
 | Use it for | Moving a collection between instances, a collector's own safety copy, a file they can read ([Your data](#your-data)) | Recovering the instance after a failed disk, moving it to new hardware, a copy before an upgrade |
 
