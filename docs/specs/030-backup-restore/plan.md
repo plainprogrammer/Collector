@@ -3,7 +3,7 @@
 **Spec:** docs/specs/030-backup-restore/spec.md (v1.2.1, Approved by the maintainer on 2026-10-21)
 **Status:** Approved by the maintainer on 2026-10-21, after two independent read-only reviews (Opus: NEEDS REVISION, 1 critical, 3 major, 13 minor; Sonnet: APPROVE WITH NITS, 4 minor) with the second review's nits folded in. The maintainer accepted ADR 0024 (its Status changes in Phase 8, step 8.5) and chose Sonnet for execution. Written without running anything: it was traced against the files it edits and the gem sources (`research.md`). Every finding, its fix and the rulings are in [plan-review.md](plan-review.md).
 **Decisions:** docs/adr/0024-backup-with-vacuum-into.md (Proposed, written with this plan; accepted by the maintainer 2026-10-21, status changed in Phase 8); ADRs 0016, 0017, 0019, 0020, 0022 apply
-**Created:** 2026-10-21 (on `a8ac463`, spec 1.2.0, then the approval commit; `origin/main` at `acb6e3c`)
+**Created:** 2026-10-21 (on `4d31c8b`, spec 1.2.0, then the approval commit; `origin/main` at `acb6e3c`)
 **Supporting:** [data-model.md](data-model.md), [contracts/tasks.md](contracts/tasks.md), [contracts/archive.md](contracts/archive.md), [research.md](research.md), [plan-review.md](plan-review.md), [issue-art-index-ready.md](issue-art-index-ready.md)
 
 ## Global Constraints
