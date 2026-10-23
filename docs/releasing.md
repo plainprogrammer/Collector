@@ -38,7 +38,8 @@ and description.
    Both `amd64` and `arm64` appear, with `linux`.
 
 4. Before announcing a release that touches import or export, restore the maintainer's own real collection from its export into a fresh instance (their NAS) through the pages and compare the new export with the old (spec 028 AC-6.5; the suite and `verification.md` only show it on one instance with a seeded catalog).
-5. Deploy with Kamal by version: `bin/kamal deploy --skip-push --version 0.1.0`. Never run a plain
+5. Before announcing a release that changes the schema, the backup or the restore, restore the maintainer's own real backup onto the new image (spec 030 AC-5.7): take a backup of the NAS instance on the previous release, restore it onto a fresh Compose project of the new image (`docs/backup-restore.md` and the README's "Backup and restore"), start it, sign in, and compare the printed counts and an export of each with the source's. Record the steps, counts and timings in the feature's `verification.md`.
+6. Deploy with Kamal by version: `bin/kamal deploy --skip-push --version 0.1.0`. Never run a plain
    `bin/kamal deploy` against the public image.
 
 **Re-runs.** Only the newest release's workflow may be re-run: a re-run moves `latest`, `X` and `X.Y` to the
@@ -49,6 +50,7 @@ is safe and is how `latest` is restored if something else overwrote it.
 
 Notes an operator needs when upgrading, newest first. `bin/docker-entrypoint` runs `bin/rails db:prepare` on boot, so every migration listed here runs unattended.
 
+- **Backup and restore (spec 030).** No migration. Two new commands, `bin/rails "backup:create[DIRECTORY]"` and `bin/rails "backup:restore[FILE]"`, back up a running instance into one file and restore it onto a new, empty volume; see the README's "Backup and restore". `config/deploy.yml` gains a `backup` alias and a commented backup-directory volume; `compose.yaml` is unchanged. Nothing is required of the operator, but take a backup before this upgrade and keep your `SECRET_KEY_BASE` and `COLLECTOR_*` settings somewhere apart from it.
 - **Locations (spec 029).** One new migration, `locations`, runs on boot; it adds a table and changes nothing else. Exports written by this release are export format version 2 (they carry the collector's `locations`), and an earlier release refuses one as written by a newer version of Collector, so upgrade every instance an export is restored on before restoring. This release reads export files of version 1 and version 2 (a version 1 file leaves the account's locations as they are). Nothing is required of the operator.
 - **Applying an import (spec 028).** Two migrations run on boot: Active Storage's tables and `import_uploads`. The app now keeps a previewed import file under `storage/` (on the persistent volume) for at most an hour, one per account and at most 32 MB, and a recurring job (`config/recurring.yml`, every 15 minutes) removes expired ones; an orphaned file is removed within 25 minutes. Nothing is required of the operator. Active Storage's routes are now gated behind sign-in, and its direct-upload routes answer 404 (ADR 0022). The write transaction of an import is under 4 seconds for 50,000 lots on the development machine; on slower hardware a very large import may briefly hold other writes, so import while nothing else is writing.
 

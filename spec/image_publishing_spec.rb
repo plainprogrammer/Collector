@@ -23,6 +23,11 @@ RSpec.describe "Image publishing files" do
       expect(Rails.root.join("bin/image-smoke").read).to include("bin/ghcr-cleanup lib/collector/ghcr_cleanup.rb")
     end
 
+    it "keeps the backup smoke script out of the image, and the image smoke test checks it (spec 030 FR-9)", :aggregate_failures do
+      expect(rules).to include("/bin/backup-smoke")
+      expect(Rails.root.join("bin/image-smoke").read).to include("bin/backup-smoke")
+    end
+
     it "keeps the checkout's OCR engine out of the build context, so the image gets the copy its build fetches (issue #31)" do
       expect(rules).to include("/vendor/ocr")
     end
@@ -109,6 +114,12 @@ RSpec.describe "Image publishing files" do
     it "offers the open catalog as a commented-out setting (spec 023 AC-1.3)" do
       expect(Rails.root.join("config/deploy.yml").read).to include("# COLLECTOR_PUBLIC_CATALOG: true")
     end
+
+    it "has a backup alias and offers the backup directory as a commented-out volume (spec 030 decision 4)", :aggregate_failures do
+      expect(deploy.dig("aliases", "backup")).to eq(%(app exec --reuse "bin/rails 'backup:create[/backups]'"))
+      expect(deploy["volumes"]).to eq([ "collector_storage:/rails/storage" ])
+      expect(Rails.root.join("config/deploy.yml").read).to include('# - "/srv/collector-backups:/backups"')
+    end
   end
 
   describe ".github/workflows/ci.yml" do
@@ -168,6 +179,15 @@ RSpec.describe "Image publishing files" do
     it "smoke-tests each image between the build and the push (AC-4.3, AC-6.2)" do
       names = steps.map { |candidate| candidate["id"] || candidate["name"] }
       expect(names.index("Smoke test")).to be_between(names.index("build"), names.index("push")).exclusive
+    end
+
+    it "runs bin/backup-smoke after bin/image-smoke and before the push, on each architecture (spec 030 AC-5.3)", :aggregate_failures do
+      names = steps.map { |candidate| candidate["id"] || candidate["name"] }
+      backup = steps.find { |candidate| candidate["run"] == "bin/backup-smoke collector:smoke" }
+
+      expect(backup).to be_present
+      expect(names.index(backup["name"])).to be_between(names.index("Smoke test"), names.index("push")).exclusive
+      expect(image_job.dig("strategy", "matrix", "include").size).to eq(2)
     end
 
     it "tags releases, main and SHAs per ADR 0009 (FR-2)", :aggregate_failures do

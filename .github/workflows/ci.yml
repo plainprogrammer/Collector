@@ -114,6 +114,11 @@ jobs:
       - name: Smoke test
         run: bin/image-smoke collector:smoke
 
+      # Backs up a running container and restores the file into a second one under another secret, the ways the README
+      # documents (spec 030, AC-5.2, AC-5.3).
+      - name: Backup smoke test
+        run: bin/backup-smoke collector:smoke
+
       # Same build from the cache, exported to the registry by digest (untagged) for the publish job.
       - name: Push by digest
         id: push
