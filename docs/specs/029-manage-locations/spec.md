@@ -7,7 +7,7 @@
 **Depends on:** [spec 028](../028-apply-import/spec.md) (apply an import, issue #40), which has merged (PR #120, `5cca2fb`; its plan retired in PR #121). The plan cites 028 as merged (v1.3.4) and records, for each citation, whether it is still true and the class, method or number now behind it
 **Branch:** `029-manage-locations`
 **Issue:** [#44](https://github.com/plainprogrammer/Collector/issues/44)
-**Plan:** [plan.md](plan.md)
+**Plan:** retired in `88a52cf7f4b84562d40db23bf157de58fceab2c2`; read it with `git show 88a52cf7f4b84562d40db23bf157de58fceab2c2^:docs/specs/029-manage-locations/plan.md`
 
 ---
 
