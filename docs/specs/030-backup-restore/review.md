@@ -1,6 +1,6 @@
 # Spec review (Mode A): 030 Back Up and Restore an Instance
 
-**Reviewed:** spec version 1.0.0 (commit `5358a2e`), 2026-10-21, by a read-only Opus subagent, as the project default. It checked the spec's factual claims against the code.
+**Reviewed:** spec version 1.0.0 (commit `8963357`), 2026-10-21, by a read-only Opus subagent, as the project default. It checked the spec's factual claims against the code.
 **Verdict on 1.0.0:** NEEDS REVISION (4 critical, 9 important, minors).
 **State of 1.1.0:** every critical and important finding and every minor is addressed in the spec below. The revised spec has **not** been reviewed a second time; the plan's first review should read it with this list.
 
@@ -41,7 +41,7 @@ All addressed: "one Collector command"; AC-2.4's wording; AC-2.10's expiry; mtim
 
 # Round 2 (Mode A, second review, Opus, 2026-10-21)
 
-**Reviewed:** spec version 1.1.0 (commit `ff0ab48`), read-only. **Verdict on 1.1.0:** NEEDS REVISION (0 critical, 4 major, 11 minor); every first-round critical finding was confirmed fixed (I7 partly, I6 partly, resolved by M1 and M2 below).
+**Reviewed:** spec version 1.1.0 (commit `c97f4a7`), read-only. **Verdict on 1.1.0:** NEEDS REVISION (0 critical, 4 major, 11 minor); every first-round critical finding was confirmed fixed (I7 partly, I6 partly, resolved by M1 and M2 below).
 **State of 1.2.0:** every finding is addressed, and none is declined. The revised spec has not been reviewed a third time; the plan's first review reads it with this list. The maintainer's rulings of 2026-10-21 are recorded in the spec (decision headings "(ruled)", changelog 1.2.0, Open Questions).
 
 ## Major

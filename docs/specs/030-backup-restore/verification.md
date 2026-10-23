@@ -147,7 +147,7 @@ CI on amd64 and arm64 is the further evidence. No CI run exists yet (nothing is 
 
 ## Deviations from the plan and fixes found in execution
 
-- Phase 0's extraction truncated `spec/backup_guards_spec.rb`; fixed in commit 1f71564 ("fix(backup): write the guards spec of Step 0.6").
+- Phase 0's extraction truncated `spec/backup_guards_spec.rb`; fixed in commit 5475e52 ("fix(backup): write the guards spec of Step 0.6").
 - `Backup.create_private` needed `.tap(&:binmode)` (`lib/collector/backup.rb` line 87): with `Encoding.default_internal` set to UTF-8 by Rails, writing gzip bytes raised.
 - `Archive.read` needed an extra `gzip.read(1)` (`lib/collector/backup/archive.rb` line 75), because zlib checks the stream's CRC and length only on the first read past the end; the plan's comment claiming otherwise was reworded.
 - `Snapshot#verify!` counts unique `[table, rowid]` pairs for `foreign_key_check` (`snapshot.rb` line 45, `.uniq`) rather than every result row.
@@ -199,22 +199,22 @@ Where the steps are carried: `docs/releasing.md` step 5 carries the recurring re
 
 SPEC-ALIGNED (independent Sonnet review 2026-10-22, after fixes)
 
-Independent `sdd-review` Mode B by Sonnet 5.5 at `def47ed` against spec 1.2.1: SPEC-ALIGNED, 0 critical, 0 major, 7 minor. Everything below was fixed or ruled, test first, one commit each.
+Independent `sdd-review` Mode B by Sonnet 5.5 at `b3335d6` against spec 1.2.1: SPEC-ALIGNED, 0 critical, 0 major, 7 minor. Everything below was fixed or ruled, test first, one commit each.
 
 | Finding | Resolution | Commit |
 |---|---|---|
-| Minor 1, AC-1.2/1.3 example too weak | Writers are two child processes (pairs, lots) with their own connections; `Create` gets a `:snapshot_starting` checkpoint and the example counts commits finishing between it and `:snapshot_written` (about 1,900 in four 40 ms windows on the first run; a blocking backup would give 0). `script/backup/measure.rb` keeps its thread writer: the recorded measurement stands and was not re-run (ruling Q1 names the example). | b5a740b |
-| Minor 2, AC-2.9 passed by the stall rule | Heartbeat 5 minutes old: past `JOB_ENDED_GRACE`, inside `STALL_AFTER`, so only the missing job reads "Interrupted". | 0c33c31 |
+| Minor 1, AC-1.2/1.3 example too weak | Writers are two child processes (pairs, lots) with their own connections; `Create` gets a `:snapshot_starting` checkpoint and the example counts commits finishing between it and `:snapshot_written` (about 1,900 in four 40 ms windows on the first run; a blocking backup would give 0). `script/backup/measure.rb` keeps its thread writer: the recorded measurement stands and was not re-run (ruling Q1 names the example). | f1b1ede |
+| Minor 2, AC-2.9 passed by the stall rule | Heartbeat 5 minutes old: past `JOB_ENDED_GRACE`, inside `STALL_AFTER`, so only the missing job reads "Interrupted". | e8908c7 |
 | Minor 3, FR-2 room-before-incomplete residue | Informational (ruling m3). Residue: a file cut short, with a bad gzip CRC or with trailing damage, on a volume without room is refused for the room, not as incomplete (note 3 above). The spec is not edited. | none |
-| Minor 4, copied-in pass without `SECRET_KEY_BASE_DUMMY` | Added to `bin/backup-smoke`'s copied-in pass and the README's copied-in command (ruling Q2). | 2c32a90 |
-| Minor 5, no guard for foreign keys to `sessions` | `spec/backup_guards_spec.rb`: every such key must cascade on delete, naming decision 3, with a negative control (ruling Q5). | 0288c3b |
-| Minor 6, 2–9-byte prefix called "not a backup" | A gzip-magic file shorter than the 10-byte header is incomplete (`archive_spec`: 2, 5, 9 bytes). | 6a21b5a |
-| Minor 7, `Backup.remove` wider than FR-6 | Suffixes are an argument; the restore passes `""` and `-journal` only (`spec/lib/collector/backup/remove_spec.rb`). | d69036b |
+| Minor 4, copied-in pass without `SECRET_KEY_BASE_DUMMY` | Added to `bin/backup-smoke`'s copied-in pass and the README's copied-in command (ruling Q2). | 9a96312 |
+| Minor 5, no guard for foreign keys to `sessions` | `spec/backup_guards_spec.rb`: every such key must cascade on delete, naming decision 3, with a negative control (ruling Q5). | 173e37a |
+| Minor 6, 2–9-byte prefix called "not a backup" | A gzip-magic file shorter than the 10-byte header is incomplete (`archive_spec`: 2, 5, 9 bytes). | 1ad88ee |
+| Minor 7, `Backup.remove` wider than FR-6 | Suffixes are an argument; the restore passes `""` and `-journal` only (`spec/lib/collector/backup/remove_spec.rb`). | 12e4cfc |
 
 Rulings (maintainer, 2026-10-22):
 
 - Q1 and Q2: as above.
-- Q3: the art-index issue is filed as #122; `issue-art-index-ready.md` is now a one-line pointer to it (897560f). The approved spec and plan are untouched.
+- Q3: the art-index issue is filed as #122; `issue-art-index-ready.md` is now a one-line pointer to it (eea062b). The approved spec and plan are untouched.
 - Q4: ADR 0024 keeps its number (029, PR #123, holds 0023).
 - Q5: as above.
 - Q6: the PR's CI is the amd64 evidence; nothing was done here.
@@ -224,9 +224,35 @@ The review's TOCTOU judgement (Security review note above) agrees with the execu
 Results after the fixes (2026-10-22, the Gemfile.lock platform change uncommitted):
 
 - `bin/ci`: `1865 examples, 0 failures, 1 pending` (seed 121); `✅ Tests: RSpec passed in 3m3.14s`; `✅ Continuous Integration passed in 3m23.10s`. The pending example is the same `art_agreement_spec` as before.
-- `bin/backup-smoke`, run again locally with podman (linux/arm64) on an image built from a `git archive` of `897560f`: exit 0, last line `OK: localhost/collector:local was backed up and restored into localhost/collector:local the documented ways`, with the copied-in pass now carrying `SECRET_KEY_BASE_DUMMY`.
+- `bin/backup-smoke`, run again locally with podman (linux/arm64) on an image built from a `git archive` of `eea062b`: exit 0, last line `OK: localhost/collector:local was backed up and restored into localhost/collector:local the documented ways`, with the copied-in pass now carrying `SECRET_KEY_BASE_DUMMY`.
 - Still owed or unconfirmed: AC-5.6 (the maintainer's NAS restore) and the first CI run on amd64.
 
 ## Distillation
 
-`distill-feature` ran on 2026-10-22 before the pull request (`f9caae1`). Spec 030's areas are release and deploy and data portability, which have no area doc yet (#109, #108), so nothing was written to `docs/architecture/`. The spec supersedes nothing in a shipped spec. The index row's Plan is "retirement owed"; the plan is retired after the merge. The maintainer's NAS restore (AC-5.6) is still owed and is the spec's release check.
+`distill-feature` ran on 2026-10-22 before the pull request (`aa0fcba`). Spec 030's areas are release and deploy and data portability, which have no area doc yet (#109, #108), so nothing was written to `docs/architecture/`. The spec supersedes nothing in a shipped spec. The index row's Plan is "retirement owed"; the plan is retired after the merge. The maintainer's NAS restore (AC-5.6) is still owed and is the spec's release check.
+
+## Rebase onto spec 029
+
+On 2026-10-23 the branch was rebased onto `origin/main` at `718b133` (spec 029, manage locations, PR #123, merged), which rewrote every commit of this branch. The SHAs this spec's `verification.md`, `plan-review.md`, `plan.md` and `review.md` cite for the branch's own commits are the rebased ones.
+
+Conflicts, and how each was resolved:
+
+| File | Conflict | Resolution |
+|---|---|---|
+| `docs/specs/README.md` | Main's rows 028 (supersession column) and 029 against the 030 row, in the first commit that added the row and in each later commit that edited it | Main's rows kept as they are; 030's row added after 029's, with each later commit's wording of it |
+| `docs/adr/README.md` | Main's 0023 row and Expected paragraph against 0024's row and its Expected paragraph, twice (proposed, then accepted) | Rows 0023 and 0024 both, in order; Expected names lots in locations (item 10) and YARD, which takes 0025 once 0024 has merged; the backup mechanism left the list, as it is now 0024 |
+| `CLAUDE.md` | Project Status paragraph: 029's locations and format version 2 sentence against 030's backup sentence | Both sentences, 029's first |
+| `docs/releasing.md` | Upgrade notes: 029's Locations entry against 030's Backup and restore entry | Both entries, newest first (030, then 029) |
+
+Checked after the rebase, against format version 2: the round trip through `CollectionExport` in `spec/backup_restored_instance_spec.rb` and `restore_spec.rb` uses the application's own export, so it now writes version 2 and passed unchanged. Fixed in its own commit: the README's export-versus-backup table said an export holds "profile, currency and lots" and restores "into any instance of any release", which version 2 made untrue (it holds locations; an earlier release refuses a version 2 file), and `archive_spec.rb`'s hand-written export file is now a version 2 document. `bin/backup-smoke` was not run: the rebase touched none of it, the Dockerfile, the entrypoint or the backup tasks.
+
+`bin/ci` after the rebase (seed 17323):
+
+```
+Finished in 2 minutes 35.6 seconds (files took 2.68 seconds to load)
+2006 examples, 0 failures, 1 pending
+✅ Tests: RSpec passed in 2m39.44s
+✅ Continuous Integration passed in 2m50.66s
+```
+
+The one pending example is the art fingerprint agreement spec, which needs `COLLECTOR_ART_AGREEMENT` (as before).
