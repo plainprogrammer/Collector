@@ -77,23 +77,33 @@ class CollectionImport::Apply
       condition = lot["condition"].presence
       cents = lot["price_paid"]&.delete(".")&.to_i
       { account_id: @account.id, catalog_entry_id: import.entry_id(row), quantity: lot["quantity"], finish:, condition:,
-        price_paid_cents: cents, lot_key: Lot.key_for(finish, condition, cents),
+        price_paid_cents: cents, location_key: row.identity.last, # the comparison key; resolved to an id once the locations are written
         created_at: Time.iso8601(lot["added_at"]), updated_at: Time.iso8601(lot["changed_at"]) }
     end
 
-    # One statement per BATCH_SIZE lots, never one per lot (FR-4). The upsert is on the lot's identity, so a changed
-    # lot keeps its id (FR-9); the rows were validated by the reader. The bulk statements skip Lot's callbacks and
-    # validations on purpose (spec 028 FR-3, ruled 2026-10-20; AC-2.4 checks the rows against Lot). Then the locations
-    # (spec 029) and the view.
+    # Delete the removed lots (the lots of a removed location are among them, so the foreign key never fires), write the
+    # locations, read them once (at most 500 rows), then upsert the lots with their place and key. One statement per
+    # BATCH_SIZE lots, never one per lot (FR-4). The upsert is on the lot's identity, so a changed lot keeps its id (FR-9) and
+    # a renamed location's lots stay where they are; the rows were validated by the reader, so the bulk statements skip Lot's
+    # callbacks and validations on purpose (spec 028 FR-3, ruled 2026-10-20; AC-2.4 checks the rows against Lot). Then the
+    # view (spec 032 research R3).
     def write!(plan, rows)
       plan.removed_lots.map(&:id).each_slice(CollectionImport::BATCH_SIZE) { |ids| @account.lots.where(id: ids).delete_all }
+      CollectionImport::LocationChanges.write!(@account, plan.locations)
+      place_ids = @account.locations.pluck(:name_key, :id).to_h
       (plan.added_rows + plan.changed_rows).each_slice(CollectionImport::BATCH_SIZE) do |slice|
-        Lot.upsert_all(slice.map { |row| rows.fetch(row.number) }, unique_by: %i[account_id catalog_entry_id lot_key],
+        Lot.upsert_all(slice.map { |row| placed(rows.fetch(row.number), place_ids) }, unique_by: %i[account_id catalog_entry_id lot_key],
           update_only: %i[quantity created_at updated_at], record_timestamps: false, returning: false)
       end
       # Only a written lot makes the lists that point at lots wrong (spec 029 decision 11, AC-9.17).
       CollectionImport::WorkingState.clear!(@account) if plan.writes_lots?
-      CollectionImport::LocationChanges.write!(@account, plan.locations)
       @account.user.update!(collection_view: plan.view_change) if plan.view_change
+    end
+
+    # One pass over the built attributes: the location's id and the key that carries it.
+    def placed(attributes, place_ids)
+      location_id = place_ids.fetch(attributes[:location_key]) if attributes[:location_key]
+      attributes.except(:location_key).merge(location_id:,
+        lot_key: Lot.key_for(attributes[:finish], attributes[:condition], attributes[:price_paid_cents], location_id))
     end
 end

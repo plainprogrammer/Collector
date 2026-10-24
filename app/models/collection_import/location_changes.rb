@@ -1,5 +1,6 @@
 # Writes what an apply decided about the collector's locations (spec 029 decision 11), inside the apply's one write
-# transaction and in at most two statements whatever their number: the removed ones are deleted first, so that an added
+# transaction (after the removed lots are deleted and before the lots are written) and in at most two statements whatever
+# their number: the removed ones are deleted first, so that an added
 # key never meets a removed one, then one upsert on [account_id, name_key] inserts the added ones and respells the renamed
 # ones, whose ids stay. An unchanged location isn't written, not even its updated_at. The names were validated by the
 # reader, so the bulk statements skip Location's validations on purpose, as the lots' do (spec 028 FR-3); a spec checks the
