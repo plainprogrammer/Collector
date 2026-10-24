@@ -296,6 +296,13 @@ RSpec.describe Upgrade::Harness, :git_sandbox, :upgrade do
       expect(out.string).to include("exactly one file")
     end
 
+    it "fails, and does not skip the leg, when the previous release lists the task but the backup it takes fails (AC-6.4)", :aggregate_failures do
+      broken = FakeEngine::Result.new("", "disk full\n", 1)
+      expect(harness(engine: FakeEngine.new(databases: leg_databases, tasks: listing, task: broken)).call).to eq(1)
+      expect(out.string).to include("backup:create failed on v0.2.1", "disk full")
+      expect(out.string).not_to include("backup leg skipped")
+    end
+
     it "skips the leg with a printed line, and the exit status doesn't change, when the previous release has no backup task (AC-6.4)", :aggregate_failures do
       expect(harness.call).to eq(0)
       expect(out.string).to include("previous release v0.2.1 has no backup task; backup leg skipped")
