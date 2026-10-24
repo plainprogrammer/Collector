@@ -1,7 +1,7 @@
 # Feature 032: Put a Lot in a Location
 
-**Status:** Awaiting the maintainer's approval. The maintainer's rulings D1–D6 (2026-10-23; decision 3 against the draft's recommendation) are recorded as decisions 1–7 below (D1–D3 are decisions 1–3, D5 is decision 7, D4 and D6 are decisions 4–6), and the maintainer confirmed the details P1–P6 as proposed on 2026-10-23. Two independent reviews are in `review.md` (round 1 NEEDS REVISION, fixed in 0.2.0; round 2 NEEDS REVISION, text only, fixed in 1.0.0)
-**Version:** 1.0.0
+**Status:** Approved by the maintainer (2026-10-23). The maintainer's rulings D1–D6 (2026-10-23; decision 3 against the draft's recommendation) are recorded as decisions 1–7 below (D1–D3 are decisions 1–3, D5 is decision 7, D4 and D6 are decisions 4–6), and the maintainer confirmed the details P1–P6 as proposed on 2026-10-23. Two independent reviews are in `review.md` (round 1 NEEDS REVISION, fixed in 0.2.0; round 2 NEEDS REVISION, text only, fixed in 1.0.0)
+**Version:** 1.0.1
 **Created:** 2026-10-23
 **Last Updated:** 2026-10-23
 **Depends on:** [spec 029](../029-manage-locations/spec.md) (manage locations, issue #44; merged) and, through it, [spec 028](../028-apply-import/spec.md) (apply an import, issue #40; merged). Spec 031 (#42, an upgrade check in CI) touches CI only and is independent
@@ -15,6 +15,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.0.1 | 2026-10-23 | Approved by the maintainer (rulings D1–D6 and details P1–P6 as recorded; both reviews' findings fixed in 0.2.0 and 1.0.0). Status line only; no criterion changes |
 | 1.0.0 | 2026-10-23 | From the second independent review (`review.md`, round 2): P1–P6 confirmed by the maintainer; the header and Decisions intro map the maintainer's D1–D6 to decisions 1–7; the round trips of spec 029 AC-9.15 and spec 028 AC-6.4 are superseded, as AC-11.14 reads them from now on; the card page's "Your copies" covers every printing of the card, and the row order is stated (AC-4.1, AC-4.2); the survivor of a whole move that merges is the destination's lot (P6); AC-6.7's race covers the edit and the move; AC-9.1 lists every sentence of the format document that changes and the reader's rule for older lots, AC-9.3 adds `lots.lot_key`; the apply's write order and the place in the lot key are stated (FR-1, FR-4, Notes for the plan); the Supersedes table and the index complete (spec 029 decision 10, spec 025 decision 9, ADR 0023's read-versions bullet); criteria in numeric order; the cost per account counts the index and the key |
 | 0.2.0 | 2026-10-23 | From the independent review (`review.md`): a row with an unlisted location keeps a readable identity (AC-10.3); a bulk Undo merges restored rows with each other and survives a removal made before the migration (AC-7.5, AC-7.8); a lot's location is matched by comparison key and re-exports with the stored spelling (AC-9.4); the edit form is reached from the table and the scanner too (decision 4, AC-2.8); deleting an account with placed lots (AC-6.6); the migration names every table that points at lots (AC-7.1); the worst-case file for the apply's bars (AC-11.12); Open Questions made consistent; Given/When/Then gaps and smaller points closed |
 | 0.1.0 | 2026-10-23 | First draft, with the maintainer's rulings of 2026-10-23 on decisions 1–6 |
