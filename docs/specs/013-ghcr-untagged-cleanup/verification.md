@@ -1,6 +1,6 @@
 # Verification: Clean Up Untagged GHCR Package Versions (spec 013)
 
-**Spec:** [spec.md](spec.md) v1.1.2 · **Plan:** [plan.md](plan.md) Phase 5 · **Recorded:** 2026-10-08 ·
+**Spec:** [spec.md](spec.md) v1.1.2 · **Plan:** plan (retired in `5a1e2eb43ff1b8c4b66ca24f3573f96013f64d2a`; read it with `git show 5a1e2eb43ff1b8c4b66ca24f3573f96013f64d2a^:docs/specs/013-ghcr-untagged-cleanup/plan.md`) Phase 5 · **Recorded:** 2026-10-08 ·
 **Branch:** `013-ghcr-untagged-cleanup`
 
 Evidence for every acceptance criterion. The selection rule, the client and the run are covered by

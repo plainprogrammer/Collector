@@ -1,6 +1,6 @@
 # Verification: Build and Publish Collector Images (spec 012)
 
-**Spec:** [spec.md](spec.md) v1.1.1 · **Plan:** [plan.md](plan.md) Phases 6 and 7 · **Recorded:** 2026-10-08
+**Spec:** [spec.md](spec.md) v1.1.1 · **Plan:** plan (retired in `a41bd089232414faafa7f6623b5e79d10997b8f6`; read it with `git show a41bd089232414faafa7f6623b5e79d10997b8f6^:docs/specs/012-ghcr-registry-publishing/plan.md`) Phases 6 and 7 · **Recorded:** 2026-10-08
 
 Evidence for every acceptance criterion that needs the registry, a workflow run or a running image. File-shape
 criteria are covered by `spec/image_publishing_spec.rb` and `spec/readme_spec.rb`, which run in `bin/ci`.
