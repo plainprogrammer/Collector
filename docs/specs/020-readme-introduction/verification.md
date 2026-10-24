@@ -1,6 +1,6 @@
 # Verification: An Accurate README (spec 020)
 
-**Spec:** [spec.md](spec.md) v1.4.2 · **Plan:** [plan.md](plan.md) · **Recorded:** 2026-10-12 ·
+**Spec:** [spec.md](spec.md) v1.4.2 · **Plan:** plan (retired in `4347416ccedc168c484b138c59605e5d49b41e81`; read it with `git show 4347416ccedc168c484b138c59605e5d49b41e81^:docs/specs/020-readme-introduction/plan.md`) · **Recorded:** 2026-10-12 ·
 **Branch:** `020-readme-introduction` · **Issue:** [#63](https://github.com/plainprogrammer/Collector/issues/63)
 
 Comparisons "with `origin/main`" are with the merge base, `3ab9864` (`origin/main...HEAD`). README line numbers are
