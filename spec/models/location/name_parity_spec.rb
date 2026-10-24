@@ -51,4 +51,34 @@ RSpec.describe Location::Name, "parity with v2.schema.json", type: :model do # r
 
     expect(sample.reject { |text| schemer.valid?(text) == well_formed?(text) }).to eq([])
   end
+
+  # Spec 032 AC-9.7: a lot's location is judged by the same rules as a name; v3.schema.json's lot_location says it for a
+  # string (it also allows null, which the string keywords don't apply to).
+  describe "a lot's location in v3.schema.json (spec 032 AC-9.7)" do
+    let(:lot_location) { ExportFormat::Rules.schema(3).dig("$defs", "lot_location") }
+
+    def lot_pattern = Regexp.new(JSONSchemer::EcmaRegexp.ruby_equivalent(lot_location["pattern"]))
+
+    def well_formed_location?(string) = string.length.between?(lot_location["minLength"], lot_location["maxLength"]) && lot_pattern.match?(string)
+
+    it "has the name's length, pattern and type plus null", :aggregate_failures do
+      expect(lot_location.slice("minLength", "maxLength", "pattern")).to eq(ExportFormat::Rules.schema(3).dig("$defs", "location_name").slice("minLength", "maxLength", "pattern"))
+      expect(lot_location["type"]).to eq([ "string", "null" ])
+    end
+
+    it "agrees with the model on every scalar value in four forms" do
+      disagreements = []
+      scalars.each do |scalar|
+        forms([ scalar ].pack("U")).each do |text|
+          stored = accepted(text)
+          disagreements << [ :stored_but_not_well_formed, text ] if stored && !well_formed_location?(stored)
+          next unless well_formed_location?(text)
+
+          disagreements << [ :well_formed_but_refused, text ] if stored.nil? && described_class.normalise(text).length <= described_class::MAX_LENGTH
+        end
+      end
+
+      expect(disagreements.first(5).map { |kind, text| [ kind, text.codepoints.map { |cp| format("U+%04X", cp) } ] }).to eq([])
+    end
+  end
 end

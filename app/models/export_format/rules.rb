@@ -1,6 +1,6 @@
 require "json_schemer"
 
-# The export format's rules for a well-formed file, versions 1 and 2 (docs/export-format/README.md, specs 017 and 029),
+# The export format's rules for a well-formed file, versions 1 to 3 (docs/export-format/README.md, specs 017, 029 and 032),
 # as the app applies them when it reads a file (spec 025, ADR 0021). The v<N>.schema.json files beside this file are
 # byte-identical copies of those in docs/export-format/, which the published image leaves out;
 # spec/models/export_format/rules_spec.rb keeps them equal.
@@ -11,17 +11,17 @@ module ExportFormat
     FORMAT = "collector-export".freeze
     # The versions this instance reads, each against its own schema. VERSION is the newest: the one the export writes and
     # the highest a reader accepts (spec 029 decision 10).
-    VERSIONS = [ 1, 2 ].freeze
+    VERSIONS = [ 1, 2, 3 ].freeze
     VERSION = VERSIONS.max
-    # Keep in step with v2.schema.json's maxItems for locations (a spec checks it).
+    # Keep in step with v2.schema.json's and v3.schema.json's maxItems for locations (a spec checks it).
     MAX_LOCATIONS = Location::MAX_PER_ACCOUNT
     # The rules a schema can't state, and the two that apply before a schema can.
-    RULES = %w[not_utf8 not_json not_a_time changed_before_added duplicate_lot duplicate_location].freeze
+    RULES = %w[not_utf8 not_json not_a_time changed_before_added duplicate_lot duplicate_location unknown_location].freeze
     SCHEMA_DIRECTORY = Pathname(__dir__)
     TIME = /\A(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})Z\z/
     JSON_TYPES = %w[array boolean integer null number object string].freeze
-    # The fields under a lot that make its identity (ADR 0019).
-    IDENTITY_FIELDS = %w[entry entry/collectible_type entry/source_id finish condition price_paid].freeze
+    # The fields under a lot that make its identity (ADR 0019, ADR 0025).
+    IDENTITY_FIELDS = %w[entry entry/collectible_type entry/source_id finish condition price_paid location].freeze
 
     def self.schema_file(version = VERSION) = SCHEMA_DIRECTORY.join("v#{version}.schema.json")
 
@@ -76,9 +76,16 @@ module ExportFormat
       found + rule_problems(data, found.to_set(&:at))
     end
 
-    # What identifies a lot (ADR 0019): its entry's type and source id, finish, condition and price paid.
-    def self.identity(lot)
-      lot.fetch("entry").values_at("collectible_type", "source_id") + lot.values_at("finish", "condition", "price_paid")
+    # What identifies a lot (ADR 0019, ADR 0025): its entry's type and source id, finish, condition, price paid and, from
+    # version 3, the comparison key of its location. Six values for every version; the sixth is nil for versions 1 and 2,
+    # which say nothing about a place (spec 032 decision 7), and for a lot in no location.
+    def self.identity(lot, version = VERSION)
+      lot.fetch("entry").values_at("collectible_type", "source_id") + lot.values_at("finish", "condition", "price_paid") +
+        [ place_key(lot["location"], version) ]
+    end
+
+    def self.place_key(location, version)
+      Location::Name.key(Location::Name.normalise(location)) if version >= 3 && location.is_a?(String)
     end
 
     # Whether the lot at +at+ has an identity to compare: it is an object, and none of its identity fields is among
@@ -132,9 +139,23 @@ module ExportFormat
       not_times = checked.reject { |at, _value| real.include?(at) }.map { |at, _value| Problem.new("not_a_time", at) }
       backwards = lots.select { |lot, index| changed_before_added?(lot, "/lots/#{index}", real) }
         .map { |_lot, index| Problem.new("changed_before_added", "/lots/#{index}/changed_at") }
-      repeats = lots.select { |lot, index| identity_readable?(lot, "/lots/#{index}", failed) }.group_by { |lot, _index| identity(lot) }.values
+      version = schema_version(data)
+      repeats = lots.select { |lot, index| identity_readable?(lot, "/lots/#{index}", failed) }.group_by { |lot, _index| identity(lot, version) }.values
         .flat_map { |group| group.drop(1).map { |_lot, index| Problem.new("duplicate_lot", "/lots/#{index}") } }
-      not_times + backwards + repeats + (schema_version(data) >= 2 ? repeated_locations(data, failed) : [])
+      not_times + backwards + repeats + unlisted_places(data, lots, failed, version) + (version >= 2 ? repeated_locations(data, failed) : [])
+    end
+
+    # The lots whose location is a name the file's locations don't list, compared by comparison key (version 3). A lot whose
+    # location failed the schema has nothing to compare, as a lot whose identity can't be read isn't compared.
+    def self.unlisted_places(data, lots, failed, version)
+      return [] unless version >= 3 && data["locations"].is_a?(Array) && !failed.include?("/locations") # an over-long list is refused at the header; none of it is folded here (spec 029 review M1)
+
+      listed = data["locations"].filter_map { |location| place_key(location["name"], version) if location.is_a?(Hash) }.to_set
+      lots.filter_map do |lot, index|
+        next unless lot["location"].is_a?(String) && !failed.include?("/lots/#{index}/location")
+
+        Problem.new("unknown_location", "/lots/#{index}/location") unless listed.include?(place_key(lot["location"], version))
+      end
     end
 
     # The locations whose comparison key an earlier location already has (spec 029 decision 9): the key of the name after
@@ -170,6 +191,6 @@ module ExportFormat
       Date.valid_date?(year, month, day) && hour < 24 && minute < 60 && second < 60
     end
 
-    private_class_method :non_finite?, :schema_problems, :locations_over_limit?, :problems_from, :rule_problems, :repeated_locations, :changed_before_added?, :moment?
+    private_class_method :non_finite?, :schema_problems, :locations_over_limit?, :problems_from, :rule_problems, :unlisted_places, :place_key, :repeated_locations, :changed_before_added?, :moment?
   end
 end

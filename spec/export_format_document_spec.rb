@@ -88,7 +88,7 @@ RSpec.describe "The export format's document" do
       expect(left_out.map { |row| row["Column"] }).to match_array(%w[
         accounts.id accounts.created_at accounts.updated_at
         locations.id locations.account_id locations.name_key locations.created_at locations.updated_at
-        lots.id lots.account_id lots.lot_key lots.location_id
+        lots.id lots.account_id lots.lot_key
         users.id users.account_id users.password_digest users.admin users.created_at users.updated_at
       ])
     end

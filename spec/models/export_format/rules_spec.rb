@@ -14,7 +14,7 @@ RSpec.describe ExportFormat::Rules, type: :model do
     documented = Rails.root.glob("docs/export-format/v*.schema.json")
     copies = documented.map { |file| described_class::SCHEMA_DIRECTORY.join(file.basename) }
 
-    expect(documented.map(&:basename).map(&:to_s)).to include("v1.schema.json", "v2.schema.json")
+    expect(documented.map(&:basename).map(&:to_s)).to include("v1.schema.json", "v2.schema.json", "v3.schema.json")
     expect(copies.map { |copy| copy.exist? && copy.binread }).to eq(documented.map(&:binread))
   end
 
@@ -168,7 +168,7 @@ RSpec.describe ExportFormat::Rules, type: :model do
       expect(described_class.schema_version(base)).to eq(1)
       expect(described_class.schema_version(v2)).to eq(2)
       expect(described_class.schema_version(v2.merge("format_version" => 2.0))).to eq(2)
-      expect(described_class.schema_version(v2.merge("format_version" => 3))).to eq(1) # a version it doesn't read: the oldest names the version
+      expect(described_class.schema_version(v2.merge("format_version" => 4))).to eq(1) # a version it doesn't read: the oldest names the version
       expect(described_class.schema_version(base.except("format_version"))).to eq(1)
       expect(described_class.schema_version(base.merge("format_version" => "1"))).to eq(1)
       expect(described_class.schema_version([ v2 ])).to eq(1) # not an object: the oldest judges it, as it always did
@@ -176,7 +176,7 @@ RSpec.describe ExportFormat::Rules, type: :model do
       expect(problems_of(base.merge("format_version" => 2))).to eq([ %w[required /locations] ])
       expect(problems_of(base.except("format_version"))).to eq([ %w[required /format_version] ]) # the version 1 invalid examples keep their one problem
       expect(problems_of(base.merge("format_version" => "1"))).to eq([ %w[const /format_version] ])
-      expect(problems_of(v2.merge("format_version" => 3))).to eq([ %w[const /format_version] ])
+      expect(problems_of(v2.merge("format_version" => 4))).to eq([ %w[const /format_version] ])
       expect(problems_of(v2.merge("format_version" => 1))).to eq([]) # an unknown field is ignored by version 1
     end
 
@@ -233,6 +233,79 @@ RSpec.describe ExportFormat::Rules, type: :model do
       data = v2.merge("locations" => [ 5, { "name" => "Box" }, { "name" => "box" } ])
 
       expect(problems_of(data)).to eq([ %w[type /locations/0], %w[duplicate_location /locations/2] ])
+    end
+  end
+
+  describe "version 3 (spec 032)" do
+    def v3 = JSON.parse(Rails.root.join("docs/export-format/examples/comparison/v3-base.json").read)
+
+    def placed(*locations, listed: %w[Blue\ binder Trade\ binder])
+      data = v3.merge("locations" => listed.map { |name| { "name" => name } })
+      data["lots"] = locations.each_with_index.map { |location, index| data["lots"][0].merge("location" => location, "finish" => index.to_s.then { |n| n == "0" ? "foil" : "f#{n}" }) }
+      data
+    end
+
+    it "reads versions 1, 2 and 3, the newest being the one written", :aggregate_failures do
+      expect(described_class::VERSIONS).to eq([ 1, 2, 3 ])
+      expect(described_class::VERSION).to eq(3)
+      expect(described_class.schema_version(v3)).to eq(3)
+      expect(problems_of(v3)).to eq([])
+    end
+
+    it "gives a lot six identity values, the sixth the location's comparison key (AC-9.5)", :aggregate_failures do
+      lot = v3["lots"][0].merge("location" => "Blue Binder")
+      expect(described_class.identity(lot, 3).size).to eq(6)
+      expect(described_class.identity(lot, 3).last).to eq("blue binder")
+      expect(described_class.identity(lot.merge("location" => nil), 3).last).to be_nil
+      expect(described_class.identity(lot, 2)).to eq(described_class.identity(lot.except("location"), 2) + [])
+      expect(described_class.identity(lot, 2).last).to be_nil # versions 1 and 2 say nothing about a place
+    end
+
+    it "finds a missing, mistyped or ill-formed lot location where the schema says (AC-9.5)", :aggregate_failures do
+      one = ->(value) { problems_of(placed("Blue binder").tap { |data| data["lots"][0]["location"] = value }) }
+      missing = placed("Blue binder").tap { |data| data["lots"][0].delete("location") }
+      expect(problems_of(missing)).to eq([ %w[required /lots/0/location] ])
+      expect(one.call(5)).to eq([ %w[type /lots/0/location] ])
+      expect(one.call("")).to eq([ %w[minLength /lots/0/location] ])
+      expect(one.call("本" * 61)).to eq([ %w[maxLength /lots/0/location] ])
+      [ " Blue binder", "Blue  binder", "Blue\tbinder", "Blue\u0007binder" ].each { |bad| expect(one.call(bad)).to eq([ %w[pattern /lots/0/location] ]), bad.inspect }
+      expect(one.call(nil)).to eq([])
+    end
+
+    it "ignores a location on a lot of a version 1 or 2 file (AC-9.8)", :aggregate_failures do
+      v2 = JSON.parse(Rails.root.join("docs/export-format/examples/comparison/v2-base.json").read)
+      v2["lots"][0]["location"] = "Anywhere at all"
+      expect(problems_of(v2)).to eq([])
+      expect(problems_of(base.tap { |data| data["lots"][0]["location"] = 5 })).to eq([])
+    end
+
+    it "finds a lot whose location the file's locations don't list, but not one listed in another case or form (AC-9.4)", :aggregate_failures do
+      expect(problems_of(placed("Long box"))).to eq([ %w[unknown_location /lots/0/location] ])
+      expect(problems_of(placed("BLUE BINDER", "Cafe\u0301", listed: [ "Blue binder", "Café" ]))).to eq([])
+    end
+
+    it "finds the repeat of a lot whose location differs only in case, and not one that differs in location (AC-9.5)", :aggregate_failures do
+      data = placed("Blue binder", "blue binder")
+      data["lots"][1]["finish"] = data["lots"][0]["finish"]
+      expect(problems_of(data)).to eq([ %w[duplicate_lot /lots/1] ])
+      data["lots"][1]["location"] = "Trade binder"
+      expect(problems_of(data)).to eq([])
+    end
+
+    it "does not walk a list over the limit again for unknown locations (spec 029 review M1)", :aggregate_failures do
+      names = Array.new(501) { |index| "Binder #{index}" }
+      data = placed("Binder 500", listed: names)
+      allow(Location::Name).to receive(:key).and_call_original
+      expect(problems_of(data)).to eq([ %w[maxItems /locations] ])
+      expect(Location::Name).not_to have_received(:key).with("binder 500")
+    end
+
+    it "judges a version 4 file by version 1's schema, which names the version" do
+      expect(problems_of(v3.merge("format_version" => 4))).to eq([ %w[const /format_version] ])
+    end
+
+    it "keeps unknown_location among the rules" do
+      expect(described_class::RULES).to include("unknown_location")
     end
   end
 
