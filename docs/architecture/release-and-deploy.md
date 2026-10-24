@@ -251,4 +251,4 @@ CI proves one release step of it: the previous release's published image, seeded
 | Date | Distilled | Pull request |
 |---|---|---|
 | 2026-10-23 | Specs 001 (container, Compose, Kamal, remote CI), 012, 013 and 020; 025 (decision 6, the request body limit); 028 (decisions 8 and 9, the stored upload's retention, the sweep and the gated routes); 030 (backup and restore, all but the export-versus-backup guidance); the image parts of 014; ADRs 0008–0011, 0016, 0022 and 0024; issues #21, #31 and #122 as limits; and CLAUDE.md's "Deploy" and "Backup and restore" bullets and the release parts of "Commands" | slice C's pull request |
-| <merge date> | Spec 031 (the upgrade proof, the migration guard, the release steps around them) | #<PR> |
+| 2026-10-24 | Spec 031 (the upgrade proof, the migration guard, the release steps around them) | spec 031's pull request |
