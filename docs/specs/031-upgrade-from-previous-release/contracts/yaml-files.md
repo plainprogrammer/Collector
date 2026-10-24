@@ -23,6 +23,8 @@ changes:
 | `rows_removed` | Rows of the old table missing in the new one | `rows_removed` |
 | `rows_added` | Rows the new table holds that the old one did not (a backfill) | `rows_added` |
 
+**Limit (plan review m4).** A table with no primary key is compared row by row in the order of all its common columns, so a row removed or added before the end shifts the rows after it and shows as `values rewritten` there; `rows_removed` and `rows_added` can match such a table only when the difference is past the shorter table's last row. No table of the application has no primary key today (every table has an `id`, apart from the ones the comparison skips), so the limit is stated, not coded around; the comparison fails closed (an unlisted difference), never passes.
+
 Rules, applied in this order by `ExpectedChanges.load` and `Compare`:
 
 1. A top-level key other than `changes`, an entry that is not a mapping, one missing `table`, `kind`, `migration` or `reason`, a `kind` outside the four, or a `rewritten` without `column` is an error naming the entry's position.

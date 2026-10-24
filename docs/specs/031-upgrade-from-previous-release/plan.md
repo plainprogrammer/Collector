@@ -1,7 +1,7 @@
 # Implementation Plan: Prove an Upgrade from the Previous Release in CI
 
-**Spec:** docs/specs/031-upgrade-from-previous-release/spec.md (1.1.1, approved by the maintainer 2026-10-23)
-**Decisions:** none new: no ADR is owed (research.md, P9). Spec decisions 1 to 10 stand; research.md section 5 lists the plan's rulings P1 to P10, of which **P4 (the backup leg's restore allowance) needs the maintainer's nod**.
+**Spec:** docs/specs/031-upgrade-from-previous-release/spec.md (1.1.2: approved by the maintainer 2026-10-23, with the P4 PATCH ruled 2026-10-24)
+**Decisions:** none new: no ADR is owed (research.md, P9). Spec decisions 1 to 10 stand; research.md section 5 lists the plan's rulings P1 to P10, of which P4 (the backup leg's restore allowance) was ruled by the maintainer on 2026-10-24 and is spec 031 1.1.2. `plan-review.md` maps the Opus review's findings to their fixes.
 **Research:** [research.md](research.md). **Contracts:** [contracts/harness.md](contracts/harness.md), [contracts/yaml-files.md](contracts/yaml-files.md). No `data-model.md` (the spec adds no table, column or collector-owned data).
 **Created:** 2026-10-23
 
@@ -48,7 +48,7 @@ CI boots the previous release's published image, seeds it, starts the image buil
 
 > **Complexity note** (Simplicity, the runner is ~700 lines of Ruby where `bin/backup-smoke` is 177 of bash): the Ruby comparer is fixed by decision 5 (host Ruby); the orchestration in Ruby (P1) buys the engine-free specs of AC-1.2, AC-1.4, AC-1.5, AC-2.4, AC-2.7, AC-2.8, AC-3.3, AC-6.4, AC-7.3 and AC-7.5 that a bash script could not have.
 
-**Conventions in this plan.** Specs live in `spec/script/upgrade/`; each requires its subject by path (`require Rails.root.join("script/upgrade/release").to_s`), because `script/` is not autoloaded. Groups are tagged `:upgrade` (and `:git_sandbox` where they need `git!`). Run one file with `bin/rspec spec/script/upgrade/<name>_spec.rb`. Every commit message ends with `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`; one conventional commit per step that says so. RuboCop is applied after each Ruby edit by the project hook; the code below is written in the project's style (spaces inside array brackets, methods after `private` indented).
+**Conventions in this plan.** Specs live in `spec/script/upgrade/`; each requires its subject by path (`require Rails.root.join("script/upgrade/release").to_s`), because `script/` is not autoloaded. Groups are tagged `:upgrade` (and `:git_sandbox` where they need `git!`). Run one file with `bin/rspec spec/script/upgrade/<name>_spec.rb`. Every commit message ends with the `Co-Authored-By:` trailer that the executing session's attribution gives (this plan was written by Sonnet 5.5; implementation may run on another model); one conventional commit per step that says so. RuboCop is applied after each Ruby edit by the project hook; the code below is written in the project's style (spaces inside array brackets, methods after `private` indented).
 
 ---
 
@@ -73,6 +73,7 @@ module UpgradeHelpers
 
   # Commits each step in turn: { "message" => { "path" => "body" } }. A message that starts with "v" also tags the commit.
   def build_history(dir, steps)
+    FileUtils.mkdir_p(dir)
     git!(dir, "init", "-q", "-b", "main")
     steps.each do |message, files|
       files.each do |path, body|
@@ -197,10 +198,10 @@ RSpec.describe Upgrade::Release, :git_sandbox, :upgrade do
   end
 
   describe "#building (AC-1.7)" do
-    it "is no tag for a push to main whose commit is already tagged", :aggregate_failures do
+    it "is no tag for a push to main whose commit is already tagged, and the previous release is the newest stable", :aggregate_failures do
       commit_tags("v0.2.1")
       expect(release(branch).building).to be_nil
-      expect(release(branch).previous).to be_nil
+      expect(release(branch).previous.tag).to eq("v0.2.1")
     end
 
     it "is the pushed tag" do
@@ -226,7 +227,7 @@ RSpec.describe Upgrade::Release, :git_sandbox, :upgrade do
   end
 
   describe "the migration tree of a ref" do
-    it "lists the files and versions of db/migrate at the ref, and shows a file as it was" do
+    it "lists the files and versions of db/migrate at the ref, and shows a file as it was", :aggregate_failures do
       build_history(dir, "v0.1.0" => { "db/migrate/20261001000001_create_a.rb" => "a\n" },
         "v0.2.0" => { "db/migrate/20261002000001_create_b.rb" => "b\n", "db/migrate/20261001000001_create_a.rb" => "changed\n" })
       files = release.migration_files("v0.1.0")
@@ -437,10 +438,16 @@ RSpec.describe Upgrade::Guard, :git_sandbox, :upgrade do
     expect(guard.lines.join).to match(/fetch/i)
   end
 
+  it "fails with a message, not a backtrace, when the ref names no release (AC-8.1, Error Scenarios)", :aggregate_failures do
+    release_with_two_migrations
+    guard = described_class.new(Upgrade::Release.new(dir, env: { "GITHUB_ACTIONS" => "true", "GITHUB_REF_TYPE" => "tag", "GITHUB_REF_NAME" => "nightly" }), root: dir)
+    expect(guard.call).not_to be_ok
+  end
+
   it "runs as a script: prints the lines and exits non-zero on a failure (AC-8.1)", :aggregate_failures do
     release_with_two_migrations
     File.write(File.join(dir, first), "edited\n")
-    out, _err, status = Open3.capture3({ "GITHUB_ACTIONS" => "true" }, RbConfig.ruby, Rails.root.join("script/upgrade/guard.rb").to_s, chdir: dir)
+    out, _err, status = Open3.capture3({ "GITHUB_ACTIONS" => "true", "GITHUB_REF_TYPE" => "branch", "GITHUB_REF_NAME" => "main" }, RbConfig.ruby, Rails.root.join("script/upgrade/guard.rb").to_s, chdir: dir)
     expect(status.exitstatus).to eq(1)
     expect(out).to include(first)
   end
@@ -504,7 +511,7 @@ module Upgrade
       return Result.new(true, [ "#{previous.tag}: its #{released_files(previous.tag).size} migrations are unchanged" ]) if problems.empty?
 
       Result.new(false, problems + [ ADVICE ])
-    rescue Release::TagsNotFetched => error
+    rescue Release::Error => error # TagsNotFetched, a git failure, a GITHUB_REF_NAME that is no release tag
       Result.new(false, [ error.message ])
     end
 
@@ -927,7 +934,7 @@ module Upgrade
       end
 
       def not_emptied(table)
-        difference(table, nil, :not_emptied, nil, "#{self.class.count(@new, table)} rows after the restore, which ends every session")
+        difference(table, nil, :not_emptied, nil, "#{self.class.count(@new, table)} rows after the restore, which ends every session and so empties this table (spec 031 decision 7)")
       end
 
       def difference(table, column, kind, key, detail) = Difference.new(table:, column:, kind:, key:, detail:)
@@ -1044,6 +1051,15 @@ RSpec.describe Upgrade::ExpectedChanges, :upgrade do
     expect(described_class.restore_effects.map(&:kind).uniq).to eq([ "rows_removed" ])
   end
 
+  it "names every table the schema cascades from sessions, so the allowance can't go stale (P4, review m8)" do
+    connection = ActiveRecord::Base.connection
+    cascading = ->(parents) { connection.tables.select { |table| connection.foreign_keys(table).any? { it.on_delete == :cascade && parents.include?(it.to_table) } } }
+    closure = [ "sessions" ]
+    closure |= cascading.call(closure) until cascading.call(closure).all? { closure.include?(it) }
+    expect(closure).to match_array(described_class::RESTORE_ENDS_SESSIONS),
+      "a table now cascades from sessions: update RESTORE_ENDS_SESSIONS and spec 031's decision 7, FR-4 and AC-6.2 (a PATCH)"
+  end
+
   it "ships empty and valid" do
     real = described_class.load(Rails.root.join("script/upgrade/expected_changes.yml"), previous_versions: [], current_versions: [])
     expect([ real.live, real.retired, real.errors ]).to all(be_empty)
@@ -1125,7 +1141,8 @@ module Upgrade
     Entry = Struct.new(:table, :column, :kind, :migration, :reason, :matched, keyword_init: true)
     Loaded = Struct.new(:live, :retired, :errors, keyword_init: true)
 
-    # The tables spec 030 requires `backup:restore` to empty: it ends every session, and the foreign keys cascade.
+    # The tables spec 030 requires `backup:restore` to empty: it ends every session, and the foreign keys cascade. Spec 031
+    # 1.1.2 (decision 7, FR-4, AC-6.2) names them; rules_spec checks the list against the schema's `on_delete: :cascade` keys.
     RESTORE_ENDS_SESSIONS = %w[sessions bulk_removals bulk_selections bulk_selection_marks].freeze
 
     # Not a migration's change, so not in expected_changes.yml: the allowance of the backup leg only (plan P4).
@@ -1461,7 +1478,7 @@ puts "UPGRADE-SEED-COMPLETE #{facts.to_json}"
 
 `run` and `run!` are private: nothing outside `Engine` can make a command line (AC-8.3). `run(category, args, check: args, stdin: nil)` refuses an argument that names a forbidden task, then a list the category's lambda does not accept (`check` is the in-container command for the `files` category).
 
-- [ ] Write `spec/support/upgrade_fakes.rb` (the doubles that Phases 7 and 8 use; it is test code and loads nothing until required):
+- [ ] Write `spec/support/upgrade_fakes.rb` (the doubles that Phases 7 and 8 use; it is test code; `rails_helper` loads every file of `spec/support`, so from this step the suite needs `engine.rb` and `web.rb` to load, which is why Phase 6 writes them in the same phase and a red run here may fail with `cannot load such file`):
 
 ```ruby
 require Rails.root.join("script/upgrade/engine").to_s
@@ -1678,7 +1695,7 @@ RSpec.describe Upgrade::Engine do
 
   def refused(category, args, **) = engine.send(:run, category, args, **)
 
-  it "builds only commands that a category accepts (AC-8.3)", :aggregate_failures do
+  it "builds only commands that a category accepts, for the container's life (AC-8.3)", :aggregate_failures do
     expect do
       engine.pull("img:1", platform: "linux/arm64")
       engine.image_info("img:1")
@@ -1688,6 +1705,14 @@ RSpec.describe Upgrade::Engine do
       engine.state("c")
       engine.logs("c")
       engine.stop("c")
+      engine.remove("c")
+      engine.remove_volume("v")
+    end.not_to raise_error
+    expect(calls).to all(start_with("docker"))
+  end
+
+  it "builds only commands that a category accepts, for the tasks and the files (AC-8.3)", :aggregate_failures do
+    expect do
       engine.runner("c", "puts 1")
       engine.tasks("c")
       engine.task("c", "backup:create[/backups]")
@@ -1696,8 +1721,6 @@ RSpec.describe Upgrade::Engine do
       engine.list_directory("img:1", "/tmp/b")
       engine.own("img:1", "/tmp/b")
       engine.remove_directory("img:1", "/tmp/s")
-      engine.remove("c")
-      engine.remove_volume("v")
     end.not_to raise_error
     expect(calls).to all(start_with("docker"))
   end
@@ -1726,7 +1749,7 @@ RSpec.describe Upgrade::Engine do
       -e SECRET_KEY_BASE_DUMMY=1 img:1 bin/rails backup:restore[/backups/collector-backup-1.tar.gz]])
   end
 
-  it "copies out the main database file and any -wal and -shm, not the other databases (AC-2.4)" do
+  it "copies out the main database file and any -wal and -shm, not the other databases (AC-2.4)", :aggregate_failures do
     engine.copy_database(volume: "v", image: "img:1", into: "/tmp/out")
     copy = calls.find { it.include?("cp") }
     expect(copy.last(3)).to eq(%w[/rails/storage/production.sqlite3 /rails/storage/production.sqlite3-wal /out/])
@@ -1744,6 +1767,13 @@ RSpec.describe Upgrade::Engine do
     hits = files.flat_map { |file| File.readlines(file).grep(pattern).map { |line| [ File.basename(file), line.strip ] } }
     expect(hits.map(&:first).uniq).to eq([ "engine.rb" ])
     expect(hits.map(&:last)).to all(start_with("FORBIDDEN ="))
+  end
+
+  it "starts a process only in engine.rb (the container CLI) and release.rb (read-only git) (AC-8.3)" do
+    spawning = /Open3|\bsystem\(|\bspawn\(|%x[\[{(]|IO\.popen|Kernel\.exec|Process\.(spawn|exec)/
+    files = Dir[Rails.root.join("script/upgrade/**/*.rb").to_s] + [ Rails.root.join("bin/upgrade-smoke").to_s ]
+    offenders = files.reject { File.basename(it).then { |name| %w[engine.rb release.rb].include?(name) } }.select { File.read(it).match?(spawning) }
+    expect(offenders).to be_empty
   end
 end
 ```
@@ -2062,7 +2092,7 @@ RSpec.describe Upgrade::Harness, :git_sandbox, :upgrade do
     expect(out.string).to match(/upgrade-smoke-\d+-previous stopped with status 137/)
   end
 
-  it "fails when the old database was not made by the previous release (AC-2.1)" do
+  it "fails when the old database was not made by the previous release (AC-2.1)", :aggregate_failures do
     engine = FakeEngine.new(databases: [ seeded("wrong", %w[20261001000001 20269999999999]) ])
     expect(harness(engine:).call).to eq(1)
     expect(out.string).to include("AC-2.1", "20269999999999")
@@ -2096,10 +2126,11 @@ RSpec.describe Upgrade::Harness, :git_sandbox, :upgrade do
   it "fails when a collector can't sign in with their old password (AC-5.1)", :aggregate_failures do
     web.sign_in_ok = false
     expect(harness.call).to eq(1)
-    expect(out.string).to include("AC-5.1", "ada@x.test")
+    expect(out.string).to include("AC-5.1", "collector 1 of 2")
+    expect(out.string).not_to include("ada@x.test")
   end
 
-  it "fails when the upgraded database lacks a migration of the code under test (AC-3.2)" do
+  it "fails when the upgraded database lacks a migration of the code under test (AC-3.2)", :aggregate_failures do
     unmigrated = seeded("unmigrated", old_migrations)
     expect(harness(engine: FakeEngine.new(databases: [ databases[0], unmigrated ])).call).to eq(1)
     expect(out.string).to include("AC-3.2", "20261002000001")
@@ -2108,14 +2139,16 @@ RSpec.describe Upgrade::Harness, :git_sandbox, :upgrade do
   it "fails when the collector's own page lacks a card name, or shows it to another collector (AC-5.2)", :aggregate_failures do
     pages["/collection"] = ->(_user) { FakeWeb::Response.new(200, "Dragon One") }
     expect(harness.call).to eq(1)
-    expect(out.string).to include("AC-5.2", "Dragon Two")
+    expect(out.string).to include("AC-5.2", "1 of the 2 seeded names")
+    expect(out.string).not_to include("Dragon Two")
   end
 
   it "fails when a seeded location is not listed, and passes when it is (AC-5.4)", :aggregate_failures do
     facts = FakeEngine::FACTS.merge("locations" => [ "Binder A" ])
     pages["/locations"] = FakeWeb::Response.new(200, "Shelf B")
     expect(harness(engine: FakeEngine.new(databases:, facts:)).call).to eq(1)
-    expect(out.string).to include("AC-5.4", "Binder A")
+    expect(out.string).to include("AC-5.4", "1 of the 1 seeded locations")
+    expect(out.string).not_to include("Binder A")
   end
 
   it "fails when the export holds fewer lots than were seeded, or names a version it has no schema for (AC-5.5)", :aggregate_failures do
@@ -2137,31 +2170,37 @@ RSpec.describe Upgrade::Harness, :git_sandbox, :upgrade do
     expect(out.string).to include("the seed's scheduled job")
   end
 
-  it "fails when the scheduled job is gone from the queue after the upgrade (AC-5.7)" do
+  it "fails when the scheduled job is gone from the queue after the upgrade (AC-5.7)", :aggregate_failures do
     counts = [ "1\n", "0\n" ] # before the stop, then after the upgrade
     gone = FakeEngine.new(databases:, runner_answers: { /arguments LIKE/ => -> { FakeEngine::Result.new(counts.shift || "0\n", "", 0) } })
     expect(harness(engine: gone).call).to eq(1)
     expect(out.string).to include("AC-5.7: the scheduled job upgrade-marker is no longer in the queue (found 0)")
   end
 
-  it "fails when a job enqueued on the upgraded instance has no row in the queue database (AC-5.7)" do
+  it "fails when a job enqueued on the upgraded instance has no row in the queue database (AC-5.7)", :aggregate_failures do
     unrowed = FakeEngine.new(databases:, runner_answers: { /perform_later/ => FakeEngine::Result.new("false\n", "", 0) })
     expect(harness(engine: unrowed).call).to eq(1)
     expect(out.string).to include("has no row in solid_queue_jobs")
   end
 
-  it "fails when the sign-up page differs after the upgrade (AC-5.3)" do
+  it "fails when the sign-up page differs after the upgrade (AC-5.3)", :aggregate_failures do
     shown = [ FakeWeb::Response.new(200, '<input name="user[email_address]">'), FakeWeb::Response.new(200, "closed") ]
     pages["/registration/new"] = ->(_user) { shown.length > 1 ? shown.shift : shown.first }
     expect(harness.call).to eq(1)
     expect(out.string).to include("AC-5.3")
   end
 
-  it "fails the run when the check exceeds its time limit, printing the time (AC-7.4)" do
+  it "fails the run when the check exceeds its time limit, printing the time (AC-7.4)", :aggregate_failures do
     options.timeout = 1
     engine = FakeEngine.new(databases:, start: ->(*, **) { sleep 3 })
     expect(harness(engine:).call).to eq(1)
     expect(out.string).to match(/exceeded 1 s \(elapsed \d+ s\)/)
+  end
+
+  it "reports an error of no expected kind with the same evidence lines (AC-7.5, Error Scenarios)", :aggregate_failures do
+    broken = FakeEngine.new(databases:, runner: FakeEngine::Result.new("UPGRADE-SEED-COMPLETE {not json", "", 0))
+    expect(harness(engine: broken).call).to eq(1)
+    expect(out.string).to match(/^FAIL: .*JSON::ParserError/).and include("reproduce:")
   end
 
   it "removes every container, volume and the scratch directory on success and on failure (AC-7.3, FR-6)", :aggregate_failures do
@@ -2203,7 +2242,7 @@ end
 
 The happy-path example reads the call log that `FakeEngine` (each builder's name) and `FakeWeb` (`:get` for a page, `:sign_in`) share; the `/up` poll is not logged. The timeout example's `start` answer sleeps past the `Timeout.timeout` that the harness wraps its whole run in.
 
-- [ ] Add `"spec/script/upgrade/harness_spec.rb"` to the `Exclude` list of `RSpec/MultipleMemoizedHelpers` in `.rubocop.yml` (the scenario specs of spec 028 are there for the same reason: a checkout, databases, a fake engine and a fake web are the scenario).
+- [ ] Add `"spec/script/upgrade/harness_spec.rb"` and `"spec/script/upgrade/files_spec.rb"` (its "the image job" group memoizes six helpers) to the `Exclude` list of `RSpec/MultipleMemoizedHelpers` in `.rubocop.yml` (the scenario specs of spec 028 are there for the same reason: a checkout, databases, a fake engine and a fake web are the scenario).
 - [ ] Run: `bin/rspec spec/script/upgrade/harness_spec.rb` — expect FAIL (`cannot load such file … harness`).
 - [ ] Create `script/upgrade/harness.rb`:
 
@@ -2288,6 +2327,8 @@ module Upgrade
       report_failure(error.message)
     rescue Timeout::Error
       report_failure("exceeded #{@options.timeout} s (elapsed #{elapsed} s)")
+    rescue StandardError => error # an export or seed line that isn't JSON, a copy SQLite can't read: still AC-7.5's report, never a bare backtrace
+      report_failure("#{error.class}: #{error.message}")
     ensure
       clean_up
     end
@@ -2367,7 +2408,7 @@ module Upgrade
         labels = info.dig("Config", "Labels") || {}
         @digest = Array(info["RepoDigests"]).first || info["Id"]
         settle_version(labels) if @plan[:release] && @plan[:version].nil?
-        @out.puts "previous: #{@plan[:tag]}  image #{image}  digest #{@digest}  revision #{labels["org.opencontainers.image.revision"] || "unknown"}"
+        @out.puts "previous: #{@plan[:tag]}  image #{image}  digest #{@digest}  version #{labels["org.opencontainers.image.version"] || "unknown"}  revision #{labels["org.opencontainers.image.revision"] || "unknown"}"
       end
 
       def pull(image)
@@ -2491,7 +2532,7 @@ module Upgrade
       def check_behaviour(instance, queue:)
         webs = @facts["users"].to_h do |user|
           web = @web.call(instance.port)
-          raise Failure, "AC-5.1: #{user["email"]} couldn't sign in with their old password" unless web.sign_in(user["email"], @facts["password"])
+          raise Failure, "AC-5.1: #{who(user)} couldn't sign in with their old password" unless web.sign_in(user["email"], @facts["password"])
 
           [ user["email"], web ]
         end
@@ -2510,11 +2551,11 @@ module Upgrade
       def check_collections(webs, owner, empty)
         listed = webs.fetch(owner["email"]).get("/collection").body
         missing = owner["names"].reject { listed.include?(it) }
-        raise Failure, "AC-5.2: #{owner["email"]}'s collection page doesn't list #{missing.first(3).join(", ")}" if missing.any?
+        raise Failure, "AC-5.2: #{who(owner)}'s collection page doesn't list #{missing.size} of the #{owner["names"].size} seeded names (first: position #{owner["names"].index(missing.first) + 1})" if missing.any?
 
         other = webs.fetch(empty["email"]).get("/collection")
         leaked = owner["names"].select { other.body.include?(it) }
-        raise Failure, "AC-5.2: #{empty["email"]}'s collection page answered #{other.status} and shows #{leaked.first(3).join(", ")}" if other.status != 200 || leaked.any?
+        raise Failure, "AC-5.2: #{who(empty)}'s collection page answered #{other.status} and shows #{leaked.size} of another collector's seeded names" if other.status != 200 || leaked.any?
       end
 
       def check_locations(web)
@@ -2522,8 +2563,11 @@ module Upgrade
 
         body = web.get("/locations").body
         missing = @facts["locations"].reject { body.include?(it) }
-        raise Failure, "AC-5.4: the locations page doesn't list #{missing.join(", ")}" if missing.any?
+        raise Failure, "AC-5.4: the locations page doesn't list #{missing.size} of the #{@facts["locations"].size} seeded locations" if missing.any?
       end
+
+      # Failures name a collector by position and give counts, never an email, card or location name (spec 031 NFR Security).
+      def who(user) = "collector #{@facts["users"].index(user) + 1} of #{@facts["users"].size}"
 
       def check_export(web, owner)
         response = web.get("/collection/export")
@@ -2755,7 +2799,7 @@ When the previous release lists `backup:create`, the previous instance takes a b
       secrets = engine.calls.select { it.first == :start }.map { it[2][:secret] }
       expect(secrets[1]).to eq(secrets[0])
       expect(secrets[3]).not_to eq(secrets[0])
-      expect(out.string).to include("== backup leg").and match(/^sessions\\s+old\\s+2\\s+new\\s+0/)
+      expect(out.string).to include("== backup leg").and match(/^sessions\s+old\s+2\s+new\s+0/)
     end
 
     it "runs Story 5's checks on the restored instance but not AC-5.7, which a primary-only backup can't satisfy (AC-6.2)" do
@@ -2764,13 +2808,13 @@ When the previous release lists `backup:create`, the previous instance takes a b
       expect(engine.calls.count { it.first == :runner && it[1].last.include?("perform_later") }).to eq(1)
     end
 
-    it "fails when the sessions a restore ends are still there (P4)" do
+    it "fails when the sessions a restore ends are still there (P4)", :aggregate_failures do
       kept = seeded("kept", all_migrations, extra: sessions)
       expect(harness(engine: FakeEngine.new(databases: leg_databases.take(2) + [ kept ], tasks: listing)).call).to eq(1)
       expect(out.string).to include("sessions", "after the restore")
     end
 
-    it "fails when the restore loses a row (AC-6.2)" do
+    it "fails when the restore loses a row (AC-6.2)", :aggregate_failures do
       thin = seeded("thin", all_migrations, lots: 1999, extra: ended)
       expect(harness(engine: FakeEngine.new(databases: leg_databases.take(2) + [ thin ], tasks: listing)).call).to eq(1)
       expect(out.string).to include("FAIL lots", "id = 2000")
@@ -2782,7 +2826,7 @@ When the previous release lists `backup:create`, the previous instance takes a b
       expect(out.string).to include("AC-6.3", "newer Collector")
     end
 
-    it "fails when the backup directory doesn't hold exactly one file (AC-6.1)" do
+    it "fails when the backup directory doesn't hold exactly one file (AC-6.1)", :aggregate_failures do
       expect(harness(engine: FakeEngine.new(databases: leg_databases, tasks: listing, list_directory: [])).call).to eq(1)
       expect(out.string).to include("exactly one file")
     end
@@ -2804,7 +2848,7 @@ When the previous release lists `backup:create`, the previous instance takes a b
       expect(engine.names).not_to include(:pull)
     end
 
-    it "reads the release from the image's version label (decision 2)" do
+    it "reads the release from the image's version label (decision 2)", :aggregate_failures do
       expect(harness(previous: "ghcr.io/plainprogrammer/collector:0.2.1").call).to eq(0)
       expect(out.string).to include("previous: v0.2.1")
     end
@@ -2865,13 +2909,14 @@ When the previous release lists `backup:create`, the previous instance takes a b
 - [ ] **First backup-leg run, by hand (AC-6.5; the maintainer's machine, podman, network).** No release has `backup:create` yet, so use the build of the commit that merged spec 030 as the "previous" image and the build of this branch as the current one:
 
 ```sh
-git worktree add ../collector-030 4cd1ef5            # the merge of spec 030's pull request: has the backup tasks
-(cd ../collector-030 && podman build -t collector:030 .)
+podman pull ghcr.io/plainprogrammer/collector:sha-4cd1ef5   # main's image after spec 030 (AC-6.5): has the backup tasks
 podman build -t collector:upgrade-dev .
-time bin/upgrade-smoke collector:030 collector:upgrade-dev --previous-ref 4cd1ef5
+time bin/upgrade-smoke ghcr.io/plainprogrammer/collector:sha-4cd1ef5 collector:upgrade-dev --previous-ref 4cd1ef5
 ```
 
-  Expect: `this run is not a release proof`, `== backup leg` with its comparison (the four session tables `old n new 0`, every other table `same`), the behaviour checks on the restored instance, and `OK`. Record the commands, the full output and the timings in `verification.md`, and remove the worktree. From the first release that has the task the image job runs the leg itself.
+  If that tag is not in the registry (the run of `4cd1ef5` pushed nothing, or cleanup removed it), pull `edge` instead if its revision label is at or after `4cd1ef5`, and only then build it locally (`git worktree add ../collector-030 4cd1ef5`, `podman build -t collector:030 .` there, pass `collector:030`); AC-6.5 says an `edge` or `sha-` image of `main`, so record the deviation and why in `verification.md`.
+
+  Expect: `this run is not a release proof`, `== backup leg` with its comparison (the four session tables `old n new 0`, every other table `same`), the behaviour checks on the restored instance, and `OK`. Record the commands, the full output and the timings in `verification.md`, and remove any worktree. From the first release that has the task the image job runs the leg itself.
 
 ---
 
@@ -2901,7 +2946,7 @@ time bin/upgrade-smoke collector:030 collector:upgrade-dev --previous-ref 4cd1ef
     it "sets up the host Ruby for the comparer before it, outside the proof's own limit (decision 5, AC-7.4)", :aggregate_failures do
       expect(names.index(ruby["name"])).to be < names.index(proof["name"])
       expect(ruby["with"]).to include("bundler-cache" => true)
-      expect(ruby.dig("env", "BUNDLE_WITHOUT")).to eq("development:test")
+      expect(image_job.dig("env", "BUNDLE_WITHOUT")).to eq("development:test")
       expect(proof["timeout-minutes"]).to eq(12)
     end
 
@@ -2920,7 +2965,14 @@ time bin/upgrade-smoke collector:030 collector:upgrade-dev --previous-ref 4cd1ef
 ```
 
 - [ ] Run: `bin/rspec spec/script/upgrade/files_spec.rb` — expect FAIL (no proof step, no `fetch-depth` in the image job).
-- [ ] Edit `.github/workflows/ci.yml`, `image` job: give its checkout the full history:
+- [ ] Edit `.github/workflows/ci.yml`, `image` job: give it `BUNDLE_WITHOUT` at **job** level (a variable on the setup-ruby step alone is not persisted by `bundle install`, so the later `bin/upgrade-smoke` step's `bundler/setup` would resolve the development and test groups that were never installed and raise `Bundler::GemNotFound`; review plan-review.md M2), next to `strategy:`:
+
+```yaml
+    env:
+      BUNDLE_WITHOUT: development:test
+```
+
+  and give its checkout the full history:
 
 ```yaml
       - name: Checkout code
@@ -2937,8 +2989,6 @@ time bin/upgrade-smoke collector:030 collector:upgrade-dev --previous-ref 4cd1ef
       # the last release publishes nothing. The comparer is Ruby on the runner, neither release's code (decision 5).
       - name: Set up Ruby for the upgrade proof
         uses: ruby/setup-ruby@v1
-        env:
-          BUNDLE_WITHOUT: development:test
         with:
           bundler-cache: true
 
@@ -2958,8 +3008,8 @@ time bin/upgrade-smoke collector:030 collector:upgrade-dev --previous-ref 4cd1ef
 ## Phase 10: The documents
 
 **Implements:** decision 9 | **Satisfies:** AC-9.1, AC-9.2, AC-9.3; the roadmap line and the rule pointer of "Documents that change"
-**Files:** `docs/releasing.md`, `CLAUDE.md`, `.claude/rules/sqlite-and-migrations.md`, `docs/roadmap.md`, `bin/backup-smoke` (its header comment), `docs/specs/README.md` (verify only)
-**Interfaces:** Consumes: the names and commands of Phases 1 to 9. Produces: prose only, verified by reading (`.claude/rules/testing.md`: no RSpec on prose documents).
+**Files:** `docs/architecture/release-and-deploy.md`, `docs/releasing.md`, `CLAUDE.md`, `.claude/rules/sqlite-and-migrations.md`, `docs/roadmap.md`, `bin/backup-smoke` (its header comment), `docs/specs/README.md`
+**Interfaces:** Consumes: the names and commands of Phases 1 to 9. `origin/main` is merged into the branch (`71e3424`, with `docs/architecture/release-and-deploy.md` and `docs/architecture/data-portability.md`; merge it again first if `main` has moved). Produces: prose only, verified by reading (`.claude/rules/testing.md`: no RSpec on prose documents).
 
 - [ ] `docs/releasing.md`, "Cutting a release". The existing step numbers stay (AC-9.1 and the upgrade notes cite them); the edits are:
   1. After step 1 ("Make sure `main` is green and contains everything the release needs.") add, indented under it:
@@ -2971,7 +3021,7 @@ time bin/upgrade-smoke collector:030 collector:upgrade-dev --previous-ref 4cd1ef
   2. In step 3, after "Both `amd64` and `arm64` appear, with `linux`." add:
 
 ```markdown
-   Also read the `Upgrade smoke test` step of both `Image` jobs in the same run: it booted the previous release's image, upgraded its seeded database with this build and compared the two, before anything was pushed. If it failed, nothing was published; fix the cause and tag again (do not delete the tag by hand to get past it).
+   Also read the `Upgrade smoke test` step of both `Image` jobs in the same run: it booted the previous release's image, upgraded its seeded database with this build and compared the two, before anything was pushed. If it failed, nothing was published; fix the cause and cut the next patch (or pre-release) version, and never move, reuse or delete the failed tag by hand to get past it (a tag is published history; `docs/architecture/release-and-deploy.md`, Re-runs).
 ```
 
   3. Step 4 (the export restore) is unchanged. Replace step 5 with:
@@ -2993,23 +3043,28 @@ time bin/upgrade-smoke collector:030 collector:upgrade-dev --previous-ref 4cd1ef
 - **Upgrade proof (spec 031).** No migration, nothing required of the operator. CI now boots the previous release's published image, fills it through its own code, starts each build on that volume and fails unless the database upgraded unattended, lost nothing and the app served the collection as it was; a release tag whose build fails it publishes no image. `bin/ci` also fails when a released migration is edited, deleted or renamed. The proof's seeds, its list of expected changes and the release steps that keep them current are in "Cutting a release".
 ```
 
-- [ ] `CLAUDE.md`: (1) in "Project Status", after the backup sentence, add: `CI proves an upgrade from the previous release's published image (\`bin/upgrade-smoke\`, \`script/upgrade/\`, spec 031, #42).` (2) in "Commands", after "Backup smoke": 
+- [ ] `docs/architecture/release-and-deploy.md` (the area doc, on `main` since #130; `documentation.md`: a change to an area's behaviour updates its doc in the same pull request, each new statement with its source inline). Edit, in the doc's own sections and style:
+  1. *Scope*, "Covers": add a line for the upgrade proof: `bin/upgrade-smoke`, `script/upgrade/` (the release resolution, the migration guard, the comparison, the seeds, the two yml files), and the workflow's Ruby setup and `Upgrade smoke test` steps (spec 031; #42). Backup and restore's line (spec 030) stays.
+  2. *Invariants*, "The pipeline and the tags": (a) the guard is a `bin/ci` step (`ruby script/upgrade/guard.rb`, `config/ci.rb`) that fails when a released migration (one in the newest stable tag below the tag being built) is edited, deleted or renamed, and uses no engine (spec 031 FR-8, AC-8.1, AC-8.2, AC-8.4); (b) the `image` job proves an upgrade from the previous release's published image after `bin/backup-smoke` and before the push, on both architectures, on every event, so a tag whose build can't upgrade publishes nothing (spec 031 decision 8, AC-7.1); (c) the `image` job checks out the full history and the tags, and sets `BUNDLE_WITHOUT` at job level (spec 031 AC-8.5, decision 5; plan P10); the `ci` job's checkout is unchanged (the guard fetches its own tags).
+  3. *Invariants*, "The image": `bin/upgrade-smoke` joins `bin/backup-smoke` in the paths the build context leaves out, and `bin/image-smoke`'s absent-path list gains it (spec 031 FR-7; the edits of Phase 7).
+  4. *States and transitions*, the workflow-run table: the `image` column's "build, `bin/image-smoke`, `bin/backup-smoke`" gains `, `bin/upgrade-smoke`` in the pull-request row, and "same" in the others already carries it. "An upgrade": add that CI proves the one-release step (the previous release's published image, seeded through its own code, upgraded unattended by the build, nothing lost, the app serving the collection as it was; once a release has `backup:create`, the leg that restores its backup too) and where its limits are (spec 031 decisions 1, 4, 7; Non-Goals).
+  5. *Named constants*: the proof's limits (the `Upgrade smoke test` step's `timeout-minutes: 12`, the harness's 600 s, the 5-minute addition target, the 30 s stop grace, 3 pull attempts, `SMOKE_BOOT_ATTEMPTS`), each with its definition (`ci.yml`, `script/upgrade/*.rb`) and spec source (decision 8, AC-7.4, AC-1.5, AC-2.4). Re-read every `ci.yml:NN` citation in the doc after Phases 2 and 9 and correct the shifted ones (`ci.yml:49`, `:75-76`, `:125`, `:156-157`, `:159-161`, `:58-61`, `:96-98`, `:109-110`, `:3-10`, `:9-10`, `:17`, `:151`, `:51-53`).
+  6. *Decisions not in an ADR*: reword the `bin/backup-smoke` line (it no longer serves #42: the backup leg is in `bin/upgrade-smoke`, which restores the backup of its own seed; the option for a second image stays; plan P3); add the release procedure around the proof (the seed renamed to the release's version and `seed_exceptions.yml`'s `next` key renamed before the tag, the retired expected changes deleted after it, `docs/releasing.md` steps 1, 3, 5 and 7; spec 031 decision 9), the previous release as the newest stable tag below the tag being built (`auto`, P2), and that the proof's allowance in the backup leg is the four tables the restore empties (spec 031 1.1.2, decision 7).
+  7. *Accepted limits and open issues*: one release step only (no chain from older releases); the old release's database is its own schema loaded by its own code, not a real instance's data; the hand restore of the maintainer's real backup (spec 030 AC-5.6, decision 9) stays manual; the proof's seed fills the catalog directly and so never exercises a refresh (the Monday 03:15 window is outside the proof); the deliberately failing tag (AC-7.2) is the maintainer's check, recorded in `verification.md`.
+  8. *Sources*: add [Spec 031](../specs/031-upgrade-from-previous-release/spec.md): all, and issue [#42](https://github.com/plainprogrammer/Collector/issues/42); spec 030's *Sources* line says "all but decision 11": add "(its decision 14 and AC-5.7 are superseded in part by spec 031 decision 7)". *Distillation log*: add a row for this change (date of the merge, "Spec 031 (the upgrade proof, the migration guard, the release steps around them)", the pull request). *Neighbours*: no change (data portability has none of it: the seed holds no collector-owned data, spec 031 index row).
+  9. Verify by reading that no statement of the doc is false after the change (the doc's own *Sources* rule), and that each added statement has its source inline.
+- [ ] `CLAUDE.md` (on `main` it points to the area doc for release and deploy and does not restate it): (1) in "Project Status" add one sentence after the backup sentence: `CI proves an upgrade from the previous release's published image (\`bin/upgrade-smoke\`, \`script/upgrade/\`, spec 031, #42; [release and deploy](docs/architecture/release-and-deploy.md)).` (2) in "Commands", after "Backup smoke":
 
 ```markdown
-- Upgrade smoke: `bin/upgrade-smoke <previous|auto> <current>` (spec 031): boots the previous release's published image, seeds it, starts a build on the same volume and compares the databases and what the app serves; CI runs it in the image job, before the push, on both architectures; it needs a container engine and a Ruby with the bundle, so it is not a `bin/ci` step. `ruby script/upgrade/guard.rb` (a `bin/ci` step) fails when a released migration was edited or deleted.
+- Upgrade smoke: `bin/upgrade-smoke <previous|auto> <current>` (spec 031): boots the previous release's published image, seeds it, starts a build on the same volume and compares the databases and what the app serves; CI runs it in the image job, before the push, on both architectures; it needs a container engine and a Ruby with the bundle, so it is not a `bin/ci` step. `ruby script/upgrade/guard.rb` is a `bin/ci` step.
 ```
 
-  (3) in "Non-obvious Facts", after the backup bullet:
-
-```markdown
-- **Upgrade proof (spec 031):** `bin/upgrade-smoke` and `script/upgrade/` (not in the image): the previous release is the newest stable tag below the tag being built (`Upgrade::Release`, tags from `fetch-depth: 0`); `seeds/<version>.rb` fills that release's database through its own code and `seeds/next.rb` (also run in the suite) fills `main`'s; `expected_changes.yml` lists what a migration may change (entries retire once a release has the migration), `seed_exceptions.yml` the tables a seed can't fill. A release renames `next.rb` and the `next` key before tagging and clears retired entries after (`docs/releasing.md`). A table or migration added to `main` needs `next.rb` or an entry to follow it. Released migrations are never edited: the guard enforces it.
-```
-
+  (3) in "Non-obvious Facts" do **not** add a rules bullet; extend the existing "Release and deploy" bullet's list by `, 031` in its spec list and ` the upgrade proof and its release steps` in what it lists, so the facts stay in the area doc (`documentation.md`: don't restate an area's rules in CLAUDE.md). The one thing an agent needs before opening the doc, a table or migration added to `main` can need `script/upgrade/seeds/next.rb` or an expected-changes entry to follow it, is in the doc's *Invariants*; add it there (item 2 above) with that sentence.
 - [ ] `.claude/rules/sqlite-and-migrations.md`: on the line `- ✗ Never edit or delete a released migration — self-hosters may be on any prior version; add a new one.` append ` \`ruby script/upgrade/guard.rb\` (a \`bin/ci\` step) fails on it, and the upgrade proof (\`bin/upgrade-smoke\`, spec 031) fails on a migration that loses data.`
 - [ ] `docs/roadmap.md`: item 7 becomes `7. [#42](https://github.com/plainprogrammer/Collector/issues/42) Prove an upgrade from the previous release in CI (supports the 1.0 test's third check). **Built <date>, done when its pull request merges:** [spec 031](specs/031-upgrade-from-previous-release/spec.md); this completes theme A.` (the form of item 9; `<date>` is the day the verification is written). Theme A's heading needs no change.
 - [ ] `bin/backup-smoke`: in the header comment, replace `(issue #42 reuses this with the previous release as <image>)` with `(spec 031's backup leg does not use this: bin/upgrade-smoke restores the backup of its own seed)`. The option keeps working.
-- [ ] Read `docs/specs/README.md`: spec 031's row has *Supersedes* and spec 030's row has *Superseded by* (both made with the draft, `cac9cf9`); AC-9.3 needs no edit. The release-and-deploy area doc of #109 does not exist on this branch (`ls docs/architecture`): if it does by now, add the command and the rule to it with the source of each statement (`documentation.md`); otherwise the distillation step (`distill-feature`) writes the area doc.
-- [ ] Verify by reading, against the criteria: AC-9.1 (the two renames before tagging, the proof's result read in the tag's run, the real-data restores kept for the releases that touch import, export, the schema, the backup or the restore, a line in the upgrade notes, and step 4's old upgrade wording gone while the export restore is unchanged), AC-9.2 (`bin/upgrade-smoke`, the seeds, the expected-changes file and the never-edited rule in `CLAUDE.md`, each pointing to the spec), AC-9.3. Record in `verification.md`.
+- [ ] `docs/specs/README.md`: spec 031's row has *Supersedes* and spec 030's row has *Superseded by* (AC-9.3). They were made with the draft and survived the merge of `main` (`71e3424`), which froze 030 (the *Superseded by* cell was put back on its Frozen row). Re-read both after any later merge. Point the 031 row's *Areas* cell at [release and deploy](../architecture/release-and-deploy.md) (it already names the area; add the link), and leave its status for the distillation step (`distill-feature`) to set, which also marks the row once the area doc above is written. The area doc is now written here, in this pull request, not by the distillation step alone.
+- [ ] Verify by reading, against the criteria: AC-9.1 (the two renames before tagging, the proof's result read in the tag's run, the real-data restores kept for the releases that touch import, export, the schema, the backup or the restore, a line in the upgrade notes, and step 4's old upgrade wording gone while the export restore is unchanged), AC-9.2 (`bin/upgrade-smoke`, the seeds, the expected-changes file and the never-edited rule in the area doc and `CLAUDE.md`, each pointing to the spec), AC-9.3. Record in `verification.md`.
 - [ ] Run: `bin/ci` — expect green.
 - [ ] Commit: `docs: release steps and notes for the upgrade proof (spec 031 decision 9)`
 
@@ -3022,7 +3077,7 @@ time bin/upgrade-smoke collector:030 collector:upgrade-dev --previous-ref 4cd1ef
 - [ ] Run: `bin/ci` — expect green (RuboCop, Brakeman, bundler-audit, importmap audit, the migration guard, RSpec).
 - [ ] Run the hand runs of Phases 7 and 8 again on the final code and keep their output.
 - [ ] Open a draft pull request from the branch (CI runs only on pull requests and `main`). Read the first run: `ci` green; both `Image` jobs: `Set up Ruby for the upgrade proof` (time, cache hit or not) and `Upgrade smoke test` (time, printed table of 19 tables, `OK: v0.2.1`). Record in `verification.md` the two durations per architecture, their sum as "added to the job", and the 5-minute target met or missed (the maintainer rules if missed, decision 8). If the bar is missed, the first levers are `docker stop -t` (the stop grace), the Ruby setup's cache and the three seed boots; nothing else changes the proof.
-- [ ] **The deliberately failing tag (AC-7.2) is the maintainer's.** A tag on the public repository is outward-facing and a wrongly passing run would publish an image, so the plan does not push it. The recipe: on a throwaway branch from this one add `db/migrate/20261201000001_delete_a_seeded_lot.rb` (`def up = execute("DELETE FROM lots WHERE id = (SELECT min(id) FROM lots)")` with an empty `down`), push the branch, check that its `ci` job passes and its `image` jobs fail only at `Upgrade smoke test`, then tag that commit **`v0.2.2-throwaway.1`** (a pre-release of the version after `v0.2.1`, so that its previous release is `v0.2.1`; a tag below `0.2.1` would find none and pass). Confirm: the `Publish manifest list` job did not run and `ghcr.io/plainprogrammer/collector:0.2.2-throwaway.1` does not exist; then delete the tag locally and on the remote, and the branch. Spec 013's cleanup removes the orphaned untagged digest. Record the run URL and the outcome in `verification.md`.
+- [ ] **The deliberately failing tag (AC-7.2) is the maintainer's.** A tag on the public repository is outward-facing and a wrongly passing run would publish an image, so the plan does not push it. The recipe: on a throwaway branch from this one add `db/migrate/20261201000001_delete_a_seeded_lot.rb` (`def up = execute("DELETE FROM lots WHERE id = (SELECT min(id) FROM lots)")` with an empty `down`), push the branch and open a **draft pull request** from it (a pushed branch alone runs nothing: `ci.yml` triggers on pull requests, pushes to `main` and release tags), check that the pull request's `ci` job passes and its `image` jobs fail only at `Upgrade smoke test`, then tag that commit (the tag's own run repeats both, and is the run to read) **`v0.2.2-throwaway.1`** (a pre-release of the version after `v0.2.1`, so that its previous release is `v0.2.1`; a tag below `0.2.1` would find none and pass). Confirm: the `Publish manifest list` job did not run and `ghcr.io/plainprogrammer/collector:0.2.2-throwaway.1` does not exist; then delete the tag locally and on the remote, and the branch. Spec 013's cleanup removes the orphaned untagged digest. Record the run URL and the outcome in `verification.md`.
 - [ ] Write `verification.md` (a row per AC with its evidence: spec example or document location or run; a Measurements table with the hand-run and CI timings; the Owed list: AC-7.2's tag, the NAS restore of decision 9 (not owed by this spec), anything a first CI run showed).
 - [ ] Run `sdd-superpowers:sdd-review` Mode B (implementation review); record it in `verification.md` under `## Implementation review` with the verdict on its first line, and fix its findings.
 - [ ] At session end run `sdd-superpowers:session-wrap`, then `distill-feature` (the area doc, the index row, the plan's retirement after the merge).
@@ -3048,7 +3103,7 @@ The last command prints `== resolve` through `== seed of the next release` and e
 
 ## Traceability
 
-Every criterion, decision and requirement of spec 031 1.1.1, with the phase that delivers it and the test or document that proves it. *Spec* = an example in `spec/script/upgrade/`; *CI run* = the first run of the image job; *hand* = a hand run recorded in `verification.md`; *read* = verified by reading.
+Every criterion, decision and requirement of spec 031 1.1.2, with the phase that delivers it and the test or document that proves it. *Spec* = an example in `spec/script/upgrade/`; *CI run* = the first run of the image job; *hand* = a hand run recorded in `verification.md`; *read* = verified by reading.
 
 | Item | Phase | Proof |
 |---|---|---|
@@ -3100,13 +3155,13 @@ Every criterion, decision and requirement of spec 031 1.1.1, with the phase that
 | AC-7.6 the ci job pulls no image and needs no engine; runs the guard | 2 | files_spec "fetches the full history … in the ci job" |
 | AC-8.1 guard compares db/migrate at the tag with the working tree | 2 | guard_spec "passes when every released migration is unchanged"; `bin/ci` |
 | AC-8.2 edited/deleted/renamed named, with the fix | 2 | guard_spec the edit, delete and rename examples |
-| AC-8.3 every command on the allowlist | 6 | engine_spec "builds only commands that a category accepts" |
+| AC-8.3 every command on the allowlist | 6 | engine_spec "builds only commands that a category accepts" (two examples), "starts a process only in engine.rb and release.rb" |
 | AC-8.4 behind the release | 2 | guard_spec "behind the release" |
 | AC-8.5 no stable tag or no remote → none; remote without tags → fetch; checkouts fetch tags | 1, 2, 9 | release_spec, guard_spec, files_spec (both checkouts) |
 | AC-8.6 these specs need no engine, network or registry, and run in bin/ci | all | `spec/script/upgrade` uses fakes and loopback only; config/ci.rb runs bin/rspec |
 | AC-9.1 releasing.md steps | 10 | read |
-| AC-9.2 CLAUDE.md and the area doc (when it exists) | 10 | read |
-| AC-9.3 index rows both ways | 10 | read (done with the draft) |
+| AC-9.2 CLAUDE.md and the release-and-deploy area doc (on `main`, so written in this pull request) | 10 | read |
+| AC-9.3 index rows both ways | 10 | read (made with the draft; kept through the merge of `main`, `71e3424`) |
 | Decision 1 two layers | 2, 7, 9 | the guard in `bin/ci`; the proof in the image job |
 | Decision 2 previous release | 1, 7 | Phase 1 and the hand modes |
 | Decision 3 fail closed | 7 | the pull and none examples |
@@ -3119,7 +3174,9 @@ Every criterion, decision and requirement of spec 031 1.1.1, with the phase that
 | Decision 10 one spec, one pull request | all | this plan's single branch |
 | FR-1 to FR-8 | 1, 6, 7, 9 | as the rows above; FR-6 cleanup in harness "removes every container"; FR-8 files_spec "keeps bin/upgrade-smoke out of the image" |
 | NFR time | 7, 11 | measurements |
-| NFR security | 6, 9 | engine allowlist; no secret in the step |
+| NFR security | 6, 7, 9 | engine allowlist; no secret in the step; harness "fails when a collector can't sign in" (position, no email) |
+| Error Scenarios: a log or database the snapshot cannot read; the harness cannot run; an unforeseen error | 7 | harness "reports an error of no expected kind with the same evidence lines"; guard_spec "fails with a message, not a backtrace, when the ref names no release" |
+| 1.1.2 (the backup leg's four tables, FR-4, decisions 6 and 7, AC-6.2) | 3, 4, 8 | compare_spec "requires the tables of a restore to be emptied"; rules_spec "names every table the schema cascades from sessions"; harness "fails when the sessions a restore ends are still there" |
 | NFR self-hosting: no migration, no setting | all | `git diff --stat db/ config/` empty except `config/ci.rb` |
 
 **Gaps:** none. **Not provable by a suite, and owed:** AC-7.2's real tag (maintainer), the first CI run's times (Phase 11), the NAS restores (decision 9, not this spec's).

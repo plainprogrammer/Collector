@@ -59,6 +59,9 @@ Every command goes through `Upgrade::Engine`, whose builders are the only code t
 | `restore` | `run --rm -u 1000 [flags] -v VOLUME:/rails/storage -v DIR:/backups:ro -e SECRET_KEY_BASE_DUMMY=1 IMAGE bin/rails backup:restore[/backups/FILE]` |
 | `files` | `run --rm -u 0 -v ... IMAGE <ls | cp | chown | chmod | rm -rf> ...` on the volume or the temporary directory only |
 | `volume` | `volume create NAME`, `volume rm -f NAME` |
+| host `git` (`Upgrade::Release`, read-only) | `git tag --list`, `git tag --points-at HEAD`, `git ls-tree -r --name-only REF -- db/migrate`, `git show REF:PATH`, `git rev-parse HEAD`, `git merge-base --is-ancestor A B`, `git remote` |
+
+The container CLI is started only by `Upgrade::Engine`; `git` only by `Upgrade::Release`; a spec fails if any other file of `script/upgrade/` or `bin/upgrade-smoke` starts a process (AC-8.3).
 
 The only `db:*` task that runs is the one in the image's entrypoint (`db:prepare`), caused by starting the image, never named by the harness.
 
