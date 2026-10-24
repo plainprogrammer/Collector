@@ -149,6 +149,16 @@ RSpec.describe "Lots", type: :request do
       expect(response.body).to include("Removed 3 × #{added} from your collection.", "You don't have this card yet.")
     end
 
+    it "removes a lot in a location, leaves the location and ends an earlier bulk removal's Undo (spec 032 AC-7.7)", :aggregate_failures do
+      location = create(:location, account: user.account)
+      lot = create(:lot, account: user.account, entry:, location:)
+      earlier = BulkRemoval.create!(session: Current.session || user.sessions.last, account: user.account, copies: 1, lots_data: [])
+      delete lot_path(lot)
+      expect(Lot.exists?(lot.id)).to be(false)
+      expect(Location.exists?(location.id)).to be(true)
+      expect(earlier.reload).not_to be_undoable
+    end
+
     it "keeps the collection context" do
       lot = create(:lot, account: user.account, entry:)
       delete lot_path(lot, from: "collection")

@@ -32,7 +32,7 @@ RSpec.describe AddLocationToLots, :backup, :committed, type: :model do
 
   def lot_rows = Lot.connection.select_rows("SELECT id, catalog_entry_id, quantity, finish, condition, price_paid_cents, lot_key, created_at, updated_at FROM lots ORDER BY id")
 
-  def pick(selection, *lots) = selection.record!(shown_ids: [], ticked_ids: lots.map(&:id), header_rendered: false, header_ticked: false)
+  def pick(selection, *lots) = selection.record!(shown_ids: lots.map(&:id), ticked_ids: lots.map(&:id), header_rendered: false, header_ticked: false)
 
   # Every kind of row that points at a lot: a mark, a number-entry line, a scanner entry, and an undoable removal.
   def fill

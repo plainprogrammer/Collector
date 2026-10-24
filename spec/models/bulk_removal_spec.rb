@@ -16,7 +16,7 @@ RSpec.describe BulkRemoval, type: :model do
     removal = described_class.remove!(selection)
     expect([ Lot.count, removal.copies, removal.undoable?, selection.reload.lots.to_a ]).to eq([ 0, 2, true, [] ])
     expect(removal.reload.lots_data).to eq([
-      { "catalog_entry_id" => lot.catalog_entry_id, "finish" => "foil", "condition" => "near_mint", "price_paid_cents" => 150, "quantity" => 2 }
+      { "catalog_entry_id" => lot.catalog_entry_id, "finish" => "foil", "condition" => "near_mint", "price_paid_cents" => 150, "quantity" => 2, "location_id" => nil }
     ])
   end
 
@@ -99,6 +99,79 @@ RSpec.describe BulkRemoval, type: :model do
     expect(connection.columns("bulk_removals").find { |column| column.name == "account_id" }.null).to be(false)
     expect(connection.indexes("bulk_removals").map(&:columns)).to include(a_collection_starting_with("account_id"))
     expect(connection.foreign_keys("bulk_removals").find { |key| key.to_table == "sessions" }.on_delete).to eq(:cascade)
+  end
+
+  describe "with locations (spec 032 Story 7)" do
+    def blue = @blue ||= create(:location, account:)
+
+    def removal_of(*lots)
+      selection.record!(shown_ids: lots.map(&:id), ticked_ids: lots.map(&:id), header_rendered: false, header_ticked: false)
+      described_class.remove!(selection).reload
+    end
+
+    it "saves each lot's place", :aggregate_failures do
+      placed = own(location: blue)
+      removal = removal_of(placed)
+      expect(removal.lots_data.sole).to include("location_id" => blue.id)
+    end
+
+    it "restores each lot to its place and merges per place (AC-7.4)", :aggregate_failures do
+      placed = own("Bolt", location: blue, quantity: 2)
+      unplaced = create(:lot, account:, entry: placed.entry, quantity: 3)
+      removal = removal_of(placed, unplaced)
+      Lot.add!(account:, entry: placed.entry, quantity: 1, location: blue)
+      removal.undo!(sort:)
+      expect(account.lots.pluck(:location_id, :quantity)).to contain_exactly([ blue.id, 3 ], [ nil, 3 ])
+    end
+
+    it "restores a lot whose location was removed unplaced and says how many (AC-7.5)", :aggregate_failures do
+      placed = own(location: blue)
+      removal = removal_of(placed)
+      blue.destroy!
+      undone = removal.undo!(sort:)
+      expect(account.lots.sole.location_id).to be_nil
+      expect(undone.unplaced).to eq(1)
+    end
+
+    it "counts no unplaced lots when every location is still there", :aggregate_failures do
+      removal = removal_of(own(location: blue), own("Opt"))
+      expect(removal.undo!(sort:).unplaced).to eq(0)
+    end
+
+    it "merges restored rows that share an identity once their location is gone (AC-7.8)", :aggregate_failures do
+      placed = own(location: blue, quantity: 3)
+      unplaced = create(:lot, account:, entry: placed.entry, quantity: 4)
+      removal = removal_of(placed, unplaced)
+      blue.destroy!
+      removal.undo!(sort:)
+      expect(account.lots.pluck(:location_id, :quantity)).to eq([ [ nil, 7 ] ])
+    end
+
+    it "raises the cap error naming the entry when only the restored rows pass 9,999 (AC-7.8, O2)", :aggregate_failures do
+      placed = own(location: blue, quantity: 9_999)
+      unplaced = create(:lot, account:, entry: placed.entry, quantity: 1)
+      removal = removal_of(placed, unplaced)
+      blue.destroy!
+      expect { removal.undo!(sort:) }.to raise_error(Lot::CapExceeded) { |error| expect(error.lot.entry).to eq(placed.entry) }
+      expect([ account.lots.count, removal.reload.undoable? ]).to eq([ 0, true ])
+    end
+
+    it "names an existing lot that would overflow before a restored row (O2)", :aggregate_failures do
+      placed = own(location: blue, quantity: 9_999)
+      unplaced = create(:lot, account:, entry: placed.entry, quantity: 1)
+      removal = removal_of(placed, unplaced)
+      blue.destroy!
+      full = Lot.add!(account:, entry: placed.entry, quantity: 9_999)
+      expect { removal.undo!(sort:) }.to raise_error(Lot::CapExceeded) { |error| expect(error.lot).to eq(full) }
+    end
+
+    it "restores saved lots with no location key unplaced (AC-7.8)" do
+      lot = own
+      removal = removal_of(lot)
+      removal.update!(lots_data: removal.lots_data.map { |data| data.except("location_id") })
+      removal.undo!(sort:)
+      expect(account.lots.sole.location_id).to be_nil
+    end
   end
 
   def queries_during

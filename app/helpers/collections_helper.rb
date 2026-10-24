@@ -15,6 +15,9 @@ module CollectionsHelper
 
   def items_count(count) = pluralize(number_with_delimiter(count), "item")
 
+  # Spec 032 P5: saved lots whose location was removed meanwhile come back in none.
+  def restored_without_location(count) = count.positive? ? " #{pluralize(count, "lot")} came back without a location." : ""
+
   # The bulk bar's count (spec 006 AC-5.1–5.5): selected copies against the filter's copies.
   def selection_count(state, matching)
     if state.everything? && matching.positive?
