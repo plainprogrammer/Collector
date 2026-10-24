@@ -23,6 +23,12 @@ RSpec.describe "Upgrade proof files" do
     expect(Rails.root.join("bin/image-smoke").read).to include("bin/upgrade-smoke")
   end
 
+  it "keeps the runner's bundle out of the image build context, which ruby/setup-ruby fills before the push", :aggregate_failures do
+    rules = Rails.root.join(".dockerignore").readlines(chomp: true).map(&:strip)
+    expect(rules).to include("/vendor/bundle")
+    expect(rules).not_to include("!/vendor/bundle")
+  end
+
   it "is executable and starts with a Ruby shebang", :aggregate_failures do
     path = Rails.root.join("bin/upgrade-smoke")
     expect(path.executable?).to be(true)
