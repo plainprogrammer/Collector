@@ -11,7 +11,7 @@ class Lot::ConditionChange
     Lot.transaction do
       lots = @lots.preload(:entry).to_a
       Catalog::Entry.preload_extensions(lots.map(&:entry))
-      groups = lots.group_by { |lot| [ lot.catalog_entry_id, Lot.key_for(lot.finish, @condition, lot.price_paid_cents) ] }
+      groups = lots.group_by { |lot| [ lot.catalog_entry_id, Lot.key_for(lot.finish, @condition, lot.price_paid_cents, lot.location_id) ] }
       targets = existing_targets(groups.keys, lots)
       check_cap!(groups, targets)
       alone = groups.reject { |key, group| group.many? || targets[key] }
@@ -36,11 +36,11 @@ class Lot::ConditionChange
       raise Lot::CapExceeded, @sort.apply(@account.lots.joins(entry: :set).where(id: over.map(&:id))).preload(entry: :set).first
     end
 
-    # Lots that keep their own identity, in one statement: lot_key is rebuilt as Lot.key_for would.
+    # Lots that keep their own identity, in one statement: lot_key is rebuilt as Lot.key_for would, place included.
     def update_alone!(ids)
       return if ids.empty?
 
-      @account.lots.where(id: ids).update_all([ "condition = ?, lot_key = COALESCE(finish, '') || '|' || ? || '|' || COALESCE(price_paid_cents, ''), updated_at = ?", @condition.presence, @condition.to_s, Time.current ]) # Safe: tenant-scoped; the controller validated the condition against the vocabulary; quantity and finish don't change; merges are handled separately, so no identity collides
+      @account.lots.where(id: ids).update_all([ "condition = ?, lot_key = COALESCE(finish, '') || '|' || ? || '|' || COALESCE(price_paid_cents, '') || COALESCE('|' || location_id, ''), updated_at = ?", @condition.presence, @condition.to_s, Time.current ]) # Safe: '|' || NULL is NULL, so an unplaced lot keeps the key it had; tenant-scoped; the controller validated the condition against the vocabulary; quantity and finish don't change; merges are handled separately, so no identity collides
     end
 
     # The existing lot survives if there is one, else the group's first lot; the others fold into it.
