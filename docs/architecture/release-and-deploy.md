@@ -1,0 +1,236 @@
+# Release and deploy
+
+How Collector is built into an image, published, deployed and kept safe: the container image, the CI workflow that builds and publishes it, release tags, the cleanup of the registry, the Compose and Kamal deployment paths, the request body limit, the stored import upload's retention, and backup and restore of an instance. This is the current truth; the specs it distils record what each feature promised when it shipped (see Sources and the [specs index](../specs/README.md)). The operator's procedures are in `README.md` ("Self-hosting", "Backup and restore") and [`docs/releasing.md`](../releasing.md); this document holds the rules those procedures follow.
+
+## Scope
+
+**Covers:**
+
+- The image: `Dockerfile`, `.dockerignore`, `bin/docker-entrypoint`, `bin/image-smoke`, and what the image holds and leaves out (spec 001 FR-5; spec 012 FR-3, Story 6; spec 014 Story 1 as far as the image goes).
+- The CI workflow `.github/workflows/ci.yml` (the `ci`, `image` and `publish` jobs), Dependabot's configuration (`.github/dependabot.yml`), and the release tags, channels and labels (spec 001 FR-4; spec 012; [ADRs 0008–0010](../adr/README.md)). `bin/ci` and `config/ci.rb` are a single definition kept in CLAUDE.md's Commands (spec 001 FR-3; see Neighbours).
+- Releasing and going public: `docs/releasing.md` (spec 012 Story 7).
+- The cleanup of untagged package versions: `.github/workflows/ghcr-cleanup.yml`, `bin/ghcr-cleanup`, `lib/collector/ghcr_cleanup.rb` (spec 013; [ADR 0011](../adr/0011-own-ghcr-cleanup-script.md)).
+- The two deployment paths: `compose.yaml`, `config/deploy.yml`, and the README's Self-hosting section (spec 001 FR-5, FR-6; spec 012 FR-4, FR-5).
+- The request body limit at every layer that receives a body (spec 025 decision 6).
+- The stored import upload as an operational matter: where it lives, how long, its sweep and the gate on Active Storage's routes (spec 028 decisions 8 and 9; [ADR 0022](../adr/0022-stored-import-upload-retention.md)).
+- Backup and restore of an instance: `backup:create`, `backup:restore`, `lib/collector/backup/`, `bin/backup-smoke`, `docs/backup-restore.md` (spec 030; [ADR 0024](../adr/0024-backup-with-vacuum-into.md)).
+- That the README is true (spec 020), as far as the release and deployment sections are concerned.
+
+**Neighbours:**
+
+- **Development environment** (stack, `bin/setup`, `bin/ci`, the Claude Code hooks, worktrees, dev ports, libvips in development) has no area doc; its facts stay in CLAUDE.md, where an agent needs them first (specs 001 stack, CI and hooks parts, 003, 014; spec 027 OD3 and D2). Those specs freeze with this area (see Sources).
+- **Data portability** (no area doc yet at the time of writing; specs 017, 022, 025, 028): the export format, what a preview and an apply do, the file's content rules, and which of the export and the backup to use for what (spec 030 decision 11). The upload's size cap (`CollectionImport::MAX_BYTES`) and what an apply writes are there; the layers that refuse a body over 40 MB and the stored file's retention are here.
+- **Catalog operations** ([catalog-operations.md](catalog-operations.md)): the weekly refresh (`config/recurring.yml`), the art index build that a restore asks the operator to press, and the wording of a finished build whose index file is missing ([#122](https://github.com/plainprogrammer/Collector/issues/122)).
+- **Tenancy and accounts** (no area doc yet; spec 004): the ownership rule behind `ActiveStorageGate` is here only as ADR 0022 states it.
+- **Scanner** (no area doc yet): the OCR engine is fetched and checksum-verified during the image build (`bin/fetch-ocr-engine`, spec 007, [ADR 0001](../adr/0001-browser-ocr-engine-and-asset-hosting.md)); how it is served is the scanner's.
+
+## Glossary
+
+- **Release:** a git tag `vX.Y.Z`, optionally with a pre-release suffix `-<suffix>` where the suffix matches `[0-9A-Za-z.-]+` (spec 012 Terms; `docs/releasing.md`).
+- **`main` channel:** the images published from every push to `main`: `edge` and `sha-<7-character sha>` (spec 012 Terms; [ADR 0009](../adr/0009-image-tags-and-release-channels.md)).
+- **Manifest list:** one image name that resolves to the right architecture on pull; here always exactly `linux/amd64` and `linux/arm64` (spec 012 AC-2.1).
+- **Build / publish:** a *build* produces one per-architecture image and, on `main` and release tags, pushes it by digest, untagged. *Publish* is creating the tagged manifest list from those digests (spec 012 Terms).
+- **Version (of the package), tagged, untagged, referenced:** one entry in the package's version list. A version is *tagged* when the packages API reports a tag for it; a digest is *referenced* when a tagged manifest list names it as a child (spec 013 Terms).
+- **Orphan unit:** an untagged manifest list with those of its children that are in the version list, untagged and unreferenced, or any other untagged, unreferenced version alone; units that share a member are one unit. Its age is its newest member's. It is *past the grace period* when strictly more than 7 days old (spec 013 Terms; `Collector::GhcrCleanup::GRACE`).
+- **Instance, volume:** one running Collector and its `storage/` volume, `collector_storage` mounted at `/rails/storage`, holding the primary, queue, cache and cable SQLite databases (spec 001 FR-1, FR-5; [ADR 0016](../adr/0016-sqlite-in-every-environment.md)).
+- **Fresh volume:** a volume that holds none of the four databases and none of their `-wal`, `-shm` or `-journal` files (spec 030 Terms, decision 6).
+- **Backup, snapshot:** one file (`collector-backup-YYYYMMDDTHHMMSSZ.tar.gz`) holding a manifest and `primary.sqlite3`, a consistent copy of the primary database at one moment (spec 030 Terms, decision 5; ADR 0024).
+- **Stored upload:** the previewed import file, kept for an hour so that applying is one click; **orphan blob:** an Active Storage blob that carries the import-upload marker, has no attachment and is older than `ImportUpload::ORPHAN_GRACE` (spec 028 decision 9; ADR 0022).
+- **Operator:** the person who runs the instance and has a shell on its host or container (spec 030 Terms).
+
+## Invariants
+
+### The pipeline and the tags
+
+- **One CI definition.** `bin/ci` (`config/ci.rb`) is what runs locally, in the pre-push hook and in the workflow's `ci` job; the workflow lists no individual check (spec 001 FR-3, FR-4, AC-2.5; `.github/workflows/ci.yml:20-43`).
+- **Nothing is published unless `bin/ci` passed on the same commit.** The `image` job needs `ci`, and `publish` needs `image`; a failed `ci` pushes nothing (spec 012 FR-1, AC-3.4; ADR 0010; `ci.yml:49`, `ci.yml:156`).
+- **A pull request builds both architectures and pushes nothing:** no tag, no digest, no registry cache. The registry login, the push by digest and the `publish` job are all conditioned on the event not being a pull request; the build cache is the CI service's own (`type=gha`) (spec 012 FR-1, AC-4.2, AC-4.3, NFR Security; `ci.yml:75-76`, `ci.yml:125`, `ci.yml:157`).
+- **Only the workflow pushes to the public image.** The maintainer's Kamal deploys use `--skip-push` (spec 012 FR-1, FR-5; ADR 0009 Consequences). `packages: write` is granted only to the `image` and `publish` jobs; the top-level permission is `contents: read` (spec 012 FR-1, NFR Security; `ci.yml:12-14`, `ci.yml:51-53`, `ci.yml:159-161`).
+- **Triggers.** The workflow runs on pull requests, on pushes to `main`, and on tags matching `v[0-9]+.[0-9]+.[0-9]+` or `v[0-9]+.[0-9]+.[0-9]+-*`. Any other tag runs nothing. That a release tag is annotated and on `main` is procedure, not checked (spec 012 AC-3.6, AC-7.1; ADR 0009; `ci.yml:3-10`).- **Tags follow ADR 0009's table** ([What each trigger publishes](../releasing.md#what-each-trigger-publishes)); all tags of one run resolve to one manifest list. A `0` tag is never published for `0.y.z`; `latest` moves only on a stable release tag, never on a pre-release or the `main` channel (spec 012 FR-2; ADR 0009; `ci.yml:83-95`).
+- **A publish is all-or-nothing.** The per-architecture images are pushed untagged by digest; the tags exist only once `docker buildx imagetools create` has merged both, and the next step fails the run unless the list holds exactly `linux/amd64` and `linux/arm64`. No attestations or SBOM entries are built, so a list has two entries (spec 012 AC-2.1, AC-2.3, FR-1, NFR Reliability; `ci.yml:109-110`, `ci.yml:195-206`).
+- **Every image carries the OCI labels** `source`, `version`, `revision`, `licenses` (`AGPL-3.0`) and `description`, the last two set by the workflow rather than the repository's settings (spec 012 AC-3.5, FR-2; ADR 0009; `ci.yml:96-98`).
+- **Architectures are built natively**: `linux/amd64` on `ubuntu-latest`, `linux/arm64` on `ubuntu-24.04-arm`; the `-j 1` bootsnap precompile stays in the `Dockerfile` for local builds under emulation (spec 012 FR-3; ADR 0010; `ci.yml:58-61`, `Dockerfile:44`, `Dockerfile:57`).
+- **Dependabot covers gems and GitHub Actions**, not the base image (spec 001 AC-2.6, FR-4; spec 012 Non-Goals; `.github/dependabot.yml`).
+
+### The image
+
+- **The image carries only what it runs.** The build context leaves out `docs/`, `spikes/`, `spec/`, `script/`, `.claude/`, `CLAUDE.md`, `.githooks/`, `orca.yaml`, `.worktreeinclude`, a checkout's `vendor/ocr`, `bin/ghcr-cleanup`, `bin/backup-smoke` and `lib/collector/ghcr_cleanup.rb`, besides the paths the Rails template excluded (`config/master.key`, `.env*`, `storage/`, `.kamal/`, `config/deploy*.yml`) (spec 012 FR-3, AC-6.1, AC-6.4; spec 013 FR-5; spec 030 FR-9; #31; `.dockerignore`). The image is public, so its source is readable by anyone who pulls it ([ADR 0008](../adr/0008-public-images-from-the-private-repository.md)); nothing that must stay private may be in the build context (spec 012 NFR Security).
+- **`bin/image-smoke` fails an image** that doesn't boot, doesn't serve the registration page, `/scanner` (redirecting a signed-out visitor), the OCR engine files or the sign-in page, whose `catalog:status[mtg]` or `collector:user[...]` task fails, whose Active Storage variant transformer isn't vips, whose `/rails/vendor` holds anything besides `.keep`, `javascript` and `ocr`, or that holds any of the development-only paths, secrets, `bin/ghcr-cleanup`, `lib/collector/ghcr_cleanup.rb` or `bin/backup-smoke` (spec 012 AC-6.1–AC-6.4; spec 013 AC-5.2; spec 014 AC-1.1–AC-1.3; #31). CI runs it on both architectures before anything is pushed (spec 012 AC-4.3; `ci.yml:114-115`).
+- **The image holds libvips and ImageMagick**, sqlite3 and curl; `ruby-vips` is bundled with `require: false`, so the app boots without libvips and variants fail loudly in the smoke test, not in production (spec 014 Story 1; [ADR 0013](../adr/0013-active-storage-variants-with-vips.md); [ADR 0012](../adr/0012-decode-art-images-with-imagemagick.md); `Dockerfile:19`, `Dockerfile:53`).
+- **The runtime is Thruster in front of Puma as uid 1000.** The OCR engine is fetched and checksum-verified during the build, and no database file or secret is baked in (spec 001 FR-5, NFR Security; spec 012 FR-3; `Dockerfile:50`, `Dockerfile:69-71`, `Dockerfile:85`).
+- **A server start prepares the database; a one-off command doesn't.** `bin/docker-entrypoint` runs `bin/rails db:prepare` only when the command ends in `./bin/rails server`, so booting a new image on an existing volume migrates it and never recreates a database, while `backup:restore` and the other tasks run before any migration (spec 001 NFR Reliability; spec 030 decision 10; `bin/docker-entrypoint:4-6`).
+
+### Deployment
+
+- **Compose runs the published image by default** (`image: ${COLLECTOR_IMAGE:-ghcr.io/plainprogrammer/collector:latest}`, no `build:`), refuses to start without `SECRET_KEY_BASE`, mounts `collector_storage` at `/rails/storage`, sets `SOLID_QUEUE_IN_PUMA`, and has a healthcheck on `/up`. It works with `docker compose` and `podman compose` (spec 001 FR-5, AC-3.5; spec 012 FR-4, AC-1.2–AC-1.5; `compose.yaml`).
+- **Kamal deploys a release by version, without building:** `bin/kamal deploy --skip-push --version X.Y.Z` (`bin/kamal setup` the first time). The registry is `ghcr.io`, the image `plainprogrammer/collector`, the password `KAMAL_REGISTRY_PASSWORD`; Kamal needs credentials even to pull a public image. Never run a plain `bin/kamal deploy` against the public image: it would push a single-architecture `latest` over the published one (spec 012 FR-5, AC-5.1–AC-5.4; ADR 0009 Consequences; `config/deploy.yml:1-7`, `config/deploy.yml:34-43`).
+- **No real host, registry credential or secret is committed.** The server in `config/deploy.yml` is a placeholder, `.kamal/secrets` reads the password from `KAMAL_REGISTRY_PASSWORD` and the master key from `config/master.key`, and the master key and `.env*` are git-ignored (spec 001 FR-6, AC-4.3, NFR Security). The secrets file is off-limits to agents, so its content is not checked here.
+- **The instance is one host and one volume.** The queue runs inside Puma on both paths, so there is no separate worker or database server, and the volume is local, never a network file system (spec 001 AC-3.4, AC-4.2; ADR 0016; `.claude/rules/sqlite-and-migrations.md`).
+- **The README documents both paths together** and says to pull the image, not the code, to upgrade; a change to a deployment file keeps the README's Self-hosting section in step (spec 012 FR-6, AC-7.3; CLAUDE.md "Deploy").
+
+### The request body limit
+
+- **A request body over 40 MB is refused before it is kept, at every layer that receives it:** Puma (`http_content_length_limit 40_000_000`, every environment), Thruster in the published image (`MAX_REQUEST_BODY`, which is unlimited by default), and kamal-proxy in a Kamal deployment (`proxy.buffering.max_request_body`, which buffers up to 1 GB to disk by default). The import file itself is refused over 32 MB before parsing, so between 32 and 40 MB the collector sees the app's reason and past 40 MB a plain 413 (spec 025 decision 6, AC-3.4; `config/puma.rb:38`, `Dockerfile:78`, `config/deploy.yml:29-32`). A reverse proxy in front of an instance keeps its own limit at 40 MB or more (README, Upload limit).
+
+### Cleaning up the registry
+
+- **The cleanup never deletes a tagged version or a digest a tagged manifest list references**, whatever its age, and never part of an orphan unit; it deletes a unit's manifest lists before its children (spec 013 FR-1, AC-2.1–AC-2.3; ADR 0011).
+- **It fails closed.** It deletes nothing, or nothing further, when the version list, a tagged version's manifest or a candidate's manifest can't be read, when a tagged version isn't a manifest list of exactly `linux/amd64` and `linux/arm64`, or when a candidate has an unknown media type; it stops at the first delete refused with a status other than 404; it exits non-zero before any request without a token; it never retries a delete in the same run (spec 013 FR-2, AC-3.1–AC-3.8).
+- **After deleting, it checks every tag** (re-reads each tagged list by digest, re-applies the two-platform rule and fetches each child), and fails the run naming the tag and digest of a missing one (spec 013 AC-2.4).
+- **It is a dry run unless given `--delete`.** A workflow started by hand is a dry run unless `dry_run` is unticked, and its job has `packages: read` only; the scheduled run deletes with `packages: write`. No third-party code holds delete rights on the public image, and the command is stdlib-only (spec 013 FR-3, FR-4, AC-4.2, NFR Security, Portability; ADR 0011; `.github/workflows/ghcr-cleanup.yml`).
+- **It never runs on a push or pull request and never changes `ci.yml`** (spec 013 FR-4).
+
+### The stored import upload
+
+- **At most one stored file per account, at most 32 MB, for at most an hour.** It is stored only when the previewed file can be applied and has something to change, recorded as `application/json` whatever the browser declared, and created analyzed so that no analysis job is queued (spec 028 decisions 1, 8, 9, AC-5.1; ADR 0022; `app/models/import_upload.rb`).
+- **There is one removal path.** Applying, refusing, replacing, expiring and deleting the account all go through `ImportUpload#remove!`, which releases the blob after the commit, file first and then the blob row, rescuing failures and logging the exception class only; the request still succeeds (spec 028 decision 9, AC-5.4; ADR 0022; `app/models/import_upload.rb:57-58`).
+- **The sweep never lists or deletes paths on disk.** `ImportUpload::SweepJob` runs every 15 minutes in development and production (`config/recurring.yml`), removes expired uploads and orphan blobs older than `ORPHAN_GRACE`, rescuing and logging per item, so an orphan goes within 25 minutes of its creation. `storage/` also holds the databases and `storage/catalog/` (spec 028 decision 9, AC-5.4, AC-5.5; ADR 0022).
+- **Active Storage's routes are gated app-wide.** Every one requires sign-in, a route that reads a blob also requires that its attachment's record belongs to the signed-in account (otherwise 404), and direct-upload creation and the disk service's upload `PUT` answer 404 until a feature needs them. Only original blobs are authorised; variants and previews are not served until the first image feature extends ownership (spec 028 decision 8, AC-1.11, AC-1.12; ADR 0022 Consequences; `config/initializers/active_storage_gate.rb`).
+
+### Backup and restore
+
+- **A backup is an online snapshot of the primary database**, `VACUUM INTO` in one read transaction, so the app keeps answering and writers wait no longer than the database's 5-second busy timeout. The queue, cache and cable databases, `storage/catalog/` downloads, art images and index, Active Storage files and every secret stay out of it (spec 030 decisions 1, 2, 3, AC-1.2, AC-1.3, AC-4.1; ADR 0024 decisions 1 and 2; ADR 0016).
+- **The destination is the operator's choice, never under `storage/`.** The commands take it as an argument and add no setting (spec 030 decision 4, hosted-door rule 3).
+- **A backup is verified before it counts.** Both the snapshot's integrity check and its foreign-key check pass and the archive reads back; otherwise no file has a final name and the run's `.partial` files are removed, with a plain message (spec 030 decision 7, AC-1.5, AC-1.12). The temporary files are created 0600 and the archive is `fsync`ed before it is given its final name; a final name is never replaced, because the archive is hard-linked into place (a rename only where a share can't link) (spec 030 decision 7, AC-1.6, AC-1.8, AC-1.9; ADR 0024 decision 3; `lib/collector/backup.rb:108-119`).
+- **A restore needs a fresh volume and never overwrites.** It refuses a volume that holds any of the four databases or a `-wal`, `-shm` or `-journal` file, with no override; it checks the file's kind, format version, checksum, SQLite's integrity and foreign-key checks and the schema before it places anything, and links the snapshot into place only after every check passes (spec 030 decisions 6, 10, AC-2.5, AC-2.6, AC-3.1–AC-3.7).
+- **A restore never opens a connection to the primary's configured path** (that would create an empty file the next `db:prepare` takes for a blank instance, whose first visitor becomes admin), opens snapshots with `SQLite3::Database` and never Active Record (which would convert them to WAL), and runs no migration, `db:schema:load`, `db:reset` or `db:drop`; the first start's `db:prepare` migrates an older backup (spec 030 decisions 6, 10, FR-8, AC-3.6; ADR 0024 decisions 4 and 5).
+- **A restore ends every session**: it clears `sessions`, which cascades to bulk removals and selections. Everyone signs in again; no collection is lost (spec 030 decision 3, AC-2.1, AC-2.4).
+- **A backup restores onto the same release or a newer one.** A snapshot that lists a migration the release doesn't have is refused, naming both schema versions (spec 030 decision 10, AC-3.5).
+- **No secret is written, printed or logged**, and neither command prints account, email or lot data, only counts of accounts, users and lots (spec 030 decision 3, FR-10, AC-1.7, AC-1.8).
+- **No page, route or admin action creates, lists, downloads or restores a backup**; the commands run in the operator's shell (spec 030 Non-Goals, AC-6.2; hosted-door rule 2).
+- **The two tasks boot nothing.** They don't depend on `:environment`, so no initializer, queue or cache connection or `secret_key_base` is needed, and `lib/collector/backup/` is required by path, not autoloaded. It names no collectible (spec 030 FR-5; ADR 0024 decision 5; `lib/tasks/backup.rake`, `config/application.rb`).
+- **A new database beyond the four, or a model with a collector-owned attachment other than `ImportUpload`, fails the suite** until the backup's contents are decided (spec 030 decision 2, AC-5.5; `spec/backup_guards_spec.rb`).
+
+### The README
+
+- **Every checkable claim in `README.md` is true of the repository**; a deployment or release change keeps the Self-hosting section and `docs/releasing.md` in step (spec 020 Goals, AC-2.1; spec 012 FR-6; CLAUDE.md "Deploy"). Its three safety warnings keep their meaning and prominence: the first person to reach an instance becomes its admin; signing in over plain HTTP; never run a plain `bin/kamal deploy` against the published registry (spec 020 AC-3.8, NFR Security).
+- **The suite checks no prose document** (`README.md`, `CLAUDE.md`, `.claude/`, the Markdown under `docs/`); a document criterion is verified by reading and recorded in the spec's `verification.md`. The configuration files (`compose.yaml`, `config/deploy.yml`, the workflows, `.dockerignore`) are checked, in `spec/image_publishing_spec.rb` (spec 020 decisions 3 and 7, AC-4.2, AC-4.7; `.claude/rules/testing.md`).
+
+## States and transitions
+
+### A workflow run (`ci.yml`)
+
+| Trigger | `ci` | `image` (per architecture) | `publish` | Registry afterwards |
+|---|---|---|---|---|
+| Pull request | `bin/ci` | build, `bin/image-smoke`, `bin/backup-smoke`; no login, no push | skipped | unchanged (spec 012 AC-4.2) |
+| Push to `main` | `bin/ci` | same, then push by digest, untagged | merge digests into `edge` and `sha-<7>`, check two platforms | `edge`, `sha-*`; `latest` unchanged (spec 012 AC-4.1) |
+| Tag `vX.Y.Z` | `bin/ci` | same | merge into `X.Y.Z`, `X.Y`, `latest`, and `X` from X ≥ 1; check | those tags (spec 012 AC-3.1, AC-3.2; ADR 0009) |
+| Tag `vX.Y.Z-<suffix>` | `bin/ci` | same | merge into `X.Y.Z-<suffix>` | that tag only (ADR 0009; see the open note on spec 012 AC-3.3) |
+| Any other tag | does not run | | | unchanged (spec 012 AC-3.6) |
+
+A failure at any stage stops the later ones. If `ci` fails nothing is pushed; if one architecture's `image` job fails, `publish` doesn't run, so no tag exists for the run and an untagged digest from the other architecture may remain, for the cleanup (spec 012 AC-2.3, AC-3.4, Error Scenarios). The OCR engine download failing in the build fails the job; re-running retries (spec 012 Error Scenarios).
+
+**Re-runs.** Only the newest release's workflow may be re-run: it builds a fresh two-architecture list from the same commit under the same tags (labels `version` and `revision` unchanged, layers not necessarily byte-identical), which is also how `latest` is restored if a plain `bin/kamal deploy` overwrote it. Re-running an older release moves `latest`, `X` and `X.Y` back to it (spec 012 AC-3.7, Error Scenarios; `docs/releasing.md`).
+
+### A package version (GHCR)
+
+| State | Meaning | Becomes |
+|---|---|---|
+| Untagged, fresh | a per-architecture image pushed by digest, or the previous list after a re-run, within the grace period | referenced once `publish` tags a list that names it; otherwise orphaned |
+| Tagged | carries a tag (`latest`, `X.Y.Z`, `X.Y`, `X`, `edge`, `sha-*`) | never deleted by the cleanup |
+| Referenced | untagged, but a tagged list names it as a child | stays, whatever its age |
+| Orphan unit, young | untagged, unreferenced, newest member 7 days old or less | deleted when its newest member is strictly more than 7 days old |
+| Deleted | removed by the cleanup, lists before children | |
+
+(Spec 013 Terms, Story 1, Story 2.) A run proceeds: read every page of the version list; read the manifest of every tagged version and of every candidate; form the units; select those past the grace period; delete (in a deleting run); re-check every tag. On 2026-10-08 the package had 18 versions, 13 untagged, of which 10 were children of the five tagged lists and only 3 safe to delete, which is why "delete untagged versions" is wrong as a rule (spec 013 Problem Statement; ADR 0011). A run prints each selected version with digest, creation time and reason, and four disjoint counts (tagged, referenced, too young, selected) that sum to the number of versions (spec 013 AC-4.1).
+
+### A stored import upload
+
+Stored by a preview that can be applied and has something to change (a second preview replaces it; a preview that stores nothing leaves it), then removed when applied, refused at the apply, replaced, expired (an hour after it was stored) or when its account is deleted. An apply that fails or is refused for a changed plan or an unconfirmed removal leaves it until it expires. An expired upload is never applied, whatever the sweep's timing: the apply judges expiry once, inside its write transaction (spec 028 decision 9, AC-3.3, AC-5.1, AC-5.2, AC-5.6; ADR 0022). A backup holds the `import_uploads` row but not the file; after a restore an apply answers 422 "Preview the file again." and the sweep removes the row once it has expired (spec 030 AC-2.10).
+
+### A backup run (`backup:create`)
+
+1. Refuse, writing nothing, if the destination doesn't exist, isn't writable by the container's user, or has less free space than twice the primary database's size (spec 030 AC-1.11).
+2. Remove `.partial` files of its own name pattern older than a day (spec 030 AC-1.6, FR-6).
+3. `VACUUM INTO` a snapshot under a random `.partial` name, 0600; put it in rollback-journal mode; verify its integrity and foreign keys; write the manifest and the archive under a `.partial` name; read the archive back; link it to `collector-backup-<UTC>.tar.gz`; `fsync` the directory (spec 030 decisions 5 and 7, AC-1.1, AC-1.4; `lib/collector/backup/create.rb`).
+4. On any failure remove the run's own `.partial` files and exit non-zero with a plain message. A damaged database and an orphan row (a foreign-key violation) each get their own message; the latter points to each collector's export (spec 030 AC-1.5, AC-1.12). A name already taken fails the run and leaves the existing file untouched (spec 030 AC-1.9).
+
+### A restore run (`backup:restore`)
+
+Checks, in this order, before anything is written on the volume other than one temporary file and its `-journal`: the volume is fresh (spec 030 AC-2.5); the file's kind (not a backup; or incomplete, being cut short, failing its gzip check or named `*.partial`) (AC-3.1, AC-3.3); the backup format version is one this release restores (AC-3.4); the volume has room; the checksum (AC-3.2); the snapshot's integrity and foreign keys (AC-3.7); the schema is not newer than the release's (AC-3.5). Then every session is ended, the counts are compared with the manifest, and the snapshot, closed in rollback-journal mode, is `fsync`ed and linked to the primary's path, never replacing a file (spec 030 FR-2, decision 6; ADR 0024 decision 4). Every refusal exits non-zero, names what is wrong and what to do, and leaves the volume as it was; a restore stopped after the temporary file is written leaves no primary database, and the next restore removes the leftover (spec 030 AC-2.6, AC-3.8, FR-4). The closing message says to start the instance, that everyone signs in again, that pending bulk-removal Undos and selections are gone, and that the art index is rebuilt with **Build art index**; a backup with no users says the first person to reach the instance becomes its admin (spec 030 AC-2.1, AC-2.11).
+
+**Restoring onto an instance.** The restore runs as a one-off container against the empty volume, before the first start, as uid 1000, with the file placed where uid 1000 can read it (a host directory owned by 1000 and mounted read-only, or created and copied in, then `chown`ed by a one-off as root). Under Kamal the sequence is `kamal server bootstrap`, a one-off `docker run` of the exact release over `ssh`, then `kamal setup` or `deploy` for that version (spec 030 decision 4; README, "Restore").
+
+### An upgrade
+
+A new release reaches an instance by `docker compose pull && docker compose up -d` or `bin/kamal deploy --skip-push --version X.Y.Z`; the container's start runs `db:prepare`, which migrates the volume's databases unattended. `docs/releasing.md` lists, newest first, the upgrade notes an operator needs for each release (spec 001 NFR Reliability; spec 012 AC-1.3, AC-5.2; `docs/releasing.md`).
+
+## Named constants
+
+| Name | Value | Defined in | Why this value | Source |
+|---|---|---|---|---|
+| Release tag patterns | `v[0-9]+.[0-9]+.[0-9]+`, `v[0-9]+.[0-9]+.[0-9]+-*` | `.github/workflows/ci.yml:9-10` | Only releases publish; any other tag runs nothing | spec 012 AC-3.6; ADR 0009 |
+| Image name | `ghcr.io/plainprogrammer/collector` | `ci.yml:17`, `compose.yaml`, `config/deploy.yml` | The public package; a public contract | ADR 0008, ADR 0009 |
+| Platforms and runners | `linux/amd64` on `ubuntu-latest`, `linux/arm64` on `ubuntu-24.04-arm` | `ci.yml:58-61` | Native builds, no emulation | ADR 0010 |
+| Publish time target | 30 minutes per run (measured 4 min 28 s to 8 min 32 s) | spec 012 NFR Performance | A pull-request run and a publish run both fit it | spec 012 NFR Performance; `verification.md` |
+| Digest artifact retention | 1 day | `ci.yml:151` | The digests only carry a run's builds to its publish job | spec 012 FR-1 |
+| `COLLECTOR_IMAGE` default | `ghcr.io/plainprogrammer/collector:latest` | `compose.yaml:14` | Compose pulls the newest release; a pin or a local tag overrides it | spec 012 FR-4, AC-1.5 |
+| Compose healthcheck | `curl -fsS http://localhost:8080/up`, every 10 s, timeout 5 s, 5 retries, 30 s start period | `compose.yaml:30-35` | Healthy within 60 s of `up` on a warm image | spec 001 AC-3.2, NFR Performance |
+| `bin/image-smoke` boot wait | 60 attempts of 2 s (`SMOKE_BOOT_ATTEMPTS`) | `bin/image-smoke:17` | Raised for emulated runs | spec 012 AC-6.2 |
+| `GRACE` | 7 days (`7 * 86_400` s), strictly more than | `lib/collector/ghcr_cleanup.rb:16` | Keeps a publish in progress, and a recent re-run, safe | spec 013 Terms, AC-1.3, AC-1.4 |
+| `PLATFORMS` | `linux/amd64`, `linux/arm64` | `lib/collector/ghcr_cleanup.rb:15` | A tagged list with any other platforms fails the run | spec 013 AC-3.8 |
+| Cleanup schedule | Sundays 06:00 UTC | `.github/workflows/ghcr-cleanup.yml:8` | Weekly, deleting | spec 013 FR-4, AC-1.5 |
+| Cleanup request limits | open 10 s, read 30 s; 100 versions per page | `lib/collector/ghcr_cleanup.rb:160`, `lib/collector/ghcr_cleanup.rb:112` | Explicit timeouts on every request; pages read by `page=N` until a page has fewer than 100 | spec 013 FR-2, FR-3 |
+| Request body cap | 40,000,000 bytes | `config/puma.rb:38`, `Dockerfile:78` (`MAX_REQUEST_BODY`), `config/deploy.yml:32` | Above the 32 MB import file, below a disk-filling upload | spec 025 decision 6, AC-3.4 |
+| `CollectionImport::MAX_BYTES` | 32,000,000 bytes | `app/models/collection_import.rb:5` | The largest export file read; stored uploads are bounded by it | spec 025 decision 6; spec 028 decision 9 |
+| `ImportUpload::EXPIRES_IN` | 1 hour | `app/models/import_upload.rb:3` | The window to apply a previewed file with one click | spec 028 decision 9; ADR 0022 |
+| `ImportUpload::ORPHAN_GRACE` | 10 minutes | `app/models/import_upload.rb:4` | Keeps the sweep from a blob a concurrent preview has created and not yet attached | spec 028 decision 9, P4 |
+| `sweep_import_uploads` schedule | every 15 minutes, queue `default`, development and production | `config/recurring.yml` | An orphan goes within 25 minutes (10 of grace plus the 15-minute cycle) | spec 028 AC-5.5; ADR 0022 |
+| `Collector::Backup::FORMAT_VERSIONS` | `[1]` | `lib/collector/backup.rb:26` | The backup format versions this release restores; a released version never changes meaning | spec 030 decision 5, AC-3.4 |
+| `Backup::BUSY_TIMEOUT_MS` | 5,000 | `lib/collector/backup.rb:28` | The database's own busy timeout, for the commands' direct connections | spec 030 AC-1.3; `config/database.yml` |
+| `Backup::STALE_PARTIAL_SECONDS` | 24 hours | `lib/collector/backup.rb:29` | A younger `.partial` may belong to a run in progress | spec 030 decision 7, AC-1.6 |
+| `Backup::TEMPORARY_MODE` | `0o600` | `lib/collector/backup.rb:30` | The file holds every user's password hash and every collection | spec 030 decision 3, AC-1.8 |
+| Backup free space | twice the primary database's size | `lib/collector/backup/create.rb:51` | The snapshot and the archive are both written in the destination | spec 030 decision 13, AC-1.11 |
+| `Backup::Restore::TEMPORARY` | `collector-restore.partial` | `lib/collector/backup/restore.rb:8` | The one fixed name the restore writes on the volume, removed with its `-journal` on any refusal | spec 030 FR-2, FR-6 |
+| `Backup::Restore::MARGIN` | 16 MiB | `lib/collector/backup/restore.rb:10` | Room for the session delete's journal and the placing, beyond the snapshot's size | spec 030 FR-2 |
+| `Backup::Archive::MANIFEST_LIMIT` | 64 KiB | `lib/collector/backup/archive.rb:14` | A manifest larger than this is not a manifest | spec 030 FR-2 |
+| Backup file name | `collector-backup-YYYYMMDDTHHMMSSZ.tar.gz` (UTC, no colon) | `lib/collector/backup/create.rb`, `docs/backup-restore.md` | A colon breaks `docker cp`, `scp` and shares | spec 030 decision 5 |
+| Backup time bars | backup and restore each under 5 minutes for the English catalog and 50,000 lots; writes wait under 5 s | spec 030 decision 13, AC-1.10 | Measured outside the suite; recorded in spec 030's `verification.md` | spec 030 decision 13 |
+| Backup schedule advice | before every upgrade and daily, never Monday 03:00–05:00 | README, "Back up" | The weekly catalog refresh (`config/recurring.yml`, Monday 3:15am) writes the most, and a backup's read transaction holds the WAL back | spec 030 decision 8, decision 13 |
+
+## Decisions not in an ADR
+
+- **Releases are cut by tagging, and the checks around the tag are procedure.** The workflow publishes on any matching tag; that the tag is annotated and on `main`, that `main` is green, and the two pre-announcement checks (restore the maintainer's own export for a release touching import or export, restore the maintainer's own backup for a release changing the schema, the backup or the restore) are steps in `docs/releasing.md` (spec 012 AC-7.1; spec 028 AC-6.5; spec 030 AC-5.7, decision 14).
+- **Going public is manual and ordered** (push the first image, verify an authenticated pull, link the package, change visibility, verify an anonymous pull), because the change cannot be undone; the workflow never does it. ADR 0008 records the decision; the steps are `docs/releasing.md`'s "Going public (one time)" (spec 012 AC-7.2, Error Scenarios). The package is public now (a pull of `edge` and the tags works anonymously, spec 013 AC-2.5 and its `verification.md`).
+- **The cleanup's token.** The workflow's own `GITHUB_TOKEN` deleted versions on the first deleting run (2026-10-18). `docs/releasing.md` still documents the fallback (a classic personal access token with `read:packages` and `delete:packages` as `GHCR_CLEANUP_TOKEN`; GitHub Packages accepts no fine-grained token), because GitHub documents token deletion as a public preview (spec 013 Open Questions, AC-2.5; `verification.md` "Live cleanup").
+- **A failed cleanup run failed closed.** It is investigated before it is re-run, and versions are never deleted by hand to get past it (spec 013 AC-5.1; `docs/releasing.md`).
+- **Backups are the operator's, not the app's.** There is no scheduler, retention, off-site upload or page; the documents show a cron line and a Kamal alias. Litestream, a stopped-volume copy and host volume snapshots are named as alternatives the app doesn't test (spec 030 decisions 1 and 8; ADR 0024).
+- **The Kamal restore path is documented, and its container command is tested, but it isn't exercised through Kamal itself** (the maintainer has no Kamal host). The `backup` alias and the commented backup-directory volume in `config/deploy.yml` are the stated additions; the volume line stays commented because Docker creates a missing bind-mount source owned by root, which uid 1000 can't write to (spec 030 decision 4; `config/deploy.yml:94-103`).
+- **`bin/backup-smoke` runs in the image job, after `bin/image-smoke`, on both architectures, and is not a `bin/ci` step** because it needs a container engine, as `bin/image-smoke` does. It takes an optional second image to restore into, so that a proof of upgrading from the previous release (issue [#42](https://github.com/plainprogrammer/Collector/issues/42)) can reuse it (spec 030 decision 9, AC-5.2, AC-5.3; `ci.yml:117-120`).
+- **A restore deletes only its own temporary file and the `sessions` rows (and their cascade)**; the freshness test ignores that temporary file by name (spec 030 FR-6).
+- **An archive is hard-linked into place** where spec 030 decision 7 says it is renamed: the code and ADR 0024 decision 3 link it (so a clash is detected and an existing file never replaced) and fall back to a rename only where a share can't link, after checking that the name is free. The same holds for the restore's placing of the snapshot (ADR 0024 decisions 3 and 4; `lib/collector/backup.rb:108-119`, `lib/collector/backup/restore.rb:56`). ADR 0024 is the source for the current behaviour.
+- **Specs 001's Compose and Kamal parts were changed by spec 012**: Compose runs the published image instead of building (`build: .`), and Kamal's placeholder registry became `ghcr.io` with credentials active. Spec 001 isn't edited; the area doc is right where they differ (spec 012 FR-4, FR-5; spec 027 D4).
+- **The README's introduction and sections are checked by hand, not by RSpec**, and a spec that checks a prose document is without precedent for the maintainer (spec 020 decisions 3 and 7).
+
+**Accepted limits and open issues:**
+
+- **Open (code and spec disagree):** spec 012 AC-3.3 reads "Given a pre-release tag such as `v1.0.0-rc.1` … Then the registry has `1.0.0-rc.1` and `latest`", which contradicts the same spec's Goals and FR-2 ("Move `latest` on a pre-release" is a must-not), ADR 0009's table, `docs/releasing.md` and the workflow, which publish the pre-release's own tag only: `type=semver,pattern={{version}}` is the only tag a pre-release matches, and metadata-action doesn't add `latest` for a pre-release. This document records the workflow's behaviour as current. The spec isn't edited (spec 027 D4). Open for the maintainer; evidence waits for the first pre-release tag ([#21](https://github.com/plainprogrammer/Collector/issues/21)).
+- [#21](https://github.com/plainprogrammer/Collector/issues/21): three spec 012 criteria have no evidence yet: the major-only tag `1` published by the first `1.0.0` (AC-3.2), the first pre-release publishing only its own tag (AC-3.3), and a live `bin/kamal deploy --skip-push --version X.Y.Z` on a real server (AC-5.2).
+- [#122](https://github.com/plainprogrammer/Collector/issues/122): after a restore, `catalog:status` and the admin panel say the art index is "ready" although its file was left behind; the documents tell the operator to press **Build art index** (spec 030 decision 12, AC-2.8).
+- **Provenance attestations and SBOMs** wait until the repository is public (ADR 0008; spec 012 Non-Goals). Retention of `sha-*` images, GitHub Releases and changelogs, a version shown in the app, and Dependabot for the base image are not built (spec 012 Non-Goals, Out of Scope; ADR 0009).
+- A pull request costs two builds on the private repository's Actions minutes, and so does every merge to `main`; the `main` channel can be throttled without changing release tags (ADR 0009 Consequences). If arm64 hosted runners are withdrawn, the matrix entry falls back to QEMU on `ubuntu-latest` as a plan change (ADR 0010).
+- An account removed by raw SQL leaves its stored upload's attachment row and file behind, which the sweep doesn't treat as an orphan; the application's own deletions run the callbacks (ADR 0022 Consequences; maintainer, 2026-10-20).
+- Active Storage use for global (non-account) records, and serving variants or previews, stay blocked until an ADR or the first image feature changes the gate (ADR 0022 Consequences).
+- A backup's read transaction holds the WAL back for its length (up to 5 minutes at the bar), so the `-wal` file grows with the writes of those minutes; there is no restore over a live instance, of one account, or onto an older release, and no point-in-time recovery (spec 030 decision 13, Non-Goals; ADR 0024 Consequences).
+- A restore onto the wrong volume (a Compose project name that differs from the instance's) restores into that volume and prints its path and counts; the operator compares them before starting, because an instance started on a different, empty volume is blank and open to the first visitor (spec 030 Error Scenarios).
+- The first deleting cleanup run and the NAS restore of spec 030 (AC-5.6) are the maintainer's checks, recorded in `verification.md` of specs 013 and 030.
+
+## Sources
+
+- [Spec 001](../specs/001-rails-app-skeleton/spec.md): FR-1 (databases), FR-4 (remote CI, Dependabot), FR-5 (container, Compose), FR-6 (Kamal), NFR Security and Reliability, and Stories 3 and 4. Its stack, `bin/ci` and hooks parts (FR-2, FR-3, FR-7, Stories 1, 2 and 5) are covered by CLAUDE.md's Stack, Commands and hooks (spec 027 OD3, D2, D3).
+- [Spec 003](../specs/003-worktree-environment-setup/spec.md) and [spec 014](../specs/014-active-storage-vips/spec.md): the development environment (worktrees, dev ports, libvips in development), covered by CLAUDE.md's Non-obvious Facts "Worktrees" and "Active Storage variants" (spec 027 OD3, D2). Spec 014 Story 1 (libvips in the image, the smoke check) is covered here.
+- [Spec 012](../specs/012-ghcr-registry-publishing/spec.md): all.
+- [Spec 013](../specs/013-ghcr-untagged-cleanup/spec.md): all.
+- [Spec 020](../specs/020-readme-introduction/spec.md): all, as far as it sets rules (the README is true; the suite checks no prose document). The record of what the sweep found is its `verification.md`.
+- [Spec 025](../specs/025-import-preview/spec.md): decision 6 and AC-3.4, the request body limit only.
+- [Spec 028](../specs/028-apply-import/spec.md): decisions 8 and 9 (the stored upload, its retention, the sweep, the gated Active Storage routes) and their criteria (AC-1.11, AC-1.12, AC-5.1–AC-5.6); the apply itself is data portability's.
+- [Spec 030](../specs/030-backup-restore/spec.md): all but decision 11 (the export versus the backup), which is data portability's.
+- ADRs [0008](../adr/0008-public-images-from-the-private-repository.md), [0009](../adr/0009-image-tags-and-release-channels.md), [0010](../adr/0010-native-multi-architecture-image-builds.md), [0011](../adr/0011-own-ghcr-cleanup-script.md), [0016](../adr/0016-sqlite-in-every-environment.md), [0022](../adr/0022-stored-import-upload-retention.md), [0024](../adr/0024-backup-with-vacuum-into.md); and, for the image's contents, [0012](../adr/0012-decode-art-images-with-imagemagick.md) and [0013](../adr/0013-active-storage-variants-with-vips.md).
+- Reference: [`docs/releasing.md`](../releasing.md), [`docs/backup-restore.md`](../backup-restore.md), `README.md` ("Self-hosting", "Backup and restore").
+- Issues [#31](https://github.com/plainprogrammer/Collector/issues/31) (local builds held the OCR engine twice; fixed, guarded by `bin/image-smoke` and `.dockerignore`) and [#109](https://github.com/plainprogrammer/Collector/issues/109); open: [#21](https://github.com/plainprogrammer/Collector/issues/21), [#122](https://github.com/plainprogrammer/Collector/issues/122).
+
+## Distillation log
+
+| Date | Distilled | Pull request |
+|---|---|---|
+| 2026-10-23 | Specs 001 (container, Compose, Kamal, remote CI), 012, 013 and 020; 025 (decision 6, the request body limit); 028 (decisions 8 and 9, the stored upload's retention, the sweep and the gated routes); 030 (backup and restore, all but the export-versus-backup guidance); the image parts of 014; ADRs 0008–0011, 0016, 0022 and 0024; issues #21, #31 and #122 as limits; and CLAUDE.md's "Deploy" and "Backup and restore" bullets and the release parts of "Commands" | slice C's pull request |
