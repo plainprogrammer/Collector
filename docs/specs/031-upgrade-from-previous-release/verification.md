@@ -219,3 +219,7 @@ Run in this worktree on `2c63286` (alone, `Gemfile.lock` uncommitted):
 - Docker-only assumptions: exit code of `docker stop`, `inspect` format, file modes after `cp`, the missing-platform pull wording.
 - That `/vendor/bundle` is absent from the pushed image (visible on a `main` or tag run: the `COPY . .` cache line of "Push by digest" should hit, and the image should hold no `/rails/vendor/bundle`).
 - The anonymous pull from a fork PR; AC-7.2's failing tag (maintainer); the backup leg in CI.
+
+## Distillation
+
+`distill-feature` ran on 2026-10-24 before the pull request. The release and deploy area doc already held what spec 031 established (the upgrade proof, the migration guard in `bin/ci`, the image job step and the release steps; Phase 10); the distillation filled its log row and marked the spec Frozen, by release and deploy, in the index, with its plan's retirement owed (the plan is retired after the merge), and added the spec's frozen line (spec 027 D4). The supersessions of spec 030 (decision 14 and AC-5.7, in part) were already recorded in both directions.
