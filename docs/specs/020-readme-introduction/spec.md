@@ -6,6 +6,7 @@
 **Last Updated:** 2026-10-12
 **Branch:** `020-readme-introduction`
 **Issue:** [#63](https://github.com/plainprogrammer/Collector/issues/63)
+**Frozen:** the current rules are in [`release-and-deploy.md`](../../architecture/release-and-deploy.md) (whole spec); see the [specs index](../README.md)
 
 ---
 
