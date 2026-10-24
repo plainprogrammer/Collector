@@ -59,6 +59,17 @@ RSpec.describe "Collection", type: :request do
     expect(response.body).to include(%(No cards in your collection match "zzz".), "0 of 5 items")
   end
 
+  it "counts a lot in a location like any other and shows no location (spec 032 AC-4.4)", :aggregate_failures do
+    entry = create(:mtg_printing).entry.tap { |e| e.update!(name: "Lightning Bolt") }
+    create(:lot, account: user.account, entry:, quantity: 3, location: create(:location, account: user.account, name: "Blue binder"))
+    create(:lot, account: user.account, entry:, quantity: 2, finish: "foil")
+    get collection_path
+    expect(response.body).to include("5 items · 1 unique", %(<span class="c-filterbar__count">5 items</span>))
+    expect(response.body).not_to include("Blue binder")
+    get collection_path(view: "table")
+    expect(response.body).not_to include("Blue binder")
+  end
+
   it "says item, not items, for a single copy", :aggregate_failures do
     entry = create(:mtg_printing).entry.tap { |e| e.update!(name: "Lightning Bolt") }
     create(:lot, account: user.account, entry:)
