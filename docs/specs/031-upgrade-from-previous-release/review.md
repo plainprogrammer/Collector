@@ -31,3 +31,37 @@ Not changed: the review noted that FR-4 and AC-1.3 name mechanisms (SQLite acces
 ## Result
 
 **READY TO PLAN once the maintainer approves** (1.0.1). Three decisions (1 to 3) are ruled; 4 to 10 are recommendations awaiting rulings.
+
+---
+
+# Round 2: second Mode A review (Opus, 2026-10-23, on 1.0.1 at `cac9cf9`)
+
+**Verdict on 1.0.1:** NEEDS REVISION (1 critical, 6 major, 12 minor). The review agreed with decisions 4 to 10, which the maintainer confirmed as recommended on 2026-10-23 (marked "ruled 2026-10-23" in 1.1.0). **After fixes (1.1.0):** every finding is taken; none changes a ruled decision. The spec awaits the maintainer's approval before a plan.
+
+| # | Severity | Finding | Fix in 1.1.0 |
+|---|---|---|---|
+| C1 | Critical | `next.rb` is never coverage-checked, so `main` can go red after a tag | AC-2.6 applies AC-2.5's coverage rule to `next.rb`'s database, exceptions keyed `next` in `seed_exceptions.yml`; the release step renames the key (decisions 5 and 9, AC-9.1); Error Scenarios row |
+| M1 | Major | The WAL may survive the stop; a bare main file can lose rows | Decision 5 and AC-2.4: clean exit = status 0 or 143 (137 fails); copy the main file with `-wal` and `-shm`; consolidate with `VACUUM INTO`; compare only the snapshot; Error Scenarios row |
+| M2 | Major | When the upgraded database is copied is undefined while behaviour checks write | New AC-2.9 and decision 5: upgrade, `/up`, stop, snapshot, compare, restart, then behaviour checks; their writes are never compared; AC-3.2, 3.5, 4.1, 6.2 read the snapshot |
+| M3 | Major | The image job has no Ruby for the comparer | Decision 5: host Ruby from `ruby/setup-ruby` with the cached bundle (`sqlite3`, `json_schemer`), not either image; AC-8.3, workflow in Documents that change, time bar (decision 8, AC-7.4), Error Scenarios row |
+| M4 | Major | AC-6.5's hand run can't run for a non-release image | Decision 2 "By hand": `--previous-ref <git ref>` (tree from the ref, `seeds/next.rb`, `next` exceptions, states it is no release proof); AC-6.5 uses it |
+| M5 | Major | AC-5.3's statuses can't see sign-up open | AC-5.3 checks the sign-up form (`user[email_address]`) is shown and not the closed notice, on both instances |
+| M6 | Major | Spec 030's *Superseded by* cell missing | The index cell for 030 added; AC-9.3 requires both directions; Supersedes section |
+| m1 | Minor | CI and local resolve different releases | One resolver with a fixed order (decision 2), AC-1.7 |
+| m2 | Minor | Label fallback covers only an absent label | Decision 2: absent or non-stable label needs a flag; flag wins; disagreement printed |
+| m3 | Minor | "19 tables" reads as 19 exceptions | Decision 5 reworded |
+| m4 | Minor | Digest encoding undefined | Decision 5 fixes `quote()` per value, SHA-256 per row and per table; AC-4.7 covers a table without a primary key and a spec on the encoding. Reporting the ordering columns' values for such a table is allowed in NFR Security (the seed's own values) |
+| m5 | Minor | An entry's version may name no migration | Decision 6 and AC-4.5: the version must be a file in the code under test's `db/migrate/` |
+| m6 | Minor | AC-8.3 allowlist incomplete | AC-8.3 lists categories (file operations, backup tasks, host harness commands); the plan holds the exact allowlist; the forbidden `db:*` tasks stay a spec check |
+| m7 | Minor | Time budget omitted three costs | Decision 8 and AC-7.4 name the Ruby setup, `next.rb`'s boot, the restart and the backup leg; 10 minutes is the upgrade step's timeout, the 5-minute target covers both steps |
+| m8 | Minor | Step 4 is the export restore | Decision 9, Goals, Problem Statement, AC-9.1: the proof replaces the upgrade part of step 5; step 4 unchanged |
+| m9 | Minor | AC-5.7 not testable | AC-5.7: a `perform_later` through `bin/rails runner` returns a job whose row is in `solid_queue_jobs` |
+| m10 | Minor | The failing-tag test needs a commit that passes `ci` | AC-7.2 says how the failure is induced, that `ci` must be green, and that the maintainer pushes the tag |
+| m11 | Minor | Schema-loaded old database vs a long-lived file | Named in Non-Goals |
+| m12 | Minor | "No tag" pass vs fetch failure | Decision 2 "None" and AC-8.5: "no previous release" only when tags are present and none is stable, or there is no remote |
+
+Not taken: none. One choice of mine within the review's options: for M2 the spec stops and restarts the upgraded container (a fourth boot, counted in the time bar) instead of a `VACUUM INTO` through `bin/rails runner` on the running container, because the stop gives one path for both databases and the clean-exit check.
+
+## Result (round 2)
+
+**READY TO PLAN once the maintainer approves** (1.1.0). Decisions 1 to 10 are all ruled.
