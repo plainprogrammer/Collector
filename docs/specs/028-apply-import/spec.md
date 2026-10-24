@@ -6,7 +6,7 @@
 **Last Updated:** 2026-10-20
 **Branch:** `028-apply-import`
 **Issue:** [#40](https://github.com/plainprogrammer/Collector/issues/40)
-**Frozen:** the current rules are in [`release-and-deploy.md`](../../architecture/release-and-deploy.md) (parts: decisions 8 and 9, the stored upload's retention, the sweep and the gated routes); see the [specs index](../README.md)
+**Frozen:** the current rules are in [`data-portability.md`](../../architecture/data-portability.md) (parts: all but the stored upload's retention and gate (decisions 8, 9)) and [`release-and-deploy.md`](../../architecture/release-and-deploy.md) (parts: decisions 8 and 9, the stored upload's retention, the sweep and the gated routes); see the [specs index](../README.md)
 **Plan:** retired in `ee4c4fa40e2223e2d81299885f8a0cabe7771956`; read it with `git show ee4c4fa40e2223e2d81299885f8a0cabe7771956^:docs/specs/028-apply-import/plan.md`
 
 ---

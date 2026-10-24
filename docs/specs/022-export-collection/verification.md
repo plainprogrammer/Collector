@@ -1,6 +1,6 @@
 # Verification: Export a Collection as a File (spec 022)
 
-**Spec:** [spec.md](spec.md) v1.2.1 · **Plan:** [plan.md](plan.md) · **Branch:** `022-export-collection` · **Issue:** [#38](https://github.com/plainprogrammer/Collector/issues/38)
+**Spec:** [spec.md](spec.md) v1.2.1 · **Plan:** plan (retired in `3d740289a96d8938e870db3f76d1bd3ac0245be7`; read it with `git show 3d740289a96d8938e870db3f76d1bd3ac0245be7^:docs/specs/022-export-collection/plan.md`) · **Branch:** `022-export-collection` · **Issue:** [#38](https://github.com/plainprogrammer/Collector/issues/38)
 
 ## Rulings
 
