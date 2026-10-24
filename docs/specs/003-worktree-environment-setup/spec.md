@@ -4,6 +4,7 @@
 **Created:** 2026-09-29
 **Branch:** `plainprogrammer/chore-003-worktree-environment-setup`
 **Frozen:** the current rules are in [`release-and-deploy.md`](../../architecture/release-and-deploy.md) (whole spec; its facts are kept in CLAUDE.md); see the [specs index](../README.md)
+**Plan:** retired in `8498f1b0e3a07b8ec0e933f7c16df1e6339e335a`; read it with `git show 8498f1b0e3a07b8ec0e933f7c16df1e6339e335a^:docs/specs/003-worktree-environment-setup/plan.md`
 
 > Numbered 003: feature 002 is being specified in parallel elsewhere.
 
