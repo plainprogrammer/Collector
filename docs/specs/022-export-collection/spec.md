@@ -6,6 +6,7 @@
 **Last Updated:** 2026-10-14
 **Branch:** `022-export-collection`
 **Issue:** [#38](https://github.com/plainprogrammer/Collector/issues/38)
+**Frozen:** the current rules are in [`data-portability.md`](../../architecture/data-portability.md) (whole spec); see the [specs index](../README.md)
 
 ---
 
