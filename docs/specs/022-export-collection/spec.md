@@ -6,6 +6,8 @@
 **Last Updated:** 2026-10-14
 **Branch:** `022-export-collection`
 **Issue:** [#38](https://github.com/plainprogrammer/Collector/issues/38)
+**Frozen:** the current rules are in [`data-portability.md`](../../architecture/data-portability.md) (whole spec); see the [specs index](../README.md)
+**Plan:** retired in `3d740289a96d8938e870db3f76d1bd3ac0245be7`; read it with `git show 3d740289a96d8938e870db3f76d1bd3ac0245be7^:docs/specs/022-export-collection/plan.md`
 
 ---
 
