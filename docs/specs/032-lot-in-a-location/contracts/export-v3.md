@@ -23,7 +23,7 @@ A lot's `location` follows exactly the rules of a location's `name` (spec 029): 
 | `duplicate_lot` | all; judged on **six** values from version 3 | two lots have the same entry, finish, condition, price paid and location **comparison key**. "Box" and "box" are one place. | `/lots/<i>` of the later lot |
 | `unknown_location` (**new**) | 3 | a lot's `location` is a string whose comparison key is no listed location's | `/lots/<i>/location` |
 
-`unknown_location` is judged only for a lot whose `location` is a string that passed the schema. A row it fails keeps a readable identity (the key of its location) so the preview can say which held lot it matches, as `duplicate_lot` rows do (AC-10.3). It is added to `ExportFormat::Rules::RULES`, and the examples must include an invalid file for it.
+`unknown_location` is judged only for a lot whose `location` is a string that passed the schema, and only when the file's `locations` list itself passed (an over-long list is refused at `/locations` and not walked again, spec 029 review M1). A row it fails keeps a readable identity (the key of its location) so the preview can say which held lot it matches, as `duplicate_lot` rows do (AC-10.3). It is added to `ExportFormat::Rules::RULES`, and the examples must include an invalid file for it.
 
 ## Lot identity, version 3
 
@@ -31,7 +31,7 @@ A lot is identified by six values: its entry's `collectible_type`, its entry's `
 
 ## The same collection, version 3
 
-Lots are equal as sets: each lot in one file has exactly one lot in the other with the same identity (six values), and those two have the same `quantity`, `added_at` and `changed_at`. Two files whose lots differ only in a lot's location are different collections. "box" against "Box" on a lot are different here, as location names are (the comparison is exact, character for character), although a reader treats them as one place when it matches. The order of the lots never counts.
+Lots are equal as sets: each lot in one file has exactly one lot in the other with the same identity (six values), and those two have the same `quantity`, `added_at` and `changed_at`. Two files whose lots differ only in a lot's location are different collections. "box" against "Box" on a lot are different here, as location names are (the comparison is exact, character for character), although a reader treats them as one place when it matches and `duplicate_lot` treats them as one lot. (The document says this in its "The same collection" section, and the suite's comparison keys a lot by its location string as written, not by the comparison key.) The order of the lots never counts.
 
 ## `v3.schema.json`
 
@@ -58,7 +58,7 @@ Each is made in `docs/export-format/README.md` and verified by reading, plus the
 | Lot identity | six values; "share all six values" |
 | Locations | "in version 2 a lot carries no reference to one" gains "from version 3, a lot's `location` names one" |
 | Well-formed and resolvable | "checks against all three versions"; the rule list gains `unknown_location` and the six-value `duplicate_lot`; "the rules are the same for all versions, with…" |
-| The same collection | lots equal on six values; the comparison of a lot's location (exact, as for names) |
+| The same collection | lots equal on six values; the comparison of a lot's location (exact, as for names; a reader's matching and `duplicate_lot` use the comparison key) |
 | Versions | row for version 3 (2026-10-23, "Lots in locations: each lot gains the required `location`, the rule `unknown_location`, and lot identity has six values"); the expected-changes sentence rewritten (version 3 is no longer expected; the next is currency per account, #64, and households, ADR 0017) |
 | Coverage | `lots.location_id` → `location`; `lots.lot_key`'s "Why" adds the place |
 | Examples | the rule list gains the version 3 examples below |
@@ -83,7 +83,7 @@ Each is made in `docs/export-format/README.md` and verified by reading, plus the
 
 | Component | Version 3 |
 |---|---|
-| `CollectionExport` | `FORMAT_VERSION = 3`; each lot's `location` is `locations.name` from the statement that reads the lots (`left_joins(:location)`), `null` when unplaced; the export stays deterministic (AC-8.5) |
-| `ExportFormat::Rules` | `VERSIONS = [1, 2, 3]`; `identity(lot, version)` returns six values; `unknown_location`; `duplicate_lot` on six; a `location` pointer is an identity field |
-| `CollectionImport` | reads 1 to 3; "This instance reads version 3."; held lots carry their place's key as the sixth identity value; a version 1 or 2 file's rows have `nil` there |
+| `CollectionExport` | `FORMAT_VERSION = 3`; the lots are read with `lots.location_id` and each lot's `location` is the name of that id in the one read of the account's locations (never a second lookup, so a rename mid-export can't leave a lot naming an unlisted location; if an id is missing the reads repeat, at most 3 times), `null` when unplaced; the export stays deterministic (AC-8.5) |
+| `ExportFormat::Rules` | `VERSIONS = [1, 2, 3]`; `identity(lot, version)` returns six values; `unknown_location` (not judged when `/locations` failed); `duplicate_lot` on six; a `location` pointer is an identity field |
+| `CollectionImport` | reads 1 to 3; "This instance reads version 3."; held lots carry their place's key as the sixth identity value; a version 1 or 2 file's rows have `nil` there; a version 3 duplicate row reads "…, price and location as row M"; "in <location>" goes on the removed lots and the problem rows, the two lists the preview has (spec 1.0.2) |
 | `CollectionImport::Apply` | the order and the keys of Phase 7 |

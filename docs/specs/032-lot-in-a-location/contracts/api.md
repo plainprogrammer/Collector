@@ -1,6 +1,6 @@
 # Contracts: pages, forms and routes
 
-**Spec:** [spec.md](../spec.md) (v1.0.1) · **Plan:** [../plan.md](../plan.md) · The export format's contract is in [export-v3.md](export-v3.md).
+**Spec:** [spec.md](../spec.md) (v1.0.2) · **Plan:** [../plan.md](../plan.md) · The export format's contract is in [export-v3.md](export-v3.md).
 
 Every route is under sign-in. Nothing in a request names an account; every location and lot is found through `Current.account` (`Current.account.locations.find`, `Current.account.lots.find`), so another account's id, or no such id, answers **404** and changes nothing (decision 6). Writes are `POST`/`PATCH`/`DELETE` with Rails' forgery protection and strong parameters (`params.expect`); no write is a `GET`.
 
@@ -33,7 +33,7 @@ resource :move, only: %i[new create], module: :lots
 
 | Request | Parameters (all strings) | Rules |
 |---|---|---|
-| Add, edit | `lot[quantity]`, `lot[finish]`, `lot[condition]`, `lot[price_paid]` (as before) and **`lot[location_id]`** | Blank or absent on add: unplaced (AC-1.8). On edit, blank: unplaced; **absent**: the lot keeps its place (plan decision, research R5). A value that is not the id of one of the account's locations: 404, before the form is validated (AC-1.7, AC-2.7). |
+| Add, edit | `lot[quantity]`, `lot[finish]`, `lot[condition]`, `lot[price_paid]` (as before) and **`lot[location_id]`** | Blank or absent on add: unplaced (AC-1.8). On edit, blank: unplaced; **absent**: the lot keeps its place (ruled by the maintainer, 2026-10-24: PATCH semantics; research R5). A value that is not the id of one of the account's locations: 404, before the form is validated (AC-1.7, AC-2.7). |
 | Move | **`move[copies]`**, **`move[location_id]`** | `copies` a whole number from 1 to the lot's quantity, else 422 "Choose from 1 to N copies." beside Copies. `location_id` blank: "No location"; otherwise one of the account's locations, else 404 (AC-3.9). The lot's own place: 422 "Those copies are already there." beside To (P4). |
 
 `account_id`, `location_id` of another account, `lot_key` and `quantity` of the destination are never read from a request.
@@ -69,7 +69,9 @@ resource :move, only: %i[new create], module: :lots
 | Import preview, version 1 or 2 file | "This file was written before lots could be in a location, so its lots would be in none." (AC-10.4) |
 | Import preview, a lot with an unlisted location | row reason "Its location “Box” isn't one of the file's locations." (AC-10.3) |
 | Import preview, version above 3 | "This file was written by a newer version of Collector (format version 4). This instance reads version 3." (AC-10.1) |
-| Import preview, removed lots | the lot's line gains "· in Blue binder" for a placed lot (AC-10.9) |
+| Import preview, removed lots and problem rows | the lot's line gains "· in Blue binder" for a placed lot (AC-10.9 as 1.0.2 words it; added and changed lots are counts) |
+| Import preview, version 3 duplicate row | "Same card, finish, condition, price and location as row 3" (older files keep "…condition and price as row 3") |
+| Card page, a lot's actions menu | name "Actions for DMR · 27 NM in Blue binder" or "…, no location" |
 
 ## The pages' markup
 
@@ -83,6 +85,6 @@ All from existing components (read `docs/design-system/components/Form.md`, `Con
 | "Move copies" menu item | `c-menu__item` between "Edit copy" and the separator |
 | Move copies page | `c-main c-page`, `c-pagehead`, `c-form` with two `c-field`s and `c-form__actions` (as Edit copy) |
 | Counts on the locations page | `c-list__meta` inside the row |
-| Refusal page | `c-confirm` (as `ConfirmPage`) with a `c-list` of lots and `c-locations__more` for "and N more" |
+| Refusal page | `c-confirm` (as `ConfirmPage`) with a `c-list` of lots (`c-locations__lots`, whose links keep the page's 44px floor) and `c-locations__more` for "and N more" |
 
-The only stylesheet addition expected is `c-locations__more` (the same declarations as `c-import__more`) and, if the counts need it, a rule for the count text under `c-locations`; each goes in `collector/additions.css` with the doc in `components/Locations.md` and a line in the README's app additions (Phase 8).
+The stylesheet additions expected are `c-locations__more` (the same declarations as `c-import__more`), the 44px floor for the `c-locations__lots` links and, if the counts need it, a rule for the count text under `c-locations`; each goes in `collector/additions.css` with the doc in `components/Locations.md` and a line in the README's app additions (Phase 8).

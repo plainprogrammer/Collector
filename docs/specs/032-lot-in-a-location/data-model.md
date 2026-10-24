@@ -1,6 +1,6 @@
 # Data Model: Put a Lot in a Location
 
-**Spec:** [spec.md](spec.md) (v1.0.1, Approved) · **Plan:** [plan.md](plan.md) · **Decision:** [ADR 0025](../../adr/0025-a-lots-location-is-part-of-its-identity.md)
+**Spec:** [spec.md](spec.md) (v1.0.2, Approved) · **Plan:** [plan.md](plan.md) · **Decision:** [ADR 0025](../../adr/0025-a-lots-location-is-part-of-its-identity.md)
 
 One column, one index and one foreign key on `lots`. No new table. Nothing is backfilled.
 
@@ -66,6 +66,7 @@ Each saved lot gains `"location_id"` (an integer or `null`); the existing keys a
 | A location's lots and copies | `lots` grouped by `location_id` (one query for every location, `Location::Holdings.counts`; two for one location, `Location#holdings`) | locations page (P2), refusal page (P1) |
 | A printing's "Your copies" rows | the account's lots of every printing of the card, `LEFT JOIN locations`, ordered as today then by `locations.name_key`, `locations.name` (`NULL` first) | card page (AC-4.1) |
 | A held lot's place in a plan | `LEFT JOIN locations`; the identity's sixth value is `locations.name_key` | `CollectionImport` (AC-10.2) |
+| A lot's `location` in the export | `lots.location_id` looked up in the one read of the account's locations (Phase 7) | `CollectionExport` (AC-8.1, AC-8.3) |
 
 ## Cost per account
 
@@ -80,6 +81,6 @@ One integer per lot and its index entry, and the place in a placed lot's key: ab
 | `up` | `ALTER TABLE lots ADD COLUMN location_id integer REFERENCES locations (id) ON DELETE RESTRICT` unless the column exists; `add_index :lots, :location_id` unless it exists | `ADD COLUMN` copies nothing and takes a `NULL` default (every lot's value); both steps are guarded so a re-run after a crash between them completes; no application model is referenced |
 | `down` | Refuses (`ActiveRecord::IrreversibleMigration`, naming how many lots are placed) while any lot has a `location_id`; otherwise removes the index, then the column | The rebuild Rails does for `remove_column` runs outside a transaction (that is why `disable_ddl_transaction!`), where `PRAGMA foreign_keys = OFF` takes effect, so the marks, lines and entries keep their rows |
 
-Proved by `spec/migrations/add_location_to_lots_spec.rb` (Phase 0) against a database with a mark, a line, an entry, an undoable removal and lots, going up from the previous schema and back down.
+Proved by `spec/migrations/add_location_to_lots_spec.rb` (Phase 0) against a database with a mark, a line, an entry, an undoable removal and lots, going down and up through the Migrator (`MigrationContext#run`, which wraps the migration in a transaction unless it disables one, as `db:rollback` does; `Migration#migrate` alone opens none), plus an assertion that `disable_ddl_transaction` is on.
 
 Self-hosters need nothing else: `bin/rails db:prepare` on boot runs it; an instance that never uses locations ends with one empty column.

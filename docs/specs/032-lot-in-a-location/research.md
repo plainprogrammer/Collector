@@ -36,15 +36,15 @@ A placed lot's key needs its location's id, which exists only after the location
 
 ## R4. Bulk Undo: which lot is named when the restored rows alone pass the cap
 
-AC-7.8: a removal of a lot in Blue binder and an unplaced lot of one identity, then Blue binder removed, restores both unplaced; if their sum passes 9,999 the Undo is refused. `Lot::CapExceeded` takes a lot and its message names `lot.entry`; `over_cap_message` uses `lot.entry.name` and `set_number(lot.entry)`. When an *existing* lot would overflow, the lot named is the first in the sort order, as today (`sort.apply(...)` is SQL and needs rows). When no existing lot is involved, there is no row to sort, so the plan names the first overflowing restored row in the order it was saved, as an unsaved `Lot.new(entry:)`. If both kinds overflow, the existing lot is named (spec 006 AC-7.5 unchanged). This refines AC-7.8's "refused as the cap rule says"; the executor writes the example first. Flagged as O2 in the plan.
+AC-7.8: a removal of a lot in Blue binder and an unplaced lot of one identity, then Blue binder removed, restores both unplaced; if their sum passes 9,999 the Undo is refused. `Lot::CapExceeded` takes a lot and its message names `lot.entry`; `over_cap_message` uses `lot.entry.name` and `set_number(lot.entry)`. When an *existing* lot would overflow, the lot named is the first in the sort order, as today (`sort.apply(...)` is SQL and needs rows). When no existing lot is involved, there is no row to sort, so the plan names the first overflowing restored row in the order it was saved, as an unsaved `Lot.new(entry:)`. If both kinds overflow, the existing lot is named (spec 006 AC-7.5 unchanged). This refines AC-7.8's "refused as the cap rule says"; the executor writes the example first. Flagged as O2 in the plan; ruled by the maintainer on 2026-10-24.
 
 ## R5. Edit with the location parameter absent
 
-AC-1.8 says a missing or blank location on **add** is unplaced. The spec doesn't say what an edit does with a missing `lot[location_id]`. The edit form always submits the select (blank is "No location"), and an account with no locations has no field, so every real request carries the key or has no placed lot. A hand-made `PATCH` that edits the quantity and leaves the key out would silently unplace a placed lot under the "absent is blank" reading. The plan reads **absent as unchanged** and **blank as unplaced** (one `key?` test, covered by two examples). Flagged as O3; a strike-through costs one line.
+AC-1.8 says a missing or blank location on **add** is unplaced. The spec doesn't say what an edit does with a missing `lot[location_id]`. The edit form always submits the select (blank is "No location"), and an account with no locations has no field, so every real request carries the key or has no placed lot. A hand-made `PATCH` that edits the quantity and leaves the key out would silently unplace a placed lot under the "absent is blank" reading. The plan reads **absent as unchanged** and **blank as unplaced** (one `key?` test, covered by two examples). Flagged as O3; ruled by the maintainer on 2026-10-24: absent keeps the place.
 
 ## R6. The preview's lists
 
-Spec 025 decision 11 and `app/views/collections/import_previews/show.html.erb` list only **removed lots** and **problem rows**; the added, changed and unchanged lots are counts. AC-10.9 says "the lists of added, changed and removed lots … add 'in <location>'". The plan applies it to the two lists that exist (removed lots; a problem row's line) and adds no list of added or changed lots, which would be a new preview feature outside this spec. AC-10.7 and AC-11.3 are then checked by counts ("1 lot added, 1 lot removed") and by the removed lot's line. Flagged as O1.
+Spec 025 decision 11 and `app/views/collections/import_previews/show.html.erb` list only **removed lots** and **problem rows**; the added, changed and unchanged lots are counts. AC-10.9 says "the lists of added, changed and removed lots … add 'in <location>'". The plan applies it to the two lists that exist (removed lots; a problem row's line) and adds no list of added or changed lots, which would be a new preview feature outside this spec. AC-10.7 and AC-11.3 are then checked by counts ("1 lot added, 1 lot removed") and by the removed lot's line. Flagged as O1; ruled by the maintainer on 2026-10-24 and recorded as spec PATCH 1.0.2 (AC-10.7, AC-10.9 name the lists the preview has).
 
 ## R7. Queries per page
 
@@ -54,7 +54,7 @@ The pages that gain a place must keep a fixed number of queries (NFR). Traced:
 - Move copies page: the lot, its entry and set, the account's locations (one), nothing per row.
 - Locations page: the list (one) and `Location::Holdings.counts` (two grouped queries: counts and sums), whatever the number of locations or lots.
 - Refusal page: the location, two totals, one list of at most 100 lots with `preload(entry: :set)`.
-- Export: the existing single statement plus the `LEFT JOIN`.
+- Export: the same two statements as before (the lots with `lots.location_id`, the locations); a lot's place is named from the locations read by id (R11).
 
 `spec/requests/query_counts_spec.rb` already compares a page with little and with much data; Phases 3 to 5 add the new pages to it. Phase 8 records the numbers at 500 locations and 5,000 lots in `verification.md`.
 
@@ -71,3 +71,17 @@ Spec 031 is approved and being planned in parallel (branch `031-upgrade-from-pre
 ## R10. Files traced for this plan
 
 `app/models/{lot,location,account,bulk_removal,collection_export,collection_import,number_entry,number_entry/line}.rb`, `app/models/{lot,collection_import,export_format,scanner}/*.rb`, `app/models/catalog/card_overview.rb`, `app/controllers/{lots,locations,catalog/entries,collections/imports,collections/bulk_removals/undos}_controller.rb` and `app/controllers/{lots,locations}/removals_controller.rb`, `app/controllers/concerns/card_context.rb`, `app/views/{lots,locations,catalog/entries,collections/import_previews}/**`, `app/helpers/{lots,import_previews}_helper.rb`, `config/routes.rb`, `db/schema.rb`, the migrations of lots, locations and number entries, `docs/export-format/README.md` and `v2.schema.json`, `docs/architecture/data-portability.md`, `spec/support/{import_helpers,export_format_rules,backup_helpers,query_counting}.rb`, `spec/{export_format_document,export_format_examples}_spec.rb`, `spec/requests/query_counts_spec.rb`, `spec/models/{bulk_removal,lot}_spec.rb`.
+
+## R11. The export's two reads (plan review M5)
+
+**Question.** Version 3 adds a rule that ties the export's two reads together (`unknown_location`: every lot's `location` is a listed name). `CollectionExport#to_h` reads the locations (`collection_export.rb:33`) and the lots (`:35-36`) in separate statements with no transaction. Can a change between them write a file Collector refuses?
+
+**Found.** Yes. A location renamed between the reads, or created and filled after the locations were read, leaves a lot whose name isn't in the list. A read transaction would fix it, but Rails opens SQLite transactions IMMEDIATE (`sqlite3_adapter.rb:162`, `default_transaction_mode: :immediate`), so it would hold the write lock for the whole export (a 50,000-lot file takes seconds).
+
+**Decision.** Read the lots (with `lots.location_id`), then the locations (id and name), and name each lot's place from the second read by id. A rename can no longer disagree with itself; a creation after the lots were read is not referenced by any lot read. The one remaining gap, a location removed between the reads, shows as an id the second read lacks, and the two reads are repeated (at most 3 times, then `CollectionExport::Unsettled`). Same two statements as today, so the count doesn't grow with the lots.
+
+**Not chosen.** A read transaction (the write lock above). Appending unlisted names to the list (writes a location that no longer exists under its old name).
+
+## R12. A migration spec that can see the hazard (plan review M4)
+
+`ActiveRecord::Migration#migrate` (`activerecord-8.1.4/lib/active_record/migration.rb:969`) opens no transaction; the Migrator's `ddl_transaction` does (`:1594-1604`), unless `disable_ddl_transaction` is true. The spec therefore runs the migration through `MigrationContext#run` (`:1283`, via `ActiveRecord::Base.connection_pool.migration_context`, `:nodoc:` but stable in 8.1.4), which is what `db:rollback` does, and asserts `described_class.disable_ddl_transaction` (the class accessor, `:685`). The refusal example calls `Migration#migrate` directly because the Migrator re-wraps an error as `StandardError` (`:1537-1556`).
