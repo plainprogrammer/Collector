@@ -760,6 +760,22 @@ RSpec.describe CollectionImport::Apply, type: :model do
       expect(NumberEntry.count + Scanner::Sitting.count + BulkSelection.count + BulkSelection::Mark.count).to eq(0)
     end
 
+    it "writes the lots in one multi-row statement per batch, one that upserts on the lot's identity (spec 032 Phase 8 remedy)", :aggregate_failures do
+      names = %w[Box Crate]
+      stub_const("CollectionImport::BATCH_SIZE", 40)
+      rows = Array.new(90) { |n| import_row(a, price_paid: format("%d.%02d", n / 100, n % 100), location: names[n % 2]) }
+      preview_v3!(rows, locations: names)
+      writes = []
+      counter = ->(*, payload) { writes << payload[:sql] if payload[:sql].start_with?("INSERT INTO lots") }
+
+      ActiveSupport::Notifications.subscribed(counter, "sql.active_record") { expect(apply.outcome).to eq(:applied) }
+
+      expect(writes.size).to eq(3)
+      expect(writes).to all(include("ON CONFLICT (account_id, catalog_entry_id, lot_key) DO UPDATE SET quantity = excluded.quantity, created_at = excluded.created_at, updated_at = excluded.updated_at"))
+      expect(account.lots.count).to eq(90)
+      expect(account.lots.map(&:lot_key)).to all(match(/\A\|\|\d+\|\d+\z/))
+    end
+
     it "runs the same number of write statements for 5,000 lots in 500 locations as for 50 in 5 (AC-11.12)", :aggregate_failures do
       measure = lambda do |lots, places|
         account.lots.delete_all

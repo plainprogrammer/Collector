@@ -92,12 +92,24 @@ class CollectionImport::Apply
       CollectionImport::LocationChanges.write!(@account, plan.locations)
       place_ids = @account.locations.pluck(:name_key, :id).to_h
       (plan.added_rows + plan.changed_rows).each_slice(CollectionImport::BATCH_SIZE) do |slice|
-        Lot.upsert_all(slice.map { |row| placed(rows.fetch(row.number), place_ids) }, unique_by: %i[account_id catalog_entry_id lot_key],
-          update_only: %i[quantity created_at updated_at], record_timestamps: false, returning: false)
+        upsert_lots!(slice.map { |row| placed(rows.fetch(row.number), place_ids) })
       end
       # Only a written lot makes the lists that point at lots wrong (spec 029 decision 11, AC-9.17).
       CollectionImport::WorkingState.clear!(@account) if plan.writes_lots?
       @account.user.update!(collection_view: plan.view_change) if plan.view_change
+    end
+
+    # One multi-row INSERT .. ON CONFLICT per batch, on the lot's identity, setting quantity and both times: what
+    # Lot.upsert_all wrote, without its per-value type casting, which took 2.6 of the 4 seconds of a 50,000-lot apply that
+    # replaces every lot (spec 032 Phase 8 measurement, maintainer's ruling 2026-10-24). The values go in through ?
+    # placeholders, quoted by the connection (sanitize_sql_array), never interpolated; the rows were validated by the reader.
+    LOT_WRITE_COLUMNS = %i[account_id catalog_entry_id quantity finish condition price_paid_cents location_id lot_key created_at updated_at].freeze
+    LOT_ROW_MARKS = "(#{Array.new(LOT_WRITE_COLUMNS.size, "?").join(", ")})".freeze
+
+    def upsert_lots!(attributes)
+      sql = "INSERT INTO lots (#{LOT_WRITE_COLUMNS.join(", ")}) VALUES #{Array.new(attributes.size, LOT_ROW_MARKS).join(", ")} " \
+        "ON CONFLICT (account_id, catalog_entry_id, lot_key) DO UPDATE SET quantity = excluded.quantity, created_at = excluded.created_at, updated_at = excluded.updated_at"
+      Lot.connection.execute(Lot.sanitize_sql_array([ sql, *attributes.flat_map { |row| row.values_at(*LOT_WRITE_COLUMNS) } ]))
     end
 
     # One pass over the built attributes: the location's id and the key that carries it.
