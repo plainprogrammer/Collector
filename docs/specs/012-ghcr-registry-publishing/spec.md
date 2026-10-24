@@ -5,6 +5,7 @@
 **Created:** 2026-10-07
 **Last Updated:** 2026-10-07
 **Branch:** `012-ghcr-registry-publishing`
+**Frozen:** the current rules are in [`release-and-deploy.md`](../../architecture/release-and-deploy.md) (whole spec); see the [specs index](../README.md)
 
 ---
 
