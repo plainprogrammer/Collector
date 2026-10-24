@@ -6,6 +6,8 @@
 **Last Updated:** 2026-10-12
 **Branch:** `020-readme-introduction`
 **Issue:** [#63](https://github.com/plainprogrammer/Collector/issues/63)
+**Frozen:** the current rules are in [`release-and-deploy.md`](../../architecture/release-and-deploy.md) (whole spec); see the [specs index](../README.md)
+**Plan:** retired in `4347416ccedc168c484b138c59605e5d49b41e81`; read it with `git show 4347416ccedc168c484b138c59605e5d49b41e81^:docs/specs/020-readme-introduction/plan.md`
 
 ---
 

@@ -1,6 +1,6 @@
 # Verification: Export Format
 
-**Spec:** [spec.md](spec.md) | **Plan:** [plan.md](plan.md)
+**Spec:** [spec.md](spec.md) | **Plan:** plan (retired in `d586ff6f117b878fcb40f718e07dd8b832dc0dbc`; read it with `git show d586ff6f117b878fcb40f718e07dd8b832dc0dbc^:docs/specs/017-export-format/plan.md`)
 
 Run on 2026-10-11, on commit `37e7778`: every phase of the plan, then the follow-ups from the implementation review (below). `bin/ci` had also passed on `e663f80`, before the review, with 1146 examples and 0 failures. Before the first phase the suite had 1119 examples, 0 failures, 1 pending.
 
