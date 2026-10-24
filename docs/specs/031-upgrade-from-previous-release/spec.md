@@ -6,7 +6,7 @@
 **Last Updated:** 2026-10-23
 **Branch:** `031-upgrade-from-previous-release`
 **Issue:** [#42](https://github.com/plainprogrammer/Collector/issues/42)
-**Plan:** none yet
+**Plan:** [plan.md](plan.md)
 
 ---
 
