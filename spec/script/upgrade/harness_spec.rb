@@ -26,7 +26,7 @@ RSpec.describe Upgrade::Harness, :git_sandbox, :upgrade do
   end
 
   # A seeded database as a release makes it (accounts, users, 2,000 lots, sign-up open), with the given migrations recorded.
-  def seeded(name, versions, lots: 2000)
+  def seeded(name, versions, lots: 2000, extra: "")
     build_database(File.join(dir, "#{name}.sqlite3")) do |db|
       db.execute_batch(<<~SQL)
         CREATE TABLE accounts (id INTEGER PRIMARY KEY); CREATE TABLE users (id INTEGER PRIMARY KEY, password_digest TEXT);
@@ -35,6 +35,7 @@ RSpec.describe Upgrade::Harness, :git_sandbox, :upgrade do
         INSERT INTO accounts VALUES (1), (2); INSERT INTO users VALUES (1, 'x'), (2, 'y'); INSERT INTO instance_settings VALUES (1, 1);
         WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < #{lots}) INSERT INTO lots SELECT i, 1 FROM n;
         #{versions.map { "INSERT INTO schema_migrations VALUES ('#{it}');" }.join}
+        #{extra}
       SQL
     end
   end
@@ -232,6 +233,87 @@ RSpec.describe Upgrade::Harness, :git_sandbox, :upgrade do
     before = Dir.glob(File.join(Dir.tmpdir, "upgrade-smoke*"))
     harness.call
     expect(Dir.glob(File.join(Dir.tmpdir, "upgrade-smoke*"))).to eq(before)
+  end
+
+  describe "the backup leg" do
+    let(:listing) { FakeEngine::Result.new("rails backup:create[DIRECTORY]  # Back up\nrails backup:restore[FILE]  # Restore\n", "", 0) }
+    let(:sessions) { "CREATE TABLE sessions (id INTEGER PRIMARY KEY); INSERT INTO sessions VALUES (1), (2);" }
+    let(:ended) { "CREATE TABLE sessions (id INTEGER PRIMARY KEY);" }
+    let(:leg_databases) { [ seeded("old2", old_migrations, extra: sessions), seeded("upgraded2", all_migrations, extra: sessions), seeded("restored", all_migrations, extra: ended), databases[2] ] }
+
+    it "backs up with the previous release, restores with the code under test under another secret, and compares (AC-6.1, AC-6.2)", :aggregate_failures do
+      engine = FakeEngine.new(databases: leg_databases, tasks: listing)
+      expect(harness(engine:).call).to eq(0)
+      expect(engine.calls.find { it.first == :task }[1]).to eq([ "upgrade-smoke-#{Process.pid}-previous", "backup:create[/backups]" ])
+      restore = engine.calls.find { it.first == :restore }[2]
+      expect(restore).to include(image: "collector:smoke", file: "collector-backup-1.tar.gz")
+      secrets = engine.calls.select { it.first == :start }.map { it[2][:secret] }
+      expect(secrets[1]).to eq(secrets[0])
+      expect(secrets[3]).not_to eq(secrets[0])
+      expect(out.string).to include("== backup leg").and match(/^sessions\s+old\s+2\s+new\s+0/)
+    end
+
+    it "runs Story 5's checks on the restored instance but not AC-5.7, which a primary-only backup can't satisfy (AC-6.2)" do
+      engine = FakeEngine.new(databases: leg_databases, tasks: listing)
+      harness(engine:).call
+      expect(engine.calls.count { it.first == :runner && it[1].last.include?("perform_later") }).to eq(1)
+    end
+
+    it "fails when the sessions a restore ends are still there (P4)", :aggregate_failures do
+      kept = seeded("kept", all_migrations, extra: sessions)
+      expect(harness(engine: FakeEngine.new(databases: leg_databases.take(2) + [ kept ], tasks: listing)).call).to eq(1)
+      expect(out.string).to include("sessions", "after the restore")
+    end
+
+    it "fails when the restore loses a row (AC-6.2)", :aggregate_failures do
+      thin = seeded("thin", all_migrations, lots: 1999, extra: ended)
+      expect(harness(engine: FakeEngine.new(databases: leg_databases.take(2) + [ thin ], tasks: listing)).call).to eq(1)
+      expect(out.string).to include("FAIL lots", "id = 2000")
+    end
+
+    it "fails naming the refusal when the code under test refuses a backup the previous release took (AC-6.3)", :aggregate_failures do
+      refusal = FakeEngine::Result.new("", "This backup was made by a newer Collector.\n", 1)
+      expect(harness(engine: FakeEngine.new(databases: leg_databases, tasks: listing, restore: refusal)).call).to eq(1)
+      expect(out.string).to include("AC-6.3", "newer Collector")
+    end
+
+    it "fails when the backup directory doesn't hold exactly one file (AC-6.1)", :aggregate_failures do
+      expect(harness(engine: FakeEngine.new(databases: leg_databases, tasks: listing, list_directory: [])).call).to eq(1)
+      expect(out.string).to include("exactly one file")
+    end
+
+    it "skips the leg with a printed line, and the exit status doesn't change, when the previous release has no backup task (AC-6.4)", :aggregate_failures do
+      expect(harness.call).to eq(0)
+      expect(out.string).to include("previous release v0.2.1 has no backup task; backup leg skipped")
+      expect(engine.names).not_to include(:restore, :task)
+    end
+  end
+
+  describe "the hand modes (decision 2, AC-6.5)" do
+    it "treats an image of a commit as no release: reads the tree from the ref, runs next.rb, retires listed changes, says so", :aggregate_failures do
+      options.previous_ref = "v0.2.1"
+      File.write(File.join(root, "script/upgrade/expected_changes.yml"),
+        "changes:\n  - table: lots\n    kind: rows_removed\n    migration: \"20261001000001\"\n    reason: \"Spec 99\"\n")
+      expect(harness(previous: "ghcr.io/plainprogrammer/collector:edge").call).to eq(0)
+      expect(out.string).to include("this run is not a release proof", "retired: lots rows_removed (migration 20261001000001 is in v0.2.1)")
+      expect(engine.names).not_to include(:pull)
+    end
+
+    it "reads the release from the image's version label (decision 2)", :aggregate_failures do
+      expect(harness(previous: "ghcr.io/plainprogrammer/collector:0.2.1").call).to eq(0)
+      expect(out.string).to include("previous: v0.2.1")
+    end
+
+    it "asks for --previous-version when the label is not a stable version, and lets the flag win and say so", :aggregate_failures do
+      info = { "RepoDigests" => [ "x@sha256:1" ], "Config" => { "Labels" => { "org.opencontainers.image.version" => "edge" } } }
+      expect(harness(previous: "x:edge", engine: FakeEngine.new(image_info: info)).call).to eq(1)
+      expect(out.string).to include("--previous-version X.Y.Z")
+      out.truncate(0)
+      out.rewind
+      options.previous_version = "0.2.1"
+      expect(harness(previous: "x:edge", engine: FakeEngine.new(databases:, image_info: info)).call).to eq(0)
+      expect(out.string).to include("the image's label says \"edge\" and --previous-version says 0.2.1; using 0.2.1")
+    end
   end
 
   describe ".parse" do

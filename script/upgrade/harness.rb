@@ -196,6 +196,7 @@ module Upgrade
         step("before the stop")
         before_stop(instance)
         @backup_expected = backup_task?(instance)
+        @backup_file = take_backup(instance) if @backup_expected
         step("stop and snapshot the old database")
         stop_and_snapshot(instance, "old").tap { verify_old(it) }
       end
@@ -358,13 +359,35 @@ module Upgrade
 
       def backup_task?(instance) = @engine.tasks(instance.name).out.include?("backup:create")
 
-      # Skipped only when the previous release lists no backup task; a release that has one and a leg that does not run
-      # fails the run (AC-6.4). Phase 8 replaces the failing branch with the leg.
-      def backup_leg(_old)
+      # Takes the backup while the previous instance runs, into the directory mounted at /backups (decision 7).
+      def take_backup(instance)
+        result = @engine.task(instance.name, "backup:create[/backups]")
+        unless result.ok? && result.out.include?("Backup written: /backups/collector-backup-")
+          raise Failure, "backup:create failed on #{@plan[:tag]}:\n#{(result.out + result.err).strip}"
+        end
+
+        files = @engine.list_directory(@current, @backups)
+        raise Failure, "the backup directory should hold exactly one file; it holds: #{files.inspect}" unless files.size == 1
+
+        files.first
+      end
+
+      # Skipped only when the previous release lists no backup task (AC-6.4). Otherwise the backup it took is restored by the
+      # code under test onto a fresh volume under another secret, and the database is judged as the upgrade's is, except that
+      # the sessions the restore ends are expected gone (P4) and AC-5.7 doesn't apply (the backup holds the primary only).
+      def backup_leg(old)
         step("backup leg")
         return @out.puts("previous release #{@plan[:tag]} has no backup task; backup leg skipped") unless @backup_expected
 
-        raise Failure, "AC-6.4: #{@plan[:tag]} has a backup task and the backup leg did not run"
+        volume = new_volume("restored")
+        result = @engine.restore(image: @current, volume:, directory: @backups, file: @backup_file)
+        raise Failure, "AC-6.3: backup:restore refused the backup #{@plan[:tag]} took: #{(result.out + result.err).strip.lines.last}" unless result.ok?
+
+        instance = boot("restored", @current, volume, RESTORE_SECRET)
+        restored = stop_and_snapshot(instance, "restored")
+        @engine.remove(instance.name)
+        compare(old, restored, optional: ExpectedChanges.restore_effects, emptied: ExpectedChanges::RESTORE_ENDS_SESSIONS)
+        check_behaviour(boot("restored-behaviour", @current, volume, RESTORE_SECRET), queue: false)
       end
 
       def next_release
