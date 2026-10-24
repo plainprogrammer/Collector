@@ -7,6 +7,7 @@
 **Branch:** `013-ghcr-untagged-cleanup`
 **Issue:** [#17](https://github.com/plainprogrammer/Collector/issues/17)
 **Frozen:** the current rules are in [`release-and-deploy.md`](../../architecture/release-and-deploy.md) (whole spec); see the [specs index](../README.md)
+**Plan:** retired in `5a1e2eb43ff1b8c4b66ca24f3573f96013f64d2a`; read it with `git show 5a1e2eb43ff1b8c4b66ca24f3573f96013f64d2a^:docs/specs/013-ghcr-untagged-cleanup/plan.md`
 
 ---
 
