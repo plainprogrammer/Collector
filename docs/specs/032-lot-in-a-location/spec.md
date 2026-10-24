@@ -7,7 +7,7 @@
 **Depends on:** [spec 029](../029-manage-locations/spec.md) (manage locations, issue #44; merged) and, through it, [spec 028](../028-apply-import/spec.md) (apply an import, issue #40; merged). Spec 031 (#42, an upgrade check in CI) touches CI only and is independent
 **Branch:** `032-lot-in-a-location`
 **Issue:** [#45](https://github.com/plainprogrammer/Collector/issues/45)
-**Plan:** not written. It owes the ADR of decision 1 (numbered when written: the next free number on `origin/main`'s `docs/adr`)
+**Plan:** [plan.md](plan.md) (Draft, awaiting review and approval). It owes the ADR of decision 1 (numbered when written: the next free number on `origin/main`'s `docs/adr`)
 
 ---
 
