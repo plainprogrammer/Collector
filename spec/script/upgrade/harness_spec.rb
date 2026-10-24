@@ -78,6 +78,14 @@ RSpec.describe Upgrade::Harness, :git_sandbox, :upgrade do
     expect(out.string).to include("FAIL: pull", "v0.2.1", "linux/arm64", "manifest unknown")
   end
 
+  it "does not retry the 403 ghcr.io answers for a repository that does not exist or a credential without read access (AC-1.4, hand run)", :aggregate_failures do
+    wording = "Error: unable to copy from source docker://ghcr.io/x/y:0.2.1: fetching manifest 0.2.1 in ghcr.io/x/y: Requesting bearer token: received unexpected HTTP status: 403 Forbidden\n"
+    engine = FakeEngine.new(pull: FakeEngine::Result.new("", wording, 1))
+    expect(harness(engine:).call).to eq(1)
+    expect(engine.names.count(:pull)).to eq(1)
+    expect(out.string).to include("FAIL: pull", "403 Forbidden")
+  end
+
   it "tries a transient pull failure three times, waiting between, then fails naming the registry's last answer (AC-1.5)", :aggregate_failures do
     waits = []
     engine = FakeEngine.new(pull: FakeEngine::Result.new("", "dial tcp: i/o timeout\n", 1))
