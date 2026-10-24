@@ -6,6 +6,7 @@
 **Last Updated:** 2026-10-08
 **Branch:** `013-ghcr-untagged-cleanup`
 **Issue:** [#17](https://github.com/plainprogrammer/Collector/issues/17)
+**Frozen:** the current rules are in [`release-and-deploy.md`](../../architecture/release-and-deploy.md) (whole spec); see the [specs index](../README.md)
 
 ---
 
