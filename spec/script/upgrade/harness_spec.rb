@@ -11,7 +11,7 @@ RSpec.describe Upgrade::Harness, :git_sandbox, :upgrade do
   let(:options) { described_class::Options.new(timeout: 60, boot_attempts: 2, repository: "ghcr.io/plainprogrammer/collector") }
   let(:pages) do
     { "/registration/new" => FakeWeb::Response.new(200, '<input name="user[email_address]">'),
-      "/collection" => ->(user) { FakeWeb::Response.new(200, user == "ada@x.test" ? "Dragon One Dragon Two" : "") },
+      "/collection" => ->(user) { FakeWeb::Response.new(200, user == "ada@x.test" ? "Dragon One Dragon Two" : '<p class="c-empty">No cards in your collection yet.</p>') },
       "/collection/export" => FakeWeb::Response.new(200, JSON.generate("format_version" => 2, "lots" => Array.new(2001) { {} })) }
   end
   let(:web) { FakeWeb.new(pages:, log:) }
@@ -165,6 +165,12 @@ RSpec.describe Upgrade::Harness, :git_sandbox, :upgrade do
     expect(harness.call).to eq(1)
     expect(out.string).to include("AC-5.2", "1 of the 2 seeded names")
     expect(out.string).not_to include("Dragon Two")
+  end
+
+  it "fails when a collector with no cards sees an error page and not the empty collection (AC-5.2)", :aggregate_failures do
+    pages["/collection"] = ->(user) { FakeWeb::Response.new(200, user == "ada@x.test" ? "Dragon One Dragon Two" : "<h1>Something went wrong</h1>") }
+    expect(harness.call).to eq(1)
+    expect(out.string).to include("AC-5.2", "empty collection")
   end
 
   it "fails when a seeded location is not listed, and passes when it is (AC-5.4)", :aggregate_failures do

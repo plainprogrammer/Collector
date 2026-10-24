@@ -25,6 +25,7 @@ module Upgrade
     PULL_ATTEMPTS = 3
     PERMANENT_PULL_FAILURE = /manifest unknown|not found|no matching manifest|unauthorized|denied|requested access|invalid reference|403 Forbidden/i
     SEED_LINE = "UPGRADE-SEED-COMPLETE ".freeze
+    EMPTY_COLLECTION_MARKER = "c-empty".freeze # the design system's empty-state class, which /collection renders for no lots
     SECRET = "secret-of-the-previous-release-instance-0001".freeze
     RESTORE_SECRET = "a-different-secret-of-the-restored-instance-0002".freeze
     RECURRING = <<~'RUBY'.freeze
@@ -308,6 +309,7 @@ module Upgrade
         other = webs.fetch(empty["email"]).get("/collection")
         leaked = owner["names"].select { other.body.include?(it) }
         raise Failure, "AC-5.2: #{who(empty)}'s collection page answered #{other.status} and shows #{leaked.size} of another collector's seeded names" if other.status != 200 || leaked.any?
+        raise Failure, "AC-5.2: #{who(empty)}'s collection page answered #{other.status} but isn't the empty collection (no #{EMPTY_COLLECTION_MARKER} element)" unless other.body.include?(EMPTY_COLLECTION_MARKER)
       end
 
       def check_locations(web)
