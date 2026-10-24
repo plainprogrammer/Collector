@@ -73,6 +73,15 @@ RSpec.describe "Page query counts", type: :request do
     expect(queries_for(new_catalog_entry_lot_path(entry))).to eq(few)
   end
 
+  it "keeps the Move copies page's queries independent of the number of locations (spec 032 NFR)" do
+    lot = own(printing)
+    create(:location, account: user.account)
+    few = queries_for(new_lot_move_path(lot))
+    29.times { create(:location, account: user.account) }
+
+    expect(queries_for(new_lot_move_path(lot))).to eq(few)
+  end
+
   it "keeps search's queries independent of the number of result groups" do
     own(printing)
     printing(identity: Catalog::Identity.sole)

@@ -12,6 +12,7 @@ RSpec.describe "Apply an import, core code", type: :config do
       app/controllers/locations_controller.rb app/views/locations/index.html.erb
       app/views/collections/import_previews/_locations.html.erb app/models/collection_import/location_changes.rb
       app/models/location/holdings.rb app/views/locations/removals/refused.html.erb app/helpers/locations_helper.rb
+      app/models/lot/move.rb app/controllers/lots/moves_controller.rb app/views/lots/moves/new.html.erb
     ]
   end
 

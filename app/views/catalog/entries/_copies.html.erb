@@ -25,6 +25,7 @@
                   <summary class="c-btn c-btn--ghost c-btn--sm c-btn--icon" aria-label="<%= lot_actions_label(lot) %>"><%= render "icons/more" %></summary>
                   <div class="c-menu__list">
                     <%= link_to "Edit copy", edit_lot_path(lot, **card_params), class: "c-menu__item" %>
+                    <%= link_to "Move copies", new_lot_move_path(lot, **card_params), class: "c-menu__item" %>
                     <div class="c-menu__sep"></div>
                     <%= link_to "Remove", new_lot_removal_path(lot, **card_params), class: "c-menu__item c-menu__item--danger" %>
                   </div>

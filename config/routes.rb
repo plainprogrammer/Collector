@@ -78,6 +78,7 @@ Rails.application.routes.draw do
   end
   resources :lots, only: %i[edit update destroy] do
     resource :removal, only: :new, module: :lots
+    resource :move, only: %i[new create], module: :lots
   end
 
   # The self-hosted OCR engine for the card scanner (spec 007, ADR 0001).
