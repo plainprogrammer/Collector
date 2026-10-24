@@ -72,6 +72,7 @@ module Upgrade
     end
 
     def call
+      outer = Signal.trap("TERM") { raise Interrupt } # a runner's timeout-minutes kill is a SIGTERM; `ensure` must still clean up (FR-6)
       @started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       Timeout.timeout(@options.timeout) { prove }
       0
@@ -83,6 +84,7 @@ module Upgrade
       report_failure("#{error.class}: #{error.message}")
     ensure
       clean_up
+      Signal.trap("TERM", outer) if outer
     end
 
     private

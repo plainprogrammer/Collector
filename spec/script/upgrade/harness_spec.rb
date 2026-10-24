@@ -249,6 +249,19 @@ RSpec.describe Upgrade::Harness, :git_sandbox, :upgrade do
     expect(Dir.glob(File.join(Dir.tmpdir, "upgrade-smoke*"))).to eq(before)
   end
 
+  it "cleans up when the runner kills the step with SIGTERM, and leaves the process's own handler as it found it (AC-7.3, FR-6)", :aggregate_failures do
+    killed = FakeEngine.new(databases:, log:, start: ->(*, **) { Process.kill("TERM", Process.pid); sleep 5 })
+    own = proc { }
+    handler = Signal.trap("TERM", &own)
+    begin
+      expect { harness(engine: killed).call }.to raise_error(Interrupt)
+      expect(killed.names).to include(:remove_volume)
+      expect(Signal.trap("TERM", handler)).to eq(own)
+    ensure
+      Signal.trap("TERM", handler)
+    end
+  end
+
   describe "the backup leg" do
     let(:listing) { FakeEngine::Result.new("rails backup:create[DIRECTORY]  # Back up\nrails backup:restore[FILE]  # Restore\n", "", 0) }
     let(:sessions) { "CREATE TABLE sessions (id INTEGER PRIMARY KEY); INSERT INTO sessions VALUES (1), (2);" }
