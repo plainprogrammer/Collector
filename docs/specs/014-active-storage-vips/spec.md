@@ -6,6 +6,7 @@
 **Last Updated:** 2026-10-09
 **Branch:** `014-active-storage-vips`
 **Issue:** [#18](https://github.com/plainprogrammer/Collector/issues/18)
+**Frozen:** the current rules are in [`release-and-deploy.md`](../../architecture/release-and-deploy.md) (whole spec; its development-environment facts are kept in CLAUDE.md); see the [specs index](../README.md)
 
 ---
 
