@@ -52,6 +52,7 @@ RSpec/DescribeClass:
     - "spec/design_system_files_spec.rb"
     - "spec/export_format_document_spec.rb"
     - "spec/export_format_examples_spec.rb"
+    - "spec/script/upgrade/seeds_spec.rb"
     - "spec/footer_core_spec.rb"
     - "spec/githooks/post_checkout_spec.rb"
     - "spec/image_publishing_spec.rb"
