@@ -170,3 +170,52 @@ Not checked by reading: that the area doc's line numbers (for example `ci.yml:13
 3. **The backup leg in CI.** It is exercised by hand only (run 2); it runs in CI from the first release that has `backup:create` (decision 7), so no CI run shows it until then.
 4. **The NAS restores** of the maintainer's own export and backup (decision 9) are not owed by this spec; they stay release steps 4 and 5.
 5. **The implementation review** (`sdd-review` Mode B) is run by the coordinator and recorded after this file's content, under its own heading, not by this phase.
+
+## Implementation review
+
+SPEC-ALIGNED (independent Sonnet review 2026-10-24, after fixes)
+
+Reviewer: Sonnet 5.5, read-only, at `7a01af3`: NEEDS FIXES, 0 critical, 1 major, 9 minor, behaviour spec-aligned (AC-by-AC traceability table in the review). All findings were fixed or ruled as below, one commit each, test first where a test could fail first.
+
+### Findings
+
+| Finding | Outcome | Commit |
+|---|---|---|
+| M1 `vendor/bundle` in the pushed image's build context | Fixed: `/vendor/bundle` in `.dockerignore`; files_spec example "keeps the runner's bundle out of the image build context"; area doc's "image carries only what it runs" line names it | `11c65f3` |
+| m1 area doc named `Upgrade::Rules::RESTORE_ENDS_SESSIONS` | Fixed: `Upgrade::ExpectedChanges::RESTORE_ENDS_SESSIONS` (no other mention in the docs or the plan) | `19854ff` |
+| m2 "tags not fetched" decided by release-shaped tags | Fixed: `Release#previous` tests `git tag --list` for emptiness; the message says to fetch from the repository that publishes releases (`git fetch <upstream> --tags`); release_spec examples for the message and for a remote with only a non-release tag (passes as "no previous release") | `406b3ea` |
+| m3 AC-5.2 empty-collection half too weak | Fixed: the page must carry `c-empty` (`EMPTY_COLLECTION_MARKER`); harness_spec example with a 200 error page | `99b5e5e` |
+| m4 AC-6.4 failure half had no example | Added: the task is listed and `backup:create` fails, so exit 1 and no "skipped" line. The behaviour was already structural, so this example passed when written | `bfe0978` |
+| m5 cleanup not run on SIGTERM | Fixed: `Harness#call` traps TERM to raise `Interrupt` so `ensure` cleans up, then restores the previous handler; harness_spec example (red first) | `53c0e14` |
+| m6 spec forbade any seed exception | Replaced by a shape check (every key `next` or `X.Y.Z`; `SeedExceptions.load` has no errors; each entry has a table and a reason) | `2c63286` |
+| m7 `ruby/setup-ruby@v1` | Fixed as ruled: the step moved above "Log in to GHCR" (files_spec example for the order); area doc line citations to `ci.yml` shifted with it. Not pinned: repo-wide SHA pinning is issue #132 | `911285c` |
+| m8 index and Distillation log row still pre-distill | Not taken, as ruled: the coordinator runs `distill-feature` before the PR, which marks the index and fills the log row | none |
+| m9 modified `Gemfile.lock` | Not taken: local arm64 platform noise, left uncommitted | none |
+
+### Rulings (maintainer, 2026-10-24)
+
+- M1: exclude `/vendor/bundle` in `.dockerignore` (not a separate job), with a guard in files_spec.
+- m7: move the Ruby setup above the GHCR login; don't pin here (#132).
+- m2: "tags not fetched" means no tag at all with a remote; the message names upstream.
+- m6: shape check, not "no exceptions".
+- Review question 5: `distill-feature` marks the index and the log row.
+
+### bin/ci
+
+Run in this worktree on `2c63286` (alone, `Gemfile.lock` uncommitted):
+
+```
+✅ Tests: RSpec passed in 3m0.41s
+2138 examples, 0 failures, 1 pending   (art_agreement_spec.rb:16, not this feature's)
+✅ Continuous Integration passed in 3m10.73s
+```
+
+`bin/upgrade-smoke` was not re-run: none of the fixes changed the harness's container steps (the SIGTERM trap and the page check are not exercised by a container).
+
+### Only the pull request's first CI run can show
+
+- Both-architecture timings of `Set up Ruby for the upgrade proof` and `Upgrade smoke test`, and the 5-minute bar.
+- `ruby/setup-ruby@v1` with `bundler-cache: true` and job-level `BUNDLE_WITHOUT`; the arm64 bundle install; the step's new position (before the login and the build).
+- Docker-only assumptions: exit code of `docker stop`, `inspect` format, file modes after `cp`, the missing-platform pull wording.
+- That `/vendor/bundle` is absent from the pushed image (visible on a `main` or tag run: the `COPY . .` cache line of "Push by digest" should hit, and the image should hold no `/rails/vendor/bundle`).
+- The anonymous pull from a fork PR; AC-7.2's failing tag (maintainer); the backup leg in CI.
