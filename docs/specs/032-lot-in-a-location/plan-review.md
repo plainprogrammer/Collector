@@ -39,3 +39,20 @@ The review's two notes (area doc citations at `data-portability.md:152` and `:20
 ## What this revision did not change
 
 No requirement, decision or design: the key, the restrict key, the refusal, version 3 and the apply's order are as the review found them. The plan stays a draft until the maintainer approves it; ADR 0025 stays Proposed until then.
+
+# Second review (2026-10-24)
+
+**Reviewed:** the revised plan at `85fb474` (spec 1.0.2) by an independent read-only Sonnet review: **NEEDS REVISION**, 0 critical, 2 major, 5 minor. All 17 findings of the first round were found fixed; the review's text is kept in the session scratchpad, not in the repository.
+**Revised:** 2026-10-24, commit `5f6703c` (`plan.md`, `research.md`, `data-model.md`, `contracts/export-v3.md`). Every finding was taken; nothing was run and the spec was not changed (no PATCH).
+
+| Finding | Verdict | Fix | Where |
+|---|---|---|---|
+| **Major 1** `Lot::Move` judges a stale in-memory lot; a double submit creates or loses copies | Taken. Traced: a whole move twice to one place finds the moved row as its own twin, adds to it and destroys it; a split of 3 twice sets the source to 1 twice and adds 3 twice | `call!` runs `lot.reload` and `valid?` inside `Lot.transaction` (IMMEDIATE), so the range, "already there" and the twin are judged on the rows under the lock; a lot deleted meanwhile is a 404. Two model examples that fail without the reload: (a) two whole moves to `blue` from two instances, the second refused "Those copies are already there."; (b) two moves of 3 of 4, the second refused "Choose from 1 to 1 copies."; total copies 4 after each call. The m6 argument now says what makes "writers are serialised" true | plan.md Phase 5 (5.1, `call!`), Self-Review, Phase 8 step 8 |
+| **Major 2** the M5 fix's second read contradicts NFR Performance bullet 2 (spec.md:414) | Taken, **by changing the plan, not the spec** (no PATCH 1.0.3, no entry in Open Items). A single statement is possible: the lots statement `LEFT JOIN`s `locations`, so each lot's name is read in the statement that reads the lots | `LOT_COLUMNS` ends in `locations.name`, `lot_rows` uses `left_joins(:location)`. The account's locations (the empty ones too) stay a second read, as they always were. The join alone doesn't remove the rename race, because the list is still read separately (a rename between the reads leaves a lot naming a name the list lacks), so the existing check stays, keyed on names: if a placed lot's name isn't among the names just read, both reads repeat, at most 3 times, then `Unsettled`. No long transaction. The rename example now expects the retry (the file lists and names "Crate"), and a third example expects `Unsettled` | plan.md Phase 7 (7.1, 7.2); research R11 and §Performance; data-model.md; contracts/export-v3.md |
+| **m-a** the AC-6.7 trigger fires on the list read, so the examples can pass without the foreign key | Taken | The delete fires on the `find`'s statement (`"locations"."id" = `), not the first `FROM "locations"`; a second subscriber records that `INSERT INTO "lots"` / `UPDATE "lots"` ran and the lot table is as it was, so the foreign key is what answered | plan.md Phase 4 (4.1), Phase 5 (5.1) |
+| **m-b** the round-trip snippet names an undefined `bytes` | Taken | `JSON.parse(ExportFormatRules.examples("valid").fetch(name))["format_version"] > 2` | plan.md Phase 6 intro |
+| **m-c** the statement counts include the subscribers' own SQL | Taken | The race examples count the reads of `FROM "lots"` (2 and 3) and the helper leaves out the subscribers' statements by their SQL text | plan.md Phase 7 (7.1) |
+| **m-d** a placeholder (`… as before`) in the export snippet | Taken | The entry hash is written out from `collection_export.rb:36-38` (keys `collector_number`, `language`, …); the Self-Review says so | plan.md Phase 7 (7.2), Self-Review |
+| **m-e** O2 and O3 live only in the plan | Taken | Phase 8 step 8 lists O2 and O3 for `verification.md` beside O1, as plan-level rulings the spec has no sentence for (no spec change; the maintainer ruled the PATCH to O1 only) | plan.md Phase 8 step 8 |
+
+**Not taken:** none.
