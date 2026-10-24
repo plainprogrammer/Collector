@@ -76,3 +76,5 @@ RSpec/MultipleMemoizedHelpers:
   Exclude:
     - "spec/models/collection_import/apply_spec.rb"
     - "spec/models/collection_import/round_trip_spec.rb"
+    - "spec/script/upgrade/files_spec.rb"
+    - "spec/script/upgrade/harness_spec.rb"

@@ -16,4 +16,16 @@ RSpec.describe "Upgrade proof files" do
     run_lines = workflow.dig("jobs", "ci", "steps").filter_map { it["run"] }
     expect(run_lines).not_to include(a_string_matching(/upgrade-smoke|docker|podman/))
   end
+
+  it "keeps bin/upgrade-smoke out of the image, and the image smoke test checks it (FR-8)", :aggregate_failures do
+    rules = Rails.root.join(".dockerignore").readlines(chomp: true).map(&:strip)
+    expect(rules).to include("/bin/upgrade-smoke", "/script")
+    expect(Rails.root.join("bin/image-smoke").read).to include("bin/upgrade-smoke")
+  end
+
+  it "is executable and starts with a Ruby shebang", :aggregate_failures do
+    path = Rails.root.join("bin/upgrade-smoke")
+    expect(path.executable?).to be(true)
+    expect(path.readlines.first).to eq("#!/usr/bin/env ruby\n")
+  end
 end

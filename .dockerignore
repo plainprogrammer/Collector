@@ -69,4 +69,5 @@
 # The GHCR cleanup command runs only in its workflow and locally (spec 013).
 /bin/ghcr-cleanup
 /bin/backup-smoke
+/bin/upgrade-smoke
 /lib/collector/ghcr_cleanup.rb
