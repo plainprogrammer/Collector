@@ -56,6 +56,10 @@ RSpec.describe "Upgrade proof files" do
       expect(proof["timeout-minutes"]).to eq(12)
     end
 
+    it "sets Ruby up before the registry login, so the action never runs with a push-capable token on disk (review m7)" do
+      expect(names.index(ruby["name"])).to be < names.index("Log in to GHCR")
+    end
+
     it "fetches the full history and the tags, because the proof resolves the previous release from them (AC-8.5)" do
       expect(checkout("image").dig("with", "fetch-depth")).to eq(0)
     end

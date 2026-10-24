@@ -78,6 +78,13 @@ jobs:
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v4
 
+      # The comparer is Ruby on the runner, neither release's code (decision 5). Set up before the registry login so the
+      # action never runs with a push-capable token on disk (review m7; pinning every action is issue #132).
+      - name: Set up Ruby for the upgrade proof
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+
       - name: Log in to GHCR
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v4
@@ -127,12 +134,7 @@ jobs:
 
       # Boots the previous release's published image, seeds it, starts this build on the same volume and compares the two
       # databases and what the app serves (spec 031). It runs before the image is pushed, so a release tag that can't upgrade
-      # the last release publishes nothing. The comparer is Ruby on the runner, neither release's code (decision 5).
-      - name: Set up Ruby for the upgrade proof
-        uses: ruby/setup-ruby@v1
-        with:
-          bundler-cache: true
-
+      # the last release publishes nothing.
       - name: Upgrade smoke test
         timeout-minutes: 12
         run: bin/upgrade-smoke auto collector:smoke --platform ${{ matrix.platform }}
