@@ -1,6 +1,6 @@
 # Verification: spec 029, Manage Locations
 
-**Spec:** [spec.md](spec.md) v1.3.2 · **Plan:** [plan.md](plan.md) (approved 2026-10-21) · **Branch:** `029-manage-locations`
+**Spec:** [spec.md](spec.md) v1.3.2 · **Plan:** plan (retired in `88a52cf7f4b84562d40db23bf157de58fceab2c2`; read it with `git show 88a52cf7f4b84562d40db23bf157de58fceab2c2^:docs/specs/029-manage-locations/plan.md`) (approved 2026-10-21) · **Branch:** `029-manage-locations`
 
 How to read this: each criterion names the example that holds it (`file`, "example title", or the part of the title that finds it) or the manual check. Prose documents are verified by reading and listed under "Documents". Phases 0 to 5 ran every example red first for the reason their phase names; Phase 6 adds measurements and documents, not code.
 
