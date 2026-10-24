@@ -1,7 +1,7 @@
 # Feature 032: Put a Lot in a Location
 
-**Status:** Draft. The maintainer ruled decisions 1–6 on 2026-10-23 (decision 3 against the draft's recommendation); the details P1–P6 are proposed and wait for the maintainer's confirmation. The independent review is in `review.md` (NEEDS REVISION, fixed in 0.2.0)
-**Version:** 0.1.0
+**Status:** Awaiting the maintainer's approval. The maintainer's rulings D1–D6 (2026-10-23; decision 3 against the draft's recommendation) are recorded as decisions 1–7 below (D1–D3 are decisions 1–3, D5 is decision 7, D4 and D6 are decisions 4–6), and the maintainer confirmed the details P1–P6 as proposed on 2026-10-23. Two independent reviews are in `review.md` (round 1 NEEDS REVISION, fixed in 0.2.0; round 2 NEEDS REVISION, text only, fixed in 1.0.0)
+**Version:** 1.0.0
 **Created:** 2026-10-23
 **Last Updated:** 2026-10-23
 **Depends on:** [spec 029](../029-manage-locations/spec.md) (manage locations, issue #44; merged) and, through it, [spec 028](../028-apply-import/spec.md) (apply an import, issue #40; merged). Spec 031 (#42, an upgrade check in CI) touches CI only and is independent
@@ -15,6 +15,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.0.0 | 2026-10-23 | From the second independent review (`review.md`, round 2): P1–P6 confirmed by the maintainer; the header and Decisions intro map the maintainer's D1–D6 to decisions 1–7; the round trips of spec 029 AC-9.15 and spec 028 AC-6.4 are superseded, as AC-11.14 reads them from now on; the card page's "Your copies" covers every printing of the card, and the row order is stated (AC-4.1, AC-4.2); the survivor of a whole move that merges is the destination's lot (P6); AC-6.7's race covers the edit and the move; AC-9.1 lists every sentence of the format document that changes and the reader's rule for older lots, AC-9.3 adds `lots.lot_key`; the apply's write order and the place in the lot key are stated (FR-1, FR-4, Notes for the plan); the Supersedes table and the index complete (spec 029 decision 10, spec 025 decision 9, ADR 0023's read-versions bullet); criteria in numeric order; the cost per account counts the index and the key |
 | 0.2.0 | 2026-10-23 | From the independent review (`review.md`): a row with an unlisted location keeps a readable identity (AC-10.3); a bulk Undo merges restored rows with each other and survives a removal made before the migration (AC-7.5, AC-7.8); a lot's location is matched by comparison key and re-exports with the stored spelling (AC-9.4); the edit form is reached from the table and the scanner too (decision 4, AC-2.8); deleting an account with placed lots (AC-6.6); the migration names every table that points at lots (AC-7.1); the worst-case file for the apply's bars (AC-11.12); Open Questions made consistent; Given/When/Then gaps and smaller points closed |
 | 0.1.0 | 2026-10-23 | First draft, with the maintainer's rulings of 2026-10-23 on decisions 1–6 |
 
@@ -26,7 +27,7 @@ This spec lets a collector record which location a lot's copies are in. ADR 0019
 
 A place is data the collector owns, so this spec extends the export format in the same pull request (roadmap ruling 19, north star "Export covers it"): each lot carries its location, which makes **format version 3** ([ADR 0023](../../adr/0023-locations-make-export-format-version-2.md)).
 
-> **Terms.** A *location*, the *locations page*, a *name* and the *comparison key* are as in spec 029. A lot is *in* a location, or *unplaced* ("No location" on screen). A lot's *identity* is its printing, finish, condition, price paid and location (decision 1); the first four are as in spec 004. A lot's *place* is its location or none. *Moving* copies changes their place. The *card page* is a printing's page, `/catalog/entries/:id`, whose "Your copies" table lists the account's lots of that printing. The *export*, the *preview*, *well-formed*, *resolvable*, a *problem row* and the *plan* are as in specs 017, 025 and 028.
+> **Terms.** A *location*, the *locations page*, a *name* and the *comparison key* are as in spec 029. A lot is *in* a location, or *unplaced* ("No location" on screen). A lot's *identity* is its printing, finish, condition, price paid and location (decision 1); the first four are as in spec 004. A lot's *place* is its location or none. *Moving* copies changes their place. The *card page* is a printing's page, `/catalog/entries/:id`, whose "Your copies" table lists the account's lots of every printing of that card. The *export*, the *preview*, *well-formed*, *resolvable*, a *problem row* and the *plan* are as in specs 017, 025 and 028.
 
 ## Goals
 
@@ -58,7 +59,7 @@ A place is data the collector owns, so this spec extends the export format in th
 
 ## Decisions
 
-Rulings of 2026-10-23, put to the maintainer with the alternatives below: decisions 1, 2, 4, 5 and 6 as recommended; decision 3 *not* as recommended (the draft recommended unplacing and merging; the maintainer ruled that a location holding lots can't be removed). The details P1–P6 follow the decisions and are proposed.
+Rulings of 2026-10-23, put to the maintainer with the alternatives below: decisions 1, 2, 4, 5 and 6 as recommended; decision 3 *not* as recommended (the draft recommended unplacing and merging; the maintainer ruled that a location holding lots can't be removed). The maintainer's labels D1–D6 map to the numbers here: D1–D3 are decisions 1–3, D5 (older files) is decision 7, and D4 and D6 are spread over decisions 4, 5 and 6. The details P1–P6 follow the decisions and were confirmed as proposed on 2026-10-23.
 
 ### 1. The location joins the lot's identity: a lot splits by place (ruled)
 
@@ -128,14 +129,14 @@ Every location a request names is looked up through the signed-in account. An id
 
 This is a restore, as every apply is (spec 025 decision 1: the collection becomes the file). The alternatives not chosen: leave places alone for such a file, which is ambiguous when a printing is in two places (which lot does the file's quantity belong to?), and refuse such a file while any lot is placed, which would stop a collector from restoring a backup they took before this spec. Locations follow spec 029: a version 2 file replaces the locations by name, a version 1 file leaves them alone.
 
-### Details proposed (P1–P6)
+### Details confirmed (P1–P6; the maintainer, 2026-10-23)
 
 - **P1. The refusal page lists the lots (decision 3).** The page that refuses removal lists the first 100 lots in the location, ordered by name, then set code, collector number, language, finish, condition and price paid (as the preview orders lots, spec 025 decision 11), each with its quantity and a link to its card page, and "and N more" after 100. Without it a collector could not find the lots to move, because the grid and the table don't show places until #46 and #47.
 - **P2. The locations page shows what each location holds.** Each location reads "12 copies in 3 lots" ("1 copy in 1 lot"), or "Empty". Spec 029 left counts out because nothing could be in a location; this is a grouped total over the account's lots, no per-location query.
 - **P3. The Location field appears when the account has a location.** An account with no locations sees no field on the add and edit forms, but a hint "Add a location to keep copies in one" linking to the locations page. The Move copies page then says "You have no locations yet", with the link, when the lot is unplaced and no location exists.
 - **P4. Moving to the place a lot is already in is refused** (422, "Those copies are already there.").
 - **P5. A bulk removal's Undo restores a lot whose location has since been removed unplaced.** The location can only have been removed once it was empty, which the removal itself made possible. Restored rows that then have one identity (one was in the removed location, one was unplaced) merge with each other and with the account's unplaced lot, the 9,999 cap applies to the merged total, and the Undo stays all or nothing. The Undo notice adds how many lots came back without a location.
-- **P6. A split-off lot's times.** Moving some copies creates the lot in the new place with *added* and *changed* times of the move. Moving all copies, with or without a merge, keeps the surviving lot's *added* time and sets its *changed* time to the move.
+- **P6. A split-off lot's times.** Moving some copies creates the lot in the new place with *added* and *changed* times of the move. Moving all copies keeps the lot's *added* time and id and sets its *changed* time to the move; when the move merges into the destination's lot, the destination's lot survives with its added time and id, and the moved lot is removed (as `Lot#revise!` does).
 
 ## Supersedes
 
@@ -144,13 +145,13 @@ Earlier specs are frozen (maintainer ruling, 2026-10-15). What this spec changes
 | Earlier document | Item | What changes |
 |---|---|---|
 | [ADR 0019](../../adr/0019-lot-as-the-unit-of-ownership.md) | Decision ("a lot is a quantity of one catalog entry with the same finish, condition and price paid") and the open question for locations | A lot's identity includes its location (decision 1). Recorded in the new ADR, which supersedes the open question; ADR 0019's Status line gets a pointer. |
-| [ADR 0023](../../adr/0023-locations-make-export-format-version-2.md) | Consequences: "deleting a location sets copies back to 'no location' and nothing else" | A location that holds copies can't be removed (decision 3). ADR 0023 stays Accepted for the rest; the new ADR supersedes this sentence and ADR 0023's Status line gets a pointer. |
+| [ADR 0023](../../adr/0023-locations-make-export-format-version-2.md) | Consequences: "deleting a location sets copies back to 'no location' and nothing else" | A location that holds copies can't be removed (decision 3). The Decision bullet "The preview and the apply read versions 1 and 2" reads versions 1 to 3 (decision 10). ADR 0023 stays Accepted for the rest; the new ADR supersedes this sentence and ADR 0023's Status line gets a pointer. |
 | [Spec 004](../004-design-system-collection/spec.md) | FR-6 and the merge criteria (a lot is the same printing, finish, condition and price paid; AC-7.4, AC-9.3, AC-10.2); the add and edit forms; the card page's "Your copies" table | A lot also has a place and merges only within it. The add and edit forms gain the Location field, the table gains the Location column, and each lot's menu gains "Move copies". |
 | [Spec 017](../017-export-format/spec.md), [ADR 0020](../../adr/0020-export-format.md) | Lot identity ("a lot is identified by five values"); decision 14 and the consequences that said a lot in a location raises the format | Lot identity has six values from version 3 (printing's two, finish, condition, price paid, location). Version 3 is this spec's; spec 029 had already moved the statement from version 2. |
 | [Spec 022](../022-export-collection/spec.md) | The file it writes (version 1, then 2 by spec 029) | The export writes version 3: each lot gains `location` (Story 8). |
 | [Spec 025](../025-import-preview/spec.md) | The versions it reads (1 and 2, by spec 029); the sentence "This instance reads version 2."; decision 1's matching of a row to a held lot on five values; decision 9's problem-row reasons | The preview reads versions 1 to 3, refuses above 3 ("This instance reads version 3."), matches a row to a held lot on six values with the rules of decision 7, and adds the problem-row reason for a location the file doesn't list (Story 10). |
-| [Spec 028](../028-apply-import/spec.md) | Terms and decision 2 (what the plan and its fingerprint cover); the lot upsert's unique key; the confirmation and the notice's counts | The apply reads versions 1 to 3, resolves each lot's location to the account's location, includes places in the plan and the fingerprint, and removes a location only with the lots in it (decision 10, Story 11). The stored upload, expiry, sweep and the working state cleared when lots are written stand. |
-| [Spec 029](../029-manage-locations/spec.md) | Decision 3 (removing a location never removes copies; the confirmation page "states how many lots are in the location once #45 can put them there"); Non-Goals ("counting lots or copies per location"); decision 9 ("a lot carries no reference to a location in version 2", still true for version 2); the removal pages' AC-3.x | A location that holds copies can't be removed; its confirmation page is replaced by the refusal page when it holds any (decision 3, Story 5). The locations page shows counts (P2). Version 2 is unchanged. |
+| [Spec 028](../028-apply-import/spec.md) | Terms and decision 2 (what the plan and its fingerprint cover); the lot upsert's unique key; the confirmation and the notice's counts | The apply reads versions 1 to 3, resolves each lot's location to the account's location, includes places in the plan and the fingerprint, and removes a location only with the lots in it (decision 10, Story 11). AC-6.4 (the round trip of each valid example) reads as AC-11.14 says from now on. The stored upload, expiry, sweep and the working state cleared when lots are written stand. |
+| [Spec 029](../029-manage-locations/spec.md) | Decision 3 (removing a location never removes copies; the confirmation page "states how many lots are in the location once #45 can put them there"); Non-Goals ("counting lots or copies per location"); decision 9 ("a lot carries no reference to a location in version 2", still true for version 2); decision 10 ("The preview and the apply read versions 1 and 2"); AC-9.15 (the round trip of each valid example); the removal pages' AC-3.x | A location that holds copies can't be removed; its confirmation page is replaced by the refusal page when it holds any (decision 3, Story 5). The locations page shows counts (P2). The preview and the apply read versions 1 to 3. Version 2 is unchanged. AC-9.15 reads as AC-11.14 says from now on (a version 1 or 2 example re-exports as version 3). |
 | [Spec 006](../006-collection-list-view/spec.md) | The deferred "Move to…" bulk action; bulk "Set condition" and the bulk removal's Undo (AC-6.x, AC-7.4) | "Move to…" stays deferred to #48. Set condition merges only lots of one place, and Undo restores each lot to its place (Story 7). |
 | [Spec 026](../026-typed-entry/spec.md), [spec 009](../009-card-scanner-confirm-flow/spec.md) | Their lots merge by the identity of spec 004 | The copies they add are unplaced and merge into the unplaced lot only (Story 7). Nothing else in them changes; #51 and #56 add the choice. |
 
@@ -221,8 +222,8 @@ Earlier specs are frozen (maintainer ruling, 2026-10-15). What this spec changes
 
 **Acceptance criteria:**
 
-- [ ] **AC-4.1** Given a printing with lots in Blue binder and unplaced When its card page shows "Your copies" Then each lot is a row with a Location column reading its location or "No location", and where the optional columns are hidden the location is in the line under the printing with the finish, condition and language.
-- [ ] **AC-4.2** Given a printing with 2 copies in Blue binder and 2 in Long box When the card page shows Then it lists two lots, each with its own quantity, and the heading reads "4 in 2 lots".
+- [ ] **AC-4.1** Given a card with lots in Blue binder and unplaced, of one printing or of several When its card page shows "Your copies" (which lists every printing of the card, as today) Then each lot is a row, ordered as today and then by location (unplaced first, then spec 029 decision 2's order) so that the rows of a split are in a fixed order, each with a Location column reading its location or "No location", and where the optional columns are hidden the location is in the line under the printing with the finish, condition and language.
+- [ ] **AC-4.2** Given a printing with 2 copies in Blue binder and 2 in Long box, and no other printing of the card owned When the card page shows Then it lists two lots, each with its own quantity, and the heading reads "4 in 2 lots".
 - [ ] **AC-4.3** Given locations "Blue binder" (3 lots, 12 copies), "Long box" (1 lot, 1 copy) and "Empty box" (none) When the locations page shows Then each reads "12 copies in 3 lots", "1 copy in 1 lot" and "Empty" (P2).
 - [ ] **AC-4.4** Given lots in locations When the collection grid or table, the page's totals and the filter bar's counts render Then copies, lots and the owned count of each printing include placed lots exactly as unplaced ones, and neither view shows a location (Non-Goals).
 - [ ] **AC-4.5** Given a location name with markup When any page shows it Then it is output escaped.
@@ -255,9 +256,9 @@ Earlier specs are frozen (maintainer ruling, 2026-10-15). What this spec changes
 - [ ] **AC-6.2** Given two accounts, each with a location called "Box" and a lot of one printing in it When the first adds, edits, moves or merges lots Then the second's lots and locations are unchanged (rows and times compared) and no lot of the second is merged into.
 - [ ] **AC-6.3** Given two accounts with "Box" locations When one's locations page and refusal page render Then no count, lot or name of the other appears.
 - [ ] **AC-6.4** Given an admin When any admin page renders Then it shows no location name, lot place or per-location count (hosted-door rule 2); the admin users page still shows only account-level copy counts.
-- [ ] **AC-6.6** Given a user whose account has lots in locations When an admin deletes the user Then the account, its lots and its locations are all removed and the deletion succeeds (the database refuses deleting a location a lot is in, so lots go first).
-- [ ] **AC-6.7** Given a lot being added into a location while another request removes that location (it was empty) When both finish Then the add answers 404 or the removal answers 409, and neither answers 500.
 - [ ] **AC-6.5** Given a signed-out visitor When any page of this spec is requested Then the visitor is sent to sign in, and a write without a session fails as spec 029 AC-4.4 says.
+- [ ] **AC-6.6** Given a user whose account has lots in locations When an admin deletes the user Then the account, its lots and its locations are all removed and the deletion succeeds (the database refuses deleting a location a lot is in, so lots go first: `Account` deletes its lots before its locations only because `lots` is declared before `locations`, and this criterion's test guards that order).
+- [ ] **AC-6.7** Given a lot being added, edited or moved into a location while another request removes that location (it was empty) When both finish Then the add, edit or move answers 404 (or 422 with the form again) or the removal answers 409, and neither answers 500.
 
 ### Story 7: Every other way of changing lots keeps working
 
@@ -272,9 +273,9 @@ Earlier specs are frozen (maintainer ruling, 2026-10-15). What this spec changes
 - [ ] **AC-7.3** Given a printing with lots of one finish and price in Blue binder and in Long box, both "Near mint" When bulk "Set condition…" sets them to "Lightly played" Then each lot keeps its place, and lots merge only with a lot of the same printing, finish, price, new condition and place; the 9,999 check of spec 006 AC-6.4 holds per place.
 - [ ] **AC-7.4** Given a bulk removal of lots in Blue binder and unplaced When its Undo is used Then the lots come back in Blue binder and unplaced, merging per place (spec 006 AC-7.4).
 - [ ] **AC-7.5** Given the Undo of AC-7.4 after the location was removed (it was empty once the lots went) When it is used Then those lots come back unplaced and the notice adds how many came back without a location (P5).
-- [ ] **AC-7.8** Given a bulk removal of a lot in Blue binder and an unplaced lot of the same printing, finish, condition and price, then Blue binder removed When the Undo is used Then one unplaced lot results with the summed quantity; given the sum passes 9,999 Then the Undo is refused as the cap rule of spec 006 AC-7.5 says and nothing is restored; given a removal made before the migration (its saved lots have no location) Then its lots come back unplaced.
 - [ ] **AC-7.6** Given a typed line or a scanner entry whose lot was then moved whole to an empty place (no merge) When its Undo is used Then the copies come out of that lot where it is now (spec 026 AC-3.5); given the move merged the lot into another Then the line can no longer be undone (spec 026 AC-3.4); given a move that left the lot with fewer copies than the line added Then a number-entry line can no longer be undone (spec 026 AC-3.4) and a scanner entry follows its own rule.
 - [ ] **AC-7.7** Given a single lot removed (spec 004 AC-10.4) When it was in a location Then it is removed as before, its location is untouched, and the earlier bulk removal can no longer be undone (spec 006 AC-7.6).
+- [ ] **AC-7.8** Given a bulk removal of a lot in Blue binder and an unplaced lot of the same printing, finish, condition and price, then Blue binder removed When the Undo is used Then one unplaced lot results with the summed quantity; given the sum passes 9,999 Then the Undo is refused as the cap rule of spec 006 AC-7.5 says and nothing is restored; given a removal made before the migration (its saved lots have no location) Then its lots come back unplaced.
 
 ### Story 8: The export carries each lot's place
 
@@ -299,10 +300,10 @@ Earlier specs are frozen (maintainer ruling, 2026-10-15). What this spec changes
 
 **Acceptance criteria:**
 
-- [ ] **AC-9.1** Given `docs/export-format/README.md` When it is read Then it defines version 3: each lot's `location` (a name that follows the Names rules, or `null`; always present), the six-value lot identity, the new well-formedness rule `unknown_location`, `duplicate_lot` over six values, the comparison of a lot's location in "The same collection", the version history and the rewritten expected-changes sentence; and it is updated wherever it says "1 or 2", "All seven fields are always present", "five values" or "the rules are the same for both".
+- [ ] **AC-9.1** Given `docs/export-format/README.md` When it is read Then it defines version 3: each lot's `location` (a name that follows the Names rules, or `null`; always present), the six-value lot identity, the new well-formedness rule `unknown_location`, `duplicate_lot` over six values, the comparison of a lot's location in "The same collection", the version history and the rewritten expected-changes sentence; and it is updated wherever it names two versions or five values: "state the same rules for a program, one for each version" and "checks against both", "1 or 2", "Version 2 only" (it becomes "From version 2"), a lot's sharing "a finish, a condition and a price paid", "in version 2 a lot carries no reference to one" (it gains "from version 3, …"), "share all five values", "files of both versions", "All seven fields are always present", and "the rules are the same for both". It also says that a version 1 or 2 lot says nothing about its place, that Collector reads such a lot as unplaced because applying is a restore (decision 7), and that a missing `location` in a version 3 file is malformed.
 - [ ] **AC-9.2** Given `docs/export-format/v3.schema.json` and the app's copy in `app/models/export_format/` When compared Then they are byte-identical (ADR 0021), `v1.schema.json`, `v2.schema.json`, their examples and their app copies are unchanged byte for byte, and `ExportFormat::Rules` reads each version against its own schema.
-- [ ] **AC-9.3** Given the Coverage tables When the suite compares them with the database Then `lots.location_id` is listed with `location` as its field, and the suite fails without that line.
-- [ ] **AC-9.4** Given the valid examples When they are checked Then there are: a collection with lots in two locations, a printing in two locations, an unplaced lot and an empty location; an empty version 3 file; a lot whose location is written in NFD, or in another case ("box" for a listed "Box"), for a listed name (well-formed, matched on its comparison key; like `locations-nfd.json` it re-exports with the stored spelling, so it is outside the round-trip check of AC-11.2); and a location of 60 code points on a lot.
+- [ ] **AC-9.3** Given the Coverage tables When the suite compares them with the database Then `lots.location_id` is listed with `location` as its field, and `lots.lot_key`'s "Why" (today "Derived from the finish, the condition and the price paid") adds the place; the suite fails without the `lots.location_id` line.
+- [ ] **AC-9.4** Given the valid examples When they are checked Then there are: a collection with lots in two locations, a printing in two locations, an unplaced lot and an empty location; an empty version 3 file; a lot whose location is written in NFD, or in another case ("box" for a listed "Box"), for a listed name (well-formed, matched on its comparison key; like `locations-nfd.json` it re-exports with the stored spelling, so it is outside the round-trip checks of AC-11.2 and AC-11.14); and a location of 60 code points on a lot.
 - [ ] **AC-9.5** Given the invalid examples and `problems.json` When they are checked Then each fails for the rule it names: a lot with no `location`; a `location` that is a number, `""`, padded, with a double space, with a tab, with a control character, or of 61 code points; a location the file's `locations` doesn't list (`unknown_location`, at `/lots/<i>/location`); and two lots of one printing, finish, condition and price in locations that differ only by case (`duplicate_lot`).
 - [ ] **AC-9.6** Given the comparison examples When they are checked Then files whose lots differ only in a lot's location are different collections, a lot written "box" against "Box" are different, and the same lots in another order are the same.
 - [ ] **AC-9.7** Given a lot's location string When the model and the schema judge it Then they agree for every Unicode scalar value, by the same definition as a location's name (spec 029 AC-7.8).
@@ -337,7 +338,7 @@ Earlier specs are frozen (maintainer ruling, 2026-10-15). What this spec changes
 **Acceptance criteria:**
 
 - [ ] **AC-11.1** Given a previewed version 3 file When it is applied Then every lot of the account ends in the location the file names, or none, in spec 028's one write transaction, with the locations written first so that each lot resolves to one of the account's locations by comparison key.
-- [ ] **AC-11.2** Given a collection with lots in two locations, a printing in both, an unplaced lot and an empty location, exported and applied to an empty account on the same catalog When the account is exported again Then the files are equal but for `exported_at` and the profile's name and email (spec 028 Story 6, spec 029 AC-9.15).
+- [ ] **AC-11.2** Given a collection with lots in two locations, a printing in both, an unplaced lot and an empty location, exported and applied to an empty account on the same catalog When the account is exported again Then the files are equal but for `exported_at` and the profile's name and email (spec 028 Story 6; spec 029 AC-9.15 as AC-11.14 reads it).
 - [ ] **AC-11.3** Given a file that moves a lot from Long box to Blue binder When it is applied Then the account holds the lot in Blue binder and none in Long box, and the notice counts one lot added and one removed.
 - [ ] **AC-11.4** Given a version 1 or 2 file When it is applied to an account with placed lots Then the lots become the file's, unplaced, the removal needs spec 028's confirmation ("I understand this removes N lots…"), and, for version 2, the locations become the file's; for version 1, the locations are unchanged (spec 029 decision 10).
 - [ ] **AC-11.5** Given a file that renames "box" to "Box" When it is applied Then the location keeps its id, its lots stay in it unwritten, and exporting names it "Box".
@@ -349,6 +350,7 @@ Earlier specs are frozen (maintainer ruling, 2026-10-15). What this spec changes
 - [ ] **AC-11.11** Given a file naming a location "Box" and two accounts that each have one When the first applies Then its lots resolve to its own "Box", and the second's lots, locations and `updated_at` times are unchanged.
 - [ ] **AC-11.12** Given a collection of 50,000 lots each in one of 500 locations whose names are 60 CJK characters, and its export When the file is previewed and applied Then the file is under the 32 MB limit and spec 028's bars hold (the request under 30 seconds, the write transaction under its hard bar of 4 seconds, under 500 MB growth), with a bounded number of statements and none per lot or per location, recorded in `verification.md`. If the file passes the limit or a bar fails, the maintainer rules before release.
 - [ ] **AC-11.13** Given an apply that writes a lot When it finishes Then the working state is cleared as spec 028 decision 7 says; given one that writes no lot Then it is not (spec 029 AC-9.17).
+- [ ] **AC-11.14** Given each valid example under `docs/export-format/examples/valid/` of versions 1, 2 and 3 that resolves against the catalog the suite builds, except the two that re-export with a stored spelling (`locations-nfd.json` and the example of AC-9.4 with a lot's location in NFD or another case) When it is applied to an empty account and the account is exported Then the export is version 3 and equals the example but for `exported_at`, the profile's name and email, the version, for a version 1 example the empty `locations`, and for a version 1 or 2 example every lot's `"location": null`. This is how spec 029 AC-9.15 and spec 028 AC-6.4 read from now on, and the specs of the export (`spec/models/collection_export_spec.rb`, which compares with `valid/collection-v2.json`) and of the apply's round trip change accordingly.
 
 ## Functional Requirements
 
@@ -359,6 +361,7 @@ Earlier specs are frozen (maintainer ruling, 2026-10-15). What this spec changes
 - Allow a lot to be in one of its account's locations or in none, and never in another account's.
 - Merge copies of one identity into one lot at every point that merges today (add, edit, bulk set condition, bulk Undo, move), and cap a lot at 9,999 copies there as everywhere.
 - Leave every other way of adding or changing lots working, adding unplaced copies (Story 7).
+- Build a lot's key with its place everywhere a key is built: the place in the key is the location's **id**, so renaming a location keeps every key (AC-11.5), and an unplaced lot's key stays what it is today. See Notes for the plan.
 
 - Scope every lookup and write of locations and lots to the signed-in account (Story 6).
 
@@ -394,7 +397,7 @@ Earlier specs are frozen (maintainer ruling, 2026-10-15). What this spec changes
 **Must:**
 - Read versions 1 to 3 and refuse higher as newer.
 - Match rows to held lots on six values, the location by comparison key, and read older files' lots as unplaced (decision 7).
-- Resolve each lot's location to the account's own location, write locations before lots and delete lots before locations, in spec 028's one transaction.
+- Resolve each lot's location to the account's own location, write locations before lots and delete lots before locations, in spec 028's one transaction. Today's apply deletes removed lots, upserts lots, then writes locations, and builds every lot's attributes, key included, before the lock; a lot's key needs its location's id, so the order becomes: delete the removed lots, delete and upsert the locations, read the account's locations once (at most 500 rows), then build and upsert the lots, all inside the transaction. AC-11.12's bounded statement count includes that read.
 - Cover places in the plan, the "nothing to change" test, the fingerprint, the problem-row reasons and the lists.
 
 **Must not:**
@@ -426,7 +429,7 @@ Earlier specs are frozen (maintainer ruling, 2026-10-15). What this spec changes
 
 ### Cost per account (hosted-door rule 4)
 
-One integer per lot, and one index entry: about 16 bytes a lot, so about 80 KB for a 5,000-lot collection and 0.8 MB for 50,000. No new table, background work, cache entry or job. An export grows by `"location":null,` (16 bytes) per unplaced lot or the field name and the value (typically under 50 bytes; at most about 195 bytes for 60 CJK characters) per placed lot. AC-11.12 measures 50,000 lots in 60-character locations against the 32 MB limit on an import (`CollectionImport::MAX_BYTES`).
+One integer per lot, its index entry (the rules index every foreign key) and, for a placed lot, the place in the lot key: about 30 bytes a placed lot and fewer for an unplaced one, so about 150 KB for a 5,000-lot collection and 1.5 MB for 50,000, at most. No new table, background work, cache entry or job. An export grows by `"location":null,` (16 bytes) per unplaced lot or the field name and the value (typically under 50 bytes; at most about 195 bytes for 60 CJK characters) per placed lot. AC-11.12 measures 50,000 lots in 60-character locations against the 32 MB limit on an import (`CollectionImport::MAX_BYTES`).
 
 ## Error Scenarios
 
@@ -449,13 +452,21 @@ One integer per lot, and one index entry: about 16 bytes a lot, so about 80 KB f
 | A lot moved or a location changed between preview and apply | 409, fresh preview, nothing written (AC-11.6, AC-11.7) |
 | A write fails during the apply | The whole transaction rolls back (AC-11.10) |
 | Delete a user whose account has placed lots | The lots go first, then the locations; it succeeds (AC-6.6) |
-| A lot is added into a location while it is removed | 404 or 409, never 500 (AC-6.7) |
+| A lot is added, edited or moved into a location while it is removed | 404 (or 422 with the form again) or 409, never 500 (AC-6.7) |
 | Roll back the migration with placed lots | Refused with a message (Reliability) |
 | Signed-out visitor | Sent to sign in; a write with no session fails forgery protection (AC-6.5) |
 
 ## Open Questions
 
-The details P1–P6 are proposed and wait for the maintainer's confirmation, which comes with approving the spec; the plan starts after the approval. None of them changes decisions 1–7. No `[NEEDS CLARIFICATION]` marker remains.
+The details P1–P6 were confirmed by the maintainer as proposed on 2026-10-23; none of them changes decisions 1–7. The plan starts after the maintainer approves the spec. No `[NEEDS CLARIFICATION]` marker remains.
+
+## Notes for the plan
+
+Not criteria; points the plan must keep (from the reviews):
+
+- **The lot key.** SQLite treats NULLs in a unique index as distinct, so the place goes into `lot_key` for a placed lot (the location's id; unplaced keys unchanged). Four places build a key and all four carry the place: `Lot.key_for`, `BulkRemoval#identity` and its raw `insert_all`, the SQL `update_all` in `Lot::ConditionChange#update_alone!`, and the apply's attribute builder with its `unique_by: [account_id, catalog_entry_id, lot_key]`. `BulkRemoval.remove!` must save each lot's location too.
+- **Deleting an account** needs lots deleted before locations; the new restrict foreign key makes the order of the `has_many` declarations matter, and AC-6.6's test guards it.
+- **A problem row** for `unknown_location` is excluded from the reader's `failed` set the way `duplicate_lot` is, so its identity stays readable (AC-10.3).
 
 ## Out of Scope (Future Considerations)
 
