@@ -5,6 +5,8 @@
 **Created:** 2026-10-07
 **Last Updated:** 2026-10-07
 **Branch:** `012-ghcr-registry-publishing`
+**Frozen:** the current rules are in [`release-and-deploy.md`](../../architecture/release-and-deploy.md) (whole spec); see the [specs index](../README.md)
+**Plan:** retired in `a41bd089232414faafa7f6623b5e79d10997b8f6`; read it with `git show a41bd089232414faafa7f6623b5e79d10997b8f6^:docs/specs/012-ghcr-registry-publishing/plan.md`
 
 ---
 

@@ -6,7 +6,7 @@
 **Last Updated:** 2026-10-15
 **Branch:** `025-import-preview`
 **Issue:** [#39](https://github.com/plainprogrammer/Collector/issues/39)
-**Frozen:** the current rules are in [`data-portability.md`](../../architecture/data-portability.md) (parts: all but decision 6's request body limit); see the [specs index](../README.md)
+**Frozen:** the current rules are in [`data-portability.md`](../../architecture/data-portability.md) (parts: all but decision 6's request body limit) and [`release-and-deploy.md`](../../architecture/release-and-deploy.md) (parts: decision 6, the request body limit); see the [specs index](../README.md)
 **Plan:** retired in `f62edb57955f78aca0836e16b3129e9cb29219ea`; read it with `git show f62edb57955f78aca0836e16b3129e9cb29219ea^:docs/specs/025-import-preview/plan.md`
 
 ---
