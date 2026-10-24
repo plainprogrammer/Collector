@@ -357,7 +357,8 @@ Every table in Collector's database that belongs to an account or to a user is l
 | `lots.finish` | `finish` | |
 | `lots.condition` | `condition` | |
 | `lots.price_paid_cents` | `price_paid` | |
-| `lots.lot_key` | Left out | Derived from the finish, the condition and the price paid. |
+| `lots.location_id` | Left out | Not in the file until version 3 (spec 032, Phase 6 of its plan). |
+| `lots.lot_key` | Left out | Derived from the finish, the condition, the price paid and the location. |
 | `lots.created_at` | `added_at` | |
 | `lots.updated_at` | `changed_at` | |
 | `locations.id` | Left out | An internal id. |
