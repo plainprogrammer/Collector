@@ -1,6 +1,6 @@
 # Verification: Feature 030, Back Up and Restore an Instance
 
-- **Spec:** [spec.md](spec.md) (1.2.1), plan [plan.md](plan.md)
+- **Spec:** [spec.md](spec.md) (1.2.1), plan (retired in `c8706d3f9b7eb33b9f13388be5a15bec33f3ce76`; read it with `git show c8706d3f9b7eb33b9f13388be5a15bec33f3ce76^:docs/specs/030-backup-restore/plan.md`)
 - **Branch:** `030-backup-restore`
 - **Date:** 2026-10-22
 - **Executor:** Sonnet 5.5
