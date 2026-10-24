@@ -7,6 +7,7 @@
 **Branch:** `031-upgrade-from-previous-release`
 **Issue:** [#42](https://github.com/plainprogrammer/Collector/issues/42)
 **Plan:** [plan.md](plan.md)
+**Frozen:** the current rules are in [`release-and-deploy.md`](../../architecture/release-and-deploy.md) (whole spec); see the [specs index](../README.md)
 
 ---
 
