@@ -28,4 +28,38 @@ RSpec.describe "Upgrade proof files" do
     expect(path.executable?).to be(true)
     expect(path.readlines.first).to eq("#!/usr/bin/env ruby\n")
   end
+
+  describe "the image job" do
+    let(:image_job) { workflow.dig("jobs", "image") }
+    let(:steps) { image_job["steps"] }
+    let(:names) { steps.map { it["id"] || it["name"] } }
+    let(:proof) { steps.find { it["run"].to_s.start_with?("bin/upgrade-smoke") } }
+    let(:ruby) { steps.find { it["uses"].to_s.start_with?("ruby/setup-ruby") } }
+
+    it "runs bin/upgrade-smoke for each architecture after the backup smoke test and before the push, on every event (AC-7.1)", :aggregate_failures do
+      expect(proof["run"]).to eq("bin/upgrade-smoke auto collector:smoke --platform ${{ matrix.platform }}")
+      expect(names.index(proof["name"])).to be_between(names.index("Backup smoke test"), names.index("push")).exclusive
+      expect(proof).not_to have_key("if")
+      expect(image_job.dig("strategy", "matrix", "include").size).to eq(2)
+    end
+
+    it "sets up the host Ruby for the comparer before it, outside the proof's own limit (decision 5, AC-7.4)", :aggregate_failures do
+      expect(names.index(ruby["name"])).to be < names.index(proof["name"])
+      expect(ruby["with"]).to include("bundler-cache" => true)
+      expect(image_job.dig("env", "BUNDLE_WITHOUT")).to eq("development:test")
+      expect(proof["timeout-minutes"]).to eq(12)
+    end
+
+    it "fetches the full history and the tags, because the proof resolves the previous release from them (AC-8.5)" do
+      expect(checkout("image").dig("with", "fetch-depth")).to eq(0)
+    end
+
+    it "adds no secret, login or permission of its own, and can't be skipped past (AC-1.6, AC-7.2, FR-6)", :aggregate_failures do
+      expect(proof.to_s).not_to include("secrets.")
+      expect(proof).not_to have_key("continue-on-error")
+      expect(image_job).not_to have_key("continue-on-error")
+      expect(image_job["permissions"]).to eq("contents" => "read", "packages" => "write")
+      expect(workflow.dig("jobs", "publish", "needs")).to eq("image")
+    end
+  end
 end
