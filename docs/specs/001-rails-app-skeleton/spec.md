@@ -6,6 +6,7 @@
 **Last Updated:** 2026-09-29
 **Branch:** `feat/001-rails-app-skeleton`
 **Frozen:** the current rules are in [`release-and-deploy.md`](../../architecture/release-and-deploy.md) (whole spec; its stack, CI and hooks parts are kept in CLAUDE.md); see the [specs index](../README.md)
+**Plan:** retired in `96d5e651ea8a2696f6372ecc41907a2d20a2efe1`; read it with `git show 96d5e651ea8a2696f6372ecc41907a2d20a2efe1^:docs/specs/001-rails-app-skeleton/plan.md`
 
 ---
 
