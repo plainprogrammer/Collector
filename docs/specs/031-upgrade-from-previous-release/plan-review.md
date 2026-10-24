@@ -37,8 +37,8 @@ Review: `sdd-superpowers:sdd-review`, Opus, read-only, 2026-10-24, of branch `03
 | **m5** failure messages print seed values | Failures name a collector by position (`collector 1 of 2`) and give counts for names and locations (`who` helper); the three harness examples assert the counts and that the email, card and location names are absent. |
 | **m6** AC-6.5 builds `4cd1ef5` locally | The hand run pulls `ghcr.io/plainprogrammer/collector:sha-4cd1ef5` and passes it as the previous image; a local build is the fallback only if the tag is missing, with the deviation recorded in `verification.md`. |
 | **m7** a pushed branch runs no CI | The AC-7.2 recipe opens a draft pull request from the throwaway branch, and says the tag's own run is the one to read. |
-| **m8** `RESTORE_ENDS_SESSIONS` hard-coded | **Taken with a different mechanism from the review's first option.** The spec (1.1.2) names exactly these four tables and "nothing else", so a set derived at run time would silently allow a future cascading table. Instead a `rules_spec` example computes the `on_delete: :cascade` closure from `sessions` in the application's schema and fails in `bin/ci` when it differs from the constant, with a message to update the constant and the spec (a PATCH). The leg's `not_emptied` message names spec 031 decision 7, so its advice is no longer the migration hint. |
-| **m9** image version label not printed | The `previous:` line prints `version <label>`; the AC-1.3 example expects `version `. |
+| **m8** `RESTORE_ENDS_SESSIONS` hard-coded | **Taken with a different mechanism from the review's first option.** The spec (1.1.2) names exactly these four tables and "nothing else", so a set derived at run time would silently allow a future cascading table. Instead an `expected_changes_spec` example computes the `on_delete: :cascade` closure from `sessions` in the application's schema and fails in `bin/ci` when it differs from the constant, with a message to update the constant and the spec (a PATCH). The leg's `not_emptied` message names spec 031 decision 7, so its advice is no longer the migration hint. |
+| **m9** image version label not printed | The `previous:` line prints `version <label>`; the AC-1.3 example expects `version 0.2.1` (added in the second round, N1). |
 | **m10a** guard script example inherits `GITHUB_REF_*` | The example passes `GITHUB_REF_TYPE=branch` and `GITHUB_REF_NAME=main` explicitly. |
 | **m10b** `upgrade_fakes.rb` "loads nothing until required" | Comment corrected: `rails_helper` loads `spec/support`, so the suite needs `engine.rb` and `web.rb`; the red step may fail with `cannot load such file`. |
 | **m10c** commit trailer names Sonnet 5.5 | The conventions paragraph now says to use the trailer the executing session's attribution gives. |
@@ -56,3 +56,18 @@ Each fix was read against the plan's own code and the files it edits (`.rubocop.
 
 - Approval of the revised plan.
 - The first CI run still decides P10 (the job-level `BUNDLE_WITHOUT` and the arm64 bundle install), as research section 6 says.
+
+## Second round (Sonnet, read-only, 2026-10-24)
+
+Verdict APPROVE WITH NITS: 0 critical, 0 major, 4 minor. All four are folded into `plan.md`.
+
+| ID | Fix |
+|---|---|
+| **N1** m9 claim unproven | The AC-1.3 example now includes `"version 0.2.1"`, and the m9 row above says so. |
+| **N2** Phase 10 `ci.yml:NN` list incomplete | The parenthetical list is replaced by "every citation of a line after line 20", checked all. |
+| **N3** README Areas cell and the log row's owner | Phase 10 edits the Areas row of `docs/architecture/README.md` (adds 031, narrows spec 030's "all but"); `distill-feature` writes the Distillation log row, Phase 10 leaving the date and pull request as placeholders for it. |
+| **N4** "rules_spec" naming | Plan and this file say `expected_changes_spec` (`spec/script/upgrade/expected_changes_spec.rb`). |
+
+## Approval
+
+The maintainer approved the plan on 2026-10-24 after its two reviews, with these nits folded in, and chose Sonnet for the execution (`plan.md` header).
