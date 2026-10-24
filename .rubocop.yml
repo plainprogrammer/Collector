@@ -59,6 +59,7 @@ RSpec/DescribeClass:
     - "spec/network_isolation_spec.rb"
     - "spec/number_entry_core_spec.rb"
     - "spec/project_config_spec.rb"
+    - "spec/script/upgrade/files_spec.rb"
     - "spec/tasks/collector_rake_spec.rb"
 
 # Integration-style examples need setup → act → assert; the default 5 lines is too tight.
