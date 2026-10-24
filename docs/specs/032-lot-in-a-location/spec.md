@@ -1,9 +1,9 @@
 # Feature 032: Put a Lot in a Location
 
 **Status:** Approved by the maintainer (2026-10-23). The maintainer's rulings D1–D6 (2026-10-23; decision 3 against the draft's recommendation) are recorded as decisions 1–7 below (D1–D3 are decisions 1–3, D5 is decision 7, D4 and D6 are decisions 4–6), and the maintainer confirmed the details P1–P6 as proposed on 2026-10-23. Two independent reviews are in `review.md` (round 1 NEEDS REVISION, fixed in 0.2.0; round 2 NEEDS REVISION, text only, fixed in 1.0.0)
-**Version:** 1.0.1
+**Version:** 1.0.2
 **Created:** 2026-10-23
-**Last Updated:** 2026-10-23
+**Last Updated:** 2026-10-24
 **Depends on:** [spec 029](../029-manage-locations/spec.md) (manage locations, issue #44; merged) and, through it, [spec 028](../028-apply-import/spec.md) (apply an import, issue #40; merged). Spec 031 (#42, an upgrade check in CI) touches CI only and is independent
 **Branch:** `032-lot-in-a-location`
 **Issue:** [#45](https://github.com/plainprogrammer/Collector/issues/45)
@@ -15,6 +15,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.0.2 | 2026-10-24 | The maintainer's ruling O1 on the plan review (`plan-review.md`): the import preview lists only removed lots and problem rows (spec 025 decision 11), so "in <location>" goes on those two lists and the counts stand for the added and changed lots; no list of added or changed lots is built. AC-10.7 and AC-10.9 reworded; no other criterion changes and no code built to 1.0.1 changes |
 | 1.0.1 | 2026-10-23 | Approved by the maintainer (rulings D1–D6 and details P1–P6 as recorded; both reviews' findings fixed in 0.2.0 and 1.0.0). Status line only; no criterion changes |
 | 1.0.0 | 2026-10-23 | From the second independent review (`review.md`, round 2): P1–P6 confirmed by the maintainer; the header and Decisions intro map the maintainer's D1–D6 to decisions 1–7; the round trips of spec 029 AC-9.15 and spec 028 AC-6.4 are superseded, as AC-11.14 reads them from now on; the card page's "Your copies" covers every printing of the card, and the row order is stated (AC-4.1, AC-4.2); the survivor of a whole move that merges is the destination's lot (P6); AC-6.7's race covers the edit and the move; AC-9.1 lists every sentence of the format document that changes and the reader's rule for older lots, AC-9.3 adds `lots.lot_key`; the apply's write order and the place in the lot key are stated (FR-1, FR-4, Notes for the plan); the Supersedes table and the index complete (spec 029 decision 10, spec 025 decision 9, ADR 0023's read-versions bullet); criteria in numeric order; the cost per account counts the index and the key |
 | 0.2.0 | 2026-10-23 | From the independent review (`review.md`): a row with an unlisted location keeps a readable identity (AC-10.3); a bulk Undo merges restored rows with each other and survives a removal made before the migration (AC-7.5, AC-7.8); a lot's location is matched by comparison key and re-exports with the stored spelling (AC-9.4); the edit form is reached from the table and the scanner too (decision 4, AC-2.8); deleting an account with placed lots (AC-6.6); the migration names every table that points at lots (AC-7.1); the worst-case file for the apply's bars (AC-11.12); Open Questions made consistent; Given/When/Then gaps and smaller points closed |
@@ -324,9 +325,9 @@ Earlier specs are frozen (maintainer ruling, 2026-10-15). What this spec changes
 - [ ] **AC-10.4** Given a version 1 or 2 file When it is previewed Then the page says "This file was written before lots could be in a location, so its lots would be in none.", its rows are matched with unplaced lots only, and a held lot in a location is reported removed (decision 7).
 - [ ] **AC-10.5** Given an account with 4 copies in Blue binder and a version 2 file with the same printing, finish, condition and price When it is previewed Then the preview shows one lot added (4 copies) and one removed (4 copies); and given an unplaced held lot of 4 with the file's times instead Then it is unchanged.
 - [ ] **AC-10.6** Given the account's own version 3 export When it is previewed Then nothing would change, and the page says so as spec 028 requires.
-- [ ] **AC-10.7** Given a file that moves one lot from Long box to Blue binder and changes nothing else When it is previewed Then the page offers the apply: one lot added in Blue binder, one removed from Long box.
+- [ ] **AC-10.7** Given a file that moves one lot from Long box to Blue binder and changes nothing else When it is previewed Then the page offers the apply: one lot added and one removed (the counts), and the removed lot's line says it was in Long box.
 - [ ] **AC-10.8** Given a file that renames "box" to "Box" and changes nothing else When it is previewed Then the Locations section lists the rename, the lots in it are unchanged, and nothing is added or removed.
-- [ ] **AC-10.9** Given the lists of added, changed and removed lots When they name a lot Then they add "in <location>" for a placed lot (the file's spelling for added and changed lots, the held one for removed lots), in the first 100 and "and N more" as spec 025 decision 11 says.
+- [ ] **AC-10.9** Given the lists the preview shows, the removed lots and the problem rows (spec 025 decision 11; added and changed lots are counts only) When they name a lot Then they add "in <location>" for a placed lot (the held one's for a removed lot, the file's spelling for a problem row), in the first 100 and "and N more" as spec 025 decision 11 says.
 - [ ] **AC-10.10** Given a version 3 file that removes a location When it is previewed Then every held lot in it is among the removed lots, and the Locations section lists the location as removed.
 - [ ] **AC-10.11** Given two accounts When one previews a file Then only its own lots and locations are read, and no name of the other's appears.
 
