@@ -1,7 +1,7 @@
 # Feature 031: Prove an Upgrade from the Previous Release in CI
 
-**Status:** Draft (awaiting the maintainer's approval; decisions 1 to 10 ruled on 2026-10-23)
-**Version:** 1.1.0
+**Status:** Approved by the maintainer (2026-10-23), with rulings on decisions 1 to 10 (decisions 1 to 3 as ruled in 1.0.0; 4 to 10 confirmed as recommended); both Mode A reviews' findings fixed (version 1.1.1)
+**Version:** 1.1.1
 **Created:** 2026-10-23
 **Last Updated:** 2026-10-23
 **Branch:** `031-upgrade-from-previous-release`
@@ -14,6 +14,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.1.1 | 2026-10-23 | Approved by the maintainer. Status and the Open Questions line only; no requirement, criterion or decision changes (PATCH) |
 | 1.1.0 | 2026-10-23 | Revised after the second Mode A review (`review.md`, round 2), and the maintainer's rulings recorded: decisions 4 to 10 confirmed as recommended (ruled 2026-10-23). `next.rb` gets the coverage rule, with its exceptions under a `next` key that the release step renames (AC-2.6, decisions 5 and 9); both databases are read as a consolidated snapshot of a cleanly stopped copy, taken before any behaviour check (AC-2.4, AC-2.9, decision 5); the harness runs on a host Ruby set up in the image job (decision 5, AC-8.3, time bar); the hand run uses `--previous-ref` (decision 2, AC-6.5); AC-5.3 checks the sign-up form, not the status; spec 030's *Superseded by* cell recorded (AC-9.3); one resolver for the tag being built (AC-1.7); digest encoding, expected-change versions checked, step 5 only replaced, testable AC-5.7, the failing-tag test described, and the limit of a schema-loaded old database named |
 | 1.0.1 | 2026-10-23 | Revised after the Mode A review (`review.md`): expected-change entries retire instead of failing after a tag; both checkouts fetch tags; helpers under `script/upgrade/`; seed fills sign-up open and the catalog directly; seed exceptions listed; `rows_added`; command allowlist (AC-8.3 replaces the ordering rule, which was wrong: Rails runs any pending version); backup leg proved by hand now (AC-6.5); supersession of 030 decision 14 recorded; pull credentials, publish gating and time-bar wording corrected |
 | 1.0.0 | 2026-10-23 | First draft. Decisions 1 to 3 ruled by the maintainer on 2026-10-23 (the layers, which release, failure rules); decisions 4 to 10 are recommendations |
@@ -321,7 +322,7 @@ Each is verified by reading, except the workflow, the scripts and the guard, whi
 
 ## Open Questions
 
-None. Decisions 1 to 10 were ruled by the maintainer on 2026-10-23 (4 to 10 as recommended). What remains is the maintainer's approval of this version, the hard gate before a plan.
+None. Decisions 1 to 10 were ruled by the maintainer on 2026-10-23 (4 to 10 as recommended). The maintainer approved the spec on 2026-10-23.
 
 ## Out of Scope
 
