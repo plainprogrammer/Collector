@@ -77,9 +77,7 @@ RSpec.describe AddLocationToLots, :backup, :committed, type: :model do
   end
 
   it "refuses to go down while a lot is in a location, saying how many", :aggregate_failures do
-    lot = owned_printing("Opt", account:)
-    location = create(:location, account:)
-    Lot.connection.execute("UPDATE lots SET location_id = #{location.id.to_i} WHERE id = #{lot.id.to_i}") # the model has no place yet (Phase 1)
+    create(:lot, account:, location: create(:location, account:))
     expect { migration.migrate(:down) }.to raise_error(ActiveRecord::IrreversibleMigration, /1 lot/) # Migration#migrate itself: the Migrator would re-wrap the error
     expect(Lot.connection.column_exists?(:lots, :location_id)).to be(true)
   end
