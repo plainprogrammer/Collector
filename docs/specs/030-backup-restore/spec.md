@@ -6,6 +6,7 @@
 **Last Updated:** 2026-10-21
 **Branch:** `030-backup-restore`
 **Issue:** [#41](https://github.com/plainprogrammer/Collector/issues/41)
+**Frozen:** the current rules are in [`release-and-deploy.md`](../../architecture/release-and-deploy.md) (parts: backup and restore, all but decision 11, the export versus the backup); see the [specs index](../README.md)
 **Plan:** retired in `c8706d3f9b7eb33b9f13388be5a15bec33f3ce76`; read it with `git show c8706d3f9b7eb33b9f13388be5a15bec33f3ce76^:docs/specs/030-backup-restore/plan.md`
 
 ---
