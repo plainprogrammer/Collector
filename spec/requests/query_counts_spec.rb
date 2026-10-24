@@ -55,6 +55,24 @@ RSpec.describe "Page query counts", type: :request do
     expect(queries_for(new_location_removal_path(location))).to eq(few)
   end
 
+  it "keeps the card page's queries independent of the number of placed lots (spec 032 NFR)" do
+    entry = printing
+    own(entry, location: create(:location, account: user.account))
+    few = queries_for(catalog_entry_path(entry))
+    19.times { |n| own(entry, location: create(:location, account: user.account), price_paid_cents: n) }
+
+    expect(queries_for(catalog_entry_path(entry))).to eq(few)
+  end
+
+  it "keeps the add form's queries independent of the number of locations (spec 032 NFR)" do
+    entry = printing
+    create(:location, account: user.account)
+    few = queries_for(new_catalog_entry_lot_path(entry))
+    29.times { create(:location, account: user.account) }
+
+    expect(queries_for(new_catalog_entry_lot_path(entry))).to eq(few)
+  end
+
   it "keeps search's queries independent of the number of result groups" do
     own(printing)
     printing(identity: Catalog::Identity.sole)

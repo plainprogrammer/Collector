@@ -11,6 +11,12 @@ module LotsHelper
     lot.vocabulary.special_finishes.include?(lot.finish) ? render("catalog/entries/finish_badge", label:) : tag.span(label, class: "is-muted")
   end
 
+  # Where a lot is kept, for a table cell (spec 032 Story 4).
+  def lot_place(lot) = lot.location&.name || "No location"
+
+  # Names a row's actions menu; a split leaves two rows of one printing and condition, so the place tells them apart.
+  def lot_actions_label(lot) = "Actions for #{set_number(lot.entry)} #{lot_condition(lot)}#{lot.location ? " in #{lot.location.name}" : ", no location"}"
+
   def lot_condition(lot) = lot.condition ? lot.vocabulary.conditions.fetch(lot.condition).last : "—"
 
   def lot_price(lot) = lot.price_paid ? number_to_currency(lot.price_paid, unit: Rails.configuration.x.currency.symbol) : "—"

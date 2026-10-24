@@ -16,8 +16,9 @@ class Catalog::CardOverview
   def lots
     return [] unless @account
 
-    @lots ||= @account.lots.joins(:entry).where(catalog_entries: { catalog_identity_id: identity.id })
-      .includes(entry: :set).merge(Catalog::Entry.newest_first).order(:finish, :condition, :price_paid_cents).to_a
+    @lots ||= @account.lots.joins(:entry).left_joins(:location).where(catalog_entries: { catalog_identity_id: identity.id })
+      .includes(entry: :set).preload(:location).merge(Catalog::Entry.newest_first).order(:finish, :condition, :price_paid_cents)
+      .order(Location.arel_table[:name_key].asc, Location.arel_table[:name].asc).to_a # unplaced first: NULL sorts first (spec 032 AC-4.1)
   end
 
   def owned_count = lots.sum(&:quantity)
