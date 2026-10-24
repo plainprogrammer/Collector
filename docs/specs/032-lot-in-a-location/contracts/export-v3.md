@@ -83,7 +83,7 @@ Each is made in `docs/export-format/README.md` and verified by reading, plus the
 
 | Component | Version 3 |
 |---|---|
-| `CollectionExport` | `FORMAT_VERSION = 3`; the lots are read with `lots.location_id` and each lot's `location` is the name of that id in the one read of the account's locations (never a second lookup, so a rename mid-export can't leave a lot naming an unlisted location; if an id is missing the reads repeat, at most 3 times), `null` when unplaced; the export stays deterministic (AC-8.5) |
+| `CollectionExport` | `FORMAT_VERSION = 3`; the lots are read with a `LEFT JOIN` to their location, so each lot's `location` is its name from the one statement that reads the lots (spec NFR Performance), `null` when unplaced; the account's locations are a second read, and if a lot's name is not among them (a rename or a removal between the two reads) both reads repeat, at most 3 times; the export stays deterministic (AC-8.5) |
 | `ExportFormat::Rules` | `VERSIONS = [1, 2, 3]`; `identity(lot, version)` returns six values; `unknown_location` (not judged when `/locations` failed); `duplicate_lot` on six; a `location` pointer is an identity field |
 | `CollectionImport` | reads 1 to 3; "This instance reads version 3."; held lots carry their place's key as the sixth identity value; a version 1 or 2 file's rows have `nil` there; a version 3 duplicate row reads "…, price and location as row M"; "in <location>" goes on the removed lots and the problem rows, the two lists the preview has (spec 1.0.2) |
 | `CollectionImport::Apply` | the order and the keys of Phase 7 |

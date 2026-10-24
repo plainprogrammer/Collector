@@ -54,7 +54,7 @@ The pages that gain a place must keep a fixed number of queries (NFR). Traced:
 - Move copies page: the lot, its entry and set, the account's locations (one), nothing per row.
 - Locations page: the list (one) and `Location::Holdings.counts` (two grouped queries: counts and sums), whatever the number of locations or lots.
 - Refusal page: the location, two totals, one list of at most 100 lots with `preload(entry: :set)`.
-- Export: the same two statements as before (the lots with `lots.location_id`, the locations); a lot's place is named from the locations read by id (R11).
+- Export: the same two statements as before (the lots with their location's name, the locations); a lot's place is its location's name from the lots' own statement (a `LEFT JOIN`), checked against the locations read, and the reads repeat on a mismatch (R11).
 
 `spec/requests/query_counts_spec.rb` already compares a page with little and with much data; Phases 3 to 5 add the new pages to it. Phase 8 records the numbers at 500 locations and 5,000 lots in `verification.md`.
 
@@ -78,7 +78,7 @@ Spec 031 is approved and being planned in parallel (branch `031-upgrade-from-pre
 
 **Found.** Yes. A location renamed between the reads, or created and filled after the locations were read, leaves a lot whose name isn't in the list. A read transaction would fix it, but Rails opens SQLite transactions IMMEDIATE (`sqlite3_adapter.rb:162`, `default_transaction_mode: :immediate`), so it would hold the write lock for the whole export (a 50,000-lot file takes seconds).
 
-**Decision.** Read the lots (with `lots.location_id`), then the locations (id and name), and name each lot's place from the second read by id. A rename can no longer disagree with itself; a creation after the lots were read is not referenced by any lot read. The one remaining gap, a location removed between the reads, shows as an id the second read lacks, and the two reads are repeated (at most 3 times, then `CollectionExport::Unsettled`). Same two statements as today, so the count doesn't grow with the lots.
+**Decision.** Read each lot's location name in the statement that reads the lots (`left_joins(:location)`; spec NFR Performance bullet 2, which a second lookup by id would have contradicted: plan review round 2, M2), then the account's locations, and check that every placed lot's name is among them; if not (a rename or a removal between the reads), repeat both reads, at most 3 times, then `CollectionExport::Unsettled`. A lot and its place cannot disagree; a creation after the lots were read is referenced by no lot read. Same two statements as today, so the count doesn't grow with the lots.
 
 **Not chosen.** A read transaction (the write lock above). Appending unlisted names to the list (writes a location that no longer exists under its old name).
 

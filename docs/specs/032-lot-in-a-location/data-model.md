@@ -66,7 +66,7 @@ Each saved lot gains `"location_id"` (an integer or `null`); the existing keys a
 | A location's lots and copies | `lots` grouped by `location_id` (one query for every location, `Location::Holdings.counts`; two for one location, `Location#holdings`) | locations page (P2), refusal page (P1) |
 | A printing's "Your copies" rows | the account's lots of every printing of the card, `LEFT JOIN locations`, ordered as today then by `locations.name_key`, `locations.name` (`NULL` first) | card page (AC-4.1) |
 | A held lot's place in a plan | `LEFT JOIN locations`; the identity's sixth value is `locations.name_key` | `CollectionImport` (AC-10.2) |
-| A lot's `location` in the export | `lots.location_id` looked up in the one read of the account's locations (Phase 7) | `CollectionExport` (AC-8.1, AC-8.3) |
+| A lot's `location` in the export | `LEFT JOIN locations` in the statement that reads the lots, `locations.name` (Phase 7; spec NFR Performance) | `CollectionExport` (AC-8.1, AC-8.3) |
 
 ## Cost per account
 
