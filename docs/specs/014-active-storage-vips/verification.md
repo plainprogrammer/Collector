@@ -1,6 +1,6 @@
 # Verification: Active Storage Variants with vips (spec 014)
 
-**Spec:** [spec.md](spec.md) v1.1.2 · **Plan:** [plan.md](plan.md) Phase 5 · **Recorded:** 2026-10-09 ·
+**Spec:** [spec.md](spec.md) v1.1.2 · **Plan:** plan (retired in `4691f7b64cbca464dae4c153f145a18f404e6f98`; read it with `git show 4691f7b64cbca464dae4c153f145a18f404e6f98^:docs/specs/014-active-storage-vips/plan.md`) Phase 5 · **Recorded:** 2026-10-09 ·
 **Branch:** `014-active-storage-vips`
 
 Evidence for every acceptance criterion. The suite examples are in
