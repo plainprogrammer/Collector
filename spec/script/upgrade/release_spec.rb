@@ -72,6 +72,19 @@ RSpec.describe Upgrade::Release, :git_sandbox, :upgrade do
       git!(dir, "remote", "add", "origin", "https://example.invalid/collector.git")
       expect { release(branch).previous }.to raise_error(described_class::TagsNotFetched, /fetch/i)
     end
+
+    it "tells a fork's contributor to fetch from the repository that publishes releases" do
+      commit_tags("work")
+      git!(dir, "remote", "add", "origin", "https://example.invalid/collector.git")
+      expect { release(branch).previous }.to raise_error(described_class::TagsNotFetched, /git fetch <upstream> --tags/)
+    end
+
+    it "is nil, not a fetch failure, when there is a remote and only a tag that is no release (AC-8.5)" do
+      commit_tags("work")
+      git!(dir, "tag", "nightly")
+      git!(dir, "remote", "add", "origin", "https://example.invalid/collector.git")
+      expect(release(branch).previous).to be_nil
+    end
   end
 
   describe "#building (AC-1.7)" do

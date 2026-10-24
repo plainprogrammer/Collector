@@ -59,7 +59,9 @@ module Upgrade
       @env = env
     end
 
-    def versions = git("tag", "--list").lines(chomp: true).filter_map { Version.parse(it) }
+    def tags = git("tag", "--list").lines(chomp: true)
+
+    def versions = tags.filter_map { Version.parse(it) }
 
     # The tag being built: the pushed tag; in GitHub Actions otherwise none (also when HEAD happens to be tagged, so the
     # ci and image jobs agree for one run); elsewhere the tag of highest precedence at HEAD, else none.
@@ -73,12 +75,13 @@ module Upgrade
     end
 
     # The newest stable tag, strictly older than the tag being built when one is. Nil when there is none: tags present
-    # and none stable, or no tags and no remote. A remote with no tags is a checkout that did not fetch them.
+    # and none stable, or no tags and no remote. A remote with no tag at all is a checkout that did not fetch them; a
+    # remote with only tags that are no release passes as "no previous release".
     def previous
       all = versions
-      if all.empty? && remote?
-        raise TagsNotFetched, "this checkout has a remote but no tags, so the previous release can't be found; " \
-          "fetch them (git fetch --tags, or fetch-depth: 0 in actions/checkout)"
+      if tags.empty? && remote?
+        raise TagsNotFetched, "this checkout has a remote but no tags, so the previous release can't be found; fetch them " \
+          "from the repository that publishes releases (git fetch <upstream> --tags, or fetch-depth: 0 in actions/checkout)"
       end
 
       ceiling = building
