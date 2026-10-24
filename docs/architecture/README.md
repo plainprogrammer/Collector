@@ -13,7 +13,7 @@ Lasting decisions are in [ADRs](../adr/README.md). What an agent needs before it
 | Collection and lots | not written yet | 004 (collection, adding cards); 006; 021 | [design system](../design-system/README.md) |
 | Tenancy and accounts | not written yet | 004 (accounts, users, admin users) | none |
 | Scanner | not written yet | 005; 007; 008; 009; 010; 011 (all but FR-2's build run) | none |
-| Data portability | not written yet | 017; 022; 025; 028 | [export format](../export-format/README.md) |
+| Data portability | [data-portability.md](data-portability.md) | 017; 022; 025 (all but decision 6's request body limit); 026 (the list left out of the export); 028 (all but the stored upload's retention and gate); 029 (format version 2, the export, the preview and the apply of locations); 030 (export versus backup) | [export format](../export-format/README.md) |
 | Release and deploy | not written yet | 001 (container, Compose, Kamal); 012; 013; 020; 025 (decision 6, the request body limit); 028 (stored upload retention, the sweep) | [releasing](../releasing.md) |
 
 Specs 001 (stack, CI, hooks), 003 and 014 describe the development environment. Its facts stay in CLAUDE.md, where an agent needs them first, and have no area doc; they freeze with the release and deploy area. Spec 004's design-system part is covered by [`docs/design-system/`](../design-system/README.md).
