@@ -5,6 +5,7 @@
 **Created:** 2026-09-29
 **Last Updated:** 2026-09-29
 **Branch:** `feat/001-rails-app-skeleton`
+**Frozen:** the current rules are in [`release-and-deploy.md`](../../architecture/release-and-deploy.md) (whole spec; its stack, CI and hooks parts are kept in CLAUDE.md); see the [specs index](../README.md)
 
 ---
 
