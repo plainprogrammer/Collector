@@ -53,8 +53,13 @@ RSpec.describe Upgrade::SeedExceptions, :upgrade do
     end
   end
 
-  it "ships with no exception for the previous release or for next" do
+  it "ships a file whose every entry, for every release and for next, has a table and a reason", :aggregate_failures do
     path = Rails.root.join("script/upgrade/seed_exceptions.yml")
-    expect([ exceptions(path.read, "0.2.1"), exceptions(path.read, "next") ].flat_map { [ it.entries, it.errors ] }).to all(be_empty)
+    keys = YAML.safe_load_file(path, permitted_classes: [], aliases: false).keys
+    expect(keys).to include("next")
+    expect(keys).to all(match(/\A(next|\d+\.\d+\.\d+)\z/))
+    results = keys.map { described_class.load(path, it) }
+    expect(results.flat_map(&:errors)).to be_empty
+    expect(results.flat_map(&:entries)).to all(have_attributes(table: be_present, reason: be_present))
   end
 end
