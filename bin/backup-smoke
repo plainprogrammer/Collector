@@ -7,8 +7,8 @@
 #
 #   bin/backup-smoke <image> [<restore-image>] [-- extra `run` flags, e.g. --platform linux/arm64]
 #
-# With a <restore-image> the backup is taken from <image> and restored into <restore-image> (issue #42 reuses this with the
-# previous release as <image>). Uses docker when present, else podman (override with CONTAINER_CLI). Exit status 0 means
+# With a <restore-image> the backup is taken from <image> and restored into <restore-image> (spec 031's backup leg does not use this:
+# bin/upgrade-smoke restores the backup of its own seed). Uses docker when present, else podman (override with CONTAINER_CLI). Exit status 0 means
 # every check passed; a failure names its step.
 set -euo pipefail
 
