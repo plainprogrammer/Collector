@@ -23,7 +23,7 @@ module Upgrade
 
     REPOSITORY = "ghcr.io/plainprogrammer/collector".freeze
     PULL_ATTEMPTS = 3
-    PERMANENT_PULL_FAILURE = /manifest unknown|not found|no matching manifest|unauthorized|denied|requested access|invalid reference/i
+    PERMANENT_PULL_FAILURE = /manifest unknown|not found|no matching manifest|unauthorized|denied|requested access|invalid reference|403 Forbidden/i
     SEED_LINE = "UPGRADE-SEED-COMPLETE ".freeze
     SECRET = "secret-of-the-previous-release-instance-0001".freeze
     RESTORE_SECRET = "a-different-secret-of-the-restored-instance-0002".freeze
