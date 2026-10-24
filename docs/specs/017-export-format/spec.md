@@ -7,6 +7,7 @@
 **Branch:** `017-export-format`
 **Issue:** [#37](https://github.com/plainprogrammer/Collector/issues/37)
 **Frozen:** the current rules are in [`data-portability.md`](../../architecture/data-portability.md) (whole spec); see the [specs index](../README.md)
+**Plan:** retired in `d586ff6f117b878fcb40f718e07dd8b832dc0dbc`; read it with `git show d586ff6f117b878fcb40f718e07dd8b832dc0dbc^:docs/specs/017-export-format/plan.md`
 
 ---
 
