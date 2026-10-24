@@ -56,3 +56,7 @@ No requirement, decision or design: the key, the restrict key, the refusal, vers
 | **m-e** O2 and O3 live only in the plan | Taken | Phase 8 step 8 lists O2 and O3 for `verification.md` beside O1, as plan-level rulings the spec has no sentence for (no spec change; the maintainer ruled the PATCH to O1 only) | plan.md Phase 8 step 8 |
 
 **Not taken:** none.
+
+## Approval
+
+The maintainer approved the plan on 2026-10-24 after the Opus review, the Sonnet second review and the two revisions above, accepted ADR 0025 (its Status line becomes Accepted in Phase 8 step 2, as the plan names) and chose Sonnet for execution.

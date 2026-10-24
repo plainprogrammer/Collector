@@ -1,7 +1,7 @@
 # Implementation Plan: Put a Lot in a Location
 
 **Spec:** docs/specs/032-lot-in-a-location/spec.md (v1.0.2: approved by the maintainer on 2026-10-23 as 1.0.1; PATCH 1.0.2 of 2026-10-24 records ruling O1)
-**Status:** Revised on 2026-10-24 for the independent read-only review (`plan-review.md`: 6 major and 11 minor findings, each mapped there to its fix) and the maintainer's rulings O1 to O3; awaiting the maintainer's approval. Plans here are not executed or test-run before approval: this plan was traced against the files it edits (research R1 to R10) and nothing was run.
+**Status:** **Approved by the maintainer on 2026-10-24** after an Opus review, a Sonnet second review and two revisions (`plan-review.md`); the maintainer accepted ADR 0025 (its Status changes in Phase 8) and chose Sonnet for execution. Before approval the plan was revised for the independent read-only review (`plan-review.md`: 6 major and 11 minor findings, each mapped there to its fix) and the maintainer's rulings O1 to O3. Plans here are not executed or test-run before approval: this plan was traced against the files it edits (research R1 to R10) and nothing was run.
 **Decisions:** docs/adr/0025-a-lots-location-is-part-of-its-identity.md (Proposed, written with this plan; accepted in Phase 8 when the maintainer approves the plan). ADRs 0016, 0017, 0019, 0020, 0021, 0022 and 0023 apply
 **Created:** 2026-10-23 (on `origin/main` at `b873304`, after PR #129 added the data portability area doc)
 **Supporting:** [data-model.md](data-model.md), [contracts/api.md](contracts/api.md), [contracts/export-v3.md](contracts/export-v3.md), [research.md](research.md)
