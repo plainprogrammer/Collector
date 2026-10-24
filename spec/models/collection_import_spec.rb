@@ -77,9 +77,9 @@ RSpec.describe CollectionImport, type: :model do
     end
 
     it "refuses a newer version as newer, before the schema (AC-3.2)", :aggregate_failures do
-      expect(refusal_of(file([], format_version: 3).except("lots", "profile"))).to eq(
-        [ "newer_version", "/format_version", "This file was written by a newer version of Collector (format version 3). This instance reads version 2." ])
-      expect(refusal_of(file([], format_version: 3.0)).first).to eq("newer_version")
+      expect(refusal_of(file([], format_version: 4).except("lots", "profile"))).to eq(
+        [ "newer_version", "/format_version", "This file was written by a newer version of Collector (format version 4). This instance reads version 3." ])
+      expect(refusal_of(file([], format_version: 4.0)).first).to eq("newer_version")
       expect(import(file([], format_version: 1.0))).not_to be_refused
     end
 
@@ -410,6 +410,127 @@ RSpec.describe CollectionImport, type: :model do
 
       expect(location_names(import(file_v2([], locations: [ "Mine" ])))).to eq([ [], [], [] ])
       expect(location_names(import(file_v2([], locations: [])))).to eq([ [], [], [ "Mine" ] ])
+    end
+  end
+
+  # A version 3 file (spec 032): its lots say where they are.
+  def row_in(entry, location, **options) = row(entry, **options).merge("location" => location)
+
+  def file_v3(lots, locations: [], **fields) = file(lots, format_version: 3, locations: locations.map { |name| { "name" => name } }, **fields)
+
+  def removed_lines(preview) = preview.removed_lots.map { |lot| [ lot.location, lot.quantity ] }
+
+  describe "version 3 (spec 032 decision 7)" do
+    it "reads versions 1, 2 and 3, each against its own schema (AC-10.1)", :aggregate_failures do
+      expect(import(file_v3([]))).not_to be_refused
+      expect(import(file_v3([], format_version: 3.0))).not_to be_refused
+      expect(reasons(import(file_v2([ row(printing) ]).merge("format_version" => 3)))).to eq(1 => [ "location is missing" ])
+    end
+
+    it "matches a held lot on printing, finish, condition, price paid and location, 'box' being 'Box' (AC-10.2)", :aggregate_failures do
+      a = printing
+      create(:location, account:, name: "Box")
+      held(a, quantity: 2, location: account.locations.first)
+      same = import(file_v3([ row_in(a, "box", quantity: 2) ], locations: [ "box" ]))
+      elsewhere = import(file_v3([ row_in(a, nil, quantity: 2) ], locations: [ "box" ]))
+
+      expect([ same.unchanged.lots, same.added.lots, same.removed.lots ]).to eq([ 1, 0, 0 ])
+      expect([ elsewhere.unchanged.lots, elsewhere.added.lots, elsewhere.removed.lots ]).to eq([ 0, 1, 1 ])
+    end
+
+    it "makes a problem row of a lot whose location the file doesn't list, holding back the lot it matches (AC-10.3)", :aggregate_failures do
+      a = printing
+      create(:location, account:, name: "Box")
+      lot = held(a, quantity: 2, location: account.locations.first)
+      preview = import(file_v3([ row_in(a, "Box", quantity: 2) ], locations: [ "Crate" ]))
+
+      expect(preview).not_to be_applicable
+      expect(reasons(preview)).to eq(1 => [ "Its location “Box” isn't one of the file's locations." ])
+      expect(preview.removed.lots).to eq(0)
+      expect(preview.held.lots).to eq(1)
+      expect(preview.lots_held_by_problem_rows.map(&:id)).to eq([ lot.id ])
+    end
+
+    it "reads a version 1 or 2 file's lots as unplaced: they match unplaced held lots only (AC-10.4, AC-10.5)", :aggregate_failures do
+      a = printing
+      b = printing
+      create(:location, account:, name: "Box")
+      held(a, quantity: 2, location: account.locations.first)
+      held(b, quantity: 3)
+      held(b, quantity: 1, finish: "foil", location: account.locations.first)
+      [ import(file([ row(a, quantity: 2), row(b, quantity: 4), row(b, quantity: 1, finish: "foil") ])),
+        import(file_v2([ row(a, quantity: 2), row(b, quantity: 4), row(b, quantity: 1, finish: "foil") ], locations: [ "Box" ])) ].each do |preview|
+        expect([ preview.added.lots, preview.changed.lots, preview.unchanged.lots, preview.removed.lots ]).to eq([ 2, 1, 0, 2 ])
+        expect(removed_lines(preview)).to contain_exactly([ "Box", 2 ], [ "Box", 1 ])
+      end
+    end
+
+    it "has nothing to change for the account's own version 3 file (AC-10.6)", :aggregate_failures do
+      a = printing
+      create(:location, account:, name: "Box")
+      held(a, quantity: 2, location: account.locations.first)
+      held(a, quantity: 5)
+      preview = import(file_v3([ row_in(a, "Box", quantity: 2), row_in(a, nil, quantity: 5) ], locations: [ "Box" ]))
+
+      expect(preview.plan.nothing_to_change?).to be(true)
+    end
+
+    it "adds one lot and removes one for a file that moves a lot between places, naming the place it leaves (AC-10.7)", :aggregate_failures do
+      a = printing
+      create(:location, account:, name: "Long box")
+      create(:location, account:, name: "Blue binder")
+      held(a, quantity: 2, location: account.locations.find_by!(name: "Long box"))
+      preview = import(file_v3([ row_in(a, "Blue binder", quantity: 2) ], locations: [ "Long box", "Blue binder" ]))
+
+      expect(preview).to be_applicable
+      expect([ preview.added.lots, preview.removed.lots, preview.changed.lots ]).to eq([ 1, 1, 0 ])
+      expect(removed_lines(preview)).to eq([ [ "Long box", 2 ] ])
+    end
+
+    it "lists a rename and changes no lot (AC-10.8)", :aggregate_failures do
+      a = printing
+      location = create(:location, account:, name: "box")
+      held(a, quantity: 2, location:)
+      preview = import(file_v3([ row_in(a, "Box", quantity: 2) ], locations: [ "Box" ]))
+
+      expect(location_names(preview)).to eq([ [], [ "Box" ], [] ])
+      expect([ preview.added.lots, preview.removed.lots, preview.changed.lots, preview.unchanged.lots ]).to eq([ 0, 0, 0, 1 ])
+    end
+
+    it "carries the file's location on a problem row (AC-10.9)", :aggregate_failures do
+      a = printing
+      preview = import(file_v3([ row_in(a, "Box", quantity: 2, finish: "etched") ], locations: [ "Box" ]))
+
+      expect(preview.problem_rows.sole.described).to include(location: "Box")
+    end
+
+    it "words a duplicate row of a version 3 file with the location, and keeps the older wording (AC-9.5)", :aggregate_failures do
+      a = printing
+      three = import(file_v3([ row_in(a, "Box"), row_in(a, "box") ], locations: [ "Box" ]))
+      one = import(file([ row(a), row(a) ]))
+
+      expect(reasons(three)).to eq(2 => [ "Same card, finish, condition, price and location as row 1" ])
+      expect(reasons(one)).to eq(2 => [ "Same card, finish, condition and price as row 1" ])
+    end
+
+    it "lists every lot of a location the file drops as removed, with the location (AC-10.10)", :aggregate_failures do
+      a = printing
+      create(:location, account:, name: "Box")
+      held(a, quantity: 2, location: account.locations.first)
+      preview = import(file_v3([], locations: []))
+
+      expect(removed_lines(preview)).to eq([ [ "Box", 2 ] ])
+      expect(location_names(preview)).to eq([ [], [], [ "Box" ] ])
+    end
+
+    it "reads only its own account's lots and locations (AC-10.11)", :aggregate_failures do
+      a = printing
+      other = create(:user).account
+      theirs = create(:location, account: other, name: "Box")
+      create(:lot, account: other, entry: a, quantity: 9, location: theirs)
+      preview = import(file_v3([ row_in(a, "Box", quantity: 9) ], locations: [ "Box" ]))
+
+      expect([ preview.added.lots, preview.removed.lots, preview.unchanged.lots ]).to eq([ 1, 0, 0 ])
     end
   end
 end
