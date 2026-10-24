@@ -6,6 +6,7 @@
 **Last Updated:** 2026-10-15
 **Branch:** `026-typed-entry`
 **Issue:** [#43](https://github.com/plainprogrammer/Collector/issues/43)
+**Frozen:** the current rules are in [`data-portability.md`](../../architecture/data-portability.md) (parts: decision 6 and FR-5, the list left out of the export); see the [specs index](../README.md)
 **Plan:** retired in `6b18cd6bf263afe0761e78b43f48772a362fafed`; read it with `git show 6b18cd6bf263afe0761e78b43f48772a362fafed^:docs/specs/026-typed-entry/plan.md`
 
 ---
