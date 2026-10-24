@@ -1,0 +1,5 @@
+# Tables a seed can't fill (spec 031 decision 5), by the release whose seed they excuse, or `next` for seeds/next.rb.
+# Each entry is { table: <name>, reason: <why it can't be filled> }. Cutting a release renames next.rb and the `next` key to
+# the version (docs/releasing.md).
+"0.2.1": []
+next: []
