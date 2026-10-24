@@ -38,6 +38,23 @@ RSpec.describe "Page query counts", type: :request do
     expect(queries_for(locations_path)).to eq(few)
   end
 
+  it "keeps the locations page's queries independent of the lots in its locations (spec 032 NFR)" do
+    create(:lot, account: user.account, location: create(:location, account: user.account))
+    few = queries_for(locations_path)
+    29.times { create(:lot, account: user.account, location: create(:location, account: user.account), entry: printing) }
+
+    expect(queries_for(locations_path)).to eq(few)
+  end
+
+  it "keeps the refusal page's queries independent of the number of lots in the location (spec 032 NFR)" do
+    location = create(:location, account: user.account)
+    5.times { |n| own(printing, location:, price_paid_cents: n) }
+    few = queries_for(new_location_removal_path(location))
+    35.times { |n| own(printing, location:, price_paid_cents: 100 + n) }
+
+    expect(queries_for(new_location_removal_path(location))).to eq(few)
+  end
+
   it "keeps search's queries independent of the number of result groups" do
     own(printing)
     printing(identity: Catalog::Identity.sole)

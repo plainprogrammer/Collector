@@ -12,6 +12,8 @@ class Location < ApplicationRecord
   belongs_to :account
   has_many :lots, dependent: nil # a location that holds lots can't be deleted: the foreign key refuses it (spec 032 decision 3)
 
+  def holdings = Holdings.new(self)
+
   # By comparison key then name, both in code-point order: SQLite compares UTF-8 text by bytes (decision 2).
   scope :ordered, -> { order(:name_key, :name) }
 

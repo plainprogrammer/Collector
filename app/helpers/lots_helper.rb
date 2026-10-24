@@ -22,6 +22,10 @@ module LotsHelper
       (vocabulary.conditions.fetch(lot.condition).last if lot.condition) ].compact.join(" ")
   end
 
+  # A lot in a list that has no table around it (the refusal page): the phone line plus the price paid, the one value that
+  # tells two lots of a printing, finish and condition apart (spec 032 P1).
+  def lot_line(lot) = [ lot_summary(lot), (lot_price(lot) if lot.price_paid_cents) ].compact.join(" · ")
+
   # The phone line under a row's name (spec 006 AC-2.8): set · number, finish, condition, language.
   def lot_summary(lot)
     [ set_number(lot.entry), (lot.vocabulary.finish_label(lot.finish) if lot.finish),
