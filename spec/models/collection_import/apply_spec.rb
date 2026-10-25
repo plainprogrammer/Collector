@@ -776,6 +776,18 @@ RSpec.describe CollectionImport::Apply, type: :model do
       expect(account.lots.map(&:lot_key)).to all(match(/\A\|\|\d+\|\d+\z/))
     end
 
+    it "stores awkward text in a lot unchanged through the hand-built statement, and leaves the table intact", :aggregate_failures do
+      awkward = %(x'?; DROP TABLE lots;-- "q" \\ \u00e9 \u{1F0A1})
+      now = Time.utc(2026, 10, 2, 10, 0, 0, 123_456)
+      row = { account_id: account.id, catalog_entry_id: a.id, quantity: 3, finish: awkward, condition: "it's ? fine", price_paid_cents: nil,
+              location_id: nil, lot_key: "k", created_at: now, updated_at: now }
+
+      described_class.new(account:, fingerprint: "unused", confirmed: true).send(:upsert_lots!, [ row ])
+
+      expect(Lot.where(account_id: account.id).sole).to have_attributes(finish: awkward, condition: "it's ? fine", quantity: 3,
+        price_paid_cents: nil, location_id: nil, lot_key: "k", created_at: now, updated_at: now)
+    end
+
     it "runs the same number of write statements for 5,000 lots in 500 locations as for 50 in 5 (AC-11.12)", :aggregate_failures do
       measure = lambda do |lots, places|
         account.lots.delete_all
