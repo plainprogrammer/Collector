@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (2026-10-21). Written with the plan for spec 029; the decision was ruled by the maintainer in spec 029 decision 1 (2026-10-20), and the maintainer's approval of the plan on 2026-10-21 accepts it. It supersedes one consequence of [ADR 0020](0020-export-format.md) (below); ADR 0020 stays Accepted and gets a pointer on its Status line.
+Accepted (2026-10-21). The consequence about deleting a location is superseded by [ADR 0025](0025-a-lots-location-is-part-of-its-identity.md). Written with the plan for spec 029; the decision was ruled by the maintainer in spec 029 decision 1 (2026-10-20), and the maintainer's approval of the plan on 2026-10-21 accepts it. It supersedes one consequence of [ADR 0020](0020-export-format.md) (below); ADR 0020 stays Accepted and gets a pointer on its Status line.
 
 **Date:** 2026-10-21
 **Feature:** 029-manage-locations

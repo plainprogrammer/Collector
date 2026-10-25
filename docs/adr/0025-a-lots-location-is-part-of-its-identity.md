@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed (2026-10-23). Written with the plan for spec 032; the decisions were ruled by the maintainer in spec 032 decisions 1 and 3 (2026-10-23), and the maintainer's approval of the plan accepts it. On acceptance it supersedes the open question in [ADR 0019](0019-lot-as-the-unit-of-ownership.md) and one consequence of [ADR 0023](0023-locations-make-export-format-version-2.md) (below); both stay Accepted and get a pointer on their Status lines. It took the number 0025 because 0024 was the last on `origin/main` and no other branch had written one (checked 2026-10-23); the YARD ADR that the roadmap expected to take 0025 takes the next free number.
+Accepted (2026-10-24). Written with the plan for spec 032; the decisions were ruled by the maintainer in spec 032 decisions 1 and 3 (2026-10-23), and the maintainer's approval of the plan on 2026-10-24 accepted it. On acceptance it supersedes the open question in [ADR 0019](0019-lot-as-the-unit-of-ownership.md) and one consequence of [ADR 0023](0023-locations-make-export-format-version-2.md) (below); both stay Accepted and get a pointer on their Status lines. It took the number 0025 because 0024 was the last on `origin/main` and no other branch had written one (checked 2026-10-23); the YARD ADR that the roadmap expected to take 0025 takes the next free number.
 
 **Date:** 2026-10-23
 **Feature:** 032-lot-in-a-location
