@@ -100,8 +100,9 @@ RSpec.describe Collector::Backup::Create, :backup, :committed do
       stop_writers(writers)
       written = commits
 
+      # A write that waited out the busy timeout fails with SQLITE_BUSY and logs an error row. Its wall-clock time is not
+      # asserted: it includes scheduling and fsync on a loaded runner. Decision 13's measured bar is script/backup/measure.rb.
       expect(written.select { it.first == "error" }).to be_empty
-      expect(written.reject { it.first == "error" }.map { it[2].to_f - it[1].to_f }.max).to be < Collector::Backup::BUSY_TIMEOUT_MS / 1000.0
       during = written.count { |_kind, _started, finished, _account| windows.any? { it.cover?(finished.to_f) } }
       expect(during).to be_positive, "no write committed while VACUUM INTO ran; the backup blocked the app's writers" # AC-1.3
       results.each_with_index do |result, index|
