@@ -350,9 +350,9 @@ files beside it. Export is built against it: a collector downloads their collect
 from the account menu or More. A collector can preview importing a file from the account menu or
 More: the app says what applying it would do and which rows it can't apply, and changes nothing in
 the collection. A file that can be applied is kept privately for an hour, so a collector applies it
-with one click: the collection then holds exactly the file's lots and, for a version 2 file, exactly its locations, all or nothing, with no undo, so
+with one click: the collection then holds exactly the file's lots and, for a version 2 or 3 file, exactly its locations, all or nothing, with no undo, so
 the page leads to a download of the current collection first. A removal needs a confirmation, and an
-apply whose collection changed since the preview is shown again instead of applied. Applying writes in one short transaction (under 4 seconds for 50,000 lots on the development machine); on slow hardware a very large import may briefly hold other writes (a scanner add, a lot edit), so import while nothing else is writing. Exports are format version 2; an instance older than the release that added locations reads one as newer than it can read, while this release reads files of versions 1 and 2 (a version 1 file leaves the locations alone).
+apply whose collection changed since the preview is shown again instead of applied. Applying writes in one short transaction (under 4 seconds for 50,000 lots on the development machine); on slow hardware a very large import may briefly hold other writes (a scanner add, a lot edit), so import while nothing else is writing. Exports are format version 3, which says which location each lot is in; an instance older than this release reads one as newer than it can read, while this release reads files of versions 1 to 3 (a version 1 file leaves the locations alone, and the lots of a version 1 or 2 file are in no location). A location that holds copies can't be removed: move them first.
 
 A collector's export is not a backup of the instance, and a backup is not a collector's export: [Backup and restore](#backup-and-restore) says which to use for what and how to restore an instance.
 
@@ -367,7 +367,7 @@ Everything a collector owns, and the card catalog, is in one SQLite file on your
 | Whose | One collector's collection | The whole instance: every account, user and setting, and the catalog |
 | Made by | The collector, from the account menu or More | The operator, with a command on the host |
 | Holds | Profile, currency, locations and lots, keyed by the card source's ids | The primary database as it is |
-| Restores into | Any instance of a release that reads the file's format version (this one reads versions 1 and 2), even one with another catalog build; replaces that collector's lots and, for a version 2 file, locations | A new, empty instance of the same release or a newer one |
+| Restores into | Any instance of a release that reads the file's format version (this one reads versions 1 to 3), even one with another catalog build; replaces that collector's lots and, for a version 2 file, locations | A new, empty instance of the same release or a newer one |
 | Doesn't hold | Passwords, other users, settings, the catalog | Secrets, `COLLECTOR_*` settings, queued jobs, the art index file, downloads |
 | Use it for | Moving a collection between instances, a collector's own safety copy, a file they can read ([Your data](#your-data)) | Recovering the instance after a failed disk, moving it to new hardware, a copy before an upgrade |
 

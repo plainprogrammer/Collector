@@ -110,6 +110,8 @@ App additions (spec 026, in `collector/additions.css`): `NumberEntry`. Upstream 
 
 App additions (spec 029, in `collector/additions.css`): `Locations`. Upstream it into the published design system before the next export replaces this folder.
 
+App additions (spec 032, in `collector/additions.css`): `c-locations__more` and the 44px floor of `c-locations__lots` links, documented in `Locations`. Upstream them into the published design system before the next export replaces this folder.
+
 ## Logo
 
 - The mark is three fanned cards, the front one vault teal with a foil diamond: a collection, one piece of which is special. It is deliberately game-neutral so it grows past trading cards.
