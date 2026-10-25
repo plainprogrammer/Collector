@@ -8,7 +8,7 @@
 **Not run, or owed:**
 
 - **The implementation review (`sdd-review` Mode B) is not here.** The coordinator runs it after this file; it adds the `## Implementation review` heading.
-- **Spec 031's upgrade check is not on `origin/main`** (checked 2026-10-24: `script/upgrade` doesn't exist), so plan step 8.9 is **deferred**: when 031 merges, `script/upgrade/seeds/next.rb` should place a lot through `Lot.add!(location:)` so the new column holds data; nothing else of 031 is affected (this migration adds a nullable column, creates no table and rewrites no lot row, so it needs neither an `expected_changes.yml` entry nor a seed exception). The follow-up issue is for the coordinator to file; nothing was posted to GitHub from this run.
+- **Spec 031's upgrade check is not on `origin/main`** (checked 2026-10-24: `script/upgrade` doesn't exist), so plan step 8.9 is **deferred**. Nothing of 031 needs a change for this migration: it adds a nullable column, creates no table and rewrites no lot row, so it needs no `expected_changes.yml` entry and no seed exception, and `script/upgrade/seeds/next.rb` is optional (the independent review, 2026-10-25). `next.rb` also runs in the previous image under `--previous-ref`, where `location_id` and `Lot.add!(location:)` may not exist, so if it ever places a lot it must guard that with `Lot.column_names.include?("location_id")`. The follow-up issue is for the coordinator to file; nothing was posted to GitHub from this run.
 - **No CI run on GitHub exists yet** (nothing is pushed). The amd64 and arm64 image builds run only there.
 - The local `bin/ci` result is at the end of this file.
 
