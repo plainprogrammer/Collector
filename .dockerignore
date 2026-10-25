@@ -7,6 +7,10 @@
 # Ignore bundler config.
 /.bundle
 
+# Ignore the gems a CI runner installs into the checkout (ruby/setup-ruby's bundler-cache, spec 031), so the image pushed
+# by digest has the context the smoke-tested one had.
+/vendor/bundle
+
 # Ignore all environment files.
 /.env*
 
@@ -69,4 +73,5 @@
 # The GHCR cleanup command runs only in its workflow and locally (spec 013).
 /bin/ghcr-cleanup
 /bin/backup-smoke
+/bin/upgrade-smoke
 /lib/collector/ghcr_cleanup.rb

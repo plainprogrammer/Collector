@@ -1,0 +1,24 @@
+#!/usr/bin/env ruby
+# Proves an upgrade from the previous release (spec 031): boots the previous release's published image, seeds it through its
+# own code, starts the image built from this checkout on the same volume, and compares the two databases and what the app
+# serves. Needs a container engine (docker, else podman; CONTAINER_CLI overrides), git, and Ruby with this bundle's gems.
+#
+#   bin/upgrade-smoke <previous|auto> <current> [--previous-version X.Y.Z | --previous-ref REF] [--timeout SECONDS]
+#                     [--platform linux/arm64]
+#
+# `auto` finds the previous release from this checkout's tags and pulls its image (what the image job runs); an image
+# reference is used as it is (a hand run). Exit status 0 means every check passed or there is no previous release.
+require "bundler/setup"
+require_relative "../script/upgrade/harness"
+
+begin
+  previous, current, options = Upgrade::Harness.parse(ARGV)
+rescue ArgumentError, OptionParser::ParseError => error
+  warn error.message
+  exit 2
+end
+
+run_flags = options.platform ? [ "--platform", options.platform ] : []
+release = Upgrade::Release.new(File.expand_path("..", __dir__))
+engine = Upgrade::Engine.new(run_flags:)
+exit Upgrade::Harness.new(previous:, current:, release:, engine:, options:, root: File.expand_path("..", __dir__)).call

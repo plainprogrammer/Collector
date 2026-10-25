@@ -1,0 +1,5 @@
+# Changes a migration is meant to make to data a release already holds (spec 031 decision 6). Format and rules:
+# docs/specs/031-upgrade-from-previous-release/contracts/yaml-files.md. A difference between the old and the upgraded
+# database that is not listed here fails the upgrade proof. After tagging a release, delete the entries whose migration
+# it contains (docs/releasing.md).
+changes: []
