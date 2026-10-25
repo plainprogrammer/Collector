@@ -8,6 +8,7 @@
 **Branch:** `032-lot-in-a-location`
 **Issue:** [#45](https://github.com/plainprogrammer/Collector/issues/45)
 **Plan:** [plan.md](plan.md) (Draft, awaiting review and approval). It owes the ADR of decision 1 (numbered when written: the next free number on `origin/main`'s `docs/adr`)
+**Frozen:** the current rules are in [`data-portability.md`](../../architecture/data-portability.md) (parts: format version 3, the export, the preview and the apply of a lot's location); see the [specs index](../README.md)
 
 ---
 
