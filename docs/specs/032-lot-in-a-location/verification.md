@@ -246,3 +246,7 @@ Mode B, read-only, at `9a06e97`: 0 critical, 0 major, 5 minor. Every minor is fi
 `bin/ci` after the fixes: `✅ Tests: RSpec passed in 21m31.97s`, `✅ Continuous Integration passed in 21m43.73s`; 2182 examples, 0 failures, 1 pending (the art agreement spec, needs `COLLECTOR_ART_AGREEMENT`).
 
 Open for the maintainer, from the review's questions: a 500 on an export racing a rename, "No location" shown on every row for an account without locations, and whether `seeds/next.rb` places a lot once 031 and 032 are both on `main`.
+
+## Distillation
+
+`distill-feature` ran on 2026-10-25 before the pull request. The data portability area doc already held what spec 032 established in its area (format version 3, a lot's location in the export, the preview and the apply; Phase 8, with its log row). The distillation added spec 032 to the areas table, marked it Frozen in part (those parts) in the index with its plan's retirement owed (the plan is retired after the merge), and added the spec's frozen line (spec 027 D4). Its collection-and-lots part (a lot's place, Move copies, the refusal to remove a non-empty location) has no area doc yet (#105) and stays in the spec. The supersessions of specs 017, 022, 025, 028 and 029 were already recorded in both directions.
