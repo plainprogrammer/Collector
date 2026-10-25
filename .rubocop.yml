@@ -52,6 +52,7 @@ RSpec/DescribeClass:
     - "spec/design_system_files_spec.rb"
     - "spec/export_format_document_spec.rb"
     - "spec/export_format_examples_spec.rb"
+    - "spec/script/upgrade/seeds_spec.rb"
     - "spec/footer_core_spec.rb"
     - "spec/githooks/post_checkout_spec.rb"
     - "spec/image_publishing_spec.rb"
@@ -59,6 +60,7 @@ RSpec/DescribeClass:
     - "spec/network_isolation_spec.rb"
     - "spec/number_entry_core_spec.rb"
     - "spec/project_config_spec.rb"
+    - "spec/script/upgrade/files_spec.rb"
     - "spec/tasks/collector_rake_spec.rb"
 
 # Integration-style examples need setup → act → assert; the default 5 lines is too tight.
@@ -74,3 +76,5 @@ RSpec/MultipleMemoizedHelpers:
   Exclude:
     - "spec/models/collection_import/apply_spec.rb"
     - "spec/models/collection_import/round_trip_spec.rb"
+    - "spec/script/upgrade/files_spec.rb"
+    - "spec/script/upgrade/harness_spec.rb"

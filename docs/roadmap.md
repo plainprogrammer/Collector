@@ -18,7 +18,7 @@ Foundation principle 2. Spec 004 named export and import as the next priority; s
 4. [#39](https://github.com/plainprogrammer/Collector/issues/39) Preview an import: per-row errors, nothing written. **Done 2026-10-15:** [spec 025](specs/025-import-preview/spec.md), [ADR 0021](adr/0021-export-format-rules-in-the-app.md), [PR #113](https://github.com/plainprogrammer/Collector/pull/113).
 5. [#40](https://github.com/plainprogrammer/Collector/issues/40) Apply an import: all or nothing, idempotent, with a round-trip test. **Done 2026-10-20:** [spec 028](specs/028-apply-import/spec.md), [ADR 0022](adr/0022-stored-import-upload-retention.md).
 6. [#41](https://github.com/plainprogrammer/Collector/issues/41) Back up and restore an instance, documented and tested. **Done:** [spec 030](specs/030-backup-restore/spec.md), [ADR 0024](adr/0024-backup-with-vacuum-into.md).
-7. [#42](https://github.com/plainprogrammer/Collector/issues/42) Prove an upgrade from the previous release in CI (supports the 1.0 test's third check).
+7. [#42](https://github.com/plainprogrammer/Collector/issues/42) Prove an upgrade from the previous release in CI (supports the 1.0 test's third check). **Built 2026-10-24, done when its pull request merges:** [spec 031](specs/031-upgrade-from-previous-release/spec.md); this completes theme A.
 
 ### Theme B: Typed entry
 
