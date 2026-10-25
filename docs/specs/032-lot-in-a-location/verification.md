@@ -228,3 +228,21 @@ Finished in 21 minutes 43 seconds (files took 2.91 seconds to load)
 ```
 
 RuboCop and Brakeman (earlier steps of the same run) passed; the one pending example is the art agreement spec that needs `COLLECTOR_ART_AGREEMENT` (not this feature's). The suite took 21 minutes in this run against 2 minutes 45 seconds in the phases' own runs because the machine was shared with other work at the time, not because of this feature.
+
+## Implementation review
+
+SPEC-ALIGNED (independent Sonnet review 2026-10-25, after fixes)
+
+Mode B, read-only, at `9a06e97`: 0 critical, 0 major, 5 minor. Every minor is fixed, one commit each, and `bin/ci` is green after them.
+
+| Finding | Fix |
+|---|---|
+| m1. CLAUDE.md still said `Lot.upsert_all` skips validations | `9b97045`: names `Location.upsert_all` and `CollectionImport::Apply#upsert_lots!` |
+| m2. Design system README omitted `c-locations__holds` | `0128ee4`: added to the app additions line |
+| m3. No test fed the hand-built lot SQL awkward text | `159cdbd`: an example stores a finish with `'`, `?`, `;`, `--`, `"`, a backslash and non-ASCII, and a condition with `'` and `?`, plus microsecond times, and reads them back unchanged. It passed on first run (the quoting was already sound), so it pins behaviour rather than fixing a defect |
+| m4. The note on spec 031's `seeds/next.rb` was wrong | `385ecf2`: 032 needs no `expected_changes.yml` entry and no seed exception, `next.rb` is optional, and a placed lot there needs a `Lot.column_names.include?("location_id")` guard because `--previous-ref` runs it in the previous image |
+| m5. CLAUDE.md bullet restated area rules | `2edd3bd`: replaced by a pointer to `docs/architecture/data-portability.md` (spec 027 R5); the collection-and-lots area doc, when written, takes the rest |
+
+`bin/ci` after the fixes: `✅ Tests: RSpec passed in 21m31.97s`, `✅ Continuous Integration passed in 21m43.73s`; 2182 examples, 0 failures, 1 pending (the art agreement spec, needs `COLLECTOR_ART_AGREEMENT`).
+
+Open for the maintainer, from the review's questions: a 500 on an export racing a rename, "No location" shown on every row for an account without locations, and whether `seeds/next.rb` places a lot once 031 and 032 are both on `main`.
