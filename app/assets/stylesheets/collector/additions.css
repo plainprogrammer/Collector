@@ -87,6 +87,12 @@ img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches:
 .c-tile__place-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .c-tile__place-more { flex:none; white-space:pre; }
 
+/* ---------- Row place (spec 033): the phone line under a name ends with the place, up to 60 characters ---------- */
+/* The export's cells don't wrap, so a long place would widen the table past 360px; the line wraps instead. */
+@container collection (max-width: 639px) {
+  .c-table__sub { white-space:normal; }
+}
+
 /* ---------- Select inside the filter bar ---------- */
 .c-select select { height:28px; max-width:220px; padding:0 var(--space-2); background:var(--surface-raised); color:var(--ink);
   border:1px solid var(--line-strong); border-radius:var(--radius-md); font:400 13px/18px var(--font-sans); }
