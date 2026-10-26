@@ -1,13 +1,13 @@
 # Feature 033: Show the Location on Tiles and Rows
 
-**Status:** Draft, awaiting the maintainer's rulings on decisions 1–4 (each carries a recommendation) and approval
-**Version:** 0.1.0
+**Status:** Approved by the maintainer (2026-10-26), with decisions 1–4 as recommended
+**Version:** 1.0.0
 **Created:** 2026-10-26
 **Last Updated:** 2026-10-26
 **Depends on:** [spec 032](../032-lot-in-a-location/spec.md) (a lot in a location, issue #45; merged, PR #137)
 **Branch:** `033-location-on-tiles-and-rows`
 **Issue:** [#46](https://github.com/plainprogrammer/Collector/issues/46)
-**Plan:** none yet (the hard gate: no plan without an approved spec)
+**Plan:** [plan.md](plan.md)
 
 ---
 
@@ -15,6 +15,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.0.0 | 2026-10-26 | Approved by the maintainer; decisions 1–4 stand as recommended. Status line only; no criterion changes |
 | 0.1.0 | 2026-10-26 | First draft |
 
 ## Problem Statement
@@ -49,9 +50,9 @@ This spec shows the location on the collection's grid tiles and table rows. It a
 
 ## Decisions
 
-Each carries the recommendation the maintainer rules on. None changes data.
+The maintainer ruled each as recommended (2026-10-26). None changes data.
 
-### 1. A tile shows the place with most copies, then how many other places (proposed)
+### 1. A tile shows the place with most copies, then how many other places (ruled)
 
 A tile sums lots, and since spec 032 a printing can be in several places. Options:
 
@@ -64,15 +65,15 @@ A tile sums lots, and since spec 032 a printing can be in several places. Option
 
 **Recommendation: A.** The place with the most copies comes first (ties: the comparison key, then unplaced last); "+N more" counts the other places, unplaced counting as a place. The full list is the card page's, one click away. B makes tiles uneven at 5,000 rows; C changes what a tile is.
 
-### 2. No location line when the account has no locations (proposed)
+### 2. No location line when the account has no locations (ruled)
 
 An account with no locations (the Location field is hidden from its forms, spec 032 P3) would see "No location" on every tile and row. **Recommendation:** show no place line and no Location column while the account has no location; they appear once it has one. Spec 032 P3 already treats "no locations" as "nothing to say about places".
 
-### 3. An unplaced lot reads "No location", muted (proposed)
+### 3. An unplaced lot reads "No location", muted (ruled)
 
 Spec 032 decision 2 names the on-screen word. On a tile or row of an account that has locations, an unplaced lot shows "No location" in secondary ink (`ink-muted`, a word, never colour alone); a tile of several places shows it as one of them (Decision 1). An em dash would be a symbol with no word.
 
-### 4. The Location column is not sortable (proposed)
+### 4. The Location column is not sortable (ruled)
 
 Sorting by location is a feature of its own beside the filter (#47). The header is a plain `th`. **Recommendation:** leave sort to #47; the spec records it so the issue is not read as promising it.
 
@@ -159,7 +160,7 @@ Recorded in the specs index in both directions.
 
 ## Open Questions
 
-Decisions 1–4 await the maintainer. If Decision 2 is rejected, AC-1.5, AC-2.4 and FR-3 go and "No location" shows always.
+The maintainer approved decisions 1–4 as recommended (2026-10-26). No question remains.
 
 ## Notes for the plan
 
