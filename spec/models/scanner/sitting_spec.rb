@@ -13,6 +13,15 @@ RSpec.describe Scanner::Sitting, type: :model do
     error.reason
   end
 
+  describe ".add! beside a lot in a location (spec 032 AC-7.2)" do
+    it "adds the copy to the unplaced lot and leaves the placed one alone", :aggregate_failures do
+      placed = create(:lot, account:, entry: printing, finish: "foil", quantity: 3, location: create(:location, account:))
+      unplaced = create(:lot, account:, entry: printing, finish: "foil", quantity: 1)
+      add
+      expect([ placed.reload.quantity, unplaced.reload.quantity ]).to eq([ 3, 2 ])
+    end
+  end
+
   describe ".add!" do
     it "adds one copy with the finish as tapped, condition and price unspecified, and opens the sitting (AC-1.2, AC-3.1)", :aggregate_failures do
       added = add

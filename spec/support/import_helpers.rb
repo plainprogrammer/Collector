@@ -5,11 +5,13 @@ module ImportHelpers
 
   def import_printing(**entry) = create(:mtg_printing, finishes: %w[nonfoil foil], entry: create(:catalog_entry, **entry)).entry
 
-  def import_row(entry, quantity: 1, finish: nil, condition: nil, price_paid: nil, added_at: "2026-10-01T10:00:00Z", changed_at: added_at)
-    { "entry" => { "collectible_type" => entry.collectible_type, "source_id" => entry.external_key, "name" => entry.name,
-                   "set_code" => entry.set.code, "collector_number" => entry.number, "language" => entry.language },
-      "quantity" => quantity, "finish" => finish, "condition" => condition, "price_paid" => price_paid,
-      "added_at" => added_at, "changed_at" => changed_at }
+  # +location+ adds the version 3 field (a name, or nil for none) only when given: a version 1 or 2 row has none.
+  def import_row(entry, quantity: 1, finish: nil, condition: nil, price_paid: nil, added_at: "2026-10-01T10:00:00Z", changed_at: added_at, location: :none)
+    row = { "entry" => { "collectible_type" => entry.collectible_type, "source_id" => entry.external_key, "name" => entry.name,
+                         "set_code" => entry.set.code, "collector_number" => entry.number, "language" => entry.language },
+            "quantity" => quantity, "finish" => finish, "condition" => condition, "price_paid" => price_paid,
+            "added_at" => added_at, "changed_at" => changed_at }
+    location == :none ? row : row.merge("location" => location)
   end
 
   def import_file(user, lots, **fields)
@@ -21,6 +23,11 @@ module ImportHelpers
   # A version 2 file (spec 029): the same, with its locations by name.
   def import_file_v2(user, lots, locations: [], **fields)
     import_file(user, lots, format_version: 2, locations: locations.map { |name| { "name" => name } }, **fields)
+  end
+
+  # A version 3 file (spec 032): the same, whose lots say where they are (see import_row's location:).
+  def import_file_v3(user, lots, locations: [], **fields)
+    import_file(user, lots, format_version: 3, locations: locations.map { |name| { "name" => name } }, **fields)
   end
 
   def import_io(data) = StringIO.new(data.is_a?(String) ? data : JSON.generate(data))

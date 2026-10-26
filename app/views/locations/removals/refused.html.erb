@@ -1,0 +1,21 @@
+<% content_for :title, "Remove location · Collector" %>
+<%= render "layouts/appbar", section: :locations, detail: true, back_path: locations_path %>
+<main class="c-main c-page c-locations">
+  <section class="c-confirm">
+    <h1 class="c-pagehead__title">“<%= @location.name %>” isn't empty</h1>
+    <p>“<%= @location.name %>” holds <%= location_holds(@holdings.total) %>. Move them before removing it.</p>
+    <ul class="c-list c-locations__lots" id="held_lots">
+      <% @holdings.listed.each do |lot| %>
+        <li>
+          <span><%= link_to lot.entry.name, catalog_entry_path(lot.entry, from: "collection", anchor: "copies") %> <span class="c-list__meta"><%= lot_line(lot) %></span></span>
+          <span class="c-list__end">×<%= number_with_delimiter(lot.quantity) %></span>
+        </li>
+      <% end %>
+    </ul>
+    <% if @holdings.more.positive? %><p class="c-locations__more">and <%= number_with_delimiter(@holdings.more) %> more</p><% end %>
+    <div class="c-form__actions">
+      <%= link_to "Back to locations", locations_path, class: "c-btn c-btn--secondary" %>
+    </div>
+  </section>
+</main>
+<%= render "layouts/tabbar", section: nil %>

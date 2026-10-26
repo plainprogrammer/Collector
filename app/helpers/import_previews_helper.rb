@@ -4,10 +4,11 @@ module ImportPreviewsHelper
 
   # Set code and number, language, then whatever finish, condition and price it has: "DMR · 27 · EN · Foil · $12.50".
   # A price the file doesn't write in the format's form is shown as the file gives it.
-  def import_lot_line(set_code:, collector_number:, language:, finish:, condition:, price_paid:)
+  # From version 3 a lot in a location ends "in <location>" (spec 032 AC-10.9).
+  def import_lot_line(set_code:, collector_number:, language:, finish:, condition:, price_paid:, location: nil)
     price = price_paid&.match?(PRICE) ? number_to_currency(price_paid, unit: Rails.configuration.x.currency.symbol) : price_paid
-    [ [ set_code&.upcase, collector_number ].compact.join(" · ").presence, language&.upcase, finish&.humanize, condition&.humanize, price ]
-      .compact.join(" · ")
+    [ [ set_code&.upcase, collector_number ].compact.join(" · ").presence, language&.upcase, finish&.humanize, condition&.humanize, price,
+      ("in #{location}" if location) ].compact.join(" · ")
   end
 
   def import_copies(count) = pluralize(number_with_delimiter(count), "copy")

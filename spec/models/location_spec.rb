@@ -143,4 +143,13 @@ RSpec.describe Location, type: :model do
 
     expect { user.destroy! }.to change(described_class, :count).by(-2)
   end
+
+  describe "a lot in it (spec 032 AC-5.5)" do
+    it "can't be deleted while a lot is in it, even by SQL", :aggregate_failures do
+      location = create(:location, account:)
+      create(:lot, account:, location:)
+      expect { described_class.where(id: location.id).delete_all }.to raise_error(ActiveRecord::InvalidForeignKey)
+      expect(described_class.exists?(location.id)).to be(true)
+    end
+  end
 end

@@ -1,5 +1,5 @@
-# Copies of one catalog entry with the same finish, condition and price paid, owned by an account
-# (spec 004 FR-6). Finish and condition are values the collectible's vocabulary defines
+# Copies of one catalog entry with the same finish, condition, price paid and location, owned by an account
+# (spec 004 FR-6; the location is part of the identity, spec 032, ADR 0025). Finish and condition are values the collectible's vocabulary defines
 # (Catalog.collecting_for); the core doesn't interpret them.
 class Lot < ApplicationRecord
   MAX_QUANTITY = 9_999
@@ -7,26 +7,33 @@ class Lot < ApplicationRecord
 
   belongs_to :account
   belongs_to :entry, class_name: "Catalog::Entry", foreign_key: :catalog_entry_id
+  belongs_to :location, optional: true # nil is unplaced (spec 032 decision 2)
 
   normalizes :finish, :condition, with: ->(value) { value.presence }
 
   validates :quantity, numericality: { only_integer: true, greater_than_or_equal_to: 1 }
   validates :price_paid_cents, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
   validate :quantity_within_cap, :finish_offered, :condition_known
+  validate :location_is_the_accounts, if: :location_id_changed? # only a new place is checked: a bulk condition change saves many lots
 
-  before_validation { self.lot_key = self.class.key_for(finish, condition, price_paid_cents) }
+  before_validation { self.lot_key = self.class.key_for(finish, condition, price_paid_cents, location_id) }
 
-  def self.key_for(finish, condition, price_paid_cents) = [ finish, condition, price_paid_cents ].join("|")
+  # The lot's identity as text (ADR 0025): an unplaced lot's key is what it was before locations; a placed lot's ends in the
+  # location's id, not its name, so renaming a location keeps every key.
+  def self.key_for(finish, condition, price_paid_cents, location_id = nil)
+    key = [ finish, condition, price_paid_cents ].join("|")
+    location_id ? "#{key}|#{location_id}" : key
+  end
 
   # Adds copies, merging into the lot with the same identity (spec 004 AC-7.4, AC-9.3). SQLite
   # IMMEDIATE transactions serialise writers; the unique index backs that up, and a lost race
   # retries once so it merges instead of failing (AC-12.5).
-  def self.add!(account:, entry:, quantity: 1, finish: nil, condition: nil, price_paid_cents: nil)
+  def self.add!(account:, entry:, quantity: 1, finish: nil, condition: nil, price_paid_cents: nil, location: nil)
     retried = false
     begin
       transaction do
-        lot = find_or_initialize_by(account:, entry:, lot_key: key_for(finish.presence, condition.presence, price_paid_cents))
-        lot.assign_attributes(finish:, condition:, price_paid_cents:, quantity: lot.quantity.to_i + quantity.to_i)
+        lot = find_or_initialize_by(account:, entry:, lot_key: key_for(finish.presence, condition.presence, price_paid_cents, location&.id))
+        lot.assign_attributes(finish:, condition:, price_paid_cents:, location:, quantity: lot.quantity.to_i + quantity.to_i)
         lot.save!
         lot
       end
@@ -72,6 +79,10 @@ class Lot < ApplicationRecord
 
     def finish_offered
       errors.add(:finish, "isn't available for this printing") if finish && vocabulary.finishes_for(entry).exclude?(finish)
+    end
+
+    def location_is_the_accounts
+      errors.add(:location, "isn't one of your locations") if location && location.account_id != account_id
     end
 
     def condition_known

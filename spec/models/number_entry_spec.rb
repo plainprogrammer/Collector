@@ -9,6 +9,15 @@ RSpec.describe NumberEntry do
     described_class.add!(account:, entry: to, quantity:, finish:, line_key:)
   end
 
+  describe ".add! beside a lot in a location (spec 032 AC-7.2)" do
+    it "adds the copy to the unplaced lot and leaves the placed one alone", :aggregate_failures do
+      placed = create(:lot, account:, entry:, finish: "nonfoil", quantity: 3, location: create(:location, account:))
+      unplaced = create(:lot, account:, entry:, finish: "nonfoil", quantity: 1)
+      add
+      expect([ placed.reload.quantity, unplaced.reload.quantity ]).to eq([ 3, 2 ])
+    end
+  end
+
   describe ".add!" do
     it "opens the account's list, adds the copies to a lot and records the line (FR-3)", :aggregate_failures do
       added = add(quantity: 4, finish: "foil")

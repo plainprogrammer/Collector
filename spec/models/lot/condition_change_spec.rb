@@ -45,6 +45,37 @@ RSpec.describe Lot::ConditionChange, type: :model do
     end
   end
 
+  describe "with locations (spec 032 AC-7.3)" do
+    let(:blue) { create(:location, account:) }
+    let(:box) { create(:location, account:) }
+
+    it "keeps each lot's place and merges only within a place", :aggregate_failures do
+      in_blue = lot(finish: "foil", condition: "near_mint", location: blue)
+      in_box = lot(finish: "foil", condition: "near_mint", location: box)
+      change([ in_blue, in_box ], "lightly_played").apply!
+      expect(in_blue.reload).to have_attributes(location: blue, lot_key: Lot.key_for("foil", "lightly_played", nil, blue.id))
+      expect(in_box.reload).to have_attributes(location: box, lot_key: Lot.key_for("foil", "lightly_played", nil, box.id))
+    end
+
+    it "merges a lot into a twin in its own place and not into one in another", :aggregate_failures do
+      twin = lot(finish: "foil", condition: "lightly_played", quantity: 4, location: blue)
+      in_blue = lot(finish: "foil", location: blue)
+      in_box = lot(finish: "foil", location: box)
+      change([ in_blue, in_box ], "lightly_played").apply!
+      expect(twin.reload.quantity).to eq(5)
+      expect(Lot.exists?(in_blue.id)).to be(false)
+      expect(in_box.reload).to have_attributes(condition: "lightly_played", location: box)
+    end
+
+    it "checks the 9,999 cap per place", :aggregate_failures do
+      lot(finish: "foil", condition: "lightly_played", quantity: 9_999, location: blue)
+      over = lot(finish: "foil", location: blue)
+      fine = lot(finish: "foil", location: box)
+      expect { change([ over, fine ], "lightly_played").apply! }.to raise_error(Lot::CapExceeded) { |error| expect(error.lot).to eq(over) }
+      expect(fine.reload.condition).to be_nil
+    end
+  end
+
   def queries_during
     count = 0
     counter = ->(*, payload) { count += 1 unless payload[:cached] || %w[SCHEMA TRANSACTION].include?(payload[:name]) }

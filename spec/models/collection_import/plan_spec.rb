@@ -161,4 +161,15 @@ RSpec.describe CollectionImport::Plan, type: :model do
       end
     end
   end
+
+  describe "the place of a lot (spec 032)" do
+    it "changes the fingerprint when a held lot's place changes, so a preview of the move is stale" do
+      lot = held_lot(account, a, quantity: 3)
+      file = import_file_v3(user, [ import_row(b, quantity: 1, location: nil) ])
+      before = CollectionImport.new(account:, file: import_io(file)).plan.fingerprint("sum")
+      lot.update!(location: create(:location, account:))
+
+      expect(CollectionImport.new(account:, file: import_io(file)).plan.fingerprint("sum")).not_to eq(before)
+    end
+  end
 end

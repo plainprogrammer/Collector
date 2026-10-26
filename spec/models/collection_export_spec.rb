@@ -1,6 +1,6 @@
 require "rails_helper"
 
-# Spec 022: the collection export writes one account's collection as a format-v2 file (docs/export-format/README.md).
+# Spec 022: the collection export writes one account's collection as a format-v3 file (docs/export-format/README.md).
 RSpec.describe CollectionExport, type: :model do
   let(:user) { create(:user, name: "Grace Example", email_address: "grace@example.test") }
   let(:account) { user.account }
@@ -39,7 +39,7 @@ RSpec.describe CollectionExport, type: :model do
   it "writes the header, the profile and the currency", :aggregate_failures do
     file = parsed
     expect(file.except("lots", "locations")).to eq(
-      "format" => "collector-export", "format_version" => 2, "exported_at" => "2026-10-14T12:34:56Z",
+      "format" => "collector-export", "format_version" => 3, "exported_at" => "2026-10-14T12:34:56Z",
       "profile" => { "name" => "Grace Example", "email_address" => "grace@example.test", "collection_view" => "grid" },
       "currency" => Rails.configuration.x.currency.code)
     expect(file).not_to have_key("generator")
@@ -50,7 +50,7 @@ RSpec.describe CollectionExport, type: :model do
     expect(ExportFormatRules.problems(export.to_json)).to eq([])
   end
 
-  it "writes each lot's seven fields from the lot, its entry and its set" do
+  it "writes each lot's eight fields from the lot, its entry and its set" do
     travel_to(Time.utc(2026, 9, 30, 18, 2, 11.999r), with_usec: true) { fixture_collection }
     lot = account.lots.find_by!(price_paid_cents: 1250)
     lot.update!(quantity: 5, updated_at: Time.utc(2026, 10, 2, 9, 15, 0.5r))
@@ -58,7 +58,7 @@ RSpec.describe CollectionExport, type: :model do
     expect(parsed["lots"]).to include(
       "entry" => { "collectible_type" => "mtg", "source_id" => "00000000-0000-4000-8000-000000000001", "name" => "Serra Angel",
                    "set_code" => "dmr", "collector_number" => "27", "language" => "en" },
-      "quantity" => 5, "finish" => "foil", "condition" => "near_mint", "price_paid" => "12.50",
+      "quantity" => 5, "finish" => "foil", "condition" => "near_mint", "price_paid" => "12.50", "location" => nil,
       "added_at" => "2026-09-30T18:02:11Z", "changed_at" => "2026-10-02T09:15:00Z")
   end
 
@@ -105,7 +105,7 @@ RSpec.describe CollectionExport, type: :model do
   it "writes exactly the fields the format defines" do
     fixture_collection
 
-    reference = JSON.parse(ExportFormatRules.directory.join("examples/valid/collection-v2.json").read)
+    reference = JSON.parse(ExportFormatRules.directory.join("examples/valid/collection-v3.json").read)
 
     expect(ExportFormatRules.field_names(parsed)).to match_array(ExportFormatRules.field_names(reference) - [ "generator" ])
   end
@@ -151,12 +151,12 @@ RSpec.describe CollectionExport, type: :model do
   describe "locations (spec 029)" do
     def locations(*names) = names.each { |name| create(:location, account:, name:) }
 
-    it "writes version 2 with the names only, in order, and a well-formed file (AC-6.1, AC-6.4, AC-6.5)", :aggregate_failures do
+    it "writes version 3 with the names only, in order, and a well-formed file (AC-6.1, AC-6.4, AC-6.5)", :aggregate_failures do
       locations("Trade binder", "Blue binder")
       fixture_collection
       file = parsed
 
-      expect(file["format_version"]).to eq(2)
+      expect(file["format_version"]).to eq(3)
       expect(file["locations"]).to eq([ { "name" => "Blue binder" }, { "name" => "Trade binder" } ])
       expect(file["locations"].flat_map(&:keys).uniq).to eq([ "name" ])
       expect(file["lots"].size).to eq(7)
@@ -164,7 +164,7 @@ RSpec.describe CollectionExport, type: :model do
     end
 
     it "writes an empty list for an account with none (AC-6.2)", :aggregate_failures do
-      expect(parsed["format_version"]).to eq(2)
+      expect(parsed["format_version"]).to eq(3)
       expect(parsed["locations"]).to eq([])
       expect(ExportFormatRules.problems(export.to_json)).to eq([])
     end
@@ -200,6 +200,131 @@ RSpec.describe CollectionExport, type: :model do
       expect(ExportFormatRules.same_collection?(first, parsed)).to be(false)
       swapped = parsed.merge("locations" => parsed["locations"].reverse)
       expect(ExportFormatRules.same_collection?(parsed, swapped)).to be(true)
+    end
+  end
+
+  describe "a lot's location (spec 032 Story 8)" do
+    def blue = @blue ||= create(:location, account:, name: "Blue binder")
+    def box = @box ||= create(:location, account:, name: "Long box")
+
+    def lots_reads(&)
+      reads = []
+      counter = ->(*, payload) { reads << payload[:sql] if payload[:sql].include?('FROM "lots"') }
+      ActiveSupport::Notifications.subscribed(counter, "sql.active_record", &)
+      reads.size
+    end
+
+    it "writes the stored name or null for every lot, never an empty string (AC-8.1)", :aggregate_failures do
+      a = printing
+      create(:lot, account:, entry: a, location: blue, quantity: 2)
+      create(:lot, account:, entry: a, quantity: 1)
+
+      expect(parsed["lots"].map { |lot| lot["location"] }).to eq([ "Blue binder", nil ])
+    end
+
+    it "writes a printing in two places as two lots (AC-8.2)", :aggregate_failures do
+      a = printing
+      create(:lot, account:, entry: a, location: blue)
+      create(:lot, account:, entry: a, location: box)
+
+      expect(parsed["lots"].map { |lot| lot["location"] }).to eq([ "Blue binder", "Long box" ])
+    end
+
+    it "lists an empty location and every lot's location among the names (AC-8.3)", :aggregate_failures do
+      create(:lot, account:, entry: printing, location: blue)
+      box
+      file = parsed
+
+      expect(file["locations"].map { |location| location["name"] }).to eq([ "Blue binder", "Long box" ])
+      expect(ExportFormatRules.problems(export.to_json)).to eq([])
+    end
+
+    it "writes nothing of another account's places (AC-8.4)", :aggregate_failures do
+      other = create(:user).account
+      theirs = create(:location, account: other, name: "Zebulon's crate")
+      create(:lot, account: other, entry: printing, location: theirs)
+      create(:lot, account:, entry: printing)
+
+      expect(export.to_json).not_to include("Zebulon")
+      expect(parsed["lots"].map { |lot| lot["location"] }).to eq([ nil ])
+    end
+
+    it "writes the same file twice, apart from exported_at (AC-8.5)" do
+      create(:lot, account:, entry: printing, location: blue)
+      later = described_class.new(account:, at: at + 1.hour)
+
+      expect(JSON.parse(later.to_json).except("exported_at")).to eq(parsed.except("exported_at"))
+    end
+
+    it "writes null everywhere and no locations for an account with none (AC-8.6)", :aggregate_failures do
+      create(:lot, account:, entry: printing)
+
+      expect(parsed["locations"]).to eq([])
+      expect(parsed["lots"].map { |lot| lot["location"] }).to eq([ nil ])
+    end
+
+    it "reads the lots and their places in one statement and the same statements whatever their number (NFR)", :aggregate_failures do
+      3.times { |n| create(:lot, account:, entry: printing, location: create(:location, account:, name: "Place #{n}")) }
+      few = lots_reads { described_class.new(account: account.reload, at:).to_json }
+      20.times { |n| create(:lot, account:, entry: printing, location: create(:location, account:, name: "More #{n}")) }
+
+      expect(few).to eq(1)
+      expect(lots_reads { described_class.new(account: account.reload, at:).to_json }).to eq(1)
+    end
+
+    describe "a location changed between the export's two reads (plan review M5)" do
+      before do
+        create(:lot, account:, entry: printing, location: box)
+        @written = []
+      end
+
+      # Runs +change+ right after the SELECT that reads the lots, +times+ times at most; counts the lot reads, leaving out the
+      # subscriber's own statements (they are UPDATE and DELETE, not a SELECT from lots).
+      def export_while(times:, &change)
+        done = 0
+        reads = 0
+        subscriber = lambda do |*, payload|
+          sql = payload[:sql]
+          next unless sql.start_with?("SELECT") && sql.include?('FROM "lots"')
+
+          reads += 1
+          next unless done < times
+
+          done += 1
+          change.call
+        end
+        file = nil
+        ActiveSupport::Notifications.subscribed(subscriber, "sql.active_record") { file = described_class.new(account:, at:).to_json }
+        [ file, reads ]
+      end
+
+      it "reads again after a rename and writes the new name on the list and the lot", :aggregate_failures do
+        file, reads = export_while(times: 1) { Location.where(id: box.id).update_all(name: "Crate", name_key: "crate") }
+        data = JSON.parse(file)
+
+        expect(reads).to eq(2)
+        expect(ExportFormatRules.problems(file)).to eq([])
+        expect([ data["locations"], data["lots"].map { |lot| lot["location"] } ]).to eq([ [ { "name" => "Crate" } ], [ "Crate" ] ])
+      end
+
+      it "reads again after the lot moved out and its location was removed", :aggregate_failures do
+        file, reads = export_while(times: 1) do
+          Lot.where(account_id: account.id).update_all(location_id: nil, lot_key: Lot.key_for(nil, nil, nil))
+          Location.where(id: box.id).delete_all
+        end
+        data = JSON.parse(file)
+
+        expect(reads).to eq(2)
+        expect(ExportFormatRules.problems(file)).to eq([])
+        expect([ data["locations"], data["lots"].map { |lot| lot["location"] } ]).to eq([ [], [ nil ] ])
+      end
+
+      it "gives up after three reads when the locations keep changing", :aggregate_failures do
+        count = 0
+        expect { export_while(times: 5) { Location.where(id: box.id).update_all(name: "Name #{count += 1}", name_key: "name #{count}") } }
+          .to raise_error(described_class::Unsettled)
+        expect(count).to eq(3)
+      end
     end
   end
 end

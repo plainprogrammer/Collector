@@ -183,7 +183,6 @@ RSpec.describe Collector::WorktreeSetup, :git_sandbox do
 
     it "reports a failure instead of claiming success when git config cannot be written", :aggregate_failures do
       skip "root reads and writes anything" if Process.uid.zero?
-
       messages = read_only(File.join(main, ".git")) { setup_for(main).enable_worktree_hooks }
       expect(messages).to include(a_string_including("could not enable"))
       expect(messages).not_to include(a_string_including("Enabled"))
