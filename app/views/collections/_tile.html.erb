@@ -14,4 +14,7 @@
   </div>
   <div class="c-tile__name"><%= entry.display_name %></div>
   <div class="c-tile__meta"><span class="c-tag"><%= set_number(entry) %></span><span class="c-tag"><%= entry.language.upcase %></span></div>
+  <% if (place = tile.place) %>
+    <div class="c-tile__meta"><span class="c-tile__place"><span class="c-tile__place-name"><%= place.name || "No location" %></span><% if place.more.positive? %><span class="c-tile__place-more"> +<%= place.more %> more</span><% end %></span></div>
+  <% end %>
 <% end %>

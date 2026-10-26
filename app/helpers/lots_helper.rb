@@ -37,4 +37,8 @@ module LotsHelper
     [ set_number(lot.entry), (lot.vocabulary.finish_label(lot.finish) if lot.finish),
       (lot.vocabulary.conditions.fetch(lot.condition).last if lot.condition), lot.entry.language.upcase ].compact.join(" · ")
   end
+
+  # The line under a table row's name: the phone line plus, when the account has locations, the lot's place last; an
+  # unplaced lot adds nothing (spec 033 AC-2.2).
+  def lot_row_summary(lot, places:) = [ lot_summary(lot), (lot.location.name if places && lot.location) ].compact.join(" · ")
 end
