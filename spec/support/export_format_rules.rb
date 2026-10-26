@@ -33,8 +33,8 @@ module ExportFormatRules
   # Why a file isn't well-formed: an empty list when it is (ExportFormat::Rules).
   def self.problems(bytes) = ExportFormat::Rules.problems(bytes)
 
-  # What identifies a lot (ADR 0019).
-  def self.identity(lot) = ExportFormat::Rules.identity(lot)
+  # What identifies a lot (ADR 0019, ADR 0025): six values, the sixth the comparison key of its location from version 3.
+  def self.identity(lot, version = ExportFormat::Rules::VERSION) = ExportFormat::Rules.identity(lot, version)
 
   # Whether two well-formed files of one version hold the same collection (spec 017 FR-7). Callers check
   # .problems first: a file that isn't well-formed may raise here.
@@ -70,10 +70,16 @@ module ExportFormatRules
   def self.cells(line) = line.delete_prefix("|").delete_suffix("|").split("|", -1).map { |cell| cell.strip.delete("`") }
 
   def self.compared(file)
+    version = file["format_version"]
     [ file.fetch("profile").slice("name", "email_address", "collection_view"), file["currency"],
-      file.fetch("lots").to_h { |lot| [ identity(lot), lot.values_at("quantity", "added_at", "changed_at") ] },
+      file.fetch("lots").to_h { |lot| [ compared_identity(lot, version), lot.values_at("quantity", "added_at", "changed_at") ] },
       file["locations"]&.map { |location| location["name"] }&.to_set ]
   end
 
-  private_class_method :compared, :cells
+  # The five values of a lot's identity and its location as written: the comparison of two files is exact, character for
+  # character, as location names are, so "box" and "Box" on a lot are different here (spec 032 AC-9.6) although a reader
+  # matches them as one place. A location on a version 1 or 2 lot is an unknown field and stays out.
+  def self.compared_identity(lot, version) = identity(lot, version).first(5) + [ (lot["location"] if version >= 3) ]
+
+  private_class_method :compared, :compared_identity, :cells
 end

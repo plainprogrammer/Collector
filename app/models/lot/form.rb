@@ -9,12 +9,14 @@ class Lot::Form
   attribute :finish, :string
   attribute :condition, :string
   attribute :price_paid, :string
+  attribute :location_id, :string # the Location field's value; the controller resolves it through the account (spec 032)
   attr_accessor :entry
 
   validate :quantity_in_range, :price_well_formed, :finish_offered, :condition_known
 
   def self.from(lot)
-    new(entry: lot.entry, quantity: lot.quantity.to_s, finish: lot.finish, condition: lot.condition, price_paid: lot.price_paid)
+    new(entry: lot.entry, quantity: lot.quantity.to_s, finish: lot.finish, condition: lot.condition, price_paid: lot.price_paid,
+      location_id: lot.location_id&.to_s)
   end
 
   def vocabulary = Catalog.collecting_for(entry.collectible_type)

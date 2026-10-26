@@ -6,6 +6,41 @@ RSpec.describe Scanner::SittingEntry, type: :model do
 
   def add(key) = Scanner::Sitting.add!(account:, printing:, finish: "foil", reading_key: key * 32).entry
 
+  describe "#undo! after a move (spec 032 AC-7.6)" do
+    let(:blue) { create(:location, account:) }
+
+    it "undoes against the lot where it is now when the lot moved whole to an empty place", :aggregate_failures do
+      entry = add("a")
+      account.lots.sole.update!(location: blue)
+      expect(entry.undo!).to be(true)
+      expect(account.lots).to be_empty
+    end
+
+    it "is changed once a whole move merged its lot away", :aggregate_failures do
+      entry = add("a")
+      create(:lot, account:, entry: printing, finish: "foil", location: blue)
+      account.lots.find_by!(location_id: nil).revise!(location: blue)
+      expect(entry.reload.state).to eq(:changed)
+    end
+  end
+
+  describe "#undo! after Move copies (spec 032 AC-7.6)" do
+    let(:blue) { create(:location, account:) }
+
+    it "is changed once a whole move merged its lot into another", :aggregate_failures do
+      entry = add("a")
+      create(:lot, account:, entry: printing, finish: "foil", location: blue)
+      Lot::Move.new(lot: account.lots.find_by!(location_id: nil), to: blue, copies: "1").call!
+      expect(entry.reload.state).to eq(:changed)
+    end
+
+    it "undoes against the lot where the whole of it was moved" do
+      entry = add("a")
+      Lot::Move.new(lot: account.lots.sole, to: blue, copies: "1").call!
+      expect(entry.undo!).to be(true)
+    end
+  end
+
   describe "#undo!" do
     it "takes one copy out of the lot and marks the entry undone (AC-4.1)", :aggregate_failures do
       add("a")

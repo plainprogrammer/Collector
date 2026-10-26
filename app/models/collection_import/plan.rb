@@ -38,5 +38,6 @@ class CollectionImport::Plan
   end
 
   private
-    def lot_part(lot) = [ lot.id, lot.quantity, lot.created_exact, lot.updated_exact ]
+    # A lot's place is part of it, so a lot moved between the preview and the apply makes the preview stale (spec 032 AC-11.7).
+    def lot_part(lot) = [ lot.id, lot.quantity, lot.created_exact, lot.updated_exact, lot.identity.last ]
 end

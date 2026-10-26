@@ -1,4 +1,4 @@
-<%# locals: (form_model:, url:, method:, submit:) %>
+<%# locals: (form_model:, url:, method:, submit:, locations:) %>
 <% entry = form_model.entry %>
 <% vocab = form_model.vocabulary %>
 <% finishes = vocab.finishes_for(entry) %>
@@ -28,6 +28,14 @@
     <p class="c-field__hint">Optional.</p>
     <%= render "shared/field_errors", messages: errors[:price_paid], id: "lot_price_paid-error" %>
   </div>
+  <% if locations.any? %>
+    <div class="c-field">
+      <%= form.label :location_id, "Location", class: "c-field__label" %>
+      <%= form.select :location_id, locations.map { |location| [ location.name, location.id ] }, { include_blank: "No location" } %>
+    </div>
+  <% else %>
+    <p class="c-field__hint"><%= link_to "Add a location", locations_path %> to keep copies in one.</p>
+  <% end %>
   <div class="c-form__actions">
     <%= form.submit submit, class: "c-btn c-btn--primary" %>
     <%= link_to "Cancel", lot_return_path(entry), class: "c-btn c-btn--secondary" %>

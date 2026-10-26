@@ -2,5 +2,7 @@
 class Locations::RemovalsController < ApplicationController
   def new
     @location = Current.account.locations.find(params[:location_id])
+    @holdings = @location.holdings
+    render :refused if @holdings.any?
   end
 end

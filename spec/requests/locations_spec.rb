@@ -181,6 +181,102 @@ RSpec.describe "Locations", type: :request do
       end
     end
 
+    describe "a location that holds lots (spec 032 Story 5)" do
+      let!(:blue) { create(:location, account:, name: "Blue binder") }
+      let(:entry) { create(:mtg_printing, finishes: %w[nonfoil foil]).entry }
+
+      def hold(count = 3, quantity: 4)
+        count.times { |n| create(:lot, account:, entry:, location: blue, quantity:, price_paid_cents: n + 1) }
+      end
+
+      it "counts what each location holds on the locations page (AC-4.3)", :aggregate_failures do
+        hold(3)
+        create(:lot, account:, location: create(:location, account:, name: "Long box"), quantity: 1)
+        create(:location, account:, name: "Empty one")
+        get locations_path
+        holds = html.css(".c-locations__list li").to_h { |row| [ row.at_css(".c-locations__name").text, row.at_css(".c-locations__holds").text.squish ] }
+        expect(holds).to eq("Blue binder" => "12 copies in 3 lots", "Long box" => "1 copy in 1 lot", "Empty one" => "Empty")
+      end
+
+      it "refuses on the confirmation page, counting and listing, with no Remove button (AC-5.2)", :aggregate_failures do
+        hold(3)
+        get new_location_removal_path(blue)
+        expect(response).to have_http_status(:ok)
+        expect(html.at_css("main").text.squish).to include("“Blue binder” holds 12 copies in 3 lots. Move them before removing it.")
+        expect(html.css("#held_lots li").size).to eq(3)
+        expect(html.css("#held_lots li .c-list__end").map(&:text)).to eq(%w[×4 ×4 ×4])
+        expect(html.at_css("#held_lots a")["href"]).to eq(catalog_entry_path(entry, from: "collection", anchor: "copies"))
+        expect(html.css("a").map(&:text)).to include("Back to locations")
+        expect(html.css("button, input[type=submit]").map { |control| control.text + control["value"].to_s }.grep(/Remove/)).to be_empty
+      end
+
+      it "lists 100 lots in order and says how many more (AC-5.3)", :aggregate_failures do
+        250.times { |n| create(:lot, account:, entry:, location: blue, price_paid_cents: n + 1) }
+        get new_location_removal_path(blue)
+        expect(html.css("#held_lots li").size).to eq(100)
+        expect(html.at_css(".c-locations__more").text).to eq("and 150 more")
+        expect(html.css("#held_lots li .c-list__meta").first.text).to include("0.01")
+      end
+
+      it "answers 409 to DELETE with the same page, removing nothing (AC-5.4)", :aggregate_failures do
+        hold(2)
+        before = account.lots.order(:id).map(&:attributes)
+        delete location_path(blue)
+        expect(response).to have_http_status(:conflict)
+        expect(html.at_css("main").text.squish).to include("holds 8 copies in 2 lots")
+        expect(account.locations.exists?(blue.id)).to be(true)
+        expect(account.lots.order(:id).map(&:attributes)).to eq(before)
+      end
+
+      it "refuses a delete after the confirmation opened empty and a lot was put in meanwhile (AC-5.5)", :aggregate_failures do
+        get new_location_removal_path(blue)
+        expect(html.css("form[action='#{location_path(blue)}'] button").size).to eq(1)
+        hold(1)
+        delete location_path(blue)
+        expect(response).to have_http_status(:conflict)
+        expect(account.locations.exists?(blue.id)).to be(true)
+      end
+
+      it "removes the location once its lots are gone, leaving other places' lots", :aggregate_failures do
+        hold(1)
+        account.lots.destroy_all
+        delete location_path(blue)
+        expect(response).to have_http_status(:see_other)
+        expect(account.locations.exists?(blue.id)).to be(false)
+      end
+
+      it "escapes a location name with markup on the list and the refusal page (AC-4.5)", :aggregate_failures do
+        evil = create(:location, account:, name: "<b>x</b>")
+        create(:lot, account:, location: evil)
+        [ locations_path, new_location_removal_path(evil) ].each do |path|
+          get path
+          expect(response.body).not_to include("<b>x</b>")
+          expect(response.body).to include("&lt;b&gt;x&lt;/b&gt;")
+        end
+      end
+
+      it "shows no count, lot or name of another account's same-named location (AC-5.7, AC-6.3)", :aggregate_failures do
+        other = create(:user).account
+        theirs = create(:location, account: other, name: "Blue binder")
+        create(:lot, account: other, location: theirs, quantity: 777, entry: create(:mtg_printing).entry)
+        hold(1)
+        get locations_path
+        expect(html.at_css(".c-locations__holds").text.squish).to eq("4 copies in 1 lot")
+        get new_location_removal_path(blue)
+        expect(html.css("#held_lots li").size).to eq(1)
+        expect(response.body).not_to include("777")
+      end
+
+      it "answers 404 for another account's location on the confirmation and the delete (decision 6)", :aggregate_failures do
+        theirs = create(:location, account: create(:user).account)
+        create(:lot, account: theirs.account, location: theirs)
+        get new_location_removal_path(theirs)
+        expect(response).to have_http_status(:not_found)
+        delete location_path(theirs)
+        expect(response).to have_http_status(:not_found)
+      end
+    end
+
     describe "only this account (Story 4)" do
       let(:other) { create(:user).account }
       let!(:theirs) { create(:location, account: other, name: "Zebulon's crate") }
@@ -242,7 +338,7 @@ RSpec.describe "Locations", type: :request do
     end
 
     it "shows no location, name or count on the admin pages (AC-4.5)", :aggregate_failures do
-      create(:location, account:, name: "Zebulon's crate")
+      create(:lot, account:, location: create(:location, account:, name: "Zebulon's crate")) # a placed lot: the admin pages count copies only (spec 032 AC-6.4)
       admin = create(:admin)
       create(:location, account: admin.account, name: "Admin's shelf")
       delete session_path # the before block signed in the member; a second sign-in would not replace that session
@@ -254,6 +350,16 @@ RSpec.describe "Locations", type: :request do
         expect(response.body).not_to include("Zebulon", "Admin&#39;s shelf", "Admin's shelf"), path
         expect(main.downcase).not_to include("location"), path # the header's own link is outside main
       end
+    end
+  end
+
+  describe "when signed out (spec 032 AC-6.5)" do
+    it "sends the refusal page's routes to sign in", :aggregate_failures do
+      location = create(:location)
+      get new_location_removal_path(location)
+      expect(response).to redirect_to(new_session_path)
+      delete location_path(location)
+      expect(response).to redirect_to(new_session_path)
     end
   end
 

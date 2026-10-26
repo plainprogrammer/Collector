@@ -7,6 +7,11 @@ RSpec.describe "Routes", type: :routing do
     expect(get: "/catalog/identities/abc").to route_to("catalog/identities#show", external_key: "abc")
   end
 
+  it "routes a lot's move (spec 032)", :aggregate_failures do
+    expect(get: "/lots/1/move/new").to route_to("lots/moves#new", lot_id: "1")
+    expect(post: "/lots/1/move").to route_to("lots/moves#create", lot_id: "1")
+  end
+
   it "routes quick add under a printing" do
     expect(post: "/catalog/entries/abc/quick_add").to route_to("catalog/quick_adds#create", entry_external_key: "abc")
   end

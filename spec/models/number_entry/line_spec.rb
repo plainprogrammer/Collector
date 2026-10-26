@@ -6,6 +6,47 @@ RSpec.describe NumberEntry::Line do
   let(:line) { NumberEntry.add!(account:, entry:, quantity: 4, finish: "nonfoil", line_key: "a" * 32).line }
   let(:lot) { line.lot }
 
+  describe "#undo! after a move (spec 032 AC-7.6)" do
+    let(:blue) { create(:location, account:) }
+
+    it "undoes against the lot where it is now when the lot moved whole to an empty place", :aggregate_failures do
+      lot.update!(location: blue)
+      expect(line).to be_undoable
+      expect(line.undo!).to be(true)
+      expect(account.lots).to be_empty
+    end
+
+    it "is no longer undoable once a whole move merged the lot away", :aggregate_failures do
+      create(:lot, account:, entry:, finish: "nonfoil", location: blue)
+      lot.revise!(location: blue)
+      expect(line.reload).not_to be_undoable
+    end
+  end
+
+  describe "#undo! after Move copies (spec 032 AC-7.6)" do
+    let(:blue) { create(:location, account:) }
+
+    it "undoes against the lot where the whole of it was moved", :aggregate_failures do
+      line
+      Lot::Move.new(lot:, to: blue, copies: "4").call!
+      expect(line.reload).to be_undoable
+      expect(line.undo!).to be(true)
+    end
+
+    it "is no longer undoable once a whole move merged the lot into another" do
+      line
+      create(:lot, account:, entry:, finish: "nonfoil", location: blue)
+      Lot::Move.new(lot:, to: blue, copies: "4").call!
+      expect(line.reload).not_to be_undoable
+    end
+
+    it "is not undoable once a split left fewer copies in the lot than the line added" do
+      line
+      Lot::Move.new(lot:, to: blue, copies: "1").call!
+      expect(line.reload).not_to be_undoable
+    end
+  end
+
   describe "#undo!" do
     it "takes the line's copies out of a lot that holds more (AC-3.2)", :aggregate_failures do
       lot.update!(quantity: 6)

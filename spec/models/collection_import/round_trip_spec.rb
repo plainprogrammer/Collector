@@ -58,6 +58,22 @@ RSpec.describe "Export and import round trip", type: :model do
     expect(CollectionImport.new(account: source.account, file: StringIO.new(JSON.generate(original))).plan.nothing_to_change?).to be(true)
   end
 
+  it "restores lots in two locations, a printing in both, an unplaced lot and an empty location (AC-11.2)", :aggregate_failures do
+    blue, box = locations(source, "Blue binder", "Long box")
+    locations(source, "Empty one")
+    entry = source.account.lots.first.entry
+    create(:lot, account: source.account, entry:, finish: "foil", condition: "near_mint", price_paid_cents: 1250, location: blue, quantity: 3)
+    create(:lot, account: source.account, entry:, finish: "foil", condition: "near_mint", price_paid_cents: 1250, location: box, quantity: 2)
+    original = export(source)
+
+    expect(apply!(target, original).outcome).to eq(:applied)
+    restored = export(target)
+
+    expect(restored.except("exported_at", "profile")).to eq(original.except("exported_at", "profile"))
+    expect(restored["locations"].map { |location| location["name"] }).to include("Empty one")
+    expect(target.account.lots.map(&:location_id).compact.size).to eq(2)
+  end
+
   def locations(user, *names) = names.map { |name| create(:location, account: user.account, name:) }
 
   def names(user) = user.account.locations.order(:id).pluck(:name)
@@ -99,11 +115,14 @@ RSpec.describe "Export and import round trip", type: :model do
     expect(ImportUpload.count).to eq(0)
   end
 
-  # An export of this instance is version 2. A version 1 example is compared as the version 2 file it becomes with no
-  # locations, and each location name as the export writes it: in NFC (decision 5), which a valid example in NFD isn't
+  # An export of this instance is version 3. An older example is compared as the version 3 file it becomes: a version 1
+  # example with no locations, and every lot of an older example in no location (a restore reads such a lot as unplaced,
+  # spec 032 decision 7); each location name as the export writes it, in NFC (decision 5), which a valid example in NFD isn't
   # (ruled 2026-10-21: AC-9.15 holds for the example once its names are normalised).
-  def as_version_two(data)
-    data = data.merge("format_version" => 2, "locations" => []) unless data["format_version"] == 2
+  def as_current_version(data)
+    data = data.merge("locations" => []) if data["format_version"] == 1
+    data = data.merge("lots" => data["lots"].map { |lot| lot.merge("location" => nil) }) if data["format_version"] < 3
+    data = data.merge("format_version" => 3)
     data.merge("locations" => data["locations"].map { |location| { "name" => Location::Name.normalise(location["name"]) } })
   end
 
@@ -119,6 +138,8 @@ RSpec.describe "Export and import round trip", type: :model do
     end
 
     ExportFormatRules.examples("valid").each_key do |name|
+      next if name.end_with?("lot-location-nfd.json") # outside the round trip: it re-exports with the stored spelling (AC-9.4)
+
       it "applies #{name} to an empty account and exports the same collection, or has nothing to change", :aggregate_failures do
         data = JSON.parse(ExportFormatRules.examples("valid").fetch(name))
         allow(Rails.configuration.x).to receive(:currency).and_return(Collector::Currency.fetch!(data["currency"]))
@@ -130,7 +151,7 @@ RSpec.describe "Export and import round trip", type: :model do
           expect([ import.refused?, import.plan.nothing_to_change? ]).to eq([ false, true ])
         else
           expect(apply!(user, data).outcome).to eq(:applied)
-          expect(same_collection?(as_version_two(data), export(user))).to be(true)
+          expect(same_collection?(as_current_version(data), export(user))).to be(true)
           expect(user.account.lots.count).to eq(data["lots"].size)
           expect(user.account.locations.count).to eq(data.fetch("locations", []).size)
         end

@@ -1,0 +1,36 @@
+<% content_for :title, "Move copies · Collector" %>
+<%= render "layouts/appbar", section: card_context, detail: true, back_path: catalog_entry_path(@lot.entry, **card_params) %>
+<main class="c-main c-page">
+  <div class="c-pagehead">
+    <div>
+      <h1 class="c-pagehead__title">Move copies of <%= @lot.entry.name %> (<%= set_number(@lot.entry) %>)</h1>
+      <p class="c-pagehead__stats"><%= lot_line(@lot) %> · <%= lot_place(@lot) %> · ×<%= number_with_delimiter(@lot.quantity) %></p>
+    </div>
+  </div>
+  <% if @destinations.empty? %>
+    <p class="c-empty">You have no locations yet. <%= link_to "Add a location", locations_path %></p>
+    <div class="c-form__actions">
+      <%= link_to "Cancel", catalog_entry_path(@lot.entry, **card_params), class: "c-btn c-btn--secondary" %>
+    </div>
+  <% else %>
+    <% copies_errors = @move.errors[:copies] %>
+    <% place_errors = @move.errors[:location_id] %>
+    <%= form_with model: @move, scope: :move, url: lot_move_path(@lot, **card_params), method: :post, class: "c-form" do |form| %>
+      <div class="c-field<%= " c-field--invalid" if copies_errors.any? %>">
+        <%= form.label :copies, "Copies", class: "c-field__label" %>
+        <label class="c-input"><%= form.number_field :copies, min: 1, max: @lot.quantity, step: 1, inputmode: "numeric", required: true, "aria-describedby": field_error_describedby("move_copies-error", copies_errors) %></label>
+        <%= render "shared/field_errors", messages: copies_errors, id: "move_copies-error" %>
+      </div>
+      <div class="c-field<%= " c-field--invalid" if place_errors.any? %>">
+        <%= form.label :location_id, "To", class: "c-field__label" %>
+        <%= form.select :location_id, options_for_select(@destinations, @move.location_id), {}, { "aria-describedby": field_error_describedby("move_location_id-error", place_errors) } %>
+        <%= render "shared/field_errors", messages: place_errors, id: "move_location_id-error" %>
+      </div>
+      <div class="c-form__actions">
+        <%= form.submit "Move", class: "c-btn c-btn--primary" %>
+        <%= link_to "Cancel", catalog_entry_path(@lot.entry, **card_params), class: "c-btn c-btn--secondary" %>
+      </div>
+    <% end %>
+  <% end %>
+</main>
+<%= render "layouts/tabbar", section: card_context %>

@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (recorded 2026-10-11, after the fact; decided in spec 004)
+Accepted (recorded 2026-10-11, after the fact; decided in spec 004). The open question for locations is answered by [ADR 0025](0025-a-lots-location-is-part-of-its-identity.md).
 
 **Date:** 2026-10-11
 **Feature:** 004-design-system-collection
