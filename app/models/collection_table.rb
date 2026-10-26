@@ -19,7 +19,7 @@ class CollectionTable
   end
 
   def lots
-    @lots ||= sort.apply(matching_lots.joins(entry: :set)).preload(entry: :set)
+    @lots ||= sort.apply(matching_lots.joins(entry: :set)).preload(:location, entry: :set)
       .offset(pagination.offset).limit(PER_PAGE).to_a
   end
 end
