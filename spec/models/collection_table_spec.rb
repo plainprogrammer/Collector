@@ -1,6 +1,8 @@
 require "rails_helper"
 
 RSpec.describe CollectionTable, type: :model do
+  include QueryCounting
+
   let(:account) { create(:user).account }
 
   def own(name = "Lightning Bolt", **options) = owned_printing(name, account:, **options)
@@ -90,5 +92,19 @@ RSpec.describe CollectionTable, type: :model do
   it "lists only the account's lots" do
     owned_printing(account: create(:user).account)
     expect(table.lots).to be_empty
+  end
+
+  it "preloads the lots' locations in a bounded number of statements" do
+    blue = create(:location, account:)
+    create(:lot, account:, entry: own("Opt").entry, location: blue)
+    few = count_queries { table.lots.each { it.location&.name } }
+    8.times { |i| create(:lot, account:, entry: own("Card #{i}").entry, location: create(:location, account:)) }
+    expect(count_queries { table.lots.each { it.location&.name } }).to eq(few)
+  end
+
+  it "knows whether the account has locations", :aggregate_failures do
+    expect(table.places?).to be(false)
+    create(:location, account:)
+    expect(table.places?).to be(true)
   end
 end

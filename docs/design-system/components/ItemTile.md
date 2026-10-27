@@ -22,7 +22,7 @@ One collected item in the image grid, the default collection view: image, quanti
 
 - Card images keep 63:88 and the physical corner (`radius-card`); never crop art to fit.
 - Always show the quantity, even ×1, so the grid answers "how many" without a click.
-- Location sits under the name: players need "where is it" as much as "what is it".
+- Location sits under the name: players need "where is it" as much as "what is it". In the app (spec 033) it is a second `c-tile__meta` row holding `c-tile__place`: the place with the most copies (`c-tile__place-name`, one line, cut with an ellipsis), then `+N more` (`c-tile__place-more`, never cut) when the printing is in other places, an unplaced lot counting as one. A printing with no place reads "No location". While the account has no location the row is left out. The two spans are separated by a space in the markup for assistive technology and by a gap on screen.
 - With no image, keep the fallback (name on `surface-sunken`) rather than a generic placeholder picture.
 - Choosing a bulk action from the grid switches to the table with the same search and filters (see `CollectionTable`).
 - Phones get two columns by default and three with `c-grid--compact`; the grid needs no breakpoints of its own.

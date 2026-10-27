@@ -17,6 +17,7 @@
       <th class="is-opt">Finish</th>
       <%= sort_header table, "condition", "Condition", bulk:, class: "is-opt" %>
       <%= sort_header table, "quantity", "Qty", bulk:, class: "is-num" %>
+      <% if table.places? %><th class="is-opt">Location</th><% end %>
       <%= sort_header table, "price", "Paid", bulk:, class: "is-num is-opt" %>
       <% unless bulk %><th><span class="c-sr">Actions</span></th><% end %>
     </tr>
@@ -32,7 +33,7 @@
                   data: { quantity: lot.quantity, bulk_selection_target: "row", action: "bulk-selection#toggle" } %>
           </td>
         <% end %>
-        <%= render "collections/lot_cells", lot: %>
+        <%= render "collections/lot_cells", lot:, places: table.places? %>
         <% unless bulk %>
           <td class="c-table__actions">
             <details class="c-menu" data-controller="menu">

@@ -34,6 +34,7 @@ The alternate collection view, and the only place bulk actions happen: one dense
   <a class="c-btn c-btn--primary c-btn--sm" href="?view=grid">Done</a>
 </div>
 ```
+- Location in the app (spec 033): a plain `is-opt` "Location" column after Qty and before Paid, with the lot's location name or "No location" (`is-muted`); on phones the column is hidden and the place ends the `c-table__sub` line under the name (nothing is added for an unplaced lot), which wraps below 640px so a 60-character name fits 360px. Both are left out while the account has no location. The column isn't sortable.
 - Default columns: select, name (with a 24px thumbnail), set · number, condition, quantity, location, price. Comics swap set for series · issue and condition for grade.
 - The header sticks; columns sort on click with `aria-sort`.
 - Prices and quantities are always right-aligned mono so digits line up.
