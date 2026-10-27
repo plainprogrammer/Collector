@@ -64,3 +64,12 @@ The budget is spec 004's 500 ms of server time. This replaces "Not measured" abo
 - Escaping: no `html_safe` or `raw`.
 - SQL: constant `Arel.sql`, bound ids.
 - CSS: tokens and `c-*` classes only, the addition documented.
+
+## Distillation
+
+2026-10-27, after the merge (PR #140). The feature had not been distilled before its merge, so the index row still read Approved with its plan present.
+- **Collection and lots:** no area doc yet (`docs/architecture/README.md`: not written yet). Nothing was written; the area's follow-up slice will distil it.
+- **Design system:** already covered by the feature's own edits (`ItemTile.md`, `CollectionTable.md`, the README's app additions).
+- **Data portability:** unchanged; there is no export change.
+
+No new ADR is owed. The spec stays unfrozen. The index row's Plan went to "retirement owed", and the plan was retired in the commits that follow.
