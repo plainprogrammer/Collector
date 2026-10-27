@@ -10,7 +10,7 @@ Lasting decisions are in [ADRs](../adr/README.md). What an agent needs before it
 |---|---|---|---|
 | Catalog operations | [catalog-operations.md](catalog-operations.md) | 002 FR-3–FR-6 and their Error Scenarios rows; 011 FR-2 (the build's run); 015; 024 | none |
 | Catalog core | not written yet | 002 FR-1, FR-2, FR-7–FR-10; 016; 018; 019; 023 | none |
-| Collection and lots | not written yet | 004 (collection, adding cards); 006; 021 | [design system](../design-system/README.md) |
+| Collection and lots | [collection-and-lots.md](collection-and-lots.md) | 004 (collection, adding cards); 006; 021; 026 (all but the list left out of the export); 029 (locations, the pages, the navigation); 032 (a lot's place, moving copies, removing a location); 033 (all but decision 5 for rows, #142); 034 | [design system](../design-system/README.md) |
 | Tenancy and accounts | not written yet | 004 (accounts, users, admin users) | none |
 | Scanner | not written yet | 005; 007; 008; 009; 010; 011 (all but FR-2's build run) | none |
 | Data portability | [data-portability.md](data-portability.md) | 017; 022; 025 (all but decision 6's request body limit); 026 (the list left out of the export); 028 (all but the stored upload's retention and gate); 029 (format version 2, the export, the preview and the apply of locations); 030 (export versus backup); 032 (format version 3, the export, the preview and the apply of a lot's location) | [export format](../export-format/README.md) |
