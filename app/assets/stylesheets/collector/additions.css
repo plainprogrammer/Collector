@@ -83,9 +83,9 @@ img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches:
 /* ---------- Tile place (spec 033): where the printing's copies are, on a second c-tile__meta row ---------- */
 /* The name is cut with an ellipsis; the "+N more" is not, so a long name never hides that there are other places. The
    export's c-tile__meta rule cuts its last span, which here is the whole place line. */
-.c-tile__place { display:flex; min-width:0; }
+.c-tile__place { display:flex; gap:var(--space-1); min-width:0; } /* the space between the spans is for assistive technology */
 .c-tile__place-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.c-tile__place-more { flex:none; white-space:pre; }
+.c-tile__place-more { flex:none; }
 
 /* ---------- Row place (spec 033): the phone line under a name ends with the place, up to 60 characters ---------- */
 /* The export's cells don't wrap, so a long place would widen the table past 360px; the line wraps instead. */
