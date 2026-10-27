@@ -7,7 +7,7 @@
 **Depends on:** [spec 032](../032-lot-in-a-location/spec.md) (a lot in a location, issue #45; merged, PR #137)
 **Branch:** `033-location-on-tiles-and-rows`
 **Issue:** [#46](https://github.com/plainprogrammer/Collector/issues/46)
-**Plan:** [plan.md](plan.md)
+**Plan:** retired in `fb8de443936f0fd8446c8cb1d0654faf63156cb6`; read it with `git show fb8de443936f0fd8446c8cb1d0654faf63156cb6^:docs/specs/033-location-on-tiles-and-rows/plan.md`
 
 ---
 
