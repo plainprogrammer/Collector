@@ -9,9 +9,10 @@ class NumberEntry::LineForm
   attribute :finish, :string
   attribute :line_key, :string
   attribute :pick, :string
-  attr_accessor :set, :language
+  attribute :location, :string
+  attr_accessor :set, :language, :account
 
-  validate :line_key_well_formed, :quantity_in_range, :single_entry, :finish_offered
+  validate :line_key_well_formed, :quantity_in_range, :single_entry, :finish_offered, :location_known
 
   # A number as decision 8's second step compares it: trimmed, lower case, without leading zeros, at least one character.
   def self.normalize(number) = number.to_s.strip.downcase.sub(/\A0+(?=.)/, "")
@@ -21,6 +22,12 @@ class NumberEntry::LineForm
 
   # The chosen finish, or the type's first one (decision 3).
   def finish = super.presence || finishes.first
+
+  # The account's locations on offer (spec 034 decision 2); none for a form without an account.
+  def locations = @locations ||= account ? account.locations.ordered.to_a : []
+
+  # The location the field names, when it is one of the account's (decision 5).
+  def location_record = (locations.find { it.id.to_s == location.to_s.strip } if location.to_s.strip.match?(/\A\d+\z/))
 
   def blank_number? = number.to_s.strip.empty? && pick.blank?
 
@@ -38,7 +45,7 @@ class NumberEntry::LineForm
     matches.first if matches.one?
   end
 
-  def add_attributes = { entry:, quantity: parsed_quantity, finish: (finish if entry_finishes.any?), line_key: }
+  def add_attributes = { entry:, quantity: parsed_quantity, finish: (finish if entry_finishes.any?), line_key:, location: location_record }
 
   private
     def find_matches
@@ -75,5 +82,12 @@ class NumberEntry::LineForm
       return unless entry && entry_finishes.any? && entry_finishes.exclude?(finish)
 
       errors.add(:finish, "isn't available for this printing")
+    end
+
+    # A location other than none must be one of the account's (spec 034 decision 5).
+    def location_known
+      return if location.blank? || location_record
+
+      errors.add(:location, "That location isn't one of yours any more. Choose again.")
     end
 end

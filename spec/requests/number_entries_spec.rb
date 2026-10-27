@@ -17,9 +17,9 @@ RSpec.describe "Number entry", type: :request do
     follow_redirect!
   end
 
-  def add(number, quantity: "1", finish: nil, line_key: SecureRandom.hex(16), pick: nil, **context)
+  def add(number, quantity: "1", finish: nil, line_key: SecureRandom.hex(16), pick: nil, location: nil, **context)
     post collection_number_entry_lines_path,
-      params: { **page_params, **context, line: { number:, quantity:, finish:, line_key:, pick: }.compact }
+      params: { **page_params, **context, line: { number:, quantity:, finish:, line_key:, pick:, location: }.compact }
   end
 
   context "when signed in" do
@@ -203,6 +203,103 @@ RSpec.describe "Number entry", type: :request do
         printing("60", finishes: nil)
         add("60")
         expect(user.account.lots.sole.finish).to be_nil
+      end
+    end
+
+    describe "choosing a location (spec 034)" do
+      def entry = @entry ||= printing("47", "Psychic Frog")
+      let!(:blue) { create(:location, account: user.account, name: "Blue binder") }
+      let!(:box) { create(:location, account: user.account, name: "Long box") }
+
+      def select_options(html = response.body)
+        Nokogiri::HTML5(html).css("#line_location option").map { [ it.text, it["value"], it["selected"] ] }
+      end
+
+      it "lists No location first, then the account's locations, with none selected (AC-1.1)", :aggregate_failures do
+        entry
+        get collection_number_entry_path(**page_params)
+        expect(select_options).to eq([ [ "No location", "", "selected" ], [ "Blue binder", blue.id.to_s, nil ], [ "Long box", box.id.to_s, nil ] ])
+        expect(response.body).to match(/for="line_location"[^>]*>Location</)
+      end
+
+      it "lists only the account's locations (FR-1)" do
+        create(:location, name: "Someone else's")
+        get collection_number_entry_path(**page_params)
+        expect(response.body).not_to include("Someone else")
+      end
+
+      it "adds into the chosen location and says so (AC-1.2, AC-1.4)", :aggregate_failures do
+        entry
+        unplaced = create(:lot, account: user.account, entry:, finish: "nonfoil", quantity: 1)
+        loaded { add("47", quantity: "2", location: blue.id) }
+        expect(user.account.lots.find_by!(location: blue)).to have_attributes(quantity: 2, entry:)
+        expect(unplaced.reload.quantity).to eq(1)
+        expect(response.body).to include("in Blue binder")
+        expect(select_options.find { it[2] }).to eq([ "Blue binder", blue.id.to_s, "selected" ])
+      end
+
+      it "joins the lot already in that place (AC-1.3)", :aggregate_failures do
+        entry
+        add("47", location: blue.id)
+        add("47", location: blue.id)
+        add("47", location: box.id)
+        expect(user.account.lots.order(:id).pluck(:location_id, :quantity)).to eq([ [ blue.id, 2 ], [ box.id, 1 ] ])
+      end
+
+      it "adds unplaced copies for no location or no parameter (AC-1.5, AC-2.2)", :aggregate_failures do
+        entry
+        add("47", location: "")
+        add("47")
+        expect(user.account.lots.sole).to have_attributes(location: nil, quantity: 2)
+      end
+
+      it "keeps the choice through the choice step and the language form (AC-4.4)", :aggregate_failures do
+        printing("47", "Other", language: "ja")
+        entry
+        get collection_number_entry_path(**page_params, location: box.id)
+        expect(select_options.find { it[2] }.first).to eq("Long box")
+        expect(response.parsed_body.css(%(input[name="location"])).map { it["value"] }).to include(box.id.to_s)
+      end
+
+      it "refuses another account's or a removed location with a field error and adds nothing (AC-4.1)", :aggregate_failures do
+        entry
+        other = create(:location)
+        [ other.id, 0, "x" ].each do |value|
+          add("47", quantity: "3", location: value)
+          expect(response).to have_http_status(:unprocessable_content)
+          expect(response.body).to include("That location isn&#39;t one of yours any more. Choose again.", 'value="3"')
+        end
+        expect(Lot.count).to eq(0)
+      end
+
+      it "shows No location for a link naming a location that is gone (AC-4.2)", :aggregate_failures do
+        entry
+        get collection_number_entry_path(**page_params, location: 0)
+        expect(response).to have_http_status(:ok)
+        expect(select_options.find { it[2] }.first).to eq("No location")
+      end
+
+      it "answers a replayed line key as the first, adding nothing more (AC-4.3)", :aggregate_failures do
+        entry
+        add("47", line_key: "a" * 32, location: blue.id)
+        add("47", line_key: "a" * 32, location: box.id)
+        expect(user.account.lots.sole).to have_attributes(location: blue, quantity: 1)
+      end
+
+      it "names the place in the list and on Undo, and undoes from the lot (AC-3.1)", :aggregate_failures do
+        entry
+        loaded { add("47", location: blue.id) }
+        expect(Nokogiri::HTML5(response.body).at_css("#number_entry_list li").text.squish).to include("in Blue binder")
+        delete_path = Nokogiri::HTML5(response.body).at_css("#number_entry_list li form")["action"]
+        post delete_path
+        expect(Lot.count).to eq(0)
+      end
+
+      it "shows no field or hint to an account without locations (AC-2.1)", :aggregate_failures do
+        Location.where(account: user.account).delete_all
+        entry
+        get collection_number_entry_path(**page_params)
+        expect(response.body).not_to include("line_location", "Add a location")
       end
     end
 

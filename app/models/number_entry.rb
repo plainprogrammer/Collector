@@ -13,9 +13,9 @@ class NumberEntry < ApplicationRecord
 
   def self.new_line_key = SecureRandom.hex(16)
 
-  # Adds quantity copies of entry, at most once per line key in the account's list (FR-3, AC-2.11). The copies merge
-  # into their lot through Lot.add!, which raises RecordInvalid at the 9,999 cap (AC-4.4); nothing is recorded then.
-  def self.add!(account:, entry:, quantity:, finish:, line_key:)
+  # Adds quantity copies of entry, in location (one of the account's, or none), at most once per line key in the
+  # account's list (FR-3, AC-2.11; spec 034). The copies merge into their lot through Lot.add!, which raises RecordInvalid at the 9,999 cap (AC-4.4); nothing is recorded then.
+  def self.add!(account:, entry:, quantity:, finish:, line_key:, location: nil)
     raise ArgumentError, "malformed line key" unless KEY_FORMAT.match?(line_key.to_s)
 
     transaction do
@@ -23,11 +23,11 @@ class NumberEntry < ApplicationRecord
       existing = list.lines.find_by(line_key:)
       next Added.new(line: existing, replayed: true) if existing
 
-      lot = Lot.add!(account:, entry:, quantity:, finish:)
+      lot = Lot.add!(account:, entry:, quantity:, finish:, location:)
       Added.new(line: list.lines.create!(account:, entry:, lot:, quantity:, finish:, line_key:), replayed: false)
     end
   end
 
   # Lines not undone, newest first, with what the page shows of each (AC-3.1).
-  def kept_lines = lines.kept.newest_first.includes(:lot, entry: :set)
+  def kept_lines = lines.kept.newest_first.includes(lot: :location, entry: :set)
 end

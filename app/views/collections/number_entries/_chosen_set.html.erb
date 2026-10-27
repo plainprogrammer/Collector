@@ -1,4 +1,4 @@
-<%# locals: (choice:, finish:) %>
+<%# locals: (choice:, finish:, location: nil) %>
 <%# The chosen set and language (spec 026 decision 2): the language is a field only when the set has more than one. %>
 <div class="c-numentry__set">
   <p class="c-numentry__setname"><strong><%= choice.set.name %></strong> <span class="c-numentry__data"><%= choice.set.code.upcase %></span></p>
@@ -7,6 +7,7 @@
       <%= hidden_field_tag :type, choice.set.collectible_type, id: nil %>
       <%= hidden_field_tag :set, choice.set.code, id: nil %>
       <%= hidden_field_tag :finish, finish, id: nil %>
+      <%= hidden_field_tag :location, location, id: nil if location %>
       <label class="c-select"><span class="c-field__label">Language</span><%= select_tag :language,
             options_for_select(choice.languages.keys.sort.map { [ it.upcase, it ] }, choice.language), id: "number_entry_language" %></label>
       <%= submit_tag "Change language", name: nil, class: "c-btn c-btn--secondary c-btn--sm" %>

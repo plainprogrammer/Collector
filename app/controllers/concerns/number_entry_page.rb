@@ -10,7 +10,8 @@ module NumberEntryPage
 
     def render_page(status: :ok)
       set_choice
-      @line ||= NumberEntry::LineForm.new(set: @choice.set, language: @choice.language, finish: params[:finish]) if @choice.chosen?
+      @line ||= NumberEntry::LineForm.new(set: @choice.set, language: @choice.language, finish: params[:finish],
+        location: params[:location], account: Current.account) if @choice.chosen?
       @line_key = NumberEntry.new_line_key
       list = Current.account.number_entry
       @lines = list ? list.kept_lines.to_a : []
@@ -20,8 +21,8 @@ module NumberEntryPage
     end
 
     # The page for the chosen set and language, keeping the finish; the bare page when none is chosen.
-    def page_path(finish: params[:finish])
+    def page_path(finish: params[:finish], location: params[:location])
       set_choice
-      collection_number_entry_path(**(@choice.chosen? ? @choice.to_params : {}), finish: finish.presence)
+      collection_number_entry_path(**(@choice.chosen? ? @choice.to_params : {}), finish: finish.presence, location: location.presence)
     end
 end

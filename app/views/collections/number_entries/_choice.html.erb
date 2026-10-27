@@ -7,7 +7,7 @@
     <% line.matches.each_with_index do |entry, index| %>
       <li><%= button_to "#{entry.name} (#{set_number(entry)})", collection_number_entry_lines_path, class: "c-btn c-btn--secondary",
             autofocus: index.zero?, params: { **choice.to_params,
-              line: { number: line.number, quantity: line.quantity, finish: line.finish, line_key:, pick: entry.external_key } } %></li>
+              line: { number: line.number, quantity: line.quantity, finish: line.finish, location: line.location_record&.id, line_key:, pick: entry.external_key } } %></li>
     <% end %>
   </ul>
 </section>
