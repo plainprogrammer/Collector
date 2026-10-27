@@ -9,14 +9,14 @@
   <%= render "catalog/not_loaded", titles: @unloaded_catalogs, named: @catalogs_named %>
   <div class="c-numentry">
     <% if @choice.chosen? %>
-      <%= render "collections/number_entries/chosen_set", choice: @choice, finish: @line.finish %>
+      <%= render "collections/number_entries/chosen_set", choice: @choice, finish: @line.finish, location: @line.location_record&.id %>
       <%= render "collections/number_entries/choice", choice: @choice, line: @line, line_key: @line_key if @line.choice? %>
       <%= render "collections/number_entries/line_form", choice: @choice, line: @line, line_key: @line_key %>
     <% elsif @choice.sets.any? %>
       <%= render "collections/number_entries/set_form", choice: @choice, named: @catalogs_named %>
     <% end %>
     <%= render "collections/number_entries/list", lines: @lines,
-          page_params: @choice.chosen? ? { **@choice.to_params, finish: @line.finish } : {} %>
+          page_params: @choice.chosen? ? { **@choice.to_params, finish: @line.finish, location: @line.location_record&.id }.compact : {} %>
   </div>
 </main>
 <%= render "layouts/tabbar", section: :collection %>

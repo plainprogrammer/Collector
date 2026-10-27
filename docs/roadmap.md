@@ -35,7 +35,7 @@ The design system's "where is it" ([docs/design-system/README.md](design-system/
 13. [#48](https://github.com/plainprogrammer/Collector/issues/48) Move many lots at once (the "Move to…" deferred in spec 006).
 14. [#49](https://github.com/plainprogrammer/Collector/issues/49) Decks as locations.
 15. [#50](https://github.com/plainprogrammer/Collector/issues/50) "Free to use" on the card page.
-16. [#51](https://github.com/plainprogrammer/Collector/issues/51) Choose a location during typed entry.
+16. [#51](https://github.com/plainprogrammer/Collector/issues/51) Choose a location during typed entry. **Built 2026-10-26, done when its pull request merges:** [spec 034](specs/034-location-in-typed-entry/spec.md).
 
 ### Theme D: Scanner bulk entry
 

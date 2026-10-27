@@ -10,8 +10,8 @@ RSpec.describe NumberEntry::LineForm do
     entry
   end
 
-  def line(number, quantity: "1", finish: nil, pick: nil, language: "en")
-    described_class.new(set: mh3, language:, number:, quantity:, finish:, line_key: key, pick:)
+  def line(number, quantity: "1", finish: nil, pick: nil, language: "en", location: nil, account: nil)
+    described_class.new(set: mh3, language:, number:, quantity:, finish:, line_key: key, pick:, location:, account:)
   end
 
   describe ".normalize" do
@@ -114,7 +114,7 @@ RSpec.describe NumberEntry::LineForm do
   describe "#add_attributes" do
     it "gives the entry, the quantity, the finish and the key", :aggregate_failures do
       entry = printing("47")
-      expect(line("47", quantity: "4", finish: "foil").add_attributes).to eq(entry:, quantity: 4, finish: "foil", line_key: key)
+      expect(line("47", quantity: "4", finish: "foil").add_attributes).to eq(entry:, quantity: 4, finish: "foil", line_key: key, location: nil)
     end
 
     it "gives no finish for an entry that lists none (AC-2.15)", :aggregate_failures do
@@ -122,6 +122,36 @@ RSpec.describe NumberEntry::LineForm do
       form = line("60")
       expect(form).to be_valid
       expect(form.add_attributes[:finish]).to be_nil
+    end
+  end
+
+  describe "#location (spec 034 decision 5)" do
+    let(:account) { create(:user).account }
+    let(:blue) { create(:location, account:) }
+
+    before { printing("47") }
+
+    it "is the account's location of that id, and none when blank", :aggregate_failures do
+      form = line("47", location: blue.id.to_s, account:)
+      expect(form).to be_valid
+      expect(form.add_attributes[:location]).to eq(blue)
+      expect(line("47", location: "", account:)).to be_valid
+      expect(line("47", location: "", account:).add_attributes[:location]).to be_nil
+    end
+
+    it "refuses another account's location, a removed one and a non-number (AC-4.1)", :aggregate_failures do
+      other = create(:location)
+      [ other.id.to_s, "0", "abc", "#{blue.id}x" ].each do |value|
+        form = line("47", location: value, account:)
+        expect(form).not_to be_valid, value
+        expect(form.errors[:location]).to eq([ "That location isn't one of yours any more. Choose again." ]), value
+      end
+    end
+
+    it "is offered only when the account has a location (AC-2.1)", :aggregate_failures do
+      expect(line("47", account:).locations).to be_empty
+      blue
+      expect(line("47", account:).locations).to eq([ blue ])
     end
   end
 end

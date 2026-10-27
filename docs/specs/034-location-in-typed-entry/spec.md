@@ -1,13 +1,13 @@
 # Feature 034: Choose a Location During Typed Entry
 
-**Status:** Draft, awaiting the maintainer's approval. Decisions 1–4 are recommendations; each lists its alternative.
-**Version:** 0.1.0
+**Status:** Approved by the maintainer (2026-10-26): decisions 1, 2 and 3 ruled as recommended (the field on each line; nothing new without locations; the place read from the lot, no column).
+**Version:** 1.0.0
 **Created:** 2026-10-26
 **Last Updated:** 2026-10-26
 **Depends on:** [spec 032](../032-lot-in-a-location/spec.md) (a lot's location is part of its identity; merged, PR #137) and [spec 026](../026-typed-entry/spec.md) (number entry, "Add by number")
 **Branch:** `034-location-in-typed-entry`
 **Issue:** [#51](https://github.com/plainprogrammer/Collector/issues/51) (roadmap item 16, theme C: locations)
-**Plan:** none yet (written after approval)
+**Plan:** [plan.md](plan.md)
 
 ---
 
@@ -15,6 +15,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.0.0 | 2026-10-26 | Approved; decisions 1–3 ruled as recommended. |
 | 0.1.0 | 2026-10-26 | Written from issue #51, spec 032 (decision 5, Story 7, AC-7.2, AC-7.6) and spec 026. |
 
 ---
@@ -135,7 +136,7 @@ As a collector with a binder to file, I want to choose it once and type numbers 
 
 ## Open Questions
 
-None blocking; decisions 1–4 await the maintainer.
+None.
 
 ## Out of Scope (Future Considerations)
 
