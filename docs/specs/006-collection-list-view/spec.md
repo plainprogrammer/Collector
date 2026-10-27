@@ -5,6 +5,7 @@
 **Created:** 2026-09-30
 **Last Updated:** 2026-10-01
 **Branch:** `006-collection-list-view`
+**Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (whole spec); see the [specs index](../README.md)
 
 ---
 
