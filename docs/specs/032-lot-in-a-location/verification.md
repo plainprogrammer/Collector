@@ -1,6 +1,6 @@
 # Verification: Feature 032, Put a Lot in a Location
 
-- **Spec:** [spec.md](spec.md) (1.0.2), [plan.md](plan.md) (approved by the maintainer on 2026-10-24)
+- **Spec:** [spec.md](spec.md) (1.0.2), plan (retired in `91700487e563dd2821dc5cb5ea294f0af104061e`; read it with `git show 91700487e563dd2821dc5cb5ea294f0af104061e^:docs/specs/032-lot-in-a-location/plan.md`) (approved by the maintainer on 2026-10-24)
 - **Branch:** `032-lot-in-a-location` (issue [#45](https://github.com/plainprogrammer/Collector/issues/45))
 - **Date:** 2026-10-24
 - **Executor:** Sonnet 5.5 (an Orca worker; the maintainer chose the model)

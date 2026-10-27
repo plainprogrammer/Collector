@@ -1,6 +1,6 @@
 # Verification: Choose a Location During Typed Entry (spec 034)
 
-**Spec:** [spec.md](spec.md) v1.0.0 · **Plan:** [plan.md](plan.md) · **Branch:** `034-location-in-typed-entry` · **Issue:** [#51](https://github.com/plainprogrammer/Collector/issues/51)
+**Spec:** [spec.md](spec.md) v1.0.0 · **Plan:** retired in `5aa4a8fe0c8cada745d0535886aea2905e975f96`; read it with `git show 5aa4a8fe0c8cada745d0535886aea2905e975f96^:docs/specs/034-location-in-typed-entry/plan.md` · **Branch:** `034-location-in-typed-entry` · **Issue:** [#51](https://github.com/plainprogrammer/Collector/issues/51)
 
 ## Rulings
 

@@ -1,6 +1,6 @@
 # Research: Put a Lot in a Location
 
-**Spec:** [spec.md](spec.md) · **Plan:** [plan.md](plan.md)
+**Spec:** [spec.md](spec.md) · **Plan:** retired in `91700487e563dd2821dc5cb5ea294f0af104061e`; read it with `git show 91700487e563dd2821dc5cb5ea294f0af104061e^:docs/specs/032-lot-in-a-location/plan.md`
 
 Read-only. Nothing here was executed: plans in this project are not run before approval (`.claude/memory`, ruled 2026-10-15), so each point below was traced by reading the file named, at `origin/main` `b873304` plus this branch. An executor confirms each with its first failing test.
 

@@ -1,6 +1,6 @@
 # Data Model: Put a Lot in a Location
 
-**Spec:** [spec.md](spec.md) (v1.0.2, Approved) · **Plan:** [plan.md](plan.md) · **Decision:** [ADR 0025](../../adr/0025-a-lots-location-is-part-of-its-identity.md)
+**Spec:** [spec.md](spec.md) (v1.0.2, Approved) · **Plan:** retired in `91700487e563dd2821dc5cb5ea294f0af104061e`; read it with `git show 91700487e563dd2821dc5cb5ea294f0af104061e^:docs/specs/032-lot-in-a-location/plan.md` · **Decision:** [ADR 0025](../../adr/0025-a-lots-location-is-part-of-its-identity.md)
 
 One column, one index and one foreign key on `lots`. No new table. Nothing is backfilled.
 

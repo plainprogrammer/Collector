@@ -7,7 +7,7 @@
 **Depends on:** [spec 032](../032-lot-in-a-location/spec.md) (a lot's location is part of its identity; merged, PR #137) and [spec 026](../026-typed-entry/spec.md) (number entry, "Add by number")
 **Branch:** `034-location-in-typed-entry`
 **Issue:** [#51](https://github.com/plainprogrammer/Collector/issues/51) (roadmap item 16, theme C: locations)
-**Plan:** [plan.md](plan.md)
+**Plan:** retired in `5aa4a8fe0c8cada745d0535886aea2905e975f96`; read it with `git show 5aa4a8fe0c8cada745d0535886aea2905e975f96^:docs/specs/034-location-in-typed-entry/plan.md`
 
 ---
 
