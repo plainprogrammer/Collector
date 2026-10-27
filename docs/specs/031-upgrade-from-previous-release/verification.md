@@ -1,6 +1,6 @@
 # Verification: Feature 031, Prove an Upgrade from the Previous Release in CI
 
-- **Spec:** [spec.md](spec.md) (1.1.2), [plan.md](plan.md)
+- **Spec:** [spec.md](spec.md) (1.1.2), plan (retired in `224105d82730320af5e64e726dfc653f6920e402`; read it with `git show 224105d82730320af5e64e726dfc653f6920e402^:docs/specs/031-upgrade-from-previous-release/plan.md`)
 - **Branch:** `031-upgrade-from-previous-release`
 - **Date:** 2026-10-24
 - **Executor:** Sonnet 5.5
