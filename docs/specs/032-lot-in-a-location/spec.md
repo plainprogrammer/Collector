@@ -8,7 +8,7 @@
 **Branch:** `032-lot-in-a-location`
 **Issue:** [#45](https://github.com/plainprogrammer/Collector/issues/45)
 **Plan:** retired in `91700487e563dd2821dc5cb5ea294f0af104061e`; read it with `git show 91700487e563dd2821dc5cb5ea294f0af104061e^:docs/specs/032-lot-in-a-location/plan.md`
-**Frozen:** the current rules are in [`data-portability.md`](../../architecture/data-portability.md) (parts: format version 3, the export, the preview and the apply of a lot's location); see the [specs index](../README.md)
+**Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (parts: a lot's place, moving copies, the card page, removing a location, every other way of changing lots) and [`data-portability.md`](../../architecture/data-portability.md) (parts: format version 3, the export, the preview and the apply of a lot's location); see the [specs index](../README.md)
 
 ---
 

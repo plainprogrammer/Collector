@@ -5,6 +5,8 @@
 **Created:** 2026-09-30
 **Last Updated:** 2026-10-01
 **Branch:** `006-collection-list-view`
+**Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (whole spec); see the [specs index](../README.md)
+**Plan:** retired in `b6cc3b6d8d2c5f8dcde27d05ba0aee554182733f`; read it with `git show b6cc3b6d8d2c5f8dcde27d05ba0aee554182733f^:docs/specs/006-collection-list-view/plan.md`
 
 ---
 

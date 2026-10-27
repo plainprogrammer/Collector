@@ -14,7 +14,7 @@ How a collector's collection leaves and enters Collector: the export format, the
 
 **Neighbours:**
 
-- The lot as the unit of ownership (ADR 0019), `Lot`, and locations as a feature (`Location`, `Location::Name`, `/locations`, spec 029 apart from its export and import parts) and a lot's place in the collection (`Lot#location`, Move copies, `Location::Holdings`, spec 032 apart from the export, preview and apply) are **collection and lots** (no area doc yet).
+- The lot as the unit of ownership (ADR 0019), `Lot`, and locations as a feature (`Location`, `Location::Name`, `/locations`, spec 029 apart from its export and import parts) and a lot's place in the collection (`Lot#location`, Move copies, `Location::Holdings`, spec 032 apart from the export, preview and apply) are **[collection and lots](collection-and-lots.md)**.
 - The stored upload's retention: `ImportUpload`'s expiry, the sweep, the orphan rule, the Active Storage routes' gate and the 40 MB request body caps in Puma, Thruster and kamal-proxy are **release and deploy** (spec 028 decision 9; spec 025 decision 6; ADR 0022). This doc uses only that an upload is stored for an hour, one per account, and is gone when it is applied or refused.
 - Backup and restore of an instance (`backup:create`, `backup:restore`, `docs/backup-restore.md`) is **release and deploy** (spec 030).
 - Catalog lookups the preview makes (`Catalog.collecting`, `Catalog::Entry`) are **catalog core** (no area doc yet).
