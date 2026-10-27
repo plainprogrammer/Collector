@@ -6,6 +6,7 @@
 **Last Updated:** 2026-10-13
 **Branch:** `021-unowned-tile-marker`
 **Issue:** [#65](https://github.com/plainprogrammer/Collector/issues/65)
+**Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (whole spec); see the [specs index](../README.md)
 
 ---
 
