@@ -23,3 +23,44 @@ Evidence for each criterion. Screenshots (`screenshots/`): grid and table at 128
 | AC-3.3 5,000 lots over 300 locations | **Not measured.** The grid adds one grouped statement over `lots.catalog_entry_id` (indexed) for at most 120 printings, the table a preload of at most 120 locations. A measurement is owed if the maintainer wants one |
 | AC-3.4 catalog tiles, signed out | request "shows no place on the catalog's tiles"; signed-out redirect unchanged (`spec/requests/collections_spec.rb`) |
 | FR-6 core names no collectible | no `MTG` in the changed files (`grep -rn "MTG" app/models/collection_grid.rb app/views/collections app/helpers/lots_helper.rb` finds none) |
+
+## Implementation review
+
+SPEC-ALIGNED, with one deviation the maintainer accepted (rows wrap the place line, [#142](https://github.com/plainprogrammer/Collector/issues/142)) and the test gaps below. The review was an independent read-only `sdd-review` Mode B, run after the merge (2026-10-27) on `a3baf0d` (PR #140). It first returned DRIFT DETECTED on the deviation. The maintainer chose to keep the shipped behaviour and record it, so a later spec supersedes Decision 5 for rows.
+
+**Deviation (Decision 5, rows).** Decision 5 keeps a place line, which the Terms define as on a tile or a row, to one line with an ellipsis. Tiles do. Rows don't:
+- The phone line under the name wraps (`additions.css`, "Row place (spec 033)", commit 383926f) so a 60-character name fits 360px.
+- The wide Location cell has no ellipsis, so a long name widens the column. A sideways scroll just above 640px is plausible but was not checked in a browser.
+
+`CollectionTable.md` documents the wrap. Settling it is #142.
+
+**Runs (2026-10-27):**
+- Model and request specs (`collection_grid`, `collection_table`, `collection_places`, `collections`, `collection_views`, `bulk_condition`, `bulk_removal`, `lot/condition_change`, and the two core specs): 103 examples, 0 failures.
+- `query_counts_spec.rb`: 10 examples, 0 failures.
+- System specs (`collection_table`, `collection`, `collection_views`; headless Firefox), including both of spec 033's system examples: 13 examples, 0 failures.
+- RuboCop on the changed Ruby: no offenses.
+
+**AC-3.3, measured.** 5,000 lots over 300 locations (about 1,500 printings), full request through Rack, test environment, median of 5:
+- grid: 57 ms
+- table: 92 ms
+- grid page 10: 42 ms
+
+The budget is spec 004's 500 ms of server time. This replaces "Not measured" above. It was measured in the test environment, not in development as the NFR states.
+
+**AC-3.2.** With places on, the grid, the table and the bulk table each run the same number of statements for 1 lot as for 115 printings over 50 locations. Places add a fixed 2 statements per page: the grid adds `locations.exists?` and the grouped read, the table adds `exists?` and the location preload. The NFR's "one statement to the grid; the table adds no statement" undercounts by FR-3's `exists?`. The bound holds.
+
+**Test gaps (not blocking; listed in #142):**
+- AC-1.8 has no example with a filter. It holds by construction: the places are read for the page's printings and all their lots.
+- AC-1.6: the tile link's accessible name containing the whole "Name +N more" isn't asserted.
+- AC-1.2's tie example can't tell ordering by comparison key from ordering by raw name.
+- AC-2.6's bulk half is checked at the model level only.
+- AC-1.7 rests on the grid's unchanged main query.
+- FR-6 is checked by grep, with no `*_core_spec.rb` guard.
+- `c-table__place` is a test hook with no CSS and no design-system mention.
+
+**Rule checks:**
+- No queries in views: holds (prepared `Data` values, preloaded `location`).
+- Tenant scoping through the account: holds (AC-3.1 is tested on the grid and the table).
+- Escaping: no `html_safe` or `raw`.
+- SQL: constant `Arel.sql`, bound ids.
+- CSS: tokens and `c-*` classes only, the addition documented.
