@@ -57,7 +57,8 @@ RSpec.describe Location::Name, "parity with v2.schema.json", type: :model do # r
   describe "a lot's location in v3.schema.json (spec 032 AC-9.7)" do
     let(:lot_location) { ExportFormat::Rules.schema(3).dig("$defs", "lot_location") }
 
-    def lot_pattern = Regexp.new(JSONSchemer::EcmaRegexp.ruby_equivalent(lot_location["pattern"]))
+    # Built once per example: as a method it was rebuilt for every string the sweep judges, about 1,500 s of CI (#145).
+    let(:lot_pattern) { Regexp.new(JSONSchemer::EcmaRegexp.ruby_equivalent(lot_location["pattern"])) }
 
     def well_formed_location?(string) = string.length.between?(lot_location["minLength"], lot_location["maxLength"]) && lot_pattern.match?(string)
 
