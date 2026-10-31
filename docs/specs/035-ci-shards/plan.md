@@ -2,6 +2,7 @@
 
 **Spec:** [spec.md](spec.md) 1.0.0 (approved 2026-10-31)
 **Branch:** `035-ci-shards` (draft PR [#149](https://github.com/plainprogrammer/Collector/pull/149))
+**Plan review:** an Opus read-only review on 2026-10-31 said NOT READY: one blocking finding and 13 others, all fixed in this version.
 
 ## Global constraints
 
@@ -10,31 +11,34 @@
   - Write the phase's examples first, run them, and see each fail for the reason stated.
   - Then implement until they pass.
   - A fix must keep the spec's behaviour. Record it as a ruling in the commit body.
-- **Scope.** Keep to CI, hook, `lib/`, `spec/` and doc files. Nothing under `app/` changes (spike brief; parallel sessions #122, #127, #47).
+- **Scope.** Keep to CI, hook, `lib/`, `spec/`, `config/application.rb`, `.dockerignore`, `bin/image-smoke` and doc files. Nothing under `app/` changes (spike brief; parallel sessions #122, #127, #47).
 - **Commits.** One Conventional Commit per step, ending with the session's attribution trailers ([[subagent-commit-trailers]]).
 - **The test database.** One process at a time uses the worktree's test database ([[worktree-shared-test-db]]). Don't run RSpec while a `bin/ci` runs.
 - **Gems.** Add `parallel_tests` with `bundle add`. It asks for permission, so ask the maintainer.
 - **Workflow edits.** Edits to `.github/workflows/**` ask for permission. Ask the maintainer.
 - **Unattended edits.** Never edit `.claude/settings.json`'s permission lists or hooks except as Phases 2 and 4 say.
-- **Facts read from `parallel_tests` 5.8.0** (installed to a scratch directory and read, not run):
+- **New spec files** under `spec/lib/collector/` take no `type:`, like their neighbours.
+- **The new `lib/collector` files are development tooling**, like `lib/collector/ghcr_cleanup.rb`. This applies to `ci_groups.rb`, `ci_shard.rb` and `push_scope.rb`.
+  - They are required by path: from `bin/ci`, from the hook script, and from their specs.
+  - They are kept out of autoloading: add them to `config.autoload_lib(ignore: …)` in `config/application.rb`, which today ignores only `collector/backup*`. Otherwise Zeitwerk would eager-load them under `CI=true`.
+  - They are kept out of the image: `.dockerignore`, and `bin/image-smoke`'s list of paths that must be absent.
+- **Facts read from `parallel_tests` 5.8.0** (installed to a scratch directory and read, not run; confirmed by the plan review):
   - `ParallelTests::RSpec::Runner.tests_in_groups(tests, num_groups, options)` returns `num_groups` sorted file lists. `options` are `group_by:` (`:runtime` or `:filesize`), `runtime_log:` and `allowed_missing_percent:`.
-  - With `group_by: :runtime`, a missing log raises (`File.read`) and a log missing more than `allowed_missing_percent` of the files raises `RuntimeLogTooSmallError`.
-  - `ParallelTests::RSpec::RuntimeLogger` writes `path:seconds` lines only when `TEST_ENV_NUMBER` is set (an empty string counts).
-  - `find_tests(["spec"])` finds the same 219 files as `find spec -name '*_spec.rb'` (checked 2026-10-31).
+  - With `group_by: :runtime`, a missing log raises (`File.read`).
+  - With `allowed_missing_percent: 100` a short log never raises: files missing from the log get the average time, and deleted files are ignored.
+  - `find_tests(["spec"])` returns `spec/…` paths, the same 219 files as `find spec -name '*_spec.rb'`. These match the runtime logger's relative paths.
+  - `ParallelTests::RSpec::RuntimeLogger` writes `path:seconds` lines only when `TEST_ENV_NUMBER` is set. `TEST_ENV_NUMBER=""` reaches Ruby as `""`, which is truthy, so it works.
 
 ## Phase 0: Prerequisites (main session)
 
 1. Wait until #147 (the parity fix) and #148 (the hooks block on a timeout) have merged.
 2. Then `git fetch origin main` and rebase `035-ci-shards` onto it. #148 adds `"onFailure": "block"` to both hooks; Phase 4 keeps it (AC-3.6).
-3. Ask the maintainer to approve `bundle add parallel_tests --version "~> 5.8" --group test --require false`.
-4. Check `bin/rails zeitwerk:check` still passes: the gem must not autoload into the app.
-5. Commit `chore(deps): add parallel_tests for CI shards (spec 035 decision 6)`.
+3. Ask the maintainer to approve `bundle add parallel_tests --version "~> 5.8.0" --group test --require false`. The lockfile pins the exact version; the plan's facts were read at 5.8.0.
+4. Commit `chore(deps): add parallel_tests for CI shards (spec 035 decision 6)`.
 
 ## Phase 1: Groups and shards in `lib/` (AC-1.5, AC-1.6)
 
-Two plain-Ruby files under `lib/collector/`. They are required by path, like `lib/collector/backup` (`config/application.rb` already keeps `lib/collector` out of autoloading; confirm and follow it). `bin/ci` loads them before Rails boots.
-
-**1.1 Write the examples first: `spec/lib/collector/ci_groups_spec.rb`** (`type: :lib`, or the type the other `spec/lib/collector` files use).
+**1.1 Write the examples first: `spec/lib/collector/ci_groups_spec.rb`** (`require Rails.root.join("lib/collector/ci_groups").to_s`).
 
 - `Collector::CiGroups.parse([])` → `group: :all`.
 - `parse(["checks"])` → `:checks`.
@@ -44,24 +48,26 @@ Two plain-Ruby files under `lib/collector/`. They are required by path, like `li
   - `["rspec", "5/4"]`, `["rspec", "0/4"]`, `["rspec", "1/0"]`, `["rspec", "a/b"]`;
   - `["lint"]`, `["checks", "1/2"]`, `["rspec", "1/2", "x"]`.
 
-They fail with `NameError` (no `Collector::CiGroups`).
+They fail with `LoadError` (no file).
 
 **1.2 Write the examples first: `spec/lib/collector/ci_shard_spec.rb`.**
 
-- **Every file exactly once (AC-1.5).** For M in 2, 3 and 4, the union of `Collector::CiShard.new(index:, total: M).files` over every index equals `Dir["spec/**/*_spec.rb"].sort`, with no file twice. Run this:
-  - with the committed log;
-  - with the log path pointing at a missing file (expect a file-size grouping);
-  - with a log that lists one deleted file and misses a real one (`allowed_missing_percent: 100`).
-- **The replay command.** `replay_command(seed: 7)` returns `CI=true bin/rspec --seed 7 --profile 10 <files>` (AC-1.4, decision 8).
+- **Every file exactly once (AC-1.5).** For M in 2, 3 and 4, the union of `Collector::CiShard.new(index:, total: M, log:).files` over every index equals `Dir["spec/**/*_spec.rb"].sort`, with no file twice. Run this:
+  - **with a fixture log** written to a scratch file: every spec file at 1 s, one deleted path, and one real file left out, so `allowed_missing_percent: 100` applies;
+  - **with `log:` pointing at a missing file** (expect `#grouping` to be `:filesize`).
+
+  The committed log's case is added in Phase 2.4, once the log exists.
+- **The replay command.** `replay_command(files: %w[spec/a_spec.rb spec/b_spec.rb], seed: 7)` returns `CI=true bin/rspec --seed 7 --profile 10 spec/a_spec.rb spec/b_spec.rb` (AC-1.4, decision 8).
 - **The grouping it reports.** `#grouping` is `:runtime` when the log exists and `:filesize` when it doesn't.
 
-They fail with `NameError`.
+They fail with `LoadError`.
 
 **1.3 Implement.**
 
 ```ruby
 # lib/collector/ci_groups.rb
 # The groups bin/ci runs (spec 035 decision 4): all steps, the checks without RSpec, the whole suite, or one shard.
+# Development tooling, required by path; not autoloaded and not in the image.
 module Collector
   module CiGroups
     Unknown = Class.new(ArgumentError)
@@ -81,14 +87,13 @@ module Collector
 end
 ```
 
-Watch that `$1` is still set inside the `if` guard of a `case/in` arm. If it isn't, match with `=~` before the `case`.
-
 ```ruby
 # lib/collector/ci_shard.rb
 require "shellwords"
 
 # One of M groups of spec files, formed by parallel_tests from the committed run-time log, or by file size without
-# one (spec 035 decision 6). The same files on every machine, whatever its core count.
+# one (spec 035 decision 6). The same files on every machine, whatever its core count. Development tooling, required
+# by path; not autoloaded and not in the image.
 module Collector
   class CiShard
     RUNTIME_LOG = "spec/support/runtime_log.txt"
@@ -108,18 +113,22 @@ module Collector
       ParallelTests::RSpec::Runner.tests_in_groups([ "spec" ], total, options).fetch(index - 1)
     end
 
-    def replay_command(seed:) = "CI=true bin/rspec --seed #{seed} --profile 10 #{files.shelljoin}"
+    def self.replay_command(files:, seed:) = "CI=true bin/rspec --seed #{seed} --profile 10 #{files.shelljoin}"
   end
 end
 ```
+
+`replay_command` is a class method that takes the files, so a shard forms its groups once. `fetch(index - 1)` can return an empty group only when there are fewer files than shards (the CLI drops empty groups), which can't happen with 219 files.
+
+**1.4** Add the two files to `config.autoload_lib(ignore: …)` in `config/application.rb`, beside `collector/backup*`. Update the comment above it, then run `bin/rails zeitwerk:check`.
 
 Run the two spec files and see them pass. Commit `feat(ci): parse bin/ci groups and form spec shards (spec 035 decisions 4, 6)`.
 
 ## Phase 2: `config/ci.rb` groups, the profile and the run-time log (AC-1.1–AC-1.4, AC-1.6–AC-1.9)
 
-**2.1 Write the example first: AC-1.9 and AC-1.8 as file-shape examples, in `spec/config/ci_definition_spec.rb`.**
+**2.1 Write the examples first, in `spec/config/ci_definition_spec.rb`** (file-shape, `type: :config` or the type its neighbours use).
 
-- **AC-1.9:** `config/ci.rb` passes `--profile 10` on each RSpec command it builds. Read the file and expect `--profile 10` in the RSpec step strings.
+- **AC-1.9:** `config/ci.rb` passes `--profile 10` on the RSpec command.
 - **AC-1.8:** `.claude/settings.json`'s `permissions.allow` includes both `Bash(bin/ci)` and `Bash(bin/ci *)`.
 
 They fail: neither is there yet.
@@ -137,16 +146,16 @@ rescue Collector::CiGroups::Unknown => error
   abort error.message
 end
 
-seed = Integer(ENV.fetch("SEED") { rand(1..65_535) })
-rspec = "bin/rspec --seed #{seed} --profile 10"
+rspec = "bin/rspec --profile 10"
 
 if selection.index
+  seed = Integer(ENV.fetch("SEED") { rand(1..65_535) })
   shard = Collector::CiShard.new(index: selection.index, total: selection.total)
   files = shard.files
   puts "Shard #{selection.index}/#{selection.total}: #{files.size} files, grouped by #{shard.grouping}, seed #{seed}"
   puts "Balance may be worse: no run-time log at #{Collector::CiShard::RUNTIME_LOG}" if shard.grouping == :filesize
-  puts "Replay: #{shard.replay_command(seed:)}"
-  rspec = "#{rspec} #{files.shelljoin}"
+  puts "Replay: #{Collector::CiShard.replay_command(files:, seed:)}"
+  rspec = "bin/rspec --seed #{seed} --profile 10 #{files.shelljoin}"
 end
 
 CI.run do
@@ -164,14 +173,14 @@ CI.run do
 end
 ```
 
-Keep the existing commented signoff block. The full run keeps today's order (AC-1.1).
+- **Keep the existing signoff block**, commented out as it is today.
+- **A plain `bin/ci` and `bin/ci rspec` gain only `--profile 10`** (AC-1.1): RSpec picks its own seed as today.
+- **Only a shard fixes the seed**, so that its replay is exact.
+- **The replay is printed before the examples run (AC-1.4):** the `puts` lines come before `CI.run`.
 
-- **The seed.** A plain `bin/ci` now always passes a seed. `--seed` is how RSpec randomises anyway (`spec_helper.rb` sets random order), so the full run doesn't change.
-- **The replay must be printed before the examples run (AC-1.4).** It is: the `puts` lines come before `CI.run`.
+**2.3 Add `Bash(bin/ci *)`** to `.claude/settings.json`, after `Bash(bin/ci)` (AC-1.8).
 
-**2.3 Add `Bash(bin/ci *)`** to `.claude/settings.json` after `Bash(bin/ci)` (AC-1.8).
-
-**2.4 Add the refresh script, `script/ci/record_runtime_log`.**
+**2.4 Add the refresh script, `script/ci/record_runtime_log`**, and make it executable:
 
 ```sh
 #!/usr/bin/env bash
@@ -183,22 +192,22 @@ TEST_ENV_NUMBER="" bin/rspec --require parallel_tests/rspec/runtime_logger --for
   --format ParallelTests::RSpec::RuntimeLogger --out spec/support/runtime_log.txt
 ```
 
-- **Check `TEST_ENV_NUMBER=""`.** The logger writes only when `ENV['TEST_ENV_NUMBER']` is truthy, and `""` is truthy in Ruby. If Bash's empty assignment doesn't reach Ruby as `""`, use `TEST_ENV_NUMBER=1`. It doesn't change the database (`config/database.yml` doesn't read it).
-- **Make it executable.**
-- **Record the log.** Run it once, alone, and commit `spec/support/runtime_log.txt`.
-- **The `spec/support` loader is safe:** `rails_helper` requires only `spec/support/**/*.rb`.
+**Record the log.**
 
-**2.5 Evidence (record in `verification.md`).**
+1. Run the script once, alone, and commit `spec/support/runtime_log.txt`.
+2. Then add the committed-log case to `spec/lib/collector/ci_shard_spec.rb`: the union over M = 4 with the default log equals every spec file once.
+
+`rails_helper` requires only `spec/support/**/*.rb`, so the `.txt` log is never loaded as code.
+
+**2.5 Evidence (record in `verification.md`).** Run these one at a time, never two together.
 
 - `bin/ci` runs every step in today's order (AC-1.1).
 - `bin/ci checks` runs no RSpec (AC-1.2).
 - `bin/ci rspec` runs the whole suite (AC-1.3).
 - `bin/ci rspec 2/4` prints the seed, the file count and the replay before the examples (AC-1.4).
 - `bin/ci rspec 5/4` and `bin/ci lint` exit non-zero before any step (AC-1.6).
-- A deliberately failing example (a scratch edit, reverted) makes `bin/ci rspec N/4` exit non-zero and name "Tests: RSpec" (AC-1.7).
+- A deliberately failing example (a scratch edit, reverted, never committed) makes `bin/ci rspec N/4` exit non-zero and name "Tests: RSpec" (AC-1.7).
 - Each run prints the 10 slowest examples (AC-1.9).
-
-Run these one at a time, never two together.
 
 Commits:
 - `feat(ci): bin/ci runs a group or a shard and prints the slowest examples (spec 035)`;
@@ -209,21 +218,24 @@ Commits:
 **3.1 Write the examples first.**
 
 - **`spec/image_publishing_spec.rb`:**
-  - "installs libvips and ImageMagick before bin/ci" looks in `jobs.rspec`, and the next run line after the install is `bin/ci rspec ${{ matrix.shard }}/${{ strategy.job-total }}` (or whatever expression 3.2 settles on).
+  - "installs libvips and ImageMagick before bin/ci" looks in `jobs.rspec`. The run line after the install is `bin/ci rspec ${{ matrix.shard }}/${{ strategy.job-total }}`.
   - The example that checks `jobs.ci` has no `permissions` checks `checks`, `rspec` and `ci` (Security).
   - A new example covers AC-2.1:
     - `checks` runs `bin/ci checks`;
-    - `rspec` has `strategy.fail-fast: false` and a `shard` matrix of 1..4;
+    - `rspec` has `strategy.fail-fast: false` and a `shard` matrix that is a contiguous `1..N` with N ≥ 2 (any N, so Phase 6's M = 3 trial stays green);
     - `ci` needs `[checks, rspec]` with `if: ${{ !cancelled() }}`;
     - `image` needs `ci`;
-    - no run line in any of the three jobs names `bin/rspec`, `bin/rubocop`, `bin/brakeman`, `bin/bundler-audit`, `bin/importmap` or `script/upgrade/guard.rb`.
+    - no run line in these three jobs names a command `config/ci.rb` runs, except through `bin/ci`. Those commands are `bin/setup`, `bin/rspec`, `bin/rubocop`, `bin/brakeman`, `bin/bundler-audit`, `bin/importmap` and `script/upgrade/guard.rb`.
+  - The new `lib/collector` files are in `.dockerignore` and in `bin/image-smoke`'s list of absent paths, beside `lib/collector/ghcr_cleanup.rb`.
 - **`spec/script/upgrade/files_spec.rb`:**
   - `checkout("checks")` has `fetch-depth: 0`;
-  - neither `checks` nor any `rspec` run line matches `upgrade-smoke|docker|podman` (spec 031 AC-7.6, AC-8.5 as superseded).
+  - neither `checks` nor `rspec` has a run line matching `upgrade-smoke|docker|podman` (spec 031 AC-7.6, AC-8.5 as superseded).
 
-They fail against today's single `ci` job.
+They fail against today's single `ci` job and today's `.dockerignore`.
 
-**3.2 Edit `.github/workflows/ci.yml`.** This asks for permission. Replace the `ci` job with:
+**3.2 Edit `.dockerignore` and `bin/image-smoke`** to add the three files.
+
+**3.3 Edit `.github/workflows/ci.yml`.** This asks for permission. Replace the `ci` job with:
 
 ```yaml
   checks:
@@ -242,9 +254,10 @@ They fail against today's single `ci` job.
       - name: Run bin/ci checks
         run: bin/ci checks
 
-  # RSpec in shards formed from spec/support/runtime_log.txt (spec 035 decision 6); bin/ci rspec N/M prints its replay.
+  # RSpec in shards formed from spec/support/runtime_log.txt (spec 035 decisions 6, 7). The shard count is the
+  # matrix's length; bin/ci rspec N/M prints the shard's seed and a replay command.
   rspec:
-    name: RSpec (${{ matrix.shard }}/4)
+    name: RSpec (${{ matrix.shard }}/${{ strategy.job-total }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -265,7 +278,7 @@ They fail against today's single `ci` job.
         run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends libvips imagemagick
 
       - name: Run bin/ci rspec
-        run: bin/ci rspec ${{ matrix.shard }}/4
+        run: bin/ci rspec ${{ matrix.shard }}/${{ strategy.job-total }}
 
       - name: Keep screenshots from failed system specs
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -288,101 +301,127 @@ They fail against today's single `ci` job.
         run: test "$CHECKS" = success && test "$RSPEC" = success
 ```
 
-- **The shard count is fixed at 4.** The `/4` in the run line and the matrix must agree. A comment names both, so that Phase 6's M = 3 trial changes both.
+- **The shard count is only the matrix's length**: changing `[ 1, 2, 3, 4 ]` changes M everywhere.
 - **`image` keeps `needs: ci`.**
 - **No new action is added.** Every `uses:` line is already pinned.
 
-**3.3 Run the changed spec files**, then commit `ci: run bin/ci checks and four RSpec shards in parallel, gathered by the ci job (spec 035 decision 5)`.
+**3.4 Run the changed spec files.** Then commit, as two commits:
+- `chore(image): keep the CI tooling out of the image`;
+- `ci: run bin/ci checks and the RSpec shards in parallel, gathered by the ci job (spec 035 decision 5)`.
 
 ## Phase 4: The documentation-only fast path (AC-3.1–AC-3.6)
 
-**4.1 Write the examples first: `spec/lib/collector/push_scope_spec.rb`** (include `GitSandbox` with `:git_sandbox` for 4.1c).
+**4.1 Write the examples first: `spec/lib/collector/push_scope_spec.rb`** (include `GitSandbox` with `:git_sandbox` for part c).
 
 **a. `Collector::PushScope.documentation_only?(paths)` (AC-3.1).**
 
-- True for `docs/adr/0001-x.md`, `docs/specs/035-ci-shards/screenshots/a.png`, `README.md`, `.claude/memory/x.md`, `.claude/rules/y.md`.
-- False when the list contains any of:
-  - `docs/export-format/README.md`, `docs/export-format/v3.schema.json`;
-  - `.claude/settings.json`, `.claude/settings.local.json`, `.claude/hooks/notes.md`;
-  - `spec/fixtures/x.md`, `app/views/x.md`, `config/ci.rb`.
-- False for `[]`.
+- **True for** `docs/adr/0001-x.md`, `docs/specs/035-ci-shards/screenshots/a.png`, `README.md`, `.claude/memory/x.md`, `.claude/rules/y.md`.
+- **False when the list contains:**
+  - `docs/export-format/README.md` or `docs/export-format/v3.schema.json`;
+  - `.claude/settings.json`, `.claude/settings.local.json` or `.claude/hooks/notes.md`;
+  - `config/ci.rb`;
+  - `<dir>x.md` for **every** entry of `PushScope::CODE_DIRS`, iterated.
+- **False for a rename**, given as its two names `["app/x.rb", "docs/x.md"]`.
+- **False for a deleted code file** (`["lib/gone.rb", "docs/a.md"]`).
+- **False for `[]`.**
 
-**b. `Collector::PushScope.parse(command, current_branch:)` (AC-3.2).** It returns `Data.define(:accepted, :directory, :reason)`.
+**b. `Collector::PushScope.parse(command, current_branch:)` (AC-3.2).** It returns `Data.define(:accepted, :cd, :git_c, :reason)`, where `cd` is a leading `cd <dir>` and `git_c` the `-C <dir>`; either may be nil.
 
 - **Accepted:**
   - `git push`, `git push origin`, `git push -u origin 035-ci-shards`, `git push --set-upstream origin HEAD`, when the current branch is `035-ci-shards`;
-  - `cd /x && git push origin HEAD` (directory `/x`);
+  - `cd /x && git push origin HEAD`;
   - `git -C /x push`;
   - `git push origin 035-ci-shards 2>&1 | tail -3`.
 - **Refused, with a reason naming the form:**
+  - `git push -u` with no remote;
   - `git push origin other`, `git push origin a:b`, `git push origin a b`;
-  - `git push --tags`, `git push origin v1.0.0` (a ref that isn't the current branch);
+  - `git push --tags`, `git push origin v1.0.0`;
   - `git push --all`, `git push --mirror`, `git push --delete origin x`;
-  - `git push && git push`, `make && git push`.
+  - `git push && git push`, `make && git push`;
+  - `git push || git push --tags`, `git push; git push --tags`, `git push | tail -3 && git push --tags`, `git push &`.
 
 **c. `Collector::PushScope.changed_paths(directory)`, in a sandbox repository** with a bare `origin` and a branch (AC-3.5).
 
-- It returns `git diff --no-renames --name-only $(git merge-base HEAD origin/main) HEAD`.
+- It returns the NUL-separated output of `git diff -z --no-renames --name-only $(git merge-base HEAD origin/main) HEAD`, so a path with non-ASCII characters comes back unquoted.
 - A rename returns both names.
 - It raises `Collector::PushScope::Unknown` with a reason when:
   - there's no `origin/main`;
   - `HEAD` is detached;
   - there's no merge base (an orphan branch).
+- Its git calls clear `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE` and `GIT_COMMON_DIR`, as `spec/support/git_sandbox.rb` does.
 
-**d. `Collector::PushScope.decide(command, directory:)` returns `[group_args, reason]`.**
+**d. `Collector::PushScope.decide(command, directory:, current_branch:, classifier: PushScope)` returns `[group_args, reason]`.**
 
-- `[["checks"], "documentation-only branch (N files): skipping RSpec"]` only when the command is accepted and the paths are documentation-only.
-- Otherwise `[[], "<why>"]`, including when `changed_paths` or the classifier raises (AC-3.3–AC-3.5).
+- It returns `[["checks"], "documentation-only branch (N files): skipping RSpec"]` only when the command is accepted and the paths are documentation-only. Otherwise it returns `[[], "<why>"]`.
+- It also returns `[[], …]` when `changed_paths` raises (AC-3.5): use a sandbox with a detached `HEAD`.
+- It also returns `[[], …]` when the classifier raises. Test that by passing a small classifier object whose `documentation_only?` raises; this is injection, not stubbing the object under test.
 
-They fail with `NameError`.
+They fail with `LoadError`.
 
-**4.2 Implement `lib/collector/push_scope.rb`.** Plain Ruby, `require "open3"`. The rules:
+**4.2 Implement `lib/collector/push_scope.rb`.** Plain Ruby, using `open3` and `shellwords`. Add it to the autoload ignore list (Phase 1.4), `.dockerignore` and `bin/image-smoke` (Phase 3.2). The rules:
 
 ```ruby
-DOCS = ->(path) { path.start_with?("docs/") || (path.end_with?(".md") && !path.start_with?(*CODE_DIRS)) }
 CODE_DIRS = %w[app/ bin/ config/ db/ lib/ script/ spec/ vendor/].freeze
-EXCLUDED = ->(path) { path.start_with?("docs/export-format/", ".claude/hooks/") || %w[.claude/settings.json .claude/settings.local.json].include?(path) }
+EXCLUDED_DIRS = %w[docs/export-format/ .claude/hooks/].freeze
+EXCLUDED_FILES = %w[.claude/settings.json .claude/settings.local.json].freeze
 
-def self.documentation_only?(paths) = paths.any? && paths.all? { DOCS.(it) && !EXCLUDED.(it) }
+def self.documentation?(path)
+  return false if path.start_with?(*EXCLUDED_DIRS) || EXCLUDED_FILES.include?(path)
+
+  path.start_with?("docs/") || (path.end_with?(".md") && !path.start_with?(*CODE_DIRS))
+end
+
+def self.documentation_only?(paths) = paths.any? && paths.all? { documentation?(it) }
 ```
 
-**Parsing.**
+**Parsing (decision 3).**
 
-1. Strip a trailing `2>&1` and a trailing `| …` pipe.
-2. Accept one leading `cd <dir> &&`.
-3. Split the rest with `Shellwords.split` and require exactly one `git` … `push` with an optional `-C <dir>`.
-4. Allow only `-u` or `--set-upstream` as options, then at most a remote and one ref equal to the current branch or `HEAD`.
+1. Refuse outright if the command contains `||`, `;`, a lone `&`, or more than one `git … push`.
+2. Strip one trailing `2>&1`, and then one trailing `| tail -N` or `| head -N` with nothing after it. Any other pipe refuses.
+3. Accept one leading `cd <dir> &&`. Any other `&&` chain refuses.
+4. Split the rest with `Shellwords.split`. It must be `git`, an optional `-C <dir>`, then `push`.
+5. After `push`, allow:
+   - nothing;
+   - a remote;
+   - `-u` or `--set-upstream`, a remote, and one ref equal to the current branch or `HEAD`;
+   - a remote and that ref, without the option.
 
 Anything else is refused, with its reason.
 
-**4.3 The hook script, `.claude/hooks/pre_push_ci.rb`.** It ports today's shell hook to Ruby: the `cd` and `git -C` resolution, the `git-common-dir` check that the push is this project's repository, and skipping a push to another repository.
+**4.3 The hook script, `.claude/hooks/pre_push_ci.rb`.** It ports today's shell hook (`.claude/settings.json`, second PreToolUse hook) to Ruby, keeping its behaviour:
 
-1. Read the tool call's JSON from stdin with `require "json"` (no `jq`).
-2. Exit 0 unless the command contains a `git … push`.
-3. Resolve the checkout.
-4. Call `Collector::PushScope.decide`.
-5. Print `Pre-push: running bin/ci <args> in <dir> (<reason>)` to stderr.
-6. Run `bin/ci` with those args in that checkout.
-7. Exit 2 with `Pre-push: bin/ci failed in <dir>. Fix the failing step before pushing.` when it fails.
-
-It requires `lib/collector/push_scope.rb` from `CLAUDE_PROJECT_DIR`. Its decision logic is the specced `decide`; the script is only the I/O around it.
+1. **Load the rules.** `require File.expand_path("../../lib/collector/push_scope", __dir__)`: the same checkout as the settings, with no environment variable.
+2. **Read the tool call.** Read its JSON from stdin with `require "json"` (no `jq`) and take `tool_input.command` and `cwd`.
+3. **Detect a push.** Exit 0 unless the command matches today's regex, `(^|[;&|[:space:]])git([[:space:]]+-C[[:space:]]+[^[:space:]]+)?[[:space:]]+push`.
+4. **Resolve the checkout as today.**
+   - Start in `cwd`, falling back to `$CLAUDE_PROJECT_DIR`.
+   - Then apply a leading `cd <dir>`.
+   - Then apply `-C <dir>`, relative to where the `cd` landed.
+   - Then go to `git rev-parse --show-toplevel`.
+   - If that checkout's `git rev-parse --git-common-dir` isn't this project's, print `Pre-push: <dir> is not this project's repository; skipping bin/ci.` and exit 0.
+   - If there's no executable `bin/ci`, exit 0.
+5. **Decide.** Call `Collector::PushScope.decide` with that checkout's current branch.
+6. **Run.** Print `Pre-push: running bin/ci <args> in <dir> (<reason>)` to stderr. Run `system("bin/ci", *args, chdir: dir, out: :err)`, so `bin/ci`'s output goes to stderr as today's `>&2` does. On failure, print `Pre-push: bin/ci failed in <dir>. Fix the failing step before pushing.` and exit 2.
+7. **Crashes.** Wrap the whole body in a top-level `rescue Exception => error` (re-raising `SystemExit`). Print `Pre-push: hook error (<class>: <message>); blocking the push.` and exit 2. An uncaught exception exits 1, which doesn't block, and FR-4 forbids skipping.
 
 **4.4 `.claude/settings.json`.** Replace the pre-push hook's command with:
 
 ```sh
-[ "${CLAUDE_CODE_REMOTE:-}" = true ] && [ -d /opt/rbenv/shims ] && PATH=/opt/rbenv/shims:$PATH; exec ruby "$CLAUDE_PROJECT_DIR/.claude/hooks/pre_push_ci.rb"
+in=$(cat); case "$in" in *push*) ;; *) exit 0 ;; esac; [ "${CLAUDE_CODE_REMOTE:-}" = true ] && [ -d /opt/rbenv/shims ] && PATH=/opt/rbenv/shims:$PATH; printf '%s' "$in" | exec ruby "$CLAUDE_PROJECT_DIR/.claude/hooks/pre_push_ci.rb"
 ```
 
-Keep `"timeout": 900` and `"onFailure": "block"` (from #148). Add a file-shape example to `spec/config/ci_definition_spec.rb`:
+The shell `case` keeps Ruby from starting on every Bash call. Keep `"timeout": 900` and `"onFailure": "block"` (from #148).
+
+Add file-shape examples to `spec/config/ci_definition_spec.rb`:
 - both git hooks keep `onFailure: "block"`;
 - the pre-push command runs `.claude/hooks/pre_push_ci.rb` and contains no `jq` (AC-3.6).
 
-**4.5 Evidence for `verification.md` (a scratch branch, never pushed to a shared remote).**
+**4.5 Evidence for `verification.md`.** Use scratch branches in a scratch clone, never pushed. Pipe a hand-written tool-call JSON into the script for:
 
-Pipe a hand-written tool-call JSON into the script for:
 - a documentation-only branch: it runs `bin/ci checks` (AC-3.3);
 - a branch touching `docs/export-format/examples/valid/empty-v2.json`: full `bin/ci` (AC-3.4);
-- a detached `HEAD`: full `bin/ci`, with the reason (AC-3.5).
+- a detached `HEAD`: full `bin/ci`, with the reason (AC-3.5);
+- a `git push --tags`: full `bin/ci`, with the reason (AC-3.5).
 
 Commits:
 - `feat(hooks): classify a branch's changes and push command for the pre-push hook (spec 035 decision 3)`;
@@ -396,7 +435,8 @@ Commits:
 - **The "Nothing is published" rule (line 47):** every group, gathered by the `ci` job.
 - **The full-history rule (line 59):** the `checks` and `rspec` jobs.
 - **The "A workflow run" table:** the jobs, with `checks`/`rspec`/`ci` in place of the `ci` column's single `bin/ci`.
-- **A new rule:** shards come from `spec/support/runtime_log.txt` through `Collector::CiShard`; a stale log changes only balance; refresh it with `script/ci/record_runtime_log`; each shard prints its seed and replay with `CI=true`.
+- **A new rule:** shards come from `spec/support/runtime_log.txt` through `Collector::CiShard`; a stale log changes only balance; refresh it with `script/ci/record_runtime_log`; each shard prints its seed and replay with `CI=true`; the CI tooling under `lib/collector` stays out of the image.
+- **Refresh every `ci.yml:NN` line reference** in the document against the new workflow.
 - **Sources:** add #145 and spec 035.
 
 **`CLAUDE.md`** (AC-4.2).
@@ -415,20 +455,36 @@ Verify each by reading. Commit `docs: CI groups and shards in the area doc, CLAU
 
 ## Phase 6: Measure on GitHub (AC-2.2–AC-2.6, AC-3.7; main session)
 
-**The metric (AC-2.4).** For each run, take `run_started_at` from `GET /repos/plainprogrammer/Collector/actions/runs/<id>`. Take the `ci` job's `completed_at` from `…/runs/<id>/jobs`.
+**The metric (AC-2.4).** Measure each attempt on its own: take `run_started_at` from `GET /repos/plainprogrammer/Collector/actions/runs/<id>/attempts/<n>`, and the `ci` job's `completed_at` from `…/runs/<id>/attempts/<n>/jobs`. A re-run attempt has its own `run_started_at`, so it is a valid new measurement.
 
-1. **Baseline.** The last three green `main` runs after #147 and #148 merged, old workflow.
-2. **M = 4.** Three green runs on #149, after Phase 3. Empty commits to re-trigger CI aren't allowed, so the three runs come from Phase 4's and Phase 5's pushes plus one re-run of the last run (a re-run is a new attempt, measured the same way).
-3. **M = 3 (AC-2.5).** A temporary commit sets the matrix to `[ 1, 2, 3 ]` and the run line to `/3`, then three runs (one push, two re-runs). Then a revert commit, or keep 3 if the stop rule says so (decision 7: keep 4 only if its median is at least 30 s faster).
-4. **AC-2.2.** A temporary commit makes one example fail. Check:
-   - that shard and `ci` fail;
-   - the other shards finish;
+1. **Baseline.** Three green `main` runs of the old workflow after #147 and #148 merged.
+   - The two merges give two. Take the third from the next merge to `main` by any session before Phase 3's workflow lands there.
+   - If none comes, ask the maintainer: re-running a `main` run also re-runs `publish` and re-pushes `edge` and `sha-*`.
+   - Green pull-request runs of the old workflow with both fixes (#148's own runs) are the fallback; record which were used.
+2. **M = 4.** Three green attempts on #149 after Phase 3: the pushes of Phases 4 and 5, then re-runs of the last run as needed. Empty commits to trigger CI aren't allowed.
+3. **M = 3 (AC-2.5).**
+   - A temporary commit changes the matrix to `[ 1, 2, 3 ]`; the run line and name follow from `strategy.job-total`, and the AC-2.1 example accepts any contiguous `1..N`.
+   - Take one push and two re-runs.
+   - Then revert, or keep 3 if the stop rule says so (decision 7: keep 4 only if its median is at least 30 s faster).
+4. **AC-2.2 and AC-2.3, in one run.** A temporary commit adds a system spec that fails only on GitHub:
+
+   ```ruby
+   it("fails only on GitHub (spec 035 AC-2.2 probe)") { visit "/"; raise "AC-2.2 probe" if ENV["GITHUB_ACTIONS"] }
+   ```
+
+   The pre-push hook's local `bin/ci` passes, so the push goes through. Check that:
+   - that shard and `ci` fail, and the other shards finish;
    - no `image` job runs;
-   - the shard's log shows the replay.
+   - the shard's log shows the replay;
+   - the shard uploads `screenshots-N`.
 
-   Then revert it.
-5. **AC-2.3.** On that failing run, if the example is a system spec, check the `screenshots-N` artifact. If it isn't, make the failing example a system spec.
-6. **AC-2.6.** Compare one shard's printed file list on GitHub with `bin/ci rspec N/4` run locally on the same commit (print only: interrupt after the replay line, or call `Collector::CiShard` from `bin/rails runner`).
-7. **AC-3.7.** Phase 5's documentation commit, pushed through the hook's fast path, still runs every group on GitHub.
+   Then revert the probe.
+5. **AC-2.6.** Pull-request runs check out the merge ref, not the branch head.
+   1. Take the SHA from the shard log's checkout line ("HEAD is now at …").
+   2. `git fetch origin pull/149/merge`, check out that SHA in a scratch worktree, and print `Collector::CiShard.new(index: N, total: M).files` there with `ruby -e`. It needs no Rails.
+   3. Compare that list with the shard's printed file count and replay line.
+6. **AC-3.7.** Decision 3 diffs the whole branch, and `035-ci-shards` changes code, so its pushes never take the fast path. Two pieces of evidence instead:
+   - **The workflow has no filter.** `on:` in `ci.yml` has no `paths` or `paths-ignore`, so any push runs every group. Record this.
+   - **A documentation-only run.** With the maintainer's OK, push a throwaway documentation-only branch: one Markdown line in `docs/`. The hook takes the fast path; record its message. The first push opens its draft PR ([[draft-pr-on-first-push]]). Record that its run ran `checks`, every shard and `ci`, then close the PR and delete the branch.
 
 Record everything in `verification.md`, then run the full `bin/ci` once at the end.
