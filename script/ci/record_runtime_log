@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Rewrites spec/support/runtime_log.txt from a serial run (spec 035 decision 6). Run it on a quiet machine when shard
+# times on GitHub differ by more than a minute, or after spec files are added or removed in bulk.
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+TEST_ENV_NUMBER="" bin/rspec --require parallel_tests/rspec/runtime_logger --format progress \
+  --format ParallelTests::RSpec::RuntimeLogger --out spec/support/runtime_log.txt
