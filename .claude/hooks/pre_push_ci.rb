@@ -9,7 +9,8 @@ begin
   require File.expand_path("../../lib/collector/push_scope", __dir__)
 
   scope = Collector::PushScope
-  input = JSON.parse($stdin.read)
+  # The tool call's JSON is UTF-8 whatever the locale; under LANG=C Ruby would read it as US-ASCII.
+  input = JSON.parse($stdin.read.force_encoding(Encoding::UTF_8))
   command = input.dig("tool_input", "command").to_s
   exit 0 unless scope.push?(command)
 

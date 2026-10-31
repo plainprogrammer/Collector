@@ -36,4 +36,21 @@ RSpec.describe "The CI definition", type: :config do # rubocop:disable RSpec/Des
       expect(Rails.root.join(".claude/hooks/pre_push_ci.rb")).to exist
     end
   end
+
+  describe ".claude/hooks/pre_push_ci.rb" do
+    # The hook runs with the session's locale, which may be C (US-ASCII), while the tool call's JSON is UTF-8.
+    it "lets a command that only mentions push through, whatever its characters and the locale (FR-4)",
+       :aggregate_failures do
+      input = JSON.generate("tool_input" => { "command" => "grep Pre-push log # ✅ ❌" },
+                            "cwd" => Rails.root.to_s)
+      env = { "LANG" => "C", "LC_ALL" => "C", "CLAUDE_PROJECT_DIR" => Rails.root.to_s }
+
+      _out, err, status = Bundler.with_unbundled_env do
+        Open3.capture3(env, "ruby", Rails.root.join(".claude/hooks/pre_push_ci.rb").to_s, stdin_data: input)
+      end
+
+      expect(err).to eq("")
+      expect(status.exitstatus).to eq(0)
+    end
+  end
 end
