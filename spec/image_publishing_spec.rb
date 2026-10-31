@@ -28,6 +28,14 @@ RSpec.describe "Image publishing files" do
       expect(Rails.root.join("bin/image-smoke").read).to include("bin/backup-smoke")
     end
 
+    it "keeps the CI tooling out of the image, and the image smoke test checks it (spec 035 Global constraints)", :aggregate_failures do
+      tooling = %w[bin/ci config/ci.rb lib/collector/ci_groups.rb lib/collector/ci_shard.rb lib/collector/push_scope.rb]
+      absent = Rails.root.join("bin/image-smoke").read[/for path in (.+); do/, 1].split
+
+      expect(rules).to include(*tooling.map { "/#{it}" })
+      expect(absent).to include("lib/collector/ghcr_cleanup.rb", *tooling)
+    end
+
     it "keeps the checkout's OCR engine out of the build context, so the image gets the copy its build fetches (issue #31)" do
       expect(rules).to include("/vendor/ocr")
     end
