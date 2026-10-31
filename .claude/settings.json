@@ -20,6 +20,7 @@
       "Bash(bin/importmap audit)",
       "Bash(bin/importmap outdated)",
       "Bash(bin/ci)",
+      "Bash(bin/ci *)",
       "Bash(bundle install)",
       "Bash(bundle check)",
       "Bash(bundle outdated *)",
