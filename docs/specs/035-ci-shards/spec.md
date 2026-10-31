@@ -1,7 +1,7 @@
 # Feature 035: `bin/ci` Groups, Used by GitHub's Shards and the Pre-Push Hook
 
 **Status:** Draft
-**Version:** 0.2.0
+**Version:** 0.3.0
 **Created:** 2026-10-31
 **Last Updated:** 2026-10-31
 **Branch:** `035-ci-shards`
@@ -13,6 +13,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.3.0 | 2026-10-31 | The open question ruled by the maintainer (2026-10-31): every RSpec run of `bin/ci` prints the 10 slowest examples (decision 8, AC-1.9), so a regression like the parity example shows in every run. The hooks' fix is stacked on the parity fix (decision 1) |
 | 0.2.0 | 2026-10-31 | Revised after the Mode A review (READY AFTER FIXES) and the maintainer's rulings on it. **Split (ruled):** the hooks' timeout fix left this spec and shipped as an issue fix with the parity fix (decision 1); the title names the one outcome, `bin/ci` groups and the two places that use them. **Supersessions:** spec 001 AC-2.5 (not FR-4); spec 031 AC-7.6 and AC-8.5's "`ci` job"; spec 014 AC-2.3 kept by installing libvips and ImageMagick in each shard; the area doc's rules named. **Shards:** `--group-by runtime` only when the log exists (decision 6); the log's path and refresh command; the seed chosen before the run and the replay a plain `bin/rspec` command (AC-1.4). **Measurement:** one metric for before and after, three runs each (AC-2.4, AC-2.5). **Fast path:** the push forms the hook accepts, a missing merge base or shallow history, a classifier error, renames, `.md` only outside code directories, and the hook in Ruby without `jq` (decision 3, Story 3). **Also:** `!cancelled()`, `Bash(bin/ci *)` allowed, a Testability requirement, Story 4's lines |
 | 0.1.0 | 2026-10-31 | First draft, from the spike's findings and the maintainer's rulings of 2026-10-31 (research.md, "Recommendation and rulings") |
 
@@ -48,7 +49,7 @@ Two waits remain, and both come from `bin/ci` being one serial list:
 
 - **The parity fix:** `def lot_pattern` becomes a memoized `let` (branch `145-memoize-parity-regexp`).
 - **The hooks:** both git hooks in `.claude/settings.json` get `"onFailure": "block"` (branch `145-hooks-block-on-timeout`), proved with Claude Code 2.1.316 in a scratch repository. Without the key a timed-out hook let the push through; with it the push was blocked.
-- **Order:** the parity fix merges first. With the slow suite, `bin/ci` runs past 900 s, and every push would be blocked.
+- **Order:** the parity fix merges first. With the slow suite, `bin/ci` runs past 900 s, and every push would be blocked. So the hooks' branch is stacked on the parity branch.
 - **Timing:** this spec's criteria are measured with both fixes in place.
 
 ### 2. RSpec is sharded on GitHub; local `bin/ci` stays serial (ruled 2026-10-31)
@@ -113,6 +114,10 @@ Any other argument fails before any step runs and names the accepted forms. Ever
 
 Start with M = 4. If the median of three green runs with 4 shards isn't at least 30 s faster than with 3 (AC-2.5), use 3. ClientKennel found that a fifth slice added minutes without making the wall time more reliable.
 
+### 8. Every RSpec run of `bin/ci` prints the 10 slowest examples (ruled 2026-10-31)
+
+The RSpec step of `bin/ci`, `bin/ci rspec` and `bin/ci rspec N/M` passes `--profile 10`. Each shard prints its own ten. The point is that a regression like the parity example (research.md §1) shows up in every local and GitHub log. It is not a gate: nothing fails on a slow example. `--profile` only reads the timings RSpec already records, so it adds no measurable time.
+
 ## Users and Context
 
 **Primary users:** the maintainer, who waits for CI before merging, and the Claude sessions whose pushes wait for the pre-push hook. These often run several at a time (#122, #127, #47 alongside this one).
@@ -138,6 +143,7 @@ Start with M = 4. If the median of three green runs with 4 shards isn't at least
 - [ ] **AC-1.6** Given an argument that isn't one of decision 4's forms (for example `bin/ci rspec 5/4`, `bin/ci rspec 0/4`, `bin/ci lint`) When `bin/ci` runs Then it exits non-zero before any step runs and names the accepted forms
 - [ ] **AC-1.7** Given a failing example in shard N When `bin/ci rspec N/M` exits Then it exits non-zero and names the failed step, as `bin/ci` does today (spec 001 FR-3)
 - [ ] **AC-1.8** Given `.claude/settings.json` When it is read Then `Bash(bin/ci *)` is allowed beside `Bash(bin/ci)`, so a group runs without a permission prompt
+- [ ] **AC-1.9** Given `bin/ci`, `bin/ci rspec` or `bin/ci rspec N/M` When its RSpec step finishes, passing or failing Then its output lists the 10 slowest examples of that run with their times and locations (decision 8), and no exit status depends on them
 
 ### Story 2: GitHub runs the groups in parallel
 
@@ -202,6 +208,7 @@ Start with M = 4. If the median of three green runs with 4 shards isn't at least
 **Must:**
 - form groups as decision 6 says, the same on every machine;
 - print the seed, the file count and a replay command per shard;
+- pass `--profile 10` to every RSpec run of `bin/ci` (decision 8);
 - run each shard as one process against `storage/test.sqlite3`.
 
 **Must not:** drop or repeat a file across the M shards of one commit.
@@ -232,7 +239,7 @@ Start with M = 4. If the median of three green runs with 4 shards isn't at least
 - **Testability:**
   - **Suite examples run by `bin/ci`:** AC-1.5, AC-1.6, AC-3.1, AC-3.2 and the hook's decision logic for AC-3.3–AC-3.5.
   - **File-shape specs in the style of `spec/image_publishing_spec.rb`:** AC-2.1 and AC-1.8, and the hooks' `onFailure` in AC-3.6. These read the workflow and the settings as configuration, not prose.
-  - **Evidence recorded in `verification.md`:** AC-1.1–AC-1.4, AC-1.7, AC-2.2–AC-2.6 and AC-3.7.
+  - **Evidence recorded in `verification.md`:** AC-1.1–AC-1.4, AC-1.7, AC-1.9, AC-2.2–AC-2.6 and AC-3.7.
   - **Checked by reading:** AC-4.1–AC-4.4.
 
 ## Error Scenarios
@@ -265,7 +272,7 @@ Start with M = 4. If the median of three green runs with 4 shards isn't at least
 
 ## Open Questions
 
-- Should `bin/ci rspec` print the slowest examples (`--profile 10`), so that a regression like the parity example shows in every run? The spike recommended it and it hasn't been ruled on. It costs nothing at run time.
+None. The question of printing the slowest examples was ruled on 2026-10-31 (decision 8).
 
 ## Out of Scope
 
