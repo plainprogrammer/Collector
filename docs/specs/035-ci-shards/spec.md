@@ -1,11 +1,12 @@
 # Feature 035: `bin/ci` Groups, Used by GitHub's Shards and the Pre-Push Hook
 
-**Status:** Draft
-**Version:** 0.3.1
+**Status:** Approved by the maintainer (2026-10-31), after two Mode A reviews
+**Version:** 1.0.0
 **Created:** 2026-10-31
 **Last Updated:** 2026-10-31
 **Branch:** `035-ci-shards`
 **Issue:** [#145](https://github.com/plainprogrammer/Collector/issues/145) (spike; findings in [research.md](research.md))
+**Plan:** [plan.md](plan.md)
 
 ---
 
@@ -13,6 +14,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.0.0 | 2026-10-31 | Approved by the maintainer. Status, version and the Plan line only; no requirement, criterion or decision changes |
 | 0.3.1 | 2026-10-31 | Revised after the second Mode A review (READY AFTER FIXES, no blocking findings). The replay sets `CI=true`, because `CI` turns on eager loading in tests (AC-1.4, decision 6). Spec 031's container-engine rule moves to `checks` and the shards, and its decision 2 sentence is superseded too. `config/ci.rb` forms a shard in Ruby through `parallel_tests`' grouping code, prints its files and runs them (decision 6). AC-1.1 allows decision 8's change. The push forms with `cd`, `git -C` and output redirection are classified (decision 3). The Security requirement is tested. AC-2.1's wording and an ambiguous reference to spec 001 AC-2.5 are fixed. No change of intent (PATCH) |
 | 0.3.0 | 2026-10-31 | The open question ruled by the maintainer (2026-10-31): every RSpec run of `bin/ci` prints the 10 slowest examples (decision 8, AC-1.9), so a regression like the parity example shows in every run. The hooks' fix is stacked on the parity fix (decision 1) |
 | 0.2.0 | 2026-10-31 | Revised after the Mode A review (READY AFTER FIXES) and the maintainer's rulings on it. **Split (ruled):** the hooks' timeout fix left this spec and shipped as an issue fix with the parity fix (decision 1); the title names the one outcome, `bin/ci` groups and the two places that use them. **Supersessions:** spec 001 AC-2.5 (not FR-4); spec 031 AC-7.6 and AC-8.5's "`ci` job"; spec 014 AC-2.3 kept by installing libvips and ImageMagick in each shard; the area doc's rules named. **Shards:** `--group-by runtime` only when the log exists (decision 6); the log's path and refresh command; the seed chosen before the run and the replay a plain `bin/rspec` command (AC-1.4). **Measurement:** one metric for before and after, three runs each (AC-2.4, AC-2.5). **Fast path:** the push forms the hook accepts, a missing merge base or shallow history, a classifier error, renames, `.md` only outside code directories, and the hook in Ruby without `jq` (decision 3, Story 3). **Also:** `!cancelled()`, `Bash(bin/ci *)` allowed, a Testability requirement, Story 4's lines |
