@@ -2,6 +2,7 @@
 
 **Spec:** [spec.md](spec.md) 1.0.0 (approved 2026-10-31)
 **Branch:** `035-ci-shards` (draft PR [#149](https://github.com/plainprogrammer/Collector/pull/149))
+**Status:** Approved by the maintainer (2026-10-31), after two read-only plan reviews
 **Plan reviews (Opus, read-only, 2026-10-31):**
 - **Round 1: NOT READY.** One blocking finding and 13 others, all fixed.
 - **Round 2: READY AFTER FIXES.** Three important findings and five minor ones, all fixed:
