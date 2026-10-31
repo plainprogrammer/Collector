@@ -17,8 +17,31 @@ env:
   IMAGE: ghcr.io/plainprogrammer/collector
 
 jobs:
-  ci:
+  checks:
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f # v1.335.0
+        with:
+          bundler-cache: true
+
+      - name: Run bin/ci checks
+        run: bin/ci checks
+
+  # RSpec in shards formed from spec/support/runtime_log.txt (spec 035 decisions 6, 7). The shard count is the
+  # matrix's length; bin/ci rspec N/M prints the shard's seed and a replay command.
+  rspec:
+    name: RSpec (${{ matrix.shard }}/${{ strategy.job-total }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [ 1, 2, 3, 4 ]
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -33,16 +56,28 @@ jobs:
       - name: Install libvips (Active Storage variants, ADR 0013) and ImageMagick (art matching's decoder, ADR 0012)
         run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends libvips imagemagick
 
-      - name: Run bin/ci
-        run: bin/ci
+      - name: Run bin/ci rspec
+        run: bin/ci rspec ${{ matrix.shard }}/${{ strategy.job-total }}
 
       - name: Keep screenshots from failed system specs
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
-          name: screenshots
+          name: screenshots-${{ matrix.shard }}
           path: tmp/capybara
           if-no-files-found: ignore
+
+  # The one verdict the image jobs wait for: every group passed (spec 035 decision 5; spec 012 FR-1).
+  ci:
+    needs: [ checks, rspec ]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every group to pass
+        env:
+          CHECKS: ${{ needs.checks.result }}
+          RSPEC: ${{ needs.rspec.result }}
+        run: test "$CHECKS" = success && test "$RSPEC" = success
 
   # Builds the image natively for each architecture (ADR 0010), smoke-tests it, and on main and release tags
   # pushes it by digest for the publish job to merge. Pull requests build and test but push nothing.

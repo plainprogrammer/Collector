@@ -154,19 +154,44 @@ RSpec.describe "Image publishing files" do
       expect(publish_job["needs"]).to eq("image")
     end
 
-    it "installs libvips and ImageMagick before bin/ci (spec 014 AC-2.3, FR-3)", :aggregate_failures do
-      ci_steps = workflow.dig("jobs", "ci", "steps")
-      install = ci_steps.index { |candidate| candidate["run"].to_s.include?("apt-get install") }
+    it "installs libvips and ImageMagick in each shard before bin/ci (spec 014 AC-2.3, FR-3; spec 035 AC-2.1)", :aggregate_failures do
+      rspec_steps = workflow.dig("jobs", "rspec", "steps")
+      install = rspec_steps.index { |candidate| candidate["run"].to_s.include?("apt-get install") }
+      run = rspec_steps.index { |candidate| candidate["run"] == "bin/ci rspec ${{ matrix.shard }}/${{ strategy.job-total }}" }
       expect(install).not_to be_nil
-      expect(ci_steps[install]["run"].split).to include("libvips", "imagemagick")
-      expect(install).to be < ci_steps.index { |candidate| candidate["run"] == "bin/ci" }
+      expect(rspec_steps[install]["run"].split).to include("libvips", "imagemagick")
+      expect(run).not_to be_nil
+      expect(install).to be < run
     end
 
-    it "grants packages: write only to the image and publish jobs (NFR Security)", :aggregate_failures do
+    it "runs bin/ci checks, the RSpec shards and the ci job that gathers them before the image (spec 035 AC-2.1)", :aggregate_failures do
+      jobs = workflow["jobs"]
+      shards = jobs.dig("rspec", "strategy", "matrix", "shard")
+      ci_commands = %r{(?:\A|[\s;&|/])(?:bin/(?:setup|rspec|rubocop|brakeman|bundler-audit|importmap)|script/upgrade/guard\.rb)\b}
+      run_lines = %w[checks rspec ci].flat_map { |name| jobs.dig(name, "steps").filter_map { |candidate| candidate["run"] } }
+
+      expect(jobs.dig("checks", "steps").filter_map { |candidate| candidate["run"] }).to include("bin/ci checks")
+      expect(jobs.dig("rspec", "strategy", "fail-fast")).to be(false)
+      expect(shards.size).to be >= 2
+      expect(shards).to eq((1..shards.size).to_a)
+      expect(jobs.dig("ci", "needs")).to eq(%w[checks rspec])
+      expect(jobs.dig("ci", "if")).to eq("${{ !cancelled() }}")
+      expect(jobs.dig("image", "needs")).to eq("ci")
+      expect(run_lines).not_to include(a_string_matching(ci_commands))
+    end
+
+    it "uploads a failed shard's screenshots as screenshots-N from Capybara's save path (spec 035 AC-2.3)", :aggregate_failures do
+      upload = workflow.dig("jobs", "rspec", "steps").find { |candidate| candidate["uses"].to_s.start_with?("actions/upload-artifact") }
+      expect(upload["if"]).to eq("failure()")
+      expect(upload.dig("with", "name")).to eq("screenshots-${{ matrix.shard }}")
+      expect(upload.dig("with", "path")).to eq(Pathname(Capybara.save_path).relative_path_from(Rails.root).to_s)
+    end
+
+    it "grants packages: write only to the image and publish jobs (NFR Security; spec 035 Security)", :aggregate_failures do
       expect(workflow["permissions"]).to eq("contents" => "read")
       expect(image_job["permissions"]).to eq("contents" => "read", "packages" => "write")
       expect(publish_job["permissions"]).to eq("contents" => "read", "packages" => "write")
-      expect(workflow.dig("jobs", "ci")).not_to have_key("permissions")
+      expect(%w[checks rspec ci].map { |name| workflow.dig("jobs", name)&.key?("permissions") }).to eq([ false, false, false ])
     end
 
     it "never pushes from a pull request and caches only in Actions (AC-4.2, FR-1)", :aggregate_failures do
