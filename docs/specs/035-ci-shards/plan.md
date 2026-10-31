@@ -2,7 +2,17 @@
 
 **Spec:** [spec.md](spec.md) 1.0.0 (approved 2026-10-31)
 **Branch:** `035-ci-shards` (draft PR [#149](https://github.com/plainprogrammer/Collector/pull/149))
-**Plan review:** an Opus read-only review on 2026-10-31 said NOT READY: one blocking finding and 13 others, all fixed in this version.
+**Plan reviews (Opus, read-only, 2026-10-31):**
+- **Round 1: NOT READY.** One blocking finding and 13 others, all fixed.
+- **Round 2: READY AFTER FIXES.** Three important findings and five minor ones, all fixed:
+  - the screenshots path;
+  - the throwaway branch's base;
+  - the 4.5 evidence setup;
+  - `cd` and `-C` resolved for refused pushes;
+  - the hook failing closed without Ruby;
+  - the AC-2.6 commands;
+  - `bin/ci` left out of the image;
+  - small points.
 
 ## Global constraints
 
@@ -18,7 +28,7 @@
 - **Workflow edits.** Edits to `.github/workflows/**` ask for permission. Ask the maintainer.
 - **Unattended edits.** Never edit `.claude/settings.json`'s permission lists or hooks except as Phases 2 and 4 say.
 - **New spec files** under `spec/lib/collector/` take no `type:`, like their neighbours.
-- **The new `lib/collector` files are development tooling**, like `lib/collector/ghcr_cleanup.rb`. This applies to `ci_groups.rb`, `ci_shard.rb` and `push_scope.rb`.
+- **The new `lib/collector` files are development tooling**, like `lib/collector/ghcr_cleanup.rb`. This applies to `ci_groups.rb`, `ci_shard.rb` and `push_scope.rb`. `bin/ci` and `config/ci.rb` require them, so those two leave the image too; nothing in the image runs them (Dockerfile and smoke scripts checked).
   - They are required by path: from `bin/ci`, from the hook script, and from their specs.
   - They are kept out of autoloading: add them to `config.autoload_lib(ignore: …)` in `config/application.rb`, which today ignores only `collector/backup*`. Otherwise Zeitwerk would eager-load them under `CI=true`.
   - They are kept out of the image: `.dockerignore`, and `bin/image-smoke`'s list of paths that must be absent.
@@ -220,20 +230,21 @@ Commits:
 - **`spec/image_publishing_spec.rb`:**
   - "installs libvips and ImageMagick before bin/ci" looks in `jobs.rspec`. The run line after the install is `bin/ci rspec ${{ matrix.shard }}/${{ strategy.job-total }}`.
   - The example that checks `jobs.ci` has no `permissions` checks `checks`, `rspec` and `ci` (Security).
+  - The `rspec` job's screenshots upload names `screenshots-${{ matrix.shard }}` and `path: tmp/screenshots`, where Rails saves failure screenshots (`Capybara.save_path` is unset, so `ActionDispatch::SystemTesting::TestHelpers::ScreenshotHelper` uses `tmp/screenshots`). Today's `ci.yml:44` uploads `tmp/capybara`, so no screenshot has ever been uploaded; say so in the commit body (AC-2.3).
   - A new example covers AC-2.1:
     - `checks` runs `bin/ci checks`;
     - `rspec` has `strategy.fail-fast: false` and a `shard` matrix that is a contiguous `1..N` with N ≥ 2 (any N, so Phase 6's M = 3 trial stays green);
     - `ci` needs `[checks, rspec]` with `if: ${{ !cancelled() }}`;
     - `image` needs `ci`;
     - no run line in these three jobs names a command `config/ci.rb` runs, except through `bin/ci`. Those commands are `bin/setup`, `bin/rspec`, `bin/rubocop`, `bin/brakeman`, `bin/bundler-audit`, `bin/importmap` and `script/upgrade/guard.rb`.
-  - The new `lib/collector` files are in `.dockerignore` and in `bin/image-smoke`'s list of absent paths, beside `lib/collector/ghcr_cleanup.rb`.
+  - The three new `lib/collector` files, `bin/ci` and `config/ci.rb` are in `.dockerignore` and in `bin/image-smoke`'s list of absent paths, beside `lib/collector/ghcr_cleanup.rb`.
 - **`spec/script/upgrade/files_spec.rb`:**
   - `checkout("checks")` has `fetch-depth: 0`;
   - neither `checks` nor `rspec` has a run line matching `upgrade-smoke|docker|podman` (spec 031 AC-7.6, AC-8.5 as superseded).
 
 They fail against today's single `ci` job and today's `.dockerignore`.
 
-**3.2 Edit `.dockerignore` and `bin/image-smoke`** to add the three files.
+**3.2 Edit `.dockerignore` and `bin/image-smoke`** to add the three `lib/collector` files, `bin/ci` and `config/ci.rb`.
 
 **3.3 Edit `.github/workflows/ci.yml`.** This asks for permission. Replace the `ci` job with:
 
@@ -285,7 +296,7 @@ They fail against today's single `ci` job and today's `.dockerignore`.
         if: failure()
         with:
           name: screenshots-${{ matrix.shard }}
-          path: tmp/capybara
+          path: tmp/screenshots
           if-no-files-found: ignore
 
   # The one verdict the image jobs wait for: every group passed (spec 035 decision 5; spec 012 FR-1).
@@ -325,7 +336,7 @@ They fail against today's single `ci` job and today's `.dockerignore`.
 - **False for a deleted code file** (`["lib/gone.rb", "docs/a.md"]`).
 - **False for `[]`.**
 
-**b. `Collector::PushScope.parse(command, current_branch:)` (AC-3.2).** It returns `Data.define(:accepted, :cd, :git_c, :reason)`, where `cd` is a leading `cd <dir>` and `git_c` the `-C <dir>`; either may be nil.
+**b. `Collector::PushScope.parse(command, current_branch:)` (AC-3.2).** It returns `Data.define(:accepted, :cd, :git_c, :reason)`, where `cd` is a leading `cd <dir>` and `git_c` the `-C <dir>`; either may be nil. Both are filled **whether or not the command is accepted**, as today's hook extracts them from any command, so a refused push still runs the full `bin/ci` in the right checkout: `cd ../wt && git push --tags` is refused with `cd == "../wt"`.
 
 - **Accepted:**
   - `git push`, `git push origin`, `git push -u origin 035-ci-shards`, `git push --set-upstream origin HEAD`, when the current branch is `035-ci-shards`;
@@ -344,7 +355,7 @@ They fail against today's single `ci` job and today's `.dockerignore`.
 
 - It returns the NUL-separated output of `git diff -z --no-renames --name-only $(git merge-base HEAD origin/main) HEAD`, so a path with non-ASCII characters comes back unquoted.
 - A rename returns both names.
-- It raises `Collector::PushScope::Unknown` with a reason when:
+- It raises `Collector::PushScope::Unknown` with a reason on any non-zero `git` exit, including when:
   - there's no `origin/main`;
   - `HEAD` is detached;
   - there's no merge base (an orphan branch).
@@ -407,16 +418,25 @@ Anything else is refused, with its reason.
 **4.4 `.claude/settings.json`.** Replace the pre-push hook's command with:
 
 ```sh
-in=$(cat); case "$in" in *push*) ;; *) exit 0 ;; esac; [ "${CLAUDE_CODE_REMOTE:-}" = true ] && [ -d /opt/rbenv/shims ] && PATH=/opt/rbenv/shims:$PATH; printf '%s' "$in" | exec ruby "$CLAUDE_PROJECT_DIR/.claude/hooks/pre_push_ci.rb"
+in=$(cat); case "$in" in *push*) ;; *) exit 0 ;; esac; [ "${CLAUDE_CODE_REMOTE:-}" = true ] && [ -d /opt/rbenv/shims ] && PATH=/opt/rbenv/shims:$PATH; h="$CLAUDE_PROJECT_DIR/.claude/hooks/pre_push_ci.rb"; command -v ruby >/dev/null && [ -f "$h" ] || { echo 'Pre-push: ruby or the hook script is missing; blocking the push.' >&2; exit 2; }; printf '%s' "$in" | exec ruby "$h"
 ```
 
-The shell `case` keeps Ruby from starting on every Bash call. Keep `"timeout": 900` and `"onFailure": "block"` (from #148).
+The shell `case` keeps Ruby from starting on every Bash call. A missing `ruby` or hook script blocks the push instead of exiting 127 or 1, which wouldn't block (FR-4). In the JSON, escape the double quotes (`\"`); the settings example parses the file, so invalid JSON fails it. Keep `"timeout": 900` and `"onFailure": "block"` (from #148).
 
 Add file-shape examples to `spec/config/ci_definition_spec.rb`:
 - both git hooks keep `onFailure: "block"`;
 - the pre-push command runs `.claude/hooks/pre_push_ci.rb` and contains no `jq` (AC-3.6).
 
-**4.5 Evidence for `verification.md`.** Use scratch branches in a scratch clone, never pushed. Pipe a hand-written tool-call JSON into the script for:
+**4.5 Evidence for `verification.md`.** Use scratch branches in a scratch clone, never pushed.
+
+**Set up the clone:**
+
+1. Clone the worktree into the scratch directory.
+2. Point its `origin/main` at this branch's head: `git update-ref refs/remotes/origin/main <035 head>`. Otherwise its `origin/main` lacks spec 035, so a branch from it either isn't documentation-only or runs the old `bin/ci`.
+3. Make the scratch branches from that.
+4. Run the clone's own `.claude/hooks/pre_push_ci.rb` with `CLAUDE_PROJECT_DIR=<clone>` and the JSON's `cwd` set to the clone, so the project-repository check passes.
+
+Pipe a hand-written tool-call JSON into the script for:
 
 - a documentation-only branch: it runs `bin/ci checks` (AC-3.3);
 - a branch touching `docs/export-format/examples/valid/empty-v2.json`: full `bin/ci` (AC-3.4);
@@ -436,7 +456,7 @@ Commits:
 - **The full-history rule (line 59):** the `checks` and `rspec` jobs.
 - **The "A workflow run" table:** the jobs, with `checks`/`rspec`/`ci` in place of the `ci` column's single `bin/ci`.
 - **A new rule:** shards come from `spec/support/runtime_log.txt` through `Collector::CiShard`; a stale log changes only balance; refresh it with `script/ci/record_runtime_log`; each shard prints its seed and replay with `CI=true`; the CI tooling under `lib/collector` stays out of the image.
-- **Refresh every `ci.yml:NN` line reference** in the document against the new workflow.
+- **Refresh every `ci.yml:NN` and `config/ci.rb:NN` line reference** in the document (for example `config/ci.rb:5` at line 57) against the new files.
 - **Sources:** add #145 and spec 035.
 
 **`CLAUDE.md`** (AC-4.2).
@@ -469,7 +489,15 @@ Verify each by reading. Commit `docs: CI groups and shards in the area doc, CLAU
 4. **AC-2.2 and AC-2.3, in one run.** A temporary commit adds a system spec that fails only on GitHub:
 
    ```ruby
-   it("fails only on GitHub (spec 035 AC-2.2 probe)") { visit "/"; raise "AC-2.2 probe" if ENV["GITHUB_ACTIONS"] }
+   # spec/system/ac_2_2_probe_spec.rb: temporary, reverted after Phase 6 step 4 (spec 035 AC-2.2, AC-2.3).
+   require "rails_helper"
+
+   RSpec.describe "Spec 035 AC-2.2 probe", type: :system do
+     it "fails only on GitHub" do
+       visit "/"
+       raise "AC-2.2 probe" if ENV["GITHUB_ACTIONS"]
+     end
+   end
    ```
 
    The pre-push hook's local `bin/ci` passes, so the push goes through. Check that:
@@ -481,10 +509,15 @@ Verify each by reading. Commit `docs: CI groups and shards in the area doc, CLAU
    Then revert the probe.
 5. **AC-2.6.** Pull-request runs check out the merge ref, not the branch head.
    1. Take the SHA from the shard log's checkout line ("HEAD is now at …").
-   2. `git fetch origin pull/149/merge`, check out that SHA in a scratch worktree, and print `Collector::CiShard.new(index: N, total: M).files` there with `ruby -e`. It needs no Rails.
+   2. `git fetch origin <that sha>` (the merge ref moves on every push or `main` change), check out that SHA in a scratch worktree, and print `Collector::CiShard.new(index: N, total: M).files` there with `bundle exec ruby -e` (the bundle finds `parallel_tests`; no Rails).
    3. Compare that list with the shard's printed file count and replay line.
 6. **AC-3.7.** Decision 3 diffs the whole branch, and `035-ci-shards` changes code, so its pushes never take the fast path. Two pieces of evidence instead:
    - **The workflow has no filter.** `on:` in `ci.yml` has no `paths` or `paths-ignore`, so any push runs every group. Record this.
-   - **A documentation-only run.** With the maintainer's OK, push a throwaway documentation-only branch: one Markdown line in `docs/`. The hook takes the fast path; record its message. The first push opens its draft PR ([[draft-pr-on-first-push]]). Record that its run ran `checks`, every shard and `ci`, then close the PR and delete the branch.
+   - **A documentation-only run.** Approved by the maintainer on 2026-10-31 as an end-to-end test.
+     1. Make a throwaway branch **from `origin/main`** with one Markdown line in `docs/`. The hook's diff is then that one line, so it takes the fast path; record its message.
+     2. Open its draft PR ([[draft-pr-on-first-push]]) with **`--base 035-ci-shards`**, so the PR's merge ref carries the new `ci.yml`. A PR into `main` would run the old single-`ci` workflow.
+     3. Record that its run ran `checks`, every shard and `ci`.
+     4. Note that the local run used `main`'s `bin/ci`, which ignores the `checks` argument until 035 merges.
+     5. Close the PR and delete the branch.
 
 Record everything in `verification.md`, then run the full `bin/ci` once at the end.
