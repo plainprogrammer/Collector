@@ -6,7 +6,7 @@
 **Plan reviews (Opus, read-only, 2026-10-31):**
 - **Round 1: NOT READY.** One blocking finding and 13 others, all fixed.
 - **Round 2: READY AFTER FIXES.** Three important findings and five minor ones, all fixed:
-  - the screenshots path;
+  - the screenshots path (a false finding: the path was already right; see Phase 3.1);
   - the throwaway branch's base;
   - the 4.5 evidence setup;
   - `cd` and `-C` resolved for refused pushes;
@@ -231,7 +231,7 @@ Commits:
 - **`spec/image_publishing_spec.rb`:**
   - "installs libvips and ImageMagick before bin/ci" looks in `jobs.rspec`. The run line after the install is `bin/ci rspec ${{ matrix.shard }}/${{ strategy.job-total }}`.
   - The example that checks `jobs.ci` has no `permissions` checks `checks`, `rspec` and `ci` (Security).
-  - The `rspec` job's screenshots upload names `screenshots-${{ matrix.shard }}` and `path: tmp/screenshots`, where Rails saves failure screenshots (`Capybara.save_path` is unset, so `ActionDispatch::SystemTesting::TestHelpers::ScreenshotHelper` uses `tmp/screenshots`). Today's `ci.yml:44` uploads `tmp/capybara`, so no screenshot has ever been uploaded; say so in the commit body (AC-2.3).
+  - The `rspec` job's screenshots upload names `screenshots-${{ matrix.shard }}`, and its `path` equals `Capybara.save_path` relative to the app root, `tmp/capybara` (set by `capybara/rails.rb`). Rails saves failure screenshots there (AC-2.3). The round-2 review's claim that they land in `tmp/screenshots` was wrong: it read only Rails' fallback for an unset `save_path`. Checked 2026-10-31, when the example asserting `tmp/screenshots` failed against `Capybara.save_path`.
   - A new example covers AC-2.1:
     - `checks` runs `bin/ci checks`;
     - `rspec` has `strategy.fail-fast: false` and a `shard` matrix that is a contiguous `1..N` with N ≥ 2 (any N, so Phase 6's M = 3 trial stays green);
@@ -297,7 +297,7 @@ They fail against today's single `ci` job and today's `.dockerignore`.
         if: failure()
         with:
           name: screenshots-${{ matrix.shard }}
-          path: tmp/screenshots
+          path: tmp/capybara
           if-no-files-found: ignore
 
   # The one verdict the image jobs wait for: every group passed (spec 035 decision 5; spec 012 FR-1).
