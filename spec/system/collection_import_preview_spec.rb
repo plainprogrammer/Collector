@@ -5,10 +5,7 @@ RSpec.describe "Import preview", type: :system do
   let!(:user) { system_sign_in_as(create(:user)) }
   let(:path) { Rails.root.join("tmp/import-preview-#{SecureRandom.hex(4)}.json") }
 
-  after do
-    FileUtils.rm_f(path)
-    page.driver.browser.manage.window.resize_to(1400, 1400) # the screen size the system specs run at (spec/support/system.rb)
-  end
+  after { FileUtils.rm_f(path) }
 
   it "previews an export file chosen from the account menu", :aggregate_failures do
     create(:lot, account: user.account, entry: create(:mtg_printing).entry, quantity: 2)
