@@ -37,6 +37,14 @@ RSpec.describe Collector::CiShard do
     it "puts every spec file in exactly one shard without a run-time log (AC-1.5)", :aggregate_failures do
       expect_every_file_once(missing_log)
     end
+
+    it "puts every spec file in exactly one of four shards with the committed run-time log (decision 6)", :aggregate_failures do
+      expect(File.file?(described_class::RUNTIME_LOG)).to be(true)
+      files = (1..4).map { |index| described_class.new(index:, total: 4).files }.flatten
+
+      expect(files.tally.select { |_, count| count > 1 }.keys).to be_empty
+      expect(files.sort).to eq(spec_files)
+    end
   end
 
   describe "#grouping" do
