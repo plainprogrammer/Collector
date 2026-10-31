@@ -57,6 +57,7 @@ Ruby 4.0.7, Rails 8.1.4, SQLite in every environment (including production), Hot
 - After editing a Ruby file: `bin/rubocop -a` runs on that file; remaining offenses are reported back.
 - Before `git commit`: RuboCop on staged Ruby files + Brakeman; failures block the commit.
 - Before `git push`: `bin/ci`; failure blocks the push.
+- Both gates also block when they time out (180 s and 900 s): each sets `"onFailure": "block"`, which needs Claude Code 2.1.295 or later; an older Claude Code ignores the key and lets a timed-out hook through, as it did while `bin/ci` ran past 900 s (#145).
 
 ## UI and design system
 
