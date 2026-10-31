@@ -16,4 +16,24 @@ RSpec.describe "The CI definition", type: :config do # rubocop:disable RSpec/Des
 
     expect(allowed).to include("Bash(bin/ci)", "Bash(bin/ci *)")
   end
+
+  describe "the git hooks in .claude/settings.json" do
+    let(:hooks) do
+      JSON.parse(Rails.root.join(".claude/settings.json").read).dig("hooks", "PreToolUse")
+        .select { it["matcher"] == "Bash" }.flat_map { it["hooks"] }
+    end
+    let(:commit_hook) { hooks.find { it["command"].include?("commit") } }
+    let(:push_hook) { hooks.find { it["command"].include?("push") } }
+
+    it "keep blocking when they fail or time out (AC-3.6, decision 1)", :aggregate_failures do
+      expect(commit_hook).to include("onFailure" => "block")
+      expect(push_hook).to include("onFailure" => "block")
+    end
+
+    it "run the pre-push hook script in Ruby, with no jq (AC-3.6)", :aggregate_failures do
+      expect(push_hook["command"]).to include(".claude/hooks/pre_push_ci.rb")
+      expect(push_hook["command"]).not_to include("jq")
+      expect(Rails.root.join(".claude/hooks/pre_push_ci.rb")).to exist
+    end
+  end
 end
