@@ -44,6 +44,22 @@ RSpec.describe Collector::PushScope do
     end
   end
 
+  describe ".push?" do
+    it "detects a push with a git -C path, quoted or not", :aggregate_failures do
+      [
+        "git push", "cd /x && git push", "git -C /x push", "git -C \"/a b\" push", "git -C '/a b' push origin"
+      ].each do |command|
+        expect(described_class.push?(command)).to be(true), command
+      end
+    end
+
+    it "ignores a command that only mentions push", :aggregate_failures do
+      [ "grep push log", "git log --grep push", "echo pushed" ].each do |command|
+        expect(described_class.push?(command)).to be(false), command
+      end
+    end
+  end
+
   describe ".parse" do
     def parse(command, branch: "035-ci-shards") = described_class.parse(command, current_branch: branch)
 
@@ -51,7 +67,7 @@ RSpec.describe Collector::PushScope do
       [
         "git push", "git push origin", "git push -u origin 035-ci-shards",
         "git push --set-upstream origin HEAD", "git push origin 035-ci-shards",
-        "cd /x && git push origin HEAD", "git -C /x push",
+        "cd /x && git push origin HEAD", "git -C /x push", "git -C \"/a b\" push",
         "git push origin 035-ci-shards 2>&1 | tail -3", "git push 2>&1"
       ].each do |command|
         result = parse(command)
@@ -62,6 +78,7 @@ RSpec.describe Collector::PushScope do
     it "fills cd and git_c from the command", :aggregate_failures do
       expect(parse("cd /x && git push origin HEAD")).to have_attributes(cd: "/x", git_c: nil)
       expect(parse("git -C /x push")).to have_attributes(cd: nil, git_c: "/x")
+      expect(parse("git -C \"/a b\" push")).to have_attributes(cd: nil, git_c: "/a b")
       expect(parse("git push")).to have_attributes(cd: nil, git_c: nil)
     end
 
@@ -88,7 +105,22 @@ RSpec.describe Collector::PushScope do
         "git push; git push --tags" => ";",
         "git push | tail -3 && git push --tags" => "more than one",
         "git push &" => "&",
-        "git push | grep x" => "pipe"
+        "git push | grep x" => "pipe",
+        # Forms bash would expand or split into other words or commands (FR-4).
+        "git push {origin,+HEAD:main}" => "`{`",
+        "git push $(echo${IFS}origin${IFS}+HEAD:main)" => "`$`",
+        "git push `echo origin`" => "`` ` ``",
+        "git push \"$(x)\"" => "`$`",
+        "git push *" => "`*`",
+        "git push origin 035-ci-shard?" => "`?`",
+        "git push origin [0]35-ci-shards" => "`[`",
+        "git push ~/x" => "`~`",
+        "git push < /dev/null" => "`<`",
+        "git push > log" => "`>`",
+        "cd \"$CLAUDE_PROJECT_DIR\" && git push" => "`$`",
+        "git push\n./script/x" => "newline",
+        "git push\nmake" => "newline",
+        "git push\r./script/x" => "carriage return"
       }
     end
 
