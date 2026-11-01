@@ -167,3 +167,17 @@ SPEC-ALIGNED, after fixes. The read-only Opus review (2026-11-01, `sdd-review` M
   - pre-rebase commit IDs are mapped above.
 - **(7) Stale roadmap line, updated in the distillation.**
 - **(8) AC-2.5, already recorded in Story 2.** The third M = 3 run came from `main`, and the stop rule's margin was 1 s.
+
+## Distillation
+
+2026-11-01, `distill-feature`, on this follow-up branch, because #149 merged before it:
+- **`docs/architecture/release-and-deploy.md`:**
+  - Phase 5 had already written the groups, the shards, the run-time log, the workflow's jobs and the slowest examples.
+  - The distillation added the measured shard count (median 140 s with four shards, 171 s with three, 348 s before) and the one-second margin as an accepted limit.
+  - It also added a Distillation log row.
+- **`docs/specs/README.md`:** spec 035 is frozen in part, all but decision 3 and Story 3, by that doc. The pre-push hook belongs to the development environment, which has no area doc, so its facts stay in `CLAUDE.md`'s Hooks section. Its Plan reads "retirement owed".
+- **`docs/specs/035-ci-shards/spec.md`:** gained its frozen line (spec 027 D4).
+- **`docs/roadmap.md`:** spec 035's line reads shipped.
+- **No ADR proposed:** the lasting decisions are the spec's own.
+- **Plan retirement:** the plan is retired after this follow-up pull request merges.
+- **Index pointers:** two of the index's retirement pointers (specs 015 and 024) don't resolve in this clone, because it is shallow (`git rev-parse --is-shallow-repository`: true). That is not a broken pointer.
