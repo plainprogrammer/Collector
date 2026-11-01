@@ -95,6 +95,8 @@ Taken between specs.
 - [#108](https://github.com/plainprogrammer/Collector/issues/108): area doc for data portability (spec 027 slice C).
 - [#109](https://github.com/plainprogrammer/Collector/issues/109): area doc for release and deploy (spec 027 slice C).
 - [#118](https://github.com/plainprogrammer/Collector/issues/118): system specs follow the host's dark mode, so light-theme examples fail; the default driver is pinned to light, and the dark drivers take the first driver's Firefox binary (found while running `bin/ci` for spec 028). **Done 2026-10-20.**
+- [#145](https://github.com/plainprogrammer/Collector/issues/145): spike: why `bin/ci` grew from minutes to 20–30, and why the pre-push hook stopped gating past its timeout. **Done 2026-10-31:** findings in [research.md](specs/035-ci-shards/research.md); the fixes in [#147](https://github.com/plainprogrammer/Collector/pull/147) (the parity example) and [#148](https://github.com/plainprogrammer/Collector/pull/148) (the hooks block on a timeout).
+- Spec 035, from #145: `bin/ci` groups, used by GitHub's RSpec shards and by the pre-push hook, which skips RSpec for a documentation-only branch. **In progress:** [spec 035](specs/035-ci-shards/spec.md), [PR #149](https://github.com/plainprogrammer/Collector/pull/149) (draft).
 
 ## Parked until after 1.0
 
