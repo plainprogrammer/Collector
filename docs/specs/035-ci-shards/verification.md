@@ -4,6 +4,22 @@
 
 Executed 2026-10-31 to 2026-11-01 in a cloud session, one implementer subagent per phase (Phases 1–5) and Phase 6 in the main session. Unless noted, local runs were on this branch, one at a time.
 
+**Commit IDs before the rebase:** the branch was rebased onto `main` on 2026-11-01 to bring in #151. The runs and evidence below that name an earlier commit name it as it was then; GitHub's runs keep those IDs. In `main`'s history the same commits are:
+
+| Before | In `main` | Commit |
+|---|---|---|
+| `7aff25a` | `3791189` | feat(ci): parse bin/ci groups and form spec shards |
+| `4e45550` | `50c19f5` | feat(ci): bin/ci runs a group or a shard and prints the slowest examples |
+| `9d5bed1` | `2cc50ce` | chore(ci): record the spec run-time log |
+| `e94ae42` | `eb7b1cd` | chore(claude): allow bin/ci with a group argument |
+| `8f5aa02` | `011659a` | chore(image): keep the CI tooling out of the image |
+| `769915e` | `cd27d48` | ci: run bin/ci checks and the RSpec shards in parallel |
+| `c1f3f37` | `8f3ce87` | feat(hooks): classify a branch's changes and push command |
+| `f3bc962` | `8288236` | feat(hooks): skip RSpec before a documentation-only push |
+| `db8d609` | `7efe8a7` | feat(hooks): run the Ruby pre-push hook from settings |
+| `6412bc2` | `db40d59` | fix(hooks): read the tool call as UTF-8 in the pre-push hook |
+| `59eea89` | `a936950` | docs: CI groups and shards in the area doc, CLAUDE.md and the roadmap |
+
 ## Rulings
 
 **By the maintainer, during execution:**
@@ -33,6 +49,7 @@ Executed 2026-10-31 to 2026-11-01 in a cloud session, one implementer subagent p
   - **The bug:** in this session's C locale, the hook read the tool call's JSON as US-ASCII. A Bash call with a non-ASCII character and the word "push" crashed it, and its fail-closed rescue blocked a command that wasn't a push.
   - **The fix:** the script forces UTF-8.
   - **The proof:** an example runs the script under `LANG=C`. It failed first, then passed.
+- **Output redirection narrower than decision 3:** only a trailing `2>&1` and a trailing `| tail -N` or `| head -N` are stripped. A push with `> file` or `>/dev/null 2>&1` is refused and runs the full `bin/ci`. That fails safe; widening it isn't worth the parsing (implementation review, item 4).
 - **AC-1.4's command:** the replay prints `CI=true bin/rspec --seed S --profile 10 <files>`. Decision 8 adds `--profile 10` to every RSpec run. The files, their order, the seed and `CI` are as AC-1.4 says.
 
 ## Evidence
