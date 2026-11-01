@@ -76,3 +76,5 @@ group :test do
   gem "webmock"
   gem "vcr"
 end
+
+gem "parallel_tests", "~> 5.8.0", group: :test, require: false

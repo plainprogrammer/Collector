@@ -5,6 +5,7 @@
 **Created:** 2026-09-29
 **Last Updated:** 2026-09-29
 **Branch:** `feat/004-design-system-collection` (chosen at `sdd-execute`; drafted on `plainprogrammer/design-system-implementation`)
+**Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (parts: the collection and adding cards: Stories 7 and 9–11, AC-6.3, AC-6.6's owned quantities and add controls, AC-8.4–AC-8.7, AC-8.9, AC-12.1–AC-12.3, AC-12.5, FR-6–FR-8, FR-10); see the [specs index](../README.md)
 
 ---
 

@@ -23,6 +23,7 @@
       <% @locations.each do |location| %>
         <li>
           <span class="c-locations__name"><%= location.name %></span>
+          <span class="c-list__meta c-locations__holds"><%= location_holds(@holdings[location.id]) %></span>
           <span class="c-list__end c-locations__actions">
             <%= link_to edit_location_path(location), class: "c-btn c-btn--ghost c-btn--sm" do %>Rename<span class="c-sr"> <%= location.name %></span><% end %>
             <%= link_to new_location_removal_path(location), class: "c-btn c-btn--ghost c-btn--sm" do %>Remove<span class="c-sr"> <%= location.name %></span><% end %>

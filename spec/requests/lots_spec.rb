@@ -149,10 +149,193 @@ RSpec.describe "Lots", type: :request do
       expect(response.body).to include("Removed 3 × #{added} from your collection.", "You don't have this card yet.")
     end
 
+    it "removes a lot in a location, leaves the location and ends an earlier bulk removal's Undo (spec 032 AC-7.7)", :aggregate_failures do
+      location = create(:location, account: user.account)
+      lot = create(:lot, account: user.account, entry:, location:)
+      earlier = BulkRemoval.create!(session: Current.session || user.sessions.last, account: user.account, copies: 1, lots_data: [])
+      delete lot_path(lot)
+      expect(Lot.exists?(lot.id)).to be(false)
+      expect(Location.exists?(location.id)).to be(true)
+      expect(earlier.reload).not_to be_undoable
+    end
+
     it "keeps the collection context" do
       lot = create(:lot, account: user.account, entry:)
       delete lot_path(lot, from: "collection")
       expect(response).to redirect_to(catalog_entry_path(entry, from: "collection"))
+    end
+  end
+
+  # Spec 032 Stories 1 and 2: the Location field of the add and edit forms.
+  describe "in a location" do
+    def account = user.account
+    def blue = @blue ||= create(:location, account:, name: "Blue binder")
+    def box = @box ||= create(:location, account:, name: "Long box")
+
+    before { blue && box }
+
+    def page_html = Nokogiri::HTML5(response.body)
+
+    # Deletes the location with SQL once, right after the statement that finds it by id (a lost race, AC-6.7), and records
+    # whether a write to lots was attempted: the foreign key, not a stub, is what answers.
+    def lose_race(location)
+      done = false
+      writes = []
+      subscriber = lambda do |*, payload|
+        sql = payload[:sql]
+        writes << sql if sql.match?(/\A(INSERT INTO|UPDATE) "lots"/)
+        next if done || !sql.match?(/FROM "locations" WHERE .*"locations"\."id" = /)
+
+        done = true
+        Location.where(id: location.id).delete_all
+      end
+      ActiveSupport::Notifications.subscribed(subscriber, "sql.active_record") { yield }
+      writes
+    end
+
+    describe "adding" do
+      it "offers No location (selected) then the account's locations in order (AC-1.1)", :aggregate_failures do
+        get new_catalog_entry_lot_path(entry)
+        select = page_html.at_css('select[name="lot[location_id]"]')
+        expect(page_html.at_css('label[for="lot_location_id"]').text).to eq("Location")
+        expect(select.css("option").map(&:text)).to eq([ "No location", "Blue binder", "Long box" ])
+        expect(select.at_css("option[selected]")&.text.to_s).to eq("No location").or eq("")
+      end
+
+      it "puts the copies in the chosen location and says so (AC-1.2)", :aggregate_failures do
+        post catalog_entry_lots_path(entry), params: { lot: { quantity: "4", location_id: blue.id } }
+        expect(response).to have_http_status(:see_other).and redirect_to(catalog_entry_path(entry))
+        expect(account.lots.sole).to have_attributes(quantity: 4, location: blue)
+        follow_redirect!
+        expect(response.body).to include("Added 4 × #{added} to Blue binder.")
+      end
+
+      it "says 'to your collection' for No location and for no key (AC-1.2, AC-1.8)", :aggregate_failures do
+        post catalog_entry_lots_path(entry), params: { lot: { quantity: "1", location_id: "" } }
+        post catalog_entry_lots_path(entry), params: { lot: { quantity: "1" } }
+        expect(account.lots.sole).to have_attributes(quantity: 2, location: nil)
+        follow_redirect!
+        expect(response.body).to include("to your collection.")
+      end
+
+      it "adds to the lot in the same place and keeps a separate lot per place (AC-1.3, AC-1.4)", :aggregate_failures do
+        post catalog_entry_lots_path(entry), params: { lot: { quantity: "2", location_id: blue.id } }
+        post catalog_entry_lots_path(entry), params: { lot: { quantity: "3", location_id: blue.id } }
+        post catalog_entry_lots_path(entry), params: { lot: { quantity: "1", location_id: box.id } }
+        expect(account.lots.pluck(:location_id, :quantity)).to contain_exactly([ blue.id, 5 ], [ box.id, 1 ])
+      end
+
+      it "holds 9,999 per place and refuses the next with the cap message (AC-1.5)", :aggregate_failures do
+        create(:lot, account:, entry:, location: blue, quantity: 9_998)
+        post catalog_entry_lots_path(entry), params: { lot: { quantity: "2", location_id: blue.id } }
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.body).to include("One lot can hold at most 9,999 copies.")
+        expect(account.lots.sole.quantity).to eq(9_998)
+        post catalog_entry_lots_path(entry), params: { lot: { quantity: "2", location_id: box.id } }
+        expect(response).to have_http_status(:see_other)
+      end
+
+      it "keeps the chosen location selected on a 422 (AC-1.6)", :aggregate_failures do
+        post catalog_entry_lots_path(entry), params: { lot: { quantity: "0", location_id: box.id } }
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(page_html.at_css('select[name="lot[location_id]"] option[selected]').text).to eq("Long box")
+      end
+
+      it "answers 404 for another account's location or a missing one, creating nothing (AC-1.7, AC-6.1)", :aggregate_failures do
+        theirs = create(:location)
+        [ theirs.id, 0, "x" ].each do |bad|
+          post catalog_entry_lots_path(entry), params: { lot: { quantity: "1", location_id: bad } }
+          expect(response).to have_http_status(:not_found)
+        end
+        expect(Lot.count).to eq(0)
+      end
+
+      it "offers no select and a link to add a location when the account has none (AC-1.9, P3)", :aggregate_failures do
+        Location.delete_all
+        get new_catalog_entry_lot_path(entry)
+        expect(page_html.at_css('select[name="lot[location_id]"]')).to be_nil
+        expect(page_html.at_css(".c-field__hint a")&.text).to eq("Add a location")
+        expect(response.body).to include("to keep copies in one.")
+      end
+
+      it "answers 404, not 500, when the location is removed after it was found, the foreign key refusing the write (AC-6.7)", :aggregate_failures do
+        writes = lose_race(blue) { post catalog_entry_lots_path(entry), params: { lot: { quantity: "1", location_id: blue.id } } }
+        expect(response).to have_http_status(:not_found)
+        expect(writes).not_to be_empty
+        expect(Lot.count).to eq(0)
+      end
+    end
+
+    describe "editing" do
+      def lot = @lot ||= create(:lot, account:, entry:, quantity: 3, location: box)
+
+      before { lot }
+
+      def revise(**lot_params) = patch(lot_path(lot), params: { lot: { quantity: "3" }.merge(lot_params) })
+
+      it "selects the lot's place, and No location for an unplaced lot (AC-2.1)", :aggregate_failures do
+        get edit_lot_path(lot)
+        expect(page_html.at_css('select[name="lot[location_id]"] option[selected]').text).to eq("Long box")
+        lot.update!(location: nil)
+        get edit_lot_path(lot)
+        expect(page_html.at_css('select[name="lot[location_id]"] option[selected]')&.text.to_s).to eq("No location").or eq("")
+      end
+
+      it "moves the same lot to the chosen place (AC-2.2)", :aggregate_failures do
+        created = lot.created_at
+        revise(location_id: blue.id)
+        expect(response).to have_http_status(:see_other).and redirect_to(catalog_entry_path(entry))
+        expect(lot.reload).to have_attributes(location: blue, created_at: created)
+        expect(lot.updated_at).to be > created
+        follow_redirect!
+        expect(response.body).to include("Saved.")
+      end
+
+      it "returns to the collection table's page when it came from there (AC-2.8)", :aggregate_failures do
+        patch lot_path(lot, return_to: collection_path(q: "bolt")), params: { lot: { quantity: "3", location_id: blue.id } }
+        expect(response).to redirect_to(collection_path(q: "bolt"))
+        expect(lot.reload.location).to eq(blue)
+      end
+
+      it "makes one lot when the place already holds a twin (AC-2.3)", :aggregate_failures do
+        twin = create(:lot, account:, entry:, quantity: 2, location: blue)
+        revise(location_id: blue.id)
+        expect(twin.reload.quantity).to eq(5)
+        expect(Lot.exists?(lot.id)).to be(false)
+      end
+
+      it "refuses a merge past 9,999 beside Quantity, changing neither lot (AC-2.4)", :aggregate_failures do
+        twin = create(:lot, account:, entry:, quantity: 9_998, location: blue)
+        revise(location_id: blue.id)
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.body).to include("One lot can hold at most 9,999 copies.")
+        expect([ twin.reload.quantity, lot.reload.quantity, lot.location ]).to eq([ 9_998, 3, box ])
+      end
+
+      it "ends with the new quantity in the new place when both change (AC-2.6)", :aggregate_failures do
+        revise(quantity: "9", location_id: blue.id)
+        expect(lot.reload).to have_attributes(quantity: 9, location: blue)
+      end
+
+      it "answers 404 for another account's location, leaving the lot as it was (AC-2.7)", :aggregate_failures do
+        revise(location_id: create(:location).id)
+        expect(response).to have_http_status(:not_found)
+        expect(lot.reload.location).to eq(box)
+      end
+
+      it "keeps the place when the parameter is absent and unplaces on a blank one (O3)", :aggregate_failures do
+        revise
+        expect(lot.reload.location).to eq(box)
+        revise(location_id: "")
+        expect(lot.reload.location).to be_nil
+      end
+
+      it "answers 404, not 500, when the location is removed after it was found (AC-6.7)", :aggregate_failures do
+        writes = lose_race(blue) { revise(location_id: blue.id) }
+        expect(response).to have_http_status(:not_found)
+        expect(writes).not_to be_empty
+        expect(lot.reload.location).to eq(box)
+      end
     end
   end
 

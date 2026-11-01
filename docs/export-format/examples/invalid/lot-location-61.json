@@ -1,0 +1,36 @@
+{
+  "format": "collector-export",
+  "format_version": 3,
+  "exported_at": "2026-10-11T12:34:56Z",
+  "generator": "Collector 0.2.1",
+  "profile": {
+    "name": "Ada Example",
+    "email_address": "ada@example.test",
+    "collection_view": "table"
+  },
+  "currency": "USD",
+  "locations": [
+    {
+      "name": "Blue binder"
+    }
+  ],
+  "lots": [
+    {
+      "entry": {
+        "collectible_type": "mtg",
+        "source_id": "00000000-0000-4000-8000-000000000001",
+        "name": "Serra Angel",
+        "set_code": "dmr",
+        "collector_number": "27",
+        "language": "en"
+      },
+      "quantity": 4,
+      "finish": "foil",
+      "condition": "near_mint",
+      "price_paid": "12.50",
+      "location": "本本本本本本本本本本本本本本本本本本本本本本本本本本本本本本本本本本本本本本本本本本本本本本本本本本本本本本本本本本本本本",
+      "added_at": "2026-09-30T18:02:11Z",
+      "changed_at": "2026-10-02T09:15:00Z"
+    }
+  ]
+}

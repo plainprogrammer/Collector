@@ -79,4 +79,30 @@ RSpec.describe "Locations", type: :system do
       expect(rings).to all(be(true)), path
     end
   end
+
+  # Spec 032 AC-5.2: the refusal page fits at 360px, offers no Remove, and its links keep the 44px floor.
+  it "refuses a location that holds lots without scrolling sideways, with 44px links and the keyboard (spec 032 AC-5.2)", :aggregate_failures do
+    blue = create(:location, account: user.account, name: "Blue binder")
+    entry = create(:mtg_printing).entry
+    create(:lot, account: user.account, entry:, location: blue, quantity: 3)
+
+    expect(open_in_narrow_frame(new_location_removal_path(blue), width: 360, ready: "main")).to eq([ 360, true ])
+    within_narrow_frame do
+      expect(page.evaluate_script("document.documentElement.scrollWidth <= window.innerWidth")).to be(true)
+      expect(page.evaluate_script("[...document.querySelectorAll('main button, main input[type=submit]')].length")).to eq(0)
+      expect(page.evaluate_script("#{targets}.filter((el) => { const box = el.getBoundingClientRect(); return box.height < 44 || box.width < 44 }).length")).to eq(0)
+    end
+    visit new_location_removal_path(blue)
+    expect(tab_to("Back to locations")).to be(true)
+  end
+
+  # Tabs until the focused element's text includes the given text, at most 40 times.
+  def tab_to(text)
+    40.times do
+      return true if page.evaluate_script("document.activeElement.textContent.includes(arguments[0])", text)
+
+      page.driver.browser.action.send_keys(:tab).perform
+    end
+    false
+  end
 end

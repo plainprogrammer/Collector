@@ -29,13 +29,13 @@ Foundation principle 2. Spec 004 named export and import as the next priority; s
 The design system's "where is it" ([docs/design-system/README.md](design-system/README.md)). The comics research findings feed this design if the research has run by then; it is deferred (ruling 26), and locations don't wait for it.
 
 9. [#44](https://github.com/plainprogrammer/Collector/issues/44) Manage locations (create, rename, remove). **Built 2026-10-21, done when its pull request merges:** [spec 029](specs/029-manage-locations/spec.md), [ADR 0023](adr/0023-locations-make-export-format-version-2.md): locations make the export format version 2 (the pull request is recorded here when it merges).
-10. [#45](https://github.com/plainprogrammer/Collector/issues/45) Put a lot in a location. **Expected ADR:** how a lot sits in more than one place ([ADR 0019](adr/0019-lot-as-the-unit-of-ownership.md) names the question). It raises the export format to version 3 (locations alone made version 2, [ADR 0023](adr/0023-locations-make-export-format-version-2.md), superseding [ADR 0020](adr/0020-export-format.md)'s consequence).
-11. [#46](https://github.com/plainprogrammer/Collector/issues/46) Show the location on tiles and rows.
+10. [#45](https://github.com/plainprogrammer/Collector/issues/45) Put a lot in a location. **Built 2026-10-24, done when its pull request merges:** [spec 032](specs/032-lot-in-a-location/spec.md), [ADR 0025](adr/0025-a-lots-location-is-part-of-its-identity.md): a lot's location is part of its identity, so a printing in two places is two lots (the pull request is recorded here when it merges; [ADR 0019](adr/0019-lot-as-the-unit-of-ownership.md) named the question). It raises the export format to version 3 (locations alone made version 2, [ADR 0023](adr/0023-locations-make-export-format-version-2.md), superseding [ADR 0020](adr/0020-export-format.md)'s consequence).
+11. [#46](https://github.com/plainprogrammer/Collector/issues/46) Show the location on tiles and rows. **Built 2026-10-26, done when its pull request merges:** [spec 033](specs/033-location-on-tiles-and-rows/spec.md): a tile names the place with most copies and counts the others, a row has a Location column (the pull request is recorded here when it merges).
 12. [#47](https://github.com/plainprogrammer/Collector/issues/47) Filter the collection by location.
 13. [#48](https://github.com/plainprogrammer/Collector/issues/48) Move many lots at once (the "Move to…" deferred in spec 006).
 14. [#49](https://github.com/plainprogrammer/Collector/issues/49) Decks as locations.
 15. [#50](https://github.com/plainprogrammer/Collector/issues/50) "Free to use" on the card page.
-16. [#51](https://github.com/plainprogrammer/Collector/issues/51) Choose a location during typed entry.
+16. [#51](https://github.com/plainprogrammer/Collector/issues/51) Choose a location during typed entry. **Built 2026-10-26, done when its pull request merges:** [spec 034](specs/034-location-in-typed-entry/spec.md).
 
 ### Theme D: Scanner bulk entry
 
@@ -87,7 +87,7 @@ Taken between specs.
 - [#84](https://github.com/plainprogrammer/Collector/issues/84): the admin catalog shows raw exception classes when a refresh or build fails (found in the review of the fix for #79 and #80). **Done 2026-10-14:** [PR #95](https://github.com/plainprogrammer/Collector/pull/95).
 - [#86](https://github.com/plainprogrammer/Collector/issues/86): rate-limit retries count over a job's whole life, so a long build can run out (found in the review of the fix for #81).
 - [#102](https://github.com/plainprogrammer/Collector/issues/102): keep the current architecture in area docs, starting with catalog operations, with a specs index, frozen specs and plans retired after merge (maintainer rulings 2026-10-15). **In progress:** [spec 027](specs/027-architecture-area-docs/spec.md).
-- [#103](https://github.com/plainprogrammer/Collector/issues/103): adopt YARD for the Ruby code's documentation, with the area docs linked in (spec 027 slice B). **Expected ADR:** YARD (0023).
+- [#103](https://github.com/plainprogrammer/Collector/issues/103): adopt YARD for the Ruby code's documentation, with the area docs linked in (spec 027 slice B). **Expected ADR:** YARD (the next free number after 0025).
 - [#104](https://github.com/plainprogrammer/Collector/issues/104): area doc for catalog core (spec 027 slice C).
 - [#105](https://github.com/plainprogrammer/Collector/issues/105): area doc for collection and lots (spec 027 slice C).
 - [#106](https://github.com/plainprogrammer/Collector/issues/106): area doc for tenancy and accounts (spec 027 slice C).
@@ -95,6 +95,8 @@ Taken between specs.
 - [#108](https://github.com/plainprogrammer/Collector/issues/108): area doc for data portability (spec 027 slice C).
 - [#109](https://github.com/plainprogrammer/Collector/issues/109): area doc for release and deploy (spec 027 slice C).
 - [#118](https://github.com/plainprogrammer/Collector/issues/118): system specs follow the host's dark mode, so light-theme examples fail; the default driver is pinned to light, and the dark drivers take the first driver's Firefox binary (found while running `bin/ci` for spec 028). **Done 2026-10-20.**
+- [#145](https://github.com/plainprogrammer/Collector/issues/145): spike: why `bin/ci` grew from minutes to 20–30, and why the pre-push hook stopped gating past its timeout. **Done 2026-10-31:** findings in [research.md](specs/035-ci-shards/research.md); the fixes in [#147](https://github.com/plainprogrammer/Collector/pull/147) (the parity example) and [#148](https://github.com/plainprogrammer/Collector/pull/148) (the hooks block on a timeout).
+- Spec 035, from #145: `bin/ci` groups, used by GitHub's RSpec shards and by the pre-push hook, which skips RSpec for a documentation-only branch. **In progress:** [spec 035](specs/035-ci-shards/spec.md), [PR #149](https://github.com/plainprogrammer/Collector/pull/149) (draft).
 
 ## Parked until after 1.0
 

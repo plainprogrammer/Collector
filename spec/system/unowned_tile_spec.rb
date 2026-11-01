@@ -24,9 +24,8 @@ RSpec.describe "Unowned tiles", :card_images, type: :system do
   JS
   let(:as_supplied) { { "chain" => [ "1 none normal none" ], "drawn" => [ "none" ] } }
 
-  # The wide layout is checked at 1280px; the window goes back to the suite's size afterwards (as in spec 019's examples).
+  # The wide layout is checked at 1280px; spec/support/system.rb puts the window back afterwards.
   before { page.current_window.resize_to(1280, 900) }
-  after { page.current_window.resize_to(1400, 1400) }
 
   def treatment(selector) = page.evaluate_script("(function () { #{treatment_script} })(#{selector.to_json})")
 

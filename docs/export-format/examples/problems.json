@@ -198,5 +198,55 @@
     "why": "Two locations hold the same name in NFC and in NFD.",
     "rule": "duplicate_location",
     "at": "/locations/1"
+  },
+  "invalid/lot-location-missing.json": {
+    "why": "A version 3 lot has no location. The field is always present, null when the lot is in none.",
+    "rule": "required",
+    "at": "/lots/0/location"
+  },
+  "invalid/lot-location-number.json": {
+    "why": "A lot's location is a number, not a name or null.",
+    "rule": "type",
+    "at": "/lots/0/location"
+  },
+  "invalid/lot-location-empty.json": {
+    "why": "A lot's location is the empty string; a lot in none says null.",
+    "rule": "minLength",
+    "at": "/lots/0/location"
+  },
+  "invalid/lot-location-padded.json": {
+    "why": "A lot's location has a space before it, so it is padded.",
+    "rule": "pattern",
+    "at": "/lots/0/location"
+  },
+  "invalid/lot-location-double-space.json": {
+    "why": "A lot's location has two spaces between its words.",
+    "rule": "pattern",
+    "at": "/lots/0/location"
+  },
+  "invalid/lot-location-tab.json": {
+    "why": "A lot's location has a tab between its words, a White_Space character other than a space.",
+    "rule": "pattern",
+    "at": "/lots/0/location"
+  },
+  "invalid/lot-location-control.json": {
+    "why": "A lot's location holds a control character (U+0007).",
+    "rule": "pattern",
+    "at": "/lots/0/location"
+  },
+  "invalid/lot-location-61.json": {
+    "why": "A lot's location is 61 code points long, one over the limit.",
+    "rule": "maxLength",
+    "at": "/lots/0/location"
+  },
+  "invalid/lot-location-unlisted.json": {
+    "why": "A lot's location is a name that none of the file's locations has.",
+    "rule": "unknown_location",
+    "at": "/lots/0/location"
+  },
+  "invalid/duplicate-lot-location-case.json": {
+    "why": "Two lots have the same entry, finish, condition and price paid, in locations that differ only in case, so they are one place and one lot.",
+    "rule": "duplicate_lot",
+    "at": "/lots/1"
   }
 }

@@ -97,10 +97,26 @@ module CardImages
 
   # The fit of every image matching the selector, after giving them the pictures in turn (they repeat).
   def card_image_fits(selector, pictures: [])
-    result = page.evaluate_async_script(FITS, selector, pictures)
+    result = begin
+      page.evaluate_async_script(FITS, selector, pictures)
+    rescue Selenium::WebDriver::Error::WebDriverError => error
+      raise error, "#{error.class}: #{error.message.presence || '(no message)'}; #{card_image_state(selector)}", error.backtrace
+    end
     raise result["error"] if result.is_a?(Hash)
 
     result.map { |fit| Fit.new(**fit.to_h { |key, value| [ key.to_sym, value.is_a?(Array) ? value.map(&:to_f) : value ] }) }
+  end
+
+  # Where the page was when the browser dropped a measurement (issue #127: geckodriver reports a lost context with an
+  # empty message). Read in a second call, which may fail as well, and says so.
+  def card_image_state(selector)
+    state = page.evaluate_script(<<~JS, selector)
+      (() => ({ url: location.href, ready: document.readyState, framed: window !== window.top,
+        images: [ ...document.querySelectorAll(arguments[0]) ].map((image) => image.complete + "/" + image.naturalWidth) }))()
+    JS
+    "page state afterwards: #{state.to_json}"
+  rescue StandardError => error
+    "page state afterwards unreadable (#{error.class}: #{error.message.to_s.lines.first&.strip})"
   end
 
   def card_slot_boxes(selector) = page.evaluate_script("(function () { #{BOXES} })(#{selector.to_json})")

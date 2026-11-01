@@ -7,6 +7,6 @@
       <p class="c-pagehead__stats"><%= set_number(@entry) %> · <%= @entry.language.upcase %></p>
     </div>
   </div>
-  <%= render "lots/form", form_model: @form, url: catalog_entry_lots_path(@entry, **card_params), method: :post, submit: "Add to collection" %>
+  <%= render "lots/form", form_model: @form, url: catalog_entry_lots_path(@entry, **card_params), method: :post, submit: "Add to collection", locations: @locations %>
 </main>
 <%= render "layouts/tabbar", section: card_context %>

@@ -1,11 +1,11 @@
 <%# locals: (line:, page_params:) %>
 <li>
   <span><%= line.entry.name %></span>
-  <span class="c-list__meta"><span class="c-numentry__data"><%= set_number(line.entry) %> · ×<%= line.quantity %></span> · <%= number_entry_finish(line) %></span>
+  <span class="c-list__meta"><span class="c-numentry__data"><%= set_number(line.entry) %> · ×<%= line.quantity %></span> · <%= number_entry_finish(line) %><% if (place = line.lot&.location&.name) %> · in <%= place %><% end %></span>
   <span class="c-list__end">
     <% if line.undoable? %>
       <%= button_to "Undo", collection_number_entry_line_undo_path(line), params: page_params, class: "c-btn c-btn--secondary c-btn--sm",
-            "aria-label": "Undo #{line.quantity} × #{number_entry_copy(line)}" %>
+            "aria-label": "Undo #{line.quantity} × #{number_entry_copy(line)}#{number_entry_place(line)}" %>
     <% else %>
       <span class="c-tag">Changed in your collection</span>
     <% end %>

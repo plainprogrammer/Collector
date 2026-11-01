@@ -1,7 +1,7 @@
 <%# locals: (choice:, line:, line_key:) %>
 <%# One line (spec 026 decision 3): number, quantity and finish, in tab order; Enter adds it. The first field with an
     error takes the focus, the number otherwise, unless a choice between matches is showing (it takes the focus). %>
-<% focus = (%i[number quantity finish] & line.errors.attribute_names).first || :number %>
+<% focus = (%i[number quantity finish location] & line.errors.attribute_names).first || :number %>
 <%# novalidate: the server's messages (AC-4.2) show, not the browser's own bubbles. %>
 <%= form_with url: collection_number_entry_lines_path, class: "c-numentry__line", html: { novalidate: true }, data: { controller: "number-entry" } do %>
   <% choice.to_params.each do |name, value| %><%= hidden_field_tag name, value, id: nil %><% end %>
@@ -28,6 +28,15 @@
             id: "line_finish", autofocus: focus == :finish, "aria-describedby": ("line_finish_error" if line.errors[:finish].any?),
             data: { action: "keydown.enter->number-entry#submit" } %>
       <% lot_error_messages(line, :finish).each do |message| %><p class="c-field__error" id="line_finish_error"><%= message %></p><% end %>
+    </div>
+  <% end %>
+  <% if line.locations.any? %>
+    <div class="c-field<%= " c-field--invalid" if line.errors[:location].any? %>">
+      <label class="c-field__label" for="line_location">Location</label>
+      <%= select_tag "line[location]", options_for_select([ [ "No location", "" ] ] + line.locations.map { [ it.name, it.id ] }, line.location_record&.id.to_s),
+            id: "line_location", autofocus: focus == :location, "aria-describedby": ("line_location_error" if line.errors[:location].any?),
+            data: { action: "keydown.enter->number-entry#submit" } %>
+      <% line.errors[:location].each do |message| %><p class="c-field__error" id="line_location_error"><%= message %></p><% end %>
     </div>
   <% end %>
   <div class="c-numentry__add"><%= submit_tag "Add", name: nil, class: "c-btn c-btn--primary" %></div>

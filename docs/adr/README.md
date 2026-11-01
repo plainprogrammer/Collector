@@ -56,7 +56,8 @@ Add a line here with each new ADR. All are Accepted unless the line says otherwi
 - [0022](0022-stored-import-upload-retention.md): A previewed import file is stored for an hour, privately, and swept
 - [0023](0023-locations-make-export-format-version-2.md): Locations make the export format version 2; putting lots in them makes version 3
 - [0024](0024-backup-with-vacuum-into.md): Back up the primary database online with `VACUUM INTO`, restore only onto a fresh volume
+- [0025](0025-a-lots-location-is-part-of-its-identity.md): A lot's location is part of its identity; a location that holds copies can't be removed
 
 ### Expected
 
-Named by the [roadmap](../roadmap.md) and written with their specs: lots in locations (item 10), and adopting YARD (spec 027 slice B), which takes the next free number (0025 once 0024 has merged). The upload-retention ADR expected by spec 028 is 0022 above.
+Named by the [roadmap](../roadmap.md) and written with their specs: adopting YARD (spec 027 slice B), which takes the next free number (0026 once 0025 has merged; lots in locations, roadmap item 10, took 0025). The upload-retention ADR expected by spec 028 is 0022 above.

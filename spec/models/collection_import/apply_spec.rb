@@ -623,4 +623,184 @@ RSpec.describe CollectionImport::Apply, type: :model do
                stranger.sessions.reload.map(&:attributes) ]).to eq(theirs)
     end
   end
+
+  describe "lots in locations (spec 032 Story 11)" do
+    def preview_v3!(lots, locations: [], **fields) = store_import!(account:, data: import_file_v3(user, lots, locations:, **fields))
+
+    def place_of(entry) = account.lots.where(catalog_entry_id: entry.id).map { |lot| lot.location&.name }.sort_by(&:to_s)
+
+    def statements_during
+      statements = []
+      counter = ->(*, payload) { statements << payload[:sql] if payload[:sql].match?(/\A\s*(INSERT|UPDATE|DELETE)/) }
+      ActiveSupport::Notifications.subscribed(counter, "sql.active_record") { yield }
+      statements.size
+    end
+
+    it "puts every lot in the file's location or none, with the key that carries the place (AC-11.1)", :aggregate_failures do
+      preview_v3!([ import_row(a, location: "Blue binder"), import_row(a, finish: "foil", location: nil), import_row(b, location: "Box") ],
+        locations: [ "Blue binder", "Box" ])
+
+      expect(apply.outcome).to eq(:applied)
+      expect(place_of(a)).to eq([ nil, "Blue binder" ])
+      expect(place_of(b)).to eq([ "Box" ])
+      account.lots.each do |lot|
+        expect(lot).to be_valid
+        expect(lot.lot_key).to eq(Lot.key_for(lot.finish, lot.condition, lot.price_paid_cents, lot.location_id))
+      end
+    end
+
+    it "moves a lot from one place to another: one added, one removed (AC-11.3)", :aggregate_failures do
+      long = create(:location, account:, name: "Long box")
+      create(:location, account:, name: "Blue binder")
+      held_lot(account, a, quantity: 2, location: long)
+      preview_v3!([ import_row(a, quantity: 2, location: "Blue binder") ], locations: [ "Long box", "Blue binder" ])
+
+      result = apply
+      expect(result.outcome).to eq(:applied)
+      expect(result.plan.counts).to eq(added: 1, changed: 0, removed: 1)
+      expect(place_of(a)).to eq([ "Blue binder" ])
+    end
+
+    it "makes an older file's lots unplaced, needing the removal confirmation (AC-11.4)", :aggregate_failures do
+      box = create(:location, account:, name: "Box")
+      held_lot(account, a, quantity: 2, location: box)
+      store_import!(account:, data: import_file_v2(user, [ import_row(a, quantity: 2) ], locations: [ "Box" ]))
+
+      expect(apply(confirmed: false).outcome).to eq(:unconfirmed)
+      expect(account.lots.sole.location).to eq(box)
+      expect(apply.outcome).to eq(:applied)
+      expect(account.lots.sole.location).to be_nil
+      expect(account.locations.pluck(:name)).to eq([ "Box" ])
+    end
+
+    it "keeps a location's id and its lots untouched when only its spelling changes (AC-11.5)", :aggregate_failures do
+      box = create(:location, account:, name: "box")
+      lot = held_lot(account, a, quantity: 2, location: box)
+      before = lot.reload.attributes
+      preview_v3!([ import_row(a, quantity: 2, location: "Box"), import_row(b, location: nil) ], locations: [ "Box" ])
+
+      expect(apply.outcome).to eq(:applied)
+      expect(box.reload.name).to eq("Box")
+      expect(lot.reload.attributes).to eq(before)
+      expect(JSON.parse(CollectionExport.new(account:, at: Time.current).to_json)["lots"].map { |row| row["location"] }).to include("Box")
+    end
+
+    it "deletes the lots of a removed location first and answers stale when a lot was placed there after the preview (AC-11.6)", :aggregate_failures do
+      gone = create(:location, account:, name: "Gone")
+      held_lot(account, a, quantity: 1, location: gone)
+      upload = preview_v3!([ import_row(b, location: nil) ], locations: [])
+      held_lot(account, c, quantity: 1, location: gone)
+      before = snapshot
+
+      expect(apply(upload).outcome).to eq(:stale)
+      expect(snapshot).to eq(before)
+    end
+
+    it "answers stale when a lot was moved to another place between preview and apply (AC-11.7)", :aggregate_failures do
+      box = create(:location, account:, name: "Box")
+      other = create(:location, account:, name: "Other")
+      lot = held_lot(account, a, quantity: 1, location: box)
+      upload = preview_v3!([ import_row(a, quantity: 5, location: "Box") ], locations: [ "Box", "Other" ])
+      lot.update!(location: other)
+
+      expect(apply(upload).outcome).to eq(:stale)
+    end
+
+    it "has nothing to change the second time (AC-11.8)", :aggregate_failures do
+      data = import_file_v3(user, [ import_row(a, location: "Box") ], locations: [ "Box" ])
+      store_import!(account:, data:)
+      expect(apply.outcome).to eq(:applied)
+
+      expect(CollectionImport.new(account: account.reload, file: import_io(data)).plan.nothing_to_change?).to be(true)
+    end
+
+    it "applies a file whose only change is one lot's place (AC-11.9)", :aggregate_failures do
+      box = create(:location, account:, name: "Box")
+      create(:location, account:, name: "Crate")
+      held_lot(account, a, quantity: 2, location: box)
+      preview_v3!([ import_row(a, quantity: 2, location: "Crate") ], locations: [ "Box", "Crate" ])
+
+      expect(apply.outcome).to eq(:applied)
+      expect(place_of(a)).to eq([ "Crate" ])
+    end
+
+    it "rolls back locations, lots and working state when a write fails after the locations were written (AC-11.10)", :aggregate_failures do
+      held = held_lot(account, a, quantity: 1)
+      working_state_for(held)
+      preview_v3!([ import_row(b, location: "Box") ], locations: [ "Box" ])
+      ActiveRecord::Base.connection.execute("CREATE TRIGGER fail_lot_upsert BEFORE INSERT ON lots BEGIN SELECT RAISE(ABORT, 'forced'); END")
+      before = snapshot
+
+      expect { apply }.to raise_error(ActiveRecord::StatementInvalid)
+      expect(snapshot).to eq(before)
+    end
+
+    it "resolves 'Box' to its own account's location and leaves another account's alone (AC-11.11)", :aggregate_failures do
+      other = create(:user).account
+      theirs = create(:location, account: other, name: "Box")
+      their_lot = create(:lot, account: other, entry: a, location: theirs, quantity: 4)
+      mine_before = other.lots.map(&:attributes)
+      preview_v3!([ import_row(a, location: "Box") ], locations: [ "Box" ])
+
+      expect(apply.outcome).to eq(:applied)
+      expect(account.lots.sole.location.account_id).to eq(account.id)
+      expect(their_lot.reload.attributes).to eq(mine_before.sole)
+      expect(theirs.reload.account_id).to eq(other.id)
+    end
+
+    it "clears the working state when a lot is written, not when only a location changes (AC-11.13)", :aggregate_failures do
+      lot = held_lot(account, a, quantity: 2)
+      working_state_for(lot)
+      preview_v3!([ import_row(a, quantity: 2, location: nil) ], locations: [ "Box" ])
+      expect(apply.outcome).to eq(:applied)
+      expect([ NumberEntry.count, Scanner::Sitting.count, BulkSelection.count, BulkSelection::Mark.count ]).to eq([ 1, 1, 1, 1 ])
+
+      preview_v3!([ import_row(a, quantity: 2, location: "Box") ], locations: [ "Box" ])
+      expect(apply.outcome).to eq(:applied)
+      expect(NumberEntry.count + Scanner::Sitting.count + BulkSelection.count + BulkSelection::Mark.count).to eq(0)
+    end
+
+    it "writes the lots in one multi-row statement per batch, one that upserts on the lot's identity (spec 032 Phase 8 remedy)", :aggregate_failures do
+      names = %w[Box Crate]
+      stub_const("CollectionImport::BATCH_SIZE", 40)
+      rows = Array.new(90) { |n| import_row(a, price_paid: format("%d.%02d", n / 100, n % 100), location: names[n % 2]) }
+      preview_v3!(rows, locations: names)
+      writes = []
+      counter = ->(*, payload) { writes << payload[:sql] if payload[:sql].start_with?("INSERT INTO lots") }
+
+      ActiveSupport::Notifications.subscribed(counter, "sql.active_record") { expect(apply.outcome).to eq(:applied) }
+
+      expect(writes.size).to eq(3)
+      expect(writes).to all(include("ON CONFLICT (account_id, catalog_entry_id, lot_key) DO UPDATE SET quantity = excluded.quantity, created_at = excluded.created_at, updated_at = excluded.updated_at"))
+      expect(account.lots.count).to eq(90)
+      expect(account.lots.map(&:lot_key)).to all(match(/\A\|\|\d+\|\d+\z/))
+    end
+
+    it "stores awkward text in a lot unchanged through the hand-built statement, and leaves the table intact", :aggregate_failures do
+      awkward = %(x'?; DROP TABLE lots;-- "q" \\ \u00e9 \u{1F0A1})
+      now = Time.utc(2026, 10, 2, 10, 0, 0, 123_456)
+      row = { account_id: account.id, catalog_entry_id: a.id, quantity: 3, finish: awkward, condition: "it's ? fine", price_paid_cents: nil,
+              location_id: nil, lot_key: "k", created_at: now, updated_at: now }
+
+      described_class.new(account:, fingerprint: "unused", confirmed: true).send(:upsert_lots!, [ row ])
+
+      expect(Lot.where(account_id: account.id).sole).to have_attributes(finish: awkward, condition: "it's ? fine", quantity: 3,
+        price_paid_cents: nil, location_id: nil, lot_key: "k", created_at: now, updated_at: now)
+    end
+
+    it "runs the same number of write statements for 5,000 lots in 500 locations as for 50 in 5 (AC-11.12)", :aggregate_failures do
+      measure = lambda do |lots, places|
+        account.lots.delete_all
+        account.locations.delete_all
+        names = Array.new(places) { |n| "Place #{n}" }
+        entry = import_printing
+        rows = Array.new(lots) { |n| import_row(entry, price_paid: format("%d.%02d", n / 100, n % 100), location: names[n % places]) }
+        store_import!(account:, data: import_file_v3(user, rows, locations: names))
+        statements_during { expect(apply.outcome).to eq(:applied) }
+      end
+
+      small = measure.call(50, 5)
+      expect(measure.call(5_000, 500)).to be <= small + 10 # upserts per BATCH_SIZE lots, not per lot or per location
+    end
+  end
 end

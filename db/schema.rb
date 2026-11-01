@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_21_100001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_23_100001) do
   create_table "accounts", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -194,8 +194,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_100001) do
     t.string "lot_key", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "location_id"
     t.index ["account_id", "catalog_entry_id", "lot_key"], name: "index_lots_on_account_id_and_catalog_entry_id_and_lot_key", unique: true
     t.index ["catalog_entry_id"], name: "index_lots_on_catalog_entry_id"
+    t.index ["location_id"], name: "index_lots_on_location_id"
     t.check_constraint "price_paid_cents IS NULL OR price_paid_cents >= 0", name: "lots_price_non_negative"
     t.check_constraint "quantity BETWEEN 1 AND 9999", name: "lots_quantity_range"
   end
@@ -353,6 +355,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_100001) do
   add_foreign_key "locations", "accounts", on_delete: :cascade
   add_foreign_key "lots", "accounts"
   add_foreign_key "lots", "catalog_entries"
+  add_foreign_key "lots", "locations", on_delete: :restrict
   add_foreign_key "mtg_artworks", "catalog_entries"
   add_foreign_key "mtg_cards", "catalog_identities"
   add_foreign_key "mtg_printings", "catalog_entries"

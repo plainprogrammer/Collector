@@ -12,6 +12,8 @@ module CollectionFilter
   attr_reader :query
 
   def filtered? = query.present?
+  # Whether the account has any location: without one there is nothing to say about places (spec 033 Decision 2).
+  def places? = defined?(@places) ? @places : (@places = @account.locations.exists?)
   def empty_collection? = total_quantity.zero?
   def total_quantity = @total_quantity ||= @account.lots.sum(:quantity)
   def matching_quantity = @matching_quantity ||= matching_lots.sum(:quantity)

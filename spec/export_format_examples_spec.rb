@@ -70,9 +70,10 @@ RSpec.describe "The export format's examples" do
   end
 
   it "has valid, invalid and comparison examples", :aggregate_failures do
-    expect(valid.keys).to match_array(%w[valid/collection-v2.json valid/collection.json valid/empty-v2.json valid/empty.json valid/location-name-60.json valid/locations-500.json valid/locations-nfd.json])
-    expect(invalid.size).to eq(40)
-    expect(comparison.size).to eq(13)
+    expect(valid.keys).to match_array(%w[valid/collection-v2.json valid/collection-v3.json valid/collection.json valid/empty-v2.json valid/empty-v3.json valid/empty.json
+      valid/location-name-60.json valid/locations-500.json valid/locations-nfd.json valid/lot-location-60.json valid/lot-location-nfd.json])
+    expect(invalid.size).to eq(50)
+    expect(comparison.size).to eq(17)
   end
 
   it "finds nothing wrong with any valid or comparison example (AC-2.1)" do
@@ -101,9 +102,9 @@ RSpec.describe "The export format's examples" do
     end
   end
 
-  it "judges a file of a version this instance doesn't read by version 1's schema, which names the version, and a version 2 file by its own (FR-8, AC-7.4)", :aggregate_failures do
+  it "judges a file of a version this instance doesn't read (4) by version 1's schema, which names the version, and a version 2 file by its own (FR-8, AC-7.4, spec 032 AC-9.2)", :aggregate_failures do
     expect(problems_of(changed(%w[format_version], 0))).to eq([ { "rule" => "const", "at" => "/format_version" } ])
-    expect(problems_of(changed(%w[format_version], 3))).to eq([ { "rule" => "const", "at" => "/format_version" } ])
+    expect(problems_of(changed(%w[format_version], 4))).to eq([ { "rule" => "const", "at" => "/format_version" } ])
     expect(problems_of(changed(%w[format_version], 2))).to eq([ { "rule" => "required", "at" => "/locations" } ])
   end
 
@@ -224,6 +225,75 @@ RSpec.describe "The export format's examples" do
 
       expect(different.keys.map { |name| name[/v2-different-(.+)\.json/, 1] }).to eq(%w[location-case location-missing locations])
       different.each { |name, file| expect(ExportFormatRules.same_collection?(original, file)).to be(false), name }
+    end
+  end
+
+  describe "version 3 (spec 032)" do
+    def v3base = comparison.fetch("comparison/v3-base.json")
+
+    def v3changed(path, value)
+      data = JSON.parse(v3base)
+      *parents, last = path
+      target = parents.empty? ? data : data.dig(*parents)
+      value == :absent ? target.delete(last) : target[last] = value
+      JSON.generate(data)
+    end
+
+    it "finds each listed variant of a malformed lot location (AC-9.5)", :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- a table of variants
+      {
+        :absent => %w[required /lots/0/location],
+        5 => %w[type /lots/0/location],
+        "" => %w[minLength /lots/0/location],
+        "本" * 61 => %w[maxLength /lots/0/location],
+        " Blue binder" => %w[pattern /lots/0/location],
+        "Blue binder\n" => %w[pattern /lots/0/location],
+        "Blue  binder" => %w[pattern /lots/0/location],
+        "Blue\u00A0binder" => %w[pattern /lots/0/location],
+        "Long box" => %w[unknown_location /lots/0/location]
+      }.each do |value, (rule, at)|
+        expect(problems_of(v3changed([ "lots", 0, "location" ], value))).to eq([ { "rule" => rule, "at" => at } ]), value.inspect
+      end
+    end
+
+    it "accepts the values at the edges of the rule (AC-9.4, AC-9.5)", :aggregate_failures do
+      expect(problems_of(v3changed([ "lots", 0, "location" ], nil))).to be_empty
+      expect(problems_of(v3changed([ "lots", 0, "location" ], "BLUE BINDER"))).to be_empty # a listed place in another case
+      expect(problems_of(v3changed([ "lots", 0, "location" ], "Blue\u0301 binder"))).to eq([ { "rule" => "unknown_location", "at" => "/lots/0/location" } ])
+      expect(problems_of(v3changed([ "locations", 0, "name" ], "Cafe\u0301"))).to eq([ { "rule" => "unknown_location", "at" => "/lots/0/location" } ])
+    end
+
+    it "carries a lot in a location, a printing in two, an unplaced lot and an empty location in one valid example (AC-9.1)", :aggregate_failures do
+      file = JSON.parse(valid.fetch("valid/collection-v3.json"))
+      places = file["lots"].map { |lot| lot["location"] }
+      entries = file["lots"].group_by { |lot| lot["entry"]["source_id"] }
+
+      expect(places).to include(nil, "Blue binder", "Trade binder")
+      expect(entries.values.any? { |group| group.map { |lot| lot["location"] }.uniq.size > 1 && ExportFormatRules.identity(group[0], 3)[2, 3] == ExportFormatRules.identity(group[1], 3)[2, 3] }).to be(true)
+      expect(file["locations"].map { |location| location["name"] } - places).not_to be_empty
+    end
+
+    it "holds the same collection for the same lots in another order and what the rule ignores (AC-9.6)", :aggregate_failures do
+      original = JSON.parse(v3base)
+      same = JSON.parse(comparison.fetch("comparison/v3-same.json"))
+
+      expect(same["lots"].map { |lot| lot["location"] }).to eq(original["lots"].map { |lot| lot["location"] }.reverse)
+      expect(ExportFormatRules.same_collection?(original, same)).to be(true)
+    end
+
+    it "differs for a changed or re-cased lot location (AC-9.6)", :aggregate_failures do
+      original = JSON.parse(v3base)
+      different = parsed(comparison).select { |name, _file| name.start_with?("comparison/v3-different-") }
+
+      expect(different.keys.map { |name| name[/v3-different-(.+)\.json/, 1] }).to match_array(%w[lot-location lot-location-case])
+      different.each { |name, file| expect(ExportFormatRules.same_collection?(original, file)).to be(false), name }
+    end
+
+    it "compares a lot's location exactly, though the identity treats 'Box' and 'box' as one place (AC-9.6)", :aggregate_failures do
+      file = ->(location) { JSON.parse(v3base).tap { |data| data["locations"] = [ { "name" => "Box" } ]; data["lots"] = [ data["lots"][0].merge("location" => location) ] } }
+      lower, upper = file.call("box"), file.call("Box")
+
+      expect(ExportFormatRules.identity(lower["lots"][0], 3)).to eq(ExportFormatRules.identity(upper["lots"][0], 3))
+      expect(ExportFormatRules.same_collection?(lower, upper)).to be(false)
     end
   end
 end

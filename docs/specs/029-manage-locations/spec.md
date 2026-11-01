@@ -7,7 +7,7 @@
 **Depends on:** [spec 028](../028-apply-import/spec.md) (apply an import, issue #40), which has merged (PR #120, `5cca2fb`; its plan retired in PR #121). The plan cites 028 as merged (v1.3.4) and records, for each citation, whether it is still true and the class, method or number now behind it
 **Branch:** `029-manage-locations`
 **Issue:** [#44](https://github.com/plainprogrammer/Collector/issues/44)
-**Frozen:** the current rules are in [`data-portability.md`](../../architecture/data-portability.md) (parts: format version 2, the export, the preview and the apply of locations); see the [specs index](../README.md)
+**Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (parts: locations, the pages and the navigation) and [`data-portability.md`](../../architecture/data-portability.md) (parts: format version 2, the export, the preview and the apply of locations); see the [specs index](../README.md)
 **Plan:** retired in `88a52cf7f4b84562d40db23bf157de58fceab2c2`; read it with `git show 88a52cf7f4b84562d40db23bf157de58fceab2c2^:docs/specs/029-manage-locations/plan.md`
 
 ---

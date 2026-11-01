@@ -5,8 +5,42 @@ RSpec.describe NumberEntry do
   let(:entry) { create(:mtg_printing, finishes: %w[nonfoil foil]).entry }
   let(:key) { "a" * 32 }
 
-  def add(line_key: key, quantity: 1, finish: "nonfoil", to: entry)
-    described_class.add!(account:, entry: to, quantity:, finish:, line_key:)
+  def add(line_key: key, quantity: 1, finish: "nonfoil", to: entry, location: nil)
+    described_class.add!(account:, entry: to, quantity:, finish:, line_key:, location:)
+  end
+
+  describe ".add! into a location (spec 034 AC-1.2, AC-1.3, AC-1.5)" do
+    let(:blue) { create(:location, account:, name: "Blue binder") }
+
+    it "adds to the lot in that place, leaving the unplaced lot alone", :aggregate_failures do
+      unplaced = create(:lot, account:, entry:, finish: "nonfoil", quantity: 1)
+      add(quantity: 2, location: blue)
+      placed = account.lots.find_by!(location: blue)
+      expect([ placed.quantity, unplaced.reload.quantity ]).to eq([ 2, 1 ])
+      expect(account.number_entry.lines.sole.lot).to eq(placed)
+    end
+
+    it "joins the lot already in that place", :aggregate_failures do
+      add(quantity: 2, location: blue)
+      add(quantity: 3, location: blue, line_key: "b" * 32)
+      expect(account.lots.sole).to have_attributes(location: blue, quantity: 5)
+    end
+
+    it "records nothing when the lot in that place would pass the cap (AC-1.6)", :aggregate_failures do
+      create(:lot, account:, entry:, finish: "nonfoil", quantity: 9_990, location: blue)
+      expect { add(quantity: 20, location: blue) }.to raise_error(ActiveRecord::RecordInvalid)
+      expect(NumberEntry::Line.count).to eq(0)
+      expect { add(quantity: 20, location: create(:location, account:)) }.not_to raise_error
+    end
+  end
+
+  describe ".add! beside a lot in a location (spec 032 AC-7.2)" do
+    it "adds the copy to the unplaced lot and leaves the placed one alone", :aggregate_failures do
+      placed = create(:lot, account:, entry:, finish: "nonfoil", quantity: 3, location: create(:location, account:))
+      unplaced = create(:lot, account:, entry:, finish: "nonfoil", quantity: 1)
+      add
+      expect([ placed.reload.quantity, unplaced.reload.quantity ]).to eq([ 3, 2 ])
+    end
   end
 
   describe ".add!" do

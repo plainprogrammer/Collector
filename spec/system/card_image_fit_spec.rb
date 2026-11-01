@@ -8,10 +8,9 @@ RSpec.describe "Card image fit", :card_images, type: :system do
   let(:tall) { card_picture(20, 40) }
   let(:wide) { card_picture(40, 20) }
 
-  # The wide layout is checked at 1280px; the window goes back to the suite's size afterwards. (Not an around hook:
-  # that would run before the driver is chosen.)
+  # The wide layout is checked at 1280px; spec/support/system.rb puts the window back afterwards. (Not an around
+  # hook: that would run before the driver is chosen.)
   before { page.current_window.resize_to(1280, 900) }
-  after { page.current_window.resize_to(1400, 1400) }
 
   def owned_with_image(name, **attributes)
     owned_printing(name, account: user.account, **attributes).tap { |lot| lot.entry.update!(image_url: card_image_address) }

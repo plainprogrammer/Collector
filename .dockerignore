@@ -75,3 +75,11 @@
 /bin/backup-smoke
 /bin/upgrade-smoke
 /lib/collector/ghcr_cleanup.rb
+
+# The CI tooling: bin/ci and its groups and shards run only on a checkout and in CI (spec 035); nothing in the image
+# runs them.
+/bin/ci
+/config/ci.rb
+/lib/collector/ci_groups.rb
+/lib/collector/ci_shard.rb
+/lib/collector/push_scope.rb

@@ -6,7 +6,7 @@
 **Last Updated:** 2026-10-24
 **Branch:** `031-upgrade-from-previous-release`
 **Issue:** [#42](https://github.com/plainprogrammer/Collector/issues/42)
-**Plan:** [plan.md](plan.md)
+**Plan:** retired in `224105d82730320af5e64e726dfc653f6920e402`; read it with `git show 224105d82730320af5e64e726dfc653f6920e402^:docs/specs/031-upgrade-from-previous-release/plan.md`
 **Frozen:** the current rules are in [`release-and-deploy.md`](../../architecture/release-and-deploy.md) (whole spec); see the [specs index](../README.md)
 
 ---

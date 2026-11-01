@@ -17,32 +17,67 @@ env:
   IMAGE: ghcr.io/plainprogrammer/collector
 
 jobs:
-  ci:
+  checks:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f # v1.335.0
+        with:
+          bundler-cache: true
+
+      - name: Run bin/ci checks
+        run: bin/ci checks
+
+  # RSpec in shards formed from spec/support/runtime_log.txt (spec 035 decisions 6, 7). The shard count is the
+  # matrix's length; bin/ci rspec N/M prints the shard's seed and a replay command.
+  rspec:
+    name: RSpec (${{ matrix.shard }}/${{ strategy.job-total }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [ 1, 2, 3 ]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f # v1.335.0
         with:
           bundler-cache: true
 
       - name: Install libvips (Active Storage variants, ADR 0013) and ImageMagick (art matching's decoder, ADR 0012)
         run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends libvips imagemagick
 
-      - name: Run bin/ci
-        run: bin/ci
+      - name: Run bin/ci rspec
+        run: bin/ci rspec ${{ matrix.shard }}/${{ strategy.job-total }}
 
       - name: Keep screenshots from failed system specs
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
-          name: screenshots
+          name: screenshots-${{ matrix.shard }}
           path: tmp/capybara
           if-no-files-found: ignore
+
+  # The one verdict the image jobs wait for: every group passed (spec 035 decision 5; spec 012 FR-1).
+  ci:
+    needs: [ checks, rspec ]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every group to pass
+        env:
+          CHECKS: ${{ needs.checks.result }}
+          RSPEC: ${{ needs.rspec.result }}
+        run: test "$CHECKS" = success && test "$RSPEC" = success
 
   # Builds the image natively for each architecture (ADR 0010), smoke-tests it, and on main and release tags
   # pushes it by digest for the publish job to merge. Pull requests build and test but push nothing.
@@ -65,7 +100,7 @@ jobs:
             runner: ubuntu-24.04-arm
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
@@ -76,28 +111,19 @@ jobs:
           PLATFORM: ${{ matrix.platform }}
 
       - name: Set up Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
-      # The comparer is Ruby on the runner, neither release's code (decision 5). Set up before the registry login so the
-      # action never runs with a push-capable token on disk (review m7; pinning every action is issue #132).
+      # The comparer is Ruby on the runner, neither release's code (decision 5).
       - name: Set up Ruby for the upgrade proof
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f # v1.335.0
         with:
           bundler-cache: true
-
-      - name: Log in to GHCR
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
 
       # Tags per ADR 0009: edge and sha-<7 chars> on main; X.Y.Z, X.Y, latest and X (from 1 up) on vX.Y.Z;
       # only X.Y.Z-<pre> on pre-releases. Licence and description are set here, not read from the repository.
       - name: Image tags and labels
         id: meta
-        uses: docker/metadata-action@v6
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: ${{ env.IMAGE }}
           tags: |
@@ -112,7 +138,7 @@ jobs:
 
       - name: Build
         id: build
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           platforms: ${{ matrix.platform }}
@@ -139,11 +165,20 @@ jobs:
         timeout-minutes: 12
         run: bin/upgrade-smoke auto collector:smoke --platform ${{ matrix.platform }}
 
+      # The login comes last: only the push needs the token, so no other action or test runs with it on disk (issue #132).
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       # Same build from the cache, exported to the registry by digest (untagged) for the publish job.
       - name: Push by digest
         id: push
         if: github.event_name != 'pull_request'
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           platforms: ${{ matrix.platform }}
@@ -163,7 +198,7 @@ jobs:
 
       - name: Upload the digest
         if: github.event_name != 'pull_request'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: digest-${{ steps.platform.outputs.pair }}
           path: /tmp/digests/*
@@ -181,17 +216,17 @@ jobs:
       packages: write
     steps:
       - name: Download the digests
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           path: /tmp/digests
           pattern: digest-*
           merge-multiple: true
 
       - name: Set up Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       - name: Log in to GHCR
-        uses: docker/login-action@v4
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -199,7 +234,7 @@ jobs:
 
       - name: Image tags and labels
         id: meta
-        uses: docker/metadata-action@v6
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: ${{ env.IMAGE }}
           tags: |

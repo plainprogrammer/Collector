@@ -11,6 +11,12 @@ module LotsHelper
     lot.vocabulary.special_finishes.include?(lot.finish) ? render("catalog/entries/finish_badge", label:) : tag.span(label, class: "is-muted")
   end
 
+  # Where a lot is kept, for a table cell (spec 032 Story 4).
+  def lot_place(lot) = lot.location&.name || "No location"
+
+  # Names a row's actions menu; a split leaves two rows of one printing and condition, so the place tells them apart.
+  def lot_actions_label(lot) = "Actions for #{set_number(lot.entry)} #{lot_condition(lot)}#{lot.location ? " in #{lot.location.name}" : ", no location"}"
+
   def lot_condition(lot) = lot.condition ? lot.vocabulary.conditions.fetch(lot.condition).last : "—"
 
   def lot_price(lot) = lot.price_paid ? number_to_currency(lot.price_paid, unit: Rails.configuration.x.currency.symbol) : "—"
@@ -22,9 +28,17 @@ module LotsHelper
       (vocabulary.conditions.fetch(lot.condition).last if lot.condition) ].compact.join(" ")
   end
 
+  # A lot in a list that has no table around it (the refusal page): the phone line plus the price paid, the one value that
+  # tells two lots of a printing, finish and condition apart (spec 032 P1).
+  def lot_line(lot) = [ lot_summary(lot), (lot_price(lot) if lot.price_paid_cents) ].compact.join(" · ")
+
   # The phone line under a row's name (spec 006 AC-2.8): set · number, finish, condition, language.
   def lot_summary(lot)
     [ set_number(lot.entry), (lot.vocabulary.finish_label(lot.finish) if lot.finish),
       (lot.vocabulary.conditions.fetch(lot.condition).last if lot.condition), lot.entry.language.upcase ].compact.join(" · ")
   end
+
+  # The line under a table row's name: the phone line plus, when the account has locations, the lot's place last; an
+  # unplaced lot adds nothing (spec 033 AC-2.2).
+  def lot_row_summary(lot, places:) = [ lot_summary(lot), (lot.location.name if places && lot.location) ].compact.join(" · ")
 end

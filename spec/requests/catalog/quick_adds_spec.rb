@@ -17,6 +17,13 @@ RSpec.describe "Quick add", type: :request do
     expect(response.body).to include("Added 1 × Lightning Bolt (#{entry.set.code.upcase} · 146) to your collection.")
   end
 
+  it "adds an unplaced copy beside a lot in a location (spec 032 AC-7.2)", :aggregate_failures do
+    placed = create(:lot, account: user.account, entry:, quantity: 3, location: create(:location, account: user.account))
+    unplaced = create(:lot, account: user.account, entry:, quantity: 1)
+    post catalog_entry_quick_add_path(entry)
+    expect([ placed.reload.quantity, unplaced.reload.quantity ]).to eq([ 3, 2 ])
+  end
+
   it "merges two quick adds into one lot" do
     2.times { post catalog_entry_quick_add_path(entry) }
     expect(user.account.lots.sole.quantity).to eq(2)

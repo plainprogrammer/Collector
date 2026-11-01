@@ -14,5 +14,11 @@ module NumberEntriesHelper
     special ? render("catalog/entries/finish_badge", label:) : tag.span(label, class: "is-muted")
   end
 
+  # " in Blue binder": where the line's lot is now (spec 034 decision 3); empty when it is unplaced or gone.
+  def number_entry_place(line)
+    name = line.lot&.location&.name
+    name ? " in #{name}" : ""
+  end
+
   def number_entry_finish_label(line) = line.finish && Catalog.collecting_for(line.entry.collectible_type).finish_label(line.finish)
 end

@@ -38,6 +38,50 @@ RSpec.describe "Page query counts", type: :request do
     expect(queries_for(locations_path)).to eq(few)
   end
 
+  it "keeps the locations page's queries independent of the lots in its locations (spec 032 NFR)" do
+    create(:lot, account: user.account, location: create(:location, account: user.account))
+    few = queries_for(locations_path)
+    29.times { create(:lot, account: user.account, location: create(:location, account: user.account), entry: printing) }
+
+    expect(queries_for(locations_path)).to eq(few)
+  end
+
+  it "keeps the refusal page's queries independent of the number of lots in the location (spec 032 NFR)" do
+    location = create(:location, account: user.account)
+    5.times { |n| own(printing, location:, price_paid_cents: n) }
+    few = queries_for(new_location_removal_path(location))
+    35.times { |n| own(printing, location:, price_paid_cents: 100 + n) }
+
+    expect(queries_for(new_location_removal_path(location))).to eq(few)
+  end
+
+  it "keeps the card page's queries independent of the number of placed lots (spec 032 NFR)" do
+    entry = printing
+    own(entry, location: create(:location, account: user.account))
+    few = queries_for(catalog_entry_path(entry))
+    19.times { |n| own(entry, location: create(:location, account: user.account), price_paid_cents: n) }
+
+    expect(queries_for(catalog_entry_path(entry))).to eq(few)
+  end
+
+  it "keeps the add form's queries independent of the number of locations (spec 032 NFR)" do
+    entry = printing
+    create(:location, account: user.account)
+    few = queries_for(new_catalog_entry_lot_path(entry))
+    29.times { create(:location, account: user.account) }
+
+    expect(queries_for(new_catalog_entry_lot_path(entry))).to eq(few)
+  end
+
+  it "keeps the Move copies page's queries independent of the number of locations (spec 032 NFR)" do
+    lot = own(printing)
+    create(:location, account: user.account)
+    few = queries_for(new_lot_move_path(lot))
+    29.times { create(:location, account: user.account) }
+
+    expect(queries_for(new_lot_move_path(lot))).to eq(few)
+  end
+
   it "keeps search's queries independent of the number of result groups" do
     own(printing)
     printing(identity: Catalog::Identity.sole)

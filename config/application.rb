@@ -29,7 +29,9 @@ module Collector
     # not contain `.rb` files, or that should not be reloaded or eager loaded.
     # Common ones are `templates`, `generators`, or `middleware`, for example.
     # collector/backup is the operator's backup and restore (spec 030): required by path before the app boots, never autoloaded.
-    config.autoload_lib(ignore: %w[assets tasks collector/backup.rb collector/backup])
+    # collector/ci_groups, collector/ci_shard and collector/push_scope are bin/ci's and the pre-push hook's development
+    # tooling (spec 035): required by path, never autoloaded.
+    config.autoload_lib(ignore: %w[assets tasks collector/backup.rb collector/backup collector/ci_groups.rb collector/ci_shard.rb collector/push_scope.rb])
 
     # Configuration for the application, engines, and railties goes here.
     #

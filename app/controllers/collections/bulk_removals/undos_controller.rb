@@ -5,8 +5,9 @@ class Collections::BulkRemovals::UndosController < ApplicationController
 
   def create
     removal = Current.session.bulk_removals.find(params[:bulk_removal_id])
-    removal.undo!(sort: return_sort)
-    redirect_to return_path, status: :see_other, notice: "Restored #{helpers.items_count(removal.copies)} to your collection."
+    undone = removal.undo!(sort: return_sort)
+    redirect_to return_path, status: :see_other,
+      notice: "Restored #{helpers.items_count(removal.copies)} to your collection.#{helpers.restored_without_location(undone.unplaced)}"
   rescue BulkRemoval::NotUndoable
     refuse(BulkRemoval::NO_LONGER_UNDOABLE)
   rescue Lot::CapExceeded => error

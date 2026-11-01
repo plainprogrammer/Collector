@@ -1,4 +1,5 @@
-# An export file read against one account's collection and this instance's catalog (spec 025; spec 029 reads version 2): either a refusal of
+# An export file read against one account's collection and this instance's catalog (spec 025; spec 029 reads version 2;
+# spec 032 reads version 3, whose lots say where they are): either a refusal of
 # the whole file (decision 10), or each row's problems and what applying the file would do (decisions 1, 2, 4, 9, 11).
 # It writes nothing. Collectible-agnostic: a type's entries and vocabulary are reached through the catalog registry.
 class CollectionImport
@@ -8,7 +9,7 @@ class CollectionImport
   ROW = %r{\A/lots/(\d+)(?:/(.+))?\z}
   LOT_COLUMNS = [ "lots.id", "catalog_entries.collectible_type", "catalog_entries.external_key", "lots.finish", "lots.condition",
     "lots.price_paid_cents", "lots.quantity", "lots.created_at", "lots.updated_at", "catalog_entries.name",
-    "catalog_sets.code", "catalog_entries.number", "catalog_entries.language" ].freeze
+    "catalog_sets.code", "catalog_entries.number", "catalog_entries.language", "locations.name", "locations.name_key" ].freeze
 
   NO_FILE = "Choose an export file to preview.".freeze
   TOO_LARGE = "This file is larger than 32 MB, so it can't be an export Collector reads.".freeze
@@ -17,6 +18,9 @@ class CollectionImport
   NO_VERSION = "This file doesn't say which version of the export format it follows.".freeze
   DUPLICATE_OF = "Same card, finish, condition and price as row %d".freeze
   DUPLICATE = "Same card, finish, condition and price as an earlier row".freeze
+  # Version 3 adds the location to the identity, and the reason names it: two rows of "Box" and "box" are one lot (spec 032 AC-9.5).
+  DUPLICATE_OF_PLACED = "Same card, finish, condition, price and location as row %d".freeze
+  DUPLICATE_PLACED = "Same card, finish, condition, price and location as an earlier row".freeze
   # The largest price in cents the lots table records (a SQLite integer is 64 bits); spec 028 1.3.4.
   MAX_PRICE_CENTS = (2**63) - 1
   PRICE_TOO_LARGE = "price_paid is too large to record".freeze
@@ -29,15 +33,17 @@ class CollectionImport
   end
 
   # A lot of the collection, as the file would write it, with its id for applying (#40).
+  # +location+ is the name of the location it is in, nil when unplaced; the sixth identity value is that location's key.
   HeldLot = Data.define(:id, :identity, :quantity, :added_at, :changed_at, :name, :set_code, :collector_number, :language,
-    :created_exact, :updated_exact) do
+    :created_exact, :updated_exact, :location) do
     def described
-      { set_code:, collector_number:, language:, finish: identity[2], condition: identity[3], price_paid: identity[4] }
+      { set_code:, collector_number:, language:, finish: identity[2], condition: identity[3], price_paid: identity[4], location: }
     end
   end
 
   # One element of the file's lots, numbered from 1. +identity+ is nil when it can't be read (decision 1).
-  Row = Data.define(:number, :lot, :identity, :problems) do
+  # +place+ is the file's spelling of a version 3 lot's location, nil for a lot in none or a file that has no places.
+  Row = Data.define(:number, :lot, :identity, :problems, :place) do
     def problem? = problems.any?
 
     def quantity = lot["quantity"]
@@ -49,7 +55,7 @@ class CollectionImport
     # What the file says the row is, using only the values it gives as strings (decision 9).
     def described
       { set_code: text(entry["set_code"]), collector_number: text(entry["collector_number"]), language: text(entry["language"]),
-        finish: field("finish"), condition: field("condition"), price_paid: field("price_paid") }
+        finish: field("finish"), condition: field("condition"), price_paid: field("price_paid"), location: place }
     end
 
     def entry = lot.is_a?(Hash) && lot["entry"].is_a?(Hash) ? lot["entry"] : {}
@@ -71,6 +77,9 @@ class CollectionImport
   end
 
   def refused? = !refusal.nil?
+
+  # Whether the file says where its lots are (version 3); the page says so when it doesn't (spec 032 AC-10.4).
+  def places? = @version >= 3
 
   # The catalog entry a row that isn't a problem row resolved to (for applying, spec 028).
   def entry_id(row) = @entry_ids.fetch(row.number)
@@ -230,11 +239,11 @@ class CollectionImport
     def read_rows
       lots = @data["lots"]
       # A duplicate is found by its identity, so its own pointer doesn't make that identity unreadable.
-      failed = @problems.reject { |problem| problem.rule == "duplicate_lot" }.to_set(&:at)
+      failed = @problems.reject { |problem| %w[duplicate_lot unknown_location].include?(problem.rule) }.to_set(&:at)
       found = Hash.new { |hash, index| hash[index] = [] }
       @problems.each { |problem| (match = ROW.match(problem.at)) && found[match[1].to_i] << problem }
       identities = lots.each_with_index.map do |lot, index|
-        ExportFormat::Rules.identity(lot) if ExportFormat::Rules.identity_readable?(lot, "/lots/#{index}", failed)
+        ExportFormat::Rules.identity(lot, @version) if ExportFormat::Rules.identity_readable?(lot, "/lots/#{index}", failed)
       end
       first_row = {}
       identities.each_with_index { |identity, index| first_row[identity] ||= index + 1 if identity }
@@ -246,13 +255,21 @@ class CollectionImport
         resolved[index] = resolved.fetch(index, []) + [ problem("price_too_large", "/lots/#{index}/price_paid", PRICE_TOO_LARGE) ]
       end
       lots.each_with_index.map do |lot, index|
-        problems = found.fetch(index, []).map { |problem| describe(problem, first_row[identities[index]]) } + resolved.fetch(index, [])
-        Row.new(number: index + 1, lot:, identity: identities[index], problems:)
+        problems = found.fetch(index, []).map { |problem| describe(problem, first_row[identities[index]], lot) } + resolved.fetch(index, [])
+        place = lot["location"] if @version >= 3 && lot.is_a?(Hash) && lot["location"].is_a?(String)
+        Row.new(number: index + 1, lot:, identity: identities[index], problems:, place:)
       end
     end
 
-    def describe(problem, earlier)
-      return Problem.new(rule: problem.rule, at: problem.at, reason: format(DUPLICATE_OF, earlier), summary: DUPLICATE) if problem.rule == "duplicate_lot"
+    def describe(problem, earlier, lot)
+      if problem.rule == "duplicate_lot"
+        of, summary = @version >= 3 ? [ DUPLICATE_OF_PLACED, DUPLICATE_PLACED ] : [ DUPLICATE_OF, DUPLICATE ]
+        return Problem.new(rule: problem.rule, at: problem.at, reason: format(of, earlier), summary:)
+      end
+      if problem.rule == "unknown_location"
+        return Problem.new(rule: problem.rule, at: problem.at, reason: "Its location “#{lot["location"]}” isn't one of the file's locations.",
+          summary: "Its location isn't one of the file's locations.")
+      end
 
       field = ROW.match(problem.at)[2]&.tr("/", ".")
       reason = case problem.rule
@@ -308,10 +325,10 @@ class CollectionImport
 
     # The collection's lots, as the file would write them, read in one statement.
     def held_lots
-      @account.lots.joins(entry: :set).pluck(*LOT_COLUMNS).map do |id, type, source_id, finish, condition, cents, quantity, added, changed, name, set_code, number, language|
-        HeldLot.new(id:, identity: [ type, source_id, finish, condition, cents && format("%.2f", cents / 100r) ], quantity:,
+      @account.lots.joins(entry: :set).left_joins(:location).pluck(*LOT_COLUMNS).map do |id, type, source_id, finish, condition, cents, quantity, added, changed, name, set_code, number, language, place, place_key|
+        HeldLot.new(id:, identity: [ type, source_id, finish, condition, cents && format("%.2f", cents / 100r), place_key ], quantity:,
           added_at: added.getutc.iso8601, changed_at: changed.getutc.iso8601, name:, set_code:, collector_number: number, language:,
-          created_exact: added.getutc.iso8601(6), updated_exact: changed.getutc.iso8601(6))
+          created_exact: added.getutc.iso8601(6), updated_exact: changed.getutc.iso8601(6), location: place)
       end
     end
 

@@ -72,6 +72,15 @@ RSpec.describe "Bulk Remove and Undo", type: :request do
     expect(Lot.sole.quantity).to eq(2)
   end
 
+  it "says how many lots came back without a location when their location was removed (spec 032 AC-7.5)", :aggregate_failures do
+    location = create(:location, account: user.account)
+    select_lots(own(quantity: 2).tap { |lot| lot.update!(location:) })
+    remove_selected
+    location.destroy!
+    post undo_form["action"], params: { return_to: collection_path(bulk: 1) }
+    expect(flash[:notice]).to eq("Restored 2 items to your collection. 1 lot came back without a location.")
+  end
+
   it "lands on the collection for an Undo URL off this instance" do
     select_lots(own)
     remove_selected

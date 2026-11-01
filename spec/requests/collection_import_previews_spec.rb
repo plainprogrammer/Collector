@@ -46,6 +46,31 @@ RSpec.describe "Import preview", type: :request do
   context "when signed in" do
     before { sign_in_as(user) }
 
+    describe "a lot's location (spec 032)" do
+      let!(:entry) { printing }
+
+      def file_v3(lots, locations: [], **fields) = file(lots, format_version: 3, locations: locations.map { |name| { "name" => name } }, **fields)
+
+      it "says an older file's lots would be in no location, and says nothing for a version 3 file (AC-10.4)", :aggregate_failures do
+        preview(file([ row(entry) ]))
+        expect(html.at_css("#places_note").text).to eq("This file was written before lots could be in a location, so its lots would be in none.")
+        preview(file_v2([ row(entry) ]))
+        expect(html.at_css("#places_note")).to be_present
+        preview(file_v3([ row(entry, location: nil) ]))
+        expect(html.at_css("#places_note")).to be_nil
+      end
+
+      it "puts 'in <location>' on a removed lot and the reason on a problem row (AC-10.3, AC-10.9)", :aggregate_failures do
+        blue = create(:location, account: user.account, name: "Blue binder")
+        create(:lot, account: user.account, entry: printing, quantity: 3, location: blue)
+        preview(file_v3([ row(entry, location: "Elsewhere") ], locations: [ "Blue binder" ]))
+
+        expect(html.at_css("#removed_lots").text).to include("in Blue binder")
+        expect(html.at_css("#problem_counts").text).to include("Its location isn't one of the file's locations.")
+        expect(html.css("#problem_rows li, #problem_rows").text).to include("Its location “Elsewhere” isn't one of the file's locations.", "in Elsewhere")
+      end
+    end
+
     describe "locations (spec 029)" do
       let!(:entry) { printing }
 
@@ -253,7 +278,7 @@ RSpec.describe "Import preview", type: :request do
       {
         nil => "Choose an export file to preview.",
         "{" => "This file isn't a Collector export: it isn't readable JSON.",
-        file([], format_version: 3) => "This file was written by a newer version of Collector (format version 3). This instance reads version 2.",
+        file([], format_version: 4) => "This file was written by a newer version of Collector (format version 4). This instance reads version 3.",
         file([], currency: "EUR") => "This file's prices are in EUR. This instance uses USD."
       }.each do |data, reason|
         data.nil? ? post(collection_import_preview_path, params: { export_file: "a pasted file" }) : preview(data)

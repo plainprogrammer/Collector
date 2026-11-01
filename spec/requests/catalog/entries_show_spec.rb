@@ -161,6 +161,46 @@ RSpec.describe "Card page", type: :request do
     expect(response.body).to include("<dd>7</dd>", "2 printings", "7 in 2 lots", "NM", "$1.25", "Foil", "Edit copy", "Remove")
   end
 
+  describe "where the copies are (spec 032 Story 4)" do
+    def account = user.account
+    def blue = @blue ||= create(:location, account:, name: "Blue binder")
+    def box = @box ||= create(:location, account:, name: "Long box")
+    def copies = Nokogiri::HTML5(response.body).at_css("#copies")
+
+    it "lists a row per lot with its Location, unplaced first and then by location (AC-4.1, AC-4.2)", :aggregate_failures do
+      create(:lot, account:, entry:, quantity: 2, location: box)
+      create(:lot, account:, entry:, quantity: 2, location: blue)
+      create(:lot, account:, entry:, quantity: 1)
+      get catalog_entry_path(entry)
+      expect(copies.css("thead th").map(&:text)).to include("Location")
+      expect(copies.css("tbody tr td.is-opt").map(&:text)).to include("No location", "Blue binder", "Long box")
+      expect(copies.css("tbody tr").map { |row| row.text.scan(/No location|Blue binder|Long box/).first }).to eq([ "No location", "Blue binder", "Long box" ])
+      expect(copies.at_css(".c-section__count").text).to eq("5 in 3 lots")
+    end
+
+    it "carries the place on the phone line under the printing (AC-4.1)" do
+      create(:lot, account:, entry:, location: blue)
+      get catalog_entry_path(entry)
+      expect(copies.at_css(".c-table__sub").text).to include("Blue binder")
+    end
+
+    it "escapes a location name with markup (AC-4.5)", :aggregate_failures do
+      create(:lot, account:, entry:, location: create(:location, account:, name: "<i>x</i>"))
+      get catalog_entry_path(entry)
+      expect(response.body).not_to include("<i>x</i>")
+      expect(response.body).to include("&lt;i&gt;x&lt;/i&gt;")
+    end
+
+    it "names each row's actions by place, so two lots of one condition differ", :aggregate_failures do
+      create(:lot, account:, entry:, condition: "near_mint", location: blue)
+      create(:lot, account:, entry:, condition: "near_mint")
+      get catalog_entry_path(entry)
+      labels = copies.css("summary").map { |summary| summary["aria-label"] }
+      expect(labels.size).to eq(2)
+      expect(labels).to include(a_string_matching(/ NM in Blue binder\z/), a_string_matching(/ NM, no location\z/))
+    end
+  end
+
   it "shows the empty copies state with an add action" do
     get catalog_entry_path(entry)
     expect(response.body).to include("You don't have this card yet.", "Add a copy")

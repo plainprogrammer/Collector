@@ -13,6 +13,9 @@
     <% else %>
       <p class="c-status__message c-status__message--alert">This file can't be applied: <%= pluralize(number_with_delimiter(@import.problem_rows.size), "row") %> <%= @import.problem_rows.one? ? "has" : "have" %> problems. Previewing changed nothing in your collection.</p>
     <% end %>
+    <% unless @import.places? %>
+      <p class="c-import__note" id="places_note">This file was written before lots could be in a location, so its lots would be in none.</p>
+    <% end %>
     <% if @import.applicable? && @import.plan.nothing_to_change? %>
       <p class="c-status__message">This file has nothing to change: your collection already holds what it describes.</p>
     <% end %>
