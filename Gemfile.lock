@@ -127,6 +127,7 @@ GEM
     ffi (1.17.4-aarch64-linux-musl)
     ffi (1.17.4-arm-linux-gnu)
     ffi (1.17.4-arm-linux-musl)
+    ffi (1.17.4-arm64-darwin)
     ffi (1.17.4-x86_64-linux-gnu)
     ffi (1.17.4-x86_64-linux-musl)
     fugit (1.14.0)
@@ -201,7 +202,8 @@ GEM
       net-ssh (>= 5.0.0, < 8.0.0)
     net-smtp (0.5.1)
       net-protocol
-    net-ssh (7.3.3)
+    net-ssh (7.3.8)
+      logger
     nio4r (2.7.5)
     nokogiri (1.19.4-aarch64-linux-gnu)
       racc (~> 1.4)
@@ -210,6 +212,8 @@ GEM
     nokogiri (1.19.4-arm-linux-gnu)
       racc (~> 1.4)
     nokogiri (1.19.4-arm-linux-musl)
+      racc (~> 1.4)
+    nokogiri (1.19.4-arm64-darwin)
       racc (~> 1.4)
     nokogiri (1.19.4-x86_64-linux-gnu)
       racc (~> 1.4)
@@ -233,7 +237,7 @@ GEM
       nio4r (~> 2.0)
     raabro (1.5.0)
     racc (1.8.1)
-    rack (3.2.7)
+    rack (3.2.8)
     rack-session (2.1.2)
       base64 (>= 0.1.0)
       rack (>= 3.0.0)
@@ -367,6 +371,7 @@ GEM
     sqlite3 (2.10.0-aarch64-linux-musl)
     sqlite3 (2.10.0-arm-linux-gnu)
     sqlite3 (2.10.0-arm-linux-musl)
+    sqlite3 (2.10.0-arm64-darwin)
     sqlite3 (2.10.0-x86_64-linux-gnu)
     sqlite3 (2.10.0-x86_64-linux-musl)
     sshkit (1.25.1)
@@ -381,6 +386,7 @@ GEM
     thor (1.5.0)
     thruster (0.1.27)
     thruster (0.1.27-aarch64-linux)
+    thruster (0.1.27-arm64-darwin)
     thruster (0.1.27-x86_64-linux)
     timeout (0.6.1)
     tsort (0.2.0)
@@ -418,6 +424,8 @@ PLATFORMS
   aarch64-linux-musl
   arm-linux-gnu
   arm-linux-musl
+  arm64-darwin-23
+  arm64-darwin-25
   x86_64-linux
   x86_64-linux-gnu
   x86_64-linux-musl
@@ -478,6 +486,7 @@ CHECKSUMS
   bootsnap (1.26.0) sha256=ca96237015e6cd74a02963d5821cf00ac5ea134653b323e8cd6d702a7718bf1b
   brakeman (8.1.0) sha256=cfa9e5214e4925842f4bc849a64f8a7e6c5d0425fe98eac8d7b7bc60fdc17e07
   builder (3.3.0) sha256=497918d2f9dca528fdca4b88d84e4ef4387256d984b8154e9d5d3fe5a9c8835f
+  bundler (4.0.20) sha256=7978a8ac648767f5e635bc522445b79e80a52b907a39a36c2d8085ed6bc762ae
   bundler-audit (0.9.3) sha256=81c8766c71e47d0d28a0f98c7eed028539f21a6ea3cd8f685eb6f42333c9b4e9
   capybara (3.40.0) sha256=42dba720578ea1ca65fd7a41d163dd368502c191804558f6e0f71b391054aeef
   concurrent-ruby (1.3.8) sha256=b2f1be836e968ccc78ccfce277ea79c72a88633f22306782c16ff23fb415d1e1
@@ -499,6 +508,7 @@ CHECKSUMS
   ffi (1.17.4-aarch64-linux-musl) sha256=9286b7a615f2676245283aef0a0a3b475ae3aae2bb5448baace630bb77b91f39
   ffi (1.17.4-arm-linux-gnu) sha256=d6dbddf7cb77bf955411af5f187a65b8cd378cb003c15c05697f5feee1cb1564
   ffi (1.17.4-arm-linux-musl) sha256=9d4838ded0465bef6e2426935f6bcc93134b6616785a84ffd2a3d82bc3cf6f95
+  ffi (1.17.4-arm64-darwin) sha256=19071aaf1419251b0a46852abf960e77330a3b334d13a4ab51d58b31a937001b
   ffi (1.17.4-x86_64-linux-gnu) sha256=9d3db14c2eae074b382fa9c083fe95aec6e0a1451da249eab096c34002bc752d
   ffi (1.17.4-x86_64-linux-musl) sha256=3fdf9888483de005f8ef8d1cf2d3b20d86626af206cbf780f6a6a12439a9c49e
   fugit (1.14.0) sha256=e311a9cc85a54bb67649df45060e721282a1e2c8ebad40e41874a3a7d576f37e
@@ -530,12 +540,13 @@ CHECKSUMS
   net-scp (4.1.0) sha256=a99b0b92a1e5d360b0de4ffbf2dc0c91531502d3d4f56c28b0139a7c093d1a5d
   net-sftp (4.0.0) sha256=65bb91c859c2f93b09826757af11b69af931a3a9155050f50d1b06d384526364
   net-smtp (0.5.1) sha256=ed96a0af63c524fceb4b29b0d352195c30d82dd916a42f03c62a3a70e5b70736
-  net-ssh (7.3.3) sha256=831def58b2c51dcef66ec00d29397d4f210de89c19fe78f95873ca30f386e86a
+  net-ssh (7.3.8) sha256=16bb1fccc4d9a580decdeea8ddb98e8544df29b7e6ac8cb94d4b379cfe4bee9f
   nio4r (2.7.5) sha256=6c90168e48fb5f8e768419c93abb94ba2b892a1d0602cb06eef16d8b7df1dca1
   nokogiri (1.19.4-aarch64-linux-gnu) sha256=1269fb644a6de405057a53dd5c762b1209b43ca7424f839454d3dbc677c31a8f
   nokogiri (1.19.4-aarch64-linux-musl) sha256=35c65b9ce72b3bb03207bdbe7067915019dc18c1b9b59139684bd6690fdd01af
   nokogiri (1.19.4-arm-linux-gnu) sha256=a301313e38bb065d68239e79734bcd6f56fb6efaacebde29e9abf2a4735340ca
   nokogiri (1.19.4-arm-linux-musl) sha256=588923c101bcfa78869734d247d25b598674323e7f22474fc468f6e5647311eb
+  nokogiri (1.19.4-arm64-darwin) sha256=a46db9853286e6597b36ebc6953817d15acf3a299583eb3f89fdc6f91dd63527
   nokogiri (1.19.4-x86_64-linux-gnu) sha256=379fae440b28915e3f19d752ce2dcf8465ed2b2fbefd2a7ca0dd497bc981a06a
   nokogiri (1.19.4-x86_64-linux-musl) sha256=17dfb7c1fa194ae02fbf7c51a7afc8d278045ab3fdacfd86f91d02d7b274470b
   ostruct (0.6.3) sha256=95a2ed4a4bd1d190784e666b47b2d3f078e4a9efda2fccf18f84ddc6538ed912
@@ -549,7 +560,7 @@ CHECKSUMS
   puma (8.0.2) sha256=c8ed871dfbbe66448ea9ffd46692342d9804d4071522b52b5331b7b6e7b686fb
   raabro (1.5.0) sha256=3f998a7bc84f9c84df3ab580634d2e0a5bda4f0841168d56035f529c9877440a
   racc (1.8.1) sha256=4a7f6929691dbec8b5209a0b373bc2614882b55fc5d2e447a21aaa691303d62f
-  rack (3.2.7) sha256=93e13e1c24f93556671d85d2d79fa228c3485815c50d7e2f265b5330c6528fb7
+  rack (3.2.8) sha256=1fecc85e463ebc7a2a945fff829ffcd549babeb1556384796fad946c28dc4ec7
   rack-session (2.1.2) sha256=595434f8c0c3473ae7d7ac56ecda6cc6dfd9d37c0b2b5255330aa1576967ffe8
   rack-test (2.2.0) sha256=005a36692c306ac0b4a9350355ee080fd09ddef1148a5f8b2ac636c720f5c463
   rackup (2.3.1) sha256=6c79c26753778e90983761d677a48937ee3192b3ffef6bc963c0950f94688868
@@ -588,6 +599,7 @@ CHECKSUMS
   sqlite3 (2.10.0-aarch64-linux-musl) sha256=ec4ffedded0bd8579629e14d0647cfee9092c0af0009c05d6404d90857b1cb8b
   sqlite3 (2.10.0-arm-linux-gnu) sha256=bcf2e165f27fd28f46ba34eeba3503d557ea7f76f9dd40434ce719f2ba0d5cda
   sqlite3 (2.10.0-arm-linux-musl) sha256=338510e64876c7d02d91733eeaee384806c58b3835d8a688d1bfdbf7e468c497
+  sqlite3 (2.10.0-arm64-darwin) sha256=f619f33adfd01a1827e8764a3da92b289c1a99d93707d021a242dccba6909c4e
   sqlite3 (2.10.0-x86_64-linux-gnu) sha256=295f48b240ba663efa2e3b6f38cbc0f19f5c8a2823a71fda3bf15531be5dd0e8
   sqlite3 (2.10.0-x86_64-linux-musl) sha256=876dd86a15c7828075ff7612e3d0ab0eb2eba0d8485b13fd4000e8a335f86bc5
   sshkit (1.25.1) sha256=be3f10b9d6eb0b44d5eaba3f7cbe41bc6bb894bce4339688ac20124391455b78
@@ -595,6 +607,7 @@ CHECKSUMS
   thor (1.5.0) sha256=e3a9e55fe857e44859ce104a84675ab6e8cd59c650a49106a05f55f136425e73
   thruster (0.1.27) sha256=5fd3855192bb4e8d13db69ae5f70d39f2dfd88fe0394fa372104996edf0bb599
   thruster (0.1.27-aarch64-linux) sha256=c50789f2dcd4dfa072c4719f99c38dea5d47ebb60ad0cc1fd1996b2266ecfd22
+  thruster (0.1.27-arm64-darwin) sha256=ece0ff0f2ec195008030fbca97067e5e867f4e1f66501fa8b8a3ec3f829bf2bf
   thruster (0.1.27-x86_64-linux) sha256=7e0e6381011401810b047ff25506e0e38755b2430499ff5586f1a110086981c6
   timeout (0.6.1) sha256=78f57368a7e7bbadec56971f78a3f5ecbcfb59b7fcbb0a3ed6ddc08a5094accb
   tsort (0.2.0) sha256=9650a793f6859a43b6641671278f79cfead60ac714148aabe4e3f0060480089f
