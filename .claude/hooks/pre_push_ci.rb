@@ -1,8 +1,8 @@
 #!/usr/bin/env ruby
 # The pre-push hook (spec 035 Story 3, FR-4), run by .claude/settings.json with the Bash tool call's JSON on stdin.
 # Before a push from this project's repository it runs bin/ci, or bin/ci checks for a documentation-only branch
-# pushed with a plain push form (decision 3). It exits 0 only for a command that isn't a push, a checkout outside
-# this repository, or a checkout without an executable bin/ci; every error blocks the push (exit 2).
+# pushed with a plain push form (decision 3). It exits 0 only for a command that isn't a push, a resolved checkout
+# outside this repository, or a checkout without an executable bin/ci; every error blocks the push (exit 2).
 
 begin
   require "json"
@@ -23,19 +23,28 @@ begin
   dir = input["cwd"].to_s.empty? ? project_dir : input["cwd"]
   dir = File.expand_path(parsed.cd, dir) if parsed.cd
   dir = File.expand_path(parsed.git_c, dir) if parsed.git_c
-  checkout = begin
+  # Only a resolved checkout of another repository is skipped (decision 3). A directory that can't be resolved runs
+  # the full bin/ci in this project's checkout (FR-4); if that can't be resolved either, the push is blocked.
+  checkout, unresolved = begin
+    raise scope::Unknown, "the directory holds a shell expansion" if [ parsed.cd, parsed.git_c ].compact.any? { |text| text.match?(/[$`]/) }
+
     root = scope.git!(dir, "rev-parse", "--show-toplevel").strip
-    root if common_dir.call(root) == project
-  rescue scope::Unknown
-    nil
-  end
-  unless checkout
-    warn "Pre-push: #{root || dir} is not this project's repository; skipping bin/ci."
-    exit 0
+    if common_dir.call(root) != project
+      warn "Pre-push: #{root} is not this project's repository; skipping bin/ci."
+      exit 0
+    end
+    [ root, nil ]
+  rescue scope::Unknown, SystemCallError => error
+    [ scope.git!(project_dir, "rev-parse", "--show-toplevel").strip, "checkout unresolved: #{dir}: #{error.message}" ]
   end
   exit 0 unless File.executable?(File.join(checkout, "bin/ci"))
 
-  args, reason = scope.decide(command, directory: checkout, current_branch: scope.current_branch(checkout))
+  args, reason =
+    if unresolved
+      [ [], unresolved ]
+    else
+      scope.decide(command, directory: checkout, current_branch: scope.current_branch(checkout))
+    end
   warn "Pre-push: running #{[ "bin/ci", *args ].join(' ')} in #{checkout} (#{reason})"
   unless system("bin/ci", *args, chdir: checkout, out: :err)
     warn "Pre-push: bin/ci failed in #{checkout}. Fix the failing step before pushing."

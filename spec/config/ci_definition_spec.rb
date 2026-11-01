@@ -1,5 +1,6 @@
 require "rails_helper"
 require "json"
+require "tmpdir"
 
 # File-shape checks for bin/ci's definition (spec 035). The runs themselves are evidenced in
 # docs/specs/035-ci-shards/verification.md (AC-1.1–AC-1.4, AC-1.7, AC-1.9).
@@ -51,6 +52,89 @@ RSpec.describe "The CI definition", type: :config do # rubocop:disable RSpec/Des
 
       expect(err).to eq("")
       expect(status.exitstatus).to eq(0)
+    end
+
+    # The real hook script against a sandbox project whose bin/ci is a stub (spec 035 decision 3, FR-4).
+    context "with a sandbox project", :git_sandbox do
+      let(:dir) { File.realpath(Dir.mktmpdir("pre_push_ci")) }
+      let(:repo) do
+        new_repo(File.join(dir, "repo"), extra_files: { ".gitignore" => "/bin/\n" }).tap do |path|
+          stub = File.join(path, "bin/ci")
+          FileUtils.mkdir_p(File.dirname(stub))
+          File.write(stub, "#!/bin/sh\necho \"STUB bin/ci $*\"\necho \"STUB pwd $(pwd -P)\"\nexit \"${STUB_EXIT:-0}\"\n")
+          File.chmod(0o755, stub)
+          git!(path, "switch", "-q", "-c", "feature")
+        end
+      end
+
+      after { FileUtils.remove_entry(dir) }
+
+      def run_hook(command, cwd: repo, stub_exit: "0")
+        input = JSON.generate("tool_input" => { "command" => command }, "cwd" => cwd)
+        env = GitSandbox::ENV_OVERRIDES.merge("LANG" => "C", "LC_ALL" => "C", "CLAUDE_PROJECT_DIR" => repo,
+                                              "STUB_EXIT" => stub_exit)
+        _out, err, status = Bundler.with_unbundled_env do
+          Open3.capture3(env, "ruby", Rails.root.join(".claude/hooks/pre_push_ci.rb").to_s, stdin_data: input)
+        end
+        [ err, status.exitstatus ]
+      end
+
+      def documentation_only_branch
+        git!(repo, "update-ref", "refs/remotes/origin/main", "main")
+        FileUtils.mkdir_p(File.join(repo, "docs"))
+        File.write(File.join(repo, "docs/a.md"), "x\n")
+        git!(repo, "add", "-A")
+        git!(repo, "commit", "-q", "-m", "docs")
+      end
+
+      it "runs the full bin/ci in the project when a cd directory can't be resolved (FR-4)", :aggregate_failures do
+        [
+          [ "cd \"$X\" && git push origin main", "$X" ],
+          [ "cd /nonexistent && git push", "/nonexistent" ],
+          [ "cd `pwd` && git push", "`pwd`" ],
+          [ "git -C /nonexistent push", "/nonexistent" ]
+        ].each do |command, named|
+          err, status = run_hook(command)
+          expect(err).to include("running bin/ci in #{repo} (checkout unresolved: "), "#{command}: #{err}"
+          expect(err).to include(named), "#{command}: #{err}"
+          expect(err).to include("STUB bin/ci \n", "STUB pwd #{repo}\n"), "#{command}: #{err}"
+          expect(status).to eq(0), command
+        end
+      end
+
+      it "skips bin/ci for a checkout of another repository (decision 3)", :aggregate_failures do
+        other = new_repo(File.join(dir, "other"))
+
+        err, status = run_hook("cd #{other} && git push")
+        expect(err).to include("#{other} is not this project's repository; skipping bin/ci")
+        expect(err).not_to include("STUB")
+        expect(status).to eq(0)
+      end
+
+      it "runs bin/ci checks for a documentation-only branch and an accepted push form (AC-3.3)", :aggregate_failures do
+        documentation_only_branch
+
+        err, status = run_hook("git push origin feature")
+        expect(err).to include("running bin/ci checks in #{repo} (documentation-only branch (1 file): skipping RSpec)")
+        expect(err).to include("STUB bin/ci checks\n")
+        expect(status).to eq(0)
+      end
+
+      it "blocks the push when bin/ci checks fails (AC-3.3)", :aggregate_failures do
+        documentation_only_branch
+
+        err, status = run_hook("git push origin feature", stub_exit: "1")
+        expect(err).to include("STUB bin/ci checks\n", "bin/ci failed in #{repo}")
+        expect(status).to eq(2)
+      end
+
+      it "blocks the push when the full bin/ci fails (FR-4)", :aggregate_failures do
+        documentation_only_branch
+
+        err, status = run_hook("git push --tags", stub_exit: "1")
+        expect(err).to include("running bin/ci in #{repo} (push form not eligible", "STUB bin/ci \n", "bin/ci failed in #{repo}")
+        expect(status).to eq(2)
+      end
     end
   end
 end
