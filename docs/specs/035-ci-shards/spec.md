@@ -7,6 +7,7 @@
 **Branch:** `035-ci-shards`
 **Issue:** [#145](https://github.com/plainprogrammer/Collector/issues/145) (spike; findings in [research.md](research.md))
 **Plan:** [plan.md](plan.md)
+**Frozen:** the current rules are in [`release-and-deploy.md`](../../architecture/release-and-deploy.md) (parts: all but decision 3 and Story 3, the pre-push hook, whose facts are in CLAUDE.md); see the [specs index](../README.md)
 
 ---
 

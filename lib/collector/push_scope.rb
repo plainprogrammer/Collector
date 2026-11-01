@@ -12,10 +12,12 @@ module Collector
 
     # Variables an enclosing git hook may set; they would point git at another repository.
     GIT_ENV = { "GIT_DIR" => nil, "GIT_WORK_TREE" => nil, "GIT_INDEX_FILE" => nil, "GIT_COMMON_DIR" => nil }.freeze
-    PUSH = /(^|[;&|\s])git(\s+-C\s+\S+)?\s+push/
+    PUSH = /(^|[;&|\s])git(\s+-C\s+(?:"[^"]*"|'[^']*'|\S+))?\s+push/
     LEADING_CD = /\A\s*cd\s+(?:"([^"]*)"|'([^']*)'|([^\s;&|"']+))/
     GIT_C = /git\s+-C\s+(?:"([^"]*)"|'([^']*)'|([^\s"']+))\s+push/
     UPSTREAM = %w[-u --set-upstream].freeze
+    # Characters bash would expand, glob or redirect on, so the words it runs aren't the words parsed (FR-4).
+    SHELL_METACHARACTERS = /[$`{}*?\[\]~<>]/
 
     # The changed paths can't be determined: the hook runs the full bin/ci.
     class Unknown < StandardError; end
@@ -28,7 +30,7 @@ module Collector
       path.start_with?("docs/") || (path.end_with?(".md") && !path.start_with?(*CODE_DIRS))
     end
 
-    def self.documentation_only?(paths) = paths.any? && paths.all? { documentation?(it) }
+    def self.documentation_only?(paths) = paths.any? && paths.all? { |path| documentation?(path) }
 
     def self.push?(command) = PUSH.match?(command)
 
@@ -42,6 +44,8 @@ module Collector
     end
 
     def self.refusal(command, current_branch)
+      return "a newline in the command" if command.include?("\n")
+      return "a carriage return in the command" if command.include?("\r")
       return "`||` in the command" if command.include?("||")
       return "`;` in the command" if command.include?(";")
       return "more than one git push in the command" if command.scan(PUSH).size > 1
@@ -49,6 +53,9 @@ module Collector
 
       rest = command.strip.sub(/\s*\|\s*(?:tail|head)\s+-\d+\z/, "").sub(/\s*2>&1\z/, "")
       return "a pipe other than `| tail -N` or `| head -N`" if rest.include?("|")
+
+      metacharacter = rest[SHELL_METACHARACTERS]
+      return "shell metacharacter #{metacharacter == '`' ? '`` ` ``' : "`#{metacharacter}`"} in the command" if metacharacter
 
       rest = rest.sub(/\A\s*cd\s+(?:"[^"]*"|'[^']*'|[^\s;&|"']+)\s*&&\s*/, "")
       return "a push chained after something other than `cd <dir> &&`" if rest.include?("&&")
@@ -68,7 +75,7 @@ module Collector
     def self.push_arguments_refusal(words, current_branch)
       upstream = words.first if UPSTREAM.include?(words.first)
       words = words.drop(1) if upstream
-      option = words.find { it.start_with?("-") }
+      option = words.find { |word| word.start_with?("-") }
       return "option #{option} pushes more than the current branch" if option
       return "#{upstream} without a remote and the current branch" if upstream && words.size != 2
       return nil if words.size <= 1
