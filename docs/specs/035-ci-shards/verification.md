@@ -10,7 +10,8 @@ Executed 2026-10-31 to 2026-11-01 in a cloud session, one implementer subagent p
 - Both `.claude/settings.json` edits approved: the allow entry (step 2.3) and the hook command (step 4.4). The auto-mode check had refused them as self-modification.
 - The `.github/workflows/ci.yml` edit approved: Phase 3, then Phase 6's temporary matrix change.
 - The branch was rebased onto `main` and force-pushed with lease, to bring in #151's fix for the order-dependent `spec/system/number_entry_spec.rb:56` failure. That failure had blocked a push at seed 22126.
-- The M = 3 trial and the AC-2.2 probe approved. The maintainer re-ran an M = 3 run, because this session's GitHub access can't re-run runs (403 "Resource not accessible by integration").
+- The M = 3 trial and the AC-2.2 probe approved. This session's GitHub access can't re-run runs (403 "Resource not accessible by integration").
+- #149 merged on 2026-11-01 at 04:55, with the trial's three-shard matrix, before this file, the implementation review and the distillation. The maintainer chose a follow-up pull request on `035-ci-shards`, restarted from `main`. It carries the stop rule's matrix, this file, the review and the distillation, and it counts `main`'s merge run as the third M = 3 measurement.
 
 **Deviations from the plan's drafts, each recorded in its commit body:**
 - **Phase 1:** the shard spec uses `let(:scratch)` with an `after` cleanup, instead of an instance variable (RuboCop RSpec/InstanceVariable).
@@ -82,9 +83,9 @@ Median: **140 s**, against the baseline's 348 s, so AC-2.4 holds.
 |---|---|---|---|---|
 | [41265934051](https://github.com/plainprogrammer/Collector/actions/runs/41265934051) attempt 1 | `3251b5c` | 02:36:53 → 02:39:55 | 182 s | 36 s; 2:35, 2:17, 2:34 |
 | [41271119404](https://github.com/plainprogrammer/Collector/actions/runs/41271119404) | `555d03b` | 03:56:36 → 03:59:22 | 166 s | 25 s; 1:59, 2:23, 2:36 |
-| M3_THIRD_ROW |
+| [41274952034](https://github.com/plainprogrammer/Collector/actions/runs/41274952034) (`main`, #149's merge) | `9b296aa` | 04:55:56 → 04:58:47 | 171 s | 36 s; 2:38, 2:25, 2:42 |
 
-M3_MEDIAN_AND_DECISION
+Median: **171 s**. M = 4's median is 31 s lower, so decision 7's stop rule (keep 4 only if it is at least 30 s faster) keeps **M = 4** (`2b68acd`). The margin is one second, inside the tens of seconds GitHub's times vary by (NFR Performance), so a later trial may well land the other way. The third M = 3 run is `main`'s run of #149's merge, not a re-run on the pull request as AC-2.5 says: this session can't re-run runs, and #149 merged, with the trial's matrix, before the maintainer's re-run. `main` ran three shards from that merge until this follow-up lands.
 
 | Criterion | Proved by |
 |---|---|
@@ -121,8 +122,9 @@ FINAL_BIN_CI
 ## Gaps and notes
 
 - **Pre-push detection false positive:** the detection regex is today's, kept on purpose (plan 4.3). Any Bash command whose text holds "git" then "push", such as a heredoc commit message, makes the hook run the full `bin/ci`, or blocks the command if `bin/ci` fails. That happened once in Phase 4. Sessions write such text to a file and use `git commit -F`.
-- **Deleting a remote branch:** this cloud session's git proxy dropped `git push --delete`, and the API delete was refused. The maintainer deleted the throwaway branch by hand.
-- **Remote re-runs:** this session can't re-run workflow runs (403). The maintainer re-ran the M = 3 run.
+- **Deleting a remote branch:** this cloud session's git proxy dropped `git push --delete`, and the API delete was refused as a destructive git action. The throwaway branch `035-ac-3-7-doc-only-probe` is left for the maintainer to delete from #152's page.
+- **Remote re-runs:** this session can't re-run workflow runs (403). The third M = 3 run is `main`'s merge run (see Story 2).
+- **An intermittent failure that isn't this spec's:** a pre-push `bin/ci` failed once on `spec/system/bulk_mode_spec.rb:67`, at seed 45443. The whole suite then passed at that seed and the example passed five times alone, so it is a timing race, not test order. That example clicks before it waits for the bulk bar's count, which its sibling example waits for. It was raised as a separate task; this spec changes nothing under `app/` and not that spec.
 
 ## Implementation review
 
