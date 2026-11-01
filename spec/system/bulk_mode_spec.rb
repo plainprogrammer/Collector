@@ -72,9 +72,13 @@ RSpec.describe "Bulk mode", type: :system do
     check "Select all"
     click_on "Next"
     click_on "Previous"
+    # Page 2 also shows a ticked header: wait for page 1 itself, or the untick lands on the page being replaced.
+    expect(page).to have_css("tbody tr", text: "Card A")
     expect(page).to have_checked_field("Select all")
     uncheck "Select all"
+    expect(page).to have_css(".c-bulkbar__count", exact_text: "0 of 5 selected")
     row_box("Card A").check
+    expect(page).to have_css(".c-bulkbar__count", exact_text: "3 of 5 selected")
     within(".c-bulkbar__extra") { click_on "Set condition…" }
     expect(page).to have_css("h1", exact_text: "Set the condition of 3 items")
   end
