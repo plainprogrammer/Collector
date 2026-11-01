@@ -134,7 +134,11 @@ Median: **171 s**. M = 4's median is 31 s lower, so decision 7's stop rule (keep
 
 ## Final run
 
-FINAL_BIN_CI
+**On `3fe441a` (all of Phases 1–6 and the four-shard matrix):** `bin/ci` ran alone and passed every step in 9 min 34 s: Setup, the upgrade guard, Style: Ruby, Brakeman, Gem audit and Importmap audit, then Tests: RSpec with 2,405 examples, 0 failures, 3 pending (seed 52486).
+
+**The review fixes (`8eff2d3`, `31d5847`):**
+- Their spec files passed with 36 examples, 0 failures.
+- The pre-push hook's full `bin/ci` ran on this follow-up branch's head before it went to GitHub.
 
 ## Gaps and notes
 
@@ -145,4 +149,21 @@ FINAL_BIN_CI
 
 ## Implementation review
 
-(pending)
+SPEC-ALIGNED, after fixes. The read-only Opus review (2026-11-01, `sdd-review` Mode B, briefed by hand because the `sdd-superpowers` plugin isn't installed in this container) reviewed `6238217..3fe441a` and found **SPEC-ALIGNED WITH GAPS**. It reported no blocking findings, two important ones and six minor ones.
+
+**Important, fixed test-first:**
+1. **Expansion and newlines.** `PushScope.parse` accepted push commands that bash would expand or split. Examples: `git push {origin,+HEAD:main}`, `git push $(…)`, a backtick, `git push *`, or a second command after a newline. On a documentation-only branch these would have skipped RSpec (FR-4, AC-3.2). Fixed in `8eff2d3`:
+   - a newline or carriage return refuses the command;
+   - any of `` $ ` { } * ? [ ] ~ < > `` left after the trailing `2>&1` and `| tail/head -N` refuses it, and the reason names the character.
+2. **An unresolvable checkout.** The hook skipped `bin/ci` entirely when it couldn't resolve a `cd` or `-C` directory: one that doesn't exist, isn't a checkout, or holds `$` or a backtick. An example is `cd "$CLAUDE_PROJECT_DIR" && git push`. Decision 3 skips only a *resolved* checkout of another repository. Fixed in `31d5847`: such a push runs the full `bin/ci` in the project's checkout, giving the reason `checkout unresolved: …`. New examples run the real hook script against a sandbox whose `bin/ci` is a stub. They also prove AC-3.3's last clause: a failing `bin/ci checks` blocks the push with exit 2.
+
+**Minor:**
+- **(3) Ruby version, fixed in `8eff2d3`.** `push_scope.rb` used `it`, which needs Ruby 3.4 or later, but the hook runs whatever `ruby` is on `PATH`. It now uses explicit block parameters and loads under Ruby 3.3.6.
+- **(4) Narrower redirection, recorded.** Plain output redirection is refused, narrower than decision 3; it's in the Rulings above.
+- **(5) Quoted `-C` paths, fixed in `8eff2d3`.** The push detection missed a quoted `-C` path with a space.
+- **(6) Gaps in this file, fixed here:**
+  - the placeholders are filled;
+  - AC-3.3's blocking clause now has an example;
+  - pre-rebase commit IDs are mapped above.
+- **(7) Stale roadmap line, updated in the distillation.**
+- **(8) AC-2.5, already recorded in Story 2.** The third M = 3 run came from `main`, and the stop rule's margin was 1 s.
