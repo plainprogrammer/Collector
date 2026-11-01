@@ -172,3 +172,5 @@ Rulings by the maintainer. Later planning builds on these and doesn't ask them a
 | # | Question | Ruling |
 |---|---|---|
 | 34 | Do locations make the export format version 2, as ruling 32 says? | Yes: ruling 32 stands for the locations list (the places themselves, [spec 029](specs/029-manage-locations/spec.md) decision 1, [ADR 0023](adr/0023-locations-make-export-format-version-2.md)). Putting a lot in a location (item 10) is a further change to data the collector owns and raises the format to version 3. |
+
+<!-- Spec 035 AC-3.7 probe: a throwaway documentation-only change, never merged. -->
