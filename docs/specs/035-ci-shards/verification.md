@@ -1,6 +1,6 @@
 # Verification: `bin/ci` Groups, GitHub's RSpec Shards and a Documentation-Only Pre-Push Path (spec 035)
 
-**Spec:** [spec.md](spec.md) 1.0.0 · **Plan:** [plan.md](plan.md) · **Branch:** `035-ci-shards` · **PR:** [#149](https://github.com/plainprogrammer/Collector/pull/149) · **Issue:** [#145](https://github.com/plainprogrammer/Collector/issues/145)
+**Spec:** [spec.md](spec.md) 1.0.0 · **Plan:** plan (retired in `c2528219d9a5232483abb0a05dbbc1d7e3f14bd3`; read it with `git show c2528219d9a5232483abb0a05dbbc1d7e3f14bd3^:docs/specs/035-ci-shards/plan.md`) · **Branch:** `035-ci-shards` · **PR:** [#149](https://github.com/plainprogrammer/Collector/pull/149) · **Issue:** [#145](https://github.com/plainprogrammer/Collector/issues/145)
 
 Executed 2026-10-31 to 2026-11-01 in a cloud session, one implementer subagent per phase (Phases 1–5) and Phase 6 in the main session. Unless noted, local runs were on this branch, one at a time.
 
