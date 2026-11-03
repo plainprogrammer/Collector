@@ -7,7 +7,7 @@
 **Depends on:** [spec 032](../032-lot-in-a-location/spec.md) (a lot's location; merged), [spec 033](../033-location-on-tiles-and-rows/spec.md) (the place on tiles and rows; merged), [spec 006](../006-collection-list-view/spec.md) (the table, bulk mode and the selection tied to a filter)
 **Branch:** `037-filter-collection-by-location`
 **Issue:** [#47](https://github.com/plainprogrammer/Collector/issues/47) (roadmap item 12, theme C: locations)
-**Plan:** present once written (`plan.md` in this folder)
+**Plan:** [plan.md](plan.md)
 
 ---
 
