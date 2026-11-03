@@ -1,6 +1,6 @@
 # Feature 038: Store Currency per Account
 
-**Status:** Draft, awaiting the spec review and the maintainer's approval. The maintainer ruled four decisions on 2026-11-03, all as recommended: no export version change (decision 6), a Currency page linked from More (decision 4), `COLLECTOR_CURRENCY` kept as the default for new accounts only (decision 2) and an import's currency becoming the account's (decision 7).
+**Status:** Approved by the maintainer (2026-11-03) after the spec review (`review.md`, round 1 APPROVED WITH CHANGES, fixed in 0.2.0). The maintainer ruled four decisions on 2026-11-03, all as recommended: no export version change (decision 6), a Currency page linked from More (decision 4), `COLLECTOR_CURRENCY` kept as the default for new accounts only (decision 2) and an import's currency becoming the account's (decision 7).
 **Version:** 0.2.0
 **Created:** 2026-11-03
 **Last Updated:** 2026-11-03

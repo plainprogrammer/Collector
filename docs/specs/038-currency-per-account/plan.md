@@ -3,33 +3,39 @@
 **Spec:** [spec.md](spec.md) 0.2.0 (approved 2026-11-03)
 **ADR:** none. The maintainer chose no version change without an ADR (decision 6); ADR 0026 stays unused.
 
-Six phases, each tests first (red, then green), each ending in a passing `bin/rspec` of the files it touched and one Conventional Commit per step. Code blocks are strong drafts, not pre-run: where a run disagrees, the deviation is recorded as a ruling in the commit body. Phases 1 and 2 must land before 3 to 5; 3, 4 and 5 touch different files and are independent of each other; 6 is last.
+Four phases, each tests first (red, then green), each leaving `bin/rspec` green for the files it touched and the branch releasable, one Conventional Commit per step. Code blocks are strong drafts, not pre-run: where a run disagrees, the deviation is recorded as a ruling in the commit body.
 
-Order of files touched, so a parallel worker can be told what overlaps: phases 1–2 `config/`, `db/`, `app/models/account.rb`, helpers, the lot form; phase 3 `config/routes.rb`, a new controller and views, two nav files; phase 4 `app/models/collection_export.rb` and the format document; phase 5 `app/models/collection_import*`, `app/controllers/collections/imports_controller.rb`, the preview view and helper; phase 6 documents and the upgrade seed.
+The order is set by one fact: every reader of `Rails.configuration.x.currency` must move before the key goes, and the Coverage guard fails the moment `accounts` has a column the format document doesn't list. So the data layer lands whole (column, model, Coverage rows, export), with `x.currency` kept as a temporary alias; then every reader moves and the alias and the guard spec land in one commit; the Currency page comes last, because it is the only way an account's currency can differ from the instance's, so no half-moved reader can show a wrong value before then (plan review B1).
 
-## Phase 1: The column, the model and the default (spec FR-1, FR-3; AC-3.x, AC-4.x)
+File overlap, for a parallel worker: phase 1 `db/`, `config/initializers/`, `app/models/account.rb`, `collection_export.rb`, the format document; phase 2 helpers, `lots/_form`, `collection_import*`, the imports controller, the preview view; phase 3 `config/routes.rb`, a new controller and views, two navigation views and their specs; phase 4 the seed and documents. Phases 2 and 3 touch different files but 3 needs 2's guard in place, so they run in order.
+
+## Phase 1: The data layer, whole (spec FR-1, FR-3, FR-5; AC-3.x, AC-4.x, AC-5.x)
 
 **Tests first**
 
-1. `spec/migrations/add_currency_to_accounts_spec.rb` and `spec/migrations/set_account_currency_from_the_instance_spec.rb`, modelled on `spec/migrations/add_location_to_lots_spec.rb` (`:backup, :committed`, the Migrator, no application model):
-   - schema step: down then up leaves every other column and row; the column is `NOT NULL` with default `USD` (`ActiveRecord::Base.connection.columns("accounts")`); existing rows read `USD` (AC-4.1's precondition);
-   - data step with `ENV` stubbed (`stub_const("ENV", ENV.to_h.merge("COLLECTOR_CURRENCY" => "eur"))`; `allow(ENV).to receive(:fetch)` is the alternative if the first doesn't reach the migration): three accounts all become `EUR`; unset gives `USD`; ` eur ` gives `EUR`; `XYZ` raises naming `COLLECTOR_CURRENCY` and `"XYZ"` and leaves the accounts as they were (AC-4.1–4.3); a database with no account passes (AC-4.4); `down` changes no account (AC-4.5). These examples answer "does the migration run with the `up` guard"; they run the migration object directly (the boot check refuses first through `db:prepare`, plan review m2).
-2. `spec/models/account_spec.rb` gains: `Account.new.currency` is the default's code, and follows a stubbed `Rails.configuration.x.default_currency` (`allow(Rails.configuration.x).to receive(:default_currency).and_return(Collector::Currency.fetch!("EUR"))`, the way the old specs stubbed `:currency`); an account with `XYZ`, `eur` or blank is invalid; `currency_unit` answers the `Unit` (AC-3.1, AC-3.2, FR-1).
-3. `spec/models/user_spec.rb` (or a new `spec/models/user/command_spec.rb` if there is none): a user created through `create(:user)`, through `User::Command.call` and through `Registration` gets the stubbed default (AC-3.1). Admin creation goes through `User.new(...).save`, the same `build_account`, so one request example in phase 3's `spec/requests/admin/users_spec.rb` covers it.
-4. `spec/lib/collector/currency_spec.rb` line 14 becomes `Rails.configuration.x.default_currency` (AC-3.2); its boot-error example stays (AC-3.4); add a `strip.upcase` example for ` eur ` (AC-3.5).
+1. `spec/migrations/add_currency_to_accounts_spec.rb`, modelled on `spec/migrations/add_location_to_lots_spec.rb` (`:backup, :committed`, the Migrator, no application model; `around` ends with `up` if the column is missing and `Account.reset_column_information`, as that spec does for `Lot`, because `Account` now declares and validates the column): asserts `described_class.disable_ddl_transaction` is true (required: `remove_column` copies `accounts` on SQLite, which is safe only because that flag lets Rails turn foreign keys off for the copy, `sqlite3_adapter.rb`); down then up leaves every other column and every row; the column is `NOT NULL` with default `USD`.
+2. `spec/migrations/set_account_currency_from_the_instance_spec.rb`: call the object's `migrate(:up)` directly (the Migrator's `run` is a no-op in the test database, because schema load records every version) with `ENV` stubbed (`stub_const("ENV", ENV.to_h.merge("COLLECTOR_CURRENCY" => "eur"))`; `allow(ENV).to receive(:fetch).with("COLLECTOR_CURRENCY", "USD")` is the fallback if a Hash `ENV` breaks the example, and `ENV["COLLECTOR_CURRENCY"]` in the raise message must be stubbed with it): three accounts all become `EUR`; unset gives `USD`; ` eur ` gives `EUR`; `XYZ` raises naming `COLLECTOR_CURRENCY` and `"XYZ"` and leaves the accounts as they were; no account passes; `down` changes no account (AC-4.1–4.5).
+3. `spec/models/account_spec.rb` gains: `Account.new.currency` is the default's code and follows a stubbed `Rails.configuration.x.default_currency` (`allow(Rails.configuration.x).to receive(:default_currency).and_return(Collector::Currency.fetch!("EUR"))`); `XYZ`, `eur`, blank are invalid with the message "Choose one of the listed currencies."; `currency_unit` answers the `Unit`; and **AC-3.3**: an account created under the stubbed default `USD`, then with the stub returning `EUR`, still reads `USD` after `reload` (AC-3.1–3.3, FR-1).
+4. `spec/models/user_spec.rb` (if none, `spec/models/user/command_spec.rb`; find with `ls spec/models | grep user`): users made with `create(:user)`, `User::Command.call` and `Registration#save` each get the stubbed default (AC-3.1).
+5. `spec/lib/collector/currency_spec.rb` line 14 reads `Rails.configuration.x.default_currency` (AC-3.2); add a ` eur ` normalising example for `fetch!` (AC-3.5). `fetch!`'s error example stays; it tests `fetch!`, not the boot (AC-3.4's evidence in `verification.md` says so).
+6. `spec/models/collection_export_spec.rb:44`: `"currency" => account.currency`, plus an EUR account writing `EUR` with `format_version` 3, and two accounts in different currencies each exporting their own (AC-5.1, AC-5.2); plus an example that `ExportFormat::Rules::VERSIONS` is `[1, 2, 3]` and `CollectionExport::FORMAT_VERSION` is 3 (AC-5.3; the schemas and examples are untouched, so `rules_spec` and `export_format_examples_spec` staying green is the rest of the proof).
+7. `spec/export_format_document_spec.rb:77`: `"accounts" => "Exported"`. Run it red first: with the column and no Coverage rows, "every column of a table that isn't left out whole" fails (AC-5.4).
 
 **Code**
 
-- `db/migrate/20261103100001_add_currency_to_accounts.rb` (schema step). `accounts` is pointed at by many foreign keys, so, as `AddLocationToLots` does, the ADD COLUMN is raw SQL (no table copy), guarded, with no DDL transaction:
+- `db/migrate/20261103100001_add_currency_to_accounts.rb`:
 
   ```ruby
-  # Gives every account the currency its prices are shown in (spec 038 decision 1). The next migration carries the
-  # instance's current currency to it; this step's default is USD on every instance, so schema.rb is the same everywhere.
+  # Gives every account the currency its prices are shown in (spec 038 decision 1). The next migration carries the instance's
+  # current currency to it; this step's default is USD on every instance, so schema.rb is the same everywhere.
+  # Without a transaction: SQLite copies the table to drop a column, and with foreign keys enforced the copy's DROP TABLE would
+  # run the ON DELETE actions of every table that points at accounts. Rails turns enforcement off for the copy only outside a
+  # transaction (see AddLocationToLots).
   class AddCurrencyToAccounts < ActiveRecord::Migration[8.1]
     disable_ddl_transaction!
 
     def up
-      execute "ALTER TABLE accounts ADD COLUMN currency varchar NOT NULL DEFAULT 'USD'" unless column_exists?(:accounts, :currency)
+      add_column :accounts, :currency, :string, null: false, default: "USD" unless column_exists?(:accounts, :currency)
     end
 
     def down
@@ -38,9 +44,8 @@ Order of files touched, so a parallel worker can be told what overlaps: phases 1
   end
   ```
 
-  If a run shows `remove_column` copies the table and trips a foreign key (the lots migration's comment), the down step takes the same care that migration does; record the ruling.
-
-- `db/migrate/20261103100002_set_account_currency_from_the_instance.rb` (data step):
+  `add_column` with `null: false` and a default is a plain `ALTER TABLE .. ADD COLUMN` on SQLite (not a table copy).
+- `db/migrate/20261103100002_set_account_currency_from_the_instance.rb`:
 
   ```ruby
   # Carries the instance's current currency to every account, so an upgrade changes nothing a collector sees (spec 038
@@ -52,16 +57,15 @@ Order of files touched, so a parallel worker can be told what overlaps: phases 1
       code = ENV.fetch("COLLECTOR_CURRENCY", "USD").strip.upcase
       raise "COLLECTOR_CURRENCY #{ENV["COLLECTOR_CURRENCY"].inspect} is not supported; use one of #{CODES.join(", ")}" unless CODES.include?(code)
 
-      execute "UPDATE accounts SET currency = #{connection.quote(code)}"
+      execute ActiveRecord::Base.sanitize_sql_array([ "UPDATE accounts SET currency = ?", code ])
     end
 
     def down
     end
   end
   ```
-
-- `db/schema.rb`: run `bin/rails db:migrate`, then restore the cable, cache and queue schema noise and keep the version line (memory: *Migrate schema noise*). `accounts` gains `t.string "currency", default: "USD", null: false`.
-- `config/initializers/currency.rb`: `Rails.configuration.x.default_currency = Collector::Currency.fetch!(ENV.fetch("COLLECTOR_CURRENCY", "USD"))`; the comment now says "the currency a new account starts with (spec 038 decision 2)". `lib/collector/currency.rb`'s header comment names the account, not the instance (the module is unchanged otherwise).
+- `db/schema.rb`: `bin/rails db:migrate`, then restore the cable, cache and queue schema noise and keep the version line (memory: *Migrate schema noise*). Expect `t.string "currency", default: "USD", null: false` on `accounts`.
+- `config/initializers/currency.rb`: set `Rails.configuration.x.default_currency = Collector::Currency.fetch!(ENV.fetch("COLLECTOR_CURRENCY", "USD"))` and, **temporarily**, `Rails.configuration.x.currency = Rails.configuration.x.default_currency` with a comment "TEMPORARY until phase 2 moves the last reader (spec 038 plan)"; the main comment says the variable is the currency a new account starts with. `lib/collector/currency.rb`'s header names the account, and must not contain the text `x.default_currency` (phase 2's guard scans `lib/`).
 - `app/models/account.rb`:
 
   ```ruby
@@ -71,63 +75,112 @@ Order of files touched, so a parallel worker can be told what overlaps: phases 1
   # What a price of this account is shown with: the code and the symbol (spec 038 decision 1).
   def currency_unit = Collector::Currency.fetch!(currency)
   ```
+- `app/models/collection_export.rb:24`: `"currency" => @account.currency`.
+- `docs/export-format/README.md`: Currency section's "The code is the currency in force for the collector…" paragraph says it is the collector's own (the account's) and that no version changed; Versions' "Two changes are already expected" sentence loses #64 (the household sentence stays); Coverage: `accounts` row "Exported", why "Its `currency`; the other columns are left out"; the column table gains `| accounts.currency | currency | |`; "`currency` comes from no table yet…" becomes "`currency` is `accounts.currency`." Schemas, `examples/` and `**Format version:** 3` are not touched.
 
-  The validation message is a whole sentence, which `lot_error_messages`' rule (capitalised messages show as written) already treats as such; the Currency page reads `errors.messages_for(:currency)` directly.
+**Commits:** `feat(accounts): add currency to accounts`, `feat(accounts): carry the instance currency to every account`, `feat(accounts): start a new account in the instance's default currency`, `feat(export): write the account's currency`, `docs(export-format): the currency is the account's, version unchanged`.
 
-**Commits:** `feat(accounts): add currency to accounts`, `feat(accounts): carry the instance currency to every account`, `feat(accounts): start a new account in the instance's default currency`.
+## Phase 2: Every reader moves, and the old key goes (spec FR-4, FR-6; AC-1.3–1.5, AC-6.x)
 
-## Phase 2: Show prices in the account's currency (spec FR-4; AC-1.3 to AC-1.5)
+Order inside the phase: the display readers, then the import, then, in the last commit, the alias and the guard.
+
+### 2a. Show prices in the account's currency
 
 **Tests first**
 
-1. `spec/helpers/lots_helper_spec.rb` (new; `Current.session`-free: set `Current.user` as `spec/helpers/application_helper_spec.rb` does, read it first): `lot_price` writes `$12.50` for a USD account and `€12.50` after the account's currency is `EUR`; `lot_price` of an unpriced lot is `—`; `lot_line` of a priced lot ends in `€12.50` (the Move copies and refusal pages use it).
-2. Request specs: the card page's Your copies table and the collection table write `€12.50` for an EUR account (find the existing examples that assert `$12.50`, such as in `spec/requests/collection_spec.rb`, `spec/requests/catalog/entries_spec.rb`; add an `eur` context or a second example), the grid shows no `€` or `$`, the Move copies page (`spec/requests/lots/moves_spec.rb`) and the location removal refusal page (`spec/requests/locations_spec.rb`, the refusal examples) write `€12.50`. The lot form's label reads `Price paid per copy (EUR)` and its prefix `€` (`spec/requests/lots_spec.rb`).
-3. `spec/currency_reads_spec.rb` (the guard, decision 2; a source check, not a prose check, like `spec/footer_core_spec.rb`): `git grep`-free, using `Dir.glob` over `app/`, `lib/` and `config/`, fail on any `x.currency` read, and on `x.default_currency` outside `app/models/account.rb` and `config/initializers/currency.rb`:
-
-   ```ruby
-   require "rails_helper"
-
-   # Spec 038 decision 2: no price code reads the instance default. A renamed key would answer empty options (a nil symbol,
-   # so `$`), so the reads are removed and checked here instead.
-   RSpec.describe "Reads of the instance currency" do
-     let(:files) { Dir.glob(Rails.root.join("{app,lib,config}/**/*.{rb,erb}")).map { |path| Pathname(path).relative_path_from(Rails.root).to_s } }
-     let(:allowed) { %w[app/models/account.rb config/initializers/currency.rb] }
-
-     it "are left to Account and the initializer", :aggregate_failures do
-       offenders = files.reject { |file| allowed.include?(file) }.select { |file| Rails.root.join(file).read.match?(/x\.(default_)?currency\b/) }
-       expect(offenders).to be_empty
-       expect(Rails.root.join("app/models/account.rb").read).to include("default_currency")
-     end
-   end
-   ```
+- `spec/helpers/lots_helper_spec.rb` (new; there is no precedent for a signed-in helper spec: `Current` has only a `session` writer, so `Current.session = user.sessions.create!` in a `before`, reset by the suite's `Current` reset): `lot_price` writes `$12.50` for a USD account and `€12.50` once the account's currency is `EUR`; `—` for no price; `lot_line` of a priced lot ends in `€12.50`.
+- Request examples that add an EUR case beside the USD ones that stay green (the existing `$` assertions are on default USD accounts): `spec/requests/catalog/entries_show_spec.rb:161` (Your copies table), `spec/requests/collection_table_spec.rb:23` (table; and the grid, in `spec/requests/collections_spec.rb`, shows neither `$` nor `€`), `spec/requests/lot_moves_spec.rb` (Move copies page), the location removal refusal examples in `spec/requests/locations_spec.rb`, and `spec/requests/lots_spec.rb:42` (label `Price paid per copy (EUR)`, prefix `€`). The accounts are set with `user.account.update!(currency: "EUR")` (AC-1.3, AC-1.4).
 
 **Code**
 
 - `app/helpers/lots_helper.rb:22`: `unit: Current.account.currency_unit.symbol`.
 - `app/views/lots/_form.html.erb:26-27`: `Current.account.currency_unit.code` and `.symbol`.
-- `app/helpers/import_previews_helper.rb:8-9`: `import_lot_line` gains a required `currency:` keyword (a `Collector::Currency::Unit` or nil: a file's code that is not one of the 20 can't reach here, because it is refused) and uses `currency.symbol` for a price in the format's form; `ImportPreviewsHelper` callers in `collections/import_previews/show.html.erb` lines 47 and 71 pass `currency: Current.account.currency_unit` for removed lots and `currency: Collector::Currency.fetch!(@import.currency)` for problem rows (decision 8). The line-47 lot is held, so the account's current; line 71's row is the file's. (Phase 5 finishes the preview; this step only keeps `bin/rspec` green after the helper change, so make the two calls in this phase.)
-- No other file reads the old key (`git grep -n 'x\.currency' -- app lib config`), so the guard passes once the three call sites change. `app/models/collection_export.rb:24` and `app/models/collection_import.rb:207` change in phases 4 and 5; until then this phase's guard example is written but excluded from the run with the two files listed in a TEMPORARY allowance that phase 5 deletes (commit message says so). Alternatively land phases 2, 4 and 5's one-line read changes together; the worker decides, and records which.
+- `app/helpers/import_previews_helper.rb:8-9`: `import_lot_line` gains a required `currency:` keyword (a `Collector::Currency::Unit`, never nil); a price in the format's form is written with `currency.symbol`. Callers in `app/views/collections/import_previews/show.html.erb` line 47 (a held lot) pass `currency: Current.account.currency_unit`, line 71 (a file's row) `currency: Collector::Currency.fetch!(@import.currency)` (decision 8; a file's code is one of the 20 here, because 2b refuses the rest).
 
-**Commits:** `refactor(prices): show a price in the signed-in account's currency`, `test(prices): fail on a read of the instance currency`.
+**Commit:** `refactor(prices): show a price in the signed-in account's currency`.
 
-## Phase 3: The Currency page (spec decisions 4–5, FR-2; AC-1.1, AC-1.2, AC-1.6–AC-1.8, AC-2.x)
+### 2b. An import brings its currency in
 
-Read `docs/design-system/README.md` and the `collector-design-system` skill before the views (CLAUDE.md). The page copies the Rename location page's markup (`app/views/locations/edit.html.erb`): `c-pagehead`, `c-form`, `c-field`, `shared/field_errors`.
+**Tests first** (rewrite what decision 3 made, add the new)
 
-**Tests first**: `spec/requests/currencies_spec.rb`, `type: :request`, modelled on `spec/requests/locations_spec.rb`:
-
-- signed out: `get edit_currency_path` and `patch currency_path` redirect to sign-in and write nothing (AC-1.8);
-- `get edit_currency_path`: one select `account[currency]` with the 20 options in `Collector::Currency::SYMBOLS` order, each text `"EUR — €"` (symbol stripped; `CHF — CHF`, `SEK — kr` accepted), the account's own selected, a Save button; the sentence "Changing the currency doesn't convert…"; with 3 priced and 2 unpriced lots "3 lots have a price paid."; with one "1 lot has a price paid."; with none no count sentence (AC-1.2, AC-1.6);
-- `patch currency_path, params: { account: { currency: "EUR" } }` redirects (303) to `more_path` with notice "Prices are now shown in EUR.", `account.reload.currency == "EUR"`, every lot's `price_paid_cents` and `lot_key` unchanged (AC-1.3, AC-1.5);
-- each of `XYZ`, `eur`, `""`, `"EUR "` answers 422, shows the error "Choose one of the listed currencies." in `#account_currency-error`, shows the account's own code selected, and leaves the column (AC-1.7); a request without `account` answers 400;
-- tenancy: two users; one changes to EUR; the other's currency and the other's pages still `$` (AC-2.1); a request with `account: { currency: "EUR", id: other.account.id }` or `account_id:` changes only the signed-in account (AC-2.2);
-- `spec/requests/mores_spec.rb` (existing) and an appbar example: More lists "Currency" linking to `/currency/edit`, and the account menu has "Currency" before the separator (AC-1.1; find the existing example that asserts the menu's items and extend it);
-- `spec/requests/admin/users_spec.rb`: the users page lists no currency; `post admin_users_path, params: { user: { name:, email_address:, password:, currency: "EUR" } }` creates an account at the default (AC-2.3, AC-3.1).
-- `spec/routing/currency_routing_spec.rb`: `edit` and `update` only.
+- `spec/models/collection_import_spec.rb:95-96`: becomes "reads a file in another supported currency, even with no lots" (`plan.currency_change` is `from: "USD", to: "EUR"`), plus a refusal `[ "unsupported_currency", "/currency", "Collector can't show prices in XYZ." ]` for `currency: "XYZ"`; `usd` stays a schema refusal (line 87); a file in the account's own currency has no `currency_change` (AC-6.1, AC-6.6).
+- The `Plan` examples (find them: `git grep -n 'nothing_to_change' spec`): `nothing_to_change?` is false when only the currency differs and true when nothing does (AC-6.4, AC-6.5); the fingerprint differs between a plan with and without the change and between `EUR instead of USD` and `EUR instead of GBP`, and is unchanged for a plan without one.
+- `spec/models/collection_import/apply_spec.rb` (exists; its triggers at lines 727-735 are the pattern): applying a EUR file to a USD account sets `EUR` (AC-6.3); **AC-6.9:** a `BEFORE INSERT ON lots` trigger that raises (as lines 727-735 do) makes the apply fail after the currency write, and `account.reload.currency` is still `USD` (the assertion reloads: an account rolled back after a failed `update!` may keep the new value in memory); the account changed to GBP after the preview makes the apply `:stale` and the replanned plan says `EUR instead of GBP` (AC-6.7); the account changed to the file's own code with nothing else different answers `:nothing_to_change`; a currency-only file applies and changes only the currency (AC-6.5).
+- `spec/requests/collection_import_previews_spec.rb`: line 282's refusal list swaps the EUR row for `file([], currency: "XYZ") => "Collector can't show prices in XYZ."`; lines 429-450 (empty examples "in its own currency"): the `x.currency` stubs go, the EUR examples (`empty.json`, `empty-v2.json`) are previewed, applicable, say "Your prices would be shown in EUR instead of USD. Nothing is converted.", show `EUR` in `.c-pagehead__stats` and offer the apply (AC-6.2, AC-6.4); the same with `user.account.update!(currency: "EUR")` is "nothing to change" with no apply (AC-6.1); a removed lot's price is in the account's currency and a problem row's in the file's (AC-6.8).
+- The apply request spec (`ls spec/requests | grep import`): the notice for a currency-only apply is `Imported: 0 lots added, 0 changed, 0 removed; prices now shown in EUR`, and with locations the currency part comes last (AC-6.3).
+- `spec/models/collection_import/round_trip_spec.rb:145`: the stub goes; the account is created at its default; a file with no lots and no locations is "nothing to change" when its currency equals the account's and otherwise a currency-only plan that applies and exports the same collection including `currency`; every other example applies and exports the same collection; versions 1, 2 and 3 are all in the loop (AC-6.10, AC-6.11).
 
 **Code**
 
-- `config/routes.rb`, next to `resource :more`: `resource :currency, only: %i[edit update]`.
+- `app/models/collection_import.rb`:
+
+  ```ruby
+  CurrencyChange = Data.define(:from, :to)
+
+  # A well-formed code this instance can't show is refused as a whole (spec 038 decision 7); any of the 20 is brought in.
+  def currency_refusal
+    code = @data["currency"]
+    return if Collector::Currency::SYMBOLS.key?(code)
+
+    refuse("unsupported_currency", "/currency", "Collector can't show prices in #{code}.")
+  end
+
+  # What applying would do to the account's currency, nil when the file's is the account's.
+  def currency_change = (CurrencyChange.new(from: @account.currency, to: currency) if currency != @account.currency)
+  ```
+
+  `plan` and `replan` build `Plan.new(outcomes, view_change, locations, currency_change)`; `replan` begins with `@account.reload` (then the existing `user.reload`), so the account's currency is read afresh inside the apply's transaction.
+- `app/models/collection_import/plan.rb`: take and expose `currency_change`; `nothing_to_change?` adds `&& currency_change.nil?`; the fingerprint appends `parts << [ currency_change.from, currency_change.to ] if currency_change` after the locations part, so a plan without a change keeps its fingerprint.
+- `app/models/collection_import/apply.rb` `write!`: the currency is written **first**, before the deletes: `@account.update!(currency: plan.currency_change.to) if plan.currency_change` (inside the transaction; it validates), so a failure of any later statement is what AC-6.9's test exercises. Header comments of `Apply` and `Plan` name it.
+- `app/controllers/collections/imports_controller.rb` `notice_for`: `[ lots, location_sentence(plan.locations), ("prices now shown in #{plan.currency_change.to}" if plan.currency_change) ].compact.join("; ")`.
+- `app/views/collections/import_previews/show.html.erb`: the Profile section's condition gains `|| @import.currency_change`, and its list starts with `<li>Your prices would be shown in <%= @import.currency_change.to %> instead of <%= @import.currency_change.from %>. Nothing is converted.</li>` when set. The stale page renders the same view from the replanned plan.
+
+**Commits:** `feat(import): refuse a currency the instance can't show`, `feat(import): plan a currency change`, `feat(import): apply the file's currency and say so in the notice`, `test(import): the examples apply whatever currency they carry`.
+
+### 2c. The old key goes, with its guard
+
+**Test first:** `spec/currency_reads_spec.rb` (a source check, like `spec/footer_core_spec.rb`; the spec's decision 2). It is red while the alias remains:
+
+```ruby
+require "rails_helper"
+
+# Spec 038 decision 2: no price code reads the instance default. A renamed key would answer empty options (a nil symbol,
+# so `$`), so the reads are removed and checked here instead.
+RSpec.describe "Reads of the instance currency" do
+  let(:files) { Dir.glob(Rails.root.join("{app,lib,config}/**/*.{rb,erb}")).map { |path| Pathname(path).relative_path_from(Rails.root).to_s } }
+  let(:allowed) { %w[app/models/account.rb config/initializers/currency.rb] }
+
+  it "are left to Account and the initializer", :aggregate_failures do
+    offenders = files.reject { |file| allowed.include?(file) }.select { |file| Rails.root.join(file).read.match?(/\bx\.(default_)?currency\b/) }
+    expect(offenders).to be_empty
+    expect(Rails.root.join("config/initializers/currency.rb").read).not_to match(/\bx\.currency\b/)
+  end
+end
+```
+
+**Code:** delete the temporary `x.currency` line from the initializer. `git grep -n 'x\.currency' -- app lib config script spec ':!.kamal/secrets'` is empty (the specs that stubbed it were rewritten in 2b).
+
+**Commit:** `refactor(currency): remove the instance currency key and guard against its return`.
+
+## Phase 3: The Currency page (spec decisions 4–5, FR-2; AC-1.1, AC-1.2, AC-1.6–1.8, AC-2.x)
+
+Read `docs/design-system/README.md` and the `collector-design-system` skill before the views (CLAUDE.md).
+
+**Tests first**
+
+- `spec/requests/currencies_spec.rb` (`type: :request`, modelled on `spec/requests/locations_spec.rb`, `sign_in_as(user)`):
+  - signed out: `get edit_currency_path` and `patch currency_path` go to sign-in and write nothing (AC-1.8);
+  - `get edit_currency_path`: one select `account[currency]` with the 20 options in `Collector::Currency::SYMBOLS` order, each text `"EUR — €"` (symbol stripped; `CHF — CHF`, `SEK — kr` accepted), the account's own selected, a Save button; the sentence "Changing the currency doesn't convert…"; with 3 priced and 2 unpriced lots "3 lots have a price paid.", with one "1 lot has a price paid.", with none no count sentence (AC-1.2, AC-1.6);
+  - `patch currency_path, params: { account: { currency: "EUR" } }` redirects (303) to `more_path`, notice "Prices are now shown in EUR.", `account.reload.currency == "EUR"`, every lot's `price_paid_cents` and `lot_key` unchanged (AC-1.3, AC-1.5);
+  - each of `XYZ`, `eur`, `""`, `"EUR "` answers 422 with "Choose one of the listed currencies." in `#account_currency-error`, the account's own code selected and the column unchanged (AC-1.7); a request without `account` answers 400;
+  - tenancy: two users; one changes to EUR; the other's currency and pages stay `$` (AC-2.1); `account: { currency: "EUR", id: other.account.id }` and `account_id:` change only the signed-in account (AC-2.2).
+- `spec/routing/routes_spec.rb` (exists): `/currency/edit` and `PATCH /currency` route to `currencies#edit` and `#update`; nothing else is routed.
+- Navigation: More's list and the account menu are asserted exactly or by position in several existing examples; update each, reading it first: `spec/requests/admin/navigation_spec.rb:15,16,25,26` (More and menu link lists), `spec/requests/locations_spec.rb:334` (`.c-more li a` `first(4)`), `spec/requests/number_entries_spec.rb:34` (`li:nth-child(5)`), `spec/requests/shell_spec.rb:53,60,61` (`nth-child(3)`, menu `first(2)`, `nth-child(4)`). More gets "Currency" after Locations (which shifts later positions by one); the account menu gets it after Import and before the separator, so its first two items stay Export and Import. New expectations: More lists "Currency" linking to `/currency/edit`, and the account menu does too (AC-1.1).
+- `spec/requests/admin/users_spec.rb` (or the file that holds the admin user examples; `ls spec/requests/admin`): the users page lists no currency, and `post admin_users_path` with a `user[currency]` creates an account at the default (AC-2.3, AC-3.1).
+
+**Code**
+
+- `config/routes.rb`, after `resource :more`: `resource :currency, only: %i[edit update]`.
 - `app/controllers/currencies_controller.rb`:
 
   ```ruby
@@ -144,6 +197,8 @@ Read `docs/design-system/README.md` and the `collector-design-system` skill befo
       if @account.update(params.expect(account: [ :currency ]))
         redirect_to more_path, notice: "Prices are now shown in #{@account.currency}.", status: :see_other
       else
+        @messages = @account.errors.messages_for(:currency)
+        @account.restore_attributes # Current.account must not keep the rejected code
         @priced = priced_lots
         render :edit, status: :unprocessable_content
       end
@@ -155,96 +210,44 @@ Read `docs/design-system/README.md` and the `collector-design-system` skill befo
   end
   ```
 
-  On a failed update the select must show the persisted code: the view reads `@account.currency_in_database`.
+  A missing `account` raises `ParameterMissing` (400) from `params.expect`, as in the other controllers.
 - `app/helpers/currencies_helper.rb`: `currency_options` = `Collector::Currency::SYMBOLS.map { |code, symbol| [ "#{code} — #{symbol.strip}", code ] }`.
-- `app/views/currencies/edit.html.erb` (the Rename location page's shape): title "Currency · Collector"; `layouts/appbar` with `detail: true, back_path: more_path`; heading "Currency"; the two sentences (the count sentence only when `@priced.positive?`, with `pluralize`-style "lot has"/"lots have"); a `form_with model: @account, url: currency_path, method: :patch` holding a `c-field` with `form.label :currency, "Currency"`, `form.select :currency, currency_options, { selected: @account.currency_in_database }` inside `c-input` (use the markup of the lot form's finish select; copy it, don't invent a class), `aria-describedby` from `field_error_describedby("account_currency-error", messages)`, `shared/field_errors` with that id; Save and Cancel (Cancel to `more_path`). The tab bar partial as the other pages (`section: nil`).
-- `app/views/mores/show.html.erb`: `<li><%= link_to "Currency", edit_currency_path %></li>` after Locations. `app/views/layouts/_appbar.html.erb`: `<%= link_to "Currency", edit_currency_path, class: "c-menu__item" %>` before Export collection.
-- `docs/design-system/` needs no new pattern doc (no new CSS); say so in `verification.md`.
+- `app/views/currencies/edit.html.erb` (shaped like `app/views/locations/edit.html.erb`): title "Currency · Collector"; `render "layouts/appbar", section: nil, detail: true, back_path: more_path` (the partial reads the bare `section` local); heading "Currency"; the two sentences (count sentence only when `@priced.positive?`); `form_with model: @account, url: currency_path, method: :patch, class: "c-form"` holding a `c-field` (`c-field--invalid` when `@messages` is set) with `form.label :currency, "Currency", class: "c-field__label"`, a bare `form.select :currency, currency_options` as the lot form's finish select is (no `c-input` wrapper there; copy that markup), `aria-describedby` from `field_error_describedby("account_currency-error", @messages || [])`, `render "shared/field_errors", messages: @messages || [], id: "account_currency-error"`; Save and Cancel (to `more_path`); the tab bar with `section: nil`.
+- `app/views/mores/show.html.erb`: `<li><%= link_to "Currency", edit_currency_path %></li>` after Locations. `app/views/layouts/_appbar.html.erb`: `<%= link_to "Currency", edit_currency_path, class: "c-menu__item" %>` after Import collection.
+- No new pattern doc under `docs/design-system/components/` (no new CSS); `verification.md` says so.
 
 **Commits:** `feat(currency): add the Currency page`, `feat(currency): link the Currency page from More and the account menu`.
 
-## Phase 4: The export carries the account's currency (spec decision 6, FR-5; AC-5.x)
-
-**Tests first**
-
-- `spec/models/collection_export_spec.rb:44`: `"currency" => account.currency` and an example with an EUR account writing `EUR` and `format_version` 3; two accounts in different currencies each export their own (AC-5.1, AC-5.2).
-- `spec/export_format_document_spec.rb:77`: `"accounts" => "Exported"` (AC-5.4); no other expectation changes. Run it first and see it red: the Coverage guard also fails until the column table has the row (AC-3.4's "every column of a table that isn't left out whole").
-- `spec/models/export_format/rules_spec.rb`, `spec/export_format_examples_spec.rb`: unchanged and still green, which is AC-5.3's proof (versions `[1, 2, 3]`, schemas and examples untouched). Add one example to `spec/export_format_document_spec.rb` or `spec/models/collection_export_spec.rb`: `ExportFormat::Rules::VERSIONS` is `[1, 2, 3]` and `CollectionExport::FORMAT_VERSION` is 3.
-
-**Code**
-
-- `app/models/collection_export.rb:24`: `"currency" => @account.currency`. Header comment unchanged otherwise.
-- `docs/export-format/README.md` (the format's document): Currency section's "The code is the currency in force for the collector…" paragraph says it is the collector's account's currency and the version didn't change; Versions section's "Two changes are already expected" sentence loses #64 (the household sentence stays); Coverage: `accounts` row "Exported", why "Its `currency`; the other columns are left out"; the column table gains `| accounts.currency | currency | |`; the line "`currency` comes from no table yet…" becomes "`currency` is `accounts.currency`." The schemas, `examples/` and `**Format version:** 3` are not touched.
-
-**Commits:** `feat(export): write the account's currency`, `docs(export-format): the currency is the account's, version unchanged`.
-
-## Phase 5: An import brings its currency in (spec decision 7, FR-6; AC-6.x)
-
-**Tests first** (all in the existing files; rewrite the ones decision 3 made, add the new)
-
-- `spec/models/collection_import_spec.rb:95-96` ("refuses a file in another currency"): becomes "reads a file in another supported currency, even with no lots" (not refused, `plan.currency_change` is `from: "USD", to: "EUR"`), plus "refuses a well-formed unsupported code": `file([], currency: "XYZ")` refuses `[ "unsupported_currency", "/currency", "Collector can't show prices in XYZ." ]`; `currency: "usd"` still a schema refusal as line 87 has it (AC-6.6). A file in the account's own currency has `currency_change` nil (AC-6.1).
-- `spec/models/collection_import/plan_spec.rb` (or where `Plan` is specced; `git grep -n 'Plan.new\|nothing_to_change' spec`): `nothing_to_change?` is false when only the currency differs and true when nothing does (AC-6.4, AC-6.5); the fingerprint differs between a plan with `currency_change` and without, and between `EUR instead of USD` and `EUR instead of GBP`, and is unchanged for a plan without one (stored fingerprints don't all go stale on deploy).
-- `spec/models/collection_import/apply_spec.rb`: applying a EUR file to a USD account sets `EUR` in the same transaction as the lots (AC-6.3); an apply that fails (stub `CollectionImport::LocationChanges.write!` to raise, the way the existing rollback example does) leaves the currency (AC-6.9); the account's currency changed to GBP after the preview makes the apply `:stale` and the new plan says `EUR instead of GBP` (AC-6.7); the account changed to the file's own code with nothing else different answers `:nothing_to_change` (decision 7); a currency-only file applies and changes only the currency (AC-6.5).
-- `spec/requests/collection_import_previews_spec.rb`: line 282's refusal list: replace the EUR row with `file([], currency: "XYZ") => "Collector can't show prices in XYZ."`; lines 429-450 (the empty examples "in its own currency"): the `x.currency` stubs go; assert the empty example in EUR (`empty.json`, `empty-v2.json`, `valid/empty-v3.json`) is previewed, not refused, can be applied, says "Your prices would be shown in EUR instead of USD. Nothing is converted." and offers the apply (it is no longer "nothing to change"); add the same example with the account at EUR (`user.account.update!(currency: "EUR")`): "nothing to change", no apply (AC-6.1, AC-6.2, AC-6.4); the removed-lot line is in the account's currency and a problem row's in the file's (AC-6.8).
-- `spec/requests/collection_imports_spec.rb` (the apply request; find its name with `ls spec/requests | grep import`): the notice for a currency-only apply is "Imported: 0 lots added, 0 changed, 0 removed; prices now shown in EUR" (AC-6.3), and a lots-and-currency apply appends it after the locations part.
-- `spec/models/collection_import/round_trip_spec.rb:145`: the stub goes; the example creates the account at its default and applies; for a file with no lots and no locations the expectation is "nothing to change" if its currency equals the account's, and otherwise a plan that has only a currency change which applies and exports the same collection including `currency` (AC-6.10); every other example applies and exports the same collection. Version 1, 2 and 3 files are all in the loop (AC-6.11).
-- `spec/support/import_helpers.rb:20`, `spec/requests/collection_import_previews_spec.rb:21`, `spec/models/collection_import_spec.rb:25` and `spec/system/collection_import_preview_spec.rb:32` build files with `"currency" => "USD"`: unchanged.
-
-**Code**
-
-- `app/models/collection_import.rb`: replace `currency_refusal`:
-
-  ```ruby
-  # A well-formed code this instance can't show is refused as a whole (spec 038 decision 7); any of the 20 is brought in.
-  def currency_refusal
-    code = @data["currency"]
-    return if Collector::Currency::SYMBOLS.key?(code)
-
-    refuse("unsupported_currency", "/currency", "Collector can't show prices in #{code}.")
-  end
-  ```
-
-  Add `CurrencyChange = Data.define(:from, :to)` and
-  `def currency_change = (CurrencyChange.new(from: @account.currency, to: currency) if currency != @account.currency)`; `plan` and `replan` build `Plan.new(outcomes, view_change, locations, currency_change)`; `replan` starts with `@account.reload` (before `user.reload`), so the account's currency is read afresh inside the apply's transaction (plan review m4 of the spec's review).
-- `app/models/collection_import/plan.rb`: take `currency_change`, `attr_reader` it; `nothing_to_change?` adds `&& currency_change.nil?`; the fingerprint appends `parts << [ currency_change.from, currency_change.to ] if currency_change` after the locations part (so a plan without a change has the fingerprint it had).
-- `app/models/collection_import/apply.rb` `write!`: after `@account.user.update!(collection_view: …)` add `@account.update!(currency: plan.currency_change.to) if plan.currency_change` (inside the transaction; it validates, as the code is one of the 20). The header comment of `Apply` and `Plan` mention it.
-- `app/controllers/collections/imports_controller.rb` `notice_for`: build the parts as `[ lots, location_sentence(plan.locations), (“prices now shown in #{plan.currency_change.to}” if plan.currency_change) ].compact.join("; ")`.
-- `app/views/collections/import_previews/show.html.erb`: the Profile section's condition gains `|| @import.currency_change`, with `<li>Your prices would be shown in <%= @import.currency_change.to %> instead of <%= @import.currency_change.from %>. Nothing is converted.</li>` first in the list. The header line keeps showing the file's code. (This is a stateless read; the view reads no query.)
-- The stale page: `preview(result, "The collection or the file changed since you looked. This is what applying would do now.", :conflict)` renders the same view from the replanned plan, so "EUR instead of GBP" appears without more code; confirm in the example above.
-
-**Commits:** `feat(import): refuse a currency the instance can't show`, `feat(import): plan a currency change`, `feat(import): apply the file's currency and say so in the notice`, `test(import): the examples apply whatever currency they carry`.
-
-## Phase 6: The upgrade seed, the documents and the verification (spec Story 4, 7; Documents that change)
+## Phase 4: The upgrade seed, a backup example and the documents (spec Stories 4 and 7; Documents that change)
 
 **Tests and checks first**
 
-- `script/upgrade/seeds/next.rb`: after `grace = User.create!(...)` add `grace.account.update!(currency: "EUR")` and name it in the comment (AC-4.7). It runs on the code under test, which has the column. Check `script/upgrade/seed_exceptions.yml` lists no `accounts` entry that the new column needs (`git grep -n accounts script/upgrade/seed_exceptions.yml`); add one only if the harness's coverage check fails on it. `spec/script/` and `spec/backup_upgrade_spec.rb` stay green: the latter rolls back only `STEP=1`, so it rolls back the data step; whether it still proves the schema step reversible is something only a run confirms (spec 038 review), and if it is now vacuous for the column, record that as a finding for the maintainer, not a change to that spec.
-- `spec/backup_restored_instance_spec.rb` (or the closest backup request example): a backup of two accounts in different currencies restores to the same two currencies (AC-7.1); add it to the example that already round-trips accounts if one exists, else a new `:backup, :committed` example modelled on it.
+- `script/upgrade/seeds/next.rb`: after `grace = User.create!(...)` add `grace.account.update!(currency: "EUR")` and say so in the comment (AC-4.7); it runs on the code under test, which has the column. `git grep -n accounts script/upgrade/seed_exceptions.yml`: add an entry only if the harness's coverage check fails without one. AC-4.6 is proved by CI's `bin/upgrade-smoke`; `spec/backup_upgrade_spec.rb` rolls back only `STEP=1`, which is now the empty data step, so whether it still proves the schema step reversible is something only a run confirms (the migration spec of phase 1 does prove it); if it is vacuous for the column, record it in `verification.md` for the maintainer, with no change to that spec.
+- AC-7.1: in `spec/backup_restored_instance_spec.rb` (read it first; add to the example that round-trips accounts, else a new `:backup, :committed` example modelled on it): two accounts in USD and EUR restore with their own currencies.
 
-**Documents** (each states its source inline; `.claude/rules/documentation.md`)
+**Documents** (each statement with its source inline; `.claude/rules/documentation.md`)
 
-- `docs/architecture/collection-and-lots.md`: line 65 (price paid shown in the account's currency, `accounts.currency`, `Account#currency_unit`; any other code is refused; changing converts nothing; the Currency page); the `COLLECTOR_CURRENCY` row of its constants table (line 187) now "the default a new account starts with"; the Known limits/Sources line 223 and Sources add spec 038; a Changes row.
-- `docs/architecture/data-portability.md`: the export's `currency` source (line 66); refusal table row 8 becomes `unsupported_currency` with its reason; the Profile notes, plan, fingerprint and notice parts (line 154 and the preview-page list); "Decisions not in an ADR" line 191 and Sources line 215 rewritten; Sources add spec 038; a Changes row. The empty examples are no longer "nothing to change" for a USD account: update any sentence that says so.
-- `docs/north-star.md:40`: the breach sentence becomes "Currency was a collector's choice stored as an instance setting (spec 004); spec 038 stores it per account, and the setting is only the default a new account starts with."
-- `docs/backup-restore.md` (only if it repeats the symbol sentence), `README.md` lines 162, 166 and 376, `compose.yaml` line 9 and 25's comment, `config/deploy.yml` lines 63-64: the variable is "the currency a new account starts with"; collectors change theirs from More → Currency; changing the variable later changes no existing account; changing the currency converts nothing.
-- `docs/specs/README.md`: the 038 row's Status (Approved at the plan's approval, Shipped at merge, the distil step then Freezes it); the Superseded-by cells of 004, 006, 017, 022, 025, 028, 030, 032 name 038 (both directions, `.claude/rules/documentation.md`; the shipped specs themselves are not edited). `docs/roadmap.md`: line 78's #64 bullet marked built. `docs/specs/038-currency-per-account/verification.md`: each AC with its evidence, the review's "only a run could confirm" list, and the `## Implementation review` heading when the review runs.
-- No `CLAUDE.md` text names the currency, so it does not change (spec review m7).
+- `docs/architecture/collection-and-lots.md`: line 65 (price paid is shown in the account's currency, `accounts.currency`, `Account#currency_unit`; changing converts nothing; the Currency page); the constants row at line 187 (`COLLECTOR_CURRENCY` is the default a new account starts with); the #64 source line 223 and Sources; a Changes row.
+- `docs/architecture/data-portability.md`: line 66 (the export's `currency`); refusal row 8 becomes `unsupported_currency`; the preview's Profile line, the plan, the fingerprint and the notice; lines 191 and 215 (the #64 statements); any sentence that says an empty example is "nothing to change" in its own currency; Sources add spec 038; a Changes row.
+- `docs/north-star.md:40` and `docs/roadmap.md:144` (decision 17: "Only currency"): the breach closed by spec 038; roadmap line 78's #64 bullet marked built.
+- `README.md` lines 162, 166 and 376, `compose.yaml` (lines 9 and 25), `config/deploy.yml` (lines 63-64), and `docs/backup-restore.md` if it repeats the symbol sentence: the variable is the currency a new account starts with; collectors change theirs from More → Currency; changing the variable later changes no existing account; changing a currency converts nothing.
+- `docs/specs/README.md`: the 038 row's Status (Approved at this plan's approval; Shipped at merge) and the Superseded-by cells of 004, 006, 017, 022, 025, 028, 030 and 032 naming 038 (both directions; the shipped specs are not edited). `docs/specs/038-currency-per-account/verification.md`: each AC with its evidence, the review's "only a run could confirm" lists, and the `## Implementation review` heading when that review runs.
+- `CLAUDE.md` names no currency text, so it does not change.
 
-**Verification at the end:** `bin/rspec` on the phase files as each lands; then `bin/ci` once at the end of the branch (push in the background, memory: *Push in background*); `bin/rails zeitwerk:check`; `bin/brakeman`; `ruby script/upgrade/guard.rb` (the new migrations are additions, so it passes); and, on a machine with a container engine, `bin/upgrade-smoke auto <image>` is CI's job here.
+**Verification at the end:** `bin/rspec` on each phase's files as it lands; `bin/ci` once at the end of the branch (pushed in the background, memory: *Push in background*); `bin/rails zeitwerk:check`; `bin/brakeman`; `ruby script/upgrade/guard.rb` (the migrations are additions).
 
-**Commits:** `test(upgrade): seed a non-default currency`, `docs(currency): area docs, README and the format document`, `docs(specs): record spec 038's supersessions in the index`.
+**Commits:** `test(upgrade): seed a non-default currency`, `test(backup): a restore keeps each account's currency`, `docs(currency): area docs, README and the format document`, `docs(specs): record spec 038's supersessions in the index`.
 
 ## What only a run can confirm
 
-- The `ENV` stub reaches the migration object, and the `ALTER TABLE` and its `down` run without copying `accounts` (foreign keys).
-- `schema.rb` dumps `default: "USD", null: false` on every machine.
-- The `x.default_currency` stub works with `Rails.configuration.x` (it did for `:currency`).
-- Each moved example's old assertion (`$`) is found by the grep in phase 2; one may live in a system spec.
-- The stale page renders "EUR instead of GBP", and a `Plan` without a currency change fingerprints as before.
-- `spec/backup_upgrade_spec.rb` and `bin/upgrade-smoke` stay green; Brakeman stays clean on the new controller; no RuboCop offence in the new files.
+- That a Hash `ENV` stub reaches `ENV.fetch` inside the data migration and nothing else in the example breaks on it.
+- That `schema.rb` dumps `t.string "currency", default: "USD", null: false`, and that the down step's table copy passes with foreign keys on.
+- That the `x.default_currency` stub works on `Rails.configuration.x` (the old `:currency` stub did).
+- That an account rolled back after a failed `update!` is reloaded correctly in AC-6.9's example, and that the stale page renders "EUR instead of GBP".
+- That a plan without a currency change keeps its old fingerprint.
+- That `spec/backup_upgrade_spec.rb` and `bin/upgrade-smoke` stay green; Brakeman and RuboCop on the new files.
 
 ## Deviations and risks
 
-- Phase 2's guard spec and phases 4 and 5's one-line reads depend on each other; the worker chooses the order and records it.
-- The empty valid examples carry EUR, so for a default-USD account they now plan a currency change (spec decision 7); the specs that said "nothing to change in its own currency" change as phase 5 lists, and the format's own document isn't touched by this (the examples are unchanged).
-- Stored import uploads at deploy: their fingerprints are for plans without a currency part and stay valid when the account's currency equals the file's (the common case); one whose currency differs shows as stale and is re-previewed. Accepted.
+- The empty valid examples carry EUR, so for a default-USD account they now plan a currency change (spec decision 7); the specs that said "nothing to change in its own currency" change as phase 2b lists. The format document's examples are not touched.
+- Stored import uploads at deploy keep valid fingerprints when the account's currency equals the file's (the common case); one whose currency differs shows as stale and is previewed again. Accepted.
