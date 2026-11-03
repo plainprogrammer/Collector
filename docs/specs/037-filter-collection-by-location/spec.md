@@ -1,7 +1,7 @@
 # Feature 037: Filter the Collection by Location
 
-**Status:** Draft, revised after the first spec review (awaiting the maintainer's approval); decisions 1, 3, 5 and 6 were ruled by the maintainer on 2026-11-03 as recommended
-**Version:** 0.2.0
+**Status:** Approved by the maintainer (2026-11-03) at 0.2.0; 0.2.1 corrects the wording of AC-5.8 found while planning; decisions 1, 3, 5 and 6 were ruled by the maintainer on 2026-11-03 as recommended
+**Version:** 0.2.1
 **Created:** 2026-11-03
 **Last Updated:** 2026-11-03
 **Depends on:** [spec 032](../032-lot-in-a-location/spec.md) (a lot's location; merged), [spec 033](../033-location-on-tiles-and-rows/spec.md) (the place on tiles and rows; merged), [spec 006](../006-collection-list-view/spec.md) (the table, bulk mode and the selection tied to a filter)
@@ -15,6 +15,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.2.1 | 2026-11-03 | AC-5.8 only: the refusal's wording. When the rendered location still matches the stored selection, a ticked header gives the existing "None of the selected items are in your collection any more."; when it doesn't, the selection restarts and the answer is "Select at least one item.". Nothing is removed either way; no decision changes (found tracing `SelectionsController#act` for the plan) |
 | 0.2.0 | 2026-11-03 | First spec review (Opus, read-only), all findings taken: fail-closed bulk resolution (B1, decision 7, AC-5.8, FR-1, FR-4), the canonical stored value (decision 1, M1), which value bulk actions use (decision 6, M2), submitted `location=` (FR-3, M3), refusal re-renders, post-removal restart and bulk pagers (AC-4.3, AC-5.6, M4), the supersessions (M5, Supersedes), and minor wording and checks |
 | 0.1.0 | 2026-11-03 | First draft from issue #47, specs 004 (Story 11), 006 (FR-4), 032 and 033, and the maintainer's rulings on decisions 1, 3, 5 and 6 |
 
@@ -135,7 +136,7 @@ As a collector filing my collection, I want to see the cards I haven't placed.
 - [ ] **AC-5.5** Given a stored selection under a location that has been removed When the selection's lots are read Then none are selected, and the confirm and refusal pages for it behave as for an empty selection (decision 7).
 - [ ] **AC-5.6** Given the confirm pages, Cancel, Back and the redirects after Set condition and Remove Then they return to the bulk table under the same location filter, name filter, sort and page (spec 006 AC-6.5, AC-7.2, AC-7.3), and Undo of a removal returns to the collection URL it carries, location included (spec 006 AC-7.4). The bulk pagers and sort headers (`go=<url>` buttons) carry it, a refused action's 422 re-render ("Select at least one item.", "None of the selected items are in your collection any more.", an Undo refused) shows the same location filter, select and empty sentence, and the selection after a removal is under the same location, so the next submission doesn't restart it.
 - [ ] **AC-5.7** Done returns to the saved view under the same location and name filters and sort (spec 006 AC-4.5).
-- [ ] **AC-5.8** Given a bulk page rendered under location L, L is removed in another tab, and the collector ticks the header and presses Remove Then nothing is removed: the submission is under a location that no longer matches the selection's, the selection restarts with nothing selected, and the answer is "Select at least one item." (422), never a removal under all locations.
+- [ ] **AC-5.8** Given a bulk page rendered under location L, L is removed in another tab, and the collector ticks the header and presses Remove Then nothing is removed and the answer is a 422 refusal, never a removal under all locations: "None of the selected items are in your collection any more." when the rendered location still matches the stored selection (its predicate matches no lot), "Select at least one item." when it doesn't (the selection restarts with nothing selected).
 
 ### Story 6: The control, and values that don't belong
 - [ ] **AC-6.1** Given an account with no location Then the page shows no Location select, in both modes, and `location=<anything>` is ignored with 200: spec 033's page.
