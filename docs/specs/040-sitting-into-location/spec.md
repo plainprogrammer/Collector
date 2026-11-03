@@ -1,7 +1,7 @@
 # Feature 040: Scan a Sitting into a Location
 
-**Status:** Draft (awaiting spec review and the maintainer's approval)
-**Version:** 0.2.0
+**Status:** Approved by the maintainer (2026-11-03) at 0.2.0, after one independent review (`review.md`)
+**Version:** 0.2.1
 **Created:** 2026-11-03
 **Last Updated:** 2026-11-03
 **Depends on:** [spec 032](../032-lot-in-a-location/spec.md) (a lot's location is part of its identity; merged), [spec 009](../009-card-scanner-confirm-flow/spec.md) (the scanner's sitting; merged) and [spec 034](../034-location-in-typed-entry/spec.md) (the pattern for naming a place; merged)
@@ -14,6 +14,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.2.1 | 2026-11-03 | Approved by the maintainer; status line only. |
 | 0.2.0 | 2026-11-03 | From the first independent review: the empty-sitting and Done states, the migration's SQLite pattern, AC-4.x statuses, citations and supersessions; Enter-in-select dropped. |
 | 0.1.0 | 2026-11-03 | Written from issue #56, roadmap ruling 20, specs 009, 032 and 034, and the maintainer's answers of 2026-11-03 (decisions 1, 2 and 6). |
 
