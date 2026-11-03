@@ -30,3 +30,18 @@
 - The baseline was GitHub's green full run of `ac77b30` (same code as this tree; later commits were documents), not a local rerun. Cost if wrong: a red baseline found late; the full `bin/ci` above ran on the final tree.
 - Implementers ran on Opus, the maintainer's standing preference. Cost: none.
 - Each implementer's commit body carries the plan section's heading verbatim, so restart detection can match it.
+
+## Implementation review
+
+SPEC-ALIGNED
+
+Mode B (`sdd-review`), 2026-11-03, a read-only Opus review of the branch at `869e287`. Every functional requirement (FR-1 to FR-3) and every acceptance criterion that can be checked before the merge passes: AC-1.1, AC-1.2, AC-2.1 to AC-2.5, AC-2.9, AC-2.11 are met by the examples in `spec/advisory_response_spec.rb` (each walked by hand against the real YAML), and AC-3.1 to AC-3.4 by the area doc and the README, read. No implementation exceeds the spec, falls short of it or differs from it. The reviewer's own runs: `bin/rspec spec/advisory_response_spec.rb` gave `8 examples, 0 failures` and `bin/rubocop spec/advisory_response_spec.rb` gave `1 file inspected, no offenses detected`.
+
+Six criteria are the maintainer's after the merge, by the spec's own design (AC-1.3, AC-1.4, AC-2.6, AC-2.7, AC-2.8, AC-2.10); each has a concrete route in the plan's Quickstart Validation and a pending row above.
+
+Optional follow-ups the review raised, neither blocking, neither done (an optional finding does not start a push):
+
+- Tighten the examples: also reject a job-level `continue-on-error` (AC-2.2 names the steps, but a job-level key would hide a failure the same way), and compare the second audit step's `if:` exactly instead of by substring (AC-2.3).
+- The README's sentence "Dependabot keeps gems and GitHub Actions up to date." could say that version updates cover direct gems only; the maintainer's choice (AC-3.4).
+
+Could not be confirmed offline: GitHub's evaluation of the second audit step's `if:` at run time (the first run after the merge shows it), that `setup-ruby` fails its own step when `bundle install` fails, GitHub's schedule delays and the 60-day disabling, who GitHub notifies of a scheduled run, whether Dependabot accepts the group, and the deferred question of why security updates opened nothing.
