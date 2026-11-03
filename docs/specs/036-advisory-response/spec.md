@@ -6,6 +6,7 @@
 **Last Updated:** 2026-11-03
 **Branch:** `claude/happy-fermi-y30wzq` (the cloud session's designated branch; the convention's `036-advisory-response` is not used because the session is bound to this name)
 **Issue:** [#164](https://github.com/plainprogrammer/Collector/issues/164)
+**Frozen:** the current rules are in [`release-and-deploy.md`](../../architecture/release-and-deploy.md) (whole spec); see the [specs index](../README.md)
 
 ---
 
