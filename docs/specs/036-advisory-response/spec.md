@@ -1,7 +1,7 @@
 # Feature 036: Advisory Response for Locked Dependencies
 
-**Status:** Draft
-**Version:** 0.2.1
+**Status:** Approved by the maintainer (2026-11-03), after two Mode A reviews
+**Version:** 1.0.0
 **Created:** 2026-11-03
 **Last Updated:** 2026-11-03
 **Branch:** `claude/happy-fermi-y30wzq` (the cloud session's designated branch; the convention's `036-advisory-response` is not used because the session is bound to this name)
@@ -13,6 +13,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.0.0 | 2026-11-03 | Approved by the maintainer, with the Dependabot-alerts question left deferred and owned (Open Questions, Decision 4). Status and version only; no requirement, criterion or decision changes |
 | 0.2.1 | 2026-11-03 | Revised after the second Mode A review of 0.2.0 (NEEDS REVISION, no blocking finding; each finding checked). **The repository is public, not private:** 0.2.0 said "private now (ADR 0008)" without checking the live state, so the 60-day disabling of an idle scheduled workflow and the public run logs now apply (Error Scenarios, NFR Security; removed from Out of Scope). **AC-2.10** names its route (a commit the maintainer authors and pushes to the unprotected `main`) and updates the area doc's schedule row in the same commit. **AC-2.3 and AC-2.9** are rewritten so the YAML can show them and so they don't contradict each other (an audit step runs only after a successful setup, and the second runs after the first fails); AC-2.9 joins the RSpec list. **AC-2.11** added for the rule against a cached advisory database. **AC-2.6's** reason for the order is restated as a precaution, not a documented rule. Clarified AC-1.2, AC-2.3's trigger and the open question's handling (deferred, owned, not blocking). No change of intent (PATCH) |
 | 0.2.0 | 2026-11-03 | Revised after the Mode A review of 0.1.0 (NEEDS REVISION; each finding checked against the repository and GitHub's documentation) and the maintainer's rulings of the same day (Decisions 2, 7–9). **FR-2** audits the commit a run is on, not always the default branch, which AC-2.6's hand run needs; the verification order is stated (AC-2.7 before AC-2.6). **Importmap:** its audit checks nothing while no pin carries a version, so the claims that assumed otherwise are removed (Goal 1, Error Scenarios, NFRs, FR-2) and Decision 2's premise is corrected. **Facts corrected:** 12 of the 16 Dependabot pull requests were opened on a Tuesday and 4 on one Wednesday; security updates opened nothing for sqlite3 either, so the open question covers all five gems. **Added:** the cron's time (Decision 8), the notification recipient's post-merge step (AC-2.10, Decision 7), the Named-constants row (FR-3), a "never a cached advisory database" rule, a setup-failure criterion (AC-2.9), the grouped-security-updates repository setting and the issue (Decision 9). Open question about the notification recipient resolved by Decision 7 |
 | 0.1.0 | 2026-11-03 | First draft, from the diagnosis of the 2026-11-03 blockade (PRs [#157](https://github.com/plainprogrammer/Collector/pull/157)–[#162](https://github.com/plainprogrammer/Collector/pull/162)) and the maintainer's rulings of the same day (Decisions 1–6) |
