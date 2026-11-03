@@ -1,7 +1,7 @@
 # Feature 036: Advisory Response for Locked Dependencies
 
 **Status:** Draft
-**Version:** 0.2.0
+**Version:** 0.2.1
 **Created:** 2026-11-03
 **Last Updated:** 2026-11-03
 **Branch:** `claude/happy-fermi-y30wzq` (the cloud session's designated branch; the convention's `036-advisory-response` is not used because the session is bound to this name)
@@ -13,6 +13,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.2.1 | 2026-11-03 | Revised after the second Mode A review of 0.2.0 (NEEDS REVISION, no blocking finding; each finding checked). **The repository is public, not private:** 0.2.0 said "private now (ADR 0008)" without checking the live state, so the 60-day disabling of an idle scheduled workflow and the public run logs now apply (Error Scenarios, NFR Security; removed from Out of Scope). **AC-2.10** names its route (a commit the maintainer authors and pushes to the unprotected `main`) and updates the area doc's schedule row in the same commit. **AC-2.3 and AC-2.9** are rewritten so the YAML can show them and so they don't contradict each other (an audit step runs only after a successful setup, and the second runs after the first fails); AC-2.9 joins the RSpec list. **AC-2.11** added for the rule against a cached advisory database. **AC-2.6's** reason for the order is restated as a precaution, not a documented rule. Clarified AC-1.2, AC-2.3's trigger and the open question's handling (deferred, owned, not blocking). No change of intent (PATCH) |
 | 0.2.0 | 2026-11-03 | Revised after the Mode A review of 0.1.0 (NEEDS REVISION; each finding checked against the repository and GitHub's documentation) and the maintainer's rulings of the same day (Decisions 2, 7–9). **FR-2** audits the commit a run is on, not always the default branch, which AC-2.6's hand run needs; the verification order is stated (AC-2.7 before AC-2.6). **Importmap:** its audit checks nothing while no pin carries a version, so the claims that assumed otherwise are removed (Goal 1, Error Scenarios, NFRs, FR-2) and Decision 2's premise is corrected. **Facts corrected:** 12 of the 16 Dependabot pull requests were opened on a Tuesday and 4 on one Wednesday; security updates opened nothing for sqlite3 either, so the open question covers all five gems. **Added:** the cron's time (Decision 8), the notification recipient's post-merge step (AC-2.10, Decision 7), the Named-constants row (FR-3), a "never a cached advisory database" rule, a setup-failure criterion (AC-2.9), the grouped-security-updates repository setting and the issue (Decision 9). Open question about the notification recipient resolved by Decision 7 |
 | 0.1.0 | 2026-11-03 | First draft, from the diagnosis of the 2026-11-03 blockade (PRs [#157](https://github.com/plainprogrammer/Collector/pull/157)–[#162](https://github.com/plainprogrammer/Collector/pull/162)) and the maintainer's rulings of the same day (Decisions 1–6) |
 
@@ -67,7 +68,7 @@ When several advisories land together, a fix pull request per gem cannot pass: e
 **Acceptance criteria:**
 
 - [ ] **AC-1.1** Given `.github/dependabot.yml` When it is parsed Then its `bundler` entry defines a group whose `applies-to` is `security-updates` and whose `patterns` is `["*"]`
-- [ ] **AC-1.2** Given `.github/dependabot.yml` When it is parsed Then the `bundler` entry's `schedule.interval` is still `weekly` and its `open-pull-requests-limit` is still `10`, the `github-actions` entry is unchanged, and the group applies to no version updates
+- [ ] **AC-1.2** Given `.github/dependabot.yml` When it is parsed Then the `bundler` entry's `schedule.interval` is still `weekly` and its `open-pull-requests-limit` is still `10` and the `github-actions` entry is unchanged
 - [ ] **AC-1.3** Given the change is merged When Dependabot next reads the repository Then Insights, Dependency graph, Dependabot shows the `bundler` ecosystem's last job with no configuration error (recorded by reading, in `verification.md`). This shows that the file is valid, not that the group works; editing the file also starts a version-update run, which may open pull requests
 - [ ] **AC-1.4** Given two or more locked gems have advisories and Dependabot opens security-update pull requests for them When the pull requests appear Then the Ruby gems' security updates are in one pull request (observed when it next happens and then recorded in `verification.md`; the spec does not wait for it, because it needs an advisory)
 
@@ -81,14 +82,15 @@ When several advisories land together, a fix pull request per gem cannot pass: e
 
 - [ ] **AC-2.1** Given the new workflow file When it is parsed Then its triggers are exactly one `schedule` entry that runs once a day, at a minute other than 0, and `workflow_dispatch`, and it does not run on `push` or `pull_request`
 - [ ] **AC-2.2** Given the workflow When it is parsed Then one job runs `bin/bundler-audit` and `bin/importmap audit` as separate steps, neither step has `continue-on-error`, and neither command is followed by anything that hides its exit status
-- [ ] **AC-2.3** Given the first audit step fails When the job continues Then the second audit step still runs, unless the run was cancelled, so one run lists the advisories of both
+- [ ] **AC-2.3** Given the workflow When it is parsed Then the second audit step runs after the first even when the first fails, and runs only when every setup step succeeded and the run was not cancelled, so one run lists the advisories of both
 - [ ] **AC-2.4** Given the workflow When it is parsed Then its top-level `permissions` are exactly `contents: read` and its job asks for nothing wider, every `uses:` line is pinned to a full commit SHA with its version in a trailing comment, and every action is one `ci.yml` already uses at the same SHA
 - [ ] **AC-2.5** Given the workflow When it is parsed Then the job has a timeout of 10 minutes or less
-- [ ] **AC-2.6** Given a throwaway branch cut from `main` after the merge, pushed by the maintainer, whose `Gemfile.lock` locks a gem version with a published advisory When the workflow is started by hand against that branch Then the run fails and its log lists the gem, its locked version, the advisory and the fixed version (verified after merge and after AC-2.7, and recorded in `verification.md`; GitHub allows a workflow to be started against another ref only once it has run)
+- [ ] **AC-2.6** Given a throwaway branch cut from `main` after the merge, pushed by the maintainer, whose `Gemfile.lock` locks a gem version with a published advisory When the workflow is started by hand against that branch Then the run fails and its log lists the gem, its locked version, the advisory and the fixed version (verified after merge, and recorded in `verification.md`; GitHub documents that a workflow started by hand must exist on the default branch, which the merge satisfies, and the run of AC-2.7 comes first as a precaution, not a documented rule)
 - [ ] **AC-2.7** Given `main` has no advisories When the workflow is started by hand on `main`, the first run after the merge Then the run passes
 - [ ] **AC-2.8** Given the failed hand run of AC-2.6 When the maintainer opens the repository's Actions tab Then the run is listed as failed, and the maintainer, who started it, was notified by GitHub as their notification settings for Actions say (recorded in `verification.md`). This shows the settings work, not who a scheduled run notifies (AC-2.10)
-- [ ] **AC-2.9** Given checkout, Ruby setup or gem installation fails When the job ends Then the run is red and neither audit is reported as passed
-- [ ] **AC-2.10** Given the workflow is merged When the maintainer makes a commit of their own that changes the workflow's cron schedule (for example, to another minute of the same hour) Then `main` holds that commit, so GitHub counts the maintainer as the person to notify of scheduled runs (GitHub's documented rule; the effect is seen only at the first scheduled run, so the criterion is the commit, recorded in `verification.md`)
+- [ ] **AC-2.9** Given the workflow When it is parsed Then neither audit step can run unless checkout, Ruby setup and gem installation all succeeded, so a failed setup leaves the run red and no audit step reports a pass
+- [ ] **AC-2.10** Given the workflow is merged When the maintainer authors a commit of their own that changes the workflow's cron schedule (for example, to another minute of the same hour) and updates the area doc's schedule row to match, and pushes it to `main` themselves Then `main` holds that commit, so GitHub counts the maintainer as the person to notify of scheduled runs (GitHub's documented rule; the effect is seen only at the first scheduled run, so the criterion is the commit, recorded in `verification.md`). `main` has no branch protection, so a direct push works, and the pre-push hook that runs `bin/ci` belongs to Claude Code, not to git
+- [ ] **AC-2.11** Given the workflow When it is parsed Then it keeps no copy of the Ruby advisory database between runs: no cache step names the database's directory, or the gem audit step asks for an update
 
 ### Story 3: The response to a red audit is written down
 
@@ -160,6 +162,7 @@ A workflow file, separate from `ci.yml`, runs the two audits once a day and on r
 - The workflow's token is `contents: read`. It uses no secret and writes nothing.
 - Its actions are pinned to a full commit SHA, kept current by Dependabot's `github-actions` updates (area doc rule on pinning; issue #132).
 - It reads advisory data from the sources the audits already use (the Ruby advisory database and, once a pin carries a version, the importmap audit's service), and adds no new one.
+- Its run logs are public, as the repository is. They hold only what the public lockfile and the public advisories already say.
 
 ### Reliability
 
@@ -173,7 +176,7 @@ A workflow file, separate from `ci.yml`, runs the two audits once a day and on r
 
 ### Testability
 
-- The file criteria (AC-1.1, AC-1.2, AC-2.1 to AC-2.5) are RSpec examples that parse the YAML, as spec 012's criteria for `ci.yml` and `ghcr-cleanup.yml` are (`spec/image_publishing_spec.rb`). The criteria that need GitHub (AC-1.3, AC-1.4, AC-2.6 to AC-2.8, AC-2.10) are verified by reading or observing, and recorded in `verification.md`. The document criteria (Story 3) are verified by reading (`.claude/rules/testing.md`).
+- The file criteria (AC-1.1, AC-1.2, AC-2.1 to AC-2.5, AC-2.9, AC-2.11) are RSpec examples that parse the YAML, as spec 012's criteria for `ci.yml` and `ghcr-cleanup.yml` are (`spec/image_publishing_spec.rb`). The criteria that need GitHub (AC-1.3, AC-1.4, AC-2.6 to AC-2.8, AC-2.10) are verified by reading or observing, and recorded in `verification.md`. The document criteria (Story 3) are verified by reading (`.claude/rules/testing.md`).
 
 ## Error Scenarios
 
@@ -190,6 +193,7 @@ A workflow file, separate from `ci.yml`, runs the two audits once a day and on r
 | The repository's "Grouped security updates" setting is on, or a version-update pull request is already open for a gem the group also updates | Not verified: Dependabot's documentation says the setting combines with the file's groups and may close open pull requests and open grouped ones. Recorded in `verification.md` if seen |
 | GitHub starts the scheduled run late, or drops one | The next day's run catches the same advisory; no promise is made about a single run |
 | The daily run fails and nobody reads the notification | The failed run stays listed in the Actions tab, and the next pull request's `checks` run fails too (the existing gate) |
+| GitHub disables the scheduled workflow after 60 days without repository activity (the repository is public; GitHub's documentation) | Daily runs stop without a failed run. The next pull request's `checks` still gate, and re-enabling the workflow in the Actions tab restarts it and, by GitHub's rule, makes whoever re-enables it the recipient (Decision 7) |
 
 ## Decisions
 
@@ -201,13 +205,13 @@ Rulings of the maintainer, 2026-11-03, in the session that diagnosed the blockad
 4. **The cause of the silent security updates is unknown,** and stays an open question. The daily audit and the documented response are the safety net until it is answered.
 5. **The full SDD flow** (spec, plan, review, execution) is used, though the change is small.
 6. **Scope:** grouped security updates and the daily audit. `allow: indirect` for version updates is not included.
-7. **The notification recipient is the maintainer, by a post-merge commit of their own** that changes the workflow's cron schedule (AC-2.10). GitHub notifies the user who initially created a scheduled workflow, or who later changes its cron syntax or re-enables it (documented), and the file arrives through a pull request opened by the cloud session's GitHub integration, so which account counts as the creator isn't known. The failed run in the Actions tab and the next pull request's red `checks` stay as backstops.
+7. **The notification recipient is the maintainer, by a post-merge commit of their own** that changes the workflow's cron schedule and updates the area doc's schedule row to match, pushed by the maintainer to `main` (AC-2.10). GitHub notifies the user who initially created a scheduled workflow, or who later changes its cron syntax or re-enables it (documented), and the file arrives through a pull request opened by the cloud session's GitHub integration, so which account counts as the creator isn't known. The failed run in the Actions tab and the next pull request's red `checks` stay as backstops.
 8. **The schedule is daily at 05:17 UTC to start with** (a judgement call, to be changed by the maintainer's own commit under Decision 7): off the hour, because GitHub delays scheduled runs at the start of every hour, and before the working day.
 9. **An issue was opened** ([#164](https://github.com/plainprogrammer/Collector/issues/164), housekeeping, on the 1.0 milestone), and the roadmap's housekeeping lane gets a line for it, as the roadmap's tracking rule asks. The implementing pull request closes it.
 
 ## Open Questions
 
-- [NEEDS CLARIFICATION: why did Dependabot's security updates open no pull request for any of the five gems (addressable, loofah, nokogiri, rails-html-sanitizer, and sqlite3, which is direct)? The maintainer can read it from Security, Dependabot (filter Closed) or Insights, Dependency graph, Dependabot. If no alert was created, Story 1's group is inert; the candidate then is `allow: indirect` with a group, which Decision 6 leaves out, and this spec would need an update first (`sdd-spec-update`). Not blocking for the plan: the daily audit and the documented response work either way (Decision 4)]
+- **Deferred, unanswered (Decision 4): why did Dependabot's security updates open no pull request for any of the five gems** (addressable, loofah, nokogiri, rails-html-sanitizer, and sqlite3, which is direct)? **Owner:** the maintainer, who can read it from Security, Dependabot (filter Closed) or Insights, Dependency graph, Dependabot. **What each answer does:** the answer is recorded in `verification.md`. If an alert existed and Dependabot reported an error, the error's text goes there and Story 1 stands. If no alert was created, Story 1's group is inert; `sdd-spec-update` follows before any work on `allow: indirect`, which Decision 6 leaves out. **Why it does not block the plan:** no requirement depends on the answer; the daily audit (Story 2) and the written response (Story 3) work either way. The marker is left off on purpose, because the skill rule is that an approved spec has no `[NEEDS CLARIFICATION]` item, and this one changes no requirement; the maintainer can overrule that at approval.
 
 ## Out of Scope (Future Considerations)
 
@@ -216,4 +220,4 @@ Rulings of the maintainer, 2026-11-03, in the session that diagnosed the blockad
 - A scheduled run of `bin/brakeman` or of the whole of `bin/ci checks`: a new Brakeman release can also turn an unchanged tree red (`.claude/memory/brakeman-ensure-latest.md`). Another candidate, with its own failure mode.
 - Filing an issue for a failed daily run (Decision 3 declined it).
 - A cooldown or schedule tuned for security-relevant gems.
-- Scheduled workflows are disabled after 60 days without repository activity in a public repository (GitHub's documentation); the repository is private now (ADR 0008), so this matters only if it goes public and falls quiet.
+- Keeping a scheduled workflow enabled through a quiet spell (see the Error Scenarios row): a repository with commits at least every 60 days never meets it.
