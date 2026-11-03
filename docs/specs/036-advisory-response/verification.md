@@ -45,3 +45,19 @@ Optional follow-ups the review raised, neither blocking, neither done (an option
 - The README's sentence "Dependabot keeps gems and GitHub Actions up to date." could say that version updates cover direct gems only; the maintainer's choice (AC-3.4).
 
 Could not be confirmed offline: GitHub's evaluation of the second audit step's `if:` at run time (the first run after the merge shows it), that `setup-ruby` fails its own step when `bundle install` fails, GitHub's schedule delays and the 60-day disabling, who GitHub notifies of a scheduled run, whether Dependabot accepts the group, and the deferred question of why security updates opened nothing.
+
+## Distillation
+
+2026-11-03, `distill-feature`, before the merge.
+
+- **Area doc:** `docs/architecture/release-and-deploy.md` carries the feature's rules, each with its source, written with the feature itself (plan Phase 3): the Scope mention, the Dependabot bullet split into four, the sentence on where the configuration files are checked, the two Named constants rows, the Sources entries for spec 036 and #164. Distilled now: its Distillation log row ([#163](https://github.com/plainprogrammer/Collector/pull/163)).
+- **Index:** spec 036's row reads Frozen, by release and deploy, Plan "retirement owed"; no supersessions in either direction (the spec supersedes nothing).
+- **Spec:** the frozen line is its header's last line (a commit of its own, spec 027 D4).
+- **CLAUDE.md:** no statement in it restates a rule this feature changed, so it is unchanged (its "Release and deploy" bullet lists spec numbers as pointers; adding 036 to that list is the maintainer's call).
+- **ADR:** none proposed. Nothing here is a decision of architectural weight beyond the spec's own Decisions 1 to 9.
+- **Left for after the merge:** the plan's retirement (a commit of its own, then the spec's and the index's retirement pointer, per `distill-feature` state 1); the Quickstart Validation results in the second table above; the roadmap line for #164 ("In progress" now; "Done" with the merge date).
+
+Two stale statements found while checking the repository's live state, not changed here because they predate this feature and sit outside it:
+
+- ADR 0008 says "The repository is private and will become public later". The repository is public now (`gh api repos/plainprogrammer/Collector` returns `"visibility":"public"`).
+- The area doc's Open points still say provenance attestations and SBOMs "wait until the repository is public" (ADR 0008; spec 012 Non-Goals). With the repository public, that wait may be over; a decision for the maintainer.
