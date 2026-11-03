@@ -1,7 +1,7 @@
 # Feature 037: Filter the Collection by Location
 
-**Status:** Approved by the maintainer (2026-11-03) at 0.2.0; 0.2.1 corrects the wording of AC-5.8 found while planning; decisions 1, 3, 5 and 6 were ruled by the maintainer on 2026-11-03 as recommended
-**Version:** 0.2.1
+**Status:** Approved by the maintainer (2026-11-03) at 0.2.0; 0.2.1 and 0.2.2 correct wording found while planning (AC-5.8, decision 1's id pattern); to be confirmed at the plan gate; decisions 1, 3, 5 and 6 were ruled by the maintainer on 2026-11-03 as recommended
+**Version:** 0.2.2
 **Created:** 2026-11-03
 **Last Updated:** 2026-11-03
 **Depends on:** [spec 032](../032-lot-in-a-location/spec.md) (a lot's location; merged), [spec 033](../033-location-on-tiles-and-rows/spec.md) (the place on tiles and rows; merged), [spec 006](../006-collection-list-view/spec.md) (the table, bulk mode and the selection tied to a filter)
@@ -15,6 +15,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.2.2 | 2026-11-03 | Plan review corrections, no decision changes. AC-5.8: both cases answer "None of the selected items are in your collection any more.", because the existing `act` decides that from the submitted header tick or ticks, and a tick is re-applied after a restart (0.2.1 promised "Select at least one item." for the non-matching case, which the code can't give). Decision 1 and FR-1: one id pattern, `\A[1-9]\d{0,17}\z` (an id of 19 or more digits overflows SQLite's 64-bit bind) |
 | 0.2.1 | 2026-11-03 | AC-5.8 only: the refusal's wording. When the rendered location still matches the stored selection, a ticked header gives the existing "None of the selected items are in your collection any more."; when it doesn't, the selection restarts and the answer is "Select at least one item.". Nothing is removed either way; no decision changes (found tracing `SelectionsController#act` for the plan) |
 | 0.2.0 | 2026-11-03 | First spec review (Opus, read-only), all findings taken: fail-closed bulk resolution (B1, decision 7, AC-5.8, FR-1, FR-4), the canonical stored value (decision 1, M1), which value bulk actions use (decision 6, M2), submitted `location=` (FR-3, M3), refusal re-renders, post-removal restart and bulk pagers (AC-4.3, AC-5.6, M4), the supersessions (M5, Supersedes), and minor wording and checks |
 | 0.1.0 | 2026-11-03 | First draft from issue #47, specs 004 (Story 11), 006 (FR-4), 032 and 033, and the maintainer's rulings on decisions 1, 3, 5 and 6 |
@@ -55,7 +56,7 @@ This spec adds a location filter to the collection page's filter bar, beside the
 
 The filter has three kinds of value: *All locations* (the default, no narrowing), *one of the account's locations*, and *No location* (only unplaced lots). It is the `location` URL parameter: absent or empty is all, `none` is "No location", and a location's id is that location. The id is the location's own, as the add, edit and Move forms use it, but a bad one is treated differently: those forms answer 404 (spec 032 decision 6), this page is a GET a collector bookmarks, so a bad value means all (decision 7), as spec 034 AC-4.2 treats a stale link on number entry (there, its own default).
 
-**Canonical form.** The value is one of three strings: `""` (all), `"none"`, or a location's id in decimal digits without leading zeros (`\A[1-9]\d*\z`). Anything else, including `017`, ` 17`, `17abc`, and a non-string parameter (`location[]=1`), is read as all. The stored selection (decision 5) and the compared values hold this form only, so `context?` is a string comparison of canonical values.
+**Canonical form.** The value is one of three strings: `""` (all), `"none"`, or a location's id in decimal digits without leading zeros and at most 18 digits (`\A[1-9]\d{0,17}\z`; a longer value would overflow SQLite's 64-bit integer bind). Anything else, including `017`, ` 17`, `17abc`, and a non-string parameter (`location[]=1`), is read as all. The stored selection (decision 5) and the compared values hold this form only, so `context?` is a string comparison of canonical values.
 
 Alternatives: one location only (recommended against: "what has no place yet?" would be unanswerable, which is the question the 1.0 test makes the collector ask); several locations (beyond the issue, and more state in the URL and the selection).
 
@@ -136,7 +137,7 @@ As a collector filing my collection, I want to see the cards I haven't placed.
 - [ ] **AC-5.5** Given a stored selection under a location that has been removed When the selection's lots are read Then none are selected, and the confirm and refusal pages for it behave as for an empty selection (decision 7).
 - [ ] **AC-5.6** Given the confirm pages, Cancel, Back and the redirects after Set condition and Remove Then they return to the bulk table under the same location filter, name filter, sort and page (spec 006 AC-6.5, AC-7.2, AC-7.3), and Undo of a removal returns to the collection URL it carries, location included (spec 006 AC-7.4). The bulk pagers and sort headers (`go=<url>` buttons) carry it, a refused action's 422 re-render ("Select at least one item.", "None of the selected items are in your collection any more.", an Undo refused) shows the same location filter, select and empty sentence, and the selection after a removal is under the same location, so the next submission doesn't restart it.
 - [ ] **AC-5.7** Done returns to the saved view under the same location and name filters and sort (spec 006 AC-4.5).
-- [ ] **AC-5.8** Given a bulk page rendered under location L, L is removed in another tab, and the collector ticks the header and presses Remove Then nothing is removed and the answer is a 422 refusal, never a removal under all locations: "None of the selected items are in your collection any more." when the rendered location still matches the stored selection (its predicate matches no lot), "Select at least one item." when it doesn't (the selection restarts with nothing selected).
+- [ ] **AC-5.8** Given a bulk page rendered under location L, L is removed in another tab, and the collector ticks the header and presses Remove Then nothing is removed and the answer is a 422 refusal, "None of the selected items are in your collection any more.", whether or not the rendered location still matches the stored selection (the header tick is applied again after a restart); never a removal under all locations. The refusal page shows All locations.
 
 ### Story 6: The control, and values that don't belong
 - [ ] **AC-6.1** Given an account with no location Then the page shows no Location select, in both modes, and `location=<anything>` is ignored with 200: spec 033's page.
@@ -149,7 +150,7 @@ As a collector filing my collection, I want to see the cards I haven't placed.
 ## Functional Requirements
 
 ### FR-1: The filter's value
-**Must:** be resolved once from the URL parameter against `Current.account`'s locations for display (decision 7), in the canonical form of decision 1 (`\A\d+\z`, non-strings read as all); be one definition used by the grid, the table, the bulk selection and the select. The stored selection and a submitted `rendered_location` are compared as canonical strings and applied as a plain predicate within the account's lots, never re-resolved to all.
+**Must:** be resolved once from the URL parameter against `Current.account`'s locations for display (decision 7), in the canonical form of decision 1 (non-strings read as all); be one definition used by the grid, the table, the bulk selection and the select. The stored selection and a submitted `rendered_location` are compared as canonical strings and applied as a plain predicate within the account's lots, never re-resolved to all.
 **Must not:** accept an account id, a user id or any other account's location; name a collectible type (the filter is core code, `Lot.location_id`).
 
 ### FR-2: Where it applies

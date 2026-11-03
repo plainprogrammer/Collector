@@ -1,6 +1,6 @@
 # Plan: Spec 037, Filter the Collection by Location
 
-**Spec:** [spec.md](spec.md) 0.2.1 (approved 2026-11-03)
+**Spec:** [spec.md](spec.md) 0.2.2 (approved 2026-11-03 at 0.2.0; 0.2.1 and 0.2.2 are wording corrections from planning and its review, confirmed at the plan gate)
 **Issue:** [#47](https://github.com/plainprogrammer/Collector/issues/47). The PR for this plan says "Refs #47"; the implementation PR closes it.
 **Method:** tests first in every task (red, then green); the code blocks are drafts, not pre-run (memory: `sdd-execute-exact-plans`, `plan-reviews-run-the-code`). One subagent per phase, Opus; a deviation is recorded as a ruling in the commit body. No phase touches the export format (decision 8).
 
@@ -23,7 +23,7 @@
 # selection or a submitted form (decision 7).
 module CollectionFilter::Place
   NONE = "none".freeze
-  ID = /\A[1-9]\d{0,17}\z/
+  ID = /\A[1-9]\d{0,17}\z/ # 18 digits: a longer id would overflow SQLite's 64-bit bind (spec 0.2.2)
 
   # Anything that isn't "none" or such an id (a non-string, "017", " 17", "17abc") is "".
   def self.parse(raw) = raw.is_a?(String) && (raw == NONE || raw.match?(ID)) ? raw : ""
@@ -38,6 +38,8 @@ module CollectionFilter::Place
   end
 end
 ```
+
+**Names.** `CollectionGrid::Place` (the tile's `Data` struct) shadows `CollectionFilter::Place` inside `CollectionGrid`: write `CollectionFilter::Place` in full there. `CollectionFilter`'s header comment ("Includers set @account and @query") adds `@requested_location`. A crafted Edit many `location=none` from an account with no locations is stored as given, mismatches the page's resolved "" and restarts under "" at the next submit: harmless and consistent with decision 7.
 
 **Display resolves, storage doesn't.** The listing (`CollectionFilter`) resolves the URL's value against the account's locations for what it *shows and queries* (`location`); a `BulkSelection` keeps the canonical string it was given and applies `Place.apply` directly, so a removed id fails closed.
 
@@ -82,7 +84,7 @@ Tests first (red), then code.
 | `spec/models/collection_filter/place_spec.rb` (new) | `parse`: `""`, `nil`, `"none"`, `"17"` stay or become `""`; `"017"`, `" 17"`, `"17abc"`, `"0"`, `"-3"`, `"NONE"`, a 19-digit id, an Array and a Hash become `""` (M1). `apply`: `""` returns the scope; `"none"` keeps only `location_id IS NULL`; an id keeps only that location's lots; a foreign or removed id returns none |
 | `spec/models/collection_grid_spec.rb` (extend) | Under a place: a printing with 3 in Blue binder and 2 in Long box has one tile, quantity 3, no `place`, and its special finishes are the Blue binder lots' (a foil lot in Long box gives no foil) (AC-1.2); a printing with no copy there has no tile; `pagination` counts the filtered printings; `none` sums unplaced copies; a stale, foreign or non-numeric place resolves to `""`; an account with no location ignores a place; with a name filter and a place, both apply (AC-3.1); statements: the grid under a place runs no `places_of` statement and one `locations` read, and the count doesn't grow with tiles (NFR) |
 | `spec/models/collection_table_spec.rb` (extend) | Rows are the matching lots; `matching_quantity` and `filtered?`; the place with the name filter; `chosen_location`; the locations read happens once |
-| `spec/models/bulk_selection_spec.rb` (extend) | `location_filter` defaults to `""` for a row made before the migration (`BulkSelection.column_defaults`); `context?` compares query, sort and location_filter; `restart!(…, location:)` stores it and clears marks; `lots` and `record!` are within the place (a shown id outside it is ignored, AC-5.2); **a stored id of a removed location, a foreign location's id and an id of no row all select no lot, also with `all_matching`** (decision 7, AC-5.5); `none` selects only unplaced lots |
+| `spec/models/bulk_selection_spec.rb` (extend) | a row inserted with SQL that leaves out `location_filter` reads `""` and `context?("", sort)` is true; `context?` compares query, sort and location_filter; `restart!(…, location:)` stores it and clears marks; `lots` and `record!` are within the place (a shown id outside it is ignored, AC-5.2); **a stored id of a removed location, a foreign location's id and an id of no row all select no lot, also with `all_matching`** (decision 7, AC-5.5); `none` selects only unplaced lots |
 | `spec/models/bulk_removal_spec.rb` (extend) | After `remove!` the selection is still under its location and query (`restart!` keeps them) |
 
 Code:
@@ -119,10 +121,11 @@ Tests first, in `spec/requests/collection_location_filter_spec.rb` (new, `type: 
 
 | Spec | Examples (AC) |
 |---|---|
-| show | `?location=<blue.id>` lists only Blue binder printings with Blue binder quantities (1.2); table view: only Blue binder rows (1.3); the count line "n of N items", the head's stats whole (1.4); `none` (2.1); empty location and "every lot placed" sentences (1.6, 2.2); name + location (3.1, 3.2); an account with no location ignores `location=…` (6.1) |
+| show | `?location=<blue.id>` lists only Blue binder printings with Blue binder quantities (1.2); table view: only Blue binder rows (1.3); the count line "n of N items", the head's stats whole (1.4); `none` (2.1); name + location (3.1); an account with no location ignores `location=…` (6.1) |
 | bad values | Another account's location id, a removed id, `abc`, `017`, `location[]=1`, `location[a]=1` and `location=` give 200 with the whole collection, no "of" in the count line, the unfiltered pager, and nothing of the other account's lots or location name in the body (1.7, 6.2); a request spec with **two accounts** proves it |
-| links | The paging links, sort headers, the `view-switch` and `edit-many` forms' hidden fields carry `location` (and omit it for all); Edit copy / Remove menu links' `return_to` carries it (4.1); a page naming a view and a location saves the view, not the location (4.2); the card page is unchanged (4.3) |
-| bulk | `POST /collection/selection` (Edit many) with `location` redirects to the bulk path carrying it and stores it; `PATCH` with `go=filter`, `q`, `location` restarts under the new pair and carries it; `rendered_location` decides Next/sort/Remove/Done, not the select's `location` (M2); a page is kept only when both filters are unchanged; Select all then Remove removes only the place's lots (5.2); another account's id in `location` or `rendered_location` removes nothing (6.2); **AC-5.8**: a page under L, L deleted (a location with no lot), header ticked, Remove: 422, both refusal texts, nothing removed, for a matching and a non-matching `rendered_location`; the 422 refusal re-render shows the select, the location and the empty sentence (5.6); Undo of a removal returns to the URL with `location`, and the Undo refusal re-render keeps it (5.6); after a removal the stored selection is still under the location (no restart on the next submit) |
+| bulk | `POST /collection/selection` (Edit many) with `location` redirects to the bulk path carrying it and stores it; `PATCH` with `go=filter`, `q`, `location` restarts under the new pair and carries it; `rendered_location` decides Next/sort/Remove/Done, not the select's `location` (M2); a page is kept only when both filters are unchanged; Select all then Remove removes only the place's lots (5.2); another account's id in `location` or `rendered_location` removes nothing (6.2); **AC-5.8**: a page under L, L deleted (a location with no lot), header ticked, Remove: 422, both refusal texts, nothing removed, for a matching and a non-matching `rendered_location`; for **AC-5.8 both cases answer `NONE_LEFT`** (the header tick is re-applied after a restart), and the refusal page shows All locations with `rendered_location=""` (L no longer resolves, decision 7; M2 of the plan review); a refusal for a location that still exists re-renders under it (controller-level: `@listing.location` and `@listing_path`; the select's markup is Phase 3); Undo of a removal redirects to the URL with `location`, and the Undo refusal re-renders under it (5.6); after a removal the stored selection is still under the location (no restart on the next submit) |
+
+Phase 2 stops at the controllers, helpers and models: its examples assert redirects, `@listing` state and `collection_listing_path` values, and nothing that needs a view edit of Phase 3 (the links, the empty sentences, the select's markup, the bulk pager's `go=` URLs).
 
 Code:
 
@@ -201,8 +204,10 @@ Tests first: request examples for the markup (below) and `spec/system/collection
 
 | Spec | Examples (AC) |
 |---|---|
-| request, markup | The select is `select[name=location]` with `All locations`, `No location`, then the locations in `Location.ordered` order, the right option selected, label text "Location", inside `.c-filterbar__filters` with a "Filter" submit after it (1.1, 1.5, 6.3); no select with no location, both modes (6.1); `rendered_location` hidden field in the bulk form; the bulk default submit (`go=filter`) is first in tree order of the bulk form's submit buttons and is visible when the account has a location, `c-sr` otherwise (decision 6); an option and the empty sentence escape `<b>&"` (6.6); a long name is in one option |
-| system | Grid: choose Blue binder, press Filter, see only its tiles and "n of N items"; pick All locations and place lines return (1.7); Table view keeps the filter across sort and page; bulk: Edit many keeps the filter, Select all then Remove under a location removes only those lots and Undo restores; changing the select without Filter and pressing Next uses the rendered location (5.3); a 390px-wide frame shows the select and button in the filter group with no horizontal scroll (6.5; headless Firefox can't go below 500px, use the fixed-width iframe, memory `headless-firefox-narrow-frame`) |
+| links (moved from Phase 2) | The paging links, sort headers, the `view-switch` and `edit-many` forms' hidden fields carry `location` (and omit it for all); the filter bar's GET form submits `q`, the sort fields and `location` together and the select has no `form` attribute there (3.3); Edit copy / Remove menu links' `return_to` carries it (4.1); a page naming a view and a location saves the view, not the location (4.2); the card page is unchanged (4.3); the bulk pager's and sort headers' `go=` URLs carry it (5.6) |
+| empty sentences | The three sentences of `no_match_message` in the grid, the table and the bulk table: "No cards in your collection are in “Blue binder”.", "…are without a location.", `…match "q" in “Blue binder”.`, `…match "q" without a location.`, and spec 004's for the name filter alone (1.6, 2.2, 3.2); bulk under a matching-nothing location: "0 of 0 selected", no header checkbox, the sentence (5.4); the bulk count "0 of <matching> selected" and the bulk select showing the choice after Edit many (5.1); a refusal re-render (422) under an existing location shows the select and the sentence (5.6) |
+| request, markup | The select is `select[name=location]` with `All locations`, `No location`, then the locations in `Location.ordered` order, the right option selected, label text "Location", inside `.c-filterbar__filters` with a "Filter" submit after it (1.1, 1.5, 6.3); no select with no location, both modes (6.1); `rendered_location` hidden field in the bulk form; the bulk default submit (`go=filter`) is first in tree order of the bulk form's submit buttons and is visible when the account has a location, `c-sr` otherwise (decision 6); an option and the empty sentence escape `<b>&"` (6.6); a long name is in one option; the AC-5.8 refusal page's select shows All locations |
+| system | Grid: choose Blue binder, press Filter, see only its tiles and "n of N items"; pick All locations and place lines return (1.7); Table view keeps the filter across sort and page; bulk: Edit many keeps the filter, Select all then Remove under a location removes only those lots and Undo restores; changing the select without Filter and pressing Next uses the rendered location (5.3); Enter in the name field applies the name and the location (6.3); a 390px-wide frame shows the select and button in the filter group with no horizontal scroll (6.5; headless Firefox can't go below 500px, use the fixed-width iframe, memory `headless-firefox-narrow-frame`) |
 
 Code:
 
@@ -219,8 +224,8 @@ Commit: `feat(collection): a Location select in the filter bar`.
 ## Phase 4: measurement, documents and verification
 
 1. Measure (spec NFR): the collection page's server time for 5,000 lots over 300 locations, with a location filter on and with `location=none`, with lots of **several accounts** in the table, grid and table, against 500 ms, the way spec 033's `verification.md` AC-3.3 recorded it. If a measurement misses the budget, add a migration for `[account_id, location_id]` on `lots` and measure again; otherwise record that the index was not needed. Record the statement counts (grid and table) in `verification.md`.
-2. `verification.md` in this folder: per-AC evidence (spec, example, or a reading), the statement counts, the measurements, the manual checks (phone width, keyboard, Firefox).
-3. Documents (same PR, `.claude/rules/documentation.md`): `docs/architecture/collection-and-lots.md` (the collection page: the filter, counts, tiles under it, bulk context; remove the "no filter by location" half of the #47 line in "Not yet"; add this spec and #47 to Sources), `docs/specs/README.md` (status, plan row, supersession columns already in), `docs/roadmap.md` item 12, `.claude/CLAUDE.md`-level pointers only if a one-line mention of the collection paragraph is warranted (CLAUDE.md says "the grid and table show it (spec 033)": add "and filter by it (spec 037)"). `distill-feature` runs at the end.
+2. `verification.md` in this folder, with an `## Implementation review` heading whose first line is the review's verdict (`.claude/rules/documentation.md`): per-AC evidence (spec, example, or a reading), the statement counts, the measurements, the manual checks (phone width, keyboard, Firefox).
+3. Documents (same PR, `.claude/rules/documentation.md`): `docs/architecture/collection-and-lots.md` (the collection page: the filter, counts, tiles under it, bulk context; remove the "no filter by location" half of the #47 line in "Not yet"; add this spec and #47 to Sources), `docs/specs/README.md` (status, plan row, supersession columns already in), `docs/roadmap.md` item 12, the root `CLAUDE.md`'s locations paragraph ("the collection's grid tiles and table rows show it (spec 033)": add "and filter by it (spec 037)"); the area doc's Selection bullets (the "Selection" term and bulk mode's selection paragraph) gain the location in the context and the fail-closed rule, each with its source. `distill-feature` runs at the end.
 4. `bin/ci` (migration guard, RuboCop, Brakeman, specs). Brakeman: `params[:location]` is only read as a string through `Place.parse` and bound as a parameter; no ignore is needed.
 
 Commit: `docs(spec-037): verification, area doc and roadmap`.
@@ -229,8 +234,8 @@ Commit: `docs(spec-037): verification, area doc and roadmap`.
 
 | Criteria | Where |
 |---|---|
-| AC-1.1–1.7, 2.1–2.2, 3.1–3.3 | Phase 2 show/links requests; Phase 3 markup and system |
-| AC-4.1–4.3 | Phase 2 links |
+| AC-1.1–1.7, 2.1–2.2, 3.1–3.3 | Phase 2 show requests (1.2–1.4, 2.1, 3.1); Phase 3 markup, empty sentences, links and system (1.1, 1.5–1.7, 2.2, 3.2, 3.3) |
+| AC-4.1–4.3 | Phase 3 links |
 | AC-5.1–5.8 | Phase 1 `bulk_selection_spec`, `bulk_removal_spec`; Phase 2 bulk requests; Phase 3 system |
 | AC-6.1–6.6 | Phase 2 bad values; Phase 3 markup and system |
 | FR-1–FR-5 | `place_spec`, `collection_grid_spec`, `bulk_selection_spec`; request examples |
