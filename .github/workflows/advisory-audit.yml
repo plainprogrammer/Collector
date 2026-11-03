@@ -1,0 +1,37 @@
+name: Advisory audit
+
+# Runs the two security audits of bin/ci (config/ci.rb) on main once a day, so an advisory published against a
+# locked dependency turns a run red within a day, not when a pull request happens to start one (spec 036,
+# docs/architecture/release-and-deploy.md). A run started by hand audits the ref it was started on.
+on:
+  schedule:
+    - cron: "17 5 * * *" # 05:17 UTC; off the hour, because GitHub delays scheduled runs at the start of every hour
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        id: checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Ruby
+        id: ruby
+        uses: ruby/setup-ruby@de492cf36cbab201753d720ce4f4e336cd688c94 # v1.336.0
+        with:
+          bundler-cache: true
+
+      # --update fetches the Ruby advisory database on every run, whatever a runner kept (AC-2.11).
+      - name: Gem audit
+        run: bin/bundler-audit check --update
+
+      # Runs whichever way the gem audit ended, but only after a good setup (AC-2.3, AC-2.9). While no pin in
+      # config/importmap.rb carries a version it checks nothing (spec 036 FR-2).
+      - name: Importmap vulnerability audit
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' && steps.ruby.outcome == 'success' }}
+        run: bin/importmap audit
