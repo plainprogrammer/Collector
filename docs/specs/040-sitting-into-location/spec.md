@@ -1,7 +1,7 @@
 # Feature 040: Scan a Sitting into a Location
 
 **Status:** Approved by the maintainer (2026-11-03) at 0.2.0, after one independent review (`review.md`)
-**Version:** 0.2.1
+**Version:** 0.2.2
 **Created:** 2026-11-03
 **Last Updated:** 2026-11-03
 **Depends on:** [spec 032](../032-lot-in-a-location/spec.md) (a lot's location is part of its identity; merged), [spec 009](../009-card-scanner-confirm-flow/spec.md) (the scanner's sitting; merged) and [spec 034](../034-location-in-typed-entry/spec.md) (the pattern for naming a place; merged)
@@ -14,6 +14,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.2.2 | 2026-11-03 | AC-3.2 reworded to the maintainer's ruling on plan item P1: only a sitting with no entries at all and no place is dropped on render. |
 | 0.2.1 | 2026-11-03 | Approved by the maintainer; status line only. |
 | 0.2.0 | 2026-11-03 | From the first independent review: the empty-sitting and Done states, the migration's SQLite pattern, AC-4.x statuses, citations and supersessions; Enter-in-select dropped. |
 | 0.1.0 | 2026-11-03 | Written from issue #56, roadmap ruling 20, specs 009, 032 and 034, and the maintainer's answers of 2026-11-03 (decisions 1, 2 and 6). |
@@ -114,7 +115,7 @@ As a collector with a binder to file, I want to say once where the scanned cards
 
 ### Story 3: Nothing changes without locations
 - [ ] **AC-3.1** Given an account with no locations When the scanner shows Then it has no select, no hint and no panel before the first add, and adds are unplaced as spec 009 says.
-- [ ] **AC-3.2** Given an account whose sitting holds a place When the account's last location is removed (only possible with no lot in it) Then the sitting's place is none, the next add is unplaced and says no place, and the redrawn panel has no select. A sitting that holds no cards then shows "This sitting: 0 cards" with Done and no select; it is dropped when the scanner next renders, so no panel shows for an account with no locations. An import apply that removes only an empty location (`CollectionImport::LocationChanges`, which does not clear working state) clears a sitting's place the same way.
+- [ ] **AC-3.2** Given an account whose sitting holds a place When the account's last location is removed (only possible with no lot in it) Then the sitting's place is none, the next add is unplaced and says no place, and the redrawn panel has no select. A sitting with no entries at all (none ever added) and no place is dropped when the scanner next renders, so no panel shows for an account with no locations; a sitting with entries, even all undone, stays and shows "This sitting: 0 cards" with Done and no select (the maintainer's ruling of 2026-11-03 on plan item P1). An import apply that removes only an empty location (`CollectionImport::LocationChanges`, which does not clear working state) clears a sitting's place the same way.
 - [ ] **AC-3.3** Given a request with no `location` key When it reaches the place endpoint Then it answers 400 and the place is unchanged; "No location" is sent as a present, empty value.
 
 ### Story 4: Bad input keeps the page

@@ -1,7 +1,7 @@
 # Implementation Plan: Scan a Sitting into a Location
 
-**Spec:** docs/specs/040-sitting-into-location/spec.md (v0.2.1, approved by the maintainer on 2026-11-03)
-**Status:** Revised on 2026-11-03 for the independent read-only plan review (`plan-review.md`: 4 major and 12 minor findings, each mapped there to its fix); awaiting the maintainer's approval and ruling on P1
+**Spec:** docs/specs/040-sitting-into-location/spec.md (v0.2.2, approved by the maintainer on 2026-11-03; 0.2.2 records the ruling on P1)
+**Status:** Approved by the maintainer (2026-11-03) after the independent read-only plan review (`plan-review.md`: 4 major and 12 minor findings, each mapped there to its fix); P1 ruled for the narrower rule, the upgrade seed skipped
 **Decisions:** none new. No ADR: the place on the sitting follows ADR 0025 (a lot's location is part of its identity) and spec 032's migration pattern. ADR 0028 stays unused.
 **Created:** 2026-11-03 (on `origin/main` at `cbf79d1`)
 
@@ -43,7 +43,7 @@ A collector chooses a location for the scanner's sitting, changes it mid-sitting
 
 | # | Item | Plan-level ruling (to be confirmed at approval) | Source |
 |---|---|---|---|
-| P1 | AC-3.2 says a sitting that "holds no cards" (AC-1.8: none added, or all undone) is dropped when the scanner next renders after its place was cleared by a removed location. Dropping an all-undone sitting on a reload would also delete spec 009's own all-undone sittings. | **For the maintainer's ruling at approval.** Recommended: the narrower rule, a sitting with **no entries at all and no place** is dropped before the scanner renders (`Scanner::Sitting#pointless?`); a sitting with entries, even all undone, stays and shows "This sitting: 0 cards" with Done. If ruled, spec 0.2.2 rewords AC-3.2 to "a sitting with no entries at all" (the spec is approved, not shipped). | spec AC-3.2, AC-1.8 |
+| P1 | AC-3.2 says a sitting that "holds no cards" (AC-1.8: none added, or all undone) is dropped when the scanner next renders after its place was cleared by a removed location. Dropping an all-undone sitting on a reload would also delete spec 009's own all-undone sittings. | **Ruled 2026-11-03: the narrower rule (spec 0.2.2 rewords AC-3.2).** a sitting with **no entries at all and no place** is dropped before the scanner renders (`Scanner::Sitting#pointless?`); a sitting with entries, even all undone, stays and shows "This sitting: 0 cards" with Done. Spec 0.2.2 rewords AC-3.2 to "a sitting with no entries at all" (the spec is approved, not shipped). | spec AC-3.2, AC-1.8 |
 | P2 | Whether the picker row needs CSS | Decide in Phase 4 after reading `Form.md`; prefer existing `c-form`/`c-field` classes, else one additions rule with its component doc. | spec Design system NFR |
 | P3 | `Location` needs no association to sittings: the database's `on delete set null` does the work and `Location has_many :lots, dependent: nil` stays | No `has_many :scanner_sittings`; a request spec proves removal through `LocationsController#destroy`. | spec decision 7 |
 
@@ -222,9 +222,8 @@ Files: `spec/system/scanner_sitting_spec.rb` (extend; it already has the scanner
 2. `docs/roadmap.md`: item 21a "Built <date>, done when its pull request merges: [spec 040](…)" and the sentence that it ran before the spikes by ruling (decision 1); keep the other rows alone.
 3. `docs/specs/README.md`: the 009 and 032 rows' "Superseded by" cells name 040 (both directions); the 040 row's status stays Approved until distillation.
 4. `docs/specs/040-sitting-into-location/verification.md`: each AC with its evidence (spec, request spec or system spec by name); document criteria verified by reading; a screenshot of the panel at phone width in both themes (`.claude/memory/pr-screenshots-workflow.md`, `headless-firefox-narrow-frame.md`) in `screenshots/`; the `## Implementation review` heading is added by the review step later.
-5. Optional, for the maintainer's ruling at approval: give `script/upgrade/seeds/next.rb`'s sitting (line 40) a place by creating its location first (it is seeded before `locations`, line 53), so the next release's upgrade proof carries a non-null `location_id` (`release-and-deploy.md:64`).
-6. `bin/ci` in full (a push runs it as a hook: push in the background, `.claude/memory/push-in-background.md`).
-7. Commits: `docs(…)`. Do not edit spec 009 or 032 (`.claude/rules/documentation.md`).
+5. `bin/ci` in full (a push runs it as a hook: push in the background, `.claude/memory/push-in-background.md`).
+6. Commits: `docs(…)`. Do not edit spec 009 or 032 (`.claude/rules/documentation.md`).
 
 ## Verification (before the pull request is ready)
 
@@ -237,4 +236,5 @@ Files: `spec/system/scanner_sitting_spec.rb` (extend; it already has the scanner
 
 ## Not in this plan
 
+The upgrade seed's place (ruled out 2026-11-03). 
 Condition (#57), language (#58), moving a sitting's cards (#48), a remembered place, naming the place in the Undo label, any capture or detection work.
