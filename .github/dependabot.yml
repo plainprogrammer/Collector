@@ -5,6 +5,13 @@ updates:
   schedule:
     interval: weekly
   open-pull-requests-limit: 10
+  # Security updates for the Ruby gems arrive as one pull request, so advisories that land together are fixed
+  # together (spec 036 FR-1).
+  groups:
+    security:
+      applies-to: security-updates
+      patterns:
+        - "*"
 - package-ecosystem: github-actions
   directory: "/"
   schedule:
