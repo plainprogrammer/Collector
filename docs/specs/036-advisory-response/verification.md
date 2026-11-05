@@ -1,6 +1,6 @@
 # Spec 036: Verification
 
-**Spec:** [spec.md](spec.md) (1.0.0) | **Plan:** [plan.md](plan.md)
+**Spec:** [spec.md](spec.md) (1.0.0) | **Plan:** plan (retired in `3ebd563429e487d6f03f5bf33c2490664a7d353b`; read it with `git show 3ebd563429e487d6f03f5bf33c2490664a7d353b^:docs/specs/036-advisory-response/plan.md`)
 
 ## Before the merge
 
