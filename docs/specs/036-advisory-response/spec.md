@@ -7,6 +7,7 @@
 **Branch:** `claude/happy-fermi-y30wzq` (the cloud session's designated branch; the convention's `036-advisory-response` is not used because the session is bound to this name)
 **Issue:** [#164](https://github.com/plainprogrammer/Collector/issues/164)
 **Frozen:** the current rules are in [`release-and-deploy.md`](../../architecture/release-and-deploy.md) (whole spec); see the [specs index](../README.md)
+**Plan:** retired in `3ebd563429e487d6f03f5bf33c2490664a7d353b`; read it with `git show 3ebd563429e487d6f03f5bf33c2490664a7d353b^:docs/specs/036-advisory-response/plan.md`
 
 ---
 
