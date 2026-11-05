@@ -1,7 +1,7 @@
 # Feature 039: A Finished Art Build Whose Index File Is Missing Isn't "Ready"
 
-**Status:** Draft
-**Version:** 1.0.0
+**Status:** Approved by the maintainer on 2026-11-03
+**Version:** 1.0.1
 **Created:** 2026-11-03
 **Last Updated:** 2026-11-03
 **Branch:** `039-art-index-missing-file`
