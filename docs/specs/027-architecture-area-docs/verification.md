@@ -545,3 +545,30 @@ Observations: the skill's Plan word for a spec with no plan (**fixed**, ruling a
 ## distill-feature
 
 Run on this branch on 2026-10-15, after the integration verification. The after-merge state checked the pointers: `git cat-file -e` succeeded for both retirement shas in the index, `6c4dd4fb5c247d6aeb5739e3ae9e096345309d0e` (015) and `0b16288741818b786e069d2a0e1617f26945dd98` (024). Spec 027 is the only row whose Plan reads "retirement owed", and its pull request (#110) hasn't merged, so there was nothing to retire. In the before-merge state, 027's row already reads "retirement owed", which counts as distilled (it has nothing to distil, AC-3.6). Result: "distill-feature: nothing to do" (D6 state 3). After #110 merges, a later session's after-merge state retires 027's plan and sets its row to Shipped (ruling P2).
+
+## Slice C: the scanner area doc (#107)
+
+Branch `107-area-doc-scanner`, run under spec 027 with no PRD, spec or ADR of its own (`.claude/memory/area-doc-slices-under-spec-027.md`). Scope was taken from the specs index's Areas column (lesson `2026-10-27-area-doc-scope-from-the-index`) and approved by the coordinator at Gate A: specs 005, 008, 010 whole; 007, 009, 011 but for what catalog core and catalog operations hold; the scanner parts of 040 and 042; spec 047.
+
+**What it did:** wrote `docs/architecture/scanner.md` and its README row; pointed the scanner lines of catalog core, catalog operations, collection and lots and release and deploy at it; rewrote CLAUDE.md's card scanner bullet as a pointer; set the nine index rows to Frozen; extended or added one `**Frozen:**` line per spec (005, 007, 008, 009, 010, 011, 040, 042, 047), one commit each; retired the plans of 005, 007, 008, 009, 010 and 011, each a retire commit and a pointer commit naming spec 027 D4.
+
+**Doc reviews (read-only, Fable):** round 1 at `6c46996b` found three majors and fourteen minors (a CLAUDE.md change claimed before it was made; spec 011 Story 2 claimed and not written; the OCR worker described as kept across visits, which the scanner's `turbo-visit-control: reload` makes untrue) and all were fixed in `3faec4be`; round 2 at `3faec4be` found one major (four neighbour docs still said the scanner had no area doc) and six minors, fixed in `1cbe8c45` and `3ad46201`. No round 3.
+
+**Code with no spec source:** three behaviours, filed as [#219](https://github.com/plainprogrammer/Collector/issues/219) and marked in the doc: the scanner's Content-Security-Policy directives beyond spec 007 AC-2.4 and ADR 0001; the OCR worker's lifetime (a module variable until the page unloads); and a name candidate's printing preferring the read set. The scanner add's lookup by external key alone is [#204](https://github.com/plainprogrammer/Collector/issues/204)'s, listed in the doc's Accepted limits.
+
+### Implementation review
+
+SPEC-ALIGNED (after two fixes; the review's own verdict was NEEDS REVISION on them)
+
+Read-only review (`sdd-superpowers:sdd-review` Mode B, Opus subagent, 2026-11-06) of the branch diff against `origin/main` at `7579455a`. It passed: D4 (only Frozen lines, Plan pointers and plain-text plan links changed in shipped specs, each in a commit naming D4; one Frozen line per spec; the old parts of 007, 009, 011, 040 and 042 still named), each retirement (the plan prints from `git show <sha>^:…`, the retire commit lists only the deleted plan, the pointer sha matches), the index rows, scope (every Areas cell naming the scanner is frozen; the remaining "no area doc" mentions are the historical `verification.md` files of 040, 042 and 047), CLAUDE.md (only its bullet changed), #219, and the push scope (documentation-only, so `bin/ci checks` and no slot).
+
+Findings:
+
+1. Major, **fixed** in `d5960d20`: the doc's Accepted limits said the scanner's add, Other printings and Details look a printing up by external key alone. Only the add does; Other printings scopes the card by type and Details finds a lot by id.
+2. Minor, **fixed** in `d5960d20`: "refuses before it touches either" for `Scanner::Sitting.add!`; the condition check runs inside the transaction, which rolls back a sitting that add just opened.
+3. Minor, **not changed:** spec 011's build-run part is spelled "FR-2, the art build's run" in its Frozen line, "FR-2's build run" in catalog operations' neighbour line and "FR-2 and Story 3's build run" in the scanner doc and rows. The spec's header isn't edited again (spec 027 D4), and the scanner row lists the Story 3 criteria that are catalog operations'.
+4. Minor, **not changed:** the new Plan cells read "retired in `<sha>`; read it with `git show …`", the wording of earlier rows, which differs from the skill's exact cell text. Left as precedent.
+5. Minor, **not changed:** the Frozen lines' "(whole spec; <other doc>: …)" form is read by the reviewer as ambiguous next to spec 023's "(all but …)". The lines are committed under D4; they name every doc that covers each part.
+6. Observation: the spike tools' variables (`CARD_SCANNER_WORK_DIR`, `CARD_SCANNER_TRUTH_CORPORA`, `CARD_SCANNER_BULK_FILE`) are in neither CLAUDE.md nor the area doc; they are in the spike code under `spikes/card_scanner/`.
+
+Owed after the merge: replace the Distillation log row's "#107's pull request" with the number once the pull request is open (done in the pull request's own commit).
