@@ -13,6 +13,7 @@ class CurrenciesController < ApplicationController
     else
       @messages = @account.errors.messages_for(:currency)
       @account.restore_attributes # Current.account must not keep the rejected code, and the select shows the saved one
+      @account.errors.clear # the page shows @messages; left on the record, Rails would wrap the field in .field_with_errors
       @priced = priced_lots
       render :edit, status: :unprocessable_content
     end

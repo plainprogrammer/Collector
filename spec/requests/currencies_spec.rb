@@ -68,6 +68,7 @@ RSpec.describe "Currency", type: :request do
         expect(html.at_css("#account_currency-error").text.squish).to eq("Choose one of the listed currencies."), code.inspect
         expect(html.at_css(".c-field--invalid select")["aria-describedby"]).to eq("account_currency-hint account_currency-error")
         expect(selected).to eq("GBP"), code.inspect
+        expect(html.css(".field_with_errors")).to be_empty # Rails' wrapper would break the field's layout
         expect(account.reload.currency).to eq("GBP"), code.inspect
       end
     end
