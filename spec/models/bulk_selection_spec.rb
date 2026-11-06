@@ -180,4 +180,44 @@ RSpec.describe BulkSelection, type: :model do
     selection.include!(Lot.ids)
     expect(selection.vocabulary).to eq(MTG::Collecting)
   end
+
+  describe "#after_move! (spec 041)" do
+    let(:blue) { create(:location, account:) }
+
+    it "selects the lots that now hold the moved copies under all locations, an excepted one too (AC-3.9)", :aggregate_failures do
+      a = own("Card A")
+      excepted = own("Card B")
+      selection.restart!(query: "", sort: default_sort)
+      tick([ a, excepted ], [ a ], header_ticked: true, baseline: [ a, excepted ], header_toggled: true)
+      expect(selection.lots).to contain_exactly(a)
+      selection.after_move!([ excepted.id ])
+      expect(selection.lots).to contain_exactly(a, excepted)
+    end
+
+    it "marks the surviving lots of a ticked-set selection (AC-3.9)" do
+      a = own("Card A")
+      b = own("Card B")
+      tick([ a, b ], [ a ])
+      selection.after_move!([ b.id ])
+      expect(selection.lots).to contain_exactly(a, b)
+    end
+
+    it "restarts empty under the same filters and sort when a location filter is set (AC-3.13)", :aggregate_failures do
+      a = own("Card A", location: blue)
+      selection.restart!(query: "card", sort: CollectionTable::Sort.parse("name", "desc"), location: blue.id.to_s)
+      tick([ a ], [ a ])
+      selection.after_move!([ a.id ])
+      expect(selection.lots).to be_empty
+      expect(selection.context?("card", CollectionTable::Sort.parse("name", "desc"), location: blue.id.to_s)).to be(true)
+      expect(selection.all_matching?).to be(false)
+    end
+
+    it "restarts under none the same way (AC-3.13)" do
+      a = own("Card A")
+      selection.restart!(query: "", sort: default_sort, location: CollectionFilter::Place::NONE)
+      tick([ a ], [ a ])
+      selection.after_move!([ a.id ])
+      expect(selection.lots).to be_empty
+    end
+  end
 end
