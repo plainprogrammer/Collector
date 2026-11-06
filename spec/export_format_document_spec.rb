@@ -53,7 +53,7 @@ RSpec.describe "The export format's document" do
 
   it "names no collectible outside its section for collectible types (FR-6)", :aggregate_failures do
     core = document.sub(/^## Collectible types\n.*?(?=^## )/m, "")
-    names = /\b(mtg|magic|scryfall)\b/i
+    names = /mtg|magic|scryfall/i # anywhere in a word: `\b` lets scryfall_id through, `_` being a word character (#209)
 
     expect(core).not_to eq(document)
     expect(core).not_to match(names)

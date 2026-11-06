@@ -16,6 +16,10 @@ The implementation review (Mode B) pointed out that in Ruby `_` is a word charac
 
 The new guard drops the boundaries (`/mtg|scryfall|magic/i`) after a case-insensitive grep of its seven files found no legitimate hit, and its mutation checks now include `scryfall_id` and `MTGPrinting`. The same `\b` pattern is in `number_entry_core_spec.rb`, `import_apply_core_spec.rb`, `collection_import_core_spec.rb`, `collection_export_core_spec.rb`, `admin_catalog_core_spec.rb` and `scanner_sitting_core_spec.rb`: [#209](https://github.com/plainprogrammer/Collector/issues/209).
 
+## Resolution ([#209](https://github.com/plainprogrammer/Collector/issues/209))
+
+The six guards now match `mtg`, `scryfall` and `magic` with no boundary, and `art` (admin catalog) and `foil`, `nonfoil` and `etched` (number entry) as `(?<![a-z])term(?![a-z])`, so `_` and digits separate words while `start` and `foiled` pass. Each guard was shown to pass a temporary `scryfall_id` or `mtg_printing` before the change and to fail it after. A CamelCase compound (`FoilLabel`, `ArtBuild`) still passes the finish and `art` checks, a known limit. `spec/export_format_document_spec.rb`, which checks the format document and its schema for the same names, had the same `\b` and got the same fix (the maintainer's ruling during the work), with the same before and after mutation checks.
+
 ## What to do next time
 
 - A guard that bans a name should be shown to fail with the spellings the code really uses (`scryfall_id`, `mtg_printing`, `MTGPrinting`), not only the bare word.
