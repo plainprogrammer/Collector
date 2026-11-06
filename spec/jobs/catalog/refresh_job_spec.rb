@@ -55,6 +55,64 @@ RSpec.describe Catalog::RefreshJob, type: :job do
 
     before { freeze_time }
 
+    def with_count(job, count) = job.tap { |queued| queued.exception_executions[Catalog::RateLimitRetry::COUNTED_AS] = count }
+
+    def count_of(job) = job.exception_executions[Catalog::RateLimitRetry::COUNTED_AS]
+
+    # Spec 043: only a refresh that wrote catalog rows before the rate limit starts the count again.
+    describe "and its count is kept only without progress (spec 043)" do
+      it "counts a rate limit on /bulk-data as no progress (AC-3.1)", :aggregate_failures do
+        stub_request(:get, "https://api.scryfall.com/bulk-data").to_return(status: 429)
+        job = with_count(described_class.new("mtg"), 2)
+
+        expect { job.perform_now }.to have_enqueued_job(described_class).at(45.seconds.from_now)
+        expect(count_of(job)).to eq(3)
+      end
+
+      it "counts a rate limit on /sets after a fresh download as no progress (AC-3.2)", :aggregate_failures do
+        file = stub_scryfall(cards: [ scryfall_card ])
+        stub_request(:get, "https://api.scryfall.com/sets").to_return(status: 429)
+        job = with_count(described_class.new("mtg"), 2)
+
+        expect { job.perform_now }.to have_enqueued_job(described_class)
+        expect(file).to have_been_requested
+        expect(count_of(job)).to eq(3)
+      ensure
+        FileUtils.rm_rf(Rails.configuration.x.catalog_download_dir)
+      end
+
+      it "starts the count again after an attempt that wrote rows, then fails on the third rate limit with none (AC-3.3, AC-3.4)",
+        :aggregate_failures do
+        stub_const("Catalog::Refresh::BATCH_SIZE", 1)
+        allow(Catalog).to receive(:source_for).with("fake").and_return(RateLimitedCatalogSource.new(entries: [ entry_record("a") ]))
+        job = with_count(described_class.new("fake"), 3)
+
+        expect { job.perform_now }.to have_enqueued_job(described_class) # wrote "a", then was turned away
+        expect(count_of(job)).to eq(1)
+        counts = []
+        2.times do # nothing new to write
+          job.perform_now
+          counts << count_of(job)
+        end
+        expect(counts).to eq([ 2, 3 ])
+        expect { job.perform_now }.to raise_error(Catalog::Sources::RateLimitedError)
+      end
+
+      # Decision 4, note 2: one job instance, two attempts. The second can't build its refresh, so it has made no
+      # progress, whatever the first did.
+      it "doesn't carry one attempt's progress into the next on the same job instance", :aggregate_failures do
+        stub_const("Catalog::Refresh::BATCH_SIZE", 1)
+        allow(Catalog).to receive(:source_for).with("fake").and_return(RateLimitedCatalogSource.new(entries: [ entry_record("a") ]))
+        job = with_count(described_class.new("fake"), 0)
+
+        job.perform_now
+        expect(count_of(job)).to eq(1) # wrote "a", then was turned away: progress
+        allow(Catalog::Refresh).to receive(:new).and_raise(rate_limited(60))
+        job.perform_now
+        expect(count_of(job)).to eq(2) # not 1: the first attempt's answer is gone
+      end
+    end
+
     it "comes back when the source asked, not at a transient error's few seconds" do
       allow(Catalog::Refresh).to receive(:new).and_raise(rate_limited(600))
 
