@@ -1,6 +1,8 @@
 require "rails_helper"
 
 # Spec 025 FR-9: the import preview's reader, controller, views and helper name no collectible type or source.
+# Issue #209: the names are matched anywhere in a word (scryfall_id, MTGPrinting), because `_` is a word character and
+# `\b` would let them through.
 RSpec.describe "The import preview's code" do
   let(:files) do
     %w[app/models/collection_import.rb app/models/export_format/rules.rb app/controllers/collections/import_previews_controller.rb
@@ -13,7 +15,7 @@ RSpec.describe "The import preview's code" do
   end
 
   it "never names a collectible type or a source" do
-    offenders = files.select { |file| file.exist? && file.read.match?(/\b(mtg|scryfall)\b/i) }
+    offenders = files.select { |file| file.exist? && file.read.match?(/mtg|scryfall/i) }
 
     expect(offenders.map { |file| file.relative_path_from(Rails.root).to_s }).to be_empty
   end
