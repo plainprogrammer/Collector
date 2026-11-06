@@ -23,6 +23,8 @@
 
 **D1. The key rule (FR-2): a fifth key builder, one SQL statement, with a parity spec.** Lots that move and meet no other lot of their identity (the common case: filing a box) are rewritten in one `UPDATE … SET location_id = ?, lot_key = <rebuilt from the row's columns> || ?, updated_at = ?` per 1,000 ids, exactly as `Lot::ConditionChange#update_alone!` does for the condition. The alternative, `lot.update!(location: to)` per lot, runs `Lot`'s validations: `finish_offered` and `condition_known` load the lot's entry and its vocabulary, an N+1 of at least two statements per lot, which for 5,000 lots does not fit the 2-second bar (spec 006 N set Set condition's one-statement update for the same reason). The lots that merge (a survivor) are written with `Lot.key_for` and a `where(id:).update_all` of their own row, one statement per survivor, which the NFR allows ("one statement per lot that merges or survives a merge"), and the folded lots are deleted in batched statements. Consequences, all in this plan: Task 2 writes the parity spec (ADR 0025 Consequences: "a spec per place"); Task 17 changes the area doc's "Four places build a key" to five and Task 18 CLAUDE.md's "four places build a `lot_key`". ADR 0025 is not edited (it records what was true on 2026-10-24; the area doc is the current truth).
 
+**Why `update_all` and `delete_all` against `.claude/rules/models.md`.** The rule keeps normal flows on validations and tenant checks. The move keeps the checks it needs in its own code: every statement goes through `@account.lots`; the destination is looked up through the account; the cap is checked for every group before the first write; no write can collide (alone lots have a free identity, merging lots are deleted before survivors change key); `Lot` has no callbacks or dependents and the foreign keys cascade (marks) or nullify (number-entry lines, scanner entries). `Lot::ConditionChange#update_alone!` is the precedent, and each statement carries a `# Safe:` comment saying so.
+
 **D2. Table order decides the survivor and the named lot.** `Lot::ConditionChange` takes `group.first` from an unordered relation. The move orders the selected lots with `sort.apply(lots.joins(entry: :set))` (the same ordering its cap message already uses), so "the first of them in the bulk table's order survives" (spec decision 4, AC-3.4) is true by construction. Ties break by id (`CollectionTable::Sort.default_order`).
 
 **D3. Whose identity group counts a lot that is already there (decision 3).** The selected lots split into *movers* (place differs from the destination) and *stayers* (already there). Movers are grouped by `[entry id, Lot.key_for(…, destination id)]`. The destination's existing lot of that identity, selected stayer or not, is the group's target and survives. A stayer is never rewritten; it is only ever a target. "Moved" counts the movers' copies, "already there" the stayers' copies; every selected lot a stayer, so no mover, is `NothingToMove` (422).
@@ -123,7 +125,7 @@ RSpec.describe Lot::BulkMove, type: :model do
   end
 
   it "keeps lots that differ only in finish, condition or price paid separate (AC-3.10)" do
-    entry = lot.entry
+    entry = create(:mtg_printing).entry
     others = [ lot(entry, finish: "foil", location: box), lot(entry, condition: "damaged", location: box), lot(entry, price_paid_cents: 150, location: box) ]
     move(others, blue)
     expect(account.lots.where(location: blue).count).to eq(3)
@@ -168,6 +170,11 @@ class Lot::BulkMove
     end
   end
 
+  # The selection selects no lot any more (removed in another tab): not "already there" (spec 041 decision 6 (3)).
+  class NoLotsLeft < StandardError
+    def initialize = super(BulkSelection::NONE_LEFT)
+  end
+
   # +to+ is a Location of +account+, or nil for none. +lots+ is the selection's relation of the account's lots.
   def initialize(account:, lots:, to:, sort:)
     @account, @lots, @to, @sort = account, lots, to, sort
@@ -175,7 +182,9 @@ class Lot::BulkMove
 
   def apply!
     Lot.transaction do
-      lots = @sort.apply(@lots.joins(entry: :set)).to_a # in the bulk table's order, read under the write lock
+      lots = @sort.apply(@lots.where(account_id: @account.id).joins(entry: :set)).to_a # the account's lots only, in the bulk table's order, read under the write lock
+      raise NoLotsLeft if lots.empty?
+
       movers, stayers = lots.partition { |lot| lot.location_id != @to&.id }
       raise NothingToMove, @to if movers.empty?
 
@@ -249,7 +258,7 @@ Tests (red: `merging` groups are never written, so the moved lots keep their old
 
 ```ruby
   describe "merging" do
-    let(:entry) { lot.entry }
+    let(:entry) { create(:mtg_printing).entry } # a printing with no lot yet: lot.entry would be an unplaced lot's identity, and a second unplaced lot(entry) would hit the unique index
 
     it "merges a moved lot into the destination's lot of its identity, which survives (AC-3.3)", :aggregate_failures do
       moved = lot(entry, location: box, quantity: 2)
@@ -262,7 +271,9 @@ Tests (red: `merging` groups are never written, so the moved lots keep their old
     it "makes selected lots of one identity one lot, the first in the table's order surviving (AC-3.4)", :aggregate_failures do
       first = lot(entry, quantity: 4)             # unplaced, lower id
       second = lot(entry, location: box, quantity: 2)
+      Lot.update_all(created_at: 1.day.ago)
       expect(move([ first, second ], blue).ids).to eq([ first.id ])
+      expect(first.reload.created_at).to be < 1.hour.ago # the survivor keeps its added time
       expect(first.reload).to have_attributes(location: blue, quantity: 6, lot_key: Lot.key_for(nil, nil, nil, blue.id))
       expect(Lot.exists?(second.id)).to be(false)
     end
@@ -289,6 +300,17 @@ Tests (red: `merging` groups are never written, so the moved lots keep their old
       result = move([ a, b ], blue)
       expect(result).to have_attributes(ids: [ b.id ], moved: 2, already_there: 3)
       expect([ b.reload.quantity, Lot.exists?(a.id) ]).to eq([ 5, false ])
+    end
+
+    it "reads a number-entry line as changed when its lot is folded away, and names the new place when its lot moved whole (spec 041 decision 6; spec 032 AC-7.6; spec 034 decision 3)", :aggregate_failures do
+      folded = NumberEntry.add!(account:, entry:, quantity: 2, line_key: "a" * 32).line
+      moved = NumberEntry.add!(account:, entry: create(:mtg_printing).entry, quantity: 1, line_key: "b" * 32).line
+      held = lot(entry, location: blue, quantity: 3)
+      move(account.lots.where(id: [ folded.lot_id, moved.lot_id ]).to_a, blue)
+      expect(folded.reload).not_to be_undoable           # its lot is gone: "Changed in your collection"
+      expect(moved.reload).to be_undoable
+      expect(moved.lot.location).to eq(blue)              # the line names its lot's new place
+      expect(held.reload.quantity).to eq(5)
     end
 
     it "keeps lots of other places and identities as they were", :aggregate_failures do
@@ -325,6 +347,10 @@ Code: replace `Task 2`'s tail of `apply!` and add the writers (the folded lots a
       end
     end
 
+    # models.md says not to use delete_all/update_all in normal flows (they skip validations and tenant checks). The move does,
+    # as Lot::ConditionChange#update_alone! does, for the 2-second bar, and each statement is safe: scoped through @account.lots,
+    # values bound, the cap and every identity collision checked on the lots read in this transaction, the place looked up through
+    # the account, and Lot has no callbacks or dependents.
     # Lot has no callbacks or dependents; the database nulls or cascades what points at a lot (number-entry lines, scanner entries, marks).
     def delete!(ids)
       ids.each_slice(BATCH) { |slice| @account.lots.where(id: slice).delete_all } # Safe: tenant-scoped, bound ids
@@ -341,7 +367,7 @@ Tests (red: an over-cap merge is written, `CapExceeded` never raised):
 
 ```ruby
   describe "the 9,999 cap" do
-    let(:entry) { lot.entry }
+    let(:entry) { create(:mtg_printing).entry } # a printing with no lot yet: lot.entry would be an unplaced lot's identity, and a second unplaced lot(entry) would hit the unique index
 
     it "changes nothing and names the first selected lot of an over-cap identity (AC-3.8)", :aggregate_failures do
       fine = lot(location: box)
@@ -377,6 +403,12 @@ Tests (red: an over-cap merge is written, `CapExceeded` never raised):
     Location.where(id: gone.id).delete_all
     expect { move([ alone, merged, twin ], gone) }.to raise_error(ActiveRecord::InvalidForeignKey)
     expect([ alone.reload.location, merged.reload.quantity, Lot.exists?(twin.id) ]).to eq([ box, 2, true ])
+  end
+
+  it "raises NoLotsLeft, not 'already there', when the relation selects no lot of the account", :aggregate_failures do
+    theirs = create(:lot, account: create(:user).account)
+    expect { described_class.new(account:, lots: Lot.where(id: theirs.id), to: blue, sort:).apply! }.to raise_error(described_class::NoLotsLeft, BulkSelection::NONE_LEFT)
+    expect(theirs.reload.location).to be_nil
   end
 
   it "touches only the account's lots", :aggregate_failures do
@@ -422,18 +454,22 @@ The `account.lots` scoping in `existing_targets`, `check_cap!` and every writer 
     count
   end
 
-  it "runs as many statements for 12 lots that merge with nothing as for 2" do
-    few = Array.new(2) { lot(location: box) }
-    many = Array.new(12) { lot(location: box) }
-    expect(queries_during { move(many, blue) }).to eq(queries_during { move(few, blue) })
-  end
+  describe "statement counts" do
+    before { blue } # the lazy let would otherwise INSERT inside the counted block
 
-  it "writes one statement per survivor and batches the deletes of folded lots" do
-    entries = Array.new(6) { lot.entry }
-    pairs = entries.flat_map { |entry| [ lot(entry, location: box), lot(entry) ] } # six groups of two, each merging
-    two_groups = queries_during { move(pairs.first(4), blue) }
-    six_groups = queries_during { move(pairs.last(8), blue) }
-    expect(six_groups - two_groups).to eq(4) # four more groups, four more survivor statements; the folded lots go in one batch either way
+    it "runs as many statements for 12 lots that merge with nothing as for 2" do
+      few = Array.new(2) { lot(location: box) }
+      many = Array.new(12) { lot(location: box) }
+      expect(queries_during { move(many, blue) }).to eq(queries_during { move(few, blue) })
+    end
+
+    it "writes one statement per survivor and batches the deletes of folded lots" do
+      entries = Array.new(6) { create(:mtg_printing).entry }
+      pairs = entries.flat_map { |entry| [ lot(entry, location: box), lot(entry) ] } # six groups of two, each merging
+      two_groups = queries_during { move(pairs.first(4), blue) }  # groups 1 and 2
+      four_groups = queries_during { move(pairs.last(8), blue) }  # groups 3 to 6, none seen by the first move
+      expect(four_groups - two_groups).to eq(2) # two more groups, two more survivor statements; the folded lots go in one batch either way
+    end
   end
 ```
 
@@ -556,7 +592,8 @@ Tests (red: the bar has two buttons; `go=move` is not an action):
       get collection_path(bulk: 1)
       expect(page_html.css(".c-bulkbar__extra button").map(&:text)).to eq([ "Set condition…", "Move to…", "Remove" ])
       expect(page_html.css(".c-bulkbar__more .c-menu__item").map(&:text)).to eq([ "Set condition…", "Move to…", "Remove" ])
-      expect(page_html.at_css('.c-bulkbar__extra button[value=move]')).to include("form" => "bulk", "name" => "go", "type" => "submit")
+      button = page_html.at_css('.c-bulkbar__extra button[value=move]')
+      expect([ button["form"], button["name"], button["type"] ]).to eq(%w[bulk go submit])
     end
 
     context "when the account has no location (AC-1.2)" do
@@ -579,7 +616,7 @@ Tests (red: the bar has two buttons; `go=move` is not an action):
     it "records the ticks and opens the move page, keeping the page (AC-1.3)", :aggregate_failures do
       lot = own
       select_lots(lot, page: 1)
-      expect(response).to redirect_to(new_collection_move_path)
+      expect(response).to redirect_to(new_collection_move_path(page: 1)) # act passes the submitted page on
       expect(response).to have_http_status(:see_other)
       select_lots(lot, page: 3)
       expect(response).to redirect_to(new_collection_move_path(page: 3))
@@ -595,6 +632,15 @@ Tests (red: the bar has two buttons; `go=move` is not an action):
       expect(page_html.at_css(".c-bulkbar")).to be_present
     end
 
+    it "refuses when the ticked lot was removed in another tab (AC-1.5)", :aggregate_failures do
+      gone = own
+      post collection_selection_path
+      gone.destroy!
+      patch collection_selection_path, params: { go: "move", rendered_q: "", rendered_location: "", all_rendered: "0", shown_ids: [ gone.id ], ticked_ids: [ gone.id ] }
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(page_html.at_css("#status").text).to include("None of the selected items are in your collection any more.")
+    end
+
     it "refuses when every ticked lot is another account's, so none is left (AC-1.5, AC-5.1)", :aggregate_failures do
       theirs = create(:lot, account: create(:user).account)
       post collection_selection_path
@@ -605,7 +651,7 @@ Tests (red: the bar has two buttons; `go=move` is not an action):
   end
 ```
 
-(AC-1.5's "removed in another tab" case, a lot that was ticked and then deleted, is covered at the controller by Task 9's "a selection whose lots are gone" GET example and Task 11's refusal "(3)"; here the lot is simply not the account's, which `record!` ignores, so the selection selects nothing.)
+(Scanner sitting entries share the number-entry line's mechanism, `on_delete: :nullify` on the lot, which Task 4's number-entry example exercises; spec 032's own examples cover the scanner's read.)
 
 Code, `Collections::SelectionsController`:
 
@@ -665,15 +711,15 @@ Tests (red: `ActionController::RoutingError`/`uninitialized constant Collections
       expect(response).to have_http_status(:ok)
       expect(page_html.at_css("h1").text).to eq("Move 12 items")
       select = page_html.at_css("select#to")
-      expect(select).to include("name" => "to", "required" => "")
+      expect([ select["name"], select["required"] ]).to eq([ "to", "required" ])
       expect(page_html.css("select#to option").map { |option| [ option.text, option["value"] ] })
         .to eq([ [ "Choose…", "" ], [ "No location", "none" ], [ "Blue binder", blue.id.to_s ], [ "Long box", box.id.to_s ] ])
       expect(page_html.at_css("select#to option[selected]").text).to eq("Choose…")
       expect(page_html.at_css("label[for=to]").text).to eq("To")
       expect(page_html.at_css("input[type=submit]")["value"]).to eq("Move")
-      expect(page_html.at_css(".c-form__actions a")).to include("href" => collection_path(bulk: 1, page: 2))
+      expect(page_html.at_css(".c-form__actions a")["href"]).to eq(collection_path(bulk: 1, page: 2))
       expect(page_html.at_css('header a[aria-label="Back"]')["href"]).to eq(collection_path(bulk: 1, page: 2))
-      expect(page_html.at_css("form")["action"]).to eq(collection_move_path(page: 2))
+      expect(page_html.at_css("main form.c-form")["action"]).to eq(collection_move_path(page: 2)) # the appbar has a Sign out form of its own
     end
 
     it "says 'Move 1 item' for one copy" do
@@ -877,6 +923,16 @@ Tests (red: `AbstractController::ActionNotFound`, `create` missing):
       expect([ bar_count, selected_names.size ]).to eq([ "5 of 5 selected", 1 ])
     end
 
+    it "counts only the copies that moved when a selected lot was removed in another tab (Error Scenarios)", :aggregate_failures do
+      kept = own("Card A", location: box, quantity: 2)
+      gone = own("Card B", location: box, quantity: 3)
+      select_lots(kept, gone)
+      gone.destroy!
+      post collection_move_path, params: { to: blue.id }
+      expect(flash[:notice]).to eq("Moved 2 items to Blue binder.")
+      expect(kept.reload.location).to eq(blue)
+    end
+
     it "does not touch the session's bulk removal Undo (AC-3.11)", :aggregate_failures do
       removed = own("Opt")
       select_lots(removed, go: "remove")
@@ -924,11 +980,12 @@ Tests (red: `AbstractController::ActionNotFound`, `create` missing):
 
     it "restarts empty under no location, listing what is left (AC-3.13)", :aggregate_failures do
       moved = own("Card A")
-      own("Card B", location: box)
+      own("Card B")           # unplaced and unticked: it stays, so the table still renders under No location
+      own("Card C", location: box)
       select_lots(moved, location: "none")
       post collection_move_path, params: { to: blue.id }
       follow_redirect!
-      expect(bar_count).to eq("0 of 0 selected")
+      expect(bar_count).to eq("0 of 1 selected")
       expect(page_html.at_css("thead input[type=checkbox]")["checked"]).to be_nil
     end
   end
@@ -987,6 +1044,8 @@ Code, `Collections::MovesController#create` and its helpers:
     refuse(alert: helpers.over_cap_message("Nothing moved.", error.lot))
   rescue Lot::BulkMove::NothingToMove => error
     refuse(alert: error.message)
+  rescue Lot::BulkMove::NoLotsLeft => error # the lots went between the check above and the write lock
+    refuse(alert: error.message, copies: 0)
   end
 ```
 
@@ -1037,13 +1096,14 @@ Tests:
     end
 
     it "(2) answers 'You have no locations yet.' with any destination, selection kept (AC-1.7)", :aggregate_failures do
+      lot.update!(location: nil) # a location that holds a lot cannot be removed (restrict foreign key)
       Location.where(account:).delete_all
       post collection_move_path, params: { to: "none" }
       expect(response).to redirect_to(collection_path(bulk: 1))
       expect(flash[:alert]).to eq("You have no locations yet.")
       post collection_move_path, params: { to: "424242" }
       expect(response).to have_http_status(:see_other)
-      expect(selection_kept).to eq("1 of 1 selected")
+      expect(selection_kept).to eq("2 of 2 selected")
     end
 
     it "(3) answers 422 with 'None of the selected items…' when the selection selects no lot", :aggregate_failures do
@@ -1067,7 +1127,16 @@ Tests:
         expect(page_html.at_css(".c-field--invalid .c-field__error").text).to eq("Choose where to move them.")
         expect(page_html.at_css("select#to")["aria-describedby"]).to eq(page_html.at_css(".c-field__error")["id"])
       end
-      expect([ lot.reload.location, selection_kept ]).to eq([ box, "1 of 1 selected" ])
+      expect([ lot.reload.location, selection_kept ]).to eq([ box, "2 of 2 selected" ])
+    end
+
+    it "(4) keeps Back and Cancel on the bulk table with its filters, sort and page when it re-renders (AC-2.4)", :aggregate_failures do
+      select_lots(lot, location: box.id.to_s)
+      post collection_move_path(page: 2), params: { to: "" }
+      bulk = collection_path(bulk: 1, location: box.id, page: 2)
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(page_html.at_css('header a[aria-label="Back"]')["href"]).to eq(bulk)
+      expect(page_html.at_css(".c-form__actions a")["href"]).to eq(bulk)
     end
 
     it "(5) answers 404 for another account's location or one removed meanwhile, changing nothing (AC-2.3, AC-5.2)", :aggregate_failures do
@@ -1079,7 +1148,7 @@ Tests:
         post collection_move_path, params: { to: value }
         expect(response).to have_http_status(:not_found)
       end
-      expect([ lot.reload.location, theirs.lots.count, selection_kept ]).to eq([ box, 0, "1 of 1 selected" ])
+      expect([ lot.reload.location, theirs.lots.count, selection_kept ]).to eq([ box, 0, "2 of 2 selected" ])
     end
 
     it "(6) refuses when every selected lot is already there (AC-3.7)", :aggregate_failures do
@@ -1087,7 +1156,7 @@ Tests:
       expect(response).to have_http_status(:unprocessable_content)
       expect(page_html.at_css("#status").text).to include("The selected items are already in Long box.")
       expect(page_html.at_css("select#to option[selected]").text).to eq("Long box")
-      expect(selection_kept).to eq("1 of 1 selected")
+      expect(selection_kept).to eq("2 of 2 selected")
     end
 
     it "(6) refuses 'already have no location' for unplaced lots (AC-3.7)" do
@@ -1102,7 +1171,7 @@ Tests:
       post collection_move_path, params: { to: blue.id }
       expect(response).to have_http_status(:unprocessable_content)
       expect(page_html.at_css("#status").text).to include("Nothing moved. Lightning Bolt (#{ApplicationController.helpers.set_number(lot.entry)}) would have more than 9,999 copies in one lot.")
-      expect([ lot.reload.location, held.reload.quantity, selection_kept ]).to eq([ box, 9_999, "1 of 1 selected" ])
+      expect([ lot.reload.location, held.reload.quantity, selection_kept ]).to eq([ box, 9_999, "2 of 10,001 selected" ])
     end
 
     it "ignores another account's lot ids and an account, user or admin value (AC-5.1, AC-5.3)", :aggregate_failures do
@@ -1176,7 +1245,7 @@ How it is tested: the server side of the flow is the whole of the no-script path
     patch collection_selection_path, params: { go: "move", rendered_q: "", rendered_location: "", all_rendered: "0", header_toggled: "0", page: 1,
       shown_ids: ids, ticked_ids: ids }
     follow_redirect!
-    form = page_html.css("form").find { |candidate| candidate["action"] == collection_move_path }
+    form = page_html.css("main form").find { |candidate| URI(candidate["action"]).path == collection_move_path } # its action carries ?page=1
     expect(form).to be_present
     expect(form.css("[data-controller]")).to be_empty
     expect(form.at_css("select[name=to][required]")).to be_present
@@ -1227,7 +1296,9 @@ RSpec.describe "Bulk Move to…", type: :system do
     check "Select all"
     within(".c-bulkbar__extra") { click_on "Move to…" }
     click_on "Move"
-    expect(page).to have_css("h1", text: "Move 1 item")
+    expect(page).to have_css("h1", text: "Move 1 item")  # still the move page
+    expect(page).to have_no_css(".c-field--invalid")      # the server's refusal never rendered: the browser stopped it
+    expect(page).to have_no_css("#status", text: /\S/)
     expect(lot.reload.location).to be_nil
   end
 
@@ -1257,7 +1328,7 @@ Run `bin/rspec spec/system/bulk_move_spec.rb` (needs headless Firefox).
 
 **Implements:** AC-4.4, NFR Performance. **Files:** `spec/requests/bulk_move_timing_spec.rb` (new).
 
-The bar is a `:timing` example (measured, never gating; run with `SCANNER_TIMING=1 bin/rspec --tag timing spec/requests/bulk_move_timing_spec.rb`), written like spec 037's. The fixture is the spec's: 5,000 lots over 300 locations, many merging into lots already in the destination, in the same table as two other accounts' lots. The shape: 1,000 printings; lot `i` is printing `i % 1000` in location `i % 300`, with price paid `i / 3000` (0 or 1) so the pairs are unique; every printing therefore has lots of one price in several places, which merge when moved to one place; 400 extra lots already in the destination for printings that have none there add merges into existing lots.
+The bar is a `:timing` example (measured, never gating; run with `SCANNER_TIMING=1 bin/rspec --tag timing spec/requests/bulk_move_timing_spec.rb`), written like spec 037's. The fixture is the spec's: 5,000 lots over 300 locations, many merging into lots already in the destination, in the same table as two other accounts' lots. The shape (the account holds 5,396 lots with the extras): 1,000 printings; lot `i` is printing `i % 1000` in location `i % 300`, with price paid `i / 3000` (0 or 1) so the pairs are unique; every printing therefore has lots of one price in several places, which merge when moved to one place (about 2,000 merge groups: 1,000 of three lots at price 0 and 1,000 of two lots at price 1); 396 extra lots (printings 1 to 400 that are not multiples of 100) already in the destination add merges into existing lots.
 
 ```ruby
 require "rails_helper"
@@ -1364,7 +1435,8 @@ Edits, each with its source:
 10. **Named constants**: rows for `Lot::BulkMove::CHOOSE` ("Choose where to move them."), `Lot::BulkMove::NO_LOCATIONS` ("You have no locations yet."), `Lot::BulkMove::BATCH` (1,000; ids per statement), `Lot::BulkMove::NothingToMove` text; the measured-bars paragraph: add "and Move to… on every matching lot of 5,000 lots over 300 locations under 2 seconds (spec 041 AC-4.4; the `:timing` example `spec/requests/bulk_move_timing_spec.rb`)".
 11. **Decisions not in an ADR**: replace "Move copies works on one lot, from the card page; many lots at once is #48" with "Move copies works on one lot, from the card page; Move to… in bulk mode moves whole lots, with no Undo, and leaves a selected lot already there alone (maintainer, 2026-11-06; spec 041 decisions 1–3)".
 12. **Accepted limits**: the #48 line becomes "No sort by location (spec 037 Non-Goals); a move's merged lots stay merged when moved back (spec 041 decision 1); no partial lots in bulk (decision 2); [#187](https://github.com/plainprogrammer/Collector/issues/187): no shortcut from a location's refusal page into bulk mode."
-13. **Sources**: add `spec 041` and issue #48; **Distillation log** is left to `distill-feature` (rule: documentation.md, session end), not written by hand here.
+13. **Decisions not in an ADR**: add "Bulk Move to… writes with `update_all` and `delete_all` on the account's lots, against the models rule, for the 2-second bar: every statement is tenant-scoped and bound, the cap and identity collisions are checked first, `Lot` has no callbacks, and the foreign keys cascade or nullify what points at a lot (`Lot::ConditionChange#update_alone!` is the precedent; spec 041 FR-2, D1 of its plan)".
+14. **Sources**: add `spec 041` and issue #48; **Distillation log** is left to `distill-feature` (rule: documentation.md, session end), not written by hand here.
 
 ### Task 18: `CLAUDE.md` and the roadmap
 
@@ -1425,17 +1497,17 @@ Spec files: `spec/models/lot/bulk_move_spec.rb` (the move), `spec/models/bulk_se
 | AC-1.2 no location: not offered, navigation | 8 | `bulk_move_spec.rb` "when the account has no location" |
 | AC-1.3 ticks recorded, page opens (303) | 8 | `bulk_move_spec.rb` "records the ticks and opens the move page" |
 | AC-1.4 nothing selected, 422 | 8 | `bulk_move_spec.rb` "refuses with the bulk table when nothing is selected" |
-| AC-1.5 all gone, 422 | 8 | `bulk_move_spec.rb` "refuses when every selected lot is gone" |
+| AC-1.5 all gone, 422 | 8 | `bulk_move_spec.rb` "refuses when the ticked lot was removed in another tab", "refuses when every ticked lot is another account's…" |
 | AC-1.6 GET with no selection, 303 | 9 | `bulk_move_spec.rb` "sends the collector back to the bulk table when nothing is selected" |
 | AC-1.7 last location removed | 9 (GET), 11 (POST) | `bulk_move_spec.rb` "answers 'You have no locations yet.'…" and refusal "(2)" |
 | AC-2.1 heading, To options, prompt, buttons, own place left out | 9 | `bulk_move_spec.rb` "says how many items…", "leaves out the selection's own place" |
 | AC-2.2 no destination, 422 on To | 11 (server), 14 (browser) | `bulk_move_spec.rb` refusal "(4)"; `system/bulk_move_spec.rb` "does not move when the To prompt is left" |
 | AC-2.3 foreign or removed location, 404 | 11 | `bulk_move_spec.rb` refusal "(5)" |
-| AC-2.4 Back and Cancel keep page, filters, sort | 9, 11 | `bulk_move_spec.rb` "says how many items…" (the page), refusals (re-render) |
+| AC-2.4 Back and Cancel keep page, filters, sort | 9, 11 | `bulk_move_spec.rb` "says how many items…" (the page), refusal "(4) keeps Back and Cancel…" (re-render under a filter and page) |
 | AC-3.1 same lots, same ids, notice | 2, 10 | `bulk_move_spec.rb` (model) "moves every copy…"; request "moves the three lots…" |
 | AC-3.2 to no location | 2, 10 | model "moves to no location"; request "moves to no location" |
 | AC-3.3 merge into the destination's lot | 4, 10 | model "merges a moved lot into…"; request "merges into the destination's lot" |
-| AC-3.4 selected lots of one identity merge, the first survives | 4 | model "makes selected lots of one identity one lot…", "lets the sort choose the survivor" |
+| AC-3.4 selected lots of one identity merge, the first survives | 4 | model "makes selected lots of one identity one lot…" (also the survivor's added time), "lets the sort choose the survivor" |
 | AC-3.5 merge with the destination's lot too | 4 | model "folds two moved lots into the destination's lot" |
 | AC-3.6 already there, counted | 3, 10 | model "leaves lots already there alone…"; request notice examples (3 variants) |
 | AC-3.12 selected lot already there is the target | 4, 10 | model "treats a selected lot already there as the target"; request "leaves a selected lot already there…" |
@@ -1463,7 +1535,7 @@ Spec files: `spec/models/lot/bulk_move_spec.rb` (the move), `spec/models/bulk_se
 | NFR Accessibility | 9, 14, 19 | markup (label, `required`, `aria-describedby`) in `bulk_move_spec.rb`; the keyboard flow is the manual check in `verification.md` |
 | NFR Security (account scoping, no account/user/admin values) | 5, 11 | as AC-5.1 to AC-5.3 |
 | NFR Reliability (all or nothing, one transaction) | 5, 11 | model cap and foreign-key examples; request "a stale page submitted twice" |
-| Error Scenarios (all nine rows) | 8, 9, 10, 11 | the rows' own examples: nothing selected (8), all gone (8, 9), no destination (11), foreign or removed destination (11), every lot there (11), over the cap (11), no location (9, 11), stale twice (11); "some selected lots gone" in Task 10's request spec "moves…" with a lot destroyed between selecting and moving (add it, one example, notice counts only the copies moved) |
+| Error Scenarios (all nine rows) | 8, 9, 10, 11 | the rows' own examples: nothing selected (8), all gone (8, 9), no destination (11), foreign or removed destination (11), every lot there (11), over the cap (11), no location (9, 11), stale twice (11); some selected lots gone: Task 10 "counts only the copies that moved when a selected lot was removed in another tab"; the selection selects no lot at the write lock: Task 5 "raises NoLotsLeft"; number-entry lines (decision 6): Task 4 "reads a number-entry line as changed…" |
 | Decision 7 (no export change) | none | no file of `docs/export-format/` or the Coverage tables changes; `bin/ci` proves the guard stays green |
 | Documents that change | 16, 17, 18, 19 | read, recorded in `verification.md` |
 
