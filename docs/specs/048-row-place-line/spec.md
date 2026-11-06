@@ -1,7 +1,7 @@
 # Feature 048: A Table Row's Place Line Wraps (Supersedes Spec 033 Decision 5 for Rows)
 
-**Status:** Approved by the coordinator under the maintainer's delegation (2026-11-06), at 0.4.0 after two spec review rounds. The maintainer ruled decisions 1–4 on 2026-10-27 and 2026-11-06 (below); the coordinator approved decisions 5 and 6, as recommended
-**Version:** 0.4.0
+**Status:** Approved by the coordinator under the maintainer's delegation (2026-11-06), at 0.4.0 after two spec review rounds; 0.5.0 clarifies AC-1.7 and adds AC-1.8 at the coordinator's request. The maintainer ruled decisions 1–4 on 2026-10-27 and 2026-11-06 (below); the coordinator approved decisions 5 and 6, as recommended
+**Version:** 0.5.0
 **Created:** 2026-11-06
 **Last Updated:** 2026-11-06
 **Depends on:** [spec 033](../033-location-on-tiles-and-rows/spec.md) (the place on tiles and rows, issue #46; merged, PR #140), [spec 037](../037-filter-collection-by-location/spec.md) (the location filter), all merged
@@ -15,6 +15,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.5.0 | 2026-11-06 | Clarified after the full suite failed AC-1.7's example: the factory's set code (`s<sequence>`) was five characters late in a run, and a four- or five-character set code (real ones: PLST, PMH3) legitimately wraps the phone line at 360px. AC-1.7 states its set code (three characters); AC-1.8 is new (a five-character code wraps, with no sideways scroll); decision 4 and the probe table no longer say "nothing visible changes" without the set code's length. Requested by the coordinator; no change to a ruling: the wrap rule is still not scoped |
 | 0.4.0 | 2026-11-06 | Approved at Gate A with two changes: spec 033's AC-1.2 tie example and AC-1.7 join Story 2 as AC-2.5 and AC-2.6 (they are in spec 033's `verification.md`, not in the issue), and the table's 16px overflow just above the breakpoint is filed as [#208](https://github.com/plainprogrammer/Collector/issues/208) and cited in Out of Scope. No review round for these two edits |
 | 0.3.0 | 2026-11-06 | Spec review round 2 (NEEDS REVISION, mechanical; 1 major, 5 minor) fixed: the wide frames start at 800px because a table with a short name is already wider than a 645px container (M1); the span is on the named cell only (m2); decision 4 states the phone rule's reach (m3); AC-1.3 and AC-1.4 name how the width is measured (m4); AC-2.1's setup is exact (m5); the guard's file and the seven paths are named (m6). No round 3; the worker checked the edits |
 | 0.2.0 | 2026-11-06 | Spec review round 1 (NEEDS REVISION; 0 blocking, 2 major, 10 minor) fixed. A second probe (below) found Firefox ignores `max-width` on a table cell, so the cap goes on a span inside the cell (M1, FR-1, decision 2); AC-2.2 of spec 033 is extended, not superseded (m3); spec 033 FR-5 is added to Supersedes (m4); AC-1.3 and AC-1.4 measure once (m5); AC-2.4 is an explicit-list guard (m6); AC-2.3's Undo, AC-1.7, AC-1.2, AC-2.2 and AC-2.1 sharpened (m7–m10, m12); documents list completed (M2, m11) |
@@ -37,7 +38,8 @@ The issue left three points open and listed five test gaps. This spec settles th
 | 40 characters, spaces | wraps, fits | table 830px: the page scrolls sideways up to a container of about 830px |
 | 60 characters, spaces | wraps to 3 lines, fits | table 950px: scrolls up to a container of about 950px |
 | 60 characters, **unbroken** | **table 779px in a 297px container: about 440px of sideways scroll** | table 1313px: scrolls at every width up to 1280 |
-| no location in the account | one line at 360 and 390; nothing changes | nothing changes |
+| no location in the account, a set code of up to three characters | one line at 360 and 390; nothing changes | nothing changes |
+| no location in the account, a five-character set code (found in the full suite) | the line wraps to two at 360 and doesn't scroll | nothing changes |
 
 So the wide cell does make the table scroll sideways just above the breakpoint (issue point 2), and an unbroken name overflows even the phone row, which the issue did not suspect.
 
@@ -85,7 +87,7 @@ Wrapping at spaces isn't enough: the probe's unbroken name overflowed the phone 
 
 ### 4. The phone wrap rule applies to every narrow collection table, an account with no location's too (ruled by the maintainer, 2026-11-06)
 
-The rule is the `c-table__sub` line's, which every narrow table has. For an account with no location the line is set · number, finish, condition and language, which fits one line at 360 and 390 (probe), so the rule changes nothing visible there. A conditional class would add code for no visible effect, so the rule is not scoped. Its reach is the rule's selector's: the `c-table__sub` line of every table inside `.c-collection` below 640px, the card page's "Your copies" line, whose place the line carries, and the admin and catalog tables' sub lines included; accepted, as spec 033's `white-space: normal` already applies there. The card page's own Location column is not changed.
+The rule is the `c-table__sub` line's, which every narrow table has. For an account with no location the line is set · number, finish, condition and language, which fits one line at 360 and 390 for a set code of up to three characters (probe), so the rule changes nothing visible there. A four- or five-character set code (PLST, PMH3) can make the line longer than a 360px phone holds: it wraps instead of scrolling the page, which is what the rule is for, and that is fine under this ruling. A conditional class would add code for no visible effect, so the rule is not scoped. Its reach is the rule's selector's: the `c-table__sub` line of every table inside `.c-collection` below 640px, the card page's "Your copies" line, whose place the line carries, and the admin and catalog tables' sub lines included; accepted, as spec 033's `white-space: normal` already applies there. The card page's own Location column is not changed.
 
 ### 5. `c-table__place` becomes a documented hook with a rule (recommended)
 
@@ -117,7 +119,8 @@ Recorded in the specs index in both directions, and in the collection and lots a
 - [ ] **AC-1.4** Given a name of 60 "W"s When the table renders at the same frames Then the name breaks inside itself in the cell, within the same 20rem, and the table is no wider than `.c-collection` and the page doesn't scroll sideways. At a frame of 760px the page still doesn't scroll sideways for either name (no table wider than its container is asked of it there).
 - [ ] **AC-1.5** Given a name with markup When a row renders Then it is output escaped in the cell and in the line (spec 032 AC-4.5), unchanged.
 - [ ] **AC-1.6** Given the same lots When the grid renders Then a tile's place name is still on one line cut with an ellipsis and its "+N more" is still visible (spec 033 AC-1.6).
-- [ ] **AC-1.7** Given an account with no location and a lot of number 146, foil, near mint, English, quantity 9,999 (spec 006 AC-2.8's line) When the table renders at 360px and at 390px Then it fits without sideways scroll, shows no Location column and no place, and its `c-table__sub` is under 20px high, one line (decision 4).
+- [ ] **AC-1.7** Given an account with no location and a lot of set code "MH3" (any code of up to three characters), number 146, foil, near mint, English, quantity 9,999 (spec 006 AC-2.8's line) When the table renders at 360px and at 390px Then it fits without sideways scroll, shows no Location column and no place, and its `c-table__sub` is under 20px high, one line (decision 4).
+- [ ] **AC-1.8** Given the same account and lot with a five-character set code ("PMH3A") When the table renders at 360px Then the line wraps (its `c-table__sub` is two lines high, 20px or more), the page doesn't scroll sideways, and it shows no Location column and no place (decision 4).
 
 ### Story 2: Spec 033's test gaps are closed
 
@@ -146,7 +149,7 @@ Recorded in the specs index in both directions, and in the collection and lots a
 - **FR-1.** The outcome is Story 1's. The mechanism, from probe 2: the Location cell `white-space: normal`; a `span.c-table__place-name` inside it (the only markup change, in `_lot_cells.html.erb`; the named cell only, the muted "No location" cell is unchanged; the text is the name as before) with `display: block`, `max-width: 20rem` and `overflow-wrap: anywhere`; and `overflow-wrap: anywhere` added to the phone line's rule in spec 033's container query (`collection`, 640px). The rules are in `additions.css`, tokens and `c-*` classes only. No controller, model or query changes. If an AC's measurement shows a rule isn't enough, the plan adjusts the rule, not the criterion.
 - **FR-2.** The tile's rules (`.c-tile__place*`) are not touched.
 - **FR-3.** Core code names no collectible; AC-2.4's guard holds it.
-- **FR-4.** The widths are measured in a browser at the frames of AC-1.1–AC-1.4 and AC-1.7 (a system example with a fixed-width frame, `spec/support/narrow_frame.rb`; a 1280px frame fits the suite's browser window), not asserted from the CSS.
+- **FR-4.** The widths are measured in a browser at the frames of AC-1.1–AC-1.4 and AC-1.7 and AC-1.8 (a system example with a fixed-width frame, `spec/support/narrow_frame.rb`; a 1280px frame fits the suite's browser window), not asserted from the CSS.
 
 ## Non-Functional Requirements
 
@@ -161,7 +164,7 @@ Recorded in the specs index in both directions, and in the collection and lots a
 |---|---|
 | A name of 60 code points with no space | Breaks inside the name, in the cell and in the phone line (decision 3) |
 | A name with markup | Escaped, as before |
-| An account with no location | No Location column and no place on the line; the wrap rule is present and changes nothing (decision 4) |
+| An account with no location | No Location column and no place on the line; the wrap rule is present and changes nothing for a set code of up to three characters; a longer code wraps the line at 360px (decision 4) |
 | A name that fits | Looks as before |
 
 ## Open Questions
