@@ -72,3 +72,7 @@ SPEC-ALIGNED WITH MINOR GAPS. `sdd-review` Mode B ran read-only on Opus, 2026-11
 - **m6:** the local `Gemfile.lock` arm64 platform lines. Left uncommitted, as for every branch on this machine.
 
 The review confirmed the `backup_upgrade_spec` vacuity note above. It also checked the stale-currency path, `Current.account` after a refusal, nil handling and tenancy, and found them clean.
+
+## Distillation
+
+Distilled before the merge (2026-11-06, `distill-feature`): `docs/architecture/collection-and-lots.md` (price paid in the account's currency, the `COLLECTOR_CURRENCY` default, the Currency page, the guard, the upgrade that carried the instance currency) and `docs/architecture/data-portability.md` (the export's source, `unsupported_currency`, the plan, the fingerprint, the preview, the apply and its notice, the backup, the decisions). Each doc has a Distillation log row. The index marks the spec Frozen by both, with its plan's retirement owed after the merge. Tenancy and accounts has no area doc, so the account column is described in collection and lots. CLAUDE.md is unchanged.
