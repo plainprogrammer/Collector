@@ -42,6 +42,14 @@ RSpec.describe "User administration", type: :request do
       expect([ bo.authenticate("another long secret").present?, bo.admin? ]).to eq([ true, true ])
     end
 
+    it "shows and takes no currency, starting a new account at the default (spec 038 AC-2.3, AC-3.1)", :aggregate_failures do
+      allow(Rails.configuration.x).to receive(:default_currency).and_return(Collector::Currency.fetch!("EUR"))
+      get admin_users_path
+      expect(Nokogiri::HTML5(response.body).at_css("main").text).not_to match(/currency|USD|EUR/i)
+      post admin_users_path, params: { user: { name: "Bo", email_address: "bo@example.test", password: "another long secret", currency: "JPY" } }
+      expect(User.find_by!(email_address: "bo@example.test").account.currency).to eq("EUR")
+    end
+
     it "links an invalid email field to its message", :aggregate_failures do
       post admin_users_path, params: { user: { name: "Bo", email_address: "", password: "another long secret" } }
       expect(response).to have_http_status(:unprocessable_content)

@@ -35,6 +35,7 @@ Rails.application.routes.draw do
     end
   end
   resource :more, only: :show
+  resource :currency, only: %i[edit update] # spec 038: the signed-in account's currency
 
   # Locations (spec 029): the named places a collector keeps part of their collection.
   resources :locations, only: %i[index create edit update destroy] do
