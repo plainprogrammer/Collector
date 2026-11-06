@@ -99,6 +99,16 @@ RSpec.describe Lot::BulkMove, type: :model do
       expect(few.reload.quantity).to eq(6)
     end
 
+    it "keeps the lowest id as the survivor under a condition sort, whatever its direction: one identity ties on condition (AC-3.4)", :aggregate_failures do
+      first = lot(entry, condition: "near_mint", quantity: 4)
+      second = lot(entry, condition: "near_mint", location: box, quantity: 2)
+      %w[asc desc].each do |direction|
+        expect(move([ second, first ], blue, sort: CollectionTable::Sort.parse("condition", direction)).ids).to eq([ first.id ])
+        first.reload.update!(location: nil)
+        second = lot(entry, condition: "near_mint", location: box, quantity: 2)
+      end
+    end
+
     it "folds two moved lots into the destination's lot when it has the identity (AC-3.5)", :aggregate_failures do
       a = lot(entry, quantity: 4)
       b = lot(entry, location: box, quantity: 2)
@@ -124,6 +134,15 @@ RSpec.describe Lot::BulkMove, type: :model do
       expect(moved.reload).to be_undoable
       expect(moved.lot.location).to eq(blue)              # the line names its lot's new place
       expect(held.reload.quantity).to eq(5)
+    end
+
+    it "reads a scanner sitting entry as changed when its lot is folded away by a move (spec 041 decision 6; spec 032 AC-7.6)", :aggregate_failures do
+      printing = create(:mtg_printing, finishes: %w[nonfoil foil]).entry
+      scanned = Scanner::Sitting.add!(account:, printing:, finish: "foil", reading_key: "a" * 32).entry
+      held = lot(printing, finish: "foil", location: blue, quantity: 3)
+      move(account.lots.where(id: scanned.lot_id).to_a, blue)
+      expect(scanned.reload.state).to eq(:changed)
+      expect(held.reload.quantity).to eq(4)
     end
 
     # Passes on arrival: a characterisation of the writers above, not a missing red.
@@ -156,6 +175,13 @@ RSpec.describe Lot::BulkMove, type: :model do
       held = lot(entry, location: blue, quantity: 9_000)
       moved = lot(entry, location: box, quantity: 1_000)
       expect { move([ moved, held ], blue) }.to raise_error(Lot::CapExceeded) { |error| expect(error.lot).to eq(held) }
+    end
+
+    it "names the over-cap lot that comes first under the sort's condition order, not the default one (AC-3.8)", :aggregate_failures do
+      lots = %w[near_mint damaged].flat_map { |condition| [ lot(entry, condition:, location: box, quantity: 5_000), lot(entry, condition:, quantity: 5_000) ] }
+      { "asc" => "near_mint", "desc" => "damaged" }.each do |direction, expected|
+        expect { move(lots, blue, sort: CollectionTable::Sort.parse("condition", direction)) }.to raise_error(Lot::CapExceeded) { |error| expect(error.lot.condition).to eq(expected) }
+      end
     end
 
     # Passes on arrival: a characterisation of the merge.
