@@ -12,14 +12,19 @@
 #   wait runs from when the error is handled, a little after the answer, on this host's clock, so 30 exactly would
 #   leave the next request clear of that window only by however long the queue takes to dispatch the job.
 # - A source that asks for more than LONGEST_WAIT isn't waited for: the job fails, and shows under Failed.
-# - So does a job turned away again after MAX_RETRIES such retries.
+# - The job is retried while its rate limits come with progress between them, and MAX_RETRIES times in a row without it
+#   (spec 043, issue #86). When a rate limit ends an attempt that made progress (the job's answer to
+#   #rate_limit_progress?: durable new work, as its own operation judges it), the count starts again at 1; otherwise it
+#   goes up by one, and the job fails when that would pass MAX_RETRIES, that is on the fourth rate limit in a row with no
+#   progress between them. A job that says nothing about progress has made none: every rate limit counts. The question
+#   is about the attempt the rate limit ended, alone.
 module Catalog::RateLimitRetry
   extend ActiveSupport::Concern
 
   SHORTEST_WAIT = 45.seconds
   LONGEST_WAIT = 1.hour
   MAX_RETRIES = 3
-  # Where the job keeps its count of these retries; Active Job serializes exception_executions with the job.
+  # Where the job keeps its count of rate limits in a row without progress; Active Job serializes exception_executions with the job (a job queued before spec 043 keeps its count).
   COUNTED_AS = "[Catalog::Sources::RateLimitedError]".freeze
 
   included do
