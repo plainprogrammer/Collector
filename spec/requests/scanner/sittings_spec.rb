@@ -180,6 +180,40 @@ RSpec.describe "Scanner sittings", type: :request do
       expect(response.body).to include("This sitting: 3 cards")
     end
 
+    it "names the place in the heading and on each entry, from the entry's lot as it is now (decisions 3, 4; AC-2.3)", :aggregate_failures do
+      place(blue.id)
+      moved = add("a")
+      add("b", card: create(:mtg_printing, entry: create(:catalog_entry, name: "Opt", set: mom, number: "7")).entry)
+      place(long_box.id)
+      changed = add("c", card: create(:mtg_printing, entry: create(:catalog_entry, name: "Shock", set: mom, number: "9")).entry)
+      moved.lot.update!(location: long_box)
+      changed.lot.destroy!
+      get scanner_path
+      expect(html.at_css("#scanner_sitting h2").text).to eq("This sitting: 3 cards, in Long box")
+      metas = html.css("#scanner_sitting > ul > li .c-list__meta").map { it.text.squish }
+      expect(metas).to match([ /\AMOM · 9 · Foil · Added .+ ago\z/, /\AMOM · 7 · Foil · in Blue binder · Added .+ ago\z/, /\AMOM · 123 · Foil · in Long box · Added .+ ago\z/ ])
+    end
+
+    it "says where cards go in a placed sitting with no entries, and keeps spec 009's copy once all were undone (AC-1.2)", :aggregate_failures do
+      place(blue.id)
+      expect(html.at_css("#scanner_sitting h2").text).to eq("This sitting: 0 cards, in Blue binder")
+      expect(html.at_css("#scanner_sitting .c-empty").text).to eq("Cards you scan now go into Blue binder.")
+      expect(html.at_css("#scanner_sitting ul")).to be_nil
+      add("a").undo!
+      get scanner_path
+      expect(html.at_css("#scanner_sitting .c-empty").text).to eq("Everything added in this sitting was undone.")
+    end
+
+    it "says nothing was added in a redrawn sitting with no entries and no place (plan Phase 4)", :aggregate_failures do
+      long_box
+      place(blue.id)
+      delete location_path(blue)
+      place(blue.id)
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(html.at_css("#scanner_sitting h2").text).to eq("This sitting: 0 cards")
+      expect(html.at_css("#scanner_sitting .c-empty").text).to eq("Nothing added yet.")
+    end
+
     it "keeps the place on a reload (AC-1.7)" do
       place(blue.id)
       get scanner_path

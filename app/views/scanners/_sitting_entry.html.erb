@@ -2,7 +2,7 @@
 <% copy = scanner_copy(entry.printing, entry.finish) %>
 <li>
   <span><%= entry.printing.name %></span>
-  <span class="c-list__meta"><%= set_number(entry.printing) %> · <%= scanner_finish(entry.printing, entry.finish) || "—" %> · Added <%= time_tag entry.created_at, "#{time_ago_in_words(entry.created_at)} ago" %></span>
+  <span class="c-list__meta"><%= set_number(entry.printing) %> · <%= scanner_finish(entry.printing, entry.finish) || "—" %> ·<% if (place = entry.lot&.location) %> in <%= place.name %> ·<% end %> Added <%= time_tag entry.created_at, "#{time_ago_in_words(entry.created_at)} ago" %></span>
   <span class="c-list__end c-scanner__entry-actions">
     <% if entry.state == :changed %>
       <span class="c-tag">Changed in your collection</span>

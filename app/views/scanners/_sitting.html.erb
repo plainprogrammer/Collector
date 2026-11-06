@@ -5,12 +5,20 @@
 <% if sitting %>
   <section id="scanner_sitting" class="c-scanner__sitting" aria-labelledby="scanner-sitting-heading">
     <div class="c-section__head">
-      <h2 class="c-section__title" id="scanner-sitting-heading">This sitting: <%= pluralize(entries.size, "card") %></h2>
+      <h2 class="c-section__title" id="scanner-sitting-heading">This sitting: <%= pluralize(entries.size, "card") %><%= ", in #{sitting.location.name}" if sitting.location %></h2>
       <span class="c-section__actions"><%= link_to "Done", new_scanner_sitting_ending_path, class: "c-btn c-btn--secondary c-btn--sm" %></span>
     </div>
     <%= render "scanners/picker", location_id: sitting.location_id, locations: locations if locations.any? %>
     <% if entries.empty? %>
-      <p class="c-empty">Everything added in this sitting was undone.</p>
+      <%# Three states (spec 040 AC-1.2): entries all undone keep spec 009's copy; a sitting with none says where cards go,
+          or, with no place (a redraw the next render drops), that nothing was added. %>
+      <% if added_any %>
+        <p class="c-empty">Everything added in this sitting was undone.</p>
+      <% elsif sitting.location %>
+        <p class="c-empty">Cards you scan now go into <%= sitting.location.name %>.</p>
+      <% else %>
+        <p class="c-empty">Nothing added yet.</p>
+      <% end %>
     <% else %>
       <ul class="c-list"><%= render partial: "scanners/sitting_entry", collection: entries.first(Scanner::Sitting::SHOWN), as: :entry %></ul>
       <% if entries.size > Scanner::Sitting::SHOWN %>
