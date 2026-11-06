@@ -1,7 +1,7 @@
 # Feature 048: A Table Row's Place Line Wraps (Supersedes Spec 033 Decision 5 for Rows)
 
-**Status:** Draft after spec review round 1, for the maintainer's approval. The maintainer ruled decisions 1–4 on 2026-10-27 and 2026-11-06 (below); decisions 5 and 6 are recommended
-**Version:** 0.3.0
+**Status:** Approved by the coordinator under the maintainer's delegation (2026-11-06), at 0.4.0 after two spec review rounds. The maintainer ruled decisions 1–4 on 2026-10-27 and 2026-11-06 (below); the coordinator approved decisions 5 and 6, as recommended
+**Version:** 0.4.0
 **Created:** 2026-11-06
 **Last Updated:** 2026-11-06
 **Depends on:** [spec 033](../033-location-on-tiles-and-rows/spec.md) (the place on tiles and rows, issue #46; merged, PR #140), [spec 037](../037-filter-collection-by-location/spec.md) (the location filter), all merged
@@ -14,6 +14,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.4.0 | 2026-11-06 | Approved at Gate A with two changes: spec 033's AC-1.2 tie example and AC-1.7 join Story 2 as AC-2.5 and AC-2.6 (they are in spec 033's `verification.md`, not in the issue), and the table's 16px overflow just above the breakpoint is filed as [#208](https://github.com/plainprogrammer/Collector/issues/208) and cited in Out of Scope. No review round for these two edits |
 | 0.3.0 | 2026-11-06 | Spec review round 2 (NEEDS REVISION, mechanical; 1 major, 5 minor) fixed: the wide frames start at 800px because a table with a short name is already wider than a 645px container (M1); the span is on the named cell only (m2); decision 4 states the phone rule's reach (m3); AC-1.3 and AC-1.4 name how the width is measured (m4); AC-2.1's setup is exact (m5); the guard's file and the seven paths are named (m6). No round 3; the worker checked the edits |
 | 0.2.0 | 2026-11-06 | Spec review round 1 (NEEDS REVISION; 0 blocking, 2 major, 10 minor) fixed. A second probe (below) found Firefox ignores `max-width` on a table cell, so the cap goes on a span inside the cell (M1, FR-1, decision 2); AC-2.2 of spec 033 is extended, not superseded (m3); spec 033 FR-5 is added to Supersedes (m4); AC-1.3 and AC-1.4 measure once (m5); AC-2.4 is an explicit-list guard (m6); AC-2.3's Undo, AC-1.7, AC-1.2, AC-2.2 and AC-2.1 sharpened (m7–m10, m12); documents list completed (M2, m11) |
 | 0.1.0 | 2026-11-06 | First draft, from issue #142, spec 033's implementation review, and a probe in headless Firefox (below) |
@@ -50,14 +51,13 @@ So the wide cell does make the table scroll sideways just above the breakpoint (
 - A table row shows the whole place name, wrapped when it is long, on a phone and on a wide table.
 - No place name, of any shape up to 60 code points, makes the collection page scroll sideways.
 - A tile keeps spec 033's one line with an ellipsis.
-- Spec 033's test gaps from the issue are closed, and the `c-table__place` hook is documented.
+- Spec 033's test gaps, the issue's five and the two more in its `verification.md`, are closed, and the `c-table__place` hook is documented.
 
 ## Non-Goals
 
 - Changing a tile, or the data, queries, export, sort or columns of the grid and the table, or the width of a table whose short names already overflow near the breakpoint.
 - A tooltip or a "show more" control for a name. The whole name is visible.
 - The card page's "Your copies" Location column, the locations page and the filter's select, which show their own names (their own specs; the select's cap is spec 037's).
-- The two other gaps in spec 033's `verification.md` that the issue does not list: AC-1.2's tie example (comparison key against raw name) and AC-1.7 resting on the unchanged main query. They stay as recorded.
 - Hiding the Location column or the wrap rule for accounts with no location (decision 4).
 
 ## Decisions
@@ -128,6 +128,8 @@ Recorded in the specs index in both directions, and in the collection and lots a
 - [ ] **AC-2.2** (spec 033 AC-1.6) Given a printing in two places When the grid renders in a browser Then the tile's link's accessible name, as the browser computes it (a system example, `native.accessible_name`), contains the whole place line, "Blue binder +1 more", after the card's name.
 - [ ] **AC-2.3** (spec 033 AC-2.6) Given lots in places When a bulk "Set condition" is applied, and when a bulk Remove is undone Then the rendered bulk table shows each of those lots' rows with the place the lot keeps (an unplaced lot reads "No location" in its Location cell). The Undo is the one on the bulk table's message, carrying the bulk table's URL.
 - [ ] **AC-2.4** (spec 033 FR-6) Given the seven core files spec 033 changed (`collection_grid.rb`, `collection_table.rb`, `collection_filter.rb`, `lots_helper.rb`, and the views `_tile`, `_table`, `_lot_cells`; not `additions.css`) When the suite runs Then a new `spec/collection_places_core_spec.rb` lists them by path (`app/models/collection_grid.rb`, `app/models/collection_table.rb`, `app/models/collection_filter.rb`, `app/helpers/lots_helper.rb`, `app/views/collections/_tile.html.erb`, `_table.html.erb`, `_lot_cells.html.erb`), fails if one no longer exists, and fails if one names a collectible type or a source (`mtg`, `scryfall`, `magic`; finish names are not checked, as a comment in `lots_helper.rb` names one).
+- [ ] **AC-2.5** (spec 033 AC-1.2's tie) Given a printing with 2 copies in a location named "Beta shelf" and 2 in one named "alpha shelf" When the grid renders Then its tile shows "alpha shelf +1 more": the comparison key (folded case) orders the tie, where the raw name would put "Beta shelf" first.
+- [ ] **AC-2.6** (spec 033 AC-1.7) Given an account with a location, and a printing with 3 foil copies and 1 non-foil copy, first all unplaced and then the foil lot placed When each grid renders Then the tile's quantity ("×4"), its finish badge, its set tag, its language tag, its link and its position among the tiles, and the page's counts, are the same in both (the place line is the only difference).
 
 ### Story 3: The hook and the rules are written where the next change reads them
 
@@ -163,7 +165,7 @@ Recorded in the specs index in both directions, and in the collection and lots a
 
 ## Open Questions
 
-None. Decisions 1–4 are the maintainer's rulings; decisions 5 and 6 are recommended and come to the maintainer with the spec.
+None. Decisions 1–4 are the maintainer's rulings; decisions 5 and 6 were approved as recommended at Gate A (the coordinator, under the maintainer's delegation).
 
 ## Notes for the plan
 
@@ -176,6 +178,7 @@ None. Decisions 1–4 are the maintainer's rulings; decisions 5 and 6 are recomm
 
 - Truncating or capping a location name's length anywhere else.
 - A sort by location (spec 037 Non-Goals).
+- The wide table being up to about 20px wider than its container for containers of 640px to about 660px even with a short name (probe 2: 661px in a 645px container). A place doesn't cause it and nothing scrolls; filed as [#208](https://github.com/plainprogrammer/Collector/issues/208).
 
 ## Documents that change
 
