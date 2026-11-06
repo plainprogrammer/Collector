@@ -14,3 +14,5 @@ Push with the Bash tool's `run_in_background: true` (a timeout of up to 2 hours)
 **Update (2026-10-31, #145):** the 20 minutes were one example (`name_parity_spec.rb:69`, about 1,490 s); with it fixed `bin/ci` takes about 6 minutes. The hook printed nothing because it timed out at 900 s and Claude Code let the push through. Both git hooks now set `"onFailure": "block"`, so a timed-out hook blocks the push: a push either ran `bin/ci` to a pass or was blocked. Backgrounding is still the rule, since 6 minutes still holds the session.
 
 **Correction (2026-10-31, later):** the silent hook in that session wasn't only the timeout. After a worker restart, the session's project directory was `/home/user`, so no repository hook was loaded at all; see [[hooks-need-repo-project-dir]]. A push that returns in seconds means the hook didn't run, not that `bin/ci` passed.
+
+**Shared test database (spec 037, 2026-11-06):** the hook's `bin/ci` uses the worktree's one test database (`storage/test.sqlite3`, `config/database.yml`), so while a background push runs, write code or documents but don't run `bin/rspec` or `bin/ci` in the same worktree.

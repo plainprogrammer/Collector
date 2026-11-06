@@ -1,6 +1,6 @@
 # Verification: Feature 039, A Finished Art Build Whose Index File Is Missing Isn't "Ready"
 
-**Spec:** [spec.md](spec.md) v1.0.1 · **Plan:** [plan.md](plan.md) · **Issue:** [#122](https://github.com/plainprogrammer/Collector/issues/122) · **Pull request:** [#175](https://github.com/plainprogrammer/Collector/pull/175)
+**Spec:** [spec.md](spec.md) v1.0.1 · **Plan:** plan (retired in `73d6c45f38e66de74d5a0425710e5199e7739f63`; read it with `git show 73d6c45f38e66de74d5a0425710e5199e7739f63^:docs/specs/039-art-index-missing-file/plan.md`) · **Issue:** [#122](https://github.com/plainprogrammer/Collector/issues/122) · **Pull request:** [#175](https://github.com/plainprogrammer/Collector/pull/175)
 
 ## Red, then green, per phase
 

@@ -7,8 +7,9 @@
 **Depends on:** [spec 032](../032-lot-in-a-location/spec.md) (a lot's location; merged), [spec 033](../033-location-on-tiles-and-rows/spec.md) (the place on tiles and rows; merged), [spec 006](../006-collection-list-view/spec.md) (the table, bulk mode and the selection tied to a filter)
 **Branch:** `037-filter-collection-by-location`
 **Issue:** [#47](https://github.com/plainprogrammer/Collector/issues/47) (roadmap item 12, theme C: locations)
-**Plan:** [plan.md](plan.md)
+**Plan:** plan (retired in `0e7e4707903cc4483e3a7e5043c9df3ac8bac644`; read it with `git show 0e7e4707903cc4483e3a7e5043c9df3ac8bac644^:docs/specs/037-filter-collection-by-location/plan.md`)
 **Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (whole spec); see the [specs index](../README.md)
+**Plan:** retired in `0e7e4707903cc4483e3a7e5043c9df3ac8bac644`; read it with `git show 0e7e4707903cc4483e3a7e5043c9df3ac8bac644^:docs/specs/037-filter-collection-by-location/plan.md`
 
 ---
 
