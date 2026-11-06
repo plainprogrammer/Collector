@@ -14,5 +14,14 @@ class MTG::Art::BuildJob < ApplicationJob
   discard_on MTG::Art::Decoder::Error
   include Catalog::RateLimitRetry
 
-  def perform = MTG::Art::Build.new(job_id:).call
+  def perform
+    @build = nil # the answer below is about this attempt alone: a job instance can run perform more than once (spec 043)
+    @build = MTG::Art::Build.new(job_id:)
+    @build.call
+  end
+
+  private
+    # Whether the attempt a rate limit just ended fetched and kept an image, or stored a batch of fingerprints
+    # (Catalog::RateLimitRetry; spec 043 decision 3). False when the build couldn't even be built.
+    def rate_limit_progress? = @build&.made_progress? || false
 end
