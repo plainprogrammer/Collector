@@ -7,6 +7,7 @@
 **Depends on:** [spec 040](../040-sitting-into-location/spec.md) (the sitting's place and its control; merged), [spec 009](../009-card-scanner-confirm-flow/spec.md) (the scanner's sitting; merged) and [spec 006](../006-collection-list-view/spec.md) (bulk Set condition, the pattern for choosing a condition; merged)
 **Branch:** `042-sitting-condition`
 **Issue:** [#57](https://github.com/plainprogrammer/Collector/issues/57) (roadmap item 21b, theme D)
+**Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) and [`data-portability.md`](../../architecture/data-portability.md) (parts: decisions 2, 4 and 5 as they touch lots; decision 6 and AC-5.3); see the [specs index](../README.md)
 
 ---
 
