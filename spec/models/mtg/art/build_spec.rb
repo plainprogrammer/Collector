@@ -151,6 +151,62 @@ RSpec.describe MTG::Art::Build, :art_matching, type: :model do
       expect(run_build(job_id: "job-2")).to have_attributes(status: "finished", fetched_count: 1, failed_count: 0, indexed_count: 2)
       expect(fetched).to have_been_requested.once
     end
+
+    # Spec 043: an image fetched and kept, or a batch of fingerprints stored, is progress; nothing else is.
+    describe "#made_progress?" do
+      let(:attempt) { described_class.new(job_id: "job-1", client:) }
+
+      def turned_away = expect { attempt.call }.to raise_error(Catalog::Sources::RateLimitedError)
+
+      it "is true for an image fetched and kept before the rate limit (AC-2.1)" do
+        stub_request(:get, first).to_return(body: noisy_png)
+        stub_request(:get, second).to_return(status: 429)
+        turned_away
+
+        expect(attempt.made_progress?).to be(true)
+      end
+
+      it "is false when the first image request is rate limited (AC-2.2)" do
+        stub_request(:get, first).to_return(status: 429)
+        turned_away
+
+        expect(attempt.made_progress?).to be(false)
+      end
+
+      it "is true for a batch of fingerprints stored for an image already cached, with none fetched (AC-2.3)", :aggregate_failures do
+        stub_const("MTG::Art::Build::BATCH", 1)
+        MTG::Art.cache_dir.mkpath
+        MTG::Art.cache_dir.join("#{art_a}.jpg").binwrite(noisy_png)
+        stub_request(:get, second).to_return(status: 429)
+        turned_away
+
+        expect(attempt.made_progress?).to be(true)
+        expect(MTG::ArtBuild.sole).to have_attributes(fetched_count: 0, fingerprinted_count: 1)
+      end
+
+      it "is false when the only image fetched couldn't be decoded and was removed, and no batch was stored (AC-2.6)", :aggregate_failures do
+        stub_request(:get, first).to_return(body: "not an image")
+        stub_request(:get, second).to_return(status: 429)
+        turned_away
+
+        expect(attempt.made_progress?).to be(false)
+        expect(MTG::ArtBuild.sole).to have_attributes(fetched_count: 1, failed_count: 1)
+      end
+
+      it "is false for a build skipped at start, which asks the host for nothing (AC-2.4)", :aggregate_failures do
+        create(:mtg_art_build, status: "running", finished_at: nil, started_at: 1.minute.ago, heartbeat_at: 10.seconds.ago,
+          job_id: "job-other") # not the factory's "job-N": one equal to the build's own "job-1" would be interrupted, not skip it
+        image = stub_request(:get, first).to_return(body: noisy_png)
+
+        expect(attempt.call).to have_attributes(status: "skipped", message: "already running")
+        expect(attempt.made_progress?).to be(false)
+        expect(image).not_to have_been_requested
+      end
+
+      it "is false before it has run" do
+        expect(attempt.made_progress?).to be(false)
+      end
+    end
   end
 
   it "records an image it can't decode as failed and drops it from the cache, so it's fetched again", :aggregate_failures do

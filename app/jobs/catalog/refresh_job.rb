@@ -17,6 +17,13 @@ class Catalog::RefreshJob < ApplicationJob
   include Catalog::RateLimitRetry
 
   def perform(collectible_type, trigger = "manual")
-    Catalog::Refresh.new(collectible_type, trigger:, job_id:).call
+    @refresh = nil # the answer below is about this attempt alone: a job instance can run perform more than once (spec 043)
+    @refresh = Catalog::Refresh.new(collectible_type, trigger:, job_id:)
+    @refresh.call
   end
+
+  private
+    # Whether the attempt a rate limit just ended wrote a catalog row (Catalog::RateLimitRetry; spec 043 decision 3).
+    # Nil when the refresh couldn't even be built.
+    def rate_limit_progress? = @refresh&.made_progress? || false
 end
