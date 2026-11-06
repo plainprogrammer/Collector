@@ -7,6 +7,7 @@
 **Depends on:** [spec 006](../006-collection-list-view/spec.md) (bulk mode, the selection, Set condition), [spec 032](../032-lot-in-a-location/spec.md) (a lot's place, Move copies; ADR 0025), [spec 037](../037-filter-collection-by-location/spec.md) (the location filter and the selection tied to it)
 **Branch:** `041-move-many-lots`
 **Issue:** [#48](https://github.com/plainprogrammer/Collector/issues/48) (roadmap item 13, theme C: locations)
+**Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (whole spec); see the [specs index](../README.md)
 
 ---
 
