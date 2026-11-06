@@ -6,6 +6,7 @@
 **Last Updated:** 2026-10-07
 **Branch:** `007-card-scanner-live-capture`
 **Frozen:** the current rules are in [`scanner.md`](../../architecture/scanner.md) and [`catalog-core.md`](../../architecture/catalog-core.md) (whole spec; catalog core: FR-4's name index and name matching, FR-5, AC-3.4, AC-3.5, AC-3.9); see the [specs index](../README.md)
+**Plan:** retired in `d73733273b6cf710be0a19bda06bc6a94d2a0d64`; read it with `git show d73733273b6cf710be0a19bda06bc6a94d2a0d64^:docs/specs/007-card-scanner-live-capture/plan.md`
 
 ---
 
