@@ -1,7 +1,7 @@
 # Feature 044: Forms Re-rendered with 422 Get No `field_with_errors` Wrapper
 
 **Status:** Draft. The maintainer ruled decisions 1 and 4 on 2026-11-06, as recommended (option A; the currency controller's `errors.clear` removed); the rule is [ADR 0026](../../adr/0026-forms-show-field-errors-through-the-design-system.md)
-**Version:** 0.1.0
+**Version:** 0.2.0
 **Created:** 2026-11-06
 **Last Updated:** 2026-11-06
 **Depends on:** [spec 004](../004-design-system-collection/spec.md) (the design system's Form, sign-up, sign-in, admin users), [spec 029](../029-manage-locations/spec.md) (locations), [spec 032](../032-lot-in-a-location/spec.md) (Move copies), [spec 026](../026-typed-entry/spec.md) (number entry), [spec 038](../038-currency-per-account/spec.md) (the Currency page), all merged
@@ -14,6 +14,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.2.0 | 2026-11-06 | Maintainer ruling (decisions 1 and 4, option A) and ADR 0026 recorded. Spec review round 1 (NEEDS REVISION, light; 0 blocking, 1 major, 5 minor) fixed: AC-1.1 renders through the form builder (M1); Non-Goals name the record-less forms and the `scope:` case (m2); AC-1.3's input and AC-1.13's wording (m3); AC-2.1 counts 12 states (m4); ADR cross-references (m5); decision 4's side effect (m6). |
 | 0.1.0 | 2026-11-06 | Written from issue #180, the lesson [`2026-11-06-clear-record-errors-after-copying-field-messages`](../../lessons/2026-11-06-clear-record-errors-after-copying-field-messages.md), the design system's [Form](../../design-system/components/Form.md), and a probe of today's 422 pages. |
 
 ---
@@ -43,14 +44,14 @@ and none on sign-in (`form_with url:`, no record), number entry's line form (`fo
 
 - No page rendered by Collector contains a `field_with_errors` element.
 - Each form the issue names has a 422 request example that proves it.
-- The rule is written where the next form's author reads it: the design system's Form doc and an ADR.
+- The rule is written where the next form's author reads it: the design system's Form doc and ADR 0026.
 
 ## Non-Goals
 
 - **Changing any message, field, status or what a form keeps on a refusal.** Every 422 keeps its messages, its `c-field--invalid`, its `aria-describedby` and its typed values exactly as its own spec has them.
 - **New styles.** No CSS is added for `field_with_errors`; the wrapper stops existing.
 - **The bulk-mode views and spec 041's bulk Move form.** Not edited here; the rule (decision 1) covers them when they land, and their spec owns their examples.
-- **Forms with no 422** (filters, the language picker, the scanner's place picker) and **Turbo Stream refusals** (quick add, the scanner sitting): they render no record's errors through a form builder.
+- **Forms built with no record** (`form_with url:` and no `scope:`, or `button_to`): sign-in, number entry's line, the import preview and apply, Set condition, bulk removal, quick add (its HTML 422 and its Turbo Stream), the filters and pickers. The builder has no object to read errors from, so they were never wrapped; sign-in and number entry keep an example because the issue names them, and AC-1.1 covers the rest if one gains a record. A form built `url:` with a `scope:` (the scanner's place picker) reads `@<scope>` and would be wrapped if that record carried errors; the app-wide rule covers it.
 
 ## Decisions
 
@@ -67,7 +68,7 @@ Alternatives:
 
 ### 2. One 422 example per form, plus a guard on the rule
 
-Each form in the probe table, plus sign-in, number entry and the Currency page, gets (or keeps) a request example that submits an invalid value, expects 422, and expects `html.css(".field_with_errors")` to be empty while the field's own message is still under it. Where an existing 422 example already renders the refused state, the assertion is added to it rather than a new request made. A further example proves the rule itself: `ActionView::Base.field_error_proc` returns its tag unchanged (the same object or an equal safe string), so a form added later is covered before its own spec writes its example.
+Each form in the probe table, plus sign-in, number entry and the Currency page, gets (or keeps) a request example that submits an invalid value, expects 422, and expects `html.css(".field_with_errors")` to be empty while the field's own message is still under it. Where an existing 422 example already renders the refused state, the assertion is added to it rather than a new request made. A further example proves the rule itself through Rails' own path: it renders `form_with model:` for a small `ActiveModel::Model` record with an error on one attribute, through the app's view context, and finds the label and the control as written and no `.field_with_errors`. Rails calls the proc with `instance_exec` only when the attribute has errors, so a direct `.call` would miss a config key Rails never applied; the render does not. A form added later is covered by the rule before its own spec writes its example.
 
 ### 3. Screenshots of every refused state
 
@@ -75,11 +76,11 @@ Verification captures each form's 422 in light and dark at desktop and phone wid
 
 ### 4. The Currency controller's `errors.clear` goes (ruled 2026-11-06)
 
-With decision 1 the line in `CurrenciesController#update` that clears the record's errors "so Rails would not wrap the field" no longer does anything for the wrapper. It is removed with its comment, and the page keeps showing `@messages`; spec 038's examples (including its `.field_with_errors` assertion) still pass.
+With decision 1 the line in `CurrenciesController#update` that clears the record's errors "so Rails would not wrap the field" no longer does anything for the wrapper. It is removed with its comment, and the page keeps showing `@messages`; spec 038's examples (including its `.field_with_errors` assertion) still pass, and that assertion now exercises the app's proc rather than the controller. `Current.account` keeps its errors for the rest of the request; nothing else in that request builds a form on it or reads them, and `restore_attributes` leaves errors alone, so this is harmless.
 
 ### 5. Where the rule is written
 
-- [Form](../../design-system/components/Form.md) gains a bullet: errors render through `c-field--invalid` and `c-field__error` only; the app's `field_error_proc` leaves fields unwrapped (spec 044, the ADR); a 422 example asserts no `.field_with_errors`.
+- [Form](../../design-system/components/Form.md) gains a bullet: errors render through `c-field--invalid` and `c-field__error` only; the app's `field_error_proc` leaves fields unwrapped (spec 044, ADR 0026); a 422 example asserts no `.field_with_errors`.
 - [ADR 0026](../../adr/0026-forms-show-field-errors-through-the-design-system.md) and its index row.
 - No area doc under `docs/architecture/` describes form markup, so none changes; the forms' behaviour is unchanged.
 - The lesson stays as written (lessons are history); its advice to clear errors is superseded by the ADR, which says so.
@@ -90,9 +91,9 @@ With decision 1 the line in `CurrenciesController#update` that clears the record
 
 **As a** collector who submits a form with a mistake, **I want** the form to come back with each field drawn as before, its message under it, **so that** the page doesn't shift and I can see what to fix.
 
-- [ ] **AC-1.1** Given `ActionView::Base.field_error_proc` When it is called with an HTML tag and a tag instance Then it returns that tag unchanged (decision 1).
+- [ ] **AC-1.1** Given an `ActiveModel::Model` record with an error on `name` When `form_with model:` renders `form.label :name` and `form.text_field :name` for it through the app's view context Then the output holds the label and the input as Rails writes them without errors, and no `.field_with_errors` (decision 2).
 - [ ] **AC-1.2** Add a lot: Given a quantity of 0 When the add form is submitted Then 422, `#lot_quantity-error` holds the quantity message, and no `.field_with_errors` is on the page.
-- [ ] **AC-1.3** Edit a lot: Given a quantity of 0 When the edit form is submitted Then 422, the quantity message under Quantity, no `.field_with_errors`.
+- [ ] **AC-1.3** Edit a lot: Given a quantity that isn't a whole number When the edit form is submitted Then 422, the quantity message under Quantity, no `.field_with_errors`.
 - [ ] **AC-1.4** Move copies: Given copies outside 1 to the lot's quantity, and separately the lot's own place as To When submitted Then 422, the message under Copies (or To), no `.field_with_errors`.
 - [ ] **AC-1.5** Add a location: Given an empty name When submitted Then 422, "Give the location a name." under Name, no `.field_with_errors`.
 - [ ] **AC-1.6** Rename a location: Given another location's name When submitted Then 422, the duplicate message under Name, no `.field_with_errors`.
@@ -102,20 +103,20 @@ With decision 1 the line in `CurrenciesController#update` that clears the record
 - [ ] **AC-1.10** Sign in: Given a wrong password When submitted Then 422 with "Email or password is incorrect." and no `.field_with_errors`.
 - [ ] **AC-1.11** Number entry: Given a line with a number the set doesn't have When submitted Then 422, the message under Number, no `.field_with_errors`.
 - [ ] **AC-1.12** Currency: Given `XYZ` When submitted Then 422, "Choose one of the listed currencies." under the select, no `.field_with_errors` (spec 038 AC-1.7's example, kept), and per decision 4 the controller no longer clears the record's errors.
-- [ ] **AC-1.13** Given AC-1.2 to AC-1.12 Then each form's messages, `c-field--invalid`, `aria-describedby` and kept values are as their own specs have them (their existing examples pass unchanged).
+- [ ] **AC-1.13** Given AC-1.2 to AC-1.12 Then each form's messages, `c-field--invalid`, `aria-describedby` and kept values are as their own specs have them (their existing assertions pass).
 
 ### Story 2: The refused states are seen, not only asserted
 
 **As the** maintainer, **I want** a screenshot of each refused form in both themes, **so that** the layout is checked by eye as spec 038's lesson asks.
 
-- [ ] **AC-2.1** Given the 11 refused states of AC-1.2 to AC-1.12 When captured in light and dark at desktop (1280 px) and phone (390 px, in a fixed-width frame) width Then each image shows the label above its control, the control as wide as the field, and the message under it; the images are committed and linked from `verification.md` and the PR (read).
+- [ ] **AC-2.1** Given the 12 refused states of AC-1.2 to AC-1.12 (AC-1.4's two: Copies and To) When captured in light and dark at desktop (1280 px) and phone (390 px, in a fixed-width frame) width Then each image shows the label above its control, the control as wide as the field, and the message under it; the images are committed and linked from `verification.md` and the PR (read).
 
 ### Story 3: The next form follows the rule without knowing it
 
 **As a** contributor adding a form (spec 041's bulk Move, for example), **I want** the rule written where I look, **so that** I neither add the wrapper's workaround nor style the wrapper.
 
-- [ ] **AC-3.1** Given the design system's [Form](../../design-system/components/Form.md) doc When read Then it says errors render only through `c-field--invalid` and `c-field__error`, that the app leaves fields unwrapped, and that a form's 422 example asserts no `.field_with_errors`, citing this spec and the ADR (read).
-- [ ] **AC-3.2** Given the ADR When read Then it states the rule, the alternatives of decision 1, that it covers forms added later, and that it supersedes the lesson's advice to clear a record's errors (read).
+- [ ] **AC-3.1** Given the design system's [Form](../../design-system/components/Form.md) doc When read Then it says errors render only through `c-field--invalid` and `c-field__error`, that the app leaves fields unwrapped, and that a form's 422 example asserts no `.field_with_errors`, citing this spec and ADR 0026 (read).
+- [ ] **AC-3.2** Given [ADR 0026](../../adr/0026-forms-show-field-errors-through-the-design-system.md) When read Then it states the rule, the alternatives of decision 1, that it covers forms added later, and that it supersedes the lesson's advice to clear a record's errors (read).
 
 ## Supersedes
 
@@ -128,7 +129,7 @@ With decision 1 the line in `CurrenciesController#update` that clears the record
 | Scenario | Expected |
 |---|---|
 | A record has errors on an attribute the view renders no message for | The field renders unwrapped and unmarked, as today on the Currency page; the view decides what it shows (unchanged rule of each spec) |
-| A future gem or Rails upgrade changes `field_error_proc`'s signature | AC-1.1's example fails |
+| A Rails upgrade changes how `field_error_proc` is called, or the config key stops being applied | AC-1.1's render and every wrapped form's 422 example fail |
 
 ## Non-Functional Requirements
 

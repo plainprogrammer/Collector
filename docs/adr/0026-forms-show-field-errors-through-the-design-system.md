@@ -11,7 +11,7 @@ Accepted (2026-11-06). Ruled by the maintainer on 2026-11-06 (spec 044 decision 
 
 Rails' default `ActionView::Base.field_error_proc` wraps every form-builder label and control whose attribute has errors in `<div class="field_with_errors">`. Collector's forms draw their errors themselves, as the design system's [Form](../design-system/components/Form.md) has them: `c-field--invalid` on the field, one `c-field__error` per message under the control (`shared/field_errors`), and `aria-describedby` from the control to each message. The wrapper sits between `c-field` and its children, so on a refused submission the control shrinks to its content width and the label shifts.
 
-Spec 038 found it on the Currency page and cleared the record's errors in its controller. A probe on 2026-11-06 found the wrapper on seven more refused forms (lots add and edit, Move copies, locations add and rename, sign-up, admin add and edit user; [spec 044](../specs/044-form-error-wrappers/spec.md)). No CSS, JavaScript or view reads the wrapper.
+Spec 038 found it on the Currency page and cleared the record's errors in its controller. A probe on 2026-11-06 found the wrapper on eight more refused forms (lots add and edit, Move copies, locations add and rename, sign-up, admin add and edit user; [spec 044](../specs/044-form-error-wrappers/spec.md)). No CSS, JavaScript or view reads the wrapper.
 
 ## Options considered
 
@@ -31,7 +31,7 @@ Add a class (for example `c-field--invalid`) to the tag. **Pros:** a forgotten v
 
 ## Decision
 
-Option A. A form shows a field's errors only through the design system's Form markup (`c-field--invalid`, `shared/field_errors`, `aria-describedby`); Rails' wrapper is never rendered. A form that re-renders with 422 has a request example asserting no `.field_with_errors` on the page, and the suite checks that the proc returns its tag unchanged. Spec 038's `errors.clear` in `CurrenciesController#update` is removed.
+Option A. A form shows a field's errors only through the design system's Form markup (`c-field--invalid`, `shared/field_errors`, `aria-describedby`); Rails' wrapper is never rendered. A form that re-renders with 422 has a request example asserting no `.field_with_errors` on the page, and the suite renders a form-builder field on a record with an error and checks that it comes out unwrapped. Spec 038's `errors.clear` in `CurrenciesController#update` is removed.
 
 ## Consequences
 
