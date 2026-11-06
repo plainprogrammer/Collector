@@ -26,6 +26,7 @@ Catalog::NameIndex.new("mtg").rebuild
 
 ada, = User::Command.call(email: "ada@upgrade.example", password:)
 grace = User.create!(name: "Grace", email_address: "grace@upgrade.example", password:)
+grace.account.update!(currency: "EUR") # a non-default currency, so the next release's proof shows the column survives (spec 038 AC-4.7)
 InstanceSetting.current.update!(sign_up_open: true)
 [ ada, grace ].each { |user| user.sessions.create!(ip_address: "127.0.0.1", user_agent: "upgrade-seed") }
 
