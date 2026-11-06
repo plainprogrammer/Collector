@@ -71,6 +71,10 @@ class MTG::ArtBuild < ApplicationRecord
   # the first two ask #stalled? before it.
   def left_behind?(queue) = stale? || (quiet? && job_ended?(queue))
 
+  # Whether the index file this build wrote is still on the volume (spec 039). The row and the file can disagree after
+  # a restore (a backup holds the database only) or when the directory was lost.
+  def index_file_present? = MTG::Art::Index.file?(index_file)
+
   def counts = COUNTS.index_with { |name| public_send(:"#{name}_count") }
 
   private
