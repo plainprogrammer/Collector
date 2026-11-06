@@ -109,3 +109,11 @@ Taken with headless Firefox from a throwaway system spec that was deleted afterw
 - **Task 4:** `.rubocop.yml` excludes `spec/scanner_sitting_core_spec.rb` from `RSpec/DescribeClass`, as it does for `spec/number_entry_core_spec.rb`, and the comment above the list names it.
 - **Tasks 1, 2, 6 and 7:** `:aggregate_failures` was added to examples with several expectations (the project convention, enforced by RuboCop).
 - **Task 6:** a `let` became a `def` because of RuboCop's MemoizedHelpers limit.
+
+## Implementation review
+
+SPEC-ALIGNED (`sdd-review` Mode B, Opus, read-only, 2026-11-06, on `efadd9d`): every AC, FR and NFR is implemented and tested; no blocking or major findings.
+
+- **Minor 1, accepted as a known deviation:** AC-7.1 describes `c-scanner__place` as a hook with no style rule and allows a new rule for a side-by-side layout. The branch adds `.c-scanner__place .c-choices { min-width:0; }` for a different reason: without it, a long location name widens the fieldset past the panel at 360px (scrollWidth 419). It serves AC-7.1's requirement that no control overflows, uses no hard-coded token values, and is documented in `Scanner.md` (the plan's fallback P1). The spec is not amended.
+- **Minor 2, declined:** `choose!` uses `find_by` then `create!` where FR-1 says "the same find-or-create as an add". Inside the one IMMEDIATE write transaction, backed by the unique `account_id` index, the behaviour is the same, and the early return for "clearing with none open" needs the `find_by` first.
+- **Process:** the whole suite and `bin/ci` run in the pre-push hook on a push slot; the result is recorded in the pull request.
