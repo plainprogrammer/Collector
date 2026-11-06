@@ -36,6 +36,13 @@ RSpec.describe "Places on the collection's tiles and rows", type: :request do # 
       expect(place_lines).to eq([ "Blue binder +2 more" ])
     end
 
+    it "orders a tie by comparison key on the rendered tile", :aggregate_failures do # spec 033 AC-1.2, spec 048 AC-2.5
+      entry = own(location: create(:location, account: user.account, name: "Beta shelf"), quantity: 2).entry
+      create(:lot, account: user.account, entry:, finish: "foil", quantity: 2, location: create(:location, account: user.account, name: "alpha shelf"))
+      get collection_path
+      expect(place_lines).to eq([ "alpha shelf +1 more" ])
+    end
+
     it "says No location for a printing with none, once the account has a location", :aggregate_failures do
       own
       blue
