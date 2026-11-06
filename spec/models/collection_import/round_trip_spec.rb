@@ -140,20 +140,22 @@ RSpec.describe "Export and import round trip", type: :model do
     ExportFormatRules.examples("valid").each_key do |name|
       next if name.end_with?("lot-location-nfd.json") # outside the round trip: it re-exports with the stored spelling (AC-9.4)
 
-      it "applies #{name} to an empty account and exports the same collection, or has nothing to change", :aggregate_failures do
+      it "applies #{name} to an empty account at the default currency and exports the same collection, currency included, or has nothing to change (spec 038 AC-6.10, AC-6.11)", :aggregate_failures do
         data = JSON.parse(ExportFormatRules.examples("valid").fetch(name))
-        allow(Rails.configuration.x).to receive(:currency).and_return(Collector::Currency.fetch!(data["currency"]))
         build_catalog(data)
         user = create(:user, name: data.dig("profile", "name"), email_address: data.dig("profile", "email_address"))
 
-        if data["lots"].empty? && data.fetch("locations", []).empty?
+        if data["lots"].empty? && data.fetch("locations", []).empty? && data["currency"] == user.account.currency
           import = CollectionImport.new(account: user.account, file: StringIO.new(JSON.generate(data)))
           expect([ import.refused?, import.plan.nothing_to_change? ]).to eq([ false, true ])
         else
           expect(apply!(user, data).outcome).to eq(:applied)
           expect(same_collection?(as_current_version(data), export(user))).to be(true)
+          expect(export(user)["currency"]).to eq(data["currency"])
           expect(user.account.lots.count).to eq(data["lots"].size)
           expect(user.account.locations.count).to eq(data.fetch("locations", []).size)
+          # Once applied, the same file has nothing to change, a currency-only file among them.
+          expect(CollectionImport.new(account: user.account.reload, file: StringIO.new(JSON.generate(data))).plan.nothing_to_change?).to be(true)
         end
       end
     end

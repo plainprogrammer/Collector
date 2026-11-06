@@ -33,6 +33,14 @@ RSpec.describe "Routes", type: :routing do
     expect(get: "/more").to route_to("mores#show")
   end
 
+  it "routes the Currency page, and only its edit and update (spec 038)", :aggregate_failures do
+    expect(get: "/currency/edit").to route_to("currencies#edit")
+    expect(patch: "/currency").to route_to("currencies#update")
+    expect(get: "/currency").not_to be_routable
+    expect(post: "/currency").not_to be_routable
+    expect(delete: "/currency").not_to be_routable
+  end
+
   it "routes user administration", :aggregate_failures do
     expect(get: "/admin/users").to route_to("admin/users#index")
     expect(post: "/admin/users").to route_to("admin/users#create")

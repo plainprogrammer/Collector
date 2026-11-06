@@ -51,6 +51,7 @@ RSpec/DescribeClass:
     - "spec/collection_export_core_spec.rb"
     - "spec/collection_import_core_spec.rb"
     - "spec/config/request_body_limit_spec.rb"
+    - "spec/currency_reads_spec.rb"
     - "spec/design_system_files_spec.rb"
     - "spec/export_format_document_spec.rb"
     - "spec/export_format_examples_spec.rb"

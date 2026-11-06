@@ -279,7 +279,7 @@ RSpec.describe "Import preview", type: :request do
         nil => "Choose an export file to preview.",
         "{" => "This file isn't a Collector export: it isn't readable JSON.",
         file([], format_version: 4) => "This file was written by a newer version of Collector (format version 4). This instance reads version 3.",
-        file([], currency: "EUR") => "This file's prices are in EUR. This instance uses USD."
+        file([], currency: "XYZ") => "Collector can't show prices in XYZ."
       }.each do |data, reason|
         data.nil? ? post(collection_import_preview_path, params: { export_file: "a pasted file" }) : preview(data)
         expect(response).to have_http_status(:unprocessable_content)
@@ -426,27 +426,40 @@ RSpec.describe "Import preview", type: :request do
       end
     end
 
-    it "previews the format's empty example, in its own currency, as nothing to change with no apply offered (AC-6.4)", :aggregate_failures do
-      allow(Rails.configuration.x).to receive(:currency).and_return(Collector::Currency.fetch!("EUR"))
-      bytes = ExportFormatRules.examples("valid").fetch("valid/empty.json")
+    it "offers to apply the format's empty examples, in EUR, to a USD account, saying the currency would change (spec 038 AC-6.2, AC-6.4)", :aggregate_failures do
+      %w[valid/empty.json valid/empty-v2.json].each do |name|
+        post collection_import_preview_path, params: { export_file: import_upload_file(ExportFormatRules.examples("valid").fetch(name)) }
 
-      post collection_import_preview_path, params: { export_file: import_upload_file(bytes) }
-
-      expect(response).to have_http_status(:ok) # not refused as another currency
-      expect(response.body).to include("nothing to change")
-      expect(html.css("form[action='#{collection_import_path}']")).to be_empty
-      expect(ImportUpload.count).to eq(0)
+        expect(response).to have_http_status(:ok), name
+        expect(response.body).not_to include("nothing to change"), name
+        expect(html.at_css(".c-pagehead__stats").text).to end_with("· EUR")
+        expect(html.css("#profile_notes li").map { |item| item.text.squish }).to include("Your prices would be shown in EUR instead of USD. Nothing is converted.")
+        expect(html.css("form[action='#{collection_import_path}']")).to be_present
+      end
     end
 
-    it "previews each empty example, version 1 and version 2, in its own currency, as nothing to change (AC-9.15)", :aggregate_failures do
+    it "previews each empty example as nothing to change for an account already in its currency (spec 038 AC-6.1, AC-9.15)", :aggregate_failures do
+      user.account.update!(currency: "EUR")
       %w[valid/empty.json valid/empty-v2.json].each do |name|
-        allow(Rails.configuration.x).to receive(:currency).and_return(Collector::Currency.fetch!("EUR"))
         post collection_import_preview_path, params: { export_file: import_upload_file(ExportFormatRules.examples("valid").fetch(name)) }
 
         expect(response).to have_http_status(:ok), name
         expect(response.body).to include("nothing to change"), name
+        expect(html.at_css("#profile_notes")).to be_nil
+        expect(html.css("form[action='#{collection_import_path}']")).to be_empty
         expect(ImportUpload.count).to eq(0)
       end
+    end
+
+    it "writes a removed lot's price in the account's currency and a problem row's in the file's (spec 038 AC-6.8)", :aggregate_failures do
+      held = printing
+      create(:lot, account: user.account, entry: held, price_paid_cents: 1250)
+      user.account.update!(currency: "GBP")
+      preview(file([ row(printing, finish: "etched", price_paid: "3.00"), stranger ], currency: "EUR"))
+
+      expect(html.at_css("#removed_lots").text).to include("£12.50")
+      expect(html.css("#problem_rows > li").first.text).to include("€3.00")
+      expect(html.at_css("#problem_rows").text).not_to include("£")
     end
   end
 

@@ -159,11 +159,11 @@ the file and start it.
 | `COLLECTOR_MTG_LANGUAGES`   | no       | English only          | Extra card languages, e.g. `ja,de` (see [Card catalog](#card-catalog))                                                                |
 | `COLLECTOR_MTG_ART_MATCHING` | no       | off                   | `true` turns on art matching for the card scanner (see [Card catalog](#card-catalog))                                                 |
 | `COLLECTOR_PUBLIC_CATALOG`  | no       | off                   | `true` lets people who aren't signed in search the catalog and open card pages (see [Open catalog](#open-catalog))                   |
-| `COLLECTOR_CURRENCY`        | no       | `USD`                 | Currency for the price you paid: USD, CAD, AUD, NZD, EUR, GBP, CHF, SEK, NOK, DKK, PLN, CZK, JPY, CNY, KRW, SGD, HKD, BRL, MXN or ZAR |
+| `COLLECTOR_CURRENCY`        | no       | `USD`                 | The currency a new account starts with for the price you paid: USD, CAD, AUD, NZD, EUR, GBP, CHF, SEK, NOK, DKK, PLN, CZK, JPY, CNY, KRW, SGD, HKD, BRL, MXN or ZAR |
 | `COLLECTOR_HTTPS`           | no       | `false`               | Set to `true` when Collector is served over HTTPS (secure cookies, redirect to HTTPS)                                                 |
 | `COLLECTOR_TRUSTED_PROXIES` | no       | Rails' private ranges | Extra reverse proxies (IPs or CIDRs, comma-separated) whose `X-Forwarded-For` is trusted                                              |
 
-Changing `COLLECTOR_CURRENCY` later doesn't convert prices you've already entered; they're shown with the new symbol. An unsupported code stops the app at boot, naming the setting.
+Each collector chooses their own currency from More → Currency (or Currency in the account menu); `COLLECTOR_CURRENCY` is only where a new account starts, and changing it later changes no existing account. Changing a currency converts nothing: prices keep their amounts and are shown with the new symbol. An unsupported code stops the app at boot, naming the setting.
 
 Compose refuses to start without `SECRET_KEY_BASE`. Generate one with:
 
@@ -373,7 +373,7 @@ Everything a collector owns, and the card catalog, is in one SQLite file on your
 
 ### What to keep outside the backup
 
-The backup holds no secret, so keep these yourself, apart from the backup file: `SECRET_KEY_BASE` (and, under Kamal, `RAILS_MASTER_KEY`), your `COLLECTOR_*` settings (a restored instance run with another `COLLECTOR_CURRENCY` shows the same prices with another symbol), and your `compose.yaml` or `config/deploy.yml`. Nothing in the database is encrypted with the secrets, so **a lost or changed secret costs only the signed-in sessions**: everyone signs in again with their password.
+The backup holds no secret, so keep these yourself, apart from the backup file: `SECRET_KEY_BASE` (and, under Kamal, `RAILS_MASTER_KEY`), your `COLLECTOR_*` settings (each account's currency is in the database and restores with it; `COLLECTOR_CURRENCY` only sets where new accounts start), and your `compose.yaml` or `config/deploy.yml`. Nothing in the database is encrypted with the secrets, so **a lost or changed secret costs only the signed-in sessions**: everyone signs in again with their password.
 
 The file is **sensitive**: it holds every user's password hash and every collection. Collector writes it readable by its owner only; store it privately.
 

@@ -23,8 +23,8 @@
     <%= render "shared/field_errors", messages: errors[:condition], id: "lot_condition-error" %>
   </div>
   <div class="c-field<%= " c-field--invalid" if errors[:price_paid].any? %>">
-    <%= form.label :price_paid, "Price paid per copy (#{Rails.configuration.x.currency.code})", class: "c-field__label" %>
-    <label class="c-input"><span aria-hidden="true"><%= Rails.configuration.x.currency.symbol %></span><%= form.text_field :price_paid, inputmode: "decimal", placeholder: "1.25", "aria-describedby": describedby[:price_paid] %></label>
+    <%= form.label :price_paid, "Price paid per copy (#{Current.account.currency_unit.code})", class: "c-field__label" %>
+    <label class="c-input"><span aria-hidden="true"><%= Current.account.currency_unit.symbol %></span><%= form.text_field :price_paid, inputmode: "decimal", placeholder: "1.25", "aria-describedby": describedby[:price_paid] %></label>
     <p class="c-field__hint">Optional.</p>
     <%= render "shared/field_errors", messages: errors[:price_paid], id: "lot_price_paid-error" %>
   </div>

@@ -19,7 +19,8 @@ module LotsHelper
 
   def lot_condition(lot) = lot.condition ? lot.vocabulary.conditions.fetch(lot.condition).last : "—"
 
-  def lot_price(lot) = lot.price_paid ? number_to_currency(lot.price_paid, unit: Rails.configuration.x.currency.symbol) : "—"
+  # In the signed-in account's currency (spec 038 decision 8).
+  def lot_price(lot) = lot.price_paid ? number_to_currency(lot.price_paid, unit: Current.account.currency_unit.symbol) : "—"
 
   # Names a lot for assistive technology: "Lightning Bolt M10 · 146 Foil NM" (spec 006 AC-2.5).
   def lot_label(lot)

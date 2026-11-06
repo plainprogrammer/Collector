@@ -60,7 +60,8 @@ env:
     # Open catalog search and card pages to visitors who aren't signed in (a hosted instance; see the README).
     # COLLECTOR_PUBLIC_CATALOG: true
 
-    # Currency for the price you paid (ISO 4217 code; see the README for the supported list).
+    # The currency a new account starts with for the price you paid (ISO 4217 code; see the README for the supported list).
+    # Each collector changes theirs from More; changing this later changes no existing account.
     # COLLECTOR_CURRENCY: USD
 
     # Set to "true" when the app is served over HTTPS (secure cookies, redirect to HTTPS).

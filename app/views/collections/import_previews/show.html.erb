@@ -28,10 +28,11 @@
     </dl>
     <p class="c-import__note" id="held_lots">Held by rows with problems: <%= pluralize(number_with_delimiter(@import.held.lots), "lot") %>, <%= import_copies(@import.held.copies) %>.</p>
     <%= render "collections/import_previews/apply", import: @import, upload: @upload, store_failed: @store_failed if @import.applicable? && !@import.plan.nothing_to_change? %>
-    <% if @import.view_change || @import.other_name || @import.other_email_address %>
+    <% if @import.currency_change || @import.view_change || @import.other_name || @import.other_email_address %>
       <section>
         <div class="c-section__head"><h2 class="c-section__title">Profile</h2></div>
         <ul class="c-list c-import__list" id="profile_notes">
+          <% if @import.currency_change %><li>Your prices would be shown in <%= @import.currency_change.to %> instead of <%= @import.currency_change.from %>. Nothing is converted.</li><% end %>
           <% if @import.view_change %><li>Your collection view would change to <%= @import.view_change %>.</li><% end %>
           <% if @import.other_name %><li>The file's name is <%= @import.other_name %>. Importing won't change yours.</li><% end %>
           <% if @import.other_email_address %><li>The file's email address is <%= @import.other_email_address %>. Importing won't change yours.</li><% end %>
@@ -44,7 +45,7 @@
         <ul class="c-list c-import__list" id="removed_lots">
           <% @import.removed_lots.each do |lot| %>
             <li>
-              <span><%= lot.name %> <span class="c-list__meta"><%= import_lot_line(**lot.described) %></span></span>
+              <span><%= lot.name %> <span class="c-list__meta"><%= import_lot_line(**lot.described, currency: Current.account.currency_unit) %></span></span>
               <span class="c-list__end">×<%= number_with_delimiter(lot.quantity) %></span>
             </li>
           <% end %>
@@ -68,7 +69,7 @@
           <% @import.listed_problem_rows.each do |row| %>
             <li>
               <span class="c-import__number">Row <%= number_with_delimiter(row.number) %></span>
-              <span><%= row.name %> <span class="c-list__meta"><%= import_lot_line(**row.described) %></span></span>
+              <span><%= row.name %> <span class="c-list__meta"><%= import_lot_line(**row.described, currency: Collector::Currency.fetch!(@import.currency)) %></span></span>
               <div class="c-import__reasons">
                 <% row.problems.each do |problem| %>
                   <p><%= problem.reason %></p>

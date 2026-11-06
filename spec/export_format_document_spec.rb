@@ -74,7 +74,7 @@ RSpec.describe "The export format's document" do
     it "marks each table as the spec rules (AC-3.5)", :aggregate_failures do
       status = covered_tables.to_h { |row| [ row["Table"], row["In the export"] ] }
 
-      expect(status).to include("lots" => "Exported", "users" => "Exported", "locations" => "Exported", "accounts" => "Nothing to export")
+      expect(status).to include("lots" => "Exported", "users" => "Exported", "locations" => "Exported", "accounts" => "Exported")
       expect(status.select { |_table, mark| mark == "Left out" }.keys)
         .to match_array(%w[bulk_removals bulk_selection_marks bulk_selections import_uploads number_entries number_entry_lines scanner_sitting_entries scanner_sittings sessions])
       expect(covered_tables.map { |row| row["Why"] }).to all(match(/\S/))

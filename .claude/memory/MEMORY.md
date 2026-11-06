@@ -15,6 +15,7 @@
 - [Pre-commit hook staging](precommit-hook-staging.md) — hook reads the command text for `git add` / `commit -a`; stage separately to be safe
 - [Worktree isolation command guard](worktree-isolation-command-guard.md) — isolated agents' Bash calls are refused when a chain mentions git or is too complex; one git op per call, edit with Edit, partial commits via a scratchpad copy
 - [Reproduce CI with its seed](reproduce-ci-with-seed.md) — on CI failure, run the full suite with the CI seed as an early reproduction step; a non-Image flake is re-run once only with the coordinator's go-ahead
+- [Pre-push CI evidence](pre-push-ci-evidence.md) — a passing pre-push hook prints nothing; cite the pushed SHA, count examples with bin/rspec --dry-run
 - [Turbo Back navigation quirks](turbo-back-navigation-quirks.md) — frame-advance has two races (the late visit cancels Back or a click, issue #62); filters now plain Drive GET visits + no-cache; stuck full-width progress bar = cancelled visit; wait_for_turbo_idle
 - [PR #5 follow-ups](pr5-open-followups.md) — back-button flake fixed by PR #9 (merged 2026-10-02), watch CI; uncaptured failure
 - [Card scanner direction](card-scanner-direction.md) — spec 011 executed 2026-10-08 (34/35 right card first, margin 300 kept by ruling); next = sdd-review Mode B, then finishing

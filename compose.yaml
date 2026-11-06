@@ -6,7 +6,7 @@
 # Optional: COLLECTOR_MTG_LANGUAGES (extra card languages, e.g. "ja,de")
 # Optional: COLLECTOR_MTG_ART_MATCHING ("true" turns on art matching for the scanner; first build ~708 MB, ~2.6 h)
 # Optional: COLLECTOR_PUBLIC_CATALOG ("true" opens catalog search and card pages to visitors who aren't signed in; default off)
-# Optional: COLLECTOR_CURRENCY (currency for the price you paid, default USD)
+# Optional: COLLECTOR_CURRENCY (the currency a new account starts with for the price you paid, default USD; each collector changes theirs from More)
 # Optional: COLLECTOR_HTTPS ("true" when served over HTTPS, e.g. behind a TLS proxy; default false)
 # Optional: COLLECTOR_TRUSTED_PROXIES (extra reverse proxy IPs/CIDRs, comma-separated)
 services:

@@ -54,6 +54,14 @@ RSpec.describe "Lot moves", type: :request do
       expect(html.css("a").map(&:text)).to include("Cancel")
     end
 
+    it "writes the lot's price in the account's currency (spec 038 AC-1.4)", :aggregate_failures do
+      account.update!(currency: "EUR")
+      lot.update!(price_paid_cents: 1250)
+      get new_lot_move_path(lot)
+      expect(html.at_css(".c-pagehead__stats").text).to include("€12.50")
+      expect(html.at_css(".c-pagehead__stats").text).not_to include("$")
+    end
+
     it "starts an unplaced lot's select on the first location (AC-3.1)" do
       lot.update!(location: nil)
       get new_lot_move_path(lot)

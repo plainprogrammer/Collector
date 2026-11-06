@@ -8,6 +8,7 @@
 **Branch:** `040-sitting-into-location`
 **Issue:** [#56](https://github.com/plainprogrammer/Collector/issues/56) (roadmap item 21a, theme D)
 **Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) and [`data-portability.md`](../../architecture/data-portability.md) (parts: decisions 2, 4 and 7 as they touch lots and locations; decision 5, AC-5.3 and AC-3.2's import case); see the [specs index](../README.md)
+**Plan:** retired in `a5c97027375d8309dd2c14acb64840e7779345b5`; read it with `git show a5c97027375d8309dd2c14acb64840e7779345b5^:docs/specs/040-sitting-into-location/plan.md`
 
 ---
 
