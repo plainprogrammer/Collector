@@ -11,9 +11,10 @@ RSpec.describe "A table row's place line", type: :system do
   let(:user) { system_sign_in_as(create(:user)) }
   let(:table_path) { collection_path(view: "table") }
 
-  # The set code is pinned: the factory's sequence makes it up to five characters late in a full run, which legitimately wraps the phone line at 360px.
+  # The set code is pinned to a realistic three-character one: the factory's sequence makes it up to five characters late in a full run,
+  # which legitimately wraps the phone line at 360px (see the AC-1.8 example).
   def own_in(name)
-    owned_printing("Lightning Bolt", account: user.account, set: create(:catalog_set, code: "s4"), number: "146", location: create(:location, account: user.account, name:))
+    owned_printing("Lightning Bolt", account: user.account, set: create(:catalog_set, code: "mh3"), number: "146", location: create(:location, account: user.account, name:))
   end
 
   # Called from the top page, after open_in_narrow_frame (it reaches the frame through #narrow; inside within_narrow_frame that
@@ -77,7 +78,7 @@ RSpec.describe "A table row's place line", type: :system do
   describe "for an account with no location" do
     [ 360, 390 ].each do |width|
       it "fits one line under the name at #{width}px and shows no place", :aggregate_failures do # AC-1.7
-        owned_printing("Lightning Bolt", account: user.account, set: create(:catalog_set, code: "s4"), number: "146", quantity: 9_999, finish: "foil", condition: "near_mint")
+        owned_printing("Lightning Bolt", account: user.account, set: create(:catalog_set, code: "mh3"), number: "146", quantity: 9_999, finish: "foil", condition: "near_mint")
         visit table_path
         expect(open_in_narrow_frame(table_path, width:, ready: "tbody tr")).to eq([ width, true ])
         within_narrow_frame do
@@ -86,6 +87,18 @@ RSpec.describe "A table row's place line", type: :system do
           expect(line.text).to end_with("· 146 · Foil · NM · EN")
           expect(line.evaluate_script("this.getBoundingClientRect().height")).to be < 20
         end
+      end
+    end
+
+    it "wraps the line at 360px for a five-character set code, with no sideways scroll and no place", :aggregate_failures do # AC-1.8
+      owned_printing("Lightning Bolt", account: user.account, set: create(:catalog_set, code: "pmh3a"), number: "146", quantity: 9_999, finish: "foil", condition: "near_mint")
+      visit table_path
+      expect(open_in_narrow_frame(table_path, width: 360, ready: "tbody tr")).to eq([ 360, true ])
+      within_narrow_frame do
+        expect(page).to have_no_css("th", text: "Location", visible: :all)
+        line = find(".c-table__sub", visible: :visible)
+        expect(line.text).to end_with("PMH3A · 146 · Foil · NM · EN")
+        expect(line.evaluate_script("this.getBoundingClientRect().height")).to be >= 20
       end
     end
   end
