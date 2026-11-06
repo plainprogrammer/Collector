@@ -7,6 +7,7 @@
 **Depends on:** [spec 004](../004-design-system-collection/spec.md) (the design system's Form, sign-up, sign-in, admin users), [spec 029](../029-manage-locations/spec.md) (locations), [spec 032](../032-lot-in-a-location/spec.md) (Move copies), [spec 026](../026-typed-entry/spec.md) (number entry), [spec 038](../038-currency-per-account/spec.md) (the Currency page), all merged
 **Branch:** `044-form-error-wrappers`
 **Issue:** [#180](https://github.com/plainprogrammer/Collector/issues/180)
+**Plan:** retired in `4f1dba720289fad1b0d6578674eed840f3e7d073`; read it with `git show 4f1dba720289fad1b0d6578674eed840f3e7d073^:docs/specs/044-form-error-wrappers/plan.md`
 
 ---
 

@@ -1,6 +1,6 @@
 # Verification: Forms Re-rendered with 422 Get No `field_with_errors` Wrapper (spec 044)
 
-**Spec:** [spec.md](spec.md) · **Plan:** [plan.md](plan.md) · **Branch:** `044-form-error-wrappers`
+**Spec:** [spec.md](spec.md) · **Plan:** plan (retired in `4f1dba720289fad1b0d6578674eed840f3e7d073`; read it with `git show 4f1dba720289fad1b0d6578674eed840f3e7d073^:docs/specs/044-form-error-wrappers/plan.md`) · **Branch:** `044-form-error-wrappers`
 
 ## Rulings
 
