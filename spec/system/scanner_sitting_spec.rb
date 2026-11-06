@@ -266,6 +266,8 @@ RSpec.describe "The scanner's sitting", type: :system do
       find_button("Undo", match: :first).send_keys(:enter)
       expect(page).to have_css("#scanner_sitting .c-empty", text: "Everything added in this sitting was undone.")
       expect(page).to have_css("#scanner_sitting h2:focus", text: "This sitting: 0 cards")
+      expect(page.evaluate_script("getComputedStyle(document.activeElement).outlineStyle")).to eq("solid") # AC-2.4: the focus token's ring
+      expect(page.evaluate_script("getComputedStyle(document.activeElement).outlineWidth")).to eq("2px")
     end
   end
 end
