@@ -1,6 +1,6 @@
 # Verification: Spec 037, Filter the Collection by Location
 
-**Spec:** [spec.md](spec.md) 0.2.2 · **Plan:** [plan.md](plan.md) · **Pull request:** [#174](https://github.com/plainprogrammer/Collector/pull/174) (closes [#47](https://github.com/plainprogrammer/Collector/issues/47))
+**Spec:** [spec.md](spec.md) 0.2.2 · **Plan:** plan (retired in `0e7e4707903cc4483e3a7e5043c9df3ac8bac644`; read it with `git show 0e7e4707903cc4483e3a7e5043c9df3ac8bac644^:docs/specs/037-filter-collection-by-location/plan.md`) · **Pull request:** [#174](https://github.com/plainprogrammer/Collector/pull/174) (closes [#47](https://github.com/plainprogrammer/Collector/issues/47))
 
 ## Evidence per criterion
 
