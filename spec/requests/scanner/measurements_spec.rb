@@ -59,6 +59,13 @@ RSpec.describe "Scanner measurement mode", type: :request do
     expect(response.body).to include('selected="selected" value="IMG_1.jpeg"', "expected Lightning Bolt (MOM · 123)")
   end
 
+  it "drops a sitting with no entries and no place before it renders, as the scanner does (spec 040 AC-3.2)", :aggregate_failures do
+    Scanner::Sitting.create!(account: User.sole.account)
+    get scanner_measurement_path
+    expect(Scanner::Sitting.count).to eq(0)
+    expect(Nokogiri::HTML5(response.body).at_css("#scanner_sitting")["hidden"]).not_to be_nil
+  end
+
   it "stores the text and both strips outside the repository, then moves on (AC-5.3)", :aggregate_failures do
     capture
     expect(response.body).to include('<turbo-stream action="replace" target="measurement_panel">', "Stored IMG_1.jpeg as the measured capture")

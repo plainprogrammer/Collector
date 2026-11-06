@@ -46,7 +46,7 @@ The scanner as built (specs 005 and 007–011) stays as it is until this theme. 
 19. [#54](https://github.com/plainprogrammer/Collector/issues/54) Spike: continuous capture (trigger, duplicates, rate). The build spec follows.
 20. [#55](https://github.com/plainprogrammer/Collector/issues/55) Spike: recognising Japanese cards. The build spec follows.
 21. Sitting-wide choices, one spec each. This reverses spec 009's deferral of sitting-wide defaults.
-    - 21a. [#56](https://github.com/plainprogrammer/Collector/issues/56) Scan a sitting into a location.
+    - 21a. [#56](https://github.com/plainprogrammer/Collector/issues/56) Scan a sitting into a location. **Built 2026-11-06, done when its pull request merges:** [spec 040](specs/040-sitting-into-location/spec.md). It ran before the spikes (17–20) by the maintainer's ruling of 2026-11-03 (spec 040 decision 1): the control and the add path are server-rendered and independent of capture; 21b and 21c keep the order.
     - 21b. [#57](https://github.com/plainprogrammer/Collector/issues/57) Set a condition for a sitting.
     - 21c. [#58](https://github.com/plainprogrammer/Collector/issues/58) Set a language for a sitting.
 

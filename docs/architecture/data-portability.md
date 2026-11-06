@@ -54,7 +54,7 @@ How a collector's collection leaves and enters Collector: the export format, the
 - **A changed lot and a renamed location keep their ids,** and an unchanged one isn't written, not even its `updated_at` (spec 028 FR-9, decision 5; spec 029 decision 10).
 - **Removing a location never changes a lot** (spec 029 decision 3, AC-9.11) and a location that holds a lot can't be removed, so an apply deletes the lots of a location it removes before the location (spec 032 decision 3, AC-11.6; ADR 0025).
 - **An older file's lots are unplaced.** A version 1 or 2 file says nothing about a place, so its lots are read as in none, match only unplaced held lots, and the preview says so (spec 032 decision 7, AC-10.4; ADR 0025).
-- **Working state is left out of the export and cleared by an apply that writes a lot:** the number-entry list, the scanner sitting, bulk selections and bulk removals' undo (spec 026 decision 6, FR-5; spec 028 decision 7; spec 029 decision 11, AC-9.17).
+- **Working state is left out of the export and cleared by an apply that writes a lot:** the number-entry list, the scanner sitting (with the place chosen for it, which adds no coverage entry or format version), bulk selections and bulk removals' undo (spec 026 decision 6, FR-5; spec 028 decision 7; spec 029 decision 11, AC-9.17; spec 040 decision 5, AC-5.3). An apply that removes only a location clears a sitting's place through the foreign key and keeps the sitting (spec 040 AC-3.2).
 - **Only a signed-in collector reaches any of these pages;** a signed-out request is sent to sign in and the reader isn't called (spec 025 AC-4.2; spec 028 AC-4.3). Signing in from the export lands on the collection, not on the file (spec 022 decision 9).
 
 ## States and transitions
@@ -228,6 +228,7 @@ Measured bars, not constants (recorded in each spec's `verification.md`): export
 - [Spec 032](../specs/032-lot-in-a-location/spec.md): decisions 1, 3, 7, Stories 8–11, FR-3, FR-4 (format version 3, the export, the preview and the apply of a lot's location); it supersedes parts of specs 017, 022, 025, 028 and 029 as its Supersedes table lists.
 - [Spec 030](../specs/030-backup-restore/spec.md): decision 11, AC-3.3, AC-6.1 (export versus backup).
 - [Spec 038](../specs/038-currency-per-account/spec.md): decisions 6–8, Stories 5–7, FR-5, FR-6 (the account's currency in the export, the preview, the apply and the backup); it supersedes parts of specs 017, 022, 025 and 028 as its Supersedes table lists.
+- [Spec 040](../specs/040-sitting-into-location/spec.md): decision 5 and AC-5.3 (the sitting's place is working state, left out and cleared with the sitting); AC-3.2's import case.
 - ADRs [0019](../adr/0019-lot-as-the-unit-of-ownership.md), [0020](../adr/0020-export-format.md), [0021](../adr/0021-export-format-rules-in-the-app.md), [0022](../adr/0022-stored-import-upload-retention.md) (as far as the apply reads the upload), [0023](../adr/0023-locations-make-export-format-version-2.md), [0025](../adr/0025-a-lots-location-is-part-of-its-identity.md).
 - Reference: [`docs/export-format/README.md`](../export-format/README.md).
 - Issues [#37](https://github.com/plainprogrammer/Collector/issues/37), [#38](https://github.com/plainprogrammer/Collector/issues/38), [#39](https://github.com/plainprogrammer/Collector/issues/39), [#40](https://github.com/plainprogrammer/Collector/issues/40), [#44](https://github.com/plainprogrammer/Collector/issues/44), [#45](https://github.com/plainprogrammer/Collector/issues/45), [#64](https://github.com/plainprogrammer/Collector/issues/64).
@@ -236,6 +237,7 @@ Measured bars, not constants (recorded in each spec's `verification.md`): export
 
 | Date | Distilled | Pull request |
 |---|---|---|
+| 2026-11-06 | Spec 040 (decision 5, AC-5.3, AC-3.2's import case): the scanner sitting's place in the working-state invariant | [#172](https://github.com/plainprogrammer/Collector/pull/172) |
 | 2026-10-24 | Spec 032 (format version 3, a lot's location in the export, the preview and the apply): glossary, invariants, export, reading a file, outcomes, preview page, fingerprint, apply order, constants, decisions and sources updated | spec 032's pull request (#45) |
 | 2026-10-23 | Specs 017, 022, 025, 028 (all but the stored upload's retention and gate), 026 (the export part), 029 (format version 2, the export, the preview and the apply) and 030 (export versus backup); ADRs 0019–0023; and CLAUDE.md's export, import and locations paragraphs | slice C's pull request |
 | 2026-11-06 | Spec 038 (the account's currency in the export, the preview, the fingerprint, the apply and its notice; `unsupported_currency`; version 3 kept): glossary, export, refusals, preview, apply, fingerprint, backup, decisions, limits and sources updated | [#173](https://github.com/plainprogrammer/Collector/pull/173) |

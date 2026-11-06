@@ -47,7 +47,7 @@ Rails.application.routes.draw do
   namespace :scanner do
     resources :readings, only: :create
     resources :printings, only: :index
-    resource :sitting, only: [] do
+    resource :sitting, only: :update do # update chooses its place (spec 040)
       resources :entries, only: :create, module: :sittings do
         resource :undo, only: :create, module: :entries
       end

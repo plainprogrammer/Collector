@@ -145,6 +145,7 @@ RSpec.describe CollectionImport::Apply, type: :model do
   describe "working state (decision 7, AC-1.8)" do
     it "clears the lists that point at lots when the apply writes", :aggregate_failures do
       removal = working_state_for(held_lot(account, d, quantity: 3))
+      Scanner::Sitting.sole.update!(location: create(:location, account:)) # a placed sitting goes too (spec 040 AC-5.3)
       preview!([ import_row(a) ])
 
       apply
@@ -314,7 +315,7 @@ RSpec.describe CollectionImport::Apply, type: :model do
     it "applies a file whose only change is a location, changing no lot and clearing no working state (AC-9.4, AC-9.17)", :aggregate_failures do
       lot = held_lot(account, a, quantity: 2)
       removal = working_state_for(lot)
-      create(:location, account:, name: "Old crate")
+      Scanner::Sitting.sole.update!(location: create(:location, account:, name: "Old crate")) # spec 040 AC-3.2
       preview_v2!([ import_row(a, quantity: 2) ], locations: [ "Blue binder" ])
       lots_before = lots_state
 
@@ -322,6 +323,7 @@ RSpec.describe CollectionImport::Apply, type: :model do
       expect(account.locations.pluck(:name)).to eq([ "Blue binder" ])
       expect(lots_state).to eq(lots_before)
       expect([ NumberEntry.count, Scanner::Sitting.count, BulkSelection.count, BulkSelection::Mark.count ]).to eq([ 1, 1, 1, 1 ])
+      expect(Scanner::Sitting.sole.location_id).to be_nil # the removed location clears the sitting's place (spec 040 AC-3.2)
       expect(removal.reload).to be_undoable
     end
 
