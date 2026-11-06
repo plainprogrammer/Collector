@@ -29,10 +29,16 @@ module Catalog::RateLimitRetry
   private
     def retry_when_asked(error)
       wait = [ error.retry_after.to_i.seconds, SHORTEST_WAIT ].max
-      retries = exception_executions[COUNTED_AS].to_i
-      raise error if wait > LONGEST_WAIT || retries >= MAX_RETRIES
+      raise error if wait > LONGEST_WAIT
 
-      exception_executions[COUNTED_AS] = retries + 1
+      counted = rate_limit_progress? ? 0 : exception_executions[COUNTED_AS].to_i
+      raise error if counted >= MAX_RETRIES
+
+      exception_executions[COUNTED_AS] = counted + 1
       retry_job(wait:, error:)
     end
+
+    # Asked of the job when a rate limit ended its attempt: did that attempt do durable new work (spec 043)? A job that
+    # includes this rule overrides it from its own operation; one that doesn't answers no, so every rate limit counts.
+    def rate_limit_progress? = false
 end
