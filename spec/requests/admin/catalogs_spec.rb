@@ -525,6 +525,17 @@ RSpec.describe "Admin catalog page", :solid_queue, type: :request do
         expect(section("art_index").at_css("button")["disabled"]).to be_nil
         expect(page.at_css("[data-controller~='poll']")).to be_nil
       end
+
+      it "queues one build when Build art index is pressed with the index file missing (spec 039 AC-3.1)", :aggregate_failures, :art_matching do
+        create(:catalog_refresh_run)
+        create(:mtg_art_build, index_file: "art-index-default-cards-1-0123456789abcdef-9.bin.gz")
+        get admin_catalog_path
+        expect(section("art_index").at_css("button")["disabled"]).to be_nil
+
+        start("art_index")
+        expect(flash[:notice]).to eq("Art index build queued.")
+        expect(SolidQueue::Job.where(class_name: "MTG::Art::BuildJob").count).to eq(1)
+      end
     end
 
     it "runs the same queries however many runs and jobs there are (NFR)", :aggregate_failures do
