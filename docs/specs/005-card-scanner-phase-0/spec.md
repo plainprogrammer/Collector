@@ -5,6 +5,7 @@
 **Created:** 2026-09-30
 **Last Updated:** 2026-09-30
 **Branch:** `005-card-scanner-phase-0`
+**Frozen:** the current rules are in [`scanner.md`](../../architecture/scanner.md) (whole spec); see the [specs index](../README.md)
 
 ---
 
