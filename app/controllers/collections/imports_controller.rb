@@ -28,8 +28,8 @@ class Collections::ImportsController < ApplicationController
     def notice_for(plan)
       counts = plan.counts
       lots = "Imported: #{helpers.pluralize(counts[:added], "lot")} added, #{counts[:changed]} changed, #{counts[:removed]} removed"
-      locations = location_sentence(plan.locations)
-      locations ? "#{lots}; #{locations}" : lots
+      currency = "prices now shown in #{plan.currency_change.to}" if plan.currency_change # spec 038 decision 7
+      [ lots, location_sentence(plan.locations), currency ].compact.join("; ")
     end
 
     # "2 locations added, 1 renamed, 1 removed": the noun on the first part that isn't zero, the zero parts left out; nil

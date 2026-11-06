@@ -22,6 +22,20 @@ RSpec.describe "an instance started from a restored backup", :backup, :committed
     end
   end
 
+  it "keeps each account's own currency, showing its prices in it (spec 038 AC-7.1)", :aggregate_failures do
+    euro = create(:user)
+    euro.account.update!(currency: "EUR")
+    create(:lot, account: euro.account, price_paid_cents: 1250)
+    restore_backup(create_backup, volume:)
+
+    with_restored_instance(restored) do
+      expect([ user.account.reload.currency, euro.account.reload.currency ]).to eq(%w[USD EUR])
+      sign_in_as(euro)
+      get "/collection?view=table"
+      expect(response.body).to include("€12.50")
+    end
+  end
+
   it "ends every session: the old cookie is sent to sign in, and the password works (AC-2.4)", :aggregate_failures do
     sign_in_as(user) # a session row, and its cookie in this integration session
     expect(table_rows(instance_database).fetch("sessions")).not_to be_empty

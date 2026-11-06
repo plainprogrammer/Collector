@@ -1,0 +1,23 @@
+<% content_for :title, "Currency · Collector" %>
+<%= render "layouts/appbar", section: nil, detail: true, back_path: more_path %>
+<main class="c-main c-page">
+  <div class="c-pagehead">
+    <div>
+      <h1 class="c-pagehead__title">Currency</h1>
+    </div>
+  </div>
+  <% messages = @messages || [] %>
+  <%= form_with model: @account, url: currency_path, method: :patch, class: "c-form" do |form| %>
+    <div class="c-field<%= " c-field--invalid" if messages.any? %>">
+      <%= form.label :currency, "Currency", class: "c-field__label" %>
+      <%= form.select :currency, currency_options, {}, { "aria-describedby": [ "account_currency-hint", field_error_describedby("account_currency-error", messages) ].compact.join(" ") } %>
+      <p class="c-field__hint" id="account_currency-hint">Changing the currency doesn't convert the prices you've entered. They keep their amounts and are shown in the currency you choose.<% if @priced.positive? %> <%= @priced == 1 ? "1 lot has" : "#{number_with_delimiter(@priced)} lots have" %> a price paid.<% end %></p>
+      <%= render "shared/field_errors", messages:, id: "account_currency-error" %>
+    </div>
+    <div class="c-form__actions">
+      <%= form.submit "Save", class: "c-btn c-btn--primary" %>
+      <%= link_to "Cancel", more_path, class: "c-btn c-btn--secondary" %>
+    </div>
+  <% end %>
+</main>
+<%= render "layouts/tabbar", section: nil %>

@@ -26,6 +26,8 @@ class CollectionImport
   PRICE_TOO_LARGE = "price_paid is too large to record".freeze
 
   Refusal = Data.define(:rule, :at, :reason)
+  # What applying would do to the account's currency (spec 038 decision 7).
+  CurrencyChange = Data.define(:from, :to)
   # One reason a row can't be applied; +summary+ is the reason without what belongs to that row alone.
   Problem = Data.define(:rule, :at, :reason, :summary)
   Tally = Data.define(:lots, :copies, :copies_after) do
@@ -85,17 +87,18 @@ class CollectionImport
   def entry_id(row) = @entry_ids.fetch(row.number)
 
   # What applying would do to the collection as it was when this was first asked (the preview's view, spec 028).
-  def plan = @plan ||= Plan.new(outcomes, view_change, locations)
+  def plan = @plan ||= Plan.new(outcomes, view_change, locations, currency_change)
 
-  # The same, against the collection as it is now: one read of the lots, of the locations and of the user, no parsing
-  # (spec 028 FR-2, spec 029 decision 11). It replaces the memoized plan, outcomes and locations, so that the page an apply
-  # renders afterwards shows what the apply decided.
+  # The same, against the collection as it is now: one read of the lots, of the locations, of the account (its currency,
+  # spec 038 decision 7) and of the user, no parsing (spec 028 FR-2, spec 029 decision 11). It replaces the memoized plan,
+  # outcomes and locations, so that the page an apply renders afterwards shows what the apply decided.
   def replan
+    @account.reload
     user.reload
     @removed_lots = nil # memoized from the outcomes below by #removed_lots
     @locations = nil
     @outcomes = outcomes_for(held_lots)
-    @plan = Plan.new(@outcomes, view_change, locations)
+    @plan = Plan.new(@outcomes, view_change, locations, currency_change)
   end
 
   # What applying would do with the collector's locations: nothing counted for a version 1 file (spec 029 decision 10).
@@ -106,6 +109,9 @@ class CollectionImport
   def exported_at = Time.iso8601(@data["exported_at"])
 
   def currency = @data["currency"]
+
+  # What applying would do to the account's currency: the file's code when it isn't the account's, else nil.
+  def currency_change = (CurrencyChange.new(from: @account.currency, to: currency) if currency != @account.currency)
 
   def problem_rows = @problem_rows ||= rows.select(&:problem?)
 
@@ -203,11 +209,12 @@ class CollectionImport
       index && refuse("maxLength", "/locations/#{index}/name", "This file isn't a well-formed export: #{field_reason("maxLength", "locations.#{index}.name")}.")
     end
 
+    # A well-formed code this instance can't show is refused as a whole; any of the 20 is brought in (spec 038 decision 7).
     def currency_refusal
-      code = Rails.configuration.x.currency.code
-      return if @data["currency"] == code
+      code = @data["currency"]
+      return if Collector::Currency::SYMBOLS.key?(code)
 
-      refuse("other_currency", "/currency", "This file's prices are in #{@data["currency"]}. This instance uses #{code}.")
+      refuse("unsupported_currency", "/currency", "Collector can't show prices in #{code}.")
     end
 
     def newer(version)

@@ -1,5 +1,6 @@
 # Applies the account's stored upload (spec 028): reads, judges and prepares everything outside any transaction, then
-# decides and writes inside one short all-or-nothing transaction. It touches +account+ only. Collectible-agnostic.
+# decides and writes inside one short all-or-nothing transaction. It touches +account+ only: its lots, locations, view and
+# currency (spec 038). Collectible-agnostic.
 class CollectionImport::Apply
   Result = Data.define(:outcome, :import, :plan, :upload, :fingerprint)
 
@@ -86,8 +87,10 @@ class CollectionImport::Apply
     # BATCH_SIZE lots, never one per lot (FR-4). The upsert is on the lot's identity, so a changed lot keeps its id (FR-9) and
     # a renamed location's lots stay where they are; the rows were validated by the reader, so the bulk statements skip Lot's
     # callbacks and validations on purpose (spec 028 FR-3, ruled 2026-10-20; AC-2.4 checks the rows against Lot). Then the
-    # view (spec 032 research R3).
+    # view (spec 032 research R3). The currency goes first, so any later statement's failure rolls it back with the lots
+    # (spec 038 decision 7, AC-6.9).
     def write!(plan, rows)
+      @account.update!(currency: plan.currency_change.to) if plan.currency_change
       plan.removed_lots.map(&:id).each_slice(CollectionImport::BATCH_SIZE) { |ids| @account.lots.where(id: ids).delete_all }
       CollectionImport::LocationChanges.write!(@account, plan.locations)
       place_ids = @account.locations.pluck(:name_key, :id).to_h
