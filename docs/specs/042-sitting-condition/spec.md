@@ -8,6 +8,7 @@
 **Branch:** `042-sitting-condition`
 **Issue:** [#57](https://github.com/plainprogrammer/Collector/issues/57) (roadmap item 21b, theme D)
 **Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) and [`data-portability.md`](../../architecture/data-portability.md) (parts: decisions 2, 4 and 5 as they touch lots; decision 6 and AC-5.3); see the [specs index](../README.md)
+**Plan:** retired in `6412b00ea8a6be07aaf3cce6ca410d5044a935dd`; read it with `git show 6412b00ea8a6be07aaf3cce6ca410d5044a935dd^:docs/specs/042-sitting-condition/plan.md`
 
 ---
 

@@ -1,5 +1,7 @@
 # Spec 042: Verification
 
+**Plan:** retired in `6412b00ea8a6be07aaf3cce6ca410d5044a935dd`; read it with `git show 6412b00ea8a6be07aaf3cce6ca410d5044a935dd^:docs/specs/042-sitting-condition/plan.md`
+
 Verified on 2026-11-06 on branch `042-sitting-condition`. The spec was approved at 0.3.1 and the plan at `d2f26f8`. Tasks 1 to 12 were built test-first by one implementer per task, and each task's diff was checked against the plan and the spec before the next began.
 
 ## Targeted runs
