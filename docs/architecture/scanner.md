@@ -215,4 +215,4 @@ Shows the next manifest row (its `file` and the expected card) above the scanner
 
 | Date | Distilled | Pull request |
 |---|---|---|
-| 2026-11-06 | Specs 005, 008 and 010 (spikes); specs 007, 009 and 011 but for the name index, query cleaning and the build's run; the scanner parts of specs 040 and 042; spec 047; ADRs 0001, 0002, 0004–0007 and 0012 | #107's pull request |
+| 2026-11-06 | Specs 005, 008 and 010 (spikes); specs 007, 009 and 011 but for the name index, query cleaning and the build's run; the scanner parts of specs 040 and 042; spec 047; ADRs 0001, 0002, 0004–0007 and 0012; and CLAUDE.md's card scanner paragraph | #107's pull request |
