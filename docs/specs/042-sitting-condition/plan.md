@@ -44,7 +44,7 @@ A collector sets a condition for the scanner's sitting in the one control that a
 
 | # | Item | Ruling in this plan | Source |
 |---|---|---|---|
-| P1 | Whether the control's fieldset needs CSS | `fieldset.c-choices` (spec 006's flex column, no border, legend spacing) holds the legend and the two `c-field`s, stacked, so no new rule. Task 9 checks it at 390px and desktop; only if a control overflows does a rule go in `additions.css` with its doc in `Scanner.md` | AC-7.1, Design system NFR |
+| P1 | Whether the control's fieldset needs CSS | `fieldset.c-choices` (spec 006's flex column, no border, legend spacing) holds the legend and the two `c-field`s, stacked, so no new rule. Task 9 checks it at 390px and desktop; only if a control overflows does a rule go in: `.c-scanner__place .c-choices { min-width: 0; }` in `additions.css`, documented in `Scanner.md` | AC-7.1, Design system NFR |
 | P2 | `choose!`'s keyword shape | `choose!(account:, condition: <key or nil>, location: <Location or nil>)`: a key left out is kept, a key given as `nil` clears. One call writes both, after the controller checked both | decisions 4, 8 |
 | P3 | Where the status line learns whether the account has locations | The concern memoises `account_locations` (the list `sitting_locals` already loads once per request), so the status message adds no query | decision 3 |
 | P4 | An add that opens a sitting and is then refused for its condition | Cannot happen through the page (a sitting's condition is set first); in the model, `Refused` is raised inside the transaction, so a sitting that this add just opened is rolled back with it. Nothing is recorded (AC-4.5) | decision 5 |
@@ -300,7 +300,7 @@ def pointless? = location_id.nil? && condition.nil? && !entries.exists?
 
    `app/controllers/scanner/sittings_controller.rb` still calls `place!`: change that one call to `Scanner::Sitting.choose!(account: Current.account, location:)` so the controller keeps working until Task 7. Update the class comment's first lines of `Scanner::Sitting` only if they mention places only.
 
-3. `bin/rspec spec/models/scanner/sitting_spec.rb spec/requests/scanner/sittings_spec.rb spec/requests/scanner/sitting_entries_spec.rb`; `bin/rubocop` on the touched files. All green (the request specs still exercise the place, which `choose!` keeps).
+3. `bin/rspec spec/models/scanner/sitting_spec.rb spec/requests/scanner/sittings_spec.rb spec/requests/scanner/sitting_entries_spec.rb spec/system/scanner_sitting_spec.rb`; `bin/rubocop` on the touched files. All green (the request specs still exercise the place, which `choose!` keeps).
 4. Commit.
 
 ## Task 3: Adding with the sitting's condition (AC-1.3 to AC-1.6, AC-4.4, AC-4.5, FR-2)
@@ -409,7 +409,7 @@ end
 
    Run `bin/rspec spec/models/scanner/sitting_spec.rb`: the new examples fail (the add ignores the condition).
 
-2. **Green.** In `Scanner::Sitting`: add `:condition` to the `Refused` comment ("`:key`, `:unavailable`, `:finish` or `:condition`"), change `add!`'s transaction, and add `condition_known?`:
+2. **Green.** In `Scanner::Sitting`: add `:condition` to the `Refused` comment ("`:key`, `:unavailable`, `:finish` or `:condition`"), change `add!`'s transaction, and add `condition_known?`, a class method defined at class level after `add!`'s closing `end`, never inside `add!`:
 
 ```ruby
 transaction do
@@ -867,6 +867,7 @@ describe "setting the choices (spec 042)" do
     expect(status_cleared?).to be(true)
   end
 
+  # Passes before the change (the old controller or model already behaves so): regression guard.
   it "clears the status line when both choices are cleared with no sitting open (decision 3)", :aggregate_failures do
     blue
     set(condition: "", location_id: "")
@@ -874,6 +875,7 @@ describe "setting the choices (spec 042)" do
     expect(status_cleared?).to be(true)
   end
 
+  # Passes before the change (the old controller or model already behaves so): regression guard.
   it "takes a sitting that holds a place and no condition to Not specified, deleting it while empty (AC-1.8)" do
     set(location_id: blue.id)
     set(location_id: "")
@@ -935,6 +937,14 @@ describe "setting the choices (spec 042)" do
     expect(account.scanner_sitting.reload.condition).to eq("near_mint")
   end
 
+  it "ignores a sitting id and an account id at the top level of the request too (AC-4.3)", :aggregate_failures do
+    other = create(:user).account
+    theirs = Scanner::Sitting.choose!(account: other, condition: "damaged")
+    patch scanner_sitting_path, params: { sitting: { condition: "near_mint" }, sitting_id: theirs.id, account_id: other.id }, headers: stream
+    expect(theirs.reload.condition).to eq("damaged")
+    expect(account.scanner_sitting.reload.condition).to eq("near_mint")
+  end
+
   it "ends the sitting with its condition, and the next one starts on Not specified (AC-5.1, AC-5.2)", :aggregate_failures do
     set(condition: "near_mint")
     add("a")
@@ -957,12 +967,14 @@ describe "setting the choices (spec 042)" do
     expect(chosen(:condition)).to eq("Lightly played (LP)")
   end
 
+  # Passes before the change (the old controller or model already behaves so): regression guard.
   it "sends a signed-out visitor to sign in" do
     delete session_path
     set(condition: "near_mint")
     expect(response).to redirect_to(new_session_path)
   end
 
+  # Passes before the change (the old controller or model already behaves so): regression guard.
   it "never touches another account's sitting (tenant isolation)" do
     other = create(:user).account
     theirs = Scanner::Sitting.choose!(account: other, condition: "damaged", location: create(:location, account: other))
@@ -989,8 +1001,7 @@ class Scanner::SittingsController < ApplicationController
   UNKNOWN_CONDITION = "That isn't a known condition. Choose again.".freeze
 
   def update
-    attributes = params.expect(sitting: %i[condition location_id])
-    raise ActionController::ParameterMissing, :sitting unless attributes.key?(:condition) || attributes.key?(:location_id) # belt and braces: params.expect already answers 400 for a missing or empty sitting; this also covers a hash with neither key
+    attributes = params.expect(sitting: %i[condition location_id]) # a request with neither key (or no sitting) raises ParameterMissing: a 400
 
     choices = {}
     if attributes.key?(:condition)
@@ -1025,7 +1036,7 @@ class Scanner::SittingsController < ApplicationController
 end
 ```
 
-   `params.expect(sitting: %i[condition location_id])` raises `ParameterMissing` (a 400) when `sitting` is missing or empty; the explicit line also covers a `sitting` hash that holds neither permitted key (confirm by the 400 example). The `Current.account.scanner_sitting` reader is not loaded before `choose!`, so the redraw reads the stored state (the pattern spec 040 relied on).
+   `params.expect(sitting: %i[condition location_id])` permits first and then requires, so a missing `sitting`, an empty one or one holding neither permitted key raises `ParameterMissing` (a 400); the AC-4.2 example confirms it. The `Current.account.scanner_sitting` reader is not loaded before `choose!`, so the redraw reads the stored state (the pattern spec 040 relied on).
 4. `bin/rspec spec/requests/scanner/sittings_spec.rb spec/requests/scanner/sitting_entries_spec.rb spec/models/scanner/sitting_spec.rb spec/scanner_sitting_core_spec.rb spec/system/scanner_sitting_spec.rb`; `bin/rubocop app/controllers/scanner/sittings_controller.rb spec/requests/scanner/sittings_spec.rb`; `bin/brakeman -q` (no new warning: `params.expect`, no mass assignment of an id).
 5. Commit.
 
@@ -1066,6 +1077,7 @@ describe "with the sitting's condition (spec 042)" do
     expect(response.body).to include("Added 1 × Lightning Bolt (MOM · 123, NM) to your collection.")
   end
 
+  # Passes before the change: regression guard.
   it "names no condition when the sitting has none (AC-1.5)", :aggregate_failures do
     choose(location: blue)
     add
@@ -1073,6 +1085,7 @@ describe "with the sitting's condition (spec 042)" do
     expect(user.account.lots.sole.condition).to be_nil
   end
 
+  # Passes before the change: regression guard.
   it "keeps the Undo announcement and the accessible names free of the condition (decision 3)", :aggregate_failures do
     choose(condition: "near_mint")
     add
@@ -1082,6 +1095,7 @@ describe "with the sitting's condition (spec 042)" do
     expect(response.body).to include("Removed 1 × Lightning Bolt (MOM · 123, Foil) from your collection.")
   end
 
+  # Passes before the change: regression guard.
   it "refuses at the cap of the lot of that condition with the existing message, while Not specified takes the card (AC-1.6)", :aggregate_failures do
     create(:lot, account: user.account, entry: printing, finish: "foil", condition: "near_mint", quantity: Lot::MAX_QUANTITY)
     choose(condition: "near_mint")
@@ -1111,6 +1125,7 @@ describe "with the sitting's condition (spec 042)" do
     expect(response.body).to include("Added 1 × Lightning Bolt (MOM · 123, Foil, LP) to your collection.")
   end
 
+  # Passes before the change: regression guard.
   it "refuses a condition the printing's vocabulary doesn't know with the not-added message, not the cap, recording nothing (AC-4.5)", :other_collecting, :aggregate_failures do
     other = create(:catalog_entry, collectible_type: "other")
     choose(condition: "near_mint")
@@ -1151,7 +1166,7 @@ end
 **Covers:** AC-1.2 (camera and reading untouched), AC-1.7, AC-2.1, AC-5.2, AC-7.1.
 
 1. The relabelling, the status string and the top-level `set_sitting` helper were made in Tasks 6 and 7, so no existing example is red here. The new examples below use `set_sitting`, which is defined at the file's top level.
-2. **Red then green** (headless Firefox, no `sleep`, Capybara waits). Add:
+2. **Acceptance examples** (headless Firefox, no `sleep`, Capybara waits; every one passes on arrival, since Tasks 6 and 7 built the behaviour: they prove it in a browser rather than drive it). Add:
 
 ```ruby
 describe "a sitting's condition (spec 042)" do
@@ -1229,7 +1244,7 @@ end
 ```
 
    The existing 360px example (long location name) keeps `ready: "#sitting_location_id"`. Run `bin/rspec spec/system/scanner_sitting_spec.rb`. If the fit example fails on a control, add the smallest rule that fixes it to `additions.css` (tokens only, a comment naming spec 042 AC-7.1) and document it in Task 11's `Scanner.md` text; otherwise add none (P1).
-3. `bin/rspec spec/system/scanner_sitting_spec.rb spec/system/scanner_adding_spec.rb spec/system/scanner_measurement_spec.rb`; `bin/rubocop spec/system/scanner_sitting_spec.rb`. Commit.
+3. `bin/rspec spec/system/scanner_sitting_spec.rb spec/system/scanner_adding_spec.rb spec/system/scanner_measurement_spec.rb spec/system/scanner_spec.rb`; `bin/rubocop spec/system/scanner_sitting_spec.rb`. Commit.
 
 ## Task 10: An import apply ends the sitting with its condition (AC-5.3)
 
@@ -1250,7 +1265,7 @@ end
 Edit the three paragraphs of `Scanner.md` that describe the panel (the lines beginning "The open sitting", "While the account has locations" and "A sitting with no entries says"), and the "Done" paragraph's last sentence:
 
 - **The open sitting:** the heading reads "This sitting: N cards" followed by the choices that are set, ", Near mint" and ", in Blue binder"; the entry line gains the short condition label after the finish ("MH3 · 47 · Foil · NM · in Blue binder · Added …"), read from the entry's lot as it is now; an entry whose lot went names none.
-- **The control** replaces "While the account has locations …": the sitting's one control (`form.c-form.c-scanner__place`, spec 042 decision 2) shows for every signed-in collector, before the first add too. A `fieldset.c-choices` with the legend "This sitting's cards" holds, stacked, a `c-field` "Condition" (a native select, "Not specified" first, then the scale as "Near mint (NM)" … "Damaged (DMG)") and, while the account has locations, a `c-field` "Location" ("No location" first, then the locations in the order of the locations page), and a `c-btn--secondary c-btn--sm` "Set" in `c-form__actions`. It needs no script. "Set" redraws the panel with a Turbo Stream and `#status` says "Cards you scan now: Near mint, in Blue binder." (both choices for an account with locations; "condition not specified" and "no location" for what is unset; the condition alone for an account with none), and is cleared when "Set" deletes an empty sitting. With no sitting open the panel holds the control alone (no heading, no "Done"). If Task 9 added a rule to `additions.css`, say so here with its selector and reason; otherwise say the control uses only existing classes (`c-choices` is the choice page's fieldset).
+- **The control** replaces "While the account has locations …": the sitting's one control (`form.c-form.c-scanner__place`, spec 042 decision 2) shows for every signed-in collector, before the first add too. A `fieldset.c-choices` with the legend "This sitting's cards" holds, stacked, a `c-field` "Condition" (a native select, "Not specified" first, then the scale as "Near mint (NM)" … "Damaged (DMG)") and, while the account has locations, a `c-field` "Location" ("No location" first, then the locations in the order of the locations page), and a `c-btn--secondary c-btn--sm` "Set" in `c-form__actions`. It needs no script. "Set" redraws the panel with a Turbo Stream and `#status` says "Cards you scan now: Near mint, in Blue binder." (both choices for an account with locations; "condition not specified" and "no location" for what is unset; the condition alone for an account with none), and is cleared when "Set" deletes an empty sitting, or clears both choices with no sitting open (spec 042 decision 3). With no sitting open the panel holds the control alone (no heading, no "Done"). If Task 9 added a rule to `additions.css`, say so here with its selector and reason; otherwise say the control uses only existing classes (`c-choices` is the choice page's fieldset).
 - **The empty list:** "Cards you scan now: Near mint, in Blue binder." naming only the parts that are set; "Nothing added yet." with neither (a redraw the next render drops); "Everything added in this sitting was undone." once every add was.
 - **After an add:** `#status` announces "Added 1 × Lightning Bolt (MOM · 123, Foil, NM) in Blue binder to your collection." (the short label after the finish, "(MOM · 123, NM)" for a printing with no finish); Undo's announcement and the accessible names ("Undo …", "Details of …") do not name the condition.
 - **Done:** the summary now carries the control on Not specified (and No location) for every account.
@@ -1283,10 +1298,11 @@ Commit with only that file.
    - `bin/rspec spec/models/scanner spec/helpers/scanners_helper_spec.rb spec/scanner_sitting_core_spec.rb spec/number_entry_core_spec.rb`
    - `bin/rspec spec/requests/scanner spec/requests/scanners_spec.rb spec/requests/locations_spec.rb`
    - `bin/rspec spec/models/collection_import/apply_spec.rb spec/export_format_document_spec.rb spec/models/account_spec.rb spec/backup_guards_spec.rb`
-   - `bin/rspec spec/system/scanner_sitting_spec.rb spec/system/scanner_adding_spec.rb spec/system/scanner_measurement_spec.rb`
+   - `bin/rspec spec/system/scanner_sitting_spec.rb spec/system/scanner_adding_spec.rb spec/system/scanner_measurement_spec.rb spec/system/scanner_spec.rb`
+   - `bin/rspec spec/system/scanner_art_spec.rb spec/system/scanner_detection_spec.rb spec/system/scanner_timing_spec.rb` (they render the page, which now always holds the control; `scanner_spec.rb` holds the 360px fit and the shutter position)
    - `bin/rubocop`, `bin/brakeman -q`, `bin/bundler-audit`, `ruby script/upgrade/guard.rb`.
 2. **The implementer must not run `bin/ci`, a bare `bin/rspec`, or the whole suite.** The whole suite and `bin/ci` run only in a CI slot the supervisor obtains; the implementer reports the targeted results and asks for that slot. `spec/support/runtime_log.txt` is not refreshed (`script/ci/record_runtime_log` runs the suite).
-3. Check by `git` that the export is untouched: `git diff origin/main --stat -- docs/export-format lib/export_format app/models/export*` is empty (decision 6, FR-3), and that `db/schema.rb`'s diff is the version line and the one column.
+3. Check by `git` that the export is untouched: `git diff origin/main --stat -- docs/export-format app/models/export_format app/models/collection_export.rb` is empty (decision 6, FR-3), and that `db/schema.rb`'s diff is the version line and the one column.
 4. `git grep -n -i -E "\b(mtg|scryfall|magic)\b" -- app/models/scanner/sitting.rb app/models/scanner/sitting_entry.rb app/views/scanners/_sitting.html.erb app/views/scanners/_sitting_entry.html.erb app/views/scanners/_picker.html.erb app/views/scanners/_summary.html.erb app/helpers/scanners_helper.rb ':!.kamal/secrets'` is empty (the guard's check, by hand).
 5. `verification.md`: each AC, FR and NFR with its evidence (the spec names in the coverage table), document criteria checked by reading, a phone-width screenshot of the control and the panel in both themes (`?theme=dark` or the OS setting; see spec 040's `verification.md` for the form), and the upgrade proof (the migration spec; CI's `bin/upgrade-smoke` runs in the image job). The `## Implementation review` heading is added later by the review step.
 
@@ -1332,12 +1348,12 @@ Commit with only that file.
 
 ## Risks and What Only a Run Can Confirm
 
-- **`params.expect(sitting: %i[condition location_id])` for a `sitting` with neither key, or an empty one,** is meant to raise `ParameterMissing` (a 400); the extra `raise` after it covers the other shape. Only the AC-4.2 example proves both.
-- **`fieldset.c-choices` as a flex column inside a `c-form`** is the choice page's pattern, used here with `c-field` children and a select in each. Legend rendering in flex containers differs between engines; only the headless Firefox fit example (390px and desktop) and a look at the screenshot in both themes confirm P1. A rule in `additions.css` is the fallback.
+- **`params.expect(sitting: %i[condition location_id])` for a `sitting` with neither key, or an empty one,** is meant to raise `ParameterMissing` (a 400) in every shape, with no explicit raise. The AC-4.2 example confirms the 400.
+- **`fieldset.c-choices` as a flex column inside a `c-form`** is the choice page's pattern, used here with `c-field` children and a select in each. Legend rendering in flex containers differs between engines; only the headless Firefox fit example (390px and desktop) and a look at the screenshot in both themes confirm P1. If the fit example fails, the one-line fix is named in advance: `.c-scanner__place .c-choices { min-width: 0; }` in `collector/additions.css` (a fieldset's default `min-inline-size` is `min-content`), with a comment naming spec 042 AC-7.1, documented in `Scanner.md` (Task 11).
 - **The migration's `down`** copies `scanner_sittings` (with its foreign keys to accounts and locations) with enforcement off; only the migration spec run proves that entries survive, as spec 040's did. If the spec shows entries lost, fix the migration (never weaken the spec).
 - **The 040 migration spec's `down`** now runs with a column after `location_id`; Task 1 step 4 runs both specs together to prove the older one stays green.
 - **Strict locals:** `conditions:` joins `_scanner`, `_sitting` and `_summary`; the measurement page renders `_scanner` through `**@sitting`. A missed render site raises `ActionView::Template::Error` at render time; Task 6's measurement and request specs cover both pages.
-- **The query-count example** compares a page with 4 entries and with 10, after a warm-up; if a cache makes the first count unstable, compare two renders of equal data to find the unstable query before loosening it.
+- **The query-count example** compares a page with 2 entries and with 8, after a warm-up; if a cache makes the first count unstable, compare two renders of equal data to find the unstable query before loosening it.
 - **`owned_printing`** (used in the migration spec) is spec 040's helper; confirm its name in `spec/support` before copying.
 - **System specs** need headless Firefox and the OCR engine under `vendor/ocr/v7.0.0/` (`bin/fetch-ocr-engine`); only a run on a prepared machine confirms Task 9.
 - **Shared test database:** the implementer runs one `bin/rspec` call at a time, and `maintain_test_schema!` reloads the test schema after Task 1's migration, so do not overlap a run with another worktree's use of the same database file (each worktree has its own, so this only matters inside this worktree).
