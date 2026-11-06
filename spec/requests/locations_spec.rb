@@ -339,7 +339,7 @@ RSpec.describe "Locations", type: :request do
 
         rows = html.css(".c-more li").map { |row| row.text.squish }
         expect(rows.first).to start_with("Signed in as")
-        expect(html.css(".c-more li a").map(&:text).first(4)).to eq([ "Locations", "Export collection", "Import collection", "Add by number" ])
+        expect(html.css(".c-more li a").map(&:text).first(5)).to eq([ "Locations", "Currency", "Export collection", "Import collection", "Add by number" ]) # Currency: spec 038 AC-1.1
         expect(html.at_css(".c-more a[href='#{locations_path}']")).to be_present
         expect(html.css(".c-appbar .c-menu__list a").map(&:text)).not_to include("Locations")
       end
