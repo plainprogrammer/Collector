@@ -117,7 +117,7 @@ RSpec.describe MTG::Art, type: :model do
     it "reports a finished build's counts and index", :art_matching do
       name = art_index_name
       create(:mtg_art_build, indexed_count: 9, without_image_count: 1, failed_count: 2, index_file: name)
-      expect(described_class.status_line).to include("ready", "9 artworks indexed", "1 without an image", "2 failed images", name)
+      expect(described_class.status_line).to eq("Art matching: ready; 9 artworks indexed, 1 without an image, 2 failed images; index #{name}")
     end
 
     it "says the index file is missing, and what to press (spec 039 AC-2.1)", :aggregate_failures, :art_matching do

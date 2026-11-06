@@ -510,6 +510,14 @@ RSpec.describe MTG::Art::Operation, :solid_queue, type: :model do
         expect(operation.state).to eq(:building)
       end
 
+      it "is interrupted when a later build was left behind (AC-1.6, decision 6)" do
+        loaded
+        build(index_file: gone, started_at: 2.hours.ago)
+        build(status: "running", finished_at: nil, heartbeat_at: (MTG::ArtBuild::STALE_AFTER + 1.minute).ago)
+
+        expect(operation.state).to eq(:interrupted)
+      end
+
       it "is failed, worded as before, when the latest build failed (AC-1.6, decision 6)", :aggregate_failures do
         loaded
         build(index_file: gone, started_at: 2.hours.ago)
