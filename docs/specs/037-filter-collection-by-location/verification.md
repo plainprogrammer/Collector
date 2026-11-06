@@ -61,4 +61,24 @@ All under the 500 ms budget, so the `[account_id, location_id]` index the NFR he
 
 ## Manual checks
 
-To be filled from the screenshots and GIF taken for the pull request (desktop and 390px, light and dark).
+Taken on 2026-11-06 with headless Firefox (Selenium) against this worktree's development server, seeded by a scratch script with one collector, three locations ("Blue binder", "Long box", "Red deck box") and 14 lots over 12 placeholder printings (no card art). Each image was inspected; the files are in [`screenshots/`](screenshots/).
+
+- **Desktop, 1280px, light and dark:** the grid under Blue binder (5 tiles, "12 of 40 items", no place line, the foil badge only where the binder holds a foil), "No location" (4 tiles, "10 of 40 items"), the table under Blue binder (Location column repeats it), bulk mode under it (select and a visible Filter in the bulk filter bar, "0 of 12 selected"), after Remove ("No cards in your collection are in “Blue binder”.", "0 of 0 selected", Undo) and after Undo (the 12 items back, still under Blue binder). Dark mode keeps the select, the button and the count legible.
+- **Phone, a 390px frame, light and dark:** grid and bulk mode under Blue binder. The select and Filter share a row under the search field, the view switch and "…" the next; the frame's `scrollWidth` equals its 390px width (no horizontal scroll), as the system spec also checks.
+- **Walkthrough GIF:** grid, choose Blue binder, Filter; No location; back under Blue binder, switch to the table; Edit many; Select all ("All 12 items selected"); Remove; confirm; Undo.
+- **Keyboard:** the select is a native control reached by Tab after the search field, with the design system's focus ring (`.c-select select:focus-visible`); Enter in the name field applies both filters (system spec).
+- No UI bug was found in the shots.
+
+## Implementation review
+
+SPEC-ALIGNED. An independent read-only `sdd-review` Mode B on Opus, run 2026-11-06 on `0690b63`, found no blocking or major findings and five minor ones:
+
+1. Showing a selection's ticks under a location (AC-5.3) had no direct example. **Fixed** in `afe0ce8`: `spec/models/collection_table/selection_state_spec.rb` "shows a selection under its location, and as nothing under another".
+2. The confirm page's Cancel and Back links, and the confirm page for a selection whose location is gone (AC-5.5, AC-5.6), weren't asserted. **Fixed** in `afe0ce8`: select markup "keeps the location on the confirm page's Cancel and Back …" and "sends the confirm page for a selection whose location is gone back to the bulk table".
+3. The filtered table's pager count (AC-1.4) was covered only indirectly. **Fixed** in `afe0ce8` (the same Cancel/Back example asserts "Page 1 of 2").
+4. This file's manual checks and this heading were missing. **Fixed** here.
+5. The working tree's `Gemfile.lock` carries the dev machine's arm64-darwin platform. **Kept out** of every commit, as the brief says.
+
+The review also judged the three recorded deviations acceptable: the `_no_match` partial in place of the plan's helper (it escapes correctly without `html_safe`; the reviewer notes a helper's `&quot;` would display the same, so the gain is keeping spec 004's existing body assertions unchanged), the migration's `ALTER TABLE … DROP COLUMN` down (the bundled SQLite is newer than 3.35), and no new CSS. It traced tenancy (a foreign id in `location`, `rendered_location` or a `go=` URL never reaches another account's lots), the fail-closed rule (AC-5.5, AC-5.8; SQLite's AUTOINCREMENT keys mean a removed location's id isn't reused), which value bulk submissions use, the default submit order, and every caller of `restart!`, `context?`, `collection_listing_path`, `prepare_collection`, `CollectionGrid.new`, `CollectionTable.new` and `CollectionFilter.lots`. An example for a foreign id in a `go=` URL was optional and is not added; `spec/requests/collection_location_filter_spec.rb` "removes nothing of another account's for its location id" covers the same predicate through `location` and `rendered_location`.
+
+Per-criterion evidence is the table at the top of this file.
