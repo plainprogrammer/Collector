@@ -1,7 +1,7 @@
 # Feature 047: Keep Focus and Announce After the Scanner Sitting Panel Redraws
 
-**Status:** Draft
-**Version:** 0.2.0
+**Status:** Approved by the coordinator under the maintainer's delegation (2026-11-06) at 0.3.0, after two spec review rounds; decision 1 ruled by the maintainer (option A, 2026-11-06)
+**Version:** 0.3.0
 **Created:** 2026-11-06
 **Last Updated:** 2026-11-06
 **Depends on:** [spec 009](../009-card-scanner-confirm-flow/spec.md) (the sitting panel, Undo, the status line), [spec 040](../040-sitting-into-location/spec.md) (the place and "Set"), [spec 042](../042-sitting-condition/spec.md) (the condition, "Set"'s status sentences)
@@ -15,6 +15,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.3.0 | 2026-11-06 | Approved. Round 2 (Fable, READY TO PLAN; 0 blocking, 0 major, 1 minor left as is). Decision 1 ruled by the maintainer: option A. |
 | 0.2.0 | 2026-11-06 | Spec review round 1 (Fable, NEEDS REVISION, light; 0 blocking, 2 important, 7 minor): spec 040 no longer listed for the status line (its text never had it; spec 042 wrote it down), a refused add does not redraw (evidence table, AC-4.1), spec 009 AC-4.4 listed, the expected flips of the request examples named (AC-4.2), "next Tab" claim dropped, AC-1.4 and AC-2.1 wording, the controller removes its target after focusing, the heading's focus rule decided (decision 4). |
 | 0.1.0 | 2026-11-06 | Written from issue #182 (found by spec 040's implementation review, PR #172). |
 
@@ -64,7 +65,7 @@ A collector scanning a binder card by card, with a keyboard, a switch device or 
 
 ## Decisions
 
-### 1. The clearing case says what the next scan gets, in "Set"'s own sentence (for ruling at approval)
+### 1. The clearing case says what the next scan gets, in "Set"'s own sentence (ruled 2026-11-06: option A)
 
 When "Set" deletes an empty sitting, or clears both choices with none open, `#status` says the sentence every other "Set" says, for the state that now holds: "Cards you scan now: condition not specified, no location." (an account with locations) or "Cards you scan now: condition not specified." (an account with none). No new copy is added: the sentence is already in the voice of `docs/design-system/` (sentence case, "you", one plain sentence, no exclamation, states exactly what is true), and "Set" always announces what later scans will get, whichever way the choices fall. One rule replaces the exception.
 
@@ -163,7 +164,7 @@ The index rows for specs 009, 040 and 042 carry this spec under "Superseded by";
 
 ## Open Questions
 
-None. Decision 1's copy is put to the maintainer at approval, with option B named.
+None. Decision 1's copy was ruled by the maintainer (option A).
 
 ## Out of Scope
 
