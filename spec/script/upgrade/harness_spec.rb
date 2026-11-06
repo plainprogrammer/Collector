@@ -41,6 +41,14 @@ RSpec.describe Upgrade::Harness, :git_sandbox, :upgrade do
   end
 
 
+  def with_tmpdir(path)
+    original = ENV.fetch("TMPDIR", nil)
+    ENV["TMPDIR"] = path
+    yield
+  ensure
+    ENV["TMPDIR"] = original
+  end
+
   def harness(previous: "auto", engine: self.engine, env: { "GITHUB_ACTIONS" => "true" }, options: self.options, release: Upgrade::Release.new(root, env:))
     described_class.new(previous:, current: "collector:smoke", release:, engine:, options:, web: web.method(:new_client), out:, root:, sleeper: ->(_) { })
   end
@@ -243,10 +251,24 @@ RSpec.describe Upgrade::Harness, :git_sandbox, :upgrade do
     expect(failing.names).to include(:remove, :remove_volume, :remove_directory)
   end
 
-  it "removes its temporary directory" do
-    before = Dir.glob(File.join(Dir.tmpdir, "upgrade-smoke*"))
-    harness.call
-    expect(Dir.glob(File.join(Dir.tmpdir, "upgrade-smoke*"))).to eq(before)
+  # The harness makes its scratch directory with Dir.mktmpdir, which reads TMPDIR on each call. The example gives it a
+  # root of its own and looks only there, never at the machine's tmpdir, where another run's upgrade-smoke* directory
+  # (a second worktree's bin/ci) can appear or vanish between two looks (#178). The other run is simulated: a sibling in
+  # the machine's tmpdir while the harness works, which the example must not mind.
+  it "removes its temporary directory, whatever other runs keep in the machine's tmpdir (#178)", :aggregate_failures do
+    shared = Dir.tmpdir
+    own_root = File.realpath(Dir.mktmpdir("upgrade-spec-root"))
+    sibling = held = nil
+    start = lambda do |*, **|
+      sibling ||= Dir.mktmpdir("upgrade-smoke", shared)
+      held ||= Dir.children(own_root).grep(/\Aupgrade-smoke/)
+    end
+    with_tmpdir(own_root) { harness(engine: FakeEngine.new(databases:, start:)).call }
+    expect(held.size).to eq(1) # the directory existed while the harness ran, so "gone" means something
+    expect(Dir.children(own_root)).to be_empty
+    expect(File.directory?(sibling)).to be(true) # nor did the harness touch what was not its own
+  ensure
+    FileUtils.rm_rf([ own_root, sibling ].compact)
   end
 
   it "cleans up when the runner kills the step with SIGTERM, and leaves the process's own handler as it found it (AC-7.3, FR-6)", :aggregate_failures do
