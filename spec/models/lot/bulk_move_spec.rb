@@ -190,4 +190,30 @@ RSpec.describe Lot::BulkMove, type: :model do
     described_class.new(account:, lots: Lot.where(id: [ mine.id, theirs.id ]), to: blue, sort:).apply!
     expect([ mine.reload.location, theirs.reload.location ]).to eq([ blue, nil ])
   end
+
+  def queries_during
+    count = 0
+    counter = ->(*, payload) { count += 1 unless payload[:cached] || %w[SCHEMA TRANSACTION].include?(payload[:name]) }
+    ActiveSupport::Notifications.subscribed(counter, "sql.active_record") { yield }
+    count
+  end
+
+  # Pass on arrival: characterisations of the NFR (a bounded number of statements), not missing reds.
+  describe "statement counts" do
+    before { blue } # the lazy let would otherwise INSERT inside the counted block
+
+    it "runs as many statements for 12 lots that merge with nothing as for 2" do
+      few = Array.new(2) { lot(location: box) }
+      many = Array.new(12) { lot(location: box) }
+      expect(queries_during { move(many, blue) }).to eq(queries_during { move(few, blue) })
+    end
+
+    it "writes one statement per survivor and batches the deletes of folded lots" do
+      entries = Array.new(6) { create(:mtg_printing).entry }
+      pairs = entries.flat_map { |entry| [ lot(entry, location: box), lot(entry) ] } # six groups of two, each merging
+      two_groups = queries_during { move(pairs.first(4), blue) }  # groups 1 and 2
+      four_groups = queries_during { move(pairs.last(8), blue) }  # groups 3 to 6, none seen by the first move
+      expect(four_groups - two_groups).to eq(2) # two more groups, two more survivor statements; the folded lots go in one batch either way
+    end
+  end
 end
