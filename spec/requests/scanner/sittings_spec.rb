@@ -163,7 +163,7 @@ RSpec.describe "Scanner sittings", type: :request do
       place(blue.id)
       expect(response).to have_http_status(:ok)
       expect(response.media_type).to eq("text/vnd.turbo-stream.html")
-      expect(response.body).to include('<turbo-stream action="replace" target="scanner_sitting">', "This sitting&#39;s cards now go into Blue binder.")
+      expect(response.body).to include('<turbo-stream action="replace" target="scanner_sitting">', "Cards you scan now: condition not specified, in Blue binder.")
       expect(response.body).not_to include('target="scanner_result"')
       expect(account.scanner_sitting.location).to eq(blue)
       expect(html.at_css("select#sitting_location_id option[selected]").text).to eq("Blue binder")
@@ -222,7 +222,7 @@ RSpec.describe "Scanner sittings", type: :request do
       add("a")
       place("")
       expect(account.scanner_sitting.reload.location).to be_nil
-      expect(response.body).to include("This sitting&#39;s cards now go in no location.", "This sitting: 1 card")
+      expect(response.body).to include("Cards you scan now: condition not specified, no location.", "This sitting: 1 card")
 
       account.scanner_sitting.entries.sole.undo!
       place(blue.id)
@@ -230,7 +230,7 @@ RSpec.describe "Scanner sittings", type: :request do
       expect(Scanner::Sitting.count).to eq(0)
       expect(response).to have_http_status(:ok)
       expect(html.at_css("select#sitting_location_id option[selected]").text).to eq("No location")
-      expect(response.body).not_to include("This sitting:", "now go")
+      expect(response.body).not_to include("This sitting:", "Cards you scan now")
     end
 
     it "answers 400 to a request with no place, changing nothing (AC-3.3)", :aggregate_failures do
@@ -463,5 +463,194 @@ RSpec.describe "Scanner sittings", type: :request do
     entry = add("a")
     patch lot_path(entry.lot_id, return_to: scanner_path), params: { lot: { quantity: "1", finish: "foil", condition: "near_mint", price_paid: "" } }
     expect(response).to redirect_to(scanner_path)
+  end
+
+  describe "setting the choices (spec 042)" do
+    def blue = @blue ||= create(:location, account:, name: "Blue binder")
+    def set(**fields) = patch(scanner_sitting_path, params: { sitting: fields }, headers: stream)
+    def chosen(field) = html.at_css("select#sitting_#{field} option[selected]").text
+    # The status line in the stream's update of "status" (`#status` itself is in the layout, not in a stream body).
+    def status_line = html.at_css("turbo-stream[target=status] .c-status__message").text.squish
+    def status_cleared? = response.body.match?(%r{<turbo-stream action="update" target="status"><template>\s*</template></turbo-stream>})
+
+    it "opens a sitting holding the condition, redrawing the panel, for an account with no locations (AC-1.2, AC-3.1)", :aggregate_failures do
+      set(condition: "near_mint")
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type).to eq("text/vnd.turbo-stream.html")
+      expect(response.body).to include('<turbo-stream action="replace" target="scanner_sitting">')
+      expect(response.body).not_to include('target="scanner_result"')
+      expect(account.scanner_sitting).to have_attributes(condition: "near_mint", location: nil)
+      expect(html.at_css("#scanner_sitting h2").text).to eq("This sitting: 0 cards, Near mint")
+      expect(html.at_css("#scanner_sitting .c-empty").text).to eq("Cards you scan now: Near mint.")
+      expect(status_line).to eq("Cards you scan now: Near mint.")
+      expect(chosen(:condition)).to eq("Near mint (NM)")
+    end
+
+    it "says both choices in the status line for an account with locations, in every variant (decision 3)", :aggregate_failures do
+      blue
+      {
+        { condition: "near_mint", location_id: blue.id } => "Cards you scan now: Near mint, in Blue binder.",
+        { condition: "near_mint", location_id: "" } => "Cards you scan now: Near mint, no location.",
+        { condition: "", location_id: blue.id } => "Cards you scan now: condition not specified, in Blue binder."
+      }.each do |fields, line|
+        set(**fields)
+        expect(status_line).to eq(line), fields.inspect
+      end
+      add("a")
+      set(condition: "", location_id: "")
+      expect(status_line).to eq("Cards you scan now: condition not specified, no location.")
+      expect(account.scanner_sitting.entries.count).to eq(1)
+    end
+
+    it "says only the condition for an account with no locations, also when it is cleared with a card kept (decision 3)", :aggregate_failures do
+      add("a")
+      set(condition: "near_mint")
+      set(condition: "")
+      expect(status_line).to eq("Cards you scan now: condition not specified.")
+    end
+
+    it "changes the condition of an open sitting, keeping its count, entries and place, and the cards already added stay put (AC-2.1, AC-2.4)", :aggregate_failures do
+      set(condition: "near_mint", location_id: blue.id)
+      entries = %w[a b c].map { add(it) }
+      set(condition: "lightly_played")
+      expect(account.scanner_sitting.reload).to have_attributes(condition: "lightly_played", location: blue, entries:)
+      expect(entries.map { it.lot.reload.condition }.uniq).to eq([ "near_mint" ])
+      expect(html.at_css("#scanner_sitting h2").text).to eq("This sitting: 3 cards, Lightly played, in Blue binder")
+      set(location_id: create(:location, account:, name: "Long box").id)
+      expect(account.scanner_sitting.reload).to have_attributes(condition: "lightly_played", location: Location.find_by!(name: "Long box"))
+    end
+
+    it "clears the condition of a sitting with a card and keeps it; deletes a sitting with no card, condition or place, and clears the status (AC-1.8)", :aggregate_failures do
+      set(condition: "near_mint")
+      add("a")
+      set(condition: "")
+      expect(account.scanner_sitting.reload.condition).to be_nil
+      expect(html.at_css("#scanner_sitting h2").text).to eq("This sitting: 1 card")
+
+      account.scanner_sitting.entries.sole.undo!
+      set(condition: "near_mint")
+      set(condition: "")
+      expect(Scanner::Sitting.count).to eq(0)
+      expect(response).to have_http_status(:ok)
+      expect(chosen(:condition)).to eq("Not specified")
+      expect(html.at_css("#scanner_sitting h2")).to be_nil
+      expect(status_cleared?).to be(true)
+    end
+
+    # Passes before the change (the old controller or model already behaves so): regression guard.
+    it "clears the status line when both choices are cleared with no sitting open (decision 3)", :aggregate_failures do
+      blue
+      set(condition: "", location_id: "")
+      expect(Scanner::Sitting.count).to eq(0)
+      expect(status_cleared?).to be(true)
+    end
+
+    # Passes before the change (the old controller or model already behaves so): regression guard.
+    it "takes a sitting that holds a place and no condition to Not specified, deleting it while empty (AC-1.8)" do
+      set(location_id: blue.id)
+      set(location_id: "")
+      expect(Scanner::Sitting.count).to eq(0)
+    end
+
+    it "answers 400 to a request with neither key, changing nothing, and keeps the other choice when only one is sent (AC-4.2)", :aggregate_failures do
+      set(condition: "near_mint", location_id: blue.id)
+      patch scanner_sitting_path, params: { sitting: { other: "1" } }, headers: stream
+      expect(response).to have_http_status(:bad_request)
+      patch scanner_sitting_path, params: {}, headers: stream
+      expect(response).to have_http_status(:bad_request)
+      expect(account.scanner_sitting.reload).to have_attributes(condition: "near_mint", location: blue)
+      set(condition: "damaged")
+      expect(account.scanner_sitting.reload).to have_attributes(condition: "damaged", location: blue)
+    end
+
+    it "refuses a condition that is not a key of the scanner's vocabulary, changing nothing, not even a place sent with it (AC-4.1)", :aggregate_failures do
+      set(condition: "near_mint", location_id: blue.id)
+      long_box = create(:location, account:, name: "Long box")
+      [ "Near mint", "Near mint (NM)", "NEAR_MINT", "near_mint ", "mint", "<b>x</b>" ].each do |value|
+        set(condition: value, location_id: long_box.id)
+        expect(response).to have_http_status(:unprocessable_content), value.inspect
+        expect(CGI.unescapeHTML(response.body)).to include("That isn't a known condition. Choose again.")
+        expect([ chosen(:condition), chosen(:location_id) ]).to eq([ "Near mint (NM)", "Blue binder" ])
+      end
+      expect(account.scanner_sitting.reload).to have_attributes(condition: "near_mint", location: blue)
+    end
+
+    it "refuses a bad condition with no sitting open, opening none (AC-4.1)", :aggregate_failures do
+      set(condition: "mint")
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(Scanner::Sitting.count).to eq(0)
+    end
+
+    it "shows the condition's message when both values are refused, changing nothing (decision 9)", :aggregate_failures do
+      set(condition: "near_mint")
+      set(condition: "mint", location_id: create(:location).id)
+      expect(response).to have_http_status(:unprocessable_content)
+      body = CGI.unescapeHTML(response.body)
+      expect(body).to include("That isn't a known condition. Choose again.")
+      expect(body).not_to include("That location isn't one of yours any more.")
+      expect(account.scanner_sitting.reload.condition).to eq("near_mint")
+    end
+
+    it "keeps spec 040's message for a refused location, and changes nothing when the condition was good (decision 9)", :aggregate_failures do
+      set(condition: "near_mint")
+      set(condition: "damaged", location_id: create(:location).id)
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(CGI.unescapeHTML(response.body)).to include("That location isn't one of yours any more. Choose again.")
+      expect(account.scanner_sitting.reload.condition).to eq("near_mint")
+    end
+
+    it "ignores a sitting id, an account id and another account's id (AC-4.3)", :aggregate_failures do
+      other = create(:user).account
+      theirs = Scanner::Sitting.choose!(account: other, condition: "damaged")
+      set(condition: "near_mint", sitting_id: theirs.id, account_id: other.id, id: theirs.id)
+      expect(theirs.reload.condition).to eq("damaged")
+      expect(account.scanner_sitting.reload.condition).to eq("near_mint")
+    end
+
+    it "ignores a sitting id and an account id at the top level of the request too (AC-4.3)", :aggregate_failures do
+      other = create(:user).account
+      theirs = Scanner::Sitting.choose!(account: other, condition: "damaged")
+      patch scanner_sitting_path, params: { sitting: { condition: "near_mint" }, sitting_id: theirs.id, account_id: other.id }, headers: stream
+      expect(theirs.reload.condition).to eq("damaged")
+      expect(account.scanner_sitting.reload.condition).to eq("near_mint")
+    end
+
+    it "ends the sitting with its condition, and the next one starts on Not specified (AC-5.1, AC-5.2)", :aggregate_failures do
+      set(condition: "near_mint")
+      add("a")
+      post scanner_sitting_ending_path
+      follow_redirect!
+      expect(chosen(:condition)).to eq("Not specified")
+      expect([ Scanner::Sitting.count, account.lots.sole.condition ]).to eq([ 0, "near_mint" ])
+      set(condition: "damaged")
+      expect(response.body).not_to include("in this sitting.")
+      expect(Scanner::Sitting.sole.condition).to eq("damaged")
+    end
+
+    it "takes Undo of an entry added under another condition from the lot it went into (AC-2.2)", :aggregate_failures do
+      set(condition: "near_mint")
+      first = add("a")
+      set(condition: "lightly_played")
+      add("b")
+      undo(first)
+      expect(account.lots.map { [ it.condition, it.quantity ] }).to eq([ [ "lightly_played", 1 ] ])
+      expect(chosen(:condition)).to eq("Lightly played (LP)")
+    end
+
+    # Passes before the change (the old controller or model already behaves so): regression guard.
+    it "sends a signed-out visitor to sign in" do
+      delete session_path
+      set(condition: "near_mint")
+      expect(response).to redirect_to(new_session_path)
+    end
+
+    # Passes before the change (the old controller or model already behaves so): regression guard.
+    it "never touches another account's sitting (tenant isolation)", :aggregate_failures do
+      other = create(:user).account
+      theirs = Scanner::Sitting.choose!(account: other, condition: "damaged", location: create(:location, account: other))
+      set(condition: "")
+      expect(theirs.reload).to have_attributes(condition: "damaged")
+      expect(account.scanner_sitting).to be_nil
+    end
   end
 end

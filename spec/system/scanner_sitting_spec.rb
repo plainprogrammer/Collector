@@ -64,7 +64,7 @@ RSpec.describe "The scanner's sitting", type: :system do
       page.execute_script("window.__marker = 'still here'")
       set_sitting(location: "Blue binder")
       expect(page).to have_css("#scanner_sitting h2", text: "This sitting: 0 cards, in Blue binder")
-      expect(page).to have_css("#status", text: "This sitting's cards now go into Blue binder.")
+      expect(page).to have_css("#status", text: "Cards you scan now: condition not specified, in Blue binder.")
       expect(page.evaluate_script("window.__marker")).to eq("still here")
       expect(page).to have_css(".c-scanner__stage video", visible: :all)
     end
