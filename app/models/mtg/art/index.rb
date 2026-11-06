@@ -25,6 +25,11 @@ class MTG::Art::Index
 
   def self.built_for?(catalog_version) = files.any? { it.basename.to_s.start_with?("art-index-#{catalog_version}-#{MTG::Art::Settings.digest}-") }
 
+  # True when a file of exactly this name is in the index directory (spec 039 decision 4). The name must be one this
+  # class writes, so nothing outside the directory is looked at; the file isn't opened. A blank name, a name of another
+  # shape and a directory that can't be examined are all "not there".
+  def self.file?(name) = NAME.match?(name.to_s) && dir.join(name.to_s).file?
+
   # Only the current or previous index, by its exact name; anything else is nil (AC-4.2).
   def self.path_for(name) = NAME.match?(name.to_s) ? files.first(KEEP).find { it.basename.to_s == name } : nil
 

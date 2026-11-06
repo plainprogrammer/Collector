@@ -1,0 +1,4 @@
+<%# locals: (listing:) %>
+<%# The empty sentence of filters that match nothing, in every mode (spec 037 AC-1.6, AC-2.2, AC-3.2; spec 004 AC-11.5 when there is no location filter). The query keeps spec 004's straight quotes and a location's name spec 029's curly ones. %>
+<% query = listing.query %>
+<p class="c-empty"><% case listing.location %><% when "" %>No cards in your collection match "<%= query %>".<% when CollectionFilter::Place::NONE %><% if query.present? %>No cards in your collection match "<%= query %>" without a location.<% else %>No cards in your collection are without a location.<% end %><% else %><% if query.present? %>No cards in your collection match "<%= query %>" in “<%= listing.chosen_location.name %>”.<% else %>No cards in your collection are in “<%= listing.chosen_location.name %>”.<% end %><% end %></p>

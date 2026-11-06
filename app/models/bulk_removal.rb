@@ -18,7 +18,7 @@ class BulkRemoval < ApplicationRecord
       removal = create!(session: selection.session, account: selection.account, copies: lots.sum(&:quantity),
         lots_data: lots.map { |lot| lot.slice(:catalog_entry_id, :finish, :condition, :price_paid_cents, :quantity, :location_id) })
       selection.account.lots.where(id: lots.map(&:id)).destroy_all
-      selection.restart!(query: selection.query, sort: selection.sort)
+      selection.restart!(query: selection.query, sort: selection.sort, location: selection.location_filter)
       removal
     end
   end

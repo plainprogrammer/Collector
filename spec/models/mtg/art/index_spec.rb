@@ -41,4 +41,19 @@ RSpec.describe MTG::Art::Index, :art_matching, type: :model do
     described_class.write!("v1", records)
     expect([ described_class.built_for?("v1"), described_class.built_for?("v2") ]).to eq([ true, false ])
   end
+
+  it "knows whether a file of its name is there (spec 039 decision 4)", :aggregate_failures do
+    path = described_class.write!("default-cards-1", [])
+    expect(described_class.file?(path.basename.to_s)).to be(true)
+    [ "art-index-default-cards-1-0123456789abcdef-3.bin.gz", nil, "", "art-index-upgrade.bin.gz", "../../config/master.key" ].each do |name|
+      expect(described_class.file?(name)).to be(false), "expected #{name.inspect} to be missing"
+    end
+
+    path.delete
+    expect(described_class.file?(path.basename.to_s)).to be(false)
+
+    described_class.write!("default-cards-1", [])
+    FileUtils.rm_rf(MTG::Art.root)
+    expect(described_class.file?(path.basename.to_s)).to be(false)
+  end
 end
