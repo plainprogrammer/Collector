@@ -7,6 +7,7 @@
 **Branch:** `023-signed-out-catalog-browsing`
 **Issue:** [#59](https://github.com/plainprogrammer/Collector/issues/59)
 **Frozen:** the current rules are in [`catalog-core.md`](../../architecture/catalog-core.md) (all but decision 7's not-loaded notice) and [`catalog-operations.md`](../../architecture/catalog-operations.md) (decision 7's not-loaded notice); see the [specs index](../README.md)
+**Plan:** retired in `befd6330e4e48a5dde88a83cb267a58764b60c53`; read it with `git show befd6330e4e48a5dde88a83cb267a58764b60c53^:docs/specs/023-signed-out-catalog-browsing/plan.md`
 
 ---
 
