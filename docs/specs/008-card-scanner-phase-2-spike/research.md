@@ -1,6 +1,6 @@
 # Feature 008: Card Scanner Phase 2 Spike — Findings
 
-**Spec:** [spec.md](spec.md) (v1.2.0) | **Plan:** [plan.md](plan.md)
+**Spec:** [spec.md](spec.md) (v1.2.0) | **Plan:** plan (retired in `5fa8f14e9e8a6d468602e29b58775794d6a5d2e0`; read it with `git show 5fa8f14e9e8a6d468602e29b58775794d6a5d2e0^:docs/specs/008-card-scanner-phase-2-spike/plan.md`)
 **Measured:** 2026-10-03 (UTC; the evening of 2026-10-02 local time), the full art index 2026-10-03 03:44–14:41 UTC | **Branch:** `008-card-scanner-phase-2-spike` | **Settings:** commit `39cdc6e` (frozen), and `5ce0238` (index metadata only, AC-1.3)
 
 Every rate carries its sample size. Held-out rates are the headline; development rates sit beside them, labelled "development, biased", because the development photos chose the settings. Every timing is a desktop figure. Art matching was measured twice, at the same frozen fingerprint settings: first against a 598-artwork subset, while the maintainer had declined the full artwork fetch, then, after the maintainer approved it (spec v1.2.0), against the full index of 50,923 artworks (every one of the catalog's 50,959 artworks that has an image). The full index's rates are the headline; the subset's sit beside them (§7, §9). Anything not measured is listed in §12 and is not estimated as if it were measured. The spike sets no pass threshold: the maintainer rules on spec 009's scope from §14.
