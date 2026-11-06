@@ -5,6 +5,7 @@
 **Created:** 2026-10-05
 **Last Updated:** 2026-10-05
 **Branch:** `010-card-scanner-art-spike`
+**Frozen:** the current rules are in [`scanner.md`](../../architecture/scanner.md) (whole spec); see the [specs index](../README.md)
 
 ---
 
