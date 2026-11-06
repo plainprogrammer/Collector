@@ -1,6 +1,6 @@
 # Feature 041: Move Many Lots at Once
 
-**Status:** Draft
+**Status:** Approved by the coordinator under the maintainer's delegation (2026-11-06) at 0.4.0; decisions 1, 2, 3 and 5 were ruled by the maintainer on 2026-11-06 as recommended
 **Version:** 0.4.0
 **Created:** 2026-11-06
 **Last Updated:** 2026-11-06
