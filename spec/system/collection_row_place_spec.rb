@@ -88,4 +88,16 @@ RSpec.describe "A table row's place line", type: :system do
       end
     end
   end
+
+  describe "a tile" do
+    it "names the whole place line in its link's accessible name, after the card's name", :aggregate_failures do # spec 033 AC-1.6, spec 048 AC-2.2
+      entry = owned_printing("Lightning Bolt", account: user.account, quantity: 3, location: create(:location, account: user.account, name: "Blue binder")).entry
+      create(:lot, account: user.account, entry:, finish: "foil", location: create(:location, account: user.account, name: "Long box"))
+      visit collection_path(view: "grid")
+      name = find("a.c-tile").native.accessible_name
+      expect(name).to include("Lightning Bolt")
+      expect(name).to end_with("Blue binder +1 more")
+      expect(name.index("Lightning Bolt")).to be < name.index("Blue binder +1 more")
+    end
+  end
 end
