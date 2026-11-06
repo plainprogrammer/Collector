@@ -54,7 +54,7 @@ How a collector's collection leaves and enters Collector: the export format, the
 - **A changed lot and a renamed location keep their ids,** and an unchanged one isn't written, not even its `updated_at` (spec 028 FR-9, decision 5; spec 029 decision 10).
 - **Removing a location never changes a lot** (spec 029 decision 3, AC-9.11) and a location that holds a lot can't be removed, so an apply deletes the lots of a location it removes before the location (spec 032 decision 3, AC-11.6; ADR 0025).
 - **An older file's lots are unplaced.** A version 1 or 2 file says nothing about a place, so its lots are read as in none, match only unplaced held lots, and the preview says so (spec 032 decision 7, AC-10.4; ADR 0025).
-- **Working state is left out of the export and cleared by an apply that writes a lot:** the number-entry list, the scanner sitting (with the place chosen for it, which adds no coverage entry or format version), bulk selections and bulk removals' undo (spec 026 decision 6, FR-5; spec 028 decision 7; spec 029 decision 11, AC-9.17; spec 040 decision 5, AC-5.3). An apply that removes only a location clears a sitting's place through the foreign key and keeps the sitting (spec 040 AC-3.2).
+- **Working state is left out of the export and cleared by an apply that writes a lot:** the number-entry list, the scanner sitting (with the place and the condition chosen for it, which add no coverage entry or format version), bulk selections and bulk removals' undo (spec 026 decision 6, FR-5; spec 028 decision 7; spec 029 decision 11, AC-9.17; spec 040 decision 5, AC-5.3; spec 042 decision 6, AC-5.3). An apply that removes only a location clears a sitting's place through the foreign key and keeps the sitting (spec 040 AC-3.2).
 - **Only a signed-in collector reaches any of these pages;** a signed-out request is sent to sign in and the reader isn't called (spec 025 AC-4.2; spec 028 AC-4.3). Signing in from the export lands on the collection, not on the file (spec 022 decision 9).
 
 ## States and transitions
@@ -206,7 +206,7 @@ Measured bars, not constants (recorded in each spec's `verification.md`): export
 - **A file's locations replace the held ones by name;** a version 1 file leaves them alone (spec 029 decision 10).
 - **A lot's location is part of its identity** (the same printing in two places is two lots), and the place is in `lot_key` as the location's id, so a rename keeps every key (maintainer, 2026-10-23; spec 032 decisions 1, 3, 7; ADR 0025). An older file's lots are read as unplaced and applying one needs the removal confirmation when it would unplace lots (spec 032 decision 7).
 - **Version 3's "same collection" compares a lot's location as written,** while the reader's matching and `duplicate_lot` use the comparison key (spec 032 AC-9.6).
-- **The number-entry list and the scanner sitting are working state,** left out of the export (spec 026 decision 6).
+- **The number-entry list and the scanner sitting are working state,** left out of the export (spec 026 decision 6; the sitting's condition too, spec 042 decision 6).
 
 **Accepted limits and open issues:**
 
@@ -229,6 +229,7 @@ Measured bars, not constants (recorded in each spec's `verification.md`): export
 - [Spec 030](../specs/030-backup-restore/spec.md): decision 11, AC-3.3, AC-6.1 (export versus backup).
 - [Spec 038](../specs/038-currency-per-account/spec.md): decisions 6–8, Stories 5–7, FR-5, FR-6 (the account's currency in the export, the preview, the apply and the backup); it supersedes parts of specs 017, 022, 025 and 028 as its Supersedes table lists.
 - [Spec 040](../specs/040-sitting-into-location/spec.md): decision 5 and AC-5.3 (the sitting's place is working state, left out and cleared with the sitting); AC-3.2's import case.
+- [Spec 042](../specs/042-sitting-condition/spec.md): decision 6 and AC-5.3 (the sitting's condition is working state, left out, destroyed by an apply that writes a lot).
 - ADRs [0019](../adr/0019-lot-as-the-unit-of-ownership.md), [0020](../adr/0020-export-format.md), [0021](../adr/0021-export-format-rules-in-the-app.md), [0022](../adr/0022-stored-import-upload-retention.md) (as far as the apply reads the upload), [0023](../adr/0023-locations-make-export-format-version-2.md), [0025](../adr/0025-a-lots-location-is-part-of-its-identity.md).
 - Reference: [`docs/export-format/README.md`](../export-format/README.md).
 - Issues [#37](https://github.com/plainprogrammer/Collector/issues/37), [#38](https://github.com/plainprogrammer/Collector/issues/38), [#39](https://github.com/plainprogrammer/Collector/issues/39), [#40](https://github.com/plainprogrammer/Collector/issues/40), [#44](https://github.com/plainprogrammer/Collector/issues/44), [#45](https://github.com/plainprogrammer/Collector/issues/45), [#64](https://github.com/plainprogrammer/Collector/issues/64).
