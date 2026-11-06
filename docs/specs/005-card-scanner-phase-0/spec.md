@@ -6,6 +6,7 @@
 **Last Updated:** 2026-09-30
 **Branch:** `005-card-scanner-phase-0`
 **Frozen:** the current rules are in [`scanner.md`](../../architecture/scanner.md) (whole spec); see the [specs index](../README.md)
+**Plan:** retired in `a5e252f9273889df360dd759e5bffb5380963cc1`; read it with `git show a5e252f9273889df360dd759e5bffb5380963cc1^:docs/specs/005-card-scanner-phase-0/plan.md`
 
 ---
 
