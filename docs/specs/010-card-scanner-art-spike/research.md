@@ -1,6 +1,6 @@
 # Feature 010: Card Scanner Art Spike — Findings
 
-**Spec:** [spec.md](spec.md) (v1.1.2) | **Plan:** [plan.md](plan.md)
+**Spec:** [spec.md](spec.md) (v1.1.2) | **Plan:** plan (retired in `cfa2777c2b982deb6230e4e13d4f7a27a0116ea1`; read it with `git show cfa2777c2b982deb6230e4e13d4f7a27a0116ea1^:docs/specs/010-card-scanner-art-spike/plan.md`)
 **Measured:** 2026-10-05 (index rebuild; the iPhone timing session 23:05 UTC) and 2026-10-07 00:05–00:14 UTC (the live captures, the evening of 2026-10-06 local time) | **Branch:** `010-card-scanner-art-spike` | **Fingerprint settings:** frozen at `39cdc6e` (index metadata commit `5ce0238`)
 
 Every figure carries its sample size. Desktop and phone figures are labelled as such. Every rate is against the full index (50,924 artworks); no subset index was used. This spike sets no pass threshold: the figures are for the maintainer's ruling on spec 011 and on ADRs 0006 and 0007.

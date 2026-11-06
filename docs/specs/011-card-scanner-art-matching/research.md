@@ -1,6 +1,6 @@
 # Feature 011: Card Scanner — Art Matching on Live Capture — Findings
 
-**Spec:** [spec.md](spec.md) (v1.1.3) | **Plan:** [plan.md](plan.md)
+**Spec:** [spec.md](spec.md) (v1.1.3) | **Plan:** plan (retired in `2b634c19ccb3879226be9afe88866629741c7064`; read it with `git show 2b634c19ccb3879226be9afe88866629741c7064^:docs/specs/011-card-scanner-art-matching/plan.md`)
 **Measured:** 2026-10-08 (agreement, the development build, the iPhone sitting and the server time) | **Branch:** `011-card-scanner-art-matching` | **Fingerprint settings:** frozen at `39cdc6e`, settings digest `aa574ad30218cd69`
 
 Every figure carries its sample size. Desktop and phone figures are labelled as such. The sitting used the same 35 cards the 300-bit margin was derived from, so its rates are biased upwards (§9). This feature sets no pass threshold: the figures are for the maintainer's ruling on the margin (§11).

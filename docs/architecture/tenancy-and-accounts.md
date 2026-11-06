@@ -20,7 +20,7 @@ Who may use an instance and whose data a request sees: the account that owns eve
 - `Catalog::EntriesController` and `Catalog::IdentitiesController` answering visitors, `collector?`, the visitor's header and the page sign-in returns to: **[catalog core](catalog-core.md)** (spec 023). This doc says how a request without a session is let through and what `Current` holds then.
 - What the export, the preview and the apply do with a collector's profile and account: **[data portability](data-portability.md)** (specs 022, 025, 028). Backup and restore, and the stored import upload's retention and its sweep: **[release and deploy](release-and-deploy.md)** (specs 028, 030; ADR 0022). `compose.yaml` passes `COLLECTOR_HTTPS` and `COLLECTOR_TRUSTED_PROXIES` to the app and `config/deploy.yml` lists them for Kamal; what they do is here (spec 004 FR-2, NFR Security). The README's upgrade warning and command text are documentation, not checked here (spec 004 AC-3.5, AC-5.7).
 - What the admin catalog and jobs pages show and do: **[catalog operations](catalog-operations.md)** (spec 015); this doc holds only who may open them.
-- The scanner's own pages and sitting: **scanner** (no area doc yet; specs 007, 009); this doc says only which of its endpoints skip sign-in.
+- The scanner's own pages and sitting: **[scanner](scanner.md)** (specs 007, 009); this doc says only which of its endpoints skip sign-in.
 - The sign-in, sign-up and admin pages' patterns (`AppHeader`, forms, `Confirm`): the [design system](../design-system/README.md).
 - The rules' home, the multi-tenancy rule file, is `.claude/rules/`; this doc links it and doesn't restate it (spec 027 D2).
 

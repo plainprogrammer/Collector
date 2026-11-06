@@ -5,6 +5,8 @@
 **Created:** 2026-10-05
 **Last Updated:** 2026-10-05
 **Branch:** `010-card-scanner-art-spike`
+**Frozen:** the current rules are in [`scanner.md`](../../architecture/scanner.md) (whole spec); see the [specs index](../README.md)
+**Plan:** retired in `cfa2777c2b982deb6230e4e13d4f7a27a0116ea1`; read it with `git show cfa2777c2b982deb6230e4e13d4f7a27a0116ea1^:docs/specs/010-card-scanner-art-spike/plan.md`
 
 ---
 

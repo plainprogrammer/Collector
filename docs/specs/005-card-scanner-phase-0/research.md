@@ -1,6 +1,6 @@
 # Feature 005: Card Scanner Phase 0 — Findings
 
-**Spec:** [spec.md](spec.md) (v1.1.1) | **Plan:** [plan.md](plan.md)
+**Spec:** [spec.md](spec.md) (v1.1.1) | **Plan:** plan (retired in `a5e252f9273889df360dd759e5bffb5380963cc1`; read it with `git show a5e252f9273889df360dd759e5bffb5380963cc1^:docs/specs/005-card-scanner-phase-0/plan.md`)
 **Measured:** 2026-09-30 | **Branch:** `005-card-scanner-phase-0`
 
 Every rate below carries its sample size. Anything that was not measured is labelled "estimate" or "not measured". Phase 0 sets no pass threshold: the numbers inform the maintainer's go / no-go / pivot decision, they don't make it.

@@ -7,6 +7,7 @@
 **Depends on:** [spec 009](../009-card-scanner-confirm-flow/spec.md) (the sitting panel, Undo, the status line), [spec 040](../040-sitting-into-location/spec.md) (the place and "Set"), [spec 042](../042-sitting-condition/spec.md) (the condition, "Set"'s status sentences)
 **Branch:** `182-sitting-focus-after-redraw`
 **Issue:** [#182](https://github.com/plainprogrammer/Collector/issues/182)
+**Frozen:** the current rules are in [`scanner.md`](../../architecture/scanner.md) (whole spec; the heading's focus-ring rule is also in the design system's [`Scanner.md`](../../design-system/components/Scanner.md)); see the [specs index](../README.md)
 **Plan:** retired in `516735751f2871e41a2dd38be336531f7c76e103`; read it with `git show 516735751f2871e41a2dd38be336531f7c76e103^:docs/specs/047-sitting-focus-after-redraw/plan.md`
 
 ---

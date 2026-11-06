@@ -1,6 +1,6 @@
 # Feature 007: Card Scanner Phase 1 — Findings
 
-**Spec:** [spec.md](spec.md) (v2.1.1) | **Plan:** [plan.md](plan.md)
+**Spec:** [spec.md](spec.md) (v2.1.1) | **Plan:** plan (retired in `d73733273b6cf710be0a19bda06bc6a94d2a0d64`; read it with `git show d73733273b6cf710be0a19bda06bc6a94d2a0d64^:docs/specs/007-card-scanner-live-capture/plan.md`)
 **Measured:** 2026-10-01 and 2026-10-02 | **Branch:** `007-card-scanner-live-capture` | **Settings:** commit `c68ffbd` (frozen)
 
 **Corrected 2026-10-02:** §2 and §7 had the stored size and EXIF orientation of the two photo corpora the wrong way round. Every file in both corpora was checked with `magick identify`. No rate or conclusion changes.
