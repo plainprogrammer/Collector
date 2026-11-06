@@ -68,10 +68,10 @@ RSpec/DescribeClass:
     - "spec/import_apply_core_spec.rb"
     - "spec/network_isolation_spec.rb"
     - "spec/number_entry_core_spec.rb"
-    - "spec/smoke_scripts_spec.rb"
     - "spec/project_config_spec.rb"
     - "spec/rate_limit_retry_core_spec.rb"
     - "spec/scanner_sitting_core_spec.rb"
+    - "spec/smoke_scripts_spec.rb"
     - "spec/script/upgrade/files_spec.rb"
     - "spec/tasks/collector_rake_spec.rb"
 

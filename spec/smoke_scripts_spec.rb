@@ -3,9 +3,12 @@ require "rails_helper"
 # The smoke scripts run under `set -o pipefail`. A pipe into a reader that stops early (`grep -q`, `grep -m`, `head`)
 # makes the writer's next write fail once the reader has gone (curl exits 23), and pipefail then reports the whole
 # pipeline as failed although the reader found what it looked for. With GNU grep, as on the CI runners, a page of
-# 13,516 bytes delivered in two writes failed 100 of 100 times at a 13,000-byte split (#217: `bin/backup-smoke`'s
+# 13,516 bytes delivered in two writes, 5 ms apart, failed 100 of 100 times at a 13,000-byte split (#217: `bin/backup-smoke`'s
 # "the lot isn't on the collection page" on arm64). The scripts capture a command's output first and test it after
 # (`bin/image-smoke`, "no pipe can end early under pipefail"); this guard keeps all three that way.
+# It reads line by line, so it cannot see a pipe that ends a line with its reader on the next, `|&`, a grep named
+# otherwise (`egrep`, `command grep`, `rg`), or other early readers (`sed q`, `awk … exit`, `read`). `bin/upgrade-smoke`
+# is Ruby and has no shell pipe today; it is swept so that a future one is caught.
 RSpec.describe "The smoke scripts' pipes (#217)", type: :config do
   let(:scripts) { %w[bin/backup-smoke bin/image-smoke bin/upgrade-smoke] }
   let(:advice) do

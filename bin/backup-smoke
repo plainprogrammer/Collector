@@ -81,15 +81,17 @@ sign_in() {
 }
 
 # collection_has_lot <port> <cookie jar> <label>: the collection page is saved with its headers, then searched. When the
-# lot isn't on it, what came back is printed: the status, the size, where it redirected, whether the jar holds a session
-# cookie and the first 300 bytes of the body.
+# lot isn't on it, what came back is printed: the status, the size, where it redirected, whether the jar holds the
+# sign-in's session_id cookie (Authentication#start_new_session_for; _collector_session is set by the form alone) and
+# the first 300 bytes of the body.
 collection_has_lot() {
-  local port="$1" jar="$2" label="$3" page="$work/collection-$3.html" meta
-  meta="$(curl -s -b "$jar" -o "$page" -w '%{http_code} %{size_download} %{redirect_url}' "http://127.0.0.1:$port/collection")" || meta="curl exited $?"
+  local port="$1" jar="$2" label="$3" page="$work/collection-$3.html" meta cookies
+  meta="$(curl -s -b "$jar" -o "$page" -w '%{http_code} %{size_download} %{redirect_url}' "http://127.0.0.1:$port/collection")" || meta="$meta (curl exited $?)"
   if grep -q "Smoke Dragon" "$page" 2>/dev/null; then return 0; fi
+  cookies="$(grep -c 'session_id' "$jar" 2>/dev/null)" || true
   {
     echo "GET /collection on port $port (restore $label) answered: $meta [status, bytes, redirect]"
-    echo "session cookie in the jar: $(grep -c '_collector_session' "$jar" 2>/dev/null || true) line(s); the page starts:"
+    echo "session_id cookie lines in the jar: ${cookies:-0}; the page starts:"
     head -c 300 "$page" 2>/dev/null || true
     echo
   } >&2
