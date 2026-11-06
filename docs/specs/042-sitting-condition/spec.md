@@ -1,7 +1,7 @@
 # Feature 042: Set a Condition for a Scanner Sitting
 
 **Status:** Draft
-**Version:** 0.3.0
+**Version:** 0.3.1
 **Created:** 2026-11-06
 **Last Updated:** 2026-11-06
 **Depends on:** [spec 040](../040-sitting-into-location/spec.md) (the sitting's place and its control; merged), [spec 009](../009-card-scanner-confirm-flow/spec.md) (the scanner's sitting; merged) and [spec 006](../006-collection-list-view/spec.md) (bulk Set condition, the pattern for choosing a condition; merged)
@@ -14,6 +14,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.3.1 | 2026-11-06 | From the third review (Fable, READY TO PLAN): the condition check after the replay check; the status line cleared when "Set" finds no sitting; the guard's pattern; the hook keeps its name; the entry line with no finish. |
 | 0.3.0 | 2026-11-06 | From the second review (Fable): spec 040 decision 4, Goals and FR-1 superseded for condition; roadmap item 21a amended; the condition check ahead of `Lot.add!`; the short label from the printing's vocabulary; two error rows; the legend "This sitting's cards"; the helper under the core guard. |
 | 0.2.0 | 2026-11-06 | From the first independent review (Fable): the copy that names the condition (notice, entry line; not Undo or accessible names), "Nothing added yet." kept, every status-line variant, where the collectible type may be named and a core guard spec, the rollback with a condition (AC-6.2), the stacked layout, and the supersessions of spec 009 FR-1 and spec 040 decision 2, AC-3.2 and AC-5.2. |
 | 0.1.0 | 2026-11-06 | Written from issue #57, roadmap ruling 20, specs 009, 040 and 006, and the coordinator's brief. Decisions 1 and 2 ruled by the maintainer the same day. |
@@ -68,8 +69,8 @@ Alternatives considered: two forms, each with its own "Set" (two buttons for one
 
 - The panel header names the choices while the sitting has any: "This sitting: 3 cards, Near mint, in Blue binder"; "This sitting: 3 cards, Near mint"; "This sitting: 3 cards, in Blue binder" (spec 040's). The condition uses the vocabulary's long label.
 - A sitting with no entries at all says, in place of the list, "Cards you scan now: Near mint, in Blue binder.", naming only the parts that are set: "Cards you scan now: Near mint." or "Cards you scan now: in Blue binder." (spec 040 AC-1.2's "Cards you scan now go into Blue binder." becomes the last). With neither set (a redraw the next render drops, spec 040 AC-3.2) it keeps "Nothing added yet.". "Everything added in this sitting was undone." stays for a sitting whose entries are all undone.
-- After "Set", the status line names both choices for an account with locations, "Not specified" as "condition not specified" and no place as "no location": "Cards you scan now: Near mint, in Blue binder.", "Cards you scan now: Near mint, no location.", "Cards you scan now: condition not specified, in Blue binder.", "Cards you scan now: condition not specified, no location." For an account with no locations it names the condition only: "Cards you scan now: Near mint." or "Cards you scan now: condition not specified." When "Set" deletes an empty sitting (decision 4), the status line is cleared, as spec 040 does.
-- The add's notice names the condition by its short label after the finish, inside the parentheses: "Added 1 × Psychic Frog (MH3 · 47, Foil, NM) in Blue binder to your collection.", and "(MH3 · 47, NM)" for a printing with no finish (spec 009 AC-1.3 leaves out an unspecified part). Each list entry shows the short label after its finish: "MH3 · 47 · Foil · NM · in Blue binder · Added 2 minutes ago". Both read the entry's lot as it is now (spec 040 decision 4's rule for the place), so an entry whose lot was edited to another condition shows that condition, and an entry whose lot is gone ("Changed in your collection") names none. No column is added to an entry.
+- After "Set", the status line names both choices for an account with locations, "Not specified" as "condition not specified" and no place as "no location": "Cards you scan now: Near mint, in Blue binder.", "Cards you scan now: Near mint, no location.", "Cards you scan now: condition not specified, in Blue binder.", "Cards you scan now: condition not specified, no location." For an account with no locations it names the condition only: "Cards you scan now: Near mint." or "Cards you scan now: condition not specified." When "Set" deletes an empty sitting (decision 4), or clears both choices with no sitting open, the status line is cleared, as spec 040 does.
+- The add's notice names the condition by its short label after the finish, inside the parentheses: "Added 1 × Psychic Frog (MH3 · 47, Foil, NM) in Blue binder to your collection.", and "(MH3 · 47, NM)" for a printing with no finish (spec 009 AC-1.3 leaves out an unspecified part). Each list entry shows the short label after its finish: "MH3 · 47 · Foil · NM · in Blue binder · Added 2 minutes ago", and "MH3 · 47 · — · NM · Added 2 minutes ago" for an unspecified finish and no place (spec 009 AC-3.2's "—"). Both read the entry's lot as it is now (spec 040 decision 4's rule for the place), so an entry whose lot was edited to another condition shows that condition, and an entry whose lot is gone ("Changed in your collection") names none. No column is added to an entry.
 - Nothing else names the condition: the Undo announcement ("Removed 1 × ‹name› (‹SET› · ‹number›, ‹finish›) from your collection.", spec 009 AC-4.1) and the entries' "Details of …" and "Undo …" accessible names stay as they are, as spec 040 left the place out of them.
 
 ### 4. The condition lives on the sitting
@@ -84,7 +85,7 @@ Alternative considered: carry the condition on each add request. Rejected for sp
 
 The core names no collectible ([collection and lots](../../architecture/collection-and-lots.md), "The core names no collectible"). The scale is the vocabulary (`Catalog.collecting_for(type).conditions`) of the collectible the scanner reads, which is Magic only (spec 007); the scanner's controllers already name that type (`Scanner::PrintingsController` names `MTG::Reading::COLLECTIBLE_TYPE`; `Scanner::ReadingsController` names `MTG::Reading`). The controllers that build the select and check a submitted key (`Scanner::SittingsController`, the `ScannerSitting` concern, `ScannersController`) may name it too. `Scanner::Sitting`, `Scanner::SittingEntry` and the sitting's partials don't: the model is given the vocabulary (or the checked key) by its caller, and at an add reads the printing's own vocabulary as it already does for finishes (`Scanner::Sitting.finish_offered?`).
 
-An add whose printing's vocabulary doesn't know the sitting's condition (unreachable while the scanner reads one collectible) is refused before anything changes, by a check in `Scanner::Sitting.add!` ahead of `Lot.add!` (a new `Refused` reason; `Lot#condition_known` would raise `RecordInvalid`, which the entries controller reports as the cap), with spec 009's "That card couldn't be added. Scan it again.", and nothing is recorded; it is never reported as the 9,999 cap.
+An add whose printing's vocabulary doesn't know the sitting's condition (unreachable while the scanner reads one collectible) is refused before anything changes, by a check in `Scanner::Sitting.add!` after the replay check (a replayed key answers as spec 009 AC-1.5 says, whatever the sitting now holds) and before `Lot.add!` (a new `Refused` reason; `Lot#condition_known` would raise `RecordInvalid`, which the entries controller reports as the cap), with spec 009's "That card couldn't be added. Scan it again.", and nothing is recorded; it is never reported as the 9,999 cap.
 
 ### 6. The sitting stays working state; nothing in the export changes
 
@@ -150,7 +151,7 @@ As a collector with a stack of near-mint cards, I want to say their condition on
 - [ ] **AC-6.2** Given a sitting with entries that holds a condition When the migration runs down Then the condition column goes and the sitting, its place and every entry stay (the condition is working state, so the rollback drops it whatever it holds).
 
 ### Story 7: The control is usable
-- [ ] **AC-7.1** The selects and the button are native controls in one form, grouped under a `<fieldset>` whose legend is "This sitting's cards", each select with its own label ("Condition", "Location"), reached by keyboard and usable by screen reader; no script is added. The panel follows `docs/design-system/`: the existing `c-form`/`c-field` classes, stacked as spec 040's control is (`c-scanner__place` is a markup hook with no style rule); if the two fields are laid out side by side at any width, that is a new rule in `collector/additions.css` documented in `docs/design-system/components/Scanner.md`. At 390px and at desktop width no control overflows the panel.
+- [ ] **AC-7.1** The selects and the button are native controls in one form, grouped under a `<fieldset>` whose legend is "This sitting's cards", each select with its own label ("Condition", "Location"), reached by keyboard and usable by screen reader; no script is added. The panel follows `docs/design-system/`: the existing `c-form`/`c-field` classes, stacked as spec 040's control is (the form keeps its markup hook `c-scanner__place`, which has no style rule); if the two fields are laid out side by side at any width, that is a new rule in `collector/additions.css` documented in `docs/design-system/components/Scanner.md`. At 390px and at desktop width no control overflows the panel.
 
 ## Functional Requirements
 
@@ -163,7 +164,7 @@ As a collector with a stack of near-mint cards, I want to say their condition on
 **Must not:** record an entry when the add fails.
 
 ### FR-3: Core code and export
-**Must:** keep `Scanner::Sitting`, `Scanner::SittingEntry` and the sitting's partials (`app/views/scanners/_sitting.html.erb`, `_sitting_entry.html.erb`, `_picker.html.erb`, `_summary.html.erb`) and `app/helpers/scanners_helper.rb` free of any collectible type (the scanner's controllers name it, decision 5), guarded by a core spec like `spec/number_entry_core_spec.rb` that fails when one of those files names `MTG` or `mtg`; leave the sitting and its condition out of the export with no new coverage entry (decision 6).
+**Must:** keep `Scanner::Sitting`, `Scanner::SittingEntry` and the sitting's partials (`app/views/scanners/_sitting.html.erb`, `_sitting_entry.html.erb`, `_picker.html.erb`, `_summary.html.erb`) and `app/helpers/scanners_helper.rb` free of any collectible type (the scanner's controllers name it, decision 5), guarded by a core spec like `spec/number_entry_core_spec.rb` that fails when one of those files matches `/\b(mtg|scryfall|magic)\b/i` (number entry's pattern without its finish words, because the helper's comments quote copy such as "Foil"); leave the sitting and its condition out of the export with no new coverage entry (decision 6).
 
 ## Non-Functional Requirements
 
