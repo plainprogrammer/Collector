@@ -124,6 +124,57 @@ RSpec.describe BulkSelection, type: :model do
     expect(selection.lots).to eq([ b ])
   end
 
+  describe "under a location filter (spec 037 decision 5)" do
+    let(:blue) { create(:location, account:) }
+
+    it "reads a row stored before the column as all locations", :aggregate_failures do
+      session = user.sessions.create!
+      now = Time.current
+      described_class.insert_all([ { session_id: session.id, account_id: account.id, created_at: now, updated_at: now } ])
+      old = described_class.find_by!(session:)
+      expect([ old.location_filter, old.context?("", default_sort), old.context?("", default_sort, location: "") ]).to eq([ "", true, true ])
+    end
+
+    it "compares the location in its context and restarts under it", :aggregate_failures do
+      lot = own(location: blue)
+      tick([ lot ], [ lot ])
+      selection.restart!(query: "", sort: default_sort, location: blue.id.to_s)
+      expect([ selection.marks.count, selection.location_filter ]).to eq([ 0, blue.id.to_s ])
+      expect([ selection.context?("", default_sort, location: blue.id.to_s), selection.context?("", default_sort) ]).to eq([ true, false ])
+    end
+
+    it "selects and records only the place's lots", :aggregate_failures do
+      inside = own("Card A", location: blue)
+      outside = own("Card B")
+      selection.restart!(query: "", sort: default_sort, location: blue.id.to_s)
+      tick([ inside, outside ], [ inside, outside ])
+      expect(selection.marks.pluck(:lot_id)).to eq([ inside.id ])
+      tick([], [], header_ticked: true)
+      expect(selection.lots).to eq([ inside ])
+    end
+
+    it "selects only unplaced lots for none" do
+      own("Card A", location: blue)
+      unplaced = own("Card B")
+      selection.restart!(query: "", sort: default_sort, location: "none")
+      tick([], [], header_ticked: true)
+      expect(selection.lots).to eq([ unplaced ])
+    end
+
+    it "fails closed for a removed, foreign or unknown location, also with every matching lot", :aggregate_failures do
+      own("Card A")
+      own("Card B", location: blue)
+      gone = create(:location, account:)
+      foreign = create(:location).tap { create(:lot, account: it.account, location: it) }
+      [ gone.id.to_s, foreign.id.to_s, "999999999" ].each do |place|
+        selection.restart!(query: "", sort: default_sort, location: place)
+        gone.destroy! if gone.persisted?
+        tick([], [], header_ticked: true)
+        expect([ selection.lots.to_a, selection.copies ]).to eq([ [], 0 ])
+      end
+    end
+  end
+
   it "uses the vocabulary of its lots' collectible" do
     own
     selection.include!(Lot.ids)
