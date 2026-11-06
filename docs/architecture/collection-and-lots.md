@@ -246,4 +246,5 @@ Measured bars, not constants (recorded in each spec's `verification.md` where on
 
 | Date | Distilled | Pull request |
 |---|---|---|
+| 2026-11-06 | Spec 040 (decisions 2, 4 and 7 as they touch lots and locations): the scanner adds into its sitting's place; removing a location clears a sitting's place; the #56 open item closed | [#172](https://github.com/plainprogrammer/Collector/pull/172) |
 | 2026-10-27 | Specs 004 (the collection and adding cards), 006, 021, 026 (all but the export part), 029 (locations, the pages, the navigation), 032 (a lot's place, moving copies, removing a location), 033 (all but decision 5 for rows, #142) and 034; ADRs 0019 and 0025; and CLAUDE.md's number entry, locations and lots-in-locations paragraphs | slice C's pull request for #105 |
