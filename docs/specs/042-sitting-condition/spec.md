@@ -1,6 +1,6 @@
 # Feature 042: Set a Condition for a Scanner Sitting
 
-**Status:** Draft
+**Status:** Approved by the maintainer (2026-11-06) at 0.3.1, after three independent reviews (`review.md`)
 **Version:** 0.3.1
 **Created:** 2026-11-06
 **Last Updated:** 2026-11-06
