@@ -145,6 +145,7 @@ RSpec.describe "Export and import round trip", type: :model do
         allow(Rails.configuration.x).to receive(:currency).and_return(Collector::Currency.fetch!(data["currency"]))
         build_catalog(data)
         user = create(:user, name: data.dig("profile", "name"), email_address: data.dig("profile", "email_address"))
+        user.account.update!(currency: data["currency"])
 
         if data["lots"].empty? && data.fetch("locations", []).empty?
           import = CollectionImport.new(account: user.account, file: StringIO.new(JSON.generate(data)))
