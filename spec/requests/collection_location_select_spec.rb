@@ -140,6 +140,28 @@ RSpec.describe "The collection's Location select", type: :request do # spec 037 
       expect(page_html.at_css("th button.c-table__sort")["value"]).to include("location=#{blue.id}")
     end
 
+    it "keeps the location on the confirm page's Cancel and Back, and counts the filtered table's pages (AC-5.6, AC-1.4)", :aggregate_failures do
+      stub_const("CollectionTable::PER_PAGE", 1)
+      lots = [ own("Lightning Bolt", location: blue), own("Opt", location: blue) ]
+      own("Shock")
+      start_bulk(location: blue.id)
+      expect(page_html.at_css(".c-pager__position").text).to eq("Page 1 of 2")
+      patch collection_selection_path, params: { go: "remove", rendered_location: blue.id.to_s, all_rendered: "0", shown_ids: [ lots.first.id ], ticked_ids: [ lots.first.id ] }
+      follow_redirect!
+      back = collection_path(bulk: 1, location: blue.id)
+      expect([ page_html.at_css(".c-confirm a.c-btn--secondary")["href"], page_html.at_css('header a[aria-label="Back"]')["href"] ]).to eq([ back, back ])
+    end
+
+    it "sends the confirm page for a selection whose location is gone back to the bulk table (AC-5.5)", :aggregate_failures do
+      gone = create(:location, account:)
+      own(location: blue)
+      start_bulk(location: gone.id)
+      gone.destroy!
+      get new_collection_bulk_removal_path
+      expect(response).to redirect_to(collection_path(bulk: 1, location: gone.id))
+      expect(flash[:alert]).to eq(BulkSelection::NOTHING_SELECTED)
+    end
+
     it "re-renders a refusal under the location, with the select and sentence (AC-5.6)", :aggregate_failures do
       own(location: blue)
       start_bulk(location: blue.id)
