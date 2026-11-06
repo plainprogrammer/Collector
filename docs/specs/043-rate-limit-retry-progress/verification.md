@@ -56,3 +56,7 @@ No blocking or major findings. Six minor:
 6. The `COUNTED_AS` comment's line length: wrapped (`9581c71`).
 
 AC-5.1, AC-5.2 and AC-5.3: met by the reviewer's reading and the supervisor's (table above).
+
+## Distillation
+
+Distilled 2026-11-06 into [`catalog-operations.md`](../../architecture/catalog-operations.md) (whole spec): "A rate-limited job" step 2 and its progress paragraph, the art build's "Ends:" bullet, the image origins' bullet in "What the source does for a refresh", the `MAX_RETRIES` and `IMAGE_HOSTS` rows, the decision that progress is judged on the attempt alone, #86 out of the open issues and into Sources, and a Distillation log row (`3ad5bac`). Index row: Frozen, Plan "retirement owed"; the spec's frozen line (`spec 027 D4` commit). CLAUDE.md already points to the area doc for rate-limit retries; unchanged. No ADR proposed: the rule's weight sits in the spec and the area doc.
