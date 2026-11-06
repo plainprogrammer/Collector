@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_23_100001) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_05_100001) do
   create_table "accounts", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -314,7 +314,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_23_100001) do
     t.integer "account_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "location_id"
     t.index ["account_id"], name: "index_scanner_sittings_on_account_id", unique: true
+    t.index ["location_id"], name: "index_scanner_sittings_on_location_id"
   end
 
   create_table "sessions", force: :cascade do |t|
@@ -369,6 +371,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_23_100001) do
   add_foreign_key "scanner_sitting_entries", "lots", on_delete: :nullify
   add_foreign_key "scanner_sitting_entries", "scanner_sittings", on_delete: :cascade
   add_foreign_key "scanner_sittings", "accounts", on_delete: :cascade
+  add_foreign_key "scanner_sittings", "locations", on_delete: :nullify
   add_foreign_key "sessions", "users"
   add_foreign_key "users", "accounts"
 
