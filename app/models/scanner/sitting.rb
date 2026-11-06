@@ -19,10 +19,11 @@ class Scanner::Sitting < ApplicationRecord
   Added = Data.define(:entry, :replayed)
 
   belongs_to :account
+  belongs_to :location, optional: true # where its adds go (spec 040 decision 2); the database nulls it when the location goes
   has_many :entries, class_name: "Scanner::SittingEntry", foreign_key: :scanner_sitting_id, inverse_of: :sitting,
     dependent: :delete_all
 
-  # Adds one copy of a printing for a reading, at most once per reading key in the account's open sitting (AC-1.2,
+  # Adds one copy of a printing for a reading, into the sitting's place (spec 040 AC-1.3), at most once per reading key in the account's open sitting (AC-1.2,
   # AC-1.5, AC-3.1). The copy merges into its lot as the catalog's Add does; Lot.add! raises RecordInvalid at the
   # 9,999 cap (AC-1.6), and nothing is recorded then.
   def self.add!(account:, printing:, finish:, reading_key:)
@@ -36,7 +37,7 @@ class Scanner::Sitting < ApplicationRecord
       existing = sitting.entries.find_by(reading_key:)
       next Added.new(entry: existing, replayed: true) if existing
 
-      lot = Lot.add!(account:, entry: printing, finish:)
+      lot = Lot.add!(account:, entry: printing, finish:, location: sitting.location) # read in the transaction (spec 040 FR-2)
       Added.new(entry: sitting.entries.create!(account:, printing:, lot:, finish:, reading_key:), replayed: false)
     end
   end
@@ -47,8 +48,27 @@ class Scanner::Sitting < ApplicationRecord
     finishes.empty? ? finish.nil? : finishes.include?(finish)
   end
 
-  # Every entry not undone, newest first, including those whose lot changed (AC-3.2, AC-3.6).
-  def kept_entries = entries.kept.newest_first.includes(printing: :set)
+  # Sets, changes or clears the account's sitting place (spec 040 decision 2, AC-1.2, AC-1.8). Choosing a place opens a
+  # sitting as an add does; clearing the place of a sitting that holds no kept card deletes it, so the page is as before
+  # any sitting. Returns the sitting (destroyed when it was deleted), or nil when there was none to clear.
+  def self.place!(account:, location:)
+    transaction do
+      if location
+        find_or_create_by!(account:).tap { |sitting| sitting.update!(location:) }
+      elsif (sitting = find_by(account:))
+        sitting.entries.kept.exists? ? sitting.update!(location: nil) : sitting.destroy!
+        sitting
+      end
+    end
+  end
+
+  # A sitting with no entries at all and no place says nothing, so the scanner drops it before it renders (spec 040
+  # AC-3.2): it is what a removed location leaves of a sitting that was only opened by choosing that place.
+  def pointless? = location_id.nil? && !entries.exists?
+
+  # Every entry not undone, newest first, including those whose lot changed (AC-3.2, AC-3.6), with each lot and its place
+  # (spec 040 decision 4).
+  def kept_entries = entries.kept.newest_first.includes(printing: :set, lot: :location)
 
   # Ends the sitting (AC-3.5): the copies stay in the collection; the entries go. Returns how many were kept.
   def end!
