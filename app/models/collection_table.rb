@@ -7,9 +7,10 @@ class CollectionTable
 
   attr_reader :sort
 
-  def initialize(account:, query:, page:, sort:)
+  def initialize(account:, query:, page:, sort:, location: "")
     @account = account
     @query = CollectionFilter.normalize(query)
+    @requested_location = CollectionFilter::Place.parse(location)
     @requested_page = page
     @sort = sort
   end

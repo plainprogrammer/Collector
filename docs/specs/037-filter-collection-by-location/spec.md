@@ -8,6 +8,7 @@
 **Branch:** `037-filter-collection-by-location`
 **Issue:** [#47](https://github.com/plainprogrammer/Collector/issues/47) (roadmap item 12, theme C: locations)
 **Plan:** [plan.md](plan.md)
+**Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (whole spec); see the [specs index](../README.md)
 
 ---
 

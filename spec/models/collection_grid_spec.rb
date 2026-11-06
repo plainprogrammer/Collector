@@ -95,4 +95,71 @@ RSpec.describe CollectionGrid, type: :model do
       expect(many).to eq(few)
     end
   end
+
+  describe "under a location filter (spec 037)" do
+    let(:blue) { create(:location, account:, name: "Blue binder") }
+    let(:box) { create(:location, account:, name: "Long box") }
+    let(:bolt) { own("Lightning Bolt").tap { account.lots.destroy_all } }
+
+    def grid(location, query: nil) = described_class.new(account:, query:, location:, page: nil)
+    def put(entry, quantity, location, **) = create(:lot, account:, entry:, quantity:, location:, **)
+
+    it "sums only the place's copies and finishes and shows no place line", :aggregate_failures do
+      put(bolt, 3, blue)
+      put(bolt, 2, box, finish: "foil")
+      tile = grid(blue.id.to_s).tiles.sole
+      expect([ tile.entry, tile.quantity, tile.special_finishes, tile.place ]).to eq([ bolt, 3, [], nil ])
+      expect([ grid(blue.id.to_s).matching_quantity, grid(blue.id.to_s).filtered? ]).to eq([ 3, true ])
+    end
+
+    it "leaves out printings with no copy there and pages the filtered printings", :aggregate_failures do
+      put(bolt, 1, blue)
+      put(own("Opt").tap { account.lots.where(entry: it).destroy_all }, 1, box)
+      expect(grid(blue.id.to_s).tiles.map(&:entry)).to eq([ bolt ])
+      expect(grid(blue.id.to_s).pagination.total_count).to eq(1)
+    end
+
+    it "sums unplaced copies for none", :aggregate_failures do
+      put(bolt, 1, blue)
+      put(bolt, 4, nil, finish: "etched")
+      tile = grid("none").tiles.sole
+      expect([ tile.quantity, tile.special_finishes, tile.place ]).to eq([ 4, %w[etched], nil ])
+    end
+
+    it "reads a stale, foreign or malformed value as all", :aggregate_failures do
+      put(bolt, 1, blue)
+      gone = create(:location, account:).tap(&:destroy!)
+      [ gone.id.to_s, create(:location).id.to_s, "abc", "017", [ blue.id.to_s ] ].each do |value|
+        filter = grid(value)
+        expect([ filter.location, filter.filtered?, filter.tiles.sole.place&.name ]).to eq([ "", false, "Blue binder" ])
+      end
+    end
+
+    it "ignores the place while the account has no location", :aggregate_failures do
+      put(bolt, 2, nil)
+      expect([ grid("none").location, grid("none").filtered? ]).to eq([ "", false ])
+    end
+
+    it "joins the name filter with AND" do
+      put(bolt, 1, blue)
+      opt = own("Opt").tap { account.lots.where(entry: it).destroy_all }
+      put(opt, 1, blue)
+      put(bolt, 1, box, finish: "foil")
+      expect(grid(blue.id.to_s, query: "bolt").tiles.map { [ it.entry, it.quantity ] }).to eq([ [ bolt, 1 ] ])
+    end
+
+    it "names the chosen location", :aggregate_failures do
+      expect(grid(blue.id.to_s).chosen_location).to eq(blue)
+      expect([ grid("none").chosen_location, grid("").chosen_location ]).to eq([ nil, nil ])
+    end
+
+    it "reads the locations once and skips the place statement, however many tiles", :aggregate_failures do
+      put(bolt, 1, blue)
+      few = count_queries { grid(blue.id.to_s).tap { it.tiles && it.chosen_location && it.places? } }
+      all = count_queries { grid("").tiles }
+      15.times { |i| put(own("Card #{i}").tap { account.lots.where(entry: it).destroy_all }, 1, blue) }
+      many = count_queries { grid(blue.id.to_s).tap { it.tiles && it.chosen_location && it.places? } }
+      expect([ many, few ]).to eq([ few, all - 1 ])
+    end
+  end
 end

@@ -1,0 +1,5 @@
+<%# locals: (listing:, form: nil) %>
+<%# The location filter (spec 037 decision 6): the design system's FilterSelect, all, none, then the account's locations. %>
+<label class="c-select"><span class="c-sr">Location</span><%= select_tag :location,
+      options_for_select([ [ "All locations", "" ], [ "No location", CollectionFilter::Place::NONE ], *listing.locations.map { [ it.name, it.id.to_s ] } ], listing.location),
+      form:, id: nil %></label>

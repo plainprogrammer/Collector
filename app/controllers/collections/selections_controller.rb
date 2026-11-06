@@ -8,21 +8,26 @@ class Collections::SelectionsController < ApplicationController
 
   def create
     query = CollectionFilter.normalize(params[:q])
+    location = CollectionFilter::Place.parse(params[:location])
     sort = CollectionTable::Sort.parse(params[:sort], params[:dir])
-    BulkSelection.for(Current.session).restart!(query:, sort:)
-    redirect_to helpers.collection_listing_path(bulk: 1, query:, sort:), status: :see_other
+    BulkSelection.for(Current.session).restart!(query:, sort:, location:)
+    redirect_to helpers.collection_listing_path(bulk: 1, query:, location:, sort:), status: :see_other
   end
 
+  # The rendered name filter and location are the page's context; only Filter applies what the fields now show (spec 037
+  # decision 5). The location stays the canonical string submitted, never re-resolved, so a removed one selects nothing
+  # (decision 7).
   def update
     query = CollectionFilter.normalize(params[:rendered_q])
+    location = CollectionFilter::Place.parse(params[:rendered_location])
     sort = CollectionTable::Sort.parse(params[:sort], params[:dir])
     selection = BulkSelection.for(Current.session)
-    return done(selection, query, sort) if params[:go] == "done"
+    return done(selection, query, location, sort) if params[:go] == "done"
 
-    selection.restart!(query:, sort:) unless selection.context?(query, sort)
+    selection.restart!(query:, sort:, location:) unless selection.context?(query, sort, location:)
     selection.record!(shown_ids: ids(:shown_ids), ticked_ids: ids(:ticked_ids), baseline_ids: ids(:baseline_ids),
       header_rendered: params[:all_rendered] == "1", header_ticked: params[:all] == "1", header_toggled: params[:header_toggled] == "1")
-    ACTIONS.include?(params[:go]) ? act(selection, query, sort) : navigate(selection, *destination(query, sort))
+    ACTIONS.include?(params[:go]) ? act(selection, query, location, sort) : navigate(selection, *destination(query, location, sort))
   end
 
   private
@@ -30,38 +35,40 @@ class Collections::SelectionsController < ApplicationController
     def ids(key) = Array(params[key]).grep(/\A\d+\z/).map(&:to_i)
 
     # Back to the saved view with the same filter and sort; the ticks are discarded (AC-4.5).
-    def done(selection, query, sort)
+    def done(selection, query, location, sort)
       selection.destroy!
-      redirect_to helpers.collection_listing_path(query:, sort:), status: :see_other
+      redirect_to helpers.collection_listing_path(query:, location:, sort:), status: :see_other
     end
 
-    def act(selection, query, sort)
+    def act(selection, query, location, sort)
       page = params[:page].presence
       if selection.lots.exists?
         path = params[:go] == "remove" ? new_collection_bulk_removal_path(page:) : new_collection_condition_change_path(page:)
         redirect_to path, status: :see_other
       else
-        prepare_collection_at(helpers.collection_listing_path(bulk: 1, query:, sort:, page:))
+        prepare_collection_at(helpers.collection_listing_path(bulk: 1, query:, location:, sort:, page:))
         gone = ids(:ticked_ids).any? || params[:all] == "1"
         render_collection_refusal(gone ? BulkSelection::NONE_LEFT : BulkSelection::NOTHING_SELECTED)
       end
     end
 
-    def navigate(selection, query, sort, page)
-      selection.restart!(query:, sort:) unless selection.context?(query, sort)
-      redirect_to helpers.collection_listing_path(bulk: 1, query:, sort:, page:), status: :see_other
+    def navigate(selection, query, location, sort, page)
+      selection.restart!(query:, sort:, location:) unless selection.context?(query, sort, location:)
+      redirect_to helpers.collection_listing_path(bulk: 1, query:, location:, sort:, page:), status: :see_other
     end
 
     # Where the filter (the form's default submit), a sort header or a pager button leads (FR-4).
-    # An unchanged filter reloads the same page.
-    def destination(query, sort)
+    # Unchanged filters reload the same page (spec 037 decision 5).
+    def destination(query, location, sort)
       if params[:go] == "filter"
         filter = CollectionFilter.normalize(params[:q])
-        [ filter, sort, (params[:page] if filter == query) ]
+        place = CollectionFilter::Place.parse(params[:location])
+        [ filter, place, sort, (params[:page] if filter == query && place == location) ]
       elsif (values = collection_values(params[:go]))
-        [ CollectionFilter.normalize(values["q"]), CollectionTable::Sort.parse(values["sort"], values["dir"]), values["page"] ]
+        [ CollectionFilter.normalize(values["q"]), CollectionFilter::Place.parse(values["location"]),
+          CollectionTable::Sort.parse(values["sort"], values["dir"]), values["page"] ]
       else
-        [ query, sort, params[:page] ]
+        [ query, location, sort, params[:page] ]
       end
     end
 

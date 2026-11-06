@@ -1,9 +1,10 @@
 # How a bulk-mode page shows the session's selection (spec 006 Story 5): which rows are ticked, the
-# header and the count. A selection made under another filter or sort shows as nothing (FR-4).
+# header and the count. A selection made under another filter, location or sort shows as nothing (FR-4; spec 037
+# decision 5).
 class CollectionTable::SelectionState
   def initialize(table:, selection:)
     @table = table
-    @selection = selection if selection&.context?(table.query, table.sort)
+    @selection = selection if selection&.context?(table.query, table.sort, location: table.location)
   end
 
   def all? = @selection&.all_matching? || false
