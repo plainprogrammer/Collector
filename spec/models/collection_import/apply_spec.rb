@@ -608,6 +608,50 @@ RSpec.describe CollectionImport::Apply, type: :model do
     end
   end
 
+  describe "the currency (spec 038 decision 7)" do
+    it "sets the account's currency to the file's with its lots (AC-6.3)", :aggregate_failures do
+      preview!([ import_row(a, price_paid: "12.50") ], currency: "EUR")
+      expect(apply.outcome).to eq(:applied)
+      expect([ account.reload.currency, account.lots.sole.price_paid_cents ]).to eq([ "EUR", 1250 ])
+    end
+
+    it "applies a file whose only difference is its currency, changing nothing else (AC-6.5)", :aggregate_failures do
+      held_lot(account, a, quantity: 3)
+      preview!([ import_row(a, quantity: 3) ], currency: "EUR")
+      before = lots_state
+      expect(apply.outcome).to eq(:applied)
+      expect([ account.reload.currency, lots_state ]).to eq([ "EUR", before ])
+    end
+
+    it "leaves the currency as it was when the apply's transaction fails (AC-6.9)", :aggregate_failures do
+      preview!([ import_row(a) ], currency: "EUR")
+      ActiveRecord::Base.connection.execute("CREATE TRIGGER fail_lot_upsert BEFORE INSERT ON lots BEGIN SELECT RAISE(ABORT, 'forced'); END")
+
+      expect { apply }.to raise_error(ActiveRecord::StatementInvalid)
+      expect(account.reload.currency).to eq("USD")
+    end
+
+    it "is stale when the currency changed after the preview, and says the new plan (AC-6.7)", :aggregate_failures do
+      preview!([ import_row(a) ], currency: "EUR")
+      upload = account.reload.import_upload
+      account.update!(currency: "GBP")
+
+      result = apply(upload)
+      expect(result.outcome).to eq(:stale)
+      expect(result.plan.currency_change).to eq(CollectionImport::CurrencyChange.new(from: "GBP", to: "EUR"))
+      expect(account.reload.currency).to eq("GBP")
+    end
+
+    it "has nothing to change when the account was changed to the file's currency and nothing else differs" do
+      held_lot(account, a, quantity: 3)
+      preview!([ import_row(a, quantity: 3) ], currency: "EUR")
+      upload = account.reload.import_upload
+      account.update!(currency: "EUR")
+
+      expect(apply(upload).outcome).to eq(:nothing_to_change)
+    end
+  end
+
   describe "only this account (AC-4.1)" do
     it "leaves every other account's rows as they were", :aggregate_failures do
       stranger = create(:user)

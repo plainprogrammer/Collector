@@ -39,6 +39,27 @@ RSpec.describe CollectionImport::Plan, type: :model do
     expect(import([ import_row(a, quantity: 3) ]).plan.nothing_to_change?).to be(true)
   end
 
+  describe "the currency (spec 038 decision 7)" do
+    it "has something to change for a file whose only difference is its currency, and nothing once it matches (AC-6.4, AC-6.5)", :aggregate_failures do
+      held_lot(account, a, quantity: 3)
+      plan = import([ import_row(a, quantity: 3) ], currency: "EUR").plan
+      expect([ plan.nothing_to_change?, plan.writes_lots?, plan.removes?, plan.currency_change.to ]).to eq([ false, false, false, "EUR" ])
+
+      account.update!(currency: "EUR")
+      expect(import([ import_row(a, quantity: 3) ], currency: "EUR").plan.nothing_to_change?).to be(true)
+    end
+
+    it "keeps a plan's fingerprint without a change, and tells changes apart by both codes", :aggregate_failures do
+      held_lot(account, a, quantity: 3)
+      same = import([ import_row(a, quantity: 3) ]).plan.fingerprint("sum")
+      expect(same).to eq(Digest::SHA256.hexdigest(JSON.generate([ "sum", [], [], [], nil ]))) # what spec 028's plan wrote
+      from_usd = import([ import_row(a, quantity: 3) ], currency: "EUR").plan.fingerprint("sum")
+      account.update!(currency: "GBP")
+      from_gbp = import([ import_row(a, quantity: 3) ], currency: "EUR").plan.fingerprint("sum")
+      expect([ from_usd == same, from_gbp == from_usd ]).to eq([ false, false ])
+    end
+  end
+
   describe "#fingerprint (AC-3.7)" do
     def view_profile(view) = { "name" => user.name, "email_address" => user.email_address, "collection_view" => view }
 

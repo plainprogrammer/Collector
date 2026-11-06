@@ -92,8 +92,21 @@ RSpec.describe CollectionImport, type: :model do
       expect(refusal_of(file({}))).to eq([ "type", "/lots", "This file isn't a well-formed export: lots isn't valid." ])
     end
 
-    it "refuses a file in another currency, even with no lots (decision 3)" do
-      expect(refusal_of(file([], currency: "EUR"))).to eq([ "other_currency", "/currency", "This file's prices are in EUR. This instance uses USD." ])
+    it "reads a file in another supported currency, even with no lots (spec 038 decision 7, AC-6.2)", :aggregate_failures do
+      parsed = import(file([], currency: "EUR"))
+      expect(parsed).not_to be_refused
+      expect(parsed.plan.currency_change).to eq(CollectionImport::CurrencyChange.new(from: "USD", to: "EUR"))
+    end
+
+    it "has no currency change for a file in the account's own currency (spec 038 AC-6.1)", :aggregate_failures do
+      account.update!(currency: "EUR")
+      parsed = import(file([], currency: "EUR"))
+      expect([ parsed.refused?, parsed.plan.currency_change ]).to eq([ false, nil ])
+    end
+
+    it "refuses a well-formed currency this instance can't show (spec 038 AC-6.6)", :aggregate_failures do
+      expect(refusal_of(file([], currency: "XYZ"))).to eq([ "unsupported_currency", "/currency", "Collector can't show prices in XYZ." ])
+      expect(refusal_of(file([], currency: "EURO")).first(2)).to eq([ "pattern", "/currency" ])
     end
 
     it "reports the rule and place problems.json names for each example refused as a whole (AC-2.7)" do

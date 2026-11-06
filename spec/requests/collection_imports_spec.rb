@@ -185,6 +185,20 @@ RSpec.describe "Apply an import", type: :request do
       expect(html.at_css("#status").text.strip).to eq("Imported: 0 lots added, 0 changed, 0 removed; 1 location removed")
     end
 
+    it "says the prices' new currency last, after a currency-only file and after locations (spec 038 AC-6.3)", :aggregate_failures do
+      store_import!(account:, data: import_file(user, [], currency: "EUR"))
+      apply
+      follow_redirect!
+      expect(html.at_css("#status").text.strip).to eq("Imported: 0 lots added, 0 changed, 0 removed; prices now shown in EUR")
+
+      create(:location, account: account.reload, name: "Old crate") # reloaded: the apply changed the account's currency
+      store_import!(account:, data: import_file_v2(user, [ import_row(a) ], locations: [ "Box" ], currency: "GBP"))
+      apply
+      follow_redirect!
+      expect(html.at_css("#status").text.strip).to eq("Imported: 1 lot added, 0 changed, 0 removed; 1 location added, 1 removed; prices now shown in GBP")
+      expect(account.reload.currency).to eq("GBP")
+    end
+
     it "says nothing about locations after a version 1 file (AC-9.14)", :aggregate_failures do
       create(:location, account:, name: "Box")
       preview!([ import_row(a) ])
