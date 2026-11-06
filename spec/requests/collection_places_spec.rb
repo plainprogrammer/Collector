@@ -12,6 +12,14 @@ RSpec.describe "Places on the collection's tiles and rows", type: :request do # 
   def place_lines = page_html.css(".c-tile__place").map { it.text.squish }
   def cells = page_html.css("td.c-table__place").map { it.text.squish }
 
+  # What a tile shows besides its place line (spec 004 AC-11.2, AC-11.3), and the page's counts.
+  def tile_facts
+    tiles = page_html.css(".c-tile").map do |tile|
+      [ tile["href"], tile.at_css(".c-tile__qty").text, tile.css(".c-tile__flags").map { it.text.squish }, tile.css(".c-tile__meta .c-tag").map { it.text.squish } ]
+    end
+    [ tiles, page_html.at_css(".c-filterbar__count").text.squish, page_html.at_css(".c-pagehead__stats").text.squish ]
+  end
+
   describe "the grid" do
     it "names a printing's place under its name", :aggregate_failures do
       own(location: blue, quantity: 3)
@@ -65,6 +73,22 @@ RSpec.describe "Places on the collection's tiles and rows", type: :request do # 
       get collection_path(q: "bolt")
       expect(page_html.css(".c-tile__name").map { it.text.squish }).to eq([ "Lightning Bolt" ])
       expect(place_lines).to eq([ "Blue binder +1 more" ])
+    end
+
+    it "changes nothing about a tile but its place line when the lots are placed", :aggregate_failures do # spec 033 AC-1.7, spec 048 AC-2.6
+      foil = own(quantity: 3, finish: "foil")
+      create(:lot, account: user.account, entry: foil.entry)
+      own("Opt")
+      blue
+
+      get collection_path
+      unplaced = tile_facts
+      expect(place_lines).to eq([ "No location", "No location" ])
+
+      foil.update!(location: blue)
+      get collection_path
+      expect(tile_facts).to eq(unplaced)
+      expect(place_lines).to eq([ "Blue binder +1 more", "No location" ])
     end
 
     it "shows no place on the catalog's tiles" do
