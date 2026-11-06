@@ -177,6 +177,23 @@ RSpec.describe Scanner::Sitting, type: :model do
     end
   end
 
+  describe "#drop_if_pointless! (spec 040 AC-3.2)" do
+    it "deletes a sitting with no entries and no place, and keeps any other", :aggregate_failures do
+      expect(described_class.create!(account:).drop_if_pointless!).to be(true)
+      expect(described_class.count).to eq(0)
+      add.entry.undo!
+      expect(described_class.find_by!(account:).drop_if_pointless!).to be(false)
+      expect(described_class.count).to eq(1)
+    end
+
+    it "reads the sitting again before deciding, so a place set since it was loaded keeps it" do
+      stale = described_class.create!(account:)
+      described_class.place!(account:, location: create(:location, account:))
+      stale.drop_if_pointless!
+      expect(described_class.find_by!(account:).location).to be_present
+    end
+  end
+
   describe "#pointless? (spec 040 plan P1)" do
     it "is true only for a sitting with no entries at all and no place", :aggregate_failures do
       sitting = described_class.create!(account:)

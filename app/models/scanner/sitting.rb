@@ -66,6 +66,17 @@ class Scanner::Sitting < ApplicationRecord
   # AC-3.2): it is what a removed location leaves of a sitting that was only opened by choosing that place.
   def pointless? = location_id.nil? && !entries.exists?
 
+  # Deletes this sitting if it is pointless, reading it again in the write transaction so an add or a place from another
+  # tab since it was loaded keeps it. Returns whether it went.
+  def drop_if_pointless!
+    transaction do
+      reload
+      pointless?.tap { |gone| destroy! if gone }
+    end
+  rescue ActiveRecord::RecordNotFound
+    true
+  end
+
   # Every entry not undone, newest first, including those whose lot changed (AC-3.2, AC-3.6), with each lot and its place
   # (spec 040 decision 4).
   def kept_entries = entries.kept.newest_first.includes(printing: :set, lot: :location)

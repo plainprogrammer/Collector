@@ -146,6 +146,7 @@ RSpec.describe "Scanner sittings", type: :request do
     it "shows the control alone with no sitting open: No location first and selected, then the locations in order (AC-1.1)", :aggregate_failures do
       long_box
       blue
+      create(:location, name: "Another account's binder") # never listed (FR-1)
       get scanner_path
       expect(picker.at_css("label[for=sitting_location_id]").text).to eq("Put this sitting in")
       expect(picker.css("option").map { [ it.text, it["value"] ] }).to eq([ [ "No location", "" ], [ "Blue binder", blue.id.to_s ], [ "Long box", long_box.id.to_s ] ])

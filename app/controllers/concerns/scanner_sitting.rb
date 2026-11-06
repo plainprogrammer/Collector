@@ -5,6 +5,13 @@ module ScannerSitting
   extend ActiveSupport::Concern
 
   private
+    # The open sitting for a page render, less one with no entries at all and no place, which says nothing and is dropped
+    # (spec 040 AC-3.2): what a removed location leaves of a sitting opened only by choosing it.
+    def current_sitting
+      sitting = Current.account.scanner_sitting
+      sitting unless sitting&.drop_if_pointless! # the has_one reader keeps a destroyed target, so the page is given nil
+    end
+
     def sitting_locals(sitting = Current.account.scanner_sitting)
       { sitting:, entries: sitting ? sitting.kept_entries.to_a : [], locations: Current.account.locations.ordered.to_a,
         added_any: sitting.present? && sitting.entries.exists? }
