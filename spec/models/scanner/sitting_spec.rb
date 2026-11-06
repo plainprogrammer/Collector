@@ -127,6 +127,76 @@ RSpec.describe Scanner::Sitting, type: :model do
     end
   end
 
+  describe ".add! with the sitting's condition (spec 042)" do
+    let(:blue) { create(:location, account:, name: "Blue binder") }
+
+    def choose(**choices) = described_class.choose!(account:, **choices)
+
+    it "adds into the lot of that printing, finish and condition, leaving the others alone (AC-1.3)", :aggregate_failures do
+      unspecified = create(:lot, account:, entry: printing, finish: "foil", quantity: 2)
+      lightly = create(:lot, account:, entry: printing, finish: "foil", condition: "lightly_played", quantity: 4)
+      choose(condition: "near_mint")
+      added = add
+      expect(added.entry.lot).to have_attributes(condition: "near_mint", location: nil, quantity: 1, finish: "foil", price_paid_cents: nil)
+      expect([ unspecified.reload.quantity, lightly.reload.quantity ]).to eq([ 2, 4 ])
+    end
+
+    it "merges into a lot already of that condition (AC-1.3)", :aggregate_failures do
+      there = create(:lot, account:, entry: printing, finish: "foil", condition: "near_mint", quantity: 3)
+      choose(condition: "near_mint")
+      add
+      expect(there.reload.quantity).to eq(4)
+      expect(account.lots.count).to eq(1)
+    end
+
+    it "adds with the condition and the place together (AC-1.4)" do
+      choose(condition: "near_mint", location: blue)
+      expect(add.entry.lot).to have_attributes(condition: "near_mint", location: blue, finish: "foil")
+    end
+
+    it "joins the lot with no condition when the sitting has none (AC-1.5)", :aggregate_failures do
+      choose(location: blue)
+      expect(add.entry.lot.condition).to be_nil
+      choose(condition: "near_mint")
+      choose(condition: nil)
+      expect(add(key: "b" * 32).entry.lot).to have_attributes(condition: nil, quantity: 2)
+    end
+
+    it "refuses at the cap of the lot of that condition, while Not specified takes the card (AC-1.6)", :aggregate_failures do
+      create(:lot, account:, entry: printing, finish: "foil", condition: "near_mint", quantity: Lot::MAX_QUANTITY)
+      choose(condition: "near_mint")
+      expect { add }.to raise_error(ActiveRecord::RecordInvalid)
+      expect(Scanner::SittingEntry.count).to eq(0)
+      choose(condition: nil)
+      expect(add.entry.lot.condition).to be_nil
+    end
+
+    it "answers a replayed key with its entry, whatever the condition is now (AC-4.4)", :aggregate_failures do
+      choose(condition: "near_mint")
+      first = add
+      choose(condition: "lightly_played")
+      again = add
+      expect(again).to have_attributes(replayed: true, entry: first.entry)
+      expect(again.entry.lot.condition).to eq("near_mint")
+      expect(account.lots.sum(:quantity)).to eq(1)
+    end
+
+    it "refuses a condition the printing's vocabulary doesn't know as :condition, never as the cap, recording nothing (AC-4.5)", :aggregate_failures, :other_collecting do
+      other = create(:catalog_entry, collectible_type: "other")
+      choose(condition: "near_mint")
+      expect(refusal { add(finish: nil, to: other) }).to eq(:condition)
+      expect([ account.lots.count, Scanner::SittingEntry.count ]).to eq([ 0, 0 ])
+      expect(described_class.find_by!(account:).condition).to eq("near_mint")
+    end
+
+    it "answers a replay before it checks the condition (decision 5)", :aggregate_failures, :other_collecting do
+      choose(condition: "near_mint")
+      first = add
+      again = add(finish: nil, to: create(:catalog_entry, collectible_type: "other"))
+      expect(again).to have_attributes(replayed: true, entry: first.entry)
+    end
+  end
+
   describe ".choose!" do
     let(:blue) { create(:location, account:, name: "Blue binder") }
     let(:long_box) { create(:location, account:, name: "Long box") }

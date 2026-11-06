@@ -5,7 +5,7 @@ class Scanner::Sitting < ApplicationRecord
   KEY_FORMAT = /\A[0-9a-f]{32}\z/
   SHOWN = 10
 
-  # Why an add was turned away before anything changed (FR-1): :key, :unavailable or :finish.
+  # Why an add was turned away before anything changed (FR-1): :key, :unavailable, :finish or :condition.
   class Refused < StandardError
     attr_reader :reason
 
@@ -23,7 +23,7 @@ class Scanner::Sitting < ApplicationRecord
   has_many :entries, class_name: "Scanner::SittingEntry", foreign_key: :scanner_sitting_id, inverse_of: :sitting,
     dependent: :delete_all
 
-  # Adds one copy of a printing for a reading, into the sitting's place (spec 040 AC-1.3), at most once per reading key in the account's open sitting (AC-1.2,
+  # Adds one copy of a printing for a reading, into the sitting's condition and place (spec 040 AC-1.3, spec 042 AC-1.3), at most once per reading key in the account's open sitting (AC-1.2,
   # AC-1.5, AC-3.1). The copy merges into its lot as the catalog's Add does; Lot.add! raises RecordInvalid at the
   # 9,999 cap (AC-1.6), and nothing is recorded then.
   def self.add!(account:, printing:, finish:, reading_key:)
@@ -37,9 +37,20 @@ class Scanner::Sitting < ApplicationRecord
       existing = sitting.entries.find_by(reading_key:)
       next Added.new(entry: existing, replayed: true) if existing
 
-      lot = Lot.add!(account:, entry: printing, finish:, location: sitting.location) # read in the transaction (spec 040 FR-2)
+      # A condition the printing's vocabulary doesn't know is refused here, after the replay check (a replayed key answers as AC-1.5
+      # says whatever the sitting holds) and before Lot.add!, whose RecordInvalid the entries controller reports as the 9,999 cap
+      # (spec 042 decision 5, AC-4.5). Raising rolls back a sitting this add just opened.
+      raise Refused, :condition unless condition_known?(printing, sitting.condition)
+
+      # The place and the condition are read in the transaction (spec 040 FR-2, spec 042 FR-2).
+      lot = Lot.add!(account:, entry: printing, finish:, condition: sitting.condition, location: sitting.location)
       Added.new(entry: sitting.entries.create!(account:, printing:, lot:, finish:, reading_key:), replayed: false)
     end
+  end
+
+  # No condition is always known; one is known when the printing's vocabulary lists it (decision 5).
+  def self.condition_known?(printing, condition)
+    condition.nil? || Catalog.collecting_for(printing.collectible_type).conditions.key?(condition)
   end
 
   # A printing with finishes takes one of them; one with none listed takes none (AC-1.1).
