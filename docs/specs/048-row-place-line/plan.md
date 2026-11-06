@@ -54,7 +54,8 @@ RSpec.describe "A table row's place line", type: :system do
     owned_printing("Lightning Bolt", account: user.account, number: "146", location: create(:location, account: user.account, name:))
   end
 
-  # Measured inside the narrow frame: the table's width, its container's clientWidth, the name span's width in rem,
+  # Called from the top page, after open_in_narrow_frame (it reaches the frame through #narrow; inside within_narrow_frame that
+  # element doesn't exist). Measured in the narrow frame: the table's width, its container's clientWidth, the name span's width in rem,
   # whether the name's text stays inside the span (it doesn't when it can't break), and the span's height in px.
   def measures
     page.evaluate_script(<<~JS).symbolize_keys
@@ -94,13 +95,10 @@ RSpec.describe "A table row's place line", type: :system do
           own_in(name)
           visit table_path
           expect(open_in_narrow_frame(table_path, width:, ready: "td.c-table__place")).to eq([ width, true ])
-          within_narrow_frame do
-            seen = measures
-            expect(find(".c-table__place-name", visible: :visible).text.squish).to eq(name)
-            expect(seen[:rem]).not_to be_nil
-            expect([ seen[:table] <= seen[:container] + 1, seen[:rem] <= 20.01, seen[:inside] ]).to eq([ true, true, true ])
-            expect(seen[:height]).to be > 18 if name.include?(" ") && width == 800
-          end
+          seen = measures
+          within_narrow_frame { expect(find(".c-table__place-name", visible: :visible).text.squish).to eq(name) }
+          expect([ seen[:table] <= seen[:container] + 1, seen[:rem] <= 20.01, seen[:inside] ]).to eq([ true, true, true ])
+          expect(seen[:height]).to be > 18 if name.include?(" ") && width == 800
         end
       end
     end
@@ -144,7 +142,7 @@ end
     end
 ```
 
-- [ ] Run: `bin/rspec spec/system/collection_row_place_spec.rb spec/requests/collection_places_spec.rb` — expect FAIL: the no-space phone examples (a real overflow, about 440px), the wide examples (the span doesn't exist yet, so they fail at the span's text or at `expect(seen[:rem]).not_to be_nil`, a missing-markup red; the layout assertions are proved by Task 2's mutation checks), both 760px examples (probe 1: 950px and 1313px tables) and the new request example (no span yet). The spaced phone examples and the no-location examples PASS already; they are regression guards and Task 2 proves they can fail.
+- [ ] Run: `bin/rspec spec/system/collection_row_place_spec.rb spec/requests/collection_places_spec.rb` — expect FAIL: the no-space phone examples (a real overflow, about 440px), the wide examples (the span doesn't exist yet, so they fail with `Capybara::ElementNotFound` for `.c-table__place-name`, a missing-markup red; a `Selenium::WebDriver::Error::JavascriptError` is not the expected red and means `measures` is being called inside the frame; the layout assertions are proved by Task 2's mutation checks), both 760px examples (probe 1: 950px and 1313px tables) and the new request example (no span yet). The spaced phone examples and the no-location examples PASS already; they are regression guards and Task 2 proves they can fail.
 - [ ] Commit: `test(collection): a row's place wraps and never scrolls the page sideways (spec 048)`
 
 ### Task 2: The rules
@@ -175,7 +173,7 @@ end
 - [ ] Run: `bin/rspec spec/system/collection_row_place_spec.rb spec/system/collection_table_spec.rb spec/requests/collection_places_spec.rb spec/requests/collection_views_spec.rb` — expect PASS. If a wide example still fails, don't guess a rule: print the span, cell and table widths per frame from `measures`, then stop and report them to the supervisor.
 - [ ] Run: `bin/rubocop` on the changed Ruby and `bin/rspec spec/requests/collections_spec.rb spec/requests/bulk_condition_spec.rb` — expect PASS (the cell's text is unchanged).
 - [ ] Commit: `feat(collection): a row's place wraps and breaks inside a name with no space (spec 048)`
-- [ ] Mutation checks, after the commit above so the rules are committed and `git checkout --` restores them: each is a temporary edit to `app/assets/stylesheets/collector/additions.css`, run the named examples, expect FAIL, then `git checkout -- app/assets/stylesheets/collector/additions.css`. (a) Delete `overflow-wrap:anywhere` from `.c-table__place-name`: every wide "with no space" example fails on `inside`. (b) Delete `white-space:normal` from the `@container` `.c-table__sub` rule: the spaced phone examples fail on `end_with` or the page scroll. (c) Add `.c-table__sub { width:4ch }` to the same container rule: the AC-1.7 examples fail on the line's height. (d) Delete the `.c-table td.c-table__place:not(.is-muted)` rule: the 800px spaced example fails on `table <= container` or on the span's height. Run `git status --short` afterwards: nothing may be modified.
+- [ ] Mutation checks, after the commit above so the rules are committed and `git checkout --` restores them: each is a temporary edit to `app/assets/stylesheets/collector/additions.css`, run the named examples, expect FAIL, then `git checkout -- app/assets/stylesheets/collector/additions.css`. (a) Delete `overflow-wrap:anywhere` from `.c-table__place-name`: every wide "with no space" example fails on `inside`. (b) Delete `white-space:normal` from the `@container` `.c-table__sub` rule: the spaced phone examples fail on `end_with` or the page scroll. (c) Add `.c-table__sub { width:4ch }` to the same container rule: the AC-1.7 examples fail on the line's height. (d) Delete the `.c-table td.c-table__place:not(.is-muted)` rule: the wide examples fail on the page scroll returned by `open_in_narrow_frame`, on `table <= container` or on `inside`. Run `git status --short` afterwards: nothing may be modified.
 
 ### Task 3: The design system's words (AC-3.1)
 
