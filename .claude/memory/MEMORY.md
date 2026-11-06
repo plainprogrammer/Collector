@@ -71,3 +71,4 @@
 - [One bin/ci at a time](one-bin-ci-at-a-time.md) — coordinator hands out one slot for any full bin/ci (direct or a push's hook); docs-only pushes need none; "stopped without reporting" while waiting on the coordinator is not a stall
 - [Commit named paths in one call](commit-only-paths-in-one-call.md) — `git commit -o <paths>` for tracked docs files in a worktree; new files need git add; skips the RuboCop hook, so not for Ruby
 - [Catalog core slice handoff](catalog-core-slice-handoff.md) — #104/PR #207 moved parts of specs 004, 007, 009 into catalog-core.md; scanner and tenancy slices extend those frozen lines; #204 holds the open rulings
+- [Focus in system specs](focus-in-system-specs.md) — spec 047 (#182): server-named focus target + once-only Stimulus controller; have_css(":focus"), stale-mark waits, :focus-visible in headless Firefox
