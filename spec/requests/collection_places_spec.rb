@@ -197,7 +197,9 @@ RSpec.describe "Places on the collection's tiles and rows", type: :request do # 
       post collection_bulk_removals_path
       follow_redirect!
       undo = page_html.at_css(".c-status form.c-status__action")
-      post undo["action"], params: { return_to: undo.at_css("input[name=return_to]")["value"] }
+      return_to = undo.at_css("input[name=return_to]")["value"]
+      expect(return_to).to eq(collection_path(bulk: 1))
+      post undo["action"], params: { return_to: }
       follow_redirect!
       expect(user.account.lots.count).to eq(3)
       expect(cells).to eq([ "Blue binder", "No location", "No location" ])
