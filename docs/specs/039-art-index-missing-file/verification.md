@@ -56,3 +56,7 @@ Every AC was covered by a test or a reading (the table above matches the reviewe
 | 6 | The upgrade seeds' `art-index-upgrade.bin.gz` reads as missing | No action: accepted by the spec's Interactions section; the upgrade proof checks neither page |
 
 A permission error reading as missing rests on `File.file?` returning false on a failed `stat`; no example forces one (not portable in CI).
+
+## Distillation
+
+2026-11-06 (`distill-feature`): the rules were written into [catalog operations](../../architecture/catalog-operations.md) (Glossary "Ready (art index)", the art index table's two Finished rows, the status-line paragraph, an accepted limit, Sources) and [release and deploy](../../architecture/release-and-deploy.md) (Neighbours line, the #122 limit reworded as fixed, Sources) in `fa3a0f4`; `fef8f9b` added both docs' Distillation log rows and set the index row to Frozen by both, plan retirement owed; `6aa432a` added the spec's frozen line. CLAUDE.md only points to the area doc and needed no change. No ADR is owed. The plan is retired after the merge.
