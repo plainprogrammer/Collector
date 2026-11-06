@@ -35,6 +35,7 @@ The sign-in and sign-up page: the brand-only header, a heading and one `Form`, c
 ```
 
 - The column is at most 480px wide and centred; its parts are spaced with `space-6`.
+- The card sets its own paragraphs (the explanatory text and the closed-state reason) at 15px/22px, and only those: the rule is `.c-auth > p`, direct children of `c-auth`. Hints and errors inside the form stay at `Form`'s caption size (12px/16px); a descendant `.c-auth p` once resized them to 15px (#188, `spec/system/auth_field_text_spec.rb`). Put new auth-card text as a direct child, or give it its own class.
 - The header shows only the brand: nothing else is reachable before signing in, except the open catalog's pages when the instance's operator has opened them to visitors (see `VisitorHeader`). The brand stays unlinked even then, so a visitor who opens sign-in from the catalog goes back with the browser (accepted, spec 023). Its logo images carry `alt="Collector"`, since there is no link text.
 - Below 640px the page has no tab bar, so the shell is marked `c-shell--untabbed` and keeps no clearance for one (see `VisitorHeader`).
 - The first-run page is titled "Set up Collector" and says in one sentence that this account becomes the instance's admin; its button says "Create admin account".

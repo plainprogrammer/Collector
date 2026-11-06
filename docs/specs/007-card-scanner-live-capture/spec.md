@@ -5,6 +5,7 @@
 **Created:** 2026-09-30
 **Last Updated:** 2026-10-07
 **Branch:** `007-card-scanner-live-capture`
+**Frozen:** the current rules are in [`catalog-core.md`](../../architecture/catalog-core.md) (parts: FR-4's name index and name matching, FR-5, AC-3.4, AC-3.5, AC-3.9); see the [specs index](../README.md)
 
 ---
 

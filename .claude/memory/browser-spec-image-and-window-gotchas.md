@@ -5,7 +5,7 @@ metadata:
   type: reference
 ---
 
-Found by running, while planning spec 019 (2026-10-11, headless Firefox 157). The measured values are in `docs/specs/019-uncropped-card-images/plan.md` under "Facts established during planning".
+Found by running, while planning spec 019 (2026-10-11, headless Firefox 157). The measured values are in spec 019's plan (retired; read it with `git show 82c6d0ea11293fd68393ca476f8cea2874a10d19^:docs/specs/019-uncropped-card-images/plan.md`) under "Facts established during planning".
 
 - **Card images in the browser:** a card image tag renders only for an `https` address on a source's allowed host (`catalog_url`), and WebMock doesn't stop Firefox's requests. Tag the example `:card_images` and use `spec/support/card_images.rb`: `card_image_address` gives `https://127.0.0.1:9/…` (Firefox refuses the port, nothing leaves the machine), `card_picture(w, h)` a `data:` picture, `card_image_fits` where the browser paints it, `card_slot_boxes` the boxes.
 - **`image.decode()` doesn't wait for a newly set `src`** in Firefox: the second picture given to an image was measured with the first one's size. Wait for the `load` event.

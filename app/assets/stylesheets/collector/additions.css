@@ -27,7 +27,7 @@
 
 /* ---------- Auth page (sign-in, sign-up) ---------- */
 .c-auth { max-width:480px; margin:0 auto; display:flex; flex-direction:column; gap:var(--space-6); }
-.c-auth p { margin:0; font:400 15px/22px var(--font-sans); }
+.c-auth > p { margin:0; font:400 15px/22px var(--font-sans); } /* direct children only: a descendant selector outranked .c-field__hint and .c-field__error in the form (#188) */
 
 /* ---------- Logo follows the OS theme when the page pins none (the export swaps only on data-theme="dark") ---------- */
 @media (prefers-color-scheme: dark) {

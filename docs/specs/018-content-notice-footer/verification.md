@@ -1,6 +1,6 @@
 # Verification: Content Notice Footer (spec 018)
 
-**Spec:** [spec.md](spec.md) v1.2.1 · **Plan:** [plan.md](plan.md) Phase 5 · **Recorded:** 2026-10-11 ·
+**Spec:** [spec.md](spec.md) v1.2.1 · **Plan:** plan (retired in `65baa8220576faa91529cc31daf18a362f3daeed`; read it with `git show 65baa8220576faa91529cc31daf18a362f3daeed^:docs/specs/018-content-notice-footer/plan.md`) Phase 5 · **Recorded:** 2026-10-11 ·
 **Branch:** `018-content-notice-footer` · **Issue:** [#34](https://github.com/plainprogrammer/Collector/issues/34)
 
 Evidence for every acceptance criterion. The suite examples are in `spec/requests/footer_spec.rb`,
