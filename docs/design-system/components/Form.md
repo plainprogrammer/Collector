@@ -32,6 +32,7 @@ A stacked form: one field per row, a label above each control, a hint and per-fi
 
 - `c-field--invalid` turns the field's `c-input` or `select` border `danger`; the error message under it says what's wrong in words, so colour never carries it alone.
 - Errors appear under their own field, one `c-field__error` per message, in the order the fields appear. When a field has errors, point the control at them with `aria-describedby` and an `id` on the message.
+- Errors render only through `c-field--invalid` and `c-field__error`. The app's `field_error_proc` leaves a field unwrapped when its record has errors, so no `.field_with_errors` element exists to style or to work around, and a form's 422 request example asserts that none is on the page (spec 044, [ADR 0026](../../adr/0026-forms-show-field-errors-through-the-design-system.md)).
 - A failed submission re-renders the form with status 422 (`:unprocessable_content`) and the values kept, so Turbo shows it in place.
 - Hints (`c-field__hint`) state limits exactly ("At least 12 characters.") or mark a field "Optional."; don't repeat the label.
 - Selects get the same height, border and focus ring as `c-input`; a blank first option says "Not specified" rather than a dash. A select never widens past its form, however long an option (a location's name) is (spec 040 AC-7.1).

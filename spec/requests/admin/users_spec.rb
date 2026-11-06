@@ -57,6 +57,7 @@ RSpec.describe "User administration", type: :request do
       ids = page.at_css('[name="user[email_address]"]')["aria-describedby"].to_s.split
       expect(ids.map { |id| page.at_css("##{id}")&.text }.join(" ")).to include("Email")
       expect(page.at_css('[name="user[name]"]')["aria-describedby"]).to be_nil
+      expect(page.css(".field_with_errors")).to be_empty
     end
 
     it "edits a user's name and email" do
@@ -91,7 +92,11 @@ RSpec.describe "User administration", type: :request do
       expect(flash[:alert]).to eq("You can't delete your own account.")
 
       patch admin_user_path(admin), params: { user: { name: "Ann", email_address: admin.email_address, admin: "0" } }
+      expect(response).to have_http_status(:unprocessable_content)
       expect(admin.reload).to be_admin
+      page = Nokogiri::HTML5(response.body)
+      expect(page.at_css("#admin-error").text).to eq("Admin can't be removed: Collector needs at least one admin.")
+      expect(page.css(".field_with_errors")).to be_empty
       expect(response.body).to include("Collector needs at least one admin.")
     end
   end

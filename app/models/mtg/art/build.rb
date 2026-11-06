@@ -29,6 +29,8 @@ class MTG::Art::Build
     @decoder = decoder
     @counts = Hash.new(0)
     @failures = []
+    @fetched_ids = ::Set.new # artworks whose image this attempt fetched and still holds (spec 043)
+    @stored = false # a batch of fingerprints was stored
   end
 
   def call
@@ -58,6 +60,12 @@ class MTG::Art::Build
     raise
   end
 
+  # Whether this attempt did durable new work (spec 043 decision 3): an image fetched into the cache and kept there, or a
+  # batch of fingerprints stored. Not progress: an image found already cached, the counts recorded at the start, an
+  # image that failed, or one fetched but undecodable and so removed (the images of an unstored batch stay cached, and
+  # count). Catalog::RateLimitRetry asks it, through the job, of the attempt a rate limit ended.
+  def made_progress? = @stored || @fetched_ids.any?
+
   private
     def beat_if_due = (@run.beat!(**@counts) if @run.heartbeat_at <= BEAT_EVERY.ago)
 
@@ -86,6 +94,7 @@ class MTG::Art::Build
         fingerprint: MTG::Art::Fingerprint.of(@decoder.decode(path)), settings_digest: MTG::Art::Settings.digest }
     rescue MTG::Art::Decoder::Error => error
       path&.delete # an undecodable download is fetched again next time
+      @fetched_ids.delete(artwork.id) # removed from the cache, so no longer kept
       failed(artwork, error)
     end
 
@@ -103,6 +112,7 @@ class MTG::Art::Build
       partial = Pathname("#{path}.part")
       partial.binwrite(bytes)
       partial.rename(path)
+      @fetched_ids << artwork.id
       @counts[:fetched] += 1
       path
     rescue Catalog::Sources::RateLimitedError
@@ -122,6 +132,7 @@ class MTG::Art::Build
       return if rows.empty?
 
       MTG::Artwork.upsert_all(rows, unique_by: :illustration_id)
+      @stored = true
       @counts[:fingerprinted] += rows.size
     end
 

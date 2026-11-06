@@ -50,6 +50,7 @@ RSpec.describe "Locations", type: :request do
       }.each do |typed, message|
         add(typed)
         expect(response).to have_http_status(:unprocessable_content)
+        expect(html.css(".field_with_errors")).to be_empty
         expect(field_error).to eq(message)
         expect(html.at_css("input[name='location[name]']")["value"]).to eq(typed)
         expect(html.at_css("input[name='location[name]']")["aria-describedby"]).to eq("location_name-error")
@@ -118,6 +119,7 @@ RSpec.describe "Locations", type: :request do
           ("a" * 61) => "Names can be at most 60 characters.", "a\u0007b" => "Names can't contain control characters." }.each do |typed, message|
           patch location_path(location), params: { location: { name: typed } }
           expect(response).to have_http_status(:unprocessable_content)
+          expect(html.css(".field_with_errors")).to be_empty
           expect(field_error).to eq(message)
         end
         expect(location.reload.name).to eq("Blue binder")

@@ -61,6 +61,15 @@ class ReportingCatalogSource < FakeCatalogSource
   end
 end
 
+# A source that hands over all its records and is then turned away (spec 043 decision 3, AC-3.3): the stand-in for a
+# source that can be rate limited after it has written something. Scryfall's refresh never is (area doc).
+class RateLimitedCatalogSource < FakeCatalogSource
+  def each_entry(path, languages:, &)
+    super
+    raise Catalog::Sources::RateLimitedError.new("rate limited", retry_after: 60)
+  end
+end
+
 # A test-only catalog type with a name of its own and one extra operation (spec 015 AC-5.3): registered for one
 # example with `:other_catalog`, as the type "other".
 class OtherCatalogSource < FakeCatalogSource

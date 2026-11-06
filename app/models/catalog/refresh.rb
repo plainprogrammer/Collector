@@ -13,6 +13,7 @@ class Catalog::Refresh
     @job_id = job_id
     @clock = clock
     @counts = Hash.new(0)
+    @wrote_rows = false
   end
 
   def call
@@ -43,6 +44,11 @@ class Catalog::Refresh
     @run.finish!(:failed, message: "#{error.class}: #{error.message}", counts: @counts) if @run&.running?
     raise
   end
+
+  # Whether this attempt wrote a catalog row: a set, an identity or an entry inserted, updated or restored, or an entry
+  # retired (spec 043 decision 3). Records seen and the download are not progress: a retried refresh reads the same file
+  # again. Catalog::RateLimitRetry asks it, through the job, of the attempt a rate limit ended.
+  def made_progress? = @wrote_rows
 
   private
     # The type's refresh jobs as the queue holds them, read before the runs are. A worker that died holding one never
@@ -85,6 +91,7 @@ class Catalog::Refresh
       changed = []
       @source.each_set { |record| changed << record unless @sets.dig(record.code, 1) == record.digest }
       write_sets(changed)
+      @wrote_rows = true if changed.any?
     end
 
     def sync_entries(path, languages)
@@ -138,6 +145,7 @@ class Catalog::Refresh
         write_identities(@pending_identities)
         write_entries(@pending_entries)
       end
+      @wrote_rows = true # the transaction has committed
       @pending_entries.each { |record| tally(record) }
       @pending_entries = []
       @pending_identities = []
@@ -212,6 +220,7 @@ class Catalog::Refresh
         # Bulk maintenance of global catalog rows: no callbacks or validations apply.
         Catalog::Entry.where(id: slice).update_all(retired_at: now, updated_at: now)
       end
+      @wrote_rows = true if ids.any?
       @counts[:retired] = ids.size
     end
 end

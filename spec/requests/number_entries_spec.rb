@@ -308,6 +308,9 @@ RSpec.describe "Number entry", type: :request do
         printing("47")
         add("999", quantity: "3", finish: "foil")
         expect(response).to have_http_status(:unprocessable_content)
+        page = Nokogiri::HTML5(response.body)
+        expect(page.at_css("#line_number_error").text).to eq("No card numbered 999 in Modern Horizons 3 (EN).")
+        expect(page.css(".field_with_errors")).to be_empty
         expect(response.body).to include("No card numbered 999 in Modern Horizons 3 (EN).", 'value="999"', 'value="3"',
           '<option selected="selected" value="foil">Foil</option>')
         expect(response.body).to match(/<input[^>]*id="line_number"[^>]*autofocus/)

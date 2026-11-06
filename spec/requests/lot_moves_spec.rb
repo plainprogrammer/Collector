@@ -90,10 +90,12 @@ RSpec.describe "Lot moves", type: :request do
       move(copies: "9", to: blue.id)
       expect(response).to have_http_status(:unprocessable_content)
       expect(html.at_css("#move_copies-error").text).to eq("Choose from 1 to 4 copies.")
+      expect(html.css(".field_with_errors")).to be_empty
       expect(html.at_css('select[name="move[location_id]"] option[selected]').text).to eq("Blue binder")
       create(:lot, account:, entry:, location: blue, quantity: 9_998)
       move(copies: "2", to: blue.id)
       expect(html.at_css("#move_copies-error").text).to eq(Lot::FULL_MESSAGE)
+      expect(html.css(".field_with_errors")).to be_empty
       expect(lot.reload.quantity).to eq(4)
     end
 
@@ -101,6 +103,7 @@ RSpec.describe "Lot moves", type: :request do
       move(copies: "1", to: box.id)
       expect(response).to have_http_status(:unprocessable_content)
       expect(html.at_css("#move_location_id-error").text).to eq("Those copies are already there.")
+      expect(html.css(".field_with_errors")).to be_empty
     end
 
     it "answers 404 for another account's lot or destination, or a missing one, changing nothing (AC-3.9, AC-6.1, AC-6.2)", :aggregate_failures do

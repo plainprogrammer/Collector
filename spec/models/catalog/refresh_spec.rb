@@ -432,4 +432,91 @@ RSpec.describe Catalog::Refresh, type: :model do
       expect(described_class.new("fake", trigger: "manual", source: plain).call).to have_attributes(status: "applied")
     end
   end
+
+  describe "#made_progress? (spec 043 decision 3)" do
+    def attempt(from = source) = described_class.new("fake", trigger: "manual", source: from).tap(&:call)
+
+    def turned_away(from)
+      described_class.new("fake", trigger: "manual", source: from).tap do |run|
+        expect { run.call }.to raise_error(Catalog::Sources::RateLimitedError)
+      end
+    end
+
+    it "is false before it has run" do
+      expect(described_class.new("fake", trigger: "manual", source:).made_progress?).to be(false)
+    end
+
+    it "is true when it inserted rows" do
+      expect(attempt.made_progress?).to be(true)
+    end
+
+    it "is false when the same data is applied again, though it saw every record and downloaded the file", :aggregate_failures do
+      attempt
+      again = attempt
+
+      expect(again.made_progress?).to be(false)
+      expect(Catalog::RefreshRun.recent.first).to have_attributes(seen_count: 2, inserted_count: 0)
+      expect(source.downloads).to eq(%w[v1 v1])
+    end
+
+    it "is true when an entry was updated" do
+      attempt
+      source.entries = [ entry_record("a"), entry_record("b", number: "2") ]
+
+      expect(attempt.made_progress?).to be(true)
+    end
+
+    it "is true when an entry was only retired" do
+      attempt
+      source.entries = [ entry_record("a") ]
+
+      expect(attempt.made_progress?).to be(true)
+    end
+
+    it "is true when an entry was only restored" do
+      attempt
+      source.entries = [ entry_record("a") ]
+      attempt
+      source.entries = [ entry_record("a"), entry_record("b") ]
+
+      expect(attempt.made_progress?).to be(true)
+    end
+
+    it "is true when only a set was written, though no entry changed (tally covers entries only)" do
+      attempt
+      source.sets = [ set_record("lea"), set_record("m10") ]
+
+      expect(attempt.made_progress?).to be(true)
+    end
+
+    it "is true when only an identity changed" do
+      attempt
+      source.entries = [ entry_record("a", identity: identity_record(extension: { errata: true })), entry_record("b") ]
+
+      expect(attempt.made_progress?).to be(true)
+    end
+
+    it "is false when the source is turned away on its sets, after a fresh download", :aggregate_failures do
+      allow(source).to receive(:each_set).and_raise(Catalog::Sources::RateLimitedError.new("rate limited", retry_after: 60))
+      run = turned_away(source)
+
+      expect(source.downloads).to eq([ "v1" ])
+      expect(run.made_progress?).to be(false)
+    end
+
+    it "is true when the source is turned away after a batch was written (AC-3.3)", :aggregate_failures do
+      stub_const("Catalog::Refresh::BATCH_SIZE", 1)
+      run = turned_away(RateLimitedCatalogSource.new(entries: [ entry_record("a") ]))
+
+      expect(run.made_progress?).to be(true)
+      expect(Catalog::Entry.pluck(:external_key)).to eq([ "a" ])
+    end
+
+    it "is false when the source is turned away before the batch is written, though it saw records", :aggregate_failures do
+      run = turned_away(RateLimitedCatalogSource.new(entries: [ entry_record("a"), entry_record("b") ]))
+
+      expect(run.made_progress?).to be(false)
+      expect(Catalog::Entry.count).to eq(0)
+    end
+  end
 end
