@@ -47,11 +47,11 @@
       "WebFetch(domain:rubygems.org)",
       "WebFetch(domain:scryfall.com)",
       "WebFetch(domain:kamal-deploy.org)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(git merge *)"
     ],
     "ask": [
       "Bash(git rebase *)",
-      "Bash(git merge *)",
       "Bash(bin/rails console *)",
       "Bash(bin/rails c *)",
       "Bash(bin/rails runner *)",
