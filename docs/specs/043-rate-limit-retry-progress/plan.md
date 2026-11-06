@@ -38,7 +38,7 @@ exception_executions[COUNTED_AS] = counted + 1
 - `Catalog::RateLimitRetry`, `Catalog::RefreshJob` and `Catalog::Refresh` name no collectible; the MTG answer lives in `MTG::Art::Build` and `MTG::Art::BuildJob` (FR-7, AC-4.1).
 - No migration, gem, setting, view, controller or source-contract change (`Catalog::Sources` is untouched, FR-6). `MAX_RETRIES`, `SHORTEST_WAIT`, `LONGEST_WAIT` and the client's back-off keep their values.
 - Specs: `type:` tag explicit, `:aggregate_failures` on every multi-expectation example, examples at most 15 lines (`RSpec/ExampleLength`, `.rubocop.yml`). Examples that touch the art directory are tagged `:art_matching`; ones that need a real art build need ImageMagick, as the files they extend already do. No real HTTP (WebMock).
-- Each task ends with one Conventional Commit; `git add` and `git commit` as separate commands; end each message with the attribution trailer the session gives. The commit hook runs RuboCop on staged Ruby files and Brakeman. Don't push: the pre-push hook runs the full `bin/ci`, and the maintainer commits and pushes. Run only the targeted spec files named in each task; the full suite and `bin/ci` are the supervisor's.
+- Each task ends with one Conventional Commit (Task 9's two commits are the one exception); `git add` and `git commit` as separate commands; end each message with the attribution trailer the session gives. The commit hook runs RuboCop on staged Ruby files and Brakeman. Don't push: the pre-push hook runs the full `bin/ci`, and the maintainer commits and pushes. Run only the targeted spec files named in each task; the full suite and `bin/ci` are the supervisor's.
 - `Gemfile.lock` has an unrelated local modification: don't stage it.
 - Prose documents aren't checked from RSpec (`.claude/rules/testing.md`): AC-5.x are verified by reading and recorded in `verification.md` (Task 9).
 
@@ -129,12 +129,12 @@ RSpec.describe Catalog::RateLimitRetry, type: :job do
   end
 
   context "when the attempt made no progress" do
-    [ 0, 1, 2 ].each do |before|
-      it "retries after the wait with the count one more, from #{before} (AC-1.3)", :aggregate_failures do
+    [ 0, 1, 2 ].each do |count|
+      it "retries after the wait with the count one more, from #{count} (AC-1.3)", :aggregate_failures do
         job = probe(before, false)
 
         expect { job.perform_now }.to have_enqueued_job(probe_class).at(60.seconds.from_now)
-        expect(count_of(job)).to eq(before + 1)
+        expect(count_of(job)).to eq(count + 1)
       end
     end
 
@@ -219,7 +219,7 @@ RSpec.describe "The core's rate-limit retry rule" do
 end
 ```
 
-Run: `bin/rspec spec/rate_limit_retry_core_spec.rb` (RuboCop's hook then checks `.rubocop.yml`'s list). Expected: green at once (the Task 1 file names none of these; `Catalog::Sources::RateLimitedError` and `Catalog::Operation::Queue` are not matched). A note in the commit body says it is a guard, not a red-first example.
+Run: `bin/rspec spec/rate_limit_retry_core_spec.rb` (RuboCop's hook then checks `.rubocop.yml`'s list). Expected: green at once (the Task 1 file names none of these; `Catalog::Sources::RateLimitedError` and `Catalog::Operation::Queue` are not matched). A note in the commit body says it is a guard, not a red-first example. One-off proof that it can fail: put the word "scryfall" in a comment of `app/jobs/catalog/rate_limit_retry.rb`, run the spec (expected: red on the first name check), revert the line, run again (green), and record both in the commit body and in `verification.md`.
 
 **Commit:** `test(catalog): the rate-limit retry rule names no collectible` (stage `.rubocop.yml` too).
 
@@ -333,7 +333,7 @@ end
   end
 ```
 
-Run: `bin/rspec spec/models/catalog/refresh_spec.rb -e "made_progress"`. Expected: every example fails with `NoMethodError: undefined method 'made_progress?' for an instance of Catalog::Refresh`. (The "seen_count: 2" expectation in the third example needs the failing run's counts, which a first green run confirms.)
+Run: `bin/rspec spec/models/catalog/refresh_spec.rb -e "made_progress"`. Expected: every example fails with `NoMethodError: undefined method 'made_progress?' for an instance of Catalog::Refresh`. (The "seen_count: 2" expectation in the third example needs the second, applied run's counts, which a first green run confirms.)
 
 **Green.** `app/models/catalog/refresh.rb`:
 
@@ -457,23 +457,23 @@ Run `bin/rspec spec/jobs/catalog/refresh_job_spec.rb spec/jobs/catalog/rate_limi
 ```ruby
     # Spec 043: an image fetched and kept, or a batch of fingerprints stored, is progress; nothing else is.
     describe "#made_progress?" do
-      let(:build) { described_class.new(job_id: "job-1", client:) }
+      let(:attempt) { described_class.new(job_id: "job-1", client:) }
 
-      def turned_away = expect { build.call }.to raise_error(Catalog::Sources::RateLimitedError)
+      def turned_away = expect { attempt.call }.to raise_error(Catalog::Sources::RateLimitedError)
 
       it "is true for an image fetched and kept before the rate limit (AC-2.1)" do
         stub_request(:get, first).to_return(body: noisy_png)
         stub_request(:get, second).to_return(status: 429)
         turned_away
 
-        expect(build.made_progress?).to be(true)
+        expect(attempt.made_progress?).to be(true)
       end
 
       it "is false when the first image request is rate limited (AC-2.2)" do
         stub_request(:get, first).to_return(status: 429)
         turned_away
 
-        expect(build.made_progress?).to be(false)
+        expect(attempt.made_progress?).to be(false)
       end
 
       it "is true for a batch of fingerprints stored for an image already cached, with none fetched (AC-2.3)", :aggregate_failures do
@@ -483,7 +483,7 @@ Run `bin/rspec spec/jobs/catalog/refresh_job_spec.rb spec/jobs/catalog/rate_limi
         stub_request(:get, second).to_return(status: 429)
         turned_away
 
-        expect(build.made_progress?).to be(true)
+        expect(attempt.made_progress?).to be(true)
         expect(MTG::ArtBuild.sole).to have_attributes(fetched_count: 0, fingerprinted_count: 1)
       end
 
@@ -492,7 +492,7 @@ Run `bin/rspec spec/jobs/catalog/refresh_job_spec.rb spec/jobs/catalog/rate_limi
         stub_request(:get, second).to_return(status: 429)
         turned_away
 
-        expect(build.made_progress?).to be(false)
+        expect(attempt.made_progress?).to be(false)
         expect(MTG::ArtBuild.sole).to have_attributes(fetched_count: 1, failed_count: 1)
       end
 
@@ -501,18 +501,18 @@ Run `bin/rspec spec/jobs/catalog/refresh_job_spec.rb spec/jobs/catalog/rate_limi
           job_id: "job-other") # not the factory's "job-N": one equal to the build's own "job-1" would be interrupted, not skip it
         image = stub_request(:get, first).to_return(body: noisy_png)
 
-        expect(build.call).to have_attributes(status: "skipped", message: "already running")
-        expect(build.made_progress?).to be(false)
+        expect(attempt.call).to have_attributes(status: "skipped", message: "already running")
+        expect(attempt.made_progress?).to be(false)
         expect(image).not_to have_been_requested
       end
 
       it "is false before it has run" do
-        expect(build.made_progress?).to be(false)
+        expect(attempt.made_progress?).to be(false)
       end
     end
 ```
 
-Run: `bin/rspec spec/models/mtg/art/build_spec.rb -e "made_progress"`. Expected: all six fail with `NoMethodError: undefined method 'made_progress?' for an instance of MTG::Art::Build`. The memoized helpers of the enclosing group (`naps`, `client`, `art_a`, `art_b`) plus `build` make five, the `RSpec/MultipleMemoizedHelpers` limit.
+Run: `bin/rspec spec/models/mtg/art/build_spec.rb -e "made_progress"`. Expected: all six fail with `NoMethodError: undefined method 'made_progress?' for an instance of MTG::Art::Build`. The memoized helpers of the enclosing group (`naps`, `client`, `art_a`, `art_b`) plus `attempt` make five, the `RSpec/MultipleMemoizedHelpers` limit.
 
 **Green.** `app/models/mtg/art/build.rb`:
 
@@ -682,15 +682,15 @@ Run `bin/rspec spec/rate_limit_retry_core_spec.rb spec/jobs/catalog/rate_limit_r
 
    > Progress is durable new work, as the operation judges it (spec 043 decision 3). For a refresh (`Catalog::Refresh#made_progress?`): a catalog row written, meaning a set, an identity or an entry inserted, updated or restored, or an entry retired; not the records seen, which the page shows, and not the download, fresh or reused. For an art build (`MTG::Art::Build#made_progress?`): an image fetched into the cache and kept, or a batch of `BATCH` fingerprints stored; not images found already cached, not the counts recorded at the start, not an image that failed or was removed as undecodable. With Scryfall a refresh is only ever rate limited on `/bulk-data` or `/sets`, before any row is written, so its count behaves as it did; the rule is still tested with a source that is turned away after writing (spec 043 decision 3).
 
-2. **"What the source does for a refresh".** Add a bullet: *A refresh asks the API host twice per run, `/bulk-data` before the download and `/sets` after it, at least `MIN_INTERVAL` apart; the bulk file comes from `data.scryfall.io`. Scryfall's documentation says the rate limits are those of `api.scryfall.com` and that "the direct file origins located at `*.scryfall.io` do not have rate limits" (https://scryfall.com/docs/api/rate-limits, read 2026-11-06), so the image origin never is by its documentation; the client still treats a 429 from any of them as a rate limit (spec 043 Problem Statement, "Does the image host ever rate limit?").*
+2. **"What the source does for a refresh".** Add a bullet: *A refresh asks the API host twice per run, `/bulk-data` before the download and `/sets` after it, at least `MIN_INTERVAL` apart; the bulk file comes from `data.scryfall.io`. Scryfall's documentation says the rate limits are those of `api.scryfall.com` and that "the direct file origins located at `*.scryfall.io` do not have rate limits" (https://scryfall.com/docs/api/rate-limits, read 2026-11-06), so the image origin is never rate limited, by its documentation; the client still treats a 429 from any of them as a rate limit (spec 043 Problem Statement, "Does the image host ever rate limit?").*
 
 3. **Named constants.**
    - `MAX_RETRIES` row, Purpose: "Rate limits in a row with no progress between them that a job is retried through before it fails, so a job that keeps being turned away stops while one that gets work done between rate limits doesn't. Progress: a catalog row written (refresh); an image fetched and kept, or a batch of fingerprints stored (build)". Source: "spec 002 FR-4; #74; spec 043 FR-2 (#86)".
-   - `IMAGE_HOSTS` row, Purpose: "The only host an image is fetched from; Scryfall's documentation gives the `*.scryfall.io` file origins no rate limits (spec 043)". Source: "spec 011 AC-3.4; spec 024 Non-Goals; spec 043".
+   - `IMAGE_HOSTS` row, Purpose: "The only host an image is fetched from; Scryfall's documentation gives the `*.scryfall.io` file origins no rate limits (spec 043)". Source: "spec 011 AC-3.4; spec 024 Non-Goals; spec 043 Problem Statement".
 
-4. **Art index build, "Ends:" bullet** (the line that says the job runs again "through `Catalog::RateLimitRetry`"): append "; the job is retried without limit while each rate limit comes with progress, and fails on the fourth in a row without (spec 043)".
+4. **Art index build, "Ends:" bullet** (the line that says the job runs again "through `Catalog::RateLimitRetry`"): append "; the job is retried without limit while each rate limit comes with progress, and fails on the fourth in a row with no progress between them (spec 043)".
 
-5. **Decisions not in an ADR.** Add: "**Progress is judged on the attempt the rate limit ended, alone.** In the order rate limit, a busy-database retry that did work, rate limit with no new work, the second rate limit counts 2, not 1: the job fails sooner than a perfect rule would, never later than before; the count stays in one place, the job's retry record (spec 043 decision 2)." Add under **Accepted limits and open issues** the same fact is not repeated; instead delete the line "[#86] … though it did work between them." (the issue is closed by this feature).
+5. **Decisions not in an ADR.** Add: "**Progress is judged on the attempt the rate limit ended, alone.** In the order rate limit, a busy-database retry that did work, rate limit with no new work, the second rate limit counts 2, not 1: the job fails sooner than a perfect rule would, never later than before; the count stays in one place, the job's retry record (spec 043 decision 2)." Delete the #86 line from Accepted limits and open issues; don't restate it there (the issue is closed by this feature).
 
 6. **Sources.** Add `- [Spec 043](../specs/043-rate-limit-retry-progress/spec.md): decisions 1 to 4, FR-1 to FR-8, Story 4.` after the spec 039 line; in the Issues line, move `#86` from the "open:" list (`open: #41, #77, #86, #111`) to the closed ones, giving `…, #84, #86, #122; open: #41, #77, #111`.
 
@@ -710,7 +710,7 @@ Reading check, recorded in Task 9: `#86` must appear in step 2 of "A rate-limite
 
 2. `verification.md`, in the repository's shape (the run evidence is pasted from the executing session; nothing here is invented ahead of it):
 
-   - A **Red evidence** table: one row per task 1 and 3 to 6 with the command from the task, the first-run failure message as seen, and the green run's summary line. Tasks 2 and 7 record that their examples were guards.
+   - A **Red evidence** table: one row per task 1 and 3 to 6 with the command from the task, the first-run failure message as seen, and the green run's summary line. Tasks 2 and 7 record that their examples were guards. Add rows for the two reset examples' red runs (Tasks 4 and 6: remove the `= nil` line, run, record the failure, restore), and for Task 2's one-off proof that the guard can fail (see Task 2).
    - An **AC table**, one row per criterion AC-1.1 to AC-5.3: the example that covers it (`spec/jobs/catalog/rate_limit_retry_spec.rb` for AC-1.x; `spec/models/mtg/art/build_spec.rb` and `spec/jobs/mtg/art/build_job_spec.rb` for AC-2.x; `spec/models/catalog/refresh_spec.rb` and `spec/jobs/catalog/refresh_job_spec.rb` for AC-3.x; `spec/rate_limit_retry_core_spec.rb` for AC-4.1) and, for AC-5.1 to AC-5.3, the reading done: step 2 and the `MAX_RETRIES` row, the `IMAGE_HOSTS` row and the refresh bullet, #86 in the open list and in Sources (AC-5.1); the two comments (AC-5.2); the four index rows (AC-5.3).
    - The **final `bin/ci` result** at the last commit, with the date.
    - A "Deviations from the plan" section (empty if none).
@@ -722,7 +722,7 @@ Reading check, recorded in Task 9: `#86` must appear in step 2 of "A rate-limite
 
 ## Self-review
 
-- **Spec coverage.** FR-1 (Task 1, AC-1.4 examples), FR-2 (Task 1), FR-3 (Task 1, silent probe), FR-4 (Task 1: same key; Tasks 4 and 6 read the count from the serialized queued job), FR-5 (Tasks 5, 6), FR-6 (Tasks 3, 4; `Catalog::Sources` untouched), FR-7 (Task 2), FR-8 (Task 1, the 45-second examples, plus the existing `retry_on`-order examples that stay green). Every AC is mapped in the table above; no gap.
+- **Spec coverage.** FR-1 (Task 1, AC-1.4 examples), FR-2 (Task 1), FR-3 (Task 1, silent probe), FR-4 (Task 1: same key; Task 4 reads the count from the job instance; only Task 6's AC-2.5 example reads it from the serialized queued job), FR-5 (Tasks 5, 6), FR-6 (Tasks 3, 4; `Catalog::Sources` untouched), FR-7 (Task 2), FR-8 (Task 1, the 45-second examples, plus the existing `retry_on`-order examples that stay green). Every AC is mapped in the table above; no gap.
 - **Placeholders.** None: every code step shows code; the verification skeleton's evidence cells are filled by the executing session from real runs, which is the point of that file.
 - **Names.** `rate_limit_progress?` (private, concern default and two job overrides), `made_progress?` (public on `Catalog::Refresh` and `MTG::Art::Build`), `RateLimitedCatalogSource` (support), `COUNTED_AS` (unchanged), `@refresh` and `@build` (job instance variables) are spelled the same in every task. Methods and helpers called exist: `have_enqueued_job(...).at/.exactly`, `freeze_time`, `stub_const`, `stub_scryfall` (returns the data file's stub), `scryfall_card`, `noisy_png`, `entry_record`, `identity_record`, `set_record`, `create(:mtg_art_build)`, `MTG::Art.cache_dir`, `ActiveJob::Base.queue_adapter.enqueued_jobs`, `ActiveJob::Base.execute`.
 
@@ -738,7 +738,7 @@ Reading check, recorded in Task 9: `#86` must appear in step 2 of "A rate-limite
 - **Existing examples** that stub the operation's constructor to raise (`Catalog::Refresh.new`, `MTG::Art::Build.new`) leave the instance variable nil and so answer "no progress": the whole of `refresh_job_spec.rb` and `build_job_spec.rb` should stay green after Tasks 4 and 6; a run confirms it.
 - **Decoding in the examples:** `noisy_png` must decode through ImageMagick as in the neighbouring examples, and the body `"not an image"` must raise `MTG::Art::Decoder::Error` from `decode` (AC-2.6, as the existing "can't decode" example shows); a run confirms both.
 - **AC-3.2's real download path** runs under `freeze_time` (the context's `before`): the download's partial file, size check and rename must not depend on the clock, and `Rails.configuration.x.catalog_download_dir` must be clean before and after (the `ensure` removes it; a leftover file from another example would make the download "already there" and skip the request the example asserts).
-- **Example length and helper count:** the AC-2.5 example (about 13 lines against the limit of 15) and Task 5's group (five memoized helpers: `naps`, `client`, `art_a`, `art_b`, `build`, against `RSpec/MultipleMemoizedHelpers`' 5) sit at their limits; RuboCop's hook says.
+- **Example length and helper count:** the AC-2.5 example (about 13 lines against the limit of 15) and Task 5's group (five memoized helpers: `naps`, `client`, `art_a`, `art_b`, `attempt`, against `RSpec/MultipleMemoizedHelpers`' 5) sit at their limits; RuboCop's hook says.
 - **The reset examples** (Tasks 4 and 6) pass before the answer exists, so their red is shown by temporarily removing the `= nil` line after the green code, as those tasks say.
 - **Documentation criteria** (AC-5.x) are not machine-checked; Task 9's reading and the supervisor's review are the only check. The area doc's exact wording of the unchanged sentences around the edits was read on 2026-11-06 and should be re-read before editing, since other branches edit the same file.
 - **Not runnable here:** nothing in this plan was executed; the full suite, `bin/ci` and any Brakeman or RuboCop finding on the new code are the supervisor's run.
