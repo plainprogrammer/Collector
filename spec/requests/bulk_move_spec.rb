@@ -4,12 +4,10 @@ require "rails_helper"
 RSpec.describe "Bulk Move to…", type: :request do
   let(:user) { create(:user) }
   let(:account) { user.account }
+  let!(:blue) { create(:location, account:, name: "Blue binder") }
+  let!(:box) { create(:location, account:, name: "Long box") }
 
-  before do
-    sign_in_as(user)
-    create(:location, account:, name: "Blue binder")
-    create(:location, account:, name: "Long box")
-  end
+  before { sign_in_as(user) }
 
   def own(name = "Lightning Bolt", **options) = owned_printing(name, account:, **options)
   def twin(lot, **options) = create(:lot, account:, entry: lot.entry, **options)
@@ -93,6 +91,91 @@ RSpec.describe "Bulk Move to…", type: :request do
       patch collection_selection_path, params: { go: "move", rendered_q: "", rendered_location: "", all_rendered: "0", shown_ids: [ theirs.id ], ticked_ids: [ theirs.id ] }
       expect(response).to have_http_status(:unprocessable_content)
       expect(page_html.at_css("#status").text).to include("None of the selected items are in your collection any more.")
+    end
+  end
+
+  describe "the move page (Story 2)" do
+    it "says how many items, offers a required To select and Cancel back to the bulk table (AC-2.1, AC-2.4)", :aggregate_failures do
+      lots = Array.new(4) { |i| own("Card #{i}", quantity: 3) }
+      select_lots(*lots, page: 2)
+      get new_collection_move_path(page: 2)
+      expect(response).to have_http_status(:ok)
+      expect(page_html.at_css("h1").text).to eq("Move 12 items")
+      select = page_html.at_css("select#to")
+      expect([ select["name"], select["required"] ]).to eq([ "to", "required" ])
+      expect(page_html.css("select#to option").map { |option| [ option.text, option["value"] ] })
+        .to eq([ [ "Choose…", "" ], [ "No location", "none" ], [ "Blue binder", blue.id.to_s ], [ "Long box", box.id.to_s ] ])
+      expect(page_html.at_css("select#to option[selected]").text).to eq("Choose…")
+      expect(page_html.at_css("label[for=to]").text).to eq("To")
+      expect(page_html.at_css("input[type=submit]")["value"]).to eq("Move")
+      expect(page_html.at_css(".c-form__actions a")["href"]).to eq(collection_path(bulk: 1, page: 2))
+      expect(page_html.at_css('header a[aria-label="Back"]')["href"]).to eq(collection_path(bulk: 1, page: 2))
+      expect(page_html.at_css("main form.c-form")["action"]).to eq(collection_move_path(page: 2)) # the appbar has a Sign out form of its own
+    end
+
+    it "says 'Move 1 item' for one copy" do
+      select_lots(own)
+      get new_collection_move_path
+      expect(page_html.at_css("h1").text).to eq("Move 1 item")
+    end
+
+    it "leaves out the selection's own place (AC-2.1)", :aggregate_failures do
+      in_box = own(location: box)
+      select_lots(in_box, location: box.id.to_s)
+      get new_collection_move_path
+      expect(page_html.css("select#to option").map(&:text)).to eq([ "Choose…", "No location", "Blue binder" ])
+      unplaced = own("Opt")
+      select_lots(unplaced, location: CollectionFilter::Place::NONE)
+      get new_collection_move_path
+      expect(page_html.css("select#to option").map(&:text)).to eq([ "Choose…", "Blue binder", "Long box" ])
+    end
+
+    it "keeps the tab bar on Collection, as Set condition's page does" do
+      select_lots(own)
+      get new_collection_move_path
+      expect(page_html.at_css('.c-tabbar a[aria-current="page"]').text).to include("Collection")
+    end
+  end
+
+  describe "the GET answers (decision 6)" do
+    it "sends the collector back to the bulk table when nothing is selected (AC-1.6)" do
+      get new_collection_move_path
+      expect([ response.location, flash[:alert] ]).to eq([ "http://www.example.com#{collection_path(bulk: 1)}", "Select at least one item." ])
+    end
+
+    it "does the same for a selection whose lots are gone (decision 6 (1))", :aggregate_failures do
+      lot = own
+      select_lots(lot)
+      lot.destroy!
+      get new_collection_move_path
+      expect([ response.status, flash[:alert] ]).to eq([ 303, "Select at least one item." ])
+    end
+
+    it "answers 'You have no locations yet.' with a selection and no location (AC-1.7)", :aggregate_failures do
+      lot = own
+      select_lots(lot)
+      Location.where(account:).delete_all
+      get new_collection_move_path
+      expect(response).to redirect_to(collection_path(bulk: 1))
+      expect(flash[:alert]).to eq("You have no locations yet.")
+      get collection_path(bulk: 1)
+      expect(bar_count).to eq("1 of 1 selected") # the selection is kept
+    end
+
+    it "asks nothing of the selection or the lots when the request is a prefetch (AC-5.4)", :aggregate_failures do
+      lot = own
+      select_lots(lot)
+      expect { get new_collection_move_path, headers: { "X-Sec-Purpose" => "prefetch" } }.not_to change { [ Lot.pluck(:id, :location_id, :updated_at), BulkSelection::Mark.count ] }
+    end
+
+    it "runs the same queries for 1 and 30 selected lots and for 1 and 30 locations (NFR)" do
+      select_lots(own)
+      get new_collection_move_path
+      few = count_queries { get new_collection_move_path }
+      lots = Array.new(29) { |i| own("Card #{i}") }
+      29.times { create(:location, account:) }
+      select_lots(*lots, own("Another"))
+      expect(count_queries { get new_collection_move_path }).to eq(few)
     end
   end
 end
