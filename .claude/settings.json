@@ -148,6 +148,9 @@
       "Bash(git push *+*)",
       "Bash(git push *--receive-pack*)",
       "Bash(git push *--exec*)",
+      "Bash(git rebase *--exec*)",
+      "Bash(git rebase *-x *)",
+      "Bash(git rebase *-x)",
       "Bash(git push *--repo*)",
       "Bash(git push *://*)",
       "Bash(git push *@*)"
