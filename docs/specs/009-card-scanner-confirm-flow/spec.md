@@ -6,6 +6,7 @@
 **Last Updated:** 2026-10-04
 **Branch:** `009-card-scanner-confirm-flow`
 **Frozen:** the current rules are in [`scanner.md`](../../architecture/scanner.md) and [`catalog-core.md`](../../architecture/catalog-core.md) (whole spec; catalog core: AC-6.1's query cleaning); see the [specs index](../README.md)
+**Plan:** retired in `282a3df420c282b2fa913d6682e6b4c70e9f2a9f`; read it with `git show 282a3df420c282b2fa913d6682e6b4c70e9f2a9f^:docs/specs/009-card-scanner-confirm-flow/plan.md`
 
 ---
 

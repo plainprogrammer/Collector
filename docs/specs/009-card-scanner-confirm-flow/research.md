@@ -1,6 +1,6 @@
 # Feature 009: Card Scanner Confirm Flow — Findings
 
-**Spec:** [spec.md](spec.md) (v1.1.2) | **Plan:** [plan.md](plan.md)
+**Spec:** [spec.md](spec.md) (v1.1.2) | **Plan:** plan (retired in `282a3df420c282b2fa913d6682e6b4c70e9f2a9f`; read it with `git show 282a3df420c282b2fa913d6682e6b4c70e9f2a9f^:docs/specs/009-card-scanner-confirm-flow/plan.md`)
 **Measured:** 2026-10-04 (the sitting 00:34–00:53 UTC and the phone photos 01:09–01:13 UTC on 2026-10-05, the evening of 2026-10-04 local time) | **Branch:** `009-card-scanner-confirm-flow` | **Settings:** commit `7afed14` (frozen, AC-6.7)
 
 Every rate carries its sample size. Rates on readings or photos that chose a setting are labelled "development, biased"; the held-out photos and the live sitting are the unbiased checks. Desktop and phone figures are labelled as such. This feature sets no pass threshold: the figures are for the maintainer and the art-matching spec.
