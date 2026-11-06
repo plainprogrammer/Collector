@@ -29,6 +29,10 @@ RSpec.describe Account, type: :model do
       expect(described_class.new(currency: "EUR").currency_unit).to eq(Collector::Currency::Unit.new(code: "EUR", symbol: "€"))
     end
 
+    it "blames its own column, not the setting, for a code it can't show" do
+      expect { described_class.new(currency: "XYZ").currency_unit }.to raise_error(ArgumentError, /\Aaccounts\.currency "XYZ"/)
+    end
+
     it "keeps its currency when the instance default changes (AC-3.3)" do
       account = create(:account)
       default_to("EUR")

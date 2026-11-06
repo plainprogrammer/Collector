@@ -49,6 +49,18 @@ RSpec.describe "Apply an import", type: :request do
       expect(account.lots.count).to eq(1)
     end
 
+    it "answers 409 when the currency changed after the preview, saying the new change (spec 038 AC-6.7)", :aggregate_failures do
+      upload = store_import!(account:, data: import_file(user, [ import_row(a) ], currency: "EUR"))
+      patch currency_path, params: { account: { currency: "GBP" } } # the Currency page, in another tab
+
+      apply(upload)
+
+      expect(response).to have_http_status(:conflict)
+      expect(html.css("#profile_notes li").map { |item| item.text.squish }).to include("Your prices would be shown in EUR instead of GBP. Nothing is converted.")
+      expect(html.at_css("input[name=fingerprint]")["value"]).to eq(upload.reload.fingerprint)
+      expect(account.reload.currency).to eq("GBP")
+    end
+
     it "answers 409 with a fresh preview whose form carries the new fingerprint (AC-3.1, AC-3.2)", :aggregate_failures do
       lot = held_lot(account, a, quantity: 2)
       upload = preview!([ import_row(a, quantity: 5) ])

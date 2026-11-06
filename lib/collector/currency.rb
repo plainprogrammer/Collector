@@ -10,10 +10,11 @@ module Collector
       "KRW" => "₩", "SGD" => "S$", "HKD" => "HK$", "BRL" => "R$", "MXN" => "MX$", "ZAR" => "R "
     }.freeze
 
-    def self.fetch!(code)
+    # +setting+ names where the code came from, for the error: the environment variable at boot, or an account's column.
+    def self.fetch!(code, setting: "COLLECTOR_CURRENCY")
       normalized = code.to_s.strip.upcase
       symbol = SYMBOLS.fetch(normalized) do
-        raise ArgumentError, "COLLECTOR_CURRENCY #{code.inspect} is not supported; use one of #{SYMBOLS.keys.join(', ')}"
+        raise ArgumentError, "#{setting} #{code.inspect} is not supported; use one of #{SYMBOLS.keys.join(', ')}"
       end
       Unit.new(code: normalized, symbol:)
     end

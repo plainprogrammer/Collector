@@ -18,5 +18,5 @@ class Account < ApplicationRecord
   def copies_count = lots.sum(:quantity)
 
   # What a price of this account is shown with: the code and the symbol (spec 038 decision 1).
-  def currency_unit = Collector::Currency.fetch!(currency)
+  def currency_unit = Collector::Currency.fetch!(currency, setting: "accounts.currency")
 end

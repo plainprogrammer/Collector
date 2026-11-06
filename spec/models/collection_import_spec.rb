@@ -107,6 +107,7 @@ RSpec.describe CollectionImport, type: :model do
     it "refuses a well-formed currency this instance can't show (spec 038 AC-6.6)", :aggregate_failures do
       expect(refusal_of(file([], currency: "XYZ"))).to eq([ "unsupported_currency", "/currency", "Collector can't show prices in XYZ." ])
       expect(refusal_of(file([], currency: "EURO")).first(2)).to eq([ "pattern", "/currency" ])
+      expect(refusal_of(file([], currency: "xyz")).first(2)).to eq([ "pattern", "/currency" ])
     end
 
     it "reports the rule and place problems.json names for each example refused as a whole (AC-2.7)" do
