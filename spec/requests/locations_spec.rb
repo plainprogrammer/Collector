@@ -269,12 +269,17 @@ RSpec.describe "Locations", type: :request do
         other = create(:user).account
         theirs = create(:location, account: other, name: "Blue binder")
         create(:lot, account: other, location: theirs, quantity: 777, entry: create(:mtg_printing).entry)
-        hold(1)
+        # The collector's own lot carries "777" in its number, as factory sequences do late in a shard (#213),
+        # so the checks look for the other lot's quantity and count, not the bare digits.
+        own = create(:mtg_printing, entry: create(:catalog_entry, number: "777")).entry
+        create(:lot, account:, entry: own, location: blue, quantity: 4)
         get locations_path
         expect(html.at_css(".c-locations__holds").text.squish).to eq("4 copies in 1 lot")
         get new_location_removal_path(blue)
-        expect(html.css("#held_lots li").size).to eq(1)
-        expect(response.body).not_to include("777")
+        expect(html.css("#held_lots .c-list__end").map { it.text.squish }).to eq([ "×4" ])
+        expect(html.at_css(".c-confirm p").text.squish).to include("holds 4 copies in 1 lot.")
+        expect(response.body).not_to include("×777")
+        expect(response.body).not_to include('777 cop')
       end
 
       it "answers 404 for another account's location on the confirmation and the delete (decision 6)", :aggregate_failures do
