@@ -252,3 +252,4 @@ Measured bars, not constants (recorded in each spec's `verification.md` where on
 | Date | Distilled | Pull request |
 |---|---|---|
 | 2026-10-27 | Specs 004 (the collection and adding cards), 006, 021, 026 (all but the export part), 029 (locations, the pages, the navigation), 032 (a lot's place, moving copies, removing a location), 033 (all but decision 5 for rows, #142) and 034; ADRs 0019 and 0025; and CLAUDE.md's number entry, locations and lots-in-locations paragraphs | slice C's pull request for #105 |
+| 2026-11-06 | Spec 037 (the location filter, tiles and counts under it, the bulk selection's location and its fail-closed rule); "Not yet" drops the filter half of #47's line | [#174](https://github.com/plainprogrammer/Collector/pull/174) |
