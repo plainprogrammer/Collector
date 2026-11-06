@@ -24,10 +24,11 @@ module ScannerSitting
     # The account's locations in the order of the locations page, loaded once per request.
     def account_locations = @account_locations ||= Current.account.locations.ordered.to_a
 
-    # Redraws the panel (after an add, an Undo or a change of place, spec 040 FR-1) and says what happened; a nil message
-    # clears the status line.
-    def sitting_stream(message, alert: false)
-      status = message ? turbo_stream.update("status", partial: "shared/status_message", locals: { message:, alert: }) : turbo_stream.update("status", "")
-      [ turbo_stream.replace("scanner_sitting", partial: "scanners/sitting", locals: sitting_locals), status ]
+    # Redraws the panel (after an add, an Undo or a change of place, spec 040 FR-1) and says what happened; the message is
+    # never empty, so every redraw is announced (spec 047 FR-1). `focus` is where the new panel puts keyboard focus once it
+    # connects: :set after a "Set", :heading after an Undo, nil after an add (spec 047 decision 2).
+    def sitting_stream(message, alert: false, focus: nil)
+      [ turbo_stream.replace("scanner_sitting", partial: "scanners/sitting", locals: sitting_locals.merge(focus:)),
+        turbo_stream.update("status", partial: "shared/status_message", locals: { message:, alert: }) ]
     end
 end

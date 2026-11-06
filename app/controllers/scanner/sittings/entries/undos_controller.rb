@@ -14,8 +14,8 @@ class Scanner::Sittings::Entries::UndosController < ApplicationController
 
     copy = helpers.scanner_copy(entry.printing, entry.finish)
     BulkRemoval.supersede!(Current.session) if entry.undo!
-    render turbo_stream: sitting_stream("Removed 1 × #{copy} from your collection.")
+    render turbo_stream: sitting_stream("Removed 1 × #{copy} from your collection.", focus: :heading)
   rescue Scanner::SittingEntry::NotUndoable => error
-    render turbo_stream: sitting_stream(REFUSED.fetch(error.message), alert: true), status: :unprocessable_content
+    render turbo_stream: sitting_stream(REFUSED.fetch(error.message), alert: true, focus: :heading), status: :unprocessable_content
   end
 end
