@@ -5,7 +5,8 @@
 **Created:** 2026-09-29
 **Last Updated:** 2026-09-29
 **Branch:** `feat/004-design-system-collection` (chosen at `sdd-execute`; drafted on `plainprogrammer/design-system-implementation`)
-**Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (parts: the collection and adding cards: Stories 7 and 9–11, AC-6.3, AC-6.6's owned quantities and add controls, AC-8.4–AC-8.7, AC-8.9, AC-12.1–AC-12.3, AC-12.5, FR-6–FR-8, FR-10) and [`catalog-core.md`](../../architecture/catalog-core.md) (parts: Story 6 but for owned quantities and add controls, AC-8.1–AC-8.3, AC-8.8, AC-8.10, FR-2's supersession of 002 FR-7, FR-6's vocabulary, FR-9, FR-14); see the [specs index](../README.md)
+**Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (parts: the collection and adding cards: Stories 7 and 9–11, AC-6.3, AC-6.6's owned quantities and add controls, AC-8.4–AC-8.7, AC-8.9, AC-12.1–AC-12.3, AC-12.5, FR-6–FR-8, FR-10) and [`catalog-core.md`](../../architecture/catalog-core.md) (parts: Story 6 but for owned quantities and add controls, AC-8.1–AC-8.3, AC-8.8, AC-8.10, FR-2's supersession of 002 FR-7, FR-6's vocabulary, FR-9, FR-14) and [`tenancy-and-accounts.md`](../../architecture/tenancy-and-accounts.md) (parts: Stories 3, 4, 5 and 12 but for the lots' isolation of AC-12.1–AC-12.3 and AC-12.5, FR-2 but for its supersession of 002 FR-7, FR-3–FR-5, AC-2.4, AC-2.6, NFR Security, NFR Reliability's first run); the design-system parts (Story 1, Story 2 but for AC-2.4 and AC-2.6, FR-1, FR-11–FR-13) are the [design system](../../design-system/README.md)'s; see the [specs index](../README.md)
+**Plan:** retired in `528c0c22c08486e63c3452148f7a5440f6c71755`; read it with `git show 528c0c22c08486e63c3452148f7a5440f6c71755^:docs/specs/004-design-system-collection/plan.md`
 
 ---
 
