@@ -61,3 +61,7 @@ Mode B, Opus, read-only, 2026-11-06, on the branch after the second merge of `or
 - Minor 5 (the P4 edge, Turbo refocusing a select that held focus while the answer was in flight): accepted, listed under "Owed to the maintainer".
 
 Not run by the reviewer (read-only): the suite. The runs are those under "Runs"; the full `bin/ci` and the PR's CI are recorded in the pull request.
+
+## Distillation
+
+`distill-feature`, 2026-11-06: the scanner has no area doc yet (`docs/architecture/README.md` lists it "not written yet"), so nothing was written under `docs/architecture/`; its slice of spec 027's follow-ups will distil it, and the design-system doc `components/Scanner.md` already carries this feature's rules (changed in T5). The index row's Status stays Approved (no area doc covers it, so it is neither Frozen nor Frozen in part) and its Plan reads "retirement owed", so the plan is retired after the pull request merges. The supersessions of specs 009, 040 and 042 are in the index in both directions. CLAUDE.md restates none of this feature's rules, so it is unchanged. No ADR was needed.
