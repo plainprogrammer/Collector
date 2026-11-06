@@ -1,6 +1,6 @@
 # Verification: Store Currency per Account (spec 038)
 
-**Spec:** [spec.md](spec.md) v0.2.0 · **Plan:** [plan.md](plan.md) · **Branch:** `038-currency-per-account` · **Issue:** [#64](https://github.com/plainprogrammer/Collector/issues/64) · **Pull request:** [#173](https://github.com/plainprogrammer/Collector/pull/173)
+**Spec:** [spec.md](spec.md) v0.2.0 · **Plan:** plan (retired in `cb2af5fdfd1b11f871ad9d7c8962540871eaa4e2`; read it with `git show cb2af5fdfd1b11f871ad9d7c8962540871eaa4e2^:docs/specs/038-currency-per-account/plan.md`) · **Branch:** `038-currency-per-account` · **Issue:** [#64](https://github.com/plainprogrammer/Collector/issues/64) · **Pull request:** [#173](https://github.com/plainprogrammer/Collector/pull/173)
 
 ## Rulings
 
