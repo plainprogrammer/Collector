@@ -1,7 +1,7 @@
 # Feature 043: Rate-Limit Retries Count Only Without Progress
 
-**Status:** Draft
-**Version:** 0.4.0
+**Status:** Approved on 2026-11-06 by the coordinator under the maintainer's delegation, with the maintainer's ruling on decision 1
+**Version:** 1.0.0
 **Created:** 2026-11-06
 **Last Updated:** 2026-11-06
 **Branch:** `043-rate-limit-retry-progress`
@@ -17,6 +17,7 @@
 | 0.2.0 | 2026-11-06 | Maintainer ruling on decision 1: option A |
 | 0.3.0 | 2026-11-06 | Spec review round 1 (Fable, APPROVE WITH CHANGES, 2 major, 7 minor): a refresh's download is not progress (the source contract can't tell a fresh download from a reused one, and the file is kept anyway), so a refresh makes progress only by writing catalog rows, which the one source can't do before a rate limit today; the build's progress is an image fetched and kept, or a batch of fingerprints stored; an admin's retry starts the count again; an attempt may open no run; the count's key is kept; the index's reverse entries; the area doc's two mentions of #86 |
 | 0.4.0 | 2026-11-06 | Spec review round 2 (Fable, APPROVE WITH CHANGES, 8 minor): AC-2.1 says a kept image; the count's kept value defined; FR-2 says "would exceed"; notes for the plan in decision 4; AC order; the area doc's heading named exactly |
+| 1.0.0 | 2026-11-06 | Approved |
 
 ---
 
