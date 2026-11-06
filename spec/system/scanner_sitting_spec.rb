@@ -202,4 +202,70 @@ RSpec.describe "The scanner's sitting", type: :system do
       expect(page.evaluate_script("document.documentElement.scrollWidth <= window.innerWidth")).to be(true)
     end
   end
+
+  describe "focus and the status after a redraw (spec 047)" do
+    before { create(:location, account: user.account, name: "Blue binder") }
+
+    def seed(*keys) = keys.each { Scanner::Sitting.add!(account: user.account, printing:, finish: "foil", reading_key: it * 32) }
+    def active = page.driver.browser.switch_to.active_element
+    # Chooses a condition with the keyboard, then Tabs from Condition through Location to Set (`RSpec/ExampleLength` is 15).
+    def choose_condition_and_tab_to_set(label)
+      field = find_field("Condition")
+      field.select(label)
+      field.send_keys(:tab) # Location
+      active.send_keys(:tab) # Set
+      expect(page.evaluate_script("document.activeElement.value")).to eq("Set")
+    end
+    def set_focused = have_css("#scanner_sitting input[type=submit][value=Set]:focus")
+    # Marks the panel on the page now; the mark is gone once Turbo has replaced the panel with the answer's.
+    def mark_stale = page.execute_script("document.getElementById('scanner_sitting').dataset.stale = '1'")
+    def redrawn = have_no_css("#scanner_sitting[data-stale]")
+
+    it "puts focus back on Set after a keyboard Set on a sitting with cards, and again on a repeat (AC-1.1, AC-3.1, AC-3.3)", :aggregate_failures do
+      seed("a")
+      visit scanner_path
+      expect(page.evaluate_script("document.activeElement.tagName")).to eq("BODY") # the page load focuses nothing
+      page.execute_script("window.__marker = 'still here'")
+      choose_condition_and_tab_to_set("Near mint (NM)")
+      active.send_keys(:enter)
+      expect(page).to have_css("#scanner_sitting h2", text: "This sitting: 1 card, Near mint")
+      expect(page).to have_css("#status", text: "Cards you scan now: Near mint, no location.")
+      expect(page).to set_focused
+      expect(page.evaluate_script("window.__marker")).to eq("still here")
+      mark_stale
+      active.send_keys(:enter) # Set again, nothing changed: the status says the same, focus is on the new Set
+      expect(page).to redrawn
+      expect(page).to set_focused
+    end
+
+    it "puts focus on Set, with the status, when Set opens a sitting, deletes an empty one, and finds none open (AC-1.2 to AC-1.4)", :aggregate_failures do
+      visit scanner_path
+      set_sitting(condition: "Near mint (NM)")
+      expect(page).to have_css("#scanner_sitting h2", text: "This sitting: 0 cards, Near mint")
+      expect(page).to have_css("#status", text: "Cards you scan now: Near mint, no location.")
+      expect(page).to set_focused
+      select "Not specified", from: "Condition"
+      click_on "Set"
+      expect(page).to have_no_css("#scanner_sitting h2")
+      expect(page).to have_css("#status", text: "Cards you scan now: condition not specified, no location.")
+      expect(page).to set_focused
+      mark_stale
+      click_on "Set" # no sitting open, both choices empty
+      expect(page).to redrawn
+      expect(page).to have_css("#status", text: "Cards you scan now: condition not specified, no location.")
+      expect(page).to set_focused
+    end
+
+    it "puts focus on the heading after a keyboard Undo; the heading is not a Tab stop (AC-2.1, AC-2.2, AC-2.4)", :aggregate_failures do
+      seed("a", "b")
+      visit scanner_path
+      expect(page.evaluate_script("document.getElementById('scanner-sitting-heading').tabIndex")).to eq(-1)
+      find_button("Undo", match: :first).send_keys(:enter) # the newest entry's
+      expect(page).to have_css("#status", text: "Removed 1 × Lightning Bolt (MOM · 123, Foil) from your collection.")
+      expect(page).to have_css("#scanner_sitting h2:focus", text: "This sitting: 1 card")
+      find_button("Undo", match: :first).send_keys(:enter)
+      expect(page).to have_css("#scanner_sitting .c-empty", text: "Everything added in this sitting was undone.")
+      expect(page).to have_css("#scanner_sitting h2:focus", text: "This sitting: 0 cards")
+    end
+  end
 end
