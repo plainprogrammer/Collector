@@ -24,7 +24,8 @@ module Catalog::RateLimitRetry
   SHORTEST_WAIT = 45.seconds
   LONGEST_WAIT = 1.hour
   MAX_RETRIES = 3
-  # Where the job keeps its count of rate limits in a row without progress; Active Job serializes exception_executions with the job (a job queued before spec 043 keeps its count).
+  # Where the job keeps its count of rate limits in a row without progress; Active Job serializes exception_executions
+  # with the job, so a job queued before spec 043 keeps its count.
   COUNTED_AS = "[Catalog::Sources::RateLimitedError]".freeze
 
   included do

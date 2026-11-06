@@ -29,9 +29,9 @@ Run evidence is taken from the commit bodies of each task.
 | AC-3.3 (model) | `spec/models/catalog/refresh_spec.rb` |
 | AC-3.1, AC-3.2, AC-3.3 (job), AC-3.4 | `spec/jobs/catalog/refresh_job_spec.rb` |
 | AC-4.1 | `spec/rate_limit_retry_core_spec.rb` |
-| AC-5.1 | Verified by reading `docs/architecture/catalog-operations.md`: "A rate-limited job" step 2 and its progress paragraph; the `MAX_RETRIES` row; the `IMAGE_HOSTS` row and the refresh bullet in "What the source does for a refresh"; #86 absent from "Accepted limits and open issues" and in Sources among the closed issues; "fourth" always followed by "in a row with no progress between them"; no "over the job's life" left. Result: pending |
-| AC-5.2 | Verified by reading the header and `COUNTED_AS` comments of `app/jobs/catalog/rate_limit_retry.rb` and the header of `app/jobs/mtg/art/build_job.rb`. Result: pending |
-| AC-5.3 | Verified by reading `docs/specs/README.md`: row 043's Supersedes cell, and the 002, 011 and 024 rows naming 043 among what supersedes them; row 043's Plan cell reads "present". Result: pending |
+| AC-5.1 | Verified by reading `docs/architecture/catalog-operations.md`: "A rate-limited job" step 2 and its progress paragraph; the `MAX_RETRIES` row; the `IMAGE_HOSTS` row and the refresh bullet in "What the source does for a refresh"; #86 absent from "Accepted limits and open issues" and in Sources among the closed issues; "fourth" always followed by "in a row with no progress between them"; no "over the job's life" left. Result: met (read 2026-11-06 at the review fixes' commit; lines 98, 127, 132–134, 163, 168, 189, 191–200, 212; the 2026-10-15 log row keeps its history) |
+| AC-5.2 | Verified by reading the header and `COUNTED_AS` comments of `app/jobs/catalog/rate_limit_retry.rb` and the header of `app/jobs/mtg/art/build_job.rb`. Result: met (`rate_limit_retry.rb` lines 15–20 and the `COUNTED_AS` comment; `build_job.rb` lines 8–10) |
+| AC-5.3 | Verified by reading `docs/specs/README.md`: row 043's Supersedes cell, and the 002, 011 and 024 rows naming 043 among what supersedes them; row 043's Plan cell reads "present". Result: met |
 
 ## Final `bin/ci`
 
