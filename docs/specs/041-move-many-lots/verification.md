@@ -1,6 +1,6 @@
 # Verification: Spec 041, Move Many Lots at Once
 
-**Spec:** [spec.md](spec.md) 0.4.0 · **Plan:** [plan.md](plan.md) · **Pull request:** (number when opened; closes [#48](https://github.com/plainprogrammer/Collector/issues/48))
+**Spec:** [spec.md](spec.md) 0.4.0 · **Plan:** retired in `c69e73d57d19bd8eb91c3b2214bf98b08b8a9aae`; read it with `git show c69e73d57d19bd8eb91c3b2214bf98b08b8a9aae^:docs/specs/041-move-many-lots/plan.md` · **Pull request:** [#197](https://github.com/plainprogrammer/Collector/pull/197) (closes [#48](https://github.com/plainprogrammer/Collector/issues/48))
 
 ## Evidence per criterion
 

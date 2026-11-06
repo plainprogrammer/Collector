@@ -8,6 +8,7 @@
 **Branch:** `041-move-many-lots`
 **Issue:** [#48](https://github.com/plainprogrammer/Collector/issues/48) (roadmap item 13, theme C: locations)
 **Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (whole spec); see the [specs index](../README.md)
+**Plan:** retired in `c69e73d57d19bd8eb91c3b2214bf98b08b8a9aae`; read it with `git show c69e73d57d19bd8eb91c3b2214bf98b08b8a9aae^:docs/specs/041-move-many-lots/plan.md`
 
 ---
 
