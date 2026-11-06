@@ -6,6 +6,7 @@
 **Last Updated:** 2026-10-11
 **Branch:** `019-uncropped-card-images`
 **Issue:** [#35](https://github.com/plainprogrammer/Collector/issues/35)
+**Frozen:** the current rules are in [`catalog-core.md`](../../architecture/catalog-core.md) (whole spec); see the [specs index](../README.md)
 
 ---
 
