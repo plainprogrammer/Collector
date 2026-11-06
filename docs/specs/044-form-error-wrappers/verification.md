@@ -65,4 +65,4 @@ In every image the theme is the one named, the page is the 422 (not the empty fo
 
 ## Full run
 
-Full `bin/ci`: pending a CI slot.
+Full `bin/ci` (2026-11-06, on `75c5c2c`, the last code commit; the later commits are documents and images): every step passed, RSpec 2605 examples, 0 failures, 1 pending, 4 min 38 s.
