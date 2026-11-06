@@ -25,3 +25,5 @@ Verified while building spec 013 (2026-10-08):
 - **Registry reads:** an anonymous pull token (`ghcr.io/token?scope=repository:plainprogrammer/collector:pull`) reads any version, tagged or not, by digest. GHCR answers 404 `MANIFEST_UNKNOWN` to GET or HEAD unless `Accept` names the manifest's media type (send all four: OCI index/manifest, Docker list/manifest). Index entries can list arm64 before amd64.
 
 **How to apply:** check these before specifying or planning registry, CI or Kamal work. Related: [[spec-012-followups]].
+
+**Watching a new PR's checks (spec 044, 2026-11-06):** right after `gh pr create`, `gh pr checks <n> --watch` exits 1 with "no checks reported" because the checks haven't registered yet. List them with `gh pr checks <n>` once they appear, then follow the run with `gh run watch <run-id> --exit-status` (in the background).

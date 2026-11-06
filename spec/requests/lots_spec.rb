@@ -70,6 +70,9 @@ RSpec.describe "Lots", type: :request do
     it "rejects invalid values with a message per field", :aggregate_failures do
       post catalog_entry_lots_path(entry), params: { lot: { quantity: "0", finish: "etched", condition: "mint", price_paid: "1.234" } }
       expect(response).to have_http_status(:unprocessable_content)
+      page = Nokogiri::HTML5(response.body)
+      expect(page.at_css("#lot_quantity-error").text).to include("Quantity must be a whole number from 1 to 9,999")
+      expect(page.css(".field_with_errors")).to be_empty
       expect(response.body).to include("Quantity must be a whole number from 1 to 9,999", "Finish isn&#39;t available for this printing",
         "Condition isn&#39;t a known condition", "Price paid must be a non-negative amount with at most two decimal places")
       expect(Lot.count).to eq(0)
@@ -126,6 +129,9 @@ RSpec.describe "Lots", type: :request do
     it "rejects invalid values with 422 and leaves the lot unchanged", :aggregate_failures do
       patch lot_path(lot), params: { lot: { quantity: "lots", finish: "", condition: "", price_paid: "-1" } }
       expect(response).to have_http_status(:unprocessable_content)
+      page = Nokogiri::HTML5(response.body)
+      expect(page.at_css("#lot_quantity-error").text).to include("Quantity must be a whole number from 1 to 9,999")
+      expect(page.css(".field_with_errors")).to be_empty
       expect(response.body).to include("Quantity must be a whole number from 1 to 9,999", "Price paid must be a non-negative amount")
       expect(lot.reload.quantity).to eq(3)
     end

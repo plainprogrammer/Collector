@@ -44,7 +44,8 @@ RSpec/Output:
 # number entry core spec those of a feature, and the rate-limit retry core spec the
 # retry rule's core file (spec 043 AC-4.1). The export format specs check the
 # format's document, schema and example files. The request body limit spec
-# checks server configuration files.
+# checks server configuration files. The field error proc spec renders a form
+# and checks the app's configuration, not a class.
 RSpec/DescribeClass:
   Exclude:
     - "spec/admin_catalog_core_spec.rb"
@@ -57,6 +58,7 @@ RSpec/DescribeClass:
     - "spec/export_format_document_spec.rb"
     - "spec/export_format_examples_spec.rb"
     - "spec/script/upgrade/seeds_spec.rb"
+    - "spec/field_error_proc_spec.rb"
     - "spec/footer_core_spec.rb"
     - "spec/githooks/post_checkout_spec.rb"
     - "spec/image_publishing_spec.rb"

@@ -59,8 +59,14 @@ RSpec.describe "Sign-up", type: :request do
     it "shows each invalid field's message with 422", :aggregate_failures do
       post registration_path, params: { user: { name: "", email_address: "nope", password: "short", password_confirmation: "other" } }
       expect(response).to have_http_status(:unprocessable_content)
-      expect(response.body).to include("Name can&#39;t be blank", "Email must look like name@example.com",
-        "Password must be at least 12 characters", "Password confirmation doesn&#39;t match Password")
+      page = Nokogiri::HTML5(response.body)
+      {
+        "name" => "Name can't be blank",
+        "email_address" => "Email must look like name@example.com",
+        "password" => "Password must be at least 12 characters",
+        "password_confirmation" => "Password confirmation doesn't match Password"
+      }.each { |field, message| expect(page.at_css("##{field}-error")&.text&.squish).to eq(message), field }
+      expect(page.css(".field_with_errors")).to be_empty
     end
   end
 
