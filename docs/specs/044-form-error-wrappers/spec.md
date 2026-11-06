@@ -1,7 +1,7 @@
 # Feature 044: Forms Re-rendered with 422 Get No `field_with_errors` Wrapper
 
-**Status:** Draft. The maintainer ruled decisions 1 and 4 on 2026-11-06, as recommended (option A; the currency controller's `errors.clear` removed); the rule is [ADR 0026](../../adr/0026-forms-show-field-errors-through-the-design-system.md)
-**Version:** 0.3.0
+**Status:** Approved by the maintainer (2026-11-06) at 0.3.0 after two spec review rounds; 0.4.0 records the screenshot ruling. The maintainer ruled decisions 1 and 4 on 2026-11-06, as recommended (option A; the currency controller's `errors.clear` removed); the rule is [ADR 0026](../../adr/0026-forms-show-field-errors-through-the-design-system.md)
+**Version:** 0.4.0
 **Created:** 2026-11-06
 **Last Updated:** 2026-11-06
 **Depends on:** [spec 004](../004-design-system-collection/spec.md) (the design system's Form, sign-up, sign-in, admin users), [spec 029](../029-manage-locations/spec.md) (locations), [spec 032](../032-lot-in-a-location/spec.md) (Move copies), [spec 026](../026-typed-entry/spec.md) (number entry), [spec 038](../038-currency-per-account/spec.md) (the Currency page), all merged
@@ -14,6 +14,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.4.0 | 2026-11-06 | Approved. Screenshot ruling (round 2 m3, option b): all 12 refused states at desktop in both themes, phone in both themes for add a lot, add a location and sign up (decision 3, AC-2.1). |
 | 0.3.0 | 2026-11-06 | Spec review round 2 (READY TO PLAN; 0 blocking, 0 major, 5 minor): AC-1.1 names `url:` and a named class (m1); decision 2 names the guard's spec type (m2); decision 5 says Form.md must travel with an upstream (m4); AC-1.9 names `#admin-error` and the assertions to add (m5). m3 (screenshot volume, 48 images) is put to the maintainer at the spec gate. |
 | 0.2.0 | 2026-11-06 | Maintainer ruling (decisions 1 and 4, option A) and ADR 0026 recorded. Spec review round 1 (NEEDS REVISION, light; 0 blocking, 1 major, 5 minor) fixed: AC-1.1 renders through the form builder (M1); Non-Goals name the record-less forms and the `scope:` case (m2); AC-1.3's input and AC-1.13's wording (m3); AC-2.1 counts 12 states (m4); ADR cross-references (m5); decision 4's side effect (m6). |
 | 0.1.0 | 2026-11-06 | Written from issue #180, the lesson [`2026-11-06-clear-record-errors-after-copying-field-messages`](../../lessons/2026-11-06-clear-record-errors-after-copying-field-messages.md), the design system's [Form](../../design-system/components/Form.md), and a probe of today's 422 pages. |
@@ -73,7 +74,7 @@ Each form in the probe table, plus sign-in, number entry and the Currency page, 
 
 ### 3. Screenshots of every refused state
 
-Verification captures each form's 422 in light and dark at desktop and phone width (the memories `pr-screenshots-workflow` and `headless-firefox-narrow-frame`), committed under `docs/specs/044-form-error-wrappers/screenshots/`, and shows in each that the label sits above a control as wide as its siblings.
+Verification captures each form's 422 in light and dark at desktop width, and in light and dark at phone width for three representative forms: add a lot, add a location and sign up (ruled 2026-11-06; the memories `pr-screenshots-workflow` and `headless-firefox-narrow-frame`), committed under `docs/specs/044-form-error-wrappers/screenshots/`, and shows in each that the label sits above a control as wide as its siblings.
 
 ### 4. The Currency controller's `errors.clear` goes (ruled 2026-11-06)
 
@@ -110,7 +111,7 @@ With decision 1 the line in `CurrenciesController#update` that clears the record
 
 **As the** maintainer, **I want** a screenshot of each refused form in both themes, **so that** the layout is checked by eye as spec 038's lesson asks.
 
-- [ ] **AC-2.1** Given the 12 refused states of AC-1.2 to AC-1.12 (AC-1.4's two: Copies and To) When captured in light and dark at desktop (1280 px) and phone (390 px, in a fixed-width frame) width Then each image shows the label above its control, the control as wide as the field, and the message under it; the images are committed and linked from `verification.md` and the PR (read).
+- [ ] **AC-2.1** Given the 12 refused states of AC-1.2 to AC-1.12 (AC-1.4's two: Copies and To) When each is captured in light and dark at desktop (1280 px) width, and add a lot, add a location and sign up also in light and dark at phone (390 px, in a fixed-width frame) width (30 images; ruled 2026-11-06) Then each image shows the label above its control, the control as wide as the field, and the message under it; the images are committed and linked from `verification.md` and the PR (read).
 
 ### Story 3: The next form follows the rule without knowing it
 
