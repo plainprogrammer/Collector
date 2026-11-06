@@ -572,3 +572,30 @@ Findings:
 6. Observation: the spike tools' variables (`CARD_SCANNER_WORK_DIR`, `CARD_SCANNER_TRUTH_CORPORA`, `CARD_SCANNER_BULK_FILE`) are in neither CLAUDE.md nor the area doc; they are in the spike code under `spikes/card_scanner/`.
 
 Owed after the merge: replace the Distillation log row's "#107's pull request" with the number once the pull request is open (done in the pull request's own commit).
+
+## Slice C: tenancy and accounts (#106)
+
+The tenancy and accounts area doc (`docs/architecture/tenancy-and-accounts.md`), written under spec 027 with no PRD, spec number or ADR (memory `area-doc-slices-under-spec-027`). Scope was approved at Gate A by the coordinator (2026-11-06): spec 004's accounts parts, ADR 0017, the admin gate of spec 015 (AC-7.1, AC-7.3) and the ownership rule behind `ActiveStorageGate` (ADR 0022). Currency, the saved view, bulk selection and Undo, and the open catalog stay with their areas.
+
+- **Doc review (read-only, Fable):** round 1 APPROVED WITH CHANGES (0 blocking, 3 major, 13 minor), all fixed in `0582c02`; round 2 APPROVED WITH CHANGES (2 minor wording errors), fixed in `f7157c8`. The majors: the measurement-mode gate's local-request check, a neighbour pointer to content release and deploy doesn't hold, and the missing CSRF line of spec 004 NFR Security.
+- **Code with no spec source:** six behaviours are [#218](https://github.com/plainprogrammer/Collector/issues/218) (sessions never expire; `sessions.ip_address` and `user_agent` read by nothing; `InstanceSetting.current` isn't one row by construction; the sign-in rate limit's counters live in the cache; a missing `password_confirmation` isn't checked; measurement mode answers only local requests). The doc states each marked "no spec source" and links the issue. No behaviour changed.
+- **Frozen line and index:** spec 004's existing `**Frozen:**` line was extended (one line, `240f48f`, then `c5283d7`, each naming spec 027 D4); its index row reads Frozen, by collection and lots, catalog core, tenancy and accounts and the design system, and its plan was retired on this branch, as the catalog core slice did for its specs: `528c0c2` deletes it and `d0cc1c7` adds the pointer to the spec and the index (Plan "retired in `528c0c22…`"). Spec 004's own pull request merged long ago, so `distill-feature` state 1 applies, and merge commits keep the sha on `main`.
+- **Neighbours:** the four area docs that said "tenancy and accounts (no area doc yet)" link the doc (`658721a`); release and deploy's Active Storage line now points here for the ownership rule.
+- **CLAUDE.md:** only the "Row-level multi-tenancy" bullet changed (`66299bf`, `8a734b0`).
+
+### Implementation review
+
+SPEC-ALIGNED WITH FINDINGS
+
+Read-only review (`sdd-superpowers:sdd-review` Mode B, Opus subagent, 2026-11-06) of the branch at `c5283d7` minus this section. It spot-checked about 30 claims against the code and spec 004, ADR 0017 and ADR 0022 (all true), the open-endpoint table against every `allow_unauthenticated_access`, the ten tenant tables and cascades against `db/schema.rb`, the frozen line (extended in place, one line, own commit naming D4), the index row, CLAUDE.md (only line 51 changed), links, commits, and `PushScope` (every changed path is documentation, so the pre-push hook runs `bin/ci checks`).
+
+Findings, none blocking, all fixed in `8a734b0` and `c5283d7` unless noted:
+
+1. Major: the index said spec 004 was Frozen whole, but its NFR Performance bullet for search under 500 ms with owned quantities was in no area doc. **Fixed:** added to collection and lots' measured bars.
+2. Major: the measurement mode's local-request check was marked "no spec source" without an issue. **Fixed:** item 6 of #218, linked from the doc.
+3. Minor: CLAUDE.md said "carry" where ADR 0017 says "carry and restore". **Fixed.**
+4. Minor: AC-2.4's "Sign out" entry was named by no coverage list. **Fixed:** the frozen line, the README row and Sources say AC-2.4.
+5. Minor: "`lots` has none" read as no foreign key. **Fixed:** "`lots`' foreign key doesn't cascade".
+6. Minor: one unlinked neighbour mention. **Fixed.**
+7. Minor: the plan qualifies for retirement once the skill's state 1 runs. **Done** on this branch (see above), by the maintainer's ruling through the coordinator.
+8. Optional, not done: CLAUDE.md's "Active Storage variants" bullet restates the gate's rules; it predates the slice.
