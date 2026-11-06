@@ -58,6 +58,15 @@ RSpec.describe "Places on the collection's tiles and rows", type: :request do # 
       expect(response.body).not_to include("Their secret box")
     end
 
+    it "shows all of a matching printing's places under a name filter, and no other printing", :aggregate_failures do # spec 033 AC-1.8, spec 048 AC-2.1
+      bolt = own(location: blue, quantity: 3).entry
+      create(:lot, account: user.account, entry: bolt, location: box, finish: "foil")
+      own("Opt", location: box)
+      get collection_path(q: "bolt")
+      expect(page_html.css(".c-tile__name").map { it.text.squish }).to eq([ "Lightning Bolt" ])
+      expect(place_lines).to eq([ "Blue binder +1 more" ])
+    end
+
     it "shows no place on the catalog's tiles" do
       own(location: blue)
       get catalog_entries_path(q: "bolt")
@@ -79,6 +88,15 @@ RSpec.describe "Places on the collection's tiles and rows", type: :request do # 
       expect(response.body).not_to include("<b>Binder</b>")
       expect(page_html.at_css("td.c-table__place .c-table__place-name").text).to start_with("<b>Binder</b>")
       expect(page_html.at_css(".c-table__sub").text).to include("<b>Binder</b>")
+    end
+
+    it "shows only the matching lots' rows under a name filter, each with its place", :aggregate_failures do # spec 048 AC-2.1
+      bolt = own(location: blue, quantity: 3).entry
+      create(:lot, account: user.account, entry: bolt, location: box, finish: "foil")
+      own("Opt", location: box)
+      get collection_path(view: "table", q: "bolt")
+      expect(page_html.css("tbody tr").size).to eq(2)
+      expect(cells).to contain_exactly("Blue binder", "Long box")
     end
 
     it "says No location in muted ink for an unplaced lot", :aggregate_failures do
