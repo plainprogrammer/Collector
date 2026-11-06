@@ -571,7 +571,9 @@ Findings:
 5. Minor, **not changed:** the Frozen lines' "(whole spec; <other doc>: …)" form is read by the reviewer as ambiguous next to spec 023's "(all but …)". The lines are committed under D4; they name every doc that covers each part.
 6. Observation: the spike tools' variables (`CARD_SCANNER_WORK_DIR`, `CARD_SCANNER_TRUTH_CORPORA`, `CARD_SCANNER_BULK_FILE`) are in neither CLAUDE.md nor the area doc; they are in the spike code under `spikes/card_scanner/`.
 
-Owed after the merge: replace the Distillation log row's "#107's pull request" with the number once the pull request is open (done in the pull request's own commit).
+The Distillation log row names the pull request, [#222](https://github.com/plainprogrammer/Collector/pull/222).
+
+After merging `main` with the tenancy slice (#221), whose lesson `2026-11-06-freeze-whole-needs-an-nfr-sweep` applies here, the NFR bullets of specs 007, 009 and 011 were swept: each was named in no scanner statement or only partly, and the doc now holds the accessibility bars, the performance targets (reported, not gated) and the text-alone fallback (commit "sweep the scanner specs' NFRs"). The specs' Frozen lines name specs, not NFRs, and stay as committed under D4.
 
 ## Slice C: tenancy and accounts (#106)
 
