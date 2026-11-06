@@ -41,3 +41,18 @@ Pending: the supervisor's run at the last commit.
 
 - Task 1: the no-progress example uses `probe(count, false)`; the plan's draft read `probe(before, false)`, and `before` is not a variable there (commit `e69075f`).
 - Task 9 (`docs/specs/README.md`): rows 002, 011, 024 and 043's Supersedes cell already carried the 043 clauses; only row 043's Plan cell changed.
+
+## Implementation review
+
+SPEC-ALIGNED (sdd-review Mode B, Opus, read-only, 2026-11-06, at `d62dcb2`).
+
+No blocking or major findings. Six minor:
+
+1. `verification.md` unfinished (AC-5.x results, final `bin/ci`, this heading): fixed in `9581c71` and here; `bin/ci` is recorded above once run.
+2. Refresh progress set only after every retired slice: rejected. A rate limit can't follow `retire_unseen`, which asks the source nothing, so the answer never reaches the count; the change would be untested code.
+3. The area doc's "a batch of `BATCH` fingerprints": fixed to "up to `BATCH` at a time" (`9581c71`).
+4. The area doc's Sources line for spec 043: now cites the Problem Statement and Stories 1 to 4 (`9581c71`).
+5. No Distillation log row for spec 043: left to `distill-feature`, which writes it before the merge.
+6. The `COUNTED_AS` comment's line length: wrapped (`9581c71`).
+
+AC-5.1, AC-5.2 and AC-5.3: met by the reviewer's reading and the supervisor's (table above).
