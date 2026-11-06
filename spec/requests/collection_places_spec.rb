@@ -73,6 +73,14 @@ RSpec.describe "Places on the collection's tiles and rows", type: :request do # 
       expect(cells).to eq([ "Blue binder" ])
     end
 
+    it "escapes a name on the row, in the cell's span and in the line under the name", :aggregate_failures do # spec 048 AC-1.5
+      own(location: create(:location, account: user.account, name: "<b>Binder</b> #{'x' * 40}"))
+      get collection_path(view: "table")
+      expect(response.body).not_to include("<b>Binder</b>")
+      expect(page_html.at_css("td.c-table__place .c-table__place-name").text).to start_with("<b>Binder</b>")
+      expect(page_html.at_css(".c-table__sub").text).to include("<b>Binder</b>")
+    end
+
     it "says No location in muted ink for an unplaced lot", :aggregate_failures do
       own
       blue
