@@ -1,7 +1,7 @@
 # Feature 041: Move Many Lots at Once
 
 **Status:** Draft
-**Version:** 0.3.0
+**Version:** 0.4.0
 **Created:** 2026-11-06
 **Last Updated:** 2026-11-06
 **Depends on:** [spec 006](../006-collection-list-view/spec.md) (bulk mode, the selection, Set condition), [spec 032](../032-lot-in-a-location/spec.md) (a lot's place, Move copies; ADR 0025), [spec 037](../037-filter-collection-by-location/spec.md) (the location filter and the selection tied to it)
@@ -14,6 +14,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.4.0 | 2026-11-06 | Third spec review (Fable, read-only), all 8 findings taken: the To field's values (`""` the prompt, `none`, a location id; decision 6, AC-2.1); decision 6 (3)'s wording; the GET answer in Error Scenarios; FR-3's refusals; the performance allowance and AC-4.4's fixture; AC-6.1 without scripting, the keyboard a manual check; Documents that change completed; AC-1.7's selection under All locations |
 | 0.3.0 | 2026-11-06 | Second spec review (Fable, read-only), all 11 findings taken: one order of answers for the move page (decision 6, AC-1.2, AC-1.6, AC-1.7, AC-2.3); spec 037's bulk-action lists superseded both ways; the To field is required and omits the selection's own place (AC-2.1, AC-2.2); the key builder is the plan's choice with its parity owed (FR-2); the nearest real page; some selected lots gone; refusals keep the selection; an excepted lot a merge reaches becomes selected; keyboard and accessibility; AC wording |
 | 0.2.0 | 2026-11-06 | First spec review (Fable, read-only), all 14 findings taken: a selected lot already there is the destination's lot of its identity (decision 3, AC-3.12); AC-4.1's merge exception; the selection after a move under a location filter restarts (decision 6, AC-3.9, AC-3.13, Error Scenarios); Documents that change; the supersessions of 006 AC-4.4 and FR-5's Must and 032 decision 5, FR-2, AC-5.6 and its Non-Goal; scanner entries; the cap names a selected lot; the account without locations (AC-1.7); the no-location notice; the merge survivor; times; FR-2's wording; names unquoted as Move copies; the move page is a Form |
 | 0.1.0 | 2026-11-06 | First draft from issue #48, specs 006 (Stories 4–6, FR-4, FR-5), 032 (decisions 1, 3, 4, Story 3) and 037, ADR 0025 and the area doc `collection-and-lots.md`; the maintainer ruled decisions 1, 2, 3 and 5 as recommended |
@@ -95,7 +96,8 @@ A location that holds lots still refuses removal with its list and "Move them be
 - A number-entry line or a scanner entry whose lot is merged away by a move reads as changed ("Changed in your collection"), as after Move copies (spec 032 AC-7.6); a line whose lot moves without merging names its new place (spec 034 decision 3).
 - The move page is a `Form` page with one select, as the Move copies page is (`docs/design-system/components/Form.md`), not a `ChoicePage`: an account may have up to 500 locations.
 - An account with no location has nothing to move to: the bulk bar doesn't offer "Move to…".
-- **The order of answers.** The move page, requested or submitted, answers by the first that holds: (1) a GET with no selection, or a selection with no lot left: 303 to the bulk table with "Select at least one item." (as `BulkSelected` does for Set condition); (2) the account has no location: 303 to the bulk table with the alert "You have no locations yet." (spec 032 P3's words), whatever destination was submitted; (3) a submission whose selection has no lot left: 422 on the move page with "None of the selected items are in your collection any more."; (4) no destination chosen: 422, AC-2.2; (5) a destination that isn't one of the account's locations: 404; (6) the move (FR-2), with its own refusals (AC-3.7, AC-3.8). Every refusal keeps the selection as it was.
+- **The To field's values.** The prompt submits `""`, which is "no destination chosen" (AC-2.2); "No location" submits `none`, the location filter's word for it (spec 037 decision 1); a location submits its id. (Move copies submits "No location" as `""`; here `""` must be the prompt so the browser's required check refuses it.)
+- **The order of answers.** The move page, requested or submitted, answers by the first that holds: (1) a GET with no selection, or a selection with no lot left: 303 to the bulk table with "Select at least one item." (as `BulkSelected` does for Set condition); (2) the account has no location: 303 to the bulk table with the alert "You have no locations yet." (spec 032 P3's words), whatever destination was submitted; (3) a submission whose selection selects no lot (its lots gone, restarted empty after a move or a removal, or no selection in the session): 422 on the move page with "None of the selected items are in your collection any more."; (4) no destination chosen: 422, AC-2.2; (5) a destination value that is neither `none` nor one of the account's location ids: 404; (6) the move (FR-2), with its own refusals (AC-3.7, AC-3.8). Every refusal keeps the selection as it was.
 
 ### 7. No collector-owned data, no export change
 
@@ -106,19 +108,20 @@ Nothing new is stored: the move changes lots' places, which the export already c
 - **Spec 006 FR-5**: its Must not "Offer or perform Move to…", and its Must "Provide Set condition and Remove on the selected lots" (Move to… joins them); its Non-Goal and Out of Scope entries for "Move to…". Superseded for "Move to…" only; Lend and Update prices stay deferred.
 - **Spec 006 AC-4.4**: the bulk bar's actions are "Set condition…", "Move to…" (while the account has a location) and "Remove".
 - **Spec 032 decision 3**, "Known cost until #48", **decision 4**'s "many lots at once is #48", **AC-5.6**'s "one lot at a time, until #48", its Non-Goal and Out of Scope entries for "Move to…": met by this spec; Move copies keeps working on one lot from the card page.
-- **Spec 037 decision 5, AC-5.2, AC-5.6**: their lists of bulk actions (Set condition and Remove) gain Move to…; after a move under a location filter the selection restarts under the same location, as after Remove.
+- **Spec 037 decision 5, AC-5.2, AC-5.3, AC-5.6**: their lists of bulk actions (Set condition and Remove) gain Move to…; after a move under a location filter the selection restarts under the same location, as after Remove.
 - **Spec 032 decision 5** and **FR-2**'s Must not "Change … the bulk bar", for the bulk bar only: bulk mode gains an action that chooses a place. The grid, table, quick add and Set condition are unchanged.
 
 ## Documents that change
 
 | Document | Change |
 |---|---|
-| [`docs/architecture/collection-and-lots.md`](../../architecture/collection-and-lots.md) | Scope's bulk mode line; the invariant "Four places build a key" if the move adds a key builder (FR-2); the invariant on which ways of adding choose a place (bulk Move to… does); a "Move to…" paragraph in Bulk mode; the locations section's "Until "Move to…" (#48)"; Decisions not in an ADR ("Move copies works on one lot…"); Accepted limits (#48 leaves, its sort half stays as spec 037 Non-Goals); Named constants for the new messages; Sources; Distillation log |
+| [`docs/architecture/collection-and-lots.md`](../../architecture/collection-and-lots.md) | Scope's bulk mode line; the Glossary (*destination*, *already there*); the invariant listing every way that merges (the move joins `Lot::Move` and `Lot::ConditionChange`); the measured bars (the move's 2 seconds); the invariant "Four places build a key" if the move adds a key builder (FR-2); the invariant on which ways of adding choose a place (bulk Move to… does); a "Move to…" paragraph in Bulk mode; the locations section's "Until "Move to…" (#48)"; Decisions not in an ADR ("Move copies works on one lot…"); Accepted limits (#48 leaves, its sort half stays as spec 037 Non-Goals); Named constants for the new messages; Sources; Distillation log |
 | [`docs/architecture/data-portability.md`](../../architecture/data-portability.md) | None: no new data or working state (decision 7) |
 | [`docs/design-system/components/BulkForm.md`](../../design-system/components/BulkForm.md) | Its markup and list of the bulk bar's buttons gain "Move to…"; `CollectionTable.md` already names it |
 | [`docs/design-system/components/Form.md`](../../design-system/components/Form.md) | A line for a required select whose blank first option is a "Choose…" prompt, not "Not specified" |
-| [`docs/specs/README.md`](../README.md), [`docs/roadmap.md`](../../roadmap.md) | This spec's row and the supersession pointers on rows 006 and 032; item 13 |
-| Specs 006 and 032 | Not edited; the index records the supersessions above |
+| [`docs/specs/README.md`](../README.md), [`docs/roadmap.md`](../../roadmap.md) | This spec's row and the supersession pointers on rows 006, 032 and 037; item 13 |
+| [`CLAUDE.md`](../../../CLAUDE.md) | The status paragraph (bulk Move to…); its "four places build a `lot_key`" sentence if the move adds a key builder (FR-2) |
+| Specs 006, 032 and 037 | Not edited; the index records the supersessions above |
 
 ## Users and Context
 
@@ -136,7 +139,7 @@ As a collector in bulk mode, I want a "Move to…" action beside Set condition.
 - [ ] **AC-1.4** Given nothing selected When the collector presses "Move to…" Then the bulk table re-renders with 422 and "Select at least one item.", nothing changed.
 - [ ] **AC-1.5** Given a selection whose lots are all gone (removed in another tab) When the collector presses "Move to…" Then the bulk table re-renders with 422 and "None of the selected items are in your collection any more."
 - [ ] **AC-1.6** Given no selection in the session When the move page is requested with GET Then it redirects (303) to the bulk table with "Select at least one item.", as the Set condition page does.
-- [ ] **AC-1.7** Given an account whose last location was removed after the bulk bar rendered, with lots selected When the move page is requested or submitted, with any destination Then the answer is 303 to the bulk table with "You have no locations yet.", nothing changes and the selection is kept (decision 6, the order of answers).
+- [ ] **AC-1.7** Given an account whose last location was removed after the bulk bar rendered, with lots selected under All locations When the move page is requested or submitted, with any destination Then the answer is 303 to the bulk table with "You have no locations yet.", nothing changes and the selection is kept (decision 6, the order of answers).
 
 ### Story 2: Choose where they go
 
@@ -172,7 +175,7 @@ As a collector emptying Long box, I want to move every lot in it at once.
 - [ ] **AC-4.1** Given the collection filtered to Long box in bulk mode with every matching lot selected (some unticked as exceptions) When the collector moves them to Blue binder Then exactly the matching lots that are not exceptions move, resolved when the move runs, and no lot outside Long box changes except a Blue binder lot that a moved lot merges into (AC-3.3).
 - [ ] **AC-4.2** Given the case of AC-4.1 When the move succeeds Then the bulk table under the Long box filter shows only the excepted lots (or the location's empty sentence), nothing selected (AC-3.13), and its count line is updated; if the page it was on no longer exists, the nearest real page shows (spec 006 AC-6.5, AC-7.3).
 - [ ] **AC-4.3** Given every matching lot under a name filter and "No location" When the collector moves them to a location Then only the unplaced lots matching the name move.
-- [ ] **AC-4.4** Given every matching lot of 5,000 lots selected When they move to one location Then the move completes in under 2 seconds of server time (NFR Performance).
+- [ ] **AC-4.4** Given every matching lot of 5,000 lots selected When they move to one location Then the move completes in under 2 seconds of server time (NFR Performance), with the 5,000 lots spread over 300 locations and many of them merging into lots already in the destination.
 
 ### Story 5: Only my lots and locations
 
@@ -185,7 +188,7 @@ As a collector on a shared instance, I want a move never to touch another accoun
 
 ### Story 6: Without scripting, and on a phone
 
-- [ ] **AC-6.1** Given a browser without scripting, used with the keyboard alone When the collector ticks lots, presses "Move to…", chooses a destination and presses "Move" Then the lots move and the bulk table shows the notice.
+- [ ] **AC-6.1** Given a browser without scripting When the collector ticks lots, presses "Move to…", chooses a destination and presses "Move" Then the lots move and the bulk table shows the notice.
 - [ ] **AC-6.2** Given a viewport below 640px When the bulk bar shows Then "Move to…" is reachable (in the bar or its "More bulk actions" menu, as the bar's design-system pattern lays it out) and the move page fits without horizontal scrolling.
 
 ## Functional Requirements
@@ -216,7 +219,7 @@ As a collector on a shared instance, I want a move never to touch another accoun
 
 **Must:**
 - Answer a successful move with 303 to the bulk table it came from (filters, sort, page, or the nearest real page), with the notice of AC-3.1, AC-3.2 or AC-3.6, pluralised ("1 item", "2 items"), and the selection of AC-3.9 or AC-3.13.
-- Answer in decision 6's order: every refusal with 422 and the message in the status region as an alert, or on the To field for a missing choice, re-rendering the move page; 404 for a destination that isn't the account's; 303 with an alert for an account with no location. Every refusal keeps the selection.
+- Answer in decision 6's order: every refusal of the move page with 422 and the message in the status region as an alert, or on the To field for a missing choice, re-rendering the move page; 404 for a destination that isn't the account's; 303 with an alert for an account with no location, and for a GET without a selection. The bulk table's own refusals are FR-1's (AC-1.4, AC-1.5). Every refusal keeps the selection.
 
 ### FR-4: The core names no collectible
 
@@ -227,11 +230,11 @@ As a collector on a shared instance, I want a move never to touch another accoun
 ### Performance
 
 - Moving every matching lot of 5,000 lots, over 300 locations, completes in under 2 seconds of server time, the bar spec 006 sets for Set condition and Remove; recorded in `verification.md`.
-- The move page and the move run a number of queries independent of the number of selected lots, apart from the lots' own reads and writes.
+- The move page runs a number of queries independent of the number of selected lots. The move may write one statement per lot that merges or survives a merge, and otherwise a number of statements independent of the number of selected lots; the measured bar above is what `verification.md` records.
 
 ### Accessibility
 
-- The "Move to…" button and the move page meet spec 006's accessibility NFR: keyboard operable, visible focus, accessible names, the notice and refusals announced in the status region, the To field's error tied to it.
+- The "Move to…" button and the move page meet spec 006's accessibility NFR: keyboard operable (the whole flow done with the keyboard alone, checked by hand and recorded in `verification.md`, as spec 006 did), visible focus, accessible names, the notice and refusals announced in the status region, the To field's error tied to it.
 
 ### Security
 
@@ -251,7 +254,7 @@ As a collector on a shared instance, I want a move never to touch another accoun
 | Situation | Answer |
 |---|---|
 | Nothing selected | 422, bulk table, "Select at least one item." |
-| All selected lots gone | 422, bulk table (or the move page when it was open), "None of the selected items are in your collection any more." |
+| All selected lots gone | 422, bulk table (or the move page when it was submitted), "None of the selected items are in your collection any more."; a GET of the move page: 303, bulk table, "Select at least one item." (decision 6 (1)) |
 | Some selected lots gone (removed in another tab) | The heading counted them; the move ignores them and the notice counts only the copies that moved (spec 006 Error Scenarios) |
 | No destination chosen | 422, move page, "Choose where to move them." on To |
 | Destination another account's, or removed meanwhile | 404, nothing changed |
