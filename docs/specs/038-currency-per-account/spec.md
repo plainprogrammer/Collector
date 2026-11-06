@@ -8,6 +8,7 @@
 **Branch:** `038-currency-per-account`
 **Issue:** [#64](https://github.com/plainprogrammer/Collector/issues/64) (roadmap, housekeeping lane; hosted-door rule 3)
 **Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (parts: each account's currency, its default, the Currency page, the upgrade that carried the instance currency) and [`data-portability.md`](../../architecture/data-portability.md) (parts: the account's currency in the export, the preview, the apply and the backup); see the [specs index](../README.md)
+**Plan:** retired in `cb2af5fdfd1b11f871ad9d7c8962540871eaa4e2`; read it with `git show cb2af5fdfd1b11f871ad9d7c8962540871eaa4e2^:docs/specs/038-currency-per-account/plan.md`
 
 ---
 
