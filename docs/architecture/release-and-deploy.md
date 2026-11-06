@@ -23,7 +23,7 @@ How Collector is built into an image, published, deployed and kept safe: the con
 - **Data portability** ([data-portability.md](data-portability.md); specs 017, 022, 025, 026, 028, 029, 030): the export format, what a preview and an apply do, the file's content rules, and which of the export and the backup to use for what (spec 030 decision 11). The upload's size cap (`CollectionImport::MAX_BYTES`) and what an apply writes are there; the layers that refuse a body over 40 MB and the stored file's retention are here.
 - **Catalog operations** ([catalog-operations.md](catalog-operations.md)): the weekly refresh (`config/recurring.yml`), the art index build that a restore asks the operator to press, and the wording of a finished build whose index file is missing, which is what the admin page and `catalog:status` read after a restore until that build is pressed (spec 039; [#122](https://github.com/plainprogrammer/Collector/issues/122)).
 - **Tenancy and accounts** (no area doc yet; spec 004): the ownership rule behind `ActiveStorageGate` is here only as ADR 0022 states it.
-- **Scanner** (no area doc yet): the OCR engine is fetched and checksum-verified during the image build (`bin/fetch-ocr-engine`, spec 007, [ADR 0001](../adr/0001-browser-ocr-engine-and-asset-hosting.md)); how it is served is the scanner's.
+- **[Scanner](scanner.md)**: the OCR engine is fetched and checksum-verified during the image build (`bin/fetch-ocr-engine`, spec 007, [ADR 0001](../adr/0001-browser-ocr-engine-and-asset-hosting.md)); how it is served is the scanner's.
 
 ## Glossary
 
