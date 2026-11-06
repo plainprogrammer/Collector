@@ -17,12 +17,14 @@
       <div class="c-bulkbar__count" data-bulk-selection-target="count"><%= selection_count(state, table.matching_quantity) %></div>
       <div class="c-bulkbar__extra">
         <%= button_tag "Set condition…", type: "submit", form: "bulk", name: "go", value: "set_condition", class: "c-btn c-btn--secondary c-btn--sm" %>
+        <% if table.places? %><%= button_tag "Move to…", type: "submit", form: "bulk", name: "go", value: "move", class: "c-btn c-btn--secondary c-btn--sm" %><% end %>
         <%= button_tag "Remove", type: "submit", form: "bulk", name: "go", value: "remove", class: "c-btn c-btn--danger c-btn--sm" %>
       </div>
       <details class="c-menu c-bulkbar__more" data-controller="menu">
         <summary class="c-btn c-btn--secondary c-btn--sm c-btn--icon" aria-label="More bulk actions"><%= render "icons/more" %></summary>
         <div class="c-menu__list">
           <%= button_tag "Set condition…", type: "submit", form: "bulk", name: "go", value: "set_condition", class: "c-menu__item" %>
+          <% if table.places? %><%= button_tag "Move to…", type: "submit", form: "bulk", name: "go", value: "move", class: "c-menu__item" %><% end %>
           <div class="c-menu__sep"></div>
           <%= button_tag "Remove", type: "submit", form: "bulk", name: "go", value: "remove", class: "c-menu__item c-menu__item--danger" %>
         </div>

@@ -4,7 +4,7 @@
 class Collections::SelectionsController < ApplicationController
   include CollectionListing
 
-  ACTIONS = %w[set_condition remove].freeze
+  ACTIONS = %w[set_condition move remove].freeze
 
   def create
     query = CollectionFilter.normalize(params[:q])
@@ -27,7 +27,7 @@ class Collections::SelectionsController < ApplicationController
     selection.restart!(query:, sort:, location:) unless selection.context?(query, sort, location:)
     selection.record!(shown_ids: ids(:shown_ids), ticked_ids: ids(:ticked_ids), baseline_ids: ids(:baseline_ids),
       header_rendered: params[:all_rendered] == "1", header_ticked: params[:all] == "1", header_toggled: params[:header_toggled] == "1")
-    ACTIONS.include?(params[:go]) ? act(selection, query, location, sort) : navigate(selection, *destination(query, location, sort))
+    ACTIONS.include?(params[:go]) && offered?(params[:go]) ? act(selection, query, location, sort) : navigate(selection, *destination(query, location, sort))
   end
 
   private
@@ -40,10 +40,17 @@ class Collections::SelectionsController < ApplicationController
       redirect_to helpers.collection_listing_path(query:, location:, sort:), status: :see_other
     end
 
+    # "Move to…" is offered only while the account has a location; asked for without one it is a navigation (spec 041 AC-1.2).
+    def offered?(action) = action != "move" || Current.account.locations.exists?
+
     def act(selection, query, location, sort)
       page = params[:page].presence
       if selection.lots.exists?
-        path = params[:go] == "remove" ? new_collection_bulk_removal_path(page:) : new_collection_condition_change_path(page:)
+        path = case params[:go]
+        when "remove" then new_collection_bulk_removal_path(page:)
+        when "move" then new_collection_move_path(page:)
+        else new_collection_condition_change_path(page:)
+        end
         redirect_to path, status: :see_other
       else
         prepare_collection_at(helpers.collection_listing_path(bulk: 1, query:, location:, sort:, page:))
