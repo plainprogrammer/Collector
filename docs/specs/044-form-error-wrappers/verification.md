@@ -81,3 +81,7 @@ Minor findings and what was done:
 4. The sign-up example checked only that each message element existed. Fixed in `d1602f7`: each `#<field>-error` is now compared with its own message (a deliberately wrong text failed at `registrations_spec.rb:68`, then 7 examples, 0 failures).
 
 Outside this spec: on sign-up the hint and field errors render at the input's size, not Form's caption size; no view or CSS changed here, so it predates the branch. Filed as [#188](https://github.com/plainprogrammer/Collector/issues/188).
+
+## Distillation
+
+`distill-feature`, 2026-11-06, before the merge: spec 044's one area is the design system, which has no area doc under `docs/architecture/` (`docs/architecture/README.md`: spec 004's design-system part is covered by `docs/design-system/`). Its rule is already written where the next form's author reads it, the Form doc (`docs/design-system/components/Form.md`, AC-3.1) and [ADR 0026](../../adr/0026-forms-show-field-errors-through-the-design-system.md); no area doc changed, and the spec is not frozen. The index row reads "present; retirement owed", so the plan is retired after the merge. No supersessions (the spec's Supersedes table: none). CLAUDE.md restates nothing this feature changed.
