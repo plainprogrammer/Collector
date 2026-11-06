@@ -36,4 +36,8 @@ module ScannersHelper
   def sitting_choices(sitting, conditions)
     [ sitting.condition && conditions.dig(sitting.condition, 0), ("in #{sitting.location.name}" if sitting.location) ].compact
   end
+
+  # The data of a redrawn sitting panel that puts keyboard focus back (spec 047 decision 3): nil on a page render and after an
+  # add, so nothing is focused by them. `focus` is :set or :heading, a word of ours; the Stimulus controller reads it once.
+  def sitting_focus_data(focus) = (focus ? { controller: "sitting-focus", sitting_focus_to_value: focus } : nil)
 end

@@ -26,19 +26,19 @@ class Scanner::SittingsController < ApplicationController
       choices[:location] = location
     end
 
-    render turbo_stream: sitting_stream(chosen_message(Scanner::Sitting.choose!(account: Current.account, **choices)))
+    render turbo_stream: sitting_stream(chosen_message(Scanner::Sitting.choose!(account: Current.account, **choices)), focus: :set)
   end
 
   private
-    def refuse(message) = render(turbo_stream: sitting_stream(message, alert: true), status: :unprocessable_content)
+    def refuse(message) = render(turbo_stream: sitting_stream(message, alert: true, focus: :set), status: :unprocessable_content)
 
-    # Says what later adds get (decision 3): both choices for an account with locations, the condition alone otherwise; nil,
-    # which clears the status line, when "Set" deleted the sitting or cleared both with none open.
+    # Says what later adds get (spec 042 decision 3, spec 047 decision 1): both choices for an account with locations, the
+    # condition alone otherwise. A sitting "Set" deleted, or none open, says the nothing-set sentence: a deleted sitting held
+    # neither choice, and `choose!` returns nil when there was none to clear.
     def chosen_message(sitting)
-      return unless sitting&.persisted? # a destroyed sitting still holds what it had in memory
-
-      parts = [ (sitting.condition && scanner_conditions.dig(sitting.condition, 0)) || "condition not specified" ]
-      parts << (sitting.location ? "in #{sitting.location.name}" : "no location") if account_locations.any?
+      sitting = nil unless sitting&.persisted? # a destroyed sitting still holds what it had in memory
+      parts = [ (sitting&.condition && scanner_conditions.dig(sitting.condition, 0)) || "condition not specified" ]
+      parts << (sitting&.location ? "in #{sitting.location.name}" : "no location") if account_locations.any?
       "Cards you scan now: #{parts.join(", ")}."
     end
 end
