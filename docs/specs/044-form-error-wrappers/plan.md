@@ -31,28 +31,29 @@ Set `config.action_view.field_error_proc` to return the tag unchanged, so no ref
 | File | Task | Change |
 |---|---|---|
 | `spec/field_error_proc_spec.rb` | 1 | new guard (AC-1.1) |
-| `config/application.rb` | 1 | the `field_error_proc` line |
-| `spec/requests/lots_spec.rb` | 2 | assertions in the add and edit 422 examples |
-| `spec/requests/lot_moves_spec.rb` | 2 | assertions in the two Move copies 422 examples |
-| `spec/requests/locations_spec.rb` | 2 | assertions in the add and rename 422 examples |
-| `spec/requests/registrations_spec.rb` | 2 | assertions in the sign-up 422 example |
-| `spec/requests/admin/users_spec.rb` | 2 | assertions in the add example; status and `#admin-error` in the edit example |
-| `spec/requests/sessions_spec.rb` | 2 | regression assertion (sign-in) |
-| `spec/requests/number_entries_spec.rb` | 2 | regression assertion (number entry) |
-| `spec/requests/currencies_spec.rb` | 3 | none expected; the existing assertion is re-run |
-| `app/controllers/currencies_controller.rb` | 3 | remove `errors.clear` and its comment |
+| `spec/requests/lots_spec.rb` | 1 | assertions in the add and edit 422 examples |
+| `spec/requests/lot_moves_spec.rb` | 1 | assertions in the two Move copies 422 examples |
+| `spec/requests/locations_spec.rb` | 1 | assertions in the add and rename 422 examples |
+| `spec/requests/registrations_spec.rb` | 1 | assertions in the sign-up 422 example |
+| `spec/requests/admin/users_spec.rb` | 1 | assertions in the add example; status, `#admin-error` text and wrapper in the edit example |
+| `spec/requests/sessions_spec.rb` | 1 | regression assertion (sign-in) |
+| `spec/requests/number_entries_spec.rb` | 1 | regression assertion (number entry) |
+| `app/controllers/currencies_controller.rb` | 2 | remove `errors.clear` and its comment |
+| `spec/requests/currencies_spec.rb` | 2 | none; the existing line-71 assertion is the red and green proof |
+| `config/application.rb` | 3 | the `field_error_proc` line |
+| `.rubocop.yml` | 3 | `"spec/field_error_proc_spec.rb"` added to `RSpec/DescribeClass: Exclude` |
 | `docs/design-system/components/Form.md` | 4 | one bullet |
 | `docs/specs/044-form-error-wrappers/screenshots/*.jpg` | 5 | 30 images |
 | `docs/specs/044-form-error-wrappers/verification.md` | 5 | AC table, rulings, `## Implementation review` heading left to the review |
 | `docs/specs/README.md` | 5 | the 044 row's Status, at the moment the maintainer approves the plan and at merge, as `distill-feature` directs |
 
-File overlap, for a parallel worker: tasks 1 and 2 touch disjoint files, but task 2's red proof needs task 1's config line to revert, so they run in order. Task 3 touches one controller and can run beside task 4. Task 5 needs 1 to 3 merged in the worktree.
+The order is tests first across the whole branch (review round 1, M3): task 1 writes every failing assertion and runs them red with no production change; task 2 removes the controller's `errors.clear`, which turns the Currency example red too; task 3 adds the one config line and everything goes green. Commits are made at the end of task 3, by path, each green: guard, config and `.rubocop.yml` first, then the request specs, then the controller. Task 4 (a document) can run beside task 2. Task 5 needs 1 to 3 in the worktree.
 
-## Task 1: The rule and its guard (spec decision 1, decision 2; AC-1.1)
+## Task 1: Tests first, the guard and every refused form (decision 2; AC-1.1 to AC-1.11, AC-1.13)
 
-**Implements:** Story 1 | **Satisfies:** AC-1.1 | **Files:** `spec/field_error_proc_spec.rb`, `config/application.rb` | **Interfaces:** `config.action_view.field_error_proc` (a callable of `(html_tag, instance)`)
+**Implements:** Story 1 | **Satisfies:** AC-1.1, AC-1.2, AC-1.3, AC-1.4, AC-1.5, AC-1.6, AC-1.7, AC-1.8, AC-1.9, AC-1.10, AC-1.11, AC-1.13 | **Files:** `spec/field_error_proc_spec.rb` and the seven request specs in the file map | **Interfaces:** none (specs only; no production code in this task)
 
-**Test first.** Create `spec/field_error_proc_spec.rb`. A top-level spec like `spec/footer_core_spec.rb` and `spec/currency_reads_spec.rb`, which carry no `type:` (nothing here needs request or view spec infrastructure; `ApplicationController.render` is a plain call). The class is named with `stub_const` because `ActiveModel::Name` refuses an anonymous class. `url: "/"` is required because an `ActiveModel::Model` record has no route.
+**1a. The guard.** Create `spec/field_error_proc_spec.rb`. A top-level spec like `spec/footer_core_spec.rb` and `spec/currency_reads_spec.rb`, which carry no `type:` (nothing here needs request or view spec infrastructure; `ApplicationController.render` is a plain call). The class is named with `stub_const` because `ActiveModel::Name` refuses an anonymous class. `url: "/"` is required because an `ActiveModel::Model` record has no route.
 
 ```ruby
 require "rails_helper"
@@ -99,35 +100,11 @@ RSpec.describe "The form builder's field errors" do
 end
 ```
 
-The `form` element's direct children are the label and the input only if the template adds nothing else; `form_with` in test adds no token (see Facts) and a hidden `utf8`/method field only for non-POST verbs. A POST for a non-persisted record adds neither. If the first example's last line fails on a stray hidden input, narrow it to `element_children.reject { it["type"] == "hidden" }`; record that in the commit body.
+The `form` element's direct children are the label and the input only if the template adds nothing else. Under `load_defaults 8.1` `form_with` adds no `utf8` hidden field (`default_enforce_utf8` is off), a `_method` hidden field only for a non-POST verb, and an authenticity token only when forgery protection is on, which `config/environments/test.rb:29` turns off. So a POST form for a non-persisted record holds no hidden input. If the first example's last line still fails on a stray hidden input, narrow it to `element_children.reject { it["type"] == "hidden" }` and record that in the commit body.
 
-Run: `bin/rspec spec/field_error_proc_spec.rb`
+The guard needs one more file: RuboCop's `RSpec/DescribeClass` (not autocorrectable) flags a top-level spec described by a string, and `.rubocop.yml` lists the exceptions beside `spec/footer_core_spec.rb` and `spec/currency_reads_spec.rb`. It is edited in task 3 and the guard is linted there.
 
-**Expected red (today):** both examples' `invalid` side fails. Rails' default proc wraps the label and the input, so `.field_with_errors` is found (two elements) and the form's children are two `div.field_with_errors`; and the form's inner HTML differs from the plain render's by the two wrapper `div`s (a per-element comparison would miss that, since each wrapped element's own HTML is unchanged, so the second example compares the form's whole inner HTML). The `plain` side passes in both.
-
-**Code.** `config/application.rb`, after the last `config.x` line inside `class Application`:
-
-```ruby
-    # The open catalog (spec 023): off until config/initializers/public_catalog.rb reads the environment.
-    config.x.public_catalog = false
-
-    # Fields render unwrapped when a record has errors; the views draw them (spec 044, ADR 0026).
-    config.action_view.field_error_proc = ->(html_tag, _instance) { html_tag }
-  end
-end
-```
-
-Run: `bin/rspec spec/field_error_proc_spec.rb` — expected green, 2 examples. Then `bin/rubocop config/application.rb spec/field_error_proc_spec.rb`.
-
-**Commit** (stage the two files in one Bash call, commit in another): `fix(forms): leave form fields unwrapped when a record has errors`, body: spec 044 decision 1, ADR 0026, issue #180.
-
-## Task 2: Each form's refused state asserts no wrapper (decision 2; AC-1.2 to AC-1.11, AC-1.13)
-
-**Implements:** Story 1 | **Satisfies:** AC-1.2, AC-1.3, AC-1.4, AC-1.5, AC-1.6, AC-1.7, AC-1.8, AC-1.9, AC-1.10, AC-1.11, AC-1.13 | **Files:** the seven request specs in the file map | **Interfaces:** none (assertions only; no production code)
-
-The assertion goes into the existing 422 example of each form, so no new request is made. Each is one line, `expect(<page>.css(".field_with_errors")).to be_empty`, beside the example's existing message assertions, which stay (they are AC-1.13: messages, `c-field--invalid`, `aria-describedby` and kept values unchanged).
-
-**Write the assertions** (each shown with the lines around it; line numbers are today's, verified when the plan was written; the examples are found by name):
+**1b. The refused forms' assertions** (each shown with the lines around it; line numbers are today's, verified when the plan was written; the examples are found by name):
 
 1. `spec/requests/lots_spec.rb`, "rejects invalid values with a message per field" (line 70, add; AC-1.2). After `expect(response).to have_http_status(:unprocessable_content)`:
 
@@ -174,12 +151,12 @@ The assertion goes into the existing 422 example of each form, so no new request
       expect(response).to have_http_status(:unprocessable_content)
       expect(admin.reload).to be_admin
       page = Nokogiri::HTML5(response.body)
-      expect(page.at_css("#admin-error").text).to eq("Collector needs at least one admin.")
+      expect(page.at_css("#admin-error").text).to eq("Admin can't be removed: Collector needs at least one admin.")
       expect(page.css(".field_with_errors")).to be_empty
       expect(response.body).to include("Collector needs at least one admin.")
    ```
 
-   (The `#admin-error` text is the whole message: `shared/field_errors` renders one `<p>` per `full_messages_for(:admin)`. If the model's full message prefixes the attribute, as `full_messages_for` does for other fields, use `include` instead of `eq`; the existing `include` of the plain sentence shows it is not prefixed, so `eq` is expected to hold. Confirm on the first run.)
+   (`app/models/user.rb:32` adds `errors.add(:admin, "can't be removed: Collector needs at least one admin.")` and the view renders `full_messages_for(:admin)`, so `#admin-error` holds "Admin can't be removed: Collector needs at least one admin." The existing `include` of "Collector needs at least one admin." stays and holds too.)
 
 7. `spec/requests/sessions_spec.rb`, "rejects a wrong password without saying which field was wrong" (line 23; AC-1.10). Regression example, green today (no record):
 
@@ -199,26 +176,21 @@ The assertion goes into the existing 422 example of each form, so no new request
 
    (Number entry's message id is `line_number_error`, with an underscore, as in `app/views/collections/number_entries/_line_form.html.erb`.)
 
-9. AC-1.12: `spec/requests/currencies_spec.rb` line 71 already asserts it (the "refuses a code outside the 20" example, line 63). No edit; task 3 re-runs it.
+9. AC-1.12: `spec/requests/currencies_spec.rb` line 71 already asserts it (the "refuses a code outside the 20" example, line 63). No edit; task 2 turns it red and task 3 green.
 
-**Prove the red.** The config line from task 1 already exists, so take it away for one run, then restore it. Two Bash calls:
+**1c. Run them red.** No production file has changed, so the app still has Rails' default proc:
 
-1. `git checkout HEAD~1 -- config/application.rb` (the working tree now has the file as it was before task 1).
-2. Run `bin/rspec spec/requests/lots_spec.rb spec/requests/lot_moves_spec.rb spec/requests/locations_spec.rb spec/requests/registrations_spec.rb spec/requests/admin/users_spec.rb spec/requests/sessions_spec.rb spec/requests/number_entries_spec.rb:307`.
+`bin/rspec spec/field_error_proc_spec.rb spec/requests/lots_spec.rb spec/requests/lot_moves_spec.rb spec/requests/locations_spec.rb spec/requests/registrations_spec.rb spec/requests/admin/users_spec.rb spec/requests/sessions_spec.rb spec/requests/number_entries_spec.rb:307`
 
-**Expected red, without the proc:** failing because the wrapper is on the page: lots add (line 70) and edit (126), both Move copies examples (89, 100), locations add (43) and rename (114), sign-up (59), admin add (53) and admin edit (88). That is nine examples, every one in the probe table. The admin edit example also had two additions that would pass on their own (`:unprocessable_content`, `#admin-error`), so its red is the wrapper line only. **Green already, regression examples, not red:** sign-in (sessions, line 23) and number entry (307); say so in the commit body.
+**Expected red:** the guard's two examples (the `invalid` side finds two `.field_with_errors` elements, and the form's inner HTML differs from the plain render's by the two wrapper `div`s; a per-element comparison would miss that because each wrapped element's own HTML is unchanged, which is why the second example compares the whole inner HTML), plus the nine probe-table examples: lots add (line 70) and edit (126), both Move copies examples (89, 100), locations add (43) and rename (114), sign-up (59), admin add (53) and admin edit (88). The admin edit example's other additions (the 422, the exact `#admin-error` text) hold today, so its red is the wrapper line alone. **Green already, regression examples, not red:** sign-in (sessions, line 23) and number entry (307); the commit body says so. The guard's `plain` side passes.
 
-3. `git checkout HEAD -- config/application.rb` restores the line. `git diff HEAD --stat -- config/application.rb` must print nothing.
+No commit yet: the tests are committed with their changes in task 3, so every commit is green.
 
-**Run green:** the same `bin/rspec` command as step 2. Expected: all examples pass. Then `bin/rubocop` on the seven spec files.
-
-**Commit:** stage the seven spec files by path; `test(forms): refused forms render no field_with_errors wrapper`, body: red run listing the nine examples, the two regression examples, AC-1.12's example is unchanged.
-
-## Task 3: The Currency controller stops clearing the record's errors (decision 4; AC-1.12)
+## Task 2: The Currency controller stops clearing the record's errors (decision 4; AC-1.12)
 
 **Implements:** Story 1 | **Satisfies:** AC-1.12 | **Files:** `app/controllers/currencies_controller.rb` | **Interfaces:** `CurrenciesController#update` (unchanged signature and responses)
 
-**Test first.** There is nothing to write: spec 038's example "refuses a code outside the 20 with a field error, changing nothing" (`spec/requests/currencies_spec.rb:63`) already asserts the 422, `#account_currency-error`, `aria-describedby`, the saved code selected and `html.css(".field_with_errors")` empty (line 71). It passes today through the controller's `errors.clear`, and after task 1 it would pass without it. That is the point: this task is a removal protected by an existing example, not a red-to-green change, and the plan says so rather than invent a failing test. As a before check, run `bin/rspec spec/requests/currencies_spec.rb` — expected green.
+**Test first.** The test is spec 038's existing example "refuses a code outside the 20 with a field error, changing nothing" (`spec/requests/currencies_spec.rb:63`), which asserts the 422, `#account_currency-error`, `aria-describedby`, the saved code selected and `html.css(".field_with_errors")` empty (line 71). Nothing is written. Today it passes through the controller's `errors.clear`.
 
 **Code.** In `update`, remove the `errors.clear` line and its comment (the `restore_attributes` line and its comment stay):
 
@@ -237,9 +209,39 @@ The line removed is:
 
 `Current.account` now keeps its errors for the rest of the request. Nothing else in the request builds a form on it or reads them, and `restore_attributes` leaves errors alone (spec decision 4).
 
-Run: `bin/rspec spec/requests/currencies_spec.rb` — expected green, every example including the one at line 63. To show the example now exercises the app's proc rather than the controller, run it once more with the config line reverted, as in task 2 (`git checkout HEAD~1 -- config/application.rb`, but note that `HEAD~1` is then the task 2 commit, which already has the line: use `git checkout HEAD~2 -- config/application.rb`, check with `git diff HEAD -- config/application.rb` that the line is gone, run `bin/rspec spec/requests/currencies_spec.rb:63`, expect red on the `.field_with_errors` line, then `git checkout HEAD -- config/application.rb`). Record the result in `verification.md`. Then `bin/rubocop app/controllers/currencies_controller.rb`.
+Run: `bin/rspec spec/requests/currencies_spec.rb:63`
 
-**Commit:** `refactor(currency): drop the errors.clear the app-wide proc replaces`, body: spec 044 decision 4; spec 038 criteria unchanged.
+**Expected red:** the `.field_with_errors` assertion at line 71 fails, because the proc is still Rails' default and the record now carries its errors. That is the proof that the example exercises the app's proc and no longer the controller. The other examples of the file stay green. Record the result in `verification.md`. Then `bin/rubocop app/controllers/currencies_controller.rb`.
+
+## Task 3: The rule, its config line and the commits (decision 1; AC-1.1 to AC-1.12 green)
+
+**Implements:** Story 1 | **Satisfies:** AC-1.1 to AC-1.13 (made green) | **Files:** `config/application.rb`, `.rubocop.yml` | **Interfaces:** `config.action_view.field_error_proc` (a callable of `(html_tag, instance)`)
+
+**Code.** `config/application.rb`, after the last `config.x` line inside `class Application`:
+
+```ruby
+    # The open catalog (spec 023): off until config/initializers/public_catalog.rb reads the environment.
+    config.x.public_catalog = false
+
+    # Fields render unwrapped when a record has errors; the views draw them (spec 044, ADR 0026).
+    config.action_view.field_error_proc = ->(html_tag, _instance) { html_tag }
+  end
+end
+```
+
+**RuboCop.** `.rubocop.yml` lists, under `RSpec/DescribeClass: Exclude` (lines 47-59), the string-described top-level specs, and the comment above it (lines 36-46) says what each kind of exempt spec checks. Append `"spec/field_error_proc_spec.rb"` to the list in its place (the list is alphabetical except `spec/script/upgrade/seeds_spec.rb`; put it after `spec/export_format_examples_spec.rb`), and add one sentence to the end of the comment: "The field error proc spec renders a form and checks the app's configuration, not a class." Read the comment's last lines first and keep its form.
+
+**Run green:** the whole of task 1c's command, plus the currency file: `bin/rspec spec/field_error_proc_spec.rb spec/requests/lots_spec.rb spec/requests/lot_moves_spec.rb spec/requests/locations_spec.rb spec/requests/registrations_spec.rb spec/requests/admin/users_spec.rb spec/requests/sessions_spec.rb spec/requests/number_entries_spec.rb spec/requests/currencies_spec.rb`. Expected: all green, including `currencies_spec.rb:63`. Then `bin/rubocop config/application.rb .rubocop.yml spec/field_error_proc_spec.rb` and `bin/rubocop` on the seven request specs and the controller; expected no offenses.
+
+**Commits, by path, three Bash pairs (stage in one call, commit in the next), each green on its own:**
+
+1. `git add spec/field_error_proc_spec.rb config/application.rb .rubocop.yml`: `fix(forms): leave form fields unwrapped when a record has errors`, body: spec 044 decision 1, ADR 0026, issue #180.
+2. `git add` the seven request specs: `test(forms): refused forms render no field_with_errors wrapper`, body: the nine red examples of task 1c, the two regression examples (sign-in, number entry), AC-1.12's example unchanged.
+3. `git add app/controllers/currencies_controller.rb`: `refactor(currency): drop the errors.clear the app-wide proc replaces`, body: spec 044 decision 4; spec 038 criteria unchanged.
+
+Commit 1 comes first so that commits 2 and 3 are green when made (commit 3 alone would be red without commit 1's proc).
+
+
 
 ## Task 4: The rule where the next form's author reads it (decision 5; AC-3.1, AC-3.2)
 
@@ -272,7 +274,8 @@ No test: the criterion is read (spec AC-2.1). The method follows the memories `p
 **Capture** (a Ruby script with `selenium-webdriver`, headless Firefox, `$stdout.sync = true`):
 
 - Sign in once as the admin through the real form. Set `data-theme` from the shot's name (`-light` or `-dark`) on `<html>` right before each save, and pause about 0.6 s after every switch. Headless Firefox reports `prefers-color-scheme: dark`, so a page with no `data-theme` renders dark; set the light theme explicitly, and look at the first shot of each theme before trusting the rest.
-- Reach each refused state by submitting the real form (no mocked HTML), so the 422 is the page's own: add a lot with quantity 0; edit a lot with quantity `lots` (the browser's `required` and `min` would stop a real click, so set `novalidate` on the form by script or submit with `form.submit` through `execute_script`); Move copies with 9 copies of 4, and then To = the lot's own place; add a location with a blank name; rename a location to another's name; sign up (signed out, in a separate session) with an empty name and a short password; admin add a user with an email `nope`; admin edit: untick Admin on the only admin and save; sign in with a wrong password (signed out); number entry with a number the set lacks (`999`); Currency with `XYZ` (set the option's value by script).
+- Reach each refused state by submitting the real form (no mocked HTML), so the 422 is the page's own: add a lot with quantity 0; edit a lot with quantity `lots` (see the next bullet for native validation); Move copies with 9 copies of 4, and then To = the lot's own place (that place is not in the select, because `Lots::MovesController#set_destinations` drops it, so the script adds an option whose value is the lot's location id, or retargets one, as it does for Currency's `XYZ`); add a location with a blank name; rename a location to another's name; sign up (signed out, in a separate session) with an empty name and a short password; admin add a user with an email `nope`; admin edit: untick Admin on the only admin and save; sign in with a wrong password (signed out); number entry with a number the set lacks (`999`); Currency with `XYZ` (set the option's value by script).
+- Native validation: `required`, `min`/`max` and `type=email` stop a real click on add a lot (quantity 0), edit a lot, Move copies (9 of 4) and admin add (`nope`). For every form, set `form.noValidate = true` by script and then call `form.requestSubmit()` (not `form.submit()`, which skips Turbo and so the page's own 422 handling, and loses the `data-theme` the script set). Do the same inside the phone frame. If a submit ends in a full page load, set `data-theme` again afterwards, before the shot.
 - 12 states: add a lot, edit a lot, Move copies (Copies), Move copies (To), add a location, rename a location, sign up, add a user, edit a user, sign in, number entry, currency.
 - Desktop: window 1280 wide, full-page screenshot per state in `light` then `dark`: 24 images.
 - Phone (390 px, add a lot, add a location, sign up only, light and dark): the window cannot go below 500 px, so open the refused page's URL state in a same-origin fixed-width iframe. A refused state is the result of a POST, so a plain `src` would reload the form empty. Instead inject the 422's HTML into the frame: fetch the refused page's HTML from the page that already shows it (`document.documentElement.outerHTML` before the frame is made), write it with `iframe.contentDocument.write`, or, simpler, submit the form from inside the frame (open the form's GET page in the frame, then fill and submit it in the frame so its 422 renders there). Grow the frame to its content height, resize the window taller than the frame, take an element screenshot of the frame (`find_element(id: "narrow").save_screenshot`), and set `data-theme` inside the frame's document, with the 0.6 s pause. 6 images.
@@ -284,20 +287,22 @@ No test: the criterion is read (spec AC-2.1). The method follows the memories `p
 
 | Criterion | Proved by |
 |---|---|
-| AC-1.1 | `spec/field_error_proc_spec.rb` (both examples; red before the config line, green after) |
+| AC-1.1 | `spec/field_error_proc_spec.rb` (both examples; red in task 1c, green after task 3's config line) |
 | AC-1.2, 1.3 | `spec/requests/lots_spec.rb` "rejects invalid values with a message per field" and "…with 422 and leaves the lot unchanged" |
 | AC-1.4 | `spec/requests/lot_moves_spec.rb` "answers 422 with the reasons beside Copies and To…" and "refuses a move to where the lot already is" |
 | AC-1.5, 1.6 | `spec/requests/locations_spec.rb` add and rename 422 examples |
 | AC-1.7 | `spec/requests/registrations_spec.rb` "shows each invalid field's message with 422" |
 | AC-1.8, 1.9 | `spec/requests/admin/users_spec.rb` "links an invalid email field to its message"; "refuses to delete yourself or demote the only admin" (status and `#admin-error` added) |
-| AC-1.10, 1.11 | `sessions_spec.rb` and `number_entries_spec.rb`, regression examples (green before the config line, as stated in task 2's commit) |
-| AC-1.12 | `spec/requests/currencies_spec.rb:63`, kept; the controller no longer clears (task 3), and the example fails with the config line reverted |
+| AC-1.10, 1.11 | `sessions_spec.rb` and `number_entries_spec.rb`, regression examples (green before the config line, as stated in the test commit's body) |
+| AC-1.12 | `spec/requests/currencies_spec.rb:63`, kept; the controller no longer clears (task 2), and the example fails without the app's proc (task 2's red run, before task 3's config line) |
 | AC-1.13 | each form's existing assertions, all green in the same runs |
 | AC-2.1 | the 30 images in `screenshots/`, listed with a one-line reading of each (by looking) |
 | AC-3.1 | `docs/design-system/components/Form.md`, the added bullet (by reading) |
 | AC-3.2 | `docs/adr/0026-…md` (by reading) |
 
-Also record: the screenshots' dev data and its limits; the measured red lists of tasks 1 to 3; the full `bin/ci` result; and, after `sdd-review` (Mode B), the `## Implementation review` heading with its verdict on its first line (`.claude/rules/documentation.md` rule; `distill-feature` reads it). Do not write that heading before the review.
+Also record: the screenshots' dev data and its limits; the measured red runs of tasks 1c and 2; the full `bin/ci` result; and, after `sdd-review` (Mode B), the `## Implementation review` heading with its verdict on its first line (`.claude/rules/documentation.md` rule; `distill-feature` reads it). Do not write that heading before the review.
+
+**PR body.** AC-2.1 wants the images linked from the PR as well as from `verification.md`. When the draft PR is opened (the coordinator's step), its body lists the 30 images as links of the form `https://github.com/plainprogrammer/Collector/blob/<commit-sha>/docs/specs/044-form-error-wrappers/screenshots/<name>.jpg?raw=true`, pinned to the SHA of the commit that adds the images (memory `pr-screenshots-workflow`; the repository is private and `gh` cannot upload images). `verification.md` links them relatively.
 
 **README index.** `docs/specs/README.md`'s 044 row: `distill-feature` and the coordinator own its Status changes (Approved now; frozen at the merge), so this task changes it only if the coordinator asks. No area doc changes, so the row's links stay.
 
@@ -309,15 +314,15 @@ Also record: the screenshots' dev data and its limits; the measured red lists of
 
 | Criterion | Task |
 |---|---|
-| AC-1.1 | 1 |
-| AC-1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 1.10, 1.11 | 2 |
-| AC-1.12 | 3 (and the existing line 71 assertion; red proof in task 3) |
-| AC-1.13 | 2 (the existing assertions stay and pass in the same runs) |
+| AC-1.1 | 1a (red), 3 (config line, green) |
+| AC-1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 1.10, 1.11 | 1b (red; 1.10 and 1.11 already green), 3 (green) |
+| AC-1.12 | 2 (the existing line 71 assertion goes red), 3 (green) |
+| AC-1.13 | 1b and 3 (the existing assertions stay and pass in the same runs) |
 | AC-2.1 | 5 |
 | AC-3.1 | 4 |
 | AC-3.2 | met by the committed ADR 0026; cited in 5's `verification.md` |
 
-Decision 1 is task 1, decision 2 tasks 1 and 2, decision 3 task 5, decision 4 task 3, decision 5 task 4 (and no area doc, by decision).
+Decision 1 is task 3, decision 2 task 1, decision 3 task 5, decision 4 task 2, decision 5 task 4 (and no area doc, by decision).
 
 ## Pre-implementation gates
 
@@ -327,16 +332,16 @@ Decision 1 is task 1, decision 2 tasks 1 and 2, decision 3 task 5, decision 4 ta
 
 ## What only a run can confirm
 
-- That the guard's first example's `form` children are exactly `label` and `input` under `ApplicationController.render` (a stray hidden input is handled in task 1's note).
+- That the guard's first example's `form` children are exactly `label` and `input` under `ApplicationController.render` (a stray hidden input is handled in task 1a's note).
 - That `ApplicationController.render(inline:, locals:, layout: false)` accepts `layout:` with `inline:` in Rails 8.1.4 (if not, drop `layout: false`; `inline` renders without a layout by default).
 - That the second guard example is red today (it compares the form's whole inner HTML, so the wrapper `div`s show).
-- That `#admin-error` holds exactly "Collector needs at least one admin." (task 2, item 6).
-- That `git checkout HEAD~1 -- config/application.rb` restores the pre-task-1 file (task 1 must be exactly one commit that touched it).
+- That `.rubocop.yml` accepts the new `RSpec/DescribeClass` exclusion in its alphabetical place and that the comment edit keeps its form.
+- That the controller's removal turns `currencies_spec.rb:63` red on line 71 while the config line is absent (task 2).
 - That the narrow-frame capture of a refused state, by submitting inside the frame, works for add a lot, add a location and sign up; sign-up needs a signed-out session for the frame, so the script uses a second browser session for it.
 - That 30 images fit comfortably under the repository's habit (about 280 KB for eight at quality 55, 150 to 300 KB at 82).
 
 ## Deviations and risks
 
 - AC-1.10 and AC-1.11 (sign-in and number entry) and AC-1.12's Currency assertion pass before any change. They are regression examples the issue asks for, not red-to-green, and the plan says so in each commit body rather than pretend.
-- A config-only fix cannot be seen to fail by an example that renders no record; only the guard and the nine wrapped forms' examples are red without it.
+- A config-only fix cannot be seen to fail by an example that renders no record; only the guard, the nine wrapped forms' examples and, after task 2, the Currency example are red without it.
 - Removing `errors.clear` leaves errors on `Current.account` for the rest of one request (spec decision 4); no reader exists today, and a future form built on `Current.account` after a failed `update` would draw its own errors, which is the app-wide rule.
