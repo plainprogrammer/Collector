@@ -23,7 +23,7 @@
 
 **D1. The key rule (FR-2): a fifth key builder, one SQL statement, with a parity spec.** Lots that move and meet no other lot of their identity (the common case: filing a box) are rewritten in one `UPDATE … SET location_id = ?, lot_key = <rebuilt from the row's columns> || ?, updated_at = ?` per 1,000 ids, exactly as `Lot::ConditionChange#update_alone!` does for the condition. The alternative, `lot.update!(location: to)` per lot, runs `Lot`'s validations: `finish_offered` and `condition_known` load the lot's entry and its vocabulary, an N+1 of at least two statements per lot, which for 5,000 lots does not fit the 2-second bar (spec 006 N set Set condition's one-statement update for the same reason). The lots that merge (a survivor) are written with `Lot.key_for` and a `where(id:).update_all` of their own row, one statement per survivor, which the NFR allows ("one statement per lot that merges or survives a merge"), and the folded lots are deleted in batched statements. Consequences, all in this plan: Task 2 writes the parity spec (ADR 0025 Consequences: "a spec per place"); Task 17 changes the area doc's "Four places build a key" to five and Task 18 CLAUDE.md's "four places build a `lot_key`". ADR 0025 is not edited (it records what was true on 2026-10-24; the area doc is the current truth).
 
-**Why `update_all` and `delete_all` against `.claude/rules/models.md`.** The rule keeps normal flows on validations and tenant checks. The move keeps the checks it needs in its own code: every statement goes through `@account.lots`; the destination is looked up through the account; the cap is checked for every group before the first write; no write can collide (alone lots have a free identity, merging lots are deleted before survivors change key); `Lot` has no callbacks or dependents and the foreign keys cascade (marks) or nullify (number-entry lines, scanner entries). `Lot::ConditionChange#update_alone!` is the precedent, and each statement carries a `# Safe:` comment saying so.
+**Why `update_all` and `delete_all` against `.claude/rules/models.md`.** The rule keeps normal flows on validations and tenant checks. The move keeps the checks it needs in its own code: every statement goes through `@account.lots`; the destination is looked up through the account; the cap is checked for every group before the first write; no write can collide (alone lots have a free identity, merging lots are deleted before survivors change key); `Lot`'s only callback is the `lot_key` builder (`before_validation`), which these writes reproduce (the SQL in `move_alone!`, `Lot.key_for` in `merge!`); it has no `dependent:` associations, and finish and condition aren't written, so `normalizes` isn't bypassed; the foreign keys cascade (marks) or nullify (number-entry lines, scanner entries). `Lot::ConditionChange#update_alone!` is the precedent, and each statement carries a `# Safe:` comment saying so.
 
 **D2. Table order decides the survivor and the named lot.** `Lot::ConditionChange` takes `group.first` from an unordered relation. The move orders the selected lots with `sort.apply(lots.joins(entry: :set))` (the same ordering its cap message already uses), so "the first of them in the bulk table's order survives" (spec decision 4, AC-3.4) is true by construction. Ties break by id (`CollectionTable::Sort.default_order`).
 
@@ -155,7 +155,9 @@ Code, `app/models/lot/bulk_move.rb` (Tasks 3 to 5 extend it; this is its first v
 # models.md says not to use update_all/delete_all in normal flows (they skip validations and tenant checks). The move does, as
 # Lot::ConditionChange#update_alone! does, for the 2-second bar, and each statement is safe: scoped through @account.lots,
 # values bound, the cap and every identity collision checked on the lots read in this transaction, the place looked up through
-# the account, and Lot has no callbacks or dependents.
+# the account; Lot's only callback is the lot_key builder (before_validation), which these writes reproduce (the SQL in
+# move_alone!, Lot.key_for in merge!); it has no dependent: associations, and finish and condition aren't written, so
+# normalizes isn't bypassed.
 class Lot::BulkMove
   CHOOSE = "Choose where to move them.".freeze
   NO_LOCATIONS = "You have no locations yet.".freeze
@@ -253,7 +255,7 @@ Tests (red: the stayers are rewritten or counted as moved, and the all-there cas
   end
 ```
 
-Code: Task 2's `apply!` already splits movers and stayers and raises, so the first and third examples pass on arrival if Task 2 is right; if one is red, the fix is in `partition`. Run them first; a pass on arrival is recorded in the commit body as a characterisation of Task 2's code, not as a missing red.
+Code: Task 2's `apply!` already splits movers and stayers and raises, so all three examples pass under Task 2's code. Each is recorded in the commit body as a characterisation of Task 2's code, not as a missing red; if one is red, the fix is in `partition`.
 
 ### Task 4: Merges
 
@@ -318,6 +320,7 @@ Tests (red: `merging` groups are never written, so the moved lots keep their old
       expect(held.reload.quantity).to eq(5)
     end
 
+    # Passes on arrival: a characterisation of the writers above, not a missing red.
     it "keeps lots of other places and identities as they were", :aggregate_failures do
       a = lot(entry, quantity: 2)
       other_finish = lot(entry, finish: "foil", quantity: 1)
@@ -820,7 +823,7 @@ class Collections::MovesController < ApplicationController
     # The To field's options: the prompt (""), "No location" ("none", the location filter's word, spec 037 decision 1), then the
     # account's locations in the locations page's order; the selection's own place is left out (AC-2.1).
     def set_destinations
-      own = @selection&.location_filter.to_s
+      own = @selection ? @selection.location_filter : ""
       locations = Current.account.locations.ordered.reject { |location| location.id.to_s == own }
       @destinations = [ [ "Choose…", "" ] ] + (own == CollectionFilter::Place::NONE ? [] : [ [ "No location", CollectionFilter::Place::NONE ] ]) +
         locations.map { |location| [ location.name, location.id ] }
@@ -1090,6 +1093,30 @@ Tests:
     let!(:lot) { own(location: box, quantity: 2) }
 
     before { select_lots(lot) }
+
+    it "(1) answers a GET with no selection 'Select at least one item.' even with no location (order)", :aggregate_failures do
+      BulkSelection.where(account:).destroy_all
+      lot.update!(location: nil)
+      Location.where(account:).delete_all
+      get new_collection_move_path
+      expect([ response.status, flash[:alert] ]).to eq([ 303, "Select at least one item." ])
+    end
+
+    it "(2) answers 'You have no locations yet.' before 'None of the selected items…' (order)", :aggregate_failures do
+      lot.update!(location: nil)
+      Location.where(account:).delete_all
+      lot.destroy!
+      post collection_move_path, params: { to: "" }
+      expect([ response.status, flash[:alert] ]).to eq([ 303, "You have no locations yet." ])
+    end
+
+    it "(3) answers 'None of the selected items…' before the missing destination (order)", :aggregate_failures do
+      lot.destroy!
+      post collection_move_path, params: { to: "" }
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(page_html.at_css("#status").text).to include("None of the selected items are in your collection any more.")
+      expect(page_html.at_css(".c-field--invalid")).to be_nil
+    end
 
     def selection_kept
       get collection_path(bulk: 1)
@@ -1437,8 +1464,9 @@ Edits, each with its source:
 10. **Named constants**: rows for `Lot::BulkMove::CHOOSE` ("Choose where to move them."), `Lot::BulkMove::NO_LOCATIONS` ("You have no locations yet."), `Lot::BulkMove::BATCH` (1,000; ids per statement), `Lot::BulkMove::NothingToMove` text; the measured-bars paragraph: add "and Move to… on every matching lot of 5,000 lots over 300 locations under 2 seconds (spec 041 AC-4.4; the `:timing` example `spec/requests/bulk_move_timing_spec.rb`)".
 11. **Decisions not in an ADR**: replace "Move copies works on one lot, from the card page; many lots at once is #48" with "Move copies works on one lot, from the card page; Move to… in bulk mode moves whole lots, with no Undo, and leaves a selected lot already there alone (maintainer, 2026-11-06; spec 041 decisions 1–3)".
 12. **Accepted limits**: the #48 line becomes "No sort by location (spec 037 Non-Goals); a move's merged lots stay merged when moved back (spec 041 decision 1); no partial lots in bulk (decision 2); [#187](https://github.com/plainprogrammer/Collector/issues/187): no shortcut from a location's refusal page into bulk mode."
-13. **Decisions not in an ADR**: add "Bulk Move to… writes with `update_all` and `delete_all` on the account's lots, against the models rule, for the 2-second bar: every statement is tenant-scoped and bound, the cap and identity collisions are checked first, `Lot` has no callbacks, and the foreign keys cascade or nullify what points at a lot (`Lot::ConditionChange#update_alone!` is the precedent; spec 041 FR-2, D1 of its plan)".
-14. **Sources**: add `spec 041`, and move issue #48 from the "open:" list of the issues line to the closed ones (#187 takes its place there as open); **Distillation log** is left to `distill-feature` (rule: documentation.md, session end), not written by hand here.
+13. **Invariants**, "The core names no collectible": change "`spec/import_apply_core_spec.rb` the location and Move copies files" to "…the location, Move copies and bulk Move to… files (spec 041 FR-4)".
+14. **Decisions not in an ADR**: add "Bulk Move to… writes with `update_all` and `delete_all` on the account's lots, against the models rule, for the 2-second bar: every statement is tenant-scoped and bound, the cap and identity collisions are checked first, `Lot`'s only callback is the `lot_key` builder (`before_validation`), which these writes reproduce (the SQL in `move_alone!`, `Lot.key_for` in `merge!`); it has no `dependent:` associations, and finish and condition aren't written, so `normalizes` isn't bypassed, and the foreign keys cascade or nullify what points at a lot (`Lot::ConditionChange#update_alone!` is the precedent; spec 041 FR-2, D1 of its plan)".
+15. **Sources**: add `spec 041`, and move issue #48 from the "open:" list of the issues line to the closed ones (#187 takes its place there as open); **Distillation log** is left to `distill-feature` (rule: documentation.md, session end), not written by hand here.
 
 ### Task 18: `CLAUDE.md` and the roadmap
 
@@ -1546,7 +1574,7 @@ Spec files: `spec/models/lot/bulk_move_spec.rb` (the move), `spec/models/bulk_se
 1. **The 2-second bar.** Written for one statement per surviving merge group plus batched deletes. If the timing example is over 2 s, the contingency (inside the NFR's "statements independent of the number of selected lots" as a stricter reading, not a spec change) is to write the survivors in one statement per batch: `UPDATE lots SET quantity = CASE id WHEN … END, lot_key = CASE id … END, location_id = ?, updated_at = ? WHERE id IN (…)`, built from bound pairs. That stays a single key rule, `Lot.key_for`'s text computed in Ruby. Only a run measures it.
 2. **`joins(entry: :set)` on top of `CollectionFilter.lots`' `joins(:entry)`.** ActiveRecord merges the two into one join tree, which is what `check_cap!` in `Lot::ConditionChange` relies on with a plain `account.lots.joins(entry: :set)`; combined with the name filter's `Catalog::Entry.named_like` merge it is untested. Task 4's examples run it with a name filter only in the request spec (AC-3.9 name filter); a duplicate-alias error would show there.
 3. **`Sort.apply`'s condition rank** takes the vocabulary from the entry's collectible type in SQL; sorting by condition on a selection is not covered by an example here. A one-line example in Task 4 (`sort: CollectionTable::Sort.parse("condition", "asc")`) is worth adding if the executor finds the rank needs the preloaded extension.
-4. **`delete_all` and `update_all`** are used, with comments, as `Lot::ConditionChange` uses `update_all`: `Lot` has no callbacks or dependents, the foreign keys null or cascade what points at a lot, and every statement is `@account.lots.where(id:)`. If the executor adds a callback or a `dependent:` to `Lot` later, these writers skip it.
+4. **`delete_all` and `update_all`** are used, with comments, as `Lot::ConditionChange` uses `update_all`: `Lot`'s only callback is the `lot_key` builder (`before_validation`), which these writes reproduce (the SQL in `move_alone!`, `Lot.key_for` in `merge!`); it has no `dependent:` associations, and finish and condition aren't written, so `normalizes` isn't bypassed; the foreign keys null or cascade what points at a lot, and every statement is `@account.lots.where(id:)`. A callback or a `dependent:` added to `Lot` later is skipped by these writers.
 5. **SQLite bound-variable limit.** Statements bind at most 1,000 ids (`BATCH`); `existing_targets` binds the distinct printing ids in one `IN`, as `Lot::ConditionChange` does. At the largest account (tens of thousands of printings in one move) that list could pass SQLite's 32,766 limit; the 5,000-lot bar does not reach it. If it does for a real account, batch that read by `BATCH` too (a one-line change, same result).
 6. **Order of `before_action`s.** `include BulkSelected` registers `set_selection` before the controller's own `require_locations`; Rails runs callbacks in declaration order, and the examples "(1) GET with no selection and no location answers 'Select at least one item.'" are worth one line in Task 9's GET describe if the executor wants decision 6 (1) before (2) pinned.
 7. **`--tag timing` and the exclusion.** `rails_helper` excludes `:timing` unless `SCANNER_TIMING` is set; whether `--tag timing` alone overrides the exclusion was not run. The plan's command sets both.
