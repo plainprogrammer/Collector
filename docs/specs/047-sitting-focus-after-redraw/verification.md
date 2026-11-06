@@ -1,6 +1,6 @@
 # Verification: Keep Focus and Announce After the Scanner Sitting Panel Redraws (spec 047)
 
-**Spec:** [spec.md](spec.md) 0.3.0 · **Plan:** [plan.md](plan.md) · **Issue:** [#182](https://github.com/plainprogrammer/Collector/issues/182)
+**Spec:** [spec.md](spec.md) 0.3.0 · **Plan:** plan (retired in `516735751f2871e41a2dd38be336531f7c76e103`; read it with `git show 516735751f2871e41a2dd38be336531f7c76e103^:docs/specs/047-sitting-focus-after-redraw/plan.md`) · **Issue:** [#182](https://github.com/plainprogrammer/Collector/issues/182)
 
 ## Rulings
 
