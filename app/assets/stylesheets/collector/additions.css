@@ -88,10 +88,15 @@ img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches:
 .c-tile__place-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .c-tile__place-more { flex:none; }
 
-/* ---------- Row place (spec 033): the phone line under a name ends with the place, up to 60 characters ---------- */
-/* The export's cells don't wrap, so a long place would widen the table past 360px; the line wraps instead. */
+/* ---------- Row place (spec 033, spec 048): a row's place wraps, a tile's is cut ---------- */
+/* The export's `.c-table td { white-space:nowrap }` would widen the table to fit a name of up to 60 characters, so a row's
+   place wraps: the phone line below 640px, the Location cell at any width. Firefox ignores max-width on a table cell, so the
+   cap is on the span inside it. overflow-wrap:anywhere breaks a name with no space, which has no other break point
+   (spec 048 decisions 1–3). The unplaced cell, "No location", keeps one line. */
+.c-table td.c-table__place:not(.is-muted) { white-space:normal; }
+.c-table__place-name { display:block; max-width:20rem; overflow-wrap:anywhere; }
 @container collection (max-width: 639px) {
-  .c-table__sub { white-space:normal; }
+  .c-table__sub { white-space:normal; overflow-wrap:anywhere; }
 }
 
 /* ---------- Select inside the filter bar ---------- */

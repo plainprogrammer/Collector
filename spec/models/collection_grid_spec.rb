@@ -73,6 +73,12 @@ RSpec.describe CollectionGrid, type: :model do
       expect(place_of).to have_attributes(name: "Blue binder", more: 2)
     end
 
+    it "orders a tie by comparison key, where the raw name would order it the other way", :aggregate_failures do # spec 033 AC-1.2, spec 048 AC-2.5
+      put(2, create(:location, account:, name: "Beta shelf"))
+      put(2, create(:location, account:, name: "alpha shelf"), finish: "foil")
+      expect(place_of).to have_attributes(name: "alpha shelf", more: 1)
+    end
+
     it "puts unplaced after a named place on a tie, and names nothing when unplaced leads", :aggregate_failures do
       put(2, nil)
       put(2, blue, finish: "foil")

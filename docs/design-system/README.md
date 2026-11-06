@@ -114,6 +114,8 @@ App additions (spec 032, in `collector/additions.css`): `c-locations__more`, `c-
 
 App additions (spec 033, in `collector/additions.css`): `c-tile__place` and its parts, and the wrapping of `c-table__sub` on narrow collections, documented in `ItemTile` and `CollectionTable`. Upstream them into the published design system before the next export replaces this folder.
 
+App additions (spec 048, in `collector/additions.css`): `c-table__place-name` (the Location cell's name, capped at 20rem and broken inside a word when it must), the wrapping of the named `c-table__place` cell and `overflow-wrap` on the phone `c-table__sub`, documented in `CollectionTable`. The cell's rule overrides the export's `.c-table td { white-space:nowrap }`. Upstream them into the published design system before the next export replaces this folder.
+
 ## Logo
 
 - The mark is three fanned cards, the front one vault teal with a foil diamond: a collection, one piece of which is special. It is deliberately game-neutral so it grows past trading cards.
