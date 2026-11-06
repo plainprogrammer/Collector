@@ -34,6 +34,8 @@ Evidence for each criterion. Screenshots (`screenshots/`, factory data, placehol
 - No example failed on unmutated code, so spec 033 has no bug to report from the gaps.
 - **A real case the first AC-1.7 example hid (found by the full `bin/ci`, 2026-11-06).** The example didn't pin its set code. The factory's `s<sequence>` made it `S2000` late in the full run, and a five-character code wraps the phone line at 360px (32px against under 20). Spec 048 0.5.0 (the coordinator's request) states the code of AC-1.7 ("MH3", three characters, one line at 360 and 390), adds AC-1.8 ("PMH3A" wraps to two lines at 360 with no sideways scroll) and says in decision 4 that a long set code can wrap the line, which is fine under the no-scoping ruling. The system examples pin the code through `own_in` too, so no width depends on the sequence.
 
+- **A latent flake exposed in CI (shard 4/4 of the first push, 2026-11-06).** `spec/requests/locations_spec.rb` "shows no count, lot or name of another account's same-named location" searched the whole HTML for the sentinel "777"; this branch's new committed-row system examples shifted ids in that shard until a page link held `777`. It reproduced locally with the shard's seed (`CI=true bin/rspec --seed 34295 …`). The check now reads the page's visible text (commit `7bb7b55`); the replay then passed (820 examples, 0 failures). The other sentinels in that file were read and are visible text or names.
+
 ## Out of scope, recorded
 
 - The table is up to about 20px wider than its container for containers of 640 to about 660px even with a short name (probe 2). It is not a place's doing, nothing scrolls, and it is filed as [#208](https://github.com/plainprogrammer/Collector/issues/208).
