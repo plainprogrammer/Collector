@@ -13,7 +13,7 @@ class Scanner::SittingsController < ApplicationController
       return render(turbo_stream: sitting_stream(GONE, alert: true), status: :unprocessable_content)
     end
 
-    sitting = Scanner::Sitting.place!(account: Current.account, location:)
+    sitting = Scanner::Sitting.choose!(account: Current.account, location:)
     render turbo_stream: sitting_stream(placed_message(sitting))
   end
 

@@ -48,23 +48,30 @@ class Scanner::Sitting < ApplicationRecord
     finishes.empty? ? finish.nil? : finishes.include?(finish)
   end
 
-  # Sets, changes or clears the account's sitting place (spec 040 decision 2, AC-1.2, AC-1.8). Choosing a place opens a
-  # sitting as an add does; clearing the place of a sitting that holds no kept card deletes it, so the page is as before
-  # any sitting. Returns the sitting (destroyed when it was deleted), or nil when there was none to clear.
-  def self.place!(account:, location:)
+  CHOICES = %i[condition location].freeze
+
+  # Sets, changes or clears the account's sitting choices (spec 042 decisions 4, 8; spec 040 decision 2): a condition (a
+  # vocabulary key the caller has checked) and a place. A choice left out is kept; one given as nil is cleared. Choosing opens
+  # a sitting as an add does; a sitting left with no kept card, no condition and no place is deleted, so the page is as before
+  # any sitting (AC-1.8), the check and the delete in one write transaction. Returns the sitting (destroyed when it was
+  # deleted), or nil when there was none to clear.
+  def self.choose!(account:, **choices)
+    raise ArgumentError, "give :condition, :location or both" if choices.empty? || (choices.keys - CHOICES).any?
+
     transaction do
-      if location
-        find_or_create_by!(account:).tap { |sitting| sitting.update!(location:) }
-      elsif (sitting = find_by(account:))
-        sitting.entries.kept.exists? ? sitting.update!(location: nil) : sitting.destroy!
-        sitting
-      end
+      sitting = find_by(account:)
+      next if sitting.nil? && choices.values.none? # clearing with none open opens none
+
+      sitting ||= create!(account:)
+      sitting.update!(choices)
+      sitting.destroy! if sitting.condition.nil? && sitting.location_id.nil? && !sitting.entries.kept.exists?
+      sitting
     end
   end
 
-  # A sitting with no entries at all and no place says nothing, so the scanner drops it before it renders (spec 040
-  # AC-3.2): it is what a removed location leaves of a sitting that was only opened by choosing that place.
-  def pointless? = location_id.nil? && !entries.exists?
+  # A sitting with no entries at all, no place and no condition says nothing, so the scanner drops it before it renders (spec 040
+  # AC-3.2, spec 042 AC-3.3): what a removed location leaves of a sitting that was only opened by choosing that place.
+  def pointless? = location_id.nil? && condition.nil? && !entries.exists?
 
   # Deletes this sitting if it is pointless, reading it again in the write transaction so an add or a place from another
   # tab since it was loaded keeps it. Returns whether it went.

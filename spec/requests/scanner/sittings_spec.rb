@@ -266,7 +266,7 @@ RSpec.describe "Scanner sittings", type: :request do
 
     it "ignores a sitting or account id in the request (AC-4.2)", :aggregate_failures do
       other = create(:user).account
-      theirs = Scanner::Sitting.place!(account: other, location: create(:location, account: other))
+      theirs = Scanner::Sitting.choose!(account: other, location: create(:location, account: other))
       place(blue.id, sitting_id: theirs.id, account_id: other.id)
       patch scanner_sitting_path, params: { sitting: { location_id: long_box.id, account_id: other.id, id: theirs.id } }, headers: stream
       expect(theirs.reload.location.account).to eq(other)

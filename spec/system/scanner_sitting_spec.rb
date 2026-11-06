@@ -82,7 +82,7 @@ RSpec.describe "The scanner's sitting", type: :system do
     end
 
     it "keeps the place on a reload, clears it with cards kept, and ends with the control on No location (AC-1.7, AC-1.8, AC-5.2)", :aggregate_failures do
-      Scanner::Sitting.place!(account: user.account, location: user.account.locations.find_by!(name: "Long box"))
+      Scanner::Sitting.choose!(account: user.account, location: user.account.locations.find_by!(name: "Long box"))
       Scanner::Sitting.add!(account: user.account, printing:, finish: "foil", reading_key: "a" * 32)
       visit scanner_path
       expect(page).to have_select("Put this sitting in", selected: "Long box")
@@ -108,7 +108,7 @@ RSpec.describe "The scanner's sitting", type: :system do
 
     it "fits a 360px screen with a long location name, never scrolling sideways (AC-7.1)", :aggregate_failures do
       long = create(:location, account: user.account, name: "The second long box under the desk, left of the shelf")
-      Scanner::Sitting.place!(account: user.account, location: long)
+      Scanner::Sitting.choose!(account: user.account, location: long)
       Scanner::Sitting.add!(account: user.account, printing:, finish: "foil", reading_key: "a" * 32)
       visit collection_path
       expect(open_in_narrow_frame(scanner_path, width: 360, ready: "#sitting_location_id")).to eq([ 360, true ])

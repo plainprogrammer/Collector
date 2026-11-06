@@ -80,7 +80,7 @@ RSpec.describe "Scanner adds", type: :request do
 
   describe "into the sitting's place (spec 040)" do
     def blue = @blue ||= create(:location, account: user.account, name: "Blue binder")
-    def place(location) = Scanner::Sitting.place!(account: user.account, location:)
+    def place(location) = Scanner::Sitting.choose!(account: user.account, location:)
     def html = Nokogiri::HTML5(response.body)
 
     it "adds into the place and names it in the notice, and redraws the control (AC-1.3, FR-1)", :aggregate_failures do

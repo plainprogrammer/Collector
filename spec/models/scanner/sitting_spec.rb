@@ -81,7 +81,7 @@ RSpec.describe Scanner::Sitting, type: :model do
     let(:blue) { create(:location, account:, name: "Blue binder") }
     let(:long_box) { create(:location, account:, name: "Long box") }
 
-    def open_in(location) = described_class.place!(account:, location:)
+    def open_in(location) = described_class.choose!(account:, location:)
 
     it "adds into the lot of that printing and finish in the place, leaving the others alone (AC-1.3)", :aggregate_failures do
       unplaced = create(:lot, account:, entry: printing, finish: "foil", quantity: 2)
@@ -127,53 +127,65 @@ RSpec.describe Scanner::Sitting, type: :model do
     end
   end
 
-  describe ".place!" do
+  describe ".choose!" do
     let(:blue) { create(:location, account:, name: "Blue binder") }
     let(:long_box) { create(:location, account:, name: "Long box") }
 
-    def place(location) = described_class.place!(account:, location:)
+    def choose(**choices) = described_class.choose!(account:, **choices)
 
-    it "opens a sitting holding the place when none is open (AC-1.2)", :aggregate_failures do
-      sitting = place(blue)
-      expect(sitting).to have_attributes(account:, location: blue, persisted?: true)
-      expect(sitting.entries).to be_empty
+    it "opens a sitting holding the condition, or the place, when none is open (AC-1.2)", :aggregate_failures do
+      expect(choose(condition: "near_mint")).to have_attributes(account:, condition: "near_mint", location: nil, persisted?: true)
+      expect(described_class.count).to eq(1)
+      described_class.destroy_all
+      expect(choose(location: blue)).to have_attributes(condition: nil, location: blue, persisted?: true)
     end
 
-    it "changes the place of the open sitting, keeping its entries, and stays one sitting (AC-2.1)", :aggregate_failures do
-      place(blue)
-      entry = add.entry
-      place(long_box)
-      place(long_box)
-      expect(described_class.where(account:).sole).to have_attributes(location: long_box, entries: [ entry ])
+    it "keeps the choice it isn't given: a condition alone keeps the place, a place alone keeps the condition (AC-2.4)", :aggregate_failures do
+      choose(condition: "near_mint", location: blue)
+      expect(choose(condition: "lightly_played")).to have_attributes(condition: "lightly_played", location: blue)
+      expect(choose(location: long_box)).to have_attributes(condition: "lightly_played", location: long_box)
+      expect(described_class.where(account:).count).to eq(1)
     end
 
-    it "clears the place and keeps a sitting that holds a card (AC-1.8)", :aggregate_failures do
-      place(blue)
+    it "clears a choice given as nil and keeps a sitting that holds a card (AC-1.8)", :aggregate_failures do
+      choose(condition: "near_mint", location: blue)
       add
-      expect(place(nil)).to have_attributes(location: nil, persisted?: true)
+      expect(choose(condition: nil, location: nil)).to have_attributes(condition: nil, location: nil, persisted?: true)
       expect(described_class.find_by!(account:).entries.count).to eq(1)
     end
 
-    it "deletes a sitting with no card on clearing its place, whether none was added or all were undone (AC-1.8)", :aggregate_failures do
-      place(blue)
-      expect(place(nil)).to be_destroyed
+    it "keeps a sitting with no card while it still holds one choice (AC-1.8)", :aggregate_failures do
+      choose(condition: "near_mint", location: blue)
+      expect(choose(location: nil)).to have_attributes(condition: "near_mint", location: nil, persisted?: true)
+      expect(choose(location: blue, condition: nil)).to have_attributes(condition: nil, location: blue, persisted?: true)
+    end
+
+    it "deletes a sitting with no kept card, no condition and no place, whether none was added or all were undone (AC-1.8)", :aggregate_failures do
+      choose(condition: "near_mint")
+      expect(choose(condition: nil)).to be_destroyed
       expect(described_class.count).to eq(0)
 
-      place(blue)
+      choose(condition: "near_mint", location: blue)
       add.entry.undo!
-      place(nil)
+      choose(condition: nil, location: nil)
       expect([ described_class.count, Scanner::SittingEntry.count ]).to eq([ 0, 0 ])
     end
 
-    it "does nothing when clearing with no sitting open" do
-      expect(place(nil)).to be_nil
+    it "does nothing when clearing with no sitting open, and opens none", :aggregate_failures do
+      expect(choose(condition: nil, location: nil)).to be_nil
+      expect(described_class.count).to eq(0)
+    end
+
+    it "needs at least one of the two choices and no other key", :aggregate_failures do
+      expect { described_class.choose!(account:) }.to raise_error(ArgumentError)
+      expect { described_class.choose!(account:, language: "en") }.to raise_error(ArgumentError)
     end
 
     it "changes only the given account's sitting" do
       other = create(:user).account
-      described_class.place!(account: other, location: create(:location, account: other))
-      place(blue)
-      expect(described_class.where(account: other).sole.location.account).to eq(other)
+      described_class.choose!(account: other, condition: "damaged")
+      choose(condition: "near_mint")
+      expect(described_class.where(account: other).sole.condition).to eq("damaged")
     end
   end
 
@@ -188,19 +200,21 @@ RSpec.describe Scanner::Sitting, type: :model do
 
     it "reads the sitting again before deciding, so a place set since it was loaded keeps it" do
       stale = described_class.create!(account:)
-      described_class.place!(account:, location: create(:location, account:))
+      described_class.choose!(account:, location: create(:location, account:))
       stale.drop_if_pointless!
       expect(described_class.find_by!(account:).location).to be_present
     end
   end
 
-  describe "#pointless? (spec 040 plan P1)" do
-    it "is true only for a sitting with no entries at all and no place", :aggregate_failures do
+  describe "#pointless? (spec 040 plan P1, spec 042 AC-3.3)" do
+    it "is true only for a sitting with no entries at all, no place and no condition", :aggregate_failures do
       sitting = described_class.create!(account:)
       expect(sitting).to be_pointless
       sitting.update!(location: create(:location, account:))
       expect(sitting).not_to be_pointless
-      sitting.update!(location: nil)
+      sitting.update!(location: nil, condition: "near_mint")
+      expect(sitting).not_to be_pointless
+      sitting.update!(condition: nil)
       add.entry.undo!
       expect(sitting.reload).not_to be_pointless
     end
@@ -218,10 +232,10 @@ RSpec.describe Scanner::Sitting, type: :model do
     it "loads each entry's lot and its location with no query per entry (spec 040 FR-1)", :aggregate_failures do
       extend QueryCounting
       blue = create(:location, account:)
-      described_class.place!(account:, location: blue)
+      described_class.choose!(account:, location: blue)
       add
       add(key: "b" * 32, to: create(:mtg_printing).entry)
-      described_class.place!(account:, location: create(:location, account:))
+      described_class.choose!(account:, location: create(:location, account:))
       add(key: "c" * 32, to: create(:mtg_printing).entry)
       sitting = described_class.find_by!(account:)
       entries = nil
