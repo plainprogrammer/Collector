@@ -66,3 +66,4 @@
 - [Parallel bin/ci tmpdir race](parallel-bin-ci-tmpdir-race.md) — "Upgrade::Harness removes its temporary directory" fails when worktrees run bin/ci together (#178); confirm alone, push again
 - [Probe framework hooks with --require](probe-framework-hooks-with-require.md) — wrap a hook (field_error_proc) in a scratch RSpec config via bin/rspec --require to see which pages it touches; call the original with instance_exec
 - [gh issue view is silent](gh-issue-view-silent.md) — in Orca worktrees `gh issue view` prints nothing and exits 0; read issues with `gh api repos/plainprogrammer/Collector/issues/<n>` (2026-11-06, spec 043)
+- [Verify red-run claims](verify-red-run-claims.md) — an implementer's "passed before the change" report can be wrong; delete the new line, run that example, git checkout the file (spec 042 AC-4.5)

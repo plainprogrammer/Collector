@@ -145,7 +145,7 @@ RSpec.describe CollectionImport::Apply, type: :model do
   describe "working state (decision 7, AC-1.8)" do
     it "clears the lists that point at lots when the apply writes", :aggregate_failures do
       removal = working_state_for(held_lot(account, d, quantity: 3))
-      Scanner::Sitting.sole.update!(location: create(:location, account:)) # a placed sitting goes too (spec 040 AC-5.3)
+      Scanner::Sitting.sole.update!(location: create(:location, account:), condition: "near_mint") # a sitting with its choices goes too (spec 040 AC-5.3, spec 042 AC-5.3)
       preview!([ import_row(a) ])
 
       apply

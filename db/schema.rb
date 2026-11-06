@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_06_100001) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_06_200001) do
   create_table "accounts", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -317,6 +317,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_06_100001) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "location_id"
+    t.string "condition"
     t.index ["account_id"], name: "index_scanner_sittings_on_account_id", unique: true
     t.index ["location_id"], name: "index_scanner_sittings_on_location_id"
   end

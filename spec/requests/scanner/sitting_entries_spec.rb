@@ -80,7 +80,7 @@ RSpec.describe "Scanner adds", type: :request do
 
   describe "into the sitting's place (spec 040)" do
     def blue = @blue ||= create(:location, account: user.account, name: "Blue binder")
-    def place(location) = Scanner::Sitting.place!(account: user.account, location:)
+    def place(location) = Scanner::Sitting.choose!(account: user.account, location:)
     def html = Nokogiri::HTML5(response.body)
 
     it "adds into the place and names it in the notice, and redraws the control (AC-1.3, FR-1)", :aggregate_failures do
@@ -122,7 +122,96 @@ RSpec.describe "Scanner adds", type: :request do
       add
       expect(response.body).to include("Added 1 × Lightning Bolt (MOM · 123, Foil) to your collection.")
       expect(user.account.lots.sole.location).to be_nil
-      expect(response.body).not_to include("Put this sitting in")
+      expect(html.at_css("select#sitting_location_id")).to be_nil
+    end
+  end
+
+  describe "with the sitting's condition (spec 042)" do
+    def blue = @blue ||= create(:location, account: user.account, name: "Blue binder")
+    def choose(**choices) = Scanner::Sitting.choose!(account: user.account, **choices)
+    def html = Nokogiri::HTML5(response.body)
+
+    it "adds into the lot of that condition and names it by its short label after the finish (AC-1.3)", :aggregate_failures do
+      choose(condition: "near_mint")
+      add
+      expect(response.body).to include("Added 1 × Lightning Bolt (MOM · 123, Foil, NM) to your collection.")
+      expect(user.account.lots.sole).to have_attributes(condition: "near_mint", finish: "foil", location: nil, price_paid_cents: nil)
+      expect(html.at_css("select#sitting_condition option[selected]").text).to eq("Near mint (NM)")
+      expect(html.at_css("#scanner_sitting li .c-list__meta").text.squish).to match(/\AMOM · 123 · Foil · NM · Added/)
+    end
+
+    it "names the condition and the place together (AC-1.4)", :aggregate_failures do
+      choose(condition: "near_mint", location: blue)
+      add
+      expect(response.body).to include("Added 1 × Lightning Bolt (MOM · 123, Foil, NM) in Blue binder to your collection.")
+      expect(user.account.lots.sole).to have_attributes(condition: "near_mint", location: blue)
+    end
+
+    it "leaves the finish out and keeps the condition for a printing with no finish listed (decision 3)" do
+      MTG::Printing.find_by!(catalog_entry_id: printing.id).update!(finishes: [])
+      choose(condition: "near_mint")
+      add(finish: "")
+      expect(response.body).to include("Added 1 × Lightning Bolt (MOM · 123, NM) to your collection.")
+    end
+
+    # Passes before the change: regression guard.
+    it "names no condition when the sitting has none (AC-1.5)", :aggregate_failures do
+      choose(location: blue)
+      add
+      expect(response.body).to include("Added 1 × Lightning Bolt (MOM · 123, Foil) in Blue binder to your collection.")
+      expect(user.account.lots.sole.condition).to be_nil
+    end
+
+    # Passes before the change: regression guard.
+    it "keeps the Undo announcement and the accessible names free of the condition (decision 3)", :aggregate_failures do
+      choose(condition: "near_mint")
+      add
+      expect(html.at_css("#scanner_sitting form.c-scanner__undo input[type=submit], #scanner_sitting form.c-scanner__undo button")["aria-label"]).to eq("Undo Lightning Bolt (MOM · 123, Foil)")
+      expect(html.at_css("#scanner_sitting a[data-scanner-event=details]")["aria-label"]).to eq("Details of Lightning Bolt (MOM · 123, Foil)")
+      post scanner_sitting_entry_undo_path(Scanner::SittingEntry.sole), headers: { "Accept" => "text/vnd.turbo-stream.html, text/html" }
+      expect(response.body).to include("Removed 1 × Lightning Bolt (MOM · 123, Foil) from your collection.")
+    end
+
+    # Passes before the change: regression guard.
+    it "refuses at the cap of the lot of that condition with the existing message, while Not specified takes the card (AC-1.6)", :aggregate_failures do
+      create(:lot, account: user.account, entry: printing, finish: "foil", condition: "near_mint", quantity: Lot::MAX_QUANTITY)
+      choose(condition: "near_mint")
+      add
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.body).to include("You already have the most copies one lot can hold (9,999).")
+      expect(Scanner::SittingEntry.count).to eq(0)
+      choose(condition: nil)
+      add
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "names the entry's lot's condition and place on a replay, never the sitting's now (AC-4.4)", :aggregate_failures do
+      choose(condition: "near_mint", location: blue)
+      add
+      choose(condition: "damaged", location: create(:location, account: user.account, name: "Long box"))
+      add
+      expect(response.body).to include("Added 1 × Lightning Bolt (MOM · 123, Foil, NM) in Blue binder to your collection.")
+      expect(user.account.lots.sum(:quantity)).to eq(1)
+    end
+
+    it "names the condition the entry's lot has been edited to (decision 3)" do
+      choose(condition: "near_mint")
+      add
+      user.account.lots.sole.update!(condition: "lightly_played")
+      add
+      expect(response.body).to include("Added 1 × Lightning Bolt (MOM · 123, Foil, LP) to your collection.")
+    end
+
+    # Passes before the change: regression guard.
+    it "refuses a condition the printing's vocabulary doesn't know with the not-added message, not the cap, recording nothing (AC-4.5)", :aggregate_failures, :other_collecting do
+      other = create(:catalog_entry, collectible_type: "other")
+      choose(condition: "near_mint")
+      add(finish: "", to: other.external_key)
+      expect(response).to have_http_status(:unprocessable_content)
+      body = CGI.unescapeHTML(response.body)
+      expect(body).to include("That card couldn't be added. Scan it again.")
+      expect(body).not_to include("9,999")
+      expect([ user.account.lots.count, Scanner::SittingEntry.count ]).to eq([ 0, 0 ])
     end
   end
 

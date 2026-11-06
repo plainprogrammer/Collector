@@ -1,21 +1,22 @@
-<%# locals: (sitting:, entries:, locations:, added_any:) %>
+<%# locals: (sitting:, entries:, conditions:, locations:, added_any:) %>
 <%# The open sitting's adds, newest first: the 10 newest, the rest behind "Show all" (spec 009 AC-3.2). Always present,
-    so an add's Turbo Stream can replace it; hidden while there's no sitting (AC-3.7), unless the account has locations,
-    when it holds the control that chooses the sitting's place (spec 040 decision 3, AC-1.1). %>
+    so an add's Turbo Stream can replace it, and always holds the control, for every collector, with no sitting too
+    (spec 042 decision 2). %>
 <% if sitting %>
+  <% choices = sitting_choices(sitting, conditions) %>
   <section id="scanner_sitting" class="c-scanner__sitting" aria-labelledby="scanner-sitting-heading">
     <div class="c-section__head">
-      <h2 class="c-section__title" id="scanner-sitting-heading">This sitting: <%= pluralize(entries.size, "card") %><%= ", in #{sitting.location.name}" if sitting.location %></h2>
+      <h2 class="c-section__title" id="scanner-sitting-heading">This sitting: <%= pluralize(entries.size, "card") %><%= ", #{choices.join(", ")}" if choices.any? %></h2>
       <span class="c-section__actions"><%= link_to "Done", new_scanner_sitting_ending_path, class: "c-btn c-btn--secondary c-btn--sm" %></span>
     </div>
-    <%= render "scanners/picker", location_id: sitting.location_id, locations: locations if locations.any? %>
+    <%= render "scanners/picker", condition: sitting.condition, location_id: sitting.location_id, conditions:, locations: %>
     <% if entries.empty? %>
-      <%# Three states (spec 040 AC-1.2): entries all undone keep spec 009's copy; a sitting with none says where cards go,
-          or, with no place (a redraw the next render drops), that nothing was added. %>
+      <%# Four states (spec 042 decision 3): entries all undone keep spec 009's copy; a sitting with none says what cards get,
+          naming only what is set; with neither (a redraw the next render drops) it says nothing was added. %>
       <% if added_any %>
         <p class="c-empty">Everything added in this sitting was undone.</p>
-      <% elsif sitting.location %>
-        <p class="c-empty">Cards you scan now go into <%= sitting.location.name %>.</p>
+      <% elsif choices.any? %>
+        <p class="c-empty">Cards you scan now: <%= choices.join(", ") %>.</p>
       <% else %>
         <p class="c-empty">Nothing added yet.</p>
       <% end %>
@@ -29,10 +30,8 @@
       <% end %>
     <% end %>
   </section>
-<% elsif locations.any? %>
-  <section id="scanner_sitting" class="c-scanner__sitting">
-    <%= render "scanners/picker", location_id: nil, locations: %>
-  </section>
 <% else %>
-  <section id="scanner_sitting" hidden></section>
+  <section id="scanner_sitting" class="c-scanner__sitting">
+    <%= render "scanners/picker", condition: nil, location_id: nil, conditions:, locations: %>
+  </section>
 <% end %>

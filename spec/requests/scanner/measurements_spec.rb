@@ -63,7 +63,7 @@ RSpec.describe "Scanner measurement mode", type: :request do
     Scanner::Sitting.create!(account: User.sole.account)
     get scanner_measurement_path
     expect(Scanner::Sitting.count).to eq(0)
-    expect(Nokogiri::HTML5(response.body).at_css("#scanner_sitting")["hidden"]).not_to be_nil
+    expect(Nokogiri::HTML5(response.body).at_css("#scanner_sitting select#sitting_condition")).not_to be_nil
   end
 
   it "stores the text and both strips outside the repository, then moves on (AC-5.3)", :aggregate_failures do
