@@ -13,9 +13,16 @@ module ScannerSitting
     end
 
     def sitting_locals(sitting = Current.account.scanner_sitting)
-      { sitting:, entries: sitting ? sitting.kept_entries.to_a : [], locations: Current.account.locations.ordered.to_a,
+      { sitting:, entries: sitting ? sitting.kept_entries.to_a : [], conditions: scanner_conditions, locations: account_locations,
         added_any: sitting.present? && sitting.entries.exists? }
     end
+
+    # The scale of the collectible the scanner reads (spec 042 decision 5): condition key => [ long label, short label ]. The one
+    # place the scanner's controllers name that type for the sitting's choices; the model and the views are handed what they need.
+    def scanner_conditions = Catalog.collecting_for(MTG::Reading::COLLECTIBLE_TYPE).conditions
+
+    # The account's locations in the order of the locations page, loaded once per request.
+    def account_locations = @account_locations ||= Current.account.locations.ordered.to_a
 
     # Redraws the panel (after an add, an Undo or a change of place, spec 040 FR-1) and says what happened; a nil message
     # clears the status line.

@@ -25,4 +25,29 @@ RSpec.describe ScannersHelper, type: :helper do
   it "has no note when art overruled nothing" do
     expect(helper.scanner_overrule_note(reading(:matched))).to be_nil
   end
+
+  describe "the condition in the sitting's copy (spec 042 decision 3)" do
+    let(:printing) { create(:mtg_printing, entry: create(:catalog_entry, name: "Psychic Frog", set: create(:catalog_set, code: "mh3"), number: "47")).entry }
+    let(:conditions) { Catalog.collecting_for("mtg").conditions }
+
+    it "gives a condition's short label from the printing's vocabulary, and nil for none or an unknown key", :aggregate_failures do
+      expect(helper.scanner_condition(printing, "near_mint")).to eq("NM")
+      expect(helper.scanner_condition(printing, nil)).to be_nil
+      expect(helper.scanner_condition(printing, "mint")).to be_nil
+    end
+
+    it "puts the condition after the finish inside the copy's parentheses, and leaves each out when unspecified", :aggregate_failures do
+      expect(helper.scanner_copy(printing, "foil", "near_mint")).to eq("Psychic Frog (MH3 · 47, Foil, NM)")
+      expect(helper.scanner_copy(printing, nil, "near_mint")).to eq("Psychic Frog (MH3 · 47, NM)")
+      expect(helper.scanner_copy(printing, "foil")).to eq("Psychic Frog (MH3 · 47, Foil)")
+    end
+
+    it "lists the sitting's choices as words, only those that are set", :aggregate_failures do
+      place = build_stubbed(:location, name: "Blue binder")
+      expect(helper.sitting_choices(Scanner::Sitting.new(condition: "near_mint", location: place), conditions)).to eq([ "Near mint", "in Blue binder" ])
+      expect(helper.sitting_choices(Scanner::Sitting.new(condition: "near_mint"), conditions)).to eq([ "Near mint" ])
+      expect(helper.sitting_choices(Scanner::Sitting.new(location: place), conditions)).to eq([ "in Blue binder" ])
+      expect(helper.sitting_choices(Scanner::Sitting.new, conditions)).to eq([])
+    end
+  end
 end
