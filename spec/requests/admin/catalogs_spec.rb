@@ -500,7 +500,8 @@ RSpec.describe "Admin catalog page", :solid_queue, type: :request do
 
       it "shows a finished build's counts (AC-4.7) and a failed one's message and index (AC-4.8)", :aggregate_failures, :art_matching do
         create(:catalog_refresh_run)
-        build = create(:mtg_art_build, indexed_count: 31_904, without_image_count: 12, failed_count: 3, finished_at: Time.utc(2026, 10, 9, 5, 0))
+        name = art_index_name
+        build = create(:mtg_art_build, index_file: name, indexed_count: 31_904, without_image_count: 12, failed_count: 3, finished_at: Time.utc(2026, 10, 9, 5, 0))
         get admin_catalog_path
         expect(text(section("art_index"))).to eq("Art index Build art index Ready. Finished 9 Oct 2026 05:00 UTC " \
           "Artworks indexed 31,904 Without an image 12 Failed images 3")
@@ -508,7 +509,21 @@ RSpec.describe "Admin catalog page", :solid_queue, type: :request do
         build.update!(status: "failed", message: "Errno::ENOSPC: No space left on device")
         get admin_catalog_path
         expect(text(section("art_index"))).to eq("Art index Build art index Failed. An unexpected error stopped it. " \
-          "Finished 9 Oct 2026 05:00 UTC Index in use none Technical detail Errno::ENOSPC: No space left on device")
+          "Finished 9 Oct 2026 05:00 UTC Index in use #{name} Technical detail Errno::ENOSPC: No space left on device")
+      end
+
+      it "says a finished build's index file is missing, with its facts and an enabled button, and doesn't poll (spec 039 AC-1.8)", :aggregate_failures, :art_matching do
+        create(:catalog_refresh_run)
+        create(:mtg_art_build, index_file: "art-index-default-cards-1-0123456789abcdef-31904.bin.gz", indexed_count: 31_904,
+          without_image_count: 12, failed_count: 3, finished_at: Time.utc(2026, 10, 9, 5, 0))
+
+        get admin_catalog_path
+
+        expect(text(section("art_index"))).to eq("Art index Build art index Index file missing. Build the art index again. " \
+          "Finished 9 Oct 2026 05:00 UTC Index file art-index-default-cards-1-0123456789abcdef-31904.bin.gz " \
+          "Artworks indexed 31,904 Without an image 12 Failed images 3")
+        expect(section("art_index").at_css("button")["disabled"]).to be_nil
+        expect(page.at_css("[data-controller~='poll']")).to be_nil
       end
     end
 
