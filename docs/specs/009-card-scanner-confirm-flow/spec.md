@@ -5,7 +5,7 @@
 **Created:** 2026-10-03
 **Last Updated:** 2026-10-04
 **Branch:** `009-card-scanner-confirm-flow`
-**Frozen:** the current rules are in [`catalog-core.md`](../../architecture/catalog-core.md) (parts: AC-6.1's query cleaning); see the [specs index](../README.md)
+**Frozen:** the current rules are in [`scanner.md`](../../architecture/scanner.md) and [`catalog-core.md`](../../architecture/catalog-core.md) (whole spec; catalog core: AC-6.1's query cleaning); see the [specs index](../README.md)
 
 ---
 
