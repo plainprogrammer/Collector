@@ -65,14 +65,22 @@ Spec files: `spec/models/lot/bulk_move_spec.rb` (the move), `spec/models/bulk_se
 
 | Check | Result |
 |---|---|
-| Accessibility NFR: the whole flow with the keyboard alone (Edit many, tick or Select all, Tab to "Move to…", Enter, choose in To, Move; also Cancel; the status region announces the notice and each refusal; the To error is read with its field; focus is visible throughout), and with a screen reader | Pending. |
-| Phone width: the bar's menu reaches "Move to…"; the move page fits (the system example proves 360px; this is a look at a real phone or 390px window) | Pending. |
-| Documents read: area doc, `BulkForm.md`, `Form.md`, `CLAUDE.md`, `docs/roadmap.md` agree with the code | Written in Tasks 16 to 18 against the code; the reading is Pending. |
+| Accessibility NFR: the whole flow with the keyboard alone (Edit many, tick or Select all, Tab to "Move to…", Enter, choose in To, Move; also Cancel; the status region announces the notice and each refusal; the To error is read with its field; focus is visible throughout), and with a screen reader | In part. Automated: `spec/system/bulk_move_spec.rb` "moves a ticked lot with the keyboard alone…" ticks a row with Space, presses "Move to…" with Enter, reaches To with Tab, chooses Blue binder by type-ahead (arrow keys don't change a closed select under WebDriver) and submits with Enter; the lot moves and the notice shows. It sends keys to the checkbox, "Move to…" and "Move" directly, so it doesn't prove they are in tab order, and it doesn't check visible focus. **Owed to the maintainer, by hand:** the Tab order of the row checkbox and the bar's buttons, visible focus throughout, and a screen-reader pass (the status region, the To field's error). Whether this is before merge or deferred is the maintainer's call. |
+| Phone width: the bar's menu reaches "Move to…"; the move page fits (the system example proves 360px; this is a look at a real phone or 390px window) | Looked at 390px in a headless Firefox frame, light and dark ([`screenshots/`](screenshots/): `phone-bulk-menu-*`, `phone-move-page-*`): the menu lists Set condition…, Move to…, Remove; the move page fits. **Owed to the maintainer:** a look on a real phone. |
+| Documents read: area doc, `BulkForm.md`, `Form.md`, `CLAUDE.md`, `docs/roadmap.md` agree with the code | Read against the code on 2026-11-06 (controller): they agree; one citation fixed (the foreign location's 404 is AC-2.3 and AC-5.2, not AC-5.1; f80588e). |
 
 ## Rulings during execution
 
 - Task 11's refusal examples passed on arrival: the refusal code was written with Task 10's create under Task 10's failing examples; Task 11's examples pin it (controller ruling).
 
+## Screenshots
+
+Taken on 2026-11-06 with headless Firefox (Selenium) from a temporary system example (deleted, not committed) on factory data: one collector, three locations ("Blue binder", "Long box", "Red deck box") and six placeholder printings (no card art). Desktop at 1280px, phone at 390px in a fixed-width frame; light and dark. Each image was inspected; the files are in [`screenshots/`](screenshots/).
+
 ## Implementation review
 
-Pending.
+SPEC-ALIGNED (round 2; 0 blocking, 0 major, 0 minor open).
+
+- **Round 1** (Opus, read-only, `sdd-review` Mode B): GAPS FOUND, 0 blocking, 1 major, 5 minor. The code matched every AC, FR, NFR and Error Scenario. Major: the manual checks were all Pending. Minors: the area doc's Sources line left out supersessions of specs 032 and 037; no request example for a destination removed between the lookup and the write (the `rescue_from(InvalidForeignKey)`); AC-4.2's empty-location sentence not asserted; no example for a scanner entry after a merge; no example under a condition sort (plan risk 3).
+- **Fixes:** 17a6163 (Sources), f30b9d1 (the 404 after the lookup; AC-4.2's sentence), d5e8ec4 (scanner entry; condition sort for the survivor and the cap refusal), 24ac631 (a keyboard-only system example), f80588e (an area-doc citation found reading the documents). Each new example was checked by breaking the code it pins.
+- **Round 2:** SPEC-ALIGNED. Every minor closed; the major settled by the keyboard example, the documents read and the 390px screenshots, with the hand checks above owed to the maintainer. The reviewer noted that the condition-sort survivor example shows the sort runs inside the move rather than that it orders survivors (lots of one identity share a condition, so the lower id decides either way).
