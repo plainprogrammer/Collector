@@ -14,7 +14,7 @@ How the catalog changes, and how admins start, watch and recover that work: the 
 
 **Neighbours:**
 
-- The catalog's own records (entries, sets, identities and their extension tables), the name index a refresh rebuilds, how a source record is mapped, the source contract's data records, and catalog search are **catalog core** (no area doc yet; spec 002 FR-1, FR-2, FR-7–FR-10). Which rows a refresh writes, and when, is here (spec 002 FR-4).
+- The catalog's own records (entries, sets, identities and their extension tables), the name index a refresh rebuilds, how a source record is mapped, the source contract's data records, and catalog search are **[catalog core](catalog-core.md)** (spec 002 FR-1, FR-2, FR-7–FR-10). Which rows a refresh writes, and when, is here (spec 002 FR-4).
 - What the artwork table holds, the fingerprint, which image an artwork uses, the index file's format, serving it and matching in the browser are **scanner** (no area doc yet; spec 011 apart from FR-2's build run; ADRs 0006, 0007, 0012).
 - The admin flag and the `AdminOnly` guard are **tenancy and accounts** (no area doc yet; spec 004).
 - Running Solid Queue inside Puma (`SOLID_QUEUE_IN_PUMA`) and the volume that holds `storage/catalog/` are in CLAUDE.md and **release and deploy**.

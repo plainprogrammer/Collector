@@ -3,6 +3,7 @@
 **Status:** Findings, ruled on 2026-10-11 ([section 7](#7-the-maintainers-ruling))
 **Date:** 2026-10-11
 **Roadmap:** [item 1](../../roadmap.md#theme-a-data-safety), for the [north star](../../north-star.md#hosted-door-rules)'s first hosted-door rule ("source terms allow hosting")
+**Frozen:** the current rules are in [`catalog-core.md`](../../architecture/catalog-core.md) (the whole note); see the [specs index](../README.md)
 
 This is a research note with no spec or plan. It reads the published terms against what Collector does today and reports. It is not legal advice: where the terms leave a question open, the note says so and doesn't settle it.
 
