@@ -336,7 +336,7 @@ Every table in Collector's database that belongs to an account or to a user is l
 
 | Table | In the export | Why |
 |---|---|---|
-| `accounts` | Nothing to export | It holds only its id and its dates; see the columns below. |
+| `accounts` | Exported | Its `currency`; the other columns are left out. |
 | `lots` | Exported | The collection. |
 | `locations` | Exported | The collector's named places. |
 | `users` | Exported | The collector's profile. |
@@ -355,6 +355,7 @@ Every table in Collector's database that belongs to an account or to a user is l
 | `accounts.id` | Left out | An internal id. |
 | `accounts.created_at` | Left out | A fact about the instance, not about the collection. |
 | `accounts.updated_at` | Left out | A fact about the instance, not about the collection. |
+| `accounts.currency` | `currency` | |
 | `lots.id` | Left out | An internal id. |
 | `lots.account_id` | Left out | An internal id. A file is one account's collection. |
 | `lots.catalog_entry_id` | `entry` | |
@@ -384,7 +385,7 @@ Every table in Collector's database that belongs to an account or to a user is l
 
 `lots.catalog_entry_id` is an internal id too. The file writes the entry it points at by its type and source id.
 
-`currency` comes from no table yet. It is the instance's setting.
+`currency` is `accounts.currency`.
 
 ## Examples
 
