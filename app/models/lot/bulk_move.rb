@@ -48,8 +48,11 @@ class Lot::BulkMove
 
       groups = movers.group_by { |lot| [ lot.catalog_entry_id, key_for(lot) ] }
       targets = existing_targets(groups.keys)
-      alone = groups.select { |key, group| group.one? && !targets[key] }
-      move_alone!(alone.values.map { |group| group.first.id }, Time.current)
+      alone, merging = groups.partition { |key, group| group.one? && !targets[key] }
+      now = Time.current
+      delete!(merging.flat_map { |key, group| targets[key] ? group : group.drop(1) }.map(&:id))
+      merging.each { |key, group| merge!(key, group, targets[key], now) }
+      move_alone!(alone.map { |_, group| group.first.id }, now)
       Result.new(ids: groups.map { |key, group| targets[key]&.id || group.first.id }, moved: movers.sum(&:quantity), already_there: stayers.sum(&:quantity))
     end
   end
@@ -70,5 +73,21 @@ class Lot::BulkMove
       ids.each_slice(BATCH) do |slice|
         @account.lots.where(id: slice).update_all([ "location_id = ?, lot_key = COALESCE(finish, '') || '|' || COALESCE(condition, '') || '|' || COALESCE(price_paid_cents, '') || ?, updated_at = ?", @to&.id, suffix, now ]) # Safe: tenant-scoped; every value is bound; the destination was looked up through the account; the identity of each lot is free in the destination (checked against the lots read in this transaction); quantity, finish, condition and price don't change
       end
+    end
+
+    # The destination's lot gains the copies and survives; with none, the group's first lot takes the place and the sum.
+    # One statement per surviving lot, written with Lot.key_for's text (key.last): validations would load each lot's entry
+    # and vocabulary, and the cap, the place and the tenant are checked above.
+    def merge!(key, group, target, now)
+      if target
+        @account.lots.where(id: target.id).update_all(quantity: target.quantity + group.sum(&:quantity), updated_at: now) # Safe: tenant-scoped; the cap was checked for this sum
+      else
+        @account.lots.where(id: group.first.id).update_all(location_id: @to&.id, lot_key: key.last, quantity: group.sum(&:quantity), updated_at: now) # Safe: tenant-scoped; the cap was checked; the key is Lot.key_for's
+      end
+    end
+
+    # The database nulls or cascades what points at a lot (number-entry lines, scanner entries, marks).
+    def delete!(ids)
+      ids.each_slice(BATCH) { |slice| @account.lots.where(id: slice).delete_all } # Safe: tenant-scoped, bound ids
     end
 end

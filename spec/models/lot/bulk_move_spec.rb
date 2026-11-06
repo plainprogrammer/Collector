@@ -69,4 +69,69 @@ RSpec.describe Lot::BulkMove, type: :model do
     expect { move([ unplaced ], nil) }.to raise_error(described_class::NothingToMove, "The selected items already have no location.")
     expect(there.reload.location).to eq(blue)
   end
+
+  describe "merging" do
+    let(:entry) { create(:mtg_printing).entry } # a printing with no lot yet: lot.entry would be an unplaced lot's identity, and a second unplaced lot(entry) would hit the unique index
+
+    it "merges a moved lot into the destination's lot of its identity, which survives (AC-3.3)", :aggregate_failures do
+      moved = lot(entry, location: box, quantity: 2)
+      survivor = lot(entry, location: blue, quantity: 3)
+      expect(move([ moved ], blue).ids).to eq([ survivor.id ])
+      expect(survivor.reload.quantity).to eq(5)
+      expect(Lot.exists?(moved.id)).to be(false)
+    end
+
+    it "makes selected lots of one identity one lot, the first in the table's order surviving (AC-3.4)", :aggregate_failures do
+      first = lot(entry, quantity: 4)             # unplaced, lower id
+      second = lot(entry, location: box, quantity: 2)
+      Lot.update_all(created_at: 1.day.ago)
+      expect(move([ first, second ], blue).ids).to eq([ first.id ])
+      expect(first.reload.created_at).to be < 1.hour.ago # the survivor keeps its added time
+      expect(first.reload).to have_attributes(location: blue, quantity: 6, lot_key: Lot.key_for(nil, nil, nil, blue.id))
+      expect(Lot.exists?(second.id)).to be(false)
+    end
+
+    it "lets the sort choose the survivor (AC-3.4)", :aggregate_failures do
+      many = lot(entry, quantity: 4)
+      few = lot(entry, location: box, quantity: 2)
+      by_quantity = CollectionTable::Sort.parse("quantity", "asc")
+      expect(move([ many, few ], blue, sort: by_quantity).ids).to eq([ few.id ])
+      expect(few.reload.quantity).to eq(6)
+    end
+
+    it "folds two moved lots into the destination's lot when it has the identity (AC-3.5)", :aggregate_failures do
+      a = lot(entry, quantity: 4)
+      b = lot(entry, location: box, quantity: 2)
+      held = lot(entry, location: blue, quantity: 1)
+      expect(move([ a, b ], blue).ids).to eq([ held.id ])
+      expect([ held.reload.quantity, Lot.where(id: [ a, b ]).count ]).to eq([ 7, 0 ])
+    end
+
+    it "treats a selected lot already there as the target, and counts its copies as already there (AC-3.12)", :aggregate_failures do
+      a = lot(entry, location: box, quantity: 2)
+      b = lot(entry, location: blue, quantity: 3)
+      result = move([ a, b ], blue)
+      expect(result).to have_attributes(ids: [ b.id ], moved: 2, already_there: 3)
+      expect([ b.reload.quantity, Lot.exists?(a.id) ]).to eq([ 5, false ])
+    end
+
+    it "reads a number-entry line as changed when its lot is folded away, and names the new place when its lot moved whole (spec 041 decision 6; spec 032 AC-7.6; spec 034 decision 3)", :aggregate_failures do
+      folded = NumberEntry.add!(account:, entry:, quantity: 2, finish: nil, line_key: "a" * 32).line
+      moved = NumberEntry.add!(account:, entry: create(:mtg_printing).entry, quantity: 1, finish: nil, line_key: "b" * 32).line
+      held = lot(entry, location: blue, quantity: 3)
+      move(account.lots.where(id: [ folded.lot_id, moved.lot_id ]).to_a, blue)
+      expect(folded.reload).not_to be_undoable           # its lot is gone: "Changed in your collection"
+      expect(moved.reload).to be_undoable
+      expect(moved.lot.location).to eq(blue)              # the line names its lot's new place
+      expect(held.reload.quantity).to eq(5)
+    end
+
+    # Passes on arrival: a characterisation of the writers above, not a missing red.
+    it "keeps lots of other places and identities as they were", :aggregate_failures do
+      a = lot(entry, quantity: 2)
+      other_finish = lot(entry, finish: "foil", quantity: 1)
+      move([ a ], blue)
+      expect(other_finish.reload).to have_attributes(location: nil, quantity: 1)
+    end
+  end
 end
