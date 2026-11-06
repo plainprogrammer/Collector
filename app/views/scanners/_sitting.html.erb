@@ -6,7 +6,7 @@
   <% choices = sitting_choices(sitting, conditions) %>
   <%= tag.section id: "scanner_sitting", class: "c-scanner__sitting", aria: { labelledby: "scanner-sitting-heading" }, data: sitting_focus_data(focus) do %>
     <div class="c-section__head">
-      <h2 class="c-section__title" id="scanner-sitting-heading" tabindex="-1">This sitting: <%= pluralize(entries.size, "card") %><%= ", #{choices.join(", ")}" if choices.any? %></h2>
+      <h2 class="c-section__title" id="scanner-sitting-heading" tabindex="-1" data-sitting-focus-target="heading">This sitting: <%= pluralize(entries.size, "card") %><%= ", #{choices.join(", ")}" if choices.any? %></h2>
       <span class="c-section__actions"><%= link_to "Done", new_scanner_sitting_ending_path, class: "c-btn c-btn--secondary c-btn--sm" %></span>
     </div>
     <%= render "scanners/picker", condition: sitting.condition, location_id: sitting.location_id, conditions:, locations: %>

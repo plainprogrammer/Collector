@@ -694,7 +694,7 @@ RSpec.describe "Scanner sittings", type: :request do
       add("b")
       undo(entry)
       expect(focus_to).to eq("heading")
-      expect(html.at_css("#scanner_sitting h2[tabindex='-1']").text).to eq("This sitting: 1 card")
+      expect(html.at_css("#scanner_sitting h2[tabindex='-1'][data-sitting-focus-target='heading']").text).to eq("This sitting: 1 card")
       expect(status_line).to start_with("Removed 1 × Lightning Bolt")
       undo(entry)
       expect(response).to have_http_status(:unprocessable_content)
