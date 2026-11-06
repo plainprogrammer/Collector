@@ -1,7 +1,7 @@
 # Feature 043: Rate-Limit Retries Count Only Without Progress
 
 **Status:** Draft
-**Version:** 0.2.0
+**Version:** 0.3.0
 **Created:** 2026-11-06
 **Last Updated:** 2026-11-06
 **Branch:** `043-rate-limit-retry-progress`
@@ -15,6 +15,7 @@
 |---------|------|--------|
 | 0.1.0 | 2026-11-06 | Written from issue #86, drafted around option A (count only rate limits with no progress since the last); ruling pending |
 | 0.2.0 | 2026-11-06 | Maintainer ruling on decision 1: option A |
+| 0.3.0 | 2026-11-06 | Spec review round 1 (Fable, APPROVE WITH CHANGES, 2 major, 7 minor): a refresh's download is not progress (the source contract can't tell a fresh download from a reused one, and the file is kept anyway), so a refresh makes progress only by writing catalog rows, which the one source can't do before a rate limit today; the build's progress is an image fetched and kept, or a batch of fingerprints stored; an admin's retry starts the count again; an attempt may open no run; the count's key is kept; the index's reverse entries; the area doc's two mentions of #86 |
 
 ---
 
@@ -40,7 +41,7 @@ So the issue's main case, a long build turned away four times, needs a 429 Scryf
 
 > **Terms.**
 > - A *rate limit* is a `Catalog::Sources::RateLimitedError` reaching the job, which `Catalog::RateLimitRetry` handles.
-> - An *attempt* is one run of the job's `perform`: the first, or a retry (a rate-limit retry, a retry of a transient error, an admin's retry). Each attempt opens its own run record (a `Catalog::RefreshRun` or an `MTG::ArtBuild`).
+> - An *attempt* is one run of the job's `perform`: the first, or a retry (a rate-limit retry, a retry of a transient error, an admin's retry). An attempt that gets far enough opens its own run record (a `Catalog::RefreshRun` or an `MTG::ArtBuild`); one that fails while starting, or a build that returns early (art matching off, no applied catalog), opens none, and has made no progress.
 > - *Progress* is durable new work the attempt did before the rate limit ended it, as its operation judges it (decision 3).
 > - The *count* is the number of rate limits in a row with no progress between them, the one that is being handled included.
 
@@ -76,11 +77,11 @@ A is what the issue's outcome names first, it fits what the bound is for, and it
 
 ### 2. Progress is judged on the attempt the rate limit ended
 
-The question is asked of the attempt that was turned away, not of every attempt since the last rate limit. An attempt between two rate limits that ended for another reason (a busy database, retried by `retry_on`; an admin's retry of a failed job) is not looked at. Its work makes the next rate-limited attempt's own progress no larger.
+The question is asked of the attempt that was turned away, not of every attempt since the last rate limit. An attempt between two rate limits that ended for another reason (a busy database, retried by `retry_on`) is not looked at. Its work makes the next rate-limited attempt's own progress no larger.
 
 So in the rare order "rate limit, busy-database retry that did work, rate limit with no new work", the second rate limit counts 2, not 1: the job fails sooner than a perfect rule would, which is today's behaviour, never later. This keeps the count in one place (the job's retry record) and keeps the question to the run in hand. It is accepted as a limit.
 
-An admin's retry from `/admin/jobs` already starts the count again: Solid Queue's retry queues the job with its arguments, and the count lives in the job's retry record (as today; spec 015 AC-6.5 counts attempts the same way).
+An admin's retry from `/admin/jobs` already starts the count again, as today: Solid Queue's retry of a failed job clears the job's retry record (`exception_executions`), where the count lives (spec 015 AC-6.5 counts attempts the same way).
 
 ### 3. What counts as progress, per operation
 
@@ -88,10 +89,12 @@ Progress must be durable new work, so that an attempt that redoes the same thing
 
 | Operation | Progress (in the attempt) | Not progress |
 |---|---|---|
-| Art build (`MTG::Art::Build`) | An image fetched into the cache, or a fingerprint stored | Images found already cached; counts recorded at the start; an image that failed |
-| Catalog refresh (`Catalog::Refresh`) | A downloaded file written into place, or a catalog row written (set, identity or entry inserted, updated, restored or retired) | Records seen (`Catalog::Refresh::Progress#seen`, the progress the page shows); a download already there, used again; a skipped run |
+| Art build (`MTG::Art::Build`) | An image fetched into the cache and kept there, or a batch of fingerprints stored (fingerprints are stored a batch of `BATCH` at a time, so those computed in the batch a rate limit ends are not stored, though their images stay cached) | Images found already cached; the fingerprint count recorded at the start (artworks fingerprinted before); an image that failed, or that was fetched but couldn't be decoded and was removed from the cache |
+| Catalog refresh (`Catalog::Refresh`) | A catalog row written (set, identity or entry inserted, updated, restored or retired) | Records seen (`Catalog::Refresh::Progress#seen`, the progress the page shows); the download, fresh or reused; a skipped run |
 
-For a refresh this makes the one rate limit that can follow work, at `/sets` after a fresh download, start the count again once; its retry reuses the download, so a second rate limit there counts 2. Records seen are not progress, though the refresh's page progress counts them: a retried refresh reads the same file again and sees the same records.
+**The download is not a refresh's progress.** The source contract (`Catalog::Sources#download`) returns the verified file's path whether it fetched it or found it already there, and reports progress the same way for both, so the core can't tell them apart without a change to the contract. Nor does it need to: the file is kept and the retry uses it again, so counting it would buy one extra fresh start and no work saved. Records seen are not progress either, though the page's progress counts them: a retried refresh reads the same file again and sees the same records.
+
+**Where a refresh can be rate limited today.** With the one source, a rate-limit error comes only from the API host: `/bulk-data` (before anything is written) and `/sets` (all pages are read before any set is written). The bulk download goes to an unlimited host, and a failed download is a transient error, not a rate limit; nothing is asked of the source after the sync. So with Scryfall a refresh is never rate limited after writing a row, and its count behaves as today. The rule is still stated and tested for a source that can be rate limited after writing (a test source raising its rate-limit error from its entries after a batch is written), so the core's answer is right for the next source.
 
 An operation that doesn't answer the question (a job class that includes the rule and says nothing about progress) gets today's rule: no progress, every rate limit counts.
 
@@ -127,9 +130,10 @@ As an operator, I want a build that fetched images before a rate limit to count 
 
 - [ ] **AC-2.1** Given an art build that fetches at least one image and is then rate limited, When the job handles the rate limit Then the attempt counts as having made progress.
 - [ ] **AC-2.2** Given an art build whose images to fetch are all uncached, When its first image request is rate limited Then the attempt counts as having made no progress.
-- [ ] **AC-2.3** Given an art build that stores fingerprints for images already cached, fetches none, and is then rate limited, When the job handles it Then the attempt counts as having made progress.
+- [ ] **AC-2.3** Given an art build that stores at least one batch of fingerprints for images already cached, fetches none, and is then rate limited, When the job handles it Then the attempt counts as having made progress.
 - [ ] **AC-2.4** Given an art build skipped at start (`already running` or `waiting for another job's retry`), When it ends Then it is never rate limited and nothing about the count changes.
 - [ ] **AC-2.5** Given an art build job rate limited four times, the first, second and third attempts each fetching images and the fourth fetching none, When the fourth rate limit is handled Then the job is retried (its count goes 1, 1, 1, 2), not failed. (The issue's scenario.)
+- [ ] **AC-2.6** Given an art build whose only fetched image couldn't be decoded (removed from the cache) before a rate limit, and no batch stored, When the job handles it Then the attempt counts as having made no progress.
 
 ### Story 3: The refresh says whether its attempt made progress
 
@@ -138,9 +142,9 @@ As an operator, I want a refresh to count as having made progress only when it w
 **Acceptance criteria:**
 
 - [ ] **AC-3.1** Given a refresh whose `/bulk-data` request is rate limited, When the job handles it Then the attempt counts as having made no progress.
-- [ ] **AC-3.2** Given a refresh that downloads a new bulk file and is then rate limited on `/sets`, When the job handles it Then the attempt counts as having made progress.
-- [ ] **AC-3.3** Given a refresh whose bulk file is already downloaded (used again, not fetched) and that is rate limited on `/sets`, When the job handles it Then the attempt counts as having made no progress.
-- [ ] **AC-3.4** Given a refresh job turned away at `/bulk-data` three times (count 3), whose fourth attempt downloads a new bulk file and is then rate limited on `/sets`, When that rate limit is handled Then the job is retried with count 1; three more rate limits at `/sets` reusing the download take it to 2, 3, and then fail it.
+- [ ] **AC-3.2** Given a refresh that downloads a new bulk file and is then rate limited on `/sets`, When the job handles it Then the attempt counts as having made no progress (decision 3).
+- [ ] **AC-3.3** Given a refresh whose source writes at least one catalog row and is then rate limited (a test source raising the rate-limit error from its entries after a batch is written), When the job handles it Then the attempt counts as having made progress.
+- [ ] **AC-3.4** Given a refresh job whose count is 3, When its next attempt writes catalog rows and is then rate limited Then the job is retried with count 1; three more rate limits with no rows written take it to 2, 3, and then fail it.
 
 ### Story 4: The rule stays core
 
@@ -148,7 +152,8 @@ As an operator, I want a refresh to count as having made progress only when it w
 
 ### Story 5: The documents say so
 
-- [ ] **AC-5.1** Given `docs/architecture/catalog-operations.md`, When read Then "A rate-limited job" step 2 and the `MAX_RETRIES` constant row state the count of rate limits with no progress between them, with this spec as source; #86 moves from the open issues to Sources; the image host's absence of rate limits, from Scryfall's documentation, is stated. (Verified by reading, recorded in `verification.md`.)
+- [ ] **AC-5.1** Given `docs/architecture/catalog-operations.md`, When read Then "A rate-limited job" step 2 and the `MAX_RETRIES` constant row state the count of rate limits with no progress between them and what each operation counts as progress, with this spec as source; #86 leaves the "Accepted limits and open issues" list and moves from the open issues to the closed ones in Sources; the `IMAGE_HOSTS` row (or "What a source does for a refresh") states that Scryfall's documentation gives the image origins no rate limits. (Verified by reading, recorded in `verification.md`.)
+- [ ] **AC-5.3** Given `docs/specs/README.md`, When read Then row 043 names what it supersedes and rows 002, 011 and 024 name 043 among what supersedes them. (Verified by reading.)
 - [ ] **AC-5.2** Given the comments of `Catalog::RateLimitRetry` and `MTG::Art::BuildJob`, When read Then they state the new count and no longer say a job fails when "turned away a fourth time" over its life. (Verified by reading.)
 
 ## Functional Requirements
@@ -156,17 +161,17 @@ As an operator, I want a refresh to count as having made progress only when it w
 - **FR-1** On a rate limit, `Catalog::RateLimitRetry` must fail the job when the wait asked exceeds `LONGEST_WAIT`, regardless of progress (unchanged).
 - **FR-2** Otherwise it must ask the job whether the attempt made progress. With progress, the count becomes 1 and the job is retried. Without, it becomes one more; if that exceeds `MAX_RETRIES` the job fails with the error, else it is retried.
 - **FR-3** A job that gives no answer must be treated as having made no progress.
-- **FR-4** The count must be kept with the job across its retries (as today), so that it survives the job being serialized and dispatched again.
-- **FR-5** The art build must answer from the work of its own attempt: images fetched or fingerprints stored (decision 3).
-- **FR-6** The refresh must answer from the work of its own attempt: a downloaded file written into place, or a catalog row written (decision 3). Records seen must not count.
+- **FR-4** The count must be kept with the job across its retries, in the same place and under the same key as today, so that it survives the job being serialized and dispatched again, and a job queued before the upgrade keeps its count.
+- **FR-5** The art build must answer from the work of its own attempt: images fetched and kept, or a batch of fingerprints stored (decision 3).
+- **FR-6** The refresh must answer from the work of its own attempt: a catalog row written (decision 3). Records seen and the download must not count. The source contract is unchanged.
 - **FR-7** `Catalog::RateLimitRetry` must name no collectible, source or host (ADR 0018).
 - **FR-8** A retry must still wait what the source asked, `SHORTEST_WAIT` at least, and still come before the job's own `retry_on` for transient errors.
 
 ## Non-Functional Requirements
 
-- **Reliability:** each fresh start of the count needs durable new work, so a job can't be retried for ever: the work left (images uncached, rows unwritten) shrinks with each.
+- **Reliability:** each fresh start of the count needs durable new work, so a job can't be retried for ever: the work left (images uncached, artworks without a fingerprint, rows that differ from the source) shrinks with each.
 - **Politeness to the source:** no more requests than today between rate limits; retries keep their waits.
-- **Compatibility:** a job already waiting in the queue when an instance upgrades carries its old count; it is read the same way (its next rate limit asks the new question). No migration.
+- **Compatibility:** a job already waiting in the queue when an instance upgrades carries its old count, kept under the same key (FR-4); its next rate limit asks the new question. No migration.
 
 ## Error Scenarios
 
@@ -174,7 +179,7 @@ As an operator, I want a refresh to count as having made progress only when it w
 |---|---|
 | A build fetches images for an hour, then a 429 | Retried after 45 seconds at least; count 1 |
 | A build's first request after its retry gets a 429, four times in a row | Count 1, 2, 3, then the job fails and shows under Failed (as today) |
-| A refresh is turned away at `/bulk-data` four times | Count 1, 2, 3, then the job fails (as today) |
+| A refresh is turned away at `/bulk-data` or `/sets` four times, a fresh download or not | Count 1, 2, 3, then the job fails (as today) |
 | A wait of more than an hour asked, after progress | The job fails at once (as today) |
 | The job's attempt fails before it opens its run (a busy database at start), then a rate limit next attempt | The rate-limited attempt is judged alone (decision 2) |
 | A job queued before the upgrade, waiting with count 3 | Its next rate limit is judged by progress: retried with count 1 if it made progress, failed if not |
