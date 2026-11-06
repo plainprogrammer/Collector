@@ -8,6 +8,7 @@
 **Branch:** `142-row-place-line`
 **Issue:** [#142](https://github.com/plainprogrammer/Collector/issues/142)
 **Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (whole spec); see the [specs index](../README.md)
+**Plan:** retired in `8463bfa13ddc9f616b938c7416dcd72e5613d149`; read it with `git show 8463bfa13ddc9f616b938c7416dcd72e5613d149^:docs/specs/048-row-place-line/plan.md`
 
 ---
 
