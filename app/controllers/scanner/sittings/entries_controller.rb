@@ -24,9 +24,11 @@ class Scanner::Sittings::EntriesController < ApplicationController
     def message_for(entry)
       return REPLAYED.fetch(entry.state) unless entry.state == :added
 
-      # The place is the entry's lot's as it is now, so a replay names where its copy went (spec 040 decision 4, AC-4.3).
-      place = entry.lot&.location
-      "Added 1 × #{helpers.scanner_copy(entry.printing, entry.finish)}#{" in #{place.name}" if place} to your collection."
+      # The condition and the place are the entry's lot's as it is now, so a replay names where its copy went (spec 040
+      # decision 4, spec 042 decision 3, AC-4.4).
+      lot = entry.lot
+      place = lot&.location
+      "Added 1 × #{helpers.scanner_copy(entry.printing, entry.finish, lot&.condition)}#{" in #{place.name}" if place} to your collection."
     end
 
     # The reading clears once its card is in (AC-1.3); a replay of an undone or changed add shows that instead, with no
