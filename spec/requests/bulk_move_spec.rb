@@ -344,4 +344,150 @@ RSpec.describe "Bulk Move to…", type: :request do
       expect([ bolt.reload.location, placed.reload.location, other.reload.location ]).to eq([ blue, box, nil ])
     end
   end
+
+  describe "refusals (decision 6, in its order)" do
+    let!(:lot) { own(location: box, quantity: 2) }
+
+    before { select_lots(lot) }
+
+    it "(1) answers a GET with no selection 'Select at least one item.' even with no location (order)", :aggregate_failures do
+      BulkSelection.where(account:).destroy_all
+      lot.update!(location: nil)
+      Location.where(account:).delete_all
+      get new_collection_move_path
+      expect([ response.status, flash[:alert] ]).to eq([ 303, "Select at least one item." ])
+    end
+
+    it "(2) answers 'You have no locations yet.' before 'None of the selected items…' (order)", :aggregate_failures do
+      lot.update!(location: nil)
+      Location.where(account:).delete_all
+      lot.destroy!
+      post collection_move_path, params: { to: "" }
+      expect([ response.status, flash[:alert] ]).to eq([ 303, "You have no locations yet." ])
+    end
+
+    it "(3) answers 'None of the selected items…' before the missing destination (order)", :aggregate_failures do
+      lot.destroy!
+      post collection_move_path, params: { to: "" }
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(page_html.at_css("#status").text).to include("None of the selected items are in your collection any more.")
+      expect(page_html.at_css(".c-field--invalid")).to be_nil
+    end
+
+    def selection_kept
+      get collection_path(bulk: 1)
+      bar_count
+    end
+
+    it "(2) answers 'You have no locations yet.' with any destination, selection kept (AC-1.7)", :aggregate_failures do
+      lot.update!(location: nil) # a location that holds a lot cannot be removed (restrict foreign key)
+      Location.where(account:).delete_all
+      post collection_move_path, params: { to: "none" }
+      expect(response).to redirect_to(collection_path(bulk: 1))
+      expect(flash[:alert]).to eq("You have no locations yet.")
+      post collection_move_path, params: { to: "424242" }
+      expect(response).to have_http_status(:see_other)
+      expect(selection_kept).to eq("2 of 2 selected")
+    end
+
+    it "(3) answers 422 with 'None of the selected items…' when the selection selects no lot", :aggregate_failures do
+      lot.destroy!
+      post collection_move_path, params: { to: blue.id }
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(page_html.at_css("#status").text).to include("None of the selected items are in your collection any more.")
+      expect(page_html.at_css("h1").text).to eq("Move 0 items")
+    end
+
+    it "(3) answers the same when the session never made a selection" do
+      BulkSelection.where(account:).destroy_all # the session never made a selection (signing in again is redirected while signed in)
+      post collection_move_path, params: { to: "none" }
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+
+    it "(4) asks to choose a destination on the To field when none was chosen (AC-2.2)", :aggregate_failures do
+      [ {}, { to: "" }, { to: " " } ].each do |params|
+        post collection_move_path, params: params
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(page_html.at_css(".c-field--invalid .c-field__error").text).to eq("Choose where to move them.")
+        expect(page_html.at_css("select#to")["aria-describedby"]).to eq(page_html.at_css(".c-field__error")["id"])
+      end
+      expect([ lot.reload.location, selection_kept ]).to eq([ box, "2 of 2 selected" ])
+    end
+
+    it "(4) keeps Back and Cancel on the bulk table with its filters, sort and page when it re-renders (AC-2.4)", :aggregate_failures do
+      select_lots(lot, location: box.id.to_s)
+      post collection_move_path(page: 2), params: { to: "" }
+      bulk = collection_path(bulk: 1, location: box.id, page: 2)
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(page_html.at_css('header a[aria-label="Back"]')["href"]).to eq(bulk)
+      expect(page_html.at_css(".c-form__actions a")["href"]).to eq(bulk)
+    end
+
+    it "(5) answers 404 for another account's location or one removed meanwhile, changing nothing (AC-2.3, AC-5.2)", :aggregate_failures do
+      theirs = create(:location, account: create(:user).account)
+      gone = create(:location, account:)
+      id = gone.id
+      gone.destroy!
+      [ theirs.id, id, 0, "abc", "017", "9" * 19, [ "none" ], { x: 1 } ].each do |value|
+        post collection_move_path, params: { to: value }
+        expect(response).to have_http_status(:not_found)
+      end
+      expect([ lot.reload.location, theirs.lots.count, selection_kept ]).to eq([ box, 0, "2 of 2 selected" ])
+    end
+
+    it "(6) refuses when every selected lot is already there (AC-3.7)", :aggregate_failures do
+      post collection_move_path, params: { to: box.id }
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(page_html.at_css("#status").text).to include("The selected items are already in Long box.")
+      expect(page_html.at_css("select#to option[selected]").text).to eq("Long box")
+      expect(selection_kept).to eq("2 of 2 selected")
+    end
+
+    it "(6) refuses 'already have no location' for unplaced lots (AC-3.7)" do
+      unplaced = own("Opt")
+      select_lots(unplaced)
+      post collection_move_path, params: { to: "none" }
+      expect([ response.status, page_html.at_css("#status").text ]).to match([ 422, a_string_including("The selected items already have no location.") ])
+    end
+
+    it "(6) refuses a merge past 9,999, naming the first selected lot, changing nothing (AC-3.8)", :aggregate_failures do
+      held = twin(lot, location: blue, quantity: 9_999)
+      post collection_move_path, params: { to: blue.id }
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(page_html.at_css("#status").text).to include("Nothing moved. Lightning Bolt (#{ApplicationController.helpers.set_number(lot.entry)}) would have more than 9,999 copies in one lot.")
+      expect([ lot.reload.location, held.reload.quantity, selection_kept ]).to eq([ box, 9_999, "2 of 10,001 selected" ])
+    end
+
+    it "ignores another account's lot ids and an account, user or admin value (AC-5.1, AC-5.3)", :aggregate_failures do
+      other = create(:user)
+      theirs = create(:lot, account: other.account)
+      post collection_selection_path
+      patch collection_selection_path, params: { go: "move", rendered_q: "", rendered_location: "", all_rendered: "0", shown_ids: [ lot.id, theirs.id ], ticked_ids: [ lot.id, theirs.id ] }
+      post collection_move_path, params: { to: blue.id, account_id: other.account.id, user_id: other.id, admin: "1", location_id: box.id }
+      expect([ lot.reload.location, theirs.reload.location, theirs.account_id ]).to eq([ blue, nil, other.account.id ])
+      expect(user.reload.admin?).to be(false)
+    end
+  end
+
+  describe "a stale page submitted twice" do
+    it "finds the lots already there under all locations (AC-3.7) and creates or loses no copy", :aggregate_failures do
+      lot = own(location: box, quantity: 2)
+      select_lots(lot)
+      post collection_move_path, params: { to: blue.id }
+      post collection_move_path, params: { to: blue.id }
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(page_html.at_css("#status").text).to include("The selected items are already in Blue binder.")
+      expect(account.lots.sum(:quantity)).to eq(2)
+    end
+
+    it "finds the selection restarted empty under a location filter (decision 6)", :aggregate_failures do
+      lot = own(location: box, quantity: 2)
+      select_lots(lot, location: box.id.to_s)
+      post collection_move_path, params: { to: blue.id }
+      post collection_move_path, params: { to: blue.id }
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(page_html.at_css("#status").text).to include("None of the selected items are in your collection any more.")
+      expect(account.lots.sum(:quantity)).to eq(2)
+    end
+  end
 end
