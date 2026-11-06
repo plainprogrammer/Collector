@@ -4,7 +4,7 @@ require "rails_helper"
 # page only through its source's optional hooks (app/models/catalog/sources.rb).
 # Issue #209: the type and source names are matched anywhere in a word (scryfall_id, MTGPrinting), because `_` is a word
 # character and `\b` would let them through. "art" is an ordinary part of words (start, part), so it is matched as a word
-# of its own: not between letters, but `art_thing` counts.
+# of its own: not between letters, but `art_thing` counts. Known limit: a CamelCase compound (ArtBuild) passes.
 RSpec.describe "The core's admin catalog code" do
   let(:files) do
     Rails.root.glob("app/controllers/admin/catalogs{_controller.rb,/**/*.rb}") + Rails.root.glob("app/views/admin/catalogs/**/*.erb") +
