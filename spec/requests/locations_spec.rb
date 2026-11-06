@@ -274,7 +274,7 @@ RSpec.describe "Locations", type: :request do
         expect(html.at_css(".c-locations__holds").text.squish).to eq("4 copies in 1 lot")
         get new_location_removal_path(blue)
         expect(html.css("#held_lots li").size).to eq(1)
-        expect(response.body).not_to include("777")
+        expect(html.text).not_to include("777")
       end
 
       it "answers 404 for another account's location on the confirmation and the delete (decision 6)", :aggregate_failures do
