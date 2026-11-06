@@ -78,6 +78,54 @@ RSpec.describe "Scanner adds", type: :request do
     expect(user.account.scanner_sitting.entries.sole.finish).to eq("foil")
   end
 
+  describe "into the sitting's place (spec 040)" do
+    def blue = @blue ||= create(:location, account: user.account, name: "Blue binder")
+    def place(location) = Scanner::Sitting.place!(account: user.account, location:)
+    def html = Nokogiri::HTML5(response.body)
+
+    it "adds into the place and names it in the notice, and redraws the control (AC-1.3, FR-1)", :aggregate_failures do
+      place(blue)
+      add
+      expect(response.body).to include("Added 1 × Lightning Bolt (MOM · 123, Foil) in Blue binder to your collection.")
+      expect(user.account.lots.sole).to have_attributes(location: blue, quantity: 1, finish: "foil")
+      expect(html.at_css("select#sitting_location_id option[selected]").text).to eq("Blue binder")
+    end
+
+    it "keeps spec 009's notice with no place set (AC-1.5)", :aggregate_failures do
+      blue
+      add
+      expect(response.body).to include("Added 1 × Lightning Bolt (MOM · 123, Foil) to your collection.")
+      expect(user.account.lots.sole.location).to be_nil
+      expect(html.at_css("select#sitting_location_id option[selected]").text).to eq("No location")
+    end
+
+    it "refuses at the cap in the place with the existing message (AC-1.6)", :aggregate_failures do
+      create(:lot, account: user.account, entry: printing, finish: "foil", quantity: Lot::MAX_QUANTITY, location: blue)
+      place(blue)
+      add
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.body).to include("You already have the most copies one lot can hold (9,999).")
+    end
+
+    it "names the entry's lot's place on a replay, not the sitting's place now (AC-4.3)", :aggregate_failures do
+      place(blue)
+      add
+      place(create(:location, account: user.account, name: "Long box"))
+      add
+      expect(response.body).to include("Added 1 × Lightning Bolt (MOM · 123, Foil) in Blue binder to your collection.")
+      expect(user.account.lots.sum(:quantity)).to eq(1)
+    end
+
+    it "adds unplaced and names no place once the place's location was removed (AC-3.2)", :aggregate_failures do
+      place(blue)
+      delete location_path(blue)
+      add
+      expect(response.body).to include("Added 1 × Lightning Bolt (MOM · 123, Foil) to your collection.")
+      expect(user.account.lots.sole.location).to be_nil
+      expect(response.body).not_to include("Put this sitting in")
+    end
+  end
+
   it "sends a signed-out visitor to sign in" do
     delete session_path
     add
