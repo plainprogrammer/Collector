@@ -38,7 +38,7 @@ Evidence for each criterion. Screenshots (`screenshots/`, factory data, placehol
 
 ## Implementation review
 
-DRIFT DETECTED at first, SPEC-ALIGNED after the fixes below (no blocking finding; 1 major, 3 minor). The review was an independent read-only `sdd-review` Mode B on Opus, run on `5fcb211` (2026-11-06). It read the diff, the stylesheet cascade, the design-system documents and the screenshots; it ran no specs.
+SPEC-ALIGNED, after the four fixes below (the review first returned DRIFT DETECTED: no blocking finding, 1 major, 3 minor). The review was an independent read-only `sdd-review` Mode B on Opus, run on `5fcb211` (2026-11-06). It read the diff, the stylesheet cascade, the design-system documents and the screenshots; it ran no specs.
 
 **Findings and what was done**
 1. **Major, AC-2.4:** the guard's `\b(mtg|scryfall|magic)\b` let `scryfall_id`, `mtg_printing` and `magic_cost` through, since `_` is a word character. The regex is now `/mtg|scryfall|magic/i`; a case-insensitive grep of the seven files finds none; two new mutations fail it (commit `2d728850`).
@@ -49,3 +49,13 @@ DRIFT DETECTED at first, SPEC-ALIGNED after the fixes below (no blocking finding
 **Checked and holding (from the review):** AC-1.1 to AC-1.7 and AC-2.1, AC-2.2, AC-2.6 meet their wording; `.c-table td.c-table__place:not(.is-muted)` (specificity 0,3,1) beats the export's `.c-table td` and `additions.css` loads after `components.css`; `.c-collection` is the `collection` container so the phone rule applies to `.c-table__sub`; the cap is on the span (decision 2); tiles untouched; the guard's file list matches `git diff --name-only a3baf0d^1 a3baf0d` less the stylesheet.
 
 **Rule checks:** testing (explicit types, `:aggregate_failures`, no prose documents from RSpec) holds; no query or logic in views; output escaped (AC-1.5); tokens and `c-*` classes only, the 20rem cap being a width like the other literals in `additions.css`; the design-system documents are updated in the same pull request; the area doc and the index wait for the distillation step.
+
+## Distillation
+
+2026-11-06, before the merge (the pull request isn't opened yet; the log row says "spec 048's pull request").
+- **Collection and lots** (`docs/architecture/collection-and-lots.md`): the place line bullet (a row wraps, a tile is cut, the cap on the span, the cost near the breakpoint, the reach of the phone rule), the core-code invariant (the new guard and the `\b` blind spot, #209), a Decisions entry, the accepted limits (#142 closed, #208 added), Sources (spec 033 "all", spec 048) and a Distillation log row. AC-3.2 is met by reading these, the index rows and spec 033's frozen line.
+- **Specs index:** spec 048's row is Frozen by collection and lots, its Plan "retirement owed"; spec 033's row is Frozen (it was "frozen in part" for decision 5 as it applies to rows) and its Superseded by cell names spec 048. Spec 033's frozen line is changed on its own (spec 027 D4).
+- **Design system:** already covered by this feature's own edits (`CollectionTable.md`, the README's app additions).
+- **Data portability:** unchanged; no export change.
+- No new ADR is owed: the rulings are presentation rules recorded in the area doc's decisions.
+- The plan is retired after the merge, by a later run of `distill-feature`.
