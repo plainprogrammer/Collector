@@ -7,6 +7,7 @@
 **Branch:** `018-content-notice-footer`
 **Issue:** [#34](https://github.com/plainprogrammer/Collector/issues/34)
 **Frozen:** the current rules are in [`catalog-core.md`](../../architecture/catalog-core.md) (whole spec); see the [specs index](../README.md)
+**Plan:** retired in `65baa8220576faa91529cc31daf18a362f3daeed`; read it with `git show 65baa8220576faa91529cc31daf18a362f3daeed^:docs/specs/018-content-notice-footer/plan.md`
 
 ---
 
