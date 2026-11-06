@@ -43,12 +43,14 @@ own() { "$cli" run --rm -u 0 -v "$1:/dir" "$image" chown 1000:1000 /dir >/dev/nu
 
 # start <name> <volume> <secret> <image> [extra run args]: runs a container, sets PORT once /up answers 200.
 start() {
-  local name="$1" volume="$2" secret="$3" img="$4"
+  local name="$1" volume="$2" secret="$3" img="$4" ports
   shift 4
   containers+=("$name")
   "$cli" run -d --name "$name" ${run_flags[@]+"${run_flags[@]}"} -p 127.0.0.1::8080 -v "$volume:/rails/storage" "$@" \
     -e SECRET_KEY_BASE="$secret" -e HTTP_PORT=8080 -e SOLID_QUEUE_IN_PUMA=true "$img" >/dev/null
-  PORT="$("$cli" port "$name" 8080 | head -n 1 | sed 's/.*://')"
+  ports="$("$cli" port "$name" 8080)" # captured first, then cut: no pipe into an early-exiting reader under pipefail (#217)
+  PORT="${ports%%$'\n'*}"
+  PORT="${PORT##*:}"
   for _ in $(seq 1 "$attempts"); do
     [ "$(status "$PORT" /up)" = "200" ] && return 0
     sleep 2
@@ -57,14 +59,43 @@ start() {
   fail "$name: /up did not answer 200 within $((attempts * 2)) s"
 }
 
-# sign_in <port> <cookie jar>: the sign-in form as a browser submits it, with its CSRF token.
+# Every page is fetched into a variable or a file and tested afterwards, never piped into grep -q or head: under pipefail
+# such a reader that exits at its first match makes curl's next write fail (exit 23) and the check fail although the
+# page held what was looked for (#217; spec/smoke_scripts_spec.rb guards it).
+
+# sign_in <port> <cookie jar>: the sign-in form as a browser submits it, with its CSRF token. A refused password is a 422
+# (SessionsController#create), a sign-in a redirect; when it isn't one, what came back is printed.
 sign_in() {
-  local token code
-  token="$(curl -s -c "$2" -b "$2" "http://127.0.0.1:$1/session/new" | sed -n 's/.*name="csrf-token" content="\([^"]*\)".*/\1/p' | head -n 1)"
-  [ -n "$token" ] || return 1
-  code="$(curl -s -o /dev/null -w '%{http_code}' -c "$2" -b "$2" --data-urlencode "authenticity_token=$token" \
+  local form token meta code target
+  form="$(curl -s -c "$2" -b "$2" "http://127.0.0.1:$1/session/new")"
+  token="$(sed -n 's/.*name="csrf-token" content="\([^"]*\)".*/\1/p' <<<"$form")"
+  token="${token%%$'\n'*}"
+  [ -n "$token" ] || { echo "sign-in form on port $1 had no CSRF token; it held ${#form} bytes, starting: ${form:0:300}" >&2; return 1; }
+  meta="$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' -c "$2" -b "$2" --data-urlencode "authenticity_token=$token" \
     --data-urlencode "email_address=smoke@example.com" --data-urlencode "password=$password" "http://127.0.0.1:$1/session")"
-  [ "$code" = "302" ] || [ "$code" = "303" ]
+  code="${meta%% *}"
+  target="${meta#* }"
+  if [ "$code" = "302" ] || [ "$code" = "303" ]; then return 0; fi
+  echo "sign-in on port $1 answered $code (redirect target: '${target}')" >&2
+  return 1
+}
+
+# collection_has_lot <port> <cookie jar> <label>: the collection page is saved with its headers, then searched. When the
+# lot isn't on it, what came back is printed: the status, the size, where it redirected, whether the jar holds the
+# sign-in's session_id cookie (Authentication#start_new_session_for; _collector_session is set by the form alone) and
+# the first 300 bytes of the body.
+collection_has_lot() {
+  local port="$1" jar="$2" label="$3" page="$work/collection-$3.html" meta cookies
+  meta="$(curl -s -b "$jar" -o "$page" -w '%{http_code} %{size_download} %{redirect_url}' "http://127.0.0.1:$port/collection")" || meta="$meta (curl exited $?)"
+  if grep -q "Smoke Dragon" "$page" 2>/dev/null; then return 0; fi
+  cookies="$(grep -c 'session_id' "$jar" 2>/dev/null)" || true
+  {
+    echo "GET /collection on port $port (restore $label) answered: $meta [status, bytes, redirect]"
+    echo "session_id cookie lines in the jar: ${cookies:-0}; the page starts:"
+    head -c 300 "$page" 2>/dev/null || true
+    echo
+  } >&2
+  return 1
 }
 
 seed_ruby='
@@ -104,7 +135,7 @@ verify_restored() {
   done
   [ "$state" = "true,0,nil,true,1,1" ] || fail "$label: the restored instance's databases weren't a fresh instance's with the collection (AC-2.3); got: $state"
   sign_in "$port" "$work/jar-$label" || fail "$label: the admin couldn't sign in with their password under a different SECRET_KEY_BASE (AC-4.2)"
-  curl -s -b "$work/jar-$label" "http://127.0.0.1:$port/collection" | grep -q "Smoke Dragon" || fail "$label: the lot isn't on the collection page"
+  collection_has_lot "$port" "$work/jar-$label" "$label" || fail "$label: the lot isn't on the collection page"
   [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$work/jar-a" "http://127.0.0.1:$port/collection")" = "302" ] \
     || fail "$label: a session cookie from the first instance was accepted (AC-4.2)"
 }
