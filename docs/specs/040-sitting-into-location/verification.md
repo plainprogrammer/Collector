@@ -75,3 +75,7 @@ The reviewer's coverage matrix matched the table above: every AC, FR and NFR cov
 | `.c-field select`'s width rule is app-wide but undocumented | minor | `docs/design-system/components/Form.md` says a select never widens past its form |
 | Focus drops to the body after Set; clearing that deletes the sitting empties `#status`; the picker-only section has no name | minor | Kept: focus after a panel redraw is spec 009's Undo pattern, and the plan rules no message when clearing deletes the sitting |
 | `place!` inserts then updates when it opens a sitting | nit | Kept: correct under the unique account index, and the row is written once per choice |
+
+## Distillation
+
+2026-11-06, before the merge (`distill-feature`): `collection-and-lots.md` holds decisions 2, 4 and 7 as they touch lots and locations (the scanner adds into its sitting's place; removing a location clears a sitting's place; the #56 open item closed); `data-portability.md` holds decision 5, AC-5.3 and AC-3.2's import case (the sitting's place is working state). The index marks 040 Frozen in part, plan retirement owed; the spec carries its frozen line. The scanner has no area doc, so the sitting's own rules (the control, the copy, P1's drop) stay in this spec until one is written. No ADR proposed: the place follows ADR 0025 and spec 032's migration pattern.
