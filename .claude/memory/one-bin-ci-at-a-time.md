@@ -12,6 +12,8 @@ When several worktrees work at once (spec 041–044 run, 2026-11-06), only one f
 **How to apply:**
 - **Slot order:** a branch about to merge comes before one still building.
 - **The maintainer can override:** a push they ask for directly in a worker's terminal can overlap; expect it to be slow; on a branch that still has the old glob example (before the #178 fix is merged in) it can also flake.
+- **Docs-only isn't per commit:** the hook judges the whole branch against its merge base, so a session-wrap or merge commit on a branch that carries code still runs the full `bin/ci` and needs a slot (#205, #212, 2026-11-06).
+- **Every merge can re-conflict the others:** after the coordinator merges a PR, tell open workers to merge `origin/main` before their next push; a green PR can turn CONFLICTING in `docs/specs/README.md` the moment a sibling merges (#212 after #211).
 - **Expected alerts:** Orca's "Worker stopped without reporting" and "waiting on a prompt" alerts often only mean the worker ended its turn to wait on `ask`, or a hook was running. Check `worker-read` before reporting a stall to the maintainer.
 
 Related: [[parallel-sdd-orchestration]], and the lesson `2026-11-06-each-merge-reconflicts-open-branches-on-the-specs-index`.
