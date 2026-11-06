@@ -171,4 +171,36 @@ RSpec.describe "Places on the collection's tiles and rows", type: :request do # 
       expect(response.body).not_to include("Their secret box")
     end
   end
+
+  describe "after a bulk action (spec 033 AC-2.6, spec 048 AC-2.3)" do
+    def select_lots(*lots, go:)
+      post collection_selection_path
+      patch collection_selection_path, params: { go:, q: "", rendered_q: "", all_rendered: "0",
+        shown_ids: lots.map(&:id), ticked_ids: lots.map(&:id) }
+    end
+
+    it "keeps each lot's place when Set condition is applied", :aggregate_failures do
+      placed = own(location: blue)
+      loose = own("Opt")
+      select_lots(placed, loose, go: "set_condition")
+      post collection_condition_change_path, params: { condition: "lightly_played" }
+      expect([ placed.reload.condition, loose.reload.condition ]).to eq(%w[lightly_played lightly_played])
+      follow_redirect!
+      expect(cells).to eq([ "Blue binder", "No location" ])
+    end
+
+    it "keeps each lot's place when a bulk Remove is undone from the bulk table's message", :aggregate_failures do
+      placed = own(location: blue)
+      loose = own("Opt")
+      own("Shock") # not selected, so the bulk table the message appears on still has a row
+      select_lots(placed, loose, go: "remove")
+      post collection_bulk_removals_path
+      follow_redirect!
+      undo = page_html.at_css(".c-status form.c-status__action")
+      post undo["action"], params: { return_to: undo.at_css("input[name=return_to]")["value"] }
+      follow_redirect!
+      expect(user.account.lots.count).to eq(3)
+      expect(cells).to eq([ "Blue binder", "No location", "No location" ])
+    end
+  end
 end
