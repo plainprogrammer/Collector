@@ -139,7 +139,7 @@
       "Bash(git push *--exec*)",
       "Bash(git push *--repo*)",
       "Bash(git push *://*)",
-      "Bash(git push *@*:*)"
+      "Bash(git push *@*)"
     ]
   },
   "hooks": {
