@@ -52,7 +52,7 @@ Every AC was covered by a test or a reading (the table above matches the reviewe
 | 2 | AC-2.2's guard matched substrings only | Fixed in `7633920`: the whole ready line is compared |
 | 3 | AC-1.6 had no interrupted example behind a missing-file build | Fixed in `7633920`: one example (stalled takes the same `running?` branch) |
 | 4 | `verification.md` uncommitted; `Gemfile.lock` noise | This commit; the local arm64-darwin `Gemfile.lock` change stays uncommitted |
-| 5 | The settings-drift follow-up issue is unfiled | Left to the coordinator, who files issues; its title and body are in the worker's report |
+| 5 | The settings-drift follow-up issue is unfiled | Filed by the coordinator as [#176](https://github.com/plainprogrammer/Collector/issues/176) |
 | 6 | The upgrade seeds' `art-index-upgrade.bin.gz` reads as missing | No action: accepted by the spec's Interactions section; the upgrade proof checks neither page |
 
 A permission error reading as missing rests on `File.file?` returning false on a failed `stat`; no example forces one (not portable in CI).
