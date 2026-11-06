@@ -16,6 +16,14 @@ module CollectionsHelper
 
   def items_count(count) = pluralize(number_with_delimiter(count), "item")
 
+  # The move's notice (spec 041 AC-3.1, AC-3.2, AC-3.6): the copies that moved, and when any were already there, how many.
+  def moved_message(result, to)
+    message = "Moved #{items_count(result.moved)} to #{to ? to.name : "no location"}."
+    return message if result.already_there.zero?
+
+    "#{message} #{items_count(result.already_there)} #{result.already_there == 1 ? "was" : "were"} already there."
+  end
+
   # Spec 032 P5: saved lots whose location was removed meanwhile come back in none.
   def restored_without_location(count) = count.positive? ? " #{pluralize(count, "lot")} came back without a location." : ""
 

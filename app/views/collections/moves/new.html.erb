@@ -1,0 +1,18 @@
+<% content_for :title, "Move items · Collector" %>
+<%= render "layouts/appbar", section: :collection, detail: true, back_path: @bulk_path %>
+<main class="c-main c-page">
+  <div class="c-pagehead"><div><h1 class="c-pagehead__title">Move <%= items_count(@copies) %></h1></div></div>
+  <% to_errors = @to_errors || [] %>
+  <%= form_with url: collection_move_path(page: params[:page]), class: "c-form" do |form| %>
+    <div class="c-field<%= " c-field--invalid" if to_errors.any? %>">
+      <%= label_tag :to, "To", class: "c-field__label" %>
+      <%= select_tag :to, options_for_select(@destinations, @to), required: true, "aria-describedby": field_error_describedby("to-error", to_errors) %>
+      <%= render "shared/field_errors", messages: to_errors, id: "to-error" %>
+    </div>
+    <div class="c-form__actions">
+      <%= form.submit "Move", class: "c-btn c-btn--primary" %>
+      <%= link_to "Cancel", @bulk_path, class: "c-btn c-btn--secondary" %>
+    </div>
+  <% end %>
+</main>
+<%= render "layouts/tabbar", section: :collection %>

@@ -42,6 +42,16 @@ class BulkSelection < ApplicationRecord
     end
   end
 
+  # After a move (spec 041 decision 6): under all locations the moved lots still match, so the lots now holding the moved
+  # copies are selected (a merged survivor, an excepted destination lot too, as after Set condition, AC-3.9); under a
+  # location or "No location" they no longer match, so the selection restarts empty under the same filters and sort, as
+  # after Remove (AC-3.13; spec 037 AC-5.6).
+  def after_move!(lot_ids)
+    return include!(lot_ids) if location_filter.empty?
+
+    restart!(query: query, sort: sort, location: location_filter)
+  end
+
   # Records one page's ticks (FR-4, spec v5.0.0). A header toggle (submitted unlike it was rendered, or
   # reported by scripting) resets the selection to every matching lot or nothing; then only the shown rows
   # whose tick differs from their rendered baseline apply. Without a toggle, the shown rows decide.

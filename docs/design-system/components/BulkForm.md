@@ -16,6 +16,7 @@ The table in bulk mode as one form, so every tick reaches the server with whatev
       <div class="c-bulkbar__count"><span>2</span> of 4,812 selected</div>
       <div class="c-bulkbar__extra">
         <button type="submit" form="bulk" name="go" value="set_condition" class="c-btn c-btn--secondary c-btn--sm">Set condition…</button>
+        <button type="submit" form="bulk" name="go" value="move" class="c-btn c-btn--secondary c-btn--sm">Move to…</button>
         <button type="submit" form="bulk" name="go" value="remove" class="c-btn c-btn--danger c-btn--sm">Remove</button>
       </div>
       <details class="c-menu c-bulkbar__more">…the same buttons as c-menu__item, each with form="bulk"…</details>
@@ -50,6 +51,7 @@ The table in bulk mode as one form, so every tick reaches the server with whatev
 ```
 
 - Every control that leaves the page is a submit button named `go`: Filter, the sort headers, Previous/Next, the actions and Done. Links would lose unsubmitted ticks, and a hover prefetch must never change the selection.
+- The bulk bar's actions are "Set condition…", "Move to…" and "Remove", in that order, in the bar and in the "More bulk actions" menu. "Move to…" is offered only while the account has a location (spec 041 AC-1.1, AC-1.2). Each opens its own page (a `Form` page, or a confirmation) and returns to the bulk table.
 - Filter comes first in tree order, so Enter in the search field filters rather than running an action.
 - `c-bulkhead` is one sticky block below the app header (`top:56px`, like `.c-shell .c-filterbar`), with the filter bar and the bulk bar static inside it. The export makes both bars sticky at their own offsets, which slides the bulk bar under the app header and the filter bar when the page scrolls; one block keeps the count, the actions and Done in view. Because the block sits outside the form, its buttons join it by id.
 - The view switch stays outside the form and is inert: Table pressed, Grid disabled.
