@@ -7,7 +7,7 @@
 **Depends on:** [spec 009](../009-card-scanner-confirm-flow/spec.md) (the sitting panel, Undo, the status line), [spec 040](../040-sitting-into-location/spec.md) (the place and "Set"), [spec 042](../042-sitting-condition/spec.md) (the condition, "Set"'s status sentences)
 **Branch:** `182-sitting-focus-after-redraw`
 **Issue:** [#182](https://github.com/plainprogrammer/Collector/issues/182)
-**Plan:** present (`plan.md`, once written)
+**Plan:** retired in `516735751f2871e41a2dd38be336531f7c76e103`; read it with `git show 516735751f2871e41a2dd38be336531f7c76e103^:docs/specs/047-sitting-focus-after-redraw/plan.md`
 
 ---
 
