@@ -1,9 +1,8 @@
 <%# locals: (condition:, location_id:, conditions:, locations:) %>
 <%# The sitting's one control (spec 042 decision 2, spec 040 decision 3): native selects and "Set" in one form, grouped under a
-    legend, answered by a Turbo Stream that redraws the panel, so it works by keyboard and needs no script (AC-7.1). The
-    fieldset is the choice page's c-choices (a flex column, no border): the two fields stack, as spec 040's did. The
-    redrawn panel names where focus goes after "Set" (spec 047): the panel's data, from `sitting_focus_data`; the form
-    works the same without that script. %>
+    legend, answered by a Turbo Stream that redraws the panel, so it works by keyboard and without script (AC-7.1; a small
+    controller only puts focus back on "Set" after the redraw, spec 047, from the panel's `sitting_focus_data`). The
+    fieldset is the choice page's c-choices (a flex column, no border): the two fields stack, as spec 040's did. %>
 <%= form_with url: scanner_sitting_path, method: :patch, scope: :sitting, class: "c-form c-scanner__place" do |form| %>
   <fieldset class="c-choices">
     <legend class="c-field__label">This sitting's cards</legend>
