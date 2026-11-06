@@ -2,6 +2,9 @@ require "rails_helper"
 
 # Spec 015 AC-5.4: the core's admin catalog code names no collectible type, source or operation. A type reaches the
 # page only through its source's optional hooks (app/models/catalog/sources.rb).
+# Issue #209: the type and source names are matched anywhere in a word (scryfall_id, MTGPrinting), because `_` is a word
+# character and `\b` would let them through. "art" is an ordinary part of words (start, part), so it is matched as a word
+# of its own: not between letters, but `art_thing` counts. Known limit: a CamelCase compound (ArtBuild) passes.
 RSpec.describe "The core's admin catalog code" do
   let(:files) do
     Rails.root.glob("app/controllers/admin/catalogs{_controller.rb,/**/*.rb}") + Rails.root.glob("app/views/admin/catalogs/**/*.erb") +
@@ -15,7 +18,7 @@ RSpec.describe "The core's admin catalog code" do
   end
 
   it "never says MTG, Scryfall or art" do
-    offenders = files.select { |file| file.read.match?(/\b(mtg|scryfall|art)\b/i) }
+    offenders = files.select { |file| file.read.match?(/mtg|scryfall|(?<![a-z])art(?![a-z])/i) }
 
     expect(offenders.map { |file| file.relative_path_from(Rails.root).to_s }).to be_empty
   end

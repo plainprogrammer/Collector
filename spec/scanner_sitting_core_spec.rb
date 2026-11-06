@@ -3,7 +3,8 @@ require "rails_helper"
 # Spec 042 FR-3: the scanner sitting is core code. Its models, partials and helper never name a collectible type or a source;
 # the scale comes to them from the scanner's controllers (the ScannerSitting concern) or from the printing's own vocabulary.
 # The pattern is spec 026's (spec/number_entry_core_spec.rb) without its finish words, because the helper's comments quote
-# copy such as "Foil".
+# copy such as "Foil". Issue #209: the names are matched anywhere in a word (scryfall_id, MTGPrinting), because `_` is a
+# word character and `\b` would let them through.
 RSpec.describe "The scanner sitting's code" do
   let(:files) do
     Rails.root.glob("{app/models/scanner/sitting{,_entry}.rb,app/views/scanners/_{sitting,sitting_entry,picker,summary}.html.erb," \
@@ -15,7 +16,7 @@ RSpec.describe "The scanner sitting's code" do
   end
 
   it "never names a collectible type or a source" do
-    offenders = files.select { |file| file.read.match?(/\b(mtg|scryfall|magic)\b/i) }
+    offenders = files.select { |file| file.read.match?(/mtg|scryfall|magic/i) }
     expect(offenders.map { |file| file.relative_path_from(Rails.root).to_s }).to be_empty
   end
 end
