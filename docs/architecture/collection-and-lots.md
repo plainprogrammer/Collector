@@ -14,14 +14,14 @@ What a collector owns and where it is kept: lots and their identity, the ways co
 - Bulk mode: the selection, Set condition, Move to…, the bulk removal and its Undo (`BulkSelection`, `Collections::SelectionsController`, `Lot::ConditionChange`, `Lot::BulkMove`, `Collections::MovesController`, `BulkRemoval`) (spec 006 Stories 4–8; spec 032 Story 7; spec 041).
 - Number entry: `NumberEntry`, `NumberEntry::Line`, `NumberEntry::LineForm`, `NumberEntry::SetChoice`, `/collection/number_entry` (spec 026, all but the list being left out of the export; spec 034).
 - Locations: `Location`, `Location::Name`, `Location::Holdings`, `/locations` (`LocationsController`, `Locations::RemovalsController`) (spec 029, all but its format, export, preview and apply parts; spec 032 Stories 4, 5).
-- Tenant isolation for all of these (spec 004 AC-12.1–AC-12.3, AC-12.5; spec 006 Story 8; spec 029 Story 4; spec 032 Story 6). That every collection table carries `account_id` with a foreign key and an index (spec 004 AC-12.4) is tenancy and accounts'.
+- Tenant isolation for all of these (spec 004 AC-12.1–AC-12.3, AC-12.5; spec 006 Story 8; spec 029 Story 4; spec 032 Story 6). That every collection table carries `account_id` with a foreign key and an index (spec 004 AC-12.4) is [tenancy and accounts](tenancy-and-accounts.md)'.
 
 **Neighbours:**
 
 - How lots and locations leave and enter an instance (the export, format version 3, the import preview and the apply), and that the number-entry list, the scanner sitting, bulk selections and bulk removals' undo are working state left out of the export and cleared by an apply that writes a lot: **[data portability](data-portability.md)**. This doc uses only that an apply replaces lots and locations in one transaction and keeps the lot identity and the location rules stated here.
 - Catalog entries, sets, search, the card page's catalog content (details, legality, the printings list's catalog rows) and each collectible's vocabulary (`Catalog.collecting_for`: finishes, `finish_order`, special finishes, conditions): **[catalog core](catalog-core.md)**. This doc uses the vocabulary as given.
 - The scanner's sitting adds copies through `Lot.add!` with the sitting's condition and into the sitting's place, unspecified and unplaced while it has none, and has its own Undo (spec 009; spec 040 decisions 2, 4; spec 042 decisions 2, 4): **scanner** (no area doc yet).
-- `Current.account`, users, sessions, sign-up, the admin users page (which shows each account's copy count) and deleting a user with their account: **tenancy and accounts** (no area doc yet). This doc uses that every collection query goes through `Current.account` and that a session ending discards its bulk selection and Undo.
+- `Current.account`, users, sessions, sign-up, the admin users page (which shows each account's copy count) and deleting a user with their account: **[tenancy and accounts](tenancy-and-accounts.md)**. This doc uses that every collection query goes through `Current.account` and that a session ending discards its bulk selection and Undo.
 - The patterns these pages are built from (`ItemTile`, `TileAdd`, `UnownedTile`, `CollectionPage`, `CollectionTable`, `ViewSwitchForm`, `SortHeader`, `BulkForm`, `BulkConfirmPage`, `ChoicePage`, `StatusAction`, `ItemPage`, `NumberEntry`, `Locations`): **[design system](../design-system/README.md)**.
 
 ## Glossary
@@ -241,7 +241,7 @@ Measured bars, not constants (recorded in each spec's `verification.md` where on
 
 ## Sources
 
-- [Spec 004](../specs/004-design-system-collection/spec.md): the collection and adding cards: Story 7, Stories 9–11, AC-6.3, AC-6.6's owned quantities and add controls, AC-8.4–AC-8.7, AC-8.9, AC-12.1–AC-12.3, AC-12.5, FR-6–FR-8, FR-9's breadcrumb mark, FR-10, FR-12 as these pages meet it, FR-14's owned quantities, the collection rows of its NFRs and Error Scenarios, and the Open Questions resolved for lots. Its design-system part is the [design system](../design-system/README.md)'s; its accounts, users and admin users are tenancy and accounts'; its search and card page catalog content is catalog core's.
+- [Spec 004](../specs/004-design-system-collection/spec.md): the collection and adding cards: Story 7, Stories 9–11, AC-6.3, AC-6.6's owned quantities and add controls, AC-8.4–AC-8.7, AC-8.9, AC-12.1–AC-12.3, AC-12.5, FR-6–FR-8, FR-9's breadcrumb mark, FR-10, FR-12 as these pages meet it, FR-14's owned quantities, the collection rows of its NFRs and Error Scenarios, and the Open Questions resolved for lots. Its design-system part is the [design system](../design-system/README.md)'s; its accounts, users and admin users are [tenancy and accounts](tenancy-and-accounts.md)'; its search and card page catalog content is catalog core's.
 - [Spec 006](../specs/006-collection-list-view/spec.md): all.
 - [Spec 021](../specs/021-unowned-tile-marker/spec.md): all.
 - [Spec 026](../specs/026-typed-entry/spec.md): all but decision 6 and FR-5 (the list left out of the export), which are data portability's.
