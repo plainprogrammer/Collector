@@ -11,3 +11,11 @@ RSpec.configure do |config|
     FileUtils.rm_rf(MTG::Art.root)
   end
 end
+
+# A finished build's index file: writes an index for the version and returns its name, to set as the build's index_file
+# (spec 039). A bare finished build row has none, which now reads as "index file missing".
+module ArtIndexHelpers
+  def art_index_name(version = "default-cards-1") = MTG::Art::Index.write!(version, []).basename.to_s
+end
+
+RSpec.configure { |config| config.include ArtIndexHelpers }

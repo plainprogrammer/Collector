@@ -34,7 +34,8 @@ module MTG::Art
   # The art line `catalog:status[mtg]` prints (AC-3.11), from the latest build run that wasn't skipped. A build still
   # marked running reads as the admin catalog page words it (MTG::Art::Operation): building with no heartbeat while a
   # worker holds the job of a build that stopped beating (MTG::ArtBuild#stalled?), interrupted once nothing is working
-  # on it (MTG::ArtBuild#left_behind?), both judged by the queue as it was read before the build.
+  # on it (MTG::ArtBuild#left_behind?), both judged by the queue as it was read before the build. A finished build whose
+  # index file isn't on the volume reads as missing, and says to press the admin page's button (spec 039 decision 3).
   def self.status_line
     return "Art matching: off (set #{ENV_NAME}=true to turn it on)" unless enabled?
 
@@ -52,6 +53,10 @@ module MTG::Art
     elsif run.running?
       "Art matching: building since #{run.started_at.utc.iso8601}; #{progress}, #{run.failed_count} failed " \
         "(last heartbeat #{run.heartbeat_at.utc.iso8601})"
+    elsif run.finished? && !run.index_file_present?
+      "Art matching: index file missing (#{run.index_file.presence || "no file name recorded"}); press Build art index on the " \
+        "admin catalog page to write it again. #{run.indexed_count} artworks indexed, #{run.without_image_count} without an image, " \
+        "#{run.failed_count} failed images"
     elsif run.finished?
       "Art matching: ready; #{run.indexed_count} artworks indexed, #{run.without_image_count} without an image, " \
         "#{run.failed_count} failed images; index #{run.index_file}"
