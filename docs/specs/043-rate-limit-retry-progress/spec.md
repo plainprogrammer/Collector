@@ -1,7 +1,7 @@
 # Feature 043: Rate-Limit Retries Count Only Without Progress
 
 **Status:** Draft
-**Version:** 0.1.0
+**Version:** 0.2.0
 **Created:** 2026-11-06
 **Last Updated:** 2026-11-06
 **Branch:** `043-rate-limit-retry-progress`
@@ -14,6 +14,7 @@
 | Version | Date | Change |
 |---------|------|--------|
 | 0.1.0 | 2026-11-06 | Written from issue #86, drafted around option A (count only rate limits with no progress since the last); ruling pending |
+| 0.2.0 | 2026-11-06 | Maintainer ruling on decision 1: option A |
 
 ---
 
@@ -35,7 +36,7 @@ The issue asks this first. From Scryfall's documentation (`https://scryfall.com/
 - The art build fetches images only from `cards.scryfall.io` (`MTG::Art::Build::IMAGE_HOSTS`), one of those origins. By the documentation a build is never rate limited. No 429 from it has been observed. The client still treats a 429 from it as one from the API (a host behind a content network can answer 429 without its documentation saying so), and this spec keeps that.
 - A refresh asks the API host twice per run: `/bulk-data` (before the download) and `/sets` (after it, one page today), with at least 100 ms between requests (`MTG::Scryfall::Client::MIN_INTERVAL`). The bulk file itself comes from `data.scryfall.io`, unlimited. A refresh is rate limited only when something else on the same address is overloading the API, or when Scryfall's limits change.
 
-So the issue's main case, a long build turned away four times, needs a 429 Scryfall says won't come. The rule is still wrong as stated (it counts work as failure), and it is cheap to make right; the ruling on whether to change it is decision 1.
+So the issue's main case, a long build turned away four times, needs a 429 Scryfall says won't come. The rule is still wrong as stated (it counts work as failure), and it is cheap to make right; the maintainer ruled to change it (decision 1).
 
 > **Terms.**
 > - A *rate limit* is a `Catalog::Sources::RateLimitedError` reaching the job, which `Catalog::RateLimitRetry` handles.
@@ -63,11 +64,11 @@ So the issue's main case, a long build turned away four times, needs a 429 Scryf
 
 ## Decisions
 
-### 1. Count only rate limits with no progress since the last one [NEEDS CLARIFICATION: maintainer ruling]
+### 1. Count only rate limits with no progress since the last one (ruled)
 
-Put to the maintainer, with three options:
+**Ruling (maintainer, 2026-11-06): A.** Only rate limits with no progress since the last one count; each operation answers whether its attempt did new durable work, and the core names no collectible. The options put:
 
-- **A (recommended, drafted here).** The count starts again whenever the attempt a rate limit ended made progress. The job fails on the fourth rate limit in a row with no progress between them.
+- **A (recommended; ruled).** The count starts again whenever the attempt a rate limit ended made progress. The job fails on the fourth rate limit in a row with no progress between them.
 - **B.** Count per period: at most 3 rate-limit retries within a rolling window. No progress question, but the window's length is a guess: too short and a job turned away every 45 seconds never fails; too long and a slow job with work between rate limits still does.
 - **C.** No code change: record Scryfall's answer (above) in the area doc and close #86, since under Scryfall's stated limits the long build is never rate limited.
 
@@ -188,7 +189,7 @@ Recorded in `docs/specs/README.md` in both directions.
 
 ## Open Questions
 
-- Decision 1 waits for the maintainer's ruling.
+None. Decision 1 was ruled by the maintainer on 2026-11-06.
 
 ## Out of Scope
 
