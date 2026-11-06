@@ -19,6 +19,7 @@ Rails.application.routes.draw do
       resource :import_preview, only: %i[new create]
       resource :import, only: :create
       resource :condition_change, only: %i[new create]
+      resource :move, only: %i[new create]
       resources :bulk_removals, only: %i[new create] do
         resource :undo, only: :create, module: :bulk_removals
       end

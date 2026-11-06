@@ -69,6 +69,11 @@ RSpec.describe "Routes", type: :routing do
     expect(post: "/collection/condition_change").to route_to("collections/condition_changes#create")
   end
 
+  it "routes Move to…", :aggregate_failures do
+    expect(get: "/collection/move/new").to route_to("collections/moves#new")
+    expect(post: "/collection/move").to route_to("collections/moves#create")
+  end
+
   it "routes bulk removal and its undo", :aggregate_failures do
     expect(get: "/collection/bulk_removals/new").to route_to("collections/bulk_removals#new")
     expect(post: "/collection/bulk_removals").to route_to("collections/bulk_removals#create")
