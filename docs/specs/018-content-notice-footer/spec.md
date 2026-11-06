@@ -6,6 +6,7 @@
 **Last Updated:** 2026-10-11
 **Branch:** `018-content-notice-footer`
 **Issue:** [#34](https://github.com/plainprogrammer/Collector/issues/34)
+**Frozen:** the current rules are in [`catalog-core.md`](../../architecture/catalog-core.md) (whole spec); see the [specs index](../README.md)
 
 ---
 
