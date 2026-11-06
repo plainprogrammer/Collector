@@ -47,4 +47,14 @@ RSpec.describe "Auth page field text", type: :system do
     expect(page).to have_css(".c-auth > p", text: "This first account will be the admin")
     expect(font_size_of(".c-auth > p")).to eq("15px")
   end
+
+  it "keeps the closed-state paragraphs at the auth card's size", :aggregate_failures do
+    create(:user)
+    InstanceSetting.current.update!(sign_up_open: false)
+    visit new_registration_path
+    expect(page).to have_css(".c-auth > p", text: "Sign-up is closed")
+    all(".c-auth > p").each do |paragraph|
+      expect(page.evaluate_script("getComputedStyle(arguments[0]).fontSize", paragraph)).to eq("15px")
+    end
+  end
 end
