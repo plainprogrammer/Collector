@@ -217,3 +217,4 @@ Filter chips Failed (the default), Running, Queued and Scheduled, each with its 
 |---|---|---|
 | 2026-10-15 | Specs 002 (FR-3–FR-6 and their Error Scenarios rows), 011 (FR-2's build run), 015 and 024; issues #60, #61, #73, #74, #78–#81 and #84, and the open #41, #77 and #86; and CLAUDE.md's "Admin catalog and jobs" bullet | [#110](https://github.com/plainprogrammer/Collector/pull/110) |
 | 2026-11-06 | Spec 039 (the art index's "Index file missing" state, the status line's missing wording, "ready" judged by the build's own named file, the accepted limit on judging by name only) and issue #122 | [#175](https://github.com/plainprogrammer/Collector/pull/175) |
+| 2026-11-06 | Spec 043 (rate-limit retries count only rate limits in a row with no progress between them; what each operation counts as progress; progress judged on the attempt the rate limit ended; Scryfall's image origins have no rate limits) and issue #86 | spec 043's pull request |
