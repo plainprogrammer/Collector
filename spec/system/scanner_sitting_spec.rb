@@ -43,12 +43,13 @@ RSpec.describe "The scanner's sitting", type: :system do
     expect(user.account.lots).to be_empty
   end
 
-  describe "a sitting's place (spec 040)" do
-    def place_in(name)
-      select name, from: "Put this sitting in"
-      click_on "Set"
-    end
+  def set_sitting(condition: nil, location: nil)
+    select condition, from: "Condition" if condition
+    select location, from: "Location" if location
+    click_on "Set"
+  end
 
+  describe "a sitting's place (spec 040)" do
     def entry_metas = all("#scanner_sitting li .c-list__meta").map { it.text.squish }
 
     before do
@@ -58,10 +59,10 @@ RSpec.describe "The scanner's sitting", type: :system do
 
     it "opens a sitting in the chosen place, keeping the page and its camera (AC-1.1, AC-1.2)", :aggregate_failures do
       visit scanner_path
-      expect(page).to have_select("Put this sitting in", selected: "No location")
+      expect(page).to have_select("Location", selected: "No location")
       expect(page).to have_no_css("#scanner_sitting h2")
       page.execute_script("window.__marker = 'still here'")
-      place_in "Blue binder"
+      set_sitting(location: "Blue binder")
       expect(page).to have_css("#scanner_sitting h2", text: "This sitting: 0 cards, in Blue binder")
       expect(page).to have_css("#status", text: "This sitting's cards now go into Blue binder.")
       expect(page.evaluate_script("window.__marker")).to eq("still here")
@@ -70,10 +71,10 @@ RSpec.describe "The scanner's sitting", type: :system do
 
     it "scans into the place, and into another once it changes mid-sitting (AC-1.3, AC-2.1)", :aggregate_failures do
       visit scanner_path
-      place_in "Blue binder"
+      set_sitting(location: "Blue binder")
       add_by_scanning
       expect(page).to have_css("#status", text: "Added 1 × Lightning Bolt (MOM · 123, Foil) in Blue binder to your collection.")
-      place_in "Long box"
+      set_sitting(location: "Long box")
       expect(page).to have_css("#scanner_sitting h2", text: "This sitting: 1 card, in Long box")
       add_by_scanning
       expect(page).to have_css("#scanner_sitting h2", text: "This sitting: 2 cards, in Long box")
@@ -85,20 +86,20 @@ RSpec.describe "The scanner's sitting", type: :system do
       Scanner::Sitting.choose!(account: user.account, location: user.account.locations.find_by!(name: "Long box"))
       Scanner::Sitting.add!(account: user.account, printing:, finish: "foil", reading_key: "a" * 32)
       visit scanner_path
-      expect(page).to have_select("Put this sitting in", selected: "Long box")
-      place_in "No location"
+      expect(page).to have_select("Location", selected: "Long box")
+      set_sitting(location: "No location")
       expect(page).to have_css("#scanner_sitting h2", exact_text: "This sitting: 1 card")
       click_on "Done"
       click_on "End sitting"
-      expect(page).to have_select("Put this sitting in", selected: "No location")
-      place_in "Blue binder"
+      expect(page).to have_select("Location", selected: "No location")
+      set_sitting(location: "Blue binder")
       expect(page).to have_css("#scanner_sitting h2", text: "This sitting: 0 cards, in Blue binder")
       expect(page).to have_no_text("Added 1 card in this sitting")
     end
 
     it "chooses a place with the keyboard alone (AC-7.1)", :aggregate_failures do
       visit scanner_path
-      field = find_field("Put this sitting in")
+      field = find_field("Location")
       field.select("Long box")
       field.send_keys(:tab)
       expect(page.evaluate_script("document.activeElement.value")).to eq("Set")

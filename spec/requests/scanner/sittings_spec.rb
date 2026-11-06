@@ -42,7 +42,9 @@ RSpec.describe "Scanner sittings", type: :request do
 
     it "shows no list or Done without a sitting (AC-3.7)", :aggregate_failures do
       get scanner_path
-      expect(html.at_css("#scanner_sitting")["hidden"]).not_to be_nil
+      expect(html.at_css("#scanner_sitting")["hidden"]).to be_nil
+      expect(html.at_css("#scanner_sitting select#sitting_condition")).not_to be_nil
+      expect(html.at_css("#scanner_sitting h2")).to be_nil
       expect(response.body).not_to include(new_scanner_sitting_ending_path)
     end
 
@@ -58,7 +60,7 @@ RSpec.describe "Scanner sittings", type: :request do
     it "keeps each account's sitting to itself (AC-3.8)", :aggregate_failures do
       theirs = add("f", to: create(:user).account)
       get scanner_path
-      expect(html.at_css("#scanner_sitting")["hidden"]).not_to be_nil
+      expect(html.at_css("#scanner_sitting h2")).to be_nil
       undo(theirs)
       expect(response).to have_http_status(:not_found)
       expect(theirs.reload.state).to eq(:added)
@@ -148,19 +150,13 @@ RSpec.describe "Scanner sittings", type: :request do
       blue
       create(:location, name: "Another account's binder") # never listed (FR-1)
       get scanner_path
-      expect(picker.at_css("label[for=sitting_location_id]").text).to eq("Put this sitting in")
-      expect(picker.css("option").map { [ it.text, it["value"] ] }).to eq([ [ "No location", "" ], [ "Blue binder", blue.id.to_s ], [ "Long box", long_box.id.to_s ] ])
+      expect(picker.at_css("label[for=sitting_location_id]").text).to eq("Location")
+      expect(picker.css("select#sitting_location_id option").map { [ it.text, it["value"] ] }).to eq([ [ "No location", "" ], [ "Blue binder", blue.id.to_s ], [ "Long box", long_box.id.to_s ] ])
       expect(chosen.text).to eq("No location")
       expect(picker.at_css("input[type=submit], button[type=submit]")["value"] || picker.at_css("button").text).to eq("Set")
       expect(html.at_css("#scanner_sitting")["hidden"]).to be_nil
       expect(html.at_css("#scanner_sitting h2")).to be_nil
       expect(response.body).not_to include(new_scanner_sitting_ending_path)
-    end
-
-    it "shows nothing of a sitting for an account with no locations (AC-3.1)", :aggregate_failures do
-      get scanner_path
-      expect(html.at_css("#scanner_sitting")["hidden"]).not_to be_nil
-      expect(response.body).not_to include("Put this sitting in")
     end
 
     it "opens a sitting in the place, redrawing the panel with it chosen (AC-1.2)", :aggregate_failures do
@@ -198,7 +194,7 @@ RSpec.describe "Scanner sittings", type: :request do
     it "says where cards go in a placed sitting with no entries, and keeps spec 009's copy once all were undone (AC-1.2)", :aggregate_failures do
       place(blue.id)
       expect(html.at_css("#scanner_sitting h2").text).to eq("This sitting: 0 cards, in Blue binder")
-      expect(html.at_css("#scanner_sitting .c-empty").text).to eq("Cards you scan now go into Blue binder.")
+      expect(html.at_css("#scanner_sitting .c-empty").text).to eq("Cards you scan now: in Blue binder.")
       expect(html.at_css("#scanner_sitting ul")).to be_nil
       add("a").undo!
       get scanner_path
@@ -295,7 +291,9 @@ RSpec.describe "Scanner sittings", type: :request do
       expect(Scanner::Sitting.sole.location).to be_nil
       get scanner_path
       expect(Scanner::Sitting.count).to eq(0)
-      expect(html.at_css("#scanner_sitting")["hidden"]).not_to be_nil
+      expect(html.at_css("#scanner_sitting h2")).to be_nil
+      expect(html.at_css("#scanner_sitting")["hidden"]).to be_nil
+      expect(response.body).not_to include(new_scanner_sitting_ending_path)
     end
 
     it "keeps a sitting with entries, all undone, when its last location goes, with Done and no control (AC-3.2)", :aggregate_failures do
@@ -305,7 +303,8 @@ RSpec.describe "Scanner sittings", type: :request do
       get scanner_path
       expect(html.at_css("#scanner_sitting h2").text).to eq("This sitting: 0 cards")
       expect(response.body).to include(new_scanner_sitting_ending_path)
-      expect(response.body).not_to include("Put this sitting in")
+      expect(html.at_css("select#sitting_location_id")).to be_nil
+      expect(html.at_css("select#sitting_condition")).not_to be_nil
     end
 
     it "shows the summary with the control on No location after Done, and a place replaces it (AC-5.1, AC-5.2)", :aggregate_failures do
@@ -321,11 +320,142 @@ RSpec.describe "Scanner sittings", type: :request do
       expect(Scanner::Sitting.sole.location).to eq(long_box)
     end
 
-    it "shows no control with the summary for an account with no locations (AC-5.2)" do
+    it "shows no control with the summary for an account with no locations (AC-5.2)", :aggregate_failures do
       add("a")
       post scanner_sitting_ending_path
       follow_redirect!
-      expect(response.body).not_to include("Put this sitting in")
+      expect(html.at_css("#scanner_sitting select#sitting_condition")).not_to be_nil
+      expect(html.at_css("#scanner_sitting select#sitting_location_id")).to be_nil
+    end
+  end
+
+  describe "the control and the panel (spec 042)" do
+    def scale
+      [ [ "Near mint (NM)", "near_mint" ], [ "Lightly played (LP)", "lightly_played" ], [ "Moderately played (MP)", "moderately_played" ],
+        [ "Heavily played (HP)", "heavily_played" ], [ "Damaged (DMG)", "damaged" ] ]
+    end
+
+    def picker = html.at_css("#scanner_sitting form[action='#{scanner_sitting_path}']")
+    def chosen(field) = picker.at_css("select#sitting_#{field} option[selected]").text
+    def choose(**choices) = Scanner::Sitting.choose!(account:, **choices)
+    def metas = html.css("#scanner_sitting > ul > li .c-list__meta").map { it.text.squish }
+
+    it "shows the control alone before the first add: legend, Condition with Not specified first, Set, nothing of a sitting (AC-1.1, AC-3.1)", :aggregate_failures do
+      get scanner_path
+      expect(html.at_css("#scanner_sitting")["hidden"]).to be_nil
+      expect(picker.at_css("fieldset legend").text).to eq("This sitting's cards")
+      expect(picker.at_css("label[for=sitting_condition]").text).to eq("Condition")
+      expect(picker.css("select#sitting_condition option").map { [ it.text, it["value"] ] }).to eq([ [ "Not specified", "" ], *scale ])
+      expect(chosen(:condition)).to eq("Not specified")
+      expect(picker.at_css("input[type=submit]")["value"]).to eq("Set")
+      expect(picker.at_css("select#sitting_location_id")).to be_nil # no locations, so no Location select and no hint to /locations
+      expect(html.at_css("#scanner_sitting a")).to be_nil
+      expect(html.at_css("#scanner_sitting h2")).to be_nil
+      expect(response.body).not_to include(new_scanner_sitting_ending_path)
+    end
+
+    it "puts the Location select after Condition while the account has locations (AC-1.1)", :aggregate_failures do
+      create(:location, account:, name: "Blue binder")
+      get scanner_path
+      expect(picker.css("select").map { it["id"] }).to eq(%w[sitting_condition sitting_location_id])
+      expect(picker.at_css("label[for=sitting_location_id]").text).to eq("Location")
+    end
+
+    it "names the sitting's choices in the heading, in the order condition then place (decision 3, AC-3.2)", :aggregate_failures do
+      blue = create(:location, account:, name: "Blue binder")
+      choose(condition: "near_mint", location: blue)
+      3.times { add(format("%x", it)) }
+      get scanner_path
+      expect(html.at_css("#scanner_sitting h2").text).to eq("This sitting: 3 cards, Near mint, in Blue binder")
+      expect([ chosen(:condition), chosen(:location_id) ]).to eq([ "Near mint (NM)", "Blue binder" ])
+      choose(location: nil)
+      get scanner_path
+      expect(html.at_css("#scanner_sitting h2").text).to eq("This sitting: 3 cards, Near mint")
+      choose(condition: nil, location: blue)
+      get scanner_path
+      expect(html.at_css("#scanner_sitting h2").text).to eq("This sitting: 3 cards, in Blue binder")
+    end
+
+    it "says what cards go into in a sitting with no entries, naming only what is set (decision 3, AC-1.2)", :aggregate_failures do
+      blue = create(:location, account:, name: "Blue binder")
+      choose(condition: "near_mint", location: blue)
+      get scanner_path
+      expect(html.at_css("#scanner_sitting .c-empty").text).to eq("Cards you scan now: Near mint, in Blue binder.")
+      choose(location: nil)
+      get scanner_path
+      expect(html.at_css("#scanner_sitting .c-empty").text).to eq("Cards you scan now: Near mint.")
+      expect(html.at_css("#scanner_sitting h2").text).to eq("This sitting: 0 cards, Near mint")
+      choose(condition: nil, location: blue)
+      get scanner_path
+      expect(html.at_css("#scanner_sitting .c-empty").text).to eq("Cards you scan now: in Blue binder.")
+    end
+
+    it "drops a sitting with no entries and neither choice when the scanner renders, and says the undone copy once every add was undone (AC-3.3, decision 3)", :aggregate_failures do
+      Scanner::Sitting.create!(account:) # what a redraw with neither choice leaves ("Nothing added yet.") until the next render
+      get scanner_path
+      expect(Scanner::Sitting.count).to eq(0)
+      expect(html.at_css("#scanner_sitting h2")).to be_nil
+      expect(picker.at_css("select#sitting_condition")).not_to be_nil
+      choose(condition: "near_mint")
+      add("a").undo!
+      get scanner_path
+      expect(html.at_css("#scanner_sitting .c-empty").text).to eq("Everything added in this sitting was undone.")
+    end
+
+    it "keeps a sitting that holds a condition and no entries (AC-3.3)", :aggregate_failures do
+      choose(condition: "near_mint")
+      get scanner_path
+      expect(Scanner::Sitting.count).to eq(1)
+      expect(html.at_css("#scanner_sitting h2").text).to eq("This sitting: 0 cards, Near mint")
+    end
+
+    it "keeps the condition on a reload (AC-1.7)" do
+      choose(condition: "lightly_played")
+      get scanner_path
+      expect(chosen(:condition)).to eq("Lightly played (LP)")
+    end
+
+    it "shows the short label after the finish, from the entry's lot as it is now (decision 3, AC-2.3)", :aggregate_failures do
+      blue = create(:location, account:, name: "Blue binder")
+      plain = create(:mtg_printing, finishes: [], entry: create(:catalog_entry, name: "Opt", set: mom, number: "7")).entry
+      choose(condition: "near_mint")
+      edited = add("a")
+      unspecified = add("b", finish: "", card: plain)
+      choose(condition: "near_mint", location: blue)
+      gone = add("c", card: create(:mtg_printing, entry: create(:catalog_entry, name: "Shock", set: mom, number: "9")).entry)
+      edited.lot.update!(condition: "lightly_played")
+      gone.lot.destroy!
+      get scanner_path
+      expect(metas).to match([ /\AMOM · 9 · Foil · Added .+ ago\z/, /\AMOM · 7 · — · NM · Added .+ ago\z/, /\AMOM · 123 · Foil · LP · Added .+ ago\z/ ])
+      expect(unspecified.lot.condition).to eq("near_mint")
+      expect(html.css("#scanner_sitting > ul > li").first.text).to include("Changed in your collection")
+    end
+
+    # Passes before the change (an entry with no condition reads as today): kept as a regression guard.
+    it "shows the entry with no condition when the sitting had none (AC-1.5)" do
+      add("a")
+      get scanner_path
+      expect(metas).to match([ /\AMOM · 123 · Foil · Added .+ ago\z/ ])
+    end
+
+    it "shows the control on the summary after Done, on Not specified, for every account (AC-5.2)", :aggregate_failures do
+      choose(condition: "near_mint")
+      add("a")
+      post scanner_sitting_ending_path
+      follow_redirect!
+      expect(html.at_css("#scanner_sitting").text.squish).to include("Added 1 card in this sitting")
+      expect(chosen(:condition)).to eq("Not specified")
+      expect(Scanner::Sitting.count).to eq(0)
+    end
+
+    # Passes before the change too (the entry line reads the vocabulary, not a query): kept as a regression guard for NFR cost.
+    it "adds no query per entry to the page (NFR cost)", :aggregate_failures do
+      choose(condition: "near_mint")
+      2.times { add(format("%x", it), card: create(:mtg_printing, entry: create(:catalog_entry, set: mom)).entry) }
+      get scanner_path # warm the caches that the first render fills
+      few = count_queries { get scanner_path }
+      6.times { add(format("%x", it + 2), card: create(:mtg_printing, entry: create(:catalog_entry, set: mom)).entry) }
+      expect(count_queries { get scanner_path }).to eq(few)
     end
   end
 

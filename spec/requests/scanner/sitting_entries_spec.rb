@@ -122,7 +122,7 @@ RSpec.describe "Scanner adds", type: :request do
       add
       expect(response.body).to include("Added 1 × Lightning Bolt (MOM · 123, Foil) to your collection.")
       expect(user.account.lots.sole.location).to be_nil
-      expect(response.body).not_to include("Put this sitting in")
+      expect(html.at_css("select#sitting_location_id")).to be_nil
     end
   end
 
