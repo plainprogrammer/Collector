@@ -12,6 +12,7 @@
 - [Background servers via task](background-servers-via-task.md) — run_in_background + TaskStop, not &/kill/pkill; 2-hour task limit, restart before device steps; TaskStop is a crash for running jobs
 - [Branch naming convention](branch-naming-convention.md) — NNN-descriptive-slug per docs/git-convention.md; rename the worktree branch at the start, never use the plainprogrammer/ prefix
 - [Headless Firefox narrow frame](headless-firefox-narrow-frame.md) — windows can't go below 500px; test/screenshot phone widths in a fixed-width iframe; not from a scanner page (frame-src none); short frame to force scrolling
+- [Batch plan tasks per implementer](batch-plan-tasks-per-implementer.md) — in sdd-execute, one implementer takes 2–4 consecutive tasks, each its own TDD commit, reading plan.md by line range; the supervisor checks each batch's diff
 - [Pre-commit hook staging](precommit-hook-staging.md) — hook reads the command text for `git add` / `commit -a`; stage separately to be safe
 - [Worktree isolation command guard](worktree-isolation-command-guard.md) — isolated agents' Bash calls are refused when a chain mentions git or is too complex; one git op per call, edit with Edit, partial commits via a scratchpad copy
 - [Reproduce CI with its seed](reproduce-ci-with-seed.md) — on CI failure, run the full suite with the CI seed as an early reproduction step; a non-Image flake is re-run once only with the coordinator's go-ahead
