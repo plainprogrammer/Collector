@@ -14,7 +14,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
-| 0.1.0 | 2026-11-06 | Written from issue #57, roadmap ruling 20, specs 009, 040 and 006, and the coordinator's brief. Decisions 1 and 2 await the maintainer's rulings. |
+| 0.1.0 | 2026-11-06 | Written from issue #57, roadmap ruling 20, specs 009, 040 and 006, and the coordinator's brief. Decisions 1 and 2 ruled by the maintainer the same day. |
 
 ---
 
@@ -50,13 +50,13 @@ This spec is item 21b only. Language (#58) is its own spec; this one adds no fie
 
 ## Decisions
 
-### 1. Build on today's scanner; the spikes need not come first (ruling pending)
+### 1. Build on today's scanner; the spikes need not come first (ruled)
 
-Roadmap item 21 is ordered after the spikes (#52–#55), and spec 040 decision 1 let 21a run first. Proposed: 21b runs first for the same reason. The control and the add path are server-rendered and independent of capture, so a spike's outcome costs little rework. The roadmap row for 21b records the ruling.
+Roadmap item 21 is ordered after the spikes (#52–#55), and spec 040 decision 1 let 21a run first. **Ruling (maintainer, 2026-11-06).** 21b runs first for the same reason. The control and the add path are server-rendered and independent of capture, so a spike's outcome costs little rework. The roadmap row for 21b records the ruling.
 
-### 2. One control for the sitting's choices, shown to every collector (ruling pending)
+### 2. One control for the sitting's choices, shown to every collector (ruled)
 
-Proposed: the sitting panel's form from spec 040 decision 3 becomes the sitting's one control. It holds, in order, a **Condition** select ("Not specified" first, then the vocabulary's scale as "Near mint (NM)", the labels of the lot form and bulk Set condition) and, while the account has at least one location, the **Location** select of spec 040 ("No location" first, then `Location.ordered`), and one "Set" button. Spec 040's label "Put this sitting in" becomes the Location select's label "Location", and a `<fieldset>` legend "Cards you scan now" groups both selects (decision 3 gives the rest of the copy).
+**Ruling (maintainer, 2026-11-06).** The sitting panel's form from spec 040 decision 3 becomes the sitting's one control. It holds, in order, a **Condition** select ("Not specified" first, then the vocabulary's scale as "Near mint (NM)", the labels of the lot form and bulk Set condition) and, while the account has at least one location, the **Location** select of spec 040 ("No location" first, then `Location.ordered`), and one "Set" button. Spec 040's label "Put this sitting in" becomes the Location select's label "Location", and a `<fieldset>` legend "Cards you scan now" groups both selects (decision 3 gives the rest of the copy).
 
 A condition can be chosen by any collector, so the control shows on the scanner for every signed-in collector, before the first add too. This supersedes spec 009 AC-3.7 (no sitting panel before the first add) for the control only: no count, list or Done shows until a sitting is open. It supersedes spec 040 decision 3 and AC-3.1 (an account with no locations sees no control and no panel before the first add): such an account sees the Condition select alone.
 
@@ -181,7 +181,7 @@ As a collector with a stack of near-mint cards, I want to say their condition on
 
 ## Open Questions
 
-- Decisions 1 and 2 await the maintainer's rulings.
+None.
 
 ## Out of Scope (Future Considerations)
 
