@@ -296,6 +296,7 @@ RSpec.describe "Bulk Move to…", type: :request do
       follow_redirect!
       expect(bar_count).to eq("0 of 0 selected")
       expect(page_html.css("tbody tr")).to be_empty
+      expect(page_html.at_css(".c-empty").text).to eq("No cards in your collection are in “Long box”.") # spec 037 AC-1.6
     end
 
     it "restarts empty under no location, listing what is left (AC-3.13)", :aggregate_failures do
@@ -433,6 +434,16 @@ RSpec.describe "Bulk Move to…", type: :request do
         expect(response).to have_http_status(:not_found)
       end
       expect([ lot.reload.location, theirs.lots.count, selection_kept ]).to eq([ box, 0, "2 of 2 selected" ])
+    end
+
+    it "(5) answers 404 when the destination is removed after it was looked up, changing nothing (decision 6 (5))", :aggregate_failures do
+      allow(Lot::BulkMove).to receive(:new).and_wrap_original do |original, **options|
+        Location.where(id: options[:to].id).delete_all # the destination goes between the lookup and the write
+        original.call(**options)
+      end
+      post collection_move_path, params: { to: blue.id }
+      expect(response).to have_http_status(:not_found)
+      expect([ lot.reload.location, selection_kept ]).to eq([ box, "2 of 2 selected" ])
     end
 
     it "(6) refuses when every selected lot is already there (AC-3.7)", :aggregate_failures do
