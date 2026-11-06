@@ -88,7 +88,7 @@ A file is well-formed with any three upper-case letters. A file written by Colle
 
 `USD`, `CAD`, `AUD`, `NZD`, `EUR`, `GBP`, `CHF`, `SEK`, `NOK`, `DKK`, `PLN`, `CZK`, `JPY`, `CNY`, `KRW`, `SGD`, `HKD`, `BRL`, `MXN`, `ZAR`
 
-The code is the currency in force for the collector when the file is written. Today that is the instance's setting. When it becomes each collector's own choice, the field keeps its meaning and the version doesn't change.
+The code is the collector's own currency when the file is written: the one their account shows prices in. Until spec 038 it was the instance's setting; the field kept its meaning when it became each account's, so no version changed.
 
 ## Lots
 
@@ -266,7 +266,7 @@ The meaning of a version never changes once it has been released.
 | 2 | 2026-10-21 | Locations: the required top-level list `locations`, with the rule `duplicate_location`. Lots are unchanged. |
 | 3 | 2026-10-23 | Lots in locations: each lot gains the required `location`, the rule `unknown_location`, and lot identity has six values. |
 
-Two changes are already expected. A currency for each account instead of the instance (issue #64) will move the code the file carries, and collections shared by a household will change who owns a lot and will raise the version ([ADR 0017](../adr/0017-row-level-tenancy-one-user-per-account.md)).
+One change is already expected: collections shared by a household will change who owns a lot and will raise the version ([ADR 0017](../adr/0017-row-level-tenancy-one-user-per-account.md)). A currency for each account (issue #64, spec 038) moved where the code the file carries comes from, from the instance to the account, without a version, because the field's meaning didn't change.
 
 ## Extending the format
 
