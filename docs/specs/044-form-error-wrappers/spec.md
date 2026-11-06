@@ -1,6 +1,6 @@
 # Feature 044: Forms Re-rendered with 422 Get No `field_with_errors` Wrapper
 
-**Status:** Draft; the approach (decision 1) and the currency controller (decision 4) await the maintainer's ruling, asked 2026-11-06 with A recommended
+**Status:** Draft. The maintainer ruled decisions 1 and 4 on 2026-11-06, as recommended (option A; the currency controller's `errors.clear` removed); the rule is [ADR 0026](../../adr/0026-forms-show-field-errors-through-the-design-system.md)
 **Version:** 0.1.0
 **Created:** 2026-11-06
 **Last Updated:** 2026-11-06
@@ -54,15 +54,15 @@ and none on sign-in (`form_with url:`, no record), number entry's line form (`fo
 
 ## Decisions
 
-### 1. The app sets `field_error_proc` to return the tag unchanged (pending the maintainer's ruling, A recommended)
+### 1. The app sets `field_error_proc` to return the tag unchanged (ruled 2026-11-06)
 
 `config/application.rb` sets `config.action_view.field_error_proc = ->(html_tag, _instance) { html_tag }`. Every form builder field and label renders as written, with or without errors. The views already show errors through `c-field--invalid` and `shared/field_errors`; nothing read the wrapper (no CSS, JavaScript or spec selects `.field_with_errors` except spec 038's assertion that it is absent).
 
-It is an app-wide rule, so an ADR records it (number from the coordinator): forms show a field's errors through the design system's Form markup, never through Rails' wrapper; a view that renders a record's errors does so with `c-field--invalid` and `shared/field_errors`.
+It is an app-wide rule, so [ADR 0026](../../adr/0026-forms-show-field-errors-through-the-design-system.md) records it: forms show a field's errors through the design system's Form markup, never through Rails' wrapper; a view that renders a record's errors does so with `c-field--invalid` and `shared/field_errors`.
 
 Alternatives:
 
-- **B. Spec 038's per-controller pattern in each controller** (copy the record's messages, `errors.clear`, render). Five controllers change, `Lot::Form#absorb` and the views that read `record.errors` would read copies instead, and every future form must remember the step; the lesson exists because one did not. Rejected (recommended against).
+- **B. Spec 038's per-controller pattern in each controller** (copy the record's messages, `errors.clear`, render). Five controllers change, `Lot::Form#absorb` and the views that read `record.errors` would read copies instead, and every future form must remember the step; the lesson exists because one did not. Rejected.
 - **A custom proc that adds a class instead of a `div`** (for example `c-field--invalid` on the control). It duplicates what the views already put on the field and couples the builder to the design system's class names. Rejected.
 
 ### 2. One 422 example per form, plus a guard on the rule
@@ -73,14 +73,14 @@ Each form in the probe table, plus sign-in, number entry and the Currency page, 
 
 Verification captures each form's 422 in light and dark at desktop and phone width (the memories `pr-screenshots-workflow` and `headless-firefox-narrow-frame`), committed under `docs/specs/044-form-error-wrappers/screenshots/`, and shows in each that the label sits above a control as wide as its siblings.
 
-### 4. The Currency controller's `errors.clear` goes (pending the ruling, recommended)
+### 4. The Currency controller's `errors.clear` goes (ruled 2026-11-06)
 
-With decision 1 the line in `CurrenciesController#update` that clears the record's errors "so Rails would not wrap the field" no longer does anything for the wrapper. It is removed with its comment, and the page keeps showing `@messages`; spec 038's examples (including its `.field_with_errors` assertion) still pass. If the maintainer rules to leave spec 038's code alone, the line and its comment stay and only the comment's reason changes to point at this rule.
+With decision 1 the line in `CurrenciesController#update` that clears the record's errors "so Rails would not wrap the field" no longer does anything for the wrapper. It is removed with its comment, and the page keeps showing `@messages`; spec 038's examples (including its `.field_with_errors` assertion) still pass.
 
 ### 5. Where the rule is written
 
 - [Form](../../design-system/components/Form.md) gains a bullet: errors render through `c-field--invalid` and `c-field__error` only; the app's `field_error_proc` leaves fields unwrapped (spec 044, the ADR); a 422 example asserts no `.field_with_errors`.
-- The ADR (decision 1) and its index row.
+- [ADR 0026](../../adr/0026-forms-show-field-errors-through-the-design-system.md) and its index row.
 - No area doc under `docs/architecture/` describes form markup, so none changes; the forms' behaviour is unchanged.
 - The lesson stays as written (lessons are history); its advice to clear errors is superseded by the ADR, which says so.
 
