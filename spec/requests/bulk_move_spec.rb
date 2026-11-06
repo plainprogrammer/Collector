@@ -490,4 +490,27 @@ RSpec.describe "Bulk Move to…", type: :request do
       expect(account.lots.sum(:quantity)).to eq(2)
     end
   end
+
+  # Characterisation: green on arrival, the path with no scripting needs no new code (Task 13).
+  it "moves the lots with plain forms: tick, press Move to…, choose, press Move (AC-6.1)", :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- one scenario: the whole no-script flow, read from the forms
+    lots = [ own("Card A", quantity: 2), own("Card B", quantity: 1) ]
+    post collection_selection_path
+    get collection_path(bulk: 1)
+    bulk = page_html.at_css("form#bulk")
+    expect(bulk["method"]).to eq("post")
+    expect(page_html.at_css("button[form=bulk][name=go][value=move]")).to be_present
+    ids = page_html.css("tbody input[name='shown_ids[]']").map { |input| input["value"] }
+    # What a browser without scripting submits: the shown ids, the ticked ones, the pressed button.
+    patch collection_selection_path, params: { go: "move", rendered_q: "", rendered_location: "", all_rendered: "0", header_toggled: "0", page: 1,
+      shown_ids: ids, ticked_ids: ids }
+    follow_redirect!
+    form = page_html.css("main form").find { |candidate| URI(candidate["action"]).path == collection_move_path } # its action carries ?page=1
+    expect(form).to be_present
+    expect(form.css("[data-controller]")).to be_empty
+    expect(form.at_css("select[name=to][required]")).to be_present
+    post form["action"], params: { to: blue.id }
+    follow_redirect!
+    expect(page_html.at_css("#status").text).to include("Moved 3 items to Blue binder.")
+    expect(lots.map { |lot| lot.reload.location }).to eq([ blue, blue ])
+  end
 end
