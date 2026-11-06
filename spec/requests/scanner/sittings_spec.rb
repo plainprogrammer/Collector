@@ -230,7 +230,8 @@ RSpec.describe "Scanner sittings", type: :request do
       expect(Scanner::Sitting.count).to eq(0)
       expect(response).to have_http_status(:ok)
       expect(html.at_css("select#sitting_location_id option[selected]").text).to eq("No location")
-      expect(response.body).not_to include("This sitting:", "Cards you scan now")
+      expect(response.body).not_to include("This sitting:")
+      expect(html.at_css("turbo-stream[target=status] .c-status__message").text.squish).to eq("Cards you scan now: condition not specified, no location.")
     end
 
     it "answers 400 to a request with no place, changing nothing (AC-3.3)", :aggregate_failures do
@@ -471,7 +472,6 @@ RSpec.describe "Scanner sittings", type: :request do
     def chosen(field) = html.at_css("select#sitting_#{field} option[selected]").text
     # The status line in the stream's update of "status" (`#status` itself is in the layout, not in a stream body).
     def status_line = html.at_css("turbo-stream[target=status] .c-status__message").text.squish
-    def status_cleared? = response.body.match?(%r{<turbo-stream action="update" target="status"><template>\s*</template></turbo-stream>})
 
     it "opens a sitting holding the condition, redrawing the panel, for an account with no locations (AC-1.2, AC-3.1)", :aggregate_failures do
       set(condition: "near_mint")
@@ -520,7 +520,7 @@ RSpec.describe "Scanner sittings", type: :request do
       expect(account.scanner_sitting.reload).to have_attributes(condition: "lightly_played", location: Location.find_by!(name: "Long box"))
     end
 
-    it "clears the condition of a sitting with a card and keeps it; deletes a sitting with no card, condition or place, and clears the status (AC-1.8)", :aggregate_failures do
+    it "clears the condition of a sitting with a card and keeps it; deletes a sitting with no card, condition or place, and says what the next scan gets (AC-1.8, AC-4.2)", :aggregate_failures do
       set(condition: "near_mint")
       add("a")
       set(condition: "")
@@ -534,15 +534,14 @@ RSpec.describe "Scanner sittings", type: :request do
       expect(response).to have_http_status(:ok)
       expect(chosen(:condition)).to eq("Not specified")
       expect(html.at_css("#scanner_sitting h2")).to be_nil
-      expect(status_cleared?).to be(true)
+      expect(status_line).to eq("Cards you scan now: condition not specified.") # this account has no locations
     end
 
-    # Passes before the change (the old controller or model already behaves so): regression guard.
-    it "clears the status line when both choices are cleared with no sitting open (decision 3)", :aggregate_failures do
+    it "says what the next scan gets when both choices are cleared with no sitting open (AC-4.2)", :aggregate_failures do
       blue
       set(condition: "", location_id: "")
       expect(Scanner::Sitting.count).to eq(0)
-      expect(status_cleared?).to be(true)
+      expect(status_line).to eq("Cards you scan now: condition not specified, no location.")
     end
 
     # Passes before the change (the old controller or model already behaves so): regression guard.
@@ -651,6 +650,76 @@ RSpec.describe "Scanner sittings", type: :request do
       set(condition: "")
       expect(theirs.reload).to have_attributes(condition: "damaged")
       expect(account.scanner_sitting).to be_nil
+    end
+  end
+
+  describe "after a redraw (spec 047)" do
+    def blue = @blue ||= create(:location, account:, name: "Blue binder")
+    def set(**fields) = patch(scanner_sitting_path, params: { sitting: fields }, headers: stream)
+    def status_line = html.at_css("turbo-stream[target=status] .c-status__message").text.squish
+    # Where the redrawn panel says focus goes: nil when it names none.
+    def focus_to = html.at_css("#scanner_sitting")["data-sitting-focus-to-value"]
+
+    it "names the Set button after a Set that opens, changes, or clears a sitting (AC-1.1 to AC-1.4)", :aggregate_failures do
+      blue
+      set(condition: "near_mint")
+      expect(focus_to).to eq("set")
+      expect(html.at_css("#scanner_sitting")["data-controller"]).to eq("sitting-focus")
+      expect(status_line).to eq("Cards you scan now: Near mint, no location.")
+      set(condition: "")
+      expect(Scanner::Sitting.count).to eq(0)
+      expect(focus_to).to eq("set")
+      expect(status_line).to eq("Cards you scan now: condition not specified, no location.")
+      set(condition: "", location_id: "")
+      expect(focus_to).to eq("set")
+      expect(status_line).to eq("Cards you scan now: condition not specified, no location.")
+    end
+
+    it "names the Set button after a Set the server refuses, and keeps the alert (AC-1.5)", :aggregate_failures do
+      set(condition: "mint-ish")
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(focus_to).to eq("set")
+      expect(html.at_css("turbo-stream[target=status] .c-status__message--alert").text.squish).to eq(Scanner::SittingsController::UNKNOWN_CONDITION)
+    end
+
+    it "names the Set button when the location is no longer the account's (AC-1.5)", :aggregate_failures do
+      set(location_id: create(:location).id) # another account's location
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(focus_to).to eq("set")
+      expect(html.at_css("turbo-stream[target=status] .c-status__message--alert").text.squish).to eq(Scanner::SittingsController::GONE)
+    end
+
+    it "names the heading after an Undo, done or refused (AC-2.1, AC-2.3)", :aggregate_failures do
+      entry = add("a")
+      add("b")
+      undo(entry)
+      expect(focus_to).to eq("heading")
+      expect(html.at_css("#scanner_sitting h2[tabindex='-1']").text).to eq("This sitting: 1 card")
+      expect(status_line).to start_with("Removed 1 × Lightning Bolt")
+      undo(entry)
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(focus_to).to eq("heading")
+      expect(status_line).to eq("That card was already undone.")
+    end
+
+    it "names no target after an add, or on the page's own render (AC-3.1, AC-3.2)", :aggregate_failures do
+      add("a")
+      get scanner_path
+      expect(html.at_css("#scanner_sitting")["data-sitting-focus-to-value"]).to be_nil
+      expect(html.at_css("#scanner_sitting")["data-controller"]).to be_nil
+      post scanner_sitting_entries_path, params: { entry: { printing: printing.external_key, finish: "foil", reading_key: "b" * 32 } }, headers: stream
+      expect(response).to have_http_status(:ok)
+      expect(focus_to).to be_nil
+    end
+
+    it "writes a sentence in #status after every redraw, one example each (AC-4.1)", :aggregate_failures do
+      entry = add("a")
+      undo(entry)
+      expect(status_line).not_to be_blank
+      post scanner_sitting_entries_path, params: { entry: { printing: printing.external_key, finish: "foil", reading_key: "a" * 32 } }, headers: stream
+      expect(status_line).to eq("You added this card, then undid it. Scan it again to add it.") # a replayed add redraws the panel
+      set(condition: "near_mint")
+      expect(status_line).not_to be_blank
     end
   end
 end
