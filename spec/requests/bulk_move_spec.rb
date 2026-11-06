@@ -178,4 +178,170 @@ RSpec.describe "Bulk Move to…", type: :request do
       expect(count_queries { get new_collection_move_path }).to eq(few)
     end
   end
+
+  describe "moving (Story 3)" do
+    it "moves the three lots with the same ids and says how many items (AC-3.1)", :aggregate_failures do
+      lots = [ own("Card A", location: box, quantity: 2), own("Card B", location: box, quantity: 5), own("Card C", location: box, quantity: 1) ]
+      select_lots(*lots)
+      post collection_move_path, params: { to: blue.id }
+      expect(response).to have_http_status(:see_other)
+      expect(response).to redirect_to(collection_path(bulk: 1))
+      expect(flash[:notice]).to eq("Moved 8 items to Blue binder.")
+      expect(account.lots.order(:id).pluck(:id, :location_id, :quantity)).to eq(lots.map { |lot| [ lot.id, blue.id, lot.quantity ] })
+    end
+
+    it "moves to no location (AC-3.2)", :aggregate_failures do
+      lots = [ own("Card A", location: blue, quantity: 2), own("Card B", location: box) ]
+      select_lots(*lots)
+      post collection_move_path, params: { to: "none" }
+      expect(flash[:notice]).to eq("Moved 3 items to no location.")
+      expect(lots.map { |lot| lot.reload.location_id }).to eq([ nil, nil ])
+    end
+
+    it "merges into the destination's lot, which survives (AC-3.3)", :aggregate_failures do
+      moved = own(location: box, quantity: 2)
+      survivor = twin(moved, location: blue, quantity: 3)
+      select_lots(moved)
+      post collection_move_path, params: { to: blue.id }
+      expect([ survivor.reload.quantity, Lot.exists?(moved.id) ]).to eq([ 5, false ])
+    end
+
+    it "keeps the returning page and the filters in the redirect (AC-3.1)" do
+      select_lots(own("Bolt A"), page: 1)
+      post collection_move_path(page: 2), params: { to: blue.id }
+      expect(response).to redirect_to(collection_path(bulk: 1, page: 2))
+    end
+
+    it "counts the copies already there (AC-3.6)", :aggregate_failures do
+      there = own("Card A", location: blue, quantity: 3)
+      coming = own("Card B", location: box, quantity: 2)
+      select_lots(there, coming)
+      post collection_move_path, params: { to: blue.id }
+      expect(flash[:notice]).to eq("Moved 2 items to Blue binder. 3 items were already there.")
+    end
+
+    it "says '1 item was already there' (AC-3.6)", :aggregate_failures do
+      select_lots(own("Card A", location: blue), own("Card B", location: box))
+      post collection_move_path, params: { to: blue.id }
+      expect(flash[:notice]).to eq("Moved 1 item to Blue binder. 1 item was already there.")
+    end
+
+    it "says it for no location too (AC-3.6)" do
+      select_lots(own("Card A"), own("Card B", location: box, quantity: 2))
+      post collection_move_path, params: { to: "none" }
+      expect(flash[:notice]).to eq("Moved 2 items to no location. 1 item was already there.")
+    end
+
+    it "leaves a selected lot already there as the target and selected (AC-3.12)", :aggregate_failures do
+      a = own(location: box, quantity: 2)
+      b = twin(a, location: blue, quantity: 3)
+      select_lots(a, b)
+      post collection_move_path, params: { to: blue.id }
+      expect(flash[:notice]).to eq("Moved 2 items to Blue binder. 3 items were already there.")
+      expect([ b.reload.quantity, Lot.exists?(a.id) ]).to eq([ 5, false ])
+      follow_redirect!
+      expect([ bar_count, selected_names.size ]).to eq([ "5 of 5 selected", 1 ])
+    end
+
+    it "counts only the copies that moved when a selected lot was removed in another tab (Error Scenarios)", :aggregate_failures do
+      kept = own("Card A", location: box, quantity: 2)
+      gone = own("Card B", location: box, quantity: 3)
+      select_lots(kept, gone)
+      gone.destroy!
+      post collection_move_path, params: { to: blue.id }
+      expect(flash[:notice]).to eq("Moved 2 items to Blue binder.")
+      expect(kept.reload.location).to eq(blue)
+    end
+
+    it "does not touch the session's bulk removal Undo (AC-3.11)", :aggregate_failures do
+      removed = own("Opt")
+      select_lots(removed, go: "remove")
+      post collection_bulk_removals_path
+      moved = own("Card A", location: box)
+      select_lots(moved)
+      post collection_move_path, params: { to: blue.id }
+      expect(BulkRemoval.undoable.count).to eq(1)
+    end
+  end
+
+  describe "the selection after a move (AC-3.9, AC-3.13)" do
+    it "keeps the lots now holding the moved copies selected under all locations, a merged survivor and an excepted destination lot too (AC-3.9)", :aggregate_failures do
+      a = own("Card A", location: box, quantity: 2)
+      excepted = twin(a, location: blue, quantity: 3)
+      c = own("Card C", quantity: 1)
+      select_everything([ a, excepted, c ], except: [ excepted ])
+      post collection_move_path, params: { to: blue.id }
+      follow_redirect!
+      expect(bar_count).to eq("All 6 items selected")
+      expect(page_html.css("tbody tr").size).to eq(2)
+      expect(page_html.css("tbody tr[aria-selected=true]").size).to eq(2)
+    end
+
+    it "keeps the lots selected under a name filter too (AC-3.9)", :aggregate_failures do
+      bolt = own("Bolt A", location: box)
+      own("Opt", location: box)
+      post collection_selection_path, params: { q: "bolt" }
+      patch collection_selection_path, params: { go: "move", q: "bolt", rendered_q: "bolt", rendered_location: "", all_rendered: "0", shown_ids: [ bolt.id ], ticked_ids: [ bolt.id ] }
+      post collection_move_path, params: { to: blue.id }
+      expect(response).to redirect_to(collection_path(bulk: 1, q: "bolt"))
+      follow_redirect!
+      expect(bar_count).to eq("1 of 1 selected")
+    end
+
+    it "restarts empty under a location filter (AC-3.13)", :aggregate_failures do
+      lot = own(location: box)
+      select_lots(lot, location: box.id.to_s)
+      post collection_move_path, params: { to: blue.id }
+      expect(response).to redirect_to(collection_path(bulk: 1, location: box.id))
+      follow_redirect!
+      expect(bar_count).to eq("0 of 0 selected")
+      expect(page_html.css("tbody tr")).to be_empty
+    end
+
+    it "restarts empty under no location, listing what is left (AC-3.13)", :aggregate_failures do
+      moved = own("Card A")
+      own("Card B")           # unplaced and unticked: it stays, so the table still renders under No location
+      own("Card C", location: box)
+      select_lots(moved, location: "none")
+      post collection_move_path, params: { to: blue.id }
+      follow_redirect!
+      expect(bar_count).to eq("0 of 1 selected")
+      expect(page_html.at_css("thead input[type=checkbox]")["checked"]).to be_nil
+    end
+  end
+
+  describe "everything a filter shows (Story 4)" do
+    it "moves exactly the matching lots that are not exceptions, resolved at run time (AC-4.1, AC-4.2)", :aggregate_failures do
+      a, kept = own("Card A", location: box), own("Card B", location: box)
+      elsewhere = own("Card D", location: blue)
+      select_everything([ a, kept ], except: [ kept ], location: box.id.to_s)
+      late = own("Card C", location: box) # added to Long box after the selection was made
+      post collection_move_path, params: { to: "none" }
+      expect([ a, late, kept, elsewhere ].map { |lot| lot.reload.location_id }).to eq([ nil, nil, box.id, blue.id ])
+      expect(flash[:notice]).to eq("Moved 2 items to no location.")
+      follow_redirect!
+      expect([ bar_count, page_html.css("tbody tr").size ]).to eq([ "0 of 1 selected", 1 ])
+    end
+
+    it "lands on the nearest real page when the move empties the last one (AC-4.2)", :aggregate_failures do
+      stub_const("CollectionTable::PER_PAGE", 1)
+      lots = [ own("Card A", location: box), own("Card B", location: box) ]
+      select_lots(lots.last, location: box.id.to_s, page: 2)
+      post collection_move_path(page: 2), params: { to: blue.id }
+      expect(response).to redirect_to(collection_path(bulk: 1, location: box.id, page: 2))
+      follow_redirect!
+      expect([ response.status, page_html.css("tbody tr").size ]).to eq([ 200, 1 ])
+    end
+
+    it "moves only the unplaced lots matching the name under a name filter and No location (AC-4.3)", :aggregate_failures do
+      bolt = own("Bolt A")
+      placed = own("Bolt B", location: box)
+      other = own("Opt")
+      post collection_selection_path, params: { q: "bolt", location: "none" }
+      patch collection_selection_path, params: { go: "move", q: "bolt", rendered_q: "bolt", location: "none", rendered_location: "none", all_rendered: "0", all: "1",
+        header_toggled: "1", shown_ids: [ bolt.id ], baseline_ids: [], ticked_ids: [ bolt.id ] }
+      post collection_move_path, params: { to: blue.id }
+      expect([ bolt.reload.location, placed.reload.location, other.reload.location ]).to eq([ blue, box, nil ])
+    end
+  end
 end
