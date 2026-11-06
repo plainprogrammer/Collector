@@ -21,6 +21,19 @@ module ScannersHelper
 
   def scanner_finish(printing, finish) = finish && Catalog.collecting_for(printing.collectible_type).finish_label(finish)
 
-  # "Tome Shredder (STX · 117, Foil)": a scanner add's card, printing and finish (spec 009 AC-1.3, AC-4.1).
-  def scanner_copy(printing, finish) = "#{printing.name} (#{[ set_number(printing), scanner_finish(printing, finish) ].compact.join(", ")})"
+  # "NM": a lot's or a sitting's condition as its short label, from the vocabulary of the printing's own collectible (spec 042
+  # decision 3); nil when none is set or the vocabulary doesn't list it. No query: the vocabulary is a constant.
+  def scanner_condition(printing, condition) = condition && Catalog.collecting_for(printing.collectible_type).conditions[condition]&.last
+
+  # "Tome Shredder (STX · 117, Foil, NM)": a scanner add's card, printing, finish and, when given, condition (spec 009 AC-1.3,
+  # spec 042 decision 3). The Undo announcement and the accessible names call it without a condition (spec 042 decision 3).
+  def scanner_copy(printing, finish, condition = nil)
+    "#{printing.name} (#{[ set_number(printing), scanner_finish(printing, finish), scanner_condition(printing, condition) ].compact.join(", ")})"
+  end
+
+  # The sitting's choices as words, only those that are set: "Near mint", "in Blue binder" (spec 042 decision 3). The scale is
+  # the Hash the caller gives (condition key => [ long label, short label ]).
+  def sitting_choices(sitting, conditions)
+    [ sitting.condition && conditions.dig(sitting.condition, 0), ("in #{sitting.location.name}" if sitting.location) ].compact
+  end
 end

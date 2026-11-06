@@ -41,7 +41,7 @@ RSpec/Output:
 # publishing spec checks the publishing files, the advisory response spec the
 # Dependabot configuration and the audit workflow, and the admin catalog core and
 # footer core specs and the import preview's core spec the files of a page, the
-# number entry core spec those of a feature, and the rate-limit retry core spec the
+# number entry and scanner sitting core specs those of a feature, and the rate-limit retry core spec the
 # retry rule's core file (spec 043 AC-4.1). The export format specs check the
 # format's document, schema and example files. The request body limit spec
 # checks server configuration files. The field error proc spec renders a form
@@ -67,6 +67,7 @@ RSpec/DescribeClass:
     - "spec/number_entry_core_spec.rb"
     - "spec/project_config_spec.rb"
     - "spec/rate_limit_retry_core_spec.rb"
+    - "spec/scanner_sitting_core_spec.rb"
     - "spec/script/upgrade/files_spec.rb"
     - "spec/tasks/collector_rake_spec.rb"
 
