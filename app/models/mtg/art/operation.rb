@@ -3,9 +3,10 @@
 # both by MTG::ArtBuild#stalled? and #left_behind?). The two differ only while the queue holds a build job that no
 # running build is being worked on by: one that waits, or one a worker has taken that hasn't opened its build yet. The
 # page then says "Queued." or "Queued to retry.", and the status line still describes the latest build (interrupted,
-# ready or failed), or says that no build has run yet.
+# ready, index file missing or failed), or says that no build has run yet.
 class MTG::Art::Operation < Catalog::Operation
   OFF = "Art matching is off. Set #{MTG::Art::ENV_NAME}=true to turn it on.".freeze
+  INDEX_MISSING = "Index file missing. Build the art index again.".freeze
   NEEDS_CATALOG = "Refresh the catalog first: the art index is built from its cards.".freeze
   # A restart that stops the worker in good order releases the job it holds: the queue runs it again, and it closes its
   # own build and carries on. After a crash or a kill the job stays held until the queue notices its worker is gone
@@ -36,17 +37,19 @@ class MTG::Art::Operation < Catalog::Operation
     @build = MTG::ArtBuild.latest
   end
 
-  # :off, :queued, :building, :stalled, :interrupted, :never, :ready or :failed. A build still marked running that
-  # nothing is working on any more is interrupted: its heartbeat stopped 10 minutes ago, or 2 minutes ago and the queue
-  # has failed its job or no longer holds it (issue #73). One whose heartbeat stopped 10 minutes ago while a worker
-  # still holds its job is stalled instead (issue #79).
+  # :off, :queued, :building, :stalled, :interrupted, :never, :ready, :index_missing or :failed. A build still marked
+  # running that nothing is working on any more is interrupted: its heartbeat stopped 10 minutes ago, or 2 minutes ago
+  # and the queue has failed its job or no longer holds it (issue #73). One whose heartbeat stopped 10 minutes ago while
+  # a worker still holds its job is stalled instead (issue #79). A finished build whose index file isn't on the volume
+  # is :index_missing (spec 039); it is judged only once nothing is in flight or running, so the states above it win.
   def state
     @state ||=
       if !MTG::Art.enabled? then :off
       elsif build&.running? then running_state
       elsif queue.any? then :queued
       elsif build.nil? then :never
-      else build.finished? ? :ready : :failed
+      elsif build.finished? then build.index_file_present? ? :ready : :index_missing
+      else :failed
       end
   end
 
@@ -64,6 +67,7 @@ class MTG::Art::Operation < Catalog::Operation
     when :interrupted then "Interrupted. Build it again to carry on from where it stopped."
     when :never then catalog_loaded? ? "No build has run yet. One starts after the next catalog refresh, or you can start it here." : NEEDS_CATALOG
     when :ready then "Ready."
+    when :index_missing then INDEX_MISSING
     when :failed then failed_summary
     end
   end
@@ -84,9 +88,7 @@ class MTG::Art::Operation < Catalog::Operation
     when :building, :stalled, :interrupted
       [ fact("Started", build.started_at), fact("Images fetched", build.fetched_count), fact("Failed images", build.failed_count),
         fact("Last heartbeat", build.heartbeat_at, relative: true) ]
-    when :ready
-      [ fact("Finished", build.finished_at), fact("Artworks indexed", build.indexed_count),
-        fact("Without an image", build.without_image_count), fact("Failed images", build.failed_count) ]
+    when :ready, :index_missing then finished_facts
     when :failed then failed_facts
     else []
     end
@@ -113,6 +115,14 @@ class MTG::Art::Operation < Catalog::Operation
 
     # Why the build failed in plain words, with the error it stored as the detail (issue #84).
     def failure = Catalog::FailureReason.for(build.message, collectible_type)
+
+    # What a finished build records, plus the file's name when that file is the point (spec 039 decision 2).
+    def finished_facts
+      [ fact("Finished", build.finished_at),
+        (fact("Index file", build.index_file.presence || "none recorded") if state == :index_missing),
+        fact("Artworks indexed", build.indexed_count), fact("Without an image", build.without_image_count),
+        fact("Failed images", build.failed_count) ].compact
+    end
 
     def failed_summary = "Failed. #{failure.sentence}"
 

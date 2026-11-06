@@ -29,6 +29,17 @@ RSpec.describe BulkRemoval, type: :model do
     expect([ Lot.exists?(bolt.id), Lot.exists?(opt.id) ]).to eq([ false, true ])
   end
 
+  it "removes only the place's lots and keeps the selection under its location and filter (spec 037 AC-5.2, AC-5.6)", :aggregate_failures do
+    blue = create(:location, account:)
+    inside = own("Lightning Bolt", location: blue)
+    outside = own("Lightning Bolt", finish: "foil")
+    selection.restart!(query: "bolt", sort:, location: blue.id.to_s)
+    select_all
+    described_class.remove!(selection)
+    expect([ Lot.exists?(inside.id), Lot.exists?(outside.id) ]).to eq([ false, true ])
+    expect(selection.reload.context?("bolt", sort, location: blue.id.to_s)).to be(true)
+  end
+
   it "restores exactly the removed lots once", :aggregate_failures do
     own(quantity: 2, finish: "foil", condition: "near_mint", price_paid_cents: 150)
     select_all

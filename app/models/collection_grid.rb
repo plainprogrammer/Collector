@@ -8,9 +8,10 @@ class CollectionGrid
   # other places there are, unplaced counting as one (spec 033 Decision 1).
   Place = Data.define(:name, :more)
 
-  def initialize(account:, query:, page:)
+  def initialize(account:, query:, page:, location: "")
     @account = account
     @query = CollectionFilter.normalize(query)
+    @requested_location = CollectionFilter::Place.parse(location)
     @requested_page = page
   end
 
@@ -36,10 +37,11 @@ class CollectionGrid
   end
 
   private
-    # One statement for the page's printings, all of their lots (the filter is on the name, spec 033 AC-1.8). Nil for every
-    # printing while the account has no location.
+    # One statement for the page's printings, all of their lots (the name filter doesn't narrow it, spec 033 AC-1.8). Nil for
+    # every printing while the account has no location, and under a location filter, which names the one place (spec 037
+    # decision 3).
     def places_of(entry_ids)
-      return {} unless places?
+      return {} unless places? && location.empty?
 
       rows = @account.lots.where(catalog_entry_id: entry_ids).left_joins(:location)
         .group(:catalog_entry_id, :location_id).pluck(:catalog_entry_id, Arel.sql("SUM(lots.quantity)"), "locations.name", "locations.name_key")

@@ -115,8 +115,23 @@ RSpec.describe MTG::Art, type: :model do
     end
 
     it "reports a finished build's counts and index", :art_matching do
+      name = art_index_name
+      create(:mtg_art_build, indexed_count: 9, without_image_count: 1, failed_count: 2, index_file: name)
+      expect(described_class.status_line).to eq("Art matching: ready; 9 artworks indexed, 1 without an image, 2 failed images; index #{name}")
+    end
+
+    it "says the index file is missing, and what to press (spec 039 AC-2.1)", :aggregate_failures, :art_matching do
       create(:mtg_art_build, indexed_count: 9, without_image_count: 1, failed_count: 2, index_file: "art-index-v1-0123456789abcdef-9.bin.gz")
-      expect(described_class.status_line).to include("ready", "9 artworks indexed", "1 without an image", "2 failed images", "art-index-v1-0123456789abcdef-9.bin.gz")
+      line = described_class.status_line
+      expect(line).to start_with("Art matching: index file missing (art-index-v1-0123456789abcdef-9.bin.gz); press Build art index " \
+        "on the admin catalog page to write it again.")
+      expect(line).to include("9 artworks indexed", "1 without an image", "2 failed images")
+      expect(line).not_to include("ready")
+    end
+
+    it "says no file name was recorded for a finished build without one (spec 039 AC-2.1)", :art_matching do
+      create(:mtg_art_build, index_file: nil)
+      expect(described_class.status_line).to start_with("Art matching: index file missing (no file name recorded); ")
     end
 
     it "reports a failed build with its message and the index still in use", :art_matching do

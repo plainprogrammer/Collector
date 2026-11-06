@@ -269,4 +269,20 @@ RSpec.describe MTG::Art::Build, :art_matching, type: :model do
     expect(run_build).to be_nil
     expect(MTG::ArtBuild.count).to eq(0)
   end
+
+  it "writes a missing index file again without an image request, and reads ready again (spec 039 AC-3.2)", :aggregate_failures do
+    printing(art_a, released_on: Date.new(2005, 1, 1))
+    serve("#{art_a}-2005-1")
+    name = run_build.index_file
+    FileUtils.rm_rf(MTG::Art.root) # the index and the cached image, as a restore onto a fresh volume leaves nothing
+    expect(MTG::Art::Operation.new("mtg").state).to eq(:index_missing)
+    expect(MTG::Art.status_line).to start_with("Art matching: index file missing")
+
+    WebMock.reset! # no stub is left: a request would raise, and would be counted
+    expect(run_build(job_id: "job-2")).to have_attributes(status: "finished", fetched_count: 0, index_file: name)
+    expect(a_request(:any, /.*/)).not_to have_been_made
+    expect(MTG::Art::Index.dir.join(name)).to be_file
+    expect(MTG::Art::Operation.new("mtg").state).to eq(:ready)
+    expect(MTG::Art.status_line).to start_with("Art matching: ready")
+  end
 end

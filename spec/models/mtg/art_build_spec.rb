@@ -242,4 +242,13 @@ RSpec.describe MTG::ArtBuild, type: :model do
     create(:mtg_art_build, status: "skipped", started_at: 1.hour.ago)
     expect(described_class.latest).to eq(finished)
   end
+
+  describe "#index_file_present?" do
+    it "is true only while the file the build names is in the index directory (spec 039)", :aggregate_failures, :art_matching do
+      expect(build(:mtg_art_build, index_file: art_index_name)).to be_index_file_present
+      expect(build(:mtg_art_build, index_file: "art-index-default-cards-1-0123456789abcdef-9.bin.gz")).not_to be_index_file_present
+      expect(build(:mtg_art_build, index_file: nil)).not_to be_index_file_present
+      expect(build(:mtg_art_build, index_file: "../x")).not_to be_index_file_present
+    end
+  end
 end

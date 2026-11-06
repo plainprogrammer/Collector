@@ -20,6 +20,15 @@ RSpec.describe MTG::Art::Operation, :solid_queue, type: :model do
         summary: "Art matching is off. Set COLLECTOR_MTG_ART_MATCHING=true to turn it on.")
       expect(operation.start).to be(false)
     end
+
+    it "looks at no file, whatever the latest build names (spec 039 AC-1.7)", :aggregate_failures do
+      loaded
+      build(index_file: "art-index-default-cards-1-0123456789abcdef-9.bin.gz")
+      allow(MTG::Art::Index).to receive(:file?)
+
+      expect(operation.state).to eq(:off)
+      expect(MTG::Art::Index).not_to have_received(:file?)
+    end
   end
 
   context "with art matching on", :art_matching do
@@ -396,7 +405,7 @@ RSpec.describe MTG::Art::Operation, :solid_queue, type: :model do
 
       it "shows the build as it ended when the job finished before the queue was read" do
         loaded
-        quiet_build(job.active_job_id).finish!(:finished)
+        quiet_build(job.active_job_id, index_file: art_index_name).finish!(:finished)
         finish_job(job)
 
         expect(operation.state).to eq(:ready)
@@ -405,11 +414,12 @@ RSpec.describe MTG::Art::Operation, :solid_queue, type: :model do
 
     it "shows a finished build's counts and finish time (AC-4.7)", :aggregate_failures do
       loaded
-      build(indexed_count: 31_904, without_image_count: 12, failed_count: 3)
+      build(index_file: art_index_name, indexed_count: 31_904, without_image_count: 12, failed_count: 3)
 
       expect(operation).to have_attributes(state: :ready, summary: "Ready.", meter: nil, startable?: true)
       expect(operation.facts.to_h { |fact| [ fact.label, fact.value ] })
         .to include("Artworks indexed" => 31_904, "Without an image" => 12, "Failed images" => 3, "Finished" => be_a(Time))
+      expect(operation.facts.map(&:label)).not_to include("Index file")
     end
 
     it "shows why a build failed, its error as the detail, and the index still in use (AC-4.8, issue #84)", :aggregate_failures do
@@ -439,10 +449,82 @@ RSpec.describe MTG::Art::Operation, :solid_queue, type: :model do
 
     it "ignores a build skipped because another was running, as the status line does" do
       loaded
-      build(indexed_count: 9, started_at: 2.hours.ago)
+      build(index_file: art_index_name, indexed_count: 9, started_at: 2.hours.ago)
       build(status: "skipped", message: "already running", started_at: 1.hour.ago)
 
       expect(operation.state).to eq(:ready)
+    end
+
+    context "with a finished build whose index file is gone (spec 039)" do
+      let(:gone) { "art-index-default-cards-1-0123456789abcdef-9.bin.gz" }
+
+      def facts = operation.facts.to_h { |fact| [ fact.label, fact.value ] }
+
+      it "says the index file is missing, shows the build's facts and can be built again (AC-1.1, AC-1.2, AC-1.3)", :aggregate_failures do
+        loaded
+        build(index_file: gone, indexed_count: 9, without_image_count: 1, failed_count: 2)
+
+        expect(operation).to have_attributes(state: :index_missing, summary: "Index file missing. Build the art index again.",
+          startable?: true, meter: nil, failed_job?: false, record_running?: false)
+        expect(operation.facts.map(&:label)).to eq([ "Finished", "Index file", "Artworks indexed", "Without an image", "Failed images" ])
+        expect(facts).to include("Finished" => be_a(Time), "Index file" => gone, "Artworks indexed" => 9, "Without an image" => 1,
+          "Failed images" => 2)
+      end
+
+      it "is ready while the named file is there (AC-1.4)", :aggregate_failures do
+        loaded
+        build(index_file: art_index_name)
+
+        expect(operation).to have_attributes(state: :ready, summary: "Ready.")
+      end
+
+      it "reads a row with no file name as missing, with none recorded (AC-1.5)", :aggregate_failures do
+        loaded
+        build(index_file: nil)
+
+        expect(operation.state).to eq(:index_missing)
+        expect(facts["Index file"]).to eq("none recorded")
+      end
+
+      it "reads a name of another shape as missing and shows it as stored (AC-1.5)", :aggregate_failures do
+        loaded
+        build(index_file: "../../x")
+
+        expect(operation.state).to eq(:index_missing)
+        expect(facts["Index file"]).to eq("../../x")
+      end
+
+      it "is queued while a build job waits (AC-1.6)" do
+        loaded
+        build(index_file: gone)
+        queue_job(MTG::Art::BuildJob)
+
+        expect(operation.state).to eq(:queued)
+      end
+
+      it "is building while a later build runs (AC-1.6)" do
+        loaded
+        build(index_file: gone, started_at: 2.hours.ago)
+        build(status: "running", finished_at: nil, heartbeat_at: 20.seconds.ago)
+
+        expect(operation.state).to eq(:building)
+      end
+
+      it "is interrupted when a later build was left behind (AC-1.6, decision 6)" do
+        loaded
+        build(index_file: gone, started_at: 2.hours.ago)
+        build(status: "running", finished_at: nil, heartbeat_at: (MTG::ArtBuild::STALE_AFTER + 1.minute).ago)
+
+        expect(operation.state).to eq(:interrupted)
+      end
+
+      it "is failed, worded as before, when the latest build failed (AC-1.6, decision 6)", :aggregate_failures do
+        loaded
+        build(index_file: gone, started_at: 2.hours.ago)
+        build(status: "failed", message: "Errno::ENOSPC: No space left on device")
+
+        expect(operation).to have_attributes(state: :failed, summary: "Failed. An unexpected error stopped it.")
+      end
     end
   end
 end

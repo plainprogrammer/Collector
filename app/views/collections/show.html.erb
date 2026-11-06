@@ -22,13 +22,13 @@
         <span class="c-filterbar__count"><%= "#{number_with_delimiter(@listing.matching_quantity)} of " if @listing.filtered? %><%= number_with_delimiter(@listing.total_quantity) %> <%= "item".pluralize(@listing.total_quantity) %></span>
       </div>
       <% if @listing.matching_quantity.zero? %>
-        <p class="c-empty">No cards in your collection match "<%= @listing.query %>".</p>
+        <%= render "collections/no_match", listing: @listing %>
       <% elsif @view == "table" %>
         <%= render "collections/table", table: @listing, return_to: @listing_path %>
-        <%= render "catalog/pagination", pagination: @listing.pagination, link_params: { view: "table", q: @listing.query.presence, **@sort.to_params } %>
+        <%= render "catalog/pagination", pagination: @listing.pagination, link_params: { view: "table", q: @listing.query.presence, location: @listing.location.presence, **@sort.to_params } %>
       <% else %>
         <div class="c-grid"><%= render partial: "collections/tile", collection: @listing.tiles, as: :tile %></div>
-        <%= render "catalog/pagination", pagination: @listing.pagination, link_params: { q: @listing.query.presence, **@sort.to_params } %>
+        <%= render "catalog/pagination", pagination: @listing.pagination, link_params: { q: @listing.query.presence, location: @listing.location.presence, **@sort.to_params } %>
       <% end %>
     </div>
   <% end %>

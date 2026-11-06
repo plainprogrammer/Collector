@@ -10,7 +10,8 @@ module BulkSelected
   private
     def set_selection
       @selection = Current.session.bulk_selection
-      @bulk_path = helpers.collection_listing_path(bulk: 1, query: @selection&.query, sort: @selection&.sort, page: params[:page])
+      @bulk_path = helpers.collection_listing_path(bulk: 1, query: @selection&.query, location: @selection&.location_filter,
+        sort: @selection&.sort, page: params[:page])
       redirect_to @bulk_path, status: :see_other, alert: BulkSelection::NOTHING_SELECTED if request.get? && !selection?
     end
 

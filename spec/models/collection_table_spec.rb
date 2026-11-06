@@ -107,4 +107,32 @@ RSpec.describe CollectionTable, type: :model do
     create(:location, account:)
     expect(table.places?).to be(true)
   end
+
+  describe "under a location filter (spec 037)" do
+    let(:blue) { create(:location, account:, name: "Blue binder") }
+
+    def placed(location) = described_class.new(account:, query: nil, location:, page: nil, sort: CollectionTable::Sort.parse(nil, nil))
+
+    it "lists the place's lots and counts their copies", :aggregate_failures do
+      bolt = own("Lightning Bolt", quantity: 2, location: blue)
+      own("Lightning Bolt", quantity: 5, finish: "foil")
+      opt = own("Opt", quantity: 1)
+      expect([ placed(blue.id.to_s).lots, placed(blue.id.to_s).matching_quantity, placed(blue.id.to_s).filtered? ]).to eq([ [ bolt ], 2, true ])
+      expect(placed("none").lots.map(&:quantity)).to eq([ 5, opt.quantity ])
+      expect([ placed(blue.id.to_s).location, placed(blue.id.to_s).chosen_location ]).to eq([ blue.id.to_s, blue ])
+    end
+
+    it "joins the name filter" do
+      own("Lightning Bolt", location: blue)
+      opt = own("Opt", location: blue)
+      filtered = described_class.new(account:, query: "opt", location: blue.id.to_s, page: nil, sort: CollectionTable::Sort.parse(nil, nil))
+      expect(filtered.lots).to eq([ opt ])
+    end
+
+    it "reads the account's locations once", :aggregate_failures do
+      own("Opt", location: blue)
+      filter = placed(blue.id.to_s)
+      expect(count_queries { [ filter.places?, filter.location, filter.chosen_location, filter.locations ] }).to eq(1)
+    end
+  end
 end

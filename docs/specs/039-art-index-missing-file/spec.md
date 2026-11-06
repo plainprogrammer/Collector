@@ -6,6 +6,7 @@
 **Last Updated:** 2026-11-03
 **Branch:** `039-art-index-missing-file`
 **Issue:** [#122](https://github.com/plainprogrammer/Collector/issues/122)
+**Frozen:** the current rules are in [`catalog-operations.md`](../../architecture/catalog-operations.md) and [`release-and-deploy.md`](../../architecture/release-and-deploy.md) (whole spec); see the [specs index](../README.md)
 
 ---
 

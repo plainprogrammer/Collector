@@ -429,7 +429,7 @@ Keep several, and delete old ones yourself.
 
 A restore needs a **new, empty volume** and runs **before the instance's first start**, as a one-off command in a container of the image you will run. It refuses a volume that already holds a Collector database (or the `-wal`, `-shm` or `-journal` file of one, or the queue, cache or cable database) and changes nothing: to restore over a running instance, restore onto a new volume and switch to it. It restores a backup taken by the same release or an older one, which the first start then migrates as any upgrade does; a backup from a newer release is refused. Use the image tag you run (`COLLECTOR_IMAGE`), and a release that has `backup:restore`.
 
-A restore ends every session (everyone signs in again) and drops pending bulk-removal Undos and selections; no collection is lost. It leaves the art index file behind: with art matching on, press **Build art index** on the admin catalog page afterwards, which needs no downloads.
+A restore ends every session (everyone signs in again) and drops pending bulk-removal Undos and selections; no collection is lost. It leaves the art index file behind: with art matching on, press **Build art index** on the admin catalog page afterwards, which needs no downloads. Until you do, that page reads "Index file missing" and `catalog:status` "Art matching: index file missing".
 
 **Docker Compose.** Create the volume without starting Collector, and find its real name (Compose prefixes the project's name; a different project name is a different, empty volume):
 
@@ -478,7 +478,7 @@ bin/kamal setup --skip-push --version 0.1.0
 
 Give the exact release as the tag: releases deploy by version, so no `latest` tag is on the server. This path is documented and its container command is tested in CI, but it hasn't been run through Kamal itself.
 
-**After a restore**, before you hand the instance back: compare the counts the command printed (accounts, users, lots) with what you expect; start it; sign in; with art matching on press **Build art index**; check your settings (`COLLECTOR_*`) and your secret.
+**After a restore**, before you hand the instance back: compare the counts the command printed (accounts, users, lots) with what you expect; start it; sign in; with art matching on press **Build art index** (until then the admin catalog page reads "Index file missing" and `catalog:status` "Art matching: index file missing"); check your settings (`COLLECTOR_*`) and your secret.
 
 **A damaged, cut-short or wrong file is refused** with a plain message and the volume is left as it was: a file still being copied, a file from another tool, a collector's export (use **Import collection** for that), a backup of a newer release, a snapshot that fails SQLite's integrity or foreign-key check.
 

@@ -10,7 +10,7 @@ class CollectionsController < ApplicationController
   def show
     bulk = params[:bulk] == "1"
     remember_view unless bulk
-    prepare_collection(query: params[:q], sort: CollectionTable::Sort.parse(params[:sort], params[:dir]), page: params[:page],
+    prepare_collection(query: params[:q], location: params[:location], sort: CollectionTable::Sort.parse(params[:sort], params[:dir]), page: params[:page],
       view: requested_view || Current.user.collection_view, bulk:)
   end
 
