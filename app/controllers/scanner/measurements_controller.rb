@@ -6,7 +6,7 @@ class Scanner::MeasurementsController < ApplicationController
   include ScannerSitting
 
   def show
-    @sitting = sitting_locals
+    @sitting = sitting_locals(current_sitting)
     @panel = panel_locals
   rescue Scanner::MeasurementRun::ManifestError => error
     @manifest_problem = error.message

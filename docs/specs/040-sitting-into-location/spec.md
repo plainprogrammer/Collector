@@ -7,6 +7,7 @@
 **Depends on:** [spec 032](../032-lot-in-a-location/spec.md) (a lot's location is part of its identity; merged), [spec 009](../009-card-scanner-confirm-flow/spec.md) (the scanner's sitting; merged) and [spec 034](../034-location-in-typed-entry/spec.md) (the pattern for naming a place; merged)
 **Branch:** `040-sitting-into-location`
 **Issue:** [#56](https://github.com/plainprogrammer/Collector/issues/56) (roadmap item 21a, theme D)
+**Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) and [`data-portability.md`](../../architecture/data-portability.md) (parts: decisions 2, 4 and 7 as they touch lots and locations; decision 5, AC-5.3 and AC-3.2's import case); see the [specs index](../README.md)
 
 ---
 

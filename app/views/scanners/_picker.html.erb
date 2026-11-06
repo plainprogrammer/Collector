@@ -1,0 +1,10 @@
+<%# locals: (location_id:, locations:) %>
+<%# Where the sitting's adds go (spec 040 decision 3): a native select and "Set", answered by a Turbo Stream that redraws
+    the panel, so it works by keyboard and needs no script (AC-7.1). %>
+<%= form_with url: scanner_sitting_path, method: :patch, scope: :sitting, class: "c-form c-scanner__place" do |form| %>
+  <div class="c-field">
+    <%= form.label :location_id, "Put this sitting in", class: "c-field__label" %>
+    <%= form.select :location_id, options_for_select([ [ "No location", "" ], *locations.map { |location| [ location.name, location.id ] } ], location_id.to_s) %>
+  </div>
+  <div class="c-form__actions"><%= form.submit "Set", class: "c-btn c-btn--secondary c-btn--sm" %></div>
+<% end %>
