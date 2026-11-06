@@ -7,6 +7,7 @@
 **Branch:** `043-rate-limit-retry-progress`
 **Issue:** [#86](https://github.com/plainprogrammer/Collector/issues/86)
 **Frozen:** the current rules are in [`catalog-operations.md`](../../architecture/catalog-operations.md) (whole spec); see the [specs index](../README.md)
+**Plan:** retired in `c1e56681be1015551943a1ea909b4a04b64d6062`; read it with `git show c1e56681be1015551943a1ea909b4a04b64d6062^:docs/specs/043-rate-limit-retry-progress/plan.md`
 
 ---
 

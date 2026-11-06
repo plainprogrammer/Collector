@@ -1,6 +1,6 @@
 # Verification: Feature 043, Rate-Limit Retries Count Only Without Progress
 
-**Spec:** [spec.md](spec.md) v1.0.0 · **Plan:** [plan.md](plan.md) · **Issue:** [#86](https://github.com/plainprogrammer/Collector/issues/86)
+**Spec:** [spec.md](spec.md) v1.0.0 · **Plan:** plan (retired in `c1e56681be1015551943a1ea909b4a04b64d6062`; read it with `git show c1e56681be1015551943a1ea909b4a04b64d6062^:docs/specs/043-rate-limit-retry-progress/plan.md`) · **Issue:** [#86](https://github.com/plainprogrammer/Collector/issues/86)
 
 ## Red evidence
 
