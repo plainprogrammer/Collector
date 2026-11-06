@@ -61,6 +61,9 @@ RSpec.describe "Sign-up", type: :request do
       expect(response).to have_http_status(:unprocessable_content)
       expect(response.body).to include("Name can&#39;t be blank", "Email must look like name@example.com",
         "Password must be at least 12 characters", "Password confirmation doesn&#39;t match Password")
+      page = Nokogiri::HTML5(response.body)
+      %w[name email_address password password_confirmation].each { |field| expect(page.at_css("##{field}-error")).not_to be_nil, field }
+      expect(page.css(".field_with_errors")).to be_empty
     end
   end
 

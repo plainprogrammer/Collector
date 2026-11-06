@@ -24,6 +24,7 @@ RSpec.describe "Sign-in", type: :request do
     sign_in(password: "wrong password!")
     expect(response).to have_http_status(:unprocessable_content)
     expect(response.body).to include("Email or password is incorrect.")
+    expect(Nokogiri::HTML5(response.body).css(".field_with_errors")).to be_empty
   end
 
   it "lets the health check through without signing in" do
