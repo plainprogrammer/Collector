@@ -9,7 +9,7 @@ Lasting decisions are in [ADRs](../adr/README.md). What an agent needs before it
 | Area | Doc | Specs it covers | Reference docs |
 |---|---|---|---|
 | Catalog operations | [catalog-operations.md](catalog-operations.md) | 002 FR-3–FR-6 and their Error Scenarios rows; 011 FR-2 (the build's run); 015; 024 | none |
-| Catalog core | not written yet | 002 FR-1, FR-2, FR-7–FR-10; 016; 018; 019; 023 | none |
+| Catalog core | [catalog-core.md](catalog-core.md) | 002 FR-1, FR-2, FR-7–FR-10 (FR-9's convention stays in the rules); 004 (search, the card page's catalog content, the collecting vocabulary); 007 (FR-4's name index and name matching, FR-5, AC-3.4, AC-3.5, AC-3.9); 009 AC-6.1; 016; 018; 019; 023 | none |
 | Collection and lots | [collection-and-lots.md](collection-and-lots.md) | 004 (collection, adding cards); 006; 021; 026 (all but the list left out of the export); 029 (locations, the pages, the navigation); 032 (a lot's place, moving copies, removing a location); 033 (all but decision 5 for rows, #142); 034; 037 | [design system](../design-system/README.md) |
 | Tenancy and accounts | not written yet | 004 (accounts, users, admin users) | none |
 | Scanner | not written yet | 005; 007; 008; 009; 010; 011 (all but FR-2's build run) | none |

@@ -1,6 +1,6 @@
 # Verification: Browse the Catalog Without Signing In (spec 023)
 
-**Spec:** [spec.md](spec.md) v1.2.1 · **Plan:** [plan.md](plan.md) (with its "Amendments from the Fable plan review") · **Branch:** `023-signed-out-catalog-browsing` · **Issue:** [#59](https://github.com/plainprogrammer/Collector/issues/59)
+**Spec:** [spec.md](spec.md) v1.2.1 · **Plan:** plan (retired in `befd6330e4e48a5dde88a83cb267a58764b60c53`; read it with `git show befd6330e4e48a5dde88a83cb267a58764b60c53^:docs/specs/023-signed-out-catalog-browsing/plan.md`) (with its "Amendments from the Fable plan review") · **Branch:** `023-signed-out-catalog-browsing` · **Issue:** [#59](https://github.com/plainprogrammer/Collector/issues/59)
 
 ## Red runs
 

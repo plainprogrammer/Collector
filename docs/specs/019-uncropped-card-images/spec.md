@@ -6,6 +6,8 @@
 **Last Updated:** 2026-10-11
 **Branch:** `019-uncropped-card-images`
 **Issue:** [#35](https://github.com/plainprogrammer/Collector/issues/35)
+**Frozen:** the current rules are in [`catalog-core.md`](../../architecture/catalog-core.md) (whole spec); see the [specs index](../README.md)
+**Plan:** retired in `82c6d0ea11293fd68393ca476f8cea2874a10d19`; read it with `git show 82c6d0ea11293fd68393ca476f8cea2874a10d19^:docs/specs/019-uncropped-card-images/plan.md`
 
 ---
 
@@ -35,7 +37,7 @@ The damage today is under a pixel, because Scryfall's images are within 0.3% of 
 > - *Shown whole* means every pixel row and column of the image is painted inside the slot. An example may establish this from the image's natural size, the slot's box and the fit the browser computed, without sampling what was painted.
 > - *In its own proportions* means the image is scaled by the same factor across and down, within 0.1%. (One device pixel was the first tolerance; at the thumbnail's size it would hide the 1.7% stretch this spec removes, which is 0.56px.)
 
-**What the rules do today** (measured in headless Firefox 157 on 2026-10-11, at 1280px wide; figures in [plan.md](plan.md)):
+**What the rules do today** (measured in headless Firefox 157 on 2026-10-11, at 1280px wide; figures in the plan, retired in `82c6d0ea11293fd68393ca476f8cea2874a10d19`; read it with `git show 82c6d0ea11293fd68393ca476f8cea2874a10d19^:docs/specs/019-uncropped-card-images/plan.md`):
 
 | Slot | Where it appears | Rule today | Effect when the image isn't 63:88 |
 |---|---|---|---|

@@ -1,6 +1,6 @@
 # Verification: Fit Card Images Without Cropping (spec 019)
 
-**Spec:** [spec.md](spec.md) v1.3.0 · **Plan:** [plan.md](plan.md) · **Branch:** `019-uncropped-card-images`
+**Spec:** [spec.md](spec.md) v1.3.0 · **Plan:** plan (retired in `82c6d0ea11293fd68393ca476f8cea2874a10d19`; read it with `git show 82c6d0ea11293fd68393ca476f8cea2874a10d19^:docs/specs/019-uncropped-card-images/plan.md`) · **Branch:** `019-uncropped-card-images`
 
 ## Table thumbnail, measured
 
