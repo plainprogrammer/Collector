@@ -151,6 +151,11 @@ Code, `app/models/lot/bulk_move.rb` (Tasks 3 to 5 extend it; this is its first v
 # merge into one (the destination's own lot survives, else the first moved lot in the bulk table's order); a selected lot
 # already in the destination stays where it is (decision 3). All or nothing: the 9,999 cap is checked for every merge
 # before anything is written. Collectible-agnostic.
+#
+# models.md says not to use update_all/delete_all in normal flows (they skip validations and tenant checks). The move does, as
+# Lot::ConditionChange#update_alone! does, for the 2-second bar, and each statement is safe: scoped through @account.lots,
+# values bound, the cap and every identity collision checked on the lots read in this transaction, the place looked up through
+# the account, and Lot has no callbacks or dependents.
 class Lot::BulkMove
   CHOOSE = "Choose where to move them.".freeze
   NO_LOCATIONS = "You have no locations yet.".freeze
@@ -303,8 +308,8 @@ Tests (red: `merging` groups are never written, so the moved lots keep their old
     end
 
     it "reads a number-entry line as changed when its lot is folded away, and names the new place when its lot moved whole (spec 041 decision 6; spec 032 AC-7.6; spec 034 decision 3)", :aggregate_failures do
-      folded = NumberEntry.add!(account:, entry:, quantity: 2, line_key: "a" * 32).line
-      moved = NumberEntry.add!(account:, entry: create(:mtg_printing).entry, quantity: 1, line_key: "b" * 32).line
+      folded = NumberEntry.add!(account:, entry:, quantity: 2, finish: nil, line_key: "a" * 32).line
+      moved = NumberEntry.add!(account:, entry: create(:mtg_printing).entry, quantity: 1, finish: nil, line_key: "b" * 32).line
       held = lot(entry, location: blue, quantity: 3)
       move(account.lots.where(id: [ folded.lot_id, moved.lot_id ]).to_a, blue)
       expect(folded.reload).not_to be_undoable           # its lot is gone: "Changed in your collection"
@@ -347,11 +352,7 @@ Code: replace `Task 2`'s tail of `apply!` and add the writers (the folded lots a
       end
     end
 
-    # models.md says not to use delete_all/update_all in normal flows (they skip validations and tenant checks). The move does,
-    # as Lot::ConditionChange#update_alone! does, for the 2-second bar, and each statement is safe: scoped through @account.lots,
-    # values bound, the cap and every identity collision checked on the lots read in this transaction, the place looked up through
-    # the account, and Lot has no callbacks or dependents.
-    # Lot has no callbacks or dependents; the database nulls or cascades what points at a lot (number-entry lines, scanner entries, marks).
+    # The database nulls or cascades what points at a lot (number-entry lines, scanner entries, marks).
     def delete!(ids)
       ids.each_slice(BATCH) { |slice| @account.lots.where(id: slice).delete_all } # Safe: tenant-scoped, bound ids
     end
@@ -363,7 +364,7 @@ Green: the six examples plus Tasks 2 and 3's. The unique index `[account_id, cat
 
 **Implements:** AC-3.8, FR-2 (all or nothing, the cap names a *selected* lot), Reliability. **Files:** the same two.
 
-Tests (red: an over-cap merge is written, `CapExceeded` never raised):
+Tests (red: without `check_cap!` an over-cap merge reaches the `lots_quantity_range` check constraint and raises `ActiveRecord::StatementInvalid`, not `CapExceeded`; the cap examples fail for that reason). Four examples pass on arrival and are characterisations of Tasks 2 to 4, named so in the commit, as Task 3's are: the foreign-key rollback, `NoLotsLeft`, "touches only the account's lots" and "allows exactly 9,999":
 
 ```ruby
   describe "the 9,999 cap" do
@@ -419,7 +420,7 @@ Tests (red: an over-cap merge is written, `CapExceeded` never raised):
   end
 ```
 
-Two details the example fixes: the foreign-key example passes a Location object whose row is gone, so the failure is the database's, exactly the production case behind `Lots::MovesController`'s `rescue_from`; the last example passes a relation that reaches another account's lot, so the account guard (`@account.lots.where(id:)` in every writer) must hold even though `lots` isn't account-scoped (the controller's relation is; the model doesn't trust it). It fails red if a writer used `Lot.where`.
+Two details the examples fix: the foreign-key example passes a Location object whose row is gone, so the failure is the database's, exactly the production case behind `Lots::MovesController`'s `rescue_from`; "touches only the account's lots" passes a relation that reaches another account's lot and proves the read's account guard (`@lots.where(account_id: @account.id)`) in `apply!`; the writers' own `@account.lots.where(id:)` scoping is a second line the examples can't reach, since a foreign lot never gets that far, and it is checked by reading (and `Brakeman`/review), not by an example.
 
 Code, in `apply!` between `existing_targets` and the writes:
 
@@ -1115,7 +1116,7 @@ Tests:
     end
 
     it "(3) answers the same when the session never made a selection" do
-      sign_in_as(user) # a new session, with no bulk selection
+      BulkSelection.where(account:).destroy_all # the session never made a selection (signing in again is redirected while signed in)
       post collection_move_path, params: { to: "none" }
       expect(response).to have_http_status(:unprocessable_content)
     end
@@ -1296,6 +1297,7 @@ RSpec.describe "Bulk Move to…", type: :system do
     check "Select all"
     within(".c-bulkbar__extra") { click_on "Move to…" }
     click_on "Move"
+    expect(page.evaluate_script("document.getElementById('to').validity.valueMissing")).to be(true) # the browser's required check stopped it
     expect(page).to have_css("h1", text: "Move 1 item")  # still the move page
     expect(page).to have_no_css(".c-field--invalid")      # the server's refusal never rendered: the browser stopped it
     expect(page).to have_no_css("#status", text: /\S/)
@@ -1386,7 +1388,7 @@ end
 
 (Seed note: `i % 1000` and `i % 300` with price `i / 3000` are unique within 5,000 lots: `lcm(1000, 300) = 3000`, and `i / 3000` separates the two passes. `shown_ids: []` with `all: 1` selects every matching lot with no exceptions; if the controller's `ids` helper wants the keys, pass `shown_ids: []` as written. The 400 extra lots collide with no seeded lot: the seeded lots in `locations.first` are `i % 300 == 0`, printings `i % 1000`, all multiples of 100, which `reject { (i % 100).zero? }` skips.)
 
-Expected on a developer laptop: well under 2 s (survivor statements about the number of printings, 1,000, plus batched deletes). If it is over, the contingency is in Risks. The numbers are recorded in `verification.md` (Task 19).
+Expected on a developer laptop: well under 2 s (about 2,000 single-row survivor `UPDATE`s, one per merge group since every group merges, plus about 4 `DELETE` batches for the folded lots). If it is over, the contingency is in Risks. The numbers are recorded in `verification.md` (Task 19).
 
 ---
 
@@ -1422,7 +1424,7 @@ Edits, each with its source:
 2. **Glossary**: add `**Destination:** the place a bulk move sends lots to, one of the account's locations or none. **Already there:** a selected lot whose place is the destination (spec 041 Terms).`
 3. **Invariants**, "Four places build a key" becomes "Five places build a key and all carry the place: `Lot.key_for`, the SQL in `Lot::ConditionChange#update_alone!`, the SQL in `Lot::BulkMove#move_alone!`, `BulkRemoval#identity` with its `insert_all`, and the apply's attribute builder for `upsert_lots!`" with "(spec 041 FR-2; `spec/models/lot/bulk_move_spec.rb` proves the move's)".
 4. **Invariants**, the merge list: `…`Lot::Move`, `Lot::ConditionChange`, `Lot::BulkMove` and `BulkRemoval#undo!`` (spec 041 decision 4).
-5. **Invariants**, "Only some ways of adding choose a place": add "bulk Move to… chooses one place for every selected lot; the other bulk actions keep each lot's place (spec 041)".
+5. **Invariants**, "Only some ways of adding choose a place": add "bulk Move to… chooses one place for every selected lot", and change the clause "quick add and the bulk actions add or keep copies unplaced (or keep each lot's place)" to "quick add adds copies unplaced, and the other bulk actions keep each lot's place" (spec 041).
 6. **Invariants**, "Everything is scoped to `Current.account`": add "a foreign location id for a bulk move is 404, foreign lot ids are ignored (spec 041 AC-5.1, AC-5.2)".
 7. **Bulk mode**: after "Set condition", a paragraph:
 
@@ -1436,7 +1438,7 @@ Edits, each with its source:
 11. **Decisions not in an ADR**: replace "Move copies works on one lot, from the card page; many lots at once is #48" with "Move copies works on one lot, from the card page; Move to… in bulk mode moves whole lots, with no Undo, and leaves a selected lot already there alone (maintainer, 2026-11-06; spec 041 decisions 1–3)".
 12. **Accepted limits**: the #48 line becomes "No sort by location (spec 037 Non-Goals); a move's merged lots stay merged when moved back (spec 041 decision 1); no partial lots in bulk (decision 2); [#187](https://github.com/plainprogrammer/Collector/issues/187): no shortcut from a location's refusal page into bulk mode."
 13. **Decisions not in an ADR**: add "Bulk Move to… writes with `update_all` and `delete_all` on the account's lots, against the models rule, for the 2-second bar: every statement is tenant-scoped and bound, the cap and identity collisions are checked first, `Lot` has no callbacks, and the foreign keys cascade or nullify what points at a lot (`Lot::ConditionChange#update_alone!` is the precedent; spec 041 FR-2, D1 of its plan)".
-14. **Sources**: add `spec 041` and issue #48; **Distillation log** is left to `distill-feature` (rule: documentation.md, session end), not written by hand here.
+14. **Sources**: add `spec 041`, and move issue #48 from the "open:" list of the issues line to the closed ones (#187 takes its place there as open); **Distillation log** is left to `distill-feature` (rule: documentation.md, session end), not written by hand here.
 
 ### Task 18: `CLAUDE.md` and the roadmap
 
