@@ -44,4 +44,29 @@ RSpec.describe Lot::BulkMove, type: :model do
       expect(Lot.where(id: lots.map(&:id)).order(:id).pluck(:lot_key)).to eq(expected)
     end
   end
+
+  # Passes on arrival: a characterisation of apply!'s mover/stayer split, not a missing red.
+  it "leaves lots already there alone and counts their copies apart (AC-3.6)", :aggregate_failures do
+    there = lot(location: blue, quantity: 3)
+    coming = lot(location: box, quantity: 2)
+    Lot.update_all(updated_at: 1.day.ago)
+    result = move([ there, coming ], blue)
+    expect(result).to have_attributes(moved: 2, already_there: 3, ids: [ coming.id ])
+    expect(there.reload.updated_at).to be < 1.hour.ago
+    expect(coming.reload.location).to eq(blue)
+  end
+
+  # Passes on arrival: a characterisation, as above.
+  it "counts lots already unplaced the same way for no location (AC-3.6)" do
+    expect(move([ lot(quantity: 4), lot(location: box, quantity: 1) ], nil)).to have_attributes(moved: 1, already_there: 4)
+  end
+
+  # Passes on arrival: a characterisation, as above.
+  it "refuses when every selected lot is already there, naming the place, and changes nothing (AC-3.7)", :aggregate_failures do
+    there = lot(location: blue)
+    expect { move([ there ], blue) }.to raise_error(described_class::NothingToMove, "The selected items are already in Blue binder.")
+    unplaced = lot
+    expect { move([ unplaced ], nil) }.to raise_error(described_class::NothingToMove, "The selected items already have no location.")
+    expect(there.reload.location).to eq(blue)
+  end
 end
