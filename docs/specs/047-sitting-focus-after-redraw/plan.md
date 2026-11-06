@@ -205,6 +205,14 @@ In `spec/system/scanner_sitting_spec.rb`, add a describe at the end (inside the 
 
     def seed(*keys) = keys.each { Scanner::Sitting.add!(account: user.account, printing:, finish: "foil", reading_key: it * 32) }
     def active = page.driver.browser.switch_to.active_element
+    # Chooses a condition with the keyboard, then Tabs from Condition through Location to Set (`RSpec/ExampleLength` is 15).
+    def choose_condition_and_tab_to_set(label)
+      field = find_field("Condition")
+      field.select(label)
+      field.send_keys(:tab) # Location
+      active.send_keys(:tab) # Set
+      expect(page.evaluate_script("document.activeElement.value")).to eq("Set")
+    end
     def set_focused = have_css("#scanner_sitting input[type=submit][value=Set]:focus")
     # Marks the panel on the page now; the mark is gone once Turbo has replaced the panel with the answer's.
     def mark_stale = page.execute_script("document.getElementById('scanner_sitting').dataset.stale = '1'")
@@ -215,11 +223,7 @@ In `spec/system/scanner_sitting_spec.rb`, add a describe at the end (inside the 
       visit scanner_path
       expect(page.evaluate_script("document.activeElement.tagName")).to eq("BODY") # the page load focuses nothing
       page.execute_script("window.__marker = 'still here'")
-      field = find_field("Condition")
-      field.select("Near mint (NM)")
-      field.send_keys(:tab) # Location
-      active.send_keys(:tab) # Set
-      expect(page.evaluate_script("document.activeElement.value")).to eq("Set")
+      choose_condition_and_tab_to_set("Near mint (NM)")
       active.send_keys(:enter)
       expect(page).to have_css("#scanner_sitting h2", text: "This sitting: 1 card, Near mint")
       expect(page).to have_css("#status", text: "Cards you scan now: Near mint, no location.")
@@ -336,5 +340,6 @@ Verify the outline assertions added at the top of this task now pass (`bin/rspec
 
 - **P1.** `tag.section … data: nil` should write no data attribute and `data: { controller:, sitting_focus_to_value: }` should write `data-controller` and `data-sitting-focus-to-value`; T1's request examples are the proof, and a reviewer should check Rails 8.1's `tag_options`.
 - **P2.** Whether headless Firefox matches `:focus-visible` for a script `focus()` after a keyboard Enter (T5's outline assertion). The fallback is stated in T5.
+- **P5 (round 2).** The first T3 example is exactly 15 lines with the helper (`RSpec/ExampleLength` max 15, not autocorrectable); the second is 15; the Undo example is 9 and 11 after T5. An implementer who adds a line splits an example rather than disabling the cop. `verification.md` points AC-2.3's "changed" case at `undos_controller.rb:19` (the same `sitting_stream(…, alert: true, focus: :heading)` call as the "already undone" refusal T1 covers) and the existing `sittings_spec.rb` example for that refusal.
 - **P4 (from plan review round 1, minor 9).** If the collector is in the old panel's Condition or Location select when an answer lands, Turbo's `withPreservedFocus` refocuses the new select by its id one frame after `connect()`, which can override the Set focus (spec Error Scenarios row 2). Not designed around; `verification.md` records it as a known edge.
 - **P3.** The stream order: `replace` before `update("status")`. The system examples wait on `#status` text and then on `:focus`, so either order passes; no sleep.
