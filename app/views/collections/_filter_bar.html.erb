@@ -2,6 +2,9 @@
 <%= form_with url: collection_path, method: :get, class: "c-filterbar", role: "search" do |form| %>
   <label class="c-input"><%= render "icons/search" %><%= form.search_field :q, value: listing.query, placeholder: "Search your collection", "aria-label": "Search your collection",
         data: { search_shortcut_target: "input" } %><kbd>/</kbd></label>
+  <% if listing.places? %>
+    <div class="c-filterbar__filters"><%= render "collections/location_select", listing: %><%= form.submit "Filter", name: nil, class: "c-btn c-btn--secondary c-btn--sm" %></div>
+  <% end %>
   <% sort.to_params.each do |name, value| %><%= hidden_field_tag name, value, id: nil %><% end %>
   <div class="c-filterbar__end">
     <%= button_tag "Edit many", type: "submit", name: nil, form: "edit-many", class: "c-btn c-btn--secondary c-btn--sm c-filterbar__bulk" %>
