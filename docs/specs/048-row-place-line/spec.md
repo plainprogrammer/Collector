@@ -1,7 +1,7 @@
 # Feature 048: A Table Row's Place Line Wraps (Supersedes Spec 033 Decision 5 for Rows)
 
 **Status:** Draft after spec review round 1, for the maintainer's approval. The maintainer ruled decisions 1–4 on 2026-10-27 and 2026-11-06 (below); decisions 5 and 6 are recommended
-**Version:** 0.2.0
+**Version:** 0.3.0
 **Created:** 2026-11-06
 **Last Updated:** 2026-11-06
 **Depends on:** [spec 033](../033-location-on-tiles-and-rows/spec.md) (the place on tiles and rows, issue #46; merged, PR #140), [spec 037](../037-filter-collection-by-location/spec.md) (the location filter), all merged
@@ -14,6 +14,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.3.0 | 2026-11-06 | Spec review round 2 (NEEDS REVISION, mechanical; 1 major, 5 minor) fixed: the wide frames start at 800px because a table with a short name is already wider than a 645px container (M1); the span is on the named cell only (m2); decision 4 states the phone rule's reach (m3); AC-1.3 and AC-1.4 name how the width is measured (m4); AC-2.1's setup is exact (m5); the guard's file and the seven paths are named (m6). No round 3; the worker checked the edits |
 | 0.2.0 | 2026-11-06 | Spec review round 1 (NEEDS REVISION; 0 blocking, 2 major, 10 minor) fixed. A second probe (below) found Firefox ignores `max-width` on a table cell, so the cap goes on a span inside the cell (M1, FR-1, decision 2); AC-2.2 of spec 033 is extended, not superseded (m3); spec 033 FR-5 is added to Supersedes (m4); AC-1.3 and AC-1.4 measure once (m5); AC-2.4 is an explicit-list guard (m6); AC-2.3's Undo, AC-1.7, AC-1.2, AC-2.2 and AC-2.1 sharpened (m7–m10, m12); documents list completed (M2, m11) |
 | 0.1.0 | 2026-11-06 | First draft, from issue #142, spec 033's implementation review, and a probe in headless Firefox (below) |
 
@@ -83,7 +84,7 @@ Wrapping at spaces isn't enough: the probe's unbroken name overflowed the phone 
 
 ### 4. The phone wrap rule applies to every narrow collection table, an account with no location's too (ruled by the maintainer, 2026-11-06)
 
-The rule is the `c-table__sub` line's, which every narrow table has. For an account with no location the line is set · number, finish, condition and language, which fits one line at 360 and 390 (probe), so the rule changes nothing visible there. A conditional class would add code for no visible effect, so the rule is not scoped.
+The rule is the `c-table__sub` line's, which every narrow table has. For an account with no location the line is set · number, finish, condition and language, which fits one line at 360 and 390 (probe), so the rule changes nothing visible there. A conditional class would add code for no visible effect, so the rule is not scoped. Its reach is the rule's selector's: the `c-table__sub` line of every table inside `.c-collection` below 640px, the card page's "Your copies" line, whose place the line carries, and the admin and catalog tables' sub lines included; accepted, as spec 033's `white-space: normal` already applies there. The card page's own Location column is not changed.
 
 ### 5. `c-table__place` becomes a documented hook with a rule (recommended)
 
@@ -111,8 +112,8 @@ Recorded in the specs index in both directions, and in the collection and lots a
 
 - [ ] **AC-1.1** Given an account with a location named with 60 code points and spaces, and a lot in it When the table renders in a 360px frame and in a 390px frame Then the line under the name ends with the whole name, on as many lines as it needs, and the page doesn't scroll sideways (spec 033 AC-2.2).
 - [ ] **AC-1.2** Given the same with a name of 60 "W"s (60 code points, no space, the widest glyph; decision 3) When the table renders at 360px and at 390px Then the name breaks inside itself, all of it is in the line's text, and the page doesn't scroll sideways.
-- [ ] **AC-1.3** Given a 60-code-point name with spaces and the wide table When it renders at frames of 760, 800, 900, 1024 and 1280px Then the whole name is in the cell, wrapped, the name's width is at most 20rem, the table is no wider than its container and the page doesn't scroll sideways.
-- [ ] **AC-1.4** Given a name of 60 "W"s When the table renders at the same frames Then the name breaks inside itself in the cell, within the same width, and the table and the page don't scroll sideways.
+- [ ] **AC-1.3** Given a 60-code-point name with spaces and the wide table When it renders at frames of 800, 900, 1024 and 1280px (containers of 705px and more; below about 735px of frame the table's other columns alone are wider than a 645px container, which a place can't change) Then the whole name is in the cell, wrapped, the name's span is at most 20rem wide (its `getBoundingClientRect().width` is at most 20 times the root font size), the table is no wider than `.c-collection` (its `clientWidth`) and the page doesn't scroll sideways.
+- [ ] **AC-1.4** Given a name of 60 "W"s When the table renders at the same frames Then the name breaks inside itself in the cell, within the same 20rem, and the table is no wider than `.c-collection` and the page doesn't scroll sideways. At a frame of 760px the page still doesn't scroll sideways for either name (no table wider than its container is asked of it there).
 - [ ] **AC-1.5** Given a name with markup When a row renders Then it is output escaped in the cell and in the line (spec 032 AC-4.5), unchanged.
 - [ ] **AC-1.6** Given the same lots When the grid renders Then a tile's place name is still on one line cut with an ellipsis and its "+N more" is still visible (spec 033 AC-1.6).
 - [ ] **AC-1.7** Given an account with no location and a lot of number 146, foil, near mint, English, quantity 9,999 (spec 006 AC-2.8's line) When the table renders at 360px and at 390px Then it fits without sideways scroll, shows no Location column and no place, and its `c-table__sub` is under 20px high, one line (decision 4).
@@ -123,10 +124,10 @@ Recorded in the specs index in both directions, and in the collection and lots a
 **I want** spec 033's criteria to have the examples the review found missing
 **So that** a later change that breaks them fails the suite
 
-- [ ] **AC-2.1** (spec 033 AC-1.8) Given two printings with places and a name filter that matches one When the grid renders Then only the matching printing has a tile and its tile shows all its printing's places, including "+N more"; given the same filter on the table Then only the matching lots' rows show, each with its place. (Under a location filter spec 037 decision 3 applies instead: no place line; the example is for the name filter.)
+- [ ] **AC-2.1** (spec 033 AC-1.8) Given an account with locations, a printing in two places (3 copies in Blue binder, 1 in Long box), another printing in one place, and the name filter `q` matching only the first When the grid renders Then only the matching printing has a tile and its tile shows all its printing's places, including "+N more"; given the same filter on the table Then only the matching lots' rows show, each with its place. (Under a location filter spec 037 decision 3 applies instead: no place line; the example is for the name filter.)
 - [ ] **AC-2.2** (spec 033 AC-1.6) Given a printing in two places When the grid renders in a browser Then the tile's link's accessible name, as the browser computes it (a system example, `native.accessible_name`), contains the whole place line, "Blue binder +1 more", after the card's name.
 - [ ] **AC-2.3** (spec 033 AC-2.6) Given lots in places When a bulk "Set condition" is applied, and when a bulk Remove is undone Then the rendered bulk table shows each of those lots' rows with the place the lot keeps (an unplaced lot reads "No location" in its Location cell). The Undo is the one on the bulk table's message, carrying the bulk table's URL.
-- [ ] **AC-2.4** (spec 033 FR-6) Given the seven core files spec 033 changed (`collection_grid.rb`, `collection_table.rb`, `collection_filter.rb`, `lots_helper.rb`, and the views `_tile`, `_table`, `_lot_cells`; not `additions.css`) When the suite runs Then a `spec/*_core_spec.rb` guard lists them, fails if one no longer exists, and fails if one names a collectible type or a source (`mtg`, `scryfall`, `magic`; finish names are not checked, as a comment in `lots_helper.rb` names one).
+- [ ] **AC-2.4** (spec 033 FR-6) Given the seven core files spec 033 changed (`collection_grid.rb`, `collection_table.rb`, `collection_filter.rb`, `lots_helper.rb`, and the views `_tile`, `_table`, `_lot_cells`; not `additions.css`) When the suite runs Then a new `spec/collection_places_core_spec.rb` lists them by path (`app/models/collection_grid.rb`, `app/models/collection_table.rb`, `app/models/collection_filter.rb`, `app/helpers/lots_helper.rb`, `app/views/collections/_tile.html.erb`, `_table.html.erb`, `_lot_cells.html.erb`), fails if one no longer exists, and fails if one names a collectible type or a source (`mtg`, `scryfall`, `magic`; finish names are not checked, as a comment in `lots_helper.rb` names one).
 
 ### Story 3: The hook and the rules are written where the next change reads them
 
@@ -135,11 +136,11 @@ Recorded in the specs index in both directions, and in the collection and lots a
 **So that** nobody reads decision 5 as applying to rows, or meets an undocumented class
 
 - [ ] **AC-3.1** The design system's `CollectionTable.md` names `c-table__place` and `c-table__place-name` and the wrap rules of the cell and the phone line; its README's list of app additions records the override of the export's `.c-table td { white-space: nowrap }`; the rules' comments in `additions.css` cite this spec. (A document criterion: verified by reading, recorded in `verification.md`.)
-- [ ] **AC-3.2** The specs index records this spec and its supersession of spec 033 in both directions, spec 033's row is no longer "frozen in part" for decision 5, and the collection and lots area doc states the row rule, drops the #142 entry from its accepted limits, names the new guard in its core-code invariant, records the decision (a row's place line wraps, a tile's is cut), cites this spec in Sources and adds a distillation-log entry. (Verified by reading.)
+- [ ] **AC-3.2** The specs index records this spec and its supersession of spec 033 in both directions, spec 033's row is no longer "frozen in part" for decision 5, and the collection and lots area doc states the row rule, drops the #142 entry from its accepted limits, names `spec/collection_places_core_spec.rb` in its core-code invariant, records the decision (a row's place line wraps, a tile's is cut), cites this spec in Sources and adds a distillation-log entry. (Verified by reading.)
 
 ## Functional Requirements
 
-- **FR-1.** The outcome is Story 1's. The mechanism, from probe 2: the Location cell `white-space: normal`; a `span.c-table__place-name` inside it (the only markup change, in `_lot_cells.html.erb`, whose text is the name as before) with `display: block`, `max-width: 20rem` and `overflow-wrap: anywhere`; and `overflow-wrap: anywhere` added to the phone line's rule in spec 033's container query (`collection`, 640px). The rules are in `additions.css`, tokens and `c-*` classes only. No controller, model or query changes. If an AC's measurement shows a rule isn't enough, the plan adjusts the rule, not the criterion.
+- **FR-1.** The outcome is Story 1's. The mechanism, from probe 2: the Location cell `white-space: normal`; a `span.c-table__place-name` inside it (the only markup change, in `_lot_cells.html.erb`; the named cell only, the muted "No location" cell is unchanged; the text is the name as before) with `display: block`, `max-width: 20rem` and `overflow-wrap: anywhere`; and `overflow-wrap: anywhere` added to the phone line's rule in spec 033's container query (`collection`, 640px). The rules are in `additions.css`, tokens and `c-*` classes only. No controller, model or query changes. If an AC's measurement shows a rule isn't enough, the plan adjusts the rule, not the criterion.
 - **FR-2.** The tile's rules (`.c-tile__place*`) are not touched.
 - **FR-3.** Core code names no collectible; AC-2.4's guard holds it.
 - **FR-4.** The widths are measured in a browser at the frames of AC-1.1–AC-1.4 and AC-1.7 (a system example with a fixed-width frame, `spec/support/narrow_frame.rb`; a 1280px frame fits the suite's browser window), not asserted from the CSS.
