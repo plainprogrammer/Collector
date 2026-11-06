@@ -17,7 +17,7 @@ RSpec.describe "The place line's core code", type: :config do
   end
 
   it "never names a collectible type or a source" do
-    named = files.select { |file| Rails.root.join(file).exist? && Rails.root.join(file).read.match?(/\b(mtg|scryfall|magic)\b/i) }
+    named = files.select { |file| Rails.root.join(file).exist? && Rails.root.join(file).read.match?(/mtg|scryfall|magic/i) }
 
     expect(named).to be_empty
   end
