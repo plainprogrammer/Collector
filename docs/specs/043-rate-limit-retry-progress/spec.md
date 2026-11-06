@@ -1,7 +1,7 @@
 # Feature 043: Rate-Limit Retries Count Only Without Progress
 
 **Status:** Draft
-**Version:** 0.3.0
+**Version:** 0.4.0
 **Created:** 2026-11-06
 **Last Updated:** 2026-11-06
 **Branch:** `043-rate-limit-retry-progress`
@@ -16,6 +16,7 @@
 | 0.1.0 | 2026-11-06 | Written from issue #86, drafted around option A (count only rate limits with no progress since the last); ruling pending |
 | 0.2.0 | 2026-11-06 | Maintainer ruling on decision 1: option A |
 | 0.3.0 | 2026-11-06 | Spec review round 1 (Fable, APPROVE WITH CHANGES, 2 major, 7 minor): a refresh's download is not progress (the source contract can't tell a fresh download from a reused one, and the file is kept anyway), so a refresh makes progress only by writing catalog rows, which the one source can't do before a rate limit today; the build's progress is an image fetched and kept, or a batch of fingerprints stored; an admin's retry starts the count again; an attempt may open no run; the count's key is kept; the index's reverse entries; the area doc's two mentions of #86 |
+| 0.4.0 | 2026-11-06 | Spec review round 2 (Fable, APPROVE WITH CHANGES, 8 minor): AC-2.1 says a kept image; the count's kept value defined; FR-2 says "would exceed"; notes for the plan in decision 4; AC order; the area doc's heading named exactly |
 
 ---
 
@@ -43,7 +44,7 @@ So the issue's main case, a long build turned away four times, needs a 429 Scryf
 > - A *rate limit* is a `Catalog::Sources::RateLimitedError` reaching the job, which `Catalog::RateLimitRetry` handles.
 > - An *attempt* is one run of the job's `perform`: the first, or a retry (a rate-limit retry, a retry of a transient error, an admin's retry). An attempt that gets far enough opens its own run record (a `Catalog::RefreshRun` or an `MTG::ArtBuild`); one that fails while starting, or a build that returns early (art matching off, no applied catalog), opens none, and has made no progress.
 > - *Progress* is durable new work the attempt did before the rate limit ended it, as its operation judges it (decision 3).
-> - The *count* is the number of rate limits in a row with no progress between them, the one that is being handled included.
+> - The *count* is the number of rate limits in a row with no progress between them, the one that is being handled included. The job keeps it after each handling; an AC's "count is N" is that kept value before the next rate limit.
 
 ## Goals
 
@@ -100,7 +101,11 @@ An operation that doesn't answer the question (a job class that includes the rul
 
 ### 4. Where the question lives
 
-`Catalog::RateLimitRetry` stays core code: it asks the job whether its attempt made progress and names no collectible, no host and no table. Each job that includes it answers for its own operation; the refresh's answer is core (`Catalog::Refresh`), the build's is MTG's (`MTG::Art::Build`). The plan chooses the exact shape.
+`Catalog::RateLimitRetry` stays core code: it asks the job whether its attempt made progress and names no collectible, no host and no table. Each job that includes it answers for its own operation; the refresh's answer is core (`Catalog::Refresh`), the build's is MTG's (`MTG::Art::Build`). The plan chooses the exact shape. Notes for the plan, from the spec review:
+
+- The refresh's answer can't come from its run's counts alone: they tally entries, and sets and identities written count too.
+- The answer must be the attempt's own: a job instance can run `perform` more than once (the job specs reuse one), so nothing kept from an earlier attempt may answer for a later one.
+- A refresh rate limited after writing a batch needs `BATCH_SIZE` changed entries from the test source, or the batch size made small in the example; the plan picks one.
 
 ## Users and Context
 
@@ -128,7 +133,7 @@ As an operator, I want a build that fetched images before a rate limit to count 
 
 **Acceptance criteria:**
 
-- [ ] **AC-2.1** Given an art build that fetches at least one image and is then rate limited, When the job handles the rate limit Then the attempt counts as having made progress.
+- [ ] **AC-2.1** Given an art build that fetches at least one image that is kept (it decodes) and is then rate limited, When the job handles the rate limit Then the attempt counts as having made progress.
 - [ ] **AC-2.2** Given an art build whose images to fetch are all uncached, When its first image request is rate limited Then the attempt counts as having made no progress.
 - [ ] **AC-2.3** Given an art build that stores at least one batch of fingerprints for images already cached, fetches none, and is then rate limited, When the job handles it Then the attempt counts as having made progress.
 - [ ] **AC-2.4** Given an art build skipped at start (`already running` or `waiting for another job's retry`), When it ends Then it is never rate limited and nothing about the count changes.
@@ -152,14 +157,14 @@ As an operator, I want a refresh to count as having made progress only when it w
 
 ### Story 5: The documents say so
 
-- [ ] **AC-5.1** Given `docs/architecture/catalog-operations.md`, When read Then "A rate-limited job" step 2 and the `MAX_RETRIES` constant row state the count of rate limits with no progress between them and what each operation counts as progress, with this spec as source; #86 leaves the "Accepted limits and open issues" list and moves from the open issues to the closed ones in Sources; the `IMAGE_HOSTS` row (or "What a source does for a refresh") states that Scryfall's documentation gives the image origins no rate limits. (Verified by reading, recorded in `verification.md`.)
-- [ ] **AC-5.3** Given `docs/specs/README.md`, When read Then row 043 names what it supersedes and rows 002, 011 and 024 name 043 among what supersedes them. (Verified by reading.)
+- [ ] **AC-5.1** Given `docs/architecture/catalog-operations.md`, When read Then "A rate-limited job" step 2 and the `MAX_RETRIES` constant row state the count of rate limits with no progress between them and what each operation counts as progress, with this spec as source; #86 leaves the "Accepted limits and open issues" list and moves from the open issues to the closed ones in Sources; the `IMAGE_HOSTS` row (or "What the source does for a refresh") states that Scryfall's documentation gives the image origins no rate limits. (Verified by reading, recorded in `verification.md`.)
 - [ ] **AC-5.2** Given the comments of `Catalog::RateLimitRetry` and `MTG::Art::BuildJob`, When read Then they state the new count and no longer say a job fails when "turned away a fourth time" over its life. (Verified by reading.)
+- [ ] **AC-5.3** Given `docs/specs/README.md`, When read Then row 043 names what it supersedes and rows 002, 011 and 024 name 043 among what supersedes them. (Verified by reading.)
 
 ## Functional Requirements
 
 - **FR-1** On a rate limit, `Catalog::RateLimitRetry` must fail the job when the wait asked exceeds `LONGEST_WAIT`, regardless of progress (unchanged).
-- **FR-2** Otherwise it must ask the job whether the attempt made progress. With progress, the count becomes 1 and the job is retried. Without, it becomes one more; if that exceeds `MAX_RETRIES` the job fails with the error, else it is retried.
+- **FR-2** Otherwise it must ask the job whether the attempt made progress. With progress, the count becomes 1 and the job is retried. Without, it becomes one more, unless that would exceed `MAX_RETRIES`, when the job fails with the error instead; otherwise the job is retried.
 - **FR-3** A job that gives no answer must be treated as having made no progress.
 - **FR-4** The count must be kept with the job across its retries, in the same place and under the same key as today, so that it survives the job being serialized and dispatched again, and a job queued before the upgrade keeps its count.
 - **FR-5** The art build must answer from the work of its own attempt: images fetched and kept, or a batch of fingerprints stored (decision 3).
