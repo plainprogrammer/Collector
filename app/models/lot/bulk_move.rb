@@ -49,6 +49,7 @@ class Lot::BulkMove
       groups = movers.group_by { |lot| [ lot.catalog_entry_id, key_for(lot) ] }
       targets = existing_targets(groups.keys)
       alone, merging = groups.partition { |key, group| group.one? && !targets[key] }
+      check_cap!(groups, targets, lots.to_set(&:id))
       now = Time.current
       delete!(merging.flat_map { |key, group| targets[key] ? group : group.drop(1) }.map(&:id))
       merging.each { |key, group| merge!(key, group, targets[key], now) }
@@ -64,6 +65,17 @@ class Lot::BulkMove
     # SQL: Lot::ConditionChange found long id lists on lot_key slow at 5,000 lots.
     def existing_targets(keys)
       @account.lots.where(location_id: @to&.id, catalog_entry_id: keys.map(&:first).uniq).index_by { |lot| [ lot.catalog_entry_id, lot.lot_key ] }.slice(*keys)
+    end
+
+    # Every merge is checked before anything is written (spec 041 AC-3.8). The lot named is the first, in the table's order,
+    # among the *selected* lots of the over-cap identities: the moved lots and a selected lot already there; an unselected
+    # destination lot may not be in the table.
+    def check_cap!(groups, targets, selected)
+      over = groups.select { |key, group| group.sum(&:quantity) + (targets[key]&.quantity || 0) > Lot::MAX_QUANTITY }
+      return if over.empty?
+
+      named = over.flat_map { |key, group| group + [ targets[key] ].compact.select { |target| selected.include?(target.id) } }
+      raise Lot::CapExceeded, @sort.apply(@account.lots.joins(entry: :set).where(id: named.map(&:id))).preload(entry: :set).first
     end
 
     # Lots that keep their own identity apart from the place, in one statement per batch: lot_key is rebuilt as Lot.key_for

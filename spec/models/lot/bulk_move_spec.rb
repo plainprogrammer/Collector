@@ -134,4 +134,60 @@ RSpec.describe Lot::BulkMove, type: :model do
       expect(other_finish.reload).to have_attributes(location: nil, quantity: 1)
     end
   end
+
+  describe "the 9,999 cap" do
+    let(:entry) { create(:mtg_printing).entry } # a printing with no lot yet: lot.entry would be an unplaced lot's identity, and a second unplaced lot(entry) would hit the unique index
+
+    it "changes nothing and names the first selected lot of an over-cap identity (AC-3.8)", :aggregate_failures do
+      fine = lot(location: box)
+      over = lot(entry, location: box, quantity: 5_000)
+      other = lot(entry, quantity: 5_000)
+      expect { move([ fine, over, other ], blue) }.to raise_error(Lot::CapExceeded) { |error| expect(error.lot).to eq(over) }
+      expect(Lot.order(:id).pluck(:location_id)).to eq([ box.id, box.id, nil ]) # every lot where it was
+    end
+
+    it "names a selected lot when the over-cap destination lot is unselected (AC-3.8)", :aggregate_failures do
+      moved = lot(entry, location: box, quantity: 9_000)
+      lot(entry, location: blue, quantity: 1_000)
+      expect { move([ moved ], blue) }.to raise_error(Lot::CapExceeded) { |error| expect(error.lot).to eq(moved) }
+    end
+
+    it "names the selected destination lot when it comes first in the table's order (AC-3.8)", :aggregate_failures do
+      held = lot(entry, location: blue, quantity: 9_000)
+      moved = lot(entry, location: box, quantity: 1_000)
+      expect { move([ moved, held ], blue) }.to raise_error(Lot::CapExceeded) { |error| expect(error.lot).to eq(held) }
+    end
+
+    # Passes on arrival: a characterisation of the merge.
+    it "allows exactly 9,999" do
+      lot(entry, location: blue, quantity: 9_000)
+      expect(move([ lot(entry, location: box, quantity: 999) ], blue).moved).to eq(999)
+    end
+  end
+
+  # Passes on arrival: a characterisation of the transaction.
+  it "changes nothing when the destination was removed meanwhile, and raises the foreign key error", :aggregate_failures do
+    gone = create(:location, account:)
+    alone = lot(location: box)
+    merged = lot(location: box, quantity: 2)
+    twin = lot(merged.entry, quantity: 1)
+    Location.where(id: gone.id).delete_all
+    expect { move([ alone, merged, twin ], gone) }.to raise_error(ActiveRecord::InvalidForeignKey)
+    expect([ alone.reload.location, merged.reload.quantity, Lot.exists?(twin.id) ]).to eq([ box, 2, true ])
+  end
+
+  # Passes on arrival: a characterisation of NoLotsLeft.
+  it "raises NoLotsLeft, not 'already there', when the relation selects no lot of the account", :aggregate_failures do
+    theirs = create(:lot, account: create(:user).account)
+    expect { described_class.new(account:, lots: Lot.where(id: theirs.id), to: blue, sort:).apply! }.to raise_error(described_class::NoLotsLeft, BulkSelection::NONE_LEFT)
+    expect(theirs.reload.location).to be_nil
+  end
+
+  # Passes on arrival: a characterisation of the account guard.
+  it "touches only the account's lots", :aggregate_failures do
+    theirs = create(:lot, account: create(:user).account, quantity: 2)
+    mine = lot
+    described_class.new(account:, lots: Lot.where(id: [ mine.id, theirs.id ]), to: blue, sort:).apply!
+    expect([ mine.reload.location, theirs.reload.location ]).to eq([ blue, nil ])
+  end
 end
