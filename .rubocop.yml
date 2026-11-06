@@ -46,7 +46,8 @@ RSpec/Output:
 # retry rule's core file (spec 043 AC-4.1). The export format specs check the
 # format's document, schema and example files. The request body limit spec
 # checks server configuration files. The field error proc spec renders a form
-# and checks the app's configuration, not a class.
+# and checks the app's configuration, not a class. The smoke scripts spec checks
+# the shell scripts' pipes (#217).
 RSpec/DescribeClass:
   Exclude:
     - "spec/admin_catalog_core_spec.rb"
@@ -67,6 +68,7 @@ RSpec/DescribeClass:
     - "spec/import_apply_core_spec.rb"
     - "spec/network_isolation_spec.rb"
     - "spec/number_entry_core_spec.rb"
+    - "spec/smoke_scripts_spec.rb"
     - "spec/project_config_spec.rb"
     - "spec/rate_limit_retry_core_spec.rb"
     - "spec/scanner_sitting_core_spec.rb"
