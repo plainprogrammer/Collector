@@ -113,7 +113,7 @@ Admin only; a member gets 404 for every page and action (spec 004 AC-5.6, FR-5; 
 | Delete another user | A confirmation page (it works without script): "This permanently deletes <name>'s account and all <n> copies in their collection. It can't be undone."; confirming removes the user, their account, their sessions and everything the account owns, and changes no other account (spec 004 AC-5.4, FR-5) |
 | Delete oneself | Refused with "You can't delete your own account."; the page offers no link for it (spec 004 AC-5.5) |
 
-Deleting a user destroys the account, which deletes its lots first and then its locations, because a lot's place blocks deleting the location (`Account` declares `lots` before `locations`; `spec/models/account_spec.rb`; spec 032 AC-6.6), and destroys its scanner sitting, number entry and stored import upload with their callbacks; the lines and the sitting's entries go by their parents' `delete_all`, and `bulk_selections`, `bulk_removals` and `bulk_selection_marks` by `ON DELETE CASCADE` (the other tables' foreign keys cascade too) (spec 004 FR-3, AC-5.4; spec 029 AC-4.6). Every table above has a foreign key to its account.
+Deleting a user destroys the account, which deletes its lots first and then its locations, because a lot's place blocks deleting the location (`Account` declares `lots` before `locations`; `spec/models/account_spec.rb`; spec 032 AC-6.6), and destroys its scanner sitting, number entry and stored import upload with their callbacks; the lines and the sitting's entries go by their parents' `delete_all`, and `bulk_selections`, `bulk_removals` and `bulk_selection_marks` by `ON DELETE CASCADE` (the foreign keys of every account-owned table but `lots` cascade too; `lots` has none, so `Account` deletes them itself) (spec 004 FR-3, AC-5.4; spec 029 AC-4.6). Every table above has a foreign key to its account.
 
 ### The operator command
 
@@ -131,7 +131,7 @@ Deleting a user destroys the account, which deletes its lots first and then its 
 | The session cookie | `session_id`: signed, permanent, HTTP-only, same-site lax, `secure` when `request.ssl?` | `app/controllers/concerns/authentication.rb` | The cookie can't be read by script or sent from another site's forms; secure on HTTPS | spec 004 NFR Security |
 | Generated password | `SecureRandom.base58(24)` | `lib/tasks/collector.rake` | The command's password when none is given or typed; at least 16 characters are required | spec 004 AC-5.7 |
 | `COLLECTOR_PASSWORD` | the command's password | `lib/tasks/collector.rake` | The documented variable the command reads first | spec 004 AC-5.7 |
-| `COLLECTOR_HTTPS` | `true` makes production assume and force SSL | `config/environments/production.rb` | Marks the session cookie secure behind a TLS-terminating proxy; the pass-through is [release and deploy](release-and-deploy.md)'s | spec 004 FR-2, NFR Security |
+| `COLLECTOR_HTTPS` | `true` makes production assume and force SSL | `config/environments/production.rb` | Marks the session cookie secure behind a TLS-terminating proxy; passed through by `compose.yaml` and `config/deploy.yml` | spec 004 FR-2, NFR Security |
 | `COLLECTOR_TRUSTED_PROXIES` | IPs or CIDRs, comma-separated, added to Rails' private ranges | `lib/collector/trusted_proxies.rb`, `config/application.rb` | Whose `X-Forwarded-For` counts as the client address for the rate limit | spec 004 AC-4.8, FR-2 |
 
 ## Decisions not in an ADR
