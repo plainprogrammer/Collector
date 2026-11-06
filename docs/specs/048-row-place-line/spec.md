@@ -7,6 +7,7 @@
 **Depends on:** [spec 033](../033-location-on-tiles-and-rows/spec.md) (the place on tiles and rows, issue #46; merged, PR #140), [spec 037](../037-filter-collection-by-location/spec.md) (the location filter), all merged
 **Branch:** `142-row-place-line`
 **Issue:** [#142](https://github.com/plainprogrammer/Collector/issues/142)
+**Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (whole spec); see the [specs index](../README.md)
 
 ---
 
