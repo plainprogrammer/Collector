@@ -44,7 +44,7 @@
         <ul class="c-list c-import__list" id="removed_lots">
           <% @import.removed_lots.each do |lot| %>
             <li>
-              <span><%= lot.name %> <span class="c-list__meta"><%= import_lot_line(**lot.described) %></span></span>
+              <span><%= lot.name %> <span class="c-list__meta"><%= import_lot_line(**lot.described, currency: Current.account.currency_unit) %></span></span>
               <span class="c-list__end">×<%= number_with_delimiter(lot.quantity) %></span>
             </li>
           <% end %>
@@ -68,7 +68,7 @@
           <% @import.listed_problem_rows.each do |row| %>
             <li>
               <span class="c-import__number">Row <%= number_with_delimiter(row.number) %></span>
-              <span><%= row.name %> <span class="c-list__meta"><%= import_lot_line(**row.described) %></span></span>
+              <span><%= row.name %> <span class="c-list__meta"><%= import_lot_line(**row.described, currency: Collector::Currency.fetch!(@import.currency)) %></span></span>
               <div class="c-import__reasons">
                 <% row.problems.each do |problem| %>
                   <p><%= problem.reason %></p>

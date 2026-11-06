@@ -210,6 +210,14 @@ RSpec.describe "Locations", type: :request do
         expect(html.css("button, input[type=submit]").map { |control| control.text + control["value"].to_s }.grep(/Remove/)).to be_empty
       end
 
+      it "writes each held lot's price in the account's currency (spec 038 AC-1.4)", :aggregate_failures do
+        account.update!(currency: "EUR")
+        create(:lot, account:, entry:, location: blue, price_paid_cents: 1250)
+        get new_location_removal_path(blue)
+        expect(html.at_css("#held_lots li .c-list__meta").text).to end_with("€12.50")
+        expect(html.at_css("#held_lots").text).not_to include("$")
+      end
+
       it "lists 100 lots in order and says how many more (AC-5.3)", :aggregate_failures do
         250.times { |n| create(:lot, account:, entry:, location: blue, price_paid_cents: n + 1) }
         get new_location_removal_path(blue)

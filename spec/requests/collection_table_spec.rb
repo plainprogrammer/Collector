@@ -29,6 +29,16 @@ RSpec.describe "Collection table", type: :request do
     expect(rows[1].at_css(".c-table__sub").text).to eq("#{bolt_set} · Foil · NM · EN")
   end
 
+  it "writes the price paid in the account's currency, and the grid shows none (spec 038 AC-1.4)", :aggregate_failures do
+    user.account.update!(currency: "EUR")
+    own("Lightning Bolt", price_paid_cents: 1250)
+    get collection_path(view: "table")
+    expect(cells(rows.sole)).to include("€12.50")
+    expect(page_html.at_css("table.c-table").text).not_to include("$")
+    get collection_path(view: "grid")
+    expect(page_html.at_css("main").text).not_to include("€", "$")
+  end
+
   it "keeps the grid's page head, Add items and count", :aggregate_failures do
     own("Lightning Bolt", quantity: 3)
     own("Opt", quantity: 2)
