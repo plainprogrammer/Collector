@@ -26,7 +26,7 @@ Ruby 4.0.7, Rails 8.1.4, SQLite in every environment (including production), Hot
 - Upgrade smoke: `bin/upgrade-smoke <previous|auto> <current>` (spec 031): boots the previous release's published image, seeds it, starts a build on the same volume and compares the databases and what the app serves; CI runs it in the image job, before the push, on both architectures; it needs a container engine and a Ruby with the bundle, so it is not a `bin/ci` step. `ruby script/upgrade/guard.rb` is a `bin/ci` step.
 - DB: `bin/rails db:prepare` (also what containers run on boot via `bin/docker-entrypoint`)
 - Catalog: `bin/rails "catalog:refresh[mtg]"` (queues a background refresh), `bin/rails "catalog:status[mtg]"` (10 most recent runs); extra languages via `COLLECTOR_MTG_LANGUAGES`
-- Containers locally: `podman compose up -d` (no Docker on the dev machine; `compose.yaml` needs `SECRET_KEY_BASE`, optional `COLLECTOR_PORT`)
+- Containers locally: `docker compose up -d` (the dev machine runs Docker, not Podman; `compose.yaml` needs `SECRET_KEY_BASE`, optional `COLLECTOR_PORT`)
 
 ## Non-obvious Facts
 
