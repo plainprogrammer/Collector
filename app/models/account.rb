@@ -11,5 +11,12 @@ class Account < ApplicationRecord
   has_many :bulk_selections, dependent: nil # the foreign keys cascade; here for the apply to name them
   has_many :bulk_removals, dependent: nil
 
+  # The currency every price of the account is shown in; a new account starts at the instance default (spec 038 decision 1–2).
+  attribute :currency, :string, default: -> { Rails.configuration.x.default_currency.code }
+  validates :currency, inclusion: { in: Collector::Currency::SYMBOLS.keys, message: "Choose one of the listed currencies." }
+
   def copies_count = lots.sum(:quantity)
+
+  # What a price of this account is shown with: the code and the symbol (spec 038 decision 1).
+  def currency_unit = Collector::Currency.fetch!(currency)
 end

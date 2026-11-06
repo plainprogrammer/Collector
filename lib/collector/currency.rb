@@ -1,6 +1,6 @@
 module Collector
-  # Currencies price paid can be shown in (spec 004 FR-6). Amounts are stored in minor units and
-  # always shown with two decimals.
+  # Currencies price paid can be shown in (spec 004 FR-6): an account's own (accounts.currency) and the default a new
+  # account starts with (spec 038). Amounts are stored in minor units and always shown with two decimals.
   module Currency
     Unit = Data.define(:code, :symbol)
 
