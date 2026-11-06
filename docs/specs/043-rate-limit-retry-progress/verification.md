@@ -35,7 +35,7 @@ Run evidence is taken from the commit bodies of each task.
 
 ## Final `bin/ci`
 
-Pending: the supervisor's run at the last commit.
+Passed at `d27273d` on 2026-11-06 (4m52s): setup, the released-migrations guard, RuboCop, Brakeman, bundler-audit, importmap audit, and RSpec with 2641 examples, 0 failures, 1 pending (seed 56322).
 
 ## Deviations from the plan
 
@@ -48,7 +48,7 @@ SPEC-ALIGNED (sdd-review Mode B, Opus, read-only, 2026-11-06, at `d62dcb2`).
 
 No blocking or major findings. Six minor:
 
-1. `verification.md` unfinished (AC-5.x results, final `bin/ci`, this heading): fixed in `9581c71` and here; `bin/ci` is recorded above once run.
+1. `verification.md` unfinished (AC-5.x results, final `bin/ci`, this heading): fixed in `9581c71` and here; `bin/ci` is recorded above.
 2. Refresh progress set only after every retired slice: rejected. A rate limit can't follow `retire_unseen`, which asks the source nothing, so the answer never reaches the count; the change would be untested code.
 3. The area doc's "a batch of `BATCH` fingerprints": fixed to "up to `BATCH` at a time" (`9581c71`).
 4. The area doc's Sources line for spec 043: now cites the Problem Statement and Stories 1 to 4 (`9581c71`).
