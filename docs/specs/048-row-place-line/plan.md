@@ -8,7 +8,8 @@
 
 - Tokens and `c-*` classes only; the rules go in `app/assets/stylesheets/collector/additions.css`, with a comment citing spec 048 (FR-1, AC-3.1).
 - No controller, model, query, export or migration change; the one markup change is a `span.c-table__place-name` inside the named Location cell of `app/views/collections/_lot_cells.html.erb` (FR-1). The muted "No location" cell and a tile's rules (`.c-tile__place*`) are not touched (FR-1, FR-2).
-- The name's span is at most 20rem wide; a name with no space breaks inside itself (`overflow-wrap: anywhere`); the table is no wider than `.c-collection` and the page never scrolls sideways because of a place name at frames of 800–1280px, and at 760px only the page's own scroll is asked of it (AC-1.3, AC-1.4).
+- The cell's rule is `white-space: normal` on the named cell only (`.c-table td.c-table__place:not(.is-muted)`, as spec FR-1 and decision 5 say); the span inside it caps the name at 20rem and breaks it;
+- The name's span is at most 20rem wide; a name with no space breaks inside itself (`overflow-wrap: anywhere`); the table is no wider than `.c-collection`'s `clientWidth` and the page never scrolls sideways because of a place name at frames of 800–1280px, and at 760px only the page's own scroll is asked of it (AC-1.3, AC-1.4).
 - Widths are measured in headless Firefox with `open_in_narrow_frame` (`spec/support/narrow_frame.rb`), never asserted from the CSS (FR-4).
 - Core code names no collectible type or source (`mtg`, `scryfall`, `magic`) (FR-3).
 - Spec types are tagged explicitly (`type: :request`, `type: :system`, `type: :model`, `type: :config`); multi-expectation examples use `:aggregate_failures` (CLAUDE.md, Specs).
@@ -29,7 +30,7 @@ A table row shows its whole place name wrapped, on a phone and in the wide table
 **Files:** `spec/system/collection_row_place_spec.rb` (new), `spec/requests/collection_places_spec.rb`, `app/views/collections/_lot_cells.html.erb`, `app/assets/stylesheets/collector/additions.css`, `docs/design-system/components/CollectionTable.md`, `docs/design-system/README.md`
 **Interfaces:** Consumes: `open_in_narrow_frame(path, width:, ready:, height: 800)` returning `[innerWidth, fits]`, `within_narrow_frame`, `system_sign_in_as`, `owned_printing(name, account:, number:, quantity:, finish:, condition:, location:, ...)` (`spec/support/narrow_frame.rb`, `spec/support/collection_helpers.rb`). Produces: the markup `<td class="is-opt c-table__place"><span class="c-table__place-name">NAME</span></td>` for a placed lot, and the CSS class `.c-table__place-name`; later phases don't depend on them.
 
-Tasks 1–3 go to one implementer, each its own commit. Task 1 writes the examples that fail on today's CSS; Task 2 makes them pass.
+Tasks 1–3 go to one implementer, each its own commit, finished and committed before Phase 2 starts. Task 1 writes the examples that fail on today's CSS; Task 2 makes them pass.
 
 ### Task 1: The examples, red
 
@@ -53,17 +54,20 @@ RSpec.describe "A table row's place line", type: :system do
     owned_printing("Lightning Bolt", account: user.account, number: "146", location: create(:location, account: user.account, name:))
   end
 
-  # [the table's width, its container's width, the name's span width in rem], measured inside the narrow frame.
+  # Measured inside the narrow frame: the table's width, its container's clientWidth, the name span's width in rem,
+  # whether the name's text stays inside the span (it doesn't when it can't break), and the span's height in px.
   def measures
-    page.evaluate_script(<<~JS)
+    page.evaluate_script(<<~JS).symbolize_keys
       (() => {
         const view = document.getElementById("narrow").contentWindow
         const doc = view.document
         const span = doc.querySelector(".c-table__place-name")
         const root = parseFloat(view.getComputedStyle(doc.documentElement).fontSize)
-        return [ doc.querySelector("table.c-table").getBoundingClientRect().width,
-                 doc.querySelector(".c-collection").getBoundingClientRect().width,
-                 span && span.getBoundingClientRect().width / root ]
+        return { table: doc.querySelector("table.c-table").getBoundingClientRect().width,
+                 container: doc.querySelector(".c-collection").clientWidth,
+                 rem: span && span.getBoundingClientRect().width / root,
+                 inside: span && span.scrollWidth <= span.clientWidth + 1,
+                 height: span && span.getBoundingClientRect().height }
       })()
     JS
   end
@@ -76,7 +80,7 @@ RSpec.describe "A table row's place line", type: :system do
           visit table_path
           expect(open_in_narrow_frame(table_path, width:, ready: "tbody tr")).to eq([ width, true ])
           within_narrow_frame do
-            expect(page).to have_css(".c-table__sub", text: name, visible: :visible)
+            expect(find(".c-table__sub", visible: :visible).text).to end_with(" · #{name}")
           end
         end
       end
@@ -90,10 +94,13 @@ RSpec.describe "A table row's place line", type: :system do
           own_in(name)
           visit table_path
           expect(open_in_narrow_frame(table_path, width:, ready: "td.c-table__place")).to eq([ width, true ])
-          table, container, rem = measures
-          within_narrow_frame { expect(find(".c-table__place-name", visible: :visible).text.squish).to eq(name) }
-          expect(table).to be <= container + 1
-          expect(rem).to be <= 20.01
+          within_narrow_frame do
+            seen = measures
+            expect(find(".c-table__place-name", visible: :visible).text.squish).to eq(name)
+            expect(seen[:rem]).not_to be_nil
+            expect([ seen[:table] <= seen[:container] + 1, seen[:rem] <= 20.01, seen[:inside] ]).to eq([ true, true, true ])
+            expect(seen[:height]).to be > 18 if name.include?(" ") && width == 800
+          end
         end
       end
     end
@@ -116,7 +123,7 @@ RSpec.describe "A table row's place line", type: :system do
         within_narrow_frame do
           expect(page).to have_no_css("th", text: "Location", visible: :all)
           line = find(".c-table__sub", visible: :visible)
-          expect(line.text).to include("· 146 · Foil · NM · EN")
+          expect(line.text).to end_with("· 146 · Foil · NM · EN")
           expect(line.evaluate_script("this.getBoundingClientRect().height")).to be < 20
         end
       end
@@ -137,7 +144,7 @@ end
     end
 ```
 
-- [ ] Run: `bin/rspec spec/system/collection_row_place_spec.rb spec/requests/collection_places_spec.rb` — expect FAIL: the no-space phone examples, every wide example, the 760px no-space example and the new request example; the spaced phone examples and the no-location examples PASS already (they guard against regressions).
+- [ ] Run: `bin/rspec spec/system/collection_row_place_spec.rb spec/requests/collection_places_spec.rb` — expect FAIL: the no-space phone examples (a real overflow, about 440px), the wide examples (the span doesn't exist yet, so they fail at the span's text or at `expect(seen[:rem]).not_to be_nil`, a missing-markup red; the layout assertions are proved by Task 2's mutation checks), both 760px examples (probe 1: 950px and 1313px tables) and the new request example (no span yet). The spaced phone examples and the no-location examples PASS already; they are regression guards and Task 2 proves they can fail.
 - [ ] Commit: `test(collection): a row's place wraps and never scrolls the page sideways (spec 048)`
 
 ### Task 2: The rules
@@ -158,30 +165,30 @@ end
    place wraps: the phone line below 640px, the Location cell at any width. Firefox ignores max-width on a table cell, so the
    cap is on the span inside it. overflow-wrap:anywhere breaks a name with no space, which has no other break point
    (spec 048 decisions 1–3). The unplaced cell, "No location", keeps one line. */
-.c-table__place-name { display:block; max-width:20rem; white-space:normal; overflow-wrap:anywhere; }
+.c-table td.c-table__place:not(.is-muted) { white-space:normal; }
+.c-table__place-name { display:block; max-width:20rem; overflow-wrap:anywhere; }
 @container collection (max-width: 639px) {
   .c-table__sub { white-space:normal; overflow-wrap:anywhere; }
 }
 ```
 
-  (Spec 048 FR-1 names `white-space: normal` on the cell; it is on the span so the "No location" cell stays one line. FR-1 lets the plan adjust the rule, not the criterion; record this in `verification.md`.)
-
-- [ ] Run: `bin/rspec spec/system/collection_row_place_spec.rb spec/system/collection_table_spec.rb spec/requests/collection_places_spec.rb spec/requests/collection_views_spec.rb` — expect PASS. If a wide example still fails, move `white-space:normal` to a `.c-table td.c-table__place:not(.is-muted)` rule (the probe's td-level rules passed at every frame) and re-run; if a frame shows the span wider than 20rem, check `display:block` took effect in the cell.
+- [ ] Run: `bin/rspec spec/system/collection_row_place_spec.rb spec/system/collection_table_spec.rb spec/requests/collection_places_spec.rb spec/requests/collection_views_spec.rb` — expect PASS. If a wide example still fails, don't guess a rule: print the span, cell and table widths per frame from `measures`, then stop and report them to the supervisor.
 - [ ] Run: `bin/rubocop` on the changed Ruby and `bin/rspec spec/requests/collections_spec.rb spec/requests/bulk_condition_spec.rb` — expect PASS (the cell's text is unchanged).
 - [ ] Commit: `feat(collection): a row's place wraps and breaks inside a name with no space (spec 048)`
+- [ ] Mutation checks, after the commit above so the rules are committed and `git checkout --` restores them: each is a temporary edit to `app/assets/stylesheets/collector/additions.css`, run the named examples, expect FAIL, then `git checkout -- app/assets/stylesheets/collector/additions.css`. (a) Delete `overflow-wrap:anywhere` from `.c-table__place-name`: every wide "with no space" example fails on `inside`. (b) Delete `white-space:normal` from the `@container` `.c-table__sub` rule: the spaced phone examples fail on `end_with` or the page scroll. (c) Add `.c-table__sub { width:4ch }` to the same container rule: the AC-1.7 examples fail on the line's height. (d) Delete the `.c-table td.c-table__place:not(.is-muted)` rule: the 800px spaced example fails on `table <= container` or on the span's height. Run `git status --short` afterwards: nothing may be modified.
 
 ### Task 3: The design system's words (AC-3.1)
 
 - [ ] In `docs/design-system/components/CollectionTable.md` replace the bullet that starts `- Location in the app (spec 033):` with:
 
 ```markdown
-- Location in the app (spec 033, spec 048): a plain `is-opt` "Location" column (`c-table__place`) after Qty and before Paid, with the lot's location name in a `c-table__place-name` span, or "No location" (`is-muted`); on phones the column is hidden and the place ends the `c-table__sub` line under the name (nothing is added for an unplaced lot). A row's place wraps, where a tile's is cut with an ellipsis: the line under the name wraps below 640px so a 60-character name fits 360px, and the span wraps the name at a width of at most 20rem (the cap is on the span because Firefox ignores `max-width` on a table cell), so a long name makes a taller row and never a sideways scroll; both break a name with no space inside it (`overflow-wrap: anywhere`). The column and the place on the line are left out while the account has no location; the line's wrap rule applies to every narrow collection table. The column isn't sortable.
+- Location in the app (spec 033, spec 048): a plain `is-opt` "Location" column (`c-table__place`) after Qty and before Paid, with the lot's location name in a `c-table__place-name` span, or "No location" (`is-muted`); on phones the column is hidden and the place ends the `c-table__sub` line under the name (nothing is added for an unplaced lot). A row's place wraps, where a tile's is cut with an ellipsis: the line under the name wraps below 640px so a 60-character name fits 360px, and the named cell wraps (`white-space: normal`, overriding the table's `nowrap`) with the name capped at 20rem by the span (the cap is on the span because Firefox ignores `max-width` on a table cell), so a long name makes a taller row and never a sideways scroll; both break a name with no space inside it (`overflow-wrap: anywhere`). The column and the place on the line are left out while the account has no location; the line's wrap rule applies to every narrow collection table. The column isn't sortable.
 ```
 
 - [ ] In `docs/design-system/README.md` add a line after the spec 033 "App additions" line:
 
 ```markdown
-App additions (spec 048, in `collector/additions.css`): `c-table__place-name` (the Location cell's name, wrapped at 20rem; `c-table__place` stays the cell's hook with no rule of its own) and `overflow-wrap` on the phone `c-table__sub`, documented in `CollectionTable`. They override the export's `.c-table td { white-space:nowrap }` for the name only. Upstream them into the published design system before the next export replaces this folder.
+App additions (spec 048, in `collector/additions.css`): `c-table__place-name` (the Location cell's name, capped at 20rem and broken inside a word when it must), the wrapping of the named `c-table__place` cell and `overflow-wrap` on the phone `c-table__sub`, documented in `CollectionTable`. The cell's rule overrides the export's `.c-table td { white-space:nowrap }`. Upstream them into the published design system before the next export replaces this folder.
 ```
 
 - [ ] Verify by reading that both files say what the spec's AC-3.1 asks. (No RSpec: prose documents aren't checked from RSpec.)
@@ -192,10 +199,10 @@ App additions (spec 048, in `collector/additions.css`): `c-table__place-name` (t
 ## Phase 2: Spec 033's test gaps (Story 2)
 
 **Implements:** FR-3 | **Satisfies:** AC-2.1–AC-2.6
-**Files:** `spec/requests/collection_places_spec.rb`, `spec/models/collection_grid_spec.rb`, `spec/system/collection_row_place_spec.rb`, `spec/collection_places_core_spec.rb` (new)
+**Files:** `spec/requests/collection_places_spec.rb`, `spec/models/collection_grid_spec.rb`, `spec/system/collection_row_place_spec.rb`, `spec/collection_places_core_spec.rb` (new), `.rubocop.yml`
 **Interfaces:** Consumes: the helpers in `spec/requests/collection_places_spec.rb` (`own`, `page_html`, `place_lines`, `cells`, `blue`, `box`) and `spec/models/collection_grid_spec.rb` (`account`, `put`, `place_of`, `blue`, `box`); Phase 1's span. Produces: examples and one guard; no app code changes. Each example describes behaviour that already holds, so it passes on first run; after writing each, the implementer proves it can fail with the stated mutation, then reverts the mutation with `git checkout -- <file>` before committing.
 
-Tasks 4–6 go to one implementer, Tasks 7–8 to another, each its own commit; no two spec runs at once in the worktree.
+Tasks 4–8 go to one implementer, in order, each its own commit staging named paths only: the mutation checks edit files other tasks' examples depend on, so no two implementers run in this worktree at once, and the examples that mutate a file are run before the next task starts.
 
 ### Task 4: AC-2.1, a name filter keeps a tile's places
 
@@ -216,11 +223,12 @@ Tasks 4–6 go to one implementer, Tasks 7–8 to another, each its own commit; 
 
 ```ruby
     it "shows only the matching lots' rows under a name filter, each with its place", :aggregate_failures do # spec 048 AC-2.1
-      own(location: blue)
+      bolt = own(location: blue, quantity: 3).entry
+      create(:lot, account: user.account, entry: bolt, location: box, finish: "foil")
       own("Opt", location: box)
       get collection_path(view: "table", q: "bolt")
-      expect(page_html.css("tbody tr").size).to eq(1)
-      expect(cells).to eq([ "Blue binder" ])
+      expect(page_html.css("tbody tr").size).to eq(2)
+      expect(cells).to contain_exactly("Blue binder", "Long box")
     end
 ```
 
@@ -239,31 +247,35 @@ Tasks 4–6 go to one implementer, Tasks 7–8 to another, each its own commit; 
     end
 ```
 
-- [ ] In `spec/requests/collection_places_spec.rb`, inside `describe "the grid"`, add:
+- [ ] In `spec/requests/collection_places_spec.rb`, next to `def cells`, add the helper, and inside `describe "the grid"` add the example:
 
 ```ruby
+  # What a tile shows besides its place line (spec 004 AC-11.2, AC-11.3), and the page's counts.
+  def tile_facts
+    tiles = page_html.css(".c-tile").map do |tile|
+      [ tile["href"], tile.at_css(".c-tile__qty").text, tile.css(".c-tile__flags").map { it.text.squish }, tile.css(".c-tile__meta .c-tag").map { it.text.squish } ]
+    end
+    [ tiles, page_html.at_css(".c-filterbar__count").text.squish, page_html.at_css(".c-pagehead__stats").text.squish ]
+  end
+
     it "changes nothing about a tile but its place line when the lots are placed", :aggregate_failures do # spec 033 AC-1.7, spec 048 AC-2.6
       foil = own(quantity: 3, finish: "foil")
       create(:lot, account: user.account, entry: foil.entry)
       own("Opt")
       blue
-      facts = lambda do
-        [ page_html.css(".c-tile").map { |tile| [ tile["href"], tile.at_css(".c-tile__qty").text, tile.css(".c-tile__flags").map { it.text.squish }, tile.css(".c-tile__meta .c-tag").map { it.text.squish } ] },
-          page_html.at_css(".c-filterbar__count").text.squish ]
-      end
 
       get collection_path
-      unplaced = facts.call
+      unplaced = tile_facts
       expect(place_lines).to eq([ "No location", "No location" ])
 
       foil.update!(location: blue)
       get collection_path
-      expect(facts.call).to eq(unplaced)
+      expect(tile_facts).to eq(unplaced)
       expect(place_lines).to eq([ "Blue binder +1 more", "No location" ])
     end
 ```
 
-- [ ] Run: `bin/rspec spec/models/collection_grid_spec.rb spec/requests/collection_places_spec.rb` — expect PASS. Mutation check for AC-2.5: in `places_of`'s `sort_by`, temporarily replace `key.to_s` with `name.to_s`; re-run the grid model spec — expect the new example FAIL; `git checkout -- app/models/collection_grid.rb`. If the AC-2.6 example fails, the failure is a bug of spec 033: stop and report it, don't adjust the example.
+- [ ] Run: `bin/rspec spec/models/collection_grid_spec.rb spec/requests/collection_places_spec.rb` — expect PASS. Mutation check for AC-2.5: in `places_of`'s `sort_by`, temporarily replace `key.to_s` with `name.to_s`; re-run the grid model spec — expect the new example FAIL; `git checkout -- app/models/collection_grid.rb`. Mutation check for AC-2.6: in `app/views/collections/_tile.html.erb` temporarily render the quantity as `<%= tile.place&.name ? tile.quantity - 1 : tile.quantity %>`; re-run — expect the new example FAIL; `git checkout -- app/views/collections/_tile.html.erb`. If the AC-2.6 example fails on unmutated code, the failure is a bug of spec 033: stop and report it, don't adjust the example.
 - [ ] Commit: `test(collection): a tie orders by comparison key, and placing lots changes only the place line (spec 048 AC-2.5, AC-2.6)`
 
 ### Task 6: AC-2.3, bulk Set condition and Undo on the rendered rows
@@ -291,14 +303,15 @@ Tasks 4–6 go to one implementer, Tasks 7–8 to another, each its own commit; 
     it "keeps each lot's place when a bulk Remove is undone from the bulk table's message", :aggregate_failures do
       placed = own(location: blue)
       loose = own("Opt")
+      own("Shock") # not selected, so the bulk table the message appears on still has a row
       select_lots(placed, loose, go: "remove")
       post collection_bulk_removals_path
       follow_redirect!
-      undo = page_html.at_css(".c-status form.c-status__action")["action"]
-      post undo, params: { return_to: collection_path(bulk: 1) }
+      undo = page_html.at_css(".c-status form.c-status__action")
+      post undo["action"], params: { return_to: undo.at_css("input[name=return_to]")["value"] }
       follow_redirect!
-      expect(Lot.where(account: user.account).count).to eq(2)
-      expect(cells).to eq([ "Blue binder", "No location" ])
+      expect(user.account.lots.count).to eq(3)
+      expect(cells).to eq([ "Blue binder", "No location", "No location" ])
     end
   end
 ```
@@ -315,7 +328,7 @@ Tasks 4–6 go to one implementer, Tasks 7–8 to another, each its own commit; 
     it "names the whole place line in its link's accessible name, after the card's name", :aggregate_failures do # spec 033 AC-1.6, spec 048 AC-2.2
       entry = owned_printing("Lightning Bolt", account: user.account, quantity: 3, location: create(:location, account: user.account, name: "Blue binder")).entry
       create(:lot, account: user.account, entry:, finish: "foil", location: create(:location, account: user.account, name: "Long box"))
-      visit collection_path
+      visit collection_path(view: "grid")
       name = find("a.c-tile").native.accessible_name
       expect(name).to include("Lightning Bolt")
       expect(name).to end_with("Blue binder +1 more")
@@ -358,7 +371,8 @@ RSpec.describe "The place line's core code", type: :config do
 end
 ```
 
-- [ ] Run: `bin/rspec spec/collection_places_core_spec.rb` — expect PASS. Mutation check: temporarily add `<%# MTG %>` to `app/views/collections/_tile.html.erb`; re-run — expect the second example FAIL; `git checkout -- app/views/collections/_tile.html.erb`.
+- [ ] In `.rubocop.yml`, add `- "spec/collection_places_core_spec.rb"` to the `RSpec/DescribeClass` `Exclude` list (alphabetically, after `spec/collection_import_core_spec.rb`) and extend the comment above the list: "the collection places core spec those of the place line's files (spec 048 AC-2.4)". The file's string `describe` with `type: :config` is the pattern of `spec/import_apply_core_spec.rb` and `spec/number_entry_core_spec.rb`, which are excluded for it.
+- [ ] Run: `bin/rubocop spec/collection_places_core_spec.rb .rubocop.yml` — expect no offenses; `bin/rspec spec/collection_places_core_spec.rb` — expect PASS. Mutation check: temporarily add `<%# MTG %>` to `app/views/collections/_tile.html.erb`; re-run — expect the second example FAIL; `git checkout -- app/views/collections/_tile.html.erb`.
 - [ ] Commit: `test(collection): guard the place line's core files against naming a collectible (spec 048 AC-2.4)`
 
 ---
@@ -382,8 +396,8 @@ Done by the supervisor, not an implementer.
 
 Done through `distill-feature`, after the implementation review:
 
-- [ ] `docs/architecture/collection-and-lots.md`: the place line bullet states that a tile's line is one line with an ellipsis and a row's wraps (the phone line, and the Location cell in a 20rem span), breaking a name with no space (spec 048 decisions 1–3; maintainer, 2026-10-27 and 2026-11-06); the core-code invariant names `spec/collection_places_core_spec.rb` and no longer says no guard lists spec 033's files; the #142 accepted-limit entry is dropped and #208 (the table's 16px overflow near the breakpoint) is added; Decisions not in an ADR gets "a row's place line wraps, a tile's is cut"; Sources lists spec 033 as "all" and adds spec 048 (with #142, #208); the distillation log gets a row.
-- [ ] `docs/specs/README.md`: spec 048's row becomes Shipped/Frozen as `distill-feature` rules; spec 033's status stops being "frozen in part for decision 5" (Frozen, by collection and lots).
+- [ ] `docs/architecture/collection-and-lots.md`: the place line bullet states that a tile's line is one line with an ellipsis and a row's wraps (the phone line, and the Location cell in a 20rem span), breaking a name with no space (spec 048 decisions 1–3; maintainer, 2026-10-27 and 2026-11-06); the core-code invariant names `spec/collection_places_core_spec.rb` and no longer says no guard lists spec 033's files; the #142 accepted-limit entry is dropped, #208 (the table's 16px overflow near the breakpoint) is added to the accepted limits, and in Sources' "Issues" line #142 moves out of the open issues and #208 joins them; Decisions not in an ADR gets "a row's place line wraps, a tile's is cut"; Sources lists spec 033 as "all" and adds spec 048 (with #142, #208); the distillation log gets a row.
+- [ ] `docs/specs/README.md`: spec 048's row: its Plan cell (now "not yet written") says retired once the plan is retired, and its status becomes Shipped/Frozen as `distill-feature` rules; spec 033's status stops being "frozen in part for decision 5" (Frozen, by collection and lots).
 - [ ] `docs/specs/033-location-on-tiles-and-rows/spec.md`: only the frozen line (line 10), in a commit of its own that names spec 027 D4: `docs(specs): mark spec 033 frozen, its decision 5 for rows superseded by spec 048 (spec 027 D4)`.
 - [ ] Commit the area doc and the index: `docs(architecture): distil spec 048 into collection and lots (#142)`
 
