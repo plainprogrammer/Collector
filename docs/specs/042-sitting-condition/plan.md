@@ -92,6 +92,15 @@ RSpec.describe AddConditionToScannerSittings, :backup, :committed, type: :model 
 
   def entry_rows = connection.select_rows("SELECT id, scanner_sitting_id, account_id, catalog_entry_id, lot_id, finish, reading_key, undone_at FROM scanner_sitting_entries ORDER BY id")
 
+  # The table copy of a rollback must keep the foreign keys (accounts cascade, locations nullify) and the unique account index.
+  def expect_table_intact
+    keys = connection.foreign_keys(:scanner_sittings)
+    expect(keys.find { |key| key.to_table == "locations" }).to have_attributes(on_delete: :nullify)
+    expect(keys.find { |key| key.to_table == "accounts" }).to have_attributes(on_delete: :cascade)
+    expect(connection.index_exists?(:scanner_sittings, :account_id, unique: true)).to be(true)
+    expect(connection.index_exists?(:scanner_sittings, :location_id)).to be(true)
+  end
+
   def fill
     lot = owned_printing("Opt", account:, quantity: 2, finish: "foil")
     Scanner::Sitting.add!(account:, printing: lot.entry, finish: "foil", reading_key: SecureRandom.hex(16))
@@ -112,10 +121,12 @@ RSpec.describe AddConditionToScannerSittings, :backup, :committed, type: :model 
     down
     expect(connection.column_exists?(:scanner_sittings, :condition)).to be(false)
     expect([ sitting_rows, entry_rows ]).to eq(before)
+    expect_table_intact
 
     up
     expect(connection.column_exists?(:scanner_sittings, :condition)).to be(true)
     expect([ sitting_rows, entry_rows ]).to eq(before)
+    expect_table_intact
     expect(connection.select_values("SELECT condition FROM scanner_sittings")).to all(be_nil)
   end
 
@@ -127,6 +138,7 @@ RSpec.describe AddConditionToScannerSittings, :backup, :committed, type: :model 
     down
     expect(connection.column_exists?(:scanner_sittings, :condition)).to be(false)
     expect([ sitting_rows, entry_rows ]).to eq(before)
+    expect_table_intact
   end
 
   it "runs twice without harm, the guard skipping a column that is already there" do
@@ -538,7 +550,7 @@ def account_locations = @account_locations ||= Current.account.locations.ordered
 ## Task 6: The panel: one control for every collector (AC-1.1, AC-1.2 (panel), AC-1.7, AC-2.3, AC-3.1 to AC-3.3, AC-5.2, AC-7.1, decision 3)
 
 **Commit:** `feat(scanner): the sitting's control and its condition on the panel`
-**Files:** `app/views/scanners/_picker.html.erb`, `_sitting.html.erb`, `_sitting_entry.html.erb`, `_summary.html.erb`, `spec/requests/scanner/sittings_spec.rb`, `spec/requests/scanner/sitting_entries_spec.rb`, `spec/requests/scanner/measurements_spec.rb`.
+**Files:** `app/views/scanners/_picker.html.erb`, `_sitting.html.erb`, `_sitting_entry.html.erb`, `_summary.html.erb`, `spec/system/scanner_sitting_spec.rb` (relabel and the `set_sitting` helper), `spec/requests/scanner/sittings_spec.rb`, `spec/requests/scanner/sitting_entries_spec.rb`, `spec/requests/scanner/measurements_spec.rb`.
 **Covers:** AC-1.1, AC-1.2 (the panel's copy), AC-1.7, AC-2.3, AC-3.1, AC-3.2 (header), AC-3.3, AC-5.2, AC-7.1 (markup), NFR cost.
 
 1. **Existing expectations this task changes** (change them first, so they fail for the right reason, then green them with the views):
@@ -555,9 +567,20 @@ def account_locations = @account_locations ||= Current.account.locations.ordered
 | `shows no control with the summary for an account with no locations (AC-5.2)` | no `Put this sitting in` | the summary shows `select#sitting_condition` and no `select#sitting_location_id` |
 | `sitting_entries_spec` "adds unplaced and names no place once the place's location was removed" | `not_to include("Put this sitting in")` | `html.at_css("select#sitting_location_id")` is nil |
 | `measurements_spec` "drops a sitting … as the scanner does" | `#scanner_sitting` hidden | the sitting is gone and `#scanner_sitting` holds `select#sitting_condition` |
+| `sittings_spec` "choosing a place" `shows the control alone … (AC-1.1)` (line 152), its option list | `picker.css("option")` (would now also collect "Not specified" and the five conditions) | `picker.css("select#sitting_location_id option")`, expecting the same `[ "No location", "Blue binder", "Long box" ]` list; `chosen` there already reads `select#sitting_location_id option[selected]` |
 | each "Put this sitting in" in the `choosing a place` describe | label | `Location` |
 
-   The status strings ("This sitting's cards now go …") change in Task 7, not here.
+   **System spec edits that belong here** (`spec/system/scanner_sitting_spec.rb`, the examples this task's label change breaks): define the helper at the top level of the file, inside the outer `RSpec.describe` and before the `describe "a sitting's place (spec 040)"` block, so both that block and Task 9's sibling describe reach it:
+
+```ruby
+def set_sitting(condition: nil, location: nil)
+  select condition, from: "Condition" if condition
+  select location, from: "Location" if location
+  click_on "Set"
+end
+```
+
+   Remove the block-local `place_in` and have the 040 block's examples call `set_sitting(location: name)`; rename every `"Put this sitting in"` to `"Location"` (lines 48, 61, 88, 93, 101; the `ready: "#sitting_location_id"` selector at 114 is unchanged). The status string at line 66 changes in Task 7.
 
 2. **Red.** Add to `spec/requests/scanner/sittings_spec.rb`, a describe after "choosing a place (spec 040)":
 
@@ -664,6 +687,7 @@ describe "the control and the panel (spec 042)" do
     expect(html.css("#scanner_sitting > ul > li").first.text).to include("Changed in your collection")
   end
 
+  # Passes before the change (an entry with no condition reads as today): kept as a regression guard.
   it "shows the entry with no condition when the sitting had none (AC-1.5)" do
     add("a")
     get scanner_path
@@ -680,6 +704,7 @@ describe "the control and the panel (spec 042)" do
     expect(Scanner::Sitting.count).to eq(0)
   end
 
+  # Passes before the change too (the entry line reads the vocabulary, not a query): kept as a regression guard for NFR cost.
   it "adds no query per entry to the page (NFR cost)", :aggregate_failures do
     choose(condition: "near_mint")
     2.times { add(format("%x", it), card: create(:mtg_printing, entry: create(:catalog_entry, set: mom)).entry) }
@@ -757,16 +782,16 @@ end
 ```
 
    `copy = scanner_copy(entry.printing, entry.finish)` and the `aria-label`s stay as they are (decision 3: no condition in accessible names).
-4. `bin/rspec spec/requests/scanner/sittings_spec.rb spec/requests/scanner/sitting_entries_spec.rb spec/requests/scanner/measurements_spec.rb spec/requests/scanners_spec.rb spec/scanner_sitting_core_spec.rb`; `bin/rubocop` on the touched Ruby spec files. The "Set" button posts both fields to the old `update`, which ignores the condition until Task 7.
+4. `bin/rspec spec/requests/scanner/sittings_spec.rb spec/requests/scanner/sitting_entries_spec.rb spec/requests/scanner/measurements_spec.rb spec/requests/scanners_spec.rb spec/scanner_sitting_core_spec.rb`; `bin/rubocop` on the touched Ruby spec files. Also `bin/rspec spec/system/scanner_sitting_spec.rb` (the 040 examples, relabelled). **Between Tasks 6 and 7 the control is half wired:** for an account with locations "Set" posts both fields and the old `update` reads `location_id` (the place examples pass); for an account with no locations "Set" posts only `sitting[condition]` and the old `params.expect(sitting: :location_id)` answers 400. Nothing in Tasks 6's specs presses "Set" for such an account, so Task 6 is green, but do not stop between the two commits: land Task 7 next.
 5. Commit.
 
 ## Task 7: Setting the choices (AC-1.2, AC-1.8, AC-2.1, AC-2.4, AC-3.2, AC-4.1 to AC-4.3, AC-5.1, AC-5.2, decisions 3, 8, 9, FR-1)
 
 **Commit:** `feat(scanner): set a sitting's condition and place together`
-**Files:** `app/controllers/scanner/sittings_controller.rb`, `spec/requests/scanner/sittings_spec.rb`.
+**Files:** `app/controllers/scanner/sittings_controller.rb`, `spec/requests/scanner/sittings_spec.rb`, `spec/system/scanner_sitting_spec.rb` (the status string only).
 **Covers:** AC-1.2, AC-1.8, AC-2.1, AC-2.2, AC-2.4, AC-3.2, AC-4.1, AC-4.2, AC-4.3, AC-5.1, AC-5.2, FR-1, NFR Security.
 
-1. **Existing expectations this task changes** (the status line, decision 3): `"This sitting's cards now go into Blue binder."` becomes `"Cards you scan now: condition not specified, in Blue binder."` (the `opens a sitting in the place` example); `"This sitting's cards now go in no location."` becomes `"Cards you scan now: condition not specified, no location."` and `not_to include("This sitting:", "now go")` becomes `not_to include("This sitting:", "Cards you scan now")` (`clears the place of a sitting with a card, and deletes one with none`); `answers 400 to a request with no place` keeps `sitting: { other: "1" }` and `params: {}` but its body is the same; `sitting_location_id`-only requests (`place(value)`) stay valid because a key left out is kept. In `spec/system/scanner_sitting_spec.rb` the same strings change in Task 9.
+1. **Existing expectations this task changes** (the status line, decision 3): `"This sitting's cards now go into Blue binder."` becomes `"Cards you scan now: condition not specified, in Blue binder."` (the `opens a sitting in the place` example); `"This sitting's cards now go in no location."` becomes `"Cards you scan now: condition not specified, no location."` and `not_to include("This sitting:", "now go")` becomes `not_to include("This sitting:", "Cards you scan now")` (`clears the place of a sitting with a card, and deletes one with none`); `answers 400 to a request with no place` keeps `sitting: { other: "1" }` and `params: {}` but its body is the same; `sitting_location_id`-only requests (`place(value)`) stay valid because a key left out is kept. In `spec/system/scanner_sitting_spec.rb` the status string at line 66 changes here too: `"This sitting's cards now go into Blue binder."` becomes `"Cards you scan now: condition not specified, in Blue binder."`; run `bin/rspec spec/system/scanner_sitting_spec.rb` in this task's step 4.
 2. **Red.** Add to the `the control and the panel (spec 042)` describe, or a sibling `describe "setting the choices (spec 042)"`:
 
 ```ruby
@@ -774,6 +799,8 @@ describe "setting the choices (spec 042)" do
   def blue = @blue ||= create(:location, account:, name: "Blue binder")
   def set(**fields) = patch(scanner_sitting_path, params: { sitting: fields }, headers: stream)
   def chosen(field) = html.at_css("select#sitting_#{field} option[selected]").text
+  # The status line in the stream's update of "status" (`#status` itself is in the layout, not in a stream body).
+  def status_line = html.at_css("turbo-stream[target=status] .c-status__message").text.squish
   def status_cleared? = response.body.match?(%r{<turbo-stream action="update" target="status"><template>\s*</template></turbo-stream>})
 
   it "opens a sitting holding the condition, redrawing the panel, for an account with no locations (AC-1.2, AC-3.1)", :aggregate_failures do
@@ -785,7 +812,7 @@ describe "setting the choices (spec 042)" do
     expect(account.scanner_sitting).to have_attributes(condition: "near_mint", location: nil)
     expect(html.at_css("#scanner_sitting h2").text).to eq("This sitting: 0 cards, Near mint")
     expect(html.at_css("#scanner_sitting .c-empty").text).to eq("Cards you scan now: Near mint.")
-    expect(html.at_css("#status").text.squish).to eq("Cards you scan now: Near mint.")
+    expect(status_line).to eq("Cards you scan now: Near mint.")
     expect(chosen(:condition)).to eq("Near mint (NM)")
   end
 
@@ -797,11 +824,11 @@ describe "setting the choices (spec 042)" do
       { condition: "", location_id: blue.id } => "Cards you scan now: condition not specified, in Blue binder."
     }.each do |fields, line|
       set(**fields)
-      expect(html.at_css("#status").text.squish).to eq(line), fields.inspect
+      expect(status_line).to eq(line), fields.inspect
     end
     add("a")
     set(condition: "", location_id: "")
-    expect(html.at_css("#status").text.squish).to eq("Cards you scan now: condition not specified, no location.")
+    expect(status_line).to eq("Cards you scan now: condition not specified, no location.")
     expect(account.scanner_sitting.entries.count).to eq(1)
   end
 
@@ -809,7 +836,7 @@ describe "setting the choices (spec 042)" do
     add("a")
     set(condition: "near_mint")
     set(condition: "")
-    expect(html.at_css("#status").text.squish).to eq("Cards you scan now: condition not specified.")
+    expect(status_line).to eq("Cards you scan now: condition not specified.")
   end
 
   it "changes the condition of an open sitting, keeping its count, entries and place, and the cards already added stay put (AC-2.1, AC-2.4)", :aggregate_failures do
@@ -963,7 +990,7 @@ class Scanner::SittingsController < ApplicationController
 
   def update
     attributes = params.expect(sitting: %i[condition location_id])
-    raise ActionController::ParameterMissing, :sitting unless attributes.key?(:condition) || attributes.key?(:location_id) # a request with neither is a 400
+    raise ActionController::ParameterMissing, :sitting unless attributes.key?(:condition) || attributes.key?(:location_id) # belt and braces: params.expect already answers 400 for a missing or empty sitting; this also covers a hash with neither key
 
     choices = {}
     if attributes.key?(:condition)
@@ -999,7 +1026,7 @@ end
 ```
 
    `params.expect(sitting: %i[condition location_id])` raises `ParameterMissing` (a 400) when `sitting` is missing or empty; the explicit line also covers a `sitting` hash that holds neither permitted key (confirm by the 400 example). The `Current.account.scanner_sitting` reader is not loaded before `choose!`, so the redraw reads the stored state (the pattern spec 040 relied on).
-4. `bin/rspec spec/requests/scanner/sittings_spec.rb spec/requests/scanner/sitting_entries_spec.rb spec/models/scanner/sitting_spec.rb spec/scanner_sitting_core_spec.rb`; `bin/rubocop app/controllers/scanner/sittings_controller.rb spec/requests/scanner/sittings_spec.rb`; `bin/brakeman -q` (no new warning: `params.expect`, no mass assignment of an id).
+4. `bin/rspec spec/requests/scanner/sittings_spec.rb spec/requests/scanner/sitting_entries_spec.rb spec/models/scanner/sitting_spec.rb spec/scanner_sitting_core_spec.rb spec/system/scanner_sitting_spec.rb`; `bin/rubocop app/controllers/scanner/sittings_controller.rb spec/requests/scanner/sittings_spec.rb`; `bin/brakeman -q` (no new warning: `params.expect`, no mass assignment of an id).
 5. Commit.
 
 ## Task 8: The add's notice names the condition (AC-1.3 to AC-1.6, AC-4.4, AC-4.5, FR-2)
@@ -1123,17 +1150,7 @@ end
 **Files:** `spec/system/scanner_sitting_spec.rb`; `app/assets/stylesheets/collector/additions.css` only if a control overflows (Open item P1).
 **Covers:** AC-1.2 (camera and reading untouched), AC-1.7, AC-2.1, AC-5.2, AC-7.1.
 
-1. **Existing examples this task changes** (`spec/system/scanner_sitting_spec.rb`): every `"Put this sitting in"` becomes `"Location"` (lines 48, 61, 88, 93, 101, 114's `ready:` selector is unchanged); `"This sitting's cards now go into Blue binder."` becomes `"Cards you scan now: condition not specified, in Blue binder."`; the first example's `have_select("Location", selected: "No location")` stays. The helper becomes:
-
-```ruby
-def set_sitting(condition: nil, location: nil)
-  select condition, from: "Condition" if condition
-  select location, from: "Location" if location
-  click_on "Set"
-end
-```
-
-   and `place_in(name)` calls `set_sitting(location: name)`.
+1. The relabelling, the status string and the top-level `set_sitting` helper were made in Tasks 6 and 7, so no existing example is red here. The new examples below use `set_sitting`, which is defined at the file's top level.
 2. **Red then green** (headless Firefox, no `sleep`, Capybara waits). Add:
 
 ```ruby
