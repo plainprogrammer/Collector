@@ -1,6 +1,8 @@
 require "rails_helper"
 
 # Spec 028 FR-8: the apply and the stored upload name no collectible type or source. FR-6: the file isn't logged.
+# Issue #209: the names are matched anywhere in a word (scryfall_id, MTGPrinting), because `_` is a word character and
+# `\b` would let them through.
 RSpec.describe "Apply an import, core code", type: :config do
   let(:files) do
     %w[
@@ -18,7 +20,7 @@ RSpec.describe "Apply an import, core code", type: :config do
   end
 
   it "never names a collectible type or a source" do
-    named = files.select { |file| Rails.root.join(file).exist? && Rails.root.join(file).read.match?(/\b(mtg|scryfall)\b/i) }
+    named = files.select { |file| Rails.root.join(file).exist? && Rails.root.join(file).read.match?(/mtg|scryfall/i) }
 
     expect(named).to be_empty
   end
