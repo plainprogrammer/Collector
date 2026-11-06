@@ -161,6 +161,17 @@ RSpec.describe "Card page", type: :request do
     expect(response.body).to include("<dd>7</dd>", "2 printings", "7 in 2 lots", "NM", "$1.25", "Foil", "Edit copy", "Remove")
   end
 
+  it "writes the copies' prices in the account's currency (spec 038 AC-1.4)", :aggregate_failures do
+    user.account.update!(currency: "EUR")
+    create(:lot, account: user.account, entry:, price_paid_cents: 1250)
+
+    get catalog_entry_path(entry)
+
+    copies = Nokogiri::HTML5(response.body).at_css("#copies").text
+    expect(copies).to include("€12.50")
+    expect(copies).not_to include("$")
+  end
+
   describe "where the copies are (spec 032 Story 4)" do
     def account = user.account
     def blue = @blue ||= create(:location, account:, name: "Blue binder")

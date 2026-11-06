@@ -22,6 +22,16 @@ RSpec.describe User, type: :model do
     expect { create(:user) }.to change(Account, :count).by(1)
   end
 
+  it "starts its account at the instance default however it is created (spec 038 AC-3.1)", :aggregate_failures do
+    allow(Rails.configuration.x).to receive(:default_currency).and_return(Collector::Currency.fetch!("EUR"))
+    registration = Registration.new(name: "Ann", email_address: "ann@example.test", password: "a long enough secret", password_confirmation: "a long enough secret")
+    registration.save
+
+    expect(create(:user).account.currency).to eq("EUR")
+    expect(User::Command.call(email: "bo@example.test", password: "a long enough secret").first.account.currency).to eq("EUR")
+    expect(registration.user.reload.account.currency).to eq("EUR")
+  end
+
   it "uses the first letter of the name as the avatar initial" do
     expect(build(:user, name: "james").initial).to eq("J")
   end

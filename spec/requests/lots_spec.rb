@@ -43,6 +43,17 @@ RSpec.describe "Lots", type: :request do
       expect(response.body).not_to include("Etched")
     end
 
+    it "asks for the price in the account's currency, adding and editing (spec 038 AC-1.3)", :aggregate_failures do
+      user.account.update!(currency: "EUR")
+      lot = create(:lot, account: user.account, entry:)
+      [ new_catalog_entry_lot_path(entry), edit_lot_path(lot) ].each do |path|
+        get path
+        field = Nokogiri::HTML5(response.body).at_css("input[name='lot[price_paid]']")
+        expect(Nokogiri::HTML5(response.body).at_css("label[for='lot_price_paid']").text).to eq("Price paid per copy (EUR)")
+        expect(field.parent.at_css("span[aria-hidden]").text).to eq("€")
+      end
+    end
+
     it "doesn't offer a finish when the printing lists none" do
       get new_catalog_entry_lot_path(create(:mtg_printing, finishes: []).entry)
       expect(response.body).not_to include('name="lot[finish]"')

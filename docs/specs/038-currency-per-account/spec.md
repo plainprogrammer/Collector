@@ -7,6 +7,7 @@
 **Depends on:** [spec 004](../004-design-system-collection/spec.md) (accounts; FR-6, the instance currency), [spec 022](../022-export-collection/spec.md) (the export), [spec 025](../025-import-preview/spec.md) and [spec 028](../028-apply-import/spec.md) (the import), all merged
 **Branch:** `038-currency-per-account`
 **Issue:** [#64](https://github.com/plainprogrammer/Collector/issues/64) (roadmap, housekeeping lane; hosted-door rule 3)
+**Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (parts: each account's currency, its default, the Currency page, the upgrade that carried the instance currency) and [`data-portability.md`](../../architecture/data-portability.md) (parts: the account's currency in the export, the preview, the apply and the backup); see the [specs index](../README.md)
 
 ---
 

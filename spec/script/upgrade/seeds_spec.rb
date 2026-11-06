@@ -40,6 +40,11 @@ RSpec.describe "Upgrade seeds", :upgrade do
       expect(Upgrade::Compare.seed_problems(database)).to be_empty
     end
 
+    it "gives one account a currency other than the default (spec 038 AC-4.7)" do
+      run_seed("next.rb")
+      expect(Account.joins(:user).order("users.email_address").pluck(:currency)).to eq(%w[USD EUR])
+    end
+
     it "schedules a job with the marker argument a year ahead" do
       expect { run_seed("next.rb") }.to have_enqueued_job(Catalog::RefreshJob).with("mtg", "upgrade-marker")
     end

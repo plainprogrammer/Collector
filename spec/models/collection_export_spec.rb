@@ -41,8 +41,29 @@ RSpec.describe CollectionExport, type: :model do
     expect(file.except("lots", "locations")).to eq(
       "format" => "collector-export", "format_version" => 3, "exported_at" => "2026-10-14T12:34:56Z",
       "profile" => { "name" => "Grace Example", "email_address" => "grace@example.test", "collection_view" => "grid" },
-      "currency" => Rails.configuration.x.currency.code)
+      "currency" => "USD")
     expect(file).not_to have_key("generator")
+  end
+
+  it "writes the account's own currency, still at version 3 (spec 038 AC-5.1)", :aggregate_failures do
+    account.update!(currency: "EUR")
+    expect(parsed.values_at("currency", "format_version")).to eq([ "EUR", 3 ])
+    expect(ExportFormatRules.problems(export.to_json)).to eq([])
+  end
+
+  it "writes each account's own currency and collection (spec 038 AC-5.2)", :aggregate_failures do
+    other = create(:user).account
+    other.update!(currency: "GBP")
+    owned_printing("Opt", account: other)
+    theirs = JSON.parse(described_class.new(account: other, at:).to_json)
+
+    expect([ parsed["currency"], theirs["currency"] ]).to eq(%w[USD GBP])
+    expect([ parsed["lots"].size, theirs["lots"].size ]).to eq([ 0, 1 ])
+  end
+
+  it "keeps the format's versions as they were (spec 038 AC-5.3)", :aggregate_failures do
+    expect(ExportFormat::Rules::VERSIONS).to eq([ 1, 2, 3 ])
+    expect(described_class::FORMAT_VERSION).to eq(3)
   end
 
   it "writes an empty collection as an empty list of lots", :aggregate_failures do
