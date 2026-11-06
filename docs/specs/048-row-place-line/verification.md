@@ -10,7 +10,8 @@ Evidence for each criterion. Screenshots (`screenshots/`, factory data, placehol
 | AC-1.4 wide, 60 "W"s | same file, the "with no space" examples at the same frames; mutation (a) (no `overflow-wrap:anywhere`) fails five of them |
 | AC-1.5 escaped | `spec/requests/collection_places_spec.rb` "escapes a name on the row, in the cell's span and in the line under the name" |
 | AC-1.6 tile cut | spec 033's `spec/system/collection_table_spec.rb` "keeps a long place name to one line on a tile, and its +N more visible", unchanged and green; `.c-tile__place*` untouched (`git diff` of the rules) |
-| AC-1.7 no location | same system file, "for an account with no location … fits one line under the name at 360px / 390px"; mutation (c) (a 4ch line) fails it on the line's height |
+| AC-1.7 no location | same system file, "for an account with no location … fits one line under the name at 360px / 390px", set code pinned to the three-character "MH3" (16px high at both widths); mutation (c) (a 4ch line) fails it on the line's height |
+| AC-1.8 long set code | same file, "wraps the line at 360px for a five-character set code, with no sideways scroll and no place" ("PMH3A": 32px, two lines); mutation (no `white-space:normal` on the phone line) fails it |
 | AC-2.1 name filter | `collection_places_spec.rb` "shows all of a matching printing's places under a name filter, and no other printing" and "shows only the matching lots' rows under a name filter, each with its place"; mutation (`places_of` reading one lot's place) fails the first |
 | AC-2.2 tile accessible name | system file, "names the whole place line in its link's accessible name, after the card's name"; mutation (`aria-hidden` on the "+N more" span) fails it |
 | AC-2.3 bulk Set condition and Undo | `collection_places_spec.rb` "after a bulk action": "keeps each lot's place when Set condition is applied", "… when a bulk Remove is undone from the bulk table's message" (it asserts the Undo's `return_to` is `collection_path(bulk: 1)` before posting); mutation (the cell not rendered) fails both |
@@ -22,7 +23,7 @@ Evidence for each criterion. Screenshots (`screenshots/`, factory data, placehol
 
 ## Runs (2026-11-06, after `origin/main` was merged in)
 
-- `bin/rspec` on `spec/system/collection_row_place_spec.rb`, `spec/system/collection_table_spec.rb`, `spec/system/collection_spec.rb`, `spec/requests/collection_places_spec.rb`, `spec/models/collection_grid_spec.rb`, `spec/models/collection_table_spec.rb`, `spec/requests/collections_spec.rb`, `spec/requests/collection_views_spec.rb`, `spec/requests/bulk_condition_spec.rb`, `spec/requests/bulk_removal_spec.rb`, `spec/collection_places_core_spec.rb`, `spec/requests/query_counts_spec.rb`: **141 examples, 0 failures**. This branch adds 27 of them (17 system, 7 request, 1 model, 2 core). RuboCop on the four spec files: no offenses.
+- `bin/rspec` on `spec/system/collection_row_place_spec.rb`, `spec/system/collection_table_spec.rb`, `spec/system/collection_spec.rb`, `spec/requests/collection_places_spec.rb`, `spec/models/collection_grid_spec.rb`, `spec/models/collection_table_spec.rb`, `spec/requests/collections_spec.rb`, `spec/requests/collection_views_spec.rb`, `spec/requests/bulk_condition_spec.rb`, `spec/requests/bulk_removal_spec.rb`, `spec/collection_places_core_spec.rb`, `spec/requests/query_counts_spec.rb`: **142 examples, 0 failures**. This branch adds 28 of them (18 system, 7 request, 1 model, 2 core). RuboCop on the four spec files: no offenses.
 - Task 1's red run on the shipped CSS: 32 examples, 13 failures, all the planned ones (the two no-space phone examples, the eight wide examples, the two 760px examples and the new request example).
 - Mutation checks, each reverted: (a) to (d) on `additions.css` as in the plan's Task 2; one per Phase 2 example as above. Each failed for the reason named.
 
@@ -31,6 +32,7 @@ Evidence for each criterion. Screenshots (`screenshots/`, factory data, placehol
 - Spec FR-1 and the plan agree: `white-space: normal` is on the named cell (`.c-table td.c-table__place:not(.is-muted)`), and the span holds the cap and the break rule. An earlier plan draft put it on the span; plan review round 1 (m5) moved it back so the "No location" cell keeps one line and the spec's decision 5 and AC-3.1 wording hold.
 - Task 8's `bin/rubocop spec/collection_places_core_spec.rb .rubocop.yml` fails because RuboCop reads the YAML as Ruby; the spec file alone is clean and `.rubocop.yml` is a plain data file. Run on the spec file only.
 - No example failed on unmutated code, so spec 033 has no bug to report from the gaps.
+- **A real case the first AC-1.7 example hid (found by the full `bin/ci`, 2026-11-06).** The example didn't pin its set code. The factory's `s<sequence>` made it `S2000` late in the full run, and a five-character code wraps the phone line at 360px (32px against under 20). Spec 048 0.5.0 (the coordinator's request) states the code of AC-1.7 ("MH3", three characters, one line at 360 and 390), adds AC-1.8 ("PMH3A" wraps to two lines at 360 with no sideways scroll) and says in decision 4 that a long set code can wrap the line, which is fine under the no-scoping ruling. The system examples pin the code through `own_in` too, so no width depends on the sequence.
 
 ## Out of scope, recorded
 
