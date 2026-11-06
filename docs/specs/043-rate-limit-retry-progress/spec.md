@@ -6,6 +6,7 @@
 **Last Updated:** 2026-11-06
 **Branch:** `043-rate-limit-retry-progress`
 **Issue:** [#86](https://github.com/plainprogrammer/Collector/issues/86)
+**Frozen:** the current rules are in [`catalog-operations.md`](../../architecture/catalog-operations.md) (whole spec); see the [specs index](../README.md)
 
 ---
 
