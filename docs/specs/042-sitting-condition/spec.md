@@ -1,7 +1,7 @@
 # Feature 042: Set a Condition for a Scanner Sitting
 
 **Status:** Draft
-**Version:** 0.2.0
+**Version:** 0.3.0
 **Created:** 2026-11-06
 **Last Updated:** 2026-11-06
 **Depends on:** [spec 040](../040-sitting-into-location/spec.md) (the sitting's place and its control; merged), [spec 009](../009-card-scanner-confirm-flow/spec.md) (the scanner's sitting; merged) and [spec 006](../006-collection-list-view/spec.md) (bulk Set condition, the pattern for choosing a condition; merged)
@@ -14,6 +14,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.3.0 | 2026-11-06 | From the second review (Fable): spec 040 decision 4, Goals and FR-1 superseded for condition; roadmap item 21a amended; the condition check ahead of `Lot.add!`; the short label from the printing's vocabulary; two error rows; the legend "This sitting's cards"; the helper under the core guard. |
 | 0.2.0 | 2026-11-06 | From the first independent review (Fable): the copy that names the condition (notice, entry line; not Undo or accessible names), "Nothing added yet." kept, every status-line variant, where the collectible type may be named and a core guard spec, the rollback with a condition (AC-6.2), the stacked layout, and the supersessions of spec 009 FR-1 and spec 040 decision 2, AC-3.2 and AC-5.2. |
 | 0.1.0 | 2026-11-06 | Written from issue #57, roadmap ruling 20, specs 009, 040 and 006, and the coordinator's brief. Decisions 1 and 2 ruled by the maintainer the same day. |
 
@@ -57,7 +58,7 @@ Roadmap item 21 is ordered after the spikes (#52–#55), and spec 040 decision 1
 
 ### 2. One control for the sitting's choices, shown to every collector (ruled)
 
-**Ruling (maintainer, 2026-11-06).** The sitting panel's form from spec 040 decision 3 becomes the sitting's one control. It holds, in order, a **Condition** select ("Not specified" first, then the vocabulary's scale as "Near mint (NM)", the labels of the lot form and bulk Set condition) and, while the account has at least one location, the **Location** select of spec 040 ("No location" first, then `Location.ordered`), and one "Set" button. Spec 040's label "Put this sitting in" becomes the Location select's label "Location", and a `<fieldset>` legend "Cards you scan now" groups both selects (decision 3 gives the rest of the copy).
+**Ruling (maintainer, 2026-11-06).** The sitting panel's form from spec 040 decision 3 becomes the sitting's one control. It holds, in order, a **Condition** select ("Not specified" first, then the vocabulary's scale as "Near mint (NM)", the labels of the lot form and bulk Set condition) and, while the account has at least one location, the **Location** select of spec 040 ("No location" first, then `Location.ordered`), and one "Set" button. Spec 040's label "Put this sitting in" becomes the Location select's label "Location", and a `<fieldset>` legend "This sitting's cards" groups both selects (decision 3 gives the rest of the copy).
 
 A condition can be chosen by any collector, so the control shows on the scanner for every signed-in collector, before the first add too. This supersedes spec 009 AC-3.7 (no sitting panel before the first add) for the control only: no count, list or Done shows until a sitting is open. It supersedes spec 040 decision 3 and AC-3.1 (an account with no locations sees no control and no panel before the first add): such an account sees the Condition select alone.
 
@@ -83,7 +84,7 @@ Alternative considered: carry the condition on each add request. Rejected for sp
 
 The core names no collectible ([collection and lots](../../architecture/collection-and-lots.md), "The core names no collectible"). The scale is the vocabulary (`Catalog.collecting_for(type).conditions`) of the collectible the scanner reads, which is Magic only (spec 007); the scanner's controllers already name that type (`Scanner::PrintingsController` names `MTG::Reading::COLLECTIBLE_TYPE`; `Scanner::ReadingsController` names `MTG::Reading`). The controllers that build the select and check a submitted key (`Scanner::SittingsController`, the `ScannerSitting` concern, `ScannersController`) may name it too. `Scanner::Sitting`, `Scanner::SittingEntry` and the sitting's partials don't: the model is given the vocabulary (or the checked key) by its caller, and at an add reads the printing's own vocabulary as it already does for finishes (`Scanner::Sitting.finish_offered?`).
 
-An add whose printing's vocabulary doesn't know the sitting's condition (unreachable while the scanner reads one collectible) is refused before anything changes, with spec 009's "That card couldn't be added. Scan it again.", and nothing is recorded; it is never reported as the 9,999 cap.
+An add whose printing's vocabulary doesn't know the sitting's condition (unreachable while the scanner reads one collectible) is refused before anything changes, by a check in `Scanner::Sitting.add!` ahead of `Lot.add!` (a new `Refused` reason; `Lot#condition_known` would raise `RecordInvalid`, which the entries controller reports as the cap), with spec 009's "That card couldn't be added. Scan it again.", and nothing is recorded; it is never reported as the 9,999 cap.
 
 ### 6. The sitting stays working state; nothing in the export changes
 
@@ -112,8 +113,8 @@ A `condition` that is not a key of the scanner's vocabulary answers 422, changes
 ### Story 1: Choose a condition for the sitting
 As a collector with a stack of near-mint cards, I want to say their condition once.
 
-- [ ] **AC-1.1** Given no open sitting When the scanner shows Then the panel holds the control alone: "Cards you scan now", a Condition select with "Not specified" first and selected, then the vocabulary's scale in order ("Near mint (NM)" … "Damaged (DMG)"), the Location select of spec 040 AC-1.1 only when the account has locations, and "Set"; nothing else of a sitting (no count, no list, no Done).
-- [ ] **AC-1.2** Given the control When Near mint is chosen and "Set" is used Then a sitting opens holding Near mint, the header says "This sitting: 0 cards, Near mint", the list's place says "Cards you scan now: Near mint.", the select shows Near mint, and the camera and any reading on screen are untouched (spec 009 AC-1.3).
+- [ ] **AC-1.1** Given no open sitting When the scanner shows Then the panel holds the control alone: the legend "This sitting's cards", a Condition select with "Not specified" first and selected, then the vocabulary's scale in order ("Near mint (NM)" … "Damaged (DMG)"), the Location select of spec 040 AC-1.1 only when the account has locations, and "Set"; nothing else of a sitting (no count, no list, no Done).
+- [ ] **AC-1.2** Given the control When Near mint is chosen and "Set" is used Then a sitting opens holding Near mint, the header says "This sitting: 0 cards, Near mint", the list's place says "Cards you scan now: Near mint." (for any account; the status line of decision 3 adds ", no location." for an account with locations), the select shows Near mint, and the camera and any reading on screen are untouched (spec 009 AC-1.3).
 - [ ] **AC-1.3** Given a sitting holding Near mint When a printing is added from a reading Then one copy goes into the lot of that printing, finish and Near mint, unplaced and with no price (merging into it if it exists); a lot of that printing and finish with no condition, or another condition, is unchanged; the notice says "(MH3 · 47, Foil, NM)" and the list entry shows "NM".
 - [ ] **AC-1.4** Given a sitting holding Near mint and Blue binder When a printing is added Then the copy goes into the lot of that printing, finish, Near mint and Blue binder, and the notice says "Added 1 × ‹name› (‹SET› · ‹number›, ‹finish›, NM) in Blue binder to your collection."
 - [ ] **AC-1.5** Given a sitting with "Not specified" When a card is added Then it joins the lot with no condition (spec 009 AC-1.2), and the notice and the entry name no condition.
@@ -149,7 +150,7 @@ As a collector with a stack of near-mint cards, I want to say their condition on
 - [ ] **AC-6.2** Given a sitting with entries that holds a condition When the migration runs down Then the condition column goes and the sitting, its place and every entry stay (the condition is working state, so the rollback drops it whatever it holds).
 
 ### Story 7: The control is usable
-- [ ] **AC-7.1** The selects and the button are native controls in one form, grouped under a `<fieldset>` whose legend is "Cards you scan now", each select with its own label ("Condition", "Location"), reached by keyboard and usable by screen reader; no script is added. The panel follows `docs/design-system/`: the existing `c-form`/`c-field` classes, stacked as spec 040's control is (`c-scanner__place` is a markup hook with no style rule); if the two fields are laid out side by side at any width, that is a new rule in `collector/additions.css` documented in `docs/design-system/components/Scanner.md`. At 390px and at desktop width no control overflows the panel.
+- [ ] **AC-7.1** The selects and the button are native controls in one form, grouped under a `<fieldset>` whose legend is "This sitting's cards", each select with its own label ("Condition", "Location"), reached by keyboard and usable by screen reader; no script is added. The panel follows `docs/design-system/`: the existing `c-form`/`c-field` classes, stacked as spec 040's control is (`c-scanner__place` is a markup hook with no style rule); if the two fields are laid out side by side at any width, that is a new rule in `collector/additions.css` documented in `docs/design-system/components/Scanner.md`. At 390px and at desktop width no control overflows the panel.
 
 ## Functional Requirements
 
@@ -162,11 +163,11 @@ As a collector with a stack of near-mint cards, I want to say their condition on
 **Must not:** record an entry when the add fails.
 
 ### FR-3: Core code and export
-**Must:** keep `Scanner::Sitting`, `Scanner::SittingEntry` and the sitting's partials (`app/views/scanners/_sitting.html.erb`, `_sitting_entry.html.erb`, `_picker.html.erb`, `_summary.html.erb`) free of any collectible type (the scanner's controllers name it, decision 5), guarded by a core spec like `spec/number_entry_core_spec.rb` that fails when one of those files names `MTG` or `mtg`; leave the sitting and its condition out of the export with no new coverage entry (decision 6).
+**Must:** keep `Scanner::Sitting`, `Scanner::SittingEntry` and the sitting's partials (`app/views/scanners/_sitting.html.erb`, `_sitting_entry.html.erb`, `_picker.html.erb`, `_summary.html.erb`) and `app/helpers/scanners_helper.rb` free of any collectible type (the scanner's controllers name it, decision 5), guarded by a core spec like `spec/number_entry_core_spec.rb` that fails when one of those files names `MTG` or `mtg`; leave the sitting and its condition out of the export with no new coverage entry (decision 6).
 
 ## Non-Functional Requirements
 
-- **Cost per account (hosted-door rule 4):** one nullable string column on a row an account has at most one of; no background work, no instance setting, no query per entry (the vocabulary is constant).
+- **Cost per account (hosted-door rule 4):** one nullable string column on a row an account has at most one of; no background work, no instance setting, no query per entry: the entry line and the notice take the condition's short label from the vocabulary of the entry's printing (`entry.printing.collectible_type`, already loaded), not from `Lot#vocabulary`, which would load each lot's catalog entry.
 - **Collector choices (rule 3):** the condition is stored per sitting, which belongs to the account; no environment variable.
 - **Security:** `condition` and `location_id` are read with `params.expect`; the condition is checked against the vocabulary's keys, the location resolved through `Current.account.locations`. Request specs prove a refused condition changes nothing and another account's sitting is never touched.
 - **Migration:** a reversible schema migration adding `scanner_sittings.condition` (string, null allowed, no default, no index: no query filters on it). Adding a nullable column is `ALTER TABLE … ADD COLUMN`, which copies no table; the rollback must not copy the table with foreign keys enforced either, because the copy's `DROP TABLE` would cascade-delete every open sitting's entries (spec 040 NFR Migration; `db/migrate/20261105100001_add_location_to_scanner_sittings.rb`), so it follows that migration's pattern: `disable_ddl_transaction!` and guarded steps. Every existing sitting migrates with no condition, so no add changes. It runs unattended from any prior version and is proved by the upgrade check ([spec 031](../031-upgrade-from-previous-release/spec.md)).
@@ -180,6 +181,8 @@ As a collector with a stack of near-mint cards, I want to say their condition on
 | Request with neither key | 400, nothing changes (AC-4.2) |
 | Lot of that identity at the 9,999 cap | The existing "full" message; nothing recorded (AC-1.6) |
 | Sitting's condition unknown to the printing's vocabulary | "That card couldn't be added. Scan it again."; nothing recorded (AC-4.5) |
+| `location_id` names another account's or a removed location | 422, nothing changes, spec 040 decision 7's alert (decision 9) |
+| Both values refused | 422, nothing changes, the condition's alert (decision 9) |
 | Lot edited or merged after the add | The entry shows the lot's condition now, or "Changed in your collection" (AC-2.3) |
 
 ## Open Questions
@@ -196,7 +199,7 @@ None.
 ## Supersedes
 
 - [Spec 009](../009-card-scanner-confirm-flow/spec.md) Non-Goals "Setting a condition … during the scan" and "Sitting-wide defaults", and FR-1's "Must not: Set condition … when adding", for condition (price and quantity stay deferred; language is #58); AC-1.2's "condition … unspecified" (the sitting's condition, unspecified unless set); AC-1.3's notice and AC-3.2's entry line and heading (they name the condition); AC-3.7, for the control only (it shows with no open sitting, for every collector).
-- [Spec 040](../040-sitting-into-location/spec.md) decision 3 and AC-1.1, AC-1.2 and AC-5.2's copy (the control's legend and fields, "Cards you scan now: …"); AC-3.1 (an account with no locations sees the condition control before the first add); AC-3.3 (`location_id` is no longer required; a request needs one of the two keys); decision 2's "Choosing 'No location' on a sitting that holds no cards … deletes it again", AC-1.8 and AC-3.2's drop rule (an empty sitting is deleted or dropped only when it has no condition either); AC-3.2's "with Done and no select" and AC-5.2's control "when the account has locations" (an account with no locations now sees the Condition select there, and no Location select); the "Set" status messages of `Scanner::SittingsController`.
+- [Spec 040](../040-sitting-into-location/spec.md) Goals' "no condition", decision 4's "condition (none)" and FR-1's "Must not: … set a condition", for condition (a scan adds with the sitting's condition); decision 3 and AC-1.1, AC-1.2 and AC-5.2's copy (the control's legend and fields, "Cards you scan now: …"); AC-3.1 (an account with no locations sees the condition control before the first add); AC-3.3 (`location_id` is no longer required; a request needs one of the two keys); decision 2's "Choosing 'No location' on a sitting that holds no cards … deletes it again", AC-1.8 and AC-3.2's drop rule (an empty sitting is deleted or dropped only when it has no condition either); AC-3.2's "with Done and no select" and AC-5.2's control "when the account has locations" (an account with no locations now sees the Condition select there, and no Location select); the "Set" status messages of `Scanner::SittingsController`.
 
 Recorded here and in the specs index; neither spec is edited (`.claude/rules/documentation.md`).
 
@@ -205,7 +208,7 @@ Recorded here and in the specs index; neither spec is edited (`.claude/rules/doc
 | Document | Change |
 |---|---|
 | `docs/specs/README.md` | A row for 042; the supersessions of 009 and 040 recorded both ways |
-| `docs/roadmap.md` | Item 21b marked built, with decision 1's ruling |
-| `docs/architecture/collection-and-lots.md` | The scope line on the scanner and "Every way of adding … merges into the identity": the scanner adds with the sitting's condition and place |
+| `docs/roadmap.md` | Item 21b marked built, with decision 1's ruling; item 21a's "21b and 21c keep the order" amended (only 21c does) |
+| `docs/architecture/collection-and-lots.md` | The scope line on the scanner and "Every way of adding … merges into the identity" and their Sources (spec 040 decision 4 is frozen there, and this spec supersedes its "condition (none)"): the scanner adds with the sitting's condition and place |
 | `docs/architecture/data-portability.md` | The working-state invariant: the sitting's condition, like its place, adds no coverage entry or format version |
 | `docs/design-system/components/Scanner.md` | The sitting control: its legend and two fields, that every collector sees it before the first add, the "Cards you scan now: …" copy in the panel and the status line, the condition in the add notice and the entry line |
