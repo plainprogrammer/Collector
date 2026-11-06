@@ -552,7 +552,7 @@ The tenancy and accounts area doc (`docs/architecture/tenancy-and-accounts.md`),
 
 - **Doc review (read-only, Fable):** round 1 APPROVED WITH CHANGES (0 blocking, 3 major, 13 minor), all fixed in `0582c02`; round 2 APPROVED WITH CHANGES (2 minor wording errors), fixed in `f7157c8`. The majors: the measurement-mode gate's local-request check, a neighbour pointer to content release and deploy doesn't hold, and the missing CSRF line of spec 004 NFR Security.
 - **Code with no spec source:** six behaviours are [#218](https://github.com/plainprogrammer/Collector/issues/218) (sessions never expire; `sessions.ip_address` and `user_agent` read by nothing; `InstanceSetting.current` isn't one row by construction; the sign-in rate limit's counters live in the cache; a missing `password_confirmation` isn't checked; measurement mode answers only local requests). The doc states each marked "no spec source" and links the issue. No behaviour changed.
-- **Frozen line and index:** spec 004's existing `**Frozen:**` line was extended (one line, `240f48f`, then `c5283d7`, each naming spec 027 D4); its index row reads Frozen, by collection and lots, catalog core, tenancy and accounts and the design system, with Plan "retirement owed". The plan itself is retired after the pull request merges (`distill-feature` state 1), not on this branch.
+- **Frozen line and index:** spec 004's existing `**Frozen:**` line was extended (one line, `240f48f`, then `c5283d7`, each naming spec 027 D4); its index row reads Frozen, by collection and lots, catalog core, tenancy and accounts and the design system, and its plan was retired on this branch, as the catalog core slice did for its specs: `528c0c2` deletes it and `d0cc1c7` adds the pointer to the spec and the index (Plan "retired in `528c0c22…`"). Spec 004's own pull request merged long ago, so `distill-feature` state 1 applies, and merge commits keep the sha on `main`.
 - **Neighbours:** the four area docs that said "tenancy and accounts (no area doc yet)" link the doc (`658721a`); release and deploy's Active Storage line now points here for the ownership rule.
 - **CLAUDE.md:** only the "Row-level multi-tenancy" bullet changed (`66299bf`, `8a734b0`).
 
@@ -570,5 +570,5 @@ Findings, none blocking, all fixed in `8a734b0` and `c5283d7` unless noted:
 4. Minor: AC-2.4's "Sign out" entry was named by no coverage list. **Fixed:** the frozen line, the README row and Sources say AC-2.4.
 5. Minor: "`lots` has none" read as no foreign key. **Fixed:** "`lots`' foreign key doesn't cascade".
 6. Minor: one unlinked neighbour mention. **Fixed.**
-7. Minor: the plan qualifies for retirement once the skill's state 1 runs, which it must do only after this pull request merges. **Recorded:** retire it on a housekeeping branch from `main` after the merge.
+7. Minor: the plan qualifies for retirement once the skill's state 1 runs. **Done** on this branch (see above), by the maintainer's ruling through the coordinator.
 8. Optional, not done: CLAUDE.md's "Active Storage variants" bullet restates the gate's rules; it predates the slice.
