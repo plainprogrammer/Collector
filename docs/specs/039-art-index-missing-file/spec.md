@@ -7,6 +7,7 @@
 **Branch:** `039-art-index-missing-file`
 **Issue:** [#122](https://github.com/plainprogrammer/Collector/issues/122)
 **Frozen:** the current rules are in [`catalog-operations.md`](../../architecture/catalog-operations.md) and [`release-and-deploy.md`](../../architecture/release-and-deploy.md) (whole spec); see the [specs index](../README.md)
+**Plan:** retired in `73d6c45f38e66de74d5a0425710e5199e7739f63`; read it with `git show 73d6c45f38e66de74d5a0425710e5199e7739f63^:docs/specs/039-art-index-missing-file/plan.md`
 
 ---
 
