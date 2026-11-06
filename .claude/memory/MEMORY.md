@@ -67,3 +67,6 @@
 - [Probe framework hooks with --require](probe-framework-hooks-with-require.md) — wrap a hook (field_error_proc) in a scratch RSpec config via bin/rspec --require to see which pages it touches; call the original with instance_exec
 - [gh issue view is silent](gh-issue-view-silent.md) — in Orca worktrees `gh issue view` prints nothing and exits 0; read issues with `gh api repos/plainprogrammer/Collector/issues/<n>` (2026-11-06, spec 043)
 - [Verify red-run claims](verify-red-run-claims.md) — an implementer's "passed before the change" report can be wrong; delete the new line, run that example, git checkout the file (spec 042 AC-4.5)
+- [Session-wrap before merge](session-wrap-before-merge.md) — run session-wrap before a feature PR merges; approved memories and lessons ride in that PR; the coordinator merges only once that commit is on it and green (2026-11-06)
+- [Parallel SDD orchestration](parallel-sdd-orchestration.md) — one Opus Orca worker per issue: Fable spec reviews, Sonnet plan + Opus plan reviews, Sonnet implementers; coordinator approves gates under delegation, rulings/prompts/merges are the maintainer's (2026-11-06)
+- [One bin/ci at a time](one-bin-ci-at-a-time.md) — coordinator hands out one slot for any full bin/ci (direct or a push's hook); docs-only pushes need none; "stopped without reporting" while waiting on the coordinator is not a stall
