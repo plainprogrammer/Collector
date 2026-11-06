@@ -8,6 +8,16 @@ RSpec.describe "Bulk Move to…", type: :system do
 
   def frame_fits? = page.evaluate_script("(() => { const view = document.getElementById('narrow').contentWindow; return view.document.documentElement.scrollWidth <= view.innerWidth })()")
 
+  # Tab until the element with this id has focus, as a keyboard does.
+  def tab_to(id)
+    20.times do
+      break if page.evaluate_script("document.activeElement.id") == id
+
+      page.driver.browser.action.send_keys(:tab).perform
+    end
+    expect(page.evaluate_script("document.activeElement.id")).to eq(id)
+  end
+
   it "moves the selected lots from the bar and returns to the bulk table (AC-3.1, AC-3.9)", :aggregate_failures do
     owned_printing("Card A", account:, quantity: 2)
     owned_printing("Card B", account:, quantity: 1)
@@ -21,6 +31,24 @@ RSpec.describe "Bulk Move to…", type: :system do
     expect(page).to have_css("#status", text: "Moved 3 items to Blue binder.")
     expect(page).to have_css(".c-bulkbar__count", exact_text: "All 3 items selected")
     expect(account.lots.pluck(:location_id).uniq).to eq([ blue.id ])
+  end
+
+  it "moves a ticked lot with the keyboard alone: space ticks, enter presses Move to…, type-ahead chooses To, enter submits (Accessibility NFR)", :aggregate_failures do
+    ticked = owned_printing("Card A", account:, quantity: 2)
+    other = owned_printing("Card B", account:, quantity: 1)
+    visit collection_path(bulk: 1)
+    find("tbody tr", text: "Card A").find("input[type=checkbox]").send_keys(:space)
+    expect(page).to have_css(".c-bulkbar__count", exact_text: "2 of 3 selected")
+    find(".c-bulkbar__extra button", text: "Move to…").send_keys(:enter)
+    expect(page).to have_css("h1", exact_text: "Move 2 items")
+    tab_to("to")
+    # Arrow keys do not move a closed select in headless Firefox under WebDriver (selectedIndex stays 0, open list or not), so the
+    # keyboard's other way to choose an option, typing its first letter, stands in for them.
+    find("#to").send_keys("B")
+    expect(page).to have_select("To", selected: "Blue binder")
+    find_button("Move").send_keys(:enter)
+    expect(page).to have_css("#status", text: "Moved 2 items to Blue binder.")
+    expect([ ticked.reload.location, other.reload.location ]).to eq([ blue, nil ])
   end
 
   it "does not move when the To prompt is left (AC-2.2: the browser refuses it first)", :aggregate_failures do
