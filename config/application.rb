@@ -59,5 +59,8 @@ module Collector
 
     # The open catalog (spec 023): off until config/initializers/public_catalog.rb reads the environment.
     config.x.public_catalog = false
+
+    # Fields render unwrapped when a record has errors; the views draw them (spec 044, ADR 0026).
+    config.action_view.field_error_proc = ->(html_tag, _instance) { html_tag }
   end
 end

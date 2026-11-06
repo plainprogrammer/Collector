@@ -8,7 +8,7 @@
 - [Plan reviews are read-only](plan-reviews-run-the-code.md) — trace plan code against the files it edits, run nothing (Opus since 2026-10-12); neither planner nor reviewer runs plan code before execution (ruled 2026-10-15)
 - [Dev machine image tools](dev-machine-image-tools.md) — magick 7, Pillow, ffmpeg, libvips 8.18.3 present (no `vips` command); ruby-vips in the bundle; decode via `magick … ppm:-`
 - [Scryfall API access](scryfall-api-access.md) — docs 403 to WebFetch; use curl + User-Agent; bulk JSONL facts
-- [PR screenshots workflow](pr-screenshots-workflow.md) — headless Firefox + magick/ffmpeg; embed in private-repo PRs via blob/<sha>?raw=true; pause 0.6s after a theme switch; set data-theme for light shots too (headless Firefox prefers dark)
+- [PR screenshots workflow](pr-screenshots-workflow.md) — headless Firefox + magick/ffmpeg; embed in private-repo PRs via blob/<sha>?raw=true; pause 0.6s after a theme switch; set data-theme for light shots too (headless Firefox prefers dark); 422 states via noValidate + requestSubmit; seed with one runner script in its own call
 - [Background servers via task](background-servers-via-task.md) — run_in_background + TaskStop, not &/kill/pkill; 2-hour task limit, restart before device steps; TaskStop is a crash for running jobs
 - [Branch naming convention](branch-naming-convention.md) — NNN-descriptive-slug per docs/git-convention.md; rename the worktree branch at the start, never use the plainprogrammer/ prefix
 - [Headless Firefox narrow frame](headless-firefox-narrow-frame.md) — windows can't go below 500px; test/screenshot phone widths in a fixed-width iframe; not from a scanner page (frame-src none); short frame to force scrolling
@@ -29,7 +29,7 @@
 - [ExitPlanMode for SDD plans](exitplanmode-for-sdd-plans.md) — long plans: summarise in chat and take the go-ahead there, not via the approval dialog
 - [Device sitting account check](device-sitting-account-check.md) — find which account holds the sitting (by reading keys) before scoring or resetting
 - [Spec 012 follow-ups](spec-012-followups.md) — issues #20, #21: releasing.md lines, evidence owed (#17 digest cleanup done, spec 013)
-- [GHCR and Actions facts](ghcr-and-actions-facts.md) — visibility one-way, attestations need public repo, arm64 runners, metadata-action v0, kamal config limits; classic PATs only, /users/ paging, Accept or 404; CI runs only on PRs/main (open a draft PR); .dockerignore drops /script, mount it
+- [GHCR and Actions facts](ghcr-and-actions-facts.md) — visibility one-way, attestations need public repo, arm64 runners, metadata-action v0, kamal config limits; classic PATs only, /users/ paging, Accept or 404; CI runs only on PRs/main (open a draft PR); .dockerignore drops /script, mount it; a new PR has no checks for a moment, so gh run watch the run
 - [ADR numbers across branches](adr-numbers-across-branches.md) — check origin/main's docs/adr before numbering; an unmerged ADR takes the next free number on rebase
 - [Bulk file copy](bulk-file-copy.md) — find … -exec cp -n -t dest {} + for big caches; a glob hits "Argument list too long"
 - [Sitting capture alignment](sitting-capture-alignment.md) — check each row's first-capture name vs the expected card (re-scans shift rows; CAPTURES override); brief "scan and add" explicitly
@@ -63,3 +63,4 @@
 - [GitHub comment tool mangles @mentions](github-comment-tool-mangles-mentions.md) — `@dependabot rebase` posted from a session was stored as `·@·d·ependabot r·ebase` and did nothing; list the exact comments for the maintainer to post, early; read a comment back once, never repost or get around it (2026-11-03, spec 036)
 - [Spec 036 follow-ups](spec-036-follow-ups.md) — merged 2026-11-03 (PR #163), plan retired; still open and the maintainer's: seven Quickstart checks (AC-2.7 before AC-2.6, a cron commit of their own), why security updates opened nothing (Decision 4), stale "repository is private" statements in ADR 0008 and the area doc
 - [Parallel bin/ci tmpdir race](parallel-bin-ci-tmpdir-race.md) — "Upgrade::Harness removes its temporary directory" fails when worktrees run bin/ci together (#178); confirm alone, push again
+- [Probe framework hooks with --require](probe-framework-hooks-with-require.md) — wrap a hook (field_error_proc) in a scratch RSpec config via bin/rspec --require to see which pages it touches; call the original with instance_exec
