@@ -48,7 +48,7 @@ In `spec/requests/scanner/sittings_spec.rb`:
     end
 ```
 
-The example at the line-233 block (spec 040's "No location" on an empty sitting, an account with locations) keeps `not_to include("This sitting:")` and drops `"Cards you scan now"` from that list; add `expect(status_line).to eq("Cards you scan now: condition not specified, no location.")` after it. Before editing each, read the example: the account in the `setting the choices (spec 042)` describe has no locations unless `blue` is called; the status sentence follows `account_locations.any?`. For the 523-538 example `blue` is not called, so the sentence has no location part (as written above).
+The example at the line-233 block (spec 040's "No location" on an empty sitting, an account with locations) keeps `not_to include("This sitting:")` and drops `"Cards you scan now"` from that list; add, after it, `expect(html.at_css("turbo-stream[target=status] .c-status__message").text.squish).to eq("Cards you scan now: condition not specified, no location.")` (written inline: `status_line` is defined only inside the `setting the choices (spec 042)` describe, so it is not in scope in this describe at line 140). The comment "Passes before the change" above the example at line 540 goes with the rewrite (it stops being true). Before editing each, read the example: the account in the `setting the choices (spec 042)` describe has no locations unless `blue` is called; the status sentence follows `account_locations.any?`. For the 523-538 example `blue` is not called, so the sentence has no location part (as written above).
 
 2. **Add a describe `"after a redraw (spec 047)"`** at the end of the file, before the last `end`. `status_line` and `set` are defined inside the `setting the choices` describe, so the new describe defines its own copies:
 
@@ -80,6 +80,13 @@ The example at the line-233 block (spec 040's "No location" on an empty sitting,
       expect(response).to have_http_status(:unprocessable_content)
       expect(focus_to).to eq("set")
       expect(html.at_css("turbo-stream[target=status] .c-status__message--alert").text.squish).to eq(Scanner::SittingsController::UNKNOWN_CONDITION)
+    end
+
+    it "names the Set button when the location is no longer the account's (AC-1.5)", :aggregate_failures do
+      set(location_id: create(:location).id) # another account's location
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(focus_to).to eq("set")
+      expect(html.at_css("turbo-stream[target=status] .c-status__message--alert").text.squish).to eq(Scanner::SittingsController::GONE)
     end
 
     it "names the heading after an Undo, done or refused (AC-2.1, AC-2.3)", :aggregate_failures do
@@ -153,7 +160,7 @@ Before writing, the implementer reads `post scanner_sitting_entries_path` in the
     end
 ```
 
-Update the class comment's sentence about the status ("a nil message clears…" is gone with the concern's comment). `app/controllers/scanner/sittings/entries/undos_controller.rb`: both `sitting_stream(...)` calls gain `focus: :heading`. `entries_controller.rb` is unchanged (`focus` defaults to nil); its comment "`sitting_stream(message_for(...))`" needs nothing.
+The sentence "nil, which clears the status line" in `chosen_message`'s comment goes with the rewrite above (the class comment has no such sentence). `app/controllers/scanner/sittings/entries/undos_controller.rb`: both `sitting_stream(...)` calls gain `focus: :heading`. `entries_controller.rb` is unchanged (`focus` defaults to nil); its comment "`sitting_stream(message_for(...))`" needs nothing.
 
 `app/helpers/scanners_helper.rb`, add:
 
@@ -182,7 +189,7 @@ Update the class comment's sentence about the status ("a nil message clears…" 
 
 (`tag.section … data: nil` writes no data attribute; a hash writes `data-controller` and `data-sitting-focus-to-value`.) The `data-sitting-focus-target="heading"` attribute on the `h2` is added with the controller in T4; the `h2[data-sitting-focus-target='heading']` expectation of T1's Undo example therefore stays red until T4, so in T1 write that selector as `h2[tabindex='-1']` and add the target to the expectation in T4.
 
-Run `bin/rspec spec/requests/scanner spec/views` (whatever exists under `spec/` for the scanner: `git ls-files spec | grep -i scanner`), then `bin/rubocop -a` on the changed Ruby. Commit `feat(scanner): name the focus target of a redrawn sitting panel and never empty the status (spec 047)`.
+`_picker.html.erb`'s header comment says the control "needs no script (AC-7.1)": reword it to "works without script; a small controller only puts focus back (AC-7.1, spec 047)" in the same commit. This task changes views, so the implementer loads the `collector-design-system` skill first (the copy and markup follow `Scanner.md`; no class or token is added in this task). Run `bin/rspec spec/requests/scanner spec/requests/scanners_spec.rb spec/helpers/scanners_helper_spec.rb spec/scanner_sitting_core_spec.rb spec/system/scanner_sitting_spec.rb` (check with `git ls-files spec | grep -i -E "scanner|sitting"` that nothing else names the sitting; a missing file is dropped from the list), then `bin/rubocop -a` on the changed Ruby. Commit `feat(scanner): name the focus target of a redrawn sitting panel and never empty the status (spec 047)`.
 
 ## Phase 2: focus moves
 
@@ -190,70 +197,75 @@ Run `bin/rspec spec/requests/scanner spec/views` (whatever exists under `spec/` 
 
 ### T3: System examples first (red)
 
-In `spec/system/scanner_sitting_spec.rb`, add a describe at the end (inside the file's top `RSpec.describe`), using the existing helpers (`add_by_scanning`, `set_sitting`). It creates a location so the sentences carry the place part; `:focus` is a CSS pseudo-class Capybara's waiting `have_css` evaluates in the browser, so no sleeping is needed:
+In `spec/system/scanner_sitting_spec.rb`, add a describe at the end (inside the file's top `RSpec.describe`). It seeds entries with `Scanner::Sitting.add!` before `visit`, as the file's reload examples do, so no example waits on the camera or the OCR engine. It creates a location so the sentences carry the place part. `:focus` is a CSS pseudo-class that Capybara's waiting `have_css` evaluates in the browser (`spec/system/number_entry_spec.rb:15` does the same), so no sleeping is needed. An assertion about the redraw that can pass on the *old* panel (a status sentence or a focused "Set" that was already there) first marks the old panel stale by script and waits for the mark to disappear, which only a replaced panel does:
 
 ```ruby
   describe "focus and the status after a redraw (spec 047)" do
     before { create(:location, account: user.account, name: "Blue binder") }
 
-    def keyboard_to_set(from_field)
-      field = find_field(from_field)
-      yield field
-      field.send_keys(:tab) # Location
-      page.driver.browser.switch_to.active_element.send_keys(:tab) # Set
-      expect(page.evaluate_script("document.activeElement.value")).to eq("Set")
-    end
-
+    def seed(*keys) = keys.each { Scanner::Sitting.add!(account: user.account, printing:, finish: "foil", reading_key: it * 32) }
+    def active = page.driver.browser.switch_to.active_element
     def set_focused = have_css("#scanner_sitting input[type=submit][value=Set]:focus")
-    def heading_focused = have_css("#scanner_sitting h2:focus")
+    # Marks the panel on the page now; the mark is gone once Turbo has replaced the panel with the answer's.
+    def mark_stale = page.execute_script("document.getElementById('scanner_sitting').dataset.stale = '1'")
+    def redrawn = have_no_css("#scanner_sitting[data-stale]")
 
-    it "puts focus back on Set after a keyboard Set, and says what later scans get (AC-1.1, AC-1.2, AC-3.3)", :aggregate_failures do
+    it "puts focus back on Set after a keyboard Set on a sitting with cards, and again on a repeat (AC-1.1, AC-3.1, AC-3.3)", :aggregate_failures do
+      seed("a")
       visit scanner_path
-      expect(page.evaluate_script("document.activeElement.tagName")).to eq("BODY") # AC-3.1: the page load focuses nothing
+      expect(page.evaluate_script("document.activeElement.tagName")).to eq("BODY") # the page load focuses nothing
       page.execute_script("window.__marker = 'still here'")
-      keyboard_to_set("Condition") { it.select("Near mint (NM)") }
-      page.driver.browser.switch_to.active_element.send_keys(:enter)
+      field = find_field("Condition")
+      field.select("Near mint (NM)")
+      field.send_keys(:tab) # Location
+      active.send_keys(:tab) # Set
+      expect(page.evaluate_script("document.activeElement.value")).to eq("Set")
+      active.send_keys(:enter)
+      expect(page).to have_css("#scanner_sitting h2", text: "This sitting: 1 card, Near mint")
       expect(page).to have_css("#status", text: "Cards you scan now: Near mint, no location.")
       expect(page).to set_focused
       expect(page.evaluate_script("window.__marker")).to eq("still here")
-      page.driver.browser.switch_to.active_element.send_keys(:enter) # Set again, unchanged: focus stays on Set
+      mark_stale
+      active.send_keys(:enter) # Set again, nothing changed: the status says the same, focus is on the new Set
+      expect(page).to redrawn
       expect(page).to set_focused
     end
 
-    it "puts focus back on Set and announces when Set deletes an empty sitting, and when none is open (AC-1.3, AC-1.4)", :aggregate_failures do
+    it "puts focus on Set, with the status, when Set opens a sitting, deletes an empty one, and finds none open (AC-1.2 to AC-1.4)", :aggregate_failures do
       visit scanner_path
       set_sitting(condition: "Near mint (NM)")
       expect(page).to have_css("#scanner_sitting h2", text: "This sitting: 0 cards, Near mint")
+      expect(page).to have_css("#status", text: "Cards you scan now: Near mint, no location.")
+      expect(page).to set_focused
       select "Not specified", from: "Condition"
       click_on "Set"
       expect(page).to have_no_css("#scanner_sitting h2")
       expect(page).to have_css("#status", text: "Cards you scan now: condition not specified, no location.")
       expect(page).to set_focused
-      page.execute_script("document.activeElement.blur()")
-      click_on "Set" # none open, both choices empty
+      mark_stale
+      click_on "Set" # no sitting open, both choices empty
+      expect(page).to redrawn
       expect(page).to have_css("#status", text: "Cards you scan now: condition not specified, no location.")
       expect(page).to set_focused
     end
 
-    it "puts focus on the heading after a keyboard Undo, which is not a Tab stop (AC-2.1, AC-2.2, AC-2.4)", :aggregate_failures do
+    it "puts focus on the heading after a keyboard Undo; the heading is not a Tab stop (AC-2.1, AC-2.2, AC-2.4)", :aggregate_failures do
+      seed("a", "b")
       visit scanner_path
-      add_by_scanning
-      expect(page).to have_css("#scanner_sitting h2", text: "This sitting: 1 card")
       expect(page.evaluate_script("document.getElementById('scanner-sitting-heading').tabIndex")).to eq(-1)
-      undo = find("form.c-scanner__undo input[type=submit], form.c-scanner__undo button", match: :first)
-      undo.send_keys(:enter)
+      find_button("Undo", match: :first).send_keys(:enter) # the newest entry's
       expect(page).to have_css("#status", text: "Removed 1 × Lightning Bolt (MOM · 123, Foil) from your collection.")
+      expect(page).to have_css("#scanner_sitting h2:focus", text: "This sitting: 1 card")
+      find_button("Undo", match: :first).send_keys(:enter)
       expect(page).to have_css("#scanner_sitting .c-empty", text: "Everything added in this sitting was undone.")
-      expect(page).to heading_focused
-      expect(page.evaluate_script("document.activeElement.textContent")).to eq("This sitting: 0 cards")
-      expect(page.evaluate_script("getComputedStyle(document.activeElement).outlineStyle")).to eq("solid") # the ring of decision 4 (T5)
+      expect(page).to have_css("#scanner_sitting h2:focus", text: "This sitting: 0 cards")
     end
   end
 ```
 
-Notes for the implementer: the existing Undo example (line 36, `click_on "Undo"`) uses `click_on`; the Undo control is a `button_to` button, so `send_keys(:enter)` on `find_button("Undo")` is the keyboard form (use `find_button("Undo Lightning Bolt MOM · 123 Foil")` if two Undo buttons ever match; here there is one). Replace the `find("form.c-scanner__undo …")` line with `find_button("Undo")` if that is what runs. The outline assertion is expected red until T5; if headless Firefox does not match `:focus-visible` for script focus after a keyboard action and the assertion cannot pass honestly, stop and report to the supervisor rather than weakening it: the ring is then proven by the screenshots only, and the spec's AC-2.4 line is amended by the supervisor.
+Notes for the implementer: the Undo control is a `button_to` button named "Undo Lightning Bolt (MOM · 123, Foil)" by `aria-label`; `find_button("Undo", match: :first)` finds it by its text and takes the first, the newest entry's (the list is newest first). If a Capybara version refuses the partial match, use `first("form.c-scanner__undo button")`. The ring (the heading's computed outline) is asserted in T5, not here.
 
-Run `bin/rspec spec/system/scanner_sitting_spec.rb -e "spec 047"`: the focus assertions fail (red). Commit `test(scanner): system examples for focus and the status after a redraw (spec 047)`.
+Run `bin/rspec spec/system/scanner_sitting_spec.rb -e "spec 047"`: the three examples fail (red; focus stays on the body). Commit `test(scanner): system examples for focus and the status after a redraw (spec 047)`.
 
 ### T4: The Stimulus controller (green)
 
@@ -279,7 +291,7 @@ export default class extends Controller {
 
 Add `data-sitting-focus-target="heading"` to the `h2` in `_sitting.html.erb`, and in `_picker.html.erb` change the submit to `form.submit "Set", class: "c-btn c-btn--secondary c-btn--sm", data: { sitting_focus_target: "set" }`. Update T1's Undo expectation to `h2[tabindex='-1'][data-sitting-focus-target='heading']`. The picker is also rendered by `_summary` (outside the controller's scope): the extra attribute is inert there.
 
-Run the new system examples (green apart from the outline assertion until T5), the whole `spec/system/scanner_sitting_spec.rb` and `spec/requests/scanner`. Commit `feat(scanner): move focus to Set or the heading after the sitting panel redraws (spec 047)`.
+Run the new system examples (green), the whole `spec/system/scanner_sitting_spec.rb` and `spec/requests/scanner`. Commit `feat(scanner): move focus to Set or the heading after the sitting panel redraws (spec 047)`.
 
 ## Phase 3: the ring, the docs, the evidence
 
@@ -287,7 +299,7 @@ Run the new system examples (green apart from the outline assertion until T5), t
 
 ### T5: The heading's focus ring and the Scanner doc
 
-First read `docs/design-system/README.md` and `docs/design-system/components/Scanner.md` (the design-system skill's rule). In `app/assets/stylesheets/collector/additions.css`, directly after the `.c-scanner__sitting .c-section__title` rule (line 189), add, in the pattern of the file's other focus rules:
+First the failing example: in T3's Undo example (`puts focus on the heading after a keyboard Undo`), after the last `h2:focus` expectation add `expect(page.evaluate_script("getComputedStyle(document.activeElement).outlineStyle")).to eq("solid")` and `expect(page.evaluate_script("getComputedStyle(document.activeElement).outlineWidth")).to eq("2px")` (red: the browser's default ring is not `2px solid` on a heading, and the `focus` token is not applied). If headless Firefox does not match `:focus-visible` for a script `focus()` after a keyboard Enter, so the assertion cannot pass honestly, stop and report to the supervisor rather than weaken it: the ring is then proven by the screenshots only and the supervisor amends AC-2.4. Then read `docs/design-system/README.md` and `docs/design-system/components/Scanner.md` (the design-system skill's rule). In `app/assets/stylesheets/collector/additions.css`, directly after the `.c-scanner__sitting .c-section__title` rule (line 189), add, in the pattern of the file's other focus rules:
 
 ```css
 .c-scanner__sitting .c-section__title:focus-visible { outline:2px solid var(--focus); outline-offset:2px; border-radius:var(--radius-sm); } /* the heading takes focus after an Undo (spec 047) */
@@ -295,11 +307,11 @@ First read `docs/design-system/README.md` and `docs/design-system/components/Sca
 
 In `docs/design-system/components/Scanner.md`:
 
-- the sitting-control bullet (line 31): replace "The line is cleared when "Set" deletes an empty sitting, or clears both choices with none open (spec 042 decision 3)." with "When "Set" deletes an empty sitting, or clears both choices with none open, the same sentence says "condition not specified" and "no location" (spec 047 decision 1, superseding spec 042 decision 3's cleared line)."; replace "It needs no script: "Set" submits it, and a Turbo Stream redraws the panel" with "It works without script: "Set" submits it, a Turbo Stream redraws the panel, and `sitting_focus_controller.js` puts focus back on "Set" (spec 047)";
+- the sitting-control bullet (line 31): replace "The line is cleared when "Set" deletes an empty sitting, or clears both choices with none open (spec 042 decision 3)." with "When "Set" deletes an empty sitting, or clears both choices with none open, the same sentence says "condition not specified" and "no location" (spec 047 decision 1, superseding spec 042 decision 3's cleared line)."; replace "It needs no script: "Set" submits it, and a Turbo Stream redraws the panel" with "It works without script: "Set" submits it, a Turbo Stream redraws the panel and says "Cards you scan now: …" in `#status`, and `sitting_focus_controller.js` then puts focus back on "Set" (spec 047)" (the stream says it; the controller only moves focus);
 - the Undo bullet (line 33): add "…and the panel's heading (`h2[tabindex=-1]`, which has a `:focus-visible` ring in `focus`, not a Tab stop) takes focus, since the Undo button is gone (spec 047)";
 - add one bullet: "Focus after a redraw (spec 047): the redrawn panel carries `data-controller="sitting-focus"` and `data-sitting-focus-to-value` (`set` after a "Set", `heading` after an Undo) only in the answer to those; the page's own render and an add name nothing, so nothing moves focus."
 
-Verify the outline assertion of T3 now passes (`bin/rspec spec/system/scanner_sitting_spec.rb -e "spec 047"`). Commit `feat(scanner): a focus ring on the sitting heading, and the Scanner doc (spec 047)`.
+Verify the outline assertions added at the top of this task now pass (`bin/rspec spec/system/scanner_sitting_spec.rb -e "spec 047"`). Commit `feat(scanner): a focus ring on the sitting heading, and the Scanner doc (spec 047)`.
 
 ### T6: Evidence (supervisor, not an implementer)
 
@@ -311,7 +323,8 @@ Verify the outline assertion of T3 now passes (`bin/rspec spec/system/scanner_si
 
 | Requirement | Where |
 |---|---|
-| FR-1 (a sentence for every redraw), AC-4.1, AC-4.2, decision 1 | T1, T2 (`chosen_message`, `sitting_stream`) |
+| FR-1 (a sentence for every redraw), AC-4.2, decision 1 | T1, T2 (`chosen_message`, `sitting_stream`) |
+| AC-4.1, case by case | add: `spec/requests/scanner/sitting_entries_spec.rb` (existing add examples assert its sentence) and T1's "no target after an add"; replayed add, Undo, Set accepted: T1's "every redraw" example; Undo refused: T1's Undo example; Set refused (condition, location): T1's two refusal examples; Set deleting an empty sitting and Set with none open: T1's first example and the flipped 042 examples |
 | FR-2 (the target by answer), AC-1.5, AC-2.3, AC-3.1, AC-3.2 | T1, T2 |
 | FR-3 (once, only a named target), AC-1.1 to AC-1.4, AC-2.1, AC-2.2, AC-3.3 | T3, T4 |
 | FR-4 (heading `tabindex="-1"`, not a Tab stop), AC-2.4 | T2, T3 (`tabIndex`), T5 (ring) |
@@ -322,5 +335,6 @@ Verify the outline assertion of T3 now passes (`bin/rspec spec/system/scanner_si
 ## Open items for the plan review
 
 - **P1.** `tag.section … data: nil` should write no data attribute and `data: { controller:, sitting_focus_to_value: }` should write `data-controller` and `data-sitting-focus-to-value`; T1's request examples are the proof, and a reviewer should check Rails 8.1's `tag_options`.
-- **P2.** Whether headless Firefox matches `:focus-visible` for a script `focus()` after a keyboard Enter (T3's outline assertion). The fallback is stated in T3.
+- **P2.** Whether headless Firefox matches `:focus-visible` for a script `focus()` after a keyboard Enter (T5's outline assertion). The fallback is stated in T5.
+- **P4 (from plan review round 1, minor 9).** If the collector is in the old panel's Condition or Location select when an answer lands, Turbo's `withPreservedFocus` refocuses the new select by its id one frame after `connect()`, which can override the Set focus (spec Error Scenarios row 2). Not designed around; `verification.md` records it as a known edge.
 - **P3.** The stream order: `replace` before `update("status")`. The system examples wait on `#status` text and then on `:focus`, so either order passes; no sleep.
