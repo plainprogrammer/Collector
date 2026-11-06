@@ -21,7 +21,7 @@ class CollectionExport
     locations, lots = locations_and_lots
     { "format" => FORMAT, "format_version" => FORMAT_VERSION, "exported_at" => time(@at),
       "profile" => { "name" => user.name, "email_address" => user.email_address, "collection_view" => user.collection_view },
-      "currency" => Rails.configuration.x.currency.code,
+      "currency" => @account.currency,
       "locations" => locations,
       "lots" => lots }
   end
