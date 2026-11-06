@@ -16,10 +16,10 @@ Deviations from the plan are recorded in the commit bodies. The capture script a
 | AC-1.2, 1.3 | `spec/requests/lots_spec.rb:70` "rejects invalid values with a message per field" and `:129` "rejects invalid values with 422 and leaves the lot unchanged" |
 | AC-1.4 | `spec/requests/lot_moves_spec.rb:89` "answers 422 with the reasons beside Copies and To, keeping the choice…" and `:102` "refuses a move to where the lot already is (P4)" |
 | AC-1.5, 1.6 | `spec/requests/locations_spec.rb:43` (add, 422 with the reason beside the field) and `:115` (rename to another's name) |
-| AC-1.7 | `spec/requests/registrations_spec.rb:59` "shows each invalid field's message with 422" |
+| AC-1.7 | `spec/requests/registrations_spec.rb:59` "shows each invalid field's message with 422" (each `#<field>-error` compared with its own message since `d1602f7`) |
 | AC-1.8, 1.9 | `spec/requests/admin/users_spec.rb:53` "links an invalid email field to its message"; `:89` "refuses to delete yourself or demote the only admin" (status and `#admin-error` added) |
-| AC-1.10 | `spec/requests/sessions_spec.rb:27` (regression: no wrapper after a wrong password; green before the config line, as the test commit's body says) |
-| AC-1.11 | `spec/requests/number_entries_spec.rb:313` (regression, same note) |
+| AC-1.10 | `spec/requests/sessions_spec.rb:23` "rejects a wrong password without saying which field was wrong" (regression: no wrapper after a wrong password; green before the config line, as the test commit's body says) |
+| AC-1.11 | `spec/requests/number_entries_spec.rb:307` "keeps the line when no entry has the number (AC-4.1)" (regression, same note) |
 | AC-1.12 | `spec/requests/currencies_spec.rb:63` (the example at `:71` asserts no wrapper), kept; the controller no longer clears (task 2), and the example fails without the app's proc (task 2's red run, below) |
 | AC-1.13 | each form's existing assertions, all green in the same runs |
 | AC-2.1 | the 30 images below, each read by looking |
@@ -31,7 +31,7 @@ Deviations from the plan are recorded in the commit bodies. The capture script a
 Counts and reasons are from the runs' saved output (the raw files are in the session scratchpad: `red-task1.txt`, `red-task2.txt`, `green-task3.txt`).
 
 - **Task 1c, red** (the new and extended examples, before any fix): 127 examples, 11 failures. Both `field_error_proc_spec.rb` examples failed (a `.field_with_errors` wrapper in the output, and the form's children being wrapped rather than `label input`), as did the wrapper assertions in the lots add and edit, Move copies (both examples), locations add and rename, sign-up and the two admin users examples. Every failure was `expect(….css(".field_with_errors")).to be_empty` (or the markup comparison) finding the Rails `div`. Sign-in and number entry were green, as expected: their forms have no record to wrap.
-- **Task 2, red** (the currency controller's `errors.clear` removed, no app-wide proc yet): `bin/rspec spec/requests/currencies_spec.rb`, 7 examples, 1 failure: `currencies_spec.rb:63` (AC-1.7's refused code), on the `.field_with_errors` assertion, four parts of the aggregate. This proves the example now exercises the app's proc and not the controller.
+- **Task 2, red** (the currency controller's `errors.clear` removed, no app-wide proc yet): `bin/rspec spec/requests/currencies_spec.rb`, 7 examples, 1 failure: `currencies_spec.rb:63` (spec 038 AC-1.7's refused code), on the `.field_with_errors` assertion, four parts of the aggregate. This proves the example now exercises the app's proc and not the controller.
 - **Task 3, green** (after the one config line): the nine spec files of the plan's final verification, 183 examples, 0 failures (seed 52051).
 
 ## Screenshots
@@ -60,9 +60,24 @@ In every image the theme is the one named, the page is the 422 (not the empty fo
 | Add a user (email `nope`) | [light](screenshots/user-add-desktop-light.jpg) | [dark](screenshots/user-add-desktop-dark.jpg) | | | Email field in the error colour, "Email must look like name@example.com" under it. |
 | Edit a user (untick the only admin) | [light](screenshots/user-edit-desktop-light.jpg) | [dark](screenshots/user-edit-desktop-dark.jpg) | | | The Admin checkbox unticked, the "Admin can't be removed…" message under it. |
 | Sign in (wrong password) | [light](screenshots/sign-in-desktop-light.jpg) | [dark](screenshots/sign-in-desktop-dark.jpg) | | | The "Email or password is incorrect." notice above, both fields plain and equal in width (no record, so no field errors). |
-| Number entry (999) | [light](screenshots/number-entry-desktop-light.jpg) | [dark](screenshots/number-entry-desktop-dark.jpg) | | | The Number field selected in the error colour, "No card numbered 999 in Modern Horizons 3 (EN)." under it; Quantity, Finish and Location in the same row. |
+| Number entry (999) | [light](screenshots/number-entry-desktop-light.jpg) | [dark](screenshots/number-entry-desktop-dark.jpg) | | | The Number field focused (focus ring), "No card numbered 999 in Modern Horizons 3 (EN)." under it in the error colour; Quantity, Finish and Location in the same row. |
 | Currency (`XYZ`) | [light](screenshots/currency-desktop-light.jpg) | [dark](screenshots/currency-desktop-dark.jpg) | | | The select full width (it narrowed under the wrapper in spec 038), the hint and "Choose one of the listed currencies." under it. |
 
 ## Full run
 
 Full `bin/ci` (2026-11-06, on `75c5c2c`, the last code commit; the later commits are documents and images): every step passed, RSpec 2605 examples, 0 failures, 1 pending, 4 min 38 s.
+
+## Implementation review
+
+SPEC-ALIGNED (sdd-review Mode B, Opus, read-only, 2026-11-06): 0 blocking, 0 major, 4 minor; all 16 criteria met.
+
+The reviewer re-ran the nine spec files green (183 examples, 0 failures) and, with `ActionView::Base.field_error_proc` set back to Rails' default in memory, red on exactly the 12 expected examples: the guard's two, the nine wrapped forms' and the currency example; sign-in and number entry stayed green. It found no file changed outside the plan's file map (no view, no CSS, no bulk-mode file), no `html_safe` or `raw`, and the screenshots matching their readings.
+
+Minor findings and what was done:
+
+1. `Gemfile.lock` has an uncommitted local change (darwin platform gems). Not reverted: it predates this branch and is the maintainer's to decide; it is never staged here.
+2. Two evidence rows cited assertion lines, not example lines. Fixed above (sessions `:23`, number entry `:307`).
+3. The number-entry reading said "selected in the error colour"; the image shows the focus ring. Fixed above.
+4. The sign-up example checked only that each message element existed. Fixed in `d1602f7`: each `#<field>-error` is now compared with its own message (a deliberately wrong text failed at `registrations_spec.rb:68`, then 7 examples, 0 failures).
+
+Outside this spec: on sign-up the hint and field errors render at the input's size, not Form's caption size; no view or CSS changed here, so it predates the branch. Filed as [#188](https://github.com/plainprogrammer/Collector/issues/188).
