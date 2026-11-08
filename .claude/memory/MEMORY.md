@@ -73,3 +73,5 @@
 - [Commit named paths in one call](commit-only-paths-in-one-call.md) — `git commit -o <paths>` for tracked docs files in a worktree; new files need git add; skips the RuboCop hook, so not for Ruby
 - [Catalog core slice handoff](catalog-core-slice-handoff.md) — #104/PR #207 moved parts of specs 004, 007, 009 into catalog-core.md; scanner and tenancy slices extend those frozen lines; #204 holds the open rulings
 - [Focus in system specs](focus-in-system-specs.md) — spec 047 (#182): server-named focus target + once-only Stimulus controller; have_css(":focus"), stale-mark waits, :focus-visible in headless Firefox
+- [Orca setup through mise](orca-setup-through-mise.md) — Orca's env carries the global mise Ruby; orca.yaml + post-checkout run `mise exec -- bin/setup` (#225); needs mise idiomatic_version_file_enable_tools to include ruby; a dirty Gemfile.lock in a fresh worktree means check that, never commit the checksum
+- [Watch #217 before closing](issue-217-watch.md) — backup smoke arm64 fix (#223) merged with Refs; close #217 after ~10 green Image (linux/arm64) runs on main since run 42285985125

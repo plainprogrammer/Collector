@@ -16,5 +16,6 @@ From the cleanup of 2026-10-15, after the parallel run's PRs (#95–#99) merged.
 - **`git branch -d` refuses when the local `main` is behind `origin/main`** ("not fully merged"). Once the ancestor check above passes, `git branch -D` is safe.
 - **A head not in `main` can be the only copy of something.** `065-unowned-tile-options` held three unpushed `scratch(065)` commits prototyping alternative "Not owned" looks; the shipped fix came through PR #88 on another branch. Show the commits (`git log origin/main..<branch>`) and ask before deleting. The maintainer chose to delete them that time.
 - Keep a worktree that backs an open PR (`013-live-cleanup-evidence` backs draft PR #28).
+- **Copy a flake's evidence out first.** If the worktree's run hit a flake, save the seed, the failure message and `tmp/capybara/*.png` (to the flake's issue or the scratchpad) before removing it. On 2026-11-06 the `107-area-doc-scanner` worktree was removed with #127's only new sighting in it; only the screenshot's file name survived.
 
 **How to apply:** whenever worktrees or branches are cleaned up. Related: [[orca-coordinator-loop]], [[pr-exists-and-conflicts-check]].
