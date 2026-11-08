@@ -1,5 +1,6 @@
 # Orca per-worktree hooks (spec 003). Orca runs this in each new worktree.
 # bin/setup is idempotent and serialized, so running after git's post-checkout hook is safe.
+# Through mise, so setup uses the Ruby that .ruby-version names: Orca's environment carries the global one (#225).
 scripts:
   setup: |
-    bin/setup --skip-server
+    mise exec -- bin/setup --skip-server
