@@ -32,6 +32,11 @@ RSpec.describe "Worktree project configuration" do
       expect(setup_script).to include("bin/setup --skip-server")
       expect(setup_script).not_to include("--reset")
     end
+
+    # Orca's environment carries the global mise Ruby, not .ruby-version's (#225).
+    it "runs bin/setup through mise, so it uses the Ruby that .ruby-version names" do
+      expect(setup_script).to include("mise exec -- bin/setup --skip-server")
+    end
   end
 
   describe "Claude Code worktree directory" do

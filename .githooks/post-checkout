@@ -13,8 +13,16 @@ common_dir=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) 
 [ "$git_dir" != "$common_dir" ] || exit 0
 [ -x bin/setup ] || exit 0
 
-echo "== New worktree: running bin/setup --skip-server =="
-if ! bin/setup --skip-server; then
+# The caller's environment may carry another Ruby (Orca's has the global mise one): with mise,
+# run setup on the Ruby that .ruby-version names (#225). Without it (CI runners), run it as is.
+if command -v mise >/dev/null 2>&1; then
+  set -- mise exec -- bin/setup --skip-server
+else
+  set -- bin/setup --skip-server
+fi
+
+echo "== New worktree: running $* =="
+if ! "$@"; then
   echo "!! Automatic setup failed. Run bin/setup in $(pwd) to finish setting up this worktree." >&2
 fi
 exit 0
