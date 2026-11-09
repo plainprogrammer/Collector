@@ -21,7 +21,7 @@ RSpec.describe Catalog::Pagination, type: :model do
     end
 
     it "shows page 1 for anything that isn't a positive decimal integer", :aggregate_failures do
-      [ "0x10", "0b11", "0o7", "1_0", "-1", "+5", "0", "00", "", " ", " 7", "7 ", "1.5", "1e1", "abc", "٣", "[\"4\"]" ].each do |requested|
+      [ "0x10", "0b11", "0o7", "1_0", "-1", "+5", "0", "00", "", " ", " 7", "7 ", "1.5", "1e1", "abc", "٣", "[\"4\"]", "7\n" ].each do |requested|
         expect(page_for(requested)).to eq(1), "expected #{requested.inspect} to show page 1"
       end
       expect(page_for(nil)).to eq(1)

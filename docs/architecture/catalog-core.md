@@ -124,7 +124,7 @@ A line's text and link phrases are plain text and escaped; a phrase must occur e
 
 ### Collector-number order
 
-`Catalog::Entry.newest_first` is the one order of printings (search's groups, the printings page, the card page's printings and copies, the collection's grid, the scanner's other printings and candidates, the art evidence): release date newest first, then set code, then the collector number, then language. The number compares by the digits it starts with, read as a number, and by its text when those are equal ([#204](https://github.com/plainprogrammer/Collector/issues/204) ruling 3; the AC wording "collector number" in spec 002 AC-1.4 and AC-10.1 doesn't say how):
+`Catalog::Entry.newest_first` is the one order of printings (search's groups, the printings page, the card page's printings and copies, the collection's grid, the collection table's default order and its Set sort (`CollectionTable::Sort` repeats the same terms), the scanner's other printings and candidates, the art evidence): release date newest first, then set code, then the collector number, then language. The number compares by the digits it starts with, read as a number, and by its text when those are equal ([#204](https://github.com/plainprogrammer/Collector/issues/204) ruling 3; the AC wording "collector number" in spec 002 AC-1.4 and AC-10.1 doesn't say how):
 
 | Numbers in one set | Order |
 |---|---|
@@ -187,7 +187,7 @@ A card image fits its slot with `object-fit: contain`, centred, at the largest s
 - **The source-adapter convention.** Source adapters implement `Catalog::Sources` and live in their collectible's namespace; the MTG namespace is written `MTG`. Spec 002 FR-9 wrote this into `CLAUDE.md`, `.claude/rules/` and the steering files, where it stays (spec 002 FR-9, AC-9.4; spec 027 D2).
 - **Specs 002 and 004's search and card-page parts are covered here.** Spec 027 D2 assigned 002 FR-1, FR-2, FR-7–FR-10 to this doc and left spec 004's catalog parts, which [collection and lots](collection-and-lots.md) already names as catalog core's, unassigned; the specs index now lists them under this doc (spec 027 D2, D3; #104).
 - **Where the layout-to-kind table comes from: no spec source.** `MTG::Scryfall::Mapper::KINDS` first appears in spec 002's plan, not its spec; a spec's AC names the kinds, not which Scryfall layout is which.
-- **Page numbers, collector-number order and key lookups: ruled by the maintainer, 2026-11-09** ([#204](https://github.com/plainprogrammer/Collector/issues/204), all as recommended). Page numbers are decimal digits only, and collector numbers compare numerically with the text as the tiebreak, both as in the rules above; spec 002 AC-1.4, AC-1.6, AC-1.14 and AC-10.1 are unchanged, because none of them said how to read a number. Names keep SQLite's byte order and lookups by external key ignore the type, both accepted limits below.
+- **Page numbers, collector-number order and key lookups: ruled by the maintainer, 2026-11-09** ([#204](https://github.com/plainprogrammer/Collector/issues/204), all as recommended). Page numbers are decimal digits only, and collector numbers compare numerically with the text as the tiebreak, both as in the rules above; spec 002 AC-1.4, AC-1.6, AC-1.14 and AC-10.1 are unchanged, because none of them said how to compare a name or read a number. Names keep SQLite's byte order and lookups by external key ignore the type, both accepted limits below.
 
 **Accepted limits and open issues:**
 

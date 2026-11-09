@@ -84,9 +84,9 @@ RSpec.describe Catalog::Entry, type: :model do
       end
 
       it "puts a number with no leading digits after the numbered ones, in text order", :aggregate_failures do
-        %w[★ 301 P2 2 ★2 0 P10 s1].each { |number| printed(number) }
+        [ "★", "301", "P2", "2", "★2", "0", "P10", "s1", "-1", "#5" ].each { |number| printed(number) }
 
-        expect(described_class.newest_first.map(&:number)).to eq(%w[0 2 301 P10 P2 s1 ★ ★2])
+        expect(described_class.newest_first.map(&:number)).to eq([ "0", "2", "301", "#5", "-1", "P10", "P2", "s1", "★", "★2" ])
       end
 
       it "lets the set order outrank the number", :aggregate_failures do
