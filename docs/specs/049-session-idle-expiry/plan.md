@@ -36,7 +36,7 @@ The cookie's lifetime is `Session::IDLE_LIMIT` (decision 7), so it has no consta
 
 ## Phase 1: The stamp, the dropped columns and the sessions' API (Tasks 1 and 2)
 
-**Implements:** FR-5, FR-6, FR-7, FR-2 (the shared rule). **Satisfies:** AC-4.1–AC-4.4, AC-4.6, AC-4.7 (by the suites), AC-2.1, AC-2.8 (the predicate), AC-1.1 and AC-1.2 (the predicate). **Files:** `db/migrate/20261109100001…`, `…100002…`, `…100003…`, `db/schema.rb`, `app/models/session.rb`, `app/controllers/concerns/authentication.rb`, `spec/migrations/drop_session_client_columns_spec.rb`, `spec/models/session_spec.rb`, `spec/support/query_counting.rb`, `spec/support/backup_helpers.rb`, `spec/lib/collector/backup/snapshot_spec.rb`, `script/upgrade/seeds/next.rb`, `script/upgrade/expected_changes.yml`.
+**Implements:** FR-5, FR-6, FR-7, FR-2 (the shared rule). **Satisfies:** AC-4.1–AC-4.4, AC-4.6, AC-4.7 (by the suites), AC-2.1, AC-2.8 (the predicate), AC-1.1 and AC-1.2 (the predicate). **Files:** `db/migrate/20261109100001…`, `…100002…`, `…100003…`, `db/schema.rb`, `app/models/session.rb`, `app/controllers/concerns/authentication.rb`, `spec/migrations/drop_session_client_columns_spec.rb`, `spec/models/session_spec.rb`, `spec/support/query_counting.rb`, `spec/support/backup_helpers.rb`, `spec/lib/collector/backup/snapshot_spec.rb`, `script/upgrade/seeds/next.rb`, `script/upgrade/expected_changes.yml`, `spec/script/upgrade/expected_changes_spec.rb`.
 
 ### Task 1: Migrations, schema, and the callers of the two columns
 
@@ -78,7 +78,7 @@ RSpec.describe DropSessionClientColumns, :backup, :committed, type: :model do
 
   # Rows as the previous release holds them: an address, a user agent, a pending selection with a mark, and an undoable removal.
   def fill_previous_schema!
-    Session.connection.execute("INSERT INTO sessions (user_id, ip_address, user_agent, created_at, updated_at) VALUES (#{user.id}, '203.0.113.9', 'RSpec', '2025-11-01 10:00:00', '2025-11-01 10:00:00')")
+    Session.connection.execute("INSERT INTO sessions (user_id, ip_address, user_agent, created_at, updated_at) VALUES (#{user.id}, '203.0.113.9', 'RSpec', '2025-11-01 10:00:00', '2025-11-01 10:00:00')") # Safe: an integer id from a factory
     session = Session.connection.select_value("SELECT id FROM sessions")
     selection = BulkSelection.create!(session_id: session, account: user.account)
     selection.marks.create!(account: user.account, lot:)
@@ -93,7 +93,7 @@ RSpec.describe DropSessionClientColumns, :backup, :committed, type: :model do
   end
 
   it "ends with no address and no user agent, and a NOT NULL stamp (AC-4.1)", :aggregate_failures do
-    expect(Session.column_names).not_to include("ip_address", "user_agent")
+    expect(columns(:sessions).map(&:first)).not_to include("ip_address", "user_agent") # the connection's columns, not the model's cached ones
     expect(columns(:sessions)).to include([ "last_used_at", "datetime(6)", false ])
   end
 
@@ -107,7 +107,7 @@ RSpec.describe DropSessionClientColumns, :backup, :committed, type: :model do
     expect([ count(:sessions), count(:bulk_selections), count(:bulk_selection_marks), count(:bulk_removals) ]).to eq(before)
     expect(Session.connection.select_value("SELECT id FROM sessions")).to eq(session)
     expect(Session.connection.select_value("SELECT user_id FROM sessions")).to eq(user.id)
-    expect(Session.column_names).not_to include("ip_address", "user_agent")
+    expect(columns(:sessions).map(&:first)).not_to include("ip_address", "user_agent")
   end
 
   it "gives every existing session the migration's time as its stamp, not its creation time (AC-4.3)", :aggregate_failures do
@@ -119,7 +119,7 @@ RSpec.describe DropSessionClientColumns, :backup, :committed, type: :model do
 
     expect(Session.connection.select_value("SELECT last_used_at FROM sessions")).to match(/\A2026-11-09 12:00:00/)
     expect(Session.connection.select_value("SELECT updated_at FROM sessions")).to eq(updated) # updated_at is not rewritten
-    expect(Session.expired).to be_empty # a sweep right after the upgrade deletes none, though the session is a year old
+    expect(Session.expired(Time.utc(2026, 11, 9, 13, 0, 0))).to be_empty # a sweep right after the upgrade deletes none, though the session is a year old
   end
 
   it "runs the backfill twice with the same result, and leaves a stamp already set (idempotent)", :aggregate_failures do
@@ -196,15 +196,15 @@ end
 ```ruby
 # db/migrate/20261109100003_drop_session_client_columns.rb
 # A session no longer keeps the client's address and user agent, which nothing read (spec 049 decision 5; #218 2), and its
-# stamp becomes NOT NULL. Without a transaction, as AddLastUsedAtToSessions explains. Going down puts the two columns back
-# empty (the values are not kept) and lets the stamp be NULL again.
+# stamp becomes NOT NULL. Without a transaction, as AddLastUsedAtToSessions explains. The UPDATE first is a safety net, not
+# the backfill (that is the migration before this): it stamps a row a database that skipped the backfill still holds, so the
+# NOT NULL can't fail. Going down puts the two columns back empty (the values are not kept) and lets the stamp be NULL again.
 class DropSessionClientColumns < ActiveRecord::Migration[8.1]
   disable_ddl_transaction!
 
   def up
-    execute "UPDATE sessions SET last_used_at = #{connection.quote(Time.current.utc.strftime("%Y-%m-%d %H:%M:%S.%6N"))} WHERE last_used_at IS NULL" # a database that skipped the backfill
-    remove_column :sessions, :ip_address if column_exists?(:sessions, :ip_address)
-    remove_column :sessions, :user_agent if column_exists?(:sessions, :user_agent)
+    execute "UPDATE sessions SET last_used_at = #{connection.quote(Time.current.utc.strftime("%Y-%m-%d %H:%M:%S.%6N"))} WHERE last_used_at IS NULL"
+    remove_columns :sessions, *%i[ip_address user_agent].select { column_exists?(:sessions, it) } # one table copy for both
     change_column_null :sessions, :last_used_at, false if columns(:sessions).find { it.name == "last_used_at" }&.null
   end
 
@@ -248,6 +248,19 @@ changes:
     migration: "20261109100003"
     reason: "Spec 049 decision 5: a session no longer stores the client's user agent"
 ```
+
+`spec/script/upgrade/expected_changes_spec.rb:73-76` ("ships empty and valid") expects the shipped file to have no live entry and no error, so it fails as soon as the two entries exist. Replace that example (plan review B1; the shipped spec 031's "ships as `changes: []`" stays as written, and `docs/releasing.md` step 7 retires the entries at the next tag):
+
+```ruby
+  it "ships valid, every entry naming a migration of the working tree" do
+    versions = Rails.root.glob("db/migrate/*.rb").map { it.basename.to_s[/\A\d+/] }
+    real = described_class.load(Rails.root.join("script/upgrade/expected_changes.yml"), previous_versions: [], current_versions: versions)
+    expect([ real.errors, real.retired ]).to all(be_empty)
+    expect(real.live.map { [ it.table, it.column, it.kind ] }).to eq([ [ "sessions", "ip_address", "dropped" ], [ "sessions", "user_agent", "dropped" ] ])
+  end
+```
+
+(The implementer matches the loader's real keyword names in `script/upgrade/rules.rb`.) The proof compares only the columns both databases have (`script/upgrade/compare.rb:105`), so the added `last_used_at`, its backfill and its NOT NULL are not reported and need no `rewritten` entry; the two `dropped` entries are all the proof needs (AC-4.5).
 
 Run `bin/rails db:migrate`; restore the cable, cache and queue schema files it rewrites (memory `migrate-schema-noise.md`); commit `db/schema.rb` with `sessions` as `t.datetime "last_used_at", null: false`, no `ip_address` and no `user_agent`, version `2026_11_09_100003`.
 
@@ -363,13 +376,16 @@ require "rails_helper"
 
 RSpec.describe "Session idle expiry (spec 049)", type: :request do
   let(:user) { create(:user) }
-  let(:session) { user.sessions.last }
+  let(:signed_in_session) { user.sessions.last } # not `session`: an integration test has one of its own
 
   before { sign_in_as(user) }
 
-  def stamp!(ago) = session.update_columns(last_used_at: Time.current - ago) # sets the stamp without a request
+  def stamp!(ago) = signed_in_session.update!(last_used_at: Time.current - ago) # sets the stamp without a request
 
-  def cookie_expiry = Time.httpdate(response.headers["Set-Cookie"][/expires=([^;]+)/i, 1])
+  # Set-Cookie is an Array when a response sets two cookies (Rack 3), so find the session cookie's own line.
+  def session_cookie = Array(response.headers["Set-Cookie"]).find { it.start_with?("session_id=") }
+
+  def cookie_expiry = Time.httpdate(session_cookie[/expires=([^;]+)/i, 1])
 
   describe "expiry (Story 1)" do
     it "signs in a session 29 days and 23 hours old (AC-1.1)" do
@@ -406,12 +422,12 @@ RSpec.describe "Session idle expiry (spec 049)", type: :request do
       stamp!(31.days)
       writes = write_statements_to("sessions") { get collection_path }
       expect(writes).to be_empty
-      expect(Session.exists?(session.id)).to be(true)
-      expect(response.headers["Set-Cookie"]).to match(/session_id=;/)
+      expect(Session.exists?(signed_in_session.id)).to be(true)
+      expect(session_cookie).to start_with("session_id=;")
     end
 
     it "makes a new session on the next sign-in, not reusing the expired one (AC-1.6)", :aggregate_failures do
-      expired = session
+      expired = signed_in_session
       stamp!(31.days)
       post session_path, params: { email_address: user.email_address, password: AuthenticationHelpers::PASSWORD }
       expect(user.sessions.where.not(id: expired.id).count).to eq(1)
@@ -431,38 +447,45 @@ RSpec.describe "Session idle expiry (spec 049)", type: :request do
     it "writes nothing to sessions for a stamp under 24 hours old (AC-2.2)", :aggregate_failures do
       stamp!(23.hours)
       expect(write_statements_to("sessions") { get collection_path }).to be_empty
-      expect(response.headers["Set-Cookie"].to_s).not_to match(/session_id=/)
+      expect(session_cookie).to be_nil
     end
 
     it "stamps a session 24 hours old or more and sets the cookie again for 30 days (AC-2.3)", :aggregate_failures do
       stamp!(24.hours)
       get collection_path
-      expect(session.reload.last_used_at).to be_within(1.minute).of(Time.current)
+      expect(signed_in_session.reload.last_used_at).to be_within(1.minute).of(Time.current)
       expect(cookie_expiry).to be_within(1.minute).of(30.days.from_now)
     end
 
     it "counts a page, a form post and an open catalog visit as use (AC-2.4)", :public_catalog, :aggregate_failures do
       lot = create(:lot, account: user.account)
-      [ -> { get collection_path }, -> { patch lot_path(lot), params: { lot: { quantity: 3 } } }, -> { get catalog_entries_path } ].each do |request|
+      [ -> { get collection_path }, -> { patch lot_path(lot), params: { lot: { quantity: 3 } } }, -> { get catalog_entries_path } ].each do |call|
         stamp!(2.days)
-        request.call
-        expect(session.reload.last_used_at).to be_within(1.minute).of(Time.current)
+        call.call
+        expect(signed_in_session.reload.last_used_at).to be_within(1.minute).of(Time.current)
       end
     end
 
-    it "records nothing for no cookie, a bad cookie or a gone row (AC-2.5)", :aggregate_failures do
-      delete session_path # signs out; the cookie is gone
+    it "records nothing for no cookie, a bad cookie or a cookie that names a gone row (AC-2.5)", :aggregate_failures do
+      gone = signed_in_session.id
+      Session.where(id: gone).delete_all # the cookie stays and now names no row
       expect(write_statements_to("sessions") { get collection_path }).to be_empty
+      expect(response).to redirect_to(new_session_path)
+
       cookies[:session_id] = "not-a-signed-value"
       expect(write_statements_to("sessions") { get collection_path }).to be_empty
       expect(response).to redirect_to(new_session_path)
+
+      cookies.delete(:session_id)
+      expect(write_statements_to("sessions") { get collection_path }).to be_empty
+      expect(Session.count).to eq(0)
     end
 
     it "sets a signed, HTTP-only, same-site-lax cookie that expires in 30 days and is not permanent (AC-2.6)", :aggregate_failures do
+      delete session_path # the group's sign-in left a session; a signed-in user is redirected away from sign-in
       https!
       sign_in_as(user)
-      header = response.headers["Set-Cookie"]
-      expect(header).to match(/httponly/i).and match(/samesite=lax/i).and match(/secure/i)
+      expect(session_cookie).to match(/httponly/i).and match(/samesite=lax/i).and match(/secure/i)
       expect(cookie_expiry).to be_within(1.minute).of(30.days.from_now)
     end
 
@@ -478,7 +501,7 @@ RSpec.describe "Session idle expiry (spec 049)", type: :request do
       stamp!(-3.days)
       get collection_path
       expect(response).to have_http_status(:ok)
-      expect(session.reload.last_used_at).to be_within(1.minute).of(Time.current)
+      expect(signed_in_session.reload.last_used_at).to be_within(1.minute).of(Time.current)
     end
   end
 end
@@ -523,7 +546,7 @@ end
     end
 ```
 
-`resume_session`, `request_authentication` and `terminate_session` are unchanged: an expired session returns nil there, so the redirect, the kept page and the 303 on sign-out are today's.
+`resume_session`, `request_authentication` and `terminate_session` are unchanged (a sign-out by a session whose stamp is a day old first stamps it and sets the cookie, then destroys the row and deletes the cookie; Rack keeps only the deletion, so the output is today's and the extra write is the spec's use): an expired session returns nil there, so the redirect, the kept page and the 303 on sign-out are today's.
 
 **Verify:** `bin/rspec spec/requests/session_expiry_spec.rb spec/requests` (every request spec signs in and out through these paths), then `bin/rspec spec/system/scanner_adding_spec.rb spec/system/scanner_spec.rb` if the Firefox driver runs here (they delete the cookie by name), else left to CI.
 
@@ -557,7 +580,7 @@ end
       expect(described_class.all).to contain_exactly(kept, theirs)
       expect(BulkSelection.pluck(:session_id)).to eq([ kept.id ])
       expect(BulkRemoval.pluck(:session_id)).to eq([ kept.id ])
-      expect(BulkSelectionMark.count).to eq(1)
+      expect(BulkSelection::Mark.count).to eq(1)
       expect([ User.count, Account.count, Lot.count ]).to eq(before)
       expect(gone).not_to be_persisted.or(satisfy { described_class.exists?(gone.id) == false })
     end
@@ -579,7 +602,7 @@ end
   end
 ```
 
-(`BulkSelectionMark` is the mark model's real name; the implementer checks `app/models`. The last assertion of the first example is simplified to `expect(described_class.exists?(gone.id)).to be(false)`.) Then `spec/jobs/session/sweep_job_spec.rb` (`type: :job`):
+(The mark model is `BulkSelection::Mark`. The first example's last assertion is `expect(described_class.exists?(gone.id)).to be(false)`, replacing the `satisfy` line.) Then `spec/jobs/session/sweep_job_spec.rb` (`type: :job`):
 
 ```ruby
 require "rails_helper"
@@ -603,7 +626,7 @@ RSpec.describe Session::SweepJob, type: :job do
     expect(described_class.concurrency_key).to eq("session_sweep")
   end
 
-  it "queues a second sweep behind the first through Solid Queue (AC-3.7)", :solid_queue do
+  it "queues a second sweep behind the first through Solid Queue (AC-3.7)", :solid_queue, :aggregate_failures do
     first = queue_job(described_class)
     second = queue_job(described_class)
 
@@ -688,7 +711,7 @@ end
 
 Edit `tenancy-and-accounts.md` as AC-5.1 lists, with spec 049 as each statement's source: the Glossary's *Session* (stamp, expiry); the Invariants' bullet on jobs ("The jobs the app runs are global: … and `Session::SweepJob`, which deletes every account's expired sessions") and the cross-account reads bullet (`Session.sweep!`); "A session" (Created: the row has no address or user agent, the cookie expires in 30 days; Resumed: an expired session is no session, the cookie removed, nothing written; a use is any request resolving the session, recorded at most daily with the cookie renewed; Ended: add idle expiry and the sweep, drop "Nothing else ends one: sessions have no expiry"); the Named constants table (`Session::IDLE_LIMIT`, `STAMP_INTERVAL`, `SWEEP_BATCH`, the cookie's lifetime, the schedule); the Decisions list: remove only the clauses for rulings 1 and 2 from the "Six behaviours have no spec source" bullet and set its count to what remains, as the coordinator's rule for the lines shared by #228–#231 says (and the same for the "open:" line under Sources, line 169), and remove the two "Accepted limits" entries about sessions. In `docs/specs/README.md` row 049: status "Approved" and plan "present"; at distillation the row changes per spec 027. Record in `verification.md` the criteria verified by reading (AC-5.1–AC-5.3) and the evidence for the rest.
 
-**Verify (with a CI slot):** `bin/ci` whole, with the example count and the run's SHA recorded in `verification.md`. `bin/upgrade-smoke` needs a container engine and is not a `bin/ci` step: AC-4.5's proof is the `spec/script/upgrade` examples plus CI's image job; the supervisor says so in `verification.md`.
+**Verify (with a CI slot):** `bin/ci` whole, with the example count and the run's SHA recorded in `verification.md`. `bin/upgrade-smoke` needs a container engine and is not a `bin/ci` step: AC-4.5's proof is the `spec/script/upgrade` examples plus CI's image job, and AC-4.7's is the harness's backup leg (`script/upgrade/harness.rb`, which restores the previous release's backup and migrates it with `RESTORE_ENDS_SESSIONS`), also CI's image job. `verification.md` says so, and that the backfilled stamp is not reported by the proof (it compares common columns only), so no `rewritten` entry exists.
 
 **Commit:** `docs(tenancy): sessions idle expiry and the dropped columns (#228)`.
 
