@@ -70,8 +70,9 @@ RSpec.describe Upgrade::ExpectedChanges, :upgrade do
       "a table now cascades from sessions: update RESTORE_ENDS_SESSIONS and spec 031's decision 7, FR-4 and AC-6.2 (a PATCH)"
   end
 
-  it "ships empty and valid" do
-    real = described_class.load(Rails.root.join("script/upgrade/expected_changes.yml"), previous_versions: [], current_versions: [])
-    expect([ real.live, real.retired, real.errors ]).to all(be_empty)
+  it "ships valid: no error (every entry names a migration of the working tree) and no retired entry" do
+    versions = Rails.root.glob("db/migrate/*.rb").map { it.basename.to_s[/\A\d+/] }
+    real = described_class.load(Rails.root.join("script/upgrade/expected_changes.yml"), previous_versions: [], current_versions: versions)
+    expect([ real.errors, real.retired ]).to all(be_empty)
   end
 end

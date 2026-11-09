@@ -87,7 +87,7 @@ module BackupHelpers
 
   # A session with a pending bulk selection (a mark) and a bulk removal, the working state a restore clears (decision 3).
   def seed_session(user, lot)
-    session = user.sessions.create!(ip_address: "203.0.113.9", user_agent: "RSpec")
+    session = user.sessions.create!
     BulkSelection.for(session).marks.create!(account: user.account, lot:)
     BulkRemoval.create!(session:, account: user.account, copies: 1)
     session
