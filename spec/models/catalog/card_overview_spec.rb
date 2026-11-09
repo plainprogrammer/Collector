@@ -29,4 +29,19 @@ RSpec.describe Catalog::CardOverview, type: :model do
     expect(rows.drop(2).map(&:entry)).to eq(newest.reverse.first(10))
     expect(described_class.new(account:, entry: old).total_printings).to eq(13)
   end
+
+  context "with printings of the card in one set (#204)" do
+    let(:set) { create(:catalog_set, code: "znr") }
+    let(:shown) { printing(set.released_on, set:, number: "1") }
+
+    it "lists the owned and the newest printings by collector number, numerically", :aggregate_failures do
+      owned = %w[100 12a 2].map { |number| printing(set.released_on, set:, number:) }
+      %w[12 10 ★].each { |number| printing(set.released_on, set:, number:) }
+      owned.each { |entry| create(:lot, account:, entry:) }
+
+      overview = described_class.new(account:, entry: shown)
+      expect(overview.rows.drop(1).map { |row| row.entry.number }).to eq(%w[2 12a 100 10 12 ★])
+      expect(overview.lots.map { |lot| lot.entry.number }).to eq(%w[2 12a 100])
+    end
+  end
 end

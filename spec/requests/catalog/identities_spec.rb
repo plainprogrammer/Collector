@@ -17,6 +17,16 @@ RSpec.describe "Card printings", type: :request do
     expect(response.body.scan(%r{href="/catalog/entries/}).size).to eq(12)
   end
 
+  it "orders a set's printings by collector number, numerically (#204)" do
+    znr = create(:catalog_set, code: "znr")
+    entries = %w[12a 100 10 2 12 ★].index_with { |number| create(:catalog_entry, identity: forest, set: znr, number:) }
+
+    get catalog_identity_path(forest)
+
+    hrefs = response.body.scan(%r{href="(/catalog/entries/[^"/?]+)"}).flatten.uniq
+    expect(hrefs).to eq(%w[2 10 12 12a 100 ★].map { |number| catalog_entry_path(entries.fetch(number)) })
+  end
+
   it "reads only decimal digits as a page number (#204)", :aggregate_failures do
     stub_const("Catalog::IdentitiesController::PER_PAGE", 1)
     Array.new(12) { |i| create(:catalog_entry, identity: forest, released_on: Date.new(2000, 1, 1) + i) }
