@@ -1,7 +1,7 @@
 # Feature 056: New and Changed Public Code Carries a Comment (a YARD Ratchet in `bin/ci checks`)
 
-**Status:** Draft
-**Version:** 1.1.0
+**Status:** Approved by the coordinator under the maintainer's rulings of 2026-11-09 (OD1–OD6, all as recommended; the Opus re-review's non-blocking findings folded in)
+**Version:** 1.2.0
 **Created:** 2026-11-09
 **Last Updated:** 2026-11-09
 **Branch:** `056-yard-comment-ratchet`
@@ -16,6 +16,7 @@
 |---------|------|--------|
 | 1.0.0 | 2026-11-09 | Written from issue #264, `.claude/rules/code-documentation.md` (the guidance the check enforces), spec 054 and ADR 0027, and a spike of YARD 0.9.45's registry on the current code (Problem Statement). The issue's four questions are decisions 1–3 and 5 and 6 below; decisions 1–5 and the ADR question are recommendations for the maintainer to rule on (Open Questions OD1–OD6) |
 | 1.1.0 | 2026-11-09 | From the spec review (Opus, read-only; REVISE, two blocking). **Detached HEAD:** GitHub's pull request checkout is detached, so the base is `git merge-base HEAD origin/main` whatever `HEAD` is, not `PushScope`'s rule (decision 5, AC-3.7, tag pushes). **Namespaces:** a class or module is judged only at its first definition and against a registry of every scoped file, so `module Collector` wrappers aren't judged and a comment above the outer wrapper doesn't count for the inner class (decision 4, AC-1.13, AC-1.14, AC-3.1). **Also:** a method's extent includes its own comment, deletions between methods judge neither (decision 4, AC-2.7, AC-2.8); what YARD can't see, and overrides (decision 3, AC-1.10, AC-1.15); FR-1's "Must not" sentence fixed; untracked means not ignored; criteria tagged by decision; OD6 quotes ADR 0027 |
+| 1.2.0 | 2026-11-09 | From the spec review round 2 (Opus, read-only; APPROVE WITH CHANGES, B1 and B2 resolved, nothing blocking), and the maintainer's rulings of 2026-11-09 (OD1–OD6 all as recommended). **"Changed" is a text comparison** of an object's extent with its base, so a deletion git places against a neighbour judges nobody (decision 4, AC-2.9); FR-1 reads the base side; **a shallow clone is refused** and the workflow keeps `fetch-depth: 0` (decision 5, AC-3.3, AC-4.9); the extent's glossary entry is for methods; the first-definition, unparseable-file, header-comment, tag and clean-checkout nits |
 
 ---
 
@@ -35,7 +36,7 @@ A spike of YARD 0.9.45's registry on the current code (nothing committed) measur
 
 - **Scoped files:** the Ruby files the check judges (decision 1).
 - **Judged object:** a public class, module or method (instance or class) in a scoped file (decision 3).
-- **Changed object:** a judged object the branch added or changed (decision 4). The **extent** of an object is its own comment (the unbroken run of comment lines above it) through its last line.
+- **Changed object:** a judged object the branch added or changed (decision 4). The **extent** of a method is its own comment (the unbroken run of comment lines directly above it) through its `end`; a class or module is judged by its own comment and opening line only (decision 4).
 - **Summary:** the comment's text before its first tag. A comment of tags alone has no summary.
 - **The base:** the commit the branch is compared with (decision 5).
 
@@ -65,19 +66,19 @@ A spike of YARD 0.9.45's registry on the current code (nothing committed) measur
 
 ## Decisions
 
-### 1. Which files are judged (recommendation, OD1)
+### 1. Which files are judged (ruled, OD1)
 
 **Recommendation:** Ruby files under `app/models/` (concerns included), `app/helpers/`, `app/*/concerns/`, `lib/` and `spec/support/`: the "reusable code" the rule lists (concerns, helpers, `lib/`, plain Ruby objects under `app/models/`, and `spec/support/` helpers; the rule's "query methods and scopes" are judged only where they are `def` methods, decision 3). Controllers, jobs, mailers and channels are entry points that the framework calls and the routes and area docs describe; their actions would be commented for their own sake. `spec/support/` is not part of the YARD site (`.yardopts` has `app` and `lib`), so the check parses its own file list and the site is unchanged.
 
 **Alternatives:** (a) the issue's minimum, `app/models/` and `lib/` only; (b) all of `app/`, `lib/` and `spec/support/`. The spike's counts above show what each would put in reach: (b) adds 158 + 15 + 1 public controller, job and mailer objects.
 
-### 2. What counts as "has a comment" (recommendation, OD2)
+### 2. What counts as "has a comment" (ruled, OD2)
 
 **Recommendation: a summary, any non-empty text before the first tag.** A comment of tags alone (`@return [Integer]`) is not a comment for this check, because the rule asks first for "a one-line summary saying what it gives the caller". `@param` and `@return` are **not** required: at 54% coverage most methods have no comment at all, a one-liner such as `def full_name = …` doesn't need them, and a check demanding them would produce comments for their own sake (ADR 0027). The rule's wording stays "reusable code gets `@param` and `@return`"; it is enforced by review.
 
 **Alternative:** also require `@param` for each parameter and `@return` on methods with parameters, as the issue floats. The check can read the method's parameters from YARD; it would flag a method whose summary is fine because a tag is missing.
 
-### 3. Which objects are judged, and `@api private` (recommendation, OD3)
+### 3. Which objects are judged, and `@api private` (ruled, OD3)
 
 **Recommendation:** public classes, modules and methods (instance and class methods, including `class << self`). Not judged: private and protected methods, constants, and attribute methods (`attr_*`, which YARD documents on its own; the rule asks constants to carry their why, which a reviewer checks, and a check on every constant would flag lists of symbols). **An object marked `@api private` counts as commented**, with or without text: the rule tells the author to mark one-caller helpers that way, so the mark is the comment's answer to "is this meant for reuse", and requiring text as well would make the mark pointless.
 
@@ -85,19 +86,19 @@ The rule's other marks, `@private` and `@!visibility private`, are not exemption
 
 **Alternative:** `@api private` objects are judged like any other (they need a summary too); or constants are judged.
 
-### 4. What "changed" means (recommendation, OD4)
+### 4. What "changed" means (ruled, OD4)
 
-An object's **extent** runs from its own comment (the unbroken run of comment lines directly above it) to its last line. A **method** is changed when the branch adds, edits or removes a line in its extent: the comment lines, the `def` line, the body, the `end` (a one-line `def x = y` is one line). So deleting a method's comment changes the method, and an old method left with no summary fails; editing a comment that keeps its summary passes. A pure deletion (a hunk with no new-side lines) changes a method only when the deleted lines lay strictly inside its extent in the base: deleting a whole method between two others changes neither of them.
+A **method's extent** runs from its own comment (the unbroken run of comment lines directly above it) to its `end` (a one-line `def x = y` is one line). A method is changed when it is new in its file, or when the text of its extent differs from the text of its extent in the base (the same file, followed through a rename, and the same name). The comparison is of text, not of diff hunks, so it doesn't depend on where git places a deletion: deleting a whole method between two others changes neither of them, deleting a method's comment changes the method (an old method left with no summary fails), editing a comment that keeps its summary passes, and moving a method within a file changes nothing. A method that is a reformat of the base is a change.
 
-A **class or module** is changed when the branch adds, edits or removes a line of its own comment or **opening** (`class Foo < Bar`, `module Foo`, the first line of `Foo = Struct.new(…) do`); a superclass change or a rename is an edit to the opening. A branch that edits a method inside it does not change the class. **A class or module is judged only at its first definition:** opening a namespace that already exists in the base (every `module Collector` wrapper in a new file of `lib/collector/`) adds nothing, and what counts as its comment is read from a registry of **every** scoped file at the head, not only the changed ones, so the namespace's comment, written in another file, is seen. The comment of a new file's header goes above the line of the class the file defines (`class PushScope` inside `module Collector`), or the namespaces above it are all the file defines and then it is theirs; a comment above only the outer `module Collector` line documents `Collector` and not the inner class.
+A **class or module** is changed when it is new, or the text of its own comment or **opening** differs from the base's (`class Foo < Bar`, `module Foo`, the first line of `Foo = Struct.new(…) do`); a superclass change or a rename is an edit to the opening. Its members' text is not part of it. A branch that edits a method inside it does not change the class. **A class or module the base doesn't define is judged once**, however many files the branch opens it in: it passes if any of its definitions at the head has a summary, and is reported at YARD's `file:line` for it. Opening a namespace the base already defines (every `module Collector` wrapper in a new file of `lib/collector/`) adds nothing, and what counts as its comment is read from a registry of **every** scoped file at the head, not only the changed ones, so a namespace's comment written in another file is seen. The comment of a new file's header goes above the line of the class the file defines (`class PushScope` inside `module Collector`), or the namespaces above it are all the file defines and then it is theirs; a comment above only the outer `module Collector` line documents `Collector` and not the inner class.
 
 **Recommendation** is that member edits don't pull in the enclosing class: touching a line of a 600-line model would otherwise demand a class comment as the price of any fix, which the rule's "don't retrofit untouched files just to comply" argues against. **Alternative:** any change inside a class or module changes it; the first edit to each old class then writes its comment, which ratchets faster and makes small fixes cost more.
 
-The diff is the branch's working tree against the base, with renames followed: a file moved with no edit changes nothing; an edited moved file is judged on its edited lines only. A file that is untracked and not ignored is entirely added. A deleted file or object is never judged. A change that only reformats a method (a RuboCop autocorrect inside it) is a change.
+The comparison is of the branch's working tree with the base, with renames followed (git's rename detection): a file moved with no edit changes nothing; an edited moved file is judged on the objects whose text changed. A file that is untracked and not ignored is entirely added. A deleted file or object is never judged. A change that only reformats a method (a RuboCop autocorrect inside it) is a change.
 
-### 5. The base, and when it can't be found (recommendation, OD5)
+### 5. The base, and when it can't be found (ruled, OD5)
 
-**Recommendation:** the base is `git merge-base HEAD origin/main`, **whatever `HEAD` is**: a branch, or the detached merge commit GitHub's `pull_request` checkout (`refs/pull/N/merge`) and a tag push check out. This is not `Collector::PushScope`'s rule, which refuses a detached `HEAD` for the pre-push hook (spec 035 decision 3); the check shares only its idea of the merge base. In GitHub's checks job (`fetch-depth: 0`) a pull request's merge base is `main`'s tip, so the check judges the pull request's own changes; on `main` itself (a push after a merge) and on a release tag at `main`'s tip the merge base is `HEAD`, nothing has changed, and the check passes. After a merge of `main` into the branch the merge base is the newest `main` commit in the branch's history, so what `main` brought in is not judged, only the branch's own changes. Locally the base is the `origin/main` the checkout last fetched: a branch rebased onto a local `main` that is ahead of `origin/main` is judged on `main`'s commits too, until `origin/main` is fetched. **When the base can't be found** (no `origin/main` ref, no merge base) **the check fails** and says what to fetch, instead of passing: a check that silently passes where it can't see is the failure mode `PushScope`'s FR-4 avoids by running the full `bin/ci`.
+**Recommendation:** the base is `git merge-base HEAD origin/main`, **whatever `HEAD` is**: a branch, or the detached merge commit GitHub's `pull_request` checkout (`refs/pull/N/merge`) and a tag push check out. This is not `Collector::PushScope`'s rule, which refuses a detached `HEAD` for the pre-push hook (spec 035 decision 3); the check shares only its idea of the merge base. In GitHub's checks job (`fetch-depth: 0`) a pull request's merge base is `main`'s tip, so the check judges the pull request's own changes; on `main` itself (a push after a merge) and on a release tag at `main`'s tip the merge base is `HEAD`, nothing has changed, and the check passes. After a merge of `main` into the branch the merge base is the newest `main` commit in the branch's history, so what `main` brought in is not judged, only the branch's own changes. **`origin/main` and the history it needs** come from the workflow: the `checks` job checks out with `fetch-depth: 0`, which fetches every branch of the base repository (a pull request from a fork included) as `refs/remotes/origin/*` with the full history the merge base needs; the workflow must keep it. **A shallow repository is refused** (`git rev-parse --is-shallow-repository` is `true`): the check fails and names `fetch-depth: 0` and `git fetch --unshallow`, instead of judging against a merge base that history cut off. Locally the base is the `origin/main` the checkout last fetched: a branch rebased onto a local `main` that is ahead of `origin/main` is judged on `main`'s commits too, until `origin/main` is fetched. **When the base can't be found** (no `origin/main` ref, no merge base, a shallow repository) **the check fails** and says what to fetch, instead of passing: a check that silently passes where it can't see is the failure mode `PushScope`'s FR-4 avoids by running the full `bin/ci`.
 
 **Alternative:** skip with a printed notice when the base can't be found (friendlier to a clone without `origin/main`, weaker in CI if a checkout ever lost its history).
 
@@ -123,7 +124,7 @@ All criteria are verified in RSpec against a throwaway git repository built in t
 - [ ] **AC-1.4** (OD3, OD4) Given a branch that adds a class with no comment, whose methods are all commented When the check runs Then it fails and names the class; with a comment above the class line it exits 0 (OD4)
 - [ ] **AC-1.5** (OD3) Given a branch that adds a module with no comment When the check runs Then it fails and names the module (as AC-1.4); and Given the branch edits a class's superclass or name on its opening line When the check runs Then the class is changed and fails without a comment (OD4)
 - [ ] **AC-1.6** Given a branch that edits a line inside the body of an existing public method that has no comment When the check runs Then it fails and names the method; and Given the method has a comment When the same edit is made Then it exits 0 (the comment's staleness isn't judged, decision 6)
-- [ ] **AC-1.7** Given a branch that only deletes lines from inside an existing uncommented public method's body When the check runs Then it fails and names the method
+- [ ] **AC-1.7** (decision 4) Given a branch that only deletes lines from inside an existing uncommented public method's body When the check runs Then it fails and names the method
 - [ ] **AC-1.8** (OD4) Given a branch that edits a line inside a method of an existing uncommented class and the method has a comment When the check runs Then it exits 0: the class is not changed (OD4)
 - [ ] **AC-1.9** (OD2) Given a method whose comment is tags only (`# @return [Integer]`) When the branch adds or changes it Then the check fails: there is no summary (OD2)
 - [ ] **AC-1.10** (OD3) Given a method marked `# @api private` with no other text When the branch adds it Then the check exits 0, while `# @private` alone fails; and Given a private or protected method, a constant, an `attr_reader`, an `initialize`, a `scope` declaration, a `define_method` or a method inside an `RSpec.configure` block with no comment When the branch adds them Then the check exits 0
@@ -142,7 +143,7 @@ All criteria are verified in RSpec against a throwaway git repository built in t
 
 **Acceptance criteria:**
 
-- [ ] **AC-2.1** Given a checkout whose `HEAD` is `origin/main` with many uncommented public methods When the check runs Then it exits 0 and prints that it found no changed public code
+- [ ] **AC-2.1** Given a clean checkout whose `HEAD` is `origin/main` with many uncommented public methods When the check runs Then it exits 0 and prints that it found no changed public code
 - [ ] **AC-2.2** Given a branch that changes only a method with a comment, in a file that has uncommented public methods elsewhere When the check runs Then it exits 0 and names none of them
 - [ ] **AC-2.3** (decision 4) Given a file renamed with no edit, containing uncommented public methods When the check runs Then it exits 0; and Given the renamed file with one uncommented method's line edited Then it fails naming that method only (decision 4)
 - [ ] **AC-2.4** Given a branch that deletes a file or an uncommented method When the check runs Then it exits 0 for the deletion; and Given the deleted method sat between two uncommented methods Then neither of them is judged (decision 4)
@@ -151,6 +152,8 @@ All criteria are verified in RSpec against a throwaway git repository built in t
 
 - [ ] **AC-2.7** (decision 4) Given a branch that deletes the whole comment of an existing method that has no other summary When the check runs Then it fails naming the method; and Given it only rewords the comment's summary Then it exits 0
 - [ ] **AC-2.8** (decision 4) Given a branch that adds a comment above an existing uncommented method and changes nothing else When the check runs Then it exits 0
+
+- [ ] **AC-2.9** (decision 4) Given a branch that deletes a whole method whose lines git places against the previous method's `end` (adjacent methods with similar endings) When the check runs Then neither neighbouring method is judged; and Given a method moved within its file with no other change Then it isn't judged
 
 ### Story 3: The failure is precise, and the check fails safe
 
@@ -162,12 +165,12 @@ All criteria are verified in RSpec against a throwaway git repository built in t
 
 - [ ] **AC-3.1** Given a branch with several objects missing a comment, across files When the check fails Then it prints one line per object (`path:line: Name has no comment`, saying whether the branch added or changed it; a class's line adds that a comment above an enclosing namespace documents the namespace), in path then line order, a count, and the path of `.claude/rules/code-documentation.md`
 - [ ] **AC-3.2** Given a failed run When its output is read Then it states that comment quality and staleness aren't checked (decision 6)
-- [ ] **AC-3.3** (OD5) Given a checkout with no `origin/main` ref, or with no merge base with it When the check runs Then it exits non-zero with a message saying what is missing and to fetch `origin/main`
-- [ ] **AC-3.4** Given a changed scoped file that YARD can't parse When the check runs Then it fails naming the file, and doesn't skip it
+- [ ] **AC-3.3** (OD5) Given a checkout with no `origin/main` ref, or with no merge base with it, or a shallow clone even with `origin/main` present When the check runs Then it exits non-zero with a message saying what is missing, and to fetch `origin/main` or, for a shallow clone, `fetch-depth: 0` and `git fetch --unshallow`
+- [ ] **AC-3.4** Given a changed scoped file that YARD can't parse When the check runs Then it fails naming the file, and doesn't skip it; and Given an unchanged scoped file YARD can't parse Then it is ignored (the site's build reports it)
 - [ ] **AC-3.5** Given the check has run When `git status --ignored` is read Then it has written nothing: no `.yardoc/`, no file in the checkout
 - [ ] **AC-3.6** Given a failed run When its output is read Then it never claims a comment is stale or poor, only that a summary is missing
 
-- [ ] **AC-3.7** (decision 5) Given a detached `HEAD` that is a merge commit of the branch into `origin/main` (as GitHub's pull request checkout) When the check runs Then it judges the branch's changes and does not fail for the detached `HEAD`; and Given a detached `HEAD` at `origin/main`'s tip (a tag push) Then it exits 0 with no changed code
+- [ ] **AC-3.7** (decision 5) Given a detached `HEAD` that is a merge commit of the branch into `origin/main` (as GitHub's pull request checkout) When the check runs Then it judges the branch's changes and does not fail for the detached `HEAD`; and Given a detached `HEAD` at `origin/main`'s tip (a tag push) Then it exits 0 with no changed code, as does a tag on an older commit that is an ancestor of `origin/main`
 
 ### Story 4: It runs where `bin/ci checks` runs, and is documented
 
@@ -182,9 +185,10 @@ All criteria are verified in RSpec against a throwaway git repository built in t
 - [ ] **AC-4.3** (CI) Given the step When its run time is read from the branch's CI run and a local run Then it is at most 30 s
 - [ ] **AC-4.4** Given this branch's own changes When the check runs on it Then it exits 0: the code it adds is commented as the rule asks
 - [ ] **AC-4.5** Given the Dockerfile's build context and `.dockerignore` When they are read Then the check's files are not in the image: `.dockerignore` leaves them out, and `bin/image-smoke`'s absent-path list and `spec/image_publishing_spec.rb` name them unless a directory already listed holds them
-- [ ] **AC-4.6** Given `.claude/rules/code-documentation.md` When it is read Then it says which paths and objects the check judges, that `@api private` counts, that the check runs in `bin/ci checks`, and that quality and staleness stay with reviews (read)
+- [ ] **AC-4.6** Given `.claude/rules/code-documentation.md` When it is read Then it says which paths and objects the check judges, that a file's header comment goes above the class the file defines, not above its `module Collector` wrapper, that `@api private` counts, that the check runs in `bin/ci checks`, and that quality and staleness stay with reviews (read)
 - [ ] **AC-4.7** Given `CLAUDE.md`'s Commands list and its Claude Code Hooks section When they are read Then `bin/ci`'s description names the step, in lines of the existing style, and the Project Status paragraph isn't extended (read)
 - [ ] **AC-4.8** (OD6) Given `docs/architecture/release-and-deploy.md`, `docs/specs/README.md` and ADR 0027's consequence that "a later spec may add" a check When they are read Then the area doc states the step, the index has this spec's row and records that spec 054's Out of Scope "a rule that new code carries comments" is superseded (both directions), and ADR 0027 is not edited (read)
+- [ ] **AC-4.9** (decision 5) Given `.github/workflows/ci.yml` When it is read Then the `checks` job's checkout has `fetch-depth: 0`, and an RSpec example names this spec beside the one that already checks it (`spec/script/upgrade/files_spec.rb`) or in `spec/config/ci_definition_spec.rb`
 
 ## Functional Requirements
 
@@ -194,7 +198,8 @@ One command, run by `bin/ci checks`, that compares the working tree with the bas
 
 **Must:**
 - Use YARD's parser for the objects, over every scoped file at the head (so a namespace's comment in another file is seen), so its idea of a public method, class method and `class << self` is the one the site uses.
-- Read the diff of the working tree against the base with renames followed, and treat an untracked scoped file as wholly added.
+- Compare the working tree with the base with renames followed, and treat an untracked, not-ignored scoped file as wholly added.
+- Read the base version of each changed scoped file, and the classes and modules the base defines across every scoped file (`git show <base>:<path>` into memory), so "new" and "changed" are answered by comparing text (decision 4).
 - Print every offender in one run (not stop at the first).
 - Run without a database, a network, a running app or a container engine, and write nothing into the checkout (AC-3.5).
 
@@ -213,7 +218,7 @@ One command, run by `bin/ci checks`, that compares the working tree with the bas
 
 ### Performance
 
-- The step adds at most 30 s to `bin/ci checks` (AC-4.3); it parses every scoped file in memory (a few seconds, as the site's build parses `app` and `lib`) and judges only the changed objects.
+- The step adds at most 30 s to `bin/ci checks` (AC-4.3); it parses every scoped file at the head, and the changed files and namespaces' definitions at the base, in memory (a few seconds, as the site's build parses `app` and `lib`), and judges only the changed objects.
 
 ### Security
 
@@ -244,7 +249,7 @@ One command, run by `bin/ci checks`, that compares the working tree with the bas
 
 ## Open Questions
 
-Each is a decision for the maintainer, as the issue lists them. The recommendation is the text of the criteria; an alternative changes the criteria its tag names.
+Ruled by the maintainer on 2026-11-09: each recommendation stands, so the criteria stand as written. The alternatives are kept so a later change knows what was weighed, and the tags in the criteria say what an alternative would change.
 
 - **OD1 — Which files (decision 1).** Recommended: `app/models/` (concerns included), `app/helpers/`, `app/*/concerns/`, `lib/`, `spec/support/`. Alternatives: models and lib only (AC-1.11 and the Glossary shrink); all of `app/`, `lib/` and `spec/support/` (AC-1.11 grows).
 - **OD2 — What counts as commented (decision 2).** Recommended: a summary; tags alone don't count; `@param`/`@return` stay with review. Alternative: also require `@param` per parameter and `@return` where the method has parameters; AC-1.2 and AC-1.9 gain the tags and FR-1 reads parameters.
