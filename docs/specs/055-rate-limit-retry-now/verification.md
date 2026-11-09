@@ -1,6 +1,6 @@
 # Verification: Spec 055, Retry Now for a Job Waiting to Retry
 
-Spec: [spec.md](spec.md) v1.0.0. Plan: [plan.md](plan.md). Issue [#77](https://github.com/plainprogrammer/Collector/issues/77).
+Spec: [spec.md](spec.md) v1.0.0. Plan: plan (retired in `9427c40ae0d7d43c8f99e81964d5fe04974440b4`; read it with `git show 9427c40ae0d7d43c8f99e81964d5fe04974440b4^:docs/specs/055-rate-limit-retry-now/plan.md`). Issue [#77](https://github.com/plainprogrammer/Collector/issues/77).
 
 Each line names the example that proves the criterion, or says "by reading" with what was read. Examples are in the file named; counts are from `bin/rspec --dry-run` and the targeted runs of 2026-11-09 (0 failures each).
 
