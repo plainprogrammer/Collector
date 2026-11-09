@@ -1,6 +1,6 @@
 # Verification: spec 049
 
-Spec [v1.0.0](spec.md), plan [plan.md](plan.md); issue [#228](https://github.com/plainprogrammer/Collector/issues/228). Suite size at the pushed head: 2,873 examples (`bin/rspec --dry-run`). The full `bin/ci` ran as the pre-push hook on the pushed head; its SHA and result are in the pull request.
+Spec [v1.0.0](spec.md), plan (retired in `01f9155548ebdd9d64f11c6661ec856dadebc417`; read it with `git show 01f9155548ebdd9d64f11c6661ec856dadebc417^:docs/specs/049-session-idle-expiry/plan.md`); issue [#228](https://github.com/plainprogrammer/Collector/issues/228). Suite size at the pushed head: 2,873 examples (`bin/rspec --dry-run`). The full `bin/ci` ran as the pre-push hook on the pushed head; its SHA and result are in the pull request.
 
 ## Evidence by criterion
 

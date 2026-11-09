@@ -8,6 +8,7 @@
 **Issue:** [#228](https://github.com/plainprogrammer/Collector/issues/228) (from [#218](https://github.com/plainprogrammer/Collector/issues/218), rulings 1 and 2)
 **Depends on:** [spec 004](../004-design-system-collection/spec.md) (FR-2, sessions and sign-in), [spec 006](../006-collection-list-view/spec.md) (a session's bulk selection and Undo, FR-4, FR-6), [spec 030](../030-backup-restore/spec.md) (decision 3, a restore ends every session), [spec 031](../031-upgrade-from-previous-release/spec.md) (the upgrade proof). Area doc: [`tenancy-and-accounts.md`](../../architecture/tenancy-and-accounts.md)
 **Frozen:** the current rules are in [`tenancy-and-accounts.md`](../../architecture/tenancy-and-accounts.md) (whole spec); see the [specs index](../README.md)
+**Plan:** retired in `01f9155548ebdd9d64f11c6661ec856dadebc417`; read it with `git show 01f9155548ebdd9d64f11c6661ec856dadebc417^:docs/specs/049-session-idle-expiry/plan.md`
 
 ---
 
