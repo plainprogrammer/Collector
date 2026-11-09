@@ -38,4 +38,18 @@ RSpec.describe "Admin catalog and jobs pages on a phone", :art_matching, :solid_
       expect(page).to have_link("Discard…")
     end
   end
+
+  it "keeps Retry now beside the start button, reachable and fitting, at 360px and 375px (spec 055 AC-5.2)", :aggregate_failures do
+    job = queue_job(Catalog::RefreshJob, "mtg", "manual", wait: 20.minutes)
+    create(:catalog_refresh_run, status: "failed", stage: "download", job_id: job.active_job_id, message: long_error)
+    system_sign_in_as(create(:admin))
+
+    [ 360, 375 ].each do |width|
+      expect(open_in_narrow_frame(admin_catalog_path, width:, ready: "main")).to eq([ width, true ]), "scrolls sideways at #{width}px"
+      within_narrow_frame do
+        expect(page).to have_button("Retry now")
+        expect(page).to have_button("Refresh now", disabled: true)
+      end
+    end
+  end
 end

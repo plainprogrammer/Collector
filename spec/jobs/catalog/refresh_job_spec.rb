@@ -198,4 +198,25 @@ RSpec.describe Catalog::RefreshJob, type: :job do
                  "Scryfall limits access for 30 seconds after a 429, so the client doesn't ask again in this call")
     end
   end
+
+  # Spec 055 AC-2.4, AC-2.5: Retry now moves the waiting row; the job that runs is that row, with its retry record.
+  context "when Retry now has moved its waiting retry (spec 055)", :solid_queue do
+    def scheduled_row(active_job_id) = SolidQueue::Job.where(active_job_id:, finished_at: nil).find(&:scheduled?)
+
+    it "carries on counting from the job's retry record, and opens a run under the same job id as any retry does", :aggregate_failures do
+      stub_request(:get, "https://api.scryfall.com/bulk-data").to_return(status: 429, headers: { "Retry-After" => "600" })
+      described_class.perform_now("mtg", "manual")
+      waiting = scheduled_row(Catalog::RefreshRun.sole.job_id)
+      counted = Catalog::RateLimitRetry::COUNTED_AS
+      expect(waiting.arguments["exception_executions"]).to eq(counted => 1)
+
+      expect(Catalog::RefreshOperation.new("mtg").retry_now).to be(true)
+      expect(waiting.reload).to be_ready
+      expect(waiting.arguments["exception_executions"]).to eq(counted => 1) # the press left the retry record alone
+
+      ActiveJob::Base.execute(waiting.arguments) # a worker runs the row; the source still turns it away, with no progress
+      expect(scheduled_row(waiting.active_job_id).arguments["exception_executions"]).to eq(counted => 2) # 2, not 1 again
+      expect(Catalog::RefreshRun.where(job_id: waiting.active_job_id).pluck(:status)).to eq(%w[failed failed])
+    end
+  end
 end
