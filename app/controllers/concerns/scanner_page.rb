@@ -1,7 +1,9 @@
 # The card scanner's Content Security Policy (spec 007 AC-2.4, ADR 0001), for every page that loads the OCR
 # engine: scripts, workers and connections only from this origin, plus blob: for the engine's worker,
 # 'wasm-unsafe-eval' to compile it and a per-request nonce for the page's inline tags. Images may also come
-# from the hosts catalog pages already use for card images. Other pages send no policy (AC-2.3).
+# from the hosts catalog pages already use for card images. Other pages send no policy (AC-2.3). The directives
+# beyond AC-2.4's (object-src, base-uri, form-action, frame-ancestors, font-src, img-src's data: and blob:) are
+# policy by #219 ruling 1; spec/requests/footer_spec.rb pins the whole header.
 module ScannerPage
   extend ActiveSupport::Concern
 

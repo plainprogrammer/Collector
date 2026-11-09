@@ -195,7 +195,7 @@ RSpec.describe "The footer", type: :request do
   describe "under the scanner's Content-Security-Policy" do
     def policy = response.headers["Content-Security-Policy"].split(";").map(&:split).to_h { |name, *sources| [ name, sources ] }
 
-    # Spec 007 AC-2.4, as ScannerPage sets it; only the nonce's value changes between requests.
+    # Spec 007 AC-2.4 and the extra directives #219 ruling 1 keeps, as ScannerPage sets them; only the nonce's value changes between requests.
     def expect_the_scanner_policy
       expect(policy).to match(
         "default-src" => [ "'self'" ], "script-src" => [ "'self'", "'wasm-unsafe-eval'", a_string_matching(/\A'nonce-[^']+'\z/) ],
