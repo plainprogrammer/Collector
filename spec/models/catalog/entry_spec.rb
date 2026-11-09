@@ -61,6 +61,54 @@ RSpec.describe Catalog::Entry, type: :model do
 
       expect(described_class.newest_first.to_a).to eq([ new_a, new_b, old ])
     end
+
+    # Collector numbers compare numerically, with the text as the tiebreak (#204 ruling 3).
+    context "with the printings of one card in one set" do
+      let(:forest) { create(:catalog_identity, name: "Forest") }
+      let(:znr) { create(:catalog_set, code: "znr", name: "Zendikar Rising", released_on: Date.new(2020, 9, 25)) }
+
+      def printed(number, **attributes) = create(:catalog_entry, identity: forest, set: znr, number:, **attributes)
+
+      it "compares collector numbers as numbers, not as text", :aggregate_failures do
+        entries = %w[12a 100 10 2 12 1].map { |number| printed(number) }
+
+        expect(described_class.newest_first.map(&:number)).to eq(%w[1 2 10 12 12a 100])
+        expect(described_class.newest_first.to_a).to match_array(entries)
+      end
+
+      it "breaks a tie in the number's value by its text, then by language", :aggregate_failures do
+        %w[10 010 10a 9★ 10 ].each_with_index { |number, i| printed(number, language: i == 4 ? "ja" : "en") }
+
+        expect(described_class.newest_first.map { |entry| [ entry.number, entry.language ] })
+          .to eq([ [ "9★", "en" ], [ "010", "en" ], [ "10", "en" ], [ "10", "ja" ], [ "10a", "en" ] ])
+      end
+
+      it "puts a number with no leading digits after the numbered ones, in text order", :aggregate_failures do
+        [ "★", "301", "P2", "2", "★2", "0", "P10", "s1", "-1", "#5" ].each { |number| printed(number) }
+
+        expect(described_class.newest_first.map(&:number)).to eq([ "0", "2", "301", "#5", "-1", "P10", "P2", "s1", "★", "★2" ])
+      end
+
+      it "lets the set order outrank the number", :aggregate_failures do
+        later = create(:catalog_set, code: "afr", released_on: Date.new(2021, 7, 23))
+        low = create(:catalog_entry, identity: forest, set: later, number: "300")
+        high_in_old = printed("2")
+        same_day = create(:catalog_set, code: "zzz", released_on: Date.new(2021, 7, 23))
+        tail = create(:catalog_entry, identity: forest, set: same_day, number: "1")
+
+        expect(described_class.newest_first.to_a).to eq([ low, tail, high_in_old ])
+      end
+
+      it "stays chainable with the other conditions, a limit and an offset", :aggregate_failures do
+        printed("10")
+        two = printed("2")
+        printed("1", retired_at: 1.day.ago)
+        scope = described_class.searchable.in_set("znr").where(catalog_identity_id: forest.id)
+
+        expect(scope.newest_first.limit(1).to_a).to eq([ two ])
+        expect(scope.newest_first.offset(1).map(&:number)).to eq(%w[10])
+      end
+    end
   end
 
   describe "#display_name" do

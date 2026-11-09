@@ -23,8 +23,15 @@ class Catalog::Entry < ApplicationRecord
   scope :printed_as, ->(set_code:, number:, language:) {
     active.joins(:set).where(number:, language:, catalog_sets: { code: set_code.to_s.downcase })
   }
+  # A collector number as a person reads it: the digits it starts with, as a number ("2" < "10" < "12" < "12a"). A
+  # number with no leading digit ("★", "P3", "") sorts after every numbered one, by its text; equal values fall back to
+  # the text ("010" before "10" before "10a"). Fixed SQL, no value interpolated (#204 ruling 3).
+  NUMBER_HAS_DIGITS_FIRST = Arel.sql("CASE WHEN catalog_entries.number GLOB '[0-9]*' THEN 0 ELSE 1 END")
+  NUMBER_VALUE = Arel.sql("CASE WHEN catalog_entries.number GLOB '[0-9]*' THEN CAST(catalog_entries.number AS INTEGER) END")
+
   scope :newest_first, -> {
-    joins(:set).order(released_on: :desc).order(Catalog::Set.arel_table[:code].asc).order(number: :asc, language: :asc)
+    joins(:set).order(released_on: :desc).order(Catalog::Set.arel_table[:code].asc)
+      .order(NUMBER_HAS_DIGITS_FIRST, NUMBER_VALUE, arel_table[:number].asc, arel_table[:language].asc)
   }
 
   def retired? = retired_at.present?
