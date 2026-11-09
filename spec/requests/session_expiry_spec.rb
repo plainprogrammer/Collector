@@ -123,6 +123,31 @@ RSpec.describe "Session idle expiry (spec 049)", type: :request do
       expect(second).to be_empty
     end
 
+    # Makes the request's own copy of the session fail when it writes its stamp, as a busy database would.
+    def fail_stamp_write_with(error)
+      allow(Session).to receive(:includes).and_wrap_original do |includes, *args|
+        includes.call(*args).tap do |relation|
+          allow(relation).to receive(:find_by).and_wrap_original do |find_by, *find_args|
+            find_by.call(*find_args)&.tap { |found| allow(found).to receive(:update!).and_raise(error) }
+          end
+        end
+      end
+    end
+
+    [ ActiveRecord::StatementTimeout, SQLite3::BusyException ].each do |error|
+      it "still signs in when the stamp can't be written because the database is busy (#{error})", :aggregate_failures do
+        stamp!(2.days)
+        stamp = signed_in_session.reload.last_used_at
+        fail_stamp_write_with(error)
+
+        get collection_path
+
+        expect(response).to have_http_status(:ok)
+        expect(signed_in_session.reload.last_used_at).to eq(stamp)
+        expect(session_cookie).to be_nil
+      end
+    end
+
     it "rewrites a stamp later than now (the clock was set back) and signs in (AC-2.8)", :aggregate_failures do
       stamp!(-3.days)
       get collection_path

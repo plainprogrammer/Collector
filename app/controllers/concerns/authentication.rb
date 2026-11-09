@@ -44,6 +44,9 @@ module Authentication
 
       session.update!(last_used_at: Time.current)
       set_session_cookie(session)
+    rescue ActiveRecord::StatementTimeout, SQLite3::BusyException => error
+      # A missed stamp write is harmless (spec 049 decision 2): the stamp just lags a day more, and the next request tries again.
+      Rails.logger.warn "session stamp not written: #{error.class}"
     end
 
     def set_session_cookie(session)
