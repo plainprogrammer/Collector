@@ -33,6 +33,7 @@ RSpec.describe MTG::Art::Operation, :solid_queue, type: :model do
     it "makes no drift comparison (spec 053 AC-1.9)", :aggregate_failures do
       loaded
       build(index_file: "art-index-default-cards-1-0123456789abcdef-9.bin.gz", settings_digest: "0123456789abcdef")
+      allow(MTG::Art::Index).to receive(:file?).and_return(true) # past :off, this build would read :out_of_date
       allow(MTG::Art).to receive(:latest_catalog_version)
 
       expect(operation.state).to eq(:off)

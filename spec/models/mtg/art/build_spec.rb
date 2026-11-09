@@ -346,7 +346,7 @@ RSpec.describe MTG::Art::Build, :art_matching, type: :model do
     printing(art_a, released_on: Date.new(2005, 1, 1))
     serve("#{art_a}-2005-1")
     allow(MTG::Art::Settings).to receive(:digest).and_return("0123456789abcdef") # the settings this build used
-    old_name = run_build.index_file
+    run_build
     allow(MTG::Art::Settings).to receive(:digest).and_call_original
     expect(MTG::Art::Operation.new("mtg").state).to eq(:out_of_date)
     expect(MTG::Art.status_line).to start_with("Art matching: out of date (built with settings 0123456789abcdef")
@@ -355,7 +355,7 @@ RSpec.describe MTG::Art::Build, :art_matching, type: :model do
     built = run_build(job_id: "job-2")
 
     expect(built).to have_attributes(status: "finished", fetched_count: 0, fingerprinted_count: 1, settings_digest: MTG::Art::Settings.digest)
-    expect(built.index_file).not_to eq(old_name)
+    expect(built.index_file).to include(MTG::Art::Settings.digest) # named for the current settings, not the old ones
     expect(a_request(:any, /.*/)).not_to have_been_made
     expect(MTG::Art::Index.dir.join(built.index_file)).to be_file
     expect(MTG::Art::Operation.new("mtg").state).to eq(:ready)
