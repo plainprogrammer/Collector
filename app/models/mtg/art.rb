@@ -40,7 +40,9 @@ module MTG::Art
   # marked running reads as the admin catalog page words it (MTG::Art::Operation): building with no heartbeat while a
   # worker holds the job of a build that stopped beating (MTG::ArtBuild#stalled?), interrupted once nothing is working
   # on it (MTG::ArtBuild#left_behind?), both judged by the queue as it was read before the build. A finished build whose
-  # index file isn't on the volume reads as missing, and says to press the admin page's button (spec 039 decision 3).
+  # index file isn't on the volume reads as missing, and says to press the admin page's button (spec 039 decision 3);
+  # one made with other settings reads as out of date, which the scanner refuses, and one made for an older catalog
+  # reads as ready with a warning (spec 053 decision 4).
   def self.status_line
     return "Art matching: off (set #{ENV_NAME}=true to turn it on)" unless enabled?
 
@@ -62,11 +64,26 @@ module MTG::Art
       "Art matching: index file missing (#{run.index_file.presence || "no file name recorded"}); press Build art index on the " \
         "admin catalog page to write it again. #{run.indexed_count} artworks indexed, #{run.without_image_count} without an image, " \
         "#{run.failed_count} failed images"
+    elsif run.finished? && run.settings_drift?
+      "Art matching: out of date (built with settings #{run.settings_digest}, current #{MTG::Art::Settings.digest}); the scanner " \
+        "reads text only. Press Build art index on the admin catalog page to build it again. #{run.indexed_count} artworks indexed, " \
+        "#{run.without_image_count} without an image, #{run.failed_count} failed images; index #{run.index_file}"
     elsif run.finished?
-      "Art matching: ready; #{run.indexed_count} artworks indexed, #{run.without_image_count} without an image, " \
-        "#{run.failed_count} failed images; index #{run.index_file}"
+      ready_line(run)
     else
       "Art matching: failed at #{run.finished_at&.utc&.iso8601}: #{run.message}; index in use: #{MTG::Art::Index.current&.basename || "none"}"
     end
   end
+
+  # The ready line, with the older-catalog warning after it (spec 053 decision 4).
+  def self.ready_line(run)
+    line = "Art matching: ready; #{run.indexed_count} artworks indexed, #{run.without_image_count} without an image, " \
+           "#{run.failed_count} failed images; index #{run.index_file}"
+    latest = latest_catalog_version
+    return line unless run.catalog_drift?(latest)
+
+    "#{line} Warning: built from catalog #{run.catalog_version}, the latest refresh is #{latest}; press Build art index on the " \
+      "admin catalog page to build it again."
+  end
+  private_class_method :ready_line
 end
