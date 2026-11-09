@@ -81,4 +81,22 @@ RSpec.describe "Admin catalog page", :solid_queue, type: :system do
     using_wait_time(5) { expect(summary).to have_text("Running.") }
     expect(page.evaluate_script("window.scrollY")).to eq(150)
   end
+
+  it "runs a refresh that waits to retry at once, and the button goes (spec 055 AC-5.1)", :aggregate_failures do
+    job = queue_job(Catalog::RefreshJob, "mtg", "manual", wait: 20.minutes)
+    create(:catalog_refresh_run, status: "failed", stage: "download", job_id: job.active_job_id,
+      message: "Catalog::Sources::RateLimitedError: asked for 1200 seconds")
+    system_sign_in_as(admin)
+    visit admin_catalog_path
+    expect(page).to have_css("#mtg_refresh .c-operation__summary", text: "Queued to retry.")
+    expect(page).to have_button("Refresh now", disabled: true)
+
+    click_button "Retry now"
+
+    expect(page).to have_css("#status", text: "Retrying now.")
+    expect(page).to have_css("#mtg_refresh .c-operation__summary", exact_text: "Queued.")
+    expect(page).to have_no_button("Retry now")
+    expect(page).to have_button("Refresh now", disabled: true)
+    expect(job.reload).to be_ready
+  end
 end

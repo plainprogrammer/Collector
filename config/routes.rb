@@ -99,6 +99,7 @@ Rails.application.routes.draw do
     # Catalog operations and background jobs (spec 015).
     resource :catalog, only: :show do
       resources :operation_starts, only: :create, module: :catalogs
+      resources :operation_retries, only: :create, module: :catalogs
     end
     resources :jobs, only: %i[index show] do
       scope module: :jobs do

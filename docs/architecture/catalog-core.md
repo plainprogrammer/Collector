@@ -202,7 +202,7 @@ A card image fits its slot with `object-fit: contain`, centred, at the largest s
 - [#23](https://github.com/plainprogrammer/Collector/issues/23): comics, the second type, are the core boundary's first real test; its source research may change the core (ADR 0018 Consequences).
 - [#55](https://github.com/plainprogrammer/Collector/issues/55): the name index's matching hasn't been tried on Japanese card names; its research is the scanner's.
 - [#127](https://github.com/plainprogrammer/Collector/issues/127): the phone-width image fit examples in `spec/system/card_image_fit_spec.rb` fail now and then with a bare `WebDriverError`; the behaviour they check is spec 019's.
-- [#77](https://github.com/plainprogrammer/Collector/issues/77) is [catalog operations](catalog-operations.md)': it names `Catalog::` classes but concerns the admin catalog page.
+- [#77](https://github.com/plainprogrammer/Collector/issues/77) is [catalog operations](catalog-operations.md)': it names `Catalog::` classes but concerns the admin catalog page, and spec 055 addressed it (an admin can run a waiting retry now; discarding one stays out of scope).
 - The unofficial-content notice is not on the static error pages in `public/`, emails, or any response that isn't a full page; and the card page's "View on Scryfall" link stays core code (spec 018 Non-Goals, Out of Scope; ADR 0018).
 - The brand on the sign-in and sign-up pages stays unlinked, so a visitor who opens sign-in goes back with the browser (spec 023 AC-5.6, accepted).
 
@@ -214,7 +214,7 @@ A card image fits its slot with `object-fit: contain`, centred, at the largest s
 - [Research 016](../specs/016-scryfall-hosting-terms/research.md): all (a research note; its findings were ruled on 2026-10-11).
 - [Spec 018](../specs/018-content-notice-footer/spec.md): all. [Spec 019](../specs/019-uncropped-card-images/spec.md): all. [Spec 023](../specs/023-signed-out-catalog-browsing/spec.md): all but decision 7's wording of the not-loaded notice, which is [catalog operations](catalog-operations.md)'.
 - ADRs [0003](../adr/0003-card-name-index.md), [0017](../adr/0017-row-level-tenancy-one-user-per-account.md), [0018](../adr/0018-collectible-agnostic-catalog-core.md).
-- Issues [#34](https://github.com/plainprogrammer/Collector/issues/34), [#35](https://github.com/plainprogrammer/Collector/issues/35), [#59](https://github.com/plainprogrammer/Collector/issues/59); [#204](https://github.com/plainprogrammer/Collector/issues/204); open: [#23](https://github.com/plainprogrammer/Collector/issues/23), [#50](https://github.com/plainprogrammer/Collector/issues/50), [#55](https://github.com/plainprogrammer/Collector/issues/55), [#77](https://github.com/plainprogrammer/Collector/issues/77), [#127](https://github.com/plainprogrammer/Collector/issues/127).
+- Issues [#34](https://github.com/plainprogrammer/Collector/issues/34), [#35](https://github.com/plainprogrammer/Collector/issues/35), [#59](https://github.com/plainprogrammer/Collector/issues/59); [#204](https://github.com/plainprogrammer/Collector/issues/204), [#77](https://github.com/plainprogrammer/Collector/issues/77) (catalog operations'; spec 055); open: [#23](https://github.com/plainprogrammer/Collector/issues/23), [#50](https://github.com/plainprogrammer/Collector/issues/50), [#55](https://github.com/plainprogrammer/Collector/issues/55), [#127](https://github.com/plainprogrammer/Collector/issues/127).
 
 ## Distillation log
 

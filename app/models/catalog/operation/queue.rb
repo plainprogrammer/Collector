@@ -45,6 +45,25 @@ class Catalog::Operation::Queue
   # (issue #78). The job retrying will do the work, so another one starting meanwhile leaves it alone.
   def waiting_to_retry?(except: nil) = in_flight.any? { |job| job.scheduled? && job.active_job_id != except }
 
+  # Makes the scheduled job with this Active Job id run now (spec 055): its scheduled entry is removed and the job is
+  # dispatched as the queue's own dispatcher would when its time came, so a job with a concurrency limit still takes it,
+  # or waits for it. True when this call moved it; false, changing nothing, when no job of this queue with this id has a
+  # scheduled entry any more: a worker or the dispatcher got there first, it finished, or it never was. The entry is
+  # removed first and the dispatch happens only when exactly one row went, because the queue's dispatch doesn't check the
+  # entry exists: dispatching a limited job that is already ready or claimed would add a blocked entry that runs it again.
+  # A retry is a new row with the same Active Job id, so the row to move is the unfinished one holding the entry. The
+  # transaction is on the queue's own database, and requires_new puts the entry back when the dispatch fails, even when
+  # it is called inside another transaction.
+  def run_now(active_job_id)
+    SolidQueue::Record.transaction(requires_new: true) do
+      scheduled = scheduled_entry_of(active_job_id)
+      next false unless scheduled && SolidQueue::ScheduledExecution.where(id: scheduled.id).delete_all == 1
+
+      scheduled.job.dispatch
+      true
+    end
+  end
+
   private
     def in_flight = jobs.reject(&:failed?)
 
@@ -59,4 +78,12 @@ class Catalog::Operation::Queue
 
     # A row whose stored arguments aren't Active Job's envelope (nothing the app queues) matches no type.
     def first_argument_of(job) = (Array(job.arguments["arguments"]).first if job.arguments.is_a?(Hash))
+
+    # The scheduled entry of the unfinished job of this class (and type) with this Active Job id, read now, not from the
+    # memoized reading of #jobs.
+    def scheduled_entry_of(active_job_id)
+      SolidQueue::Job.where(class_name: @job_class.name, active_job_id:, finished_at: nil).includes(:scheduled_execution)
+        .find { |job| job.scheduled_execution && (@first_argument.nil? || first_argument_of(job) == @first_argument) }
+        &.scheduled_execution
+    end
 end

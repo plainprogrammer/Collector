@@ -58,6 +58,8 @@ class MTG::Art::Operation < Catalog::Operation
 
   def record_running? = %i[building stalled].include?(state)
 
+  def retry_candidate = build
+
   # The page links to the failed list for the build on show: a failed one, or an interrupted one whose own job is there.
   def failed_job? = (state == :failed && super) || (state == :interrupted && build.job_id.present? && queue.failed?(build.job_id))
 
@@ -113,9 +115,7 @@ class MTG::Art::Operation < Catalog::Operation
     # A failed build whose own job waits to run again: turned away by the image host (Catalog::RateLimitRetry), or by
     # a busy database (MTG::Art::BuildJob's retry_on). The retry keeps the job's id, which is how a build queued fresh
     # behind another job's failure is told apart: that one is plain "Queued.".
-    def retrying?
-      state == :queued && build&.failed? && build.job_id.present? && queue.retry_at(build.job_id).present?
-    end
+    def retrying? = state == :queued && retry_job_id.present?
 
     # Why the build failed in plain words, with the error it stored as the detail (issue #84).
     def failure = Catalog::FailureReason.for(build.message, collectible_type)
