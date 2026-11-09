@@ -20,10 +20,15 @@ class CollectionTable::Sort
   end
 
   def self.default_order
-    [ asc(entries[:name]), desc(entries[:released_on]), asc(sets[:code]), asc(entries[:number]), asc(entries[:language]),
+    [ asc(entries[:name]), desc(entries[:released_on]), asc(sets[:code]), *number_terms { |node| asc(node) }, asc(entries[:language]),
       asc(lots[:finish].eq(nil)), asc(rank(lots[:finish], &:finish_order)), asc(lots[:finish]),
       asc(lots[:condition].eq(nil)), asc(rank(lots[:condition]) { |vocabulary| vocabulary.conditions.keys }),
       asc(lots[:price_paid_cents].eq(nil)), asc(lots[:price_paid_cents]), asc(lots[:id]) ]
+  end
+
+  # A collector number compares as the catalog compares it, by value then text, as the grid's order does (#204 ruling 3).
+  def self.number_terms
+    [ Catalog::Entry::NUMBER_HAS_DIGITS_FIRST, Catalog::Entry::NUMBER_VALUE, entries[:number] ].map { |node| yield node }
   end
 
   # Each collectible's own order for a column (its condition scale, its finishes); unknown values last.
@@ -66,7 +71,7 @@ class CollectionTable::Sort
       klass = self.class
       case column
       when "name" then [ by(klass.entries[:name]) ]
-      when "set" then [ by(klass.sets[:code]), by(klass.entries[:number]) ]
+      when "set" then [ by(klass.sets[:code]), *klass.number_terms { |node| by(node) } ]
       when "condition"
         [ klass.asc(klass.lots[:condition].eq(nil)), by(klass.rank(klass.lots[:condition]) { |vocabulary| vocabulary.conditions.keys }) ]
       when "quantity" then [ by(klass.lots[:quantity]) ]
