@@ -17,6 +17,19 @@ RSpec.describe "Card printings", type: :request do
     expect(response.body.scan(%r{href="/catalog/entries/}).size).to eq(12)
   end
 
+  it "reads only decimal digits as a page number (#204)", :aggregate_failures do
+    stub_const("Catalog::IdentitiesController::PER_PAGE", 1)
+    Array.new(12) { |i| create(:catalog_entry, identity: forest, released_on: Date.new(2000, 1, 1) + i) }
+
+    get catalog_identity_path(forest, page: "010")
+    expect(response.body).to include("Page 10 of 12")
+    [ "0x10", "1_0", "-1", "0", "" ].each do |requested|
+      get catalog_identity_path(forest, page: requested)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Page 1 of 12"), "page #{requested.inspect}"
+    end
+  end
+
   it "keeps a set filter and offers to show all sets", :aggregate_failures do
     a = create(:catalog_entry, identity: forest, set: create(:catalog_set, code: "aaa"))
     b = create(:catalog_entry, identity: forest, set: create(:catalog_set, code: "bbb"))

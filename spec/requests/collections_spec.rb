@@ -96,4 +96,19 @@ RSpec.describe "Collection", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Page 2 of 2")
   end
+
+  it "reads only decimal digits as a page number (#204)", :aggregate_failures do
+    stub_const("CollectionGrid::PER_PAGE", 1)
+    stub_const("CollectionTable::PER_PAGE", 1)
+    12.times { create(:lot, account: user.account) }
+    [ {}, { view: "table" } ].each do |view|
+      get collection_path(view.merge(page: "010"))
+      expect(response.body).to include("Page 10 of 12")
+      [ "0x10", "1_0", "-1", "0", "" ].each do |requested|
+        get collection_path(view.merge(page: requested))
+        expect(response).to have_http_status(:ok)
+        expect(response.body).to include("Page 1 of 12"), "#{view} page #{requested.inspect}"
+      end
+    end
+  end
 end

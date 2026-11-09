@@ -45,4 +45,15 @@ RSpec.describe Catalog::Search, type: :model do
     expect(described_class.new(query: "card", page: "abc").pagination.page).to eq(1)
     expect(described_class.new(query: "card", page: "99").pagination.page).to eq(2)
   end
+
+  it "reads only decimal digits as a page number (#204)", :aggregate_failures do
+    stub_const("Catalog::Search::PER_PAGE", 1)
+    12.times { |i| printing(format("Card %02d", i)) }
+
+    expect(described_class.new(query: "card", page: "010").pagination.page).to eq(10)
+    expect(described_class.new(query: "card", page: "010").groups.map { |group| group.identity.name }).to eq([ "Card 09" ])
+    %w[0x10 1_0 -1 0].each do |requested|
+      expect(described_class.new(query: "card", page: requested).pagination.page).to eq(1), "page #{requested.inspect}"
+    end
+  end
 end
