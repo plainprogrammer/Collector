@@ -252,15 +252,14 @@ changes:
 `spec/script/upgrade/expected_changes_spec.rb:73-76` ("ships empty and valid") expects the shipped file to have no live entry and no error, so it fails as soon as the two entries exist. Replace that example (plan review B1; the shipped spec 031's "ships as `changes: []`" stays as written, and `docs/releasing.md` step 7 retires the entries at the next tag):
 
 ```ruby
-  it "ships valid, every entry naming a migration of the working tree" do
+  it "ships valid: no error (every entry names a migration of the working tree) and no retired entry" do
     versions = Rails.root.glob("db/migrate/*.rb").map { it.basename.to_s[/\A\d+/] }
     real = described_class.load(Rails.root.join("script/upgrade/expected_changes.yml"), previous_versions: [], current_versions: versions)
     expect([ real.errors, real.retired ]).to all(be_empty)
-    expect(real.live.map { [ it.table, it.column, it.kind ] }).to eq([ [ "sessions", "ip_address", "dropped" ], [ "sessions", "user_agent", "dropped" ] ])
   end
 ```
 
-(The implementer matches the loader's real keyword names in `script/upgrade/rules.rb`.) The proof compares only the columns both databases have (`script/upgrade/compare.rb:105`), so the added `last_used_at`, its backfill and its NOT NULL are not reported and need no `rewritten` entry; the two `dropped` entries are all the proof needs (AC-4.5).
+The example pins no entry: `docs/releasing.md` step 7 deletes the entries after the next tag, and a pinned list would turn red then (Gate B). (The implementer matches the loader's real keyword names in `script/upgrade/rules.rb`.) The proof compares only the columns both databases have (`script/upgrade/compare.rb:105`), so the added `last_used_at`, its backfill and its NOT NULL are not reported and need no `rewritten` entry; the two `dropped` entries are all the proof needs (AC-4.5).
 
 Run `bin/rails db:migrate`; restore the cable, cache and queue schema files it rewrites (memory `migrate-schema-noise.md`); commit `db/schema.rb` with `sessions` as `t.datetime "last_used_at", null: false`, no `ip_address` and no `user_agent`, version `2026_11_09_100003`.
 
