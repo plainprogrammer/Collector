@@ -71,9 +71,20 @@ Each line names the example that proves the criterion, or says "by reading" with
 ## Deviations from the plan, and accepted edges
 
 - **`retry_job_id` checks `unavailable_reason` first** (before reading the candidate record), not last as plan Task 2.5 has it: with art matching off the build operation has no start label, so the view's `operation.retry_now?` ran for it, and reading the latest build and the queue added queries to a page that must make the same queries however many runs and jobs exist (`catalogs_spec.rb` "runs the same queries however many runs and jobs there are"). Found by that example in Phase 3 (`a8b7679c`).
-- **A failed build whose job waits, with no applied refresh** (barely reachable): `retrying?` goes through `unavailable_reason`, so the panel reads "Queued." with no button instead of "Queued to retry." (the art operation's `unavailable_reason` is "Refresh the catalog first…" then). Accepted.
+- **A failed build whose job waits, with no applied refresh** (barely reachable): `retrying?` goes through `unavailable_reason`, so the panel reads "Queued." with no button instead of "Queued to retry." (the art operation's `unavailable_reason` is "Refresh the catalog first…" then). Accepted; in that edge it differs from spec 015 AC-4.12 ("Queued to retry."), which the area doc's panel table does not list (the state is barely reachable).
 - **"Before" screenshots** are the same page with the "Retry now" form hidden by an appended `<style>`, since nothing of the old code can be loaded in this worktree. The data is factory data (the catalog shows 0 cards; no printings are shown).
 
 ## Implementation review
 
-(Task 5.7.)
+SPEC-ALIGNED WITH MINOR NOTES
+
+Read-only review on Opus (`sdd-review` Mode B) of the whole branch against `origin/main` at `e54378b5`, 2026-11-09: coverage matrix of every AC, FR and decision (all covered; AC-2.3's "once a worker holds it" half, AC-2.4's "progress" half and AC-2.5's art half partial, each documented above; AC-6.1's distillation-log row owed to `distill-feature`), correctness of `run_now` against Solid Queue 1.7.0 (no double-run path, no lost job, no authorization hole, core boundary intact), test quality, documents and screenshots (no visual defect). No blocking or major finding.
+
+| # | Finding | Disposition |
+|---|---|---|
+| 1 | #77's status disagreed across documents (the area doc's accepted-limits line kept it as open; Sources and `catalog-core.md` closed it; the plan says `Closes #77`) | Fixed: the accepted-limits line now states the remaining limit (no discard from `/admin/jobs`) as a maintainer ruling on #77, not as an open issue; the PR says `Closes #77`, since the maintainer's ruling made Retry now the issue's outcome and discarding out of scope |
+| 2 | AC-2.5's art half is not run end to end (the build job example stubs `MTG::Art::Build.new`) | Accepted, disclosed above: `art/operation_spec.rb` "opens a new run when the retry starts" proves the start guard under the job's id |
+| 3 | AC-2.4's "progress resets to 1" half is not tested with a press | Accepted, disclosed above: the press leaves the retry record alone and spec 043's example proves the rule |
+| 4 | AC-6.1's distillation-log row is owed | Task 5.8 (`distill-feature`), before the PR is marked ready |
+| 5 | The no-applied-refresh build edge changes spec 015 AC-4.12's reading in an unrecorded way | Recorded above under "Deviations" |
+| 6 | "Before" screenshots are made (button hidden), and the markup differs from `main` by the wrapper | The PR body says so |
