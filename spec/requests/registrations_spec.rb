@@ -68,6 +68,23 @@ RSpec.describe "Sign-up", type: :request do
       }.each { |field, message| expect(page.at_css("##{field}-error")&.text&.squish).to eq(message), field }
       expect(page.css(".field_with_errors")).to be_empty
     end
+
+    # Spec 004 AC-4.1 asks for "a matching confirmation" and AC-4.3 refuses a mismatch with 422; a confirmation that is
+    # missing or blank is no match (#218 ruling 5, #230). The refusal reads as a mismatch does, under the same field.
+    {
+      "is missing" => ->(user) { user.except(:password_confirmation) },
+      "is blank" => ->(user) { user.merge(password_confirmation: "") }
+    }.each do |what, change|
+      it "refuses a sign-up whose confirmation #{what}, as it does a mismatch", :aggregate_failures do
+        users, accounts = User.count, Account.count
+        post registration_path, params: { user: change.call(params[:user]) }
+        expect([ User.count, Account.count ]).to eq([ users, accounts ])
+        expect(response).to have_http_status(:unprocessable_content)
+        page = Nokogiri::HTML5(response.body)
+        expect(page.at_css("#password_confirmation-error")&.text&.squish).to eq("Password confirmation doesn't match Password")
+        expect(page.at_css("#user_name")["value"]).to eq("Ann")
+      end
+    end
   end
 
   it "sends a signed-in user away from sign-up" do
