@@ -25,7 +25,29 @@ module Authentication
     end
 
     def find_session_by_cookie
-      Session.includes(user: :account).find_by(id: cookies.signed[:session_id]) if cookies.signed[:session_id]
+      return unless cookies.signed[:session_id]
+
+      session = Session.includes(user: :account).find_by(id: cookies.signed[:session_id])
+      if session&.expired?
+        # An expired session is no session (spec 049 decision 9). A read doesn't write: the row stays for the nightly sweep.
+        cookies.delete(:session_id)
+        nil
+      else
+        record_use_of(session) if session
+        session
+      end
+    end
+
+    # At most one write a day per session (decision 2); the cookie's new date goes out in the same response (decision 7).
+    def record_use_of(session)
+      return unless session.stale?
+
+      session.update!(last_used_at: Time.current)
+      set_session_cookie(session)
+    end
+
+    def set_session_cookie(session)
+      cookies.signed[:session_id] = { value: session.id, expires: Session::IDLE_LIMIT.from_now, httponly: true, same_site: :lax, secure: request.ssl? }
     end
 
     def request_authentication
@@ -40,7 +62,7 @@ module Authentication
     def start_new_session_for(user)
       user.sessions.create!.tap do |new_session|
         Current.session = new_session
-        cookies.signed.permanent[:session_id] = { value: new_session.id, httponly: true, same_site: :lax, secure: request.ssl? }
+        set_session_cookie(new_session)
       end
     end
 
