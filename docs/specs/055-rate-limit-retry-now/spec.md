@@ -1,7 +1,7 @@
 # Feature 055: Retry Now for a Job Waiting to Retry
 
 **Status:** Draft
-**Version:** 0.1.0
+**Version:** 0.2.0
 **Created:** 2026-11-09
 **Last Updated:** 2026-11-09
 **Branch:** `055-rate-limit-retry-now`
@@ -14,7 +14,7 @@
 | Version | Date | Change |
 |---------|------|--------|
 | 0.1.0 | 2026-11-09 | Written from issue #77 and the maintainer's ruling of 2026-11-09 (add "Retry now" to the waiting status on `/admin/catalog`; the run keeps its lifecycle and retry count; discarding a scheduled retry from `/admin/jobs` is out of scope) |
-| 0.2.0 | 2026-11-09 | Spec review round 1 (Fable, APPROVE WITH CHANGES, 4 major, 6 minor): the refresh's "Queued to retry" is tied to the run's own job as the build's is (decision 1, AC-1.6, AC-1.7, FR-1); a retry is a new queue row with the same Active Job id, so the move targets the unfinished row holding the scheduled entry (decision 2, AC-3.6); the one-winner guard is stated (FR-2); decision 1's breadth is an open question with the narrow alternative; documents list completed; AC format and the "never an error" contradiction fixed |
+| 0.2.0 | 2026-11-09 | Spec review rounds 1 and 2 (rounds: Fable, APPROVE WITH CHANGES each; round 2's two major fixes are in 0.2.0: the refresh mirrors the build's not-retrying panel (AC-1.3b, AC-1.6), AC-3.6 and an Error Scenarios row are per operation). Round 1 (Fable, APPROVE WITH CHANGES, 4 major, 6 minor): the refresh's "Queued to retry" is tied to the run's own job as the build's is (decision 1, AC-1.6, AC-1.7, FR-1); a retry is a new queue row with the same Active Job id, so the move targets the unfinished row holding the scheduled entry (decision 2, AC-3.6); the one-winner guard is stated (FR-2); decision 1's breadth is an open question with the narrow alternative; documents list completed; AC format and the "never an error" contradiction fixed |
 
 ---
 
@@ -87,11 +87,11 @@ Button **"Retry now"**, `c-btn--secondary`, in the operation's head beside its s
 
 - [ ] **AC-1.1** Given a type's latest refresh run failed and its own job is scheduled for a later time When an admin views `/admin/catalog` Then the Refresh section reads "Queued to retry. …" with "Retrying at", shows an enabled "Retry now" button, and "Refresh now" is disabled
 - [ ] **AC-1.2** Given art matching on and the latest art build failed and its own job is scheduled for a later time When an admin views `/admin/catalog` Then the Art index section reads "Queued to retry. …" with "Retrying at", shows an enabled "Retry now" button, and "Build art index" is disabled
-- [ ] **AC-1.3** Given a refresh whose state is any of the following (each its own example) When an admin views `/admin/catalog` Then no "Retry now" button is shown: (a) a job queued fresh and ready; (b) a job scheduled by hand with no failed run of its own; (c) a failed run whose job is in the Failed list; (d) a failed run whose job id is no longer in the queue; (e) a failed run with no job id; (f) running; (g) applied; (h) skipped; (i) never run
+- [ ] **AC-1.3** Given a refresh whose state is any of the following (each its own example) When an admin views `/admin/catalog` Then no "Retry now" button is shown: (a) a job queued fresh and ready; (b) a job scheduled by hand with no failed run of its own (the panel reads "Queued." with "Retrying at" as that job's time, as today); (c) a failed run whose job is in the Failed list; (d) a failed run whose job id is no longer in the queue; (e) a failed run with no job id; (f) running; (g) applied; (h) skipped; (i) never run
 - [ ] **AC-1.3a** Given the art index in each of the same cases (a)–(i) read for a build, and art matching off Then no "Retry now" button is shown (each its own example)
 - [ ] **AC-1.4** Given a failed run whose own job is scheduled and another job of the same class scheduled for a later time When the panel is read Then "Retry now" is offered for the failed run's own job, "Retrying at" shows that job's time (not the other's), and the other job is not the one a press moves (see AC-2.6)
 - [ ] **AC-1.5** Given a failed art build whose own job is scheduled by the busy-database retry Then the panel offers "Retry now" as for a rate limit (decision 1; changes with open question 1's answer)
-- [ ] **AC-1.6** Given a failed refresh run and only a job scheduled by hand beside it (not the run's own) When an admin views `/admin/catalog` Then the Refresh section reads "Queued." with no "Retrying at" and no "Retry now" (fails before the change: "Queued to retry." with the other job's time)
+- [ ] **AC-1.6** Given a failed refresh run and only a job scheduled by hand beside it (not the run's own) When an admin views `/admin/catalog` Then the Refresh section reads "Queued." with "Retrying at" as the hand-scheduled job's time (as the art index does for a job that isn't the failed build's own retry), shows no stages or other facts of the failed run, and shows no "Retry now" (fails before the change: "Queued to retry." with the failed run's stages and facts)
 - [ ] **AC-1.7** Given a failed refresh run whose own job is scheduled, and a hand-scheduled job due earlier When the panel is read Then "Retrying at" is the own job's time
 
 ### Story 2: Pressing it runs the waiting job
@@ -123,8 +123,9 @@ Button **"Retry now"**, `c-btn--secondary`, in the operation's head beside its s
 - [ ] **AC-3.2** Given a retry whose scheduled time has passed but which the queue has not yet dispatched When "Retry now" is pressed Then it is moved, once
 - [ ] **AC-3.3** Given the job has been claimed by a worker, or has finished, or has been discarded, or has failed When "Retry now" is pressed (a page rendered earlier still showed the button) Then nothing changes (no ready or blocked entry is added for the job) and the notice is "Nothing is waiting to retry."
 - [ ] **AC-3.4** Given the press has moved the job When the queue's own dispatch of due scheduled entries then runs (`SolidQueue::ScheduledExecution.dispatch_next_batch`) Then it finds nothing to dispatch for that job and the job still has exactly one ready entry and no blocked one; and given the dispatch ran first, a press after it changes nothing and adds no blocked entry (both orders)
-- [ ] **AC-3.5** Given the scheduled entry is removed by another party after the page read it and before the press (the example removes it between the operation's read and the press, standing for another admin or the dispatcher) Then exactly one entry is ready, none is blocked and the press raises nothing and answers "Nothing is waiting to retry."
-- [ ] **AC-3.6** Given a job still claimed whose own retry row (same Active Job id, new row) is scheduled, as in the instant between the retry being queued and the old attempt's claim ending When "Retry now" is pressed Then the scheduled row is the one moved (for a refresh: to a blocked entry, released when the old claim ends), the claimed row is untouched, and one job runs after the other, not both at once
+- [ ] **AC-3.5** Given the queue-side move is asked to move a job whose scheduled entry another party removed after the operation re-read the queue and before the move (a model-level example: the entry is removed between the re-read and the move, standing for another admin or the dispatcher) Then exactly one entry is ready, none is blocked, nothing raises, and a request that hits this answers "Nothing is waiting to retry."
+- [ ] **AC-3.6** Given a refresh job still claimed whose own retry row (same Active Job id, new row) is scheduled, as in the instant between the retry being queued and the old attempt's claim ending When "Retry now" is pressed Then the scheduled row is the one moved, to a blocked entry (the type's concurrency limit), released when the old claim ends; the claimed row is untouched and the two never run at once
+- [ ] **AC-3.7** Given the same window for an art build job (which has no concurrency limit) When "Retry now" is pressed Then the scheduled row becomes ready, the claimed row is untouched and no other entry is created; the art build's own start guard (`MTG::ArtBuild.start!`, spec 011 AC-3.2) is what keeps two builds from working at once, as for any retry
 
 ### Story 4: Admins only, and only what the page names
 
@@ -149,7 +150,7 @@ Button **"Retry now"**, `c-btn--secondary`, in the operation's head beside its s
 **Acceptance criteria:**
 
 - [ ] **AC-5.1** Given a Capybara system example with a rate-limited refresh waiting (a failed run, its job scheduled) When an admin clicks "Retry now" Then the page shows "Retrying now.", the panel reads "Queued." and the "Retry now" button is gone, without a full reload by the example (Turbo)
-- [ ] **AC-5.2** Given the panel in the waiting state at 390px wide Then the operation's head holds both buttons without sideways scrolling and the button has its text as accessible name (recorded in `verification.md` with screenshots at 390px and 1280px, light and dark, taken with the narrow-frame method of the project's `pr-screenshots-workflow`; the PR shows them)
+- [ ] **AC-5.2** Given the panel in the waiting state at 390px wide Then the operation's head holds both buttons without sideways scrolling and the button has its text as accessible name (recorded in `verification.md` with screenshots at 390px and 1280px, light and dark, taken with the method in `.claude/memory/pr-screenshots-workflow.md`; the PR shows them)
 - [ ] **AC-5.3** Given the page polls while anything waits (spec 015 AC-2.10) Then it still does, and after the press polling carries on until the job ends
 
 ### Story 6: The documents say so
@@ -158,7 +159,7 @@ Button **"Retry now"**, `c-btn--secondary`, in the operation's head beside its s
 **I want** the area doc, the design system and the indexes to describe the button
 **So that** the current rules are in one place
 
-- [ ] **AC-6.1** `docs/architecture/catalog-operations.md`: the "A rate-limited job" section and the panel tables gain "Retry now" (what it does, one winner, which job, wording), the invariants gain that a press moves only the operation's own run's job and runs nothing in the request, the panel table rows for "Failed, a refresh job scheduled to run again" (now the run's own job) and the build's "Failed build whose own job is scheduled" show the button, the invariant that the jobs pages read the queue's tables adds that the catalog page moves one scheduled job through the queue's own operations (ADR 0014), the open-issues line for #77 is reworded to what remains (discarding), the glossary's "Waiting retry" cross-refers, and Sources and the distillation log carry spec 055 and #77 (verified by reading)
+- [ ] **AC-6.1** `docs/architecture/catalog-operations.md`: the "A rate-limited job" section and the panel tables gain "Retry now" (what it does, one winner, which job, wording), the invariants gain that a press moves only the operation's own run's job and runs nothing in the request, the panel table rows for "Failed, a refresh job scheduled to run again" (now the run's own job) and the build's "Failed build whose own job is scheduled" show the button, a new refresh row says a failed run beside only another scheduled job reads "Queued." with that job's "Retrying at" (as the build's "isn't a failed build's own retry" row does), the invariant that the jobs pages read the queue's tables adds that the catalog page moves one scheduled job through the queue's own operations (ADR 0014), the open-issues line for #77 is reworded to what remains (discarding), the glossary's "Waiting retry" cross-refers, and Sources and the distillation log carry spec 055 and #77 (verified by reading)
 - [ ] **AC-6.2** `docs/design-system/components/AdminCatalog.md` (and the admin catalog preview if it shows the waiting state): the rule "Each operation has at most one button" says one start button, plus "Retry now" while a retry waits (verified by reading)
 - [ ] **AC-6.3** `docs/specs/README.md` has the 055 row with its Supersedes (015, 043, 024 in the senses below), and those rows carry "Superseded by" 055; no shipped spec is edited; `docs/roadmap.md`'s #77 line and `docs/architecture/catalog-core.md`'s two mentions of #77 (lines 205 and 217) are updated, and CLAUDE.md's "Admin catalog and jobs" bullet names spec 055 (verified by reading)
 - [ ] **AC-6.4** `spec/admin_catalog_core_spec.rb` covers the new controller and view code (its file count is raised to the new count of files the glob finds, and nothing else in it changes) and passes: the core names no collectible
@@ -167,7 +168,7 @@ Button **"Retry now"**, `c-btn--secondary`, in the operation's head beside its s
 
 ### FR-1: The operation offers and performs a retry now
 
-`Catalog::Operation` answers whether a retry of its own latest run is waiting (so the panel offers the button) and performs the move, generically, with no collectible named in the core. By default an operation has none. `Catalog::RefreshOperation` and `MTG::Art::Operation` answer from their latest run's or build's job id and the queue's reading, the one the panel already makes; the refresh's "Queued to retry" state and its "Retrying at" fact take the run's job id, as the build's already do (AC-1.6, AC-1.7).
+`Catalog::Operation` answers whether a retry of its own latest run is waiting (so the panel offers the button) and performs the move, generically, with no collectible named in the core. By default an operation has none. `Catalog::RefreshOperation` and `MTG::Art::Operation` answer from their latest run's or build's job id and the queue's reading, the one the panel already makes; the refresh's "Queued to retry" state and its own-job "Retrying at" take the run's job id, as the build's already do; with no retry of the run's own it falls back to the earliest scheduled job's time, as the build does (AC-1.6, AC-1.7).
 
 **Must:**
 - Offer only in the state of decision 1; and perform only when that state still holds when the request is handled (re-read at press time, not trusted from the page).
@@ -229,6 +230,7 @@ A new resource controller under the catalog page's admin namespace takes `create
 | Another admin pressed first | Same notice; the job runs once |
 | The job was discarded or finished meanwhile | Same notice |
 | The job's retry blocks behind another refresh holding the type's lock | "Retrying now."; the panel reads "Queued." (waiting) until that job ends, then the retry runs |
+| A press in the instant a retry row is scheduled while its old attempt's row is still claimed | The scheduled row is moved: for a refresh it is blocked until the claim ends, for a build it is ready and the build's start guard keeps two builds from working at once (AC-3.6, AC-3.7) |
 | The run has no job id (a run from before spec 015, or `perform_now`) | No button; a forged request moves nothing and gets the "nothing waiting" notice |
 | Unknown type or operation | 404, nothing changes |
 | The source is still rate limiting when the job runs | The job is turned away again as usual: the count goes up (no progress) or starts again (progress); it is scheduled again and the button reappears |
