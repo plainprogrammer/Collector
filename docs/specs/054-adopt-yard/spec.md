@@ -1,7 +1,7 @@
 # Feature 054: Browsable API Documentation for the Ruby Code, with the Area Docs and ADRs Linked In (YARD)
 
 **Status:** Approved by the coordinator under the maintainer's rulings of 2026-11-09 (OD1–OD3, all recommendations)
-**Version:** 1.2.0
+**Version:** 1.2.1
 **Created:** 2026-11-09
 **Last Updated:** 2026-11-09
 **Branch:** `054-adopt-yard`
@@ -18,6 +18,7 @@
 | 1.1.0 | 2026-11-09 | From the spec review (Fable, read-only; APPROVE WITH CHANGES, nothing blocking). **Extension and the app's boot:** a link-rewriting extension must never be loaded by the app, which eager-loads `lib/` (AC-3.7, decision 6). **ADR count:** 26 ADRs, and the ADR index is left out of the site because its name collides with the front page's (decision 1, AC-1.3). **Code to area doc:** the `@see` form is fixed and shown by one worked example (decision 5, AC-1.9). **New criteria:** fragments and the front page's links (AC-1.5), a dead link (AC-2.7), a stale cache (AC-2.8), globs (AC-1.3), the extension not autoloaded (AC-3.7). **Rewording:** the recommended rulings are written into the criteria, tagged OD1–OD3 where a different ruling changes them; one command everywhere (AC-2.1, FR-2); AC-1.2, AC-3.3 and AC-4.4 name their objects; the test files are named; the supersession claims less (Supersedes) |
 | 1.1.1 | 2026-11-09 | Spec review round 2 (Fable, APPROVE WITH CHANGES, nothing blocking): a warning exits non-zero for everyone, the option is in `.yardopts` and the CI step adds only the no-cache option (FR-1, FR-2); OD1 and OD2 list every criterion they change and the criteria carry the tags; the Gemfile and CI-step examples are named as new; "26 ADRs" read as "26 today"; AC-3.7 and FR-3 reworded |
 | 1.2.0 | 2026-11-09 | Approved. The maintainer ruled on OD1–OD3 (2026-11-09): all three recommendations stand, so the criteria stand as written and the alternatives are not taken. The decisions' headings say "ruled" |
+| 1.2.1 | 2026-11-09 | Planning: the one `[NEEDS CLARIFICATION]` (Markdown processor and comment markup) is resolved by a spike: YARD's own renderer, `--markup markdown`, no extra gem; AC-3.5 and AC-4.2 lose the "if the plan needs one" wording; the comment that renders as a stray tag is fixed with the warnings (AC-2.1). No ruling changes |
 
 ---
 
@@ -139,7 +140,7 @@ All criteria that name a command are verified by running it and recording its ou
 - [ ] **AC-3.2** Given `.dockerignore` When it is read Then it excludes `/doc`, `/.yardoc`, `/.yardopts`, every binstub this feature adds (`bin/yard`, and `bin/yardoc` and `bin/yri` if the binstub command makes them) and the extension's file(s), each with a comment in the file's style saying why
 - [ ] **AC-3.3** Given `bin/image-smoke` When its list of paths that must be absent from the image is read Then it names `doc`, `.yardoc`, `.yardopts`, each binstub of AC-3.2 and the extension's file(s), and `spec/image_publishing_spec.rb` checks that the rules and the list agree, as it does for the existing ones; an image that holds any of them fails the smoke
 - [ ] **AC-3.4** Given the Gemfile and the `Dockerfile` When they are read Then `yard` is in the `:development` group only (never `:development, :test`) and the `Dockerfile`'s `BUNDLE_WITHOUT="development"` leaves it out of the image's bundle; the specs of the extension `require "yard"` themselves, which the full bundle of a checkout and of CI allows
-- [ ] **AC-3.5** Given the Gemfile and `Gemfile.lock` When they are read Then `yard` (and a Markdown processor, if the plan needs one) are added by editing the Gemfile and running `bundle install`, with `require: false`, and `bin/bundler-audit` passes
+- [ ] **AC-3.5** Given the Gemfile and `Gemfile.lock` When they are read Then `yard` is added by editing the Gemfile and running `bundle install`, with `require: false`, and `bin/bundler-audit` passes
 - [ ] **AC-3.6** Given an image built from the branch When `bin/image-smoke` runs Then it passes. Checked in CI's image job; locally only if a container engine is at hand
 - [ ] **AC-3.7** Given the extension's file(s) When the app eager-loads (`bin/rails zeitwerk:check`, and the suite with `CI=true`) Then the app boots and eager-loads without loading them or requiring `yard`: they are outside what the app autoloads or are in `config/application.rb`'s ignore list, as `lib/collector/ci_groups.rb` is
 
@@ -152,7 +153,7 @@ All criteria that name a command are verified by running it and recording its ou
 **Acceptance criteria:**
 
 - [ ] **AC-4.1** Given `CLAUDE.md`'s Commands list When it is read Then it names `bin/yard doc`, what it writes (`doc/`), and that `bin/ci checks` fails on a warning, in lines of the existing style; its description of `bin/ci`'s steps lists the documentation step; and the Project Status paragraph is not extended
-- [ ] **AC-4.2** Given `docs/adr/0027-yard-for-api-documentation.md` When it is read Then it has the ADR sections in their order, Status `Accepted`, the choice of YARD (against RDoc and no generated docs), the Markdown processor chosen, decisions 1, 2 and 6 as ruled, and the consequences; `docs/adr/README.md` has its index row and its "Expected" paragraph no longer lists YARD
+- [ ] **AC-4.2** Given `docs/adr/0027-yard-for-api-documentation.md` When it is read Then it has the ADR sections in their order, Status `Accepted`, the choice of YARD (against RDoc and no generated docs), the Markdown rendering (YARD's own, no extra gem), decisions 1, 2 and 6 as ruled, and the consequences; `docs/adr/README.md` has its index row and its "Expected" paragraph no longer lists YARD
 - [ ] **AC-4.3** Given `docs/architecture/release-and-deploy.md` When it is read Then its image statements ("The image carries only what it runs", "`bin/image-smoke` fails an image that…") list the paths of AC-3.2 and AC-3.3, with this spec as their source, its statement of which configuration files the suite checks names what the new RSpec examples check, and its Sources and Distillation log are updated per the documentation rules
 - [ ] **AC-4.4** Given `.claude/rules/conventions.md` When it is read Then it states the comment convention of decision 5 (OD1: `@see file:` for an area doc only) and that a comment with an unresolved `{…}` fails `bin/ci checks` (OD2)
 - [ ] **AC-4.5** Given `docs/architecture/README.md` When it is read Then it says the area docs are also pages of the generated site and how to build it, and its links are still plain relative ones (spec 027 NFR)
@@ -222,7 +223,7 @@ Per Story 3. **Must** be checked in RSpec (AC-3.3) and in `bin/image-smoke`.
 
 - Area docs and ADRs stay plain Markdown with relative links and no front matter YARD would render (spec 027 NFR).
 - Ruby 4.0.7 and the bundle's pinned gems: the gem's dependencies add nothing that needs a compiler or system library on a developer machine or CI.
-- [NEEDS CLARIFICATION, for the plan and ADR 0027, not the maintainer: the Markdown processor and the comment markup. The spike rendered the area docs' tables with the processor YARD found on its own (RDoc's, which is in the bundle). The plan confirms that every included document renders correctly, and that existing comments (some contain text such as `<dir>/<file>`) render legibly under the markup chosen for comments; if neither holds it adds a gem or picks another markup, and ADR 0027 records the choice.]
+- Markdown: the pages and the comments are rendered as Markdown (`--markup markdown`) by YARD's own renderer, which is the first of its providers and is always present, so no gem is added for it. The spike rendered the area docs' tables and headings with it. A comment that is not legible as Markdown (the `<dir>/<file>` and `foil[,era]` layout lines of `app/models/scanner/measurement_run.rb`, which render as a stray tag and a link) is fixed with the three that warn (AC-2.1).
 
 ## Error Scenarios
 
@@ -245,7 +246,6 @@ Ruled by the maintainer on 2026-11-09: each recommendation stands. The alternati
 - **OD2 — The `bin/ci checks` step (decision 2).** Recommended: yes, failing on any warning, about 8 s. Alternative: no step, `bin/yard doc` only; AC-2.2, AC-2.3, AC-2.5 and AC-2.8, AC-2.7's `bin/ci checks` clause, AC-4.1's `bin/ci` lines and AC-4.4's `bin/ci checks` clause, FR-2, the Performance requirement and the first two Error Scenarios rows' `bin/ci checks` part are dropped, and Story 2's goal becomes "documented, not enforced"; AC-2.1, AC-2.4 and AC-2.6 stay for `bin/yard doc`.
 - **OD3 — Links to documents outside the site (decision 6).** Recommended: the generation rewrites them to GitHub's `main` and fails on a dead link. Alternative: leave them as written, and rewrite only included-to-included links; AC-1.6 and AC-2.7 change to "left as written" and "not checked".
 
-The Markdown processor and the comment markup (Compatibility) are for the plan and ADR 0027.
 
 ## Out of Scope (Future Considerations)
 
