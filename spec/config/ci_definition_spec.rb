@@ -18,6 +18,7 @@ RSpec.describe "The CI definition", type: :config do # rubocop:disable RSpec/Des
 
     expect(yard).not_to be_nil
     expect(yard).to be > lines.index('step "Style: Ruby", "bin/rubocop"')
+    expect(yard).to be < lines.index { it.start_with?('step "Security: Brakeman') }
     expect(yard).to be > lines.index("unless selection.group == :rspec")
     expect(yard).to be < lines.each_index.find { |i| i > lines.index("unless selection.group == :rspec") && lines[i] == "end" }
   end

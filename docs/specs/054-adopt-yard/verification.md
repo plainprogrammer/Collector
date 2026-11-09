@@ -15,7 +15,7 @@ Evidence for each criterion of [spec.md](spec.md) (v1.2.1). Commands were run at
 | AC-1.5 | `grep -o 'href="file.0024[^"]*"' doc/file.release-and-deploy.html` prints `href="file.0024-backup-with-vacuum-into.html"`; `grep -o 'href="file.catalog-core.html"' doc/index.html` prints one match (the front page's links); fragment mapping to YARD's heading ids is checked in `spec/script/yard/links_spec.rb` and `spec/script/yard/site_spec.rb` (`file.beta.html#What_it_keeps` with `id="What_it_keeps"` in the target page, and the reverse link with punctuation in the heading). No included page links to a heading of another included page today (the one fragment link, `release-and-deploy.md` to `../releasing.md#…`, leaves the site) |
 | AC-1.6 | a link to a spec reads `href="https://github.com/plainprogrammer/Collector/blob/main/docs/specs/README.md"`; `grep -o 'href="[^h#"][^"]*\.md[^"]*"' doc/file.*.html \| head` prints nothing (no relative `.md` link left); `site_spec.rb`: `notes/outside.md#…` becomes `…/blob/main/notes/outside.md#…` and `https://example.com/page` is unchanged |
 | AC-1.7 | `git status --short` after the run: no change under `docs/`; `site_spec.rb` "leaves the documents on disk as they were" |
-| AC-1.8 | a second run without `--no-cache` (Phase 1, `034b0fdf`): same output, `exit=0` |
+| AC-1.8 | a second run without `--no-cache` at the branch's head (after the follow-up commit): same statistics, `exit=0`, `grep -c warn` = 0 (first checked at `034b0fdf`, before the extension) |
 | AC-1.9 | `lib/collector/backup.rb` carries `@see file:release-and-deploy.md` (`abefc4de`); `grep -o 'href="../file.release-and-deploy.html"' doc/Collector/Backup.html` prints one match (the href is relative to the class page); `bin/yard doc --no-cache` after it: `exit=0`, no warning; `site_spec.rb` checks the top-level fixture class the same way |
 
 ### Story 2: A comment that warns is caught
@@ -38,7 +38,7 @@ Evidence for each criterion of [spec.md](spec.md) (v1.2.1). Commands were run at
 | AC-3.1 | `spec/project_config_spec.rb` "ignores the generated site and its cache"; `.gitignore` has `/doc/` and `/.yardoc/` |
 | AC-3.2 | `.dockerignore` has `/doc`, `/.yardoc`, `/.yardopts`, `/bin/yard` under a comment saying why; the extension is under `/script`, already ruled out; `bin/yard` is the only binstub (written by hand, no `bin/yardoc` or `bin/yri`); checked in `spec/image_publishing_spec.rb` |
 | AC-3.3 | `bin/image-smoke`'s `for path in …` list ends `… lib/collector/push_scope.rb doc .yardoc .yardopts bin/yard` and holds `script`, which holds the extension (by reading); `spec/image_publishing_spec.rb` "keeps YARD's output… out of the image" checks the rules and the list agree |
-| AC-3.4 | `Gemfile`: `gem "yard", require: false` in `group :development` only; the `Dockerfile` has `BUNDLE_WITHOUT="development"`; `spec/project_config_spec.rb` checks the group, `autorequire` and the `Dockerfile` line |
+| AC-3.4 | Deviation: the extension's specs don't all `require "yard"` themselves: `links_spec.rb` runs without YARD and `site_spec.rb` runs YARD in a subprocess, which keeps the `defined?(YARD)` check in `project_config_spec.rb` independent of test order. `Gemfile`: `gem "yard", require: false` in `group :development` only; the `Dockerfile` has `BUNDLE_WITHOUT="development"`; `spec/project_config_spec.rb` checks the group, `autorequire` and the `Dockerfile` line |
 | AC-3.5 | `Gemfile` edited, `bundle install` run (`Gemfile.lock` gained `yard 0.9.45`); `bin/bundler-audit`: no vulnerabilities; `bin/ci checks`'s "Security: Gem audit" passed |
 | AC-3.6 | CI: **pending**, the pull request's image job (`bin/image-smoke`, both architectures) |
 | AC-3.7 | `bin/rails zeitwerk:check`: "All is good!"; `spec/project_config_spec.rb` "keeps the extension and YARD out of the app's boot" (`Rails.autoloaders.main.dirs` has no `script/` path, `YARD` undefined) |
@@ -77,3 +77,7 @@ Mode B review of the whole branch diff against origin/main (Opus, read-only), 20
 8. ADR 0027 puts `### Options considered` inside Decision; ADRs 0020–0026 put `## Options considered` between Context and Decision.
 9. The AC-1.8 row cites a second run before the extension existed; repeat it at the branch's head.
 10. AC-2.5 and AC-3.6 are filled from the pull request's CI run.
+
+### Follow-up disposition
+
+Applied: 1, 2 and 3 (wording in `release-and-deploy.md`), 5 (the unsupported link forms are listed as known limits in `docs/architecture/README.md`; the regex is not widened, since none occurs in the docs and the spec doesn't ask for it), 7 (`ci_definition_spec.rb` also asserts the step precedes Brakeman), 9 (the AC-1.8 row). Recorded as deviation: 4 (AC-3.4 row). Skipped: 6 (the `type: :model` tags stay: `CLAUDE.md` says to tag spec types explicitly, and without the tag `RSpec/DescribeClass` fails the string `describe` of `site_spec.rb`); 8 (ADR 0027's `### Options considered` stays inside Decision; the ADR conventions in `docs/adr/README.md` fix the four sections and their order, which hold). Pending until CI: 10.
