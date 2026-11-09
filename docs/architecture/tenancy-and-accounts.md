@@ -146,7 +146,7 @@ Deleting a user destroys the account, which deletes its lots first and then its 
 - **Signing out ends only the current session,** so another browser stays signed in (spec 004 FR-2).
 - **The rate limit is per email and client address,** and behind a trusted proxy the address is the one the proxy forwards, not the proxy's own (spec 004 AC-4.8, Open Questions "Rate limit").
 - **The ownership rule for Active Storage is "a record of the signed-in account holds the blob,"** by `account_id`, because the only upload today is the import preview's stored file; the first image upload extends it to variants and previews (ADR 0022; spec 028 decision 8). Rails' route helpers aren't visible to Active Storage's controllers, so the gate redirects to sign-in through `main_app`.
-- **Six behaviours have no spec source.** None is written down anywhere: a session never expires (a permanent cookie, no expiry, no sweep); `sessions.ip_address` and `user_agent` are stored and read by nothing; `InstanceSetting.current` is `first || create!` with nothing making it one row; the sign-in rate limit's counters live in the cache, so a cache clear resets them; and a sign-up that omits `password_confirmation` isn't checked for a match (`has_secure_password` checks it only when present); and scanner measurement mode answers only local requests (`request.local?`, which spec 007 doesn't state). They are open for a ruling in [#218](https://github.com/plainprogrammer/Collector/issues/218); a ruling changes this doc's States and its Accepted limits.
+- **Five behaviours have no spec source.** None is written down anywhere: a session never expires (a permanent cookie, no expiry, no sweep); `sessions.ip_address` and `user_agent` are stored and read by nothing; `InstanceSetting.current` is `first || create!` with nothing making it one row; the sign-in rate limit's counters live in the cache, so a cache clear resets them; and a sign-up that omits `password_confirmation` isn't checked for a match (`has_secure_password` checks it only when present). They are open for a ruling in [#218](https://github.com/plainprogrammer/Collector/issues/218); a ruling changes this doc's States and its Accepted limits.
 
 **Accepted limits and open issues:**
 
@@ -166,7 +166,7 @@ Deleting a user destroys the account, which deletes its lots first and then its 
 - [Spec 007](../specs/007-card-scanner-live-capture/spec.md) AC-2.2, AC-5.1, AC-5.6, FR-6 and [spec 011](../specs/011-card-scanner-art-matching/spec.md) Story 4, AC-4.4 (the public files and measurement mode's sign-in exemption). [Spec 028](../specs/028-apply-import/spec.md) decisions 8, 9 (the gate; the sweep); [spec 029](../specs/029-manage-locations/spec.md) AC-4.5, AC-4.6; [spec 032](../specs/032-lot-in-a-location/spec.md) AC-6.6; [spec 006](../specs/006-collection-list-view/spec.md) FR-4, FR-6 (a session's selection and Undo end with it).
 - [North star](../north-star.md): the hosted-door rules, "The operator is not the user" and "Collector choices are stored per account or user".
 - [`.claude/rules/multi-tenancy.md`](../../.claude/rules/multi-tenancy.md) and [`.claude/rules/security.md`](../../.claude/rules/security.md): where the coding rules stay.
-- Issues: open: [#218](https://github.com/plainprogrammer/Collector/issues/218) (six behaviours with no spec source).
+- Issues: open: [#218](https://github.com/plainprogrammer/Collector/issues/218) (five behaviours with no spec source; its ruling 6, measurement mode's local-only routes, is recorded in [scanner](scanner.md)).
 
 ## Distillation log
 
