@@ -24,6 +24,32 @@ RSpec.describe "Admin jobs page", :solid_queue, type: :system do
     })()
   JS
 
+  # Hides the tab and calls a tick by hand (nothing sleeps), then shows the tab again, and returns the visits Turbo started at each point:
+  # [while hidden, right after the tab is shown, right after it is shown with a menu open]. The interval timer is
+  # cleared first, so only the tab being shown can start a visit, never a tick.
+  let(:shown_again_js) { <<~JS }
+    (() => {
+      const poll = window.Stimulus.getControllerForElementAndIdentifier(document.querySelector("main"), "poll")
+      clearInterval(poll.timer)
+      let visits = 0
+      document.addEventListener("turbo:visit", () => visits++)
+      const setHidden = (hidden) => {
+        if (hidden) Object.defineProperty(document, "hidden", { value: true, configurable: true })
+        else delete document.hidden
+        document.dispatchEvent(new Event("visibilitychange"))
+      }
+      setHidden(true); poll.refresh()
+      const whileHidden = visits
+      setHidden(false)
+      const afterShown = visits
+      const menu = document.querySelector("details.c-menu")
+      document.documentElement.removeAttribute("aria-busy") // the visit above marked Turbo busy, which would hold this too
+      menu.open = true; setHidden(true); setHidden(false)
+      menu.open = false
+      return [ whileHidden, afterShown, visits ]
+    })()
+  JS
+
   def failed_job(job_class, *arguments, message:) = fail_job(queue_job(job_class, *arguments), RuntimeError.new(message))
 
   def open_actions(job)
@@ -100,5 +126,14 @@ RSpec.describe "Admin jobs page", :solid_queue, type: :system do
     expect(page).to have_css("main[data-controller~='poll']")
 
     expect(page.evaluate_script(held_refreshes_js)).to eq([ [ admin_jobs_path, "replace" ] ])
+  end
+
+  it "refreshes at once when a hidden tab is shown again, unless a menu is open (#111)", :aggregate_failures do
+    queue_job(MTG::Art::BuildJob)
+    system_sign_in_as(admin)
+    visit admin_jobs_path
+    expect(page).to have_css("main[data-controller~='poll']")
+
+    expect(page.evaluate_script(shown_again_js)).to eq([ 0, 1, 1 ])
   end
 end
