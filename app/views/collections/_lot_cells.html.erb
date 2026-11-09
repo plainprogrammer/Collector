@@ -7,7 +7,7 @@
     <% else %>
       <span class="c-table__thumb" aria-hidden="true"></span>
     <% end %>
-    <div><%= link_to entry.display_name, catalog_entry_path(entry, from: "collection") %><span class="c-table__sub"><%= lot_row_summary(lot, places:) %></span></div>
+    <div class="c-table__name"><%= link_to entry.display_name, catalog_entry_path(entry, from: "collection") %><span class="c-table__sub"><%= lot_row_summary(lot, places:) %></span></div>
   </div>
 </td>
 <td class="is-data is-opt"><%= set_number(entry) %></td>
