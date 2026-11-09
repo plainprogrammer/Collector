@@ -1,0 +1,6 @@
+#!/usr/bin/env ruby
+# Generates the API documentation: bin/yard doc (spec 054, ADR 0027). Options are in .yardopts.
+require "rubygems"
+require "bundler/setup"
+
+load Gem.bin_path("yard", "yard")

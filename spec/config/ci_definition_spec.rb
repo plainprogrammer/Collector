@@ -12,6 +12,17 @@ RSpec.describe "The CI definition", type: :config do # rubocop:disable RSpec/Des
     expect(rspec_commands).to all(include("--profile 10"))
   end
 
+  it "runs YARD in bin/ci checks, after the style step and not with the RSpec group, and never reads its cache (spec 054 AC-2.3, AC-2.8)", :aggregate_failures do
+    lines = Rails.root.join("config/ci.rb").readlines(chomp: true).map(&:strip)
+    yard = lines.index('step "Docs: YARD builds without warnings", "bin/yard doc --no-cache"')
+
+    expect(yard).not_to be_nil
+    expect(yard).to be > lines.index('step "Style: Ruby", "bin/rubocop"')
+    expect(yard).to be < lines.index { it.start_with?('step "Security: Brakeman') }
+    expect(yard).to be > lines.index("unless selection.group == :rspec")
+    expect(yard).to be < lines.each_index.find { |i| i > lines.index("unless selection.group == :rspec") && lines[i] == "end" }
+  end
+
   it "lets a session run bin/ci and its groups without a permission prompt (AC-1.8)" do
     allowed = JSON.parse(Rails.root.join(".claude/settings.json").read).dig("permissions", "allow")
 

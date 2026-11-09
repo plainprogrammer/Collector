@@ -22,6 +22,8 @@ module Collector
   # initializers, no Solid* connection, no secret_key_base (research.md 1 and 2), and no Active Record connection that
   # could create the primary's file (FR-8). So this library needs only the standard library, the sqlite3 gem and, for the
   # database paths, Rails.root and config/database.yml; it is required by path and isn't autoloaded (config/application.rb).
+  #
+  # @see file:release-and-deploy.md
   module Backup
     FORMAT_VERSIONS = [ 1 ].freeze # the backup format versions this release restores (decision 5, AC-3.4)
     FORMAT_VERSION = FORMAT_VERSIONS.last # the one backup:create writes

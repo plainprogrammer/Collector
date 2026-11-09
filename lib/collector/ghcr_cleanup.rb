@@ -117,7 +117,7 @@ module Collector
         @token = token
       end
 
-      # Every page, by number on the /users/ path; the Link header points at a /user/{id}/ path (FR-3).
+      # Every page, by number on the `/users/` path; the Link header points at a `/user/{id}/` path (FR-3).
       def versions
         (1..).each_with_object([]) do |page, all|
           url = "#{API}?per_page=#{PER_PAGE}&page=#{page}"

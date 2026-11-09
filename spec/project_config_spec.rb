@@ -50,4 +50,24 @@ RSpec.describe "Worktree project configuration" do
       expect(config.file_to_exclude?(Rails.root.join(".claude/worktrees/example/app/models/thing.rb").to_s)).to be(true)
     end
   end
+
+  describe "YARD (spec 054)" do
+    it "ignores the generated site and its cache (AC-3.1)", :aggregate_failures do
+      expect(git_ignored?("doc/index.html")).to be(true)
+      expect(git_ignored?(".yardoc/checksums")).to be(true)
+    end
+
+    it "keeps the extension and YARD out of the app's boot (AC-3.7)", :aggregate_failures do
+      expect(Rails.autoloaders.main.dirs).not_to include(a_string_starting_with(Rails.root.join("script").to_s))
+      expect(defined?(YARD)).to be_nil
+    end
+
+    it "is a development-only gem that nothing requires, which the image's bundle leaves out (AC-3.4, AC-3.5)", :aggregate_failures do
+      yard = Bundler.definition.dependencies.find { it.name == "yard" }
+
+      expect(yard.groups).to eq([ :development ])
+      expect(yard.autorequire).to eq([])
+      expect(Rails.root.join("Dockerfile").read).to include('BUNDLE_WITHOUT="development"')
+    end
+  end
 end

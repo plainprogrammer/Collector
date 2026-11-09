@@ -87,7 +87,7 @@ Taken between specs.
 - [#84](https://github.com/plainprogrammer/Collector/issues/84): the admin catalog shows raw exception classes when a refresh or build fails (found in the review of the fix for #79 and #80). **Done 2026-10-14:** [PR #95](https://github.com/plainprogrammer/Collector/pull/95).
 - [#86](https://github.com/plainprogrammer/Collector/issues/86): rate-limit retries count over a job's whole life, so a long build can run out (found in the review of the fix for #81).
 - [#102](https://github.com/plainprogrammer/Collector/issues/102): keep the current architecture in area docs, starting with catalog operations, with a specs index, frozen specs and plans retired after merge (maintainer rulings 2026-10-15). **In progress:** [spec 027](specs/027-architecture-area-docs/spec.md).
-- [#103](https://github.com/plainprogrammer/Collector/issues/103): adopt YARD for the Ruby code's documentation, with the area docs linked in (spec 027 slice B). **Expected ADR:** YARD (the next free number after 0025).
+- [#103](https://github.com/plainprogrammer/Collector/issues/103): adopt YARD for the Ruby code's documentation, with the area docs linked in (spec 027 slice B). **In progress:** [spec 054](specs/054-adopt-yard/spec.md), [ADR 0027](adr/0027-yard-for-api-documentation.md).
 - [#104](https://github.com/plainprogrammer/Collector/issues/104): area doc for catalog core (spec 027 slice C).
 - [#105](https://github.com/plainprogrammer/Collector/issues/105): area doc for collection and lots (spec 027 slice C).
 - [#106](https://github.com/plainprogrammer/Collector/issues/106): area doc for tenancy and accounts (spec 027 slice C).

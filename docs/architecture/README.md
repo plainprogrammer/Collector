@@ -4,6 +4,8 @@ One area doc per subsystem holds the current truth about it: its terms, the rule
 
 Lasting decisions are in [ADRs](../adr/README.md). What an agent needs before it knows where to look stays in [CLAUDE.md](../../CLAUDE.md).
 
+The area docs and the numbered ADRs are also pages of the generated API documentation: `bin/yard doc` writes it to `doc/` (spec 054, [ADR 0027](../adr/0027-yard-for-api-documentation.md)), turning the relative links below into links between pages. The files keep plain relative links. Known limits (spec 054): a link to a heading that matches no heading of the target page is passed through unchanged, so it may not land on the heading in the site (decision 6); `@see file:<name>.md` naming a page that doesn't exist renders a dead link and is not caught; `bin/yard doc` doesn't clear `doc/`, so a page whose source was deleted leaves its generated file behind until `doc/` is removed; links with a title, angle-bracket targets, reference-style links, `~~~` fences and root-absolute links (`/foo.md`) are not rewritten (none occurs in the docs today).
+
 ## Areas
 
 | Area | Doc | Specs it covers | Reference docs |
