@@ -9,7 +9,11 @@ class Registration
   def self.open? = !User.exists? || InstanceSetting.current.sign_up_open?
 
   def initialize(params)
-    @user = User.new(params.to_h.symbolize_keys.slice(*PERMITTED))
+    attributes = params.to_h.symbolize_keys.slice(*PERMITTED)
+    # has_secure_password compares a confirmation only when one is sent, and AC-4.1 asks for a matching one: a sign-up
+    # that omits the field is checked as the empty confirmation it is, so it gets a mismatch's error (AC-4.3; #230).
+    attributes[:password_confirmation] = attributes[:password_confirmation].to_s
+    @user = User.new(attributes)
     @closed = false
   end
 
