@@ -24,9 +24,11 @@ module Upgrade
     REPOSITORY = "ghcr.io/plainprogrammer/collector".freeze
     PULL_ATTEMPTS = 3
     PERMANENT_PULL_FAILURE = /manifest unknown|not found|no matching manifest|unauthorized|denied|requested access|invalid reference|403 Forbidden/i
-    QUEUE_PROCESSES = %w[Dispatcher Worker Scheduler].freeze # Solid Queue logs "Started <kind>" once each has trapped signals (#177)
-    QUEUE_START_ATTEMPTS = 15
-    QUEUE_START_WAIT = 2 # seconds between attempts: up to 30 s, the stop's own grace
+    # Solid Queue logs "Started <kind>" once each process has trapped signals (#177). One line of each kind is enough while
+    # config/queue.yml runs one worker process (JOB_CONCURRENCY unset, as the proof boots it); a second worker would need its own.
+    QUEUE_PROCESSES = %w[Dispatcher Worker Scheduler].freeze
+    QUEUE_START_ATTEMPTS = 15 # log reads, QUEUE_START_WAIT seconds apart: 28 s of waiting, inside the stop's own 30 s grace
+    QUEUE_START_WAIT = 2
     STOP_LOG_LINES = 20
     SEED_LINE = "UPGRADE-SEED-COMPLETE ".freeze
     EMPTY_COLLECTION_MARKER = "c-empty".freeze # the design system's empty-state class, which /collection renders for no lots
@@ -250,16 +252,19 @@ module Upgrade
 
       # A stop that reaches the container before Solid Queue's supervisor and its dispatcher, worker and scheduler have trapped
       # signals is lost (Puma's plugin waits for the supervisor without a bound), so the engine kills the container at the end of
-      # the grace period (#177). The proof stops an instance only once all three have logged that they started; a log that never
-      # says so (another log format) is no failure of the instance, so the wait ends and the stop is attempted.
+      # the grace period (#177). The proof stops an instance only once all three have logged that they started. An instance whose
+      # queue never starts fails the proof (spec 031 FR-5: no warning lets the job pass), naming what is missing and its log.
       def wait_for_queue(instance)
+        missing = QUEUE_PROCESSES
         QUEUE_START_ATTEMPTS.times do |attempt|
           log = @engine.logs(instance.name)
-          return if QUEUE_PROCESSES.all? { log.match?(/\bStarted #{it}\b/) }
+          missing = QUEUE_PROCESSES.reject { log.match?(/\bStarted #{it}\b/) }
+          return if missing.empty?
 
           @sleeper.call(QUEUE_START_WAIT) if attempt < QUEUE_START_ATTEMPTS - 1
         end
-        @out.puts "note: #{instance.name} didn't log that its dispatcher, worker and scheduler started within #{QUEUE_START_ATTEMPTS * QUEUE_START_WAIT} s; stopping it anyway"
+        raise Failure, "#{instance.name}: Solid Queue's #{missing.join(", ")} didn't log that #{missing.one? ? "it" : "they"} started within #{(QUEUE_START_ATTEMPTS - 1) * QUEUE_START_WAIT} s of /up, " \
+          "so the instance was not stopped (a stop before they start is lost, #177). Its last log lines:\n#{@engine.logs(instance.name).lines.last(STOP_LOG_LINES).join}"
       end
 
       def verify_old(db)
