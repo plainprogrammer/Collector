@@ -1,7 +1,7 @@
 # Feature 053: An Art Index Built With Other Settings or For an Older Catalog Isn't Plain "Ready"
 
 **Status:** Draft
-**Version:** 1.0.0
+**Version:** 1.0.1
 **Created:** 2026-11-09
 **Last Updated:** 2026-11-09
 **Branch:** `176-art-index-drift`
@@ -14,6 +14,7 @@
 | Version | Date | Change |
 |---------|------|--------|
 | 1.0.0 | 2026-11-09 | Written from issue #176 and the maintainer's rulings of 2026-11-09 (confirm what the scanner does first; its own state where the scanner can't use the index, a warning fact where it keeps using it; catalog drift by the same test) |
+| 1.0.1 | 2026-11-09 | Spec review (Fable, APPROVE WITH CHANGES, nothing blocking): AC-5.1 drops a Neighbours line that doesn't exist and adds the Glossary's "Ready (art index)" entry; AC-5.2 names Sources and the page-side rules; AC-1.7 is per blank; AC-3.2 has its applied refresh; AC-4.1 and AC-4.2 say art matching is on and how the fixture is made; one statement of the blank version; the cost; the Supersedes wording |
 
 ---
 
@@ -52,7 +53,7 @@ So the panel and the line say "Ready." for an index the scanner refuses (setting
 
 ### 1. The tests, and where each applies (ruled)
 
-**Ruling (maintainer, 2026-11-09).** Settings drift: the latest finished build's `settings_digest` differs from `MTG::Art::Settings.digest`. Catalog drift: its `catalog_version` is not the latest applied refresh's `source_version` (`Catalog::RefreshRun.for_type("mtg").last_applied`, the version a build reads at its start). A blank on either side isn't judged: a build row with no `settings_digest` or `catalog_version`, or no applied refresh with a `source_version`, reads as before. The settings test is the one the scanner enforces (it refuses a digest it doesn't hold); the catalog test is one it doesn't, which is why the first gets a state and the second a fact.
+**Ruling (maintainer, 2026-11-09).** Settings drift: the latest finished build's `settings_digest` differs from `MTG::Art::Settings.digest`. Catalog drift: its `catalog_version` is not the latest applied refresh's `source_version` (`Catalog::RefreshRun.for_type("mtg").last_applied`, the version a build reads at its start). A blank on either side isn't judged: a build row with no `settings_digest` or `catalog_version`, or whose latest applied refresh has no `source_version`, reads as before (the *latest* applied refresh's version, not the latest one that has a version). The settings test is the one the scanner enforces (it refuses a digest it doesn't hold); the catalog test is one it doesn't, which is why the first gets a state and the second a fact.
 
 Both are judged only for a finished latest build whose file is on disk and only once nothing is in flight: spec 039's missing state comes first (no file, nothing to compare), the in-flight and failed states are unchanged (spec 039 decision 6). **The weekly refresh's queued rebuild doesn't excuse a wrong panel** (ruled): while that build is queued or running the panel says so, as always; the moment nothing is in flight the panel judges the finished build in front of it, so a rebuild that was lost, discarded or never queued (art matching was off, or the settings changed with no refresh) shows as drift. The status line describes the latest build whatever the queue holds, as it does for "missing".
 
@@ -97,7 +98,7 @@ No change to the build. Its end-to-end behaviour for each kind is one example (S
 - [ ] **AC-1.4** Given a finished latest build at the current digest and the latest applied refresh's version, with its file on disk Then the state is `:ready`, the summary "Ready." and there is no "Warning" fact (guard)
 - [ ] **AC-1.5** Given a finished latest build at the current digest whose `catalog_version` is not the latest applied refresh's `source_version`, with its file on disk When the operation is asked Then the state is `:ready`, the summary "Ready." and the last fact is "Warning" with the value of decision 3 naming both versions (fails before the change: no such fact)
 - [ ] **AC-1.6** Given both drifts Then the state is `:out_of_date` and no "Warning" fact appears; given a missing file and a drifted build Then the state is `:index_missing` (spec 039's, first)
-- [ ] **AC-1.7** Given a build with no `settings_digest` and `catalog_version`, or an applied refresh with no `source_version` Then nothing is judged: `:ready` with no "Warning" fact
+- [ ] **AC-1.7** Given a finished build with no `settings_digest`, or with no `catalog_version`, or an applied refresh whose latest has no `source_version` (each its own example) Then that comparison isn't made: `:ready` with no "Warning" fact for the first and the others' catalog side, and no `:out_of_date` for a blank digest
 - [ ] **AC-1.8** Given a drifted finished build and a build job queued, or a build running, or a failed latest build Then the state is `:queued`, the running state or `:failed`, worded as before (decision 1)
 - [ ] **AC-1.9** Given art matching off Then the section reads "off" as before and no comparison is made
 - [ ] **AC-1.10** Given `/admin/catalog` rendered for an admin in each of the two drifted states Then the Art index section shows the summary, the facts (the "Warning" fact for the catalog case) and an enabled "Build art index" button, and the page doesn't poll (request spec); a member still gets 404
@@ -111,19 +112,19 @@ No change to the build. Its end-to-end behaviour for each kind is one example (S
 ### Story 3: Building again clears it
 
 - [ ] **AC-3.1** Given the out of date state and an admin When they press **Build art index** Then one `MTG::Art::BuildJob` is queued, as for any start (request spec; the controller is unchanged)
-- [ ] **AC-3.2** Given ImageMagick present (tag `:art_matching`), artworks fingerprinted at another digest, their images in the art cache, every HTTP request blocked, and a finished latest build recorded at that digest When `MTG::Art::Build` runs Then it finishes without an image request, the new file for the current digest exists, and the panel's state is `:ready` with no "Warning" fact and the line reads "ready"
+- [ ] **AC-3.2** Given ImageMagick present (tag `:art_matching`), an applied refresh with a version, artworks fingerprinted at another digest, their images in the art cache, every HTTP request blocked, and a finished latest build recorded at that digest When `MTG::Art::Build` runs Then it finishes without an image request, the new file for the current digest exists, and the panel's state is `:ready` with no "Warning" fact and the line reads "ready"
 - [ ] **AC-3.3** Given a finished latest build for an older catalog version, every artwork fingerprinted at the current settings and an applied refresh at a newer version, with every HTTP request blocked When `MTG::Art::Build` runs Then it finishes, and the panel reads `:ready` with no "Warning" fact
 
 ### Story 4: What the scanner does with each kind is pinned
 
-- [ ] **AC-4.1** Given a finished build and file at another settings digest When `MTG::Art.page_config` is read and the file fetched from the scanner art route Then the page is offered it (present), it is served with 200, and its header digest is not the page config's digest (the Problem Statement's first row; the browser's refusal is the existing system example, spec 011 AC-5.2)
-- [ ] **AC-4.2** Given a finished build and file for an older catalog version at the current digest Then the page is offered it, it is served with 200 and its header digest is the page config's (the second row)
+- [ ] **AC-4.1** Given art matching on, a finished build and file at another settings digest (the file written with the digest stubbed, or its header patched as `spec/system/scanner_art_spec.rb` does, since `MTG::Art::Index.write!` always writes the current one) When `MTG::Art.page_config` is read and the file fetched from the scanner art route Then the page is offered it (present), it is served with 200, and its header digest is not the page config's digest (the Problem Statement's first row; the browser's refusal is the existing system example, spec 011 AC-5.2)
+- [ ] **AC-4.2** Given art matching on, a finished build and file for an older catalog version at the current digest Then the page is offered it, it is served with 200 and its header digest is the page config's (the second row)
 
 ### Story 5: The documents say so
 
-- [ ] **AC-5.1** `docs/architecture/catalog-operations.md`: the art index panel table gains the "Out of date" row and the "Ready." row's warning fact with their sources; the status-line paragraph words both lines; the accepted limit "a damaged file, or one built for older settings or an older catalog version, still reads Ready." is reworded to the damaged file only; the Neighbours line for #176 is removed or reworded as fixed; Sources gets #176 and this spec (verified by reading)
-- [ ] **AC-5.2** `docs/architecture/scanner.md`: the open-issues line for #176 is removed or reworded as fixed, and the page-side rules (refuse a digest that isn't the page's, use an older catalog's index) say that the admin page now shows the first as out of date and the second as a warning, with the source (verified by reading)
-- [ ] **AC-5.3** The specs index has the 053 row and records the supersession in the Supersedes and Superseded-by columns of the rows it names (039, 015, 011); no shipped spec is edited (verified by reading)
+- [ ] **AC-5.1** `docs/architecture/catalog-operations.md`: the art index panel table gains the "Out of date" row and the "Ready." row's warning fact with their sources; the status-line paragraph words both lines; the Glossary's "Ready (art index)" entry says what ready is judged by now (a finished build whose file is on the volume and which was built at the current settings, with the catalog version carried as a warning) instead of "judged by its name only"; the accepted limit "a damaged file, or one built for older settings or an older catalog version, still reads Ready." is reworded to the damaged file only; Sources gets #176 and this spec (verified by reading)
+- [ ] **AC-5.2** `docs/architecture/scanner.md`: the open-issues line for #176 is removed or reworded as fixed and #176 is added to Sources; the page-side rules (the digest paragraph and the art-status table's mismatch row: a digest that isn't the page's is refused, an older catalog's index is used) say that the admin page shows the first as out of date and the second as a warning, with the source (verified by reading)
+- [ ] **AC-5.3** The specs index has the 053 row and records the supersession in the Supersedes and Superseded-by columns of the rows it names (039, 015, 011), as this spec's Supersedes section does; no shipped spec is edited (verified by reading; both were written with this spec and are checked unchanged at distillation, the status word moving from Draft as the spec progresses)
 
 ## Functional Requirements
 
@@ -135,24 +136,24 @@ No change to the build. Its end-to-end behaviour for each kind is one example (S
 ## Non-Functional Requirements
 
 - **Data.** No migration, no new column, no stored data; the export format and the backup are untouched.
-- **Cost.** One read of the latest applied refresh per panel render and per `catalog:status` run, only in the finished branch (the panel already makes one for "loaded"); no network, no file read.
+- **Cost.** One more query per panel render and per `catalog:status` run, for the latest applied refresh's version, only in the finished branch (the panel's `catalog_loaded?` is an `exists?` already; the plan may fold the two into one read); no network, no file read.
 - **Tenancy.** The catalog and its index are global; the admin pages answer 404 to a member as before.
 - **UI.** Summary and fact labels are admin page copy, worded under the `collector-design-system` skill: sentence case, "you", no emoji, a state word first, numbers exact. No new component, class or token.
-- **Testability.** The existing "Ready." examples (`operation_spec.rb`, `art_spec.rb`, `admin/catalogs_spec.rb`) build finished builds at the current digest, and their applied refresh has no `source_version`, so they stay "Ready." with no warning (AC-1.7); the plan checks each.
+- **Testability.** The existing "Ready." examples (`operation_spec.rb`, `art_spec.rb`, `admin/catalogs_spec.rb`) build finished builds at the current digest, and their applied refresh has no `source_version`, so they stay "Ready." with no warning (AC-1.7); the plan checks each. A drifted fixture takes a build row at another `settings_digest` or `catalog_version` and, for settings drift, a file whose header digest is another (stub the digest while writing, or patch the header bytes).
 
 ## Error Scenarios
 
 | Condition | Behaviour |
 |---|---|
 | A build row with no settings digest or catalog version | Not judged (AC-1.7) |
-| No applied refresh with a version (a catalog never loaded with a version) | Catalog drift isn't judged; with none applied the panel is `:never` or off as before |
+| The latest applied refresh has no `source_version` (or none is applied) | Catalog drift isn't judged; with none applied the panel is `:never` or off as before |
 | Settings drift and the file is missing | Missing (spec 039); the rebuild writes a file at the current digest |
 | A newer refresh applies while the page is open | The next render shows the warning; nothing is cached |
 | A build for the current settings fails after drifted ones | The latest build is `failed`, which reads as before; the drifted file is still "Index in use" (Non-Goal) |
 
 ## Supersedes
 
-- **Spec 039 Non-Goals, settings drift, and its Open Questions note that a follow-up issue records it:** a finished build whose settings digest differs, or whose catalog version is no longer the latest, no longer reads plain "Ready.". Spec 039 decision 1 and the file test stand.
+- **Spec 039 Non-Goals, settings drift (the Non-Goal's "a follow-up issue records it" is this issue):** a finished build whose settings digest differs, or whose catalog version is no longer the latest, no longer reads plain "Ready.". Spec 039 decision 1 and the file test stand.
 - **Spec 015 AC-4.1, in part (again):** the art index states gain "out of date", and "ready" can carry a warning fact.
 - **Spec 011 AC-3.11, in part (again):** the art line says "ready" plainly only for a build at the current settings and catalog; the other lines are decision 4's.
 
