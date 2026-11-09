@@ -44,3 +44,11 @@ Findings and what was done:
 | Minor 7: `last_used_at` has no index, so a sweep batch scans | Accepted at the spec's scale (a row per sign-in: tens to a few thousand); revisit if sessions grow |
 
 Not verified by the review, owed to CI: the full `bin/ci` and `bin/upgrade-smoke` / the harness's backup leg.
+
+## Distillation (spec 027)
+
+- `docs/architecture/tenancy-and-accounts.md` is the one area doc for this spec: Glossary, Invariants, States ("A session": Created, Resumed, Used, Ended, the sweep, the upgrade), Named constants, Decisions, Accepted limits, Sources and the Distillation log row.
+- `docs/specs/README.md` row 049: Frozen, by the tenancy area doc; Plan "retirement owed". No other spec's row changes: no criterion of an earlier spec is superseded (the area doc recorded the missing lifetime as "no spec source", [#218](https://github.com/plainprogrammer/Collector/issues/218) 1 and 2).
+- CLAUDE.md restates nothing this feature changed. No ADR is proposed: the decisions are the spec's.
+- Lessons written: `docs/lessons/2026-11-09-define-a-timed-rule-on-the-stored-value.md`, `…-a-bookkeeping-write-must-not-fail-a-read.md`, `…-dont-pin-the-entries-of-a-file-a-release-edits.md`.
+- After the merge: `distill-feature` retires `plan.md` (state 1).
