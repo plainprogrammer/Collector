@@ -1,6 +1,6 @@
 # Verification: Feature 053, An Art Index Built With Other Settings or For an Older Catalog Isn't Plain "Ready"
 
-**Spec:** [spec.md](spec.md) v1.0.1 · **Plan:** [plan.md](plan.md) · **Issue:** [#176](https://github.com/plainprogrammer/Collector/issues/176)
+**Spec:** [spec.md](spec.md) v1.0.1 · **Plan:** plan (retired in `413bba67293c920ef392ff4ddb63ca16d383165f`; read it with `git show 413bba67293c920ef392ff4ddb63ca16d383165f^:docs/specs/053-art-index-drift/plan.md`) · **Issue:** [#176](https://github.com/plainprogrammer/Collector/issues/176)
 
 ## Red, then green, per phase
 

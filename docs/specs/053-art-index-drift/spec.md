@@ -7,6 +7,7 @@
 **Branch:** `176-art-index-drift`
 **Issue:** [#176](https://github.com/plainprogrammer/Collector/issues/176)
 **Frozen:** the current rules are in [`catalog-operations.md`](../../architecture/catalog-operations.md) and [`scanner.md`](../../architecture/scanner.md) (whole spec); see the [specs index](../README.md)
+**Plan:** retired in `413bba67293c920ef392ff4ddb63ca16d383165f`; read it with `git show 413bba67293c920ef392ff4ddb63ca16d383165f^:docs/specs/053-art-index-drift/plan.md`
 
 ---
 
