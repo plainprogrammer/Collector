@@ -16,4 +16,13 @@ RSpec.describe "config/recurring.yml", type: :config do # rubocop:disable RSpec/
       expect(task).to include("class" => "ImportUpload::SweepJob", "queue" => "default", "schedule" => "every 15 minutes")
     end
   end
+
+  %w[development production].each do |environment|
+    it "schedules the session sweep daily at night in #{environment} (spec 049 AC-3.6)", :aggregate_failures do
+      task = YAML.load_file(Rails.root.join("config/recurring.yml"), aliases: true).dig(environment, "sweep_sessions")
+
+      expect(task).to include("class" => "Session::SweepJob", "queue" => "default")
+      expect(Fugit.parse_cronish(task["schedule"]).to_cron_s).to eq("10 4 * * *")
+    end
+  end
 end

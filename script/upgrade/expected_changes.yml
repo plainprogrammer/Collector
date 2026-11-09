@@ -2,4 +2,14 @@
 # docs/specs/031-upgrade-from-previous-release/contracts/yaml-files.md. A difference between the old and the upgraded
 # database that is not listed here fails the upgrade proof. After tagging a release, delete the entries whose migration
 # it contains (docs/releasing.md).
-changes: []
+changes:
+  - table: sessions
+    column: ip_address
+    kind: dropped
+    migration: "20261109100003"
+    reason: "Spec 049 decision 5: a session no longer stores the client's address"
+  - table: sessions
+    column: user_agent
+    kind: dropped
+    migration: "20261109100003"
+    reason: "Spec 049 decision 5: a session no longer stores the client's user agent"
