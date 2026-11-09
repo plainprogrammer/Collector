@@ -11,7 +11,7 @@
 | 3. The status line | `a82f4050` | AC-2.1 and AC-2.2 failed, the line reading "Art matching: ready; …"; AC-2.3 passed as a guard (28 examples, 2 failures) | `art_spec.rb`, `catalog_rake_spec.rb`, `scryfall/source_spec.rb`: 59 examples, 0 failures |
 | 4. Building again, and the scanner pinned | `7b80f2f7` | Not observed: these are integration and characterization examples written after the code they exercise (Phase 4 adds no production code). AC-3.2 and AC-3.3 would fail without Phases 2 and 3 (their mid-example `:out_of_date` and "Warning" assertions are Phase 2's red examples at the integration level); AC-4.1 and AC-4.2 pin what the scanner already does | `build_spec.rb`, `art_indexes_spec.rb`: 36 examples, 0 failures |
 | Review tightening | `8541838` | | `build_spec.rb`, `operation_spec.rb`: 94 examples, 0 failures |
-| 5. Documents | (distillation, below) | Reading-verified | |
+| 5. Documents | `087fa10`, `9fbb0a7` | Reading-verified (the Distillation section) | |
 
 Targeted run after Phase 4: `spec/models/mtg`, `spec/requests/admin`, `spec/requests/scanner`, `spec/tasks` and `spec/admin_catalog_core_spec.rb`: 583 examples, 0 failures; `spec/models/catalog/refresh_run_spec.rb` and `spec/backup_restored_art_spec.rb`: 29 examples, 0 failures; `bin/rubocop`: 649 files, no offenses.
 
@@ -35,7 +35,9 @@ Targeted run after Phase 4: `spec/models/mtg`, `spec/requests/admin`, `spec/requ
 | AC-3.3 | `build_spec.rb` "builds again for a newer catalog, and the warning goes" |
 | AC-4.1 | `spec/requests/scanner/art_indexes_spec.rb` "is offered to the page and served although its header digest isn't the page's, which the browser refuses"; the browser's refusal is the existing `spec/system/scanner_art_spec.rb` "says art matching isn't available, and sends text only, when the index doesn't match the page" |
 | AC-4.2 | `art_indexes_spec.rb` "is offered and served for an older catalog, its header digest the page's, which the browser uses" |
-| AC-5.1–5.3 | Reading-verified at distillation (below) |
+| AC-5.1 | `087fa10`: `docs/architecture/catalog-operations.md`, read after the edit: the Glossary's "Ready (art index)" entry says what ready is judged by now; the panel table has the "Out of date" row and the "Ready." row's Warning fact; the status-line paragraph words both lines and the three rebuild cases; the accepted limit is reworded to the damaged file and a new open point records that a release changing the settings queues no rebuild; Sources and the Distillation log carry spec 053 and #176 (the Neighbours block names no issue, so there was nothing to remove there) |
+| AC-5.2 | `087fa10`: `docs/architecture/scanner.md`, read after the edit: the digest paragraph and the art-status table's mismatch row say what the browser refuses and what it keeps using and that the admin pages show them; the open-issues line for #176 is removed, #176 moves to the fixed issues in Sources, and spec 053 is in Sources and the Distillation log |
+| AC-5.3 | `087fa10`: `docs/specs/README.md` has the 053 row (Frozen, by both area docs; Plan "retirement owed") and the Supersedes and Superseded-by entries on the 039, 015 and 011 rows, as the spec's Supersedes section says (written with the spec, unchanged); no shipped spec was edited; the spec's own frozen line is `9fbb0a7` (spec 027 D4) |
 
 - NFR Cost holds by reading: `finished_facts` asks `latest_catalog_version` only after `state == :ready`, and `MTG::Art.status_line` only in `ready_line`; no query-count example (the one in `catalogs_spec.rb` runs with art matching off).
 - The problem statement's answer to the maintainer's first question (what the scanner does with each kind of drift) was run as a throwaway request example before the spec was written, then pinned by AC-4.1 and AC-4.2.
@@ -49,3 +51,7 @@ SPEC-ALIGNED WITH FOLLOW-UPS (Opus, read-only, 2026-11-09, over `974e5989..7b80f
 - Three minor findings. (1) The AC-1.9 example's file was never written, so the not-called assertion couldn't fail for the reason it names: fixed, the index file test is stubbed true so a build past `:off` would read `:out_of_date` (`8541838`). (2) AC-3.2 didn't check the new file is named for the current digest: fixed, the example asserts it. (3) The AC-4.1 fixture is a hybrid (name at the current digest, header and row at another): kept, since the browser's refusal reads only the header and AC-4.1 allows a patched header.
 - Suggestions kept as they are: `MTG::Art.latest_catalog_version` repeats the one query `MTG::Art::Build#call` makes (FR-4 forbids touching the build here); a ready panel makes two `last_applied` queries (the NFR allows one more).
 - The documents (AC-5.1–5.3) were pending at the review, written by distillation.
+
+## Distillation
+
+Spec 053 is distilled into [catalog operations](../../architecture/catalog-operations.md) (all of it) and [scanner](../../architecture/scanner.md) (the page's behaviour with a drifted index), in `087fa10`; no area without a doc is involved. CLAUDE.md restates no rule this feature changed, so it is untouched. No decision needed an ADR. Two lessons: `docs/lessons/2026-11-09-a-not-called-guard-needs-a-fixture-that-reaches-it.md` and `docs/lessons/2026-11-09-probe-the-ruled-first-question-before-the-spec.md`. The plan's retirement is owed after the pull request merges.
