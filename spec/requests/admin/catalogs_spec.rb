@@ -526,6 +526,47 @@ RSpec.describe "Admin catalog page", :solid_queue, type: :request do
         expect(page.at_css("[data-controller~='poll']")).to be_nil
       end
 
+      it "says a finished build is out of date, with its facts and an enabled button, and doesn't poll (spec 053 AC-1.10)", :aggregate_failures, :art_matching do
+        create(:catalog_refresh_run)
+        name = art_index_name
+        create(:mtg_art_build, index_file: name, settings_digest: "0123456789abcdef", indexed_count: 31_904, without_image_count: 12,
+          failed_count: 3, finished_at: Time.utc(2026, 10, 9, 5, 0))
+
+        get admin_catalog_path
+
+        expect(text(section("art_index"))).to eq("Art index Build art index Out of date. Built with other settings, so the scanner " \
+          "can't use it. Build the art index again. Finished 9 Oct 2026 05:00 UTC Index file #{name} Built with settings " \
+          "0123456789abcdef Current settings #{MTG::Art::Settings.digest} Artworks indexed 31,904 Without an image 12 Failed images 3")
+        expect(section("art_index").at_css("button")["disabled"]).to be_nil
+        expect(section("art_index").at_css("a")).to be_nil
+        expect(page.at_css("[data-controller~='poll']")).to be_nil
+      end
+
+      it "shows a warning under Ready. for a build made for an older catalog, with an enabled button, and doesn't poll (spec 053 AC-1.10)", :aggregate_failures, :art_matching do
+        create(:catalog_refresh_run, source_version: "default-cards-2")
+        create(:mtg_art_build, index_file: art_index_name, indexed_count: 31_904, without_image_count: 12, failed_count: 3,
+          finished_at: Time.utc(2026, 10, 9, 5, 0))
+
+        get admin_catalog_path
+
+        expect(text(section("art_index"))).to eq("Art index Build art index Ready. Finished 9 Oct 2026 05:00 UTC Artworks indexed 31,904 " \
+          "Without an image 12 Failed images 3 Warning Built from catalog default-cards-1; the latest refresh is default-cards-2. " \
+          "Cards added since may be missing from it. Build the art index again.")
+        expect(section("art_index").at_css("button")["disabled"]).to be_nil
+        expect(page.at_css("[data-controller~='poll']")).to be_nil
+      end
+
+      it "queues one build when Build art index is pressed with the index out of date (spec 053 AC-3.1)", :aggregate_failures, :art_matching do
+        create(:catalog_refresh_run)
+        create(:mtg_art_build, index_file: art_index_name, settings_digest: "0123456789abcdef")
+        get admin_catalog_path
+        expect(section("art_index").at_css("button")["disabled"]).to be_nil
+
+        start("art_index")
+        expect(flash[:notice]).to eq("Art index build queued.")
+        expect(SolidQueue::Job.where(class_name: "MTG::Art::BuildJob").count).to eq(1)
+      end
+
       it "queues one build when Build art index is pressed with the index file missing (spec 039 AC-3.1)", :aggregate_failures, :art_matching do
         create(:catalog_refresh_run)
         create(:mtg_art_build, index_file: "art-index-default-cards-1-0123456789abcdef-9.bin.gz")

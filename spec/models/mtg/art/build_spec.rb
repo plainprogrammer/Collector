@@ -341,4 +341,44 @@ RSpec.describe MTG::Art::Build, :art_matching, type: :model do
     expect(MTG::Art::Operation.new("mtg").state).to eq(:ready)
     expect(MTG::Art.status_line).to start_with("Art matching: ready")
   end
+
+  it "builds an out of date index again from the cached images without an image request, and reads ready again (spec 053 AC-3.2)", :aggregate_failures do
+    printing(art_a, released_on: Date.new(2005, 1, 1))
+    serve("#{art_a}-2005-1")
+    allow(MTG::Art::Settings).to receive(:digest).and_return("0123456789abcdef") # the settings this build used
+    run_build
+    allow(MTG::Art::Settings).to receive(:digest).and_call_original
+    expect(MTG::Art::Operation.new("mtg").state).to eq(:out_of_date)
+    expect(MTG::Art.status_line).to start_with("Art matching: out of date (built with settings 0123456789abcdef")
+
+    WebMock.reset! # no stub is left: a request would raise, and would be counted
+    built = run_build(job_id: "job-2")
+
+    expect(built).to have_attributes(status: "finished", fetched_count: 0, fingerprinted_count: 1, settings_digest: MTG::Art::Settings.digest)
+    expect(built.index_file).to include(MTG::Art::Settings.digest) # named for the current settings, not the old ones
+    expect(a_request(:any, /.*/)).not_to have_been_made
+    expect(MTG::Art::Index.dir.join(built.index_file)).to be_file
+    expect(MTG::Art::Operation.new("mtg").state).to eq(:ready)
+    expect(MTG::Art.status_line).to start_with("Art matching: ready")
+  end
+
+  it "builds again for a newer catalog, and the warning goes (spec 053 AC-3.3)", :aggregate_failures do
+    printing(art_a, released_on: Date.new(2005, 1, 1))
+    serve("#{art_a}-2005-1")
+    run_build
+    create(:catalog_refresh_run, collectible_type: "mtg", source_version: "default-cards-2", finished_at: 1.minute.ago)
+    warned = MTG::Art::Operation.new("mtg")
+    expect(warned.state).to eq(:ready)
+    expect(warned.facts.map(&:label)).to include("Warning")
+    expect(MTG::Art.status_line).to include("Warning: built from catalog default-cards-1, the latest refresh is default-cards-2")
+
+    WebMock.reset!
+    expect(run_build(job_id: "job-2")).to have_attributes(status: "finished", fetched_count: 0, catalog_version: "default-cards-2")
+
+    expect(a_request(:any, /.*/)).not_to have_been_made
+    fresh = MTG::Art::Operation.new("mtg")
+    expect(fresh.state).to eq(:ready)
+    expect(fresh.facts.map(&:label)).not_to include("Warning")
+    expect(MTG::Art.status_line).not_to include("Warning")
+  end
 end

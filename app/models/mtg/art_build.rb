@@ -75,6 +75,15 @@ class MTG::ArtBuild < ApplicationRecord
   # a restore (a backup holds the database only) or when the directory was lost.
   def index_file_present? = MTG::Art::Index.file?(index_file)
 
+  # Whether the build used other fingerprint settings than the instance runs now (spec 053 decision 1). The scanner
+  # refuses an index of another digest, so this is its own state. A build row with no digest isn't judged.
+  def settings_drift? = settings_digest.present? && settings_digest != MTG::Art::Settings.digest
+
+  # Whether the build is for another catalog version than the latest applied refresh's, which the caller reads once
+  # (MTG::Art.latest_catalog_version). The scanner keeps using such an index, so this is a warning. A blank on either
+  # side isn't judged.
+  def catalog_drift?(latest_version) = catalog_version.present? && latest_version.present? && catalog_version != latest_version
+
   def counts = COUNTS.index_with { |name| public_send(:"#{name}_count") }
 
   private

@@ -251,4 +251,23 @@ RSpec.describe MTG::ArtBuild, type: :model do
       expect(build(:mtg_art_build, index_file: "../x")).not_to be_index_file_present
     end
   end
+
+  describe "#settings_drift? and #catalog_drift? (spec 053 decision 1)" do
+    it "judges the build's settings digest against the current one, and a blank digest not at all", :aggregate_failures do
+      expect(build(:mtg_art_build)).not_to be_settings_drift
+      expect(build(:mtg_art_build, settings_digest: "0123456789abcdef")).to be_settings_drift
+      expect(build(:mtg_art_build, settings_digest: nil)).not_to be_settings_drift
+      expect(build(:mtg_art_build, settings_digest: "")).not_to be_settings_drift
+    end
+
+    it "judges the build's catalog version against the latest one given, a blank on either side not at all", :aggregate_failures do
+      run = build(:mtg_art_build, catalog_version: "default-cards-1")
+
+      expect(run.catalog_drift?("default-cards-1")).to be(false)
+      expect(run.catalog_drift?("default-cards-2")).to be(true)
+      expect(run.catalog_drift?(nil)).to be(false)
+      expect(run.catalog_drift?("")).to be(false)
+      expect(build(:mtg_art_build, catalog_version: nil).catalog_drift?("default-cards-2")).to be(false)
+    end
+  end
 end

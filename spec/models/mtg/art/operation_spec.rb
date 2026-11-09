@@ -29,6 +29,17 @@ RSpec.describe MTG::Art::Operation, :solid_queue, type: :model do
       expect(operation.state).to eq(:off)
       expect(MTG::Art::Index).not_to have_received(:file?)
     end
+
+    it "makes no drift comparison (spec 053 AC-1.9)", :aggregate_failures do
+      loaded
+      build(index_file: "art-index-default-cards-1-0123456789abcdef-9.bin.gz", settings_digest: "0123456789abcdef")
+      allow(MTG::Art::Index).to receive(:file?).and_return(true) # past :off, this build would read :out_of_date
+      allow(MTG::Art).to receive(:latest_catalog_version)
+
+      expect(operation.state).to eq(:off)
+      expect(operation.facts).to eq([])
+      expect(MTG::Art).not_to have_received(:latest_catalog_version)
+    end
   end
 
   context "with art matching on", :art_matching do
@@ -521,6 +532,107 @@ RSpec.describe MTG::Art::Operation, :solid_queue, type: :model do
       it "is failed, worded as before, when the latest build failed (AC-1.6, decision 6)", :aggregate_failures do
         loaded
         build(index_file: gone, started_at: 2.hours.ago)
+        build(status: "failed", message: "Errno::ENOSPC: No space left on device")
+
+        expect(operation).to have_attributes(state: :failed, summary: "Failed. An unexpected error stopped it.")
+      end
+    end
+
+    context "with a finished build that drifted (spec 053)" do
+      let(:other) { "0123456789abcdef" }
+      let(:gone) { "art-index-default-cards-1-0123456789abcdef-9.bin.gz" }
+
+      def facts = operation.facts.to_h { |fact| [ fact.label, fact.value ] }
+
+      it "says it is out of date when built with other settings, with its facts and a button (AC-1.1, AC-1.2, AC-1.3)", :aggregate_failures do
+        loaded
+        name = art_index_name
+        build(index_file: name, settings_digest: other, indexed_count: 9, without_image_count: 1, failed_count: 2)
+
+        expect(operation).to have_attributes(state: :out_of_date, startable?: true, meter: nil, failed_job?: false, record_running?: false,
+          summary: "Out of date. Built with other settings, so the scanner can't use it. Build the art index again.")
+        expect(operation.facts.map(&:label)).to eq([ "Finished", "Index file", "Built with settings", "Current settings", "Artworks indexed",
+          "Without an image", "Failed images" ])
+        expect(facts).to include("Index file" => name, "Built with settings" => other, "Current settings" => MTG::Art::Settings.digest,
+          "Artworks indexed" => 9, "Without an image" => 1, "Failed images" => 2)
+      end
+
+      it "is plain ready at the current settings and the latest catalog (AC-1.4)", :aggregate_failures do
+        create(:catalog_refresh_run, source_version: "default-cards-1")
+        build(index_file: art_index_name)
+
+        expect(operation).to have_attributes(state: :ready, summary: "Ready.")
+        expect(operation.facts.map(&:label)).to eq([ "Finished", "Artworks indexed", "Without an image", "Failed images" ])
+      end
+
+      it "stays ready with a warning fact last when built for an older catalog (AC-1.5)", :aggregate_failures do
+        create(:catalog_refresh_run, source_version: "default-cards-2")
+        build(index_file: art_index_name)
+
+        expect(operation).to have_attributes(state: :ready, summary: "Ready.", startable?: true, meter: nil)
+        expect(operation.facts.map(&:label)).to eq([ "Finished", "Artworks indexed", "Without an image", "Failed images", "Warning" ])
+        expect(operation.facts.last.value).to eq("Built from catalog default-cards-1; the latest refresh is default-cards-2. " \
+                                                 "Cards added since may be missing from it. Build the art index again.")
+      end
+
+      it "says out of date alone when both drifted (AC-1.6)", :aggregate_failures do
+        create(:catalog_refresh_run, source_version: "default-cards-2")
+        build(index_file: art_index_name, settings_digest: other)
+
+        expect(operation.state).to eq(:out_of_date)
+        expect(operation.facts.map(&:label)).not_to include("Warning")
+      end
+
+      it "reads a missing file as missing, whatever the settings (AC-1.6)" do
+        loaded
+        build(index_file: gone, settings_digest: other)
+
+        expect(operation.state).to eq(:index_missing)
+      end
+
+      it "judges no settings for a build with no digest (AC-1.7)", :aggregate_failures do
+        create(:catalog_refresh_run, source_version: "default-cards-1")
+        build(index_file: art_index_name, settings_digest: nil)
+
+        expect(operation.state).to eq(:ready)
+        expect(operation.facts.map(&:label)).not_to include("Warning")
+      end
+
+      it "judges no catalog for a build with no catalog version (AC-1.7)", :aggregate_failures do
+        create(:catalog_refresh_run, source_version: "default-cards-2")
+        build(index_file: art_index_name, catalog_version: nil)
+
+        expect(operation.state).to eq(:ready)
+        expect(operation.facts.map(&:label)).not_to include("Warning")
+      end
+
+      it "judges no catalog when the latest applied refresh has no version (AC-1.7)", :aggregate_failures do
+        loaded
+        build(index_file: art_index_name)
+
+        expect(operation.state).to eq(:ready)
+        expect(operation.facts.map(&:label)).not_to include("Warning")
+      end
+
+      it "is queued while a build job waits (AC-1.8)" do
+        loaded
+        build(index_file: art_index_name, settings_digest: other)
+        queue_job(MTG::Art::BuildJob)
+
+        expect(operation.state).to eq(:queued)
+      end
+
+      it "is building while a later build runs (AC-1.8)" do
+        loaded
+        build(index_file: art_index_name, settings_digest: other, started_at: 2.hours.ago)
+        build(status: "running", finished_at: nil, heartbeat_at: 20.seconds.ago)
+
+        expect(operation.state).to eq(:building)
+      end
+
+      it "is failed, worded as before, when the latest build failed (AC-1.8)", :aggregate_failures do
+        loaded
+        build(index_file: art_index_name, settings_digest: other, started_at: 2.hours.ago)
         build(status: "failed", message: "Errno::ENOSPC: No space left on device")
 
         expect(operation).to have_attributes(state: :failed, summary: "Failed. An unexpected error stopped it.")

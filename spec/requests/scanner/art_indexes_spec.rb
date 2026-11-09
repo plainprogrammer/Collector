@@ -50,4 +50,37 @@ RSpec.describe "Art index file", :art_matching, type: :request do
     expect(response).to have_http_status(:not_found)
     expect(path).to exist
   end
+
+  describe "an index that drifted (spec 053 Problem Statement)" do
+    def served_digest = Zlib.gunzip(response.body.b).byteslice(8, 16)
+
+    it "is offered to the page and served although its header digest isn't the page's, which the browser refuses (AC-4.1)", :aggregate_failures do
+      path = write("v1")
+      bytes = Zlib.gunzip(path.binread)
+      bytes[8, 16] = "0123456789abcdef"
+      path.binwrite(ActiveSupport::Gzip.compress(bytes))
+      create(:mtg_art_build, index_file: path.basename.to_s, settings_digest: "0123456789abcdef")
+      config = MTG::Art.page_config
+
+      get scanner_art_index_path(config.fetch(:name))
+
+      expect(config).to include(name: path.basename.to_s)
+      expect(response).to have_http_status(:ok)
+      expect(served_digest).to eq("0123456789abcdef")
+      expect(served_digest).not_to eq(config.dig(:settings, "digest"))
+    end
+
+    it "is offered and served for an older catalog, its header digest the page's, which the browser uses (AC-4.2)", :aggregate_failures do
+      path = write("default-cards-1")
+      create(:mtg_art_build, index_file: path.basename.to_s, catalog_version: "default-cards-1")
+      create(:catalog_refresh_run, source_version: "default-cards-2")
+      config = MTG::Art.page_config
+
+      get scanner_art_index_path(config.fetch(:name))
+
+      expect(config).to include(name: path.basename.to_s)
+      expect(response).to have_http_status(:ok)
+      expect(served_digest).to eq(config.dig(:settings, "digest"))
+    end
+  end
 end

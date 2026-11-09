@@ -134,10 +134,56 @@ RSpec.describe MTG::Art, type: :model do
       expect(described_class.status_line).to start_with("Art matching: index file missing (no file name recorded); ")
     end
 
+    it "says the index is out of date when built with other settings, and what to press (spec 053 AC-2.1)", :aggregate_failures, :art_matching do
+      name = art_index_name
+      create(:mtg_art_build, indexed_count: 9, without_image_count: 1, failed_count: 2, index_file: name, settings_digest: "0123456789abcdef")
+      line = described_class.status_line
+
+      expect(line).to eq("Art matching: out of date (built with settings 0123456789abcdef, current #{MTG::Art::Settings.digest}); " \
+        "the scanner reads text only. Press Build art index on the admin catalog page to build it again. " \
+        "9 artworks indexed, 1 without an image, 2 failed images; index #{name}")
+      expect(line).not_to include("ready")
+    end
+
+    it "adds a warning to the ready line when built for an older catalog (spec 053 AC-2.2)", :aggregate_failures, :art_matching do
+      create(:catalog_refresh_run, source_version: "default-cards-2")
+      name = art_index_name
+      create(:mtg_art_build, indexed_count: 9, without_image_count: 1, failed_count: 2, index_file: name)
+
+      expect(described_class.status_line).to eq("Art matching: ready; 9 artworks indexed, 1 without an image, 2 failed images; " \
+        "index #{name} Warning: built from catalog default-cards-1, the latest refresh is default-cards-2; press Build art index " \
+        "on the admin catalog page to build it again.")
+    end
+
+    it "judges nothing of a blank, and reads a missing file first (spec 053 AC-2.3)", :aggregate_failures, :art_matching do
+      create(:catalog_refresh_run, source_version: "default-cards-2")
+      name = art_index_name
+      create(:mtg_art_build, index_file: name, catalog_version: nil, settings_digest: nil, indexed_count: 9, without_image_count: 1, failed_count: 2)
+      expect(described_class.status_line).to eq("Art matching: ready; 9 artworks indexed, 1 without an image, 2 failed images; index #{name}")
+
+      MTG::ArtBuild.delete_all
+      create(:mtg_art_build, index_file: "art-index-v1-0123456789abcdef-9.bin.gz", settings_digest: "0123456789abcdef")
+      expect(described_class.status_line).to start_with("Art matching: index file missing")
+    end
+
     it "reports a failed build with its message and the index still in use", :art_matching do
       kept = MTG::Art::Index.write!("v1", [])
       create(:mtg_art_build, status: "failed", message: "Errno::ENOSPC: No space left on device")
       expect(described_class.status_line).to include("failed", "No space left on device", kept.basename.to_s)
+    end
+  end
+
+  describe ".latest_catalog_version (spec 053 decision 1)" do
+    it "is the latest applied mtg refresh's source version, and nil when none is applied or that refresh has none", :aggregate_failures do
+      expect(described_class.latest_catalog_version).to be_nil
+
+      create(:catalog_refresh_run, source_version: "default-cards-1", finished_at: 2.hours.ago)
+      create(:catalog_refresh_run, source_version: "default-cards-2", finished_at: 1.hour.ago)
+      create(:catalog_refresh_run, source_version: "default-cards-3", status: "failed", finished_at: 10.minutes.ago)
+      expect(described_class.latest_catalog_version).to eq("default-cards-2")
+
+      create(:catalog_refresh_run, source_version: nil, finished_at: 5.minutes.ago)
+      expect(described_class.latest_catalog_version).to be_nil
     end
   end
 
