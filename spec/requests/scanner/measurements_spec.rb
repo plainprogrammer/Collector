@@ -105,6 +105,19 @@ RSpec.describe "Scanner measurement mode", type: :request do
     expect(response).to have_http_status(:not_found)
   end
 
+  # The replay routes skip sign-in, so on top of the mode being on they answer local requests only (#218 ruling 6).
+  it "shows the replay page and takes replays from this machine only", :aggregate_failures do
+    remote = { "REMOTE_ADDR" => "192.168.1.22" }
+    get scanner_measurement_replay_path(label: "desktop-a"), env: remote
+    expect(response).to have_http_status(:not_found)
+    post scanner_measurement_replay_path, env: remote, as: :json,
+      params: { label: "desktop-a", results: [ { file: "IMG_1.jpeg", name_text: "Bolt", collector_text: "" } ] }
+    expect(response).to have_http_status(:not_found)
+    expect(current.replays).to be_empty
+    get scanner_measurement_replay_path(label: "desktop-a")
+    expect(response).to have_http_status(:ok)
+  end
+
   it "tells the replay page to re-apply spec 009's refinements only when asked (AC-6.2, AC-6.3)", :aggregate_failures do
     get scanner_measurement_replay_path(label: "p9-a", refine: "1")
     expect(response.body).to include('data-replay-refine-value="true"')
