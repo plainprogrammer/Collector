@@ -1,6 +1,6 @@
 ---
 name: browser-spec-image-and-window-gotchas
-description: System specs that load card images or resize the window — the 127.0.0.1:9 plus data: picture helper, decode() vs load, around hooks, saved collection view, float noise
+description: System specs that load card images or resize the window — the 127.0.0.1:9 plus data: picture helper, decode() vs load, around hooks, saved collection view, float noise, no async script calls (#127)
 metadata:
   type: reference
 ---
@@ -13,6 +13,7 @@ Found by running, while planning spec 019 (2026-10-11, headless Firefox 157). Th
 - **The collection's view is a saved preference.** After one visit to the table, `collection_path` shows the table. Always pass `view:`.
 - **`getBoundingClientRect` sizes carry float noise** (33.51666 against 33.51667). Round before comparing sizes for equality.
 - **`owned_printing` returns a lot whose `entry.extension` isn't loaded.** Set faces on the `MTG::Printing` itself.
+- **No async script calls in system-spec helpers (issue #127, 2026-11-09).** A script that returns an object with an `error` key from `evaluate_async_script` is read by geckodriver as its own error (an empty-message `WebDriverError`), and the async call itself was dropped once under load with the page finished. `card_image_fits` hands out the pictures with `execute_script`, waits with Capybara on `data-card-picture` (pending, loaded, failed) and measures with a synchronous `evaluate_script`; prefer that shape, and keep #138's page-state diagnostic. See `docs/lessons/2026-11-09-reproduce-a-load-flake-with-another-suite-running.md`.
 - **A sub-pixel change doesn't show in a screenshot.** Compare boxes and computed styles.
 - **Downloads (spec 022):** `spec/support/system.rb` sets `browser.download.folderList` = 2 and `browser.download.dir` to `DOWNLOADS` (`tmp/downloads`, git-ignored). On headless Firefox 157 those two alone save an attachment without a dialog. `browser.helperApps.neverAsk.saveToDisk` is a legacy preference and isn't needed. Wait for the file with `page.document.synchronize(10) { raise Capybara::ExpectationNotMet … }` until it exists, isn't empty and has no `.part` beside it. Work out its name before the click.
 - **The suite never sets `Capybara.default_max_wait_time`,** so a bare `synchronize` or matcher waits Capybara's default of 2 s. Pass a bound (`synchronize(10)`, `wait: 30`) when the browser does real work.
