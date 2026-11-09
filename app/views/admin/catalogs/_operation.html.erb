@@ -3,12 +3,20 @@
 <section class="c-operation" id="<%= catalog.collectible_type %>_<%= operation.key %>">
   <div class="c-operation__head">
     <h3 class="c-operation__title"><%= operation.title %></h3>
-    <% if operation.start_label %>
-      <%# The refresh is the page's primary action while the catalog isn't loaded (AC-1.4). %>
-      <%= button_to operation.start_label, admin_catalog_operation_starts_path,
-            params: { collectible_type: catalog.collectible_type, operation: operation.key }, disabled: !operation.startable?,
-            class: class_names("c-btn", !catalog.loaded? && operation == catalog.refresh ? "c-btn--primary" : "c-btn--secondary"),
-            form: { class: "c-operation__start" } %>
+    <% if operation.start_label || operation.retry_now? %>
+      <div class="c-operation__start">
+        <% if operation.start_label %>
+          <%# The refresh is the page's primary action while the catalog isn't loaded (AC-1.4). %>
+          <%= button_to operation.start_label, admin_catalog_operation_starts_path,
+                params: { collectible_type: catalog.collectible_type, operation: operation.key }, disabled: !operation.startable?,
+                class: class_names("c-btn", !catalog.loaded? && operation == catalog.refresh ? "c-btn--primary" : "c-btn--secondary") %>
+        <% end %>
+        <% if operation.retry_now? %>
+          <%# While its failed run's own job waits to retry, the job can be run now (spec 055). %>
+          <%= button_to "Retry now", admin_catalog_operation_retries_path,
+                params: { collectible_type: catalog.collectible_type, operation: operation.key }, class: "c-btn c-btn--secondary" %>
+        <% end %>
+      </div>
     <% end %>
   </div>
   <p class="c-operation__summary"><%= operation.summary %></p>

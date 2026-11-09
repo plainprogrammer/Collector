@@ -143,4 +143,22 @@ RSpec.describe MTG::Art::BuildJob, type: :job do
       expect(job.exception_executions[Catalog::RateLimitRetry::COUNTED_AS]).to eq(2) # not 1
     end
   end
+
+  context "when Retry now has moved its waiting retry (spec 055 AC-2.4)", :solid_queue do
+    it "carries on counting from the job's retry record", :aggregate_failures do
+      allow(MTG::Art::Build).to receive(:new).and_raise(Catalog::Sources::RateLimitedError.new("rate limited", retry_after: 600))
+      described_class.perform_now
+      waiting = SolidQueue::Job.sole
+      counted = Catalog::RateLimitRetry::COUNTED_AS
+      expect(waiting.arguments["exception_executions"]).to eq(counted => 1)
+
+      expect(Catalog::Operation::Queue.new(described_class).run_now(waiting.active_job_id)).to be(true)
+      expect(waiting.reload).to be_ready
+      expect(waiting.arguments["exception_executions"]).to eq(counted => 1)
+
+      ActiveJob::Base.execute(waiting.arguments)
+      retry_row = SolidQueue::Job.where(active_job_id: waiting.active_job_id).find(&:scheduled?)
+      expect(retry_row.arguments["exception_executions"]).to eq(counted => 2)
+    end
+  end
 end
