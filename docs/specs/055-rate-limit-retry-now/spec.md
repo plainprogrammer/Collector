@@ -1,7 +1,7 @@
 # Feature 055: Retry Now for a Job Waiting to Retry
 
-**Status:** Draft
-**Version:** 0.2.0
+**Status:** Approved by the coordinator under the maintainer's delegation on 2026-11-09; open question 1 ruled by the maintainer the same day
+**Version:** 1.0.0
 **Created:** 2026-11-09
 **Last Updated:** 2026-11-09
 **Branch:** `055-rate-limit-retry-now`
@@ -14,6 +14,7 @@
 | Version | Date | Change |
 |---------|------|--------|
 | 0.1.0 | 2026-11-09 | Written from issue #77 and the maintainer's ruling of 2026-11-09 (add "Retry now" to the waiting status on `/admin/catalog`; the run keeps its lifecycle and retry count; discarding a scheduled retry from `/admin/jobs` is out of scope) |
+| 1.0.0 | 2026-11-09 | Approved. Maintainer ruling on open question 1 (2026-11-09): the wide offer, for any waiting retry of the failed run's own job; the side effect is that the refresh's "Queued to retry" means the run's own job, superseding spec 015 AC-3.7 in part. Open Questions now none; decision 1 and AC-1.5 stand as written |
 | 0.2.0 | 2026-11-09 | Spec review rounds 1 and 2 (rounds: Fable, APPROVE WITH CHANGES each; round 2's two major fixes are in 0.2.0: the refresh mirrors the build's not-retrying panel (AC-1.3b, AC-1.6), AC-3.6 and an Error Scenarios row are per operation). Round 1 (Fable, APPROVE WITH CHANGES, 4 major, 6 minor): the refresh's "Queued to retry" is tied to the run's own job as the build's is (decision 1, AC-1.6, AC-1.7, FR-1); a retry is a new queue row with the same Active Job id, so the move targets the unfinished row holding the scheduled entry (decision 2, AC-3.6); the one-winner guard is stated (FR-2); decision 1's breadth is an open question with the narrow alternative; documents list completed; AC format and the "never an error" contradiction fixed |
 
 ---
@@ -52,7 +53,7 @@ What exists today (verified in the code): a failed build whose own job is schedu
 
 On an operation's panel in the state "Queued to retry.": its latest run (refresh) or build (art index) failed, and **that run's own job** (by its Active Job id) is still in the queue waiting for a later time. For the refresh this tightens the state to the run's own job, as #80 did for the build: a failed run with only a hand-scheduled job beside it reads plain "Queued." (superseding spec 015 AC-3.7 in part, below). Nothing else gets the button: not a plain "Queued." (a job queued fresh, or one held by hand), not a failed run whose job is in the Failed list, not a run in progress, applied, skipped or never run, not an operation that is switched off, unavailable or has no job id on its run.
 
-It is offered for any retry the queue holds for that job, whatever caused it: a rate limit (the case of the issue) and also the few-second waits of a busy database or a transient source error. One rule is simpler, and running the job a few seconds early is harmless; the cost is that an early press on a busy-database or transient-error retry (which the job allows 3 attempts in all) can use up one of those attempts sooner. The recorded failure does say whether it was a rate limit (`Catalog::FailureReason` keys on the stored error class), so the narrow rule is possible. *(Open question 1, for the coordinator at Gate A; the maintainer's ruling names the rate-limit retry.)*
+It is offered for any retry the queue holds for that job, whatever caused it: a rate limit (the case of the issue) and also the few-second waits of a busy database or a transient source error. One rule is simpler, and running the job a few seconds early is harmless; the cost is that an early press on a busy-database or transient-error retry (which the job allows 3 attempts in all) can use up one of those attempts sooner. The recorded failure does say whether it was a rate limit (`Catalog::FailureReason` keys on the stored error class), so the narrow rule is possible. *(Ruled by the maintainer on 2026-11-09: the wide offer. The rate-limit-only alternative was possible from the stored error class and was not chosen.)*
 
 ### 2. What it does
 
@@ -90,7 +91,7 @@ Button **"Retry now"**, `c-btn--secondary`, in the operation's head beside its s
 - [ ] **AC-1.3** Given a refresh whose state is any of the following (each its own example) When an admin views `/admin/catalog` Then no "Retry now" button is shown: (a) a job queued fresh and ready; (b) a job scheduled by hand with no failed run of its own (the panel reads "Queued." with "Retrying at" as that job's time, as today); (c) a failed run whose job is in the Failed list; (d) a failed run whose job id is no longer in the queue; (e) a failed run with no job id; (f) running; (g) applied; (h) skipped; (i) never run
 - [ ] **AC-1.3a** Given the art index in each of the same cases (a)–(i) read for a build, and art matching off Then no "Retry now" button is shown (each its own example)
 - [ ] **AC-1.4** Given a failed run whose own job is scheduled and another job of the same class scheduled for a later time When the panel is read Then "Retry now" is offered for the failed run's own job, "Retrying at" shows that job's time (not the other's), and the other job is not the one a press moves (see AC-2.6)
-- [ ] **AC-1.5** Given a failed art build whose own job is scheduled by the busy-database retry Then the panel offers "Retry now" as for a rate limit (decision 1; changes with open question 1's answer)
+- [ ] **AC-1.5** Given a failed art build whose own job is scheduled by the busy-database retry Then the panel offers "Retry now" as for a rate limit (decision 1, ruled 2026-11-09)
 - [ ] **AC-1.6** Given a failed refresh run and only a job scheduled by hand beside it (not the run's own) When an admin views `/admin/catalog` Then the Refresh section reads "Queued." with "Retrying at" as the hand-scheduled job's time (as the art index does for a job that isn't the failed build's own retry), shows no stages or other facts of the failed run, and shows no "Retry now" (fails before the change: "Queued to retry." with the failed run's stages and facts)
 - [ ] **AC-1.7** Given a failed refresh run whose own job is scheduled, and a hand-scheduled job due earlier When the panel is read Then "Retrying at" is the own job's time
 
@@ -243,7 +244,7 @@ A new resource controller under the catalog page's admin namespace takes `create
 
 ## Open Questions
 
-1. **Breadth of the offer (decision 1).** Offer "Retry now" for any retry the queue holds for the failed run's own job (recommended: one rule, harmless early run; the cost is an early press on a busy-database or transient-error retry may use one of its 3 attempts sooner), or only when the run failed with a rate limit (the maintainer ruling's wording; possible from the stored error class, at the price of a second rule and a panel that reads "Queued to retry." without a button for other causes)? The ACs are written for the first; AC-1.5 flips with the second.
+None. Open question 1 (breadth of the offer) was ruled by the maintainer on 2026-11-09: offer "Retry now" for any retry the queue holds for the failed run's own job, not only a rate limit's. The accepted cost is that an early press on a busy-database or transient-error retry may use one of its 3 attempts sooner.
 
 ## Out of Scope (Future Considerations)
 
