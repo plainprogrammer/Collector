@@ -6,13 +6,20 @@ require Rails.root.join("script/upgrade/web").to_s
 class FakeEngine
   Result = Upgrade::Engine::Result
   SEED_LINE = "UPGRADE-SEED-COMPLETE ".freeze
+  # What a started instance's log holds once Solid Queue's three processes are up (the harness waits for these before it stops).
+  QUEUE_STARTED = <<~LOG.freeze
+    SolidQueue-1.7.0 Started Supervisor(fork) (9.0ms)  pid: 33
+    SolidQueue-1.7.0 Started Dispatcher (30.0ms)  pid: 40
+    SolidQueue-1.7.0 Started Worker (30.0ms)  pid: 44
+    SolidQueue-1.7.0 Started Scheduler (70.0ms)  pid: 48
+  LOG
   FACTS = { "release" => "0.2.1", "password" => "pw-1234-pw-1234", "marker" => "upgrade-marker", "locations" => [],
     "users" => [ { "email" => "ada@x.test", "lots" => 2001, "names" => [ "Dragon One", "Dragon Two" ] }, { "email" => "grace@x.test", "lots" => 0, "names" => [] } ] }.freeze
   DEFAULTS = {
     pull: Result.new("", "", 0),
     image_info: { "RepoDigests" => [ "ghcr.io/plainprogrammer/collector@sha256:abc123" ],
       "Config" => { "Labels" => { "org.opencontainers.image.version" => "0.2.1", "org.opencontainers.image.revision" => "deadbeef" } } },
-    create_volume: nil, remove_volume: nil, start: nil, port: 4000, state: { running: true, exit_code: 0 }, stop: nil, logs: "", remove: nil,
+    create_volume: nil, remove_volume: nil, start: nil, port: 4000, state: { running: true, exit_code: 0 }, stop: nil, logs: QUEUE_STARTED, remove: nil,
     tasks: Result.new("", "", 0), task: Result.new("Backup written: /backups/collector-backup-1.tar.gz\n", "", 0),
     restore: Result.new("Restored collector-backup-1.tar.gz into /rails/storage.\n", "", 0), list_directory: [ "collector-backup-1.tar.gz" ],
     own: nil, remove_directory: nil
