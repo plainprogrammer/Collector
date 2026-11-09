@@ -37,6 +37,10 @@
 # Ignore test coverage reports.
 /coverage/
 
+# The generated API documentation and its cache (spec 054, bin/yard doc).
+/doc/
+/.yardoc/
+
 # Claude Code worktrees (claude --worktree) live inside the repo.
 /.claude/worktrees/
 

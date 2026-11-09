@@ -36,6 +36,17 @@ RSpec.describe "Image publishing files" do
       expect(absent).to include("lib/collector/ghcr_cleanup.rb", *tooling)
     end
 
+    it "keeps YARD's output, cache, options, binstub and extension out of the image, and the image smoke test checks them (spec 054 Story 3)", :aggregate_failures do
+      builders = %w[doc .yardoc .yardopts bin/yard]
+      absent = Rails.root.join("bin/image-smoke").read[/for path in (.+); do/, 1].split
+
+      expect(rules).to include(*builders.map { "/#{it}" })
+      expect(absent).to include(*builders)
+      # The extension lives in script/, which the rules and the smoke list already hold out (AC-3.2, AC-3.3).
+      expect(rules).to include("/script")
+      expect(absent).to include("script")
+    end
+
     it "keeps the checkout's OCR engine out of the build context, so the image gets the copy its build fetches (issue #31)" do
       expect(rules).to include("/vendor/ocr")
     end

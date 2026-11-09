@@ -1,8 +1,8 @@
 # A measured run of the card scanner (spec 007 Story 5): the manifest of known cards (spec 005's format,
-# file,set,number,foil[,era]) and what each live capture read, stored in a directory outside the
+# `file,set,number,foil[,era]`) and what each live capture read, stored in a directory outside the
 # repository. The first capture of a row is the measured one; later ones are retakes (AC-5.4).
-# Layout: <dir>/<file>/capture-NNN.json, capture-NNN-{name,collector}.png (and capture-NNN-frame.png, spec 010), skipped.json;
-# <dir>/replays/<label>.json.
+# Layout: `<dir>/<file>/capture-NNN.json`, `capture-NNN-name.png` and `capture-NNN-collector.png` (and
+# `capture-NNN-frame.png`, spec 010), `skipped.json`; `<dir>/replays/<label>.json`.
 class Scanner::MeasurementRun
   Row = Data.define(:file, :set, :number)
   class ManifestError < StandardError; end

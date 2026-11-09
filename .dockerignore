@@ -83,3 +83,11 @@
 /lib/collector/ci_groups.rb
 /lib/collector/ci_shard.rb
 /lib/collector/push_scope.rb
+
+# The API documentation: the generated site, its cache, its options and its binstub run only on a checkout and in CI
+# (spec 054). The extension that fixes the site's links is in /script, which is already left out. `yard` itself is in the
+# development group, which the image's bundle leaves out.
+/doc
+/.yardoc
+/.yardopts
+/bin/yard

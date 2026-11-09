@@ -68,6 +68,10 @@ end
 group :development do
   # Use console on exceptions pages [https://github.com/rails/web-console]
   gem "web-console"
+
+  # API documentation from the code's comments, with the area docs and ADRs as pages (spec 054, ADR 0027). Development
+  # only: the image's bundle leaves this group out.
+  gem "yard", require: false
 end
 
 group :test do

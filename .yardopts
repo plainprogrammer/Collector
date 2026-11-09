@@ -1,0 +1,8 @@
+--markup markdown
+--output-dir doc
+--readme docs/architecture/README.md
+--title Collector
+--fail-on-warning
+app/**/*.rb
+lib/**/*.rb
+--files docs/architecture/*.md,docs/adr/0*.md
