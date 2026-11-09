@@ -1,6 +1,6 @@
 # Feature 049: Sessions Expire After 30 Days Unused, and Stop Storing the Address and User Agent
 
-**Status:** Draft, for Gate A. Decisions 1–4 are ruled by the maintainer (issue #228, from #218 rulings 1 and 2); decisions 5–10 are recommendations awaiting the coordinator's approval
+**Status:** Draft, for Gate A. Decisions 1–5 are ruled by the maintainer (issue #228, from #218 rulings 1 and 2); decisions 6–11 are recommendations awaiting the coordinator's approval
 **Version:** 0.1.0
 **Created:** 2026-11-09
 **Last Updated:** 2026-11-09
@@ -15,6 +15,7 @@
 | Version | Date | Change |
 |---------|------|--------|
 | 0.1.0 | 2026-11-09 | First draft, from issue #228 and the tenancy area doc's "A session" section |
+| 0.2.0 | 2026-11-09 | Spec review round 1 (Fable, APPROVE WITH CHANGES, 0 blocking, 2 major, 9 minor) fixed: "expired" is defined on the stamp, which the app can read, not on the true last use (M1); the stamp is a column of its own and `updated_at` is not rewritten, so the upgrade proof's differences are named (M2); the status line's decision numbers; the area doc keeps four unsourced behaviours, not five; FR-3 covers a stamp in the future; the write prohibitions say `sessions`; the busy-database error class; the migration precedent (`disable_ddl_transaction!`); `seeds/0.2.1.rb` unchanged and the spec helper; FR-1 names the Active Storage gate |
 
 ---
 
@@ -26,10 +27,9 @@ This spec ends a session after 30 days without use, records use cheaply, sweeps 
 
 > **Terms.**
 > - A *session* is a `sessions` row and the cookie that names it (spec 004 FR-2; the area doc's Glossary).
-> - A session's *last use* is the time it last resumed a request or, until it has, the time it was created (decision 2).
-> - A session is *expired* when its last use is 30 days or more ago (the *idle limit*).
 > - A request *uses* a session when the app resolves that session from the cookie (decision 6).
-> - The *stamp* is the stored last-use time. It is updated at most once in 24 hours (decision 2), so it may be up to 24 hours older than the true last use.
+> - The *stamp* is the session's stored last-use time: the time of the last request that updated it, or, until one has, the time the session was created. It is updated at most once in 24 hours (decision 2), so it is less than 24 hours older than the true last use.
+> - A session is *expired* when its stamp is 30 days or more old (the *idle limit*). Every rule of this spec that says a session is expired means this, for the request path and the sweep alike.
 
 ## Goals
 
@@ -66,7 +66,7 @@ This spec ends a session after 30 days without use, records use cheaply, sweeps 
 ### Ruled by the maintainer (#228)
 
 1. **Idle expiry only, 30 days.** A session ends after 30 days without use. A session in regular use keeps going; there is no absolute lifetime.
-2. **Use is recorded at most about once a day.** The stamp is updated only when it is 24 hours or more old, so an ordinary request writes nothing. A new session's stamp is its creation time. Consequence: the stamp may lag the true last use by under 24 hours, so a session used within the last 29 days is never expired and one unused for 30 days always is; one unused for 29 to 30 days may or may not be.
+2. **Use is recorded at most about once a day.** The stamp is updated only when it is 24 hours or more old, so an ordinary request writes nothing. A new session's stamp is its creation time. Consequence: the stamp lags the true last use by less than 24 hours, so a session used within the last 29 days is never expired and one unused for 30 days always is; one unused for 29 to 30 days may or may not be.
 3. **A nightly job deletes expired sessions** (`config/recurring.yml`).
 4. **An expired session is no session.** A request with one is treated as having none: a collector is redirected to sign in (a visitor to an open endpoint is a visitor).
 5. **The address and the user agent are no longer stored,** and the stored values are removed. The two columns are dropped in a reversible migration that is safe to run unattended (`.claude/rules/sqlite-and-migrations.md`).
@@ -81,7 +81,7 @@ This spec ends a session after 30 days without use, records use cheaply, sweeps 
 
 ### Also recommended: what the upgrade does to sessions that exist
 
-11. **Every session that exists at the upgrade has its last use set to the time of the upgrade.** None expires at once, even one created a year ago, because the only older record is its creation time, which says nothing about use. *Cost, accepted:* a lost phone's session lives up to 30 more days after the upgrade. The two columns' values are discarded; the sessions, and their bulk selections and removals, are kept (spec 031: the upgrade proof lists the dropped columns as expected changes). *Alternative:* set it to the row's creation time: every session older than 30 days would end at the first sweep and everyone would sign in again, including collectors in daily use.
+11. **Every session that exists at the upgrade has its stamp set to the time of the upgrade.** None expires at once, even one created a year ago, because the only older record is its creation time, which says nothing about use. *Cost, accepted:* a lost phone's session lives up to 30 more days after the upgrade. The two columns' values are discarded; the sessions, and their bulk selections and removals, are kept (spec 031: the upgrade proof lists the dropped columns as expected changes). The stamp is a column of its own (name left to the plan); `updated_at` stays Rails' bookkeeping and is not rewritten, so the upgrade proof's difference is the dropped columns and the added column's backfill. *Alternative:* set it to the row's creation time: every session older than 30 days would end at the first sweep and everyone would sign in again, including collectors in daily use.
 
 ## User Stories
 
@@ -93,11 +93,11 @@ This spec ends a session after 30 days without use, records use cheaply, sweeps 
 
 **Acceptance criteria:**
 
-- [ ] **AC-1.1** Given a session whose last use is 29 days and 23 hours ago When a request carries its cookie Then the request is signed in as that user, as today.
-- [ ] **AC-1.2** Given a session whose last use is 30 days and one second ago When a collector's GET carries its cookie Then the response redirects to the sign-in page, the path asked for is kept as the page to return to after signing in (spec 004 AC-4.4), and no signed-in page is shown.
+- [ ] **AC-1.1** Given a session whose stamp is 29 days and 23 hours old When a request carries its cookie Then the request is signed in as that user, as today.
+- [ ] **AC-1.2** Given a session whose stamp is 30 days and one second old When a collector's GET carries its cookie Then the response redirects to the sign-in page, the path asked for is kept as the page to return to after signing in (spec 004 AC-4.4), and no signed-in page is shown.
 - [ ] **AC-1.3** Given an expired session When a request that is not a GET carries its cookie Then the response redirects to the sign-in page and the data the request would have changed is unchanged.
 - [ ] **AC-1.4** Given an expired session and an instance with the open catalog (spec 023) When its cookie opens a catalog page Then the page is shown as to a visitor (the header's sign-in link, no collection signals).
-- [ ] **AC-1.5** Given an expired session When a request carries its cookie Then the request writes nothing to the database (the row is not deleted or changed) and the response removes the `session_id` cookie.
+- [ ] **AC-1.5** Given an expired session When a request carries its cookie Then the request writes nothing to `sessions` (the row is not deleted or changed) and the response removes the `session_id` cookie.
 - [ ] **AC-1.6** Given a collector who signs in again after expiry When the sign-in succeeds Then a new session exists with its own id and the expired one is not reused.
 - [ ] **AC-1.7** Given a collector who makes a request every 10 days for 100 days (time advancing between requests) When each request carries the session's cookie Then every request is signed in: there is no absolute lifetime.
 - [ ] **AC-1.8** Given an expired session that has a bulk selection and a bulk removal with Undo When the nightly sweep runs Then the session, its selection and its removal are gone (Story 3).
@@ -110,7 +110,7 @@ This spec ends a session after 30 days without use, records use cheaply, sweeps 
 
 **Acceptance criteria:**
 
-- [ ] **AC-2.1** Given a collector signs in or signs up When the session is created Then its last use is that moment.
+- [ ] **AC-2.1** Given a collector signs in or signs up When the session is created Then its stamp is that moment.
 - [ ] **AC-2.2** Given a session whose stamp is 23 hours old When a request carries its cookie Then the stamp is unchanged and the request makes no write to `sessions`.
 - [ ] **AC-2.3** Given a session whose stamp is 24 hours old or more (and not expired) When a request carries its cookie Then the stamp becomes the time of the request, and the response sets the `session_id` cookie again to expire 30 days from then (decision 7).
 - [ ] **AC-2.4** Given a signed-in collector When each of these carries the cookie: a GET of a page, a form post, and a visit to an open catalog page (when the instance has one open) Then each counts as a use (the stamp updates when it is 24 hours old).
@@ -129,9 +129,9 @@ This spec ends a session after 30 days without use, records use cheaply, sweeps 
 
 - [ ] **AC-3.1** Given sessions that are expired and sessions that are not When the job runs Then each expired session is deleted, with its bulk selection and bulk removals, and no other session or selection is changed.
 - [ ] **AC-3.2** Given no expired session When the job runs Then it changes nothing; given it has just run When it runs again Then it deletes nothing and does not fail.
-- [ ] **AC-3.3** Given more expired sessions than one batch (the batch size reduced in the example, or 2,500 rows) When the job runs Then every expired session is deleted, each batch in its own transaction.
+- [ ] **AC-3.3** Given more expired sessions than one batch (the batch size reduced in the example, or 2,500 rows) When the job runs Then every expired session is deleted, each batch in its own transaction (the plan picks how an example observes it).
 - [ ] **AC-3.4** Given the job When it runs Then it touches only `sessions` and the rows that cascade from it: no user, account, lot, location or other table changes.
-- [ ] **AC-3.5** Given a batch that raises `SQLite3::BusyException` When the job runs Then it is retried later and the job completes the deletion; given an error that is not transient it is not retried: the job fails and shows under Failed.
+- [ ] **AC-3.5** Given a batch that meets a busy database (`SQLite3::BusyException`, or the `ActiveRecord::StatementTimeout` Rails raises for it) When the job runs Then it is retried later and the job completes the deletion; given an error that is not transient it is not retried: the job fails and shows under Failed.
 - [ ] **AC-3.6** Given `config/recurring.yml` When read for `production` and `development` Then each has an entry for the job, daily, in a night hour, on the `default` queue.
 - [ ] **AC-3.7** Given two sweeps queued together When both are ready Then only one runs at a time (the job's declared concurrency limit, one key for all).
 - [ ] **AC-3.8** Given an expired session of a user and a non-expired session of another account When the job runs Then it deletes the first and leaves the second and both accounts (it is cross-tenant by nature and says so in a comment, `.claude/rules/multi-tenancy.md`).
@@ -146,32 +146,32 @@ This spec ends a session after 30 days without use, records use cheaply, sweeps 
 
 - [ ] **AC-4.1** Given a successful sign-in or sign-up When the session is created Then the `sessions` row has no address and no user agent, and the table has no column for either.
 - [ ] **AC-4.2** Given a database at the previous schema with sessions that hold an address and a user agent, a bulk selection and a bulk removal When the migration runs Then every session, selection and removal is still there with the same ids and the same user, and the two columns and their values are gone.
-- [ ] **AC-4.3** Given the same database When the migration has run Then every session that existed has a last use equal to the migration's time (not its creation time), so a sweep run right after deletes none, even one created a year before (decision 11).
-- [ ] **AC-4.4** Given the migration When it runs forward, backward and forward again (`db:migrate:redo`, or a migration spec) Then each run succeeds, the backward run restores the two columns empty and removes the last-use column, and the forward run after it leaves the same table as the first.
-- [ ] **AC-4.5** Given an upgrade from the previous release's image When `bin/upgrade-smoke` compares the databases Then the two columns are listed as expected `dropped` changes of this migration with spec 049 as the reason, `seeds/next.rb` creates sessions without them, and the proof passes.
+- [ ] **AC-4.3** Given the same database When the migration has run Then every session that existed has a stamp equal to the migration's time (not its creation time), so a sweep run right after deletes none, even one created a year before (decision 11).
+- [ ] **AC-4.4** Given the migration When it runs forward, backward and forward again (`db:migrate:redo`, or a migration spec) Then each run succeeds, the backward run restores the two columns empty and removes the stamp's column, and the forward run after it leaves the same table as the first.
+- [ ] **AC-4.5** Given an upgrade from the previous release's image When `bin/upgrade-smoke` compares the databases Then the two columns are listed as expected `dropped` changes of this migration with spec 049 as the reason, `seeds/next.rb` creates sessions without them, `seeds/0.2.1.rb` (which runs in the previous image) is unchanged, the stamp column's backfill is listed too if the proof reports it, and the proof passes. The spec helpers that create sessions (`spec/support/backup_helpers.rb`) stop passing the two attributes.
 - [ ] **AC-4.6** Given `spec/backup_guards_spec.rb` and the export format's Coverage guard (`ExportFormat`) When the suite runs Then both pass without a change to the format or its version: `sessions` stays "Left out", and every foreign key to `sessions` still cascades.
 - [ ] **AC-4.7** Given a backup taken before the upgrade When it is restored onto the upgraded release Then the restore succeeds (its sessions step deletes the old rows, spec 030 decision 3) and the migration then runs on the restored database.
 
 ### Story 5: The documents say so
 
-- [ ] **AC-5.1** Given [`tenancy-and-accounts.md`](../../architecture/tenancy-and-accounts.md) When read Then "A session" (created, resumed, ended) states the 30-day idle expiry, what a use is, the once-a-day stamp, the cookie's lifetime, the sweep and that an expired session is no session; the Glossary, the Invariants' list of jobs and of cross-account reads name the sweep; the Named constants table has the idle limit, the stamp's interval, the batch size and the cookie's lifetime; the Decisions section replaces "Six behaviours have no spec source" with five, and the "Accepted limits" entries for sessions (a session lasts until ended; the address and user agent) are removed; each with spec 049 as the source. (Verified by reading, recorded in `verification.md`.)
+- [ ] **AC-5.1** Given [`tenancy-and-accounts.md`](../../architecture/tenancy-and-accounts.md) When read Then "A session" (created, resumed, ended) states the 30-day idle expiry, what a use is, the once-a-day stamp, the cookie's lifetime, the sweep and that an expired session is no session; the Glossary, the Invariants' list of jobs and of cross-account reads name the sweep; the Named constants table has the idle limit, the stamp's interval, the batch size and the cookie's lifetime; the Decisions section replaces "Six behaviours have no spec source" with four, and the "Accepted limits" entries for sessions (a session lasts until ended; the address and user agent) are removed; each with spec 049 as the source. (Verified by reading, recorded in `verification.md`.)
 - [ ] **AC-5.2** Given `docs/specs/README.md` When read Then it has row 049 with the issue, the area it covers and what it supersedes (spec 004 FR-2's lifetime only by silence: no criterion is changed).
 - [ ] **AC-5.3** Given `docs/backup-restore.md` and `README.md` When read Then nothing says a session lasts until ended; if a sentence does, it is corrected. (Verified by reading.)
 
 ## Functional Requirements
 
-- **FR-1** The app must treat a session as no session when its last use is 30 days or more ago, in the same place that finds the session from the cookie, so every endpoint that resolves a session (`require_authentication`, `authenticated?`, the open catalog) agrees.
+- **FR-1** The app must treat a session as no session when it is expired, in the same place that finds the session from the cookie, so every endpoint that resolves a session (`require_authentication`, `authenticated?`, the open catalog, and the Active Storage gate, which includes `Authentication`) agrees.
 - **FR-2** The expiry rule must be defined once and used by the request path and the sweep alike, so a session the request rejects is the one the sweep deletes.
-- **FR-3** A request that uses a session must update the stamp only when it is 24 hours or more old, and in that request re-issue the cookie with a 30-day lifetime and the same security attributes.
+- **FR-3** A request that uses a session must update the stamp only when it is 24 hours or more old or later than the time of the request, and in that request re-issue the cookie with a 30-day lifetime and the same security attributes.
 - **FR-4** The sweep must delete expired sessions in batches, each in its own transaction, be idempotent, run one at a time, retry a busy database, and be scheduled nightly in `config/recurring.yml`.
 - **FR-5** `sessions.ip_address` and `sessions.user_agent` must be removed, and no code may read or write them.
-- **FR-6** The migration must be reversible, keep every existing session and what cascades from it, give every existing session a last use of the migration's time, and be safe to run unattended on a self-hoster's upgrade.
+- **FR-6** The migration must be reversible, keep every existing session and what cascades from it, give every existing session a stamp of the migration's time, and be safe to run unattended on a self-hoster's upgrade.
 - **FR-7** The upgrade proof's `expected_changes.yml` must list the dropped columns, and `seeds/next.rb` must create sessions without them.
 
 **Must not:**
 
 - Add an absolute session lifetime, or extend a session by anything but a use.
-- Write to the database on a request that does not update the stamp, or on one with an expired session.
+- Write to `sessions` on a request that does not update the stamp, or on one with an expired session.
 - Read the address or the user agent into a log line or a record in their place.
 - Change the export format, its version, or what the export holds.
 - Change what ends a session today, or the cascade of a session's selection and Undo.
@@ -210,7 +210,7 @@ This spec ends a session after 30 days without use, records use cheaply, sweeps 
 ## Open Questions
 
 - Decisions 6–11 are recommendations for the coordinator's Gate A ruling: the cookie's lifetime (7), what a use is (6), the sweep as a recurring job with a concurrency limit (8), the batch size (10), what an expired session shows (9), and the upgrade's treatment of existing sessions (11).
-- For the plan, not the spec: whether the stamp is a new column or the existing `updated_at`. Either needs the migration to set every existing row (decision 11), and no criterion depends on the choice. The plan also checks that dropping columns from `sessions` on SQLite (Rails rebuilds the table) does not run the foreign keys' `ON DELETE CASCADE` on `bulk_selections` and `bulk_removals` (AC-4.2).
+- For the plan: dropping columns from `sessions` on SQLite makes Rails rebuild the table, and the drop of the old table inside a transaction can run the foreign keys' `ON DELETE CASCADE` on `bulk_selections` and `bulk_removals` (AC-4.2). The project has the answer already: `db/migrate/20261103100001_add_currency_to_accounts.rb` (and `AddLocationToLots`) use `disable_ddl_transaction!` with each step guarded by `column_exists?`, and `spec/migrations/add_currency_to_accounts_spec.rb` asserts it. The plan reuses that pattern and its spec's shape; the migration is then not atomic, as those are not.
 
 ## Supersedes
 
