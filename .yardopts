@@ -1,3 +1,4 @@
+--load script/yard/links.rb
 --markup markdown
 --output-dir doc
 --readme docs/architecture/README.md

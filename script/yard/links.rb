@@ -1,9 +1,9 @@
-# Makes the links of the Markdown pages in YARD's site work (spec 054 FR-3, decision 6, ADR 0027). The area docs and ADRs
-# keep plain relative links for GitHub; at generation this rewrites them in the text a page is rendered from, never on
-# disk: a link to another page of the site becomes that page, any other relative link becomes the file on GitHub's main
-# branch, and a link to a file that doesn't exist is a warning (so `bin/yard doc` fails); a fragment that matches no heading is left as written. Loaded by
-# .yardopts (`--load`); the app never loads it (it is outside app/ and lib/). Standard library only, apart from the hook
-# at the end, which needs YARD.
+# Makes the links of the Markdown pages in YARD's site work (spec 054 FR-3, decision 6, ADR 0027). The area docs and
+# ADRs keep plain relative links for GitHub; at generation this rewrites them in the text a page is rendered from,
+# never on disk: a link to another page of the site becomes that page, any other relative link becomes the file on
+# GitHub's main branch, and a link to a file that doesn't exist is a warning (so `bin/yard doc` fails); a fragment
+# that matches no heading is left as written. Loaded by .yardopts (`--load`); the app never loads it (it is outside
+# app/ and lib/). Standard library only, apart from the hook at the end, which needs YARD.
 # `yard doc` parses its options a second time for its statistics, which loads this file again: once is enough.
 return if defined?(YardLinks)
 
