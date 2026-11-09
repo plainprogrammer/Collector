@@ -24,7 +24,7 @@ RSpec.describe "Admin jobs page", :solid_queue, type: :system do
     })()
   JS
 
-  # Hides the tab and lets a tick pass, then shows it again, and returns the visits Turbo started at each point:
+  # Hides the tab and calls a tick by hand (nothing sleeps), then shows the tab again, and returns the visits Turbo started at each point:
   # [while hidden, right after the tab is shown, right after it is shown with a menu open]. The interval timer is
   # cleared first, so only the tab being shown can start a visit, never a tick.
   let(:shown_again_js) { <<~JS }
@@ -43,6 +43,7 @@ RSpec.describe "Admin jobs page", :solid_queue, type: :system do
       setHidden(false)
       const afterShown = visits
       const menu = document.querySelector("details.c-menu")
+      document.documentElement.removeAttribute("aria-busy") // the visit above marked Turbo busy, which would hold this too
       menu.open = true; setHidden(true); setHidden(false)
       menu.open = false
       return [ whileHidden, afterShown, visits ]
