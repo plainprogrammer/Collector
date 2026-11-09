@@ -63,4 +63,17 @@ Evidence for each criterion of [spec.md](spec.md) (v1.2.1). Commands were run at
 
 ## Implementation review
 
-(pending)
+SPEC-ALIGNED WITH FOLLOW-UPS
+
+Mode B review of the whole branch diff against origin/main (Opus, read-only), 2026-11-09, at `81d2397c`. No blocking or major findings. It ran `bin/yard doc --no-cache` into a scratch directory: exit 0, no `[warn]` line, 197 files, 61 modules, 210 classes, 838 methods, 53.70% documented, 35 file pages, every relative link of the included pages rewritten, `git status --ignored` unchanged. Open follow-ups (minor, none changes a verdict):
+
+1. `release-and-deploy.md` Sources line: `#103` follows `#217`'s parenthesis with no separator.
+2. `release-and-deploy.md` Distillation log row reads `spec 054: …`; the other rows read `Spec NNN (…)`.
+3. `release-and-deploy.md` "The image carries only what it runs": the list lacks an "and" before the API documentation clause.
+4. AC-3.4's clause that the extension's specs `require "yard"` themselves isn't literally met: `links_spec.rb` runs without YARD and `site_spec.rb` runs YARD in a subprocess, which keeps `project_config_spec.rb`'s `defined?(YARD)` check independent of test order. A deliberate deviation.
+5. `script/yard/links.rb` leaves links with a title, angle-bracket targets, reference-style links and `~~~` fences untouched (none occurs in the docs today); a root-absolute link (`/foo.md`) is resolved against the filesystem root. Latent; list them as known limits or handle them.
+6. `links_spec.rb` and `site_spec.rb` carry `type: :model`; the neighbouring script specs carry no type.
+7. `ci_definition_spec.rb` finds the `unless` block's end by the first `end` line; also assert the step precedes `step "Security: Brakeman…"`.
+8. ADR 0027 puts `### Options considered` inside Decision; ADRs 0020–0026 put `## Options considered` between Context and Decision.
+9. The AC-1.8 row cites a second run before the extension existed; repeat it at the branch's head.
+10. AC-2.5 and AC-3.6 are filled from the pull request's CI run.
