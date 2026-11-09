@@ -34,7 +34,7 @@ The Art index panel and the `catalog:status` art line say "Out of date" for a fi
 
 The build row already holds what the comparison needs; this phase gives the panel and the line one statement of each test, as `#left_behind?` is one statement of its rule.
 
-- [ ] **Task 1.1: write the failing model examples.** In `spec/models/mtg/art_build_spec.rb`, add before the last `end` (after the `#index_file_present?` describe, line 252):
+- [ ] **Task 1.1: write the failing model examples.** In `spec/models/mtg/art_build_spec.rb`, add before the file's last `end` (right after the `#index_file_present?` describe's closing `end`):
 
 ```ruby
 
@@ -253,6 +253,7 @@ The state goes between `:index_missing` and `:ready` inside the finished branch;
           "can't use it. Build the art index again. Finished 9 Oct 2026 05:00 UTC Index file #{name} Built with settings " \
           "0123456789abcdef Current settings #{MTG::Art::Settings.digest} Artworks indexed 31,904 Without an image 12 Failed images 3")
         expect(section("art_index").at_css("button")["disabled"]).to be_nil
+        expect(section("art_index").at_css("a")).to be_nil
         expect(page.at_css("[data-controller~='poll']")).to be_nil
       end
 
@@ -317,7 +318,7 @@ The state goes between `:index_missing` and `:ready` inside the finished branch;
 
 (d) In `facts`, change `when :ready, :index_missing then finished_facts` to `when :ready, :index_missing, :out_of_date then finished_facts`.
 
-(e) In the private section, before `failed_summary`, replace `finished_facts` with these three methods (keeping `failed_summary` after them):
+(e) In the private section, before `failed_summary`, replace `finished_facts` with these four methods, `finished_state`, `finished_facts`, `catalog_warning` and `latest_catalog_version` (keeping `failed_summary` after them):
 
 ```ruby
     # The file's own state first, then the settings it was built with (spec 053 decision 2).
@@ -387,7 +388,7 @@ The state goes between `:index_missing` and `:ready` inside the finished branch;
       create(:mtg_art_build, indexed_count: 9, without_image_count: 1, failed_count: 2, index_file: name)
 
       expect(described_class.status_line).to eq("Art matching: ready; 9 artworks indexed, 1 without an image, 2 failed images; " \
-        "index #{name}. Warning: built from catalog default-cards-1, the latest refresh is default-cards-2; press Build art index " \
+        "index #{name} Warning: built from catalog default-cards-1, the latest refresh is default-cards-2; press Build art index " \
         "on the admin catalog page to build it again.")
     end
 
@@ -434,7 +435,7 @@ and add, after `status_line`'s `end` and before the module's closing `end`:
     latest = latest_catalog_version
     return line unless run.catalog_drift?(latest)
 
-    "#{line}. Warning: built from catalog #{run.catalog_version}, the latest refresh is #{latest}; press Build art index on the " \
+    "#{line} Warning: built from catalog #{run.catalog_version}, the latest refresh is #{latest}; press Build art index on the " \
       "admin catalog page to build it again."
   end
   private_class_method :ready_line
@@ -453,7 +454,7 @@ and add, after `status_line`'s `end` and before the module's closing `end`:
 
 AC-3.2 and AC-3.3 go red against the pre-Phase-2 code (they assert `:out_of_date` and the warning before building), so they prove the end-to-end path on top of this plan's code. AC-4.1 and AC-4.2 pin what the code already does (Problem Statement); they are characterization examples, green from the start, and are written to fail if the scanner's behaviour ever changes.
 
-- [ ] **Task 4.1: write the build examples.** In `spec/models/mtg/art/build_spec.rb`, directly after the example `"writes a missing index file again without an image request, and reads ready again (spec 039 AC-3.2)"`, before the file's last `end`, add:
+- [ ] **Task 4.1: write the build examples.** (Both sit at RuboCop's example-length limit of 15 lines: add no line to them.) In `spec/models/mtg/art/build_spec.rb`, directly after the example `"writes a missing index file again without an image request, and reads ready again (spec 039 AC-3.2)"`, before the file's last `end`, add:
 
 ```ruby
 
@@ -510,6 +511,7 @@ AC-3.2 and AC-3.3 go red against the pre-Phase-2 code (they assert `:out_of_date
       bytes = Zlib.gunzip(path.binread)
       bytes[8, 16] = "0123456789abcdef"
       path.binwrite(ActiveSupport::Gzip.compress(bytes))
+      create(:mtg_art_build, index_file: path.basename.to_s, settings_digest: "0123456789abcdef")
       config = MTG::Art.page_config
 
       get scanner_art_index_path(config.fetch(:name))
@@ -522,6 +524,7 @@ AC-3.2 and AC-3.3 go red against the pre-Phase-2 code (they assert `:out_of_date
 
     it "is offered and served for an older catalog, its header digest the page's, which the browser uses (AC-4.2)", :aggregate_failures do
       path = write("default-cards-1")
+      create(:mtg_art_build, index_file: path.basename.to_s, catalog_version: "default-cards-1")
       create(:catalog_refresh_run, source_version: "default-cards-2")
       config = MTG::Art.page_config
 
@@ -546,10 +549,10 @@ AC-3.2 and AC-3.3 go red against the pre-Phase-2 code (they assert `:out_of_date
 **Interfaces:** Consumes: Phases 1–4. Produces: the area docs' current rules and the verification record.
 
 - [ ] **Task 5.1: run the checks.** `bin/rubocop` and `bin/rspec spec/models/mtg spec/requests/admin spec/requests/scanner spec/tasks spec/admin_catalog_core_spec.rb` — expect 0 offenses, 0 failures. Then, with the coordinator's "ci slot", the full `bin/ci`; release the slot with the SHA and result.
-- [ ] **Task 5.2: write `verification.md`** (`docs/specs/053-art-index-drift/verification.md`, modelled on spec 039's): a Red-then-green table per phase (commit SHAs and the failing example names from Tasks 1.2, 2.2, 3.2), the AC → evidence table (each AC to its example or document), the `bin/ci` run, and later the `## Implementation review` section with its verdict first.
+- [ ] **Task 5.2: write `verification.md`** (`docs/specs/053-art-index-drift/verification.md`, modelled on spec 039's): a Red-then-green table per phase (commit SHAs and the failing example names from Tasks 1.2, 2.2, 3.2), the AC → evidence table (each AC to its example or document), the `bin/ci` run, and later the `## Implementation review` section with its verdict first. It also records: AC-1.10's "a member still gets 404" is the existing generic example at `spec/requests/admin/catalogs_spec.rb` ("is invisible to a member: 404, and nothing is queued", AC-7.1); AC-3.2 and AC-3.3 are integration examples written after the code they exercise, so their red state is inferred from the Phase 2 and 3 red runs (Phase 4 adds no production code), not observed; and the NFR Cost claim (one more query, only for a ready build) holds by reading `finished_facts`, which asks `latest_catalog_version` only after `state == :ready`, not by a query-count example.
 - [ ] **Task 5.3: area docs (done by `distill-feature`, before the pull request is ready; the maintainer's ruling: "The catalog operations area doc is updated at distillation").** Read each document and make exactly the AC-5.1 and AC-5.2 edits, each new statement carrying its source inline (spec 053 criterion, decision or #176):
   - `docs/architecture/catalog-operations.md`: the art index panel table's "Finished, its index file on the volume" row gains the "Warning" fact for an older catalog and "at the current settings"; a new row "Finished, its index file on the volume, built with other settings" with the summary, the facts (finish time, file name, built-with and current settings, counts), button enabled unless a job is in flight, no meter, no Failed-list link, no polling, and "judged only once nothing is queued or running"; the status-line paragraph words both lines; the Glossary's "Ready (art index)" entry says what ready is judged by now; the accepted limit about older settings or catalog is reworded to the damaged file only, and a new open point: a release that changes the settings queues no rebuild, only a refresh does (maintainer's ruling, 2026-11-09); Sources gets #176 and spec 053.
-  - `docs/architecture/scanner.md`: the digest paragraph and the art-status table's mismatch row say the admin page shows the refused index as out of date and an older catalog's index as a warning; the open-issues line for #176 is removed; Sources gets #176 and spec 053.
+  - `docs/architecture/scanner.md`: the digest paragraph and the art-status table's mismatch row say the admin page shows the refused index as out of date and an older catalog's index as a warning; the open-issues line for #176 is removed and #176 moves out of the Sources list's "open" issues (to the fixed ones), with spec 053 added.
   - `docs/specs/README.md`: the 053 row's status word moves as the spec progresses (Approved → Shipped → Frozen by the area docs), and its Plan column becomes "retirement owed" at distillation; the three Superseded-by entries stay.
 - [ ] **Task 5.4: commit.** `docs(art): the area docs and the verification record for spec 053 (#176)`.
 
