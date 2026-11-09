@@ -42,6 +42,7 @@ For each qualifying row:
    - Replace every Markdown link to `plan.md` in the spec's folder (`git grep -n -E "\]\((\./)?plan\.md" -- docs/specs/NNN-<slug> ':!.kamal/secrets'`) with the plain text ``plan (retired in `<sha>`; read it with `git show <sha>^:docs/specs/NNN-<slug>/plan.md`)``. A path in quoted command output isn't a link; leave it.
    - Change nothing else in the spec. Commit: `docs(specs): point to the retired plan of spec NNN (spec 027 D4)`.
 5. Check: `git show <sha>^:docs/specs/NNN-<slug>/plan.md` prints the plan, and `git show --stat <sha>` lists only the deleted plan.
+6. In the area docs' Distillation logs, replace the placeholder "spec NNN's pull request" (written before the pull request had a number, state 2 step 2) with a link to the merged pull request, `[#N](https://github.com/<owner>/<repo>/pull/N)` (`git grep -n "spec NNN's pull request" -- docs/architecture ':!.kamal/secrets'`), in a third commit: `docs(architecture): name the pull request of spec NNN in the distillation logs`.
 
 If no row qualifies, go to 2.
 
