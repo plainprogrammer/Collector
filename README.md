@@ -188,6 +188,12 @@ The app is then available at `http://localhost:3000` (or your `COLLECTOR_PORT`).
 - **Health:** the container has a healthcheck on `/up`, and runs as a non-root user (uid 1000).
 - **Upgrades:** `docker compose pull && docker compose up -d`. Database migrations run automatically
   when the container starts.
+- **Stopping:** `docker compose stop` ends the app within a second or two. A stop in the first one or two
+  seconds after the container starts can hang until the engine's grace period ends (10 seconds for Compose
+  unless you set `stop_grace_period`) and the container is then killed, with exit status 137: Solid Queue's
+  integration with the web server loses a stop that arrives before its background processes have started.
+  Nothing is lost, because SQLite recovers its write-ahead log on the next start, and a stop a few seconds
+  after a start is graceful.
 - **Building from source:** `docker build -t collector:local .` in a checkout, then start Compose with
   `COLLECTOR_IMAGE=collector:local`.
 - **HTTPS:** the Compose setup serves plain HTTP. Signing in over plain HTTP sends your password unencrypted, which is only acceptable on a trusted private network. Put an HTTPS reverse proxy (for example Caddy, nginx, or Traefik) in front of it and set `COLLECTOR_HTTPS=true`.
