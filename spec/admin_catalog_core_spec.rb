@@ -14,7 +14,7 @@ RSpec.describe "The core's admin catalog code" do
   end
 
   it "covers the controllers, views, models, helper and script of the page" do
-    expect(files.size).to eq(15)
+    expect(files.size).to eq(16)
   end
 
   it "never says MTG, Scryfall or art" do

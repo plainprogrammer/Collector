@@ -310,9 +310,9 @@ RSpec.describe "Admin catalog page", :solid_queue, type: :request do
       end
 
       it "shows a failed run whose job waits to retry as queued, without the failed link (AC-3.7)", :aggregate_failures do
-        create(:catalog_refresh_run, status: "failed", stage: "download", message: "Catalog::Sources::TransientError: 503")
         travel_to(Time.utc(2026, 10, 9, 3, 15)) do
-          queue_job(Catalog::RefreshJob, "mtg", "manual", wait: 3.minutes)
+          job = queue_job(Catalog::RefreshJob, "mtg", "manual", wait: 3.minutes)
+          create(:catalog_refresh_run, status: "failed", stage: "download", message: "Catalog::Sources::TransientError: 503", job_id: job.active_job_id)
           get admin_catalog_path
         end
 
@@ -479,7 +479,7 @@ RSpec.describe "Admin catalog page", :solid_queue, type: :request do
           get admin_catalog_path
         end
 
-        expect(text(section("art_index"))).to eq("Art index Build art index Queued to retry. The last build failed. " \
+        expect(text(section("art_index"))).to eq("Art index Build art index Retry now Queued to retry. The last build failed. " \
           "The source was turning requests away for a while (rate limiting). Nothing is wrong on your side. " \
           "Retrying at 9 Oct 2026 03:25 UTC Finished 9 Oct 2026 03:15 UTC Index in use none Technical detail " \
           "Catalog::Sources::RateLimitedError: GET https://cards.scryfall.io/small/a.jpg still rate limited after 3 attempts")

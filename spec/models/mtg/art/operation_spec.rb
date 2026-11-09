@@ -21,6 +21,13 @@ RSpec.describe MTG::Art::Operation, :solid_queue, type: :model do
       expect(operation.start).to be(false)
     end
 
+    it "offers no Retry now, whatever waits (spec 055 AC-1.3a)" do
+      loaded
+      build(status: "failed", job_id: queue_job(MTG::Art::BuildJob, wait: 5.minutes).active_job_id)
+
+      expect(operation).not_to be_retry_now
+    end
+
     it "looks at no file, whatever the latest build names (spec 039 AC-1.7)", :aggregate_failures do
       loaded
       build(index_file: "art-index-default-cards-1-0123456789abcdef-9.bin.gz")
@@ -230,6 +237,39 @@ RSpec.describe MTG::Art::Operation, :solid_queue, type: :model do
         expect(second).to have_attributes(status: "skipped", message: "waiting for another job's retry")
         expect(operation.summary)
           .to eq("Queued to retry. The last build failed. #{Catalog::FailureReason::REASONS.fetch("Catalog::Sources::RateLimitedError")}")
+      end
+
+      it "offers Retry now, and runs the waiting job at once without queueing another (spec 055 AC-1.2, AC-2.2)", :aggregate_failures do
+        expect(operation).to be_retry_now
+        expect { expect(operation.retry_now).to be(true) }.not_to change(SolidQueue::Job, :count)
+        expect(SolidQueue::Job.sole).to be_ready
+        expect(described_class.new("mtg")).to have_attributes(state: :queued, summary: "Queued.", retry_now?: false) # a fresh read: `operation` memoized its queue
+      end
+
+      it "offers it for the busy-database retry too (spec 055 AC-1.5)", :aggregate_failures do
+        MTG::ArtBuild.sole.update!(message: "SQLite3::BusyException: database is locked")
+
+        expect(operation).to be_retry_now
+      end
+    end
+
+    {
+      "a build job queued fresh" => -> { queue_job(MTG::Art::BuildJob) },
+      "a build job scheduled by hand with no failed build of its own" => -> { queue_job(MTG::Art::BuildJob, wait: 5.minutes) },
+      "a failed build whose job is in the Failed list" => -> { build(status: "failed", job_id: fail_job(queue_job(MTG::Art::BuildJob)).active_job_id) },
+      "a failed build whose job id is no longer in the queue" => -> { build(status: "failed", job_id: "gone") },
+      "a failed build with no job id" => -> { build(status: "failed", job_id: nil) },
+      "a build in progress" => -> { build(status: "running", finished_at: nil, heartbeat_at: Time.current, job_id: claim_job(queue_job(MTG::Art::BuildJob)).active_job_id) },
+      "a finished build" => -> { build(status: "finished") },
+      "a skipped build" => -> { build(status: "skipped", message: "already running") },
+      "no build at all" => -> { nil }
+    }.each do |name, setup|
+      it "doesn't offer Retry now for #{name} (spec 055 AC-1.3a)", :aggregate_failures do
+        loaded
+        instance_exec(&setup)
+
+        expect(operation).not_to be_retry_now
+        expect(operation.retry_now).to be(false)
       end
     end
 
