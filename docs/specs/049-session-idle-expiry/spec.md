@@ -1,7 +1,7 @@
 # Feature 049: Sessions Expire After 30 Days Unused, and Stop Storing the Address and User Agent
 
-**Status:** Draft, for Gate A. Decisions 1–5 are ruled by the maintainer (issue #228, from #218 rulings 1 and 2); decisions 6–11 are recommendations awaiting the coordinator's approval
-**Version:** 0.1.0
+**Status:** Approved on 2026-11-09 by the coordinator under the maintainer's delegation (Gate A), with decisions 6–11 as recommended; Fable review round 1 (APPROVE WITH CHANGES) fixed, no round 2
+**Version:** 1.0.0
 **Created:** 2026-11-09
 **Last Updated:** 2026-11-09
 **Branch:** `228-session-idle-expiry`
@@ -16,6 +16,7 @@
 |---------|------|--------|
 | 0.1.0 | 2026-11-09 | First draft, from issue #228 and the tenancy area doc's "A session" section |
 | 0.2.0 | 2026-11-09 | Spec review round 1 (Fable, APPROVE WITH CHANGES, 0 blocking, 2 major, 9 minor) fixed: "expired" is defined on the stamp, which the app can read, not on the true last use (M1); the stamp is a column of its own and `updated_at` is not rewritten, so the upgrade proof's differences are named (M2); the status line's decision numbers; the area doc keeps four unsourced behaviours, not five; FR-3 covers a stamp in the future; the write prohibitions say `sessions`; the busy-database error class; the migration precedent (`disable_ddl_transaction!`); `seeds/0.2.1.rb` unchanged and the spec helper; FR-1 names the Active Storage gate |
+| 1.0.0 | 2026-11-09 | Approved at Gate A; recommendations 6–11 accepted. Notes for the plan: prove with a migration spec that the column drop keeps a session's bulk selection and Undo removal (a cascade would delete collector state), and count writes with a statement-counting helper (spec 032 AC-11.12's) |
 
 ---
 
