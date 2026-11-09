@@ -6,6 +6,7 @@
 **Last Updated:** 2026-11-09
 **Branch:** `176-art-index-drift`
 **Issue:** [#176](https://github.com/plainprogrammer/Collector/issues/176)
+**Frozen:** the current rules are in [`catalog-operations.md`](../../architecture/catalog-operations.md) and [`scanner.md`](../../architecture/scanner.md) (whole spec); see the [specs index](../README.md)
 
 ---
 
