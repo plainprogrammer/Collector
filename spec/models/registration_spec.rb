@@ -34,4 +34,12 @@ RSpec.describe Registration, type: :model do
     registration.save
     expect(registration.user.errors[:password_confirmation]).to include("doesn't match Password")
   end
+
+  it "reports a missing or blank confirmation as a mismatch, creating nothing (spec 004 AC-4.1, #230)", :aggregate_failures do
+    [ params.except(:password_confirmation), params.merge(password_confirmation: ""), params.merge(password_confirmation: nil) ].each do |attributes|
+      registration = described_class.new(attributes)
+      expect { expect(registration.save).to be(false) }.not_to change(User, :count)
+      expect(registration.user.errors[:password_confirmation]).to eq([ "doesn't match Password" ])
+    end
+  end
 end
