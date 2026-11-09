@@ -100,7 +100,7 @@ RSpec.describe Collector::Backup::Snapshot, :backup do
       sqlite(copy) do |database|
         database.execute("PRAGMA foreign_keys = OFF")
         account_id, user_id = insert_account_and_user(database)
-        database.execute("INSERT INTO sessions (user_id, created_at, updated_at) VALUES (?, ?, ?)", [ user_id, now, now ])
+        database.execute("INSERT INTO sessions (user_id, last_used_at, created_at, updated_at) VALUES (?, ?, ?, ?)", [ user_id, now, now, now ])
         session_id = database.last_insert_row_id
         database.execute("INSERT INTO bulk_selections (session_id, account_id, created_at, updated_at) VALUES (?, ?, ?, ?)", [ session_id, account_id, now, now ])
         selection_id = database.last_insert_row_id

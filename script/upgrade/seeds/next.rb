@@ -28,7 +28,7 @@ ada, = User::Command.call(email: "ada@upgrade.example", password:)
 grace = User.create!(name: "Grace", email_address: "grace@upgrade.example", password:)
 grace.account.update!(currency: "EUR") # a non-default currency, so the next release's proof shows the column survives (spec 038 AC-4.7)
 InstanceSetting.current.update!(sign_up_open: true)
-[ ada, grace ].each { |user| user.sessions.create!(ip_address: "127.0.0.1", user_agent: "upgrade-seed") }
+[ ada, grace ].each { |user| user.sessions.create! }
 
 # 50 printings x 2 finishes x 5 conditions x 4 prices = 2,000 lots for Ada; Grace's collection stays empty.
 variants = %w[nonfoil foil].product(%w[near_mint lightly_played moderately_played heavily_played damaged], [ nil, 100, 250, 1999 ])

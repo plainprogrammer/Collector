@@ -4,4 +4,6 @@ class Session < ApplicationRecord
   # delete_all (User#end_sessions!, user deletion), which runs no callbacks (spec 006 FR-4, FR-6).
   has_one :bulk_selection
   has_many :bulk_removals
+
+  attribute :last_used_at, default: -> { Time.current }
 end
