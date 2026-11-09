@@ -22,6 +22,11 @@ module MTG::Art
     { name: index.basename.to_s, settings: MTG::Art::Settings.for_page } if index
   end
 
+  # The source version of the latest applied catalog refresh, the version a build records (MTG::Art::Build#call) and the
+  # one a build's catalog drift is judged against (spec 053 decision 1). Nil with none applied, or when that refresh
+  # recorded no version.
+  def self.latest_catalog_version = Catalog::RefreshRun.for_type(MTG::Art::Build::COLLECTIBLE_TYPE).last_applied&.source_version
+
   # Spec 011 AC-3.1: one build after an applied refresh, or after one skipped as already applied while that catalog
   # version has no index at the current settings. Nothing with art matching off. Called by the MTG source's hook.
   def self.after_refresh(run)

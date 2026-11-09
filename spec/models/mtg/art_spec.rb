@@ -141,6 +141,20 @@ RSpec.describe MTG::Art, type: :model do
     end
   end
 
+  describe ".latest_catalog_version (spec 053 decision 1)" do
+    it "is the latest applied mtg refresh's source version, and nil when none is applied or that refresh has none", :aggregate_failures do
+      expect(described_class.latest_catalog_version).to be_nil
+
+      create(:catalog_refresh_run, source_version: "default-cards-1", finished_at: 2.hours.ago)
+      create(:catalog_refresh_run, source_version: "default-cards-2", finished_at: 1.hour.ago)
+      create(:catalog_refresh_run, source_version: "default-cards-3", status: "failed", finished_at: 10.minutes.ago)
+      expect(described_class.latest_catalog_version).to eq("default-cards-2")
+
+      create(:catalog_refresh_run, source_version: nil, finished_at: 5.minutes.ago)
+      expect(described_class.latest_catalog_version).to be_nil
+    end
+  end
+
   describe ".page_config (spec 011 AC-5.1)" do
     it "gives the page the current index's name and the settings, only with art on and an index built", :aggregate_failures, :art_matching do
       expect(described_class.page_config).to be_nil
