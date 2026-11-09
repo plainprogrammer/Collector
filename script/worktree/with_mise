@@ -10,6 +10,12 @@
 # post-checkout hook, seeing no mise, ran bin/setup on macOS's system Ruby 2.6 ("Could not find 'bundler'").
 # So look for mise in the PATH first, then in the places it is installed.
 #
+# The second half of #268: the setup terminal is a zsh with mise active, and the `bash -lc` started in it
+# keeps mise's tool directories in the PATH but moves /usr/bin ahead of them (macOS's path_helper). `mise exec`
+# doesn't move a directory that is already in the PATH, so `bin/setup`'s `#!/usr/bin/env ruby` and its
+# `bundle` ran on /usr/bin's Ruby 2.6 even through mise. Before `mise exec`, drop mise's own install and shim
+# directories from the PATH, so it puts the right ones first.
+#
 # COLLECTOR_MISE_SEARCH: colon-separated directories to look in after the PATH (default below; tests set it).
 # --optional: with no mise anywhere, run COMMAND as it is (CI runners and containers have no mise, and their
 # Ruby is already the right one). Without it, no mise is an error (exit 127): Orca's setup must not
@@ -39,6 +45,19 @@ if [ -z "$mise" ]; then
 fi
 
 if [ -n "$mise" ]; then
+  data="${MISE_DATA_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/mise}"
+  clean=""
+  old_ifs=$IFS
+  IFS=:
+  for dir in $PATH; do
+    case "$dir" in
+      "$data"/installs/* | "$data"/shims) ;;
+      *) clean="${clean:+$clean:}$dir" ;;
+    esac
+  done
+  IFS=$old_ifs
+  PATH="$clean"
+  export PATH
   exec "$mise" exec -- "$@"
 elif $optional; then
   exec "$@"

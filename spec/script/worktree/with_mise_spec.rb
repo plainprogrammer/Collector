@@ -59,4 +59,37 @@ RSpec.describe "script/worktree/with_mise", type: :model do # rubocop:disable RS
     _out, _err, status = run_script("sh", "-c", "exit 3", env: { "COLLECTOR_MISE_SEARCH" => "#{dir}/brew" })
     expect(status.exitstatus).to eq(3)
   end
+
+  # A login shell started from a terminal where mise was active keeps mise's directories, but after /usr/bin;
+  # mise leaves a directory already in the PATH where it is, so the system Ruby would win (#268).
+  describe "the PATH mise is given" do
+    let(:data) { "#{dir}/.local/share/mise" }
+    let(:fake) do
+      fake_mise(File.join(dir, "brew")).tap do |path|
+        File.write(path, "#!/bin/sh\necho \"$PATH\" > \"#{dir}/mise-path.txt\"\nshift 2\nexec \"$@\"\n")
+      end
+    end
+
+    def path_seen = File.read("#{dir}/mise-path.txt").strip.split(":")
+
+    it "drops mise's own install and shim directories so mise puts them first", :aggregate_failures do
+      fake
+      path = [ "/usr/bin", "#{data}/installs/ruby/4.0.7/bin", "/bin", "#{data}/shims", "#{data}/installs-not/bin" ].join(":")
+      run_script("true", env: { "PATH" => path, "COLLECTOR_MISE_SEARCH" => "#{dir}/brew" })
+      expect(path_seen).to eq([ "/usr/bin", "/bin", "#{data}/installs-not/bin" ])
+    end
+
+    it "follows MISE_DATA_DIR" do
+      fake
+      path = [ "/usr/bin", "#{dir}/data/installs/ruby/4.0.7/bin", "#{data}/shims" ].join(":")
+      run_script("true", env: { "PATH" => path, "MISE_DATA_DIR" => "#{dir}/data", "COLLECTOR_MISE_SEARCH" => "#{dir}/brew" })
+      expect(path_seen).to eq([ "/usr/bin", "#{data}/shims" ])
+    end
+
+    it "leaves the PATH alone when it runs the command without mise (--optional)" do
+      path = [ "/usr/bin", "#{data}/shims", "/bin" ].join(":")
+      out, _err, _status = run_script("--optional", "sh", "-c", "echo $PATH", env: { "PATH" => path, "COLLECTOR_MISE_SEARCH" => "#{dir}/nope" })
+      expect(out.strip).to eq(path)
+    end
+  end
 end
