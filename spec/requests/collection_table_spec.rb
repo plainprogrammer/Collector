@@ -90,6 +90,26 @@ RSpec.describe "Collection table", type: :request do
     expect(response.body).not_to include("c-table")
   end
 
+  describe "collector numbers (#204)" do
+    let(:znr) { create(:catalog_set, code: "znr") }
+
+    def numbers = rows.map { |row| cells(row)[1].split(" · ").last }
+
+    before { %w[12a 100 10 2 12].each { |number| own("Forest", set: znr, number:) } }
+
+    it "orders a set's printings by number as the grid does, numerically", :aggregate_failures do
+      get collection_path(view: "table")
+      expect(numbers).to eq(%w[2 10 12 12a 100])
+    end
+
+    it "sorts the Set column by set code, then number, numerically in both directions", :aggregate_failures do
+      get collection_path(view: "table", sort: "set", dir: "asc")
+      expect(numbers).to eq(%w[2 10 12 12a 100])
+      get collection_path(view: "table", sort: "set", dir: "desc")
+      expect(numbers).to eq(%w[100 12a 12 10 2])
+    end
+  end
+
   describe "sorting" do
     it "links every sortable header and marks Name ascending by default", :aggregate_failures do
       own
