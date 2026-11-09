@@ -24,6 +24,10 @@ module Upgrade
     REPOSITORY = "ghcr.io/plainprogrammer/collector".freeze
     PULL_ATTEMPTS = 3
     PERMANENT_PULL_FAILURE = /manifest unknown|not found|no matching manifest|unauthorized|denied|requested access|invalid reference|403 Forbidden/i
+    QUEUE_PROCESSES = %w[Dispatcher Worker Scheduler].freeze # Solid Queue logs "Started <kind>" once each has trapped signals (#177)
+    QUEUE_START_ATTEMPTS = 15
+    QUEUE_START_WAIT = 2 # seconds between attempts: up to 30 s, the stop's own grace
+    STOP_LOG_LINES = 20
     SEED_LINE = "UPGRADE-SEED-COMPLETE ".freeze
     EMPTY_COLLECTION_MARKER = "c-empty".freeze # the design system's empty-state class, which /collection renders for no lots
     SECRET = "secret-of-the-previous-release-instance-0001".freeze
@@ -228,16 +232,34 @@ module Upgrade
       end
 
       def stop_and_snapshot(instance, label)
+        wait_for_queue(instance)
+        stopping = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         @engine.stop(instance.name)
+        took = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - stopping).round(1)
         code = @engine.state(instance.name)[:exit_code]
         unless [ 0, 143 ].include?(code)
-          raise Failure, "#{instance.name} stopped with status #{code}, not 0 or 143 (#{code == 137 ? "it was killed at the end of the grace period" : "it did not stop cleanly"}); no database was compared"
+          raise Failure, "#{instance.name} stopped with status #{code} after #{took} s, not 0 or 143 (#{code == 137 ? "it was killed at the end of the grace period" : "it did not stop cleanly"}); " \
+            "no database was compared. Its last log lines:\n#{@engine.logs(instance.name).lines.last(STOP_LOG_LINES).join}"
         end
 
         copies = File.join(@scratch, "copies", label)
         FileUtils.mkdir_p(copies)
         @engine.copy_database(volume: instance.volume, image: @current, into: copies)
         Snapshot.open(Snapshot.consolidate(copies, "production.sqlite3", File.join(@scratch, "#{label}.sqlite3")))
+      end
+
+      # A stop that reaches the container before Solid Queue's supervisor and its dispatcher, worker and scheduler have trapped
+      # signals is lost (Puma's plugin waits for the supervisor without a bound), so the engine kills the container at the end of
+      # the grace period (#177). The proof stops an instance only once all three have logged that they started; a log that never
+      # says so (another log format) is no failure of the instance, so the wait ends and the stop is attempted.
+      def wait_for_queue(instance)
+        QUEUE_START_ATTEMPTS.times do |attempt|
+          log = @engine.logs(instance.name)
+          return if QUEUE_PROCESSES.all? { log.match?(/\bStarted #{it}\b/) }
+
+          @sleeper.call(QUEUE_START_WAIT) if attempt < QUEUE_START_ATTEMPTS - 1
+        end
+        @out.puts "note: #{instance.name} didn't log that its dispatcher, worker and scheduler started within #{QUEUE_START_ATTEMPTS * QUEUE_START_WAIT} s; stopping it anyway"
       end
 
       def verify_old(db)

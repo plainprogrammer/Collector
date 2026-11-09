@@ -124,6 +124,33 @@ RSpec.describe Upgrade::Harness, :git_sandbox, :upgrade do
     expect(out.string).to match(/upgrade-smoke-\d+-previous stopped with status 137/)
   end
 
+  # #177: Solid Queue's Puma plugin loses a stop that reaches the container before its supervisor and their three processes
+  # (dispatcher, worker, scheduler) have trapped signals, so the harness stops an instance only once they have said "Started".
+  it "waits until Solid Queue's dispatcher, worker and scheduler have started before it stops an instance (#177)", :aggregate_failures do
+    reads = Hash.new(0)
+    reads_at_stop = {}
+    logs = ->(name) { (reads[name] += 1) < 3 ? "SolidQueue-1.7.0 Started Supervisor(fork) (9.0ms)  pid: 33\n" : FakeEngine::QUEUE_STARTED }
+    engine = FakeEngine.new(databases:, logs:, stop: ->(name) { reads_at_stop[name] = reads[name] })
+    expect(harness(engine:).call).to eq(0)
+    expect(reads_at_stop.size).to eq(engine.names.count(:stop))
+    expect(reads_at_stop.values).to all(be >= 3)
+  end
+
+  it "stops an instance anyway, and says so, when Solid Queue never logs that it started (#177)", :aggregate_failures do
+    engine = FakeEngine.new(databases:, logs: "booted\n")
+    expect(harness(engine:).call).to eq(0)
+    expect(out.string).to include("didn't log that its dispatcher, worker and scheduler started within 30 s; stopping it anyway")
+    expect(engine.names.count(:logs)).to eq(engine.names.count(:stop) * described_class::QUEUE_START_ATTEMPTS)
+  end
+
+  it "prints how long the stop took and the container's last log lines when it was not graceful (#177)", :aggregate_failures do
+    log_lines = Array.new(40) { "log line #{it + 1}\n" }.join
+    engine = FakeEngine.new(databases:, state: { running: false, exit_code: 137 }, logs: FakeEngine::QUEUE_STARTED + log_lines)
+    expect(harness(engine:).call).to eq(1)
+    expect(out.string).to match(/stopped with status 137 after \d+(\.\d)? s/)
+    expect(out.string).to include("log line 40", "log line 21").and(satisfy { !it.include?("log line 20\n") })
+  end
+
   it "fails when the old database was not made by the previous release (AC-2.1)", :aggregate_failures do
     engine = FakeEngine.new(databases: [ seeded("wrong", %w[20261001000001 20269999999999]) ])
     expect(harness(engine:).call).to eq(1)
