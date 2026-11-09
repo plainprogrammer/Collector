@@ -88,3 +88,8 @@ Read-only review on Opus (`sdd-review` Mode B) of the whole branch against `orig
 | 4 | AC-6.1's distillation-log row is owed | Task 5.8 (`distill-feature`), before the PR is marked ready |
 | 5 | The no-applied-refresh build edge changes spec 015 AC-4.12's reading in an unrecorded way | Recorded above under "Deviations" |
 | 6 | "Before" screenshots are made (button hidden), and the markup differs from `main` by the wrapper | The PR body says so |
+
+## Distillation
+
+Distilled on 2026-11-09 by `distill-feature` (state 2, before the pull request): `docs/architecture/catalog-operations.md` carries the feature (Phase 5's edits in `e54378b5` and `80bc56ee`, the distillation-log row in `6ccc5d79`); `docs/specs/README.md`'s 055 row is Frozen by that doc with Plan "retirement owed" (`6ccc5d79`), and the 015, 024 and 043 rows carry the supersession; the spec's `**Frozen:**` line is in its own commit (spec 027 D4). CLAUDE.md keeps its pointer-only bullet (names spec 055). The design system's `AdminCatalog.md` and `docs/roadmap.md` and `catalog-core.md` were updated in Phase 5. No ADR was proposed. Lessons: three under `docs/lessons/2026-11-09-*` (`ffbf683c`).
+
