@@ -1,7 +1,7 @@
 # Feature 056: New and Changed Public Code Carries a Comment (a YARD Ratchet in `bin/ci checks`)
 
 **Status:** Approved by the coordinator under the maintainer's rulings of 2026-11-09 (OD1–OD6, all as recommended; the Opus re-review's non-blocking findings folded in)
-**Version:** 1.2.0
+**Version:** 1.2.1
 **Created:** 2026-11-09
 **Last Updated:** 2026-11-09
 **Branch:** `056-yard-comment-ratchet`
@@ -16,6 +16,7 @@
 |---------|------|--------|
 | 1.0.0 | 2026-11-09 | Written from issue #264, `.claude/rules/code-documentation.md` (the guidance the check enforces), spec 054 and ADR 0027, and a spike of YARD 0.9.45's registry on the current code (Problem Statement). The issue's four questions are decisions 1–3 and 5 and 6 below; decisions 1–5 and the ADR question are recommendations for the maintainer to rule on (Open Questions OD1–OD6) |
 | 1.1.0 | 2026-11-09 | From the spec review (Opus, read-only; REVISE, two blocking). **Detached HEAD:** GitHub's pull request checkout is detached, so the base is `git merge-base HEAD origin/main` whatever `HEAD` is, not `PushScope`'s rule (decision 5, AC-3.7, tag pushes). **Namespaces:** a class or module is judged only at its first definition and against a registry of every scoped file, so `module Collector` wrappers aren't judged and a comment above the outer wrapper doesn't count for the inner class (decision 4, AC-1.13, AC-1.14, AC-3.1). **Also:** a method's extent includes its own comment, deletions between methods judge neither (decision 4, AC-2.7, AC-2.8); what YARD can't see, and overrides (decision 3, AC-1.10, AC-1.15); FR-1's "Must not" sentence fixed; untracked means not ignored; criteria tagged by decision; OD6 quotes ADR 0027 |
+| 1.2.1 | 2026-11-09 | Planning probed YARD 0.9.45 and corrected two statements, no ruling changes: a `Struct.new` or `Data.define` held in a constant **is** registered as a class (with its block's methods), so it is judged like any class, its comment above the constant's line (decision 3, AC-1.10); and a `(see Parent#method)` comment leaves the docstring empty, so it does not count as a summary (decision 3, AC-1.15) |
 | 1.2.0 | 2026-11-09 | From the spec review round 2 (Opus, read-only; APPROVE WITH CHANGES, B1 and B2 resolved, nothing blocking), and the maintainer's rulings of 2026-11-09 (OD1–OD6 all as recommended). **"Changed" is a text comparison** of an object's extent with its base, so a deletion git places against a neighbour judges nobody (decision 4, AC-2.9); FR-1 reads the base side; **a shallow clone is refused** and the workflow keeps `fetch-depth: 0` (decision 5, AC-3.3, AC-4.9); the extent's glossary entry is for methods; the first-definition, unparseable-file, header-comment, tag and clean-checkout nits |
 
 ---
@@ -28,7 +29,7 @@ A spike of YARD 0.9.45's registry on the current code (nothing committed) measur
 
 - Public objects (classes, modules, methods, constants; attribute methods counted as methods) and how many have no comment text: `app/models` 1,088 and 454; `lib` 355 and 146; `spec/support` 243 and 110; `app/controllers` 158 and 98; `app/helpers` 69 and 26; `app/jobs` 15 and 8; `app/mailers` 1 and 1. A total gate would fail on about 840 objects today; a check on what a branch changes fails on none of them.
 - Every object has a file and a line (`file`, `line`), and 3 have several locations: namespace wrappers (`Collector` in 22 files, `Collector::Backup` in 9, `Collector::Backup::Manifest` in 2). In this repository a file's header comment sits above its outer `module Collector` line, so YARD gives that comment to `Collector`, and the class the file defines (`Collector::PushScope`) is blank in the registry. The registry gives an object's first line but not its last, so the extent of a method must come from the source.
-- YARD doesn't see `scope :x, -> {…}` declarations (none of `app/models`' 24 scopes is an object), `define_method`, `delegate`, a `Data.define` assigned to a constant, or methods defined inside `RSpec.configure` and shared-context blocks. Every `initialize` (59) has generated text ("A new instance of …"), so none is blank.
+- YARD doesn't see `scope :x, -> {…}` declarations (none of `app/models`' 24 scopes is an object), `define_method`, `delegate`, or methods defined inside `RSpec.configure` and shared-context blocks; a `Struct.new` or `Data.define` assigned to a constant is registered as a class. Every `initialize` (59) has generated text ("A new instance of …"), so none is blank.
 - A comment of tags only (`# @return [Integer]`) is "not blank" to YARD, and a method that overrides a documented one has an empty docstring of its own (nothing is inherited at the registry level). A method marked `# @api private` with no text is "blank". An `attr_reader` gets generated text ("Returns the value of attribute x."), so it is never blank. These are the places where "has a comment" needs a stated meaning (decisions 2 and 3).
 - No object carries `@api private` today, so nothing needs exempting for that reason.
 
@@ -82,7 +83,7 @@ A spike of YARD 0.9.45's registry on the current code (nothing committed) measur
 
 **Recommendation:** public classes, modules and methods (instance and class methods, including `class << self`). Not judged: private and protected methods, constants, and attribute methods (`attr_*`, which YARD documents on its own; the rule asks constants to carry their why, which a reviewer checks, and a check on every constant would flag lists of symbols). **An object marked `@api private` counts as commented**, with or without text: the rule tells the author to mark one-caller helpers that way, so the mark is the comment's answer to "is this meant for reuse", and requiring text as well would make the mark pointless.
 
-The rule's other marks, `@private` and `@!visibility private`, are not exemptions: the author uses `@api private`. **An override is judged like any method** (`to_param`, `==`, `call`): YARD inherits no text for it, so it needs its own summary; YARD's `(see #other_method)` form is text and counts. **What YARD doesn't register isn't judged**, and the check doesn't pretend otherwise: `scope` declarations, `define_method`, `delegate`, a `Data.define` or `Struct.new` held in a constant, and methods defined inside `RSpec.configure` or shared-context blocks; `initialize` has generated text, so it is never blank (as the attributes).
+The rule's other marks, `@private` and `@!visibility private`, are not exemptions: the author uses `@api private`. **An override is judged like any method** (`to_param`, `==`, `call`): YARD inherits no text for it, so it needs its own summary (a `(see Other#method)` comment leaves the docstring empty and doesn't count). **What YARD doesn't register isn't judged**, and the check doesn't pretend otherwise: `scope` declarations, `define_method`, `delegate`, and methods defined inside `RSpec.configure` or shared-context blocks (YARD registers none of them); a `Struct.new` or `Data.define` held in a constant **is** registered, as a class with its block's methods, and is judged like any class; `initialize` has generated text, so it is never blank (as the attributes).
 
 **Alternative:** `@api private` objects are judged like any other (they need a summary too); or constants are judged.
 
@@ -133,7 +134,7 @@ All criteria are verified in RSpec against a throwaway git repository built in t
 
 - [ ] **AC-1.13** (decision 4) Given a branch that adds `lib/collector/thing.rb` of the form `module Collector` / `class Thing` with its comment above `class Thing` When the check runs Then it exits 0 and `Collector` is not judged, though the file adds a `module Collector` line; and Given the file's only comment is above the `module Collector` line Then it fails naming `Collector::Thing`, not `Collector`
 - [ ] **AC-1.14** (decision 4) Given a branch that edits a method of a nested class inside an outer class When the check runs Then the outer class is not changed and only the inner class's method is judged
-- [ ] **AC-1.15** (OD3) Given a branch that adds an override (`def to_param` in a class whose parent's `to_param` is commented) with no comment of its own When the check runs Then it fails; with a `(see Parent#to_param)` comment it exits 0
+- [ ] **AC-1.15** (OD3) Given a branch that adds an override (`def to_param` in a class whose parent's `to_param` is commented) with no comment of its own When the check runs Then it fails; with a one-line summary above it, it exits 0
 
 ### Story 2: Code the branch doesn't touch is never judged
 
