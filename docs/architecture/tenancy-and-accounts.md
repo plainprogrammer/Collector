@@ -179,3 +179,4 @@ Deleting a user destroys the account, which deletes its lots first and then its 
 | Date | Distilled | Pull request |
 |---|---|---|
 | 2026-11-06 | The accounts parts of spec 004 (Stories 3, 4, 5 and 12; FR-2–FR-5; NFR Security), ADR 0017, and CLAUDE.md's row-level tenancy paragraph | [#221](https://github.com/plainprogrammer/Collector/pull/221) |
+| 2026-11-09 | Spec 049 (sessions expire after 30 days unused, and stop storing the address and user agent): the session's stamp, expiry, use, cookie lifetime, nightly sweep and upgrade, and #218's rulings 1 and 2 | spec 049's pull request |
