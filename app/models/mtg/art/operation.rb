@@ -7,6 +7,7 @@
 class MTG::Art::Operation < Catalog::Operation
   OFF = "Art matching is off. Set #{MTG::Art::ENV_NAME}=true to turn it on.".freeze
   INDEX_MISSING = "Index file missing. Build the art index again.".freeze
+  OUT_OF_DATE = "Out of date. Built with other settings, so the scanner can't use it. Build the art index again.".freeze
   NEEDS_CATALOG = "Refresh the catalog first: the art index is built from its cards.".freeze
   # A restart that stops the worker in good order releases the job it holds: the queue runs it again, and it closes its
   # own build and carries on. After a crash or a kill the job stays held until the queue notices its worker is gone
@@ -37,18 +38,20 @@ class MTG::Art::Operation < Catalog::Operation
     @build = MTG::ArtBuild.latest
   end
 
-  # :off, :queued, :building, :stalled, :interrupted, :never, :ready, :index_missing or :failed. A build still marked
-  # running that nothing is working on any more is interrupted: its heartbeat stopped 10 minutes ago, or 2 minutes ago
-  # and the queue has failed its job or no longer holds it (issue #73). One whose heartbeat stopped 10 minutes ago while
-  # a worker still holds its job is stalled instead (issue #79). A finished build whose index file isn't on the volume
-  # is :index_missing (spec 039); it is judged only once nothing is in flight or running, so the states above it win.
+  # :off, :queued, :building, :stalled, :interrupted, :never, :ready, :index_missing, :out_of_date or :failed. A build
+  # still marked running that nothing is working on any more is interrupted: its heartbeat stopped 10 minutes ago, or
+  # 2 minutes ago and the queue has failed its job or no longer holds it (issue #73). One whose heartbeat stopped
+  # 10 minutes ago while a worker still holds its job is stalled instead (issue #79). A finished build is judged by
+  # its file first: not on the volume is :index_missing (spec 039); then by its settings: another digest than the
+  # instance runs now is :out_of_date, since the scanner refuses such an index (spec 053). It is judged only once
+  # nothing is in flight or running, so the states above it win.
   def state
     @state ||=
       if !MTG::Art.enabled? then :off
       elsif build&.running? then running_state
       elsif queue.any? then :queued
       elsif build.nil? then :never
-      elsif build.finished? then build.index_file_present? ? :ready : :index_missing
+      elsif build.finished? then finished_state
       else :failed
       end
   end
@@ -68,6 +71,7 @@ class MTG::Art::Operation < Catalog::Operation
     when :never then catalog_loaded? ? "No build has run yet. One starts after the next catalog refresh, or you can start it here." : NEEDS_CATALOG
     when :ready then "Ready."
     when :index_missing then INDEX_MISSING
+    when :out_of_date then OUT_OF_DATE
     when :failed then failed_summary
     end
   end
@@ -88,7 +92,7 @@ class MTG::Art::Operation < Catalog::Operation
     when :building, :stalled, :interrupted
       [ fact("Started", build.started_at), fact("Images fetched", build.fetched_count), fact("Failed images", build.failed_count),
         fact("Last heartbeat", build.heartbeat_at, relative: true) ]
-    when :ready, :index_missing then finished_facts
+    when :ready, :index_missing, :out_of_date then finished_facts
     when :failed then failed_facts
     else []
     end
@@ -116,12 +120,38 @@ class MTG::Art::Operation < Catalog::Operation
     # Why the build failed in plain words, with the error it stored as the detail (issue #84).
     def failure = Catalog::FailureReason.for(build.message, collectible_type)
 
-    # What a finished build records, plus the file's name when that file is the point (spec 039 decision 2).
+    # The file's own state first, then the settings it was built with (spec 053 decision 2).
+    def finished_state
+      if !build.index_file_present? then :index_missing
+      elsif build.settings_drift? then :out_of_date
+      else :ready
+      end
+    end
+
+    # What a finished build records, plus the file's name where the file is the point (spec 039 decision 2), the two
+    # settings digests where they differ (spec 053 decision 2), and a warning when a ready build is for an older
+    # catalog (spec 053 decision 3).
     def finished_facts
+      drifted = state == :out_of_date
       [ fact("Finished", build.finished_at),
-        (fact("Index file", build.index_file.presence || "none recorded") if state == :index_missing),
+        (fact("Index file", build.index_file.presence || "none recorded") if state == :index_missing || drifted),
+        (fact("Built with settings", build.settings_digest) if drifted),
+        (fact("Current settings", MTG::Art::Settings.digest) if drifted),
         fact("Artworks indexed", build.indexed_count), fact("Without an image", build.without_image_count),
-        fact("Failed images", build.failed_count) ].compact
+        fact("Failed images", build.failed_count),
+        (fact("Warning", catalog_warning) if state == :ready && build.catalog_drift?(latest_catalog_version)) ].compact
+    end
+
+    def catalog_warning
+      "Built from catalog #{build.catalog_version}; the latest refresh is #{latest_catalog_version}. " \
+        "Cards added since may be missing from it. Build the art index again."
+    end
+
+    # Read once per render, and only for a ready build (spec 053 NFR Cost).
+    def latest_catalog_version
+      return @latest_catalog_version if defined?(@latest_catalog_version)
+
+      @latest_catalog_version = MTG::Art.latest_catalog_version
     end
 
     def failed_summary = "Failed. #{failure.sentence}"
