@@ -43,7 +43,6 @@ In `spec/image_publishing_spec.rb`, inside `describe ".dockerignore"`, after the
       expect(rules).to include(*builders.map { "/#{it}" })
       expect(absent).to include(*builders)
       # The extension lives in script/, which the rules and the smoke list already hold out (AC-3.2, AC-3.3).
-      expect(Rails.root.join("script/yard/links.rb").to_s).to start_with(Rails.root.join("script").to_s)
       expect(rules).to include("/script")
       expect(absent).to include("script")
     end
@@ -57,6 +56,11 @@ In `spec/project_config_spec.rb`, before the file's last `end`, add:
     it "ignores the generated site and its cache (AC-3.1)", :aggregate_failures do
       expect(git_ignored?("doc/index.html")).to be(true)
       expect(git_ignored?(".yardoc/checksums")).to be(true)
+    end
+
+    it "keeps the extension and YARD out of the app's boot (AC-3.7)", :aggregate_failures do
+      expect(Rails.autoloaders.main.dirs).not_to include(a_string_starting_with(Rails.root.join("script").to_s))
+      expect(defined?(YARD)).to be_nil
     end
 
     it "is a development-only gem that nothing requires, which the image's bundle leaves out (AC-3.4, AC-3.5)", :aggregate_failures do
@@ -172,7 +176,11 @@ with
 # `capture-NNN-frame.png`, spec 010), `skipped.json`; `<dir>/replays/<label>.json`.
 ```
 
-- `lib/collector/ghcr_cleanup.rb`: line 120 reads `# Every page, by number on the /users/ path; the Link header points at a /user/{id}/ path (FR-3).`; put the paths in backticks (`` `/users/` `` and `` `/user/{id}/` ``). Run `bin/yard doc --no-cache 2>&1 | grep -A1 warn` again: the warning at `:107` names the object whose comment is at that line; open the file at that line and fix the `{…}` YARD reads as a link the same way (backticks, or the braces dropped).
+- `lib/collector/ghcr_cleanup.rb`: line 120 reads `# Every page, by number on the /users/ path; the Link header points at a /user/{id}/ path (FR-3).`; put the paths in backticks (`` `/users/` `` and `` `/user/{id}/` ``). Both warnings come from the one `{id}` at line 120 (`:107` is the `Client` page rendering the method's summary), so the one edit fixes both: the new line 120 is
+
+```ruby
+      # Every page, by number on the `/users/` path; the Link header points at a `/user/{id}/` path (FR-3).
+```
 
 Run: `bin/yard doc --no-cache; echo "exit=$?"`
 Expected: no `[warn]` line, `exit=0`, `doc/index.html` exists (AC-1.1, AC-2.1). Run it a second time without `--no-cache`: the same (AC-1.8). Run `git status --short`: only the intended files; `doc/` and `.yardoc/` don't show (AC-1.1, AC-2.4, AC-3.1).
@@ -200,7 +208,7 @@ Check AC-1.2 and AC-1.4 by reading `doc/index.html` (the area map) and `doc/clas
     expect(yard).not_to be_nil
     expect(yard).to be > lines.index('step "Style: Ruby", "bin/rubocop"')
     expect(yard).to be > lines.index("unless selection.group == :rspec")
-    expect(yard).to be < lines.index { it.start_with?('step "Tests: RSpec"') }
+    expect(yard).to be < lines.each_index.find { |i| i > lines.index("unless selection.group == :rspec") && lines[i] == "end" }
   end
 ```
 
@@ -219,14 +227,14 @@ Run: `bin/rspec spec/config/ci_definition_spec.rb`. Expected: pass.
 - [ ] **Task 2.3: prove the step fails on a bad comment, and not otherwise (AC-2.2, AC-2.6, AC-2.8).**
 
 1. Run `bin/yard doc` once (writes `.yardoc/`), `echo "exit=$?"`; expected `exit=0`.
-2. Add a deliberately bad tag to a comment: in `app/models/lot.rb`, directly above the line `class Lot < ApplicationRecord` (check the first line of the class with `grep -n "^class Lot" app/models/lot.rb`), insert two lines `# See {nothing_here}.` and `# @param`.
+2. Add a deliberately bad comment with the Edit tool: in `app/models/lot.rb`, directly above the line `class Lot < ApplicationRecord` (check with `grep -n "^class Lot" app/models/lot.rb`), insert the line `# See {nothing_here}.` (an unresolved link; a bare `@param` above a class doesn't warn, YARD checks it on methods only).
 3. Run `bin/yard doc --no-cache; echo "exit=$?"`. Expected: `[warn]` lines naming `app/models/lot.rb` with its line, and `exit=1`.
-4. Run `bin/ci checks`. Expected: the step "Docs: YARD builds without warnings" fails with those lines in its output, and `bin/ci` exits non-zero (AC-2.2, AC-2.6); the `.yardoc/` of step 1 is still there, so the failure also shows AC-2.8: the step's `--no-cache` makes YARD parse the file again instead of reusing the clean parse in `.yardoc/`.
-5. Revert with `git checkout app/models/lot.rb`; run `bin/ci checks`; expected: it passes, with the step's time in its output (record it for AC-2.5; it must be at most 30 s).
+4. Run `bin/ci checks`. Expected: the step "Docs: YARD builds without warnings" fails with those lines in its output, and `bin/ci` exits non-zero (AC-2.2, AC-2.6); the `.yardoc/` of step 1 is still there, and the step's `--no-cache` makes YARD parse the sources again instead of reusing the clean parse in `.yardoc/` (it is YARD's default; the option guards against a `-c` added to `.yardopts`, AC-2.8).
+5. Revert the edit with the Edit tool (remove the inserted line); `git status --short` must show no change to `app/models/lot.rb`; run `bin/ci checks`; expected: it passes. AC-2.5's time is read from the branch's CI run (the `checks` job log) once it exists, and recorded then.
 
 Record each output in `verification.md`. `git status --short` must show no change to `app/models/lot.rb`.
 
-- [ ] **Task 2.4: commit.** Stage `config/ci.rb spec/config/ci_definition_spec.rb`; commit `ci: fail bin/ci checks on a YARD warning (#103)`.
+- [ ] **Task 2.4: commit.** Stage `config/ci.rb spec/config/ci_definition_spec.rb`; commit `ci(docs): fail bin/ci checks on a YARD warning (#103)`.
 
 ---
 
@@ -236,7 +244,7 @@ Record each output in `verification.md`. `git status --short` must show no chang
 **Files:** `script/yard/links.rb`, `.yardopts`, `spec/script/yard/links_spec.rb`, `spec/script/yard/site_spec.rb`, `spec/fixtures/yard_site/` (new)
 **Interfaces:** Consumes: `.yardopts` of Phase 1; YARD's `YARD::CodeObjects::ExtraFileObject#initialize(filename, contents = nil)`, `#contents`, `#filename`, `#name`; `YARD::Logger.instance.warn`. Produces: `YardLinks::Rewriter.new(root:, pages:, warn:)` and `#rewrite(text, from:)` (String), `YardLinks.slug(text)` and `YardLinks.yard_id(text)` (String), the hook that loads them into YARD.
 
-The behaviour of a page's link (spec 054 decision 6): a relative link to another page of the site becomes `file.<name>.html` plus its fragment mapped to YARD's heading id; any other relative link becomes `https://github.com/plainprogrammer/Collector/blob/main/<path>` (`tree` for a directory); an absolute URL or an in-page anchor is unchanged; a link to a missing file, or to a heading the page doesn't have, is a warning. Fenced code isn't touched.
+The behaviour of a page's link (spec 054 decision 6): a relative link to another page of the site becomes `file.<name>.html` plus its fragment mapped to YARD's heading id; any other relative link becomes `https://github.com/plainprogrammer/Collector/blob/main/<path>` (`tree` for a directory); an absolute URL or an in-page anchor is unchanged; a link to a missing file is a warning; a fragment that matches no heading of the page is left as written. Fenced code isn't touched.
 
 - [ ] **Task 3.1: write the failing unit examples.** Create `spec/script/yard/links_spec.rb`:
 
@@ -247,7 +255,7 @@ require Rails.root.join("script/yard/links").to_s
 
 # The extension that makes the links of YARD's Markdown pages work (spec 054 FR-3, decision 6). The pure rewriting is
 # here; spec/script/yard/site_spec.rb runs it inside a real YARD run.
-RSpec.describe YardLinks::Rewriter, type: :model do
+RSpec.describe YardLinks::Rewriter, type: :model do # rubocop:disable RSpec/SpecFilePathFormat -- the file is script/yard/links.rb; Rewriter is its part that needs no YARD
   let(:root) { Pathname(Dir.mktmpdir) }
   let(:pages) { { "docs/architecture/a.md" => "a", "docs/adr/0001-x.md" => "0001-x" } }
   let(:warnings) { [] }
@@ -292,14 +300,12 @@ RSpec.describe YardLinks::Rewriter, type: :model do
     expect(warnings.first).to include("docs/architecture/a.md", "missing.md", "doesn't exist")
   end
 
-  it "warns about a fragment that names no heading, once however often the page is rendered" do
-    2.times { rewrite("../adr/0001-x.md#nope") }
-
-    expect(warnings.size).to eq(1)
-    expect(warnings.first).to include("0001-x.md#nope", "heading")
+  it "passes a fragment that names no heading through unchanged, without a warning" do
+    expect(rewrite("../adr/0001-x.md#nope")).to eq("See [x](file.0001-x.html#nope).")
+    expect(warnings).to be_empty
   end
 
-  it "doesn't touch a link inside a fenced code block" do
+  it "doesn't touch a link inside a fenced code block", :aggregate_failures do
     text = "```\n[x](missing.md)\n```\n"
 
     expect(rewriter.rewrite(text, from: "docs/architecture/a.md")).to eq(text)
@@ -307,9 +313,7 @@ RSpec.describe YardLinks::Rewriter, type: :model do
   end
 
   it "does not count a '#' line in a fenced block as a heading" do
-    rewrite("a.md#not-a-heading")
-
-    expect(warnings.size).to eq(1)
+    expect(rewrite("a.md#not-a-heading")).to eq("See [x](file.a.html#not-a-heading).")
   end
 
   describe ".slug and .yard_id" do
@@ -333,6 +337,9 @@ Run: `bin/rspec spec/script/yard/links_spec.rb`. Expected: fails to load (`canno
 # branch, and a link to a file or heading that doesn't exist is a warning (so `bin/yard doc` fails). Loaded by
 # .yardopts (`--load`); the app never loads it (it is outside app/ and lib/). Standard library only, apart from the hook
 # at the end, which needs YARD.
+# `yard doc` parses its options a second time for its statistics, which loads this file again: once is enough.
+return if defined?(YardLinks)
+
 require "pathname"
 
 module YardLinks
@@ -380,21 +387,17 @@ module YardLinks
       end
 
       if (name = @pages[resolved])
-        "file.#{name}.html#{page_anchor(resolved, fragment, from, target)}"
+        "file.#{name}.html#{page_anchor(resolved, fragment)}"
       else
         kind = @root.join(resolved).directory? ? "tree" : "blob"
         "#{GITHUB}/#{kind}/main/#{resolved}#{"##{fragment}" if fragment}"
       end
     end
 
-    def page_anchor(page, fragment, from, target)
+    def page_anchor(page, fragment)
       return "" unless fragment
 
-      id = headings(page)[fragment]
-      return "##{id}" if id
-
-      warn_once(from, target, "the link #{target} names a heading that #{page} doesn't have")
-      "##{fragment}"
+      "##{headings(page).fetch(fragment, fragment)}" # a fragment that matches no heading is passed through
     end
 
     # GitHub's anchor => YARD's id, for each heading of a page outside fenced code (the first of equal anchors wins).
@@ -436,7 +439,7 @@ class Thing; end
 
 ## Option A: The `VACUUM INTO` step
 
-See [beta](beta.md#what-it-keeps), [the releasing notes](outside.md#what-each-trigger-publishes) and
+See [beta](beta.md#what-it-keeps), [the releasing notes](../notes/outside.md#what-each-trigger-publishes) and
 [the web](https://example.com/page).
 ```
 
@@ -450,7 +453,7 @@ See [beta](beta.md#what-it-keeps), [the releasing notes](outside.md#what-each-tr
 Back to [alpha](alpha.md#option-a-the-vacuum-into-step).
 ```
 
-`docs/outside.md`:
+`notes/outside.md` (not under `docs/`, so not a page of the fixture's site):
 
 ```markdown
 # Outside
@@ -458,7 +461,7 @@ Back to [alpha](alpha.md#option-a-the-vacuum-into-step).
 ## What each trigger publishes
 ```
 
-(`outside.md` is on disk but not a page of the fixture's site.) Create `spec/script/yard/site_spec.rb`:
+Create `spec/script/yard/site_spec.rb`:
 
 ```ruby
 require "rails_helper"
@@ -481,25 +484,25 @@ RSpec.describe "The extension in a YARD run", type: :model do
 
   it "links the pages to each other, at ids the target has, and the rest to GitHub", :aggregate_failures do
     Dir.mktmpdir do |out|
-      _stdout, stderr, status = yard(out:)
+      stdout, stderr, status = yard(out:)
 
-      expect(status).to be_success, stderr
+      expect(status).to be_success, stdout + stderr
       alpha = page(out, "alpha")
       beta = page(out, "beta")
       expect(alpha).to include('href="file.beta.html#What_it_keeps"')
       expect(beta).to include('id="What_it_keeps"')
       expect(beta).to include('href="file.alpha.html#Option_A__The__VACUUM_INTO__step"')
       expect(alpha).to include('id="Option_A__The__VACUUM_INTO__step"')
-      expect(alpha).to include('href="https://github.com/plainprogrammer/Collector/blob/main/docs/outside.md#what-each-trigger-publishes"')
+      expect(alpha).to include('href="https://github.com/plainprogrammer/Collector/blob/main/notes/outside.md#what-each-trigger-publishes"')
       expect(alpha).to include('href="https://example.com/page"')
     end
   end
 
   it "renders a class comment's @see file: as a link to the page, with no warning (AC-1.9)", :aggregate_failures do
     Dir.mktmpdir do |out|
-      _stdout, stderr, status = yard(out:)
+      stdout, stderr, status = yard(out:)
 
-      expect(status).to be_success, stderr
+      expect(status).to be_success, stdout + stderr
       expect(File.read(File.join(out, "Thing.html"))).to include('href="file.alpha.html"')
     end
   end
@@ -529,7 +532,7 @@ RSpec.describe "The extension in a YARD run", type: :model do
 end
 ```
 
-The fixture is run from its own directory, so `outside.md` is at `docs/outside.md` of that run's root, and that is the path in the GitHub URL.
+The fixture is run from its own directory, so `notes/outside.md` is at `notes/outside.md` of that run's root, and that is the path in the GitHub URL.
 
 Run: `bin/rspec spec/script/yard/site_spec.rb`. Expected: fails (YARD doesn't load the extension's hook yet: `href="beta.md#what-it-keeps"` is not rewritten, and `bin/yard` exits 0 for the missing-file case).
 
@@ -553,7 +556,8 @@ if defined?(YARD::CodeObjects::ExtraFileObject)
     module ExtraFileHook
       def initialize(filename, contents = nil)
         super
-        YardLinks.pages[repository_path] = name
+        # YARD also builds throwaway file objects for `@see file:` links; only a file on disk is a page.
+        YardLinks.pages[repository_path] = name if File.file?(filename)
       end
 
       def contents
@@ -573,7 +577,7 @@ end
 
 Then run `bin/rspec spec/script/yard`. Expected: pass. If the page map is incomplete when `contents` is first asked for (a link to a page of the site goes to GitHub instead), the file object for that page was created after the first render; in that case build the map from `YARD::CLI::Yardoc` instead (stop and ask the coordinator; do not guess).
 
-- [ ] **Task 3.5: load it in the real run and check the real docs.** Add to `.yardopts`, after `--fail-on-warning`:
+- [ ] **Task 3.5: load it in the real run and check the real docs.** Add `--load script/yard/links.rb` as the **first line** of `.yardopts`, so the hook exists before `--readme` builds the front page's file object:
 
 ```
 --load script/yard/links.rb
@@ -581,11 +585,14 @@ Then run `bin/rspec spec/script/yard`. Expected: pass. If the page map is incomp
 
 Run: `bin/yard doc --no-cache; echo "exit=$?"`. Expected: no `[warn]` line, `exit=0` (AC-1.1, AC-1.3, AC-2.7: none of the 389 relative links of the area docs and ADRs is dead on disk, the spike checked). Then check, and record in `verification.md`:
 
-1. `ls doc | grep -c '^file\.'` is 33 (7 area docs, including `README`, and 26 ADRs; `file.0027-…` makes it 34 once ADR 0027 is on disk: count what exists with `ls docs/adr/0*.md docs/architecture/*.md | wc -l`) and there is no `file.README.html` for the ADR index (AC-1.3): `grep -L` shows `doc/file.README.html` is the area map, `docs/adr/README.md` has no page.
+1. `ls doc | grep -c '^file\.'` equals `ls docs/adr/0*.md docs/architecture/*.md | wc -l` (35 with ADR 0027 on disk: 8 files in `docs/architecture/`, the 7 area docs and its `README.md`, and 27 ADRs; the spec's Glossary says "7 area docs (including `README.md`)", which is one short: record it); `doc/file.README.html` is the area map (not the ADR index, which has no page); `grep -c '<table' doc/file.release-and-deploy.html` is not 0 (tables render, AC-1.3); and the five classes of AC-1.2 each have a page: `ls doc/Lot.html doc/Account.html doc/Collector/Backup.html doc/MTG/Art/Operation.html doc/Catalog/Entry.html`, while `ls doc | grep -i -E 'YardLinks|Upgrade'` prints nothing.
 2. A link from an area doc to an ADR: `grep -o 'href="file.0024[^"]*"' doc/file.release-and-deploy.html | head -1` prints `href="file.0024-backup-with-vacuum-into.html"` (AC-1.5); a link to a spec: `grep -o 'href="https://github.com/plainprogrammer/Collector/blob/main/docs/specs[^"]*"' doc/file.catalog-operations.html | head -1` prints one (AC-1.6).
 3. No relative link of a rendered page is left: `grep -o 'href="[^h#"][^"]*\.md[^"]*"' doc/file.*.html | head` prints nothing.
 4. `git status --short` shows no change to any document under `docs/` (AC-1.7).
-5. App boot: `bin/rails zeitwerk:check` passes, and `CI=true bin/rspec spec/models/lot_spec.rb` (an eager-loaded run) passes without loading YARD (AC-3.7): `CI=true bin/rails runner 'abort "yard loaded" if defined?(YARD)'` exits 0.
+5. App boot (AC-3.7): `bin/rails zeitwerk:check` passes, and the example added in Task 1.1 (below) shows `script/` isn't an autoload path and YARD isn't loaded.
+6. A page added with no change to the options (AC-1.3, Error Scenarios): create `docs/architecture/zz-probe.md` (`# Probe`), run `bin/yard doc --no-cache`, check `doc/file.zz-probe.html` exists, delete the probe and run it again.
+7. The front page's links (AC-1.5): `grep -o 'href="file.catalog-core.html"' doc/index.html | head -1` prints one match.
+8. `git status --ignored --short | grep -E 'doc|yardoc'` shows `!! doc/` and `!! .yardoc/` only (AC-2.4).
 
 - [ ] **Task 3.6: commit.** `bin/rubocop` must pass. Stage `script/yard/links.rb .yardopts spec/script/yard spec/fixtures/yard_site`; commit `feat(docs): make the links of the YARD pages work (#103)`.
 
@@ -594,18 +601,19 @@ Run: `bin/yard doc --no-cache; echo "exit=$?"`. Expected: no `[warn]` line, `exi
 ## Phase 4: The worked example and the documents
 
 **Implements:** FR-1 (the example), Story 4 | **Satisfies:** AC-1.9, AC-4.1–AC-4.7
-**Files:** `lib/collector/backup.rb`, `CLAUDE.md`, `.claude/rules/conventions.md`, `docs/adr/0027-yard-for-api-documentation.md`, `docs/adr/README.md`, `docs/architecture/README.md`, `docs/architecture/release-and-deploy.md`, `docs/specs/README.md`, `docs/roadmap.md`, `docs/specs/054-adopt-yard/verification.md`
+**Files:** `lib/collector/backup.rb`, `CLAUDE.md`, `.claude/rules/conventions.md`, `docs/adr/0027-yard-for-api-documentation.md`, `docs/adr/README.md`, `docs/architecture/README.md`, `docs/architecture/release-and-deploy.md`, `docs/specs/054-adopt-yard/verification.md` (`docs/specs/README.md` and `docs/roadmap.md` are done with the plan)
 **Interfaces:** Consumes: Phases 1–3. Produces: nothing in code beyond one comment.
 
 Documents are verified by reading, recorded in `verification.md` (`.claude/rules/testing.md`); no test.
 
-- [ ] **Task 4.1: the worked-example `@see`.** In `lib/collector/backup.rb`, find the comment above `module Collector` … `module Backup` (`grep -n "module Backup" lib/collector/backup.rb`) and add as the last line of that comment, after a `#` blank line if the comment is more than one line:
+- [ ] **Task 4.1: the worked-example `@see`.** `Collector::Backup` has its comment at `lib/collector/backup.rb:20-24` (indented two spaces, above `module Backup`). After line 24 add two lines, keeping the indentation:
 
 ```ruby
-# @see file:release-and-deploy.md
+  #
+  # @see file:release-and-deploy.md
 ```
 
-Run `bin/yard doc --no-cache; echo "exit=$?"` (expected: no warning, `exit=0`) and `grep -o 'href="file.release-and-deploy.html"' doc/Collector/Backup.html` (expected: one match; AC-1.9). If `Collector::Backup` has no class comment, give it a one-line one first: `# Backs up the primary database online and restores it onto a fresh volume (spec 030, ADR 0024).`
+Run `bin/yard doc --no-cache; echo "exit=$?"` (expected: no warning, `exit=0`) and `grep -o 'href="\.\./file\.release-and-deploy\.html"' doc/Collector/Backup.html` (expected: one match; YARD links relative to the class page, so the href starts with `../`; AC-1.9).
 
 - [ ] **Task 4.2: CLAUDE.md (AC-4.1).** In the Commands list, after the line beginning `- Lint (autocorrect):`, add:
 
@@ -634,11 +642,12 @@ Replace the "### Expected" paragraph's first sentence `Named by the [roadmap](..
 
 - [ ] **Task 4.5: the area docs (AC-4.3, AC-4.5).** In `docs/architecture/release-and-deploy.md`:
 
-1. The bullet "**The image carries only what it runs.**": after the `bin/upgrade-smoke`-related list, add `, the API documentation (`doc/`, `.yardoc/`, `.yardopts`, `bin/yard`; the site's link extension is under `script/`, which is already left out, and the gem is in the development group, which the image's bundle leaves out)` and the source `spec 054 Story 3; ADR 0027` inside its closing parenthesis list of sources.
+1. The bullet "**The image carries only what it runs.**": after the CI tooling's closing parenthesis (`… `config/application.rb`)`) and before ", besides the paths the Rails template excluded", add `, the API documentation (`doc/`, `.yardoc/`, `.yardopts`, `bin/yard`; the site's link extension is under `script/`, which is already left out, and the gem is in the development group, which the image's bundle leaves out)` and the source `spec 054 Story 3; ADR 0027` inside its closing parenthesis list of sources.
 2. The bullet "**`bin/image-smoke` fails an image**…": add `doc`, `.yardoc`, `.yardopts` and `bin/yard` to the development-only paths it lists, with `spec 054 AC-3.3` in its sources.
-3. The bullet "**The suite checks no prose document**…": after "`.dockerignore`" in its list of checked configuration files, add `, the Gemfile's group for `yard`, `.gitignore`'s rules for the generated site, the `bin/ci` step for YARD` and `spec 054 Story 3, AC-2.3` in its sources.
+3. The bullet "**The suite checks no prose document**…" (line 123): after its clause on `spec/image_publishing_spec.rb`, add the clause `; the Gemfile's group for `yard` and `.gitignore`'s rules for the generated site are checked in `spec/project_config_spec.rb`, and the `bin/ci` step for YARD in `spec/config/ci_definition_spec.rb` (spec 054 Story 3, AC-2.3)`.
+3a. The line that lists `bin/ci`'s steps (line 50, "(setup, the migration guard, RuboCop, Brakeman, bundler-audit, the importmap audit, RSpec)"): change it to "(setup, the migration guard, RuboCop, the YARD build, Brakeman, bundler-audit, the importmap audit, RSpec)" with the source "spec 054 decision 2, AC-2.3".
 4. Sources: add `[spec 054](../specs/054-adopt-yard/spec.md) (the image's ignore rules for the API documentation) and [ADR 0027](../adr/0027-yard-for-api-documentation.md)` and issue `#103`.
-5. Distillation log: one row `2026-11-09 | spec 054: the image's rules for the API documentation | <the pull request, when it exists>`.
+5. Distillation log: one row `2026-11-09 | spec 054: the image's rules for the API documentation and the YARD step of bin/ci | spec 054's pull request`; `distill-feature` doesn't add a second row for spec 054.
 
 In `docs/architecture/README.md`, after the paragraph "Lasting decisions are in [ADRs](../adr/README.md)…", add:
 
@@ -646,17 +655,11 @@ In `docs/architecture/README.md`, after the paragraph "Lasting decisions are in 
 The area docs and the numbered ADRs are also pages of the generated API documentation: `bin/yard doc` writes it to `doc/` (spec 054, [ADR 0027](../adr/0027-yard-for-api-documentation.md)), turning the relative links below into links between pages. The files keep plain relative links.
 ```
 
-- [ ] **Task 4.6: the indexes (AC-4.6).** In `docs/specs/README.md`: add a row for 054 after the row for 053, in the table's format (columns Spec | Status | Areas | Plan | Supersedes | Superseded by):
+- [ ] **Task 4.6: the indexes (AC-4.6).** Already written with the plan (the row for spec 054 and the Superseded-by cell of spec 027's row in `docs/specs/README.md`, the #103 line of `docs/roadmap.md`). Read them against AC-4.6 and record that in `verification.md`; when the pull request is ready, the distillation step changes the 054 row's Status and Plan words (spec 027 FR-3).
 
-```
-| [054 Browsable API Documentation for the Ruby Code, with the Area Docs and ADRs Linked In (YARD)](054-adopt-yard/spec.md) | Approved | Release and deploy (the image's ignore rules; [release and deploy](../architecture/release-and-deploy.md)); CLAUDE.md (R5): commands | present | 027 Out of Scope "Slice B: adopt YARD" (the starting shape, decided here) and the expected ADR number 0023 in D9, FR-8 and AC-6.2 (0027) | |
-```
+- [ ] **Task 4.7: verification.md.** Create `docs/specs/054-adopt-yard/verification.md` with a `## Criteria` table (one row per AC of the spec: the evidence: the command and its recorded output, or the document and the line read; Phases 1–3's recorded outputs go here), with by-reading rows for AC-3.3 (`bin/image-smoke`'s list names `script`, which holds the extension), AC-3.4 and the Error Scenarios row for a checkout without the development group, and leave the `## Implementation review` heading for the implementation review.
 
-and in spec 027's row, put in its empty "Superseded by" cell: `Out of Scope "Slice B: adopt YARD" (the starting shape) and D9's, FR-8's and AC-6.2's expected ADR number 0023: 054 (ADR 0027)`. In `docs/roadmap.md`, replace the #103 line's text after the link with: `adopt YARD for the Ruby code's documentation, with the area docs linked in (spec 027 slice B). **In progress:** [spec 054](specs/054-adopt-yard/spec.md), [ADR 0027](adr/0027-yard-for-api-documentation.md).`
-
-- [ ] **Task 4.7: verification.md.** Create `docs/specs/054-adopt-yard/verification.md` with a `## Criteria` table (one row per AC of the spec: the evidence: the command and its recorded output, or the document and the line read; Phases 1–3's recorded outputs go here), and leave the `## Implementation review` heading for the implementation review.
-
-- [ ] **Task 4.8: commits.** One commit per document group: `docs: the YARD worked example, CLAUDE.md and the comment convention (#103)`, `docs(adr): accept ADR 0027, YARD for API documentation`, `docs: area docs, indexes and verification for spec 054`.
+- [ ] **Task 4.8: commits.** One commit per task: `docs(lib): a worked @see example for YARD (#103)` (4.1), `docs: YARD in CLAUDE.md's commands (#103)` (4.2), `docs(rules): the YARD comment convention (#103)` (4.3), `docs(adr): accept ADR 0027, YARD for API documentation` (4.4, after Gate B), `docs(architecture): the image's rules and the YARD step in release and deploy (#103)` (4.5), `docs(specs): index rows for spec 054, roadmap line (#103)` (4.6), `docs(specs): verification of spec 054` (4.7).
 
 ---
 
