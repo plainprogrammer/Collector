@@ -32,8 +32,9 @@ module CardImages
 
   # arguments: a selector for the images, the pictures to give them in turn. Each image's data-card-picture says how it
   # got on: pending until its picture loads (loaded) or fails (failed). The script returns at once, and the example
-  # waits for the images with Capybara: an asynchronous script call here was the one geckodriver sometimes dropped
-  # (issue #127, with an empty message), and a result of the form { error: … } is read by it as its own error.
+  # waits for the images with Capybara: the asynchronous script call that did both failed sometimes with an empty
+  # message (issue #127; in the one reproduction the page had finished and the driver's reply was lost), and a
+  # result of the form { error: … } is read by geckodriver as its own error.
   PICTURES = <<~JS.freeze
     const [ selector, pictures ] = arguments
     document.querySelectorAll(selector).forEach((image, index) => {
@@ -119,7 +120,7 @@ module CardImages
   # Hands each image its picture and waits until every one has loaded; a picture that fails to load is an error.
   def give_card_pictures(selector, pictures)
     page.execute_script(PICTURES, selector, pictures)
-    expect(page).to have_no_css("#{selector}[data-card-picture='pending']", visible: :all)
+    page.assert_no_selector(:css, "#{selector}[data-card-picture='pending']", visible: :all)
     raise "a test picture did not load" if page.has_css?("#{selector}[data-card-picture='failed']", visible: :all, wait: 0)
   end
 
