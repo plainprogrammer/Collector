@@ -194,7 +194,7 @@ Shows the next manifest row (its `file` and the expected card) above the scanner
 
 **Accepted limits and open issues:**
 
-- The scanner's add looks a printing up by external key alone (Other printings scopes the card by type, and Details finds a lot by id), the limit [#204](https://github.com/plainprogrammer/Collector/issues/204) asks about for the catalog's lookups.
+- The scanner's add looks a printing up by external key alone (Other printings scopes the card by type, and Details finds a lot by id), the accepted limit of [#204](https://github.com/plainprogrammer/Collector/issues/204) ruling 1 for the catalog's lookups; the second collectible type must name the type there too.
 - English cards only: no Japanese or other languages, no flavour names, no battle cards (spec 007 Non-Goals; spec 009 Non-Goals). [#55](https://github.com/plainprogrammer/Collector/issues/55) is the Japanese spike; [#58](https://github.com/plainprogrammer/Collector/issues/58) asks for a language for a sitting.
 - Art evidence is unmeasured on unseen cards: the 300-bit margin was derived from the same 35 cards it was measured on, one confident wrong match is known (IMG_6806), and art names the exact printing only when the artwork belongs to one printing ([#52](https://github.com/plainprogrammer/Collector/issues/52); spec 011 AC-9.4).
 - Detection on live frames, continuous capture and art on the photo path are not built ([#53](https://github.com/plainprogrammer/Collector/issues/53), [#54](https://github.com/plainprogrammer/Collector/issues/54); spec 011 Out of Scope).
