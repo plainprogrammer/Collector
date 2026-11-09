@@ -101,14 +101,18 @@ img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches:
 
 /* ---------- Row name gives (#208): the wide table never outgrows its container ---------- */
 /* From 640px of container the other columns need about 531px, so a name column that holds its whole name (every cell is
-   nowrap, so its minimum is its maximum) pushed the table past .c-collection for containers of 640 to about 700px. The name
-   may now wrap in the table's auto layout, and overflow-wrap:anywhere lowers its minimum from its longest word to one
-   character without touching its maximum; the clamp to one line cuts what doesn't fit with an ellipsis. A width, max-width
-   or contain on the cell would also zero its maximum and narrow the column in wide layouts. Below 640px the name stays whole
-   and the line under it carries the rest, so the rule is scoped to the wide layout. */
-@container collection (min-width: 640px) {
-  .c-table__name { min-width:0; overflow:hidden; white-space:normal; overflow-wrap:anywhere;
-    display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:1; line-clamp:1; }
+   nowrap, so its minimum is its maximum) pushed the table past .c-collection for containers of 640 to about 670px. In that
+   band the name may wrap in the table's auto layout, and overflow-wrap:anywhere lowers its minimum from its longest word to
+   a few characters without touching its maximum; the clamp to one line cuts what doesn't fit with an ellipsis. A width,
+   max-width or contain on the cell would also zero its maximum and narrow the column in wide layouts. The rule stops at
+   700px because auto layout shares a shortfall between columns in proportion to how far each can shrink: with the name
+   shrinkable it would take a share beside a long place name (spec 048) and be cut at 800 to 1024px frames where the
+   wrapping place line is meant to give. Below 640px the name stays whole and the line under it carries the rest. */
+@container collection (min-width: 640px) and (max-width: 699px) {
+  .c-table__name { min-width:0; white-space:normal; overflow-wrap:anywhere; }
+  /* The clamp is on the link, not on the div around it: focusing a link inside a clipped box scrolls the box to show the
+     link's second line, which moves the name, and the box would clip the focus ring. */
+  .c-table__name a { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:1; line-clamp:1; overflow:hidden; }
 }
 
 /* ---------- Select inside the filter bar ---------- */
