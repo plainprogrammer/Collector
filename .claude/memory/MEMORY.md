@@ -75,3 +75,7 @@
 - [Focus in system specs](focus-in-system-specs.md) — spec 047 (#182): server-named focus target + once-only Stimulus controller; have_css(":focus"), stale-mark waits, :focus-visible in headless Firefox
 - [Orca setup through mise](orca-setup-through-mise.md) — Orca's env carries the global mise Ruby; orca.yaml + post-checkout run `mise exec -- bin/setup` (#225); needs mise idiomatic_version_file_enable_tools to include ruby; a dirty Gemfile.lock in a fresh worktree means check that, never commit the checksum
 - [Watch #217 before closing](issue-217-watch.md) — backup smoke arm64 fix (#223) merged with Refs; close #217 after ~10 green Image (linux/arm64) runs on main since run 42285985125
+- [Design system owned in code](design-system-owned-in-code.md) — since 2026-11-09 no re-export or upstreaming; ignore CLAUDE.md/README "replaced wholesale"/"Upstream these" until #248 lands
+- [Design system before features](design-system-before-features.md) — settle and file design-system issues from reviewed mock-ups before a theme's feature issues
+- [2.0 milestone](milestone-2-0.md) — post-1.0 work goes on milestone #2 as stories; #258 deck checks early; #262 unplaced
+- [Brainstorm mock-ups with Collector CSS](brainstorm-mockups-with-collector-css.md) — visual companion serves /files/<basename>; copy CSS + fonts flat, rewrite font URLs; restart keeps the port
