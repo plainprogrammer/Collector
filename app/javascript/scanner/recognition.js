@@ -1,5 +1,7 @@
-// The on-device OCR engine (spec 007 Story 2, ADR 0001): one Tesseract worker per page session, kept across
-// Turbo visits, reading each strip with its own settings. Only the text leaves this module.
+// The on-device OCR engine (spec 007 Story 2, ADR 0001): one Tesseract worker per page load, reading each strip
+// with its own settings. The scanner page asks Turbo for a full load on every visit so the camera is released
+// (spec 007 FR-2; #219), so a return creates the worker again (the engine files come from the HTTP cache).
+// Only the text leaves this module.
 // Page segmentation per strip, frozen on 2026-10-01 for the measured run (spec 007 AC-6.1).
 export const SETTINGS = { name: { tessedit_pageseg_mode: "6" }, collector: { tessedit_pageseg_mode: "6" } }
 let engine = null
