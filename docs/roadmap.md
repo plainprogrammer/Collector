@@ -4,7 +4,7 @@
 
 The roadmap has one main line, built in order, with a research lane and a housekeeping lane beside it. Each numbered item is a **candidate spec** sized to the north star's one-outcome rule. Candidates are refined, split or dropped when their turn comes; they are not specified ahead.
 
-**Tracking.** Every candidate has a GitHub issue on the [1.0 milestone](https://github.com/plainprogrammer/Collector/milestone/1), labelled by theme (`theme: data-safety`, `theme: typed-entry`, `theme: locations`, `theme: scanner`) or `housekeeping`, with `spike` on the spikes. This file holds the order and the reasons; the issues hold the state. A candidate that is added, split or dropped changes both in the same PR. A spec's PR closes its issue. Build specs that follow a spike get their issue after the maintainer's ruling. Specs 001–015 are done and aren't listed here.
+**Tracking.** Every candidate has a GitHub issue on the [1.0 milestone](https://github.com/plainprogrammer/Collector/milestone/1), labelled by theme (`theme: data-safety`, `theme: typed-entry`, `theme: locations`, `theme: scanner`) or `housekeeping`, with `spike` on the spikes and `design-system` on candidates that change the design system. Work recorded for after 1.0 has issues on the [2.0 milestone](https://github.com/plainprogrammer/Collector/milestone/2). This file holds the order and the reasons; the issues hold the state. A candidate that is added, split or dropped changes both in the same PR. A spec's PR closes its issue. Build specs that follow a spike get their issue after the maintainer's ruling. Specs 001–015 are done and aren't listed here.
 
 ## Main line
 
@@ -33,8 +33,20 @@ The design system's "where is it" ([docs/design-system/README.md](design-system/
 11. [#46](https://github.com/plainprogrammer/Collector/issues/46) Show the location on tiles and rows. **Built 2026-10-26, done when its pull request merges:** [spec 033](specs/033-location-on-tiles-and-rows/spec.md): a tile names the place with most copies and counts the others, a row has a Location column (the pull request is recorded here when it merges).
 12. [#47](https://github.com/plainprogrammer/Collector/issues/47) Filter the collection by location. **Built 2026-11-06, done when its pull request merges:** [spec 037](specs/037-filter-collection-by-location/spec.md): a Location select in the filter bar (all, one location or "No location"), honoured by the grid, the table and bulk mode's selection ([PR #174](https://github.com/plainprogrammer/Collector/pull/174)).
 13. [#48](https://github.com/plainprogrammer/Collector/issues/48) Move many lots at once (the "Move to…" deferred in spec 006). Planned: [spec 041](specs/041-move-many-lots/spec.md) (approved 2026-11-06): "Move to…" in bulk mode, for the selected lots or every matching lot, to a location or none (the distillation step records the build date and the pull request).
-14. [#49](https://github.com/plainprogrammer/Collector/issues/49) Decks as locations.
-15. [#50](https://github.com/plainprogrammer/Collector/issues/50) "Free to use" on the card page.
+14. Decks, one candidate per outcome, scoped on 2026-11-09 in the [decks and locations issue design](superpowers/specs/2026-11-09-decks-and-locations-issues-design.md) from the maintainer's v1 design and an interview with mock-ups. The design-system candidates go first, so later candidates build on written patterns; 14c and 14d are independent and may run beside them. The later work (deck checks first) is on the [2.0 milestone](https://github.com/plainprogrammer/Collector/milestone/2): [#258](https://github.com/plainprogrammer/Collector/issues/258), [#259](https://github.com/plainprogrammer/Collector/issues/259), [#260](https://github.com/plainprogrammer/Collector/issues/260), [#261](https://github.com/plainprogrammer/Collector/issues/261).
+    - 14a. [#248](https://github.com/plainprogrammer/Collector/issues/248) Design system: deck rules, navigation and pickers.
+    - 14b. [#249](https://github.com/plainprogrammer/Collector/issues/249) Design system: deck components and previews (after 14a).
+    - 14c. [#187](https://github.com/plainprogrammer/Collector/issues/187) Open a location's lots in bulk mode from its refusal page (the shortcut spec 041 decision 5 left out).
+    - 14d. [#250](https://github.com/plainprogrammer/Collector/issues/250) Store each card's mana value from the catalog.
+    - 14e. [#49](https://github.com/plainprogrammer/Collector/issues/49) Create, rename and remove a deck (after 14a and 14b). It raises the export format to version 4.
+    - 14f. [#251](https://github.com/plainprogrammer/Collector/issues/251) Change a deck's format (after 14e).
+    - 14g. [#252](https://github.com/plainprogrammer/Collector/issues/252) Deck zones in every location picker and in the collection filter (after 14e).
+    - 14h. [#253](https://github.com/plainprogrammer/Collector/issues/253) Deck page: owned cards by zone (after 14b, 14e and 14g).
+    - 14i. [#254](https://github.com/plainprogrammer/Collector/issues/254) Proxies: add, change and remove a proxy in a deck zone (after 14h).
+    - 14j. [#255](https://github.com/plainprogrammer/Collector/issues/255) Add to deck from the card page (after 14i).
+    - 14k. [#256](https://github.com/plainprogrammer/Collector/issues/256) Deck shape panel: mana curve, card types and coloured mana symbols (after 14d, 14h and 14i).
+    - 14l. [#257](https://github.com/plainprogrammer/Collector/issues/257) Replace a proxy with a copy (after 14i).
+15. [#50](https://github.com/plainprogrammer/Collector/issues/50) "Free to use" and "In decks" on the card page (after 14e and 14i).
 16. [#51](https://github.com/plainprogrammer/Collector/issues/51) Choose a location during typed entry. **Built 2026-10-26, done when its pull request merges:** [spec 034](specs/034-location-in-typed-entry/spec.md).
 
 ### Theme D: Scanner bulk entry
@@ -49,6 +61,8 @@ The scanner as built (specs 005 and 007–011) stays as it is until this theme. 
     - 21a. [#56](https://github.com/plainprogrammer/Collector/issues/56) Scan a sitting into a location. **Built 2026-11-06, done when its pull request merges:** [spec 040](specs/040-sitting-into-location/spec.md). It ran before the spikes (17–20) by the maintainer's ruling of 2026-11-03 (spec 040 decision 1): the control and the add path are server-rendered and independent of capture; only 21c keeps the order (spec 042 amends this: 21b ran first as well).
     - 21b. [#57](https://github.com/plainprogrammer/Collector/issues/57) Set a condition for a sitting. **Built 2026-11-06, done when its pull request merges:** [spec 042](specs/042-sitting-condition/spec.md). It ran before the spikes (17–20) by the maintainer's ruling of 2026-11-06 (spec 042 decision 1), for spec 040's reason: the control and the add path are server-rendered and independent of capture.
     - 21c. [#58](https://github.com/plainprogrammer/Collector/issues/58) Set a language for a sitting.
+
+Not yet placed: [#262](https://github.com/plainprogrammer/Collector/issues/262) separate "add" and "look up" scanning modes, recorded on 2026-11-09 from the v1 decks design. The maintainer places it.
 
 ### Theme E: Comics
 
