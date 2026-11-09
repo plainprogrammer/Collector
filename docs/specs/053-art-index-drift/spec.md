@@ -1,6 +1,6 @@
 # Feature 053: An Art Index Built With Other Settings or For an Older Catalog Isn't Plain "Ready"
 
-**Status:** Draft
+**Status:** Approved by the coordinator under the maintainer's delegation on 2026-11-09
 **Version:** 1.0.1
 **Created:** 2026-11-09
 **Last Updated:** 2026-11-09
