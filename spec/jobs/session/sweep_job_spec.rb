@@ -31,6 +31,9 @@ RSpec.describe Session::SweepJob, type: :job do
     allow(Session).to receive(:sweep!).and_raise(SQLite3::BusyException)
     expect { described_class.perform_now }.to have_enqueued_job(described_class)
 
+    allow(Session).to receive(:sweep!).and_raise(ActiveRecord::StatementTimeout)
+    expect { described_class.perform_now }.to have_enqueued_job(described_class)
+
     allow(Session).to receive(:sweep!).and_raise(ArgumentError)
     expect { described_class.perform_now }.to raise_error(ArgumentError)
   end

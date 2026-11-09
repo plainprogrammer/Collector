@@ -42,6 +42,11 @@ RSpec.describe "Session idle expiry (spec 049)", type: :request do
       get catalog_entries_path
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Sign in")
+      expect(response.body).not_to include("Sign out") # the collector's account menu, which a visitor has no use for
+
+      sign_in_as(user) # the expired session's cookie is gone, so this signs in afresh
+      get catalog_entries_path
+      expect(response.body).to include("Sign out")
     end
 
     it "writes nothing to sessions and removes the cookie (AC-1.5)", :aggregate_failures do
