@@ -1,7 +1,7 @@
 # Feature 054: Browsable API Documentation for the Ruby Code, with the Area Docs and ADRs Linked In (YARD)
 
 **Status:** Draft
-**Version:** 1.1.0
+**Version:** 1.1.1
 **Created:** 2026-11-09
 **Last Updated:** 2026-11-09
 **Branch:** `054-adopt-yard`
@@ -16,6 +16,7 @@
 |---------|------|--------|
 | 1.0.0 | 2026-11-09 | Written from issue #103, the starting shape in spec 027's Out of Scope ("Slice B: adopt YARD") and a measured spike of YARD 0.9.45 on the current code (Problem Statement). Decisions 1, 2 and 6 are recommendations for the maintainer to rule on (Open Questions) |
 | 1.1.0 | 2026-11-09 | From the spec review (Fable, read-only; APPROVE WITH CHANGES, nothing blocking). **Extension and the app's boot:** a link-rewriting extension must never be loaded by the app, which eager-loads `lib/` (AC-3.7, decision 6). **ADR count:** 26 ADRs, and the ADR index is left out of the site because its name collides with the front page's (decision 1, AC-1.3). **Code to area doc:** the `@see` form is fixed and shown by one worked example (decision 5, AC-1.9). **New criteria:** fragments and the front page's links (AC-1.5), a dead link (AC-2.7), a stale cache (AC-2.8), globs (AC-1.3), the extension not autoloaded (AC-3.7). **Rewording:** the recommended rulings are written into the criteria, tagged OD1–OD3 where a different ruling changes them; one command everywhere (AC-2.1, FR-2); AC-1.2, AC-3.3 and AC-4.4 name their objects; the test files are named; the supersession claims less (Supersedes) |
+| 1.1.1 | 2026-11-09 | Spec review round 2 (Fable, APPROVE WITH CHANGES, nothing blocking): a warning exits non-zero for everyone, the option is in `.yardopts` and the CI step adds only the no-cache option (FR-1, FR-2); OD1 and OD2 list every criterion they change and the criteria carry the tags; the Gemfile and CI-step examples are named as new; "26 ADRs" read as "26 today"; AC-3.7 and FR-3 reworded |
 
 ---
 
@@ -34,7 +35,7 @@ A spike on the current code (YARD 0.9.45, run outside the repository, nothing co
 ### Glossary
 
 - **The site**: the HTML YARD generates into `doc/`.
-- **Included documents**: the pages added to the site besides the API reference: the 7 area docs (including `docs/architecture/README.md`, the front page) and the 26 numbered ADRs.
+- **Included documents**: the pages added to the site besides the API reference: the 7 area docs (including `docs/architecture/README.md`, the front page) and the numbered ADRs (26 before this feature's ADR 0027).
 - **Warning**: a line YARD prints beginning `[warn]`, such as an unresolved link, an unknown tag or a malformed tag.
 
 ## Goals
@@ -64,7 +65,7 @@ A spike on the current code (YARD 0.9.45, run outside the repository, nothing co
 
 ### 1. The ADRs are included pages (recommendation; the maintainer rules, OD1)
 
-**Recommendation: include the 26 numbered ADRs (`docs/adr/0*.md`), not the ADR index (`docs/adr/README.md`).** The area docs cite ADRs on almost every page (122 of their 389 relative links target an ADR), and a reader following such a citation inside the site should land on the ADR. The cost measured in the spike is 26 more pages and under 1 MB. The ADR index is left out because its file name, `README`, would give it the same page name as the front page (`docs/architecture/README.md`); a link to it follows decision 6 like any other link to a document outside the site. A new ADR is picked up by the pattern with no change to the configuration. **Alternative:** area docs only, with ADR links pointing at GitHub (decision 6); a smaller site, but the reason for each choice is a click further from the code that follows it.
+**Recommendation: include the numbered ADRs (`docs/adr/0*.md`; 26 today), not the ADR index (`docs/adr/README.md`).** The area docs cite ADRs on almost every page (122 of their 389 relative links target an ADR), and a reader following such a citation inside the site should land on the ADR. The cost measured in the spike is 26 more pages and under 1 MB. The ADR index is left out because its file name, `README`, would give it the same page name as the front page (`docs/architecture/README.md`); a link to it follows decision 6 like any other link to a document outside the site. A new ADR is picked up by the pattern with no change to the configuration. **Alternative:** area docs only, with ADR links pointing at GitHub (decision 6); a smaller site, but the reason for each choice is a click further from the code that follows it.
 
 ### 2. Warnings are checked by a `bin/ci` step (recommendation; the maintainer rules, OD2)
 
@@ -88,7 +89,7 @@ A relative link from an included document to another included document (area doc
 
 ## User Stories
 
-All criteria that name a command are verified by running it and recording its output in `verification.md`; the criteria about documents are verified by reading, per `.claude/rules/testing.md`. Criteria about the repository's configuration files are checked in RSpec where the existing ones are (`.dockerignore` and `bin/image-smoke`: `spec/image_publishing_spec.rb`; `.gitignore` and the Gemfile: `spec/project_config_spec.rb`; the CI step: `spec/config/ci_definition_spec.rb`); the extension has unit specs. A criterion tagged OD1, OD2 or OD3 changes if the maintainer rules the alternative of that decision.
+All criteria that name a command are verified by running it and recording its output in `verification.md`; the criteria about documents are verified by reading, per `.claude/rules/testing.md`. Criteria about the repository's configuration files are checked in RSpec: `.dockerignore` and `bin/image-smoke` in `spec/image_publishing_spec.rb`, where such examples are; `.gitignore` in `spec/project_config_spec.rb` (it has the ignore helper); the Gemfile's group for `yard` and the CI step are new examples, in a spec file the plan names (`spec/config/ci_definition_spec.rb` for the step); the extension has unit specs. A criterion tagged OD1, OD2 or OD3 changes if the maintainer rules the alternative of that decision.
 
 ### Story 1: A reader browses the Ruby API with the architecture beside it
 
@@ -102,8 +103,8 @@ All criteria that name a command are verified by running it and recording its ou
 - [ ] **AC-1.2** Given the site When its class list is read Then it has a page for each of `Lot`, `Account`, `Collector::Backup`, `MTG::Art::Operation` and `Catalog::Entry`, its object counts equal those `yard stats` reports for `app` and `lib`, and it has no page for a class that exists only in `spec/`, `config/`, `db/`, `script/` or `vendor/`
 - [ ] **AC-1.3** Given the site When its file list is read Then it has a page for each of the 7 area docs and each numbered ADR (`docs/adr/0*.md`) (OD1), with their headings, tables and code blocks rendered as HTML, and none for `docs/adr/README.md`; and Given a new `docs/architecture/<name>.md` or `docs/adr/0NNN-<slug>.md` When the site is generated again with no other change Then it has a page for it
 - [ ] **AC-1.4** Given the site When its front page is opened Then it shows the area map (`docs/architecture/README.md`), not the repository's `README.md`
-- [ ] **AC-1.5** Given an included document (the front page, an area doc or an ADR) When a link in it to another included document is followed in the site, with or without a `#fragment` (for example `../adr/0024-backup-with-vacuum-into.md#consequences`) Then it opens that page, at that fragment
-- [ ] **AC-1.6** Given an included document When a link in it to a document that isn't a page of the site (a spec, `docs/releasing.md`, `docs/adr/README.md`) is followed in the site Then it opens that file on GitHub's `main` branch (OD3); an absolute URL and an in-page `#anchor` are unchanged
+- [ ] **AC-1.5** Given an included document (the front page, an area doc or an ADR) When a link in it to another included document is followed in the site, with or without a `#fragment` (for example `../adr/0024-backup-with-vacuum-into.md#consequences`) Then it opens that page, at that fragment (OD1: with area docs only, the example and "an ADR" go)
+- [ ] **AC-1.6** Given an included document When a link in it to a document that isn't a page of the site (a spec, `docs/releasing.md`, `docs/adr/README.md`) is followed in the site Then it opens that file on GitHub's `main` branch (OD3; under OD1's alternative the ADRs join the documents that open there); an absolute URL and an in-page `#anchor` are unchanged
 - [ ] **AC-1.7** Given the area docs and ADRs on disk When the site has been generated Then `git status` shows no change to any of them
 - [ ] **AC-1.8** Given a second run When `bin/yard doc` runs again with no change Then it exits 0 with no `[warn]` line and the same pages
 - [ ] **AC-1.9** Given the one class whose comment carries the worked-example `@see file:<area doc>.md` (decision 5) When the site is generated Then its page lists that tag as a link to the area doc's page, and the run prints no `[warn]` line
@@ -119,11 +120,11 @@ All criteria that name a command are verified by running it and recording its ou
 - [ ] **AC-2.1** Given the code at the branch's head When `bin/yard doc` runs Then it exits 0 with no `[warn]` line: the three comments that warn today (`app/models/scanner/measurement_run.rb:4`, `lib/collector/ghcr_cleanup.rb:107` and `:120`) no longer do, and their text still says what it said
 - [ ] **AC-2.2** Given a comment with an unresolved link (for example `{nothing_here}`) or a malformed tag (for example a `@param` with no name) in `app/` or `lib/` When `bin/ci checks` runs Then the documentation step fails, names the file and line YARD printed, and `bin/ci` exits non-zero; with the comment reverted it passes (OD2). The run is recorded in `verification.md`
 - [ ] **AC-2.3** Given `config/ci.rb` When it is read Then the documentation step is in the group that `bin/ci checks` runs and not in the RSpec group (OD2), and `spec/config/ci_definition_spec.rb` says so
-- [ ] **AC-2.4** Given the step has run in a checkout When `git status --ignored` is read Then everything it wrote is in an ignored path (`doc/`, `.yardoc/` or `tmp/`) and nothing is tracked or untracked-and-unignored
-- [ ] **AC-2.5** Given the step When its run time is read from the branch's CI run Then it is at most 30 s
-- [ ] **AC-2.6** Given the step fails on a bad comment When its output is read Then it contains YARD's warning lines (file, line and text), not only an exit status
-- [ ] **AC-2.7** Given an included document with a relative link to a file that doesn't exist on disk When `bin/yard doc` runs Then it prints a warning naming the document and the link, exits non-zero, and `bin/ci checks` fails (OD3)
-- [ ] **AC-2.8** Given a `.yardoc/` left by an earlier clean run When a comment is then made to warn and `bin/ci checks` runs Then the step still fails: it never reads the cache
+- [ ] **AC-2.4** Given `bin/yard doc` or the step has run in a checkout When `git status --ignored` is read Then everything it wrote is in an ignored path (`doc/`, `.yardoc/` or `tmp/`) and nothing is tracked or untracked-and-unignored
+- [ ] **AC-2.5** Given the step When its run time is read from the branch's CI run Then it is at most 30 s (OD2)
+- [ ] **AC-2.6** Given `bin/yard doc` (or the step) fails on a bad comment When its output is read Then it contains YARD's warning lines (file, line and text), not only an exit status
+- [ ] **AC-2.7** Given an included document with a relative link to a file that doesn't exist on disk When `bin/yard doc` runs Then it prints a warning naming the document and the link and exits non-zero, and `bin/ci checks` fails (OD3; the `bin/ci checks` clause is OD2)
+- [ ] **AC-2.8** Given a `.yardoc/` left by an earlier clean run When a comment is then made to warn and `bin/ci checks` runs Then the step still fails: it never reads the cache (OD2)
 
 ### Story 3: Nothing generated is committed or shipped
 
@@ -139,7 +140,7 @@ All criteria that name a command are verified by running it and recording its ou
 - [ ] **AC-3.4** Given the Gemfile and the `Dockerfile` When they are read Then `yard` is in the `:development` group only (never `:development, :test`) and the `Dockerfile`'s `BUNDLE_WITHOUT="development"` leaves it out of the image's bundle; the specs of the extension `require "yard"` themselves, which the full bundle of a checkout and of CI allows
 - [ ] **AC-3.5** Given the Gemfile and `Gemfile.lock` When they are read Then `yard` (and a Markdown processor, if the plan needs one) are added by editing the Gemfile and running `bundle install`, with `require: false`, and `bin/bundler-audit` passes
 - [ ] **AC-3.6** Given an image built from the branch When `bin/image-smoke` runs Then it passes. Checked in CI's image job; locally only if a container engine is at hand
-- [ ] **AC-3.7** Given the extension's file(s) When the app eager-loads (`bin/rails zeitwerk:check`, and the suite with `CI=true`) Then it loads without them and without `yard`: they are outside what the app autoloads or are in `config/application.rb`'s ignore list, as `lib/collector/ci_groups.rb` is
+- [ ] **AC-3.7** Given the extension's file(s) When the app eager-loads (`bin/rails zeitwerk:check`, and the suite with `CI=true`) Then the app boots and eager-loads without loading them or requiring `yard`: they are outside what the app autoloads or are in `config/application.rb`'s ignore list, as `lib/collector/ci_groups.rb` is
 
 ### Story 4: The documentation records and explains it
 
@@ -152,7 +153,7 @@ All criteria that name a command are verified by running it and recording its ou
 - [ ] **AC-4.1** Given `CLAUDE.md`'s Commands list When it is read Then it names `bin/yard doc`, what it writes (`doc/`), and that `bin/ci checks` fails on a warning, in lines of the existing style; its description of `bin/ci`'s steps lists the documentation step; and the Project Status paragraph is not extended
 - [ ] **AC-4.2** Given `docs/adr/0027-yard-for-api-documentation.md` When it is read Then it has the ADR sections in their order, Status `Accepted`, the choice of YARD (against RDoc and no generated docs), the Markdown processor chosen, decisions 1, 2 and 6 as ruled, and the consequences; `docs/adr/README.md` has its index row and its "Expected" paragraph no longer lists YARD
 - [ ] **AC-4.3** Given `docs/architecture/release-and-deploy.md` When it is read Then its image statements ("The image carries only what it runs", "`bin/image-smoke` fails an image that…") list the paths of AC-3.2 and AC-3.3, with this spec as their source, its statement of which configuration files the suite checks names what the new RSpec examples check, and its Sources and Distillation log are updated per the documentation rules
-- [ ] **AC-4.4** Given `.claude/rules/conventions.md` When it is read Then it states the comment convention of decision 5 and that a comment with an unresolved `{…}` fails `bin/ci checks`
+- [ ] **AC-4.4** Given `.claude/rules/conventions.md` When it is read Then it states the comment convention of decision 5 (OD1: `@see file:` for an area doc only) and that a comment with an unresolved `{…}` fails `bin/ci checks` (OD2)
 - [ ] **AC-4.5** Given `docs/architecture/README.md` When it is read Then it says the area docs are also pages of the generated site and how to build it, and its links are still plain relative ones (spec 027 NFR)
 - [ ] **AC-4.6** Given `docs/specs/README.md` and `docs/roadmap.md` When they are read Then the index has this spec's row (Draft until approved, then per the documentation rules); spec 027's row lists "Out of Scope, Slice B (the starting shape, decided here), and the expected ADR number 0023 (0027): 054" under Superseded by, and this spec's row says the same under Supersedes; and the roadmap's #103 line names this spec and ADR 0027
 - [ ] **AC-4.7** Given the supersession of AC-4.6 When this spec is read Then it records it ("Supersedes", below), and spec 027's file is not edited
@@ -164,7 +165,7 @@ All criteria that name a command are verified by running it and recording its ou
 `bin/yard` is a binstub of the `yard` gem; `bin/yard doc` generates the site.
 
 **Must:**
-- Read its options from `.yardopts` at the repository root (so a plain `yard doc` and an editor's tool behave the same): sources `app` and `lib`; the included documents as patterns (decision 1); the front page (decision 4); the output directory `doc/`; the link extension (decision 6).
+- Read its options from `.yardopts` at the repository root (so a plain `yard doc` and an editor's tool behave the same): sources `app` and `lib`; the included documents as patterns (decision 1); the front page (decision 4); the output directory `doc/`; the link extension (decision 6); and that a warning makes the run exit non-zero.
 - Treat `.yardopts` as the one definition of what goes in the site.
 
 **Must not:**
@@ -173,7 +174,7 @@ All criteria that name a command are verified by running it and recording its ou
 
 ### FR-2: The warnings check
 
-A step in `config/ci.rb` (decision 2) runs `bin/yard doc` and fails when YARD prints a warning. The step's command and a developer's differ only in the options that make a warning fail the run and keep a cache from being read.
+A step in `config/ci.rb` (decision 2) runs `bin/yard doc`. A warning makes the command exit non-zero for everyone, a developer included (the option is in `.yardopts`, FR-1); the step adds only the option that keeps a cache from being read.
 
 **Must:**
 - Fail on any warning and show it (AC-2.2, AC-2.6, AC-2.7, AC-2.8).
@@ -194,7 +195,7 @@ The generation makes included-to-included links work, and handles the rest as de
 - Run in the generation only; the app doesn't load it (AC-3.7).
 
 **Must not:**
-- Print a warning for a link it handles.
+- Print a warning for a link that resolves (a link to a missing file is the AC-2.7 case).
 
 ### FR-4: Keeping generated files and their builders out of the image
 
@@ -239,8 +240,8 @@ Per Story 3. **Must** be checked in RSpec (AC-3.3) and in `bin/image-smoke`.
 
 For the maintainer, at spec approval (each is a decision above with its recommendation written into the criteria):
 
-- **OD1 — ADRs in the site (decision 1).** Recommended: include the 26 numbered ADRs. Alternative: area docs only, ADR links to GitHub; AC-1.3 and AC-4.2 change.
-- **OD2 — The `bin/ci checks` step (decision 2).** Recommended: yes, failing on any warning, about 8 s. Alternative: no step; `bin/yard doc` only; AC-2.2, AC-2.3 and AC-2.5 and AC-2.8 are dropped, and the Story 2 goal becomes "documented, not enforced".
+- **OD1 — ADRs in the site (decision 1).** Recommended: include the numbered ADRs. Alternative: area docs only; AC-1.3, AC-1.5, AC-1.6, AC-4.2 and AC-4.4, the Glossary's "included documents" and decision 5's second example change as their tags say. The 122 links to ADRs go to GitHub under OD3's recommendation, and are dead in the site if OD3's alternative is ruled too.
+- **OD2 — The `bin/ci checks` step (decision 2).** Recommended: yes, failing on any warning, about 8 s. Alternative: no step, `bin/yard doc` only; AC-2.2, AC-2.3, AC-2.5 and AC-2.8, AC-2.7's `bin/ci checks` clause, AC-4.1's `bin/ci` lines and AC-4.4's `bin/ci checks` clause, FR-2, the Performance requirement and the first two Error Scenarios rows' `bin/ci checks` part are dropped, and Story 2's goal becomes "documented, not enforced"; AC-2.1, AC-2.4 and AC-2.6 stay for `bin/yard doc`.
 - **OD3 — Links to documents outside the site (decision 6).** Recommended: the generation rewrites them to GitHub's `main` and fails on a dead link. Alternative: leave them as written, and rewrite only included-to-included links; AC-1.6 and AC-2.7 change to "left as written" and "not checked".
 
 The Markdown processor and the comment markup (Compatibility) are for the plan and ADR 0027.
