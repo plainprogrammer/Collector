@@ -56,7 +56,9 @@ RSpec.describe "Bulk Move to…", type: :system do
     visit collection_path(bulk: 1)
     check "Select all"
     within(".c-bulkbar__extra") { click_on "Move to…" }
-    click_on "Move"
+    # Wait for the move page: on the bulk page a bare "Move" partially matches "Move to…" and clicks it again (#233).
+    expect(page).to have_css("h1", exact_text: "Move 1 item")
+    click_on "Move", exact: true
     expect(page.evaluate_script("document.getElementById('to').validity.valueMissing")).to be(true) # the browser's required check stopped it
     expect(page).to have_css("h1", text: "Move 1 item") # still the move page
     expect(page).to have_no_css(".c-field--invalid") # the server's refusal never rendered: the browser stopped it
