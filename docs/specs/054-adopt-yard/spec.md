@@ -1,7 +1,7 @@
 # Feature 054: Browsable API Documentation for the Ruby Code, with the Area Docs and ADRs Linked In (YARD)
 
-**Status:** Draft
-**Version:** 1.1.1
+**Status:** Approved by the coordinator under the maintainer's rulings of 2026-11-09 (OD1–OD3, all recommendations)
+**Version:** 1.2.0
 **Created:** 2026-11-09
 **Last Updated:** 2026-11-09
 **Branch:** `054-adopt-yard`
@@ -17,6 +17,7 @@
 | 1.0.0 | 2026-11-09 | Written from issue #103, the starting shape in spec 027's Out of Scope ("Slice B: adopt YARD") and a measured spike of YARD 0.9.45 on the current code (Problem Statement). Decisions 1, 2 and 6 are recommendations for the maintainer to rule on (Open Questions) |
 | 1.1.0 | 2026-11-09 | From the spec review (Fable, read-only; APPROVE WITH CHANGES, nothing blocking). **Extension and the app's boot:** a link-rewriting extension must never be loaded by the app, which eager-loads `lib/` (AC-3.7, decision 6). **ADR count:** 26 ADRs, and the ADR index is left out of the site because its name collides with the front page's (decision 1, AC-1.3). **Code to area doc:** the `@see` form is fixed and shown by one worked example (decision 5, AC-1.9). **New criteria:** fragments and the front page's links (AC-1.5), a dead link (AC-2.7), a stale cache (AC-2.8), globs (AC-1.3), the extension not autoloaded (AC-3.7). **Rewording:** the recommended rulings are written into the criteria, tagged OD1–OD3 where a different ruling changes them; one command everywhere (AC-2.1, FR-2); AC-1.2, AC-3.3 and AC-4.4 name their objects; the test files are named; the supersession claims less (Supersedes) |
 | 1.1.1 | 2026-11-09 | Spec review round 2 (Fable, APPROVE WITH CHANGES, nothing blocking): a warning exits non-zero for everyone, the option is in `.yardopts` and the CI step adds only the no-cache option (FR-1, FR-2); OD1 and OD2 list every criterion they change and the criteria carry the tags; the Gemfile and CI-step examples are named as new; "26 ADRs" read as "26 today"; AC-3.7 and FR-3 reworded |
+| 1.2.0 | 2026-11-09 | Approved. The maintainer ruled on OD1–OD3 (2026-11-09): all three recommendations stand, so the criteria stand as written and the alternatives are not taken. The decisions' headings say "ruled" |
 
 ---
 
@@ -63,13 +64,13 @@ A spike on the current code (YARD 0.9.45, run outside the repository, nothing co
 
 ## Decisions
 
-### 1. The ADRs are included pages (recommendation; the maintainer rules, OD1)
+### 1. The ADRs are included pages (ruled, OD1)
 
-**Recommendation: include the numbered ADRs (`docs/adr/0*.md`; 26 today), not the ADR index (`docs/adr/README.md`).** The area docs cite ADRs on almost every page (122 of their 389 relative links target an ADR), and a reader following such a citation inside the site should land on the ADR. The cost measured in the spike is 26 more pages and under 1 MB. The ADR index is left out because its file name, `README`, would give it the same page name as the front page (`docs/architecture/README.md`); a link to it follows decision 6 like any other link to a document outside the site. A new ADR is picked up by the pattern with no change to the configuration. **Alternative:** area docs only, with ADR links pointing at GitHub (decision 6); a smaller site, but the reason for each choice is a click further from the code that follows it.
+**Ruling (maintainer, 2026-11-09), the recommendation: include the numbered ADRs (`docs/adr/0*.md`; 26 today), not the ADR index (`docs/adr/README.md`).** The area docs cite ADRs on almost every page (122 of their 389 relative links target an ADR), and a reader following such a citation inside the site should land on the ADR. The cost measured in the spike is 26 more pages and under 1 MB. The ADR index is left out because its file name, `README`, would give it the same page name as the front page (`docs/architecture/README.md`); a link to it follows decision 6 like any other link to a document outside the site. A new ADR is picked up by the pattern with no change to the configuration. **Alternative:** area docs only, with ADR links pointing at GitHub (decision 6); a smaller site, but the reason for each choice is a click further from the code that follows it.
 
-### 2. Warnings are checked by a `bin/ci` step (recommendation; the maintainer rules, OD2)
+### 2. Warnings are checked by a `bin/ci` step (ruled, OD2)
 
-**Recommendation: a step in `bin/ci checks`**, after the Ruby style step, running `bin/yard doc` with the options that make it fail on a warning and ignore any cache, and writing nothing into the checkout that isn't ignored. It adds about 8 s to `checks` (the spike's time, on the maintainer's machine) and runs wherever `bin/ci checks` runs: the pre-push hook for documentation-only branches (where a broken link in an area doc would otherwise pass unseen), `bin/ci`, and GitHub's checks job. **Alternative:** a command only; a warning then goes unseen until someone generates the site, and the count rises from zero.
+**Ruling (maintainer, 2026-11-09), the recommendation: a step in `bin/ci checks`**, after the Ruby style step, running `bin/yard doc` with the options that make it fail on a warning and ignore any cache, and writing nothing into the checkout that isn't ignored. It adds about 8 s to `checks` (the spike's time, on the maintainer's machine) and runs wherever `bin/ci checks` runs: the pre-push hook for documentation-only branches (where a broken link in an area doc would otherwise pass unseen), `bin/ci`, and GitHub's checks job. **Alternative:** a command only; a warning then goes unseen until someone generates the site, and the count rises from zero.
 
 ### 3. Coverage is not checked, and private and protected methods stay hidden
 
@@ -83,9 +84,9 @@ The site's front page is `docs/architecture/README.md` (the map of the areas), n
 
 Existing comments naming a spec and criterion ("spec 015 AC-2.16") are kept. A comment written or edited after this spec that points at an area doc or an ADR writes it as an `@see` tag in the form `@see file:<file name>.md` (for example `@see file:release-and-deploy.md`, `@see file:0024-backup-with-vacuum-into.md`), not wrapped in braces, so the site renders a link to that page and lists it apart from the prose. A reference to a spec (which isn't a page of the site) stays in the prose, as it is today. This spec adds one such tag to one class whose subsystem has an area doc, as the worked example (AC-1.9). The convention is written where agents read conventions and is not checked tag by tag (a check of every tag is the coverage kind of gate, Non-Goals).
 
-### 6. Links in the included documents work in the site (recommendation; the maintainer rules, OD3)
+### 6. Links in the included documents work in the site (ruled, OD3)
 
-A relative link from an included document to another included document (area doc to area doc, area doc to ADR, ADR to ADR), with its fragment, opens that page in the site. **Recommendation:** every other relative link in an included document (a spec, `docs/releasing.md`, `docs/design-system/`, the ADR index, a source file) becomes a link to that file on GitHub's `main` branch in the site, so no link in the site is dead; the target's existence is checked on disk, so a link to a file added on the branch and not yet on `main` is accepted. The files keep their relative links (spec 027 NFR) and nothing is rewritten on disk: the rewriting is part of generation, in a small YARD extension loaded by `.yardopts`. The extension is a development tool: the app never loads it and never requires `yard` (AC-3.7), and it is kept out of the image (AC-3.2). **Alternative:** rewrite only the included-to-included links and leave the rest as written, dead in the site and live on GitHub (46% of the links); the code is then smaller, and AC-1.6 and AC-2.7 change as their tags say. The recommendation's cost is that extension and its unit specs.
+A relative link from an included document to another included document (area doc to area doc, area doc to ADR, ADR to ADR), with its fragment, opens that page in the site. **Ruling (maintainer, 2026-11-09), the recommendation:** every other relative link in an included document (a spec, `docs/releasing.md`, `docs/design-system/`, the ADR index, a source file) becomes a link to that file on GitHub's `main` branch in the site, so no link in the site is dead; the target's existence is checked on disk, so a link to a file added on the branch and not yet on `main` is accepted. The files keep their relative links (spec 027 NFR) and nothing is rewritten on disk: the rewriting is part of generation, in a small YARD extension loaded by `.yardopts`. The extension is a development tool: the app never loads it and never requires `yard` (AC-3.7), and it is kept out of the image (AC-3.2). **Alternative:** rewrite only the included-to-included links and leave the rest as written, dead in the site and live on GitHub (46% of the links); the code is then smaller, and AC-1.6 and AC-2.7 change as their tags say. The recommendation's cost is that extension and its unit specs.
 
 ## User Stories
 
@@ -238,7 +239,7 @@ Per Story 3. **Must** be checked in RSpec (AC-3.3) and in `bin/image-smoke`.
 
 ## Open Questions
 
-For the maintainer, at spec approval (each is a decision above with its recommendation written into the criteria):
+Ruled by the maintainer on 2026-11-09: each recommendation stands. The alternatives are kept so a later change knows what was weighed, and the tags in the criteria say what an alternative would change:
 
 - **OD1 — ADRs in the site (decision 1).** Recommended: include the numbered ADRs. Alternative: area docs only; AC-1.3, AC-1.5, AC-1.6, AC-4.2 and AC-4.4, the Glossary's "included documents" and decision 5's second example change as their tags say. The 122 links to ADRs go to GitHub under OD3's recommendation, and are dead in the site if OD3's alternative is ruled too.
 - **OD2 — The `bin/ci checks` step (decision 2).** Recommended: yes, failing on any warning, about 8 s. Alternative: no step, `bin/yard doc` only; AC-2.2, AC-2.3, AC-2.5 and AC-2.8, AC-2.7's `bin/ci checks` clause, AC-4.1's `bin/ci` lines and AC-4.4's `bin/ci checks` clause, FR-2, the Performance requirement and the first two Error Scenarios rows' `bin/ci checks` part are dropped, and Story 2's goal becomes "documented, not enforced"; AC-2.1, AC-2.4 and AC-2.6 stay for `bin/yard doc`.
