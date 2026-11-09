@@ -74,6 +74,7 @@ RSpec.describe DropSessionClientColumns, :backup, :committed, type: :model do
 
     expect(Session.connection.select_value("SELECT last_used_at FROM sessions")).to match(/\A2026-11-09 12:00:00/)
     expect(Session.connection.select_value("SELECT updated_at FROM sessions")).to eq(updated) # updated_at is not rewritten
+    expect(Session.expired(Time.utc(2026, 11, 9, 13, 0, 0))).to be_empty # a sweep right after the upgrade deletes none, though the session is a year old
   end
 
   it "runs the backfill twice with the same result, and leaves a stamp already set (idempotent)", :aggregate_failures do
