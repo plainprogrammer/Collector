@@ -34,6 +34,17 @@ RSpec.describe "Card image fit", :card_images, type: :system do
       expect(card_image_fits(images, pictures: [ wide ]).sole.natural).to eq([ 40.0, 20.0 ])
     end
 
+    # The helper's own contract (issue #127 changed how it waits): a picture the browser can't decode is reported, not
+    # waited on until the example times out.
+    it "reports a test picture that does not load" do
+      owned_with_image("Bolt")
+      visit collection_path(view: "grid")
+      find(images, visible: :all)
+
+      expect { card_image_fits(images, pictures: [ "data:image/png;base64,AAAA" ]) }
+        .to raise_error(RuntimeError, "a test picture did not load")
+    end
+
     it "shows images of any proportions whole, in equal 63:88 slots, in both themes (AC-1.1, AC-1.2, AC-1.5, AC-1.6)", :aggregate_failures do
       %w[Bolt Opt Shock].each { |name| owned_with_image(name) }
       visit collection_path(view: "grid")
