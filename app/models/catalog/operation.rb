@@ -12,7 +12,7 @@
 #   summary             where it stands, starting with its state in a word: one sentence, and more only for what
 #                       the state leaves unsaid (why a retry waits, what the admin can do)
 #   record_running?     true while its own run record says it is working
-# and may provide queue_argument, stages, meter, facts and unavailable_reason.
+# and may provide queue_argument, stages, meter, facts, unavailable_reason and retry_candidate.
 class Catalog::Operation
   # One step of an operation: its state is :done, :current, :stopped (where a run failed or was interrupted) or :pending.
   Stage = Data.define(:label, :state, :meter, :note)
@@ -53,6 +53,32 @@ class Catalog::Operation
   def failed_job? = queue.failed?
 
   def startable? = unavailable_reason.nil? && !in_flight?
+
+  # The run or build record of its latest attempt, which a retry belongs to: it answers #failed?, #job_id and #message.
+  # Nil for an operation that has none; such an operation never offers Retry now (spec 055 FR-1).
+  def retry_candidate = nil
+
+  # Whether a failed attempt's waiting retry may be run now. The one place the offer is narrowed: spec 055 decision 1
+  # offers it for any retry of the failed attempt's own job (ruled by the maintainer, 2026-11-09).
+  def retryable?(_record) = true
+
+  # The Active Job id of the latest failed attempt's own job when the queue holds it for a later time: what Retry now
+  # would run, and what the page shows "Retrying at" for. Nil otherwise: not a failed attempt, no job id, its job in the
+  # Failed list or gone, only some other job waiting, or the operation unavailable (a setting that is off: spec 055
+  # decision 1, Error Scenarios).
+  def retry_job_id
+    record = retry_candidate
+    return unless record&.failed? && record.job_id.present? && retryable?(record) && unavailable_reason.nil?
+
+    record.job_id if queue.retry_at(record.job_id)
+  end
+
+  def retry_now? = retry_job_id.present?
+
+  # Runs the waiting job now, through the queue's own dispatch (spec 055 decision 2). True when this call moved it;
+  # false, changing nothing, when nothing waits for it any more. The offer is read again here, not trusted from the
+  # page, and the move itself decides atomically (Catalog::Operation::Queue#run_now).
+  def retry_now = retry_job_id.present? && queue.run_now(retry_job_id)
 
   # Queues its job unless it is unavailable or already in flight. True when it queued one.
   def start = startable? && job_class.perform_later(*job_arguments).present?

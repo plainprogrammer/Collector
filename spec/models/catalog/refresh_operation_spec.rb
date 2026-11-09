@@ -349,8 +349,8 @@ RSpec.describe Catalog::RefreshOperation, :solid_queue, type: :model do
 
     it "shows a failed run whose job waits to retry as queued, retrying at its time (AC-3.7)", :aggregate_failures do
       freeze_time do
-        run(status: "failed", stage: "download", message: "Catalog::Sources::TransientError: 503")
-        queue_job(Catalog::RefreshJob, "mtg", "manual", wait: 3.minutes)
+        job = queue_job(Catalog::RefreshJob, "mtg", "manual", wait: 3.minutes)
+        run(status: "failed", stage: "download", message: "Catalog::Sources::TransientError: 503", job_id: job.active_job_id)
 
         expect(operation).to have_attributes(state: :queued, startable?: false, failed_job?: false,
           summary: "Queued to retry. The last run failed while downloading. The source couldn't be reached, or answered " \
@@ -363,14 +363,98 @@ RSpec.describe Catalog::RefreshOperation, :solid_queue, type: :model do
 
     it "still shows the failed run, queued to retry, after another refresh was skipped for it (issue #78)", :aggregate_failures do
       freeze_time do
-        run(status: "failed", stage: "download", message: "Catalog::Sources::TransientError: 503", started_at: 2.minutes.ago)
-        queue_job(Catalog::RefreshJob, "mtg", "manual", wait: 3.minutes)
+        job = queue_job(Catalog::RefreshJob, "mtg", "manual", wait: 3.minutes)
+        run(status: "failed", stage: "download", message: "Catalog::Sources::TransientError: 503", started_at: 2.minutes.ago, job_id: job.active_job_id)
         run(status: "skipped", message: "waiting for another job's retry", started_at: 1.minute.ago)
 
         expect(operation).to have_attributes(state: :queued,
           summary: "Queued to retry. The last run failed while downloading. The source couldn't be reached, or answered " \
                    "with an error. This usually passes by itself.")
       end
+    end
+  end
+
+  # Spec 055: "Retry now" runs the failed run's own job when it waits to retry.
+  context "when the failed run's own job waits to retry (spec 055)" do
+    def waiting_job(wait: 10.minutes) = queue_job(Catalog::RefreshJob, "mtg", "manual", wait:)
+
+    def failed_run(job_id) = run(status: "failed", stage: "download", job_id:, message: "Catalog::Sources::RateLimitedError: asked for 600 seconds")
+
+    it "offers it, and runs that job at once without queueing another or writing a run (AC-1.1, AC-2.1, AC-2.8)", :aggregate_failures do
+      job = waiting_job
+      failed_run(job.active_job_id)
+
+      expect(operation).to be_retry_now
+      expect { expect(operation.retry_now).to be(true) }.not_to change { [ SolidQueue::Job.count, Catalog::RefreshRun.count ] }
+      expect(job.reload).to be_ready
+    end
+
+    it "offers it for any retry of that job, not only a rate limit's (decision 1, ruled 2026-11-09)" do
+      job = waiting_job
+      run(status: "failed", stage: "download", job_id: job.active_job_id, message: "Catalog::Sources::TransientError: 503")
+
+      expect(operation).to be_retry_now
+    end
+
+    {
+      "a job queued fresh and ready" => -> { queue_job(Catalog::RefreshJob, "mtg", "manual") },
+      "a job scheduled by hand with no failed run of its own" => -> { waiting_job },
+      "a failed run whose job is in the Failed list" => -> { failed_run(fail_job(queue_job(Catalog::RefreshJob, "mtg", "manual")).active_job_id) },
+      "a failed run whose job id is no longer in the queue" => -> { waiting_job.tap { failed_run("gone") } },
+      "a failed run with no job id" => -> { waiting_job.tap { failed_run(nil) } },
+      "a run in progress" => -> { running(job_id: claim_job(queue_job(Catalog::RefreshJob, "mtg", "manual")).active_job_id) },
+      "an applied run" => -> { run(status: "applied") },
+      "a skipped run" => -> { run(status: "skipped", message: "already running") },
+      "no run at all" => -> { nil }
+    }.each do |name, setup|
+      it "doesn't offer it for #{name} (AC-1.3)", :aggregate_failures do
+        instance_exec(&setup)
+
+        expect(operation).not_to be_retry_now
+        expect(operation.retry_now).to be(false)
+      end
+    end
+
+    it "shows a failed run beside only a hand-scheduled job as plain queued, with that job's time and none of the run's stages (AC-1.6)", :aggregate_failures do
+      freeze_time do
+        failed_run("another-job")
+        waiting_job(wait: 4.minutes)
+
+        expect(operation).to have_attributes(state: :queued, summary: "Queued.", stages: [])
+        expect(operation.facts.map { |fact| [ fact.label, fact.value ] }).to eq([ [ "Retrying at", 4.minutes.from_now ] ])
+        expect(operation).not_to be_retry_now
+      end
+    end
+
+    it "shows the run's own job's time and moves only that job when another is scheduled sooner (AC-1.4, AC-1.7, AC-2.6)", :aggregate_failures do
+      freeze_time do
+        hand = waiting_job(wait: 1.minute)
+        own = waiting_job(wait: 5.minutes)
+        failed_run(own.active_job_id)
+
+        expect(operation.summary).to start_with("Queued to retry.")
+        expect(operation.facts.first).to have_attributes(label: "Retrying at", value: 5.minutes.from_now)
+        expect(operation.retry_now).to be(true)
+        expect(own.reload).to be_ready
+        expect(hand.reload).to be_scheduled
+      end
+    end
+
+    it "does nothing, and says so, when the job was moved after the operation read the queue (AC-3.5)", :aggregate_failures do
+      job = waiting_job
+      failed_run(job.active_job_id)
+      expect(operation).to be_retry_now # the page was rendered with the button
+
+      SolidQueue::ScheduledExecution.where(job_id: job.id).delete_all # another admin, or the dispatcher, was first
+      job.reload.dispatch_bypassing_concurrency_limits
+
+      expect(operation.retry_now).to be(false)
+      expect(SolidQueue::ReadyExecution.where(job_id: job.id).count).to eq(1)
+      expect(SolidQueue::BlockedExecution.where(job_id: job.id)).to be_none
+    end
+
+    it "does nothing for an operation whose latest run has no job to move" do
+      expect(Catalog::Operation.new("mtg")).not_to be_retry_now
     end
   end
 end

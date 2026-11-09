@@ -42,6 +42,8 @@ class Catalog::RefreshOperation < Catalog::Operation
 
   def record_running? = %i[running stalled].include?(state)
 
+  def retry_candidate = run
+
   # The page links to the failed list only for the run on show: a failed one (spec 015 AC-3.1), or an interrupted one
   # whose own job is there.
   def failed_job? = (state == :failed && super) || (state == :interrupted && job_failed?(run))
@@ -78,7 +80,7 @@ class Catalog::RefreshOperation < Catalog::Operation
   end
 
   def facts
-    retry_fact = [ (fact("Retrying at", queue.retry_at) if state == :queued && queue.retry_at) ].compact
+    retry_fact = [ (fact("Retrying at", queue.retry_at(retrying? ? run.job_id : nil)) if state == :queued && queue.retry_at) ].compact
     return retry_fact unless shown_run
 
     retry_fact + [
@@ -122,8 +124,9 @@ class Catalog::RefreshOperation < Catalog::Operation
 
     def job_failed?(run) = run.job_id.present? && queue.failed?(run.job_id)
 
-    # A failed run whose job waits to run again (spec 015 AC-3.7).
-    def retrying? = state == :queued && queue.retry_at.present? && run&.failed?
+    # A failed run whose own job waits to run again (spec 015 AC-3.7, as spec 055 decision 1 words it: the run's own job,
+    # as an extension's build already is, so a job held by hand beside a failed run is plain "Queued.").
+    def retrying? = state == :queued && retry_job_id.present?
 
     # The run the stages and facts describe: none while a new refresh is queued, unless it is the failed run's retry.
     def shown_run = (run if state != :queued || retrying?)

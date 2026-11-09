@@ -310,9 +310,9 @@ RSpec.describe "Admin catalog page", :solid_queue, type: :request do
       end
 
       it "shows a failed run whose job waits to retry as queued, without the failed link (AC-3.7)", :aggregate_failures do
-        create(:catalog_refresh_run, status: "failed", stage: "download", message: "Catalog::Sources::TransientError: 503")
         travel_to(Time.utc(2026, 10, 9, 3, 15)) do
-          queue_job(Catalog::RefreshJob, "mtg", "manual", wait: 3.minutes)
+          job = queue_job(Catalog::RefreshJob, "mtg", "manual", wait: 3.minutes)
+          create(:catalog_refresh_run, status: "failed", stage: "download", message: "Catalog::Sources::TransientError: 503", job_id: job.active_job_id)
           get admin_catalog_path
         end
 
