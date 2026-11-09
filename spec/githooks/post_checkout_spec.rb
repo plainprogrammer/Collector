@@ -9,9 +9,10 @@ RSpec.describe "post-checkout hook", :git_sandbox do
   let(:main) do
     new_repo(File.join(dir, "main"), extra_files: {
       ".githooks/post-checkout" => Rails.root.join(".githooks/post-checkout").read,
-      "bin/setup" => stub_setup
+      "bin/setup" => stub_setup,
+      "script/worktree/with_mise" => Rails.root.join("script/worktree/with_mise").read
     }).tap do |repo|
-      File.chmod(0o755, File.join(repo, ".githooks/post-checkout"), File.join(repo, "bin/setup"))
+      File.chmod(0o755, File.join(repo, ".githooks/post-checkout"), File.join(repo, "bin/setup"), File.join(repo, "script/worktree/with_mise"))
       git!(repo, "add", ".")
       git!(repo, "commit", "-q", "-m", "exec bits")
       git!(repo, "config", "core.hooksPath", ".githooks")
@@ -83,10 +84,18 @@ RSpec.describe "post-checkout hook", :git_sandbox do
     expect([ status.success?, ran_setup?(worktree) ]).to eq([ true, false ])
   end
 
-  # The hook runs in the caller's environment (Orca's carries the global mise Ruby), so it goes through
-  # `mise exec` when mise is there, to get the Ruby that .ruby-version names (#225).
+  # The hook runs in the caller's environment (Orca's carries the global mise Ruby, or none and no mise on the
+  # PATH), so it goes through `mise exec` when it finds mise, to get the Ruby that .ruby-version names
+  # (#225, #268).
   describe "the Ruby it runs setup with" do
     let(:bin_dir) { File.join(dir, "bin-on-path").tap { FileUtils.mkdir_p(it) } }
+
+    # git and sh only: no mise, as in the Orca app's environment.
+    def minimal_path
+      git_path = Open3.capture2("sh", "-c", "command -v git").first.strip
+      File.symlink(git_path, File.join(bin_dir, "git")) unless File.exist?(File.join(bin_dir, "git"))
+      "#{bin_dir}:/usr/bin:/bin"
+    end
 
     def put_on_path(name, body)
       File.join(bin_dir, name).tap do |path|
@@ -102,11 +111,20 @@ RSpec.describe "post-checkout hook", :git_sandbox do
       expect(File.read(File.join(worktree, "setup-ran.txt")).strip).to eq("--skip-server")
     end
 
-    it "runs bin/setup directly when mise isn't on the PATH" do
+    it "finds mise outside the PATH, as in Orca's setup shell (#268)", :aggregate_failures do
+      fake = put_on_path("mise", "#!/bin/sh\necho \"$@\" > mise-ran.txt\nshift 2\nexec \"$@\"\n")
+      FileUtils.mkdir_p(File.join(dir, "elsewhere"))
+      FileUtils.mv(fake, File.join(dir, "elsewhere/mise"))
+      add_worktree(env: { "PATH" => minimal_path, "COLLECTOR_MISE_SEARCH" => File.join(dir, "elsewhere") })
+      expect(File.read(File.join(worktree, "mise-ran.txt")).strip).to eq("exec -- bin/setup --skip-server")
+      expect(File.read(File.join(worktree, "setup-ran.txt")).strip).to eq("--skip-server")
+    end
+
+    it "runs bin/setup directly when mise isn't on the PATH or in the search directories" do
       without_mise = ENV.fetch("PATH").split(File::PATH_SEPARATOR).reject { File.executable?(File.join(it, "mise")) }
       git_path = Open3.capture2("sh", "-c", "command -v git").first.strip
       File.symlink(git_path, File.join(bin_dir, "git"))
-      add_worktree(env: { "PATH" => [ bin_dir, *without_mise ].join(File::PATH_SEPARATOR) })
+      add_worktree(env: { "PATH" => [ bin_dir, *without_mise ].join(File::PATH_SEPARATOR), "COLLECTOR_MISE_SEARCH" => File.join(dir, "empty") })
       expect(File.read(File.join(worktree, "setup-ran.txt")).strip).to eq("--skip-server")
     end
   end
