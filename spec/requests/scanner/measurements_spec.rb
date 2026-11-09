@@ -114,6 +114,7 @@ RSpec.describe "Scanner measurement mode", type: :request do
       params: { label: "desktop-a", results: [ { file: "IMG_1.jpeg", name_text: "Bolt", collector_text: "" } ] }
     expect(response).to have_http_status(:not_found)
     expect(current.replays).to be_empty
+    delete session_path
     get scanner_measurement_replay_path(label: "desktop-a")
     expect(response).to have_http_status(:ok)
   end
