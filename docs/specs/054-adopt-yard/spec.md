@@ -7,6 +7,7 @@
 **Branch:** `054-adopt-yard`
 **Issue:** [#103](https://github.com/plainprogrammer/Collector/issues/103) (spec 027 slice B)
 **ADR:** 0027 (YARD), written with this spec's plan. The issue and [spec 027](../027-architecture-area-docs/spec.md) say "ADR 0023"; that number is taken ([0023](../../adr/0023-locations-make-export-format-version-2.md)) and 0024–0026 were taken after it, so the YARD ADR takes the next free number, 0027, as spec 027 D9 and the [ADR index](../../adr/README.md) allow
+**Frozen:** the current rules are in [`release-and-deploy.md`](../../architecture/release-and-deploy.md) (whole spec: the image's rules and the `bin/ci` step; the commands are in CLAUDE.md, R5); see the [specs index](../README.md)
 
 ---
 
