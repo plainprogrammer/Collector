@@ -16,7 +16,7 @@ Copied from the spec; every phase includes them.
 - The refresh's "Queued to retry" means the failed run's own job, as the art build's already does (decision 1, AC-1.6, AC-1.7; supersedes spec 015 AC-3.7 in part).
 - Wording, exact: button "Retry now" (`c-btn--secondary`); notices "Retrying now." and "Nothing is waiting to retry."; both on a `303` to `/admin/catalog` (decision 5).
 - Admin only: 404 for a member, sign-in for a visitor (spec 015 FR-7); the core names no collectible: `spec/admin_catalog_core_spec.rb` keeps passing, its file count raised by the one new controller (AC-6.4).
-- No new component, class or token unless Task 5.2's visual check fails; then the one rule it adds is documented (spec FR-4, `collector-design-system`).
+- No new component, class or token (spec FR-4): the two buttons share the existing `c-operation__start` class, whose rule gains a `gap` (Task 3.4), documented in `AdminCatalog.md` (Task 5.3).
 - Test files: `type:` tags explicit, `:aggregate_failures` on multi-expectation examples, no `any_instance_of`, no `sleep`; Solid Queue examples are tagged `:solid_queue` and move jobs with `queue_job`, `claim_job`, `fail_job`, `finish_job` (`.claude/rules/testing.md`, CLAUDE.md).
 - Commits: one Conventional Commit per task, ending with the `Co-Authored-By:` line the coordinator's brief gives. Stage and commit in separate Bash calls. Targeted `bin/rspec <file>` runs need no CI slot; the one full `bin/ci` needs one (Task 5.6).
 
@@ -231,7 +231,7 @@ with
         run(status: "failed", stage: "download", message: "Catalog::Sources::TransientError: 503", started_at: 2.minutes.ago, job_id: job.active_job_id)
 ```
 
-  (b) Add, before the file's last two `end`s (inside the outermost `RSpec.describe`, after the last `context`'s closing `end`):
+  (b) Add, before the file's last `end` (inside the outermost `RSpec.describe`, after the last `context`'s closing `end`, before the file's final `end`):
 
 ```ruby
 
@@ -330,7 +330,7 @@ with
         expect(operation).to be_retry_now
         expect { expect(operation.retry_now).to be(true) }.not_to change(SolidQueue::Job, :count)
         expect(SolidQueue::Job.sole).to be_ready
-        expect(operation).to have_attributes(state: :queued, summary: "Queued.", retry_now?: false)
+        expect(described_class.new("mtg")).to have_attributes(state: :queued, summary: "Queued.", retry_now?: false) # a fresh read: `operation` memoized its queue
       end
 
       it "offers it for the busy-database retry too (spec 055 AC-1.5)", :aggregate_failures do
@@ -352,6 +352,7 @@ with
       "a failed build with no job id" => -> { build(status: "failed", job_id: nil) },
       "a build in progress" => -> { build(status: "running", finished_at: nil, heartbeat_at: Time.current, job_id: claim_job(queue_job(MTG::Art::BuildJob)).active_job_id) },
       "a finished build" => -> { build(status: "finished") },
+      "a skipped build" => -> { build(status: "skipped", message: "already running") },
       "no build at all" => -> { nil }
     }.each do |name, setup|
       it "doesn't offer Retry now for #{name} (spec 055 AC-1.3a)", :aggregate_failures do
@@ -393,7 +394,7 @@ with
           get admin_catalog_path
         end
 ```
-  (and, in that example's last line, `expect(refresh.at_css("button")["disabled"]).to be_present` stays: after Task 3.4 the section has two buttons, so Task 3.4 changes this line to `refresh.at_css("button.c-operation__start button, form.c-operation__start button")`; leave it as is for now).
+  These two edits keep the example green before and after the implementation (a run with its own job id is "queued to retry" today too). The art example at line ~476 ("shows a failed build whose job waits to retry as queued, with the reason and the time (AC-4.12)") compares the whole section's text, button text included; once the button exists (Task 3.4) its expected string gains "Retry now" after "Build art index". Edit it in Task 3.4, not here.
 
 - [ ] **Task 2.4: run them, expect FAIL.** `bin/rspec spec/models/catalog/refresh_operation_spec.rb spec/models/mtg/art/operation_spec.rb` — expect: the new examples fail with `NoMethodError` for `retry_now?`/`retry_now`; the two edited existing refresh examples still pass (a run with its own job id is "queued to retry" today as well).
 - [ ] **Task 2.5: implement.** 
@@ -416,10 +417,11 @@ with
 
   # The Active Job id of the latest failed attempt's own job when the queue holds it for a later time: what Retry now
   # would run, and what the page shows "Retrying at" for. Nil otherwise: not a failed attempt, no job id, its job in the
-  # Failed list or gone, or only some other job waiting (spec 055 decision 1).
+  # Failed list or gone, only some other job waiting, or the operation unavailable (art matching off: spec 055 decision 1,
+  # Error Scenarios).
   def retry_job_id
     record = retry_candidate
-    return unless record&.failed? && record.job_id.present? && retryable?(record)
+    return unless record&.failed? && record.job_id.present? && retryable?(record) && unavailable_reason.nil?
 
     record.job_id if queue.retry_at(record.job_id)
   end
@@ -454,7 +456,7 @@ with
   to
 ```ruby
     # A failed run whose own job waits to run again (spec 015 AC-3.7, as spec 055 decision 1 words it: the run's own job,
-    # as the art build's always was, so a job held by hand beside a failed run is plain "Queued.").
+    # as an extension's build already is, so a job held by hand beside a failed run is plain "Queued.").
     def retrying? = state == :queued && retry_job_id.present?
 ```
 
@@ -471,7 +473,7 @@ with
 ```
   (the comment above it stays).
 
-- [ ] **Task 2.6: run them, expect PASS.** `bin/rspec spec/models/catalog/refresh_operation_spec.rb spec/models/mtg/art/operation_spec.rb spec/models/catalog/operation spec/requests/admin/catalogs_spec.rb spec/models/catalog/health_spec.rb` — expect: all pass, including AC-1.6's and AC-1.7's new refresh examples and the three edited existing ones. If the `Catalog::Operation.new("mtg")` example raises, apply the note under Task 2.1.
+- [ ] **Task 2.6: run them, expect PASS.** `bin/rspec spec/models/catalog/refresh_operation_spec.rb spec/models/mtg/art/operation_spec.rb spec/models/catalog/operation spec/requests/admin/catalogs_spec.rb spec/models/catalog/health_spec.rb spec/admin_catalog_core_spec.rb` — expect: all pass, including AC-1.6's and AC-1.7's new refresh examples and the three edited existing ones. If the `Catalog::Operation.new("mtg")` example raises, apply the note under Task 2.1.
 - [ ] **Task 2.7: commit.** `feat(admin): offer and perform Retry now on an operation, tie the refresh's retry state to its own job (spec 055 FR-1, #77)`.
 
 > **Complexity note.** None: one hook (`retryable?`) and four small methods on the base class, no new class. The refresh's tightening is a behaviour change to an existing panel, recorded in the spec's Supersedes (spec 015 AC-3.7) and in Task 5.4's area doc edits.
@@ -481,7 +483,7 @@ with
 ## Phase 3: The route, the controller and the button
 
 **Implements:** FR-3, FR-4 | **Satisfies:** AC-1.1, AC-1.2 (page level), AC-2.1, AC-2.2, AC-2.3, AC-2.8 (page level), AC-3.1, AC-3.3 (page level), AC-4.1–AC-4.5, AC-5.3
-**Files:** `config/routes.rb`, `app/controllers/admin/catalogs/operation_retries_controller.rb`, `app/views/admin/catalogs/_operation.html.erb`, `spec/requests/admin/catalogs/operation_retries_spec.rb`, `spec/requests/admin/catalogs_spec.rb`, `spec/admin_catalog_core_spec.rb`
+**Files:** `config/routes.rb`, `app/controllers/admin/catalogs/operation_retries_controller.rb`, `app/views/admin/catalogs/_operation.html.erb`, `app/assets/stylesheets/collector/additions.css`, `spec/requests/admin/catalogs/operation_retries_spec.rb`, `spec/requests/admin/catalogs_spec.rb`, `spec/admin_catalog_core_spec.rb`
 **Interfaces:** Consumes: `Catalog::Health.find(type).operation(key)`, `Catalog::Operation#retry_now?`, `#retry_now` (Phase 2). Produces: `POST /admin/catalog/operation_retries` (`admin_catalog_operation_retries_path`, params `collectible_type`, `operation`) answering `303` to `admin_catalog_path` with flash notice "Retrying now." or "Nothing is waiting to retry."; the "Retry now" button in the operation head.
 
 - [ ] **Task 3.1: write the failing request examples.** Create `spec/requests/admin/catalogs/operation_retries_spec.rb`:
@@ -606,6 +608,17 @@ RSpec.describe "Retrying a waiting refresh or art build now", :solid_queue, type
       expect(job.reload).to be_claimed
     end
 
+    it "offers no button and moves nothing for an art build while art matching is off (spec 055 Error Scenarios)", :aggregate_failures do
+      job = waiting_build # the example runs with art matching off: no :art_matching tag
+
+      get admin_catalog_path
+      expect(page.css("form[action='#{admin_catalog_operation_retries_path}']")).to be_empty
+
+      retry_now("art_index")
+      expect(flash[:notice]).to eq("Nothing is waiting to retry.")
+      expect(job.reload).to be_scheduled
+    end
+
     it "says nothing is waiting when no run is waiting at all" do
       retry_now("refresh")
 
@@ -657,7 +670,7 @@ RSpec.describe "Retrying a waiting refresh or art build now", :solid_queue, type
 end
 ```
 
-- [ ] **Task 3.2: run it, expect FAIL.** `bin/rspec spec/requests/admin/catalogs/operation_retries_spec.rb` — expect: every example fails with `NoMethodError: undefined method 'admin_catalog_operation_retries_path'` (the route doesn't exist).
+- [ ] **Task 3.2: run it, expect FAIL.** `bin/rspec spec/requests/admin/catalogs/operation_retries_spec.rb` — expect: every example fails with a `NameError` for `admin_catalog_operation_retries_path` (the route doesn't exist).
 - [ ] **Task 3.3: route and controller.** In `config/routes.rb`, change
 
 ```ruby
@@ -692,17 +705,33 @@ class Admin::Catalogs::OperationRetriesController < ApplicationController
 end
 ```
 
-- [ ] **Task 3.4: the button.** In `app/views/admin/catalogs/_operation.html.erb`, after the `<% if operation.start_label %> … <% end %>` block inside `.c-operation__head`, add (inside the head `div`, before its closing tag):
+- [ ] **Task 3.4: the button.** Invoke the `collector-design-system` skill and read `docs/design-system/README.md` and `docs/design-system/components/AdminCatalog.md` and `Button.md` first (CLAUDE.md, UI section). The head is `display:flex; flex-wrap:wrap; justify-content:space-between`, so a third direct child (a second form) would sit mid-row. Both buttons therefore go into one wrapper that carries the existing `c-operation__start` class (no new class), and the rule gains a gap.
+
+  In `app/views/admin/catalogs/_operation.html.erb`, replace the whole `<% if operation.start_label %> … <% end %>` block inside `.c-operation__head` with:
 
 ```erb
-    <% if operation.retry_now? %>
-      <%# While its failed run's own job waits to retry, the job can be run now (spec 055). %>
-      <%= button_to "Retry now", admin_catalog_operation_retries_path,
-            params: { collectible_type: catalog.collectible_type, operation: operation.key },
-            class: "c-btn c-btn--secondary", form: { class: "c-operation__start" } %>
+    <% if operation.start_label || operation.retry_now? %>
+      <div class="c-operation__start">
+        <% if operation.start_label %>
+          <%# The refresh is the page's primary action while the catalog isn't loaded (AC-1.4). %>
+          <%= button_to operation.start_label, admin_catalog_operation_starts_path,
+                params: { collectible_type: catalog.collectible_type, operation: operation.key }, disabled: !operation.startable?,
+                class: class_names("c-btn", !catalog.loaded? && operation == catalog.refresh ? "c-btn--primary" : "c-btn--secondary") %>
+        <% end %>
+        <% if operation.retry_now? %>
+          <%# While its failed run's own job waits to retry, the job can be run now (spec 055). %>
+          <%= button_to "Retry now", admin_catalog_operation_retries_path,
+                params: { collectible_type: catalog.collectible_type, operation: operation.key }, class: "c-btn c-btn--secondary" %>
+        <% end %>
+      </div>
     <% end %>
 ```
-  In `spec/requests/admin/catalogs_spec.rb`, the example from Task 2.3 ends with `expect(refresh.at_css("button")["disabled"]).to be_present`; with two buttons in the section `at_css("button")` is still the first one, the start button (it precedes the retry form), so the line stays valid. The art example at line ~484 `section("art_index").at_css("button")["disabled"]` is likewise the first button. No edit is needed; this task's run proves it.
+  In `app/assets/stylesheets/collector/additions.css`, change the line `.c-operation__start { display:flex; }` to:
+
+```css
+.c-operation__start { display:flex; flex-wrap:wrap; gap:var(--space-2); } /* the start button, and Retry now beside it while a retry waits (spec 055) */
+```
+  In `spec/requests/admin/catalogs_spec.rb`, the art example "shows a failed build whose job waits to retry as queued, with the reason and the time (AC-4.12)" compares the section's whole text, button text included: change the start of its expected string from `"Art index Build art index Queued to retry. The last build failed. "` to `"Art index Build art index Retry now Queued to retry. The last build failed. "`. Every other example reads `at_css("button")`, which is still the start button (it comes first), or `.c-operation__summary`, so none else needs an edit; this task's run proves it. The only users of the class are this view, `additions.css` and `AdminCatalog.md` (checked with `grep -rln "c-operation__start" app docs spec`).
 - [ ] **Task 3.5: the core guard.** In `spec/admin_catalog_core_spec.rb`, the example "covers the controllers, views, models, helper and script of the page" counts the files the glob finds (`app/controllers/admin/catalogs{_controller.rb,/**/*.rb}` now also finds the new controller). Change `expect(files.size).to eq(15)` to `expect(files.size).to eq(16)`.
 - [ ] **Task 3.6: run, expect PASS.** `bin/rspec spec/requests/admin/catalogs/operation_retries_spec.rb spec/requests/admin/catalogs_spec.rb spec/admin_catalog_core_spec.rb spec/requests/admin/jobs_spec.rb` — expect: all pass. (AC-4.5, forgery protection, is the framework default; it is verified by reading `ApplicationController` in Task 5.5.)
 - [ ] **Task 3.7: commit.** `feat(admin): Retry now on /admin/catalog for a job waiting to retry (spec 055 FR-3, FR-4, #77)`.
@@ -724,7 +753,7 @@ These examples pass as soon as they are written, because they test behaviour the
 ```ruby
 
   # Spec 055 AC-2.4, AC-2.5: Retry now moves the waiting row; the job that runs is that row, with its retry record.
-  context "after Retry now moved its waiting retry (spec 055)", :solid_queue do
+  context "when Retry now has moved its waiting retry (spec 055)", :solid_queue do
     def scheduled_row(active_job_id) = SolidQueue::Job.where(active_job_id:, finished_at: nil).find(&:scheduled?)
 
     it "carries on counting from the job's retry record, and opens a run under the same job id as any retry does", :aggregate_failures do
@@ -749,7 +778,7 @@ These examples pass as soon as they are written, because they test behaviour the
 
 ```ruby
 
-  context "after Retry now moved its waiting retry (spec 055 AC-2.4)", :solid_queue do
+  context "when Retry now has moved its waiting retry (spec 055 AC-2.4)", :solid_queue do
     it "carries on counting from the job's retry record", :aggregate_failures do
       allow(MTG::Art::Build).to receive(:new).and_raise(Catalog::Sources::RateLimitedError.new("rate limited", retry_after: 600))
       described_class.perform_now
@@ -767,7 +796,7 @@ These examples pass as soon as they are written, because they test behaviour the
     end
   end
 ```
-  Run: `bin/rspec spec/jobs/catalog/refresh_job_spec.rb spec/jobs/mtg/art/build_job_spec.rb` — expect: pass. If `ActiveJob::Base.execute` on the stored envelope raises instead of rescheduling, the examples above are wrong about how the worker runs a row: stop and read `SolidQueue::ClaimedExecution#execute` (`ActiveJob::Base.execute(job.arguments)`) before changing anything.
+  Run: `bin/rspec spec/jobs/catalog/refresh_job_spec.rb spec/jobs/mtg/art/build_job_spec.rb` — expect: pass. If an example is red, do not bend it to fit: invoke `sdd-superpowers:systematic-debugging` and read `SolidQueue::ClaimedExecution#execute` in the gem (it calls `ActiveJob::Base.execute(job.arguments)`, which these examples copy) to find which side is wrong.
 - [ ] **Task 4.2: the system example.** In `spec/system/admin_catalog_spec.rb`, add before the file's last `end`:
 
 ```ruby
@@ -820,24 +849,25 @@ These examples pass as soon as they are written, because they test behaviour the
 **Files:** `docs/architecture/catalog-operations.md`, `docs/design-system/components/AdminCatalog.md`, `docs/roadmap.md`, `docs/architecture/catalog-core.md`, `CLAUDE.md`, `docs/specs/README.md`, `docs/specs/055-rate-limit-retry-now/verification.md`, and the screenshot files under `docs/specs/055-rate-limit-retry-now/screenshots/`
 **Interfaces:** Consumes: Phases 1–4. Produces: the area doc's current rules, the verification record, the PR's screenshots.
 
-- [ ] **Task 5.1: the visual check.** Following `.claude/memory/pr-screenshots-workflow.md` and `.claude/memory/headless-firefox-narrow-frame.md`: seed one runner script (in its own Bash call) that creates an applied refresh run, a failed run whose own `Catalog::RefreshJob` waits 20 minutes (`queue_job` equivalent: `Catalog::RefreshJob.set(wait: 20.minutes).perform_later("mtg", "manual")` through Solid Queue), and an art build the same way with art matching on; start `bin/dev` with `run_in_background`; take the "before" shots from `main`'s checkout is not possible in this worktree, so "before" is taken by loading the same page with the "Retry now" form hidden by injecting `<style>form[action$="operation_retries"]{display:none}</style>` (the CSS-fix "before" method of the memory file); "after" is the page as built. Shots at 1280px and at 390px (narrow frame), light and dark, of `/admin/catalog` in the waiting state, and one of the page after pressing.
-- [ ] **Task 5.2: decide the head's layout.** The head is `display:flex; flex-wrap:wrap; justify-content:space-between` holding the title and now two `c-operation__start` forms; with three children, space-between puts the buttons apart. Look at the shots: if the two buttons sit together at the end (or wrap together) acceptably at 1280px and 390px, change nothing. If not, add one wrapper rule to `app/assets/stylesheets/collector/additions.css` next to `.c-operation__start`: `.c-operation__actions { display:flex; flex-wrap:wrap; gap:var(--space-2); }`, wrap the two `button_to`s in `<div class="c-operation__actions">…</div>` in `_operation.html.erb`, document the class in `docs/design-system/components/AdminCatalog.md`, note it in spec 055 as a v1.0.1 change to FR-4 ("no new class" → the one wrapper), and re-run `bin/rspec spec/requests/admin spec/system/admin_catalog_spec.rb spec/system/narrow_admin_pages_spec.rb`. Either way: commit `style(admin): the waiting operation's buttons sit together (spec 055)` only if CSS changed.
-- [ ] **Task 5.3: the design system document.** In `docs/design-system/components/AdminCatalog.md`, replace the bullet that begins "Each operation has at most one button, named for what it starts" with:
+- [ ] **Task 5.1: the screenshots.** Following the "Screenshots from a throwaway system spec" paragraph of `.claude/memory/pr-screenshots-workflow.md` and `.claude/memory/headless-firefox-narrow-frame.md` (no dev server, no seed script, nothing that runs a real job): write an uncommitted `spec/system/zz_055_screenshots_spec.rb` (`:solid_queue`, `:art_matching`, `type: :system`) that builds, with factories and `queue_job(..., wait: 20.minutes)`, an applied refresh run, a failed refresh run whose own job waits, and a failed art build whose own job waits (the data of Task 4.2), signs in an admin, and saves with `page.save_screenshot(File.join(ENV.fetch("SHOTS_DIR"), name))`: `/admin/catalog` in the waiting state at 1280px, and at 390px through `open_in_narrow_frame` and `find("#narrow").native.save_screenshot`, each in light and dark (set `data-theme` in the page and inside the frame, pause 0.6s after each switch), and one of the page after pressing "Retry now" (summary "Queued.", no button). The "before" shots are the same states with `document.head.append` of a `<style>.c-operation__start form[action$="operation_retries"]{display:none}</style>` (the memory file's "before" method; note in `verification.md` that "before" is the page without the button, since nothing of the old code can be loaded). Run with `SHOTS_DIR=<scratchpad> bin/rspec spec/system/zz_055_screenshots_spec.rb`; look at one shot of each theme and width before trusting the rest; compress with `magick … -resize 1000x -quality 82`; copy the chosen files to `docs/specs/055-rate-limit-retry-now/screenshots/`; delete the spec before committing. Say "factory data, placeholder printings" in the PR body.
+- [ ] **Task 5.2: look at the shots.** The buttons share one wrapper that wraps as a unit; confirm at 1280px and 390px that "Retry now" sits beside "Refresh now" (or under it on the narrow frame), that the title is not squeezed, and that the focus ring is visible on both (tab to each in the page). A defect found here is fixed in the view or the one rule of Task 3.4 and re-run with `bin/rspec spec/requests/admin spec/system/admin_catalog_spec.rb spec/system/narrow_admin_pages_spec.rb`, committed as `fix(admin): …`.
+- [ ] **Task 5.3: the design system document.** In `docs/design-system/components/AdminCatalog.md`: (1) the markup sample's start form becomes `<div class="c-operation__start"><form method="post" action="/admin/catalog/operation_starts">…<button class="c-btn c-btn--secondary" disabled>Refresh now</button></form></div>`; (2) replace the bullet that begins "Each operation has at most one button, named for what it starts" with:
 
 ```markdown
-- Each operation has one start button, named for what it starts ("Refresh now", "Build art index"). It is `c-btn--secondary`, and disabled while the operation is queued or running or can't run yet; the summary says why. "Refresh now" is `c-btn--primary` only while the catalog has no cards, when it is the page's one next step. While a failed run's own job waits to retry ("Queued to retry."), the operation also shows "Retry now", `c-btn--secondary` and enabled, which runs that waiting job at once (spec 055); the start button stays disabled beside it. An operation that is switched off shows no button, and its summary says how to switch it on.
+- Each operation has one start button, named for what it starts ("Refresh now", "Build art index"). It is `c-btn--secondary`, and disabled while the operation is queued or running or can't run yet; the summary says why. "Refresh now" is `c-btn--primary` only while the catalog has no cards, when it is the page's one next step. While a failed run's own job waits to retry ("Queued to retry."), the operation also shows "Retry now", `c-btn--secondary` and enabled, beside the start button in the same `c-operation__start` wrapper (a flex row that wraps, `space-2` apart), which runs that waiting job at once (spec 055); the start button stays disabled. An operation that is switched off shows no button, and its summary says how to switch it on.
 ```
-  and add `docs/design-system/previews/` changes only if a preview file shows the waiting state (check with `grep -ln "Queued to retry" docs/design-system/previews/*.html`; if one does, add the button to its markup in the same shape).
-- [ ] **Task 5.4: the other documents (AC-6.1–AC-6.3).** Read each document and make exactly these edits, each new statement with its source inline (spec 055 criterion or decision, or #77); the `catalog-operations.md` edits are the ones `distill-feature` writes before the pull request is ready and are listed here so the plan covers every AC:
-  - `docs/architecture/catalog-operations.md`: (1) in "A rate-limited job", step 3, add after the panel sentence: "An admin can run the waiting job at once with **Retry now**: it moves the failed run's own job's scheduled entry to ready (`Catalog::Operation::Queue#run_now`), queues no job and changes neither the job's Active Job id nor its retry record, so the count carries on as for any retry; the move is atomic with one winner (the entry is removed first and the dispatch happens only when that removal happened), so a second press, a press as the wait ends or the queue's own dispatch changes nothing and the press says 'Nothing is waiting to retry.' (spec 055 decisions 1–5, FR-2; #77)." (2) In the refresh panel table, the row "Failed, a refresh job scheduled to run again" now reads "…the failed run's own job scheduled to run again…; 'Refresh now' disabled, 'Retry now' enabled (spec 055 decision 1; spec 015 AC-3.7 in part)" and a new row: "Failed run, only another refresh job scheduled (held by hand) | 'Queued.' with that job's 'Retrying at', none of the failed run's stages or facts, no 'Retry now' (spec 055 AC-1.6)". (3) In the art table, the row "Failed build whose own job is scheduled to run again" gains "'Retry now' enabled (spec 055 AC-1.2)". (4) In Invariants, after "The jobs pages read Solid Queue's own tables…": "**The catalog page moves one scheduled job, through the queue's own operations.** 'Retry now' names only a type and an operation key, takes the job from the operation's own latest failed run, runs nothing in the request and writes no run record; it is admin only like the rest of the page (spec 055 decision 4, FR-1; ADR 0014)." (5) Glossary "Waiting retry": add "Retry now runs the failed run's own waiting job (spec 055)". (6) Accepted limits: reword the #77 line to "[#77](…): an admin can run a waiting retry now (spec 055) but still can't discard one from `/admin/jobs`, which discards only failed jobs (ruling 2026-11-09, out of scope)." (7) Scope's "Covers" list: add `Admin::Catalogs::OperationRetriesController`. (8) Sources and the distillation log: spec 055, #77. (9) The note in the "Admin catalog and jobs" CLAUDE.md bullet below.
-  - `CLAUDE.md`: in the "Admin catalog and jobs (specs 015, 024; ADRs 0014, 0015)" bullet, change the heading to "(specs 015, 024, 055; ADRs 0014, 0015)" and add "'Retry now' runs a waiting rate-limit retry" after "rate-limit retries"; keep the bullet's pointer-only shape (`.claude/rules/documentation.md`).
+  Then check with `grep -ln "Queued to retry\|c-operation__start" docs/design-system/previews/*.html`; if a preview shows either, change it to the same markup.
+- [ ] **Task 5.4: the other documents (AC-6.1–AC-6.3).** The implementer writes every edit here, including the area doc's; `distill-feature` at session end (Task 5.8) finds them done, checks them, adds the distillation-log row with the pull request's number and moves the index's status words. Read each document and make exactly these edits, each new statement with its source inline (spec 055 criterion or decision, or #77):
+  - `docs/architecture/catalog-operations.md`: (1) in "A rate-limited job", step 3, add after the panel sentence: "An admin can run the waiting job at once with **Retry now**: it moves the failed run's own job's scheduled entry to ready (`Catalog::Operation::Queue#run_now`), queues no job and changes neither the job's Active Job id nor its retry record, so the count carries on as for any retry; the move is atomic with one winner (the entry is removed first and the dispatch happens only when that removal happened), so a second press, a press as the wait ends or the queue's own dispatch changes nothing and the press says 'Nothing is waiting to retry.'; it is offered for any retry of that job, not only a rate limit's (spec 055 decisions 1–5, FR-2; maintainer ruling 2026-11-09; #77)." (2) In the refresh panel table, the row "Failed, a refresh job scheduled to run again" now reads "…the failed run's own job scheduled to run again…; 'Refresh now' disabled, 'Retry now' enabled (spec 055 decision 1; spec 015 AC-3.7 in part)" and a new row follows it: "Failed run, only another refresh job scheduled (held by hand) | 'Queued.' with that job's 'Retrying at', none of the failed run's stages or facts, no 'Retry now' (spec 055 AC-1.6)". (3) In the art table, the row "Failed build whose own job is scheduled to run again" gains "'Retry now' enabled (spec 055 AC-1.2)". (4) In Invariants, after the line "The jobs pages read Solid Queue's own tables…": "**The catalog page moves one scheduled job, through the queue's own operations.** 'Retry now' names only a type and an operation key, takes the job from the operation's own latest failed run, runs nothing in the request and writes no run record; it is admin only like the rest of the page (spec 055 decision 4, FR-1; ADR 0014)." (5) Glossary "Waiting retry": append "Retry now runs the failed run's own waiting job (spec 055)." (6) "Accepted limits and open issues": reword the #77 line to "[#77](https://github.com/plainprogrammer/Collector/issues/77): an admin can run a waiting retry now (spec 055) but still can't discard one from `/admin/jobs`, which discards only failed jobs (ruling 2026-11-09, out of scope)." (7) Scope's "Covers" admin-pages bullet: add `Admin::Catalogs::OperationRetriesController`. (8) Sources: add the line "- [Spec 055](../specs/055-rate-limit-retry-now/spec.md): all." and, in the Issues line, move #77 out of "open:" into the resolved list.
+  - `CLAUDE.md`: in the "Admin catalog and jobs (specs 015, 024; ADRs 0014, 0015)" bullet, change the heading to "(specs 015, 024, 055; ADRs 0014, 0015)" and add "'Retry now' runs a waiting retry now" after "rate-limit retries"; keep the bullet's pointer-only shape (`.claude/rules/documentation.md`).
   - `docs/roadmap.md` line 82 (the #77 line): reword to "#77: an admin can run a waiting rate-limit retry now (spec 055); discarding one from `/admin/jobs` is out of scope".
   - `docs/architecture/catalog-core.md`: lines 205 and 217 list #77 as an open issue of the catalog operations area; reword line 205 to say #77 is catalog operations' and addressed by spec 055, and drop it from line 217's open list if it appears there as open.
-  - `docs/specs/README.md`: the 055 row's status stays "Approved" until merge; its Plan column "present" becomes "retirement owed" at distillation; the 015, 024 and 043 rows already carry "055" (done with the spec).
-- [ ] **Task 5.5: the verification record.** Create `docs/specs/055-rate-limit-retry-now/verification.md` with one line per AC (the spec file and example that proves it, or "by reading" with what was read), including: AC-4.5 (read `ApplicationController`: forgery protection is on by default and the form posts with `button_to`'s token), FR-2's transaction (read `Catalog::Operation::Queue#run_now`: `SolidQueue::Record.transaction`, which is the queue's connection; the test environment shares the primary database so no example can tell), AC-6.1–AC-6.3 (by reading), the screenshots' file names, and the Phase 1 complexity note. Record the examples counted: `bin/rspec --dry-run` over each new file.
-- [ ] **Task 5.6: full verification.** Ask the coordinator for a CI slot, then run `bin/ci` and record the result and the SHA in `verification.md`; send "slot released" with the SHA and result.
-- [ ] **Task 5.7: commit.** `docs(specs): spec 055's area docs, design system rule and verification record (#77)`.
-- [ ] **Task 5.8: implementation review.** Dispatch the read-only `opus` `sdd-review` Mode B reviewer over the whole branch diff against `origin/main`; record it under `## Implementation review` in `verification.md` with the verdict first.
+  - `docs/specs/README.md`: the 055 row's Plan column "present" becomes "retirement owed" at distillation (Task 5.8); its status stays "Approved" until merge; the 015, 024 and 043 rows already carry "055".
+- [ ] **Task 5.5: the verification record.** Create `docs/specs/055-rate-limit-retry-now/verification.md` with one line per AC (the spec file and example that proves it, or "by reading" with what was read), including: AC-4.5 (read `ApplicationController`: forgery protection is on by default and `button_to` posts the token); FR-2's transaction (read `Catalog::Operation::Queue#run_now`: `SolidQueue::Record.transaction`, the queue's connection; the test environment shares the primary database, so no example can tell); AC-2.4's "made progress, so the count starts again" half (the move leaves the retry record alone, and spec 043's example "starts the count again after an attempt that wrote rows" in `spec/jobs/catalog/refresh_job_spec.rb` proves the count's rule); AC-2.5's art half (the existing example "opens a new run when the retry starts" in `spec/models/mtg/art/operation_spec.rb`, which calls `MTG::ArtBuild.start!` under the job's id, plus Task 4.1's count example; a moved art job is not run end to end); AC-6.1–AC-6.3 (by reading); the screenshots' file names and that "before" is the page without the button; the Phase 1 complexity note; the example counts from `bin/rspec --dry-run` over each new or changed file.
+- [ ] **Task 5.6: the implementation review.** Dispatch the read-only `opus` `sdd-review` Mode B reviewer over the whole branch diff against `origin/main`; record it in `verification.md` under `## Implementation review` with the verdict on its first line; fix what it finds blocking or major, test first, one commit each.
+- [ ] **Task 5.7: commit.** `docs(specs): spec 055's area docs, design system rule, screenshots and verification record (#77)` (screenshots staged in a commit of their own first if the hook's size limit requires it).
+- [ ] **Task 5.8: session wrap and distillation.** Run `sdd-superpowers:session-wrap`, then `distill-feature`, show the coordinator the digest and wait for approval, commit its output.
+- [ ] **Task 5.9: push and pull request.** Ask the coordinator for a CI slot covering the push (the pre-push hook runs `bin/ci` once; its pass is the evidence, cite the pushed SHA); `git push -u origin 055-rate-limit-retry-now`; `gh pr create --draft` with the summary, test counts, "factory data, placeholder printings", the before/after screenshots embedded as `https://github.com/plainprogrammer/Collector/blob/<sha>/<path>?raw=true`, `Closes #77`, and the footer `🤖 Generated with [Claude Code](https://claude.com/claude-code)`; wait for CI green; `gh pr ready <N>` and `gh pr edit <N> --add-assignee @me`; send "slot released" with the SHA and result; then `worker_done`.
 
 ---
 
@@ -846,9 +876,9 @@ These examples pass as soon as they are written, because they test behaviour the
 **Implements:** All FRs | **Satisfies:** All ACs
 
 - [ ] Run `bin/rspec spec/models/catalog spec/models/mtg/art spec/requests/admin spec/jobs spec/system/admin_catalog_spec.rb spec/system/narrow_admin_pages_spec.rb spec/admin_catalog_core_spec.rb` — expect: all pass.
-- [ ] Run `bin/ci` (with a slot) — expect: green.
+- [ ] The pre-push `bin/ci` and GitHub's CI (Task 5.9) — expect: green.
 - [ ] Walk the spec's ACs against `verification.md`.
 
 ## Quickstart Validation
 
-With `bin/dev` running and an admin signed in: in `bin/rails runner` terms (not run by an agent without a prompt: use the seed script of Task 5.1), seed a failed refresh run whose own `Catalog::RefreshJob` is scheduled 20 minutes ahead; open `/admin/catalog`: the Refresh section reads "Queued to retry." with "Retrying at" and shows "Retry now" beside the disabled "Refresh now"; press "Retry now": the page says "Retrying now.", the section reads "Queued." and the button is gone; press nothing more; `SolidQueue::Job` still has the one row, now ready.
+The throwaway spec of Task 5.1 is the walkthrough: with a failed refresh run whose own `Catalog::RefreshJob` is scheduled 20 minutes ahead, `/admin/catalog` reads "Queued to retry." with "Retrying at" and shows "Retry now" beside the disabled "Refresh now"; pressing it shows "Retrying now.", the section reads "Queued." and the button is gone; `SolidQueue::Job` still has the one row, now ready (Task 4.2's assertions).
