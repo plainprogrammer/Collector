@@ -49,6 +49,10 @@ Add a line here with each new ADR. All are Accepted unless the line says otherwi
 - [0014](0014-hand-built-admin-jobs-console.md): Hand-build the admin jobs console on Solid Queue's models
 - [0015](0015-admin-progress-by-polling.md): Show live progress on admin pages by polling with Turbo morph refreshes
 
+### Documentation
+
+- [0027](0027-yard-for-api-documentation.md): Generate the Ruby API documentation with YARD, from the code's comments and the area docs
+
 ### Data safety
 
 - [0020](0020-export-format.md): The export format is one versioned JSON document keyed by source ids
@@ -61,4 +65,4 @@ Add a line here with each new ADR. All are Accepted unless the line says otherwi
 
 ### Expected
 
-Named by the [roadmap](../roadmap.md) and written with their specs: adopting YARD (spec 027 slice B), which takes the next free number (lots in locations, roadmap item 10, took 0025; form errors, spec 044, took 0026). The upload-retention ADR expected by spec 028 is 0022 above.
+Named by the [roadmap](../roadmap.md) and written with their specs: none now. The upload-retention ADR expected by spec 028 is 0022 above, and the YARD ADR (spec 027 slice B) is 0027 above (it was expected as 0023, then as the next free number: 0023 went to locations, 0025 to lots in locations, 0026 to form errors).

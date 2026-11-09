@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed (2026-11-09); Accepted when the coordinator approves the plan of [spec 054](../specs/054-adopt-yard/spec.md). The decisions it records were ruled by the maintainer on 2026-11-09 (spec 054 decisions 1, 2 and 6, OD1–OD3, all as recommended). It took the number 0027: [spec 027](../specs/027-architecture-area-docs/spec.md), the issue ([#103](https://github.com/plainprogrammer/Collector/issues/103)) and the roadmap expected "0023" (the roadmap: "the next free number after 0025"), which [0023](0023-locations-make-export-format-version-2.md) took, and 0024–0026 took the next numbers; the coordinator of the run that wrote spec 054 confirmed 0027.
+Accepted (2026-11-09), with the approval of the plan of [spec 054](../specs/054-adopt-yard/spec.md) by the coordinator under the maintainer's delegation. The decisions it records were ruled by the maintainer on 2026-11-09 (spec 054 decisions 1, 2 and 6, OD1–OD3, all as recommended). It took the number 0027: [spec 027](../specs/027-architecture-area-docs/spec.md), the issue ([#103](https://github.com/plainprogrammer/Collector/issues/103)) and the roadmap expected "0023" (the roadmap: "the next free number after 0025"), which [0023](0023-locations-make-export-format-version-2.md) took, and 0024–0026 took the next numbers; the coordinator of the run that wrote spec 054 confirmed 0027.
 
 ## Context
 
