@@ -244,7 +244,8 @@ img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches:
 .c-operation__summary a { color:var(--brand); font-weight:600; text-decoration:none; }
 .c-operation__summary a:hover { text-decoration:underline; }
 .c-operation__summary a:focus-visible { outline:2px solid var(--focus); outline-offset:2px; border-radius:var(--radius-sm); }
-.c-operation__start { display:flex; }
+.c-operation__start { display:flex; flex-wrap:wrap; gap:var(--space-2); } /* the start button, and Retry now beside it while a retry waits (spec 055) */
+.c-operation__start form { display:flex; } /* as the start form itself was before the wrapper: a button in a block form would sit on a line box's baseline */
 .c-runs li { flex-wrap:wrap; }
 
 /* ---------- Stage list (spec 015): the steps of an operation in order, each with its state in a word ---------- */

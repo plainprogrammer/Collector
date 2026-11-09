@@ -67,8 +67,10 @@ class Catalog::Operation
   # Failed list or gone, only some other job waiting, or the operation unavailable (a setting that is off: spec 055
   # decision 1, Error Scenarios).
   def retry_job_id
+    return unless unavailable_reason.nil? # first: a switched-off operation reads no record or queue for the page's sake
+
     record = retry_candidate
-    return unless record&.failed? && record.job_id.present? && retryable?(record) && unavailable_reason.nil?
+    return unless record&.failed? && record.job_id.present? && retryable?(record)
 
     record.job_id if queue.retry_at(record.job_id)
   end
