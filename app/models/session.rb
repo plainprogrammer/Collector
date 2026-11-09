@@ -16,6 +16,18 @@ class Session < ApplicationRecord
 
   scope :expired, ->(now = Time.current) { where(last_used_at: ..(now - IDLE_LIMIT)) }
 
+  # Deletes the expired sessions a batch at a time, each batch its own statement and so its own short write transaction
+  # (spec 049 decision 10), and returns how many it deleted. Cross-tenant by nature: the instance runs it over every account's
+  # sessions (.claude/rules/multi-tenancy.md). delete_all runs no callbacks on purpose: the database removes each session's
+  # bulk selection and Undo (ON DELETE CASCADE), as it does for User#end_sessions! (spec 006 FR-4, FR-6).
+  def self.sweep!(now: Time.current, batch: SWEEP_BATCH)
+    deleted = 0
+    while (ids = expired(now).limit(batch).pluck(:id)).any?
+      deleted += where(id: ids).delete_all
+    end
+    deleted
+  end
+
   def expired?(now = Time.current) = last_used_at <= now - IDLE_LIMIT
 
   # Due for a new stamp: a day old, or later than now (the host's clock was set back, AC-2.8).
