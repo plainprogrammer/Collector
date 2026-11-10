@@ -8,7 +8,7 @@ RSpec.describe "Open a location's lots in bulk mode", type: :system do
 
   before { create(:location, account:, name: "Long box") } # the destination; reached by its name
 
-  it "empties a location from its refusal page through Move to… (AC-3.1, AC-2.2, AC-2.3)", :aggregate_failures do
+  it "empties a location from its refusal page through Move to… and on to its removal (AC-3.1, AC-2.2, AC-2.3)", :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- one scenario: refusal, bulk mode, move, then the removal it unlocks
     owned_printing("Card A", account:, location: blue, quantity: 2)
     owned_printing("Card B", account:, location: blue, quantity: 3)
     visit locations_path
@@ -24,9 +24,7 @@ RSpec.describe "Open a location's lots in bulk mode", type: :system do
     click_on "Move"
     expect(page).to have_css("#status", text: "Moved 5 items to Long box.")
     expect(account.lots.where(location: blue)).to be_empty
-  end
 
-  it "lets the emptied location be removed from its confirmation page (AC-3.1)", :aggregate_failures do
     visit locations_path
     click_on "Remove Blue binder"
     expect(page).to have_css("h1", text: "Remove Blue binder?")
