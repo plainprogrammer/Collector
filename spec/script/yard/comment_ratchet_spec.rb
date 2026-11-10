@@ -405,6 +405,31 @@ RSpec.describe YardRatchet::Check, :git_sandbox, type: :model do # rubocop:disab
       expect(offences(check)).to contain_exactly(a_string_matching(/\Alib\/[ab]\.rb:\d: Foo has no comment \(added\)/))
     end
 
+    # A magic comment or a shebang is not a summary (decision 2, AC-1.4): YARD skips some of them and the check's own
+    # reading of the lines above a definition must too, or a file that opens with one passes uncommented.
+    {
+      "a frozen_string_literal comment" => "# frozen_string_literal: true\n",
+      "a shebang" => "#!/usr/bin/env ruby\n",
+      "an encoding comment" => "# encoding: utf-8\n",
+      "an Emacs coding comment" => "# -*- coding: utf-8 -*-\n",
+      "a warn_indent comment" => "# warn_indent: true\n",
+      "a shebang and a magic comment" => "#!/usr/bin/env ruby\n# frozen_string_literal: true\n"
+    }.each do |what, header|
+      it "fails a new class whose only comment is #{what} (AC-1.4)" do
+        base_with("README.md" => "base")
+        write("lib/m.rb", "#{header}class M\nend\n")
+
+        expect(offences(check)).to eq([ "lib/m.rb:#{header.lines.size + 1}: M has no comment (added)" ])
+      end
+
+      it "passes a new class with a real summary under #{what} (AC-1.4)" do
+        base_with("README.md" => "base")
+        write("lib/m.rb", "#{header}# Em.\nclass M\nend\n")
+
+        expect(check).to be_ok
+      end
+    end
+
     it "doesn't judge a namespace a new file reopens (AC-1.13)", :aggregate_failures do
       base_with("lib/collector/other.rb" => other)
       write("lib/collector/thing.rb", "module Collector\n  # Does a thing.\n  class Thing\n  end\nend\n")
