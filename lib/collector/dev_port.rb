@@ -19,6 +19,8 @@ module Collector
       for_worktree(File.realpath(root))
     end
 
+    def probe = 1
+
     def for_worktree(path)
       WORKTREE_RANGE.first + (Zlib.crc32(path) % WORKTREE_RANGE.size)
     end
