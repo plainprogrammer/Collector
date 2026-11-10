@@ -7,6 +7,7 @@
 **Branch:** `058-mtg-mana-value`
 **Issue:** [#250](https://github.com/plainprogrammer/Collector/issues/250) (roadmap 14d)
 **Plan:** `plan.md` (while the feature is in progress)
+**Frozen:** the current rules are in [`catalog-core.md`](../../architecture/catalog-core.md) and [`catalog-operations.md`](../../architecture/catalog-operations.md) (whole spec); see the [specs index](../README.md)
 
 ---
 
