@@ -79,7 +79,7 @@ module YardRatchet
 
   # What YARD sees in a set of files: one Item per class, module and method, by qualified name.
   module Snapshot
-    Item = Data.define(:name, :namespace, :nested, :file, :line, :commented, :exempt)
+    Item = Data.define(:name, :namespace, :nested, :file, :line, :commented, :exempt, :extents)
 
     # root: the directory the files are in; files: paths relative to it. Parses in memory (writes nothing). YARD's
     # registry is cleared before and after, and its logger's level is put back.
@@ -91,20 +91,35 @@ module YardRatchet
       YARD::Logger.instance.level = YARD::Logger::FATAL
       YARD::Registry.clear
       YARD.parse(files.map { root.join(it).to_s })
+      sources = Hash.new { |hash, path| hash[path] = File.readlines(path, chomp: true) }
       YARD::Registry.all(:class, :module, :method).each_with_object({}) do |object, items|
-        items[object.path] = item(object, root) unless object.files.empty?
+        items[object.path] = item(object, root, sources) unless object.files.empty?
       end
     ensure
       YARD::Registry.clear
       YARD::Logger.instance.level = level if level
     end
 
-    def self.item(object, root)
-      Item.new(name: object.path, namespace: object.type != :method, nested: !object.namespace.root?,
+    def self.item(object, root, sources)
+      namespace = object.type != :method
+      exempt = exempt?(object)
+      extents = exempt ? [] : object.files.map { |file, line| extent(object, file, line, namespace, sources[file]) }
+      Item.new(name: object.path, namespace:, nested: !object.namespace.root?,
                file: Pathname(object.file).relative_path_from(root).to_s, line: object.line,
-               commented: !object.docstring.to_s.strip.empty?, exempt: exempt?(object))
+               commented: !object.docstring.to_s.strip.empty?, exempt:, extents:)
     end
     private_class_method :item
+
+    # The text of one definition (decision 4): its own comment (the unbroken run of comment lines directly above it)
+    # through its `end`; for a class or module, its comment and its opening line only, so its members' text is not
+    # part of it. An alias's `source` is the original method's, so an alias is one line.
+    def self.extent(object, file, line, namespace, lines)
+      first = line
+      first -= 1 while first > 1 && lines[first - 2].lstrip.start_with?("#")
+      span = namespace || object.source.nil? || object.is_alias? ? 1 : object.source.lines.size
+      lines[(first - 1)..(line + span - 2)].join("\n")
+    end
+    private_class_method :extent
 
     # Not judged (decision 3): non-public objects, `@api private`, attribute methods and `initialize`. A
     # `@!visibility private` directive makes YARD call a method private, but it is not an exemption: only the
@@ -148,8 +163,24 @@ module YardRatchet
 
     private
 
-    # Phase 2 replaces this with the comparison of text.
-    def change(_item, old) = old.nil? ? :added : nil
+    # :added, :changed or nil (decision 4). Text is compared by qualified name, so a rename, a move, a deletion
+    # beside a method and the place Git puts a hunk can't matter. A method is changed when any of its extents is new;
+    # a class or module the base has is changed only by an edit (a definition's text removed and another added),
+    # never by a new file reopening it or a file that defined it going away. The comparison counts repeats (a class
+    # defined in two files with the same opening line has that text twice), so it is a multiset difference.
+    def change(item, old)
+      return :added if old.nil?
+      return nil if surplus(item.extents, old.extents).empty?
+      return :changed unless item.namespace
+
+      surplus(old.extents, item.extents).empty? ? nil : :changed
+    end
+
+    # The elements of `items` left over when each element of `others` cancels one equal element.
+    def surplus(items, others)
+      counts = others.tally
+      items.reject { counts[it].to_i.positive? && (counts[it] -= 1) }
+    end
 
     def judge(head, before)
       checked = 0
