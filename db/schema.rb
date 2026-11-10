@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_10_100001) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_10_200001) do
   create_table "accounts", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -159,6 +159,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_10_100001) do
     t.index ["collectible_type", "code"], name: "index_catalog_sets_on_collectible_type_and_code", unique: true
   end
 
+  create_table "decks", force: :cascade do |t|
+    t.integer "account_id", null: false
+    t.integer "location_id", null: false
+    t.string "collectible_type", null: false
+    t.string "format", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_decks_on_account_id"
+    t.index ["location_id"], name: "index_decks_on_location_id", unique: true
+  end
+
   create_table "import_uploads", force: :cascade do |t|
     t.integer "account_id", null: false
     t.string "fingerprint", null: false
@@ -182,7 +193,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_10_100001) do
     t.string "name_key", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["account_id", "name_key"], name: "index_locations_on_account_id_and_name_key", unique: true
+    t.string "kind", default: "place", null: false
+    t.integer "parent_id"
+    t.string "zone"
+    t.index ["account_id", "name_key"], name: "index_locations_on_account_id_and_name_key_top_level", unique: true, where: "parent_id IS NULL"
+    t.index ["parent_id", "name_key"], name: "index_locations_on_parent_id_and_name_key", unique: true, where: "parent_id IS NOT NULL"
+    t.index ["parent_id"], name: "index_locations_on_parent_id"
+    t.check_constraint "(kind = 'deck_zone') = (parent_id IS NOT NULL)", name: "locations_parent_matches_kind"
+    t.check_constraint "(kind = 'deck_zone') = (zone IS NOT NULL)", name: "locations_zone_matches_kind"
+    t.check_constraint "kind IN ('place', 'deck', 'deck_zone')", name: "locations_kind_known"
     t.check_constraint "length(name) BETWEEN 1 AND 60", name: "locations_name_length"
     t.check_constraint "length(name_key) >= 1", name: "locations_name_key_present"
   end
@@ -357,8 +376,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_10_100001) do
   add_foreign_key "catalog_entries", "catalog_identities"
   add_foreign_key "catalog_entries", "catalog_sets"
   add_foreign_key "catalog_names", "catalog_identities"
+  add_foreign_key "decks", "accounts", on_delete: :cascade
+  add_foreign_key "decks", "locations", on_delete: :cascade
   add_foreign_key "import_uploads", "accounts", on_delete: :cascade
   add_foreign_key "locations", "accounts", on_delete: :cascade
+  add_foreign_key "locations", "locations", column: "parent_id", on_delete: :cascade
   add_foreign_key "lots", "accounts"
   add_foreign_key "lots", "catalog_entries"
   add_foreign_key "lots", "locations", on_delete: :restrict

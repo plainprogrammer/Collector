@@ -339,6 +339,7 @@ Every table in Collector's database that belongs to an account or to a user is l
 | `accounts` | Exported | Its `currency`; the other columns are left out. |
 | `lots` | Exported | The collection. |
 | `locations` | Exported | The collector's named places. |
+| `decks` | Exported | The collector's decks, as `decks`; a deck's name is its location's. |
 | `users` | Exported | The collector's profile. |
 | `bulk_removals` | Left out | A short-lived way to undo a bulk removal. The lots it would restore aren't in the collection. |
 | `bulk_selection_marks` | Left out | Working state that lasts for one bulk edit. |
@@ -373,6 +374,16 @@ Every table in Collector's database that belongs to an account or to a user is l
 | `locations.name_key` | Left out | Derived from the name. |
 | `locations.created_at` | Left out | A fact about the instance, not about the collection. |
 | `locations.updated_at` | Left out | A fact about the instance, not about the collection. |
+| `locations.kind` | Left out | Places are `locations` and decks are `decks`, so the file's list says the kind. |
+| `locations.parent_id` | Left out | An internal id. A zone is derived from its deck's format, and the file doesn't list zones. |
+| `locations.zone` | `zone` | A lot's place in a deck: the key of the deck's zone. |
+| `decks.id` | Left out | An internal id. |
+| `decks.account_id` | Left out | An internal id. A file is one account's collection. |
+| `decks.location_id` | Left out | An internal id. The deck is named by its location's name. |
+| `decks.collectible_type` | `collectible_type` | |
+| `decks.format` | `format` | |
+| `decks.created_at` | Left out | A fact about the instance, not about the collection. |
+| `decks.updated_at` | Left out | A fact about the instance, not about the collection. |
 | `users.id` | Left out | An internal id. |
 | `users.account_id` | Left out | An internal id. |
 | `users.name` | `name` | |

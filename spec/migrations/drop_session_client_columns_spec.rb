@@ -70,11 +70,13 @@ RSpec.describe DropSessionClientColumns, :backup, :committed, type: :model do
     fill_previous_schema!
     updated = Session.connection.select_value("SELECT updated_at FROM sessions")
 
-    travel_to(Time.utc(2026, 11, 9, 12, 0, 0)) { up_all }
+    # Far ahead, not at the migration's own date: Rails refuses a migration file stamped more than a day after the clock, so a
+    # later migration (spec 062's, 20261110200001) would otherwise fail this example for a reason that has nothing to do with it.
+    travel_to(Time.utc(2099, 1, 1, 12, 0, 0)) { up_all }
 
-    expect(Session.connection.select_value("SELECT last_used_at FROM sessions")).to match(/\A2026-11-09 12:00:00/)
+    expect(Session.connection.select_value("SELECT last_used_at FROM sessions")).to match(/\A2099-01-01 12:00:00/)
     expect(Session.connection.select_value("SELECT updated_at FROM sessions")).to eq(updated) # updated_at is not rewritten
-    expect(Session.expired(Time.utc(2026, 11, 9, 13, 0, 0))).to be_empty # a sweep right after the upgrade deletes none, though the session is a year old
+    expect(Session.expired(Time.utc(2099, 1, 1, 13, 0, 0))).to be_empty # a sweep right after the upgrade deletes none, though the session is a year old
   end
 
   it "runs the backfill twice with the same result, and leaves a stamp already set (idempotent)", :aggregate_failures do
