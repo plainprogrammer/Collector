@@ -1,7 +1,7 @@
 # Feature 057: Design System: Deck Rules, Navigation and Pickers
 
-**Status:** Draft
-**Version:** 0.3.1
+**Status:** Approved by the maintainer at Gate A on 2026-11-10 (option A; Q17 and Q18 ruled A; decisions 14 to 16 confirmed)
+**Version:** 1.0.0
 **Created:** 2026-11-10
 **Last Updated:** 2026-11-10
 **Depends on:** [the decks and locations issue design](../../superpowers/specs/2026-11-09-decks-and-locations-issues-design.md) (decisions 9, 14–16 and 18), [spec 029](../029-manage-locations/spec.md) (the header's links, Locations), [spec 037](../037-filter-collection-by-location/spec.md) (the collection's location filter), all merged
@@ -14,6 +14,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.0.0 | 2026-11-10 | Approved at Gate A by the maintainer (option A): Q17 = A and Q18 = A as drafted, and decisions 14 (no ADR), 15 (an empty picker group is omitted) and 16 (a native open list may ignore the styling) confirmed. Status Approved; no text change |
 | 0.3.1 | 2026-11-10 | The maintainer ruled Q17 = A and Q18 = A (decisions 17 and 18, as drafted); both `[NEEDS CLARIFICATION]` markers are removed. No other change |
 | 0.3.0 | 2026-11-10 | Spec review round 2 (NEEDS REVISION, mechanical; 0 blocking, 3 major, 7 minor) fixed: the existing example that expects the label class `"c-select"` exactly is named and edited (M1; AC-4.6, Documents table); the 019 and 021 supersession names the frozen clauses that forbid editing `ItemTile.md` and `ItemPage.md` and expect a re-export (M2); AC-1.3 and AC-1.4 measure what can fail (the nav ends before the account menu; the fixed tab bar's last tab is inside the bar) (M3); 3.010:1; the cap's source order; AC-4.3 compares the font family too; AC-4.5 lists every select that must stay as it is; AC-7.4 allows an unrelated hit; the README's own "App additions (spec 057)" line. No round 3; the worker checked the edits |
 | 0.2.0 | 2026-11-10 | Spec review round 1 (NEEDS REVISION; 0 blocking, 3 major, 10 minor) fixed: the 300px cap is the location select's alone through `c-select--wide`, which makes one view line a change (M1; decisions 4 and 18, AC-4.4, AC-4.6); supersession of specs 019 and 021 recorded (M2); `ItemTile.md` added to the re-export files, with two more comments (M3, decision 12); the file counts; two more previews with the old navigation (decision 17); the guard spec's constraints; AC-2.3 reads `tokens.css`, unrounded, and AC-2.4 corrects the README's "≥6:1"; AC-5.3 and AC-5.4 use the 328px page container; decision 16 corrected; AC-1.2 gains `AppHeader.md`'s "four links" sentence; AC-1.3 and AC-1.4 use the app's own header and tab bar; the hosted-door line; two questions open (17, 18) |
