@@ -27,11 +27,15 @@ RSpec.describe ".claude/hooks/session-start.sh", type: :model do # rubocop:disab
     File.chmod(0o755, path)
   end
 
-  # A mise whose `exec -- COMMAND` runs COMMAND with a fake Ruby's directory first on the PATH.
-  def fake_mise(ruby_dir)
-    executable(File.join(ruby_dir, "ruby"), "echo fake ruby")
-    executable(File.join(dir, "brew/mise"), %(shift 2\nPATH="#{ruby_dir}:$PATH"\nexport PATH\nexec "$@"))
+  # A mise whose `exec -- COMMAND` runs COMMAND with a fake Ruby's directory first on the PATH. The fake Ruby
+  # answers any `ruby -e` with its version.
+  def fake_mise(ruby_dir, version: "4.0.7")
+    executable(File.join(ruby_dir, "ruby"), "echo #{version}")
+    executable(File.join(dir, "brew/mise"), %(shift 2\nPATH='#{ruby_dir}':"$PATH"\nexport PATH\nexec "$@"))
   end
+
+  # A mise that resolves no Ruby for the checkout: it runs COMMAND with the PATH it was given.
+  def mise_without_ruby = executable(File.join(dir, "brew/mise"), %(shift 2\nexec "$@"))
 
   def run_hook(env = {})
     Open3.capture3({ "PATH" => base_path, "HOME" => dir, "CLAUDE_PROJECT_DIR" => project,
@@ -74,11 +78,30 @@ RSpec.describe ".claude/hooks/session-start.sh", type: :model do # rubocop:disab
 
     it "quotes a Ruby directory that has spaces", :aggregate_failures do
       fake_mise(File.join(dir, "mise ruby/4.0.7 bin"))
+      _out, err, status = run_hook
+      ruby, path = ruby_after_sourcing
+
+      expect(status.success?).to be(true), err
+      expect(ruby).to eq("#{dir}/mise ruby/4.0.7 bin/ruby")
+      expect(path).to eq("#{dir}/mise ruby/4.0.7 bin:#{base_path}")
+    end
+
+    it "quotes a Ruby directory that has shell characters", :aggregate_failures do
+      fake_mise(File.join(dir, %(a "$HOME*b/bin)))
       run_hook
       ruby, path = ruby_after_sourcing
 
-      expect(ruby).to eq("#{dir}/mise ruby/4.0.7 bin/ruby")
-      expect(path).to eq("#{dir}/mise ruby/4.0.7 bin:#{base_path}")
+      expect(ruby).to eq(%(#{dir}/a "$HOME*b/bin/ruby))
+      expect(path).to eq(%(#{dir}/a "$HOME*b/bin:#{base_path}))
+    end
+
+    # Claude Code runs the session's commands in the user's shell, zsh on macOS.
+    it "writes a line that zsh sources too", :aggregate_failures, skip: ("zsh is not installed" unless system("command -v zsh >/dev/null 2>&1")) do
+      fake_mise(File.join(dir, "mise ruby/bin"))
+      run_hook
+      out, = Open3.capture3({ "PATH" => base_path }, "zsh", "-c", %(. "#{env_file}"; . "#{env_file}"; echo "$PATH"))
+
+      expect(out.strip).to eq("#{dir}/mise ruby/bin:#{base_path}")
     end
 
     it "adds the directory once when the hook runs again on resume or compact", :aggregate_failures do
@@ -96,11 +119,41 @@ RSpec.describe ".claude/hooks/session-start.sh", type: :model do # rubocop:disab
       expect(env_file_text).to eq("")
     end
 
-    it "writes nothing when the session's Ruby is already the one mise resolves", :aggregate_failures do
+    # The hook's PATH may differ from the session's commands' (their shell can reorder it), so it doesn't skip
+    # a Ruby the hook sees first: the line it writes does nothing when the directory is already first.
+    it "leaves the PATH as it is when the Ruby is already first", :aggregate_failures do
       fake_mise(File.join(dir, "mise-ruby/bin"))
-      _out, err, status = run_hook("PATH" => "#{dir}/mise-ruby/bin:#{base_path}")
+      path = "#{dir}/mise-ruby/bin:#{base_path}"
+      _out, err, status = run_hook("PATH" => path)
+      _ruby, after = ruby_after_sourcing(path: path)
+
+      expect(status.success?).to be(true), err
+      expect(after).to eq(path)
+    end
+
+    # with_mise drops mise's own directories from the PATH, so a mise that adds no Ruby leaves /usr/bin's:
+    # putting that first would turn the session's Ruby 3.x into 2.6.
+    it "writes nothing when mise resolves no Ruby, whatever the session had", :aggregate_failures do
+      mise_without_ruby
+      session_ruby = "#{dir}/.local/share/mise/installs/ruby/3.4.1/bin"
+      executable(File.join(session_ruby, "ruby"), "echo 3.4.1")
+      _out, err, status = run_hook("PATH" => "#{session_ruby}:#{base_path}")
+
       expect(status.success?).to be(true), err
       expect(env_file_text).to eq("")
+    end
+
+    it "writes nothing when mise's Ruby is not .ruby-version's", :aggregate_failures do
+      fake_mise(File.join(dir, "mise-ruby/bin"), version: "3.4.1")
+      _out, err, status = run_hook
+      expect(status.success?).to be(true), err
+      expect(env_file_text).to eq("")
+    end
+
+    it "succeeds when the env file can't be written", :aggregate_failures do
+      fake_mise(File.join(dir, "mise-ruby/bin"))
+      _out, _err, status = run_hook("CLAUDE_ENV_FILE" => File.join(dir, "no-such-dir/claude-env"))
+      expect(status.success?).to be(true)
     end
 
     it "writes nothing when mise has no Ruby for the checkout", :aggregate_failures do

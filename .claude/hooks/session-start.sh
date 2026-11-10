@@ -9,25 +9,35 @@
 # "Could not find 'bundler'" (#268's setup fix and #270's hook fix don't reach the model's own commands).
 set -euo pipefail
 
-cd "${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}" || exit 0
-
 if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
+  # A local session must never fail here: every step that can go wrong exits 0 and leaves the PATH alone.
+  cd "${CLAUDE_PROJECT_DIR:-.}" 2>/dev/null || exit 0
+  [ -n "${CLAUDE_ENV_FILE:-}" ] && [ -x script/worktree/with_mise ] && [ -f .ruby-version ] || exit 0
+  wanted="$(tr -d '[:space:]' < .ruby-version | sed 's/^ruby-//')"
   # Ask script/worktree/with_mise (which knows where mise lives, and drops mise's directories from the PATH
-  # so it can put them first) which `ruby` it resolves. With --optional, no mise means the session's own ruby,
-  # so CI runners, containers and any machine without mise get no change. Only Ruby's directory is added, not
-  # the other tools mise has (node, java): this is the Ruby 2.6 problem, not a toolchain switch.
-  [ -n "${CLAUDE_ENV_FILE:-}" ] && [ -x script/worktree/with_mise ] || exit 0
-  session_ruby="$(command -v ruby 2>/dev/null || true)"
-  mise_ruby="$(script/worktree/with_mise --optional sh -c 'command -v ruby' 2>/dev/null || true)"
+  # so it can put them first) which `ruby` it resolves, and its version, in one call. With --optional, no mise
+  # means the session's own ruby, so CI runners, containers and any machine without mise get no change. The
+  # version must be .ruby-version's: with_mise strips the session's own mise directories, so a mise that
+  # resolves no Ruby for the checkout leaves /usr/bin's, and putting that first would make things worse.
+  # MISE_EXEC_AUTO_INSTALL=0: a session start must not wait on a Ruby install (the check then finds no Ruby).
+  # Only Ruby's directory is added, not the other tools mise has (node, java): this is the Ruby 2.6 problem,
+  # not a toolchain switch.
+  found="$(MISE_EXEC_AUTO_INSTALL=0 script/worktree/with_mise --optional sh -c \
+    'r=$(command -v ruby) && printf "%s\n" "$r" && "$r" -e "print RUBY_VERSION"' 2>/dev/null || true)"
+  mise_ruby="$(printf '%s\n' "$found" | sed -n 1p)"
+  [ "$(printf '%s\n' "$found" | sed -n 2p)" = "$wanted" ] || exit 0
   case "$mise_ruby" in /*) ;; *) exit 0 ;; esac
-  [ "$mise_ruby" != "$session_ruby" ] || exit 0
   # The hook runs again on resume and compact; the line is written once, and is safe to source twice. It tests
   # for the directory *first* in the PATH, not anywhere in it: Orca's login shell keeps mise's directories
-  # behind /usr/bin (#268). %q quotes a directory with spaces or shell characters.
-  line="$(printf 'case ":$PATH:" in :%q:*) ;; *) export PATH=%q:"$PATH" ;; esac' "$(dirname "$mise_ruby")" "$(dirname "$mise_ruby")")"
-  grep -qxF "$line" "$CLAUDE_ENV_FILE" 2>/dev/null || echo "$line" >> "$CLAUDE_ENV_FILE"
+  # behind /usr/bin (#268), and the session's commands run in a shell whose PATH may differ from this hook's, so
+  # a Ruby this hook sees first is not skipped. %q quotes a directory with spaces or shell characters.
+  dir="$(dirname "$mise_ruby")"
+  line="$(printf 'case ":$PATH:" in :%q:*) ;; *) export PATH=%q:"$PATH" ;; esac' "$dir" "$dir")"
+  { grep -qxF "$line" "$CLAUDE_ENV_FILE" 2>/dev/null || echo "$line" >> "$CLAUDE_ENV_FILE"; } 2>/dev/null || true
   exit 0
 fi
+
+cd "${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel)}"
 
 RUBY_VERSION="$(tr -d '[:space:]' < .ruby-version | sed 's/^ruby-//')"
 export RBENV_ROOT="${RBENV_ROOT:-/opt/rbenv}"
