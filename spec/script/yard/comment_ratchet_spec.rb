@@ -145,6 +145,30 @@ RSpec.describe YardRatchet::Check, :git_sandbox, type: :model do # rubocop:disab
     expect(check).to be_ok
   end
 
+  def internal_source(tag)
+    "# Internal helpers.\n#{tag}class Internal\n  def a = 1\n\n  class Inner\n    def b = 1\n  end\nend\n"
+  end
+
+  it "doesn't judge the members of a class marked `@api private`, and judges them without the tag (AC-1.10, decision 3)", :aggregate_failures do
+    base_with("README.md" => "base")
+    write("lib/internal.rb", internal_source("# @api private\n"))
+
+    expect(check).to be_ok
+
+    write("lib/internal.rb", internal_source(""))
+
+    expect(offences(check)).to contain_exactly("lib/internal.rb:3: Internal#a has no comment (added)",
+                                               a_string_starting_with("lib/internal.rb:5: Internal::Inner has no comment (added)"),
+                                               "lib/internal.rb:6: Internal::Inner#b has no comment (added)")
+  end
+
+  it "covers the members of a class whose only comment is `@api private`, with no text (AC-1.10, decision 3)" do
+    base_with("README.md" => "base")
+    write("lib/internal.rb", "# @api private\nclass Internal\n  def a = 1\n\n  class Inner\n    def b = 1\n  end\nend\n")
+
+    expect(check).to be_ok
+  end
+
   it "judges a Struct.new or Data.define held in a constant as a class (decision 3)", :aggregate_failures do
     base_with("README.md" => "base")
     write("lib/pairs.rb", "# Pairs.\nmodule Pairs\n  Pair = Struct.new(:a) do\n    def twice = a * 2\n  end\nend\n")
@@ -352,6 +376,21 @@ RSpec.describe YardRatchet::Check, :git_sandbox, type: :model do # rubocop:disab
       write("lib/trio.rb", moved)
 
       expect(check).to be_ok
+    end
+
+    it "doesn't judge a method moved to another file of the same class with its text unchanged, and judges one edited on the way (decision 4)", :aggregate_failures do
+      base_with("lib/a.rb" => "# A.\nclass A\n  def x = 1\nend\n")
+      write("lib/a.rb", "# A.\nclass A\nend\n")
+      write("lib/a2.rb", "class A\n  def x = 1\nend\n")
+
+      result = check
+
+      expect(result).to be_ok
+      expect(result.lines.first).to include("Found no added or changed public code")
+
+      write("lib/a2.rb", "class A\n  def x = 2\nend\n")
+
+      expect(offences(check)).to eq([ "lib/a2.rb:2: A#x has no comment (changed)" ])
     end
 
     it "counts deleting a method's comment as changing it, and rewording a comment that keeps its summary as nothing (AC-2.7)", :aggregate_failures do
