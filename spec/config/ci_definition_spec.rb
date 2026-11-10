@@ -23,6 +23,18 @@ RSpec.describe "The CI definition", type: :config do # rubocop:disable RSpec/Des
     expect(yard).to be < lines.each_index.find { |i| i > lines.index("unless selection.group == :rspec") && lines[i] == "end" }
   end
 
+  it "runs the comment ratchet in bin/ci checks, directly after the YARD step and not with the RSpec group (spec 056 AC-4.1)", :aggregate_failures do
+    lines = Rails.root.join("config/ci.rb").readlines(chomp: true).map(&:strip)
+    yard = lines.index('step "Docs: YARD builds without warnings", "bin/yard doc --no-cache"')
+    ratchet = lines.index('step "Docs: new and changed public code has a comment", "ruby script/yard/comment_ratchet.rb"')
+    guarded = lines.index("unless selection.group == :rspec")
+
+    expect(ratchet).not_to be_nil
+    expect(ratchet).to eq(yard + 1)
+    expect(ratchet).to be > guarded
+    expect(ratchet).to be < lines.each_index.find { |i| i > guarded && lines[i] == "end" }
+  end
+
   it "lets a session run bin/ci and its groups without a permission prompt (AC-1.8)" do
     allowed = JSON.parse(Rails.root.join(".claude/settings.json").read).dig("permissions", "allow")
 

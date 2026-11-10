@@ -28,6 +28,7 @@ CI.run do
     step "Upgrade: released migrations unchanged", "ruby script/upgrade/guard.rb"
     step "Style: Ruby", "bin/rubocop"
     step "Docs: YARD builds without warnings", "bin/yard doc --no-cache"
+    step "Docs: new and changed public code has a comment", "ruby script/yard/comment_ratchet.rb"
     step "Security: Brakeman code analysis", "bin/brakeman --quiet --no-pager --exit-on-warn --exit-on-error"
     step "Security: Gem audit", "bin/bundler-audit"
     step "Security: Importmap vulnerability audit", "bin/importmap audit"

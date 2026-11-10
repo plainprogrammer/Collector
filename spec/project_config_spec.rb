@@ -58,9 +58,15 @@ RSpec.describe "Worktree project configuration" do
       expect(git_ignored?(".yardoc/checksums")).to be(true)
     end
 
+    # A fresh process, not this one: the suite's own process may have loaded YARD for other examples (spec 056's
+    # comment ratchet requires it in-process), and AC-3.7 is about what booting the app loads.
     it "keeps the extension and YARD out of the app's boot (AC-3.7)", :aggregate_failures do
+      out, err, status = Open3.capture3({ "RAILS_ENV" => "test" }, Rails.root.join("bin/rails").to_s, "runner", "print defined?(YARD).inspect",
+        chdir: Rails.root.to_s)
+
       expect(Rails.autoloaders.main.dirs).not_to include(a_string_starting_with(Rails.root.join("script").to_s))
-      expect(defined?(YARD)).to be_nil
+      expect(status.exitstatus).to eq(0), "the boot failed: #{err}"
+      expect(out).to eq("nil"), "booting the app loaded YARD (defined?(YARD) is #{out})"
     end
 
     it "is a development-only gem that nothing requires, which the image's bundle leaves out (AC-3.4, AC-3.5)", :aggregate_failures do
