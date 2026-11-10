@@ -12,4 +12,5 @@ A stats block with one stat, for pages where the export's four-up stats grid wou
 
 - One column, at most 240px wide on wide pages; below 640px of the page container it takes the full width. It never becomes a 2 × 2 grid.
 - The number is exact and uses `number_with_delimiter` ("1,204"); the small line qualifies it with the right plural ("1 printing", "2 printings").
-- Use it only while there is one stat worth showing; when more arrive, switch back to the plain `c-stats` grid.
+- Use it only while there is one stat worth showing; when more arrive, use `c-stats--three` for three and the plain `c-stats` grid for four.
+- For three stats use `c-stats c-stats--three` instead (three equal columns at every width; see `ItemPage`).

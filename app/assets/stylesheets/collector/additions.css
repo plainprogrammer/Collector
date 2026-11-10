@@ -1,5 +1,5 @@
-/* Collector app additions: patterns the export lacks (spec 004 FR-11), built only on tokens.
-   Documented in docs/design-system/components/; upstream them into the published design system. */
+/* Collector app additions: the project's own patterns on top of the export's components (spec 004 FR-11, spec 057
+   decision 12), built only on tokens. Documented in docs/design-system/components/. */
 
 /* ---------- Status message (live region under the header) ---------- */
 .c-status:empty { display:none; }
@@ -68,16 +68,17 @@
 .c-tile__add .c-btn { width:100%; justify-content:flex-start; }
 
 /* ---------- Image fit (spec 019): a card image is shown whole and in its own proportions inside its 63:88 slot ---------- */
-/* Overrides the export until the published design system fits images this way; then delete this block. Any leftover
-   shows the slot's surface-sunken ground. */
+/* Overrides the export's crop and stretch, which components.css still carries; this block is the rule (spec 057
+   decision 12). Any leftover shows the slot's surface-sunken ground. */
 .c-tile__media img, .c-item__image img { object-fit:contain; } /* the export crops with cover */
 img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches: the tag's height="34" beats aspect-ratio */
 .c-item__image { position:relative; } /* holds the missing-image fallback inside its own slot */
 
 /* ---------- Unowned tile (spec 021): a card you don't own keeps its image as supplied and is marked in words ---------- */
-/* Overrides the export, which fades the image and the missing-image fallback to 45%; once an export drops that fade,
-   delete the first rule. The marker is a c-tag on a second c-tile__meta row, so the tile is one line taller: the add
-   control goes to the foot of its cell and a row that mixes owned and unowned tiles keeps its buttons level. */
+/* Overrides the export, which fades the image and the missing-image fallback to 45% and still carries that rule; the
+   first rule here is what applies (spec 057 decision 12). The marker is a c-tag on a second c-tile__meta row, so the
+   tile is one line taller: the add control goes to the foot of its cell and a row that mixes owned and unowned tiles
+   keeps its buttons level. */
 .c-tile--owned-none .c-tile__media > img, .c-tile--owned-none .c-tile__missing { opacity:1; }
 .c-tilecell > .c-tile__add { margin-top:auto; }
 
@@ -121,6 +122,23 @@ img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches:
 .c-select select:focus-visible { outline:2px solid var(--focus); outline-offset:2px; }
 @media (pointer: coarse) { .c-select select { min-height:40px; } }
 
+/* ---------- Grouped select (spec 057): optgroup labels and options, in a form and in the filter bar ---------- */
+/* A group label is quiet text, not the browser's bold italic, and options keep ink on a raised ground in both themes.
+   Firefox's own stylesheet gives an optgroup a system font, which the options inside it would inherit, so its size and
+   family are set back to the select's with two longhands (never the shorthand, FR-4; AC-4.3). The browser or the phone
+   draws the open list: this applies where it is honoured and nothing relies on it (spec 057 decision 16). */
+.c-field select optgroup, .c-select select optgroup { color:var(--ink-muted); font-weight:600; font-style:normal; font-size:inherit; font-family:inherit; }
+.c-field select option, .c-select select option { color:var(--ink); background:var(--surface-raised); font-weight:400; }
+
+/* ---------- Location filter cap (spec 057 decision 4): 300px from a 640px collection, 220px below ---------- */
+/* At 220px a long selection clips its zone, the part that tells zones apart. On a phone the filter row scrolls sideways and
+   300px would push the Filter button off screen. Only the location select carries c-select--wide; the Set select on search
+   and the Language select on number entry stay at 220px (decision 18). The doubled class outranks `.c-select select` above
+   whatever the order. */
+@container collection (min-width: 640px) {
+  .c-select.c-select--wide select { max-width:300px; }
+}
+
 /* ---------- Pagination ---------- */
 .c-pager { display:flex; align-items:center; justify-content:center; gap:var(--space-3); margin:var(--space-6) 0; }
 .c-pager__position { font:400 13px/18px var(--font-mono); color:var(--ink-muted); }
@@ -140,6 +158,26 @@ img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches:
 .c-list .is-data { font-family:var(--font-mono); white-space:nowrap; }
 .c-list .c-tile__add .c-btn { width:auto; }
 @container page (max-width: 639px) { .c-stats--single { grid-template-columns:minmax(0, 1fr); max-width:none; } }
+
+/* ---------- Three-stat strip (spec 057): the card page's Owned, In decks and Free to use ---------- */
+/* Three equal columns at every width, because the labels fit at 360px. The export's narrow rules assume a two by two grid
+   (no left border on the third stat, a top border from the third stat on), so the strip restates them for three. With
+   "Est. value" back the page uses the plain four-up c-stats and drops this modifier (spec 057 decision 7). */
+.c-stats--three { grid-template-columns:repeat(3, minmax(0, 1fr)); }
+@container page (max-width: 639px) {
+  .c-stats.c-stats--three { grid-template-columns:repeat(3, minmax(0, 1fr)); }
+  .c-stats.c-stats--three .c-stat { padding:var(--space-3); border-top:0; }
+  .c-stats.c-stats--three .c-stat + .c-stat { border-left:1px solid var(--line); }
+}
+
+/* ---------- Header room for five links (spec 057 decision 19): the logo mark stands in for the wordmark from 640px to 719px ---------- */
+/* With five links the header overflows from 640px (the account menu ends 54.6px past the bar), and five links plus the wordmark
+   first fit at a 695px viewport; the mark leaves room until 720px. It applies only while the nav holds five or more links, so
+   today's four-link header keeps its wordmark. The two declarations are the phone rule's in components.css. */
+@media (min-width: 640px) and (max-width: 719px) {
+  .c-appbar:has(.c-appbar__nav > :nth-child(5)) .c-appbar__brand .c-appbar__wordmark { display:none; }
+  .c-appbar:has(.c-appbar__nav > :nth-child(5)) .c-appbar__brand .c-appbar__mark { display:block; }
+}
 
 /* ---------- Sortable table header (spec 006): a link, or a bulk-form button, with the order's arrow ---------- */
 .c-table__sort { display:inline-flex; align-items:center; gap:var(--space-1); padding:0; border:0; background:none;

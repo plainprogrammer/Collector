@@ -46,7 +46,7 @@ RSpec.describe "Design system files" do
 
     it "leaves the export's fade and its override as the only rules that fade, filter or blend anything on a tile (FR-3)" do
       # Comments are dropped first, so only a rule's own declarations are read. The first of the two is the export's
-      # (components.css); an export that drops the fade removes it, and this expectation is edited then.
+      # (components.css), which still carries the fade; the second is the override that applies (spec 057 decision 12).
       rules = root.glob("app/assets/stylesheets/**/*.css")
         .flat_map { |path| path.read.gsub(%r{/\*.*?\*/}m, "").scan(/([^{}]*c-tile[^{}]*)(\{[^}]*\})/) }
       treating = rules.map(&:last).grep(/opacity|filter|mix-blend-mode/)

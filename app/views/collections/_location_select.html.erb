@@ -1,5 +1,7 @@
 <%# locals: (listing:, form: nil) %>
-<%# The location filter (spec 037 decision 6): the design system's FilterSelect, all, none, then the account's locations. %>
-<label class="c-select"><span class="c-sr">Location</span><%= select_tag :location,
+<%# The location filter (spec 037 decision 6): the design system's FilterSelect, all, none, then the account's locations.
+    c-select--wide lifts its cap from 220px to 300px in a collection 640px wide or wider (spec 057 decision 4); the Set
+    select on search and the Language select on number entry are c-select too and stay at 220px (decision 18). %>
+<label class="c-select c-select--wide"><span class="c-sr">Location</span><%= select_tag :location,
       options_for_select([ [ "All locations", "" ], [ "No location", CollectionFilter::Place::NONE ], *listing.locations.map { [ it.name, it.id.to_s ] } ], listing.location),
       form:, id: nil %></label>

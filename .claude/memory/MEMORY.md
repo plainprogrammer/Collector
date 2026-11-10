@@ -43,7 +43,6 @@
 - [Spec 015 follow-ups](spec-015-followups.md) — PR #32 draft, CI green; unchecked: graceful restart, art matching on, focus rings; later spec: "Running." after a crash, "Attempts 0"
 - [CSS shell state by class](css-shell-state-by-class.md) — maintainer chose a layout-set class (`c-shell--footed`) over `:has()` (spec 018); a new body class breaks exact class-string assertions
 - [Browser spec image and window gotchas](browser-spec-image-and-window-gotchas.md) — card images via 127.0.0.1:9 + data: pictures (`spec/support/card_images.rb`); decode() vs load; around runs before driven_by; saved collection view; float noise; downloads to tmp/downloads (two Firefox prefs, synchronize(10)); default Capybara wait is 2 s; no async script calls in helpers (#127)
-- [Spec 019 follow-ups](spec-019-followups.md) — PR #66 draft (closes #35); owed: WebKit phone check; fade is #65; ImageFit to upstream; conflicts expected with the spec 018 PR
 - [Orca supervised stages](orca-supervised-stages.md) — as a dispatched worker: `orca orchestration ask` for decisions (30-minute cap: `--resume`, never re-ask; `check --ack`; `ask` has no `--task-id`, `--options` is one CSV, `check` takes `--terminal`), a Task may span spec to PR, heartbeat loop ended by a stop file, no orchestration messages for a pasted wrap
 - [Spec 017 follow-ups](spec-017-followups.md) — PR #68 draft, owed: rendered-doc read, checks, ADR 0020 and log row 32 at merge; import reads `format_version` first; locations make version 2
 - [Spec 022 follow-ups](spec-022-followups.md) — export merged (PR #97, 2026-10-15); open: More focus ring, menu stays open after download; import inherits no `generator`, id order, times without fraction
@@ -75,7 +74,8 @@
 - [Focus in system specs](focus-in-system-specs.md) — spec 047 (#182): server-named focus target + once-only Stimulus controller; have_css(":focus"), stale-mark waits, :focus-visible in headless Firefox
 - [Orca setup through mise](orca-setup-through-mise.md) — Orca's env carries the global mise Ruby; orca.yaml + post-checkout run `mise exec -- bin/setup` (#225); needs mise idiomatic_version_file_enable_tools to include ruby; a dirty Gemfile.lock in a fresh worktree means check that, never commit the checksum
 - [Watch #217 before closing](issue-217-watch.md) — backup smoke arm64 fix (#223) merged with Refs; close #217 after ~10 green Image (linux/arm64) runs on main since run 42285985125
-- [Design system owned in code](design-system-owned-in-code.md) — since 2026-11-09 no re-export or upstreaming; ignore CLAUDE.md/README "replaced wholesale"/"Upstream these" until #248 lands
+- [Design system owned in code](design-system-owned-in-code.md) — project's own in code since spec 057 (#248): additions.css + a component doc + a README line; no re-export, no upstreaming
 - [Design system before features](design-system-before-features.md) — settle and file design-system issues from reviewed mock-ups before a theme's feature issues
 - [2.0 milestone](milestone-2-0.md) — post-1.0 work goes on milestone #2 as stories; #258 deck checks early; #262 unplaced
 - [Brainstorm mock-ups with Collector CSS](brainstorm-mockups-with-collector-css.md) — visual companion serves /files/<basename>; copy CSS + fonts flat, rewrite font URLs; restart keeps the port
+- [Design system guard and RuboCop traps](design-system-guard-and-rubocop-traps.md) — additions.css blocks need their own (spec NNN) heading (guard spec counts); LeakyConstantDeclaration, DescribeClass, ExampleLength in new specs
