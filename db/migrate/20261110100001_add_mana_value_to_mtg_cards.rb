@@ -4,7 +4,7 @@
 # conversion. Reversible: SQLite copies the table to
 # remove the column, which is safe here because no foreign key points at mtg_cards (it only points at
 # catalog_identities), unlike the tables AddLocationToLots had to protect. if_not_exists guards a re-run of the up.
-class AddManaValueToMTGCards< ActiveRecord::Migration[8.1]
+class AddManaValueToMTGCards < ActiveRecord::Migration[8.1]
   def change
     add_column :mtg_cards, :mana_value, :float, if_not_exists: true
   end
