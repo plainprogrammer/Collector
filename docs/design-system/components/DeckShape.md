@@ -34,7 +34,7 @@ The `details` copy, shown below 640px of the page container, holds the same thre
 ```html
 <details class="c-shapefold">
   <summary><span class="c-shapefold__title">Deck shape</span><span class="c-shapefold__facts">Main · 60 cards · average mana value 2.3</span></summary>
-  <div class="c-shape c-shape--bare">…the three c-shape__parts…</div>
+  <div class="c-shape c-shape--bare">…the three c-shape__part blocks…</div>
 </details>
 ```
 

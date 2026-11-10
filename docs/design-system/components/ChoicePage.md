@@ -28,3 +28,4 @@ A detail page that asks for one choice from a short list, such as the condition 
 - Nothing is chosen at first, and Apply without a choice is refused by the browser; a refusal from the server re-renders the page with an alert message.
 - Apply is the only primary action; Cancel and the Back link return to the bulk table with the selection kept.
 - Keep the list short enough to read at once (about ten options); a longer list belongs in a `FilterSelect`.
+- `AddToDeck` is a variant: with one option, the option is chosen (spec 060 decision 14).

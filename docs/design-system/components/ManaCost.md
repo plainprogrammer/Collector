@@ -18,4 +18,5 @@ Collector's own mana display for Magic costs: coloured circles with a letter or 
 - **Sizes**: 20px inline (type lines, tables); `c-cost--lg` 24px next to a page title. Nothing smaller, so the letters stay at 12px or more.
 - **Our own design, not theirs**: plain circles, a letter, a flat fill. No sun, droplet, skull, flame or tree shapes, no bevels or shading.
 - **In Rails**, a `mana_cost("{3}{G}{G}")` helper should parse the card data's cost string into pips and build the `aria-label`.
+- The mana bar of `DeckShape` is where the Charts rule uses the `mana-*` fills (spec 060).
 - **Not designed yet**: hybrid (`{W/U}`), Phyrexian (`{G/P}`) and snow costs. Until they are, show those symbols as text in a `c-tag` (`{W/U}`) beside the pips.

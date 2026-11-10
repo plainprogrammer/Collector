@@ -24,7 +24,7 @@ The top bar on every page: logo, main navigation and the account menu; on phones
 - The current section gets a 2px `brand` underline and `ink` text; the others are `ink-muted`.
 - Profile, settings, import/export and sign-out live in the avatar menu, never in the main nav.
 - The logo swaps light/dark with `data-theme`; the wordmark shows on wide screens, the mark alone on phones, and the mark also stands in from 640px to 719px while the nav holds five or more links (above).
-- Below 640px (viewport) the nav hides, the mark replaces the wordmark and the icon-only `+` (`c-appbar__add`) appears; the page head's own buttons hide.
+- Below 640px (viewport) the nav hides, the mark replaces the wordmark and the icon-only `+` (`c-appbar__add`) appears; the page head's own buttons hide (except the Decks page's New deck, spec 060 decision 24).
 - On a shared instance the avatar shows whose collection you are in.
 - It is sticky at the top, 56px tall; anything else sticky sits below it.
 - On detail pages (`c-appbar--detail`) phones show a back arrow (`c-appbar__back`) instead of the logo, and the `+` is left out because the page has its own primary action.
