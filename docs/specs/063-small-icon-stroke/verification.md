@@ -63,4 +63,16 @@ Maintainer's visual review: pending (asked before the pull request is marked rea
 
 ## Implementation review
 
-(To be recorded by `sdd-review` Mode B.)
+**SPEC-ALIGNED WITH MINORS** (Opus, read-only, `sdd-review` Mode B, 2026-11-10; 0 blocking, 0 major, 5 minor). It confirmed from the repo: the CSS block's selectors cover every component that draws a stroked icon below 20px and none of `spec/design_system_files_spec.rb`'s block guards matches it; `git diff main...HEAD -- app` is `additions.css` alone and `app/views/icons` is unchanged; 27 previews link `additions.css` (only `Cover` and `ManaCost` don't, and neither draws a stroked icon) and the 195 attributes are all `"1.5"`; no document still says "1.5px stroke" or `stroke-width="2"`; each example of `icon_stroke_spec.rb` fails before the CSS and passes after, with no silent-pass path (every selection and page must be non-empty).
+
+The minors and what was done:
+
+1. The README said the stroke is `30 ÷ size` "in px", which reads as the stroke being in px: now "`30 ÷ size`, with the size in px, rounded to a half" (taken).
+2. The README had no "App additions (spec 063)" line, as every spec that adds rules to `additions.css` has: added (taken).
+3. AC-1.6 is tested for "no stroke" only, not "drawn as before": the badge shots (`badges-*`) show the star in place and at its size; no change to the star's rule exists in the diff (recorded, not tested further: the star is `fill="currentColor"` and no rule here sets its size).
+4. The maintainer's AC-1.7 review is still pending (above); recorded when given.
+5. The table's "Set" header is clipped to "Sei" in `tablerow-*.jpg`, before and after alike: not this branch's doing (cause not investigated), reported to the coordinator as a possible issue, not changed here.
+
+## Distilled
+
+2026-11-10, by `distill-feature` before the merge: the rules of spec 063 are in `docs/design-system/README.md` (Iconography, and the App additions line for `additions.css`), which is the area doc of the design system (it has no Sources table or Distillation log; the Iconography bullet and the App additions line name spec 063). `docs/architecture/README.md`'s list of what the design-system docs cover names spec 063. The index row reads Frozen with the plan owed a retirement after the merge; the spec's header carries its frozen line. Lesson: `docs/lessons/2026-11-10-nine-previews-did-not-load-additions-css.md`.
