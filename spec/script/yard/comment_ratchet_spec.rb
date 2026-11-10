@@ -374,6 +374,28 @@ RSpec.describe YardRatchet::Check, :git_sandbox, type: :model do # rubocop:disab
       expect(offences(check)).to contain_exactly(a_string_starting_with("lib/dup_a.rb:1: Dup has no comment (changed)"))
     end
 
+    # A new class defined in two files is judged once and passes if any definition has a summary, whichever file YARD
+    # reads last (decision 4): YARD's own docstring for it is the last definition's.
+    {
+      "the summary first" => [ "lib/a.rb", "lib/b.rb" ], "the summary last" => [ "lib/b.rb", "lib/a.rb" ]
+    }.each do |order, (summary_file, tags_file)|
+      it "passes a new class whose summary is in one of its two files, with #{order} (decision 4)" do
+        base_with("README.md" => "base")
+        write(summary_file, "# Foo summary.\nclass Foo\nend\n")
+        write(tags_file, "# @see file:x.md\nclass Foo\nend\n")
+
+        expect(check).to be_ok
+      end
+    end
+
+    it "fails a new class defined in two files when neither definition has a summary, reporting it once (decision 4)" do
+      base_with("README.md" => "base")
+      write("lib/a.rb", "# @see file:x.md\nclass Foo\nend\n")
+      write("lib/b.rb", "class Foo\nend\n")
+
+      expect(offences(check)).to contain_exactly(a_string_matching(/\Alib\/[ab]\.rb:\d: Foo has no comment \(added\)/))
+    end
+
     it "doesn't judge a namespace a new file reopens (AC-1.13)", :aggregate_failures do
       base_with("lib/collector/other.rb" => other)
       write("lib/collector/thing.rb", "module Collector\n  # Does a thing.\n  class Thing\n  end\nend\n")
