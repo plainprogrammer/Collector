@@ -7,6 +7,7 @@
 **Branch:** `056-yard-comment-ratchet`
 **Issue:** [#264](https://github.com/plainprogrammer/Collector/issues/264), the follow-up to [#103](https://github.com/plainprogrammer/Collector/issues/103) (spec 054, [ADR 0027](../../adr/0027-yard-for-api-documentation.md)). The maintainer asked for this spec on 2026-11-09
 **ADR:** open (OD6)
+**Frozen:** the current rules are in [`release-and-deploy.md`](../../architecture/release-and-deploy.md) (whole spec); see the [specs index](../README.md)
 
 ---
 
