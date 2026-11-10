@@ -193,6 +193,15 @@ RSpec.describe YardRatchet::Check, :git_sandbox, type: :model do # rubocop:disab
     expect(lines.join("\n")).not_to include("lib/ignored.rb")
   end
 
+  it "doesn't take a tracked symlink to a scoped file for a changed file (AC-1.12)" do
+    base_with("lib/real.rb" => "class Real\n  def go = 1\nend\n")
+    root.join("lib/link.rb").make_symlink("real.rb")
+    commit_all("a link")
+    run_git("update-ref", "refs/remotes/origin/main", "HEAD")
+
+    expect(check).to be_ok
+  end
+
   it "passes, and says it found no changed code, when the branch changes nothing (AC-2.1)", :aggregate_failures do
     base_with("lib/old.rb" => "class Old\n  def go = 1\nend\n")
 
