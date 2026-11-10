@@ -1,6 +1,6 @@
 # Verification: spec 057, design system deck rules, navigation and pickers
 
-**Spec:** [spec.md](spec.md) 1.1.0 | **Plan:** [plan.md](plan.md) | **Issue:** [#248](https://github.com/plainprogrammer/Collector/issues/248)
+**Spec:** [spec.md](spec.md) 1.1.0 | **Plan:** plan (retired in `20bb951812466842686dc4333a8bf504b22306ba`; read it with `git show 20bb951812466842686dc4333a8bf504b22306ba^:docs/specs/057-deck-design-rules/plan.md`) | **Issue:** [#248](https://github.com/plainprogrammer/Collector/issues/248)
 **Recorded:** 2026-11-10, on branch `057-deck-design-rules` after merging `origin/main` (b0e699d3).
 
 ## Browser and unit criteria (RSpec, headless Firefox)
