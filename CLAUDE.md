@@ -55,6 +55,7 @@ Ruby 4.0.7, Rails 8.1.4, SQLite in every environment (including production), Hot
 
 ## Claude Code Hooks (`.claude/settings.json`)
 
+- At session start in a local session (an Orca worker's too): `.claude/hooks/session-start.sh` puts `.ruby-version`'s Ruby first on the PATH of the session's commands through `$CLAUDE_ENV_FILE`, found with `script/worktree/with_mise --optional`, so a bare `ruby` and `bundle` are 4.0.7 and not macOS's 2.6 (#289); with no mise (CI, containers) it changes nothing, and cloud sessions keep the rbenv path.
 - After editing a Ruby file: `bin/rubocop -a` runs on that file; remaining offenses are reported back.
 - Before `git commit`: RuboCop on staged Ruby files + Brakeman; failures block the commit.
 - Before `git push`: `.claude/hooks/pre_push_ci.rb` (Ruby, no `jq`) runs `bin/ci checks`, skipping RSpec, when the branch is documentation-only and the command is a plain push of the current branch; otherwise, or whenever it can't tell, the full `bin/ci`. It prints which it ran and why; failure blocks the push (spec 035 decision 3, Story 3). Documentation-only means every path the branch changed since its merge base with `origin/main` (both names of a rename) is under `docs/` or is a `.md` file outside `app/`, `bin/`, `config/`, `db/`, `lib/`, `script/`, `spec/` and `vendor/`, and none is under `docs/export-format/` or `.claude/hooks/` or is `.claude/settings.json` or `.claude/settings.local.json`. The rules are code in `lib/collector/push_scope.rb`.
