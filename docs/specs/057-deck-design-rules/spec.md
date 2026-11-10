@@ -7,6 +7,7 @@
 **Depends on:** [the decks and locations issue design](../../superpowers/specs/2026-11-09-decks-and-locations-issues-design.md) (decisions 9, 14–16 and 18), [spec 029](../029-manage-locations/spec.md) (the header's links, Locations), [spec 037](../037-filter-collection-by-location/spec.md) (the collection's location filter), all merged
 **Branch:** `057-deck-design-rules`
 **Issue:** [#248](https://github.com/plainprogrammer/Collector/issues/248) (roadmap item 14a)
+**Frozen:** the current rules are in the [design system](../../design-system/README.md) and its component docs (whole spec: the deck rules, navigation, pickers, the card page's stats and the CSS in `additions.css`), and in [`catalog-core.md`](../../architecture/catalog-core.md) and [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (parts: decision 12's wording); see the [specs index](../README.md)
 
 ---
 
