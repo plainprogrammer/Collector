@@ -114,12 +114,12 @@ RSpec.describe "A table row's place line", type: :system do
     end
 
     it "wraps a line wider than its room at a phone's 360px content width, with no sideways scroll and no place", :aggregate_failures do # spec 061 AC-1.1, AC-1.2
-      owned_printing("Lightning Bolt", account: user.account, set: create(:catalog_set, code: "pmh3a"), number: "146", quantity: 9_999, finish: "foil", condition: "near_mint")
+      owned_printing("Lightning Bolt", account: user.account, set: create(:catalog_set, code: "plst"), number: "PCY-132", quantity: 9_999, finish: "etched", condition: "near_mint")
       visit table_path
       expect(open_in_narrow_frame(table_path, width: 360, ready: "tbody tr")).to eq([ 360, true ])
       within_narrow_frame do
         expect(page).to have_no_css("th", text: "Location", visible: :all)
-        expect(find(".c-table__sub", visible: :visible).text).to end_with("PMH3A · 146 · Foil · NM · EN")
+        expect(find(".c-table__sub", visible: :visible).text).to end_with("PLST · PCY-132 · Etched · NM · EN")
       end
       seen = line_measures
       expect(seen[:height]).to be >= 20
