@@ -13,6 +13,59 @@ RSpec.describe Lot, type: :model do
     end
   end
 
+  describe "a lot's place or zone (spec 062 AC-5.3, AC-5.4, AC-6.12)" do
+    let(:izzet) { create(:deck, account:) }
+    let(:main) { izzet.zone("main") }
+    let(:place) { create(:location, account:, name: "Binder") }
+
+    def lot_in(location) = described_class.new(account:, entry:, quantity: 1, location:)
+
+    it "is valid in a zone, in a place or nowhere, and invalid in a deck's own row (AC-5.3)", :aggregate_failures do
+      expect([ lot_in(main), lot_in(place), lot_in(nil) ]).to all(be_valid)
+      deck_row = lot_in(izzet.location)
+      expect(deck_row).not_to be_valid
+      expect(deck_row.errors[:location]).to eq([ "isn't one of your locations" ])
+    end
+
+    it "is invalid in another account's place, deck or zone (AC-5.3)", :aggregate_failures do
+      theirs = create(:deck, account: create(:user).account, name: "Theirs")
+      stranger = create(:location, account: theirs.account)
+
+      [ stranger, theirs.location, theirs.zone("main") ].each do |location|
+        lot = lot_in(location)
+        expect(lot).not_to be_valid
+        expect(lot.errors[:location]).to eq([ "isn't one of your locations" ])
+      end
+    end
+
+    it "refuses to add copies to a deck's own row, writing nothing (AC-5.3)", :aggregate_failures do
+      expect { described_class.add!(account:, entry:, location: izzet.location) }.to raise_error(ActiveRecord::RecordInvalid)
+      expect(described_class.count).to eq(0)
+    end
+
+    it "says where it is: nil unplaced, the place's name, or `Deck › Zone` (AC-5.4)", :aggregate_failures do
+      expect(lot_in(nil).place_label).to be_nil
+      expect(lot_in(place).place_label).to eq("Binder")
+      expect(lot_in(main).place_label).to eq("Izzet Tempo › Main")
+    end
+
+    it "keys a lot in a zone by the zone's id, in the form a place's has (AC-6.12)", :aggregate_failures do
+      lot = described_class.add!(account:, entry:, location: main)
+
+      expect(lot.lot_key).to eq("|||#{main.id}")
+      expect(described_class.key_for("foil", "near_mint", 150, main.id)).to eq("foil|near_mint|150|#{main.id}")
+      expect(described_class.key_for(nil, nil, nil, place.id)).to eq("|||#{place.id}") # a place's form: the id, never a name
+    end
+
+    it "keeps copies in two zones of one deck as two lots, and merges copies added to one zone", :aggregate_failures do
+      described_class.add!(account:, entry:, location: main, quantity: 1)
+      described_class.add!(account:, entry:, location: main, quantity: 2)
+      described_class.add!(account:, entry:, location: izzet.zone("sideboard"), quantity: 4)
+
+      expect(account.lots.pluck(:quantity, :location_id)).to contain_exactly([ 3, main.id ], [ 4, izzet.zone("sideboard").id ])
+    end
+  end
+
   describe ".add! in a place (spec 032)" do
     let(:blue) { create(:location, account:) }
     let(:box) { create(:location, account:) }

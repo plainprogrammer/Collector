@@ -1,6 +1,10 @@
 # Copies of one catalog entry with the same finish, condition, price paid and location, owned by an account
 # (spec 004 FR-6; the location is part of the identity, spec 032, ADR 0025). Finish and condition are values the collectible's vocabulary defines
 # (Catalog.collecting_for); the core doesn't interpret them.
+#
+# A lot sits in a place or in a zone of a deck (spec 062, ADR 0028), never in a deck's own row: a deck holds copies only through
+# its zones. The database can't state that (a foreign key names the table, and SQLite would need a trigger to look at the
+# row's kind), so `location_is_the_accounts` does. A zone's id is part of the identity exactly as a place's is.
 class Lot < ApplicationRecord
   MAX_QUANTITY = 9_999
   FULL_MESSAGE = "One lot can hold at most 9,999 copies.".freeze
@@ -68,6 +72,12 @@ class Lot < ApplicationRecord
     raise ActiveRecord::RecordInvalid, self
   end
 
+  # Where the lot is, for people: nil when unplaced, the place's name, or "Deck › Zone" for a zone. The one reader of a lot's
+  # place label (spec 062 decision 6); a list preloads `location: :parent` so it costs no query per lot.
+  #
+  # @return [String, nil]
+  def place_label = location&.label
+
   def price_paid = price_paid_cents && format("%.2f", price_paid_cents / 100r)
 
   def vocabulary = Catalog.collecting_for(entry.collectible_type)
@@ -82,7 +92,7 @@ class Lot < ApplicationRecord
     end
 
     def location_is_the_accounts
-      errors.add(:location, "isn't one of your locations") if location && location.account_id != account_id
+      errors.add(:location, "isn't one of your locations") if location && (location.account_id != account_id || location.deck?)
     end
 
     def condition_known
