@@ -94,7 +94,7 @@ Recorded as the plan listed them, not hidden:
 - YARD attaches a comment that has one blank line before the `def`, which the extent doesn't include, so removing such a comment goes unjudged.
 - A method made public with no edit to its text (moved above `private`) is judged, because it is no longer exempt in the base; a method moved between files of the same class is not judged.
 - An alias's extent is one line.
-- A method that is private by the `private` keyword and also carries a `@!visibility private` comment is judged; and a free-standing `# @!visibility private` (a blank line before the next `def`) makes the methods after it private, so they are exempted without the keyword.
+- A method that is private by the `private` keyword and also carries a `@!visibility private` comment is judged. (An earlier version of this line said a free-standing `# @!visibility private`, a blank line before the next `def`, exempts the methods after it; probed in a throwaway repository, both methods were judged.)
 - A compact `class A::B` with no comment gets the namespace hint though no enclosing comment exists to blame.
 - The check's own `git` calls use the developer's global Git configuration, so a global `core.excludesFile` can hide an untracked file from it. The spec's in-process examples likewise make their own Git calls with the developer's global configuration (only the `run_git` helper is isolated), so such a setting could hide an untracked file from AC-1.12's example.
 - A file that Ripper accepts and that YARD drops with something other than the exception the after-parse callback catches is not known to be caught; no such case has been found.
