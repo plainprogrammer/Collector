@@ -1,6 +1,6 @@
 # Verification: spec 063, small icons keep their weight (#294)
 
-**Spec:** [spec.md](spec.md) 0.3.0 | **Plan:** [plan.md](plan.md) | **Branch:** `063-small-icon-stroke`
+**Spec:** [spec.md](spec.md) 0.3.0 | **Plan:** plan (retired in `375c33e05e502eec749f84a1cafa9b0d79b00ba1`; read it with `git show 375c33e05e502eec749f84a1cafa9b0d79b00ba1^:docs/specs/063-small-icon-stroke/plan.md`) | **Branch:** `063-small-icon-stroke`
 **Commits:** `9a91d4d6` (the red example), `c2b9badd` (the CSS block), `cdccb7d9` (README, TabBar.md, Badge.md), `fa1fb683` (nine previews load `additions.css`)
 
 ## Acceptance criteria

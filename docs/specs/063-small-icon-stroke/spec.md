@@ -8,6 +8,7 @@
 **Branch:** `063-small-icon-stroke`
 **Issue:** [#294](https://github.com/plainprogrammer/Collector/issues/294) (design-system lane)
 **Frozen:** the current rules are in [`design-system/README.md`](../../design-system/README.md) (whole spec); see the [specs index](../README.md)
+**Plan:** retired in `375c33e05e502eec749f84a1cafa9b0d79b00ba1`; read it with `git show 375c33e05e502eec749f84a1cafa9b0d79b00ba1^:docs/specs/063-small-icon-stroke/plan.md`
 
 ---
 
