@@ -7,6 +7,7 @@
 **Depends on:** [spec 057](../057-deck-design-rules/spec.md) (the deck rules, the Charts rule, the Decks vocabulary, grouped pickers), [spec 058](../058-mtg-mana-value/spec.md) (the mana value the curve expects), both merged; [the decks and locations issue design](../../superpowers/specs/2026-11-09-decks-and-locations-issues-design.md) (decisions 4, 7, 9 to 13, 15 to 17)
 **Branch:** `060-deck-components`
 **Issue:** [#249](https://github.com/plainprogrammer/Collector/issues/249) (roadmap item 14b)
+**Frozen:** the current rules are in the [design system](../../design-system/README.md) and its component docs (whole spec: the deck components, their previews and the CSS in `additions.css`); see the [specs index](../README.md)
 
 ---
 
