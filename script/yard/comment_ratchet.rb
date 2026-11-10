@@ -183,8 +183,11 @@ module YardRatchet
     private_class_method :extent
 
     # Not judged (decision 3): non-public objects, `@api private`, attribute methods and `initialize`. A
-    # `@!visibility private` directive makes YARD call a method private, but it is not an exemption: only the
-    # `private` keyword is, and `@api private` is the mark.
+    # `@!visibility private` directive makes YARD call a method private, but it is not an exemption: the `private`
+    # keyword is, and `@api private` is the mark. A method with both the keyword and the directive is judged (a known
+    # limit: YARD reports one visibility for it, and the directive's text is what tells the two apart).
+    # `@api private` on a class or module reaches its members and nested classes, because YARD's `tag` looks the tag
+    # up through the enclosing namespaces, so they are exempt too without a mark of their own.
     def self.exempt?(object)
       return true if object.tag(:api)&.text == "private"
       return true if object.visibility != :public && !object.docstring.all.match?(/^\s*@!visibility\s+private\b/)
