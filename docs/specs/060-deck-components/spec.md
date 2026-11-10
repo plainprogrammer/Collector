@@ -1,0 +1,281 @@
+# Feature 060: Design System: Deck Components and Previews
+
+**Status:** Draft (awaiting the maintainer's rulings on decisions 1 to 17)
+**Version:** 0.1.0
+**Created:** 2026-11-10
+**Last Updated:** 2026-11-10
+**Depends on:** [spec 057](../057-deck-design-rules/spec.md) (the deck rules, the Charts rule, the Decks vocabulary, grouped pickers), [spec 058](../058-mtg-mana-value/spec.md) (the mana value the curve expects), both merged; [the decks and locations issue design](../../superpowers/specs/2026-11-09-decks-and-locations-issues-design.md) (decisions 4, 7, 9 to 13, 15 to 17)
+**Branch:** `060-deck-components`
+**Issue:** [#249](https://github.com/plainprogrammer/Collector/issues/249) (roadmap item 14b)
+
+---
+
+## Changelog
+
+| Version | Date | Change |
+|---------|------|--------|
+| 0.1.0 | 2026-11-10 | First draft, from issue #249 and its comment (spec 057's leftovers), the issue design, spec 057 and its verification record, and mock-ups drawn with the real Collector CSS (the 2026-11-09 mock-ups are not in the repository, so deck page option B and curve option B were redrawn from the issue text). Seventeen decisions are open, each sent to the coordinator as a separate question with options and a recommendation; the recommended option is written below as the draft text |
+
+## Problem Statement
+
+Decks are the next theme of 1.0, and the deck issues ([#49](https://github.com/plainprogrammer/Collector/issues/49) first, then [#253](https://github.com/plainprogrammer/Collector/issues/253), [#254](https://github.com/plainprogrammer/Collector/issues/254), [#255](https://github.com/plainprogrammer/Collector/issues/255), [#256](https://github.com/plainprogrammer/Collector/issues/256), [#257](https://github.com/plainprogrammer/Collector/issues/257)) each build a view. Spec 057 wrote the rules those views follow (the Decks words, the Charts rule, grouped pickers, navigation), but the components themselves do not exist yet: there is no deck shape panel (a mana curve, counts by type, a coloured-mana bar), no way to mark a proxy without colour, no deck page layout, no list of decks, and no page for adding a card to a deck or for replacing a proxy with a copy. An agent building #49 would invent them, and the first invention would become the pattern.
+
+This spec draws them, with the real CSS, before any view is built: six component documents, the CSS they need in `additions.css`, and a preview of each at desktop and phone width in both themes. It changes documents, one stylesheet and the previews. It changes no view, helper, model, route, query, export or migration.
+
+> **Terms.** A *zone* is a named part of a deck (Main, Sideboard, Considering). A *proxy* is a stand-in for a card the collector does not own, recorded against a deck zone. The *shape panel* is `DeckShape`: the curve, the card types and the coloured mana symbols of a deck's Main (and Commander) zone. The *page container* is `.c-page`, whose width the page's own layout answers to (`@container page`). The full vocabulary is the README's Decks section (spec 057 FR-3).
+
+## Goals
+
+- Six components are documented in `docs/design-system/components/` with the markup an agent copies and the rules it must keep: `DeckShape`, `ProxyTag`, `DeckPage`, `DecksIndex`, `AddToDeck`, `UseMyCopy`.
+- The CSS they need exists in `collector/additions.css`, in tokens and `c-*` classes only, each rule under its own `(spec 060 …)` heading, and is proved in a browser.
+- Each component is previewed in HTML at 1280px and 390px in light and dark, and listed in the README's Components section.
+- The leftovers of spec 057 on the issue are done: `c-split` is out of the README's Components list, the preview icons share the app's stroke (decision 16), and the stale indentation in the card page previews is tidied.
+
+## Non-Goals
+
+- Any view, helper, route, model, query, export or migration: the first deck view is [#49](https://github.com/plainprogrammer/Collector/issues/49). `DeckShape` names the data it expects (`mtg_cards.mana_value`, spec 058) and builds nothing that reads it.
+- How "6+" and half mana values fall into the seven curve columns, which faces of a double-faced card count, the order of the card types, and hybrid and Phyrexian symbols in the mana bar: the shape panel's issue ([#256](https://github.com/plainprogrammer/Collector/issues/256), the issue design's "Left to each issue's spec"). `DeckShape` draws the seven columns, the type counts and the symbol counts it is given.
+- What a lot count takes from when the collector asks for fewer copies than are free (`AddToDeck`), what changing or removing a proxy does, and the proxy's own pages: [#254](https://github.com/plainprogrammer/Collector/issues/254), [#255](https://github.com/plainprogrammer/Collector/issues/255), [#257](https://github.com/plainprogrammer/Collector/issues/257). This spec draws where those actions sit and the two replace actions' names.
+- Format rules beyond the per-card legality marker (deck size, copy limits): the 2.0 milestone.
+- A token change (`tokens.json`, `tokens.css`).
+- A new ADR (decision 18).
+
+## Decisions
+
+The maintainer decides each of decisions 1 to 17 from the mock-ups (screenshots in the questions; the final ones go in the PR). **The text of each is the recommended option, written as the draft, and is marked `[NEEDS CLARIFICATION]` until ruled.** Decisions 18 to 22 are my calls, for Gate A to confirm.
+
+1. **The hatch for proxies in the curve** `[NEEDS CLARIFICATION: decision 1]`. A diagonal 45° hatch of `line-strong` lines, 1.5px wide every 5px, on `surface-raised`, with a 1px `ink-muted` outline, stacked on top of the solid `ink-muted` owned part (issue design decision 11). Alternatives drawn: a denser diagonal (1px/3px), a cross-hatch, dots.
+2. **Card types: one count and a muted proxy suffix** `[NEEDS CLARIFICATION: decision 2]`. Each type is a row: its name, its count (owned plus proxy, in `data` mono), and, when it has proxies, a muted "N proxy". Alternative drawn: two columns, Owned and Proxy.
+3. **Mana bar caption carries the counts** `[NEEDS CLARIFICATION: decision 3]`. "Blue 44 · 73% · Red 16 · 27%": the colour, its symbol count and its percentage, so a segment too narrow for its label still has its count (the Charts rule). Alternative: percentages only ("Blue 73% · Red 27%", the issue design's wording).
+4. **Mana bar rules** `[NEEDS CLARIFICATION: decision 4]`. Segments always in W U B R G order; a segment under 10% of the symbols drops the label inside it (the server sets `c-manabar__seg--narrow`; no JavaScript) and the caption carries it; only W, U, B, R and G are drawn, never generic or colourless symbols.
+5. **ProxyTag** `[NEEDS CLARIFICATION: decision 5]`. A 20px tag, `radius-sm`, a 1px **dashed** `ink-muted` border, text `ink`, "Proxy" in sans 600 and the count in mono: "Proxy 2". It is the same tag in the Proxy column, on the phone's line under a card's name and in the Decks list. It reads without colour: the shape and the word carry it. Alternatives drawn: the tag in mono with a `line-strong` border; the number alone inside the dashed box in the Proxy column.
+6. **The panel stacks above the zones below 992px of the page container** `[NEEDS CLARIFICATION: decision 6]`. Measured on the real CSS: with the issue design's 640px the two columns start at a 719px window with a 289px zone column, and a zone table only gets its wide layout (Owned and Proxy columns, which `CollectionTable`'s pattern shows from 640px of its own container) from a window of about 1071px, so between them a phone-layout table sits beside a 320px panel and the zone's counts are cut. 992px is the table's 640px, the panel's 320px and the 32px gap (`space-8`). This replaces the 640px that the issue design marked as its author's call (decision 10); the same decision's panel position (sticky right column) stands. Alternatives: 640px as the issue design says, 900px.
+7. **A stacked panel on a phone is a closed `details` above the zones** `[NEEDS CLARIFICATION: decision 7]`. When the panel stacks it is about 640px tall, so a collector on a phone would scroll about 800px to the first card. Below the breakpoint the panel sits above the zones as a native `<details>` (works without JavaScript, as the design system's menus do), closed, its summary "Deck shape" with "Main · 60 cards · average mana value 2.3" and Show or Hide. Alternatives: above and open (the issue design), below the zones. Whether the closed form applies to every stacked width or to phones only is the plan's call from the shots; the draft applies it below 640px of the page container and shows the open panel from 640px to the breakpoint.
+8. **The legality marker shows exceptions only** `[NEEDS CLARIFICATION: decision 8]`. A card that is not legal in the deck's format (Banned, Restricted, Not legal) gets the card page's `c-legal c-legal--no` marker, a cross and the word, after its name; a legal card has no marker, and a format with no rules has none at all. Alternative: a Legality column with Legal on every row.
+9. **Phone columns of a zone table** `[NEEDS CLARIFICATION: decision 9]`. Below 640px of the table's container: Card (name, then `set · number`, the Proxy tag and any legality marker on the line under it), Cost, Total (and the row's menu, decision 17). Owned and Proxy fold into the tag and the Total. Alternative: Card and Total only, with the cost on the line under the name.
+10. **The deck page's heads** `[NEEDS CLARIFICATION: decision 10]`. The page head is `c-item__head`'s pattern: the deck's name, a muted line "Modern · 69 cards · 58 owned · 11 proxy", the actions "Edit deck" (secondary) and a "…" `Menu` ("Change format", then "Remove deck", danger, last). A zone's head is `c-section__head`: the zone's name, "60 cards · 52 owned · 8 proxy" and "Add a proxy" (ghost, small, with a plus) at the end; below 640px the counts take their own line (a cut count is information lost). An empty zone says "No cards in Sideboard yet." Alternative: no "Edit deck" button (rename and change format only in the menu).
+11. **DecksIndex is a table** `[NEEDS CLARIFICATION: decision 11]`. A `c-table` in `.c-collection`: Deck (the name as `TableItemLink`), Format, Cards, Owned, Proxy (the tag, or a muted dash). Below 640px Deck folds the format, the owned count and the proxy tag into its line and Cards stays. Alternative: `c-list` rows like Locations.
+12. **"Cards" counts every zone** `[NEEDS CLARIFICATION: decision 12]`. In the Decks list and the deck page's head "cards" is owned plus proxy in every zone, Considering included (copies in Considering are in the deck, README Decks section), so owned and proxy always add up to cards. The shape panel and each zone's head name their own zone. Alternative: Main and Commander only.
+13. **New deck is a form above the list** `[NEEDS CLARIFICATION: decision 13]`. As the Locations page adds a place: Name, Format (a native select), "Add deck", above the list. Alternative: a "New deck" button opening its own page.
+14. **AddToDeck preselects the only option** `[NEEDS CLARIFICATION: decision 14]`. The page is a `ChoicePage` variant: "Add Lightning Bolt to a deck"; "Deck and zone", one native select whose options are "Deck › Zone" under a "Decks" group (spec 057 decision 2's shape, with no "Places" group because only zones can be chosen); "How many" (a number field, 1); "What to use": "My copies (3 free: 2 in Blue binder, 1 in Red box)", shown only when copies are free, and "A proxy of 2X2 · 117 foil". With two options nothing is chosen at first and the page refuses a submission without a choice; with one (no copy is free) it is already chosen.
+15. **UseMyCopy: pick one lot, then how many** `[NEEDS CLARIFICATION: decision 15]`. "Use my copy of Lightning Bolt", a line naming the proxy row (deck › zone, printing, finish, the proxy count); the free copies as radios grouped "This printing" then "Other printings", each lot's `set · number`, finish, condition, place and "×N free", nothing chosen; "How many" (a number field, at most the row's proxies and the chosen lot's free copies); "Use this copy" and "Cancel". Alternative: a quantity field on every lot.
+16. **Preview icons use the app's stroke** `[NEEDS CLARIFICATION: decision 16]`. The app draws every icon at stroke 1.5 (its eleven icon partials) and the README's Iconography says 1.5; the previews draw 99 icons at 2 and 21 at 2.5, and the phone tab bar's Collection icon is already 1.5. Every icon in every preview is set to 1.5, and the new previews draw at 1.5. Alternatives: only the new previews and the tab bars and headers of the existing ones; leave the existing previews.
+17. **A zone row's actions are a menu cell** `[NEEDS CLARIFICATION: decision 17]`. The issue design's "a proxy row offers Use my copy and Add a new copy" needs a place. The last cell of a zone row is `TableActions` (a "…" `Menu` whose trigger is named for the row): a row with proxies lists "Use my copy", "Add a new copy", "Change proxy count", then "Remove proxy" (danger, last, to a confirm page); a row with only owned copies lists "Move copies". This spec documents the cell and names the two replace items; the rest of the items are #254's and #257's. Alternatives: an inline "Use my copy" button on proxy rows; nothing drawn.
+18. **No ADR (my call).** The design system is the project's own, in code (spec 057 decision 12); a component, a rule and a breakpoint are recorded in its documents and here, and none has an alternative with a cost beyond the page.
+19. **Phone previews follow the existing convention (my call).** A screen has `Name.html` and `NamePhone.html` (`ItemPage` and `ItemPagePhone`); the shell and the page container adapt by themselves, so the two hold the same markup and the phone one is opened in a 390px frame. The new screens (`DeckPage`, `DecksIndex`, `AddToDeck`, `UseMyCopy`) get both; `DeckShape` and `ProxyTag`, parts and not screens, get one preview each that shows the part at both widths side by side.
+20. **A chart's numbers are custom properties on its elements (my call).** The curve's bar heights and the mana bar's segment shares come from the data, so each element carries them as unitless custom properties in a `style` attribute (`--owned`, `--proxy`, `--max`, `--n`), and the CSS turns them into lengths. A value is a number, never a colour, so no token is bypassed. This is the same pattern as `ProgressMeter`'s values, without an inline length. No page except the scanner's sends a Content-Security-Policy, and that one allows inline styles.
+21. **`DeckShape` is MTG-specific; the page shell is not (my call).** `DeckPage` is the collectible-agnostic shell: its documents name no format and no game, and the shape panel and the legality marker are "the extension's contribution" (issue design). `DeckShape.md` and the Cost column say they are shown for Magic, as `ItemPage.md` is.
+22. **Each new block of CSS has its own heading (my call).** `spec/design_system_files_spec.rb` finds a block by its heading comment and counts the rules up to the next heading; a block without a heading is counted in the one above. The blocks, each headed `(spec 060 …)`: ProxyTag; DeckShape (panel, curve, types, mana bar); DeckPage (layout, zone groups, empty zone, stacked panel); DecksIndex; the pick list of UseMyCopy.
+
+## Users and Context
+
+**Primary users:** the agents and the maintainer who build the deck views (#49, #253 to #257), reading the design system before writing a view; secondarily the collector, who meets these components as the pages the views produce.
+**Usage context:** `collector-design-system` tells every agent to read `docs/design-system/README.md`, the component's doc and the preview before writing UI. These six documents and previews are where the deck components are written.
+**User mental model:** a deck is a place with parts; a proxy is a card you are borrowing the idea of, marked so it can't be mistaken for one you own; the shape panel answers "what does this deck do" from the catalog alone.
+
+## User Stories
+
+### Story 1: ProxyTag
+
+**As an** agent marking a proxy in a table or a list
+**I want** one tag that reads without colour
+**So that** a proxy is never mistaken for an owned card, and I don't invent a second look.
+
+**Acceptance criteria:**
+
+- [ ] **AC-1.1** Given `ProxyTag.md` When it is read Then it states the markup (`c-proxy`, the word "Proxy" and the count), the 20px height, the dashed `ink-muted` border, that it reads without colour, where it is used (the Proxy column, the phone's line under a card's name, the Decks list's Proxy cell and phone line), that a row with no proxies shows a muted dash and no tag, and that a proxy never counts as owned
+- [ ] **AC-1.2** Given a `c-proxy` in the light and in the dark theme When its style is read Then its border style is dashed with the `ink-muted` token as its colour, its text is `ink`, its height is 20px, and it has `radius-sm` corners
+- [ ] **AC-1.3** Given the tag beside a solid `c-tag` When both are drawn Then the border style is the only thing that differs in kind (dashed against solid), so the tag reads as a different thing without colour (the example reads both computed border styles)
+
+### Story 2: DeckShape
+
+**As an** agent building the deck page's panel (#256)
+**I want** the curve, the types and the mana bar drawn and documented
+**So that** I fill them with data and don't draw them.
+
+**Acceptance criteria:**
+
+- [ ] **AC-2.1** Given `DeckShape.md` When it is read Then it states the panel's markup and its three parts in order (Mana curve, Card types, Mana symbols), what each expects as data (seven columns of owned and proxy counts; types with owned and proxy counts; symbol counts for W, U, B, R, G; the average mana value; the scope line), that lands are left out of the curve, that the figures come from the deck's Main (and Commander) zone, that the mana value is `mtg_cards.mana_value` (spec 058) and this spec builds nothing that reads it, that a zero part is left out of the markup, the `role="img"` and `aria-label` of each chart and what the label reads, and that no part uses `brand` or a status colour
+- [ ] **AC-2.2** Given a curve whose columns hold owned and proxy counts and a largest column of N When it is rendered in a panel Then each column's owned part is 96px × owned ÷ N high and its proxy part 96px × proxy ÷ N, the proxy part sits on top of the owned part, the count above the column reads owned plus proxy, and the seven mana-value labels sit below a 1px `line-strong` baseline
+- [ ] **AC-2.3** Given the curve in the light and in the dark theme When its fills are read Then the owned part's background is the `ink-muted` token, the proxy part's background image is a gradient of the `line-strong` and `surface-raised` tokens with a 1px `ink-muted` border, and neither uses `brand` or a status colour (the tokens' contrast is guarded by spec 057 AC-2.3)
+- [ ] **AC-2.4** Given the panel in a 288px column and in a 296px stacked column When it is rendered Then the seven columns, their counts and the legend fit with no horizontal overflow, and no count is clipped
+- [ ] **AC-2.5** Given the card types list When it is rendered Then each row has its name at the start and its count at the end in `data` mono, a type with proxies shows a muted "N proxy" and a type without shows none, and rows are divided by `line` (decision 2)
+- [ ] **AC-2.6** Given a mana bar of segments of counts c1…cn When it is rendered Then each segment's width is proportional to its count (within 1px), consecutive segments are divided by a 1px `line-strong` border, the bar has a 1px `line-strong` outline and `radius-sm` corners, each segment's fill is its `mana-*` token with its `on-mana-*` text in both themes (the same fills in both), and a segment marked narrow hides its label (decision 4)
+- [ ] **AC-2.7** Given a five-colour deck whose white segment is under 10% When the bar and its caption are read Then the white segment shows no label, and the caption carries the colour, its count and its percentage for every colour (decision 3)
+- [ ] **AC-2.8** Given the README's Charts rule and `ManaCost.md` When they are read Then each points to `DeckShape` as where the rule is drawn, and the Charts rule's "hatched `line-strong` fill" says which hatch (decision 1)
+
+### Story 3: DeckPage
+
+**As an** agent building the deck page (#253, #254)
+**I want** the layout, the zone tables and the shape panel's place written down and drawn
+**So that** the page is the same at every width and in every deck.
+
+**Acceptance criteria:**
+
+- [ ] **AC-3.1** Given `DeckPage.md` When it is read Then it states the page's markup (head, zones in the main column, the shape panel as an `aside`), the zone table's columns and their order (Card, Cost, Owned, Proxy, Total and the row menu), the group rows by top-level type, the legality marker (decision 8), the zone head and the page head (decision 10), the empty zone, that the shell names no format and no game and that the panel, the Cost column and the legality marker are the extension's contribution (decision 21), and what each width does
+- [ ] **AC-3.2** Given a deck page in a page container of 992px or wider When it is rendered Then the zones and the panel are two columns (the panel 320px, a `space-8` gap), the panel is `position: sticky` with its top at the header's 56px plus `space-6`, and the zones are the column on its left
+- [ ] **AC-3.3** Given the same page in a container of 991px or narrower When it is rendered Then the panel is above the zones in one column, is not sticky, and (from 640px to 991px) is open and as wide as the zones (decision 6)
+- [ ] **AC-3.4** Given the same page in a container narrower than 640px (a 390px phone) When it is rendered Then the panel is a closed `details` above the zones, its summary reads "Deck shape" with its facts, and the page has no horizontal overflow (decision 7)
+- [ ] **AC-3.5** Given a zone table of three type groups When it is rendered in a container of 640px or wider Then the columns are Card, Cost, Owned, Proxy, Total and the menu; each group has a full-width row with the type's name and its count on `surface-sunken` that does not stick; a row with proxies shows the Proxy tag in the Proxy column and a row without shows a muted dash; the Owned, Proxy and Total cells are right-aligned mono
+- [ ] **AC-3.6** Given the same table in a container narrower than 640px When it is rendered Then Owned and Proxy are hidden, the Card cell's line under the name shows `set · number` and the Proxy tag of a row that has proxies, Cost and Total stay, and the table has no horizontal overflow at 360px (decision 9)
+- [ ] **AC-3.7** Given a zone's head in a container narrower than 640px When it is rendered Then the name and "Add a proxy" share the first line and the counts are on their own line below, uncut (the example reads the counts' scroll width against its client width); from 640px the head is one line
+- [ ] **AC-3.8** Given a card that is not legal in the deck's format When its row is rendered Then the marker (a cross and the word) follows the name, and a legal card's row has no marker (decision 8)
+- [ ] **AC-3.9** Given an empty zone When it is rendered Then it shows the head with "0 cards · 0 owned · 0 proxy", "Add a proxy", and the sentence in a `surface-sunken` block, with no table
+- [ ] **AC-3.10** Given a row's menu When it is read Then it is `TableActions` (a trigger named "Actions for <card>"), a row with proxies lists "Use my copy" and "Add a new copy" first, and the destructive item is last after a separator (decision 17)
+
+### Story 4: DecksIndex
+
+**As an** agent building the Decks page (#49)
+**I want** the list of decks and the form that adds one drawn
+**So that** the page is built from a component.
+
+**Acceptance criteria:**
+
+- [ ] **AC-4.1** Given `DecksIndex.md` When it is read Then it states the page's markup (the page head with its count, the form above the list, the table), the columns, what "Cards" counts (decision 12), the Proxy cell, the phone fold, the empty state ("No decks yet. Add a deck to start building one."), that the Decks page lists decks only and the Locations page places only (spec 057 decision 11), and the form's fields (Name, a native Format select) (decisions 11, 13)
+- [ ] **AC-4.2** Given a Decks table of decks with and without proxies in a container 640px or wider When it is rendered Then the columns are Deck, Format, Cards, Owned and Proxy, Cards, Owned and Proxy are right-aligned mono, a deck with proxies shows the tag and a deck without shows a muted dash
+- [ ] **AC-4.3** Given the same table in a container narrower than 640px When it is rendered Then Format, Owned and Proxy are hidden, the line under the deck's name reads the format, the owned count and the Proxy tag, Cards stays, and the table has no horizontal overflow at 360px
+- [ ] **AC-4.4** Given the form above the list When it is rendered in a 360px frame Then the fields are stacked, no wider than the form's 560px limit (`c-locations__add` pattern), and it has no horizontal overflow
+
+### Story 5: AddToDeck
+
+**As an** agent building "Add to deck" on the card page (#255)
+**I want** the page drawn
+**So that** it is a `ChoicePage` with known fields.
+
+**Acceptance criteria:**
+
+- [ ] **AC-5.1** Given `AddToDeck.md` When it is read Then it states the markup (a `ChoicePage` variant: the heading, a `c-form` of the Deck and zone select, How many, a `c-choices` fieldset "What to use", Add to deck and Cancel), that the select's options are "Deck › Zone" under a Decks group with no Places group, that "My copies" shows only when copies are free and its sentence's shape ("3 free: 2 in Blue binder, 1 in Red box"), that the proxy option names the shown printing ("A proxy of 2X2 · 117 foil", `SET · number` in mono), that with two options nothing is chosen and the page refuses a submission without a choice, with one it is chosen (decision 14), what #255 decides (which lots a count takes), and where Cancel returns to (the card page)
+- [ ] **AC-5.2** Given the page in a 360px frame When it is rendered Then it has no horizontal overflow, and a long deck name in the select is cut by the control without widening the form (spec 040 AC-7.1's rule)
+
+### Story 6: UseMyCopy
+
+**As an** agent building "Use my copy" (#257)
+**I want** the page drawn
+**So that** the choice of a free copy is a component.
+
+**Acceptance criteria:**
+
+- [ ] **AC-6.1** Given `UseMyCopy.md` When it is read Then it states the markup (heading, the proxy row's line, the "Which copy" fieldset with its two groups, How many, Use this copy and Cancel), what a lot line reads (`set · number`, finish, condition, place, "×N free"), that "This printing" holds the proxy's own printing and finish and "Other printings" the rest, that nothing is chosen at first, that a proxy's replacement lowers the proxy count by the number of copies used, that a group with no lot is left out, and the empty state when no copy is free (a sentence and a link back, and no form) (decision 15)
+- [ ] **AC-6.2** Given the lot rows When they are rendered in a 360px frame Then each is at least 44px high, its line wraps without horizontal overflow, and a long place name breaks inside the word
+- [ ] **AC-6.3** Given a lot row When it is focused by keyboard Then its radio shows the 2px `focus` ring (the row never hides the control)
+
+### Story 7: Documents, previews and leftovers
+
+**As an** agent or the maintainer
+**I want** the components listed, previewed and consistent with the app
+**So that** I find them, match them and trust them.
+
+**Acceptance criteria:**
+
+- [ ] **AC-7.1** Given the README's Components section When it is read Then it lists `DeckShape`, `ProxyTag`, `DeckPage`, `DecksIndex`, `AddToDeck` and `UseMyCopy` among the current set and the full screens, has an "App additions (spec 060, in `collector/additions.css`)" line naming the new classes and their documents, and no longer lists `c-split` among the card-page parts
+- [ ] **AC-7.2** Given the ten previews (`DeckShape`, `ProxyTag`, `DeckPage`, `DeckPagePhone`, `DecksIndex`, `DecksIndexPhone`, `AddToDeck`, `AddToDeckPhone`, `UseMyCopy`, `UseMyCopyPhone`) When their `<link>` tags are read Then each links `tokens.css`, `components.css` and `additions.css` in that order, and each shows the same markup its document shows
+- [ ] **AC-7.3** Given each preview in headless Firefox at 1280px (and at a 390px frame for the Phone ones) in the light and in the dark theme When it is opened Then it renders with no console error and no horizontal overflow, and the screenshots are recorded in `verification.md` and the pull request
+- [ ] **AC-7.4** Given `ItemPage.html` and `ItemPagePhone.html` When they are read Then the In decks and Format legality sections have no leftover indentation of the removed `c-split` wrapper (the two previews stay identical)
+- [ ] **AC-7.5** Given the previews When their icons are read Then every icon's stroke is 1.5, as in the app (decision 16)
+- [ ] **AC-7.6** Given `ChoicePage.md`, `ManaCost.md` and `TableActions.md` When they are read Then each carries one line pointing to the component that uses it (`AddToDeck`; `DeckShape`'s mana bar; `DeckPage`'s row menu)
+- [ ] **AC-7.7** Given the repository When `bin/ci checks` runs Then the YARD, RuboCop and comment-ratchet steps pass, and `spec/design_system_files_spec.rb` is green (each new CSS block under its own heading, "spec 019" and "spec 021" still once each)
+
+## Functional Requirements
+
+### FR-1: ProxyTag (`ProxyTag.md`, `additions.css`)
+
+`.c-proxy`: `display:inline-flex`, `align-items:center`, `gap:var(--space-1)`, height 20px, padding `0 6px`, `border:1px dashed var(--ink-muted)`, `border-radius:var(--radius-sm)`, `font:600 12px/16px var(--font-sans)`, `color:var(--ink)`, `white-space:nowrap`; its count in `c-proxy b` is `font:400 12px/16px var(--font-mono)`. Markup `<span class="c-proxy">Proxy <b>2</b></span>`. **Must:** keep the word with the number; use the tag wherever a proxy count appears in a table or list. **Must not:** fill the tag with a colour, or use it for anything but proxies.
+
+### FR-2: DeckShape (`DeckShape.md`, `additions.css`)
+
+A panel `.c-shape` (`surface-raised`, 1px `line` border, `radius-md`, `space-4` padding, `space-6` between parts) holding a title ("Deck shape") and scope line (`data` mono, `ink-muted`) and three `c-shape__part`s, each with an `h3` `c-shape__heading`.
+- **Curve** (`c-curve`): a `role="img"` chart with an `aria-label` that reads every column (decision 20 for the numbers), seven columns in a grid (0 to 6+), each a count (mono 12px) above a bar of at most 96px with the proxy part above the owned part; a 1px `line-strong` baseline; seven labels below; then a legend ("Owned 30", "Proxy 6", each with its swatch) and "Average mana value 2.3". A column with no owned (or no proxy) has no element for that part. Heights are `calc(96px * var(--owned) / var(--max))`.
+- **Types** (`c-types`): decision 2. **Mana bar** (`c-manabar`, a `role="img"` list with an `aria-label` that reads the counts) and its caption (`c-manacap`): decisions 3 and 4.
+**Must:** every part work in a 288px column; every part have a word or a number on it; use only tokens (`ink-muted`, `line-strong`, `surface-raised`, `line`, `ink`, `mana-*`, `on-mana-*`). **Must not:** use `brand`, a status colour or a `mana-*` fill outside the mana bar; draw lands in the curve; read data.
+
+### FR-3: DeckPage (`DeckPage.md`, `additions.css`)
+
+`.c-deck`: a grid of the zones (`minmax(0,1fr)`) and the panel (320px) with a `space-8` gap from 992px of the page container (decision 6), the panel `position:sticky; top:calc(56px + var(--space-6))`, one column below it with the panel first and not sticky, and, below 640px, the panel inside `details.c-shapefold` (decision 7). Zones are `section.c-zone` in a column with a `space-8` gap, each a `c-section__head` (decision 10) and a `c-table` in `.c-collection` whose group rows are `tr.c-zone__group` with `th scope="rowgroup"`: `surface-sunken`, `ink-muted`, 12px 600, not sticky (the export's `.c-table th` sticks). Below 640px of the page container the zone head wraps its counts onto their own line. The card's name is `TableItemLink`; `set · number` is mono `ink-muted`; the Cost cell is a `ManaCost` or a muted dash; the last cell is `TableActions` (decision 17).
+**Must:** keep the existing table rules (the `is-opt` fold, `c-table__sub` on narrow containers); keep every control at its existing touch size. **Must not:** name a format or a game in the shell's document (decision 21); add a column to the table.
+
+### FR-4: DecksIndex (`DecksIndex.md`, `additions.css` only if the form or table need it)
+
+Decisions 11 to 13. The page is `.c-main.c-page`: a `c-pagehead` ("Decks" and a muted "6 decks · 379 cards"), the form (`c-form c-locations__add`'s pattern, `c-decks__add` if it needs its own class), then the table. **Must:** a deck with no cards shows "0" and a dash; the empty state replaces the table.
+
+### FR-5: AddToDeck and UseMyCopy (`AddToDeck.md`, `UseMyCopy.md`, `additions.css`)
+
+`AddToDeck` is composed from `c-pagehead`, `c-form`, `c-field`, `c-choices` and `c-check` with no new CSS. `UseMyCopy` adds the pick list: `c-pick` (a `c-choices` whose rows are bordered `surface-raised` labels), `c-pick__group` (the group label) and the lot's line, each row at least 44px high. Both wrap in the existing pages' `c-main c-page` and use `c-appbar--detail`.
+
+### FR-6: Documents and previews
+
+The six documents follow the existing documents' shape (one-line summary, **Markup**, the rules as bullets). The README's Components list and App additions line, the three one-line pointers (AC-7.6), the ten previews (decision 19), the c-split removal and the icon strokes and the indentation (decision 16, AC-7.4). Each preview loads `preview-fonts.css`, `tokens.css`, `components.css` and `additions.css`, and honours `?theme=dark`.
+
+## Non-Functional Requirements
+
+### Accessibility
+
+- Every chart is `role="img"` with an `aria-label` that reads its values; the visible numbers and legend repeat them for sighted readers (README Charts rule).
+- Nothing is colour-only: the proxy is a dashed shape and a word, the legality marker a cross and a word, every segment a letter and a count or the caption.
+- Text holds 4.5:1 and every fill or outline 3:1 on `surface`, `surface-raised` and `surface-sunken` in both themes (spec 057 AC-2.3 guards the tokens; the mana letters hold 5.5:1 on their fills, `ManaCost.md`).
+- Every control keeps its focus ring and its touch size; the row menus and the Show/Hide summary are keyboard-operable (`<details>`).
+
+### Layout
+
+- Everything works from 360px wide, in both themes, with no horizontal scroll; the shape panel works in a 288px column.
+- The shell follows the viewport at 640px and the page at its own container (README Mobile and Hotwire).
+
+### Hosted door
+
+Checked against the hosted-door rules ([north star](../../north-star.md)): the spec adds no collector-owned data, so there is nothing to export, no per-account state, no sign-up, email or billing, and no data of a source a hosted instance would have to expose. Cost per account: none (documents, one stylesheet and previews).
+
+### Documentation
+
+- A change of a rule updates the document that states it in the same commit (`.claude/rules/documentation.md`); the README's Components list, App additions line and the Decks and Charts rules agree with the new documents.
+- No RSpec example reads a prose document (`.claude/rules/testing.md`): document criteria are verified by reading and recorded in `verification.md`. The CSS and layout criteria are proved in a browser.
+
+## Error Scenarios
+
+| Scenario | Expected behaviour |
+|----------|--------------------|
+| A deck has no nonland cards | The curve shows seven columns of "0" with no bars, the legend "Owned 0 · Proxy 0" and no average (the line is left out) |
+| A deck has only proxies | The curve's columns are hatched only; the types show their counts with "N proxy" equal to the count |
+| A symbol count is zero for a colour | That colour has no segment; the caption names only the colours present |
+| A deck has no coloured symbols | The mana bar and its caption are left out and the part says "No coloured mana symbols." |
+| A part is zero (owned or proxy) in a column | The element is not in the markup, so there is no 2px sliver from the borders |
+| A card name is long | It wraps inside the Card cell (the existing `c-table__name` rules); a long deck name wraps in the head and in the select |
+| A zone has many rows | The page scrolls; the panel stays sticky only while it fits the window (the panel's height is under the window's at 720px) |
+| No free copy for a proxy | UseMyCopy shows the sentence and the link back and no form |
+| A browser draws the open `select` list itself | The group label and options are still readable; nothing relies on the styling (spec 057 decision 16) |
+
+## Open Questions
+
+Decisions 1 to 17, above, each sent to the coordinator with options and a recommendation. None is answered at this version.
+
+## Out of Scope (Future Considerations)
+
+- The deck pages' views, helpers and queries: [#49](https://github.com/plainprogrammer/Collector/issues/49), [#253](https://github.com/plainprogrammer/Collector/issues/253), [#254](https://github.com/plainprogrammer/Collector/issues/254), [#255](https://github.com/plainprogrammer/Collector/issues/255), [#256](https://github.com/plainprogrammer/Collector/issues/256), [#257](https://github.com/plainprogrammer/Collector/issues/257).
+- Grouped pickers in the lot form and the other pickers: [#252](https://github.com/plainprogrammer/Collector/issues/252).
+- Collector-chosen sections, a deck-builder workflow, deck-size and copy-limit checks (the 2.0 milestone).
+- A sixth header link (spec 057's guard fails until the header is revisited).
+
+## Supersedes
+
+- [The issue design](../../superpowers/specs/2026-11-09-decks-and-locations-issues-design.md) decision 10's "Below 640px of the page container, the panel stacks above the zones *(my call)*", for 992px, and the phone's closed `details` (decisions 6 and 7), if ruled as drafted. The issue design is a design document, not a shipped spec; its text is not edited.
+- [Spec 057](../057-deck-design-rules/spec.md) Non-Goal "A hatched-fill or chart CSS": drawn here (not a change of a rule). Its Charts rule stands; decision 1 names the hatch.
+- No frozen spec is edited.
+
+## Documents and Files Changed
+
+| File | Change |
+|------|--------|
+| `docs/design-system/components/DeckShape.md`, `ProxyTag.md`, `DeckPage.md`, `DecksIndex.md`, `AddToDeck.md`, `UseMyCopy.md` | New (FR-1 to FR-5) |
+| `docs/design-system/components/ChoicePage.md`, `ManaCost.md`, `TableActions.md` | One pointer line each (AC-7.6) |
+| `docs/design-system/README.md` | Components list and App additions line; the Charts rule's hatch; `c-split` out |
+| `docs/design-system/previews/DeckShape.html`, `ProxyTag.html`, `DeckPage.html`, `DeckPagePhone.html`, `DecksIndex.html`, `DecksIndexPhone.html`, `AddToDeck.html`, `AddToDeckPhone.html`, `UseMyCopy.html`, `UseMyCopyPhone.html` | New |
+| `docs/design-system/previews/*.html` (existing) | Icon strokes (decision 16); `ItemPage.html` and `ItemPagePhone.html` indentation |
+| `app/assets/stylesheets/collector/additions.css` | New blocks, each under its own `(spec 060 …)` heading (decision 22) |
+| `spec/system/design_system_deck_components_spec.rb` (new) | The CSS and layout criteria (AC-1.2, 1.3, 2.2 to 2.7, 3.2 to 3.9, 4.2 to 4.4, 5.2, 6.2, 6.3) |
+| `docs/specs/README.md` | This spec's row |
+| `docs/specs/060-deck-components/verification.md` | The record |
+
+## Verification
+
+- **Document criteria** (AC-1.1, 2.1, 2.8, 3.1, 4.1, 5.1, 6.1, 7.1, 7.2's links and markup, 7.4 to 7.6): read against the text; the quotations are recorded in `verification.md`.
+- **CSS and layout criteria**: a system example per criterion group, in headless Firefox with classic scrollbars (`spec/support/system.rb`), adds the components' markup to a real page (no view exists), reads computed style and layout, uses `open_in_narrow_frame` for narrow widths, and is shown to fail with its rule removed. Where a component will sit in an existing page or partial (the header, the `.c-page` container, the tab bar's clearance), it is measured there and not only in the preview (lesson `docs/lessons/2026-11-10-measure-the-apps-header-not-the-preview.md`).
+- **Previews** (AC-7.2, 7.3): the `<link>` tags are read; each preview is opened in headless Firefox at 1280px and in a 390px frame in both themes, the console is read, and the screenshots go in `verification.md` and the pull request.
+- **Final visual review**: before the pull request is marked ready, screenshots of each component in both themes, wide and phone, go to the maintainer for review and into the pull request body.
