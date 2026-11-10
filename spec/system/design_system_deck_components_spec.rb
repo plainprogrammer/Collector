@@ -82,6 +82,9 @@ RSpec.describe "Design system: deck components", type: :system do
     %(<div class="c-curve__col"><span class="c-curve__count">#{owned + proxy}</span><div class="c-curve__bar">#{parts}</div></div>)
   end
 
+  # The first family of the `--font-mono` token, as the browser spells it in a computed `font-family`.
+  def mono_family = evaluate('return getComputedStyle(document.documentElement).getPropertyValue("--font-mono")').split(",").first.strip.delete("\"'")
+
   def mana_names = { "W" => "White", "U" => "Blue", "B" => "Black", "R" => "Red", "G" => "Green" }
 
   # The `c-types` markup: `[name, owned, proxy]` rows. A type with no proxies keeps an empty suffix, so the counts line up.
@@ -128,6 +131,84 @@ RSpec.describe "Design system: deck components", type: :system do
         #{panel_parts(curve:, types:, mana:)}
       </section>
     HTML
+  end
+
+  def icon_svg(path) = %(<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">#{path}</svg>)
+
+  def pip(sym)
+    modifier = mana_names.key?(sym) ? " c-mana--#{sym.downcase}" : ""
+    %(<span class="c-mana#{modifier}" aria-hidden="true">#{sym}</span>)
+  end
+
+  # The `c-cost` of a list of symbols (colours as W U B R G, generic as numbers), as `ManaCost.md` shows it.
+  def cost_html(symbols)
+    words = symbols.map { mana_names.key?(it) ? "1 #{mana_names[it].downcase}" : "#{it} generic" }.join(", ")
+    %(<span class="c-cost" role="img" aria-label="Mana cost: #{words}">#{symbols.map { pip(it) }.join}</span>)
+  end
+
+  def proxy_tag(count) = %(<span class="c-proxy">Proxy <b>#{count}</b></span>)
+
+  # One row of a zone: a name, where it sits, its cost (symbols or nil), the owned and proxy counts, its legality.
+  def zrow(name, group: "Creatures", set: "MH2 · 52", cost: %w[R], owned: 4, proxy: 0, legal: :legal)
+    { name:, group:, set:, cost:, owned:, proxy:, legal: }
+  end
+
+  def zone_rows
+    [ zrow("Murktide Regent", cost: %w[5 U U], owned: 2, proxy: 2), zrow("Dragon's Rage Channeler", set: "MH3 · 124"),
+      zrow("Ragavan, Nimble Pilferer", set: "MH2 · 138", legal: :banned),
+      zrow("Counterspell", group: "Instants", set: "MH2 · 267", cost: %w[U U]), zrow("Lightning Bolt", group: "Instants", set: "2X2 · 117", owned: 3, proxy: 1),
+      zrow("Island", group: "Lands", set: "MH3 · 308", cost: nil, owned: 9) ]
+  end
+
+  # A zone: head, then its table of grouped rows, or the empty sentence. `id` on the section.
+  def zone_html(title, rows, id: nil)
+    body = rows.empty? ? %(<p class="c-zone__empty">No cards in #{title} yet.</p>) : zone_table(rows)
+    %(<section class="c-zone"#{%( id="#{id}") if id}>#{zone_head(title, rows)}#{body}</section>)
+  end
+
+  def zone_head(title, rows)
+    cards = rows.sum { it[:owned] + it[:proxy] }
+    counts = "#{cards} #{cards == 1 ? "card" : "cards"} · #{rows.sum { it[:owned] }} owned · #{rows.sum { it[:proxy] }} proxy"
+    add = %(<a class="c-btn c-btn--ghost c-btn--sm" href="#">#{icon_svg('<path d="M12 5v14M5 12h14"/>')}Add a proxy<span class="c-sr"> to #{title}</span></a>)
+    %(<div class="c-section__head"><h2 class="c-section__title">#{title}</h2><span class="c-section__count">#{counts}</span><div class="c-section__actions">#{add}</div></div>)
+  end
+
+  def zone_table(rows)
+    cells = %(<th class="c-zone__c-cost">Cost</th><th class="c-zone__c-owned is-num is-opt">Owned</th><th class="c-zone__c-proxy is-num is-opt">Proxy</th><th class="c-zone__c-total is-num">Total</th>)
+    body = rows.group_by { it[:group] }.map { |group, found| zone_group(group, found) + found.map { zone_row(it) }.join }.join
+    %(<div class="c-collection"><table class="c-table"><thead><tr><th>Card</th>#{cells}<th class="c-zone__c-menu"><span class="c-sr">Actions</span></th></tr></thead><tbody>#{body}</tbody></table></div>)
+  end
+
+  def zone_group(group, rows)
+    %(<tr class="c-zone__group"><th scope="rowgroup" colspan="6">#{group}<span class="c-zone__groupcount">#{rows.sum { it[:owned] + it[:proxy] }}</span></th></tr>)
+  end
+
+  def zone_row(row)
+    proxy = row[:proxy].positive?
+    legal = row[:legal] == :legal ? "" : %( <span class="c-legal c-legal--no">#{icon_svg('<path d="M6 6l12 12M18 6 6 18"/>')}#{row[:legal].to_s.humanize}</span>)
+    set = %(<span class="c-zone__set">#{row[:set]}</span>)
+    card = %(<td><div class="c-table__item"><div><a href="#">#{row[:name]}</a>#{legal}<span class="is-opt"><br>#{set}</span><span class="c-table__sub">#{set}#{" #{proxy_tag(row[:proxy])}" if proxy}</span></div></div></td>)
+    dash = %(<span class="is-muted">–</span>)
+    %(<tr>#{card}<td>#{row[:cost] ? cost_html(row[:cost]) : dash}</td><td class="is-num is-opt">#{row[:owned]}</td><td class="is-num is-opt">#{proxy ? proxy_tag(row[:proxy]) : dash}</td><td class="is-num">#{row[:owned] + row[:proxy]}</td>#{menu_cell(row)}</tr>)
+  end
+
+  # `TableActions`: every row has its menu (decision 17), so the menu column is the same in every zone.
+  def menu_cell(row)
+    dots = %(<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>)
+    items = row[:proxy].positive? ? %(<a class="c-menu__item" href="#">Use my copy</a>) : %(<a class="c-menu__item" href="#">Move copies</a>)
+    %(<td class="c-table__actions"><details class="c-menu"><summary class="c-btn c-btn--ghost c-btn--sm c-btn--icon" aria-label="Actions for #{row[:name]} #{row[:set]}">#{dots}</summary><div class="c-menu__list">#{items}</div></details></td>)
+  end
+
+  # The deck page body: the closed `details` copy of the panel, the `aside` copy, then the zones. `panel: false` leaves out both copies.
+  def deck_html(panel: true)
+    zones = [ zone_html("Main", zone_rows, id: "zone-main"), zone_html("Sideboard", [ zrow("Dress Down", group: "Instants", proxy: 2, owned: 0) ], id: "zone-side") ].join
+    %(<div class="c-deck" id="probe">#{shape_copies if panel}<div class="c-deck__zones">#{zones}</div></div>)
+  end
+
+  def shape_copies
+    parts = panel_parts(curve: default_curve, types: types_html([ [ "Lands", 22, 2 ] ]), mana: manabar_html({ "U" => 44, "R" => 16 }))
+    facts = %(<span class="c-shapefold__title">Deck shape</span><span class="c-shapefold__facts">Main · 60 cards · average mana value 2.3</span>)
+    %(<details class="c-shapefold"><summary>#{facts}</summary><div class="c-shape c-shape--bare">#{parts}</div></details><aside class="c-deck__shape">#{panel_html(id: "shape-aside")}</aside>)
   end
 
   describe "ProxyTag (AC-1.2, AC-1.3)" do
@@ -240,8 +321,6 @@ RSpec.describe "Design system: deck components", type: :system do
       JS
     end
 
-    def mono_family = evaluate('return getComputedStyle(document.documentElement).getPropertyValue("--font-mono")').split(",").first.strip.delete("\"'")
-
     it "puts the name first, the count and the proxy suffix last, and lines the counts up", :aggregate_failures do
       types_panel
       lands, artifacts = measured_rows
@@ -297,6 +376,236 @@ RSpec.describe "Design system: deck components", type: :system do
       expect(measured_bar["segs"].map { it["display"] == "none" }).to eq([ true, false, true, false, false ])
       expect(evaluate('return document.querySelector("#probe .c-manacap").textContent'))
         .to include("White 3 · 5%", "Blue 20 · 33%", "Black 4 · 7%", "Red 18 · 30%", "Green 15 · 25%")
+    end
+  end
+
+  describe "DeckPage layout (AC-3.2 to AC-3.4, AC-3.12)" do
+    def deck_at(width, **) = add_to_main(wrap(width, deck_html(**)))
+
+    # Whether the element's parent, the width-setting wrapper, scrolls sideways.
+    def parent_scrolls?(selector) = evaluate("const el = document.querySelector(#{selector.to_json}).parentElement; return el.scrollWidth > el.clientWidth")
+
+    def shape_display = [ computed("#probe > .c-shapefold", "display"), computed("#probe > .c-deck__shape", "display") ].flatten
+
+    def fold_open? = evaluate('return document.querySelector("#probe .c-shapefold").open')
+
+    it "sets the zones left of a 320px sticky panel, 32px apart, from 992px (AC-3.2)", :aggregate_failures do
+      deck_at(1100)
+      zones, shape = box("#probe .c-deck__zones"), box("#probe .c-deck__shape")
+      expect(zones["left"]).to be < shape["left"]
+      expect(shape["width"]).to eq(320)
+      expect(shape["left"] - zones["right"]).to be_within(0.5).of(32)
+      expect(computed("#probe .c-deck__shape", "position", "top")).to eq(%w[sticky 80px])
+      expect(shape_display).to eq(%w[none block])
+    end
+
+    [ 991, 700 ].each do |width|
+      it "stacks the open panel above the zones, as wide as them, with no summary at #{width}px (AC-3.3)", :aggregate_failures do
+        deck_at(width)
+        zones, shape = box("#probe .c-deck__zones"), box("#probe .c-deck__shape")
+        expect(shape["bottom"]).to be <= zones["top"]
+        expect(shape["width"]).to be_within(0.5).of(zones["width"])
+        expect(computed("#probe .c-deck__shape", "position")).to eq([ "static" ])
+        expect(shape_display).to eq(%w[none block])
+        expect(evaluate('return document.querySelector("#probe .c-deck__shape summary")')).to be_nil
+      end
+    end
+
+    it "shows a closed details above the zones below 640px, opened from the keyboard (AC-3.4)", :aggregate_failures do
+      deck_at(639)
+      fold, zones = box("#probe .c-shapefold"), box("#probe .c-deck__zones")
+      expect(shape_display).to eq(%w[block none])
+      expect([ fold_open?, fold["bottom"] <= zones["top"], box("#probe .c-shapefold > summary")["height"] ]).to match([ false, true, be >= 44 ])
+      expect(evaluate('return document.querySelector("#probe .c-shapefold > summary").textContent')).to include("Deck shape", "average mana value")
+      find("#probe .c-shapefold > summary").send_keys(:enter)
+      expect(fold_open?).to be(true)
+      find("#probe .c-shapefold > summary").send_keys(:enter)
+      expect(fold_open?).to be(false)
+      expect(parent_scrolls?("#probe")).to be(false)
+    end
+
+    it "shows the aside and not the details at 640px (AC-3.4)" do
+      deck_at(640)
+      expect(shape_display).to eq(%w[none block])
+    end
+
+    it "keeps the zones in the first column when there is no panel (AC-3.12)", :aggregate_failures do
+      deck_at(1100, panel: false)
+      wrapper = evaluate('const r = document.querySelector("#probe").parentElement.getBoundingClientRect(); return { left: r.left, width: r.width }')
+      zones = box("#probe .c-deck__zones")
+      expect([ zones["left"], zones["width"] ]).to eq([ wrapper["left"], wrapper["width"] - 352 ])
+      expect(evaluate('return document.querySelectorAll("#probe .c-shapefold, #probe .c-deck__shape").length')).to eq(0)
+    end
+
+    it "lets the zones span the wrapper below 992px when there is no panel (AC-3.12)" do
+      deck_at(700, panel: false)
+      expect(box("#probe .c-deck__zones")["width"]).to eq(700)
+    end
+  end
+
+  describe "DeckPage zone tables (AC-3.5, AC-3.6, AC-3.8, AC-3.11, cost and name)" do
+    def long_name = "Abcdefghij" * 6
+
+    def zone_at(width, rows = zone_rows, container: "collection") = add_to_main(wrap(width, zone_html("Main", rows, id: "probe"), container:))
+
+    def row_script(name) = %(const row = [ ...document.querySelectorAll("#probe tbody tr") ].find((tr) => tr.querySelector("a")?.textContent === #{name.to_json}))
+
+    # The nth cell (1-based) of the row whose link reads `name`: its edges, whether it scrolls, and how it is set.
+    def cell(name, number)
+      evaluate(<<~JS)
+        #{row_script(name)}
+        const td = row.children[#{number - 1}], rect = td.getBoundingClientRect(), style = getComputedStyle(td)
+        return { left: rect.left, right: rect.right, scrolls: td.scrollWidth > td.clientWidth, display: style.display, align: style.textAlign,
+                 font: style.fontFamily, text: td.textContent.trim(), proxies: td.querySelectorAll(".c-proxy").length }
+      JS
+    end
+
+    # The height, width and right edge of the row's cost, and the link's right edge.
+    def cost_of(name)
+      evaluate(<<~JS)
+        #{row_script(name)}
+        const cost = row.querySelector(".c-cost").getBoundingClientRect()
+        return { height: cost.height, width: cost.width, link: row.querySelector("a").getBoundingClientRect().right }
+      JS
+    end
+
+    # Each legality marker in the row: its word, whether it is drawn, the tag before it and its colour.
+    def markers_of(name)
+      evaluate(<<~JS)
+        #{row_script(name)}
+        return [ ...row.querySelectorAll(".c-legal") ].map((m) => ({ text: m.textContent.trim(), shown: m.getClientRects().length > 0,
+          after: m.previousElementSibling?.tagName, color: getComputedStyle(m).color }))
+      JS
+    end
+
+    def wrapper_scrolls? = evaluate('const el = document.querySelector("#probe").parentElement; return el.scrollWidth > el.clientWidth')
+
+    def group_cell
+      evaluate(<<~JS)
+        const th = document.querySelector("#probe .c-zone__group th"), style = getComputedStyle(th)
+        return { colspan: th.colSpan, text: th.textContent.trim(), position: style.position, background: style.backgroundColor }
+      JS
+    end
+
+    it "reads six columns and sets group rows on a sunken, unstuck ground at 700px (AC-3.5)", :aggregate_failures do
+      zone_at(700)
+      expect(evaluate('return [ ...document.querySelectorAll("#probe thead th") ].map((th) => th.textContent.trim())')).to eq(%w[Card Cost Owned Proxy Total Actions])
+      group = group_cell
+      expect(group.values_at("colspan", "position", "background")).to eq([ 6, "static", token("--surface-sunken") ])
+      expect(group["text"]).to match(/\ACreatures\s*12\z/)
+    end
+
+    it "shows the tag where a row has proxies and a dash where not, right-aligned in mono (AC-3.5)", :aggregate_failures do
+      zone_at(700)
+      expect([ cell("Murktide Regent", 4)["proxies"], cell("Dragon's Rage Channeler", 4) ]).to match([ 1, include("proxies" => 0, "text" => "–") ])
+      numbers = [ 3, 4, 5 ].map { cell("Dragon's Rage Channeler", it) }
+      expect(numbers.map { it["align"] }).to all(eq("right"))
+      expect(numbers.map { it["font"] }).to all(include(mono_family))
+    end
+
+    it "folds Owned and Proxy into the Card cell's line at 360px, keeping Cost and Total (AC-3.6)", :aggregate_failures do
+      zone_at(360)
+      expect([ 3, 4 ].map { cell("Murktide Regent", it)["display"] }).to eq(%w[none none])
+      expect([ 2, 5 ].map { cell("Murktide Regent", it)["display"] }).to eq(%w[table-cell table-cell])
+      sub = evaluate(%(#{row_script("Murktide Regent")}; const sub = row.querySelector(".c-table__sub"); return [ getComputedStyle(sub).display, sub.textContent, sub.querySelectorAll(".c-proxy").length ]))
+      expect(sub).to match([ "block", include("MH2 · 52"), 1 ])
+    end
+
+    it "fits a worst-case row, a 60-character name and a six-symbol cost, in 360px (AC-3.6)", :aggregate_failures do
+      zone_at(360, zone_rows + [ zrow(long_name, cost: %w[2 W U B R G]) ])
+      expect(wrapper_scrolls?).to be(false)
+      expect(cell(long_name, 2)["scrolls"]).to be(false)
+    end
+
+    it "keeps a six-symbol cost on one line in Cost and wraps an eight-symbol one (spec 1.0.1)", :aggregate_failures do
+      zone_at(640, zone_rows + [ zrow("Six", cost: %w[2 W U B R G]), zrow("Eight", cost: %w[2 W U B R G 1 X]) ])
+      six, eight = cost_of("Six"), cost_of("Eight")
+      expect([ six["height"], six["width"] ]).to match([ be_within(1).of(22), be_within(1).of(142) ])
+      expect(eight["height"]).to be > 22
+      expect([ cell("Six", 2)["scrolls"], cell("Eight", 2)["scrolls"] ]).to eq([ false, false ])
+    end
+
+    it "wraps a 60-character name inside the Card cell at 640px (spec 1.0.2)", :aggregate_failures do
+      zone_at(640, zone_rows + [ zrow(long_name) ])
+      expect([ cell(long_name, 1)["scrolls"], wrapper_scrolls? ]).to eq([ false, false ])
+      expect(cost_of(long_name)["link"]).to be <= cell(long_name, 2)["left"]
+    end
+
+    [ 700, 360 ].each do |width|
+      it "marks a banned card after its name and no legal one, in muted ink, at #{width}px (AC-3.8)", :aggregate_failures do
+        zone_at(width)
+        markers = [ markers_of("Ragavan, Nimble Pilferer"), markers_of("Counterspell") ]
+        expect(markers.last).to eq([])
+        expect(markers.first).to eq([ { "text" => "Banned", "shown" => true, "after" => "A", "color" => token("--ink-muted") } ])
+      end
+    end
+  end
+
+  describe "DeckPage zone tables across zones (AC-3.11)" do
+    def three_zones
+      add_to_main(wrap(900, three_zone_html, container: "collection"))
+    end
+
+    def three_zone_html
+      zone_html("Main", zone_rows, id: "zone-1") +
+        zone_html("Sideboard", [ zrow("Mystical Dispute", group: "Instants", cost: %w[2 U], owned: 2), zrow(Array.new(30, "ab").join, owned: 1, proxy: 1) ], id: "zone-2") +
+        zone_html("Considering", [ zrow("Opt", group: "Instants", cost: %w[U]), zrow("Island", group: "Lands", cost: nil) ], id: "zone-3")
+    end
+
+    # Per header cell of a zone's table: its left and right edge relative to the table's left, and its width.
+    def columns_of(zone)
+      evaluate(<<~JS)
+        const table = document.querySelector("##{zone} table"), base = table.getBoundingClientRect().left
+        return [ ...table.querySelectorAll("thead th") ].map((th) => { const r = th.getBoundingClientRect(); return { left: r.left - base, right: r.right - base, width: r.width } })
+      JS
+    end
+
+    def all_columns = %w[zone-1 zone-2 zone-3].map { columns_of(it) }
+
+    # The column positions the three tables must share, read by `key` over the columns at `indexes`.
+    def shared(key, indexes) = all_columns.map { |columns| indexes.map { columns[it][key] } }
+
+    it "gives Cost, Owned, Proxy, Total and the menu one position and width in every zone at 900px", :aggregate_failures do
+      three_zones
+      expect(shared("left", 1..5).uniq.size).to eq(1)
+      expect(shared("width", 1..5)).to all(match([ 176, 80, 112, 80, 64 ].map { be_within(0.5).of(it) }))
+    end
+
+    it "lines up the right edges of Cost, Total and the menu in every zone at 360px", :aggregate_failures do
+      add_to_main(wrap(360, three_zone_html, container: "collection"))
+      edges = shared("right", [ 1, 4, 5 ])
+      expect(edges.transpose.map { |column| column.max - column.min }).to all(be <= 1)
+      expect(shared("width", [ 4, 5 ]).transpose.map { |column| column.max - column.min }).to all(be <= 1)
+    end
+  end
+
+  describe "DeckPage zone heads and empty zones (AC-3.7, AC-3.9)" do
+    def head_at(width, rows = zone_rows, title: "Main") = add_to_main(wrap(width, zone_html(title, rows, id: "probe")))
+
+    def head_boxes = %w[.c-section__title .c-section__count .c-section__actions\ .c-btn].map { box("#probe #{it}") }
+
+    def counts_scroll? = evaluate('const el = document.querySelector("#probe .c-section__count"); return el.scrollWidth > el.clientWidth')
+
+    it "puts the counts on their own line below 640px, uncut, with Add a proxy beside the title (AC-3.7)", :aggregate_failures do
+      head_at(600)
+      title, counts, add = head_boxes
+      expect(counts["top"]).to be >= title["bottom"]
+      expect(add["top"]).to be < title["bottom"]
+      expect(counts_scroll?).to be(false)
+    end
+
+    it "keeps the head on one line from 640px (AC-3.7)", :aggregate_failures do
+      head_at(700)
+      title, counts, add = head_boxes
+      expect([ counts["top"], add["top"] ]).to all(be < title["bottom"])
+    end
+
+    it "shows an empty zone as its head and a sunken sentence, with no table (AC-3.9)", :aggregate_failures do
+      head_at(700, [], title: "Sideboard")
+      expect(evaluate('return document.querySelector("#probe .c-section__count").textContent')).to eq("0 cards · 0 owned · 0 proxy")
+      expect(evaluate('return document.querySelector("#probe table")')).to be_nil
+      expect(computed("#probe .c-zone__empty", "background-color")).to eq([ token("--surface-sunken") ])
+      expect(evaluate('return document.querySelector("#probe .c-zone__empty").textContent')).to eq("No cards in Sideboard yet.")
     end
   end
 end

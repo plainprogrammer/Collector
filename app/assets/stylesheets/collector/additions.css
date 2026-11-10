@@ -433,3 +433,60 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
 .c-manabar__seg--g { background:var(--mana-g); color:var(--on-mana-g); }
 .c-manabar__seg--narrow span { display:none; }
 .c-manacap { margin:0; font:400 13px/18px var(--font-sans); color:var(--ink-muted); }
+
+/* ---------- Deck page layout and the panel's two copies (spec 060) ---------- */
+/* The shape panel is rendered twice, an aside and a closed details, and each hides the other: a closed details hides its
+   content whatever the CSS, and ::details-content would put a browser floor under the page (decision 7). The page's
+   container decides, as the rest of a detail page does. Two columns from 992px: 640px of table, 320px of panel and the
+   space-8 gap (decision 6). With no panel the second column stays empty (issue design item 7). */
+.c-deck { display:grid; grid-template-columns:minmax(0, 1fr); gap:var(--space-6); align-items:start; margin-top:var(--space-6); }
+.c-deck__zones { display:flex; flex-direction:column; gap:var(--space-8); min-width:0; }
+.c-shapefold { display:none; background:var(--surface-raised); border:1px solid var(--line); border-radius:var(--radius-md); }
+.c-shapefold > summary { display:flex; flex-wrap:wrap; align-items:baseline; gap:var(--space-1) var(--space-3); min-height:44px; padding:var(--space-2) var(--space-4); list-style:none; cursor:pointer; }
+.c-shapefold > summary::-webkit-details-marker { display:none; }
+.c-shapefold > summary::after { content:"Show" / ""; margin-left:auto; font:600 13px/18px var(--font-sans); color:var(--brand); }
+.c-shapefold[open] > summary::after { content:"Hide" / ""; }
+.c-shapefold > summary:focus-visible { outline:2px solid var(--focus); outline-offset:2px; border-radius:var(--radius-md); }
+.c-shapefold__title { font:600 20px/28px var(--font-sans); color:var(--ink); }
+.c-shapefold__facts { font:400 13px/18px var(--font-mono); color:var(--ink-muted); }
+@container page (min-width: 992px) {
+  .c-deck { grid-template-columns:minmax(0, 1fr) 320px; gap:var(--space-8); }
+  .c-deck__zones { grid-column:1; grid-row:1; }
+  .c-deck__shape { grid-column:2; grid-row:1; position:sticky; top:calc(56px + var(--space-6)); } /* the header's 56px, as c-item__media */
+}
+@container page (max-width: 639px) {
+  .c-deck__shape { display:none; }
+  .c-shapefold { display:block; }
+  .c-zone .c-section__head { flex-wrap:wrap; } /* the counts take their own line: a cut count is information lost */
+  .c-zone .c-section__count { order:3; flex-basis:100%; white-space:normal; }
+  .c-zone .c-section__actions { margin-left:auto; }
+}
+
+/* ---------- Deck page zones (spec 060): a table per zone, grouped rows, one shared column layout ---------- */
+/* From 640px of the table's container every zone table has the same fixed widths, so Cost, Owned, Proxy, Total and the
+   menu sit at one x in every zone (decision 25). th is border-box: a width is the whole column, padding included. A pip is
+   22px (20px and a 1px border; the export sets no box-sizing), so six symbols are 142px and a cell pads 12px a side: Cost
+   needs 166px and has 176px. Below 640px the table keeps its auto layout (decision 9): zones are stacked there and a fixed
+   Cost would leave a phone's name column 25px. A longer cost wraps its pips, and a long name wraps, at every width rather
+   than spill into the next cell. */
+.c-zone__group th { position:static; padding:var(--space-2) var(--space-3); background:var(--surface-sunken); font:600 12px/16px var(--font-sans);
+  color:var(--ink-muted); border-bottom:1px solid var(--line); } /* the export's .c-table th sticks */
+.c-table tr.c-zone__group:hover { background:transparent; }
+.c-zone__groupcount { margin-left:var(--space-2); font:400 12px/16px var(--font-mono); }
+.c-zone__set { font:400 12px/16px var(--font-mono); color:var(--ink-muted); }
+.c-zone__empty { margin:0; padding:var(--space-4); background:var(--surface-sunken); border-radius:var(--radius-md); font:400 14px/20px var(--font-sans); color:var(--ink-muted); }
+@container collection (min-width: 640px) {
+  .c-zone .c-table { table-layout:fixed; }
+  .c-zone .c-table th { box-sizing:border-box; }
+  .c-zone .c-table .c-zone__c-cost { width:11rem; }
+  .c-zone .c-table .c-zone__c-owned { width:5rem; }
+  .c-zone .c-table .c-zone__c-proxy { width:7rem; }
+  .c-zone .c-table .c-zone__c-total { width:5rem; }
+  .c-zone .c-table .c-zone__c-menu { width:4rem; }
+}
+@container collection (max-width: 639px) {
+  .c-decks td:first-child { white-space:normal; overflow-wrap:anywhere; } /* the export's nowrap: a name never widens a phone's table */
+  .c-zone .c-zone__c-total { width:1%; } /* the auto layout shares spare width among auto columns; Total keeps its content's, as the menu does */
+}
+.c-zone td:first-child { white-space:normal; overflow-wrap:anywhere; } /* every width: in the 128px Card column of a 640px table a name would spill into Cost under the export's nowrap */
+.c-zone .c-cost { flex-wrap:wrap; }
