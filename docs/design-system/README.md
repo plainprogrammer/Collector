@@ -144,4 +144,6 @@ App additions (spec 060, in `collector/additions.css`): `ProxyTag` (`c-proxy`), 
 
 ## Iconography
 
-- No icon set chosen yet. Until one is, use Lucide (ISC-licensed, 1.5px stroke, 20px) in `currentColor`, which matches Plex's weight. Flag any other set here before adopting it.
+- No icon set chosen yet. Until one is, use Lucide (ISC-licensed) in `currentColor`, which matches Plex's weight. Flag any other set here before adopting it.
+- Stroke follows the size an icon is drawn at (spec 063). A stroke scales with its icon, so a Lucide stroke of 1.5 draws 1.25px on screen at 20px but 0.75px at 12px, a hairline beside a 600-weight word. Below 20px an icon keeps about 1.25px on screen: the stroke is `30 ÷ size` in px, rounded to a half, never below 1.5 or above 2.5. The app draws 1.5 at 20px and above (the tab bar's 22px), 2 at 14px to 16px (buttons, inputs, menu items, the view switch, filter chips) and 2.5 at 12px (badges, legality marks).
+- Every icon keeps `stroke-width="1.5"` in its markup (the weight at 20px, so a copied icon looks right on its own). `additions.css` sets the heavier stroke by the component that draws the icon, so an icon placed in one of those components needs nothing more. An icon drawn at a size no component sets gets its stroke by the rule above, and its size and stroke are added to the list of sizes above.

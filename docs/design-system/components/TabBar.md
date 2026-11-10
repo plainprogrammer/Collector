@@ -7,7 +7,7 @@ The bottom tab bar on phones, in the pattern of native apps: four sections (Coll
 ```html
 <nav class="c-tabbar" id="tabbar" aria-label="Main" data-turbo-permanent>
   <a href="/collection" aria-current="page"><span class="c-tabbar__icon"><svg …/></span>Collection</a>
-  <a href="/decks"><span class="c-tabbar__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="3" width="12" height="16" rx="2"/><path d="M5 7v12a2 2 0 0 0 2 2h9"/></svg></span>Decks</a>
+  <a href="/decks"><span class="c-tabbar__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="3" width="12" height="16" rx="2"/><path d="M5 7v12a2 2 0 0 0 2 2h9"/></svg></span>Decks</a>
   <a href="/catalog/entries"><span class="c-tabbar__icon"><svg …/></span>Search</a>
   <a href="/scanner"><span class="c-tabbar__icon"><svg …/></span>Scan</a>
   <a href="/more"><span class="c-tabbar__icon"><svg …/></span>More</a>
