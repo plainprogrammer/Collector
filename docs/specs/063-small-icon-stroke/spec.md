@@ -7,6 +7,7 @@
 **Depends on:** [spec 060](../060-deck-components/spec.md) (decision 16: every icon in the previews is at the app's stroke, 1.5; this issue is its follow-up), [spec 057](../057-deck-design-rules/spec.md) (the design system's rules and additions), all merged
 **Branch:** `063-small-icon-stroke`
 **Issue:** [#294](https://github.com/plainprogrammer/Collector/issues/294) (design-system lane)
+**Frozen:** the current rules are in [`design-system/README.md`](../../design-system/README.md) (whole spec); see the [specs index](../README.md)
 
 ---
 
