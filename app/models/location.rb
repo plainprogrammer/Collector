@@ -34,8 +34,13 @@ class Location < ApplicationRecord
   # What the collector names and what the 500 limit counts: places and decks, never a zone.
   scope :top_level, -> { where(parent_id: nil) }
 
+  # Whether this location is a place, a deck or a zone of a deck (the `kind` column in words).
   def place? = kind == "place"
+
+  # (see #place?)
   def deck? = kind == "deck"
+
+  # (see #place?)
   def zone? = kind == "deck_zone"
 
   # "Izzet Tempo › Main" for a zone, the name for anything else: the one label wherever a lot's place is shown (spec 062 D6).
