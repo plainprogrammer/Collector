@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed (2026-11-10). Written with spec 062; the maintainer approved the spec and this ADR's content on 2026-11-10 (v0.4.0 and the 500 message), so it becomes Accepted when the feature merges; the maintainer ruled its data shapes on 2026-11-10 (D1: the schema, D2: how a lot names a zone in a file, D3: how decks appear in a file, D4: the collectible type beside the format, D6: a zone's label and the safe edit of a lot in a zone), and the maintainer's approval of the spec and plan will accept it. It builds on [ADR 0025](0025-a-lots-location-is-part-of-its-identity.md) and [ADR 0023](0023-locations-make-export-format-version-2.md), which stay Accepted; the seam follows [ADR 0018](0018-collectible-agnostic-catalog-core.md).
+Accepted (2026-11-10). Written with spec 062 as Proposed; the maintainer ruled its data shapes on 2026-11-10 (D1: the schema, D2: how a lot names a zone in a file, D3: how decks appear in a file, D4: the collectible type beside the format, D6: a zone's label and the safe edit of a lot in a zone, D7: the older-file refusals) and approved the spec (v0.5.0) and the plan (v0.3.0) the same day. It builds on [ADR 0025](0025-a-lots-location-is-part-of-its-identity.md) and [ADR 0023](0023-locations-make-export-format-version-2.md), which stay Accepted; the seam follows [ADR 0018](0018-collectible-agnostic-catalog-core.md).
 
 **Date:** 2026-11-10
 **Feature:** 062-create-rename-remove-a-deck

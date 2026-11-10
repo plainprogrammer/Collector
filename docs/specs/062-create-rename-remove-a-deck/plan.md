@@ -1,7 +1,7 @@
 # Plan 062: Create, rename and remove a deck
 
 **Spec:** [spec.md](spec.md) v0.5.0 (Approved) · **ADR:** [0028](../../adr/0028-decks-are-locations-with-zones.md) · **Issue:** [#49](https://github.com/plainprogrammer/Collector/issues/49)
-**Plan version:** 0.3.0 (2026-11-10, after review round 2) · **Status:** Draft, for Gate B
+**Plan version:** 0.3.1 (2026-11-10, after review round 2; approved at Gate B with the icon stroke note) · **Status:** Approved (maintainer, 2026-11-10; Gate B)
 
 ## Goal
 
@@ -360,7 +360,7 @@ class DecksController < ApplicationController
 end
 ```
 
-`find_by!` raises `ActiveRecord::RecordNotFound` (404, as in `LocationsController`). The nav: `_appbar` inserts `Decks` after Collection (`decks_path`, `"aria-current": ("page" if section == :decks)`); `_tabbar` inserts the Decks tab after Collection with `render "icons/decks"` (the markup is in `TabBar.md`: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="3" width="12" height="16" rx="2"/><path d="M5 7v12a2 2 0 0 0 2 2h9"/></svg>`, following the other icon partials' shape). The page's table markup follows `DecksIndex.md` minus the Proxy column, plus an actions cell with `c-btn c-btn--ghost c-btn--sm` Rename and Remove as the Locations list has. `DecksHelper#deck_count_line(listing)` builds "6 decks · 379 cards". If the actions cell needs a rule, it goes in `additions.css` with a note in `DecksIndex.md` (T23); keep new rules in one block at the end of the file (a sibling worker, #294, edits icons and `additions.css`).
+`find_by!` raises `ActiveRecord::RecordNotFound` (404, as in `LocationsController`). The nav: `_appbar` inserts `Decks` after Collection (`decks_path`, `"aria-current": ("page" if section == :decks)`); `_tabbar` inserts the Decks tab after Collection with `render "icons/decks"` (the shapes are in `TabBar.md`, but draw them as every partial in `app/views/icons/` is drawn, `stroke-width="1.5" stroke-linecap="round"` (maintainer, 2026-11-10: the #294 branch sets heavier strokes by component in `additions.css`, so the partial needs nothing extra): `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="3" width="12" height="16" rx="2"/><path d="M5 7v12a2 2 0 0 0 2 2h9"/></svg>`, following the other icon partials' shape). The page's table markup follows `DecksIndex.md` minus the Proxy column, plus an actions cell with `c-btn c-btn--ghost c-btn--sm` Rename and Remove as the Locations list has. `DecksHelper#deck_count_line(listing)` builds "6 decks · 379 cards". If the actions cell needs a rule, it goes in `additions.css` with a note in `DecksIndex.md` (T23); keep new rules in one block at the end of the file (a sibling worker, #294, edits icons and `additions.css`).
 
 **Commit:** `feat(decks): the Decks page, and Decks in the header and tab bar (#49)`.
 
