@@ -81,4 +81,4 @@ group :test do
   gem "vcr"
 end
 
-gem "parallel_tests", "~> 5.8.0", group: :test, require: false
+gem "parallel_tests", "~> 5.9.0", group: :test, require: false
