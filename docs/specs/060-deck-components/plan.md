@@ -1,11 +1,11 @@
 # Implementation Plan: Design System: Deck Components and Previews
 
-**Spec:** [docs/specs/060-deck-components/spec.md](spec.md) (version 1.0.1: Approved at Gate A on 2026-11-10; 1.0.1 is the patch the plan review forced, see its changelog)
+**Spec:** [docs/specs/060-deck-components/spec.md](spec.md) (version 1.0.2: Approved at Gate A on 2026-11-10; 1.0.1 and 1.0.2 are the patches the plan review forced, see its changelog)
 **Decisions:** none new; the maintainer's rulings are the spec's decisions 1–17, 23 and 24, and decisions 18–22 and 25 were confirmed at Gate A. No ADR (decision 18).
 **Issue:** [#249](https://github.com/plainprogrammer/Collector/issues/249) (roadmap item 14b)
 **Created:** 2026-11-10
-**Status:** Draft (plan review round 1 fixed; awaiting round 2 and Gate B)
-**Review:** round 1 (read-only Opus): NEEDS REVISION, 0 blocking, 6 major, 6 minor, 2 nits; fixed in this draft: the blocks go at the end of the file (cascade), the host page is stripped, a pip is 22px (spec 1.0.1: Cost 11rem), the head's line check, the types' counts line up, AC-3.11 reads right edges in the narrow layout, controls added, the README names the classes.
+**Status:** Draft (plan review rounds 1 and 2 fixed; awaiting Gate B)
+**Review:** round 1 (read-only Opus): NEEDS REVISION, 0 blocking, 6 major, 6 minor, 2 nits; fixed in this draft: the blocks go at the end of the file (cascade), the host page is stripped, a pip is 22px (spec 1.0.1: Cost 11rem), the head's line check, the types' counts line up, AC-3.11 reads right edges in the narrow layout, controls added, the README names the classes. Round 2: NEEDS REVISION, 0 blocking, 2 major, 4 minor, 1 nit; fixed: the six-symbol cost is asserted on one line, the Card name wraps at every width (spec 1.0.2), Total is `width:1%` below 640px with one short table in AC-3.11, the stale numbers, AC-7.7 named.
 
 ## Global Constraints
 
@@ -265,11 +265,12 @@ A card that is not legal in the format has `<span class="c-legal c-legal--no">�
 - [ ] AC-3.4 at 639px: the aside is `display:none`; the details copy is `display:block`, closed (`open` is false), above the zones, its summary at least 44px high and its text containing "Deck shape" and "average mana value"; focus the summary and `send_keys(:enter)` opens it, a second press closes it; the wrapper's `scrollWidth <= clientWidth`. At 640px the details copy is `display:none` and the aside is displayed.
 - [ ] AC-3.5 at a table container of 700px (`wrap(700, zone_html(…), container: "collection")`): the header cells read `Card, Cost, Owned, Proxy, Total, Actions`; a group row's `th` has `colspan` 6, background `token("--surface-sunken")`, `position` `static`, text starting "Creatures" with its count; the row with proxies has a `.c-proxy` in the Proxy cell, the row without has "–"; Owned, Proxy and Total cells are right-aligned and use the mono family.
 - [ ] AC-3.6 at a table container of 360px: Owned and Proxy are `display:none`; the Card cell's `.c-table__sub` is displayed and holds the set and (for a proxy row) a `.c-proxy`; Cost and Total are shown; the wrapper's `scrollWidth <= clientWidth` with a worst-case row (a 60-character name with no space and a six-symbol cost); the Cost cell's `scrollWidth <= clientWidth`.
-- [ ] A cost that fits (spec 1.0.1): at a table container of 640px a row with a six-symbol cost has its Cost `td`'s `scrollWidth <= clientWidth` (142px of pips in 176px less 24px of padding); a row with an eight-symbol cost wraps its pips (the `.c-cost`'s height is more than one pip's) and the `td`'s `scrollWidth <= clientWidth`.
+- [ ] A cost that fits (spec 1.0.1): at a table container of 640px a row with a six-symbol cost has its `.c-cost` on one line (its height is one pip, 22px within 1px, and its width 142px within 1px) inside the Cost `td` (176px less 24px of padding); a row with an eight-symbol cost wraps its pips (the `.c-cost`'s height is more than one pip's) and the `td`'s `scrollWidth <= clientWidth`. The first assertion is the one that fails if the Cost column is too narrow (a wrapping `.c-cost` would keep `scrollWidth` within the cell).
+- [ ] A name at 640px (spec 1.0.2): at a table container of 640px a row with a 60-character name with no space has the Card `td`'s `scrollWidth <= clientWidth`, and the name link's right edge is at or left of the Cost `td`'s left edge.
 - [ ] AC-3.7: a page wrapper at 600px: the counts' top is at or below the title's bottom and "Add a proxy" overlaps the title vertically (its top is above the title's bottom); the counts' `scrollWidth <= clientWidth`; at 700px the head is one line: the counts' top and the button's top are each above the title's bottom (the head aligns on baselines, so tops differ by a few pixels, which is why the example reads overlap, not equal tops).
 - [ ] AC-3.8: a banned row's name link is followed by a `.c-legal` containing "Banned", at 700px and at 360px; a legal row has none; the marker's colour is `token("--ink-muted")`.
 - [ ] AC-3.9: an empty zone: the counts read `0 cards · 0 owned · 0 proxy`; no `table`; `.c-zone__empty` has background `token("--surface-sunken")` and text `No cards in Sideboard yet.`.
-- [ ] AC-3.11: three zone tables with different rows at a 900px collection container: for the Cost, Owned, Proxy, Total and menu `th`s the left edge relative to the table and the width are equal across the three tables, and the widths are 176, 80, 112, 80 and 64px. At 360px (the auto layout) the right edges, relative to the table, of the Cost, Total and menu cells are equal across the tables within 1px, and so are the widths of Total and the menu (spec 1.0.1: Cost's left edge follows its content). If a right edge cannot match, stop and raise a spec update; do not loosen the example.
+- [ ] AC-3.11: three zone tables with different rows at a 900px collection container: for the Cost, Owned, Proxy, Total and menu `th`s the left edge relative to the table and the width are equal across the three tables, and the widths are 176, 80, 112, 80 and 64px. At 360px (the auto layout) the right edges, relative to the table, of the Cost, Total and menu cells are equal across the tables within 1px, and so are the widths of Total and the menu (spec 1.0.1: Cost's left edge follows its content). One of the three tables has short rows (a zone of "Opt" and one more card), because an auto layout whose content is narrower than the table shares the extra width among its auto columns; Total's `width:1%` below 640px is what keeps it from stretching. If a right edge cannot match, stop and raise a spec update; do not loosen the example.
 - [ ] AC-3.12: `deck_html(panel: false)` at 1100px: the zones' left equals the wrapper's left and their width is the wrapper's width minus 352px (320 and 32); at 700px they span the wrapper; there is no `.c-shapefold` and no `.c-deck__shape`.
 - [ ] Run: failures. Add the two blocks:
 
@@ -307,7 +308,8 @@ A card that is not legal in the format has `<span class="c-legal c-legal--no">�
    menu sit at one x in every zone (decision 25). th is border-box: a width is the whole column, padding included. A pip is
    22px (20px and a 1px border; the export sets no box-sizing), so six symbols are 142px and a cell pads 12px a side: Cost
    needs 166px and has 176px. Below 640px the table keeps its auto layout (decision 9): zones are stacked there and a fixed
-   Cost would leave a phone's name column 49px. A longer cost wraps its pips at every width rather than spill. */
+   Cost would leave a phone's name column 25px. A longer cost wraps its pips, and a long name wraps, at every width rather
+   than spill into the next cell. */
 .c-zone__group th { position:static; padding:var(--space-2) var(--space-3); background:var(--surface-sunken); font:600 12px/16px var(--font-sans);
   color:var(--ink-muted); border-bottom:1px solid var(--line); } /* the export's .c-table th sticks */
 .c-table tr.c-zone__group:hover { background:transparent; }
@@ -324,8 +326,10 @@ A card that is not legal in the format has `<span class="c-legal c-legal--no">�
   .c-zone .c-table .c-zone__c-menu { width:4rem; }
 }
 @container collection (max-width: 639px) {
-  .c-zone td:first-child, .c-decks td:first-child { white-space:normal; overflow-wrap:anywhere; } /* the export's nowrap: a name never widens a phone's table */
+  .c-decks td:first-child { white-space:normal; overflow-wrap:anywhere; } /* the export's nowrap: a name never widens a phone's table */
+  .c-zone .c-zone__c-total { width:1%; } /* the auto layout shares spare width among auto columns; Total keeps its content's, as the menu does */
 }
+.c-zone td:first-child { white-space:normal; overflow-wrap:anywhere; } /* every width: in the 128px Card column of a 640px table a name would spill into Cost under the export's nowrap */
 .c-zone .c-cost { flex-wrap:wrap; }
 ```
 
@@ -444,6 +448,6 @@ Both follow the existing documents: a one-line summary, **Markup** (the referenc
 
 ## Phase 13: The record (supervisor)
 
-- [ ] `verification.md`: the browser examples' count and result; the document criteria's quotations; the screenshots (every new preview at 1280px and 390px, light and dark) in `docs/specs/060-deck-components/screenshots/`; the red runs; the measurements (Cost 154px, the Card column at a 640px container, the 313px and 279px panel); the 12px marks at 1.5.
+- [ ] `verification.md`: the browser examples' count and result; AC-7.7 (`bin/ci checks` and `spec/design_system_files_spec.rb`, the full `bin/ci` in the PR); the document criteria's quotations; the screenshots (every new preview at 1280px and 390px, light and dark) in `docs/specs/060-deck-components/screenshots/`; the red runs; the measurements (Cost 176px, 166px needed; the Card column at a 640px container, the 313px and 279px panel); the 12px marks at 1.5.
 - [ ] `docs/specs/README.md`: Plan "present". Record in `verification.md`: the Decks table is exempt from decision 25's column layout although FR-4 once pointed at it (FR-4's wording was corrected to the name wrap only); the export's coarse-pointer 44px rule (AC-4.4); the unit pip width (22px).
 - [ ] Implementation review (`sdd-review` Mode B, read-only Opus) recorded under `## Implementation review`; the final visual review with the maintainer (screenshots of each new component, both themes, wide and phone, in the PR body, including the tidied lot rows of UseMyCopy); session wrap and distill-feature; a CI slot for the push and the full `bin/ci`.
