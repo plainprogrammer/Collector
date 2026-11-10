@@ -8,6 +8,7 @@
 **Branch:** `060-deck-components`
 **Issue:** [#249](https://github.com/plainprogrammer/Collector/issues/249) (roadmap item 14b)
 **Frozen:** the current rules are in the [design system](../../design-system/README.md) and its component docs (whole spec: the deck components, their previews and the CSS in `additions.css`); see the [specs index](../README.md)
+**Plan:** retired in `7e9c5850773b19319ce1cda1bf6b9fe0aed127cb`; read it with `git show 7e9c5850773b19319ce1cda1bf6b9fe0aed127cb^:docs/specs/060-deck-components/plan.md`
 
 ---
 
