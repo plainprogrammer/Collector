@@ -1,11 +1,11 @@
 # Verification: spec 060, design system deck components and previews
 
-**Spec:** [spec.md](spec.md) 1.0.3 | **Plan:** [plan.md](plan.md) | **Issue:** [#249](https://github.com/plainprogrammer/Collector/issues/249)
+**Spec:** [spec.md](spec.md) 1.0.4 | **Plan:** [plan.md](plan.md) | **Issue:** [#249](https://github.com/plainprogrammer/Collector/issues/249)
 **Recorded:** 2026-11-10, on branch `060-deck-components` after merging `origin/main` (`e4986ee8`; main has since moved to `f8b56bba`, merged again at the push).
 
 ## Browser criteria (RSpec, headless Firefox)
 
-`script/worktree/with_mise bin/rspec spec/system/design_system_deck_components_spec.rb spec/design_system_files_spec.rb`: **49 + 7 examples, 0 failures** (the guard spec's count is unchanged, "spec 019" and "spec 021" once each). RuboCop on the new spec: no offenses, no `.rubocop.yml` change (a `type: :system` spec is not checked by `RSpec/DescribeClass`, as the plan review found). The full `bin/ci` run is recorded in the pull request (one run, with a CI slot).
+`script/worktree/with_mise bin/rspec spec/system/design_system_deck_components_spec.rb spec/design_system_files_spec.rb`: **52 + 7 examples, 0 failures** (the guard spec's count is unchanged, "spec 019" and "spec 021" once each). RuboCop on the new spec: no offenses, no `.rubocop.yml` change (a `type: :system` spec is not checked by `RSpec/DescribeClass`, as the plan review found). The full `bin/ci` run is recorded in the pull request (one run, with a CI slot).
 
 | Describe (in `spec/system/design_system_deck_components_spec.rb`) | Criteria |
 |---|---|
@@ -14,7 +14,7 @@
 | Card types; the mana bar | AC-2.5, AC-2.6, AC-2.7 |
 | The deck page: layout, the panel's two copies, zone tables, head, legality marker (both copies), empty zone, shared columns, no panel | AC-3.2 to AC-3.9, AC-3.11, AC-3.12, and the cost and name examples of spec 1.0.1 and 1.0.2 |
 | The Decks list and the New deck page | AC-4.2 to AC-4.5 (with the control: the head without `.c-decks` is hidden at 360px) |
-| AddToDeck and UseMyCopy | AC-5.2, AC-5.3, AC-6.2 to AC-6.4, and the mono and nowrap example of commit `8faea817` |
+| AddToDeck and UseMyCopy | AC-5.2, AC-5.3, AC-6.2 to AC-6.4, and the mono and nowrap example of commit `8faea817`; the four-symbol cost on one line at 360px and in a 390px frame, and the open details copy's corner radii (final visual review) |
 
 ### Red runs (test first), as the implementers reported them
 
@@ -79,7 +79,6 @@ In [screenshots/](screenshots/), each in light and dark: the seven pages at 1280
 ## Observations
 
 - The mock-ups of 2026-11-09 were not in the repository, so deck page option B and curve option B were redrawn from the issue text, and the maintainer ruled on 17 questions from shots drawn with the real CSS (the spec's decisions).
-- The open `details` copy of the shape panel shows a faint bottom edge in the `DeckShape` preview; to look at in the final visual review.
 
 ## Implementation review
 
@@ -102,4 +101,14 @@ Read-only Opus review (sdd-review Mode B) of the committed branch and the uncomm
 ## Distillation
 
 At session wrap (`distill-feature`, 2026-11-10): the rules of this spec live in `docs/design-system/` (the design system is its own reference, as for specs 004's design-system part and 057): the six component documents, the README's Components list, App additions line and Charts rule, and the pointers in `ChoicePage`, `ManaCost`, `TableActions` and `AppHeader`. No area doc changes. `docs/architecture/README.md` names spec 060 in its design-system note; the specs index row reads Frozen, by the design system, with the plan's retirement owed; the spec's header carries its frozen line. Memory: `design-system-guard-and-rubocop-traps` (a wrapper div and `blank_host` for a component with no view; blocks at the end of `additions.css`), `pr-screenshots-workflow` (static previews over a local server), and a new `sdd-gate-blocks-plan-before-approval`. Lessons: `docs/lessons/2026-11-10-a-pip-is-22px-a-width-in-a-spec-comes-from-a-probe.md` and `docs/lessons/2026-11-10-reread-a-ruling-against-what-each-batch-produced.md`. Issue [#294](https://github.com/plainprogrammer/Collector/issues/294) (12px icon strokes) was filed from decision 16.
+
+## Final visual review
+
+The maintainer reviewed the screenshots in the pull request on 2026-11-10 and asked for three changes, each its own commit, all done:
+
+1. **A four-symbol cost wrapped to two lines in the 390px zone table** (Cryptic Command, `1UUU`: 46px high). Cause: the auto layout may shrink the Cost cell to the width of one wrapped pip. Fix `8f6f876f` (spec 1.0.4): `min-width:94px` on `c-cost` inside a zone table (4 × 22px + 3 × 2px); the examples at a 360px container and in a 390px frame went red (46px) and then green (one pip high); the six-symbol, 60-character worst case at 360px still does not overflow. `DeckPage.md` says what still wraps: five or more symbols may take two lines in the narrow layout; six fit one line in the wide layout's 176px.
+2. **No "Not legal" marker in the preview.** Sample data, not a CSS bug: the earlier mock-ups had Pyroblast and Spell Queller marked and the first preview drew only a Banned marker on Ragavan. `b45f61e8` adds the marker (both copies) to those rows in `DeckPage.html` and `DeckPagePhone.html`; the previews now show one Banned and two Not legal.
+3. **The open `details` copy drew a faint bottom edge.** Cause: the bare panel's square corners and raised background painted over the details' rounded border (8px radius, 1px border). Fix `8a223a8e`: the bare panel's bottom corners take the details' inner radius (7px); the new example failed on `[0, 0]` against `[7, 7]` and a 3x crop shows a continuous border.
+
+The affected screenshots (`DeckPage` and `DeckShape`, wide and phone, light and dark) were re-shot and replaced.
 
