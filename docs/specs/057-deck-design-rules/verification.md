@@ -100,9 +100,13 @@ Read-only Opus review (sdd-review Mode B) of `git diff origin/main...HEAD` again
 | 1 | minor | `AppHeader.md` still said "the wordmark shows on wide screens, the mark alone on phones" | fixed (the bullet now names the 640px to 719px stand-in) |
 | 2 | minor | `SingleStat.md` said "switch back to the plain `c-stats` grid" beside the new `c-stats--three` bullet | fixed ("use `c-stats--three` for three and the plain `c-stats` grid for four") |
 | 3 | minor | spec 057 decision 12 missing from the Sources lists of `catalog-core.md` and `collection-and-lots.md` | fixed (a Spec 057 line in each) |
-| 4 | minor | `.claude/memory/` files (`spec-019-followups.md`, `design-system-owned-in-code.md`, the index line) still say "upstream" and "re-export" | to be done at session wrap (`session-wrap` and `distill-feature`), in this PR; AC-7.4's scope does not include `.claude/memory` |
+| 4 | minor | `.claude/memory/` files (`spec-019-followups.md`, `design-system-owned-in-code.md`, the index line) still say "upstream" and "re-export" | fixed at session wrap, in this PR (the ownership memory reworded as settled, the spec 019 follow-ups memory deleted; AC-7.4's scope does not include `.claude/memory`) |
 | 5 | nit | `font-size`/`font-family: inherit` are on the optgroup, FR-4 says on the options | recorded under Deviations |
 | 6 | nit | `ManaCost.md` said "data colours" twice | fixed |
 | 7 | nit | the unowned-tile comment in `additions.css` was left with a short line | fixed (rewrapped) |
 | 8 | nit | the In decks and Format legality sections in `ItemPage.html`/`ItemPagePhone.html` keep the two-space indent of the removed `c-split`; the two previews are byte-identical | left as is (harmless) |
 | 9 | nit | AC-4.2's "unaffected" wording: the option rule styles every option; the example checks that no label style leaks onto an ungrouped option | left as is (the spec is approved; the example proves what matters, and the plan's honest note says so) |
+
+## Distillation
+
+At session wrap (`distill-feature`, 2026-11-10): the rules of this spec live in `docs/design-system/` (the design system is its own reference, as for spec 004's design-system part); `catalog-core.md` and `collection-and-lots.md` carry decision 12's wording, a Spec 057 line in their Sources and a Distillation log row ("spec 057's pull request", to be named once it merges); `docs/architecture/README.md` lists the spec in both rows and in the design-system note; the specs index row reads Frozen and its Plan "retirement owed"; the spec's header carries its frozen line. The `.claude/memory/` files the review flagged were fixed (the ownership memory reworded, the spec 019 follow-ups memory deleted, since PR #66 merged on 2026-10-12), and a lesson was written (`docs/lessons/2026-11-10-measure-the-apps-header-not-the-preview.md`).
