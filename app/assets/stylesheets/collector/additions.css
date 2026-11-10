@@ -517,3 +517,10 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
    no break inside it: the page-head line is mono by inheritance but broke inside "2X2 · 117" at 390px. */
 .c-pick .is-data { font-family:var(--font-mono); }
 .c-pick .is-data, .c-pagehead__stats .is-data { white-space:nowrap; }
+
+/* ---------- Decks page row actions (spec 062): Rename and Remove beside each deck ---------- */
+/* The Locations list's ghost buttons in a table cell. The cell is as narrow as its buttons (`td.c-table__actions`), the two sit
+   on one line with the list's gap and meet the 44px touch floor like the rest of the deck pages, and the deck page's own
+   links (#253) may take them over. */
+.c-decks__actions { display:flex; justify-content:flex-end; gap:var(--space-2); font-family:var(--font-sans); }
+.c-decks .c-btn { min-height:var(--touch-floor); min-width:var(--touch-floor); }

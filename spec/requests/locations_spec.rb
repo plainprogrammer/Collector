@@ -329,8 +329,8 @@ RSpec.describe "Locations", type: :request do
     describe "the ways in (Story 5)" do
       it "adds Locations after Scan in the header, current on its pages, and no tab is marked (AC-5.1, AC-5.3)", :aggregate_failures do
         get collection_path
-        expect(html.css(".c-appbar__nav a").map(&:text)).to eq(%w[Collection Search Scan Locations])
-        expect(html.css(".c-tabbar a").map { |link| link.text.strip }).to eq(%w[Collection Search Scan More])
+        expect(html.css(".c-appbar__nav a").map(&:text)).to eq(%w[Collection Decks Search Scan Locations]) # Decks joined in spec 062
+        expect(html.css(".c-tabbar a").map { |link| link.text.strip }).to eq(%w[Collection Decks Search Scan More])
 
         create(:location, account:)
         [ locations_path, edit_location_path(account.locations.first), new_location_removal_path(account.locations.first) ].each do |path|

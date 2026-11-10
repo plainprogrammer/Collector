@@ -44,6 +44,11 @@ Rails.application.routes.draw do
     resource :selection, only: :create, module: :locations # spec 059: the refusal page's shortcut into bulk mode
   end
 
+  # Decks (spec 062): a deck is a location with zones; the id in every deck URL is the deck's location id (decision 4).
+  resources :decks, only: %i[index new create edit update destroy] do
+    resource :removal, only: :new, module: :decks
+  end
+
   # The card scanner (spec 007; spec 009 adds the sitting and Other printings, and links it from the navigation).
   resource :scanner, only: :show
   namespace :scanner do

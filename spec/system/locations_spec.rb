@@ -23,7 +23,7 @@ RSpec.describe "Locations", type: :system do
     expect(page).to have_css(".c-empty")
   end
 
-  it "keeps Collection, Search, Scan and Locations on one line with the account menu at 640px (AC-5.1)" do
+  it "keeps Collection, Decks, Search, Scan and Locations on one line with the account menu at 640px (AC-5.1, spec 062 AC-4.2)" do
     visit locations_path
     open_in_narrow_frame(locations_path, width: 640, ready: ".c-appbar__nav")
     fits = within_narrow_frame do
@@ -38,7 +38,7 @@ RSpec.describe "Locations", type: :system do
       JS
     end
 
-    expect(fits).to eq([ 4, 1, true, true ])
+    expect(fits).to eq([ 5, 1, true, true ])
   end
 
   # Every control on the page, as the pointer sees it: a field is its label (the `c-input` wrapper), a link or button itself.
