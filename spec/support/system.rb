@@ -29,11 +29,14 @@ RSpec.configure do |config|
     # Camera pages get Firefox's synthetic stream without a prompt; scanner specs then substitute their own
     # card in the page (ADR 0002). Downloads land in DOWNLOADS without asking. The colour scheme is pinned to
     # light so the examples don't follow the host's appearance (issue #118); dark examples register their own
-    # driver under another name, so the two never share a session.
+    # driver under another name, so the two never share a session. Scrollbars are pinned to classic, as CI's
+    # Linux Firefox draws them: on a Mac, Firefox follows "Show scroll bars" and draws overlay ones when no
+    # mouse is connected, which widens a narrow frame by 15px and changes where lines wrap (issue #271).
     driven_by :selenium, using: :headless_firefox, screen_size: SYSTEM_SCREEN_SIZE do |options|
       FirefoxBinary.pin(options)
       options.add_preference("ui.systemUsesDarkTheme", 0)
       options.add_preference("layout.css.prefers-color-scheme.content-override", 1) # 1 = light
+      options.add_preference("ui.useOverlayScrollbars", 0) # 0 = classic
       options.add_preference("media.navigator.permission.disabled", true)
       options.add_preference("media.navigator.streams.fake", true)
       options.add_preference("browser.download.folderList", 2)
