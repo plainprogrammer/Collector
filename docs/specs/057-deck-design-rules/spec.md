@@ -8,6 +8,7 @@
 **Branch:** `057-deck-design-rules`
 **Issue:** [#248](https://github.com/plainprogrammer/Collector/issues/248) (roadmap item 14a)
 **Frozen:** the current rules are in the [design system](../../design-system/README.md) and its component docs (whole spec: the deck rules, navigation, pickers, the card page's stats and the CSS in `additions.css`), and in [`catalog-core.md`](../../architecture/catalog-core.md) and [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (parts: decision 12's wording); see the [specs index](../README.md)
+**Plan:** retired in `20bb951812466842686dc4333a8bf504b22306ba`; read it with `git show 20bb951812466842686dc4333a8bf504b22306ba^:docs/specs/057-deck-design-rules/plan.md`
 
 ---
 
