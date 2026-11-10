@@ -390,4 +390,155 @@ RSpec.describe YardRatchet::Check, :git_sandbox, type: :model do # rubocop:disab
       expect(lines).to contain_exactly(a_string_starting_with("lib/collector/thing.rb:3: Collector::Thing has no comment (added)"))
     end
   end
+
+  describe "the base" do
+    def script = Rails.root.join("script/yard/comment_ratchet.rb").to_s
+
+    it "doesn't judge what main changed while the branch didn't merge it (AC-2.5)" do
+      base_with("lib/main_edit.rb" => "# Main's.\nclass MainEdit\n  def go = 1\nend\n")
+      run_git("checkout", "-q", "main")
+      write("lib/main_edit.rb", "# Main's.\nclass MainEdit\n  def go = 2\nend\n")
+      commit_all("main moves on")
+      run_git("update-ref", "refs/remotes/origin/main", "HEAD")
+      run_git("checkout", "-q", "topic")
+
+      expect(check).to be_ok
+    end
+
+    it "judges only the branch's own code after a merge of main that brought uncommented code (AC-2.5)", :aggregate_failures do
+      base_with("README.md" => "base")
+      run_git("checkout", "-q", "main")
+      write("lib/old.rb", "class Old\n  def go = 1\nend\n")
+      commit_all("main moves on")
+      run_git("update-ref", "refs/remotes/origin/main", "HEAD")
+      run_git("checkout", "-q", "topic")
+      run_git("merge", "-q", "--no-ff", "-m", "merge main", "main")
+      write("lib/new.rb", "class New\n  def go = 1\nend\n")
+
+      lines = check.lines.join("\n")
+
+      expect(lines).to include("lib/new.rb:1: New has no comment (added)")
+      expect(lines).not_to include("lib/old.rb")
+    end
+
+    it "fails, saying to fetch origin/main, when there is none (AC-3.3)", :aggregate_failures do
+      base_with("README.md" => "base")
+      run_git("update-ref", "-d", "refs/remotes/origin/main")
+
+      result = check
+
+      expect(result).not_to be_ok
+      expect(result.lines.join("\n")).to include("no origin/main", "git fetch origin main")
+    end
+
+    it "fails when the branch shares no history with origin/main (AC-3.3)", :aggregate_failures do
+      base_with("README.md" => "base")
+      run_git("checkout", "-q", "--orphan", "loner")
+      commit_all("unrelated")
+
+      result = check
+
+      expect(result).not_to be_ok
+      expect(result.lines.join("\n")).to include("shares no history")
+    end
+
+    it "fails on a shallow clone even when origin/main is there, naming fetch-depth 0 (AC-3.3)", :aggregate_failures do
+      base_with("README.md" => "base")
+      shallow = Pathname(Dir.mktmpdir)
+      run_git("clone", "-q", "--depth", "1", "--branch", "main", "file://#{root}", shallow.to_s, dir: shallow.dirname)
+
+      result = described_class.new(root: shallow).call
+
+      expect(result).not_to be_ok
+      expect(result.lines.join("\n")).to include("shallow", "fetch-depth: 0", "git fetch --unshallow")
+    ensure
+      FileUtils.remove_entry(shallow) if shallow
+    end
+
+    it "judges the branch's changes from a detached merge commit, as GitHub's pull request checkout is (AC-3.7)", :aggregate_failures do
+      base_with("README.md" => "base")
+      write("lib/new.rb", "class New\n  def go = 1\nend\n")
+      commit_all("topic work")
+      run_git("checkout", "-q", "--detach", "main")
+      run_git("merge", "-q", "--no-ff", "-m", "pull request merge", "topic")
+
+      result = check
+
+      expect(result).not_to be_ok
+      expect(result.lines).to include("lib/new.rb:1: New has no comment (added)")
+    end
+
+    it "finds nothing changed on a tag at the tip of origin/main (AC-3.7, a guard)" do
+      base_with("README.md" => "base")
+      run_git("checkout", "-q", "main")
+      write("lib/new.rb", "class New\n  def go = 1\nend\n")
+      commit_all("later")
+      run_git("update-ref", "refs/remotes/origin/main", "HEAD")
+      run_git("checkout", "-q", "--detach", "main")
+
+      expect(check).to be_ok
+    end
+
+    it "finds nothing changed on a tag at an older commit of origin/main, whose later commits edited code (AC-3.7)" do
+      base_with("lib/old.rb" => "class Old\n  def go = 1\nend\n")
+      first = run_git("rev-parse", "HEAD").strip
+      run_git("checkout", "-q", "main")
+      write("lib/old.rb", "class Old\n  def go = 2\nend\n")
+      commit_all("later")
+      run_git("update-ref", "refs/remotes/origin/main", "HEAD")
+      run_git("checkout", "-q", "--detach", first)
+
+      expect(check).to be_ok
+    end
+
+    it "starts no parse when no judged file differs from the base (AC-4.3)", :aggregate_failures do
+      base_with("lib/old.rb" => "class Old\n  def go = 1\nend\n")
+      allow(YardRatchet::Snapshot).to receive(:build).and_call_original
+
+      result = check
+
+      expect(result).to be_ok
+      expect(YardRatchet::Snapshot).not_to have_received(:build)
+    end
+
+    it "fails for a changed file YARD can't parse, and ignores an unchanged one (AC-3.4)", :aggregate_failures do
+      base_with("lib/broken.rb" => "def broken(\n", "README.md" => "base")
+
+      expect(check).to be_ok
+
+      write("lib/broken.rb", "def broken(\nputs 1\n")
+      result = check
+
+      expect(result).not_to be_ok
+      expect(result.lines.join("\n")).to include("lib/broken.rb", "can't parse")
+    end
+
+    it "writes nothing into the checkout (AC-3.5)", :aggregate_failures do
+      base_with("README.md" => "base")
+      write("lib/new.rb", "# New.\nclass New\n  def go = 1\nend\n")
+      before = run_git("status", "--porcelain", "--ignored")
+
+      check
+
+      expect(run_git("status", "--porcelain", "--ignored")).to eq(before)
+      expect(root.join(".yardoc")).not_to exist
+    end
+
+    it "exits 1 and prints each offender when run as a command, and 0 when nothing is missing (FR-1)", :aggregate_failures do
+      base_with("README.md" => "base")
+      write("lib/new.rb", "# New.\nclass New\n  def go = 1\nend\n")
+      env = GitSandbox::ENV_OVERRIDES.merge("BUNDLE_GEMFILE" => Rails.root.join("Gemfile").to_s)
+
+      out, _err, status = Bundler.with_unbundled_env { Open3.capture3(env, RbConfig.ruby, script, chdir: root.to_s) }
+
+      expect(status.exitstatus).to eq(1)
+      expect(out).to include("lib/new.rb:3: New#go has no comment (added)")
+
+      write("lib/new.rb", "# New.\nclass New\n  # Goes.\n  def go = 1\nend\n")
+      out, _err, status = Bundler.with_unbundled_env { Open3.capture3(env, RbConfig.ruby, script, chdir: root.to_s) }
+
+      expect(status.exitstatus).to eq(0)
+      expect(out).to include("all with a comment")
+    end
+  end
 end
