@@ -375,3 +375,9 @@ img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches:
 .c-locations .c-btn, .c-locations .c-input { min-height:var(--touch-floor); min-width:var(--touch-floor); }
 /* The header's back button is outside main; on these pages it too keeps the 44px floor on every pointer (AC-5.5). */
 body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-width:var(--touch-floor); }
+
+/* ---------- ProxyTag (spec 060): a dashed tag that marks a proxy without colour ---------- */
+/* The dashed border and the word carry it; no fill (spec 060 FR-1). The count is mono, like the tables' numbers. */
+.c-proxy { display:inline-flex; align-items:center; gap:var(--space-1); height:20px; padding:0 6px; border:1px dashed var(--ink-muted);
+  border-radius:var(--radius-sm); font:600 12px/16px var(--font-sans); color:var(--ink); white-space:nowrap; }
+.c-proxy b { font:400 12px/16px var(--font-mono); }
