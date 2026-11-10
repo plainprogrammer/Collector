@@ -137,16 +137,38 @@ module YardRatchet
       extents = exempt ? [] : object.files.map { |file, line| extent(object, file, line, namespace, sources[file]) }
       Item.new(name: object.path, namespace:, nested: !object.namespace.root?,
                file: Pathname(object.file).relative_path_from(root).to_s, line: object.line,
-               commented: !object.docstring.to_s.strip.empty?, exempt:, extents:)
+               commented: commented?(object, namespace, sources), exempt:, extents:)
     end
     private_class_method :item
+
+    # Whether the object has a summary (decision 2). YARD's docstring for a class or module opened in several files is
+    # the last definition's, so which file it read last would decide the answer; a namespace therefore also counts when
+    # the comment above any one of its definitions has text before its first tag (decision 4).
+    def self.commented?(object, namespace, sources)
+      return true unless object.docstring.to_s.strip.empty?
+      return false unless namespace
+
+      object.files.any? do |file, line|
+        lines = sources[file]
+        text = lines[(comment_start(lines, line) - 1)...(line - 1)].map { it.sub(/\A\s*#\s?/, "") }.join("\n")
+        !YARD::DocstringParser.new.parse(text).text.strip.empty?
+      end
+    end
+    private_class_method :commented?
+
+    # The first line of the unbroken run of comment lines directly above `line` (`line` itself when there is none).
+    def self.comment_start(lines, line)
+      first = line
+      first -= 1 while first > 1 && lines[first - 2].lstrip.start_with?("#")
+      first
+    end
+    private_class_method :comment_start
 
     # The text of one definition (decision 4): its own comment (the unbroken run of comment lines directly above it)
     # through its `end`; for a class or module, its comment and its opening line only, so its members' text is not
     # part of it. An alias's `source` is the original method's, so an alias is one line.
     def self.extent(object, file, line, namespace, lines)
-      first = line
-      first -= 1 while first > 1 && lines[first - 2].lstrip.start_with?("#")
+      first = comment_start(lines, line)
       span = namespace || object.source.nil? || object.is_alias? ? 1 : object.source.lines.size
       lines[(first - 1)..(line + span - 2)].join("\n")
     end
