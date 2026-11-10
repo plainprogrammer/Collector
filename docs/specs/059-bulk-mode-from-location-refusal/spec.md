@@ -7,6 +7,7 @@
 **Depends on:** [spec 006](../006-collection-list-view/spec.md) (bulk mode, the selection, `Edit many` as a button), [spec 029](../029-manage-locations/spec.md) (locations), [spec 032](../032-lot-in-a-location/spec.md) (the removal refusal page), [spec 037](../037-filter-collection-by-location/spec.md) (the location filter and the selection tied to it), [spec 041](../041-move-many-lots/spec.md) (Move to…)
 **Branch:** `059-bulk-mode-from-location-refusal`
 **Issue:** [#187](https://github.com/plainprogrammer/Collector/issues/187) (roadmap item 14c, theme: locations)
+**Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (whole spec); see the [specs index](../README.md)
 
 ---
 
