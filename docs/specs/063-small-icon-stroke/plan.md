@@ -65,7 +65,8 @@ RSpec.describe "Icon stroke follows size", type: :system do
     JS
   end
 
-  def weight(icon) = icon["strokeWidth"] * icon["width"] / 24
+  # `.to_f`: a whole-number stroke and width come back from the browser as Integers, and 2 * 16 / 24 is 1 in Ruby.
+  def weight(icon) = icon["strokeWidth"].to_f * icon["width"] / 24
 
   # Every icon the selector matches is drawn `size` px wide with a computed stroke of `stroke`.
   def expect_stroke(selector, stroke:, size:)
@@ -136,17 +137,19 @@ RSpec.describe "Icon stroke follows size", type: :system do
 end
 ```
 
-- [ ] Run `bin/rspec spec/system/icon_stroke_spec.rb`. Expected: **5 of 6 examples fail**: the legality, badge, 16px and 14px examples with the measured pairs in the message (for example `.c-legal--yes svg: [{"width"=>12, … "strokeWidth"=>1.5}]` against `[[2.5, 12]]`), and the guard example on the 0.75px icons (`"…: 0.75px"`). The tab bar example (AC-1.4) **passes**, because 1.5 is what the shipped CSS draws and the rule keeps it: it is a regression guard, not a red one. If an example fails any other way (no `main`, `ApplicationController.render` raising, `evaluate_script` returning nil), fix the example and re-run until only the weights fail. The suite pins classic scrollbars; they don't change a weight.
+- [ ] Run `bin/rspec spec/system/icon_stroke_spec.rb`. Expected: **4 of 5 examples fail**: the legality, badge and 16px and 14px examples with the measured pairs in the message (for example `.c-legal--yes svg: [{"width"=>12, … "strokeWidth"=>1.5}]` against `[[2.5, 12]]`), and the guard example on the 0.75px icons (`"…: 0.75px"`). The tab bar example (AC-1.4) **passes**, because 1.5 is what the shipped CSS draws and the rule keeps it: it is a regression guard, not a red one. If an example fails any other way (no `main`, `ApplicationController.render` raising, `evaluate_script` returning nil), fix the example and re-run until only the weights fail. The suite pins classic scrollbars; they don't change a weight.
 - [ ] Run `bin/rubocop spec/system/icon_stroke_spec.rb` and fix what it reports (`RSpec/ExampleLength` is 15 lines: the longest example is 11; `RSpec/MultipleExpectations` is covered by `:aggregate_failures`).
 - [ ] Commit: `git add spec/system/icon_stroke_spec.rb`, then in its own call `git commit -m "test(design-system): small icons keep their weight, red on the shipped stroke (spec 063)"` followed by the attribution line.
 
 ### Task 2: The CSS block, green
 
+Load the `collector-design-system` skill first (CLAUDE.md: before any stylesheet or UI copy change), and read `docs/design-system/README.md`.
+
 - [ ] Append to `app/assets/stylesheets/collector/additions.css` (a blank line after the file's last rule, then the block; the file's last block ends with the `.c-pick .is-data, .c-pagehead__stats .is-data` rule):
 
 ```css
 
-/* ---------- Small icon stroke (spec 063): the stroke follows the size an icon is drawn at ---------- */
+/* ---------- Small icon stroke (spec 063) ---------- */
 /* An icon's stroke scales with it: weight on screen = stroke-width × drawn width ÷ 24 (the viewBox). The partials write
    1.5, Lucide's weight at 20px (1.25px on screen); at 12px that is 0.75px, a hairline beside a 600-weight word, and at
    14px to 16px it is 0.88px to 1px. The rule is about 1.25px on screen below 20px: 30 ÷ size, rounded to a half (12px
@@ -158,9 +161,9 @@ end
 .c-btn svg, .c-input svg, .c-menu__item svg, .c-filter svg, .c-seg button svg { stroke-width:2; }
 ```
 
-- [ ] Run `bin/rspec spec/system/icon_stroke_spec.rb`. Expected: **6 examples, 0 failures**.
+- [ ] Run `bin/rspec spec/system/icon_stroke_spec.rb`. Expected: **5 examples, 0 failures**.
 - [ ] Run `bin/rspec spec/design_system_files_spec.rb`. Expected: all pass (the counts of "spec 019", "spec 021" and "spec 023" are unchanged: the new block names none).
-- [ ] Run `git diff --stat main -- app/views app/helpers app/javascript`. Expected: no output (AC-3.1: partials, views and helpers untouched).
+- [ ] Run `git diff --stat main -- app`. Expected: only `app/assets/stylesheets/collector/additions.css` (AC-3.1: partials, views, helpers and every other stylesheet untouched).
 - [ ] Commit: `git add app/assets/stylesheets/collector/additions.css`, then in its own call `git commit -m "feat(design-system): small icons keep their weight, stroke follows size (spec 063, #294)"` followed by the attribution line.
 
 ---
@@ -175,6 +178,8 @@ Tasks 3 and 4 go to one implementer, each its own commit, after Phase 1. The sha
 
 ### Task 3: README, TabBar.md and Badge.md
 
+Load the `collector-design-system` skill first (the README and component documents are its rules).
+
 - [ ] In `docs/design-system/README.md`, replace the Iconography bullet
 
 ```
@@ -186,11 +191,15 @@ with
 ```
 - No icon set chosen yet. Until one is, use Lucide (ISC-licensed) in `currentColor`, which matches Plex's weight. Flag any other set here before adopting it.
 - Stroke follows the size an icon is drawn at (spec 063). A stroke scales with its icon, so a Lucide stroke of 1.5 draws 1.25px on screen at 20px but 0.75px at 12px, a hairline beside a 600-weight word. Below 20px an icon keeps about 1.25px on screen: the stroke is `30 ÷ size` in px, rounded to a half, never below 1.5 or above 2.5. The app draws 1.5 at 20px and above (the tab bar's 22px), 2 at 14px to 16px (buttons, inputs, menu items, the view switch, filter chips) and 2.5 at 12px (badges, legality marks).
-- Every icon keeps `stroke-width="1.5"` in its markup (the weight at 20px, so a copied icon looks right on its own). `additions.css` sets the heavier stroke by the component that draws the icon, so an icon placed in one of those components needs nothing more. An icon drawn at a size no component sets gets its stroke by the rule above, and the sizes in this line grow by it.
+- Every icon keeps `stroke-width="1.5"` in its markup (the weight at 20px, so a copied icon looks right on its own). `additions.css` sets the heavier stroke by the component that draws the icon, so an icon placed in one of those components needs nothing more. An icon drawn at a size no component sets gets its stroke by the rule above, and its size and stroke are added to the list of sizes above.
 ```
 
 - [ ] In `docs/design-system/components/TabBar.md` line 10, change `stroke-width="2"` to `stroke-width="1.5"` on the Decks icon's `<svg>` (the app's partials and `previews/TabBar.html` draw 1.5; the icon is the design system's own, no partial draws it).
-- [ ] In `docs/design-system/components/Badge.md` line 5, replace `the consumer provides a 12px icon and a one- or two-word label; both are required, because colour alone never carries meaning.` with `the consumer provides a 12px icon and a one- or two-word label; both are required, because colour alone never carries meaning. The icon's stroke is 2.5, set by `additions.css` for `c-badge svg` (spec 063), not by its `stroke-width` attribute, which stays 1.5.`
+- [ ] In `docs/design-system/components/Badge.md` line 5, replace `the consumer provides a 12px icon and a one- or two-word label; both are required, because colour alone never carries meaning.` with (the added sentence follows the first one, inside the same paragraph):
+
+```
+**Markup** — the consumer provides a 12px icon and a one- or two-word label; both are required, because colour alone never carries meaning. The icon's stroke is 2.5, set by `additions.css` for `c-badge svg` (spec 063), not by its `stroke-width` attribute, which stays 1.5.
+```
 - [ ] Run `git diff docs/design-system/` and read it: the three files, nothing else. Commit: `git add docs/design-system/README.md docs/design-system/components/TabBar.md docs/design-system/components/Badge.md`, then in its own call `git commit -m "docs(design-system): stroke follows size in Iconography (spec 063, #294)"` followed by the attribution line.
 
 ### Task 4: The nine previews load additions.css
@@ -217,13 +226,13 @@ done
 
 ### Task 5: Before and after shots of the app
 
-- [ ] Copy the throwaway spec from the scratchpad (`zz_063_screenshots_spec.rb`, written for the probe) into `spec/system/`, and rewrite it so each region is shot twice per theme and pixel ratio: **before** with a `<style>` appended after the page has rendered holding the old weight (`.c-badge svg, .c-legal svg, .c-btn svg, .c-input svg, .c-menu__item svg, .c-filter svg, .c-seg button svg { stroke-width: 1.5 !important }`), **after** with no override. Regions: the legality grid (`.c-legality`, card page), a badge row (the real partials' markup, as `add_badges` builds it), the collection page's `main` (header buttons, search field, view switch), and a table row's More button (`collection_path(view: "table")`, the `c-btn--icon` of a row). Light and dark through `layout.css.prefers-color-scheme.content-override` and `data-theme` set in the page with a 0.7s pause; 1x and 2x through `layout.css.devPixelsPerPx`. Classic scrollbars as `spec/support/system.rb` pins them. This follows `.claude/memory/pr-screenshots-workflow.md` ("Screenshots from a throwaway system spec", "CSS-fix before shots").
+- [ ] Copy the throwaway spec the probe wrote (`/private/tmp/claude-501/-Users-james-orca-workspaces-Collector-small-icon-stroke/dd46c0b2-fada-4ecc-b8de-d0f08f5b8d63/scratchpad/zz_063_screenshots_spec.rb`; scratchpads are per session, so if it is gone rebuild it from `.claude/memory/pr-screenshots-workflow.md`) into `spec/system/`, and rewrite it so each region is shot twice per theme and pixel ratio: **before** with a `<style>` appended after the page has rendered holding the old weight (`.c-badge svg, .c-legal svg, .c-btn svg, .c-input svg, .c-menu__item svg, .c-filter svg, .c-seg button svg { stroke-width: 1.5 !important }`), **after** with no override. Regions: the legality grid (`.c-legality`, card page), a badge row (the real partials' markup, as `add_badges` builds it), the collection page's `main` (header buttons, search field, view switch), and a table row's More button (`collection_path(view: "table")`, the `c-btn--icon` of a row). Light and dark through `layout.css.prefers-color-scheme.content-override` and `data-theme` set in the page with a 0.7s pause; 1x and 2x through `layout.css.devPixelsPerPx`, each combination in its own registered driver (`driven_by :selenium, using: :headless_firefox, options: { name: … }` with `FirefoxBinary.pin(options)`, as the probe's `shoot` helper and `spec/support/system.rb` do). Classic scrollbars as `spec/support/system.rb` pins them. This follows `.claude/memory/pr-screenshots-workflow.md` ("Screenshots from a throwaway system spec", "CSS-fix before shots").
 - [ ] Run `SHOTS_DIR=<scratchpad>/final bin/rspec spec/system/zz_063_screenshots_spec.rb`. Look at one shot of each theme and ratio before trusting the rest (headless Firefox prefers dark: each shot sets `data-theme` itself). Delete the throwaway spec from `spec/system/`.
 - [ ] Compose labelled before-and-after pairs (`magick … -append`, quality 82 JPEG, about 150–300 KB each) into `docs/specs/063-small-icon-stroke/screenshots/` (`legality-light-2x.jpg`, `badges-dark-2x.jpg`, …, 1x as well), and show them to the maintainer for the final visual review (AC-1.7), with the More dots and the 14px view switch in view. A change the maintainer asks for goes back through the spec (decision 1) before the CSS moves.
 
 ### Task 6: The previews measured, and the record
 
-- [ ] Serve the worktree (`python3 -m http.server 3871 --bind 127.0.0.1 --directory "$PWD"`, started with `run_in_background`), and in a scratch Ruby script outside the repo load `http://127.0.0.1:3871/docs/design-system/previews/<Name>.html` in headless Firefox for Badge, ItemPage, Button, Input, ViewSwitch, Menu, Chip and TabBar, and read `getComputedStyle(svg).strokeWidth` and the drawn width of their icons: expected 2.5 at 12px (Badge, ItemPage's legality), 2 at 16px (Button, Input, Menu's items) and 14px (ViewSwitch, Chip), 1.5 at 22px (TabBar); and run `git grep 'stroke-width=' -- docs/design-system/previews | grep -vc 'stroke-width="1.5"'` (expected 0: AC-2.2, spec 060 AC-7.5). Take before (the link removed in the page by script) and after shots of the nine previews that gained the link, light, 1x, and note the two changes the spec allows (ItemTile's unowned tile, CollectionTable's phone frame) if they show. Keep the scripts and shots of this task under the git-ignored `tmp/`; commit only the few shots `verification.md` cites.
+- [ ] Serve the worktree (`python3 -m http.server 3871 --bind 127.0.0.1 --directory "$PWD"`, started with `run_in_background`), and in a scratch Ruby script under the git-ignored `tmp/` (run with `script/worktree/with_mise bundle exec ruby tmp/…`, so the bundle's selenium loads) load `http://127.0.0.1:3871/docs/design-system/previews/<Name>.html` in headless Firefox for Badge, ItemPage, Button, Input, ViewSwitch, Menu, Chip and TabBar, and read `getComputedStyle(svg).strokeWidth` and the drawn width of their icons: expected 2.5 at 12px (Badge, ItemPage's legality), 2 at 16px (Button, Input, Menu's items) and 14px (ViewSwitch, Chip), 1.5 at 22px (TabBar); and run `git grep -ho 'stroke-width="[^"]*"' -- docs/design-system/previews | grep -vc '"1.5"'` (expected 0: AC-2.2, spec 060 AC-7.5; per match, not per line, because the previews' markup sits on long lines). Take before (the link removed in the page by script) and after shots of the nine previews that gained the link, light, 1x, and note the two changes the spec allows (ItemTile's unowned tile, CollectionTable's phone frame) if they show. Keep the shots of this task under `tmp/` too; commit only the few shots `verification.md` cites.
 - [ ] Write `docs/specs/063-small-icon-stroke/verification.md`: each AC with how it was met (the commit, the example, the reading), the red run of Task 1 (the pairs it printed), the preview measures, the shots and the maintainer's review of them, the facts not measured (headless Selenium couldn't read the browser console, if that holds), and a `## Implementation review` heading left for `sdd-review` Mode B.
 - [ ] Commit the shots and `verification.md`: `git add docs/specs/063-small-icon-stroke`, then in its own call `git commit -m "docs(specs): verification and shots of spec 063"` followed by the attribution line.
 
