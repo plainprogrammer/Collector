@@ -80,7 +80,7 @@ end
 # conversion. Reversible: SQLite copies the table to
 # remove the column, which is safe here because no foreign key points at mtg_cards (it only points at
 # catalog_identities), unlike the tables AddLocationToLots had to protect. if_not_exists guards a re-run of the up.
-class AddManaValueToMtgCards < ActiveRecord::Migration[8.1]
+class AddManaValueToMTGCards < ActiveRecord::Migration[8.1] # the MTG acronym inflection: the file name camelizes to this
   def change
     add_column :mtg_cards, :mana_value, :float, if_not_exists: true
   end
@@ -402,7 +402,7 @@ Documents are checked by reading, never by RSpec; the area docs say what is true
 
 - [ ] **Step 2: catalog operations.** In `docs/architecture/catalog-operations.md`: (a) in the Refresh's "Running" step (the line that says a scheduled run whose version was already applied ends `skipped`), after the existing citation that follows "and so does any run whose source's `#reapply?` says so" add a new sentence: "`MTG::Scryfall::Source#reapply?` says so for two reasons: spec 011 AC-2.3's, printings with no artwork id, and spec 058 decision 3's, cards in the catalog and none with a mana value, so an upgraded instance fills the new column on its next refresh even when Scryfall's file is unchanged; the test is that none has one, not that any lacks one, as for artwork ids."; (b) to the "**Accepted limits and open issues:**" list, add "- A refresh that fails after some batches committed leaves some cards with a mana value and some without; a scheduled run of the same version is then skipped as already applied (the reapply test needs none to have one), and the rest fill when Scryfall publishes a new file or on a manual refresh; spec 011's artwork test has the same gap (spec 058 Error Scenarios)."; (c) add "[Spec 058](../specs/058-mtg-mana-value/spec.md) decision 3 (`#reapply?`'s second reason)" to Sources.
 
-- [ ] **Step 3: upgrade notes.** In `docs/releasing.md`, "Upgrade notes", add as the newest entry (first bullet): "- **Mana value (spec 058).** One migration, `AddManaValueToMtgCards`, runs on boot; it adds a nullable `mana_value` column to `mtg_cards` and changes nothing else. Existing cards have no mana value until the next catalog refresh, which applies even if Scryfall's file hasn't changed since the last one (the weekly refresh, or **Refresh now** on the admin catalog page, or `bin/rails "catalog:refresh[mtg]"`); nothing reads it yet. Nothing is required of the operator, and the export format is unchanged (version 3)."
+- [ ] **Step 3: upgrade notes.** In `docs/releasing.md`, "Upgrade notes", add as the newest entry (first bullet): "- **Mana value (spec 058).** One migration, `AddManaValueToMTGCards`, runs on boot; it adds a nullable `mana_value` column to `mtg_cards` and changes nothing else. Existing cards have no mana value until the next catalog refresh, which applies even if Scryfall's file hasn't changed since the last one (the weekly refresh, or **Refresh now** on the admin catalog page, or `bin/rails "catalog:refresh[mtg]"`); nothing reads it yet. Nothing is required of the operator, and the export format is unchanged (version 3)."
 
 - [ ] **Step 4: data portability (AC-4.4) and index (AC-4.5).** Re-read `docs/architecture/data-portability.md` and `docs/export-format/README.md`: no edit. In `docs/specs/README.md`, the 058 row's Status stays "Approved" until `distill-feature` moves it (its row already says what it adds to).
 
