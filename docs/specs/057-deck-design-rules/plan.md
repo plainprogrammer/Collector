@@ -5,6 +5,7 @@
 **Issue:** [#248](https://github.com/plainprogrammer/Collector/issues/248) (roadmap item 14a)
 **Created:** 2026-11-10
 **Status:** Draft, for Gate B
+**Review:** round 1 (read-only Opus): NEEDS REVISION, 0 blocking, 7 major, 8 minor; all fixed in this draft (the font longhands on the optgroup, the selected option in the probe, the batches, the Decks icon, the README and phone-page sentences, the missed re-export line in the area doc, the header measure's control, the preview scripts). Round 2: APPROVED (one wording nit, fixed).
 
 ## Global Constraints
 
@@ -20,7 +21,7 @@ These bind every phase. They are the spec's, copied in short.
 - Commits: small Conventional Commits, one per task. Implementer subagents (Sonnet) end each commit message with `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`; the supervising session's own commits end with its own line. One git operation per shell call. Never `git push` (the supervisor does, with a CI slot).
 - Run Ruby through `script/worktree/with_mise` (this shell's plain Ruby is macOS 2.6). Targeted `script/worktree/with_mise bin/rspec <file>` needs no CI slot; a full `bin/ci` does.
 - Never read `.kamal/secrets`, `config/master.key`, `.env*` or `storage/`; end every `git grep` with `':!.kamal/secrets'`.
-- Subagents share the worktree's test database: never run two test runs at once. The batches below run one after another.
+- Subagents share the worktree's test database: never run two test runs at once. The batches (see Batches) run one after another.
 
 ---
 
@@ -41,6 +42,19 @@ The design system states the rules decks follow (navigation, colour and charts, 
 | `docs/design-system/README.md`, `components/*.md`, `.claude/skills/collector-design-system/SKILL.md`, `CLAUDE.md`, `docs/architecture/catalog-core.md`, `collection-and-lots.md` | The rules and the retired wording | 8–12 |
 | `docs/design-system/previews/*.html` (six) | FR-8 | 13, 14 |
 | `docs/specs/057-deck-design-rules/verification.md` (new), `docs/specs/README.md` | The record; the Plan column | 15, 16 |
+
+## Batches
+
+One Sonnet implementer per batch (test-first, one commit per phase), run one after another because they share the test database. The supervisor reads each batch's diff before the next starts.
+
+| Batch | Phases | Content |
+|-------|--------|---------|
+| A | 0–3 | Baseline, the view class, grouped selects, the filter's cap |
+| B | 4–6 | The three-stat strip, the header and tab bar guards, the contrast floor |
+| C | 7–10 | Code comments, the README, the navigation docs, the mana, picker, Locations and SingleStat docs |
+| D | 11–14 | The card page docs, the skill and CLAUDE.md, the re-export wording, the six previews |
+
+The supervisor does Phases 15 and 16 (the record, the screenshots, the CI slot, the reviews).
 
 ## Pre-implementation gates
 
@@ -125,12 +139,13 @@ RSpec.describe "Design system: deck rules, navigation and pickers", type: :syste
 
   before { system_sign_in_as(user) }
 
-  # A flat option, then a "Places" group and a "Decks" group, as the picker rule of FR-4 draws them.
+  # A flat option, then a "Places" group and a "Decks" group, as the picker rule of FR-4 draws them. The last option is
+  # the selected one, so neither option the examples read is the checked one, whose highlight Firefox draws itself.
   def picker
     <<~HTML.squish
       <option value="">No location</option>
       <optgroup label="Places"><option value="1">Blue binder</option></optgroup>
-      <optgroup label="Decks"><option value="2">Izzet Tempo (all zones)</option><option value="3">Izzet Tempo › Main</option></optgroup>
+      <optgroup label="Decks"><option value="2">Izzet Tempo (all zones)</option><option value="3" selected>Izzet Tempo › Main</option></optgroup>
     HTML
   end
 
@@ -189,24 +204,20 @@ RSpec.describe "Design system: deck rules, navigation and pickers", type: :syste
 end
 ```
 
-- [ ] Run `script/worktree/with_mise bin/rspec spec/system/design_system_deck_rules_spec.rb` — expect 4 failures (Firefox draws the group label bold italic in the default colour, and the option's background is transparent).
+- [ ] Run `script/worktree/with_mise bin/rspec spec/system/design_system_deck_rules_spec.rb` — expect 4 failures (Firefox draws the group label bold italic in a system font and the default colour, and the option's background is transparent).
 - [ ] In `app/assets/stylesheets/collector/additions.css`, insert the block below directly after the line `@media (pointer: coarse) { .c-select select { min-height:40px; } }` (the end of "Select inside the filter bar") and before the `/* ---------- Pagination ---------- */` heading, with one blank line either side:
 
 ```css
 /* ---------- Grouped select (spec 057): optgroup labels and options, in a form and in the filter bar ---------- */
-/* A group label is quiet text, not the browser's bold italic, and options keep ink on a raised ground in both themes. No
-   shorthand sets the optgroup's size or family, so the options inside it keep the select's own (AC-4.3). The browser or the
-   phone draws the open list: this applies where it is honoured and nothing relies on it (spec 057 decision 16). */
-.c-field select optgroup, .c-select select optgroup { color:var(--ink-muted); font-weight:600; font-style:normal; }
+/* A group label is quiet text, not the browser's bold italic, and options keep ink on a raised ground in both themes.
+   Firefox's own stylesheet gives an optgroup a system font, which the options inside it would inherit, so its size and
+   family are set back to the select's with two longhands (never the shorthand, FR-4; AC-4.3). The browser or the phone
+   draws the open list: this applies where it is honoured and nothing relies on it (spec 057 decision 16). */
+.c-field select optgroup, .c-select select optgroup { color:var(--ink-muted); font-weight:600; font-style:normal; font-size:inherit; font-family:inherit; }
 .c-field select option, .c-select select option { color:var(--ink); background:var(--surface-raised); font-weight:400; }
 ```
 
-- [ ] Run `script/worktree/with_mise bin/rspec spec/system/design_system_deck_rules_spec.rb` — expect `0 failures`. If only the `font-size, font-family` comparison fails (a browser's own optgroup font), add this rule on the line after the two above, as separate properties (FR-4 allows it), and run again:
-
-```css
-.c-field select optgroup option, .c-select select optgroup option { font-size:inherit; font-family:inherit; }
-```
-
+- [ ] Run `script/worktree/with_mise bin/rspec spec/system/design_system_deck_rules_spec.rb` — expect `0 failures`. If the options' `font-size, font-family` comparison still fails, do not add a `font` shorthand: report the computed values of the select, the optgroup and the option to the supervisor.
 - [ ] Run `script/worktree/with_mise bin/rspec spec/design_system_files_spec.rb` — expect `0 failures` (the guard counts the new heading as its own block).
 - [ ] Commit: `feat(design-system): style the labels and options of a grouped select (spec 057 AC-4.2, AC-4.3, #248)`
 
@@ -405,15 +416,19 @@ The Decks link and tab are cloned from Collection's in the page, so the real par
     end
 
     # Link count, how many distinct tops (1 is one line), whether every link ends inside the nav, whether the nav ends
-    # before the account menu starts, and whether the page scrolls sideways.
+    # before the account menu starts (true by the row's own layout), whether the account menu ends inside the bar, and whether
+    # the page scrolls sideways. Extra links push the account menu out of the bar, which is what the control looks for.
     def header_fit
       evaluate(<<~JS)
         const nav = document.querySelector(".c-appbar__nav"), box = nav.getBoundingClientRect()
         const links = [ ...nav.querySelectorAll("a") ]
         const actions = document.querySelector(".c-appbar__actions").getBoundingClientRect()
+        const bar = document.querySelector(".c-appbar"), barStyle = getComputedStyle(bar)
+        const barEnd = bar.getBoundingClientRect().right - parseFloat(barStyle.paddingRight)
         return { links: links.length, lines: new Set(links.map((el) => Math.round(el.getBoundingClientRect().top))).size,
                  inside: links.every((el) => el.getBoundingClientRect().right <= box.right + 0.5),
-                 beforeAccount: box.right <= actions.left, scrolls: document.documentElement.scrollWidth > window.innerWidth }
+                 beforeAccount: box.right <= actions.left, accountInside: actions.right <= barEnd + 0.5,
+                 scrolls: document.documentElement.scrollWidth > window.innerWidth }
       JS
     end
 
@@ -429,7 +444,7 @@ The Decks link and tab are cloned from Collection's in the page, so the real par
       JS
     end
 
-    def header_fits?(found) = found["lines"] == 1 && found["inside"] && found["beforeAccount"] && !found["scrolls"]
+    def header_fits?(found) = found["lines"] == 1 && found["inside"] && found["beforeAccount"] && found["accountInside"] && !found["scrolls"]
 
     it "keeps five links on one line before the account menu at 640px (AC-1.3)", :aggregate_failures do
       open_in_narrow_frame(collection_path, width: 640, ready: ".c-appbar__nav", height: 1200)
@@ -529,7 +544,7 @@ RSpec.describe "Design system tokens: the contrast floor (spec 057 AC-2.3)" do
     expect(ratio("#777777", "#ffffff")).to be_within(0.01).of(4.48)
   end
 
-  ["light", "dark", "dark by preference"].each do |name|
+  [ "light", "dark", "dark by preference" ].each do |name|
     it "holds 3:1 for ink-muted and line-strong on every surface in the #{name} block", :aggregate_failures do
       expect(block(name)).to be_present
       expect(below_floor(colours(block(name)))).to be_empty
@@ -548,7 +563,7 @@ RSpec.describe "Design system tokens: the contrast floor (spec 057 AC-2.3)" do
 end
 ```
 
-- [ ] Add the new file to the string-describe exclusions in `.rubocop.yml`: under `RSpec/DescribeClass:` `Exclude:`, add the line `    - "spec/design_system_tokens_spec.rb"` next to `    - "spec/design_system_files_spec.rb"` (a describe of the tokens file is no class, as the other design-system spec's is not).
+- [ ] Add the new file to the string-describe exclusions in `.rubocop.yml`: under `RSpec/DescribeClass:` `Exclude:`, add the line `    - "spec/design_system_tokens_spec.rb"` next to `    - "spec/design_system_files_spec.rb"` (a describe of the tokens file is no class, as the other design-system spec's is not), and give it its reason in the comment block above `RSpec/DescribeClass`: change that block's last line `# the shell scripts' pipes (#217).` to `# the shell scripts' pipes (#217). The design-system tokens spec checks the colours in tokens.css, a stylesheet (spec 057 AC-2.3).`
 - [ ] Run `script/worktree/with_mise bin/rspec spec/design_system_tokens_spec.rb` — expect `0 failures`. This is a guard on values that already hold, so it has no red run of its own; the control example proves the check can fail. If the `be_within(0.001).of(3.010)` example fails, record the measured value and tell the supervisor (the spec states 3.010:1) before changing the expectation.
 - [ ] Run `script/worktree/with_mise bin/rubocop spec/design_system_tokens_spec.rb spec/system/design_system_deck_rules_spec.rb` — expect no offenses; fix any with `bin/rubocop -a` through `script/worktree/with_mise`.
 - [ ] Commit: `test(design-system): guard the 3:1 floor of ink-muted and line-strong (spec 057 AC-2.3, #248)`
@@ -582,14 +597,14 @@ The guard spec already protects these blocks: before and after the edit it must 
 
 ```css
 /* Overrides the export until the published design system fits images this way; then delete this block. Any leftover
-   shows the slot's `surface-sunken` ground. */
+   shows the slot's surface-sunken ground. */
 ```
 
   with:
 
 ```css
 /* Overrides the export's crop and stretch, which components.css still carries; this block is the rule (spec 057
-   decision 12). Any leftover shows the slot's `surface-sunken` ground. */
+   decision 12). Any leftover shows the slot's surface-sunken ground. */
 ```
 
 - [ ] In the unowned-tile block, replace the comment's first two lines
@@ -603,7 +618,8 @@ The guard spec already protects these blocks: before and after the edit it must 
 
 ```css
 /* Overrides the export, which fades the image and the missing-image fallback to 45% and still carries that rule; the
-   first rule here is what applies (spec 057 decision 12). The marker is a c-tag on a second c-tile__meta row, so the tile is one line taller: the add
+   first rule here is what applies (spec 057 decision 12). The marker is a c-tag on a second c-tile__meta row, so the
+   tile is one line taller: the add
 ```
 
   (the following lines of the comment, "control goes to the foot of its cell and a row that mixes owned and unowned tiles keeps its buttons level. */", stay as they are).
@@ -638,7 +654,7 @@ There is no test for a prose document (`.claude/rules/testing.md`); the check is
 - [ ] **Who it's for.** Replace the whole bullet that begins `- A physical copy is in exactly one place at a time. A deck is a location like a binder or a box,` with:
 
 ```markdown
-- A physical copy is in exactly one place at a time. A deck is a place with parts (zones) that holds the copies it uses, so a copy in a deck is not free for another deck; the Decks section below defines the words, "Free to use" among them. (Digital decks that share cards may come later; when they do, their cards are labelled as such and never count against physical copies.)
+- A physical copy is in exactly one place at a time. A deck is a kind of location whose copies live in its zones, so a copy in a deck is not free for another deck; the Decks section below defines the words, "Free to use" among them. (Digital decks that share cards may come later; when they do, their cards are labelled as such and never count against physical copies.)
 ```
 
 - [ ] **Color, text contrast.** In the bullet that begins `- Text is \`ink\`; secondary text and metadata are \`ink-muted\`.`, replace `(≥6:1)` with `(5.5:1 or better)`.
@@ -721,14 +737,21 @@ Each doc says the same order as the README. Read each file before editing; keep 
 - Today's header links Collection, Search, Scan and Locations, in that order (spec 029); Decks joins after Collection when the deck pages ship. At 640px, where the nav first appears, the five links share one line with the account menu (`spec/system/design_system_deck_rules_spec.rb` measures it with Decks added).
 ```
 
-- [ ] `TabBar.md`: in the first paragraph replace `four sections (the collector's choice; Collection, Decks, Locations and Wishlist by default) and More.` with `four sections (Collection, Decks, Search and Scan, in that order; Locations stays in More) and More. The five tabs are full: a new section starts in More. Collectors will later be able to choose and reorder their sections (spec 057 decision 6).` In the markup block, keep the Collection, Decks and More tabs as they are (Decks keeps its icon, a card and the one behind it) and replace the `<a href="/locations">…Locations</a>` and `<a href="/wishlist">…Wishlist</a>` lines with:
+- [ ] `TabBar.md`: in the first paragraph replace `four sections (the collector's choice; Collection, Decks, Locations and Wishlist by default) and More.` with `four sections (Collection, Decks, Search and Scan, in that order; Locations stays in More) and More. The five tabs are full: a new section starts in More. Collectors will later be able to choose and reorder their sections (spec 057 decision 6).` In the markup block, keep the Collection, Decks and More tabs as they are (Decks' own markup line is replaced in the next step) and replace the `<a href="/locations">…Locations</a>` and `<a href="/wishlist">…Wishlist</a>` lines with:
 
 ```html
   <a href="/catalog/entries"><span class="c-tabbar__icon"><svg …/></span>Search</a>
   <a href="/scanner"><span class="c-tabbar__icon"><svg …/></span>Scan</a>
 ```
 
-  (use the exact indentation of the neighbouring lines; the `…` stays as in the other tabs, which show no icon markup). Keep the sentence about More opening a full page.
+  (use the exact indentation of the neighbouring lines; the `…` stays as in the Collection and More tabs). Keep the sentence about More opening a full page.
+- [ ] `TabBar.md`, the Decks icon (spec 057 decision 5): in the markup block replace the Decks line's `<svg …/>` with the design system's own icon, the one the `TabBar` preview and the card page's "Add to deck" button use, so the document shows it:
+
+```html
+  <a href="/decks"><span class="c-tabbar__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="3" width="12" height="16" rx="2"/><path d="M5 7v12a2 2 0 0 0 2 2h9"/></svg></span>Decks</a>
+```
+
+  and add this bullet after "Labels always show; icons alone are not enough.": `- Decks' icon is the design system's own, a card and the one behind it, the same as the card page's "Add to deck" button, so one icon means deck everywhere (spec 057 decision 5).`
 - [ ] `MorePage.md`: in the bullet that begins `- Locations comes right after "Signed in as" and opens the locations page (spec 029);` replace `it is a section, so on phones it starts in More and the tab bar doesn't change.` with `it is a section, and it stays in More because the tab bar's fifth tab is More and its five tabs are full: Collection, Decks, Search, Scan, More (spec 057 decision 6).`
 - [ ] Read back: `git grep -n -i -e "wishlist" -e "four links" -e "tab bar doesn't change" -- docs/design-system/components/AppHeader.md docs/design-system/components/TabBar.md docs/design-system/components/MorePage.md ':!.kamal/secrets'` — expect only the "Wishlist is planned" sentence in `AppHeader.md`.
 - [ ] Commit: `docs(design-system): AppHeader, TabBar and MorePage say the new section order (spec 057 FR-1, #248)`
@@ -756,7 +779,7 @@ Each doc says the same order as the README. Read each file before editing; keep 
 ```
 
 - [ ] `SingleStat.md`: add as the last bullet: `- For three stats use \`c-stats c-stats--three\` instead (three equal columns at every width; see \`ItemPage\`).`
-- [ ] `Locations.md`: add this bullet after the bullet that describes what the page lists (read the file and place it with the page's scope; if none fits, after the first bullet of the notes):
+- [ ] `Locations.md`: add this bullet directly after the bullet that begins `- The list is in the order of the names' comparison key`:
 
 ```markdown
 - The page lists places only: locations that are not decks. Its count counts places only. Decks live on their own page (Decks, with its own header link and tab) and appear in every location picker; the Locations page carries no pointer to Decks (spec 057 decision 11).
@@ -792,7 +815,8 @@ Each doc says the same order as the README. Read each file before editing; keep 
 - **In decks** is a full-width section after Printings, with Format legality below it. It is `CollectionTable`'s pattern (a `c-table` in `.c-collection`, numeric cells `is-num`): columns Deck (the deck's name as `TableItemLink` documents, its format muted beside it), Zone, Owned and Proxy. Owned counts the copies in that zone and Proxy the proxies in it; the Proxy column is always shown, with a muted dash for none. On a phone Zone folds under the deck name with the format (`c-table__sub`), as in the other tables. No new CSS (spec 057 decision 8).
 ```
 
-- [ ] `ItemPagePhone.md`: replace the line `- Decks and legality stack instead of sitting side by side.` with `- The stats stay three across, divided by left borders (the labels fit at 360px). In decks is the full-width table with Zone folded under the deck name and the format (\`c-table__sub\`); Format legality follows it (spec 057 decisions 7, 8).`
+- [ ] `ItemPagePhone.md`: replace the line `- Stats become a 2 × 2 grid.` with `- The stats stay three across (\`c-stats--three\`), divided by left borders; the labels fit at 360px (spec 057 decision 7).` and replace the line `- Decks and legality stack instead of sitting side by side.` with `- In decks is the full-width table with Zone folded under the deck name and the format (\`c-table__sub\`); Format legality follows it (spec 057 decision 8).`
+- [ ] `ItemPage.md`, Your copies: replace `A deck is a location, so copies in a deck appear here with the deck's name.` with `A deck is a location, so copies in a deck appear here, the place written Deck › Zone (the README's Decks section).`
 - [ ] `.claude/skills/collector-design-system/SKILL.md`: replace the line `- A physical copy is in one place at a time; a deck is a location. "Free to use" = owned − in decks.` with `- A physical copy is in one place at a time; a deck is a location with zones that holds the copies it uses. "Free to use" = owned − copies in any deck zone (Considering included); a proxy never counts. The README's Decks section has the words.`
 - [ ] `CLAUDE.md`, "UI and design system": replace the sentence `The export's files (\`tokens.css\`, \`components.css\`, fonts, logos, \`docs/design-system/\`) are replaced wholesale by re-exporting the published design system; app-specific patterns live in \`collector/additions.css\` with a doc per pattern under \`docs/design-system/components/\`.` with `The design system is the project's own, in code: new patterns go in \`collector/additions.css\` with a doc per pattern under \`docs/design-system/components/\`, and a rule changes in \`docs/design-system/README.md\`.`
 - [ ] Read back: `git grep -n -i -e "owned minus in decks" -e "location like a binder" -e "replaced wholesale" -- CLAUDE.md .claude/skills docs/design-system ':!.kamal/secrets'` — expect no output.
@@ -815,7 +839,8 @@ Read each line before replacing it; the replacements keep the facts and drop the
 - [ ] `catalog-core.md` paragraph "A card image fits its slot…": replace `The export's \`components.css\` crops with \`cover\` and stretches the thumbnail; the override lives in \`additions.css\`, in one block headed with spec 019, so a re-export can't undo it (spec 019 decision 1, FR-3, AC-4.3, AC-4.4).` with `The export's \`components.css\` crops with \`cover\` and stretches the thumbnail, and still carries those rules; the override lives in \`additions.css\`, in one block headed with spec 019, guarded by \`spec/design_system_files_spec.rb\` (spec 019 decision 1, FR-3, AC-4.3, AC-4.4; spec 057 decision 12).`
 - [ ] `catalog-core.md` decision bullet: replace `- **Images fit by an override, not a re-export, and slots keep their shape.** A re-export of the design system replaces \`docs/design-system/\` wholesale and 28 app patterns live only in this repo, so the fix lives in \`additions.css\` with a pattern doc, listed for upstreaming; once the published system fits images this way the block is deleted.` with `- **Images fit by an override in \`additions.css\`, and slots keep their shape.** The design system is the project's own, in code (spec 057 decision 12), so the fix is a block of its own in \`additions.css\` with a pattern doc; the export's \`components.css\` still carries the crop and the stretch it overrides.` Keep the rest of that bullet (from `Slots stay 63:88` on).
 - [ ] `collection-and-lots.md`: replace `\`ItemTile.md\` still describes the fade until a re-export (spec 021).` with `\`ItemTile.md\` points to \`UnownedTile\` for the marker (spec 021; spec 057 decision 12).`
-- [ ] Run the AC-7.4 search and record every hit in your report for `verification.md`: `git grep -n -i -e "re-export" -e "replaced wholesale" -e "Upstream" -e "before the next export" -e "an export that" -e "published design system" -- CLAUDE.md .claude/skills docs/design-system docs/architecture app/assets/stylesheets spec ':!.kamal/secrets'` — expect only unrelated hits: `spec/models/collection_import/round_trip_spec.rb` ("re-exports"), `spec/lib/collector/push_scope_spec.rb` and `spec/script/upgrade/release_spec.rb` ("upstream" in git commands), `docs/design-system/components/StatusMessage.md` ("the upstream source" in a sample message), and `docs/design-system/components/ImageFit.md`'s sentence that `components.css` still carries the export's rules is not a hit. Any other hit is reported, not edited, and the supervisor decides.
+- [ ] `collection-and-lots.md` line "An unowned search tile keeps its image unfaded": replace `as an override in \`additions.css\` until the published \`ItemTile\` drops the fade (spec 021 decision 8).` with `as a rule of the project's own in \`additions.css\`; \`components.css\` still carries the fade it overrides (spec 021 decision 8; spec 057 decision 12).`
+- [ ] Run the AC-7.4 search and record every hit in your report for `verification.md`: `git grep -n -i -e "re-export" -e "replaced wholesale" -e "Upstream" -e "before the next export" -e "an export that" -e "published design system" -- CLAUDE.md .claude/skills docs/design-system docs/architecture app/assets/stylesheets spec ':!.kamal/secrets'` — expect only unrelated hits: `spec/models/collection_import/round_trip_spec.rb` ("re-exports"), `spec/lib/collector/push_scope_spec.rb` and `spec/script/upgrade/release_spec.rb` ("upstream" in git commands), `spec/requests/catalog/entries_show_spec.rb` ("upstream source"), `docs/architecture/catalog-core.md` and `docs/architecture/release-and-deploy.md` ("upstream source", "filed upstream", unrelated to the design system), `docs/design-system/components/StatusMessage.md` ("the upstream source" in a sample message), and `docs/design-system/components/ImageFit.md`'s sentence that `components.css` still carries the export's rules is not a hit. Any other hit is reported, not edited, and the supervisor decides.
 - [ ] Commit: `docs(design-system): retire the re-export wording from ImageFit, UnownedTile, ItemTile and two area docs (spec 057 FR-7, #248)`
 
 ---
@@ -882,15 +907,15 @@ begin
     driver.navigate.to("#{root}#{name}.html")
     links = driver.execute_script("return [...document.querySelectorAll('.c-appbar__nav a')].map(a => a.textContent)")
     tabs = driver.execute_script("return [...document.querySelectorAll('.c-tabbar a')].map(a => a.textContent)")
-    errors = driver.execute_script("return document.styleSheets.length")
-    puts [ name, links.join("/"), tabs.join("/"), "sheets=#{errors}" ].join(" | ")
+    sheets = driver.execute_script("return [...document.querySelectorAll('link[rel=stylesheet]')].map(l => l.getAttribute('href').split('/').pop())")
+    puts [ name, links.join("/"), tabs.join("/"), sheets.join(",") ].join(" | ")
   end
 ensure
   driver.quit
 end
 ```
 
-  Expect `AppHeader | Collection/Decks/Search/Scan/Locations | | sheets=4`, `TabBar | | Collection/Decks/Search/Scan/More | sheets=4`, and the two collection previews with both lists and `sheets=4` (preview-fonts, tokens, components, additions).
+  Expect `AppHeader | Collection/Decks/Search/Scan/Locations | | preview-fonts.css,tokens.css,components.css,additions.css`, `TabBar | | Collection/Decks/Search/Scan/More | preview-fonts.css,tokens.css,components.css,additions.css`, and the two collection previews with both lists and `preview-fonts.css,tokens.css,components.css,additions.css` (in that order: it proves AC-8.3).
 - [ ] Commit: `docs(design-system): the four navigation previews show Decks, Search, Scan, Locations and the five tabs (spec 057 FR-8, #248)`
 
 ---
@@ -903,7 +928,7 @@ end
 
 Both previews already hold the markup the doc describes, apart from the stats strip and the c-split. The header/tab-bar edit is Phase 13's script run for these two files. The card page edit is a second script: three stats with `c-stats--three`, the In decks table after Printings (the markup the maintainer approved in the mock-ups: Deck name link with the format muted beside it on wide, the phone line `c-table__sub` with the format and the zone, Zone `is-opt`, Owned and Proxy `is-num`, a muted dash for no proxy), then Format legality.
 
-- [ ] Run `python3 -I /private/tmp/claude-501/-Users-james-orca-workspaces-Collector-deck-design-rules/ec07c470-c507-4b98-907e-1884affc6f7c/scratchpad/previews_nav.py ItemPage.html ItemPagePhone.html` — expect two `edited` lines. (The card page previews' `Add to wishlist` menu item stays: a later issue owns it, decision 13.)
+- [ ] Run `python3 -I /private/tmp/claude-501/-Users-james-orca-workspaces-Collector-deck-design-rules/ec07c470-c507-4b98-907e-1884affc6f7c/scratchpad/previews_nav.py ItemPage.html ItemPagePhone.html` — expect two `edited` lines. (The card page previews' `Add to wishlist` menu item stays: Wishlist is planned, and no rule of this spec touches the item.)
 - [ ] Write `/private/tmp/claude-501/-Users-james-orca-workspaces-Collector-deck-design-rules/ec07c470-c507-4b98-907e-1884affc6f7c/scratchpad/previews_item.py`:
 
 ```python
@@ -935,14 +960,19 @@ for name in ("ItemPage.html", "ItemPagePhone.html"):
     legality = "        <section>\n" + match.group("legality") + "        </section>\n"
     text = text[:match.start()] + IN_DECKS + legality + text[match.end():]
     assert "c-split" not in text and "c-list" not in text, (name, "leftover")
+    # the stat's small line says "in N decks" (decision 7); "Your copies" writes a deck's place as Deck › Zone (FR-3)
+    assert text.count("<small>2 decks</small>") == 1, (name, "small")
+    text = text.replace("<small>2 decks</small>", "<small>in 2 decks</small>")
+    assert text.count("Izzet Tempo deck") == 2, (name, "place")
+    text = text.replace("Izzet Tempo deck", "Izzet Tempo › Main")
     open(root + name, "w").write(text)
     print("edited", name)
 ```
 
-  The `.*?` for the legality section copies its inner lines exactly, so Format legality's content is unchanged and only its wrapper (the `c-split`) goes. The two files differ only in their wrapper width (390px in the phone preview), so the same script applies to both.
+  The `.*?` for the legality section copies its inner lines exactly, so Format legality's content is unchanged and only its wrapper (the `c-split`) goes. The two files are byte-identical today, so the same script applies to both.
 - [ ] Run `python3 -I /private/tmp/claude-501/-Users-james-orca-workspaces-Collector-deck-design-rules/ec07c470-c507-4b98-907e-1884affc6f7c/scratchpad/previews_item.py` — expect two `edited` lines. If the `c-split` pattern does not match (the two files' indentation differs from what the script assumes), the script stops with `AssertionError` before writing; read the `In decks` part of the file and adapt the pattern, keeping the replacement text.
 - [ ] Read back: `git grep -n -e "c-stats--three" -e "In decks" -e "Est. value" -e "c-split" -- docs/design-system/previews/ItemPage.html docs/design-system/previews/ItemPagePhone.html ':!.kamal/secrets'` — expect `c-stats--three` once and `In decks` (the stat and the section title) in each file, and no `Est. value` and no `c-split`.
-- [ ] Run the Phase 13 count script again with `%w[ItemPage ItemPagePhone]` in place of the four names and expect five links, five tabs and `sheets=4` for each.
+- [ ] Run the Phase 13 count script again with `%w[ItemPage ItemPagePhone]` in place of the four names and expect five links, five tabs and `preview-fonts.css,tokens.css,components.css,additions.css` for each.
 - [ ] Commit: `docs(design-system): the card page previews show three stats, the In decks table and the new navigation (spec 057 FR-8, #248)`
 
 ---
@@ -964,7 +994,7 @@ for name in ("ItemPage.html", "ItemPagePhone.html"):
 - [ ] Run `script/worktree/with_mise bin/rspec spec/system/design_system_deck_rules_spec.rb spec/design_system_tokens_spec.rb spec/design_system_files_spec.rb spec/requests/collection_location_select_spec.rb` — expect `0 failures`, and record the example counts in `verification.md`.
 - [ ] Ask the coordinator for a CI slot, then run `script/worktree/with_mise bin/ci` once (RuboCop, YARD, Brakeman, bundler-audit, importmap audit, the whole suite) — expect green; send "slot released" with the SHA and the result.
 - [ ] Opus implementation review (`sdd-review` Mode B) of the whole diff against the spec; record it in `verification.md` under `## Implementation review`, verdict on the first line.
-- [ ] Update `docs/specs/README.md`: the 057 row's Plan column from `none` to `present` (done with the plan commit); `distill-feature` at session wrap decides the area-doc changelog rows and the status.
+- [ ] `distill-feature` at session wrap decides the area-doc changelog rows and the index status.
 
 ## Quickstart Validation
 
