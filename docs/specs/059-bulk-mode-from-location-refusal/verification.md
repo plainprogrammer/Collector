@@ -87,7 +87,7 @@ The fixes were minor and not sent for a second review round.
 
 ## Distillation
 
-`distill-feature` (before the merge): the area doc `collection-and-lots.md` already carried the feature's rules, written with it (Phase 3), so the step added its Distillation log row (the pull request named "spec 059's pull request" until it has a number), set row 059 of the index to Frozen with its plan "retirement owed", and added the spec's `**Frozen:**` line. No other area has a doc that the spec touches (the design system's `Locations.md` was updated in Phase 2). No ADR is proposed: the decisions are spec-local. The plan is retired after the merge.
+`distill-feature` (before the merge): the area doc `collection-and-lots.md` already carried the feature's rules, written with it (Phase 3), so the step added its Distillation log row (naming pull request #280), set row 059 of the index to Frozen with its plan "retirement owed", and added the spec's `**Frozen:**` line. No other area has a doc that the spec touches (the design system's `Locations.md` was updated in Phase 2). No ADR is proposed: the decisions are spec-local. The plan is retired after the merge.
 
 ## Full run
 
