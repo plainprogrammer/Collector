@@ -149,20 +149,33 @@ module YardRatchet
     end
     private_class_method :item
 
-    # Whether the object has a summary (decision 2). YARD's docstring for a class or module opened in several files is
-    # the last definition's, so which file it read last would decide the answer; a namespace therefore also counts when
-    # the comment above any one of its definitions has text before its first tag (decision 4).
+    # A comment line (its `#` removed) that Ruby reads as a shebang or a magic comment, which is never documentation.
+    # YARD skips a shebang, an encoding comment and `frozen_string_literal` itself at the top of a file, but not the
+    # others Ruby knows (`warn_indent`, `shareable_constant_value`), and the raw lines read below keep all of them.
+    MAGIC_LINE = /\A(?:!\S|-\*-.*-\*-\z|(?:en)?coding\s*[:=]|(?:frozen[_-]string[_-]literal|warn[_-]indent|shareable[_-]constant[_-]value)\s*:)/i
+
+    # Whether the object has a summary (decision 2, AC-1.4). YARD's docstring for a class or module opened in several
+    # files is the last definition's, so which file it read last would decide the answer; a namespace therefore also
+    # counts when the comment above any one of its definitions has text before its first tag (decision 4).
     def self.commented?(object, namespace, sources)
-      return true unless object.docstring.to_s.strip.empty?
+      return true if summary?(object.docstring.to_s)
       return false unless namespace
 
       object.files.any? do |file, line|
         lines = sources[file]
-        text = lines[(comment_start(lines, line) - 1)...(line - 1)].map { it.sub(/\A\s*#\s?/, "") }.join("\n")
-        !YARD::DocstringParser.new.parse(text).text.strip.empty?
+        summary?(lines[(comment_start(lines, line) - 1)...(line - 1)].map { it.sub(/\A\s*#\s?/, "") }.join("\n"), parse: true)
       end
     end
     private_class_method :commented?
+
+    # Whether comment `text` (without its `#`s) has text before its first tag once the leading shebang and magic
+    # comments are dropped; `parse` reads the tags out of raw lines, which YARD's own docstring already did.
+    def self.summary?(text, parse: false)
+      text = text.lines.drop_while { it.strip.empty? || it.strip.match?(MAGIC_LINE) }.join
+      text = YARD::DocstringParser.new.parse(text).text if parse
+      !text.strip.empty?
+    end
+    private_class_method :summary?
 
     # The first line of the unbroken run of comment lines directly above `line` (`line` itself when there is none).
     def self.comment_start(lines, line)
