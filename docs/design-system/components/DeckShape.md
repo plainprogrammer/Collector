@@ -29,7 +29,7 @@ A panel that answers what a deck does from the catalog alone: its mana curve, it
 </aside>
 ```
 
-The `details` copy, shown below 640px of the page container, holds the same three parts with their own title ids:
+The `details` copy, shown below 640px of the page container, holds the same three parts under a bare panel with no title of its own:
 
 ```html
 <details class="c-shapefold">
@@ -73,7 +73,7 @@ The `details` copy, shown below 640px of the page container, holds the same thre
 
 **Colour and contrast** (spec 060 FR-2).
 
-- The panel uses `ink-muted`, `line-strong`, `surface-raised`, `line`, `ink` and, in the mana bar only, `mana-*` with `on-mana-*`. It never uses `brand`, which means an action, and never a status colour.
+- The panel uses `ink-muted`, `line-strong`, `surface-raised`, `line`, `ink` and, in the mana bar only, `mana-*` with `on-mana-*`. It never uses `brand`, which means an action, and never a status colour. The rule is about the panel's charts and fills: the `details` summary's "Show" or "Hide" is an action, so it is `brand`.
 - The panel itself is `surface-raised` with a 1px `line` border, `radius-md` corners, `space-4` padding and `space-6` between its parts. The title is the sans family at 20px and weight 600; the scope line is mono and `ink-muted`.
 - Fills and outlines hold 3:1 on `surface`, `surface-raised` and `surface-sunken` in both themes (the tokens' contrast is guarded by spec 057 AC-2.3).
 
@@ -82,6 +82,6 @@ The `details` copy, shown below 640px of the page container, holds the same thre
 **The two copies** (spec 060 decision 7, AC-3.4). A closed `details` hides its content whatever the CSS says, and `::details-content` would put a browser floor under the page, so the deck page renders the panel twice and each copy hides the other with `display: none`.
 
 - The `aside` copy shows from 640px of the page container. The `details` copy shows below 640px, closed: its summary reads "Deck shape" and the facts line "Main · 60 cards · average mana value 2.3", with "Show" or "Hide" at the end, and is at least 44px high. It works without JavaScript and from the keyboard (Enter or Space).
-- The panel's root has no `id`. Each copy's `aria-labelledby` points to a title id that is unique to that copy; the view generates both. The hidden copy is not in the tab order or the accessibility tree.
+- The panel's root has no `id`. The `aside` copy's `section` is labelled by its title (`aria-labelledby` points to a title id the view generates); the `details` copy has no title of its own and is named by its `summary`. The hidden copy is not in the tab order or the accessibility tree.
 - The `details` copy's panel is `c-shape c-shape--bare`: no outer border, a `line` rule above the parts, because the `details` draws the box.
 - Where the copies sit and how the page lays them out is in `DeckPage`.

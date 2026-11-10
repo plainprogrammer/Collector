@@ -19,8 +19,8 @@ The list of a collector's decks and the page that adds one. Shown with Magic: Th
           <td class="is-opt">Modern</td><td class="is-num">69</td><td class="is-num is-opt">58</td><td class="is-num is-opt"><span class="c-proxy">Proxy <b>11</b></span></td>
         </tr>
         <tr>
-          <td><div class="c-table__item"><div><a href="/decks/2">Mono Red Burn</a><span class="c-table__sub">Pioneer · 60 owned</span></div></div></td>
-          <td class="is-opt">Pioneer</td><td class="is-num">60</td><td class="is-num is-opt">60</td><td class="is-num is-opt"><span class="is-muted">–</span></td>
+          <td><div class="c-table__item"><div><a href="/decks/2">Krenko, goblin army</a><span class="c-table__sub">Commander · 97 owned · <span class="c-proxy">Proxy <b>3</b></span></span></div></div></td>
+          <td class="is-opt">Commander</td><td class="is-num">100</td><td class="is-num is-opt">97</td><td class="is-num is-opt"><span class="c-proxy">Proxy <b>3</b></span></td>
         </tr>
       </tbody>
     </table>

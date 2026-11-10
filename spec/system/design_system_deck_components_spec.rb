@@ -290,8 +290,8 @@ RSpec.describe "Design system: deck components", type: :system do
   # lot a 60-character place name with no space. A lot is `[id, text, free]`.
   def use_my_copy_html(long: false)
     place = long ? long_place : "Blue binder"
-    this = [ [ "lot_1", "2X2 · 117 foil, Near Mint, #{place}, ×1 free", 1 ], [ "lot_2", "2X2 · 117 foil, Lightly Played, Red box, ×2 free", 2 ] ]
-    other = [ [ "lot_3", "MM3 · 122, Near Mint, Red box, ×1 free", 1 ] ]
+    this = [ [ "lot_1", "2X2 · 117 foil, Near mint, #{place}, ×1 free", 1 ], [ "lot_2", "2X2 · 117 foil, Lightly played, Red box, ×2 free", 2 ] ]
+    other = [ [ "lot_3", "MM3 · 122, Near mint, Red box, ×1 free", 1 ] ]
     stats = "Replaces 1 proxy in Izzet Tempo › Main · 2X2 · 117 foil"
     groups = pick_group("This printing", this) + pick_group("Other printings", other)
     fieldset = %(<fieldset class="c-choices c-pick"><legend class="c-field__label">Which copies</legend>#{groups}</fieldset>)
@@ -907,7 +907,7 @@ RSpec.describe "Design system: deck components", type: :system do
       add_to_main(use_my_copy_html)
       fields = evaluate(%(return [ ...document.querySelectorAll("#probe input[type=number]") ].map((i) => ({ min: i.min, max: i.max, name: [ ...i.labels ].map((l) => l.textContent).join(" ") }))))
       expect(fields.map { it.values_at("min", "max") }).to eq([ %w[0 1], %w[0 2], %w[0 1] ])
-      expect(fields.first["name"]).to include("2X2 · 117", "foil", "Near Mint", "Blue binder")
+      expect(fields.first["name"]).to include("2X2 · 117", "foil", "Near mint", "Blue binder")
     end
   end
 end

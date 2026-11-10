@@ -442,7 +442,7 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
 .c-deck { display:grid; grid-template-columns:minmax(0, 1fr); gap:var(--space-6); align-items:start; margin-top:var(--space-6); }
 .c-deck__zones { display:flex; flex-direction:column; gap:var(--space-8); min-width:0; }
 .c-shapefold { display:none; background:var(--surface-raised); border:1px solid var(--line); border-radius:var(--radius-md); }
-.c-shapefold > summary { display:flex; flex-wrap:wrap; align-items:baseline; gap:var(--space-1) var(--space-3); min-height:44px; padding:var(--space-2) var(--space-4); list-style:none; cursor:pointer; }
+.c-shapefold > summary { display:flex; flex-wrap:wrap; align-items:baseline; gap:var(--space-1) var(--space-3); min-height:var(--touch-floor); padding:var(--space-2) var(--space-4); list-style:none; cursor:pointer; }
 .c-shapefold > summary::-webkit-details-marker { display:none; }
 .c-shapefold > summary::after { content:"Show" / ""; margin-left:auto; font:600 13px/18px var(--font-sans); color:var(--brand); }
 .c-shapefold[open] > summary::after { content:"Hide" / ""; }
@@ -494,7 +494,7 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
 /* ---------- Decks list (spec 060): the New deck button stays on a phone ---------- */
 /* The export hides a page head's actions below 640px, and the app's header plus means "Add items" everywhere, so the
    Decks page would have no way to add a deck on a phone (decision 24); this page alone keeps its button. A deck's name
-   wraps with the zone tables' rule, in the block above (the same selector list). */
+   wraps with its own rule (`.c-decks td:first-child`) in the zone tables' narrow container query, in the block above. */
 @media (max-width: 639px) { .c-decks .c-pagehead__actions { display:flex; } }
 
 /* ---------- Pick list for AddToDeck and UseMyCopy (spec 060): choices that wrap, with a visible focus ---------- */
@@ -509,7 +509,7 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
 .c-pick__lot { display:flex; flex-direction:column; gap:var(--space-2); padding:var(--space-3); background:var(--surface-raised);
   border:1px solid var(--line); border-radius:var(--radius-md); }
 .c-pick__label { font:400 14px/20px var(--font-sans); color:var(--ink); overflow-wrap:anywhere; }
-.c-pick__lot .c-input { width:6rem; min-height:44px; }
+.c-pick__lot .c-input { width:6rem; min-height:var(--touch-floor); }
 /* `SET · number` is written `<span class="is-data">` in a pick label, a radio's label and the page-head line. The export gives
    `.is-data` its mono only in tables, details and lists, so the pick list sets it here (spec 060 documents it in mono), and
    no break inside it: the page-head line is mono by inheritance but broke inside "2X2 · 117" at 390px. */

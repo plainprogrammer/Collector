@@ -30,9 +30,12 @@ One deck at desktop and phone width: its zones as tables and, beside or above th
           <th>Card</th><th class="c-zone__c-cost">Cost</th><th class="c-zone__c-owned is-num is-opt">Owned</th><th class="c-zone__c-proxy is-num is-opt">Proxy</th><th class="c-zone__c-total is-num">Total</th><th class="c-zone__c-menu"><span class="c-sr">Actions</span></th></tr></thead>
         <tbody>
           <tr class="c-zone__group"><th scope="rowgroup" colspan="6">Creatures<span class="c-zone__groupcount">12</span></th></tr>
-          <tr><td><div class="c-table__item"><div><a href="#">Murktide Regent</a><span class="is-opt"> <span class="c-legal c-legal--no">…cross…Banned</span></span><span class="is-opt"><br><span class="c-zone__set">MH2 · 52</span></span><span class="c-table__sub"><span class="c-zone__set">MH2 · 52</span> <span class="c-proxy">Proxy <b>2</b></span> <span class="c-legal c-legal--no">…cross…Banned</span></span></div></div></td>
+          <tr><td><div class="c-table__item"><div><a href="#">Murktide Regent</a><span class="is-opt"><br><span class="c-zone__set">MH2 · 52</span></span><span class="c-table__sub"><span class="c-zone__set">MH2 · 52</span> <span class="c-proxy">Proxy <b>2</b></span></span></div></div></td>
             <td><span class="c-cost" role="img" aria-label="Mana cost: 5 generic, 1 blue, 1 blue">…pips…</span></td><td class="is-num is-opt">2</td><td class="is-num is-opt"><span class="c-proxy">Proxy <b>2</b></span></td><td class="is-num">4</td>
-            <td class="c-table__actions"><details class="c-menu">…TableActions, trigger "Actions for Murktide Regent MH2 · 52"…</details></td></tr>
+            <td class="c-table__actions"><details class="c-menu" open>…TableActions, trigger "Actions for Murktide Regent MH2 · 52"…</details></td></tr>
+          <tr><td><div class="c-table__item"><div><a href="#">Ragavan, Nimble Pilferer</a><span class="is-opt"> <span class="c-legal c-legal--no">…cross…Banned</span></span><span class="is-opt"><br><span class="c-zone__set">MH2 · 138</span></span><span class="c-table__sub"><span class="c-zone__set">MH2 · 138</span> <span class="c-legal c-legal--no">…cross…Banned</span></span></div></div></td>
+            <td><span class="c-cost" role="img" aria-label="Mana cost: 1 red">…pips…</span></td><td class="is-num is-opt">4</td><td class="is-num is-opt"><span class="is-muted">–</span></td><td class="is-num">4</td>
+            <td class="c-table__actions"><details class="c-menu">…TableActions, trigger "Actions for Ragavan, Nimble Pilferer MH2 · 138"…</details></td></tr>
         </tbody></table></div>
       </section>
       <!-- Sideboard, Considering: the same markup -->
@@ -41,7 +44,7 @@ One deck at desktop and phone width: its zones as tables and, beside or above th
 </main>
 ```
 
-A card that is not legal in the deck's format has its `<span class="c-legal c-legal--no">…cross…Banned</span>` written twice, as the set is: after its name link inside `<span class="is-opt"> …</span>` and again at the end of the `c-table__sub` line (the sample shows both on its first row). A card with no cost, or no proxy, shows `<span class="is-muted">–</span>` in that cell. An empty zone replaces the table with `<p class="c-zone__empty">No cards in Sideboard yet.</p>`.
+A card that is not legal in the deck's format has its `<span class="c-legal c-legal--no">…cross…Banned</span>` written twice, as the set is: after its name link inside `<span class="is-opt"> …</span>` and again at the end of the `c-table__sub` line (the sample shows both on its Ragavan, Nimble Pilferer row; Murktide Regent, the proxy row with the open menu, has none). A card with no cost, or no proxy, shows `<span class="is-muted">–</span>` in that cell. An empty zone replaces the table with `<p class="c-zone__empty">No cards in Sideboard yet.</p>`.
 
 **Widths** (spec 060 decisions 6 and 7, FR-3). The deck's layout answers to its page container (`.c-page`, `@container page`), not the viewport.
 
