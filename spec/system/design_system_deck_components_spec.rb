@@ -613,6 +613,25 @@ RSpec.describe "Design system: deck components", type: :system do
       expect(cell(long_name, 2)["scrolls"]).to be(false)
     end
 
+    # The worst-case row of AC-3.6 and a four-symbol cost (Cryptic Command), beside long names.
+    def four_symbol_rows = zone_rows + [ zrow(long_name, cost: %w[2 W U B R G]), zrow("Cryptic Command", group: "Instants", cost: %w[1 U U U]) ]
+
+    it "keeps a four-symbol cost one pip high at 360px, with no overflow (AC-3.6, spec 1.0.4)", :aggregate_failures do
+      zone_at(360, four_symbol_rows)
+      expect(cost_of("Cryptic Command")["height"]).to be_within(1).of(22)
+      expect([ wrapper_scrolls?, cell(long_name, 2)["scrolls"] ]).to eq([ false, false ])
+    end
+
+    it "keeps a four-symbol cost one pip high in a 390px frame, with no overflow (AC-3.6, spec 1.0.4)", :aggregate_failures do
+      open_in_narrow_frame(locations_path, width: 390, ready: "main")
+      within_narrow_frame do
+        blank_host
+        add_to_main(zone_html("Main", four_symbol_rows, id: "probe"))
+        expect(cost_of("Cryptic Command")["height"]).to be_within(1).of(22)
+        expect(evaluate("return document.documentElement.scrollWidth <= window.innerWidth")).to be(true)
+      end
+    end
+
     it "keeps a six-symbol cost on one line in Cost and wraps an eight-symbol one (spec 1.0.1)", :aggregate_failures do
       zone_at(640, zone_rows + [ zrow("Six", cost: %w[2 W U B R G]), zrow("Eight", cost: %w[2 W U B R G 1 X]) ])
       six, eight = cost_of("Six"), cost_of("Eight")
