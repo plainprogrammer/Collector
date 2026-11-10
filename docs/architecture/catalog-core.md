@@ -222,3 +222,4 @@ A card image fits its slot with `object-fit: contain`, centred, at the largest s
 | Date | Distilled | Pull request |
 |---|---|---|
 | 2026-11-06 | Specs 002 (FR-1, FR-2, FR-7–FR-10), 016 (research), 018, 019 and 023; the catalog parts of spec 004 (search, the card page, the vocabulary); the name index of specs 007 and 009 and ADR 0003; and CLAUDE.md's catalog core paragraphs | [#207](https://github.com/plainprogrammer/Collector/pull/207) |
+| 2026-11-10 | Spec 057 (decision 12: the design system is the project's own, so no note says an override waits for a re-export; the image-fit and unowned-tile notes now say `components.css` still carries the export's rule and `additions.css` is what applies); the rest of the spec (the deck rules, navigation, pickers) is in `docs/design-system/` | spec 057's pull request |
