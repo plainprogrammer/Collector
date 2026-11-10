@@ -13,6 +13,16 @@ RSpec.describe "Open a location's lots in bulk mode", type: :request do
   def own(name = "Lightning Bolt", **options) = owned_printing(name, account:, **options)
   def shortcut_form = page_html.at_css("main form[action='#{location_selection_path(blue)}']")
 
+  # What the browser sends for the bulk table it was just given, with the user touching nothing: the header's state as
+  # rendered, each row's shown, baseline and ticked fields as rendered (a disabled field is never sent).
+  def untouched_bulk_form(go)
+    fields = ->(css) { page_html.css(css).reject { |field| field["disabled"] }.map { |field| field["value"] } }
+    { go:, rendered_q: "", rendered_location: blue.id.to_s, all_rendered: page_html.at_css("input[name=all_rendered]")["value"],
+      shown_ids: fields.("input[name='shown_ids[]']"), baseline_ids: fields.("input[name='baseline_ids[]']"),
+      ticked_ids: page_html.css("tbody input[type=checkbox][checked]").map { |box| box["value"] } }
+      .merge(page_html.at_css("thead input[name=all][checked]") ? { all: "1" } : {})
+  end
+
   describe "the button on the refusal page (Story 1)" do
     before do
       own("Card A", location: blue, quantity: 5)
@@ -89,9 +99,7 @@ RSpec.describe "Open a location's lots in bulk mode", type: :request do
       get collection_path(bulk: 1, location: blue.id)
       expect(page_html.css(".c-bulkbar__extra button").map(&:text)).to eq([ "Set condition…", "Move to…", "Remove" ])
 
-      ids = held.first(2).map(&:id)
-      patch collection_selection_path, params: { go: "move", rendered_q: "", rendered_location: blue.id.to_s, all_rendered: "1", all: "1",
-        shown_ids: ids, baseline_ids: ids, ticked_ids: ids }
+      patch collection_selection_path, params: untouched_bulk_form("move") # what the stored selection alone gives the browser
       follow_redirect!
       expect(page_html.at_css("h1").text).to eq("Move 12 items")
       expect(page_html.css("select#to option").map(&:text)).to eq([ "Choose…", "No location", "Long box" ])
