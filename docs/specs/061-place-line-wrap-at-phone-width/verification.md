@@ -22,3 +22,7 @@ None from the plan, except one extra commit, `0643068d`, which changes the wordi
 ## Implementation review
 
 SPEC-ALIGNED (Opus, read-only, `sdd-review` Mode B, 2026-11-10, at `ac3a4d56`). Every criterion AC-1.1 to AC-2.2 and FR-1 to FR-3 is met and evidenced; spec 048 is unedited; only the system spec and documents changed. 0 blocking, 0 major, 3 minor, all taken: the classic numbers' evidence says they came from a temporary logging line; the area doc's sentence is split so its two citation groups don't touch; the system spec's header comment is re-wrapped. The distillation-log entry and the index row's status word are owed by `distill-feature`.
+
+## Distillation
+
+Distilled into [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (2026-11-10): the place line bullet (done with Task 4), Sources, the issues list and a distillation log row; the specs index row is Frozen with its plan "retirement owed"; spec 061 carries its frozen line. The lesson is `docs/lessons/2026-11-10-a-wrap-criterion-needs-a-measured-margin-at-the-phones-width.md`. No ADR was needed, and CLAUDE.md restates none of this.
