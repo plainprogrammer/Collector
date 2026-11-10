@@ -616,4 +616,30 @@ RSpec.describe YardRatchet::Check, :git_sandbox, type: :model do # rubocop:disab
       expect(out).to include("all with a comment")
     end
   end
+
+  describe "the pieces' guards" do
+    it "raises Unseen from Git#export for a path the base doesn't have (decision 5)" do
+      base_with("lib/old.rb" => "class Old\nend\n")
+
+      Dir.mktmpdir do |tmp|
+        expect { YardRatchet::Git.new(root).export(run_git("rev-parse", "HEAD").strip, [ "lib/nope.rb" ], tmp) }
+          .to raise_error(YardRatchet::Unseen, %r{lib/nope\.rb is not in})
+      end
+    end
+
+    it "leaves YARD's registry empty and its logger level as it was when Snapshot.build raises (AC-3.5)", :aggregate_failures do
+      write("lib/a.rb", "class A\nend\n")
+      YARD.parse_string("class Leftover; end")
+      level = YARD::Logger.instance.level
+      YARD::Logger.instance.level = YARD::Logger::DEBUG
+
+      # A nil path is not a file name: it raises (TypeError) once the level and the registry are set up.
+      expect { YardRatchet::Snapshot.build(root, [ "lib/a.rb", nil ]) }.to raise_error(TypeError)
+
+      expect(YARD::Registry.all).to be_empty
+      expect(YARD::Logger.instance.level).to eq(YARD::Logger::DEBUG)
+    ensure
+      YARD::Logger.instance.level = level
+    end
+  end
 end
