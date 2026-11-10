@@ -43,3 +43,16 @@ Commit `d2739aa5`. Before the change, `source_spec.rb` and `refresh_scryfall_spe
 - **AC-4.4:** `docs/architecture/data-portability.md` is not edited. Its version rule (line 42, "a new field of collector-owned data raises it") lists collector-owned tables and columns; `mtg_cards` is global catalog data, and `ExportFormat::Rules::VERSIONS` is `[1, 2, 3]` (its Named constants table).
 - **AC-4.5:** `docs/specs/README.md` has the 058 row (status Approved until `distill-feature` moves it). Spec 058 supersedes nothing and no shipped spec is edited.
 - **AC-4.6:** `bin/yard doc` builds without warnings (recorded in Phase 5); `Mapper.mana_value` and `Source#reapply?` carry why-comments, the first naming the missing top-level key, the front face and the no-`fetch` rule, the second naming both reasons.
+
+## Implementation review
+
+SPEC-ALIGNED WITH NOTES
+
+Read-only Opus review (`sdd-review` Mode B) of `a29c5987..cdade2d7`: no blocking and no major findings; every AC from 1.1 to 4.6 is met by code or a document line, and each code AC has an example that would fail if the behaviour broke. Six minor notes, all dealt with in the commit after the review:
+
+1. `Source#reapply?`'s cost line said two `exists?` queries; it is at most four, and only when a scheduled run's version was already applied. Comment corrected.
+2. The migration comment's line wrap was broken. Reflowed.
+3. Spec AC-4.3 spells the class `AddManaValueToMtgCards`; the code and `docs/releasing.md` say `AddManaValueToMTGCards` (the MTG acronym inflection). The document is right; the spec is left as approved, and this file records it.
+4. A source file with no `cmc` on any card would keep `#reapply?` true and re-parse the file each scheduled run, writing nothing (digests match); not a loop, since the hook is asked once per run. Added to the accepted limits in `catalog-operations.md`.
+5. AC-3.8 has no example of its own: it rests on the suite-wide WebMock block and on `mana_value` appearing in `app` and `lib` only in `mapper.rb` and `source.rb`. The AC's wording allows this; no change.
+6. `mapper.rb`'s `Array(card["card_faces"]).first&.dig("cmc")` would raise on a malformed `card_faces` (the card would become Malformed), as `illustration_id` already does; Scryfall always sends an array of objects. No change.

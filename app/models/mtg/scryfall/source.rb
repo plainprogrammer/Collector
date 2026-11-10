@@ -53,7 +53,7 @@ class MTG::Scryfall::Source
   #   when Scryfall has published no new file. A few cards may have no value, so the test is that none has one.
   #
   # Both are false on an empty catalog (it applies anyway) and once one row has the value, so an up-to-date catalog skips as
-  # before. Two `exists?` queries a scheduled run.
+  # before. At most four `exists?` queries, and only when a scheduled run's version was already applied.
   #
   # @return [Boolean]
   def reapply? = artwork_ids_missing? || mana_values_missing?
