@@ -1,6 +1,6 @@
 # Verification: Spec 056, New and Changed Public Code Carries a Comment (a YARD Ratchet in `bin/ci checks`)
 
-Spec: [spec.md](spec.md) v1.2.3. Plan: [plan.md](plan.md). Issue [#264](https://github.com/plainprogrammer/Collector/issues/264).
+Spec: [spec.md](spec.md) v1.2.3. Plan: plan (retired in `3aa1960297f638b76b13fcc71a6e2f0caed348bd`; read it with `git show 3aa1960297f638b76b13fcc71a6e2f0caed348bd^:docs/specs/056-yard-comment-ratchet/plan.md`). Issue [#264](https://github.com/plainprogrammer/Collector/issues/264).
 
 Each row names the example that proves the criterion (by its description and the AC tag in it), the command and its recorded output, or says "read" with what was read. The examples are in `spec/script/yard/comment_ratchet_spec.rb` unless another file is named; each cited description was checked against the file. `bin/rspec spec/script/yard/comment_ratchet_spec.rb` on 2026-11-10 at HEAD `76dfc8f8`: **82 examples, 0 failures**. The suite checks no prose (`.claude/rules/testing.md`), so the documentation criteria are verified by reading, here.
 
