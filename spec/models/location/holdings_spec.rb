@@ -62,4 +62,40 @@ RSpec.describe Location::Holdings, type: :model do
       expect(blue.holdings.listed).to eq([ ant, zebra ])
     end
   end
+
+  describe "of a deck (spec 062)" do
+    let(:izzet) { create(:deck, account:) }
+
+    it "counts the lots of every zone, and nothing of a place or another deck", :aggregate_failures do
+      create_lot_in_zone(izzet, "main", quantity: 4)
+      create_lot_in_zone(izzet, "considering", quantity: 2)
+      create_lot_in_zone(create(:deck, account:, name: "Other"), "main", quantity: 7)
+      create(:lot, account:, location: blue, quantity: 9)
+
+      expect(izzet.location.holdings.total).to eq(described_class::Count.new(lots: 2, copies: 6))
+      expect(izzet.location.holdings.any?).to be(true)
+    end
+
+    it "lists the lots with each zone's deck loaded, so a label costs no query", :aggregate_failures do
+      create_lot_in_zone(izzet, "main")
+      create_lot_in_zone(izzet, "sideboard")
+
+      listed = izzet.location.holdings.listed
+      expect(count_queries { listed.map { it.location.label } }).to eq(0)
+      expect(listed.map { it.location.label }).to contain_exactly("Izzet Tempo › Main", "Izzet Tempo › Sideboard")
+    end
+
+    it "is unchanged for a zone, which holds only its own lots", :aggregate_failures do
+      create_lot_in_zone(izzet, "main", quantity: 4)
+      create_lot_in_zone(izzet, "sideboard", quantity: 2)
+
+      expect(izzet.zone("main").holdings.total).to eq(described_class::Count.new(lots: 1, copies: 4))
+    end
+
+    it "keeps counts grouped by location, so a zone is counted under its own id" do
+      create_lot_in_zone(izzet, "main", quantity: 4)
+
+      expect(described_class.counts(account)[izzet.zone("main").id]).to eq(described_class::Count.new(lots: 1, copies: 4))
+    end
+  end
 end

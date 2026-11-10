@@ -23,6 +23,7 @@ class Location < ApplicationRecord
   belongs_to :parent, class_name: "Location", optional: true
   has_many :zones, -> { where(kind: "deck_zone") }, class_name: "Location", foreign_key: :parent_id, inverse_of: :parent,
     dependent: nil # the foreign key cascades from a deck to its zones
+  has_one :deck, dependent: nil # a deck's own data; its row goes with the location (the foreign key cascades), see Deck#remove!
   has_many :lots, dependent: nil # a location that holds lots can't be deleted: the foreign key refuses it (spec 032 decision 3)
 
   def holdings = Holdings.new(self)
@@ -52,6 +53,7 @@ class Location < ApplicationRecord
 
   validate :name_is_acceptable
   validate :kind_is_consistent
+  validate :zone_key_is_the_formats, if: :zone?
   validate :name_is_free
   validate :account_has_room, on: :create
 
@@ -105,6 +107,16 @@ class Location < ApplicationRecord
         errors.add(:parent, "is only for a zone of a deck") unless parent_id.nil?
         errors.add(:zone, "is only for a zone of a deck") unless self.zone.nil?
       end
+    end
+
+    # A zone's key is one of its deck's format's (spec 062 AC-9.5). It lets a zone go when the deck has no row or its format is
+    # no longer registered: rename and removal of such a deck must still work, so a registration that went away fails open.
+    def zone_key_is_the_formats
+      return if errors.any? || zone.blank?
+
+      deck = parent&.deck
+      zones = deck && Catalog::Formats.zones_for(deck.collectible_type, deck.format)
+      errors.add(:zone, "isn't a zone of the deck's format") if zones && zones.none? { it.key == zone }
     end
 
     # Write transactions are IMMEDIATE and validations run inside save's transaction, so counting and inserting is

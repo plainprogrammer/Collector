@@ -283,6 +283,28 @@ RSpec.describe Location, type: :model do
         expect(zone(izzet, "Side", key: "side")).to be_valid
       end
 
+      it "needs a zone's key to be one of its deck's format's, and lets it go when the deck has no registration (AC-9.5)", :aggregate_failures do
+        izzet = create(:deck, account:, format: "commander")
+        unregistered = create(:deck, account:, name: "Old")
+        unregistered.update_columns(format: "retired")
+        bare = deck("No row")
+
+        expect(zone(izzet.location, "Commander", key: "commander").tap { it.name = "Boss" }).to be_valid
+        refused = zone(izzet.location, "Side", key: "sideboard")
+        expect(refused).not_to be_valid
+        expect(refused.errors.where(:zone).size).to eq(1)
+        expect(zone(unregistered.location, "Whatever", key: "anything")).to be_valid # fails open: the registration is gone
+        expect(zone(bare, "Whatever", key: "anything")).to be_valid # no decks row to read the format from
+      end
+
+      it "gives a deck's location its `deck` and answers `decks` as the scope (T4)", :aggregate_failures do
+        izzet = create(:deck, account:)
+
+        expect(izzet.location.deck).to eq(izzet)
+        expect(described_class.decks).to contain_exactly(izzet.location)
+        expect(add("Binder").deck).to be_nil
+      end
+
       it "refuses an unknown kind", :aggregate_failures do
         location = account.locations.new(name: "Odd", kind: "shelf")
 

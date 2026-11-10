@@ -12,8 +12,10 @@ class Location::Holdings
     placed.count.to_h { |id, lots| [ id, Count.new(lots:, copies: copies.fetch(id)) ] }.tap { |counts| counts.default = EMPTY }
   end
 
+  # A deck holds what its zones hold, together; a place or a zone holds its own lots. The zones are a subquery, not a read.
   def initialize(location)
-    @lots = Lot.where(account_id: location.account_id, location_id: location.id) # the location came from the signed-in account; the scope is by value, so it costs no query
+    held_in = location.deck? ? Location.where(parent_id: location.id).select(:id) : location.id
+    @lots = Lot.where(account_id: location.account_id, location_id: held_in) # the location came from the signed-in account; the scope is by value, so it costs no query
   end
 
   def lots_count = @lots_count ||= @lots.count
@@ -24,7 +26,7 @@ class Location::Holdings
 
   # The first LISTED lots, as the import preview orders lots: name, set code, number, language, finish, condition, price paid.
   def listed
-    @listed ||= @lots.joins(entry: :set).preload(entry: :set).limit(LISTED).order(
+    @listed ||= @lots.joins(entry: :set).preload(entry: :set, location: :parent).limit(LISTED).order(
       Catalog::Entry.arel_table[:name].asc, Catalog::Set.arel_table[:code].asc, Catalog::Entry.arel_table[:number].asc,
       Catalog::Entry.arel_table[:language].asc, Lot.arel_table[:finish].asc, Lot.arel_table[:condition].asc,
       Lot.arel_table[:price_paid_cents].asc).to_a

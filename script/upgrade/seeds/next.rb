@@ -52,6 +52,9 @@ MTG::ArtBuild.create!(status: "finished", job_id: "upgrade-seed", catalog_versio
   index_file: "art-index-upgrade.bin.gz", started_at: now - 60, heartbeat_at: now, finished_at: now, total_count: 50, indexed_count: 50)
 MTG::Artwork.create!(entry: entries.first, illustration_id: "upgrade-illustration-0", fingerprint: "\x00".b * 128, settings_digest: "upgrade-seed")
 locations = [ "Binder A", "Shelf B" ].map { |location| Location.create!(account: ada.account, name: location) }
+# A deck with a lot in a zone, so the upgrade proof carries decks, their zones and a placed lot across (spec 062 AC-9.2).
+deck = Deck::Creation.new(account: ada.account, name: "Upgrade Deck", format: "mtg/modern").tap(&:save!).deck
+Lot.add!(account: ada.account, entry: entries.first, quantity: 3, finish: "nonfoil", location: deck.zone("main"))
 NumberEntry.add!(account: ada.account, entry: entries.first, quantity: 2, finish: "foil", line_key: SecureRandom.hex(16))
 plan = Object.new
 def plan.fingerprint(checksum) = "upgrade-seed-#{checksum}"

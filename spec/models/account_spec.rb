@@ -9,6 +9,23 @@ RSpec.describe Account, type: :model do
     expect([ Lot.where(account_id: account.id).count, Location.where(account_id: account.id).count, described_class.exists?(account.id) ]).to eq([ 0, 0, false ])
   end
 
+  it "deletes its decks, their zones and the lots in them with no foreign key failure (spec 062 AC-9.6)", :aggregate_failures do
+    user = create(:user)
+    account = user.account
+    deck = create(:deck, account:)
+    create_lot_in_zone(deck, "main")
+    create(:lot, account:, location: create(:location, account:))
+
+    expect { user.destroy! }.not_to raise_error
+    expect([ Lot, Location, Deck ].map { it.where(account_id: account.id).count }).to eq([ 0, 0, 0 ])
+  end
+
+  it "declares lots before locations and decks after them (spec 062 AC-9.6)" do
+    order = described_class.reflect_on_all_associations(:has_many).map(&:name) & %i[lots locations decks]
+
+    expect(order).to eq(%i[lots locations decks])
+  end
+
   describe "currency (spec 038)" do
     def default_to(code) = allow(Rails.configuration.x).to receive(:default_currency).and_return(Collector::Currency.fetch!(code))
 
