@@ -36,6 +36,30 @@ RSpec.describe MTG::Scryfall::Source, type: :model do
       printing.update!(illustration_id: "art-1")
       expect(source.reapply?).to be(false)
     end
+
+    it "asks once for a catalog whose cards have no mana value yet, when artwork ids are all there (spec 058 AC-3.4)", :aggregate_failures do
+      create(:mtg_printing, illustration_id: "art-1")
+      card = create(:mtg_card)
+      expect(source.reapply?).to be(true)
+      card.update!(mana_value: 0.0) # zero is a value
+      expect(source.reapply?).to be(false)
+    end
+
+    it "does not ask while some card has a mana value, though others lack one, as a few cards legitimately have none", :aggregate_failures do
+      create(:mtg_printing, illustration_id: "art-1")
+      create(:mtg_card, mana_value: 2.0)
+      create(:mtg_card)
+
+      expect(source.reapply?).to be(false)
+    end
+
+    it "asks for either reason alone", :aggregate_failures do
+      create(:mtg_card, mana_value: 1.0) # mana values present, artwork ids missing
+      printing = create(:mtg_printing)
+      expect(source.reapply?).to be(true)
+      printing.update!(illustration_id: "art-1")
+      expect(source.reapply?).to be(false)
+    end
   end
 
   describe "#languages" do

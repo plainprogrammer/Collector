@@ -67,6 +67,56 @@ RSpec.describe MTG::Scryfall::Mapper, type: :model do
     end
   end
 
+  describe "mana value (spec 058)" do
+    def scryfall_fixture(name) = JSON.parse(file_fixture("scryfall/#{name}.json").read)
+    def identity_extension(card) = described_class.entry_record(card).identity.extension
+
+    it "reads a whole mana value, a half and a very large one from recorded cards", :aggregate_failures do
+      expect(identity_extension(scryfall_fixture("lightning_bolt_m10"))[:mana_value]).to eq(1.0)
+      expect(identity_extension(scryfall_fixture("little_girl_unh"))[:mana_value]).to eq(0.5)
+      expect(identity_extension(scryfall_fixture("gleemax_unh"))[:mana_value]).to eq(1_000_000.0)
+    end
+
+    it "keeps a token's zero as zero, not nil", :aggregate_failures do
+      record = described_class.entry_record(scryfall_fixture("avatar_token_tm10"))
+
+      expect(record.kind).to eq("token")
+      expect(record.identity.extension[:mana_value]).to eq(0.0)
+    end
+
+    it "reads a reversible card's front face when the card has no cmc of its own, and does not drop it", :aggregate_failures do
+      card = scryfall_fixture("ajani_reversible_sld")
+
+      expect(card).not_to have_key("cmc")
+      expect(card["card_faces"].map { |face| face["cmc"] }).to eq([ 4.0, 4.0 ])
+      expect { described_class.entry_record(card) }.not_to raise_error
+      expect(identity_extension(card)[:mana_value]).to eq(4.0)
+    end
+
+    it "gives nil, still mapped and with the key present, when no usable cmc exists", :aggregate_failures do
+      no_cmc = scryfall_card.except("cmc")
+      no_faces_at_all = scryfall_fixture("lightning_bolt_m10").except("cmc", "card_faces")
+      reversible = scryfall_fixture("ajani_reversible_sld")
+      front_without = reversible.merge("card_faces" => [ reversible["card_faces"][0].except("cmc"), reversible["card_faces"][1] ])
+
+      [ no_cmc, no_faces_at_all, front_without,
+        scryfall_card("cmc" => "x"), scryfall_card("cmc" => "3"), scryfall_card("cmc" => true), scryfall_card("cmc" => nil) ].each do |card|
+        extension = identity_extension(card)
+
+        expect(extension).to have_key(:mana_value)
+        expect(extension[:mana_value]).to be_nil
+      end
+    end
+
+    it "makes an integer 3 and a float 3.0 one value with one digest", :aggregate_failures do
+      integer = described_class.entry_record(scryfall_card("cmc" => 3)).identity
+      float = described_class.entry_record(scryfall_card("cmc" => 3.0)).identity
+
+      expect(integer.extension[:mana_value]).to be(3.0)
+      expect(integer.digest).to eq(float.digest)
+    end
+  end
+
   describe ".paper?" do
     it "is false for digital-only printings", :aggregate_failures do
       expect(described_class.paper?(scryfall_card)).to be(true)

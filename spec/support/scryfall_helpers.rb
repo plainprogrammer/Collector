@@ -6,7 +6,7 @@ module ScryfallHelpers
       "released_at" => "2009-07-17", "scryfall_uri" => "https://scryfall.com/card/m10/146/lightning-bolt",
       "layout" => "normal", "image_uris" => { "normal" => "https://cards.scryfall.io/normal/front/a/b/#{id}.jpg",
                                               "large" => "https://cards.scryfall.io/large/front/a/b/#{id}.jpg" },
-      "mana_cost" => "{R}", "type_line" => "Instant", "oracle_text" => "Lightning Bolt deals 3 damage to any target.",
+      "mana_cost" => "{R}", "cmc" => 1.0, "type_line" => "Instant", "oracle_text" => "Lightning Bolt deals 3 damage to any target.",
       "colors" => [ "R" ], "color_identity" => [ "R" ], "keywords" => [], "legalities" => { "modern" => "legal" },
       "games" => [ "paper", "mtgo" ], "digital" => false, "finishes" => [ "nonfoil", "foil" ], "rarity" => "common",
       "set" => "m10", "set_name" => "Magic 2010", "collector_number" => "146", "artist" => "Christopher Moeller",
