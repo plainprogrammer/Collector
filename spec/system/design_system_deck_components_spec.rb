@@ -518,6 +518,25 @@ RSpec.describe "Design system: deck components", type: :system do
       expect(parent_scrolls?("#probe")).to be(false)
     end
 
+    # The open details' bare panel: its bottom corner radii, the details' radius and border width, and both bottom edges.
+    def open_fold_corners
+      page.execute_script('document.querySelector("#probe .c-shapefold").open = true')
+      evaluate(<<~JS)
+        const fold = document.querySelector("#probe .c-shapefold"), bare = fold.querySelector(".c-shape--bare")
+        const foldStyle = getComputedStyle(fold), bareStyle = getComputedStyle(bare)
+        return { radii: [ bareStyle.borderBottomLeftRadius, bareStyle.borderBottomRightRadius ], foldRadius: foldStyle.borderBottomLeftRadius,
+                 border: foldStyle.borderBottomWidth, bareBottom: bare.getBoundingClientRect().bottom, foldBottom: fold.getBoundingClientRect().bottom }
+      JS
+    end
+
+    it "rounds the open details' bare panel inside the details' border, so no square corner covers it (AC-3.4)", :aggregate_failures do
+      deck_at(313)
+      found = open_fold_corners
+      inner = found["foldRadius"].to_f - found["border"].to_f
+      expect(found["radii"].map(&:to_f)).to eq([ inner, inner ])
+      expect(found["bareBottom"]).to be <= found["foldBottom"] - found["border"].to_f
+    end
+
     it "shows the aside and not the details at 640px (AC-3.4)" do
       deck_at(640)
       expect(shape_display).to eq(%w[none block])

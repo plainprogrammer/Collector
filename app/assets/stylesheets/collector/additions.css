@@ -388,7 +388,9 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
    of zero is not in the markup, so its borders draw no sliver. box-sizing is border-box because the export sets none. */
 .c-shape { display:flex; flex-direction:column; gap:var(--space-6); box-sizing:border-box; padding:var(--space-4); background:var(--surface-raised);
   border:1px solid var(--line); border-radius:var(--radius-md); }
-.c-shape--bare { border:0; border-top:1px solid var(--line); border-radius:0; }
+.c-shape--bare { border:0; border-top:1px solid var(--line); border-radius:0 0 calc(var(--radius-md) - 1px) calc(var(--radius-md) - 1px); }
+/* The bare panel sits inside the details copy's 1px border and radius-md: square bottom corners would paint over the
+   rounded border and leave the open copy's bottom edge faint, so they take the details' inner radius (spec 060 final visual review). */
 .c-shape__title { margin:0; font:600 20px/28px var(--font-sans); color:var(--ink); }
 .c-shape__scope { margin:0; font:400 13px/18px var(--font-mono); color:var(--ink-muted); }
 .c-shape__part { display:flex; flex-direction:column; gap:var(--space-2); }
