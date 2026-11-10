@@ -82,8 +82,27 @@ In [screenshots/](screenshots/), each in light and dark: `AppHeader-1280`, `Coll
 - **Spec 1.1.0 (decision 19).** The Phase 5 header guard found that the app's own header with five links overflows from 640px. The maintainer ruled option A; AC-1.3 was rewritten, AC-1.5 and AC-1.6 added and a fourth CSS block (the logo swap) added. Two calls inside the ruling, for the visual review: the swap applies only while the nav holds five or more links (`:has(.c-appbar__nav > :nth-child(5))`), and it ends at 720px (the measured 695px plus 25px).
 - Phase 3: a stray blank line in the plan's snippet was left out (RuboCop).
 - Phase 4: the `layout` helper's single-stat read was made safe (see the red table).
+- FR-4 puts `font-size: inherit` and `font-family: inherit` "on the options"; the CSS puts them on the `optgroup` (the plan's round-1 fix), because Firefox's own stylesheet gives the optgroup a system font which the options inside it would inherit. The options keep the select's font and AC-4.3's example proves it; no `font` shorthand is used.
 
 ## Observations
 
 - The README's Components list still names `c-split` among the card-page parts; no page uses it since "In decks" went full width. The class stays in `components.css`, so the list is still true; a later cleanup may drop it.
 - The Decks tab and link in the system examples are cloned from Collection's in the page; the real ones arrive with #49, whose own examples will measure them.
+
+## Implementation review
+
+SPEC-ALIGNED WITH MINOR FINDINGS
+
+Read-only Opus review (sdd-review Mode B) of `git diff origin/main...HEAD` against spec 1.1.0, on 2026-11-10: nothing blocking or major; four minor findings and five nits, all stale or inconsistent wording, none a functional defect. Verified sound: the only `app/` changes are `additions.css` and the one view class; the four CSS blocks (headings, specificity, no colour literal, no `font` shorthand, no JavaScript) and the guard spec's block counts by hand; the 16 system examples and the tokens spec are not vacuous (selectors match what the app renders, the controls can fail); every quotation and line number in this record; decision 19 consistent across spec, plan, README, `AppHeader.md`, the CSS comment and the previews; the six previews; the index rows and Superseded-by cells; no shipped spec edited; the Files table matches the diff.
+
+| # | Severity | Finding | Disposition |
+|---|----------|---------|-------------|
+| 1 | minor | `AppHeader.md` still said "the wordmark shows on wide screens, the mark alone on phones" | fixed (the bullet now names the 640px to 719px stand-in) |
+| 2 | minor | `SingleStat.md` said "switch back to the plain `c-stats` grid" beside the new `c-stats--three` bullet | fixed ("use `c-stats--three` for three and the plain `c-stats` grid for four") |
+| 3 | minor | spec 057 decision 12 missing from the Sources lists of `catalog-core.md` and `collection-and-lots.md` | fixed (a Spec 057 line in each) |
+| 4 | minor | `.claude/memory/` files (`spec-019-followups.md`, `design-system-owned-in-code.md`, the index line) still say "upstream" and "re-export" | to be done at session wrap (`session-wrap` and `distill-feature`), in this PR; AC-7.4's scope does not include `.claude/memory` |
+| 5 | nit | `font-size`/`font-family: inherit` are on the optgroup, FR-4 says on the options | recorded under Deviations |
+| 6 | nit | `ManaCost.md` said "data colours" twice | fixed |
+| 7 | nit | the unowned-tile comment in `additions.css` was left with a short line | fixed (rewrapped) |
+| 8 | nit | the In decks and Format legality sections in `ItemPage.html`/`ItemPagePhone.html` keep the two-space indent of the removed `c-split`; the two previews are byte-identical | left as is (harmless) |
+| 9 | nit | AC-4.2's "unaffected" wording: the option rule styles every option; the example checks that no label style leaks onto an ungrouped option | left as is (the spec is approved; the example proves what matters, and the plan's honest note says so) |

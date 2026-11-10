@@ -23,7 +23,7 @@ The top bar on every page: logo, main navigation and the account menu; on phones
 - With five links there is no room for the wordmark from 640px to 719px, so the logo mark replaces it there while the nav holds five or more links, and the wordmark shows from 720px (spec 057 decision 19; today's four-link header keeps the wordmark).
 - The current section gets a 2px `brand` underline and `ink` text; the others are `ink-muted`.
 - Profile, settings, import/export and sign-out live in the avatar menu, never in the main nav.
-- The logo swaps light/dark with `data-theme`; the wordmark shows on wide screens, the mark alone on phones.
+- The logo swaps light/dark with `data-theme`; the wordmark shows on wide screens, the mark alone on phones, and the mark also stands in from 640px to 719px while the nav holds five or more links (above).
 - Below 640px (viewport) the nav hides, the mark replaces the wordmark and the icon-only `+` (`c-appbar__add`) appears; the page head's own buttons hide.
 - On a shared instance the avatar shows whose collection you are in.
 - It is sticky at the top, 56px tall; anything else sticky sits below it.

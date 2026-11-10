@@ -77,8 +77,8 @@ img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches:
 /* ---------- Unowned tile (spec 021): a card you don't own keeps its image as supplied and is marked in words ---------- */
 /* Overrides the export, which fades the image and the missing-image fallback to 45% and still carries that rule; the
    first rule here is what applies (spec 057 decision 12). The marker is a c-tag on a second c-tile__meta row, so the
-   tile is one line taller: the add
-   control goes to the foot of its cell and a row that mixes owned and unowned tiles keeps its buttons level. */
+   tile is one line taller: the add control goes to the foot of its cell and a row that mixes owned and unowned tiles
+   keeps its buttons level. */
 .c-tile--owned-none .c-tile__media > img, .c-tile--owned-none .c-tile__missing { opacity:1; }
 .c-tilecell > .c-tile__add { margin-top:auto; }
 

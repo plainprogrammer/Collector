@@ -12,7 +12,7 @@ Collector's own mana display for Magic costs: coloured circles with a letter or 
 </span>
 ```
 
-- **Colours**: `c-mana--w` white, `--u` blue, `--b` black, `--r` red, `--g` green; no modifier for generic numbers, X and colourless (C). The fills are data colours (`mana-*` tokens), identical in both themes. They are data colours, used only to show mana: these pips and charts of mana symbols (the README's Charts rule). They stay apart from `success`, `warning` and `danger`; the letter or number always shows, and every use has a 1px `line-strong` outline (spec 057 FR-2).
+- **Colours**: `c-mana--w` white, `--u` blue, `--b` black, `--r` red, `--g` green; no modifier for generic numbers, X and colourless (C). The fills are the `mana-*` tokens, identical in both themes. They are data colours, used only to show mana: these pips and charts of mana symbols (the README's Charts rule). They stay apart from `success`, `warning` and `danger`; the letter or number always shows, and every use has a 1px `line-strong` outline (spec 057 FR-2).
 - **The letter always shows.** Colour is never the only signal: W, U, B, R, G, C, X or the number. Every letter holds at least 5.5:1 on its fill.
 - Every pip has a 1px `line-strong` outline, so white and colourless stay visible on paper and black stays visible in the dark theme.
 - **Sizes**: 20px inline (type lines, tables); `c-cost--lg` 24px next to a page title. Nothing smaller, so the letters stay at 12px or more.
