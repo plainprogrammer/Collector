@@ -82,15 +82,50 @@ RSpec.describe "Design system: deck components", type: :system do
     %(<div class="c-curve__col"><span class="c-curve__count">#{owned + proxy}</span><div class="c-curve__bar">#{parts}</div></div>)
   end
 
-  # A deck shape panel, `id` on the section so every example scopes its selectors to it. The types and the mana bar are
-  # plain strings until their own phases give them markup.
-  def panel_html(curve:, types: "", mana: "", id: "probe")
+  def mana_names = { "W" => "White", "U" => "Blue", "B" => "Black", "R" => "Red", "G" => "Green" }
+
+  # The `c-types` markup: `[name, owned, proxy]` rows. A type with no proxies keeps an empty suffix, so the counts line up.
+  def types_html(rows)
+    items = rows.map do |name, owned, proxy|
+      suffix = proxy.positive? ? "#{proxy} proxy" : ""
+      %(<li><span>#{name}</span><span class="c-types__n">#{owned + proxy}</span><span class="c-types__proxy">#{suffix}</span></li>)
+    end
+    %(<ul class="c-types">#{items.join}</ul>)
+  end
+
+  # The `c-manabar` and its caption: `counts` maps W, U, B, R, G to symbol counts. A segment under 10% is marked narrow.
+  def manabar_html(counts)
+    total = counts.values.sum
+    order = mana_names.keys.select { counts.key?(it) }
+    segs = order.map { |sym| manabar_seg(sym, counts[sym], total) }.join
+    caption = order.map { |sym| "#{mana_names[sym]} #{counts[sym]} · #{(100.0 * counts[sym] / total).round}%" }.join(" · ")
+    label = "Coloured mana symbols in Main: #{order.map { "#{mana_names[it].downcase} #{counts[it]}" }.join(", ")}"
+    %(<ul class="c-manabar" role="img" aria-label="#{label}">#{segs}</ul><p class="c-manacap">#{caption}</p>)
+  end
+
+  def manabar_seg(sym, count, total)
+    narrow = count * 10 < total ? " c-manabar__seg--narrow" : ""
+    %(<li class="c-manabar__seg c-manabar__seg--#{sym.downcase}#{narrow}" style="--n:#{count}"><span>#{sym} #{count}</span></li>)
+  end
+
+  # The three parts of the panel, in order.
+  def panel_parts(curve:, types:, mana:)
+    <<~HTML.squish
+      <div class="c-shape__part"><h3 class="c-shape__heading">Mana curve</h3>#{curve}</div>
+      <div class="c-shape__part"><h3 class="c-shape__heading">Card types</h3>#{types}</div>
+      <div class="c-shape__part"><h3 class="c-shape__heading">Mana symbols</h3>#{mana}</div>
+    HTML
+  end
+
+  def default_curve = curve_html([ [ 4, 0 ], [ 11, 1 ], [ 5, 3 ], [ 4, 0 ], [ 4, 0 ], [ 0, 0 ], [ 2, 2 ] ])
+
+  # A deck shape panel, `id` on the section so every example scopes its selectors to it.
+  def panel_html(curve: default_curve, types: types_html([ [ "Lands", 22, 2 ], [ "Artifacts", 4, 0 ] ]),
+                 mana: manabar_html("U" => 44, "R" => 16), id: "probe")
     <<~HTML.squish
       <section class="c-shape" id="#{id}" aria-labelledby="#{id}-title">
         <div><h2 class="c-shape__title" id="#{id}-title">Deck shape</h2><p class="c-shape__scope">Main · 60 cards</p></div>
-        <div class="c-shape__part"><h3 class="c-shape__heading">Mana curve</h3>#{curve}</div>
-        <div class="c-shape__part"><h3 class="c-shape__heading">Card types</h3>#{types}</div>
-        <div class="c-shape__part"><h3 class="c-shape__heading">Mana symbols</h3>#{mana}</div>
+        #{panel_parts(curve:, types:, mana:)}
       </section>
     HTML
   end
@@ -188,6 +223,80 @@ RSpec.describe "Design system: deck components", type: :system do
     it "reports a panel 150px wide as not fitting (the measure can fail)" do
       curve_panel(150)
       expect(fits?(curve_fit)).to be(false)
+    end
+  end
+
+  describe "DeckShape card types (AC-2.5)" do
+    def types_panel = add_to_main(wrap(320, panel_html(types: types_html([ [ "Lands", 22, 2 ], [ "Artifacts", 4, 0 ] ]))))
+
+    # Per row: the name's left and the suffix's right edge against the row's, the count's right edge, the texts.
+    def measured_rows
+      evaluate(<<~JS)
+        return [ ...document.querySelectorAll("#probe .c-types li") ].map((li) => {
+          const [ name, count, suffix ] = li.children, row = li.getBoundingClientRect()
+          return { nameLeft: name.getBoundingClientRect().left - row.left, suffixRight: row.right - suffix.getBoundingClientRect().right,
+                   countRight: count.getBoundingClientRect().right, texts: [ count.textContent, suffix.textContent ] }
+        })
+      JS
+    end
+
+    def mono_family = evaluate('return getComputedStyle(document.documentElement).getPropertyValue("--font-mono")').split(",").first.strip.delete("\"'")
+
+    it "puts the name first, the count and the proxy suffix last, and lines the counts up", :aggregate_failures do
+      types_panel
+      lands, artifacts = measured_rows
+      expect([ lands["nameLeft"], artifacts["nameLeft"] ]).to eq([ 0, 0 ])
+      expect([ lands["suffixRight"], artifacts["suffixRight"] ]).to all(be_within(0.5).of(0))
+      expect(artifacts["countRight"]).to be_within(1).of(lands["countRight"])
+      expect([ lands["texts"], artifacts["texts"] ]).to eq([ [ "24", "2 proxy" ], [ "4", "" ] ])
+    end
+
+    it "divides rows by line and sets the count in the mono family", :aggregate_failures do
+      types_panel
+      expect(computed("#probe .c-types li", "border-bottom-color")).to eq([ token("--line") ])
+      expect(computed("#probe .c-types__n", "font-family").first).to include(mono_family)
+    end
+  end
+
+  describe "DeckShape mana bar (AC-2.6, AC-2.7)" do
+    def bar_panel(counts, width: 288) = add_to_main(wrap(width, panel_html(mana: manabar_html(counts))))
+
+    # The bar's inner width and, per segment, its content width (border-box less the divider), left border and text.
+    def measured_bar
+      evaluate(<<~JS)
+        const bar = document.querySelector("#probe .c-manabar"), box = bar.getBoundingClientRect()
+        const inner = box.width - 2 * parseFloat(getComputedStyle(bar).borderLeftWidth)
+        const segs = [ ...bar.children ].map((li) => {
+          const left = parseFloat(getComputedStyle(li).borderLeftWidth)
+          return { width: li.getBoundingClientRect().width - left, text: li.textContent.trim(), display: getComputedStyle(li.firstElementChild).display }
+        })
+        return { inner, segs }
+      JS
+    end
+
+    def bar_outline = computed("#probe .c-manabar", "border-top-width", "border-top-style", "border-top-color", "border-top-left-radius")
+
+    def divider = computed("#probe .c-manabar__seg + .c-manabar__seg", "border-left-width", "border-left-style", "border-left-color")
+
+    %w[light dark].each do |name|
+      it "splits the bar by count, outlines it and fills each segment from its mana token in the #{name} theme", :aggregate_failures do
+        bar_panel({ "U" => 44, "R" => 16 })
+        theme(name)
+        found = measured_bar
+        expect(found["segs"].map { it["width"] }).to match([ be_within(1).of(found["inner"] * 44 / 60), be_within(1).of(found["inner"] * 16 / 60) ])
+        expect([ bar_outline, divider ]).to eq([ [ "1px", "solid", token("--line-strong"), "4px" ], [ "1px", "solid", token("--line-strong") ] ])
+        expect(found["segs"].map { it["text"] }).to eq([ "U 44", "R 16" ])
+        expect(segment_paints).to eq([ [ token("--mana-u"), token("--on-mana-u") ], [ token("--mana-r"), token("--on-mana-r") ] ])
+      end
+    end
+
+    def segment_paints = %w[u r].map { |sym| computed("#probe .c-manabar__seg--#{sym}", "background-color", "color") }
+
+    it "hides the label of a segment under 10% and names every colour in the caption", :aggregate_failures do
+      bar_panel({ "W" => 3, "U" => 20, "B" => 4, "R" => 18, "G" => 15 })
+      expect(measured_bar["segs"].map { it["display"] == "none" }).to eq([ true, false, true, false, false ])
+      expect(evaluate('return document.querySelector("#probe .c-manacap").textContent'))
+        .to include("White 3 · 5%", "Blue 20 · 33%", "Black 4 · 7%", "Red 18 · 30%", "Green 15 · 25%")
     end
   end
 end

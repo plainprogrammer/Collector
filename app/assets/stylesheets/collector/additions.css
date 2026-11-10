@@ -412,3 +412,24 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
 .c-curve__swatch--proxy { background:repeating-linear-gradient(45deg, var(--line-strong) 0 1.5px, var(--surface-raised) 1.5px 5px); }
 .c-curve__avg { margin:0; font:400 13px/18px var(--font-sans); color:var(--ink-muted); }
 .c-curve__avg b { font:600 13px/18px var(--font-mono); color:var(--ink); }
+
+/* ---------- DeckShape card types (spec 060): a name, a count, and the proxies in a muted suffix ---------- */
+.c-types { margin:0; padding:0; list-style:none; border-top:1px solid var(--line); }
+.c-types li { display:flex; align-items:baseline; gap:var(--space-2); min-height:32px; padding:var(--space-1) 0; border-bottom:1px solid var(--line); font:400 14px/20px var(--font-sans); }
+.c-types__n { margin-left:auto; font:400 14px/20px var(--font-mono); }
+.c-types__proxy { min-width:4.5rem; text-align:right; font:400 12px/16px var(--font-mono); color:var(--ink-muted); } /* reserved even when empty, so the counts line up */
+
+/* ---------- DeckShape mana bar (spec 060): one bar split by colour, the only chart that may use the mana fills ---------- */
+/* README Charts rule: every segment has its letter and count (the caption carries a segment under 10%, which the markup
+   marks narrow), and a 1px line-strong outline and divider, because the white and black fills vanish on the ground. */
+.c-manabar { display:flex; height:32px; margin:0; padding:0; list-style:none; border:1px solid var(--line-strong); border-radius:var(--radius-sm); overflow:hidden; }
+.c-manabar__seg { flex:var(--n) 1 0; min-width:0; display:flex; align-items:center; justify-content:center; background:var(--mana-c); color:var(--on-mana-c);
+  font:600 12px/16px var(--font-mono); }
+.c-manabar__seg + .c-manabar__seg { border-left:1px solid var(--line-strong); }
+.c-manabar__seg--w { background:var(--mana-w); color:var(--on-mana-w); }
+.c-manabar__seg--u { background:var(--mana-u); color:var(--on-mana-u); }
+.c-manabar__seg--b { background:var(--mana-b); color:var(--on-mana-b); }
+.c-manabar__seg--r { background:var(--mana-r); color:var(--on-mana-r); }
+.c-manabar__seg--g { background:var(--mana-g); color:var(--on-mana-g); }
+.c-manabar__seg--narrow span { display:none; }
+.c-manacap { margin:0; font:400 13px/18px var(--font-sans); color:var(--ink-muted); }
