@@ -71,4 +71,32 @@ RSpec.describe "Design system: deck rules, navigation and pickers", type: :syste
       end
     end
   end
+
+  describe "the location filter's cap (AC-4.4)" do
+    def cap(selector) = computed(selector, "max-width").first
+    def collection_width(pixels) = page.execute_script("document.querySelector('.c-collection').style.width = arguments[0] + 'px'", pixels)
+
+    it "is 300px in a collection 700px wide, in normal view and in bulk mode; the Set select beside it stays 220px", :aggregate_failures do
+      own
+      visit collection_path(view: "table")
+      collection_width(700)
+      expect(cap("select[name=location]")).to eq("300px")
+      visit collection_path(bulk: 1)
+      expect(page).to have_css(".c-bulkbar")
+      collection_width(700)
+      expect(cap("select[name=location]")).to eq("300px")
+      visit catalog_entries_path
+      collection_width(700)
+      expect(cap(".c-select select")).to eq("220px")
+    end
+
+    it "is 220px in a 390px phone frame, in normal view and in bulk mode", :aggregate_failures do
+      own
+      visit collection_path
+      open_in_narrow_frame(collection_path(view: "table"), width: 390, ready: "select[name=location]")
+      within_narrow_frame { expect(cap("select[name=location]")).to eq("220px") }
+      open_in_narrow_frame(collection_path(bulk: 1), width: 390, ready: ".c-bulkbar")
+      within_narrow_frame { expect(cap("select[name=location]")).to eq("220px") }
+    end
+  end
 end

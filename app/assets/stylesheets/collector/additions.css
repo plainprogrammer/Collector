@@ -129,6 +129,15 @@ img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches:
 .c-field select optgroup, .c-select select optgroup { color:var(--ink-muted); font-weight:600; font-style:normal; font-size:inherit; font-family:inherit; }
 .c-field select option, .c-select select option { color:var(--ink); background:var(--surface-raised); font-weight:400; }
 
+/* ---------- Location filter cap (spec 057 decision 4): 300px from a 640px collection, 220px below ---------- */
+/* At 220px a long selection clips its zone, the part that tells zones apart. On a phone the filter row scrolls sideways and
+   300px would push the Filter button off screen. Only the location select carries c-select--wide; the Set select on search
+   and the Language select on number entry stay at 220px (decision 18). The doubled class outranks `.c-select select` above
+   whatever the order. */
+@container collection (min-width: 640px) {
+  .c-select.c-select--wide select { max-width:300px; }
+}
+
 /* ---------- Pagination ---------- */
 .c-pager { display:flex; align-items:center; justify-content:center; gap:var(--space-3); margin:var(--space-6) 0; }
 .c-pager__position { font:400 13px/18px var(--font-mono); color:var(--ink-muted); }
