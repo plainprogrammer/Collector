@@ -381,3 +381,34 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
 .c-proxy { display:inline-flex; align-items:center; gap:var(--space-1); height:20px; padding:0 6px; border:1px dashed var(--ink-muted);
   border-radius:var(--radius-sm); font:600 12px/16px var(--font-sans); color:var(--ink); white-space:nowrap; }
 .c-proxy b { font:400 12px/16px var(--font-mono); }
+
+/* ---------- DeckShape panel and curve (spec 060): a neutral chart, owned solid and proxies hatched on top ---------- */
+/* Fills are neutral (README Charts rule, spec 057 decision 10): ink-muted for owned, a hatched line-strong with an
+   ink-muted outline for proxies. A column's parts come from custom properties, numbers only (spec 060 decision 20); a part
+   of zero is not in the markup, so its borders draw no sliver. box-sizing is border-box because the export sets none. */
+.c-shape { display:flex; flex-direction:column; gap:var(--space-6); box-sizing:border-box; padding:var(--space-4); background:var(--surface-raised);
+  border:1px solid var(--line); border-radius:var(--radius-md); }
+.c-shape--bare { border:0; border-top:1px solid var(--line); border-radius:0; }
+.c-shape__title { margin:0; font:600 20px/28px var(--font-sans); color:var(--ink); }
+.c-shape__scope { margin:0; font:400 13px/18px var(--font-mono); color:var(--ink-muted); }
+.c-shape__part { display:flex; flex-direction:column; gap:var(--space-2); }
+.c-shape__heading { margin:0; font:600 14px/20px var(--font-sans); color:var(--ink); }
+.c-curve { display:flex; flex-direction:column; gap:var(--space-2); }
+.c-curve__cols { display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:var(--space-1); align-items:end; border-bottom:1px solid var(--line-strong); }
+.c-curve__col { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:2px; height:116px; }
+.c-curve__count { font:400 12px/16px var(--font-mono); color:var(--ink); }
+.c-curve__bar { display:flex; flex-direction:column; width:70%; }
+.c-curve__owned, .c-curve__proxy { box-sizing:border-box; border:1px solid var(--ink-muted); }
+.c-curve__owned { height:calc(96px * var(--owned) / var(--max)); background:var(--ink-muted); }
+.c-curve__proxy { height:calc(96px * var(--proxy) / var(--max));
+  background:repeating-linear-gradient(45deg, var(--line-strong) 0 1.5px, var(--surface-raised) 1.5px 5px); }
+.c-curve__proxy + .c-curve__owned { margin-top:-1px; } /* the two outlines share one line */
+.c-curve__labels { display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:var(--space-1); text-align:center;
+  font:400 12px/16px var(--font-mono); color:var(--ink-muted); }
+.c-curve__legend { display:flex; flex-wrap:wrap; gap:var(--space-1) var(--space-4); margin:0; padding:0; list-style:none; font:400 13px/18px var(--font-sans); color:var(--ink); }
+.c-curve__legend li { display:inline-flex; align-items:center; gap:var(--space-2); }
+.c-curve__swatch { box-sizing:border-box; width:16px; height:12px; border:1px solid var(--ink-muted); border-radius:2px; flex:none; }
+.c-curve__swatch--owned { background:var(--ink-muted); }
+.c-curve__swatch--proxy { background:repeating-linear-gradient(45deg, var(--line-strong) 0 1.5px, var(--surface-raised) 1.5px 5px); }
+.c-curve__avg { margin:0; font:400 13px/18px var(--font-sans); color:var(--ink-muted); }
+.c-curve__avg b { font:600 13px/18px var(--font-mono); color:var(--ink); }
