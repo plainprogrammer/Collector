@@ -99,3 +99,7 @@ Read-only Opus review (sdd-review Mode B) of the committed branch and the uncomm
 | 8 | nit | `aria-label` on a roleless `div` in `DeckShape.html` | fixed (removed) |
 | 9 | nit | the spec's builder wrote "Near Mint" where the app and documents write "Near mint" | fixed |
 
+## Distillation
+
+At session wrap (`distill-feature`, 2026-11-10): the rules of this spec live in `docs/design-system/` (the design system is its own reference, as for specs 004's design-system part and 057): the six component documents, the README's Components list, App additions line and Charts rule, and the pointers in `ChoicePage`, `ManaCost`, `TableActions` and `AppHeader`. No area doc changes. `docs/architecture/README.md` names spec 060 in its design-system note; the specs index row reads Frozen, by the design system, with the plan's retirement owed; the spec's header carries its frozen line. Memory: `design-system-guard-and-rubocop-traps` (a wrapper div and `blank_host` for a component with no view; blocks at the end of `additions.css`), `pr-screenshots-workflow` (static previews over a local server), and a new `sdd-gate-blocks-plan-before-approval`. Lessons: `docs/lessons/2026-11-10-a-pip-is-22px-a-width-in-a-spec-comes-from-a-probe.md` and `docs/lessons/2026-11-10-reread-a-ruling-against-what-each-batch-produced.md`. Issue [#294](https://github.com/plainprogrammer/Collector/issues/294) (12px icon strokes) was filed from decision 16.
+
