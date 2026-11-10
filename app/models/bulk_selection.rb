@@ -33,12 +33,20 @@ class BulkSelection < ApplicationRecord
   # The selected lots' collectible vocabulary; a selection spans one collectible (spec 006 Non-Goals).
   def vocabulary = Catalog.collecting_for(lots.pick(Catalog::Entry.arel_table[:collectible_type]) || Catalog.collecting.keys.first)
 
-  # Empty again, under a filter, location and sort: Edit many, a changed filter or sort, a removal (FR-4, AC-7.3; spec 037
-  # decision 5). The marks are this selection's own rows, so deleting them in SQL skips nothing.
-  def restart!(query:, sort:, location: "")
+  # Starts again under a filter, location and sort: Edit many, a changed filter or sort, a removal (FR-4, AC-7.3; spec 037
+  # decision 5), and a location's shortcut from its refusal page (spec 059 decision 3). Nothing is selected unless `all:`;
+  # then every matching lot is, with no exceptions, set in the same transaction so a failure can't leave the filter stored
+  # with nothing ticked. The marks are this selection's own rows, so deleting them in SQL skips nothing.
+  #
+  # @param query [String] the name filter, already normalised
+  # @param sort [CollectionTable::Sort] the table's order
+  # @param location [String] the location filter's canonical string (`""`, `"none"` or an id)
+  # @param all [Boolean] select every matching lot (the header's state) instead of none
+  # @return [true] the result of the update
+  def restart!(query:, sort:, location: "", all: false)
     transaction do
       marks.delete_all
-      update!(query:, sort_key: sort.key, location_filter: location, all_matching: false)
+      update!(query:, sort_key: sort.key, location_filter: location, all_matching: all)
     end
   end
 
