@@ -95,21 +95,38 @@ module YardRatchet
   module Snapshot
     Item = Data.define(:name, :namespace, :nested, :file, :line, :commented, :exempt, :extents)
 
+    # What `build` found: the items by qualified name, and the files (as given, relative to the root) that YARD
+    # skipped without parsing them.
+    Parsed = Data.define(:items, :dropped)
+
     # root: the directory the files are in; files: paths relative to it. Parses in memory (writes nothing). YARD's
-    # registry is cleared before and after, and its logger's level is put back.
+    # registry is cleared before and after, its logger's level is put back and the callback below is removed.
+    #
+    # YARD drops a file it can't read (an invalid byte sequence is the common case, and Ripper accepts such a file
+    # that YARD rejects) with a warning only, which the FATAL level hides, and the file then has no objects, which
+    # looks the same as a file with nothing to judge. So the files YARD finishes parsing are recorded through its
+    # after-parse callback, which runs only after a successful parse (an empty file included), and the rest are
+    # `dropped`. This doesn't read YARD's log text and doesn't depend on whether a file defines anything.
+    #
+    # @return [Parsed]
     def self.build(root, files)
-      return {} if files.empty?
+      return Parsed.new(items: {}, dropped: []) if files.empty?
 
       root = Pathname(root)
       level = YARD::Logger.instance.level
       YARD::Logger.instance.level = YARD::Logger::FATAL
       YARD::Registry.clear
+      parsed = []
+      recorder = proc { |parser| parsed << parser.file }
+      YARD::Parser::SourceParser.after_parse_file(&recorder)
       YARD.parse(files.map { root.join(it).to_s })
       sources = Hash.new { |hash, path| hash[path] = File.readlines(path, chomp: true) }
-      YARD::Registry.all(:class, :module, :method).each_with_object({}) do |object, items|
-        items[object.path] = item(object, root, sources) unless object.files.empty?
+      items = YARD::Registry.all(:class, :module, :method).each_with_object({}) do |object, found|
+        found[object.path] = item(object, root, sources) unless object.files.empty?
       end
+      Parsed.new(items:, dropped: files.reject { parsed.include?(root.join(it).to_s) })
     ensure
+      YARD::Parser::SourceParser.after_parse_file_callbacks.delete(recorder)
       YARD::Registry.clear
       YARD::Logger.instance.level = level if level
     end
@@ -163,7 +180,8 @@ module YardRatchet
 
     # @return [Result] ok when every added or changed judged object has a summary; lines is what to print. Not ok
     #   either when the base can't be determined (`Unseen`: shallow, no origin/main, no merge base) or when a changed
-    #   judged file doesn't parse; the check never passes where it can't see.
+    #   judged file doesn't parse (a syntax error for Ripper, or any file YARD skips, an encoding error for one); the
+    #   check never passes where it can't see. An unchanged file that doesn't parse is ignored.
     def call
       base = @git.base
       Dir.mktmpdir("yard-ratchet") do |tmp|
@@ -177,7 +195,11 @@ module YardRatchet
         broken = unparseable(differing)
         next Result.new(ok: false, lines: broken.map { "#{it}: YARD can't parse this file (a syntax error); fix it first." }) if broken.any?
 
-        report(base, *judge(Snapshot.build(@root, head_files), Snapshot.build(tmp, before_files)))
+        head = Snapshot.build(@root, head_files)
+        dropped = head.dropped & differing
+        next Result.new(ok: false, lines: dropped.map { "#{it}: YARD can't parse this file (an encoding error, for example); fix it first." }) if dropped.any?
+
+        report(base, *judge(head.items, Snapshot.build(tmp, before_files).items))
       end
     rescue Unseen => error
       Result.new(ok: false, lines: [ error.message ])
