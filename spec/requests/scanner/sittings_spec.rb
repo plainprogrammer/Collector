@@ -330,6 +330,51 @@ RSpec.describe "Scanner sittings", type: :request do
     end
   end
 
+  # Spec 062 D6, AC-5.1, AC-5.2, AC-5.7, AC-5.8a: the sitting's place is a place; a zone's or a deck's id is refused as any id
+  # that isn't the account's is; an Undo leaves a lot that sits in a zone in its zone.
+  describe "with a deck (spec 062)" do
+    def deck = @deck ||= create(:deck, account:, name: "Izzet Tempo")
+    def blue = @blue ||= create(:location, account:, name: "Blue binder")
+    def place(value) = patch(scanner_sitting_path, params: { sitting: { location_id: value } }, headers: stream)
+    def picker = html.at_css("#scanner_sitting form[action='#{scanner_sitting_path}']")
+
+    it "lists No location and the places in the picker, never a deck or a zone (AC-5.1)", :aggregate_failures do
+      deck
+      create(:location, account:, name: "Long box")
+      blue
+      get scanner_path
+      expect(picker.css("select#sitting_location_id option").map(&:text)).to eq([ "No location", "Blue binder", "Long box" ])
+    end
+
+    it "shows no place control to an account with a deck and no place (AC-5.8a)", :aggregate_failures do
+      deck
+      get scanner_path
+      expect(html.at_css("#scanner_sitting select#sitting_location_id")).to be_nil
+      expect(html.at_css("#scanner_sitting select#sitting_condition")).not_to be_nil
+    end
+
+    it "refuses a zone's id and a deck's id as the sitting's place, leaving the sitting's place alone (AC-5.2)", :aggregate_failures do
+      place(blue.id)
+      [ deck.zone("main").id, deck.location_id ].each do |id|
+        place(id)
+        expect(response).to have_http_status(:unprocessable_content), id.to_s
+        expect(CGI.unescapeHTML(response.body)).to include("That location isn't one of yours any more. Choose again.")
+        expect(html.at_css("select#sitting_location_id option[selected]").text).to eq("Blue binder")
+      end
+      expect(account.scanner_sitting.reload.location).to eq(blue)
+    end
+
+    it "keeps a lot that sits in a zone in its zone when an entry's Undo leaves part of it (AC-5.7)", :aggregate_failures do
+      entry = add("a")
+      zone = deck.zone("main")
+      entry.lot.update!(location: zone, quantity: 3)
+      undo(entry)
+      expect(response).to have_http_status(:ok)
+      expect(entry.lot.reload).to have_attributes(location: zone, quantity: 2)
+      expect(entry.lot.lot_key).to end_with("|#{zone.id}")
+    end
+  end
+
   describe "the control and the panel (spec 042)" do
     def scale
       [ [ "Near mint (NM)", "near_mint" ], [ "Lightly played (LP)", "lightly_played" ], [ "Moderately played (MP)", "moderately_played" ],

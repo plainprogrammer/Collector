@@ -38,10 +38,10 @@ class CollectionGrid
 
   private
     # One statement for the page's printings, all of their lots (the name filter doesn't narrow it, spec 033 AC-1.8). Nil for
-    # every printing while the account has no location, and under a location filter, which names the one place (spec 037
-    # decision 3).
+    # every printing while the account has no place and no lot in a zone (spec 062 AC-5.8a), and under a location filter, which
+    # names the one place (spec 037 decision 3). The join reads every kind of location: a lot is followed to where it is.
     def places_of(entry_ids)
-      return {} unless places? && location.empty?
+      return {} unless place_column? && location.empty?
 
       rows = @account.lots.where(catalog_entry_id: entry_ids).left_joins(:location)
         .group(:catalog_entry_id, :location_id).pluck(:catalog_entry_id, Arel.sql("SUM(lots.quantity)"), "locations.name", "locations.name_key")

@@ -303,6 +303,50 @@ RSpec.describe "Number entry", type: :request do
       end
     end
 
+    # Spec 062 D6, AC-5.1, AC-5.2, AC-5.7, AC-5.8a: a deck's zones are not offered, a zone's id is a field error, and an Undo
+    # leaves a lot that sits in a zone where it is.
+    describe "with a deck (spec 062)" do
+      def entry = @entry ||= printing("47", "Psychic Frog")
+      def deck = @deck ||= create(:deck, account: user.account, name: "Izzet Tempo")
+      def options(html = response.body) = Nokogiri::HTML5(html).css("#line_location option").map(&:text)
+
+      it "lists No location and the places, never a deck or a zone (AC-5.1)", :aggregate_failures do
+        entry
+        deck
+        create(:location, account: user.account, name: "Long box")
+        create(:location, account: user.account, name: "Blue binder")
+        get collection_number_entry_path(**page_params)
+        expect(options).to eq([ "No location", "Blue binder", "Long box" ])
+      end
+
+      it "shows no field to an account with a deck and no place (AC-5.8a)" do
+        entry
+        deck
+        get collection_number_entry_path(**page_params)
+        expect(response.body).not_to include("line_location")
+      end
+
+      it "refuses a zone's id and a deck's id with the field's error and adds nothing (AC-5.2)", :aggregate_failures do
+        entry
+        create(:location, account: user.account) # the field is shown, and so is its error, while the account has a place
+        [ deck.zone("main").id, deck.location_id ].each do |id|
+          add("47", quantity: "3", location: id)
+          expect(response).to have_http_status(:unprocessable_content)
+          expect(response.body).to include("That location isn&#39;t one of yours any more. Choose again.", 'value="3"')
+        end
+        expect([ Lot.count, NumberEntry::Line.count ]).to eq([ 0, 0 ])
+      end
+
+      it "keeps a lot that sits in a zone in its zone when a line's Undo leaves part of it (AC-5.7)", :aggregate_failures do
+        line = NumberEntry.add!(account: user.account, entry:, quantity: 4, finish: "nonfoil", line_key: SecureRandom.hex(16)).line
+        zone = deck.zone("main")
+        line.lot.update!(location: zone, quantity: 6)
+        post collection_number_entry_line_undo_path(line), params: page_params
+        expect(line.lot.reload).to have_attributes(location: zone, quantity: 2)
+        expect(line.lot.lot_key).to end_with("|#{zone.id}")
+      end
+    end
+
     describe "a rejected line" do
       it "keeps the line when no entry has the number (AC-4.1)", :aggregate_failures do
         printing("47")
