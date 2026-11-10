@@ -2,9 +2,9 @@ require "rails_helper"
 
 # Spec 048: a table row's place line wraps, on a phone (AC-1.1, AC-1.2) and in the wide Location cell (AC-1.3, AC-1.4),
 # so no name makes the page scroll sideways; a table with no location is unchanged (AC-1.7). A no-location line wider than
-# its room wraps at a phone's 360px content width (spec 061 AC-1.1, AC-1.2, which restate spec 048 AC-1.8). AC-1.6 (a tile's place is
-# still cut with an ellipsis) is spec 033's example "keeps a long place name to one line on a tile" in
-# collection_table_spec.rb, which must stay green.
+# its room wraps at a phone's 360px content width (spec 061 AC-1.1, AC-1.2, which restate spec 048 AC-1.8).
+# AC-1.6 (a tile's place is still cut with an ellipsis) is spec 033's example "keeps a long place name to one line on a tile"
+# in collection_table_spec.rb, which must stay green.
 RSpec.describe "A table row's place line", type: :system do
   spaced = "Blue binder, shelf three, left side, behind the board games." # 60 code points
   unbroken = "W" * 60
