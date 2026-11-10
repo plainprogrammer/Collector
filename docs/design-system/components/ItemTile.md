@@ -18,7 +18,7 @@ One collected item in the image grid, the default collection view: image, quanti
 </div></div>
 ```
 
-**Modifiers**: `c-tile--comic` keeps the same slot as a card (so mixed rows line up) and shows the whole cover inside it, uncropped, with square-ish corners; `c-tile--owned-none` fades an item you don't own (wishlist, set checklist). Tiles are never selectable: bulk actions happen in `CollectionTable`. `c-grid--compact` fits more per row.
+**Modifiers**: `c-tile--comic` keeps the same slot as a card (so mixed rows line up) and shows the whole cover inside it, uncropped, with square-ish corners; `c-tile--owned-none` marks a card you don't own (search results, a card's printings, a set checklist): its image stays as supplied and a "Not owned" tag sits under it; see `UnownedTile` (spec 057 decision 12). Tiles are never selectable: bulk actions happen in `CollectionTable`. `c-grid--compact` fits more per row.
 
 - Card images keep 63:88 and the physical corner (`radius-card`); never crop art to fit.
 - Always show the quantity, even ×1, so the grid answers "how many" without a click.

@@ -6,7 +6,7 @@ It should feel like a well-kept archive that gets used: warm paper, deep ink, on
 
 - A collection of a few thousand items is the normal case, not the edge case. Design every list for 5,000 rows first and 50 second: search, filters and bulk edits are primary, not tucked away.
 - Players need "where is it" as much as "what is it": in a deck, in a binder, in a box, lent to someone. Location and availability sit next to the item name, not on a detail page.
-- A physical copy is in exactly one place at a time. A deck is a location like a binder or a box, so a copy in a deck is not free for another deck, and "Free to use" is always owned minus in decks. (Digital decks that share cards may come later; when they do, their cards are labelled as such and never count against physical copies.)
+- A physical copy is in exactly one place at a time. A deck is a kind of location whose copies live in its zones, so a copy in a deck is not free for another deck; the Decks section below defines the words, "Free to use" among them. (Digital decks that share cards may come later; when they do, their cards are labelled as such and never count against physical copies.)
 - Readers need reading state as well as ownership: read, to read, reading.
 - Several people may share one instance. Show whose item it is whenever more than one collector is visible.
 
@@ -22,7 +22,7 @@ It should feel like a well-kept archive that gets used: warm paper, deep ink, on
 ## Color
 
 - Page ground is `surface`; panels, cards, inputs and menus are `surface-raised`; wells, table stripes and empty binder slots are `surface-sunken`.
-- Text is `ink`; secondary text and metadata are `ink-muted`. Both read on `surface`, `surface-raised` and `surface-sunken` in both themes (≥6:1).
+- Text is `ink`; secondary text and metadata are `ink-muted`. Both read on `surface`, `surface-raised` and `surface-sunken` in both themes (5.5:1 or better).
 - `brand` (vault teal) is the one action colour: primary buttons, links, selected tabs, the checked state. Text on a `brand` fill is `on-brand`, never literal white. Hover/pressed fill is `brand-hover`.
 - `brand-tint` marks selection in lists and active filter chips; text on it stays `ink`.
 - Each collectible category has an identity accent: `cat-cards` (plum) for trading card games, `cat-comics` (burnt orange) for comics, `cat-other` (slate) for anything the community adds before it earns its own. Each has a `-tint` for chip and banner backgrounds.
@@ -31,6 +31,8 @@ It should feel like a well-kept archive that gets used: warm paper, deep ink, on
 - A new category gets its own accent only once it has real users; until then it uses `cat-other`. A new accent must hold 4.5:1 on `surface`, `surface-raised` and its tint in both themes, and differ in lightness or hue family from the existing ones.
 - `foil` (gold) means rare, foil or special — a badge fill, a star, the logo's diamond. It is a fill only: it fails as text on paper. Text on it is `on-foil`. Use it sparingly; if everything shines, nothing does.
 - `success`, `warning`, `danger` are status only and always come with a word or icon (colour is never the only signal).
+- **Mana colours.** The `mana-*` colours are data colours, used only to show mana: the `ManaCost` pips and charts of mana symbols. The fills stay apart from `success`, `warning` and `danger` and are the same in both themes. The letter or number always shows, and every use has a 1px `line-strong` outline.
+- **Charts.** Fills are neutral: `ink-muted` for the main series, a hatched `line-strong` fill with an `ink-muted` outline for a second series stacked on it; never `brand` (brand means an action) and never a status colour. Every column or segment carries a word or a number (a count above a column; a letter and count in a segment; a segment too narrow for its label shows them in the caption beneath), and a legend or caption names each series, so colour or pattern is never the only signal. The chart is `role="img"` with an `aria-label` that reads the values. Fills and outlines hold 3:1 against the ground they sit on. A chart of mana symbols may use the `mana-*` fills, each with a 1px `line-strong` outline, and a divider between segments, because the white and black fills disappear on the light and dark ground.
 - Dividers use `line`; control borders use `line-strong` (≥3:1 on every surface).
 - Instance operators (a shop, a club) may re-skin their instance by overriding `brand`, `brand-hover`, `on-brand` and `brand-tint` only, keeping the same contrast floors. Everything else stays fixed so the app remains recognisably Collector.
 - Both themes are first-class: set `data-theme="dark"` on `<html>`. Never hard-code a hex; use the tokens.
@@ -76,45 +78,61 @@ It should feel like a well-kept archive that gets used: warm paper, deep ink, on
 
 ## Navigation
 
-- The default sections, in this order: Collection, Decks, Locations, Wishlist (today's header for a collector links Collection, Search, Scan and Locations, spec 029; Decks and Wishlist don't exist yet). Each collector will be able to choose and reorder their own sections; design for any four, and never hard-code a section's position. Wide screens show them in the `AppHeader`; phones show them in a native-style bottom `TabBar` with a fifth tab, More.
+- A collector's wide header, in order: Collection, Decks, Search, Scan, Locations. The phone tab bar, in order: Collection, Decks, Search, Scan, More; Locations stays in More. Each collector will later be able to choose and reorder their own sections, so never hard-code a section's position. Wishlist is planned. Decks joins the header and the tab bar when the deck pages ship (today's header for a collector links Collection, Search, Scan and Locations, spec 029); the order is the rule for both from then on (spec 057 decision 6). Wide screens show the sections in the `AppHeader`; phones show them in a native-style bottom `TabBar` with More as its fifth tab.
 - Profile, settings and import/export live in the avatar menu (wide) or More (phone), never in the main navigation.
-- The tab bar holds five tabs at most. A new section starts in More.
+- The tab bar holds five tabs at most and is now full (Collection, Decks, Search, Scan, More): a new section starts in More.
+- With five links the header has no room for the wordmark between 640px and 719px: the logo mark stands in for it there, while the nav holds five or more links, and the wordmark returns from 720px (spec 057 decision 19).
 - Detail pages (a single card, a deck) use `c-appbar--detail`: on phones a back arrow replaces the logo and breadcrumbs.
 - The app shell (`c-shell`, `AppHeader`, `TabBar`) responds to the viewport at 640px, because it is the page itself. Everything inside a page responds to its container (`.c-collection` for lists, `.c-page` for a detail page).
+
+## Decks
+
+The words every deck screen uses (spec 057 FR-3). They name no format and no collectible; a deck's formats and zones are defined where decks are built.
+
+- **Deck:** a kind of location. Its copies live in its zones.
+- **Zone:** a named part of a deck, such as Main or Sideboard. Which zones a deck has depends on its format; every deck has Considering.
+- **Considering:** the zone for cards you are thinking about. Copies there are in the deck.
+- **Proxy:** a stand-in for a card you do not own, recorded against a deck zone with a printing. A proxy never counts as owned; it is not in Owned, In decks or Free to use.
+- **"Deck › Zone":** how a zone is named wherever a place is shown or chosen (tiles, rows, pickers): the deck's name, a single right angle quote (›), the zone's name. A zone is never shown without its deck.
+- **Free to use:** copies you own minus copies in any deck zone, Considering included. Proxies don't change it.
+- **Places:** your locations that are not decks (a binder, a box). "Places" is the picker's group label; the page is still "Locations".
 
 ## Components
 
 - Components are plain CSS classes (prefix `c-`) in `components/bundle.css`, built only on these tokens. There is no JavaScript bundle: each component's README gives the HTML, which you wrap in a Rails partial or ViewComponent.
 - Current set: `AppHeader`, `TabBar`, `Button`, `Menu`, `Input`, `Chip` (category chip, filter chip, tag), `Badge`, `ManaCost`, `ViewSwitch`, `FilterBar`, `ItemTile` (with `c-grid`), `CollectionTable` (with its `c-bulkbar`). Full screens: `CollectionPage` and `ItemPage` (desktop), `CollectionPagePhone` and `ItemPagePhone`. Card-page parts: `c-crumbs`, `c-item`, `c-rules`, `c-stats`, `c-section`, `c-list`, `c-legality`, `c-split`.
 - Build new components from these before inventing new styles; a new pattern gets its own entry here first.
+- The design system is the project's own, in code (spec 057 decision 12). A new pattern goes in `collector/additions.css`, with a doc under `components/` and a line in the App additions list below; a rule changes in this README, in the same change as the code.
 
-App additions (spec 004, in `collector/additions.css`): `StatusMessage`, `Form`, `AuthPage`, `ConfirmPage`, `SearchResults`, `TileAdd`, `FinishBadge`, `FilterSelect`, `Pager`, `EmptyState`, `Details`, `SingleStat`, `MorePage`, `AdminUsers`, `TableActions`, `SystemLogo`. Upstream these into the published design system before the next export replaces this folder.
+App additions (spec 004, in `collector/additions.css`): `StatusMessage`, `Form`, `AuthPage`, `ConfirmPage`, `SearchResults`, `TileAdd`, `FinishBadge`, `FilterSelect`, `Pager`, `EmptyState`, `Details`, `SingleStat`, `MorePage`, `AdminUsers`, `TableActions`, `SystemLogo`.
 
-App additions (spec 006, in `collector/additions.css`): `SortHeader`, `StatusAction`, `BulkConfirmPage`, `ChoicePage`, `BulkForm`, `ViewSwitchForm`, `TableItemLink`. Upstream these into the published design system before the next export replaces this folder.
+App additions (spec 006, in `collector/additions.css`): `SortHeader`, `StatusAction`, `BulkConfirmPage`, `ChoicePage`, `BulkForm`, `ViewSwitchForm`, `TableItemLink`.
 
-App additions (spec 007, in `collector/additions.css`): `Scanner`. Upstream it into the published design system before the next export replaces this folder.
+App additions (spec 007, in `collector/additions.css`): `Scanner`.
 
-App additions (spec 015, in `collector/additions.css`): `AdminJobs`, `AdminCatalog`, `StageList`, `ProgressMeter`. Upstream these into the published design system before the next export replaces this folder.
+App additions (spec 015, in `collector/additions.css`): `AdminJobs`, `AdminCatalog`, `StageList`, `ProgressMeter`.
 
-App additions (spec 018, in `collector/additions.css`): `Footer`. Upstream it into the published design system before the next export replaces this folder.
+App additions (spec 018, in `collector/additions.css`): `Footer`.
 
-App additions (spec 019, in `collector/additions.css`): `ImageFit`. It overrides the export's image fitting. Upstream it into the published design system before the next export replaces this folder.
+App additions (spec 019, in `collector/additions.css`): `ImageFit`. It overrides the export's image fitting.
 
-App additions (spec 021, in `collector/additions.css`): `UnownedTile`. It overrides the export's fade on `ItemTile`'s `c-tile--owned-none`. Upstream it into the published design system before the next export replaces this folder.
+App additions (spec 021, in `collector/additions.css`): `UnownedTile`. It overrides the export's fade on `ItemTile`'s `c-tile--owned-none`.
 
-App additions (spec 023, in `collector/additions.css`): `VisitorHeader`. It is `AppHeader`'s signed-out form, and marks a shell with no `TabBar` `c-shell--untabbed`. Upstream it into the published design system before the next export replaces this folder.
+App additions (spec 023, in `collector/additions.css`): `VisitorHeader`. It is `AppHeader`'s signed-out form, and marks a shell with no `TabBar` `c-shell--untabbed`.
 
-App additions (spec 025, in `collector/additions.css`): `ImportPreview`. Upstream it into the published design system before the next export replaces this folder.
+App additions (spec 025, in `collector/additions.css`): `ImportPreview`.
 
-App additions (spec 026, in `collector/additions.css`): `NumberEntry`. Upstream it into the published design system before the next export replaces this folder.
+App additions (spec 026, in `collector/additions.css`): `NumberEntry`.
 
-App additions (spec 029, in `collector/additions.css`): `Locations`. Upstream it into the published design system before the next export replaces this folder.
+App additions (spec 029, in `collector/additions.css`): `Locations`.
 
-App additions (spec 032, in `collector/additions.css`): `c-locations__more`, `c-locations__holds` and the 44px floor of `c-locations__lots` links, documented in `Locations`. Upstream them into the published design system before the next export replaces this folder.
+App additions (spec 032, in `collector/additions.css`): `c-locations__more`, `c-locations__holds` and the 44px floor of `c-locations__lots` links, documented in `Locations`.
 
-App additions (spec 033, in `collector/additions.css`): `c-tile__place` and its parts, and the wrapping of `c-table__sub` on narrow collections, documented in `ItemTile` and `CollectionTable`. Upstream them into the published design system before the next export replaces this folder.
+App additions (spec 033, in `collector/additions.css`): `c-tile__place` and its parts, and the wrapping of `c-table__sub` on narrow collections, documented in `ItemTile` and `CollectionTable`.
 
-App additions (spec 048, in `collector/additions.css`): `c-table__place-name` (the Location cell's name, capped at 20rem and broken inside a word when it must), the wrapping of the named `c-table__place` cell and `overflow-wrap` on the phone `c-table__sub`, documented in `CollectionTable`. The cell's rule overrides the export's `.c-table td { white-space:nowrap }`. Upstream them into the published design system before the next export replaces this folder.
+App additions (spec 048, in `collector/additions.css`): `c-table__place-name` (the Location cell's name, capped at 20rem and broken inside a word when it must), the wrapping of the named `c-table__place` cell and `overflow-wrap` on the phone `c-table__sub`, documented in `CollectionTable`. The cell's rule overrides the export's `.c-table td { white-space:nowrap }`.
+
+App additions (spec 057, in `collector/additions.css`): the label and option rules of a grouped select (documented in `Form` and `FilterSelect`), `c-select--wide` (`FilterSelect`), `c-stats--three` (`ItemPage`) and the logo mark's stand-in for the wordmark from 640px to 719px while the header holds five links (`AppHeader`).
 
 ## Logo
 

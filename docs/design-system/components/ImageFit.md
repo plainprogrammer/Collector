@@ -1,6 +1,6 @@
 # ImageFit
 
-How a card image sits in its slot: whole and in its own proportions, never cropped or stretched. It overrides the export until the published design system fits images this way.
+How a card image sits in its slot: whole and in its own proportions, never cropped or stretched. It overrides the export's image rules.
 
 **Markup** — unchanged. The rule applies to the image in each of the three slots: the tile's, the card page's and the table thumbnail's.
 
@@ -16,4 +16,4 @@ How a card image sits in its slot: whole and in its own proportions, never cropp
 - The thumbnail's `width` and `height` attributes are layout hints only. Its height comes from 63:88 of its 24px width, so it matches the empty thumbnail shown when there is no image.
 - The card page's slot is positioned, so the missing-image fallback (`c-tile__missing`) stays inside its own slot and never lies over another face's image.
 - A new image slot (a comic's cover, a deck's card list) follows the same rule: a fixed slot, with the whole image inside it.
-- This overrides the export, whose `c-tile__media` and `c-item__image` crop with `cover` and whose `c-table__thumb` stretches the image to its box. Upstream it; once an export carries it, delete the block from `collector/additions.css`.
+- This overrides the export, whose `c-tile__media` and `c-item__image` crop with `cover` and whose `c-table__thumb` stretches the image to its box; `components.css` still carries those rules, and the block in `collector/additions.css` is what applies. The design system is the project's own, so the block stays (spec 057 decision 12).

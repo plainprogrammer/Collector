@@ -34,7 +34,7 @@ The docs say `components/bundle.css` and `fonts/`; in this repo those are `app/a
 - Build narrow first, down to 360px wide. Secondary actions go into a `c-menu` on narrow screens; the primary action stays visible.
 - Nothing may need JavaScript to work. Menus are `<details>`; Stimulus only enhances. State lives in URL params; results sit in Turbo Frames; bulk changes answer with Turbo Streams. Mark `c-appbar` and `c-tabbar` with `data-turbo-permanent`.
 - Magic mana costs use `c-cost`/`c-mana` pips with an `aria-label`, never Wizards' symbols. Rarity is a word. No set symbols.
-- A physical copy is in one place at a time; a deck is a location. "Free to use" = owned − in decks.
+- A physical copy is in one place at a time; a deck is a location with zones that holds the copies it uses. "Free to use" = owned − copies in any deck zone (Considering included); a proxy never counts. The README's Decks section has the words.
 - Copy is sentence case, says "you" and never "we", uses no emoji or exclamation marks, and states numbers exactly.
 
 ## Checking your work
