@@ -337,4 +337,36 @@ RSpec.describe Scanner::Sitting, type: :model do
     account.user.destroy!
     expect([ described_class.count, Scanner::SittingEntry.count ]).to eq([ 0, 0 ])
   end
+
+  # Spec 062 AC-5.7: a lot that sits in a zone stays in it. A scanner add goes to the lot of the identity in the sitting's place
+  # (a place or none, from the controller; the model takes whatever the sitting holds), and its Undo takes the copy out of the
+  # lot where it now is.
+  describe "with a lot in a deck's zone (spec 062 AC-5.7)" do
+    let(:deck) { create(:deck, account:, name: "Izzet Tempo") }
+    let(:zone) { deck.zone("main") }
+
+    it "adds to the unplaced lot and leaves the zone's lot alone", :aggregate_failures do
+      zoned = create_lot_in_zone(deck, "main", entry: printing, finish: "foil", quantity: 3)
+      add
+      expect(zoned.reload.quantity).to eq(3)
+      expect(account.lots.where(location_id: nil).sole.quantity).to eq(1)
+    end
+
+    it "adds to the zone's lot when the sitting holds that zone, creating no lot in a place", :aggregate_failures do
+      zoned = create_lot_in_zone(deck, "main", entry: printing, finish: "foil", quantity: 3)
+      described_class.create!(account:, location: zone)
+      add
+      expect(account.lots.sole).to eq(zoned)
+      expect(zoned.reload).to have_attributes(quantity: 4, location: zone)
+    end
+
+    it "undoes an add whose lot has since moved into a zone, keeping the lot there", :aggregate_failures do
+      entry = add.entry
+      lot = entry.lot
+      lot.update!(location: zone, quantity: 3)
+      entry.reload.undo!
+      expect(lot.reload).to have_attributes(quantity: 2, location: zone)
+      expect(lot.lot_key).to end_with("|#{zone.id}")
+    end
+  end
 end
