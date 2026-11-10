@@ -18,6 +18,39 @@ RSpec.describe BulkSelection, type: :model do
     expect([ selection.lots.to_a, selection.copies, selection.context?("", default_sort) ]).to eq([ [], 0, true ])
   end
 
+  describe "#restart! with all: true (spec 059 decision 3)" do
+    let!(:blue) { create(:location, account:, name: "Blue binder") }
+
+    it "selects every matching lot of the location in the restart's own write, with no exceptions", :aggregate_failures do
+      held = own("Card A", location: blue, quantity: 2)
+      also = own("Card B", location: blue, quantity: 3)
+      elsewhere = own("Card C")
+      selection.restart!(query: "", sort: default_sort, location: blue.id.to_s, all: true)
+
+      expect(selection.lots).to contain_exactly(held, also)
+      expect(selection.lots).not_to include(elsewhere)
+      expect([ selection.everything?, selection.copies, selection.location_filter ]).to eq([ true, 5, blue.id.to_s ])
+    end
+
+    it "replaces earlier ticks and marks", :aggregate_failures do
+      first = own("Card A", location: blue)
+      second = own("Card B", location: blue)
+      tick([ first, second ], [ first ])
+      selection.restart!(query: "", sort: default_sort, location: blue.id.to_s, all: true)
+
+      expect(selection.marks).to be_empty
+      expect(selection.lots).to contain_exactly(first, second)
+    end
+
+    it "leaves the default restart selecting nothing (Edit many)", :aggregate_failures do
+      own("Card A", location: blue)
+      selection.restart!(query: "", sort: default_sort, location: blue.id.to_s)
+
+      expect(selection.lots).to be_empty
+      expect(selection.everything?).to be(false)
+    end
+  end
+
   it "selects shown-and-ticked lots and unselects shown-and-unticked ones, across pages" do
     a, b, c = [ "Card A", "Card B", "Card C" ].map { |name| own(name) }
     tick([ a, b ], [ a, b ])
