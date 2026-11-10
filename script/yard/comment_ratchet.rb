@@ -16,11 +16,16 @@ require "bundler/setup" if $PROGRAM_NAME == __FILE__
 require "fileutils"
 require "open3"
 require "pathname"
+require "ripper"
 require "tmpdir"
 require "yard"
 
 module YardRatchet
   RULE = ".claude/rules/code-documentation.md".freeze
+  SHALLOW = "The checkout is shallow, so the merge base with origin/main can't be trusted. Fetch the full history " \
+            "(actions/checkout: `fetch-depth: 0`; locally `git fetch --unshallow`).".freeze
+  NO_ORIGIN = "There is no origin/main to compare with. Fetch it (`git fetch origin main`).".freeze
+  NO_MERGE_BASE = "HEAD shares no history with origin/main. Fetch origin/main again (`git fetch origin main`) or rebase the branch onto it.".freeze
 
   # The files judged (spec 056 decision 1): the reusable code the rule lists.
   module Scope
@@ -38,8 +43,17 @@ module YardRatchet
 
     def initialize(root) = @root = root.to_s
 
-    # The commit the branch is compared with. Phase 3 replaces this with the merge base and its guards.
-    def base = run("rev-parse", "refs/remotes/origin/main").strip
+    # The merge base of HEAD and origin/main, whatever HEAD is: a branch, or the detached merge commit GitHub checks
+    # out for a pull request or a tag (decision 5). Unlike Collector::PushScope, a detached HEAD isn't refused.
+    #
+    # @return [String] the merge base's commit id.
+    # @raise [Unseen] when the repository is shallow, origin/main is missing or HEAD shares no history with it.
+    def base
+      raise Unseen, SHALLOW if run("rev-parse", "--is-shallow-repository").strip == "true"
+
+      run("rev-parse", "--verify", "--quiet", "refs/remotes/origin/main^{commit}", fail_with: NO_ORIGIN)
+      run("merge-base", "HEAD", "refs/remotes/origin/main", fail_with: NO_MERGE_BASE).strip
+    end
 
     # Judged files at the head: tracked or untracked, never ignored, and present on disk.
     def head_files
@@ -69,11 +83,11 @@ module YardRatchet
 
     private
 
-    def run(*args)
+    def run(*args, fail_with: nil)
       out, err, status = Open3.capture3(CLEARED, "git", *args, chdir: @root)
       return out if status.success?
 
-      raise Unseen, "git #{args.join(' ')} failed: #{err.strip}"
+      raise Unseen, fail_with || "git #{args.join(' ')} failed: #{err.strip}"
     end
   end
 
@@ -147,21 +161,41 @@ module YardRatchet
       @git = git
     end
 
-    # @return [Result] ok when every added or changed judged object has a summary; lines is what to print.
+    # @return [Result] ok when every added or changed judged object has a summary; lines is what to print. Not ok
+    #   either when the base can't be determined (`Unseen`: shallow, no origin/main, no merge base) or when a changed
+    #   judged file doesn't parse; the check never passes where it can't see.
     def call
       base = @git.base
       Dir.mktmpdir("yard-ratchet") do |tmp|
         before_files = @git.base_files(base)
         @git.export(base, before_files, tmp)
-        head = Snapshot.build(@root, @git.head_files)
-        before = Snapshot.build(tmp, before_files)
-        report(base, *judge(head, before))
+        head_files = @git.head_files
+        differing = head_files.reject { identical?(it, tmp) }
+        # Nothing added, edited or removed in the judged files: nothing can be changed, so YARD isn't started.
+        next Result.new(ok: true, lines: [ none(base) ]) if differing.empty? && head_files == before_files
+
+        broken = unparseable(differing)
+        next Result.new(ok: false, lines: broken.map { "#{it}: YARD can't parse this file (a syntax error); fix it first." }) if broken.any?
+
+        report(base, *judge(Snapshot.build(@root, head_files), Snapshot.build(tmp, before_files)))
       end
     rescue Unseen => error
       Result.new(ok: false, lines: [ error.message ])
     end
 
     private
+
+    # Whether the head's file is byte for byte the base's (exported under `base_dir`).
+    def identical?(path, base_dir)
+      base_path = File.join(base_dir, path)
+      File.file?(base_path) && File.binread(base_path) == File.binread(File.join(@root, path))
+    end
+
+    # The changed judged files that Ripper, which YARD parses with, rejects. An unchanged file that doesn't parse is
+    # the site's build to report (spec 054), not this check's.
+    def unparseable(files)
+      files.select { Ripper.sexp(File.binread(File.join(@root, it)).force_encoding(Encoding::UTF_8)).nil? }
+    end
 
     # :added, :changed or nil (decision 4). Text is compared by qualified name, so a rename, a move, a deletion
     # beside a method and the place Git puts a hunk can't matter. A method is changed when any of its extents is new;
@@ -218,4 +252,10 @@ module YardRatchet
       "#{offender.file}:#{offender.line}: #{offender.name} has no comment (#{offender.kind})#{NAMESPACE_HINT if offender.hint}"
     end
   end
+end
+
+if $PROGRAM_NAME == __FILE__
+  result = YardRatchet::Check.new.call
+  puts result.lines
+  exit(result.ok? ? 0 : 1)
 end
