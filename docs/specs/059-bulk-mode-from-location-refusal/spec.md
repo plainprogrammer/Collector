@@ -8,6 +8,7 @@
 **Branch:** `059-bulk-mode-from-location-refusal`
 **Issue:** [#187](https://github.com/plainprogrammer/Collector/issues/187) (roadmap item 14c, theme: locations)
 **Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (whole spec); see the [specs index](../README.md)
+**Plan:** retired in `8d9f59223e75ea8357fb151d1c7077cd049717f0`; read it with `git show 8d9f59223e75ea8357fb151d1c7077cd049717f0^:docs/specs/059-bulk-mode-from-location-refusal/plan.md`
 
 ---
 

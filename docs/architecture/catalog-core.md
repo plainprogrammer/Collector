@@ -223,4 +223,4 @@ A card image fits its slot with `object-fit: contain`, centred, at the largest s
 | Date | Distilled | Pull request |
 |---|---|---|
 | 2026-11-06 | Specs 002 (FR-1, FR-2, FR-7–FR-10), 016 (research), 018, 019 and 023; the catalog parts of spec 004 (search, the card page, the vocabulary); the name index of specs 007 and 009 and ADR 0003; and CLAUDE.md's catalog core paragraphs | [#207](https://github.com/plainprogrammer/Collector/pull/207) |
-| 2026-11-10 | Spec 058 (decisions 1 and 2: the mana value's column, Scryfall's `cmc` read from the card or its front face and never worked out from the mana cost; the `fetch` trap) and issue #250 | spec 058's pull request |
+| 2026-11-10 | Spec 058 (decisions 1 and 2: the mana value's column, Scryfall's `cmc` read from the card or its front face and never worked out from the mana cost; the `fetch` trap) and issue #250 | [#279](https://github.com/plainprogrammer/Collector/pull/279) |
