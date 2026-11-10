@@ -29,7 +29,10 @@ Code written to be called from elsewhere: concerns, helpers, `lib/`, plain Ruby 
 
 - ✓ A change to behaviour updates the comment that describes it in the same commit. A stale comment is a bug: agents act on it.
 - ✓ A plan's task that changes a public method's behaviour or contract names the comment it updates.
-- ✓ Code reviews (`sdd-review` Mode B, code-review subagents) check new and changed public methods for a missing, stale or what-not-why comment, and report it as a finding.
+- ✓ `bin/ci checks` fails a branch that adds or changes a public class, module or method with no comment (spec 056, the step "Docs: new and changed public code has a comment", `script/yard/comment_ratchet.rb`). It judges `app/models/` (concerns included), `app/helpers/`, `app/*/concerns/`, `lib/` and `spec/support/`, never total coverage and never code the branch didn't touch. A comment means summary text; tags alone, `@private` and `@!visibility private` don't count, `@api private` does, and a `(see Other#method)` that resolves to a commented method does. Private and protected methods, constants, attribute methods and `initialize` aren't judged, and neither is what YARD doesn't register (`scope`, `define_method`, `delegate`, methods inside `RSpec.configure` blocks). It needs the full history (`fetch-depth: 0`) and fails, never passes, when it can't find the merge base with `origin/main`.
+- ✓ Put a file's header comment above the class the file defines, not above its outer `module Collector` line: a comment above a namespace documents the namespace, and the check then names the class.
+- ✗ Don't expect the check to find a stale or what-not-why comment; it reads only that a summary exists. That stays with reviews (the "Code reviews" bullet).
+- ✓ Code reviews (`sdd-review` Mode B, code-review subagents) check new and changed public methods for a stale or what-not-why comment, and for `@param`/`@return` where the rule asks for them; a missing summary is `bin/ci checks`' to find.
 
 ## Finding code before writing it
 
