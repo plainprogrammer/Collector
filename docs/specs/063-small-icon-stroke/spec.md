@@ -1,6 +1,6 @@
 # Feature 063: Small Icons Keep Their Weight (Stroke Follows Size)
 
-**Status:** Draft
+**Status:** Approved by the maintainer (2026-11-10, Gate A, relayed by the coordinator) at 0.3.0, after two spec review rounds
 **Version:** 0.3.0
 **Created:** 2026-11-10
 **Last Updated:** 2026-11-10
