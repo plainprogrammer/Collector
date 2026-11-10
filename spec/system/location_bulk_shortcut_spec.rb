@@ -36,7 +36,7 @@ RSpec.describe "Open a location's lots in bulk mode", type: :system do
     owned_printing(account:, location: blue, quantity: 4)
     visit new_location_removal_path(blue)
 
-    expect(tab_to("Move them in bulk mode")).to be(true)
+    expect(tab_to_text("Move them in bulk mode")).to be(true)
     ring = page.evaluate_script("(() => { const el = document.activeElement; const style = getComputedStyle(el); return el.matches(':focus-visible') && style.outlineStyle !== 'none' && parseFloat(style.outlineWidth) > 0 })()")
     expect(ring).to be(true) # a visible focus ring (Accessibility NFR)
     page.driver.browser.action.send_keys(:enter).perform

@@ -93,6 +93,6 @@ RSpec.describe "Locations", type: :system do
       expect(page.evaluate_script("#{targets}.filter((el) => { const box = el.getBoundingClientRect(); return box.height < 44 || box.width < 44 }).length")).to eq(0)
     end
     visit new_location_removal_path(blue)
-    expect(tab_to("Back to locations")).to be(true)
+    expect(tab_to_text("Back to locations")).to be(true)
   end
 end
