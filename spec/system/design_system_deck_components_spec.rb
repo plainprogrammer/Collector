@@ -247,6 +247,61 @@ RSpec.describe "Design system: deck components", type: :system do
     %(<div id="probe"><div class="c-pagehead"><div><h1 class="c-pagehead__title">New deck</h1></div></div><form class="c-form">#{field}#{format}#{actions}</form></div>)
   end
 
+  def long_place = "Binder" * 10
+
+  # `html` added to the blank `main` of the Locations page inside a 360px frame, the block run in the frame.
+  def in_phone_frame(html)
+    open_in_narrow_frame(locations_path, width: 360, ready: "main")
+    within_narrow_frame do
+      blank_host
+      add_to_main(html)
+      yield
+    end
+  end
+
+  def pagehead_html(title, stats = nil)
+    line = stats ? %(<p class="c-pagehead__stats">#{stats}</p>) : ""
+    %(<div class="c-pagehead"><div><h1 class="c-pagehead__title">#{title}</h1>#{line}</div></div>)
+  end
+
+  def form_actions(submit) = %(<div class="c-form__actions"><input type="submit" class="c-btn c-btn--primary" value="#{submit}"><a class="c-btn c-btn--secondary" href="#">Cancel</a></div>)
+
+  # AddToDeck (a ChoicePage variant): the grouped Deck and zone select, How many, and the "What to use" radios. `long: true`
+  # puts a 60-character deck name in the select and a 60-character place name, with no space, in the "My copies" option.
+  def add_to_deck_html(long: false)
+    deck = long ? "Abcdefghij" * 6 : "Izzet Tempo"
+    place = long ? long_place : "Blue binder"
+    select = %(<select id="deck_zone" required><option value="">Choose a deck and zone…</option><optgroup label="Decks"><option>#{deck} › Main</option><option>#{deck} › Sideboard</option></optgroup></select>)
+    zone = %(<div class="c-field"><label class="c-field__label" for="deck_zone">Deck and zone</label>#{select}</div>)
+    many = %(<div class="c-field"><label class="c-field__label" for="how_many">How many</label><label class="c-input"><input id="how_many" type="number" min="1" value="1" inputmode="numeric"></label></div>)
+    %(<div id="probe">#{pagehead_html("Add Lightning Bolt to a deck")}<form class="c-form">#{zone}#{many}#{use_choices(place)}#{form_actions("Add to deck")}</form></div>)
+  end
+
+  def use_choices(place)
+    copies = %(<label class="c-check"><input type="radio" name="use" value="copies" required>My copies (3 free: 2 in #{place}, 1 in Red box)</label>)
+    proxy = %(<label class="c-check"><input type="radio" name="use" value="proxy" required>A proxy of <span class="is-data">2X2 · 117</span> foil</label>)
+    %(<fieldset class="c-choices c-pick"><legend class="c-field__label">What to use</legend>#{copies}#{proxy}</fieldset>)
+  end
+
+  # UseMyCopy: free copies as lots, each a bordered row with its label above a quantity field. `long: true` gives the first
+  # lot a 60-character place name with no space. A lot is `[id, text, free]`.
+  def use_my_copy_html(long: false)
+    place = long ? long_place : "Blue binder"
+    this = [ [ "lot_1", "2X2 · 117 foil, Near Mint, #{place}, ×1 free", 1 ], [ "lot_2", "2X2 · 117 foil, Lightly Played, Red box, ×2 free", 2 ] ]
+    other = [ [ "lot_3", "MM3 · 122, Near Mint, Red box, ×1 free", 1 ] ]
+    stats = "Replaces 1 proxy in Izzet Tempo › Main · 2X2 · 117 foil"
+    groups = pick_group("This printing", this) + pick_group("Other printings", other)
+    fieldset = %(<fieldset class="c-choices c-pick"><legend class="c-field__label">Which copies</legend>#{groups}</fieldset>)
+    %(<div id="probe">#{pagehead_html("Use my copy of Lightning Bolt", stats)}<form class="c-form">#{fieldset}#{form_actions("Use these copies")}</form></div>)
+  end
+
+  def pick_group(title, lots)
+    rows = lots.map do |id, text, free|
+      %(<div class="c-pick__lot"><label class="c-pick__label" for="#{id}">#{text}</label><label class="c-input"><input id="#{id}" type="number" min="0" max="#{free}" value="0" inputmode="numeric"></label></div>)
+    end
+    %(<p class="c-pick__group">#{title}</p>#{rows.join})
+  end
+
   describe "ProxyTag (AC-1.2, AC-1.3)" do
     def tag = %(<span class="c-proxy" id="probe">Proxy <b>2</b></span>)
 
@@ -743,6 +798,84 @@ RSpec.describe "Design system: deck components", type: :system do
         expect(second["top"]).to be >= first["bottom"]
         expect(evaluate("return document.documentElement.scrollWidth <= window.innerWidth")).to be(true)
       end
+    end
+  end
+
+  describe "AddToDeck (AC-5.2, AC-5.3)" do
+    # Overflow of the page, the select's and the form's widths, and the right edge of the "My copies" text against the fieldset's.
+    def add_fit
+      evaluate(<<~JS)
+        const rect = (selector) => document.querySelector(selector).getBoundingClientRect()
+        const text = document.createRange()
+        text.selectNodeContents(document.querySelector("#probe .c-check"))
+        return { fits: document.documentElement.scrollWidth <= window.innerWidth, select: rect("#deck_zone").width, form: rect("#probe .c-form").width,
+                 textRight: text.getBoundingClientRect().right, fieldsetRight: rect("#probe .c-choices").right }
+      JS
+    end
+
+    def expect_add_fit(found)
+      expect(found["fits"]).to be(true)
+      expect(found["select"]).to be <= found["form"]
+      expect(found["textRight"]).to be <= found["fieldsetRight"] + 0.5
+    end
+
+    it "fits a 360px frame with a 60-character deck and place name, the option text wrapping (AC-5.2)", :aggregate_failures do
+      in_phone_frame(add_to_deck_html(long: true)) { expect_add_fit(add_fit) }
+    end
+
+    it "gives the focused radio's row a 2px solid focus ring (AC-5.3)", :aggregate_failures do
+      add_to_main(add_to_deck_html)
+      find("#deck_zone").send_keys(:tab, :tab)
+      expect(evaluate("return document.activeElement.type + ':' + document.activeElement.value")).to eq("radio:copies")
+      ring = evaluate(%(const label = document.activeElement.closest("label"); const s = getComputedStyle(label); return [ s.outlineStyle, s.outlineWidth, s.outlineColor ]))
+      expect(ring).to eq([ "solid", "2px", token("--focus") ])
+    end
+  end
+
+  describe "UseMyCopy (AC-6.2 to AC-6.4)" do
+    # Per lot: its border, ground, the label's and the field's edges, the field's size, the label's overflow.
+    def lot_states
+      evaluate(<<~JS)
+        return [ ...document.querySelectorAll("#probe .c-pick__lot") ].map((lot) => {
+          const style = getComputedStyle(lot), label = lot.querySelector(".c-pick__label"), field = lot.querySelector(".c-input")
+          return { border: [ style.borderTopWidth, style.borderTopStyle, style.borderTopColor ], ground: style.backgroundColor,
+                   top: lot.getBoundingClientRect().top, bottom: lot.getBoundingClientRect().bottom,
+                   labelBottom: label.getBoundingClientRect().bottom, labelFits: label.scrollWidth <= label.clientWidth,
+                   fieldTop: field.getBoundingClientRect().top, fieldHeight: field.getBoundingClientRect().height, fieldWidth: getComputedStyle(field).width }
+        })
+      JS
+    end
+
+    def expect_lot(state)
+      expect(state["border"]).to eq([ "1px", "solid", token("--line") ])
+      expect(state["ground"]).to eq(token("--surface-raised"))
+      expect(state["labelBottom"]).to be <= state["fieldTop"]
+      expect([ state["fieldHeight"] >= 44, state["fieldWidth"], state["labelFits"] ]).to eq([ true, "96px", true ])
+    end
+
+    it "draws each lot as a bordered raised block, label above a 44px by 96px field, 12px apart (AC-6.2)", :aggregate_failures do
+      in_phone_frame(use_my_copy_html(long: true)) do
+        states = lot_states
+        states.each { expect_lot(it) }
+        expect(states[1]["top"] - states[0]["bottom"]).to be_within(0.5).of(12)
+        expect(evaluate("return document.documentElement.scrollWidth <= window.innerWidth")).to be(true)
+      end
+    end
+
+    it "rings a keyboard-focused field's wrapper, and a click on the label focuses the field (AC-6.3)", :aggregate_failures do
+      add_to_main(use_my_copy_html)
+      find("#lot_1").send_keys(:tab)
+      expect(evaluate("return document.activeElement.id")).to eq("lot_2")
+      expect(evaluate(%(const s = getComputedStyle(document.activeElement.closest(".c-input")); return [ s.outlineStyle, s.outlineWidth, s.outlineColor ]))).to eq([ "solid", "2px", token("--focus") ])
+      find("label[for=lot_1]").click
+      expect(evaluate("return document.activeElement.id")).to eq("lot_1")
+    end
+
+    it "bounds each field by its lot's free copies and names it by the lot (AC-6.4)", :aggregate_failures do
+      add_to_main(use_my_copy_html)
+      fields = evaluate(%(return [ ...document.querySelectorAll("#probe input[type=number]") ].map((i) => ({ min: i.min, max: i.max, name: [ ...i.labels ].map((l) => l.textContent).join(" ") }))))
+      expect(fields.map { it.values_at("min", "max") }).to eq([ %w[0 1], %w[0 2], %w[0 1] ])
+      expect(fields.first["name"]).to include("2X2 · 117", "foil", "Near Mint", "Blue binder")
     end
   end
 end

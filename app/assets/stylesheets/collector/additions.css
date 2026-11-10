@@ -496,3 +496,17 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
    Decks page would have no way to add a deck on a phone (decision 24); this page alone keeps its button. A deck's name
    wraps with the zone tables' rule, in the block above (the same selector list). */
 @media (max-width: 639px) { .c-decks .c-pagehead__actions { display:flex; } }
+
+/* ---------- Pick list for AddToDeck and UseMyCopy (spec 060): choices that wrap, with a visible focus ---------- */
+/* A fieldset is as wide as its widest child, so a long place name in "My copies (…)" would widen the page (spec 042
+   AC-7.1's lesson): min-width:0 and a break inside a word. .c-check has no focus ring of its own, so the row shows one
+   while its control has keyboard focus. UseMyCopy's lots are bordered blocks, label above field, the field 44px high and
+   6rem wide so it is hard to mis-tap, space-3 apart (decision 15). */
+.c-pick { min-width:0; gap:var(--space-3); }
+.c-pick .c-check { overflow-wrap:anywhere; }
+.c-pick .c-check:has(input:focus-visible) { outline:2px solid var(--focus); outline-offset:2px; border-radius:var(--radius-sm); }
+.c-pick__group { margin:var(--space-2) 0 calc(var(--space-1) * -1); font:600 12px/16px var(--font-sans); color:var(--ink-muted); }
+.c-pick__lot { display:flex; flex-direction:column; gap:var(--space-2); padding:var(--space-3); background:var(--surface-raised);
+  border:1px solid var(--line); border-radius:var(--radius-md); }
+.c-pick__label { font:400 14px/20px var(--font-sans); color:var(--ink); overflow-wrap:anywhere; }
+.c-pick__lot .c-input { width:6rem; min-height:44px; }
