@@ -510,3 +510,8 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
   border:1px solid var(--line); border-radius:var(--radius-md); }
 .c-pick__label { font:400 14px/20px var(--font-sans); color:var(--ink); overflow-wrap:anywhere; }
 .c-pick__lot .c-input { width:6rem; min-height:44px; }
+/* `SET · number` is written `<span class="is-data">` in a pick label, a radio's label and the page-head line. The export gives
+   `.is-data` its mono only in tables, details and lists, so the pick list sets it here (spec 060 documents it in mono), and
+   no break inside it: the page-head line is mono by inheritance but broke inside "2X2 · 117" at 390px. */
+.c-pick .is-data { font-family:var(--font-mono); }
+.c-pick .is-data, .c-pagehead__stats .is-data { white-space:nowrap; }

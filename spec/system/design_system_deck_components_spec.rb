@@ -868,6 +868,32 @@ RSpec.describe "Design system: deck components", type: :system do
       end
     end
 
+    # The computed parent class, font family and white-space of every `[data-probe]` element.
+    def probes
+      evaluate(<<~JS)
+        return [ ...document.querySelectorAll("#probe [data-probe]") ].map((el) => {
+          const style = getComputedStyle(el)
+          return { parent: el.parentElement.className, family: style.fontFamily, wrap: style.whiteSpace }
+        })
+      JS
+    end
+
+    # `SET · number` is written `<span class="is-data">` in a pick label, a radio's label and the page-head line. The export
+    # gives `.is-data` its mono only in tables, details and lists, so the first two would stay sans without a rule of the
+    # pick list; the page-head line is mono already (it inherits `.c-pagehead__stats`' font) and needs only the no-break.
+    it "sets `SET · number` in mono on one line in a pick label, a radio's label and the page-head line (AC-6.2)", :aggregate_failures do
+      data = %(<span class="is-data" data-probe>2X2 · 117</span>)
+      add_to_main(<<~HTML.squish)
+        <div id="probe"><p class="c-pagehead__stats">Replaces 1 proxy · #{data}</p>
+          <fieldset class="c-choices c-pick"><label class="c-check">A proxy of #{data} foil</label>
+          <div class="c-pick__lot"><label class="c-pick__label">#{data}, Near Mint</label></div></fieldset></div>
+      HTML
+      found = probes
+      expect(found.map { it["parent"] }).to eq([ "c-pagehead__stats", "c-check", "c-pick__label" ])
+      expect(found.map { it["family"] }).to all(include(mono_family))
+      expect(found.map { it["wrap"] }).to all(eq("nowrap"))
+    end
+
     it "rings a keyboard-focused field's wrapper, and a click on the label focuses the field (AC-6.3)", :aggregate_failures do
       add_to_main(use_my_copy_html)
       find("#lot_1").send_keys(:tab)
