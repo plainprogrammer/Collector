@@ -61,6 +61,29 @@ RSpec.describe "The CI definition", type: :config do # rubocop:disable RSpec/Des
     end
   end
 
+  # A session Orca starts has macOS's Ruby 2.6 first on its PATH, so a hook that runs Ruby bare fails and
+  # blocks every commit (#270). Each Ruby the hooks run goes through script/worktree/with_mise --optional,
+  # which picks .ruby-version's Ruby where mise exists and changes nothing where it doesn't (CI, cloud).
+  describe "the Ruby the hooks in .claude/settings.json run (#270)" do
+    let(:commands) do
+      JSON.parse(Rails.root.join(".claude/settings.json").read).fetch("hooks").values.flatten
+        .flat_map { it["hooks"] }.map { it["command"] }
+    end
+    let(:ruby_commands) { commands.select { it.match?(%r{bin/rubocop|bin/brakeman|pre_push_ci\.rb}) } }
+
+    it "picks the runner from script/worktree/with_mise --optional", :aggregate_failures do
+      expect(ruby_commands.size).to eq(3)
+      expect(ruby_commands).to all(include("[ -x script/worktree/with_mise ] && w='script/worktree/with_mise --optional'"))
+    end
+
+    it "runs RuboCop, Brakeman and the pre-push script through that runner", :aggregate_failures do
+      all = ruby_commands.join("\n")
+
+      expect(all).to include("$($w bin/rubocop", "-r $w bin/rubocop", "then $w bin/brakeman", 'exec $w ruby "$h"')
+      expect(all).not_to match(%r{(\$\(|-r|then|exec) (bin/rubocop|bin/brakeman|ruby )})
+    end
+  end
+
   describe ".claude/hooks/pre_push_ci.rb" do
     # The hook runs with the session's locale, which may be C (US-ASCII), while the tool call's JSON is UTF-8.
     it "lets a command that only mentions push through, whatever its characters and the locale (FR-4)",
