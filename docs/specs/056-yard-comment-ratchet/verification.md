@@ -124,6 +124,15 @@ An Opus code review of the implementation returned APPROVE WITH CHANGES, with th
 - **2026-11-10 (maintainer, via the coordinator):** spec v1.2.3 confirmed (PATCH): a method is new by qualified name across the base's scoped files, so a method moved between files of the same class is not judged; a class or module marked `@api private` covers the members YARD scopes under it. Both state what the approved plan's design and the code already did; no ruling changed.
 - **2026-11-10 (this session, within the worker's remit; reported to the coordinator):** the plan assumed `links_spec.rb` already loads YARD into the RSpec process; no spec does. The new spec file's `require` of the check loads it, so spec 054's AC-3.7 example (`expect(defined?(YARD)).to be_nil`, in `spec/project_config_spec.rb`) failed in a full run. Ruling: the new spec's in-process examples stay; the AC-3.7 example now boots the app in a fresh process (`bin/rails runner 'print defined?(YARD).inspect'`, about 0.8 s) and still fails if the boot loads YARD (checked with `RUBYOPT=-ryard`). Cost if wrong: the example proves the boot, not the suite's process, which is what spec 054 AC-3.7 says. Commit `e4bcb6ec`.
 
+## Distillation
+
+Distilled on 2026-11-10 (`distill-feature`, before the merge) into [release and deploy](../../architecture/release-and-deploy.md), the only area the index lists for this spec:
+
+- The "comment ratchet" bullet of Invariants, rewritten to state decisions 1 to 6: what the step judges and the files, what counts as a comment, what "changed" means, the base and its failures, the history the `checks` job's `fetch-depth: 0` gives it, the output and the 30 s budget (measured about 0.3 to 0.4 s with no judged file changed, 1.07 s for 165 files added against an empty base).
+- Scope names the step; the suite-checks-no-prose bullet says spec 054's AC-3.7 example boots the app in a fresh process because this spec's spec loads YARD into the suite process (Rulings, commit `e4bcb6ec`); two Named constants rows (`YardRatchet::Scope::PATTERNS`, `YardRatchet::RULE`); one Distillation log row naming pull request #273. Sources already held spec 056 and #264.
+- The index row is Frozen by that doc with its Plan "retirement owed"; the spec has its `**Frozen:**` line (spec 027 D4). CLAUDE.md already points to the rule and is unchanged. No ADR is proposed: the spec ruled OD6, and no decision of lasting weight is missing one.
+- Not distilled: the Known limits above (specific to the implementation, kept here), and AC-4.2's CI half and AC-4.3's CI time, which stay pending in this file.
+
 ## Implementation review
 
 SPEC-ALIGNED
