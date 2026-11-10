@@ -54,7 +54,7 @@ The shots in `screenshots/`, from the real pages with factory data and placehold
 
 What the shots show (read by the author; the maintainer's review is below): the 12px check and cross carry the weight of "Legal" and "Not legal" in both themes, the badge check matches "Read" and "Matched by its collector line", the warning triangle and the foil star read as before, the 14px to 16px icons (Scan, plus, search, Grid, Table) balance their 600-weight labels, and the More dots (stroked circles, radius 1.5, at stroke 2) are slightly larger and stay apart.
 
-Maintainer's visual review: pending (asked before the pull request is marked ready).
+Maintainer's visual review: approved as shown (2026-11-10, relayed by the coordinator), the shots of `screenshots/` at 1x and 2x, light and dark, with the rulings of decision 1 unchanged.
 
 ## Not measured
 
@@ -70,7 +70,7 @@ The minors and what was done:
 1. The README said the stroke is `30 ÷ size` "in px", which reads as the stroke being in px: now "`30 ÷ size`, with the size in px, rounded to a half" (taken).
 2. The README had no "App additions (spec 063)" line, as every spec that adds rules to `additions.css` has: added (taken).
 3. AC-1.6 is tested for "no stroke" only, not "drawn as before": the badge shots (`badges-*`) show the star in place and at its size; no change to the star's rule exists in the diff (recorded, not tested further: the star is `fill="currentColor"` and no rule here sets its size).
-4. The maintainer's AC-1.7 review is still pending (above); recorded when given.
+4. The maintainer's AC-1.7 review was pending at the review; since given and recorded above (approved as shown).
 5. The table's "Set" header is clipped to "Sei" in `tablerow-*.jpg`, before and after alike: not this branch's doing (cause not investigated), reported to the coordinator as a possible issue, not changed here.
 
 ## Distilled
