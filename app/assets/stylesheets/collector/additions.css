@@ -375,3 +375,145 @@ img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches:
 .c-locations .c-btn, .c-locations .c-input { min-height:var(--touch-floor); min-width:var(--touch-floor); }
 /* The header's back button is outside main; on these pages it too keeps the 44px floor on every pointer (AC-5.5). */
 body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-width:var(--touch-floor); }
+
+/* ---------- ProxyTag (spec 060): a dashed tag that marks a proxy without colour ---------- */
+/* The dashed border and the word carry it; no fill (spec 060 FR-1). The count is mono, like the tables' numbers. */
+.c-proxy { display:inline-flex; align-items:center; gap:var(--space-1); height:20px; padding:0 6px; border:1px dashed var(--ink-muted);
+  border-radius:var(--radius-sm); font:600 12px/16px var(--font-sans); color:var(--ink); white-space:nowrap; }
+.c-proxy b { font:400 12px/16px var(--font-mono); }
+
+/* ---------- DeckShape panel and curve (spec 060): a neutral chart, owned solid and proxies hatched on top ---------- */
+/* Fills are neutral (README Charts rule, spec 057 decision 10): ink-muted for owned, a hatched line-strong with an
+   ink-muted outline for proxies. A column's parts come from custom properties, numbers only (spec 060 decision 20); a part
+   of zero is not in the markup, so its borders draw no sliver. box-sizing is border-box because the export sets none. */
+.c-shape { display:flex; flex-direction:column; gap:var(--space-6); box-sizing:border-box; padding:var(--space-4); background:var(--surface-raised);
+  border:1px solid var(--line); border-radius:var(--radius-md); }
+.c-shape--bare { border:0; border-top:1px solid var(--line); border-radius:0 0 calc(var(--radius-md) - 1px) calc(var(--radius-md) - 1px); }
+/* The bare panel sits inside the details copy's 1px border and radius-md: square bottom corners would paint over the
+   rounded border and leave the open copy's bottom edge faint, so they take the details' inner radius (spec 060 final visual review). */
+.c-shape__title { margin:0; font:600 20px/28px var(--font-sans); color:var(--ink); }
+.c-shape__scope { margin:0; font:400 13px/18px var(--font-mono); color:var(--ink-muted); }
+.c-shape__part { display:flex; flex-direction:column; gap:var(--space-2); }
+.c-shape__heading { margin:0; font:600 14px/20px var(--font-sans); color:var(--ink); }
+.c-curve { display:flex; flex-direction:column; gap:var(--space-2); }
+.c-curve__cols { display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:var(--space-1); align-items:end; border-bottom:1px solid var(--line-strong); }
+.c-curve__col { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:2px; height:116px; }
+.c-curve__count { font:400 12px/16px var(--font-mono); color:var(--ink); }
+.c-curve__bar { display:flex; flex-direction:column; width:70%; }
+.c-curve__owned, .c-curve__proxy { box-sizing:border-box; border:1px solid var(--ink-muted); }
+.c-curve__owned { height:calc(96px * var(--owned) / var(--max)); background:var(--ink-muted); }
+.c-curve__proxy { height:calc(96px * var(--proxy) / var(--max));
+  background:repeating-linear-gradient(45deg, var(--line-strong) 0 1.5px, var(--surface-raised) 1.5px 5px); }
+.c-curve__proxy + .c-curve__owned { margin-top:-1px; } /* the two outlines share one line */
+.c-curve__labels { display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:var(--space-1); text-align:center;
+  font:400 12px/16px var(--font-mono); color:var(--ink-muted); }
+.c-curve__legend { display:flex; flex-wrap:wrap; gap:var(--space-1) var(--space-4); margin:0; padding:0; list-style:none; font:400 13px/18px var(--font-sans); color:var(--ink); }
+.c-curve__legend li { display:inline-flex; align-items:center; gap:var(--space-2); }
+.c-curve__swatch { box-sizing:border-box; width:16px; height:12px; border:1px solid var(--ink-muted); border-radius:2px; flex:none; }
+.c-curve__swatch--owned { background:var(--ink-muted); }
+.c-curve__swatch--proxy { background:repeating-linear-gradient(45deg, var(--line-strong) 0 1.5px, var(--surface-raised) 1.5px 5px); }
+.c-curve__avg { margin:0; font:400 13px/18px var(--font-sans); color:var(--ink-muted); }
+.c-curve__avg b { font:600 13px/18px var(--font-mono); color:var(--ink); }
+
+/* ---------- DeckShape card types (spec 060): a name, a count, and the proxies in a muted suffix ---------- */
+.c-types { margin:0; padding:0; list-style:none; border-top:1px solid var(--line); }
+.c-types li { display:flex; align-items:baseline; gap:var(--space-2); min-height:32px; padding:var(--space-1) 0; border-bottom:1px solid var(--line); font:400 14px/20px var(--font-sans); }
+.c-types__n { margin-left:auto; font:400 14px/20px var(--font-mono); }
+.c-types__proxy { min-width:4.5rem; text-align:right; font:400 12px/16px var(--font-mono); color:var(--ink-muted); } /* reserved even when empty, so the counts line up */
+
+/* ---------- DeckShape mana bar (spec 060): one bar split by colour, the only chart that may use the mana fills ---------- */
+/* README Charts rule: every segment has its letter and count (the caption carries a segment under 10%, which the markup
+   marks narrow), and a 1px line-strong outline and divider, because the white and black fills vanish on the ground. */
+.c-manabar { display:flex; height:32px; margin:0; padding:0; list-style:none; border:1px solid var(--line-strong); border-radius:var(--radius-sm); overflow:hidden; }
+.c-manabar__seg { flex:var(--n) 1 0; min-width:0; display:flex; align-items:center; justify-content:center; background:var(--mana-c); color:var(--on-mana-c);
+  font:600 12px/16px var(--font-mono); }
+.c-manabar__seg + .c-manabar__seg { border-left:1px solid var(--line-strong); }
+.c-manabar__seg--w { background:var(--mana-w); color:var(--on-mana-w); }
+.c-manabar__seg--u { background:var(--mana-u); color:var(--on-mana-u); }
+.c-manabar__seg--b { background:var(--mana-b); color:var(--on-mana-b); }
+.c-manabar__seg--r { background:var(--mana-r); color:var(--on-mana-r); }
+.c-manabar__seg--g { background:var(--mana-g); color:var(--on-mana-g); }
+.c-manabar__seg--narrow span { display:none; }
+.c-manacap { margin:0; font:400 13px/18px var(--font-sans); color:var(--ink-muted); }
+
+/* ---------- Deck page layout and the panel's two copies (spec 060) ---------- */
+/* The shape panel is rendered twice, an aside and a closed details, and each hides the other: a closed details hides its
+   content whatever the CSS, and ::details-content would put a browser floor under the page (decision 7). The page's
+   container decides, as the rest of a detail page does. Two columns from 992px: 640px of table, 320px of panel and the
+   space-8 gap (decision 6). With no panel the second column stays empty (issue design item 7). */
+.c-deck { display:grid; grid-template-columns:minmax(0, 1fr); gap:var(--space-6); align-items:start; margin-top:var(--space-6); }
+.c-deck__zones { display:flex; flex-direction:column; gap:var(--space-8); min-width:0; }
+.c-shapefold { display:none; background:var(--surface-raised); border:1px solid var(--line); border-radius:var(--radius-md); }
+.c-shapefold > summary { display:flex; flex-wrap:wrap; align-items:baseline; gap:var(--space-1) var(--space-3); min-height:var(--touch-floor); padding:var(--space-2) var(--space-4); list-style:none; cursor:pointer; }
+.c-shapefold > summary::-webkit-details-marker { display:none; }
+.c-shapefold > summary::after { content:"Show" / ""; margin-left:auto; font:600 13px/18px var(--font-sans); color:var(--brand); }
+.c-shapefold[open] > summary::after { content:"Hide" / ""; }
+.c-shapefold > summary:focus-visible { outline:2px solid var(--focus); outline-offset:2px; border-radius:var(--radius-md); }
+.c-shapefold__title { font:600 20px/28px var(--font-sans); color:var(--ink); }
+.c-shapefold__facts { font:400 13px/18px var(--font-mono); color:var(--ink-muted); }
+@container page (min-width: 992px) {
+  .c-deck { grid-template-columns:minmax(0, 1fr) 320px; gap:var(--space-8); }
+  .c-deck__zones { grid-column:1; grid-row:1; }
+  .c-deck__shape { grid-column:2; grid-row:1; position:sticky; top:calc(56px + var(--space-6)); } /* the header's 56px, as c-item__media */
+}
+@container page (max-width: 639px) {
+  .c-deck__shape { display:none; }
+  .c-shapefold { display:block; }
+  .c-zone .c-section__head { flex-wrap:wrap; } /* the counts take their own line: a cut count is information lost */
+  .c-zone .c-section__count { order:3; flex-basis:100%; white-space:normal; }
+  .c-zone .c-section__actions { margin-left:auto; }
+}
+
+/* ---------- Deck page zones (spec 060): a table per zone, grouped rows, one shared column layout ---------- */
+/* From 640px of the table's container every zone table has the same fixed widths, so Cost, Owned, Proxy, Total and the
+   menu sit at one x in every zone (decision 25). th is border-box: a width is the whole column, padding included. A pip is
+   22px (20px and a 1px border; the export sets no box-sizing), so six symbols are 142px and a cell pads 12px a side: Cost
+   needs 166px and has 176px. Below 640px the table keeps its auto layout (decision 9): zones are stacked there and a fixed
+   Cost would leave a phone's name column 25px. A longer cost wraps its pips, and a long name wraps, at every width rather
+   than spill into the next cell. */
+.c-zone__group th { position:static; padding:var(--space-2) var(--space-3); background:var(--surface-sunken); font:600 12px/16px var(--font-sans);
+  color:var(--ink-muted); border-bottom:1px solid var(--line); } /* the export's .c-table th sticks */
+.c-table tr.c-zone__group:hover { background:transparent; }
+.c-zone__groupcount { margin-left:var(--space-2); font:400 12px/16px var(--font-mono); }
+.c-zone__set { font:400 12px/16px var(--font-mono); color:var(--ink-muted); }
+.c-zone__empty { margin:0; padding:var(--space-4); background:var(--surface-sunken); border-radius:var(--radius-md); font:400 14px/20px var(--font-sans); color:var(--ink-muted); }
+@container collection (min-width: 640px) {
+  .c-zone .c-table { table-layout:fixed; }
+  .c-zone .c-table th { box-sizing:border-box; }
+  .c-zone .c-table .c-zone__c-cost { width:11rem; }
+  .c-zone .c-table .c-zone__c-owned { width:5rem; }
+  .c-zone .c-table .c-zone__c-proxy { width:7rem; }
+  .c-zone .c-table .c-zone__c-total { width:5rem; }
+  .c-zone .c-table .c-zone__c-menu { width:4rem; }
+}
+@container collection (max-width: 639px) {
+  .c-decks td:first-child { white-space:normal; overflow-wrap:anywhere; } /* the export's nowrap: a name never widens a phone's table */
+  .c-zone .c-zone__c-total { width:1%; } /* the auto layout shares spare width among auto columns; Total keeps its content's, as the menu does */
+}
+.c-zone td:first-child { white-space:normal; overflow-wrap:anywhere; } /* every width: in the 128px Card column of a 640px table a name would spill into Cost under the export's nowrap */
+.c-zone .c-cost { flex-wrap:wrap; min-width:94px; } /* four pips (4 x 22px + 3 x 2px) never wrap: the auto layout shrinks a cell to its min-content, one wrapped pip, so a phone's Cryptic Command cost took two lines (spec 060 final visual review) */
+
+/* ---------- Decks list (spec 060): the New deck button stays on a phone ---------- */
+/* The export hides a page head's actions below 640px, and the app's header plus means "Add items" everywhere, so the
+   Decks page would have no way to add a deck on a phone (decision 24); this page alone keeps its button. A deck's name
+   wraps with its own rule (`.c-decks td:first-child`) in the zone tables' narrow container query, in the block above. */
+@media (max-width: 639px) { .c-decks .c-pagehead__actions { display:flex; } }
+
+/* ---------- Pick list for AddToDeck and UseMyCopy (spec 060): choices that wrap, with a visible focus ---------- */
+/* A fieldset is as wide as its widest child, so a long place name in "My copies (…)" would widen the page (spec 042
+   AC-7.1's lesson): min-width:0 and a break inside a word. .c-check has no focus ring of its own, so the row shows one
+   while its control has keyboard focus. UseMyCopy's lots are bordered blocks, label above field, the field 44px high and
+   6rem wide so it is hard to mis-tap, space-3 apart (decision 15). */
+.c-pick { min-width:0; gap:var(--space-3); }
+.c-pick .c-check { overflow-wrap:anywhere; }
+.c-pick .c-check:has(input:focus-visible) { outline:2px solid var(--focus); outline-offset:2px; border-radius:var(--radius-sm); }
+.c-pick__group { margin:var(--space-2) 0 calc(var(--space-1) * -1); font:600 12px/16px var(--font-sans); color:var(--ink-muted); }
+.c-pick__lot { display:flex; flex-direction:column; gap:var(--space-2); padding:var(--space-3); background:var(--surface-raised);
+  border:1px solid var(--line); border-radius:var(--radius-md); }
+.c-pick__label { font:400 14px/20px var(--font-sans); color:var(--ink); overflow-wrap:anywhere; }
+.c-pick__lot .c-input { width:6rem; min-height:var(--touch-floor); }
+/* `SET · number` is written `<span class="is-data">` in a pick label, a radio's label and the page-head line. The export gives
+   `.is-data` its mono only in tables, details and lists, so the pick list sets it here (spec 060 documents it in mono), and
+   no break inside it: the page-head line is mono by inheritance but broke inside "2X2 · 117" at 390px. */
+.c-pick .is-data { font-family:var(--font-mono); }
+.c-pick .is-data, .c-pagehead__stats .is-data { white-space:nowrap; }

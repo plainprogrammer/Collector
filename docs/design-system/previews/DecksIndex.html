@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en" data-theme="light"><head>
+<link rel="stylesheet" href="preview-fonts.css"><link rel="stylesheet" href="../../../app/assets/stylesheets/collector/tokens.css"><link rel="stylesheet" href="../../../app/assets/stylesheets/collector/components.css"><link rel="stylesheet" href="../../../app/assets/stylesheets/collector/additions.css"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DecksIndex</title>
+<style>html, body { margin:0; } body { background:var(--surface); }
+.c-decks .c-collection { margin-top:var(--space-6); }</style></head>
+<body>
+<div class="c-shell">
+<header class="c-appbar">
+  <a class="c-appbar__brand" href="#" aria-label="Collector home">
+    <span class="c-appbar__wordmark"><img class="c-logo--light" src="../../../app/assets/images/collector/collector-wordmark.svg" alt=""><img class="c-logo--dark" src="../../../app/assets/images/collector/collector-wordmark-reversed.svg" alt=""></span>
+    <span class="c-appbar__mark"><img class="c-logo--light" src="../../../app/assets/images/collector/collector-mark.svg" alt=""><img class="c-logo--dark" src="../../../app/assets/images/collector/collector-mark-reversed.svg" alt=""></span>
+  </a>
+  <nav class="c-appbar__nav" aria-label="Main"><a href="#">Collection</a><a href="#" aria-current="page">Decks</a><a href="#">Search</a><a href="#">Scan</a><a href="#">Locations</a></nav>
+  <div class="c-appbar__actions">
+    <a class="c-btn c-btn--primary c-btn--sm c-btn--icon c-appbar__add" href="#" aria-label="Add items"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></a>
+    <details class="c-menu"><summary class="c-avatar" aria-label="Account: James">J</summary>
+      <div class="c-menu__list"><a class="c-menu__item" href="#">Profile</a><a class="c-menu__item" href="#">Settings</a><a class="c-menu__item" href="#">Import and export</a><div class="c-menu__sep"></div><a class="c-menu__item" href="#">Sign out</a></div>
+    </details>
+  </div>
+</header>
+<main class="c-main c-page c-decks">
+  <div class="c-pagehead">
+    <div><h1 class="c-pagehead__title">Decks</h1><p class="c-pagehead__stats">6 decks · 379 cards</p></div>
+    <div class="c-pagehead__actions"><a class="c-btn c-btn--primary" href="/decks/new"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>New deck</a></div>
+  </div>
+  <div class="c-collection">
+    <table class="c-table">
+      <thead><tr><th>Deck</th><th class="is-opt">Format</th><th class="is-num">Cards</th><th class="is-num is-opt">Owned</th><th class="is-num is-opt">Proxy</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><div class="c-table__item"><div><a href="/decks/1">Izzet Tempo</a><span class="c-table__sub">Modern · 58 owned · <span class="c-proxy">Proxy <b>11</b></span></span></div></div></td>
+          <td class="is-opt">Modern</td><td class="is-num">69</td><td class="is-num is-opt">58</td><td class="is-num is-opt"><span class="c-proxy">Proxy <b>11</b></span></td>
+        </tr>
+        <tr>
+          <td><div class="c-table__item"><div><a href="/decks/2">Krenko, goblin army</a><span class="c-table__sub">Commander · 97 owned · <span class="c-proxy">Proxy <b>3</b></span></span></div></div></td>
+          <td class="is-opt">Commander</td><td class="is-num">100</td><td class="is-num is-opt">97</td><td class="is-num is-opt"><span class="c-proxy">Proxy <b>3</b></span></td>
+        </tr>
+        <tr>
+          <td><div class="c-table__item"><div><a href="/decks/3">Mono-red burn</a><span class="c-table__sub">Pauper · 75 owned</span></div></div></td>
+          <td class="is-opt">Pauper</td><td class="is-num">75</td><td class="is-num is-opt">75</td><td class="is-num is-opt"><span class="is-muted">–</span></td>
+        </tr>
+        <tr>
+          <td><div class="c-table__item"><div><a href="/decks/4">Esper control</a><span class="c-table__sub">Standard · 60 owned · <span class="c-proxy">Proxy <b>15</b></span></span></div></div></td>
+          <td class="is-opt">Standard</td><td class="is-num">75</td><td class="is-num is-opt">60</td><td class="is-num is-opt"><span class="c-proxy">Proxy <b>15</b></span></td>
+        </tr>
+        <tr>
+          <td><div class="c-table__item"><div><a href="/decks/5">Rakdos pile</a><span class="c-table__sub">Casual · 60 owned</span></div></div></td>
+          <td class="is-opt">Casual</td><td class="is-num">60</td><td class="is-num is-opt">60</td><td class="is-num is-opt"><span class="is-muted">–</span></td>
+        </tr>
+        <tr>
+          <td><div class="c-table__item"><div><a href="/decks/6">New brew</a><span class="c-table__sub">Casual · 0 owned</span></div></div></td>
+          <td class="is-opt">Casual</td><td class="is-num">0</td><td class="is-num is-opt">0</td><td class="is-num is-opt"><span class="is-muted">–</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+<nav class="c-tabbar" aria-label="Main"><a href="#"><span class="c-tabbar__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="9" rx="1"/><rect x="3" y="15" width="7" height="6" rx="1"/><rect x="14" y="15" width="7" height="6" rx="1"/></svg></span>Collection</a><a href="#" aria-current="page"><span class="c-tabbar__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="3" width="12" height="16" rx="2"/><path d="M5 7v12a2 2 0 0 0 2 2h9"/></svg></span>Decks</a><a href="#"><span class="c-tabbar__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>Search</a><a href="#"><span class="c-tabbar__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><rect x="9" y="7.5" width="6" height="9" rx="1"/></svg></span>Scan</a><a href="#"><span class="c-tabbar__icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></span>More</a></nav>
+</div>
+<script>/* preview only: ?theme=dark */ if(new URLSearchParams(location.search).get("theme")==="dark")document.documentElement.dataset.theme="dark";</script>
+</body></html>

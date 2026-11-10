@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en" data-theme="light"><head>
+<link rel="stylesheet" href="preview-fonts.css"><link rel="stylesheet" href="../../../app/assets/stylesheets/collector/tokens.css"><link rel="stylesheet" href="../../../app/assets/stylesheets/collector/components.css"><link rel="stylesheet" href="../../../app/assets/stylesheets/collector/additions.css"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DeckShape</title>
+<style>html, body { margin:0; } body { background:var(--surface); }
+.pv { padding:var(--space-4); color:var(--ink); font-family:var(--font-sans); }
+.pv__cap { margin:0 0 var(--space-2); font:600 12px/16px var(--font-sans); color:var(--ink-muted); }
+.pv__row { display:flex; flex-wrap:wrap; gap:var(--space-6); align-items:flex-start; margin-bottom:var(--space-8); }
+.pv__cell { flex:none; }
+</style></head>
+<body>
+<div class="pv">
+<div class="pv__row">
+  <div class="pv__cell"><p class="pv__cap">aside copy, 320px (shown from 640px of the page container)</p>
+    <div style="width:320px">
+    <aside class="c-deck__shape">
+      <section class="c-shape" aria-labelledby="shape-title-aside">
+        <div><h2 class="c-shape__title" id="shape-title-aside">Deck shape</h2><p class="c-shape__scope">Main · 60 cards</p></div>
+        <div class="c-shape__part"><h3 class="c-shape__heading">Mana curve</h3>
+      <div class="c-curve">
+        <div role="img" aria-label="Mana curve of the 36 nonland cards in Main: mana value 0, 4 cards (4 owned); 1, 12 cards (11 owned, 1 proxy); 2, 8 cards (5 owned, 3 proxy); 3, 4 cards (4 owned); 4, 4 cards (4 owned); 5, 0 cards; 6+, 4 cards (2 owned, 2 proxy). Average mana value 2.3.">
+          <div class="c-curve__cols" aria-hidden="true">
+          <div class="c-curve__col"><span class="c-curve__count">4</span><div class="c-curve__bar"><div class="c-curve__owned" style="--owned:4;--max:12"></div></div></div>
+          <div class="c-curve__col"><span class="c-curve__count">12</span><div class="c-curve__bar"><div class="c-curve__proxy" style="--proxy:1;--max:12"></div><div class="c-curve__owned" style="--owned:11;--max:12"></div></div></div>
+          <div class="c-curve__col"><span class="c-curve__count">8</span><div class="c-curve__bar"><div class="c-curve__proxy" style="--proxy:3;--max:12"></div><div class="c-curve__owned" style="--owned:5;--max:12"></div></div></div>
+          <div class="c-curve__col"><span class="c-curve__count">4</span><div class="c-curve__bar"><div class="c-curve__owned" style="--owned:4;--max:12"></div></div></div>
+          <div class="c-curve__col"><span class="c-curve__count">4</span><div class="c-curve__bar"><div class="c-curve__owned" style="--owned:4;--max:12"></div></div></div>
+          <div class="c-curve__col"><span class="c-curve__count">0</span><div class="c-curve__bar"></div></div>
+          <div class="c-curve__col"><span class="c-curve__count">4</span><div class="c-curve__bar"><div class="c-curve__proxy" style="--proxy:2;--max:12"></div><div class="c-curve__owned" style="--owned:2;--max:12"></div></div></div>
+          </div>
+          <div class="c-curve__labels" aria-hidden="true"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6+</span></div>
+        </div>
+        <ul class="c-curve__legend"><li><span class="c-curve__swatch c-curve__swatch--owned"></span>Owned 30</li><li><span class="c-curve__swatch c-curve__swatch--proxy"></span>Proxy 6</li></ul>
+        <p class="c-curve__avg">Average mana value <b>2.3</b></p>
+      </div></div>
+    <div class="c-shape__part"><h3 class="c-shape__heading">Card types</h3>
+      <ul class="c-types"><li><span>Lands</span><span class="c-types__n">24</span><span class="c-types__proxy">2 proxy</span></li><li><span>Creatures</span><span class="c-types__n">12</span><span class="c-types__proxy">2 proxy</span></li><li><span>Instants</span><span class="c-types__n">16</span><span class="c-types__proxy">1 proxy</span></li><li><span>Sorceries</span><span class="c-types__n">4</span><span class="c-types__proxy">3 proxy</span></li><li><span>Artifacts</span><span class="c-types__n">4</span><span class="c-types__proxy"></span></li></ul></div>
+    <div class="c-shape__part"><h3 class="c-shape__heading">Mana symbols</h3>
+      <ul class="c-manabar" role="img" aria-label="Coloured mana symbols in Main: blue 44, red 16"><li class="c-manabar__seg c-manabar__seg--u" style="--n:44"><span>U 44</span></li><li class="c-manabar__seg c-manabar__seg--r" style="--n:16"><span>R 16</span></li></ul>
+        <p class="c-manacap">Blue 44 · 73% · Red 16 · 27%</p></div>
+      </section>
+    </aside>
+    </div></div>
+  <!-- The details copy is shown only below 640px of a page container (.c-page), so it sits in a 313px .c-page wrapper:
+       the page's own container rule shows it here, as it would on a 360px phone (313px wide, 279px inside). -->
+  <div class="pv__cell"><p class="pv__cap">details copy, closed, 313px (shown below 640px)</p>
+    <div class="c-page" style="width:313px">
+    <details class="c-shapefold">
+      <summary><span class="c-shapefold__title">Deck shape</span><span class="c-shapefold__facts">Main · 60 cards · average mana value 2.3</span></summary>
+      <div class="c-shape c-shape--bare">
+        <div class="c-shape__part"><h3 class="c-shape__heading">Mana curve</h3>
+      <div class="c-curve">
+        <div role="img" aria-label="Mana curve of the 36 nonland cards in Main: mana value 0, 4 cards (4 owned); 1, 12 cards (11 owned, 1 proxy); 2, 8 cards (5 owned, 3 proxy); 3, 4 cards (4 owned); 4, 4 cards (4 owned); 5, 0 cards; 6+, 4 cards (2 owned, 2 proxy). Average mana value 2.3.">
+          <div class="c-curve__cols" aria-hidden="true">
+          <div class="c-curve__col"><span class="c-curve__count">4</span><div class="c-curve__bar"><div class="c-curve__owned" style="--owned:4;--max:12"></div></div></div>
+          <div class="c-curve__col"><span class="c-curve__count">12</span><div class="c-curve__bar"><div class="c-curve__proxy" style="--proxy:1;--max:12"></div><div class="c-curve__owned" style="--owned:11;--max:12"></div></div></div>
+          <div class="c-curve__col"><span class="c-curve__count">8</span><div class="c-curve__bar"><div class="c-curve__proxy" style="--proxy:3;--max:12"></div><div class="c-curve__owned" style="--owned:5;--max:12"></div></div></div>
+          <div class="c-curve__col"><span class="c-curve__count">4</span><div class="c-curve__bar"><div class="c-curve__owned" style="--owned:4;--max:12"></div></div></div>
+          <div class="c-curve__col"><span class="c-curve__count">4</span><div class="c-curve__bar"><div class="c-curve__owned" style="--owned:4;--max:12"></div></div></div>
+          <div class="c-curve__col"><span class="c-curve__count">0</span><div class="c-curve__bar"></div></div>
+          <div class="c-curve__col"><span class="c-curve__count">4</span><div class="c-curve__bar"><div class="c-curve__proxy" style="--proxy:2;--max:12"></div><div class="c-curve__owned" style="--owned:2;--max:12"></div></div></div>
+          </div>
+          <div class="c-curve__labels" aria-hidden="true"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6+</span></div>
+        </div>
+        <ul class="c-curve__legend"><li><span class="c-curve__swatch c-curve__swatch--owned"></span>Owned 30</li><li><span class="c-curve__swatch c-curve__swatch--proxy"></span>Proxy 6</li></ul>
+        <p class="c-curve__avg">Average mana value <b>2.3</b></p>
+      </div></div>
+    <div class="c-shape__part"><h3 class="c-shape__heading">Card types</h3>
+      <ul class="c-types"><li><span>Lands</span><span class="c-types__n">24</span><span class="c-types__proxy">2 proxy</span></li><li><span>Creatures</span><span class="c-types__n">12</span><span class="c-types__proxy">2 proxy</span></li><li><span>Instants</span><span class="c-types__n">16</span><span class="c-types__proxy">1 proxy</span></li><li><span>Sorceries</span><span class="c-types__n">4</span><span class="c-types__proxy">3 proxy</span></li><li><span>Artifacts</span><span class="c-types__n">4</span><span class="c-types__proxy"></span></li></ul></div>
+    <div class="c-shape__part"><h3 class="c-shape__heading">Mana symbols</h3>
+      <ul class="c-manabar" role="img" aria-label="Coloured mana symbols in Main: blue 44, red 16"><li class="c-manabar__seg c-manabar__seg--u" style="--n:44"><span>U 44</span></li><li class="c-manabar__seg c-manabar__seg--r" style="--n:16"><span>R 16</span></li></ul>
+        <p class="c-manacap">Blue 44 · 73% · Red 16 · 27%</p></div>
+      </div>
+    </details>
+    </div></div>
+  <div class="pv__cell"><p class="pv__cap">details copy, open, 313px</p>
+    <div class="c-page" style="width:313px">
+    <details class="c-shapefold" open>
+      <summary><span class="c-shapefold__title">Deck shape</span><span class="c-shapefold__facts">Main · 60 cards · average mana value 2.3</span></summary>
+      <div class="c-shape c-shape--bare">
+        <div class="c-shape__part"><h3 class="c-shape__heading">Mana curve</h3>
+      <div class="c-curve">
+        <div role="img" aria-label="Mana curve of the 36 nonland cards in Main: mana value 0, 4 cards (4 owned); 1, 12 cards (11 owned, 1 proxy); 2, 8 cards (5 owned, 3 proxy); 3, 4 cards (4 owned); 4, 4 cards (4 owned); 5, 0 cards; 6+, 4 cards (2 owned, 2 proxy). Average mana value 2.3.">
+          <div class="c-curve__cols" aria-hidden="true">
+          <div class="c-curve__col"><span class="c-curve__count">4</span><div class="c-curve__bar"><div class="c-curve__owned" style="--owned:4;--max:12"></div></div></div>
+          <div class="c-curve__col"><span class="c-curve__count">12</span><div class="c-curve__bar"><div class="c-curve__proxy" style="--proxy:1;--max:12"></div><div class="c-curve__owned" style="--owned:11;--max:12"></div></div></div>
+          <div class="c-curve__col"><span class="c-curve__count">8</span><div class="c-curve__bar"><div class="c-curve__proxy" style="--proxy:3;--max:12"></div><div class="c-curve__owned" style="--owned:5;--max:12"></div></div></div>
+          <div class="c-curve__col"><span class="c-curve__count">4</span><div class="c-curve__bar"><div class="c-curve__owned" style="--owned:4;--max:12"></div></div></div>
+          <div class="c-curve__col"><span class="c-curve__count">4</span><div class="c-curve__bar"><div class="c-curve__owned" style="--owned:4;--max:12"></div></div></div>
+          <div class="c-curve__col"><span class="c-curve__count">0</span><div class="c-curve__bar"></div></div>
+          <div class="c-curve__col"><span class="c-curve__count">4</span><div class="c-curve__bar"><div class="c-curve__proxy" style="--proxy:2;--max:12"></div><div class="c-curve__owned" style="--owned:2;--max:12"></div></div></div>
+          </div>
+          <div class="c-curve__labels" aria-hidden="true"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6+</span></div>
+        </div>
+        <ul class="c-curve__legend"><li><span class="c-curve__swatch c-curve__swatch--owned"></span>Owned 30</li><li><span class="c-curve__swatch c-curve__swatch--proxy"></span>Proxy 6</li></ul>
+        <p class="c-curve__avg">Average mana value <b>2.3</b></p>
+      </div></div>
+    <div class="c-shape__part"><h3 class="c-shape__heading">Card types</h3>
+      <ul class="c-types"><li><span>Lands</span><span class="c-types__n">24</span><span class="c-types__proxy">2 proxy</span></li><li><span>Creatures</span><span class="c-types__n">12</span><span class="c-types__proxy">2 proxy</span></li><li><span>Instants</span><span class="c-types__n">16</span><span class="c-types__proxy">1 proxy</span></li><li><span>Sorceries</span><span class="c-types__n">4</span><span class="c-types__proxy">3 proxy</span></li><li><span>Artifacts</span><span class="c-types__n">4</span><span class="c-types__proxy"></span></li></ul></div>
+    <div class="c-shape__part"><h3 class="c-shape__heading">Mana symbols</h3>
+      <ul class="c-manabar" role="img" aria-label="Coloured mana symbols in Main: blue 44, red 16"><li class="c-manabar__seg c-manabar__seg--u" style="--n:44"><span>U 44</span></li><li class="c-manabar__seg c-manabar__seg--r" style="--n:16"><span>R 16</span></li></ul>
+        <p class="c-manacap">Blue 44 · 73% · Red 16 · 27%</p></div>
+      </div>
+    </details>
+    </div></div>
+</div>
+<!-- Five colours: W 3 and B 4 are under 10% of the symbols, so they carry the narrow class and no label; the caption names them. -->
+<p class="pv__cap">Mana symbols, five colours, 320px</p>
+<div style="width:320px"><div class="c-shape">
+  <div class="c-shape__part"><h3 class="c-shape__heading">Mana symbols</h3>
+    <ul class="c-manabar" role="img" aria-label="Coloured mana symbols in Main: white 3, blue 20, black 4, red 18, green 15"><li class="c-manabar__seg c-manabar__seg--w c-manabar__seg--narrow" style="--n:3"><span>W 3</span></li><li class="c-manabar__seg c-manabar__seg--u" style="--n:20"><span>U 20</span></li><li class="c-manabar__seg c-manabar__seg--b c-manabar__seg--narrow" style="--n:4"><span>B 4</span></li><li class="c-manabar__seg c-manabar__seg--r" style="--n:18"><span>R 18</span></li><li class="c-manabar__seg c-manabar__seg--g" style="--n:15"><span>G 15</span></li></ul>
+        <p class="c-manacap">White 3 · 5% · Blue 20 · 33% · Black 4 · 7% · Red 18 · 30% · Green 15 · 25%</p></div>
+</div></div>
+</div>
+<script>/* preview only: ?theme=dark */ if(new URLSearchParams(location.search).get("theme")==="dark")document.documentElement.dataset.theme="dark";</script>
+</body></html>

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en" data-theme="light"><head>
+<link rel="stylesheet" href="preview-fonts.css"><link rel="stylesheet" href="../../../app/assets/stylesheets/collector/tokens.css"><link rel="stylesheet" href="../../../app/assets/stylesheets/collector/components.css"><link rel="stylesheet" href="../../../app/assets/stylesheets/collector/additions.css"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ProxyTag</title>
+<style>html, body { margin:0; } body { background:var(--surface); }
+.pv { padding:var(--space-4); color:var(--ink); font-family:var(--font-sans); }
+.pv__cap { margin:var(--space-6) 0 var(--space-2); font:600 12px/16px var(--font-sans); color:var(--ink-muted); }
+.pv__cap:first-child { margin-top:0; }
+.pv__wide { width:640px; max-width:100%; }
+.pv__phone { width:360px; max-width:100%; border:1px solid var(--line); border-radius:var(--radius-md); }
+</style></head>
+<body>
+<div class="pv">
+<!-- Part 1: the tag in the Proxy column of a table from 640px of its container; a muted dash where a row has no proxies. -->
+<p class="pv__cap">In a table (640px and wider)</p>
+<div class="pv__wide"><div class="c-collection"><table class="c-table"><thead><tr><th>Card</th><th class="is-num">Owned</th><th class="is-num">Proxy</th><th class="is-num">Total</th></tr></thead><tbody>
+  <tr><td><div class="c-table__item"><div><a href="#">Murktide Regent</a></div></div></td><td class="is-num">2</td><td class="is-num"><span class="c-proxy">Proxy <b>2</b></span></td><td class="is-num">4</td></tr>
+  <tr><td><div class="c-table__item"><div><a href="#">Lightning Bolt</a></div></div></td><td class="is-num">3</td><td class="is-num"><span class="c-proxy">Proxy <b>1</b></span></td><td class="is-num">4</td></tr>
+  <tr><td><div class="c-table__item"><div><a href="#">Expressive Iteration</a></div></div></td><td class="is-num">1</td><td class="is-num"><span class="c-proxy">Proxy <b>3</b></span></td><td class="is-num">4</td></tr>
+  <tr><td><div class="c-table__item"><div><a href="#">Counterspell</a></div></div></td><td class="is-num">4</td><td class="is-num"><span class="is-muted">–</span></td><td class="is-num">4</td></tr>
+</tbody></table></div></div>
+<!-- Part 2: on a phone the Owned and Proxy columns are hidden and the line under the name carries set · number and the tag. -->
+<p class="pv__cap">On a phone line (below 640px)</p>
+<div class="pv__phone"><div class="c-collection"><table class="c-table"><thead><tr><th>Card</th><th class="is-num">Total</th></tr></thead><tbody>
+  <tr><td><div class="c-table__item"><div><a href="#">Murktide Regent</a><span class="c-table__sub"><span class="c-zone__set">MH2 · 52</span> <span class="c-proxy">Proxy <b>2</b></span></span></div></div></td><td class="is-num">4</td></tr>
+  <tr><td><div class="c-table__item"><div><a href="#">Lightning Bolt</a><span class="c-table__sub"><span class="c-zone__set">2X2 · 117</span> <span class="c-proxy">Proxy <b>1</b></span></span></div></div></td><td class="is-num">4</td></tr>
+  <tr><td><div class="c-table__item"><div><a href="#">Counterspell</a><span class="c-table__sub"><span class="c-zone__set">MH2 · 267</span></span></div></div></td><td class="is-num">4</td></tr>
+</tbody></table></div></div>
+<!-- Part 3: the tag alone. -->
+<p class="pv__cap">The tag</p>
+<p style="margin:0"><span class="c-proxy">Proxy <b>1</b></span> <span class="c-proxy">Proxy <b>2</b></span> <span class="c-proxy">Proxy <b>11</b></span></p>
+</div>
+<script>/* preview only: ?theme=dark */ if(new URLSearchParams(location.search).get("theme")==="dark")document.documentElement.dataset.theme="dark";</script>
+</body></html>
