@@ -79,3 +79,4 @@
 - [2.0 milestone](milestone-2-0.md) — post-1.0 work goes on milestone #2 as stories; #258 deck checks early; #262 unplaced
 - [Brainstorm mock-ups with Collector CSS](brainstorm-mockups-with-collector-css.md) — visual companion serves /files/<basename>; copy CSS + fonts flat, rewrite font URLs; restart keeps the port
 - [Design system guard and RuboCop traps](design-system-guard-and-rubocop-traps.md) — additions.css blocks need their own (spec NNN) heading (guard spec counts); LeakyConstantDeclaration, DescribeClass, ExampleLength in new specs
+- [claude -p hook proof](claude-p-hook-proof.md) — prove a hook change in a fresh local session: throwaway worktree with hooksPath off, absolute-path claude, probe hook for CLAUDE_ENV_FILE; COLLECTOR_MISE_SEARCH=/nonexistent for the no-mise path
