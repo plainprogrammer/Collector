@@ -99,4 +99,60 @@ RSpec.describe "Design system: deck rules, navigation and pickers", type: :syste
       within_narrow_frame { expect(cap("select[name=location]")).to eq("220px") }
     end
   end
+
+  describe "the three-stat strip (AC-5.2 to AC-5.4)" do
+    def three = [ [ "Owned", "7", "3 printings" ], [ "In decks", "4", "in 2 decks" ], [ "Free to use", "3", "not in a deck" ] ]
+    def four = three + [ [ "Est. value", "$10.20", "updated today" ] ]
+
+    def stat(label, value, small) = %(<div class="c-stat"><dt>#{label}</dt><dd>#{value}</dd><small>#{small}</small></div>)
+    def strip(width, modifier, stats) = add_to_main(%(<div class="c-page" style="width:#{width}px"><dl class="c-stats #{modifier}" id="probe-strip">#{stats.map { stat(*it) }.join}</dl></div>))
+
+    # Columns, each stat's width and its left and top border, whether the strip scrolls sideways and whether every
+    # stat's content fits inside the stat.
+    def layout
+      evaluate(<<~JS)
+        const strip = document.querySelector("#probe-strip")
+        const stats = [ ...strip.children ]
+        const border = (el, side) => getComputedStyle(el).getPropertyValue(`border-${side}-width`)
+        return { columns: getComputedStyle(strip).gridTemplateColumns.split(" ").length,
+                 widths: stats.map((el) => el.getBoundingClientRect().width),
+                 left: stats.map((el) => border(el, "left")), top: stats.map((el) => border(el, "top")),
+                 divider: stats[1] ? getComputedStyle(stats[1]).borderLeftColor : null, // a single strip has no second stat
+                 scrolls: strip.scrollWidth > strip.clientWidth, fits: stats.every((el) => el.scrollWidth <= el.clientWidth) }
+      JS
+    end
+
+    before do
+      own
+      visit collection_path
+    end
+
+    it "is three equal columns with a 1px line divider between neighbours at 900px (AC-5.2)", :aggregate_failures do
+      strip(900, "c-stats--three", three)
+      found = layout
+      expect(found["columns"]).to eq(3)
+      expect(found["widths"].max - found["widths"].min).to be <= 1
+      expect(found["left"]).to eq([ "0px", "1px", "1px" ])
+      expect(found["divider"]).to eq(token("--line"))
+    end
+
+    it "stays three across at 328px, divided by left borders and none on top, without overflow (AC-5.3)", :aggregate_failures do
+      strip(328, "c-stats--three", three)
+      found = layout
+      expect(found["columns"]).to eq(3)
+      expect(found["widths"].max - found["widths"].min).to be <= 1
+      expect(found["left"]).to eq([ "0px", "1px", "1px" ])
+      expect(found["top"]).to eq(%w[0px 0px 0px])
+      expect([ found["scrolls"], found["fits"] ]).to eq([ false, true ])
+    end
+
+    it "leaves the four-up strip two by two and the single strip one column at 328px (AC-5.4)", :aggregate_failures do
+      strip(328, "", four)
+      found = layout
+      expect([ found["columns"], found["left"], found["top"] ]).to eq([ 2, %w[0px 1px 0px 1px], %w[0px 0px 1px 1px] ])
+      visit collection_path
+      strip(328, "c-stats--single", three.first(1))
+      expect(layout["columns"]).to eq(1)
+    end
+  end
 end

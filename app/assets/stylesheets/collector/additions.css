@@ -158,6 +158,17 @@ img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches:
 .c-list .c-tile__add .c-btn { width:auto; }
 @container page (max-width: 639px) { .c-stats--single { grid-template-columns:minmax(0, 1fr); max-width:none; } }
 
+/* ---------- Three-stat strip (spec 057): the card page's Owned, In decks and Free to use ---------- */
+/* Three equal columns at every width, because the labels fit at 360px. The export's narrow rules assume a two by two grid
+   (no left border on the third stat, a top border from the third stat on), so the strip restates them for three. With
+   "Est. value" back the page uses the plain four-up c-stats and drops this modifier (spec 057 decision 7). */
+.c-stats--three { grid-template-columns:repeat(3, minmax(0, 1fr)); }
+@container page (max-width: 639px) {
+  .c-stats.c-stats--three { grid-template-columns:repeat(3, minmax(0, 1fr)); }
+  .c-stats.c-stats--three .c-stat { padding:var(--space-3); border-top:0; }
+  .c-stats.c-stats--three .c-stat + .c-stat { border-left:1px solid var(--line); }
+}
+
 /* ---------- Sortable table header (spec 006): a link, or a bulk-form button, with the order's arrow ---------- */
 .c-table__sort { display:inline-flex; align-items:center; gap:var(--space-1); padding:0; border:0; background:none;
   color:inherit; font:inherit; text-decoration:none; cursor:pointer; }
