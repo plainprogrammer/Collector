@@ -13,10 +13,11 @@ common_dir=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) 
 [ "$git_dir" != "$common_dir" ] || exit 0
 [ -x bin/setup ] || exit 0
 
-# The caller's environment may carry another Ruby (Orca's has the global mise one): with mise,
-# run setup on the Ruby that .ruby-version names (#225). Without it (CI runners), run it as is.
-if command -v mise >/dev/null 2>&1; then
-  set -- mise exec -- bin/setup --skip-server
+# The caller's environment may carry another Ruby, or none and no mise on the PATH (Orca's: #225, #268).
+# script/worktree/with_mise finds mise and runs setup on the Ruby that .ruby-version names; with no mise
+# anywhere (CI runners), --optional runs it as is.
+if [ -x script/worktree/with_mise ]; then
+  set -- script/worktree/with_mise --optional bin/setup --skip-server
 else
   set -- bin/setup --skip-server
 fi
