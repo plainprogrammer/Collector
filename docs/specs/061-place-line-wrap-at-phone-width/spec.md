@@ -7,6 +7,7 @@
 **Depends on:** [spec 048](../048-row-place-line/spec.md) (a table row's place line wraps; decision 4, AC-1.7, AC-1.8), [spec 033](../033-location-on-tiles-and-rows/spec.md) (the phone line); [#272](https://github.com/plainprogrammer/Collector/pull/272) (the suite pins classic scrollbars), all merged
 **Branch:** `061-place-line-wrap-at-phone-width`
 **Issue:** [#288](https://github.com/plainprogrammer/Collector/issues/288) (the cause was found in [#271](https://github.com/plainprogrammer/Collector/issues/271); theme: locations)
+**Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (whole spec); see the [specs index](../README.md)
 
 ---
 
