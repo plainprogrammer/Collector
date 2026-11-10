@@ -44,6 +44,10 @@ FactoryBot.define do
     scryfall_uri { "https://scryfall.com/card/#{entry.set.code}/#{entry.number}" }
   end
 
+  factory :mtg_card, class: "MTG::Card" do
+    identity factory: :catalog_identity
+  end
+
   factory :catalog_refresh_run, class: "Catalog::RefreshRun" do
     collectible_type { "mtg" }
     trigger { "scheduled" }
