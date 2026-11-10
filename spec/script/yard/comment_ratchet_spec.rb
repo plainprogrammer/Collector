@@ -477,7 +477,8 @@ RSpec.describe YardRatchet::Check, :git_sandbox, type: :model do # rubocop:disab
     {
       "a @!parse directive that defines a class" => [ "# @!parse\n#   class Fake; end\nclass P\nend\n", "P" ],
       "a @!parse directive that defines a method" => [ "# @!parse\n#   def self.fake; end\nmodule P\nend\n", "P" ],
-      "a @!macro directive" => [ "# @!macro [new] thing\n#   Does $1.\nclass P\nend\n", "P" ]
+      "a @!method directive" => [ "# @!method fake\n#   @return [Integer]\nclass P\nend\n", "P" ],
+      "an @!attribute directive" => [ "# @!attribute [r] fake\n#   @return [Integer]\nclass P\nend\n", "P" ]
     }.each do |what, (source, name)|
       it "fails a new class or module whose only comment is #{what}, naming it, with no exception (AC-3.1)", :aggregate_failures do
         base_with("README.md" => "base")
@@ -486,7 +487,8 @@ RSpec.describe YardRatchet::Check, :git_sandbox, type: :model do # rubocop:disab
         result = check
 
         expect(result).not_to be_ok
-        expect(offences(result)).to eq([ "lib/x.rb:#{source.lines.size - 1}: #{name} has no comment (added)" ])
+        # YARD also registers what the directive defines, at the line of the class it sits on, so that is reported too.
+        expect(offences(result)).to include("lib/x.rb:#{source.lines.size - 1}: #{name} has no comment (added)")
       end
     end
 

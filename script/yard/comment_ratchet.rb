@@ -163,16 +163,21 @@ module YardRatchet
 
       object.files.any? do |file, line|
         lines = sources[file]
-        summary?(lines[(comment_start(lines, line) - 1)...(line - 1)].map { it.sub(/\A\s*#\s?/, "") }.join("\n"), parse: true)
+        summary?(lines[(comment_start(lines, line) - 1)...(line - 1)].map { it.sub(/\A\s*#\s?/, "") }.join("\n"), raw: true)
       end
     end
     private_class_method :commented?
 
-    # Whether comment `text` (without its `#`s) has text before its first tag once the leading shebang and magic
-    # comments are dropped; `parse` reads the tags out of raw lines, which YARD's own docstring already did.
-    def self.summary?(text, parse: false)
+    # Whether comment `text` (without its `#`s) has text before its first tag or directive once the leading shebang and
+    # magic comments are dropped; `raw` is a definition's own comment lines, whose tags YARD's docstring has not cut out.
+    #
+    # The raw lines are cut at the first line that starts with `@` by hand and not by `YARD::DocstringParser`: it
+    # *runs* directives, and a `@!parse` one parses its code into the live registry (from a source named `(stdin)`)
+    # while `build` walks it, which crashed the check on a class whose only comment was such a directive. A directive
+    # is not summary text, so cutting at it also gives the answer decision 2 wants.
+    def self.summary?(text, raw: false)
       text = text.lines.drop_while { it.strip.empty? || it.strip.match?(MAGIC_LINE) }.join
-      text = YARD::DocstringParser.new.parse(text).text if parse
+      text = text.lines.take_while { !it.match?(/\A\s*@\S/) }.join if raw
       !text.strip.empty?
     end
     private_class_method :summary?
