@@ -471,6 +471,39 @@ RSpec.describe YardRatchet::Check, :git_sandbox, type: :model do # rubocop:disab
       end
     end
 
+    # A `@!parse` directive in the only comment of a class defines code in YARD's registry when YARD runs the
+    # directive, and the check must not run it: that re-parses text from `(stdin)` while the snapshot walks the registry
+    # (AC-3.1, decision 2: a directive is not summary text).
+    {
+      "a @!parse directive that defines a class" => [ "# @!parse\n#   class Fake; end\nclass P\nend\n", "P" ],
+      "a @!parse directive that defines a method" => [ "# @!parse\n#   def self.fake; end\nmodule P\nend\n", "P" ],
+      "a @!macro directive" => [ "# @!macro [new] thing\n#   Does $1.\nclass P\nend\n", "P" ]
+    }.each do |what, (source, name)|
+      it "fails a new class or module whose only comment is #{what}, naming it, with no exception (AC-3.1)", :aggregate_failures do
+        base_with("README.md" => "base")
+        write("lib/x.rb", source)
+
+        result = check
+
+        expect(result).not_to be_ok
+        expect(offences(result)).to eq([ "lib/x.rb:#{source.lines.size - 1}: #{name} has no comment (added)" ])
+      end
+    end
+
+    it "passes a new class whose summary comes before a @!parse directive (decision 2)" do
+      base_with("README.md" => "base")
+      write("lib/x.rb", "# Summary.\n#\n# @!parse\n#   class Fake; end\nclass P\nend\n")
+
+      expect(check).to be_ok
+    end
+
+    it "doesn't crash on an unchanged file whose only comment is a @!parse directive when the branch changes another file (AC-3.1)", :aggregate_failures do
+      base_with("lib/x.rb" => "# @!parse\n#   class Fake; end\nclass P\nend\n", "lib/y.rb" => "# Y.\nclass Y\nend\n")
+      write("lib/y.rb", "# Y.\nclass Y\n  # Runs.\n  def run = 1\nend\n")
+
+      expect(check).to be_ok
+    end
+
     it "doesn't judge a namespace a new file reopens (AC-1.13)", :aggregate_failures do
       base_with("lib/collector/other.rb" => other)
       write("lib/collector/thing.rb", "module Collector\n  # Does a thing.\n  class Thing\n  end\nend\n")
