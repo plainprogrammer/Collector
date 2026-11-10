@@ -1,7 +1,7 @@
 # Feature 060: Design System: Deck Components and Previews
 
-**Status:** Draft (every decision, 1 to 17, 23 and 24, ruled by the maintainer on 2026-11-10; spec review round 2 fixed; awaiting Gate A)
-**Version:** 0.4.0
+**Status:** Approved by the maintainer at Gate A on 2026-11-10 (as written, with my calls 18 to 22 and 25 and items (a) to (e) of the Gate A message)
+**Version:** 1.0.0
 **Created:** 2026-11-10
 **Last Updated:** 2026-11-10
 **Depends on:** [spec 057](../057-deck-design-rules/spec.md) (the deck rules, the Charts rule, the Decks vocabulary, grouped pickers), [spec 058](../058-mtg-mana-value/spec.md) (the mana value the curve expects), both merged; [the decks and locations issue design](../../superpowers/specs/2026-11-09-decks-and-locations-issues-design.md) (decisions 4, 7, 9 to 13, 15 to 17)
@@ -14,6 +14,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.0.0 | 2026-11-10 | Approved at Gate A by the maintainer, as written: decisions 18 to 22 and 25 confirmed, and the notes on the stacked panel's two copies, the Decks page's New deck button, the two derived error sentences, the panel-less deck page and the redrawn mock-ups. The one text change is a Files-table row for `.rubocop.yml` (the new system spec's `RSpec/DescribeClass` exclusion), which the plan needs; no criterion changes |
 | 0.4.0 | 2026-11-10 | Spec review round 2 (NEEDS REVISION; 0 blocking, 5 major, 6 minor, 2 nits) fixed: decision 25's widths redone from the real CSS (border-box `th` widths; Cost 10rem; the fixed layout from 640px of the table's container only, narrow tables keep the auto layout the maintainer ruled in decision 9, with the pips allowed to wrap), moved into FR-3 and limited to the zone tables; decision 24 ruled A and its CSS and the `AppHeader.md` exception named; the quantity errors split into a per-lot and a group sentence; the panel-less deck page (issue design [7]) gets a rule and AC-3.12; the panel's DOM order and ids; Supersedes and the index row; AC-7.7 in the Verification list; two nits |
 | 0.3.0 | 2026-11-10 | The maintainer ruled decisions 1 to 17 and 23 (2026-11-10): all as recommended except 13 (New deck is a button to its own page) and 15 (a quantity field on every lot), and 14 as recommended for the single-option case. Decision 24 (New deck on a phone) is a follow-up, drafted as recommended and still with the maintainer. Markers removed; stories, FRs and the files table follow decisions 13 and 15 (a New deck page, with its own preview; quantity fields); the plan inherits the shared fixed column layout the coordinator asked for (decision 25) |
 | 0.2.0 | 2026-11-10 | Spec review round 1 (NEEDS REVISION; 0 blocking, 7 major, 10 minor, 6 nits) fixed: the stacked panel's mechanism (two renderings, decision 7); names wrap in a narrow table container, with worst-case rows in the ACs; the card page's Proxy column keeps spec 057's plain count; the shell's rules vs the Magic sample (decision 21); the panel's widths (320px, 313px stacked); empty and refused states, with decision 23 for their wording; the pick list's wrap and focus ring; AC-1.3, AC-4.4, AC-7.2, AC-7.5, AC-7.7 and the verification lists; three Supersedes entries |
@@ -290,6 +291,7 @@ None. The maintainer ruled every decision (1 to 17, 23 and 24); decisions 18 to 
 | `docs/design-system/previews/*.html` (existing) | Icon strokes (decision 16); `ItemPage.html` and `ItemPagePhone.html` indentation |
 | `app/assets/stylesheets/collector/additions.css` | New blocks, each under its own `(spec 060 …)` heading (decision 22) |
 | `spec/system/design_system_deck_components_spec.rb` (new) | The CSS and layout criteria (AC-1.2, 1.3, 2.2 to 2.7, 3.2 to 3.9, 3.11, 3.12, 4.2 to 4.5, 5.2, 5.3, 6.2 to 6.4) |
+| `.rubocop.yml` | The new system spec's `RSpec/DescribeClass` exclusion, with its reason |
 | `docs/specs/README.md` | This spec's row |
 | `docs/specs/060-deck-components/verification.md` | The record |
 
