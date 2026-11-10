@@ -11,7 +11,7 @@ RSpec.describe "Upgrade proof files" do
     expect(Rails.root.join("config/ci.rb").read).to include('step "Upgrade: released migrations unchanged", "ruby script/upgrade/guard.rb"')
   end
 
-  it "fetches the full history and the tags in the checks job, which runs the guard (AC-8.5, AC-7.6 as superseded by spec 035)", :aggregate_failures do
+  it "fetches the full history and the tags in the checks job, which runs the guard and the comment ratchet's merge base (AC-8.5, AC-7.6 as superseded by spec 035; spec 056 AC-4.9)", :aggregate_failures do
     expect(checkout("checks").dig("with", "fetch-depth")).to eq(0)
     run_lines = %w[checks rspec].flat_map { |job| workflow.dig("jobs", job, "steps").filter_map { it["run"] } }
     expect(run_lines).not_to include(a_string_matching(/upgrade-smoke|docker|podman/))
