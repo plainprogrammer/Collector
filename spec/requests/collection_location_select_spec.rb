@@ -29,7 +29,7 @@ RSpec.describe "The collection's Location select", type: :request do # spec 037 
       expect(options).to eq([ [ "All locations", "" ], [ "No location", "none" ], [ "Blue binder", blue.id.to_s ], [ "long box", account.locations.find_by(name: "long box").id.to_s ] ])
       expect(chosen).to eq("")
       label = select.parent
-      expect([ label.name, label["class"], label.at_css(".c-sr").text ]).to eq([ "label", "c-select", "Location" ])
+      expect([ label.name, label["class"], label.at_css(".c-sr").text ]).to eq([ "label", "c-select c-select--wide", "Location" ])
       expect(select["form"]).to be_nil
       filters = select.ancestors(".c-filterbar__filters").first
       expect(filters.ancestors("form").first["method"]).to eq("get")
@@ -45,6 +45,13 @@ RSpec.describe "The collection's Location select", type: :request do # spec 037 
       end
       get collection_path(location: "none")
       expect(chosen).to eq("none")
+    end
+
+    it "carries the wide modifier in bulk mode too (AC-4.6)" do
+      own
+      blue
+      start_bulk
+      expect(select.parent["class"]).to eq("c-select c-select--wide")
     end
 
     it "is not shown while the account has no location, in either mode (AC-6.1)", :aggregate_failures do
