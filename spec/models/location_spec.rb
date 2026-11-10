@@ -89,7 +89,7 @@ RSpec.describe Location, type: :model do
       expect(add("The 500th")).to be_persisted
       refused = add("The 501st")
       expect(refused).not_to be_persisted
-      expect(reasons(refused)).to eq([ "You can have at most 500 locations." ])
+      expect(reasons(refused)).to eq([ "You can have at most 500 places and decks together." ])
       expect(account.locations.count).to eq(500)
     end
 
@@ -142,6 +142,168 @@ RSpec.describe Location, type: :model do
     add("Box")
 
     expect { user.destroy! }.to change(described_class, :count).by(-2)
+  end
+
+  describe "kinds (spec 062 decision 1, ADR 0028)" do
+    def deck(name = "Izzet Tempo", in_account: account) = in_account.locations.create!(name:, kind: "deck")
+
+    def zone(of, name = "Main", key: "main") = Location.new(account_id: of.account_id, parent: of, kind: "deck_zone", name:, zone: key)
+
+    def top_level(count, kind: "place")
+      Location.insert_all!(Array.new(count) { |index| { account_id: account.id, name: "#{kind} #{index}", name_key: "#{kind} #{index}", kind: } })
+    end
+
+    it "is a place unless it is made another kind, and the kinds and scopes tell them apart", :aggregate_failures do
+      place = add("Binder")
+      izzet = deck
+      main = zone(izzet).tap(&:save!)
+
+      expect([ place, izzet, main ].map(&:kind)).to eq(%w[place deck deck_zone])
+      expect([ place.place?, izzet.deck?, main.zone? ]).to all(be(true))
+      expect([ place.deck?, place.zone?, izzet.place?, main.place? ]).to all(be(false))
+      expect(described_class.places).to contain_exactly(place)
+      expect(described_class.decks).to contain_exactly(izzet)
+      expect(described_class.zones_of_decks).to contain_exactly(main)
+      expect(described_class.top_level).to contain_exactly(place, izzet)
+      expect(izzet.zones).to contain_exactly(main)
+      expect(main.parent).to eq(izzet)
+    end
+
+    it "labels a zone with its deck and anything else with its name (spec 062 D6)", :aggregate_failures do
+      izzet = deck
+      main = zone(izzet).tap(&:save!)
+
+      expect(main.label).to eq("Izzet Tempo › Main")
+      expect(izzet.label).to eq("Izzet Tempo")
+      expect(add("Binder").label).to eq("Binder")
+      expect(described_class::Placement.label("Main", "Izzet Tempo")).to eq("Izzet Tempo › Main")
+    end
+
+    describe "the limit (AC-1.7a, AC-5.9)" do
+      it "says decks count toward it", :aggregate_failures do
+        expect(described_class::FULL).to eq("You can have at most 500 places and decks together.")
+        expect(described_class::MAX_PER_ACCOUNT).to eq(500)
+      end
+
+      it "counts places and decks together: 400 places and 100 decks refuse a 501st place and a 501st deck", :aggregate_failures do
+        top_level(400)
+        top_level(100, kind: "deck")
+
+        [ "place", "deck" ].each do |kind|
+          refused = account.locations.new(name: "One more #{kind}", kind:).tap(&:save)
+          expect(refused).not_to be_persisted
+          expect(reasons(refused)).to eq([ "You can have at most 500 places and decks together." ])
+        end
+        expect(account.locations.count).to eq(500)
+      end
+
+      it "does not count zones: 499 top-level rows and 3 zones accept a 500th", :aggregate_failures do
+        top_level(498)
+        izzet = deck
+        3.times { |index| described_class.insert!({ account_id: account.id, parent_id: izzet.id, kind: "deck_zone", name: "Zone #{index}", name_key: "zone #{index}", zone: "z#{index}" }) }
+
+        expect(add("The 500th")).to be_persisted
+        expect(add("The 501st")).not_to be_persisted
+      end
+
+      it "does not refuse to save a zone or a rename when the account is full", :aggregate_failures do
+        top_level(499)
+        izzet = deck
+
+        expect(zone(izzet).save).to be(true)
+        izzet.name = "Izzet Tempo 2"
+        expect(izzet.save).to be(true)
+      end
+    end
+
+    describe "names (AC-1.5, AC-1.6)" do
+      it "is shared by places and decks: a deck can't have a place's key and a place can't have a deck's", :aggregate_failures do
+        add("Main")
+        deck("Izzet")
+
+        refused_deck = account.locations.new(name: "  main ", kind: "deck").tap(&:save)
+        refused_place = add("IZZET")
+
+        expect(reasons(refused_deck)).to eq([ "You already have a location called “main”." ])
+        expect(reasons(refused_place)).to eq([ "You already have a location called “IZZET”." ])
+      end
+
+      it "may repeat a zone's name in two decks and not in one", :aggregate_failures do
+        one = deck("One")
+        two = deck("Two")
+        zone(one).save!
+
+        expect(zone(two).save).to be(true)
+        again = zone(one, "main", key: "other")
+        expect(again.save).to be(false)
+        expect(reasons(again)).to eq([ "You already have a location called “main”." ])
+      end
+
+      it "lets a zone have the name of a place or a deck", :aggregate_failures do
+        add("Main")
+        izzet = deck
+
+        expect(zone(izzet).save).to be(true)
+      end
+
+      it "is refused by the index too when a duplicate is inserted past validation (race)", :aggregate_failures do
+        deck("Izzet")
+        late = account.locations.new(name: "izzet", kind: "deck")
+
+        expect(late.save(validate: false)).to be(false)
+        expect(reasons(late)).to eq([ "You already have a location called “izzet”." ])
+      end
+    end
+
+    describe "consistency (AC-9.5)" do
+      it "refuses a place or a deck with a parent or a zone", :aggregate_failures do
+        izzet = deck
+        faulty = [
+          account.locations.new(name: "A", parent: izzet),
+          account.locations.new(name: "B", zone: "main"),
+          account.locations.new(name: "C", kind: "deck", parent: izzet),
+          account.locations.new(name: "D", kind: "deck", zone: "main")
+        ]
+
+        faulty.each { |location| expect(location).not_to be_valid, location.name }
+        expect(faulty.map { it.errors.attribute_names }).to eq([ [ :parent ], [ :zone ], [ :parent ], [ :zone ] ])
+      end
+
+      it "needs a zone to have a parent that is a deck of its account, and a zone key", :aggregate_failures do
+        izzet = deck
+        other_deck = deck("Other", in_account: create(:user).account)
+        place = add("Binder")
+        main = zone(izzet).tap(&:save!)
+
+        expect(account.locations.new(name: "Main", kind: "deck_zone", zone: "main")).not_to be_valid # no parent
+        expect(zone(place)).not_to be_valid # a place's zone
+        expect(zone(other_deck).tap { it.account_id = account.id }).not_to be_valid # another account's deck
+        expect(zone(main, "Deeper", key: "deeper")).not_to be_valid # a zone of a zone
+        expect(account.locations.new(name: "Main 2", kind: "deck_zone", parent: izzet)).not_to be_valid # no zone key
+        expect(zone(izzet, "Side", key: "side")).to be_valid
+      end
+
+      it "refuses an unknown kind", :aggregate_failures do
+        location = account.locations.new(name: "Odd", kind: "shelf")
+
+        expect(location).not_to be_valid
+        expect(location.errors.where(:kind).size).to eq(1)
+      end
+
+      it "says nothing about the kind of a valid record", :aggregate_failures do
+        izzet = deck
+
+        expect(zone(izzet)).to be_valid
+        expect(izzet.errors).to be_empty
+      end
+    end
+
+    it "takes its zones with it when the deck is deleted, as the foreign key says (AC-9.4)", :aggregate_failures do
+      izzet = deck
+      zone(izzet).save!
+
+      expect { described_class.where(id: izzet.id).delete_all }.to change(described_class, :count).by(-2)
+    end
   end
 
   describe "a lot in it (spec 032 AC-5.5)" do

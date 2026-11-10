@@ -64,7 +64,7 @@ RSpec.describe "Locations", type: :request do
       add("One more")
 
       expect(response).to have_http_status(:unprocessable_content)
-      expect(field_error).to eq("You can have at most 500 locations.")
+      expect(field_error).to eq("You can have at most 500 places and decks together.")
       expect(account.locations.count).to eq(500)
     end
 
