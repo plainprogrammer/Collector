@@ -39,6 +39,7 @@ module YardRatchet
 
   # The repository's side of the check: which files, and the base's blobs.
   class Git
+    SYMLINK_MODE = "120000".freeze
     CLEARED = { "GIT_DIR" => nil, "GIT_WORK_TREE" => nil, "GIT_INDEX_FILE" => nil, "GIT_COMMON_DIR" => nil }.freeze
 
     def initialize(root) = @root = root.to_s
@@ -55,14 +56,21 @@ module YardRatchet
       run("merge-base", "HEAD", "refs/remotes/origin/main", fail_with: NO_MERGE_BASE).strip
     end
 
-    # Judged files at the head: tracked or untracked, never ignored, and present on disk.
+    # Judged files at the head: tracked or untracked, never ignored, and present on disk. A symlink isn't one: the
+    # base holds the link's target path as its content while the disk reads through it, so it would always look
+    # changed, and its target is judged at its own path.
     def head_files
       run("ls-files", "-z", "--cached", "--others", "--exclude-standard").split("\0").uniq.sort
-        .select { Scope.include?(it) && File.file?(File.join(@root, it)) }
+        .select { Scope.include?(it) && !File.symlink?(File.join(@root, it)) && File.file?(File.join(@root, it)) }
     end
 
-    # Judged files at the base.
-    def base_files(base) = run("ls-tree", "-r", "-z", "--name-only", base).split("\0").select { Scope.include?(it) }.sort
+    # Judged files at the base, symlinks left out for the reason `head_files` gives.
+    def base_files(base)
+      run("ls-tree", "-r", "-z", base).split("\0").filter_map do |entry|
+        meta, path = entry.split("\t", 2)
+        path if !meta.start_with?(SYMLINK_MODE) && Scope.include?(path)
+      end.sort
+    end
 
     # Writes the base's version of each path under `into`, through one `git cat-file --batch`.
     def export(base, paths, into)
