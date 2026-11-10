@@ -83,8 +83,8 @@ All on 2026-11-10 at HEAD `82af8bb7`; the raw output of (b) is in `/private/tmp/
 | An uncommented method added to `lib/collector/dev_port.rb`, `bin/ci checks`, then reverted | Done: run (b) |
 | `bin/yard doc --no-cache` with no `[warn]` line | Passed inside `bin/ci checks` (run (b), the passing run): "Docs: YARD builds without warnings passed in 6.35s", no `[warn]` line. A separate `bin/yard doc --no-cache` is not run on its own |
 | `bin/rspec spec/script/yard/comment_ratchet_spec.rb` | Done: 82 examples, 0 failures |
-| Full `bin/ci` at the pushed SHA (every step, RSpec included; example count from `bin/rspec --dry-run`; the step's run time) | Not yet run |
-| `bin/rspec --seed 1` and `bin/rspec --seed 42424` (the new spec file requires `yard` into the RSpec process; no example outside this feature changes its result) | Not yet run |
+| Full `bin/ci` at `e4bcb6ec` (every step, RSpec included; the code is the pushed SHA's, which adds only this file) | Done 2026-11-10: every step passed; "Docs: new and changed public code has a comment" passed in 0.41 s ("Found no added or changed public code in scope (compared with a29c5987)"); "Tests: RSpec" 3121 examples, 0 failures, 1 pending (seed 30303), 5m20.95s; "Continuous Integration passed in 5m39.98s". The first full run, at the merge of `origin/main` (PR #272), failed one example, `spec/project_config_spec.rb` AC-3.7 (spec 054), because the new spec file requires `yard` into the RSpec process; fixed by `e4bcb6ec` (see Rulings) |
+| `CI=true bin/rspec --seed 1` and `CI=true bin/rspec --seed 42424` (the new spec file requires `yard` into the RSpec process; no example outside this feature changes its result) | Done 2026-11-10 at `e4bcb6ec`: seed 1 and seed 42424 each 3121 examples, 0 failures, 1 pending |
 | The pull request's `checks` job log for the step (AC-4.2's CI half, AC-4.3's CI time) | Not yet verified: recorded after the pull request's first CI run / after the maintainer's scratch run (route A) |
 
 ## Known limits
@@ -122,6 +122,7 @@ An Opus code review of the implementation returned APPROVE WITH CHANGES, with th
 
 - **2026-11-10 (maintainer, via the coordinator):** the plan is approved, including the corrections of spec v1.2.2. AC-4.2 is verified by route A: the maintainer pushes a throwaway failing commit to a scratch branch off this one, with a pull request, by hand, and the coordinator relays the result; the fallback is recorded in the plan (Phase 4, the AC-4.2 item).
 - **2026-11-10 (maintainer, via the coordinator):** spec v1.2.3 confirmed (PATCH): a method is new by qualified name across the base's scoped files, so a method moved between files of the same class is not judged; a class or module marked `@api private` covers the members YARD scopes under it. Both state what the approved plan's design and the code already did; no ruling changed.
+- **2026-11-10 (this session, within the worker's remit; reported to the coordinator):** the plan assumed `links_spec.rb` already loads YARD into the RSpec process; no spec does. The new spec file's `require` of the check loads it, so spec 054's AC-3.7 example (`expect(defined?(YARD)).to be_nil`, in `spec/project_config_spec.rb`) failed in a full run. Ruling: the new spec's in-process examples stay; the AC-3.7 example now boots the app in a fresh process (`bin/rails runner 'print defined?(YARD).inspect'`, about 0.8 s) and still fails if the boot loads YARD (checked with `RUBYOPT=-ryard`). Cost if wrong: the example proves the boot, not the suite's process, which is what spec 054 AC-3.7 says. Commit `e4bcb6ec`.
 
 ## Implementation review
 
