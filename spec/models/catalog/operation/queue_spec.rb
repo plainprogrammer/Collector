@@ -120,13 +120,18 @@ RSpec.describe Catalog::Operation::Queue, :solid_queue, type: :model do
   describe "#run_now (spec 055 FR-2)" do
     def waiting(wait: 10.minutes) = queue_job(Catalog::RefreshJob, "mtg", "manual", wait:)
 
+    # "Its arguments" are the job's Active Job arguments, not the whole stored column: Solid Queue keeps its own
+    # bookkeeping there, and 1.7.2 adds the semaphore a concurrency-limited job took its slot from when the job
+    # is dispatched (rails/solid_queue#831). The maintainer's ruling on #283 reads FR-2 this way.
     it "makes a scheduled job ready, adding no job and leaving its Active Job id and arguments as they were", :aggregate_failures do
       job = waiting
-      before = job.slice(:id, :active_job_id, :arguments)
+      identity = ->(record) { [ record.id, record.active_job_id, record.arguments["job_id"], record.arguments["arguments"] ] }
+      before = identity.(job)
 
       expect { expect(queue.run_now(job.active_job_id)).to be(true) }.not_to change(SolidQueue::Job, :count)
 
-      expect(job.reload.slice(:id, :active_job_id, :arguments)).to eq(before)
+      expect(identity.(job.reload)).to eq(before)
+      expect(before.last).to eq([ "mtg", "manual" ])
       expect(job).to be_ready
       expect(job.scheduled_execution).to be_nil
       expect(job.blocked_execution).to be_nil
