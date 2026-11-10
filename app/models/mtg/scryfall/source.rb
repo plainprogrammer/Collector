@@ -44,9 +44,19 @@ class MTG::Scryfall::Source
     @bulk_files = {}
   end
 
-  # Spec 011 AC-2.3: an instance upgrading to artwork ids applies its current bulk file once more, art matching on or off,
-  # so every printing gets its artwork id. About 760 printings legitimately have none, so "any without" isn't the test.
-  def reapply? = MTG::Printing.exists? && !MTG::Printing.where.not(illustration_id: nil).exists?
+  # Whether an already-applied bulk file is worth applying again (Catalog::Refresh asks once, before the skip; a manual
+  # refresh applies anyway). Two reasons, either alone is enough:
+  #
+  # - Spec 011 AC-2.3: an instance upgrading to artwork ids applies its current file once more, art matching on or off, so
+  #   every printing gets its artwork id. About 760 printings legitimately have none, so "any without" isn't the test.
+  # - Spec 058 decision 3: an instance upgrading to mana values does the same, so its cards fill on the next refresh even
+  #   when Scryfall has published no new file. A few cards may have no value, so the test is that none has one.
+  #
+  # Both are false on an empty catalog (it applies anyway) and once one row has the value, so an up-to-date catalog skips as
+  # before. At most four `exists?` queries, and only when a scheduled run's version was already applied.
+  #
+  # @return [Boolean]
+  def reapply? = artwork_ids_missing? || mana_values_missing?
 
   # Spec 011 AC-3.1: art matching queues its build after a refresh (Catalog::Refresh calls this hook).
   def after_refresh(run) = MTG::Art.after_refresh(run)
@@ -108,6 +118,10 @@ class MTG::Scryfall::Source
   end
 
   private
+    def artwork_ids_missing? = MTG::Printing.exists? && !MTG::Printing.where.not(illustration_id: nil).exists?
+
+    def mana_values_missing? = MTG::Card.exists? && !MTG::Card.where.not(mana_value: nil).exists?
+
     def fetch(url, path, expected)
       partial = Pathname("#{path}.part")
       File.open(partial, "wb") do |io|
