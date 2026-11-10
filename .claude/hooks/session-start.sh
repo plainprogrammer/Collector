@@ -1,13 +1,33 @@
 #!/bin/bash
-# SessionStart hook for Claude Code cloud sessions: makes the project's specs and linters runnable.
-# Idempotent and non-interactive; the container state is cached after it finishes.
+# SessionStart hook for Claude Code sessions.
+#
+# Cloud sessions (CLAUDE_CODE_REMOTE=true): makes the project's specs and linters runnable. Idempotent and
+# non-interactive; the container state is cached after it finishes.
+#
+# Local sessions (an Orca worker's too, #289): puts .ruby-version's Ruby first on the PATH of the session's
+# commands. Orca starts the session with macOS's Ruby 2.6 first, so a bare `ruby` or `bundle` failed with
+# "Could not find 'bundler'" (#268's setup fix and #270's hook fix don't reach the model's own commands).
 set -euo pipefail
 
+cd "${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}" || exit 0
+
 if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
+  # Ask script/worktree/with_mise (which knows where mise lives, and drops mise's directories from the PATH
+  # so it can put them first) which `ruby` it resolves. With --optional, no mise means the session's own ruby,
+  # so CI runners, containers and any machine without mise get no change. Only Ruby's directory is added, not
+  # the other tools mise has (node, java): this is the Ruby 2.6 problem, not a toolchain switch.
+  [ -n "${CLAUDE_ENV_FILE:-}" ] && [ -x script/worktree/with_mise ] || exit 0
+  session_ruby="$(command -v ruby 2>/dev/null || true)"
+  mise_ruby="$(script/worktree/with_mise --optional sh -c 'command -v ruby' 2>/dev/null || true)"
+  case "$mise_ruby" in /*) ;; *) exit 0 ;; esac
+  [ "$mise_ruby" != "$session_ruby" ] || exit 0
+  # The hook runs again on resume and compact; the line is written once, and is safe to source twice. It tests
+  # for the directory *first* in the PATH, not anywhere in it: Orca's login shell keeps mise's directories
+  # behind /usr/bin (#268). %q quotes a directory with spaces or shell characters.
+  line="$(printf 'case ":$PATH:" in :%q:*) ;; *) export PATH=%q:"$PATH" ;; esac' "$(dirname "$mise_ruby")" "$(dirname "$mise_ruby")")"
+  grep -qxF "$line" "$CLAUDE_ENV_FILE" 2>/dev/null || echo "$line" >> "$CLAUDE_ENV_FILE"
   exit 0
 fi
-
-cd "${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel)}"
 
 RUBY_VERSION="$(tr -d '[:space:]' < .ruby-version | sed 's/^ruby-//')"
 export RBENV_ROOT="${RBENV_ROOT:-/opt/rbenv}"
