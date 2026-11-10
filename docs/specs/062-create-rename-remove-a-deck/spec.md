@@ -1,7 +1,7 @@
 # Feature 062: Create, Rename and Remove a Deck
 
-**Status:** Draft
-**Version:** 0.4.0
+**Status:** Approved
+**Version:** 0.5.0
 **Created:** 2026-11-10
 **Last Updated:** 2026-11-10
 **Depends on:** [spec 057](../057-deck-design-rules/spec.md) (the deck rules, navigation and pickers, #248; merged) and [spec 060](../060-deck-components/spec.md) (the deck components, `DecksIndex` and its New deck page, #249; merged); builds on [spec 029](../029-manage-locations/spec.md) (locations), [spec 032](../032-lot-in-a-location/spec.md) (a lot in a location), [ADR 0025](../../adr/0025-a-lots-location-is-part-of-its-identity.md) and, for the format, [spec 017](../017-export-format/spec.md), [spec 025](../025-import-preview/spec.md) and [spec 028](../028-apply-import/spec.md)
@@ -15,6 +15,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.5.0 | 2026-11-10 | Maintainer's approval of v0.4.0 (spec and ADR 0028, with the round 3 fix), with one change: the 500 limit's message says decks count toward it (AC-1.7a); the Open Questions entry that accepted the old sentence is dropped |
 | 0.4.0 | 2026-11-10 | From review round 3 (the maintainer's extra round; no blocking, one major): a deck name over 60 characters after normalisation refuses the file (AC-6.7b); the apply rewrites a deck's zone names from the registration before inserting zones (AC-8.2a); AC-7.4d's scope and order, the order of the reader's refusals (AC-7.4e), the Locations page's 500 message and a lost-registration deck's rename and removal recorded |
 | 0.3.1 | 2026-11-10 | D7 ruled by the maintainer (option A): AC-7.4a and AC-7.4b stand; AC-7.4d adds the apply's own guard against the unique name index. The reader-only rule for places plus held decks is named `too_many_with_decks` here (the maintainer's message calls it too_many_locations) so it is not confused with the format's own rule of that name |
 | 0.3.0 | 2026-11-10 | From review round 2 (no blocking, six major): the apply resolves a place key among places and a zone by its (deck key, zone key) pair; deck URLs use the deck's location id; zone ids on every locations route are 404; the older-file wording says the copies in decks would be removed; spec 041 AC-2.1 is kept; and smaller fixes (a reader-only rule name `too_many_with_decks`, named constraints, the seam's name checks, a reason for deck problem rows, the gate for an account with decks and no place) |
@@ -100,7 +101,8 @@ The rulings D1 to D4 are the maintainer's (2026-11-10, answering the questions t
 - [ ] **AC-1.4** Given a deck is created When its zones are read Then each is a location of kind `deck_zone` whose parent is the deck, which no list of places shows and which the 500 limit does not count
 - [ ] **AC-1.5** Given a collector with a place named "Main" When they create a deck named "Main" Then it is refused with the taken sentence, because places and decks share one name space (comparison key, case and normalisation as for places)
 - [ ] **AC-1.6** Given two decks When each is created Then both have a zone named "Main" and both are accepted, because a zone's name is unique within its deck
-- [ ] **AC-1.7** Given a blank name, a name with a control character, a name over 60 characters, a name already used by a place or a deck, or an account that already has 500 places and decks When the collector submits Then the response is 422, the New deck page is shown again with the typed name and format kept, and the Name field shows the sentence (`Location::MESSAGES`, `Location::FULL`, "You already have a location called “<name>”."), and nothing is written
+- [ ] **AC-1.7** Given a blank name, a name with a control character, a name over 60 characters, a name already used by a place or a deck, or an account that already has 500 places and decks When the collector submits Then the response is 422, the New deck page is shown again with the typed name and format kept, and the Name field shows the sentence (`Location::MESSAGES`, `Location::FULL` (AC-1.7a), "You already have a location called “<name>”."), and nothing is written
+- [ ] **AC-1.7a** Given an account that holds 500 places and decks together (any mix, for example 400 places and 100 decks, or no deck at all) When a collector adds a place on the Locations page, or submits the New deck page Then the Name field's sentence is "You can have at most 500 places and decks together." (`Location::FULL`, one sentence for both pages, so it says decks count toward the limit wherever it shows), and the sentence replaces spec 029's "You can have at most 500 locations." for every caller (maintainer, 2026-11-10)
 - [ ] **AC-1.8** Given a Format value that is not a `<collectible_type>/<format key>` pair the extension registers (blank, no slash, an unknown type, a key of another type), or a request without the `deck` parameter When the collector submits Then nothing is written: an unregistered or blank format is 422 on the Format field ("Choose a format."), a missing `deck` parameter is 400
 - [ ] **AC-1.9** Given two requests that create decks with one name together When both run Then one deck and one set of zones exist and the other gets 422 (never 500), and an account at 499 locations that adds one place and one deck together ends at 500, never 501
 - [ ] **AC-1.10** Given a request with `account_id`, `kind`, `parent_id`, `zone` or `collectible_type` among its parameters When it is submitted Then those values are ignored: the account is the signed-in one, the kind is `deck`, and the collectible type is the one in the checked format pair
@@ -375,7 +377,6 @@ The Decks section is a live section of the header and the tab bar; the Decks, Ne
 
 ## Open Questions
 
-- Accepted: with places and decks sharing the 500 limit, the Locations page can read "400 locations" and still refuse a new place with "You can have at most 500 locations." because 100 decks count too; the sentence is the Locations page's own (spec 060 decision 23), and a variant that names decks waits for a collector to ask.
 - The plan decides how the apply upserts places and decks under a partial unique index (a conflict target with its condition) and how the migration adds its checks; both must keep AC-9.2.
 
 ## Out of Scope (Future Considerations)
@@ -392,6 +393,7 @@ The Decks section is a live section of the header and the tab bar; the Decks, Ne
 
 - **Supersedes** [spec 029](../029-manage-locations/spec.md) decision 4 ("a location is a name and nothing else": no kind, no nesting) for locations as a whole: a location now has a kind and a zone may have a parent. Places stay a name and nothing else; the Locations page's behaviour is unchanged.
 - **Supersedes** [spec 029](../029-manage-locations/spec.md) decision 7 and AC-1.13 where they count "locations": the limit counts top-level locations, places and decks together.
+- **Supersedes** [spec 029](../029-manage-locations/spec.md) AC-1.13's sentence "You can have at most 500 locations.": it reads "You can have at most 500 places and decks together." (AC-1.7a; `Location::FULL`, the Locations page's and the New deck page's refusal; the sentence in `collection-and-lots.md` and `DecksIndex.md` changes with it).
 - **Supersedes** [spec 029](../029-manage-locations/spec.md) decision 9's "unique per account" for a name: a zone's name is unique within its deck; top-level names are unique per account.
 - **Supersedes** [spec 032](../032-lot-in-a-location/spec.md) FR-3's and the format document's "lot identity has six values" in the sixth value's form: the sixth value is a place key, a (deck key, zone key) pair or none, from version 4.
 - **Supersedes** [spec 060](../060-deck-components/spec.md) decision 11 and AC-4.1 to AC-4.3 for the Decks page until #253 and #254: the deck's name is plain text (not the `TableItemLink`), each row has Rename and Remove, and the table has no Proxy column or tag. #253 restores the link; #254 adds the Proxy column and tag (maintainer D5, 2026-11-10).
