@@ -8,6 +8,7 @@
 **Branch:** `061-place-line-wrap-at-phone-width`
 **Issue:** [#288](https://github.com/plainprogrammer/Collector/issues/288) (the cause was found in [#271](https://github.com/plainprogrammer/Collector/issues/271); theme: locations)
 **Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (whole spec); see the [specs index](../README.md)
+**Plan:** retired in `1c0d5ee074242ad292e522b94df96b291f82954d`; read it with `git show 1c0d5ee074242ad292e522b94df96b291f82954d^:docs/specs/061-place-line-wrap-at-phone-width/plan.md`
 
 ---
 

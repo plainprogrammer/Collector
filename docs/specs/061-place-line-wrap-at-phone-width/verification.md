@@ -1,6 +1,6 @@
 # Verification: The Phone Line's Wrap Is Stated at a Phone's Width (spec 061, #288)
 
-**Spec:** [spec.md](spec.md) (0.3.0) | **Plan:** [plan.md](plan.md) | **Branch:** `061-place-line-wrap-at-phone-width`
+**Spec:** [spec.md](spec.md) (0.3.0) | **Plan:** plan (retired in `1c0d5ee074242ad292e522b94df96b291f82954d`; read it with `git show 1c0d5ee074242ad292e522b94df96b291f82954d^:docs/specs/061-place-line-wrap-at-phone-width/plan.md`) | **Branch:** `061-place-line-wrap-at-phone-width`
 
 The example is `spec/system/collection_row_place_spec.rb`, "wraps a line wider than its room at a phone's 360px content width, with no sideways scroll and no place". Commits: `bb6626bd` (red, on the old PMH3A line), `a2223414` (green, on the PLST line), `2bd9a9c0` and `0643068d` (comments).
 
