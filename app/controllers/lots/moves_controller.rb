@@ -20,7 +20,7 @@ class Lots::MovesController < ApplicationController
   end
 
   private
-    def set_lot = @lot = Current.account.lots.includes(:location, entry: :set).find(params[:lot_id])
+    def set_lot = @lot = Current.account.lots.includes({ location: :parent }, entry: :set).find(params[:lot_id])
 
     # "No location" first unless the lot is already there, then the account's other places: the options of the To field. A deck
     # is never a destination and a zone is not offered (spec 062 AC-5.6); a lot in a zone is "somewhere" (it has a location_id),

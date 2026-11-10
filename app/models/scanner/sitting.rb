@@ -97,7 +97,7 @@ class Scanner::Sitting < ApplicationRecord
 
   # Every entry not undone, newest first, including those whose lot changed (AC-3.2, AC-3.6), with each lot and its place
   # (spec 040 decision 4).
-  def kept_entries = entries.kept.newest_first.includes(printing: :set, lot: :location)
+  def kept_entries = entries.kept.newest_first.includes(printing: :set, lot: { location: :parent })
 
   # Ends the sitting (AC-3.5): the copies stay in the collection; the entries go. Returns how many were kept.
   def end!

@@ -17,7 +17,7 @@
 <td class="is-num"><%= number_with_delimiter(lot.quantity) %></td>
 <% if places %>
   <% if lot.location %>
-    <td class="is-opt c-table__place"><span class="c-table__place-name"><%= lot.location.name %></span></td>
+    <td class="is-opt c-table__place"><span class="c-table__place-name"><%= lot.place_label %></span></td>
   <% else %>
     <td class="is-opt is-muted c-table__place">No location</td>
   <% end %>

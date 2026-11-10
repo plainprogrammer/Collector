@@ -2,6 +2,8 @@
 class Catalog::CardOverview
   NEWEST = 10
   Row = Data.define(:entry, :owned, :shown)
+  # A zone's parent, for the order of the copies (a place has none).
+  PARENT_JOIN = "LEFT JOIN locations parents ON parents.id = locations.parent_id".freeze
 
   attr_reader :entry
 
@@ -16,9 +18,11 @@ class Catalog::CardOverview
   def lots
     return [] unless @account
 
-    @lots ||= @account.lots.joins(:entry).left_joins(:location).where(catalog_entries: { catalog_identity_id: identity.id })
-      .includes(entry: :set).preload(:location).merge(Catalog::Entry.newest_first).order(:finish, :condition, :price_paid_cents)
-      .order(Location.arel_table[:name_key].asc, Location.arel_table[:name].asc).to_a # unplaced first: NULL sorts first (spec 032 AC-4.1)
+    # The place order reads a zone under its deck's name, so a deck's zones sort together (spec 062 AC-5.4); `location: :parent` is
+    # preloaded because the label of a zone names its deck, and costs one query however many lots there are.
+    @lots ||= @account.lots.joins(:entry).left_joins(:location).joins(PARENT_JOIN).where(catalog_entries: { catalog_identity_id: identity.id })
+      .includes(entry: :set).preload(location: :parent).merge(Catalog::Entry.newest_first).order(:finish, :condition, :price_paid_cents)
+      .order(Arel.sql("COALESCE(parents.name_key, locations.name_key)"), Location.arel_table[:name_key].asc, Location.arel_table[:name].asc).to_a # unplaced first: NULL sorts first (spec 032 AC-4.1)
   end
 
   def owned_count = lots.sum(&:quantity)

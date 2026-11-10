@@ -105,6 +105,24 @@ RSpec.describe "Page query counts", type: :request do
     expect(queries_for(catalog_entry_path(entry))).to eq(few)
   end
 
+  # Spec 062 AC-5.4: a zone's label names its deck, so every lot list preloads the parent. A zone lot costs at most the one
+  # query that loads the parents (a place has none to load), and no query more however many lots or decks there are.
+  it "keeps the grid's, the table's, the bulk table's and the card page's queries to a place's plus one for lots in zones", :aggregate_failures do
+    user.update!(collection_view: "table")
+    entry = printing
+    lot = own(entry, location: create(:location, account: user.account))
+    post collection_selection_path
+    paths = { grid: collection_path(view: "grid"), table: collection_path, bulk: collection_path(bulk: 1), card: catalog_entry_path(entry) }
+    in_a_place = paths.transform_values { |path| queries_for(path) }
+
+    lot.update!(location: create(:deck, account: user.account, name: "Deck 0").zone("main"))
+    in_a_zone = paths.transform_values { |path| queries_for(path) }
+    expect(in_a_zone.merge(in_a_place) { |_, zone, place| zone - place }.values).to all(be <= 1)
+
+    5.times { |n| own(entry, location: create(:deck, account: user.account, name: "Deck #{n + 1}").zone("sideboard"), price_paid_cents: n) }
+    expect(paths.transform_values { |path| queries_for(path) }).to eq(in_a_zone)
+  end
+
   it "keeps the table's queries independent of the number of lots, in and out of bulk mode", :aggregate_failures do
     user.update!(collection_view: "table")
     own(printing, finish: "foil")
