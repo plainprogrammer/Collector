@@ -530,3 +530,11 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
    each held lot's "Deck › Zone" line, so each breaks inside a word on a phone instead of widening the page (the lesson of
    `.c-locations__name` and `.c-pick`). */
 .c-decks .c-confirm :is(h1, p), .c-decks .c-list li > span:first-child { min-width:0; overflow-wrap:anywhere; }
+
+/* ---------- A field's read-only value (spec 062 AC-5.5): Edit copy of a lot in a deck's zone ---------- */
+/* The Location field of a lot in a zone is text, not a select: the zone is chosen by a later spec's picker, and a select of
+   places would unplace the lot when it is saved. It lines up with the controls around it (the select's 36px height and the
+   input's 15px text, one line high), breaks inside a long deck name instead of widening the page, and meets the touch floor
+   a control does on a coarse pointer. */
+.c-field__static { margin:0; min-height:36px; display:flex; align-items:center; font:400 15px/22px var(--font-sans); color:var(--ink); overflow-wrap:anywhere; }
+@media (pointer: coarse) { .c-field__static { min-height:var(--touch-floor); } }

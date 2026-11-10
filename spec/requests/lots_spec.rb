@@ -454,4 +454,76 @@ RSpec.describe "Lots", type: :request do
       expect(response.body).to include("to keep copies in one.")
     end
   end
+
+  # Spec 062 AC-5.5, D6: a lot in a zone shows its place read-only, and saving keeps it there; the zone is chosen through a later
+  # spec's picker, never through Edit copy's select (which lists places only).
+  describe "editing a lot in a zone (spec 062 AC-5.5)" do
+    def account = user.account
+    def deck = @deck ||= create(:deck, account:, name: "Izzet Tempo")
+    def lot = @lot ||= create(:lot, account:, entry:, quantity: 2, finish: "foil", condition: "near_mint", price_paid_cents: 150, location: deck.zone("main"))
+    def page_html = Nokogiri::HTML5(response.body)
+
+    # What a browser submits for the form on the page: every named field's value, a select's chosen (or first) option.
+    def submitted(form)
+      form.css("input[name], select[name]").reject { it["type"] == "submit" }.to_h do |field|
+        value = field.name == "select" ? (field.at_css("option[selected]") || field.at_css("option"))&.[]("value").to_s : field["value"].to_s
+        [ field["name"], value ]
+      end
+    end
+
+    it "shows the place as plain text with no select", :aggregate_failures do
+      get edit_lot_path(lot)
+      expect(page_html.at_css("select#lot_location_id")).to be_nil
+      expect(page_html.at_css('[name="lot[location_id]"]')).to be_nil
+      field = page_html.css(".c-field").find { it.at_css(".c-field__label")&.text == "Location" }
+      expect(field.at_css("p.c-field__static").text).to eq("Izzet Tempo › Main")
+    end
+
+    it "shows it to an account with a deck and no place too (AC-5.8a)", :aggregate_failures do
+      expect(account.locations.places).to be_empty
+      get edit_lot_path(lot)
+      expect(page_html.at_css("p.c-field__static").text).to eq("Izzet Tempo › Main")
+      expect(page_html.at_css(".c-field__hint a")).to be_nil
+    end
+
+    it "keeps the lot in its zone when the form is saved as the page sends it", :aggregate_failures do
+      create(:location, account:, name: "Binder")
+      get edit_lot_path(lot)
+      fields = submitted(page_html.at_css("form.c-form")).merge("lot[quantity]" => "5")
+      patch lot_path(lot), params: Rack::Utils.parse_nested_query(URI.encode_www_form(fields))
+      expect(response).to have_http_status(:see_other)
+      expect(lot.reload.attributes.values_at("location_id", "quantity")).to eq([ deck.zone("main").id, 5 ])
+      expect(lot.lot_key).to end_with("|#{deck.zone("main").id}")
+    end
+
+    it "merges a changed condition into the lot of that identity in the same zone, and never across zones", :aggregate_failures do
+      same_zone = create(:lot, account:, entry:, quantity: 1, finish: "foil", condition: "lightly_played", price_paid_cents: 150, location: deck.zone("main"))
+      other_zone = create(:lot, account:, entry:, quantity: 4, finish: "foil", condition: "damaged", price_paid_cents: 150, location: deck.zone("sideboard"))
+      patch lot_path(lot), params: { lot: { quantity: "2", finish: "foil", condition: "lightly_played", price_paid: "1.50" } }
+      expect(response).to have_http_status(:see_other)
+      expect(Lot.where(id: [ lot.id, same_zone.id ]).pluck(:quantity, :location_id)).to eq([ [ 3, deck.zone("main").id ] ])
+      expect(other_zone.reload.attributes.values_at("quantity", "location_id")).to eq([ 4, deck.zone("sideboard").id ])
+    end
+
+    it "ignores a location in the request: the zone is not changed through Edit copy", :aggregate_failures do
+      place = create(:location, account:, name: "Binder")
+      [ place.id, deck.zone("sideboard").id, deck.location_id, "" ].each do |id|
+        patch lot_path(lot), params: { lot: { quantity: "3", location_id: id } }
+        expect(response).to have_http_status(:see_other)
+        expect(lot.reload.attributes.values_at("location_id", "quantity")).to eq([ deck.zone("main").id, 3 ])
+      end
+    end
+
+    it "leaves a lot in a place and an unplaced lot as before", :aggregate_failures do
+      place = create(:location, account:, name: "Binder")
+      placed = create(:lot, account:, entry:, location: place)
+      unplaced = create(:lot, account:, entry:, finish: "foil")
+      get edit_lot_path(placed)
+      expect(page_html.at_css("select#lot_location_id option[selected]")&.text).to eq("Binder")
+      expect(page_html.at_css("p.c-field__static")).to be_nil
+      get edit_lot_path(unplaced)
+      expect(page_html.at_css("select#lot_location_id")).to be_present
+      expect(page_html.at_css("p.c-field__static")).to be_nil
+    end
+  end
 end
