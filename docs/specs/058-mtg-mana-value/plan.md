@@ -3,7 +3,7 @@
 **Spec:** docs/specs/058-mtg-mana-value/spec.md (v1.0.2, approved by the maintainer 2026-11-10, Gate A)
 **Decisions:** none new; no ADR (spec decision 5 and Non-Goals)
 **Created:** 2026-11-10
-**Revised:** 2026-11-10 after the Opus plan review (REVISE: two blocking and nine smaller findings, all folded in: the AC-3.2 and AC-3.5 examples reset the identity digests as a real upgrade has them, the redo command is `db:migrate:redo:primary` for this four-database app, the fixture paths are absolute, and the failing-first list is exact)
+**Revised:** 2026-11-10 after round 2 of the Opus plan review (APPROVE WITH CHANGES, nothing blocking; the nine minor findings folded in: spec v1.0.3 names `db:migrate:redo:primary`, AC-3.1 checks the cards' other attributes, AC-4.1 states why the value isn't derived from the mana cost, `verification.md` is written in two steps, all core specs run) and after the round 1 review (REVISE: two blocking and nine smaller findings, all folded in: the AC-3.2 and AC-3.5 examples reset the identity digests as a real upgrade has them, the redo command is `db:migrate:redo:primary` for this four-database app, the fixture paths are absolute, and the failing-first list is exact)
 
 ## Global Constraints
 
@@ -79,7 +79,7 @@ end
 # A float because the values are whole numbers or halves, exact in a double, and a later sum or average needs no
 # conversion. Reversible: SQLite copies the table to
 # remove the column, which is safe here because no foreign key points at mtg_cards (it only points at
-# catalog_identities), unlike the tables AddLocationToLots had to protect.
+# catalog_identities), unlike the tables AddLocationToLots had to protect. if_not_exists guards a re-run of the up.
 class AddManaValueToMtgCards < ActiveRecord::Migration[8.1]
   def change
     add_column :mtg_cards, :mana_value, :float, if_not_exists: true
@@ -91,9 +91,9 @@ end
 
 - [ ] **Step 6: run it and see it pass.** `script/worktree/with_mise bin/rspec spec/models/mtg/card_spec.rb`. Expected: 2 examples, 0 failures.
 
-- [ ] **Step 7: prove reversibility (AC-1.3).** `script/worktree/with_mise bin/rails db:migrate:redo:primary`, restore the three noise files again, then `git diff --stat db/schema.rb`. Expected: no error, and the diff is the same as in Step 5. This app has four databases, so plain `db:migrate:redo` aborts ("You're using a multiple database application"); the `:primary` task is AC-1.3's command here, and `verification.md` says so. Record the output for `verification.md`.
+- [ ] **Step 7: prove reversibility (AC-1.3).** `script/worktree/with_mise bin/rails db:migrate:redo:primary`, restore the three noise files again, then `git diff --stat db/schema.rb`. Expected: no error, and the diff is the same as in Step 5. This app has four databases, so plain `db:migrate:redo` aborts ("You're using a multiple database application"); the `:primary` task is AC-1.3's command (spec v1.0.3 names it). Record the output for `verification.md`.
 
-- [ ] **Step 8: guards (AC-1.4, AC-1.5).** `script/worktree/with_mise ruby script/upgrade/guard.rb` (expected: passes), and `script/worktree/with_mise bin/rspec spec/admin_catalog_core_spec.rb spec/footer_core_spec.rb spec/scanner_sitting_core_spec.rb spec/number_entry_core_spec.rb spec/import_apply_core_spec.rb spec/backup_guards_spec.rb` (expected: green). `git diff --stat script/upgrade/expected_changes.yml` is empty.
+- [ ] **Step 8: guards (AC-1.4, AC-1.5).** `script/worktree/with_mise ruby script/upgrade/guard.rb` (expected: passes), and `script/worktree/with_mise bin/rspec spec/*_core_spec.rb spec/backup_guards_spec.rb` (expected: green). `git diff --stat script/upgrade/expected_changes.yml` is empty.
 
 - [ ] **Step 9: commit.** Stage the four files, then `feat(catalog): add mtg_cards.mana_value (#250)` with the attribution line.
 
@@ -286,6 +286,7 @@ script/worktree/with_mise ruby -rjson -e '
       stub_scryfall(cards: file_cards.map { |card| card.except("cmc") })
       refresh
       entry_ids = Catalog::Entry.order(:external_key).pluck(:id)
+      other_attributes = MTG::Card.order(:catalog_identity_id).pluck(:catalog_identity_id, :mana_cost, :type_line, :oracle_text)
       expect(MTG::Card.pluck(:mana_value)).to eq([ nil, nil ])
 
       stub_scryfall(cards: file_cards, stamp: "20260930090555")
@@ -293,6 +294,7 @@ script/worktree/with_mise ruby -rjson -e '
 
       expect(MTG::Card.joins(:identity).order("catalog_identities.external_key").pluck(:mana_value)).to eq([ 2.0, 0.5 ])
       expect(Catalog::Entry.order(:external_key).pluck(:id)).to eq(entry_ids)
+      expect(MTG::Card.order(:catalog_identity_id).pluck(:catalog_identity_id, :mana_cost, :type_line, :oracle_text)).to eq(other_attributes)
       expect(MTG::Card.count).to eq(2)
     end
 
@@ -384,7 +386,7 @@ script/worktree/with_mise ruby -rjson -e '
 
 - [ ] **Step 6: AC-3.8 and neighbours.** `grep -rn "mana_value" app lib config --include='*.rb' --include='*.erb'` lists the migration-free uses: only `app/models/mtg/scryfall/mapper.rb` and `source.rb` (no view, helper or controller; AC-3.8, FR-4). Then run the catalog and art examples that apply a refresh: `script/worktree/with_mise bin/rspec spec/models/mtg spec/models/catalog spec/jobs spec/requests/admin`. Expected: 0 failures.
 
-- [ ] **Step 7: lint and commit.** `bin/rubocop -a` on the three files, stage them, then `feat(mtg): apply an already-applied file once for cards without a mana value (#250)` with the attribution line and, in the body, the examples that failed first.
+- [ ] **Step 7: lint and commit.** `script/worktree/with_mise bin/rubocop -a` on the three files, stage them, then `feat(mtg): apply an already-applied file once for cards without a mana value (#250)` with the attribution line and, in the body, the examples that failed first.
 
 ---
 
@@ -396,15 +398,15 @@ script/worktree/with_mise ruby -rjson -e '
 
 Documents are checked by reading, never by RSpec; the area docs say what is true after this change and name its source inline (`.claude/rules/documentation.md`). The distillation step (`distill-feature`) later moves the specs index row's status; this phase only updates the area docs' facts.
 
-- [ ] **Step 1: catalog core.** In `docs/architecture/catalog-core.md`: (a) in the Glossary's **Extension** entry, change "`MTG::Card` holds mana cost, type line and rules text (a multi-face card's faces joined with " // "), colors, color identity and keywords" to "`MTG::Card` holds mana cost, mana value, type line and rules text (…), colors, color identity and keywords", and add after that sentence: "The mana value is Scryfall's `cmc`, a nullable float (a whole number or a half; null is unknown, not zero), read from the card's own `cmc` or, for a reversible card that has none, its front face's, and never worked out from the mana cost, because X, hybrid, Phyrexian, split and adjusted cards need rules Scryfall has already applied (spec 058 decisions 1, 2)."; (b) add to "Decisions not in an ADR": "- **The mana value is Scryfall's number, read without failing.** `MTG::Scryfall::Mapper.mana_value` reads `cmc`, else the front face's, else nothing, and never uses `fetch`: a reversible card has no top-level `cmc`, and a `fetch` would make the record malformed and drop the card from the catalog. Nothing reads the column yet; the deck shape panel ([#256](https://github.com/plainprogrammer/Collector/issues/256)) is its first reader and decides how halves bucket and which faces of a double-faced card count (spec 058 decisions 1, 2, Non-Goals).", and (c) add spec 058 and #250 to Sources: "- [Spec 058](../specs/058-mtg-mana-value/spec.md): decisions 1, 2 (the column and the mapper's reading); issue [#250](https://github.com/plainprogrammer/Collector/issues/250). Its decision 3 is [catalog operations](catalog-operations.md)'."
+- [ ] **Step 1: catalog core.** In `docs/architecture/catalog-core.md`: (a) in the Glossary's **Extension** entry, change "`MTG::Card` holds mana cost, type line and rules text (a multi-face card's faces joined with " // "), colors, color identity and keywords" to "`MTG::Card` holds mana cost, mana value, type line and rules text (a multi-face card's faces joined with " // "), colors, color identity and keywords", and add after that sentence: "The mana value is Scryfall's `cmc`, a nullable float (a whole number or a half; null is unknown, not zero), read from the card's own `cmc` or, for a reversible card that has none, its front face's, and never worked out from the mana cost, because X, hybrid, Phyrexian, split and adjusted cards need rules Scryfall has already applied (spec 058 decisions 1, 2)."; (b) add to "Decisions not in an ADR": "- **The mana value is Scryfall's number, read without failing.** `MTG::Scryfall::Mapper.mana_value` reads `cmc`, else the front face's, else nothing, and never uses `fetch`: a reversible card has no top-level `cmc`, and a `fetch` would make the record malformed and drop the card from the catalog. It is never worked out from `mana_cost`: X, hybrid, Phyrexian, split and adjusted cards follow rules Scryfall has already applied. Nothing reads the column yet; the deck shape panel ([#256](https://github.com/plainprogrammer/Collector/issues/256)) is its first reader and decides how halves bucket and which faces of a double-faced card count (spec 058 decisions 1, 2, Non-Goals).", and (c) add spec 058 and #250 to Sources: "- [Spec 058](../specs/058-mtg-mana-value/spec.md): decisions 1, 2 (the column and the mapper's reading); issue [#250](https://github.com/plainprogrammer/Collector/issues/250). Its decision 3 is [catalog operations](catalog-operations.md)'."
 
-- [ ] **Step 2: catalog operations.** In `docs/architecture/catalog-operations.md`: (a) in the Refresh's "Running" step (the line that says a scheduled run whose version was already applied ends `skipped`), after "and so does any run whose source's `#reapply?` says so" add "(`MTG::Scryfall::Source#reapply?` says so for two reasons: spec 011 AC-2.3's, printings with no artwork id, and spec 058 decision 3's, cards in the catalog and none with a mana value, so an upgraded instance fills the new column on its next refresh even when Scryfall's file is unchanged; the test is that none has one, not that any lacks one, as for artwork ids)"; (b) to the "**Accepted limits and open issues:**" list, add "- A refresh that fails after some batches committed leaves some cards with a mana value and some without; a scheduled run of the same version is then skipped as already applied (the reapply test needs none to have one), and the rest fill when Scryfall publishes a new file or on a manual refresh; spec 011's artwork test has the same gap (spec 058 Error Scenarios)."; (c) add "[Spec 058](../specs/058-mtg-mana-value/spec.md) decision 3 (`#reapply?`'s second reason)" to Sources.
+- [ ] **Step 2: catalog operations.** In `docs/architecture/catalog-operations.md`: (a) in the Refresh's "Running" step (the line that says a scheduled run whose version was already applied ends `skipped`), after the existing citation that follows "and so does any run whose source's `#reapply?` says so" add a new sentence: "`MTG::Scryfall::Source#reapply?` says so for two reasons: spec 011 AC-2.3's, printings with no artwork id, and spec 058 decision 3's, cards in the catalog and none with a mana value, so an upgraded instance fills the new column on its next refresh even when Scryfall's file is unchanged; the test is that none has one, not that any lacks one, as for artwork ids."; (b) to the "**Accepted limits and open issues:**" list, add "- A refresh that fails after some batches committed leaves some cards with a mana value and some without; a scheduled run of the same version is then skipped as already applied (the reapply test needs none to have one), and the rest fill when Scryfall publishes a new file or on a manual refresh; spec 011's artwork test has the same gap (spec 058 Error Scenarios)."; (c) add "[Spec 058](../specs/058-mtg-mana-value/spec.md) decision 3 (`#reapply?`'s second reason)" to Sources.
 
 - [ ] **Step 3: upgrade notes.** In `docs/releasing.md`, "Upgrade notes", add as the newest entry (first bullet): "- **Mana value (spec 058).** One migration, `AddManaValueToMtgCards`, runs on boot; it adds a nullable `mana_value` column to `mtg_cards` and changes nothing else. Existing cards have no mana value until the next catalog refresh, which applies even if Scryfall's file hasn't changed since the last one (the weekly refresh, or **Refresh now** on the admin catalog page, or `bin/rails "catalog:refresh[mtg]"`); nothing reads it yet. Nothing is required of the operator, and the export format is unchanged (version 3)."
 
 - [ ] **Step 4: data portability (AC-4.4) and index (AC-4.5).** Re-read `docs/architecture/data-portability.md` and `docs/export-format/README.md`: no edit. In `docs/specs/README.md`, the 058 row's Status stays "Approved" until `distill-feature` moves it (its row already says what it adds to).
 
-- [ ] **Step 5: write `docs/specs/058-mtg-mana-value/verification.md`** with: the Phase 1 `db:migrate:redo:primary` output and schema diff (AC-1.3); the commands and results of Phase 5 (rspec counts, rubocop, yard, brakeman, guard, `bin/ci`'s run); each AC with the example or the reading that satisfies it; the AC-4.x readings (which line of which document, by quoting its first words); the confirmation for AC-4.4 (data-portability.md's version rule lists only collector-owned tables and columns, and `mtg_cards` is global catalog data; `ExportFormat::Rules::VERSIONS` is `[1, 2, 3]`); and later, under `## Implementation review`, the review's verdict on its first line.
+- [ ] **Step 5: write `docs/specs/058-mtg-mana-value/verification.md`** with the evidence of Phases 1–4 (Phase 5's results are added in Phase 5 Step 5): the Phase 1 `db:migrate:redo:primary` output and schema diff (AC-1.3); each AC with the example or the reading that satisfies it; the AC-4.x readings (which line of which document, by quoting its first words); the confirmation for AC-4.4 (data-portability.md's version rule lists only collector-owned tables and columns, and `mtg_cards` is global catalog data; `ExportFormat::Rules::VERSIONS` is `[1, 2, 3]`); and later, under `## Implementation review`, the review's verdict on its first line.
 
 - [ ] **Step 6: commit.** Stage the documents and `docs: spec 058 area docs, upgrade note and verification (#250)` with the attribution line.
 
@@ -420,7 +422,8 @@ Documents are checked by reading, never by RSpec; the area docs say what is true
 - [ ] **Step 2: lint, security, docs build:** `bin/rubocop`, `bin/brakeman`, `bin/yard doc` (a YARD warning fails it; AC-4.6), `ruby script/upgrade/guard.rb`, each through `script/worktree/with_mise`. Expected: no offenses, no warnings, guard passes.
 - [ ] **Step 3: ask the coordinator for the CI slot**, then `script/worktree/with_mise bin/ci` (or `bin/ci checks` and `bin/ci rspec` in turn). Expected: green. Release the slot with the SHA and result. The container upgrade proof (`bin/upgrade-smoke`) and the backup smoke run in GitHub's image job, on the pushed branch; read their result there.
 - [ ] **Step 4: restore noise.** `git status` shows only the intended files; `db/cable_schema.rb`, `db/cache_schema.rb` and `db/queue_schema.rb` are unchanged, and `db/schema.rb` holds only the version line and the one column (`git checkout db/schema.rb` after a `bin/ci` run that loaded the queue tables, then check the diff is the intended one).
-- [ ] **Step 5: implementation review** (`sdd-review` Mode B, read-only, Opus), its verdict recorded in `verification.md` under `## Implementation review`; then session-wrap and `distill-feature`.
+- [ ] **Step 5: record the evidence.** Add to `verification.md` the commands and results of Steps 1–4 (rspec counts, rubocop, yard, brakeman, guard, `bin/ci`'s run and SHA), then commit it as `docs: spec 058 verification evidence (#250)` with the attribution line.
+- [ ] **Step 6: implementation review** (`sdd-review` Mode B, read-only, Opus), its verdict recorded in `verification.md` under `## Implementation review`; then session-wrap and `distill-feature`.
 
 ---
 

@@ -1,7 +1,7 @@
 # Feature 058: Store Each Card's Mana Value from the Catalog
 
 **Status:** Approved by the maintainer on 2026-11-10 (Gate A, as written, including decision 3's `reapply?` reason), relayed by the coordinator
-**Version:** 1.0.2
+**Version:** 1.0.3
 **Created:** 2026-11-10
 **Last Updated:** 2026-11-10
 **Branch:** `058-mtg-mana-value`
@@ -17,6 +17,7 @@
 | 1.0.0 | 2026-11-10 | Written from issue #250, the [decks and locations issue design](../../superpowers/specs/2026-11-09-decks-and-locations-issues-design.md) ("Data notes found in the code") and a read of Scryfall's real data (halves, a one-million value, and a layout that has no top-level `cmc`) |
 | 1.0.1 | 2026-11-10 | Spec review round 1 (Opus, APPROVE WITH CHANGES, nothing blocking): decision 2 reads `Numeric` only (`Float()` raises and would make a record malformed) and always carries the key; AC-2.5 and AC-2.7 reworded; AC-3.6 observable through `made_progress?` and `updated_at`; AC-3.8 narrowed; the partial-failure Error Scenarios row corrected; Interactions names the real existing specs and fixtures; document ACs say they are verified by reading |
 | 1.0.2 | 2026-11-10 | Approved by the maintainer as written (Gate A); the Open Questions' three author calls (float, front face, the `reapply?` reason) are confirmed. No change to the text |
+| 1.0.3 | 2026-11-10 | Plan review round 2 (Opus, APPROVE WITH CHANGES, nothing blocking): the reversibility command is `bin/rails db:migrate:redo:primary` (decision 4, AC-1.3, the Error Scenarios row), because plain `db:migrate:redo` aborts in this four-database app; the intent is unchanged |
 
 ---
 
@@ -84,7 +85,7 @@ An instance whose refresh fails or has not run yet keeps NULL values, which no p
 
 ### 4. The migration
 
-One migration, `AddManaValueToMtgCards`, timestamped after the newest on `main`: `change { add_column … }`, reversible by itself, no model reference, no backfill (decision 2), safe to run unattended on boot from any prior version, since adding a nullable column to SQLite is one `ALTER TABLE .. ADD COLUMN`. The reader of a restored backup or an upgraded volume sees NULLs until a refresh, never an error. Reversibility is proved with `bin/rails db:migrate:redo` (no `db:rollback`), recorded in `verification.md`, and the schema file's diff is the one line.
+One migration, `AddManaValueToMtgCards`, timestamped after the newest on `main`: `change { add_column … }`, reversible by itself, no model reference, no backfill (decision 2), safe to run unattended on boot from any prior version, since adding a nullable column to SQLite is one `ALTER TABLE .. ADD COLUMN`. The reader of a restored backup or an upgraded volume sees NULLs until a refresh, never an error. Reversibility is proved with `bin/rails db:migrate:redo:primary` (plain `db:migrate:redo` aborts in this four-database app; no `db:rollback`), recorded in `verification.md`, and the schema file's diff is the one line.
 
 The upgrade proof (`bin/upgrade-smoke`, spec 031) compares the columns both databases have, so an added nullable column is no difference and **`script/upgrade/expected_changes.yml` is unchanged** (it holds spec 049's two `sessions` entries; none is added); `ruby script/upgrade/guard.rb` passes because no released migration changes. The seed `script/upgrade/seeds/next.rb` creates a card with no mana value, which is the state of a real upgrade, and stays as it is.
 
@@ -100,7 +101,7 @@ The export format is collector-owned data, "keyed by external IDs" (`docs/export
 
 - [ ] **AC-1.1** `mtg_cards` has `mana_value`, a nullable `float` with no default (a schema example reading `MTG::Card.columns_hash`); a card created without one reads `nil`, and a stored `0.0` reads `0.0`, not `nil`
 - [ ] **AC-1.2** The column holds `0.5` and `1_000_000.0` exactly (create, reload, compare)
-- [ ] **AC-1.3** The migration is reversible: `bin/rails db:migrate:redo` runs without error and leaves `db/schema.rb` as it found it (recorded in `verification.md`; no `db:rollback`)
+- [ ] **AC-1.3** The migration is reversible: `bin/rails db:migrate:redo:primary` runs without error and leaves `db/schema.rb` as it found it (recorded in `verification.md`; no `db:rollback`)
 - [ ] **AC-1.4** The migration references no application model and no other table's column; `ruby script/upgrade/guard.rb` passes; `script/upgrade/expected_changes.yml` is unchanged
 - [ ] **AC-1.5** No core table (`catalog_identities`, `catalog_entries`, `catalog_sets`, `catalog_names`) gains a column, and no core file names the new attribute (the core-names-no-collectible specs pass as they are)
 
@@ -167,7 +168,7 @@ Criteria AC-4.1 to AC-4.5 are verified by reading and recorded in `verification.
 | The refresh fails after some batches committed (each batch commits on its own) | Some cards hold a value, so `#reapply?` is false; a scheduled run of the same version is then skipped as already applied (the earlier applied run still counts) and the rest fill when Scryfall publishes a new file (their digests differ) or on a manual refresh. Spec 011's artwork test has the same gap; accepted, no page reads the column |
 | Scryfall's file is unchanged since the last applied refresh | A scheduled run applies once anyway while no card has a value, then skips as before (AC-3.2, AC-3.3) |
 | An instance whose catalog never loaded | No `MTG::Card` rows, `#reapply?` false, the not-loaded notice as before |
-| The migration is run twice, or redone | `change` is reversible; `db:migrate:redo` ends with the same schema (AC-1.3) |
+| The migration is run twice, or redone | `change` is reversible; `db:migrate:redo:primary` ends with the same schema (AC-1.3) |
 
 ## Interactions
 
