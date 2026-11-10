@@ -1,7 +1,7 @@
 # Feature 057: Design System: Deck Rules, Navigation and Pickers
 
-**Status:** Approved by the maintainer at Gate A on 2026-11-10 (option A; Q17 and Q18 ruled A; decisions 14 to 16 confirmed)
-**Version:** 1.0.0
+**Status:** Approved by the maintainer at Gate A on 2026-11-10 (option A; Q17 and Q18 ruled A; decisions 14 to 16 confirmed); version 1.1.0 adds decision 19 (the header's room for five links), ruled option A by the maintainer on 2026-11-10
+**Version:** 1.1.0
 **Created:** 2026-11-10
 **Last Updated:** 2026-11-10
 **Depends on:** [the decks and locations issue design](../../superpowers/specs/2026-11-09-decks-and-locations-issues-design.md) (decisions 9, 14–16 and 18), [spec 029](../029-manage-locations/spec.md) (the header's links, Locations), [spec 037](../037-filter-collection-by-location/spec.md) (the collection's location filter), all merged
@@ -14,6 +14,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.1.0 | 2026-11-10 | MINOR. During execution the guard for AC-1.3 (the app's own header, a Decks link added, 640px, headless Firefox) failed: five links make the account menu end 54.6px past the bar's content edge (nav 379.6px, wordmark 138px, bar padding 32px). The design system's preview header had hidden it. The maintainer ruled option A (decision 19): the logo mark replaces the wordmark from 640px up to the width where five links and the wordmark fit, the wordmark above it. New: decision 19, AC-1.3 rewritten (it could not pass), AC-1.5 and AC-1.6, a fourth CSS block in `additions.css`, the Navigation docs say it. No other criterion changes |
 | 1.0.0 | 2026-11-10 | Approved at Gate A by the maintainer (option A): Q17 = A and Q18 = A as drafted, and decisions 14 (no ADR), 15 (an empty picker group is omitted) and 16 (a native open list may ignore the styling) confirmed. Status Approved; no text change |
 | 0.3.1 | 2026-11-10 | The maintainer ruled Q17 = A and Q18 = A (decisions 17 and 18, as drafted); both `[NEEDS CLARIFICATION]` markers are removed. No other change |
 | 0.3.0 | 2026-11-10 | Spec review round 2 (NEEDS REVISION, mechanical; 0 blocking, 3 major, 7 minor) fixed: the existing example that expects the label class `"c-select"` exactly is named and edited (M1; AC-4.6, Documents table); the 019 and 021 supersession names the frozen clauses that forbid editing `ItemTile.md` and `ItemPage.md` and expect a re-export (M2); AC-1.3 and AC-1.4 measure what can fail (the nav ends before the account menu; the fixed tab bar's last tab is inside the bar) (M3); 3.010:1; the cap's source order; AC-4.3 compares the font family too; AC-4.5 lists every select that must stay as it is; AC-7.4 allows an unrelated hit; the README's own "App additions (spec 057)" line. No round 3; the worker checked the edits |
@@ -24,14 +25,14 @@
 
 Decks are the next theme of 1.0, and every later deck issue ([#249](https://github.com/plainprogrammer/Collector/issues/249) and the ten after it) builds on written design rules. Today the design system has none: it says "Decks and Wishlist don't exist yet", it says the `mana-*` colours are "never used anywhere else in the UI" (a deck's mana bar must use them), it has no rule for charts, no deck vocabulary, no grouped location picker (a deck's zones can't sit in a flat list of places), and a card page that shows four stats and an "In decks" list written before proxies and Considering existed. Its README and `CLAUDE.md` still say the design system is "replaced wholesale by re-exporting" and tell every addition to "upstream" itself, although the maintainer ruled on 2026-11-09 that the project owns the design system in code.
 
-This spec writes those rules and adds the CSS they need (grouped selects, a three-stat strip, the filter's width), and retires the re-export wording. It changes documents, one stylesheet and six previews, and adds one class to one line of one view (the collection filter's location select, so the width the maintainer ruled applies to it). It changes no helper, model, route, query, export or migration, and no other view: the app catches up in the issues that build each part.
+This spec writes those rules and adds the CSS they need (grouped selects, a three-stat strip, the filter's width, and room in the header for five links), and retires the re-export wording. It changes documents, one stylesheet and six previews, and adds one class to one line of one view (the collection filter's location select, so the width the maintainer ruled applies to it). It changes no helper, model, route, query, export or migration, and no other view: the app catches up in the issues that build each part.
 
 > **Terms.** A *place* is a location that is not a deck (a binder, a box). A *deck* is a location whose copies live in *zones*. A *proxy* is a stand-in for a card the collector doesn't own, recorded against a deck zone. *Considering* is the zone for cards being thought about. A *picker* is a location `<select>` in a form (the lot form, Move copies, typed entry, the scanner sitting, bulk Move to…); the *filter* is the collection's location select (spec 037). The full vocabulary is decision 9 and FR-3.
 
 ## Goals
 
 - The design system's README and component docs state the rules decks follow: navigation with Decks as a live section, the `mana-*` colour rule, a Charts rule, the deck vocabulary, grouped location pickers, the card page's stats and "In decks" table, and a Locations page that lists places only.
-- The CSS those rules need exists and is proved in a browser: group labels in selects, a three-stat strip, the filter's wider cap.
+- The CSS those rules need exists and is proved in a browser: group labels in selects, a three-stat strip, the filter's wider cap, and a header that holds five links from 640px (decision 19).
 - The existing previews that the rules contradict show the new rules: `AppHeader`, `TabBar`, `ItemPage` and `ItemPagePhone` entirely, and `CollectionPage` and `CollectionPagePhone` for their navigation (decision 17).
 - No file tells anyone to upstream a pattern or expects a re-export: the design system is the project's own.
 
@@ -66,6 +67,7 @@ The maintainer ruled on each of these on 2026-11-10 from the mock-ups the worker
 16. **The browser's own list is not our job (my call).** Group labels show only in the open list of a `<select>`, which the browser or the phone draws; Firefox on a desktop honours decision 1, native menus (macOS, phones) honour less or none of it. The closed control never shows a label. Nothing depends on the label's styling: with it ignored a group label is still a label, and the options are still readable. AC-4.2 and AC-4.3 therefore prove that the rule applies (the computed style of the group and its options), not how a native menu looks.
 17. (Q17 = A, ruled 2026-11-10.) `CollectionPage.html` and `CollectionPagePhone.html` also show the old header (Wishlist) and tab bar. Their header links and tab bar are updated to decision 6 and nothing else on them changes.
 18. (Q18 = A, ruled 2026-11-10.) The 300px cap is the location select's alone (decision 4); the Set select on search and the Language select on number entry stay at 220px.
+19. **The header makes room for five links with the logo mark (ruled, option A, 2026-11-10; version 1.1.0).** The app's own header with five links overflows from 640px: measured in headless Firefox with classic scrollbars, the account menu ends 54.6px past the bar's content edge at a 640px viewport, and five links plus the wordmark first fit at a 695px viewport (a 625px layout width). From 640px up to **719px** the logo mark replaces the wordmark (the phone header's own pattern, existing assets), and from **720px** the wordmark shows again; 720px is the measured 695px with 25px to spare for font rendering. The maintainer ruled the swap; my two calls inside it, for the visual review to veto: the rule applies only while the nav holds five or more links (`:has(.c-appbar__nav > :nth-child(5))`), so today's four-link header is unchanged until #49 adds Decks, and the upper bound is 720px rather than the bare minimum. Considered and not chosen: tighter bar and link padding (the overhang drops to 0 only with both, and the links crowd), no CSS change and leaving the band to #49 (a known overflow handed on), and moving the nav and tab bar switch to 720px (it rewrites the export's media rules and changes the tab bar).
 
 ## Users and Context
 
@@ -84,9 +86,11 @@ The maintainer ruled on each of these on 2026-11-10 from the mock-ups the worker
 **Acceptance criteria:**
 
 - [ ] **AC-1.1** Given the README's Navigation section When it is read Then it states the wide header order (Collection, Decks, Search, Scan, Locations), the phone tab bar order (Collection, Decks, Search, Scan, More) with Locations in More, that collectors will later choose and reorder their sections and no position is hard-coded, that Wishlist is planned, that the tab bar holds five tabs at most and is now full so a new section starts in More, and that Decks joins when the deck pages ship; and it no longer says "Decks and Wishlist don't exist yet" or lists Wishlist as a default section
-- [ ] **AC-1.2** Given `AppHeader.md`, `TabBar.md` and `MorePage.md` When they are read Then each says the same order, `AppHeader.md`'s sentence that "the four links share one line" at 640px says five, `TabBar.md`'s markup shows the five tabs with the Decks icon (a card and the one behind it), and `MorePage.md` says Locations stays in More because the tab bar's fifth tab is More and its tabs are full (not "the tab bar doesn't change")
-- [ ] **AC-1.3** Given the app's own header (`layouts/_appbar`: wordmark, nav, `+` button, account menu) with a Decks link added to its nav after Collection When it is rendered at a 640px viewport (where the nav first appears) Then there are five links, all with the same top (one line), the nav's right edge is at or before the account menu's left edge, and the page's scroll width is no more than the window's (the five-link sibling of spec 029 AC-5.1's measure, which stays as it is for today's four links)
+- [ ] **AC-1.2** Given `AppHeader.md`, `TabBar.md` and `MorePage.md` When they are read Then each says the same order, `AppHeader.md`'s sentence that "the four links share one line" at 640px says five and says the logo mark replaces the wordmark from 640px to 719px while the nav holds five links (decision 19), `TabBar.md`'s markup shows the five tabs with the Decks icon (a card and the one behind it), and `MorePage.md` says Locations stays in More because the tab bar's fifth tab is More and its tabs are full (not "the tab bar doesn't change")
+- [ ] **AC-1.3** Given the app's own header (`layouts/_appbar`: wordmark, nav, `+` button, account menu) with a Decks link added to its nav after Collection When it is rendered at a 640px viewport (where the nav first appears) and at a 719px viewport Then there are five links, all with the same top (one line), the nav's right edge is at or before the account menu's left edge, the account menu's right edge is at or inside the bar's content edge, the page's scroll width is no more than the window's, and the mark shows and the wordmark does not (decision 19; the five-link sibling of spec 029 AC-5.1's measure, which stays as it is for today's four links)
 - [ ] **AC-1.4** Given the app's own tab bar (`layouts/_tabbar`) with a Decks tab added after Collection When it is rendered at a 360px viewport Then there are five tabs, the last tab's right edge is at or inside the bar's right edge, the bar's scroll width is no more than its client width, and each tab's text fits inside its tab (the bar is fixed, so page overflow alone can't see it overflow)
+- [ ] **AC-1.5** Given the same header at a 720px viewport Then the five links fit as in AC-1.3 and the wordmark shows and the mark does not (so the swap ends where five links and the wordmark fit, and no earlier)
+- [ ] **AC-1.6** Given the app's own header as it is today, four links, at a 640px viewport When it is rendered Then the wordmark shows and the mark does not (decision 19: the swap waits for the fifth link)
 
 ### Story 2: Mana colour and charts
 
@@ -183,7 +187,8 @@ The maintainer ruled on each of these on 2026-11-10 from the mock-ups the worker
 Replace the default-sections sentence and "Decks and Wishlist don't exist yet" with decision 6. The header's nav, the tab bar and the More page say the same order. The five-tab limit stays; it is now full.
 
 **Must:** state both orders; keep "collectors will later choose and reorder", "never hard-code a section's position", "profile, settings and import/export live in the avatar menu or More", and "detail pages use `c-appbar--detail`"; say Wishlist is planned; update `TabBar.md`'s markup and its sentence "four sections (the collector's choice; …)".
-**Must not:** change a rule of the header or tab bar other than the sections (height, sticky, current tab, 56px tabs).
+**CSS (decision 19):** one block in `additions.css`, headed `(spec 057 …)`, inside `@media (min-width: 640px) and (max-width: 719px)`: while the nav holds five or more links the mark shows and the wordmark hides (the same two declarations as the phone rule in `components.css`). `AppHeader.md` and the README's Navigation section state it; the previews load `additions.css`, so they show it.
+**Must not:** change a rule of the header or tab bar other than the sections and the logo swap of decision 19 (height, sticky, current tab, 56px tabs).
 
 ### FR-2: Colour (README Color section, `ManaCost.md`)
 
@@ -283,10 +288,12 @@ Checked against the hosted-door rules ([north star](../../north-star.md)): the s
 | An account has decks but no places | "No location" then the "Decks" group; the empty "Places" group is omitted (decision 15) |
 | A later issue needs a fourth stat on the card page (Est. value) | The strip is the default four-up `c-stats`; `c-stats--three` is dropped for that page |
 | A new section is wanted in the tab bar | It starts in More; the five-tab limit is full |
+| A window 640px to 719px wide with five header links | The logo mark replaces the wordmark; the five links share one line with the account menu (decision 19) |
+| A sixth header link is added later | The header no longer fits at 640px; the guard for AC-1.3 fails until the rule is revisited |
 
 ## Open Questions
 
-None. The maintainer ruled on every question (decisions 1–13, 17 and 18). Decisions 14, 15 and 16 are my calls for Gate A to confirm.
+None. The maintainer ruled on every question (decisions 1–13, 17, 18 and 19). Decisions 14, 15 and 16 are my calls for Gate A to confirm.
 
 ## Out of Scope (Future Considerations)
 
@@ -319,20 +326,20 @@ None. The maintainer ruled on every question (decisions 1–13, 17 and 18). Deci
 | `docs/design-system/components/ImageFit.md`, `UnownedTile.md` | Re-export wording (FR-7) |
 | `docs/design-system/components/ItemTile.md` | The `c-tile--owned-none` sentence points to `UnownedTile` (FR-7) |
 | `docs/design-system/previews/AppHeader.html`, `TabBar.html`, `ItemPage.html`, `ItemPagePhone.html`, `CollectionPage.html`, `CollectionPagePhone.html` | FR-8 |
-| `app/assets/stylesheets/collector/additions.css` | Grouped selects, the filter's cap, `c-stats--three` (each under its own `(spec 057)` heading); the heading comment and two override comments (FR-4, FR-5, FR-7) |
+| `app/assets/stylesheets/collector/additions.css` | Grouped selects, the filter's cap, `c-stats--three`, the header's logo swap (each under its own `(spec 057)` heading); the heading comment and two override comments (FR-4, FR-5, FR-7) |
 | `app/views/collections/_location_select.html.erb` | One class, `c-select--wide`, on the label (FR-4) |
 | `.claude/skills/collector-design-system/SKILL.md`, `CLAUDE.md` | The deck line; the ownership note (FR-3, FR-7) |
 | `docs/architecture/catalog-core.md`, `collection-and-lots.md` | Re-export wording (FR-7) |
 | `docs/specs/README.md` | This spec's row; "Superseded by" for 004, 019, 021, 029 and 037 |
 | `spec/design_system_files_spec.rb` | One comment (FR-7) |
-| `spec/system/` (one new file) | AC-1.3, AC-1.4, AC-4.2 to AC-4.4, AC-5.2 to AC-5.4; `spec/system/locations_spec.rb` (four links at 640px) is unchanged until #49 adds Decks to the real header |
+| `spec/system/` (one new file) | AC-1.3 to AC-1.6, AC-1.4, AC-4.2 to AC-4.4, AC-5.2 to AC-5.4; `spec/system/locations_spec.rb` (four links at 640px) is unchanged until #49 adds Decks to the real header |
 | `spec/requests/collection_location_select_spec.rb` | One edited example (line 32, the label's class), AC-4.6 |
 | `spec/design_system_tokens_spec.rb` (new) | AC-2.3 |
 
 ## Verification
 
 - **Document criteria** (AC-1.1, 1.2, 2.1, 2.2, 2.4, 3.1, 3.2, 4.1, 5.1, 5.5, 6.1, 7.1, 7.2, and the reading of AC-7.3 and 7.4): read against the text; the quotations, the `git grep` hits and their readings are recorded in `verification.md`.
-- **CSS and layout criteria** (AC-1.3, 1.4, 4.2 to 4.4, 5.2 to 5.4): a system example loads a real page (the header and tab bar are the app's own partials with a Decks link and tab added in the page; the selects and the stats strip are markup added to a real page, since no page has them yet), reads computed style and layout in a browser, uses a fixed-width frame for narrow widths, and each example is shown to fail when its rule is removed.
+- **CSS and layout criteria** (AC-1.3 to 1.6, 4.2 to 4.4, 5.2 to 5.4): a system example loads a real page (the header and tab bar are the app's own partials with a Decks link and tab added in the page; the selects and the stats strip are markup added to a real page, since no page has them yet), reads computed style and layout in a browser, uses a fixed-width frame for narrow widths, and each example is shown to fail when its rule is removed.
 - **Contrast** (AC-2.3): a unit example computes the unrounded ratios from the three blocks of `tokens.css` (the file the app ships; testing.md bars reading prose documents, and tokens are code). AC-2.4 is a prose statement: verified by reading.
 - **The filter's class** (AC-4.6): a request example on the collection page, normal and bulk.
 - **Unchanged flat select, default and single stats, the guard spec** (AC-4.5, AC-5.4, AC-7.3): the existing request and system examples and `spec/design_system_files_spec.rb` stay green.

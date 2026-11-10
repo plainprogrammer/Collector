@@ -1,10 +1,10 @@
 # Implementation Plan: Design System: Deck Rules, Navigation and Pickers
 
-**Spec:** [docs/specs/057-deck-design-rules/spec.md](spec.md) (version 1.0.0, Approved at Gate A on 2026-11-10)
+**Spec:** [docs/specs/057-deck-design-rules/spec.md](spec.md) (version 1.1.0: Approved at Gate A on 2026-11-10, plus decision 19 ruled by the maintainer the same day)
 **Decisions:** none new; the maintainer's rulings are the spec's decisions 1–18 (no ADR, decision 14)
 **Issue:** [#248](https://github.com/plainprogrammer/Collector/issues/248) (roadmap item 14a)
 **Created:** 2026-11-10
-**Status:** Draft, for Gate B
+**Status:** Approved at Gate B (2026-11-10); revised for spec 1.1.0 (Phase 5 and the Navigation docs), the maintainer's ruling on the header
 **Review:** round 1 (read-only Opus): NEEDS REVISION, 0 blocking, 7 major, 8 minor; all fixed in this draft (the font longhands on the optgroup, the selected option in the probe, the batches, the Decks icon, the README and phone-page sentences, the missed re-export line in the area doc, the header measure's control, the preview scripts). Round 2: APPROVED (one wording nit, fixed).
 
 ## Global Constraints
@@ -35,8 +35,8 @@ The design system states the rules decks follow (navigation, colour and charts, 
 |------|----------------|-------|
 | `app/views/collections/_location_select.html.erb` | One class, `c-select--wide`, on the label | 1 |
 | `spec/requests/collection_location_select_spec.rb` | The label class, normal and bulk (AC-4.6) | 1 |
-| `app/assets/stylesheets/collector/additions.css` | Three new blocks (grouped select, location cap, three-stat strip); three comment rewrites | 2, 3, 4, 7 |
-| `spec/system/design_system_deck_rules_spec.rb` (new) | AC-1.3, 1.4, 4.2–4.4, 5.2–5.4 in headless Firefox | 2–6 |
+| `app/assets/stylesheets/collector/additions.css` | Four new blocks (grouped select, location cap, three-stat strip, the header's logo swap); three comment rewrites | 2, 3, 4, 5, 7 |
+| `spec/system/design_system_deck_rules_spec.rb` (new) | AC-1.3 to 1.6, 4.2–4.4, 5.2–5.4 in headless Firefox | 2–6 |
 | `spec/design_system_tokens_spec.rb` (new), `.rubocop.yml` | AC-2.3; the new spec's string describe is excluded from `RSpec/DescribeClass` | 6 |
 | `spec/design_system_files_spec.rb` | One comment | 7 |
 | `docs/design-system/README.md`, `components/*.md`, `.claude/skills/collector-design-system/SKILL.md`, `CLAUDE.md`, `docs/architecture/catalog-core.md`, `collection-and-lots.md` | The rules and the retired wording | 8–12 |
@@ -58,7 +58,7 @@ The supervisor does Phases 15 and 16 (the record, the screenshots, the CI slot, 
 
 ## Pre-implementation gates
 
-- **Simplicity:** three components (view class, three CSS blocks, documents). No new dependency. Passes.
+- **Simplicity:** three components (view class, four CSS blocks, documents). No new dependency. Passes.
 - **Anti-abstraction:** the system spec uses Capybara, Selenium's `execute_script` and the repo's `NarrowFrame`; no new wrapper beyond four small private helpers inside the one spec file. Passes.
 - **Integration-first:** the contract is the class name and the computed values in the spec's ACs; Phases 1 to 6 write the examples before the CSS they prove.
 
@@ -374,13 +374,17 @@ The strip is added to a real page inside a `.c-page` of a fixed width: 900px, an
 
 ---
 
-## Phase 5: Five header links and five tabs (AC-1.3, AC-1.4)
+## Phase 5: The header's room for five links, and five tabs (AC-1.3 to AC-1.6)
 
-**Implements:** FR-1 (what the CSS must hold) | **Satisfies:** AC-1.3, AC-1.4
-**Files:** `spec/system/design_system_deck_rules_spec.rb`
-**Interfaces:** Consumes: the app's `layouts/_appbar` and `layouts/_tabbar` as rendered, `NarrowFrame`. Produces: nothing for later phases. No CSS changes: the mock-ups showed five links fit at 640px and five tabs fit at 360px, so these examples are guards for the order the deck issues add.
+**Implements:** FR-1 (what the CSS must hold), decision 19 | **Satisfies:** AC-1.3, AC-1.4, AC-1.5, AC-1.6
+**Files:** `spec/system/design_system_deck_rules_spec.rb`, `app/assets/stylesheets/collector/additions.css`
+**Interfaces:** Consumes: the app's `layouts/_appbar` and `layouts/_tabbar` as rendered, `NarrowFrame`. Produces: the fourth CSS block (the logo swap), which `AppHeader.md` and the README's Navigation section state (Phases 8, 9).
+
+**Revised for spec 1.1.0.** The first run of this phase's header guard failed: five links overflow the app's header at 640px by 54.6px (nav 379.6px, wordmark 138px, bar padding 32px, 625px layout width with a classic scrollbar). The maintainer ruled decision 19: the logo mark replaces the wordmark from 640px to 719px while the nav holds five or more links. The header examples therefore have a real red run; the tab examples stay guards (five tabs fit at 360px with room: the widest label, "Collection", leaves 11.5px).
 
 The Decks link and tab are cloned from Collection's in the page, so the real partials, real CSS and real fonts are measured. Each fit measure has a control: a header and a tab bar with extra items, which the same measure must report as not fitting, so the measure is shown able to fail.
+
+The Phase 5 describe is already in the working tree, uncommitted (the implementer wrote it before the stop). Replace its three header examples with the ones below, add the `logo` helper, then follow the steps in order.
 
 - [ ] Add to the spec file, after the stats describe:
 
@@ -446,13 +450,43 @@ The Decks link and tab are cloned from Collection's in the page, so the real par
 
     def header_fits?(found) = found["lines"] == 1 && found["inside"] && found["beforeAccount"] && found["accountInside"] && !found["scrolls"]
 
-    it "keeps five links on one line before the account menu at 640px (AC-1.3)", :aggregate_failures do
-      open_in_narrow_frame(collection_path, width: 640, ready: ".c-appbar__nav", height: 1200)
+    # Which logo the header draws: whether the wordmark and the mark are displayed (decision 19).
+    def logo
+      evaluate(<<~JS)
+        const shown = (selector) => getComputedStyle(document.querySelector(selector)).display !== "none"
+        return { wordmark: shown(".c-appbar__wordmark"), mark: shown(".c-appbar__mark") }
+      JS
+    end
+
+    [ 640, 719 ].each do |width|
+      it "fits five links before the account menu, with the mark for the wordmark, at #{width}px (AC-1.3)", :aggregate_failures do
+        open_in_narrow_frame(collection_path, width:, ready: ".c-appbar__nav", height: 1200)
+        within_narrow_frame do
+          add_nav_links("Decks")
+          found = header_fit
+          expect(found["links"]).to eq(5)
+          expect(header_fits?(found)).to be(true)
+          expect(logo).to eq("wordmark" => false, "mark" => true)
+        end
+      end
+    end
+
+    it "fits five links with the wordmark at 720px, where the swap ends (AC-1.5)", :aggregate_failures do
+      open_in_narrow_frame(collection_path, width: 720, ready: ".c-appbar__nav", height: 1200)
       within_narrow_frame do
         add_nav_links("Decks")
         found = header_fit
         expect(found["links"]).to eq(5)
         expect(header_fits?(found)).to be(true)
+        expect(logo).to eq("wordmark" => true, "mark" => false)
+      end
+    end
+
+    it "keeps the wordmark for today's four links at 640px (AC-1.6)", :aggregate_failures do
+      open_in_narrow_frame(collection_path, width: 640, ready: ".c-appbar__nav", height: 1200)
+      within_narrow_frame do
+        expect(header_fit["links"]).to eq(4)
+        expect(logo).to eq("wordmark" => true, "mark" => false)
       end
     end
 
@@ -484,8 +518,22 @@ The Decks link and tab are cloned from Collection's in the page, so the real par
   end
 ```
 
-- [ ] Run `script/worktree/with_mise bin/rspec spec/system/design_system_deck_rules_spec.rb -e "five header links"` — expect `0 failures`: this phase adds no CSS, so the two guard examples pass at once and the two control examples must also pass (they pass when the measure reports the overfull bar). If a control example fails (the measure did not flag the extra items), do not weaken the guard: report the measured values to the supervisor.
-- [ ] Commit: `test(design-system): guard five header links and five tabs (spec 057 AC-1.3, AC-1.4, #248)`
+- [ ] Run `script/worktree/with_mise bin/rspec spec/system/design_system_deck_rules_spec.rb -e "five links" -e "five tabs"` and confirm the red run: the two AC-1.3 examples (640px and 719px) fail (`header_fits?` false: the account menu overhangs; `logo` shows the wordmark); the AC-1.5, AC-1.6, AC-1.4 examples and the two controls pass. Record the failing example names and the measured overhang. If anything else fails (for example AC-1.5 at 720px: the five links and the wordmark do not fit there), stop and report the numbers; do not change the 719/720 boundary.
+- [ ] Add the fourth block to `app/assets/stylesheets/collector/additions.css`, after the three-stat strip block (its own heading, so the guard spec's block counts stay as they are):
+
+```css
+/* ---------- Header room for five links (spec 057 decision 19): the logo mark stands in for the wordmark from 640px to 719px ---------- */
+/* With five links the header overflows from 640px (the account menu ends 54.6px past the bar), and five links plus the wordmark
+   first fit at a 695px viewport; the mark leaves room until 720px. It applies only while the nav holds five or more links, so
+   today's four-link header keeps its wordmark. The two declarations are the phone rule's in components.css. */
+@media (min-width: 640px) and (max-width: 719px) {
+  .c-appbar:has(.c-appbar__nav > :nth-child(5)) .c-appbar__brand .c-appbar__wordmark { display:none; }
+  .c-appbar:has(.c-appbar__nav > :nth-child(5)) .c-appbar__brand .c-appbar__mark { display:block; }
+}
+```
+
+- [ ] Run the same command and `script/worktree/with_mise bin/rspec spec/design_system_files_spec.rb` — expect `0 failures` for both (the new block has its own heading, "spec 057" appears in several headings, and none of the guarded blocks changed).
+- [ ] Commit: `feat(design-system): the logo mark stands in for the wordmark when the header holds five links (spec 057 decision 19, AC-1.3 to AC-1.6, #248)`
 
 ---
 
@@ -672,7 +720,7 @@ There is no test for a prose document (`.claude/rules/testing.md`); the check is
 - A collector's wide header, in order: Collection, Decks, Search, Scan, Locations. The phone tab bar, in order: Collection, Decks, Search, Scan, More; Locations stays in More. Each collector will later be able to choose and reorder their own sections, so never hard-code a section's position. Wishlist is planned. Decks joins the header and the tab bar when the deck pages ship (today's header for a collector links Collection, Search, Scan and Locations, spec 029); the order is the rule for both from then on (spec 057 decision 6). Wide screens show the sections in the `AppHeader`; phones show them in a native-style bottom `TabBar` with More as its fifth tab.
 ```
 
-  Replace the bullet `- The tab bar holds five tabs at most. A new section starts in More.` with `- The tab bar holds five tabs at most and is now full (Collection, Decks, Search, Scan, More): a new section starts in More.` Keep the bullets on the avatar menu / More and on `c-appbar--detail` and the shell's 640px as they are.
+  Replace the bullet `- The tab bar holds five tabs at most. A new section starts in More.` with `- The tab bar holds five tabs at most and is now full (Collection, Decks, Search, Scan, More): a new section starts in More.` Then add one bullet after it: `- With five links the header has no room for the wordmark between 640px and 719px: the logo mark stands in for it there, while the nav holds five or more links, and the wordmark returns from 720px (spec 057 decision 19).` Keep the bullets on the avatar menu / More and on `c-appbar--detail` and the shell's 640px as they are.
 - [ ] **Decks section.** After the Navigation section's last bullet and before `## Components`, insert:
 
 ```markdown
@@ -714,7 +762,7 @@ print("removed", count)
 - [ ] **Fifteenth line.** After the spec 048 line (the last `App additions` line), with a blank line between, add:
 
 ```markdown
-App additions (spec 057, in `collector/additions.css`): the label and option rules of a grouped select (documented in `Form` and `FilterSelect`), `c-select--wide` (`FilterSelect`) and `c-stats--three` (`ItemPage`).
+App additions (spec 057, in `collector/additions.css`): the label and option rules of a grouped select (documented in `Form` and `FilterSelect`), `c-select--wide` (`FilterSelect`), `c-stats--three` (`ItemPage`) and the logo mark's stand-in for the wordmark from 640px to 719px while the header holds five links (`AppHeader`).
 ```
 
 - [ ] Read back: `git grep -n -i -e "upstream" -e "re-export" -e "replaced wholesale" -e "before the next export" -e "published design system" -e "Wishlist" -e "≥6:1" -- docs/design-system/README.md ':!.kamal/secrets'` — expect only: the Wishlist-is-planned sentence in Navigation, and no other line.
@@ -735,6 +783,7 @@ Each doc says the same order as the README. Read each file before editing; keep 
 ```markdown
 - Sections, in order for a collector: Collection, Decks, Search, Scan, Locations (spec 057 decision 6). Collectors will be able to choose and reorder them later; whatever they pick appears in the same order in the `TabBar` on phones, so the app has one navigation model at every width. Wishlist is planned.
 - Today's header links Collection, Search, Scan and Locations, in that order (spec 029); Decks joins after Collection when the deck pages ship. At 640px, where the nav first appears, the five links share one line with the account menu (`spec/system/design_system_deck_rules_spec.rb` measures it with Decks added).
+- With five links there is no room for the wordmark from 640px to 719px, so the logo mark replaces it there while the nav holds five or more links, and the wordmark shows from 720px (spec 057 decision 19; today's four-link header keeps the wordmark).
 ```
 
 - [ ] `TabBar.md`: in the first paragraph replace `four sections (the collector's choice; Collection, Decks, Locations and Wishlist by default) and More.` with `four sections (Collection, Decks, Search and Scan, in that order; Locations stays in More) and More. The five tabs are full: a new section starts in More. Collectors will later be able to choose and reorder their sections (spec 057 decision 6).` In the markup block, keep the Collection, Decks and More tabs as they are (Decks' own markup line is replaced in the next step) and replace the `<a href="/locations">…Locations</a>` and `<a href="/wishlist">…Wishlist</a>` lines with:
@@ -984,7 +1033,7 @@ for name in ("ItemPage.html", "ItemPagePhone.html"):
 **Interfaces:** Consumes: everything above. Produces: the record `distill-feature` and the final review read.
 
 - [ ] The supervisor reads each document criterion against the text and writes `verification.md`: a table of criterion, file and line quoted, verdict; the AC-7.4 `git grep` hits with each reading; the AC-8.3 `<link>` read of all six previews.
-- [ ] Screenshots, with a scratch Selenium script as in the mock-up work: each of the six previews at 1280px and in a 390px frame, in both themes (`?theme=dark` and `data-theme="light"` set explicitly, a 0.6s pause after a switch), plus one image each for the grouped select labels (the probe markup, since the open list is the browser's) in both themes. They go in `docs/specs/057-deck-design-rules/screenshots/` and are embedded in the PR body.
+- [ ] Screenshots, with a scratch Selenium script as in the mock-up work: each of the six previews at 1280px and in a 390px frame, in both themes; the app's own header with a Decks link added (the system example's frame or a scratch page) at 640px, 719px and 720px, light and dark, for decision 19 (mark, mark, wordmark); `AppHeader.html` at 640px and 720px (`?theme=dark` and `data-theme="light"` set explicitly, a 0.6s pause after a switch), plus one image each for the grouped select labels (the probe markup, since the open list is the browser's) in both themes. They go in `docs/specs/057-deck-design-rules/screenshots/` and are embedded in the PR body.
 - [ ] Ask the coordinator for the maintainer's final visual review with those screenshots (the brief's step). Fix what the review finds as a task of its own with its own commit.
 
 ## Phase 16: Integration verification
@@ -1008,7 +1057,8 @@ for name in ("ItemPage.html", "ItemPagePhone.html"):
 | AC | Phase | Proof |
 |----|-------|-------|
 | 1.1, 1.2 | 8, 9 | reading |
-| 1.3, 1.4 | 5 | system example, with controls |
+| 1.3, 1.5, 1.6 | 5 | system examples; 1.3 red first, 1.5 and 1.6 guard the swap's two edges |
+| 1.4 | 5 | system example, with a control |
 | 2.1 | 8, 10 | reading |
 | 2.2, 2.4 | 8 | reading |
 | 2.3 | 6 | unit example, with a control |
