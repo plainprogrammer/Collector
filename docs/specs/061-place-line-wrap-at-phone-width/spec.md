@@ -1,7 +1,7 @@
 # Feature 061: The Phone Line's Wrap Is Stated at a Phone's Width (Restates Spec 048 AC-1.8)
 
-**Status:** Draft
-**Version:** 0.2.0
+**Status:** Approved by the maintainer (2026-11-10, Gate A, relayed by the coordinator) at 0.3.0, after two spec review rounds
+**Version:** 0.3.0
 **Created:** 2026-11-10
 **Last Updated:** 2026-11-10
 **Depends on:** [spec 048](../048-row-place-line/spec.md) (a table row's place line wraps; decision 4, AC-1.7, AC-1.8), [spec 033](../033-location-on-tiles-and-rows/spec.md) (the phone line); [#272](https://github.com/plainprogrammer/Collector/pull/272) (the suite pins classic scrollbars), all merged
@@ -14,6 +14,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.3.0 | 2026-11-10 | Spec review round 2 (Opus, read-only; APPROVE, 0 blocking, 0 major, 4 minor), minors taken: the room of 146 is stated as what the wrapping lines measure; the fragility row separates raw overflow from the asserted margin; the index rows are aligned; AC-2.2 amends the Sources line. Approved at Gate A by the maintainer, relayed by the coordinator |
 | 0.2.0 | 2026-11-10 | Spec review (Opus, read-only), round 1: 1 blocking, 2 major, 7 minor, all taken: the margin's wording (20px of 23px, not "half"); spec 048's Error Scenarios row added to what is superseded; AC-1.4 states how the overlay run is made and what it must record; room is marked "fits" where the line fits; AC-1.3 is met by existing examples; the error row names AC-1.2; FR-1 names the header and factory comments; the history left unedited is listed |
 | 0.1.0 | 2026-11-10 | First draft from issue #288, #271 and the measurements below. The maintainer ruled decision 1 (option a) on 2026-11-10 |
 
@@ -48,7 +49,7 @@ The behaviour is right and the CSS is not at fault: a phone line wider than its 
 - Changing a rule, a view or the phone line's content. Spec 048 decision 4 stands: the wrap rule is the `c-table__sub` rule of every narrow table, not scoped away from an account with no location.
 - Changing spec 048's AC-1.7 and its 360px and 390px examples (a three-character code fits one line, which is true at every scrollbar setting), or AC-1.1 to AC-1.6 (their wording and examples don't depend on where a line wraps).
 - Removing the classic-scrollbar pin of #272: other examples depend on a fixed width, and CI draws classic scrollbars.
-- Widening spec 048 AC-1.7's margin: its example fits by only about 7.5px in the suite's 345px content width (138.5 against a room of 146), the same thinness in the other direction, but it fits at every scrollbar setting and no wrap is claimed there, so nothing flips.
+- Widening spec 048 AC-1.7's margin: its example fits by only about 7.5px in the suite's 345px content width (138.5 against the 146px room the wrapping lines measure at 345; a line that fits reports its own width), the same thinness in the other direction, but it fits at every scrollbar setting and no wrap is claimed there, so nothing flips.
 - Any claim of how the line wraps at 390px: a phone's 390px content is wide enough for this spec's line to fit on one row, and nothing is asked of it there.
 
 ## Decisions
@@ -60,7 +61,7 @@ The behaviour is right and the CSS is not at fault: a phone line wider than its 
 | What the criterion says | A phone line wider than its room wraps instead of scrolling, shown with a line that does at a phone's width | A long no-location line never scrolls | The same line, at the width a classic scrollbar leaves |
 | What phones do | the criterion and the example match | silent | the example matches a width no phone has |
 | Proof that a no-location line wraps | kept | lost (spec 048 AC-1.1 and AC-1.2 prove it only for lines with a place) | kept, at about 7px |
-| Fragility | margin 23px at a phone's width, 38px with a classic scrollbar | none | the same 7px |
+| Fragility | margin 23px at a phone's width, 38px of raw overflow with a classic scrollbar (the asserted margin is 23 either way) | none | the same 7px |
 
 The line is PLST · PCY-132 · Etched · NM · EN: a real set code, number and finish of the vocabulary, 184px wide against a room of 161px at a phone's 360px. The example keeps spec 048's other settings (no location, quantity 9,999, near mint, English). The 20px margin is set against the line's 23px: it leaves 3px for a font's or a rounding's difference and is more than the classic scrollbar's 15px, so a scrollbar setting can't flip the example the way it flipped the old one, and a change of more than a few pixels to a font, a gutter or a column fails it loudly.
 
@@ -100,7 +101,7 @@ Recorded in the specs index in both directions and in the collection and lots ar
 **So that** nobody reads "a five-character code wraps at 360px" as a rule
 
 - [ ] **AC-2.1** The specs index adds this spec's row and names its supersession of spec 048 AC-1.8, and spec 048's row names this spec in "Superseded by" (a small edit of the index only, not of spec 048). (Verified by reading.)
-- [ ] **AC-2.2** The collection and lots area doc's place line bullet replaces its "a four- or five-character set code can wrap the line at 360px (spec 048 decision 4, AC-1.8)" with the rule of decision 3 and cites this spec's AC-1.1 and AC-1.2; this spec joins its Sources and its distillation log. (Verified by reading.)
+- [ ] **AC-2.2** The collection and lots area doc's place line bullet replaces its "a four- or five-character set code can wrap the line at 360px (spec 048 decision 4, AC-1.8)" with the rule of decision 3 and cites this spec's AC-1.1 and AC-1.2; this spec joins its Sources, where the line for spec 048 ("all") says "all, except AC-1.8, restated by spec 061", and its distillation log. (Verified by reading.)
 
 ## Functional Requirements
 
