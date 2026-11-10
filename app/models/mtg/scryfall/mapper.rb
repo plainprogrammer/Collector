@@ -44,7 +44,7 @@ module MTG::Scryfall::Mapper
       external_key: card["oracle_id"] || card.fetch("card_faces").first.fetch("oracle_id"),
       name: card.fetch("name"),
       extension: {
-        mana_cost: joined(card, faces, "mana_cost"), type_line: joined(card, faces, "type_line"),
+        mana_cost: joined(card, faces, "mana_cost"), mana_value: mana_value(card), type_line: joined(card, faces, "type_line"),
         oracle_text: joined(card, faces, "oracle_text"),
         colors: Array(card["colors"] || card["card_faces"]&.flat_map { |face| Array(face["colors"]) }).uniq.sort,
         color_identity: card.fetch("color_identity").sort, keywords: card.fetch("keywords").sort
@@ -60,6 +60,20 @@ module MTG::Scryfall::Mapper
 
   # The front face's artwork (spec 011 AC-2.1): a multi-face printing's first face, else the card's own.
   def illustration_id(card) = Array(card["card_faces"]).first&.dig("illustration_id") || card["illustration_id"]
+
+  # A card's mana value: Scryfall's cmc, a whole number or a half, as a Float (spec 058 decision 2). A reversible card has
+  # no cmc of its own, only one on each face, so the front face's is read, the way illustration_id reads the front face's
+  # artwork. Never fetch, and never Float(value): both raise on a missing or odd value, and a raise makes the record
+  # Malformed, which silently drops the card from the catalog. A value that isn't a number reads as nil, which is not zero
+  # (a land's 0.0 is a value). Always put in the extension, nil included: the refresh's upsert needs the same keys in every
+  # row of a batch.
+  #
+  # @param card [Hash] a Scryfall card object
+  # @return [Float, nil]
+  def mana_value(card)
+    value = card["cmc"] || Array(card["card_faces"]).first&.dig("cmc")
+    value.to_f if value.is_a?(Numeric)
+  end
 
   def joined(card, faces, field) = card[field] || faces.filter_map { |face| face[field].presence }.join(" // ").presence
 
