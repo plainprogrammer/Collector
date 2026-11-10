@@ -211,6 +211,42 @@ RSpec.describe "Design system: deck components", type: :system do
     %(<details class="c-shapefold"><summary>#{facts}</summary><div class="c-shape c-shape--bare">#{parts}</div></details><aside class="c-deck__shape">#{panel_html(id: "shape-aside")}</aside>)
   end
 
+  def plus_icon = icon_svg('<path d="M12 5v14M5 12h14"/>')
+
+  def deck_list = [ [ "Izzet Tempo", "Modern", 58, 11 ], [ "Mono Red Burn", "Pioneer", 60, 0 ], [ "Empty Shell", "Commander", 0, 0 ] ]
+
+  # The Decks page: `.c-decks` on a wrapper holding the page head (count and the primary New deck button) and the table of
+  # the markup reference. `decks` is `[name, format, owned, proxy]`; Cards is owned plus proxy (decision 12). `scoped: false`
+  # leaves `.c-decks` off, the control of the phone example.
+  def decks_html(decks = deck_list, scoped: true)
+    cards = decks.sum { it[2] + it[3] }
+    stats = "#{decks.size} decks · #{cards} cards"
+    head = %(<div class="c-pagehead"><div><h1 class="c-pagehead__title">Decks</h1><p class="c-pagehead__stats">#{stats}</p></div>) +
+           %(<div class="c-pagehead__actions"><a class="c-btn c-btn--primary" href="/decks/new">#{plus_icon}New deck</a></div></div>)
+    %(<div#{%( class="c-decks") if scoped} id="probe">#{head}#{decks_table(decks)}</div>)
+  end
+
+  def decks_table(decks)
+    heads = %w[Deck Format Cards Owned Proxy].zip([ "", " is-opt", " is-num", " is-num is-opt", " is-num is-opt" ]).map { |text, css| %(<th class="#{css.strip}">#{text}</th>) }
+    %(<div class="c-collection"><table class="c-table"><thead><tr>#{heads.join}</tr></thead><tbody>#{decks.map { deck_row(*it) }.join}</tbody></table></div>)
+  end
+
+  def deck_row(name, format, owned, proxy)
+    tag = proxy.positive? ? proxy_tag(proxy) : %(<span class="is-muted">–</span>)
+    sub = [ "#{format} · #{owned} owned", (proxy_tag(proxy) if proxy.positive?) ].compact.join(" · ")
+    item = %(<td><div class="c-table__item"><div><a href="#">#{name}</a><span class="c-table__sub">#{sub}</span></div></div></td>)
+    %(<tr>#{item}<td class="is-opt">#{format}</td><td class="is-num">#{owned + proxy}</td><td class="is-num is-opt">#{owned}</td><td class="is-num is-opt">#{tag}</td></tr>)
+  end
+
+  # The New deck page's body: heading and the form of the markup reference.
+  def new_deck_html
+    formats = %w[Standard Modern Commander].map { %(<option>#{it}</option>) }.join
+    field = %(<div class="c-field"><label class="c-field__label" for="deck_name">Name</label><label class="c-input"><input id="deck_name" type="text"></label></div>)
+    format = %(<div class="c-field"><label class="c-field__label" for="deck_format">Format</label><select id="deck_format">#{formats}</select><p class="c-field__hint">The format sets the deck's zones.</p></div>)
+    actions = %(<div class="c-form__actions"><input type="submit" class="c-btn c-btn--primary" value="Create deck"><a class="c-btn c-btn--secondary" href="#">Cancel</a></div>)
+    %(<div id="probe"><div class="c-pagehead"><div><h1 class="c-pagehead__title">New deck</h1></div></div><form class="c-form">#{field}#{format}#{actions}</form></div>)
+  end
+
   describe "ProxyTag (AC-1.2, AC-1.3)" do
     def tag = %(<span class="c-proxy" id="probe">Proxy <b>2</b></span>)
 
@@ -606,6 +642,107 @@ RSpec.describe "Design system: deck components", type: :system do
       expect(evaluate('return document.querySelector("#probe table")')).to be_nil
       expect(computed("#probe .c-zone__empty", "background-color")).to eq([ token("--surface-sunken") ])
       expect(evaluate('return document.querySelector("#probe .c-zone__empty").textContent')).to eq("No cards in Sideboard yet.")
+    end
+  end
+
+  describe "DecksIndex table (AC-4.2, AC-4.3)" do
+    def decks_at(width) = add_to_main(wrap(width, decks_html(deck_list + [ [ "Abcdefghij" * 6, "Legacy", 12, 3 ] ])))
+
+    def row_cells(name)
+      evaluate(<<~JS)
+        const row = [ ...document.querySelectorAll("#probe tbody tr") ].find((tr) => tr.querySelector("a").textContent === #{name.to_json})
+        return [ ...row.children ].map((td) => { const style = getComputedStyle(td)
+          return { display: style.display, align: style.textAlign, font: style.fontFamily, text: td.textContent.trim(), tags: td.querySelectorAll(".c-proxy").length } })
+      JS
+    end
+
+    def overflow
+      evaluate(<<~JS)
+        const scrolls = (el) => el.scrollWidth > el.clientWidth
+        return [ scrolls(document.querySelector("#probe").parentElement), scrolls(document.querySelector("#probe .c-collection")) ]
+      JS
+    end
+
+    it "reads Deck, Format, Cards, Owned and Proxy, the numbers right-aligned in mono, at 700px (AC-4.2)", :aggregate_failures do
+      decks_at(700)
+      expect(evaluate('return [ ...document.querySelectorAll("#probe thead th") ].map((th) => th.textContent.trim())')).to eq(%w[Deck Format Cards Owned Proxy])
+      cells = row_cells("Izzet Tempo")
+      expect(cells.values_at(2, 3, 4).map { it["align"] }).to all(eq("right"))
+      expect(cells.values_at(2, 3, 4).map { it["font"] }).to all(include(mono_family))
+    end
+
+    it "shows the tag where a deck has proxies and a dash where not (AC-4.2)", :aggregate_failures do
+      decks_at(700)
+      expect(row_cells("Izzet Tempo")[4].values_at("tags", "text")).to eq([ 1, "Proxy 11" ])
+      expect(row_cells("Mono Red Burn")[4].values_at("tags", "text")).to eq([ 0, "–" ])
+    end
+
+    it "hides Format, Owned and Proxy at 360px and folds them into the Deck cell, Cards staying (AC-4.3)", :aggregate_failures do
+      decks_at(360)
+      cells = row_cells("Izzet Tempo")
+      expect(cells.map { it["display"] }).to eq(%w[table-cell none table-cell none none])
+      expect(cells.first["text"]).to match(/Modern · 58 owned\s*·\s*Proxy\s+11/)
+      expect([ cells.first["tags"], cells[2]["text"] ]).to eq([ 1, "69" ])
+    end
+
+    it "has no sideways overflow at 360px with a 60-character deck name (AC-4.3)" do
+      decks_at(360)
+      expect(overflow).to eq([ false, false ])
+    end
+  end
+
+  describe "DecksIndex page head and New deck page (AC-4.4, AC-4.5)" do
+    def head_state
+      evaluate(<<~JS)
+        const actions = getComputedStyle(document.querySelector("#probe .c-pagehead__actions")), button = document.querySelector("#probe .c-btn--primary")
+        const shown = button.getClientRects().length > 0 && getComputedStyle(button).display !== "none"
+        return { actions: actions.display, shown, height: button.getBoundingClientRect().height,
+                 fits: document.documentElement.scrollWidth <= window.innerWidth }
+      JS
+    end
+
+    def phone_head(**)
+      open_in_narrow_frame(locations_path, width: 360, ready: ".c-pagehead")
+      within_narrow_frame do
+        blank_host
+        add_to_main(decks_html(**))
+        head_state
+      end
+    end
+
+    it "keeps a primary New deck button, at least 36px high, in the head at 360px (AC-4.4)", :aggregate_failures do
+      found = phone_head
+      expect(found.values_at("actions", "shown", "fits")).to eq([ "flex", true, true ])
+      expect(found["height"]).to be >= 36
+    end
+
+    it "hides the head's actions at 360px without `.c-decks`, so the rule is what shows them (control)" do
+      expect(phone_head(scoped: false)["actions"]).to eq("none")
+    end
+
+    it "keeps the same button at 1280px (AC-4.4)", :aggregate_failures do
+      page.current_window.resize_to(1280, 900)
+      add_to_main(decks_html)
+      found = head_state
+      expect(found.values_at("actions", "shown", "fits")).to eq([ "flex", true, true ])
+      expect(found["height"]).to be >= 36
+    end
+
+    it "keeps the New deck form at most 420px wide at 1280px (AC-4.5)" do
+      page.current_window.resize_to(1280, 900)
+      add_to_main(new_deck_html)
+      expect(box("#probe .c-form")["width"]).to be <= 420
+    end
+
+    it "stacks the New deck fields at 360px with no overflow (AC-4.5)", :aggregate_failures do
+      open_in_narrow_frame(locations_path, width: 360, ready: ".c-pagehead")
+      within_narrow_frame do
+        blank_host
+        add_to_main(new_deck_html)
+        first, second = box("#probe .c-field:nth-child(1)"), box("#probe .c-field:nth-child(2)")
+        expect(second["top"]).to be >= first["bottom"]
+        expect(evaluate("return document.documentElement.scrollWidth <= window.innerWidth")).to be(true)
+      end
     end
   end
 end

@@ -490,3 +490,9 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
 }
 .c-zone td:first-child { white-space:normal; overflow-wrap:anywhere; } /* every width: in the 128px Card column of a 640px table a name would spill into Cost under the export's nowrap */
 .c-zone .c-cost { flex-wrap:wrap; }
+
+/* ---------- Decks list (spec 060): the New deck button stays on a phone ---------- */
+/* The export hides a page head's actions below 640px, and the app's header plus means "Add items" everywhere, so the
+   Decks page would have no way to add a deck on a phone (decision 24); this page alone keeps its button. A deck's name
+   wraps with the zone tables' rule, in the block above (the same selector list). */
+@media (max-width: 639px) { .c-decks .c-pagehead__actions { display:flex; } }
