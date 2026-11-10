@@ -121,6 +121,14 @@ img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches:
 .c-select select:focus-visible { outline:2px solid var(--focus); outline-offset:2px; }
 @media (pointer: coarse) { .c-select select { min-height:40px; } }
 
+/* ---------- Grouped select (spec 057): optgroup labels and options, in a form and in the filter bar ---------- */
+/* A group label is quiet text, not the browser's bold italic, and options keep ink on a raised ground in both themes.
+   Firefox's own stylesheet gives an optgroup a system font, which the options inside it would inherit, so its size and
+   family are set back to the select's with two longhands (never the shorthand, FR-4; AC-4.3). The browser or the phone
+   draws the open list: this applies where it is honoured and nothing relies on it (spec 057 decision 16). */
+.c-field select optgroup, .c-select select optgroup { color:var(--ink-muted); font-weight:600; font-style:normal; font-size:inherit; font-family:inherit; }
+.c-field select option, .c-select select option { color:var(--ink); background:var(--surface-raised); font-weight:400; }
+
 /* ---------- Pagination ---------- */
 .c-pager { display:flex; align-items:center; justify-content:center; gap:var(--space-3); margin:var(--space-6) 0; }
 .c-pager__position { font:400 13px/18px var(--font-mono); color:var(--ink-muted); }
