@@ -155,4 +155,132 @@ RSpec.describe "Design system: deck rules, navigation and pickers", type: :syste
       expect(layout["columns"]).to eq(1)
     end
   end
+
+  describe "five header links and five tabs (AC-1.3, AC-1.4)" do
+    # Clones Collection's link (or tab) `names` times, after the first, so the page has the section that #49 adds.
+    def add_nav_links(*names)
+      page.execute_script(<<~JS, names)
+        const first = document.querySelector(".c-appbar__nav a")
+        let anchor = first
+        for (const name of arguments[0]) {
+          const copy = first.cloneNode(true)
+          copy.textContent = name
+          copy.removeAttribute("aria-current")
+          anchor.after(copy)
+          anchor = copy
+        }
+      JS
+    end
+
+    def add_tabs(*names)
+      page.execute_script(<<~JS, names)
+        const first = document.querySelector(".c-tabbar a")
+        let anchor = first
+        for (const name of arguments[0]) {
+          const copy = first.cloneNode(true)
+          copy.lastChild.textContent = name
+          copy.removeAttribute("aria-current")
+          anchor.after(copy)
+          anchor = copy
+        }
+      JS
+    end
+
+    # Link count, how many distinct tops (1 is one line), whether every link ends inside the nav, whether the nav ends
+    # before the account menu starts (true by the row's own layout), whether the account menu ends inside the bar, and whether
+    # the page scrolls sideways. Extra links push the account menu out of the bar, which is what the control looks for.
+    def header_fit
+      evaluate(<<~JS)
+        const nav = document.querySelector(".c-appbar__nav"), box = nav.getBoundingClientRect()
+        const links = [ ...nav.querySelectorAll("a") ]
+        const actions = document.querySelector(".c-appbar__actions").getBoundingClientRect()
+        const bar = document.querySelector(".c-appbar"), barStyle = getComputedStyle(bar)
+        const barEnd = bar.getBoundingClientRect().right - parseFloat(barStyle.paddingRight)
+        return { links: links.length, lines: new Set(links.map((el) => Math.round(el.getBoundingClientRect().top))).size,
+                 inside: links.every((el) => el.getBoundingClientRect().right <= box.right + 0.5),
+                 beforeAccount: box.right <= actions.left, accountInside: actions.right <= barEnd + 0.5,
+                 scrolls: document.documentElement.scrollWidth > window.innerWidth }
+      JS
+    end
+
+    # Tab count, whether the last tab ends inside the bar, whether the bar scrolls sideways, and whether each tab's
+    # label fits inside its tab (the bar is fixed, so page overflow alone can't see it overflow).
+    def tabbar_fit
+      evaluate(<<~JS)
+        const bar = document.querySelector(".c-tabbar"), box = bar.getBoundingClientRect()
+        const tabs = [ ...bar.querySelectorAll("a") ]
+        const label = (tab) => { const range = document.createRange(); range.selectNodeContents(tab.lastChild); return range.getBoundingClientRect().width }
+        return { tabs: tabs.length, lastInside: tabs.at(-1).getBoundingClientRect().right <= box.right + 0.5,
+                 scrolls: bar.scrollWidth > bar.clientWidth, labelsFit: tabs.every((tab) => label(tab) <= tab.clientWidth) }
+      JS
+    end
+
+    def header_fits?(found) = found["lines"] == 1 && found["inside"] && found["beforeAccount"] && found["accountInside"] && !found["scrolls"]
+
+    # Which logo the header draws: whether the wordmark and the mark are displayed (decision 19).
+    def logo
+      evaluate(<<~JS)
+        const shown = (selector) => getComputedStyle(document.querySelector(selector)).display !== "none"
+        return { wordmark: shown(".c-appbar__wordmark"), mark: shown(".c-appbar__mark") }
+      JS
+    end
+
+    [ 640, 719 ].each do |width|
+      it "fits five links before the account menu, with the mark for the wordmark, at #{width}px (AC-1.3)", :aggregate_failures do
+        open_in_narrow_frame(collection_path, width:, ready: ".c-appbar__nav", height: 1200)
+        within_narrow_frame do
+          add_nav_links("Decks")
+          found = header_fit
+          expect(found["links"]).to eq(5)
+          expect(header_fits?(found)).to be(true)
+          expect(logo).to eq("wordmark" => false, "mark" => true)
+        end
+      end
+    end
+
+    it "fits five links with the wordmark at 720px, where the swap ends (AC-1.5)", :aggregate_failures do
+      open_in_narrow_frame(collection_path, width: 720, ready: ".c-appbar__nav", height: 1200)
+      within_narrow_frame do
+        add_nav_links("Decks")
+        found = header_fit
+        expect(found["links"]).to eq(5)
+        expect(header_fits?(found)).to be(true)
+        expect(logo).to eq("wordmark" => true, "mark" => false)
+      end
+    end
+
+    it "keeps the wordmark for today's four links at 640px (AC-1.6)", :aggregate_failures do
+      open_in_narrow_frame(collection_path, width: 640, ready: ".c-appbar__nav", height: 1200)
+      within_narrow_frame do
+        expect(header_fit["links"]).to eq(4)
+        expect(logo).to eq("wordmark" => true, "mark" => false)
+      end
+    end
+
+    it "reports a header with five more links as not fitting (the measure can fail)" do
+      open_in_narrow_frame(collection_path, width: 640, ready: ".c-appbar__nav", height: 1200)
+      within_narrow_frame do
+        add_nav_links("Decks", "Wishlist", "Recently viewed", "Price alerts", "Trade binder")
+        expect(header_fits?(header_fit)).to be(false)
+      end
+    end
+
+    it "keeps five tabs inside the bar, each label inside its tab, at 360px (AC-1.4)", :aggregate_failures do
+      open_in_narrow_frame(collection_path, width: 360, ready: ".c-tabbar")
+      within_narrow_frame do
+        add_tabs("Decks")
+        found = tabbar_fit
+        expect([ found["tabs"], found["lastInside"], found["scrolls"], found["labelsFit"] ]).to eq([ 5, true, false, true ])
+      end
+    end
+
+    it "reports a tab bar with four more tabs as not fitting (the measure can fail)" do
+      open_in_narrow_frame(collection_path, width: 360, ready: ".c-tabbar")
+      within_narrow_frame do
+        add_tabs("Decks", "Wishlist", "Collections", "Trades")
+        found = tabbar_fit
+        expect(found.values_at("lastInside", "scrolls", "labelsFit")).not_to eq([ true, false, true ])
+      end
+    end
+  end
 end

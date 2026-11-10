@@ -170,6 +170,15 @@ img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches:
   .c-stats.c-stats--three .c-stat + .c-stat { border-left:1px solid var(--line); }
 }
 
+/* ---------- Header room for five links (spec 057 decision 19): the logo mark stands in for the wordmark from 640px to 719px ---------- */
+/* With five links the header overflows from 640px (the account menu ends 54.6px past the bar), and five links plus the wordmark
+   first fit at a 695px viewport; the mark leaves room until 720px. It applies only while the nav holds five or more links, so
+   today's four-link header keeps its wordmark. The two declarations are the phone rule's in components.css. */
+@media (min-width: 640px) and (max-width: 719px) {
+  .c-appbar:has(.c-appbar__nav > :nth-child(5)) .c-appbar__brand .c-appbar__wordmark { display:none; }
+  .c-appbar:has(.c-appbar__nav > :nth-child(5)) .c-appbar__brand .c-appbar__mark { display:block; }
+}
+
 /* ---------- Sortable table header (spec 006): a link, or a bulk-form button, with the order's arrow ---------- */
 .c-table__sort { display:inline-flex; align-items:center; gap:var(--space-1); padding:0; border:0; background:none;
   color:inherit; font:inherit; text-decoration:none; cursor:pointer; }
