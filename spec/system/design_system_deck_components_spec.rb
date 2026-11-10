@@ -185,9 +185,12 @@ RSpec.describe "Design system: deck components", type: :system do
 
   def zone_row(row)
     proxy = row[:proxy].positive?
-    legal = row[:legal] == :legal ? "" : %( <span class="c-legal c-legal--no">#{icon_svg('<path d="M6 6l12 12M18 6 6 18"/>')}#{row[:legal].to_s.humanize}</span>)
+    # The marker is written twice, as the set is (spec 060 AC-3.8, decision 9): beside the name from 640px, under it below.
+    marker = row[:legal] == :legal ? "" : %(<span class="c-legal c-legal--no">#{icon_svg('<path d="M6 6l12 12M18 6 6 18"/>')}#{row[:legal].to_s.humanize}</span>)
+    beside = marker.empty? ? "" : %(<span class="is-opt"> #{marker}</span>)
     set = %(<span class="c-zone__set">#{row[:set]}</span>)
-    card = %(<td><div class="c-table__item"><div><a href="#">#{row[:name]}</a>#{legal}<span class="is-opt"><br>#{set}</span><span class="c-table__sub">#{set}#{" #{proxy_tag(row[:proxy])}" if proxy}</span></div></div></td>)
+    sub = [ set, (proxy_tag(row[:proxy]) if proxy), (marker unless marker.empty?) ].compact.join(" ")
+    card = %(<td><div class="c-table__item"><div><a href="#">#{row[:name]}</a>#{beside}<span class="is-opt"><br>#{set}</span><span class="c-table__sub">#{sub}</span></div></div></td>)
     dash = %(<span class="is-muted">–</span>)
     %(<tr>#{card}<td>#{row[:cost] ? cost_html(row[:cost]) : dash}</td><td class="is-num is-opt">#{row[:owned]}</td><td class="is-num is-opt">#{proxy ? proxy_tag(row[:proxy]) : dash}</td><td class="is-num">#{row[:owned] + row[:proxy]}</td>#{menu_cell(row)}</tr>)
   end
@@ -560,12 +563,14 @@ RSpec.describe "Design system: deck components", type: :system do
       JS
     end
 
-    # Each legality marker in the row: its word, whether it is drawn, the tag before it and its colour.
+    # Each legality marker in the row: its word, whether it is drawn, where it is written (in the line under the
+    # name or beside the name, after the link) and its colour.
     def markers_of(name)
       evaluate(<<~JS)
         #{row_script(name)}
         return [ ...row.querySelectorAll(".c-legal") ].map((m) => ({ text: m.textContent.trim(), shown: m.getClientRects().length > 0,
-          after: m.previousElementSibling?.tagName, color: getComputedStyle(m).color }))
+          where: m.closest(".c-table__sub") ? "sub" : (m.parentElement.previousElementSibling?.tagName === "A" ? "beside" : "other"),
+          color: getComputedStyle(m).color }))
       JS
     end
 
@@ -622,12 +627,13 @@ RSpec.describe "Design system: deck components", type: :system do
       expect(cost_of(long_name)["link"]).to be <= cell(long_name, 2)["left"]
     end
 
-    [ 700, 360 ].each do |width|
-      it "marks a banned card after its name and no legal one, in muted ink, at #{width}px (AC-3.8)", :aggregate_failures do
+    { 700 => "beside", 360 => "sub" }.each do |width, shown|
+      it "shows the banned card's marker #{shown == "beside" ? "beside the name" : "in the line under the name"} and no legal one's, in muted ink, at #{width}px (AC-3.8)", :aggregate_failures do
         zone_at(width)
-        markers = [ markers_of("Ragavan, Nimble Pilferer"), markers_of("Counterspell") ]
-        expect(markers.last).to eq([])
-        expect(markers.first).to eq([ { "text" => "Banned", "shown" => true, "after" => "A", "color" => token("--ink-muted") } ])
+        expect(markers_of("Counterspell")).to eq([])
+        expect(markers_of("Ragavan, Nimble Pilferer")).to match_array(%w[beside sub].map do |where|
+          { "text" => "Banned", "shown" => where == shown, "where" => where, "color" => token("--ink-muted") }
+        end)
       end
     end
   end
