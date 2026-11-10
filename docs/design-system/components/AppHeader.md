@@ -18,11 +18,12 @@ The top bar on every page: logo, main navigation and the account menu; on phones
 </header>
 ```
 
-- Default sections: Collection, Decks, Locations, Wishlist. Collectors will be able to choose and reorder them; whatever they pick appears in the same order in the `TabBar` on phones, so the app has one navigation model at every width.
-- The collector's links today are Collection, Search, Scan and Locations, in that order (spec 029); Decks and Wishlist join when those sections exist. At 640px, where the nav first appears, the four links share one line with the account menu.
+- Sections, in order for a collector: Collection, Decks, Search, Scan, Locations (spec 057 decision 6). Collectors will be able to choose and reorder them later; whatever they pick appears in the same order in the `TabBar` on phones, so the app has one navigation model at every width. Wishlist is planned.
+- Today's header links Collection, Search, Scan and Locations, in that order (spec 029); Decks joins after Collection when the deck pages ship. At 640px, where the nav first appears, the five links share one line with the account menu (`spec/system/design_system_deck_rules_spec.rb` measures it with Decks added).
+- With five links there is no room for the wordmark from 640px to 719px, so the logo mark replaces it there while the nav holds five or more links, and the wordmark shows from 720px (spec 057 decision 19; today's four-link header keeps the wordmark).
 - The current section gets a 2px `brand` underline and `ink` text; the others are `ink-muted`.
 - Profile, settings, import/export and sign-out live in the avatar menu, never in the main nav.
-- The logo swaps light/dark with `data-theme`; the wordmark shows on wide screens, the mark alone on phones.
+- The logo swaps light/dark with `data-theme`; the wordmark shows on wide screens, the mark alone on phones, and the mark also stands in from 640px to 719px while the nav holds five or more links (above).
 - Below 640px (viewport) the nav hides, the mark replaces the wordmark and the icon-only `+` (`c-appbar__add`) appears; the page head's own buttons hide.
 - On a shared instance the avatar shows whose collection you are in.
 - It is sticky at the top, 56px tall; anything else sticky sits below it.

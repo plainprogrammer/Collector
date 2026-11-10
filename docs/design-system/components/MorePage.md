@@ -24,7 +24,7 @@ The page behind the tab bar's "More" tab: who is signed in, account links, and s
 
 - It holds what the header's account menu holds on wide screens, so phones reach everything from the tab bar, plus "Add by number", which wide screens reach from the collection page's head (spec 026).
 - No section is marked current in the header or tab bar on this page.
-- Locations comes right after "Signed in as" and opens the locations page (spec 029); it is a section, so on phones it starts in More and the tab bar doesn't change.
+- Locations comes right after "Signed in as" and opens the locations page (spec 029); it is a section, and it stays in More because the tab bar's fifth tab is More and its five tabs are full: Collection, Decks, Search, Scan, More (spec 057 decision 6).
 - Currency follows Locations and opens the Currency page, where the collector chooses the currency their prices are shown in; the account menu holds it too, after Import collection (spec 038).
 - Export collection is a plain download link, outside Turbo and never prefetched; it is for every collector, so it comes before the admin links.
 - Import collection follows it and opens the import preview's upload page (spec 025).
