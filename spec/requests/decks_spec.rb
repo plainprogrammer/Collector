@@ -259,4 +259,132 @@ RSpec.describe "Decks", type: :request do
       expect(response).to redirect_to(new_session_path)
     end
   end
+
+  describe "GET /decks/:id/edit and PATCH /decks/:id (Story 2)" do
+    let!(:deck) { create(:deck, account:, name: "Izzet Tempo") }
+
+    def name_error = html.at_css("#location_name-error")&.text
+    def rename(name, to: deck) = patch(deck_path(to), params: { location: { name: } })
+
+    context "when signed in" do
+      before { sign_in_as(user) }
+
+      it "shows the Name field with the current name, Save and Cancel, under Decks (AC-2.1)", :aggregate_failures do
+        get edit_deck_path(deck)
+
+        expect(response).to have_http_status(:ok)
+        expect(html.at_css("h1").text).to eq("Rename deck")
+        expect(html.at_css(".c-pagehead__stats").text).to eq("Izzet Tempo")
+        expect(html.at_css("form[action='#{deck_path(deck)}'] input[name=_method]")["value"]).to eq("patch")
+        expect(html.at_css("input[name='location[name]']")["value"]).to eq("Izzet Tempo")
+        expect(html.at_css("form input[type=submit]")["value"]).to eq("Save")
+        expect(html.at_css(".c-form__actions a.c-btn--secondary[href='#{decks_path}']").text).to eq("Cancel")
+        expect(html.css(".c-appbar__nav a[aria-current=page]").map(&:text)).to eq([ "Decks" ])
+        expect(html.at_css("header.c-appbar--detail .c-appbar__back")["href"]).to eq(decks_path)
+      end
+
+      it "renames, answers 303 with the notice and leaves the zones, the format and the lots alone (AC-2.2, AC-2.5)", :aggregate_failures do
+        lot = create_lot_in_zone(deck, "main", quantity: 3)
+        before = [ deck.zones.pluck(:id, :zone, :name), lot.attributes.slice("id", "lot_key", "quantity") ]
+
+        rename("Spirits")
+
+        expect(response).to have_http_status(:see_other).and redirect_to(decks_path)
+        follow_redirect!
+        expect(html.at_css("#status").text.squish).to eq("Renamed “Izzet Tempo” to “Spirits”.")
+        expect(deck.reload).to have_attributes(name: "Spirits", format: "modern", collectible_type: "mtg")
+        expect([ deck.zones.pluck(:id, :zone, :name), lot.reload.attributes.slice("id", "lot_key", "quantity") ]).to eq(before)
+        expect(lot.place_label).to eq("Spirits › Main")
+      end
+
+      it "allows a change of case alone and refuses another place's or deck's name in any case (AC-2.3)", :aggregate_failures do
+        create(:location, account:, name: "Blue binder")
+        create(:deck, account:, name: "Krenko")
+
+        rename("izzet tempo")
+        expect(response).to have_http_status(:see_other)
+        expect(deck.reload.name).to eq("izzet tempo")
+
+        [ "BLUE binder", "krenko" ].each do |taken|
+          rename(taken)
+          expect(response).to have_http_status(:unprocessable_content)
+          expect(name_error).to eq("You already have a location called “#{taken}”.")
+        end
+        expect(deck.reload.name).to eq("izzet tempo")
+      end
+
+      it "answers 422 with the typed text kept and the sentence on the Name field (AC-2.4)", :aggregate_failures do
+        { "   " => Location::MESSAGES[:blank], ("a" * 61) => Location::MESSAGES[:too_long], "a\u200Bb" => Location::MESSAGES[:control] }.each do |typed, message|
+          rename(typed)
+
+          expect(response).to have_http_status(:unprocessable_content)
+          expect(html.css(".field_with_errors")).to be_empty
+          expect(html.at_css("h1").text).to eq("Rename deck")
+          expect(html.at_css(".c-pagehead__stats").text).to eq("Izzet Tempo")
+          expect(name_error).to eq(message)
+          expect(html.at_css("#location_name")["value"]).to eq(typed)
+          expect(html.at_css("#location_name")["aria-describedby"]).to eq("location_name-error")
+          expect(deck.reload.name).to eq("Izzet Tempo")
+        end
+      end
+
+      it "answers 400 without the location parameter" do
+        patch deck_path(deck), params: { other: "x" }
+
+        expect(response).to have_http_status(:bad_request)
+      end
+
+      it "refuses a place's name for a new place and a rename on the Locations page, by key (AC-2.5a)", :aggregate_failures do
+        place = create(:location, account:, name: "Blue binder")
+
+        post locations_path, params: { location: { name: "izzet  TEMPO" } }
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(html.at_css("#location_name-error").text).to eq("You already have a location called “izzet TEMPO”.")
+        patch location_path(place), params: { location: { name: "Izzet Tempo" } }
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(place.reload.name).to eq("Blue binder")
+        expect(account.locations.top_level.count).to eq(2)
+      end
+
+      it "answers 404 for a place's id and a zone's id on /decks (AC-2.6)", :aggregate_failures do
+        place = create(:location, account:, name: "Blue binder")
+
+        [ place, deck.zone("main") ].each do |other|
+          get edit_deck_path(other.id)
+          expect(response).to have_http_status(:not_found)
+          rename("Renamed", to: other.id)
+          expect(response).to have_http_status(:not_found)
+          expect(other.reload.name).not_to eq("Renamed")
+        end
+      end
+
+      it "answers 404 for a deck's id and a zone's id on /locations (AC-2.6, a place's name is the only one this page renames)", :aggregate_failures do
+        pending "T10 makes the Locations routes answer places only (spec 062 AC-2.6)"
+        [ deck.location, deck.zone("main") ].each do |other|
+          get edit_location_path(other)
+          expect(response).to have_http_status(:not_found)
+          patch location_path(other), params: { location: { name: "Renamed" } }
+          expect(response).to have_http_status(:not_found)
+        end
+      end
+
+      it "answers 404 for another account's deck and changes nothing (AC-9.7)", :aggregate_failures do
+        theirs = create(:deck, name: "Theirs")
+
+        get edit_deck_path(theirs)
+        expect(response).to have_http_status(:not_found)
+        rename("Mine", to: theirs)
+        expect(response).to have_http_status(:not_found)
+        expect(theirs.reload.name).to eq("Theirs")
+      end
+    end
+
+    it "sends a signed-out visitor to sign in", :aggregate_failures do
+      get edit_deck_path(deck)
+      expect(response).to redirect_to(new_session_path)
+      rename("Spirits")
+      expect(response).to redirect_to(new_session_path)
+      expect(deck.reload.name).to eq("Izzet Tempo")
+    end
+  end
 end
