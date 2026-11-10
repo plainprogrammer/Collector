@@ -1,7 +1,7 @@
 # Feature 061: The Phone Line's Wrap Is Stated at a Phone's Width (Restates Spec 048 AC-1.8)
 
 **Status:** Draft
-**Version:** 0.1.0
+**Version:** 0.2.0
 **Created:** 2026-11-10
 **Last Updated:** 2026-11-10
 **Depends on:** [spec 048](../048-row-place-line/spec.md) (a table row's place line wraps; decision 4, AC-1.7, AC-1.8), [spec 033](../033-location-on-tiles-and-rows/spec.md) (the phone line); [#272](https://github.com/plainprogrammer/Collector/pull/272) (the suite pins classic scrollbars), all merged
@@ -14,6 +14,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.2.0 | 2026-11-10 | Spec review (Opus, read-only), round 1: 1 blocking, 2 major, 7 minor, all taken: the margin's wording (20px of 23px, not "half"); spec 048's Error Scenarios row added to what is superseded; AC-1.4 states how the overlay run is made and what it must record; room is marked "fits" where the line fits; AC-1.3 is met by existing examples; the error row names AC-1.2; FR-1 names the header and factory comments; the history left unedited is listed |
 | 0.1.0 | 2026-11-10 | First draft from issue #288, #271 and the measurements below. The maintainer ruled decision 1 (option a) on 2026-11-10 |
 
 ## Problem Statement
@@ -28,8 +29,8 @@ The behaviour is right and the CSS is not at fault: a phone line wider than its 
 
 | Line (set · number · finish · condition · language) | Unwrapped | Room at 330 / 345 / 360 | Wraps at 345 | Wraps at 360 (a phone) |
 |---|---|---|---|---|
-| MH3 · 146 · Foil · NM · EN (spec 048 AC-1.7) | 138.5 | 131 / 138 / 138 | no | no |
-| PMH3A · 146 · Foil · NM · EN (spec 048 AC-1.8) | 153.4 | 131 / 146 / 153 | yes, by 7 | **no**, 8 to spare |
+| MH3 · 146 · Foil · NM · EN (spec 048 AC-1.7) | 138.5 | 131 / 138 (fits) / 138 (fits) | no | no |
+| PMH3A · 146 · Foil · NM · EN (spec 048 AC-1.8) | 153.4 | 131 / 146 / 153 (fits) | yes, by 7 | **no**, 8 to spare |
 | PLST · PCY-132 · Foil · NM · EN | 166 | 131 / 146 / 161 | yes, by 20 | yes, by 5 |
 | PMH3A · 146 · Etched · NM · EN | 171.6 | 131 / 146 / 161 | yes, by 25.6 | yes, by 10.6 |
 | **PLST · PCY-132 · Etched · NM · EN** | 184.1 | 131 / 146 / 161 | yes, by 38 | yes, **by 23** |
@@ -47,6 +48,7 @@ The behaviour is right and the CSS is not at fault: a phone line wider than its 
 - Changing a rule, a view or the phone line's content. Spec 048 decision 4 stands: the wrap rule is the `c-table__sub` rule of every narrow table, not scoped away from an account with no location.
 - Changing spec 048's AC-1.7 and its 360px and 390px examples (a three-character code fits one line, which is true at every scrollbar setting), or AC-1.1 to AC-1.6 (their wording and examples don't depend on where a line wraps).
 - Removing the classic-scrollbar pin of #272: other examples depend on a fixed width, and CI draws classic scrollbars.
+- Widening spec 048 AC-1.7's margin: its example fits by only about 7.5px in the suite's 345px content width (138.5 against a room of 146), the same thinness in the other direction, but it fits at every scrollbar setting and no wrap is claimed there, so nothing flips.
 - Any claim of how the line wraps at 390px: a phone's 390px content is wide enough for this spec's line to fit on one row, and nothing is asked of it there.
 
 ## Decisions
@@ -60,7 +62,7 @@ The behaviour is right and the CSS is not at fault: a phone line wider than its 
 | Proof that a no-location line wraps | kept | lost (spec 048 AC-1.1 and AC-1.2 prove it only for lines with a place) | kept, at about 7px |
 | Fragility | margin 23px at a phone's width, 38px with a classic scrollbar | none | the same 7px |
 
-The line is PLST · PCY-132 · Etched · NM · EN: a real set code, number and finish of the vocabulary, 184px wide against a room of 161px at a phone's 360px. The example keeps spec 048's other settings (no location, quantity 9,999, near mint, English). The 20px margin is half the line's 23px and more than the classic scrollbar's 15px, so a change of a few pixels to a font, a gutter or a column fails the example where it used to flip it.
+The line is PLST · PCY-132 · Etched · NM · EN: a real set code, number and finish of the vocabulary, 184px wide against a room of 161px at a phone's 360px. The example keeps spec 048's other settings (no location, quantity 9,999, near mint, English). The 20px margin is set against the line's 23px: it leaves 3px for a font's or a rounding's difference and is more than the classic scrollbar's 15px, so a scrollbar setting can't flip the example the way it flipped the old one, and a change of more than a few pixels to a font, a gutter or a column fails it loudly.
 
 ### 2. The margin is measured at a phone's content width, whatever scrollbar the browser draws
 
@@ -68,13 +70,13 @@ The example reads the line's unwrapped width, its room, and the page's scrollbar
 
 ### 3. Spec 048 AC-1.8 and the sentences of decision 4 that name it are restated here; the ruling of decision 4 stands
 
-Decision 4's "a four- or five-character set code (PLST, PMH3) can make the line longer than a 360px phone holds" is true of a code with a long number, an Etched finish or a long language code, not of a five-character code alone ("PMH3A · 146 · Foil · NM · EN" fits a phone with 8px to spare). What a phone shows is: a line wider than its room wraps instead of scrolling the page, whatever account it is for.
+Decision 4's "a four- or five-character set code (PLST, PMH3) can make the line longer than a 360px phone holds" is true of a code with a long number, an Etched finish or a long language code, not of a five-character code alone ("PMH3A · 146 · Foil · NM · EN" fits a phone with 8px to spare). What a phone shows is: a line wider than its room wraps instead of scrolling the page, whatever account it is for. The same goes for spec 048's Error Scenarios row for an account with no location ("a longer code wraps the line at 360px").
 
 ## Supersedes
 
 | Spec | What it says | What changes |
 |------|--------------|--------------|
-| [Spec 048](../048-row-place-line/spec.md) | AC-1.8: a five-character set code ("PMH3A") wraps the phone line at 360px, with no sideways scroll and no Location column or place; decision 4's sentence that a four- or five-character set code can make the line longer than a 360px phone holds; probe 1's last table row and the 0.5.0 changelog line that say the same | AC-1.1 of this spec replaces AC-1.8 (a line that is wider than its room wraps; the example line is PLST · PCY-132 · Etched · NM · EN). Decision 4's ruling (the rule isn't scoped to accounts with a location), AC-1.7 and every other criterion stand |
+| [Spec 048](../048-row-place-line/spec.md) | AC-1.8: a five-character set code ("PMH3A") wraps the phone line at 360px, with no sideways scroll and no Location column or place; decision 4's sentence that a four- or five-character set code can make the line longer than a 360px phone holds; probe 1's last table row, the Error Scenarios row for an account with no location ("a longer code wraps the line at 360px") and the 0.5.0 changelog line that say the same | AC-1.1 of this spec replaces AC-1.8 (a line that is wider than its room wraps; the example line is PLST · PCY-132 · Etched · NM · EN). Decision 4's ruling (the rule isn't scoped to accounts with a location), AC-1.7 and every other criterion stand |
 
 Recorded in the specs index in both directions and in the collection and lots area doc. Spec 048 is frozen and is not edited.
 
@@ -88,8 +90,8 @@ Recorded in the specs index in both directions and in the collection and lots ar
 
 - [ ] **AC-1.1** Given an account with no location and a lot of set code "PLST", number "PCY-132", Etched, near mint, English, quantity 9,999 When the table renders in a 360px frame Then the line under the name is two lines high (its `c-table__sub` is 20px or more high), the page doesn't scroll sideways, the table has no Location column, and the line carries no place; the result is the same whether the browser draws classic or overlay scrollbars.
 - [ ] **AC-1.2** Given the same account and lot When the line's unwrapped width and its room are measured in the 360px frame (decision 2) Then the unwrapped width exceeds the room plus the page's scrollbar width by at least 20px.
-- [ ] **AC-1.3** Given spec 048's AC-1.7 lot (set code "MH3", number 146, foil, near mint, English, quantity 9,999, no location) When the table renders at 360px and at 390px Then it is one line (under 20px), as spec 048 AC-1.7 says, unchanged.
-- [ ] **AC-1.4** Given AC-1.1's example When it is run once with overlay scrollbars (the suite's `ui.useOverlayScrollbars` preference set to 1 for that run only) Then it passes, and the run and its measurements (unwrapped width, room, scrollbar width, line height) are recorded in this spec's `verification.md`. (A verification criterion: the suite keeps the classic pin, decision 1.)
+- [ ] **AC-1.3** Given spec 048's AC-1.7 lot (set code "MH3", number 146, foil, near mint, English, quantity 9,999, no location) When the table renders at 360px and at 390px Then it is one line (under 20px), as spec 048 AC-1.7 says, unchanged; the existing examples (`spec/system/collection_row_place_spec.rb`, "fits one line under the name at 360px and 390px") meet it and no new example is written.
+- [ ] **AC-1.4** Given AC-1.1's and AC-1.2's example When it is run once with overlay scrollbars, by a temporary edit of the `ui.useOverlayScrollbars` preference in `spec/support/system.rb` to 1 that is reverted after the run (nothing is committed for it) Then it passes, and `verification.md` records that run with its measured scrollbar width (0), room (about 161px), unwrapped width (about 184px) and line height; a run that doesn't record a scrollbar width of 0 doesn't meet this criterion. (A verification criterion: the suite keeps the classic pin, decision 1.)
 
 ### Story 2: The restatement is written where the next change reads it
 
@@ -102,7 +104,7 @@ Recorded in the specs index in both directions and in the collection and lots ar
 
 ## Functional Requirements
 
-- **FR-1.** The one example of spec 048 AC-1.8 (`spec/system/collection_row_place_spec.rb`) is replaced by one for AC-1.1 and AC-1.2, measured in the narrow frame (`spec/support/narrow_frame.rb`), with the margin assertion of decision 2. Its comments cite this spec and no longer say a five-character code wraps at 360px. The factory comment in the same file that says a five-character code "legitimately wraps the phone line at 360px" is reworded to "can wrap".
+- **FR-1.** The one example of spec 048 AC-1.8 (`spec/system/collection_row_place_spec.rb`) is replaced by one for AC-1.1 and AC-1.2, measured in the narrow frame (`spec/support/narrow_frame.rb`), with the margin assertion of decision 2. Its comments cite this spec and no longer say a five-character code wraps at 360px. The file's header comment (it cites spec 048's criteria) cites this spec too. The factory comment in the same file that says a five-character code "legitimately wraps the phone line at 360px" is reworded to say it can wrap the line in the suite's 360px frame, whose classic scrollbar leaves 345px (the factory's codes, such as `S2000`, wrap there and not on a phone).
 - **FR-2.** No stylesheet, view, helper, model, controller, migration or export file changes. If the example's measurement shows the margin is smaller than decision 1 says, the plan adjusts the line, not the 20px.
 - **FR-3.** The example is stated by what it measures, never by a scrollbar setting: the scrollbar's width is read, not assumed (decision 2).
 
@@ -116,9 +118,9 @@ Recorded in the specs index in both directions and in the collection and lots ar
 
 | Scenario | Behaviour |
 |---|---|
-| A font, gutter or column change leaves the line less than 20px wider than its room at a 360px content width | AC-1.2's assertion fails and names the measured numbers; the plan then picks a longer line or the change is questioned |
+| A font, gutter or column change leaves the line less than 20px wider than its room at a 360px content width | AC-1.2's assertion fails and its message gives the measured numbers (unwrapped width, room, scrollbar width); the plan then picks a longer line or the change is questioned |
 | The browser draws overlay scrollbars | The scrollbar width is 0; the margin is the same, 23px (AC-1.4) |
-| The line fits on one row at a 360px content width | AC-1.1 fails (the line is under 20px high) |
+| The line fits on one row at a 360px content width | In the suite (a 345px content width) AC-1.1 can still hold, so AC-1.2's margin is what fails; with overlay scrollbars (AC-1.4) AC-1.1 fails too (the line is under 20px high) |
 
 ## Open Questions
 
@@ -128,6 +130,7 @@ None. Decision 1 is the maintainer's ruling of 2026-11-10.
 
 - The measuring code goes in the example file, as spec 048's `measures` does; the narrow frame's helper already returns whether the page scrolls sideways.
 - Measure the unwrapped width on a range over the line's contents with `white-space: nowrap` set on the element, then restore it (the probe did).
+- Build the margin expectation with a message that gives the numbers, for example `expect(margin).to be >= 20, "unwrapped #{unwrapped}, room #{room}, scrollbar #{scrollbar}"`.
 - The first task writes the new example and runs it against the shipped CSS (it should pass: nothing but the test changes); the TDD gate is met by running the example first with the old line "PMH3A · 146 · Foil · NM · EN" and seeing the margin assertion fail (153.4 − (146 + 15) = −7.6px with the suite's classic scrollbars), then with the new line and seeing it pass.
 
 ## Out of Scope (Future Considerations)
@@ -140,3 +143,4 @@ None. Decision 1 is the maintainer's ruling of 2026-11-10.
 - `docs/specs/README.md`: this spec's row; spec 048's "Superseded by" cell.
 - `docs/architecture/collection-and-lots.md`: the place line bullet (the restated rule and the source), Sources and the distillation log.
 - No ADR: the ruling is a test and a criterion, recorded here.
+- Left as history, and not edited: spec 048 and its `verification.md`, and the lesson `docs/lessons/2026-11-10-a-local-only-failure-was-the-macs-scrollbar-setting.md`, all of which state the five-character claim as it was found. The design system's `CollectionTable.md` and README make no such claim.
