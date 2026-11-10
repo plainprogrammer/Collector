@@ -68,4 +68,28 @@ RSpec.describe "Decks", type: :system do
       expect(page).to have_css(".c-decks td", text: "Modern")
     end
   end
+
+  describe "removing a deck, which needs no script (AC-3.1, AC-3.3)" do
+    it "removes an empty deck from its row through the confirmation page", :aggregate_failures do
+      create(:deck, account:, name: "Izzet Tempo")
+      visit decks_path
+      click_on "Remove Izzet Tempo"
+      expect(page).to have_css("h1", text: "Remove Izzet Tempo?")
+      click_on "Remove"
+      expect(page).to have_css("#status", text: "Removed “Izzet Tempo”.")
+      expect(page).to have_css(".c-empty", text: "No decks yet.")
+    end
+
+    it "shows the refusal at 360px with the zones' labels and no horizontal scroll", :aggregate_failures do
+      deck = create(:deck, account:, name: "W" * 60)
+      create_lot_in_zone(deck, "main", quantity: 2)
+      open_in_narrow_frame(new_deck_removal_path(deck), width: 360, ready: "#held_lots")
+      within_narrow_frame do
+        expect(page).to have_css("#held_lots .c-decks__zone", text: "#{"W" * 60} › Main")
+        expect(page).to have_link("Back to decks")
+        expect(page).to have_no_css("main button", text: /Remove|bulk/)
+        expect(fits?).to be(true)
+      end
+    end
+  end
 end

@@ -524,3 +524,9 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
    links (#253) may take them over. */
 .c-decks__actions { display:flex; justify-content:flex-end; gap:var(--space-2); font-family:var(--font-sans); }
 .c-decks .c-btn { min-height:var(--touch-floor); min-width:var(--touch-floor); }
+
+/* ---------- Deck removal pages (spec 062 AC-3.1, AC-3.3): a long name wraps ---------- */
+/* A deck's name may be 60 characters with no space, and the confirmation and refusal pages say it in a heading, a sentence and
+   each held lot's "Deck › Zone" line, so each breaks inside a word on a phone instead of widening the page (the lesson of
+   `.c-locations__name` and `.c-pick`). */
+.c-decks .c-confirm :is(h1, p), .c-decks .c-list li > span:first-child { min-width:0; overflow-wrap:anywhere; }
