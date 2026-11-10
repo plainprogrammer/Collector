@@ -1,5 +1,5 @@
-/* Collector app additions: patterns the export lacks (spec 004 FR-11), built only on tokens.
-   Documented in docs/design-system/components/; upstream them into the published design system. */
+/* Collector app additions: the project's own patterns on top of the export's components (spec 004 FR-11, spec 057
+   decision 12), built only on tokens. Documented in docs/design-system/components/. */
 
 /* ---------- Status message (live region under the header) ---------- */
 .c-status:empty { display:none; }
@@ -68,15 +68,16 @@
 .c-tile__add .c-btn { width:100%; justify-content:flex-start; }
 
 /* ---------- Image fit (spec 019): a card image is shown whole and in its own proportions inside its 63:88 slot ---------- */
-/* Overrides the export until the published design system fits images this way; then delete this block. Any leftover
-   shows the slot's surface-sunken ground. */
+/* Overrides the export's crop and stretch, which components.css still carries; this block is the rule (spec 057
+   decision 12). Any leftover shows the slot's surface-sunken ground. */
 .c-tile__media img, .c-item__image img { object-fit:contain; } /* the export crops with cover */
 img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches: the tag's height="34" beats aspect-ratio */
 .c-item__image { position:relative; } /* holds the missing-image fallback inside its own slot */
 
 /* ---------- Unowned tile (spec 021): a card you don't own keeps its image as supplied and is marked in words ---------- */
-/* Overrides the export, which fades the image and the missing-image fallback to 45%; once an export drops that fade,
-   delete the first rule. The marker is a c-tag on a second c-tile__meta row, so the tile is one line taller: the add
+/* Overrides the export, which fades the image and the missing-image fallback to 45% and still carries that rule; the
+   first rule here is what applies (spec 057 decision 12). The marker is a c-tag on a second c-tile__meta row, so the
+   tile is one line taller: the add
    control goes to the foot of its cell and a row that mixes owned and unowned tiles keeps its buttons level. */
 .c-tile--owned-none .c-tile__media > img, .c-tile--owned-none .c-tile__missing { opacity:1; }
 .c-tilecell > .c-tile__add { margin-top:auto; }
