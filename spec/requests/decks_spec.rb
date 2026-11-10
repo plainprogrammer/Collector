@@ -359,7 +359,6 @@ RSpec.describe "Decks", type: :request do
       end
 
       it "answers 404 for a deck's id and a zone's id on /locations (AC-2.6, a place's name is the only one this page renames)", :aggregate_failures do
-        pending "T10 makes the Locations routes answer places only (spec 062 AC-2.6)"
         [ deck.location, deck.zone("main") ].each do |other|
           get edit_location_path(other)
           expect(response).to have_http_status(:not_found)
