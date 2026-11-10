@@ -216,4 +216,178 @@ RSpec.describe YardRatchet::Check, :git_sandbox, type: :model do # rubocop:disab
                                         ".claude/rules/code-documentation.md", "is not checked here")
     expect(lines.join("\n")).not_to match(/is (stale|poor|vague)/)
   end
+
+  # Lines: 1 comment, 2 class, 3 def spin, 4-6 body, 7 end, 9 comment, 10 def turn, 11 body, 12 end, 14 def idle.
+  def gadget
+    <<~RUBY
+      # A gadget.
+      class Gadget
+        def spin
+          a = 1
+          b = 2
+          a + b
+        end
+
+        # Turns.
+        def turn
+          1
+        end
+
+        def idle = 0
+      end
+    RUBY
+  end
+  def bare = gadget.sub("# A gadget.\n", "")
+
+  def trio
+    <<~RUBY
+      # Trio.
+      class Trio
+        def a
+          1
+        end
+
+        def b
+          1
+        end
+
+        def c
+          1
+        end
+      end
+    RUBY
+  end
+
+  def offences(result) = result.lines.grep(/ has no comment \(/)
+
+  describe "what counts as changed" do
+    it "judges an uncommented method whose body the branch edits, and not one whose comment stays (AC-1.6)", :aggregate_failures do
+      base_with("app/models/gadget.rb" => gadget)
+      write("app/models/gadget.rb", gadget.sub("a = 1", "a = 3"))
+
+      expect(offences(check)).to eq([ "app/models/gadget.rb:3: Gadget#spin has no comment (changed)" ])
+
+      write("app/models/gadget.rb", gadget.sub("def turn\n    1", "def turn\n    2"))
+
+      expect(check).to be_ok
+    end
+
+    it "judges a method the branch only removes lines from (AC-1.7)" do
+      base_with("app/models/gadget.rb" => gadget)
+      write("app/models/gadget.rb", gadget.sub("    b = 2\n", ""))
+
+      expect(offences(check)).to eq([ "app/models/gadget.rb:3: Gadget#spin has no comment (changed)" ])
+    end
+
+    it "judges a method the branch only reformats (AC-2.6)" do
+      base_with("app/models/gadget.rb" => gadget)
+      write("app/models/gadget.rb", gadget.sub("a = 1", "a=1"))
+
+      expect(offences(check)).to eq([ "app/models/gadget.rb:3: Gadget#spin has no comment (changed)" ])
+    end
+
+    it "doesn't change an uncommented class when only one of its methods is edited (AC-1.8)" do
+      base_with("app/models/gadget.rb" => bare)
+      write("app/models/gadget.rb", bare.sub("def turn\n    1", "def turn\n    2"))
+
+      expect(check).to be_ok
+    end
+
+    it "changes a class when its opening line is edited (AC-1.5)", :aggregate_failures do
+      base_with("app/models/gadget.rb" => bare)
+      write("app/models/gadget.rb", bare.sub("class Gadget", "class Gadget < Base"))
+
+      expect(offences(check)).to contain_exactly(a_string_starting_with("app/models/gadget.rb:1: Gadget has no comment (changed)"))
+    end
+
+    it "judges only the inner class's method when a method of a nested class is edited (AC-1.14)" do
+      base_with("lib/outer.rb" => "class Outer\n  class Inner\n    def run = 1\n  end\nend\n")
+      write("lib/outer.rb", "class Outer\n  class Inner\n    def run = 2\n  end\nend\n")
+
+      expect(offences(check)).to eq([ "lib/outer.rb:3: Outer::Inner#run has no comment (changed)" ])
+    end
+
+    it "ignores the uncommented methods of a file whose commented method is the only one edited (AC-2.2)" do
+      base_with("app/models/gadget.rb" => gadget)
+      write("app/models/gadget.rb", gadget.sub("def turn\n    1", "def turn\n    2"))
+
+      expect(check.lines.join("\n")).not_to match(/spin|idle/)
+    end
+
+    it "passes a file renamed with no edit, and judges only the edited method of a renamed and edited one (AC-2.3)", :aggregate_failures do
+      base_with("app/models/gadget.rb" => gadget)
+      run_git("mv", "app/models/gadget.rb", "app/models/gizmo.rb")
+
+      expect(check).to be_ok
+
+      write("app/models/gizmo.rb", gadget.sub("def idle = 0", "def idle = 5"))
+
+      expect(offences(check)).to eq([ "app/models/gizmo.rb:14: Gadget#idle has no comment (changed)" ])
+    end
+
+    it "never judges a deletion, of a method or of a file (AC-2.4)", :aggregate_failures do
+      base_with("app/models/gadget.rb" => gadget, "lib/gone.rb" => "class Gone\n  def go = 1\nend\n")
+      write("app/models/gadget.rb", gadget.sub("\n  def idle = 0\n", ""))
+      FileUtils.rm(root.join("lib/gone.rb"))
+
+      expect(check).to be_ok
+    end
+
+    it "judges neither neighbour of a deleted method, and not a method that only moved (AC-2.9)", :aggregate_failures do
+      base_with("lib/trio.rb" => trio)
+      write("lib/trio.rb", trio.sub("\n  def b\n    1\n  end\n", ""))
+
+      expect(check).to be_ok
+
+      moved = trio.sub("\n  def c\n    1\n  end\n", "").sub("class Trio\n", "class Trio\n  def c\n    1\n  end\n\n")
+      write("lib/trio.rb", moved)
+
+      expect(check).to be_ok
+    end
+
+    it "counts deleting a method's comment as changing it, and rewording a comment that keeps its summary as nothing (AC-2.7)", :aggregate_failures do
+      base_with("app/models/gadget.rb" => gadget)
+      write("app/models/gadget.rb", gadget.sub("  # Turns.\n", ""))
+
+      expect(offences(check)).to eq([ "app/models/gadget.rb:9: Gadget#turn has no comment (changed)" ])
+
+      write("app/models/gadget.rb", gadget.sub("# Turns.", "# Turns once."))
+
+      expect(check).to be_ok
+    end
+
+    it "passes a comment added above an existing uncommented method (AC-2.8)" do
+      base_with("app/models/gadget.rb" => gadget)
+      write("app/models/gadget.rb", gadget.sub("  def spin", "  # Spins.\n  def spin"))
+
+      expect(check).to be_ok
+    end
+  end
+
+  describe "namespaces" do
+    def other = "# Collector's documentation.\nmodule Collector\n  # Other.\n  class Other\n  end\nend\n"
+
+    it "changes a class defined in two files when the only comment is deleted, though the other definition is unchanged (decision 4)" do
+      base_with("lib/dup_a.rb" => "# Dup.\nclass Dup\nend\n", "lib/dup_b.rb" => "class Dup\n  # B.\n  def b = 1\nend\n")
+      write("lib/dup_a.rb", "class Dup\nend\n")
+
+      expect(offences(check)).to contain_exactly(a_string_starting_with("lib/dup_a.rb:1: Dup has no comment (changed)"))
+    end
+
+    it "doesn't judge a namespace a new file reopens (AC-1.13)", :aggregate_failures do
+      base_with("lib/collector/other.rb" => other)
+      write("lib/collector/thing.rb", "module Collector\n  # Does a thing.\n  class Thing\n  end\nend\n")
+
+      expect(check).to be_ok
+    end
+
+    it "doesn't count a comment above the outer wrapper for the class the file defines (AC-1.13)", :aggregate_failures do
+      base_with("lib/collector/other.rb" => other)
+      write("lib/collector/thing.rb", "# Thing's header.\nmodule Collector\n  class Thing\n  end\nend\n")
+
+      lines = offences(check)
+
+      expect(lines).to contain_exactly(a_string_starting_with("lib/collector/thing.rb:3: Collector::Thing has no comment (added)"))
+    end
+  end
 end
