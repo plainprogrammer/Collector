@@ -88,3 +88,7 @@ The fixes were minor and not sent for a second review round.
 ## Distillation
 
 `distill-feature` (before the merge): the area doc `collection-and-lots.md` already carried the feature's rules, written with it (Phase 3), so the step added its Distillation log row (the pull request named "spec 059's pull request" until it has a number), set row 059 of the index to Frozen with its plan "retirement owed", and added the spec's `**Frozen:**` line. No other area has a doc that the spec touches (the design system's `Locations.md` was updated in Phase 2). No ADR is proposed: the decisions are spec-local. The plan is retired after the merge.
+
+## Full run
+
+The first push of the branch (head `db96a5e4`, 2026-11-10, origin/main at `a29c5987`) ran the pre-push hook, which ran the full `bin/ci` (setup, migration guard, RuboCop, YARD, Brakeman, bundler-audit, importmap audit, RSpec): it passed, and the push succeeded. The hook prints nothing when it passes; the suite counts 3064 examples (`bin/rspec --dry-run`), 0 failures. Before it, the plan's targeted run (`spec/models`, `spec/requests`, the locations, shortcut, bulk mode, bulk move and narrow bulk system specs and `spec/import_apply_core_spec.rb`) gave 2130 examples, 0 failures, with RuboCop, `bin/yard doc` and `zeitwerk:check` clean. GitHub's CI run for the pull request is recorded in the pull request.
