@@ -69,4 +69,22 @@ None in this phase. The documents changed are those the plan's Phase 3 lists, pl
 
 ## Implementation review
 
-Pending: sdd-review Mode B
+SPEC-ALIGNED WITH FINDINGS (round 1, read-only Opus, `sdd-review` Mode B, over `a29c5987..83ad6de0`): 0 blocking, 1 major, 6 minor, none a defect in the code.
+
+The code matches every FR, decision and non-goal: the controller reads only the path's location id through `Current.account.locations`; the route has no GET; the other `restart!` callers don't pass `all:` and keep `all_matching: false`; the button follows the design system; the supersessions are in the index, both directions, with specs 006, 032 and 041 untouched.
+
+| # | Finding | Disposition |
+|---|---------|-------------|
+| 1 (major) | No fresh full-run evidence recorded | Closed by the full `bin/ci` run recorded under "Full run" below. |
+| 2 | AC-3.1 not followed to the removal in one example | Taken (`1f20be42`): the first system example ends on the emptied location's removal; the redundant second example is gone. |
+| 3 | The AC-2.3 request example passed even if nothing was selected | Taken (`6da1d8b2`): it sends the page's own untouched form, and fails with `all: false` in the controller (mutation checked). |
+| 4 | Area doc's core-guard sentence omitted the shortcut's controller | Taken (`c9cccacc`). |
+| 5 | #187 moved out of "open" in the area doc's Sources before the merge | Not changed: the roadmap says "done when its pull request merges", and the distillation step owns the area doc's Sources after it. |
+| 6 | Shared `tab_to` lacked YARD tags and shares a name with `bulk_move_spec.rb`'s | Taken (`79faf576`): renamed `tab_to_text`, documented. |
+| 7 | AC-5.2's theme loop measures nothing theme-dependent | Taken (`c9cccacc`): "Measured" says contrast was checked by reading and the screenshots. |
+
+The fixes were minor and not sent for a second review round.
+
+## Distillation
+
+`distill-feature` (before the merge): the area doc `collection-and-lots.md` already carried the feature's rules, written with it (Phase 3), so the step added its Distillation log row (the pull request named "spec 059's pull request" until it has a number), set row 059 of the index to Frozen with its plan "retirement owed", and added the spec's `**Frozen:**` line. No other area has a doc that the spec touches (the design system's `Locations.md` was updated in Phase 2). No ADR is proposed: the decisions are spec-local. The plan is retired after the merge.
