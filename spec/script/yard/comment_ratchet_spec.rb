@@ -374,7 +374,9 @@ RSpec.describe YardRatchet::Check, :git_sandbox, type: :model do # rubocop:disab
   end
 
   describe "namespaces" do
-    def other = "# Collector's documentation.\nmodule Collector\n  # Other.\n  class Other\n  end\nend\n"
+    # The base's own file opens `module Collector` with no comment, as the files in lib/collector/ do: were the namespace
+    # judged, a comment on the base's definition would hide it (AC-1.13).
+    def other = "module Collector\n  # Other.\n  class Other\n  end\nend\n"
 
     it "changes a class defined in two files when the only comment is deleted, though the other definition is unchanged (decision 4)" do
       base_with("lib/dup_a.rb" => "# Dup.\nclass Dup\nend\n", "lib/dup_b.rb" => "class Dup\n  # B.\n  def b = 1\nend\n")
