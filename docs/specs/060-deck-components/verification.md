@@ -1,6 +1,6 @@
 # Verification: spec 060, design system deck components and previews
 
-**Spec:** [spec.md](spec.md) 1.0.4 | **Plan:** [plan.md](plan.md) | **Issue:** [#249](https://github.com/plainprogrammer/Collector/issues/249)
+**Spec:** [spec.md](spec.md) 1.0.4 | **Plan:** plan (retired in `7e9c5850773b19319ce1cda1bf6b9fe0aed127cb`; read it with `git show 7e9c5850773b19319ce1cda1bf6b9fe0aed127cb^:docs/specs/060-deck-components/plan.md`) | **Issue:** [#249](https://github.com/plainprogrammer/Collector/issues/249)
 **Recorded:** 2026-11-10, on branch `060-deck-components` after merging `origin/main` (`e4986ee8`; main has since moved to `f8b56bba`, merged again at the push).
 
 ## Browser criteria (RSpec, headless Firefox)
