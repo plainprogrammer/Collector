@@ -1,6 +1,6 @@
 # Implementation Plan: A YARD Comment Ratchet in `bin/ci checks`
 
-**Spec:** docs/specs/056-yard-comment-ratchet/spec.md (v1.2.2, approved; OD1–OD6 ruled as recommended)
+**Spec:** docs/specs/056-yard-comment-ratchet/spec.md (v1.2.3, approved; OD1–OD6 ruled as recommended)
 **Decisions:** none new (OD6: no ADR); relies on [ADR 0027](../../adr/0027-yard-for-api-documentation.md)
 **Created:** 2026-11-09
 **Revised:** 2026-11-09 after the Opus plan review (APPROVE WITH CHANGES; its two blocking findings and the should-fix items are folded in)

@@ -1,6 +1,6 @@
 # Verification: Spec 056, New and Changed Public Code Carries a Comment (a YARD Ratchet in `bin/ci checks`)
 
-Spec: [spec.md](spec.md) v1.2.2. Plan: [plan.md](plan.md). Issue [#264](https://github.com/plainprogrammer/Collector/issues/264).
+Spec: [spec.md](spec.md) v1.2.3. Plan: [plan.md](plan.md). Issue [#264](https://github.com/plainprogrammer/Collector/issues/264).
 
 Each row names the example that proves the criterion (by its description and the AC tag in it), the command and its recorded output, or says "read" with what was read. The examples are in `spec/script/yard/comment_ratchet_spec.rb` unless another file is named; each cited description was checked against the file. `bin/rspec spec/script/yard/comment_ratchet_spec.rb` on 2026-11-10 at HEAD `82af8bb7`: **61 examples, 0 failures**. The suite checks no prose (`.claude/rules/testing.md`), so the documentation criteria are verified by reading, here.
 
@@ -113,6 +113,7 @@ An Opus code review of the implementation returned APPROVE WITH CHANGES, with th
 ## Rulings
 
 - **2026-11-10 (maintainer, via the coordinator):** the plan is approved, including the corrections of spec v1.2.2. AC-4.2 is verified by route A: the maintainer pushes a throwaway failing commit to a scratch branch off this one, with a pull request, by hand, and the coordinator relays the result; the fallback is recorded in the plan (Phase 4, the AC-4.2 item).
+- **2026-11-10 (maintainer, via the coordinator):** spec v1.2.3 confirmed (PATCH): a method is new by qualified name across the base's scoped files, so a method moved between files of the same class is not judged; a class or module marked `@api private` covers the members YARD scopes under it. Both state what the approved plan's design and the code already did; no ruling changed.
 
 ## Implementation review
 
