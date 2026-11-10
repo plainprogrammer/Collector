@@ -1,7 +1,7 @@
 # Feature 063: Small Icons Keep Their Weight (Stroke Follows Size)
 
 **Status:** Draft
-**Version:** 0.1.0
+**Version:** 0.2.0
 **Created:** 2026-11-10
 **Last Updated:** 2026-11-10
 **Depends on:** [spec 060](../060-deck-components/spec.md) (decision 16: every icon in the previews is at the app's stroke, 1.5; this issue is its follow-up), [spec 057](../057-deck-design-rules/spec.md) (the design system's rules and additions), all merged
@@ -14,6 +14,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.2.0 | 2026-11-10 | Spec review round 1 (Opus, read-only; REVISE: 1 blocking, 2 major, 7 minor), all taken: ten previews don't load `additions.css` and gain the link (decision 2, AC-2.2, FR-2); AC-1.5 measures rendered icons only (width above 0, a stroke that isn't `none`); AC-2.3's TabBar sample is corrected to match the preview, not a partial; the Problem Statement says menu items and filter chips draw icons in the previews only; the inline icons number 195; the previews' More dots are filled; FR-1 names every guarded spec number; the index row's plan is "none"; FR-3 says one spec file |
 | 0.1.0 | 2026-11-10 | First draft from issue #294 and the measurements below. The maintainer ruled decisions 1 and 2 on 2026-11-10 (the coordinator relayed them: option A of each) |
 
 ## Problem Statement
@@ -24,8 +25,8 @@ The app draws every icon with `stroke-width="1.5"` on a 24-unit viewBox (`app/vi
 |---|---|---|
 | 22px | the tab bar | 1.375px |
 | 20px | Lucide's intended size | 1.25px |
-| 16px | `c-btn`, `c-input`, `c-menu__item` | 1.0px |
-| 14px | `c-seg`, `c-filter` | 0.875px |
+| 16px | `c-btn`, `c-input`, `c-menu__item` (the last in the previews only) | 1.0px |
+| 14px | `c-seg`, `c-filter` (the last in the previews only) | 0.875px |
 | 12px | `c-badge`, `c-legal` | **0.75px** |
 
 At 12px the check and the cross of the legality grid ("Legal", "Not legal", "Banned") and the check of a badge ("Matched by its collector line") are visibly lighter than the weight-600 word beside them, in light and dark, at 1x and 2x (the stem of Plex Sans 600 at 12px is near 1.4px). They stay legible: the foil star is filled and the warning triangle reads fine. At 14px to 16px the icons are lighter than their labels but not hairlines. The maintainer ruled on 2026-11-10 to keep the previews at 1.5 to match the app (spec 060 decision 16) and asked for this issue for the app itself.
@@ -45,7 +46,7 @@ At 12px the check and the cross of the legality grid ("Legal", "Not legal", "Ban
 - Choosing an icon set or redrawing an icon: Lucide stays (the README's Iconography line).
 - Changing an icon at 20px or larger: the tab bar's 22px icons and any icon the app draws at 20px keep 1.5.
 - Changing a partial's markup or interface: the `stroke-width="1.5"` attribute stays on every partial (decision 2), so existing and in-flight calls (the deck views of spec 062) are unaffected.
-- Changing the previews' 120 inline icons: they load `additions.css` and take the weight from it (decision 2); spec 060 AC-7.5 (every `stroke-width` attribute in the previews is 1.5) stays true.
+- Changing the previews' 195 inline icons: they take the weight from `additions.css` (decision 2); spec 060 AC-7.5 (every `stroke-width` attribute in the previews is 1.5) stays true. Ten previews that draw an icon don't load `additions.css` yet and gain the `<link>` (AC-2.2); no icon markup changes.
 - Changing the filled icon (the foil star, `fill="currentColor" stroke="none"`) or any icon's size.
 
 ## Decisions
@@ -68,7 +69,7 @@ The rule behind A is a stroke of `30 ÷ size` (the stroke that gives 1.25px at t
 | Where the stroke lives | one block in `additions.css`, under its own `(spec 063 …)` heading | each partial writes the stroke | one rule |
 | Partials' interface | unchanged | changes; every call that sets a size changes | unchanged |
 | An icon placed in a component later | takes the right weight at once | must pass the size | takes it, but a 20px icon changes too |
-| Previews | match with no edit (they load `additions.css`) | 120 inline icons to rewrite | match, but the 20px ones change |
+| Previews | match once they load `additions.css` (ten gain the `<link>`, no icon edit) | 195 inline icons to rewrite | match, but the 20px ones change |
 | Follows Lucide's scaling | yes, in three steps | yes | no |
 
 A CSS declaration beats an SVG presentation attribute on the same element, so `.c-badge svg { stroke-width: 2.5 }` wins over the partial's `stroke-width="1.5"` while the attribute still states the 20px weight and keeps the partials, the previews and a copied icon from a design export correct on their own. The selectors name the components that set the size (`components.css` lines 8, 26, 43, 54, 65, 137, 215, 300), not the icons, so an icon drawn in them takes the weight whichever partial it is. The rules go in `additions.css`, not `components.css`, which is the export's file (the design system's own rule for what the app adds).
@@ -104,8 +105,8 @@ Recorded in the specs index. Spec 060 is frozen and is not edited.
 - [ ] **AC-1.2** Given a `c-badge` holding the check partial and a `c-badge` holding the alert partial (the scanner's "Matched by…" and "Printing not confirmed" badges) When they render Then each icon is drawn at 12px with a computed stroke width of 2.5.
 - [ ] **AC-1.3** Given the collection page When its search field, buttons and view switch render Then the `c-input` icon and the `c-btn` icons (16px) and the `c-seg` icons (14px) have a computed stroke width of 2.
 - [ ] **AC-1.4** Given the collection page on a phone (a 390px frame) When the tab bar renders Then its icons are 22px with a computed stroke width of 1.5, unchanged.
-- [ ] **AC-1.5** Given the card page, the collection page (grid and table) and the catalog search, and the collection page in a 390px frame When every stroked icon on them is measured Then each has a weight (computed stroke width × drawn width ÷ 24) of 1.1px to 1.4px. (A guard: an icon at a new size or in a new component outside the rule fails it.)
-- [ ] **AC-1.6** Given the filled foil star When it renders Then it has no stroke and is drawn as before.
+- [ ] **AC-1.5** Given the card page, the collection page (grid and table) and the catalog search, and the collection page in a 390px frame When every rendered stroked icon on them is measured (an `svg` whose drawn width is above 0 and whose computed `stroke` is not `none`: the tab bar on a wide screen, the appbar's add and back buttons where they are hidden and the filled star are not measured) Then each has a weight (computed stroke width × drawn width ÷ 24) of 1.1px to 1.4px, and at least one icon is measured on each page. (A guard: an icon at a new size or in a new component outside the rule fails it, and so does an icon that shrinks.)
+- [ ] **AC-1.6** Given the filled foil star When it renders Then it has no stroke (computed `stroke` is `none`) and is drawn as before.
 - [ ] **AC-1.7** Given the legality grid, the badges, the buttons and the view switch, in light and dark, at 1x and 2x When the maintainer compares them with the shots from before the change Then the 12px check and cross read at about the weight of the word beside them and the 14px to 16px icons balance their labels. (A verification criterion: the maintainer's visual review of the before and after shots, recorded in `verification.md` and shown in the pull request; the More dots, drawn as circles, are in the shots.)
 
 ### Story 2: The rule is written where the next icon reads it
@@ -115,8 +116,8 @@ Recorded in the specs index. Spec 060 is frozen and is not edited.
 **So that** I don't guess a weight, and the previews and the app agree
 
 - [ ] **AC-2.1** The README's Iconography states the rule of decision 1 with its sizes (1.5 at 20px and above, 2 at 14px to 16px, 2.5 at 12px; about 1.25px on screen below 20px; `30 ÷ size` rounded to a half) and says where it lives (`additions.css`, by component; the partials keep 1.5), and points to this spec. (Verified by reading.)
-- [ ] **AC-2.2** The previews draw the same weights as the app: a preview of each component of decision 2's table (Badge, ItemPage's legality, Button, Input, ViewSwitch, TabBar) has the computed stroke widths of AC-1.1 to AC-1.4 when loaded with the real stylesheets, and their `stroke-width` attributes are still 1.5. (A verification criterion, measured once in headless Firefox and recorded in `verification.md`; no preview file changes.)
-- [ ] **AC-2.3** The one component document that carries a `stroke-width` attribute, `docs/design-system/components/TabBar.md` (`stroke-width="2"` in its markup sample), is corrected to 1.5, the app's partial; `Badge.md` says the 12px icon's weight comes from the stylesheet. (Verified by reading.)
+- [ ] **AC-2.2** The previews draw the same weights as the app. Ten previews that draw an icon don't load `additions.css` (`Badge`, `Button`, `Chip`, `CollectionTable`, `Cover`, `FilterBar`, `Input`, `ItemTile`, `Menu`, `ViewSwitch`) and gain its `<link>`, after `components.css` as the other previews have it; no icon markup changes and every `stroke-width` attribute in the previews is still 1.5 (spec 060 AC-7.5). When a preview of each component of decision 2's table (Badge, ItemPage's legality, Button, Input, ViewSwitch, TabBar) is loaded with the real stylesheets in headless Firefox, its icons have the computed stroke widths of AC-1.1 to AC-1.4, and the ten previews that gained the link look the same as before outside their icons. (A verification criterion, measured once and recorded in `verification.md` with the before and after shots of the ten; the preview's More dots are filled circles, not the app's stroked ones, so AC-1.7's dots come from the app.)
+- [ ] **AC-2.3** The one component document that carries a `stroke-width` attribute, `docs/design-system/components/TabBar.md` (`stroke-width="2"` in the Decks icon of its markup sample, which the design system draws itself and no partial does), is corrected to 1.5, as `previews/TabBar.html` and the partials draw; `Badge.md` says the 12px icon's weight comes from the stylesheet. (Verified by reading.)
 - [ ] **AC-2.4** The specs index has this spec's row. (Verified by reading.)
 
 ### Story 3: Nothing that draws an icon changes
@@ -129,9 +130,9 @@ Recorded in the specs index. Spec 060 is frozen and is not edited.
 
 ## Functional Requirements
 
-- **FR-1.** `additions.css` gets one new block, `/* ---------- Small icon stroke (spec 063) ---------- */`, holding the two rules of decision 2's table (12px components at 2.5, 14px to 16px components at 2), with a comment giving the why (the weight formula, the 1.25px aim, the CSS-over-attribute order) and pointing to the README. The block heading does not contain "spec 019" or "spec 021" (the guard in `spec/design_system_files_spec.rb` counts them) and every rule in it sits under it.
-- **FR-2.** The README's Iconography, `TabBar.md` and `Badge.md` change as AC-2.1 and AC-2.3 say; `docs/specs/README.md` gets the row.
-- **FR-3.** One system example (`spec/system/icon_stroke_spec.rb`) proves AC-1.1 to AC-1.6 by measuring computed styles and drawn sizes on the real pages; it fails before the CSS and passes after. The 390px frame is `open_in_narrow_frame`.
+- **FR-1.** `additions.css` gets one new block, `/* ---------- Small icon stroke (spec 063) ---------- */`, holding the two rules of decision 2's table (12px components at 2.5, 14px to 16px components at 2), with a comment giving the why (the weight formula, the 1.25px aim, the CSS-over-attribute order) and pointing to the README. The block heading names no spec number but 063 (the guards in `spec/design_system_files_spec.rb` count "spec 019", "spec 021" and "spec 023") and every rule in it sits under it.
+- **FR-2.** The README's Iconography, `TabBar.md` and `Badge.md` change as AC-2.1 and AC-2.3 say; the ten previews of AC-2.2 gain the stylesheet link; `docs/specs/README.md` gets the row.
+- **FR-3.** One system spec file (`spec/system/icon_stroke_spec.rb`) proves AC-1.1 to AC-1.6 by measuring computed styles and drawn sizes on the real pages; it fails before the CSS and passes after. The 390px frame is `open_in_narrow_frame`.
 - **FR-4.** No partial, view, helper, model, migration or export file changes. The partials' attribute and the README's "1.5 at 20px and above" are the same number, so a copied icon from a design export looks right on its own.
 
 ## Non-Functional Requirements
@@ -139,7 +140,7 @@ Recorded in the specs index. Spec 060 is frozen and is not edited.
 - **Compatibility:** no migration, no schema change, export format unchanged at version 3, upgrade-safe from the previous release.
 - **Hosted-door cost per account (north star rule 4):** none; a stylesheet and documents.
 - **Accessibility:** a heavier stroke raises the icon's contrast on its ground; the icons are `aria-hidden` and a word or a label always comes with them (the README's status rule), unchanged.
-- **Visual change:** yes, small and deliberate. Before and after shots (light and dark, 1x and 2x) of the card page's legality grid, a badge row, the collection page header and view switch, and the More button and its menu are owed to the maintainer's review before the pull request is ready, and go in the pull request body.
+- **Visual change:** yes, small and deliberate. Before and after shots (light and dark, 1x and 2x) of the card page's legality grid, a badge row, the collection page header and view switch, and the More button (its menu items carry no icons) are owed to the maintainer's review before the pull request is ready, and go in the pull request body.
 
 ## Error Scenarios
 
@@ -172,5 +173,6 @@ None. Decisions 1 and 2 are the maintainer's rulings of 2026-11-10.
 - `docs/design-system/components/TabBar.md` (the sample's attribute), `docs/design-system/components/Badge.md` (one sentence).
 - `app/assets/stylesheets/collector/additions.css` (the block); `spec/system/icon_stroke_spec.rb` (new).
 - `docs/specs/README.md`: this spec's row.
+- The ten previews of AC-2.2 (`<link>` to `additions.css` only).
 - No area doc: the design system's rules are its README and component documents (spec 057, spec 060); no ADR: the rulings are decisions 1 and 2 here.
 - Left as history, not edited: spec 060 and its `verification.md` (decision 16 and AC-7.5 stand).
