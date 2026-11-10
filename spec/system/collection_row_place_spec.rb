@@ -36,6 +36,29 @@ RSpec.describe "A table row's place line", type: :system do
     JS
   end
 
+  # Measured in the narrow frame (spec 061 decision 2): the phone line's room (its clientWidth while its text wraps), its
+  # height, its unwrapped width (a range over its contents with wrapping switched off, then restored) and the page's
+  # scrollbar width (15px classic, 0 overlay). Room grows one for one with the frame's content width, so
+  # room + scrollbar is the room a 360px content width gives.
+  def line_measures
+    page.evaluate_script(<<~JS).symbolize_keys
+      (() => {
+        const view = document.getElementById("narrow").contentWindow
+        const doc = view.document
+        const line = doc.querySelector(".c-table__sub")
+        const room = line.clientWidth
+        const height = line.getBoundingClientRect().height
+        const before = line.style.whiteSpace
+        line.style.whiteSpace = "nowrap"
+        const range = doc.createRange()
+        range.selectNodeContents(line)
+        const unwrapped = range.getBoundingClientRect().width
+        line.style.whiteSpace = before
+        return { room, height, unwrapped, scrollbar: view.innerWidth - doc.documentElement.clientWidth }
+      })()
+    JS
+  end
+
   describe "on a phone" do
     [ 360, 390 ].each do |width|
       { "with spaces" => spaced, "with no space" => unbroken }.each do |label, name|
@@ -90,16 +113,18 @@ RSpec.describe "A table row's place line", type: :system do
       end
     end
 
-    it "wraps the line at 360px for a five-character set code, with no sideways scroll and no place", :aggregate_failures do # AC-1.8
+    it "wraps a line wider than its room at a phone's 360px content width, with no sideways scroll and no place", :aggregate_failures do # spec 061 AC-1.1, AC-1.2
       owned_printing("Lightning Bolt", account: user.account, set: create(:catalog_set, code: "pmh3a"), number: "146", quantity: 9_999, finish: "foil", condition: "near_mint")
       visit table_path
       expect(open_in_narrow_frame(table_path, width: 360, ready: "tbody tr")).to eq([ 360, true ])
       within_narrow_frame do
         expect(page).to have_no_css("th", text: "Location", visible: :all)
-        line = find(".c-table__sub", visible: :visible)
-        expect(line.text).to end_with("PMH3A · 146 · Foil · NM · EN")
-        expect(line.evaluate_script("this.getBoundingClientRect().height")).to be >= 20
+        expect(find(".c-table__sub", visible: :visible).text).to end_with("PMH3A · 146 · Foil · NM · EN")
       end
+      seen = line_measures
+      expect(seen[:height]).to be >= 20
+      margin = seen[:unwrapped] - (seen[:room] + seen[:scrollbar])
+      expect(margin).to be >= 20, "margin #{margin.round(1)}: unwrapped #{seen[:unwrapped].round(1)}, room #{seen[:room]}, scrollbar #{seen[:scrollbar]}"
     end
   end
 
