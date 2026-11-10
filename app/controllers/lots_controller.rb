@@ -52,12 +52,15 @@ class LotsController < ApplicationController
 
     def set_lot = @lot = Current.account.lots.includes(entry: :set).find(params[:id])
 
-    def set_locations = @locations = Current.account.locations.ordered.to_a
+    # The form's Location select lists places only (spec 062 D6): a deck is never a lot's place, and a zone is chosen by a
+    # later spec's picker, not by this select.
+    def set_locations = @locations = Current.account.locations.places.ordered.to_a
 
-    # The account's location the form names, nil for none; another account's, a missing one and text that isn't an id are 404.
+    # The account's place the form names, nil for none; another account's, a missing one, a deck's or a zone's id and text that
+    # isn't an id are 404 (spec 062 AC-5.2).
     def chosen_location
       id = lot_params[:location_id].presence
-      Current.account.locations.find(id) if id
+      Current.account.locations.places.find(id) if id
     end
 
     def lot_params = params.expect(lot: %i[quantity finish condition price_paid location_id])

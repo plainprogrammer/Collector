@@ -40,8 +40,9 @@ class Collections::SelectionsController < ApplicationController
       redirect_to helpers.collection_listing_path(query:, location:, sort:), status: :see_other
     end
 
-    # "Move to…" is offered only while the account has a location; asked for without one it is a navigation (spec 041 AC-1.2).
-    def offered?(action) = action != "move" || Current.account.locations.exists?
+    # "Move to…" is offered only while the account has a place (a deck is not one, spec 062 AC-5.8a); asked for without one it is
+    # a navigation (spec 041 AC-1.2).
+    def offered?(action) = action != "move" || Current.account.locations.places.exists?
 
     def act(selection, query, location, sort)
       page = params[:page].presence

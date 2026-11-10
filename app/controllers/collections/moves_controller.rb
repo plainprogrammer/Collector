@@ -33,12 +33,13 @@ class Collections::MovesController < ApplicationController
   end
 
   private
-    # nil for "No location"; any other value must be one of the account's location ids, else 404 (decision 6 (5), AC-2.3).
+    # nil for "No location"; any other value must be one of the account's place ids, else 404 (decision 6 (5), AC-2.3). A deck's
+    # or a zone's id is 404 too (spec 062 AC-5.2): the move writes with update_all, which would put lots in a deck.
     def destination_for(value)
       return if value == CollectionFilter::Place::NONE
       raise ActiveRecord::RecordNotFound unless value.match?(CollectionFilter::Place::ID)
 
-      Current.account.locations.find(value)
+      Current.account.locations.places.find(value)
     end
 
     # Every refusal re-renders the move page with 422 and keeps the selection and the chosen To.
@@ -49,16 +50,17 @@ class Collections::MovesController < ApplicationController
     end
 
     # The order of answers (decision 6): BulkSelected has answered a GET with nothing selected; an account with no location
-    # has nothing to move to, whatever was submitted. The selection is kept.
+    # has nothing to move to, whatever was submitted. The selection is kept. An account with decks and no place has none (spec
+    # 062 AC-5.8a).
     def require_locations
-      redirect_to @bulk_path, status: :see_other, alert: Lot::BulkMove::NO_LOCATIONS unless Current.account.locations.exists?
+      redirect_to @bulk_path, status: :see_other, alert: Lot::BulkMove::NO_LOCATIONS unless Current.account.locations.places.exists?
     end
 
     # The To field's options: the prompt (""), "No location" ("none", the location filter's word, spec 037 decision 1), then the
-    # account's locations in the locations page's order; the selection's own place is left out (AC-2.1).
+    # account's places in the locations page's order; the selection's own place is left out (AC-2.1).
     def set_destinations
       own = @selection ? @selection.location_filter : ""
-      locations = Current.account.locations.ordered.reject { |location| location.id.to_s == own }
+      locations = Current.account.locations.places.ordered.reject { |location| location.id.to_s == own }
       @destinations = [ [ "Choose…", "" ] ] + (own == CollectionFilter::Place::NONE ? [] : [ [ "No location", CollectionFilter::Place::NONE ] ]) +
         locations.map { |location| [ location.name, location.id ] }
     end

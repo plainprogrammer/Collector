@@ -406,4 +406,52 @@ RSpec.describe "Lots", type: :request do
       expect(Nokogiri::HTML5(response.body).at_css("form.c-form")["action"]).to eq(lot_path(lot))
     end
   end
+
+  # Spec 062 D6, AC-5.1, AC-5.2: the form lists places and takes a place; a deck's or a zone's id is a refusal.
+  describe "with a deck (spec 062)" do
+    def account = user.account
+    def box = @box ||= create(:location, account:, name: "Box")
+    def deck = @deck ||= create(:deck, account:, name: "Izzet Tempo")
+    def zone = deck.zone("main")
+    def page_html = Nokogiri::HTML5(response.body)
+
+    before do
+      box
+      create(:location, account:, name: "Binder")
+      deck
+    end
+
+    it "lists the places in comparison-key order and never a deck or a zone, on the new and the edit form (AC-5.1)", :aggregate_failures do
+      lot = create(:lot, account:, entry:, location: box)
+      [ new_catalog_entry_lot_path(entry), edit_lot_path(lot) ].each do |path|
+        get path
+        expect(page_html.css('select[name="lot[location_id]"] option').map(&:text)).to eq([ "No location", "Binder", "Box" ])
+      end
+    end
+
+    it "refuses a zone's id and a deck's id as the new lot's location, adding nothing (AC-5.2)", :aggregate_failures do
+      [ zone.id, deck.location_id ].each do |id|
+        post catalog_entry_lots_path(entry), params: { lot: { quantity: "1", location_id: id } }
+        expect(response).to have_http_status(:not_found)
+      end
+      expect(account.lots.count).to eq(0)
+    end
+
+    it "refuses a zone's id and a deck's id on Edit copy, changing nothing (AC-5.2)", :aggregate_failures do
+      lot = create(:lot, account:, entry:, quantity: 3, location: box)
+      [ zone.id, deck.location_id ].each do |id|
+        patch lot_path(lot), params: { lot: { quantity: "4", location_id: id } }
+        expect(response).to have_http_status(:not_found)
+      end
+      expect(lot.reload.attributes.values_at("location_id", "quantity")).to eq([ box.id, 3 ])
+    end
+
+    it "offers no select and the hint to an account with a deck and no place (AC-5.8a)", :aggregate_failures do
+      Location.places.where(account:).delete_all
+      get new_catalog_entry_lot_path(entry)
+      expect(page_html.at_css('select[name="lot[location_id]"]')).to be_nil
+      expect(page_html.at_css(".c-field__hint a")&.text).to eq("Add a location")
+      expect(response.body).to include("to keep copies in one.")
+    end
+  end
 end
