@@ -17,4 +17,20 @@ module DecksHelper
   def deck_sub_line(row)
     "#{row.deck.format_name} · #{number_with_delimiter(row.cards)} owned"
   end
+
+  # The Format select's options: every format the registered collectibles give, in their registered order, as
+  # `<type>/<key>` values. With formats of more than one type each type's formats sit under its category name; with one
+  # the list is flat (spec 062 AC-1.2).
+  #
+  # @param selected [String, nil] the value to mark selected, as `<type>/<key>`
+  # @return [ActiveSupport::SafeBuffer] option and optgroup tags
+  def deck_format_options(selected)
+    options = Catalog::Formats.options
+    return options_for_select(options.map { [ it.format.name, it.value ] }, selected) unless Catalog::Formats.grouped?
+
+    groups = options.group_by(&:type).map do |type, in_type|
+      [ Catalog::Formats.category_name(type), in_type.map { [ it.format.name, it.value ] } ]
+    end
+    grouped_options_for_select(groups, selected)
+  end
 end

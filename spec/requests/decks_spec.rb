@@ -144,4 +144,119 @@ RSpec.describe "Decks", type: :request do
       end
     end
   end
+
+  describe "GET /decks/new and POST /decks (Story 1)" do
+    def name_error = html.at_css("#deck_name-error")&.text
+    def format_error = html.at_css("#deck_format-error")&.text
+    def taken_names = [ create(:location, account:, name: "Blue binder"), create(:deck, account:, name: "Krenko", format: "commander") ]
+    def create_deck(name: "Izzet Tempo", format: "mtg/modern", **extra) = post(decks_path, params: { deck: { name:, format: }.merge(extra) })
+
+    context "when signed in" do
+      before { sign_in_as(user) }
+
+      it "shows Name, Format with the default selected, the hint and the actions under a detail header (AC-1.1)", :aggregate_failures do
+        get new_deck_path
+
+        expect(response).to have_http_status(:ok)
+        expect(html.at_css("h1").text).to eq("New deck")
+        expect(html.at_css("header.c-appbar.c-appbar--detail .c-appbar__back")["href"]).to eq(decks_path)
+        expect(html.at_css("form[action='#{decks_path}'][method=post] input[name='deck[name]']")).to be_present
+        select = html.at_css("form select[name='deck[format]']")
+        expect(select.css("option").map(&:text)).to eq(%w[Casual Standard Pioneer Modern Legacy Vintage Pauper Commander])
+        expect(select.at_css("option[selected]").text).to eq("Casual")
+        expect(select.css("option").map { it["value"] }.first(2)).to eq(%w[mtg/casual mtg/standard])
+        expect(select.css("optgroup")).to be_empty
+        expect(html.at_css(".c-field__hint").text).to eq("The format sets the deck's zones.")
+        expect(html.at_css("form input[type=submit]")["value"]).to eq("Create deck")
+        expect(html.at_css(".c-form__actions a.c-btn--secondary[href='#{decks_path}']").text).to eq("Cancel")
+        expect(html.css(".c-appbar__nav a[aria-current=page]").map(&:text)).to eq([ "Decks" ])
+        expect(html.at_css("main").text).not_to match(/magic|mtg|scryfall/i)
+      end
+
+      it "groups the formats under each collectible's category name when two are registered (AC-1.2)", :aggregate_failures, :other_collecting do
+        get new_deck_path
+
+        groups = html.css("select[name='deck[format]'] optgroup")
+        expect(groups.map { it["label"] }).to eq([ "Magic: The Gathering", "Other cards" ])
+        expect(groups.last.css("option").map { [ it.text, it["value"] ] }).to eq([ [ "Standard", "other/standard" ] ])
+        expect(html.css("select[name='deck[format]'] option[selected]").map(&:text)).to eq([ "Casual" ])
+      end
+
+      it "creates the deck and its zones for the signed-in account, then answers 303 with the notice (AC-1.3)", :aggregate_failures do
+        create_deck
+
+        expect(response).to have_http_status(:see_other).and redirect_to(decks_path)
+        follow_redirect!
+        expect(html.at_css("#status").text.squish).to eq("Added “Izzet Tempo”.")
+        deck = account.decks.sole
+        expect(deck).to have_attributes(collectible_type: "mtg", format: "modern")
+        expect(deck.zones.map(&:zone)).to eq(%w[main sideboard considering])
+        expect(Deck.where.not(account:)).to be_empty
+        expect(stats).to eq("1 deck · 0 cards")
+      end
+
+      it "answers 422 with the reason beside the Name field and the typed name and format kept (AC-1.7)", :aggregate_failures do
+        taken_names
+        {
+          "   " => Location::MESSAGES[:blank], ("a" * 61) => Location::MESSAGES[:too_long], "a\u200Bb" => Location::MESSAGES[:control],
+          "  blue   BINDER " => "You already have a location called “blue BINDER”.", "krenko" => "You already have a location called “krenko”."
+        }.each do |typed, message|
+          create_deck(name: typed, format: "mtg/pauper")
+
+          expect(response).to have_http_status(:unprocessable_content)
+          expect(html.css(".field_with_errors")).to be_empty
+          expect(name_error).to eq(message)
+          expect(html.at_css("#deck_name")["value"]).to eq(typed)
+          expect(html.at_css("#deck_name")["aria-describedby"]).to eq("deck_name-error")
+          expect(html.at_css("#deck_name").ancestors(".c-field").first["class"]).to include("c-field--invalid")
+          expect(html.at_css("select option[selected]").text).to eq("Pauper")
+        end
+        expect(account.decks.count).to eq(1)
+      end
+
+      it "says decks count toward the limit of 500 (AC-1.7a)", :aggregate_failures do
+        Location.insert_all!(Array.new(500) { |index| { account_id: account.id, name: "Place #{index}", name_key: "place #{index}" } })
+
+        create_deck
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(name_error).to eq("You can have at most 500 places and decks together.")
+        expect(account.decks.count).to eq(0)
+      end
+
+      it "refuses a format that is not a registered type and key pair on the Format field and writes nothing (AC-1.8)", :aggregate_failures do
+        [ "", "modern", "mtg/", "mtg/nonesuch", "nonesuch/modern", "other/standard" ].each do |value|
+          expect { create_deck(format: value) }.not_to change(Location, :count)
+
+          expect(response).to have_http_status(:unprocessable_content), value
+          expect(format_error).to eq("Choose a format."), value
+          expect(html.at_css("#deck_format")["aria-describedby"]).to eq("deck_format-error")
+          expect(html.at_css("#deck_name")["value"]).to eq("Izzet Tempo")
+        end
+        expect { post decks_path, params: { other: "x" } }.not_to change(Location, :count)
+        expect(response).to have_http_status(:bad_request)
+      end
+
+      it "ignores an account, a kind, a parent, a zone and a collectible type in the parameters (AC-1.10)", :aggregate_failures do
+        other = create(:user).account
+        host = create(:deck, account:, name: "Host")
+
+        create_deck(account_id: other.id, kind: "place", parent_id: host.location_id, zone: "main", collectible_type: "other")
+
+        expect(response).to have_http_status(:see_other)
+        deck = account.decks.find_by!(location: account.locations.find_by!(name: "Izzet Tempo"))
+        expect(deck).to have_attributes(collectible_type: "mtg", account_id: account.id)
+        expect(deck.location).to have_attributes(kind: "deck", parent_id: nil, zone: nil, account_id: account.id)
+        expect(other.decks.count).to eq(0)
+      end
+    end
+
+    it "sends a signed-out visitor to sign in", :aggregate_failures do
+      user
+      get new_deck_path
+      expect(response).to redirect_to(new_session_path)
+      expect { create_deck }.not_to change(Deck, :count)
+      expect(response).to redirect_to(new_session_path)
+    end
+  end
 end

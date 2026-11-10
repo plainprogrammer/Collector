@@ -41,4 +41,31 @@ RSpec.describe "Decks", type: :system do
       expect(fits?).to be(true)
     end
   end
+
+  describe "the New deck page at 360px (AC-1.1)" do
+    it "has no horizontal overflow and keeps the field and the select inside the form", :aggregate_failures do
+      open_in_narrow_frame(new_deck_path, width: 360, ready: "form.c-form")
+      within_narrow_frame do
+        inside = page.evaluate_script(<<~JS)
+          (() => {
+            const form = document.querySelector("form.c-form").getBoundingClientRect()
+            return [...document.querySelectorAll("form.c-form input:not([type=hidden]), form.c-form select")]
+              .map((el) => el.getBoundingClientRect()).every((box) => box.left >= form.left - 0.5 && box.right <= form.right + 0.5)
+          })()
+        JS
+        expect(inside).to be(true)
+        expect(fits?).to be(true)
+        expect(page).to have_select("Format", selected: "Casual")
+      end
+    end
+
+    it "creates a deck from the form, which needs no script", :aggregate_failures do
+      visit new_deck_path
+      fill_in "Name", with: "Izzet Tempo"
+      select "Modern", from: "Format"
+      click_on "Create deck"
+      expect(page).to have_css("#status", text: "Added “Izzet Tempo”.")
+      expect(page).to have_css(".c-decks td", text: "Modern")
+    end
+  end
 end
