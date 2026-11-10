@@ -16,7 +16,7 @@ RSpec.describe YardRatchet::Check, :git_sandbox, type: :model do # rubocop:disab
 
   def write(path, body, dir: root)
     dir.join(path).dirname.mkpath
-    dir.join(path).write(body)
+    dir.join(path).binwrite(body)
   end
 
   def commit_all(message)
@@ -511,6 +511,50 @@ RSpec.describe YardRatchet::Check, :git_sandbox, type: :model do # rubocop:disab
 
       expect(result).not_to be_ok
       expect(result.lines.join("\n")).to include("lib/broken.rb", "can't parse")
+    end
+
+    # One Latin-1 byte and no magic comment: Ruby's Ripper accepts the file, YARD drops it whole on an encoding error.
+    def latin1(code = "def a = 1\n") = "# caf\xE9 note\nclass Cafe\n  #{code}end\n".b
+
+    it "fails for a changed file that Ripper accepts and YARD drops (an encoding error), naming the file (AC-3.4)", :aggregate_failures do
+      base_with("README.md" => "base")
+      write("lib/c.rb", latin1)
+
+      result = check
+
+      expect(result).not_to be_ok
+      expect(result.lines.join("\n")).to include("lib/c.rb", "can't parse")
+      expect(result.lines.join("\n")).not_to include("Found no added or changed public code")
+    end
+
+    it "fails for an edited file YARD drops even when its base version was just as unreadable, though it adds a comment (AC-3.4)" do
+      base_with("lib/c.rb" => latin1)
+      write("lib/c.rb", latin1("# Spins.\n  def a = 2\n"))
+
+      expect(check).not_to be_ok
+    end
+
+    it "doesn't fail a changed file that holds no class, module or method: an empty one, comments only, or constants only (AC-3.4)", :aggregate_failures do
+      base_with("README.md" => "base")
+      write("lib/empty.rb", "")
+      write("lib/notes.rb", "# Only a comment.\n")
+      write("spec/support/constants.rb", "require \"set\"\nLIMIT = 3\n")
+
+      result = check
+
+      expect(result).to be_ok
+      expect(result.lines.first).to include("Found no added or changed public code")
+    end
+
+    it "ignores an unchanged file YARD drops, and judges the changed ones beside it (AC-3.4)", :aggregate_failures do
+      base_with("lib/c.rb" => latin1, "README.md" => "base")
+      write("lib/new.rb", "# New.\nclass New\n  # Goes.\n  def go = 1\nend\n")
+
+      expect(check).to be_ok
+
+      write("lib/new.rb", "class New\n  # Goes.\n  def go = 1\nend\n")
+
+      expect(check.lines).to include("lib/new.rb:1: New has no comment (added)")
     end
 
     it "writes nothing into the checkout (AC-3.5)", :aggregate_failures do
