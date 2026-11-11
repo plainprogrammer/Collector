@@ -52,14 +52,17 @@ module MTG::Collecting
   # @return [Catalog::DeckCards::Answer]
   def self.deck_card(entry, format_key)
     printing = entry.extension
-    position = MTG::DeckGroups.position(printing&.faces&.first&.dig("type_line"))
+    face = printing&.faces&.first
+    position = MTG::DeckGroups.position(face&.dig("type_line"))
     Catalog::DeckCards::Answer.new(group: MTG::DeckGroups.group_name(position), position:,
-      legality: deck_legality(printing, format_key), costed: !printing.nil?)
+      legality: deck_legality(printing, face, format_key), costed: !printing.nil?)
   end
 
+  # A printing with no extension record or no face data is not judged: it has no card data to be a legal or a banned card,
+  # so it gets no marker (spec 066 AC-6.6).
   # @api private
-  def self.deck_legality(printing, format_key)
-    return unless printing && LEGALITY_FORMATS.include?(format_key)
+  def self.deck_legality(printing, face, format_key)
+    return unless printing && face && LEGALITY_FORMATS.include?(format_key)
 
     status = printing.legalities.fetch(format_key, "not_legal")
     MTG::Legality.word(status) unless status == "legal"

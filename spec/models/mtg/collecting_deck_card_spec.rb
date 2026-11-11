@@ -25,7 +25,7 @@ RSpec.describe MTG::Collecting, type: :model do
     end
 
     it "puts a printing with no face data in Other with no marker", :aggregate_failures do
-      answer = described_class.deck_card(entry_with(faces: [], legalities: { "modern" => "banned" }), "casual")
+      answer = described_class.deck_card(entry_with(faces: [], legalities: { "modern" => "banned" }), "modern")
 
       expect([ answer.group, answer.legality ]).to eq([ "Other", nil ])
     end

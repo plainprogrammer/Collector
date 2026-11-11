@@ -371,6 +371,17 @@ RSpec.describe "Deck page", type: :request do
       expect(html.css(".c-legal")).to be_empty
     end
 
+    it "keeps a printing with no face data in Other with a dash and no marker, even in a format with rules (AC-6.6)", :aggregate_failures do
+      own("main", printing(name: "Faceless", legalities: { "modern" => "banned" }).tap { MTG::Printing.find_by!(catalog_entry_id: it.id).update!(faces: []) })
+
+      get deck_path(deck)
+
+      expect(response).to have_http_status(:ok)
+      expect(zone_section("Main").at_css("tr.c-zone__group th").text).to start_with("Other")
+      expect(card_rows(zone_section("Main")).first.css("td")[1].at_css(".is-muted").text).to eq("–")
+      expect(html.css(".c-legal")).to be_empty
+    end
+
     it "keeps a printing with no extension record in Other with a dash and no marker (AC-6.6)", :aggregate_failures do
       own("main", create(:catalog_entry, name: "Bare"))
 
