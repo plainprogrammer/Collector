@@ -10,6 +10,8 @@ class Deck::Listing
     @account = account
   end
 
+  # The page's rows, read once per listing so the page and its count agree. The copies are summed per deck in one grouped
+  # statement and the decks' locations preloaded, so the cost doesn't grow with the number of decks.
   # @return [Array<Row>] the decks by comparison key, then name; a deck with no copies has 0
   def rows
     @rows ||= begin
@@ -18,6 +20,7 @@ class Deck::Listing
     end
   end
 
+  # How many decks the account has, from the rows already read, for the page's heading and empty state.
   # @return [Integer] how many decks the account has
   def count = rows.size
 end

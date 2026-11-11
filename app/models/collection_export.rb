@@ -20,6 +20,10 @@ class CollectionExport
     @at = at
   end
 
+  # The whole export as a Hash ready for JSON: the profile, the currency, the places, the decks and every lot, one consistent
+  # read of the account (see `places_decks_and_lots`).
+  # @return [Hash{String => Object}] the version 4 document
+  # @raise [Unsettled] when the account's places and decks kept changing through every read
   def to_h
     user = @account.user
     locations, decks, lots = places_decks_and_lots
