@@ -185,4 +185,4 @@ Deleting a user destroys the account, which deletes its lots first and then its 
 | 2026-11-06 | The accounts parts of spec 004 (Stories 3, 4, 5 and 12; FR-2–FR-5; NFR Security), ADR 0017, and CLAUDE.md's row-level tenancy paragraph | [#221](https://github.com/plainprogrammer/Collector/pull/221) |
 | 2026-11-09 | Spec 049 (sessions expire after 30 days unused, and stop storing the address and user agent): the session's stamp, expiry, use, cookie lifetime, nightly sweep and upgrade, and #218's rulings 1 and 2 | [#240](https://github.com/plainprogrammer/Collector/pull/240) |
 | 2026-11-10 | Spec 062 (the deck routes' 404 rule: a deck is found by its location id through the account; a place's or a zone's id is 404, and the reverse on the locations routes) | [#300](https://github.com/plainprogrammer/Collector/pull/300) |
-| 2026-11-10 | Spec 064 (the Change format routes' 404 rule: another account's deck, a place's or a zone's id, a removed deck) | spec 064's pull request |
+| 2026-11-10 | Spec 064 (the Change format routes' 404 rule: another account's deck, a place's or a zone's id, a removed deck) | [#303](https://github.com/plainprogrammer/Collector/pull/303) |
