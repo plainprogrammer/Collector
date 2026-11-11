@@ -1,6 +1,6 @@
 # Verification: Feature 062, Create, rename and remove a deck
 
-**Spec:** [spec.md](spec.md) v0.5.0 · **Plan:** [plan.md](plan.md) v0.3.1 · **ADR:** [0028](../../adr/0028-decks-are-locations-with-zones.md) · **Issue:** [#49](https://github.com/plainprogrammer/Collector/issues/49)
+**Spec:** [spec.md](spec.md) v0.5.0 · **Plan:** plan (retired in `624c513a993a037534b13f7572525d65e6c8238c`; read it with `git show 624c513a993a037534b13f7572525d65e6c8238c^:docs/specs/062-create-rename-remove-a-deck/plan.md`) v0.3.1 · **ADR:** [0028](../../adr/0028-decks-are-locations-with-zones.md) · **Issue:** [#49](https://github.com/plainprogrammer/Collector/issues/49)
 
 Written at task T23 from the code and the specs as committed (branch `062-create-rename-remove-a-deck`, before the full `bin/ci` and the implementation review). Each line names what proved the criterion: an example (its file under `spec/` and its description, the criterion's number being in the description unless said), or "read" for a statement checked by reading the code or the document. A criterion with no example is under **Gaps**. The full `bin/ci`, the final visual review and the implementation review are the supervisor's (plan, "After the last batch") and are not recorded as done here.
 
