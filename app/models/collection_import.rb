@@ -1,15 +1,22 @@
 # An export file read against one account's collection and this instance's catalog (spec 025; spec 029 reads version 2;
-# spec 032 reads version 3, whose lots say where they are): either a refusal of
-# the whole file (decision 10), or each row's problems and what applying the file would do (decisions 1, 2, 4, 9, 11).
-# It writes nothing. Collectible-agnostic: a type's entries and vocabulary are reached through the catalog registry.
+# spec 032 reads version 3, whose lots say where they are; spec 062 reads version 4, whose decks and zones are read here): either
+# a refusal of the whole file (decision 10), or each row's problems and what applying the file would do (decisions 1, 2, 4, 9,
+# 11). It writes nothing. Collectible-agnostic: a type's entries and vocabulary and a deck's formats and zones are reached
+# through the catalog registry.
+#
+# The refusals of the whole file come in one order (spec 062 AC-7.4e): the header's (an export, its version, its well-formedness,
+# decks' names included), then `unsupported_currency`, then `unknown_format` (version 4), then, for a version 1 to 3 file that
+# meets the collector's decks, `deck_name_taken` and `too_many_with_decks`.
+# @see file:data-portability.md
 class CollectionImport
   MAX_BYTES = 32_000_000
   LIST_LIMIT = 100
   BATCH_SIZE = 1_000
   ROW = %r{\A/lots/(\d+)(?:/(.+))?\z}
+  # What a held lot is read from, before its place's columns (`Lot::PLACE_COLUMNS`, pluck them after these).
   LOT_COLUMNS = [ "lots.id", "catalog_entries.collectible_type", "catalog_entries.external_key", "lots.finish", "lots.condition",
     "lots.price_paid_cents", "lots.quantity", "lots.created_at", "lots.updated_at", "catalog_entries.name",
-    "catalog_sets.code", "catalog_entries.number", "catalog_entries.language", "locations.name", "locations.name_key" ].freeze
+    "catalog_sets.code", "catalog_entries.number", "catalog_entries.language" ].freeze
 
   NO_FILE = "Choose an export file to preview.".freeze
   TOO_LARGE = "This file is larger than 32 MB, so it can't be an export Collector reads.".freeze
@@ -24,6 +31,11 @@ class CollectionImport
   # The largest price in cents the lots table records (a SQLite integer is 64 bits); spec 028 1.3.4.
   MAX_PRICE_CENTS = (2**63) - 1
   PRICE_TOO_LARGE = "price_paid is too large to record".freeze
+  # An older file against the collector's decks (spec 062 AC-7.4a, AC-7.4b): its places and their decks share one name space and
+  # one limit, and applying the file would replace the places and leave the decks.
+  DECK_NAME_TAKEN = "A deck you have is called “%s”, like a place in this file. Rename one of them and preview again.".freeze
+  TOO_MANY_WITH_DECKS = "This file and your decks together would have more than #{Location::MAX_PER_ACCOUNT} locations.".freeze
+  UNKNOWN_FORMAT = "This instance doesn't know the format “%s” of %s.".freeze
 
   Refusal = Data.define(:rule, :at, :reason)
   # What applying would do to the account's currency (spec 038 decision 7).
@@ -35,7 +47,8 @@ class CollectionImport
   end
 
   # A lot of the collection, as the file would write it, with its id for applying (#40).
-  # +location+ is the name of the location it is in, nil when unplaced; the sixth identity value is that location's key.
+  # +location+ is the label of the place it is in (a place's name, "Deck › Zone" for a zone), nil when unplaced; the sixth
+  # identity value is that place's `Location::Placement` key: nil, a place's comparison key, or `[deck key, zone key]`.
   HeldLot = Data.define(:id, :identity, :quantity, :added_at, :changed_at, :name, :set_code, :collector_number, :language,
     :created_exact, :updated_exact, :location) do
     def described
@@ -44,7 +57,8 @@ class CollectionImport
   end
 
   # One element of the file's lots, numbered from 1. +identity+ is nil when it can't be read (decision 1).
-  # +place+ is the file's spelling of a version 3 lot's location, nil for a lot in none or a file that has no places.
+  # +place+ is the file's spelling of a lot's place as a person reads it (a version 3 place's name, a version 4 zone as
+  # "Deck › Zone"), nil for a lot in none or a file that has no places.
   Row = Data.define(:number, :lot, :identity, :problems, :place) do
     def problem? = problems.any?
 
@@ -83,6 +97,9 @@ class CollectionImport
   # Whether the file says where its lots are (version 3); the page says so when it doesn't (spec 032 AC-10.4).
   def places? = @version >= 3
 
+  # Whether the file lists decks (version 4); an older one leaves the collector's decks alone, and the page says so.
+  def decks_counted? = @version >= 4
+
   # The catalog entry a row that isn't a problem row resolved to (for applying, spec 028).
   def entry_id(row) = @entry_ids.fetch(row.number)
 
@@ -97,12 +114,17 @@ class CollectionImport
     user.reload
     @removed_lots = nil # memoized from the outcomes below by #removed_lots
     @locations = nil
+    @held_decks = nil
+    @decks = nil
     @outcomes = outcomes_for(held_lots)
     @plan = Plan.new(@outcomes, view_change, locations, currency_change)
   end
 
   # What applying would do with the collector's locations: nothing counted for a version 1 file (spec 029 decision 10).
   def locations = @locations ||= Locations.new(held_locations, @version >= 2 ? file_location_names : nil)
+
+  # What applying would do with the collector's decks: nothing counted for a file older than version 4 (spec 062 AC-7.4).
+  def decks = @decks ||= Decks.new(held_decks, @version >= 4 ? file_decks : nil)
 
   def applicable? = !refused? && problem_rows.empty?
 
@@ -177,7 +199,7 @@ class CollectionImport
       @data, problem = ExportFormat::Rules.parse(file.read)
       return refuse(problem.rule, "", NOT_JSON) if problem
 
-      header_refusal || currency_refusal
+      header_refusal || currency_refusal || format_refusal || held_decks_refusal
     end
 
     # Decision 10's checks in order: an export, its version (read before the schema), then the schema and the time
@@ -217,6 +239,35 @@ class CollectionImport
       refuse("unsupported_currency", "/currency", "Collector can't show prices in #{code}.")
     end
 
+    # A version 4 deck of a collectible type or format this instance doesn't register is refused as a whole, like a currency it
+    # can't show, never a problem row (spec 062 AC-6.11): it depends on the registrations, not on the file alone, so it is the
+    # reader's and not a rule of the format.
+    def format_refusal
+      return unless @version >= 4
+
+      index = @data["decks"].index { |deck| Catalog::Formats.find(deck["collectible_type"], deck["format"]).nil? }
+      return unless index
+
+      deck = @data["decks"][index]
+      refuse("unknown_format", "/decks/#{index}/format", format(UNKNOWN_FORMAT, deck["format"], deck["collectible_type"]))
+    end
+
+    # A version 2 or 3 file replaces the collector's places and leaves their decks, which share the places' names and their
+    # limit, so a file that would put a place on a deck's name or past the limit is refused whole, before anything can reach
+    # the unique name index (spec 062 AC-7.4a, AC-7.4b, maintainer D7). A version 1 file has no places and leaves the
+    # held ones, so the held places plus the held decks, which the limit already held together, can't exceed it: no check.
+    # `replan` judges both again inside the apply's transaction.
+    def held_decks_refusal
+      return if @version < 2 || @version >= 4 || held_decks.empty?
+
+      taken = held_decks.index_by(&:key)
+      names = file_location_names
+      index = names.index { |name| taken.key?(Location::Name.key(name)) }
+      return refuse("deck_name_taken", "/locations/#{index}", format(DECK_NAME_TAKEN, taken.fetch(Location::Name.key(names[index])).name)) if index
+
+      refuse("too_many_with_decks", "/locations", TOO_MANY_WITH_DECKS) if names.size + held_decks.size > Location::MAX_PER_ACCOUNT
+    end
+
     def newer(version)
       "This file was written by a newer version of Collector (format version #{version}). " \
         "This instance reads version #{ExportFormat::Rules::VERSION}."
@@ -236,11 +287,29 @@ class CollectionImport
       end
     end
 
-    def file_location_names = @data["locations"].map { |location| Location::Name.normalise(location["name"]) }
+    def file_location_names = @file_location_names ||= @data["locations"].map { |location| Location::Name.normalise(location["name"]) }
 
-    # The account's locations, in one statement (at most 500 rows).
+    # The file's decks, each name as a collector's typed name is stored (`Location::Name`).
+    def file_decks
+      @data["decks"].map { |deck| Decks::Entry.new(name: Location::Name.normalise(deck["name"]), collectible_type: deck["collectible_type"], format: deck["format"]) }
+    end
+
+    # The file's decks' collectible type and format by the deck's comparison key, for judging the zones of a version 4 lot.
+    def file_deck_formats
+      @file_deck_formats ||= @data["decks"].to_h do |deck|
+        [ Location::Name.key(Location::Name.normalise(deck["name"])), [ deck["collectible_type"], deck["format"] ] ]
+      end
+    end
+
+    # The account's places, in one statement (at most 500 rows): a deck is not one, it has its own list (#held_decks).
     def held_locations
-      @account.locations.pluck(:id, :name, :name_key).map { |id, name, key| Locations::Held.new(id:, name:, key:) }
+      @account.locations.places.pluck(:id, :name, :name_key).map { |id, name, key| Locations::Held.new(id:, name:, key:) }
+    end
+
+    # The account's decks, in one statement (at most 500 rows), read once until `replan`.
+    def held_decks
+      @held_decks ||= @account.decks.joins(:location).pluck("decks.location_id", "locations.name", "locations.name_key", "decks.collectible_type", "decks.format")
+        .map { |id, name, key, type, format| Decks::Held.new(id:, name:, key:, collectible_type: type, format:) }
     end
 
     def read_rows
@@ -263,15 +332,38 @@ class CollectionImport
       end
       lots.each_with_index.map do |lot, index|
         problems = found.fetch(index, []).map { |problem| describe(problem, first_row[identities[index]], lot) } + resolved.fetch(index, [])
-        place = lot["location"] if @version >= 3 && lot.is_a?(Hash) && lot["location"].is_a?(String)
-        Row.new(number: index + 1, lot:, identity: identities[index], problems:, place:)
+        Row.new(number: index + 1, lot:, identity: identities[index], problems:, place: place_label(lot))
       end
+    end
+
+    # How a person reads the lot's place in the file, or nil: a place's name, or "Deck › Zone" for a version 4 zone, the deck
+    # as the file spells it and the zone by the name its deck's format registers (its key when the format has none).
+    def place_label(lot)
+      location = lot["location"] if lot.is_a?(Hash)
+      case location
+      when String then location if @version >= 3
+      when Hash
+        return unless @version >= 4 && location["deck"].is_a?(String) && location["zone"].is_a?(String)
+
+        Location::Placement.label(zone_name(location) || location["zone"], location["deck"])
+      end
+    end
+
+    # The name the deck's format registers for the zone a lot's location names, nil when the deck, its format or the zone
+    # isn't known.
+    def zone_name(location)
+      pair = file_deck_formats[Location::Placement.file_key(location).first]
+      Catalog::Formats.zones_for(*pair)&.find { |zone| zone.key == location["zone"] }&.name if pair
     end
 
     def describe(problem, earlier, lot)
       if problem.rule == "duplicate_lot"
         of, summary = @version >= 3 ? [ DUPLICATE_OF_PLACED, DUPLICATE_PLACED ] : [ DUPLICATE_OF, DUPLICATE ]
         return Problem.new(rule: problem.rule, at: problem.at, reason: format(of, earlier), summary:)
+      end
+      if problem.rule == "unknown_location" && lot["location"].is_a?(Hash)
+        return Problem.new(rule: problem.rule, at: problem.at, reason: "Its deck “#{lot["location"]["deck"]}” isn't one of the file's decks.",
+          summary: "Its deck isn't one of the file's decks.")
       end
       if problem.rule == "unknown_location"
         return Problem.new(rule: problem.rule, at: problem.at, reason: "Its location “#{lot["location"]}” isn't one of the file's locations.",
@@ -286,8 +378,33 @@ class CollectionImport
       Problem.new(rule: problem.rule, at: problem.at, reason:, summary: reason)
     end
 
-    # Decision 9's catalog checks for well-formed rows: the type, then the entry, then its finish and the condition.
+    # Decision 9's catalog checks for well-formed rows: the type, then the entry, then its finish and the condition; then, for a
+    # row with none of those, the zone of a version 4 lot (spec 062 AC-6.10).
     def resolution_problems(candidates)
+      found = catalog_problems(candidates)
+      candidates.each do |lot, index|
+        problem = zone_problem(lot, index) unless found.key?(index)
+        found[index] = [ problem ] if problem
+      end
+      found
+    end
+
+    # A lot in a zone its deck's format lacks: the deck is listed (else it is `unknown_location`, a rule of the format) and
+    # registered (else the file was refused), so only the zone key can be wrong. A resolvable check, depends on this instance's
+    # registrations (spec 062 AC-6.11).
+    def zone_problem(lot, index)
+      location = lot["location"]
+      return unless location.is_a?(Hash)
+
+      pair = file_deck_formats[Location::Placement.file_key(location).first]
+      zones = Catalog::Formats.zones_for(*pair) if pair
+      return unless zones && zones.none? { |zone| zone.key == location["zone"] }
+
+      Problem.new(rule: "unknown_zone", at: "/lots/#{index}/location/zone", summary: "Its deck has no such zone in its format.",
+        reason: "The deck “#{location["deck"]}” has no zone “#{location["zone"]}” in its format.")
+    end
+
+    def catalog_problems(candidates)
       candidates.group_by { |lot, _index| lot["entry"]["collectible_type"] }.each_with_object({}) do |(type, group), found|
         unless registered?(type)
           group.each { |_lot, index| found[index] = [ problem("unknown_type", "/lots/#{index}/entry/collectible_type", "This instance doesn't collect #{type}") ] }
@@ -330,12 +447,17 @@ class CollectionImport
       end.index_by(&:external_key)
     end
 
-    # The collection's lots, as the file would write them, read in one statement.
+    # The collection's lots, as the file would write them, read in one statement: each with its place's key (`Lot::PLACE_COLUMNS`
+    # are the last of the row) and the label a person reads it by.
     def held_lots
-      @account.lots.joins(entry: :set).left_joins(:location).pluck(*LOT_COLUMNS).map do |id, type, source_id, finish, condition, cents, quantity, added, changed, name, set_code, number, language, place, place_key|
-        HeldLot.new(id:, identity: [ type, source_id, finish, condition, cents && format("%.2f", cents / 100r), place_key ], quantity:,
+      @account.lots.joins(entry: :set).with_place.pluck(*LOT_COLUMNS, *Lot::PLACE_COLUMNS).map do |row|
+        id, type, source_id, finish, condition, cents, quantity, added, changed, name, set_code, number, language = row.first(LOT_COLUMNS.size)
+        kind, place, place_key, zone, deck_name, deck_key = row.last(Lot::PLACE_COLUMNS.size).first(6)
+        key = Location::Placement.key(kind:, name_key: place_key, zone:, deck_key:)
+        HeldLot.new(id:, identity: [ type, source_id, finish, condition, cents && format("%.2f", cents / 100r), key ], quantity:,
           added_at: added.getutc.iso8601, changed_at: changed.getutc.iso8601, name:, set_code:, collector_number: number, language:,
-          created_exact: added.getutc.iso8601(6), updated_exact: changed.getutc.iso8601(6), location: place)
+          created_exact: added.getutc.iso8601(6), updated_exact: changed.getutc.iso8601(6),
+          location: (zone ? Location::Placement.label(place, deck_name) : place))
       end
     end
 
