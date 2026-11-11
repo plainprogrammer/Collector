@@ -1,6 +1,6 @@
 # Verification: Spec 066, The Deck Page, Owned Cards by Zone
 
-**Spec:** [spec.md](spec.md) v0.3.1 · **Plan:** [plan.md](plan.md) · **Issue:** [#253](https://github.com/plainprogrammer/Collector/issues/253)
+**Spec:** [spec.md](spec.md) v0.3.1 · **Plan:** plan (retired in `bb52f62c6c7f377a1c72c76d1722f73237ea85d2`; read it with `git show bb52f62c6c7f377a1c72c76d1722f73237ea85d2^:docs/specs/066-deck-page-owned-cards-by-zone/plan.md`) · **Issue:** [#253](https://github.com/plainprogrammer/Collector/issues/253)
 
 ## Implementation review
 
