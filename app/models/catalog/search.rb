@@ -26,6 +26,10 @@ class Catalog::Search
       requested_page: @requested_page, per_page: PER_PAGE)
   end
 
+  # The page's cards, each with its newest printings (at most `ENTRIES_PER_GROUP`) and their extension records preloaded; none
+  # when neither a name nor a set was given.
+  #
+  # @return [Array<Group>]
   def groups
     return [] unless active?
 

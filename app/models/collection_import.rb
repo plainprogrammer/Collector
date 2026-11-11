@@ -146,6 +146,7 @@ class CollectionImport
   # What applying would do with the collector's proxies: nothing counted for a file older than version 4 (spec 068 decision 15).
   def proxies = @proxies ||= Proxies.new(held_proxies, proxies_counted? ? proxy_rows : nil)
 
+  # Whether the file can be applied: it isn't refused and no lot row or proxy row has a problem.
   def applicable? = !refused? && problem_rows.empty? && proxy_problem_rows.empty?
 
   def exported_at = Time.iso8601(@data["exported_at"])
@@ -213,6 +214,7 @@ class CollectionImport
 
   def other_email_address = differing("email_address")
 
+  # The titles of the catalogs the file's lots and proxies name that this instance hasn't loaded yet.
   def unloaded_catalog_titles
     Catalog.unloaded_titles((rows.filter_map { it.entry["collectible_type"] } + proxy_rows.filter_map { it.entry["collectible_type"] }).grep(String).uniq)
   end
