@@ -1,5 +1,6 @@
 # An export file read against one account's collection and this instance's catalog (spec 025; spec 029 reads version 2;
-# spec 032 reads version 3, whose lots say where they are; spec 062 reads version 4, whose decks and zones are read here): either
+# spec 032 reads version 3, whose lots say where they are; spec 062 reads version 4, whose decks and zones are read here; spec 068
+# reads version 4's proxies): either
 # a refusal of the whole file (decision 10), or each row's problems and what applying the file would do (decisions 1, 2, 4, 9,
 # 11). It writes nothing. Collectible-agnostic: a type's entries and vocabulary and a deck's formats and zones are reached
 # through the catalog registry.
@@ -9,6 +10,8 @@
 # meets the collector's decks, `deck_name_taken` and `too_many_with_decks`.
 # @see file:data-portability.md
 class CollectionImport
+  include ProxyRows
+
   MAX_BYTES = 32_000_000
   LIST_LIMIT = 100
   BATCH_SIZE = 1_000
@@ -85,14 +88,16 @@ class CollectionImport
       def text(value) = (value if value.is_a?(String))
   end
 
-  attr_reader :refusal, :rows
+  attr_reader :refusal, :rows, :proxy_rows
 
   # +file+ is the upload: anything that answers #read and #size. Anything else is no file.
   def initialize(account:, file:)
     @account = account
     @entry_ids = {}
+    @proxy_entry_ids = {}
     @refusal = read(file)
     @rows = refused? ? [] : read_rows
+    @proxy_rows = refused? || @version < 4 ? [] : read_proxy_rows
   end
 
   def refused? = !refusal.nil?
@@ -103,11 +108,14 @@ class CollectionImport
   # Whether the file lists decks (version 4); an older one leaves the collector's decks alone, and the page says so.
   def decks_counted? = @version >= 4
 
+  # Whether the file lists proxies (version 4); an older one leaves the collector's alone, and the page says so.
+  def proxies_counted? = @version >= 4
+
   # The catalog entry a row that isn't a problem row resolved to (for applying, spec 028).
   def entry_id(row) = @entry_ids.fetch(row.number)
 
   # What applying would do to the collection as it was when this was first asked (the preview's view, spec 028).
-  def plan = @plan ||= Plan.new(outcomes, view_change, locations, decks, currency_change)
+  def plan = @plan ||= Plan.new(outcomes, view_change, locations, decks, proxies, currency_change)
 
   # The same, against the collection as it is now: one read of the lots, of the locations, of the decks, of the account (its
   # currency, spec 038 decision 7) and of the user, no parsing (spec 028 FR-2, spec 029 decision 11). It replaces the
@@ -122,9 +130,11 @@ class CollectionImport
     @locations = nil
     @held_decks = nil
     @decks = nil
+    @held_proxies = nil
+    @proxies = nil
     @refusal = held_decks_refusal if @refusal.nil? # a file refused when it was read has no rows to replan (the apply never gets here for one)
     @outcomes = outcomes_for(held_lots)
-    @plan = Plan.new(@outcomes, view_change, locations, decks, currency_change)
+    @plan = Plan.new(@outcomes, view_change, locations, decks, proxies, currency_change)
   end
 
   # What applying would do with the collector's locations: nothing counted for a version 1 file (spec 029 decision 10).
@@ -133,7 +143,10 @@ class CollectionImport
   # What applying would do with the collector's decks: nothing counted for a file older than version 4 (spec 062 AC-7.4).
   def decks = @decks ||= Decks.new(held_decks, @version >= 4 ? file_decks : nil)
 
-  def applicable? = !refused? && problem_rows.empty?
+  # What applying would do with the collector's proxies: nothing counted for a file older than version 4 (spec 068 decision 15).
+  def proxies = @proxies ||= Proxies.new(held_proxies, proxies_counted? ? proxy_rows : nil)
+
+  def applicable? = !refused? && problem_rows.empty? && proxy_problem_rows.empty?
 
   def exported_at = Time.iso8601(@data["exported_at"])
 
@@ -150,6 +163,21 @@ class CollectionImport
 
   # How many problem rows have each kind of problem, in the order the kinds first appear.
   def problem_counts = problem_rows.flat_map { |row| row.problems.map(&:summary).uniq }.tally
+
+  # The proxy rows that can't be applied, as `problem_rows` are for lots (spec 068 decision 18).
+  def proxy_problem_rows = @proxy_problem_rows ||= proxy_rows.select(&:problem?)
+
+  # The first `LIST_LIMIT` proxy rows that can't be applied, for the page.
+  def listed_proxy_problem_rows = proxy_problem_rows.first(LIST_LIMIT)
+
+  # How many proxy problem rows the page doesn't list.
+  def more_proxy_problem_rows = proxy_problem_rows.size - listed_proxy_problem_rows.size
+
+  # How many proxy rows have each kind of problem, in the order the kinds first appear.
+  def proxy_problem_counts = proxy_problem_rows.flat_map { |row| row.problems.map(&:summary).uniq }.tally
+
+  # The catalog entry a proxy row that isn't a problem row resolved to (for applying).
+  def proxy_entry_id(row) = @proxy_entry_ids.fetch(row.number)
 
   def added = outcomes.fetch(:added)
   def changed = outcomes.fetch(:changed)
@@ -186,7 +214,7 @@ class CollectionImport
   def other_email_address = differing("email_address")
 
   def unloaded_catalog_titles
-    Catalog.unloaded_titles(rows.filter_map { |row| row.entry["collectible_type"] }.grep(String).uniq)
+    Catalog.unloaded_titles((rows.filter_map { it.entry["collectible_type"] } + proxy_rows.filter_map { it.entry["collectible_type"] }).grep(String).uniq)
   end
 
   private
@@ -222,7 +250,7 @@ class CollectionImport
       return refuse("newer_version", "/format_version", newer(@version)) if @version > ExportFormat::Rules::VERSION
 
       @problems = ExportFormat::Rules.problems_in(@data)
-      outside = @problems.reject { |problem| ROW.match?(problem.at) }
+      outside = @problems.reject { |problem| ROW.match?(problem.at) || ProxyRows::PROXY_ROW.match?(problem.at) }
       first = outside.min_by { |problem| [ position(problem.at), outside.index(problem) ] }
       return refuse(first.rule, first.at, "This file isn't a well-formed export: #{field_reason(first.rule, field_name(first.at))}.") if first
 
@@ -317,6 +345,19 @@ class CollectionImport
     def held_decks
       @held_decks ||= @account.decks.joins(:location).pluck("decks.location_id", "locations.name", "locations.name_key", "decks.collectible_type", "decks.format")
         .map { |id, name, key, type, format| Decks::Held.new(id:, name:, key:, collectible_type: type, format:) }
+    end
+
+    # The account's proxies, in one statement, read once until `replan`: each as the file would write it, with its zone's
+    # deck's comparison key and the zone's key for the identity.
+    def held_proxies
+      @held_proxies ||= @account.deck_proxies.joins(entry: :set)
+        .joins("JOIN locations ON locations.id = deck_proxies.location_id JOIN locations parents ON parents.id = locations.parent_id")
+        .pluck("deck_proxies.id", "catalog_entries.collectible_type", "catalog_entries.external_key", "deck_proxies.finish", "deck_proxies.quantity",
+               "catalog_entries.name", "catalog_sets.code", "catalog_entries.number", "catalog_entries.language", "parents.name_key", "parents.name", "locations.zone", "locations.name")
+        .map do |id, type, source_id, finish, quantity, name, set_code, number, language, deck_key, deck_name, zone, zone_name|
+          Proxies::Held.new(id:, identity: [ deck_key, zone, type, source_id, finish ], quantity:, name:, set_code:, collector_number: number, language:, finish:,
+            place: Location::Placement.label(zone_name, deck_name))
+        end
     end
 
     def read_rows

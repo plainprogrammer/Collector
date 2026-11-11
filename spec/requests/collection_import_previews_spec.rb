@@ -177,9 +177,9 @@ RSpec.describe "Import preview", type: :request do
     describe "decks (spec 062)" do
       let!(:entry) { printing }
 
-      def file_v4(lots, locations: [], decks: [], **fields)
+      def file_v4(lots, locations: [], decks: [], proxies: [], **fields)
         decks = decks.map { |deck| deck.is_a?(Hash) ? deck : { "name" => deck, "collectible_type" => "mtg", "format" => "modern" } }
-        file(lots, format_version: 4, locations: locations.map { |name| { "name" => name } }, decks:, **fields)
+        file(lots, format_version: 4, locations: locations.map { |name| { "name" => name } }, decks:, proxies:, **fields)
       end
 
       def zone(deck, key = "main") = { "deck" => deck, "zone" => key }

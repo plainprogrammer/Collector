@@ -111,7 +111,7 @@ RSpec.describe CollectionImport, type: :model do
     end
 
     it "reports the rule and place problems.json names for each example refused as a whole (AC-2.7)" do
-      named = JSON.parse(Rails.root.join("docs/export-format/examples/problems.json").read).reject { |_name, entry| entry["at"].start_with?("/lots/") }
+      named = JSON.parse(Rails.root.join("docs/export-format/examples/problems.json").read).reject { |_name, entry| entry["at"].start_with?("/lots/") || entry["at"].match?(%r{\A/proxies/\d}) }
       found = named.to_h do |name, _entry|
         refusal = import(Rails.root.join("docs/export-format/examples", name).binread).refusal
         [ name, refusal && { "rule" => refusal.rule, "at" => refusal.at } ]
@@ -549,8 +549,8 @@ RSpec.describe CollectionImport, type: :model do
   end
 
   # A version 4 file (spec 062): its decks beside its places, and a lot's location may be a deck's zone.
-  def file_v4(lots, locations: [], decks: [], **fields)
-    file(lots, format_version: 4, locations: locations.map { |name| { "name" => name } }, decks: decks.map { |deck| deck_in_file(deck) }, **fields)
+  def file_v4(lots, locations: [], decks: [], proxies: [], **fields)
+    file(lots, format_version: 4, locations: locations.map { |name| { "name" => name } }, decks: decks.map { |deck| deck_in_file(deck) }, proxies:, **fields)
   end
 
   # A deck of a file: a name alone is a Casual deck of the one collectible this suite registers; a hash is taken as written.

@@ -72,7 +72,7 @@ RSpec.describe "Import and export timing with decks", :timing, type: :request do
     { "format" => "collector-export", "format_version" => 4, "exported_at" => "2026-10-15T09:00:00Z",
       "profile" => { "name" => user.name, "email_address" => user.email_address, "collection_view" => "grid" }, "currency" => "USD",
       "locations" => place_names.map { |name| { "name" => name } },
-      "decks" => deck_names.map { |name| { "name" => name, "collectible_type" => "mtg", "format" => "modern" } }, "lots" => rows }
+      "decks" => deck_names.map { |name| { "name" => name, "collectible_type" => "mtg", "format" => "modern" } }, "proxies" => [], "lots" => rows }
   end
 
   # Prints one measurement, marking a memory peak over the bar it is measured against.
