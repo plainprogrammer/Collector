@@ -21,14 +21,14 @@ Evidence for each criterion of [spec 067](spec.md) (0.2.0), on branch `067-deck-
 | AC-2.7 removed after the 303 | Request file, "reads a deck removed after the redirect as all locations, nothing selected (AC-2.7)" |
 | AC-2.8 Done | Request file, "returns to the saved view under the deck on Done (AC-2.8)" |
 | AC-2.9 bulk actions | Request file, "using the bulk actions on it (AC-2.9)": Set condition, Move to… and Remove change exactly the deck's lots, each lot keeping its zone unless moved |
-| AC-3.1 end to end | System file, "empties a deck from its refusal page through Move to… and on to its removal (AC-3.1, AC-2.2, AC-2.3)": Decks page, Remove, the shortcut, Move to…, "Long box", Move, the notice, the empty-filter sentence and "0 of 0 selected", then the removal page and the notice "Removed “Izzet Tempo”." Runs with scripting (headless Firefox); see Deviations |
+| AC-3.1 end to end | System file, "without scripting", "empties a deck from its refusal page through Move to… and on to its removal (AC-5.1, AC-3.1)", under `rack_test` (the example asserts `page.driver` is `Capybara::RackTest::Driver`): Decks page, Remove, the shortcut, "All 5 items selected", Move to…, "Long box", Move, the notice, the empty-filter sentence and "0 of 0 selected", then the removal page and the notice "Removed “Izzet Tempo”." The "with scripting" context runs the same scenario in headless Firefox |
 | AC-4.1 another account's deck | Request file, "answers 404 for another account's deck and changes nothing (AC-4.1)" |
 | AC-4.2 place, zone, no such id | Request file, "answers 404 for a place's id, a zone's id and an id that doesn't exist, and creates nothing (AC-4.2)" |
 | AC-4.3 nothing read | Request file, "ignores a name filter, location, sort, account or user value in the request (AC-4.3)" |
 | AC-4.4 signed out | Request file, "sends a signed-out visitor to sign-in and creates nothing (AC-4.4)" |
 | AC-4.5 no GET | Request file, "answers no GET, prefetch-marked or not, and changes nothing (AC-4.5)" |
 | AC-4.6 place route unchanged | Request file, "keeps the place shortcut's 404 for a deck's and a zone's id, and its answer for a place (AC-4.6)" |
-| AC-5.1 no scripting | System file, "without scripting": `driven_by :rack_test` (the example asserts `page.driver` is `Capybara::RackTest::Driver`), the button, "All 5 items selected", two selected rows, and Move to… opening |
+| AC-5.1 no scripting | The same "without scripting" example: the whole scenario, from the Decks page to the removal, runs with no script |
 | AC-5.2 360px, 44px, themes | System file, "fits at 360px in both themes with 44px targets and the button first (AC-5.2)": frame width 360, no horizontal overflow, no `main` link or button under 44px, the button first in `.c-form__actions`, in light and in dark. Colour is not an example: text and focus-ring contrast were checked by reading, since the button is `c-btn c-btn--primary` and the page adds no CSS (see below) |
 | FR-1 route, one verb | AC-4.5's example; `config/routes.rb` has `resource :selection, only: :create, module: :decks` under `resources :decks` with a comment citing spec 067 |
 | FR-3 core names no collectible | `spec/import_apply_core_spec.rb` lists `app/controllers/concerns/bulk_mode_shortcut.rb`; `spec/deck_core_spec.rb`'s count is 27 and its glob covers `app/controllers/decks/selections_controller.rb`; both pass |
@@ -49,13 +49,12 @@ The deck refusal page adds no colour, spacing or font: the button is `c-btn c-bt
 
 - Red run, Task 1: `bin/rspec spec/requests/deck_bulk_shortcut_spec.rb spec/requests/decks_spec.rb`: 66 examples, 21 failures (20 `NoMethodError: undefined method 'deck_selection_path'`, the changed AC-3.3 example on its button expectation); the examples for AC-1.3, 1.5, 1.6, 4.5 and 4.6 already passed, as planned.
 - Green, Task 3: the request files, `spec/deck_core_spec.rb`, `spec/import_apply_core_spec.rb`, `spec/system/decks_spec.rb` and `spec/requests/location_bulk_shortcut_spec.rb`: 108 examples, 0 failures.
-- System file: `bin/rspec spec/system/deck_bulk_shortcut_spec.rb`: 4 examples, 0 failures. With the view's `button_to` line temporarily deleted, all 4 failed.
+- System file: `bin/rspec spec/system/deck_bulk_shortcut_spec.rb`: 4 examples, 0 failures (re-run after the review's fix, with the guards and the place shortcut's request spec: 33 examples, 0 failures). With the view's `button_to` line temporarily deleted, all 4 failed.
 - Full `bin/ci` on `8b6148cc`: RuboCop, YARD (no warnings), the comment ratchet, Brakeman, bundler-audit, importmap audit and RSpec all passed; RSpec was **3807 examples, 0 failures, 1 pending** (seed 16693), CI total 5 m 56 s.
 
 ## Deviations
 
 1. The system file is one top-level `RSpec.describe` with two contexts (`RSpec/MultipleDescribes` rejects the plan's two top-level groups). The no-script context signs in under `rack_test`.
 2. `spec/support/system.rb`'s after-hook resized the window with every driver; under `rack_test` that raised `Capybara::NotSupportedByDriverError`, so the resize is skipped for non-Selenium drivers (one line and a comment).
-3. The spec's Notes ask for AC-3.1's end-to-end system example to run without scripting. The end-to-end example runs in headless Firefox; the no-script example covers AC-5.1 from the refusal page through the bulk table to the Move to… page, and the move itself and the removal it unlocks are plain forms the end-to-end example proves. This is as the approved plan (Task 4) wrote it.
-4. The plan's Step 0 regex was written `/\ARemove/` in Ruby (the plan's `/\\ARemove/` was a Markdown escape).
-5. Commit trailers name Claude Opus 5.5, as the brief says.
+3. The plan's Step 0 regex was written `/\ARemove/` in Ruby (the plan's `/\\ARemove/` was a Markdown escape).
+4. Commit trailers name Claude Opus 5.5, as the brief says.
