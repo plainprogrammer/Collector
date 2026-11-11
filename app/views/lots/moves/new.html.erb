@@ -7,7 +7,7 @@
       <p class="c-pagehead__stats"><%= lot_line(@lot) %> · <%= lot_place(@lot) %> · ×<%= number_with_delimiter(@lot.quantity) %></p>
     </div>
   </div>
-  <% if @destinations.empty? %>
+  <% if !@offered %>
     <p class="c-empty">You have no locations yet. <%= link_to "Add a location", locations_path %></p>
     <div class="c-form__actions">
       <%= link_to "Cancel", catalog_entry_path(@lot.entry, **card_params), class: "c-btn c-btn--secondary" %>
@@ -23,7 +23,7 @@
       </div>
       <div class="c-field<%= " c-field--invalid" if place_errors.any? %>">
         <%= form.label :location_id, "To", class: "c-field__label" %>
-        <%= form.select :location_id, options_for_select(@destinations, @move.location_id), {}, { "aria-describedby": field_error_describedby("move_location_id-error", place_errors) } %>
+        <%= form.select :location_id, location_options(@choices, selected: @move.location_id, leading: @leading, except: @lot.location_id), {}, { "aria-describedby": field_error_describedby("move_location_id-error", place_errors) } %>
         <%= render "shared/field_errors", messages: place_errors, id: "move_location_id-error" %>
       </div>
       <div class="c-form__actions">
