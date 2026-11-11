@@ -91,6 +91,22 @@ RSpec.describe "The collection's location filter with decks", type: :request do
     expect(select.at_css("option[selected]")&.text || "All locations").to eq("All locations")
   end
 
+  it "returns from Edit copy to the table under the same deck filter (AC-6.6)", :aggregate_failures do
+    get collection_path(location: deck_value, view: "table")
+    edit_href = page_html.css("tbody a").map { it["href"] }.find { it.start_with?("/lots/#{in_main.id}/edit") }
+    return_to = Rack::Utils.parse_query(URI(edit_href).query)["return_to"]
+    expect(Rack::Utils.parse_query(URI(return_to).query)).to include("location" => deck_value, "view" => "table")
+
+    get edit_href
+    expect(page_html.at_css('header a[aria-label="Back"]')["href"]).to eq(return_to)
+    action = page_html.at_css("form.c-form")["action"]
+    patch action, params: { lot: { quantity: "2" } }
+    expect(response).to redirect_to(return_to)
+    follow_redirect!
+    expect(select.at_css("option[selected]").text).to eq("Izzet Tempo (all zones)")
+    expect(page_html.css("tbody .c-table__place-name").map { it.text.squish }).to contain_exactly("Izzet Tempo › Main", "Izzet Tempo › Sideboard")
+  end
+
   it "gives an account with a deck and no place the select, the column and the place line (AC-6.10)", :aggregate_failures do
     solo = create(:user)
     delete session_path # the example's own account, not the one signed in above
@@ -142,7 +158,20 @@ RSpec.describe "The collection's location filter with decks", type: :request do
     it "offers every zone of the deck as a destination under a deck filter, leaving out none (AC-3.1)", :aggregate_failures do
       select_under(deck_value, in_main, go: "move")
       get new_collection_move_path
-      expect(page_html.css('select#to optgroup[label="Decks"] option').map(&:text)).to include("Izzet Tempo › Main", "Izzet Tempo › Sideboard")
+      expect(page_html.at_css("select#to").xpath("./option").map(&:text)).to eq([ "Choose…", "No location" ])
+      expect(page_html.css("select#to optgroup").map { it["label"] }).to eq(%w[Places Decks])
+      expect(page_html.css('select#to optgroup[label="Places"] option').map(&:text)).to eq([ "Long box" ])
+      expect(page_html.css('select#to optgroup[label="Decks"] option').map(&:text)).to eq(deck.zones.map { "Izzet Tempo › #{it.name}" })
+    end
+
+    it "escapes a zone's deck name in the notice after a move (AC-6.9)", :aggregate_failures do
+      odd = create(:deck, account:, name: "A <i>&\" deck")
+      select_under(deck_value, in_main, go: "move")
+      post collection_move_path, params: { to: odd.zone("main").id }
+      expect(response).to have_http_status(:see_other)
+      follow_redirect!
+      expect(response.body).not_to include("<i>")
+      expect(response.body).to include("Moved 1 item to A &lt;i&gt;&amp;&quot; deck › Main.")
     end
 
     it "moves lots selected under a deck's value to a place (AC-3.4)", :aggregate_failures do
