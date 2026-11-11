@@ -87,7 +87,8 @@ RSpec.describe "The export format's document" do
       expect(mapped.map { |row| row["In the file"] } - fields).to be_empty
       expect(left_out.map { |row| row["Column"] }).to match_array(%w[
         accounts.id accounts.created_at accounts.updated_at
-        locations.id locations.account_id locations.name_key locations.created_at locations.updated_at
+        locations.id locations.account_id locations.name_key locations.created_at locations.updated_at locations.kind locations.parent_id
+        decks.id decks.account_id decks.location_id decks.created_at decks.updated_at
         lots.id lots.account_id lots.lot_key
         users.id users.account_id users.password_digest users.admin users.created_at users.updated_at
       ])

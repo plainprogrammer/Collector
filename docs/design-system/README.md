@@ -78,7 +78,7 @@ It should feel like a well-kept archive that gets used: warm paper, deep ink, on
 
 ## Navigation
 
-- A collector's wide header, in order: Collection, Decks, Search, Scan, Locations. The phone tab bar, in order: Collection, Decks, Search, Scan, More; Locations stays in More. Each collector will later be able to choose and reorder their own sections, so never hard-code a section's position. Wishlist is planned. Decks joins the header and the tab bar when the deck pages ship (today's header for a collector links Collection, Search, Scan and Locations, spec 029); the order is the rule for both from then on (spec 057 decision 6). Wide screens show the sections in the `AppHeader`; phones show them in a native-style bottom `TabBar` with More as its fifth tab.
+- A collector's wide header, in order: Collection, Decks, Search, Scan, Locations. The phone tab bar, in order: Collection, Decks, Search, Scan, More; Locations stays in More. Each collector will later be able to choose and reorder their own sections, so never hard-code a section's position. Wishlist is planned. Decks is live in both since spec 062 (a collector's header links Collection, Decks, Search, Scan and Locations, and the tab bar holds Collection, Decks, Search, Scan and More; a visitor's header on an open catalog has no Decks link, AC-4.9); the order is the rule for both (spec 057 decision 6; spec 062 AC-4.1). The Decks, New deck, Rename and removal pages mark Decks current. Wide screens show the sections in the `AppHeader`; phones show them in a native-style bottom `TabBar` with More as its fifth tab.
 - Profile, settings and import/export live in the avatar menu (wide) or More (phone), never in the main navigation.
 - The tab bar holds five tabs at most and is now full (Collection, Decks, Search, Scan, More): a new section starts in More.
 - With five links the header has no room for the wordmark between 640px and 719px: the logo mark stands in for it there, while the nav holds five or more links, and the wordmark returns from 720px (spec 057 decision 19).
@@ -96,11 +96,12 @@ The words every deck screen uses (spec 057 FR-3). They name no format and no col
 - **"Deck › Zone":** how a zone is named wherever a place is shown or chosen (tiles, rows, pickers): the deck's name, a single right angle quote (›), the zone's name. A zone is never shown without its deck.
 - **Free to use:** copies you own minus copies in any deck zone, Considering included. Proxies don't change it.
 - **Places:** your locations that are not decks (a binder, a box). "Places" is the picker's group label; the page is still "Locations".
+- **What is live** (spec 062, #49): a collector creates, renames and removes a deck on the Decks pages (`DecksIndex`), and a deck is removed only while no zone holds a copy. "Deck › Zone" is shown wherever a lot's place is shown, from one label (`Lot#place_label`), and a lot in a zone's Edit copy shows its place read-only (`Form`, `c-field__static`). The grouped location picker, "Deck (all zones)" in the collection filter and the tiles' design for a zone are #252's: until then every picker, filter and Move to… lists places only. A deck's name is plain text on the Decks page until the deck page (#253), and the page has no Proxy column until #254.
 
 ## Components
 
 - Components are plain CSS classes (prefix `c-`) in `components/bundle.css`, built only on these tokens. There is no JavaScript bundle: each component's README gives the HTML, which you wrap in a Rails partial or ViewComponent.
-- Current set: `AppHeader`, `TabBar`, `Button`, `Menu`, `Input`, `Chip` (category chip, filter chip, tag), `Badge`, `ManaCost`, `ViewSwitch`, `FilterBar`, `ItemTile` (with `c-grid`), `CollectionTable` (with its `c-bulkbar`), `DeckShape` and `ProxyTag` (parts). Full screens: `CollectionPage` and `ItemPage` (desktop), `CollectionPagePhone` and `ItemPagePhone`, `DeckPage`, `DecksIndex` (with its New deck page), `AddToDeck` and `UseMyCopy`. Card-page parts: `c-crumbs`, `c-item`, `c-rules`, `c-stats`, `c-section`, `c-list`, `c-legality`.
+- Current set: `AppHeader`, `TabBar`, `Button`, `Menu`, `Input`, `Chip` (category chip, filter chip, tag), `Badge`, `ManaCost`, `ViewSwitch`, `FilterBar`, `ItemTile` (with `c-grid`), `CollectionTable` (with its `c-bulkbar`), `DeckShape` and `ProxyTag` (parts). Full screens: `CollectionPage` and `ItemPage` (desktop), `CollectionPagePhone` and `ItemPagePhone`, `DeckPage`, `DecksIndex` (with its New deck, Rename and removal pages), `AddToDeck` and `UseMyCopy`. Card-page parts: `c-crumbs`, `c-item`, `c-rules`, `c-stats`, `c-section`, `c-list`, `c-legality`.
 - Build new components from these before inventing new styles; a new pattern gets its own entry here first.
 - The design system is the project's own, in code (spec 057 decision 12). A new pattern goes in `collector/additions.css`, with a doc under `components/` and a line in the App additions list below; a rule changes in this README, in the same change as the code.
 
@@ -135,6 +136,8 @@ App additions (spec 048, in `collector/additions.css`): `c-table__place-name` (t
 App additions (spec 057, in `collector/additions.css`): the label and option rules of a grouped select (documented in `Form` and `FilterSelect`), `c-select--wide` (`FilterSelect`), `c-stats--three` (`ItemPage`) and the logo mark's stand-in for the wordmark from 640px to 719px while the header holds five links (`AppHeader`).
 
 App additions (spec 060, in `collector/additions.css`): `ProxyTag` (`c-proxy`), `DeckShape` (`c-shape`, `c-curve`, `c-types`, `c-manabar`, `c-manacap`), `DeckPage` (`c-deck`, `c-shapefold`, `c-zone`), `DecksIndex` (`c-decks`) and the pick list (`c-pick`) of `AddToDeck` and `UseMyCopy`.
+
+App additions (spec 062, in `collector/additions.css`): `DecksIndex`'s row actions (`c-decks__actions`) and the removal pages' wrapping rule (`.c-decks .c-confirm`), and `c-field__static`, a field's read-only value (`Form`).
 
 App additions (spec 063, in `collector/additions.css`): the stroke of small icons, set by the component that draws them (`c-badge`, `c-legal`, `c-btn`, `c-input`, `c-menu__item`, `c-filter`, `c-seg`), documented in Iconography.
 

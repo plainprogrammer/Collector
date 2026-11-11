@@ -2,7 +2,8 @@ require "rails_helper"
 
 # Spec 057: the CSS the deck rules need, proved in headless Firefox on the app's own pages. The grouped selects and the
 # stat strips have no page yet (the deck issues build them), so their markup is added to a real page; the header and the
-# tab bar are the app's own partials, with the Decks link and tab that #49 adds put in by the example.
+# tab bar are the app's own partials with the app's own Decks link and tab (spec 062 AC-4.2): the examples count them and
+# never add them. The "can fail" controls still clone links and tabs, which is the point of them.
 RSpec.describe "Design system: deck rules, navigation and pickers", type: :system do
   let(:user) { create(:user) }
   let(:binder) { create(:location, account: user.account, name: "Blue binder") }
@@ -157,7 +158,8 @@ RSpec.describe "Design system: deck rules, navigation and pickers", type: :syste
   end
 
   describe "five header links and five tabs (AC-1.3, AC-1.4)" do
-    # Clones Collection's link (or tab) `names` times, after the first, so the page has the section that #49 adds.
+    # Clones Collection's link (or tab) once per name, after the first: sections the app does not have, to show the
+    # measure fails when the header or the bar holds too many.
     def add_nav_links(*names)
       page.execute_script(<<~JS, names)
         const first = document.querySelector(".c-appbar__nav a")
@@ -229,7 +231,6 @@ RSpec.describe "Design system: deck rules, navigation and pickers", type: :syste
       it "fits five links before the account menu, with the mark for the wordmark, at #{width}px (AC-1.3)", :aggregate_failures do
         open_in_narrow_frame(collection_path, width:, ready: ".c-appbar__nav", height: 1200)
         within_narrow_frame do
-          add_nav_links("Decks")
           found = header_fit
           expect(found["links"]).to eq(5)
           expect(header_fits?(found)).to be(true)
@@ -241,7 +242,6 @@ RSpec.describe "Design system: deck rules, navigation and pickers", type: :syste
     it "fits five links with the wordmark at 720px, where the swap ends (AC-1.5)", :aggregate_failures do
       open_in_narrow_frame(collection_path, width: 720, ready: ".c-appbar__nav", height: 1200)
       within_narrow_frame do
-        add_nav_links("Decks")
         found = header_fit
         expect(found["links"]).to eq(5)
         expect(header_fits?(found)).to be(true)
@@ -249,18 +249,41 @@ RSpec.describe "Design system: deck rules, navigation and pickers", type: :syste
       end
     end
 
-    it "keeps the wordmark for today's four links at 640px (AC-1.6)", :aggregate_failures do
+    # The header has five links now, so the count rule (the mark stands in only while the nav holds five or more) is tested by
+    # taking one real link away: with four the wordmark returns at 640px.
+    it "keeps the wordmark for four links at 640px (AC-1.6)", :aggregate_failures do
       open_in_narrow_frame(collection_path, width: 640, ready: ".c-appbar__nav", height: 1200)
       within_narrow_frame do
+        page.execute_script("document.querySelector('.c-appbar__nav a[href=\"#{locations_path}\"]').remove()")
         expect(header_fit["links"]).to eq(4)
         expect(logo).to eq("wordmark" => true, "mark" => false)
       end
     end
 
-    it "reports a header with five more links as not fitting (the measure can fail)" do
+    it "shows the app's five links in the order of AC-4.1 and leaves the page without a sideways scroll at 360px and 1280px", :aggregate_failures do
+      [ 360, 1280 ].each do |width|
+        open_in_narrow_frame(collection_path, width:, ready: "main", height: 1200)
+        within_narrow_frame do
+          expect(evaluate("return [...document.querySelectorAll('.c-appbar__nav a')].map((el) => el.textContent.trim())")).to eq(%w[Collection Decks Search Scan Locations])
+          expect(evaluate("return document.documentElement.scrollWidth <= window.innerWidth")).to be(true)
+        end
+      end
+    end
+
+    it "reports a header with four more links as not fitting (the measure can fail)", :aggregate_failures do
       open_in_narrow_frame(collection_path, width: 640, ready: ".c-appbar__nav", height: 1200)
       within_narrow_frame do
-        add_nav_links("Decks", "Wishlist", "Recently viewed", "Price alerts", "Trade binder")
+        add_nav_links("Wishlist", "Recently viewed", "Price alerts", "Trade binder")
+        expect(header_fit["links"]).to eq(9)
+        expect(header_fits?(header_fit)).to be(false)
+      end
+    end
+
+    it "reports a header with a sixth link as not fitting at 640px (AC-4.2: the guard still fails on one)", :aggregate_failures do
+      open_in_narrow_frame(collection_path, width: 640, ready: ".c-appbar__nav", height: 1200)
+      within_narrow_frame do
+        add_nav_links("Wishlist")
+        expect(header_fit["links"]).to eq(6)
         expect(header_fits?(header_fit)).to be(false)
       end
     end
@@ -268,17 +291,17 @@ RSpec.describe "Design system: deck rules, navigation and pickers", type: :syste
     it "keeps five tabs inside the bar, each label inside its tab, at 360px (AC-1.4)", :aggregate_failures do
       open_in_narrow_frame(collection_path, width: 360, ready: ".c-tabbar")
       within_narrow_frame do
-        add_tabs("Decks")
         found = tabbar_fit
         expect([ found["tabs"], found["lastInside"], found["scrolls"], found["labelsFit"] ]).to eq([ 5, true, false, true ])
       end
     end
 
-    it "reports a tab bar with four more tabs as not fitting (the measure can fail)" do
+    it "reports a tab bar with three more tabs as not fitting (the measure can fail)", :aggregate_failures do
       open_in_narrow_frame(collection_path, width: 360, ready: ".c-tabbar")
       within_narrow_frame do
-        add_tabs("Decks", "Wishlist", "Collections", "Trades")
+        add_tabs("Wishlist", "Collections", "Trades")
         found = tabbar_fit
+        expect(found["tabs"]).to eq(8)
         expect(found.values_at("lastInside", "scrolls", "labelsFit")).not_to eq([ true, false, true ])
       end
     end

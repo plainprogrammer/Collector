@@ -38,16 +38,22 @@ class CollectionGrid
 
   private
     # One statement for the page's printings, all of their lots (the name filter doesn't narrow it, spec 033 AC-1.8). Nil for
-    # every printing while the account has no location, and under a location filter, which names the one place (spec 037
-    # decision 3).
+    # every printing while the account has no place and no lot in a zone (spec 062 AC-5.8a), and under a location filter, which
+    # names the one place (spec 037 decision 3). The join reads every kind of location: a lot is followed to where it is, and a
+    # zone's parent is joined too, so its tile reads "Deck › Zone" from the one statement (spec 062 AC-5.4).
     def places_of(entry_ids)
-      return {} unless places? && location.empty?
+      return {} unless place_column? && location.empty?
 
       rows = @account.lots.where(catalog_entry_id: entry_ids).left_joins(:location)
-        .group(:catalog_entry_id, :location_id).pluck(:catalog_entry_id, Arel.sql("SUM(lots.quantity)"), "locations.name", "locations.name_key")
+        .joins("LEFT JOIN locations parents ON parents.id = locations.parent_id")
+        .group(:catalog_entry_id, :location_id).pluck(:catalog_entry_id, Arel.sql("SUM(lots.quantity)"), "locations.name", "locations.name_key",
+          "parents.name", "parents.name_key")
       rows.group_by(&:first).transform_values do |places|
-        first, *others = places.sort_by { |_, quantity, name, key| [ -quantity, name ? 0 : 1, key.to_s, name.to_s ] }
-        Place.new(name: first[2], more: others.size)
+        first, *others = places.sort_by { |_, quantity, name, key, _, parent_key| [ -quantity, name ? 0 : 1, parent_key || key.to_s, key.to_s, name.to_s ] }
+        Place.new(name: tile_label(first[2], first[4]), more: others.size)
       end
     end
+
+    # A place's name, or "Deck › Zone" when the row has a deck name (what `Lot#place_label` gives, for rows that are plucked).
+    def tile_label(name, deck_name) = deck_name ? Location::Placement.label(name, deck_name) : name
 end

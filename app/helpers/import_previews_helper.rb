@@ -17,20 +17,50 @@ module ImportPreviewsHelper
   # "6 copies become 9", "1 copy becomes 2".
   def import_change(tally) = "#{import_copies(tally.copies)} #{tally.copies == 1 ? "becomes" : "become"} #{number_with_delimiter(tally.copies_after)}"
 
-  # What an apply removes, in words: "3 lots (12 copies) and 2 locations" (spec 028 decision 6, spec 029 decision 11).
+  # What an apply removes, in words: "3 lots (12 copies), 2 locations and 1 deck" (spec 028 decision 6, spec 029 decision 11,
+  # spec 062 AC-7.6). The lots include those in a deck's zones.
   def import_removals(import)
     plan = import.plan
     parts = []
     parts << "#{pluralize(number_with_delimiter(plan.removed_lots.size), "lot")} (#{import_copies(import.removed.copies)})" if plan.removed_lots.any?
-    parts << pluralize(number_with_delimiter(plan.locations.removed.size), "location") if plan.locations.removes?
-    parts.to_sentence
+    parts.concat(import_removed_places_and_decks(plan))
+    parts.to_sentence(last_word_connector: " and ")
   end
 
-  # The counts in the checkbox's label: "1 lot", "3 lots and 2 locations".
+  # The counts in the checkbox's label: "1 lot", "3 lots and 2 locations", "3 lots, 2 locations and 1 deck".
   def import_removed_counts(plan)
     parts = []
     parts << pluralize(number_with_delimiter(plan.removed_lots.size), "lot") if plan.removed_lots.any?
-    parts << pluralize(number_with_delimiter(plan.locations.removed.size), "location") if plan.locations.removes?
-    parts.to_sentence
+    parts.concat(import_removed_places_and_decks(plan))
+    parts.to_sentence(last_word_connector: " and ")
   end
+
+  # "Elves: First format → Second format": a format-changed deck by the names its formats are shown by, each prefixed by its
+  # collectible's heading when the two formats belong to different collectibles (spec 062 AC-7.1).
+  def import_format_change(change)
+    held = change.held
+    prefix = held.collectible_type != change.collectible_type
+    "#{held.name}: #{import_format_name(held.collectible_type, held.format, prefix)} → #{import_format_name(change.collectible_type, change.format, prefix)}"
+  end
+
+  # What the page says of the decks for a file that says nothing of them (version 1 to 3): they stay, and so do the copies in
+  # them unless a lot of one is among the lots the file's rows don't name, which applying removes (spec 062 AC-7.4).
+  def import_decks_stay(plan)
+    lots = plan.removed_zone_lots.size
+    note = "This file was written before decks existed, so your decks would stay"
+    lots.positive? ? "#{note}, but the copies in them (#{pluralize(number_with_delimiter(lots), "lot")}) would be removed." : "#{note}."
+  end
+
+  private
+    def import_removed_places_and_decks(plan)
+      parts = []
+      parts << pluralize(number_with_delimiter(plan.locations.removed.size), "location") if plan.locations.removes?
+      parts << pluralize(number_with_delimiter(plan.decks.removed.size), "deck") if plan.decks.removes?
+      parts
+    end
+
+    def import_format_name(type, key, with_category)
+      name = Catalog::Formats.name_for(type, key)
+      with_category ? "#{Catalog::Formats.category_name(type)} #{name}" : name
+    end
 end

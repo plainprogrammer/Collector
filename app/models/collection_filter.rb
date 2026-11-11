@@ -13,12 +13,24 @@ module CollectionFilter
 
   attr_reader :query
 
-  # One read of the account's locations in the locations page's order: the select's options, whether the account has one
-  # (spec 033 Decision 2) and the chosen location's name (spec 037 NFR Performance).
-  def locations = @locations ||= @account.locations.ordered.to_a
+  # One read of the account's places in the locations page's order: the select's options, whether the account has one
+  # (spec 033 Decision 2) and the chosen place's name (spec 037 NFR Performance). Places only (spec 062 D6): a deck or a zone
+  # is not a filter value, so its id reads as "all" (AC-5.2).
+  def locations = @locations ||= @account.locations.places.ordered.to_a
+
+  # Whether the account has a place: the gate of the select, the filter and Move to… (they list places).
   def places? = locations.any?
 
-  # The location filter as the page shows and queries it: "" unless the account has a location and the value is "none" or
+  # Whether a lot's place is shown, on the tile's line, the table's Location column and the phone line: the account has a place,
+  # or a lot in a zone, which has a place to read (spec 062 AC-5.8a). The second read happens only for an account with no
+  # place, once.
+  def place_column?
+    return @place_column if defined?(@place_column)
+
+    @place_column = places? || @account.lots.joins(:location).where(locations: { kind: "deck_zone" }).exists?
+  end
+
+  # The location filter as the page shows and queries it: "" unless the account has a place and the value is "none" or
   # names one of its own (spec 037 decisions 6 and 7).
   def location = @location ||= resolved_location
   def chosen_location = (locations.find { it.id.to_s == location } unless location.in?([ "", Place::NONE ]))

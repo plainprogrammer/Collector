@@ -22,6 +22,25 @@ RSpec.describe "an instance started from a restored backup", :backup, :committed
     end
   end
 
+  it "holds the decks, their zones and the lots in them, and exports the same collection (spec 062 AC-9.9)", :aggregate_failures do
+    deck = create(:deck, account: user.account, name: "Izzet Tempo", format: "modern")
+    in_main = create_lot_in_zone(deck, "main", entry: seed.entries.first, quantity: 4)
+    before_export = JSON.parse(CollectionExport.new(account: user.account, at: Time.utc(2026, 10, 21, 12)).to_json)
+    restore_backup(create_backup, volume:)
+
+    expect(table_rows(restored).fetch("decks").size).to eq(1)
+    with_restored_instance(restored) do
+      account = user.account.reload
+      expect(account.decks.map(&:name)).to eq([ "Izzet Tempo" ])
+      expect(account.decks.first.zones.pluck(:zone)).to eq(deck.zones.pluck(:zone))
+      expect(account.lots.find(in_main.id).location).to eq(account.decks.first.zone("main"))
+      expect(account.lots.sum(:quantity)).to eq(seed.lots.sum(&:quantity) + 4)
+      sign_in_as(user)
+      get "/collection/export"
+      expect(ExportFormatRules.same_collection?(before_export, JSON.parse(response.body))).to be(true)
+    end
+  end
+
   it "keeps each account's own currency, showing its prices in it (spec 038 AC-7.1)", :aggregate_failures do
     euro = create(:user)
     euro.account.update!(currency: "EUR")

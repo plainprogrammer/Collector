@@ -5,9 +5,9 @@
 #
 # @see file:collection-and-lots.md
 class Locations::SelectionsController < ApplicationController
-  # 404 for a location that isn't the account's (spec 059 AC-4.1). Replaces any stored selection, as Edit many does.
+  # 404 for a location that isn't one of the account's places (spec 059 AC-4.1; a deck or a zone is not one, spec 062 AC-3.8). Replaces any stored selection, as Edit many does.
   def create
-    location = Current.account.locations.find(params[:location_id])
+    location = Current.account.locations.places.find(params[:location_id])
     sort = CollectionTable::Sort.parse(nil, nil)
     BulkSelection.for(Current.session).restart!(query: "", sort:, location: location.id.to_s, all: true)
     redirect_to helpers.collection_listing_path(bulk: 1, location: location.id.to_s, sort:), status: :see_other

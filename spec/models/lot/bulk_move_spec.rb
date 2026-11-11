@@ -242,4 +242,38 @@ RSpec.describe Lot::BulkMove, type: :model do
       expect(four_groups - two_groups).to eq(2) # two more groups, two more survivor statements; the folded lots go in one batch either way
     end
   end
+
+  # Spec 062 AC-5.7a, D6: a lot in a deck's zone moves out of it to a place or to none, and its key follows. The writes skip
+  # validations, so the keys are checked here against Lot.key_for.
+  describe "of lots in a deck's zones (spec 062 AC-5.7a)" do
+    let(:deck) { create(:deck, account:, name: "Izzet Tempo") }
+
+    def zoned(zone = "main", **attributes) = create_lot_in_zone(deck, zone, **attributes)
+
+    it "moves them to a place, where a place's lot of the identity takes the copies, and never counts them as already there", :aggregate_failures do
+      shared = create(:mtg_printing).entry
+      main = zoned("main", entry: shared, quantity: 2)
+      side = zoned("sideboard", entry: shared, quantity: 3)
+      held = lot(shared, location: blue, quantity: 4)
+      result = move([ main, side ], blue)
+      expect(result).to have_attributes(moved: 5, already_there: 0)
+      expect(held.reload.quantity).to eq(9)
+      expect(Lot.where(id: [ main.id, side.id ])).to be_empty
+    end
+
+    it "moves one to a place or to none with the key Lot.key_for gives", :aggregate_failures do
+      alone = zoned("main", finish: "foil")
+      other = zoned("sideboard", price_paid_cents: 150)
+      move([ alone ], blue)
+      move([ other ], nil)
+      expect(alone.reload).to have_attributes(location: blue, lot_key: Lot.key_for("foil", nil, nil, blue.id))
+      expect(other.reload).to have_attributes(location_id: nil, lot_key: Lot.key_for(nil, nil, 150))
+    end
+
+    it "writes a zone's id into the key when given a zone, as the model's own check", :aggregate_failures do
+      placed = lot(location: blue, finish: "foil")
+      move([ placed ], deck.zone("main"))
+      expect(placed.reload.lot_key).to eq(Lot.key_for("foil", nil, nil, deck.zone("main").id))
+    end
+  end
 end

@@ -1,0 +1,34 @@
+<%# locals: (import:) %>
+<% decks = import.decks %>
+<% if decks.counted? %>
+  <section id="decks">
+    <div class="c-section__head"><h2 class="c-section__title">Decks</h2></div>
+    <dl class="c-stats">
+      <div class="c-stat"><dt>Decks added</dt><dd><%= number_with_delimiter(decks.added.size) %></dd></div>
+      <div class="c-stat"><dt>Decks renamed</dt><dd><%= number_with_delimiter(decks.renamed.size) %></dd></div>
+      <div class="c-stat"><dt>Format changed</dt><dd><%= number_with_delimiter(decks.format_changed.size) %></dd></div>
+      <div class="c-stat"><dt>Decks unchanged</dt><dd><%= number_with_delimiter(decks.unchanged) %></dd></div>
+      <div class="c-stat"><dt>Decks removed</dt><dd><%= number_with_delimiter(decks.removed.size) %></dd></div>
+    </dl>
+    <% if decks.renamed.any? %>
+      <ul class="c-list c-import__list" id="renamed_decks">
+        <% decks.listed_renamed.each do |renamed| %><li><span><%= renamed.held.name %> → <%= renamed.name %></span></li><% end %>
+      </ul>
+      <% if decks.more_renamed.positive? %><p class="c-import__more">and <%= number_with_delimiter(decks.more_renamed) %> more</p><% end %>
+    <% end %>
+    <% if decks.format_changed.any? %>
+      <ul class="c-list c-import__list" id="format_changed_decks">
+        <% decks.listed_format_changed.each do |changed| %><li><span><%= import_format_change(changed) %></span></li><% end %>
+      </ul>
+      <% if decks.more_format_changed.positive? %><p class="c-import__more">and <%= number_with_delimiter(decks.more_format_changed) %> more</p><% end %>
+    <% end %>
+    <% if decks.removed.any? %>
+      <ul class="c-list c-import__list" id="removed_decks">
+        <% decks.listed_removed.each do |deck| %><li><span><%= deck.name %></span></li><% end %>
+      </ul>
+      <% if decks.more_removed.positive? %><p class="c-import__more">and <%= number_with_delimiter(decks.more_removed) %> more</p><% end %>
+    <% end %>
+  </section>
+<% else %>
+  <p class="c-import__note" id="decks_stay"><%= import_decks_stay(import.plan) %></p>
+<% end %>

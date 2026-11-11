@@ -23,10 +23,11 @@ class NumberEntry::LineForm
   # The chosen finish, or the type's first one (decision 3).
   def finish = super.presence || finishes.first
 
-  # The account's locations on offer (spec 034 decision 2); none for a form without an account.
-  def locations = @locations ||= account ? account.locations.ordered.to_a : []
+  # The account's places on offer (spec 034 decision 2); none for a form without an account. Places only (spec 062 D6): a deck
+  # is never a lot's place and a zone is not chosen from this select, so their ids are the field's error too (AC-5.2).
+  def locations = @locations ||= account ? account.locations.places.ordered.to_a : []
 
-  # The location the field names, when it is one of the account's (decision 5).
+  # The place the field names, when it is one of the account's (decision 5).
   def location_record = (locations.find { it.id.to_s == location.to_s.strip } if location.to_s.strip.match?(/\A\d+\z/))
 
   def blank_number? = number.to_s.strip.empty? && pick.blank?

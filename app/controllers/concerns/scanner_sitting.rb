@@ -21,8 +21,9 @@ module ScannerSitting
     # place the scanner's controllers name that type for the sitting's choices; the model and the views are handed what they need.
     def scanner_conditions = Catalog.collecting_for(MTG::Reading::COLLECTIBLE_TYPE).conditions
 
-    # The account's locations in the order of the locations page, loaded once per request.
-    def account_locations = @account_locations ||= Current.account.locations.ordered.to_a
+    # The account's places in the order of the locations page, loaded once per request. Places only (spec 062 D6): a sitting's
+    # adds go to a place or to none, never to a deck or a zone.
+    def account_locations = @account_locations ||= Current.account.locations.places.ordered.to_a
 
     # Redraws the panel (after an add, an Undo or a change of place, spec 040 FR-1) and says what happened; the message is
     # never empty, so every redraw is announced (spec 047 FR-1). `focus` is where the new panel puts keyboard focus once it

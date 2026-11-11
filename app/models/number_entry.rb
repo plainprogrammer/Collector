@@ -29,5 +29,5 @@ class NumberEntry < ApplicationRecord
   end
 
   # Lines not undone, newest first, with what the page shows of each (AC-3.1).
-  def kept_lines = lines.kept.newest_first.includes(lot: :location, entry: :set)
+  def kept_lines = lines.kept.newest_first.includes(lot: { location: :parent }, entry: :set)
 end

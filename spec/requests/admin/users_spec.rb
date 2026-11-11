@@ -13,6 +13,24 @@ RSpec.describe "User administration", type: :request do
       expect(response.body).to include("Users and sign-up", "Bo", "bo@example.test", "Sign-up is closed", '<td class="is-num">3</td>')
     end
 
+    it "shows no deck, zone, format or deck count for an account with decks, and counts a zone's copies as copies (spec 062 AC-9.8)", :aggregate_failures do
+      bo = create(:user, name: "Bo", email_address: "bo@example.test")
+      create(:lot, account: bo.account, quantity: 3)
+      deck = create(:deck, account: bo.account, name: "Izzet Tempo", format: "modern")
+      create_lot_in_zone(deck, "main", quantity: 4)
+      create_lot_in_zone(deck, Catalog::Formats::CONSIDERING, quantity: 2)
+      words = [ "Izzet Tempo", "Modern", "Sideboard", "Considering", "Main", "Deck" ]
+
+      [ admin_users_path, admin_catalog_path, admin_jobs_path ].each do |path|
+        get path
+        expect(response).to have_http_status(:ok)
+        text = Nokogiri::HTML5(response.body).at_css("main").text
+        words.each { |word| expect(text).not_to include(word), "#{path} shows #{word.inspect}" }
+      end
+      get admin_users_path
+      expect(response.body).to include('<td class="is-num">9</td>') # 3 unplaced and 6 in zones: a lot in a zone is a lot
+    end
+
     it "links to user administration from the avatar menu and the More page", :aggregate_failures do
       get collection_path
       expect(response.body[%r{<details class="c-menu".*?</details>}m]).to include(%(href="#{admin_users_path}"))

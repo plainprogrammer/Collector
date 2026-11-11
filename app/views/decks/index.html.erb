@@ -1,0 +1,46 @@
+<% content_for :title, "Decks · Collector" %>
+<%= render "layouts/appbar", section: :decks %>
+<main class="c-main c-page c-decks">
+  <div class="c-pagehead">
+    <div>
+      <h1 class="c-pagehead__title">Decks</h1>
+      <p class="c-pagehead__stats"><%= deck_count_line(@listing) %></p>
+    </div>
+    <div class="c-pagehead__actions"><%= link_to new_deck_path, class: "c-btn c-btn--primary" do %><%= render "icons/plus" %>New deck<% end %></div>
+  </div>
+  <% if @listing.rows.empty? %>
+    <p class="c-empty">No decks yet. Add a deck to start building one.</p>
+  <% else %>
+    <div class="c-collection">
+      <table class="c-table">
+        <thead>
+          <tr>
+            <th>Deck</th>
+            <th class="is-opt">Format</th>
+            <th class="is-num">Cards</th>
+            <th class="is-num is-opt">Owned</th>
+            <th><span class="c-sr">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @listing.rows.each do |row| %>
+            <% deck = row.deck %>
+            <tr>
+              <td><div class="c-table__item"><div><span><%= deck.name %></span><span class="c-table__sub"><%= deck_sub_line(row) %></span></div></div></td>
+              <td class="is-opt"><%= deck.format_name %></td>
+              <td class="is-num"><%= number_with_delimiter(row.cards) %></td>
+              <td class="is-num is-opt"><%= number_with_delimiter(row.cards) %></td>
+              <td class="c-table__actions">
+                <span class="c-decks__actions">
+                  <%= link_to edit_deck_path(deck), class: "c-btn c-btn--ghost c-btn--sm" do %>Rename<span class="c-sr"> <%= deck.name %></span><% end %>
+                  <%= link_to new_deck_removal_path(deck), class: "c-btn c-btn--ghost c-btn--sm" do %>Remove<span class="c-sr"> <%= deck.name %></span><% end %>
+                </span>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
+</main>
+<%= render "layouts/tabbar", section: :decks %>

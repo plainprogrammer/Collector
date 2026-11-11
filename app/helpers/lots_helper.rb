@@ -11,11 +11,12 @@ module LotsHelper
     lot.vocabulary.special_finishes.include?(lot.finish) ? render("catalog/entries/finish_badge", label:) : tag.span(label, class: "is-muted")
   end
 
-  # Where a lot is kept, for a table cell (spec 032 Story 4).
-  def lot_place(lot) = lot.location&.name || "No location"
+  # Where a lot is kept, for a table cell (spec 032 Story 4): its place's name, "Deck › Zone" for a zone (spec 062 decision 6),
+  # or "No location". The lot's list preloads `location: :parent`, so a zone costs no query per lot.
+  def lot_place(lot) = lot.place_label || "No location"
 
   # Names a row's actions menu; a split leaves two rows of one printing and condition, so the place tells them apart.
-  def lot_actions_label(lot) = "Actions for #{set_number(lot.entry)} #{lot_condition(lot)}#{lot.location ? " in #{lot.location.name}" : ", no location"}"
+  def lot_actions_label(lot) = "Actions for #{set_number(lot.entry)} #{lot_condition(lot)}#{lot.location ? " in #{lot.place_label}" : ", no location"}"
 
   def lot_condition(lot) = lot.condition ? lot.vocabulary.conditions.fetch(lot.condition).last : "—"
 
@@ -39,7 +40,7 @@ module LotsHelper
       (lot.vocabulary.conditions.fetch(lot.condition).last if lot.condition), lot.entry.language.upcase ].compact.join(" · ")
   end
 
-  # The line under a table row's name: the phone line plus, when the account has locations, the lot's place last; an
-  # unplaced lot adds nothing (spec 033 AC-2.2).
-  def lot_row_summary(lot, places:) = [ lot_summary(lot), (lot.location.name if places && lot.location) ].compact.join(" · ")
+  # The line under a table row's name: the phone line plus, when the account has locations (or a lot in a zone), the lot's place
+  # last, as "Deck › Zone" for a zone; an unplaced lot adds nothing (spec 033 AC-2.2, spec 062 AC-5.4).
+  def lot_row_summary(lot, places:) = [ lot_summary(lot), (lot.place_label if places) ].compact.join(" · ")
 end

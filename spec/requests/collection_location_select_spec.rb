@@ -186,4 +186,26 @@ RSpec.describe "The collection's Location select", type: :request do # spec 037 
       expect([ response.status, chosen, hidden("bulk")["rendered_location"] ]).to eq([ 422, "", "" ])
     end
   end
+
+  # Spec 062 D6, AC-5.1, AC-5.2: the select lists places only, and the value of a zone or a deck is "all".
+  describe "with a deck (spec 062)" do
+    def deck = @deck ||= create(:deck, account:, name: "Izzet Tempo")
+
+    it "lists all, none, then the places only, never a deck or a zone (AC-5.1)", :aggregate_failures do
+      deck
+      create(:location, account:, name: "Long box")
+      own(location: blue)
+      get collection_path
+      expect(options).to eq([ [ "All locations", "" ], [ "No location", "none" ], [ "Blue binder", blue.id.to_s ], [ "Long box", account.locations.find_by(name: "Long box").id.to_s ] ])
+    end
+
+    it "reads a zone's id and a deck's id as all on the bulk page's shown filter and its hidden value (AC-5.2)", :aggregate_failures do
+      own("Placed", location: blue)
+      create_lot_in_zone(deck, "main", quantity: 2)
+      [ deck.zone("main").id, deck.location_id ].each do |id|
+        start_bulk(location: id)
+        expect([ chosen, hidden("bulk")["rendered_location"] ]).to eq([ "", "" ]), id.to_s
+      end
+    end
+  end
 end

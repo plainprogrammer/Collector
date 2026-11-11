@@ -1,0 +1,13 @@
+<% content_for :title, "Remove deck · Collector" %>
+<%= render "layouts/appbar", section: :decks, detail: true, back_path: decks_path %>
+<main class="c-main c-page c-decks">
+  <section class="c-confirm">
+    <h1 class="c-pagehead__title">Remove <%= @deck.name %>?</h1>
+    <p>This removes the deck, and its zones are removed with it. No copy in your collection is removed or changed.</p>
+    <div class="c-form__actions">
+      <%= button_to "Remove", deck_path(@deck), method: :delete, class: "c-btn c-btn--danger" %>
+      <%= link_to "Cancel", decks_path, class: "c-btn c-btn--secondary" %>
+    </div>
+  </section>
+</main>
+<%= render "layouts/tabbar", section: :decks %>

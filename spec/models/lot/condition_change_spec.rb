@@ -98,4 +98,32 @@ RSpec.describe Lot::ConditionChange, type: :model do
         .to match_array(Lot.where(id: lots).map { |lot| [ condition, Lot.key_for(lot.finish, condition, lot.price_paid_cents) ] })
     end
   end
+
+  # Spec 062 AC-5.7b: Set condition keeps each lot where it is, a zone included; two zones are two places.
+  describe "with lots in a deck's zones (spec 062 AC-5.7b)" do
+    let(:deck) { create(:deck, account:, name: "Izzet Tempo") }
+
+    def zoned(zone, **attributes) = create_lot_in_zone(deck, zone, entry: first.entry, finish: "foil", **attributes)
+
+    it "keeps lots equal but for their zone apart, each in its own zone, with the key's zone", :aggregate_failures do
+      main = zoned("main", condition: "damaged", quantity: 2)
+      side = zoned("sideboard", condition: "near_mint", quantity: 3)
+      change([ main, side ], "lightly_played").apply!
+      expect(Lot.where(id: [ main.id, side.id ]).pluck(:location_id, :condition, :quantity, :lot_key)).to contain_exactly(
+        [ deck.zone("main").id, "lightly_played", 2, Lot.key_for("foil", "lightly_played", nil, deck.zone("main").id) ],
+        [ deck.zone("sideboard").id, "lightly_played", 3, Lot.key_for("foil", "lightly_played", nil, deck.zone("sideboard").id) ]
+      )
+    end
+
+    it "merges lots that become identical inside one zone, and not into another zone's", :aggregate_failures do
+      main = zoned("main", condition: "damaged", quantity: 2)
+      played = zoned("main", condition: "lightly_played", quantity: 4)
+      side = zoned("sideboard", condition: "lightly_played", quantity: 8)
+      ids = change([ main ], "lightly_played").apply!
+      expect(ids).to eq([ played.id ])
+      expect(played.reload).to have_attributes(quantity: 6, location: deck.zone("main"))
+      expect(side.reload).to have_attributes(quantity: 8, location: deck.zone("sideboard"))
+      expect(Lot.exists?(main.id)).to be(false)
+    end
+  end
 end

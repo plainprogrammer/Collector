@@ -1,6 +1,10 @@
 # Copies of one catalog entry with the same finish, condition, price paid and location, owned by an account
 # (spec 004 FR-6; the location is part of the identity, spec 032, ADR 0025). Finish and condition are values the collectible's vocabulary defines
 # (Catalog.collecting_for); the core doesn't interpret them.
+#
+# A lot sits in a place or in a zone of a deck (spec 062, ADR 0028), never in a deck's own row: a deck holds copies only through
+# its zones. The database can't state that (a foreign key names the table, and SQLite would need a trigger to look at the
+# row's kind), so `location_is_the_accounts` does. A zone's id is part of the identity exactly as a place's is.
 class Lot < ApplicationRecord
   MAX_QUANTITY = 9_999
   FULL_MESSAGE = "One lot can hold at most 9,999 copies.".freeze
@@ -15,6 +19,24 @@ class Lot < ApplicationRecord
   validates :price_paid_cents, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
   validate :quantity_within_cap, :finish_offered, :condition_known
   validate :location_is_the_accounts, if: :location_id_changed? # only a new place is checked: a bulk condition change saves many lots
+
+  # The joins that put a lot's place, and for a zone its deck, on the lot's own row (spec 062 AC-6.4): the place, the place's
+  # parent (a zone's deck, nothing for a place) and the parent's `decks` row. `LEFT` joins, so an unplaced lot stays.
+  PLACE_JOIN = "LEFT JOIN locations ON locations.id = lots.location_id " \
+               "LEFT JOIN locations parents ON parents.id = locations.parent_id " \
+               "LEFT JOIN decks ON decks.location_id = parents.id".freeze
+  # What a lot's place is made of, in the order `Location::Placement` reads it: the place's kind, name, comparison key and
+  # zone key, then its deck's name and comparison key, and the deck's collectible type and format. A reader that plucks these
+  # takes them as one slice of the row, `row.last(PLACE_COLUMNS.size)`, and passes them to `Location::Placement`.
+  PLACE_COLUMNS = %w[locations.kind locations.name locations.name_key locations.zone parents.name parents.name_key
+                     decks.collectible_type decks.format].freeze
+
+  # The lots with their place's own columns and, for a zone, its deck's, from one statement: what the export and the import
+  # read, so a lot never names a place the account's lists lack (spec 062 AC-6.4). Pluck {PLACE_COLUMNS} with it; the SQL
+  # joins the tables by name, so no other join of the caller may alias `locations`, `parents` or `decks`.
+  #
+  # @return [ActiveRecord::Relation<Lot>]
+  scope :with_place, -> { joins(PLACE_JOIN) }
 
   before_validation { self.lot_key = self.class.key_for(finish, condition, price_paid_cents, location_id) }
 
@@ -68,6 +90,12 @@ class Lot < ApplicationRecord
     raise ActiveRecord::RecordInvalid, self
   end
 
+  # Where the lot is, for people: nil when unplaced, the place's name, or "Deck › Zone" for a zone. The one reader of a lot's
+  # place label (spec 062 decision 6); a list preloads `location: :parent` so it costs no query per lot.
+  #
+  # @return [String, nil]
+  def place_label = location&.label
+
   def price_paid = price_paid_cents && format("%.2f", price_paid_cents / 100r)
 
   def vocabulary = Catalog.collecting_for(entry.collectible_type)
@@ -82,7 +110,7 @@ class Lot < ApplicationRecord
     end
 
     def location_is_the_accounts
-      errors.add(:location, "isn't one of your locations") if location && location.account_id != account_id
+      errors.add(:location, "isn't one of your locations") if location && (location.account_id != account_id || location.deck?)
     end
 
     def condition_known

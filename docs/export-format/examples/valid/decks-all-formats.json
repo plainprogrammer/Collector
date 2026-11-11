@@ -1,0 +1,537 @@
+{
+  "format": "collector-export",
+  "format_version": 4,
+  "exported_at": "2026-11-10T12:34:56Z",
+  "generator": "Collector 0.2.1",
+  "profile": {
+    "name": "Ada Example",
+    "email_address": "ada@example.test",
+    "collection_view": "table"
+  },
+  "currency": "USD",
+  "locations": [],
+  "decks": [
+    {
+      "name": "Casual deck",
+      "collectible_type": "mtg",
+      "format": "casual"
+    },
+    {
+      "name": "Standard deck",
+      "collectible_type": "mtg",
+      "format": "standard"
+    },
+    {
+      "name": "Pioneer deck",
+      "collectible_type": "mtg",
+      "format": "pioneer"
+    },
+    {
+      "name": "Modern deck",
+      "collectible_type": "mtg",
+      "format": "modern"
+    },
+    {
+      "name": "Legacy deck",
+      "collectible_type": "mtg",
+      "format": "legacy"
+    },
+    {
+      "name": "Vintage deck",
+      "collectible_type": "mtg",
+      "format": "vintage"
+    },
+    {
+      "name": "Pauper deck",
+      "collectible_type": "mtg",
+      "format": "pauper"
+    },
+    {
+      "name": "Commander deck",
+      "collectible_type": "mtg",
+      "format": "commander"
+    }
+  ],
+  "lots": [
+    {
+      "entry": {
+        "collectible_type": "mtg",
+        "source_id": "00000000-0000-4000-8000-000000000001",
+        "name": "Serra Angel",
+        "set_code": "dmr",
+        "collector_number": "27",
+        "language": "en"
+      },
+      "quantity": 1,
+      "finish": "foil",
+      "condition": "near_mint",
+      "price_paid": "12.50",
+      "location": {
+        "deck": "Casual deck",
+        "zone": "main"
+      },
+      "added_at": "2026-11-03T10:00:00Z",
+      "changed_at": "2026-11-03T10:00:00Z"
+    },
+    {
+      "entry": {
+        "collectible_type": "mtg",
+        "source_id": "00000000-0000-4000-8000-000000000001",
+        "name": "Serra Angel",
+        "set_code": "dmr",
+        "collector_number": "27",
+        "language": "en"
+      },
+      "quantity": 1,
+      "finish": "foil",
+      "condition": "near_mint",
+      "price_paid": "12.50",
+      "location": {
+        "deck": "Casual deck",
+        "zone": "sideboard"
+      },
+      "added_at": "2026-11-03T10:00:00Z",
+      "changed_at": "2026-11-03T10:00:00Z"
+    },
+    {
+      "entry": {
+        "collectible_type": "mtg",
+        "source_id": "00000000-0000-4000-8000-000000000001",
+        "name": "Serra Angel",
+        "set_code": "dmr",
+        "collector_number": "27",
+        "language": "en"
+      },
+      "quantity": 1,
+      "finish": "foil",
+      "condition": "near_mint",
+      "price_paid": "12.50",
+      "location": {
+        "deck": "Casual deck",
+        "zone": "considering"
+      },
+      "added_at": "2026-11-03T10:00:00Z",
+      "changed_at": "2026-11-03T10:00:00Z"
+    },
+    {
+      "entry": {
+        "collectible_type": "mtg",
+        "source_id": "00000000-0000-4000-8000-000000000001",
+        "name": "Serra Angel",
+        "set_code": "dmr",
+        "collector_number": "27",
+        "language": "en"
+      },
+      "quantity": 1,
+      "finish": "foil",
+      "condition": "near_mint",
+      "price_paid": "12.50",
+      "location": {
+        "deck": "Standard deck",
+        "zone": "main"
+      },
+      "added_at": "2026-11-03T10:00:00Z",
+      "changed_at": "2026-11-03T10:00:00Z"
+    },
+    {
+      "entry": {
+        "collectible_type": "mtg",
+        "source_id": "00000000-0000-4000-8000-000000000001",
+        "name": "Serra Angel",
+        "set_code": "dmr",
+        "collector_number": "27",
+        "language": "en"
+      },
+      "quantity": 1,
+      "finish": "foil",
+      "condition": "near_mint",
+      "price_paid": "12.50",
+      "location": {
+        "deck": "Standard deck",
+        "zone": "sideboard"
+      },
+      "added_at": "2026-11-03T10:00:00Z",
+      "changed_at": "2026-11-03T10:00:00Z"
+    },
+    {
+      "entry": {
+        "collectible_type": "mtg",
+        "source_id": "00000000-0000-4000-8000-000000000001",
+        "name": "Serra Angel",
+        "set_code": "dmr",
+        "collector_number": "27",
+        "language": "en"
+      },
+      "quantity": 1,
+      "finish": "foil",
+      "condition": "near_mint",
+      "price_paid": "12.50",
+      "location": {
+        "deck": "Standard deck",
+        "zone": "considering"
+      },
+      "added_at": "2026-11-03T10:00:00Z",
+      "changed_at": "2026-11-03T10:00:00Z"
+    },
+    {
+      "entry": {
+        "collectible_type": "mtg",
+        "source_id": "00000000-0000-4000-8000-000000000001",
+        "name": "Serra Angel",
+        "set_code": "dmr",
+        "collector_number": "27",
+        "language": "en"
+      },
+      "quantity": 1,
+      "finish": "foil",
+      "condition": "near_mint",
+      "price_paid": "12.50",
+      "location": {
+        "deck": "Pioneer deck",
+        "zone": "main"
+      },
+      "added_at": "2026-11-03T10:00:00Z",
+      "changed_at": "2026-11-03T10:00:00Z"
+    },
+    {
+      "entry": {
+        "collectible_type": "mtg",
+        "source_id": "00000000-0000-4000-8000-000000000001",
+        "name": "Serra Angel",
+        "set_code": "dmr",
+        "collector_number": "27",
+        "language": "en"
+      },
+      "quantity": 1,
+      "finish": "foil",
+      "condition": "near_mint",
+      "price_paid": "12.50",
+      "location": {
+        "deck": "Pioneer deck",
+        "zone": "sideboard"
+      },
+      "added_at": "2026-11-03T10:00:00Z",
+      "changed_at": "2026-11-03T10:00:00Z"
+    },
+    {
+      "entry": {
+        "collectible_type": "mtg",
+        "source_id": "00000000-0000-4000-8000-000000000001",
+        "name": "Serra Angel",
+        "set_code": "dmr",
+        "collector_number": "27",
+        "language": "en"
+      },
+      "quantity": 1,
+      "finish": "foil",
+      "condition": "near_mint",
+      "price_paid": "12.50",
+      "location": {
+        "deck": "Pioneer deck",
+        "zone": "considering"
+      },
+      "added_at": "2026-11-03T10:00:00Z",
+      "changed_at": "2026-11-03T10:00:00Z"
+    },
+    {
+      "entry": {
+        "collectible_type": "mtg",
+        "source_id": "00000000-0000-4000-8000-000000000001",
+        "name": "Serra Angel",
+        "set_code": "dmr",
+        "collector_number": "27",
+        "language": "en"
+      },
+      "quantity": 1,
+      "finish": "foil",
+      "condition": "near_mint",
+      "price_paid": "12.50",
+      "location": {
+        "deck": "Modern deck",
+        "zone": "main"
+      },
+      "added_at": "2026-11-03T10:00:00Z",
+      "changed_at": "2026-11-03T10:00:00Z"
+    },
+    {
+      "entry": {
+        "collectible_type": "mtg",
+        "source_id": "00000000-0000-4000-8000-000000000001",
+        "name": "Serra Angel",
+        "set_code": "dmr",
+        "collector_number": "27",
+        "language": "en"
+      },
+      "quantity": 1,
+      "finish": "foil",
+      "condition": "near_mint",
+      "price_paid": "12.50",
+      "location": {
+        "deck": "Modern deck",
+        "zone": "sideboard"
+      },
+      "added_at": "2026-11-03T10:00:00Z",
+      "changed_at": "2026-11-03T10:00:00Z"
+    },
+    {
+      "entry": {
+        "collectible_type": "mtg",
+        "source_id": "00000000-0000-4000-8000-000000000001",
+        "name": "Serra Angel",
+        "set_code": "dmr",
+        "collector_number": "27",
+        "language": "en"
+      },
+      "quantity": 1,
+      "finish": "foil",
+      "condition": "near_mint",
+      "price_paid": "12.50",
+      "location": {
+        "deck": "Modern deck",
+        "zone": "considering"
+      },
+      "added_at": "2026-11-03T10:00:00Z",
+      "changed_at": "2026-11-03T10:00:00Z"
+    },
+    {
+      "entry": {
+        "collectible_type": "mtg",
+        "source_id": "00000000-0000-4000-8000-000000000001",
+        "name": "Serra Angel",
+        "set_code": "dmr",
+        "collector_number": "27",
+        "language": "en"
+      },
+      "quantity": 1,
+      "finish": "foil",
+      "condition": "near_mint",
+      "price_paid": "12.50",
+      "location": {
+        "deck": "Legacy deck",
+        "zone": "main"
+      },
+      "added_at": "2026-11-03T10:00:00Z",
+      "changed_at": "2026-11-03T10:00:00Z"
+    },
+    {
+      "entry": {
+        "collectible_type": "mtg",
+        "source_id": "00000000-0000-4000-8000-000000000001",
+        "name": "Serra Angel",
+        "set_code": "dmr",
+        "collector_number": "27",
+        "language": "en"
+      },
+      "quantity": 1,
+      "finish": "foil",
+      "condition": "near_mint",
+      "price_paid": "12.50",
+      "location": {
+        "deck": "Legacy deck",
+        "zone": "sideboard"
+      },
+      "added_at": "2026-11-03T10:00:00Z",
+      "changed_at": "2026-11-03T10:00:00Z"
+    },
+    {
+      "entry": {
+        "collectible_type": "mtg",
+        "source_id": "00000000-0000-4000-8000-000000000001",
+        "name": "Serra Angel",
+        "set_code": "dmr",
+        "collector_number": "27",
+        "language": "en"
+      },
+      "quantity": 1,
+      "finish": "foil",
+      "condition": "near_mint",
+      "price_paid": "12.50",
+      "location": {
+        "deck": "Legacy deck",
+        "zone": "considering"
+      },
+      "added_at": "2026-11-03T10:00:00Z",
+      "changed_at": "2026-11-03T10:00:00Z"
+    },
+    {
+      "entry": {
+        "collectible_type": "mtg",
+        "source_id": "00000000-0000-4000-8000-000000000001",
+        "name": "Serra Angel",
+        "set_code": "dmr",
+        "collector_number": "27",
+        "language": "en"
+      },
+      "quantity": 1,
+      "finish": "foil",
+      "condition": "near_mint",
+      "price_paid": "12.50",
+      "location": {
+        "deck": "Vintage deck",
+        "zone": "main"
+      },
+      "added_at": "2026-11-03T10:00:00Z",
+      "changed_at": "2026-11-03T10:00:00Z"
+    },
+    {
+      "entry": {
+        "collectible_type": "mtg",
+        "source_id": "00000000-0000-4000-8000-000000000001",
+        "name": "Serra Angel",
+        "set_code": "dmr",
+        "collector_number": "27",
+        "language": "en"
+      },
+      "quantity": 1,
+      "finish": "foil",
+      "condition": "near_mint",
+      "price_paid": "12.50",
+      "location": {
+        "deck": "Vintage deck",
+        "zone": "sideboard"
+      },
+      "added_at": "2026-11-03T10:00:00Z",
+      "changed_at": "2026-11-03T10:00:00Z"
+    },
+    {
+      "entry": {
+        "collectible_type": "mtg",
+        "source_id": "00000000-0000-4000-8000-000000000001",
+        "name": "Serra Angel",
+        "set_code": "dmr",
+        "collector_number": "27",
+        "language": "en"
+      },
+      "quantity": 1,
+      "finish": "foil",
+      "condition": "near_mint",
+      "price_paid": "12.50",
+      "location": {
+        "deck": "Vintage deck",
+        "zone": "considering"
+      },
+      "added_at": "2026-11-03T10:00:00Z",
+      "changed_at": "2026-11-03T10:00:00Z"
+    },
+    {
+      "entry": {
+        "collectible_type": "mtg",
+        "source_id": "00000000-0000-4000-8000-000000000001",
+        "name": "Serra Angel",
+        "set_code": "dmr",
+        "collector_number": "27",
+        "language": "en"
+      },
+      "quantity": 1,
+      "finish": "foil",
+      "condition": "near_mint",
+      "price_paid": "12.50",
+      "location": {
+        "deck": "Pauper deck",
+        "zone": "main"
+      },
+      "added_at": "2026-11-03T10:00:00Z",
+      "changed_at": "2026-11-03T10:00:00Z"
+    },
+    {
+      "entry": {
+        "collectible_type": "mtg",
+        "source_id": "00000000-0000-4000-8000-000000000001",
+        "name": "Serra Angel",
+        "set_code": "dmr",
+        "collector_number": "27",
+        "language": "en"
+      },
+      "quantity": 1,
+      "finish": "foil",
+      "condition": "near_mint",
+      "price_paid": "12.50",
+      "location": {
+        "deck": "Pauper deck",
+        "zone": "sideboard"
+      },
+      "added_at": "2026-11-03T10:00:00Z",
+      "changed_at": "2026-11-03T10:00:00Z"
+    },
+    {
+      "entry": {
+        "collectible_type": "mtg",
+        "source_id": "00000000-0000-4000-8000-000000000001",
+        "name": "Serra Angel",
+        "set_code": "dmr",
+        "collector_number": "27",
+        "language": "en"
+      },
+      "quantity": 1,
+      "finish": "foil",
+      "condition": "near_mint",
+      "price_paid": "12.50",
+      "location": {
+        "deck": "Pauper deck",
+        "zone": "considering"
+      },
+      "added_at": "2026-11-03T10:00:00Z",
+      "changed_at": "2026-11-03T10:00:00Z"
+    },
+    {
+      "entry": {
+        "collectible_type": "mtg",
+        "source_id": "00000000-0000-4000-8000-000000000001",
+        "name": "Serra Angel",
+        "set_code": "dmr",
+        "collector_number": "27",
+        "language": "en"
+      },
+      "quantity": 1,
+      "finish": "foil",
+      "condition": "near_mint",
+      "price_paid": "12.50",
+      "location": {
+        "deck": "Commander deck",
+        "zone": "commander"
+      },
+      "added_at": "2026-11-03T10:00:00Z",
+      "changed_at": "2026-11-03T10:00:00Z"
+    },
+    {
+      "entry": {
+        "collectible_type": "mtg",
+        "source_id": "00000000-0000-4000-8000-000000000001",
+        "name": "Serra Angel",
+        "set_code": "dmr",
+        "collector_number": "27",
+        "language": "en"
+      },
+      "quantity": 1,
+      "finish": "foil",
+      "condition": "near_mint",
+      "price_paid": "12.50",
+      "location": {
+        "deck": "Commander deck",
+        "zone": "main"
+      },
+      "added_at": "2026-11-03T10:00:00Z",
+      "changed_at": "2026-11-03T10:00:00Z"
+    },
+    {
+      "entry": {
+        "collectible_type": "mtg",
+        "source_id": "00000000-0000-4000-8000-000000000001",
+        "name": "Serra Angel",
+        "set_code": "dmr",
+        "collector_number": "27",
+        "language": "en"
+      },
+      "quantity": 1,
+      "finish": "foil",
+      "condition": "near_mint",
+      "price_paid": "12.50",
+      "location": {
+        "deck": "Commander deck",
+        "zone": "considering"
+      },
+      "added_at": "2026-11-03T10:00:00Z",
+      "changed_at": "2026-11-03T10:00:00Z"
+    }
+  ]
+}

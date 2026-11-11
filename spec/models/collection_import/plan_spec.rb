@@ -193,4 +193,112 @@ RSpec.describe CollectionImport::Plan, type: :model do
       expect(CollectionImport.new(account:, file: import_io(file)).plan.fingerprint("sum")).not_to eq(before)
     end
   end
+
+  describe "decks (spec 062)" do
+    def import_v4(lots = [ import_row(a, location: nil) ], decks: [], locations: [], **fields)
+      CollectionImport.new(account:, file: import_io(import_file_v4(user, lots, decks:, locations:, **fields)))
+    end
+
+    def deck_of(name, format: "modern") = { "name" => name, "collectible_type" => "mtg", "format" => format }
+
+    it "takes the decks into the plan: what a deck changes is something to change, a removed one removes, a lot is not written (AC-7.7)", :aggregate_failures do
+      held_lot(account, a, quantity: 1)
+      create(:deck, account:, name: "Old deck")
+      plan = import_v4(decks: [ "Izzet Tempo" ]).plan
+
+      expect(plan.decks.added.map(&:name)).to eq([ "Izzet Tempo" ])
+      expect(plan.decks.removed.map(&:name)).to eq([ "Old deck" ])
+      expect([ plan.nothing_to_change?, plan.removes?, plan.writes_lots? ]).to eq([ false, true, false ])
+    end
+
+    it "has something to change for a file whose only difference is one deck, and nothing once the collection holds them (AC-7.7)", :aggregate_failures do
+      held_lot(account, a, quantity: 1)
+      only_deck = import_v4([ import_row(a, location: nil) ], decks: [ "Izzet Tempo" ]).plan
+      expect([ only_deck.nothing_to_change?, only_deck.removes? ]).to eq([ false, false ])
+
+      create(:deck, account:, name: "Izzet Tempo")
+      expect(import_v4([ import_row(a, location: nil) ], decks: [ "Izzet Tempo" ]).plan.nothing_to_change?).to be(true)
+      expect(import_v4([ import_row(a, location: nil) ], decks: [ "Izzet Tempo" ], currency: "EUR").plan.nothing_to_change?).to be(false)
+    end
+
+    it "judges every difference of a deck in the plan: added, renamed, format changed, both together, unchanged, removed (AC-7.2)", :aggregate_failures do
+      %w[Same tempo Elves Gone].each { |name| create(:deck, account:, name:) }
+      plan = import_v4(decks: [ "Same", "Tempo", deck_of("Elves", format: "commander"), "New" ]).plan
+
+      expect(plan.decks.counts).to eq(added: 1, renamed: 1, format_changed: 1, unchanged: 1, removed: 1)
+      expect(plan.decks.renamed.map { |renamed| [ renamed.held.name, renamed.name ] }).to eq([ %w[tempo Tempo] ])
+      expect(plan.decks.format_changed.map { |changed| [ changed.held.name, changed.format ] }).to eq([ %w[Elves commander] ])
+    end
+
+    describe "#fingerprint (AC-7.10)" do
+      def fingerprint(*decks, **options) = import_v4(decks: decks, **options).plan.fingerprint("sum")
+
+      it "differs for a deck added, removed, renamed or given another format between preview and apply, and for another file", :aggregate_failures do
+        elves = create(:deck, account:, name: "Elves")
+        baseline = fingerprint("Elves", "New")
+
+        expect(fingerprint("Elves", "New")).to eq(baseline)
+        expect(fingerprint("Elves", "Newer")).not_to eq(baseline) # another file
+        create(:deck, account:, name: "New") # added by another tab: the file's deck is no longer added
+        expect(fingerprint("Elves", "New")).not_to eq(baseline)
+        Deck.joins(:location).find_by!(locations: { name: "New" }).remove!
+        elves.rename("ELVES")
+        expect(fingerprint("Elves", "New")).not_to eq(baseline) # respelled: it was unchanged, now renamed
+        elves.rename("Elves")
+        expect(fingerprint("Elves", "New")).to eq(baseline)
+        elves.update!(format: "commander")
+        expect(fingerprint("Elves", "New")).not_to eq(baseline) # its format
+        elves.update!(format: "modern")
+        elves.remove!
+        expect(fingerprint("Elves", "New")).not_to eq(baseline) # a removed one is added again
+      end
+
+      it "holds no id: a renamed, a format-changed, an unchanged and a removed deck deleted and made again as they were change nothing", :aggregate_failures do
+        { "izzet" => "modern", "Elves" => "commander", "Same" => "modern", "Old" => "modern" }.each { |name, format| create(:deck, account:, name:, format:) }
+        files = [ "Izzet", deck_of("Elves", format: "pauper"), "Same", "Other" ]
+        baseline = import_v4(decks: files).plan.fingerprint("sum")
+
+        Deck.includes(:location).to_a.map { |deck| [ deck.name, deck.format ] }.each do |name, format|
+          Deck.joins(:location).find_by!(locations: { name: }).remove!
+          create(:deck, account:, name:, format:) # a new id each, the same plan
+        end
+
+        expect(import_v4(decks: files).plan.fingerprint("sum")).to eq(baseline)
+      end
+
+      it "keeps the fingerprint a version 1 to 3 plan had, whatever decks are held, with and without a currency change", :aggregate_failures do
+        create(:deck, account:, name: "Izzet Tempo")
+        row = import_row(a, location: nil)
+        old = ->(*parts) { Digest::SHA256.hexdigest(JSON.generate([ "sum", [ [ 1, "added" ] ], [], [], nil, *parts ])) }
+
+        v1 = CollectionImport.new(account:, file: import_io(import_file(user, [ import_row(a) ])))
+        v3 = CollectionImport.new(account:, file: import_io(import_file_v3(user, [ row ], locations: [ "Box" ])))
+        eur = CollectionImport.new(account:, file: import_io(import_file_v3(user, [ row ], locations: [ "Box" ], currency: "EUR")))
+
+        expect(v1.plan.fingerprint("sum")).to eq(old.call)
+        expect(v3.plan.fingerprint("sum")).to eq(old.call([ [ "Box" ], [], [] ]))
+        expect(eur.plan.fingerprint("sum")).to eq(old.call([ [ "Box" ], [], [] ], [ "USD", "EUR" ]))
+      end
+
+      it "puts the decks' part after the locations' and before the currency change, only for a version 4 plan" do
+        create(:deck, account:, name: "Old")
+        plan = import_v4([ import_row(a, location: nil) ], locations: [ "Box" ], decks: [ "New" ], currency: "EUR").plan
+        expected = Digest::SHA256.hexdigest(JSON.generate([ "sum", [ [ 1, "added" ] ], [], [], nil, [ [ "Box" ], [], [] ],
+          [ [ "New" ], [], [], [ [ "Old" ] ] ], [ "USD", "EUR" ] ]))
+
+        expect(plan.fingerprint("sum")).to eq(expected)
+      end
+    end
+
+    it "re-reads the held decks on replan, so a deck made after the preview is part of the new plan", :aggregate_failures do
+      parsed = import_v4(decks: [ "Izzet Tempo" ])
+      expect(parsed.plan.decks.added.size).to eq(1)
+
+      create(:deck, account:, name: "Izzet Tempo")
+
+      expect(parsed.plan.decks.added.size).to eq(1) # memoized
+      expect(parsed.replan.decks.added).to be_empty
+      expect(parsed.plan.decks.unchanged).to eq(1)
+    end
+  end
 end

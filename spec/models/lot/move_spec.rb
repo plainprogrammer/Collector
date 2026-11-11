@@ -121,4 +121,40 @@ RSpec.describe Lot::Move, type: :model do
       expect { twin.save!(validate: false) }.to raise_error(ActiveRecord::RecordNotUnique)
     end
   end
+
+  # Spec 062 AC-5.7a, D6: a lot in a deck's zone is "somewhere", so Move copies takes it out of the zone to a place or to none.
+  describe "#call! of a lot in a deck's zone (spec 062 AC-5.7a)" do
+    let(:deck) { create(:deck, account:, name: "Izzet Tempo") }
+
+    def zoned(quantity = 4, **attributes) = create_lot_in_zone(deck, "main", entry:, quantity:, **attributes)
+
+    it "splits some copies into a place, leaving the rest in the zone, each key ending in its own place's id", :aggregate_failures do
+      lot = zoned(4, finish: "foil", condition: "near_mint")
+      moved = move(lot, blue, "3").call!
+      expect(lot.reload).to have_attributes(quantity: 1, location: deck.zone("main"))
+      expect(lot.lot_key).to eq(Lot.key_for("foil", "near_mint", nil, deck.zone("main").id))
+      expect(moved).to have_attributes(quantity: 3, location: blue, lot_key: Lot.key_for("foil", "near_mint", nil, blue.id))
+    end
+
+    it "moves every copy to no location, leaving a key without a place", :aggregate_failures do
+      lot = zoned(4, finish: "foil")
+      move(lot, nil).call!
+      expect(lot.reload).to have_attributes(location_id: nil, lot_key: Lot.key_for("foil", nil, nil))
+    end
+
+    it "merges every copy into the place's lot of the same identity, and the zone's lot goes", :aggregate_failures do
+      lot = zoned(2)
+      held = lot_in(blue, 3)
+      expect(move(lot, blue).call!).to eq(held)
+      expect(held.reload.quantity).to eq(5)
+      expect(Lot.exists?(lot.id)).to be(false)
+    end
+
+    it "moves a place's copies into the zone's lot only when asked to a zone's id (the model's own check)", :aggregate_failures do
+      lot = lot_in(blue, 2)
+      zone_lot = zoned(1)
+      expect(move(lot, deck.zone("main")).call!).to eq(zone_lot)
+      expect(zone_lot.reload.quantity).to eq(3)
+    end
+  end
 end

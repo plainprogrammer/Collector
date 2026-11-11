@@ -8,6 +8,7 @@ RSpec.describe "Apply an import", type: :request do
   let(:b) { import_printing }
 
   def preview!(lots) = store_import!(account:, data: import_file(user, lots))
+  def preview_v3!(lots, locations: []) = store_import!(account:, data: import_file_v3(user, lots, locations:))
   def preview_v2!(lots, locations: []) = store_import!(account:, data: import_file_v2(user, lots, locations:))
   def apply(upload = account.reload.import_upload, **params) = post(collection_import_path, params: { fingerprint: upload&.fingerprint, confirm_removal: "1" }.merge(params))
   def html = Nokogiri::HTML5(response.body)
@@ -209,6 +210,62 @@ RSpec.describe "Apply an import", type: :request do
       follow_redirect!
       expect(html.at_css("#status").text.strip).to eq("Imported: 1 lot added, 0 changed, 0 removed; 1 location added, 1 removed; prices now shown in GBP")
       expect(account.reload.currency).to eq("GBP")
+    end
+
+    describe "the decks in the notice (spec 062 AC-8.8)" do
+      def preview_v4!(lots, decks: [], locations: [], **fields) = store_import!(account:, data: import_file_v4(user, lots, decks:, locations:, **fields))
+
+      def deck_of(name, format) = { "name" => name, "collectible_type" => "mtg", "format" => format }
+
+      it "adds the decks after the locations and before the currency, zero parts left out, no final period", :aggregate_failures do
+        create(:location, account:, name: "box")
+        create(:location, account:, name: "Old crate")
+        %w[tempo Elves Gone Same].each { |name| create(:deck, account:, name:) }
+        preview_v4!([ import_row(a, location: nil) ], locations: [ "Box", "Blue binder", "Trade binder" ], currency: "EUR",
+          decks: [ "Tempo", deck_of("Elves", "commander"), deck_of("Same", "modern"), deck_of("New", "modern"), deck_of("Newer", "modern") ])
+
+        apply
+        follow_redirect!
+
+        expect(html.at_css("#status").text.strip).to eq(
+          "Imported: 1 lot added, 0 changed, 0 removed; 2 locations added, 1 renamed, 1 removed; " \
+          "2 decks added, 1 renamed, 1 format changed, 1 removed; prices now shown in EUR")
+        expect(account.decks.joins(:location).order("locations.name_key").pluck("locations.name", :format)).to eq(
+          [ %w[Elves commander], %w[New modern], %w[Newer modern], %w[Same modern], %w[Tempo modern] ])
+      end
+
+      it "names the one part that is not zero, with the noun on it", :aggregate_failures do
+        create(:deck, account:, name: "Gone")
+        held_lot(account, a, quantity: 1)
+        preview_v4!([ import_row(a, location: nil) ])
+
+        apply
+        follow_redirect!
+
+        expect(html.at_css("#status").text.strip).to eq("Imported: 0 lots added, 0 changed, 0 removed; 1 deck removed")
+      end
+
+      it "refuses an older file with its reason when a deck made after the preview has a file place's name, writing nothing (AC-7.4d)", :aggregate_failures do
+        upload = preview_v3!([ import_row(a, location: nil) ], locations: [ "Izzet Tempo" ])
+        create(:deck, account:, name: "izzet tempo")
+
+        apply(upload)
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.body).to include("A deck you have is called “izzet tempo”, like a place in this file. Rename one of them and preview again.")
+        expect(account.reload.import_upload).to be_nil
+        expect([ account.lots.count, account.locations.places.count ]).to eq([ 0, 0 ])
+      end
+
+      it "says nothing about decks after a version 3 file, which leaves them alone", :aggregate_failures do
+        create(:deck, account:, name: "Izzet Tempo")
+        preview_v3!([ import_row(a, location: nil) ])
+
+        apply
+        follow_redirect!
+
+        expect(html.at_css("#status").text.strip).to eq("Imported: 1 lot added, 0 changed, 0 removed")
+      end
     end
 
     it "says nothing about locations after a version 1 file (AC-9.14)", :aggregate_failures do

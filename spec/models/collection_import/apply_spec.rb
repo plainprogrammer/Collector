@@ -363,13 +363,13 @@ RSpec.describe CollectionImport::Apply, type: :model do
       held_lot(account, d, quantity: 3)
       upload = preview_v2!([ import_row(a) ], locations: [ "Blue binder" ])
       before = snapshot
-      allow(CollectionImport::LocationChanges).to receive(:write!).and_raise(RuntimeError, "disk full")
+      allow(CollectionImport::DeckChanges).to receive(:write!).and_raise(RuntimeError, "disk full")
 
       expect { apply(upload) }.to raise_error(RuntimeError, "disk full")
       expect(snapshot).to eq(before)
       expect(account.reload.import_upload).to eq(upload)
 
-      allow(CollectionImport::LocationChanges).to receive(:write!).and_call_original
+      allow(CollectionImport::DeckChanges).to receive(:write!).and_call_original
       expect(apply(upload).outcome).to eq(:applied)
       expect(account.locations.pluck(:name)).to eq([ "Blue binder" ])
     end
@@ -847,6 +847,321 @@ RSpec.describe CollectionImport::Apply, type: :model do
 
       small = measure.call(50, 5)
       expect(measure.call(5_000, 500)).to be <= small + 10 # upserts per BATCH_SIZE lots, not per lot or per location
+    end
+  end
+
+  describe "decks and zones (spec 062 Story 8)" do
+    def preview_v4!(lots, decks: [], locations: [], **fields) = store_import!(account:, data: import_file_v4(user, lots, decks:, locations:, **fields))
+
+    def deck_of(name, format = "modern", type: "mtg") = { "name" => name, "collectible_type" => type, "format" => format }
+
+    def zone(deck, key = "main") = { "deck" => deck, "zone" => key }
+
+    def deck_named(name) = account.decks.joins(:location).find_by!(locations: { name: })
+
+    def zones_of(deck) = deck.zones.pluck(:zone, :name, :name_key)
+
+    def names(scope) = scope.order(:name_key).pluck(:name)
+
+    # Every location and deck of the account checked against the models, as AC-2.4 does for lots (AC-8.9).
+    def expect_written_rows_valid
+      expect(account.locations.includes(:parent)).to all(be_valid)
+      expect(account.decks).to all(be_valid)
+    end
+
+    # A vocabulary registered as the type "fake" whose one format "f" has these zones; calling it again is a release that changed them.
+    def fake_vocabulary(*zones)
+      format = Catalog::Formats::Format.new(key: "f", name: "F", default: true, zones: zones.map { |key, name| Catalog::Formats::Zone.new(key:, name:) })
+      stub_const("FakeDeckVocabulary", Module.new { define_singleton_method(:formats) { [ format ] } })
+      Catalog.collecting["fake"] = "FakeDeckVocabulary"
+    end
+
+    after { Catalog.collecting.delete("fake") }
+
+    it "writes an added deck with the zones of its format in order, keys and names as registered (AC-8.1, AC-8.2, AC-8.9)", :aggregate_failures do
+      preview_v4!([ import_row(a, location: nil) ], decks: [ deck_of("Izzet Tempo"), deck_of("Elves", "commander") ])
+
+      expect(apply.outcome).to eq(:applied)
+
+      izzet = deck_named("Izzet Tempo")
+      expect([ izzet.collectible_type, izzet.format ]).to eq(%w[mtg modern])
+      expect(izzet.location).to have_attributes(kind: "deck", parent_id: nil, zone: nil, name_key: "izzet tempo")
+      expect(zones_of(izzet)).to eq([ %w[main Main main], %w[sideboard Sideboard sideboard], %w[considering Considering considering] ])
+      expect(zones_of(deck_named("Elves"))).to eq([ %w[commander Commander commander], %w[main Main main], %w[considering Considering considering] ])
+      expect_written_rows_valid
+    end
+
+    it "keeps a renamed deck's id, zones and lots, and changes a deck's format keeping its id, name and the zones both formats have (AC-8.2)", :aggregate_failures do
+      izzet = create(:deck, account:, name: "izzet")
+      elves = create(:deck, account:, name: "Elves", format: "commander")
+      kept = create_lot_in_zone(izzet, "main", entry: a, quantity: 2)
+      lost = create_lot_in_zone(elves, "commander", entry: b, quantity: 1)
+      stays = create_lot_in_zone(elves, "main", entry: c, quantity: 3)
+      izzet_zones = izzet.zones.pluck(:id)
+      elves_main = elves.zone("main").id
+      elves_considering = elves.zone("considering").id
+      preview_v4!([ import_row(a, quantity: 2, location: zone("Izzet")), import_row(c, quantity: 3, location: zone("Elves")) ],
+        decks: [ deck_of("Izzet"), deck_of("Elves", "modern") ])
+
+      expect(apply.outcome).to eq(:applied)
+
+      expect(izzet.location.reload.name).to eq("Izzet")
+      expect([ izzet.zones.pluck(:id), kept.reload.location_id ]).to eq([ izzet_zones, izzet_zones.first ])
+      expect([ elves.reload.format, elves.location.name ]).to eq(%w[modern Elves])
+      expect(elves.zones.pluck(:zone)).to eq(%w[main considering sideboard]) # the commander zone went; the sideboard came after the kept ones
+      expect([ elves.zone("main").id, elves.zone("considering").id ]).to eq([ elves_main, elves_considering ])
+      expect(Lot.exists?(lost.id)).to be(false) # the lot of the lost zone is among the removed lots
+      expect(stays.reload.location_id).to eq(elves_main)
+      expect(account.lots.joins(:location).where(locations: { zone: "considering" })).to be_empty # an import moves no lot into Considering
+      expect_written_rows_valid
+    end
+
+    it "changes a deck's collectible type with its format, keeping the zones both formats have", :aggregate_failures do
+      create(:deck, account:, name: "Elves")
+      fake_vocabulary(%w[main Main], %w[considering Considering])
+      preview_v4!([ import_row(a, location: nil) ], decks: [ deck_of("Elves", "f", type: "fake") ])
+
+      expect(apply.outcome).to eq(:applied)
+      deck = deck_named("Elves")
+      expect([ deck.collectible_type, deck.format, deck.zones.pluck(:zone) ]).to eq([ "fake", "f", %w[main considering] ])
+    end
+
+    describe "a format that has changed since a deck was made (AC-8.2a)" do
+      it "creates the missing zones and rewrites the names of those it has, so a lot naming the new zone is placed", :aggregate_failures do
+        fake_vocabulary(%w[main Main], %w[considering Considering])
+        deck = create(:deck, account:, name: "Fake deck", pair: "fake/f")
+        fake_vocabulary(%w[main Mainboard], %w[extra Extra], %w[considering Considering]) # a release renamed Main and added Extra
+        preview_v4!([ import_row(a, location: zone("Fake deck", "extra")) ], decks: [ deck_of("Fake deck", "f", type: "fake") ])
+
+        expect(apply.outcome).to eq(:applied)
+
+        expect(zones_of(deck)).to eq([ %w[main Mainboard mainboard], %w[considering Considering considering], %w[extra Extra extra] ])
+        expect(account.lots.sole.location).to eq(deck.zone("extra"))
+        expect_written_rows_valid
+      end
+
+      it "rewrites the names of two zones that swap them, never meeting in the name index", :aggregate_failures do
+        fake_vocabulary(%w[main Main], %w[side Side], %w[considering Considering])
+        deck = create(:deck, account:, name: "Fake deck", pair: "fake/f")
+        fake_vocabulary(%w[main Side], %w[side Main], %w[considering Considering])
+        preview_v4!([ import_row(a, location: zone("Fake deck", "side")) ], decks: [ deck_of("Fake deck", "f", type: "fake") ])
+
+        expect(apply.outcome).to eq(:applied)
+        expect(zones_of(deck)).to eq([ %w[main Side side], %w[side Main main], %w[considering Considering considering] ])
+      end
+
+      it "is never a change of its own: a file equal to the collection has nothing to change and the zone stays missing", :aggregate_failures do
+        deck = create(:deck, account:, name: "Izzet Tempo")
+        deck.zone("considering").destroy!
+        data = import_file_v4(user, [], decks: [ deck_of("Izzet Tempo") ])
+        expect(CollectionImport.new(account:, file: import_io(data)).plan.nothing_to_change?).to be(true)
+        upload = store_import!(account:, data:, forced: true)
+        before = snapshot
+
+        expect(apply(upload).outcome).to eq(:nothing_to_change)
+        expect(snapshot).to eq(before)
+        expect(deck.zones.pluck(:zone)).to eq(%w[main sideboard])
+      end
+
+      it "is written with an apply that changes something else, the zones of a deck the file lists unchanged included", :aggregate_failures do
+        deck = create(:deck, account:, name: "Izzet Tempo")
+        deck.zone("considering").destroy!
+        held_lot(account, a, quantity: 1)
+        preview_v4!([ import_row(a, quantity: 2, location: nil) ], decks: [ deck_of("Izzet Tempo") ])
+
+        expect(apply.outcome).to eq(:applied)
+        expect(deck.zones.pluck(:zone)).to eq(%w[main sideboard considering])
+      end
+    end
+
+    it "removes every removed place and deck before it writes any addition, so a place and a deck can swap names (AC-8.3)", :aggregate_failures do
+      create(:location, account:, name: "Alpha")
+      old = create(:deck, account:, name: "Beta")
+      preview_v4!([ import_row(a, location: nil) ], locations: [ "Beta" ], decks: [ deck_of("Alpha") ])
+
+      expect(apply.outcome).to eq(:applied)
+
+      expect([ names(account.locations.places), names(account.locations.decks) ]).to eq([ [ "Beta" ], [ "Alpha" ] ])
+      expect(Location.exists?(old.location_id)).to be(false)
+      expect(account.decks.count).to eq(1)
+      expect_written_rows_valid
+    end
+
+    it "moves a place's name to a deck and a deck's name to a place in one file, with all their lots placed (AC-8.3)", :aggregate_failures do
+      box = create(:location, account:, name: "Box")
+      deck = create(:deck, account:, name: "Izzet Tempo")
+      held_lot(account, a, quantity: 1, location: box)
+      create_lot_in_zone(deck, "main", entry: b, quantity: 1)
+      preview_v4!([ import_row(a, location: zone("Box")), import_row(b, location: "Izzet Tempo") ], locations: [ "Izzet Tempo" ], decks: [ deck_of("Box") ])
+
+      expect(apply.outcome).to eq(:applied)
+      expect(account.lots.map { |lot| [ lot.catalog_entry_id, lot.location.label ] }).to contain_exactly([ a.id, "Box › Main" ], [ b.id, "Izzet Tempo" ])
+      expect_written_rows_valid
+    end
+
+    it "places a lot in its zone with the key that carries it, never mistaking a place Main for a zone main or one deck's zone for another's (AC-8.4)", :aggregate_failures do
+      preview_v4!([ import_row(a, location: "Main"), import_row(a, location: zone("Izzet Tempo")), import_row(a, location: zone("Elves")) ],
+        locations: [ "Main" ], decks: [ deck_of("Izzet Tempo"), deck_of("Elves", "commander") ])
+
+      expect(apply.outcome).to eq(:applied)
+
+      expect(account.lots.map { |lot| lot.location.label }).to contain_exactly("Main", "Izzet Tempo › Main", "Elves › Main")
+      account.lots.each do |lot|
+        expect(lot.lot_key).to eq(Lot.key_for(lot.finish, lot.condition, lot.price_paid_cents, lot.location_id))
+        expect(lot).to be_valid
+      end
+      expect(deck_named("Elves").zone("main").lots.sole.catalog_entry_id).to eq(a.id)
+    end
+
+    it "deletes a removed deck's lots before its zones and never moves a lot (AC-8.6)", :aggregate_failures do
+      deck = create(:deck, account:, name: "Izzet Tempo")
+      create_lot_in_zone(deck, "main", entry: a, quantity: 2)
+      create_lot_in_zone(deck, "sideboard", entry: b, quantity: 1)
+      kept = held_lot(account, c, quantity: 1)
+      zone_ids = deck.zones.pluck(:id)
+      preview_v4!([ import_row(c, location: nil) ])
+      kept_before = kept.reload.attributes
+
+      expect(apply.outcome).to eq(:applied)
+
+      expect(Location.where(id: [ deck.location_id, *zone_ids ])).to be_empty
+      expect(Deck.exists?(deck.id)).to be(false)
+      expect(account.lots.pluck(:id)).to eq([ kept.id ])
+      expect(kept.reload.attributes).to eq(kept_before)
+    end
+
+    it "clears a scanner sitting's place through the foreign key when a place goes, keeping the sitting and every other list (AC-8.6, AC-8.7)", :aggregate_failures do
+      removal = working_state_for(held_lot(account, a, quantity: 2))
+      Scanner::Sitting.sole.update!(location: create(:location, account:, name: "Old crate"))
+      preview_v4!([ import_row(a, quantity: 2, location: nil) ], decks: [ deck_of("Izzet Tempo") ])
+
+      expect(apply.outcome).to eq(:applied)
+
+      expect(account.locations.places).to be_empty
+      expect([ NumberEntry.count, Scanner::Sitting.count, BulkSelection.count, BulkSelection::Mark.count ]).to eq([ 1, 1, 1, 1 ])
+      expect(Scanner::Sitting.sole.location_id).to be_nil
+      expect(removal.reload).to be_undoable
+    end
+
+    it "clears the working state only when it writes a lot, a deck change alone leaving it (AC-8.7)", :aggregate_failures do
+      removal = working_state_for(held_lot(account, a, quantity: 2))
+      create(:deck, account:, name: "Old deck")
+      preview_v4!([ import_row(a, quantity: 2, location: nil) ], decks: [ deck_of("Izzet Tempo") ])
+
+      expect(apply.outcome).to eq(:applied)
+      expect([ NumberEntry.count, Scanner::Sitting.count, BulkSelection.count ]).to eq([ 1, 1, 1 ])
+      expect(removal.reload).to be_undoable
+
+      preview_v4!([ import_row(a, quantity: 5, location: nil) ], decks: [ deck_of("Izzet Tempo") ])
+      expect(apply.outcome).to eq(:applied)
+      expect(NumberEntry.count + Scanner::Sitting.count + BulkSelection.count).to eq(0)
+    end
+
+    it "leaves the decks and their zones of an older file's account as they are and removes the copies in them, with the confirmation (AC-7.4)", :aggregate_failures do
+      deck = create(:deck, account:, name: "Izzet Tempo")
+      box = create(:location, account:, name: "Main") # a place called Main beside a zone main
+      create_lot_in_zone(deck, "main", entry: a, quantity: 2)
+      held_lot(account, b, quantity: 1, location: box)
+      zones = deck.zones.pluck(:id, :name)
+      store_import!(account:, data: import_file_v3(user, [ import_row(b, location: "Main"), import_row(c, location: "Main") ], locations: [ "Main" ]))
+
+      expect(apply(confirmed: false).outcome).to eq(:unconfirmed)
+      expect(apply.outcome).to eq(:applied)
+
+      expect(deck.reload.zones.pluck(:id, :name)).to eq(zones)
+      expect(names(account.locations.decks)).to eq([ "Izzet Tempo" ])
+      expect(account.lots.map { |lot| [ lot.catalog_entry_id, lot.location.label ] }).to contain_exactly([ b.id, "Main" ], [ c.id, "Main" ])
+    end
+
+    describe "an older file against decks that came after the preview (AC-7.4d)" do
+      def bulk_decks(count)
+        now = Time.current
+        Location.insert_all!(Array.new(count) { |n| { account_id: account.id, kind: "deck", name: "Deck #{n}", name_key: "deck #{n}", created_at: now, updated_at: now } })
+        Deck.insert_all!(account.locations.decks.pluck(:id).map { |id| { account_id: account.id, location_id: id, collectible_type: "mtg", format: "modern", created_at: now, updated_at: now } })
+      end
+
+      # Runs the block when the moment comes: at once (before `call` reads anything) or when the apply's transaction opens, after
+      # `call` read the upload and judged it (the window only the transaction's own judgement covers).
+      def when_the(moment, &arrange)
+        return arrange.call if moment == :before_call
+
+        allow(ImportUpload).to receive(:transaction).and_wrap_original do |original, *args, &block|
+          arrange.call
+          original.call(*args, &block)
+        end
+      end
+
+      %i[before_call inside_call].each do |moment|
+        it "refuses with the preview's reason when a deck is made with a file place's name (#{moment}), removing the upload and writing nothing", :aggregate_failures do
+          upload = store_import!(account:, data: import_file_v3(user, [ import_row(a, location: nil) ], locations: [ "Izzet Tempo", "Box" ]))
+          when_the(moment) { create(:deck, account:, name: "izzet tempo") }
+          before = snapshot
+
+          result = apply(upload)
+
+          expect([ result.outcome, result.import.refusal.rule ]).to eq([ :refused, "deck_name_taken" ])
+          expect(result.import.refusal.reason).to eq("A deck you have is called “izzet tempo”, like a place in this file. Rename one of them and preview again.")
+          expect(snapshot.except("locations", "decks")).to eq(before.except("locations", "decks")) # the deck made after the preview is the one thing new
+          expect(names(account.locations.top_level)).to eq([ "izzet tempo" ])
+          expect(ImportUpload.count).to eq(0)
+        end
+
+        it "refuses when the decks made after the preview take the file's places past 500 (#{moment})", :aggregate_failures do
+          upload = store_import!(account:, data: import_file_v3(user, [ import_row(a, location: nil) ], locations: Array.new(450) { |n| "Binder #{n}" }))
+          when_the(moment) { bulk_decks(51) }
+
+          result = apply(upload)
+
+          expect([ result.outcome, result.import.refusal.rule ]).to eq([ :refused, "too_many_with_decks" ])
+          expect(account.locations.places).to be_empty
+          expect(account.lots).to be_empty
+          expect(ImportUpload.count).to eq(0)
+        end
+      end
+
+      it "applies a version 2 file when a deck made after the preview collides with nothing", :aggregate_failures do
+        upload = store_import!(account:, data: import_file_v2(user, [ import_row(a) ], locations: [ "Box" ]))
+        create(:deck, account:, name: "Izzet Tempo")
+
+        expect(apply(upload).outcome).to eq(:applied)
+        expect([ names(account.locations.places), names(account.locations.decks) ]).to eq([ [ "Box" ], [ "Izzet Tempo" ] ])
+      end
+    end
+
+    describe "statements (AC-8.9)" do
+      include QueryCounting
+
+      # +decks+ held decks, half renamed and given another format by the file, half removed, and as many added.
+      def statements_for(decks)
+        other = create(:user)
+        decks.times { |n| create(:deck, account: other.account, name: "held #{n}") }
+        file = Array.new(decks / 2) { |n| deck_of("HELD #{n}", "commander") } + Array.new(decks / 2) { |n| deck_of("New #{n}") }
+        upload = store_import!(account: other.account, data: import_file_v4(other, [ import_row(import_printing, location: nil) ], decks: file))
+        count_queries { apply(upload, for_account: other.account) }.tap do
+          expect(other.account.decks.joins(:location).pluck("locations.name").sort).to eq(file.pluck("name").sort) # it wrote them
+        end
+      end
+
+      # +decks+ decks of a format that a release changed: every one lacks a zone and has a zone to rename; the file lists them all.
+      def repair_statements_for(decks)
+        other = create(:user)
+        fake_vocabulary(%w[main Main], %w[considering Considering])
+        decks.times { |n| create(:deck, account: other.account, name: "held #{n}", pair: "fake/f") }
+        fake_vocabulary(%w[main Mainboard], %w[extra Extra], %w[considering Considering])
+        file = Array.new(decks) { |n| deck_of("held #{n}", "f", type: "fake") }
+        upload = store_import!(account: other.account, data: import_file_v4(other, [ import_row(import_printing, location: nil) ], decks: file))
+        count_queries { apply(upload, for_account: other.account) }.tap do
+          expect(other.account.locations.zones_of_decks.pluck(:zone, :name).tally).to eq([ %w[main Mainboard], %w[extra Extra], %w[considering Considering] ].to_h { |pair| [ pair, decks ] }) # it repaired them
+        end
+      end
+
+      it "runs the same statements for 2 decks as for 40, every kind of change among them" do
+        expect(statements_for(40)).to eq(statements_for(2))
+      end
+
+      it "runs the same statements to repair the zones of 2 decks as of 40" do
+        expect(repair_statements_for(40)).to eq(repair_statements_for(2))
+      end
     end
   end
 end

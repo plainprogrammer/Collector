@@ -4,8 +4,16 @@ require "rails_helper"
 RSpec.describe "Import preview", type: :system do
   let!(:user) { system_sign_in_as(create(:user)) }
   let(:path) { Rails.root.join("tmp/import-preview-#{SecureRandom.hex(4)}.json") }
+  let(:own_export) do
+    deck = create(:deck, account: user.account, name: long_name)
+    create_lot_in_zone(deck, "main", quantity: 3)
+    create(:deck, account: user.account, name: "Elves", format: "commander")
+    JSON.parse(CollectionExport.new(account: user.account, at: Time.current).to_json)
+  end
+  let(:long_name) { "Izzet Tempo with a rather long name for a phone" }
 
   after { FileUtils.rm_f(path) }
+
 
   it "previews an export file chosen from the account menu", :aggregate_failures do
     create(:lot, account: user.account, entry: create(:mtg_printing).entry, quantity: 2)
@@ -45,6 +53,34 @@ RSpec.describe "Import preview", type: :system do
 
     expect(page).to have_text("Its location “Nowhere in the file” isn't one of the file's locations.")
     expect(page).to have_text("in Blue binder with a rather long name for a phone")
+    expect(page.evaluate_script("document.documentElement.scrollWidth <= window.innerWidth")).to be(true)
+  end
+
+  # Spec 062 AC-7.1, AC-7.5: the collector's own export, decks and a copy in a zone included, previews with the Decks section; a
+  # version 4 file with a changed deck and a removed deck fits the narrowest window headless Firefox opens.
+  def preview_file(data)
+    path.write(JSON.generate(data))
+    visit new_collection_import_preview_path
+    attach_file "Export file", path.to_s
+    click_on "Preview import"
+  end
+
+
+  it "shows the Decks section of the collector's own export", :aggregate_failures do
+    preview_file(own_export)
+
+    expect(page).to have_css("#decks .c-section__title", text: "Decks")
+    within(find(".c-stat", text: "Decks unchanged")) { expect(page).to have_css("dd", text: "2") }
+  end
+
+  it "fits 500px for a file that changes one deck's format and removes another", :aggregate_failures do
+    data = own_export
+    data["decks"] = data["decks"].select { |deck| deck["name"] == long_name }.map { |deck| deck.merge("format" => "casual") }
+    page.driver.browser.manage.window.resize_to(500, 900)
+    preview_file(data)
+
+    expect(page).to have_css("#format_changed_decks li", text: "#{long_name}:")
+    expect(page).to have_css("#removed_decks li", text: "Elves")
     expect(page.evaluate_script("document.documentElement.scrollWidth <= window.innerWidth")).to be(true)
   end
 end

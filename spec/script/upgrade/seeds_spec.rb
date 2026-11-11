@@ -31,8 +31,13 @@ RSpec.describe "Upgrade seeds", :upgrade do
       run_seed("next.rb")
       schema_tables = Rails.root.join("db/schema.rb").read.scan(/^  create_table "([^"]+)"/).flatten
       listed = Upgrade::SeedExceptions.load(seeds.join("../seed_exceptions.yml"), "next").entries
+      # Active Record's connection answers rows as hashes, which Upgrade::Compare (written for a plain SQLite3::Database) reads as
+      # name/value pairs: with them the rule saw no table at all, so it passed whatever the seed left empty and failed any listed exception.
+      database.results_as_hash = false
       problems, = Upgrade::SeedExceptions.coverage(database, listed, label: "next", seed: "script/upgrade/seeds/next.rb", only: schema_tables)
       expect(problems).to be_empty
+    ensure
+      database.results_as_hash = true
     end
 
     it "leaves what AC-2.3 asks for" do

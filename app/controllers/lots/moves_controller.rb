@@ -20,17 +20,20 @@ class Lots::MovesController < ApplicationController
   end
 
   private
-    def set_lot = @lot = Current.account.lots.includes(:location, entry: :set).find(params[:lot_id])
+    def set_lot = @lot = Current.account.lots.includes({ location: :parent }, entry: :set).find(params[:lot_id])
 
-    # "No location" first unless the lot is already there, then the account's other locations: the options of the To field.
+    # "No location" first unless the lot is already there, then the account's other places: the options of the To field. A deck
+    # is never a destination and a zone is not offered (spec 062 AC-5.6); a lot in a zone is "somewhere" (it has a location_id),
+    # so it is offered "No location" and every place, its own zone being the source.
     def set_destinations
-      locations = Current.account.locations.ordered.reject { |location| location.id == @lot.location_id }
+      locations = Current.account.locations.places.ordered.reject { |location| location.id == @lot.location_id }
       @destinations = (@lot.location_id ? [ [ "No location", "" ] ] : []) + locations.map { |location| [ location.name, location.id ] }
     end
 
+    # The place the To field names, nil for none; any other id, a deck's and a zone's included, is 404 (spec 062 AC-5.2).
     def destination
       id = move_params[:location_id].presence
-      Current.account.locations.find(id) if id
+      Current.account.locations.places.find(id) if id
     end
 
     def move_params = params.expect(move: %i[copies location_id])

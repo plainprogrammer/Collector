@@ -248,5 +248,95 @@
     "why": "Two lots have the same entry, finish, condition and price paid, in locations that differ only in case, so they are one place and one lot.",
     "rule": "duplicate_lot",
     "at": "/lots/1"
+  },
+  "invalid/decks-missing.json": {
+    "why": "A version 4 file has no decks. The list is always present, empty when the collector has none.",
+    "rule": "required",
+    "at": "/decks"
+  },
+  "invalid/decks-not-a-list.json": {
+    "why": "The decks are one object, not a list.",
+    "rule": "type",
+    "at": "/decks"
+  },
+  "invalid/deck-name-missing.json": {
+    "why": "A deck has no name.",
+    "rule": "required",
+    "at": "/decks/0/name"
+  },
+  "invalid/deck-format-empty.json": {
+    "why": "A deck's format is the empty string.",
+    "rule": "pattern",
+    "at": "/decks/0/format"
+  },
+  "invalid/deck-collectible-type-empty.json": {
+    "why": "A deck's collectible type is the empty string.",
+    "rule": "pattern",
+    "at": "/decks/0/collectible_type"
+  },
+  "invalid/deck-name-61.json": {
+    "why": "A deck's name is 61 code points long, one over the limit.",
+    "rule": "maxLength",
+    "at": "/decks/0/name"
+  },
+  "invalid/deck-name-control.json": {
+    "why": "A deck's name holds a control character (U+0007).",
+    "rule": "pattern",
+    "at": "/decks/0/name"
+  },
+  "invalid/deck-name-60-nfc.json": {
+    "why": "A deck's name is 31 code points as written but 62 once normalised (NFC), over the limit of 60.",
+    "rule": "maxLength",
+    "at": "/decks/0/name"
+  },
+  "invalid/deck-duplicate-place.json": {
+    "why": "A deck has the same name as a place, ignoring case: places and decks share one set of names.",
+    "rule": "duplicate_location",
+    "at": "/decks/0"
+  },
+  "invalid/deck-duplicate-deck-fold.json": {
+    "why": "Two decks have names that differ only by full case folding (ß and SS).",
+    "rule": "duplicate_location",
+    "at": "/decks/1"
+  },
+  "invalid/decks-501.json": {
+    "why": "The file lists 501 decks, one over the limit of 500 places and decks together.",
+    "rule": "too_many_locations",
+    "at": "/decks"
+  },
+  "invalid/locations-and-decks-501.json": {
+    "why": "The file lists 250 places and 251 decks, 501 names together, one over the limit of 500.",
+    "rule": "too_many_locations",
+    "at": "/decks"
+  },
+  "invalid/lot-location-object-no-zone.json": {
+    "why": "A lot's location names a deck but no zone.",
+    "rule": "required",
+    "at": "/lots/0/location/zone"
+  },
+  "invalid/lot-location-object-no-deck.json": {
+    "why": "A lot's location names a zone but no deck.",
+    "rule": "required",
+    "at": "/lots/0/location/deck"
+  },
+  "invalid/lot-location-object-extra-key.json": {
+    "why": "A lot's location has a key besides deck and zone.",
+    "rule": "schema",
+    "at": "/lots/0/location/slot"
+  },
+  "invalid/lot-location-zone-blank.json": {
+    "why": "A lot's location names a deck and a blank zone.",
+    "rule": "pattern",
+    "at": "/lots/0/location/zone"
+  },
+  "invalid/lot-location-deck-unlisted.json": {
+    "why": "A lot's location names a deck that none of the file's decks has.",
+    "rule": "unknown_location",
+    "at": "/lots/0/location"
+  },
+  "invalid/lot-location-zone-duplicate-case.json": {
+    "why": "Two lots have the same entry, finish, condition and price paid, in one zone of decks whose names differ only in case, so they are one deck and one lot.",
+    "rule": "duplicate_lot",
+    "at": "/lots/1"
   }
 }

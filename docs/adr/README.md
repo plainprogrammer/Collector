@@ -61,6 +61,7 @@ Add a line here with each new ADR. All are Accepted unless the line says otherwi
 - [0023](0023-locations-make-export-format-version-2.md): Locations make the export format version 2; putting lots in them makes version 3
 - [0024](0024-backup-with-vacuum-into.md): Back up the primary database online with `VACUUM INTO`, restore only onto a fresh volume
 - [0025](0025-a-lots-location-is-part-of-its-identity.md): A lot's location is part of its identity; a location that holds copies can't be removed
+- [0028](0028-decks-are-locations-with-zones.md): A deck is a location whose zones are child locations; formats come from the collectible extension; the export format is version 4
 - [0026](0026-forms-show-field-errors-through-the-design-system.md): Forms show field errors through the design system, not Rails' wrapper
 
 ### Expected

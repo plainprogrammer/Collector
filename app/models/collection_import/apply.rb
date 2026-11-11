@@ -1,6 +1,6 @@
 # Applies the account's stored upload (spec 028): reads, judges and prepares everything outside any transaction, then
-# decides and writes inside one short all-or-nothing transaction. It touches +account+ only: its lots, locations, view and
-# currency (spec 038). Collectible-agnostic.
+# decides and writes inside one short all-or-nothing transaction. It touches +account+ only: its lots, locations, decks, view
+# and currency (spec 038, spec 062). Collectible-agnostic.
 class CollectionImport::Apply
   Result = Data.define(:outcome, :import, :plan, :upload, :fingerprint)
 
@@ -37,6 +37,9 @@ class CollectionImport::Apply
         next remove(current, result(:unreadable, upload: current)) unless checksum
 
         plan = import.replan
+        # A version 1 to 3 file is judged against the collector's decks again, on what the transaction holds (spec 062 AC-7.4d):
+        # before the other checks, so a refusal is never shown as a stale preview offered again.
+        next refuse(current, import) if import.refused?
         next remove(current, result(:nothing_to_change, import:, plan:)) if plan.nothing_to_change?
 
         now = plan.fingerprint(checksum)
@@ -82,24 +85,35 @@ class CollectionImport::Apply
         created_at: Time.iso8601(lot["added_at"]), updated_at: Time.iso8601(lot["changed_at"]) }
     end
 
-    # Delete the removed lots (the lots of a removed location are among them, so the foreign key never fires), write the
-    # locations, read them once (at most 500 rows), then upsert the lots with their place and key. One statement per
-    # BATCH_SIZE lots, never one per lot (FR-4). The upsert is on the lot's identity, so a changed lot keeps its id (FR-9) and
-    # a renamed location's lots stay where they are; the rows were validated by the reader, so the bulk statements skip Lot's
-    # callbacks and validations on purpose (spec 028 FR-3, ruled 2026-10-20; AC-2.4 checks the rows against Lot). Then the
-    # view (spec 032 research R3). The currency goes first, so any later statement's failure rolls it back with the lots
+    # Delete the removed lots (the lots of a removed place, deck or zone are among them, so the foreign key never fires), write
+    # the places, decks and zones in `DeckChanges`' order (every removal before any addition), read the places and the zones
+    # once (at most 500 places and decks, a few zones each), then upsert the lots with their place and key. One statement
+    # per BATCH_SIZE lots, never one per lot (FR-4). The upsert is on the lot's identity, so a changed lot keeps its id (FR-9)
+    # and a renamed location's lots stay where they are; the rows were validated by the reader, so the bulk statements skip
+    # Lot's callbacks and validations on purpose (spec 028 FR-3, ruled 2026-10-20; AC-2.4 checks the rows against Lot). Then
+    # the view (spec 032 research R3). The currency goes first, so any later statement's failure rolls it back with the lots
     # (spec 038 decision 7, AC-6.9).
     def write!(plan, rows)
       @account.update!(currency: plan.currency_change.to) if plan.currency_change
       plan.removed_lots.map(&:id).each_slice(CollectionImport::BATCH_SIZE) { |ids| @account.lots.where(id: ids).delete_all }
-      CollectionImport::LocationChanges.write!(@account, plan.locations)
-      place_ids = @account.locations.pluck(:name_key, :id).to_h
+      CollectionImport::DeckChanges.write!(@account, plan.locations, plan.decks)
+      places, zones = place_ids, zone_ids
       (plan.added_rows + plan.changed_rows).each_slice(CollectionImport::BATCH_SIZE) do |slice|
-        upsert_lots!(slice.map { |row| placed(rows.fetch(row.number), place_ids) })
+        upsert_lots!(slice.map { |row| placed(rows.fetch(row.number), places, zones) })
       end
       # Only a written lot makes the lists that point at lots wrong (spec 029 decision 11, AC-9.17).
       CollectionImport::WorkingState.clear!(@account) if plan.writes_lots?
       @account.user.update!(collection_view: plan.view_change) if plan.view_change
+    end
+
+    # The account's places by comparison key: a zone's key is never among them (spec 062 AC-8.4).
+    def place_ids = @account.locations.places.pluck(:name_key, :id).to_h
+
+    # The account's zones by `[deck key, zone key]`, the pair a lot's identity holds, so a zone is never mistaken for a place
+    # or for another deck's zone of the same key.
+    def zone_ids
+      @account.locations.zones_of_decks.joins("JOIN locations parents ON parents.id = locations.parent_id")
+        .pluck("parents.name_key", "locations.zone", "locations.id").to_h { |deck_key, zone, id| [ [ deck_key, zone ], id ] }
     end
 
     # One multi-row INSERT .. ON CONFLICT per batch, on the lot's identity, setting quantity and both times: what
@@ -115,9 +129,9 @@ class CollectionImport::Apply
       Lot.connection.execute(Lot.sanitize_sql_array([ sql, *attributes.flat_map { |row| row.values_at(*LOT_WRITE_COLUMNS) } ]))
     end
 
-    # One pass over the built attributes: the location's id and the key that carries it.
-    def placed(attributes, place_ids)
-      location_id = place_ids.fetch(attributes[:location_key]) if attributes[:location_key]
+    # One pass over the built attributes: the place's or zone's id and the key that carries it (`Location::Placement`).
+    def placed(attributes, places, zones)
+      location_id = Location::Placement.resolve(attributes[:location_key], places:, zones:)
       attributes.except(:location_key).merge(location_id:,
         lot_key: Lot.key_for(attributes[:finish], attributes[:condition], attributes[:price_paid_cents], location_id))
     end

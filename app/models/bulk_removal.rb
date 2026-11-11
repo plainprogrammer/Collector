@@ -40,6 +40,9 @@ class BulkRemoval < ApplicationRecord
     transaction do
       entries = Catalog::Entry.where(id: lots_data.pluck("catalog_entry_id")).index_by(&:id)
       Catalog::Entry.preload_extensions(entries.values)
+      # Every kind of location, keyed by id: the lots are followed to where they were, and that can be a zone (spec 062 AC-5.7). A
+      # deck's row can't be one of them, since a lot is never placed in a deck, and a zone that went with its deck is missing here,
+      # so its lots come back unplaced and are counted, as for a removed place.
       locations = account.locations.where(id: lots_data.filter_map { |data| data["location_id"] }).index_by(&:id)
       unplaced = lots_data.count { |data| data["location_id"] && !locations.key?(data["location_id"]) }
       rows = restored_rows(locations)

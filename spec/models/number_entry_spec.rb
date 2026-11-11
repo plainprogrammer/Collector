@@ -101,4 +101,34 @@ RSpec.describe NumberEntry do
     expect(NumberEntry::Line.count).to eq(0)
     expect(account.lots.sole.quantity).to eq(3)
   end
+
+  # Spec 062 AC-5.7: a lot that sits in a zone stays in it. Number entry adds to the lot of the identity in the place it is given,
+  # and its Undo takes the copies out of the lot where it now is.
+  describe "with a lot in a deck's zone (spec 062 AC-5.7)" do
+    let(:deck) { create(:deck, account:, name: "Izzet Tempo") }
+    let(:zone) { deck.zone("main") }
+
+    it "adds to the lot of the zone it is given, creating no lot in a place", :aggregate_failures do
+      zoned = Lot.add!(account:, entry:, finish: "nonfoil", quantity: 2, location: zone)
+      add(quantity: 3, location: zone)
+      expect(account.lots.sole).to eq(zoned)
+      expect(zoned.reload).to have_attributes(quantity: 5, location: zone)
+    end
+
+    it "adds to the unplaced lot, not the zone's, when given no place", :aggregate_failures do
+      zoned = Lot.add!(account:, entry:, finish: "nonfoil", quantity: 2, location: zone)
+      add
+      expect(zoned.reload.quantity).to eq(2)
+      expect(account.lots.where(location_id: nil).sole.quantity).to eq(1)
+    end
+
+    it "undoes a line whose lot has since moved into a zone, keeping the lot there", :aggregate_failures do
+      line = add(quantity: 1).line
+      lot = line.lot
+      lot.update!(location: zone, quantity: 3)
+      line.reload.undo!
+      expect(lot.reload).to have_attributes(quantity: 2, location: zone)
+      expect(lot.lot_key).to end_with("|#{zone.id}")
+    end
+  end
 end

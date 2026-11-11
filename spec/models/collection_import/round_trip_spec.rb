@@ -115,14 +115,75 @@ RSpec.describe "Export and import round trip", type: :model do
     expect(ImportUpload.count).to eq(0)
   end
 
-  # An export of this instance is version 3. An older example is compared as the version 3 file it becomes: a version 1
-  # example with no locations, and every lot of an older example in no location (a restore reads such a lot as unplaced,
-  # spec 032 decision 7); each location name as the export writes it, in NFC (decision 5), which a valid example in NFD isn't
-  # (ruled 2026-10-21: AC-9.15 holds for the example once its names are normalised).
+  describe "decks and zones (spec 062 AC-8.5)" do
+    # One deck in every format the specs register, a copy in its Main and in Considering and the rest of its zones empty, two
+    # places holding a copy each, and the unplaced lots the outer `before` made.
+    def seed_decks_and_places(user)
+      entry = import_printing
+      blue, box = locations(user, "Blue binder", "Long box")
+      create(:lot, account: user.account, entry:, finish: "foil", location: blue, quantity: 2)
+      create(:lot, account: user.account, entry:, finish: "nonfoil", location: box, quantity: 3)
+      Catalog::Formats.options.map do |option|
+        create(:deck, account: user.account, name: "Deck #{option.format.name}", pair: option.value).tap do |deck|
+          create_lot_in_zone(deck, "main", entry:, quantity: 4)
+          create_lot_in_zone(deck, Catalog::Formats::CONSIDERING, entry:, quantity: 1, finish: "foil")
+        end
+      end
+    end
+
+    def collection_rows(account)
+      [ account.locations.order(:id).pluck(:id, :name, :kind, :parent_id, :zone), account.decks.order(:id).pluck(:id, :location_id, :collectible_type, :format),
+        account.lots.order(:id).pluck(:id, :quantity, :location_id, :lot_key, :created_at, :updated_at) ]
+    end
+
+    it "restores places, decks of every format with their zones, zone lots, a place's lot and an unplaced lot into a fresh account", :aggregate_failures do
+      seed_decks_and_places(source)
+      original = export(source)
+
+      expect(apply!(target, original).outcome).to eq(:applied)
+      restored = export(target)
+
+      expect(same_collection?(original, restored)).to be(true)
+      expect(restored.except("exported_at", "profile")).to eq(original.except("exported_at", "profile"))
+      expect(restored["decks"].size).to eq(Catalog::Formats.options.size)
+      expect(ExportFormatRules.problems(JSON.generate(restored))).to be_empty
+      expect(target.account.lots.where(location_id: nil)).to exist
+      target.account.decks.includes(:location).each do |deck|
+        expect(deck.zones.pluck(:zone)).to eq(Catalog::Formats.zones_for(deck.collectible_type, deck.format).map(&:key))
+      end
+      expect(target.account.lots.joins(:location).where(locations: { kind: "deck_zone" }).count).to eq(2 * Catalog::Formats.options.size)
+      expect(target.account.locations.zones_of_decks.where.not(id: target.account.lots.where.not(location_id: nil).select(:location_id)).count).to be > 0 # empty zones came across
+    end
+
+    it "refuses the same file the second time as nothing to change, writing and clearing nothing", :aggregate_failures do
+      seed_decks_and_places(source)
+      original = export(source)
+      apply!(target, original)
+      rows = collection_rows(target.account)
+      working_state = NumberEntry.create!(account: target.account)
+      again = store_import!(account: target.account, data: original, forced: true)
+
+      expect(CollectionImport.new(account: target.account.reload, file: StringIO.new(JSON.generate(original))).plan.nothing_to_change?).to be(true)
+      result = CollectionImport::Apply.new(account: target.account.reload, fingerprint: again.fingerprint, confirmed: true).call
+
+      expect(result.outcome).to eq(:nothing_to_change)
+      expect(collection_rows(target.account)).to eq(rows)
+      expect(NumberEntry.exists?(working_state.id)).to be(true)
+    end
+  end
+
+  # An export of this instance is version 4. An older example is compared as the version 4 file it becomes: a version 1
+  # example with no locations, every lot of an older example in no location (a restore reads such a lot as unplaced,
+  # spec 032 decision 7), and no decks (an older file says nothing of them, spec 062); each location name as the export writes it, in NFC (decision 5), which a valid example in NFD isn't
+  # (ruled 2026-10-21: AC-9.15 holds for the example once its names are normalised). A lot's zone names its deck by any spelling
+  # of its comparison key ("IZZET TEMPO", AC-6.12), and an export writes the deck's own: the example is compared with that.
+  def spelled(data, deck) = data["decks"].map { |entry| entry["name"] }.find { |name| Location::Name.key(name) == Location::Name.key(deck) }
+
   def as_current_version(data)
+    data = data.merge("lots" => data["lots"].map { |lot| lot["location"].is_a?(Hash) ? lot.merge("location" => lot["location"].merge("deck" => spelled(data, lot["location"]["deck"]))) : lot }) if data["format_version"] == 4
     data = data.merge("locations" => []) if data["format_version"] == 1
     data = data.merge("lots" => data["lots"].map { |lot| lot.merge("location" => nil) }) if data["format_version"] < 3
-    data = data.merge("format_version" => 3)
+    data = data.merge("format_version" => 4, "decks" => data.fetch("decks", []))
     data.merge("locations" => data["locations"].map { |location| { "name" => Location::Name.normalise(location["name"]) } })
   end
 
@@ -153,7 +214,9 @@ RSpec.describe "Export and import round trip", type: :model do
           expect(same_collection?(as_current_version(data), export(user))).to be(true)
           expect(export(user)["currency"]).to eq(data["currency"])
           expect(user.account.lots.count).to eq(data["lots"].size)
-          expect(user.account.locations.count).to eq(data.fetch("locations", []).size)
+          expect(user.account.locations.places.count).to eq(data.fetch("locations", []).size)
+          expect(user.account.decks.count).to eq(data.fetch("decks", []).size) # a deck is a location of its own kind, with its zones beside it
+          expect(user.account.locations.zones_of_decks.count).to eq(data.fetch("decks", []).sum { |deck| Catalog::Formats.zones_for(deck["collectible_type"], deck["format"]).size })
           # Once applied, the same file has nothing to change, a currency-only file among them.
           expect(CollectionImport.new(account: user.account.reload, file: StringIO.new(JSON.generate(data))).plan.nothing_to_change?).to be(true)
         end

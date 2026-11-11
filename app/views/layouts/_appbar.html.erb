@@ -10,6 +10,7 @@
       <% end %>
       <nav class="c-appbar__nav" aria-label="Main">
         <%= link_to "Collection", collection_path, "aria-current": ("page" if section == :collection) %>
+        <%= link_to "Decks", decks_path, "aria-current": ("page" if section == :decks) %>
         <%= link_to "Search", catalog_entries_path, "aria-current": ("page" if section == :search) %>
         <%= link_to "Scan", scanner_path, "aria-current": ("page" if section == :scanner), data: { turbo_prefetch: false } %>
         <%= link_to "Locations", locations_path, "aria-current": ("page" if section == :locations) %>

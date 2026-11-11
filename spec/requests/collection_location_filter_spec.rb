@@ -244,4 +244,33 @@ RSpec.describe "Filtering the collection by location", type: :request do # spec 
       expect([ response.status, count_line ]).to eq([ 422, "1 of 2 items" ])
     end
   end
+
+  # Spec 062 D6, AC-5.2, AC-5.8: a zone or a deck is never a filter value, and a lot in a zone is in no place and not unplaced.
+  describe "with a deck (spec 062)" do
+    def deck = @deck ||= create(:deck, account:, name: "Izzet Tempo")
+
+    def three_lots
+      blue
+      zoned = create_lot_in_zone(deck, "main", entry: create(:mtg_printing).entry.tap { it.update!(name: "Zone card") }, quantity: 2)
+      [ zoned, own("Place card", location: blue), own("Loose card") ]
+    end
+
+    it "reads a zone's id and a deck's id as all, in both views (AC-5.2)", :aggregate_failures do
+      three_lots
+      [ deck.zone("main").id, deck.location_id ].each do |id|
+        %w[grid table].each do |view|
+          get collection_path(location: id, view:)
+          expect([ response.status, count_line ]).to eq([ 200, "4 items" ]), "#{view} #{id}"
+        end
+      end
+    end
+
+    it "puts a lot in a zone in neither No location nor a place, and shows it under All locations (AC-5.8)", :aggregate_failures do
+      three_lots
+      { "none" => [ "Loose card" ], blue.id.to_s => [ "Place card" ], "" => [ "Loose card", "Place card", "Zone card" ] }.each do |value, names|
+        get collection_path(location: value, view: "table")
+        expect(page_html.css("tbody tr").map { it.at_css("td a").text }).to match_array(names), value
+      end
+    end
+  end
 end

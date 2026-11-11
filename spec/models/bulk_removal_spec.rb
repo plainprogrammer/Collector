@@ -192,6 +192,46 @@ RSpec.describe BulkRemoval, type: :model do
     count
   end
 
+  # Spec 062 AC-5.7: Undo follows a lot to where it was (every kind of location), a zone included.
+  describe "with a lot in a deck's zone (spec 062 AC-5.7)" do
+    def deck = @deck ||= create(:deck, account:, name: "Izzet Tempo")
+    def zone = deck.zone("main")
+
+    def removal_of(*lots)
+      selection.record!(shown_ids: lots.map(&:id), ticked_ids: lots.map(&:id), header_rendered: false, header_ticked: false)
+      described_class.remove!(selection).reload
+    end
+
+    def zoned(entry: create(:mtg_printing).entry, **attrs) = create_lot_in_zone(deck, "main", entry:, **attrs)
+
+    it "restores a zone lot in its zone, merging into the lot there, and keeps the key's zone", :aggregate_failures do
+      lot = zoned(quantity: 2)
+      removal = removal_of(lot)
+      Lot.add!(account:, entry: lot.entry, quantity: 1, location: zone)
+      undone = removal.undo!(sort:)
+      expect(undone.unplaced).to eq(0)
+      expect(account.lots.sole).to have_attributes(location: zone, quantity: 3)
+      expect(account.lots.sole.lot_key).to end_with("|#{zone.id}")
+    end
+
+    it "restores it unplaced, and says so, when its deck was removed after the removal", :aggregate_failures do
+      lot = zoned(quantity: 2)
+      removal = removal_of(lot)
+      deck.remove!
+      undone = removal.undo!(sort:)
+      expect(undone.unplaced).to eq(1)
+      expect(account.lots.sole).to have_attributes(location_id: nil, quantity: 2)
+    end
+
+    it "restores zone lots and place lots each where they were", :aggregate_failures do
+      blue = create(:location, account:)
+      zone_lot = zoned(quantity: 2)
+      place_lot = create(:lot, account:, entry: zone_lot.entry, quantity: 3, location: blue)
+      removal_of(zone_lot, place_lot).undo!(sort:)
+      expect(account.lots.pluck(:location_id, :quantity)).to contain_exactly([ zone.id, 2 ], [ blue.id, 3 ])
+    end
+  end
+
   def undo_queries_for(count)
     count.times { |n| own("Card #{n}", finish: n.even? ? "foil" : nil, price_paid_cents: n.even? ? nil : 100 * n) }
     select_all

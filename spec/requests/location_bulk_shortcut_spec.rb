@@ -194,6 +194,18 @@ RSpec.describe "Open a location's lots in bulk mode", type: :request do
       expect(BulkSelection.where(account: foreign.account)).to be_empty
     end
 
+    it "answers 404 for a deck's id and a zone's id and changes nothing (spec 062 AC-5.2, AC-3.8)", :aggregate_failures do
+      deck = create(:deck, account:, name: "Izzet Tempo")
+      create_lot_in_zone(deck, "main", quantity: 2)
+
+      [ deck.location, deck.zone("main") ].each do |other|
+        post location_selection_path(other)
+
+        expect(response).to have_http_status(:not_found)
+      end
+      expect(BulkSelection.where(account:)).to be_empty
+    end
+
     it "answers 404 for a location that doesn't exist (AC-4.2)" do
       post location_selection_path(blue.id + 1000)
 

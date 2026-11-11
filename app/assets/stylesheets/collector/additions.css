@@ -518,6 +518,27 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
 .c-pick .is-data { font-family:var(--font-mono); }
 .c-pick .is-data, .c-pagehead__stats .is-data { white-space:nowrap; }
 
+/* ---------- Decks page row actions (spec 062): Rename and Remove beside each deck ---------- */
+/* The Locations list's ghost buttons in a table cell. The cell is as narrow as its buttons (`td.c-table__actions`), the two sit
+   on one line with the list's gap and meet the 44px touch floor like the rest of the deck pages, and the deck page's own
+   links (#253) may take them over. */
+.c-decks__actions { display:flex; justify-content:flex-end; gap:var(--space-2); font-family:var(--font-sans); }
+.c-decks .c-btn { min-height:var(--touch-floor); min-width:var(--touch-floor); }
+
+/* ---------- Deck removal pages (spec 062 AC-3.1, AC-3.3): a long name wraps ---------- */
+/* A deck's name may be 60 characters with no space, and the confirmation and refusal pages say it in a heading, a sentence and
+   each held lot's "Deck › Zone" line, so each breaks inside a word on a phone instead of widening the page (the lesson of
+   `.c-locations__name` and `.c-pick`). */
+.c-decks .c-confirm :is(h1, p), .c-decks .c-list li > span:first-child { min-width:0; overflow-wrap:anywhere; }
+
+/* ---------- A field's read-only value (spec 062 AC-5.5): Edit copy of a lot in a deck's zone ---------- */
+/* The Location field of a lot in a zone is text, not a select: the zone is chosen by a later spec's picker, and a select of
+   places would unplace the lot when it is saved. It lines up with the controls around it (the select's 36px height and the
+   input's 15px text, one line high), breaks inside a long deck name instead of widening the page, and meets the touch floor
+   a control does on a coarse pointer. */
+.c-field__static { margin:0; min-height:36px; display:flex; align-items:center; font:400 15px/22px var(--font-sans); color:var(--ink); overflow-wrap:anywhere; }
+@media (pointer: coarse) { .c-field__static { min-height:var(--touch-floor); } }
+
 /* ---------- Small icon stroke (spec 063) ---------- */
 /* An icon's stroke scales with it: weight on screen = stroke-width × drawn width ÷ 24 (the viewBox). The partials write
    1.5, Lucide's weight at 20px (1.25px on screen); at 12px that is 0.75px, a hairline beside a 600-weight word, and at

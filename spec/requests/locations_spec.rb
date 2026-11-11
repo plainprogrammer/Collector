@@ -64,7 +64,7 @@ RSpec.describe "Locations", type: :request do
       add("One more")
 
       expect(response).to have_http_status(:unprocessable_content)
-      expect(field_error).to eq("You can have at most 500 locations.")
+      expect(field_error).to eq("You can have at most 500 places and decks together.")
       expect(account.locations.count).to eq(500)
     end
 
@@ -329,8 +329,8 @@ RSpec.describe "Locations", type: :request do
     describe "the ways in (Story 5)" do
       it "adds Locations after Scan in the header, current on its pages, and no tab is marked (AC-5.1, AC-5.3)", :aggregate_failures do
         get collection_path
-        expect(html.css(".c-appbar__nav a").map(&:text)).to eq(%w[Collection Search Scan Locations])
-        expect(html.css(".c-tabbar a").map { |link| link.text.strip }).to eq(%w[Collection Search Scan More])
+        expect(html.css(".c-appbar__nav a").map(&:text)).to eq(%w[Collection Decks Search Scan Locations]) # Decks joined in spec 062
+        expect(html.css(".c-tabbar a").map { |link| link.text.strip }).to eq(%w[Collection Decks Search Scan More])
 
         create(:location, account:)
         [ locations_path, edit_location_path(account.locations.first), new_location_removal_path(account.locations.first) ].each do |path|
@@ -428,6 +428,64 @@ RSpec.describe "Locations", type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(response.body).not_to include("Locations")
+    end
+  end
+
+  # Spec 062: a deck is renamed and removed as a deck (it has its own pages), and a zone on no page of its own, so every
+  # locations route answers places only.
+  describe "decks and zones (spec 062 AC-3.8, AC-4.8)" do
+    let!(:deck) { create(:deck, account:, name: "Izzet Tempo") }
+    let(:others) { [ deck.location, deck.zone("main") ] }
+
+    def snapshot = [ Location, Deck, Lot ].map { |model| model.order(:id).map(&:attributes) }
+
+    before do
+      create(:location, account:, name: "Blue binder")
+      sign_in_as(user)
+    end
+
+    it "answers 404 for a deck's id and a zone's id on every locations route and changes nothing (AC-3.8)", :aggregate_failures do
+      create_lot_in_zone(deck, "main", quantity: 2)
+      before = snapshot
+
+      others.each do |other|
+        [ -> { get edit_location_path(other) }, -> { patch location_path(other), params: { location: { name: "Renamed" } } },
+          -> { get new_location_removal_path(other) }, -> { delete location_path(other) }, -> { post location_selection_path(other) } ].each do |request|
+          request.()
+          expect(response).to have_http_status(:not_found)
+        end
+      end
+
+      expect(snapshot).to eq(before)
+      expect(BulkSelection.where(account:)).to be_empty
+    end
+
+    it "lists places only and counts only places while a deck exists (AC-4.8)", :aggregate_failures do
+      create(:location, account:, name: "Long box")
+      create_lot_in_zone(deck, "main", quantity: 2)
+
+      get locations_path
+
+      expect(listed).to eq([ "Blue binder", "Long box" ])
+      expect(html.at_css(".c-pagehead__stats").text).to eq("2 locations")
+      expect(response.body).not_to include("Izzet Tempo")
+      expect(html.css(".c-locations__list a").map { it["href"] }.grep(/#{deck.location_id}/)).to be_empty
+    end
+
+    it "lists places only on the page a refused add shows again (AC-4.8)", :aggregate_failures do
+      add("blue BINDER")
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(listed).to eq([ "Blue binder" ])
+      expect(html.at_css(".c-pagehead__stats").text).to eq("1 location")
+    end
+
+    it "still adds a place, whatever kind the request names (AC-4.8)", :aggregate_failures do
+      add("Long box", kind: "deck", parent_id: deck.location_id, zone: "main")
+      post locations_path, params: { location: { name: "Shelf", kind: "deck", parent_id: deck.location_id, zone: "main" } }
+
+      expect(response).to have_http_status(:see_other)
+      expect(account.locations.where(name: [ "Long box", "Shelf" ]).pluck(:kind, :parent_id, :zone).uniq).to eq([ [ "place", nil, nil ] ])
     end
   end
 end

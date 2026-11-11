@@ -77,9 +77,9 @@ RSpec.describe CollectionImport, type: :model do
     end
 
     it "refuses a newer version as newer, before the schema (AC-3.2)", :aggregate_failures do
-      expect(refusal_of(file([], format_version: 4).except("lots", "profile"))).to eq(
-        [ "newer_version", "/format_version", "This file was written by a newer version of Collector (format version 4). This instance reads version 3." ])
-      expect(refusal_of(file([], format_version: 4.0)).first).to eq("newer_version")
+      expect(refusal_of(file([], format_version: 5).except("lots", "profile"))).to eq(
+        [ "newer_version", "/format_version", "This file was written by a newer version of Collector (format version 5). This instance reads version 4." ])
+      expect(refusal_of(file([], format_version: 5.0)).first).to eq("newer_version")
       expect(import(file([], format_version: 1.0))).not_to be_refused
     end
 
@@ -545,6 +545,274 @@ RSpec.describe CollectionImport, type: :model do
       preview = import(file_v3([ row_in(a, "Box", quantity: 9) ], locations: [ "Box" ]))
 
       expect([ preview.added.lots, preview.removed.lots, preview.unchanged.lots ]).to eq([ 1, 0, 0 ])
+    end
+  end
+
+  # A version 4 file (spec 062): its decks beside its places, and a lot's location may be a deck's zone.
+  def file_v4(lots, locations: [], decks: [], **fields)
+    file(lots, format_version: 4, locations: locations.map { |name| { "name" => name } }, decks: decks.map { |deck| deck_in_file(deck) }, **fields)
+  end
+
+  # A deck of a file: a name alone is a Casual deck of the one collectible this suite registers; a hash is taken as written.
+  def deck_in_file(deck) = deck.is_a?(Hash) ? deck.stringify_keys : { "name" => deck, "collectible_type" => "mtg", "format" => "modern" }
+
+  def zone(deck, key) = { "deck" => deck, "zone" => key }
+
+  def refusal_rules(data) = refusal_of(data).first
+
+  describe "version 4 (spec 062 Story 6 and Story 7)" do
+    it "reads version 4 against its own schema, decks and all (AC-6.7a)", :aggregate_failures do
+      expect(import(file_v4([], decks: [ "Izzet Tempo" ]))).not_to be_refused
+      expect(import(file_v4([], decks: [ "Izzet Tempo" ], format_version: 4.0))).not_to be_refused
+      expect(refusal_of(file_v4([]).except("decks"))).to eq([ "required", "/decks", "This file isn't a well-formed export: decks is missing." ])
+    end
+
+    it "refuses a schema problem in the decks as a whole, at its pointer, and reads no row (AC-7.8)", :aggregate_failures do
+      a = printing
+      broken = file_v4([ row(a) ], decks: [ { "name" => "Izzet Tempo", "collectible_type" => "mtg" } ])
+      preview = import(broken)
+
+      expect([ preview.refusal.rule, preview.refusal.at ]).to eq([ "required", "/decks/0/format" ])
+      expect(preview.rows).to eq([])
+      expect(refusal_of(file_v4([], decks: [ "a" * 61 ])).first(2)).to eq([ "maxLength", "/decks/0/name" ])
+    end
+
+    it "refuses places and decks over 500 together as too_many_locations at /decks, and no row (AC-7.8)", :aggregate_failures do
+      preview = import(file_v4([ row(printing) ], locations: Array.new(300) { |n| "Binder #{n}" }, decks: Array.new(201) { |n| "Deck #{n}" }))
+
+      expect([ preview.refusal.rule, preview.refusal.at, preview.rows ]).to eq([ "too_many_locations", "/decks", [] ])
+    end
+
+    it "refuses a deck name over 60 code points once normalised, before the currency (AC-6.7b)", :aggregate_failures do
+      name = "#{"本" * 59}\u0344" # 60 code points as written; NFC is 61
+      expect(ExportFormat::Rules.problems(JSON.generate(file_v4([], decks: [ name ])))).to eq([ ExportFormat::Rules::Problem.new("maxLength", "/decks/0/name") ])
+
+      expect(refusal_of(file_v4([], decks: [ name ], currency: "XYZ"))).to eq(
+        [ "maxLength", "/decks/0/name", "This file isn't a well-formed export: decks.0.name isn't valid." ])
+    end
+
+    it "refuses a deck whose format or collectible type this instance doesn't register, as a whole (AC-6.11)", :aggregate_failures do
+      a = printing
+      expect(refusal_of(file_v4([ row(a) ], decks: [ "Izzet Tempo", { "name" => "Odd", "collectible_type" => "mtg", "format" => "nope" } ]))).to eq(
+        [ "unknown_format", "/decks/1/format", "This instance doesn't know the format “nope” of mtg." ])
+      expect(refusal_of(file_v4([], decks: [ { "name" => "Odd", "collectible_type" => "comics", "format" => "modern" } ]))).to eq(
+        [ "unknown_format", "/decks/0/format", "This instance doesn't know the format “modern” of comics." ])
+      expect(import(file_v4([ row(a) ], decks: [ { "name" => "Odd", "collectible_type" => "comics", "format" => "modern" } ])).rows).to eq([])
+    end
+
+    it "judges unsupported_currency before unknown_format (AC-7.4e)" do
+      data = file_v4([], decks: [ { "name" => "Odd", "collectible_type" => "mtg", "format" => "nope" } ], currency: "XYZ")
+
+      expect(refusal_rules(data)).to eq("unsupported_currency")
+    end
+
+    it "makes a problem row of a lot in a zone its deck's format lacks, naming the deck and the key as the lot spells them (AC-6.10, AC-6.7a)", :aggregate_failures do
+      a = printing
+      preview = import(file_v4([ row_in(a, zone("IZZET TEMPO", "commander")), row_in(a, zone("Izzet Tempo", "main"), finish: "foil") ], decks: [ "Izzet Tempo" ]))
+      problem = preview.problem_rows.sole.problems.sole
+
+      expect(preview).not_to be_refused
+      expect(preview.problem_rows.map(&:number)).to eq([ 1 ])
+      expect([ problem.rule, problem.at, problem.reason ]).to eq(
+        [ "unknown_zone", "/lots/0/location/zone", "The deck “IZZET TEMPO” has no zone “commander” in its format." ])
+    end
+
+    it "makes a problem row of a lot naming a deck the file doesn't list, with the reason of a deck (AC-6.10, AC-6.7a)", :aggregate_failures do
+      a = printing
+      preview = import(file_v4([ row_in(a, zone("Nope", "main")) ], decks: [ "Izzet Tempo" ]))
+      problem = preview.problem_rows.sole.problems.sole
+
+      expect(preview).not_to be_refused
+      expect([ problem.rule, problem.at, problem.reason ]).to eq([ "unknown_location", "/lots/0/location", "Its deck “Nope” isn't one of the file's decks." ])
+    end
+
+    it "reads a place's reason as before, in a version 4 file (AC-6.10)" do
+      preview = import(file_v4([ row_in(printing, "Box") ], locations: [ "Crate" ]))
+
+      expect(reasons(preview)).to eq(1 => [ "Its location “Box” isn't one of the file's locations." ])
+    end
+
+    it "never prints a raw object in a reason (AC-6.7a)", :aggregate_failures do
+      a = printing
+      preview = import(file_v4([ row_in(a, zone("Nope", "main")), row_in(a, zone("Izzet Tempo", "commander"), finish: "foil"),
+                                 row_in(a, { "deck" => "Izzet Tempo", "zone" => 5 }, finish: "nonfoil") ], decks: [ "Izzet Tempo" ]))
+      text = preview.problem_rows.flat_map { |row| row.problems.flat_map { |problem| [ problem.reason, problem.summary ] } + [ row.place.to_s ] }.join
+
+      expect(preview.problem_rows.size).to eq(3)
+      expect(text).not_to match(/[{}]|=>|"deck"/)
+    end
+
+    it "gives a row in a zone the label of its deck, with the zone's name as the format registers it, else its key (AC-7.5)", :aggregate_failures do
+      a = printing
+      preview = import(file_v4([ row_in(a, zone("izzet tempo", "main")), row_in(a, zone("Izzet Tempo", "considering"), finish: "foil"),
+                                 row_in(a, zone("Izzet Tempo", "commander"), finish: "nonfoil"), row_in(a, "Box", condition: "damaged") ],
+        locations: [ "Box" ], decks: [ "Izzet Tempo" ]))
+
+      expect(preview.rows.map(&:place)).to eq([ "izzet tempo › Main", "Izzet Tempo › Considering", "Izzet Tempo › commander", "Box" ])
+      expect(preview.rows.first.described[:location]).to eq("izzet tempo › Main")
+    end
+
+    it "keeps a lot's place out of the row of a version 1 to 3 file, and of a lot that has none (AC-7.4)", :aggregate_failures do
+      a = printing
+      expect(import(file([ row(a) ])).rows.map(&:place)).to eq([ nil ])
+      expect(import(file_v4([ row_in(a, nil) ])).rows.map(&:place)).to eq([ nil ])
+    end
+
+    it "identifies a lot in a zone by its deck's comparison key and the zone's key, so the same printing in two decks' Main is two lots (AC-7.4c)", :aggregate_failures do
+      a = printing
+      izzet = create(:deck, account:, name: "Izzet Tempo")
+      elves = create(:deck, account:, name: "Elves", format: "commander")
+      held_izzet = create_lot_in_zone(izzet, "main", entry: a, quantity: 2)
+      held_elves = create_lot_in_zone(elves, "main", entry: a, quantity: 3)
+      [ held_izzet, held_elves ].each { |lot| lot.update_columns(created_at: Time.utc(2026, 10, 1, 10), updated_at: Time.utc(2026, 10, 1, 10)) } # the rows' times
+      both = import(file_v4([ row_in(a, zone("Izzet Tempo", "main"), quantity: 2), row_in(a, zone("elves", "main"), quantity: 3) ], decks: [ "Izzet Tempo", { "name" => "Elves", "collectible_type" => "mtg", "format" => "commander" } ]))
+      one = import(file_v4([ row_in(a, zone("Izzet Tempo", "main"), quantity: 2) ], decks: [ "Izzet Tempo", { "name" => "Elves", "collectible_type" => "mtg", "format" => "commander" } ]))
+
+      expect(both.rows.map { |row| row.identity.last }).to eq([ [ "izzet tempo", "main" ], [ "elves", "main" ] ])
+      expect([ both.unchanged.lots, both.added.lots, both.removed.lots ]).to eq([ 2, 0, 0 ])
+      expect(both.rows.map { |row| both.held_lot_for(row).id }).to eq([ held_izzet.id, held_elves.id ])
+      expect([ one.unchanged.lots, one.removed.lots ]).to eq([ 1, 1 ])
+      expect(one.all_removed_lots.map(&:id)).to eq([ held_elves.id ])
+    end
+
+    it "keeps a place called like a zone's key apart from the zone (AC-6.12)", :aggregate_failures do
+      a = printing
+      place = create(:location, account:, name: "Main")
+      create_lot_in_zone(create(:deck, account:, name: "Izzet Tempo"), "main", entry: a)
+      held(a, quantity: 2, location: place)
+      preview = import(file_v4([ row_in(a, "Main", quantity: 2) ], locations: [ "Main" ], decks: [ "Izzet Tempo" ]))
+
+      expect([ preview.unchanged.lots, preview.added.lots, preview.removed.lots ]).to eq([ 1, 0, 1 ])
+      expect(preview.removed_lots.map(&:location)).to eq([ "Izzet Tempo › Main" ])
+    end
+
+    it "has the account's own export as lots with nothing to change, decks counted (AC-7.4c)", :aggregate_failures do
+      a = printing
+      izzet = create(:deck, account:, name: "Izzet Tempo")
+      create_lot_in_zone(izzet, "main", entry: a, quantity: 2)
+      create_lot_in_zone(izzet, "sideboard", entry: a, quantity: 1)
+      data = JSON.parse(CollectionExport.new(account:, at: Time.utc(2026, 11, 10)).to_json)
+      preview = import(data)
+
+      expect([ preview.unchanged.lots, preview.added.lots, preview.removed.lots, preview.changed.lots ]).to eq([ 2, 0, 0, 0 ])
+      expect([ preview.decks.counted?, preview.decks.unchanged, preview.decks.nothing_to_change? ]).to eq([ true, 1, true ])
+    end
+
+    it "reads the decks of the account only (AC-7.2)" do
+      create(:deck, name: "Elsewhere")
+      create(:deck, account:, name: "Mine")
+
+      expect(import(file_v4([], decks: [ "Mine" ])).decks.counts).to eq(added: 0, renamed: 0, format_changed: 0, unchanged: 1, removed: 0)
+    end
+
+    it "says the file lists places and decks (AC-7.4)", :aggregate_failures do
+      expect([ import(file([])).places?, import(file_v3([])).places?, import(file_v4([])).places? ]).to eq([ false, true, true ])
+      expect([ import(file([])).decks_counted?, import(file_v3([])).decks_counted?, import(file_v4([])).decks_counted? ]).to eq([ false, false, true ])
+    end
+
+    it "writes nothing and enqueues nothing for a file with decks and zone lots (AC-7.9)", :aggregate_failures do
+      a = printing
+      create(:deck, account:, name: "Held deck")
+      data = file_v4([ row_in(a, zone("Izzet Tempo", "main")), row_in(a, zone("Nope", "main"), finish: "foil") ], decks: [ "Izzet Tempo" ])
+      writes = []
+      counter = ->(*, payload) { writes << payload[:sql] if payload[:sql].match?(/\A\s*(INSERT|UPDATE|DELETE)/i) }
+
+      expect do
+        ActiveSupport::Notifications.subscribed(counter, "sql.active_record") do
+          preview = import(data)
+          [ preview.plan, preview.decks.counts, preview.removed_lots, preview.problem_counts ]
+        end
+      end.not_to have_enqueued_job
+      expect(writes).to eq([])
+    end
+  end
+
+  describe "a version 1 to 3 file and the decks held (spec 062 AC-7.4)" do
+    let!(:izzet) { create(:deck, account:, name: "Izzet Tempo") }
+
+    it "says nothing of decks: they aren't counted, the lots of the file are in places or none (AC-7.4)", :aggregate_failures do
+      a = printing
+      [ file([ row(a) ]), file_v2([ row(a) ]), file_v3([ row_in(a, nil) ]) ].each do |data|
+        preview = import(data)
+        expect(preview).not_to be_refused
+        expect(preview.decks.counted?).to be(false)
+        expect(preview.rows.map(&:place)).to eq([ nil ])
+      end
+    end
+
+    it "lists a held lot in a zone as removed, with its label, since no row of such a file matches it (AC-7.4)", :aggregate_failures do
+      a = printing
+      create_lot_in_zone(izzet, "main", entry: a, quantity: 3)
+      held(a, quantity: 1)
+      [ import(file([ row(a) ])), import(file_v3([ row_in(a, nil) ])) ].each do |preview|
+        expect(removed_lines(preview)).to eq([ [ "Izzet Tempo › Main", 3 ] ])
+        expect([ preview.unchanged.lots, preview.removed.lots ]).to eq([ 1, 1 ])
+      end
+    end
+
+    it "refuses a version 2 or 3 file with a place that has a held deck's comparison key, at the place (AC-7.4a)", :aggregate_failures do
+      reason = "A deck you have is called “Izzet Tempo”, like a place in this file. Rename one of them and preview again."
+      expect(refusal_of(file_v2([], locations: [ "Box", "IZZET tempo" ]))).to eq([ "deck_name_taken", "/locations/1", reason ])
+      expect(refusal_of(file_v3([], locations: [ "izzet tempo" ]))).to eq([ "deck_name_taken", "/locations/0", reason ])
+      expect(refusal_of(file_v3([], locations: [ "Izzet Tempo" ]))).to eq([ "deck_name_taken", "/locations/0", reason ])
+    end
+
+    it "never refuses a version 1 file for a deck, which has no places (AC-7.4a)" do
+      expect(import(file([]))).not_to be_refused
+    end
+
+    it "reads the name of a place in NFD as its stored spelling when it meets a deck (AC-7.4a)" do
+      create(:deck, account:, name: "Café")
+
+      expect(refusal_of(file_v3([], locations: [ "Cafe\u0301" ])).first(2)).to eq([ "deck_name_taken", "/locations/0" ])
+    end
+
+    it "refuses a version 2 or 3 file whose places and the held decks would pass 500, as a whole (AC-7.4b)", :aggregate_failures do
+      create(:deck, account:, name: "Elves")
+      reason = "This file and your decks together would have more than 500 locations."
+      names = Array.new(499) { |n| "Binder #{n}" }
+
+      expect(refusal_of(file_v2([], locations: names))).to eq([ "too_many_with_decks", "/locations", reason ])
+      expect(refusal_of(file_v3([ row_in(printing, nil) ], locations: names)).first).to eq("too_many_with_decks")
+      expect(import(file_v3([], locations: names.first(498)))).not_to be_refused
+    end
+
+    it "does not refuse the same file for an account without decks, and never a version 1 file (AC-7.4b)", :aggregate_failures do
+      create(:deck, account:, name: "Elves")
+      other = create(:user).account
+      big = file_v3([], locations: Array.new(500) { |n| "Binder #{n}" })
+
+      expect(described_class.new(account: other, file: StringIO.new(JSON.generate(big)))).not_to be_refused
+      expect(import(file([]))).not_to be_refused
+    end
+
+    it "judges the file's own places, not the places held (AC-7.4b)" do
+      create(:deck, account:, name: "Elves")
+      30.times { |n| create(:location, account:, name: "Held #{n}") }
+
+      expect(import(file_v3([], locations: [ "Only one" ]))).not_to be_refused
+    end
+
+    it "decides deck_name_taken before too_many_with_decks, and unsupported_currency before either (AC-7.4e)", :aggregate_failures do
+      create(:deck, account:, name: "Elves")
+      names = Array.new(499) { |n| "Binder #{n}" } + [ "izzet tempo" ]
+      data = file_v3([], locations: names)
+
+      expect(refusal_rules(data)).to eq("deck_name_taken")
+      expect(refusal_rules(data.merge("currency" => "XYZ"))).to eq("unsupported_currency")
+    end
+
+    it "reads nothing of another account's decks (AC-7.4a)" do
+      other = create(:user).account
+      create(:deck, account: other, name: "Elsewhere")
+
+      expect(described_class.new(account: other, file: StringIO.new(JSON.generate(file_v3([], locations: [ "Izzet Tempo" ]))))).not_to be_refused
+    end
+
+    it "writes nothing when it refuses (AC-7.4a)" do
+      data = file_v3([ row_in(printing, nil) ], locations: [ "Izzet Tempo" ])
+
+      expect { import(data) }.not_to(change { [ Location.count, Deck.count, Lot.count, Location.maximum(:updated_at) ] })
     end
   end
 end

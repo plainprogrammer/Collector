@@ -148,6 +148,55 @@ RSpec.describe "Lot moves", type: :request do
     end
   end
 
+  # Spec 062 D6, AC-5.1, AC-5.2, AC-5.6: a deck's places are not destinations; a lot in a zone moves out as any lot does.
+  context "with a deck (spec 062)" do
+    def binder = @binder ||= create(:location, account:, name: "Binder")
+    def deck = @deck ||= create(:deck, account:, name: "Izzet Tempo")
+    def zone = deck.zone("main")
+    def zone_lot = @zone_lot ||= create_lot_in_zone(deck, "main", entry:, quantity: 4)
+
+    before do
+      sign_in_as(user)
+      box
+      binder
+      deck
+    end
+
+    it "offers the places and No location, never a deck or a zone, to a lot in a place (AC-5.1)" do
+      get new_lot_move_path(create(:lot, account:, entry:, location: box))
+      expect(html.css("select#move_location_id option").map(&:text)).to eq([ "No location", "Binder" ])
+    end
+
+    it "offers No location and the places for a lot in a zone, and its own zone is not a destination (AC-5.6)", :aggregate_failures do
+      get new_lot_move_path(zone_lot)
+      expect(response).to have_http_status(:ok)
+      expect(html.css("select#move_location_id option").map(&:text)).to eq([ "No location", "Binder", "Long box" ])
+      expect(html.at_css(".c-pagehead__stats").text).to include("Izzet Tempo › Main") # the label, never the zone's name alone (AC-5.4)
+    end
+
+    it "refuses a zone's id and a deck's id as the destination, moving nothing (AC-5.2)", :aggregate_failures do
+      [ zone.id, deck.location_id ].each do |id|
+        post lot_move_path(lot), params: { move: { copies: "1", location_id: id } }
+        expect(response).to have_http_status(:not_found)
+      end
+      expect(account.lots.pluck(:location_id, :quantity)).to eq([ [ box.id, 4 ] ])
+    end
+
+    it "moves some copies of a lot in a zone to a place, merging into an equal lot there (AC-5.6)", :aggregate_failures do
+      twin = create(:lot, account:, entry:, quantity: 1, location: binder)
+      post lot_move_path(zone_lot), params: { move: { copies: "2", location_id: binder.id } }
+      expect(response).to have_http_status(:see_other)
+      expect(twin.reload.quantity).to eq(3)
+      expect(zone_lot.reload.attributes.values_at("location_id", "quantity")).to eq([ zone.id, 2 ])
+    end
+
+    it "moves every copy of a lot in a zone to No location (AC-5.6)", :aggregate_failures do
+      post lot_move_path(zone_lot), params: { move: { copies: "4", location_id: "" } }
+      expect(response).to have_http_status(:see_other)
+      expect(zone_lot.reload.attributes.values_at("location_id", "quantity")).to eq([ nil, 4 ])
+    end
+  end
+
   context "when signed out" do
     it "sends the page and the write to sign in (AC-6.5)", :aggregate_failures do
       other = create(:lot, entry:)

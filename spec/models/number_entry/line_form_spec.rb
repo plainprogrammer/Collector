@@ -153,5 +153,17 @@ RSpec.describe NumberEntry::LineForm do
       blue
       expect(line("47", account:).locations).to eq([ blue ])
     end
+
+    it "offers places only, never a deck or a zone, and refuses their ids with the field's error (spec 062 AC-5.1, AC-5.2)", :aggregate_failures do
+      deck = create(:deck, account:)
+      expect(line("47", account:).locations).to be_empty
+      blue
+      expect(line("47", account:).locations).to eq([ blue ])
+      [ deck.location_id, deck.zone("main").id ].each do |id|
+        form = line("47", location: id.to_s, account:)
+        expect(form).not_to be_valid, id.to_s
+        expect(form.errors[:location]).to eq([ "That location isn't one of yours any more. Choose again." ]), id.to_s
+      end
+    end
   end
 end
