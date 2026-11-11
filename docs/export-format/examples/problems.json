@@ -338,5 +338,60 @@
     "why": "Two lots have the same entry, finish, condition and price paid, in one zone of decks whose names differ only in case, so they are one deck and one lot.",
     "rule": "duplicate_lot",
     "at": "/lots/1"
+  },
+  "invalid/proxies-missing.json": {
+    "why": "A version 4 file has no proxies. The list is always present, empty when the collector has none.",
+    "rule": "required",
+    "at": "/proxies"
+  },
+  "invalid/proxies-not-a-list.json": {
+    "why": "The proxies are one object, not a list.",
+    "rule": "type",
+    "at": "/proxies"
+  },
+  "invalid/proxy-not-an-object.json": {
+    "why": "A proxy is a number, not an object.",
+    "rule": "type",
+    "at": "/proxies/0"
+  },
+  "invalid/proxy-quantity-zero.json": {
+    "why": "A proxy's quantity is 0.",
+    "rule": "minimum",
+    "at": "/proxies/0/quantity"
+  },
+  "invalid/proxy-quantity-10000.json": {
+    "why": "A proxy's quantity is over 9,999.",
+    "rule": "maximum",
+    "at": "/proxies/0/quantity"
+  },
+  "invalid/proxy-extra-key.json": {
+    "why": "A proxy has a key besides deck, zone, entry, finish and quantity.",
+    "rule": "schema",
+    "at": "/proxies/0/slot"
+  },
+  "invalid/proxy-finish-blank.json": {
+    "why": "A proxy's finish is only whitespace; not recorded is written as null.",
+    "rule": "pattern",
+    "at": "/proxies/0/finish"
+  },
+  "invalid/proxy-entry-missing.json": {
+    "why": "A proxy has no entry.",
+    "rule": "required",
+    "at": "/proxies/0/entry"
+  },
+  "invalid/proxy-deck-unlisted.json": {
+    "why": "A proxy names a deck that none of the file's decks has.",
+    "rule": "unknown_location",
+    "at": "/proxies/0/deck"
+  },
+  "invalid/proxy-duplicate.json": {
+    "why": "Two proxies have the same deck, zone, entry and finish.",
+    "rule": "duplicate_proxy",
+    "at": "/proxies/1"
+  },
+  "invalid/proxy-duplicate-deck-case.json": {
+    "why": "Two proxies have the same zone, entry and finish in decks that differ only in case, so they are one deck and one proxy.",
+    "rule": "duplicate_proxy",
+    "at": "/proxies/1"
   }
 }

@@ -1,7 +1,10 @@
 <section class="c-zone">
   <div class="c-section__head">
     <h2 class="c-section__title" id="zone-<%= zone.id %>"><%= zone.name %></h2>
-    <span class="c-section__count"><%= deck_counts_line(zone.owned) %></span>
+    <span class="c-section__count"><%= deck_counts_line(zone.owned, zone.proxy) %></span>
+    <div class="c-section__actions">
+      <%= link_to new_deck_zone_proxy_path(@deck, zone.location.zone), class: "c-btn c-btn--ghost c-btn--sm" do %><%= render "icons/plus" %>Add a proxy<span class="c-sr"> to <%= zone.name %></span><% end %>
+    </div>
   </div>
   <% if zone.empty? %>
     <p class="c-zone__empty">No cards in <%= zone.name %> yet.</p>
@@ -15,12 +18,13 @@
             <th class="c-zone__c-owned is-num is-opt">Owned</th>
             <th class="c-zone__c-proxy is-num is-opt">Proxy</th>
             <th class="c-zone__c-total is-num">Total</th>
+            <th class="c-zone__c-menu"><span class="c-sr">Actions</span></th>
           </tr>
         </thead>
         <% zone.groups.each do |group| %>
           <tbody>
             <% if group.name %>
-              <tr class="c-zone__group"><th scope="rowgroup" colspan="5"><%= group.name %><span class="c-zone__groupcount"><%= number_with_delimiter(group.owned) %></span></th></tr>
+              <tr class="c-zone__group"><th scope="rowgroup" colspan="6"><%= group.name %><span class="c-zone__groupcount"><%= number_with_delimiter(group.total) %></span></th></tr>
             <% end %>
             <%= render partial: "decks/card_row", collection: group.rows, as: :row %>
           </tbody>

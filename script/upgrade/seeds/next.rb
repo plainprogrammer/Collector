@@ -55,6 +55,8 @@ locations = [ "Binder A", "Shelf B" ].map { |location| Location.create!(account:
 # A deck with a lot in a zone, so the upgrade proof carries decks, their zones and a placed lot across (spec 062 AC-9.2).
 deck = Deck::Creation.new(account: ada.account, name: "Upgrade Deck", format: "mtg/modern").tap(&:save!).deck
 Lot.add!(account: ada.account, entry: entries.first, quantity: 3, finish: "nonfoil", location: deck.zone("main"))
+# A proxy beside the deck's lot, so the next release's upgrade proof carries `deck_proxies` across (spec 068 AC-8.6, spec 031's coverage rule).
+Deck::Proxy.add!(account: ada.account, zone: deck.zone("sideboard"), entry: entries.first, finish: "foil", quantity: 2)
 NumberEntry.add!(account: ada.account, entry: entries.first, quantity: 2, finish: "foil", line_key: SecureRandom.hex(16))
 plan = Object.new
 def plan.fingerprint(checksum) = "upgrade-seed-#{checksum}"

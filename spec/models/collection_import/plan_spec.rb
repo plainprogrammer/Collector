@@ -280,11 +280,11 @@ RSpec.describe CollectionImport::Plan, type: :model do
         expect(eur.plan.fingerprint("sum")).to eq(old.call([ [ "Box" ], [], [] ], [ "USD", "EUR" ]))
       end
 
-      it "puts the decks' part after the locations' and before the currency change, only for a version 4 plan" do
+      it "puts the decks' part, then the proxies' (empty here), after the locations' and before the currency change, only for a version 4 plan" do
         create(:deck, account:, name: "Old")
         plan = import_v4([ import_row(a, location: nil) ], locations: [ "Box" ], decks: [ "New" ], currency: "EUR").plan
         expected = Digest::SHA256.hexdigest(JSON.generate([ "sum", [ [ 1, "added" ] ], [], [], nil, [ [ "Box" ], [], [] ],
-          [ [ "New" ], [], [], [ [ "Old" ] ] ], [ "USD", "EUR" ] ]))
+          [ [ "New" ], [], [], [ [ "Old" ] ] ], [ [], [], [] ], [ "USD", "EUR" ] ]))
 
         expect(plan.fingerprint("sum")).to eq(expected)
       end

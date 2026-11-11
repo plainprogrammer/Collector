@@ -17,13 +17,16 @@ module ExportFormat
     # or 3 file. Keep in step with the schemas' maxItems for locations and decks (a spec checks it).
     MAX_LOCATIONS = Location::MAX_PER_ACCOUNT
     # The rules a schema can't state, and the two that apply before a schema can. too_many_locations is version 4's count of
-    # places and decks together, which no maxItems of one list can state.
-    RULES = %w[not_utf8 not_json not_a_time changed_before_added duplicate_lot duplicate_location unknown_location too_many_locations].freeze
+    # places and decks together, which no maxItems of one list can state. duplicate_proxy is version 4's second proxy of one
+    # identity (spec 068).
+    RULES = %w[not_utf8 not_json not_a_time changed_before_added duplicate_lot duplicate_location duplicate_proxy unknown_location too_many_locations].freeze
     SCHEMA_DIRECTORY = Pathname(__dir__)
     TIME = /\A(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})Z\z/
     JSON_TYPES = %w[array boolean integer null number object string].freeze
     # The fields under a lot that make its identity (ADR 0019, ADR 0025, ADR 0028): a deck's zone has two more under its location.
     IDENTITY_FIELDS = %w[entry entry/collectible_type entry/source_id finish condition price_paid location location/deck location/zone].freeze
+    # The fields under a proxy that make its identity (spec 068): the deck, the zone, the entry's type and source id, the finish.
+    PROXY_IDENTITY_FIELDS = %w[deck zone entry entry/collectible_type entry/source_id finish].freeze
 
     def self.schema_file(version = VERSION) = SCHEMA_DIRECTORY.join("v#{version}.schema.json")
 
@@ -33,6 +36,9 @@ module ExportFormat
 
     # The schema of one lot, $defs/lot, whose own $refs resolve against the whole schema of its version.
     def self.lot_schemer(version = VERSION) = (@lot_schemers ||= {})[version] ||= schemer(version).ref("#/$defs/lot")
+
+    # The schema of one proxy, $defs/proxy (version 4), checked one at a time like a lot (spec 068 decision 18).
+    def self.proxy_schemer(version = VERSION) = (@proxy_schemers ||= {})[version] ||= schemer(version).ref("#/$defs/proxy")
 
     # The version whose schema judges +data+: its own when this instance reads it, else the oldest. A file with a missing,
     # unreadable or unknown version is then judged as it always was: by version 1's schema, which names the version
@@ -101,18 +107,23 @@ module ExportFormat
 
     # The schema's problems, in the order a whole-file pass gives them. The lots are checked one at a time against
     # $defs/lot, each lot's errors mapped before the next lot's (spec 025 decision 13: json_schemer holds a result tree
-    # for everything it validates in one call). The rest of the file, locations and decks included, is checked with no lots; its
-    # errors at the root (a missing key) follow the lots', as json_schemer reports what "properties" finds before the
-    # root's own "required". Data that isn't an object, or whose lots aren't an array, is checked whole: no lot is
-    # checked then, so its tree is small.
+    # for everything it validates in one call), and from version 4 the proxies the same way against $defs/proxy, after the
+    # lots (spec 068 decision 18). The rest of the file, locations and decks included, is checked with no lots and no proxies;
+    # its errors at the root (a missing key) follow the lots' and the proxies', as json_schemer reports what "properties"
+    # finds before the root's own "required". Data that isn't an object, or whose lots aren't an array, is checked whole: no
+    # lot is checked then, so its tree is small. A `proxies` that isn't a list stays in the shell, where the schema names it.
     def self.schema_problems(data, version)
       return problems_from(schemer(version).validate(data)) unless data.is_a?(Hash) && data["lots"].is_a?(Array)
 
       over = names_over_limit?(data, version)
       data = cut_names(data) if over
-      root, header = schemer(version).validate(data.merge("lots" => [])).partition { |error| error["data_pointer"].empty? }
+      proxies = data["proxies"] if version >= 4 && data["proxies"].is_a?(Array)
+      shell = data.merge("lots" => [])
+      shell = shell.merge("proxies" => []) if proxies
+      root, header = schemer(version).validate(shell).partition { |error| error["data_pointer"].empty? }
       lots = data["lots"].each_with_index.flat_map { |lot, index| problems_from(lot_schemer(version).validate(lot), "/lots/#{index}") }
-      problems_from(header) + (over ? [ over_limit_problem(version) ] : []) + lots + problems_from(root)
+      rows = proxies ? proxies.each_with_index.flat_map { |proxy, index| problems_from(proxy_schemer(version).validate(proxy), "/proxies/#{index}") } : []
+      problems_from(header) + (over ? [ over_limit_problem(version) ] : []) + lots + rows + problems_from(root)
     end
 
     # Whether the file lists more names than it may, so that only the first MAX_LOCATIONS of each list are checked and what
@@ -162,7 +173,9 @@ module ExportFormat
       failed = failed | long.to_set(&:at)
       repeats = lots.select { |lot, index| identity_readable?(lot, "/lots/#{index}", failed) }.group_by { |lot, _index| identity(lot, version) }.values
         .flat_map { |group| group.drop(1).map { |_lot, index| Problem.new("duplicate_lot", "/lots/#{index}") } }
-      long + not_times + backwards + repeats + unlisted_places(data, lots, failed, version) + (version >= 2 ? repeated_locations(data, failed, version) : [])
+      proxies = version >= 4 && data["proxies"].is_a?(Array) ? data["proxies"].each_with_index.select { |proxy, _index| proxy.is_a?(Hash) } : []
+      long + not_times + backwards + repeats + unlisted_places(data, lots, failed, version) + (version >= 2 ? repeated_locations(data, failed, version) : []) +
+        repeated_proxies(proxies, failed) + unlisted_proxy_decks(data, proxies, failed)
     end
 
     # The decks whose well-formed name is over MAX_LENGTH code points once normalised (NFC): U+0344 and others decompose to
@@ -231,6 +244,42 @@ module ExportFormat
       end
     end
 
+    # The second and later proxies of one identity (spec 068, `duplicate_proxy`): the deck by comparison key, so "Izzet" and
+    # "izzet" are one deck. A proxy whose identity fields failed the schema has nothing to compare, as a lot's doesn't.
+    def self.repeated_proxies(proxies, failed)
+      readable = proxies.select { |proxy, index| proxy_identity_readable?(proxy, "/proxies/#{index}", failed) }
+      readable.group_by { |proxy, _index| proxy_identity(proxy) }.values
+        .flat_map { |group| group.drop(1).map { |_proxy, index| Problem.new("duplicate_proxy", "/proxies/#{index}") } }
+    end
+
+    # The proxies whose deck isn't one of the file's decks, by comparison key (`unknown_location`, at the proxy's `deck`): a
+    # proxy whose deck failed the schema has nothing to compare, and none is compared against a list that failed.
+    def self.unlisted_proxy_decks(data, proxies, failed)
+      keys = listed_keys(data, "decks", failed, 4) or return []
+
+      proxies.filter_map do |proxy, index|
+        at = "/proxies/#{index}"
+        next if failed.include?(at) || failed.include?("#{at}/deck")
+
+        Problem.new("unknown_location", "#{at}/deck") unless keys.include?(Location::Name.key(Location::Name.normalise(proxy["deck"])))
+      end
+    end
+
+    # What identifies a proxy (spec 068): the deck's comparison key, the zone key, the entry's type and source id, the finish.
+    #
+    # @param proxy [Hash] a proxy of the file whose identity fields passed the schema
+    # @return [Array] five values
+    def self.proxy_identity(proxy)
+      [ Location::Name.key(Location::Name.normalise(proxy["deck"])), proxy["zone"], proxy.dig("entry", "collectible_type"), proxy.dig("entry", "source_id"), proxy["finish"] ]
+    end
+
+    # Whether the proxy at +at+ has an identity to compare: none of its identity fields is among the +failed+ pointers.
+    #
+    # @return [Boolean]
+    def self.proxy_identity_readable?(proxy, at, failed)
+      !failed.include?(at) && PROXY_IDENTITY_FIELDS.none? { |field| failed.include?("#{at}/#{field}") }
+    end
+
     def self.non_finite?(value)
       case value
       when Float then !value.finite?
@@ -250,6 +299,6 @@ module ExportFormat
     end
 
     private_class_method :non_finite?, :schema_problems, :names_over_limit?, :cut_names, :over_limit_problem, :problems_from, :rule_problems, :long_deck_names, :unlisted_places,
-                         :listed_keys, :location_failed?, :place_key, :repeated_locations, :changed_before_added?, :moment?
+                         :listed_keys, :location_failed?, :place_key, :repeated_locations, :repeated_proxies, :unlisted_proxy_decks, :changed_before_added?, :moment?
   end
 end

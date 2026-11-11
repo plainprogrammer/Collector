@@ -123,6 +123,65 @@ RSpec.describe Deck::Page, type: :model do
     end
   end
 
+  describe "proxies (spec 068)" do
+    let(:deck) { create(:deck, account:) }
+    let(:bolt) { create(:mtg_printing).entry }
+
+    def proxy(zone, entry, finish: "nonfoil", quantity: 1) = create(:deck_proxy, zone: deck.zone(zone), account: deck.account, entry:, finish:, quantity:)
+
+    it "sums a printing's proxies of every finish into its row and lists each as a line (AC-2.1, AC-2.2)", :aggregate_failures do
+      proxy("main", bolt, finish: "foil", quantity: 2)
+      proxy("main", bolt, finish: "nonfoil", quantity: 3)
+      create_lot_in_zone(deck, "main", entry: bolt, quantity: 4)
+
+      row = page_of(deck).zones.first.groups.first.rows.first
+
+      expect([ row.owned, row.proxy, row.total ]).to eq([ 4, 5, 9 ])
+      expect(row.lines.map { [ it.finish, it.quantity ] }).to contain_exactly([ "foil", 2 ], [ "nonfoil", 3 ])
+    end
+
+    it "makes a row of a printing that has a proxy and no copy, with Owned 0 (AC-2.2)", :aggregate_failures do
+      proxy("sideboard", bolt, quantity: 2)
+
+      zone = page_of(deck).zones.find { it.name == "Sideboard" }
+
+      expect(zone.empty?).to be(false)
+      expect(zone.groups.flat_map(&:rows).map { [ it.owned, it.proxy, it.total ] }).to eq([ [ 0, 2, 2 ] ])
+    end
+
+    it "counts owned, proxy and total in the zone, the group and the page (AC-2.3)", :aggregate_failures do
+      create_lot_in_zone(deck, "main", entry: bolt, quantity: 4)
+      proxy("main", bolt, quantity: 5)
+      proxy("considering", create(:mtg_printing).entry, quantity: 2)
+      page = page_of(deck)
+
+      expect([ page.owned, page.proxy, page.total ]).to eq([ 4, 7, 11 ])
+      main = page.zones.find { it.name == "Main" }
+      expect([ main.owned, main.proxy, main.total ]).to eq([ 4, 5, 9 ])
+      expect(main.groups.first.total).to eq(9)
+    end
+
+    it "counts no proxy of another deck, another account or a place (AC-2.8 by value)", :aggregate_failures do
+      other = create(:deck, account: deck.account, name: "Other")
+      create(:deck_proxy, zone: other.zone("main"), account: other.account, entry: bolt)
+      stranger = create(:deck_proxy, entry: bolt) # another account's deck
+
+      expect(stranger.account).not_to eq(deck.account)
+      expect(page_of(deck).proxy).to eq(0)
+    end
+
+    it "reads the proxies in one statement more than before, however many there are (AC-2.10)", :aggregate_failures do
+      none = page_of(deck).then { |page| count_queries { page.zones } } # the deck and its location are read outside the count
+      create_lot_in_zone(deck, "main")
+      proxy("main", create(:mtg_printing).entry)
+      some = page_of(deck).then { |page| count_queries { page.zones } }
+      6.times { |n| proxy(%w[main sideboard considering][n % 3], create(:mtg_printing).entry) }
+      many = page_of(deck).then { |page| count_queries { page.zones } }
+
+      expect([ none, some, many ]).to eq([ 3, 6, 6 ]) # the zones, the lot sums, the proxies; then the entries, their sets and one extension read
+    end
+  end
+
   describe "statements (AC-2.10)" do
     def seed(zones:, printings:)
       printings.times do |i|
@@ -131,13 +190,13 @@ RSpec.describe Deck::Page, type: :model do
       end
     end
 
-    it "runs 5 statements for a small deck and for a large one alike", :aggregate_failures do
+    it "runs 6 statements for a small deck and for a large one alike", :aggregate_failures do
       seed(zones: %w[main], printings: 1)
       small = page_of(deck).then { |page| count_queries { page.zones } } # the deck and its location are read outside the count
       seed(zones: %w[main sideboard considering], printings: 12)
       large = page_of(deck).then { |page| count_queries { page.zones } }
 
-      expect([ small, large ]).to eq([ 5, 5 ]) # the zones, the copies, the entries, their sets, the one extension read
+      expect([ small, large ]).to eq([ 6, 6 ]) # the zones, the copies, the proxies, the entries, their sets, the one extension read
     end
   end
 end

@@ -72,9 +72,10 @@ RSpec.describe "The export format's examples" do
   it "has valid, invalid and comparison examples", :aggregate_failures do
     expect(valid.keys).to match_array(%w[valid/collection-v2.json valid/collection-v3.json valid/collection-v4.json valid/collection.json valid/deck-name-60.json
       valid/decks-500.json valid/decks-all-formats.json valid/empty-v2.json valid/empty-v3.json valid/empty-v4.json valid/empty.json
-      valid/location-name-60.json valid/locations-500.json valid/locations-nfd.json valid/lot-in-zone.json valid/lot-location-60.json valid/lot-location-nfd.json])
-    expect(invalid.size).to eq(68)
-    expect(comparison.size).to eq(22)
+      valid/location-name-60.json valid/locations-500.json valid/locations-nfd.json valid/lot-in-zone.json valid/lot-location-60.json valid/lot-location-nfd.json
+      valid/proxies-v4.json])
+    expect(invalid.size).to eq(79)
+    expect(comparison.size).to eq(23)
   end
 
   it "finds nothing wrong with any valid or comparison example (AC-2.1)" do
@@ -394,7 +395,7 @@ RSpec.describe "The export format's examples" do
       original = JSON.parse(v4base)
       different = parsed(comparison).select { |name, _file| name.start_with?("comparison/v4-different-") }
 
-      expect(different.keys.map { |name| name[/v4-different-(.+)\.json/, 1] }).to match_array(%w[deck-format deck-name lot-zone])
+      expect(different.keys.map { |name| name[/v4-different-(.+)\.json/, 1] }).to match_array(%w[deck-format deck-name lot-zone proxy-added])
       different.each { |name, file| expect(ExportFormatRules.same_collection?(original, file)).to be(false), name }
     end
 
@@ -404,6 +405,71 @@ RSpec.describe "The export format's examples" do
 
       expect(ExportFormatRules.identity(lower["lots"][0], 4)).to eq(ExportFormatRules.identity(upper["lots"][0], 4))
       expect(ExportFormatRules.same_collection?(lower, upper)).to be(false)
+    end
+
+    describe "proxies (spec 068)" do
+      def v4_with(proxies) = JSON.parse(v4base).tap { |data| data["proxies"] = proxies }
+
+      def proxy(**changes)
+        base = JSON.parse(v4base)
+        { "deck" => base["decks"][0]["name"], "zone" => "main", "entry" => base["lots"][0]["entry"], "finish" => "foil", "quantity" => 2 }.merge(changes.transform_keys(&:to_s))
+      end
+
+      it "finds each listed variant of a malformed proxy, one problem each", :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- a table of variants
+        {
+          [ proxy.merge("quantity" => 0) ] => %w[minimum /proxies/0/quantity],
+          [ proxy.merge("quantity" => 10_000) ] => %w[maximum /proxies/0/quantity],
+          [ proxy.merge("quantity" => 2.5) ] => %w[type /proxies/0/quantity],
+          [ proxy.merge("quantity" => "2") ] => %w[type /proxies/0/quantity],
+          [ proxy.except("quantity") ] => %w[required /proxies/0/quantity],
+          [ proxy.except("finish") ] => %w[required /proxies/0/finish],
+          [ proxy.merge("finish" => " ") ] => %w[pattern /proxies/0/finish],
+          [ proxy.except("deck") ] => %w[required /proxies/0/deck],
+          [ proxy.merge("deck" => "Izzet  Tempo") ] => %w[pattern /proxies/0/deck],
+          [ proxy.except("zone") ] => %w[required /proxies/0/zone],
+          [ proxy.merge("zone" => "") ] => %w[pattern /proxies/0/zone],
+          [ proxy.except("entry") ] => %w[required /proxies/0/entry],
+          [ proxy.merge("slot" => 1) ] => %w[schema /proxies/0/slot],
+          [ 5 ] => %w[type /proxies/0],
+          [ proxy.merge("deck" => "Nope") ] => %w[unknown_location /proxies/0/deck],
+          [ proxy, proxy ] => %w[duplicate_proxy /proxies/1],
+          [ proxy, proxy.merge("deck" => "IZZET TEMPO") ] => %w[duplicate_proxy /proxies/1]
+        }.each do |proxies, (rule, at)|
+          expect(problems_of(JSON.generate(v4_with(proxies)))).to eq([ { "rule" => rule, "at" => at } ]), proxies.inspect
+        end
+      end
+
+      it "finds a missing or malformed list at the list", :aggregate_failures do
+        expect(problems_of(JSON.generate(JSON.parse(v4base).tap { it.delete("proxies") }))).to eq([ { "rule" => "required", "at" => "/proxies" } ])
+        expect(problems_of(JSON.generate(v4_with({})))).to eq([ { "rule" => "type", "at" => "/proxies" } ])
+      end
+
+      it "accepts a proxy with no finish, two finishes of one printing and a deck in another case", :aggregate_failures do
+        expect(problems_of(JSON.generate(v4_with([ proxy("finish" => nil) ])))).to be_empty
+        expect(problems_of(JSON.generate(v4_with([ proxy("finish" => "foil"), proxy("finish" => "nonfoil") ])))).to be_empty
+        expect(problems_of(JSON.generate(v4_with([ proxy("deck" => "IZZET TEMPO") ])))).to be_empty
+      end
+
+      it "carries proxies of two finishes, a null finish and two zones in the valid example", :aggregate_failures do
+        file = JSON.parse(valid.fetch("valid/proxies-v4.json"))
+
+        expect(file["proxies"].map { it["finish"] }).to include("foil", "nonfoil", nil)
+        expect(file["proxies"].map { it["zone"] }.uniq.size).to be >= 2
+        expect(problems_of(valid.fetch("valid/proxies-v4.json"))).to be_empty
+      end
+
+      it "holds the same collection for the same proxies in another order, and a different one for any change (spec 068 AC-7.3)", :aggregate_failures do
+        original = v4_with([ proxy("finish" => "foil"), proxy("finish" => "nonfoil") ])
+        reordered = v4_with(original["proxies"].reverse)
+
+        expect(ExportFormatRules.same_collection?(original, reordered)).to be(true)
+        [ proxy("finish" => "foil", "quantity" => 3), proxy("finish" => "etched"), proxy("zone" => "sideboard"), proxy("deck" => "izzet tempo") ].each do |changed|
+          other = v4_with([ changed, proxy("finish" => "nonfoil") ])
+          expect(ExportFormatRules.same_collection?(original, other)).to be(false), changed.inspect
+        end
+        expect(ExportFormatRules.same_collection?(original, v4_with([ proxy("finish" => "foil") ]))).to be(false)
+        expect(ExportFormatRules.same_collection?(JSON.parse(v4base), JSON.parse(comparison.fetch("comparison/v4-different-proxy-added.json")))).to be(false)
+      end
     end
   end
 end

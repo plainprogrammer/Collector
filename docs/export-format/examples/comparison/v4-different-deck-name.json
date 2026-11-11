@@ -26,6 +26,7 @@
       "format": "commander"
     }
   ],
+  "proxies": [],
   "lots": [
     {
       "entry": {

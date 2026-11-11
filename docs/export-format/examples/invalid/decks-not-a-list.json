@@ -19,6 +19,7 @@
     "collectible_type": "mtg",
     "format": "modern"
   },
+  "proxies": [],
   "lots": [
     {
       "entry": {

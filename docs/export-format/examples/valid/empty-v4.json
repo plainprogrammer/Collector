@@ -10,5 +10,6 @@
   "currency": "EUR",
   "locations": [],
   "decks": [],
+  "proxies": [],
   "lots": []
 }

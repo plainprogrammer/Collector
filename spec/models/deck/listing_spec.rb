@@ -23,6 +23,25 @@ RSpec.describe Deck::Listing, type: :model do
     expect(described_class.new(account).count).to eq(3)
   end
 
+  it "adds the proxies of every zone to a deck's cards and lists owned and proxy apart (AC-5.1)", :aggregate_failures do
+    deck = create(:deck, account:, name: "Alpha")
+    create_lot_in_zone(deck, "main", quantity: 3)
+    create(:deck_proxy, zone: deck.zone("sideboard"), account:, quantity: 4)
+    create(:deck_proxy, zone: deck.zone("considering"), account:, quantity: 2)
+    create(:deck, account:, name: "Beta")
+
+    alpha, beta = described_class.new(account).rows
+
+    expect([ alpha.owned, alpha.proxy, alpha.cards ]).to eq([ 3, 6, 9 ])
+    expect([ beta.owned, beta.proxy, beta.cards ]).to eq([ 0, 0, 0 ])
+  end
+
+  it "reads the proxies with one grouped statement, however many decks (AC-5.3)" do
+    3.times { |n| create(:deck_proxy, zone: create(:deck, account:, name: "D#{n}").zone("main"), account:) }
+
+    expect(count_queries { described_class.new(account).rows }).to eq(4) # the decks, their locations, the copies, the proxies
+  end
+
   it "lists nothing for an account with no deck, and never another account's" do
     create(:deck, account: create(:user).account)
 

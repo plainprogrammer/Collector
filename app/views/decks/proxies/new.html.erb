@@ -1,0 +1,34 @@
+<% content_for :title, "Add a proxy to #{proxy_zone_label(@deck, @zone)} · Collector" %>
+<%= render "layouts/appbar", section: :decks, detail: true, back_path: new_deck_zone_proxy_path(@deck, @zone.zone) %>
+<main class="c-main c-page c-decks">
+  <div class="c-pagehead">
+    <div>
+      <h1 class="c-pagehead__title">Add a proxy to <%= proxy_zone_label(@deck, @zone) %></h1>
+      <p class="c-pagehead__stats"><%= @addition.entry.name %> <span class="is-data"><%= deck_set_line(@addition.entry) %></span></p>
+    </div>
+  </div>
+  <% finish_errors = @addition.errors[:finish] %>
+  <% quantity_errors = @addition.errors[:quantity] %>
+  <%= form_with model: @addition, scope: :proxy, url: deck_zone_proxies_path(@deck, @zone.zone), method: :post, class: "c-form" do |form| %>
+    <%= hidden_field_tag "proxy[entry]", @addition.entry.external_key, id: nil %>
+    <% if @finishes.any? %>
+      <div class="c-field<%= " c-field--invalid" if finish_errors.any? %>">
+        <%= form.label :finish, "Finish", class: "c-field__label" %>
+        <%= form.select :finish, options_for_select(@finishes, @addition.finish.presence || (@finishes.first.last if @finishes.one?)),
+              (@finishes.one? ? {} : { include_blank: "Choose…" }), { required: true, "aria-describedby": field_error_describedby("proxy_finish-error", finish_errors) } %>
+        <%= render "shared/field_errors", messages: finish_errors, id: "proxy_finish-error" %>
+      </div>
+    <% end %>
+    <div class="c-field<%= " c-field--invalid" if quantity_errors.any? %>">
+      <%= form.label :quantity, "Quantity", class: "c-field__label" %>
+      <label class="c-input"><%= form.number_field :quantity, min: 1, max: Deck::Proxy::MAX_QUANTITY, step: 1, inputmode: "numeric", required: true, "aria-describedby": field_error_describedby("proxy_quantity-error", quantity_errors) %></label>
+      <%= render "shared/field_errors", messages: quantity_errors, id: "proxy_quantity-error" %>
+    </div>
+    <%= render "shared/field_errors", messages: @addition.errors[:base], id: "proxy_base-error" %>
+    <div class="c-form__actions">
+      <%= form.submit "Add proxy", class: "c-btn c-btn--primary" %>
+      <%= link_to "Cancel", deck_path(@deck), class: "c-btn c-btn--secondary" %>
+    </div>
+  <% end %>
+</main>
+<%= render "layouts/tabbar", section: :decks %>

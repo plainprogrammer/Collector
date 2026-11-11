@@ -183,7 +183,7 @@ RSpec.describe "Export and import round trip", type: :model do
     data = data.merge("lots" => data["lots"].map { |lot| lot["location"].is_a?(Hash) ? lot.merge("location" => lot["location"].merge("deck" => spelled(data, lot["location"]["deck"]))) : lot }) if data["format_version"] == 4
     data = data.merge("locations" => []) if data["format_version"] == 1
     data = data.merge("lots" => data["lots"].map { |lot| lot.merge("location" => nil) }) if data["format_version"] < 3
-    data = data.merge("format_version" => 4, "decks" => data.fetch("decks", []))
+    data = data.merge("format_version" => 4, "decks" => data.fetch("decks", []), "proxies" => data.fetch("proxies", []))
     data.merge("locations" => data["locations"].map { |location| { "name" => Location::Name.normalise(location["name"]) } })
   end
 

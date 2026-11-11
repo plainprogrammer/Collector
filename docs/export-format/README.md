@@ -3,7 +3,7 @@
 **Format name:** `collector-export`
 **Format version:** 4
 
-An export is one file that holds one collector's data: their profile, the currency their prices are in, the locations they keep their collection in, from version 4 their decks, and every lot in their collection.
+An export is one file that holds one collector's data: their profile, the currency their prices are in, the locations they keep their collection in, from version 4 their decks and the proxies in them, and every lot in their collection.
 
 - **It is personal.** The file contains your name and your email address. It never contains your password.
 - **It is complete.** The file contains everything needed to rebuild your collection on another Collector instance.
@@ -29,6 +29,7 @@ A file describes exactly one account's collection at one moment. It needs no oth
 | `currency` | A string | The currency of every price in the file. See [Currency](#currency). |
 | `locations` | A list | From version 2: the places the collection is kept. See [Locations](#locations). From version 4 it lists places only: a deck is in `decks`. It may be empty, and its order has no meaning. A version 1 file has no `locations`. |
 | `decks` | A list | From version 4: the collector's decks. See [Decks](#decks). It may be empty, and its order has no meaning. A file of version 1 to 3 has no `decks`. |
+| `proxies` | A list | From version 4: the cards the collector's decks need and they don't own. See [Proxies](#proxies). It may be empty, and its order has no meaning. A file of version 1 to 3 has no `proxies`. |
 | `lots` | A list | The collection. See [Lots](#lots). It may be empty, and its order has no meaning. |
 
 A reader never behaves differently because of `exported_at` or `generator`.
@@ -50,6 +51,7 @@ A collection with nothing in it is a complete file:
   "currency": "EUR",
   "locations": [],
   "decks": [],
+  "proxies": [],
   "lots": []
 }
 ```
@@ -195,6 +197,20 @@ A copy that is in a deck is in one of its zones. A lot's `location` says which w
 
 The object has these two fields and no others; a lot's `location` is never a deck alone. An example is in [Collectible types](#collectible-types).
 
+## Proxies
+
+A **proxy** is a card that a deck's zone needs and that the collector doesn't own. From version 4 a file carries the collector's proxies as the required top-level list `proxies`; a file of version 1 to 3 has none and says nothing about them. A proxy is never a lot: it isn't in `lots`, and no count of copies the collector owns includes it.
+
+| Field | Value | Meaning |
+|---|---|---|
+| `deck` | A [name](#names) | The name of one of the file's decks, matched by [comparison key](#location-identity). |
+| `zone` | A string that isn't blank | The key of one of the zones of that deck's format. A zone key is compared exactly, as written. |
+| `entry` | An [entry](#entry) | The printing the proxy is of. Its collectible type and source id identify it. |
+| `finish` | A string that isn't blank, or `null` | One of the finishes the catalog lists for that entry; `null` for a printing that lists none. |
+| `quantity` | A whole number from 1 to 9,999 | How many proxies of that printing and finish the zone has. |
+
+The object has these fields and no others. A proxy is identified by five values: the deck's comparison key, the zone key, the entry's collectible type and source id, and the finish. A file never holds two proxies of one identity. A proxy carries no time and no price. A zone, a deck and a collectible type are the ones the [Decks](#decks) section describes; a proxy's printing need not be of its deck's collectible type, because a deck whose type changed keeps the proxies it had.
+
 ## Lot identity
 
 A lot is identified by six values:
@@ -228,8 +244,10 @@ A file can be wrong in two different ways, and the format keeps them apart.
 - from version 4, the locations and the decks together are at most 500 (`too_many_locations`)
 - from version 4, no deck's name is over 60 code points once normalised (`maxLength`)
 - from version 4, every lot's `location` that is a deck and zone names one of the file's decks, compared by comparison key (`unknown_location`)
+- from version 4, no two proxies have the same [identity](#proxies) (`duplicate_proxy`)
+- from version 4, every proxy's `deck` is one of the file's decks, compared by comparison key (`unknown_location`)
 
-Each version has its own schema; the rules are the same for all four, with the rule about locations from version 2, the rule about a lot's location from version 3 and the rules about decks from version 4. A reader looks at `format_version` first: a file whose version is higher than it knows is refused as newer than it can read, not as malformed. A file whose version this document doesn't define (a version above the newest, or a version that is missing or isn't a whole number) is judged by the schema of version 1, which names the version as the problem.
+Each version has its own schema; the rules are the same for all four, with the rule about locations from version 2, the rule about a lot's location from version 3, the rules about decks from version 4 and the rules about proxies from version 4. A reader looks at `format_version` first: a file whose version is higher than it knows is refused as newer than it can read, not as malformed. A file whose version this document doesn't define (a version above the newest, or a version that is missing or isn't a whole number) is judged by the schema of version 1, which names the version as the problem.
 
 A field that this document doesn't define doesn't make a file malformed. A reader ignores it.
 
@@ -242,6 +260,8 @@ A field that this document doesn't define doesn't make a file malformed. A reade
 
 and for every deck, its `collectible_type` and `format` are a format that the instance has registered for that type.
 
+and for every proxy: its entry is in that catalog, retired or not; its `finish` is `null` or one that the catalog lists for that entry; and its `zone` is one of the zones of its deck's format on that instance.
+
 | A well-formed file where | Is |
 |---|---|
 | a lot's collectible type isn't one the instance has | not resolvable there |
@@ -252,6 +272,10 @@ and for every deck, its `collectible_type` and `format` are a format that the in
 | a descriptive field disagrees with the catalog | resolvable; the id wins |
 | a deck's collectible type and format aren't a format the instance has registered (`unknown_format`) | not resolvable there |
 | a lot's zone isn't one of the zones of its deck's format on the instance (`unknown_zone`) | not resolvable there |
+| a proxy's collectible type isn't one the instance has | not resolvable there |
+| a proxy's entry isn't in the instance's catalog | not resolvable there |
+| a proxy's finish isn't one the catalog lists for that entry | not resolvable there |
+| a proxy's zone isn't one of the zones of its deck's format on the instance (`unknown_zone`) | not resolvable there |
 
 The same file may be resolvable on one instance and not on another. What a reader does with a file that isn't well-formed or isn't resolvable is the reader's decision. A reader never guesses at a lot it can't resolve, and never drops it without saying so.
 
@@ -264,6 +288,7 @@ Two well-formed files of the same version hold the same collection when all of t
 - Their lots are equal as sets. Each lot in one file has exactly one lot in the other with the same [identity](#lot-identity), and those two have the same `quantity`, `added_at` and `changed_at`. From version 3 a lot's `location` is compared exactly, as the locations are: "box" and "Box" on a lot are different here, although a reader matches them as one place and the duplicate rule treats them as one lot. A zone is compared as the object the file wrote: by its deck's name as written and its zone key.
 - From version 2, their locations are equal as sets of names, compared exactly, character for character, as written in the files, without normalising either. "box" and "Box" are different locations here, although a reader treats them as one when it matches locations (see [Location identity](#location-identity)); the order of the locations never counts.
 - From version 4, their decks are equal as sets of `name`, `collectible_type` and `format`, each compared exactly as written. A deck's name "izzet" and "Izzet" are different decks here, and so are two decks that differ only in their format; the order of the decks never counts.
+- From version 4, their proxies are equal as sets of deck name (as written), zone key, entry identity, finish and quantity, each compared exactly. The order of the proxies doesn't matter.
 
 Every comparison is exact, character for character. A writer writes each value as the instance stores it: the email address in lower case, the name and the email address without spaces around them, the currency in upper case.
 
@@ -295,7 +320,7 @@ A reader:
 - refuses a file whose `format_version` is higher than any it knows, and says that the file is newer than it can read
 - ignores fields it doesn't know. Because a new field of the collector's data raises the version, a field that a reader doesn't know at a version it does know is always information only
 
-A file of version 1, 2 or 3 says nothing about decks, and a lot of such a file is in a location or in none. A reader of version 4 reads it as the whole collection it describes: the collector's decks are left in place, because a deck is not a place that the file names, but the copies that are in their zones are not in the file and so applying it removes them. Collector says so before it applies the file.
+A file of version 1, 2 or 3 says nothing about decks, and a lot of such a file is in a location or in none. A reader of version 4 reads it as the whole collection it describes: the collector's decks are left in place, because a deck is not a place that the file names, and so are their proxies, because such a file can name none, but the copies that are in their zones are not in the file and so applying it removes them. Collector says so before it applies the file.
 
 The meaning of a version never changes once it has been released.
 
@@ -304,7 +329,9 @@ The meaning of a version never changes once it has been released.
 | 1 | 2026-10-11 | The first version: profile, currency and lots. |
 | 2 | 2026-10-21 | Locations: the required top-level list `locations`, with the rule `duplicate_location`. Lots are unchanged. |
 | 3 | 2026-10-23 | Lots in locations: each lot gains the required `location`, the rule `unknown_location`, and lot identity has six values. |
-| 4 | 2026-11-10 | Decks: the required top-level list `decks`, and a lot's `location` may be an object `{ deck, zone }`. The rules `duplicate_location` and `unknown_location` cover decks, and `too_many_locations` counts places and decks together. |
+| 4 | 2026-11-10 | Decks and proxies: the required top-level lists `decks` and `proxies`, and a lot's `location` may be an object `{ deck, zone }`. The rules `duplicate_location` and `unknown_location` cover decks (and `unknown_location` a proxy's deck), `duplicate_proxy` covers proxies, and `too_many_locations` counts places and decks together. |
+
+Version 4 gained `proxies` before any release wrote a version 4 file, so it is one version (the maintainer's ruling of 2026-11-11); a version 4 file written by a development build before that has no `proxies` and isn't a well-formed version 4 file.
 
 One change is already expected: collections shared by a household will change who owns a lot and will raise the version ([ADR 0017](../adr/0017-row-level-tenancy-one-user-per-account.md)). A currency for each account (issue #64, spec 038) moved where the code the file carries comes from, from the instance to the account, without a version, because the field's meaning didn't change.
 
@@ -430,6 +457,7 @@ Every table in Collector's database that belongs to an account or to a user is l
 | `lots` | Exported | The collection. |
 | `locations` | Exported | The collector's named places. |
 | `decks` | Exported | The collector's decks, as `decks`; a deck's name is its location's. |
+| `deck_proxies` | Exported | The proxies a collector's decks need, as `proxies`. |
 | `users` | Exported | The collector's profile. |
 | `bulk_removals` | Left out | A short-lived way to undo a bulk removal. The lots it would restore aren't in the collection. |
 | `bulk_selection_marks` | Left out | Working state that lasts for one bulk edit. |
@@ -466,7 +494,7 @@ Every table in Collector's database that belongs to an account or to a user is l
 | `locations.updated_at` | Left out | A fact about the instance, not about the collection. |
 | `locations.kind` | Left out | Places are `locations` and decks are `decks`, so the file's list says the kind. |
 | `locations.parent_id` | Left out | An internal id. A zone is derived from its deck's format, and the file doesn't list zones. |
-| `locations.zone` | `zone` | A lot's place in a deck: the key of the deck's zone. |
+| `locations.zone` | `zone` | A lot's or a proxy's place in a deck: the key of the deck's zone. |
 | `decks.id` | Left out | An internal id. |
 | `decks.account_id` | Left out | An internal id. A file is one account's collection. |
 | `decks.location_id` | Left out | An internal id. The deck is named by its location's name. |
@@ -474,6 +502,14 @@ Every table in Collector's database that belongs to an account or to a user is l
 | `decks.format` | `format` | |
 | `decks.created_at` | Left out | A fact about the instance, not about the collection. |
 | `decks.updated_at` | Left out | A fact about the instance, not about the collection. |
+| `deck_proxies.id` | Left out | An internal id. |
+| `deck_proxies.account_id` | Left out | An internal id. A file is one account's collection. |
+| `deck_proxies.location_id` | `deck` | By the zone's deck's name; the zone is the field `zone`. |
+| `deck_proxies.catalog_entry_id` | `entry` | |
+| `deck_proxies.finish` | `finish` | |
+| `deck_proxies.quantity` | `quantity` | |
+| `deck_proxies.created_at` | Left out | A fact about the instance, not about the collection. |
+| `deck_proxies.updated_at` | Left out | A fact about the instance, not about the collection. |
 | `users.id` | Left out | An internal id. |
 | `users.account_id` | Left out | An internal id. |
 | `users.name` | `name` | |
@@ -492,13 +528,15 @@ Every table in Collector's database that belongs to an account or to a user is l
 
 | Folder | Holds |
 |---|---|
-| [`examples/valid/`](examples/valid/) | Well-formed files: a collection that shows every shape a lot can take, and an empty one, for each version; version 3's shows a printing in two locations, a lot in none and an empty location; version 4's adds decks of several formats and a printing in a place and in zones. |
+| [`examples/valid/`](examples/valid/) | Well-formed files: a collection that shows every shape a lot can take, and an empty one, for each version; version 3's shows a printing in two locations, a lot in none and an empty location; version 4's adds decks of several formats, a printing in a place and in zones, and proxies of two finishes, of none and in two zones. |
 | [`examples/invalid/`](examples/invalid/) | Files that aren't well-formed, each with one thing wrong. |
 | [`examples/comparison/`](examples/comparison/) | A base file, a file that holds the same collection, and files that each differ from the base in one thing that counts. |
 
 The folders hold files of all four versions; the examples of versions 1 to 3 are unchanged. Version 3 adds lot-location variants: `valid/lot-location-nfd.json` writes a lot's location in NFD for a listed name, and "box" for a listed "Box" (well-formed, and re-exported with the stored spelling, so outside the round trip), `valid/lot-location-60.json` is the 60-code-point edge, `invalid/lot-location-*.json` are the forms a location can break, `invalid/duplicate-lot-location-case.json` is the duplicate rule on six values, and `comparison/v3-*.json` differ in a lot's location. A location named in NFD (`Cafe` and a combining acute accent) is in `valid/locations-nfd.json`: well-formed, because a reader normalises names on read. Collector exports it as `Café` in NFC, so a collection restored from this file exports a file whose name is the NFC spelling, not this one's.
 
-Version 4 adds `valid/decks-all-formats.json` (one deck of each format of the collectible type with a lot in each of its zones), `valid/decks-500.json` (the limit), `valid/deck-name-60.json` (the longest name), `valid/lot-in-zone.json` (a lot in zones, one deck named in another case) and `valid/collection-v4.json`; `invalid/deck-*.json` and `invalid/decks-*.json` are the forms a deck and the list of decks can break (`invalid/deck-name-60-nfc.json` a name that is 60 code points or fewer as written and more once normalised, `invalid/locations-and-decks-501.json` the limit on places and decks together), `invalid/lot-location-object-*.json` and `invalid/lot-location-zone-*.json` the forms a deck and zone can break, and `comparison/v4-*.json` differ in a deck's name, a deck's format and a lot's zone.
+Version 4 adds `valid/decks-all-formats.json` (one deck of each format of the collectible type with a lot in each of its zones), `valid/decks-500.json` (the limit), `valid/deck-name-60.json` (the longest name), `valid/lot-in-zone.json` (a lot in zones, one deck named in another case) and `valid/collection-v4.json`; `invalid/deck-*.json` and `invalid/decks-*.json` are the forms a deck and the list of decks can break (`invalid/deck-name-60-nfc.json` a name that is 60 code points or fewer as written and more once normalised, `invalid/locations-and-decks-501.json` the limit on places and decks together), `invalid/lot-location-object-*.json` and `invalid/lot-location-zone-*.json` the forms a deck and zone can break, and `comparison/v4-*.json` differ in a deck's name, a deck's format, a lot's zone and a proxy added.
+
+Version 4's proxies add `valid/proxies-v4.json` (proxies of two finishes of one printing, one with no finish and one in a second zone), `invalid/proxies-*.json` (a list that is missing or isn't a list) and `invalid/proxy-*.json` (the forms a proxy can break: not an object, a quantity of 0 or over 9,999, another key, a blank finish, no entry, a deck the file doesn't list, and the same identity twice, once with the deck in another case), and `comparison/v4-different-proxy-added.json`. Every other version 4 file carries `"proxies": []`.
 
 [`examples/problems.json`](examples/problems.json) names, for each invalid file, why it isn't well-formed (`why`), the rule it breaks (`rule`) and where (`at`, a [JSON Pointer](https://www.rfc-editor.org/rfc/rfc6901) into the file, empty for the whole file).
 
@@ -512,6 +550,7 @@ A `rule` is the schema keyword that fails (`required`, `const`, `pattern`, `mini
 | `changed_before_added` | A lot's `changed_at` is earlier than its `added_at`. |
 | `duplicate_lot` | A lot has the same identity as an earlier lot in the file. |
 | `duplicate_location` | A location, or from version 4 a deck, has the same comparison key as an earlier location or deck in the file; the locations are judged before the decks. |
-| `unknown_location` | A lot's `location` is a name whose comparison key no location in the file has, or (version 4) a deck and zone whose deck's comparison key no deck in the file has. |
+| `duplicate_proxy` | A proxy (version 4) has the same identity as an earlier proxy in the file: the same deck by comparison key, zone, entry and finish. |
+| `unknown_location` | A lot's `location` is a name whose comparison key no location in the file has, or (version 4) a deck and zone whose deck's comparison key no deck in the file has; or a proxy's `deck` is a name whose comparison key no deck in the file has, at the proxy's `deck`. |
 | `too_many_locations` | The locations and the decks together are more than 500 (version 4), at the pointer `/decks`. |
-| `schema` | A key that the schema doesn't allow: a lot's `location` object has a key besides `deck` and `zone`, at that key. |
+| `schema` | A key that the schema doesn't allow: a lot's `location` object or a proxy has a key besides the ones this document defines for it, at that key. |

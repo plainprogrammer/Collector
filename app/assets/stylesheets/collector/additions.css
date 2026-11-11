@@ -489,7 +489,7 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
 @container collection (max-width: 639px) {
   .c-zone .c-zone__c-total { width:1%; } /* the auto layout shares spare width among auto columns; Total keeps its content's, as the menu does */
 }
-.c-zone td:first-child { white-space:normal; overflow-wrap:anywhere; } /* every width: the Card column is 128px with the menu column (spec 060) and 192px on the deck page until #254 adds the menu, so a name would spill into Cost under the export's nowrap */
+.c-zone td:first-child { white-space:normal; overflow-wrap:anywhere; } /* every width: the Card column is 128px with the menu column (spec 060, built by spec 068), so a name would spill into Cost under the export's nowrap */
 .c-zone .c-cost { flex-wrap:wrap; min-width:94px; } /* four pips (4 x 22px + 3 x 2px) never wrap: the auto layout shrinks a cell to its min-content, one wrapped pip, so a phone's Cryptic Command cost took two lines (spec 060 final visual review) */
 
 /* ---------- Decks list (spec 060): the New deck button stays on a phone ---------- */
@@ -509,6 +509,13 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
    name (AC-5.6). */
 .c-deckpage .c-item__head > div:first-child { min-width:0; }
 .c-deckpage .c-item__title { overflow-wrap:anywhere; }
+
+/* ---------- Deck page Add a proxy (spec 068 NFR Accessibility): the touch floor ---------- */
+/* Each zone's head carries a small ghost "Add a proxy" button, 36px on a mouse and 40px on a touch screen by the design system's
+   rule for a small button. It is the zone's one control, so it gets the 44px floor the Decks pages' buttons have (`.c-decks .c-btn`
+   below), at every pointer like theirs. Its width follows, and the head's wrapping below 640px (above) still holds it on the
+   name's line. */
+.c-deckpage .c-section__actions .c-btn { min-height:var(--touch-floor); min-width:var(--touch-floor); }
 
 /* ---------- Pick list for AddToDeck and UseMyCopy (spec 060): choices that wrap, with a visible focus ---------- */
 /* A fieldset is as wide as its widest child, so a long place name in "My copies (…)" would widen the page (spec 042
@@ -549,6 +556,12 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
    `.c-locations__name` and `.c-pick`). */
 .c-decks .c-confirm :is(h1, p), .c-decks .c-list li > span:first-child { min-width:0; overflow-wrap:anywhere; }
 
+/* ---------- Deck pages' selects (spec 068 AC-9.1): the touch floor on a coarse pointer ---------- */
+/* The add-a-proxy chooser's Set select (`.c-select`, 40px on a touch screen) and the form's Finish select (`.c-field`, 36px) sit
+   under the 44px floor every other control of the deck pages meets. The rule is scoped to `.c-decks`, so it also lifts the Change
+   format page's Format select (spec 064), which shares that class; raising the select floor app-wide is out of scope. */
+@media (pointer: coarse) { .c-decks .c-select select, .c-decks .c-field select { min-height:var(--touch-floor); } }
+
 /* ---------- Small icon stroke (spec 063) ---------- */
 /* An icon's stroke scales with it: weight on screen = stroke-width × drawn width ÷ 24 (the viewBox). The partials write
    1.5, Lucide's weight at 20px (1.25px on screen); at 12px that is 0.75px, a hairline beside a 600-weight word, and at
@@ -566,3 +579,8 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
    place since spec 032). `anywhere`, unlike `break-word`, lowers the min-content width of the flex item. This is the one rule;
    the Decks pages add no copy of it. */
 .c-pagehead__stats { overflow-wrap:anywhere; }
+
+/* ---------- Change proxy page head (spec 068 AC-9.1): the title names the printing ---------- */
+/* The Change proxy count page's title says the card's name, up to 60 characters with no space, so the title breaks inside a word
+   like the stats line above instead of widening the page. Scoped to the Decks pages: other page heads' titles are their own. */
+.c-decks .c-pagehead__title { overflow-wrap:anywhere; }

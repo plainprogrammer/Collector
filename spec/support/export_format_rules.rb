@@ -38,7 +38,8 @@ module ExportFormatRules
   def self.identity(lot, version = ExportFormat::Rules::VERSION) = ExportFormat::Rules.identity(lot, version)
 
   # Whether two well-formed files of one version hold the same collection (spec 017 FR-7; from version 4 the decks are
-  # compared as sets of name, collectible type and format exactly as written, spec 062 AC-6.13). Callers check
+  # compared as sets of name, collectible type and format exactly as written, spec 062 AC-6.13; from version 4 the proxies
+  # are compared as sets of deck name as written, zone key, entry identity, finish and quantity, spec 068). Callers check
   # .problems first: a file that isn't well-formed may raise here.
   def self.same_collection?(one, other)
     raise ArgumentError, "the files have different format versions" unless one["format_version"] == other["format_version"]
@@ -76,7 +77,8 @@ module ExportFormatRules
     [ file.fetch("profile").slice("name", "email_address", "collection_view"), file["currency"],
       file.fetch("lots").to_h { |lot| [ compared_identity(lot, version), lot.values_at("quantity", "added_at", "changed_at") ] },
       file["locations"]&.map { |location| location["name"] }&.to_set,
-      file["decks"]&.map { |deck| deck.values_at("name", "collectible_type", "format") }&.to_set ]
+      file["decks"]&.map { |deck| deck.values_at("name", "collectible_type", "format") }&.to_set,
+      file["proxies"]&.map { |proxy| [ proxy["deck"], proxy["zone"], *proxy["entry"].values_at("collectible_type", "source_id"), proxy["finish"], proxy["quantity"] ] }&.to_set ]
   end
 
   # The five values of a lot's identity and its location as written: the comparison of two files is exact, character for

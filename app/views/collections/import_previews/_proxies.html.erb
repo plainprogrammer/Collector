@@ -1,0 +1,24 @@
+<%# locals: (import:) %>
+<% proxies = import.plan.proxies %>
+<% if proxies.counted? %>
+  <section id="proxies">
+    <div class="c-section__head"><h2 class="c-section__title">Proxies</h2></div>
+    <dl class="c-stats">
+      <div class="c-stat"><dt>Proxies added</dt><dd><%= number_with_delimiter(proxies.added.size) %></dd></div>
+      <div class="c-stat"><dt>Proxies changed</dt><dd><%= number_with_delimiter(proxies.changed.size) %></dd></div>
+      <div class="c-stat"><dt>Proxies unchanged</dt><dd><%= number_with_delimiter(proxies.unchanged) %></dd></div>
+      <div class="c-stat"><dt>Proxies removed</dt><dd><%= number_with_delimiter(proxies.removed.size) %></dd></div>
+    </dl>
+    <% if proxies.removed.any? %>
+      <ul class="c-list c-import__list" id="removed_proxies">
+        <% proxies.listed_removed.each do |proxy| %>
+          <li>
+            <span><%= proxy.name %> <span class="c-list__meta"><%= import_proxy_line(**proxy.described) %></span></span>
+            <span class="c-list__end">×<%= number_with_delimiter(proxy.quantity) %></span>
+          </li>
+        <% end %>
+      </ul>
+      <% if proxies.more_removed.positive? %><p class="c-import__more">and <%= number_with_delimiter(proxies.more_removed) %> more</p><% end %>
+    <% end %>
+  </section>
+<% end %>

@@ -20,10 +20,10 @@ RSpec.describe Account, type: :model do
     expect([ Lot, Location, Deck ].map { it.where(account_id: account.id).count }).to eq([ 0, 0, 0 ])
   end
 
-  it "declares lots before locations and decks after them (spec 062 AC-9.6)" do
-    order = described_class.reflect_on_all_associations(:has_many).map(&:name) & %i[lots locations decks]
+  it "declares lots before locations and decks, then deck proxies, after them (spec 062 AC-9.6, spec 068 AC-8.4)" do
+    order = described_class.reflect_on_all_associations(:has_many).map(&:name) & %i[lots locations decks deck_proxies]
 
-    expect(order).to eq(%i[lots locations decks])
+    expect(order).to eq(%i[lots locations decks deck_proxies])
   end
 
   describe "currency (spec 038)" do

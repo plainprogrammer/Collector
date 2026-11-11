@@ -2,9 +2,9 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:collector:export-format:v4",
   "title": "Collector export, format version 4",
-  "description": "The part of a well-formed Collector export that a schema can state. README.md beside this file defines the format and lists the rules a schema can't state: the file is UTF-8 JSON with no repeated key, every time is a real moment, no lot was changed before it was added, no two lots have the same identity (entry, finish, condition, price paid and place, once the names are normalised and case folded), no two locations or decks have the same name once the names are normalised (NFC) and case folded, locations and decks together are at most 500, no deck name is over 60 code points once normalised, and a lot's location is one of the file's locations or a zone of one of the file's decks.",
+  "description": "The part of a well-formed Collector export that a schema can state. README.md beside this file defines the format and lists the rules a schema can't state: the file is UTF-8 JSON with no repeated key, every time is a real moment, no lot was changed before it was added, no two lots have the same identity (entry, finish, condition, price paid and place, once the names are normalised and case folded), no two proxies have the same identity (deck, zone, entry and finish, the deck name normalised and case folded), no two locations or decks have the same name once the names are normalised (NFC) and case folded, locations and decks together are at most 500, no deck name is over 60 code points once normalised, a lot's location is one of the file's locations or a zone of one of the file's decks, and every proxy's deck is one of the file's decks.",
   "type": "object",
-  "required": ["format", "format_version", "exported_at", "profile", "currency", "locations", "decks", "lots"],
+  "required": ["format", "format_version", "exported_at", "profile", "currency", "locations", "decks", "proxies", "lots"],
   "properties": {
     "format": { "const": "collector-export" },
     "format_version": { "const": 4 },
@@ -22,6 +22,7 @@
     "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
     "locations": { "type": "array", "maxItems": 500, "items": { "$ref": "#/$defs/location" } },
     "decks": { "type": "array", "maxItems": 500, "items": { "$ref": "#/$defs/deck" } },
+    "proxies": { "type": "array", "items": { "$ref": "#/$defs/proxy" } },
     "lots": { "type": "array", "items": { "$ref": "#/$defs/lot" } }
   },
   "$defs": {
@@ -55,6 +56,19 @@
         "name": { "$ref": "#/$defs/location_name" },
         "collectible_type": { "$ref": "#/$defs/text" },
         "format": { "$ref": "#/$defs/text" }
+      }
+    },
+    "proxy": {
+      "description": "A card a deck's zone needs and the collector doesn't own: the deck and one of its zones, the entry, a finish (null for a printing that lists none) and a quantity. The object has these fields and no others.",
+      "type": "object",
+      "required": ["deck", "zone", "entry", "finish", "quantity"],
+      "additionalProperties": false,
+      "properties": {
+        "deck": { "$ref": "#/$defs/location_name" },
+        "zone": { "$ref": "#/$defs/text" },
+        "entry": { "$ref": "#/$defs/entry" },
+        "finish": { "$ref": "#/$defs/recorded_text" },
+        "quantity": { "type": "integer", "minimum": 1, "maximum": 9999 }
       }
     },
     "location_name": {

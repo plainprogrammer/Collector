@@ -6,6 +6,7 @@ class Account < ApplicationRecord
   has_many :lots, dependent: :delete_all
   has_many :locations, dependent: :delete_all # the foreign key cascades too, as for `import_uploads` and `number_entries` (spec 029 AC-4.6)
   has_many :decks, dependent: nil # declared after `locations`; the foreign keys cascade (spec 062 AC-9.6)
+  has_many :deck_proxies, class_name: "Deck::Proxy", dependent: nil # declared after `locations` and `decks`; the foreign keys cascade (spec 068 AC-8.4)
   has_one :scanner_sitting, class_name: "Scanner::Sitting", dependent: :destroy
   has_one :number_entry, dependent: :destroy
   has_one :import_upload, dependent: :destroy

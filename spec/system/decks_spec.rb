@@ -42,6 +42,52 @@ RSpec.describe "Decks", type: :system do
     end
   end
 
+  # Spec 068 AC-5.2, AC-5.2a: a deck with proxies, a 58-copy count and a 60-character name with no space.
+  describe "the Decks page with proxies (spec 068)" do
+    let(:long_name) { "W" * 60 }
+
+    before do
+      deck = create(:deck, account:, name: long_name)
+      create_lot_in_zone(deck, "main", quantity: 58)
+      create(:deck_proxy, zone: deck.zone("main"), account:, quantity: 11)
+    end
+
+    def set_theme(name) = page.execute_script("document.documentElement.dataset.theme = #{name.to_json}")
+
+    it "hides Format, Owned and Proxy at 360px, reads the owned count then the tag under the name and does not scroll sideways (AC-5.2)", :aggregate_failures do
+      open_in_narrow_frame(decks_path, width: 360, ready: ".c-decks table")
+      within_narrow_frame do
+        shown = page.evaluate_script(<<~JS)
+          [...document.querySelectorAll(".c-decks thead th")].filter((th) => th.getClientRects().length > 0).map((th) => th.textContent.trim())
+        JS
+        expect(shown).to eq([ "Deck", "Cards", "Actions" ])
+        expect(find(".c-decks .c-table__sub").text.squish).to eq("Modern · 58 owned Proxy 11")
+        expect(page).to have_css(".c-decks .c-table__sub .c-proxy", text: /Proxy\s+11/)
+        expect(fits?).to be(true)
+      end
+    end
+
+    [ 640, 768, 1280 ].each do |width|
+      %w[light dark].each do |theme|
+        it "has no horizontal overflow at #{width}px in the #{theme} theme and the tag and the three buttons do not overlap (AC-5.2a)", :aggregate_failures do
+          open_in_narrow_frame(decks_path, width:, ready: ".c-decks table")
+          within_narrow_frame do
+            set_theme(theme)
+            expect(fits?).to be(true)
+            boxes = page.evaluate_script(<<~JS)
+              (() => { const row = document.querySelector(".c-decks tbody tr")
+                const visible = (el) => el.getClientRects().length > 0
+                const boxes = [...row.querySelectorAll(".c-proxy, .c-decks__actions a")].filter(visible).map((el) => { const b = el.getBoundingClientRect(); return [b.left, b.top, b.right, b.bottom] })
+                const overlaps = boxes.flatMap((a, i) => boxes.slice(i + 1).filter((b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3]))
+                return { count: boxes.length, overlaps: overlaps.length } })()
+            JS
+            expect(boxes).to eq({ "count" => 4, "overlaps" => 0 })
+          end
+        end
+      end
+    end
+  end
+
   describe "the New deck page at 360px (AC-1.1)" do
     it "has no horizontal overflow and keeps the field and the select inside the form", :aggregate_failures do
       open_in_narrow_frame(new_deck_path, width: 360, ready: "form.c-form")

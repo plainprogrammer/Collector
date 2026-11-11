@@ -36,6 +36,12 @@ class Deck < ApplicationRecord
   # What the deck's zones hold together (see Location::Holdings), for the page that refuses a removal and the Decks page.
   def holdings = location.holdings
 
+  # The deck's proxies, in every zone, as one relation read by value (the account and the zones' parent), so a caller adds no
+  # query to find them (spec 068).
+  #
+  # @return [ActiveRecord::Relation<Deck::Proxy>]
+  def proxies = Deck::Proxy.where(account_id:, location_id: Location.where(parent_id: location_id, kind: "deck_zone").select(:id))
+
   # The format's shown name, or its key when the extension no longer registers it.
   def format_name = Catalog::Formats.name_for(collectible_type, format)
 

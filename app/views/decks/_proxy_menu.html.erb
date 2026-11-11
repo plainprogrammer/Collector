@@ -1,0 +1,15 @@
+<%# locals: (deck:, row:) %>
+<% if row.lines.any? %>
+  <details class="c-menu" data-controller="menu">
+    <summary class="c-btn c-btn--ghost c-btn--sm c-btn--icon" aria-label="Actions for <%= row.entry.display_name %> <%= deck_set_line(row.entry) %>"><%= render "icons/more" %></summary>
+    <div class="c-menu__list">
+      <% row.lines.each do |line| %>
+        <%= link_to proxy_item_label("Change", line, row), edit_deck_proxy_path(deck, line.id), class: "c-menu__item" %>
+      <% end %>
+      <div class="c-menu__sep"></div>
+      <% row.lines.each do |line| %>
+        <%= link_to proxy_item_label("Remove", line, row), new_deck_proxy_removal_path(deck, line.id), class: "c-menu__item c-menu__item--danger" %>
+      <% end %>
+    </div>
+  </details>
+<% end %>

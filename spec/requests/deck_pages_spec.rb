@@ -10,6 +10,7 @@ RSpec.describe "Deck page", type: :request do
   def zone_section(name) = html.css("section.c-zone").find { it.at_css("h2").text == name }
   def card_rows(section) = section.css("tbody tr:not(.c-zone__group)")
   def own(zone, entry, quantity: 1, **attrs) = create_lot_in_zone(deck, zone, entry:, quantity:, **attrs)
+  def proxy_in(zone, entry, quantity: 1, finish: "nonfoil") = create(:deck_proxy, zone: deck.zone(zone), account:, entry:, finish:, quantity:)
 
   def printing(name: "Lightning Bolt", type_line: "Instant", cost: "{R}", legalities: {}, **attrs)
     entry = create(:catalog_entry, name:, **attrs)
@@ -40,16 +41,16 @@ RSpec.describe "Deck page", type: :request do
 
         get deck_path(deck)
 
-        expect(html.at_css(".c-item__type").text).to eq("Modern · 58 cards · 58 owned")
+        expect(html.at_css(".c-item__type").text).to eq("Modern · 58 cards · 58 owned · 0 proxy")
       end
 
       it "reads '1 card · 1 owned' for one copy and '0 cards · 0 owned' for none (AC-1.3)", :aggregate_failures do
         get deck_path(deck)
-        expect(html.at_css(".c-item__type").text).to eq("Modern · 0 cards · 0 owned")
+        expect(html.at_css(".c-item__type").text).to eq("Modern · 0 cards · 0 owned · 0 proxy")
 
         own("main", printing)
         get deck_path(deck)
-        expect(html.at_css(".c-item__type").text).to eq("Modern · 1 card · 1 owned")
+        expect(html.at_css(".c-item__type").text).to eq("Modern · 1 card · 1 owned · 0 proxy")
       end
 
       it "shows the stored format key for a format the instance no longer registers (AC-1.3)" do
@@ -57,7 +58,7 @@ RSpec.describe "Deck page", type: :request do
 
         get deck_path(deck)
 
-        expect(html.at_css(".c-item__type").text).to eq("retired · 0 cards · 0 owned")
+        expect(html.at_css(".c-item__type").text).to eq("retired · 0 cards · 0 owned · 0 proxy")
       end
 
       it "offers Edit deck, then a menu with Change format and, after a separator, Remove deck (AC-1.4)", :aggregate_failures do
@@ -72,14 +73,181 @@ RSpec.describe "Deck page", type: :request do
         expect(items.last["href"]).to eq(new_deck_removal_path(deck))
       end
 
-      it "has no proxy control, no proxy count and no shape panel (AC-1.6)", :aggregate_failures do
+      it "has no shape panel, and a dash in the Proxy cell of a row with no proxy (AC-1.6; spec 068 supersedes spec 066 AC-1.6's no proxy control)", :aggregate_failures do
         own("main", printing)
 
         get deck_path(deck)
 
-        expect(html.css(".c-item__head, .c-section__head, main tbody").map(&:text).join).not_to match(/proxy/i) # the Proxy column's header is required, its cells are dashes
-        expect(html.css(".c-proxy, main a, main button").select { it.text.match?(/proxy/i) }).to be_empty
+        expect(card_rows(zone_section("Main")).first.css("td")[3].at_css(".is-muted").text).to eq("–")
         expect(html.at_css("aside.c-deck__shape, details.c-shapefold")).to be_nil
+      end
+    end
+
+    describe "proxies (spec 068 Story 2)" do
+      it "shows the tag, Owned 0 and Total in the row, and the three counts in the heads (AC-2.1, AC-2.3)", :aggregate_failures do
+        bolt = printing
+        own("main", bolt, quantity: 4)
+        proxy_in("main", bolt, quantity: 5)
+        proxy_in("sideboard", printing(name: "Spell Pierce"), quantity: 2)
+
+        get deck_path(deck)
+
+        expect(html.at_css(".c-item__type").text).to eq("Modern · 11 cards · 4 owned · 7 proxy")
+        main = zone_section("Main")
+        expect(main.at_css(".c-section__count").text).to eq("9 cards · 4 owned · 5 proxy")
+        row = card_rows(main).first
+        expect(row.css("td")[2].text.strip).to eq("4")
+        expect(row.css("td")[3].at_css("span.c-proxy").text.squish).to eq("Proxy 5")
+        expect(row.css("td")[4].text.strip).to eq("9")
+        expect(row.at_css(".c-table__sub .c-proxy").text.squish).to eq("Proxy 5")
+        expect(card_rows(zone_section("Sideboard")).first.css("td")[2].text.strip).to eq("0")
+        expect(main.at_css("tr.c-zone__group .c-zone__groupcount").text).to eq("9")
+      end
+
+      it "shows a muted dash and no tag for a row with no proxy, and '0 proxy' in an empty zone's head (AC-2.1, AC-2.3)", :aggregate_failures do
+        own("main", printing)
+
+        get deck_path(deck)
+
+        row = card_rows(zone_section("Main")).first
+        expect(row.css("td")[3].at_css(".c-proxy")).to be_nil
+        expect(row.css("td")[3].at_css(".is-muted").text).to eq("–")
+        expect(row.at_css(".c-table__sub .c-proxy")).to be_nil
+        expect(zone_section("Sideboard").at_css(".c-section__count").text).to eq("0 cards · 0 owned · 0 proxy")
+        expect(zone_section("Sideboard").at_css(".c-zone__empty").text).to eq("No cards in Sideboard yet.")
+      end
+
+      it "gives each zone head an Add a proxy link, and the page no form (AC-1.1, AC-2.7)", :aggregate_failures do
+        get deck_path(deck)
+
+        main = zone_section("Main")
+        link = main.at_css(".c-section__actions a")
+        expect(link["href"]).to eq(new_deck_zone_proxy_path(deck, "main"))
+        expect(link.text.squish).to eq("Add a proxy to Main")
+        expect(zone_section("Sideboard").at_css(".c-section__actions a")).to be_present
+        expect(html.at_css("main form")).to be_nil
+      end
+
+      it "has a menu cell with the proxy items for a row with a proxy, and none for a row without (AC-2.6, AC-2.7)", :aggregate_failures do
+        bolt = printing
+        proxy_in("main", bolt)
+        own("main", printing(name: "Spell Pierce"))
+
+        get deck_path(deck)
+
+        rows = card_rows(zone_section("Main"))
+        with, without = rows.partition { it.at_css("a").text.include?("Lightning") }.map(&:first)
+        trigger = with.at_css("td.c-table__actions summary")
+        expect(trigger["aria-label"]).to match(/\AActions for Lightning Bolt /)
+        items = with.css(".c-menu__item")
+        expect(items.map { it.text.strip }).to eq([ "Change proxy count", "Remove proxy" ])
+        expect(items.last["class"]).to include("c-menu__item--danger")
+        expect(with.css(".c-menu__sep").size).to eq(1)
+        expect(without.at_css("td.c-table__actions").children.map(&:text).join.strip).to eq("")
+        expect(without.at_css("summary")).to be_nil
+        expect(html.css("th").map { it.text.strip }.first(6)).to eq([ "Card", "Cost", "Owned", "Proxy", "Total", "Actions" ])
+      end
+
+      it "names the finish in a row with proxies of two finishes (AC-2.6)", :aggregate_failures do
+        bolt = printing
+        proxy_in("main", bolt, finish: "foil", quantity: 1)
+        proxy_in("main", bolt, finish: "nonfoil", quantity: 2)
+
+        get deck_path(deck)
+
+        items = card_rows(zone_section("Main")).first.css(".c-menu__item").map { it.text.strip }
+        expect(items).to eq([ "Change Foil proxy count", "Change Nonfoil proxy count", "Remove Foil proxy", "Remove Nonfoil proxy" ])
+      end
+
+      it "shows a proxy of a retired printing and a legality marker on a proxy row (AC-2.8, AC-2.9)", :aggregate_failures do
+        banned = printing(name: "Black Lotus", legalities: { "modern" => "banned" })
+        retired = create(:catalog_entry, :retired, name: "Old Card")
+        create(:mtg_printing, entry: retired)
+        proxy_in("main", banned)
+        proxy_in("main", retired)
+
+        get deck_path(deck)
+
+        rows = card_rows(zone_section("Main"))
+        expect(rows.map { it.at_css("a").text }).to include("Black Lotus", "Old Card")
+        expect(rows.find { it.at_css("a").text == "Black Lotus" }.at_css(".c-legal").text).to include("Banned")
+      end
+
+      it "shows a proxy of a printing with no extension record in Other, with a dash for its cost and no marker (AC-2.8)", :aggregate_failures do
+        proxy_in("main", create(:catalog_entry, name: "Bare"), finish: nil)
+
+        get deck_path(deck)
+
+        expect(zone_section("Main").at_css("tr.c-zone__group th").text).to start_with("Other")
+        row = card_rows(zone_section("Main")).sole
+        expect(row.css("td")[1].at_css(".is-muted").text).to eq("–")
+        expect(row.at_css(".c-proxy").text.squish).to eq("Proxy 1")
+        expect(html.css(".c-legal")).to be_empty
+      end
+
+      it "counts no proxy in the collection, the card page or an export's lots (AC-4.1)", :aggregate_failures do
+        bolt = printing
+        proxy_in("main", bolt, quantity: 3)
+
+        get collection_path
+        expect(response.body).not_to include("Lightning Bolt")
+        get catalog_entry_path(bolt)
+        expect(html.text).not_to match(/\b3 copies\b/)
+        expect(CollectionExport.new(account:, at: Time.current).to_h["lots"]).to eq([])
+      end
+    end
+
+    describe "what a proxy leaves alone (AC-2.12, AC-4.1)" do
+      let(:bolt) { printing }
+
+      def collection_count
+        get collection_path
+        html.at_css(".c-pagehead__stats").text
+      end
+
+      def card_page_owned
+        get catalog_entry_path(bolt)
+        html.css(".c-stat").find { it.at_css("dt").text == "Owned" }.at_css("dd").text
+      end
+
+      def decks_page_owned
+        get decks_path
+        html.at_css("tbody tr").css("td")[html.css("thead th").map { it.text.strip }.index("Owned")].text.strip
+      end
+
+      def snapshot = [ collection_count, card_page_owned, decks_page_owned ]
+
+      def proxy_tags_on_collection_and_card_page = [ collection_path, catalog_entry_path(bolt) ].flat_map { get(it) && html.css(".c-proxy").to_a }
+
+      it "changes no count on the collection, the card page or the Decks page when a proxy is added, changed and removed", :aggregate_failures do
+        own("main", bolt, quantity: 2)
+        before = snapshot
+        post deck_zone_proxies_path(deck, "main"), params: { proxy: { entry: bolt.external_key, finish: "nonfoil", quantity: "3" } }
+        proxy = Deck::Proxy.sole
+        added = snapshot
+        patch deck_proxy_path(deck, proxy), params: { proxy: { quantity: "5" } }
+        changed = snapshot
+        delete deck_proxy_path(deck, proxy)
+
+        expect(before).to eq([ "2 items · 1 unique", "2", "2" ])
+        expect([ added, changed, snapshot ]).to all(eq(before))
+        expect(Deck::Proxy.count).to eq(0)
+      end
+
+      it "shows no proxy tag on the collection or the card page while a deck holds one" do
+        own("main", bolt, quantity: 2)
+        proxy_in("main", bolt, quantity: 3)
+
+        expect(proxy_tags_on_collection_and_card_page).to be_empty
+      end
+
+      it "shows no proxy tag on the collection in bulk mode or the scanner while a deck holds one" do
+        own("main", bolt, quantity: 2)
+        proxy_in("main", bolt, quantity: 3)
+
+        tags = [ collection_path(bulk: 1, view: "table"), collection_path(bulk: 1), scanner_path ].map { get(it) && [ response.status, html.css(".c-proxy").size ] }
+
+        expect(tags).to eq([ [ 200, 0 ], [ 200, 0 ], [ 200, 0 ] ])
       end
     end
 
@@ -112,10 +280,10 @@ RSpec.describe "Deck page", type: :request do
         get deck_path(deck)
 
         expect(html.css("section.c-zone h2").map(&:text)).to eq(%w[Main Sideboard Considering])
-        expect(zone_section("Main").at_css(".c-section__count").text).to eq("12 cards · 12 owned")
+        expect(zone_section("Main").at_css(".c-section__count").text).to eq("12 cards · 12 owned · 0 proxy")
         table = zone_section("Main").at_css("table")
         expect(table["aria-labelledby"]).to eq(zone_section("Main").at_css("h2")["id"])
-        expect(table.css("thead th").map { it.text.squish }).to eq([ "Card", "Cost", "Owned", "Proxy", "Total" ])
+        expect(table.css("thead th").map { it.text.squish }).to eq([ "Card", "Cost", "Owned", "Proxy", "Total", "Actions" ])
       end
 
       it "lists Commander first for a Commander deck (AC-2.1)" do
@@ -186,7 +354,7 @@ RSpec.describe "Deck page", type: :request do
 
         bodies = zone_section("Main").css("table tbody")
         expect(bodies.map { it.at_css("tr.c-zone__group th[scope='rowgroup']").text }).to eq([ "Creatures3", "Lands20" ])
-        expect(bodies.map { it.at_css("th[scope='rowgroup']")["colspan"] }).to eq(%w[5 5])
+        expect(bodies.map { it.at_css("th[scope='rowgroup']")["colspan"] }).to eq(%w[6 6])
         expect(bodies.first.css("tr:not(.c-zone__group) td a").map(&:text)).to eq([ "Dryad Arbor", "Murktide Regent" ])
       end
 
@@ -196,7 +364,7 @@ RSpec.describe "Deck page", type: :request do
         get deck_path(deck)
 
         sideboard = zone_section("Sideboard")
-        expect(sideboard.at_css(".c-section__count").text).to eq("0 cards · 0 owned")
+        expect(sideboard.at_css(".c-section__count").text).to eq("0 cards · 0 owned · 0 proxy")
         expect(sideboard.at_css("p.c-zone__empty").text).to eq("No cards in Sideboard yet.")
         expect(sideboard.at_css("table")).to be_nil
       end
@@ -208,7 +376,7 @@ RSpec.describe "Deck page", type: :request do
         get deck_path(deck)
 
         expect(response.body).not_to include("Elsewhere")
-        expect(html.at_css(".c-item__type").text).to eq("Modern · 0 cards · 0 owned")
+        expect(html.at_css(".c-item__type").text).to eq("Modern · 0 cards · 0 owned · 0 proxy")
       end
 
       it "shows a retired printing like any other (AC-2.9)" do
@@ -328,13 +496,13 @@ RSpec.describe "Deck page", type: :request do
     end
 
     describe "copies are not added or moved here (Story 4)" do
-      it "has no form, no row menu, no link to add, to number entry or to the scanner inside the page, no drag target (AC-4.2)", :aggregate_failures do
+      it "has no form or drag target, no link to add copies, to number entry or to the scanner, and every card links to its copies (AC-4.2)", :aggregate_failures do
         own("main", printing)
 
         get deck_path(deck)
 
         main = html.at_css("main")
-        expect(main.css("form, .c-table__actions, [draggable]")).to be_empty
+        expect(main.css("form, [draggable]")).to be_empty
         hrefs = main.css("a").map { it["href"] }
         expect(hrefs.grep(%r{/lots/new|number_entry|/scanner})).to be_empty
         expect(main.css("tbody a").map { it["href"] }).to all(include("from=collection#copies"))
@@ -365,7 +533,7 @@ RSpec.describe "Deck page", type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(html.css("section.c-zone h2").map(&:text)).to eq(%w[Main Sideboard Considering])
-      expect(html.at_css(".c-item__type").text).to eq("#{deck.format} · 1 card · 1 owned")
+      expect(html.at_css(".c-item__type").text).to eq("#{deck.format} · 1 card · 1 owned · 0 proxy")
       expect(html.css("tr.c-zone__group")).to be_empty
       expect(card_rows(zone_section("Main")).first.css("td")[1].at_css(".is-muted").text).to eq("–")
       expect(html.css(".c-legal")).to be_empty

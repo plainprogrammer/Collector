@@ -20,6 +20,8 @@ RSpec.describe Deck::FormatChange, type: :model do
       define_singleton_method(:formats) { formats }
       define_singleton_method(:finish_order) { [] }
       define_singleton_method(:conditions) { {} }
+      define_singleton_method(:finishes_for) { |_entry| [] }
+      define_singleton_method(:finish_label) { |finish| finish.to_s }
     end)
     Catalog.collecting["fake"] = "FakeDeckVocabulary"
   end
@@ -325,6 +327,171 @@ RSpec.describe Deck::FormatChange, type: :model do
       expect(data["decks"]).to eq([ { "name" => "Krenko", "collectible_type" => "mtg", "format" => "modern" } ])
       expect(data["lots"].map { it["location"] }).to contain_exactly({ "deck" => "Krenko", "zone" => "considering" }, { "deck" => "Krenko", "zone" => "main" })
       expect(CollectionImport.new(account:, file: StringIO.new(JSON.generate(data))).plan.nothing_to_change?).to be(true)
+    end
+  end
+
+  describe "proxies (spec 068 Story 6)" do
+    let(:deck) { create(:deck, account:, name: "Elves", format: "commander") }
+    let(:entry) { create(:mtg_printing).entry }
+
+    def proxy_in(zone, entry: self.entry, finish: "foil", quantity: 1) = proxy_in_deck(deck, zone, entry:, finish:, quantity:)
+    def proxy_in_deck(deck, zone, entry: self.entry, finish: "foil", quantity: 1) = create(:deck_proxy, zone: deck.zone(zone), account:, entry:, finish:, quantity:)
+
+    it "moves the proxies of a dropped zone into Considering and leaves the others where they were (AC-6.1)", :aggregate_failures do
+      commander = proxy_in("commander", quantity: 2)
+      main = proxy_in("main", entry: create(:mtg_printing).entry)
+      kept = proxy_in("considering", entry: create(:mtg_printing).entry)
+      change = change_to(deck, "modern")
+
+      change.save!
+
+      considering = deck.reload.zone("considering")
+      expect(commander.reload.zone).to eq(considering)
+      expect([ main.reload.zone, kept.reload.zone ]).to eq([ deck.zone("main"), considering ])
+      expect(deck.zones.pluck(:zone)).not_to include("commander")
+      expect(change.proxies_moved).to eq(2)
+      expect(Deck::Proxy.count).to eq(3)
+    end
+
+    it "merges a moved proxy into the proxy of its printing and finish already in Considering, which survives (AC-6.2)", :aggregate_failures do
+      moved = proxy_in("commander", quantity: 2)
+      there = proxy_in("considering", quantity: 3)
+
+      change_to(deck, "modern").save!
+
+      expect(Deck::Proxy.pluck(:id, :quantity)).to eq([ [ there.id, 5 ] ])
+      expect { moved.reload }.to raise_error(ActiveRecord::RecordNotFound)
+    end
+
+    it "keeps a moved proxy's own row (same id) when Considering has none of that printing and finish (AC-6.2)", :aggregate_failures do
+      moved = proxy_in("commander", quantity: 2)
+      proxy_in("considering", finish: "nonfoil", quantity: 3) # another finish of the same printing: not a merge
+
+      change_to(deck, "modern").save!
+
+      expect(moved.reload.zone).to eq(deck.zone("considering"))
+      expect(Deck::Proxy.count).to eq(2)
+    end
+
+    it "makes one proxy of those of one printing and finish from several dropped zones (AC-6.2)", :aggregate_failures do
+      fake_vocabulary # the helper's vocabulary also answers `finishes_for` and `finish_label`
+      other = create(:deck, account:, name: "Fake deck", pair: "fake/f")
+      entry = create(:catalog_entry, collectible_type: "fake")
+      a = create(:deck_proxy, zone: other.zone("a"), account:, entry:, finish: nil, quantity: 2)
+      b = create(:deck_proxy, zone: other.zone("b"), account:, entry:, finish: nil, quantity: 3)
+
+      change = described_class.new(deck: other, format: "fake/g")
+      change.save!
+
+      expect(Deck::Proxy.where(location_id: other.zone("considering").id).pluck(:id, :quantity)).to eq([ [ a.id, 5 ] ])
+      expect { b.reload }.to raise_error(ActiveRecord::RecordNotFound)
+      expect(change.proxies_moved).to eq(5)
+    end
+
+    it "refuses a move past 9,999 naming the proxy, and writes nothing (AC-6.4)", :aggregate_failures do
+      moved = proxy_in("commander", quantity: 5_000)
+      proxy_in("considering", quantity: 5_000)
+
+      expect { change_to(deck, "modern").save }.to raise_error(Deck::Proxy::CapExceeded) { |error| expect(error.proxy.id).to eq(moved.id) }
+
+      expect(deck.reload.format).to eq("commander")
+      expect(moved.reload.zone).to eq(deck.zone("commander"))
+      expect(Deck::Proxy.pluck(:quantity).sort).to eq([ 5_000, 5_000 ])
+    end
+
+    describe "with two proxies over the cap (AC-6.4)" do
+      def printing(name: "Bolt", set: "mh2", number: "1", language: "en")
+        catalog_set = Catalog::Set.find_by(code: set) || create(:catalog_set, code: set)
+        create(:mtg_printing, entry: create(:catalog_entry, name:, number:, set: catalog_set, language:)).entry
+      end
+
+      # A proxy of the entry in the dropped zone, with one of the same printing and finish in Considering, so the move would pass 9,999.
+      def breach(entry, finish: "foil")
+        proxy_in("considering", entry:, finish:, quantity: 5_000)
+        proxy_in("commander", entry:, finish:, quantity: 5_000)
+      end
+
+      def refused
+        change_to(deck, "modern").save
+      rescue Deck::Proxy::CapExceeded => error
+        error.proxy
+      end
+
+      it "names the first by card name, not the one made first" do
+        ant = breach(printing(name: "Ant"))
+        breach(printing(name: "Zed"))
+
+        expect(refused).to eq(ant)
+      end
+
+      it "breaks a tie of name, set and number by language, ascending (en before ja)" do
+        breach(printing(language: "ja")) # made first, so only the language puts the English one ahead
+        english = breach(printing(language: "en"))
+
+        expect(refused).to eq(english)
+      end
+
+      it "breaks a tie of name by set code" do
+        breach(printing(set: "zzz"))
+        early = breach(printing(set: "aaa"))
+
+        expect(refused).to eq(early)
+      end
+
+      it "then by collector number as a number" do
+        breach(printing(number: "10"))
+        nine = breach(printing(number: "9"))
+
+        expect(refused).to eq(nine)
+      end
+
+      it "then by finish" do
+        entry = printing
+        breach(entry, finish: "nonfoil")
+        foil = breach(entry, finish: "foil")
+
+        expect(refused).to eq(foil)
+      end
+    end
+
+    it "shows the lots' refusal first when both would pass the cap (AC-6.5)" do
+      lot_entry = create(:mtg_printing).entry
+      Lot.add!(account:, entry: lot_entry, location: deck.zone("commander"), quantity: 9_000, finish: "foil")
+      Lot.add!(account:, entry: lot_entry, location: deck.zone("considering"), quantity: 9_000, finish: "foil")
+      proxy_in("commander", quantity: 9_000)
+      proxy_in("considering", quantity: 9_000)
+
+      expect { change_to(deck, "modern").save }.to raise_error(Lot::CapExceeded)
+    end
+
+    it "leaves a proxy where it is, with its id and quantity, when the new format has the same zones, and counts none moved (AC-6.6)", :aggregate_failures do
+      modern = create(:deck, account:, name: "Plain", format: "modern")
+      proxy = proxy_in_deck(modern, "main", quantity: 7)
+      change = change_to(modern, "pauper")
+
+      change.save!
+
+      expect(proxy.reload).to have_attributes(location_id: modern.zone("main").id, quantity: 7)
+      expect([ change.proxies_moved, Deck::Proxy.count ]).to eq([ 0, 1 ])
+    end
+
+    it "rolls the proxies back with the deck when the change fails part way (AC-6.7)", :aggregate_failures do
+      moved = proxy_in("commander", quantity: 4)
+      allow(Location).to receive(:insert_all!).and_raise(ActiveRecord::StatementInvalid, "disk full") # the step after the move adds Modern's Sideboard, as spec 064 AC-2.8's example fails it
+
+      expect { change_to(deck, "modern").save }.to raise_error(ActiveRecord::StatementInvalid)
+
+      expect(moved.reload.zone).to eq(deck.zone("commander"))
+      expect(deck.reload.format).to eq("commander")
+    end
+
+    it "moves the proxies into the Considering the change makes for a deck that has none (AC-6.8)", :aggregate_failures do
+      moved = proxy_in("commander", quantity: 2)
+      deck.zone("considering").delete # a deck with no Considering row (spec 064 AC-2.10's case): no lot is in it
+
+      change_to(deck.reload, "modern").save!
+
+      expect(moved.reload.zone).to eq(deck.zone("considering"))
     end
   end
 end

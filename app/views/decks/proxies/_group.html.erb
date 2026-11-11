@@ -1,0 +1,19 @@
+<%# locals: (group:, deck:, zone:) %>
+<section class="c-group" aria-labelledby="<%= dom_id(group.identity, :heading) %>">
+  <div class="c-section__head">
+    <h2 class="c-section__title" id="<%= dom_id(group.identity, :heading) %>"><%= group.identity.name %></h2>
+    <% if group.total_entries > group.entries.size %>
+      <span class="c-section__count">Showing <%= group.entries.size %> of <%= group.total_entries %> printings. Choose a set to see the others.</span>
+    <% else %>
+      <span class="c-section__count"><%= pluralize(group.total_entries, "printing") %></span>
+    <% end %>
+  </div>
+  <ul class="c-list">
+    <% group.entries.each do |entry| %>
+      <li>
+        <span class="is-data"><%= deck_set_line(entry) %></span>
+        <span class="c-list__end"><%= link_to new_deck_zone_proxy_path(deck, zone.zone, entry: entry.external_key), class: "c-btn c-btn--secondary c-btn--sm" do %>Choose<span class="c-sr"> <%= group.identity.name %> <%= deck_set_line(entry) %></span><% end %></span>
+      </li>
+    <% end %>
+  </ul>
+</section>

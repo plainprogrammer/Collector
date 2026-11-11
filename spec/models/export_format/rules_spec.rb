@@ -566,6 +566,33 @@ RSpec.describe ExportFormat::Rules, type: :model do
     end
   end
 
+  describe "proxies (spec 068 decision 18)" do
+    let(:base) { JSON.parse(ExportFormatRules.examples("valid").fetch("valid/proxies-v4.json")) }
+
+    it "reads each proxy against its own schema, so a bad proxy is one row problem under /proxies/N", :aggregate_failures do
+      data = base.merge("proxies" => base["proxies"] + [ base["proxies"][0].merge("quantity" => 0, "finish" => "etched") ]) # another finish: not a duplicate
+
+      expect(described_class.problems_in(data).map { [ it.rule, it.at ] }).to eq([ [ "minimum", "/proxies/3/quantity" ] ])
+    end
+
+    it "judges duplicates and unlisted decks by identity and comparison key, skipping a proxy whose own fields failed", :aggregate_failures do
+      one = base["proxies"][0]
+      data = base.merge("proxies" => [ one, one.merge("deck" => one["deck"].upcase), one.merge("deck" => "Nope"), one.merge("finish" => " ", "quantity" => 1) ])
+
+      expect(described_class.problems_in(data).map { [ it.rule, it.at ] }).to eq([ [ "pattern", "/proxies/3/finish" ], [ "duplicate_proxy", "/proxies/1" ], [ "unknown_location", "/proxies/2/deck" ] ])
+    end
+
+    it "lists duplicate_proxy among the rules a schema can't state" do
+      expect(described_class::RULES).to include("duplicate_proxy")
+    end
+
+    it "doesn't read proxies of a file older than version 4 (a version 3 file has none)" do
+      v3 = JSON.parse(ExportFormatRules.examples("valid").fetch("valid/collection-v3.json"))
+
+      expect(described_class.problems_in(v3.merge("proxies" => [ 5 ]))).to be_empty
+    end
+  end
+
   describe ".identity_readable?" do
     let(:lot) { base["lots"][0] }
 

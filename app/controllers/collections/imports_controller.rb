@@ -29,7 +29,7 @@ class Collections::ImportsController < ApplicationController
       counts = plan.counts
       lots = "Imported: #{helpers.pluralize(counts[:added], "lot")} added, #{counts[:changed]} changed, #{counts[:removed]} removed"
       currency = "prices now shown in #{plan.currency_change.to}" if plan.currency_change # spec 038 decision 7
-      [ lots, location_sentence(plan.locations), deck_sentence(plan.decks), currency ].compact.join("; ")
+      [ lots, location_sentence(plan.locations), deck_sentence(plan.decks), proxy_sentence(plan.proxies), currency ].compact.join("; ")
     end
 
     # "2 locations added, 1 renamed, 1 removed": the noun on the first part that isn't zero, the zero parts left out; nil
@@ -47,6 +47,14 @@ class Collections::ImportsController < ApplicationController
       return unless decks.counted?
 
       sentence("deck", decks.counts.slice(:added, :renamed, :format_changed, :removed))
+    end
+
+    # "2 proxies added, 1 changed, 1 removed", the same way (rows, not quantities); nil for a file older than version 4 and when no
+    # proxy changes (spec 068 decision 16).
+    def proxy_sentence(proxies)
+      return unless proxies.counted?
+
+      sentence("proxy", proxies.counts.slice(:added, :changed, :removed))
     end
 
     def sentence(noun, counts)

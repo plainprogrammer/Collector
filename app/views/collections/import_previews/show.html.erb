@@ -11,7 +11,7 @@
     <% if @import.applicable? %>
       <p class="c-status__message">This file can be applied. Previewing changed nothing in your collection.</p>
     <% else %>
-      <p class="c-status__message c-status__message--alert">This file can't be applied: <%= pluralize(number_with_delimiter(@import.problem_rows.size), "row") %> <%= @import.problem_rows.one? ? "has" : "have" %> problems. Previewing changed nothing in your collection.</p>
+      <p class="c-status__message c-status__message--alert">This file can't be applied: <% problem_total = @import.problem_rows.size + @import.proxy_problem_rows.size %><%= pluralize(number_with_delimiter(problem_total), "row") %> <%= problem_total == 1 ? "has" : "have" %> problems. Previewing changed nothing in your collection.</p>
     <% end %>
     <% unless @import.places? %>
       <p class="c-import__note" id="places_note">This file was written before lots could be in a location, so its lots would be in none.</p>
@@ -55,6 +55,7 @@
     <% end %>
     <%= render "collections/import_previews/locations", import: @import %>
     <%= render "collections/import_previews/decks", import: @import %>
+    <%= render "collections/import_previews/proxies", import: @import %>
     <% if @import.problem_rows.any? %>
       <section>
         <div class="c-section__head"><h2 class="c-section__title">Rows with problems</h2><span class="c-section__count"><%= pluralize(number_with_delimiter(@import.problem_rows.size), "row") %></span></div>
@@ -80,6 +81,26 @@
           <% end %>
         </ol>
         <% if @import.more_problem_rows.positive? %><p class="c-import__more">and <%= number_with_delimiter(@import.more_problem_rows) %> more</p><% end %>
+      </section>
+    <% end %>
+    <% if @import.proxy_problem_rows.any? %>
+      <section>
+        <div class="c-section__head"><h2 class="c-section__title">Proxies with problems</h2><span class="c-section__count"><%= pluralize(number_with_delimiter(@import.proxy_problem_rows.size), "proxy", "proxies") %></span></div>
+        <ul class="c-list c-import__list" id="proxy_problem_counts">
+          <% @import.proxy_problem_counts.each do |summary, count| %>
+            <li><span><%= summary %></span><span class="c-list__end"><%= pluralize(number_with_delimiter(count), "row") %></span></li>
+          <% end %>
+        </ul>
+        <ol class="c-list c-import__list c-import__rows" id="problem_proxies">
+          <% @import.listed_proxy_problem_rows.each do |row| %>
+            <li>
+              <span class="c-import__number">Proxy <%= number_with_delimiter(row.number) %></span>
+              <span><%= row.name %> <span class="c-list__meta"><%= import_proxy_line(**row.described) %></span></span>
+              <div class="c-import__reasons"><% row.problems.each do |problem| %><p><%= problem.reason %></p><% end %></div>
+            </li>
+          <% end %>
+        </ol>
+        <% if @import.more_proxy_problem_rows.positive? %><p class="c-import__more">and <%= number_with_delimiter(@import.more_proxy_problem_rows) %> more</p><% end %>
       </section>
     <% end %>
     <div class="c-form__actions">

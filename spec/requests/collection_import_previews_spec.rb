@@ -177,9 +177,9 @@ RSpec.describe "Import preview", type: :request do
     describe "decks (spec 062)" do
       let!(:entry) { printing }
 
-      def file_v4(lots, locations: [], decks: [], **fields)
+      def file_v4(lots, locations: [], decks: [], proxies: [], **fields)
         decks = decks.map { |deck| deck.is_a?(Hash) ? deck : { "name" => deck, "collectible_type" => "mtg", "format" => "modern" } }
-        file(lots, format_version: 4, locations: locations.map { |name| { "name" => name } }, decks:, **fields)
+        file(lots, format_version: 4, locations: locations.map { |name| { "name" => name } }, decks:, proxies:, **fields)
       end
 
       def zone(deck, key = "main") = { "deck" => deck, "zone" => key }
@@ -226,14 +226,14 @@ RSpec.describe "Import preview", type: :request do
       it "says an older file leaves the decks, and what it would remove from them, with no Decks counts (AC-7.4)", :aggregate_failures do
         deck = create(:deck, account: user.account, name: "Izzet Tempo")
         preview(file_v2([ row(entry) ]))
-        expect(html.at_css("#decks_stay").text).to eq("This file was written before decks existed, so your decks would stay.")
+        expect(html.at_css("#decks_stay").text).to eq("This file was written before decks existed, so your decks would stay. This file was written before proxies existed, so your proxies would stay.")
         expect(html.at_css("#decks")).to be_nil
 
         create_lot_in_zone(deck, "main", quantity: 2)
         create_lot_in_zone(deck, "sideboard", quantity: 1)
         preview(file([ row(entry) ]))
         expect(html.at_css("#decks_stay").text).to eq(
-          "This file was written before decks existed, so your decks would stay, but the copies in them (2 lots) would be removed.")
+          "This file was written before decks existed, so your decks would stay, but the copies in them (2 lots) would be removed. This file was written before proxies existed, so your proxies would stay.")
         expect(html.at_css("#decks")).to be_nil
       end
 

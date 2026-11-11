@@ -27,11 +27,28 @@ RSpec.describe "Decks", type: :request do
         expect(response).to have_http_status(:ok)
         expect(html.at_css("h1").text).to eq("Decks")
         expect(stats).to eq("3 decks · 10 cards")
-        expect(html.css(".c-decks thead th").map { it.text.squish }).to eq([ "Deck", "Format", "Cards", "Owned", "Actions" ])
+        expect(html.css(".c-decks thead th").map { it.text.squish }).to eq([ "Deck", "Format", "Cards", "Owned", "Proxy", "Actions" ])
         expect(deck_names).to eq(%w[Beatdown Krenko tempo])
         expect(html.css(".c-decks tbody td:first-child .c-table__item > div > span:first-child a").map { it["href"] }).to eq(account.decks.listing_order.map { deck_path(it) }) # spec 066 AC-1.5: each name links to its page
-        expect(html.at_css(".c-decks").text).not_to include("Proxy")
         expect(html.at_css(".c-pagehead__actions a.c-btn--primary[href='#{new_deck_path}']").text.squish).to eq("New deck")
+      end
+
+      it "shows Cards as owned plus proxy, Owned, and the Proxy tag or a dash, and the phone line's tag (AC-5.1, AC-5.2)", :aggregate_failures do
+        alpha = create(:deck, account:, name: "Alpha")
+        create_lot_in_zone(alpha, "main", quantity: 58)
+        create(:deck_proxy, zone: alpha.zone("main"), account:, quantity: 11)
+        create(:deck, account:, name: "Beta")
+
+        get decks_path
+
+        a, b = html.css("tbody tr")
+        expect(a.css("td")[2].text.strip).to eq("69")
+        expect(a.css("td")[3].text.strip).to eq("58")
+        expect(a.css("td")[4].at_css(".c-proxy").text.squish).to eq("Proxy 11")
+        expect(a.at_css(".c-table__sub").text.squish).to eq("Modern · 58 owned Proxy 11")
+        expect(b.css("td")[4].at_css(".is-muted").text).to eq("–")
+        expect(html.at_css(".c-pagehead__stats").text).to eq("2 decks · 69 cards")
+        expect(html.css("th").map { it.text.strip }).to eq([ "Deck", "Format", "Cards", "Owned", "Proxy", "Actions" ])
       end
 
       it "says '1 deck' for one (AC-4.3)" do
@@ -584,6 +601,55 @@ RSpec.describe "Decks", type: :request do
       delete deck_path(deck)
       expect(response).to redirect_to(new_session_path)
       expect(Deck.exists?(location_id: deck.location_id)).to be(true)
+    end
+  end
+
+  describe "removing a deck with proxies (spec 068 Story 5)" do
+    let(:deck) { create(:deck, account:, name: "Wishlist") }
+
+    before { sign_in_as(user) }
+
+    it "asks first and says the proxies go with the deck (AC-5.4)", :aggregate_failures do
+      create(:deck_proxy, zone: deck.zone("main"), account:, quantity: 8)
+      create(:deck_proxy, zone: deck.zone("sideboard"), account:, quantity: 3)
+
+      get new_deck_removal_path(deck)
+
+      expect(response).to have_http_status(:ok)
+      expect(html.at_css(".c-confirm p").text).to eq("This removes the deck, and its zones and its 11 proxies are removed with it. No copy in your collection is removed or changed.")
+      expect(html.at_css("form[action='#{deck_path(deck)}']")).to be_present
+    end
+
+    it "keeps the old sentence for a deck with no proxy" do
+      get new_deck_removal_path(deck)
+
+      expect(html.at_css(".c-confirm p").text).to eq("This removes the deck, and its zones are removed with it. No copy in your collection is removed or changed.")
+    end
+
+    it "removes a deck that holds only proxies, with its zones and its proxies, and nothing else (AC-5.4, AC-4.4)", :aggregate_failures do
+      create(:deck_proxy, zone: deck.zone("main"), account:, quantity: 8)
+      other = create(:deck, account:, name: "Other")
+      keep = create(:deck_proxy, zone: other.zone("main"), account:)
+      lot = create_lot_in_zone(other, "main")
+
+      delete deck_path(deck)
+
+      expect(response).to redirect_to(decks_path)
+      expect(Deck::Proxy.pluck(:id)).to eq([ keep.id ])
+      expect(Deck.pluck(:location_id)).to eq([ other.location_id ])
+      expect(lot.reload.quantity).to eq(1)
+    end
+
+    it "is still refused while a zone holds a lot, whatever its proxies (AC-4.4)", :aggregate_failures do
+      create(:deck_proxy, zone: deck.zone("main"), account:)
+      create_lot_in_zone(deck, "sideboard")
+
+      get new_deck_removal_path(deck)
+      expect(html.at_css("h1").text).to include("isn't empty")
+
+      delete deck_path(deck)
+      expect(response).to have_http_status(:conflict)
+      expect(Deck::Proxy.count).to eq(1)
     end
   end
 end

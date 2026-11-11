@@ -174,4 +174,15 @@ RSpec.describe "Page query counts", type: :request do
 
     expect(queries_for(deck_path(deck))).to eq(few)
   end
+
+  it "keeps the deck page's and the Decks page's queries the same with six proxies as with one (spec 068 AC-2.10, AC-5.3)", :aggregate_failures do
+    deck = create(:deck, account: user.account, name: "Izzet Tempo")
+    create(:deck_proxy, zone: deck.zone("main"), account: user.account)
+    paths = [ deck_path(deck), decks_path ]
+    with_one = paths.map { |path| queries_for(path) }
+
+    5.times { |n| create(:deck_proxy, zone: deck.zone(%w[main sideboard considering][n % 3]), account: user.account) }
+
+    expect(paths.map { |path| queries_for(path) }).to eq(with_one)
+  end
 end
