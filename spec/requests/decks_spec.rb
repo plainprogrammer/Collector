@@ -358,6 +358,15 @@ RSpec.describe "Decks", type: :request do
         end
       end
 
+      it "answers 404 for an id that is a deck's id followed by letters, as for any id that is not digits only (spec 066 AC-1.2)", :aggregate_failures do
+        [ "#{deck.location_id}abc", "abc", "0", "-1" ].each do |id|
+          get edit_deck_path(id)
+          expect(response).to have_http_status(:not_found), "#{id.inspect} was not a 404"
+        end
+        get edit_deck_path(deck)
+        expect(response).to have_http_status(:ok)
+      end
+
       it "answers 404 for a deck's id and a zone's id on /locations (AC-2.6, a place's name is the only one this page renames)", :aggregate_failures do
         [ deck.location, deck.zone("main") ].each do |other|
           get edit_location_path(other)

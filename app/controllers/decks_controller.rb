@@ -54,8 +54,12 @@ class DecksController < ApplicationController
     end
 
     # `find_by!` raises RecordNotFound (404) for another account's deck and for a place's or a zone's location id, which no
-    # deck row points at.
-    def set_deck = @deck = Current.account.decks.includes(:location).find_by!(location_id: params[:id])
+    # deck row points at. An id is text of digits only: "12abc" would otherwise cast to 12 (`Location::ID_TEXT`, spec 066 AC-1.2).
+    def set_deck
+      raise ActiveRecord::RecordNotFound, "not a deck id" unless params[:id].to_s.match?(Location::ID_TEXT)
+
+      @deck = Current.account.decks.includes(:location).find_by!(location_id: params[:id])
+    end
 
     # The one permitted parameter of a rename, the location's name as the Locations page's form sends it; a request without
     # the location parameter is a 400.
