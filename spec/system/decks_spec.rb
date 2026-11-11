@@ -92,4 +92,55 @@ RSpec.describe "Decks", type: :system do
       end
     end
   end
+
+  describe "changing a deck's format (spec 064)" do
+    it "changes the format from the row through the Change format page, which needs no script (AC-1.1, AC-1.3)", :aggregate_failures do
+      deck = create(:deck, account:, name: "Krenko", format: "commander")
+      create_lot_in_zone(deck, "commander", quantity: 2)
+
+      visit decks_path
+      click_link "Change format Krenko"
+      expect(page).to have_css("h1", text: "Change format")
+      select "Modern", from: "Format"
+      click_button "Save"
+
+      expect(page).to have_css("#status", text: "Changed “Krenko” to Modern. 2 cards moved to Considering.")
+      expect(page).to have_css(".c-decks tbody", text: "Modern")
+    end
+
+    it "keeps the three row buttons on one line on a wide screen (AC-1.1)", :aggregate_failures do
+      create(:deck, account:, name: "Krenko", format: "casual")
+
+      visit decks_path
+      tops = page.evaluate_script('Array.from(document.querySelectorAll(".c-decks__actions a")).map((a) => a.offsetTop)')
+
+      expect(tops.size).to eq(3)
+      expect(tops.uniq.size).to eq(1)
+    end
+
+    it "keeps the Decks row and the Change format page inside a 360px frame, a 60-character name included (AC-1.1)", :aggregate_failures do
+      create(:deck, account:, name: "W" * 60, format: "casual")
+
+      open_in_narrow_frame(decks_path, width: 360, ready: ".c-decks table")
+      within_narrow_frame { expect(fits?).to be(true) }
+
+      open_in_narrow_frame(edit_deck_format_path(account.decks.first), width: 360, ready: ".c-decks form")
+      within_narrow_frame { expect(fits?).to be(true) }
+    end
+
+    # Between the buttons' 640px breakpoint and the table's own container query a name does not wrap by the viewport alone.
+    [ 768, 1024 ].each do |width|
+      [ "W" * 60, "Mono-blue artifacts tempo with far too many words in it ok" ].each do |name|
+        it "keeps the Decks page inside a #{width}px frame for the name #{name[0, 12].inspect} (#{name.length} characters) (AC-1.1)", :aggregate_failures do
+          create(:deck, account:, name:, format: "casual")
+
+          open_in_narrow_frame(decks_path, width:, ready: ".c-decks table")
+          within_narrow_frame do
+            expect(page).to have_css(".c-decks__actions a", count: 3)
+            expect(fits?).to be(true)
+          end
+        end
+      end
+    end
+  end
 end

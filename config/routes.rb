@@ -47,6 +47,7 @@ Rails.application.routes.draw do
   # Decks (spec 062): a deck is a location with zones; the id in every deck URL is the deck's location id (decision 4).
   resources :decks, only: %i[index new create edit update destroy] do
     resource :removal, only: :new, module: :decks
+    resource :format, only: %i[edit update], module: :decks # spec 064: change a deck's format
   end
 
   # The card scanner (spec 007; spec 009 adds the sitting and Other printings, and links it from the navigation).

@@ -33,4 +33,26 @@ module DecksHelper
     end
     grouped_options_for_select(groups, selected)
   end
+
+  # The value the Change format select starts on: the deck's own pair when the instance registers it, else the default format
+  # (a deck whose registration was lost; the page head still shows its stored key, spec 064 AC-1.7).
+  #
+  # @param deck [Deck]
+  # @return [String, nil] `<type>/<key>`
+  def deck_format_selection(deck)
+    Catalog::Formats.find(deck.collectible_type, deck.format) ? "#{deck.collectible_type}/#{deck.format}" : Catalog::Formats.default_option&.value
+  end
+
+  # The notice after a change of format: "Changed “Izzet Tempo” to <Format>. 12 cards moved to Considering." (the second
+  # sentence only when copies moved, naming the zone as its row does), or that the deck already has the format (AC-1.3, AC-1.6).
+  #
+  # @param deck [Deck] after the change
+  # @param change [Deck::FormatChange] after {Deck::FormatChange#save}
+  # @return [String]
+  def format_changed_message(deck, change)
+    return "“#{deck.name}” is already #{deck.format_name}." unless change.changed?
+
+    base = "Changed “#{deck.name}” to #{deck.format_name}."
+    change.moved.positive? ? "#{base} #{pluralize(number_with_delimiter(change.moved), "card")} moved to #{change.considering_name}." : base
+  end
 end

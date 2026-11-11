@@ -1,8 +1,8 @@
 # DecksIndex
 
-The list of a collector's decks, the page that adds one, and the pages that rename and remove one. Shown with Magic: The Gathering formats; the pages name no collectible in their rules.
+The list of a collector's decks, the page that adds one, and the pages that rename, change the format of and remove one. Shown with Magic: The Gathering formats; the pages name no collectible in their rules.
 
-**Live since spec 062 (create, rename and remove a deck, #49).** The app's Decks page differs from spec 060's preview in three ways, each ruled by the maintainer (D5, 2026-11-10): each row has Rename and Remove ghost buttons, the deck's name is plain text and not the `TableItemLink`, and the table has no Proxy column or tag. **Spec 062 supersedes spec 060 decision 11 and AC-4.1 to AC-4.3 for the page until #253 and #254**: #253 (the deck page) restores the link and may remove the row actions where the deck page offers them; #254 (proxies) adds the Proxy column, the tag and the `Owned` + `Proxy` = `Cards` rule. The static previews (`previews/DecksIndex.html`, `previews/DecksIndexPhone.html`) still draw spec 060's shape, with the Proxy column and the linked name, and are the target #253 and #254 restore; the markup below is what the app renders today.
+**Live since spec 062 (create, rename and remove a deck, #49).** The app's Decks page differs from spec 060's preview in three ways, each ruled by the maintainer (D5, 2026-11-10): each row has Rename, Change format and Remove ghost buttons (Change format since spec 064, #251), the deck's name is plain text and not the `TableItemLink`, and the table has no Proxy column or tag. **Spec 062 supersedes spec 060 decision 11 and AC-4.1 to AC-4.3 for the page until #253 and #254**: #253 (the deck page) restores the link and may remove the row actions where the deck page offers them; #254 (proxies) adds the Proxy column, the tag and the `Owned` + `Proxy` = `Cards` rule. The static previews (`previews/DecksIndex.html`, `previews/DecksIndexPhone.html`) still draw spec 060's shape, with the Proxy column and the linked name, and are the target #253 and #254 restore; the markup below is what the app renders today.
 
 **Markup, the Decks page** — inside `.c-main.c-page.c-decks`: a page head with the count and the primary "New deck" button, then the table in `.c-collection`. With no decks a `c-empty` paragraph takes the table's place.
 
@@ -21,6 +21,7 @@ The list of a collector's decks, the page that adds one, and the pages that rena
           <td class="is-opt">Modern</td><td class="is-num">58</td><td class="is-num is-opt">58</td>
           <td class="c-table__actions"><span class="c-decks__actions">
             <a class="c-btn c-btn--ghost c-btn--sm" href="/decks/41/edit">Rename<span class="c-sr"> Izzet Tempo</span></a>
+            <a class="c-btn c-btn--ghost c-btn--sm" href="/decks/41/format/edit">Change format<span class="c-sr"> Izzet Tempo</span></a>
             <a class="c-btn c-btn--ghost c-btn--sm" href="/decks/41/removal/new">Remove<span class="c-sr"> Izzet Tempo</span></a>
           </span></td>
         </tr>
@@ -75,6 +76,27 @@ The `41` in the URLs is the deck's **location id**, not a row id of a `decks` ta
 </main>
 ```
 
+**Markup, the Change format page** (spec 064 AC-1.2, AC-2.6, AC-3.1) — under `c-appbar--detail`, with the Decks section current: a page head "Change format" whose stats line is the deck's name and its current format ("Izzet Tempo · Modern", the stored key when the instance no longer registers the format, AC-1.7), and a `Form` of the Format field, the Rename page's shape with the New deck page's select and a hint.
+
+```html
+<main class="c-main c-page c-decks">
+  <div class="c-pagehead"><div><h1 class="c-pagehead__title">Change format</h1><p class="c-pagehead__stats">Izzet Tempo · Modern</p></div></div>
+  <form class="c-form" action="/decks/41/format" method="post"><!-- _method=patch -->
+    <div class="c-field"><!-- c-field--invalid with a c-field__error after the select on "Choose a format." -->
+      <label class="c-field__label" for="deck_format">Format</label>
+      <select id="deck_format" name="deck[format]"><option value="mtg/casual">Casual</option>…<option value="mtg/modern" selected>Modern</option>…</select>
+      <p class="c-field__hint">Cards in zones the new format doesn't have move to Considering.</p>
+    </div>
+    <div class="c-form__actions">
+      <input type="submit" class="c-btn c-btn--primary" value="Save">
+      <a class="c-btn c-btn--secondary" href="/decks">Cancel</a>
+    </div>
+  </form>
+</main>
+```
+
+A refusal at the cap answers 422 with this page again and the page's alert in the shared status region above it (`#status`, `c-status__message--alert`): "Nothing changed. Lightning Bolt (M10 · 146) would have more than 9,999 copies in one lot.", as the bulk move page shows its own (spec 064 decision 6, AC-2.6).
+
 **Markup, the removal pages** (spec 062 AC-3.1, AC-3.3) — the `ConfirmPage` pattern inside `.c-decks`, with no script needed. The confirmation, for a deck whose zones hold no copy:
 
 ```html
@@ -113,9 +135,9 @@ and the refusal, for a deck any of whose zones holds a copy (the same page answe
 - The Decks page lists decks only, and the Locations page lists places only (spec 057 decision 11; `Locations`; spec 062 AC-4.8). Decks have their own header link and tab (`AppHeader`, `TabBar`).
 - **Columns** (spec 062 AC-4.3, AC-4.4, superseding spec 060 decision 11 and AC-4.2 until #253 and #254): Deck, Format, Cards, Owned and a last column of actions with no heading but a screen-reader one ("Actions"). The deck's name is plain text (not `TableItemLink`) until the deck page of #253 exists. Cards and Owned are right-aligned mono. The Format cell is the format's name, or its key when the instance no longer registers it. Decks are ordered by the name's comparison key, then the name.
 - **Cards counts every zone**: the copies in Main, Sideboard, Considering and the rest, Considering included, because copies in Considering are in the deck (spec 060 decision 12; the README's Decks section). **Owned is the same number until proxies exist** (#254 adds the Proxy column and the rule that Owned and Proxy add up to Cards). A deck with no cards shows "0".
-- **The row actions** (spec 062 decision 5, AC-4.4): "Rename" and "Remove", `c-btn c-btn--ghost c-btn--sm` links like the Locations list's, each followed by a `c-sr` span with the deck's name so a screen reader hears "Rename Izzet Tempo". They sit in `span.c-decks__actions` in the cell `td.c-table__actions`: a flex row at the end of the cell, `space-2` apart, in the sans font, and every `.c-decks .c-btn` is at least the touch floor (44px) high and wide. The cell is as narrow as its buttons (`td.c-table__actions { width: 1% }`).
+- **The row actions** (spec 062 decision 5, AC-4.4; spec 064 AC-1.1): "Rename", "Change format" and "Remove", `c-btn c-btn--ghost c-btn--sm` links like the Locations list's, each followed by a `c-sr` span with the deck's name so a screen reader hears "Rename Izzet Tempo" and "Change format Izzet Tempo". They sit in `span.c-decks__actions` in the cell `td.c-table__actions`: a flex row at the end of the cell, `space-2` apart, in the sans font, and every `.c-decks .c-btn` is at least the touch floor (44px) high and wide. The cell is as narrow as its buttons (`td.c-table__actions { width: 1% }`). **The three buttons stay on one line on a wide screen and wrap onto lines of their own below 640px of the viewport** (spec 064 AC-1.1): `.c-decks__actions` is `flex-wrap: nowrap` by default (with wrapping allowed the cell's minimum is one button wide and they would stack at every width) and `@media (max-width: 639px) { .c-decks__actions { flex-wrap: wrap } }` lets a phone's row grow taller instead of wider, so no row widens a 360px page. The real page is what the previews do not draw.
 - **The phone fold** (spec 060 decision 11, AC-4.3; spec 062 AC-4.5). Below 640px of the table's container Format and Owned are hidden and the line under the deck's name (`c-table__sub`) reads the format and the owned count: "Modern · 58 owned" (#254 adds the `ProxyTag` after it). Cards and the actions stay. This is the fold `CollectionTable` describes.
-- **Names wrap.** Below 640px of the table's container the Deck cell wraps its name (`white-space: normal`, `overflow-wrap: anywhere`: `.c-decks td:first-child`), so a 60-character name with no space never widens a phone's table and the table has no horizontal overflow at 360px.
+- **Names wrap.** At every width the Deck cell wraps its name (`white-space: normal`, `overflow-wrap: anywhere`: `.c-decks td:first-child`), so a 60-character name never widens the table: the row's three buttons stay on one line from 640px up, and the page has no horizontal overflow at 360px, 768px or 1024px.
 - **No fixed layout.** The columns size themselves; the fixed column widths of `DeckPage`'s zone tables do not apply here (spec 060 decision 25).
 - **Empty state** (spec 060 AC-4.1; spec 062 AC-4.6): "No decks yet. Add a deck to start building one." replaces the table, as an `EmptyState`; the page head and its New deck button stay.
 - **Cost.** The page reads the decks with their locations and one grouped sum of the copies in all their zones, a bounded number of queries whatever the number of decks, zones or lots (spec 062 AC-4.7).
@@ -140,10 +162,16 @@ and the refusal, for a deck any of whose zones holds a copy (the same page answe
 - "Rename deck" under `c-appbar--detail` with the Decks tab current; the stats line is the deck's name as it is now, the Name field holds it, and Save is primary with Cancel beside it. It is a page of its own, reached from the row's Rename without scripting. A refusal answers 422 with the typed text kept and the same sentences on the Name field. A success answers 303 to the Decks page with "Renamed “<old>” to “<new>”."; a change of case alone is allowed.
 - Only a deck is renamed here: a zone's name is its format's, so a zone's or a place's id is a 404.
 
+**The Change format page** (spec 064 AC-1.1 to AC-1.7, AC-2.1 to AC-2.6, AC-3.1)
+
+- "Change format" under `c-appbar--detail` with the Decks tab current, reached from the row's Change format without scripting. The Format select has the options and grouping of the New deck page, with the deck's own format selected (the default format when the instance no longer registers the deck's, so saving the default is a visible choice: the head line shows the stored key). The hint says what happens to cards, "Cards in zones the new format doesn't have move to Considering."; Save is primary with Cancel beside it.
+- A success answers 303 to the Decks page with the notice "Changed “<name>” to <Format>." and, when copies moved, " 12 cards moved to Considering." ("1 card" for one); the format the deck already has is "“<name>” is already <Format>." A bad pair is "Choose a format." on the Format field with 422; a merge past 9,999 copies is the alert described above with 422 and the chosen format kept.
+- A long name wraps in the head's stats line: `.c-decks .c-pagehead > div { min-width: 0 }` and `.c-decks .c-pagehead__stats { overflow-wrap: anywhere }`, so a 60-character name with no space breaks inside itself on a phone and the page has no horizontal overflow at 360px (spec 064 AC-1.1).
+
 **The removal pages** (spec 062 AC-3.1 to AC-3.5)
 
 - The confirmation is a `ConfirmPage` on its own page: the question "Remove <name>?", one sentence saying the zones go with the deck and no copy is removed or changed, the one danger button "Remove" and a Cancel link. Success answers 303 to the Decks page with "Removed “<name>”."
 - The refusal replaces it for a deck whose zones hold any copy: the heading "“<name>” isn't empty", "“<name>” holds 12 copies in 3 lots. Move them before removing it.", the first 100 lots (`Location::Holdings::LISTED`) each linking to its card page with its zone as "Deck › Zone" in `c-list__meta` and its quantity at the end, "and N more" beyond them, and "Back to decks" as the only action. It reuses the Locations refusal page's `c-list c-locations__lots` and `c-locations__more`, and `c-decks__zone` is a hook with no rule of its own.
 - A long name wraps on both pages: `.c-decks .c-confirm :is(h1, p), .c-decks .c-list li > span:first-child` take `min-width: 0` and `overflow-wrap: anywhere`, so a 60-character name with no space breaks inside itself on a phone and the page has no horizontal overflow (the lesson of `.c-locations__name` and `.c-pick`).
 
-**CSS the pages add** (spec 062, one block each at the end of `additions.css`; no colour, spacing or font value of its own): `.c-decks__actions` and `.c-decks .c-btn` (the row actions above), the removal pages' wrapping rule above, and `.c-field__static` (`Form`). `.c-decks` itself was spec 060's: the name's wrap in the narrow container query and the New deck button on a phone.
+**CSS the pages add** (spec 062 and 064, one block each at the end of `additions.css`; no colour, spacing or font value of its own): `.c-decks__actions` and `.c-decks .c-btn` (the row actions above, with spec 064's wrap below 640px), the removal pages' wrapping rule above, the page heads' wrap on every Decks page (`.c-decks .c-pagehead > div`, `.c-decks .c-pagehead__stats`), and `.c-field__static` (`Form`). `.c-decks` itself was spec 060's: the New deck button on a phone; the name's wrap was spec 060's in the narrow container query and spec 064 made it apply at every width.
