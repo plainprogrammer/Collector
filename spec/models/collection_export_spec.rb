@@ -38,7 +38,7 @@ RSpec.describe CollectionExport, type: :model do
 
   it "writes the header, the profile and the currency", :aggregate_failures do
     file = parsed
-    expect(file.except("lots", "locations", "decks")).to eq(
+    expect(file.except("lots", "locations", "decks", "proxies")).to eq(
       "format" => "collector-export", "format_version" => 4, "exported_at" => "2026-10-14T12:34:56Z",
       "profile" => { "name" => "Grace Example", "email_address" => "grace@example.test", "collection_view" => "grid" },
       "currency" => "USD")
@@ -501,6 +501,60 @@ RSpec.describe CollectionExport, type: :model do
           .to raise_error(described_class::Unsettled)
         expect(count).to eq(3)
       end
+    end
+  end
+
+  # Spec 068 Story 7: the proxies a deck's zones need, format version 4.
+  describe "proxies (spec 068 Story 7)" do
+    def deck = @deck ||= create(:deck, account:, name: "Izzet Tempo")
+
+    def entry = @entry ||= create(:mtg_printing).entry
+
+    def exported = described_class.new(account:, at: Time.utc(2026, 11, 11, 12)).to_h
+
+    it "writes an empty list for an account with none (AC-7.1)" do
+      expect(exported["proxies"]).to eq([])
+    end
+
+    it "writes each proxy as deck, zone, entry, finish and quantity, with no id and no time (AC-7.1)", :aggregate_failures do
+      create(:deck_proxy, zone: deck.zone("sideboard"), account:, entry:, finish: "foil", quantity: 2)
+
+      proxy = exported["proxies"].sole
+
+      expect(proxy).to eq("deck" => "Izzet Tempo", "zone" => "sideboard",
+        "entry" => { "collectible_type" => "mtg", "source_id" => entry.external_key, "name" => entry.name, "set_code" => entry.set.code,
+                     "collector_number" => entry.number, "language" => "en" },
+        "finish" => "foil", "quantity" => 2)
+      expect(ExportFormat::Rules.problems(described_class.new(account:, at: Time.current).to_json)).to be_empty
+    end
+
+    it "writes them in the same order for two exports, and not another account's or any lot (AC-7.1)", :aggregate_failures do
+      other = create(:deck, account:, name: "Alpha")
+      create(:deck_proxy, zone: deck.zone("main"), account:, entry:, finish: "nonfoil")
+      create(:deck_proxy, zone: deck.zone("main"), account:, entry:, finish: "foil")
+      create(:deck_proxy, zone: other.zone("considering"), account:)
+      create(:deck_proxy)
+
+      first = exported["proxies"]
+
+      expect(first.map { [ it["deck"], it["zone"], it["finish"] ] }).to eq([ [ "Alpha", "considering", "nonfoil" ], [ "Izzet Tempo", "main", "foil" ], [ "Izzet Tempo", "main", "nonfoil" ] ])
+      expect(exported["proxies"]).to eq(first)
+      expect(exported["lots"]).to eq([])
+    end
+
+    it "reads the proxies in one statement, however many (AC-7.2)", :aggregate_failures do
+      account # built here, not inside the count: a lazy `let` would add its own statements to the first count
+      few = count_queries { exported }
+      5.times { |n| create(:deck_proxy, zone: create(:deck, account:, name: "D#{n}").zone("main"), account:) }
+
+      expect(count_queries { exported }).to eq(few) # the proxies' read runs once, with none or with five
+    end
+
+    it "still exports a proxy of a collectible type the instance no longer has (AC-7.2)" do
+      create(:deck_proxy, zone: deck.zone("main"), account:, entry:)
+      allow(Catalog).to receive(:collecting).and_return({})
+
+      expect(exported["proxies"].size).to eq(1)
     end
   end
 end
