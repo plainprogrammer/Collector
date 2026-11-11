@@ -21,6 +21,16 @@ module CollectionFilter
   # Whether the account has a place: the gate of the select, the filter and Move to… (they list places).
   def places? = locations.any?
 
+  # Everything the account can choose a location from, read once (spec 065 decision 1).
+  #
+  # @return [Location::Choices]
+  def choices = @choices ||= Location::Choices.new(@account)
+
+  # Whether the account has a place or a zone: the gate of the select, the filter and Move to… (spec 065 decision 3).
+  #
+  # @return [Boolean]
+  def choices? = choices.any?
+
   # Whether a lot's place is shown, on the tile's line, the table's Location column and the phone line: the account has a place,
   # or a lot in a zone, which has a place to read (spec 062 AC-5.8a). The second read happens only for an account with no
   # place, once.
