@@ -93,3 +93,7 @@ Opus read-only review (sdd-review Mode B), 2026-11-10: no blocking finding, one 
 - **Minor, a comment in `Lot::BulkMove#initialize`** contradicted itself about "already there" for a lot in a zone; the clause was dropped.
 - **Minor, AC-3.6's export and preview half** stays "read" (every read goes through `Current.account`, as above); no example was added.
 - **Minor, AC-1.2's option grouping** is covered by spec 062's examples of the same select, so no example was added here.
+
+## Distillation
+
+Distilled by `distill-feature` before the pull request (2026-11-10): [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (scope, glossary, the invariant "written, renamed, changed and removed", the deck table's Change format row, Considering's rules for #50 and #256, the import/app difference, the `Deck#zones` order note, sources and the log), [`data-portability.md`](../../architecture/data-portability.md) (an import moves no card into Considering; no format change) and [`tenancy-and-accounts.md`](../../architecture/tenancy-and-accounts.md) (the Change format routes' 404 rule), with `DecksIndex.md` and the design system's README written with the feature. The spec's row in the [specs index](../README.md) is Frozen with its plan "retirement owed"; the plan is retired after the merge. No ADR was written: ADR 0028 already records the decision. The log rows name "spec 064's pull request" until it has a number.
