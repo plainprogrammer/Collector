@@ -102,10 +102,16 @@ RSpec.describe CollectionTable, type: :model do
     expect(count_queries { table.lots.each { it.location&.name } }).to eq(few)
   end
 
-  it "knows whether the account has locations", :aggregate_failures do
-    expect(table.places?).to be(false)
+  it "knows whether the account has anything to choose a location from", :aggregate_failures do
+    expect(table.choices?).to be(false)
     create(:location, account:)
-    expect(table.places?).to be(true)
+    expect(table.choices?).to be(true)
+  end
+
+  it "counts a deck's zones as choices and shows the place column for them (spec 065 decision 3)", :aggregate_failures do
+    deck = create(:deck, account:)
+    expect([ table.choices?, table.place_column? ]).to eq([ true, true ])
+    expect(table.choices.decks.map { it.location }).to eq([ deck.location ])
   end
 
   describe "under a location filter (spec 037)" do
@@ -132,7 +138,7 @@ RSpec.describe CollectionTable, type: :model do
     it "reads the account's locations once", :aggregate_failures do
       own("Opt", location: blue)
       filter = placed(blue.id.to_s)
-      expect(count_queries { [ filter.places?, filter.location, filter.chosen_location, filter.locations ] }).to eq(1)
+      expect(count_queries { [ filter.choices?, filter.location, filter.chosen_location, filter.choices.places ] }).to eq(1)
     end
   end
 end

@@ -6,7 +6,7 @@
   <%= form_with url: collection_move_path(page: params[:page]), class: "c-form" do |form| %>
     <div class="c-field<%= " c-field--invalid" if to_errors.any? %>">
       <%= label_tag :to, "To", class: "c-field__label" %>
-      <%= select_tag :to, options_for_select(@destinations, @to), required: true, "aria-describedby": field_error_describedby("to-error", to_errors) %>
+      <%= select_tag :to, location_options(@choices, selected: @to, leading: @leading, except: @own), required: true, "aria-describedby": field_error_describedby("to-error", to_errors) %>
       <%= render "shared/field_errors", messages: to_errors, id: "to-error" %>
     </div>
     <div class="c-form__actions">

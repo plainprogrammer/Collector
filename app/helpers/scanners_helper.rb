@@ -34,7 +34,7 @@ module ScannersHelper
   # The sitting's choices as words, only those that are set: "Near mint", "in Blue binder" (spec 042 decision 3). The scale is
   # the Hash the caller gives (condition key => [ long label, short label ]).
   def sitting_choices(sitting, conditions)
-    [ sitting.condition && conditions.dig(sitting.condition, 0), ("in #{sitting.location.name}" if sitting.location) ].compact
+    [ sitting.condition && conditions.dig(sitting.condition, 0), ("in #{sitting.location.label}" if sitting.location) ].compact
   end
 
   # The data of a redrawn sitting panel that puts keyboard focus back (spec 047 decision 3): nil on a page render and after an

@@ -245,8 +245,9 @@ RSpec.describe "Filtering the collection by location", type: :request do # spec 
     end
   end
 
-  # Spec 062 D6, AC-5.2, AC-5.8: a zone or a deck is never a filter value, and a lot in a zone is in no place and not unplaced.
-  describe "with a deck (spec 062)" do
+  # Spec 062 AC-5.8: a lot in a zone is in no place and not unplaced. Spec 062 D6, AC-5.2 (a zone or a deck is never a filter value)
+  # is superseded by spec 065 decision 4: a zone's id is a value, a deck's own id without its `deck:` prefix still reads as all.
+  describe "with a deck (spec 062, spec 065)" do
     def deck = @deck ||= create(:deck, account:, name: "Izzet Tempo")
 
     def three_lots
@@ -255,13 +256,19 @@ RSpec.describe "Filtering the collection by location", type: :request do # spec 
       [ zoned, own("Place card", location: blue), own("Loose card") ]
     end
 
-    it "reads a zone's id and a deck's id as all, in both views (AC-5.2)", :aggregate_failures do
+    it "reads a deck's own id as all, in both views (spec 065 decision 4)", :aggregate_failures do
       three_lots
-      [ deck.zone("main").id, deck.location_id ].each do |id|
-        %w[grid table].each do |view|
-          get collection_path(location: id, view:)
-          expect([ response.status, count_line ]).to eq([ 200, "4 items" ]), "#{view} #{id}"
-        end
+      %w[grid table].each do |view|
+        get collection_path(location: deck.location_id, view:)
+        expect([ response.status, count_line ]).to eq([ 200, "4 items" ]), "#{view} #{deck.location_id}"
+      end
+    end
+
+    it "filters to a zone's lots by its id, in both views (spec 065 AC-6.2)", :aggregate_failures do
+      three_lots
+      %w[grid table].each do |view|
+        get collection_path(location: deck.zone("main").id, view:)
+        expect([ response.status, count_line ]).to eq([ 200, "2 of 4 items" ]), "#{view} #{deck.zone('main').id}"
       end
     end
 

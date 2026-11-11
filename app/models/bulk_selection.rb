@@ -40,7 +40,7 @@ class BulkSelection < ApplicationRecord
   #
   # @param query [String] the name filter, already normalised
   # @param sort [CollectionTable::Sort] the table's order
-  # @param location [String] the location filter's canonical string (`""`, `"none"` or an id)
+  # @param location [String] the location filter's canonical string (`""`, `"none"`, an id or `deck:<id>`)
   # @param all [Boolean] select every matching lot (the header's state) instead of none
   # @return [true] the result of the update
   def restart!(query:, sort:, location: "", all: false)

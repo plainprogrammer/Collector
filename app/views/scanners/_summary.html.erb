@@ -1,7 +1,7 @@
-<%# locals: (count:, conditions:, locations:) %>
+<%# locals: (count:, conditions:, choices:) %>
 <%# Shown once, in the response to Done, in place of the list (spec 009 AC-3.5). The next add replaces it with a new sitting,
     as does choosing with the control under it, on Not specified and No location, for every collector (spec 042 AC-5.2). %>
 <section id="scanner_sitting" class="c-scanner__sitting">
   <p class="c-status__message">Added <%= pluralize(count, "card") %> in this sitting. <%= link_to "Open your collection", collection_path %></p>
-  <%= render "scanners/picker", condition: nil, location_id: nil, conditions:, locations: %>
+  <%= render "scanners/picker", condition: nil, location_id: nil, conditions:, choices: %>
 </section>

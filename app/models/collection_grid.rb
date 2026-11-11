@@ -38,7 +38,7 @@ class CollectionGrid
 
   private
     # One statement for the page's printings, all of their lots (the name filter doesn't narrow it, spec 033 AC-1.8). Nil for
-    # every printing while the account has no place and no lot in a zone (spec 062 AC-5.8a), and under a location filter, which
+    # every printing while the account has no place and no zone (spec 065 decision 3), and under a location filter, which
     # names the one place (spec 037 decision 3). The join reads every kind of location: a lot is followed to where it is, and a
     # zone's parent is joined too, so its tile reads "Deck › Zone" from the one statement (spec 062 AC-5.4).
     def places_of(entry_ids)

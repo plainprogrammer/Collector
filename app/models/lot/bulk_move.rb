@@ -18,13 +18,16 @@ class Lot::BulkMove
   # were already in the destination.
   Result = Data.define(:ids, :moved, :already_there)
 
-  # Every selected lot is already in the destination: nothing would change (spec 041 AC-3.7).
+  # Every selected lot is already in the destination: nothing would change (spec 041 AC-3.7). The message names the
+  # destination's label (spec 065 decision 9), so a zone reads "Izzet Tempo › Main".
   class NothingToMove < StandardError
     attr_reader :to
 
+    # @param to [Location, nil] the destination, with its parent loaded when it is a zone (`Location.find_placeable!` does);
+    #   nil for "no location"
     def initialize(to)
       @to = to
-      super(to ? "The selected items are already in #{to.name}." : "The selected items already have no location.")
+      super(to ? "The selected items are already in #{to.label}." : "The selected items already have no location.")
     end
   end
 
@@ -33,12 +36,13 @@ class Lot::BulkMove
     def initialize = super(BulkSelection::NONE_LEFT)
   end
 
-  # +to+ is a place of +account+, a zone of one of its decks, or nil for none, never a deck's own row: the writes below skip
-  # validations, so the caller's lookup is what keeps a lot out of a deck. The collection's Move to… passes a place or none
-  # (`Collections::MovesController`); a deck's change of format passes its Considering zone (`Deck::FormatChange`, spec 064).
-  # +lots+ is the selection's relation of the account's lots, whatever place each is in: a lot in a zone is never "already
-  # there", so the partition below, by `lot.location_id != @to&.id`, moves it out of its zone; when +to+ is a zone of a deck,
-  # the lots moved are those of the deck's other zones, so none is already there either.
+  # +to+ is a place or a zone of +account+, or nil for none, never a deck's own row: the writes below skip validations, so the
+  # caller's lookup is what keeps a lot out of a deck. Both callers look it up through the account: the collection's Move to…
+  # passes a place, a zone or none through `Location.find_placeable!` (`Collections::MovesController`, spec 065), and a deck's
+  # change of format passes its Considering zone (`Deck::FormatChange`, spec 064).
+  # +lots+ is the selection's relation of the account's lots, whatever place each is in: a lot already in +to+ is "already
+  # there", and the partition below, by `lot.location_id != @to&.id`, moves the others, out of their zones too; when +to+ is a
+  # zone of a deck being changed, the lots moved are those of the deck's other zones.
   def initialize(account:, lots:, to:, sort:)
     @account, @lots, @to, @sort = account, lots, to, sort
   end

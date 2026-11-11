@@ -1,22 +1,22 @@
-<%# locals: (sitting:, entries:, conditions:, locations:, added_any:, focus: nil) %>
+<%# locals: (sitting:, entries:, conditions:, choices:, added_any:, focus: nil) %>
 <%# The open sitting's adds, newest first: the 10 newest, the rest behind "Show all" (spec 009 AC-3.2). Always present,
     so an add's Turbo Stream can replace it, and always holds the control, for every collector, with no sitting too
     (spec 042 decision 2). %>
 <% if sitting %>
-  <% choices = sitting_choices(sitting, conditions) %>
+  <% words = sitting_choices(sitting, conditions) %>
   <%= tag.section id: "scanner_sitting", class: "c-scanner__sitting", aria: { labelledby: "scanner-sitting-heading" }, data: sitting_focus_data(focus) do %>
     <div class="c-section__head">
-      <h2 class="c-section__title" id="scanner-sitting-heading" tabindex="-1" data-sitting-focus-target="heading">This sitting: <%= pluralize(entries.size, "card") %><%= ", #{choices.join(", ")}" if choices.any? %></h2>
+      <h2 class="c-section__title" id="scanner-sitting-heading" tabindex="-1" data-sitting-focus-target="heading">This sitting: <%= pluralize(entries.size, "card") %><%= ", #{words.join(", ")}" if words.any? %></h2>
       <span class="c-section__actions"><%= link_to "Done", new_scanner_sitting_ending_path, class: "c-btn c-btn--secondary c-btn--sm" %></span>
     </div>
-    <%= render "scanners/picker", condition: sitting.condition, location_id: sitting.location_id, conditions:, locations: %>
+    <%= render "scanners/picker", condition: sitting.condition, location_id: sitting.location_id, conditions:, choices: %>
     <% if entries.empty? %>
       <%# Four states (spec 042 decision 3): entries all undone keep spec 009's copy; a sitting with none says what cards get,
           naming only what is set; with neither (a redraw the next render drops) it says nothing was added. %>
       <% if added_any %>
         <p class="c-empty">Everything added in this sitting was undone.</p>
-      <% elsif choices.any? %>
-        <p class="c-empty">Cards you scan now: <%= choices.join(", ") %>.</p>
+      <% elsif words.any? %>
+        <p class="c-empty">Cards you scan now: <%= words.join(", ") %>.</p>
       <% else %>
         <p class="c-empty">Nothing added yet.</p>
       <% end %>
@@ -32,6 +32,6 @@
   <% end %>
 <% else %>
   <%= tag.section id: "scanner_sitting", class: "c-scanner__sitting", data: sitting_focus_data(focus) do %>
-    <%= render "scanners/picker", condition: nil, location_id: nil, conditions:, locations: %>
+    <%= render "scanners/picker", condition: nil, location_id: nil, conditions:, choices: %>
   <% end %>
 <% end %>

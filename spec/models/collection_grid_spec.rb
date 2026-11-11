@@ -41,7 +41,7 @@ RSpec.describe CollectionGrid, type: :model do
     expect(described_class::PER_PAGE).to eq(120)
   end
 
-  describe "#places? and a tile's place (spec 033)" do
+  describe "#choices? and a tile's place (spec 033, spec 065 decision 3)" do
     let(:entry) { own("Lightning Bolt", quantity: 1).tap { account.lots.destroy_all } }
     let(:blue) { create(:location, account:, name: "Blue binder") }
     let(:box) { create(:location, account:, name: "Long box") }
@@ -52,7 +52,7 @@ RSpec.describe CollectionGrid, type: :model do
     it "has no place and no places while the account has no location", :aggregate_failures do
       put(2, nil)
       grid = described_class.new(account:, query: nil, page: nil)
-      expect([ grid.places?, grid.tiles.sole.place ]).to eq([ false, nil ])
+      expect([ grid.choices?, grid.tiles.sole.place ]).to eq([ false, nil ])
     end
 
     it "names the one place of a printing", :aggregate_failures do
@@ -161,10 +161,10 @@ RSpec.describe CollectionGrid, type: :model do
 
     it "reads the locations once and skips the place statement, however many tiles", :aggregate_failures do
       put(bolt, 1, blue)
-      few = count_queries { grid(blue.id.to_s).tap { it.tiles && it.chosen_location && it.places? } }
+      few = count_queries { grid(blue.id.to_s).tap { it.tiles && it.chosen_location && it.choices? } }
       all = count_queries { grid("").tiles }
       15.times { |i| put(own("Card #{i}").tap { account.lots.where(entry: it).destroy_all }, 1, blue) }
-      many = count_queries { grid(blue.id.to_s).tap { it.tiles && it.chosen_location && it.places? } }
+      many = count_queries { grid(blue.id.to_s).tap { it.tiles && it.chosen_location && it.choices? } }
       expect([ many, few ]).to eq([ few, all - 1 ])
     end
   end

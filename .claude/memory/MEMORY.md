@@ -83,3 +83,4 @@
 - [SDD gate blocks plan before approval](sdd-gate-blocks-plan-before-approval.md) — a hook refuses to write plan.md until spec.md Status is Approved; draft in the scratchpad or approve first
 - [Separate-runner memory measurement](separate-runner-memory-measurement.md) — a memory bar is measured in a throwaway runner, own process, scratch sqlite under tmp/measure, whole requests, ps rss; db:schema:load is refused (spec 062's in-process load was a one-time allowance, ask again); measure twice (359-496 MB spread)
 - [Name the guards that go red between plan commits](name-the-guards-that-go-red-between-plan-commits.md) — per task, list the guards it turns red and mark them pending until the task that turns them green; a pending example that passes fails the run
+- [Nokogiri :scope selector unsupported](nokogiri-scope-selector-unsupported.md) — `css(":scope > option")` raises in Nokogiri 1.19; use `xpath("./option")` in request-spec HTML checks

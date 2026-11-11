@@ -148,22 +148,28 @@ RSpec.describe NumberEntry::LineForm do
       end
     end
 
-    it "is offered only when the account has a location (AC-2.1)", :aggregate_failures do
-      expect(line("47", account:).locations).to be_empty
+    it "is offered only when the account has a place or a zone (AC-2.1, spec 065 AC-4.1)", :aggregate_failures do
+      expect(line("47", account:).choices.any?).to be(false)
       blue
-      expect(line("47", account:).locations).to eq([ blue ])
+      expect(line("47", account:).choices.places).to eq([ blue ])
+      expect(line("47", account:).choices.any?).to be(true)
     end
 
-    it "offers places only, never a deck or a zone, and refuses their ids with the field's error (spec 062 AC-5.1, AC-5.2)", :aggregate_failures do
+    it "offers places and zones, and refuses a deck's own row and another account's ids with the field's error (spec 065 AC-4.1, AC-4.3)", :aggregate_failures do
       deck = create(:deck, account:)
-      expect(line("47", account:).locations).to be_empty
-      blue
-      expect(line("47", account:).locations).to eq([ blue ])
-      [ deck.location_id, deck.zone("main").id ].each do |id|
+      foreign = create(:deck, account: create(:user).account)
+      expect(line("47", account:).choices.any?).to be(true)
+      expect(line("47", location: deck.zone("main").id.to_s, account:).location_record).to eq(deck.zone("main"))
+      expect(line("47", location: blue.id.to_s, account:).location_record).to eq(blue)
+      [ deck.location_id, foreign.zone("main").id ].each do |id|
         form = line("47", location: id.to_s, account:)
         expect(form).not_to be_valid, id.to_s
         expect(form.errors[:location]).to eq([ "That location isn't one of yours any more. Choose again." ]), id.to_s
       end
+    end
+
+    it "offers nothing to a form without an account (spec 065 decision 8)" do
+      expect(line("47").choices.any?).to be(false)
     end
   end
 end

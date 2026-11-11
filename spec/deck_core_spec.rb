@@ -19,6 +19,9 @@ RSpec.describe "The deck code", type: :config do
     app/models/deck.rb app/models/deck/*.rb app/models/location/placement.rb app/models/catalog/formats.rb
     app/helpers/decks_helper.rb app/models/collection_import/decks.rb app/models/collection_import/deck_changes.rb
     app/views/collections/import_previews/_decks.html.erb app/views/icons/_decks.html.erb
+    app/models/location/choices.rb app/helpers/location_choices_helper.rb
+    app/views/lots/_form.html.erb app/views/lots/moves/new.html.erb
+    app/views/collections/_location_select.html.erb app/views/collections/moves/new.html.erb
   ]
   end
 
@@ -29,7 +32,7 @@ RSpec.describe "The deck code", type: :config do
   def relative(files) = files.map { |file| file.relative_path_from(Rails.root).to_s }
 
   it "covers every file of the feature" do
-    expect(files.size).to eq(20)
+    expect(files.size).to eq(20 + 6) # spec 064 brought the list to 20; spec 065 adds the choices model, its helper and the four picker views
   end
 
   it "names every file it lists, each of which exists" do

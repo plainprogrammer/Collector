@@ -187,25 +187,31 @@ RSpec.describe "The collection's Location select", type: :request do # spec 037 
     end
   end
 
-  # Spec 062 D6, AC-5.1, AC-5.2: the select lists places only, and the value of a zone or a deck is "all".
-  describe "with a deck (spec 062)" do
+  # Spec 062 D6, AC-5.1, AC-5.2, superseded by spec 065 decision 4 (AC-6.1, AC-6.5): the select offers the places and the decks'
+  # zones, "<Deck> (all zones)" too; a zone's id is a value, a deck's own id without its prefix reads as "all".
+  describe "with a deck (spec 065)" do
     def deck = @deck ||= create(:deck, account:, name: "Izzet Tempo")
 
-    it "lists all, none, then the places only, never a deck or a zone (AC-5.1)", :aggregate_failures do
+    it "lists all, none, then the places and the decks' zones in groups, never a deck's own row (AC-6.1)", :aggregate_failures do
       deck
       create(:location, account:, name: "Long box")
       own(location: blue)
       get collection_path
-      expect(options).to eq([ [ "All locations", "" ], [ "No location", "none" ], [ "Blue binder", blue.id.to_s ], [ "Long box", account.locations.find_by(name: "Long box").id.to_s ] ])
+      expect(select.xpath("./option").map { [ it.text, it["value"] ] }).to eq([ [ "All locations", "" ], [ "No location", "none" ] ])
+      expect(select.css("optgroup").map { it["label"] }).to eq(%w[Places Decks])
+      expect(select.css('optgroup[label="Places"] option').map { [ it.text, it["value"] ] })
+        .to eq([ [ "Blue binder", blue.id.to_s ], [ "Long box", account.locations.find_by(name: "Long box").id.to_s ] ])
+      expect(select.css('optgroup[label="Decks"] option').map { [ it.text, it["value"] ] })
+        .to eq([ [ "Izzet Tempo (all zones)", "deck:#{deck.location_id}" ], *deck.zones.map { [ "Izzet Tempo › #{it.name}", it.id.to_s ] } ])
     end
 
-    it "reads a zone's id and a deck's id as all on the bulk page's shown filter and its hidden value (AC-5.2)", :aggregate_failures do
+    it "shows a zone's id as that zone chosen, and a deck's own id as all, on the bulk page's shown filter and hidden value (AC-6.5)", :aggregate_failures do
       own("Placed", location: blue)
       create_lot_in_zone(deck, "main", quantity: 2)
-      [ deck.zone("main").id, deck.location_id ].each do |id|
-        start_bulk(location: id)
-        expect([ chosen, hidden("bulk")["rendered_location"] ]).to eq([ "", "" ]), id.to_s
-      end
+      start_bulk(location: deck.zone("main").id)
+      expect([ chosen, hidden("bulk")["rendered_location"] ]).to eq([ deck.zone("main").id.to_s, deck.zone("main").id.to_s ])
+      start_bulk(location: deck.location_id)
+      expect([ chosen, hidden("bulk")["rendered_location"] ]).to eq([ "", "" ])
     end
   end
 end

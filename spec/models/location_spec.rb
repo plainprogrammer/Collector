@@ -336,4 +336,33 @@ RSpec.describe Location, type: :model do
       expect(described_class.exists?(location.id)).to be(true)
     end
   end
+
+  # Spec 065 decision 1: what a copy can be in, and the one lookup a write that names a location goes through.
+  describe ".placeable" do
+    it "is the places and the zones of decks, never a deck's own row", :aggregate_failures do
+      place = create(:location, account:)
+      deck = create(:deck, account:)
+      expect(account.locations.placeable).to contain_exactly(place, *deck.zones)
+      expect(account.locations.placeable).not_to include(deck.location)
+    end
+  end
+
+  describe ".find_placeable!" do
+    it "finds a place or a zone with its parent loaded", :aggregate_failures do
+      deck = create(:deck, account:)
+      zone = account.locations.find_placeable!(deck.zone("main").id.to_s)
+      expect(zone).to eq(deck.zone("main"))
+      expect(zone.association(:parent)).to be_loaded
+      expect(account.locations.find_placeable!(create(:location, account:).id)).to be_present
+    end
+
+    it "is not found for a deck's own row, another account's location, or text that merely starts with an id", :aggregate_failures do
+      deck = create(:deck, account:)
+      foreign = create(:deck, account: create(:user).account)
+      zone_id = deck.zone("main").id
+      [ deck.location_id, foreign.zone("main").id, "#{zone_id}abc", "0#{zone_id}", "", nil, "9" * 19 ].each do |bad|
+        expect { account.locations.find_placeable!(bad) }.to raise_error(ActiveRecord::RecordNotFound), bad.inspect
+      end
+    end
+  end
 end

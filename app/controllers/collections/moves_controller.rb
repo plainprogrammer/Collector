@@ -3,8 +3,8 @@
 class Collections::MovesController < ApplicationController
   include BulkSelected
 
-  before_action :require_locations
-  before_action :set_destinations
+  before_action :set_choices
+  before_action :require_choices
 
   rescue_from(ActiveRecord::InvalidForeignKey) { raise ActiveRecord::RecordNotFound } # the destination was removed meanwhile
 
@@ -33,13 +33,14 @@ class Collections::MovesController < ApplicationController
   end
 
   private
-    # nil for "No location"; any other value must be one of the account's place ids, else 404 (decision 6 (5), AC-2.3). A deck's
-    # or a zone's id is 404 too (spec 062 AC-5.2): the move writes with update_all, which would put lots in a deck.
+    # nil for "No location"; any other value must be the id of one of the account's places or zones, else 404 (decision 6 (5),
+    # AC-2.3; spec 065 AC-3.3). A deck's own row is 404 (spec 062 AC-5.2, spec 065 decision 7): the move writes with update_all,
+    # which would put lots in a deck. A `deck:` value is no id, so the ID check answers 404 for it too.
     def destination_for(value)
       return if value == CollectionFilter::Place::NONE
       raise ActiveRecord::RecordNotFound unless value.match?(CollectionFilter::Place::ID)
 
-      Current.account.locations.places.find(value)
+      Current.account.locations.find_placeable!(value)
     end
 
     # Every refusal re-renders the move page with 422 and keeps the selection and the chosen To.
@@ -49,19 +50,17 @@ class Collections::MovesController < ApplicationController
       render :new, status: :unprocessable_content
     end
 
-    # The order of answers (decision 6): BulkSelected has answered a GET with nothing selected; an account with no location
-    # has nothing to move to, whatever was submitted. The selection is kept. An account with decks and no place has none (spec
-    # 062 AC-5.8a).
-    def require_locations
-      redirect_to @bulk_path, status: :see_other, alert: Lot::BulkMove::NO_LOCATIONS unless Current.account.locations.places.exists?
+    # The order of answers (decision 6): BulkSelected has answered a GET with nothing selected; an account with no place and
+    # no deck has nothing to move to, whatever was submitted. The selection is kept.
+    def require_choices
+      redirect_to @bulk_path, status: :see_other, alert: Lot::BulkMove::NO_LOCATIONS unless @choices.any?
     end
 
-    # The To field's options: the prompt (""), "No location" ("none", the location filter's word, spec 037 decision 1), then the
-    # account's places in the locations page's order; the selection's own place is left out (AC-2.1).
-    def set_destinations
-      own = @selection ? @selection.location_filter : ""
-      locations = Current.account.locations.places.ordered.reject { |location| location.id.to_s == own }
-      @destinations = [ [ "Choose…", "" ] ] + (own == CollectionFilter::Place::NONE ? [] : [ [ "No location", CollectionFilter::Place::NONE ] ]) +
-        locations.map { |location| [ location.name, location.id ] }
+    # What the To field offers: the prompt, "No location" (left out under the "No location" filter), Places and Decks, the
+    # selection's own place or zone left out (spec 065 decision 7; a deck filter leaves out nothing, its value is no id).
+    def set_choices
+      @choices = Location::Choices.new(Current.account)
+      @own = @selection ? @selection.location_filter : ""
+      @leading = [ [ "Choose…", "" ] ] + (@own == CollectionFilter::Place::NONE ? [] : [ [ "No location", CollectionFilter::Place::NONE ] ])
     end
 end
