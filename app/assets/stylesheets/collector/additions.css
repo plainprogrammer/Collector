@@ -566,3 +566,8 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
    place since spec 032). `anywhere`, unlike `break-word`, lowers the min-content width of the flex item. This is the one rule;
    the Decks pages add no copy of it. */
 .c-pagehead__stats { overflow-wrap:anywhere; }
+
+/* ---------- Change proxy page head (spec 068 AC-9.1): the title names the printing ---------- */
+/* The Change proxy count page's title says the card's name, up to 60 characters with no space, so the title breaks inside a word
+   like the stats line above instead of widening the page. Scoped to the Decks pages: other page heads' titles are their own. */
+.c-decks .c-pagehead__title { overflow-wrap:anywhere; }

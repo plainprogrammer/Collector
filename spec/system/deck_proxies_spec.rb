@@ -38,7 +38,7 @@ RSpec.describe "Adding a proxy", type: :system do
         paths = [ new_deck_zone_proxy_path(deck, "main", q: "WWWW"), new_deck_zone_proxy_path(deck, "main", entry: long.external_key),
                   edit_deck_proxy_path(deck, proxy), new_deck_proxy_removal_path(deck, proxy) ]
 
-        paths.first(2).each do |path| # T10 changes this to `paths`: the change and removal pages don't exist until then
+        paths.each do |path|
           visit deck_path(deck) # the outer page hosts the frame
           open_in_narrow_frame(path, width:, ready: "main")
           within_narrow_frame do

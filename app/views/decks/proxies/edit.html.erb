@@ -1,0 +1,23 @@
+<% content_for :title, "Change proxy count · Collector" %>
+<%= render "layouts/appbar", section: :decks, detail: true, back_path: deck_path(@deck) %>
+<main class="c-main c-page c-decks">
+  <div class="c-pagehead">
+    <div>
+      <h1 class="c-pagehead__title">Change the proxies of <%= proxy_name(@proxy) %></h1>
+      <p class="c-pagehead__stats">in <%= proxy_zone_label(@deck, @proxy.zone) %> · <%= number_with_delimiter(@proxy.quantity) %> now</p>
+    </div>
+  </div>
+  <% quantity_errors = @quantity_error ? [ @quantity_error ] : [] %>
+  <%= form_with scope: :proxy, url: deck_proxy_path(@deck, @proxy), method: :patch, class: "c-form" do |form| %>
+    <div class="c-field<%= " c-field--invalid" if quantity_errors.any? %>">
+      <%= form.label :quantity, "Quantity", class: "c-field__label" %>
+      <label class="c-input"><%= form.number_field :quantity, value: @typed || @proxy.quantity, min: 1, max: Deck::Proxy::MAX_QUANTITY, step: 1, inputmode: "numeric", required: true, "aria-describedby": field_error_describedby("proxy_quantity-error", quantity_errors) %></label>
+      <%= render "shared/field_errors", messages: quantity_errors, id: "proxy_quantity-error" %>
+    </div>
+    <div class="c-form__actions">
+      <%= form.submit "Save", class: "c-btn c-btn--primary" %>
+      <%= link_to "Cancel", deck_path(@deck), class: "c-btn c-btn--secondary" %>
+    </div>
+  <% end %>
+</main>
+<%= render "layouts/tabbar", section: :decks %>

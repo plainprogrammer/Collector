@@ -1,0 +1,13 @@
+<% content_for :title, "Remove proxy · Collector" %>
+<%= render "layouts/appbar", section: :decks, detail: true, back_path: deck_path(@deck) %>
+<main class="c-main c-page c-decks">
+  <section class="c-confirm">
+    <h1 class="c-pagehead__title">Remove the proxies of <%= proxy_name(@proxy) %> from <%= proxy_zone_label(@deck, @proxy.zone) %>?</h1>
+    <p>This removes <%= pluralize(number_with_delimiter(@proxy.quantity), "proxy", "proxies") %> from this zone. No copy in your collection is removed or changed.</p>
+    <div class="c-form__actions">
+      <%= button_to "Remove", deck_proxy_path(@deck, @proxy), method: :delete, class: "c-btn c-btn--danger" %>
+      <%= link_to "Cancel", deck_path(@deck), class: "c-btn c-btn--secondary" %>
+    </div>
+  </section>
+</main>
+<%= render "layouts/tabbar", section: :decks %>

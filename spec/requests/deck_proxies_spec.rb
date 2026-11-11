@@ -190,6 +190,129 @@ RSpec.describe "Deck proxies", type: :request do
         expect(response).to have_http_status(:not_found)
       end
     end
+
+    describe "changing a proxy (Story 3)" do
+      let!(:proxy) { create(:deck_proxy, zone: deck.zone("main"), account:, entry: printing, finish: "foil", quantity: 2) }
+
+      def name = "Lightning Bolt (#{proxy.entry.set.code.upcase} · #{proxy.entry.number}, Foil)" # not a `let`: RSpec/MultipleMemoizedHelpers allows 5
+
+      it "shows the proxy named with its deck, zone and finish, the count, Save and Cancel (AC-3.1)", :aggregate_failures do
+        get edit_deck_proxy_path(deck, proxy)
+
+        expect(response).to have_http_status(:ok)
+        expect(html.at_css("header.c-appbar--detail")).to be_present
+        expect(html.at_css("h1").text).to include("Lightning Bolt")
+        expect(html.text).to include("Izzet Tempo › Main")
+        expect(html.text).to include("Foil")
+        expect(html.at_css("input[name='proxy[quantity]']")["value"]).to eq("2")
+        expect(html.at_css("input[type=submit]")["value"]).to eq("Save")
+        expect(html.css("a").find { it.text.squish == "Cancel" }["href"]).to eq(deck_path(deck))
+      end
+
+      it "saves a quantity from 1 to 9,999 keeping the id, and says so (AC-3.2)", :aggregate_failures do
+        patch deck_proxy_path(deck, proxy), params: { proxy: { quantity: "4" } }
+
+        expect(response).to redirect_to(deck_path(deck))
+        expect(flash[:notice]).to eq("Changed the proxies of #{name} in Izzet Tempo › Main to 4.")
+        expect(proxy.reload.quantity).to eq(4)
+      end
+
+      it "writes nothing for the same quantity (AC-3.2)", :aggregate_failures do
+        expect(write_statements_to("deck_proxies") { patch deck_proxy_path(deck, proxy), params: { proxy: { quantity: "2" } } }).to be_empty
+        expect(response).to redirect_to(deck_path(deck))
+      end
+
+      it "refuses 0, a negative number, over 9,999, text and nothing, keeping what was typed (AC-3.3)", :aggregate_failures do
+        [ "0", "-1", "10000", "x", "" ].each do |text|
+          patch deck_proxy_path(deck, proxy), params: { proxy: { quantity: text } }
+
+          expect(response).to have_http_status(:unprocessable_content), text.inspect
+          expect(html.at_css(".c-field__error").text).to start_with("Enter a number from 1 to 9,999.")
+          expect(html.at_css("input[name='proxy[quantity]']")["value"]).to eq(text)
+        end
+        expect(html.at_css(".c-field__error").text).not_to include("Remove proxy")
+        patch deck_proxy_path(deck, proxy), params: { proxy: { quantity: "0" } }
+        expect(html.at_css(".c-field__error").text).to eq("Enter a number from 1 to 9,999. To remove it, use Remove proxy.")
+        expect(proxy.reload.quantity).to eq(2)
+      end
+
+      it "touches no lot, location, deck or other proxy (AC-3.7)", :aggregate_failures do
+        other = create(:deck_proxy, zone: deck.zone("main"), account:, entry: printing(name: "Spell Pierce"))
+        lot = create_lot_in_zone(deck, "main")
+        before = [ Lot.pluck(:updated_at), Location.pluck(:updated_at), Deck.pluck(:updated_at), other.reload.updated_at ]
+
+        patch deck_proxy_path(deck, proxy), params: { proxy: { quantity: "7" } }
+
+        expect([ Lot.pluck(:updated_at), Location.pluck(:updated_at), Deck.pluck(:updated_at), other.reload.updated_at ]).to eq(before)
+        expect(lot.reload.quantity).to eq(1)
+      end
+    end
+
+    describe "removing a proxy (Story 3)" do
+      let!(:proxy) { create(:deck_proxy, zone: deck.zone("main"), account:, entry: printing, finish: "foil", quantity: 2) }
+
+      before { create(:deck_proxy, zone: deck.zone("main"), account:, entry: proxy.entry, finish: "nonfoil", quantity: 1) } # the same printing in another finish
+
+      def name = "Lightning Bolt (#{proxy.entry.set.code.upcase} · #{proxy.entry.number}, Foil)" # not a `let`: RSpec/MultipleMemoizedHelpers allows 5
+
+      it "asks first on a page that removes nothing by itself (AC-3.4)", :aggregate_failures do
+        get new_deck_proxy_removal_path(deck, proxy)
+
+        expect(response).to have_http_status(:ok)
+        expect(html.at_css("h1").text).to eq("Remove the proxies of #{name} from Izzet Tempo › Main?")
+        expect(html.at_css("form[action='#{deck_proxy_path(deck, proxy)}'] input[name=_method][value=delete]")).to be_present
+        expect(html.css("a").find { it.text.squish == "Cancel" }["href"]).to eq(deck_path(deck))
+        expect(Deck::Proxy.count).to eq(2)
+      end
+
+      it "removes that proxy only, and says so (AC-3.4)", :aggregate_failures do
+        delete deck_proxy_path(deck, proxy)
+
+        expect(response).to redirect_to(deck_path(deck))
+        expect(flash[:notice]).to eq("Removed the proxies of #{name} from Izzet Tempo › Main.")
+        expect(Deck::Proxy.pluck(:finish)).to eq([ "nonfoil" ])
+      end
+
+      it "answers 404 for a proxy removed meanwhile and for a second delete (AC-3.5)", :aggregate_failures do
+        proxy.destroy!
+
+        get edit_deck_proxy_path(deck, proxy)
+        expect(response).to have_http_status(:not_found)
+        delete deck_proxy_path(deck, proxy)
+        expect(response).to have_http_status(:not_found)
+        patch deck_proxy_path(deck, proxy), params: { proxy: { quantity: "3" } }
+        expect(response).to have_http_status(:not_found)
+      end
+
+      it "answers 404 for every proxy page of a deck removed meanwhile (AC-5.5)", :aggregate_failures do
+        removed = create(:deck_proxy, zone: deck.zone("sideboard"), account:)
+        id = deck.location_id
+        deck.remove!
+
+        [ new_deck_zone_proxy_path(id, "main"), edit_deck_proxy_path(id, removed.id), new_deck_proxy_removal_path(id, removed.id) ].each do |path|
+          get path
+          expect(response).to have_http_status(:not_found), path
+        end
+        delete deck_proxy_path(id, removed.id)
+        expect(response).to have_http_status(:not_found)
+      end
+
+      it "answers 404 for another account's proxy, another deck's proxy under this deck, a place's or a zone's id as the deck, and a malformed id (AC-3.6)", :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- a table of paths
+        theirs = create(:deck_proxy)
+        elsewhere = create(:deck, account:, name: "Elsewhere")
+        elsewhere_proxy = create(:deck_proxy, zone: elsewhere.zone("main"), account:)
+        place = create(:location, account:)
+        paths = [ [ :get, edit_deck_proxy_path(deck, theirs) ], [ :get, edit_deck_proxy_path(deck, elsewhere_proxy) ],
+                  [ :get, new_deck_proxy_removal_path(deck, elsewhere_proxy) ], [ :delete, deck_proxy_path(deck, elsewhere_proxy) ],
+                  [ :patch, deck_proxy_path(deck, theirs) ], [ :get, edit_deck_proxy_path(place.id, proxy) ],
+                  [ :get, edit_deck_proxy_path(deck.zone("main").id, proxy) ], [ :get, "/decks/#{deck.location_id}/proxies/12abc/edit" ] ]
+        paths.each do |verb, path|
+          public_send(verb, path)
+          expect(response).to have_http_status(:not_found), "#{verb} #{path}"
+        end
+        expect(Deck::Proxy.count).to eq(4)
+      end
+    end
   end
 
   it "sends a visitor who isn't signed in to sign in (AC-1.7)", :aggregate_failures do
