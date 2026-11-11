@@ -8,6 +8,7 @@
 **Branch:** `065-deck-zones-in-pickers`
 **Issue:** [#252](https://github.com/plainprogrammer/Collector/issues/252)
 **ADR:** none: ADR 0028 decided that a picker lists places only "until the pickers and the filter learn zones (#252)"; this spec is that step and changes none of its choices
+**Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (whole spec) and [`scanner.md`](../../architecture/scanner.md) (Story 5 and the sitting's parts of decisions 2, 3, 8 and 9); see the [specs index](../README.md)
 
 ---
 
