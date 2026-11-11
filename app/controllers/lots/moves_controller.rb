@@ -14,7 +14,7 @@ class Lots::MovesController < ApplicationController
     @move = Lot::Move.new(lot: @lot, to:, copies: move_params[:copies])
     @move.call!
     redirect_to catalog_entry_path(@lot.entry, **card_params), status: :see_other,
-      notice: "Moved #{@move.count} × #{@lot.entry.name} (#{helpers.set_number(@lot.entry)}) to #{to ? to.name : "no location"}."
+      notice: "Moved #{@move.count} × #{@lot.entry.name} (#{helpers.set_number(@lot.entry)}) to #{to ? to.label : "no location"}."
   rescue ActiveRecord::RecordInvalid
     render :new, status: :unprocessable_content
   end
@@ -22,18 +22,18 @@ class Lots::MovesController < ApplicationController
   private
     def set_lot = @lot = Current.account.lots.includes({ location: :parent }, entry: :set).find(params[:lot_id])
 
-    # "No location" first unless the lot is already there, then the account's other places: the options of the To field. A deck
-    # is never a destination and a zone is not offered (spec 062 AC-5.6); a lot in a zone is "somewhere" (it has a location_id),
-    # so it is offered "No location" and every place, its own zone being the source.
+    # The To field's choices: "No location" first unless the lot is already unplaced, then Places and Decks, the lot's own place or
+    # zone left out (spec 065 decision 7). @offered says whether there is anything to move to.
     def set_destinations
-      locations = Current.account.locations.places.ordered.reject { |location| location.id == @lot.location_id }
-      @destinations = (@lot.location_id ? [ [ "No location", "" ] ] : []) + locations.map { |location| [ location.name, location.id ] }
+      @choices = Location::Choices.new(Current.account)
+      @leading = @lot.location_id ? [ [ "No location", "" ] ] : []
+      @offered = @lot.location_id.present? || @choices.any?(except: @lot.location_id)
     end
 
-    # The place the To field names, nil for none; any other id, a deck's and a zone's included, is 404 (spec 062 AC-5.2).
+    # The place or zone the To field names, nil for none; a deck's own row and any other id are 404 (spec 065 AC-2.4).
     def destination
       id = move_params[:location_id].presence
-      Current.account.locations.places.find(id) if id
+      Current.account.locations.find_placeable!(id) if id
     end
 
     def move_params = params.expect(move: %i[copies location_id])

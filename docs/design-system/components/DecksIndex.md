@@ -112,7 +112,7 @@ A refusal at the cap answers 422 with this page again and the page's alert in th
 </main>
 ```
 
-and the refusal, for a deck any of whose zones holds a copy (the same page answers a `DELETE` with 409; there is no Remove button and no "Move them in bulk mode" button, because the collection filter by zone is #252's):
+and the refusal, for a deck any of whose zones holds a copy (the same page answers a `DELETE` with 409; there is no Remove button and no "Move them in bulk mode" button: the shortcut stays places-only, not built for a deck and filed as [#302](https://github.com/plainprogrammer/Collector/issues/302), spec 065 Non-Goals):
 
 ```html
 <main class="c-main c-page c-decks">
@@ -166,7 +166,7 @@ and the refusal, for a deck any of whose zones holds a copy (the same page answe
 
 - "Change format" under `c-appbar--detail` with the Decks tab current, reached from the row's Change format without scripting. The Format select has the options and grouping of the New deck page, with the deck's own format selected (the default format when the instance no longer registers the deck's, so saving the default is a visible choice: the head line shows the stored key). The hint says what happens to cards, "Cards in zones the new format doesn't have move to Considering."; Save is primary with Cancel beside it.
 - A success answers 303 to the Decks page with the notice "Changed “<name>” to <Format>." and, when copies moved, " 12 cards moved to Considering." ("1 card" for one); the format the deck already has is "“<name>” is already <Format>." A bad pair is "Choose a format." on the Format field with 422; a merge past 9,999 copies is the alert described above with 422 and the chosen format kept.
-- A long name wraps in the head's stats line: `.c-decks .c-pagehead > div { min-width: 0 }` and `.c-decks .c-pagehead__stats { overflow-wrap: anywhere }`, so a 60-character name with no space breaks inside itself on a phone and the page has no horizontal overflow at 360px (spec 064 AC-1.1).
+- A long name wraps in the head's stats line: `.c-decks .c-pagehead > div { min-width: 0 }` and the shared `.c-pagehead__stats { overflow-wrap: anywhere }` (spec 065), so a 60-character name with no space breaks inside itself on a phone and the page has no horizontal overflow at 360px (spec 064 AC-1.1).
 
 **The removal pages** (spec 062 AC-3.1 to AC-3.5)
 
@@ -174,4 +174,4 @@ and the refusal, for a deck any of whose zones holds a copy (the same page answe
 - The refusal replaces it for a deck whose zones hold any copy: the heading "“<name>” isn't empty", "“<name>” holds 12 copies in 3 lots. Move them before removing it.", the first 100 lots (`Location::Holdings::LISTED`) each linking to its card page with its zone as "Deck › Zone" in `c-list__meta` and its quantity at the end, "and N more" beyond them, and "Back to decks" as the only action. It reuses the Locations refusal page's `c-list c-locations__lots` and `c-locations__more`, and `c-decks__zone` is a hook with no rule of its own.
 - A long name wraps on both pages: `.c-decks .c-confirm :is(h1, p), .c-decks .c-list li > span:first-child` take `min-width: 0` and `overflow-wrap: anywhere`, so a 60-character name with no space breaks inside itself on a phone and the page has no horizontal overflow (the lesson of `.c-locations__name` and `.c-pick`).
 
-**CSS the pages add** (spec 062 and 064, one block each at the end of `additions.css`; no colour, spacing or font value of its own): `.c-decks__actions` and `.c-decks .c-btn` (the row actions above, with spec 064's wrap below 640px), the removal pages' wrapping rule above, the page heads' wrap on every Decks page (`.c-decks .c-pagehead > div`, `.c-decks .c-pagehead__stats`), and `.c-field__static` (`Form`). `.c-decks` itself was spec 060's: the New deck button on a phone; the name's wrap was spec 060's in the narrow container query and spec 064 made it apply at every width.
+**CSS the pages add** (spec 062 and 064, one block each at the end of `additions.css`; no colour, spacing or font value of its own): `.c-decks__actions` and `.c-decks .c-btn` (the row actions above, with spec 064's wrap below 640px), the removal pages' wrapping rule above, and the page heads' `.c-decks .c-pagehead > div`. A page head's stats line breaks a long name by spec 065's one `.c-pagehead__stats { overflow-wrap:anywhere }`, which every page head shares (the Decks pages included). `.c-decks` itself was spec 060's: the New deck button on a phone; the name's wrap was spec 060's in the narrow container query and spec 064 made it apply at every width. Spec 065 removed `.c-field__static` (`Form`'s read-only value).

@@ -17,8 +17,9 @@ module CollectionsHelper
   def items_count(count) = pluralize(number_with_delimiter(count), "item")
 
   # The move's notice (spec 041 AC-3.1, AC-3.2, AC-3.6): the copies that moved, and when any were already there, how many.
+  # The destination is named by its label, so a zone reads "Izzet Tempo › Main" (spec 065 decision 9).
   def moved_message(result, to)
-    message = "Moved #{items_count(result.moved)} to #{to ? to.name : "no location"}."
+    message = "Moved #{items_count(result.moved)} to #{to ? to.label : "no location"}."
     return message if result.already_there.zero?
 
     "#{message} #{items_count(result.already_there)} #{result.already_there == 1 ? "was" : "were"} already there."

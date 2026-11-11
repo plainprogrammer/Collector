@@ -537,19 +537,92 @@ RSpec.describe "Bulk Move to…", type: :request do
       create_lot_in_zone(deck, "main", entry: create(:mtg_printing).entry.tap { it.update!(name:) }, **options)
     end
 
-    it "offers No location and the places, never a deck or a zone (AC-5.1)", :aggregate_failures do
+    it "offers Choose…, No location, Places and Decks as Deck › Zone (spec 065 AC-3.1)", :aggregate_failures do
       select_lots(own("Placed", location: box))
       get new_collection_move_path
-      expect(page_html.css("select#to option").map(&:text)).to eq([ "Choose…", "No location", "Blue binder", "Long box" ])
+      select = page_html.at_css("select#to")
+      expect(select.xpath("./option").map(&:text)).to eq([ "Choose…", "No location" ])
+      expect(select.css("optgroup").map { it["label"] }).to eq(%w[Places Decks])
+      expect(select.css('optgroup[label="Places"] option').map(&:text)).to eq([ "Blue binder", "Long box" ])
+      expect(select.css('optgroup[label="Decks"] option').map(&:text)).to eq(deck.zones.map { "Izzet Tempo › #{it.name}" })
+      expect(select.css('optgroup[label="Decks"] option').map { it["value"] }).to eq(deck.zones.map { it.id.to_s })
     end
 
-    it "answers 404 for a zone's id and a deck's id as the destination, changing nothing (AC-5.2)", :aggregate_failures do
+    it "leaves out the filter's own zone, and keeps the deck's other zones (AC-3.1)", :aggregate_failures do
+      select_lots(in_zone, location: zone.id.to_s)
+      get new_collection_move_path
+      labels = page_html.css('select#to optgroup[label="Decks"] option').map(&:text)
+      expect(labels).to eq(deck.zones.reject { it == zone }.map { "Izzet Tempo › #{it.name}" })
+      expect(labels).not_to include("Izzet Tempo › Main")
+    end
+
+    it "moves every selected lot into the zone and names the label (AC-3.2)", :aggregate_failures do
+      placed = own("Card B", location: box, quantity: 3)
+      unplaced = own("Card C", quantity: 1)
+      select_lots(placed, unplaced)
+      post collection_move_path, params: { to: zone.id }
+      expect(response).to have_http_status(:see_other)
+      expect(flash[:notice]).to eq("Moved 4 items to Izzet Tempo › Main.")
+      expect([ placed.reload.location, unplaced.reload.location ]).to all(eq(zone))
+    end
+
+    it "merges lots that reach one identity in the zone, the zone's own lot surviving (AC-3.2)", :aggregate_failures do
+      held = in_zone("Card A", quantity: 2)
+      coming = twin(held, location: box, quantity: 3)
+      select_lots(coming)
+      post collection_move_path, params: { to: zone.id }
+      expect(Lot.where(id: coming.id)).to be_empty
+      expect(held.reload.quantity).to eq(5)
+    end
+
+    it "counts a selected lot already in the zone as already there (AC-3.2)", :aggregate_failures do
+      zoned = in_zone("Card A", quantity: 2)
+      coming = own("Card B", location: box, quantity: 3)
+      select_lots(zoned, coming)
+      post collection_move_path, params: { to: zone.id }
+      expect(flash[:notice]).to eq("Moved 3 items to Izzet Tempo › Main. 2 items were already there.")
+      expect([ zoned.reload.location, coming.reload.location ]).to all(eq(zone))
+    end
+
+    it "honours the 9,999 cap for a lot moving into a zone, changing nothing (AC-3.2)", :aggregate_failures do
+      held = in_zone(quantity: 9_999)
+      coming = twin(held, location: box, quantity: 1)
+      select_lots(coming)
+      post collection_move_path, params: { to: zone.id }
+      expect(response).to have_http_status(:unprocessable_content)
+      expect([ coming.reload.location, held.reload.quantity ]).to eq([ box, 9_999 ])
+    end
+
+    it "answers 404 for a deck's own id and another account's zone, changing nothing (AC-3.3)", :aggregate_failures do
       zoned = in_zone
       select_lots(zoned)
-      [ zone.id, deck.location_id ].each do |id|
+      foreign = create(:deck, account: create(:user).account)
+      [ deck.location_id, foreign.zone("main").id ].each do |id|
         post collection_move_path, params: { to: id }
         expect(response).to have_http_status(:not_found)
       end
+      expect(zoned.reload.location).to eq(zone)
+    end
+
+    it "answers 404 for a deck's value, text that is not an id and a removed zone (AC-3.3)", :aggregate_failures do
+      zoned = in_zone
+      select_lots(zoned)
+      gone = create(:deck, account:, name: "Gone")
+      removed_id = gone.zone("main").id
+      gone.remove!
+      [ "deck:#{deck.location_id}", "#{zone.id}abc", removed_id ].each do |to|
+        post collection_move_path, params: { to: }
+        expect(response).to have_http_status(:not_found)
+      end
+      expect(zoned.reload.location).to eq(zone)
+    end
+
+    it "refuses a move to where every selected lot already is, naming the label (AC-3.3)", :aggregate_failures do
+      zoned = in_zone
+      select_lots(zoned)
+      post collection_move_path, params: { to: zone.id }
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.body).to include("The selected items are already in Izzet Tempo › Main.")
       expect(zoned.reload.location).to eq(zone)
     end
 
@@ -584,17 +657,45 @@ RSpec.describe "Bulk Move to…", type: :request do
       expect([ zoned.reload.location, held.reload.quantity ]).to eq([ zone, 9_999 ])
     end
 
-    context "when the account has a deck and no place (AC-5.8a)" do
+    # Spec 065 decision 3 supersedes spec 062 AC-5.8a: a deck's zones are choices, so a deck alone is something to move to.
+    context "when the account has a deck and no place (spec 065 AC-3.1)" do
       before { Location.places.where(account:).delete_all }
 
-      it "answers 'You have no locations yet.' to the page and offers no Move to… to a submission", :aggregate_failures do
+      it "offers Move to… and the move page, with the Decks group only", :aggregate_failures do
         zoned = in_zone
         select_lots(zoned)
+        expect(response).to redirect_to(new_collection_move_path) # pressing Move to… is no longer a navigation back
+        get new_collection_move_path
+        expect(response).to have_http_status(:ok)
+        select = page_html.at_css("select#to")
+        expect(select.css("optgroup").map { it["label"] }).to eq(%w[Decks])
+        expect(select.css("option").map(&:text)).to eq([ "Choose…", "No location", *deck.zones.map { "Izzet Tempo › #{it.name}" } ])
+      end
+
+      it "moves a lot into a zone of the deck", :aggregate_failures do
+        sideboard = deck.zone("sideboard")
+        zoned = in_zone
+        select_lots(zoned)
+        post collection_move_path, params: { to: sideboard.id }
+        expect(flash[:notice]).to eq("Moved 1 item to Izzet Tempo › Sideboard.")
+        expect(zoned.reload.location).to eq(sideboard)
+      end
+    end
+
+    context "when the account has neither a place nor a deck" do
+      before do
+        Location.places.where(account:).delete_all
+        deck.remove!
+      end
+
+      it "answers 'You have no locations yet.' to the page and offers no Move to… to a submission", :aggregate_failures do
+        lot = own
+        select_lots(lot)
         expect(response).to redirect_to(collection_path(bulk: 1)) # a navigation, not the move page
         get new_collection_move_path
         expect(response).to redirect_to(collection_path(bulk: 1))
         expect(flash[:alert]).to eq("You have no locations yet.")
-        expect(zoned.reload.location).to eq(zone)
+        expect(lot.reload.location).to be_nil
       end
     end
   end

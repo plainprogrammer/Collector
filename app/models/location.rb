@@ -4,8 +4,9 @@
 # A location has a `kind` (spec 062, ADR 0028): a `place` (the only kind there was), a `deck`, whose own data is a `decks`
 # row, or a `deck_zone`, a child of a deck that holds its copies. A top-level location is a place or a deck and shares one
 # name space and the 500 limit with the others; a zone's name is unique within its deck and no zone counts toward the limit.
-# Every list of "places" must say which kind it means: `places` for a picker or a filter, `top_level` for everything the
-# collector names, and no scope when the reader follows a lot to where it is (a lot may sit in a zone).
+# Every list of "places" must say which kind it means: `places` for the Locations page and the export, `placeable` for a
+# picker, the filter or a write that names a location, `top_level` for everything the collector names, and no scope when the
+# reader follows a lot to where it is (a lot may sit in a zone).
 # @see file:collection-and-lots.md
 class Location < ApplicationRecord
   MAX_PER_ACCOUNT = 500
@@ -18,6 +19,9 @@ class Location < ApplicationRecord
   }.freeze
   # The one refusal of the limit, for a place and for a deck: it says decks count, wherever it shows (spec 062 AC-1.7a).
   FULL = "You can have at most #{MAX_PER_ACCOUNT} places and decks together.".freeze
+  # An id as text: at most 18 digits, no leading zero (a longer id overflows SQLite's 64-bit bind; spec 037 0.2.2). The one
+  # definition for a filter value and for a write's location id.
+  ID_TEXT = /\A[1-9]\d{0,17}\z/
 
   belongs_to :account
   belongs_to :parent, class_name: "Location", optional: true
@@ -28,10 +32,28 @@ class Location < ApplicationRecord
 
   def holdings = Holdings.new(self)
 
-  # The kind of location a collector can put a copy in by choice: a picker or a filter offers these until zones are offered.
+  # The plain places: what the Locations page lists and the export writes. A picker, the filter and a write that names a
+  # location use `placeable`, which adds the zones of decks (spec 065 decision 1).
   scope :places, -> { where(kind: "place") }
   scope :decks, -> { where(kind: "deck") }
   scope :zones_of_decks, -> { where(kind: "deck_zone") }
+
+  # What a copy can be in: a place or a zone of a deck, never a deck's own row. Every picker, the filter and every write that
+  # names a location go through this (spec 065 decision 1; ADR 0028's "a lot sits in a zone only").
+  scope :placeable, -> { where(kind: %w[place deck_zone]) }
+
+  # The place or zone with this id, for a write that names one, its parent loaded so a message can read its label. Call it on
+  # the account's relation (`Current.account.locations.find_placeable!(id)`), so another account's id is not found either.
+  # Text is checked before it is cast: `find("12abc")` would read it as 12.
+  #
+  # @param id [Integer, String, nil]
+  # @return [Location]
+  # @raise [ActiveRecord::RecordNotFound] for a deck's own row, a missing id, another account's and anything but an id
+  def self.find_placeable!(id)
+    raise ActiveRecord::RecordNotFound, "not a location id" unless id.to_s.match?(ID_TEXT)
+
+    placeable.includes(:parent).find(id)
+  end
   # What the collector names and what the 500 limit counts: places and decks, never a zone.
   scope :top_level, -> { where(parent_id: nil) }
 

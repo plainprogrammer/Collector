@@ -303,33 +303,55 @@ RSpec.describe "Number entry", type: :request do
       end
     end
 
-    # Spec 062 D6, AC-5.1, AC-5.2, AC-5.7, AC-5.8a: a deck's zones are not offered, a zone's id is a field error, and an Undo
-    # leaves a lot that sits in a zone where it is.
-    describe "with a deck (spec 062)" do
+    # Spec 062 AC-5.7 and spec 065 AC-4.1 to AC-4.4: the Location select offers the account's places and its decks' zones as
+    # "Deck › Zone", a zone is added into, a deck's own row is a field error, and an Undo leaves a lot that sits in a zone
+    # where it is.
+    describe "with a deck (spec 062, spec 065)" do
       def entry = @entry ||= printing("47", "Psychic Frog")
       def deck = @deck ||= create(:deck, account: user.account, name: "Izzet Tempo")
       def options(html = response.body) = Nokogiri::HTML5(html).css("#line_location option").map(&:text)
 
-      it "lists No location and the places, never a deck or a zone (AC-5.1)", :aggregate_failures do
+      it "lists No location, Places and Decks as Deck › Zone (spec 065 AC-4.1)", :aggregate_failures do
         entry
         deck
         create(:location, account: user.account, name: "Long box")
         create(:location, account: user.account, name: "Blue binder")
         get collection_number_entry_path(**page_params)
-        expect(options).to eq([ "No location", "Blue binder", "Long box" ])
+        select = response.parsed_body.at_css("select#line_location")
+        expect(select.xpath("./option").map(&:text)).to eq([ "No location" ])
+        expect(select.css("optgroup").map { it["label"] }).to eq(%w[Places Decks])
+        expect(select.css('optgroup[label="Places"] option').map(&:text)).to eq([ "Blue binder", "Long box" ])
+        expect(select.css('optgroup[label="Decks"] option').map(&:text)).to eq(deck.zones.map { "Izzet Tempo › #{it.name}" })
       end
 
-      it "shows no field to an account with a deck and no place (AC-5.8a)" do
+      it "shows the select, with the Decks group only, to an account with a deck and no place (spec 065 AC-4.1, supersedes spec 062 AC-5.8a)", :aggregate_failures do
         entry
         deck
         get collection_number_entry_path(**page_params)
-        expect(response.body).not_to include("line_location")
+        select = response.parsed_body.at_css("select#line_location")
+        expect(select).not_to be_nil
+        expect(select.css("optgroup").map { it["label"] }).to eq(%w[Decks])
       end
 
-      it "refuses a zone's id and a deck's id with the field's error and adds nothing (AC-5.2)", :aggregate_failures do
+      it "adds into the zone chosen, names it in the list and shows it chosen after the add (spec 065 AC-4.2, AC-4.4)", :aggregate_failures do
         entry
-        create(:location, account: user.account) # the field is shown, and so is its error, while the account has a place
-        [ deck.zone("main").id, deck.location_id ].each do |id|
+        zone = deck.zone("main")
+        loaded { add("47", quantity: "2", location: zone.id) }
+        expect(user.account.lots.sole).to have_attributes(location: zone, quantity: 2)
+        expect(response.parsed_body.at_css("#number_entry_list li").text.squish).to include("in Izzet Tempo › Main")
+        expect(response.parsed_body.at_css("select#line_location option[selected]").text).to eq("Izzet Tempo › Main")
+      end
+
+      it "keeps the zone chosen through a link's location parameter (spec 065 AC-4.4)" do
+        entry
+        get collection_number_entry_path(**page_params, location: deck.zone("main").id)
+        expect(response.parsed_body.at_css("select#line_location option[selected]").text).to eq("Izzet Tempo › Main")
+      end
+
+      it "refuses a deck's own id and another account's zone with the field's error and adds nothing (spec 065 AC-4.3)", :aggregate_failures do
+        entry
+        foreign = create(:deck, account: create(:user).account)
+        [ deck.location_id, foreign.zone("main").id ].each do |id|
           add("47", quantity: "3", location: id)
           expect(response).to have_http_status(:unprocessable_content)
           expect(response.body).to include("That location isn&#39;t one of yours any more. Choose again.", 'value="3"')
@@ -337,13 +359,15 @@ RSpec.describe "Number entry", type: :request do
         expect([ Lot.count, NumberEntry::Line.count ]).to eq([ 0, 0 ])
       end
 
-      it "keeps a lot that sits in a zone in its zone when a line's Undo leaves part of it (AC-5.7)", :aggregate_failures do
-        line = NumberEntry.add!(account: user.account, entry:, quantity: 4, finish: "nonfoil", line_key: SecureRandom.hex(16)).line
+      it "undoes a line added into a zone, and keeps the lot in its zone for the rest (spec 062 AC-5.7, spec 065 AC-4.2)", :aggregate_failures do
+        entry
         zone = deck.zone("main")
-        line.lot.update!(location: zone, quantity: 6)
+        add("47", quantity: "4", location: zone.id)
+        add("47", quantity: "3", location: zone.id)
+        line = NumberEntry::Line.order(:id).first
         post collection_number_entry_line_undo_path(line), params: page_params
-        expect(line.lot.reload).to have_attributes(location: zone, quantity: 2)
-        expect(line.lot.lot_key).to end_with("|#{zone.id}")
+        expect(user.account.lots.sole).to have_attributes(location: zone, quantity: 3)
+        expect(user.account.lots.sole.lot_key).to end_with("|#{zone.id}")
       end
     end
 
