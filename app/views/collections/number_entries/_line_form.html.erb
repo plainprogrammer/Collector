@@ -30,10 +30,10 @@
       <% lot_error_messages(line, :finish).each do |message| %><p class="c-field__error" id="line_finish_error"><%= message %></p><% end %>
     </div>
   <% end %>
-  <% if line.locations.any? %>
+  <% if line.choices.any? %>
     <div class="c-field<%= " c-field--invalid" if line.errors[:location].any? %>">
       <label class="c-field__label" for="line_location">Location</label>
-      <%= select_tag "line[location]", options_for_select([ [ "No location", "" ] ] + line.locations.map { [ it.name, it.id ] }, line.location_record&.id.to_s),
+      <%= select_tag "line[location]", location_options(line.choices, selected: line.location_record&.id.to_s, leading: [ [ "No location", "" ] ]),
             id: "line_location", autofocus: focus == :location, "aria-describedby": ("line_location_error" if line.errors[:location].any?),
             data: { action: "keydown.enter->number-entry#submit" } %>
       <% line.errors[:location].each do |message| %><p class="c-field__error" id="line_location_error"><%= message %></p><% end %>

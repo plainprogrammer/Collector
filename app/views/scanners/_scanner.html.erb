@@ -1,4 +1,4 @@
-<%# locals: (sitting:, entries:, conditions:, locations:, added_any:, summary: nil) %>
+<%# locals: (sitting:, entries:, conditions:, choices:, added_any:, summary: nil) %>
 <% art = scanner_art %>
 <div class="c-scanner" data-controller="card-reader camera"
      data-card-reader-readings-url-value="<%= scanner_readings_path %>" data-card-reader-engine-path-value="<%= ocr_engine_path %>"
@@ -35,9 +35,9 @@
   <div id="scanner_result" class="c-scanner__result" data-card-reader-target="result" data-controller="scanner-reading"
        data-action="turbo:submit-start->scanner-reading#lock turbo:submit-end->scanner-reading#unlock turbo:before-fetch-response->scanner-reading#inspect turbo:frame-missing->scanner-reading#printingsMissing turbo:fetch-request-error->scanner-reading#printingsErrored turbo:frame-load->scanner-reading#printingsLoaded"></div>
   <% if summary %>
-    <%= render "scanners/summary", count: summary, conditions:, locations: %>
+    <%= render "scanners/summary", count: summary, conditions:, choices: %>
   <% else %>
-    <%= render "scanners/sitting", sitting:, entries:, conditions:, locations:, added_any: %>
+    <%= render "scanners/sitting", sitting:, entries:, conditions:, choices:, added_any: %>
   <% end %>
   <noscript><p class="c-status__message c-status__message--alert">The scanner needs JavaScript. <%= link_to "Search the catalog", catalog_entries_path %> instead.</p></noscript>
 </div>

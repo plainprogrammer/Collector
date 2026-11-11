@@ -1,4 +1,4 @@
-<%# locals: (condition:, location_id:, conditions:, locations:) %>
+<%# locals: (condition:, location_id:, conditions:, choices:) %>
 <%# The sitting's one control (spec 042 decision 2, spec 040 decision 3): native selects and "Set" in one form, grouped under a
     legend, answered by a Turbo Stream that redraws the panel, so it works by keyboard and without script (AC-7.1; a small
     controller only puts focus back on "Set" after the redraw, spec 047, from the panel's `sitting_focus_data`). The
@@ -10,10 +10,10 @@
       <%= form.label :condition, "Condition", class: "c-field__label" %>
       <%= form.select :condition, options_for_select([ [ "Not specified", "" ], *conditions.map { |key, (label, short)| [ "#{label} (#{short})", key ] } ], condition.to_s) %>
     </div>
-    <% if locations.any? %>
+    <% if choices.any? %>
       <div class="c-field">
         <%= form.label :location_id, "Location", class: "c-field__label" %>
-        <%= form.select :location_id, options_for_select([ [ "No location", "" ], *locations.map { |location| [ location.name, location.id ] } ], location_id.to_s) %>
+        <%= form.select :location_id, location_options(choices, selected: location_id.to_s, leading: [ [ "No location", "" ] ]) %>
       </div>
     <% end %>
   </fieldset>
