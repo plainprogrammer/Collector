@@ -400,9 +400,9 @@ RSpec.describe Deck::FormatChange, type: :model do
     end
 
     describe "with two proxies over the cap (AC-6.4)" do
-      def printing(name: "Bolt", set: "mh2", number: "1")
+      def printing(name: "Bolt", set: "mh2", number: "1", language: "en")
         catalog_set = Catalog::Set.find_by(code: set) || create(:catalog_set, code: set)
-        create(:mtg_printing, entry: create(:catalog_entry, name:, number:, set: catalog_set)).entry
+        create(:mtg_printing, entry: create(:catalog_entry, name:, number:, set: catalog_set, language:)).entry
       end
 
       # A proxy of the entry in the dropped zone, with one of the same printing and finish in Considering, so the move would pass 9,999.
@@ -418,10 +418,17 @@ RSpec.describe Deck::FormatChange, type: :model do
       end
 
       it "names the first by card name, not the one made first" do
-        breach(printing(name: "Zed"))
         ant = breach(printing(name: "Ant"))
+        breach(printing(name: "Zed"))
 
         expect(refused).to eq(ant)
+      end
+
+      it "breaks a tie of name, set and number by language, ascending (en before ja)" do
+        breach(printing(language: "ja")) # made first, so only the language puts the English one ahead
+        english = breach(printing(language: "en"))
+
+        expect(refused).to eq(english)
       end
 
       it "breaks a tie of name by set code" do

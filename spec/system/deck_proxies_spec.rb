@@ -54,21 +54,30 @@ RSpec.describe "Adding a proxy", type: :system do
       end
     end
 
-    # The Decks pages' touch floor is one rule on `.c-decks .c-btn`, so every page's `main` must carry `c-decks`. Headless Firefox has
-    # a fine pointer (a small button is 36px there), so the rule is read from the stylesheet and the buttons are measured as drawn:
-    # the rule applies at every pointer, so a button under it is 44px even here.
+    # The selects' floor applies on a coarse pointer only, and headless Firefox can't emulate one, so the example reads the rule.
+    it "lifts the chooser's Set select and the form's Finish select to the touch floor on a coarse pointer (AC-9.1)", :aggregate_failures do
+      visit new_deck_zone_proxy_path(deck, "main", q: "WWWW")
+      rule = page.evaluate_script(<<~JS)
+        (() => { for (const sheet of document.styleSheets) for (const media of sheet.cssRules)
+          if (media instanceof CSSMediaRule && media.conditionText.includes("pointer: coarse"))
+            for (const rule of media.cssRules)
+              if (rule.selectorText?.includes(".c-decks .c-select select") && rule.selectorText.includes(".c-decks .c-field select"))
+                return { minHeight: rule.style.minHeight,
+                         floor: parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--touch-floor")) || 0 }
+          return null })()
+      JS
+      expect(rule).not_to be_nil
+      expect(rule["minHeight"]).to eq("var(--touch-floor)")
+      expect(rule["floor"]).to be >= 44
+    end
+
+    # The Decks pages' touch floor is one rule on `.c-decks .c-btn`, so every page's `main` must carry `c-decks`: the buttons are
+    # measured as drawn. The rule applies at every pointer, so a button under it is 44px even in headless Firefox's fine pointer.
     it "gives the chooser's buttons the touch floor of the Decks pages (AC-9.1)", :aggregate_failures do
       visit new_deck_zone_proxy_path(deck, "main", q: "WWWW")
-      floor = page.evaluate_script(<<~JS)
-        (() => { let found = 0
-          for (const sheet of document.styleSheets) for (const rule of sheet.cssRules)
-            if (rule.selectorText === ".c-decks .c-btn") found = Math.max(found, parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--touch-floor")) || 0)
-          return found })()
-      JS
       heights = page.evaluate_script(<<~JS)
         [...document.querySelectorAll("main .c-btn")].map((el) => el.getBoundingClientRect().height)
       JS
-      expect(floor).to be >= 44
       expect(heights.size).to be >= 2 # Search and Cancel
       expect(heights).to all(be >= 44)
     end

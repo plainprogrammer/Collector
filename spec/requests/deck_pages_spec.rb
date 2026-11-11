@@ -240,6 +240,15 @@ RSpec.describe "Deck page", type: :request do
 
         expect(proxy_tags_on_collection_and_card_page).to be_empty
       end
+
+      it "shows no proxy tag on the collection in bulk mode or the scanner while a deck holds one" do
+        own("main", bolt, quantity: 2)
+        proxy_in("main", bolt, quantity: 3)
+
+        tags = [ collection_path(bulk: 1, view: "table"), collection_path(bulk: 1), scanner_path ].map { get(it) && [ response.status, html.css(".c-proxy").size ] }
+
+        expect(tags).to eq([ [ 200, 0 ], [ 200, 0 ], [ 200, 0 ] ])
+      end
     end
 
     describe "tenancy (AC-1.2)" do

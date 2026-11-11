@@ -556,6 +556,12 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
    `.c-locations__name` and `.c-pick`). */
 .c-decks .c-confirm :is(h1, p), .c-decks .c-list li > span:first-child { min-width:0; overflow-wrap:anywhere; }
 
+/* ---------- Deck pages' selects (spec 068 AC-9.1): the touch floor on a coarse pointer ---------- */
+/* The add-a-proxy chooser's Set select (`.c-select`, 40px on a touch screen) and the form's Finish select (`.c-field`, 36px) sit
+   under the 44px floor every other control of the deck pages meets. The rule is scoped to `.c-decks`, so it also lifts the Change
+   format page's Format select (spec 064), which shares that class; raising the select floor app-wide is out of scope. */
+@media (pointer: coarse) { .c-decks .c-select select, .c-decks .c-field select { min-height:var(--touch-floor); } }
+
 /* ---------- Small icon stroke (spec 063) ---------- */
 /* An icon's stroke scales with it: weight on screen = stroke-width × drawn width ÷ 24 (the viewBox). The partials write
    1.5, Lucide's weight at 20px (1.25px on screen); at 12px that is 0.75px, a hairline beside a 600-weight word, and at

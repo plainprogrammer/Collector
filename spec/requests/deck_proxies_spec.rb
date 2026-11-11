@@ -305,6 +305,7 @@ RSpec.describe "Deck proxies", type: :request do
         expect(response).to have_http_status(:not_found)
         patch deck_proxy_path(deck, proxy), params: { proxy: { quantity: "3" } }
         expect(response).to have_http_status(:not_found)
+        expect(Deck::Proxy.pluck(:finish)).to eq([ "nonfoil" ]) # the sibling proxy is as it was
       end
 
       it "answers 404 for every proxy page of a deck removed meanwhile (AC-5.5)", :aggregate_failures do

@@ -6,7 +6,7 @@ All four are detail pages: `c-appbar--detail` with a back arrow, Decks the curre
 
 ## The chooser
 
-`GET /decks/:deck_id/zones/:zone/proxies/new`. The heading names the deck and the zone ("Add a proxy to Izzet Tempo › Main"); under it a `c-filterbar` with the card search's name field and set filter and a "Search" button, then the results, then "Cancel".
+`GET /decks/:deck_id/zones/:zone/proxies/new`. The heading names the deck and the zone ("Add a proxy to Izzet Tempo › Main"); under it a `c-filterbar` with the card search's name field and set filter and a "Search" button, then the results, then "Cancel". On a coarse pointer the Set select is lifted to the 44px touch floor by `.c-decks .c-select select` (spec 068 AC-9.1; `DecksIndex`).
 
 ```html
 <div class="c-pagehead"><div><h1 class="c-pagehead__title">Add a proxy to Izzet Tempo › Main</h1>
@@ -37,7 +37,7 @@ All four are detail pages: `c-appbar--detail` with a back arrow, Decks the curre
 
 `GET …/proxies/new?entry=<the printing's key>`, the page the preview `previews/AddProxy.html` (and `AddProxyPhone.html`) draws: the heading as above, the card's name and `SET · number` in the muted line, then a `c-form`: a hidden `proxy[entry]`, a Finish select, a Quantity field, and the actions.
 
-- **Finish** is one native `select` of the printing's finishes in the collectible's order ("Choose…" first, nothing chosen, when there are several; the only one chosen, with no blank option, when there is one). A printing that lists none has no Finish field.
+- **Finish** is one native `select` of the printing's finishes in the collectible's order ("Choose…" first, nothing chosen, when there are several; the only one chosen, with no blank option, when there is one). A printing that lists none has no Finish field. On a coarse pointer the select is at least the 44px touch floor (`.c-decks .c-field select`, spec 068 AC-9.1).
 - **Quantity** is a `c-input` number field, `min` 1, `max` 9,999, 1 at first.
 - "Add proxy" (primary) and "Cancel" (secondary, to the deck page). Adding to a zone that already has a proxy of that printing and finish adds the quantities.
 - **Errors** are `c-field__error` paragraphs under their field, tied to it by `aria-describedby`: "Enter a number from 1 to 9,999.", "Choose a finish.", "That finish isn't available for this printing.", and "A zone can hold at most 9,999 proxies of one printing and finish." under Quantity. The page answers 422 and keeps what was typed.
