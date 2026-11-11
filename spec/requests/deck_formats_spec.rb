@@ -128,6 +128,17 @@ RSpec.describe "Deck formats", type: :request do
       expect(count_queries { get edit_deck_format_path(full) }).to eq(count_queries { get edit_deck_format_path(empty) })
     end
 
+    describe "the Decks page's row button (AC-1.1)" do
+      it "links each deck to its Change format page and names the deck for a screen reader", :aggregate_failures do
+        get decks_path
+
+        link = html.at_css(".c-decks__actions a[href='#{edit_deck_format_path(deck)}']")
+        expect(link.text.squish).to eq("Change format Izzet Tempo")
+        expect(link["class"]).to include("c-btn--ghost", "c-btn--sm")
+        expect(html.css(".c-decks__actions a").map { it.text.squish.split.first(2).join(" ") }).to eq([ "Rename Izzet", "Change format", "Remove Izzet" ])
+      end
+    end
+
     describe "tenant isolation and bad ids (AC-3.3, AC-3.4)" do
       let(:foreign) { create(:deck, account: create(:user).account, name: "Theirs", format: "modern") }
       let(:place) { create(:location, account:) }
