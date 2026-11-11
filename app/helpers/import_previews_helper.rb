@@ -12,13 +12,19 @@ module ImportPreviewsHelper
       ("in #{location}" if location) ].compact.join(" · ")
   end
 
+  # Set code and number, language, finish and place of a proxy as the preview writes it: "MH2 · 138 · EN · Foil · in Izzet Tempo › Main".
+  # Takes the keywords a proxy's `described` gives, a held proxy's and a file row's alike (spec 068 AC-7.6, AC-7.7).
+  def import_proxy_line(set_code:, collector_number:, language:, finish:, place:)
+    [ [ set_code&.upcase, collector_number ].compact.join(" · ").presence, language&.upcase, finish&.humanize, ("in #{place}" if place) ].compact.join(" · ")
+  end
+
   def import_copies(count) = pluralize(number_with_delimiter(count), "copy")
 
   # "6 copies become 9", "1 copy becomes 2".
   def import_change(tally) = "#{import_copies(tally.copies)} #{tally.copies == 1 ? "becomes" : "become"} #{number_with_delimiter(tally.copies_after)}"
 
   # What an apply removes, in words: "3 lots (12 copies), 2 locations and 1 deck" (spec 028 decision 6, spec 029 decision 11,
-  # spec 062 AC-7.6). The lots include those in a deck's zones.
+  # spec 062 AC-7.6, spec 068 AC-7.9): "3 lots (12 copies), 2 locations, 1 deck and 4 proxies". The lots include those in a deck's zones.
   def import_removals(import)
     plan = import.plan
     parts = []
@@ -27,7 +33,7 @@ module ImportPreviewsHelper
     parts.to_sentence(last_word_connector: " and ")
   end
 
-  # The counts in the checkbox's label: "1 lot", "3 lots and 2 locations", "3 lots, 2 locations and 1 deck".
+  # The counts in the checkbox's label: "1 lot", "3 lots and 2 locations", "3 lots, 2 locations, 1 deck and 4 proxies".
   def import_removed_counts(plan)
     parts = []
     parts << pluralize(number_with_delimiter(plan.removed_lots.size), "lot") if plan.removed_lots.any?
@@ -44,7 +50,8 @@ module ImportPreviewsHelper
   end
 
   # What the page says of the decks for a file that says nothing of them (version 1 to 3): they stay, and so do the copies in
-  # them unless a lot of one is among the lots the file's rows don't name, which applying removes (spec 062 AC-7.4).
+  # them unless a lot of one is among the lots the file's rows don't name, which applying removes (spec 062 AC-7.4). The view
+  # adds the proxies' sentence (spec 068 AC-7.8).
   def import_decks_stay(plan)
     lots = plan.removed_zone_lots.size
     note = "This file was written before decks existed, so your decks would stay"
@@ -56,6 +63,7 @@ module ImportPreviewsHelper
       parts = []
       parts << pluralize(number_with_delimiter(plan.locations.removed.size), "location") if plan.locations.removes?
       parts << pluralize(number_with_delimiter(plan.decks.removed.size), "deck") if plan.decks.removes?
+      parts << pluralize(number_with_delimiter(plan.proxies.removed.size), "proxy") if plan.proxies.removes?
       parts
     end
 

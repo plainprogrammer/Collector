@@ -226,14 +226,14 @@ RSpec.describe "Import preview", type: :request do
       it "says an older file leaves the decks, and what it would remove from them, with no Decks counts (AC-7.4)", :aggregate_failures do
         deck = create(:deck, account: user.account, name: "Izzet Tempo")
         preview(file_v2([ row(entry) ]))
-        expect(html.at_css("#decks_stay").text).to eq("This file was written before decks existed, so your decks would stay.")
+        expect(html.at_css("#decks_stay").text).to eq("This file was written before decks existed, so your decks would stay. This file was written before proxies existed, so your proxies would stay.")
         expect(html.at_css("#decks")).to be_nil
 
         create_lot_in_zone(deck, "main", quantity: 2)
         create_lot_in_zone(deck, "sideboard", quantity: 1)
         preview(file([ row(entry) ]))
         expect(html.at_css("#decks_stay").text).to eq(
-          "This file was written before decks existed, so your decks would stay, but the copies in them (2 lots) would be removed.")
+          "This file was written before decks existed, so your decks would stay, but the copies in them (2 lots) would be removed. This file was written before proxies existed, so your proxies would stay.")
         expect(html.at_css("#decks")).to be_nil
       end
 
