@@ -89,6 +89,7 @@ RSpec.describe "Open a deck's lots in bulk mode", type: :system do
       expect(page).to have_css("#status", text: "Moved 5 items to Long box.")
       expect(page).to have_text("No cards in your collection are in “Izzet Tempo”.")
       expect(page).to have_css(".c-bulkbar__count", exact_text: "0 of 0 selected")
+      expect(user.account.lots.where(location: deck.zones)).to be_empty
 
       visit decks_path
       click_on "Remove Izzet Tempo"
