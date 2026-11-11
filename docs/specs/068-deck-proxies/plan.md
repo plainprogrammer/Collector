@@ -582,8 +582,12 @@ class Deck::Page
   end
   # One zone: its location and its groups in the extension's order.
   Zone = Data.define(:location, :groups) do
+    # The zone location's id.
     def id = location.id
+
+    # The zone's shown name.
     def name = location.name
+
     # The copies in the zone.
     def owned = groups.sum(&:owned)
     # The proxies in the zone.
@@ -680,7 +684,7 @@ class Deck::Page
   end
 ```
 
-(Check the existing example for the current count; spec 062 AC-4.7's figure was 2 statements. The new figure is the old plus one.)
+(The old count was 3, the decks, their locations and the copies; the new is 4. The example asserts a figure so a later change is noticed.)
 
 - [ ] **Step 2: Run, confirm it fails.** **Step 3:** in `app/models/deck/listing.rb`:
 
@@ -1034,8 +1038,9 @@ and, after the `end` of that `resources :decks` block, two top-level routes (a `
 
 (`deck_count_line` keeps `listing.rows.sum(&:cards)`.)
 
-- [ ] **Step 6: Run** `bin/rspec spec/requests/deck_pages_spec.rb spec/requests/decks_spec.rb spec/helpers`: pass, after updating the two existing examples that assert the spec 066 heads ("58 cards · 58 owned", "12 cards · 12 owned", "0 cards · 0 owned", every Proxy cell a dash, no menu column, five columns) to their spec 068 texts ("… · 0 proxy", six `th`, the last "Actions"); each such edit is one assertion changed to the text AC-2.3 gives. The examples that spec 066 wrote and spec 068 supersedes (its "Supersedes and updates") are, in `spec/requests/deck_pages_spec.rb`: the head texts at lines ~43, 48, 52, 60, 115, 199, 211 and 368 ("58 cards · 58 owned", "12 cards · 12 owned", "0 cards · 0 owned", each gains " · 0 proxy"); the AC-1.6 example at ~75 ("no proxy control, no proxy count and no proxy tag"), which is rewritten whole: it keeps "no shape panel" and a dash in the Proxy cell of a row with no proxy, and drops the rest; the AC-4.2 example at ~337, whose selector `form, .c-table__actions, [draggable]` becomes `form, [draggable]` (every row now has an actions cell; the menu's own checks are AC-2.6's) and which keeps its "no link to a new copy, number entry or the scanner"; and in `spec/requests/decks_spec.rb` the column list at ~30 (five headers become six: `Deck Format Cards Owned Proxy Actions`) and any Cards or Owned cell it asserts (Cards is owned plus proxy). Each change is a supersession the spec names, never a weakened assertion for a behaviour that still holds.
+- [ ] **Step 6: Run** `bin/rspec spec/requests/deck_pages_spec.rb spec/requests/decks_spec.rb spec/helpers`: pass, after updating the two existing examples that assert the spec 066 heads ("58 cards · 58 owned", "12 cards · 12 owned", "0 cards · 0 owned", every Proxy cell a dash, no menu column, five columns) to their spec 068 texts ("… · 0 proxy", six `th`, the last "Actions"); each such edit is one assertion changed to the text AC-2.3 gives. The examples that spec 066 wrote and spec 068 supersedes (its "Supersedes and updates") are, in `spec/requests/deck_pages_spec.rb`: the head texts at lines ~43, 48, 52, 60, 115, 199, 211 and 368 ("58 cards · 58 owned", "12 cards · 12 owned", "0 cards · 0 owned", each gains " · 0 proxy"); the AC-1.6 example at ~75 ("no proxy control, no proxy count and no proxy tag"), which is rewritten whole: it keeps "no shape panel" and a dash in the Proxy cell of a row with no proxy, and drops the rest; the AC-4.2 example at ~337, whose selector `form, .c-table__actions, [draggable]` becomes `form, [draggable]` (every row now has an actions cell; the menu's own checks are AC-2.6's) and which keeps its "no link to a new copy, number entry or the scanner"; the `thead th` list at ~118 (`[ "Card", "Cost", "Owned", "Proxy", "Total" ]` gains `"Actions"`); and in `spec/requests/decks_spec.rb` the column list at ~30 (five headers become six: `Deck Format Cards Owned Proxy Actions`) and the line at ~33 `expect(html.at_css(".c-decks").text).not_to include("Proxy")` (spec 066's "no Proxy column": delete it) and any Cards or Owned cell it asserts (Cards is owned plus proxy). Each change is a supersession the spec names, never a weakened assertion for a behaviour that still holds.
 - [ ] **Step 7: The system spec** `spec/system/deck_page_spec.rb`: extend the spec 066 widths example (read it; it measures overflow at 360/640/768/1280px in both themes) so its seeded deck has a proxy row with a four-digit proxy count, the 60-character name, the six-symbol cost and a marker, and asserts: no horizontal overflow, the zone heads' counts uncut, the Cost cell's scroll width ≤ client width (AC-2.11), the Cost, Owned, Proxy, Total and menu columns share a left edge and width across three zone tables at 1280px (AC-2.5), Owned and Proxy hidden below 640px with the tag in the line under the name (AC-2.4), and every menu trigger at least 44px on a coarse pointer (AC-2.11). The existing CSS has the widths (`additions.css:481-487`); if an example fails, fix it with a rule under a new heading comment `(spec 068 deck page with proxies)` in `additions.css`, never a literal colour or size outside the tokens.
+- [ ] **Step 7b: The columns the system spec reads.** In `spec/system/deck_page_spec.rb`, the example "shows the marker and the set line beside the name from 768px … and all five columns" (line ~110) expects `shown_headers` to eq `[ "Card", "Cost", "Owned", "Proxy", "Total" ]`: it gains `"Actions"` and "six columns" in its title; run the file and change any other spec 066 expectation that names five columns or no menu to spec 068's (a supersession the spec names).
 - [ ] **Step 8: The Decks page at the narrow widths** (AC-5.2, AC-5.2a): extend `spec/system/decks_spec.rb` (read it: it has the Decks page's overflow examples) with a deck that has 58 owned copies, 11 proxies and a 60-character name with no space, and assert at 360px (narrow frame) that Format, Owned and Proxy are hidden, the line under the name reads "Modern · 58 owned" followed by the tag, there is no horizontal overflow, and at 640px, 768px and 1280px in both themes there is no horizontal overflow and the tag and the three action buttons don't overlap (their bounding boxes don't intersect). If the row's actions don't fit at 640px, fix it with a rule under a heading comment `(spec 068 Decks list with proxies)` in `additions.css`.
 - [ ] **Step 9: Run** `bin/rspec spec/system/deck_page_spec.rb spec/system/decks_spec.rb`. **Step 10: Commit** `feat(decks): proxies on the deck page and the Decks page (spec 068 T6)`.
 
@@ -1129,7 +1134,7 @@ RSpec.describe "Deck proxies", type: :request do
         expect(html.at_css("header.c-appbar--detail")).to be_present
         expect(html.at_css("input[name=q]")).to be_present
         expect(html.at_css("select[name=set]")).to be_present
-        expect(html.css("a", text: "Choose")).to be_empty
+        expect(html.css("a").select { it.text.start_with?("Choose") }).to be_empty
       end
 
       it "lists a card's printings of the deck's type with a Choose link each, and no retired or other printing", :aggregate_failures do
@@ -1175,7 +1180,7 @@ RSpec.describe "Deck proxies", type: :request do
         expect(html.css("select[name='proxy[finish]'] option").map(&:text)).to eq([ "Choose…", "Nonfoil", "Foil" ]) # the vocabulary's finish order
         expect(html.at_css("input[name='proxy[quantity]']")["value"]).to eq("1")
         expect(html.at_css("input[type=submit]")["value"]).to eq("Add proxy")
-        expect(html.at_css("a", text: "Cancel")["href"]).to eq(deck_path(deck))
+        expect(html.css("a").find { it.text.squish == "Cancel" }["href"]).to eq(deck_path(deck))
         expect(html.css("label").map(&:text)).to include("Finish", "Quantity") # each field has its visible label (AC-9.1)
       end
 
@@ -1630,7 +1635,7 @@ end
         expect(html.text).to include("Foil")
         expect(html.at_css("input[name='proxy[quantity]']")["value"]).to eq("2")
         expect(html.at_css("input[type=submit]")["value"]).to eq("Save")
-        expect(html.at_css("a", text: "Cancel")["href"]).to eq(deck_path(deck))
+        expect(html.css("a").find { it.text.squish == "Cancel" }["href"]).to eq(deck_path(deck))
       end
 
       it "saves a quantity from 1 to 9,999 keeping the id, and says so (AC-3.2)", :aggregate_failures do
@@ -1683,7 +1688,7 @@ end
         expect(response).to have_http_status(:ok)
         expect(html.at_css("h1").text).to eq("Remove the proxies of #{name} from Izzet Tempo › Main?")
         expect(html.at_css("form[action='#{deck_proxy_path(deck, proxy)}'] input[name=_method][value=delete]")).to be_present
-        expect(html.at_css("a", text: "Cancel")["href"]).to eq(deck_path(deck))
+        expect(html.css("a").find { it.text.squish == "Cancel" }["href"]).to eq(deck_path(deck))
         expect(Deck::Proxy.count).to eq(2)
       end
 
@@ -1954,10 +1959,12 @@ and in `app/views/decks/removals/new.html.erb` replace the `<p>` with `<p><%= de
       a = create(:deck_proxy, zone: other.zone("a"), account:, entry:, finish: nil, quantity: 2)
       b = create(:deck_proxy, zone: other.zone("b"), account:, entry:, finish: nil, quantity: 3)
 
-      described_class.new(deck: other, format: "fake/g").save!
+      change = described_class.new(deck: other, format: "fake/g")
+      change.save!
 
       expect(Deck::Proxy.where(location_id: other.zone("considering").id).pluck(:id, :quantity)).to eq([ [ a.id, 5 ] ])
       expect { b.reload }.to raise_error(ActiveRecord::RecordNotFound)
+      expect(change.proxies_moved).to eq(5)
     end
 
     it "refuses a move past 9,999 naming the proxy, and writes nothing (AC-6.4)", :aggregate_failures do
@@ -2079,6 +2086,7 @@ end
       over = groups.filter_map { |key, group| group.first if group.sum(&:quantity) + (there[key]&.quantity || 0) > Deck::Proxy::MAX_QUANTITY }
       raise Deck::Proxy::CapExceeded, first_by_shown_order(over) if over.any?
 
+      moved = proxies.sum(&:quantity) # before the writes: a keeper's quantity changes in memory when its siblings merge into it
       groups.each do |key, group|
         total = group.sum(&:quantity)
         if there[key]
@@ -2090,7 +2098,7 @@ end
           rest.each(&:destroy!)
         end
       end
-      @proxies_moved = proxies.sum(&:quantity)
+      @proxies_moved = moved
     end
 
     # The proxy that comes first by card name, set code, collector number as a person reads it, language, then finish.
@@ -2417,7 +2425,7 @@ The object has these fields and no others. A proxy is identified by five values:
 
 (The "Left out" rows' second column heading in that table is "Why left out"; copy the neighbouring rows' column layout, and keep the `locations.zone` row's wording in step: its "In the file" is `zone`, which now serves proxies too.) The "Examples" section's list gains `valid/proxies-v4.json`, the eleven `invalid/proxy*` files and `comparison/v4-different-proxy-added.json`.
 
-- [ ] **Step 7: Run** `bin/rspec spec/export_format_examples_spec.rb spec/export_format_document_spec.rb spec/models/export_format`: the example and the document specs still fail only on what T15 and T16 add (the rules: `duplicate_proxy` and the per-row proxy problems need the app's `ExportFormat::Rules`); the document spec's coverage examples fail until the migration's table is listed (done in Step 6) — they must pass now. Commit the schema, the examples and the document together once T15's rules make the examples spec pass, as one commit `docs(export): version 4 carries proxies, their schema, document and examples (spec 068 T14)`: if the examples spec still fails after T15, the examples are wrong, not the rules.
+- [ ] **Step 7: Run** `bin/rspec spec/export_format_examples_spec.rb spec/export_format_document_spec.rb spec/models/export_format`: the example and the document specs still fail only on what T15 and T16 add (the rules: `duplicate_proxy` and the per-row proxy problems need the app's `ExportFormat::Rules`); the document spec's coverage examples fail until the migration's table is listed (done in Step 6) — they must pass now. Commit the schema, the examples and the document together once T15's rules make the examples spec pass (the round-trip example over the valid examples, `spec/models/collection_import/round_trip_spec.rb`, stays red on `valid/proxies-v4.json` until T18: the commit is still made, and the red example is named in its body), as one commit `docs(export): version 4 carries proxies, their schema, document and examples (spec 068 T14)`: if the examples spec still fails after T15, the examples are wrong, not the rules.
 
 ### T15: The app's rules for proxies
 
@@ -2659,7 +2667,8 @@ and the new methods (add `:repeated_proxies, :unlisted_proxy_decks` to `private_
 
 (`@account.deck_proxies.joins(entry: :set)`: the `decks` join must not clash with the proxies' own account scope; the statement names every column it reads.)
 
-- [ ] **Step 4: Run** `bin/rspec spec/models/collection_export_spec.rb spec/collection_export_core_spec.rb spec/requests/collection_exports_spec.rb`: pass (the export's existing query-count examples compare a few lots with many, so no number moves). **Step 5: Commit** `feat(export): the export carries proxies (spec 068 T16)`.
+- [ ] **Step 4: The header example.** In `spec/models/collection_export_spec.rb` the example "writes the header, the profile and the currency" (line ~41) compares `file.except("lots", "locations", "decks")`: add `"proxies"` to the `except`.
+- [ ] **Step 4b: Run** `bin/rspec spec/models/collection_export_spec.rb spec/collection_export_core_spec.rb spec/requests/collection_exports_spec.rb`: pass (the export's existing query-count examples compare a few lots with many, so no number moves). **Step 5: Commit** `feat(export): the export carries proxies (spec 068 T16)`.
 
 ---
 
@@ -3086,8 +3095,8 @@ end
   def removes? = removed_lots.any? || locations.removes? || decks.removes? || proxies.removes?
 ```
 
-and in `fingerprint`, after the decks' line: `parts << proxies.fingerprint_part if proxies.counted?` (doc: "the proxies' part for a file that counts them (version 4 only, so a version 1 to 3 plan keeps the fingerprint it had, spec 068 AC-7.8)"). `writes_lots?` is unchanged: a proxy-only apply clears no working state (AC-7.11).
-- [ ] **Step 7: Run** `bin/rspec spec/models/collection_import_proxies_spec.rb spec/models/collection_import spec/requests/collection_import_previews_spec.rb spec/requests/collection_imports_spec.rb spec/requests/collection_import_deck_timing_spec.rb --dry-run` first (it must load), then without `--dry-run` except the timing file: the new file passes and the rest still do, once the version 4 files they build by hand carry `proxies` (a required list now). `import_file_v4` in `spec/support/import_helpers.rb` gains `proxies: []` as a keyword and passes it on: `def import_file_v4(user, lots, locations: [], decks: [], proxies: [], **fields)` and `import_file(user, lots, format_version: 4, locations: ..., decks:, proxies:, **fields)` (its callers are `apply_spec`, `deck_changes_spec`, `plan_spec`, `collection_import_spec`, `collection_import_previews_spec` and `collection_imports_spec`); `as_current_version` in `spec/models/collection_import/round_trip_spec.rb` (line ~186) adds `"proxies" => data.fetch("proxies", [])` to its last `merge`, so `same_collection?` compares empty sets and not nil; and `spec/requests/collection_import_deck_timing_spec.rb` (line ~72) adds `"proxies" => []` to its file hash. Run each of those files in this step (the timing file under `SCANNER_TIMING=1` only in T19). **Step 8: Commit** `feat(import): read, judge and plan a file's proxies (spec 068 T17)`.
+and in `fingerprint`, after the decks' line: `parts << proxies.fingerprint_part if proxies.counted?` (doc: "the proxies' part for a file that counts them (version 4 only, so a version 1 to 3 plan keeps the fingerprint it had, spec 068 AC-7.8)"); update the comments on `nothing_to_change?` ("no lot, no location, no deck, no proxy, no view change and no currency change"), `removes?` ("a lot, a place, a deck or a proxy") and the class's top comment ("and, for a version 4 file, of the proxies") in the same edit, and `format_changed_message`'s comment in `decks_helper.rb` ("… the proxy sentence follows the cards sentence"). `writes_lots?` is unchanged: a proxy-only apply clears no working state (AC-7.11).
+- [ ] **Step 7: Run** `bin/rspec spec/models/collection_import_proxies_spec.rb spec/models/collection_import_spec.rb spec/models/collection_import spec/requests/collection_import_previews_spec.rb spec/requests/collection_imports_spec.rb`: the new file passes and the rest still do, once the version 4 files they build by hand carry `proxies` (a required list now). Four places build them, and each gets the list: `import_file_v4` in `spec/support/import_helpers.rb` gains `proxies: []` as a keyword and passes it on (`def import_file_v4(user, lots, locations: [], decks: [], proxies: [], **fields)`, `import_file(user, lots, format_version: 4, locations: ..., decks:, proxies:, **fields)`; its callers are `apply_spec`, `deck_changes_spec`, `plan_spec` and `collection_imports_spec`); the local `file_v4` helpers of `spec/models/collection_import_spec.rb` (line ~552, 26 uses) and of `spec/requests/collection_import_previews_spec.rb` (line ~180, 12 uses) each add `proxies: []` the same way (`def file_v4(lots, locations: [], decks: [], proxies: [], **fields)` and `proxies:` in the `file(...)` call); `as_current_version` in `spec/models/collection_import/round_trip_spec.rb` (line ~186) adds `"proxies" => data.fetch("proxies", [])` to its last `merge`, so `same_collection?` compares empty sets and not nil; and `spec/requests/collection_import_deck_timing_spec.rb` (line ~72) adds `"proxies" => []` to its file hash. Two examples need a change of their own: `spec/models/collection_import_spec.rb`'s "reports the rule and place problems.json names for each example refused as a whole (AC-2.7)" (line ~113) rejects only the entries whose `at` starts with `/lots/`; the invalid examples under `/proxies/N/` are row problems now, so its `reject` also drops `entry["at"].match?(%r{\A/proxies/\d})` (the two entries at `/proxies` itself are refusals and stay); and `spec/models/collection_import/round_trip_spec.rb`'s loop over every valid example (line ~201) picks up `valid/proxies-v4.json`, which restores only once T18's apply writes proxies: run that round-trip example in T18 Step 7, and until then expect it red (it is the proof of AC-7.4's file side). **Step 8: Commit** `feat(import): read, judge and plan a file's proxies (spec 068 T17)`.
 
 ### T18: The apply, the preview and the notice
 
