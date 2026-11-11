@@ -62,7 +62,7 @@ A collector adds a proxy (a printing, a finish and a quantity) to a zone of a de
 | `script/upgrade/seeds/next.rb`, `spec/deck_core_spec.rb`, `spec/requests/query_counts_spec.rb` | edit | The upgrade seed, the core guard, the counts |
 | `docs/design-system/**`, `docs/architecture/**`, `CLAUDE.md`, `docs/specs/README.md`, `docs/releasing.md`, `verification.md` | edit, new | Documentation (Phase 8) |
 
-Batches for the implementer subagents (2–4 consecutive tasks, one commit per task, test first): **A** = T1–T3, **B** = T4–T6, **C** = T7–T9, **D** = T10–T11, **E** = T12–T13, **F** = T14–T16, **G** = T17–T19, **H** = T20–T22. The supervisor checks each batch's diff; the documentation (T23, T24) is written by the supervisor.
+Batches for the implementer subagents (2–4 consecutive tasks, one commit per task, test first): **A** = T1–T3, **B** = T4–T6, **C** = T7–T9, **D** = T10–T11, **E** = T12–T13, **F** = T14–T16, **G** = T17–T19, **H** = T20–T21. The supervisor checks each batch's diff; the documentation (T22 to T24) is written by the supervisor.
 
 ---
 
@@ -70,7 +70,7 @@ Batches for the implementer subagents (2–4 consecutive tasks, one commit per t
 
 **Implements:** FR-1 (data), Story 8 | **Satisfies:** AC-8.1, AC-8.2, AC-8.4, AC-1.6 (merge), AC-1.9
 **Files:** `db/migrate/20261111150001_create_deck_proxies.rb`, `db/schema.rb`, `app/models/deck/proxy.rb`, `app/models/deck/proxy/addition.rb`, `app/models/deck.rb`, `app/models/account.rb`, `spec/factories/decks.rb`, `spec/models/deck/proxy_spec.rb`, `spec/models/deck/proxy/addition_spec.rb`, `spec/models/account_spec.rb`
-**Interfaces:** Produces `Deck::Proxy` (`zone`, `entry`, `finish`, `quantity`; `.add!(account:, zone:, entry:, finish:, quantity:)`; `Deck::Proxy::FULL_MESSAGE`), `Deck::Proxy::Addition` (`#save` → proxy or false), `Deck#proxies`, `Account#deck_proxies`, factory `:deck_proxy`.
+**Interfaces:** Produces `Deck::Proxy` (`zone`, `entry`, `finish`, `quantity`; `.add!(account:, zone:, entry:, finish:, quantity:)`; `Deck::Proxy::FULL_MESSAGE`), `Deck::Proxy::Addition` (`#save` → true or false; `#proxy` the written proxy), `Deck#proxies`, `Account#deck_proxies`, factory `:deck_proxy`.
 
 ### T1: The table and the model
 
@@ -165,7 +165,7 @@ RSpec.describe Deck::Proxy, type: :model do
     other_account = create(:user).account
     other = create(:deck, account: other_account, name: "Other")
     described_class.add!(account: other_account, zone: other.zone("main"), entry:, finish: "foil", quantity: 1)
-    expect { other_account.user.destroy!; other_account.destroy! }.to change(described_class, :count).from(1).to(0)
+    expect { other_account.user.destroy! }.to change(described_class, :count).from(1).to(0) # the user's account is destroyed with it
   end
 
   it "doesn't revalidate a stored proxy against the catalog (decision 2)" do
@@ -539,17 +539,19 @@ end
     end
 
     it "reads the proxies in one statement more than before, however many there are (AC-2.10)", :aggregate_failures do
-      one = count_queries { described_class.new(deck.reload).zones }
-      6.times { proxy("main", create(:mtg_printing).entry) }
-      many = count_queries { described_class.new(Deck.includes(:location).find(deck.id)).zones }
+      none = page_of(deck).then { |page| count_queries { page.zones } } # the deck and its location are read outside the count
+      create_lot_in_zone(deck, "main")
+      proxy("main", create(:mtg_printing).entry)
+      some = page_of(deck).then { |page| count_queries { page.zones } }
+      6.times { |n| proxy(%w[main sideboard considering][n % 3], create(:mtg_printing).entry) }
+      many = page_of(deck).then { |page| count_queries { page.zones } }
 
-      expect(one).to eq(3)  # the zones, the lot sums, the proxies
-      expect(many).to eq(6) # + the entries, their sets and one extension read for the one collectible type
+      expect([ none, some, many ]).to eq([ 3, 6, 6 ]) # the zones, the lot sums, the proxies; then the entries, their sets and one extension read
     end
   end
 ```
 
-The last example's two numbers are spec 066's (2 and 5) plus one (AC-2.10); if a run shows another figure, stop and report it: the gate's count and the spec's AC are then wrong, not the example.
+The example's numbers are spec 066's (the file's existing example asserts 5 for a deck with lots; a deck with none reads the zones and the lot sums, 2) plus one (AC-2.10); if a run shows another figure, stop and report it: the gate's count and the spec's AC are then wrong, not the example. The file's own `page_of(deck)` helper builds the page the way the controller does.
 
 - [ ] **Step 2: Run, confirm it fails** (`NoMethodError: proxy`).
 - [ ] **Step 3: The implementation**, `app/models/deck/page.rb` replaces the top of the class and `build_zones`/`groups_for`:
@@ -594,10 +596,15 @@ class Deck::Page
 
   attr_reader :deck
 
+  # @param deck [Deck] a deck of the signed-in account, its location loaded to keep the read count
   def initialize(deck)
     @deck = deck
   end
 
+  # The zones in the format's order; a zone the format does not list, and every zone of a format the instance no longer
+  # registers, follows by id. Read once.
+  #
+  # @return [Array<Zone>]
   def zones = @zones ||= build_zones
 
   # The copies in every zone, Considering included.
@@ -645,7 +652,7 @@ class Deck::Page
 
 (Keep `ordered_locations`, `copies_by_zone_and_entry` and `entries_for` as they are. Update the class comment: "at most 6 statements with the deck's location loaded, 3 for a deck with no lots and no proxies (spec 068 AC-2.10)".)
 
-- [ ] **Step 4: Run** `bin/rspec spec/models/deck/page_spec.rb`: the new examples pass; the file's existing statement-count example fails with 6 where it said 5 and 3 where it said 2: update those two numbers to 6 and 3 (spec 068 AC-2.10 says one more) in the same commit.
+- [ ] **Step 4: Run** `bin/rspec spec/models/deck/page_spec.rb`: the new examples pass; the file's existing example "runs 5 statements for a small deck and for a large one alike" now reads 6 (the proxies' statement always runs): change its title and its expected `[ 5, 5 ]` to `[ 6, 6 ]` and its comment to add "the proxies", in the same commit.
 - [ ] **Step 5: Commit** `feat(decks): the deck page model reads proxies (spec 068 T4)`.
 
 ### T5: The Decks page's listing
@@ -669,7 +676,7 @@ class Deck::Page
   it "reads the proxies with one grouped statement, however many decks (AC-5.3)" do
     3.times { |n| create(:deck_proxy, zone: create(:deck, account:, name: "D#{n}").zone("main"), account:) }
 
-    expect(count_queries { described_class.new(account).rows }).to eq(3) # the decks with locations, the copies, the proxies
+    expect(count_queries { described_class.new(account).rows }).to eq(4) # the decks, their locations, the copies, the proxies
   end
 ```
 
@@ -689,6 +696,9 @@ class Deck::Page
 and `rows`:
 
 ```ruby
+  # The page's rows, read once per listing so the page and its count agree. The copies and the proxies are each summed per deck
+  # in one grouped statement and the decks' locations preloaded, so the cost doesn't grow with the number of decks.
+  # @return [Array<Row>] the decks by comparison key, then name; a deck with no copies and no proxies has 0 of each
   def rows
     @rows ||= begin
       owned = @account.lots.joins(:location).where(locations: { kind: "deck_zone" }).group("locations.parent_id").sum(:quantity)
@@ -702,7 +712,7 @@ and `rows`:
 
 Update the class comment: "one grouped read of the copies and one of the proxies". Fix any other caller of `Row.new(deck:, cards:)` (grep `Listing::Row`) and the helpers' `row.cards` stays valid.
 
-- [ ] **Step 4: Run** the file and `spec/requests/decks_spec.rb`; update the existing statement-count example by +1. **Step 5: Commit** `feat(decks): the Decks listing counts proxies (spec 068 T5)`.
+- [ ] **Step 4: Run** the file and `spec/requests/decks_spec.rb` (its "same number of queries with 2 decks as with 10" example compares two counts, so no number moves; the listing's own example in `listing_spec.rb`, if it asserts a figure, goes up by one). **Step 5: Commit** `feat(decks): the Decks listing counts proxies (spec 068 T5)`.
 
 ### T6: The pages: heads, cells, tag, menu column and the Decks page's columns
 
@@ -841,17 +851,23 @@ and in `spec/requests/decks_spec.rb` (the Decks page):
 - [ ] **Step 3: Routes**, in `config/routes.rb` inside `resources :decks ... do` after the `selection` line:
 
 ```ruby
-    # Spec 068: proxies. A zone is named by its key within the deck (the deck's location id is :deck_id); a proxy by its own id.
+    # Spec 068: a proxy is named by its own id under its deck (the deck's location id is :deck_id).
     scope module: :decks do
-      get "zones/:zone/proxies/new", to: "proxies#new", as: :new_zone_proxy
-      post "zones/:zone/proxies", to: "proxies#create", as: :zone_proxies
       resources :proxies, only: %i[edit update destroy] do
         resource :removal, only: :new, module: :proxies
       end
     end
 ```
 
-`bin/rails routes -g proxy` must list `new_deck_zone_proxy`, `deck_zone_proxies`, `edit_deck_proxy`, `deck_proxy` (PATCH, DELETE) and `new_deck_proxy_removal`; if a name differs, change `as:` until the helpers named in this plan exist.
+and, after the `end` of that `resources :decks` block, two top-level routes (a `get` inside the block would be named `deck_new_zone_proxy`, which no `as:` can change), so a zone is named by its key within the deck:
+
+```ruby
+  # Spec 068: add a proxy to a zone, named by its key in the path (:deck_id is the deck's location id, never a zone's).
+  get "decks/:deck_id/zones/:zone/proxies/new", to: "decks/proxies#new", as: :new_deck_zone_proxy
+  post "decks/:deck_id/zones/:zone/proxies", to: "decks/proxies#create", as: :deck_zone_proxies
+```
+
+`bin/rails routes -g proxy` must list `new_deck_zone_proxy`, `deck_zone_proxies`, `edit_deck_proxy`, `deck_proxy` (PATCH, DELETE) and `new_deck_proxy_removal`; these are the names every spec and view of this plan uses.
 
 - [ ] **Step 4: The helpers** in `app/helpers/decks_helper.rb` (replace `deck_sub_line`, `deck_counts_line` and `deck_page_line`; add the rest):
 
@@ -1018,7 +1034,7 @@ and in `spec/requests/decks_spec.rb` (the Decks page):
 
 (`deck_count_line` keeps `listing.rows.sum(&:cards)`.)
 
-- [ ] **Step 6: Run** `bin/rspec spec/requests/deck_pages_spec.rb spec/requests/decks_spec.rb spec/helpers`: pass, after updating the two existing examples that assert the spec 066 heads ("58 cards · 58 owned", "12 cards · 12 owned", "0 cards · 0 owned", every Proxy cell a dash, no menu column, five columns) to their spec 068 texts ("… · 0 proxy", six `th`, the last "Actions"); each such edit is one assertion changed to the text AC-2.3 gives. Also `spec/requests/deck_pages_spec.rb`'s example "has no row menu, no form…" (spec 066 AC-4.2) keeps its `form` and "no link to a new copy, number entry or the scanner" assertions and drops its "no row menu" one.
+- [ ] **Step 6: Run** `bin/rspec spec/requests/deck_pages_spec.rb spec/requests/decks_spec.rb spec/helpers`: pass, after updating the two existing examples that assert the spec 066 heads ("58 cards · 58 owned", "12 cards · 12 owned", "0 cards · 0 owned", every Proxy cell a dash, no menu column, five columns) to their spec 068 texts ("… · 0 proxy", six `th`, the last "Actions"); each such edit is one assertion changed to the text AC-2.3 gives. The examples that spec 066 wrote and spec 068 supersedes (its "Supersedes and updates") are, in `spec/requests/deck_pages_spec.rb`: the head texts at lines ~43, 48, 52, 60, 115, 199, 211 and 368 ("58 cards · 58 owned", "12 cards · 12 owned", "0 cards · 0 owned", each gains " · 0 proxy"); the AC-1.6 example at ~75 ("no proxy control, no proxy count and no proxy tag"), which is rewritten whole: it keeps "no shape panel" and a dash in the Proxy cell of a row with no proxy, and drops the rest; the AC-4.2 example at ~337, whose selector `form, .c-table__actions, [draggable]` becomes `form, [draggable]` (every row now has an actions cell; the menu's own checks are AC-2.6's) and which keeps its "no link to a new copy, number entry or the scanner"; and in `spec/requests/decks_spec.rb` the column list at ~30 (five headers become six: `Deck Format Cards Owned Proxy Actions`) and any Cards or Owned cell it asserts (Cards is owned plus proxy). Each change is a supersession the spec names, never a weakened assertion for a behaviour that still holds.
 - [ ] **Step 7: The system spec** `spec/system/deck_page_spec.rb`: extend the spec 066 widths example (read it; it measures overflow at 360/640/768/1280px in both themes) so its seeded deck has a proxy row with a four-digit proxy count, the 60-character name, the six-symbol cost and a marker, and asserts: no horizontal overflow, the zone heads' counts uncut, the Cost cell's scroll width ≤ client width (AC-2.11), the Cost, Owned, Proxy, Total and menu columns share a left edge and width across three zone tables at 1280px (AC-2.5), Owned and Proxy hidden below 640px with the tag in the line under the name (AC-2.4), and every menu trigger at least 44px on a coarse pointer (AC-2.11). The existing CSS has the widths (`additions.css:481-487`); if an example fails, fix it with a rule under a new heading comment `(spec 068 deck page with proxies)` in `additions.css`, never a literal colour or size outside the tokens.
 - [ ] **Step 8: The Decks page at the narrow widths** (AC-5.2, AC-5.2a): extend `spec/system/decks_spec.rb` (read it: it has the Decks page's overflow examples) with a deck that has 58 owned copies, 11 proxies and a 60-character name with no space, and assert at 360px (narrow frame) that Format, Owned and Proxy are hidden, the line under the name reads "Modern · 58 owned" followed by the tag, there is no horizontal overflow, and at 640px, 768px and 1280px in both themes there is no horizontal overflow and the tag and the three action buttons don't overlap (their bounding boxes don't intersect). If the row's actions don't fit at 640px, fix it with a rule under a heading comment `(spec 068 Decks list with proxies)` in `additions.css`.
 - [ ] **Step 9: Run** `bin/rspec spec/system/deck_page_spec.rb spec/system/decks_spec.rb`. **Step 10: Commit** `feat(decks): proxies on the deck page and the Decks page (spec 068 T6)`.
@@ -1043,7 +1059,7 @@ and in `spec/requests/decks_spec.rb` (the Decks page):
     everything = described_class.new(query: "Bolt")
     only_mtg = described_class.new(query: "Bolt", collectible_type: "mtg")
 
-    expect(everything.groups.flat_map(&:entries)).to contain_exactly(mtg, other)
+    expect(everything.pagination.total_count).to eq(2) # not `groups`: it preloads each type's extension, and "other" has no source
     expect(only_mtg.groups.flat_map(&:entries)).to contain_exactly(mtg)
     expect(only_mtg.pagination.total_count).to eq(1)
   end
@@ -1094,9 +1110,12 @@ RSpec.describe "Deck proxies", type: :request do
   let(:deck) { create(:deck, account:, name: "Izzet Tempo") }
 
   def html = Nokogiri::HTML5(response.body)
-  def printing(name: "Lightning Bolt", finishes: %w[foil nonfoil], **attrs)
-    create(:mtg_printing, entry: create(:catalog_entry, name:, **attrs), finishes:).entry
+  # Printings of one card share an identity (the search groups by it); pass `identity: bolt` for several printings of a card.
+  def printing(name: "Lightning Bolt", finishes: %w[foil nonfoil], identity: nil, **attrs)
+    create(:mtg_printing, entry: create(:catalog_entry, name:, identity: identity || create(:catalog_identity, name:), **attrs), finishes:).entry
   end
+
+  let(:bolt) { create(:catalog_identity, name: "Lightning Bolt") }
 
   context "when signed in" do
     before { sign_in_as(user) }
@@ -1114,9 +1133,9 @@ RSpec.describe "Deck proxies", type: :request do
       end
 
       it "lists a card's printings of the deck's type with a Choose link each, and no retired or other printing", :aggregate_failures do
-        first = printing
-        second = printing(set: create(:catalog_set, code: "mh2"))
-        create(:mtg_printing, entry: create(:catalog_entry, :retired, name: "Lightning Bolt"))
+        first = printing(identity: bolt)
+        second = printing(identity: bolt, set: create(:catalog_set, code: "mh2"))
+        create(:mtg_printing, entry: create(:catalog_entry, :retired, name: "Lightning Bolt", identity: bolt))
         create(:catalog_entry, name: "Lightning Bolt", collectible_type: "other")
 
         get new_deck_zone_proxy_path(deck, "main", q: "Lightning")
@@ -1127,7 +1146,7 @@ RSpec.describe "Deck proxies", type: :request do
       end
 
       it "says how many printings of a card with more than ten it shows (AC-1.3)" do
-        12.times { |n| printing(set: create(:catalog_set, code: "s#{n}")) }
+        12.times { |n| printing(identity: bolt, set: create(:catalog_set, code: "s#{n}")) }
 
         get new_deck_zone_proxy_path(deck, "main", q: "Lightning")
 
@@ -1145,7 +1164,7 @@ RSpec.describe "Deck proxies", type: :request do
     end
 
     describe "the form (AC-1.4)" do
-      it "shows the printing, a Finish select of its finishes with nothing chosen, a Quantity of 1, Add proxy and Cancel", :aggregate_failures do
+      it "shows the printing, a Finish select of its finishes (in the vocabulary's order) with nothing chosen, a Quantity of 1, Add proxy and Cancel", :aggregate_failures do
         entry = printing
 
         get new_deck_zone_proxy_path(deck, "main", entry: entry.external_key)
@@ -1153,10 +1172,19 @@ RSpec.describe "Deck proxies", type: :request do
         expect(response).to have_http_status(:ok)
         expect(html.at_css("h1").text).to eq("Add a proxy to Izzet Tempo › Main")
         expect(html.at_css("select[name='proxy[finish]'] option[selected]")).to be_nil
-        expect(html.css("select[name='proxy[finish]'] option").map(&:text)).to eq([ "Choose…", "Foil", "Nonfoil" ])
+        expect(html.css("select[name='proxy[finish]'] option").map(&:text)).to eq([ "Choose…", "Nonfoil", "Foil" ]) # the vocabulary's finish order
         expect(html.at_css("input[name='proxy[quantity]']")["value"]).to eq("1")
         expect(html.at_css("input[type=submit]")["value"]).to eq("Add proxy")
         expect(html.at_css("a", text: "Cancel")["href"]).to eq(deck_path(deck))
+        expect(html.css("label").map(&:text)).to include("Finish", "Quantity") # each field has its visible label (AC-9.1)
+      end
+
+      it "ties a field's error to it with aria-describedby (AC-9.1)", :aggregate_failures do
+        post deck_zone_proxies_path(deck, "main"), params: { proxy: { entry: printing.external_key, finish: "foil", quantity: "0" } }
+
+        field = html.at_css("input[name='proxy[quantity]']")
+        expect(field["aria-describedby"]).to be_present
+        expect(html.at_css("##{field["aria-describedby"]}").text).to eq("Enter a number from 1 to 9,999.")
       end
 
       it "chooses the only finish, and shows no Finish select for a printing that lists none", :aggregate_failures do
@@ -1298,10 +1326,12 @@ module FindsDeck
     end
 
     # The proxy with the path's id among the deck's own (its zones'), with the entry and set the pages name it by.
-    def set_proxy
-      raise ActiveRecord::RecordNotFound, "not a proxy id" unless params[:id].to_s.match?(Location::ID_TEXT)
+    #
+    # @param param [Symbol] the path parameter holding the proxy's id (`:id`; the removal page's route calls it `:proxy_id`)
+    def set_proxy(param = :id)
+      raise ActiveRecord::RecordNotFound, "not a proxy id" unless params[param].to_s.match?(Location::ID_TEXT)
 
-      @proxy = @deck.proxies.includes(:zone, entry: :set).find(params[:id])
+      @proxy = @deck.proxies.includes(:zone, entry: :set).find(params[param])
     end
 end
 ```
@@ -1470,7 +1500,7 @@ end
 ```erb
 <% content_for :title, "Add a proxy to #{proxy_zone_label(@deck, @zone)} · Collector" %>
 <%= render "layouts/appbar", section: :decks, detail: true, back_path: new_deck_zone_proxy_path(@deck, @zone.zone) %>
-<main class="c-main c-page">
+<main class="c-main c-page c-decks">
   <div class="c-pagehead">
     <div>
       <h1 class="c-pagehead__title">Add a proxy to <%= proxy_zone_label(@deck, @zone) %></h1>
@@ -1524,6 +1554,7 @@ RSpec.describe "Adding a proxy", type: :system do
   let!(:entry) do
     create(:mtg_printing, entry: create(:catalog_entry, name: "Lightning Bolt", set: create(:catalog_set, code: "mh2"), number: "138"), finishes: %w[foil nonfoil]).entry
   end
+  let!(:long) { create(:mtg_printing, entry: create(:catalog_entry, name: "W" * 60), finishes: %w[foil nonfoil]).entry } # a 60-character name with no space
 
   def set_theme(name) = page.execute_script("document.documentElement.dataset.theme = #{name.to_json}")
   def fits? = page.evaluate_script("document.documentElement.scrollWidth <= window.innerWidth")
@@ -1551,8 +1582,8 @@ RSpec.describe "Adding a proxy", type: :system do
   %w[light dark].each do |theme|
     [ 360, 640, 1280 ].each do |width|
       it "fits the chooser, the form, the change page and the removal page at #{width}px in the #{theme} theme (AC-9.1)", :aggregate_failures do
-        proxy = create(:deck_proxy, zone: deck.zone("main"), account: user.account, entry:, finish: "foil", quantity: 2)
-        paths = [ new_deck_zone_proxy_path(deck, "main", q: "Lightning"), new_deck_zone_proxy_path(deck, "main", entry: entry.external_key),
+        proxy = create(:deck_proxy, zone: deck.zone("main"), account: user.account, entry: long, finish: "foil", quantity: 2)
+        paths = [ new_deck_zone_proxy_path(deck, "main", q: "WWWW"), new_deck_zone_proxy_path(deck, "main", entry: long.external_key),
                   edit_deck_proxy_path(deck, proxy), new_deck_proxy_removal_path(deck, proxy) ]
 
         paths.first(2).each do |path| # T10 changes this to `paths`: the change and removal pages don't exist until then
@@ -1675,6 +1706,19 @@ end
         expect(response).to have_http_status(:not_found)
       end
 
+      it "answers 404 for every proxy page of a deck removed meanwhile (AC-5.5)", :aggregate_failures do
+        removed = create(:deck_proxy, zone: deck.zone("sideboard"), account:)
+        id = deck.location_id
+        deck.remove!
+
+        [ new_deck_zone_proxy_path(id, "main"), edit_deck_proxy_path(id, removed.id), new_deck_proxy_removal_path(id, removed.id) ].each do |path|
+          get path
+          expect(response).to have_http_status(:not_found), path
+        end
+        delete deck_proxy_path(id, removed.id)
+        expect(response).to have_http_status(:not_found)
+      end
+
       it "answers 404 for another account's proxy, another deck's proxy under this deck, a place's or a zone's id as the deck, and a malformed id (AC-3.6)", :aggregate_failures do
         theirs = create(:deck_proxy)
         elsewhere = create(:deck, account:, name: "Elsewhere")
@@ -1705,7 +1749,7 @@ class Decks::Proxies::RemovalsController < ApplicationController
   include FindsDeck
 
   before_action :set_deck
-  before_action :set_proxy, only: :new
+  before_action -> { set_proxy(:proxy_id) }, only: :new
 
   # Renders the question.
   def new
@@ -1713,14 +1757,14 @@ class Decks::Proxies::RemovalsController < ApplicationController
 end
 ```
 
-(`before_action :set_proxy` reads `params[:id]`, but the nested route's proxy id is `:proxy_id`: in the controller, define `def set_proxy` override? Use the route's name: for `resource :removal` nested under `resources :proxies` the parameter is `proxy_id`. Make the concern's `set_proxy(param = :id)` take a parameter, and call `set_proxy(:proxy_id)` here: change the concern's method signature to `def set_proxy(param = :id)` and use `params[param]` in both lines of its body.)
+(The nested `resource :removal` route calls the proxy's id `:proxy_id`, so the callback passes it; the concern's default `:id` serves the proxies controller.)
 
 - [ ] **Step 4: The views.** `app/views/decks/proxies/edit.html.erb`:
 
 ```erb
 <% content_for :title, "Change proxy count · Collector" %>
 <%= render "layouts/appbar", section: :decks, detail: true, back_path: deck_path(@deck) %>
-<main class="c-main c-page">
+<main class="c-main c-page c-decks">
   <div class="c-pagehead">
     <div>
       <h1 class="c-pagehead__title">Change the proxies of <%= proxy_name(@proxy) %></h1>
@@ -1748,7 +1792,7 @@ end
 ```erb
 <% content_for :title, "Remove proxy · Collector" %>
 <%= render "layouts/appbar", section: :decks, detail: true, back_path: deck_path(@deck) %>
-<main class="c-main c-page">
+<main class="c-main c-page c-decks">
   <section class="c-confirm">
     <h1 class="c-pagehead__title">Remove the proxies of <%= proxy_name(@proxy) %> from <%= proxy_zone_label(@deck, @proxy.zone) %>?</h1>
     <p>This removes <%= pluralize(number_with_delimiter(@proxy.quantity), "proxy", "proxies") %> from this zone. No copy in your collection is removed or changed.</p>
@@ -1837,7 +1881,7 @@ In `app/helpers/decks_helper.rb` add:
   # @param proxies [Integer] the quantities of proxies in the deck
   # @return [String]
   def deck_removal_sentence(proxies)
-    what = proxies.positive? ? "its zones and its #{number_with_delimiter(proxies)} proxies are" : "its zones are"
+    what = proxies.positive? ? "its zones and its #{pluralize(number_with_delimiter(proxies), "proxy", "proxies")} are" : "its zones are"
     "This removes the deck, and #{what} removed with it. No copy in your collection is removed or changed."
   end
 ```
@@ -1904,14 +1948,13 @@ and in `app/views/decks/removals/new.html.erb` replace the `<p>` with `<p><%= de
     end
 
     it "makes one proxy of those of one printing and finish from several dropped zones (AC-6.2)", :aggregate_failures do
-      fake_vocabulary
+      fake_vocabulary # the helper's vocabulary also answers `finishes_for` and `finish_label` (see the edit below)
       other = create(:deck, account:, name: "Fake deck", pair: "fake/f")
       entry = create(:catalog_entry, collectible_type: "fake")
-      allow(Catalog).to receive(:sources).and_return(Catalog.sources.merge("fake" => Object)) # the type has no source; the proxies' own rule needs a vocabulary only
       a = create(:deck_proxy, zone: other.zone("a"), account:, entry:, finish: nil, quantity: 2)
       b = create(:deck_proxy, zone: other.zone("b"), account:, entry:, finish: nil, quantity: 3)
 
-      change_to(other, "g").save!
+      described_class.new(deck: other, format: "fake/g").save!
 
       expect(Deck::Proxy.where(location_id: other.zone("considering").id).pluck(:id, :quantity)).to eq([ [ a.id, 5 ] ])
       expect { b.reload }.to raise_error(ActiveRecord::RecordNotFound)
@@ -1950,7 +1993,7 @@ and in `app/views/decks/removals/new.html.erb` replace the `<p>` with `<p><%= de
 
     it "rolls the proxies back with the deck when the change fails part way (AC-6.7)", :aggregate_failures do
       moved = proxy_in("commander", quantity: 4)
-      allow_any_instance_of(described_class).to receive(:remove_zones!).and_raise(ActiveRecord::StatementInvalid) # rubocop:disable RSpec/AnyInstance -- fails the step after the move, as spec 064 AC-2.8's example does
+      allow(Location).to receive(:insert_all!).and_raise(ActiveRecord::StatementInvalid, "disk full") # the step after the move adds Modern's Sideboard, as spec 064 AC-2.8's example fails it
 
       expect { change_to(deck, "modern").save }.to raise_error(ActiveRecord::StatementInvalid)
 
@@ -1969,9 +2012,8 @@ and in `app/views/decks/removals/new.html.erb` replace the `<p>` with `<p><%= de
   end
 ```
 
-(The spec-064 file already has an `allow_any_instance_of` example for AC-2.8 or a similar failure injection; copy its way of failing a step. If it uses another stub, use that.)
-
-- [ ] **Step 2: Run, confirm it fails** (`uninitialized constant Deck::Proxy::CapExceeded` / no `proxies_moved`).
+- [ ] **Step 2: The spec's fake vocabulary.** In `fake_vocabulary` (the file's helper, which registers the type "fake"), add `define_singleton_method(:finishes_for) { |_entry| [] }` and `define_singleton_method(:finish_label) { |finish| finish.to_s }` beside its `finish_order` and `conditions`: a proxy's creation reads the vocabulary's finishes, and the example's printing lists none.
+- [ ] **Step 2b: Run, confirm it fails** (`uninitialized constant Deck::Proxy::CapExceeded` / no `proxies_moved`).
 - [ ] **Step 3: The error** `app/models/deck/proxy/cap_exceeded.rb`:
 
 ```ruby
@@ -2034,7 +2076,7 @@ end
 
       there = deck.account.deck_proxies.where(location_id: considering.id).index_by { |proxy| [ proxy.catalog_entry_id, proxy.finish ] }
       groups = proxies.group_by { |proxy| [ proxy.catalog_entry_id, proxy.finish ] }
-      over = groups.filter_map { |key, group| group.first if group.sum(&:quantity) + there[key]&.quantity.to_i > Deck::Proxy::MAX_QUANTITY }
+      over = groups.filter_map { |key, group| group.first if group.sum(&:quantity) + (there[key]&.quantity || 0) > Deck::Proxy::MAX_QUANTITY }
       raise Deck::Proxy::CapExceeded, first_by_shown_order(over) if over.any?
 
       groups.each do |key, group|
@@ -2274,7 +2316,7 @@ once('    "location_name": {',
 p.write_text(s)
 ```
 
-then `cp docs/export-format/v4.schema.json app/models/export_format/v4.schema.json` (byte-identical; a spec keeps them equal).
+then read the schema's top-level `description` (line 5), which lists the rules a schema can't state, and add `duplicate_proxy` and "every proxy's deck is one of the file's decks" to it in its own style; then `cp docs/export-format/v4.schema.json app/models/export_format/v4.schema.json` (byte-identical; a spec keeps them equal).
 
 - [ ] **Step 4: Add `"proxies": []` to every version 4 example, textually** (same scratchpad script style; the examples include invalid files whose bytes are the point, so no JSON round trip):
 
@@ -2285,14 +2327,12 @@ for path in sorted(root.glob("*/*.json")):
     text = path.read_bytes().decode("utf-8", errors="surrogateescape")
     if not re.search(r'"format_version":\s*4(\.0)?\s*,', text) or re.search(r'^  "proxies"', text, re.M):
         continue
-    if re.search(r'^  "lots"', text, re.M):
-        text = re.sub(r'^(  "lots")', r'  "proxies": [],\n\1', text, count=1, flags=re.M)
-    else:                                   # invalid/lots-missing.json: nothing to put it before
-        text = re.sub(r'\n}\s*\Z', ',\n  "proxies": []\n}\n', text)
+    assert re.search(r'^  "lots"', text, re.M), path   # every version 4 example has its top-level lots key (invalid/lots-missing.json is version 1)
+    text = re.sub(r'^(  "lots")', r'  "proxies": [],\n\1', text, count=1, flags=re.M)
     path.write_bytes(text.encode("utf-8", errors="surrogateescape"))
 ```
 
-Run `git diff --stat docs/export-format/examples | tail -1` (about 100 files, one line each) and `git diff docs/export-format/examples/invalid/repeated-key.json docs/export-format/examples/invalid/byte-order-mark.json docs/export-format/examples/invalid/not-json.json docs/export-format/examples/invalid/not-utf8.json`: only the one inserted line (or none, for a file that isn't a version 4 file) must show.
+Run `git diff --stat docs/export-format/examples | tail -1` (29 files, one line each) and `git diff docs/export-format/examples/invalid/repeated-key.json docs/export-format/examples/invalid/byte-order-mark.json docs/export-format/examples/invalid/not-json.json docs/export-format/examples/invalid/not-utf8.json`: only the one inserted line (or none, for a file that isn't a version 4 file) must show.
 
 - [ ] **Step 5: The new example files** (one scratchpad script, writing pretty files with `json.dumps(indent=2, ensure_ascii=False)`):
 
@@ -2388,7 +2428,7 @@ The object has these fields and no others. A proxy is identified by five values:
     let(:base) { JSON.parse(ExportFormatRules.examples("valid").fetch("valid/proxies-v4.json")) }
 
     it "reads each proxy against its own schema, so a bad proxy is one row problem under /proxies/N", :aggregate_failures do
-      data = base.merge("proxies" => base["proxies"] + [ base["proxies"][0].merge("quantity" => 0) ])
+      data = base.merge("proxies" => base["proxies"] + [ base["proxies"][0].merge("quantity" => 0, "finish" => "etched") ]) # another finish: not a duplicate
 
       expect(described_class.problems_in(data).map { [ it.rule, it.at ] }).to eq([ [ "minimum", "/proxies/3/quantity" ] ])
     end
@@ -2477,10 +2517,17 @@ and the new methods (add `:repeated_proxies, :unlisted_proxy_decks` to `private_
       end
     end
 
+    # What identifies a proxy (spec 068): the deck's comparison key, the zone key, the entry's type and source id, the finish.
+    #
+    # @param proxy [Hash] a proxy of the file whose identity fields passed the schema
+    # @return [Array] five values
     def self.proxy_identity(proxy)
       [ Location::Name.key(Location::Name.normalise(proxy["deck"])), proxy["zone"], proxy.dig("entry", "collectible_type"), proxy.dig("entry", "source_id"), proxy["finish"] ]
     end
 
+    # Whether the proxy at +at+ has an identity to compare: none of its identity fields is among the +failed+ pointers.
+    #
+    # @return [Boolean]
     def self.proxy_identity_readable?(proxy, at, failed)
       !failed.include?(at) && PROXY_IDENTITY_FIELDS.none? { |field| failed.include?("#{at}/#{field}") }
     end
@@ -2612,7 +2659,7 @@ and the new methods (add `:repeated_proxies, :unlisted_proxy_decks` to `private_
 
 (`@account.deck_proxies.joins(entry: :set)`: the `decks` join must not clash with the proxies' own account scope; the statement names every column it reads.)
 
-- [ ] **Step 4: Run** `bin/rspec spec/models/collection_export_spec.rb spec/collection_export_core_spec.rb spec/requests/collection_export_spec.rb`: pass. The existing query-count example of the export (spec 022 AC-1.8) gains one statement: update its expected number by one in this commit (note the old and new numbers in the commit body). **Step 5: Commit** `feat(export): the export carries proxies (spec 068 T16)`.
+- [ ] **Step 4: Run** `bin/rspec spec/models/collection_export_spec.rb spec/collection_export_core_spec.rb spec/requests/collection_exports_spec.rb`: pass (the export's existing query-count examples compare a few lots with many, so no number moves). **Step 5: Commit** `feat(export): the export carries proxies (spec 068 T16)`.
 
 ---
 
@@ -2687,7 +2734,7 @@ RSpec.describe CollectionImport, "proxies", type: :model do
     it "lists the removed proxies by deck, zone, name, set, number, language and finish (decision 16)" do
       second = create(:deck_proxy, zone: deck.zone("considering"), account:, entry: create(:mtg_printing).entry)
 
-      expect(read(with([])).plan.proxies.removed.map(&:id)).to eq([ held.id, second.id ])
+      expect(read(with([])).plan.proxies.removed.map(&:id)).to eq([ second.id, held.id ]) # the zone key "considering" sorts before "main"
     end
 
     it "judges nothing for a file older than version 4, and leaves the proxies (decision 15)", :aggregate_failures do
@@ -2861,7 +2908,8 @@ end
 # Reads a version 4 file's proxies, one row at a time, as `CollectionImport` reads its lots (spec 068 decision 18): a problem under
 # `/proxies/N` is a problem row of that proxy and never a refusal of the file; a `proxies` that isn't a list is refused with the
 # header's problems. Included by `CollectionImport`, whose private helpers it shares (`entries_for`, `registered?`, `problem`,
-# `field_reason`, `file_deck_formats`, `zone_name`).
+# `field_reason`, `file_deck_formats`, `zone_name`); its constants are named in full (`CollectionImport::Problem`) because the
+# compact module name leaves `CollectionImport` out of the lexical scope.
 #
 # The rules, each with its home: the schema's keywords, `duplicate_proxy` and `unknown_location` are the format's
 # (`ExportFormat::Rules`); `unknown_type`, `not_in_catalog`, `finish_not_listed` and `unknown_zone` are the reader's, judged in
@@ -2924,13 +2972,13 @@ module CollectionImport::ProxyRows
 
     def describe_proxy_problem(item, earlier, proxy)
       case item.rule
-      when "duplicate_proxy" then Problem.new(rule: item.rule, at: item.at, reason: format(DUPLICATE_PROXY_OF, earlier), summary: DUPLICATE_PROXY)
+      when "duplicate_proxy" then CollectionImport::Problem.new(rule: item.rule, at: item.at, reason: format(DUPLICATE_PROXY_OF, earlier), summary: DUPLICATE_PROXY)
       when "unknown_location"
-        Problem.new(rule: item.rule, at: item.at, reason: "Its deck “#{proxy["deck"]}” isn't one of the file's decks.", summary: "Its deck isn't one of the file's decks.")
+        CollectionImport::Problem.new(rule: item.rule, at: item.at, reason: "Its deck “#{proxy["deck"]}” isn't one of the file's decks.", summary: "Its deck isn't one of the file's decks.")
       else
         field = PROXY_ROW.match(item.at)[2]&.tr("/", ".")
         reason = field ? field_reason(item.rule, field) : "This row isn't a proxy"
-        Problem.new(rule: item.rule, at: item.at, reason:, summary: reason)
+        CollectionImport::Problem.new(rule: item.rule, at: item.at, reason:, summary: reason)
       end
     end
 
@@ -2974,7 +3022,7 @@ module CollectionImport::ProxyRows
       zones = Catalog::Formats.zones_for(*pair) if pair
       return unless zones && zones.none? { |zone| zone.key == proxy["zone"] }
 
-      Problem.new(rule: "unknown_zone", at: "/proxies/#{index}/zone", summary: "Its deck has no such zone in its format.",
+      CollectionImport::Problem.new(rule: "unknown_zone", at: "/proxies/#{index}/zone", summary: "Its deck has no such zone in its format.",
         reason: "The deck “#{proxy["deck"]}” has no zone “#{proxy["zone"]}” in its format.")
     end
 end
@@ -2997,8 +3045,10 @@ end
   # The proxy rows that can't be applied, as `problem_rows` are for lots (spec 068 decision 18).
   def proxy_problem_rows = @proxy_problem_rows ||= proxy_rows.select(&:problem?)
 
+  # The first `LIST_LIMIT` proxy rows that can't be applied, for the page.
   def listed_proxy_problem_rows = proxy_problem_rows.first(LIST_LIMIT)
 
+  # How many proxy problem rows the page doesn't list.
   def more_proxy_problem_rows = proxy_problem_rows.size - listed_proxy_problem_rows.size
 
   # How many proxy rows have each kind of problem, in the order the kinds first appear.
@@ -3037,7 +3087,7 @@ end
 ```
 
 and in `fingerprint`, after the decks' line: `parts << proxies.fingerprint_part if proxies.counted?` (doc: "the proxies' part for a file that counts them (version 4 only, so a version 1 to 3 plan keeps the fingerprint it had, spec 068 AC-7.8)"). `writes_lots?` is unchanged: a proxy-only apply clears no working state (AC-7.11).
-- [ ] **Step 7: Run** `bin/rspec spec/models/collection_import_proxies_spec.rb spec/models/collection_import_spec.rb spec/requests/collection_import_previews_spec.rb`: the new file passes and the rest still do (a version 4 example file of the existing specs now needs `proxies`; each such spec builds its file from the export or an example, so they carry it; a spec that writes a bare hash by hand gets `"proxies" => []`, one line per spec, in this commit). **Step 8: Commit** `feat(import): read, judge and plan a file's proxies (spec 068 T17)`.
+- [ ] **Step 7: Run** `bin/rspec spec/models/collection_import_proxies_spec.rb spec/models/collection_import spec/requests/collection_import_previews_spec.rb spec/requests/collection_imports_spec.rb spec/requests/collection_import_deck_timing_spec.rb --dry-run` first (it must load), then without `--dry-run` except the timing file: the new file passes and the rest still do, once the version 4 files they build by hand carry `proxies` (a required list now). `import_file_v4` in `spec/support/import_helpers.rb` gains `proxies: []` as a keyword and passes it on: `def import_file_v4(user, lots, locations: [], decks: [], proxies: [], **fields)` and `import_file(user, lots, format_version: 4, locations: ..., decks:, proxies:, **fields)` (its callers are `apply_spec`, `deck_changes_spec`, `plan_spec`, `collection_import_spec`, `collection_import_previews_spec` and `collection_imports_spec`); `as_current_version` in `spec/models/collection_import/round_trip_spec.rb` (line ~186) adds `"proxies" => data.fetch("proxies", [])` to its last `merge`, so `same_collection?` compares empty sets and not nil; and `spec/requests/collection_import_deck_timing_spec.rb` (line ~72) adds `"proxies" => []` to its file hash. Run each of those files in this step (the timing file under `SCANNER_TIMING=1` only in T19). **Step 8: Commit** `feat(import): read, judge and plan a file's proxies (spec 068 T17)`.
 
 ### T18: The apply, the preview and the notice
 
@@ -3387,7 +3437,7 @@ And the other half, a file that also changes a lot:
   end
 ```
 
-- [ ] **Step 3: Run** both files; fix by reading failures. **Step 4: Commit** `test(import): the proxy bars, the written rows and the working state (spec 068 T19)`.
+- [ ] **Step 3: Run** both files; fix by reading failures. The written-rows and working-state examples guard behaviour T18 built, so they pass on their first run: run each once with the line it guards broken (the `CollectionImport::WorkingState.clear!` condition made `true`; the `quantity` column dropped from `upsert_proxies!`'s update set) to see it fail, then restore it. **Step 4: Commit** `test(import): the proxy bars, the written rows and the working state (spec 068 T19)`.
 
 ---
 
@@ -3480,7 +3530,7 @@ end
 
 (If `admin_users_path` or the `admin: true` attribute are named otherwise, use what `spec/requests/admin_users_spec.rb` uses.)
 
-- [ ] **Step 2: `spec/deck_core_spec.rb`:** add to `patterns` (a shared file: keep the edit to these lines, so a second branch merges by summing the count): `app/controllers/decks/proxies/*.rb app/controllers/concerns/finds_deck.rb app/models/deck/proxy/*.rb app/models/collection_import/proxies.rb app/models/collection_import/proxy_rows.rb app/views/collections/import_previews/_proxies.html.erb`; and change the count to `20 + 6 + 1 + 1 + 4 + 1 + 15` with the trailing comment "spec 068 adds 15: `deck/proxy.rb` and the proxies controller (the globs already cover them), the six proxy views under `app/views/decks`, `decks/proxies/removals_controller.rb`, `deck/proxy/addition.rb` and `cap_exceeded.rb`, `finds_deck.rb`, the import's `proxies.rb` and `proxy_rows.rb`, and the preview's `_proxies.html.erb`". Run the spec first: it fails by the real number of files; the arithmetic must equal what `files.size` reports (recount: if it isn't 48, the sum above is wrong, not the glob, and the comment names the files found). `spec/collection_export_core_spec.rb`, `spec/collection_import_core_spec.rb` and `spec/import_apply_core_spec.rb` need no edit: they read the export's and the import's files by glob, which now include the proxy code, and it names no collectible.
+- [ ] **Step 2: `spec/deck_core_spec.rb`:** add to `patterns` (a shared file: keep the edit to these lines, so a second branch merges by summing the count): `app/controllers/decks/proxies/*.rb app/controllers/concerns/finds_deck.rb app/models/deck/proxy/*.rb app/models/collection_import/proxies.rb app/models/collection_import/proxy_rows.rb app/views/collections/import_previews/_proxies.html.erb`; and change the count to `20 + 6 + 1 + 1 + 4 + 1 + 15` with the trailing comment "spec 068 adds 15: `deck/proxy.rb` and the proxies controller (the globs already cover them), the six proxy views under `app/views/decks`, `decks/proxies/removals_controller.rb`, `deck/proxy/addition.rb` and `cap_exceeded.rb`, `finds_deck.rb`, the import's `proxies.rb` and `proxy_rows.rb`, and the preview's `_proxies.html.erb`". Run the spec first: it fails by the real number of files; the arithmetic must equal what `files.size` reports (recount: if it isn't 48, the sum above is wrong, not the glob, and the comment names the files found). `spec/collection_export_core_spec.rb` already lists `collection_export.rb`; `spec/collection_import_core_spec.rb` and `spec/import_apply_core_spec.rb` list their files explicitly, so add to the first's `files` the new `app/models/collection_import/proxies.rb`, `app/models/collection_import/proxy_rows.rb` and `app/views/collections/import_previews/_proxies.html.erb` (AC-7.14), and to the second's `app/models/collection_import/proxies.rb`; each file names no collectible, a source, a format key or a zone key other than `considering`.
 - [ ] **Step 3: The query-count spec**, `spec/requests/query_counts_spec.rb`: add an example that the deck page and the Decks page run the same number of statements with 1 and with 6 proxies (AC-2.10, AC-5.3), modelled on the file's neighbouring examples:
 
 ```ruby
@@ -3497,7 +3547,7 @@ end
 ```
 
 (`queries_for` and `user` are the file's own helpers.)
-- [ ] **Step 4: Run** the three files and `bin/rspec spec/deck_core_spec.rb spec/models/account_spec.rb spec/backup_guards_spec.rb`; **Step 5: Commit** `test(decks): proxies are never owned, tenant-scoped and core-clean (spec 068 T20)`.
+- [ ] **Step 4: Run** the three files and `bin/rspec spec/deck_core_spec.rb spec/models/account_spec.rb spec/backup_guards_spec.rb`. The isolation and tenancy examples guard behaviour built in Phases 0 to 3, so they pass on their first run: run each once with the rule it guards broken (for the isolation example, make `Lot.add!` touch `Deck::Proxy.update_all(updated_at: Time.current)`; for the tenancy one, find the deck without `Current.account`) to see it fail, then restore it. **Step 5: Commit** `test(decks): proxies are never owned, tenant-scoped and core-clean (spec 068 T20)`.
 
 ### T21: The upgrade seed, the backup and the release notes
 
