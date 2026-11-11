@@ -3,8 +3,8 @@
 # decks, so every read is scoped to it by value and costs no extra statement.
 #
 # Reads in a bounded number of statements however many zones, rows and lots the deck has: the zones, the lots' copies summed
-# per zone and printing, the printings with their sets, and the extension records once per collectible type (5 in all
-# when the deck's location is loaded; spec 066 AC-2.10). A row is one printing in one zone: its lots of every finish,
+# per zone and printing, the printings with their sets, and the extension records once per collectible type (at most 5
+# statements with the deck's location loaded, 2 for a deck with no lots; spec 066 AC-2.10). A row is one printing in one zone: its lots of every finish,
 # condition and price are summed (decision 2).
 # @see file:collection-and-lots.md
 class Deck::Page
