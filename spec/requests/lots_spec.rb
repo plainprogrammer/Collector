@@ -407,8 +407,9 @@ RSpec.describe "Lots", type: :request do
     end
   end
 
-  # Spec 062 D6, AC-5.1, AC-5.2: the form lists places and takes a place; a deck's or a zone's id is a refusal.
-  describe "with a deck (spec 062)" do
+  # Spec 065 Story 1 (supersedes spec 062 D6, AC-5.1, AC-5.2, AC-5.8a): the form lists the places and the zones of decks, and takes
+  # either; a deck's own id, another account's location and text that only starts with an id are refusals.
+  describe "with a deck (spec 065)" do
     def account = user.account
     def box = @box ||= create(:location, account:, name: "Box")
     def deck = @deck ||= create(:deck, account:, name: "Izzet Tempo")
@@ -421,43 +422,85 @@ RSpec.describe "Lots", type: :request do
       deck
     end
 
-    it "lists the places in comparison-key order and never a deck or a zone, on the new and the edit form (AC-5.1)", :aggregate_failures do
+    it "lists No location, Places, then Decks as Deck › Zone, on the new and the edit form (spec 065 AC-1.1)", :aggregate_failures do
       lot = create(:lot, account:, entry:, location: box)
       [ new_catalog_entry_lot_path(entry), edit_lot_path(lot) ].each do |path|
         get path
-        expect(page_html.css('select[name="lot[location_id]"] option').map(&:text)).to eq([ "No location", "Binder", "Box" ])
+        select = page_html.at_css('select[name="lot[location_id]"]')
+        expect(select.xpath("./option").map(&:text)).to eq([ "No location" ])
+        expect(select.css("optgroup").map { it["label"] }).to eq(%w[Places Decks])
+        expect(select.css('optgroup[label="Places"] option').map(&:text)).to eq(%w[Binder Box])
+        expect(select.css('optgroup[label="Decks"] option').map(&:text)).to eq(deck.zones.map { "Izzet Tempo › #{it.name}" })
       end
     end
 
-    it "refuses a zone's id and a deck's id as the new lot's location, adding nothing (AC-5.2)", :aggregate_failures do
-      [ zone.id, deck.location_id ].each do |id|
+    it "adds copies to the zone chosen and names it in the notice (AC-1.5)", :aggregate_failures do
+      post catalog_entry_lots_path(entry), params: { lot: { quantity: "2", location_id: zone.id } }
+      expect(response).to have_http_status(:see_other)
+      expect(account.lots.sole.attributes.values_at("location_id", "quantity")).to eq([ zone.id, 2 ])
+      expect(flash[:notice]).to end_with("to Izzet Tempo › Main.")
+    end
+
+    it "refuses a deck's own id and another account's place, zone and deck, adding nothing (AC-1.7)", :aggregate_failures do
+      foreign = create(:deck, account: create(:user).account)
+      other_place = create(:location, account: create(:user).account)
+      [ deck.location_id, foreign.zone("main").id, foreign.location_id, other_place.id, "12abc" ].each do |id|
         post catalog_entry_lots_path(entry), params: { lot: { quantity: "1", location_id: id } }
-        expect(response).to have_http_status(:not_found)
+        expect(response).to have_http_status(:not_found), id.to_s
       end
       expect(account.lots.count).to eq(0)
     end
 
-    it "refuses a zone's id and a deck's id on Edit copy, changing nothing (AC-5.2)", :aggregate_failures do
+    it "refuses a deck's own id on Edit copy, changing nothing, and moves a lot to a zone (AC-1.6, AC-1.7)", :aggregate_failures do
       lot = create(:lot, account:, entry:, quantity: 3, location: box)
-      [ zone.id, deck.location_id ].each do |id|
-        patch lot_path(lot), params: { lot: { quantity: "4", location_id: id } }
-        expect(response).to have_http_status(:not_found)
-      end
+      patch lot_path(lot), params: { lot: { quantity: "4", location_id: deck.location_id } }
+      expect(response).to have_http_status(:not_found)
       expect(lot.reload.attributes.values_at("location_id", "quantity")).to eq([ box.id, 3 ])
+      patch lot_path(lot), params: { lot: { quantity: "3", location_id: zone.id } }
+      expect(lot.reload.location).to eq(zone)
     end
 
-    it "offers no select and the hint to an account with a deck and no place (AC-5.8a)", :aggregate_failures do
+    it "offers the select to an account with a deck and no place (AC-1.2)", :aggregate_failures do
+      Location.places.where(account:).delete_all
+      get new_catalog_entry_lot_path(entry)
+      select = page_html.at_css('select[name="lot[location_id]"]')
+      expect(select.css("optgroup").map { it["label"] }).to eq([ "Decks" ])
+      expect(response.body).not_to include("to keep copies in one.")
+    end
+
+    it "is flat for an account with places and no deck, and keeps the hint for one with neither (AC-1.3, AC-1.4)", :aggregate_failures do
+      account.decks.find_each { it.remove! }
+      get new_catalog_entry_lot_path(entry)
+      expect(page_html.css('select[name="lot[location_id]"] optgroup')).to be_empty
+      expect(page_html.css('select[name="lot[location_id]"] option').map(&:text)).to eq([ "No location", "Binder", "Box" ])
       Location.places.where(account:).delete_all
       get new_catalog_entry_lot_path(entry)
       expect(page_html.at_css('select[name="lot[location_id]"]')).to be_nil
-      expect(page_html.at_css(".c-field__hint a")&.text).to eq("Add a location")
       expect(response.body).to include("to keep copies in one.")
+    end
+
+    it "permits only quantity, finish, condition, price paid and location: the lot is the account's and its place the one named (AC-1.8)", :aggregate_failures do
+      other = create(:user).account
+      post catalog_entry_lots_path(entry), params: { lot: { quantity: "1", location_id: zone.id, account_id: other.id, kind: "deck", parent_id: box.id } }
+      expect(response).to have_http_status(:see_other)
+      expect(account.lots.sole.location).to eq(zone)
+      expect(other.lots.count).to eq(0)
+      expect(zone.reload.attributes.values_at("kind", "parent_id")).to eq([ "deck_zone", deck.location_id ])
+    end
+
+    it "answers 404 when the zone's deck is removed before the save, leaving the lot where it was (AC-1.6)", :aggregate_failures do
+      lot = create(:lot, account:, entry:, quantity: 3, location: box)
+      gone = zone.id
+      account.decks.find_each { it.remove! }
+      patch lot_path(lot), params: { lot: { quantity: "3", location_id: gone } }
+      expect(response).to have_http_status(:not_found)
+      expect(lot.reload.location).to eq(box)
     end
   end
 
-  # Spec 062 AC-5.5, D6: a lot in a zone shows its place read-only, and saving keeps it there; the zone is chosen through a later
-  # spec's picker, never through Edit copy's select (which lists places only).
-  describe "editing a lot in a zone (spec 062 AC-5.5)" do
+  # Spec 065 AC-1.6 (supersedes spec 062 AC-5.5): a lot in a zone shows its place in the select like any lot, and saving the form
+  # as the page sends it keeps the lot there.
+  describe "editing a lot in a zone (spec 065 AC-1.6)" do
     def account = user.account
     def deck = @deck ||= create(:deck, account:, name: "Izzet Tempo")
     def lot = @lot ||= create(:lot, account:, entry:, quantity: 2, finish: "foil", condition: "near_mint", price_paid_cents: 150, location: deck.zone("main"))
@@ -471,18 +514,17 @@ RSpec.describe "Lots", type: :request do
       end
     end
 
-    it "shows the place as plain text with no select", :aggregate_failures do
+    it "shows the select with the zone chosen, not read-only text (spec 065 AC-1.6)", :aggregate_failures do
       get edit_lot_path(lot)
-      expect(page_html.at_css("select#lot_location_id")).to be_nil
-      expect(page_html.at_css('[name="lot[location_id]"]')).to be_nil
-      field = page_html.css(".c-field").find { it.at_css(".c-field__label")&.text == "Location" }
-      expect(field.at_css("p.c-field__static").text).to eq("Izzet Tempo › Main")
+      expect(page_html.at_css("p.c-field__static")).to be_nil
+      select = page_html.at_css("select#lot_location_id")
+      expect(select.at_css("option[selected]").text).to eq("Izzet Tempo › Main")
     end
 
-    it "shows it to an account with a deck and no place too (AC-5.8a)", :aggregate_failures do
+    it "shows it to an account with a deck and no place too (AC-1.2)", :aggregate_failures do
       expect(account.locations.places).to be_empty
       get edit_lot_path(lot)
-      expect(page_html.at_css("p.c-field__static").text).to eq("Izzet Tempo › Main")
+      expect(page_html.at_css("select#lot_location_id option[selected]").text).to eq("Izzet Tempo › Main")
       expect(page_html.at_css(".c-field__hint a")).to be_nil
     end
 
@@ -505,12 +547,18 @@ RSpec.describe "Lots", type: :request do
       expect(other_zone.reload.attributes.values_at("quantity", "location_id")).to eq([ 4, deck.zone("sideboard").id ])
     end
 
-    it "ignores a location in the request: the zone is not changed through Edit copy", :aggregate_failures do
+    it "moves a lot in a zone to a place, another zone or none through Edit copy's select, and answers 404 for a deck's own row (AC-1.6, AC-1.7)", :aggregate_failures do
       place = create(:location, account:, name: "Binder")
-      [ place.id, deck.zone("sideboard").id, deck.location_id, "" ].each do |id|
-        patch lot_path(lot), params: { lot: { quantity: "3", location_id: id } }
+      { place.id => place, deck.zone("sideboard").id => deck.zone("sideboard"), "" => nil }.each do |id, expected|
+        patch lot_path(lot), params: { lot: { quantity: "2", location_id: id } }
         expect(response).to have_http_status(:see_other)
-        expect(lot.reload.attributes.values_at("location_id", "quantity")).to eq([ deck.zone("main").id, 3 ])
+        expect(lot.reload.location).to eq(expected)
+        lot.update!(location: deck.zone("main"))
+      end
+      [ deck.location_id, "#{deck.zone("main").id}abc" ].each do |id|
+        patch lot_path(lot), params: { lot: { quantity: "2", location_id: id } }
+        expect(response).to have_http_status(:not_found), id.to_s
+        expect(lot.reload.attributes.values_at("location_id", "quantity")).to eq([ deck.zone("main").id, 2 ])
       end
     end
 

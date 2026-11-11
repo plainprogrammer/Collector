@@ -148,7 +148,8 @@ RSpec.describe "Lot moves", type: :request do
     end
   end
 
-  # Spec 062 D6, AC-5.1, AC-5.2, AC-5.6: a deck's places are not destinations; a lot in a zone moves out as any lot does.
+  # Spec 065 Story 2 (supersedes spec 062 AC-5.1, AC-5.2): a zone is a destination and a deck's own row is not; spec 062 AC-5.6: a
+  # lot in a zone moves out as any lot does.
   context "with a deck (spec 062)" do
     def binder = @binder ||= create(:location, account:, name: "Binder")
     def deck = @deck ||= create(:deck, account:, name: "Izzet Tempo")
@@ -162,24 +163,44 @@ RSpec.describe "Lot moves", type: :request do
       deck
     end
 
-    it "offers the places and No location, never a deck or a zone, to a lot in a place (AC-5.1)" do
+    it "offers No location, Places and Decks to a lot in a place, its own place left out (spec 065 AC-2.1)", :aggregate_failures do
       get new_lot_move_path(create(:lot, account:, entry:, location: box))
-      expect(html.css("select#move_location_id option").map(&:text)).to eq([ "No location", "Binder" ])
+      select = html.at_css('select[name="move[location_id]"]')
+      expect(select.xpath("./option").map(&:text)).to eq([ "No location" ])
+      expect(select.css("optgroup").map { it["label"] }).to eq(%w[Places Decks])
+      expect(select.css('optgroup[label="Places"] option').map(&:text)).to eq([ "Binder" ])
+      expect(select.css('optgroup[label="Decks"] option').map(&:text)).to eq(deck.zones.map { "Izzet Tempo › #{it.name}" })
     end
 
-    it "offers No location and the places for a lot in a zone, and its own zone is not a destination (AC-5.6)", :aggregate_failures do
+    it "offers No location, Places and Decks, the lot's own zone left out (spec 065 AC-2.1)", :aggregate_failures do
       get new_lot_move_path(zone_lot)
       expect(response).to have_http_status(:ok)
-      expect(html.css("select#move_location_id option").map(&:text)).to eq([ "No location", "Binder", "Long box" ])
+      select = html.at_css('select[name="move[location_id]"]')
+      expect(select.xpath("./option").map(&:text)).to eq([ "No location" ])
+      expect(select.css('optgroup[label="Places"] option').map(&:text)).to eq([ "Binder", "Long box" ])
+      expect(select.css('optgroup[label="Decks"] option').map(&:text)).not_to include("Izzet Tempo › Main")
+      expect(select.css('optgroup[label="Decks"] option').map(&:text)).to include("Izzet Tempo › Sideboard")
       expect(html.at_css(".c-pagehead__stats").text).to include("Izzet Tempo › Main") # the label, never the zone's name alone (AC-5.4)
     end
 
-    it "refuses a zone's id and a deck's id as the destination, moving nothing (AC-5.2)", :aggregate_failures do
-      [ zone.id, deck.location_id ].each do |id|
-        post lot_move_path(lot), params: { move: { copies: "1", location_id: id } }
-        expect(response).to have_http_status(:not_found)
+    it "moves some copies into a zone, merging as for a place, and names the label (spec 065 AC-2.2)", :aggregate_failures do
+      post lot_move_path(lot), params: { move: { copies: "2", location_id: zone.id } }
+      expect(response).to have_http_status(:see_other)
+      expect(flash[:notice]).to end_with("to Izzet Tempo › Main.")
+      expect(account.lots.where(location: zone).sum(:quantity)).to eq(2)
+      expect(lot.reload.quantity).to eq(2)
+    end
+
+    it "refuses a lot's own zone and 404s a deck's own id, another account's zone and text that only starts with an id (spec 065 AC-2.3, AC-2.4)", :aggregate_failures do
+      post lot_move_path(zone_lot), params: { move: { copies: "1", location_id: zone.id } }
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.body).to include("Those copies are already there.")
+      foreign = create(:deck, account: create(:user).account)
+      [ deck.location_id, foreign.zone("main").id, "#{binder.id}abc" ].each do |id|
+        post lot_move_path(zone_lot), params: { move: { copies: "1", location_id: id } }
+        expect(response).to have_http_status(:not_found), id.to_s
       end
-      expect(account.lots.pluck(:location_id, :quantity)).to eq([ [ box.id, 4 ] ])
+      expect(zone_lot.reload.attributes.values_at("location_id", "quantity")).to eq([ zone.id, 4 ])
     end
 
     it "moves some copies of a lot in a zone to a place, merging into an equal lot there (AC-5.6)", :aggregate_failures do
