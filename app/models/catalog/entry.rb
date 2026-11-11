@@ -42,6 +42,14 @@ class Catalog::Entry < ApplicationRecord
   # stylized (e.g. "SERRA ANGEL"), so English printings use the card name.
   def display_name = (language != "en" && localized_name.presence) || name
 
+  # `#display_name` as SQL, for an ORDER BY or a pluck (spec 066 decision 3): the localized name of a non-English printing
+  # that has one, else the card's name. Fixed text, nothing interpolated; `spec/models/catalog/entry_display_name_sql_spec.rb`
+  # holds it equal to the Ruby rule.
+  DISPLAY_NAME_SQL = Arel.sql(
+    "CASE WHEN catalog_entries.language <> 'en' AND TRIM(COALESCE(catalog_entries.localized_name, '')) <> '' " \
+    "THEN catalog_entries.localized_name ELSE catalog_entries.name END"
+  )
+
   # Loads each entry's collectible-specific record in one query per type.
   def self.preload_extensions(entries)
     entries.group_by(&:collectible_type).each do |collectible_type, group|
