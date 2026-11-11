@@ -1,6 +1,6 @@
 # Verification: Feature 068, Proxies in a Deck Zone
 
-**Spec:** [spec.md](spec.md) (v0.4.0) · **Plan:** [plan.md](plan.md) · **Issue:** [#254](https://github.com/plainprogrammer/Collector/issues/254) · **Pull request:** [#313](https://github.com/plainprogrammer/Collector/pull/313)
+**Spec:** [spec.md](spec.md) (v0.4.0) · **Plan:** plan (retired in `91a0e8ffbec348799d98734841daf69fdaee75fb`; read it with `git show 91a0e8ffbec348799d98734841daf69fdaee75fb^:docs/specs/068-deck-proxies/plan.md`) · **Issue:** [#254](https://github.com/plainprogrammer/Collector/issues/254) · **Pull request:** [#313](https://github.com/plainprogrammer/Collector/pull/313)
 
 Each acceptance criterion with the spec example (or the document check) that proves it. A path is a spec file; a quoted name is the example's title or the describe it sits in. Documents are verified by reading, never by RSpec (`.claude/rules/testing.md`), except the export format document's own checks.
 
@@ -141,4 +141,4 @@ SPEC-ALIGNED, after two follow-up rounds; the last round's fixes were checked by
 
 ## Distilled
 
-2026-11-11, before the merge (`distill-feature`): the area docs `collection-and-lots.md`, `data-portability.md` and `tenancy-and-accounts.md` carry the feature's rules (written with the feature, T23, each statement with its source), `CLAUDE.md`'s deck sentence and its two spec lists point at them, the design system's `DeckPage`, `DecksIndex`, `ProxyTag` and `AddProxy` carry the markup, the spec's index row reads Frozen with its plan "retirement owed", and the spec has its `Frozen` line. The Distillation log rows say "spec 068's pull request (#313)". After the merge the plan is retired as `distill-feature` state 1 says.
+2026-11-11, before the merge (`distill-feature`): the area docs `collection-and-lots.md`, `data-portability.md` and `tenancy-and-accounts.md` carry the feature's rules (written with the feature, T23, each statement with its source), `CLAUDE.md`'s deck sentence and its two spec lists point at them, the design system's `DeckPage`, `DecksIndex`, `ProxyTag` and `AddProxy` carry the markup, the spec's index row reads Frozen with its plan "retirement owed", and the spec has its `Frozen` line. The Distillation log rows name #313. After the merge the plan was retired as `distill-feature` state 1 says (the pointer is in the spec's header and the index).
