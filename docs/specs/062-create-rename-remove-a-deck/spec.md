@@ -9,6 +9,7 @@
 **Issue:** [#49](https://github.com/plainprogrammer/Collector/issues/49)
 **ADR:** [0028](../../adr/0028-decks-are-locations-with-zones.md), written with this spec: zones as child locations, formats from the collectible extension
 
+**Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md), [`data-portability.md`](../../architecture/data-portability.md) and [`tenancy-and-accounts.md`](../../architecture/tenancy-and-accounts.md) (whole spec); see the [specs index](../README.md)
 ---
 
 ## Changelog
