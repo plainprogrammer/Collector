@@ -9,6 +9,7 @@
 **Issue:** [#254](https://github.com/plainprogrammer/Collector/issues/254)
 **ADR:** none: ADR 0028 already makes a deck a location and a zone a child location; a proxy is a row that belongs to a zone, and the choices below are this spec's (decision 12)
 **Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (the whole spec but the export, import and tenancy parts), [`data-portability.md`](../../architecture/data-portability.md) (decisions 14–16 and 18, Story 7, FR-4) and [`tenancy-and-accounts.md`](../../architecture/tenancy-and-accounts.md) (AC-1.7, AC-8.3, AC-8.4); see the [specs index](../README.md)
+**Plan:** retired in `91a0e8ffbec348799d98734841daf69fdaee75fb`; read it with `git show 91a0e8ffbec348799d98734841daf69fdaee75fb^:docs/specs/068-deck-proxies/plan.md`
 
 ---
 

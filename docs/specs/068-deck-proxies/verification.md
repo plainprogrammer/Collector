@@ -1,6 +1,6 @@
 # Verification: Feature 068, Proxies in a Deck Zone
 
-**Spec:** [spec.md](spec.md) (v0.4.0) · **Plan:** [plan.md](plan.md) · **Issue:** [#254](https://github.com/plainprogrammer/Collector/issues/254) · **Pull request:** [#313](https://github.com/plainprogrammer/Collector/pull/313)
+**Spec:** [spec.md](spec.md) (v0.4.0) · **Plan:** plan (retired in `91a0e8ffbec348799d98734841daf69fdaee75fb`; read it with `git show 91a0e8ffbec348799d98734841daf69fdaee75fb^:docs/specs/068-deck-proxies/plan.md`) · **Issue:** [#254](https://github.com/plainprogrammer/Collector/issues/254) · **Pull request:** [#313](https://github.com/plainprogrammer/Collector/pull/313)
 
 Each acceptance criterion with the spec example (or the document check) that proves it. A path is a spec file; a quoted name is the example's title or the describe it sits in. Documents are verified by reading, never by RSpec (`.claude/rules/testing.md`), except the export format document's own checks.
 
