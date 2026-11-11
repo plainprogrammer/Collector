@@ -47,7 +47,7 @@ RSpec/Output:
 # format's document, schema and example files. The request body limit spec
 # checks server configuration files. The field error proc spec renders a form
 # and checks the app's configuration, not a class. The smoke scripts spec checks
-# the shell scripts' pipes (#217). The design-system tokens spec checks the colours in tokens.css, a stylesheet (spec 057 AC-2.3).
+# the shell scripts' pipes (#217). The design-system tokens spec checks the colours in tokens.css, a stylesheet (spec 057 AC-2.3). The deck core spec is the guard of the deck files (spec 062 AC-9.11).
 RSpec/DescribeClass:
   Exclude:
     - "spec/admin_catalog_core_spec.rb"
@@ -57,6 +57,7 @@ RSpec/DescribeClass:
     - "spec/collection_places_core_spec.rb"
     - "spec/config/request_body_limit_spec.rb"
     - "spec/currency_reads_spec.rb"
+    - "spec/deck_core_spec.rb"
     - "spec/design_system_files_spec.rb"
     - "spec/design_system_tokens_spec.rb"
     - "spec/export_format_document_spec.rb"

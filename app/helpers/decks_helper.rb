@@ -9,7 +9,7 @@ module DecksHelper
     "#{pluralize(number_with_delimiter(listing.count), "deck")} · #{pluralize(number_with_delimiter(cards), "card")}"
   end
 
-  # The line a narrow table shows under a deck's name: "Modern · 58 owned". Owned is the cards count until proxies exist
+  # The line a narrow table shows under a deck's name: "Format name · 58 owned". Owned is the cards count until proxies exist
   # (spec 062 AC-4.4), which is why one number serves both columns.
   #
   # @param row [Deck::Listing::Row]
