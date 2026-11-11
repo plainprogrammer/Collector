@@ -518,11 +518,18 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
 .c-pick .is-data { font-family:var(--font-mono); }
 .c-pick .is-data, .c-pagehead__stats .is-data { white-space:nowrap; }
 
-/* ---------- Decks page row actions (spec 062): Rename and Remove beside each deck ---------- */
-/* The Locations list's ghost buttons in a table cell. The cell is as narrow as its buttons (`td.c-table__actions`), the two sit
-   on one line with the list's gap and meet the 44px touch floor like the rest of the deck pages, and the deck page's own
-   links (#253) may take them over. */
+/* ---------- Decks page row actions (spec 062, 064): Rename, Change format and Remove beside each deck ---------- */
+/* The Locations list's ghost buttons in a table cell. The cell is as narrow as its buttons (`td.c-table__actions`, width 1%),
+   so the three sit on one line with the list's gap on a wide screen (nowrap: with wrapping allowed the cell's min-content is
+   one button wide and they would stack at every width) and wrap onto lines of their own below 640px, where they would widen
+   the page. They meet the 44px touch floor like the rest of the deck pages, and the deck page's own links (#253) may take them
+   over. */
 .c-decks__actions { display:flex; justify-content:flex-end; gap:var(--space-2); font-family:var(--font-sans); }
+@media (max-width: 639px) { .c-decks__actions { flex-wrap:wrap; } }
+/* The Rename and Change format pages' head line says a deck's name, up to 60 characters with no space: it breaks inside a word
+   on a phone instead of widening the page. */
+.c-decks .c-pagehead > div { min-width:0; }
+.c-decks .c-pagehead__stats { overflow-wrap:anywhere; }
 .c-decks .c-btn { min-height:var(--touch-floor); min-width:var(--touch-floor); }
 
 /* ---------- Deck removal pages (spec 062 AC-3.1, AC-3.3): a long name wraps ---------- */
