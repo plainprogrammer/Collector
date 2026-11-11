@@ -37,10 +37,6 @@ class CollectionImport
   TOO_MANY_WITH_DECKS = "This file and your decks together would have more than #{Location::MAX_PER_ACCOUNT} locations.".freeze
   UNKNOWN_FORMAT = "This instance doesn't know the format “%s” of %s.".freeze
 
-  # The refusals that depend on the collector's decks, so `replan` judges them again (spec 062 AC-7.4d); every other refusal
-  # depends on the file, or on this instance's registrations, and can't change between a preview and an apply.
-  OLDER_FILE_REFUSALS = %w[deck_name_taken too_many_with_decks].freeze
-
   Refusal = Data.define(:rule, :at, :reason)
   # What applying would do to the account's currency (spec 038 decision 7).
   CurrencyChange = Data.define(:from, :to)
@@ -126,7 +122,7 @@ class CollectionImport
     @locations = nil
     @held_decks = nil
     @decks = nil
-    @refusal = held_decks_refusal if @refusal.nil? || OLDER_FILE_REFUSALS.include?(@refusal.rule)
+    @refusal = held_decks_refusal if @refusal.nil? # a file refused when it was read has no rows to replan (the apply never gets here for one)
     @outcomes = outcomes_for(held_lots)
     @plan = Plan.new(@outcomes, view_change, locations, decks, currency_change)
   end

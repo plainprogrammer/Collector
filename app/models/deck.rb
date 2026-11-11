@@ -20,7 +20,8 @@ class Deck < ApplicationRecord
   # The account's decks by their locations' comparison keys, then names: the order every list of decks uses.
   def self.listing_order = joins(:location).order("locations.name_key", "locations.name")
 
-  # The deck's zones in the format's order: they are written together, so their ids run in that order.
+  # The deck's zones, by id: a deck's zones are written together in the format's order, so their ids run in that order, except
+  # that a zone an import's repair adds later (a release gave the format another zone) gets a later id and is listed last.
   #
   # @return [ActiveRecord::Relation<Location>]
   def zones = location.zones.order(:id)

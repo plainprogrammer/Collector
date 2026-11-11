@@ -171,6 +171,7 @@ RSpec.describe "Lot moves", type: :request do
       get new_lot_move_path(zone_lot)
       expect(response).to have_http_status(:ok)
       expect(html.css("select#move_location_id option").map(&:text)).to eq([ "No location", "Binder", "Long box" ])
+      expect(html.at_css(".c-pagehead__stats").text).to include("Izzet Tempo › Main") # the label, never the zone's name alone (AC-5.4)
     end
 
     it "refuses a zone's id and a deck's id as the destination, moving nothing (AC-5.2)", :aggregate_failures do
