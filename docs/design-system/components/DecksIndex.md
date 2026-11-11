@@ -2,7 +2,7 @@
 
 The list of a collector's decks, the page that adds one, and the pages that rename, change the format of and remove one. Shown with Magic: The Gathering formats; the pages name no collectible in their rules.
 
-**Live since spec 062 (create, rename and remove a deck, #49).** The app's Decks page differs from spec 060's preview in three ways, each ruled by the maintainer (D5, 2026-11-10): each row has Rename, Change format and Remove ghost buttons (Change format since spec 064, #251), the deck's name is plain text and not the `TableItemLink`, and the table has no Proxy column or tag. **Spec 062 supersedes spec 060 decision 11 and AC-4.1 to AC-4.3 for the page until #253 and #254**: #253 (the deck page) restores the link and may remove the row actions where the deck page offers them; #254 (proxies) adds the Proxy column, the tag and the `Owned` + `Proxy` = `Cards` rule. The static previews (`previews/DecksIndex.html`, `previews/DecksIndexPhone.html`) still draw spec 060's shape, with the Proxy column and the linked name, and are the target #253 and #254 restore; the markup below is what the app renders today.
+**Live since spec 062 (create, rename and remove a deck, #49).** The app's Decks page differs from spec 060's preview in three ways, each ruled by the maintainer (D5, 2026-11-10): each row has Rename, Change format and Remove ghost buttons (Change format since spec 064, #251), the deck's name was plain text and not the `TableItemLink` (since spec 066 it is a link to the deck page, a plain `<a>` inside the `span`), and the table has no Proxy column or tag. **Spec 062 supersedes spec 060 decision 11 and AC-4.1 to AC-4.3 for the page until #254** (spec 066 restored the link; the row actions stay, as the deck page offers the same three in its head): #254 (proxies) adds the Proxy column, the tag and the `Owned` + `Proxy` = `Cards` rule. The static previews (`previews/DecksIndex.html`, `previews/DecksIndexPhone.html`) still draw spec 060's shape, with the Proxy column and the linked name, and are the target #253 and #254 restore; the markup below is what the app renders today.
 
 **Markup, the Decks page** — inside `.c-main.c-page.c-decks`: a page head with the count and the primary "New deck" button, then the table in `.c-collection`. With no decks a `c-empty` paragraph takes the table's place.
 
@@ -17,7 +17,7 @@ The list of a collector's decks, the page that adds one, and the pages that rena
       <thead><tr><th>Deck</th><th class="is-opt">Format</th><th class="is-num">Cards</th><th class="is-num is-opt">Owned</th><th><span class="c-sr">Actions</span></th></tr></thead>
       <tbody>
         <tr>
-          <td><div class="c-table__item"><div><span>Izzet Tempo</span><span class="c-table__sub">Modern · 58 owned</span></div></div></td>
+          <td><div class="c-table__item"><div><span><a href="/decks/41">Izzet Tempo</a></span><span class="c-table__sub">Modern · 58 owned</span></div></div></td>
           <td class="is-opt">Modern</td><td class="is-num">58</td><td class="is-num is-opt">58</td>
           <td class="c-table__actions"><span class="c-decks__actions">
             <a class="c-btn c-btn--ghost c-btn--sm" href="/decks/41/edit">Rename<span class="c-sr"> Izzet Tempo</span></a>
