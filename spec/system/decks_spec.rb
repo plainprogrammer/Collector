@@ -127,5 +127,20 @@ RSpec.describe "Decks", type: :system do
       open_in_narrow_frame(edit_deck_format_path(account.decks.first), width: 360, ready: ".c-decks form")
       within_narrow_frame { expect(fits?).to be(true) }
     end
+
+    # Between the buttons' 640px breakpoint and the table's own container query a name does not wrap by the viewport alone.
+    [ 768, 1024 ].each do |width|
+      [ "W" * 60, "Mono-blue artifacts tempo with far too many words in it ok" ].each do |name|
+        it "keeps the Decks page inside a #{width}px frame for the name #{name[0, 12].inspect} (#{name.length} characters) (AC-1.1)", :aggregate_failures do
+          create(:deck, account:, name:, format: "casual")
+
+          open_in_narrow_frame(decks_path, width:, ready: ".c-decks table")
+          within_narrow_frame do
+            expect(page).to have_css(".c-decks__actions a", count: 3)
+            expect(fits?).to be(true)
+          end
+        end
+      end
+    end
   end
 end
