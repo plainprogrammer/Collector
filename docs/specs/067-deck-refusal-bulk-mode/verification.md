@@ -58,3 +58,13 @@ The deck refusal page adds no colour, spacing or font: the button is `c-btn c-bt
 2. `spec/support/system.rb`'s after-hook resized the window with every driver; under `rack_test` that raised `Capybara::NotSupportedByDriverError`, so the resize is skipped for non-Selenium drivers (one line and a comment).
 3. The plan's Step 0 regex was written `/\ARemove/` in Ruby (the plan's `/\\ARemove/` was a Markdown escape).
 4. Commit trailers name Claude Opus 5.5, as the brief says.
+
+## Implementation review
+
+SPEC-ALIGNED WITH MINOR NOTES
+
+`sdd-review` Mode B, read-only, on Opus, two rounds (the limit), on commits `3d5ce589..6178f13c`.
+
+- **Round 1: NEEDS CHANGES.** No blocking finding. One major, M1: AC-3.1 and the spec's Notes for the plan ask for the end-to-end system example without scripting, and the first version stopped at the Move to… page under `rack_test` (this file's deviation 3 had argued the rest was proved elsewhere; the review judged that a gap, not a deviation). Fixed in `1ea3f032`: the "without scripting" example now runs the whole scenario, from the Decks page to the removal. Minors taken: the concern's header said "place" for "a place or a deck" (m1), the `BulkSelection#restart!` comment's wrap (m2), the stale comment above `SYSTEM_SCREEN_SIZE` (m3), and a Sources entry for spec 067 in `tenancy-and-accounts.md` (m4, `6178f13c`). m5 (the distillation-log rows and the README row's status) is done by `distill-feature`, before the pull request is ready.
+- **Round 2: SPEC-ALIGNED WITH MINOR NOTES.** The round-1 fixes were checked as correct and complete, and every criterion is evidenced. Two minor notes, both taken: the `restart!` comment's line was too long after the m2 reflow, and the no-script example gained the database check that no lot is left in the deck's zones (AC-3.1 "the lots are in the place").
+- Checked and fine in both rounds: the 404 rule for another account's deck, a place's id, a zone's id and a removed deck; only the path id is read; the 303 with the colon encoded; CSRF kept; no GET route; the comments say why and name their source; the core guards name no collectible; specs 059, 062 and 065 are unedited; the documents match the code.
