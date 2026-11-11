@@ -37,6 +37,16 @@ RSpec.describe "Deck formats", type: :request do
         expect(html.at_css(".c-pagehead__stats").text.squish).to eq("Izzet Tempo · retired")
         expect(html.at_css("select[name='deck[format]'] option[selected]")["value"]).to eq("mtg/casual")
       end
+
+      it "opens for a deck whose collectible type is no longer registered, shows the stored key and starts the select on the default (AC-1.7)", :aggregate_failures do
+        deck.update!(collectible_type: "gone")
+
+        get edit_deck_format_path(deck)
+
+        expect(response).to have_http_status(:ok)
+        expect(html.at_css(".c-pagehead__stats").text.squish).to eq("Izzet Tempo · modern")
+        expect(html.at_css("select[name='deck[format]'] option[selected]")["value"]).to eq("mtg/casual")
+      end
     end
 
     describe "PATCH /decks/:id/format" do
@@ -86,7 +96,7 @@ RSpec.describe "Deck formats", type: :request do
         patch_format("mtg/modern", target: commander)
 
         expect(response).to have_http_status(:unprocessable_content)
-        expect(html.at_css("#status .c-status__message--alert").text).to include("Nothing changed. #{entry.name}", "would have more than 9,999 copies in one lot.")
+        expect(html.at_css("#status .c-status__message--alert").text).to eq("Nothing changed. #{entry.name} (#{entry.set.code.upcase} · #{entry.number}) would have more than 9,999 copies in one lot.")
         expect(html.at_css("select option[selected]")["value"]).to eq("mtg/modern")
         expect(html.at_css(".c-pagehead__stats").text.squish).to eq("Krenko · Commander")
         expect(commander.reload.format).to eq("commander")

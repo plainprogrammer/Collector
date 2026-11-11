@@ -30,16 +30,19 @@ RSpec.describe Deck::FormatChange, type: :model do
     it "changes the type and format and nothing else when the formats share their zones (AC-1.3, AC-1.4)", :aggregate_failures do
       deck = create(:deck, account:, format: "modern")
       lot = create_lot_in_zone(deck, "main", quantity: 3)
-      zone_ids = deck.zones.pluck(:id)
+      create_lot_in_zone(deck, "sideboard", quantity: 2)
       location_id = deck.location_id
+      zones = -> { deck.zones.order(:id).pluck(:id, :name, :name_key, :updated_at) }
+      lots = -> { Lot.order(:id).pluck(:id, :lot_key, :quantity, :location_id, :updated_at) }
+      before = [ zones.call, lots.call ]
       form = change_to(deck, "pauper")
 
       expect(form.save).to be(true)
 
       expect(deck.reload).to have_attributes(collectible_type: "mtg", format: "pauper")
-      expect(deck.reload.location_id).to eq(location_id)
-      expect(deck.zones.pluck(:id)).to eq(zone_ids)
-      expect(lot.reload).to have_attributes(quantity: 3, location_id: deck.zone("main").id)
+      expect(deck.location_id).to eq(location_id)
+      expect([ zones.call, lots.call ]).to eq(before)
+      expect(lot.reload.location_id).to eq(deck.zone("main").id)
       expect([ form.changed?, form.moved ]).to eq([ true, 0 ])
     end
 
@@ -106,6 +109,19 @@ RSpec.describe Deck::FormatChange, type: :model do
       expect(form.save).to be(true)
       expect(form.moved).to eq(2)
       expect(deck.reload.format).to eq("modern")
+    end
+
+    it "changes a deck whose collectible type the instance no longer registers, and moves its dropped zone's lots (AC-1.7)", :aggregate_failures do
+      deck = create(:deck, account:, format: "commander")
+      lot = create_lot_in_zone(deck, "commander", quantity: 2)
+      deck.update!(collectible_type: "gone")
+
+      form = change_to(deck, "modern")
+
+      expect(form.save).to be(true)
+      expect(deck.reload).to have_attributes(collectible_type: "mtg", format: "modern")
+      expect(lot.reload.location_id).to eq(deck.zone("considering").id)
+      expect([ form.moved, zone_keys(deck) ]).to eq([ 2, %w[main considering sideboard] ])
     end
 
     it "refuses a blank, unregistered or foreign-key format with 'Choose a format.' and writes nothing (AC-3.1)", :aggregate_failures do
@@ -215,6 +231,17 @@ RSpec.describe Deck::FormatChange, type: :model do
         expect([ Lot.order(:id).pluck(:id, :quantity, :location_id, :lot_key), deck.zones.order(:id).pluck(:id, :zone, :name) ]).to eq(before)
       end
 
+      it "does not call a refused change a change: changed? is false and nothing moved (AC-2.6)", :aggregate_failures do
+        entry = create(:mtg_printing).entry
+        create_lot_in_zone(deck, "considering", entry:, quantity: 9_999)
+        create_lot_in_zone(deck, "commander", entry:, quantity: 1)
+        form = change_to(deck, "modern")
+
+        expect { form.save }.to raise_error(Lot::CapExceeded)
+
+        expect([ form.changed?, form.moved ]).to eq([ false, 0 ])
+      end
+
       it "leaves everything as it was when a write fails part way, and does not call it a refusal (AC-2.8)", :aggregate_failures do
         lot = create_lot_in_zone(deck, "commander", quantity: 2)
         allow(Location).to receive(:insert_all!).and_raise(ActiveRecord::StatementInvalid, "disk full")
@@ -256,6 +283,20 @@ RSpec.describe Deck::FormatChange, type: :model do
       lots = deck.zone("considering").lots
       expect(lots.map { [ it.catalog_entry_id, it.quantity ] }).to eq([ [ entry.id, 5 ] ])
       expect([ form.moved, zone_keys(deck) ]).to eq([ 5, [ "considering" ] ])
+    end
+
+    it "refuses, changing nothing, when lots of one identity from two dropped zones would pass 9,999 copies together (AC-2.6)", :aggregate_failures do
+      fake_vocabulary
+      deck = create(:deck, account:, pair: "fake/f")
+      entry = create(:mtg_printing).entry
+      create_lot_in_zone(deck, "a", entry:, quantity: 5_000)
+      create_lot_in_zone(deck, "b", entry:, quantity: 5_000)
+      before = [ Lot.order(:id).pluck(:id, :quantity, :location_id, :lot_key), deck.zones.order(:id).pluck(:id, :zone, :name) ]
+
+      expect { described_class.new(deck:, format: "fake/g").save }.to raise_error(Lot::CapExceeded) { |error| expect(error.lot.entry).to eq(entry) }
+
+      expect(deck.reload).to have_attributes(collectible_type: "fake", format: "f")
+      expect([ Lot.order(:id).pluck(:id, :quantity, :location_id, :lot_key), deck.zones.order(:id).pluck(:id, :zone, :name) ]).to eq(before)
     end
 
     it "brings an undo of an earlier bulk removal back without a location once its zone is gone (AC-2.9)", :aggregate_failures do

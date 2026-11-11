@@ -30,7 +30,10 @@ class Deck::FormatChange
 
   # Whether {#save} changed the deck.
   #
-  # @return [Boolean] false when the deck already had the format, so nothing was written
+  # Meaningful after a {#save} that returned true (false when the deck already had the format, so nothing was written) and
+  # after one that wrote nothing; a refused or failed change leaves it false, as it leaves the deck.
+  #
+  # @return [Boolean]
   def changed? = @changed
 
   # Makes the change.
@@ -52,6 +55,8 @@ class Deck::FormatChange
     Deck.transaction { apply(option) }
     true
   rescue Lot::CapExceeded
+    @changed = false # the transaction rolled back: the deck is as it was
+    @moved = 0
     deck.reload
     raise
   end

@@ -37,8 +37,8 @@ class Lot::BulkMove
   # validations, so the caller's lookup is what keeps a lot out of a deck. The collection's Move to… passes a place or none
   # (`Collections::MovesController`); a deck's change of format passes its Considering zone (`Deck::FormatChange`, spec 064).
   # +lots+ is the selection's relation of the account's lots, whatever place each is in: a lot in a zone is never "already
-  # there", since +to+ is a place or none, so the partition below, by `lot.location_id != @to&.id`, moves it out of its zone;
-  # when +to+ is a zone of a deck, the lots moved are those of the deck's other zones, so none is already there either.
+  # there", so the partition below, by `lot.location_id != @to&.id`, moves it out of its zone; when +to+ is a zone of a deck,
+  # the lots moved are those of the deck's other zones, so none is already there either.
   def initialize(account:, lots:, to:, sort:)
     @account, @lots, @to, @sort = account, lots, to, sort
   end
