@@ -1,6 +1,6 @@
 # Feature 068: Proxies in a Deck Zone
 
-**Status:** Draft
+**Status:** Approved
 **Version:** 0.4.0
 **Created:** 2026-11-11
 **Last Updated:** 2026-11-11
@@ -15,7 +15,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
-| 0.4.0 | 2026-11-11 | Gate A, the maintainer's ruling (2026-11-11): `proxies` is **required** in version 4 and a version 4 file without it is refused as any schema-invalid file is (decisions 14, 15; AC-7.3, AC-7.5; the optional-list branch, its preview sentence, its removed-outcome case and the `edge` note are dropped); decision 9 ruled as written |
+| 0.4.0 | 2026-11-11 | Gate A, the maintainer's ruling (2026-11-11): `proxies` is **required** in version 4 and a version 4 file without it is refused as any schema-invalid file is (decisions 14, 15; AC-7.3, AC-7.5; the optional-list branch, its preview sentence, its removed-outcome case and the `edge` note are dropped); decision 9 ruled as written; Approved at Gate A (the coordinator, under the maintainer's delegation, 2026-11-11) |
 | 0.3.0 | 2026-11-11 | From review round 2 (0 blocking, 3 major): a version 4 file without `proxies` still counts the proxies of the decks and zones it removes as removed outcomes (decision 15), the type and finish rules are creation-time rules and the import has no `type_mismatch` (decisions 2, 18, 19: a format change can switch a deck's type), AC-6.4's refusal order, the Coverage mapping and "same collection" for an absent list, `problems.json`, the held-by-a-problem-row case, the chooser's edge cases and the supersession list |
 | 0.2.0 | 2026-11-11 | From review round 1 (1 blocking, 8 major): the import's proxy rows are row-level problem rows with a rule list (decision 18), `proxies` is optional in version 4 and an absent list leaves proxies alone (decisions 14, 15; the `edge` channel recorded), the chooser's paging and type filter (decision 3), the finish rules apply at creation only and the import accepts a finish-less proxy (decision 2), the proxy's printing must be of the deck's type in the model and the import (decision 19), counts defined as quantities or rows (Terms), the finish named on every change and removal page and notice, the completed supersession list, "same collection" for proxies, and the minor fixes |
 | 0.1.0 | 2026-11-11 | First draft from issue #254, the issue design's item [8], specs 060, 062, 064, 065 and 066, the area docs `collection-and-lots.md` and `data-portability.md`, and the export format document |
