@@ -54,7 +54,19 @@ jobs:
           bundler-cache: true
 
       - name: Install libvips (Active Storage variants, ADR 0013) and ImageMagick (art matching's decoder, ADR 0012)
-        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends libvips imagemagick
+        # When the runner's resolver can't resolve Ubuntu's mirrors, apt retries for about 13 minutes and every shard
+        # fails before running an example (#306). Check the mirror first, fall back to public resolvers if it doesn't
+        # resolve, and fail in seconds with a clear error if that doesn't help either. A working resolver is left alone.
+        run: |
+          mirror=azure.archive.ubuntu.com
+          if ! getent hosts "$mirror" > /dev/null; then
+            echo "::warning::$mirror does not resolve with the runner's resolver; using 1.1.1.1 and 8.8.8.8 (#306)"
+            sudo rm -f /etc/resolv.conf
+            printf 'nameserver 1.1.1.1\nnameserver 8.8.8.8\n' | sudo tee /etc/resolv.conf > /dev/null
+            getent hosts "$mirror" > /dev/null || { echo "::error::$mirror does not resolve with public resolvers either (#306)"; exit 1; }
+          fi
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libvips imagemagick
 
       - name: Run bin/ci rspec
         run: bin/ci rspec ${{ matrix.shard }}/${{ strategy.job-total }}
