@@ -10,6 +10,8 @@
 **ADR:** [0028](../../adr/0028-decks-are-locations-with-zones.md), written with this spec: zones as child locations, formats from the collectible extension
 
 **Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md), [`data-portability.md`](../../architecture/data-portability.md) and [`tenancy-and-accounts.md`](../../architecture/tenancy-and-accounts.md) (whole spec); see the [specs index](../README.md)
+**Plan:** retired in `624c513a993a037534b13f7572525d65e6c8238c`; read it with `git show 624c513a993a037534b13f7572525d65e6c8238c^:docs/specs/062-create-rename-remove-a-deck/plan.md`
+
 ---
 
 ## Changelog
