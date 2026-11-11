@@ -164,12 +164,17 @@ RSpec.describe "Deck formats", type: :request do
         expect([ foreign.reload.format, deck.reload.format ]).to eq(%w[modern modern])
       end
 
-      it "answers 404 for the decks row's own id, which is not a location id (AC-3.3)" do
-        3.times { create(:location, account:) } # place and zone ids move past the decks table's ids
+      it "answers 404 for the decks row's own id, which is not a location id (AC-3.3)", :aggregate_failures do
         other = create(:deck, account:, name: "Other")
+        # The page looks a deck up by its location id. Which number the decks table's own id happens to be
+        # depends on the id sequences, so it could equal some deck's location id and open that deck; move the
+        # row's id past every location id so the two numbers cannot coincide.
+        rows_id = Location.maximum(:id) + 1_000
+        Deck.where(id: other.id).update_all(id: rows_id)
 
-        get "/decks/#{other.id}/format/edit"
-
+        get "/decks/#{rows_id}/format/edit"
+        expect(response).to have_http_status(:not_found)
+        patch "/decks/#{rows_id}/format", params: { deck: { format: "mtg/pauper" } }
         expect(response).to have_http_status(:not_found)
       end
 
