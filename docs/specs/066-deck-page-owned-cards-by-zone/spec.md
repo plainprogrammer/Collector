@@ -1,7 +1,7 @@
 # Feature 066: The Deck Page, Owned Cards by Zone
 
 **Status:** Approved
-**Version:** 0.3.0
+**Version:** 0.3.1
 **Created:** 2026-11-11
 **Last Updated:** 2026-11-11
 **Depends on:** [spec 060](../060-deck-components/spec.md) (the `DeckPage` shell, the zone table, the legality marker and their CSS; merged), [spec 062](../062-create-rename-remove-a-deck/spec.md) (decks, zones, the Decks page; merged), [spec 065](../065-deck-zones-in-pickers/spec.md) (copies reach a zone through the pickers; merged); builds on [spec 064](../064-change-deck-format/spec.md) (a change of format moves copies and can add a zone) and [spec 004](../004-design-system-collection/spec.md)'s card page legality
@@ -15,6 +15,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.3.1 | 2026-11-11 | Gate B, the coordinator's ruling: AC-5.6 states the design system's rule (44px on coarse pointers, the size `c-btn` and links already have on fine ones) so the system example asserts what the criterion says |
 | 0.3.0 | 2026-11-11 | Gate A, the maintainer's rulings (2026-11-11) through the coordinator: rows per printing and no row menu as written (decisions 2, 9); **changed:** the zone table keeps spec 060's Card, Cost, Owned, Proxy and Total columns, with no menu column, Proxy a muted dash and Total equal to Owned until #254, and the phone layout stays spec 060 decision 9's, so spec 060 decision 9 and AC-3.6 are no longer superseded (decision 7); **changed:** a card with Land in its type line is in Lands unless it is also a Creature (decision 6, AC-6.3); Approved |
 | 0.2.1 | 2026-11-11 | From review round 2 (no blocking, one major): 060 decisions 10 and 25 and AC-3.11 added to the supersession list, AC-6.6 for a printing with no extension record, and wording fixes |
 | 0.2.0 | 2026-11-11 | From review round 1 (no blocking, six major): no row menu in 1.0 (decision 9; the name links to the card's copies), Owned on a phone recorded as superseding spec 060 decision 9 (decision 7), the number order cited from `Catalog::Entry`, the printing's first face as the data source (decisions 5, 11), `tenancy-and-accounts.md` added, "one row per printing" flagged as the reading of the issue's "one row per card" (decision 2), and the minor fixes |
@@ -146,7 +147,7 @@ Each is my call unless it names a ruling; alternatives are listed so the coordin
 - [ ] **AC-5.3** Given a table container narrower than 640px When it is rendered Then Owned and Proxy are hidden and the columns shown are Card, Cost and Total, the line under the name carries `SET · NUMBER` and any legality marker, and the beside-the-name marker is hidden (spec 060 decision 9 and AC-3.6)
 - [ ] **AC-5.4** Given the worst case at 360px (a 60-character name with no space, a six-symbol cost, a marker, a three-digit Total) When the page is rendered in either theme Then the page has no horizontal overflow and the Cost cell's scroll width is at most its client width
 - [ ] **AC-5.5** Given a deck page at 360px, 640px, 768px and 1280px in the light and the dark theme When it is rendered Then it has no horizontal overflow, the zone heads' counts are uncut (own line below 640px, as spec 060 AC-3.7), and every colour comes from the design system's tokens
-- [ ] **AC-5.6** Given the page head at 360px When it is rendered Then the actions wrap below the name and each touch target is at least 44px
+- [ ] **AC-5.6** Given the page head at 360px When it is rendered Then the actions wrap below the name and each touch target is at least 44px on a coarse pointer, and on a fine pointer at least the 36px that `c-btn` and links already have (`components.css`'s touch rule gives the 44px floor)
 - [ ] **AC-5.7** Given a zone table When its markup is read Then each type group is its own `tbody` whose first row is a `th scope="rowgroup"` spanning the columns, so a group row is a row-group header
 
 ### Story 6: The collectible's part is the extension's

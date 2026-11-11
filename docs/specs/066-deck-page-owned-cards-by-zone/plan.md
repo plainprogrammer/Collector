@@ -1,6 +1,6 @@
 # Implementation Plan: The Deck Page, Owned Cards by Zone
 
-**Spec:** [spec.md](spec.md) (v0.3.0, Approved at Gate A, 2026-11-11)
+**Spec:** [spec.md](spec.md) (v0.3.1, Approved at Gate A, 2026-11-11; AC-5.6 patched at Gate B)
 **Decisions:** none new; ADR 0028's seam gets one more optional answer (spec decision 12)
 **Created:** 2026-11-11
 
@@ -48,7 +48,7 @@ A signed-in collector opens `GET /decks/:id` from the Decks page and reads their
 | `app/models/catalog/entry.rb` | edit | `DISPLAY_NAME_SQL` beside `#display_name` |
 | `app/models/deck/page.rb` | new | One deck's zones, groups, rows and counts |
 | `config/routes.rb` | edit | `show` on `decks` |
-| `app/controllers/decks_controller.rb` | edit | `show`, the id guard in `set_deck` |
+| `app/controllers/decks_controller.rb` | edit | `show`; the id guard in `set_deck` (T4a, its own commit) |
 | `app/views/decks/show.html.erb`, `_zone.html.erb`, `_card_row.html.erb`, `_legality_marker.html.erb` | new | The page |
 | `app/helpers/decks_helper.rb` | edit | `deck_counts_line`, `deck_page_line`, `deck_set_line` |
 | `app/views/decks/index.html.erb` | edit | The name is a link |
@@ -57,7 +57,7 @@ A signed-in collector opens `GET /decks/:id` from the Decks page and reads their
 | `spec/requests/decks_spec.rb`, `spec/requests/query_counts_spec.rb` | edit | The link; the page's bounded queries |
 | `docs/design-system/components/DeckPage.md`, `DecksIndex.md`, `docs/architecture/collection-and-lots.md`, `docs/architecture/tenancy-and-accounts.md`, `CLAUDE.md`, `docs/specs/README.md`, `verification.md` | edit/new | Documentation (Phase 6) |
 
-Batches for the implementer subagents (2–4 consecutive tasks, one commit per task, test first): **Batch A** = T1–T4, **Batch B** = T5–T7, **Batch C** = T8. The supervisor checks each batch's diff; the documentation (T9) is written by the supervisor.
+Batches for the implementer subagents (2–4 consecutive tasks, one commit per task, test first): **Batch A** = T1–T4, **Batch B** = T4a, T5–T7, **Batch C** = T8. The supervisor checks each batch's diff; the documentation (T9) is written by the supervisor.
 
 ---
 
@@ -701,6 +701,41 @@ end
 **Files:** `config/routes.rb`, `app/controllers/decks_controller.rb`, `app/helpers/decks_helper.rb`, `app/views/decks/show.html.erb`, `app/views/decks/_zone.html.erb`, `app/views/decks/_card_row.html.erb`, `app/views/decks/_legality_marker.html.erb`, `spec/requests/deck_pages_spec.rb`, `spec/requests/query_counts_spec.rb`
 **Interfaces:** Consumes: `Deck::Page`, `DecksHelper`, `catalog_entry_path`, `set_number`, `render_catalog_extension`, layouts `appbar`/`tabbar`, icons `more` and `cross`. Produces: `GET /decks/:id` (`deck_path(deck)`), `@page`, `deck_counts_line(owned)`, `deck_page_line(page)`, `deck_set_line(entry)`.
 
+### T4a: the numeric-id guard (its own commit; Gate B note 1)
+
+`find_by!(location_id: "12abc")` casts the text to 12, so `/decks/12abc/edit` would open deck 12. The deck page needs a clean 404 for such an id (AC-1.2); the guard is its own commit because it also tightens `edit`, `update` and `destroy`, which share `set_deck`, and the PR body says so.
+
+- [ ] Add to `spec/requests/decks_spec.rb`, in the "GET /decks/:id/edit and PATCH /decks/:id (Story 2)" describe, after the example "answers 404 for a place's id and a zone's id on /decks (AC-2.6)":
+
+```ruby
+      it "answers 404 for an id that is a deck's id followed by letters, as for any id that is not digits only (spec 066 AC-1.2)", :aggregate_failures do
+        deck = create(:deck, account:, name: "Izzet Tempo")
+
+        [ "#{deck.location_id}abc", "abc", "0", "-1" ].each do |id|
+          get edit_deck_path(id)
+          expect(response).to have_http_status(:not_found), "#{id.inspect} was not a 404"
+        end
+        get edit_deck_path(deck)
+        expect(response).to have_http_status(:ok)
+      end
+```
+
+- [ ] Run: `bin/rspec spec/requests/decks_spec.rb -e "followed by letters"` — expect FAIL (`"<id>abc"` answers 200).
+- [ ] Edit `app/controllers/decks_controller.rb`: replace `set_deck` and the comment above it with:
+
+```ruby
+    # `find_by!` raises RecordNotFound (404) for another account's deck and for a place's or a zone's location id, which no
+    # deck row points at. An id is text of digits only: "12abc" would otherwise cast to 12 (`Location::ID_TEXT`, spec 066 AC-1.2).
+    def set_deck
+      raise ActiveRecord::RecordNotFound, "not a deck id" unless params[:id].to_s.match?(Location::ID_TEXT)
+
+      @deck = Current.account.decks.includes(:location).find_by!(location_id: params[:id])
+    end
+```
+
+- [ ] Run: `bin/rspec spec/requests/decks_spec.rb spec/requests/deck_formats_spec.rb` — expect PASS.
+- [ ] Commit: `fix(decks): answer 404 for a deck id that is not digits only`
+
 ### T5: the page
 
 - [ ] Write `spec/requests/deck_pages_spec.rb`:
@@ -1095,7 +1130,7 @@ end
 
 - [ ] Run: `bin/rspec spec/requests/deck_pages_spec.rb spec/requests/query_counts_spec.rb` — expect FAIL (`GET /decks/:id` answers 404, a routing error, until the route exists).
 - [ ] Edit `config/routes.rb` line 48: `resources :decks, only: %i[index show new create edit update destroy] do`.
-- [ ] Edit `app/controllers/decks_controller.rb`: replace the file header comment's first sentence and `before_action`, add `show`, guard the id:
+- [ ] Edit `app/controllers/decks_controller.rb`: replace the file header comment's first sentence and `before_action` and add `show` (the id guard is T4a's, already in):
 
 ```ruby
 # Spec 062: the signed-in collector's decks, and spec 066's page of one deck. Every lookup is through Current.account and by the
@@ -1115,19 +1150,7 @@ class DecksController < ApplicationController
   end
 ```
 
-and replace `set_deck` and its comment with:
 
-```ruby
-    # `find_by!` raises RecordNotFound (404) for another account's deck and for a place's or a zone's location id, which no
-    # deck row points at. An id is text of digits only: "12abc" would otherwise cast to 12 (`Location::ID_TEXT`, spec 066 AC-1.2).
-    def set_deck
-      raise ActiveRecord::RecordNotFound, "not a deck id" unless params[:id].to_s.match?(Location::ID_TEXT)
-
-      @deck = Current.account.decks.includes(:location).find_by!(location_id: params[:id])
-    end
-```
-
-(The id `0` and `"abc"` also fail the text check, so they are 404 before a query.)
 
 - [ ] Edit `app/helpers/decks_helper.rb`: add after `deck_sub_line`:
 
@@ -1482,7 +1505,7 @@ end
 - [ ] Run: `bin/rspec spec/system/deck_page_spec.rb spec/system/decks_spec.rb spec/system/design_system_deck_components_spec.rb spec/system/design_system_deck_rules_spec.rb` — expect PASS.
 - [ ] Commit: `test(decks): measure the deck page at every width in both themes`
 
-> Flag for the reviewers: AC-5.6 says each touch target is at least 44px. The design system gives 44px only to `pointer: coarse` (`components.css`); a fine-pointer Firefox measures the buttons' own height (36px). The system example asserts 36px, as `spec/system/decks_spec.rb` does for New deck, and `verification.md` records that the coarse rule supplies 44px, as for every page. Spec 066's wording is not changed.
+> AC-5.6 (v0.3.1) is the design system's rule: 44px on coarse pointers, 36px on fine ones. The system example asserts the 36px a fine-pointer Firefox measures; the coarse rule is `components.css`'s `@media (pointer: coarse)` and is not re-proved here.
 
 ---
 
@@ -1502,7 +1525,7 @@ Each in its own commit; each statement carries its source (spec 066 decision or 
 - [ ] `tenancy-and-accounts.md`: add `GET /decks/:id` to the routes that find a deck by its location id through the account, 404 for another account's deck, a place's id, a zone's id and a malformed id (spec 066 AC-1.2); add spec 066 to its Sources and distillation log lines as the area doc's convention requires.
 - [ ] `CLAUDE.md`: in the Collection-and-lots bullet's deck sentence add "a collector opens a deck at `/decks/:id` to read its owned cards by zone (`Deck::Page`, `Catalog::DeckCards`, spec 066)" and in the first paragraph's decks sentence the same; add spec 066 to the bullet's spec list; the deck files' guard sentence mentions `Catalog::DeckCards`.
 - [ ] `docs/specs/README.md`: the 066 row's plan cell links `plan.md` and drops "(not yet written)"; Status stays Approved until the implementation review records and the distillation step changes it; the 062 row's superseded-by cell adds "066 decision 1 (the deck's name on the Decks page is a link)" beside its existing 060 text, so the supersession is recorded in both directions.
-- [ ] `verification.md`: the AC to proof table (below), the system examples' results at 360/640/768/1280px in both themes, the statement count, the screenshots at 360px and 1280px light and dark (headless Firefox per the PR-screenshots note, kept in `screenshots/`), the AC-5.6 note, and the `## Implementation review` heading with the Mode B verdict on its first line.
+- [ ] `verification.md`: the AC to proof table (below), the system examples' results at 360/640/768/1280px in both themes, the statement count, the screenshots at 360px and 1280px light and dark (headless Firefox per the PR-screenshots note, kept in `screenshots/`), the AC-5.6 reading, and the `## Implementation review` heading with the Mode B verdict on its first line.
 
 ---
 
@@ -1529,7 +1552,7 @@ Each in its own commit; each statement carries its source (spec 066 decision or 
 | 3.1 to 3.6 | `deck_pages_spec` "the legality marker", `collecting_deck_card_spec` |
 | 3.7 | `deck_pages_spec` (WebMock blocks the network) |
 | 4.1, 4.2 | `deck_pages_spec` "copies are not added or moved here" |
-| 5.1 to 5.6 | `spec/system/deck_page_spec.rb` (5.6 at 36px fine pointer, see the flag) |
+| 5.1 to 5.6 | `spec/system/deck_page_spec.rb` (5.6 at the fine-pointer 36px, AC-5.6 as patched) |
 | 5.7 | `deck_pages_spec` "puts each group in its own tbody" |
 | 6.1, 6.6 | `deck_cards_spec`, `deck_pages_spec` "a collectible that answers nothing" |
 | 6.2 | `spec/deck_core_spec.rb` |
