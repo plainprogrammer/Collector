@@ -174,6 +174,133 @@ RSpec.describe "Import preview", type: :request do
     end
 
 
+    describe "decks (spec 062)" do
+      let!(:entry) { printing }
+
+      def file_v4(lots, locations: [], decks: [], **fields)
+        decks = decks.map { |deck| deck.is_a?(Hash) ? deck : { "name" => deck, "collectible_type" => "mtg", "format" => "modern" } }
+        file(lots, format_version: 4, locations: locations.map { |name| { "name" => name } }, decks:, **fields)
+      end
+
+      def zone(deck, key = "main") = { "deck" => deck, "zone" => key }
+
+      def decks_stat(label) = html.css("#decks .c-stat").find { |stat| stat.at_css("dt").text == label }&.at_css("dd")&.text
+
+      def list(id) = html.css("##{id} li").map { |item| item.text.squish }
+
+      it "has a Decks section after Locations, with the five counts and the lists of renamed, format-changed and removed decks (AC-7.1)", :aggregate_failures do
+        %w[Same tempo Elves Gone].each { |name| create(:deck, account: user.account, name:) }
+        create(:location, account: user.account, name: "Box")
+        preview(file_v4([ row(entry, location: nil) ], locations: [ "Box" ],
+          decks: [ "Same", "Tempo", { "name" => "Elves", "collectible_type" => "mtg", "format" => "commander" }, "New" ]))
+
+        expect(response).to have_http_status(:ok)
+        expect(html.css("section").map { |section| section["id"] }.compact.first(2)).to eq(%w[locations decks])
+        expect(html.css("#decks .c-section__title").map(&:text)).to eq([ "Decks" ])
+        expect([ "Decks added", "Decks renamed", "Format changed", "Decks unchanged", "Decks removed" ].map { |label| decks_stat(label) }).to eq(%w[1 1 1 1 1])
+        expect(list("renamed_decks")).to eq([ "tempo → Tempo" ])
+        expect(list("format_changed_decks")).to eq([ "Elves: Modern → Commander" ])
+        expect(list("removed_decks")).to eq([ "Gone" ])
+        expect(html.at_css("#decks_stay")).to be_nil
+      end
+
+      it "counts all and lists the first LIST_LIMIT of each, with the rest counted (AC-7.1)", :aggregate_failures do
+        stub_const("CollectionImport::LIST_LIMIT", 3)
+        6.times { |n| create(:deck, account: user.account, name: "Old #{n}") }
+        preview(file_v4([ row(entry, location: nil) ], decks: [ "Old 0", "old 1", "old 2", "old 3", "old 4" ]))
+
+        expect([ decks_stat("Decks renamed"), decks_stat("Decks removed") ]).to eq(%w[4 1])
+        expect(list("renamed_decks").size).to eq(3)
+        expect(html.css("#decks .c-import__more").map(&:text)).to eq([ "and 1 more" ])
+      end
+
+      it "says a place the file lacks and a deck of the same name it has are a removal and an addition, in both sections (AC-7.3)", :aggregate_failures do
+        create(:location, account: user.account, name: "Box")
+        preview(file_v4([ row(entry, location: nil) ], decks: [ "Box" ]))
+
+        expect(list("removed_locations")).to eq([ "Box" ])
+        expect(decks_stat("Decks added")).to eq("1")
+        expect(html.at_css("label.c-check").text.squish).to eq("I understand this removes 1 location")
+      end
+
+      it "says an older file leaves the decks, and what it would remove from them, with no Decks counts (AC-7.4)", :aggregate_failures do
+        deck = create(:deck, account: user.account, name: "Izzet Tempo")
+        preview(file_v2([ row(entry) ]))
+        expect(html.at_css("#decks_stay").text).to eq("This file was written before decks existed, so your decks would stay.")
+        expect(html.at_css("#decks")).to be_nil
+
+        create_lot_in_zone(deck, "main", quantity: 2)
+        create_lot_in_zone(deck, "sideboard", quantity: 1)
+        preview(file([ row(entry) ]))
+        expect(html.at_css("#decks_stay").text).to eq(
+          "This file was written before decks existed, so your decks would stay, but the copies in them (2 lots) would be removed.")
+        expect(html.at_css("#decks")).to be_nil
+      end
+
+      it "ends a removed lot in a zone, and a problem row naming a zone, with the deck and the zone (AC-7.5)", :aggregate_failures do
+        deck = create(:deck, account: user.account, name: "Izzet Tempo")
+        create_lot_in_zone(deck, "main", quantity: 2)
+        preview(file_v4([ row(entry, location: zone("Izzet Tempo", "commander")) ], decks: [ "Izzet Tempo" ]))
+
+        expect(html.at_css("#removed_lots").text.squish).to include("in Izzet Tempo › Main")
+        expect(html.at_css("#problem_rows").text.squish).to include("in Izzet Tempo › commander")
+        expect(html.at_css("#problem_rows").text).to include("The deck “Izzet Tempo” has no zone “commander” in its format.")
+      end
+
+      it "words the confirmation for lots, locations and decks, naming only the parts that apply (AC-7.6)", :aggregate_failures do
+        deck = create(:deck, account: user.account, name: "Izzet Tempo")
+        create_lot_in_zone(deck, "main", quantity: 2)
+        create(:location, account: user.account, name: "Box")
+        create(:deck, account: user.account, name: "Elves")
+        preview(file_v4([ row(entry, location: nil) ]))
+
+        expect(html.at_css("label.c-check").text.squish).to eq("I understand this removes 1 lot, 1 location and 2 decks")
+        expect(html.at_css("form[action='#{collection_import_path}'] .c-import__note").text).to include("removes 1 lot (2 copies), 1 location and 2 decks and can't be undone")
+
+        Deck.joins(:location).find_by!(locations: { name: "Elves" }).remove!
+        preview(file_v4([ row(entry, location: nil) ], decks: [ "Izzet Tempo" ]))
+        expect(html.at_css("label.c-check").text.squish).to eq("I understand this removes 1 lot and 1 location")
+      end
+
+      it "words it for decks alone when only a deck goes (AC-7.6)" do
+        create(:deck, account: user.account, name: "Elves")
+        held_lot(user.account, entry, quantity: 1)
+        preview(file_v4([ row(entry, location: nil) ]))
+
+        expect(html.at_css("label.c-check").text.squish).to eq("I understand this removes 1 deck")
+      end
+
+      it "offers the apply, and stores the file, when the only change is a deck, and says nothing to change for none (AC-7.7)", :aggregate_failures do
+        held_lot(user.account, entry, quantity: 1)
+        preview(file_v4([ row(entry, location: nil) ], decks: [ "Izzet Tempo" ]))
+
+        expect(html.at_css("form[action='#{collection_import_path}']")).to be_present
+        expect(user.account.reload.import_upload).to be_present
+        expect(html.at_css("form[action='#{collection_import_path}'] label.c-check")).to be_nil # nothing is removed
+
+        create(:deck, account: user.account, name: "Izzet Tempo")
+        preview(file_v4([ row(entry, location: nil) ], decks: [ "Izzet Tempo" ]))
+        expect(response.body).to include("This file has nothing to change")
+        expect(html.at_css("form[action='#{collection_import_path}']")).to be_nil
+      end
+
+      it "refuses a file whose deck's format this instance doesn't know, with its reason and no row (AC-7.8)", :aggregate_failures do
+        preview(file_v4([ row(entry, location: nil) ], decks: [ { "name" => "Odd", "collectible_type" => "mtg", "format" => "nope" } ]))
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.body).to include("This instance doesn&#39;t know the format “nope” of mtg.")
+        expect(html.at_css(".c-stats, #problem_rows")).to be_nil
+      end
+
+      it "writes only the upload, its blob and its attachment for a version 4 file (AC-7.9)" do
+        create(:deck, account: user.account, name: "Old")
+        before = snapshot
+        preview(file_v4([ row(entry, location: nil) ], decks: [ "Izzet Tempo" ]))
+
+        expect(snapshot.reject { |table, rows| before[table] == rows }.keys).to match_array(%w[import_uploads active_storage_blobs active_storage_attachments])
+      end
+    end
+
     it "offers the upload form, outside Turbo (AC-1.1)", :aggregate_failures do
       get new_collection_import_preview_path
       form = html.at_css("form.c-form")

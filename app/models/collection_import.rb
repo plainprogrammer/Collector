@@ -54,6 +54,9 @@ class CollectionImport
     def described
       { set_code:, collector_number:, language:, finish: identity[2], condition: identity[3], price_paid: identity[4], location: }
     end
+
+    # Whether the lot is in a deck's zone: the identity's place is a pair, not a place's key (`Location::Placement`).
+    def in_zone? = identity.last.is_a?(Array)
   end
 
   # One element of the file's lots, numbered from 1. +identity+ is nil when it can't be read (decision 1).
@@ -104,7 +107,7 @@ class CollectionImport
   def entry_id(row) = @entry_ids.fetch(row.number)
 
   # What applying would do to the collection as it was when this was first asked (the preview's view, spec 028).
-  def plan = @plan ||= Plan.new(outcomes, view_change, locations, currency_change)
+  def plan = @plan ||= Plan.new(outcomes, view_change, locations, decks, currency_change)
 
   # The same, against the collection as it is now: one read of the lots, of the locations, of the account (its currency,
   # spec 038 decision 7) and of the user, no parsing (spec 028 FR-2, spec 029 decision 11). It replaces the memoized plan,
@@ -117,7 +120,7 @@ class CollectionImport
     @held_decks = nil
     @decks = nil
     @outcomes = outcomes_for(held_lots)
-    @plan = Plan.new(@outcomes, view_change, locations, currency_change)
+    @plan = Plan.new(@outcomes, view_change, locations, decks, currency_change)
   end
 
   # What applying would do with the collector's locations: nothing counted for a version 1 file (spec 029 decision 10).

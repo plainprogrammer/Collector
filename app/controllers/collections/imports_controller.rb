@@ -29,7 +29,7 @@ class Collections::ImportsController < ApplicationController
       counts = plan.counts
       lots = "Imported: #{helpers.pluralize(counts[:added], "lot")} added, #{counts[:changed]} changed, #{counts[:removed]} removed"
       currency = "prices now shown in #{plan.currency_change.to}" if plan.currency_change # spec 038 decision 7
-      [ lots, location_sentence(plan.locations), currency ].compact.join("; ")
+      [ lots, location_sentence(plan.locations), deck_sentence(plan.decks), currency ].compact.join("; ")
     end
 
     # "2 locations added, 1 renamed, 1 removed": the noun on the first part that isn't zero, the zero parts left out; nil
@@ -38,10 +38,22 @@ class Collections::ImportsController < ApplicationController
     def location_sentence(locations)
       return unless locations.counted?
 
-      parts = locations.counts.slice(:added, :renamed, :removed).reject { |_verb, count| count.zero? }
+      sentence("location", locations.counts.slice(:added, :renamed, :removed))
+    end
+
+    # "2 decks added, 1 renamed, 1 format changed, 1 removed", the same way; nil for a file older than version 4, which says
+    # nothing of decks, and when no deck changes (spec 062 AC-8.8).
+    def deck_sentence(decks)
+      return unless decks.counted?
+
+      sentence("deck", decks.counts.slice(:added, :renamed, :format_changed, :removed))
+    end
+
+    def sentence(noun, counts)
+      parts = counts.reject { |_verb, count| count.zero? }
       return if parts.empty?
 
-      parts.map.with_index { |(verb, count), index| index.zero? ? "#{helpers.pluralize(count, "location")} #{verb}" : "#{count} #{verb}" }.join(", ")
+      parts.map.with_index { |(verb, count), index| "#{index.zero? ? helpers.pluralize(count, noun) : count} #{verb.to_s.tr("_", " ")}" }.join(", ")
     end
 
     def upload_page(message)

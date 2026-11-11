@@ -30,6 +30,13 @@ module ImportHelpers
     import_file(user, lots, format_version: 3, locations: locations.map { |name| { "name" => name } }, **fields)
   end
 
+  # A version 4 file (spec 062): the same, with its decks beside its places. A deck is a name (a Modern deck of the default type)
+  # or the file's own hash; a lot's place may be a deck's zone, `{ "deck" => name, "zone" => key }` (see import_row's location:).
+  def import_file_v4(user, lots, locations: [], decks: [], **fields)
+    decks = decks.map { |deck| deck.is_a?(Hash) ? deck.stringify_keys : { "name" => deck, "collectible_type" => "mtg", "format" => "modern" } }
+    import_file(user, lots, format_version: 4, locations: locations.map { |name| { "name" => name } }, decks:, **fields)
+  end
+
   def import_io(data) = StringIO.new(data.is_a?(String) ? data : JSON.generate(data))
 
   def import_upload_file(data, type: "application/json", name: "export.json")
