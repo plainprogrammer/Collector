@@ -96,7 +96,7 @@ The words every deck screen uses (spec 057 FR-3). They name no format and no col
 - **"Deck › Zone":** how a zone is named wherever a place is shown or chosen (tiles, rows, pickers): the deck's name, a single right angle quote (›), the zone's name. A zone is never shown without its deck.
 - **Free to use:** copies you own minus copies in any deck zone, Considering included. Proxies don't change it.
 - **Places:** your locations that are not decks (a binder, a box). "Places" is the picker's group label; the page is still "Locations".
-- **What is live** (spec 062, #49): a collector creates, renames and removes a deck on the Decks pages (`DecksIndex`), and a deck is removed only while no zone holds a copy. "Deck › Zone" is shown wherever a lot's place is shown, from one label (`Lot#place_label`), and a lot in a zone's Edit copy shows its place read-only (`Form`, `c-field__static`). The grouped location picker, "Deck (all zones)" in the collection filter and the tiles' design for a zone are #252's: until then every picker, filter and Move to… lists places only. A deck's name is plain text on the Decks page until the deck page (#253), and the page has no Proxy column until #254.
+- **What is live** (spec 062, #49): a collector creates, renames and removes a deck on the Decks pages (`DecksIndex`), and a deck is removed only while no zone holds a copy. "Deck › Zone" is shown wherever a lot's place is shown, from one label (`Lot#place_label`). Since spec 065 (#252) the grouped location picker (`Form`) is live in the lot form, Move copies, bulk Move to…, number entry and the scanner sitting, and the collection filter lists the zones and "<Deck> (all zones)" (`FilterSelect`); a lot in a zone's Edit copy shows the select with the zone chosen, and the read-only field is gone. The tiles show no place line under a filter, a deck's included, and the table shows each row's "Deck › Zone" (spec 065 decision 13). A deck's name is plain text on the Decks page until the deck page (#253), and the page has no Proxy column until #254.
 
 ## Components
 
@@ -137,7 +137,7 @@ App additions (spec 057, in `collector/additions.css`): the label and option rul
 
 App additions (spec 060, in `collector/additions.css`): `ProxyTag` (`c-proxy`), `DeckShape` (`c-shape`, `c-curve`, `c-types`, `c-manabar`, `c-manacap`), `DeckPage` (`c-deck`, `c-shapefold`, `c-zone`), `DecksIndex` (`c-decks`) and the pick list (`c-pick`) of `AddToDeck` and `UseMyCopy`.
 
-App additions (spec 062, in `collector/additions.css`): `DecksIndex`'s row actions (`c-decks__actions`) and the removal pages' wrapping rule (`.c-decks .c-confirm`), and `c-field__static`, a field's read-only value (`Form`).
+App additions (spec 062, in `collector/additions.css`): `DecksIndex`'s row actions (`c-decks__actions`) and the removal pages' wrapping rule (`.c-decks .c-confirm`). Spec 065 (#252) removed the read-only field's rule that spec 062 added for the Edit copy form's Location, which no view uses any more; the grouped picker and "Deck (all zones)" use spec 057's rules, and the app adds no CSS for them.
 
 App additions (spec 063, in `collector/additions.css`): the stroke of small icons, set by the component that draws them (`c-badge`, `c-legal`, `c-btn`, `c-input`, `c-menu__item`, `c-filter`, `c-seg`), documented in Iconography.
 
