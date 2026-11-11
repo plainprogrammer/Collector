@@ -171,4 +171,20 @@ All time bars are met. **The preview's memory is near its bar and is flagged, no
 
 ## Implementation review
 
-(to be filled by the implementation review)
+INCOMPLETE: no blocking finding and no drift from the spec; one criterion is open (AC-8.10's memory bar, put to the maintainer), and the rest of the review is recorded below. When the maintainer rules on the memory bar this line becomes SPEC-ALIGNED.
+
+Read-only Opus review (sdd-review Mode B) of `f8a9f1c7` on 2026-11-10, 0 blocking, 2 major, 10 minor. It opened about 20 of the riskiest examples (AC-1.3, 1.7 to 1.11, 3.4, 3.5, 4.7, 5.5, 5.6, 7.4d, 9.11, the query-count, core-guard and bulk-zone-filter specs) and found each runs the real code path; all 100 criteria have an example.
+
+**Major**
+
+1. AC-8.10, the preview's memory bar. The in-process timing spec reports the first preview's growth as 385 to 506 MB against the 500 MB bar, so the bar is not proved. Spec 032's +188 MB came from a separate runner, so the two figures are not comparable; the same file with 500 places and no decks reads 431 MB in this harness, so decks add little. Time bars all hold. Status: open, put to the maintainer (accept the in-harness figure, or ask for a separate-runner measurement).
+2. AC-9.2, `bin/upgrade-smoke`. Unverified at review time because the PR's image jobs were pending. Resolved: PR #300's checks (`checks`, RSpec 1/4 to 4/4, Image linux/amd64 and linux/arm64, `ci`) all passed, and the image job runs the upgrade smoke.
+
+**Minor, and what was done** (commit `e8256608`)
+
+- `CollectionImport#replan` re-judged an older-file refusal even when the file had been refused at read (unreachable today): now only when no refusal was made.
+- `Deck#zones`'s comment now says a zone added by the repair is listed last.
+- AC-5.4, the Move copies page: an example now asserts the "Deck › Zone" label there.
+- The unused `OLDER_FILE_REFUSALS` is removed. Not changed, noted: `Location#place?`, `Location.top_level` and `CollectionImport#decks_counted?` are used by specs only (kept; harmless and tested); `upsert_top_level!` relies on the reader's guarantee that a key of the other kind is already removed (hardening with `kind = excluded.kind` considered and left).
+- Docs: `data-portability.md` no longer says the same bars hold (the time bars hold, the memory bar is flagged); `collection-and-lots.md` states the zone preload and `place_column?` queries; ADR 0028 records that a long NFC deck name is a rule of the format.
+- Accepted: AC-6.7b's layer (rule of the format for decks, reader check for places; same outcome and pointer); AC-8.1 lists decks before places in its removal order where the code removes places first (every removal still precedes every addition); the retired-zone-name hazard (open item 1 above).
