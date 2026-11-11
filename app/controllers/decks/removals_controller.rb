@@ -3,10 +3,13 @@
 # another account's deck, a place and a zone are all 404 (AC-3.8, AC-9.7). It removes nothing; `DecksController#destroy` does.
 # @see file:collection-and-lots.md
 class Decks::RemovalsController < ApplicationController
-  # Renders the question, or the refusal page when the deck's zones hold any lot.
+  # Renders the question (with the quantity of proxies that go with the deck, spec 068 AC-5.4), or the refusal page when the
+  # deck's zones hold any lot.
   def new
     @deck = Current.account.decks.includes(:location).find_by!(location_id: params[:deck_id])
     @holdings = @deck.holdings
-    render :refused if @holdings.any?
+    return render :refused if @holdings.any?
+
+    @proxies = @deck.proxies.sum(:quantity)
   end
 end

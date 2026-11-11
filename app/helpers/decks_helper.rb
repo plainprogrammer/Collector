@@ -116,4 +116,13 @@ module DecksHelper
     base = "Changed “#{deck.name}” to #{deck.format_name}."
     change.moved.positive? ? "#{base} #{pluralize(number_with_delimiter(change.moved), "card")} moved to #{change.considering_name}." : base
   end
+
+  # The confirmation's first sentence (spec 068 AC-5.4): the zones go with the deck, and so do its proxies when it has any.
+  #
+  # @param proxies [Integer] the quantities of proxies in the deck
+  # @return [String]
+  def deck_removal_sentence(proxies)
+    what = proxies.positive? ? "its zones and its #{pluralize(number_with_delimiter(proxies), "proxy", "proxies")} are" : "its zones are"
+    "This removes the deck, and #{what} removed with it. No copy in your collection is removed or changed."
+  end
 end
