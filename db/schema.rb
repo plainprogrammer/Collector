@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_10_200001) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_11_150001) do
   create_table "accounts", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -157,6 +157,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_10_200001) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["collectible_type", "code"], name: "index_catalog_sets_on_collectible_type_and_code", unique: true
+  end
+
+  create_table "deck_proxies", force: :cascade do |t|
+    t.integer "account_id", null: false
+    t.integer "location_id", null: false
+    t.integer "catalog_entry_id", null: false
+    t.string "finish"
+    t.integer "quantity", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index "location_id, catalog_entry_id, COALESCE(finish, '')", name: "index_deck_proxies_on_zone_entry_and_finish", unique: true
+    t.index ["account_id"], name: "index_deck_proxies_on_account_id"
+    t.index ["catalog_entry_id"], name: "index_deck_proxies_on_catalog_entry_id"
+    t.index ["location_id"], name: "index_deck_proxies_on_location_id"
+    t.check_constraint "quantity BETWEEN 1 AND 9999", name: "deck_proxies_quantity_range"
   end
 
   create_table "decks", force: :cascade do |t|
@@ -376,6 +391,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_10_200001) do
   add_foreign_key "catalog_entries", "catalog_identities"
   add_foreign_key "catalog_entries", "catalog_sets"
   add_foreign_key "catalog_names", "catalog_identities"
+  add_foreign_key "deck_proxies", "accounts", on_delete: :cascade
+  add_foreign_key "deck_proxies", "catalog_entries"
+  add_foreign_key "deck_proxies", "locations", on_delete: :cascade
   add_foreign_key "decks", "accounts", on_delete: :cascade
   add_foreign_key "decks", "locations", on_delete: :cascade
   add_foreign_key "import_uploads", "accounts", on_delete: :cascade
