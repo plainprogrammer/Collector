@@ -48,6 +48,7 @@ Rails.application.routes.draw do
   resources :decks, only: %i[index new create edit update destroy] do
     resource :removal, only: :new, module: :decks
     resource :format, only: %i[edit update], module: :decks # spec 064: change a deck's format
+    resource :selection, only: :create, module: :decks # spec 067: the refusal page's shortcut into bulk mode
   end
 
   # The card scanner (spec 007; spec 009 adds the sitting and Other printings, and links it from the navigation).
