@@ -10,10 +10,13 @@ class Catalog::Search
 
   attr_reader :query, :set_code
 
-  def initialize(query: nil, set_code: nil, page: nil)
+  # @param collectible_type [String, nil] limits the results to one collectible type's printings (the add-a-proxy page lists
+  #   only the deck's own; spec 068 decision 3); nil searches every type, as the card search does
+  def initialize(query: nil, set_code: nil, page: nil, collectible_type: nil)
     @query = query.to_s.strip.first(MAX_QUERY_LENGTH)
     @set_code = set_code.presence
     @requested_page = page
+    @collectible_type = collectible_type.presence
   end
 
   def active? = query.present? || set_code.present?
@@ -29,7 +32,7 @@ class Catalog::Search
     @groups ||= begin
       identities = Catalog::Identity.where(id: matching_entries.select(:catalog_identity_id))
         .order(:name, :id).offset(pagination.offset).limit(PER_PAGE).to_a
-      entries = Catalog::Entry.searchable.in_set(set_code).where(catalog_identity_id: identities.map(&:id))
+      entries = entries_scope.where(catalog_identity_id: identities.map(&:id))
         .newest_first.includes(:set).to_a.group_by(&:catalog_identity_id)
       identities.map do |identity|
         listed = entries.fetch(identity.id, [])
@@ -39,8 +42,12 @@ class Catalog::Search
   end
 
   private
-    def matching_entries
+    def entries_scope
       scope = Catalog::Entry.searchable.in_set(set_code)
-      query.present? ? scope.named_like(query) : scope
+      @collectible_type ? scope.where(collectible_type: @collectible_type) : scope
+    end
+
+    def matching_entries
+      query.present? ? entries_scope.named_like(query) : entries_scope
     end
 end

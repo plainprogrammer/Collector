@@ -54,6 +54,18 @@ RSpec.describe Catalog::Search, type: :model do
     expect(described_class.new(query: "forest").groups.first.entries.map(&:number)).to eq(%w[2 10 12 12a 100 ★])
   end
 
+  it "lists only the printings of the collectible type it is given (spec 068 AC-1.3)", :aggregate_failures do
+    mtg = create(:catalog_entry, name: "Bolt of Mtg")
+    create(:catalog_entry, name: "Bolt of Other", collectible_type: "other")
+
+    everything = described_class.new(query: "Bolt")
+    only_mtg = described_class.new(query: "Bolt", collectible_type: "mtg")
+
+    expect(everything.pagination.total_count).to eq(2) # not `groups`: it preloads each type's extension, and "other" has no source
+    expect(only_mtg.groups.flat_map(&:entries)).to contain_exactly(mtg)
+    expect(only_mtg.pagination.total_count).to eq(1)
+  end
+
   it "reads only decimal digits as a page number (#204)", :aggregate_failures do
     stub_const("Catalog::Search::PER_PAGE", 1)
     12.times { |i| printing(format("Card %02d", i)) }
