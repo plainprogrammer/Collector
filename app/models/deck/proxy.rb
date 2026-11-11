@@ -64,6 +64,17 @@ class Deck::Proxy < ApplicationRecord
   # @return [Integer, nil]
   def self.parse_quantity(text) = Integer(text.to_s.strip, 10, exception: false)&.then { it if it.between?(1, MAX_QUANTITY) }
 
+  # Sets the quantity. The same quantity writes nothing (not even `updated_at`).
+  #
+  # @param count [Integer]
+  # @return [Deck::Proxy] self
+  # @raise [ActiveRecord::RecordInvalid] when the quantity is outside 1 to 9,999
+  def change_quantity!(count)
+    self.quantity = count
+    save! if changed?
+    self
+  end
+
   # The finish as the printing's vocabulary labels it, nil for a proxy with none.
   # @return [String, nil]
   def finish_label

@@ -95,4 +95,23 @@ RSpec.describe Deck::Proxy, type: :model do
 
     expect(proxy.reload.update(quantity: 4)).to be(true)
   end
+
+  describe "#change_quantity!" do
+    it "sets the quantity, keeping the id, and is a no-op for the same quantity (AC-3.2)", :aggregate_failures do
+      proxy = add(quantity: 2)
+      stamp = proxy.updated_at
+
+      expect(proxy.change_quantity!(4).reload.quantity).to eq(4)
+      travel_to(1.hour.from_now) { expect { proxy.change_quantity!(4) }.not_to(change { proxy.reload.updated_at }) }
+      expect(proxy.updated_at).to be >= stamp
+    end
+
+    it "refuses 0 and a number over 9,999 (AC-3.3)", :aggregate_failures do
+      proxy = add(quantity: 2)
+
+      expect { proxy.change_quantity!(0) }.to raise_error(ActiveRecord::RecordInvalid)
+      expect { proxy.change_quantity!(10_000) }.to raise_error(ActiveRecord::RecordInvalid, /#{Regexp.escape(described_class::FULL_MESSAGE)}/)
+      expect(proxy.reload.quantity).to eq(2)
+    end
+  end
 end
