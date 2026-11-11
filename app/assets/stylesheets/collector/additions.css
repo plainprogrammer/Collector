@@ -538,3 +538,14 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
    a control does on a coarse pointer. */
 .c-field__static { margin:0; min-height:36px; display:flex; align-items:center; font:400 15px/22px var(--font-sans); color:var(--ink); overflow-wrap:anywhere; }
 @media (pointer: coarse) { .c-field__static { min-height:var(--touch-floor); } }
+
+/* ---------- Small icon stroke (spec 063) ---------- */
+/* An icon's stroke scales with it: weight on screen = stroke-width × drawn width ÷ 24 (the viewBox). The partials write
+   1.5, Lucide's weight at 20px (1.25px on screen); at 12px that is 0.75px, a hairline beside a 600-weight word, and at
+   14px to 16px it is 0.88px to 1px. The rule is about 1.25px on screen below 20px: 30 ÷ size, rounded to a half (12px
+   2.5, 14px to 16px 2, 20px and up the partials' 1.5, so the tab bar's 22px icons need no rule). A CSS declaration beats
+   an SVG presentation attribute on the same element, so the components that set the size set the stroke too, the
+   partials keep their attribute and the previews match once they load this file. The filled star has `stroke: none`
+   and is not touched by it. The README's Iconography states the rule. */
+.c-badge svg, .c-legal svg { stroke-width:2.5; }
+.c-btn svg, .c-input svg, .c-menu__item svg, .c-filter svg, .c-seg button svg { stroke-width:2; }
