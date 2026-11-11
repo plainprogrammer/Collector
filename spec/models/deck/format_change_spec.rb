@@ -272,5 +272,18 @@ RSpec.describe Deck::FormatChange, type: :model do
       expect(undone.unplaced).to eq(1)
       expect(account.lots.sole).to have_attributes(location_id: nil, quantity: 2)
     end
+
+    it "exports the new format and zones, and the file has nothing to change (AC-1.8)", :aggregate_failures do
+      deck = create(:deck, account:, name: "Krenko", format: "commander")
+      create_lot_in_zone(deck, "commander", quantity: 2)
+      create_lot_in_zone(deck, "main", quantity: 1)
+      change_to(deck, "modern").save!
+
+      data = JSON.parse(CollectionExport.new(account: account.reload, at: Time.utc(2026, 11, 10)).to_json)
+
+      expect(data["decks"]).to eq([ { "name" => "Krenko", "collectible_type" => "mtg", "format" => "modern" } ])
+      expect(data["lots"].map { it["location"] }).to contain_exactly({ "deck" => "Krenko", "zone" => "considering" }, { "deck" => "Krenko", "zone" => "main" })
+      expect(CollectionImport.new(account:, file: StringIO.new(JSON.generate(data))).plan.nothing_to_change?).to be(true)
+    end
   end
 end
