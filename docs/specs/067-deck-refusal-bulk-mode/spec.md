@@ -7,6 +7,7 @@
 **Depends on:** [spec 059](../059-bulk-mode-from-location-refusal/spec.md) (the place's shortcut, `BulkSelection#restart!`'s `all:`), [spec 062](../062-create-rename-remove-a-deck/spec.md) (decks, zones, the deck refusal page), [spec 065](../065-deck-zones-in-pickers/spec.md) (the filter's `deck:<id>`, "<Deck> (all zones)", Move to… under a deck filter), [spec 037](../037-filter-collection-by-location/spec.md) (the location filter and the selection tied to it), [spec 041](../041-move-many-lots/spec.md) (Move to…)
 **Branch:** `067-deck-refusal-bulk-mode`
 **Issue:** [#302](https://github.com/plainprogrammer/Collector/issues/302) (theme: locations)
+**Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (whole spec) and [`tenancy-and-accounts.md`](../../architecture/tenancy-and-accounts.md) (the deck shortcut's 404 rule); see the [specs index](../README.md)
 
 ---
 
