@@ -29,7 +29,7 @@ RSpec.describe "The deck code", type: :config do
   def relative(files) = files.map { |file| file.relative_path_from(Rails.root).to_s }
 
   it "covers every file of the feature" do
-    expect(files.size).to eq(18)
+    expect(files.size).to eq(20)
   end
 
   it "names every file it lists, each of which exists" do
