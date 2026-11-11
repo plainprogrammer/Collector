@@ -1,6 +1,6 @@
 # Feature 067: Open a Deck's Lots in Bulk Mode from Its Refusal Page
 
-**Status:** Draft
+**Status:** Approved (Gate A, 2026-11-11, by the coordinator under the maintainer's delegation, at 0.2.0)
 **Version:** 0.2.0
 **Created:** 2026-11-11
 **Last Updated:** 2026-11-11
