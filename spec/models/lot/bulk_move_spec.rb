@@ -70,6 +70,13 @@ RSpec.describe Lot::BulkMove, type: :model do
     expect(there.reload.location).to eq(blue)
   end
 
+  it "names the destination's label when every selected lot is already there (spec 065 AC-3.3)", :aggregate_failures do
+    deck = create(:deck, account:, name: "Izzet Tempo")
+    zone = Location.find_placeable!(deck.zone("main").id)
+    expect(described_class::NothingToMove.new(zone).message).to eq("The selected items are already in Izzet Tempo › Main.")
+    expect(described_class::NothingToMove.new(blue).message).to eq("The selected items are already in Blue binder.")
+  end
+
   describe "merging" do
     let(:entry) { create(:mtg_printing).entry } # a printing with no lot yet: lot.entry would be an unplaced lot's identity, and a second unplaced lot(entry) would hit the unique index
 

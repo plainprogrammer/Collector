@@ -57,7 +57,11 @@ RSpec.describe "A bulk selection stored under a zone's or a deck's id", type: :r
 
   it "moves the zone's lots to the place the collector chooses, as Move to… does for any lot", :aggregate_failures do
     select_under(zone.id.to_s, zoned, placed, go: "move")
-    post collection_move_path, params: { to: zone.id }
+    post collection_move_path, params: { to: zone.id } # spec 065: a zone is a destination now, and the selected lot is already there
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(response.body).to include("The selected items are already in Izzet Tempo › Main.")
+    expect(zoned.reload.location).to eq(zone)
+    post collection_move_path, params: { to: deck.location_id } # a deck's own row is never a destination
     expect(response).to have_http_status(:not_found)
     expect(zoned.reload.location).to eq(zone)
     post collection_move_path, params: { to: box.id }

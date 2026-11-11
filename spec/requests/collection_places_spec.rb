@@ -214,7 +214,8 @@ RSpec.describe "Places on the collection's tiles and rows", type: :request do # 
   end
 
   # Spec 062 AC-5.8a: the place line and the Location column show while the account has a place or a lot in a zone (a lot in a
-  # zone has a place to read); the selects, the filter and Move to… need a place to list, so they wait for one.
+  # zone has a place to read). The selects, the filter and Move to… now show while the account has a place or a zone (spec 065
+  # decision 3 supersedes AC-5.8a here: a deck's zones are choices); the column's gate changes with spec 065 AC-6.9.
   describe "with a deck and a lot in its zone (spec 062 AC-5.8a)" do
     def deck = @deck ||= create(:deck, account: user.account, name: "Izzet Tempo")
     def zone_lot = @zone_lot ||= create_lot_in_zone(deck, "main", entry: create(:mtg_printing).entry, quantity: 2)
@@ -224,25 +225,31 @@ RSpec.describe "Places on the collection's tiles and rows", type: :request do # 
     context "when the account has no place" do
       before { zone_lot }
 
-      it "shows the place line on the tile, and no select or filter", :aggregate_failures do
+      it "shows the place line on the tile", :aggregate_failures do
         get collection_path(view: "grid")
         expect(place_lines.sole).to end_with("Main")
-        expect(select).to be_nil
       end
 
-      it "shows the Location column and the place on the phone line, and no select or filter", :aggregate_failures do
+      it "shows the Location column and the place on the phone line", :aggregate_failures do
         get collection_path(view: "table")
         expect(page_html.css("thead th").map { it.text.squish }).to include("Location")
         expect(cells.sole).to end_with("Main")
         expect(page_html.at_css(".c-table__sub").text).to include("Main")
-        expect(select).to be_nil
       end
 
-      it "shows the same in bulk mode, without Move to… or the filter", :aggregate_failures do
+      it "shows the place and Move to… in bulk mode", :aggregate_failures do
         get collection_path(bulk: "1")
         expect(cells.sole).to end_with("Main")
-        expect(select).to be_nil
-        expect(bulk_buttons).to eq([ "Set condition…", "Remove", "Done" ])
+        expect(bulk_buttons).to eq([ "Set condition…", "Move to…", "Remove", "Done" ])
+      end
+
+      it "shows the filter select, on the grid and the table (spec 065 AC-6.10, decision 3)", :aggregate_failures do
+        get collection_path(view: "grid")
+        expect(select).to be_present
+        get collection_path(view: "table")
+        expect(select).to be_present
+        get collection_path(bulk: "1")
+        expect(select).to be_present
       end
     end
 
@@ -263,14 +270,22 @@ RSpec.describe "Places on the collection's tiles and rows", type: :request do # 
       end
     end
 
-    it "shows no column, place line or select when the account has a deck and no lot in a zone", :aggregate_failures do
+    it "shows no column or place line when the account has a deck and no lot in a zone", :aggregate_failures do
       deck
       own
       get collection_path(view: "table")
       expect(page_html.css("thead th").map { it.text.squish }).not_to include("Location")
-      expect(select).to be_nil
       get collection_path(view: "grid")
       expect(place_lines).to be_empty
+    end
+
+    it "shows the filter select and Move to… when the account has a deck and no lot in a zone (spec 065 AC-6.10, decision 3)", :aggregate_failures do
+      deck
+      own
+      get collection_path(view: "table")
+      expect(select).to be_present
+      get collection_path(bulk: "1")
+      expect(bulk_buttons).to include("Move to…")
     end
   end
 end
