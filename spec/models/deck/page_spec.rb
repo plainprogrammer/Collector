@@ -13,7 +13,6 @@ RSpec.describe Deck::Page, type: :model do
 
   def page_of(deck) = described_class.new(Deck.includes(:location).find_by!(location_id: deck.location_id))
   def zone_named(page, name) = page.zones.find { it.name == name }
-  def names(zone) = zone.groups.flat_map { |group| group.rows.map { it.entry.display_name } }
 
   describe "#zones" do
     it "lists the zones in the format's order (AC-2.1)" do

@@ -357,6 +357,20 @@ RSpec.describe "Deck page", type: :request do
       end
     end
 
+    it "answers 200 for a deck whose collectible type is no longer registered: the stored format key, a flat table, a dash, no marker (Reliability)", :aggregate_failures do
+      own("main", printing(legalities: { "modern" => "banned" }))
+      deck.update!(collectible_type: "gone")
+
+      get deck_path(deck)
+
+      expect(response).to have_http_status(:ok)
+      expect(html.css("section.c-zone h2").map(&:text)).to eq(%w[Main Sideboard Considering])
+      expect(html.at_css(".c-item__type").text).to eq("#{deck.format} · 1 card · 1 owned")
+      expect(html.css("tr.c-zone__group")).to be_empty
+      expect(card_rows(zone_section("Main")).first.css("td")[1].at_css(".is-muted").text).to eq("–")
+      expect(html.css(".c-legal")).to be_empty
+    end
+
     it "keeps a printing with no extension record in Other with a dash and no marker (AC-6.6)", :aggregate_failures do
       own("main", create(:catalog_entry, name: "Bare"))
 

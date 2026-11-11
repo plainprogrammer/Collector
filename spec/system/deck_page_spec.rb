@@ -33,6 +33,28 @@ RSpec.describe "Deck page", type: :system do
     JS
   end
 
+  # What the 60-character card's row shows: the marker and the set line under the name (`.c-table__sub`) and beside it (`.is-opt`),
+  # and how many markers show in all.
+  def long_row_shown
+    page.evaluate_script(<<~JS)
+      (() => { const row = [...document.querySelectorAll(".c-zone tbody tr")].find((tr) => tr.textContent.includes("W".repeat(60)))
+        const shown = (el) => el.getClientRects().length > 0
+        return { sub: shown(row.querySelector(".c-table__sub .c-legal")), beside: shown(row.querySelector(".is-opt .c-legal")),
+                 subSet: shown(row.querySelector(".c-table__sub .c-zone__set")), besideSet: shown(row.querySelector(".is-opt .c-zone__set")),
+                 markers: [...row.querySelectorAll(".c-legal")].filter(shown).length } })()
+    JS
+  end
+
+  # Each zone head's count: cut off, and whether it sits below the name.
+  def zone_head_counts
+    page.evaluate_script(<<~JS)
+      [...document.querySelectorAll(".c-zone .c-section__head")].map((head) => {
+        const count = head.querySelector(".c-section__count"), title = head.querySelector(".c-section__title")
+        return { cut: count.scrollWidth > count.clientWidth, below: count.getBoundingClientRect().top >= title.getBoundingClientRect().bottom }
+      })
+    JS
+  end
+
   # The left edge and width of each column's header in each zone table.
   def column_boxes
     page.evaluate_script(<<~JS)
@@ -58,43 +80,37 @@ RSpec.describe "Deck page", type: :system do
     end
   end
 
-  it "keeps each zone head's count uncut and, under 640px, on its own line below the name (AC-5.5)", :aggregate_failures do
-    open_in_narrow_frame(deck_path(deck), width: 360, ready: ".c-zone:first-of-type table")
-    within_narrow_frame do
-      heads = page.evaluate_script(<<~JS)
-        [...document.querySelectorAll(".c-zone .c-section__head")].map((head) => {
-          const count = head.querySelector(".c-section__count"), title = head.querySelector(".c-section__title")
-          return { cut: count.scrollWidth > count.clientWidth, below: count.getBoundingClientRect().top >= title.getBoundingClientRect().bottom }
-        })
-      JS
-      expect(heads.size).to eq(3)
-      expect(heads).to all(eq({ "cut" => false, "below" => true }))
+  # Measured: the zone table's container is under 640px in a 640px frame (the page's padding), so the head's count is on its own
+  # line, as at 360px, and from 768px it sits beside the name. At every width it is uncut.
+  [ 360, 640, 768, 1280 ].each do |width|
+    it "keeps each zone head's count uncut at #{width}px and on its own line below the name while the table is narrow (AC-5.5)", :aggregate_failures do
+      open_in_narrow_frame(deck_path(deck), width:, ready: ".c-zone:first-of-type table")
+      within_narrow_frame do
+        heads = zone_head_counts
+        expect(heads.size).to eq(3)
+        expect(heads).to all(eq({ "cut" => false, "below" => width <= 640 }))
+      end
+    end
+
+    it "shows the marker once in the card's row at #{width}px (AC-3.6)" do
+      open_in_narrow_frame(deck_path(deck), width:, ready: ".c-zone:first-of-type table")
+      within_narrow_frame { expect(long_row_shown["markers"]).to eq(1) }
     end
   end
 
-  it "shows Card, Cost and Total under 640px, with the set and the marker under the name and Owned hidden (AC-5.3)", :aggregate_failures do
+  it "shows Card, Cost and Total under 640px, with the set line and the marker under the name and Owned hidden (AC-5.3)", :aggregate_failures do
     open_in_narrow_frame(deck_path(deck), width: 360, ready: ".c-zone:first-of-type table")
     within_narrow_frame do
       expect(shown_headers.first(3)).to eq([ "Card", "Cost", "Total" ])
-      visible = page.evaluate_script(<<~JS)
-        (() => { const row = [...document.querySelectorAll(".c-zone tbody tr")].find((tr) => tr.textContent.includes("W".repeat(60)))
-          const shown = (el) => el.getClientRects().length > 0
-          return { sub: shown(row.querySelector(".c-table__sub .c-legal")), beside: shown(row.querySelector(".is-opt .c-legal")) } })()
-      JS
-      expect(visible).to eq({ "sub" => true, "beside" => false })
+      expect(long_row_shown).to include("sub" => true, "beside" => false, "subSet" => true, "besideSet" => false)
     end
   end
 
-  it "shows the marker once beside the name from 640px and not under it, and all five columns (AC-3.6, AC-5.2)", :aggregate_failures do
+  it "shows the marker and the set line beside the name from 768px and not under it, and all five columns (AC-3.6, AC-5.2)", :aggregate_failures do
     open_in_narrow_frame(deck_path(deck), width: 1280, ready: ".c-zone:first-of-type table")
     within_narrow_frame do
       expect(shown_headers).to eq([ "Card", "Cost", "Owned", "Proxy", "Total" ])
-      visible = page.evaluate_script(<<~JS)
-        (() => { const row = [...document.querySelectorAll(".c-zone tbody tr")].find((tr) => tr.textContent.includes("W".repeat(60)))
-          const shown = (el) => el.getClientRects().length > 0
-          return { sub: shown(row.querySelector(".c-table__sub .c-legal")), beside: shown(row.querySelector(".is-opt .c-legal")) } })()
-      JS
-      expect(visible).to eq({ "sub" => false, "beside" => true })
+      expect(long_row_shown).to include("sub" => false, "beside" => true, "subSet" => false, "besideSet" => true)
     end
   end
 
