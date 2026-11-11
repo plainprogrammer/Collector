@@ -26,7 +26,7 @@
           <% @listing.rows.each do |row| %>
             <% deck = row.deck %>
             <tr>
-              <td><div class="c-table__item"><div><span><%= deck.name %></span><span class="c-table__sub"><%= deck_sub_line(row) %></span></div></div></td>
+              <td><div class="c-table__item"><div><span><%= link_to deck.name, deck_path(deck) %></span><span class="c-table__sub"><%= deck_sub_line(row) %></span></div></div></td>
               <td class="is-opt"><%= deck.format_name %></td>
               <td class="is-num"><%= number_with_delimiter(row.cards) %></td>
               <td class="is-num is-opt"><%= number_with_delimiter(row.cards) %></td>
