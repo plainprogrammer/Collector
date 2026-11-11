@@ -1,7 +1,7 @@
 # Collector export format
 
 **Format name:** `collector-export`
-**Format version:** 3
+**Format version:** 4
 
 An export is one file that holds one collector's data: their profile, the currency their prices are in, the locations they keep their collection in, and every lot in their collection.
 
@@ -101,7 +101,7 @@ A collector owns lots, not single copies ([ADR 0019](../adr/0019-lot-as-the-unit
 | `finish` | A string that isn't blank, or `null` | The finish of the copies, as the collectible type names it. |
 | `condition` | A string that isn't blank, or `null` | The condition of the copies, as the collectible type names it. |
 | `price_paid` | A string in the form below, or `null` | What the collector paid for **one copy**, in the file's currency. |
-| `location` | A [name](#names) of one of the file's locations, or `null`; version 3 | Where the copies are kept, written as the instance stores the name (NFC), or `null` for a lot in no location. Never the empty string. |
+| `location` | `null`, a [name](#names) of one of the file's locations, or from version 4 an object `{ "deck": …, "zone": … }`; version 3 | Where the copies are kept, written as the instance stores the name (NFC): `null` for a lot in no place, the name of one of the file's locations for a lot in a place, and for a lot in a deck's zone an object whose `deck` is the name of one of the file's decks and whose `zone` is the key of one of that deck's zones. Never the empty string. |
 | `added_at` | A [time](#times) | When the lot was added to the collection. |
 | `changed_at` | A [time](#times) | When the lot was last changed. Never earlier than `added_at`. |
 
@@ -265,6 +265,7 @@ The meaning of a version never changes once it has been released.
 | 1 | 2026-10-11 | The first version: profile, currency and lots. |
 | 2 | 2026-10-21 | Locations: the required top-level list `locations`, with the rule `duplicate_location`. Lots are unchanged. |
 | 3 | 2026-10-23 | Lots in locations: each lot gains the required `location`, the rule `unknown_location`, and lot identity has six values. |
+| 4 | 2026-11-10 | Decks: the required top-level list `decks`, and a lot's `location` may be an object `{ deck, zone }`. The rules `duplicate_location` and `unknown_location` cover decks, and `too_many_locations` counts places and decks together. |
 
 One change is already expected: collections shared by a household will change who owns a lot and will raise the version ([ADR 0017](../adr/0017-row-level-tenancy-one-user-per-account.md)). A currency for each account (issue #64, spec 038) moved where the code the file carries comes from, from the instance to the account, without a version, because the field's meaning didn't change.
 

@@ -62,7 +62,7 @@ RSpec.describe CollectionExport, type: :model do
   end
 
   it "keeps the format's versions as they were (spec 038 AC-5.3)", :aggregate_failures do
-    expect(ExportFormat::Rules::VERSIONS).to eq([ 1, 2, 3 ])
+    expect(ExportFormat::Rules::VERSIONS).to eq([ 1, 2, 3, 4 ])
     expect(described_class::FORMAT_VERSION).to eq(3)
   end
 

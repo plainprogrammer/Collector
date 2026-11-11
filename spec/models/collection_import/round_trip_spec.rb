@@ -140,7 +140,11 @@ RSpec.describe "Export and import round trip", type: :model do
     ExportFormatRules.examples("valid").each_key do |name|
       next if name.end_with?("lot-location-nfd.json") # outside the round trip: it re-exports with the stored spelling (AC-9.4)
 
-      it "applies #{name} to an empty account at the default currency and exports the same collection, currency included, or has nothing to change (spec 038 AC-6.10, AC-6.11)", :aggregate_failures do
+      # Version 4's examples need the reader, the apply and the export of decks (spec 062 T18 to T21), which land after the
+      # examples; each version 4 example stays pending until then and fails the run when it passes, so T21 removes this.
+      pending = ("spec 062 T21: the reader and the apply of decks" if JSON.parse(ExportFormatRules.examples("valid").fetch(name))["format_version"] == 4)
+
+      it "applies #{name} to an empty account at the default currency and exports the same collection, currency included, or has nothing to change (spec 038 AC-6.10, AC-6.11)", :aggregate_failures, pending: do
         data = JSON.parse(ExportFormatRules.examples("valid").fetch(name))
         build_catalog(data)
         user = create(:user, name: data.dig("profile", "name"), email_address: data.dig("profile", "email_address"))

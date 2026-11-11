@@ -14,7 +14,7 @@ RSpec.describe ExportFormat::Rules, type: :model do
     documented = Rails.root.glob("docs/export-format/v*.schema.json")
     copies = documented.map { |file| described_class::SCHEMA_DIRECTORY.join(file.basename) }
 
-    expect(documented.map(&:basename).map(&:to_s)).to include("v1.schema.json", "v2.schema.json", "v3.schema.json")
+    expect(documented.map(&:basename).map(&:to_s)).to include("v1.schema.json", "v2.schema.json", "v3.schema.json", "v4.schema.json")
     expect(copies.map { |copy| copy.exist? && copy.binread }).to eq(documented.map(&:binread))
   end
 
@@ -132,7 +132,9 @@ RSpec.describe ExportFormat::Rules, type: :model do
     end
 
     it "finds the same problems, in the same order, as the whole-file pass on every example and variant", :aggregate_failures do
-      files = examples("valid").merge(examples("invalid"), examples("comparison"), variants)
+      # The reference pass is a schema alone, so it can't state version 4's count of places and decks together
+      # (too_many_locations, spec 062 AC-6.9); those two examples are checked by problems.json and "6.9" below.
+      files = examples("valid").merge(examples("invalid"), examples("comparison"), variants).except("invalid/decks-501.json", "invalid/locations-and-decks-501.json")
 
       files.each do |name, bytes|
         expect(described_class.problems(bytes)).to eq(whole_file_problems(bytes)), name
@@ -168,7 +170,7 @@ RSpec.describe ExportFormat::Rules, type: :model do
       expect(described_class.schema_version(base)).to eq(1)
       expect(described_class.schema_version(v2)).to eq(2)
       expect(described_class.schema_version(v2.merge("format_version" => 2.0))).to eq(2)
-      expect(described_class.schema_version(v2.merge("format_version" => 4))).to eq(1) # a version it doesn't read: the oldest names the version
+      expect(described_class.schema_version(v2.merge("format_version" => 5))).to eq(1) # a version it doesn't read: the oldest names the version
       expect(described_class.schema_version(base.except("format_version"))).to eq(1)
       expect(described_class.schema_version(base.merge("format_version" => "1"))).to eq(1)
       expect(described_class.schema_version([ v2 ])).to eq(1) # not an object: the oldest judges it, as it always did
@@ -176,7 +178,7 @@ RSpec.describe ExportFormat::Rules, type: :model do
       expect(problems_of(base.merge("format_version" => 2))).to eq([ %w[required /locations] ])
       expect(problems_of(base.except("format_version"))).to eq([ %w[required /format_version] ]) # the version 1 invalid examples keep their one problem
       expect(problems_of(base.merge("format_version" => "1"))).to eq([ %w[const /format_version] ])
-      expect(problems_of(v2.merge("format_version" => 4))).to eq([ %w[const /format_version] ])
+      expect(problems_of(v2.merge("format_version" => 5))).to eq([ %w[const /format_version] ])
       expect(problems_of(v2.merge("format_version" => 1))).to eq([]) # an unknown field is ignored by version 1
     end
 
@@ -245,9 +247,9 @@ RSpec.describe ExportFormat::Rules, type: :model do
       data
     end
 
-    it "reads versions 1, 2 and 3, the newest being the one written", :aggregate_failures do
-      expect(described_class::VERSIONS).to eq([ 1, 2, 3 ])
-      expect(described_class::VERSION).to eq(3)
+    it "reads versions 1 to 4, the newest being the one written", :aggregate_failures do
+      expect(described_class::VERSIONS).to eq([ 1, 2, 3, 4 ])
+      expect(described_class::VERSION).to eq(4)
       expect(described_class.schema_version(v3)).to eq(3)
       expect(problems_of(v3)).to eq([])
     end
@@ -300,12 +302,267 @@ RSpec.describe ExportFormat::Rules, type: :model do
       expect(Location::Name).not_to have_received(:key).with("binder 500")
     end
 
-    it "judges a version 4 file by version 1's schema, which names the version" do
-      expect(problems_of(v3.merge("format_version" => 4))).to eq([ %w[const /format_version] ])
+    it "judges a version 5 file by version 1's schema, which names the version" do
+      expect(problems_of(v3.merge("format_version" => 5))).to eq([ %w[const /format_version] ])
     end
 
     it "keeps unknown_location among the rules" do
       expect(described_class::RULES).to include("unknown_location")
+    end
+  end
+
+  describe "version 4 (spec 062)" do
+    def v4 = JSON.parse(Rails.root.join("docs/export-format/examples/comparison/v4-base.json").read)
+
+    def deck(name, format: "modern", type: "mtg") = { "name" => name, "collectible_type" => type, "format" => format }
+
+    def places(*names) = names.map { |name| { "name" => name } }
+
+    # A version 4 file with these places and decks and no lots, unless lots are given.
+    def filed(places: [], decks: [], lots: []) = v4.merge("locations" => places(*places), "decks" => decks, "lots" => lots)
+
+    def lot_in(location) = v4["lots"][0].merge("location" => location)
+
+    it "reads versions 1 to 4 and checks a version 4 file by its own schema", :aggregate_failures do
+      expect(described_class.schema_version(v4)).to eq(4)
+      expect(described_class.schema_version(v4.merge("format_version" => 4.0))).to eq(4)
+      expect(problems_of(v4)).to eq([])
+    end
+
+    it "keeps a byte-identical copy of the schema of version 4 beside the rules (ADR 0021)" do
+      document = Rails.root.join("docs/export-format/v4.schema.json")
+
+      expect(described_class.schema_file(4).binread).to eq(document.binread)
+    end
+
+    it "6.7 finds a missing, mistyped or ill-formed list of decks where the schema says", :aggregate_failures do
+      expect(problems_of(v4.except("decks"))).to eq([ %w[required /decks] ])
+      expect(problems_of(v4.merge("decks" => {}))).to eq([ %w[type /decks] ])
+      expect(problems_of(v4.merge("decks" => "Izzet Tempo"))).to eq([ %w[type /decks] ])
+      expect(problems_of(v4.merge("decks" => [ 5 ], "lots" => []))).to eq([ %w[type /decks/0] ])
+    end
+
+    it "6.7 finds a deck whose fields are missing, blank or ill-formed", :aggregate_failures do
+      one = ->(changes) { problems_of(filed(places: [], decks: [ deck("Izzet Tempo").merge(changes) ])) }
+      %w[name collectible_type format].each { |field| expect(one.call(field => nil)).to eq([ [ "type", "/decks/0/#{field}" ] ]), field }
+      expect(problems_of(filed(decks: [ deck("Izzet Tempo").except("name") ]))).to eq([ %w[required /decks/0/name] ])
+      expect(problems_of(filed(decks: [ deck("Izzet Tempo").except("collectible_type") ]))).to eq([ %w[required /decks/0/collectible_type] ])
+      expect(problems_of(filed(decks: [ deck("Izzet Tempo").except("format") ]))).to eq([ %w[required /decks/0/format] ])
+      expect(one.call("collectible_type" => "")).to eq([ %w[pattern /decks/0/collectible_type] ])
+      expect(one.call("collectible_type" => " \t")).to eq([ %w[pattern /decks/0/collectible_type] ])
+      expect(one.call("format" => "")).to eq([ %w[pattern /decks/0/format] ])
+      expect(one.call("format" => "  ")).to eq([ %w[pattern /decks/0/format] ])
+    end
+
+    it "6.7 judges a deck's name as a place's: control, padding, spacing and length", :aggregate_failures do
+      one = ->(name) { problems_of(filed(decks: [ deck(name) ])) }
+      expect(one.call("")).to eq([ %w[minLength /decks/0/name] ])
+      expect(one.call("Izzet\u0007Tempo")).to eq([ %w[pattern /decks/0/name] ])
+      expect(one.call(" Izzet Tempo")).to eq([ %w[pattern /decks/0/name] ])
+      expect(one.call("Izzet Tempo ")).to eq([ %w[pattern /decks/0/name] ])
+      expect(one.call("Izzet  Tempo")).to eq([ %w[pattern /decks/0/name] ])
+      expect(one.call("本" * 61)).to eq([ %w[maxLength /decks/0/name] ])
+      expect(one.call("本" * 60)).to eq([])
+    end
+
+    describe "a lot's location" do
+      def one(location, decks: [ deck("Izzet Tempo") ]) = problems_of(filed(places: [ "Blue binder" ], decks:, lots: [ lot_in(location) ]))
+
+      it "6.7 is accepted as null, a listed place's name or a listed deck's zone", :aggregate_failures do
+        expect(one(nil)).to eq([])
+        expect(one("Blue binder")).to eq([])
+        expect(one({ "deck" => "Izzet Tempo", "zone" => "main" })).to eq([])
+      end
+
+      it "6.7 is refused as a number, a list or a missing field where the schema says", :aggregate_failures do
+        missing = filed(places: [ "Blue binder" ], decks: [ deck("Izzet Tempo") ], lots: [ v4["lots"][0].except("location") ])
+        expect(problems_of(missing)).to eq([ %w[required /lots/0/location] ])
+        expect(one(5)).to eq([ %w[type /lots/0/location] ])
+        expect(one([])).to eq([ %w[type /lots/0/location] ])
+        expect(one(true)).to eq([ %w[type /lots/0/location] ])
+      end
+
+      it "6.7 is refused as an object without a deck or a zone, naming the missing key", :aggregate_failures do
+        expect(one({})).to eq([ %w[required /lots/0/location/deck], %w[required /lots/0/location/zone] ])
+        expect(one({ "zone" => "main" })).to eq([ %w[required /lots/0/location/deck] ])
+        expect(one({ "deck" => "Izzet Tempo" })).to eq([ %w[required /lots/0/location/zone] ])
+      end
+
+      it "6.7 is refused as an object with another key, at that key" do
+        expect(one({ "deck" => "Izzet Tempo", "zone" => "main", "slot" => 1 })).to eq([ %w[schema /lots/0/location/slot] ])
+      end
+
+      it "6.7 is refused with a deck that isn't a well-formed name or a blank zone", :aggregate_failures do
+        expect(one({ "deck" => "Izzet  Tempo", "zone" => "main" })).to eq([ %w[pattern /lots/0/location/deck] ])
+        expect(one({ "deck" => "", "zone" => "main" })).to eq([ %w[minLength /lots/0/location/deck] ])
+        expect(one({ "deck" => 5, "zone" => "main" })).to eq([ %w[type /lots/0/location/deck] ])
+        expect(one({ "deck" => "Izzet Tempo", "zone" => "" })).to eq([ %w[pattern /lots/0/location/zone] ])
+        expect(one({ "deck" => "Izzet Tempo", "zone" => " " })).to eq([ %w[pattern /lots/0/location/zone] ])
+        expect(one({ "deck" => "Izzet Tempo", "zone" => 5 })).to eq([ %w[type /lots/0/location/zone] ])
+      end
+
+      it "6.7 holds a string to the rules of a name, as in version 3", :aggregate_failures do
+        expect(one("")).to eq([ %w[minLength /lots/0/location] ])
+        expect(one("本" * 61)).to eq([ %w[maxLength /lots/0/location] ])
+        expect(one("Blue  binder")).to eq([ %w[pattern /lots/0/location] ])
+      end
+
+      it "6.10 is unknown_location at the location when the deck isn't listed, compared by comparison key, and not when the zone key is unknown", :aggregate_failures do
+        expect(one({ "deck" => "Nope", "zone" => "main" })).to eq([ %w[unknown_location /lots/0/location] ])
+        expect(one({ "deck" => "IZZET TEMPO", "zone" => "main" })).to eq([])
+        expect(one({ "deck" => "Cafe\u0301", "zone" => "main" }, decks: [ deck("Café") ])).to eq([])
+        expect(one({ "deck" => "Izzet Tempo", "zone" => "no-such-zone" })).to eq([]) # the format's zone keys are the reader's to check
+        expect(one({ "deck" => "Blue binder", "zone" => "main" })).to eq([ %w[unknown_location /lots/0/location] ]) # a place isn't a deck
+      end
+
+      it "6.10 is unknown_location for a place's name that is only a deck's name", :aggregate_failures do
+        expect(one("Izzet Tempo")).to eq([ %w[unknown_location /lots/0/location] ])
+      end
+
+      it "6.10 compares no location that failed the schema, nor any when the decks failed", :aggregate_failures do
+        expect(one({ "deck" => "Nope  x", "zone" => "main" })).to eq([ %w[pattern /lots/0/location/deck] ])
+        expect(problems_of(filed(decks: { "name" => "x" }, lots: [ lot_in({ "deck" => "Nope", "zone" => "main" }) ]))).to eq([ %w[type /decks] ])
+      end
+    end
+
+    describe "6.8 a name two entries share" do
+      it "is duplicate_location at the later entry, a deck after a place being /decks/0", :aggregate_failures do
+        expect(problems_of(filed(places: [ "Box" ], decks: [ deck("box") ]))).to eq([ %w[duplicate_location /decks/0] ])
+        expect(problems_of(filed(places: [ "Box", "box" ], decks: [ deck("BOX") ]))).to eq([ %w[duplicate_location /locations/1], %w[duplicate_location /decks/0] ])
+        expect(problems_of(filed(decks: [ deck("Straße"), deck("STRASSE") ]))).to eq([ %w[duplicate_location /decks/1] ])
+        expect(problems_of(filed(decks: [ deck("Café"), deck("Cafe\u0301") ]))).to eq([ %w[duplicate_location /decks/1] ])
+      end
+
+      it "is judged with the places before the decks, so a place is never the later entry" do
+        expect(problems_of(filed(places: [ "binder" ], decks: [ deck("Binder") ]))).to eq([ %w[duplicate_location /decks/0] ])
+      end
+
+      it "compares no deck whose name fails the schema, as it compares no place", :aggregate_failures do
+        expect(problems_of(filed(decks: [ deck("a  b"), deck("a  b") ]))).to eq([ %w[pattern /decks/0/name], %w[pattern /decks/1/name] ])
+        expect(problems_of(filed(places: [ "Box" ], decks: [ deck("box ") ]))).to eq([ %w[pattern /decks/0/name] ])
+      end
+
+      it "judges a name alone, whatever the deck's collectible type and format" do
+        expect(problems_of(filed(decks: [ deck("Izzet"), deck("izzet", format: "legacy", type: "cards") ]))).to eq([ %w[duplicate_location /decks/1] ])
+      end
+    end
+
+    describe "6.7b a deck name over 60 code points after normalisation" do
+      let(:long) { "\u0344" * 31 } # 31 code points as written; each decomposes to two
+
+      it "is maxLength at the name, and the 60-character name stays valid", :aggregate_failures do
+        expect(problems_of(filed(decks: [ deck(long) ]))).to eq([ %w[maxLength /decks/0/name] ])
+        expect(problems_of(filed(decks: [ deck("\u0344" * 30) ]))).to eq([])
+        expect(problems_of(filed(decks: [ deck("本" * 60) ]))).to eq([])
+      end
+
+      it "is not compared for a duplicate", :aggregate_failures do
+        expect(problems_of(filed(decks: [ deck(long), deck(long) ]))).to eq([ %w[maxLength /decks/0/name], %w[maxLength /decks/1/name] ])
+      end
+
+      it "leaves a lot that names the deck unjudged against it" do
+        data = filed(decks: [ deck(long) ], lots: [ lot_in({ "deck" => long, "zone" => "main" }) ])
+
+        expect(problems_of(data)).to eq([ %w[maxLength /decks/0/name] ])
+      end
+
+      it "checks the first 500 decks only", :aggregate_failures do
+        decks = Array.new(500) { |index| deck("Deck #{index}") } + [ deck(long) ]
+        allow(Location::Name).to receive(:normalise).and_call_original
+
+        expect(problems_of(filed(decks:))).to eq([ %w[too_many_locations /decks] ])
+        expect(Location::Name).not_to have_received(:normalise).with(long)
+      end
+    end
+
+    describe "6.9 places and decks together over 500" do
+      let(:limit) { described_class::MAX_LOCATIONS }
+
+      it "keeps the limit in step with the account's cap and the schema's maxItems", :aggregate_failures do
+        expect(limit).to eq(Location::MAX_PER_ACCOUNT)
+        expect(JSON.parse(Rails.root.join("docs/export-format/v4.schema.json").read).dig("properties", "decks", "maxItems")).to eq(limit)
+      end
+
+      it "is too_many_locations at /decks, whichever list is long, and not when the total is 500", :aggregate_failures do
+        names = ->(count, prefix) { Array.new(count) { |index| "#{prefix} #{index}" } }
+        decks = ->(count) { names.call(count, "Deck").map { |name| deck(name) } }
+
+        expect(problems_of(filed(places: names.call(300, "Binder"), decks: decks.call(200)))).to eq([])
+        expect(problems_of(filed(places: names.call(300, "Binder"), decks: decks.call(201)))).to eq([ %w[too_many_locations /decks] ])
+        expect(problems_of(filed(decks: decks.call(501)))).to eq([ %w[too_many_locations /decks] ])
+        expect(problems_of(filed(places: names.call(501, "Binder")))).to eq([ %w[too_many_locations /decks] ])
+        expect(problems_of(filed(decks: decks.call(500)))).to eq([])
+      end
+
+      it "still lists the problems of the first items of a list over the limit", :aggregate_failures do
+        decks = [ deck("a  b") ] + Array.new(limit) { |index| deck("Deck #{index}") }
+
+        expect(problems_of(filed(decks:))).to eq([ %w[pattern /decks/0/name], %w[too_many_locations /decks] ])
+      end
+
+      it "validates and case-folds no name past the limit, and judges no lot against or repeats no name in a refused list", :aggregate_failures do
+        decks = Array.new(100_000) { |index| deck("Deck #{index}") }
+        decks[limit + 10] = deck("a  b") # fails the schema, but lies past the limit
+        allow(Location::Name).to receive(:key).and_call_original
+
+        expect(problems_of(filed(decks:, lots: [ lot_in({ "deck" => "Deck 600", "zone" => "main" }) ]))).to eq([ %w[too_many_locations /decks] ])
+        expect(Location::Name).to have_received(:key).once.with("Deck 600") # the lot's identity, and no name of the list
+      end
+
+      it "keeps a version 2 and 3 list of locations over the limit as maxItems at /locations", :aggregate_failures do
+        long = Array.new(limit + 1) { |index| { "name" => "Binder #{index}" } }
+        v2 = JSON.parse(Rails.root.join("docs/export-format/examples/comparison/v2-base.json").read)
+        v3 = JSON.parse(Rails.root.join("docs/export-format/examples/comparison/v3-base.json").read)
+
+        expect(problems_of(v2.merge("locations" => long))).to eq([ %w[maxItems /locations] ])
+        expect(problems_of(v3.merge("locations" => long, "lots" => []))).to eq([ %w[maxItems /locations] ])
+      end
+    end
+
+    describe "6.12 lot identity" do
+      let(:lot) { v4["lots"][0] }
+
+      it "gives six values, the sixth nil, a place's key or the pair of a deck's key and a zone key", :aggregate_failures do
+        expect(described_class.identity(lot.merge("location" => nil), 4)).to eq(described_class.identity(lot, 4).first(5) + [ nil ])
+        expect(described_class.identity(lot.merge("location" => "Blue Binder"), 4).last).to eq("blue binder")
+        expect(described_class.identity(lot.merge("location" => { "deck" => "Izzet Tempo", "zone" => "main" }), 4).last).to eq([ "izzet tempo", "main" ])
+        expect(described_class.identity(lot.merge("location" => { "deck" => "Izzet Tempo", "zone" => "main" }), 4).size).to eq(6)
+      end
+
+      it "tells a place from a deck's zone of the same name, and a zone from another zone of one deck", :aggregate_failures do
+        place = described_class.identity(lot.merge("location" => "Box"), 4)
+        zone = described_class.identity(lot.merge("location" => { "deck" => "Box", "zone" => "main" }), 4)
+
+        expect(place).not_to eq(zone)
+        expect(zone).not_to eq(described_class.identity(lot.merge("location" => { "deck" => "Box", "zone" => "sideboard" }), 4))
+      end
+
+      it "finds two lots in one zone of a deck written in two cases a duplicate, and not lots in two zones or a place and a zone", :aggregate_failures do
+        twice = ->(one, other) { problems_of(filed(places: [ "Box" ], decks: [ deck("Izzet") ], lots: [ lot_in(one), lot_in(other) ])) }
+
+        expect(twice.call({ "deck" => "Izzet", "zone" => "main" }, { "deck" => "izzet", "zone" => "main" })).to eq([ %w[duplicate_lot /lots/1] ])
+        expect(twice.call({ "deck" => "Izzet", "zone" => "main" }, { "deck" => "izzet", "zone" => "sideboard" })).to eq([])
+        expect(twice.call({ "deck" => "Izzet", "zone" => "main" }, "Box")).to eq([])
+        expect(twice.call({ "deck" => "Izzet", "zone" => "Main" }, { "deck" => "Izzet", "zone" => "main" })).to eq([]) # a zone key is compared as written
+      end
+
+      it "reads no identity from a lot whose zone object failed the schema" do
+        data = filed(decks: [ deck("Izzet") ], lots: [ lot_in({ "deck" => "Izzet", "zone" => "" }), lot_in({ "deck" => "Izzet", "zone" => "" }) ])
+
+        expect(problems_of(data)).to eq([ %w[pattern /lots/0/location/zone], %w[pattern /lots/1/location/zone] ])
+      end
+    end
+
+    it "keeps too_many_locations among the rules, and identity fields for a deck and a zone", :aggregate_failures do
+      expect(described_class::RULES).to include("too_many_locations")
+      expect(described_class::IDENTITY_FIELDS).to include("location/deck", "location/zone")
+    end
+
+    it "leaves a version 3 file to its own schema: its decks are ignored and a zone object is a type problem", :aggregate_failures do
+      v3 = JSON.parse(Rails.root.join("docs/export-format/examples/comparison/v3-base.json").read)
+
+      expect(problems_of(v3.merge("decks" => 5))).to eq([])
+      expect(problems_of(v3.tap { |data| data["lots"][0]["location"] = { "deck" => "X", "zone" => "main" } })).to eq([ %w[type /lots/0/location] ])
     end
   end
 

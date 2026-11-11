@@ -80,8 +80,7 @@ RSpec.describe "The export format's document" do
       expect(covered_tables.map { |row| row["Why"] }).to all(match(/\S/))
     end
 
-    it "maps each column to a field of the format or says why it is left out (AC-3.5)", :aggregate_failures,
-       pending: "spec 062 T16 adds the version 4 examples that carry these fields" do
+    it "maps each column to a field of the format or says why it is left out (AC-3.5)", :aggregate_failures do
       left_out, mapped = covered_columns.partition { |row| row["In the file"] == "Left out" }
 
       expect(left_out.map { |row| row["Why left out"] }).to all(match(/\S/))

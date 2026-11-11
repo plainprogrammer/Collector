@@ -70,10 +70,11 @@ RSpec.describe "The export format's examples" do
   end
 
   it "has valid, invalid and comparison examples", :aggregate_failures do
-    expect(valid.keys).to match_array(%w[valid/collection-v2.json valid/collection-v3.json valid/collection.json valid/empty-v2.json valid/empty-v3.json valid/empty.json
-      valid/location-name-60.json valid/locations-500.json valid/locations-nfd.json valid/lot-location-60.json valid/lot-location-nfd.json])
-    expect(invalid.size).to eq(50)
-    expect(comparison.size).to eq(17)
+    expect(valid.keys).to match_array(%w[valid/collection-v2.json valid/collection-v3.json valid/collection-v4.json valid/collection.json valid/deck-name-60.json
+      valid/decks-500.json valid/decks-all-formats.json valid/empty-v2.json valid/empty-v3.json valid/empty-v4.json valid/empty.json
+      valid/location-name-60.json valid/locations-500.json valid/locations-nfd.json valid/lot-in-zone.json valid/lot-location-60.json valid/lot-location-nfd.json])
+    expect(invalid.size).to eq(68)
+    expect(comparison.size).to eq(22)
   end
 
   it "finds nothing wrong with any valid or comparison example (AC-2.1)" do
@@ -102,9 +103,9 @@ RSpec.describe "The export format's examples" do
     end
   end
 
-  it "judges a file of a version this instance doesn't read (4) by version 1's schema, which names the version, and a version 2 file by its own (FR-8, AC-7.4, spec 032 AC-9.2)", :aggregate_failures do
+  it "judges a file of a version this instance doesn't read (5) by version 1's schema, which names the version, and a version 2 file by its own (FR-8, AC-7.4, spec 032 AC-9.2)", :aggregate_failures do
     expect(problems_of(changed(%w[format_version], 0))).to eq([ { "rule" => "const", "at" => "/format_version" } ])
-    expect(problems_of(changed(%w[format_version], 4))).to eq([ { "rule" => "const", "at" => "/format_version" } ])
+    expect(problems_of(changed(%w[format_version], 5))).to eq([ { "rule" => "const", "at" => "/format_version" } ])
     expect(problems_of(changed(%w[format_version], 2))).to eq([ { "rule" => "required", "at" => "/locations" } ])
   end
 
@@ -293,6 +294,115 @@ RSpec.describe "The export format's examples" do
       lower, upper = file.call("box"), file.call("Box")
 
       expect(ExportFormatRules.identity(lower["lots"][0], 3)).to eq(ExportFormatRules.identity(upper["lots"][0], 3))
+      expect(ExportFormatRules.same_collection?(lower, upper)).to be(false)
+    end
+  end
+
+  describe "version 4 (spec 062)" do
+    def v4base = comparison.fetch("comparison/v4-base.json")
+
+    def v4changed(path, value)
+      data = JSON.parse(v4base)
+      data["lots"] = [] if path.first == "decks" # a lot that names the deck would be a second problem beside the one under test
+      *parents, last = path
+      target = parents.empty? ? data : data.dig(*parents)
+      value == :absent ? target.delete(last) : target[last] = value
+      JSON.generate(data)
+    end
+
+    it "6.7 finds each listed variant of a malformed deck or lot location", :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- a table of variants
+      {
+        [ %w[decks], :absent ] => %w[required /decks],
+        [ %w[decks], {} ] => %w[type /decks],
+        [ %w[decks], "Izzet Tempo" ] => %w[type /decks],
+        [ [ "decks", 0 ], 5 ] => %w[type /decks/0],
+        [ [ "decks", 0, "name" ], :absent ] => %w[required /decks/0/name],
+        [ [ "decks", 0, "name" ], "" ] => %w[minLength /decks/0/name],
+        [ [ "decks", 0, "name" ], " Izzet Tempo" ] => %w[pattern /decks/0/name],
+        [ [ "decks", 0, "name" ], "Izzet  Tempo" ] => %w[pattern /decks/0/name],
+        [ [ "decks", 0, "name" ], "Izzet\u0007Tempo" ] => %w[pattern /decks/0/name],
+        [ [ "decks", 0, "name" ], "本" * 61 ] => %w[maxLength /decks/0/name],
+        [ [ "decks", 0, "name" ], 5 ] => %w[type /decks/0/name],
+        [ [ "decks", 0, "collectible_type" ], :absent ] => %w[required /decks/0/collectible_type],
+        [ [ "decks", 0, "collectible_type" ], " " ] => %w[pattern /decks/0/collectible_type],
+        [ [ "decks", 0, "format" ], :absent ] => %w[required /decks/0/format],
+        [ [ "decks", 0, "format" ], "" ] => %w[pattern /decks/0/format],
+        [ [ "decks", 0, "format" ], 5 ] => %w[type /decks/0/format],
+        [ [ "lots", 0, "location" ], :absent ] => %w[required /lots/0/location],
+        [ [ "lots", 0, "location" ], 5 ] => %w[type /lots/0/location],
+        [ [ "lots", 0, "location" ], [] ] => %w[type /lots/0/location],
+        [ [ "lots", 0, "location" ], { "zone" => "main" } ] => %w[required /lots/0/location/deck],
+        [ [ "lots", 0, "location" ], { "deck" => "Izzet Tempo" } ] => %w[required /lots/0/location/zone],
+        [ [ "lots", 0, "location", "deck" ], "Izzet  Tempo" ] => %w[pattern /lots/0/location/deck],
+        [ [ "lots", 0, "location", "deck" ], 5 ] => %w[type /lots/0/location/deck],
+        [ [ "lots", 0, "location", "zone" ], "" ] => %w[pattern /lots/0/location/zone],
+        [ [ "lots", 0, "location", "zone" ], " " ] => %w[pattern /lots/0/location/zone],
+        [ [ "lots", 0, "location", "zone" ], 5 ] => %w[type /lots/0/location/zone],
+        [ [ "lots", 0, "location", "deck" ], "Nope" ] => %w[unknown_location /lots/0/location]
+      }.each do |(path, value), (rule, at)|
+        expect(problems_of(v4changed(path, value))).to eq([ { "rule" => rule, "at" => at } ]), "#{path.join('/')} = #{value.inspect}"
+      end
+    end
+
+    it "6.7 accepts the values at the edges of the rules", :aggregate_failures do
+      deck_named = ->(name) { ->(data) { data["decks"] = [ data["decks"][0].merge("name" => name) ] } }
+      located = ->(location) { ->(data) { data["lots"] = [ data["lots"][0].merge("location" => location) ] } }
+      {
+        "no decks" => ->(data) { data["decks"] = []; data["lots"] = [] },
+        "a name of 60 code points" => ->(data) { deck_named.call("本" * 60).call(data); located.call({ "deck" => "本" * 60, "zone" => "main" }).call(data) },
+        "a name in NFD" => ->(data) { deck_named.call("Cafe\u0301").call(data); located.call({ "deck" => "Café", "zone" => "main" }).call(data) },
+        "no place" => located.call(nil),
+        "a place" => located.call("Blue binder"),
+        "a deck in another case" => located.call({ "deck" => "IZZET TEMPO", "zone" => "main" }),
+        "a zone key the format may not have (the reader's to refuse)" => located.call({ "deck" => "Izzet Tempo", "zone" => "no-such-zone" })
+      }.each do |name, change|
+        data = JSON.parse(v4base)
+        change.call(data)
+        expect(problems_of(JSON.generate(data))).to be_empty, name
+      end
+    end
+
+    it "6.9 refuses a deck list over 500 and accepts one of 500", :aggregate_failures do
+      decks = ->(count) { Array.new(count) { |index| { "name" => "Deck #{index}", "collectible_type" => "mtg", "format" => "casual" } } }
+      without_lots = ->(count) { JSON.parse(v4base).tap { |data| data.merge!("locations" => [], "decks" => decks.call(count), "lots" => []) } }
+
+      expect(problems_of(JSON.generate(without_lots.call(500)))).to be_empty
+      expect(problems_of(JSON.generate(without_lots.call(501)))).to eq([ { "rule" => "too_many_locations", "at" => "/decks" } ])
+    end
+
+    it "6.6 carries a deck of every format, a lot in every zone of its format and the same printing in a place and a zone", :aggregate_failures do
+      all = JSON.parse(valid.fetch("valid/decks-all-formats.json"))
+      zones = all["lots"].map { |lot| lot["location"]["zone"] }.uniq
+      mixed = JSON.parse(valid.fetch("valid/collection-v4.json"))["lots"]
+
+      expect(all["decks"].map { |deck| deck["format"] }).to eq(%w[casual standard pioneer modern legacy vintage pauper commander])
+      expect(zones).to match_array(%w[main sideboard considering commander])
+      expect(mixed.map { |lot| lot["location"] }).to include(nil, "Blue binder", a_hash_including("zone" => "main"))
+      expect(mixed.group_by { |lot| lot["entry"]["source_id"] }.values.any? { |group| group.map { |lot| lot["location"].class }.uniq.size > 1 }).to be(true)
+    end
+
+    it "6.13 holds the same collection for the same decks and lots in another order and what the rule ignores", :aggregate_failures do
+      original = JSON.parse(v4base)
+      same = JSON.parse(comparison.fetch("comparison/v4-same.json"))
+
+      expect(same["decks"]).to eq(original["decks"].reverse)
+      expect(same.values_at("exported_at", "generator")).not_to include(*original.values_at("exported_at", "generator"))
+      expect(ExportFormatRules.same_collection?(original, same)).to be(true)
+    end
+
+    it "6.13 differs for a deck's name or format and a lot's zone", :aggregate_failures do
+      original = JSON.parse(v4base)
+      different = parsed(comparison).select { |name, _file| name.start_with?("comparison/v4-different-") }
+
+      expect(different.keys.map { |name| name[/v4-different-(.+)\.json/, 1] }).to match_array(%w[deck-format deck-name lot-zone])
+      different.each { |name, file| expect(ExportFormatRules.same_collection?(original, file)).to be(false), name }
+    end
+
+    it "6.13 compares a deck's name and a lot's zone object exactly, though the identity treats 'Izzet' and 'izzet' as one deck (AC-6.12)", :aggregate_failures do
+      file = ->(deck) { JSON.parse(v4base).tap { |data| data["decks"] = [ { "name" => deck, "collectible_type" => "mtg", "format" => "modern" } ]; data["lots"] = [ data["lots"][0].merge("location" => { "deck" => deck, "zone" => "main" }) ] } }
+      lower, upper = file.call("izzet"), file.call("Izzet")
+
+      expect(ExportFormatRules.identity(lower["lots"][0], 4)).to eq(ExportFormatRules.identity(upper["lots"][0], 4))
       expect(ExportFormatRules.same_collection?(lower, upper)).to be(false)
     end
   end
