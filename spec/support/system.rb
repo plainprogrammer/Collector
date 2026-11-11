@@ -14,7 +14,7 @@ module FirefoxBinary
 end
 
 # The window size every system example starts at. The driver applies it only when its session starts, and the session
-# is reused, so the after hook below puts the window back after every example: a 1000×500 window left by
+# is reused, so the after hook below puts the window back after every browser example: a 1000×500 window left by
 # admin_catalog_spec hid the More page's links below the window in number_entry_spec's 800px narrow frame (seed 12061).
 SYSTEM_SCREEN_SIZE = [ 1400, 1400 ].freeze
 
@@ -22,7 +22,8 @@ RSpec.configure do |config|
   # Runs before Capybara's session reset (after hooks run in reverse order) and after a failure's screenshot (the
   # system example group's own after hook runs first).
   config.after(:each, type: :system) do
-    page.current_window.resize_to(*SYSTEM_SCREEN_SIZE)
+    # A no-script example (spec 067 AC-5.1) runs under rack_test, which has no window to resize.
+    page.current_window.resize_to(*SYSTEM_SCREEN_SIZE) if page.driver.is_a?(Capybara::Selenium::Driver)
   end
 
   config.before(:each, type: :system) do

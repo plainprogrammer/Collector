@@ -112,7 +112,7 @@ A refusal at the cap answers 422 with this page again and the page's alert in th
 </main>
 ```
 
-and the refusal, for a deck any of whose zones holds a copy (the same page answers a `DELETE` with 409; there is no Remove button and no "Move them in bulk mode" button: the shortcut stays places-only, not built for a deck and filed as [#302](https://github.com/plainprogrammer/Collector/issues/302), spec 065 Non-Goals):
+and the refusal, for a deck any of whose zones holds a copy (the same page answers a `DELETE` with 409; there is no Remove button, and the primary "Move them in bulk mode" button comes first: a `button_to` form posting to `/decks/:id/selection` with a `c-sr` tail naming the deck, spec 067 AC-1.1, AC-1.4, [#302](https://github.com/plainprogrammer/Collector/issues/302)):
 
 ```html
 <main class="c-main c-page c-decks">
@@ -123,7 +123,10 @@ and the refusal, for a deck any of whose zones holds a copy (the same page answe
       <li><span><a href="/catalog/entries/…?from=collection#copies">Lightning Bolt</a> <span class="c-list__meta c-decks__zone">Izzet Tempo › Main</span> <span class="c-list__meta">…</span></span><span class="c-list__end">×4</span></li>
     </ul>
     <p class="c-locations__more">and 12 more</p>
-    <div class="c-form__actions"><a class="c-btn c-btn--secondary" href="/decks">Back to decks</a></div>
+    <div class="c-form__actions">
+      <button class="c-btn c-btn--primary" type="submit">Move them in bulk mode<span class="c-sr"> from “Izzet Tempo”</span></button><!-- a form: POST /decks/41/selection -->
+      <a class="c-btn c-btn--secondary" href="/decks">Back to decks</a>
+    </div>
   </section>
 </main>
 ```
@@ -171,7 +174,7 @@ and the refusal, for a deck any of whose zones holds a copy (the same page answe
 **The removal pages** (spec 062 AC-3.1 to AC-3.5)
 
 - The confirmation is a `ConfirmPage` on its own page: the question "Remove <name>?", one sentence saying the zones go with the deck and no copy is removed or changed, the one danger button "Remove" and a Cancel link. Success answers 303 to the Decks page with "Removed “<name>”."
-- The refusal replaces it for a deck whose zones hold any copy: the heading "“<name>” isn't empty", "“<name>” holds 12 copies in 3 lots. Move them before removing it.", the first 100 lots (`Location::Holdings::LISTED`) each linking to its card page with its zone as "Deck › Zone" in `c-list__meta` and its quantity at the end, "and N more" beyond them, and "Back to decks" as the only action. It reuses the Locations refusal page's `c-list c-locations__lots` and `c-locations__more`, and `c-decks__zone` is a hook with no rule of its own.
+- The refusal replaces it for a deck whose zones hold any copy: the heading "“<name>” isn't empty", "“<name>” holds 12 copies in 3 lots. Move them before removing it.", the first 100 lots (`Location::Holdings::LISTED`) each linking to its card page with its zone as "Deck › Zone" in `c-list__meta` and its quantity at the end, "and N more" beyond them, and the actions row: the `c-btn--primary` "Move them in bulk mode" first (a `button_to` form posting to `/decks/:id/selection`, never a link, with a `c-sr` tail ` from “<name>”`, spec 067 AC-1.1, AC-1.4) and then "Back to decks" `c-btn--secondary`. It reuses the Locations refusal page's `c-list c-locations__lots` and `c-locations__more`, and `c-decks__zone` is a hook with no rule of its own.
 - A long name wraps on both pages: `.c-decks .c-confirm :is(h1, p), .c-decks .c-list li > span:first-child` take `min-width: 0` and `overflow-wrap: anywhere`, so a 60-character name with no space breaks inside itself on a phone and the page has no horizontal overflow (the lesson of `.c-locations__name` and `.c-pick`).
 
 **CSS the pages add** (spec 062 and 064, one block each at the end of `additions.css`; no colour, spacing or font value of its own): `.c-decks__actions` and `.c-decks .c-btn` (the row actions above, with spec 064's wrap below 640px), the removal pages' wrapping rule above, and the page heads' `.c-decks .c-pagehead > div`. A page head's stats line breaks a long name by spec 065's one `.c-pagehead__stats { overflow-wrap:anywhere }`, which every page head shares (the Decks pages included). `.c-decks` itself was spec 060's: the New deck button on a phone; the name's wrap was spec 060's in the narrow container query and spec 064 made it apply at every width. Spec 065 removed `.c-field__static` (`Form`'s read-only value).
