@@ -60,7 +60,7 @@ A card that is not legal in the deck's format has its `<span class="c-legal c-le
 
 **A zone** (spec 060 decision 10, AC-3.7, AC-3.9).
 
-- A zone's head is `c-section__head`: its name, the muted counts "60 cards · 52 owned · 8 proxy" (a single card reads "1 card") and "Add a proxy" at the end (ghost, small, with a plus). The button's visible text is "Add a proxy"; a `c-sr` tail " to Main" names the zone for screen readers.
+- A zone's head is `c-section__head`: its name, the muted counts "60 cards · 52 owned · 8 proxy" (a single card reads "1 card") and "Add a proxy" at the end (ghost, small, with a plus). The button's visible text is "Add a proxy"; a `c-sr` tail " to Main" names the zone for screen readers. It has the 44px touch floor at every pointer (`.c-deckpage .c-section__actions .c-btn`, spec 068 NFR Accessibility).
 - From 640px of the page container the head is one line. Below it the name and "Add a proxy" share the first line and the counts take their own line, uncut: a cut count is information lost.
 - Zones stack in a column with a `space-8` gap.
 - An empty zone keeps its head with the counts "0 cards · 0 owned · 0 proxy" and "Add a proxy", and shows "No cards in Sideboard yet." in a `surface-sunken` block (`c-zone__empty`) instead of a table.

@@ -2,7 +2,7 @@
 <%# Back refetches this page instead of restoring a snapshot, so it never shows typed filter values. %>
 <% content_for :head, tag.meta(name: "turbo-cache-control", content: "no-cache") %>
 <%= render "layouts/appbar", section: :decks, detail: true, back_path: deck_path(@deck) %>
-<main class="c-main c-page">
+<main class="c-main c-page c-decks">
   <div class="c-pagehead">
     <div>
       <h1 class="c-pagehead__title">Add a proxy to <%= proxy_zone_label(@deck, @zone) %></h1>

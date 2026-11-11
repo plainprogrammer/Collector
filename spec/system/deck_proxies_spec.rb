@@ -31,22 +31,46 @@ RSpec.describe "Adding a proxy", type: :system do
     expect(page).to have_css(".c-item__type", text: "3 cards · 0 owned · 3 proxy")
   end
 
-  %w[light dark].each do |theme|
-    [ 360, 640, 1280 ].each do |width|
-      it "fits the chooser, the form, the change page and the removal page at #{width}px in the #{theme} theme (AC-9.1)", :aggregate_failures do
-        proxy = create(:deck_proxy, zone: deck.zone("main"), account: user.account, entry: long, finish: "foil", quantity: 2)
-        paths = [ new_deck_zone_proxy_path(deck, "main", q: "WWWW"), new_deck_zone_proxy_path(deck, "main", entry: long.external_key),
-                  edit_deck_proxy_path(deck, proxy), new_deck_proxy_removal_path(deck, proxy) ]
+  # The worst case for every proxy page's heading: the deck's name is 60 characters with no space, and each page says it.
+  context "when the deck's name is 60 characters with no space" do
+    let(:deck) { create(:deck, account: user.account, name: "D" * 60) }
 
-        paths.each do |path|
-          visit deck_path(deck) # the outer page hosts the frame
-          open_in_narrow_frame(path, width:, ready: "main")
-          within_narrow_frame do
-            set_theme(theme)
-            expect(fits?).to be(true), "#{path} at #{width}px in #{theme}"
+    %w[light dark].each do |theme|
+      [ 360, 640, 1280 ].each do |width|
+        it "fits the chooser, the form, the change page and the removal page at #{width}px in the #{theme} theme (AC-9.1)", :aggregate_failures do
+          proxy = create(:deck_proxy, zone: deck.zone("main"), account: user.account, entry: long, finish: "foil", quantity: 2)
+          paths = [ new_deck_zone_proxy_path(deck, "main", q: "WWWW"), new_deck_zone_proxy_path(deck, "main", entry: long.external_key),
+                    edit_deck_proxy_path(deck, proxy), new_deck_proxy_removal_path(deck, proxy) ]
+
+          paths.each do |path|
+            visit deck_path(deck) # the outer page hosts the frame
+            open_in_narrow_frame(path, width:, ready: "main")
+            within_narrow_frame do
+              set_theme(theme)
+              expect(fits?).to be(true), "#{path} at #{width}px in #{theme}"
+            end
           end
         end
       end
+    end
+
+    # The Decks pages' touch floor is one rule on `.c-decks .c-btn`, so every page's `main` must carry `c-decks`. Headless Firefox has
+    # a fine pointer (a small button is 36px there), so the rule is read from the stylesheet and the buttons are measured as drawn:
+    # the rule applies at every pointer, so a button under it is 44px even here.
+    it "gives the chooser's buttons the touch floor of the Decks pages (AC-9.1)", :aggregate_failures do
+      visit new_deck_zone_proxy_path(deck, "main", q: "WWWW")
+      floor = page.evaluate_script(<<~JS)
+        (() => { let found = 0
+          for (const sheet of document.styleSheets) for (const rule of sheet.cssRules)
+            if (rule.selectorText === ".c-decks .c-btn") found = Math.max(found, parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--touch-floor")) || 0)
+          return found })()
+      JS
+      heights = page.evaluate_script(<<~JS)
+        [...document.querySelectorAll("main .c-btn")].map((el) => el.getBoundingClientRect().height)
+      JS
+      expect(floor).to be >= 44
+      expect(heights.size).to be >= 2 # Search and Cancel
+      expect(heights).to all(be >= 44)
     end
   end
 end

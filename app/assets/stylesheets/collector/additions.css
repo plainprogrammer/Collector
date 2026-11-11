@@ -510,6 +510,13 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
 .c-deckpage .c-item__head > div:first-child { min-width:0; }
 .c-deckpage .c-item__title { overflow-wrap:anywhere; }
 
+/* ---------- Deck page Add a proxy (spec 068 NFR Accessibility): the touch floor ---------- */
+/* Each zone's head carries a small ghost "Add a proxy" button, 36px on a mouse and 40px on a touch screen by the design system's
+   rule for a small button. It is the zone's one control, so it gets the 44px floor the Decks pages' buttons have (`.c-decks .c-btn`
+   below), at every pointer like theirs. Its width follows, and the head's wrapping below 640px (above) still holds it on the
+   name's line. */
+.c-deckpage .c-section__actions .c-btn { min-height:var(--touch-floor); min-width:var(--touch-floor); }
+
 /* ---------- Pick list for AddToDeck and UseMyCopy (spec 060): choices that wrap, with a visible focus ---------- */
 /* A fieldset is as wide as its widest child, so a long place name in "My copies (…)" would widen the page (spec 042
    AC-7.1's lesson): min-width:0 and a break inside a word. .c-check has no focus ring of its own, so the row shows one

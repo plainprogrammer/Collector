@@ -2,7 +2,7 @@
 
 The pages that add, change and remove a proxy in a deck zone (spec 068, #254): the chooser that finds a printing, the form that takes a finish and a quantity, the Change proxy count page and the Remove proxy confirmation. They add no class: every part is an existing pattern (`c-pagehead`, `c-filterbar`, `c-group`, `c-list`, `c-form`, `c-field`, `c-confirm`). Shown for a Magic: The Gathering card; the pages name no collectible in their rules.
 
-All four are detail pages: `c-appbar--detail` with a back arrow, Decks the current section, and `main` carries `c-main c-page c-decks` (the form, change and removal pages; the chooser's `main` is `c-main c-page`). `c-decks` is what lets a 60-character name with no space break inside a word: `.c-decks .c-confirm :is(h1, p)` and `.c-decks .c-pagehead__title` take `overflow-wrap: anywhere` (spec 068 AC-9.1). "Cancel" on every page returns to the deck page.
+All four are detail pages: `c-appbar--detail` with a back arrow, Decks the current section, and `main` of all four carries `c-main c-page c-decks`. `c-decks` is what gives their buttons the 44px touch floor (`.c-decks .c-btn`) and lets a 60-character name with no space break inside a word: `.c-decks .c-confirm :is(h1, p)` and `.c-decks .c-pagehead__title` take `overflow-wrap: anywhere` (spec 068 AC-9.1). "Cancel" on every page returns to the deck page.
 
 ## The chooser
 

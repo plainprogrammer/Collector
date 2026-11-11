@@ -170,6 +170,35 @@ RSpec.describe "Deck page", type: :system do
     expect(trigger).to all(be >= 30) # a small button drawn for a fine pointer
   end
 
+  # "Add a proxy" is a small ghost button, 40px on a touch screen by the design system's rule. The deck page's own rule lifts it to
+  # the Decks pages' 44px at every pointer, so, as above, the rule is read from the stylesheet and the link measured as drawn.
+  it "gives each zone's Add a proxy link the 44px touch floor (NFR Accessibility)", :aggregate_failures do
+    visit deck_path(deck)
+    rule = page.evaluate_script(<<~JS)
+      (() => { for (const sheet of document.styleSheets) for (const rule of sheet.cssRules)
+        if (rule.selectorText === ".c-deckpage .c-section__actions .c-btn") return rule.style.minHeight
+        return null })()
+    JS
+    drawn = page.evaluate_script(<<~JS)
+      [...document.querySelectorAll(".c-zone .c-section__actions .c-btn")].map((el) => { const box = el.getBoundingClientRect(); return [box.width, box.height] }).flat()
+    JS
+    expect(rule).to eq("var(--touch-floor)")
+    expect(drawn.size).to eq(6)
+    expect(drawn).to all(be >= 44)
+  end
+
+  it "keeps each zone head inside the frame, with Add a proxy on the name's line, at 360px (NFR Accessibility)", :aggregate_failures do
+    open_in_narrow_frame(deck_path(deck), width: 360, ready: ".c-zone:first-of-type table")
+    within_narrow_frame do
+      expect(fits?).to be(true)
+      heads = page.evaluate_script(<<~JS)
+        [...document.querySelectorAll(".c-zone .c-section__head")].map((head) => { const title = head.querySelector(".c-section__title").getBoundingClientRect(), add = head.querySelector(".c-section__actions").getBoundingClientRect()
+          return { inside: add.right <= window.innerWidth, sameLine: add.top < title.bottom } })
+      JS
+      expect(heads).to all(eq({ "inside" => true, "sameLine" => true }))
+    end
+  end
+
   it "leaves the second column empty from 992px: the zones keep the first column and nothing sits in the second (AC-5.1)", :aggregate_failures do
     visit deck_path(deck)
     page.driver.browser.manage.window.resize_to(1280, 900)
