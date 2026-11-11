@@ -115,14 +115,14 @@ RSpec.describe "Export and import round trip", type: :model do
     expect(ImportUpload.count).to eq(0)
   end
 
-  # An export of this instance is version 3. An older example is compared as the version 3 file it becomes: a version 1
-  # example with no locations, and every lot of an older example in no location (a restore reads such a lot as unplaced,
-  # spec 032 decision 7); each location name as the export writes it, in NFC (decision 5), which a valid example in NFD isn't
+  # An export of this instance is version 4. An older example is compared as the version 4 file it becomes: a version 1
+  # example with no locations, every lot of an older example in no location (a restore reads such a lot as unplaced,
+  # spec 032 decision 7), and no decks (an older file says nothing of them, spec 062); each location name as the export writes it, in NFC (decision 5), which a valid example in NFD isn't
   # (ruled 2026-10-21: AC-9.15 holds for the example once its names are normalised).
   def as_current_version(data)
     data = data.merge("locations" => []) if data["format_version"] == 1
     data = data.merge("lots" => data["lots"].map { |lot| lot.merge("location" => nil) }) if data["format_version"] < 3
-    data = data.merge("format_version" => 3)
+    data = data.merge("format_version" => 4, "decks" => data.fetch("decks", []))
     data.merge("locations" => data["locations"].map { |location| { "name" => Location::Name.normalise(location["name"]) } })
   end
 
@@ -141,8 +141,9 @@ RSpec.describe "Export and import round trip", type: :model do
       next if name.end_with?("lot-location-nfd.json") # outside the round trip: it re-exports with the stored spelling (AC-9.4)
 
       # Version 4's examples need the reader, the apply and the export of decks (spec 062 T18 to T21), which land after the
-      # examples; each version 4 example stays pending until then and fails the run when it passes, so T21 removes this.
-      pending = ("spec 062 T21: the reader and the apply of decks" if JSON.parse(ExportFormatRules.examples("valid").fetch(name))["format_version"] == 4)
+      # examples; each version 4 example stays pending until then and fails the run when it passes, so T21 removes this. The
+      # empty one only needs the reader (nothing to apply), which exists, so it is not pending.
+      pending = ("spec 062 T21: the reader and the apply of decks" if name != "valid/empty-v4.json" && JSON.parse(ExportFormatRules.examples("valid").fetch(name))["format_version"] == 4)
 
       it "applies #{name} to an empty account at the default currency and exports the same collection, currency included, or has nothing to change (spec 038 AC-6.10, AC-6.11)", :aggregate_failures, pending: do
         data = JSON.parse(ExportFormatRules.examples("valid").fetch(name))

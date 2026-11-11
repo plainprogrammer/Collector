@@ -1,6 +1,6 @@
 require "rails_helper"
 
-# Spec 022: the collection export writes one account's collection as a format-v3 file (docs/export-format/README.md).
+# Spec 022: the collection export writes one account's collection as a format-v4 file (docs/export-format/README.md).
 RSpec.describe CollectionExport, type: :model do
   let(:user) { create(:user, name: "Grace Example", email_address: "grace@example.test") }
   let(:account) { user.account }
@@ -38,16 +38,16 @@ RSpec.describe CollectionExport, type: :model do
 
   it "writes the header, the profile and the currency", :aggregate_failures do
     file = parsed
-    expect(file.except("lots", "locations")).to eq(
-      "format" => "collector-export", "format_version" => 3, "exported_at" => "2026-10-14T12:34:56Z",
+    expect(file.except("lots", "locations", "decks")).to eq(
+      "format" => "collector-export", "format_version" => 4, "exported_at" => "2026-10-14T12:34:56Z",
       "profile" => { "name" => "Grace Example", "email_address" => "grace@example.test", "collection_view" => "grid" },
       "currency" => "USD")
     expect(file).not_to have_key("generator")
   end
 
-  it "writes the account's own currency, still at version 3 (spec 038 AC-5.1)", :aggregate_failures do
+  it "writes the account's own currency, at version 4 (spec 038 AC-5.1)", :aggregate_failures do
     account.update!(currency: "EUR")
-    expect(parsed.values_at("currency", "format_version")).to eq([ "EUR", 3 ])
+    expect(parsed.values_at("currency", "format_version")).to eq([ "EUR", 4 ])
     expect(ExportFormatRules.problems(export.to_json)).to eq([])
   end
 
@@ -61,9 +61,9 @@ RSpec.describe CollectionExport, type: :model do
     expect([ parsed["lots"].size, theirs["lots"].size ]).to eq([ 0, 1 ])
   end
 
-  it "keeps the format's versions as they were (spec 038 AC-5.3)", :aggregate_failures do
+  it "writes the newest version, and the format still reads the older ones (spec 038 AC-5.3, spec 062 AC-6.1)", :aggregate_failures do
     expect(ExportFormat::Rules::VERSIONS).to eq([ 1, 2, 3, 4 ])
-    expect(described_class::FORMAT_VERSION).to eq(3)
+    expect(described_class::FORMAT_VERSION).to eq(4)
   end
 
   it "writes an empty collection as an empty list of lots", :aggregate_failures do
@@ -125,8 +125,9 @@ RSpec.describe CollectionExport, type: :model do
 
   it "writes exactly the fields the format defines" do
     fixture_collection
+    create_lot_in_zone(create(:deck, account:), "main")
 
-    reference = JSON.parse(ExportFormatRules.directory.join("examples/valid/collection-v3.json").read)
+    reference = JSON.parse(ExportFormatRules.directory.join("examples/valid/collection-v4.json").read)
 
     expect(ExportFormatRules.field_names(parsed)).to match_array(ExportFormatRules.field_names(reference) - [ "generator" ])
   end
@@ -172,12 +173,12 @@ RSpec.describe CollectionExport, type: :model do
   describe "locations (spec 029)" do
     def locations(*names) = names.each { |name| create(:location, account:, name:) }
 
-    it "writes version 3 with the names only, in order, and a well-formed file (AC-6.1, AC-6.4, AC-6.5)", :aggregate_failures do
+    it "writes the names only, in order, and a well-formed file (AC-6.1, AC-6.4, AC-6.5)", :aggregate_failures do
       locations("Trade binder", "Blue binder")
       fixture_collection
       file = parsed
 
-      expect(file["format_version"]).to eq(3)
+      expect(file["format_version"]).to eq(4)
       expect(file["locations"]).to eq([ { "name" => "Blue binder" }, { "name" => "Trade binder" } ])
       expect(file["locations"].flat_map(&:keys).uniq).to eq([ "name" ])
       expect(file["lots"].size).to eq(7)
@@ -185,7 +186,7 @@ RSpec.describe CollectionExport, type: :model do
     end
 
     it "writes an empty list for an account with none (AC-6.2)", :aggregate_failures do
-      expect(parsed["format_version"]).to eq(3)
+      expect(parsed["format_version"]).to eq(4)
       expect(parsed["locations"]).to eq([])
       expect(ExportFormatRules.problems(export.to_json)).to eq([])
     end
@@ -343,6 +344,160 @@ RSpec.describe CollectionExport, type: :model do
       it "gives up after three reads when the locations keep changing", :aggregate_failures do
         count = 0
         expect { export_while(times: 5) { Location.where(id: box.id).update_all(name: "Name #{count += 1}", name_key: "name #{count}") } }
+          .to raise_error(described_class::Unsettled)
+        expect(count).to eq(3)
+      end
+    end
+  end
+
+  # Spec 062 Story 6: decks and the zones that hold lots, format version 4.
+  describe "decks and zones (spec 062 Story 6)" do
+    def deck(name, format: "modern") = create(:deck, account:, name:, format:)
+
+    def decks_reads(&)
+      reads = []
+      counter = ->(*, payload) { reads << payload[:sql] if payload[:sql].include?('FROM "decks"') }
+      ActiveSupport::Notifications.subscribed(counter, "sql.active_record", &)
+      reads.size
+    end
+
+    it "writes version 4 with an empty list of decks for an account with none (AC-6.1)", :aggregate_failures do
+      expect(parsed.values_at("format_version", "decks")).to eq([ 4, [] ])
+      expect(ExportFormatRules.problems(export.to_json)).to eq([])
+    end
+
+    it "lists each deck as its name as stored, its collectible type and its format key, by comparison key then name (AC-6.1)", :aggregate_failures do
+      deck("izzet tempo")
+      deck("Élan")
+      deck("Elf Tribal", format: "commander")
+      deck("Izzet Tempo 2", format: "pauper")
+
+      expect(parsed["decks"]).to eq([
+        { "name" => "Elf Tribal", "collectible_type" => "mtg", "format" => "commander" },
+        { "name" => "izzet tempo", "collectible_type" => "mtg", "format" => "modern" },
+        { "name" => "Izzet Tempo 2", "collectible_type" => "mtg", "format" => "pauper" },
+        { "name" => "Élan", "collectible_type" => "mtg", "format" => "modern" }
+      ])
+      expect(parsed["decks"].flat_map(&:keys).uniq).to eq(%w[name collectible_type format])
+    end
+
+    it "lists places only among the locations, never a deck or a zone (AC-6.2)", :aggregate_failures do
+      create(:location, account:, name: "Blue binder")
+      deck("Izzet Tempo")
+
+      expect(parsed["locations"]).to eq([ { "name" => "Blue binder" } ])
+      expect(export.to_json).to include("Izzet Tempo")
+      expect(parsed["locations"].map { |location| location["name"] }).not_to include("Izzet Tempo", "Main", "main")
+    end
+
+    it "writes a zone's lot as its deck's name and the zone's key, a place's as its name and an unplaced lot's as null (AC-6.3)", :aggregate_failures do
+      izzet = deck("Izzet Tempo")
+      entry = printing
+      create_lot_in_zone(izzet, "main", entry:)
+      create_lot_in_zone(izzet, "considering", entry:, finish: "foil")
+      create(:lot, account:, entry:, finish: "nonfoil", location: create(:location, account:, name: "Blue binder"))
+      create(:lot, account:, entry:)
+
+      expect(parsed["lots"].map { |lot| lot["location"] }).to eq([
+        { "deck" => "Izzet Tempo", "zone" => "main" }, { "deck" => "Izzet Tempo", "zone" => "considering" }, "Blue binder", nil
+      ])
+      expect(ExportFormatRules.problems(export.to_json)).to eq([])
+    end
+
+    it "validates against version 4's schema and the rules, every shape of lot and place together (AC-6.1 to AC-6.3)", :aggregate_failures do
+      fixture_collection
+      create(:location, account:, name: "Blue binder")
+      create_lot_in_zone(deck("Izzet Tempo"), "sideboard")
+      deck("Empty deck", format: "commander")
+
+      expect(ExportFormatRules.problems(export.to_json)).to eq([])
+      expect(ExportFormat::Rules.schemer(4).valid?(parsed)).to be(true)
+    end
+
+    it "reads the decks and lots in as many statements for 30 decks and lots as for 1 (AC-6.4)", :aggregate_failures do
+      create_lot_in_zone(deck("Deck 0"), "main")
+      few = count_queries { described_class.new(account: account.reload, at:).to_json }
+      29.times { |n| create_lot_in_zone(deck("Deck #{n + 1}"), "main") }
+      many = count_queries { described_class.new(account: account.reload, at:).to_json }
+
+      expect(many).to eq(few)
+      expect(decks_reads { described_class.new(account: account.reload, at:).to_json }).to eq(1)
+    end
+
+    it "writes the same file twice for an unchanged collection, apart from exported_at, with no id and no zone name (AC-6.5)", :aggregate_failures do
+      create_lot_in_zone(deck("Izzet Tempo"), "main")
+      later = described_class.new(account:, at: at + 1.hour)
+
+      expect(JSON.parse(later.to_json).except("exported_at")).to eq(parsed.except("exported_at"))
+      expect(export.to_json).not_to include("\"Main\"", "\"id\"", "account_id", "user_id", "parent")
+    end
+
+    it "writes none of another account's decks or zones (AC-6.1, AC-6.3)", :aggregate_failures do
+      other = create(:user).account
+      create_lot_in_zone(create(:deck, account: other, name: "Zebulon's deck"), "main")
+      deck("Mine")
+
+      expect(parsed["decks"].map { |item| item["name"] }).to eq([ "Mine" ])
+      expect(parsed["lots"]).to eq([])
+      expect(export.to_json).not_to include("Zebulon")
+    end
+
+    # Runs +change+ right after the SELECT that reads the lots, +times+ times at most, and counts the lot reads.
+    def export_while(times:, &change)
+      done = 0
+      reads = 0
+      subscriber = lambda do |*, payload|
+        sql = payload[:sql]
+        next unless sql.start_with?("SELECT") && sql.include?('FROM "lots"')
+
+        reads += 1
+        next unless done < times
+
+        done += 1
+        change.call
+      end
+      file = nil
+      ActiveSupport::Notifications.subscribed(subscriber, "sql.active_record") { file = described_class.new(account:, at:).to_json }
+      [ file, reads ]
+    end
+
+    describe "a deck changed between the export's two reads (AC-6.4)" do
+      let!(:izzet) { deck("Izzet Tempo") }
+
+      before { create_lot_in_zone(izzet, "main") }
+
+      it "reads again after a rename and writes the new name on the list and the lot", :aggregate_failures do
+        file, reads = export_while(times: 1) { Location.where(id: izzet.location_id).update_all(name: "Crate", name_key: "crate") }
+        data = JSON.parse(file)
+
+        expect(reads).to eq(2)
+        expect(ExportFormatRules.problems(file)).to eq([])
+        expect([ data["decks"].map { |item| item["name"] }, data["lots"].map { |lot| lot["location"] } ]).to eq([ [ "Crate" ], [ { "deck" => "Crate", "zone" => "main" } ] ])
+      end
+
+      it "reads again after the deck's format changed, so no lot names a zone the listed format lacks", :aggregate_failures do
+        file, reads = export_while(times: 1) { Deck.where(id: izzet.id).update_all(format: "commander") }
+        data = JSON.parse(file)
+
+        expect(reads).to eq(2)
+        expect(data["decks"].map { |item| item["format"] }).to eq([ "commander" ])
+        expect(ExportFormatRules.problems(file)).to eq([])
+      end
+
+      it "reads again after the lot moved out and the deck was removed", :aggregate_failures do
+        file, reads = export_while(times: 1) do
+          Lot.where(account_id: account.id).update_all(location_id: nil, lot_key: Lot.key_for(nil, nil, nil))
+          Location.where(id: izzet.location_id).delete_all
+        end
+        data = JSON.parse(file)
+
+        expect(reads).to eq(2)
+        expect([ data["decks"], data["lots"].map { |lot| lot["location"] } ]).to eq([ [], [ nil ] ])
+      end
+
+      it "gives up after three reads when the deck keeps changing", :aggregate_failures do
+        count = 0
+        expect { export_while(times: 5) { Location.where(id: izzet.location_id).update_all(name: "Name #{count += 1}", name_key: "name #{count}") } }
           .to raise_error(described_class::Unsettled)
         expect(count).to eq(3)
       end

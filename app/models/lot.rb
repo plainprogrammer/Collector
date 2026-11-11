@@ -20,6 +20,24 @@ class Lot < ApplicationRecord
   validate :quantity_within_cap, :finish_offered, :condition_known
   validate :location_is_the_accounts, if: :location_id_changed? # only a new place is checked: a bulk condition change saves many lots
 
+  # The joins that put a lot's place, and for a zone its deck, on the lot's own row (spec 062 AC-6.4): the place, the place's
+  # parent (a zone's deck, nothing for a place) and the parent's `decks` row. `LEFT` joins, so an unplaced lot stays.
+  PLACE_JOIN = "LEFT JOIN locations ON locations.id = lots.location_id " \
+               "LEFT JOIN locations parents ON parents.id = locations.parent_id " \
+               "LEFT JOIN decks ON decks.location_id = parents.id".freeze
+  # What a lot's place is made of, in the order `Location::Placement` reads it: the place's kind, name, comparison key and
+  # zone key, then its deck's name and comparison key, and the deck's collectible type and format. A reader that plucks these
+  # takes them as one slice of the row, `row.last(PLACE_COLUMNS.size)`, and passes them to `Location::Placement`.
+  PLACE_COLUMNS = %w[locations.kind locations.name locations.name_key locations.zone parents.name parents.name_key
+                     decks.collectible_type decks.format].freeze
+
+  # The lots with their place's own columns and, for a zone, its deck's, from one statement: what the export and the import
+  # read, so a lot never names a place the account's lists lack (spec 062 AC-6.4). Pluck {PLACE_COLUMNS} with it; the SQL
+  # joins the tables by name, so no other join of the caller may alias `locations`, `parents` or `decks`.
+  #
+  # @return [ActiveRecord::Relation<Lot>]
+  scope :with_place, -> { joins(PLACE_JOIN) }
+
   before_validation { self.lot_key = self.class.key_for(finish, condition, price_paid_cents, location_id) }
 
   # The lot's identity as text (ADR 0025): an unplaced lot's key is what it was before locations; a placed lot's ends in the
