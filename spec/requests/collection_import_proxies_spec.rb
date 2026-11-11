@@ -145,4 +145,45 @@ RSpec.describe "Importing proxies", type: :request do
     expect(response).to have_http_status(:unprocessable_content)
     expect(html.text).to include("proxies")
   end
+
+  it "writes rows the model accepts, with an account, a zone of a deck, a listed finish and a quantity in range (AC-7.10)", :aggregate_failures do
+    deck
+    data = export.merge("proxies" => [ { "deck" => "Izzet Tempo", "zone" => "main", "entry" => entry_hash(entry), "finish" => "foil", "quantity" => 7 } ])
+    preview(data)
+
+    apply
+
+    proxy = Deck::Proxy.sole
+    expect(proxy.valid?).to be(true)
+    expect([ proxy.account, proxy.zone, proxy.entry, proxy.finish, proxy.quantity ]).to eq([ account, deck.zone("main"), entry, "foil", 7 ])
+    expect(proxy.created_at).to be_within(1.minute).of(Time.current)
+  end
+
+  it "clears no working state for a proxy-only change (AC-7.11)", :aggregate_failures do
+    deck
+    NumberEntry.add!(account:, entry:, quantity: 1, finish: "foil", line_key: SecureRandom.hex(16))
+    data = export.merge("decks" => [ { "name" => "Izzet Tempo", "collectible_type" => "mtg", "format" => "modern" } ],
+                        "proxies" => [ { "deck" => "Izzet Tempo", "zone" => "main", "entry" => entry_hash(entry), "finish" => "foil", "quantity" => 1 } ])
+    preview(data)
+
+    apply
+
+    expect(account.reload.number_entry).to be_present
+    expect(Deck::Proxy.count).to eq(1)
+  end
+
+  it "clears the working state when the same file also changes a lot (spec 028 decision 7)", :aggregate_failures do
+    deck
+    NumberEntry.add!(account:, entry:, quantity: 1, finish: "foil", line_key: SecureRandom.hex(16))
+    data = export.merge("decks" => [ { "name" => "Izzet Tempo", "collectible_type" => "mtg", "format" => "modern" } ],
+                        "proxies" => [ { "deck" => "Izzet Tempo", "zone" => "main", "entry" => entry_hash(entry), "finish" => "foil", "quantity" => 1 } ],
+                        "lots" => [ { "entry" => entry_hash(entry), "quantity" => 2, "finish" => "foil", "condition" => nil, "price_paid" => nil, "location" => nil,
+                                      "added_at" => "2026-11-01T10:00:00Z", "changed_at" => "2026-11-01T10:00:00Z" } ])
+    preview(data)
+
+    apply
+
+    expect(account.reload.number_entry).to be_nil
+    expect(Deck::Proxy.count).to eq(1)
+  end
 end
