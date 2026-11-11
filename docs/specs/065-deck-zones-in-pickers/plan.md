@@ -1,6 +1,7 @@
 # Plan: Deck Zones in Every Location Picker and in the Collection Filter
 
 **Spec:** [spec.md](spec.md) v0.2.0 (approved at Gate A, 2026-11-10) | **Issue:** [#252](https://github.com/plainprogrammer/Collector/issues/252) | **Branch:** `065-deck-zones-in-pickers`
+**Status:** Approved (Gate B, 2026-11-10, by the coordinator under the maintainer's delegation, at 0.3.0)
 **Version:** 0.3.0 (round 1: nine majors folded in; round 2: one major and the minors folded in, no third round; Gate B is the coordinator's)
 
 ## Global Constraints
