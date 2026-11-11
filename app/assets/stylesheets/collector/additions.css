@@ -489,7 +489,7 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
 @container collection (max-width: 639px) {
   .c-zone .c-zone__c-total { width:1%; } /* the auto layout shares spare width among auto columns; Total keeps its content's, as the menu does */
 }
-.c-zone td:first-child { white-space:normal; overflow-wrap:anywhere; } /* every width: in the 128px Card column of a 640px table a name would spill into Cost under the export's nowrap */
+.c-zone td:first-child { white-space:normal; overflow-wrap:anywhere; } /* every width: the Card column is 128px with the menu column (spec 060) and 192px on the deck page until #254 adds the menu, so a name would spill into Cost under the export's nowrap */
 .c-zone .c-cost { flex-wrap:wrap; min-width:94px; } /* four pips (4 x 22px + 3 x 2px) never wrap: the auto layout shrinks a cell to its min-content, one wrapped pip, so a phone's Cryptic Command cost took two lines (spec 060 final visual review) */
 
 /* ---------- Decks list (spec 060): the New deck button stays on a phone ---------- */
@@ -501,6 +501,14 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
    query: the row's three buttons stay on one line from 640px up, and a 60-character name beside them made the page scroll
    sideways at 768px, and at 1024px when it had no space (spec 064 review; examples in spec/system/decks_spec.rb). */
 .c-decks td:first-child { white-space:normal; overflow-wrap:anywhere; }
+
+/* ---------- Deck page head (spec 066 AC-5.5): a long name wraps ---------- */
+/* A deck's name may be 60 characters with no space. The name's block is a flex item of `.c-item__head`, whose automatic
+   minimum width is its content's, so the unbroken name kept the block, and with it the page, wider than a phone. min-width:0
+   lets the block shrink to the row and the title breaks inside a word; the actions then wrap below it as they do for a short
+   name (AC-5.6). */
+.c-deckpage .c-item__head > div:first-child { min-width:0; }
+.c-deckpage .c-item__title { overflow-wrap:anywhere; }
 
 /* ---------- Pick list for AddToDeck and UseMyCopy (spec 060): choices that wrap, with a visible focus ---------- */
 /* A fieldset is as wide as its widest child, so a long place name in "My copies (…)" would widen the page (spec 042
@@ -525,8 +533,8 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
 /* The Locations list's ghost buttons in a table cell. The cell is as narrow as its buttons (`td.c-table__actions`, width 1%),
    so the three sit on one line with the list's gap on a wide screen (nowrap: with wrapping allowed the cell's min-content is
    one button wide and they would stack at every width) and wrap onto lines of their own below 640px, where they would widen
-   the page. They meet the 44px touch floor like the rest of the deck pages, and the deck page's own links (#253) may take them
-   over. */
+   the page. They meet the 44px touch floor like the rest of the deck pages, and the Decks page keeps these row buttons beside
+   the name link since spec 066 decision 1. */
 .c-decks__actions { display:flex; justify-content:flex-end; gap:var(--space-2); font-family:var(--font-sans); }
 @media (max-width: 639px) { .c-decks__actions { flex-wrap:wrap; } }
 /* These rules apply to every Decks page, not only Rename and Change format: a page head's line can say a deck's name, up

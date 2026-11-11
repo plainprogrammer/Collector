@@ -1,11 +1,17 @@
-# Spec 062: the signed-in collector's decks. Every lookup is through Current.account and by the deck's location id, so another
-# account's deck, a place or a zone is a 404 (AC-9.7, AC-3.8); nothing in a request names an account, a kind or a parent.
+# Spec 062: the signed-in collector's decks, and spec 066's page of one deck. Every lookup is through Current.account and by the
+# deck's location id, so another account's deck, a place or a zone is a 404 (AC-9.7, AC-3.8, spec 066 AC-1.2); nothing in a
+# request names an account, a kind or a parent.
 # @see file:collection-and-lots.md
 class DecksController < ApplicationController
-  before_action :set_deck, only: %i[edit update destroy]
+  before_action :set_deck, only: %i[show edit update destroy]
 
   def index
     @listing = Deck::Listing.new(Current.account)
+  end
+
+  # One deck's zones with the cards the account owns in them (spec 066). Reads only.
+  def show
+    @page = Deck::Page.new(@deck)
   end
 
   def new
@@ -54,8 +60,12 @@ class DecksController < ApplicationController
     end
 
     # `find_by!` raises RecordNotFound (404) for another account's deck and for a place's or a zone's location id, which no
-    # deck row points at.
-    def set_deck = @deck = Current.account.decks.includes(:location).find_by!(location_id: params[:id])
+    # deck row points at. An id is text of digits only: "12abc" would otherwise cast to 12 (`Location::ID_TEXT`, spec 066 AC-1.2).
+    def set_deck
+      raise ActiveRecord::RecordNotFound, "not a deck id" unless params[:id].to_s.match?(Location::ID_TEXT)
+
+      @deck = Current.account.decks.includes(:location).find_by!(location_id: params[:id])
+    end
 
     # The one permitted parameter of a rename, the location's name as the Locations page's form sends it; a request without
     # the location parameter is a 400.

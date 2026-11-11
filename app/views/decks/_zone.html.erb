@@ -1,0 +1,31 @@
+<section class="c-zone">
+  <div class="c-section__head">
+    <h2 class="c-section__title" id="zone-<%= zone.id %>"><%= zone.name %></h2>
+    <span class="c-section__count"><%= deck_counts_line(zone.owned) %></span>
+  </div>
+  <% if zone.empty? %>
+    <p class="c-zone__empty">No cards in <%= zone.name %> yet.</p>
+  <% else %>
+    <div class="c-collection">
+      <table class="c-table" aria-labelledby="zone-<%= zone.id %>">
+        <thead>
+          <tr>
+            <th>Card</th>
+            <th class="c-zone__c-cost">Cost</th>
+            <th class="c-zone__c-owned is-num is-opt">Owned</th>
+            <th class="c-zone__c-proxy is-num is-opt">Proxy</th>
+            <th class="c-zone__c-total is-num">Total</th>
+          </tr>
+        </thead>
+        <% zone.groups.each do |group| %>
+          <tbody>
+            <% if group.name %>
+              <tr class="c-zone__group"><th scope="rowgroup" colspan="5"><%= group.name %><span class="c-zone__groupcount"><%= number_with_delimiter(group.owned) %></span></th></tr>
+            <% end %>
+            <%= render partial: "decks/card_row", collection: group.rows, as: :row %>
+          </tbody>
+        <% end %>
+      </table>
+    </div>
+  <% end %>
+</section>

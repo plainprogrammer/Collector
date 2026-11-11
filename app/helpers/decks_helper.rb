@@ -18,6 +18,25 @@ module DecksHelper
     "#{row.deck.format_name} · #{number_with_delimiter(row.cards)} owned"
   end
 
+  # "12 cards · 12 owned": a zone's counts and the tail of the page head. Cards and owned are one number until proxies exist
+  # (spec 066 decision 4).
+  #
+  # @param owned [Integer] the copies counted
+  # @return [String]
+  def deck_counts_line(owned) = "#{pluralize(number_with_delimiter(owned), "card")} · #{number_with_delimiter(owned)} owned"
+
+  # The deck page's muted head line: the format's name (its key when no longer registered), then the counts of every zone.
+  #
+  # @param page [Deck::Page]
+  # @return [String]
+  def deck_page_line(page) = "#{page.deck.format_name} · #{deck_counts_line(page.owned)}"
+
+  # "S1 · 52" under a card's name, with " · DE" after the number for a printing whose language is not English (spec 066 AC-2.5).
+  #
+  # @param entry [Catalog::Entry] with its set loaded
+  # @return [String]
+  def deck_set_line(entry) = entry.language == "en" ? set_number(entry) : "#{set_number(entry)} · #{entry.language.upcase}"
+
   # The Format select's options: every format the registered collectibles give, in their registered order, as
   # `<type>/<key>` values. With formats of more than one type each type's formats sit under its category name; with one
   # the list is flat (spec 062 AC-1.2).

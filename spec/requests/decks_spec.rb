@@ -29,7 +29,7 @@ RSpec.describe "Decks", type: :request do
         expect(stats).to eq("3 decks · 10 cards")
         expect(html.css(".c-decks thead th").map { it.text.squish }).to eq([ "Deck", "Format", "Cards", "Owned", "Actions" ])
         expect(deck_names).to eq(%w[Beatdown Krenko tempo])
-        expect(html.css(".c-decks tbody td:first-child a")).to be_empty # a name is plain text until the deck page (#253)
+        expect(html.css(".c-decks tbody td:first-child .c-table__item > div > span:first-child a").map { it["href"] }).to eq(account.decks.listing_order.map { deck_path(it) }) # spec 066 AC-1.5: each name links to its page
         expect(html.at_css(".c-decks").text).not_to include("Proxy")
         expect(html.at_css(".c-pagehead__actions a.c-btn--primary[href='#{new_deck_path}']").text.squish).to eq("New deck")
       end
@@ -72,6 +72,17 @@ RSpec.describe "Decks", type: :request do
         expect(rename.at_css("span.c-sr").text).to eq(" Izzet Tempo")
         expect(remove.text).to eq("Remove Izzet Tempo")
         expect([ rename["class"], remove["class"] ]).to all(eq("c-btn c-btn--ghost c-btn--sm"))
+      end
+
+      it "links each deck's name to its page and keeps the row's three buttons and narrow line (spec 066 AC-1.5)", :aggregate_failures do
+        deck = create(:deck, account:, name: "Izzet Tempo")
+
+        get decks_path
+
+        link = html.at_css(".c-decks tbody td:first-child a")
+        expect([ link.text, link["href"] ]).to eq([ "Izzet Tempo", deck_path(deck) ])
+        expect(html.css(".c-decks tbody .c-decks__actions a").size).to eq(3)
+        expect(html.at_css(".c-decks .c-table__sub").text).to eq("Modern · 0 owned")
       end
 
       it "shows the empty sentence in place of the table and keeps New deck (AC-4.6)", :aggregate_failures do
@@ -356,6 +367,15 @@ RSpec.describe "Decks", type: :request do
           expect(response).to have_http_status(:not_found)
           expect(other.reload.name).not_to eq("Renamed")
         end
+      end
+
+      it "answers 404 for an id that is a deck's id followed by letters, as for any id that is not digits only (spec 066 AC-1.2)", :aggregate_failures do
+        [ "#{deck.location_id}abc", "abc", "0", "-1" ].each do |id|
+          get edit_deck_path(id)
+          expect(response).to have_http_status(:not_found), "#{id.inspect} was not a 404"
+        end
+        get edit_deck_path(deck)
+        expect(response).to have_http_status(:ok)
       end
 
       it "answers 404 for a deck's id and a zone's id on /locations (AC-2.6, a place's name is the only one this page renames)", :aggregate_failures do
