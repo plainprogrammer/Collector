@@ -8,6 +8,7 @@
 **Branch:** `067-deck-refusal-bulk-mode`
 **Issue:** [#302](https://github.com/plainprogrammer/Collector/issues/302) (theme: locations)
 **Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (whole spec) and [`tenancy-and-accounts.md`](../../architecture/tenancy-and-accounts.md) (the deck shortcut's 404 rule); see the [specs index](../README.md)
+**Plan:** retired in `e6382f3d4a17e9b5c71a64b01984bd6b061fe260`; read it with `git show e6382f3d4a17e9b5c71a64b01984bd6b061fe260^:docs/specs/067-deck-refusal-bulk-mode/plan.md`
 
 ---
 
