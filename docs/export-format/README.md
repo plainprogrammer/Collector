@@ -3,13 +3,13 @@
 **Format name:** `collector-export`
 **Format version:** 4
 
-An export is one file that holds one collector's data: their profile, the currency their prices are in, the locations they keep their collection in, and every lot in their collection.
+An export is one file that holds one collector's data: their profile, the currency their prices are in, the locations they keep their collection in, from version 4 their decks, and every lot in their collection.
 
 - **It is personal.** The file contains your name and your email address. It never contains your password.
 - **It is complete.** The file contains everything needed to rebuild your collection on another Collector instance.
 - **It is yours.** It is plain JSON, and it names every item so that a person can read it without Collector.
 
-This document defines the format. Export and import are built against it, and so is the check that a restored collection matches the one exported. The decision and the alternatives it rejected are in [ADR 0020](../adr/0020-export-format.md). [`v1.schema.json`](v1.schema.json), [`v2.schema.json`](v2.schema.json) and [`v3.schema.json`](v3.schema.json) state the same rules for a program, one for each version, and [`examples/`](examples/) holds files that the test suite checks against all three. Locations and the version 2 are the decision of [ADR 0023](../adr/0023-locations-make-export-format-version-2.md); a lot's location and the version 3 are the decision of [ADR 0025](../adr/0025-a-lots-location-is-part-of-its-identity.md).
+This document defines the format. Export and import are built against it, and so is the check that a restored collection matches the one exported. The decision and the alternatives it rejected are in [ADR 0020](../adr/0020-export-format.md). [`v1.schema.json`](v1.schema.json), [`v2.schema.json`](v2.schema.json), [`v3.schema.json`](v3.schema.json) and [`v4.schema.json`](v4.schema.json) state the same rules for a program, one for each version, and [`examples/`](examples/) holds files that the test suite checks against all four. Locations and the version 2 are the decision of [ADR 0023](../adr/0023-locations-make-export-format-version-2.md); a lot's location and the version 3 are the decision of [ADR 0025](../adr/0025-a-lots-location-is-part-of-its-identity.md); decks, zones and the version 4 are the decision of [ADR 0028](../adr/0028-decks-are-locations-with-zones.md).
 
 Two words are used throughout. A **writer** is any program that produces a file, and a **reader** is any program that consumes one.
 
@@ -22,12 +22,13 @@ A file describes exactly one account's collection at one moment. It needs no oth
 | Field | Value | Meaning |
 |---|---|---|
 | `format` | The string `collector-export` | Says that the file is a Collector export. A reader refuses a file with any other value. |
-| `format_version` | A whole number | The version of this format that the file follows: 1, 2 or 3. See [Versions](#versions). |
+| `format_version` | A whole number | The version of this format that the file follows: 1, 2, 3 or 4. See [Versions](#versions). |
 | `exported_at` | A [time](#times) | When the file was written. Information only. |
 | `generator` | A string; may be left out | The program that wrote the file, and its version (`Collector 0.2.1`). Information only. |
 | `profile` | An object | The collector. See [Profile](#profile). |
 | `currency` | A string | The currency of every price in the file. See [Currency](#currency). |
-| `locations` | A list | From version 2: the places the collection is kept. See [Locations](#locations). It may be empty, and its order has no meaning. A version 1 file has no `locations`. |
+| `locations` | A list | From version 2: the places the collection is kept. See [Locations](#locations). From version 4 it lists places only: a deck is in `decks`. It may be empty, and its order has no meaning. A version 1 file has no `locations`. |
+| `decks` | A list | From version 4: the collector's decks. See [Decks](#decks). It may be empty, and its order has no meaning. A file of version 1 to 3 has no `decks`. |
 | `lots` | A list | The collection. See [Lots](#lots). It may be empty, and its order has no meaning. |
 
 A reader never behaves differently because of `exported_at` or `generator`.
@@ -39,7 +40,7 @@ A collection with nothing in it is a complete file:
 ```json
 {
   "format": "collector-export",
-  "format_version": 3,
+  "format_version": 4,
   "exported_at": "2026-10-11T12:34:56Z",
   "profile": {
     "name": "Grace Example",
@@ -48,6 +49,7 @@ A collection with nothing in it is a complete file:
   },
   "currency": "EUR",
   "locations": [],
+  "decks": [],
   "lots": []
 }
 ```
@@ -92,7 +94,7 @@ The code is the collector's own currency when the file is written: the one their
 
 ## Lots
 
-A collector owns lots, not single copies ([ADR 0019](../adr/0019-lot-as-the-unit-of-ownership.md)). A lot is a number of copies of one catalog entry that share a finish, a condition, a price paid and, from version 3, a location.
+A collector owns lots, not single copies ([ADR 0019](../adr/0019-lot-as-the-unit-of-ownership.md)). A lot is a number of copies of one catalog entry that share a finish, a condition, a price paid and, from version 3, a place: a location or, from version 4, a zone of a deck.
 
 | Field | Value | Meaning |
 |---|---|---|
@@ -105,7 +107,7 @@ A collector owns lots, not single copies ([ADR 0019](../adr/0019-lot-as-the-unit
 | `added_at` | A [time](#times) | When the lot was added to the collection. |
 | `changed_at` | A [time](#times) | When the lot was last changed. Never earlier than `added_at`. |
 
-In version 3 all eight fields are always present, and a lot without `location` is not well-formed; a reader never reads a missing `location` as `null`. A lot of version 1 or 2 has the first seven and says nothing about its place: a reader reads it as in no location, because applying a file restores a collection, and a `location` on such a lot is a field the version doesn't define and is ignored. The format gives `finish` and `condition` no meaning of its own; the collectible type does ([Collectible types](#collectible-types)). A file says nothing about a single copy within a lot.
+From version 3 all eight fields are always present, and a lot without `location` is not well-formed; a reader never reads a missing `location` as `null`. A lot of version 1 or 2 has the first seven and says nothing about its place: a reader reads it as in no location, because applying a file restores a collection, and a `location` on such a lot is a field the version doesn't define and is ignored. The format gives `finish` and `condition` no meaning of its own; the collectible type does ([Collectible types](#collectible-types)). A file says nothing about a single copy within a lot.
 
 ### Price paid
 
@@ -146,11 +148,11 @@ A **location** is a named place the collector keeps part of their collection: a 
 |---|---|---|
 | `name` | A string of 1 to 60 Unicode code points, as [Names](#names) says | The location's name. |
 
-The list has at most 500 elements. A file carries no id for a location. In version 2 a lot carries no reference to one; from version 3 a lot's `location` names one by its name, and the name must be one of the file's locations, compared by [comparison key](#location-identity).
+The list has at most 500 elements, and from version 4 at most 500 together with the file's [decks](#decks), which share its names. A file carries no id for a location. In version 2 a lot carries no reference to one; from version 3 a lot's `location` names one by its name, and the name must be one of the file's locations, compared by [comparison key](#location-identity). From version 4 `locations` lists places only, never a deck and never a deck's zone.
 
 ### Names
 
-A well-formed name (a lot's `location`, when it isn't `null`, follows the same rules):
+A well-formed name (a lot's `location`, when it is a string, a deck's `name` and the `deck` of a lot's `location` object follow the same rules):
 
 - is 1 to 60 Unicode code points long (a character made of several code points counts each);
 - has no character of general category Cc (control) or Cf (format): U+0000, U+0007, U+200B, U+200E, U+FEFF and the rest of those two categories;
@@ -158,15 +160,40 @@ A well-formed name (a lot's `location`, when it isn't `null`, follows the same r
 
 Any other character is allowed, in any script.
 
-`v2.schema.json` and `v3.schema.json` state these rules as one pattern that uses Unicode property escapes (`\p{Cc}`, `\p{Cf}`), which is ECMA-262 syntax with the `u` flag. A program that validates with a regular expression engine without them (Python's `re`, for one) can't compile the pattern as it stands; the rules in words above are the definition, and the pattern is their statement for a validator that can read it.
+`v2.schema.json`, `v3.schema.json` and `v4.schema.json` state these rules as one pattern that uses Unicode property escapes (`\p{Cc}`, `\p{Cf}`), which is ECMA-262 syntax with the `u` flag. A program that validates with a regular expression engine without them (Python's `re`, for one) can't compile the pattern as it stands; the rules in words above are the definition, and the pattern is their statement for a validator that can read it.
 
 A writer writes a name in Unicode normalisation form NFC, as Collector does. A name in another form is still well-formed, because a schema can't state the form. A reader **normalises each name on read**: it makes it NFC, then removes White_Space at both ends and makes each run of White_Space inside the name one U+0020, before it matches, compares, judges duplicates or stores the name. For a well-formed name the second step changes nothing.
 
 ### Location identity
 
-A location is identified by its **comparison key**: the Unicode full case folding of its name after normalisation. "Blue binder" and "blue binder" are one name, and so are "Straße" and "STRASSE", and "Café" written in NFC and in NFD. A file never holds two locations with the same identity.
+A location is identified by its **comparison key**: the Unicode full case folding of its name after normalisation. "Blue binder" and "blue binder" are one name, and so are "Straße" and "STRASSE", and "Café" written in NFC and in NFD. A file never holds two locations with the same identity, and from version 4 never a location and a deck, or two decks, with the same identity: they share one set of names.
 
 The key is for matching and for the duplicate rule only. It is never written in a file.
+
+## Decks
+
+A **deck** is a named set of copies that a collector keeps together to play. From version 4 a file carries the collector's decks as the required top-level list `decks`; a file of version 1 to 3 has none and says nothing about them.
+
+| Field | Value | Meaning |
+|---|---|---|
+| `name` | A string of 1 to 60 Unicode code points, as [Names](#names) says | The deck's name. |
+| `collectible_type` | A string that isn't blank | The key of the collectible type the deck is for, as an [entry's](#entry). |
+| `format` | A string that isn't blank | The key of the deck's format, one of the formats that the collectible type names (see [Collectible types](#collectible-types)). A format key is unique within its collectible type, so two types may both have a format with one key. |
+
+A deck is identified by the [comparison key](#location-identity) of its name, and that key is shared with the file's locations: a deck and a location, or two decks, never have the same one. The list has at most 500 elements, and the locations and the decks together at most 500. A file carries no id for a deck.
+
+A deck's name is at most 60 code points after normalisation too, as a location's is: a name made of characters that decompose to more than they were (U+0344 is two code points in NFC) can be within the limit as written and over it as stored, and such a file is not well-formed. It is reported as `maxLength` at the name.
+
+A deck has **zones**: the sections of it that its format fixes, each with a stable key. Every format has a zone with the key `considering`; its other zones are the format's own. A file doesn't list zones. They come from the format, so a file can't say a deck has a zone its format lacks, and there is no empty zone to carry.
+
+A copy that is in a deck is in one of its zones. A lot's `location` says which with an object:
+
+| Field | Value | Meaning |
+|---|---|---|
+| `deck` | A [name](#names) | The name of one of the file's decks, matched by [comparison key](#location-identity). |
+| `zone` | A string that isn't blank | The key of one of the zones of that deck's format. A zone key is compared exactly, as written. |
+
+The object has these two fields and no others; a lot's `location` is never a deck alone. An example is in [Collectible types](#collectible-types).
 
 ## Lot identity
 
@@ -177,9 +204,9 @@ A lot is identified by six values:
 3. its `finish`
 4. its `condition`
 5. its `price_paid`
-6. its `location`, by [comparison key](#location-identity)
+6. its place: its `location`, by [comparison key](#location-identity), or, for a lot in a deck's zone, its `location`'s `deck` by comparison key and its `zone`
 
-Each of the first five is compared character for character; the sixth by its comparison key, so "Box" and "box" are one place. `null` is a value of its own: it matches only `null`. In versions 1 and 2 the sixth value is `null` for every lot, because those versions say nothing about a place.
+Each of the first five is compared character for character; the sixth by its comparison key, so "Box" and "box" are one place. A zone is the pair of its deck's comparison key and its zone key, so a lot in the zone `{ "deck": "Izzet", "zone": "x" }` and one in `{ "deck": "izzet", "zone": "x" }` are in one place, one in zone `x` and one in zone `X` are not, and a location called "Izzet" is never the same place as a deck's zone. `null` is a value of its own: it matches only `null`. In versions 1 and 2 the sixth value is `null` for every lot, because those versions say nothing about a place.
 
 The descriptive fields, the quantity and the two times are never part of a lot's identity.
 
@@ -189,16 +216,20 @@ A file never holds two lots with the same identity. Copies that share all six va
 
 A file can be wrong in two different ways, and the format keeps them apart.
 
-**Well-formed** is a property of the file alone. It never depends on a catalog or on an instance. A file is well-formed when it passes the schema of its own version ([`v1.schema.json`](v1.schema.json), [`v2.schema.json`](v2.schema.json) or [`v3.schema.json`](v3.schema.json)) and the rules that a schema can't state:
+**Well-formed** is a property of the file alone. It never depends on a catalog or on an instance. A file is well-formed when it passes the schema of its own version ([`v1.schema.json`](v1.schema.json), [`v2.schema.json`](v2.schema.json), [`v3.schema.json`](v3.schema.json) or [`v4.schema.json`](v4.schema.json)) and the rules that a schema can't state:
 
 - it is UTF-8 JSON, and no object holds the same key twice
 - every time is a real moment
 - no lot's `changed_at` is earlier than its `added_at`
 - no two lots have the same [identity](#lot-identity)
 - from version 2, no two locations have the same [identity](#location-identity)
-- from version 3, every lot's `location` that isn't `null` is one of the file's locations, compared by comparison key
+- from version 3, every lot's `location` that is a name is one of the file's locations, compared by comparison key (`unknown_location`)
+- from version 4, no deck has the same [identity](#location-identity) as a location or an earlier deck (`duplicate_location`), the locations being judged before the decks
+- from version 4, the locations and the decks together are at most 500 (`too_many_locations`)
+- from version 4, no deck's name is over 60 code points once normalised (`maxLength`)
+- from version 4, every lot's `location` that is a deck and zone names one of the file's decks, compared by comparison key (`unknown_location`)
 
-Each version has its own schema; the rules are the same for all three, with the rule about locations from version 2 and the rule about a lot's location from version 3. A reader looks at `format_version` first: a file whose version is higher than it knows is refused as newer than it can read, not as malformed. A file whose version this document doesn't define (a version above the newest, or a version that is missing or isn't a whole number) is judged by the schema of version 1, which names the version as the problem.
+Each version has its own schema; the rules are the same for all four, with the rule about locations from version 2, the rule about a lot's location from version 3 and the rules about decks from version 4. A reader looks at `format_version` first: a file whose version is higher than it knows is refused as newer than it can read, not as malformed. A file whose version this document doesn't define (a version above the newest, or a version that is missing or isn't a whole number) is judged by the schema of version 1, which names the version as the problem.
 
 A field that this document doesn't define doesn't make a file malformed. A reader ignores it.
 
@@ -207,6 +238,9 @@ A field that this document doesn't define doesn't make a file malformed. A reade
 - its entry is in that catalog, retired or not
 - its `finish` is `null` or one that the catalog lists for that entry
 - its `condition` is `null` or in the collectible type's conditions on that instance
+- when its `location` is a deck and zone, the `zone` is one of the zones of that deck's format on that instance
+
+and for every deck, its `collectible_type` and `format` are a format that the instance has registered for that type.
 
 | A well-formed file where | Is |
 |---|---|
@@ -216,6 +250,8 @@ A field that this document doesn't define doesn't make a file malformed. A reade
 | a lot's finish isn't one the catalog lists for that entry | not resolvable there |
 | a lot's condition isn't one of the type's conditions | not resolvable there |
 | a descriptive field disagrees with the catalog | resolvable; the id wins |
+| a deck's collectible type and format aren't a format the instance has registered (`unknown_format`) | not resolvable there |
+| a lot's zone isn't one of the zones of its deck's format on the instance (`unknown_zone`) | not resolvable there |
 
 The same file may be resolvable on one instance and not on another. What a reader does with a file that isn't well-formed or isn't resolvable is the reader's decision. A reader never guesses at a lot it can't resolve, and never drops it without saying so.
 
@@ -225,8 +261,9 @@ Two well-formed files of the same version hold the same collection when all of t
 
 - Their profiles are equal: `name`, `email_address` and `collection_view`.
 - Their currencies are equal.
-- Their lots are equal as sets. Each lot in one file has exactly one lot in the other with the same [identity](#lot-identity), and those two have the same `quantity`, `added_at` and `changed_at`. From version 3 a lot's `location` is compared exactly, as the locations are: "box" and "Box" on a lot are different here, although a reader matches them as one place and the duplicate rule treats them as one lot.
+- Their lots are equal as sets. Each lot in one file has exactly one lot in the other with the same [identity](#lot-identity), and those two have the same `quantity`, `added_at` and `changed_at`. From version 3 a lot's `location` is compared exactly, as the locations are: "box" and "Box" on a lot are different here, although a reader matches them as one place and the duplicate rule treats them as one lot. A zone is compared as the object the file wrote: by its deck's name as written and its zone key.
 - From version 2, their locations are equal as sets of names, compared exactly, character for character, as written in the files, without normalising either. "box" and "Box" are different locations here, although a reader treats them as one when it matches locations (see [Location identity](#location-identity)); the order of the locations never counts.
+- From version 4, their decks are equal as sets of `name`, `collectible_type` and `format`, each compared exactly as written. A deck's name "izzet" and "Izzet" are different decks here, and so are two decks that differ only in their format; the order of the decks never counts.
 
 Every comparison is exact, character for character. A writer writes each value as the instance stores it: the email address in lower case, the name and the email address without spaces around them, the currency in upper case.
 
@@ -257,6 +294,8 @@ A reader:
 - refuses a file whose `format` isn't `collector-export`, or that has no `format_version`
 - refuses a file whose `format_version` is higher than any it knows, and says that the file is newer than it can read
 - ignores fields it doesn't know. Because a new field of the collector's data raises the version, a field that a reader doesn't know at a version it does know is always information only
+
+A file of version 1, 2 or 3 says nothing about decks, and a lot of such a file is in a location or in none. A reader of version 4 reads it as the whole collection it describes: the collector's decks are left in place, because a deck is not a place that the file names, but the copies that are in their zones are not in the file and so applying it removes them. Collector says so before it applies the file.
 
 The meaning of a version never changes once it has been released.
 
@@ -326,6 +365,56 @@ A lot of four foil copies, bought for 12.50 each and kept in the Blue binder:
   "location": "Blue binder",
   "added_at": "2026-09-30T18:02:11Z",
   "changed_at": "2026-10-02T09:15:00Z"
+}
+```
+
+A deck for this type has `collectible_type` `mtg` and as its `format` one of these keys. A format's zones are listed in the order a collector sees them, and every format has `considering`:
+
+| Format key | Name | Zones, in order | Default |
+|---|---|---|---|
+| `casual` | Casual | `main`, `sideboard`, `considering` | Yes |
+| `standard` | Standard | `main`, `sideboard`, `considering` | |
+| `pioneer` | Pioneer | `main`, `sideboard`, `considering` | |
+| `modern` | Modern | `main`, `sideboard`, `considering` | |
+| `legacy` | Legacy | `main`, `sideboard`, `considering` | |
+| `vintage` | Vintage | `main`, `sideboard`, `considering` | |
+| `pauper` | Pauper | `main`, `sideboard`, `considering` | |
+| `commander` | Commander | `commander`, `main`, `considering` | |
+
+| Zone key | Zone name |
+|---|---|
+| `main` | Main |
+| `sideboard` | Sideboard |
+| `considering` | Considering |
+| `commander` | Commander |
+
+A Modern deck called Izzet Tempo, and a lot of three copies of the card above in its Main zone:
+
+```json
+{
+  "name": "Izzet Tempo",
+  "collectible_type": "mtg",
+  "format": "modern"
+}
+```
+
+```json
+{
+  "entry": {
+    "collectible_type": "mtg",
+    "source_id": "00000000-0000-4000-8000-000000000001",
+    "name": "Serra Angel",
+    "set_code": "dmr",
+    "collector_number": "27",
+    "language": "en"
+  },
+  "quantity": 3,
+  "finish": "foil",
+  "condition": "near_mint",
+  "price_paid": "12.50",
+  "location": { "deck": "Izzet Tempo", "zone": "main" },
+  "added_at": "2026-11-01T10:00:00Z",
+  "changed_at": "2026-11-01T10:00:00Z"
 }
 ```
 
@@ -403,11 +492,13 @@ Every table in Collector's database that belongs to an account or to a user is l
 
 | Folder | Holds |
 |---|---|
-| [`examples/valid/`](examples/valid/) | Well-formed files: a collection that shows every shape a lot can take, and an empty one, for each version; version 3's shows a printing in two locations, a lot in none and an empty location. |
+| [`examples/valid/`](examples/valid/) | Well-formed files: a collection that shows every shape a lot can take, and an empty one, for each version; version 3's shows a printing in two locations, a lot in none and an empty location; version 4's adds decks of several formats and a printing in a place and in zones. |
 | [`examples/invalid/`](examples/invalid/) | Files that aren't well-formed, each with one thing wrong. |
 | [`examples/comparison/`](examples/comparison/) | A base file, a file that holds the same collection, and files that each differ from the base in one thing that counts. |
 
-The folders hold files of all three versions; the examples of versions 1 and 2 are unchanged. Version 3 adds lot-location variants: `valid/lot-location-nfd.json` writes a lot's location in NFD for a listed name, and "box" for a listed "Box" (well-formed, and re-exported with the stored spelling, so outside the round trip), `valid/lot-location-60.json` is the 60-code-point edge, `invalid/lot-location-*.json` are the forms a location can break, `invalid/duplicate-lot-location-case.json` is the duplicate rule on six values, and `comparison/v3-*.json` differ in a lot's location. A location named in NFD (`Cafe` and a combining acute accent) is in `valid/locations-nfd.json`: well-formed, because a reader normalises names on read. Collector exports it as `Café` in NFC, so a collection restored from this file exports a file whose name is the NFC spelling, not this one's.
+The folders hold files of all four versions; the examples of versions 1 to 3 are unchanged. Version 3 adds lot-location variants: `valid/lot-location-nfd.json` writes a lot's location in NFD for a listed name, and "box" for a listed "Box" (well-formed, and re-exported with the stored spelling, so outside the round trip), `valid/lot-location-60.json` is the 60-code-point edge, `invalid/lot-location-*.json` are the forms a location can break, `invalid/duplicate-lot-location-case.json` is the duplicate rule on six values, and `comparison/v3-*.json` differ in a lot's location. A location named in NFD (`Cafe` and a combining acute accent) is in `valid/locations-nfd.json`: well-formed, because a reader normalises names on read. Collector exports it as `Café` in NFC, so a collection restored from this file exports a file whose name is the NFC spelling, not this one's.
+
+Version 4 adds `valid/decks-all-formats.json` (one deck of each format of the collectible type with a lot in each of its zones), `valid/decks-500.json` (the limit), `valid/deck-name-60.json` (the longest name), `valid/lot-in-zone.json` (a lot in zones, one deck named in another case) and `valid/collection-v4.json`; `invalid/deck-*.json` and `invalid/decks-*.json` are the forms a deck and the list of decks can break (`invalid/deck-name-60-nfc.json` a name that is 60 code points or fewer as written and more once normalised, `invalid/locations-and-decks-501.json` the limit on places and decks together), `invalid/lot-location-object-*.json` and `invalid/lot-location-zone-*.json` the forms a deck and zone can break, and `comparison/v4-*.json` differ in a deck's name, a deck's format and a lot's zone.
 
 [`examples/problems.json`](examples/problems.json) names, for each invalid file, why it isn't well-formed (`why`), the rule it breaks (`rule`) and where (`at`, a [JSON Pointer](https://www.rfc-editor.org/rfc/rfc6901) into the file, empty for the whole file).
 
@@ -420,5 +511,7 @@ A `rule` is the schema keyword that fails (`required`, `const`, `pattern`, `mini
 | `not_a_time` | A time has the right form but isn't a real moment. |
 | `changed_before_added` | A lot's `changed_at` is earlier than its `added_at`. |
 | `duplicate_lot` | A lot has the same identity as an earlier lot in the file. |
-| `duplicate_location` | A location has the same comparison key as an earlier location in the file. |
-| `unknown_location` | A lot's `location` is a name whose comparison key no location in the file has. |
+| `duplicate_location` | A location, or from version 4 a deck, has the same comparison key as an earlier location or deck in the file; the locations are judged before the decks. |
+| `unknown_location` | A lot's `location` is a name whose comparison key no location in the file has, or (version 4) a deck and zone whose deck's comparison key no deck in the file has. |
+| `too_many_locations` | The locations and the decks together are more than 500 (version 4), at the pointer `/decks`. |
+| `schema` | A key that the schema doesn't allow: a lot's `location` object has a key besides `deck` and `zone`, at that key. |
