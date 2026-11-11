@@ -87,7 +87,16 @@ class Deck::FormatChange
       location.zones.find_by!(zone: zone.key).tap { kept << it }
     end
 
+    # The lots of the dropped zones go into Considering through the bulk move: one lot of an identity per place, the cap checked
+    # for every merge before anything is written (all or nothing), every key rebuilt with the place (`Lot.key_for`, so no sixth
+    # builder). The bulk move raises for an empty selection, which is the ordinary case of an empty dropped zone, so it is
+    # skipped then. The default order of the collection table names the first lot over the cap.
     def move_lots!(dropped, considering)
+      lots = deck.account.lots.where(location_id: dropped.map(&:id))
+      return unless lots.exists?
+
+      sort = CollectionTable::Sort.parse(nil, nil)
+      @moved = Lot::BulkMove.new(account: deck.account, lots:, to: considering, sort:).apply!.moved
     end
 
     # The dropped zones are empty here (their lots moved), and the lots' foreign key is RESTRICT, so a lot that slipped in fails
