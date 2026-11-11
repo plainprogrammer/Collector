@@ -35,7 +35,7 @@ A signed-in collector opens `GET /decks/:id` from the Decks page and reads their
 - **Simplicity (≤3 components).** Three: `Deck::Page` (reads and shapes the zones), `Catalog::DeckCards` (the seam, with Magic's answer behind it in `MTG::Collecting`, `MTG::DeckGroups` and one partial) and the views with their helper. No new table, gem, controller, JavaScript or CSS.
 - **Anti-abstraction.** `Deck::Page` returns three small `Data` shapes (`Row`, `Group`, `Zone`) that the views read directly; there is no parallel view-model layer. The seam is one module, one `Data` answer and one optional vocabulary method, the same shape as `Catalog::Formats`.
 - **Integration-first.** The seam's contract test (Phase 0) is written before Magic's answer and before the page; each later phase starts with its failing spec.
-- **Statement count (AC-2.10), fixed here:** `Deck::Page#zones` runs exactly **5** statements (the zones, the grouped lot sums, the entries, their sets, one extension read per collectible type; 4 for a deck with no lots, 2 for no zones with lots), given a deck whose location is loaded, whatever the number of zones, rows, lots and printings. The request adds the controller's 2 (the deck and its location). Phase 1 pins the 5; Phase 2 compares a small and a large deck's whole request.
+- **Statement count (AC-2.10), fixed here:** `Deck::Page#zones` runs exactly **5** statements (the zones, the grouped lot sums, the entries, their sets, one extension read per collectible type; 2 for a deck with no lots), given a deck whose location is loaded, whatever the number of zones, rows, lots and printings. The request adds the controller's 2 (the deck and its location). Phase 1 pins the 5; Phase 2 compares a small and a large deck's whole request.
 
 ## File map
 
@@ -210,7 +210,7 @@ RSpec.describe MTG::DeckGroups, type: :model do
       expect(described_class.group_name(described_class.position(nil))).to eq("Other")
     end
 
-    it "does not read a type after the dash" do
+    it "does not read a type after the dash", :aggregate_failures do
       expect(described_class.group_name(described_class.position("Creature — Land"))).to eq("Creatures")
       expect(described_class.group_name(described_class.position("Instant — Land"))).to eq("Instants")
     end
@@ -406,12 +406,13 @@ require "rails_helper"
 # Spec 066 decision 3: ordering by the name shown needs the same rule in SQL as `Catalog::Entry#display_name` has in Ruby.
 RSpec.describe Catalog::Entry, type: :model do
   describe "DISPLAY_NAME_SQL" do
-    it "evaluates to #display_name for English, localized and blank-localized printings", :aggregate_failures do
+    it "evaluates to #display_name for English, localized, blank and whitespace-only localized printings", :aggregate_failures do
       entries = [
         create(:catalog_entry, name: "Lightning Bolt", language: "en", localized_name: "ignored"),
         create(:catalog_entry, name: "Lightning Bolt", language: "de", localized_name: "Blitzschlag"),
         create(:catalog_entry, name: "Lightning Bolt", language: "ja", localized_name: ""),
-        create(:catalog_entry, name: "Lightning Bolt", language: "fr", localized_name: nil)
+        create(:catalog_entry, name: "Lightning Bolt", language: "fr", localized_name: nil),
+        create(:catalog_entry, name: "Lightning Bolt", language: "es", localized_name: "  ")
       ]
 
       shown = described_class.where(id: entries.map(&:id)).pluck(:id, described_class::DISPLAY_NAME_SQL).to_h
@@ -431,7 +432,7 @@ end
   # that has one, else the card's name. Fixed text, nothing interpolated; `spec/models/catalog/entry_display_name_sql_spec.rb`
   # holds it equal to the Ruby rule.
   DISPLAY_NAME_SQL = Arel.sql(
-    "CASE WHEN catalog_entries.language <> 'en' AND COALESCE(catalog_entries.localized_name, '') <> '' " \
+    "CASE WHEN catalog_entries.language <> 'en' AND TRIM(COALESCE(catalog_entries.localized_name, '')) <> '' " \
     "THEN catalog_entries.localized_name ELSE catalog_entries.name END"
   )
 ```
@@ -505,8 +506,9 @@ RSpec.describe Deck::Page, type: :model do
     end
 
     it "keeps two printings of one card as two rows (AC-2.4)" do
-      create_lot_in_zone(deck, "main", entry: printing(number: "1"), quantity: 2)
-      create_lot_in_zone(deck, "main", entry: printing(number: "2"), quantity: 1)
+      set = create(:catalog_set, code: "aaa")
+      create_lot_in_zone(deck, "main", entry: printing(set:, number: "1"), quantity: 2)
+      create_lot_in_zone(deck, "main", entry: printing(set:, number: "2"), quantity: 1)
 
       expect(zone_named(page_of(deck), "Main").groups.flat_map(&:rows).map(&:owned)).to eq([ 2, 1 ])
     end
@@ -671,6 +673,7 @@ class Deck::Page
         Catalog::Entry.arel_table[:number].asc, Catalog::Entry.arel_table[:language].asc
       ).to_a
       Catalog::Entry.preload_extensions(entries.select { Catalog.sources.key?(it.collectible_type) }) # a type with no source has no extension model to ask
+      entries # preload_extensions returns what it was given, so the entries of a type with no source are not dropped
     end
 
     # The zone's rows in the printings' order, grouped by the vocabulary's position (a row with none last), each group
@@ -782,7 +785,8 @@ RSpec.describe "Deck page", type: :request do
 
         get deck_path(deck)
 
-        expect(html.at_css("main").text).not_to match(/proxy/i)
+        expect(html.css(".c-item__head, .c-section__head, main tbody").map(&:text).join).not_to match(/proxy/i) # the Proxy column's header is required, its cells are dashes
+        expect(html.css(".c-proxy, main a, main button").select { it.text.match?(/proxy/i) }).to be_empty
         expect(html.at_css("aside.c-deck__shape, details.c-shapefold")).to be_nil
       end
     end
@@ -795,8 +799,8 @@ RSpec.describe "Deck page", type: :request do
         [ other.to_param, place.id, deck.zone("main").id, 0, "abc", "#{deck.location_id}abc", Location.maximum(:id).to_i + 100 ].each do |id|
           get deck_path(id)
           expect(response).to have_http_status(:not_found), "#{id.inspect} was not a 404"
+          expect(response.body).not_to include("Theirs")
         end
-        expect(response.body).not_to include("Theirs")
       end
 
       it "sends a visitor who is not signed in to sign in" do
@@ -935,7 +939,7 @@ RSpec.describe "Deck page", type: :request do
       it "draws the first face's pips, not the second's, and a muted dash for no cost", :aggregate_failures do
         pips = printing(name: "Tarmogoyf", type_line: "Creature", cost: "{3}{G}{G}")
         double = printing(name: "Delver", cost: "{1}{U}")
-        double.extension.update!(faces: [ { "name" => "Delver", "type_line" => "Creature", "mana_cost" => "{1}{U}" },
+        MTG::Printing.find_by!(catalog_entry_id: double.id).update!(faces: [ { "name" => "Delver", "type_line" => "Creature", "mana_cost" => "{1}{U}" },
                                           { "name" => "Insectile", "type_line" => "Creature", "mana_cost" => "{2}{G}" } ])
         land = printing(name: "Island", type_line: "Basic Land — Island", cost: "")
         [ pips, double, land ].each { own("main", it) }
@@ -1089,7 +1093,7 @@ end
   end
 ```
 
-- [ ] Run: `bin/rspec spec/requests/deck_pages_spec.rb spec/requests/query_counts_spec.rb` — expect FAIL (no route `deck_path`... `undefined method`/routing error).
+- [ ] Run: `bin/rspec spec/requests/deck_pages_spec.rb spec/requests/query_counts_spec.rb` — expect FAIL (`GET /decks/:id` answers 404, a routing error, until the route exists).
 - [ ] Edit `config/routes.rb` line 48: `resources :decks, only: %i[index show new create edit update destroy] do`.
 - [ ] Edit `app/controllers/decks_controller.rb`: replace the file header comment's first sentence and `before_action`, add `show`, guard the id:
 
@@ -1257,11 +1261,11 @@ and replace `set_deck` and its comment with:
 
 ### T6: the name is a link
 
-- [ ] Edit `spec/requests/decks_spec.rb` line 29 (the comment-bearing expectation) from `expect(html.css(".c-decks tbody td:first-child a")).to be_empty # a name is plain text until the deck page (#253)` to:
+- [ ] Edit `spec/requests/decks_spec.rb` line 32 (the comment-bearing expectation) from `expect(html.css(".c-decks tbody td:first-child a")).to be_empty # a name is plain text until the deck page (#253)` to:
 
 ```ruby
         expect(html.css(".c-decks tbody td:first-child .c-table__item > div > span:first-child a").map { it["href"] }).to eq(
-          Deck.listing_order.map { deck_path(it) }
+          account.decks.listing_order.map { deck_path(it) }
         ) # spec 066 AC-1.5: each name links to its page
 ```
 
@@ -1365,7 +1369,7 @@ RSpec.describe "Deck page", type: :system do
     JS
   end
 
-  [ 360, 640, 768 ].each do |width|
+  [ 360, 640, 768, 1280 ].each do |width|
     %w[light dark].each do |theme|
       it "has no horizontal overflow at #{width}px in the #{theme} theme and keeps a six-symbol cost inside its cell (AC-5.4, AC-5.5)", :aggregate_failures do
         open_in_narrow_frame(deck_path(deck), width:, ready: ".c-zone table")
@@ -1379,6 +1383,20 @@ RSpec.describe "Deck page", type: :system do
           expect(worst.first).to be <= worst.last
         end
       end
+    end
+  end
+
+  it "keeps each zone head's count uncut and, under 640px, on its own line below the name (AC-5.5)", :aggregate_failures do
+    open_in_narrow_frame(deck_path(deck), width: 360, ready: ".c-zone table")
+    within_narrow_frame do
+      heads = page.evaluate_script(<<~JS)
+        [...document.querySelectorAll(".c-zone .c-section__head")].map((head) => {
+          const count = head.querySelector(".c-section__count"), title = head.querySelector(".c-section__title")
+          return { cut: count.scrollWidth > count.clientWidth, below: count.getBoundingClientRect().top >= title.getBoundingClientRect().bottom }
+        })
+      JS
+      expect(heads.size).to eq(3)
+      expect(heads).to all(eq({ "cut" => false, "below" => true }))
     end
   end
 
@@ -1483,7 +1501,7 @@ Each in its own commit; each statement carries its source (spec 066 decision or 
 - [ ] `collection-and-lots.md`: in the Decks section add the deck page (route, `Deck::Page`, one row per printing, the sum rule, the order, the head and zone counts, the card link, the 5-statement bound) and the seam `Catalog::DeckCards` with a pointer to its comment as the contract (`@see` style: "the contract is in `Catalog::DeckCards`' comment"); MTG's answer (`MTG::DeckGroups`, `MTG::Collecting.deck_card`, the `deck_cost` partial, the Land-unless-Creature rule); replace the open note that `Deck#zones` is ordered by id with "the deck page lists zones in the format's order (spec 066 decision 3); `Deck#zones` stays by id"; replace the statement that the deck's name is plain text until #253; add spec 066 to Sources and the named constants `MTG::DeckGroups::NAMES`, `MTG::Collecting::LEGALITY_FORMATS`.
 - [ ] `tenancy-and-accounts.md`: add `GET /decks/:id` to the routes that find a deck by its location id through the account, 404 for another account's deck, a place's id, a zone's id and a malformed id (spec 066 AC-1.2); add spec 066 to its Sources and distillation log lines as the area doc's convention requires.
 - [ ] `CLAUDE.md`: in the Collection-and-lots bullet's deck sentence add "a collector opens a deck at `/decks/:id` to read its owned cards by zone (`Deck::Page`, `Catalog::DeckCards`, spec 066)" and in the first paragraph's decks sentence the same; add spec 066 to the bullet's spec list; the deck files' guard sentence mentions `Catalog::DeckCards`.
-- [ ] `docs/specs/README.md`: the 066 row's plan cell links `plan.md`; Status stays Approved until implementation review records and the distillation step changes it.
+- [ ] `docs/specs/README.md`: the 066 row's plan cell links `plan.md` and drops "(not yet written)"; Status stays Approved until the implementation review records and the distillation step changes it; the 062 row's superseded-by cell adds "066 decision 1 (the deck's name on the Decks page is a link)" beside its existing 060 text, so the supersession is recorded in both directions.
 - [ ] `verification.md`: the AC to proof table (below), the system examples' results at 360/640/768/1280px in both themes, the statement count, the screenshots at 360px and 1280px light and dark (headless Firefox per the PR-screenshots note, kept in `screenshots/`), the AC-5.6 note, and the `## Implementation review` heading with the Mode B verdict on its first line.
 
 ---
@@ -1505,7 +1523,7 @@ Each in its own commit; each statement carries its source (spec 066 decision or 
 | 1.1, 1.3, 1.4, 1.6 | `spec/requests/deck_pages_spec.rb` "the page and its head" |
 | 1.2 | `deck_pages_spec` "tenancy" (another account, place, zone, 0, letters, an id nothing has, signed out) |
 | 1.5 | `spec/requests/decks_spec.rb` (the link examples) |
-| 2.1, 2.2, 2.3, 2.5, 2.6, 2.7, 2.8, 2.9 | `deck_pages_spec` "zones" and `spec/models/deck/page_spec.rb` |
+| 2.1, 2.2, 2.3, 2.5, 2.6, 2.7, 2.8, 2.9 | `deck_pages_spec` "zones" and `spec/models/deck/page_spec.rb` (AC-2.1's zone the format does not list shares the `\|\| keys.size` branch the unregistered-format example runs: `zone_key_is_the_formats` refuses to build such a zone for a registered format; recorded in `verification.md`) |
 | 2.4 | `page_spec` and `deck_pages_spec` (finishes summed, printings split, other zone, place, account) |
 | 2.10 | `page_spec` "statements" (5) and `query_counts_spec` (whole request) |
 | 3.1 to 3.6 | `deck_pages_spec` "the legality marker", `collecting_deck_card_spec` |
