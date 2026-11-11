@@ -137,7 +137,7 @@ App additions (spec 057, in `collector/additions.css`): the label and option rul
 
 App additions (spec 060, in `collector/additions.css`): `ProxyTag` (`c-proxy`), `DeckShape` (`c-shape`, `c-curve`, `c-types`, `c-manabar`, `c-manacap`), `DeckPage` (`c-deck`, `c-shapefold`, `c-zone`), `DecksIndex` (`c-decks`) and the pick list (`c-pick`) of `AddToDeck` and `UseMyCopy`.
 
-App additions (spec 062, in `collector/additions.css`): `DecksIndex`'s row actions (`c-decks__actions`) and the removal pages' wrapping rule (`.c-decks .c-confirm`). Spec 065 (#252) removed the read-only field's rule that spec 062 added for the Edit copy form's Location, which no view uses any more; the grouped picker and "Deck (all zones)" use spec 057's rules, and the app adds no CSS for them.
+App additions (spec 062, in `collector/additions.css`): `DecksIndex`'s row actions (`c-decks__actions`) and the removal pages' wrapping rule (`.c-decks .c-confirm`). Spec 065 (#252) removed the read-only field's rule that spec 062 added for the Edit copy form's Location, which no view uses any more; the grouped picker and "Deck (all zones)" use spec 057's rules, and the app adds no CSS for them. Spec 065 adds one rule to `collector/additions.css`: `.c-pagehead__stats` breaks inside a word (`overflow-wrap:anywhere`), so a 60-character place or deck name in Move copies' stats line stays inside a 360px frame.
 
 App additions (spec 063, in `collector/additions.css`): the stroke of small icons, set by the component that draws them (`c-badge`, `c-legal`, `c-btn`, `c-input`, `c-menu__item`, `c-filter`, `c-seg`), documented in Iconography.
 

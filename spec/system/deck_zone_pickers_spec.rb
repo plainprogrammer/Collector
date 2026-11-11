@@ -40,10 +40,8 @@ RSpec.describe "Deck zones in the pickers", type: :system do
       expect(open_in_narrow_frame(new_catalog_entry_lot_path(lot.entry), width: 360, ready: "select#lot_location_id")).to eq([ 360, true ])
     end
 
-    # An unbroken 60-character name still widens Move copies' page head (its stats line shows the lot's place); that
-    # is the same for a place since spec 032, so the example uses a name of words, which wraps.
-    it "holds Move copies inside the frame when the name is words", :aggregate_failures do
-      deck.location.update!(name: "#{'Izzet Tempo ' * 4}Izzet Tempo!")
+    it "holds Move copies inside the frame when the name is one unbroken word", :aggregate_failures do
+      deck.location.update!(name: "W" * 60)
       expect(open_in_narrow_frame(new_lot_move_path(lot), width: 360, ready: "select#move_location_id")).to eq([ 360, true ])
     end
   end

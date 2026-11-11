@@ -541,3 +541,8 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
    and is not touched by it. The README's Iconography states the rule. */
 .c-badge svg, .c-legal svg { stroke-width:2.5; }
 .c-btn svg, .c-input svg, .c-menu__item svg, .c-filter svg, .c-seg button svg { stroke-width:2; }
+
+/* ---------- Page head stats line (spec 065): a long unbroken name wraps ---------- */
+/* Move copies' stats line says the lot's place, and a 60-character name with no space must not scroll the page sideways (spec 065
+   NFR; the same for a place since spec 032). `anywhere`, unlike `break-word`, lowers the min-content width of the flex item. */
+.c-pagehead__stats { overflow-wrap:anywhere; }
