@@ -10,6 +10,7 @@
 **ADR:** none needed: [ADR 0028](../../adr/0028-decks-are-locations-with-zones.md) already records that a change of format moves cards into the one zone the core names, `considering`; this spec adds no table, column, file field or seam
 
 **Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md), [`data-portability.md`](../../architecture/data-portability.md) and [`tenancy-and-accounts.md`](../../architecture/tenancy-and-accounts.md) (whole spec); see the [specs index](../README.md)
+**Plan:** retired in `91f6c2e8ca09bea8b7fc12a856d83310e918a535`; read it with `git show 91f6c2e8ca09bea8b7fc12a856d83310e918a535^:docs/specs/064-change-deck-format/plan.md`
 
 ---
 
