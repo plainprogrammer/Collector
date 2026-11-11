@@ -9,6 +9,7 @@
 **Issue:** [#253](https://github.com/plainprogrammer/Collector/issues/253)
 **ADR:** none: ADR 0028 already puts the formats behind the collectible's vocabulary; this spec adds a second optional answer to the same seam (decision 5) and changes none of its choices
 **Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (whole spec but AC-1.2's route rule) and [`tenancy-and-accounts.md`](../../architecture/tenancy-and-accounts.md) (AC-1.2, the deck page's 404 rule); see the [specs index](../README.md)
+**Plan:** retired in `bb52f62c6c7f377a1c72c76d1722f73237ea85d2`; read it with `git show bb52f62c6c7f377a1c72c76d1722f73237ea85d2^:docs/specs/066-deck-page-owned-cards-by-zone/plan.md`
 
 ---
 
