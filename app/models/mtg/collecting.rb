@@ -38,4 +38,31 @@ module MTG::Collecting
   #
   # @return [Array<Catalog::Formats::Format>]
   def self.formats = FORMATS
+
+  # The deck formats whose rules the catalog stores a legality for: Scryfall's legality key is the format's own key, so the
+  # deck's key reads the printing's `legalities` directly. Casual has no rules, so it has no entry here and no marker.
+  LEGALITY_FORMATS = %w[standard pioneer modern legacy vintage pauper commander].freeze
+
+  # The deck page's answer for one card (spec 066, the extension side of `Catalog::DeckCards`): the group of its first face's
+  # type line, the marker word for the deck's format and whether the `deck_cost` partial draws its cost. Reads the loaded
+  # extension record only, so no query runs per card.
+  #
+  # @param entry [Catalog::Entry] a printing with `extension` loaded (`Catalog::Entry.preload_extensions`)
+  # @param format_key [String] the deck's stored format key
+  # @return [Catalog::DeckCards::Answer]
+  def self.deck_card(entry, format_key)
+    printing = entry.extension
+    position = MTG::DeckGroups.position(printing&.faces&.first&.dig("type_line"))
+    Catalog::DeckCards::Answer.new(group: MTG::DeckGroups.group_name(position), position:,
+      legality: deck_legality(printing, format_key), costed: !printing.nil?)
+  end
+
+  # @api private
+  def self.deck_legality(printing, format_key)
+    return unless printing && LEGALITY_FORMATS.include?(format_key)
+
+    status = printing.legalities.fetch(format_key, "not_legal")
+    MTG::Legality.word(status) unless status == "legal"
+  end
+  private_class_method :deck_legality
 end
