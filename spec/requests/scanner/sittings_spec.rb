@@ -330,41 +330,86 @@ RSpec.describe "Scanner sittings", type: :request do
     end
   end
 
-  # Spec 062 D6, AC-5.1, AC-5.2, AC-5.7, AC-5.8a: the sitting's place is a place; a zone's or a deck's id is refused as any id
-  # that isn't the account's is; an Undo leaves a lot that sits in a zone in its zone.
-  describe "with a deck (spec 062)" do
+  # Spec 062 AC-5.7 and spec 065 Story 5 (AC-5.1 to AC-5.5): the sitting's Location offers places and zones, a zone is set,
+  # scanned into and named, a deck's own row is refused as any id that isn't the account's is, and an Undo leaves a lot that
+  # sits in a zone in its zone.
+  describe "with a deck (spec 062, spec 065)" do
     def deck = @deck ||= create(:deck, account:, name: "Izzet Tempo")
     def blue = @blue ||= create(:location, account:, name: "Blue binder")
     def place(value) = patch(scanner_sitting_path, params: { sitting: { location_id: value } }, headers: stream)
     def picker = html.at_css("#scanner_sitting form[action='#{scanner_sitting_path}']")
+    def select = picker.at_css("select#sitting_location_id")
 
-    it "lists No location and the places in the picker, never a deck or a zone (AC-5.1)", :aggregate_failures do
+    it "lists No location, Places and Decks as Deck › Zone in the picker (spec 065 AC-5.1)", :aggregate_failures do
       deck
       create(:location, account:, name: "Long box")
       blue
       get scanner_path
-      expect(picker.css("select#sitting_location_id option").map(&:text)).to eq([ "No location", "Blue binder", "Long box" ])
+      expect(select.xpath("./option").map(&:text)).to eq([ "No location" ])
+      expect(select.css("optgroup").map { it["label"] }).to eq(%w[Places Decks])
+      expect(select.css('optgroup[label="Places"] option').map(&:text)).to eq([ "Blue binder", "Long box" ])
+      expect(select.css('optgroup[label="Decks"] option').map(&:text)).to eq(deck.zones.map { "Izzet Tempo › #{it.name}" })
     end
 
-    it "shows no place control to an account with a deck and no place (AC-5.8a)", :aggregate_failures do
+    it "shows the control, with the Decks group only, to an account with a deck and no place (spec 065 AC-5.1, supersedes spec 062 AC-5.8a)", :aggregate_failures do
       deck
       get scanner_path
-      expect(html.at_css("#scanner_sitting select#sitting_location_id")).to be_nil
+      expect(select.css("optgroup").map { it["label"] }).to eq(%w[Decks])
       expect(html.at_css("#scanner_sitting select#sitting_condition")).not_to be_nil
     end
 
-    it "refuses a zone's id and a deck's id as the sitting's place, leaving the sitting's place alone (AC-5.2)", :aggregate_failures do
-      place(blue.id)
-      [ deck.zone("main").id, deck.location_id ].each do |id|
+    it "offers the zones in the panel in each state: none open, open, after Set and the ended summary (spec 065 AC-5.1)", :aggregate_failures do
+      deck
+      decks_group = ->(node) { node.css('select#sitting_location_id optgroup[label="Decks"] option').map(&:text) }
+      zones = deck.zones.map { "Izzet Tempo › #{it.name}" }
+      get scanner_path
+      expect(decks_group.call(picker)).to eq(zones)
+      add("a")
+      get scanner_path
+      expect(decks_group.call(picker)).to eq(zones)
+      place(deck.zone("main").id)
+      expect(decks_group.call(picker)).to eq(zones)
+      expect(picker.at_css("select#sitting_location_id option[selected]").text).to eq("Izzet Tempo › Main")
+      post scanner_sitting_ending_path
+      follow_redirect!
+      expect(html.at_css("#scanner_sitting").text.squish).to include("Added 1 card in this sitting")
+      expect(decks_group.call(picker)).to eq(zones)
+    end
+
+    it "sets a zone, scans into it and says so (spec 065 AC-5.2)", :aggregate_failures do
+      place(deck.zone("main").id)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Cards you scan now: condition not specified, in Izzet Tempo › Main.")
+      expect(account.scanner_sitting.location).to eq(deck.zone("main"))
+      entry = add("a")
+      expect(entry.lot.reload.location).to eq(deck.zone("main"))
+    end
+
+    it "refuses a deck's own id, another account's zone and a non-id with 422 and the sentence, changing nothing (spec 065 AC-5.3)", :aggregate_failures do
+      foreign = create(:deck, account: create(:user).account)
+      [ deck.location_id, foreign.zone("main").id, "12abc" ].each do |id|
         place(id)
         expect(response).to have_http_status(:unprocessable_content), id.to_s
         expect(CGI.unescapeHTML(response.body)).to include("That location isn't one of yours any more. Choose again.")
-        expect(html.at_css("select#sitting_location_id option[selected]").text).to eq("Blue binder")
       end
+      expect(account.scanner_sitting).to be_nil
+    end
+
+    it "keeps the sitting's place when a refused id follows a good one (spec 065 AC-5.3)", :aggregate_failures do
+      place(blue.id)
+      place(deck.location_id)
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(html.at_css("select#sitting_location_id option[selected]").text).to eq("Blue binder")
       expect(account.scanner_sitting.reload.location).to eq(blue)
     end
 
-    it "keeps a lot that sits in a zone in its zone when an entry's Undo leaves part of it (AC-5.7)", :aggregate_failures do
+    it "unplaces a sitting whose zone goes with a removed deck (spec 065 AC-5.4)", :aggregate_failures do
+      Scanner::Sitting.choose!(account:, location: deck.zone("main"))
+      deck.remove!
+      expect(account.reload.scanner_sitting.location_id).to be_nil
+    end
+
+    it "keeps a lot that sits in a zone in its zone when an entry's Undo leaves part of it (spec 062 AC-5.7)", :aggregate_failures do
       entry = add("a")
       zone = deck.zone("main")
       entry.lot.update!(location: zone, quantity: 3)
