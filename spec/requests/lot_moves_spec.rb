@@ -191,6 +191,24 @@ RSpec.describe "Lot moves", type: :request do
       expect(lot.reload.quantity).to eq(2)
     end
 
+    it "merges the copies moved into a zone into the lot of the same identity already there (spec 065 AC-2.2)", :aggregate_failures do
+      twin = create(:lot, account:, entry:, quantity: 3, location: zone)
+      post lot_move_path(lot), params: { move: { copies: "4", location_id: zone.id } }
+      expect(response).to have_http_status(:see_other)
+      expect(account.lots.pluck(:id, :quantity, :location_id)).to eq([ [ twin.id, 7, zone.id ] ])
+    end
+
+    it "moves a lot in a zone to another zone of its deck and to another deck's zone (spec 065 AC-2.3)", :aggregate_failures do
+      other = create(:deck, account:, name: "Golgari Midrange")
+      post lot_move_path(zone_lot), params: { move: { copies: "4", location_id: deck.zone("sideboard").id } }
+      expect(response).to have_http_status(:see_other)
+      expect(zone_lot.reload.attributes.values_at("location_id", "quantity")).to eq([ deck.zone("sideboard").id, 4 ])
+      post lot_move_path(zone_lot), params: { move: { copies: "1", location_id: other.zone("main").id } }
+      expect(response).to have_http_status(:see_other)
+      expect(flash[:notice]).to end_with("to Golgari Midrange › Main.")
+      expect(account.lots.pluck(:location_id, :quantity)).to contain_exactly([ deck.zone("sideboard").id, 3 ], [ other.zone("main").id, 1 ])
+    end
+
     it "refuses a lot's own zone and 404s a deck's own id, another account's zone and text that only starts with an id (spec 065 AC-2.3, AC-2.4)", :aggregate_failures do
       post lot_move_path(zone_lot), params: { move: { copies: "1", location_id: zone.id } }
       expect(response).to have_http_status(:unprocessable_content)

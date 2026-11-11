@@ -441,6 +441,13 @@ RSpec.describe "Lots", type: :request do
       expect(flash[:notice]).to end_with("to Izzet Tempo › Main.")
     end
 
+    it "merges the added copies into the lot of the same identity already in the zone (AC-1.5)", :aggregate_failures do
+      twin = create(:lot, account:, entry:, quantity: 3, location: zone)
+      post catalog_entry_lots_path(entry), params: { lot: { quantity: "2", location_id: zone.id } }
+      expect(response).to have_http_status(:see_other)
+      expect(account.lots.pluck(:id, :quantity, :location_id)).to eq([ [ twin.id, 5, zone.id ] ])
+    end
+
     it "refuses a deck's own id and another account's place, zone and deck, adding nothing (AC-1.7)", :aggregate_failures do
       foreign = create(:deck, account: create(:user).account)
       other_place = create(:location, account: create(:user).account)
