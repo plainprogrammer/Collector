@@ -9,7 +9,7 @@ class Decks::FormatsController < ApplicationController
   end
 
   # A format the deck has is no change (AC-1.6); a merge past the cap re-renders the page with the alert and writes nothing
-  # (AC-2.6); an unregistered pair re-renders it with "Choose a format." on the field (AC-3.1).
+  # (AC-2.6), and so does a merge of proxies past it (spec 068 AC-6.4); an unregistered pair re-renders it with "Choose a format." on the field (AC-3.1).
   def update
     @change = Deck::FormatChange.new(deck: @deck, format: params.expect(deck: [ :format ])[:format])
     if @change.save
@@ -19,6 +19,9 @@ class Decks::FormatsController < ApplicationController
     end
   rescue Lot::CapExceeded => error
     flash.now[:alert] = helpers.over_cap_message("Nothing changed.", error.lot)
+    render :edit, status: :unprocessable_content
+  rescue Deck::Proxy::CapExceeded => error
+    flash.now[:alert] = helpers.over_proxy_cap_message("Nothing changed.", error.proxy)
     render :edit, status: :unprocessable_content
   end
 

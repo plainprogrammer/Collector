@@ -104,8 +104,9 @@ module DecksHelper
     Catalog::Formats.find(deck.collectible_type, deck.format) ? "#{deck.collectible_type}/#{deck.format}" : Catalog::Formats.default_option&.value
   end
 
-  # The notice after a change of format: "Changed “Izzet Tempo” to <Format>. 12 cards moved to Considering." (the second
-  # sentence only when copies moved, naming the zone as its row does), or that the deck already has the format (AC-1.3, AC-1.6).
+  # The notice after a change of format: "Changed “Izzet Tempo” to <Format>. 12 cards moved to Considering. 3 proxies moved to
+  # Considering." (the second sentence only when copies moved and the third only when proxies moved, "1 proxy" for one, each
+  # naming the zone as its row does), or that the deck already has the format (AC-1.3, AC-1.6; spec 068 AC-6.3).
   #
   # @param deck [Deck] after the change
   # @param change [Deck::FormatChange] after {Deck::FormatChange#save}
@@ -113,8 +114,20 @@ module DecksHelper
   def format_changed_message(deck, change)
     return "“#{deck.name}” is already #{deck.format_name}." unless change.changed?
 
-    base = "Changed “#{deck.name}” to #{deck.format_name}."
-    change.moved.positive? ? "#{base} #{pluralize(number_with_delimiter(change.moved), "card")} moved to #{change.considering_name}." : base
+    parts = [ "Changed “#{deck.name}” to #{deck.format_name}." ]
+    parts << "#{pluralize(number_with_delimiter(change.moved), "card")} moved to #{change.considering_name}." if change.moved.positive?
+    parts << "#{number_with_delimiter(change.proxies_moved)} #{change.proxies_moved == 1 ? "proxy" : "proxies"} moved to #{change.considering_name}." if change.proxies_moved.positive?
+    parts.join(" ")
+  end
+
+  # The alert of a format change a proxy merge would break (spec 068 AC-6.4): "Nothing changed. Lightning Bolt (MH2 · 138) would
+  # have more than 9,999 proxies in one zone."
+  #
+  # @param prefix [String]
+  # @param proxy [Deck::Proxy] with its entry and set loaded
+  # @return [String]
+  def over_proxy_cap_message(prefix, proxy)
+    "#{prefix} #{proxy.entry.name} (#{set_number(proxy.entry)}) would have more than #{number_with_delimiter(Deck::Proxy::MAX_QUANTITY)} proxies in one zone."
   end
 
   # The confirmation's first sentence (spec 068 AC-5.4): the zones go with the deck, and so do its proxies when it has any.

@@ -129,6 +129,46 @@ RSpec.describe "Deck formats", type: :request do
       end
     end
 
+    describe "proxies (spec 068 AC-6.3, AC-6.4)" do
+      let(:deck) { create(:deck, account:, name: "Elves", format: "commander") }
+      let(:entry) { create(:mtg_printing).entry }
+
+      it "says how many proxies moved, after the cards sentence (AC-6.3)", :aggregate_failures do
+        Lot.add!(account:, entry: create(:mtg_printing).entry, location: deck.zone("commander"), quantity: 12, finish: "foil")
+        create(:deck_proxy, zone: deck.zone("commander"), account:, entry:, quantity: 3)
+
+        patch deck_format_path(deck), params: { deck: { format: "mtg/modern" } }
+
+        expect(response).to redirect_to(decks_path)
+        expect(flash[:notice]).to eq("Changed “Elves” to Modern. 12 cards moved to Considering. 3 proxies moved to Considering.")
+      end
+
+      it "says '1 proxy', and omits the cards sentence when only proxies moved (AC-6.3)", :aggregate_failures do
+        create(:deck_proxy, zone: deck.zone("commander"), account:, entry:, quantity: 1)
+
+        patch deck_format_path(deck), params: { deck: { format: "mtg/modern" } }
+
+        expect(flash[:notice]).to eq("Changed “Elves” to Modern. 1 proxy moved to Considering.")
+      end
+
+      it "adds nothing about proxies when none moved (AC-6.6)" do
+        patch deck_format_path(deck), params: { deck: { format: "mtg/modern" } }
+
+        expect(flash[:notice]).to eq("Changed “Elves” to Modern.")
+      end
+
+      it "refuses a cap breach with the alert naming the proxy, 422, nothing changed (AC-6.4)", :aggregate_failures do
+        create(:deck_proxy, zone: deck.zone("commander"), account:, entry:, finish: "foil", quantity: 5_000)
+        create(:deck_proxy, zone: deck.zone("considering"), account:, entry:, finish: "foil", quantity: 5_000)
+
+        patch deck_format_path(deck), params: { deck: { format: "mtg/modern" } }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(html.at_css("#status .c-status__message--alert").text).to eq("Nothing changed. #{entry.name} (#{entry.set.code.upcase} · #{entry.number}) would have more than 9,999 proxies in one zone.")
+        expect(deck.reload.format).to eq("commander")
+      end
+    end
+
     it "costs the same number of queries whatever the deck holds (NFR)" do
       empty = create(:deck, account:, name: "Empty")
       full = create(:deck, account:, name: "Full", format: "commander")
