@@ -48,7 +48,7 @@ RSpec.describe Location::Choices, type: :model do
     choices = described_class.new(account)
     expect(choices.find(place.id)).to eq(place)
     expect(choices.find(deck.zone("main").id.to_s)).to eq(deck.zone("main"))
-    expect([ deck.location_id, foreign.zone("main").id, "12abc", "", nil ].map { choices.find(it) }).to all(be_nil)
+    expect([ deck.location_id, foreign.zone("main").id, "12abc", "012", "", nil ].map { choices.find(it) }).to all(be_nil)
   end
 
   it "finds a deck's group by its location's id only", :aggregate_failures do

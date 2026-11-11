@@ -3,8 +3,8 @@
 # names a zone cost one read between them, and each zone's `parent` is set from that read so `Location#label` costs nothing.
 #
 # This is for showing a choice. A write that names a location still looks it up through `Location.find_placeable!`, called on
-# `Current.account.locations` (404 when it isn't one), because a request's id is untrusted. Collectible-agnostic: a deck is a location and a zone is its
-# child; no format or zone key is named here.
+# `Current.account.locations` (404 when it isn't one), because a request's id is untrusted. Collectible-agnostic: a deck is a
+# location and a zone is its child; no format or zone key is named here.
 # @see file:collection-and-lots.md
 class Location::Choices
   # A deck (its location) and its zones in zone order (`Deck#zones`: by id, the format's order).
@@ -46,7 +46,7 @@ class Location::Choices
   # @return [Location, nil] with its parent set when it is a zone
   def find(id)
     key = id.to_s
-    return unless key.match?(/\A\d+\z/)
+    return unless key.match?(Location::ID_TEXT)
 
     places.find { it.id.to_s == key } || decks.flat_map(&:zones).find { it.id.to_s == key }
   end

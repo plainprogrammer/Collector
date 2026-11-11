@@ -36,7 +36,8 @@ class Lot::BulkMove
     def initialize = super(BulkSelection::NONE_LEFT)
   end
 
-  # +to+ is a place or a zone of +account+ (never a deck row; the controller lookup, Location.find_placeable!, is what keeps a lot out of a deck), or nil for none; the writes below skip validations.
+  # +to+ is a place or a zone of +account+ (never a deck row; the controller lookup, Location.find_placeable!, is what keeps a
+  # lot out of a deck), or nil for none; the writes below skip validations.
   # +lots+ is the selection's relation of the account's lots, whatever place each is in: a lot already in +to+ is "already
   # there", and the partition below, by `lot.location_id != @to&.id`, moves the others, out of their zones too.
   def initialize(account:, lots:, to:, sort:)
