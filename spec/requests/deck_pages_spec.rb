@@ -173,6 +173,18 @@ RSpec.describe "Deck page", type: :request do
         expect(rows.find { it.at_css("a").text == "Black Lotus" }.at_css(".c-legal").text).to include("Banned")
       end
 
+      it "shows a proxy of a printing with no extension record in Other, with a dash for its cost and no marker (AC-2.8)", :aggregate_failures do
+        proxy_in("main", create(:catalog_entry, name: "Bare"), finish: nil)
+
+        get deck_path(deck)
+
+        expect(zone_section("Main").at_css("tr.c-zone__group th").text).to start_with("Other")
+        row = card_rows(zone_section("Main")).sole
+        expect(row.css("td")[1].at_css(".is-muted").text).to eq("–")
+        expect(row.at_css(".c-proxy").text.squish).to eq("Proxy 1")
+        expect(html.css(".c-legal")).to be_empty
+      end
+
       it "counts no proxy in the collection, the card page or an export's lots (AC-4.1)", :aggregate_failures do
         bolt = printing
         proxy_in("main", bolt, quantity: 3)
@@ -182,6 +194,51 @@ RSpec.describe "Deck page", type: :request do
         get catalog_entry_path(bolt)
         expect(html.text).not_to match(/\b3 copies\b/)
         expect(CollectionExport.new(account:, at: Time.current).to_h["lots"]).to eq([])
+      end
+    end
+
+    describe "what a proxy leaves alone (AC-2.12, AC-4.1)" do
+      let(:bolt) { printing }
+
+      def collection_count
+        get collection_path
+        html.at_css(".c-pagehead__stats").text
+      end
+
+      def card_page_owned
+        get catalog_entry_path(bolt)
+        html.css(".c-stat").find { it.at_css("dt").text == "Owned" }.at_css("dd").text
+      end
+
+      def decks_page_owned
+        get decks_path
+        html.at_css("tbody tr").css("td")[html.css("thead th").map { it.text.strip }.index("Owned")].text.strip
+      end
+
+      def snapshot = [ collection_count, card_page_owned, decks_page_owned ]
+
+      def proxy_tags_on_collection_and_card_page = [ collection_path, catalog_entry_path(bolt) ].flat_map { get(it) && html.css(".c-proxy").to_a }
+
+      it "changes no count on the collection, the card page or the Decks page when a proxy is added, changed and removed", :aggregate_failures do
+        own("main", bolt, quantity: 2)
+        before = snapshot
+        post deck_zone_proxies_path(deck, "main"), params: { proxy: { entry: bolt.external_key, finish: "nonfoil", quantity: "3" } }
+        proxy = Deck::Proxy.sole
+        added = snapshot
+        patch deck_proxy_path(deck, proxy), params: { proxy: { quantity: "5" } }
+        changed = snapshot
+        delete deck_proxy_path(deck, proxy)
+
+        expect(before).to eq([ "2 items · 1 unique", "2", "2" ])
+        expect([ added, changed, snapshot ]).to all(eq(before))
+        expect(Deck::Proxy.count).to eq(0)
+      end
+
+      it "shows no proxy tag on the collection or the card page while a deck holds one" do
+        own("main", bolt, quantity: 2)
+        proxy_in("main", bolt, quantity: 3)
+
+        expect(proxy_tags_on_collection_and_card_page).to be_empty
       end
     end
 
@@ -430,7 +487,7 @@ RSpec.describe "Deck page", type: :request do
     end
 
     describe "copies are not added or moved here (Story 4)" do
-      it "has no form, no row menu, no link to add, to number entry or to the scanner inside the page, no drag target (AC-4.2)", :aggregate_failures do
+      it "has no form or drag target, no link to add copies, to number entry or to the scanner, and every card links to its copies (AC-4.2)", :aggregate_failures do
         own("main", printing)
 
         get deck_path(deck)

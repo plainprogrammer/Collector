@@ -115,6 +115,20 @@ RSpec.describe "Importing proxies", type: :request do
     expect([ Deck.count, Deck::Proxy.count ]).to eq([ 0, 0 ])
   end
 
+  it "answers 404 for a proxy's pages once an apply dropped its zone by changing the deck's format (AC-5.5)", :aggregate_failures do
+    modern = create(:deck, account:, name: "Izzet Tempo", format: "modern")
+    proxy = create(:deck_proxy, zone: modern.zone("sideboard"), account:, entry:, finish: "foil", quantity: 2)
+    preview(export.merge("decks" => [ { "name" => "Izzet Tempo", "collectible_type" => "mtg", "format" => "commander" } ], "proxies" => []))
+
+    apply(confirm: true)
+
+    expect(modern.reload.zones.pluck(:zone)).not_to include("sideboard")
+    [ edit_deck_proxy_path(modern, proxy.id), new_deck_proxy_removal_path(modern, proxy.id), new_deck_zone_proxy_path(modern, "sideboard") ].each do |path|
+      get path
+      expect(response).to have_http_status(:not_found), path
+    end
+  end
+
   it "leaves the proxies of a version 3 file's collector alone and says so (AC-7.8)", :aggregate_failures do
     create(:deck_proxy, zone: deck.zone("main"), account:, entry:, finish: "foil", quantity: 2)
     v3 = export.except("proxies", "decks").merge("format_version" => 3, "lots" => [])
@@ -125,6 +139,22 @@ RSpec.describe "Importing proxies", type: :request do
     expect(html.at_css("#decks_stay").text).to include("so your decks would stay")
     expect(html.at_css("#decks_stay").text).to include("This file was written before proxies existed, so your proxies would stay.")
     expect(html.at_css("#proxies")).to be_nil
+  end
+
+  it "applies a version 3 file and leaves every proxy row as it was, with its id, zone, finish, quantity and time (AC-7.8)", :aggregate_failures do
+    create(:deck_proxy, zone: deck.zone("main"), account:, entry:, finish: "foil", quantity: 2)
+    create(:deck_proxy, zone: deck.zone("sideboard"), account:, entry: create(:mtg_printing).entry, finish: "nonfoil", quantity: 5)
+    rows = -> { Deck::Proxy.order(:id).pluck(:id, :location_id, :catalog_entry_id, :finish, :quantity, :updated_at) }
+    before = rows.call
+    lot = { "entry" => entry_hash(entry), "quantity" => 2, "finish" => "foil", "condition" => nil, "price_paid" => nil, "location" => nil,
+            "added_at" => "2026-11-01T10:00:00Z", "changed_at" => "2026-11-01T10:00:00Z" }
+    preview(export.except("proxies", "decks").merge("format_version" => 3, "lots" => [ lot ]))
+
+    apply
+
+    expect(response).to redirect_to(collection_path)
+    expect([ Lot.count, Deck.count ]).to eq([ 1, 1 ]) # the file's lot is written, the deck stays
+    expect(rows.call).to eq(before)
   end
 
   it "lists a proxy row with problems as 'Proxy N', says the file can't be applied, and stores nothing (AC-7.6)", :aggregate_failures do
@@ -144,6 +174,7 @@ RSpec.describe "Importing proxies", type: :request do
 
     expect(response).to have_http_status(:unprocessable_content)
     expect(html.text).to include("proxies")
+    expect(account.reload.import_upload).to be_nil # nothing is stored for a file that is refused
   end
 
   it "writes rows the model accepts, with an account, a zone of a deck, a listed finish and a quantity in range (AC-7.10)", :aggregate_failures do

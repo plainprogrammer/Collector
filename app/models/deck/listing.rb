@@ -1,4 +1,4 @@
-# The Decks page's rows (spec 062 FR-4, spec 068 FR-5): an account's decks in comparison-key order, each with the copies in all
+# The Decks page's rows (spec 062 FR-4, spec 068 FR-2): an account's decks in comparison-key order, each with the copies in all
 # its zones and the proxies in them, in a bounded number of statements however many decks there are (one for the decks and
 # their locations, one grouped read of the copies and one of the proxies). Needs the account, not `Current.account`.
 class Deck::Listing

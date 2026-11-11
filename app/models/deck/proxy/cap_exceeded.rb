@@ -1,7 +1,8 @@
-# A move that would put more than 9,999 proxies of one printing and finish in one zone (spec 068 decision 10). It names the
-# first such proxy by card name, set code, collector number, language and finish, as the format change's refusal says.
+# A move that would put more than 9,999 proxies of one printing and finish in one zone (spec 068 decision 10). The error carries
+# the proxy the caller chose as first: `Deck::FormatChange` picks it by card name, set code, collector number, language and finish
+# (`first_by_shown_order`), and the refusal names that one.
 class Deck::Proxy::CapExceeded < StandardError
-  # The proxy that would overflow.
+  # The proxy the caller chose to name, one that would overflow.
   # @return [Deck::Proxy]
   attr_reader :proxy
 

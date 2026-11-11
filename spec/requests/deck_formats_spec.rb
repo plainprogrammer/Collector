@@ -165,6 +165,7 @@ RSpec.describe "Deck formats", type: :request do
 
         expect(response).to have_http_status(:unprocessable_content)
         expect(html.at_css("#status .c-status__message--alert").text).to eq("Nothing changed. #{entry.name} (#{entry.set.code.upcase} · #{entry.number}) would have more than 9,999 proxies in one zone.")
+        expect(html.at_css("select[name='deck[format]'] option[selected]")["value"]).to eq("mtg/modern") # the page keeps the chosen format
         expect(deck.reload.format).to eq("commander")
       end
     end

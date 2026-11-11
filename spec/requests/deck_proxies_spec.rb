@@ -41,6 +41,17 @@ RSpec.describe "Deck proxies", type: :request do
         expect(html.text).to include("2 printings")
       end
 
+      it "offers only the sets of the deck's collectible type (AC-1.3)", :aggregate_failures do
+        printing(set: create(:catalog_set, code: "mh2", name: "Modern Horizons 2"))
+        create(:catalog_entry, collectible_type: "other", set: create(:catalog_set, collectible_type: "other", code: "oth", name: "Other Set"))
+
+        get new_deck_zone_proxy_path(deck, "main")
+
+        offered = html.css("select[name=set] option").map(&:text)
+        expect(offered).to include("Modern Horizons 2 (MH2)")
+        expect(offered).not_to include("Other Set (OTH)")
+      end
+
       it "says how many printings of a card with more than ten it shows (AC-1.3)" do
         12.times { |n| printing(identity: bolt, set: create(:catalog_set, code: "s#{n}")) }
 
@@ -105,6 +116,12 @@ RSpec.describe "Deck proxies", type: :request do
         proxy = Deck::Proxy.sole
         expect([ proxy.zone, proxy.entry, proxy.finish, proxy.quantity ]).to eq([ deck.zone("main"), entry, "foil", 2 ])
         expect(Lot.count).to eq(0)
+      end
+
+      it "writes a thousand with a delimiter in the notice (AC-1.5)" do
+        add(printing, quantity: "1000")
+
+        expect(flash[:notice]).to start_with("Added 1,000 proxies of ")
       end
 
       it "says '1 proxy' for one, and merges into the proxy it already has (same id)", :aggregate_failures do
@@ -182,12 +199,16 @@ RSpec.describe "Deck proxies", type: :request do
         expect(Deck::Proxy.count).to eq(0)
       end
 
-      it "answers 404 for a deck whose collectible type the instance no longer registers (decision 19)" do
+      it "answers 404 for the chooser, the form and the create of a deck whose collectible type the instance no longer registers (AC-1.10, decision 19)", :aggregate_failures do
         deck.update_columns(collectible_type: "gone")
 
         get new_deck_zone_proxy_path(deck, "main")
-
         expect(response).to have_http_status(:not_found)
+        get new_deck_zone_proxy_path(deck, "main", entry: entry.external_key)
+        expect(response).to have_http_status(:not_found)
+        post deck_zone_proxies_path(deck, "main"), params: { proxy: { entry: entry.external_key, finish: "foil", quantity: "1" } }
+        expect(response).to have_http_status(:not_found)
+        expect(Deck::Proxy.count).to eq(0)
       end
     end
 
@@ -277,6 +298,8 @@ RSpec.describe "Deck proxies", type: :request do
         proxy.destroy!
 
         get edit_deck_proxy_path(deck, proxy)
+        expect(response).to have_http_status(:not_found)
+        get new_deck_proxy_removal_path(deck, proxy)
         expect(response).to have_http_status(:not_found)
         delete deck_proxy_path(deck, proxy)
         expect(response).to have_http_status(:not_found)

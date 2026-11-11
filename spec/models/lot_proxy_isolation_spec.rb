@@ -30,6 +30,16 @@ RSpec.describe "Proxies and the ways copies reach a zone", type: :model do
   end
   # rubocop:enable RSpec/ExampleLength
 
+  it "shows a copy the scanner added to the zone beside the unchanged proxy in the zone's row (AC-4.2)", :aggregate_failures do
+    Scanner::Sitting.choose!(account:, location: deck.zone("main"))
+    Scanner::Sitting.add!(account:, printing: entry, finish: "foil", reading_key: "a" * 32)
+
+    row = Deck::Page.new(Deck.find_by!(location_id: deck.location_id)).zones.find { it.name == "Main" }.groups.flat_map(&:rows).sole
+
+    expect([ row.owned, row.proxy, row.total ]).to eq([ 1, 3, 4 ])
+    expect(unchanged?).to be(true)
+  end
+
   it "survives a catalog refresh that retires the printing (AC-4.3)", :aggregate_failures do
     entry.update!(retired_at: Time.current)
 

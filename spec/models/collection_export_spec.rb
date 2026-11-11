@@ -550,6 +550,31 @@ RSpec.describe CollectionExport, type: :model do
       expect(count_queries { exported }).to eq(few) # the proxies' read runs once, with none or with five
     end
 
+    # Runs +change+ once, right after the SELECT that reads the proxies (before the decks are read), and counts the proxy reads.
+    def export_changing_after_proxies_read(&change)
+      reads = 0
+      subscriber = lambda do |*, payload|
+        next unless payload[:sql].start_with?("SELECT") && payload[:sql].include?('FROM "deck_proxies"')
+
+        change.call if (reads += 1) == 1
+      end
+      file = nil
+      ActiveSupport::Notifications.subscribed(subscriber, "sql.active_record") { file = described_class.new(account:, at: Time.utc(2026, 11, 11)).to_json }
+      [ file, reads ]
+    end
+
+    it "reads again when a deck's format changed after the proxies were read, and writes a file that agrees with itself (AC-7.2)", :aggregate_failures do
+      create(:deck_proxy, zone: deck.zone("main"), account:, entry:, finish: "foil", quantity: 2)
+
+      file, reads = export_changing_after_proxies_read { Deck.where(id: deck.id).update_all(format: "commander") }
+      data = JSON.parse(file)
+
+      expect(reads).to eq(2)
+      expect(data["decks"].map { it["format"] }).to eq([ "commander" ])
+      expect(data["proxies"].map { [ it["deck"], it["zone"], it["quantity"] ] }).to eq([ [ "Izzet Tempo", "main", 2 ] ])
+      expect(ExportFormat::Rules.problems(file)).to be_empty
+    end
+
     it "still exports a proxy of a collectible type the instance no longer has (AC-7.2)" do
       create(:deck_proxy, zone: deck.zone("main"), account:, entry:)
       allow(Catalog).to receive(:collecting).and_return({})

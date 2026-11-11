@@ -334,7 +334,8 @@ RSpec.describe Deck::FormatChange, type: :model do
     let(:deck) { create(:deck, account:, name: "Elves", format: "commander") }
     let(:entry) { create(:mtg_printing).entry }
 
-    def proxy_in(zone, entry: self.entry, finish: "foil", quantity: 1) = create(:deck_proxy, zone: deck.zone(zone), account:, entry:, finish:, quantity:)
+    def proxy_in(zone, entry: self.entry, finish: "foil", quantity: 1) = proxy_in_deck(deck, zone, entry:, finish:, quantity:)
+    def proxy_in_deck(deck, zone, entry: self.entry, finish: "foil", quantity: 1) = create(:deck_proxy, zone: deck.zone(zone), account:, entry:, finish:, quantity:)
 
     it "moves the proxies of a dropped zone into Considering and leaves the others where they were (AC-6.1)", :aggregate_failures do
       commander = proxy_in("commander", quantity: 2)
@@ -398,6 +399,54 @@ RSpec.describe Deck::FormatChange, type: :model do
       expect(Deck::Proxy.pluck(:quantity).sort).to eq([ 5_000, 5_000 ])
     end
 
+    describe "with two proxies over the cap (AC-6.4)" do
+      def printing(name: "Bolt", set: "mh2", number: "1")
+        catalog_set = Catalog::Set.find_by(code: set) || create(:catalog_set, code: set)
+        create(:mtg_printing, entry: create(:catalog_entry, name:, number:, set: catalog_set)).entry
+      end
+
+      # A proxy of the entry in the dropped zone, with one of the same printing and finish in Considering, so the move would pass 9,999.
+      def breach(entry, finish: "foil")
+        proxy_in("considering", entry:, finish:, quantity: 5_000)
+        proxy_in("commander", entry:, finish:, quantity: 5_000)
+      end
+
+      def refused
+        change_to(deck, "modern").save
+      rescue Deck::Proxy::CapExceeded => error
+        error.proxy
+      end
+
+      it "names the first by card name, not the one made first" do
+        breach(printing(name: "Zed"))
+        ant = breach(printing(name: "Ant"))
+
+        expect(refused).to eq(ant)
+      end
+
+      it "breaks a tie of name by set code" do
+        breach(printing(set: "zzz"))
+        early = breach(printing(set: "aaa"))
+
+        expect(refused).to eq(early)
+      end
+
+      it "then by collector number as a number" do
+        breach(printing(number: "10"))
+        nine = breach(printing(number: "9"))
+
+        expect(refused).to eq(nine)
+      end
+
+      it "then by finish" do
+        entry = printing
+        breach(entry, finish: "nonfoil")
+        foil = breach(entry, finish: "foil")
+
+        expect(refused).to eq(foil)
+      end
+    end
+
     it "shows the lots' refusal first when both would pass the cap (AC-6.5)" do
       lot_entry = create(:mtg_printing).entry
       Lot.add!(account:, entry: lot_entry, location: deck.zone("commander"), quantity: 9_000, finish: "foil")
@@ -408,14 +457,15 @@ RSpec.describe Deck::FormatChange, type: :model do
       expect { change_to(deck, "modern").save }.to raise_error(Lot::CapExceeded)
     end
 
-    it "adds no sentence about proxies when none moved, and counts none for a same-zones change (AC-6.6)", :aggregate_failures do
-      proxy_in("main")
+    it "leaves a proxy where it is, with its id and quantity, when the new format has the same zones, and counts none moved (AC-6.6)", :aggregate_failures do
+      modern = create(:deck, account:, name: "Plain", format: "modern")
+      proxy = proxy_in_deck(modern, "main", quantity: 7)
+      change = change_to(modern, "pauper")
 
-      change = change_to(create(:deck, account:, name: "Plain", format: "modern"), "pauper")
       change.save!
 
-      expect(change.proxies_moved).to eq(0)
-      expect(Deck::Proxy.count).to eq(1)
+      expect(proxy.reload).to have_attributes(location_id: modern.zone("main").id, quantity: 7)
+      expect([ change.proxies_moved, Deck::Proxy.count ]).to eq([ 0, 1 ])
     end
 
     it "rolls the proxies back with the deck when the change fails part way (AC-6.7)", :aggregate_failures do

@@ -89,6 +89,15 @@ RSpec.describe Deck::Proxy, type: :model do
     expect { other_account.user.destroy! }.to change(described_class, :count).from(1).to(0) # the user's account is destroyed with it
   end
 
+  it "refuses to give an existing proxy a finish its printing doesn't list, and still takes a new quantity (AC-8.2)", :aggregate_failures do
+    proxy = add(quantity: 2)
+
+    expect(proxy.update(finish: "etched")).to be(false)
+    expect(proxy.errors[:finish]).to eq([ "That finish isn't available for this printing." ])
+    expect(proxy.reload.finish).to eq("foil")
+    expect(proxy.update(quantity: 3)).to be(true)
+  end
+
   it "doesn't revalidate a stored proxy against the catalog (decision 2)" do
     proxy = add
     entry.extension.update!(finishes: %w[nonfoil]) # a refresh dropped foil

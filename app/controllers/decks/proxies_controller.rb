@@ -14,7 +14,7 @@ class Decks::ProxiesController < ApplicationController
 
     @search = Catalog::Search.new(query: search_params[:q], set_code: search_params[:set], page: search_params[:page], collectible_type: @deck.collectible_type)
     @groups = @search.groups
-    @sets = Catalog::Set.with_searchable_entries.newest_first.to_a
+    @sets = Catalog::Set.where(collectible_type: @deck.collectible_type).with_searchable_entries.newest_first.to_a # only the deck's own type's sets (AC-1.3)
     render :choose
   end
 
@@ -23,7 +23,7 @@ class Decks::ProxiesController < ApplicationController
     entry = find_entry(proxy_params[:entry])
     @addition = Deck::Proxy::Addition.new(account: Current.account, zone: @zone, entry:, finish: proxy_params[:finish], quantity: proxy_params[:quantity])
     if @addition.save
-      added = helpers.pluralize(Deck::Proxy.parse_quantity(@addition.quantity), "proxy", "proxies")
+      added = helpers.pluralize(helpers.number_with_delimiter(Deck::Proxy.parse_quantity(@addition.quantity)), "proxy", "proxies")
       redirect_to deck_path(@deck), status: :see_other,
         notice: "Added #{added} of #{helpers.proxy_name(@addition.proxy)} to #{helpers.proxy_zone_label(@deck, @zone)}."
     else
@@ -31,11 +31,11 @@ class Decks::ProxiesController < ApplicationController
     end
   end
 
-  # The Change proxy count page (T10).
+  # The Change proxy count page (AC-3.1).
   def edit
   end
 
-  # Sets the proxy's quantity (T10).
+  # Sets the proxy's quantity (AC-3.2).
   def update
     count = Deck::Proxy.parse_quantity(proxy_params[:quantity])
     return refuse_quantity(proxy_params[:quantity]) unless count
@@ -45,7 +45,7 @@ class Decks::ProxiesController < ApplicationController
       notice: "Changed the proxies of #{helpers.proxy_name(@proxy)} in #{helpers.proxy_zone_label(@deck, @proxy.zone)} to #{helpers.number_with_delimiter(count)}."
   end
 
-  # Removes the proxy (T10); the confirmation page is `Decks::Proxies::RemovalsController#new`.
+  # Removes the proxy (AC-3.4); the confirmation page is `Decks::Proxies::RemovalsController#new`.
   def destroy
     @proxy.destroy!
     redirect_to deck_path(@deck), status: :see_other,
