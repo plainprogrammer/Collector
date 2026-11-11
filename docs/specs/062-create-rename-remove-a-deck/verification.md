@@ -169,6 +169,12 @@ All time bars are met. **The preview's memory is near its bar and is flagged, no
 4. **Two issue notes owed to the maintainer** (not written by the worker; plan T23): for [#251](https://github.com/plainprogrammer/Collector/issues/251), "an import changes a deck's format as the file says, with no move to Considering"; for [#252](https://github.com/plainprogrammer/Collector/issues/252), "the label and the safe Edit copy are done in #49". Both are in the specs index's row for spec 062 (the index has no entry per issue). They go in `worker_done`'s body.
 5. The previews: the static previews of the design system (`previews/DecksIndex.html`, `previews/DecksIndexPhone.html`) still draw spec 060's page with the Proxy column and the linked name; `DecksIndex.md` says so. #253 and #254 restore that shape.
 
+## Visual review
+
+Screenshots (32, in `screenshots/`, embedded in PR #300): the Decks page, after creating a deck, New deck, New deck with a refused name, Rename, Rename with a refused name, the removal confirmation and the refusal page; each wide (1280px) and phone (a 390px frame), light and dark; real CSS, classic scrollbars, headless Firefox, factory data with placeholder printings. Every phone page was measured: no horizontal overflow. Found and fixed in the review of these shots: the refusal page's zone label ran into the set code ("Izzet Tempo › Sideboard S86"); it is now joined to the line by a dot (`91efe31e`).
+
+Maintainer ruling, 2026-11-10: the Rename and Remove width on phones (each row spends about 170px on the two buttons, so a long name wraps early; a 60-character name wraps in nine lines and nothing overflows) was reviewed and kept as decision D5 has it. The deck page of #253 revisits where these actions live.
+
 ## Implementation review
 
 INCOMPLETE: no blocking finding and no drift from the spec; one criterion is open (AC-8.10's memory bar, put to the maintainer), and the rest of the review is recorded below. When the maintainer rules on the memory bar this line becomes SPEC-ALIGNED.
