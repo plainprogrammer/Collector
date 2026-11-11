@@ -62,6 +62,12 @@ The fixes were proved by the targeted runs below; a second review round was not 
 
 `DeckPage.md` (as-built paragraph, the row-menu note, the head's wrapping), `DecksIndex.md` (the name is a link), `collection-and-lots.md` (the deck page, the seam, the two named constants, the zone-order note, Sources), `tenancy-and-accounts.md` (the route, the digits-only guard, Sources), `CLAUDE.md` (the deck sentence, the spec list, the guard sentence), `docs/specs/README.md` (the 066 row; the supersession recorded in the 060 and 062 rows). The distillation logs are written by the distillation step.
 
+## Distillation
+
+Distilled into [collection and lots](../../architecture/collection-and-lots.md) (the deck page, the seam, the constants, the zone-order note) and [tenancy and accounts](../../architecture/tenancy-and-accounts.md) (the route's 404 rule); the architecture README lists spec 066 under both; each area doc has a Distillation log row reading "spec 066's pull request" until the pull request is numbered. The design system's `DeckPage.md` and `DecksIndex.md` were updated in the feature's own commits. CLAUDE.md's deck sentence, spec list and guard sentence point to the area docs. The index row is Frozen with its plan "retirement owed"; the frozen line is on the spec. No ADR was proposed: the seam is one more optional answer on ADR 0028's.
+
+Not done here (not this branch's): spec 067's plan, whose pull request has merged, is owed a retirement; that is a housekeeping branch from `origin/main`.
+
 ## Screenshots
 
 `screenshots/deck-page-wide-light.jpg`, `-wide-dark.jpg` (1280px) and `-phone-light.jpg`, `-phone-dark.jpg` (360px, in a narrow frame), from a throwaway system spec with a Modern deck of three zones: Creatures, Instants, Sorceries and Lands groups (an Artifact Land inside Lands), a banned and a not legal marker in the muted ink, a 60-character name with no space and a six-symbol cost, and an empty right column. No horizontal overflow at either width (`scrollWidth` 15px under `innerWidth`, the classic scrollbar).
