@@ -1,6 +1,6 @@
 <% content_for :title, "#{@deck.name} · Collector" %>
 <%= render "layouts/appbar", section: :decks, detail: true, back_path: decks_path %>
-<main class="c-main c-page">
+<main class="c-main c-page c-deckpage">
   <div class="c-item__head">
     <div>
       <h1 class="c-item__title"><%= @deck.name %></h1>

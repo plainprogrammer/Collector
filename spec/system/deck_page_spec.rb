@@ -135,6 +135,27 @@ RSpec.describe "Deck page", type: :system do
     end
   end
 
+  # Whether each of the head's parts lies inside the frame, and whether the name is cut.
+  def head_boxes
+    page.evaluate_script(<<~JS)
+      (() => { const title = document.querySelector(".c-item__title"), width = window.innerWidth
+        const inside = (el) => { const box = el.getBoundingClientRect(); return box.left >= 0 && box.right <= width }
+        return { cut: title.scrollWidth > title.clientWidth, title: inside(title),
+                 buttons: [...document.querySelectorAll(".c-item__actions .c-btn")].map(inside) } })()
+    JS
+  end
+
+  %w[light dark].each do |theme|
+    it "wraps a 60-character deck name with no space inside the head at 360px in the #{theme} theme (AC-5.5, AC-5.6)", :aggregate_failures do
+      open_in_narrow_frame(deck_path(create(:deck, account:, name: long_name)), width: 360, ready: ".c-item__head")
+      within_narrow_frame do
+        set_theme(theme)
+        expect(fits?).to be(true)
+        expect(head_boxes).to eq({ "cut" => false, "title" => true, "buttons" => [ true, true ] })
+      end
+    end
+  end
+
   it "wraps the head's actions below the name at 360px and keeps them 36px high or more (AC-5.6)", :aggregate_failures do
     open_in_narrow_frame(deck_path(deck), width: 360, ready: ".c-item__head")
     within_narrow_frame do

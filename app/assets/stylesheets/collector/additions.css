@@ -502,6 +502,14 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
    sideways at 768px, and at 1024px when it had no space (spec 064 review; examples in spec/system/decks_spec.rb). */
 .c-decks td:first-child { white-space:normal; overflow-wrap:anywhere; }
 
+/* ---------- Deck page head (spec 066 AC-5.5): a long name wraps ---------- */
+/* A deck's name may be 60 characters with no space. The name's block is a flex item of `.c-item__head`, whose automatic
+   minimum width is its content's, so the unbroken name kept the block, and with it the page, wider than a phone. min-width:0
+   lets the block shrink to the row and the title breaks inside a word; the actions then wrap below it as they do for a short
+   name (AC-5.6). */
+.c-deckpage .c-item__head > div:first-child { min-width:0; }
+.c-deckpage .c-item__title { overflow-wrap:anywhere; }
+
 /* ---------- Pick list for AddToDeck and UseMyCopy (spec 060): choices that wrap, with a visible focus ---------- */
 /* A fieldset is as wide as its widest child, so a long place name in "My copies (…)" would widen the page (spec 042
    AC-7.1's lesson): min-width:0 and a break inside a word. .c-check has no focus ring of its own, so the row shows one
