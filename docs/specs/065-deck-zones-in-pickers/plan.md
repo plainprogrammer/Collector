@@ -1,17 +1,17 @@
 # Plan: Deck Zones in Every Location Picker and in the Collection Filter
 
 **Spec:** [spec.md](spec.md) v0.2.0 (approved at Gate A, 2026-11-10) | **Issue:** [#252](https://github.com/plainprogrammer/Collector/issues/252) | **Branch:** `065-deck-zones-in-pickers`
-**Version:** 0.1.0 (draft for review; Gate B is the coordinator's)
+**Version:** 0.2.0 (from plan review round 1: nine major findings folded in; Gate B is the coordinator's)
 
 ## Global Constraints
 
 - Test first: every phase writes the failing examples, runs them red, then implements. One Conventional Commit per task, each ending with `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`. `git add` and `git commit` in separate calls.
 - Targeted `bin/rspec <file>` runs need no CI slot. Never run two test runs at once (shared test database). No full `bin/ci`, and no push, without asking the coordinator for a slot.
 - Core files name no collectible, format or zone key but `considering` (`spec/deck_core_spec.rb`, `number_entry_core_spec.rb`, `import_apply_core_spec.rb`, `scanner_sitting_core_spec.rb`). `Location::Name` is untouched.
-- A write path takes its location from `Current.account.locations.placeable` (`place` and `deck_zone`), never `Location.find`, never a deck's own row. The bulk move's `update_all` is safe only because of that lookup.
+- A write path takes its location from `Current.account.locations.find_placeable!(id)` (`place` and `deck_zone` only; text that is not an id of at most 18 digits is 404 before any cast, so "12abc" is never read as 12), never `Location.find`, never a deck's own row. The bulk move's `update_all` is safe only because of that lookup.
 - No migration, no export or import change, no new parameter beyond `deck:<id>` as a filter value, no proxy code or field. A picker's request shape is unchanged: a zone's id travels as the same `location_id`, `location` or `to`.
 - UI follows the design system (`Form` and `FilterSelect` already describe the grouped select; `optgroup`/`option` rules exist in `additions.css`). Native selects, no script. The only CSS change is removing the now-unused `.c-field__static`.
-- Comments follow `.claude/rules/code-documentation.md`: the new public class and helper carry summaries; every comment that says "places only" and is now false is updated in the same task (`Location.places`' own scope comment stays true: it still means places).
+- Comments follow `.claude/rules/code-documentation.md`: the new public class and helper carry summaries; every comment that says "places only" and is now false is updated in the same task (`Location.places`' comment says pickers use it until zones are offered: that part goes).
 - Overlap: the #251 worker (spec 064) edits decks' format and `collection-and-lots.md`; the #297 worker edits `_table.html.erb`'s Set heading. Keep edits to pickers, the filter and the label. Do not touch `app/views/collections/_table.html.erb` or the CSS around `.c-table`.
 
 ## Goal
@@ -23,7 +23,7 @@ Every picker (lot form, Move copies, bulk Move to…, number entry, the scanner 
 **Implements:** FR-1, decision 1, decision 2 | **Satisfies:** AC-8.2 (the one read), AC-8.3 (the guard list), AC-8.4 (the scope)
 **Files:** `app/models/location.rb` (scope, class comment), `app/models/location/choices.rb` (new), `app/helpers/location_choices_helper.rb` (new), `spec/models/location/choices_spec.rb` (new), `spec/helpers/location_choices_helper_spec.rb` (new), `spec/models/location_spec.rb`, `spec/deck_core_spec.rb`
 **Interfaces:**
-- `Location.placeable` → relation of `place` and `deck_zone` rows.
+- `Location.placeable` → relation of `place` and `deck_zone` rows. `Location.find_placeable!(id)` (callable on an account's relation) → the place or zone with that id text, its parent loaded; raises `ActiveRecord::RecordNotFound` for a deck's own row, another account's location (when called on the account's relation), a missing one and any text that is not `Location::ID_TEXT` (`/\A[1-9]\d{0,17}\z/`), which `find` would otherwise cast (`"12abc"` → 12).
 - `Location::Choices.new(account)` (nil account is empty): `#places` (Array<Location>, comparison-key order), `#decks` (Array<`Choices::Group`>, a `Data.define(:location, :zones)` per deck that has at least one zone, comparison-key order, zones by id), `#any?(except: nil)`, `#decks?`, `#find(id)` (a place or a zone by id string or integer, else nil; never a deck's row), `#deck(id)` (the deck's `Group`, else nil). One statement; each zone's `parent` is set from it.
 - `location_options(choices, selected: nil, leading: [], except: nil, deck_values: false)` → options markup: `leading` pairs, then (no deck in the account) the places flat, or (a deck) `optgroup` "Places" and `optgroup` "Decks"; a group with nothing is omitted; zones read `Location#label`; with `deck_values: true` each deck's group starts with "<Deck> (all zones)" whose value is `CollectionFilter::Place.deck_value(id)`; `except` leaves out the place or zone with that id.
 
@@ -39,6 +39,27 @@ describe ".placeable" do
     deck = create(:deck, account:)
     expect(account.locations.placeable).to contain_exactly(place, *deck.zones)
     expect(account.locations.placeable).not_to include(deck.location)
+  end
+
+  describe ".find_placeable!" do
+    let(:account) { create(:user).account }
+
+    it "finds a place or a zone with its parent loaded", :aggregate_failures do
+      deck = create(:deck, account:)
+      zone = account.locations.find_placeable!(deck.zone("main").id.to_s)
+      expect(zone).to eq(deck.zone("main"))
+      expect(zone.association(:parent)).to be_loaded
+      expect(account.locations.find_placeable!(create(:location, account:).id)).to be_present
+    end
+
+    it "is not found for a deck's own row, another account's location, or text that merely starts with an id", :aggregate_failures do
+      deck = create(:deck, account:)
+      foreign = create(:deck, account: create(:user).account)
+      zone_id = deck.zone("main").id
+      [ deck.location_id, foreign.zone("main").id, "#{zone_id}abc", "0#{zone_id}", "", nil, "9" * 19 ].each do |bad|
+        expect { account.locations.find_placeable!(bad) }.to raise_error(ActiveRecord::RecordNotFound), bad.inspect
+      end
+    end
   end
 end
 ```
@@ -176,6 +197,23 @@ end
   # What a copy can be in: a place or a zone of a deck, never a deck's own row. Every picker, the filter and every write that
   # names a location go through this (spec 065 decision 1; ADR 0028's "a lot sits in a zone only").
   scope :placeable, -> { where(kind: %w[place deck_zone]) }
+
+  # An id as text: at most 18 digits, no leading zero (a longer id overflows SQLite's 64-bit bind; spec 037 0.2.2). The one
+  # definition for a filter value and for a write's location id.
+  ID_TEXT = /\A[1-9]\d{0,17}\z/
+
+  # The place or zone with this id, for a write that names one, its parent loaded so a message can read its label. Call it on
+  # the account's relation (`Current.account.locations.find_placeable!(id)`), so another account's id is not found either.
+  # Text is checked before it is cast: `find("12abc")` would read it as 12.
+  #
+  # @param id [Integer, String, nil]
+  # @return [Location]
+  # @raise [ActiveRecord::RecordNotFound] for a deck's own row, a missing id, another account's and anything but an id
+  def self.find_placeable!(id)
+    raise ActiveRecord::RecordNotFound, "not a location id" unless id.to_s.match?(ID_TEXT)
+
+    placeable.includes(:parent).find(id)
+  end
 ```
 
 and change the comment above `scope :places` and the class header's "Every list of "places" must say which kind it means: `places` for a picker or a filter" to say: `places` for the Locations page and the export; `placeable` for a picker or the filter or a write; `top_level` for everything the collector names; no scope when the reader follows a lot to where it is.
@@ -200,9 +238,13 @@ class Location::Choices
     @account = account
   end
 
-  # @return [Array<Location>] the places, by comparison key then name (the Locations page's order)
+  # The account's places, in the Locations page's order.
+  #
+  # @return [Array<Location>] the places, by comparison key then name
   def places = loaded.first
 
+  # The account's decks that have a zone, each with its zones.
+  #
   # @return [Array<Group>] the decks that have a zone, by comparison key then name; a deck with no zone (only an import's
   #   repair can leave one) is not offered, so no group is ever drawn empty
   def decks = loaded.last
@@ -216,6 +258,8 @@ class Location::Choices
   end
 
   # Whether the account has a deck to group zones under.
+  #
+  # @return [Boolean]
   def decks? = decks.any?
 
   # A place or a zone of the account by id; nil for anything else, a deck's own row included.
@@ -292,7 +336,7 @@ module LocationChoicesHelper
 end
 ```
 
-- [ ] `CollectionFilter::Place.deck_value` is added in Phase 5 (Task 5.2); to keep this phase green, add it now in `app/models/collection_filter/place.rb` only as `def self.deck_value(id) = "deck:#{id}"` with its comment (Phase 5 completes the module).
+- [ ] `CollectionFilter::Place.deck_value` is added in Phase 5 (Task 5.2); to keep this phase green, add it now in `app/models/collection_filter/place.rb` only as `def self.deck_value(id) = "deck:#{id}"` with its comment, and set `ID = Location::ID_TEXT` there (same value, one definition); Phase 5 completes the module.
 - [ ] `spec/deck_core_spec.rb`: add `app/models/location/choices.rb app/helpers/location_choices_helper.rb` to `patterns`, and change `expect(files.size).to eq(17)` to `19`. Check `grep -n "scanner\|number" ` guards' globs do not match the new files (`spec/number_entry_core_spec.rb`, `spec/scanner_sitting_core_spec.rb` list their own files).
 - [ ] Run the three new/changed spec files and `bin/rspec spec/deck_core_spec.rb`. Expected: all pass.
 - [ ] Commit: `feat(locations): Location.placeable and Location::Choices, the one source of what a picker offers (#252)`.
@@ -313,7 +357,7 @@ it "lists No location, Places, then Decks as Deck › Zone, on the new and the e
   [ new_catalog_entry_lot_path(entry), edit_lot_path(lot) ].each do |path|
     get path
     select = page_html.at_css('select[name="lot[location_id]"]')
-    expect(select.css(":scope > option").map(&:text)).to eq([ "No location" ])
+    expect(select.xpath("./option").map(&:text)).to eq([ "No location" ])
     expect(select.css("optgroup").map { it["label"] }).to eq(%w[Places Decks])
     expect(select.css('optgroup[label="Places"] option').map(&:text)).to eq(%w[Binder Box])
     expect(select.css('optgroup[label="Decks"] option').map(&:text)).to eq(deck.zones.map { "Izzet Tempo › #{it.name}" })
@@ -394,7 +438,7 @@ it "offers No location, Places and Decks, the lot's own zone left out (spec 065 
   lot = create(:lot, account:, entry:, quantity: 2, location: deck.zone("main"))
   get new_lot_move_path(lot)
   select = page_html.at_css('select[name="move[location_id]"]')
-  expect(select.css(":scope > option").map(&:text)).to eq([ "No location" ])
+  expect(select.xpath("./option").map(&:text)).to eq([ "No location" ])
   expect(select.css('optgroup[label="Decks"] option').map(&:text)).not_to include("Izzet Tempo › Main")
   expect(select.css('optgroup[label="Decks"] option').map(&:text)).to include("Izzet Tempo › Sideboard")
 end
@@ -423,7 +467,12 @@ end
 ```
 
   Use the file's own `let`s for `entry`, `deck` and `account` (read the neighbouring examples at about line 150–200 and name the same ones); change the old 404 example (zone id) to keep only the deck's own id and a foreign zone.
-- [ ] Run `bin/rspec spec/requests/lots_spec.rb spec/requests/lot_moves_spec.rb`. Expected: the new and rewritten examples fail (no optgroups, a zone's id still 404).
+- [ ] Also rewrite what Phase 2 makes false (open each range and rewrite it to say what spec 065 says):
+  - `spec/requests/lots_spec.rb` about lines 508–515, "ignores a location in the request: the zone is not changed through Edit copy": a zone lot now moves through the select. Replace with "moves a lot in a zone to a place, another zone or none through Edit copy's select, and answers 404 for a deck's own row (AC-1.6, AC-1.7)", with `"#{zone.id}abc"` among the 404 ids (text that merely starts with an id is 404, AC-1.7).
+  - `spec/system/lot_edit_zone_spec.rb` (the whole file asserts `.c-field__static`, which goes): header says spec 065 AC-1.6; example one asserts `have_select("Location", selected: "Izzet Tempo › Main")`, fills Quantity 5, saves, and checks the lot is still in the zone; example two sets a 60-character deck name and uses `open_in_narrow_frame(edit_lot_path(lot), width: 360, ready: "select#lot_location_id")` expecting `[ 360, true ]` (no sideways scroll: a select never widens its form).
+  - `spec/requests/lot_moves_spec.rb` about lines 170–175 (the exact list `["No location", "Binder", "Long box"]`): the lists now include the Decks group when the account has a deck; assert the groups as in the new example above (a lot in a place: No location, Places without its own, Decks with every zone).
+  - New examples in `lots_spec.rb` for AC-1.8 (a request with `account_id`, `kind` and `parent_id` among the lot's params is permitted only `quantity finish condition price_paid location_id`: the lot is the signed-in account's and its location the one named) and for the AC-1.6 race (the zone's deck is removed before a PATCH that names the zone: 404, `lot.reload.location` unchanged).
+- [ ] Run `bin/rspec spec/requests/lots_spec.rb spec/requests/lot_moves_spec.rb spec/system/lot_edit_zone_spec.rb`. Expected: the new and rewritten examples fail (no optgroups, a zone's id still 404, the system example still looks for the select).
 - [ ] Commit: `test(lots): spec 065 examples for zones in the lot form and Move copies (#252)`.
 
 ### Task 2.2: The lot form and Move copies offer zones
@@ -438,13 +487,13 @@ end
     # isn't an id are 404 (spec 065 AC-1.7). Its parent is loaded so the notice can read "Deck › Zone".
     def chosen_location
       id = lot_params[:location_id].presence
-      Current.account.locations.placeable.includes(:parent).find(id) if id
+      Current.account.locations.find_placeable!(id) if id
     end
 
     def lot_params = params.expect(lot: %i[quantity finish condition price_paid location_id])
 ```
 
-  In `update` delete the comment line about a lot in a zone keeping it and keep `place = lot_params.key?(:location_id) ? chosen_location : @lot.location # absent keeps the place; blank is "No location" (spec 032 O3)`. In `create` the notice becomes `to #{location ? location.label : "your collection"}`. Update the `set_lot` comment only if it mentions the zone label (it names "the form's label": keep `eager_load(location: :parent)`, still needed by the edit page's `@lot.place_label` if used; if the edit view no longer reads the label after this task, leave the eager load, it costs no extra statement).
+  In `update` delete the comment line about a lot in a zone keeping it and keep `place = lot_params.key?(:location_id) ? chosen_location : @lot.location # absent keeps the place; blank is "No location" (spec 032 O3)`. In `create` the notice becomes `to #{location ? location.label : "your collection"}`. Rewrite the `set_lot` comment: its "the form's label needs them" is stale (the form no longer shows a label); keep `eager_load(location: :parent)` and the reason that stays true, that a separate lookup of the lot's place would come before the lookup of the place the form names (spec 032 AC-6.7's race).
 - [ ] `app/views/lots/_form.html.erb`: first line `<%# locals: (form_model:, url:, method:, submit:, choices:) %>`; replace the `<% if zone_label %> … <% elsif locations.any? %> … <% else %>` block by:
 
 ```erb
@@ -473,14 +522,14 @@ end
     # The place or zone the To field names, nil for none; a deck's own row and any other id are 404 (spec 065 AC-2.4).
     def destination
       id = move_params[:location_id].presence
-      Current.account.locations.placeable.includes(:parent).find(id) if id
+      Current.account.locations.find_placeable!(id) if id
     end
 ```
 
   notice: `to #{to ? to.label : "no location"}`. Fix the comment above `set_destinations`.
 - [ ] `app/views/lots/moves/new.html.erb`: `<% if @destinations.empty? %>` → `<% unless @offered %>` (and `<% else %>` stays: write `<% if !@offered %>`), and the select: `form.select :location_id, location_options(@choices, selected: @move.location_id, leading: @leading, except: @lot.location_id), {}, { "aria-describedby": … }`.
 - [ ] `app/assets/stylesheets/collector/additions.css`: delete the two `.c-field__static` lines (and the comment block above them if it only describes it). `git grep -n 'c-field__static' -- app docs ':!.kamal/secrets'` must then show only docs (updated in Phase 6).
-- [ ] Run `bin/rspec spec/requests/lots_spec.rb spec/requests/lot_moves_spec.rb spec/models/lot/move_spec.rb`. Expected: pass.
+- [ ] Run `bin/rspec spec/requests/lots_spec.rb spec/requests/lot_moves_spec.rb spec/models/lot/move_spec.rb spec/system/lot_edit_zone_spec.rb spec/models/location_spec.rb`. Expected: pass.
 - [ ] Commit: `feat(lots): the lot form and Move copies offer deck zones in grouped selects (#252)`.
 
 ## Phase 3: Bulk Move to…
@@ -498,19 +547,17 @@ it "offers Choose…, No location, Places and Decks as Deck › Zone (spec 065 A
   select_lots(own("Placed", location: box))
   get new_collection_move_path
   select = page_html.at_css("select#to")
-  expect(select.css(":scope > option").map(&:text)).to eq([ "Choose…", "No location" ])
+  expect(select.xpath("./option").map(&:text)).to eq([ "Choose…", "No location" ])
   expect(select.css("optgroup").map { it["label"] }).to eq(%w[Places Decks])
   expect(select.css('optgroup[label="Decks"] option').map(&:text)).to eq(deck.zones.map { "Izzet Tempo › #{it.name}" })
 end
 
 it "leaves out the filter's own zone, and nothing under a deck filter (AC-3.1)", :aggregate_failures do
   zoned = in_zone
-  start_bulk(location: zone.id) # the file's helper that posts the selection under a filter, see below
-  patch collection_selection_path, params: { go: "move", rendered_location: zone.id.to_s, all_rendered: "0", shown_ids: [ zoned.id ], ticked_ids: [ zoned.id ], q: "" }
+  select_lots(zoned, location: zone.id.to_s) # starts the selection under the zone filter and ticks the lot, as the file's own helper does
   get new_collection_move_path
   expect(page_html.css('select#to optgroup[label="Decks"] option').map(&:text)).not_to include("Izzet Tempo › Main")
-  start_bulk(location: CollectionFilter::Place.deck_value(deck.location_id))
-  patch collection_selection_path, params: { go: "move", rendered_location: CollectionFilter::Place.deck_value(deck.location_id), all_rendered: "0", shown_ids: [ zoned.id ], ticked_ids: [ zoned.id ], q: "" }
+  select_lots(zoned, location: CollectionFilter::Place.deck_value(deck.location_id)) # passes only once Task 5.2 parses deck:<id>
   get new_collection_move_path
   expect(page_html.css('select#to optgroup[label="Decks"] option').map(&:text)).to include("Izzet Tempo › Main", "Izzet Tempo › Sideboard")
 end
@@ -544,7 +591,7 @@ it "refuses a move to where every selected lot already is, naming the label (AC-
 end
 ```
 
-  Read the file's existing helpers around lines 1–60 and 520–535 first and use their real names (`start_bulk`, `select_lots` may differ: reuse whichever the neighbouring examples use to start a selection under a filter; `bulk_zone_filter_spec.rb`'s `select_under(filter, *lots, go:)` shows the raw requests, copy that shape if there is no helper). The existing "answers 404 for a zone's id and a deck's id" example becomes the deck-and-foreign one above; the "moves a zone lot, a place lot and an unplaced lot to a place" example (AC-5.7a) stays.
+  Read the file's helpers near its top first: `select_lots(*lots)` ticks lots under all locations; if it takes no `location:` keyword, extend it (`post collection_selection_path, params: { location: }` before the `patch`) or use `bulk_zone_filter_spec.rb`'s `select_under(filter, *lots, go: "move")`, which shows the raw requests. The existing "answers 404 for a zone's id and a deck's id" example becomes the deck-and-foreign one above; the "moves a zone lot, a place lot and an unplaced lot to a place" example (AC-5.7a) stays.
 - [ ] `spec/models/lot/bulk_move_spec.rb`: add
 
 ```ruby
@@ -556,6 +603,11 @@ end
 ```
 
   (`account` as the file defines it; adapt the `let`.)
+- [ ] Also rewrite what Phase 3 makes false:
+  - `spec/requests/bulk_move_spec.rb` about lines 587–598 (an account with a deck and no place gets "You have no locations yet."): it now gets the Move page, with the Decks group only; keep a sibling example for an account with neither a place nor a deck.
+  - `spec/requests/collection_places_spec.rb` about lines 227–246 (a deck-only account has no select, no Move to…): it now shows the select and Move to… (spec 065 AC-6.10, decision 3).
+  - `spec/requests/bulk_zone_filter_spec.rb` about lines 59–61 (a move whose destination is a zone's id answers 404): the destination is a zone now, so moving lots that are all in it answers 422 "The selected items are already in Izzet Tempo › Main."; keep a 404 case for a deck's own id.
+- [ ] The deck half of the filter-own-zone example passes only once Phase 5 parses `deck:<id>` as a filter value; write it in Task 5.1 with the filter examples and keep the zone half here.
 - [ ] Run `bin/rspec spec/requests/bulk_move_spec.rb spec/models/lot/bulk_move_spec.rb`. Expected: new examples fail.
 - [ ] Commit: `test(bulk): spec 065 examples for zones in bulk Move to… (#252)`.
 
@@ -577,10 +629,10 @@ end
 ```ruby
     # "Move to…" is offered only while the account has a place or a zone; asked for without one it is a navigation (spec 041
     # AC-1.2; spec 065 decision 3).
-    def offered?(action) = action != "move" || Current.account.locations.placeable.exists?
+    def offered?(action) = action != "move" || Location::Choices.new(Current.account).any?
 ```
 
-- [ ] `app/controllers/collections/moves_controller.rb`: `before_action :set_choices` then `:require_choices` (replace `require_locations` and `set_destinations`); `destination_for` ends `Current.account.locations.placeable.includes(:parent).find(value)` with its comment saying a deck's own row is 404 (the move writes with `update_all`); and
+- [ ] `app/controllers/collections/moves_controller.rb`: `before_action :set_choices` then `:require_choices` (replace `require_locations` and `set_destinations`); `destination_for` ends `Current.account.locations.find_placeable!(value)` (its own `ID` check stays: it also answers 404 for a `deck:` value) with its comment saying a deck's own row is 404 (the move writes with `update_all`); and
 
 ```ruby
     # What the To field offers: the prompt, "No location" (left out under the "No location" filter), Places and Decks, the
@@ -599,7 +651,7 @@ end
 
 - [ ] `app/views/collections/moves/new.html.erb`: `select_tag :to, location_options(@choices, selected: @to, leading: @leading, except: @own), required: true, "aria-describedby": …`.
 - [ ] `app/models/lot/bulk_move.rb`: `NothingToMove` message `#{to.label}` (comment: `to` is loaded with its parent when a zone); the header comment's "+to+ is a place of +account+ … (never a deck or a zone, spec 062 …)" becomes "a place or a zone of +account+, never a deck's own row". `app/helpers/collections_helper.rb#moved_message`: `to.label`.
-- [ ] Run `bin/rspec spec/requests/bulk_move_spec.rb spec/models/lot/bulk_move_spec.rb spec/requests/bulk_mode_spec.rb spec/requests/edit_many_spec.rb spec/import_apply_core_spec.rb`. Expected: pass. (`spec/requests/bulk_zone_filter_spec.rb` is Phase 5's.)
+- [ ] Run `bin/rspec spec/requests/bulk_move_spec.rb spec/models/lot/bulk_move_spec.rb spec/requests/bulk_mode_spec.rb spec/requests/edit_many_spec.rb spec/requests/collection_places_spec.rb spec/requests/bulk_zone_filter_spec.rb spec/import_apply_core_spec.rb`. Expected: pass (`bulk_zone_filter_spec.rb`'s header comment and first example are rewritten in Task 5.1).
 - [ ] Commit: `feat(bulk): Move to… offers deck zones and names the label (#252)`.
 
 ## Phase 4: Number entry and the scanner sitting
@@ -634,7 +686,7 @@ end
 it "lists No location, Places and Decks as Deck › Zone (spec 065 AC-4.1)", :aggregate_failures do
   get number_entry_url_for_set
   select = page_html.at_css("select#line_location")
-  expect(select.css(":scope > option").map(&:text)).to eq([ "No location" ])
+  expect(select.xpath("./option").map(&:text)).to eq([ "No location" ])
   expect(select.css("optgroup").map { it["label"] }).to eq(%w[Places Decks])
   expect(select.css('optgroup[label="Decks"] option').map(&:text)).to eq(deck.zones.map { "Izzet Tempo › #{it.name}" })
 end
@@ -687,6 +739,11 @@ end
 ```
 
   (`deck`, `account` as the file defines them; the sitting picker examples there show the way to read the panel's HTML. `deck.remove!` works because the deck is empty.)
+- [ ] Also rewrite what Phase 4 makes false:
+  - `spec/models/number_entry/line_form_spec.rb` about lines 151–155 (calls `#locations`): use `#choices.places` / `#choices.any?`.
+  - `spec/requests/number_entries_spec.rb` about lines 329–338 (a zone's id is refused): a zone's id is added to; keep the refusal for a deck's own row and another account's zone. Its AC-5.8a example (deck and no place: no select) now expects the select with the Decks group only.
+  - `spec/requests/scanner/sittings_spec.rb` about lines 349–354 (AC-5.8a: a deck-only account has no control) and 356–365 (a zone's id is refused): the control is there with the Decks group; a zone's id is accepted; keep the 422 for a deck's own row.
+  - Extend the "adds into the zone" example to check the list's line reads "in Izzet Tempo › Main" and that the line's Undo removes the copies and keeps the lot's zone for the rest (spec 062 AC-5.7 is re-proved), and check the sitting panel's select in each state (none open, open, after "Set") for AC-5.1.
 - [ ] Run `bin/rspec spec/models/number_entry/line_form_spec.rb spec/requests/number_entries_spec.rb spec/requests/scanner/sittings_spec.rb`. Expected: new examples fail.
 - [ ] Commit: `test(entry): spec 065 examples for zones in number entry and the scanner sitting (#252)`.
 
@@ -714,8 +771,18 @@ end
 ```
 
   and fix the module header comment's "The account's locations come along for the sitting's place".
-- [ ] `app/controllers/scanner/sittings_controller.rb`: lookup `location = Current.account.locations.placeable.includes(:parent).find_by(id: value) if value.match?(/\A\d+\z/)` with the comment saying a deck's own row is not a place; `chosen_message`: `if account_choices.any?` and `"in #{sitting.location.label}"`; header comment "a place among the account's places" → "a place or a zone among the account's".
-- [ ] `app/helpers/scanners_helper.rb#sitting_choices`: `"in #{sitting.location.label}"`.
+- [ ] `app/controllers/scanner/sittings_controller.rb`: lookup `location = Current.account.locations.placeable.includes(:parent).find_by(id: value) if value.match?(/\A\d+\z/)` (the digits guard already keeps "12abc" from being cast) with the comment saying a deck's own row is not a place; `chosen_message`: `if account_choices.any?` and `"in #{sitting.location.label}"`; header comment "a place among the account's places" → "a place or a zone among the account's".
+- [ ] `app/helpers/scanners_helper.rb#sitting_choices`: `"in #{sitting.location.label}"`. A label needs the zone's parent, so `sitting_locals` hands the sitting its location from the one read instead of letting the association load it (decision 1: a label costs no further query):
+
+```ruby
+    def sitting_locals(sitting = Current.account.scanner_sitting)
+      sitting.association(:location).target = account_choices.find(sitting.location_id) if sitting&.location_id
+      { sitting:, entries: sitting ? sitting.kept_entries.to_a : [], conditions: scanner_conditions, choices: account_choices,
+        added_any: sitting.present? && sitting.entries.exists? }
+    end
+```
+
+  (This replaces the `sitting_locals` line change above; `find` returns nil for a location that is gone, which leaves the association to load lazily and read nil.)
 - [ ] `app/views/scanners/_picker.html.erb` (`locals: (condition:, location_id:, conditions:, choices:)`): `<% if choices.any? %>` and `form.select :location_id, location_options(choices, selected: location_id.to_s, leading: [ [ "No location", "" ] ])`. In `_sitting.html.erb`, `_summary.html.erb` and `_scanner.html.erb` rename the local `locations` to `choices` in the `locals:` line and every `render "scanners/…", …, locations:` call (`git grep -n 'locations' app/views/scanners` shows them all; `app/controllers/scanner/measurements_controller.rb` and `scanners_controller.rb` pass `sitting_locals(...)` as a whole, so need no change).
 - [ ] Run `bin/rspec spec/models/number_entry spec/requests/number_entries_spec.rb spec/requests/scanner spec/requests/scanners_spec.rb spec/number_entry_core_spec.rb spec/scanner_sitting_core_spec.rb`. Expected: pass.
 - [ ] Commit: `feat(entry): number entry and the scanner sitting offer deck zones (#252)`.
@@ -782,12 +849,12 @@ RSpec.describe "The collection's location filter with decks", type: :request do
 
   def page_html = Nokogiri::HTML5(response.body)
   def select = page_html.at_css('select[name="location"]')
-  def names = page_html.css(".c-tile__name, tbody .c-table__item-link").map { it.text.squish }
+  def names = page_html.css(".c-tile__name").map { it.text.squish } # the grid is the default view
   def deck_value = CollectionFilter::Place.deck_value(deck.location_id)
 
   it "lists All locations and No location, then Places, then Decks with each deck's all-zones option first (AC-6.1)", :aggregate_failures do
     get collection_path
-    expect(select.css(":scope > option").map(&:text)).to eq([ "All locations", "No location" ])
+    expect(select.xpath("./option").map(&:text)).to eq([ "All locations", "No location" ])
     expect(select.css("optgroup").map { it["label"] }).to eq(%w[Places Decks])
     expect(select.css('optgroup[label="Decks"] option').map(&:text)).to eq([ "Izzet Tempo (all zones)", *deck.zones.map { "Izzet Tempo › #{it.name}" } ])
     expect(select.css('optgroup[label="Decks"] option').first["value"]).to eq(deck_value)
@@ -880,8 +947,8 @@ describe "bulk mode under a zone or a deck (AC-6.7, AC-6.8, AC-6.11)" do
   end
 
   it "sets a condition on exactly the deck's lots; a lot outside it whose id is sent is ignored", :aggregate_failures do
-    lots = [ in_main, in_side ].map(&:lots).map(&:first)
-    outsider = in_box.lots.first
+    lots = [ in_main, in_side ]
+    outsider = in_box
     select_under(deck_value, *lots, outsider, go: "set_condition")
     post collection_condition_change_path, params: { condition: "lightly_played" }
     expect(lots.map { it.reload.condition }).to eq(%w[lightly_played lightly_played])
@@ -889,7 +956,7 @@ describe "bulk mode under a zone or a deck (AC-6.7, AC-6.8, AC-6.11)" do
   end
 
   it "restarts the selection empty after a move to another zone of the same deck (decision 12)", :aggregate_failures do
-    lot = in_main.lots.first
+    lot = in_main
     select_under(deck_value, lot, go: "move")
     post collection_move_path, params: { to: deck.zone("sideboard").id }
     expect(response).to have_http_status(:see_other)
@@ -899,9 +966,30 @@ describe "bulk mode under a zone or a deck (AC-6.7, AC-6.8, AC-6.11)" do
     expect(page_html.css("tbody tr[aria-selected=true]")).to be_empty
   end
 
+  it "moves lots selected under a deck's value to a place (AC-3.4)", :aggregate_failures do
+    lots = [ in_main, in_side ]
+    select_under(deck_value, *lots, go: "move")
+    post collection_move_path, params: { to: box.id }
+    expect(response).to have_http_status(:see_other)
+    expect(lots.map { it.reload.location }).to all(eq(box))
+  end
+
+  it "removes exactly the deck's lots when every matching lot is selected (AC-6.7)", :aggregate_failures do
+    post collection_selection_path, params: { location: deck_value }
+    patch collection_selection_path, params: { go: "remove", q: "", rendered_q: "", rendered_location: deck_value, all_rendered: "1", all: "1", shown_ids: [ in_main.id, in_side.id ], ticked_ids: [ in_main.id, in_side.id ] }
+    delete collection_bulk_removal_path
+    expect(account.lots.pluck(:id)).to contain_exactly(in_box.id, loose.id)
+  end
+
+  it "shows nothing selected when the value changes between the page and the action (AC-6.7)", :aggregate_failures do
+    post collection_selection_path, params: { location: deck_value }
+    get collection_path(bulk: 1, location: deck.zone("main").id)
+    expect(page_html.css("tbody tr[aria-selected=true]")).to be_empty
+  end
+
   it "acts on nothing under a deck that was removed in another tab (AC-6.8)", :aggregate_failures do
     ghost = create(:deck, account:, name: "Ghost")
-    select_under(CollectionFilter::Place.deck_value(ghost.location_id), in_main.lots.first, go: "remove")
+    select_under(CollectionFilter::Place.deck_value(ghost.location_id), in_main, go: "remove")
     ghost.remove!
     post collection_selection_path, params: { location: CollectionFilter::Place.deck_value(ghost.location_id) }
     patch collection_selection_path, params: { go: "remove", q: "", rendered_q: "", rendered_location: CollectionFilter::Place.deck_value(ghost.location_id), all_rendered: "1", all: "1" }
@@ -911,16 +999,19 @@ describe "bulk mode under a zone or a deck (AC-6.7, AC-6.8, AC-6.11)" do
 end
 ```
 
-  Adapt `select_under` and the removal sequence to `bulk_zone_filter_spec.rb`'s own helper and its examples (same requests; read it first). `in_main.lots` is the entry's lots via `owned_printing`'s return value (it returns the lot, per `zone_place_label_spec.rb`'s `zone_lot.entry`): if `owned_printing` returns a lot, use `in_main` directly instead of `.lots.first` and `in_main.entry` for the entry.
+  Adapt `select_under` and the removal sequence to `bulk_zone_filter_spec.rb`'s own helper and its examples (same requests; read it first). `owned_printing` returns the Lot (`zone_place_label_spec.rb` reads `zone_lot.entry`), so `in_main`, `in_side`, `in_box` and `loose` are lots.
 - [ ] `spec/requests/bulk_zone_filter_spec.rb`: its header says a zone's id or a deck's id can only be stored by a crafted request because the page offers places only. Update the header and the first example: a zone's id now is a filter value (the page shows it selected and filters to it), a deck's own id without the prefix is still all. The other examples (stored selection acts on the zone's lots, never unplaces) stay as they are, and stay true.
 - [ ] `spec/requests/collection_location_select_spec.rb`: replace the `describe "with a deck (spec 062)"` AC-5.1 example with the grouped expectation and the AC-5.2 example with: a zone's id shows that zone selected, a deck's own id reads as all.
-- [ ] `spec/requests/collection_places_spec.rb` (about line 255, "shows the select with places only, the column, Move to… and the place line" for an account with a deck and no place): change to expect the select with the Decks group only.
+- [ ] `spec/requests/collection_places_spec.rb`: about line 255 (a place and a deck, "shows the select with places only…"): the flat list gains the Decks group; about line 266 (a deck with no lot in a zone: no column, no select) is superseded by decision 3: it now shows both (AC-6.10).
+- [ ] Specs that call removed methods or assert the old resolution: `spec/models/collection_grid_spec.rb` (about lines 55, 164, 167 call `places?`) and `spec/models/collection_table_spec.rb` (about lines 105–109 and 135 call `places?` and `filter.locations`): use `choices?` and `choices.places`; line 135's "one statement" still holds. `spec/requests/collection_location_filter_spec.rb` about lines 258–266 ("reads a zone's id and a deck's id as all"): a zone's id is a value now; keep the deck's own id as all.
 - [ ] `spec/requests/query_counts_spec.rb`: add an example that a collection page (grid and table) of an account with one place and three decks issues no more statements than the same page with the decks removed plus none for the decks (the decks are read by the one `Location::Choices` statement the filter already made): follow the file's `queries_for(path)` helper.
+- [ ] The query-count example is a regression proof (the old filter also made one read of the account's locations), not a red-first one; say so in a comment on it.
 - [ ] Run `bin/rspec spec/models/collection_filter spec/requests/collection_deck_filter_spec.rb spec/requests/bulk_zone_filter_spec.rb spec/requests/collection_location_select_spec.rb spec/requests/collection_places_spec.rb spec/requests/query_counts_spec.rb`. Expected: the new and rewritten examples fail.
 - [ ] Commit: `test(filter): spec 065 examples for zones and deck:<id> in the collection filter (#252)`.
 
 ### Task 5.2: The filter value, the select and the sentences
 
+- [ ] Stale comment: `app/models/bulk_selection.rb` (about line 43) says the location is "`""`, `"none"` or an id": add `deck:<id>`.
 - [ ] `app/models/collection_filter/place.rb`:
 
 ```ruby
@@ -1014,7 +1105,7 @@ end
 ## Phase 6: Cross-cutting proofs, documents and screenshots
 
 **Implements:** Stories 7, 8 | **Satisfies:** AC-7.1, AC-8.1, AC-8.2, AC-8.3, AC-8.5, and the spec's "Updates" list
-**Files:** `spec/requests/deck_zone_pickers_spec.rb` (new), `docs/architecture/collection-and-lots.md`, `docs/architecture/scanner.md`, `docs/design-system/README.md`, `docs/design-system/components/Form.md`, `FilterSelect.md`, `DecksIndex.md`, `docs/specs/065-deck-zones-in-pickers/verification.md`, `docs/specs/065-deck-zones-in-pickers/screenshots/`
+**Files:** `spec/requests/deck_zone_pickers_spec.rb` (new), `docs/specs/README.md`, `docs/architecture/collection-and-lots.md`, `docs/architecture/scanner.md`, `docs/design-system/README.md`, `docs/design-system/components/Form.md`, `FilterSelect.md`, `DecksIndex.md`, `docs/specs/065-deck-zones-in-pickers/verification.md`, `docs/specs/065-deck-zones-in-pickers/screenshots/`
 
 ### Task 6.1: The cross-surface examples
 
@@ -1039,10 +1130,15 @@ RSpec.describe "Deck zones in the pickers, across surfaces", type: :request do
 
   def page_html = Nokogiri::HTML5(response.body)
 
-  it "shows a copy added into a zone by the lot form, Move, bulk move and number entry as Deck › Zone (AC-7.1)", :aggregate_failures do
+  it "shows a copy put into a zone by the lot form, number entry and the scanner as Deck › Zone on the collection page (AC-7.1)", :aggregate_failures do
     post catalog_entry_lots_path(entry), params: { lot: { quantity: "1", location_id: zone.id } }
+    second = create(:mtg_printing, name: "Second Card").entry
+    post collection_number_entry_lines_path, params: { line: { set: second.set.code, number: second.number, quantity: "1", finish: "nonfoil", location: zone.id, line_key: SecureRandom.hex(16) }, type: "mtg", language: second.language }
+    third = create(:mtg_printing, name: "Third Card").entry
+    patch scanner_sitting_path, params: { sitting: { location_id: zone.id } }, as: :turbo_stream
+    post scanner_sitting_entries_path, params: { entry: { printing: third.external_key, finish: "nonfoil", reading_key: SecureRandom.hex(16) } }, as: :turbo_stream
     get collection_path(view: "table")
-    expect(page_html.css("tbody .c-table__place-name").map { it.text.squish }).to eq([ "Izzet Tempo › Main" ])
+    expect(page_html.css("tbody .c-table__place-name").map { it.text.squish }).to eq([ "Izzet Tempo › Main" ] * 3)
     expect(page_html.css("tbody .c-table__sub").map(&:text).join).to include("Izzet Tempo › Main")
   end
 
@@ -1054,7 +1150,9 @@ RSpec.describe "Deck zones in the pickers, across surfaces", type: :request do
       expect(response.body).not_to include("Rival"), path
     end
     post collection_selection_path
+    patch collection_selection_path, params: { go: "move", q: "", rendered_q: "", rendered_location: "", all_rendered: "0", shown_ids: [ lot.id ], ticked_ids: [ lot.id ] }
     get new_collection_move_path
+    expect(response).to have_http_status(:ok)
     expect(response.body).not_to include("Rival")
     [ rival_deck.zone("main").id, rival_deck.location_id, rival_box.id ].each do |id|
       post catalog_entry_lots_path(entry), params: { lot: { quantity: "1", location_id: id } }
@@ -1067,14 +1165,14 @@ RSpec.describe "Deck zones in the pickers, across surfaces", type: :request do
 
   it "keeps the export's locations to places and writes a lot in a zone by deck and key (AC-8.5)", :aggregate_failures do
     create(:lot, account:, entry:, location: zone)
-    data = CollectionExport.new(account).as_json
+    data = CollectionExport.new(account:, at: Time.current).to_h
     expect(data["locations"]).to eq([])
     expect(data["lots"].sole["location"]).to eq({ "deck" => "Izzet Tempo", "zone" => "main" })
   end
 end
 ```
 
-  Run first; if `new_collection_move_path` needs a bulk selection with lots, select a lot first (copy `select_lots` from `bulk_move_spec.rb`); `CollectionExport.new(account).as_json` is the entry point (`app/models/collection_export.rb` line 23 `#as_json`-like: read the method name there and use it; the `data["lots"]` key names are in the format document). Expected: pass at once (the behaviour exists after Phases 2–5); these examples are regression proofs added last, so they cannot "fail first": record that in `verification.md`.
+  The number-entry and scanner requests above copy the parameter shapes of `spec/requests/number_entries_spec.rb` and `spec/requests/scanner/sittings/entries_spec.rb` (read the neighbouring examples and use their exact params, finish values and route helpers: the names above are what those files use at the time of writing). `CollectionExport.new(account:, at:).to_h` is the entry point; the `data["lots"]` key names are in the format document. Expected: pass at once (the behaviour exists after Phases 2–5); these examples, and the query-count example of Task 5.1 (the filter read the same one statement for places before), are regression proofs added last, so they cannot "fail first": record that in `verification.md`.
 - [ ] Commit: `test(pickers): spec 065 cross-surface examples for labels, tenancy and the export (#252)`.
 
 ### Task 6.2: Area docs and design-system docs
@@ -1119,11 +1217,11 @@ end
 | FR-4 | 2.2, 3.2, 4.2, 5.2 (labels in notices and sentences) |
 | AC-1.1–1.8 | 2.1, 2.2 |
 | AC-2.1–2.4 | 2.1, 2.2 |
-| AC-3.1–3.4 | 3.1, 3.2 (AC-3.4 is the bulk_zone_filter / deck-filter example in 5.1) |
+| AC-3.1–3.4 | 3.1, 3.2 (the deck half of AC-3.1 and AC-3.4 are in 5.1: they need the filter's `deck:<id>`) |
 | AC-4.1–4.4 | 4.1, 4.2 |
 | AC-5.1–5.5 | 4.1, 4.2 (AC-5.5 by `spec/scanner_sitting_core_spec.rb` in the run) |
 | AC-6.1–6.11 | 5.1, 5.2 |
-| AC-7.1 | 6.1 |
+| AC-7.1 | 6.1 (lot form, number entry, scanner; Move and bulk move are proved by their own phases' label examples) |
 | AC-8.1 | 5.1, 6.1 |
 | AC-8.2 | 1.1 (one read), 5.1 (query counts) |
 | AC-8.3 | 1.2 (guard list), runs in 3.2, 4.2 |
