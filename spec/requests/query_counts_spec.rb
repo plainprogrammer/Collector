@@ -129,6 +129,7 @@ RSpec.describe "Page query counts", type: :request do
     own(printing, location: create(:location, account: user.account))
     paths = { grid: collection_path(view: "grid"), table: collection_path(view: "table"), bulk: collection_path(bulk: 1) }
     post collection_selection_path
+    paths.each_value { |path| queries_for(path) } # a view param saves the collector's view, one write that the first pass makes
     without_decks = paths.transform_values { |path| queries_for(path) }
 
     3.times { |n| create(:deck, account: user.account, name: "Deck #{n}") }
