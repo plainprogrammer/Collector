@@ -32,7 +32,7 @@ RSpec.describe "The deck code", type: :config do
   def relative(files) = files.map { |file| file.relative_path_from(Rails.root).to_s }
 
   it "covers every file of the feature" do
-    expect(files.size).to eq(20 + 6 + 1) # spec 064 brought the list to 20; spec 065 adds the choices model, its helper and the four picker views; spec 066 adds Deck::Page (the `app/models/deck/*.rb` glob already covers it)
+    expect(files.size).to eq(20 + 6 + 1 + 4) # spec 064 brought the list to 20; spec 065 adds the choices model, its helper and the four picker views; spec 066 adds Deck::Page and the deck page's four views (the `app/models/deck/*.rb` and `app/views/decks/**/*.erb` globs already cover them)
   end
 
   it "names every file it lists, each of which exists" do

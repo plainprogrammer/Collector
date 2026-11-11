@@ -1,0 +1,27 @@
+<% content_for :title, "#{@deck.name} · Collector" %>
+<%= render "layouts/appbar", section: :decks, detail: true, back_path: decks_path %>
+<main class="c-main c-page">
+  <div class="c-item__head">
+    <div>
+      <h1 class="c-item__title"><%= @deck.name %></h1>
+      <p class="c-item__type"><%= deck_page_line(@page) %></p>
+    </div>
+    <div class="c-item__actions">
+      <%= link_to "Edit deck", edit_deck_path(@deck), class: "c-btn c-btn--secondary" %>
+      <details class="c-menu" data-controller="menu">
+        <summary class="c-btn c-btn--secondary c-btn--icon" aria-label="More actions"><%= render "icons/more" %></summary>
+        <div class="c-menu__list">
+          <%= link_to "Change format", edit_deck_format_path(@deck), class: "c-menu__item" %>
+          <div class="c-menu__sep"></div>
+          <%= link_to "Remove deck", new_deck_removal_path(@deck), class: "c-menu__item c-menu__item--danger" %>
+        </div>
+      </details>
+    </div>
+  </div>
+  <div class="c-deck">
+    <div class="c-deck__zones">
+      <%= render partial: "decks/zone", collection: @page.zones, as: :zone %>
+    </div>
+  </div>
+</main>
+<%= render "layouts/tabbar", section: :decks %>

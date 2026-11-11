@@ -45,7 +45,7 @@ Rails.application.routes.draw do
   end
 
   # Decks (spec 062): a deck is a location with zones; the id in every deck URL is the deck's location id (decision 4).
-  resources :decks, only: %i[index new create edit update destroy] do
+  resources :decks, only: %i[index show new create edit update destroy] do
     resource :removal, only: :new, module: :decks
     resource :format, only: %i[edit update], module: :decks # spec 064: change a deck's format
   end

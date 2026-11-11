@@ -1,0 +1,16 @@
+<% entry = row.entry %>
+<% marker = row.answer.legality %>
+<tr>
+  <td>
+    <div class="c-table__item"><div>
+      <%= link_to entry.display_name, catalog_entry_path(entry, from: "collection", anchor: "copies") %>
+      <% if marker %><span class="is-opt"> <%= render "decks/legality_marker", word: marker %></span><% end %>
+      <span class="is-opt"><br><span class="c-zone__set"><%= deck_set_line(entry) %></span></span>
+      <span class="c-table__sub"><span class="c-zone__set"><%= deck_set_line(entry) %></span><% if marker %> <%= render "decks/legality_marker", word: marker %><% end %></span>
+    </div></div>
+  </td>
+  <td><%= row.answer.costed ? render_catalog_extension(entry, :deck_cost) : tag.span("–", class: "is-muted") %></td>
+  <td class="is-num is-opt"><%= number_with_delimiter(row.owned) %></td>
+  <td class="is-num is-opt"><span class="is-muted">–</span></td>
+  <td class="is-num"><%= number_with_delimiter(row.owned) %></td>
+</tr>

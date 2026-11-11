@@ -162,4 +162,16 @@ RSpec.describe "Page query counts", type: :request do
     expect(queries_for(collection_path)).to eq(few)
     expect(queries_for(collection_path(bulk: 1))).to eq(few_bulk)
   end
+
+  it "keeps the deck page's queries independent of the zones, printings and lots a deck holds (spec 066 AC-2.10)" do
+    deck = create(:deck, account: user.account, name: "Izzet Tempo")
+    create_lot_in_zone(deck, "main", entry: printing(identity: create(:catalog_identity, name: "One")))
+    few = queries_for(deck_path(deck))
+    24.times do |n|
+      entry = printing(identity: create(:catalog_identity, name: "Card #{n}"), number: (n + 2).to_s)
+      create_lot_in_zone(deck, %w[main sideboard considering][n % 3], entry:, finish: n.even? ? "foil" : "nonfoil")
+    end
+
+    expect(queries_for(deck_path(deck))).to eq(few)
+  end
 end
