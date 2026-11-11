@@ -1,6 +1,6 @@
 # Feature 065: Deck Zones in Every Location Picker and in the Collection Filter
 
-**Status:** Draft
+**Status:** Approved (Gate A, 2026-11-10, by the coordinator under the maintainer's delegation, at 0.2.0)
 **Version:** 0.2.0
 **Created:** 2026-11-10
 **Last Updated:** 2026-11-10
