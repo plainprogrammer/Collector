@@ -161,6 +161,22 @@ None: every criterion has an example or a recorded reading. Two are proved in pa
 
 All time bars are met. **The preview's memory is near its bar and is flagged, not hidden:** the same scenario with 500 places and no decks grew by +431 MB in this in-process harness, and earlier specs' separate-runner figure was +188 MB, so the harness (which holds the request body and the parsed file beside the application) is what is near 500 MB, with or without decks; a first preview grows it by 385 to 506 MB across runs.
 
+### AC-8.10's memory bar, measured in a separate runner (maintainer ruling, 2026-11-10)
+
+**Method** (the way spec 032 measured, `docs/specs/032-lot-in-a-location/verification.md` "Machine and method"): Apple M1, 16 GB, macOS, Ruby 4.0.7. A throwaway runner in the session scratchpad (never committed) ran in a separate process, `bin/rails runner`, in the test environment against a scratch SQLite file under the git-ignored `tmp/measure/` (`DATABASE_URL=sqlite3:tmp/measure/<name>.sqlite3`, a fresh file per run, deleted afterwards). **The schema was loaded in-process** from `db/schema.rb` by the runner, after it checked that `Rails.env.test?` and that the connection's database path ended in `tmp/measure/<name>.sqlite3` (it aborts otherwise); no `db:schema:load` command was run, nothing under `storage/` was read or written, and no maintainer data was involved. Each figure is a whole request through `ActionDispatch::Integration::Session` (sign-in, the preview's POST, the apply's POST, the export's GET); RSS is `ps -o rss` of the runner process before and after the request, with the peak sampled every 50 ms meanwhile; the write transaction is the longest `transaction.active_record` duration seen during the request. One user, one set, 50,000 entries and printings, a version 4 file of 50,000 lots each in one place or zone, names of 60 CJK characters. **Deck scenario:** 300 places, 100 decks (Modern, three zones each), 300 zones, a 24.0 MB file. **Baseline:** 500 places, no deck (the spec 032 shape), a 23.4 MB file. Two fresh runs of each.
+
+| Request | Deck run 1 | Deck run 2 | Baseline run 1 | Baseline run 2 | Bar |
+|---|---|---|---|---|---|
+| Preview into an empty account, seconds | 8.82 | 8.63 | 7.72 | 7.70 | 30 s |
+| Preview, RSS growth (peak) | **+359 MB** (359) | **+496 MB** (496) | +420 MB (420) | +409 MB (409) | 500 MB |
+| Apply, seconds (write transaction) | 9.65 (1.11) | 9.66 (1.10) | 8.44 (0.97) | 8.50 (1.01) | 30 s (4 s) |
+| Apply, RSS growth (peak) | +260 (273) | +119 (131) | +153 (168) | +110 (125) | 500 MB |
+| Export, seconds / RSS growth | 0.89 / +26 | 0.85 / +70 | 0.83 / +24 | 0.82 / +25 | 10 s / 300 MB |
+| Preview, every lot changed, seconds / growth (peak) | 9.99 / -23 (66) | 10.02 / +61 (67) | 8.86 / +67 (90) | 8.72 / +92 (92) | 30 s / 500 MB |
+| Apply, every lot changed, seconds (write transaction) / growth (peak) | 11.36 (2.56) / +298 (320) | 10.95 (2.35) / +109 (151) | 10.03 (2.33) / +88 (111) | 10.14 (2.32) / +132 (155) | 30 s (4 s) / 500 MB |
+
+Every request is inside every bar, so AC-8.10 is met. **The margin of the first preview is thin and noisy, and the table shows it:** deck run 2's first preview peaked at +496 MB, 4 MB under the bar, and run 1's at +359 MB for the same file; the baselines without decks were +409 and +420 MB. The first preview's growth is the parse of a 24 MB file and the schema check of 50,000 rows, which the allocator frees later and unevenly, so its spread between runs (359 to 496 MB) is larger than anything the decks add; the decks themselves add no more than the 100 decks' and 300 zones' own rows. Spec 032's figure of +188 MB was for the same request shape before it grew, and is not comparable run for run. A later change that makes the preview parse more (a larger limit, more per-row work) should be measured the same way. The in-process timing spec's numbers above stay as its own (times and write transaction asserted, memory reported).
+
 ## Open items
 
 1. **A zone retired from a registration whose name a new zone then takes** would be skipped by the zone repair's insert (`ON CONFLICT DO NOTHING` on the zone name index), and a lot naming the new zone would raise inside the apply's transaction: it rolls back and the collector gets the error page. Out of scope: a release that does it needs a migration and an upgrade note (ADR 0028 Consequences). Recorded in `data-portability.md`.
@@ -177,13 +193,13 @@ Maintainer ruling, 2026-11-10: the Rename and Remove width on phones (each row s
 
 ## Implementation review
 
-INCOMPLETE: no blocking finding and no drift from the spec; one criterion is open (AC-8.10's memory bar, put to the maintainer), and the rest of the review is recorded below. When the maintainer rules on the memory bar this line becomes SPEC-ALIGNED.
+SPEC-ALIGNED: no blocking finding and no drift from the spec; the review's two majors are resolved (AC-8.10's memory bar by the separate-runner measurement above, ruled by the maintainer; AC-9.2's upgrade smoke by PR #300's passing image jobs), and its minors are fixed or recorded below.
 
 Read-only Opus review (sdd-review Mode B) of `f8a9f1c7` on 2026-11-10, 0 blocking, 2 major, 10 minor. It opened about 20 of the riskiest examples (AC-1.3, 1.7 to 1.11, 3.4, 3.5, 4.7, 5.5, 5.6, 7.4d, 9.11, the query-count, core-guard and bulk-zone-filter specs) and found each runs the real code path; all 100 criteria have an example.
 
 **Major**
 
-1. AC-8.10, the preview's memory bar. The in-process timing spec reports the first preview's growth as 385 to 506 MB against the 500 MB bar, so the bar is not proved. Spec 032's +188 MB came from a separate runner, so the two figures are not comparable; the same file with 500 places and no decks reads 431 MB in this harness, so decks add little. Time bars all hold. Status: open, put to the maintainer (accept the in-harness figure, or ask for a separate-runner measurement).
+1. AC-8.10, the preview's memory bar. The in-process timing spec reports the first preview's growth as 385 to 506 MB against the 500 MB bar, so the bar is not proved. Spec 032's +188 MB came from a separate runner, so the two figures are not comparable; the same file with 500 places and no decks reads 431 MB in this harness, so decks add little. Time bars all hold. Status: resolved. The maintainer ruled that it be measured in a separate runner, as spec 032 did; the figures are in "AC-8.10's memory bar, measured in a separate runner" above (first preview +359 and +496 MB with decks, +409 and +420 MB without, all under 500 MB; the margin of the +496 MB run is 4 MB and is recorded as thin and noisy).
 2. AC-9.2, `bin/upgrade-smoke`. Unverified at review time because the PR's image jobs were pending. Resolved: PR #300's checks (`checks`, RSpec 1/4 to 4/4, Image linux/amd64 and linux/arm64, `ci`) all passed, and the image job runs the upgrade smoke.
 
 **Minor, and what was done** (commit `e8256608`)
