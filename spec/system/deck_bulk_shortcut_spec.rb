@@ -70,17 +70,31 @@ RSpec.describe "Open a deck's lots in bulk mode", type: :system do
     let!(:user) { system_sign_in_as(create(:user)) }
     let!(:deck) { create(:deck, account: user.account, name: "Izzet Tempo") }
 
-    it "opens bulk mode with every lot of the deck selected, and Move to… opens (AC-5.1)", :aggregate_failures do
+    it "empties a deck from its refusal page through Move to… and on to its removal (AC-5.1, AC-3.1)", :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- one scenario: refusal, bulk mode, move, then the removal it unlocks
       expect(page.driver).to be_a(Capybara::RackTest::Driver) # the example would prove nothing under a browser that runs script
+      create(:location, account: user.account, name: "Long box") # the destination; reached by its name
       create_lot_in_zone(deck, "main", quantity: 2)
       create_lot_in_zone(deck, "sideboard", quantity: 3)
-      visit new_deck_removal_path(deck)
+      visit decks_path
+      click_on "Remove Izzet Tempo"
+      expect(page).to have_css("h1", text: "“Izzet Tempo” isn't empty")
 
       click_on "Move them in bulk mode"
       expect(page).to have_css(".c-bulkbar__count", exact_text: "All 5 items selected")
       expect(page).to have_css("tbody tr[aria-selected=true]", count: 2)
       within(".c-bulkbar__extra") { click_on "Move to…" }
       expect(page).to have_css("h1", exact_text: "Move 5 items")
+      select "Long box", from: "To"
+      click_on "Move"
+      expect(page).to have_css("#status", text: "Moved 5 items to Long box.")
+      expect(page).to have_text("No cards in your collection are in “Izzet Tempo”.")
+      expect(page).to have_css(".c-bulkbar__count", exact_text: "0 of 0 selected")
+
+      visit decks_path
+      click_on "Remove Izzet Tempo"
+      expect(page).to have_css("h1", text: "Remove Izzet Tempo?")
+      click_on "Remove"
+      expect(page).to have_css("#status", text: "Removed “Izzet Tempo”.")
     end
   end
 end

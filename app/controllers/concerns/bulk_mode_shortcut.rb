@@ -1,9 +1,9 @@
-# What a refusal page's "Move them in bulk mode" button does, once for every kind of place a collector can empty: start the
-# session's bulk selection under a location filter with every matching lot selected, and go to the bulk table under it
-# (spec 059 decisions 1 and 3 for a place; spec 067 for a deck). It is the sequence spec 041 decision 5 described (filter,
-# Edit many, select every matching lot) in one POST. The including controller finds the thing in the path through
-# `Current.account` first (a 404 there ends the request before anything is stored) and passes only the filter string, so no
-# request parameter is ever read here.
+# What a refusal page's "Move them in bulk mode" button does, once for every kind of location a collector can empty (a
+# place or a deck): start the session's bulk selection under a location filter with every matching lot selected, and go
+# to the bulk table under it (spec 059 decisions 1 and 3 for a place; spec 067 for a deck). It is the sequence spec 041
+# decision 5 described (filter, Edit many, select every matching lot) in one POST. The including controller finds the
+# thing in the path through `Current.account` first (a 404 there ends the request before anything is stored) and passes
+# only the filter string, so no request parameter is ever read here.
 #
 # @see file:collection-and-lots.md
 module BulkModeShortcut

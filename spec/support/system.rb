@@ -14,7 +14,7 @@ module FirefoxBinary
 end
 
 # The window size every system example starts at. The driver applies it only when its session starts, and the session
-# is reused, so the after hook below puts the window back after every example: a 1000×500 window left by
+# is reused, so the after hook below puts the window back after every browser example: a 1000×500 window left by
 # admin_catalog_spec hid the More page's links below the window in number_entry_spec's 800px narrow frame (seed 12061).
 SYSTEM_SCREEN_SIZE = [ 1400, 1400 ].freeze
 
