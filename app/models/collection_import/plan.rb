@@ -36,6 +36,7 @@ class CollectionImport::Plan
   # @return [Array<CollectionImport::HeldLot>]
   def removed_zone_lots = removed_lots.select(&:in_zone?)
 
+  # Whether applying removes anything the collector must confirm: a lot, a place or a deck (spec 028 decision 6, spec 062 AC-7.6).
   def removes? = removed_lots.any? || locations.removes? || decks.removes?
 
   def counts = { added: added_rows.size, changed: changed_rows.size, removed: removed_lots.size }

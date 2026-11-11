@@ -37,6 +37,10 @@ class CollectionImport
   TOO_MANY_WITH_DECKS = "This file and your decks together would have more than #{Location::MAX_PER_ACCOUNT} locations.".freeze
   UNKNOWN_FORMAT = "This instance doesn't know the format “%s” of %s.".freeze
 
+  # The refusals that depend on the collector's decks, so `replan` judges them again (spec 062 AC-7.4d); every other refusal
+  # depends on the file, or on this instance's registrations, and can't change between a preview and an apply.
+  OLDER_FILE_REFUSALS = %w[deck_name_taken too_many_with_decks].freeze
+
   Refusal = Data.define(:rule, :at, :reason)
   # What applying would do to the account's currency (spec 038 decision 7).
   CurrencyChange = Data.define(:from, :to)
@@ -109,9 +113,12 @@ class CollectionImport
   # What applying would do to the collection as it was when this was first asked (the preview's view, spec 028).
   def plan = @plan ||= Plan.new(outcomes, view_change, locations, decks, currency_change)
 
-  # The same, against the collection as it is now: one read of the lots, of the locations, of the account (its currency,
-  # spec 038 decision 7) and of the user, no parsing (spec 028 FR-2, spec 029 decision 11). It replaces the memoized plan,
-  # outcomes and locations, so that the page an apply renders afterwards shows what the apply decided.
+  # The same, against the collection as it is now: one read of the lots, of the locations, of the decks, of the account (its
+  # currency, spec 038 decision 7) and of the user, no parsing (spec 028 FR-2, spec 029 decision 11). It replaces the
+  # memoized plan, outcomes, locations and decks, so that the page an apply renders afterwards shows what the apply decided.
+  # It also judges again the two refusals of an older file that depend on the collector's decks (`deck_name_taken`,
+  # `too_many_with_decks`, spec 062 AC-7.4d): the apply asks {#refused?} right after, so a deck made after the preview never
+  # reaches the unique name index.
   def replan
     @account.reload
     user.reload
@@ -119,6 +126,7 @@ class CollectionImport
     @locations = nil
     @held_decks = nil
     @decks = nil
+    @refusal = held_decks_refusal if @refusal.nil? || OLDER_FILE_REFUSALS.include?(@refusal.rule)
     @outcomes = outcomes_for(held_lots)
     @plan = Plan.new(@outcomes, view_change, locations, decks, currency_change)
   end

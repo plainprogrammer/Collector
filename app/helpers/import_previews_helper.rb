@@ -35,7 +35,7 @@ module ImportPreviewsHelper
     parts.to_sentence(last_word_connector: " and ")
   end
 
-  # "Izzet Tempo: Modern → Commander": a format-changed deck by the names its formats are shown by, each prefixed by its
+  # "Elves: First format → Second format": a format-changed deck by the names its formats are shown by, each prefixed by its
   # collectible's heading when the two formats belong to different collectibles (spec 062 AC-7.1).
   def import_format_change(change)
     held = change.held

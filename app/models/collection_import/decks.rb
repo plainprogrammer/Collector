@@ -58,23 +58,33 @@ class CollectionImport::Decks
   # Whether the file says anything about decks (version 4); false for an older file, which leaves the collector's decks alone.
   def counted? = @counted
 
-  # @return [Hash{Symbol => Integer}] the five counts the preview shows
+  # The five counts the preview shows.
+  #
+  # @return [Hash{Symbol => Integer}]
   def counts = { added: added.size, renamed: renamed.size, format_changed: format_changed.size, unchanged:, removed: removed.size }
 
+  # Whether the file changes no deck: none added, renamed, format-changed or removed (an unchanged deck is no change).
   def nothing_to_change? = added.empty? && renamed.empty? && format_changed.empty? && removed.empty?
 
+  # Whether applying removes a deck, which needs the collector's confirmation.
   def removes? = removed.any?
 
+  # The first `CollectionImport::LIST_LIMIT` renamed decks, for the page.
   def listed_renamed = renamed.first(CollectionImport::LIST_LIMIT)
 
+  # How many renamed decks the page doesn't list.
   def more_renamed = renamed.size - listed_renamed.size
 
+  # The first `CollectionImport::LIST_LIMIT` format-changed decks, for the page.
   def listed_format_changed = format_changed.first(CollectionImport::LIST_LIMIT)
 
+  # How many format-changed decks the page doesn't list.
   def more_format_changed = format_changed.size - listed_format_changed.size
 
+  # The first `CollectionImport::LIST_LIMIT` removed decks, for the page.
   def listed_removed = removed.first(CollectionImport::LIST_LIMIT)
 
+  # How many removed decks the page doesn't list.
   def more_removed = removed.size - listed_removed.size
 
   # What the plan's fingerprint takes from the decks (spec 062 AC-7.10, as the places' part does): the name of each added

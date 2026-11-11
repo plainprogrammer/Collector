@@ -230,6 +230,8 @@ RSpec.describe "Apply an import", type: :request do
         expect(html.at_css("#status").text.strip).to eq(
           "Imported: 1 lot added, 0 changed, 0 removed; 2 locations added, 1 renamed, 1 removed; " \
           "2 decks added, 1 renamed, 1 format changed, 1 removed; prices now shown in EUR")
+        expect(account.decks.joins(:location).order("locations.name_key").pluck("locations.name", :format)).to eq(
+          [ %w[Elves commander], %w[New modern], %w[Newer modern], %w[Same modern], %w[Tempo modern] ])
       end
 
       it "names the one part that is not zero, with the noun on it", :aggregate_failures do
@@ -241,6 +243,18 @@ RSpec.describe "Apply an import", type: :request do
         follow_redirect!
 
         expect(html.at_css("#status").text.strip).to eq("Imported: 0 lots added, 0 changed, 0 removed; 1 deck removed")
+      end
+
+      it "refuses an older file with its reason when a deck made after the preview has a file place's name, writing nothing (AC-7.4d)", :aggregate_failures do
+        upload = preview_v3!([ import_row(a, location: nil) ], locations: [ "Izzet Tempo" ])
+        create(:deck, account:, name: "izzet tempo")
+
+        apply(upload)
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.body).to include("A deck you have is called “izzet tempo”, like a place in this file. Rename one of them and preview again.")
+        expect(account.reload.import_upload).to be_nil
+        expect([ account.lots.count, account.locations.places.count ]).to eq([ 0, 0 ])
       end
 
       it "says nothing about decks after a version 3 file, which leaves them alone", :aggregate_failures do

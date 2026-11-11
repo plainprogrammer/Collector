@@ -118,8 +118,12 @@ RSpec.describe "Export and import round trip", type: :model do
   # An export of this instance is version 4. An older example is compared as the version 4 file it becomes: a version 1
   # example with no locations, every lot of an older example in no location (a restore reads such a lot as unplaced,
   # spec 032 decision 7), and no decks (an older file says nothing of them, spec 062); each location name as the export writes it, in NFC (decision 5), which a valid example in NFD isn't
-  # (ruled 2026-10-21: AC-9.15 holds for the example once its names are normalised).
+  # (ruled 2026-10-21: AC-9.15 holds for the example once its names are normalised). A lot's zone names its deck by any spelling
+  # of its comparison key ("IZZET TEMPO", AC-6.12), and an export writes the deck's own: the example is compared with that.
+  def spelled(data, deck) = data["decks"].map { |entry| entry["name"] }.find { |name| Location::Name.key(name) == Location::Name.key(deck) }
+
   def as_current_version(data)
+    data = data.merge("lots" => data["lots"].map { |lot| lot["location"].is_a?(Hash) ? lot.merge("location" => lot["location"].merge("deck" => spelled(data, lot["location"]["deck"]))) : lot }) if data["format_version"] == 4
     data = data.merge("locations" => []) if data["format_version"] == 1
     data = data.merge("lots" => data["lots"].map { |lot| lot.merge("location" => nil) }) if data["format_version"] < 3
     data = data.merge("format_version" => 4, "decks" => data.fetch("decks", []))
@@ -140,12 +144,7 @@ RSpec.describe "Export and import round trip", type: :model do
     ExportFormatRules.examples("valid").each_key do |name|
       next if name.end_with?("lot-location-nfd.json") # outside the round trip: it re-exports with the stored spelling (AC-9.4)
 
-      # Version 4's examples need the reader, the apply and the export of decks (spec 062 T18 to T21), which land after the
-      # examples; each version 4 example stays pending until then and fails the run when it passes, so T21 removes this. The
-      # empty one only needs the reader (nothing to apply), which exists, so it is not pending.
-      pending = ("spec 062 T21: the reader and the apply of decks" if name != "valid/empty-v4.json" && JSON.parse(ExportFormatRules.examples("valid").fetch(name))["format_version"] == 4)
-
-      it "applies #{name} to an empty account at the default currency and exports the same collection, currency included, or has nothing to change (spec 038 AC-6.10, AC-6.11)", :aggregate_failures, pending: do
+      it "applies #{name} to an empty account at the default currency and exports the same collection, currency included, or has nothing to change (spec 038 AC-6.10, AC-6.11)", :aggregate_failures do
         data = JSON.parse(ExportFormatRules.examples("valid").fetch(name))
         build_catalog(data)
         user = create(:user, name: data.dig("profile", "name"), email_address: data.dig("profile", "email_address"))
@@ -158,7 +157,9 @@ RSpec.describe "Export and import round trip", type: :model do
           expect(same_collection?(as_current_version(data), export(user))).to be(true)
           expect(export(user)["currency"]).to eq(data["currency"])
           expect(user.account.lots.count).to eq(data["lots"].size)
-          expect(user.account.locations.count).to eq(data.fetch("locations", []).size)
+          expect(user.account.locations.places.count).to eq(data.fetch("locations", []).size)
+          expect(user.account.decks.count).to eq(data.fetch("decks", []).size) # a deck is a location of its own kind, with its zones beside it
+          expect(user.account.locations.zones_of_decks.count).to eq(data.fetch("decks", []).sum { |deck| Catalog::Formats.zones_for(deck["collectible_type"], deck["format"]).size })
           # Once applied, the same file has nothing to change, a currency-only file among them.
           expect(CollectionImport.new(account: user.account.reload, file: StringIO.new(JSON.generate(data))).plan.nothing_to_change?).to be(true)
         end

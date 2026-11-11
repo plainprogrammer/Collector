@@ -10,7 +10,7 @@ RSpec.describe "Apply an import, core code", type: :config do
       app/models/collection_import/apply.rb app/models/collection_import/working_state.rb
       app/controllers/collections/imports_controller.rb app/controllers/concerns/active_storage_gate.rb
       app/views/collections/import_previews/_apply.html.erb app/views/collections/imports/failed.html.erb
-      app/models/collection_import/locations.rb app/models/collection_import/decks.rb app/models/location.rb app/models/location/name.rb
+      app/models/collection_import/locations.rb app/models/collection_import/decks.rb app/models/collection_import/deck_changes.rb app/models/location.rb app/models/location/name.rb
       app/controllers/locations_controller.rb app/views/locations/index.html.erb
       app/views/collections/import_previews/_locations.html.erb app/views/collections/import_previews/_decks.html.erb
       app/models/collection_import/location_changes.rb
