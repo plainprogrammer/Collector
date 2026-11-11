@@ -34,9 +34,10 @@ class BulkSelection < ApplicationRecord
   def vocabulary = Catalog.collecting_for(lots.pick(Catalog::Entry.arel_table[:collectible_type]) || Catalog.collecting.keys.first)
 
   # Starts again under a filter, location and sort: Edit many, a changed filter or sort, a removal (FR-4, AC-7.3; spec 037
-  # decision 5), and a location's shortcut from its refusal page (spec 059 decision 3). Nothing is selected unless `all:`;
-  # then every matching lot is, with no exceptions, set in the same transaction so a failure can't leave the filter stored
-  # with nothing ticked. The marks are this selection's own rows, so deleting them in SQL skips nothing.
+  # decision 5), and the shortcut on a place's or a deck's refusal page (spec 059 decision 3; spec 067, through
+  # `BulkModeShortcut`). Nothing is selected unless `all:`; then every
+  # matching lot is, with no exceptions, set in the same transaction so a failure can't leave the filter stored with
+  # nothing ticked. The marks are this selection's own rows, so deleting them in SQL skips nothing.
   #
   # @param query [String] the name filter, already normalised
   # @param sort [CollectionTable::Sort] the table's order

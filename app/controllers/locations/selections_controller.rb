@@ -1,15 +1,13 @@
-# The refusal page's shortcut into bulk mode (spec 059, #187): starts the session's bulk selection under one of the
-# account's locations with every matching lot selected, and goes to the bulk table. It is the sequence spec 041 decision 5
-# described (filter, Edit many, select every matching lot) in one POST, a form button because Edit many is never a link
-# (spec 006 FR-1). The location in the path is the only parameter read.
+# The place refusal page's shortcut into bulk mode (spec 059, #187): a form button because Edit many is never a link
+# (spec 006 FR-1). The place in the path is the only parameter read; what pressing does is `BulkModeShortcut`'s, which a
+# deck's refusal page shares (`Decks::SelectionsController`, spec 067).
 #
 # @see file:collection-and-lots.md
 class Locations::SelectionsController < ApplicationController
-  # 404 for a location that isn't one of the account's places (spec 059 AC-4.1; a deck or a zone is not one, spec 062 AC-3.8). Replaces any stored selection, as Edit many does.
+  include BulkModeShortcut
+
+  # 404 for a location that isn't one of the account's places (spec 059 AC-4.1; a deck or a zone is not one, spec 062 AC-3.8).
   def create
-    location = Current.account.locations.places.find(params[:location_id])
-    sort = CollectionTable::Sort.parse(nil, nil)
-    BulkSelection.for(Current.session).restart!(query: "", sort:, location: location.id.to_s, all: true)
-    redirect_to helpers.collection_listing_path(bulk: 1, location: location.id.to_s, sort:), status: :see_other
+    open_in_bulk_mode(Current.account.locations.places.find(params[:location_id]).id.to_s)
   end
 end
