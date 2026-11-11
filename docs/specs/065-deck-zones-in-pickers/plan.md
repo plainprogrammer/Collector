@@ -1,10 +1,11 @@
 # Plan: Deck Zones in Every Location Picker and in the Collection Filter
 
 **Spec:** [spec.md](spec.md) v0.2.0 (approved at Gate A, 2026-11-10) | **Issue:** [#252](https://github.com/plainprogrammer/Collector/issues/252) | **Branch:** `065-deck-zones-in-pickers`
-**Version:** 0.2.0 (from plan review round 1: nine major findings folded in; Gate B is the coordinator's)
+**Version:** 0.3.0 (round 1: nine majors folded in; round 2: one major and the minors folded in, no third round; Gate B is the coordinator's)
 
 ## Global Constraints
 
+- The test snippets show the shape of each example; helper, `let` and parameter names in them (`page_html` vs a file's own `html`, `line(...)`, `place(value)`, `headers: stream`) are the ones the neighbouring examples of that file use: read the file's top and copy its idioms before pasting.
 - Test first: every phase writes the failing examples, runs them red, then implements. One Conventional Commit per task, each ending with `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`. `git add` and `git commit` in separate calls.
 - Targeted `bin/rspec <file>` runs need no CI slot. Never run two test runs at once (shared test database). No full `bin/ci`, and no push, without asking the coordinator for a slot.
 - Core files name no collectible, format or zone key but `considering` (`spec/deck_core_spec.rb`, `number_entry_core_spec.rb`, `import_apply_core_spec.rb`, `scanner_sitting_core_spec.rb`). `Location::Name` is untouched.
@@ -552,14 +553,11 @@ it "offers Choose…, No location, Places and Decks as Deck › Zone (spec 065 A
   expect(select.css('optgroup[label="Decks"] option').map(&:text)).to eq(deck.zones.map { "Izzet Tempo › #{it.name}" })
 end
 
-it "leaves out the filter's own zone, and nothing under a deck filter (AC-3.1)", :aggregate_failures do
+it "leaves out the filter's own zone (AC-3.1)", :aggregate_failures do
   zoned = in_zone
   select_lots(zoned, location: zone.id.to_s) # starts the selection under the zone filter and ticks the lot, as the file's own helper does
   get new_collection_move_path
   expect(page_html.css('select#to optgroup[label="Decks"] option').map(&:text)).not_to include("Izzet Tempo › Main")
-  select_lots(zoned, location: CollectionFilter::Place.deck_value(deck.location_id)) # passes only once Task 5.2 parses deck:<id>
-  get new_collection_move_path
-  expect(page_html.css('select#to optgroup[label="Decks"] option').map(&:text)).to include("Izzet Tempo › Main", "Izzet Tempo › Sideboard")
 end
 
 it "moves every selected lot into the zone, merging where an identity meets, and names the label (AC-3.2)", :aggregate_failures do
@@ -605,9 +603,9 @@ end
   (`account` as the file defines it; adapt the `let`.)
 - [ ] Also rewrite what Phase 3 makes false:
   - `spec/requests/bulk_move_spec.rb` about lines 587–598 (an account with a deck and no place gets "You have no locations yet."): it now gets the Move page, with the Decks group only; keep a sibling example for an account with neither a place nor a deck.
-  - `spec/requests/collection_places_spec.rb` about lines 227–246 (a deck-only account has no select, no Move to…): it now shows the select and Move to… (spec 065 AC-6.10, decision 3).
+  - `spec/requests/collection_places_spec.rb` about lines 227–246 and 266–274 (a deck-only account has no select, no Move to…, and a deck with no lot in a zone shows no column): the select and Move to… half is rewritten here to show them (spec 065 AC-6.10, decision 3), because Task 3.2 moves their gate; the Location column and place line half (`place_column?`) is rewritten in Task 5.1, where Task 5.2 changes it, so keep that assertion unchanged until then (split the example in two if it holds both).
   - `spec/requests/bulk_zone_filter_spec.rb` about lines 59–61 (a move whose destination is a zone's id answers 404): the destination is a zone now, so moving lots that are all in it answers 422 "The selected items are already in Izzet Tempo › Main."; keep a 404 case for a deck's own id.
-- [ ] The deck half of the filter-own-zone example passes only once Phase 5 parses `deck:<id>` as a filter value; write it in Task 5.1 with the filter examples and keep the zone half here.
+- [ ] The deck half of AC-3.1 (a deck filter leaves out nothing) passes without proving anything until Phase 5 parses `deck:<id>`, so it is written in Task 5.1's bulk block, not here.
 - [ ] Run `bin/rspec spec/requests/bulk_move_spec.rb spec/models/lot/bulk_move_spec.rb`. Expected: new examples fail.
 - [ ] Commit: `test(bulk): spec 065 examples for zones in bulk Move to… (#252)`.
 
@@ -743,7 +741,7 @@ end
   - `spec/models/number_entry/line_form_spec.rb` about lines 151–155 (calls `#locations`): use `#choices.places` / `#choices.any?`.
   - `spec/requests/number_entries_spec.rb` about lines 329–338 (a zone's id is refused): a zone's id is added to; keep the refusal for a deck's own row and another account's zone. Its AC-5.8a example (deck and no place: no select) now expects the select with the Decks group only.
   - `spec/requests/scanner/sittings_spec.rb` about lines 349–354 (AC-5.8a: a deck-only account has no control) and 356–365 (a zone's id is refused): the control is there with the Decks group; a zone's id is accepted; keep the 422 for a deck's own row.
-  - Extend the "adds into the zone" example to check the list's line reads "in Izzet Tempo › Main" and that the line's Undo removes the copies and keeps the lot's zone for the rest (spec 062 AC-5.7 is re-proved), and check the sitting panel's select in each state (none open, open, after "Set") for AC-5.1.
+  - Extend the "adds into the zone" example to check the list's line reads "in Izzet Tempo › Main" and that the line's Undo removes the copies and keeps the lot's zone for the rest (spec 062 AC-5.7 is re-proved), and check the sitting panel's select in each state (none open, open, after "Set", and the ended summary after Done: `_summary.html.erb`) for AC-5.1.
 - [ ] Run `bin/rspec spec/models/number_entry/line_form_spec.rb spec/requests/number_entries_spec.rb spec/requests/scanner/sittings_spec.rb`. Expected: new examples fail.
 - [ ] Commit: `test(entry): spec 065 examples for zones in number entry and the scanner sitting (#252)`.
 
@@ -771,7 +769,7 @@ end
 ```
 
   and fix the module header comment's "The account's locations come along for the sitting's place".
-- [ ] `app/controllers/scanner/sittings_controller.rb`: lookup `location = Current.account.locations.placeable.includes(:parent).find_by(id: value) if value.match?(/\A\d+\z/)` (the digits guard already keeps "12abc" from being cast) with the comment saying a deck's own row is not a place; `chosen_message`: `if account_choices.any?` and `"in #{sitting.location.label}"`; header comment "a place among the account's places" → "a place or a zone among the account's".
+- [ ] `app/controllers/scanner/sittings_controller.rb`: lookup `location = Current.account.locations.placeable.includes(:parent).find_by(id: value) if value.match?(Location::ID_TEXT)` (the guard is `Location::ID_TEXT`, so "12abc" and "012" are refused, not cast) with the comment saying a deck's own row is not a place; `chosen_message`: `if account_choices.any?` and `"in #{sitting.location.label}"`; header comment "a place among the account's places" → "a place or a zone among the account's".
 - [ ] `app/helpers/scanners_helper.rb#sitting_choices`: `"in #{sitting.location.label}"`. A label needs the zone's parent, so `sitting_locals` hands the sitting its location from the one read instead of letting the association load it (decision 1: a label costs no further query):
 
 ```ruby
@@ -782,7 +780,7 @@ end
     end
 ```
 
-  (This replaces the `sitting_locals` line change above; `find` returns nil for a location that is gone, which leaves the association to load lazily and read nil.)
+  (This replaces the `sitting_locals` line change above; a location that is gone gives `target = nil`, which marks the association loaded and reading nil: right, since the foreign key already nulled the column.)
 - [ ] `app/views/scanners/_picker.html.erb` (`locals: (condition:, location_id:, conditions:, choices:)`): `<% if choices.any? %>` and `form.select :location_id, location_options(choices, selected: location_id.to_s, leading: [ [ "No location", "" ] ])`. In `_sitting.html.erb`, `_summary.html.erb` and `_scanner.html.erb` rename the local `locations` to `choices` in the `locals:` line and every `render "scanners/…", …, locations:` call (`git grep -n 'locations' app/views/scanners` shows them all; `app/controllers/scanner/measurements_controller.rb` and `scanners_controller.rb` pass `sitting_locals(...)` as a whole, so need no change).
 - [ ] Run `bin/rspec spec/models/number_entry spec/requests/number_entries_spec.rb spec/requests/scanner spec/requests/scanners_spec.rb spec/number_entry_core_spec.rb spec/scanner_sitting_core_spec.rb`. Expected: pass.
 - [ ] Commit: `feat(entry): number entry and the scanner sitting offer deck zones (#252)`.
@@ -810,11 +808,11 @@ describe "the deck value (spec 065 decision 4)" do
   it "matches the lots in any zone of the deck and no other lot", :aggregate_failures do
     entry = create(:mtg_printing).entry
     main = create(:lot, account:, entry:, location: deck.zone("main"))
-    side = create(:lot, account:, entry:, finish: "foil", location: deck.zone("sideboard"))
-    elsewhere = create(:lot, account:, entry:, condition: "near_mint", location: create(:location, account:))
-    unplaced = create(:lot, account:, entry:, condition: "played")
+    side = create(:lot, account:, entry:, location: deck.zone("sideboard"))
+    elsewhere = create(:lot, account:, entry:, location: create(:location, account:))
+    unplaced = create(:lot, account:, entry:)
     other_deck = create(:deck, account:, name: "Other")
-    stray = create(:lot, account:, entry:, condition: "heavily_played", location: other_deck.zone("main"))
+    stray = create(:lot, account:, entry:, location: other_deck.zone("main"))
     scope = described_class.apply(account.lots, described_class.deck_value(deck.location_id))
     expect(scope).to contain_exactly(main, side)
     expect([ elsewhere, unplaced, stray ]).to all(satisfy { !scope.include?(it) })
@@ -966,6 +964,12 @@ describe "bulk mode under a zone or a deck (AC-6.7, AC-6.8, AC-6.11)" do
     expect(page_html.css("tbody tr[aria-selected=true]")).to be_empty
   end
 
+  it "offers every zone of the deck as a destination under a deck filter, leaving out none (AC-3.1)", :aggregate_failures do
+    select_under(deck_value, in_main, go: "move")
+    get new_collection_move_path
+    expect(page_html.css('select#to optgroup[label="Decks"] option').map(&:text)).to include("Izzet Tempo › Main", "Izzet Tempo › Sideboard")
+  end
+
   it "moves lots selected under a deck's value to a place (AC-3.4)", :aggregate_failures do
     lots = [ in_main, in_side ]
     select_under(deck_value, *lots, go: "move")
@@ -977,22 +981,22 @@ describe "bulk mode under a zone or a deck (AC-6.7, AC-6.8, AC-6.11)" do
   it "removes exactly the deck's lots when every matching lot is selected (AC-6.7)", :aggregate_failures do
     post collection_selection_path, params: { location: deck_value }
     patch collection_selection_path, params: { go: "remove", q: "", rendered_q: "", rendered_location: deck_value, all_rendered: "1", all: "1", shown_ids: [ in_main.id, in_side.id ], ticked_ids: [ in_main.id, in_side.id ] }
-    delete collection_bulk_removal_path
+    post collection_bulk_removals_path
     expect(account.lots.pluck(:id)).to contain_exactly(in_box.id, loose.id)
   end
 
   it "shows nothing selected when the value changes between the page and the action (AC-6.7)", :aggregate_failures do
-    post collection_selection_path, params: { location: deck_value }
+    select_under(deck_value, in_main, go: "move")
     get collection_path(bulk: 1, location: deck.zone("main").id)
     expect(page_html.css("tbody tr[aria-selected=true]")).to be_empty
   end
 
   it "acts on nothing under a deck that was removed in another tab (AC-6.8)", :aggregate_failures do
     ghost = create(:deck, account:, name: "Ghost")
-    select_under(CollectionFilter::Place.deck_value(ghost.location_id), in_main, go: "remove")
-    ghost.remove!
-    post collection_selection_path, params: { location: CollectionFilter::Place.deck_value(ghost.location_id) }
-    patch collection_selection_path, params: { go: "remove", q: "", rendered_q: "", rendered_location: CollectionFilter::Place.deck_value(ghost.location_id), all_rendered: "1", all: "1" }
+    ghost_value = CollectionFilter::Place.deck_value(ghost.location_id)
+    post collection_selection_path, params: { location: ghost_value } # the selection is made under the ghost deck's value
+    ghost.remove!                                                    # then the deck goes in another tab
+    patch collection_selection_path, params: { go: "remove", q: "", rendered_q: "", rendered_location: ghost_value, all_rendered: "1", all: "1" }
     expect(response.body).to include("None of the selected items are in your collection any more.")
     expect(account.lots.count).to eq(4)
   end
@@ -1017,9 +1021,9 @@ end
 ```ruby
 module CollectionFilter::Place
   NONE = "none".freeze
-  ID = /\A[1-9]\d{0,17}\z/ # at most 18 digits: a longer id would overflow SQLite's 64-bit bind (spec 037 0.2.2)
+  ID = Location::ID_TEXT # at most 18 digits: a longer id would overflow SQLite's 64-bit bind (spec 037 0.2.2)
   # A whole deck: `deck:` and its location's id, at most 18 digits (spec 065 decision 4).
-  DECK = /\Adeck:([1-9]\d{0,17})\z/
+  DECK = /\Adeck:([1-9]\d{0,17})\z/ # the digits of Location::ID_TEXT behind the prefix: a regexp can't embed its anchors
 
   # The value of the "<Deck> (all zones)" option.
   #
@@ -1132,9 +1136,9 @@ RSpec.describe "Deck zones in the pickers, across surfaces", type: :request do
 
   it "shows a copy put into a zone by the lot form, number entry and the scanner as Deck › Zone on the collection page (AC-7.1)", :aggregate_failures do
     post catalog_entry_lots_path(entry), params: { lot: { quantity: "1", location_id: zone.id } }
-    second = create(:mtg_printing, name: "Second Card").entry
-    post collection_number_entry_lines_path, params: { line: { set: second.set.code, number: second.number, quantity: "1", finish: "nonfoil", location: zone.id, line_key: SecureRandom.hex(16) }, type: "mtg", language: second.language }
-    third = create(:mtg_printing, name: "Third Card").entry
+    second = create(:mtg_printing).entry
+    post collection_number_entry_lines_path, params: { type: "mtg", set: second.set.code, language: second.language, line: { number: second.number, quantity: "1", finish: "nonfoil", location: zone.id, line_key: SecureRandom.hex(16) } }
+    third = create(:mtg_printing).entry
     patch scanner_sitting_path, params: { sitting: { location_id: zone.id } }, as: :turbo_stream
     post scanner_sitting_entries_path, params: { entry: { printing: third.external_key, finish: "nonfoil", reading_key: SecureRandom.hex(16) } }, as: :turbo_stream
     get collection_path(view: "table")
@@ -1172,7 +1176,7 @@ RSpec.describe "Deck zones in the pickers, across surfaces", type: :request do
 end
 ```
 
-  The number-entry and scanner requests above copy the parameter shapes of `spec/requests/number_entries_spec.rb` and `spec/requests/scanner/sittings/entries_spec.rb` (read the neighbouring examples and use their exact params, finish values and route helpers: the names above are what those files use at the time of writing). `CollectionExport.new(account:, at:).to_h` is the entry point; the `data["lots"]` key names are in the format document. Expected: pass at once (the behaviour exists after Phases 2–5); these examples, and the query-count example of Task 5.1 (the filter read the same one statement for places before), are regression proofs added last, so they cannot "fail first": record that in `verification.md`.
+  The number-entry and scanner requests above copy the parameter shapes of `spec/requests/number_entries_spec.rb` and `spec/requests/scanner/sitting_entries_spec.rb` (read the neighbouring examples and use their exact params, finish values and route helpers: the names above are what those files use at the time of writing). `CollectionExport.new(account:, at:).to_h` is the entry point; the `data["lots"]` key names are in the format document. Expected: pass at once (the behaviour exists after Phases 2–5); these examples, and the query-count example of Task 5.1 (the filter read the same one statement for places before), are regression proofs added last, so they cannot "fail first": record that in `verification.md`.
 - [ ] Commit: `test(pickers): spec 065 cross-surface examples for labels, tenancy and the export (#252)`.
 
 ### Task 6.2: Area docs and design-system docs
@@ -1181,7 +1185,7 @@ end
   - Scope bullets: add spec 065 to the lot form, Move copies, bulk Move to…, number entry and the collection page bullets' source lists, and name `Location::Choices`, `LocationChoicesHelper` and `Location.placeable`.
   - Glossary "Location filter": values are `""`, `none`, an id of a place or a zone, or `deck:<id>` (a whole deck), and unknown values read as all (`CollectionFilter::Place`; spec 065 decision 4). "Destination": a place, a zone or none.
   - Invariants: replace "A lot is in one of its account's places or zones…" so the forms and Move look the place up through `placeable` (404 for a deck's own row and another account's); replace "Every list of locations says which kind it means" so it says: the Locations page, its counts, the export's `locations`, the import's held and file locations are places only; **every picker and the filter now list places and zones through `Location::Choices`, on purpose widening what spec 062 decision 1 kept to places only until #252 (spec 065 decision 1)**, and a write names its location through `Location.placeable`; add that a copy that reaches a zone through a picker never changes a proxy (spec 065 decision 11; proxies come with #254). Update "No path unplaces a lot in a zone by accident" (Edit copy shows the select with the zone chosen; Move copies and bulk Move to… offer zones and places and "No location"). Update the queries bullet (the filter's and the pickers' one read; `place_column?` makes no second read).
-  - States tables: the "Edit copy" row (select with the zone chosen, no read-only text), Move copies' To field, "Add a copy"'s Location field and the paragraph under the table (gate: a place or a zone), the location filter bullet (groups, "Deck (all zones)", sentences, tiles show no place line under any filter, the table shows each zone), the place line bullet (gate), Move to… (offered while the account has a place or a zone; groups; own place or zone left out), number entry's line (Location groups), and every "#252" sentence: the deck refusal page's missing bulk-mode shortcut is "not built; a follow-up".
+  - States tables: the "Edit copy" row (select with the zone chosen, no read-only text), Move copies' To field, "Add a copy"'s Location field and the paragraph under the table (gate: a place or a zone), the location filter bullet (groups, "Deck (all zones)", sentences, tiles show no place line under any filter, the table shows each zone), the place line bullet (gate), Move to… (offered while the account has a place or a zone; groups; own place or zone left out), number entry's line (Location groups), and every "#252" sentence: the deck refusal page's missing bulk-mode shortcut is "not built; filed as #302" (link to the issue).
   - Sources: spec 065 and issue #252.
 - [ ] `docs/architecture/scanner.md`: the sitting's "Location select" (line about "None open" and the "Set" paragraph): "No location" first, then Places and Decks (zones as "Deck › Zone"), shown while the account has a place or a zone; the 422 sentence also covers a deck's own row; the answer's "in <place>" names the label. Sources: spec 065.
 - [ ] `docs/design-system/README.md` ("What is live", line about the grouped picker, the App additions line): the grouped picker, "Deck (all zones)" and the zone label are live (spec 065); `c-field__static` is gone. `components/Form.md`: drop "not built until #252" and the "A read-only value" bullet; the Location picker bullet is now what the app does. `FilterSelect.md`: unchanged unless a sentence says "when built". `DecksIndex.md` line about `.c-field__static`: remove it from the CSS list. Confirm nothing else mentions `c-field__static` (`git grep`).
