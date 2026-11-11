@@ -259,9 +259,9 @@ RSpec.describe "Places on the collection's tiles and rows", type: :request do # 
         own(location: blue)
       end
 
-      it "shows the select with places only, the column, Move to… and the place line", :aggregate_failures do
+      it "shows the select with the places and the deck's zones, the column, Move to… and the place line (spec 065 AC-6.1)", :aggregate_failures do
         get collection_path(view: "table")
-        expect(select.css("option").map(&:text)).to eq([ "All locations", "No location", "Blue binder" ])
+        expect(select.css("option").map(&:text)).to eq([ "All locations", "No location", "Blue binder", "Izzet Tempo (all zones)", *deck.zones.map { "Izzet Tempo › #{it.name}" } ])
         expect(cells).to contain_exactly("Blue binder", a_string_ending_with("Main"))
         get collection_path(bulk: "1")
         expect(bulk_buttons).to include("Move to…")
@@ -270,13 +270,15 @@ RSpec.describe "Places on the collection's tiles and rows", type: :request do # 
       end
     end
 
-    it "shows no column or place line when the account has a deck and no lot in a zone", :aggregate_failures do
+    # Spec 065 decision 3 supersedes spec 062 AC-5.8a: a deck's zones are choices, so the account has a place to show.
+    it "shows the column and the place line when the account has a deck and no lot in a zone (spec 065 AC-6.10)", :aggregate_failures do
       deck
       own
       get collection_path(view: "table")
-      expect(page_html.css("thead th").map { it.text.squish }).not_to include("Location")
+      expect(page_html.css("thead th").map { it.text.squish }).to include("Location")
+      expect(cells).to eq([ "No location" ])
       get collection_path(view: "grid")
-      expect(place_lines).to be_empty
+      expect(place_lines).to eq([ "No location" ])
     end
 
     it "shows the filter select and Move to… when the account has a deck and no lot in a zone (spec 065 AC-6.10, decision 3)", :aggregate_failures do

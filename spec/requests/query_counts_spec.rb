@@ -123,6 +123,18 @@ RSpec.describe "Page query counts", type: :request do
     expect(paths.transform_values { |path| queries_for(path) }).to eq(in_a_zone)
   end
 
+  # Spec 065 AC-8.2. A regression proof, not a red-first example: the filter already read the account's locations in one
+  # statement, and now one `Location::Choices` read carries the places, the decks and their zones, so decks cost nothing more.
+  it "keeps the collection page's queries the same with three decks as with none (spec 065 AC-8.2)", :aggregate_failures do
+    own(printing, location: create(:location, account: user.account))
+    paths = { grid: collection_path(view: "grid"), table: collection_path(view: "table"), bulk: collection_path(bulk: 1) }
+    post collection_selection_path
+    without_decks = paths.transform_values { |path| queries_for(path) }
+
+    3.times { |n| create(:deck, account: user.account, name: "Deck #{n}") }
+    expect(paths.transform_values { |path| queries_for(path) }).to eq(without_decks)
+  end
+
   it "keeps the table's queries independent of the number of lots, in and out of bulk mode", :aggregate_failures do
     user.update!(collection_view: "table")
     own(printing, finish: "foil")

@@ -1,9 +1,10 @@
 require "rails_helper"
 
-# Spec 062 D6, AC-5.2, AC-5.7, AC-5.7a, AC-5.7b and spec 037 decision 7 (not superseded): a stored bulk selection keeps the location
-# string it was made under and never re-resolves it, so a request can store a zone's id or a deck's id there even though the page
-# only offers places. These examples pin what each bulk path does then: it acts on the account's own lots in that zone (a deck's
-# own row holds none), keeps a lot in its zone unless the collector moves it, and never unplaces one by accident.
+# Spec 062 D6, AC-5.7, AC-5.7a, AC-5.7b and spec 037 decision 7 (not superseded): a stored bulk selection keeps the location
+# string it was made under and never re-resolves it. A zone's id is a filter value now (spec 065 decision 4, so the page offers
+# it and shows it chosen), but a deck's own id without its `deck:` prefix is still not one, and a request can store it. These
+# examples pin what each bulk path does then: it acts on the account's own lots in that zone (a deck's own row holds none),
+# keeps a lot in its zone unless the collector moves it, and never unplaces one by accident.
 RSpec.describe "A bulk selection stored under a zone's or a deck's id", type: :request do
   let(:user) { create(:user) }
   let!(:box) { create(:location, account:, name: "Long box") }
@@ -24,15 +25,23 @@ RSpec.describe "A bulk selection stored under a zone's or a deck's id", type: :r
       shown_ids: lots.map(&:id), ticked_ids: lots.map(&:id) }
   end
 
-  it "shows the page as for all locations, with nothing selected, when the filter is not a place (spec 037 decision 7)", :aggregate_failures do
-    [ zone.id, deck.location_id ].each do |id|
-      post collection_selection_path, params: { location: id }
-      follow_redirect!
-      expect(response).to have_http_status(:ok)
-      expect(page_html.at_css("input[name=rendered_location]")["value"]).to eq("")
-      expect(page_html.css("tbody tr[aria-selected=true]")).to be_empty
-      expect(page_html.css("tbody tr").size).to eq(2)
-    end
+  it "shows the zone's id as the chosen filter, with its lots only and nothing selected (spec 065 decision 4)", :aggregate_failures do
+    post collection_selection_path, params: { location: zone.id }
+    follow_redirect!
+    expect(response).to have_http_status(:ok)
+    expect(page_html.at_css("input[name=rendered_location]")["value"]).to eq(zone.id.to_s)
+    expect(page_html.at_css("select[name=location] option[selected]").text).to eq("Izzet Tempo › Main")
+    expect(page_html.css("tbody tr[aria-selected=true]")).to be_empty
+    expect(page_html.css("tbody tr").size).to eq(1)
+  end
+
+  it "shows the page as for all locations, with nothing selected, when the filter is a deck's own id (spec 037 decision 7)", :aggregate_failures do
+    post collection_selection_path, params: { location: deck.location_id }
+    follow_redirect!
+    expect(response).to have_http_status(:ok)
+    expect(page_html.at_css("input[name=rendered_location]")["value"]).to eq("")
+    expect(page_html.css("tbody tr[aria-selected=true]")).to be_empty
+    expect(page_html.css("tbody tr").size).to eq(2)
   end
 
   it "sets a condition on the zone's lots only, each staying in its zone", :aggregate_failures do

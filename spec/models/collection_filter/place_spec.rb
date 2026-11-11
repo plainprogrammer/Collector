@@ -15,6 +15,42 @@ RSpec.describe CollectionFilter::Place, type: :model do
     end
   end
 
+  describe "the deck value (spec 065 decision 4)" do
+    let(:account) { create(:user).account }
+    let(:deck) { create(:deck, account:) }
+
+    it "parses deck:<id> and refuses malformed ones", :aggregate_failures do
+      expect(described_class.parse("deck:12")).to eq("deck:12")
+      expect([ "deck:", "deck:012", "deck:12abc", "Deck:12", " deck:12", "deck:#{'9' * 19}" ].map { described_class.parse(it) }).to all(eq(""))
+    end
+
+    it "matches the lots in any zone of the deck and no other lot", :aggregate_failures do
+      entry = create(:mtg_printing).entry
+      main = create(:lot, account:, entry:, location: deck.zone("main"))
+      side = create(:lot, account:, entry:, location: deck.zone("sideboard"))
+      elsewhere = create(:lot, account:, entry:, location: create(:location, account:))
+      unplaced = create(:lot, account:, entry:)
+      other_deck = create(:deck, account:, name: "Other")
+      stray = create(:lot, account:, entry:, location: other_deck.zone("main"))
+      scope = described_class.apply(account.lots, described_class.deck_value(deck.location_id))
+      expect(scope).to contain_exactly(main, side)
+      expect([ elsewhere, unplaced, stray ]).to all(satisfy { !scope.include?(it) })
+    end
+
+    it "matches no lot of the account for another account's deck id" do
+      foreign = create(:deck, account: create(:user).account)
+      create(:lot, account:, entry: create(:mtg_printing).entry)
+      expect(described_class.apply(account.lots, described_class.deck_value(foreign.location_id))).to be_empty
+    end
+
+    it "matches no lot of another account even on a relation wider than the account's (AC-8.4)" do
+      mine = create(:lot, account:, entry: create(:mtg_printing).entry, location: deck.zone("main"))
+      foreign = create(:lot, account: create(:user).account, entry: create(:mtg_printing).entry)
+      scope = described_class.apply(Lot.where(id: [ mine.id, foreign.id ]), described_class.deck_value(deck.location_id))
+      expect(scope).to contain_exactly(mine)
+    end
+  end
+
   describe ".apply" do
     let(:account) { create(:user).account }
     let(:blue) { create(:location, account:) }
