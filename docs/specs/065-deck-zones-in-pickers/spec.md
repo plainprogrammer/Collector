@@ -42,7 +42,7 @@ This spec teaches every picker and the collection filter about zones. The lot fo
 - Any change to the export format, its version or the import: zones are not new data, a lot in a zone is already exported (spec 062 Story 6).
 - Filtering by more than one location, sorting or grouping by location (spec 037 Non-Goals).
 - Changing the number-entry list, the sitting or a bulk selection's lifetime.
-- A "Move them in bulk mode" button on a deck's removal refusal page (`collection-and-lots.md` says it waits for this filter). The filter can now open a deck in bulk mode, but spec 059's shortcut (`Locations::SelectionsController`) stays places-only here; it is a follow-up for the maintainer to file, and the area doc says so.
+- A "Move them in bulk mode" button on a deck's removal refusal page (`collection-and-lots.md` says it waits for this filter). The filter can now open a deck in bulk mode, but spec 059's shortcut (`Locations::SelectionsController`) stays places-only here; it is filed as [#302](https://github.com/plainprogrammer/Collector/issues/302), and the area doc says so.
 
 ## Users and Context
 
