@@ -387,7 +387,7 @@ RSpec.describe "Scanner sittings", type: :request do
 
     it "refuses a deck's own id, another account's zone and a non-id with 422 and the sentence, changing nothing (spec 065 AC-5.3)", :aggregate_failures do
       foreign = create(:deck, account: create(:user).account)
-      [ deck.location_id, foreign.zone("main").id, "12abc" ].each do |id|
+      [ deck.location_id, foreign.zone("main").id, "12abc", "012", "0#{blue.id}" ].each do |id|
         place(id)
         expect(response).to have_http_status(:unprocessable_content), id.to_s
         expect(CGI.unescapeHTML(response.body)).to include("That location isn't one of yours any more. Choose again.")
@@ -407,6 +407,7 @@ RSpec.describe "Scanner sittings", type: :request do
       Scanner::Sitting.choose!(account:, location: deck.zone("main"))
       deck.remove!
       expect(account.reload.scanner_sitting.location_id).to be_nil
+      expect(add("a").lot.location_id).to be_nil # the next scan after the removal is unplaced
     end
 
     it "keeps a lot that sits in a zone in its zone when an entry's Undo leaves part of it (spec 062 AC-5.7)", :aggregate_failures do

@@ -68,8 +68,11 @@ RSpec.describe "The collection's location filter with decks", type: :request do
 
   it "reads anything it can't resolve as all, naming nothing of another account (AC-6.5, AC-8.1)", :aggregate_failures do
     foreign = create(:deck, account: create(:user).account, name: "Secret deck")
+    removed = create(:deck, account:, name: "Removed deck")
+    removed_id = removed.location_id
+    removed.remove!
     values = [ foreign.zone("main").id.to_s, "deck:#{foreign.location_id}", deck.location_id.to_s, "deck:#{deck.zone('main').id}",
-               "deck:99999", "deck:", "deck:0#{deck.location_id}", "012", "x" ]
+               "deck:#{box.id}", "deck:#{removed_id}", "deck:", "deck:0#{deck.location_id}", "012", "x" ]
     values.each do |value|
       get collection_path(location: value)
       expect(response).to have_http_status(:ok), value
@@ -166,6 +169,9 @@ RSpec.describe "The collection's location filter with decks", type: :request do
       expect(page_html.css("tbody tr[aria-selected=true]")).to be_empty
     end
 
+    # A deck that holds lots can't be removed (spec 062), so a whole-deck selection can only be orphaned this way: the deck is
+    # empty when it goes. The example shows the stored-value rule (a value that no longer resolves matches no lot), not a
+    # removal of lots.
     it "acts on nothing under a deck that was removed in another tab (AC-6.8)", :aggregate_failures do
       ghost = create(:deck, account:, name: "Ghost")
       ghost_value = CollectionFilter::Place.deck_value(ghost.location_id)
