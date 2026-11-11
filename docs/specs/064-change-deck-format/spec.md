@@ -1,7 +1,7 @@
 # Feature 064: Change a Deck's Format
 
 **Status:** Approved
-**Version:** 0.2.2
+**Version:** 0.2.3
 **Created:** 2026-11-10
 **Last Updated:** 2026-11-10
 **Depends on:** [spec 062](../062-create-rename-remove-a-deck/spec.md) (decks, zones, the format seam, the Decks page; merged) and, for the move and the cap, [spec 041](../041-move-many-lots/spec.md) (`Lot::BulkMove`) and [`collection-and-lots.md`](../../architecture/collection-and-lots.md)
@@ -15,6 +15,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.2.3 | 2026-11-10 | AC-1.5: the one case a unique-index error can still end the change, from the plan review |
 | 0.2.2 | 2026-11-10 | AC-1.2: the line under the head names the deck and its current format (AC-1.7 already needs the stored key) |
 | 0.2.1 | 2026-11-10 | Gate A: approved by the coordinator under the maintainer's delegation (v0.2.0 as written; both own calls stand: a separate Change format page, `Deck#zones` keeps its order); if the maintainer overrules either, a later version records it |
 | 0.2.0 | 2026-11-10 | From review round 1 (no blocking, six major): `Deck#zones` keeps its order (decision 4 dropped, AC-1.6 dropped; the area doc's open note is extended); the statement-count clause is a timing bar; an empty dropped zone (AC-2.1a); kept zones take their names from the registration (AC-1.5); the real concurrent writers named; AC-1.3 and AC-2.9 corrected; smaller fixes |
@@ -79,7 +80,7 @@ Decisions 1 and 7 are this spec's own calls, flagged for the review; the rest fo
 - [ ] **AC-1.2** Given a deck When the collector opens `/decks/:id/format/edit` Then the page, titled "Change format of <name> · Collector" and under the Decks section with a detail header, shows the head "Change format" with the deck's name and current format under it ("Izzet Tempo · Modern"), a Format select of every format the registered collectibles give (the options and grouping of the New deck page) with the deck's current format selected, the hint "Cards in zones the new format doesn't have move to Considering.", a primary "Save" and a "Cancel" link back to the Decks page; it works without scripting
 - [ ] **AC-1.3** Given a deck When the collector chooses another registered format and saves Then the deck's collectible type and format are the chosen pair's, its name and location id are unchanged, every lot that is not merged keeps its id, the response is 303 to the Decks page with the notice of decision 5, and the Decks page shows the new format
 - [ ] **AC-1.4** Given a change between formats with the same zones (Modern to Pauper) When it is saved Then no zone row is added, removed or renamed, no lot changes, and the notice reads "Changed “<name>” to <Format>." with no sentence about cards
-- [ ] **AC-1.5** Given a Commander deck When it is changed to Modern Then the deck has the zones Main, Sideboard and Considering: Main and Considering are the rows it had (same ids and keys), Sideboard is created with the registration's key and name, and the Commander zone is removed; and Modern to Commander does the reverse (Sideboard removed, Commander created). Every zone of the deck then has the name the registration gives its key (a kept zone whose stored name a release has since changed is rewritten, as spec 062 AC-8.2a does for an import), and the change never ends in a unique-index error
+- [ ] **AC-1.5** Given a Commander deck When it is changed to Modern Then the deck has the zones Main, Sideboard and Considering: Main and Considering are the rows it had (same ids and keys), Sideboard is created with the registration's key and name, and the Commander zone is removed; and Modern to Commander does the reverse (Sideboard removed, Commander created). Every zone of the deck then has the name the registration gives its key (a kept zone whose stored name a release has since changed is rewritten, as spec 062 AC-8.2a does for an import), and the change never ends in a unique-index error (one case excepted: a deck with no Considering row that also holds a zone of another key named like it, which no path of the app makes, rolls back with the index's error)
 - [ ] **AC-1.6** Given a deck When the collector saves the format it already has Then the response is 303 to the Decks page with "“<name>” is already <Format>.", nothing is written (no zone, deck or lot row changes, and no `updated_at` moves), and no card is moved
 - [ ] **AC-1.7** Given a deck whose format or collectible type the instance no longer registers When its Format page is opened Then it opens, the page head's line under the name shows the deck's stored format key (so a collector who saves the default does not change it unseen), the select starts on the default format, and saving a registered format works as for any deck, dropping the zones the new format lacks and moving their lots into Considering
 - [ ] **AC-1.8** Given a deck whose format was changed When the account is exported Then its entry in `decks` carries the new `format`, its lots' `location` is `{ "deck", "zone" }` with the new zone keys (a moved lot's zone is `considering`), and applying that file on the same instance is "nothing to change"

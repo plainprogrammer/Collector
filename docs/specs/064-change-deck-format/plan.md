@@ -1,7 +1,7 @@
 # Plan: Feature 064, Change a Deck's Format
 
-**Spec:** [spec.md](spec.md) v0.2.1 (Approved at Gate A) · **Issue:** [#251](https://github.com/plainprogrammer/Collector/issues/251) · **Branch:** `064-change-deck-format`
-**Version:** 0.1.0
+**Spec:** [spec.md](spec.md) v0.2.3 (Approved at Gate A as v0.2.0; later versions are the plan-review round's clarifications) · **Issue:** [#251](https://github.com/plainprogrammer/Collector/issues/251) · **Branch:** `064-change-deck-format`
+**Version:** 0.2.0 (from plan review round 1: two blocking, seven major)
 
 ## Global Constraints
 
@@ -104,7 +104,7 @@ require "rails_helper"
 RSpec.describe Deck::FormatChange, type: :model do
   let(:account) { create(:user).account }
 
-  def change(deck, to) = described_class.new(deck:, format: "mtg/#{to}")
+  def change_to(deck, key) = described_class.new(deck:, format: "mtg/#{key}") # not `change`: that is RSpec's matcher
   def zone_keys(deck) = deck.zones.pluck(:zone)
   def written = [ Location.count, Deck.count, Lot.count ]
 
@@ -113,12 +113,13 @@ RSpec.describe Deck::FormatChange, type: :model do
       deck = create(:deck, account:, format: "modern")
       lot = create_lot_in_zone(deck, "main", quantity: 3)
       zone_ids = deck.zones.pluck(:id)
-      form = change(deck, "pauper")
+      location_id = deck.location_id
+      form = change_to(deck, "pauper")
 
       expect(form.save).to be(true)
 
       expect(deck.reload).to have_attributes(collectible_type: "mtg", format: "pauper")
-      expect(deck.location_id).to eq(deck.location.id)
+      expect(deck.reload.location_id).to eq(location_id)
       expect(deck.zones.pluck(:id)).to eq(zone_ids)
       expect(lot.reload).to have_attributes(quantity: 3, location_id: deck.zone("main").id)
       expect([ form.changed?, form.moved ]).to eq([ true, 0 ])
@@ -128,7 +129,7 @@ RSpec.describe Deck::FormatChange, type: :model do
       deck = create(:deck, account:, format: "commander")
       kept = deck.zones.where(zone: %w[main considering]).pluck(:zone, :id).to_h
 
-      expect(change(deck, "modern").save).to be(true)
+      expect(change_to(deck, "modern").save).to be(true)
 
       expect(zone_keys(deck)).to contain_exactly("main", "considering", "sideboard")
       expect(deck.zones.where(zone: %w[main considering]).pluck(:zone, :id).to_h).to eq(kept)
@@ -138,7 +139,7 @@ RSpec.describe Deck::FormatChange, type: :model do
     it "goes back the other way: Modern to Commander drops Sideboard and adds Commander (AC-1.5)", :aggregate_failures do
       deck = create(:deck, account:, format: "modern")
 
-      expect(change(deck, "commander").save).to be(true)
+      expect(change_to(deck, "commander").save).to be(true)
 
       expect(zone_keys(deck)).to contain_exactly("main", "considering", "commander")
       expect(deck.zone("commander")).to have_attributes(name: "Commander")
@@ -148,7 +149,7 @@ RSpec.describe Deck::FormatChange, type: :model do
       deck = create(:deck, account:, format: "commander")
       deck.zone("main").update_columns(name: "Sideboard", name_key: "sideboard") # a stale name another zone is about to take
 
-      expect(change(deck, "modern").save).to be(true)
+      expect(change_to(deck, "modern").save).to be(true)
 
       expect(deck.zone("main")).to have_attributes(name: "Main", name_key: "main")
       expect(deck.zone("sideboard")).to have_attributes(name: "Sideboard", name_key: "sideboard")
@@ -158,7 +159,7 @@ RSpec.describe Deck::FormatChange, type: :model do
       deck = create(:deck, account:, format: "modern")
       create_lot_in_zone(deck, "sideboard", quantity: 2)
       stamps = [ Deck.pluck(:updated_at), Location.pluck(:updated_at), Lot.pluck(:updated_at) ]
-      form = change(deck, "modern")
+      form = change_to(deck, "modern")
 
       expect(form.save).to be(true)
 
@@ -166,12 +167,12 @@ RSpec.describe Deck::FormatChange, type: :model do
       expect([ Deck.pluck(:updated_at), Location.pluck(:updated_at), Lot.pluck(:updated_at) ]).to eq(stamps)
     end
 
-    it "reads the format under the write lock: a stale deck object that already has the chosen format changes nothing (AC-1.6)" do
+    it "reads the format under the write lock: a stale deck object that already has the chosen format changes nothing (AC-1.6)", :aggregate_failures do
       deck = create(:deck, account:, format: "modern")
       stale = Deck.find(deck.id)
-      change(deck, "pauper").save!
+      change_to(deck, "pauper").save!
 
-      form = change(stale, "pauper")
+      form = change_to(stale, "pauper")
 
       expect { form.save }.not_to change { [ Location.count, Lot.count ] }
       expect(form.changed?).to be(false)
@@ -182,7 +183,7 @@ RSpec.describe Deck::FormatChange, type: :model do
       create_lot_in_zone(deck, "commander", quantity: 2)
       deck.update!(format: "retired")
 
-      form = change(deck, "modern")
+      form = change_to(deck, "modern")
 
       expect(form.save).to be(true)
       expect(form.moved).to eq(2)
@@ -215,7 +216,9 @@ end
 # that still holds one), and a zone the deck has no row for is added. Every kept zone takes its name from the registration, as
 # an import's zone repair does (spec 062 AC-8.2a), so a release that renamed a zone can't make a new zone's name meet an old one
 # in the unique index on (deck, name key). The order of the writes is what keeps that index safe: lots, then the dropped zones,
-# then the renames, then the added zones.
+# then the renames, then the added zones. One case is not repaired: a deck with no Considering row that also holds a zone of
+# another key named like it (no path of the app makes one); its insert is refused by the index, and the change rolls back with
+# that error.
 #
 # Needs no `Current.account`: the deck carries it. The deck and its zones are read again inside the write transaction, so the
 # "same format" check and the cap are judged on what holds when the write runs.
@@ -227,12 +230,16 @@ class Deck::FormatChange
   def self.i18n_scope = :activerecord
 
   attr_accessor :deck, :format
-  # @return [Integer] the copies moved into Considering by a successful {#save}
+  # The copies {#save} moved into Considering.
+  # @return [Integer]
   attr_reader :moved
-  # @return [String, nil] the Considering zone's name as its row has it, set when copies moved
+  # The Considering zone's name as its row has it, for the notice; set when copies moved.
+  # @return [String, nil]
   attr_reader :considering_name
 
-  # @return [Boolean] whether {#save} changed the deck: false when it already had the format
+  # Whether {#save} changed the deck.
+  #
+  # @return [Boolean] false when the deck already had the format, so nothing was written
   def changed? = @changed
 
   # Makes the change.
@@ -257,6 +264,10 @@ class Deck::FormatChange
     deck.reload
     raise
   end
+
+  # (see #save)
+  # @raise [ActiveRecord::RecordInvalid] when {#save} is false
+  def save! = save || raise(ActiveRecord::RecordInvalid, self)
 
   private
     def apply(option)
@@ -354,7 +365,7 @@ and these examples inside `describe "#save"`:
         second = create_lot_in_zone(deck, "commander", quantity: 1)
         main = create_lot_in_zone(deck, "main", quantity: 4)
         there = create_lot_in_zone(deck, "considering", quantity: 5)
-        form = change(deck, "modern")
+        form = change_to(deck, "modern")
 
         expect(form.save).to be(true)
 
@@ -367,7 +378,7 @@ and these examples inside `describe "#save"`:
 
       it "removes an empty dropped zone and moves nothing (AC-2.1a)", :aggregate_failures do
         lot = create_lot_in_zone(deck, "main", quantity: 2)
-        form = change(deck, "modern")
+        form = change_to(deck, "modern")
 
         expect { form.save }.not_to change { Lot.pluck(:id, :quantity, :location_id, :lot_key) }
         expect(zone_keys(deck)).not_to include("commander")
@@ -380,7 +391,7 @@ and these examples inside `describe "#save"`:
         merging = create_lot_in_zone(deck, "commander", entry:, quantity: 2)
         alone = create_lot_in_zone(deck, "commander", quantity: 1)
 
-        change(deck, "modern").save!
+        change_to(deck, "modern").save!
 
         expect(there.reload).to have_attributes(quantity: 5, location_id: considering.id)
         expect(Lot.exists?(merging.id)).to be(false)
@@ -392,7 +403,7 @@ and these examples inside `describe "#save"`:
         create_lot_in_zone(deck, "considering", entry:, quantity: 3)
         create_lot_in_zone(deck, "commander", entry:, quantity: 2)
 
-        form = change(deck, "modern")
+        form = change_to(deck, "modern")
         form.save!
 
         expect(form.moved).to eq(2)
@@ -401,7 +412,7 @@ and these examples inside `describe "#save"`:
       it "keys a moved lot by the Considering zone's id, as Lot.key_for builds it, and exports it there (AC-2.4)", :aggregate_failures do
         lot = create_lot_in_zone(deck, "commander", finish: "foil", condition: "near_mint", price_paid_cents: 250, quantity: 1)
 
-        change(deck, "modern").save!
+        change_to(deck, "modern").save!
 
         expect(lot.reload.lot_key).to eq(Lot.key_for("foil", "near_mint", 250, considering.id))
         exported = CollectionExport.new(account:, at: Time.utc(2026, 11, 10)).to_json
@@ -416,9 +427,18 @@ and these examples inside `describe "#save"`:
         unplaced = Lot.add!(account:, entry: create(:mtg_printing).entry, quantity: 1)
         stamps = [ elsewhere.reload.updated_at, unplaced.reload.updated_at ]
 
-        expect { change(deck, "modern").save! }.not_to change { deck.holdings.copies }
+        expect { change_to(deck, "modern").save! }.not_to change { deck.holdings.copies }
         expect([ elsewhere.reload.updated_at, unplaced.reload.updated_at ]).to eq(stamps)
         expect(elsewhere.location_id).to eq(other.zone("commander").id)
+      end
+
+      it "writes the same number of statements for 3 lots and for 30 when none merges (NFR; a characterization, not a first-red example)" do
+        few = create(:deck, account:, name: "Few", format: "commander")
+        3.times { create_lot_in_zone(few, "commander", quantity: 1) }
+        many = create(:deck, account:, name: "Many", format: "commander")
+        30.times { create_lot_in_zone(many, "commander", quantity: 1) }
+
+        expect(count_queries { change_to(many, "modern").save! }).to eq(count_queries { change_to(few, "modern").save! })
       end
 
       it "refuses, changing nothing, when a merge would pass 9,999 copies (AC-2.6)", :aggregate_failures do
@@ -427,7 +447,7 @@ and these examples inside `describe "#save"`:
         create_lot_in_zone(deck, "commander", entry:, quantity: 1)
         before = [ Lot.order(:id).pluck(:id, :quantity, :location_id, :lot_key), deck.zones.order(:id).pluck(:id, :zone, :name) ]
 
-        expect { change(deck, "modern").save }.to raise_error(Lot::CapExceeded) { |error| expect(error.lot.entry).to eq(entry) }
+        expect { change_to(deck, "modern").save }.to raise_error(Lot::CapExceeded) { |error| expect(error.lot.entry).to eq(entry) }
 
         expect(deck.reload.format).to eq("commander")
         expect([ Lot.order(:id).pluck(:id, :quantity, :location_id, :lot_key), deck.zones.order(:id).pluck(:id, :zone, :name) ]).to eq(before)
@@ -437,7 +457,7 @@ and these examples inside `describe "#save"`:
         lot = create_lot_in_zone(deck, "commander", quantity: 2)
         allow(Location).to receive(:insert_all!).and_raise(ActiveRecord::StatementInvalid, "disk full")
 
-        expect { change(deck, "modern").save }.to raise_error(ActiveRecord::StatementInvalid)
+        expect { change_to(deck, "modern").save }.to raise_error(ActiveRecord::StatementInvalid)
 
         expect(deck.reload.format).to eq("commander")
         expect(lot.reload.location_id).to eq(deck.zone("commander").id)
@@ -448,15 +468,15 @@ and these examples inside `describe "#save"`:
         lot = create_lot_in_zone(deck, "commander", quantity: 2)
         deck.zone("considering").delete
 
-        change(deck, "modern").save!
+        change_to(deck, "modern").save!
 
         expect(lot.reload.location_id).to eq(deck.zone("considering").id)
       end
 
-      it "keeps Considering the same row and keeps the lots in it (AC-2.10)" do
+      it "keeps Considering the same row and keeps the lots in it (AC-2.10)", :aggregate_failures do
         there = create_lot_in_zone(deck, "considering", quantity: 5)
 
-        expect { change(deck, "modern").save! }.not_to change { deck.zone("considering").id }
+        expect { change_to(deck, "modern").save! }.not_to change { deck.zone("considering").id }
         expect(there.reload.location_id).to eq(deck.zone("considering").id)
       end
     end
@@ -479,12 +499,12 @@ and these examples inside `describe "#save"`:
     it "brings an undo of an earlier bulk removal back without a location once its zone is gone (AC-2.9)", :aggregate_failures do
       deck = create(:deck, account:, format: "commander")
       lot = create_lot_in_zone(deck, "commander", quantity: 2)
-      session = create(:session, user: account.users.first)
+      session = account.user.sessions.create!
       selection = BulkSelection.for(session)
       selection.record!(shown_ids: [ lot.id ], ticked_ids: [ lot.id ], header_rendered: false, header_ticked: false)
       removal = BulkRemoval.remove!(selection)
 
-      change(deck, "modern").save!
+      change_to(deck, "modern").save!
       undone = removal.undo!(sort: CollectionTable::Sort.parse(nil, nil))
 
       expect(undone.unplaced).to eq(1)
@@ -492,7 +512,7 @@ and these examples inside `describe "#save"`:
     end
 ```
 
-(If `create(:session, …)`, `BulkSelection.for` or `record!` differ from `spec/migrations/add_location_to_lots_spec.rb`'s `pick`/`fill` helpers, mirror those helpers exactly: that spec removes lots through the same three calls.)
+(`account.user.sessions.create!`, `BulkSelection.for`, `record!` and `BulkRemoval.remove!` are the calls `spec/migrations/add_location_to_lots_spec.rb` makes; the Undo's own notice wording is proven by its existing specs, so this example asserts the count it returns.)
 
 - [ ] Run `bin/rspec spec/models/deck/format_change_spec.rb`; expect the new examples red (the lots don't move: `move_lots!` is empty).
 - [ ] Fill in `move_lots!` in `app/models/deck/format_change.rb` and the notice's name:
@@ -510,7 +530,7 @@ and these examples inside `describe "#save"`:
       @moved = Lot::BulkMove.new(account: deck.account, lots:, to: considering, sort:).apply!.moved
     end
 ```
-- [ ] In `app/models/lot/bulk_move.rb` change the comment on `initialize`: "+to+ is a place of +account+, or nil for none (never a deck or a zone, …" to say: "+to+ is a place of +account+, a zone of one of its decks, or nil for none, never a deck's own row: the writes below skip validations, so the caller's lookup is what keeps a lot out of a deck. The collection's Move to… passes a place or none (`Collections::MovesController`); a deck's change of format passes its Considering zone (`Deck::FormatChange`, spec 064)." and the class comment's first paragraph gains "or a deck's Considering zone". No code changes.
+- [ ] In `app/models/lot/bulk_move.rb` change the comment on `initialize`: "+to+ is a place of +account+, or nil for none (never a deck or a zone, …" to say: "+to+ is a place of +account+, a zone of one of its decks, or nil for none, never a deck's own row: the writes below skip validations, so the caller's lookup is what keeps a lot out of a deck. The collection's Move to… passes a place or none (`Collections::MovesController`); a deck's change of format passes its Considering zone (`Deck::FormatChange`, spec 064)." and the class comment's first paragraph gains "or a deck's Considering zone". Both sentences of the comment on `initialize` change: its second sentence ("a lot in a zone is never 'already there', since +to+ is a place or none, so the partition below … moves it out of its zone") stays true for a place or none; add "when +to+ is a zone of a deck, the lots moved are those of the deck's other zones, so none is already there either". No code changes. The #252 worker's branch changes the pickers and the place label and may edit this same comment: the supervisor tells the coordinator the wording and merges `origin/main` before the push.
 - [ ] Run `bin/rspec spec/models/deck/format_change_spec.rb spec/models/lot/bulk_move_spec.rb`; expect all green. If the AC-2.9 example's setup raises, align it with `spec/migrations/add_location_to_lots_spec.rb` as noted, then rerun.
 - [ ] `bin/rubocop -a app/models spec/models/deck`, then `git add app/models/deck/format_change.rb app/models/lot/bulk_move.rb spec/models/deck/format_change_spec.rb`, then commit `feat(decks): move a dropped zone's lots into Considering (#251)`.
 
@@ -613,7 +633,7 @@ RSpec.describe "Deck formats", type: :request do
         patch_format("mtg/modern", target: commander)
 
         expect(response).to have_http_status(:unprocessable_content)
-        expect(html.at_css(".c-alert, [role=alert]").text).to include("Nothing changed. #{entry.name}", "would have more than 9,999 copies in one lot.")
+        expect(html.at_css("#status .c-status__message--alert").text).to include("Nothing changed. #{entry.name}", "would have more than 9,999 copies in one lot.")
         expect(html.at_css("select option[selected]")["value"]).to eq("mtg/modern")
         expect(html.at_css(".c-pagehead__stats").text.squish).to eq("Krenko · Commander")
         expect(commander.reload.format).to eq("commander")
@@ -646,6 +666,15 @@ RSpec.describe "Deck formats", type: :request do
       end
     end
 
+    it "costs the same number of queries whatever the deck holds (NFR)" do
+      empty = create(:deck, account:, name: "Empty")
+      full = create(:deck, account:, name: "Full", format: "commander")
+      10.times { create_lot_in_zone(full, "commander", quantity: 1) }
+      get edit_deck_format_path(empty) # warms what the count would otherwise see once
+
+      expect(count_queries { get edit_deck_format_path(full) }).to eq(count_queries { get edit_deck_format_path(empty) })
+    end
+
     describe "tenant isolation and bad ids (AC-3.3, AC-3.4)" do
       let(:foreign) { create(:deck, account: create(:user).account, name: "Theirs", format: "modern") }
       let(:place) { create(:location, account:) }
@@ -661,13 +690,34 @@ RSpec.describe "Deck formats", type: :request do
         expect([ foreign.reload.format, deck.reload.format ]).to eq(%w[modern modern])
       end
 
-      it "answers 404 for a deck removed in another tab" do
+      it "answers 404 for the decks row's own id, which is not a location id (AC-3.3)" do
+        3.times { create(:location, account:) } # place and zone ids move past the decks table's ids
+        other = create(:deck, account:, name: "Other")
+
+        get "/decks/#{other.id}/format/edit"
+
+        expect(response).to have_http_status(:not_found)
+      end
+
+      it "answers 404 for a deck removed in another tab, on the page and on the change (AC-3.4)", :aggregate_failures do
         removed = create(:deck, account:, name: "Gone")
         removed.remove!
 
-        patch_format("mtg/pauper", target: removed.location_id)
-
+        get "/decks/#{removed.location_id}/format/edit"
         expect(response).to have_http_status(:not_found)
+        patch_format("mtg/pauper", target: removed.location_id)
+        expect(response).to have_http_status(:not_found)
+      end
+
+      it "changes nothing of another account's deck of the same name (AC-3.6)", :aggregate_failures do
+        theirs = create(:deck, account: create(:user).account, name: "Izzet Tempo", format: "commander")
+        create_lot_in_zone(theirs, "commander", quantity: 2)
+
+        patch_format("mtg/pauper")
+
+        expect(theirs.reload.format).to eq("commander")
+        expect(theirs.holdings.copies).to eq(2)
+        expect(theirs.zones.pluck(:zone)).to include("commander")
       end
     end
   end
@@ -732,7 +782,7 @@ end
     Catalog::Formats.find(deck.collectible_type, deck.format) ? "#{deck.collectible_type}/#{deck.format}" : Catalog::Formats.default_option&.value
   end
 
-  # The notice after a change of format: "Changed “Izzet Tempo” to Commander. 12 cards moved to Considering." (the second
+  # The notice after a change of format: "Changed “Izzet Tempo” to <Format>. 12 cards moved to Considering." (the second
   # sentence only when copies moved, naming the zone as its row does), or that the deck already has the format (AC-1.3, AC-1.6).
   #
   # @param deck [Deck] after the change
@@ -786,7 +836,7 @@ end
 
 ```ruby
     describe "the Decks page's row button (AC-1.1)" do
-      it "links each deck to its Change format page and names the deck for a screen reader" do
+      it "links each deck to its Change format page and names the deck for a screen reader", :aggregate_failures do
         get decks_path
 
         link = html.at_css(".c-decks__actions a[href='#{edit_deck_format_path(deck)}']")
@@ -803,24 +853,13 @@ end
                   <%= link_to edit_deck_format_path(deck), class: "c-btn c-btn--ghost c-btn--sm" do %>Change format<span class="c-sr"> <%= deck.name %></span><% end %>
 ```
 
-- [ ] In `app/assets/stylesheets/collector/additions.css` change the rule and its comment:
-
-```css
-/* ---------- Decks page row actions (spec 062, 064): Rename, Change format and Remove beside each deck ---------- */
-/* The Locations list's ghost buttons in a table cell. The cell is as narrow as its buttons (`td.c-table__actions`), the three sit
-   on one line with the list's gap where they fit and wrap onto lines of their own where they don't (a phone), so they never
-   widen the page; they meet the 44px touch floor like the rest of the deck pages, and the deck page's own links (#253) may take
-   them over. */
-.c-decks__actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:var(--space-2); font-family:var(--font-sans); }
-```
-
 - [ ] Run `bin/rspec spec/requests/deck_formats_spec.rb spec/requests/decks_spec.rb`; expect green (the existing Decks examples that count links or read the actions row may need the third button: update only expectations that list the actions).
-- [ ] `git add` the view, css, spec; commit `feat(decks): a Change format button on each Decks row (#251)`.
+- [ ] `git add` the view and the spec; commit `feat(decks): a Change format button on each Decks row (#251)`. (The CSS that makes the row fit a phone is Task 3.1's, after its failing examples.)
 
 ## Phase 3: System specs, timing, guards, round trip
 
-**Implements:** FR-2, NFR Performance | **Satisfies:** AC-1.1 (360px), AC-1.8, NFR (timing, queries)
-**Files:** modify `spec/system/decks_spec.rb`, `spec/requests/deck_formats_spec.rb`; create `spec/requests/deck_format_change_timing_spec.rb`, `spec/models/deck/format_change_round_trip_spec.rb`
+**Implements:** FR-2, NFR Performance | **Satisfies:** AC-1.1 (the row at 360px and 1280px), AC-1.8, NFR (timing)
+**Files:** modify `spec/system/decks_spec.rb`, `spec/models/deck/format_change_spec.rb`, `app/assets/stylesheets/collector/additions.css`; create `spec/requests/deck_format_change_timing_spec.rb`
 
 ### Task 3.1: The flow and the phone widths
 
@@ -838,11 +877,21 @@ end
       select "Modern", from: "Format"
       click_button "Save"
 
-      expect(page).to have_css(".c-notice, [role=status]", text: "Changed “Krenko” to Modern. 2 cards moved to Considering.")
+      expect(page).to have_css("#status", text: "Changed “Krenko” to Modern. 2 cards moved to Considering.")
       expect(page).to have_css(".c-decks tbody", text: "Modern")
     end
 
-    it "keeps the Decks row and the Change format page inside a 360px frame (AC-1.1)", :aggregate_failures do
+    it "keeps the three row buttons on one line on a wide screen (AC-1.1)" do
+      create(:deck, account:, name: "Krenko", format: "casual")
+
+      visit decks_path
+      tops = page.evaluate_script('Array.from(document.querySelectorAll(".c-decks__actions a")).map((a) => a.offsetTop)')
+
+      expect(tops.size).to eq(3)
+      expect(tops.uniq.size).to eq(1)
+    end
+
+    it "keeps the Decks row and the Change format page inside a 360px frame, a 60-character name included (AC-1.1)", :aggregate_failures do
       create(:deck, account:, name: "W" * 60, format: "casual")
 
       open_in_narrow_frame(decks_path, width: 360, ready: ".c-decks table")
@@ -854,44 +903,50 @@ end
   end
 ```
 
-(The notice selector must match what the app's notices render; copy it from the existing "creates a deck from the form" example in the same file.)
+- [ ] Run `bin/rspec spec/system/decks_spec.rb`. Expected red: the 360px example fails because the 60-character name in the Change format page's head line (`.c-pagehead__stats`, 13px mono, no break rule) widens the page. (If the default window is not wide, size it as the file's other examples do before reading the buttons' `offsetTop`.)
+- [ ] In `app/assets/stylesheets/collector/additions.css` replace the row-actions rule and its comment, and add the page-head rule:
 
-- [ ] Run `bin/rspec spec/system/decks_spec.rb`. If the 360px example fails because the three buttons overflow, fix the CSS in `additions.css` (not the spec) until green; this is the "wraps onto lines of their own" criterion.
-- [ ] Commit `test(decks): the Change format flow and its phone fit (#251)`.
-
-### Task 3.2: The round trip, the statement count and the timing example
-
-- [ ] Create `spec/models/deck/format_change_round_trip_spec.rb`:
-
-```ruby
-require "rails_helper"
-
-# Spec 064 AC-1.8: a deck whose format was changed exports with the new format and its lots' new zones, and applying that
-# file on the same instance has nothing to change.
-RSpec.describe Deck::FormatChange, "export round trip", type: :model do
-  let(:user) { create(:user) }
-  let(:account) { user.account }
-
-  it "exports the new format and zones, and the file has nothing to change", :aggregate_failures do
-    deck = create(:deck, account:, name: "Krenko", format: "commander")
-    create_lot_in_zone(deck, "commander", quantity: 2)
-    create_lot_in_zone(deck, "main", quantity: 1)
-    described_class.new(deck:, format: "mtg/modern").save!
-
-    data = JSON.parse(CollectionExport.new(account: account.reload, at: Time.utc(2026, 11, 10)).to_json)
-
-    expect(data["decks"]).to eq([ { "name" => "Krenko", "collectible_type" => "mtg", "format" => "modern" } ])
-    expect(data["lots"].map { it["location"] }).to contain_exactly({ "deck" => "Krenko", "zone" => "considering" }, { "deck" => "Krenko", "zone" => "main" })
-    expect(CollectionImport.new(account:, file: StringIO.new(JSON.generate(data))).plan.nothing_to_change?).to be(true)
-  end
-end
+```css
+/* ---------- Decks page row actions (spec 062, 064): Rename, Change format and Remove beside each deck ---------- */
+/* The Locations list's ghost buttons in a table cell. The cell is as narrow as its buttons (`td.c-table__actions`, width 1%),
+   so the three sit on one line with the list's gap on a wide screen (nowrap: with wrapping allowed the cell's min-content is
+   one button wide and they would stack at every width) and wrap onto lines of their own below 640px, where they would widen
+   the page. They meet the 44px touch floor like the rest of the deck pages, and the deck page's own links (#253) may take them
+   over. */
+.c-decks__actions { display:flex; justify-content:flex-end; gap:var(--space-2); font-family:var(--font-sans); }
+@media (max-width: 639px) { .c-decks__actions { flex-wrap:wrap; } }
+/* The Rename and Change format pages' head line says a deck's name, up to 60 characters with no space: it breaks inside a word
+   on a phone instead of widening the page. */
+.c-decks .c-pagehead > div { min-width:0; }
+.c-decks .c-pagehead__stats { overflow-wrap:anywhere; }
 ```
 
-- [ ] Run it; expect green (it proves AC-1.8 against the existing export and import).
-- [ ] Add to `spec/models/deck/format_change_spec.rb` an example bounding the statements for a change that moves many lots, using the helper the creation spec uses for "costs at most ten statements" (`grep -n "statements" spec/models/deck/creation_spec.rb` for the counter) so that the count is the same for 3 lots and 30 lots in the dropped zone plus the merges it makes (one statement per merged lot is the documented cost: create the 30 lots of distinct identities so none merges). Assert the two counts are equal.
-- [ ] Create `spec/requests/deck_format_change_timing_spec.rb` modelled on `spec/requests/bulk_move_timing_spec.rb` (same `:timing` tag, same seed helper style: `Lot.insert_all` in slices of 1,000): a Commander deck with 5,000 lots in its Commander zone over 1,000 printings and 400 lots already in Considering that 400 of the moved lots merge into; call `Deck::FormatChange.new(deck:, format: "mtg/modern").save!` inside `Benchmark.realtime`; assert `< 2` seconds; puts the time (run with `SCANNER_TIMING=1`, never gating).
+- [ ] Run `bin/rspec spec/system/decks_spec.rb spec/requests/decks_spec.rb spec/system/design_system_deck_rules_spec.rb spec/system/design_system_deck_components_spec.rb`; expect green. If the page still overflows, find the widening element by script in the frame and fix its rule here, not the spec.
+- [ ] Commit `feat(decks): the Change format flow fits a phone (#251)`.
+
+### Task 3.2: The export round trip and the timing example
+
+- [ ] Add to `spec/models/deck/format_change_spec.rb`, inside `describe "#save"` (one more `it`, no second `describe`, so RuboCop's RSpec cops keep the file's name):
+
+```ruby
+    it "exports the new format and zones, and the file has nothing to change (AC-1.8)", :aggregate_failures do
+      deck = create(:deck, account:, name: "Krenko", format: "commander")
+      create_lot_in_zone(deck, "commander", quantity: 2)
+      create_lot_in_zone(deck, "main", quantity: 1)
+      change_to(deck, "modern").save!
+
+      data = JSON.parse(CollectionExport.new(account: account.reload, at: Time.utc(2026, 11, 10)).to_json)
+
+      expect(data["decks"]).to eq([ { "name" => "Krenko", "collectible_type" => "mtg", "format" => "modern" } ])
+      expect(data["lots"].map { it["location"] }).to contain_exactly({ "deck" => "Krenko", "zone" => "considering" }, { "deck" => "Krenko", "zone" => "main" })
+      expect(CollectionImport.new(account:, file: StringIO.new(JSON.generate(data))).plan.nothing_to_change?).to be(true)
+    end
+```
+
+- [ ] Run `bin/rspec spec/models/deck/format_change_spec.rb`; expect green (it proves AC-1.8 against the existing export and import).
+- [ ] Create `spec/requests/deck_format_change_timing_spec.rb` modelled on `spec/requests/bulk_move_timing_spec.rb` (same `:timing` tag, same seed helper style: `Lot.insert_all` in slices of 1,000): a Commander deck with 5,000 lots in its Commander zone over 1,000 printings and 400 lots already in Considering that 400 of the moved lots merge into; call `Deck::FormatChange.new(deck:, format: "mtg/modern").save!` timed with `Process.clock_gettime(Process::CLOCK_MONOTONIC)` as `bulk_move_timing_spec.rb` does (not `Benchmark`, which Ruby 4 doesn't load by default); assert `< 2` seconds; report the time with `RSpec.configuration.reporter.message` (not `puts`, which `RSpec/Output` refuses); run with `SCANNER_TIMING=1`, never gating.
 - [ ] Run `SCANNER_TIMING=1 bin/rspec spec/requests/deck_format_change_timing_spec.rb`, note the time for `verification.md`.
-- [ ] Commit `test(decks): the export round trip, the statement count and the timing of a change (#251)`.
+- [ ] Commit `test(decks): the export round trip and the timing of a change (#251)`.
 
 ## Phase 4: Documents and the visual evidence
 
@@ -901,6 +956,7 @@ end
 ### Task 4.1: The area docs and the design system's page
 
 - [ ] `docs/architecture/collection-and-lots.md`: (a) Scope's Decks bullet gains `Deck::FormatChange`, `Decks::FormatsController` and `spec 064`; (b) in "A deck", after the Remove row add the Change format row: "any | Change format (`/decks/:id/format/edit`, `PATCH /decks/:id/format`) | One transaction: the zones become the new format's (kept by key, same rows and lots; dropped ones removed after their lots move; added ones created; kept zones named from the registration), every lot of a dropped zone moves into Considering through `Lot::BulkMove` (merging by identity, the Considering lot surviving, all or nothing at 9,999) and the `decks` row takes the type and format. 303 to `/decks` with "Changed “<name>” to <Format>. 12 cards moved to Considering." (second sentence only when copies moved); the same format is "“<name>” is already <Format>." and writes nothing; a cap refusal is 422 on the page, "Nothing changed. <name> (<SET> · <number>) would have more than 9,999 copies in one lot."; "Choose a format." for a bad pair (spec 064 AC-1.3–AC-1.7, AC-2.1–AC-2.10, AC-3.1)"; (c) the invariant "A deck and its zones are written, renamed and removed as one thing" gains "changed"; (d) a bullet under the deck table: Considering is in every format and is in the deck, so copies in it are not free to use (#50) and the shape panel leaves it out (#256), with the issue design's decision 3 as source; (e) the line about `Deck#zones` order (line ~268) says a format change adds to the cases that list a later-added zone last; (f) Sources gains spec 064 and #251; the "In the app a deck keeps its format" statement, if present, is removed.
+- [ ] `docs/design-system/README.md`: the App additions line that lists the row-actions rule says Rename, Change format and Remove, wrapping below 640px (spec 064).
 - [ ] `docs/architecture/tenancy-and-accounts.md`: the deck routes' 404 rule lists `/decks/:id/format/edit` and `PATCH /decks/:id/format`.
 - [ ] `docs/architecture/data-portability.md`: the statement that the move into Considering is #251's now points at spec 064 (an import still moves none).
 - [ ] `docs/design-system/components/DecksIndex.md`: the Decks markup gains the "Change format" button between Rename and Remove; a new "Markup, the Change format page" section (the Rename page's shape with the Format field, hint, and the alert on a cap refusal); the row-actions CSS note says the buttons wrap on a phone.
