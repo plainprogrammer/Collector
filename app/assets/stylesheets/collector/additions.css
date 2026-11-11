@@ -489,7 +489,7 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
 @container collection (max-width: 639px) {
   .c-zone .c-zone__c-total { width:1%; } /* the auto layout shares spare width among auto columns; Total keeps its content's, as the menu does */
 }
-.c-zone td:first-child { white-space:normal; overflow-wrap:anywhere; } /* every width: the Card column is 128px with the menu column (spec 060) and 192px on the deck page until #254 adds the menu, so a name would spill into Cost under the export's nowrap */
+.c-zone td:first-child { white-space:normal; overflow-wrap:anywhere; } /* every width: the Card column is 128px with the menu column (spec 060, built by spec 068), so a name would spill into Cost under the export's nowrap */
 .c-zone .c-cost { flex-wrap:wrap; min-width:94px; } /* four pips (4 x 22px + 3 x 2px) never wrap: the auto layout shrinks a cell to its min-content, one wrapped pip, so a phone's Cryptic Command cost took two lines (spec 060 final visual review) */
 
 /* ---------- Decks list (spec 060): the New deck button stays on a phone ---------- */
