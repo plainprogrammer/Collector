@@ -1,7 +1,7 @@
-# Moves every copy of many lots to one location, or to none (spec 041). Lots that reach one identity in the destination
-# merge into one (the destination's own lot survives, else the first moved lot in the bulk table's order); a selected lot
-# already in the destination stays where it is (decision 3). All or nothing: the 9,999 cap is checked for every merge
-# before anything is written. Collectible-agnostic.
+# Moves every copy of many lots to one location, to none, or to a deck's Considering zone (spec 041, spec 064). Lots that
+# reach one identity in the destination merge into one (the destination's own lot survives, else the first moved lot in the
+# bulk table's order); a selected lot already in the destination stays where it is (decision 3). All or nothing: the 9,999
+# cap is checked for every merge before anything is written. Collectible-agnostic.
 #
 # models.md says not to use update_all/delete_all in normal flows (they skip validations and tenant checks). The move does, as
 # Lot::ConditionChange#update_alone! does, for the 2-second bar, and each statement is safe: scoped through @account.lots,
@@ -36,10 +36,13 @@ class Lot::BulkMove
     def initialize = super(BulkSelection::NONE_LEFT)
   end
 
-  # +to+ is a place or a zone of +account+ (never a deck row; the controller lookup, Location.find_placeable!, is what keeps a
-  # lot out of a deck), or nil for none; the writes below skip validations.
+  # +to+ is a place or a zone of +account+, or nil for none, never a deck's own row: the writes below skip validations, so the
+  # caller's lookup is what keeps a lot out of a deck. Both callers look it up through the account: the collection's Move to…
+  # passes a place, a zone or none through `Location.find_placeable!` (`Collections::MovesController`, spec 065), and a deck's
+  # change of format passes its Considering zone (`Deck::FormatChange`, spec 064).
   # +lots+ is the selection's relation of the account's lots, whatever place each is in: a lot already in +to+ is "already
-  # there", and the partition below, by `lot.location_id != @to&.id`, moves the others, out of their zones too.
+  # there", and the partition below, by `lot.location_id != @to&.id`, moves the others, out of their zones too; when +to+ is a
+  # zone of a deck being changed, the lots moved are those of the deck's other zones.
   def initialize(account:, lots:, to:, sort:)
     @account, @lots, @to, @sort = account, lots, to, sort
   end

@@ -1,0 +1,24 @@
+<% content_for :title, "Change format of #{@deck.name} · Collector" %>
+<%= render "layouts/appbar", section: :decks, detail: true, back_path: decks_path %>
+<main class="c-main c-page c-decks">
+  <div class="c-pagehead">
+    <div>
+      <h1 class="c-pagehead__title">Change format</h1>
+      <p class="c-pagehead__stats"><%= @deck.name %> · <%= @deck.format_name %></p>
+    </div>
+  </div>
+  <% messages = @change.errors.messages_for(:format) %>
+  <%= form_with model: @change, scope: :deck, url: deck_format_path(@deck), method: :patch, class: "c-form" do |form| %>
+    <div class="c-field<%= " c-field--invalid" if messages.any? %>">
+      <%= form.label :format, "Format", class: "c-field__label" %>
+      <%= form.select :format, deck_format_options(@change.format), {}, "aria-describedby": field_error_describedby("deck_format-error", messages) %>
+      <%= render "shared/field_errors", messages:, id: "deck_format-error" %>
+      <p class="c-field__hint">Cards in zones the new format doesn't have move to Considering.</p>
+    </div>
+    <div class="c-form__actions">
+      <%= form.submit "Save", class: "c-btn c-btn--primary" %>
+      <%= link_to "Cancel", decks_path, class: "c-btn c-btn--secondary" %>
+    </div>
+  <% end %>
+</main>
+<%= render "layouts/tabbar", section: :decks %>

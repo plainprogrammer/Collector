@@ -12,6 +12,18 @@ RSpec.describe Deck::Creation, type: :model do
 
   def written = [ Location.count, Deck.count ]
 
+  describe ".zone_rows" do
+    it "builds one row per zone, with the normalised name and its comparison key, for one INSERT" do
+      deck = create(:deck, account:)
+      zones = [ Catalog::Formats::Zone.new(key: "extra", name: "  Extra   Zone ") ]
+
+      rows = described_class.zone_rows(deck.location, zones)
+
+      expect(rows).to match([ a_hash_including(account_id: account.id, parent_id: deck.location_id, kind: "deck_zone", zone: "extra",
+        name: "Extra Zone", name_key: "extra zone") ])
+    end
+  end
+
   describe "#save" do
     it "writes one deck with the format's type and key and one zone per zone of the format, in its order (AC-1.3)", :aggregate_failures do
       form = creation(format: "mtg/commander")

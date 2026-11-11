@@ -32,7 +32,7 @@ RSpec.describe "The deck code", type: :config do
   def relative(files) = files.map { |file| file.relative_path_from(Rails.root).to_s }
 
   it "covers every file of the feature" do
-    expect(files.size).to eq(19 + 4) # spec 065 adds the four picker views
+    expect(files.size).to eq(20 + 6) # spec 064 brought the list to 20; spec 065 adds the choices model, its helper and the four picker views
   end
 
   it "names every file it lists, each of which exists" do

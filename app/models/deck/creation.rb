@@ -47,7 +47,7 @@ class Deck::Creation
       end
 
       deck = Deck.create!(account:, location:, collectible_type: option.type, format: option.format.key)
-      Location.insert_all!(zone_rows(location, option.format))
+      Location.insert_all!(self.class.zone_rows(location, option.format.zones))
     end
     @deck = deck if errors.empty?
     errors.empty?
@@ -57,13 +57,20 @@ class Deck::Creation
   # @raise [ActiveRecord::RecordInvalid] when {#save} is false
   def save! = save || raise(ActiveRecord::RecordInvalid, self)
 
-  private
-    def zone_rows(location, format)
-      now = Time.current
-      format.zones.map do |zone|
-        normal = Location::Name.normalise(zone.name)
-        { account_id: location.account_id, parent_id: location.id, kind: "deck_zone", zone: zone.key, name: normal,
-          name_key: Location::Name.key(normal), created_at: now, updated_at: now }
-      end
+  # The rows of a deck's zones, ready for one `Location.insert_all!` (which skips validations on purpose: the keys and names
+  # come from a registration `Catalog::Formats.verify!` checked at boot, and the unique index on (deck, name key) backs
+  # them). The one place a zone row's shape is written: creating a deck and changing its format both use it.
+  #
+  # @api private
+  # @param location [Location] the deck's location
+  # @param zones [Array<Catalog::Formats::Zone>] the zones to write, in order
+  # @return [Array<Hash>]
+  def self.zone_rows(location, zones)
+    now = Time.current
+    zones.map do |zone|
+      normal = Location::Name.normalise(zone.name)
+      { account_id: location.account_id, parent_id: location.id, kind: "deck_zone", zone: zone.key, name: normal,
+        name_key: Location::Name.key(normal), created_at: now, updated_at: now }
     end
+  end
 end
