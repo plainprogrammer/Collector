@@ -2,8 +2,8 @@
 # decision 1). One statement reads every location of the account, so a picker, the collection filter and a message that
 # names a zone cost one read between them, and each zone's `parent` is set from that read so `Location#label` costs nothing.
 #
-# This is for showing a choice. A write that names a location still looks it up through `Current.account.locations.placeable`
-# (404 when it isn't one), because a request's id is untrusted. Collectible-agnostic: a deck is a location and a zone is its
+# This is for showing a choice. A write that names a location still looks it up through `Location.find_placeable!`, called on
+# `Current.account.locations` (404 when it isn't one), because a request's id is untrusted. Collectible-agnostic: a deck is a location and a zone is its
 # child; no format or zone key is named here.
 # @see file:collection-and-lots.md
 class Location::Choices

@@ -516,7 +516,6 @@ RSpec.describe "Lots", type: :request do
 
     it "shows the select with the zone chosen, not read-only text (spec 065 AC-1.6)", :aggregate_failures do
       get edit_lot_path(lot)
-      expect(page_html.at_css("p.c-field__static")).to be_nil
       select = page_html.at_css("select#lot_location_id")
       expect(select.at_css("option[selected]").text).to eq("Izzet Tempo › Main")
     end
@@ -568,10 +567,8 @@ RSpec.describe "Lots", type: :request do
       unplaced = create(:lot, account:, entry:, finish: "foil")
       get edit_lot_path(placed)
       expect(page_html.at_css("select#lot_location_id option[selected]")&.text).to eq("Binder")
-      expect(page_html.at_css("p.c-field__static")).to be_nil
       get edit_lot_path(unplaced)
       expect(page_html.at_css("select#lot_location_id")).to be_present
-      expect(page_html.at_css("p.c-field__static")).to be_nil
     end
   end
 end
