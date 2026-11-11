@@ -1,6 +1,6 @@
 # Implementation Plan: Proxies in a Deck Zone
 
-**Spec:** [spec.md](spec.md) (v0.4.0, Approved at Gate A, 2026-11-11)
+**Spec:** [spec.md](spec.md) (v0.4.0, Approved at Gate A, 2026-11-11); plan approved at Gate B (the coordinator, under the maintainer's delegation, 2026-11-11)
 **Decisions:** none new; ADR 0028's deck model gets one table (spec decision 12)
 **Created:** 2026-11-11
 
