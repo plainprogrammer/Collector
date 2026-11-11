@@ -1,6 +1,7 @@
 # The Decks pages' words (spec 062 FR-4); the markup is in `app/views/decks`.
 module DecksHelper
-  # "6 decks · 379 cards" for the Decks page's head: the decks, then the copies in all their zones (Considering included).
+  # "6 decks · 379 cards" for the Decks page's head: the decks, then their cards, owned plus proxy, in all their zones
+  # (Considering included).
   #
   # @param listing [Deck::Listing]
   # @return [String]
@@ -9,27 +10,68 @@ module DecksHelper
     "#{pluralize(number_with_delimiter(listing.count), "deck")} · #{pluralize(number_with_delimiter(cards), "card")}"
   end
 
-  # The line a narrow table shows under a deck's name: "Format name · 58 owned". Owned is the cards count until proxies exist
-  # (spec 062 AC-4.4), which is why one number serves both columns.
+  # "Format name · 58 owned": the line a narrow table shows under a deck's name; the proxy tag follows it in the view.
   #
   # @param row [Deck::Listing::Row]
   # @return [String]
-  def deck_sub_line(row)
-    "#{row.deck.format_name} · #{number_with_delimiter(row.cards)} owned"
-  end
+  def deck_sub_line(row) = "#{row.deck.format_name} · #{number_with_delimiter(row.owned)} owned"
 
-  # "12 cards · 12 owned": a zone's counts and the tail of the page head. Cards and owned are one number until proxies exist
-  # (spec 066 decision 4).
+  # "60 cards · 52 owned · 8 proxy": a zone's counts and the tail of the page head (spec 068 decision 7). Cards are owned plus
+  # proxy, and "proxy" has no plural.
   #
   # @param owned [Integer] the copies counted
+  # @param proxy [Integer] the proxies counted (quantities)
   # @return [String]
-  def deck_counts_line(owned) = "#{pluralize(number_with_delimiter(owned), "card")} · #{number_with_delimiter(owned)} owned"
+  def deck_counts_line(owned, proxy = 0) = "#{pluralize(number_with_delimiter(owned + proxy), "card")} · #{number_with_delimiter(owned)} owned · #{number_with_delimiter(proxy)} proxy"
 
   # The deck page's muted head line: the format's name (its key when no longer registered), then the counts of every zone.
   #
   # @param page [Deck::Page]
   # @return [String]
-  def deck_page_line(page) = "#{page.deck.format_name} · #{deck_counts_line(page.owned)}"
+  def deck_page_line(page) = "#{page.deck.format_name} · #{deck_counts_line(page.owned, page.proxy)}"
+
+  # The dashed tag of a proxy count: `<span class="c-proxy">Proxy <b>2</b></span>` (ProxyTag, spec 060 FR-1).
+  #
+  # @param count [Integer]
+  # @return [ActiveSupport::SafeBuffer]
+  def proxy_tag(count) = tag.span(class: "c-proxy") { safe_join([ "Proxy ", tag.b(number_with_delimiter(count)) ]) }
+
+  # "Izzet Tempo › Main": a zone as the pages say it, from the deck's name and the zone's own, without loading the parent.
+  #
+  # @param deck [Deck]
+  # @param zone [Location]
+  # @return [String]
+  def proxy_zone_label(deck, zone) = Location::Placement.label(zone.name, deck.name)
+
+  # "Lightning Bolt (MH2 · 138, Foil)": a proxy as the pages and notices name it, the finish after the number only when it has one.
+  #
+  # @param proxy [Deck::Proxy] with its entry and set loaded
+  # @return [String]
+  def proxy_name(proxy)
+    detail = [ set_number(proxy.entry), proxy.finish_label ].compact.join(", ")
+    "#{proxy.entry.name} (#{detail})"
+  end
+
+  # A row menu item's words (spec 068 decision 5): "Change proxy count" / "Remove proxy", with the finish named when the row has
+  # proxies of more than one finish: "Change Foil proxy count", "Remove Foil proxy".
+  #
+  # @param verb [String] "Change" or "Remove"
+  # @param line [Deck::Page::Line]
+  # @param row [Deck::Page::Row]
+  # @return [String]
+  def proxy_item_label(verb, line, row)
+    finish = line.finish && row.lines.size > 1 ? "#{proxy_finish_label(row.entry, line.finish)} " : ""
+    verb == "Change" ? "Change #{finish}proxy count" : "Remove #{finish}proxy"
+  end
+
+  # The finish as its collectible's vocabulary labels it; the humanised key for a collectible this instance no longer has.
+  #
+  # @param entry [Catalog::Entry]
+  # @param finish [String]
+  # @return [String]
+  def proxy_finish_label(entry, finish)
+    Catalog.collecting.key?(entry.collectible_type) ? Catalog.collecting_for(entry.collectible_type).finish_label(finish) : finish.humanize
+  end
 
   # "S1 · 52" under a card's name, with " · DE" after the number for a printing whose language is not English (spec 066 AC-2.5).
   #

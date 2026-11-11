@@ -49,7 +49,17 @@ Rails.application.routes.draw do
     resource :removal, only: :new, module: :decks
     resource :format, only: %i[edit update], module: :decks # spec 064: change a deck's format
     resource :selection, only: :create, module: :decks # spec 067: the refusal page's shortcut into bulk mode
+    # Spec 068: a proxy is named by its own id under its deck (the deck's location id is :deck_id).
+    scope module: :decks do
+      resources :proxies, only: %i[edit update destroy] do
+        resource :removal, only: :new, module: :proxies
+      end
+    end
   end
+
+  # Spec 068: add a proxy to a zone, named by its key in the path (:deck_id is the deck's location id, never a zone's).
+  get "decks/:deck_id/zones/:zone/proxies/new", to: "decks/proxies#new", as: :new_deck_zone_proxy
+  post "decks/:deck_id/zones/:zone/proxies", to: "decks/proxies#create", as: :deck_zone_proxies
 
   # The card scanner (spec 007; spec 009 adds the sitting and Other printings, and links it from the navigation).
   resource :scanner, only: :show

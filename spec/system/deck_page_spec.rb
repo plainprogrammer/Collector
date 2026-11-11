@@ -1,7 +1,7 @@
 require "rails_helper"
 
-# Spec 066 Story 5: the deck page at 360, 640, 768 and 1280px in both themes, in headless Firefox. Phone widths use the narrow
-# frame (a window can't go below 500px), whose page is a same-origin iframe.
+# Spec 066 Story 5, spec 068 AC-2.4, AC-2.5 and AC-2.11: the deck page at 360, 640, 768 and 1280px in both themes, in headless
+# Firefox. Phone widths use the narrow frame (a window can't go below 500px), whose page is a same-origin iframe.
 RSpec.describe "Deck page", type: :system do
   let!(:user) { system_sign_in_as(create(:user)) }
   let(:account) { user.account }
@@ -14,10 +14,12 @@ RSpec.describe "Deck page", type: :system do
     entry
   end
 
-  # The worst case (a 60-character name with no space, a six-symbol cost, a marker, a three-digit quantity), a short row, a land,
-  # and cards in Sideboard and Considering so three zone tables differ in content.
+  # The worst case (a 60-character name with no space, a six-symbol cost, a marker, a three-digit quantity and a four-digit
+  # proxy count: AC-2.11), a short row, a land, and cards in Sideboard and Considering so three zone tables differ in content.
   before do
-    create_lot_in_zone(deck, "main", entry: printing(name: long_name), quantity: 123)
+    worst = printing(name: long_name)
+    create_lot_in_zone(deck, "main", entry: worst, quantity: 123)
+    create(:deck_proxy, zone: deck.zone("main"), account:, entry: worst, finish: "nonfoil", quantity: 1234)
     create_lot_in_zone(deck, "main", entry: printing(name: "Lightning Bolt", type_line: "Instant", cost: "{R}", legalities: { "modern" => "legal" }), quantity: 4)
     create_lot_in_zone(deck, "main", entry: printing(name: "Island", type_line: "Basic Land — Island", cost: "", legalities: { "modern" => "legal" }), quantity: 20)
     create_lot_in_zone(deck, "sideboard", entry: printing(name: "Spell Pierce", type_line: "Instant", cost: "{U}", legalities: { "modern" => "not_legal" }), quantity: 2)
@@ -29,7 +31,7 @@ RSpec.describe "Deck page", type: :system do
 
   def shown_headers
     page.evaluate_script(<<~JS)
-      [...document.querySelectorAll(".c-zone thead th")].filter((th) => th.getClientRects().length > 0).slice(0, 5).map((th) => th.textContent.trim())
+      [...document.querySelectorAll(".c-zone thead th")].filter((th) => th.getClientRects().length > 0).slice(0, 6).map((th) => th.textContent.trim())
     JS
   end
 
@@ -106,22 +108,66 @@ RSpec.describe "Deck page", type: :system do
     end
   end
 
-  it "shows the marker and the set line beside the name from 768px and not under it, and all five columns (AC-3.6, AC-5.2)", :aggregate_failures do
+  it "shows the marker and the set line beside the name from 768px and not under it, and all six columns (AC-3.6, AC-5.2; spec 068 AC-2.5)", :aggregate_failures do
     open_in_narrow_frame(deck_path(deck), width: 1280, ready: ".c-zone:first-of-type table")
     within_narrow_frame do
-      expect(shown_headers).to eq([ "Card", "Cost", "Owned", "Proxy", "Total" ])
+      expect(shown_headers).to eq([ "Card", "Cost", "Owned", "Proxy", "Total", "Actions" ])
       expect(long_row_shown).to include("sub" => false, "beside" => true, "subSet" => false, "besideSet" => true)
     end
   end
 
-  it "gives Cost, Owned, Proxy and Total one left edge and width in every zone table from 640px (AC-5.2)", :aggregate_failures do
+  it "gives Cost, Owned, Proxy, Total and the menu one left edge and width in every zone table from 640px (AC-5.2; spec 068 AC-2.5)", :aggregate_failures do
     visit deck_path(deck)
     page.driver.browser.manage.window.resize_to(1280, 900)
     expect(page).to have_css(".c-zone table", count: 3)
 
     boxes = column_boxes
 
-    (1..4).each { |column| expect(boxes.map { it[column] }.uniq.size).to eq(1), "column #{column} differs between zone tables: #{boxes.map { it[column] }}" }
+    (1..5).each { |column| expect(boxes.map { it[column] }.uniq.size).to eq(1), "column #{column} differs between zone tables: #{boxes.map { it[column] }}" }
+  end
+
+  it "shows the proxy tag under the name and hides Owned and Proxy below 640px, keeping Cost, Total and the menu (AC-2.4)", :aggregate_failures do
+    open_in_narrow_frame(deck_path(deck), width: 360, ready: ".c-zone:first-of-type table")
+    within_narrow_frame do
+      expect(shown_headers.first(4)).to eq([ "Card", "Cost", "Total", "Actions" ]) # the next zone's table follows
+      shown = page.evaluate_script(<<~JS)
+        (() => { const row = [...document.querySelectorAll(".c-zone tbody tr")].find((tr) => tr.textContent.includes("W".repeat(60)))
+          const shown = (el) => el.getClientRects().length > 0
+          return { sub: shown(row.querySelector(".c-table__sub .c-proxy")), proxyCell: shown(row.querySelectorAll("td")[3]), menu: shown(row.querySelector("td.c-table__actions summary")) } })()
+      JS
+      expect(shown).to eq({ "sub" => true, "proxyCell" => false, "menu" => true })
+    end
+  end
+
+  it "shows the proxy tag in the Proxy column from 640px, with its four digits uncut, and not under the name (AC-2.5, AC-2.11)", :aggregate_failures do
+    open_in_narrow_frame(deck_path(deck), width: 1280, ready: ".c-zone:first-of-type table")
+    within_narrow_frame do
+      cell = page.evaluate_script(<<~JS)
+        (() => { const row = [...document.querySelectorAll(".c-zone tbody tr")].find((tr) => tr.textContent.includes("W".repeat(60)))
+          const td = row.querySelectorAll("td")[3], tag = td.querySelector(".c-proxy")
+          return { text: tag.textContent.replace(/\\s+/g, " ").trim(), cut: td.scrollWidth > td.clientWidth, sub: row.querySelector(".c-table__sub").getClientRects().length > 0 } })()
+      JS
+      expect(cell).to eq({ "text" => "Proxy 1,234", "cut" => false, "sub" => false })
+    end
+  end
+
+  # The trigger's floor on a touch screen is the design system's rule for a small button (40px, components.css); headless
+  # Firefox has a fine pointer, so the rule is read from the stylesheet and the trigger is measured as it is drawn.
+  it "gives the row menu's trigger the touch floor of a small icon button (AC-2.11)", :aggregate_failures do
+    visit deck_path(deck)
+    floor = page.evaluate_script(<<~JS)
+      (() => { let found = 0
+        for (const sheet of document.styleSheets) for (const rule of sheet.cssRules) {
+          if (rule.media && rule.conditionText.includes("pointer: coarse")) for (const inner of rule.cssRules)
+            if (inner.selectorText === ".c-btn--sm.c-btn--icon") found = Math.max(found, parseFloat(inner.style.minWidth) || 0)
+        }
+        return found })()
+    JS
+    trigger = page.evaluate_script(<<~JS)
+      (() => { const box = document.querySelector(".c-zone td.c-table__actions summary").getBoundingClientRect(); return [box.width, box.height] })()
+    JS
+    expect(floor).to be >= 40
+    expect(trigger).to all(be >= 30) # a small button drawn for a fine pointer
   end
 
   it "leaves the second column empty from 992px: the zones keep the first column and nothing sits in the second (AC-5.1)", :aggregate_failures do

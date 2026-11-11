@@ -19,6 +19,7 @@
             <th class="is-opt">Format</th>
             <th class="is-num">Cards</th>
             <th class="is-num is-opt">Owned</th>
+            <th class="is-num is-opt">Proxy</th>
             <th><span class="c-sr">Actions</span></th>
           </tr>
         </thead>
@@ -26,10 +27,11 @@
           <% @listing.rows.each do |row| %>
             <% deck = row.deck %>
             <tr>
-              <td><div class="c-table__item"><div><span><%= link_to deck.name, deck_path(deck) %></span><span class="c-table__sub"><%= deck_sub_line(row) %></span></div></div></td>
+              <td><div class="c-table__item"><div><span><%= link_to deck.name, deck_path(deck) %></span><span class="c-table__sub"><%= deck_sub_line(row) %><% if row.proxy.positive? %> <%= proxy_tag(row.proxy) %><% end %></span></div></div></td>
               <td class="is-opt"><%= deck.format_name %></td>
               <td class="is-num"><%= number_with_delimiter(row.cards) %></td>
-              <td class="is-num is-opt"><%= number_with_delimiter(row.cards) %></td>
+              <td class="is-num is-opt"><%= number_with_delimiter(row.owned) %></td>
+              <td class="is-num is-opt"><%= row.proxy.positive? ? proxy_tag(row.proxy) : tag.span("–", class: "is-muted") %></td>
               <td class="c-table__actions">
                 <span class="c-decks__actions">
                   <%= link_to edit_deck_path(deck), class: "c-btn c-btn--ghost c-btn--sm" do %>Rename<span class="c-sr"> <%= deck.name %></span><% end %>

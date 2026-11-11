@@ -27,11 +27,28 @@ RSpec.describe "Decks", type: :request do
         expect(response).to have_http_status(:ok)
         expect(html.at_css("h1").text).to eq("Decks")
         expect(stats).to eq("3 decks · 10 cards")
-        expect(html.css(".c-decks thead th").map { it.text.squish }).to eq([ "Deck", "Format", "Cards", "Owned", "Actions" ])
+        expect(html.css(".c-decks thead th").map { it.text.squish }).to eq([ "Deck", "Format", "Cards", "Owned", "Proxy", "Actions" ])
         expect(deck_names).to eq(%w[Beatdown Krenko tempo])
         expect(html.css(".c-decks tbody td:first-child .c-table__item > div > span:first-child a").map { it["href"] }).to eq(account.decks.listing_order.map { deck_path(it) }) # spec 066 AC-1.5: each name links to its page
-        expect(html.at_css(".c-decks").text).not_to include("Proxy")
         expect(html.at_css(".c-pagehead__actions a.c-btn--primary[href='#{new_deck_path}']").text.squish).to eq("New deck")
+      end
+
+      it "shows Cards as owned plus proxy, Owned, and the Proxy tag or a dash, and the phone line's tag (AC-5.1, AC-5.2)", :aggregate_failures do
+        alpha = create(:deck, account:, name: "Alpha")
+        create_lot_in_zone(alpha, "main", quantity: 58)
+        create(:deck_proxy, zone: alpha.zone("main"), account:, quantity: 11)
+        create(:deck, account:, name: "Beta")
+
+        get decks_path
+
+        a, b = html.css("tbody tr")
+        expect(a.css("td")[2].text.strip).to eq("69")
+        expect(a.css("td")[3].text.strip).to eq("58")
+        expect(a.css("td")[4].at_css(".c-proxy").text.squish).to eq("Proxy 11")
+        expect(a.at_css(".c-table__sub").text.squish).to eq("Modern · 58 owned Proxy 11")
+        expect(b.css("td")[4].at_css(".is-muted").text).to eq("–")
+        expect(html.at_css(".c-pagehead__stats").text).to eq("2 decks · 69 cards")
+        expect(html.css("th").map { it.text.strip }).to eq([ "Deck", "Format", "Cards", "Owned", "Proxy", "Actions" ])
       end
 
       it "says '1 deck' for one (AC-4.3)" do
