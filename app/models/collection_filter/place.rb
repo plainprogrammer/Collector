@@ -3,7 +3,14 @@
 # selection or a submitted form (decision 7).
 module CollectionFilter::Place
   NONE = "none".freeze
-  ID = /\A[1-9]\d{0,17}\z/ # at most 18 digits: a longer id would overflow SQLite's 64-bit bind (spec 037 0.2.2)
+  ID = Location::ID_TEXT # at most 18 digits: a longer id would overflow SQLite's 64-bit bind (spec 037 0.2.2)
+
+  # A deck's "all zones" filter value, "deck:<id>" (spec 065 decision 3). Only the form of the value is here for now; the
+  # filter's parsing and query follow in the filter's own task.
+  #
+  # @param id [Integer, String] the deck's location id
+  # @return [String]
+  def self.deck_value(id) = "deck:#{id}"
 
   # Anything that isn't "none" or such an id (a non-string, "017", " 17", "17abc") is "".
   def self.parse(raw) = raw.is_a?(String) && (raw == NONE || raw.match?(ID)) ? raw : ""
