@@ -46,6 +46,7 @@ The design system's "where is it" ([docs/design-system/README.md](design-system/
     - 14j. [#255](https://github.com/plainprogrammer/Collector/issues/255) Add to deck from the card page (after 14i).
     - 14k. [#256](https://github.com/plainprogrammer/Collector/issues/256) Deck shape panel: mana curve, card types and coloured mana symbols (after 14d, 14h and 14i).
     - 14l. [#257](https://github.com/plainprogrammer/Collector/issues/257) Replace a proxy with a copy (after 14i).
+    - 14m. [#302](https://github.com/plainprogrammer/Collector/issues/302) Open a deck's lots in bulk mode from its removal refusal page (the shortcut spec 062 decision 7 and spec 065 left out; after 14g). [Spec 067](specs/067-deck-refusal-bulk-mode/spec.md).
 15. [#50](https://github.com/plainprogrammer/Collector/issues/50) "Free to use" and "In decks" on the card page (after 14e and 14i).
 16. [#51](https://github.com/plainprogrammer/Collector/issues/51) Choose a location during typed entry. **Built 2026-10-26, done when its pull request merges:** [spec 034](specs/034-location-in-typed-entry/spec.md).
 

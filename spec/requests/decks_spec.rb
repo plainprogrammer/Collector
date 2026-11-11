@@ -450,7 +450,7 @@ RSpec.describe "Decks", type: :request do
         expect([ lot.reload.attributes, other.zones.pluck(:id, :name), place.reload.attributes ]).to eq(before)
       end
 
-      it "refuses a deck with lots in two zones, counting and listing each lot with its zone, with no Remove and no bulk button (AC-3.3)", :aggregate_failures do
+      it "refuses a deck with lots in two zones, counting and listing each lot with its zone, with no Remove and the bulk shortcut first (AC-3.3; spec 067 AC-1.1)", :aggregate_failures do
         create_lot_in_zone(deck, "main", quantity: 4)
         create_lot_in_zone(deck, "main", quantity: 4)
         create_lot_in_zone(deck, "sideboard", quantity: 4)
@@ -465,8 +465,8 @@ RSpec.describe "Decks", type: :request do
         expect(html.css("#held_lots li .c-decks__zone").map(&:text).sort).to eq([ "Izzet Tempo › Main", "Izzet Tempo › Main", "Izzet Tempo › Sideboard" ])
         expect(html.css("#held_lots li a").map { it["href"] }).to all(start_with("/catalog/entries/").and(end_with("#copies")))
         expect(html.at_css("a[href='#{decks_path}']", text: "Back to decks")).to be_present
-        expect(buttons.grep(/Remove|bulk/)).to be_empty
-        expect(html.css("main form")).to be_empty
+        expect(buttons).to eq([ "Move them in bulk mode from “Izzet Tempo”" ])
+        expect(html.css("main form").map { it["action"] }).to eq([ deck_selection_path(deck) ])
       end
 
       it "lists the first 100 lots and says how many more (AC-3.3)", :aggregate_failures do

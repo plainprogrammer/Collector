@@ -87,7 +87,8 @@ RSpec.describe "Decks", type: :system do
       within_narrow_frame do
         expect(page).to have_css("#held_lots .c-decks__zone", text: "#{"W" * 60} › Main")
         expect(page).to have_link("Back to decks")
-        expect(page).to have_no_css("main button", text: /Remove|bulk/)
+        expect(page).to have_css("main button", text: "Move them in bulk mode")
+        expect(page).to have_no_css("main button", text: /\ARemove/)
         expect(fits?).to be(true)
       end
     end
