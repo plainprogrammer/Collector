@@ -74,8 +74,43 @@ module Catalog::DeckChecks
   private_class_method :counted_rows
 
   # @api private
-  def self.rule_lines(_rules, _deck_type, _format_key, _zones, _counted) = []
+  def self.rule_lines(rules, deck_type, format_key, zones, counted)
+    rules.sizes.map { size_line(it, deck_type, format_key, zones, counted) }
+  end
   private_class_method :rule_lines
+
+  # One size result (decision 6). Zones are named in the rule's key order: by the zone row's shown name, else by the format's
+  # registration, else by the key.
+  # @api private
+  def self.size_line(rule, deck_type, format_key, zones, counted)
+    total = counted.select { rule.zone_keys.include?(it.zone.location.zone) }.sum { it.row.total }
+    subject = rule.zone_keys.map { zone_name(it, deck_type, format_key, zones) }.join(" + ")
+    status = if rule.min && total < rule.min then "Short" elsif rule.max && total > rule.max then "Over" else "Pass" end
+    format_name = Catalog::Formats.name_for(deck_type, format_key)
+    Line.new(status:, sentence: "#{subject}: #{counted_words(total, 'card')}; #{format_name} #{size_need(rule)}.", fault: status != "Pass")
+  end
+  private_class_method :size_line
+
+  # The rule's requirement in words: "needs at least 60", "allows at most 15" or "needs exactly 100".
+  # @api private
+  def self.size_need(rule)
+    return "needs exactly #{delimited(rule.min)}" if rule.min && rule.min == rule.max
+    return "needs at least #{delimited(rule.min)}" if rule.min
+
+    "allows at most #{delimited(rule.max)}"
+  end
+  private_class_method :size_need
+
+  # @api private
+  def self.zone_name(key, deck_type, format_key, zones)
+    zones.find { it.location.zone == key }&.name || Catalog::Formats.zones_for(deck_type, format_key)&.find { it.key == key }&.name || key
+  end
+  private_class_method :zone_name
+
+  # "1 card", "5 copies": the count with delimiters and the singular for one.
+  # @api private
+  def self.counted_words(number, word) = "#{delimited(number)} #{word.pluralize(number)}"
+  private_class_method :counted_words
 
   # @api private
   def self.no_rules_line(deck_type, format_key)

@@ -82,4 +82,44 @@ RSpec.describe Catalog::DeckChecks, type: :model do
       expect(lines(report(*zones)).drop(1).map(&:last)).to eq([ "Abe in Alpha: 1 owned, 1 proxy.", "Zed in Alpha: 1 owned, 1 proxy.", "Abe in Beta: 1 owned, 1 proxy." ])
     end
   end
+
+  describe "size results" do
+    it "judges a minimum with the true count in every sentence", :aggregate_failures do
+      register(sizes: [ size(%w[main], min: 60) ])
+      bolt = card("Bolt", 1)
+      expect(lines(report(zone("main", "Main", row(bolt, owned: 58))))).to include([ "Short", "Main: 58 cards; tight needs at least 60." ])
+      expect(lines(report(zone("main", "Main", row(bolt, owned: 59, proxy: 1))))).to include([ "Pass", "Main: 60 cards; tight needs at least 60." ])
+      expect(lines(report(zone("main", "Main", row(bolt, owned: 61))))).to include([ "Pass", "Main: 61 cards; tight needs at least 60." ])
+    end
+
+    it "names a rule's zones in its key order and a zone the deck lacks by its key", :aggregate_failures do
+      register(sizes: [ size(%w[bench], max: 15), size(%w[lead main], min: 100, max: 100) ])
+      zones = [ zone("main", "Main", row(card("A", 1), owned: 98)), zone("lead", "Lead", row(card("B", 2), owned: 1)) ]
+      expect(lines(report(*zones))).to start_with([ "Pass", "bench: 0 cards; tight allows at most 15." ], [ "Short", "Lead + Main: 99 cards; tight needs exactly 100." ])
+    end
+
+    it "says Over past a maximum and past an exact size, and the singular for one card", :aggregate_failures do
+      register(sizes: [ size(%w[bench], max: 15), size(%w[main], min: 1, max: 1) ])
+      zones = [ zone("bench", "Bench", row(card("A", 1), owned: 16)), zone("main", "Main", row(card("B", 2), owned: 2)) ]
+      expect(lines(report(*zones))).to start_with([ "Over", "Bench: 16 cards; tight allows at most 15." ], [ "Over", "Main: 2 cards; tight needs exactly 1." ])
+      expect(lines(report(zone("main", "Main", row(card("B", 2), owned: 1))))).to include([ "Pass", "Main: 1 card; tight needs exactly 1." ])
+    end
+
+    it "counts nothing in Considering or an unnamed zone, and passes at exactly the exact size", :aggregate_failures do
+      register(sizes: [ size(%w[main], min: 100, max: 100) ])
+      zones = [ zone("main", "Main", row(card("A", 1), owned: 100)), zone("considering", "Considering", row(card("B", 2), owned: 30)) ]
+      expect(lines(report(*zones)).first).to eq([ "Pass", "Main: 100 cards; tight needs exactly 100." ])
+    end
+
+    it "separates thousands in a count" do
+      register(sizes: [ size(%w[main], min: 60) ])
+      expect(lines(report(zone("main", "Main", row(card("A", 1), owned: 1_234)))).first.last).to eq("Main: 1,234 cards; tight needs at least 60.")
+    end
+
+    it "leaves out another collectible's cards and zones no rule names", :aggregate_failures do
+      register(sizes: [ size(%w[main], min: 1) ])
+      zones = [ zone("main", "Main", row(card("Other", 9, type: "stranger"), owned: 5)), zone("stash", "Stash", row(card("A", 1), owned: 7)) ]
+      expect(lines(report(*zones)).first).to eq([ "Short", "Main: 0 cards; tight needs at least 1." ])
+    end
+  end
 end
