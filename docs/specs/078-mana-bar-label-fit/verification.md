@@ -10,7 +10,7 @@ Examples are the nested `describe "mana label fit (spec 078, #330)"` of `spec/sy
 |---|---|
 | AC-1.1 | system "draws each label on one line inside its segment or not at all, centred, at every width, for the four-label deck" (and "five-label", "six-label"): 320, 345, 360, a 366px and a 640px frame and the 1280px aside, both themes; "draws some labels and clips others at a 320px viewport, so the rule is seen acting and is not vacuous" ("W 12", 29.2px in a 27.83px segment, is clipped and at least one label is drawn) |
 | AC-1.2 | the same three examples (`decided?`: a label at least 0.5px narrower than its fractional content width is drawn, one at least 0.5px wider is not); "draws a label at 360px and in the aside where it fits, a 12% segment's among them" ("W 12" in 32.6px and 33.6px of content) |
-| AC-1.3 | the same three examples (`centred?`: a drawn label's centre within 1px of its segment's); can fail: "without the segment's first item the label sits off its segment's centre" (`::before{content:none}` leaves a drawn label about 8px off) |
+| AC-1.3 | the same three examples (`centred?`: a drawn label's centre within 1px of its segment's); can fail: "without the segment's first item the label sits off its segment's centre" (`::before{content:none}` leaves a drawn label several pixels off) |
 | AC-1.4 | can fail: "with the old layout a label wraps onto two lines at a 320px viewport" (the old layout restored by a `<style>`: "W 12" on two lines, `tidy?` false) |
 | AC-1.5 | system "draws every label of the five-equal-segment fixture at every width, none clipped"; spec 077's own AC-2.2 example and its variant, unchanged and green |
 | AC-1.6 | spec 069's request example "marks a segment under 10% of the symbols narrow in the page (AC-4.6)", spec 077's AC-2.3 reading and every request example of the bar's markup, `aria-label` and caption, unchanged and green; `git diff --stat origin/main...HEAD -- app/` shows no view or model change |
@@ -45,3 +45,17 @@ Screenshots in `docs/specs/078-mana-bar-label-fit/screenshots/` (24 JPEGs, facto
 ## Owed to the maintainer: the phone check (AC-2.4)
 
 The suite runs the rule in headless Firefox only. The rule relies on flex line breaking and a percentage height in a stretched flex item (`DeckShape.md`, "Browsers"). **To record here when done:** open a deck of mana symbols in the 10-20% band (a deck whose white is about 12% of its coloured symbols, with a four-character label) on a phone in Safari or another WebKit browser, at 320px or 360px wide, and confirm that no label wraps onto two lines or is cut off, a label that fits is drawn, and a label that does not is not drawn. Status: **not yet done**.
+
+## Implementation review
+
+SPEC-ALIGNED WITH FINDINGS (3 minor, 2 nits; none blocking or major).
+
+Mode B, Opus, read-only (it read the branch and did not run the suite), 2026-11-12, after commit `6f1280ab`. It found every AC met by the CSS, the examples and the documents; the examples' "drawn" and "clipped" predicates sound, neither failing variant able to pass by accident, and the Linux risk low ("W 12" about 30.0px against a 27.83px segment is still clipped; the fixture's 46.2px leaves 1.5px over a 44.70px label); the CSS in scope (AC-3.1) with an accurate comment; the screenshots matching this document (10 of the 24 looked at); no shipped spec edited; no throwaway file committed. Findings and what was done:
+
+- Minor: AC-2.3's Distillation log row is not in the area doc yet. It is the `distill-feature` step's, run after this review; done there.
+- Minor: the area doc's Sources line for 078 left out spec 077's Open Questions, which the spec's Supersedes table lists. Fixed (commit after `6f1280ab`).
+- Minor: "before-four-phone320" shows "12" only slightly cut off; the two lines are the clearer evidence. Accepted as it is (the verification text says "wraps onto two lines").
+- Nit: the "about 8px off" of the AC-1.3 variant is about 7px by geometry. Fixed (now "several pixels").
+- Nit: commit trailers name Sonnet 5.5 and Opus 5.5 by session. Left as they are (the plan says earlier commits keep their trailer).
+
+Not verifiable by this review and still to come: the full `bin/ci` and the Linux CI run, and the maintainer's phone check (AC-2.4, above).
