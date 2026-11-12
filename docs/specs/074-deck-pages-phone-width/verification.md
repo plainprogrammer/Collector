@@ -1,0 +1,20 @@
+# Verification: spec 074 (Deck pages at phone width, #326)
+
+Status: in progress (spec in review). This file records the evidence the spec cites; the implementation's evidence and the review are added under their own headings as the work lands.
+
+## Evidence for the spec (2026-11-11)
+
+All measured in headless Firefox through throwaway system specs (`spec/system/zz_074_probe_spec.rb`, never committed), with factory data, in the suite's 1400×1400 window (a 1315px viewport) unless stated.
+
+1. **Row menu behind the tab bar (Problem 1).** Deck page in a 375px frame (a 360px viewport with the Mac's 15px classic scrollbar), 640px tall, first proxy row's menu opened by a click: the tab bar at 573px to 640px (67px high); the menu items at 524 to 560, 560 to 596, 596 to 632 and 641 to 677px. Scroll position 0.
+2. **The page can't scroll far enough at its end (review finding B1).** The same page with the proxy on the last zone's last row and proxies of two finishes (8 items), scrolled to the end, a `toggle` listener calling `scrollIntoView({block: "nearest"})` and `scroll-margin-bottom: 75px`: without a room box the last items sat at 563px to 635px (behind the bar); with `.c-menu[open] > .c-menu__list::after` (absolute, `top: 100%`, 75px tall) the page scrolled 74px further (maximum scroll 514px to 588px) and the last item ended at 561px. With one finish (4 items) the list fit either way (last item at 557px), so the case needs a long menu or a short footer.
+3. **The missing tab bar (Problem 2).** Add to deck with no decks, a 390px frame: the bar is `display: flex`, `position: fixed`, its bottom edge on the frame's bottom edge at frame heights 700px, 815px and 1315px. A frame of 1700px in the 1315px viewport gave a 1315px element screenshot with no bar. An 815px frame in a 1280×800 window (viewport 715px) gave an 815px screenshot with no bar (the picture of spec 071's shots 04 and 05); in a 1280×900 window (viewport 815px) the same shot has the bar. The window spec 071's throwaway used can't be read back, so the cause of its shots is reproduced, not confirmed.
+4. **The audit of `Menu` uses.** `git grep -n 'c-menu' -- app/views ':!.kamal/secrets' | grep -v 'c-menu__'` lists the ten menus of the spec's table (`admin/jobs/index`, `admin/users/index`, `catalog/entries/_copies`, `catalog/entries/show`, `collections/_bulk`, `collections/_filter_bar`, `collections/_table`, `decks/_proxy_menu`, `decks/show`, `layouts/_appbar`); `decks/_zone` matches only the column class `c-zone__c-menu`. The Locations views have no `c-menu`.
+5. **Supersession search.** `git grep -n -i -E 'menu.*(scroll|clear|below the viewport|opens (down|up))|(open|opens).*menu.*(bottom|upward|down)' -- 'docs/specs/*/spec.md' docs/architecture docs/design-system spec ':!.kamal/secrets'` found no criterion about a menu's placement or scrolling (the hits are about sideways scrolling and the account menu's width). Spec 070's `verification.md` line 79 notes the menu problem as seen, not as a rule. Result: Supersedes is empty.
+6. **Existing examples that open a menu.** `git grep -n 'summary' -- spec/system`, filtered by hand: the narrow-frame ones are `narrow_admin_pages_spec.rb:36`, `narrow_bulk_pages_spec.rb:18` and `:30`, `bulk_mode_spec.rb:122`, `bulk_move_spec.rb:76`, the 1400px-window ones are `bulk_mode_spec.rb:85` (Escape on the account menu, line 91), `admin_jobs_spec.rb:56`, `deck_proxy_replacements_spec.rb:26` and `:40`, `lot_moves_spec.rb:13`.
+
+## Spec review
+
+- Round 1 (Opus, read-only), REVISE: 1 blocking, 4 major, 9 minor, 3 nit; all taken in spec v0.2.0 (its changelog lists each).
+- Round 2 (Opus, read-only), REVISE: 0 blocking, 5 major, 6 minor, 4 nit; all taken in spec v0.3.0 (its changelog lists each). No round 3: the findings were fixed in the text, and the coordinator is told at Gate A.
+- Left as it is on purpose (round 2, R2-14): the export's `components.css:127` comment ("Stimulus adds outside-click and arrow keys") stays wrong; `components.css` is the design export's file and this spec leaves it unchanged. `Menu.md` is corrected.
