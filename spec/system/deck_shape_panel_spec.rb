@@ -110,23 +110,13 @@ RSpec.describe "Deck shape panel", type: :system do
     JS
   end
 
-  # Opens the deck page in a frame whose viewport (the page's `documentElement.clientWidth`, the frame less its classic scrollbar) is
-  # 360px, with the fold open, and returns that viewport's width so the example can assert it. The scrollbar's width depends on the
-  # platform (15px on the Mac, about 12px on the Linux CI runner, found when CI measured an inside of 281px where the Mac measured
-  # 278px), so the frame is sized from the measured scrollbar, `360 + scrollbar`, and never from a constant: it opens at 375px, the
-  # Mac's answer, and reopens only when the scrollbar isn't 15px.
+  # Opens the deck page in a frame whose viewport is 360px (open_in_viewport_frame sizes it from the measured scrollbar: 15px on the Mac,
+  # about 12px on the Linux CI runner, found when CI measured an inside of 281px where the Mac measured 278px), with the fold open, and
+  # returns that viewport's width so the example can assert it.
   def open_phone_frame
-    width = 375
-    2.times do
-      open_in_narrow_frame(deck_path(deck), width:, ready: "details.c-shapefold")
-      within_narrow_frame do
-        page.execute_script('document.querySelector("details.c-shapefold").open = true')
-        scrollbar = page.evaluate_script("window.innerWidth - document.documentElement.clientWidth")
-        width = 360 + scrollbar
-      end
-      break if width == 375
-    end
-    within_narrow_frame { page.evaluate_script("document.documentElement.clientWidth") }
+    viewport = open_in_viewport_frame(deck_path(deck), viewport: 360, ready: "details.c-shapefold")
+    within_narrow_frame { page.execute_script('document.querySelector("details.c-shapefold").open = true') }
+    viewport
   end
 
   # A phone's 360px viewport has no scrollbar and the frame keeps a classic one, so the frame is 360px plus the measured scrollbar
@@ -203,21 +193,12 @@ RSpec.describe "Deck shape panel", type: :system do
     def open_fold = page.execute_script('document.querySelector("details.c-shapefold").open = true')
     def inject_css(rules) = page.execute_script("const style = document.createElement('style'); style.textContent = #{rules.to_json}; document.head.append(style)")
 
-    # A frame whose viewport is `viewport` px wide with the fold open: the viewport plus the scrollbar the frame draws (measured, then
-    # the frame is reopened if it was not 15px). Returns the viewport it got, for the example to assert.
+    # A frame whose viewport is `viewport` px wide (open_in_viewport_frame) with the fold open. Returns the viewport it got, for the
+    # example to assert.
     def open_fold_in_frame(path, viewport)
-      width = viewport + 15
-      2.times do
-        open_in_narrow_frame(path, width:, ready: "details.c-shapefold")
-        scrollbar = within_narrow_frame do
-          open_fold
-          page.evaluate_script("window.innerWidth - document.documentElement.clientWidth")
-        end
-        break if viewport + scrollbar == width
-
-        width = viewport + scrollbar
-      end
-      within_narrow_frame { page.evaluate_script("document.documentElement.clientWidth") }
+      got = open_in_viewport_frame(path, viewport:, ready: "details.c-shapefold")
+      within_narrow_frame { open_fold }
+      got
     end
 
     # Opens the deck page as `width` says (a viewport in px, a fixed frame, or :aside at 1280px) and yields the panel's selector, inside
