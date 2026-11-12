@@ -4,8 +4,9 @@
 #
 # "In a deck" is not decided here: the caller passes the card's lots that are in deck zones (`Catalog::CardOverview#deck_lots`,
 # the complement of `Lot::FreeCopies`), so `Lot.free` stays the one definition. Proxies are read here, by the card's identity,
-# because they are never lots. Two statements for the proxies and the zones' decks plus one preload each for a zone's deck
-# and the deck's own row, however many zones there are; none for a nil account or for a card in no deck.
+# because they are never lots. Four statements however many zones there are: the proxies summed by zone, the zones, a preload
+# of the zones' parents and a preload of the parents' decks rows. One for a card with no copy in a deck and no proxy (only
+# the proxies, which are read before the zones are known); none for a nil account.
 #
 # Takes the account explicitly and never reads `Current.account`. Collectible-agnostic.
 # @see file:collection-and-lots.md

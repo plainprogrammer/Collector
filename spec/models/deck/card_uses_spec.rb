@@ -64,6 +64,19 @@ RSpec.describe Deck::CardUses, type: :model do
     expect(described_class.new(account: other, entry:, lots: other.lots.to_a).rows.map { it.deck.name }).to eq([ "Theirs" ])
   end
 
+  # The zones query would drop another account's zones anyway, so the rows can't show whether the proxies' own account filter
+  # is there: the statement that sums the proxies is read directly.
+  it "sums only this account's proxies by zone, never another account's proxy of the card in its own zone", :aggregate_failures do
+    deck = create(:deck, account:, name: "Mine")
+    create(:deck_proxy, zone: deck.zone("main"), entry:, quantity: 1)
+    other = create(:user).account
+    theirs = create(:deck, account: other, name: "Theirs")
+    create(:deck_proxy, zone: theirs.zone("main"), entry:, account: other, quantity: 8)
+
+    expect(uses.send(:proxies_by_zone)).to eq(deck.zone("main").id => 1)
+    expect(described_class.new(account: other, entry:, lots: []).send(:proxies_by_zone)).to eq(theirs.zone("main").id => 8)
+  end
+
   it "has no rows and runs no statement for a visitor (no account)", :aggregate_failures do
     entry.identity # loaded beforehand: only the object's own reads are counted
     visitor = described_class.new(account: nil, entry:, lots: [])
