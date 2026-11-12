@@ -169,4 +169,41 @@ RSpec.describe "Deck shape panel", type: :request do
 
     expect(response).to have_http_status(:not_found)
   end
+
+  # Spec 077: the worst case's numbers in a slot of fixed width are abbreviated, and everything that can carry the exact number does.
+  describe "counts in a slot of fixed width (spec 077, #320)" do
+    # Spec 069's worst case: a 6+ column of 1,357 (123 owned, 1,234 proxy), five single cards and Bolt in column 1, 20 lands, and a
+    # five-colour mana bar of about 2,591 symbols a colour (red 2,595: Bolt's {R} times 4).
+    before do
+      own(card(name: "Worst", type_line: "Creature — Elf", cost: "{2}{W}{U}{B}{R}{G}", mana_value: 7.0), 123)
+      proxy(card(name: "Gleemax", type_line: "Creature — Elf", cost: "{W/U}{U/B}{B/R}{R/G}{G/W}", mana_value: 1_000_000.0), 1_234)
+      own(card(name: "Bolt", cost: "{R}", mana_value: 1.0), 4)
+      5.times { own(card(type_line: "Sorcery", cost: "{1}", mana_value: 1.0)) }
+      own(card(name: "Island", type_line: "Basic Land — Island", cost: "", mana_value: 0.0), 20)
+      get deck_path(deck)
+    end
+
+    it "abbreviates a column's count from 1,000 and keeps the exact numbers in the label and the legend (AC-1.2)", :aggregate_failures do
+      expect(html.css("aside .c-curve__count").map(&:text)).to eq(%w[0 9 0 0 0 0 1.4k])
+      expect(html.at_css("aside .c-curve [role=img]")["aria-label"]).to include("6+, 1,357 cards (123 owned, 1,234 proxy)")
+      expect(html.css("aside .c-curve__legend li").map(&:text)).to eq([ "Owned 132", "Proxy 1,234" ])
+    end
+
+    it "abbreviates a segment's label and keeps the bar's label and the caption exact (AC-2.1)", :aggregate_failures do
+      expect(html.css("aside .c-manabar__seg span").map(&:text)).to eq([ "W 2.6k", "U 2.6k", "B 2.6k", "R 2.6k", "G 2.6k" ])
+      expect(html.at_css("aside .c-manabar")["aria-label"]).to eq("Coloured mana symbols in Main: white 2,591, blue 2,591, black 2,591, red 2,595, green 2,591")
+      expect(html.at_css("aside .c-manacap").text).to eq("White 2,591 · 20% · Blue 2,591 · 20% · Black 2,591 · 20% · Red 2,595 · 20% · Green 2,591 · 20%")
+    end
+
+    it "sets each caption item as a `c-manacap__item` span and the paragraph's text is the caption string (AC-4.2)", :aggregate_failures do
+      items = html.css("aside .c-manacap .c-manacap__item")
+
+      expect(items.map(&:text)).to eq([ "White 2,591 · 20% ·", "Blue 2,591 · 20% ·", "Black 2,591 · 20% ·", "Red 2,595 · 20% ·", "Green 2,591 · 20%" ])
+      expect(html.at_css("aside .c-manacap").text).to eq(items.map(&:text).join(" "))
+    end
+
+    it "keeps the types' counts and suffix exact (the rows have room)" do
+      expect(html.css("aside .c-types li").first.css("span").map(&:text)).to eq([ "Creatures", "1,357", "1,234 proxy" ])
+    end
+  end
 end
