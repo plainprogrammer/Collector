@@ -115,3 +115,11 @@ SPEC-ALIGNED WITH MINOR FINDINGS (round 2, `sdd-review` Mode B, read-only Opus r
 - **Round 2** confirmed every round-1 finding resolved (reading the diff and the files), the scope clean (the one controller line and its comment; `Deck::Page`, the zone partial, the row menu, CSS, tokens, migrations and the export untouched; no shipped spec edited), the core guard (50 files, no core file naming a game, a format or a zone but Considering), and 38 of 39 spot-checked example titles in this file existing exactly once (the one mismatch, the AC-6.1 row's old title, and two nits (a comment saying 1px for 1.85px; the AC-5.2 row's frame) are corrected here and in the spec file).
 - **Edge cases the reviewer checked, none a defect:** a zone with only proxies; a card in both Commander and Main (each row counts separately; the identity ids are de-duplicated for the one statement); `value.floor` on a float; the exact Rational mean; an identity with several card rows (the unique index); huge counts; another account's deck (a 404).
 - **Open for the maintainer** (not defects of this spec): the CSS follow-ups in "Findings" above.
+
+## Distillation (`distill-feature`, spec 027)
+
+- `docs/architecture/collection-and-lots.md` (the panel's rules, the seam, the deck-page paragraph, the Named constants rows, Sources and the log row, written with T10 and distilled here) and `docs/architecture/catalog-core.md` (the mana value's first reader). The design system's `DeckShape.md` and `DeckPage.md` were updated in T10; the design system has no area doc or Distillation log.
+- `docs/specs/README.md`: the 069 row is Frozen, by those two area docs, Plan "retirement owed"; the supersession of spec 066 AC-1.6 and AC-5.1 is in both directions (written with the spec). The Distillation log rows say "spec 069's pull request" until the pull request has a number; the plan's retirement follows the merge (state 1).
+- `CLAUDE.md`: the decks sentence and the guard sentence name the panel and `Catalog::DeckShape` (a pointer, no rule restated).
+- No ADR proposed: ADR 0028 and spec 066 decision 5 already set the seam pattern.
+- The Issues bullet of `collection-and-lots.md` still lists #253 and #254 as open (stale before this spec; noted by T10 and left for the next distillation of those specs).
