@@ -389,6 +389,8 @@ RSpec.describe "Menus and the phone's tab bar", type: :system do
         worst_case_row(deck)
         open_phone(deck_path(deck), ready: ".c-zone:first-child table")
         apply_coarse_rules
+        trigger_width = frame_js("return d.querySelector('.c-zone .c-table__actions summary').getBoundingClientRect().width")
+        expect(trigger_width).to be >= 40, "the coarse rules did not apply (the trigger is #{trigger_width}px wide)"
         overflow = page_and_table_overflow
         expect(overflow["page"]).to be <= 0
         expect(overflow["spill"]).to be <= 20, "the worst-case table is #{overflow["spill"]}px wider than its container (measured 19px)"
@@ -515,17 +517,20 @@ RSpec.describe "Menus and the phone's tab bar", type: :system do
         if (!bar) return null
         const style = w.getComputedStyle(bar)
         return { display: style.display, position: style.position, bottom: bar.getBoundingClientRect().bottom, frame: w.innerHeight,
-                 tabs: bar.querySelectorAll("a").length, current: bar.querySelectorAll("a[aria-current=page]").length }
+                 tabs: bar.querySelectorAll("a").length, current: bar.querySelectorAll("a[aria-current=page]").length,
+                 label: bar.querySelector("a[aria-current=page]")?.textContent.trim(), path: w.location.pathname }
       JS
     end
 
-    it "is drawn, fixed to the frame's bottom, with five tabs and one current, on all fourteen pages", :aggregate_failures do
+    it "is drawn, fixed to the frame's bottom, with five tabs and the right one current, on all fourteen pages", :aggregate_failures do
       deck_family_paths.each do |name, path|
         open_phone(path, ready: "main")
         bar = tab_bar_facts
         expect(bar).not_to be_nil, "#{name} draws no tab bar"
         expect(bar.slice("display", "position", "tabs", "current")).to eq("display" => "flex", "position" => "fixed", "tabs" => 5, "current" => 1), name
         expect(bar["bottom"]).to be_within(0.5).of(bar["frame"]), name
+        expect(bar["path"]).to eq(URI(path).path), "#{name} ended on #{bar["path"]}"
+        expect(name == "Add to deck" ? %w[Search Collection] : [ "Decks" ]).to include(bar["label"]), "#{name}: current tab #{bar["label"]}"
       end
     end
   end
