@@ -113,6 +113,53 @@ class MTG::DeckShape
     "#{counted(unvalued, 'nonland card')} #{unvalued == 1 ? 'has' : 'have'} no mana value yet."
   end
 
+  # One coloured segment of the mana bar: the colour's letter, its symbol count, its share rounded half up to a percent and whether the
+  # segment is too narrow for its label (under 10% of the symbols, decision 9).
+  Segment = Data.define(:colour, :count, :percent, :narrow)
+  # The five colours in the order the bar draws them, with the words the caption and label use.
+  COLOURS = { "W" => "white", "U" => "blue", "B" => "black", "R" => "red", "G" => "green" }.freeze
+
+  # The segments of the mana bar for the colours that have a symbol (decision 8), in W, U, B, R, G order.
+  # @return [Array<Segment>]
+  def symbols
+    @symbols ||= begin
+      total = symbol_counts.values.sum
+      COLOURS.keys.filter_map do |colour|
+        count = symbol_counts[colour]
+        next unless count.positive?
+
+        Segment.new(colour:, count:, percent: Rational(count * 100, total).round, narrow: count * 100 < total * 10)
+      end
+    end
+  end
+
+  # "White 2 · 25% · Blue 4 · 50%": every colour present with its count and percentage.
+  # @return [String, nil] nil when there is no coloured symbol
+  def caption
+    symbols.map { |s| "#{COLOURS[s.colour].capitalize} #{delimited(s.count)} · #{s.percent}%" }.join(" · ").presence
+  end
+
+  # "Coloured mana symbols in Main: white 2, blue 4" for the bar's `aria-label`.
+  # @return [String]
+  def symbols_label = "Coloured mana symbols in #{scope_names}: #{symbols.map { |s| "#{COLOURS[s.colour]} #{delimited(s.count)}" }.join(', ')}"
+
+  # The curve's `aria-label` (spec 060 AC-2.2): the scope, the cards in the curve, each column that has cards with its split, then the average.
+  # @return [String]
+  def curve_label
+    head = "Mana curve of the #{counted(curve_cards, 'nonland card')} in #{scope_names}: "
+    return "#{head}no cards." if curve_cards.zero?
+
+    columns = curve.each_with_index.reject { |column, _| column.total.zero? }.map.with_index do |(column, index), position|
+      split = [ ("#{delimited(column.owned)} owned" if column.owned.positive?), ("#{delimited(column.proxy)} proxy" if column.proxy.positive?) ].compact.join(", ")
+      "#{'mana value ' if position.zero?}#{index == TOP_COLUMN ? '6+' : index}, #{counted(column.total, 'card')} (#{split})"
+    end
+    "#{head}#{columns.join('; ')}. Average mana value #{average_text}."
+  end
+
+  # The fold's facts line: the scope, and the average when the curve has cards.
+  # @return [String]
+  def facts = [ scope, ("average mana value #{average_text}" if average_text) ].compact.join(" · ")
+
   private
     def nonland = @nonland ||= rows.reject { MTG::DeckGroups.land?(it.answer.position) }
 
@@ -124,6 +171,14 @@ class MTG::DeckShape
       @mana_values ||= begin
         ids = rows.map { it.entry.catalog_identity_id }.uniq
         ids.empty? ? {} : MTG::Card.where(catalog_identity_id: ids).where.not(mana_value: nil).pluck(:catalog_identity_id, :mana_value).to_h
+      end
+    end
+
+    # `{ "W" => 3, … }` for every colour: each symbol of every row's first face's cost, times the row's cards.
+    def symbol_counts
+      @symbol_counts ||= rows.each_with_object(COLOURS.keys.index_with { 0 }) do |row, counts|
+        cost = row.entry.extension&.faces&.first&.dig("mana_cost")
+        cost.to_s.scan(/\{([^{}]+)\}/).flatten.each { |symbol| (symbol.split("/") & COLOURS.keys).each { counts[it] += row.total } }
       end
     end
 

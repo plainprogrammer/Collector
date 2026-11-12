@@ -38,6 +38,7 @@ RSpec.describe MTG::DeckShape, type: :model do
       expect(figures.scope).to eq("Main · 4 cards")
       expect(figures.types.map(&:name)).to eq([ "Instants" ])
       expect(figures.curve.last.total).to eq(0)
+      expect(figures.symbols.map(&:colour)).to eq([ "R" ])
     end
 
     it "counts Commander and Main together, in the deck's zone order, and not Considering", :aggregate_failures do
@@ -51,6 +52,7 @@ RSpec.describe MTG::DeckShape, type: :model do
       expect(figures.scope).to eq("Commander + Main · 100 cards")
       expect(figures.types.map(&:name)).to eq([ "Instants" ])
       expect(figures.curve.last.total).to eq(0)
+      expect(figures.symbols.map(&:colour)).to eq([ "R" ])
     end
 
     it "says '1 card' and '0 cards' and delimits thousands", :aggregate_failures do
@@ -232,6 +234,131 @@ RSpec.describe MTG::DeckShape, type: :model do
       figures = described_class.build(zones_of)
 
       expect(count_queries { figures.curve; figures.average_text; figures.unvalued; figures.curve_max }).to eq(1)
+    end
+  end
+
+  describe "#symbols" do
+    def counts(figures = shape) = figures.symbols.to_h { [ it.colour, it.count ] }
+
+    it "counts by colour, times the card's count, W U B R G order (AC-4.1)", :aggregate_failures do
+      own(card(cost: "{U}{U}"), 2)
+      own(card(cost: "{R}"), 1)
+      proxy(card(cost: "{R}"), 1)
+      proxy(card(cost: "{2}{W}{W}", type_line: "Sorcery"), 1)
+
+      figures = shape
+
+      expect(figures.symbols.map { [ it.colour, it.count, it.percent ] }).to eq([ [ "W", 2, 25 ], [ "U", 4, 50 ], [ "R", 2, 25 ] ])
+      expect(figures.caption).to eq("White 2 · 25% · Blue 4 · 50% · Red 2 · 25%")
+      expect(figures.symbols_label).to eq("Coloured mana symbols in Main: white 2, blue 4, red 2")
+    end
+
+    it "counts a hybrid symbol toward each colour (AC-4.2)" do
+      own(card(cost: "{W/U}{W/U}"), 2)
+      own(card(cost: "{R/G}"))
+
+      expect(counts).to eq("W" => 4, "U" => 4, "R" => 1, "G" => 1)
+    end
+
+    it "counts a Phyrexian symbol toward its colour, a Phyrexian hybrid toward both, and {2/W} and {C/W} toward W only (AC-4.3)" do
+      own(card(cost: "{2}{G/P}"))
+      own(card(cost: "{G/W/P}"))
+      own(card(cost: "{2/W}"))
+      own(card(cost: "{C/W}"))
+
+      expect(counts).to eq("W" => 3, "G" => 2)
+    end
+
+    it "never counts generic, X, colourless, snow or half symbols (AC-4.4)", :aggregate_failures do
+      own(card(cost: "{3}{X}{C}{S}{G}"))
+      own(card(name: "Little Girl", cost: "{HW}", mana_value: 0.5))
+
+      expect(counts).to eq("G" => 1)
+      expect(shape.symbols.sum(&:count)).to eq(1)
+      expect(shape.curve.first.total).to eq(1) # the {HW} card is still in the curve, at its mana value
+    end
+
+    it "reads only the first face of a double-faced and a split card (AC-4.5)" do
+      own(card(faces: [ { "name" => "A", "type_line" => "Creature", "mana_cost" => "{1}{U}" }, { "name" => "B", "type_line" => "Land", "mana_cost" => "{3}{R}" } ]))
+      own(card(faces: [ { "name" => "Fire", "type_line" => "Instant", "mana_cost" => "{1}{R}" }, { "name" => "Ice", "type_line" => "Instant", "mana_cost" => "{1}{U}" } ]))
+
+      expect(counts).to eq("U" => 1, "R" => 1)
+    end
+
+    it "marks a segment under 10% narrow and not one of exactly 10% (AC-4.6)", :aggregate_failures do
+      own(card(cost: "{W}"), 5)
+      own(card(cost: "{U}"), 95)
+      expect(shape.symbols.map { [ it.colour, it.narrow ] }).to eq([ [ "W", true ], [ "U", false ] ])
+      expect(shape.caption).to eq("White 5 · 5% · Blue 95 · 95%")
+
+      other = create(:deck, account:, name: "Ten")
+      own(card(cost: "{W}"), 10, in_deck: other)
+      own(card(cost: "{U}"), 90, in_deck: other)
+      expect(shape(other).symbols.first.narrow).to be(false)
+    end
+
+    it "rounds each percentage on its own, half up and exactly (AC-4.7)", :aggregate_failures do
+      own(card(cost: "{W}{U}{B}"))
+      expect(shape.symbols.map(&:percent)).to eq([ 33, 33, 33 ])
+
+      other = create(:deck, account:, name: "Eighths")
+      own(card(cost: "{W}"), 1, in_deck: other)
+      own(card(cost: "{U}"), 7, in_deck: other)
+      expect(shape(other).symbols.map(&:percent)).to eq([ 13, 88 ]) # 12.5 and 87.5, each half up
+    end
+
+    it "has no segment and no caption for a deck of generic costs (AC-4.8)", :aggregate_failures do
+      own(card(type_line: "Artifact", cost: "{3}", mana_value: 3.0), 4)
+
+      expect(shape.symbols).to eq([])
+      expect(shape.caption).to be_nil
+    end
+
+    it "does not count Sideboard or Considering symbols (AC-4.10)" do
+      own(card(cost: "{U}"))
+      own(card(cost: "{G}{G}"), 3, zone: "sideboard")
+      own(card(cost: "{G}"), 3, zone: "considering")
+
+      expect(counts).to eq("U" => 1)
+    end
+
+    it "reads a nil, blank or malformed cost as nothing and raises nothing" do
+      own(card(cost: nil))
+      own(card(cost: ""))
+      own(card(cost: "{W"))
+      own(card(faces: [ { "name" => "Bare" } ]))
+
+      expect(shape.symbols).to eq([])
+    end
+  end
+
+  describe "texts" do
+    it "reads the curve for a screen reader: each column with cards, the owned and proxy split, then the average (AC-2.9)" do
+      own(card(mana_value: 1.0), 11)
+      proxy(card(mana_value: 1.0), 1)
+      own(card(mana_value: 6.0), 2)
+
+      expect(shape.curve_label).to eq("Mana curve of the 14 nonland cards in Main: mana value 1, 12 cards (11 owned, 1 proxy); 6+, 2 cards (2 owned). Average mana value 1.7.")
+      # (12 × 1 + 2 × 6) ÷ 14 = 1.714…
+    end
+
+    it "says '1 nonland card' and, for none, 'no cards' (AC-1.5)", :aggregate_failures do
+      expect(shape.curve_label).to eq("Mana curve of the 0 nonland cards in Main: no cards.")
+      own(card(mana_value: 2.0))
+      expect(shape.curve_label).to eq("Mana curve of the 1 nonland card in Main: mana value 2, 1 card (1 owned). Average mana value 2.0.")
+    end
+
+    it "builds the fold's facts: the scope, then the average when there is one", :aggregate_failures do
+      expect(shape.facts).to eq("Main · 0 cards")
+      own(card(mana_value: 3.0), 2)
+      expect(shape.facts).to eq("Main · 2 cards · average mana value 3.0")
+    end
+
+    it "reads the symbols label for the scope (AC-4.9)" do
+      krenko = create(:deck, account:, name: "Krenko", format: "commander")
+      own(card(cost: "{R}"), 1, zone: "commander", in_deck: krenko)
+
+      expect(shape(krenko).symbols_label).to eq("Coloured mana symbols in Commander + Main: red 1")
     end
   end
 end
