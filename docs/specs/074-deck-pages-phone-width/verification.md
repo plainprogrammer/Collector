@@ -81,4 +81,19 @@ Every image was looked at. The tab bar is in every phone shot. Nothing needed fi
 
 ## Implementation review
 
-(Added when the Mode B review is recorded.)
+SPEC-ALIGNED WITH MINOR FINDINGS
+
+Mode B, read-only, on Opus, round 1, over the branch's whole diff, the spec (v0.6.1), the plan, this file, every example of `menu_tab_bar_clearance_spec.rb` and nine of the screenshots. No blocking or major findings; FR-5 holds (no view, helper, model, Rails controller, migration, export or `components.css` change; specs 060 and 068 not edited); area docs: no change owed (`collection-and-lots.md:133`, "a row with no proxy has an empty menu cell", is still true). Findings and what was done:
+
+| # | Finding | Done |
+|---|---|---|
+| F1 (minor) | AC-1.15's example could pass without the coarse rules applying (the fine-pointer spill, 19px, is within the 20px limit) | `b7942d57`: the example asserts the zone trigger is at least 40px wide after `apply_coarse_rules` |
+| F2 (minor) | AC-3.1's example didn't check which tab is current or which page rendered | `b7942d57`: it asserts the page's path (no redirect) and the current tab's label (Decks, or Search or Collection on Add to deck) |
+| F3 (minor) | README line 74 still said Stimulus adds "arrow keys" | `847e3b95`: dropped, and the line now names the phone scroll |
+| F4 (minor) | No "App additions (spec 074)" entry in the README | `847e3b95`: added, naming both blocks |
+| F5 (nit) | `DeckPage.md`'s auto-layout bullet stated the floor twice, and said "no horizontal overflow" beside the 19px spill | `847e3b95`: one statement, "the page does not scroll sideways" |
+| F6 (nit) | Two very long CSS comment lines; the floor comment's 62px (58 + 4) vs Decision 6's prose "60px" | `847e3b95`: re-wrapped, "spec 075, not yet built" named; Decision 6's "60px" in the shipped spec's prose is not edited (the table says 62px, and the CSS comment is exact) |
+| F7 (nit) | The spec's Status line names only 0.3.0 and 0.4.0 | left: the changelog holds every ruling |
+| F8 (nit, process) | AC-1.14 and AC-1.15 were committed in the same commit as the floor CSS (`1662035e`), so git doesn't show the red run | none: this file records it (the menu column 16px against 64px, the 30px spread) and the mutation table backs it up |
+
+After the fixes: `menu_tab_bar_clearance_spec.rb` and `design_system_files_spec.rb`, 36 examples, 0 failures.
