@@ -130,6 +130,37 @@ RSpec.describe "Page query counts", type: :request do
     expect(paths.transform_values { |path| queries_for(path) }).to eq(in_a_zone)
   end
 
+  # Decks of the account with a lot and a proxy of the card in each of the zones, and free lots in places, every one on a printing of
+  # the card other than the shown one (spec 073 AC-3.3).
+  def stock_card_decks(identity, decks:, zones:, free_lots:)
+    decks.times do
+      deck = create(:deck, account: user.account, name: "Deck #{Deck.count}")
+      zones.each do |zone|
+        create_lot_in_zone(deck, zone, entry: printing(identity:), quantity: 2)
+        create(:deck_proxy, zone: deck.zone(zone), entry: printing(identity:), quantity: 1)
+      end
+    end
+    free_lots.times { own(printing(identity:), location: create(:location, account: user.account)) }
+  end
+
+  # Spec 073 AC-3.3: the card page's reads don't grow with the account's lots, places, decks, zones or proxies. Both runs have the
+  # same shape (a free lot, a lot in a zone and a proxy, on printings other than the shown one) so every preload has rows to load
+  # and the request's query cache hides none (spec 070's lesson); the page is warmed once before each count. A deck that holds
+  # only a proxy of the card is in both runs: with one deck the overview's read of the lots' decks (its parent preload) and
+  # `Deck::CardUses`' read of the zones' parents are the same statement, and the second is a cache hit the counter skips.
+  it "keeps the card page's queries independent of the number of lots, decks, zones and proxies (spec 073 AC-3.3)" do
+    entry = printing(identity:)
+    stock_card_decks(identity, decks: 1, zones: %w[main], free_lots: 1)
+    proxy_only_deck = create(:deck, account: user.account, name: "Proxy only")
+    create(:deck_proxy, zone: proxy_only_deck.zone("main"), entry: printing(identity:), quantity: 1)
+    queries_for(catalog_entry_path(entry)) # warm
+    few = queries_for(catalog_entry_path(entry))
+    stock_card_decks(identity, decks: 10, zones: %w[main sideboard considering], free_lots: 20)
+    queries_for(catalog_entry_path(entry)) # warm
+
+    expect(queries_for(catalog_entry_path(entry))).to eq(few)
+  end
+
   # Spec 065 AC-8.2. A regression proof, not a red-first example: the filter already read the account's locations in one
   # statement, and now one `Location::Choices` read carries the places, the decks and their zones, so decks cost nothing more.
   it "keeps the collection page's queries the same with three decks as with none (spec 065 AC-8.2)", :aggregate_failures do
