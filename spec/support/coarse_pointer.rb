@@ -9,8 +9,9 @@ module CoarsePointer
   # Raises when a selector named in `needs` is not among the coarse rules, so an example about a new rule fails by naming it
   # and not by a layout symptom (or passes with nothing applied, the two states being identical until the rule exists).
   #
-  # @param needs [Array<String>] the `selectorText` of rules the example is about, exactly as the stylesheet writes them
-  #   (a grouped rule's text is the whole list, such as `".c-btn, .c-input"`).
+  # @param needs [Array<String, Hash>] the rules the example is about, in the same forms as `needs:` of {#inject_coarse}: the
+  #   `selectorText` exactly as the stylesheet writes it (a grouped rule's text is the whole list, such as `".c-btn, .c-input"`),
+  #   or `{ sheet:, selector: }` when two stylesheets have the same selector text.
   # @return [Array<String>] the selector text of every coarse rule found, in source order.
   # @raise [RuntimeError] when a selector in `needs` is not in the loaded stylesheets.
   def apply_coarse_rules(needs: [])
