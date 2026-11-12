@@ -36,6 +36,13 @@ class Catalog::Entry < ApplicationRecord
 
   def retired? = retired_at.present?
 
+  # Whether a collector can add this printing to a deck from its page (spec 071 decision 2): a live card of the primary kind
+  # (what the search lists, and what a proxy can be made of: spec 068) whose collectible type has both a vocabulary, for its
+  # finishes, and a source. The page and the card page's link both ask, so they can't disagree.
+  #
+  # @return [Boolean]
+  def deck_addable? = !retired? && kind == PRIMARY_KIND && Catalog.collecting.key?(collectible_type) && Catalog.sources.key?(collectible_type)
+
   def to_param = external_key
 
   # The printed name for non-English printings; English printed names can be

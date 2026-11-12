@@ -12,7 +12,7 @@ One card in your collection, at desktop width: the card image, its rules text, w
     <div class="c-item">
       <div class="c-item__media"><div class="c-item__image"><img …></div><p class="c-item__caption">Showing your 2X2 · 117 foil</p></div>
       <div class="c-item__body">
-        <div class="c-item__head">…c-item__title, c-item__type (category chip, type line, ManaCost), c-item__actions…</div>
+        <div class="c-item__head">…c-item__title, c-item__type (category chip, type line, ManaCost), c-item__actions: Add to deck (secondary, the decks icon), Add a copy (primary), the … menu…</div>
         <p class="c-rules">…rules text…</p>
         <dl class="c-stats c-stats--three">…Owned, In decks, Free to use…</dl>
         <section>…Your copies (c-table in .c-collection)…</section>
@@ -27,6 +27,7 @@ One card in your collection, at desktop width: the card image, its rules text, w
 
 **Order of sections** (most-used first): stats, your copies, printings, in decks, format legality. Keep this order for every card game; a game without formats simply drops the legality section.
 
+- **Head actions.** For a signed-in collector: `Add to deck` (a secondary link to `AddToDeck`, class `c-item__adddeck`, shown when the printing can be added to a deck), `Add a copy` (primary) and, with a Scryfall link, the `…` menu. A visitor sees none of the first two. The stats strip, Your copies and In decks are the page's body and the actions take no room from them (spec 071 decision 1). Below 640px of the page container the `Add to deck` link drops its icon and the row's gap is `var(--space-1)`, so the three controls stay on one line at 360px (spec 071 AC-1.5; the rule is in `additions.css`).
 - **Stats** answer the player's question first, three across at every width (`c-stats c-stats--three`): Owned ("N printings"), In decks ("in N decks") and Free to use ("not in a deck"). Free to use is the copies you own minus the copies in any deck zone, Considering included. A proxy never counts in Owned, In decks or Free to use (the README's Decks section). Est. value waits for prices: when it returns, the strip is the plain four-up `c-stats` again (spec 057 decisions 7, 8).
 - **Your copies** are lots: one row per printing + finish + condition + language + location. A deck is a location, so copies in a deck appear here, the place written Deck › Zone (the README's Decks section). Each row has its own "…" menu (edit, move, remove); `Edit many` goes to bulk mode for this card's lots.
 - **Printings** lists every known printing. Ones you don't own are muted with an `Add` ghost button, which makes this the fastest way to add a specific printing. The printing shown in the image is tagged `Shown`; clicking a row shows that printing's image.

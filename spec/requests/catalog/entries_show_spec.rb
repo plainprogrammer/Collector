@@ -238,4 +238,52 @@ RSpec.describe "Card page", type: :request do
     expect(response.body).to include(%(<li><a href="#{catalog_entries_path}">Search</a></li>),
       %(aria-current="page" href="#{catalog_entries_path}">Search</a>))
   end
+
+  describe "the Add to deck action (spec 071 AC-1.1, AC-1.3, AC-1.4)" do
+    let(:card) { create(:mtg_printing, entry: create(:catalog_entry, name: "Lightning Bolt")).entry }
+
+    it "is a secondary link before Add a copy, to the page, keeping the collection mark, with the menu still there", :aggregate_failures do
+      get catalog_entry_path(card, from: "collection")
+
+      actions = Nokogiri::HTML5(response.body).at_css(".c-item__actions")
+      links = actions.css("a.c-btn").map { |link| [ link.text.squish, link["href"], link["class"] ] }
+      expect(links.map(&:first)).to eq([ "Add to deck", "Add a copy" ])
+      expect(links.first[1]).to eq(new_catalog_entry_deck_addition_path(card, from: "collection"))
+      expect(links.first[2]).to include("c-btn--secondary")
+      expect(links.last[2]).to include("c-btn--primary")
+      expect(actions.at_css("a.c-btn--secondary svg")).to be_present
+      expect(actions.at_css("details.c-menu summary[aria-label='More actions']")).to be_present # the printing has a Scryfall link
+    end
+
+    it "runs the same number of statements with the link as without it (AC-2.9's last clause)" do
+      create(:lot, account: user.account, entry: card, location: create(:location, account: user.account))
+      get catalog_entry_path(card) # warm-up
+
+      with_link = count_queries { get catalog_entry_path(card) }
+      card.update!(retired_at: 1.day.ago) # the same card, now without the link
+      without = count_queries { get catalog_entry_path(card) }
+      expect(with_link).to eq(without)
+    end
+
+    it "is absent for a retired printing and a token (AC-1.3)", :aggregate_failures do
+      [ create(:catalog_entry, :retired), create(:catalog_entry, kind: "token") ].each do |bad|
+        get catalog_entry_path(bad)
+        expect(response).to have_http_status(:ok), bad.kind # the page answers, so the absence below is the link's and not an error page's
+        expect(response.body).not_to include("Add to deck"), bad.kind
+      end
+      get catalog_entry_path(card) # the control: the same page for a live card has it
+      expect(response.body).to include("Add to deck")
+    end
+
+    it "leaves the stats strip and the sections as they are, so #50's places are free (AC-1.4)", :aggregate_failures do
+      get catalog_entry_path(card)
+
+      html = Nokogiri::HTML5(response.body)
+      expect(html.css("dl.c-stats").size).to eq(1)
+      expect(html.at_css("dl.c-stats")["class"]).to include("c-stats--single")
+      expect(html.css("dl.c-stats .c-stat dt").map(&:text)).to eq([ "Owned" ])
+      expect(response.body).not_to include("Free to use")
+      expect(response.body).not_to include("In decks")
+    end
+  end
 end

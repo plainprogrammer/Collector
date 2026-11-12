@@ -97,6 +97,7 @@ Rails.application.routes.draw do
 
   scope "catalog/entries/:entry_external_key", as: :catalog_entry do
     resources :lots, only: %i[new create]
+    resources :deck_additions, only: %i[new create] # "Add to deck" (spec 071)
   end
   resources :lots, only: %i[edit update destroy] do
     resource :removal, only: :new, module: :lots

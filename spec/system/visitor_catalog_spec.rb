@@ -50,6 +50,7 @@ RSpec.describe "A visitor's catalog", :public_catalog, type: :system do
     expect(page).to have_current_path(catalog_entry_path(bolt))
     expect(page).to have_no_css(".c-avatar")
     expect(page).to have_no_text("Add a copy")
+    expect(page).to have_no_text("Add to deck")
     expect(page).to have_css("body > footer.c-footer", text: notice)
     expect(page).to have_css(".c-appbar", text: "Sign in")
   end

@@ -39,6 +39,6 @@ A visitor's catalog pages, sign-in and sign-up are untabbed. A page provides not
 The catalog pages read the collector's account for their collection parts. A visitor has none, so those parts are left out, not shown empty:
 
 - A tile is the plain `c-tile` (`ItemTile`). It has no "Not owned" marker and no dashed frame (`UnownedTile`), no quantity badge (`c-tile__qty`) and no add control (`TileAdd`). The tile sits in its `c-tilecell` alone.
-- The card page has no "Owned" stat, no "Your copies" section and no "Add a copy" button.
+- The card page has no "Owned" stat, no "Your copies" section and no "Add a copy" or "Add to deck" button.
 - The printings list's count reads "N known", with no "· N owned". No row is muted (`is-unowned`), and no row has a quantity or an add control.
 - The catalog-not-loaded notice says only that the catalog hasn't been loaded.
