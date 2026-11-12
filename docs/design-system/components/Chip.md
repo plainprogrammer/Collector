@@ -16,3 +16,4 @@ Three small labels: the category chip, the toggleable filter chip, and the monos
 
 - Don't use a category chip as a button or a filter; filters are always `c-filter`, in brand colours.
 - A new community category uses `c-chip--other` until it has its own accent.
+- On a coarse pointer (a touch screen) a filter chip is at least 44px high; 28px is a mouse's (README, Touch rule, spec 075).

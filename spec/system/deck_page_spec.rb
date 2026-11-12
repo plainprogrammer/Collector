@@ -152,26 +152,28 @@ RSpec.describe "Deck page", type: :system do
     end
   end
 
-  # The trigger's floor on a touch screen is the design system's rule for a small button (40px, components.css); headless
-  # Firefox has a fine pointer, so the rule is read from the stylesheet and the trigger is measured as it is drawn.
+  # The trigger's floor on a touch screen is the design system's rule for a small icon button (44px since spec 075, in
+  # `additions.css`; `components.css` still writes 40px and loses by source order). Headless Firefox has a fine pointer, so the
+  # rule is read from the stylesheet and the trigger is measured as it is drawn.
   it "gives the row menu's trigger the touch floor of a small icon button (AC-2.11)", :aggregate_failures do
     visit deck_path(deck)
     floor = page.evaluate_script(<<~JS)
-      (() => { let found = 0
-        for (const sheet of document.styleSheets) for (const rule of sheet.cssRules) {
-          if (rule.media && rule.conditionText.includes("pointer: coarse")) for (const inner of rule.cssRules)
-            if (inner.selectorText === ".c-btn--sm.c-btn--icon") found = Math.max(found, parseFloat(inner.style.minWidth) || 0)
-        }
+      (() => { let found = null
+        for (const sheet of document.styleSheets) if ((sheet.href || "").includes("additions"))
+          for (const rule of sheet.cssRules)
+            if (rule.media && rule.conditionText.includes("pointer: coarse")) for (const inner of rule.cssRules)
+              if (inner.selectorText === ".c-btn--sm.c-btn--icon, .c-seg button") found = inner.style.minWidth
         return found })()
     JS
     trigger = page.evaluate_script(<<~JS)
-      (() => { const box = document.querySelector(".c-zone td.c-table__actions summary").getBoundingClientRect(); return [box.width, box.height] })()
+      (() => { const box = document.querySelector(".c-zone td.c-table__actions summary").getBoundingClientRect(); const token = getComputedStyle(document.documentElement).getPropertyValue("--touch-floor"); return { size: [box.width, box.height], token: parseFloat(token) } })()
     JS
-    expect(floor).to be >= 40
-    expect(trigger).to all(be >= 30) # a small button drawn for a fine pointer
+    expect(floor).to eq("var(--touch-floor)")
+    expect(trigger["token"]).to be >= 44 # what the rule's token resolves to
+    expect(trigger["size"]).to all(be >= 30) # a small button drawn for a fine pointer
   end
 
-  # "Add a proxy" is a small ghost button, 40px on a touch screen by the design system's rule. The deck page's own rule lifts it to
+  # "Add a proxy" is a small ghost button, 28px with a mouse and 44px on a touch screen by the design system's rule (spec 075). The deck page's own rule lifts it to
   # the Decks pages' 44px at every pointer, so, as above, the rule is read from the stylesheet and the link measured as drawn.
   it "gives each zone's Add a proxy link the 44px touch floor (NFR Accessibility)", :aggregate_failures do
     visit deck_path(deck)

@@ -25,3 +25,9 @@ When a spec's criterion is about what a touch screen draws, write the examples s
 - A plan that applies "the rule" alone and then checks the page's layout or other controls.
 - A comparison example whose two states are identical until the CSS exists (it is green before and proves nothing).
 - A frame of fixed height and a page that may now grow past it.
+
+## A second trap (spec 075, #316): a can-fail variant must change what the comparison measures
+
+Spec 075 compared every control that is not a small control with and without the new block, and named as its can-fail partner "a rule that makes every small button 90px high". That variant changes nothing the comparison counts, so it could not fail; it was found while writing the plan. The plan's replacement, a 90px rule on `.c-input, .c-btn:not(.c-btn--sm)`, ran on the card search, whose `main` has no `.c-btn` that is not small (Search, Show all, the quick add and the pager are all small), so it could not fail either (plan review round 1, blocking). It now runs on number entry, whose Add button is a plain `c-btn`, and asserts the base value is under 90.
+
+**Next time:** for each can-fail partner, name the control the variant changes and check that the comparison counts it, on the page the example runs on. A variant that "should" fail is not a proof until it has been traced to a measured value.

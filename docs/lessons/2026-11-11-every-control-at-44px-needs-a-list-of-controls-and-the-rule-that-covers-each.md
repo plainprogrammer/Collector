@@ -26,3 +26,7 @@ When an acceptance criterion says "every control" (or "each touch target"), the 
 - "Every control", "each touch target" or "at least 44px" in an AC, with an example that measures only overflow.
 - A new page that doesn't carry the class its sibling pages use for the touch floor and the long-name wrap (`c-decks`).
 - A `select` or number field on a page that must meet a touch floor: the design system sizes them at 36 to 40px.
+
+## Again in spec 075 (#316): the audit is per control and names the rule that covers each
+
+Spec 075's audit of the small controls (small buttons, filter chips, the view switch) was first a table of pages. Spec review round 1 found it wrong in the way this lesson predicts: two more page families already gave their buttons 44px at every pointer (number entry's list, the scanner's adds, undos and sitting), so an acceptance criterion that every small control with no page rule is under 36px at a fine pointer could not have passed, and several controls (the card search's "Show all", the printings page's quick add, the pagers, four job chips, not five) were missing. The table became one row per control family with a "Rule today" column (`none` for the touch block's 40px, `page` for a page rule), and the examples assert each listed control is drawn, with nothing injected, before the CSS exists, so a wrong selector or fixture fails in the red run and not at the green one.

@@ -91,32 +91,6 @@ RSpec.describe "Selects meet the touch floor on a coarse pointer", type: :system
     expect(page).to have_css(".c-scanner__stage:not([hidden])", wait: 10) if [ "scanner", "measurement mode" ].include?(name)
   end
 
-  # Applies the coarse-pointer rules of the loaded stylesheets, media wrapper removed, to the current document as one
-  # adopted sheet (after every stylesheet, in source order). `only` keeps the rules with those selectors; `except` drops
-  # them; `extra` is more CSS appended. Raises when a rule named in `only` or `needs` is not in the stylesheets, so a missing
-  # rule is reported as that and not as a layout symptom, and an example about the new rules can't pass without them.
-  def inject_coarse(only: nil, except: [], extra: "", needs: [])
-    found = page.evaluate_script(<<~JS, only, except, extra)
-      (() => {
-        const [only, except, extra] = arguments
-        const css = [], selectors = []
-        for (const sheet of document.styleSheets)
-          for (const media of sheet.cssRules)
-            if (media instanceof CSSMediaRule && media.conditionText.includes("pointer: coarse"))
-              for (const rule of media.cssRules) {
-                selectors.push(rule.selectorText)
-                if ((!only || only.includes(rule.selectorText)) && !except.includes(rule.selectorText)) css.push(rule.cssText)
-              }
-        const sheet = new CSSStyleSheet()
-        sheet.replaceSync(css.join(" ") + " " + extra)
-        document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet]
-        return selectors
-      })()
-    JS
-    missing = (Array(only) + Array(needs)) - found
-    raise "the coarse-pointer rule #{missing.inspect} is not in the loaded stylesheets (found #{found.inspect})" if missing.any?
-  end
-
   # Every drawn select of the current document: its name, its height and which of the two shapes holds it.
   def selects
     page.evaluate_script(<<~JS)
@@ -124,48 +98,6 @@ RSpec.describe "Selects meet the touch floor on a coarse pointer", type: :system
         name: el.name || el.id, height: el.getBoundingClientRect().height,
         shape: el.closest(".c-field") ? "field" : (el.closest(".c-select") ? "select" : "none")
       })).filter((el) => el.height > 0)
-    JS
-  end
-
-  # Page overflow, wide selects and overlapping controls of the current document (AC-1.4). A control counts when it is not
-  # visually hidden (`.c-sr`) or in a closed menu, has a box, and is not clipped away by the nearest ancestor that clips its overflow (the
-  # document itself never clips: the whole page counts, not the viewport); a control of the filter row always counts, as
-  # the row scrolls sideways inside itself on a phone (spec 057 decision 4).
-  def layout_report
-    page.evaluate_script(<<~JS)
-      (() => {
-        const clipper = (el) => {
-          for (let p = el.parentElement; p && p !== document.body && p !== document.documentElement; p = p.parentElement) {
-            const style = getComputedStyle(p)
-            if ([style.overflowX, style.overflowY].some((value) => value !== "visible")) return p
-          }
-          return null
-        }
-        // Firefox still reports a box for the items of a closed `<details>` menu (an absolutely placed list nobody sees), which
-        // would overlap the table beneath it; only the menu's own summary is drawn.
-        const inClosedMenu = (el) => {
-          const details = el.closest("details:not([open])")
-          return !!details && !(el.tagName === "SUMMARY" && el.parentElement === details)
-        }
-        const meets = (a, b) => !(a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top)
-        const label = (el) => el.tagName.toLowerCase() + (el.id ? "#" + el.id : "") + (el.className ? "." + String(el.className).split(" ").join(".") : "")
-        const controls = [...document.querySelectorAll("main select, main input:not([type=hidden]), main button, main .c-btn, main summary")]
-          .filter((el) => !el.closest(".c-sr") && !inClosedMenu(el))
-          .map((el) => ({ el, rect: el.getBoundingClientRect(), row: !!el.closest(".c-filterbar__filters") }))
-          .filter(({ el, rect, row }) => rect.width > 0 && rect.height > 0 && (row || !clipper(el) || meets(rect, clipper(el).getBoundingClientRect())))
-        const overlaps = []
-        controls.forEach((a, i) => controls.slice(i + 1).forEach((b) => {
-          const w = Math.min(a.rect.right, b.rect.right) - Math.max(a.rect.left, b.rect.left)
-          const h = Math.min(a.rect.bottom, b.rect.bottom) - Math.max(a.rect.top, b.rect.top)
-          if (w > 1 && h > 1) overlaps.push([label(a.el), label(b.el)])
-        }))
-        const wide = [...document.querySelectorAll("main select")].filter((el) => {
-          const box = el.closest(".c-form, .c-numentry__line, .c-filterbar__filters, main")
-          return el.getBoundingClientRect().width > box.getBoundingClientRect().width + 1
-        }).map(label)
-        // clientWidth, not innerWidth: innerWidth includes a classic scrollbar's 15px, which would hide a sideways overflow that small
-        return { overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, overlaps, wide }
-      })()
     JS
   end
 
@@ -295,9 +227,19 @@ RSpec.describe "Selects meet the touch floor on a coarse pointer", type: :system
     end
   end
 
-  it "needs the alignment rule: without it the small button sits off the select's centre (AC-1.5 can fail)" do
+  # A button shorter than the select (spec 075: small buttons are 44px too, so a 30px one stands in for "a control that is not 44px").
+  def short_button = ".c-filterbar__filters .c-btn { min-height:30px; height:30px; }"
+
+  it "keeps a shorter button level with the select by the alignment rule (AC-1.5)" do
     in_page("card search") do
-      inject_coarse(except: [ row_rule ], needs: [ select_rule ]) # the select rule must exist, or there is nothing to compare
+      inject_coarse(needs: [ select_rule, row_rule ], extra: short_button)
+      expect(row_alignment["offset"]).to be <= 1
+    end
+  end
+
+  it "needs the alignment rule: without it a shorter button sits off the select's centre (AC-1.5 can fail)" do
+    in_page("card search") do
+      inject_coarse(except: [ row_rule ], needs: [ select_rule ], extra: short_button) # the select rule must exist, or there is nothing to compare
       expect(row_alignment["offset"]).to be > 1
     end
   end
@@ -318,7 +260,7 @@ RSpec.describe "Selects meet the touch floor on a coarse pointer", type: :system
     without = other_controls_of("card search", except: [ select_rule, row_rule ])
     with = other_controls_of("card search", extra: ".c-btn--sm { min-height: 90px; }")
     search = ->(controls) { controls.find { |control| control[1] == "Search" }.last }
-    expect([ search.(without), search.(with) ]).to eq([ 40, 90 ])
+    expect([ search.(without), search.(with) ]).to eq([ 44, 90 ])
   end
 
   it "has no select rule scoped to the deck pages and none in the filter bar's own block (AC-1.6)", :aggregate_failures do
