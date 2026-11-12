@@ -7,6 +7,7 @@ RSpec.describe "Deck page", type: :system do
   let(:account) { user.account }
   let(:deck) { create(:deck, account:, name: "Izzet Tempo") }
   let(:long_name) { "W" * 60 }
+  let(:other_deck) { create(:deck, account:, name: "Other deck", pair: "other/standard") }
 
   def printing(name:, type_line: "Creature", cost: "{2}{W}{U}{B}{R}{G}", legalities: { "modern" => "banned" }, **attrs)
     entry = create(:catalog_entry, name:, **attrs)
@@ -199,8 +200,8 @@ RSpec.describe "Deck page", type: :system do
     end
   end
 
-  it "leaves the second column empty from 992px: the zones keep the first column and nothing sits in the second (AC-5.1)", :aggregate_failures do
-    visit deck_path(deck)
+  it "leaves the second column empty from 992px for a deck whose collectible draws no panel (AC-5.1; spec 069 supersedes it for a Magic deck, spec 060 AC-3.12)", :aggregate_failures, :other_collecting do
+    visit deck_path(other_deck)
     page.driver.browser.manage.window.resize_to(1280, 900)
     expect(page).to have_css(".c-deck__zones")
 
