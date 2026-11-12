@@ -320,6 +320,24 @@ RSpec.describe "Use my copy", type: :request do
 
         expect([ sibling.reload.quantity, theirs.reload.quantity ]).to eq([ 2, 4 ])
       end
+
+      it "leaves the export consistent: the moved lots in the zone's place and the lowered proxy, no new field (AC-5.3)", :aggregate_failures do
+        lot = lot_in(binder, entry, 2, finish: "foil")
+        post_use({ lot.id.to_s => "1" })
+
+        data = CollectionExport.new(account:, at: Time.current).to_h
+
+        expect(data["proxies"].map { it.slice("quantity", "finish") }).to eq([ { "quantity" => 1, "finish" => "foil" } ])
+        expect(data["lots"].filter_map { it["location"]["zone"] if it["location"].is_a?(Hash) }).to include("main")
+        expect(data.keys).to match_array(CollectionExport.new(account: create(:user).account, at: Time.current).to_h.keys)
+      end
+
+      it "changes no proxy when a copy reaches the zone by any other path (AC-5.1, the spec 068 rule stands)", :aggregate_failures do
+        place_lot = lot_in(binder, entry, 2, finish: "foil")
+        Lot::Move.new(lot: place_lot, to: deck.zone("main"), copies: "1").call!
+
+        expect(proxy.reload.quantity).to eq(2)
+      end
     end
 
     describe "who can open it (AC-2.8, AC-2.9)" do

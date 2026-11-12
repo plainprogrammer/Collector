@@ -16,6 +16,9 @@ RSpec.describe "Proxies and the ways copies reach a zone", type: :model do
     expect(unchanged?).to be(true)
     elsewhere = create(:location, account:)
     Lot::Move.new(lot:, to: elsewhere, copies: "1").call!
+    Lot::MoveIntoZone.new(account:, zone: deck.zone("main"), picks: [ [ Lot.find_by!(location: elsewhere), 1 ] ]).call!
+    expect(unchanged?).to be(true)
+    Lot::Move.new(lot: lot.reload, to: elsewhere, copies: "1").call!
     Lot::Move.new(lot: Lot.find_by!(location: elsewhere), to: deck.zone("main"), copies: "1").call!
     expect(unchanged?).to be(true)
     lot.reload.revise!(quantity: 4)
