@@ -894,6 +894,10 @@ end
 **Files:** `spec/deck_core_spec.rb`, `spec/requests/query_counts_spec.rb`, `spec/requests/catalog/visitors_spec.rb`
 **Interfaces:** Consumes: everything above. Produces: nothing.
 
+### Task 5.0: The guard's count after Task 1.2 (done in the batch with Phase 3)
+
+`Deck::CardUses` is picked up by the guard's existing glob `app/models/deck/*.rb` the moment it exists (Task 1.2), so `spec/deck_core_spec.rb`'s "covers every file of the feature" went red at that commit (61 files expected, 62 found; found by the Phase 1 implementer). Fix in its own commit before Phase 3: change `... + 6 + 5` to `... + 6 + 5 + 1` and append to the count line's trailing comment `; spec 073 adds 1: `deck/card_uses.rb`, covered by the `app/models/deck/*.rb` glob`. Run `bin/rspec spec/deck_core_spec.rb` — expect: PASS. Commit: `test: count Deck::CardUses in the core-names guard (spec 073)`.
+
 ### Task 5.1: The collectible-agnostic guard
 
 - [ ] In `spec/deck_core_spec.rb`, add to `patterns` a new line after the last pattern line (`app/controllers/deck_additions_controller.rb … deck_additions_helper.rb`):
@@ -902,7 +906,7 @@ end
     app/models/catalog/card_overview.rb app/views/catalog/entries/_stats.html.erb app/views/catalog/entries/_decks.html.erb
 ```
 
-  and change the count arithmetic `20 + 6 + 1 + 1 + 4 + 1 + 15 + 2 + 6 + 5` to `20 + 6 + 1 + 1 + 4 + 1 + 15 + 2 + 6 + 5 + 4` (61 + 4 = 65), appending to that line's trailing comment: `; spec 073 adds 4: `deck/card_uses.rb` (the `app/models/deck/*.rb` glob already covers it), `catalog/card_overview.rb` and the card page's `_stats` and `_decks` partials (new patterns; the page's `show.html.erb` is not listed, because its `scryfall` link variable names a source)`.
+  and change the count arithmetic `… + 5 + 1` (the `+ 1` is `deck/card_uses.rb`, added by Task 5.0 below) to `… + 5 + 1 + 3` (62 + 3 = 65), appending to that line's trailing comment: `; spec 073 adds 3 here: `catalog/card_overview.rb` and the card page's `_stats` and `_decks` partials (new patterns; the page's `show.html.erb` is not listed, because its `scryfall` link variable names a source)`.
 - [ ] Run `bin/rspec spec/deck_core_spec.rb` — expect: PASS. If "never names a game…" fails on a new file (a comment naming a format key or a game), reword that comment: the guard reads comments too.
 - [ ] Commit: `test: cover the card page's deck files with the core-names guard (spec 073)`.
 
