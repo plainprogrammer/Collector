@@ -27,3 +27,8 @@ Write the spec's supersession list and the plan's "existing examples that change
 - A plan step that says "update the existing examples" without a list of files and lines.
 - A helper or fixture that builds a file or a page shape another feature changed (`file_v4`, `as_current_version`).
 - A list of pages or controls copied from an issue, not from a grep: spec 072's issue named import and admin (which draw no select) and missed the Currency page, and the first audit table kept Edit a proxy (no select) until a review traced each view; its audit table comes from `git grep -n -E "<select|form\.select|f\.select|select_tag|collection_select|grouped_collection_select|c-select" -- app ':!app/assets'`, named in its `verification.md`.
+
+## Another case: a new link or label (spec 073, #50)
+
+The same trap came from a view, not a spec. Spec 073's "In decks" section added an empty-state link named "Add to deck" (the page's head already has one) and a Zone cell reading "Main". The spec's supersession list, built from the earlier specs, missed three existing examples: two no-script system examples in `spec/system/deck_additions_spec.rb` that click the bare link name (now ambiguous) and a guard in `spec/requests/zone_place_label_spec.rb` that no "Main" stands outside a "Deck › Zone" label. Plan review round 1 did not find them; round 2 did, by grepping `spec/` for the strings. Before a view adds a link text, a heading or a cell word that exists elsewhere, `git grep` `spec/` for that exact string and list each hit with its disposition in the spec.
+

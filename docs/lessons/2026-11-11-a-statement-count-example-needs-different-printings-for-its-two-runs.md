@@ -24,3 +24,14 @@ Build the one-row run of a statement-count example so it touches the same kinds 
 
 - A count example whose few-row case reuses a record the page itself loads (the proxy's printing, the account's one place).
 - A difference of one or two statements between the two runs, with no loop in the code.
+
+## Again with two preloads of one association (spec 073, #50)
+
+The card page gained a second reader of the lots' places: `Catalog::CardOverview#lots` preloads `location: :parent` and `Lot::FreeCopies#lots` preloads `:location`. With one placed lot, or with one deck, both issue the identical statement and the second is a query-cache hit that the counter skips, so the baseline run undercounts (19 against 20, then 26 against 27) while the page's real count is constant.
+
+- The record was not the trap this time, the order of the ids was: the two IN lists must differ to defeat the cache. With priced lots both collaborators read in price order, so prices in reverse order did not help. The baseline that worked has one unpriced lot: the overview sorts NULL first, while `Lot::FreeCopies` reads in the order of the `lot_key` index, which puts it last. That depends on SQLite's index-order scan of `lots`; the example's comment says so, and it may need a new baseline if that plan changes.
+- For the decks, the small run gets a deck that holds only a proxy of the card, so the zones' parent ids of the two preloads differ there too.
+- The proof that the example can fail: swap `preload(parent: :deck)` for a per-row `Deck.find_by` and it fails (30 against 50).
+
+When a page gains a second reader of an association another reader already loads, give the baseline run the same sets in different orders, not only different records, log both statements once to see that neither is a cache hit, and write in the comment what the order depends on.
+

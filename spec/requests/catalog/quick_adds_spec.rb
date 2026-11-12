@@ -52,8 +52,23 @@ RSpec.describe "Quick add", type: :request do
     expect(response).to have_http_status(:unprocessable_content)
     expect(response.body).to include("You already have the most copies one lot can hold (9,999).", "Your copies", "9999")
     html = Nokogiri::HTML5(response.body)
-    expect(html.css(".c-stat dt").map(&:text)).to eq([ "Owned" ]) # spec 023 AC-6.2: the collection parts stay
+    expect(html.css(".c-stat dt").map(&:text)).to eq([ "Owned", "In decks", "Free to use" ]) # spec 023 AC-6.2: the collection parts stay (spec 073 adds two stats and the section)
     expect(html.at_css(".c-avatar")).to be_present
+  end
+
+  it "shows the same stats and In decks table as a plain visit when the no-script add is refused (spec 073 AC-3.2)", :aggregate_failures do
+    create(:lot, account: user.account, entry:, quantity: 9_999)
+    create_lot_in_zone(create(:deck, account: user.account, name: "Izzet Tempo"), "main", entry:, quantity: 2)
+    post catalog_entry_quick_add_path(entry)
+    refused = Nokogiri::HTML5(response.body)
+    get catalog_entry_path(entry)
+    plain = Nokogiri::HTML5(response.body)
+
+    [ ".c-stat dd", "#in-decks tbody td" ].each do |selector|
+      expect(refused.css(selector)).not_to be_empty # the control: the refused page has the parts
+      expect(refused.css(selector).map { it.text.squish }).to eq(plain.css(selector).map { it.text.squish })
+    end
+    expect(refused.css(".c-stat dd").map(&:text)).to eq(%w[10,001 2 9,999])
   end
 
   it "adds a retired printing like any other", :aggregate_failures do
