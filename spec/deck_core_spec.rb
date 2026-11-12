@@ -24,6 +24,7 @@ RSpec.describe "The deck code", type: :config do
     app/views/collections/_location_select.html.erb app/views/collections/moves/new.html.erb
     app/controllers/decks/proxies/*.rb app/controllers/concerns/finds_deck.rb app/models/deck/proxy/*.rb app/models/collection_import/proxies.rb
     app/models/collection_import/proxy_rows.rb app/views/collections/import_previews/_proxies.html.erb
+    app/controllers/deck_additions_controller.rb app/views/deck_additions/*.erb app/models/lot/free_copies.rb app/helpers/deck_additions_helper.rb
   ]
   end
 
@@ -34,7 +35,7 @@ RSpec.describe "The deck code", type: :config do
   def relative(files) = files.map { |file| file.relative_path_from(Rails.root).to_s }
 
   it "covers every file of the feature" do
-    expect(files.size).to eq(20 + 6 + 1 + 1 + 4 + 1 + 15) # spec 064 brought the list to 20; spec 065 adds the choices model, its helper and the four picker views; spec 067 adds the selections controller (the glob already covers it); spec 066 adds Deck::Page and the deck page's four views (the `app/models/deck/*.rb` and `app/views/decks/**/*.erb` globs already cover them) and the seam `app/models/catalog/deck_cards.rb`; spec 068 adds 15: `deck/proxy.rb` and the proxies controller (the globs already cover them), the six proxy views under `app/views/decks`, `decks/proxies/removals_controller.rb`, `deck/proxy/addition.rb` and `cap_exceeded.rb`, `finds_deck.rb`, the import's `proxies.rb` and `proxy_rows.rb`, and the preview's `_proxies.html.erb`
+    expect(files.size).to eq(20 + 6 + 1 + 1 + 4 + 1 + 15 + 5) # spec 064 brought the list to 20; spec 065 adds the choices model, its helper and the four picker views; spec 067 adds the selections controller (the glob already covers it); spec 066 adds Deck::Page and the deck page's four views (the `app/models/deck/*.rb` and `app/views/decks/**/*.erb` globs already cover them) and the seam `app/models/catalog/deck_cards.rb`; spec 068 adds 15: `deck/proxy.rb` and the proxies controller (the globs already cover them), the six proxy views under `app/views/decks`, `decks/proxies/removals_controller.rb`, `deck/proxy/addition.rb` and `cap_exceeded.rb`, `finds_deck.rb`, the import's `proxies.rb` and `proxy_rows.rb`, and the preview's `_proxies.html.erb`; spec 071 adds 5: the controller, its view, `Lot::FreeCopies` and the helper (new patterns) and `deck/addition.rb` (the `app/models/deck/*.rb` glob already covers it)
   end
 
   it "names every file it lists, each of which exists" do
