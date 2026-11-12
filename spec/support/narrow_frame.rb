@@ -13,9 +13,15 @@ module NarrowFrame
       document.body.append(frame)
     JS
     within_narrow_frame { find(ready) }
+    [ page.evaluate_script("document.getElementById('narrow').contentWindow.innerWidth"), narrow_frame_fits? ]
+  end
+
+  # Whether the page in the narrow frame fits without horizontal scrolling, measured now.
+  # Call it from the top page, outside within_narrow_frame (it reaches the frame through #narrow).
+  def narrow_frame_fits?
     page.evaluate_script(<<~JS)
       (() => { const view = document.getElementById("narrow").contentWindow
-        return [ view.innerWidth, view.document.documentElement.scrollWidth <= view.innerWidth ] })()
+        return view.document.documentElement.scrollWidth <= view.innerWidth })()
     JS
   end
 
