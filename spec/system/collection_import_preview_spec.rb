@@ -53,7 +53,7 @@ RSpec.describe "Import preview", type: :system do
 
     expect(page).to have_text("Its location “Nowhere in the file” isn't one of the file's locations.")
     expect(page).to have_text("in Blue binder with a rather long name for a phone")
-    expect(page.evaluate_script("document.documentElement.scrollWidth <= window.innerWidth")).to be(true)
+    expect(page_fits_sideways?).to be(true)
   end
 
   # Spec 062 AC-7.1, AC-7.5: the collector's own export, decks and a copy in a zone included, previews with the Decks section; a
@@ -81,6 +81,6 @@ RSpec.describe "Import preview", type: :system do
 
     expect(page).to have_css("#format_changed_decks li", text: "#{long_name}:")
     expect(page).to have_css("#removed_decks li", text: "Elves")
-    expect(page.evaluate_script("document.documentElement.scrollWidth <= window.innerWidth")).to be(true)
+    expect(page_fits_sideways?).to be(true)
   end
 end

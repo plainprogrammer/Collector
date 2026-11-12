@@ -649,7 +649,7 @@ RSpec.describe "Design system: deck components", type: :system do
         blank_host
         add_to_main(zone_html("Main", four_symbol_rows, id: "probe"))
         expect(cost_of("Cryptic Command")["height"]).to be_within(1).of(22)
-        expect(evaluate("return document.documentElement.scrollWidth <= window.innerWidth")).to be(true)
+        expect(page_fits_sideways?).to be(true)
       end
     end
 
@@ -842,7 +842,7 @@ RSpec.describe "Design system: deck components", type: :system do
         add_to_main(new_deck_html)
         first, second = box("#probe .c-field:nth-child(1)"), box("#probe .c-field:nth-child(2)")
         expect(second["top"]).to be >= first["bottom"]
-        expect(evaluate("return document.documentElement.scrollWidth <= window.innerWidth")).to be(true)
+        expect(page_fits_sideways?).to be(true)
       end
     end
   end
@@ -911,7 +911,7 @@ RSpec.describe "Design system: deck components", type: :system do
         states = lot_states
         states.each { expect_lot(it) }
         expect(states[1]["top"] - states[0]["bottom"]).to be_within(0.5).of(12)
-        expect(evaluate("return document.documentElement.scrollWidth <= window.innerWidth")).to be(true)
+        expect(page_fits_sideways?).to be(true)
       end
     end
 

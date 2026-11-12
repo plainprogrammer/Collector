@@ -53,7 +53,7 @@ RSpec.describe "Open a deck's lots in bulk mode", type: :system do
         expect(open_in_narrow_frame(new_deck_removal_path(deck), width: 360, ready: "main")).to eq([ 360, true ])
         within_narrow_frame do
           page.execute_script("document.documentElement.setAttribute('data-theme', arguments[0])", theme)
-          expect(page.evaluate_script("document.documentElement.scrollWidth <= window.innerWidth")).to be(true), theme
+          expect(page_fits_sideways?).to be(true), theme
           small = page.evaluate_script("[...document.querySelectorAll('main a, main button')].filter((el) => { const box = el.getBoundingClientRect(); return box.height < 44 || box.width < 44 }).map((el) => el.outerHTML.slice(0, 60))")
           expect(small).to eq([]), theme
           expect(page.evaluate_script("document.querySelector('main .c-form__actions').firstElementChild.textContent.trim()")).to start_with("Move them in bulk mode")

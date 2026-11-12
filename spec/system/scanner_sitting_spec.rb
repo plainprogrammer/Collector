@@ -199,7 +199,7 @@ RSpec.describe "The scanner's sitting", type: :system do
       page.current_window.resize_to(1280, 900)
       visit scanner_path
       expect(page).to have_css("#scanner_sitting select#sitting_condition")
-      expect(page.evaluate_script("document.documentElement.scrollWidth <= window.innerWidth")).to be(true)
+      expect(page_fits_sideways?).to be(true)
     end
   end
 

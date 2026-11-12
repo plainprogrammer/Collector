@@ -265,7 +265,7 @@ RSpec.describe "Design system: deck rules, navigation and pickers", type: :syste
         open_in_narrow_frame(collection_path, width:, ready: "main", height: 1200)
         within_narrow_frame do
           expect(evaluate("return [...document.querySelectorAll('.c-appbar__nav a')].map((el) => el.textContent.trim())")).to eq(%w[Collection Decks Search Scan Locations])
-          expect(evaluate("return document.documentElement.scrollWidth <= window.innerWidth")).to be(true)
+          expect(page_fits_sideways?).to be(true)
         end
       end
     end
