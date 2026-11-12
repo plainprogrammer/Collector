@@ -9,8 +9,6 @@ RSpec.describe "Card page: Free to use and In decks", type: :system do
 
   def set_theme(name) = page.execute_script("document.documentElement.dataset.theme = #{name.to_json}")
 
-  def fits? = page.evaluate_script("document.documentElement.scrollWidth <= window.innerWidth")
-
   describe "the stats strip (AC-5.1)" do
     before do
       older = create(:mtg_printing, entry: create(:catalog_entry, identity: card.identity, released_on: Date.new(2020, 1, 1))).entry
@@ -36,7 +34,7 @@ RSpec.describe "Card page: Free to use and In decks", type: :system do
                          clipped: parts.some((el) => el.scrollWidth > el.clientWidth + 1) } })()
             JS
             expect(shown).to eq("texts" => %w[24,690 12,345 12,345], "oneRow" => true, "clipped" => false)
-            expect(fits?).to be(true)
+            expect(page_fits_sideways?).to be(true)
           end
         end
       end
@@ -67,7 +65,7 @@ RSpec.describe "Card page: Free to use and In decks", type: :system do
             expect(shown_headers).to eq([ "Deck", "Owned", "Proxy" ])
             expect(page).to have_css("#in-decks tbody tr:first-child .c-table__sub", text: "Modern · Main", visible: :visible)
             expect(find("#in-decks td:first-child a", match: :first).native.rect.height).to be > 20 # the 60-character name wraps
-            expect(fits?).to be(true)
+            expect(page_fits_sideways?).to be(true)
           end
         end
       end
@@ -81,7 +79,7 @@ RSpec.describe "Card page: Free to use and In decks", type: :system do
           expect(shown_headers).to eq([ "Deck", "Zone", "Owned", "Proxy" ])
           expect(page).to have_css("#in-decks tbody tr:first-child span.is-muted", text: "· Modern", visible: :visible)
           expect(page).to have_no_css("#in-decks .c-table__sub", visible: :visible)
-          expect(fits?).to be(true)
+          expect(page_fits_sideways?).to be(true)
         end
       end
     end

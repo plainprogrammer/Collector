@@ -4,7 +4,6 @@ require "rails_helper"
 # and 1280px in both themes with the worst-case names (AC-6.1), and the touch-floor rules read (AC-6.2).
 RSpec.describe "Replacing a proxy", type: :system do
   def set_theme(name) = page.execute_script("document.documentElement.dataset.theme = #{name.to_json}")
-  def fits? = page.evaluate_script("document.documentElement.scrollWidth <= window.innerWidth")
 
   def entry_of(name = "Lightning Bolt", set: "mh2", number: "138") = create(:mtg_printing, finishes: %w[foil nonfoil], entry: create(:catalog_entry, name:, set: create(:catalog_set, code: set), number:)).entry
 
@@ -105,7 +104,7 @@ RSpec.describe "Replacing a proxy", type: :system do
             open_in_narrow_frame(path, width:, ready: "main")
             within_narrow_frame do
               set_theme(theme)
-              expect(fits?).to be(true), "#{path} at #{width}px in #{theme}"
+              expect(page_fits_sideways?).to be(true), "#{path} at #{width}px in #{theme}"
             end
           end
         end
@@ -123,7 +122,7 @@ RSpec.describe "Replacing a proxy", type: :system do
               send(submit)
               expect(page).to have_css(".c-field__error")
               expect(page).to have_css(described)
-              expect(fits?).to be(true), "#{path} refused at #{width}px in #{theme}"
+              expect(page_fits_sideways?).to be(true), "#{path} refused at #{width}px in #{theme}"
             end
           end
         end

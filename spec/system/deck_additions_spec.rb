@@ -4,8 +4,6 @@ require "rails_helper"
 RSpec.describe "Add to deck", type: :system do
   def set_theme(name) = page.execute_script("document.documentElement.dataset.theme = #{name.to_json}") # no colour is read here, so no pause (testing.md: no sleep)
 
-  def fits? = page.evaluate_script("document.documentElement.scrollWidth <= window.innerWidth")
-
   # The drawn height of every control of the page, by kind. `html` is pinned to a scrollbar in both pointer states, so a
   # taller page can't narrow the layout by a scrollbar's width and move what wraps (spec 072's lesson).
   def control_heights
@@ -39,7 +37,7 @@ RSpec.describe "Add to deck", type: :system do
           open_in_narrow_frame(new_catalog_entry_deck_addition_path(wide_entry), width:, ready: "main")
           within_narrow_frame do
             set_theme(theme)
-            expect(fits?).to be(true)
+            expect(page_fits_sideways?).to be(true)
             overflow = page.evaluate_script(<<~JS)
               (() => { const form = document.querySelector(".c-form").getBoundingClientRect()
                 const select = document.querySelector("#deck_zone").getBoundingClientRect()

@@ -8,7 +8,6 @@ RSpec.describe "Adding a proxy", type: :system do
   let!(:long) { create(:mtg_printing, entry: create(:catalog_entry, name: "W" * 60), finishes: %w[foil nonfoil]).entry } # a 60-character name with no space
 
   def set_theme(name) = page.execute_script("document.documentElement.dataset.theme = #{name.to_json}")
-  def fits? = page.evaluate_script("document.documentElement.scrollWidth <= window.innerWidth")
 
   before do
     create(:mtg_printing, entry: create(:catalog_entry, name: "Lightning Bolt", set: create(:catalog_set, code: "mh2"), number: "138"), finishes: %w[foil nonfoil])
@@ -47,7 +46,7 @@ RSpec.describe "Adding a proxy", type: :system do
             open_in_narrow_frame(path, width:, ready: "main")
             within_narrow_frame do
               set_theme(theme)
-              expect(fits?).to be(true), "#{path} at #{width}px in #{theme}"
+              expect(page_fits_sideways?).to be(true), "#{path} at #{width}px in #{theme}"
             end
           end
         end
