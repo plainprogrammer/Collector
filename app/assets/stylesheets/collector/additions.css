@@ -498,7 +498,7 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
   .c-zone .c-table .c-zone__c-menu { width:4rem; }
 }
 @container collection (max-width: 639px) {
-  .c-zone .c-zone__c-total { width:1%; } /* the auto layout shares spare width among auto columns; Total keeps its content's, as the menu does */
+  .c-zone .c-zone__c-total { width:1%; } /* the auto layout shares spare width among auto columns; Total keeps its content's; the menu column keeps at least 4rem (spec 074's floor block at the end of this file) */
 }
 .c-zone td:first-child { white-space:normal; overflow-wrap:anywhere; } /* every width: the Card column is 128px with the menu column (spec 060, built by spec 068), so a name would spill into Cost under the export's nowrap */
 .c-zone .c-cost { flex-wrap:wrap; min-width:94px; } /* four pips (4 x 22px + 3 x 2px) never wrap: the auto layout shrinks a cell to its min-content, one wrapped pip, so a phone's Cryptic Command cost took two lines (spec 060 final visual review) */
@@ -642,4 +642,14 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
     content: ""; position: absolute; top: 100%; left: 0; right: 0; pointer-events: none;
     height: calc(67px + env(safe-area-inset-bottom) + var(--space-2));
   }
+}
+
+/* ---------- Deck zones' menu column floor (spec 074) ---------- */
+/* The zone tables' menu column (spec 074, Decision 6). Below 640px of the table's container a zone table keeps its auto layout, where the
+   menu column is as wide as its widest cell: 46px with a trigger (a 30px button and 8px of padding a side) and 16px when every cell is
+   empty (a row with no proxy has no trigger), so a zone with no proxy was 30px narrower there and its Cost and Total moved with it
+   (spec 060 AC-3.11). The floor is the 64px the wide layout already fixes (`width: 4rem` in the zone rules above), and it clears a
+   coarse pointer's trigger (58px of column today at 40px, 62px at #316's 44px target, not yet built). The worst-case row (a 60-character unbroken name, a six-symbol cost, 1,234 proxies) spills 19px past its container with it, 1px (fine pointer) or 13px (coarse) without: wrapping the proxy tag would remove that, and is out of this spec's scope. th is border-box there, as in the wide layout: 4rem is the whole column. */
+@container collection (max-width: 639px) {
+  .c-zone .c-table th.c-zone__c-menu { box-sizing: border-box; min-width: 4rem; }
 }

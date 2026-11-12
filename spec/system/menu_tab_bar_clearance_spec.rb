@@ -97,6 +97,45 @@ RSpec.describe "Menus and the phone's tab bar", type: :system do
     JS
   end
 
+  # Each zone table's menu column width and the right edges of its Cost and Total columns, as the frame draws them.
+  def zone_columns
+    frame_js(<<~JS)
+      return [...d.querySelectorAll(".c-zone table")].map((table) => {
+        const box = (name) => table.querySelector("th." + name).getBoundingClientRect()
+        return { menu: box("c-zone__c-menu").width, cost: box("c-zone__c-cost").right, total: box("c-zone__c-total").right }
+      })
+    JS
+  end
+
+  # Applies every rule inside every `@media (pointer: coarse)` block, as a touch screen draws them (the coarse trigger size included).
+  def apply_coarse_rules
+    frame_run(<<~JS)
+      const css = [...d.styleSheets].flatMap((sheet) => [...sheet.cssRules])
+        .filter((rule) => rule.conditionText && rule.conditionText.includes("pointer: coarse"))
+        .flatMap((rule) => [...rule.cssRules].map((inner) => inner.cssText)).join("\\n")
+      const style = d.createElement("style")
+      style.textContent = css
+      d.head.append(style)
+    JS
+  end
+
+  # The page's width as the frame draws it, and how far each zone table is wider than its container.
+  def page_and_table_overflow
+    frame_js(<<~JS)
+      const spill = [...d.querySelectorAll(".c-zone .c-collection")].map((box) => box.scrollWidth - box.clientWidth)
+      return { page: d.documentElement.scrollWidth - d.documentElement.clientWidth, spill: Math.max(...spill) }
+    JS
+  end
+
+  # The worst case of `deck_page_spec.rb`: a 60-character name with no space, a six-symbol cost, 123 owned and 1,234 proxies.
+  def worst_case_row(deck, name: "W" * 60)
+    entry = create(:catalog_entry, name:)
+    faces = [ { "name" => name, "type_line" => "Creature", "mana_cost" => "{2}{W}{U}{B}{R}{G}", "image_uris" => {} } ]
+    create(:mtg_printing, entry:, legalities: { "modern" => "banned" }, faces:)
+    create_lot_in_zone(deck, "main", entry:, quantity: 123)
+    create(:deck_proxy, zone: deck.zone("main"), account:, entry:, finish: "nonfoil", quantity: 1234)
+  end
+
   # A proxy of +name+ in +zone_key+ of +deck+, one per finish given (a row's menu has four items a finish).
   def proxy_row(deck, zone_key, name, finishes: %w[nonfoil])
     entry = create(:mtg_printing, entry: create(:catalog_entry, name:), finishes: %w[nonfoil foil etched]).entry
@@ -324,6 +363,35 @@ RSpec.describe "Menus and the phone's tab bar", type: :system do
       it_behaves_like "a row menu on a phone" do
         def trigger_index = 3
         def trigger = ".c-zone .c-table__actions summary"
+      end
+    end
+
+    describe "the zones' columns" do
+      # Main has a row with proxies (a menu trigger); Sideboard and Considering hold owned cards only, so their menu cells are empty.
+      before do
+        proxy_row(deck, "main", "Proxied")
+        create_lot_in_zone(deck, "sideboard", entry: create(:mtg_printing, entry: create(:catalog_entry, name: "Owned only")).entry, quantity: 2)
+        create_lot_in_zone(deck, "considering", entry: create(:mtg_printing, entry: create(:catalog_entry, name: "Considered")).entry)
+      end
+
+      it "keeps the menu column and the Cost and Total edges at one x in every zone at 360px (AC-1.14)", :aggregate_failures do
+        open_phone(deck_path(deck), ready: ".c-zone:first-child table")
+        columns = zone_columns
+        spread = ->(key) { columns.pluck(key).then { |values| values.max - values.min } }
+        expect(columns.size).to eq(3)
+        expect(columns.pluck("menu").min).to be >= 63.5
+        expect([ spread.("menu"), spread.("cost"), spread.("total") ]).to all(be <= 1)
+      end
+
+      # AC-1.15. Passes before and after: a guard on the floor's cost (spec Decision 6: the worst-case table spills 19px past its container,
+      # the document does not scroll sideways).
+      it "keeps the worst case from scrolling the page sideways at 360px with every coarse rule applied (AC-1.15)", :aggregate_failures do
+        worst_case_row(deck)
+        open_phone(deck_path(deck), ready: ".c-zone:first-child table")
+        apply_coarse_rules
+        overflow = page_and_table_overflow
+        expect(overflow["page"]).to be <= 0
+        expect(overflow["spill"]).to be <= 20, "the worst-case table is #{overflow["spill"]}px wider than its container (measured 19px)"
       end
     end
 
