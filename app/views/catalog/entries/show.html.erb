@@ -31,6 +31,9 @@
           <p class="c-item__type"><span class="c-chip c-chip--cards"><span class="c-chip__dot"></span><%= @overview.vocabulary.category_name %></span></p>
         </div>
         <div class="c-item__actions">
+          <% if collector? && @entry.deck_addable? %>
+            <%= link_to new_catalog_entry_deck_addition_path(@entry, **card_params), class: "c-btn c-btn--secondary" do %><%= render "icons/decks" %>Add to deck<% end %>
+          <% end %>
           <% if collector? %>
             <%= link_to new_catalog_entry_lot_path(@entry, **card_params), class: "c-btn c-btn--primary" do %><%= render "icons/plus" %>Add a copy<% end %>
           <% end %>

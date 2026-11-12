@@ -193,13 +193,13 @@ RSpec.describe "The catalog for visitors", type: :request do
 
     it "shows a visitor no collection part and no tenant data (AC-4.1)", :aggregate_failures do
       absent = [ ".c-avatar", ".c-tile__qty", ".c-tile__add", "form[action*='quick_add']", "a[href*='/lots/new']",
-                 "#copies", ".c-stat", ".c-tile--owned-none", "li.is-unowned" ]
+                 "a[href*='/deck_additions/new']", "#copies", ".c-stat", ".c-tile--owned-none", "li.is-unowned" ]
 
       pages.each do |path|
         get path
         expect(response).to have_http_status(:ok), path
         absent.each { |selector| expect(html.css(selector)).to be_empty, "#{path}: #{selector}" }
-        [ "Not owned", "Your copies", "Add a copy", " owned" ].each { expect(html.text).not_to include(it), "#{path}: #{it}" }
+        [ "Not owned", "Your copies", "Add a copy", "Add to deck", " owned" ].each { expect(html.text).not_to include(it), "#{path}: #{it}" }
         [ "Morgan Owner", "morgan@example.com" ].each { expect(response.body).not_to include(it), "#{path}: #{it}" }
       end
     end
@@ -210,6 +210,19 @@ RSpec.describe "The catalog for visitors", type: :request do
         expect(response).to have_http_status(:ok), path
         expect(statements.grep(/"lots"/)).to be_empty, path
       end
+    end
+
+    it "sends a visitor's request for the Add to deck page to sign in (spec 071 AC-1.2)", :aggregate_failures do
+      other = create(:mtg_printing).entry
+      create(:lot, entry: other) # another account's copy: a visitor's request must read no lots
+      statements = statements_during do
+        get new_catalog_entry_deck_addition_path(other)
+        post catalog_entry_deck_additions_path(other), params: { zone_id: "1", use: "proxy:foil", quantity: "1" }
+      end
+
+      expect(response).to redirect_to(new_session_path) # the POST's; the GET's is the same (asserted in the request spec's signed-out example)
+      expect(statements.grep(/"lots"/)).to be_empty
+      expect(Deck::Proxy.count).to eq(0)
     end
 
     it "still sends a visitor to sign in for quick add, a new lot, the collection, the scanner and More (AC-4.3)",
