@@ -15,6 +15,12 @@ RSpec.describe "Use my copy", type: :request do
   def box = place("Red box")
   def html = Nokogiri::HTML5(response.body)
 
+  # The lot ids of one group of the page, in the order drawn: the group's heading and its lots are siblings in the fieldset.
+  def lot_ids_in(group)
+    drawn = html.css(".c-pick__group, .c-pick__lot").slice_before { it["class"].include?("c-pick__group") }.find { it.first.text == group }
+    drawn.drop(1).map { it.at_css("input[type=number]")["id"].delete_prefix("lot_").to_i }
+  end
+
   def printing(set: "2x2", number: "117", language: "en", finishes: %w[foil nonfoil])
     set = Catalog::Set.find_by(code: set) || create(:catalog_set, code: set)
     create(:mtg_printing, finishes:, entry: create(:catalog_entry, name: "Lightning Bolt", identity: bolt, number:, language:, set:)).entry
@@ -74,6 +80,43 @@ RSpec.describe "Use my copy", type: :request do
         other_finish.destroy!
         get new_deck_proxy_replacement_path(deck, proxy)
         expect(html.css(".c-pick__group").map(&:text)).to eq([ "Other printings" ])
+      end
+
+      # AC-2.2's order inside a group, worked out by hand from the rule (finish, condition, price paid, then the place's name),
+      # each key ascending with a missing one first, as SQLite sorts NULL: finish nil < "foil" < "nonfoil"; condition nil <
+      # "lightly_played" < "near_mint"; price nil < 100 < 200; place none < "Alpha" < "Blue binder" < "Red box".
+      it "orders This printing's lots by condition, price paid and place, a missing value first (AC-2.2)" do
+        lots = [
+          lot_in(binder, entry, 1, finish: "foil", condition: nil, price_paid_cents: 100),
+          lot_in(binder, entry, 1, finish: "foil", condition: "lightly_played", price_paid_cents: 900),
+          lot_in(box, entry, 1, finish: "foil", condition: "near_mint", price_paid_cents: nil),
+          lot_in(nil, entry, 1, finish: "foil", condition: "near_mint", price_paid_cents: 100),
+          lot_in(binder, entry, 1, finish: "foil", condition: "near_mint", price_paid_cents: 100),
+          lot_in(box, entry, 1, finish: "foil", condition: "near_mint", price_paid_cents: 100)
+        ]
+
+        get new_deck_proxy_replacement_path(deck, proxy)
+
+        expect(lot_ids_in("This printing")).to eq(lots.map(&:id))
+      end
+
+      it "orders Other printings' lots of one printing by finish, condition, price paid and place, a missing value first (AC-2.2)" do
+        other = printing(set: "mm3", number: "122")
+        lots = [
+          lot_in(binder, other, 1, finish: nil, condition: "near_mint", price_paid_cents: 100),
+          lot_in(binder, other, 1, finish: "foil", condition: nil, price_paid_cents: 300),
+          lot_in(binder, other, 1, finish: "foil", condition: "lightly_played", price_paid_cents: 500),
+          lot_in(binder, other, 1, finish: "foil", condition: "near_mint", price_paid_cents: nil),
+          lot_in(nil, other, 1, finish: "foil", condition: "near_mint", price_paid_cents: 100),
+          lot_in(place("Alpha"), other, 1, finish: "foil", condition: "near_mint", price_paid_cents: 100),
+          lot_in(binder, other, 1, finish: "foil", condition: "near_mint", price_paid_cents: 100),
+          lot_in(binder, other, 1, finish: "foil", condition: "near_mint", price_paid_cents: 200),
+          lot_in(binder, other, 1, finish: "nonfoil", condition: "near_mint", price_paid_cents: 100)
+        ]
+
+        get new_deck_proxy_replacement_path(deck, proxy)
+
+        expect(lot_ids_in("Other printings")).to eq(lots.map(&:id))
       end
 
       it "lists only free lots of the card: no lot in a zone, in Considering, of another card or of another account", :aggregate_failures do
@@ -348,6 +391,36 @@ RSpec.describe "Use my copy", type: :request do
 
         expect(response).to have_http_status(:not_found)
       end
+    end
+  end
+
+  context "when the proxy was made before the printing changed (Error Scenarios)" do
+    before { sign_in_as(user) }
+
+    it "opens both pages for a proxy whose printing a refresh retired since, and shows the printing", :aggregate_failures do
+      entry.update_columns(retired_at: Time.current)
+      lot_in(binder, entry, 1, finish: "foil")
+
+      [ new_deck_proxy_replacement_path(deck, proxy), new_deck_proxy_copy_path(deck, proxy) ].each do |path|
+        get path
+
+        expect(response).to have_http_status(:ok)
+        expect(html.at_css(".c-pagehead__stats").text.squish).to eq("Replaces 2 proxies in Izzet Tempo › Main · 2X2 · 117, Foil")
+      end
+    end
+
+    it "opens both pages for a proxy with no finish on a printing that lists finishes, choosing none", :aggregate_failures do
+      proxy.update_columns(finish: nil)
+      lot_in(binder, entry, 1, finish: "foil")
+
+      get new_deck_proxy_copy_path(deck, proxy)
+      expect(response).to have_http_status(:ok)
+      expect(html.at_css("select[name='lot[finish]'] option").text).to eq("Not specified")
+      expect(html.css("select[name='lot[finish]'] option[selected]")).to be_empty # nothing chosen: the browser shows the blank first
+
+      get new_deck_proxy_replacement_path(deck, proxy)
+      expect(response).to have_http_status(:ok)
+      expect(html.at_css(".c-pagehead__stats").text.squish).to eq("Replaces 2 proxies in Izzet Tempo › Main · 2X2 · 117")
     end
   end
 

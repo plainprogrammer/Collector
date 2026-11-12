@@ -115,16 +115,23 @@ RSpec.describe "Add a new copy", type: :request do
         expect([ proxy.reload.quantity, account.lots.count ]).to eq([ 3, 0 ])
       end
 
-      it "gives Add a copy's own sentence to a quantity that isn't a whole number from 1 to 9,999, and to a finish or price it refuses", :aggregate_failures do
+      it "gives Add a copy's own sentence to a quantity that isn't a whole number from 1 to 9,999 (AC-4.3)", :aggregate_failures do
         post_copy({ quantity: "10000" })
-        expect(html.at_css("#lot_quantity-error").text).to eq("Quantity must be a whole number from 1 to 9,999")
 
-        post_copy({ finish: "etched" })
-        expect(html.at_css("#lot_finish-error").text).to include("isn't available for this printing")
-
-        post_copy({ price_paid: "-1" })
         expect(response).to have_http_status(:unprocessable_content)
-        expect(account.lots.count).to eq(0)
+        expect(html.at_css("#lot_quantity-error").text).to eq("Quantity must be a whole number from 1 to 9,999")
+      end
+
+      it "gives Add a copy's own sentence to a finish, a price and a condition it refuses, and writes nothing", :aggregate_failures do
+        { { finish: "etched" } => [ "#lot_finish-error", "Finish isn't available for this printing" ],
+          { price_paid: "-1" } => [ "#lot_price_paid-error", "Price paid must be a non-negative amount with at most two decimal places" ],
+          { condition: "bogus" } => [ "#lot_condition-error", "Condition isn't a known condition" ] }.each do |lot, (error, sentence)|
+          post_copy(lot)
+
+          expect(response).to have_http_status(:unprocessable_content)
+          expect(html.at_css(error).text).to eq(sentence)
+        end
+        expect([ proxy.reload.quantity, account.lots.count ]).to eq([ 3, 0 ])
       end
 
       it "refuses a proxy that is not the count the form showed, writes the count now, and the next submit works (AC-4.6, AC-4.6a)", :aggregate_failures do
@@ -157,7 +164,7 @@ RSpec.describe "Add a new copy", type: :request do
         post_copy
 
         expect(response).to have_http_status(:unprocessable_content)
-        expect(html.at_css("#lot_quantity-error").text).to include("9,999")
+        expect(html.at_css("#lot_quantity-error").text).to eq("One lot can hold at most 9,999 copies.")
         expect(proxy.reload.quantity).to eq(3)
       end
 

@@ -134,12 +134,13 @@ RSpec.describe Deck::Proxy, type: :model do
   describe "#lower_by!" do
     it "lowers the quantity and keeps the row and its times but updated_at", :aggregate_failures do
       proxy = add(quantity: 5)
-      proxy.update_columns(created_at: 2.days.ago)
+      proxy.update_columns(created_at: 2.days.ago, updated_at: 2.days.ago)
 
       proxy.lower_by!(2)
 
       expect(proxy.reload).to have_attributes(quantity: 3)
       expect(proxy.created_at).to be < 1.day.ago
+      expect(proxy.updated_at).to be > 1.day.ago
     end
 
     it "removes the proxy when the count equals its quantity", :aggregate_failures do
