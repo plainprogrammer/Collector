@@ -620,3 +620,26 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
    the page. Scoped to the Decks pages: other pages' error lines are their own. It also lets the other deck pages' sentences that
    name a long card or deck wrap. */
 .c-decks .c-field__error { overflow-wrap:anywhere; }
+
+/* ---------- Menus open clear of the tab bar (spec 074) ---------- */
+/* Below 640px a fixed tab bar covers the bottom 67px of the screen (the link's 56px minimum height and 6px + 4px padding, and the bar's 1px
+   border: components.css `.c-tabbar`; a change to the bar's size changes the 67px here; the margin is a literal, not read from the bar, because the room box below is pure CSS and must agree with it, and the spec's AC-1.6 reads both bars' drawn heights from the page, so a mismatch fails an example) and the sticky app bar the top 57px (56px height and
+   a 1px border: `.c-appbar`). A menu's list opens downward and is absolutely positioned, so it can end behind the bar. The menu controller
+   scrolls an opened list into view (`scrollIntoView`, nearest alignment), and these margins say how far: the list's bottom edge ends
+   `space-2` above the bar (plus the home indicator's inset, as `.c-main`'s padding does), a list taller than the room between the two bars
+   starts just under the app bar. The empty box under an open list gives the page the scroll range to do it: the page ends 80px under its
+   content, and a list adds overflow only to its own bottom edge, so without the box the last rows' menus could not be scrolled clear
+   (measured, spec 074). The box is as wide as the list (an engine may ignore a zero-width box) and `pointer-events: none`, so a tap in it
+   reaches the page and the controller still sees an outside click. Only below 640px on a shell with a tab bar: wider screens and
+   `c-shell--untabbed` pages draw neither margin nor box. Menu items are 36px at a fine pointer and 44px at a coarse one, so nothing here
+   states an item height. */
+@media (max-width: 639px) {
+  .c-shell:not(.c-shell--untabbed) .c-menu__list {
+    scroll-margin-top: calc(57px + var(--space-2));
+    scroll-margin-bottom: calc(67px + env(safe-area-inset-bottom) + var(--space-2));
+  }
+  .c-shell:not(.c-shell--untabbed) .c-menu[open] > .c-menu__list::after {
+    content: ""; position: absolute; top: 100%; left: 0; right: 0; pointer-events: none;
+    height: calc(67px + env(safe-area-inset-bottom) + var(--space-2));
+  }
+}
