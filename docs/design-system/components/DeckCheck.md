@@ -46,7 +46,7 @@ A deck whose format has no rules starts its list with a plain row, then owned pl
 
 - **Below 640px:** a row is one column: the status word on its line, the sentence under it.
 - **From 640px:** two columns, the status in 11rem (wide enough for "Owned and proxy" on one line) and the sentence in the rest, on one baseline with a `space-4` gap; a plain row's sentence spans both.
-- A row breaks inside a word (`overflow-wrap: anywhere`, `minmax(0, 1fr)`), so a 60-character card or zone name with no space wraps and the page does not scroll sideways at 360px in either theme. The zone heads and the shape fold's facts line wrap a long zone name too (`DeckPage`).
+- A row breaks inside a word (`overflow-wrap: anywhere`, `minmax(0, 1fr)`), so a 60-character card or zone name with no space wraps inside the section at 360px in either theme.
 
 **Icon.** `icons/check` and `icons/alert` drawn at 12px with a stroke of 2.5, as a badge's icon is (`.c-deckcheck__status svg`; README, Iconography). The markup keeps `stroke-width="1.5"`.
 

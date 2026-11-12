@@ -41,16 +41,28 @@ RSpec.describe "Deck checks", type: :system do
     expect(page.evaluate_script("!!(#{follows})")).to be(true)
   end
 
-  it "fits a phone, in both themes, with long names (AC-6.1, 6.4)", :aggregate_failures do
-    long = "N" * 60
-    create_lot_in_zone(deck, "main", entry: printing(long, type_line: "Instant"), quantity: 5)
-    deck.zone("main").update_columns(name: "Z" * 60) # a zone's shown name is a copy, so a long one is a fixture, not a rename flow
+  it "fits a phone, in both themes, with a long card name (AC-6.1, 6.4)", :aggregate_failures do
+    create_lot_in_zone(deck, "main", entry: printing("N" * 60, type_line: "Instant"), quantity: 5)
     visit deck_path(deck)
     expect(open_in_viewport_frame(deck_check_path(deck), viewport: 360, ready: "#deck-check-title")).to eq(360)
     within_narrow_frame do
       %w[light dark].each do |theme|
         set_theme(theme)
         expect([ page_fits_sideways?, clipped(".c-deckcheck__text, .c-deckcheck__status, .c-item__actions .c-btn") ]).to eq([ true, 0 ])
+      end
+    end
+  end
+
+  it "wraps a long zone name inside the results at phone width, in both themes (AC-6.4)", :aggregate_failures do
+    deck.zone("main").update_columns(name: "Z" * 60) # a zone's shown name is a copy, so a long one is a fixture, not a rename flow
+    visit deck_path(deck)
+    expect(open_in_viewport_frame(deck_check_path(deck), viewport: 360, ready: "#deck-check-title")).to eq(360)
+    fits = "(s => s.scrollWidth <= s.clientWidth)(document.querySelector('.c-deckcheck'))"
+    within_narrow_frame do
+      expect(page).to have_css(".c-deckcheck__text", text: "Z" * 60) # the size finding names the zone
+      %w[light dark].each do |theme|
+        set_theme(theme)
+        expect([ clipped(".c-deckcheck__text, .c-deckcheck__status"), page.evaluate_script(fits) ]).to eq([ 0, true ])
       end
     end
   end

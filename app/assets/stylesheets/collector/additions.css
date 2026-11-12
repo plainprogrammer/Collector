@@ -544,13 +544,6 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
   .c-deckcheck__row--plain .c-deckcheck__text { grid-column:1 / -1; }
 }
 
-/* ---------- Deck page long zone names (spec 079 AC-6.1, AC-6.4): a zone's name wraps in its head and the fold's facts ---------- */
-/* The results page is the deck page, so it fits 360px only if the zones do. The export's `.c-section__title` is nowrap and the
-   fold's facts line names the counted zone, so a 60-character zone name with no space pushed the page to 743px. Both break
-   inside a word; the title shrinks (min-width:0) beside "Add a proxy" rather than push it off the line. */
-.c-zone .c-section__title { min-width:0; white-space:normal; overflow-wrap:anywhere; }
-.c-shapefold__facts { min-width:0; overflow-wrap:anywhere; }
-
 /* ---------- Deck page zones (spec 060): a table per zone, grouped rows, one shared column layout ---------- */
 /* From 640px of the table's container every zone table has the same fixed widths, so Cost, Owned, Proxy, Total and the
    menu sit at one x in every zone (decision 25). th is border-box: a width is the whole column, padding included. A pip is
