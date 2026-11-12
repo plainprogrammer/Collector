@@ -1,6 +1,6 @@
 # Feature 069: The Deck Shape Panel (Mana Curve, Card Types and Coloured Mana Symbols)
 
-**Status:** Draft
+**Status:** Approved at Gate A (2026-11-11, the coordinator under the maintainer's delegation, as written; version 0.2.0)
 **Version:** 0.1.0
 **Created:** 2026-11-11
 **Last Updated:** 2026-11-11
