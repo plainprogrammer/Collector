@@ -9,6 +9,7 @@
 **Issue:** [#50](https://github.com/plainprogrammer/Collector/issues/50)
 **ADR:** none: no data, no schema and no new pattern; what is decided here (the card as the scope, free as the one existing definition, how a count reads) is this spec's (decisions 1 to 6)
 **Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) and [`catalog-core.md`](../../architecture/catalog-core.md) (the whole spec; catalog core holds the card page's order and the visitor rule, decision 4's place of "In decks" and AC-3.1); the card page's markup is `ItemPage` in the [design system](../../design-system/README.md); see the [specs index](../README.md)
+**Plan:** retired in `1bdb1c62a908b76131f1eb2a94f769b419a78689`; read it with `git show 1bdb1c62a908b76131f1eb2a94f769b419a78689^:docs/specs/073-card-page-deck-stats/plan.md`
 
 ---
 
