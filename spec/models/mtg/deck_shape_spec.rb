@@ -37,6 +37,7 @@ RSpec.describe MTG::DeckShape, type: :model do
       expect(figures.cards).to eq(4)
       expect(figures.scope).to eq("Main · 4 cards")
       expect(figures.types.map(&:name)).to eq([ "Instants" ])
+      expect(figures.curve.last.total).to eq(0)
     end
 
     it "counts Commander and Main together, in the deck's zone order, and not Considering", :aggregate_failures do
@@ -49,6 +50,7 @@ RSpec.describe MTG::DeckShape, type: :model do
 
       expect(figures.scope).to eq("Commander + Main · 100 cards")
       expect(figures.types.map(&:name)).to eq([ "Instants" ])
+      expect(figures.curve.last.total).to eq(0)
     end
 
     it "says '1 card' and '0 cards' and delimits thousands", :aggregate_failures do
@@ -104,6 +106,132 @@ RSpec.describe MTG::DeckShape, type: :model do
 
       expect(shape.cards).to eq(2)
       expect(shape.types.sum(&:count)).to eq(2)
+    end
+  end
+
+  describe "#curve" do
+    it "buckets Bolt, Elves, Counterspell and a Forest as AC-2.1 says", :aggregate_failures do
+      bolt = card(name: "Lightning Bolt", mana_value: 1.0)
+      own(bolt, 3)
+      proxy(bolt, 1)
+      own(card(name: "Llanowar Elves", type_line: "Creature — Elf", mana_value: 1.0), 2)
+      proxy(card(name: "Counterspell", mana_value: 2.0), 2)
+      own(card(name: "Forest", type_line: "Basic Land — Forest", cost: "", mana_value: 0.0), 4)
+
+      figures = shape
+
+      expect(figures.curve.map { [ it.owned, it.proxy ] }).to eq([ [ 0, 0 ], [ 5, 1 ], [ 0, 2 ], [ 0, 0 ], [ 0, 0 ], [ 0, 0 ], [ 0, 0 ] ])
+      expect([ figures.curve_owned, figures.curve_proxy, figures.curve_max ]).to eq([ 5, 3, 6 ])
+      expect(figures.average_text).to eq("1.3") # (6 × 1 + 2 × 2) ÷ 8 = 1.25, half up
+    end
+
+    it "puts 0, 5, 6, 7, 9 and 1,000,000 in columns 0, 5, 6+, 6+, 6+, 6+ (AC-2.2)" do
+      [ 0.0, 5.0, 6.0, 7.0, 9.0, 1_000_000.0 ].each { own(card(mana_value: it)) }
+
+      expect(shape.curve.map(&:total)).to eq([ 1, 0, 0, 0, 0, 1, 4 ])
+    end
+
+    it "floors a half value into the whole number below it: 0.5, 2.5, 6.5 (AC-2.3)" do
+      [ 0.5, 2.5, 6.5 ].each { own(card(mana_value: it)) }
+
+      expect(shape.curve.map(&:total)).to eq([ 1, 0, 1, 0, 0, 0, 1 ])
+    end
+
+    it "leaves lands out and keeps Dryad Arbor in column 0 (AC-2.6)", :aggregate_failures do
+      own(card(type_line: "Land Creature — Forest Dryad", cost: "", mana_value: 0.0)) # Dryad Arbor: a Creature, mana value 0
+      own(card(type_line: "Artifact Land", cost: "", mana_value: 0.0))
+      own(card(type_line: "Basic Land — Island", cost: "", mana_value: 0.0))
+
+      expect(shape.curve.map(&:total)).to eq([ 1, 0, 0, 0, 0, 0, 0 ])
+      expect(shape.curve_owned).to eq(1)
+    end
+
+    it "uses the card's stored value for a double-faced and a reversible card, and keeps a Sorcery // Land in the curve (AC-2.7)", :aggregate_failures do
+      own(card(mana_value: 2.0, faces: [ { "name" => "A", "type_line" => "Creature — Human", "mana_cost" => "{1}{U}" },
+                                         { "name" => "B", "type_line" => "Land", "mana_cost" => "" } ])) # transform: front Creature, back Land
+      own(card(mana_value: 4.0, faces: [ { "name" => "Ajani", "type_line" => "Legendary Planeswalker — Ajani", "mana_cost" => "{2}{W}{W}" },
+                                         { "name" => "Ajani", "type_line" => "Legendary Planeswalker — Ajani", "mana_cost" => "{2}{W}{W}" } ])) # reversible: stored value 4
+      own(card(mana_value: 3.0, faces: [ { "name" => "C", "type_line" => "Sorcery", "mana_cost" => "{2}{B}" }, { "name" => "D", "type_line" => "Land", "mana_cost" => "" } ]))
+
+      expect(shape.curve.map(&:total)).to eq([ 0, 0, 1, 1, 1, 0, 0 ])
+      expect(shape.types.map { [ it.name, it.count ] }).to eq([ [ "Creatures", 1 ], [ "Planeswalkers", 1 ], [ "Sorceries", 1 ] ]) # by the front face's type
+    end
+
+    it "leaves a nonland card with no mana value out and counts it for the note (AC-2.5)", :aggregate_failures do
+      own(card(mana_value: 3.0))
+      own(card(mana_value: nil))
+
+      expect(shape.curve.map(&:total)).to eq([ 0, 0, 0, 1, 0, 0, 0 ])
+      expect(shape.unvalued).to eq(1)
+      expect(shape.types.sum(&:count)).to eq(2)
+      expect(shape.unvalued_note).to eq("1 nonland card has no mana value yet.")
+    end
+
+    it "words the note for several cards, and has none for a mana value of 0.0 (AC-2.5)", :aggregate_failures do
+      3.times { own(card(mana_value: nil)) }
+      expect(shape.unvalued_note).to eq("3 nonland cards have no mana value yet.")
+
+      other = create(:deck, account:, name: "Zero")
+      own(card(type_line: "Artifact", cost: "{0}", mana_value: 0.0), 1, in_deck: other)
+      expect(shape(other).unvalued_note).to be_nil
+      expect(shape(other).curve.first.total).to eq(1)
+    end
+
+    it "counts an entry with no MTG::Card row as having no mana value" do
+      entry = create(:catalog_entry)
+      create(:mtg_printing, entry:)
+      own(entry)
+
+      expect(shape.unvalued).to eq(1)
+    end
+  end
+
+  describe "#average_text" do
+    it "is the exact mean, 2.625 shown 2.6 (AC-2.4)" do
+      [ 0.5, 2.5, 6.5, 1.0 ].each { own(card(mana_value: it)) }
+
+      expect(shape.average_text).to eq("2.6")
+    end
+
+    it "keeps a trailing zero: a mean of 3 is 3.0 (AC-2.4)" do
+      own(card(mana_value: 3.0), 4)
+
+      expect(shape.average_text).to eq("3.0")
+    end
+
+    it "rounds 0.15 up with exact arithmetic, not down as a float would (AC-2.4)" do
+      own(card(mana_value: 0.5), 3)
+      own(card(mana_value: 0.0), 7)
+
+      expect(shape.average_text).to eq("0.2")
+    end
+
+    it "is nil with no card in the curve, and delimits a long number (AC-1.5)", :aggregate_failures do
+      expect(shape.average_text).to be_nil
+      own(card(mana_value: 1_000_000.0))
+      expect(shape.average_text).to eq("1,000,000.0")
+    end
+  end
+
+  describe "statements" do
+    it "runs one statement for the mana values however many cards, and none for an empty deck (AC-6.1)", :aggregate_failures do
+      page_zones = zones_of
+      expect(count_queries { described_class.build(page_zones).curve }).to eq(0)
+
+      10.times { own(card) }
+      page_zones = zones_of
+      expect(count_queries { described_class.build(page_zones).curve }).to eq(1)
+
+      30.times { own(card) }
+      page_zones = zones_of
+      expect(count_queries { described_class.build(page_zones).curve }).to eq(1)
+    end
+
+    it "reads the mana values once for the curve, the average and the note (AC-6.3)" do
+      own(card)
+      figures = described_class.build(zones_of)
+
+      expect(count_queries { figures.curve; figures.average_text; figures.unvalued; figures.curve_max }).to eq(1)
     end
   end
 end

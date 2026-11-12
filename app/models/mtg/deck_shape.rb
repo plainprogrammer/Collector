@@ -51,7 +51,82 @@ class MTG::DeckShape
     end
   end
 
+  # One column of the curve: nonland cards of one mana value bucket, owned and proxy apart.
+  Column = Data.define(:owned, :proxy) do
+    # Owned plus proxy: the count above the column.
+    def total = owned + proxy
+  end
+  # The curve's last column holds this mana value and above (decision 4).
+  TOP_COLUMN = 6
+
+  # The seven columns, mana value 0 to 6+, counting nonland cards with a mana value (decision 4): column n holds values from n
+  # up to but not including n + 1, and the last holds every value from 6.
+  # @return [Array<Column>]
+  def curve
+    @curve ||= begin
+      owned = Array.new(TOP_COLUMN + 1, 0)
+      proxy = Array.new(TOP_COLUMN + 1, 0)
+      valued.each do |row, value|
+        column = [ value.floor, TOP_COLUMN ].min
+        owned[column] += row.owned
+        proxy[column] += row.proxy
+      end
+      owned.zip(proxy).map { |o, p| Column.new(owned: o, proxy: p) }
+    end
+  end
+
+  # The owned cards in the curve (the legend's "Owned N").
+  # @return [Integer]
+  def curve_owned = curve.sum(&:owned)
+
+  # The proxy cards in the curve (the legend's "Proxy N").
+  # @return [Integer]
+  def curve_proxy = curve.sum(&:proxy)
+
+  # The tallest column's owned plus proxy, the custom property `--max` of every bar; 0 when the curve is empty.
+  # @return [Integer]
+  def curve_max = curve.map(&:total).max
+
+  # The cards in the curve.
+  # @return [Integer]
+  def curve_cards = curve_owned + curve_proxy
+
+  # The exact mean mana value of the cards in the curve, shown to one decimal, rounded half up (decision 5). The arithmetic is
+  # exact (Rational), so 0.15 shows 0.2 where a float would give 0.1.
+  # @return [String, nil] nil when no card is in the curve
+  def average_text
+    return if curve_cards.zero?
+
+    mean = valued.sum { |row, value| value.to_r * row.total } / curve_cards
+    delimited(format("%.1f", mean.round(1).to_f))
+  end
+
+  # The nonland cards with no mana value (decision 6): a catalog not refreshed since spec 058, or a card Scryfall gave none.
+  # @return [Integer]
+  def unvalued = @unvalued ||= nonland.sum { |row| mana_values[row.entry.catalog_identity_id] ? 0 : row.total }
+
+  # The sentence under the curve, or nil when every nonland card has a mana value.
+  # @return [String, nil]
+  def unvalued_note
+    return if unvalued.zero?
+
+    "#{counted(unvalued, 'nonland card')} #{unvalued == 1 ? 'has' : 'have'} no mana value yet."
+  end
+
   private
+    def nonland = @nonland ||= rows.reject { MTG::DeckGroups.land?(it.answer.position) }
+
+    # [[row, mana value]] for the nonland rows whose card has one.
+    def valued = @valued ||= nonland.filter_map { |row| (value = mana_values[row.entry.catalog_identity_id]) && [ row, value ] }
+
+    # One statement, none when no card counts: `{ identity id => mana value }` (spec 058's column, global catalog data).
+    def mana_values
+      @mana_values ||= begin
+        ids = rows.map { it.entry.catalog_identity_id }.uniq
+        ids.empty? ? {} : MTG::Card.where(catalog_identity_id: ids).where.not(mana_value: nil).pluck(:catalog_identity_id, :mana_value).to_h
+      end
+    end
+
     def delimited(number) = ActiveSupport::NumberHelper.number_to_delimited(number)
 
     def counted(number, word) = "#{delimited(number)} #{number == 1 ? word : word.pluralize}"
