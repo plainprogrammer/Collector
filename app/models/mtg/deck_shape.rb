@@ -2,7 +2,7 @@
 # type, by mana value and by coloured mana symbol, owned copies and proxies together and the curve and types keeping them
 # apart. A plain object built once per request from `Deck::Page#zones`; it reads the rows' loaded printings and runs one
 # statement of its own (the cards' mana values, none when no card counts). It is the code of the spec's
-# decisions 2 to 10 (the rules themselves are in the area doc).
+# decisions 2 to 10 and 14 (the rules themselves are in the area doc).
 #
 # Known limit (spec 069 Non-Goals, decision 7): a card is read through its first face, as the zone tables read it, so the second half of a
 # split card adds no symbol to the bar, though its mana value (Scryfall's, both halves added) is in the curve. That is deliberate.
@@ -95,10 +95,12 @@ class MTG::DeckShape
   # exact (Rational), so 0.15 shows 0.2 where a float would give 0.1.
   # @return [String, nil] nil when no card is in the curve
   def average_text
-    return if curve_cards.zero?
+    return @average_text if defined?(@average_text)
 
-    mean = valued.sum { |row, value| value.to_r * row.total } / curve_cards
-    delimited(format("%.1f", mean.round(1).to_f))
+    @average_text = unless curve_cards.zero?
+      mean = valued.sum { |row, value| value.to_r * row.total } / curve_cards
+      delimited(format("%.1f", mean.round(1).to_f))
+    end
   end
 
   # The nonland cards with no mana value (decision 6): a catalog not refreshed since spec 058, or a card Scryfall gave none.
