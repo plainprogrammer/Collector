@@ -22,6 +22,28 @@ module NarrowFrame
     [ page.evaluate_script("document.getElementById('narrow').contentWindow.innerWidth"), narrow_frame_fits? ]
   end
 
+  # Loads path in a frame whose viewport (its documentElement.clientWidth) is viewport px wide, the way a phone of that width is:
+  # open_in_narrow_frame's width includes the frame's classic scrollbar, so a "360px" frame there lays a page out in 345px or 348px.
+  # The frame is the viewport plus the scrollbar it draws, measured (about 15px on a Mac, 12px on the Linux runner) and reopened
+  # once if the first guess was wrong.
+  #
+  # @param path [String] the page to load, on the current origin
+  # @param viewport [Integer] the width the page is laid out in, in px
+  # @param ready [String] a CSS selector that must be present in the frame before it is measured
+  # @param height [Integer] the frame's height in px
+  # @return [Integer] the viewport the frame got, for the example to assert
+  def open_in_viewport_frame(path, viewport:, ready:, height: 800)
+    width = viewport + 15
+    2.times do
+      open_in_narrow_frame(path, width:, ready:, height:)
+      scrollbar = within_narrow_frame { page.evaluate_script("window.innerWidth - document.documentElement.clientWidth") }
+      break if viewport + scrollbar == width
+
+      width = viewport + scrollbar
+    end
+    within_narrow_frame { page.evaluate_script("document.documentElement.clientWidth") }
+  end
+
   # Whether the page the driver is in (the top page, or the frame's inside within_narrow_frame) fits without horizontal
   # scrolling, measured now. The one measure of sideways overflow, so a check never has to write it again (#318).
   #

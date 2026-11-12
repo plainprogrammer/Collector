@@ -39,6 +39,17 @@ RSpec.describe "The narrow-frame helper", type: :system do
     expect(narrow_frame_fits?).to be(false)
   end
 
+  # A phone's viewport is its width, with no scrollbar taken from it; the frame's classic scrollbar is (about 12 to 15px by platform).
+  it "opens a frame whose viewport is the width asked for, whatever the scrollbar", :aggregate_failures do
+    visit new_registration_path
+    expect(open_in_viewport_frame(new_registration_path, viewport: 360, height: 320, ready: "main")).to eq(360)
+    within_narrow_frame do
+      expect(page.evaluate_script("document.documentElement.clientWidth")).to eq(360)
+      expect(page.evaluate_script("window.innerWidth")).to be > 360 # the scrollbar is drawn, and sits outside the viewport asked for
+    end
+    expect(narrow_frame_fits?).to be(true)
+  end
+
   # The same trap for the checks that run inside within_narrow_frame, or on the top page, and measure the page they are in.
   it "reports the same overflow for the page the driver is in", :aggregate_failures do
     open_sign_up_frame
