@@ -73,3 +73,11 @@ SPEC-ALIGNED WITH MINOR FINDINGS (round 1, `sdd-review` Mode B, read-only Opus r
   3. Two "can fail" examples proved only that the predicate could be false: fixed in `430295a3` (the AC-3.1 variant expects the count edges to spread over 5px, the AC-4.3 variant at 345px and 360px expects an item on two lines).
   - Nits: the version and unrecorded deviations (5, 6, 7 above, fixed here); the literal "U 44" of AC-2.1 had no example of its own (a request example "writes counts under 1,000 in full in a slot of fixed width (AC-2.1)" was added in `430295a3`); "never longer than four characters" overstated past 999m (the area doc and `DeckShape.md` now say "through 999m", `366ae43c`).
 - **Owed to CI, not defects:** two checks have little margin and were proved on a Mac only: AC-2.2's 0.44px at a 320px viewport, and the 366px frame's leading dot (an interior of 272px on the Linux runner, inside the measured range). If either fails on the runner, the spec is updated through `sdd-spec-update` before a bound moves.
+
+## Distillation (`distill-feature`, spec 027)
+
+- `docs/architecture/collection-and-lots.md`: the panel's paragraph (written with Task 5) and the two Named constants rows and the Issues bullet naming #330, plus, here, the Sources bullet for spec 077 (#320, #330) and a Distillation log row ("spec 077's pull request" until the pull request has a number). The design system has no area doc or log: `DeckShape.md` was written in Task 5.
+- `docs/specs/README.md`: the 077 row is Frozen, by that area doc, Plan "retirement owed"; the supersession of specs 060 and 069 is in both directions (written with the spec).
+- No ADR proposed: the rulings are the spec's decisions and decision 2 is the maintainer's (#330).
+- No `CLAUDE.md` change: it restates no rule the feature changed (its decks sentence names the panel and `Catalog::DeckShape`, a pointer).
+- The plan's retirement follows the merge (state 1).
