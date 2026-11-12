@@ -18,27 +18,30 @@
     </details>
   </div>
 </header>
-<main class="c-main c-page">
+<main class="c-main c-page c-decks">
   <div class="c-pagehead"><div>
     <h1 class="c-pagehead__title">Use my copy of Lightning Bolt</h1>
-    <p class="c-pagehead__stats">Replaces 1 proxy in Izzet Tempo › Main · <span class="is-data">2X2 · 117</span> foil</p>
+    <p class="c-pagehead__stats">Replaces 1 proxy in Izzet Tempo › Main · <span class="is-data">2X2 · 117</span>, Foil</p>
   </div></div>
   <form class="c-form" action="/decks/…/proxies/…/replacement" method="post">
     <fieldset class="c-choices c-pick">
       <legend class="c-field__label">Which copies</legend>
       <p class="c-pick__group">This printing</p>
       <div class="c-pick__lot">
-        <label class="c-pick__label" for="lot_1"><span class="is-data">2X2 · 117</span> foil, Near mint, Blue binder, ×1 free</label>
-        <label class="c-input"><input id="lot_1" name="lots[1]" type="number" min="0" max="1" value="0" inputmode="numeric"></label>
+        <label class="c-pick__label" for="lot_1"><span class="is-data">2X2 · 117</span> Foil, Near mint, paid $1.25, Blue binder, ×1 free</label>
+        <label class="c-input"><input id="lot_1" name="lots[1]" type="number" min="0" max="1" step="1" value="0" inputmode="numeric"></label>
+        <input type="hidden" name="shown[1]" value="1">
       </div>
       <div class="c-pick__lot">
-        <label class="c-pick__label" for="lot_2"><span class="is-data">2X2 · 117</span> foil, Lightly played, Red box, ×2 free</label>
-        <label class="c-input"><input id="lot_2" name="lots[2]" type="number" min="0" max="2" value="0" inputmode="numeric"></label>
+        <label class="c-pick__label" for="lot_2"><span class="is-data">2X2 · 117</span> Foil, Lightly played, Red box, ×2 free</label>
+        <label class="c-input"><input id="lot_2" name="lots[2]" type="number" min="0" max="2" step="1" value="0" inputmode="numeric"></label>
+        <input type="hidden" name="shown[2]" value="2">
       </div>
       <p class="c-pick__group">Other printings</p>
       <div class="c-pick__lot">
-        <label class="c-pick__label" for="lot_3"><span class="is-data">MM3 · 122</span>, Near mint, Red box, ×1 free</label>
-        <label class="c-input"><input id="lot_3" name="lots[3]" type="number" min="0" max="1" value="0" inputmode="numeric"></label>
+        <label class="c-pick__label" for="lot_3"><span class="is-data">MM3 · 122</span>, Near mint, No location, ×1 free</label>
+        <label class="c-input"><input id="lot_3" name="lots[3]" type="number" min="0" max="1" step="1" value="0" inputmode="numeric"></label>
+        <input type="hidden" name="shown[3]" value="1">
       </div>
     </fieldset>
     <div class="c-form__actions">
