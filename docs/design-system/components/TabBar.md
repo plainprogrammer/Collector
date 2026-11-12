@@ -22,4 +22,5 @@ The bottom tab bar on phones, in the pattern of native apps: four sections (Coll
 - Every tab is at least 56px tall and takes an equal share of the width.
 - More opens a full page (not a pop-up) listing profile, settings, import and export, and any newer sections.
 - It stays visible while scrolling; hide it only while the on-screen keyboard is open (a small Stimulus controller).
+- A `Menu` opened near the bar is scrolled clear of it (`Menu`, spec 074); when you shoot a phone page, size the window taller than the frame, or the fixed bar is clipped out of the picture (a frame taller than the window's viewport loses it).
 - Mark it `data-turbo-permanent` so it doesn't redraw between pages, and update `aria-current` from the URL on `turbo:load`.
