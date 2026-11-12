@@ -47,7 +47,7 @@ The request examples of the writes were integration examples over code a model s
 | `docs/design-system/components/AddToDeck.md` and both previews | Per-finish proxy radios, the refusals drawn, the label's case, `c-decks` on `main`, the floors |
 | `spec/system/design_system_deck_components_spec.rb` `use_choices` | One proxy radio per finish; one new example |
 | `ItemPage.md`, `ItemPagePhone.md` and their previews | The head actions, the phone rule |
-| `collection-and-lots.md` card-page section, glossary, constants, decisions, open-issues line (#255 built, the stale "proxies are not" clause fixed), sources; `tenancy-and-accounts.md`; `CLAUDE.md`; `docs/specs/README.md` rows 060 and 071 | Updated (T10) |
+| `collection-and-lots.md` card-page section, glossary, constants, decisions, open-issues line (#255 built, the stale "proxies are not" clause fixed), sources; `tenancy-and-accounts.md`; `CLAUDE.md`; `docs/specs/README.md` rows 004 (superseded in part: AC-9.5), 060, 068 (a pointer: its Non-Goal is fulfilled) and 071 | Updated (T10; rows 004 and 068 added after the implementation review) |
 | `spec/system/design_system_deck_components_spec.rb:926` (a lower-case "… foil" in a drawn option) | Left as is: its example checks fit only |
 | `docs/roadmap.md` item 14j | Marked by the distillation step at merge |
 
@@ -72,4 +72,21 @@ The request examples of the writes were integration examples over code a model s
 
 ## Implementation review
 
-(written by the review)
+SPEC-ALIGNED WITH MINOR FINDINGS
+
+Mode B, read-only, on Opus, round 1, over the branch's diff, the spec (v0.5.1), this file, every example it cites and a sample of eleven screenshots. No blocking findings. All findings were taken in `2515fffe` (documents) and `f753e729` (code and specs):
+
+| # | Finding | Disposition |
+|---|---------|-------------|
+| 1 (major) | The specs index lacked spec 004 AC-9.5's supersession and spec 068's pointer (the supersession list of this file had missed it) | Rows 004, 068 and 071 updated; the table above lists them |
+| 2 (major) | `AddToDeck.md` and both previews drew `main` without `c-decks` while saying it carries it | Fixed in all three |
+| 3 | One CSS heading over three unrelated rules | Three headings; the AC-6.4 example reads the radio-rows block only and asserts the other two rules are not in it |
+| 4 | On a phone the link has no icon (decision 1 says it has one) | Recorded in deviation 1; AC-1.5 allows the change; for the maintainer at the merge gate |
+| 5 | A doc comment above the wrong method in `card_page_spec.rb` | Moved |
+| 6 | `ItemPagePhone.md` said "full width" and "the flexible one" | Reworded |
+| 7 | An RDoc `+count+` in a Markdown comment; the controller's `InvalidForeignKey` comment named the take | Reworded |
+| 8 | Weak controls: the rival's name asserted absent without a control from the rival's own request; the visitor's `"lots"` grep without a control; AC-3.4 without the surviving id | A sibling example per control (each shown able to fail by breaking the line it guards: `deck_zone_options` emptied, a collector's request with a deck and a lot matched against the grep, `Lot::Move#move_whole` mutated so the zone's lot is destroyed); the AC-3.4 example asserts `[[zone_lot.id, 4]]` |
+| 9 | The AC-1.3 absence example did not check the status | Asserts 200 for each card page first |
+| 10 | Phone shots without a tab bar (04, 05; 10 at 360px has one) | Not a change of this feature: the page renders the shared `layouts/tabbar` partial as Move copies' page does, and the shell shows the bar by its own container rule; the cause of its absence in the 390px frames of the shorter pages was not investigated. Noted for the maintainer; the pages' own content fits in every shot |
+
+Accepted as the spec words it: AC-3.9's double submit is sequential (SQLite's immediate lock makes one writer at a time, so a sequential second request meets the first's result); AC-3.12's proxy-path `InvalidForeignKey` backstop has no example of its own (it copies `LotsController`'s).
