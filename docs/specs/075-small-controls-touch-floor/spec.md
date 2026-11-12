@@ -1,7 +1,7 @@
 # Feature 075: Small Buttons, Filter Chips and the View Switch Meet the Touch Floor on a Coarse Pointer
 
-**Status:** Draft, awaiting Gate A
-**Version:** 0.3.0
+**Status:** Approved by the coordinator under the maintainer's delegation (2026-11-11, Gate A) at 0.3.0, with decision 1 ruled by the maintainer (A), after two spec review rounds
+**Version:** 0.3.1
 **Created:** 2026-11-11
 **Last Updated:** 2026-11-11
 **Depends on:** [spec 072](../072-select-touch-floor/spec.md) (selects at 44px, the filter row centred, the coarse-pointer example technique; its Non-Goals named this change as a separate design-system ruling), [spec 063](../063-small-icon-stroke/spec.md) (decision 2: the app's additions go in `additions.css`, never in the export's `components.css`), all merged
@@ -14,6 +14,7 @@
 
 | Version | Date | Change |
 |---|---|---|
+| 0.3.1 | 2026-11-11 | Gate A: decision 1 ruled by the maintainer on 2026-11-11, option A (44px for `.c-btn--sm`, `.c-filter` and `.c-seg button` on a coarse pointer only, with the 44px min-width for the icon buttons and `.c-seg button`; a fine pointer unchanged); the proposal wording and the open question are closed; no other change |
 | 0.3.0 | 2026-11-11 | Spec review round 2 (Opus, read-only; REVISE: 0 blocking, 1 major, 4 minor, 3 nit), all taken: `except:` matches the selector text and the stylesheet, not the value (two other `additions.css` coarse rules carry `var(--touch-floor)`: the selects' and the radio rows'); a line is a cluster of controls whose vertical extents overlap, counted over the AC-1.2 set; AC-1.8 names 360px for number entry; rows 4 and 5 gain the printings page's quick add and the grid's pager; rows 14b and 15 get widths and "Store again" is exempted by name; the hoisted helper and the re-premised example are stated exactly; a note that AC-2.11's example is not red by itself |
 | 0.2.0 | 2026-11-11 | Spec review round 1 (Opus, read-only; REVISE: 1 blocking, 5 major, 3 minor, 3 nit), all taken: the audit is per control and names the rule that covers each, and finds two more page families with their own 44px rules (number entry's list, the scanner's sitting and Add buttons), so AC-1.3 is limited to the controls with no page rule; the rows the review found missing or wrong are fixed (four job chips, "Other printings", "Show all N printings" on the card search, the card page's quick add, the pagers); AC-1.2 runs at two widths and covers `#status`, and asks for a width only of icon-only controls; the examples identify the block's rules by stylesheet and value, not by selector text alone (the min-height rule's text equals `components.css`'s); AC-1.5 defines a line and its rows; the supersession list gains `NumberEntry.md`, the alignment can-fail example, two spec comments and the callers of `apply_coarse_rules`; the view switch's width is stated exactly |
 | 0.1.0 | 2026-11-11 | First draft from issue #316 and the audit below. Routing: the change is a design-system rule (the README states the 40px exception), so it is a spec, not a direct fix. Decision 1 is the product call the issue leaves open, with a recommendation |
@@ -79,9 +80,9 @@ A measurement before this spec (a throwaway probe, 2026-11-11, with every coarse
 
 ## Decisions
 
-### 1. The floor for small controls rises to 44px on a coarse pointer, with no exception (proposed; a product call for Gate A)
+### 1. The floor for small controls rises to 44px on a coarse pointer, with no exception (ruled by the maintainer, 2026-11-11: option A)
 
-| | A. 44px for every small control on a coarse pointer (proposed) | B. Keep 40px, the README states a reasoned exception for dense toolbars | C. 44px only for controls that share a row with a 44px control (the filter bars) | D. 44px at every pointer, as Locations and the Decks pages do |
+| | A. 44px for every small control on a coarse pointer (ruled) | B. Keep 40px, the README states a reasoned exception for dense toolbars | C. 44px only for controls that share a row with a 44px control (the filter bars) | D. 44px at every pointer, as Locations and the Decks pages do |
 |---|---|---|---|---|
 | Consistency | one number for every target and every select; nothing to remember | the README keeps an exception, so each new page asks which side it is on | two floors on one page (the collection's bar at 44px, its bulk bar at 40px) | one number, one rule |
 | Touch target | every small control reaches 44px, including the destructive ones (Remove beside Move to… in the bulk bar, Undo) | a bulk bar's Remove and Move to… stay 4px short | the bulk bar and row menus stay short | as A |
@@ -90,7 +91,7 @@ A measurement before this spec (a throwaway probe, 2026-11-11, with every coarse
 | Evidence the exception was needed | none: the 40px came with the export, and five families of page already ship 44px small buttons | n/a | n/a | n/a |
 | Where the rule is | one block in `additions.css`, README sentence | the README's sentence stays and grows a paragraph | one block with a scoped selector | per-page, as today (five scopes already) |
 
-Recommended: **A**. The README's 40px exception has no recorded reason (its source is the export), the app's own pages for Locations, Decks, the proxy chooser, number entry's list and the scanner already use 44px for the same classes, the probe found no layout cost at 360px, and the destructive actions (Remove, Undo) are the controls where a missed tap costs the most. *B* is the alternative if the maintainer values the dense toolbar: the README would then keep "40px for small buttons, chips and the view switch" and add the reason, and this spec would shrink to a README paragraph, the audit and AC-1.4 (no change to CSS); say so at Gate A. *C* leaves two floors on one page. *D* costs the desktop's compact rows, which spec 072 and the issue keep.
+Ruled: **A**, by the maintainer on 2026-11-11 (recommended in the draft). The README's 40px exception has no recorded reason (its source is the export), the app's own pages for Locations, Decks, the proxy chooser, number entry's list and the scanner already use 44px for the same classes, the probe found no layout cost at 360px, and the destructive actions (Remove, Undo) are the controls where a missed tap costs the most. *B* is the alternative if the maintainer values the dense toolbar: the README would then keep "40px for small buttons, chips and the view switch" and add the reason, and this spec would shrink to a README paragraph, the audit and AC-1.4 (no change to CSS); say so at Gate A. *C* leaves two floors on one page. *D* costs the desktop's compact rows, which spec 072 and the issue keep.
 
 ### 2. One block of its own in `additions.css`, two rules inside `@media (pointer: coarse)`
 
@@ -189,7 +190,7 @@ Recorded in the specs index, both directions: spec 072's "Superseded by" gains t
 
 ## Open Questions
 
-1. **Decision 1** (A raise all, B keep the 40px exception, C and D): the maintainer's call. Recommended A. If B, this spec is withdrawn down to a README paragraph and the audit.
+None. Decision 1 was the one open question; the maintainer ruled A on 2026-11-11.
 
 ## Notes for the plan
 
