@@ -1,6 +1,6 @@
 # Implementation Plan: Deck Pages at Phone Width (spec 074, #326)
 
-**Spec:** docs/specs/074-deck-pages-phone-width/spec.md (v0.6.0, approved at Gate A by the coordinator at 0.3.0; Gate B approved the plan with 0.4.1; 0.5.0 adds AC-1.13 and 0.6.0 adds AC-1.14 and AC-1.15, both ruled by the coordinator; Task 3b is the 0.6.0 patch)
+**Spec:** docs/specs/074-deck-pages-phone-width/spec.md (v0.6.1, approved at Gate A by the coordinator at 0.3.0; Gate B approved the plan with 0.4.1; 0.5.0 adds AC-1.13 and 0.6.0 adds AC-1.14 and AC-1.15, both ruled by the coordinator, and 0.6.1 records the floor's measured cost and makes AC-1.15 a committed example; Task 3b is the 0.6.x patch)
 **Decisions:** none (no ADR; the rulings are the spec's Decisions 1 to 5)
 **Created:** 2026-11-11
 
@@ -10,7 +10,7 @@ Copied from the spec; every phase includes them.
 
 - `components.css` is not changed (the design export's file). All CSS goes in one block of `additions.css` under the heading `/* ---------- Menus open clear of the tab bar (spec 074) ---------- */`, whose comment must not contain "spec 019", "spec 021" or "spec 023" (guards in `spec/design_system_files_spec.rb`).
 - No view, helper, model, Rails controller, migration or export file changes (FR-5). The `menu` Stimulus controller and `additions.css` change.
-- The CSS applies only below 640px (`@media (max-width: 639px)`) on a tabbed shell (`.c-shell:not(.c-shell--untabbed)`); 640px and wider, and a shell with no tab bar, keep today's behaviour exactly.
+- The menu rules apply only below 640px (`@media (max-width: 639px)`) on a tabbed shell (`.c-shell:not(.c-shell--untabbed)`); 640px and wider, and a shell with no tab bar, keep today's menu behaviour exactly. The zone tables' menu column floor (Task 3b) follows the table's container, not the viewport or the shell.
 - The tab bar is drawn 67px high (56px link minimum height, 6px plus 4px link padding, 1px border, default `content-box`); the app bar 57px (56px plus 1px border). The margins are `calc(57px + var(--space-2))` above and `calc(67px + env(safe-area-inset-bottom) + var(--space-2))` below; the comment says where the 57px and 67px come from, so a later change to either bar finds them (Gate A condition 1).
 - The zone tables' menu column is at least 4rem (64px, border-box) below 640px of the table's container (`@container collection (max-width: 639px)` on `th.c-zone__c-menu`), the wide layout's own width, so every zone's columns sit at one x (spec Decision 6, AC-1.14); the comment names the 64px, the 46px column a trigger makes (30px button, 8px padding a side) and spec 075's 60px (44px trigger plus padding).
 - A menu is closed on `turbo:before-cache` (a document listener added in `connect`, removed in `disconnect`), at every width (spec AC-1.13).
@@ -668,6 +668,39 @@ Found while doing Task 4: the real page's zones misalign at 360px (measured: men
   end
 ```
 
+- [ ] Also add these two helpers next to `zone_columns` (the coarse rules are injected the way spec 072's examples did: every rule inside every `@media (pointer: coarse)` block of the loaded stylesheets, wrapper removed, in source order, as one `<style>`; headless Firefox has a fine pointer):
+
+```ruby
+  # Applies every rule inside every `@media (pointer: coarse)` block, as a touch screen draws them (the coarse trigger size included).
+  def apply_coarse_rules
+    frame_run(<<~JS)
+      const css = [...d.styleSheets].flatMap((sheet) => [...sheet.cssRules])
+        .filter((rule) => rule.conditionText && rule.conditionText.includes("pointer: coarse"))
+        .flatMap((rule) => [...rule.cssRules].map((inner) => inner.cssText)).join("\n")
+      const style = d.createElement("style")
+      style.textContent = css
+      d.head.append(style)
+    JS
+  end
+
+  # The page's width as the frame draws it, and how far each zone table is wider than its container.
+  def page_and_table_overflow
+    frame_js(<<~JS)
+      const spill = [...d.querySelectorAll(".c-zone .c-collection")].map((box) => box.scrollWidth - box.clientWidth)
+      return { page: d.documentElement.scrollWidth - d.documentElement.clientWidth, spill: Math.max(...spill) }
+    JS
+  end
+
+  # The worst case of `deck_page_spec.rb`: a 60-character name with no space, a six-symbol cost, 123 owned and 1,234 proxies.
+  def worst_case_row(deck, name: "W" * 60)
+    entry = create(:catalog_entry, name:)
+    faces = [ { "name" => name, "type_line" => "Creature", "mana_cost" => "{2}{W}{U}{B}{R}{G}", "image_uris" => {} } ]
+    create(:mtg_printing, entry:, legalities: { "modern" => "banned" }, faces:)
+    create_lot_in_zone(deck, "main", entry:, quantity: 123)
+    create(:deck_proxy, zone: deck.zone("main"), account:, entry:, finish: "nonfoil", quantity: 1234)
+  end
+```
+
 - [ ] In the same file, inside `context "with a collector's pages"`, after the `describe "the deck page"` group and before `describe "a deck whose row has proxies of three finishes"`, add:
 
 ```ruby
@@ -687,26 +720,39 @@ Found while doing Task 4: the real page's zones misalign at 360px (measured: men
         expect(columns.pluck("menu").min).to be >= 63.5
         expect([ spread.("menu"), spread.("cost"), spread.("total") ]).to all(be <= 1)
       end
+
+      # AC-1.15. Passes before and after: a guard on the floor's cost (spec Decision 6: the worst-case table spills 19px past its container,
+      # the document does not scroll sideways).
+      it "keeps the worst case from scrolling the page sideways at 360px with every coarse rule applied (AC-1.15)", :aggregate_failures do
+        worst_case_row(deck)
+        open_phone(deck_path(deck), ready: ".c-zone:first-child table")
+        apply_coarse_rules
+        overflow = page_and_table_overflow
+        expect(overflow["page"]).to be <= 0
+        expect(overflow["spill"]).to be <= 20, "the worst-case table is #{overflow["spill"]}px wider than its container (measured 19px)"
+      end
     end
 ```
 
 - [ ] Run: `bin/rspec spec/system/menu_tab_bar_clearance_spec.rb -e "(AC-1.14)"` — expect FAIL (the menu column is 46px, 16px, 16px; the Cost and Total edges 30px apart; record the numbers).
-- [ ] Append to the end of `app/assets/stylesheets/collector/additions.css`, inside this spec's block (after its `@media (max-width: 639px)` rule, same heading, nothing above it touched):
+- [ ] Append to the end of `app/assets/stylesheets/collector/additions.css`, after the menu clearance block, under its own heading:
 
 ```css
 
+/* ---------- Deck zones' menu column floor (spec 074) ---------- */
 /* The zone tables' menu column (spec 074, Decision 6). Below 640px of the table's container a zone table keeps its auto layout, where the
    menu column is as wide as its widest cell: 46px with a trigger (a 30px button and 8px of padding a side) and 16px when every cell is
    empty (a row with no proxy has no trigger), so a zone with no proxy was 30px narrower there and its Cost and Total moved with it
    (spec 060 AC-3.11). The floor is the 64px the wide layout already fixes (`width: 4rem` in the zone rules above), and it clears a
-   coarse pointer's 44px trigger (60px of column with its padding). th is border-box there, as in the wide layout: 4rem is the whole column. */
+   coarse pointer's trigger (58px of column today at 40px, 62px at #316's 44px target, not yet built). The worst-case row (a 60-character unbroken name, a six-symbol cost, 1,234 proxies) spills 19px past its container with it, 1px (fine pointer) or 13px (coarse) without: wrapping the proxy tag would remove that, and is out of this spec's scope. th is border-box there, as in the wide layout: 4rem is the whole column. */
 @container collection (max-width: 639px) {
   .c-zone .c-table th.c-zone__c-menu { box-sizing: border-box; min-width: 4rem; }
 }
 ```
 
 - [ ] Run: `bin/rspec spec/system/menu_tab_bar_clearance_spec.rb -e "(AC-1.14)"` — expect PASS. If the column does not reach 64px (a browser may ignore `min-width` on a header cell in an auto layout), try `width: 4rem` on the same selector in the same container query; report which worked.
-- [ ] Run: `bin/rspec spec/design_system_files_spec.rb` — expect PASS.
+- [ ] In the same file, change the comment of the zone rule `.c-zone .c-zone__c-total { width:1%; }` (line 501): replace `Total keeps its content's, as the menu does */` with `Total keeps its content's; the menu column keeps at least 4rem (spec 074's floor block at the end of this file) */`. Change nothing else above the blocks.
+- [ ] Run: `bin/rspec spec/system/menu_tab_bar_clearance_spec.rb -e "(AC-1.15)"` — expect PASS (it passes before the floor too: it is a guard; record the `spill` it reads, about 19). Run `bin/rspec spec/design_system_files_spec.rb` — expect PASS.
 - [ ] Commit: `fix(design-system): the deck zones' menu column keeps 4rem below 640px so every zone's columns align (spec 074)`
 
 ---
@@ -791,8 +837,8 @@ for path in sys.argv[1:]:
 
 ### Task 5b: document the menu column floor (spec 0.6.0)
 
-- [ ] `docs/design-system/components/DeckPage.md`, "The zone table", the bullet "**Auto layout below 640px of the table's container.**": append the sentence "The menu column keeps at least 4rem (64px, the wide layout's own width) here too, so a zone whose rows have no proxy (an empty menu cell) keeps Cost and Total at the same x as a zone with proxies (spec 074, AC-1.14; spec 068's empty cell had shrunk it to 16px against a trigger's 46px)." If that bullet's wording differs, put the sentence at the end of the bullet that describes the auto layout.
-- [ ] `docs/design-system/components/TableActions.md`: after the bullet "The cell is `width:1%` …" add the sentence to that bullet: " A zone table of `DeckPage` keeps the column at 4rem or more below 640px, so rows with no menu don't narrow it (`DeckPage`, spec 074)."
+- [ ] `docs/design-system/components/DeckPage.md`, "The zone table", the bullet "**Auto layout below 640px of the table's container.**": first replace its clause "Total takes its content width (`width: 1%`), as the menu does, so the auto layout does not stretch it." with "Total takes its content width (`width: 1%`) so the auto layout does not stretch it; the menu column keeps at least 4rem (below)."; then, at the end of that bullet, replace "(a 60-character name with no space and a six-symbol cost is the worst case)" with "(a 60-character name with no space and a six-symbol cost is the worst case: the page does not scroll sideways, but that row's table is up to 19px wider than its container, spec 074)"; then append the sentence "The menu column keeps at least 4rem (64px, the wide layout's own width) here too, so a zone whose rows have no proxy (an empty menu cell) keeps Cost and Total at the same x as a zone with proxies (spec 074, AC-1.14; spec 068's empty cell had shrunk it to 16px against a trigger's 46px)." If that bullet's wording differs, put the sentence at the end of the bullet that describes the auto layout.
+- [ ] `docs/design-system/components/TableActions.md`: append to the bullet "The cell is `width:1%`, so it shrinks to its menu and the other columns get the space; never set the width inline." the sentence: " A zone table of `DeckPage` keeps the column at 4rem or more below 640px, so rows with no menu don't narrow it (`DeckPage`, spec 074)."
 - [ ] Commit: `docs(design-system): the deck zones' menu column floor in DeckPage and TableActions (spec 074)`
 
 ---
