@@ -1,6 +1,6 @@
 # Verification: Add to a Deck from the Card Page (spec 071, #255)
 
-Plan: [plan.md](plan.md) (approved at Gate B). Spec: [spec.md](spec.md) v0.5.1.
+Plan: plan (retired in `3aaec4b0cfa66b36ccacf6019ea2da2857c4dc87`; read it with `git show 3aaec4b0cfa66b36ccacf6019ea2da2857c4dc87^:docs/specs/071-add-to-deck-from-card-page/plan.md`) (approved at Gate B). Spec: [spec.md](spec.md) v0.5.1.
 
 ## How each acceptance criterion is proved
 
