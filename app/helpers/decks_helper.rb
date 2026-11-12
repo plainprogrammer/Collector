@@ -70,6 +70,33 @@ module DecksHelper
     end
   end
 
+  # "Replaces 2 proxies in Izzet Tempo › Main · 2X2 · 117, Foil": the muted line of both replacement pages (spec 070 AC-2.1,
+  # AC-4.1). The printing is `deck_set_line`'s (with ` · LANG` for a language other than English), the finish the vocabulary's
+  # label, only when the proxy has one.
+  #
+  # @param deck [Deck]
+  # @param proxy [Deck::Proxy] with its zone, entry and set loaded
+  # @return [ActiveSupport::SafeBuffer]
+  def replaces_line(deck, proxy)
+    printing = safe_join([ tag.span(deck_set_line(proxy.entry), class: "is-data"), (", #{proxy.finish_label}" if proxy.finish) ])
+    safe_join([ "Replaces #{pluralize(number_with_delimiter(proxy.quantity), "proxy", "proxies")} in #{proxy_zone_label(deck, proxy.zone)} · ", printing ])
+  end
+
+  # A free lot's row text on Use my copy (spec 070 decision 4): the printing, the finish and the condition as the vocabulary
+  # labels them (each only when the lot has one), "paid $1.25" in the account's currency when it has a price, the place ("No
+  # location" when unplaced) and "×N free". It names the row's number field.
+  #
+  # @param lot [Lot] with its entry and location loaded
+  # @return [ActiveSupport::SafeBuffer]
+  def lot_pick_label(lot)
+    vocabulary = lot.vocabulary
+    finish = vocabulary.finish_label(lot.finish) if lot.finish
+    condition = vocabulary.conditions.fetch(lot.condition) { [ lot.condition.humanize ] }.first if lot.condition
+    price = "paid #{number_to_currency(lot.price_paid, unit: Current.account.currency_unit.symbol)}" if lot.price_paid
+    rest = [ condition, price, lot.place_label || "No location", "×#{number_with_delimiter(lot.quantity)} free" ].compact.join(", ")
+    safe_join([ tag.span(deck_set_line(lot.entry), class: "is-data"), (" #{finish}" if finish), ", ", rest ])
+  end
+
   # The finish as its collectible's vocabulary labels it; the humanised key for a collectible this instance no longer has.
   #
   # @param entry [Catalog::Entry]
