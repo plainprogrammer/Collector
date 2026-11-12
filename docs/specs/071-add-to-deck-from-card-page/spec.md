@@ -1,7 +1,7 @@
 # Feature 071: Add to a Deck from the Card Page
 
-**Status:** Draft
-**Version:** 0.3.0
+**Status:** Approved
+**Version:** 0.4.0
 **Created:** 2026-11-11
 **Last Updated:** 2026-11-11
 **Depends on:** [spec 068](../068-deck-proxies/spec.md) (proxies and `Deck::Proxy.add!`; merged), [spec 065](../065-deck-zones-in-pickers/spec.md) (`Location::Choices`, zones in pickers, `Lot::Move` into a zone; merged), [spec 060](../060-deck-components/spec.md) (the `AddToDeck` design, decision 14; merged), [spec 057](../057-deck-design-rules/spec.md) (the words "Free to use", "Considering", "Deck › Zone"; merged), [spec 062](../062-create-rename-remove-a-deck/spec.md) (decks, zones; merged)
@@ -15,6 +15,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.4.0 | 2026-11-11 | Approved at Gate A (the coordinator, under the maintainer's delegation); decision 16 ruled A by the maintainer: a success lands on the card page; the Open Questions are closed |
 | 0.3.0 | 2026-11-11 | From review round 2 (0 blocking, 3 major) and the coordinator's ruling: `Lot.free` and `Lot::MoveIntoZone` are provided by spec 070 (decision 6, FR-2, FR-3); one precedence rule for `use` values (decision 11, AC-5.1); FR-1 allows the zone's own lot to gain copies; AC-1.5 is measured with the coarse sizes injected; the removed-zone 404 comes from the lookup (AC-3.12); the visitor docs and selector joined the supersession list |
 | 0.2.0 | 2026-11-11 | From review round 1 (0 blocking, 6 major): the coarse floor is one new rule, the How many field and the new link already have 44px from `components.css` (AC-6.3, AC-6.4, decision 17); AC-1.5 is measurable (one line, inside the row, not clipped) and both `card_page_spec.rb` width assertions are listed; a taken lot `Lot` refuses is a sentence (decision 11, AC-3.11) and the take's transaction rule is in FR-3 (AC-3.12); a printing whose type has no vocabulary or source is 404 (decision 2, AC-1.3); the supersession list gains the visitor system spec, spec 004 AC-9.5, specs 065 and 066's Non-Goals, the roadmap item and the lower-case finish; the card's name, flat parameters, the collection mark on the form, the singular "1 more place", delimiters |
 | 0.1.0 | 2026-11-11 | First draft from issue #255, specs 057, 060, 065 and 068, the area docs `collection-and-lots.md` and `tenancy-and-accounts.md`, and `AddToDeck.md` |
@@ -71,7 +72,7 @@ This spec adds "Add to deck" to the card page: one page where the collector choo
 13. **No data model change, no migration, no ADR, no export change.** A move changes a lot's `location_id` and `lot_key` as `Lot::Move` does; a proxy is a `deck_proxies` row. Export format version 4 and its Coverage tables are unchanged, so the spec writes nothing under `docs/export-format/`.
 14. **The deck code stays collectible-agnostic.** The controller, views, helper text and models of this feature name no collectible, format or zone key but `considering` (`spec/deck_core_spec.rb`): the finish words, the category name and "Magic" come from the vocabulary, the formats from `Catalog::Formats`. The new files join that spec's list.
 15. **The card's name is `entry.name`,** as the card page's heading and Move copies' notice use it, in the heading, the notices and the refusals.
-16. **Open for the maintainer, with a recommendation:** where a success goes (decision 10). Recommended: the card page, as written. Alternative: the deck page of the zone, which shows the card's row with Owned and Proxy.
+16. **Ruled (the maintainer, option A, 2026-11-11): a success goes to the card page** (decision 10), with the notice naming the deck and zone. Alternative not chosen: the deck page of the zone, which shows the card's row with Owned and Proxy.
 17. **The page and the head action follow the design system.** The page is `AddToDeck.md`'s markup inside `c-main c-page c-decks` (the Decks pages' class carries the 44px floor of `c-btn`, the select's coarse floor and the long-name wrap, spec 062, 068); the one new piece of CSS is a coarse-pointer floor for the radio rows (AC-6.3), under its own heading in `collector/additions.css`. The How many field's 44px, and the card page's new link's, are already the app-wide coarse rule `.c-btn, .c-input { min-height:44px }` of `components.css`.
 
 ## User Stories
@@ -230,7 +231,7 @@ The take: this spec's count and order over spec 070's `Lot::MoveIntoZone` (decis
 
 ## Open Questions
 
-1. Where a success goes: the card page (recommended, decision 10) or the deck page (decision 16). Asked of the maintainer at Gate A; the AC changes in two lines if the answer is the deck page.
+None. Decision 16 is ruled (the maintainer, 2026-11-11, at Gate A); the rest is approved as written.
 
 ## Out of Scope (Future Considerations)
 
