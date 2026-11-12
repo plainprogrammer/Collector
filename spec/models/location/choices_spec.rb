@@ -64,4 +64,26 @@ RSpec.describe Location::Choices, type: :model do
     create(:deck, account:)
     expect(described_class.new(account).any?(except: place.id)).to be(true)
   end
+
+  describe "#decks_of" do
+    it "offers only the decks of the collectible type, with their zones", :aggregate_failures, :other_collecting do
+      mine = create(:deck, account:, name: "Izzet Tempo")
+      create(:deck, account:, name: "Elsewhere", pair: "other/standard")
+      create(:deck, name: "Theirs") # another account's
+
+      groups = described_class.new(account).decks_of("mtg")
+
+      expect(groups.map { |group| group.location.name }).to eq([ "Izzet Tempo" ])
+      expect(groups.first.zones.map(&:id)).to eq(mine.zones.map(&:id))
+      expect(described_class.new(account).decks_of("other").map { |group| group.location.name }).to eq([ "Elsewhere" ])
+    end
+
+    it "is empty for an account with no deck of the type, one more statement than the choices' own", :aggregate_failures do
+      choices = described_class.new(account)
+      choices.decks
+
+      expect(count_queries { choices.decks_of("mtg") }).to eq(1)
+      expect(choices.decks_of("mtg")).to be_empty
+    end
+  end
 end
