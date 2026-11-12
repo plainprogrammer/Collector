@@ -164,7 +164,7 @@ RSpec.describe "Small controls meet the touch floor on a coarse pointer", :solid
       2.times { |i| NumberEntry.add!(account:, entry: i.zero? ? entry : second_printing, quantity: 1, finish: "nonfoil", line_key: SecureRandom.hex(16)) }
       [ entry, second_printing ].each { |printing| Scanner::Sitting.add!(account:, printing:, finish: "nonfoil", reading_key: SecureRandom.hex(16)) }
       create(:user)
-      fail_job(queue_job(MTG::Art::BuildJob))
+      2.times { fail_job(queue_job(MTG::Art::BuildJob)) } # two failed, so the failed list has a second page
       queue_job(MTG::Art::BuildJob, wait: 1.hour)
     end
 
@@ -185,13 +185,15 @@ RSpec.describe "Small controls meet the touch floor on a coarse pointer", :solid
           wide: [ [ ".c-btn--sm", "Show all sets" ], [ ".c-grid .c-btn--sm", nil ], [ ".c-pager .c-btn--sm", "Next" ] ] },
         "collection grid" => { path: collection_path(view: "grid"), # row 5
           wide: [ [ ".c-filterbar__filters .c-btn--sm", "Filter" ], [ ".c-filterbar__bulk", "Edit many" ], [ ".c-seg button", nil ], [ ".c-pager .c-btn--sm", "Next" ] ],
-          narrow: [ [ ".c-filterbar__more summary", nil ], [ ".c-seg button", nil ], [ ".c-appbar .c-appbar__add", nil ] ] },
+          narrow: [ [ ".c-filterbar__filters .c-btn--sm", "Filter" ], [ ".c-filterbar__more summary", nil ], [ ".c-seg button", nil ],
+                    [ ".c-pager .c-btn--sm", "Next" ], [ ".c-appbar .c-appbar__add", nil ] ] },
         "collection table" => { path: collection_path(view: "table"), # row 6
           wide: [ [ ".c-table summary.c-btn--sm.c-btn--icon", nil ], [ ".c-seg button", nil ], [ ".c-pager .c-btn--sm", "Next" ] ] },
         "bulk mode" => { path: collection_path(bulk: 1), # row 7
           wide: [ [ ".c-bulkbar__extra .c-btn--sm", "Set condition" ], [ ".c-bulkbar__extra .c-btn--sm", "Move to" ], [ ".c-bulkbar__extra .c-btn--sm", "Remove" ],
                   [ ".c-bulkbar .c-btn--sm", "Done" ], [ ".c-filterbar__filters .c-btn--sm", "Filter" ], [ ".c-seg button", nil ], [ ".c-pager .c-btn--sm", "Next" ] ],
-          narrow: [ [ ".c-bulkbar__more summary", nil ], [ ".c-bulkbar .c-btn--sm", "Done" ] ] },
+          narrow: [ [ ".c-bulkbar__more summary", nil ], [ ".c-bulkbar .c-btn--sm", "Done" ], [ ".c-filterbar__filters .c-btn--sm", "Filter" ],
+                    [ ".c-seg button", nil ], [ ".c-pager .c-btn--sm", "Next" ] ] },
         "number entry" => { path: collection_number_entry_path(type: "mtg", set: entry.set.code, language: "en"), # rows 8, 8b
           wide: [ [ ".c-numentry__language .c-btn--sm", "Change language" ], [ ".c-btn--sm", "Change set" ], [ ".c-numentry__list .c-btn--sm", "Done" ],
                   [ ".c-numentry__list .c-btn--sm", "Undo" ], [ ".c-numentry__list summary.c-btn--sm", "Show all" ] ] },
@@ -212,17 +214,17 @@ RSpec.describe "Small controls meet the touch floor on a coarse pointer", :solid
 
     # Runs the block on the page: in the window at 1280px, or in a frame `width` px wide (the frame is the document the block
     # measures and injects into, so `document` and `window` in its scripts are the frame's).
-    def in_page(name, width: 1280, &block)
-      definition = pages.fetch(name)
+    def in_page(name, width: 1280, path: nil, &block)
+      path ||= pages.fetch(name).fetch(:path)
       if width < 500
         visit collection_path(view: "grid")
-        open_in_narrow_frame(definition.fetch(:path), width:, ready: "main")
+        open_in_narrow_frame(path, width:, ready: "main")
         within_narrow_frame do
           settle(name)
           block.call
         end
       else
-        visit definition.fetch(:path)
+        visit path
         expect(page).to have_css("main")
         settle(name)
         yield
@@ -265,6 +267,26 @@ RSpec.describe "Small controls meet the touch floor on a coarse pointer", :solid
             expect(found).not_to be_empty, "#{name}: no small control is drawn"
             expect(found.select { it["height"] < 44 }.map { it["name"] }).to be_empty, "#{name}: under 44px high"
             expect(found.select { it["icon"] && it["width"] < 44 }.map { it["name"] }).to be_empty, "#{name}: icon-only under 44px wide"
+          end
+        end
+      end
+    end
+
+    # The pages whose pager draws Previous: the second page of each (every route above is page 1, which has no Previous). The admin
+    # jobs' failed list has two jobs (make_fixtures) and the printings page two entries in the set (English and Japanese).
+    def second_pages
+      { "card search" => catalog_entries_path(q: "Lightning", page: 2), # row 2
+        "printings page" => catalog_identity_path(entry.identity, set: entry.set.code, page: 2), # row 4
+        "admin jobs" => admin_jobs_path(status: "failed", page: 2) } # row 12
+    end
+
+    [ 1280, 360 ].each do |width|
+      it "draws the pagers' Previous at 44px on a second page at #{width}px (AC-1.2, rows 2, 4 and 12)", :aggregate_failures do
+        second_pages.each do |name, path|
+          in_page(name, width:, path:) do
+            inject_coarse(needs: block_rules)
+            expect(drawn?(".c-pager .c-btn--sm", "Previous")).to be(true), "#{name}: no Previous is drawn on page 2"
+            expect(small_controls.select { it["height"] < 44 }.map { it["name"] }).to be_empty, "#{name}: under 44px high"
           end
         end
       end
