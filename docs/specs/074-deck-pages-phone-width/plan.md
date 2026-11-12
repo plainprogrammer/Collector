@@ -1,6 +1,6 @@
 # Implementation Plan: Deck Pages at Phone Width (spec 074, #326)
 
-**Spec:** docs/specs/074-deck-pages-phone-width/spec.md (v0.4.1, approved at Gate A by the coordinator)
+**Spec:** docs/specs/074-deck-pages-phone-width/spec.md (v0.5.0, approved at Gate A by the coordinator at 0.3.0; Gate B approved the plan with 0.4.1; 0.5.0 adds AC-1.13 from the coordinator)
 **Decisions:** none (no ADR; the rulings are the spec's Decisions 1 to 5)
 **Created:** 2026-11-11
 
@@ -12,6 +12,7 @@ Copied from the spec; every phase includes them.
 - No view, helper, model, Rails controller, migration or export file changes (FR-5). The `menu` Stimulus controller and `additions.css` change.
 - The CSS applies only below 640px (`@media (max-width: 639px)`) on a tabbed shell (`.c-shell:not(.c-shell--untabbed)`); 640px and wider, and a shell with no tab bar, keep today's behaviour exactly.
 - The tab bar is drawn 67px high (56px link minimum height, 6px plus 4px link padding, 1px border, default `content-box`); the app bar 57px (56px plus 1px border). The margins are `calc(57px + var(--space-2))` above and `calc(67px + env(safe-area-inset-bottom) + var(--space-2))` below; the comment says where the 57px and 67px come from, so a later change to either bar finds them (Gate A condition 1).
+- A menu is closed on `turbo:before-cache` (a document listener added in `connect`, removed in `disconnect`), at every width (spec AC-1.13).
 - The controller scrolls only when the open list's bottom edge plus its bottom margin is below the viewport; "nearest" alignment; `instant` under `prefers-reduced-motion: reduce`, `smooth` otherwise, read when the menu opens.
 - A 360px viewport in a spec is a frame of 360px plus the measured scrollbar, no taller than the window's viewport; overflow is compared with `clientWidth`, never `innerWidth` (#318).
 - Tolerance: "at least 8px" and "within 1px" are compared with 0.5px of layout rounding, stated in each example.
@@ -52,7 +53,7 @@ One implementer (Sonnet) takes each batch, one commit per task, reading `plan.md
 
 ## Phase 0: The failing system spec
 
-**Implements:** FR-4 | **Satisfies:** AC-1.1 to AC-1.12, AC-3.1 (all proved here; AC-1.1, AC-1.3, AC-1.5, AC-1.6, AC-1.8, AC-1.9 fail until Phase 1)
+**Implements:** FR-4 | **Satisfies:** AC-1.1 to AC-1.13, AC-3.1 (all proved here; AC-1.1, AC-1.3, AC-1.5, AC-1.6, AC-1.8, AC-1.9, AC-1.13 fail until Phase 1)
 **Files:** `spec/system/menu_tab_bar_clearance_spec.rb`
 **Interfaces:** Consumes: `open_in_narrow_frame`, `within_narrow_frame` (`spec/support/narrow_frame.rb`), `system_sign_in_as` (`spec/support/authentication_helpers.rb`), `create_lot_in_zone` (`spec/support/deck_helpers.rb`), `owned_printing` (`spec/support/collection_helpers.rb`), `queue_job`/`fail_job` (the `:solid_queue` helpers), factories `:deck`, `:deck_proxy`, `:mtg_printing`, `:catalog_entry`, `:lot`, `:user`, `:admin`. Produces: nothing later phases call; Phase 1 must make it pass.
 
@@ -355,6 +356,23 @@ RSpec.describe "Menus and the phone's tab bar", type: :system do
         expect(hit).to be(false)
       end
 
+      it "restores a page from Turbo's cache with every menu closed and the scroll it had (AC-1.13)", :aggregate_failures do
+        open_phone(path, ready:)
+        place_trigger(trigger, gap: 40)
+        open_menu(trigger)
+        settle
+        left_at = scroll_y
+        within_narrow_frame do
+          find("details.c-menu[open] a", text: "Change proxy count").click
+          expect(page).to have_no_css(".c-zone")
+        end
+        frame_run("w.history.back()")
+        within_narrow_frame { expect(page).to have_css(".c-zone table").and(have_no_css("html[aria-busy]")) }
+        settle
+        expect(open_menus).to eq(0)
+        expect(scroll_y).to be_within(1).of(left_at)
+      end
+
       it "finds a scrolling ancestor of a menu when there is one, so AC-1.11's check can fail" do
         open_phone(path, ready:)
         frame_run(<<~JS)
@@ -512,7 +530,7 @@ end
 
 Notes for the implementer: the file has no `let!`, no constants and at most one `let` a group, because `.rubocop.yml` enforces `RSpec/MultipleMemoizedHelpers` (max 5, counted across ancestor groups), `RSpec/LetSetup`, `RSpec/InstanceVariable` and `RSpec/ExampleLength` (max 15); it was linted statically (`bin/rubocop --stdin`) and syntax-checked before this plan was written, not run. Each describe defines `path`, `ready`, `trigger` and `trigger_index` as methods, and the shared examples call them. The route helpers (`new_deck_zone_proxy_path(deck, "main", …)`, `new_deck_proxy_replacement_path`) are from `bin/rails routes | grep deck`; `entry.external_key` is the entry's route key. If a cop objects after an edit, fix the code, not the config.
 
-- [ ] Run: `bin/rspec spec/system/menu_tab_bar_clearance_spec.rb` — expect FAIL for: AC-1.1, AC-1.3 (the five pages' "scrolled clear" examples: the card page, the collection, the deck page's own row menus, the users list, the jobs list; the admin menus have one or two items but still end behind the bar), AC-1.5 (both), AC-1.6 on a phone, AC-1.8, AC-1.9; expect PASS for AC-1.2, AC-1.4, AC-1.6 at 1280px, AC-1.7 (the Escape example, the outside-click example, and the hit-test with the trigger 120px from the top), AC-1.10, AC-1.11 (the five pages), AC-1.12, "finds a scrolling ancestor" and AC-3.1. If an example the plan expects green is red, or one expected red is green, fix the example, not the plan: a red example that should be green usually means the fixture can't place the trigger (the `place_trigger` message says so). Record the red/green list in `verification.md` and commit that file with this task.
+- [ ] Run: `bin/rspec spec/system/menu_tab_bar_clearance_spec.rb` — expect FAIL for: AC-1.1, AC-1.3 (the five pages' "scrolled clear" examples: the card page, the collection, the deck page's own row menus, the users list, the jobs list; the admin menus have one or two items but still end behind the bar), AC-1.5 (both), AC-1.6 on a phone, AC-1.8, AC-1.9, AC-1.13 (the restored snapshot still holds the open menu); expect PASS for AC-1.2, AC-1.4, AC-1.6 at 1280px, AC-1.7 (the Escape example, the outside-click example, and the hit-test with the trigger 120px from the top), AC-1.10, AC-1.11 (the five pages), AC-1.12, "finds a scrolling ancestor" and AC-3.1. If an example the plan expects green is red, or one expected red is green, fix the example, not the plan: a red example that should be green usually means the fixture can't place the trigger (the `place_trigger` message says so). Record the red/green list in `verification.md` and commit that file with this task.
 - [ ] Commit: `test: add the menu and tab bar clearance examples (spec 074)`
 
 ---
@@ -572,16 +590,19 @@ export default class extends Controller {
     this.close = this.close.bind(this)
     this.onKeydown = this.onKeydown.bind(this)
     this.reveal = this.reveal.bind(this)
+    this.closeForCache = this.closeForCache.bind(this)
     document.addEventListener("click", this.close)
     document.addEventListener("keydown", this.onKeydown)
     // `toggle` does not bubble, so the listener is on the <details> itself (no view carries a data-action for it).
     this.element.addEventListener("toggle", this.reveal)
+    document.addEventListener("turbo:before-cache", this.closeForCache)
   }
 
   disconnect() {
     document.removeEventListener("click", this.close)
     document.removeEventListener("keydown", this.onKeydown)
     this.element.removeEventListener("toggle", this.reveal)
+    document.removeEventListener("turbo:before-cache", this.closeForCache)
   }
 
   close(event) {
@@ -593,6 +614,12 @@ export default class extends Controller {
       this.element.open = false
       this.element.querySelector("summary")?.focus()
     }
+  }
+
+  // Turbo caches the page as the collector leaves it, and a <details> restored with its `open` attribute fires `toggle` again, which
+  // would scroll the page on Back. Closing the menu before the snapshot is taken restores the page with every menu closed (AC-1.13).
+  closeForCache() {
+    this.element.open = false
   }
 
   // When the <details> opens and its list would end behind the tab bar, scrolls the page just far enough (the list's
@@ -613,7 +640,7 @@ export default class extends Controller {
 }
 ```
 
-- [ ] Run: `bin/rspec spec/system/menu_tab_bar_clearance_spec.rb` — expect all PASS. If AC-1.8 or AC-1.9 fail, read the failure's numbers first (the measured prototype is in `verification.md`) and report before changing the CSS or the spec.
+- [ ] Run: `bin/rspec spec/system/menu_tab_bar_clearance_spec.rb` — expect all PASS (AC-1.13 included: the restored page has no open menu and keeps its scroll). If AC-1.8 or AC-1.9 fail, read the failure's numbers first (the measured prototype is in `verification.md`) and report before changing the CSS or the spec.
 - [ ] Run: `bin/rspec spec/system/bulk_mode_spec.rb spec/system/narrow_admin_pages_spec.rb spec/system/narrow_bulk_pages_spec.rb spec/system/bulk_move_spec.rb spec/system/admin_jobs_spec.rb spec/system/deck_proxy_replacements_spec.rb spec/system/lot_moves_spec.rb` — expect PASS (the existing examples that open a menu; the plan's list from the spec's Notes). Note the result for `verification.md`.
 - [ ] Run: `bin/rubocop app/javascript spec/system/menu_tab_bar_clearance_spec.rb` (the JS is not linted; the spec is) and `bin/importmap audit` is unaffected.
 - [ ] Commit: `feat(menu): scroll an opened menu clear of the phone tab bar (spec 074)`
@@ -667,7 +694,7 @@ for path in sys.argv[1:]:
 
 ```markdown
 - A Stimulus `menu` controller adds close on outside click and Esc, focus return to the trigger on Esc, and, on a phone, the scroll below; without it the menu still opens and closes. (There is no arrow-key movement: an earlier version of this line, and the comment above `.c-menu` in `components.css`, claimed it; the export's comment is left as it is and the next export fixes it, spec 074.)
-- **A menu opened near the bottom of a phone is scrolled clear of the tab bar** (spec 074, #326). Below 640px, on a page with a tab bar, the controller scrolls the page just far enough that the open list's bottom edge ends `space-2` above the bar (plus `env(safe-area-inset-bottom)`), and a list taller than the room between the app bar and the bar starts just under the app bar. It does nothing when the list is already clear, at 640px and wider, or on a page with no tab bar (`c-shell--untabbed`), and it scrolls instantly under `prefers-reduced-motion: reduce` and smoothly otherwise. The clearances are `scroll-margin-top` and `scroll-margin-bottom` on `.c-menu__list` and a room box (an `::after` on the open list, as wide as the list, `pointer-events: none`) that lets the page scroll that far at its end, all in one block of `additions.css`; a menu is never put inside a scrolling container, or the room box would show as a scrollbar in it. The 57px (app bar) and 67px (tab bar) in the block are the bars' drawn heights: change them with the bars.
+- **A menu opened near the bottom of a phone is scrolled clear of the tab bar** (spec 074, #326). Below 640px, on a page with a tab bar, the controller scrolls the page just far enough that the open list's bottom edge ends `space-2` above the bar (plus `env(safe-area-inset-bottom)`), and a list taller than the room between the app bar and the bar starts just under the app bar. It does nothing when the list is already clear, at 640px and wider, or on a page with no tab bar (`c-shell--untabbed`), and it scrolls instantly under `prefers-reduced-motion: reduce` and smoothly otherwise. The clearances are `scroll-margin-top` and `scroll-margin-bottom` on `.c-menu__list` and a room box (an `::after` on the open list, as wide as the list, `pointer-events: none`) that lets the page scroll that far at its end, all in one block of `additions.css`; a menu is never put inside a scrolling container, or the room box would show as a scrollbar in it. A menu is closed before Turbo caches the page (`turbo:before-cache`), so Back restores the page with every menu closed and without a scroll. The 57px (app bar) and 67px (tab bar) in the block are the bars' drawn heights: change them with the bars.
 ```
 
 - [ ] `docs/design-system/components/TableActions.md`: append one bullet after "Used by …":
@@ -724,6 +751,7 @@ for path in sys.argv[1:]:
 - [ ] Remove `pointer-events: none` from the room box: run `-e "under the room box"` — expect FAIL. Restore.
 - [ ] Remove the room box rule: run `-e "(AC-1.8)"` — expect FAIL. Restore.
 - [ ] Remove `scroll-margin-top`: run `-e "(AC-1.9)"` — expect FAIL. Restore.
+- [ ] Remove the `turbo:before-cache` listener (the line in `connect`): run `-e "(AC-1.13)"` — expect FAIL (the restored page holds an open menu). Restore.
 - [ ] In `app/views/decks/show.html.erb` (do not commit) remove `<%= render "layouts/tabbar", section: :decks %>`: run `-e "(AC-3.1)"` — expect FAIL naming "Deck". Restore (`git checkout app/views/decks/show.html.erb`).
 - [ ] `git status --short` shows only the intended files. Record each mutation and its result in `verification.md`.
 
@@ -738,7 +766,7 @@ for path in sys.argv[1:]:
 - [ ] Write `spec/system/zz_074_screenshots_spec.rb` (uncommitted) with factory data as `.claude/memory/pr-screenshots-workflow.md` describes: the deck of Phase 0's fixture, `SHOTS_DIR=<scratchpad>`. Window taller than the frame: `page.current_window.resize_to(1400, 1400)` (the default). Shots, each in light and dark (set `data-theme` in the page and inside the frame, pause 0.6s after each switch), at a 360px viewport (`open_phone`-style frame, 640px tall): (1) AFTER: the deck page, Proxy Card 4's menu opened 40px above the bar, settled; (2) AFTER: Tail Card's eight-item menu at the page's end; (3) BEFORE, emulated: the same two states with the page restored to the scroll position it had when the menu opened (`w.scrollTo(0, before)` right after the click settles), which is what the old code showed; say so in `verification.md`; (4) the two previews (`DeckPage.html`, `DeckPagePhone.html`) served as the memory file's "static previews" paragraph says, at 1280px and a 390px frame, both themes; (5) the card page's copies menu and the collection table's row menu opened near the bottom, after only; (6) one 1280px shot of the deck page with a menu open (nothing moved). Look at every shot yourself before keeping it, and look for the tab bar in each phone shot.
 - [ ] Compress with `magick in.png -resize 1000x -quality 70 out.jpg`; copy into `docs/specs/074-deck-pages-phone-width/screenshots/` with names like `01-row-menu-near-bottom-after-360-light.jpg`; list them in `verification.md`. A short GIF of the menu opening and the page scrolling (frames at 4 per second: `ffmpeg -framerate 4 -pattern_type glob -i 'f-*.png' -vf "scale=960:-1,split[a][b];[a]palettegen=max_colors=128[p];[b][p]paletteuse" -loop 0 menu-clears-tab-bar-360.gif`, under 1 MB).
 - [ ] Delete `spec/system/zz_074_screenshots_spec.rb` and `spec/system/zz_074_probe_spec.rb` before committing. Commit the images: `docs(spec): add the before and after shots for spec 074`.
-- [ ] Fill `verification.md`: the red and green lists of Phase 0, the mutation results, the test counts, the Back-navigation check (open a row menu, follow "Edit copy", press Back: record whether the page scrolls on restore), the measured move when the menu closes at a page's end, the existing-example runs, the screenshots, the 0.5px tolerance, and that the headless Firefox can't emulate a coarse pointer (the 44px row items are not measured here). Then the implementation review (Mode B, read-only, Opus) under `## Implementation review` with its verdict on the first line.
+- [ ] Fill `verification.md`: the red and green lists of Phase 0, the mutation results, the test counts, the Back check is AC-1.13's example (its mutation in Task 7 is the evidence), the measured move when the menu closes at a page's end, the existing-example runs, the screenshots, the 0.5px tolerance, and that the headless Firefox can't emulate a coarse pointer (the 44px row items are not measured here). Then the implementation review (Mode B, read-only, Opus) under `## Implementation review` with its verdict on the first line.
 
 ---
 
