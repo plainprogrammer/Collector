@@ -1,0 +1,46 @@
+# Verification: spec 072, selects meet the touch floor on a coarse pointer
+
+**Branch:** `072-select-touch-floor` | **Issue:** [#315](https://github.com/plainprogrammer/Collector/issues/315) | **Spec:** [spec.md](spec.md) 0.3.0 | **Plan:** [plan.md](plan.md)
+
+## Acceptance criteria
+
+The system examples are in `spec/system/select_touch_floor_spec.rb` (10 examples; the `[ 1280, 360 ]` loop makes AC-1.5 two). Run on 2026-11-11 with `bin/rspec spec/system/select_touch_floor_spec.rb spec/system/deck_proxies_spec.rb spec/design_system_files_spec.rb`: **26 examples, 0 failures**. The red run before the CSS (commit `27efb740`) was 19 examples, 9 failures, exactly the plan's expected list: AC-1.1, AC-1.2, AC-1.4, both AC-1.5 widths, "needs the alignment rule", AC-1.7, AC-1.6 and spec 068's rewritten AC-9.1 example; AC-1.3 and "notices a rule that grows another control" passed, as they guard what exists today and test the check itself.
+
+| AC | Proved by |
+|---|---|
+| AC-1.1 | "has one coarse-pointer rule for selects…": the one coarse rule with a select selector is `.c-field select, .c-select select` at `var(--touch-floor)`; `--touch-floor` resolves to 44px |
+| AC-1.2 | "reaches every select of every page with the select rule alone": all 15 entries of the spec's `pages` (the audit's twelve pages split into their routes, and measurement mode), every drawn select at least 44px, at least one per page, every one inside `.c-field` or `.c-select` |
+| AC-1.3 | "leaves a fine pointer's heights alone": 36px for a `c-field` select, 28px for a `c-select` select, nothing injected |
+| AC-1.4 | "keeps every page whole at 360px with all the coarse rules": no overflow, no wide select, no overlap, every page in a 360px frame |
+| AC-1.5 | "centres the filter row's button on its select" at 1280px and 360px (collection in grid view and in bulk mode, card search, proxy chooser), and "needs the alignment rule" as its can-fail example |
+| AC-1.6 | "has no select rule scoped to the deck pages…": no `.c-decks … select` selector, no `.c-select select` in a coarse block |
+| AC-1.7 | "changes no other control's size": every page at 360px, all coarse rules with and without the block's two; "notices a rule that grows another control" is its can-fail example (the Search button goes from 40px to 90px) |
+| AC-2.1 | read: `docs/design-system/README.md` line 73 now says a select is at least 44px on a coarse pointer, its compact 28px and 36px are the fine pointer's, the rule lives in one block of `additions.css`, it covers `c-field` and `c-select`, and the filter row centres its controls; `bundle.css` is corrected to `components.css` and `additions.css` on lines 73 and 103 |
+| AC-2.2 | read: `Form.md` (the select-height sentence now states both pointers), `FilterSelect.md` (the 40px sentence is now 44px with the centring, the "Used by" bullet lists the chooser and number entry's language row), `DecksIndex.md` (the scoped-rule bullet points to the app-wide rule), `AddProxy.md` lines 9 and 40 (they named `.c-decks … select`) and its Sources line, `AddToDeck.md`, `NumberEntry.md` and `Scanner.md` (one bullet each). The six previews that draw a select load `additions.css` already and change nothing |
+| AC-2.3 | read: `docs/specs/README.md` has the row for 072 and spec 068's "Superseded by" cell names it |
+| AC-3.1 | `git diff --stat origin/main...HEAD -- app db config lib`: one file, `app/assets/stylesheets/collector/additions.css`, 12 insertions, 7 deletions. No view, helper, controller, model, migration, export or other stylesheet changed |
+| AC-3.2 | `spec/system/deck_proxies_spec.rb`'s AC-9.1 select example reads the app-wide rule and passes; its width examples and spec 064's Change format examples pass (the Phase 2 run: 105 examples across `select_touch_floor`, `deck_proxies`, `design_system_files`, `design_system_deck_rules`, `deck_page`, `decks`, `catalog_search`, `collection_location_filter` and `number_entry`, 0 failures) |
+
+## The audit
+
+Command, run 2026-11-11 from the repository root: `git grep -n -E "<select|form\.select|f\.select|select_tag|collection_select|grouped_collection_select|c-select" -- app ':!app/assets' ':!.kamal/secrets'`. It finds the twelve pages of the spec's table (card search, collection, number entry, add and edit copy, Move copies, bulk Move to…, scanner, New deck and Change format, proxy chooser, proxy form, Currency) and the development-only measurement panel, and nothing else; no select is built by script (`app/javascript` has none). The issue's "import, admin" draw no select. The rest of the hits are the `_bulk` and `_view_forms` forms (`collection_selection_path`, which only match "select" in the word) and comments. The Add to deck page of `AddToDeck.md` is design only, not built yet.
+
+## The supersession grep
+
+Command: `git grep -n -E "c-decks \.c-(select|field)|min-height: ?40px|pointer: ?coarse|touch.floor|grows to at least 40|Selects get the same height" -- spec docs app .claude CLAUDE.md README.md ':!docs/specs' ':!docs/lessons' ':!.kamal/secrets'`, with the dispositions in the plan's table. After the change, `git grep -n -E "c-decks \.c-(select|field)|min-height: ?40px|grows to at least 40" -- spec docs/design-system app` prints one line: `components.css:173`, the 40px of small buttons, chips and the view switch, which the spec leaves as the README states it (Non-Goals). Specs 064 and 068 and their `verification.md` files are history and are not edited.
+
+## Decisions taken while implementing
+
+- **The `display:flex` fallback for the `c-select` label was not needed.** AC-1.5 passed at both widths on the first run with the plain label: the select's centre and the button's are within 1px.
+- **`layout_report` skips the items of a closed `<details>` menu.** The first run after the CSS failed AC-1.4 and AC-1.5 on bulk mode: Firefox reports a box for the closed More menu's items (an absolutely placed list nobody sees), which overlapped the table under it. The menu's own summary is still measured. The assertions are not loosened. This is a measurement fix, not a CSS defect.
+- **No scanner overlap exclusion, no scrollbar or timing fix was needed.** The plan's pinned scrollbar (`html { overflow-y: scroll }`) and the wait for the scanner's stage are in the examples as written.
+- **Coarse rules are applied as an adopted constructable stylesheet, not a `<style>` element** (the coordinator accepted this at Gate B): it sits after every link in the cascade, in source order, and the scanner pages' policy (`style-src 'self' 'unsafe-inline'`) does not matter to it.
+- **AC-1.5's "list view" is the collection's grid view,** named in the URL (`view: "grid"`) because the view is a saved preference; bulk mode is a page of its own and is measured too. **AC-1.7 runs at 360px;** AC-1.5 covers the filter row at 1280px.
+- **Alignment rule.** `.c-filterbar__filters { align-items:center }`, in the same coarse block, widens the issue's one-rule outcome by a second rule (the review found a 40px small button would sit top-aligned beside a 44px select). The coordinator accepted it at Gate A; the PR body names it.
+- **Test time.** The new spec file is slow (about 80 page loads, 24 s in a run with its two neighbours). `spec/support/runtime_log.txt` was not refreshed; a refresh is only needed if the shard balance shows it.
+
+## Evidence
+
+[`screenshots/`](screenshots/): 48 JPEGs, six pages (card search's Set, collection's Location, the Add a copy form, number entry, the proxy chooser, New deck) × light and dark × 1280px and 360px (a frame, as a window can't go below 500px) × before and after. Factory data, placeholder card images (the catalog is not loaded, so the Set select lists only "All sets"). Names are `<page>-<wide|phone>-<light|dark>-<before|after>.jpg`.
+
+Headless Firefox has a fine pointer, so these are not photographs of a touch screen: "after" applies every `(pointer: coarse)` rule of the shipped stylesheet to the page, in source order; "before" applies every coarse rule but the new block's two, plus the filter bar's old 40px and the deck pages' old rule, which is what a phone drew before. Every pair was looked at: the filter bar's select grows from 40px to 44px with the button centred on it (card search, collection, proxy chooser), the form selects grow from 36px to 44px (Add a copy, number entry's Finish and Location, New deck's Format), nothing overflows at 360px, nothing overlaps, and the light shots are light and the dark ones dark. One thing seen and not caused by this change: on number entry the "Language" label touches its select, in the before and the after shot alike (`c-select` has no gap between a visible label and its select); it is reported as a possible follow-up, with the 40px small buttons and chips.
