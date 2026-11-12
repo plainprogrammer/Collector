@@ -1,6 +1,6 @@
 # Feature 077: The Deck Shape Panel Stays Tidy at Extreme Counts
 
-**Status:** Draft
+**Status:** Approved by the coordinator under the maintainer's delegation (2026-11-11, Gate A) at 0.3.0, after two spec review rounds; decision 2 ruled A by the maintainer
 **Version:** 0.3.0
 **Created:** 2026-11-11
 **Last Updated:** 2026-11-11
@@ -195,7 +195,7 @@ Existing examples this changes (a grep, not memory; the command is repeated in `
 
 ## Open Questions
 
-None. The rulings of decisions 1 to 4 are recommendations for Gate A; the alternatives are written beside each.
+None. Gate A (2026-11-11) approved decisions 1 to 5 as written, and the maintainer ruled decision 2 **A**: spec 060's 10% rule stays, and the mana-label band is recorded in `DeckShape.md` as a documented limit with the shares above and becomes its own issue (filed by the coordinator from the text in the plan's Gate B message; its number is cited in `DeckShape.md`, the area doc's Issues bullet and here once it exists). Option B is not taken.
 
 ## Notes for the plan
 
