@@ -59,3 +59,7 @@ Command: `git grep -n -E "40px|touch floor|pointer: ?coarse|apply_coarse_rules|i
 
 The review did not re-run the suite (read-only); the full run is the push's `bin/ci`.
 
+
+## Distillation
+
+`distill-feature` (state 2, before the merge): spec 075 changes the design system's rules, which live in `docs/design-system/README.md` and its component documents (the same home as specs 063 and 072), so no document under `docs/architecture/` has a statement to add or rewrite and no area doc's Sources or Distillation log gains a row; the README's Touch rule and the nine component documents were written with the implementation (Task 6, AC-2.1, AC-2.2). The index row reads Frozen, by the design system, with Plan "retirement owed"; the spec's header carries its frozen line; spec 072's "Superseded by" cell names this spec. `CLAUDE.md` restates no rule this feature changed (its design-system paragraph points to `docs/design-system/`). No ADR was proposed: the ruling is decision 1 of the spec, taken by the maintainer on 2026-11-11. The plan is retired in a housekeeping pull request after this one merges.
