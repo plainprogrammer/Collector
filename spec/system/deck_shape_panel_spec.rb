@@ -379,5 +379,119 @@ RSpec.describe "Deck shape panel", type: :system do
         end
       end
     end
+
+    # Spec 078 (#330): a mana label is on one line inside its segment or is not drawn. The three decks put W, U, B, R and G symbols in the
+    # 10-20% band for labels of four, five and six characters (measured 2026-11-12, a 320px viewport, a 238px bar: "W 12" 29.2px in a 27.83px
+    # segment is not drawn; "W 120" 36.4px, "W 1.2k" 43.6px). A label's width differs by platform (the Mac's 43.56px, the Linux runner's about
+    # 44.70px for six characters), so the examples assert the rule, with a 0.5px band around the fractional content width (spec decision 3),
+    # never a per-label result, except "W 12" on a 320px viewport, which cannot fit on either platform.
+    describe "mana label fit (spec 078, #330)" do
+      def band_counts
+        { four: { "W" => 12, "U" => 13, "B" => 15, "R" => 16, "G" => 44 },
+          five: { "W" => 120, "U" => 160, "B" => 180, "R" => 190, "G" => 350 },
+          six: { "W" => 1_200, "U" => 1_800, "B" => 2_000, "R" => 2_100, "G" => 3_900 } }
+      end
+
+      # One creature per colour with that many copies of a one-symbol cost: the bar's counts are the numbers above.
+      def build_band_deck(key)
+        band = create(:deck, account:, name: "Band #{key}")
+        band_counts.fetch(key).each do |symbol, copies|
+          create_lot_in_zone(band, "main", entry: card(name: "Band #{key} #{symbol}", cost: "{#{symbol}}", mana_value: 1.0), quantity: copies)
+        end
+        band
+      end
+
+      # Per label of the panel's bar: its line count, its text width, its segment's fractional content width (the box less the divider's
+      # border), whether its text box is inside the segment's box (0.5px of tolerance), whether it lies wholly below it, the segment's
+      # overflow and how far the text's centre is from the segment's. A narrow segment's label has no box at all.
+      def label_states(selector)
+        page.evaluate_script(<<~JS)
+          (() => { const panel = document.querySelector(#{selector.to_json})
+            return [...panel.querySelectorAll(".c-manabar__seg")].map((seg) => { const span = seg.querySelector("span"), range = document.createRange(); range.selectNodeContents(span)
+              const text = range.getBoundingClientRect(), box = seg.getBoundingClientRect(), edge = parseFloat(getComputedStyle(seg).borderLeftWidth)
+              return { name: span.textContent, narrow: span.getClientRects().length === 0,
+                lines: new Set([...range.getClientRects()].map((q) => Math.round(q.top))).size,
+                width: text.width, content: box.width - edge, overflow: getComputedStyle(seg).overflowX,
+                inside: text.left >= box.left - 0.5 && text.right <= box.right + 0.5 && text.top >= box.top - 0.5 && text.bottom <= box.bottom + 0.5,
+                below: text.top >= box.bottom - 0.5,
+                off: Math.abs((text.top + text.bottom) / 2 - (box.top + box.bottom) / 2) } }) })()
+        JS
+      end
+
+      def drawn?(label) = label["lines"] == 1 && label["inside"]
+      def clipped?(label) = label["below"] && %w[clip hidden].include?(label["overflow"])
+      # AC-1.1: each label is drawn, clipped away or has no box (a narrow segment); never on two lines, never partly out.
+      def clean?(label) = label["narrow"] || drawn?(label) || clipped?(label)
+      # AC-1.2: a label at least 0.5px narrower than its content width is drawn, one at least 0.5px wider is not.
+      def decided?(label)
+        label["narrow"] || ((label["width"] > label["content"] - 0.5 || drawn?(label)) && (label["width"] < label["content"] + 0.5 || !drawn?(label)))
+      end
+      def centred?(label) = !drawn?(label) || label["off"] <= 1
+      def tidy?(states) = states.size >= 2 && states.all? { clean?(it) && decided?(it) && centred?(it) }
+
+      def expect_labels_in_both_themes(width, panel)
+        %w[light dark].each do |theme|
+          set_theme(theme)
+          found = label_states(panel)
+          expect(yield(found)).to be(true), "at #{width} in #{theme}: #{found.inspect}"
+        end
+      end
+
+      # The old layout: no wrapping, nothing clipped, the label a shrinkable item, no first item (what `main` draws).
+      def inject_old_label_layout
+        inject_css(".c-manabar__seg{flex-wrap:nowrap !important;overflow:visible !important} .c-manabar__seg::before{content:none !important} .c-manabar__seg>span{flex:0 1 auto !important}")
+      end
+
+      %i[four five six].each do |key|
+        it "draws each label on one line inside its segment or not at all, centred, at every width, for the #{key}-label deck (AC-1.1, AC-1.2, AC-1.3)", :aggregate_failures do
+          band = build_band_deck(key)
+          widths.each { |width| at_width(width, deck_path(band)) { |panel| expect_labels_in_both_themes("#{key} at #{width}", panel) { tidy?(it) } } }
+        end
+      end
+
+      it "draws some labels and clips others at a 320px viewport, so the rule is seen acting and is not vacuous (AC-1.1, AC-1.2)", :aggregate_failures do
+        at_width(320, deck_path(build_band_deck(:four))) do |panel|
+          states = label_states(panel).index_by { it["name"] }
+          expect(states.fetch("W 12")).to include("lines" => 1, "narrow" => false)
+          expect(clipped?(states.fetch("W 12"))).to be(true), states["W 12"].inspect # 29.2px of label in a 27.83px segment, on every platform
+          expect(states.values.count { drawn?(it) }).to be >= 1, states.inspect
+        end
+      end
+
+      it "draws a label at 360px and in the aside where it fits, a 12% segment's among them (AC-1.2)", :aggregate_failures do
+        band = build_band_deck(:four)
+        [ 360, :aside ].each do |width|
+          at_width(width, deck_path(band)) do |panel|
+            expect(label_states(panel).find { it["name"] == "W 12" }).to satisfy("be drawn at #{width}") { drawn?(it) } # 32.6px and 33.6px of content against 29.2px
+          end
+        end
+      end
+
+      it "draws every label of the five-equal-segment fixture at every width, none clipped (AC-1.5)", :aggregate_failures do
+        widths.each do |width|
+          at_width(width, deck_path(deck)) do |panel|
+            expect_labels_in_both_themes("fixture at #{width}", panel) { |found| found.size == 5 && found.all? { drawn?(it) } }
+          end
+        end
+      end
+
+      it "can fail: with the old layout a label wraps onto two lines at a 320px viewport (AC-1.4)", :aggregate_failures do
+        at_width(320, deck_path(build_band_deck(:four))) do |panel|
+          inject_old_label_layout
+          found = label_states(panel)
+          expect(tidy?(found)).to be(false), found.inspect
+          expect(found.find { it["name"] == "W 12" }["lines"]).to eq(2)
+        end
+      end
+
+      it "can fail: without the segment's first item the label sits off its segment's centre (AC-1.3)", :aggregate_failures do
+        at_width(360, deck_path(build_band_deck(:four))) do |panel|
+          inject_css(".c-manabar__seg::before{content:none !important}")
+          found = label_states(panel)
+          expect(tidy?(found)).to be(false), found.inspect
+          expect(found.select { drawn?(it) }.map { it["off"] }.max).to be > 1
+        end
+      end
+    end
   end
 end
