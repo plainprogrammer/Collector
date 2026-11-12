@@ -1,0 +1,14 @@
+<section class="c-check" aria-labelledby="deck-check-title">
+  <h2 class="c-section__title c-check__title" id="deck-check-title" tabindex="-1" autofocus>Deck check</h2>
+  <p class="c-check__summary"><%= check.summary %></p>
+  <ul class="c-check__list">
+    <% check.lines.each do |line| %>
+      <li class="c-check__row<%= line.status ? (line.fault ? " c-check__row--fault" : " c-check__row--pass") : " c-check__row--plain" %>">
+        <% if line.status %>
+          <span class="c-check__status"><%= render(line.fault ? "icons/alert" : "icons/check") %><%= line.status %></span>
+        <% end %>
+        <span class="c-check__text"><%= line.sentence %></span>
+      </li>
+    <% end %>
+  </ul>
+</section>

@@ -1,4 +1,6 @@
 <% content_for :title, "#{@deck.name} · Collector" %>
+<%# The results page isn't kept for Back: Back asks for the check again, so it never shows results from before an edit (spec 079 decision 7). %>
+<% content_for :head, tag.meta(name: "turbo-cache-control", content: "no-cache") if @check %>
 <%= render "layouts/appbar", section: :decks, detail: true, back_path: decks_path %>
 <main class="c-main c-page c-deckpage">
   <div class="c-item__head">
@@ -8,6 +10,7 @@
     </div>
     <div class="c-item__actions">
       <%= link_to "Edit deck", edit_deck_path(@deck), class: "c-btn c-btn--secondary" %>
+      <%= link_to "Check deck", deck_check_path(@deck), class: "c-btn c-btn--secondary", data: { turbo_prefetch: false } %>
       <details class="c-menu" data-controller="menu">
         <summary class="c-btn c-btn--secondary c-btn--icon" aria-label="More actions"><%= render "icons/more" %></summary>
         <div class="c-menu__list">
@@ -18,6 +21,7 @@
       </details>
     </div>
   </div>
+  <%= render "decks/check", check: @check if @check %>
   <div class="c-deck">
     <% if @shape %>
       <%= render "decks/shape", answer: @shape, copy: :fold %>

@@ -256,7 +256,7 @@ RSpec.describe "Deck page", type: :system do
       within_narrow_frame do
         set_theme(theme)
         expect(page_fits_sideways?).to be(true)
-        expect(head_boxes).to eq({ "cut" => false, "title" => true, "buttons" => [ true, true ] })
+        expect(head_boxes).to eq({ "cut" => false, "title" => true, "buttons" => [ true, true, true ] })
       end
     end
   end

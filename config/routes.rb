@@ -49,6 +49,7 @@ Rails.application.routes.draw do
     resource :removal, only: :new, module: :decks
     resource :format, only: %i[edit update], module: :decks # spec 064: change a deck's format
     resource :selection, only: :create, module: :decks # spec 067: the refusal page's shortcut into bulk mode
+    resource :check, only: :show, module: :decks # spec 079: Check deck, the deck page with its checks
     # Spec 068: a proxy is named by its own id under its deck (the deck's location id is :deck_id).
     scope module: :decks do
       resources :proxies, only: %i[edit update destroy] do
