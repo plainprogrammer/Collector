@@ -1,6 +1,6 @@
 # Verification: spec 077, the deck shape panel at extreme counts
 
-Spec 0.3.2, plan `plan.md` (commit `8bee6a51`). Issue [#320](https://github.com/plainprogrammer/Collector/issues/320); the follow-up for the mana-label band is [#330](https://github.com/plainprogrammer/Collector/issues/330).
+Spec 0.3.3, plan `plan.md` (commit `8bee6a51`). Issue [#320](https://github.com/plainprogrammer/Collector/issues/320); the follow-up for the mana-label band is [#330](https://github.com/plainprogrammer/Collector/issues/330).
 
 ## Acceptance criteria
 
@@ -12,7 +12,7 @@ Examples are in `spec/models/mtg/deck_shape_spec.rb` (model), `spec/requests/dec
 | AC-1.2 | request "abbreviates a column's count from 1,000 and keeps the exact numbers in the label and the legend (AC-1.2)" |
 | AC-1.3 | system "keeps every curve count inside its column and the panel inside its box at every width, in both themes (AC-1.3)" (320, 345, 360, a 366px and a 640px frame, the 1280px aside); can fail: "the full count in the 6+ column overflows its column at a 320px and a 345px viewport (AC-1.3)" |
 | AC-2.1 | request "abbreviates a segment's label and keeps the bar's label and the caption exact (AC-2.1)"; a segment of 44 reading "U 44" is covered by spec 069's existing request example ("U 6", "R 3": below 1,000 nothing changes) |
-| AC-2.2 | system "keeps every mana label on one line inside its segment at every width, in both themes (AC-2.2)"; can fail: "a label written in full wraps inside its segment at a 320px viewport (AC-2.2)" |
+| AC-2.2 | system "keeps every mana label on one line inside its segment at every width, in both themes (AC-2.2)"; can fail: "a label written in full wraps inside its segment at a 320px viewport (AC-2.2)" (it fails through the `lines == 1` clause: every label wraps onto two lines, text 36px, `inside` true, measured under the 0.3.3 bound) |
 | AC-2.3 | spec 069's request example "marks a segment under 10% of the symbols narrow in the page (AC-4.6)", unchanged and green |
 | AC-3.1 | system "ends every Card types count at one x with the suffix at the row's edge, nothing cut off, at every width (AC-3.1)"; can fail: "flex rows with a 4.5rem suffix put the 9,999 proxy row's count left of the others' (AC-3.1)" |
 | AC-3.1b | system "keeps a five-digit row inside the list with the counts at one x at a 320px viewport, the name wrapping (AC-3.1b)"; can fail: "without the name cell's wrap rule the name spills over its cell (AC-3.1b)" |
@@ -50,6 +50,7 @@ Each "can fail" example injects the old text or the old rule into the page and e
 5. The spec's Notes say to wait about 0.6s after a theme switch; the geometry examples don't (`testing.md` forbids sleeps, and the second reading in the other theme is a guard, since layout cannot depend on the theme; the helper's comment says so).
 6. The non-functional requirements describe the "before" shots as made by injecting the old rules and stubbing the abbreviation; they were taken from the unchanged code at the start of the branch (the same fixture, run before any app change), which is the real "before", not an emulation.
 7. `docs/architecture/collection-and-lots.md`'s Sources and Distillation log are written by `distill-feature` at the end (the plan leaves them there), not by Task 5.
+8. **GitHub CI failed AC-2.2 on the Linux runner at a 320px viewport** (PR #331, run 43153405100, shard 2/4; the other thin check, the 366px frame's leading dot, passed). The six-character label measured 44.70px there against 43.56px on the Mac (the runner's mono face is wider), in a 46px content width: 1.30px of margin on the runner, 2.44px on the Mac, and the spec's bound (text at most `clientWidth` less 2px) was 44px. The label was on one line and inside its segment, so no code or CSS was wrong: the 2px gap was a number the spec had drawn from a Mac measurement. Ruled (the coordinator, under the maintainer's delegation): spec PATCH 0.3.3 drops the gap, so a label fits when it is on one line, its text is within the segment's `clientWidth` and its box is inside its segment's box; `labels_fit?` follows. The failing variant (the unabbreviated label at 320px) still fails under the new bound, through its `lines` clause alone (two lines per label); the `text` and `inside` clauses pass there. The band shares of the spec (14%, 17%, 20%) were measured on a Mac with the old 2px gap and stay as the shares at which a label has a pixel a side.
 
 ## Screenshots
 

@@ -1,7 +1,7 @@
 # Feature 077: The Deck Shape Panel Stays Tidy at Extreme Counts
 
 **Status:** Approved by the coordinator under the maintainer's delegation (2026-11-11, Gate A) at 0.3.0, after two spec review rounds; decision 2 ruled A by the maintainer
-**Version:** 0.3.2
+**Version:** 0.3.3
 **Created:** 2026-11-11
 **Last Updated:** 2026-11-11
 **Depends on:** [spec 060](../060-deck-components/spec.md) (the `DeckShape` component and its CSS), [spec 069](../069-deck-shape-panel/spec.md) (the panel's figures; its verification "Findings" 1 to 4 are this spec's input), both merged
@@ -15,6 +15,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.3.3 | 2026-11-11 | PATCH (`sdd-spec-update`, spec only, approved by the coordinator under the maintainer's delegation; behaviour unchanged): AC-2.2's label bound is the segment's `clientWidth` with the label on one line and inside its segment, no longer "less 2px", because the Linux runner's Firefox draws the six-character label 44.70px wide where the Mac draws 43.56px (a 46px content width; margins 1.30px and 2.44px); CI failed the 2px gap by 0.7px while the label fits. The shares of the label band (14%, 17%, 20%) were measured on a Mac with the 2px gap, so they state where a label has a pixel a side |
 | 0.3.2 | 2026-11-11 | PATCH (a pointer only): the follow-up issue for the mana-label band is #330 |
 | 0.3.1 | 2026-11-11 | PATCH (`sdd-spec-update`, spec only; found while writing the plan, before it was approved): the measurement table's caption column is corrected (at a 320px viewport the old caption breaks between colours, not inside one; at 345px it splits "Green / 2,591"), so AC-4.3's failing variant runs at 345px and 360px, not 320px; the sweep found the leading dot (16 of 72 frame widths), so AC-4.3 gains a 366px frame and its no-leading-dot clause can fail; the label shares are measured, 14%, 17% and 20%, not the arithmetic 13.5%, 16.5% and 19.5%; AC-3.1b adds "not cut off" and a variant for the name cell's wrap rule; the 0.84px room is 0.44px (an integer `clientWidth`). No behaviour changes |
 | 0.3.0 | 2026-11-11 | Spec review round 2 (Opus, read-only; REVISE: 0 blocking, 1 major, 4 minor, 3 nit), all taken: the fixture's red is 2,595 (AC-4.1's strings); the band's shares are 13.5%, 16.5% and 19.5% in both places; the Non-Goal and Goal 1 agree on five-digit Card types rows; AC-5.1 and AC-5.3 require the band and its follow-up issue to be recorded and the 060 AC-2.4 row is qualified; option B is costed; the method is named (`short_count`); AC-2.2's thin room is flagged for the CI runner; the preview comment's chain |
@@ -123,7 +124,7 @@ Existing examples this changes (a grep, not memory; the command is repeated in `
 **So that** the bar reads as a bar, not as crowded text
 
 - [ ] **AC-2.1** Given a segment of 2,591 symbols When the bar renders Then its label reads "W 2.6k" (its letter, a space and the abbreviation), a segment of 44 reads "U 44", the caption reads "White 2,591 · 20% · …" and the bar's `aria-label` reads "white 2,591, …", all exact.
-- [ ] **AC-2.2** Given the fixture's five segments of about 2,591 at the viewports and the aside of AC-1.3, in both themes When each label's text is measured with a `Range` Then it is on one line (its height is at most one line, 16px), its width is at most its segment's `clientWidth` (the content box, the divider's border excluded; the first segment has no divider) less 2px (a pixel a side), and no label overlaps another. A variant that writes the count in full fails at the 320px viewport.
+- [ ] **AC-2.2** Given the fixture's five segments of about 2,591 at the viewports and the aside of AC-1.3, in both themes When each label's text is measured with a `Range` Then it is on one line (its height is at most one line, 16px), its width is at most its segment's `clientWidth` (the content box, the divider's border excluded; the first segment has no divider) and the text's box is inside its segment's box (so no label overlaps another). A variant that writes the count in full fails at the 320px viewport (the label wraps onto two lines). Measured margins at a 320px viewport (a 46px content width): 2.44px on a Mac (a 43.56px label) and 1.30px on the Linux runner (44.70px).
 - [ ] **AC-2.3** Given a segment under 10% When the bar renders Then it still carries `c-manabar__seg--narrow` and no visible label (spec 069 AC-4.6 unchanged).
 
 ### Story 3: The types' counts line up whatever the suffix
@@ -204,7 +205,7 @@ None. Gate A (2026-11-11) approved decisions 1 to 5 as written, and the maintain
 
 - The label band and the leading-dot sweep were measured before the plan (`verification.md`); the AC-1.3, AC-2.2, AC-3.1 and AC-4.3 examples and the model examples are written red first.
 - The interiors (238, 263, 278, 286px) are derived from the page's own chain (viewport, body margin, page padding, border, panel padding) and the examples assert the viewport, as `open_phone_frame` does. Spec 074 (#326, branch `074-deck-pages-phone-width`) may change the deck page's padding: if it merges first, re-measure the interiors and update the numbers here and in `DeckShape.md`.
-- AC-2.2's room at a 320px viewport is thin (`clientWidth` is a whole number, so a 46.38px segment reads 46 and the bound is 44px against a 43.56px label: 0.44px): the first green run confirms it on the Linux CI runner's Firefox as well as on the Mac, and if a runner's font metrics need more, the spec is updated through `sdd-spec-update` before the bound moves.
+- AC-2.2's room at a 320px viewport is thin (`clientWidth` is a whole number, so a 46.38px segment reads 46 and the bound is 44px against a 43.56px label: 0.44px): the first green run showed the runner's mono face 1.1px wider (44.70px), which failed the 2px gap the spec had drawn from the Mac, and the gap was dropped in 0.3.3 (the criterion is about wrapping and overflow).
 - Each geometry example measures both themes in one frame (set `data-theme`, wait about 0.6s, measure again) so the cost is one frame per width; theme cannot change layout, so the second measurement is a guard, not a second example.
 - The frame sizes: a viewport of 320px needs a frame of 320 + the measured scrollbar (335px with the Mac's 15px, about 332px on the Linux runner), a 345px viewport a frame of 360px; size every frame from the measured scrollbar as `open_phone_frame` does, and assert the viewport. The aside is measured at a 1280px window (a 320px panel, 286px inside).
 - Each system example needs its failing variant (the lesson `an-example-that-cannot-fail-proves-nothing`): inject the old rule (`.c-types li { display:flex }` and the old `.c-types__proxy`) or remove the nowrap rule with a `<style>` and expect the example to fail; say in the example's comment which it is.

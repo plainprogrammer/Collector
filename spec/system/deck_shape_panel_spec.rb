@@ -270,12 +270,13 @@ RSpec.describe "Deck shape panel", type: :system do
       JS
     end
 
-    # `clientWidth` is a whole number, so a 46.38px segment reads 46 and a label has 0.44px to spare at a 320px viewport (the bound is 2px).
+    # A label fits when it is on one line and its text is within its segment's content width (spec AC-2.2). Margins at a 320px viewport,
+    # where `clientWidth` is a whole 46px: 2.44px on a Mac (a 43.56px label) and 1.30px on the Linux runner (44.70px: its mono face is wider).
     # A page whose panel is not drawn measures nothing, so the seven columns and a column with a width are part of "fits".
     def counts_fit?(found)
       found["countRoom"] >= 0 && !found["scrolls"] && found["beyond"].zero? && found["clipped"].zero? && found["columns"] == 7 && found["narrowest"] > 0
     end
-    def labels_fit?(found) = found["labels"].any? && found["labels"].all? { |label| label["lines"] == 1 && label["inside"] && label["text"] <= label["room"] - 2 }
+    def labels_fit?(found) = found["labels"].any? && found["labels"].all? { |label| label["lines"] == 1 && label["inside"] && label["text"] <= label["room"] }
     def counts_aligned?(found) = found["rights"].any? && found["rights"].min > 0 && (found["rights"].max - found["rights"].min) <= 0.5
     def types_tidy?(found) = counts_aligned?(found) && found["suffixGap"].all? { it <= 0.5 } && found["rowOver"].zero? && found["cut"].zero?
     def wide_row_tidy?(found) = found["rowOver"].zero? && found["cut"].zero? && counts_aligned?(found) && found["rights"].size == 2
