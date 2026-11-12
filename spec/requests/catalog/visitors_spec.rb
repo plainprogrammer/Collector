@@ -193,23 +193,33 @@ RSpec.describe "The catalog for visitors", type: :request do
 
     it "shows a visitor no collection part and no tenant data (AC-4.1)", :aggregate_failures do
       absent = [ ".c-avatar", ".c-tile__qty", ".c-tile__add", "form[action*='quick_add']", "a[href*='/lots/new']",
-                 "a[href*='/deck_additions/new']", "#copies", ".c-stat", ".c-tile--owned-none", "li.is-unowned" ]
+                 "a[href*='/deck_additions/new']", "#copies", "#in-decks", ".c-stat", ".c-tile--owned-none", "li.is-unowned" ]
 
       pages.each do |path|
         get path
         expect(response).to have_http_status(:ok), path
         absent.each { |selector| expect(html.css(selector)).to be_empty, "#{path}: #{selector}" }
-        [ "Not owned", "Your copies", "Add a copy", "Add to deck", " owned" ].each { expect(html.text).not_to include(it), "#{path}: #{it}" }
+        [ "Not owned", "Your copies", "Add a copy", "Add to deck", " owned", "In decks", "Free to use" ].each { expect(html.text).not_to include(it), "#{path}: #{it}" }
         [ "Morgan Owner", "morgan@example.com" ].each { expect(response.body).not_to include(it), "#{path}: #{it}" }
       end
     end
 
-    it "runs no query against lots for a visitor (AC-4.2)", :aggregate_failures do
+    it "runs no query against lots, locations, decks or deck proxies for a visitor (AC-4.2; spec 073 AC-3.1)", :aggregate_failures do
       pages.each do |path|
         statements = statements_during { get path }
         expect(response).to have_http_status(:ok), path
-        expect(statements.grep(/"lots"/)).to be_empty, path
+        expect(statements.grep(/"(lots|locations|decks|deck_proxies)"/)).to be_empty, path
       end
+    end
+
+    it "reads those tables for a signed-in collector's card page, so the visitor example's grep can fail (control of spec 073 AC-3.1)", :aggregate_failures do
+      deck = create(:deck, account: collector.account)
+      create_lot_in_zone(deck, "main", entry: printing)
+      create(:deck_proxy, zone: deck.zone("main"), entry: printing)
+      sign_in_as(collector)
+      statements = statements_during { get catalog_entry_path(printing) }
+
+      %w[lots locations decks deck_proxies].each { |table| expect(statements.grep(/"#{table}"/)).not_to be_empty, table }
     end
 
     it "sends a visitor's request for the Add to deck page to sign in (spec 071 AC-1.2)", :aggregate_failures do
