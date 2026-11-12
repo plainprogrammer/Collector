@@ -1,7 +1,7 @@
 # Feature 069: The Deck Shape Panel (Mana Curve, Card Types and Coloured Mana Symbols)
 
 **Status:** Approved at Gate A (2026-11-11, the coordinator under the maintainer's delegation, as written; version 0.2.0; the decision text of 0.2.0 reached the file only in 0.2.1, see the changelog)
-**Version:** 0.2.1
+**Version:** 0.2.2
 **Created:** 2026-11-11
 **Last Updated:** 2026-11-11
 **Depends on:** [spec 058](../058-mtg-mana-value/spec.md) (the stored mana value; merged), [spec 060](../060-deck-components/spec.md) (the `DeckShape` component, its CSS and previews, and the panel's two copies in `DeckPage`; merged), [spec 066](../066-deck-page-owned-cards-by-zone/spec.md) (the deck page, its seam `Catalog::DeckCards` and Magic's groups; merged), [spec 068](../068-deck-proxies/spec.md) (proxies in a zone; merged), [the decks and locations issue design](../../superpowers/specs/2026-11-09-decks-and-locations-issues-design.md) (decisions 4, 11, 12, 13 and 14, "Shape panel" in "Left to each issue's spec")
@@ -15,6 +15,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.2.2 | 2026-11-11 | PATCH (spec only, found by the implementation review): AC-5.3's "279px inside it at 360px" came from spec 060 AC-2.4's arithmetic, which leaves out the page's 8px body margin; a 360px phone viewport leaves 278px. The criterion now says so and is proved in a 375px test frame (a 360px viewport, because the test frame keeps a 15px classic scrollbar a phone doesn't have). The coordinator's ruling stands: no CSS changed. A known limit is recorded (Error Scenarios): in a 360px browser frame with that scrollbar, a four-digit 6+ count overflows its column by about 1.85px, a follow-up for spec 060's CSS. No behaviour, code or other criterion changes |
 | 0.2.1 | 2026-11-11 | Approved at Gate A as written (v0.2.0 as described to the coordinator). **Correction:** the v0.2.0 commit (`efea31ad`) carried the review's changes to the acceptance criteria and tables but, through a scripting slip, not its changes to the decisions' text; this version applies them (decisions 1, 2, 3, 5, 8, 9, 12 and the new decision 14), adding nothing the Gate A message did not say. The coordinator's notes for the plan: the split-card non-goal is named in the panel's comment and the area doc, and the only controller edit is the one line in `DecksController#show` |
 | 0.2.0 | 2026-11-11 | Spec review round 1 (Opus, APPROVE WITH CHANGES, 0 blocking, 2 major, 11 minor, 4 nits) fixed: the seam is called in `DecksController#show` and the answer's members are named, with the core partial drawing each copy's frame (decision 1, FR-1, FR-3); a row's group is the page's own answer, and another collectible's card is skipped (decision 3, AC-3.5); exact arithmetic for the average and the percentages (decisions 5, 9; AC-2.4, AC-4.7); `{HW}` counts nothing (decision 8); empty-part sentences, the singular in the chart's label and number delimiters (decision 14); retired formats keep a panel (decision 2, AC-1.4, AC-1.8); fixtures that can fail (AC-2.8, AC-4.4, AC-4.10); more stale statements named in AC-7.1 and AC-7.2 |
 | 0.1.0 | 2026-11-11 | First draft from issue #256, the issue design, specs 058, 060, 066 and 068, the `DeckShape` and `DeckPage` component documents and today's lessons. The supersession list (spec 066 AC-1.6 and AC-5.1) is from a grep of `spec/`, `docs/` and the area docs for "shape", `c-deck`, `c-shapefold` and "second column" |
@@ -152,7 +153,7 @@ Decisions 1 to 12 and 14 are this spec's calls inside the issue design's outline
 
 - [ ] **AC-5.1** Given a deck page at 360px, 640px, 768px and 1280px in the light and the dark theme, with a deck of every type, a hybrid-heavy five-colour cost list, a 60-character deck name with no space and a mana value of 1,000,000 in the deck When it is rendered Then the page has no horizontal overflow and every colour of the panel is a design system token
 - [ ] **AC-5.2** Given the page at 360px When it is rendered Then the `details` copy is the one displayed, closed, at least 44px high, its summary reads "Deck shape" with the facts line of the deck's own figures (for a fixture of 60 cards in Main and an average of 2.3, "Main · 60 cards · average mana value 2.3") and Show, and it opens and closes from the keyboard with Enter or Space and with no script
-- [ ] **AC-5.3** Given the panel open at 360px When it is measured Then the seven curve columns, the legend, every type row and the caption fit in the 279px inside it with no horizontal overflow of its own, and the average line wraps when its number is long
+- [ ] **AC-5.3** Given the panel open in a phone's 360px viewport (the page's 8px body margin, 16px page padding, the fold's 2px border and the panel's 32px padding leave 278px inside it; the example opens a 375px frame, whose pinned 15px classic scrollbar a phone doesn't have) When it is measured Then the seven curve columns, the legend, every type row and the caption fit inside it with no horizontal scroll of the panel, nothing drawn past its padding edge and no text cut off in its own box, and each count has room in its column; the average line wraps when its number is long
 - [ ] **AC-5.4** Given the panel in both themes When it is read Then no part is conveyed by colour alone: every column has its count, every segment its letter and count or a caption naming it, and the series are named in the legend
 
 ### Story 6: What the page reads
@@ -250,6 +251,7 @@ The deck page renders the two copies of the panel inside `c-deck`, before the zo
 | A card's mana cost is nil, empty or has a symbol the rules don't name (`{HW}`) | Counts no colour for what it cannot read; the card is still counted in its type and the curve (AC-4.4) |
 | A card of another collectible type in a Magic zone | Skipped by every part of the panel, shown flat in the zone table (AC-3.5) |
 | A mana value of 1,000,000 | Column 6+, and the average line's long number wraps inside the panel |
+| A four-digit count in the 6+ column in a 360px browser frame that keeps a 15px classic scrollbar (a 263px interior) | The count ("1,357") overflows its column by about 1.85px and the panel's inner edge by about 1px. A known limit of spec 060's column width, not seen on a phone (278px: +0.28px); the CSS is left unchanged and the follow-up is the maintainer's |
 | A card in Lands with a mana value, or a land with a cost | Not in the curve; a land's symbols, if it had any, are counted (decision 8) |
 | Every symbol is generic | "No coloured mana symbols." in place of the bar and caption |
 | A deck with zero coloured symbols in the five colours but hybrid colourless symbols (`{C/W}`) | The W count rises; the colourless half is never drawn |
