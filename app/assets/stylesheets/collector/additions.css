@@ -567,6 +567,14 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
    `.c-locations__name` and `.c-pick`). */
 .c-decks .c-confirm :is(h1, p), .c-decks .c-list li > span:first-child { min-width:0; overflow-wrap:anywhere; }
 
+/* ---------- Add a new copy's read-only Location (spec 070 AC-6.1) ---------- */
+/* The zone's label ("Deck › Zone") names a deck of up to 60 characters with no space, so the read-only line breaks inside a
+   word like the page head's stats line instead of widening the form. It is the value under a `c-field__label` paragraph. Both
+   are paragraphs (the label labels no control, so it is not a `label`), and nothing resets a paragraph's default 1em margins,
+   which would open a larger gap around "Location" than around the other fields: the label's margins are reset with the value's. */
+.c-decks .c-field > p.c-field__label, .c-decks .c-field__value { margin:0; }
+.c-decks .c-field__value { overflow-wrap:anywhere; }
+
 /* ---------- Small icon stroke (spec 063) ---------- */
 /* An icon's stroke scales with it: weight on screen = stroke-width × drawn width ÷ 24 (the viewBox). The partials write
    1.5, Lucide's weight at 20px (1.25px on screen); at 12px that is 0.75px, a hairline beside a 600-weight word, and at
@@ -589,3 +597,26 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
 /* The Change proxy count page's title says the card's name, up to 60 characters with no space, so the title breaks inside a word
    like the stats line above instead of widening the page. Scoped to the Decks pages: other page heads' titles are their own. */
 .c-decks .c-pagehead__title { overflow-wrap:anywhere; }
+
+/* ---------- Add to deck's radio rows (spec 071): a coarse pointer's 44px tap target ---------- */
+/* A `.c-check` row is 20px high and its radio 16px wide, and the label is the whole tap target. The How many field and the
+   buttons already reach 44px (components.css' coarse `.c-input`, `.c-decks .c-btn`) and the select has spec 072's rule above, so the
+   rows are the one control of the page left under the floor. Scoped to the Decks pages' pick list: no other page changes. */
+@media (pointer: coarse) { .c-decks .c-pick .c-check { min-height:var(--touch-floor); } }
+
+/* ---------- The card page head's Add to deck link on a phone (spec 071) ---------- */
+/* The card page's head wants its three controls on one line (AC-1.5): at 360px they need 318 to 326px
+   against a 297px row in the frame the examples use (a 15px scrollbar; 312px on a real phone), so below 640px of the page
+   container the Add to deck link drops its icon (about 24px with its gap) and the row's gaps go from 8px to 4px (8px). The
+   `:has` keeps the deck page's head, which shares `.c-item__actions`, as it is. */
+@container page (max-width: 639px) {
+  .c-item__adddeck svg { display:none; }
+  .c-item__actions:has(> .c-item__adddeck) { gap:var(--space-1); }
+}
+
+/* ---------- Refusal sentences wrap on the Decks pages (spec 071) ---------- */
+/* The refusal sentences of the Add to deck page name the card ("Nothing changed. <card> (SET · 1) would have more than 9,999 copies in one lot."),
+   up to 60 characters with no space (AC-6.1), so `.c-field__error` breaks inside a word like the titles above instead of widening
+   the page. Scoped to the Decks pages: other pages' error lines are their own. It also lets the other deck pages' sentences that
+   name a long card or deck wrap. */
+.c-decks .c-field__error { overflow-wrap:anywhere; }

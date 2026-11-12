@@ -38,6 +38,16 @@ class Lot < ApplicationRecord
   # @return [ActiveRecord::Relation<Lot>]
   scope :with_place, -> { joins(PLACE_JOIN) }
 
+  # The lots that are free to use: in no deck zone, so unplaced or in a place. A lot in any zone of any deck, Considering
+  # included, is in a deck and is not free (spec 057's "Free to use"; spec 070 decision 2). Proxies never change it. Written as
+  # "no place or a place" and not as "not in a zone" because `NOT IN` over a NULL location is never true in SQL.
+  #
+  # Chain it on the account's lots (`account.lots.free`): it names no account itself, and the subselect is over places of any
+  # account, which is safe because a lot's place is always its own account's (`location_is_the_accounts`).
+  #
+  # @return [ActiveRecord::Relation<Lot>]
+  scope :free, -> { where(location_id: nil).or(where(location_id: Location.places.select(:id))) }
+
   before_validation { self.lot_key = self.class.key_for(finish, condition, price_paid_cents, location_id) }
 
   # The lot's identity as text (ADR 0025): an unplaced lot's key is what it was before locations; a placed lot's ends in the

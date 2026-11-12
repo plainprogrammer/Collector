@@ -280,10 +280,10 @@ RSpec.describe "Design system: deck components", type: :system do
     %(<div id="probe">#{pagehead_html("Add Lightning Bolt to a deck")}<form class="c-form">#{zone}#{many}#{use_choices(place)}#{form_actions("Add to deck")}</form></div>)
   end
 
-  def use_choices(place)
+  def use_choices(place, finishes: %w[Nonfoil Foil])
     copies = %(<label class="c-check"><input type="radio" name="use" value="copies" required>My copies (3 free: 2 in #{place}, 1 in Red box)</label>)
-    proxy = %(<label class="c-check"><input type="radio" name="use" value="proxy" required>A proxy of <span class="is-data">2X2 · 117</span> foil</label>)
-    %(<fieldset class="c-choices c-pick"><legend class="c-field__label">What to use</legend>#{copies}#{proxy}</fieldset>)
+    proxies = finishes.map { |finish| %(<label class="c-check"><input type="radio" name="use" value="proxy:#{finish.downcase}" required>A proxy of <span class="is-data">2X2 · 117</span> #{finish}</label>) }.join
+    %(<fieldset class="c-choices c-pick"><legend class="c-field__label">What to use</legend>#{copies}#{proxies}</fieldset>)
   end
 
   # UseMyCopy: free copies as lots, each a bordered row with its label above a quantity field. `long: true` gives the first
@@ -865,6 +865,13 @@ RSpec.describe "Design system: deck components", type: :system do
 
     it "fits a 360px frame with a 60-character deck and place name, the option text wrapping (AC-5.2)", :aggregate_failures do
       in_phone_frame(add_to_deck_html(long: true)) { expect_add_fit(add_fit) }
+    end
+
+    it "fits a 360px frame with a proxy radio per finish, the rows wrapping (spec 071 decision 9)", :aggregate_failures do
+      in_phone_frame(add_to_deck_html(long: true)) do
+        expect_add_fit(add_fit)
+        expect(evaluate("return document.querySelectorAll('#probe .c-choices input[type=radio]').length")).to eq(3)
+      end
     end
 
     it "gives the focused radio's row a 2px solid focus ring (AC-5.3)", :aggregate_failures do

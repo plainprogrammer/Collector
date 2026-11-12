@@ -128,4 +128,24 @@ RSpec.describe Catalog::Entry, type: :model do
   it "is addressed by its external key" do
     expect(build(:catalog_entry, external_key: "abc-123").to_param).to eq("abc-123")
   end
+
+  describe "#deck_addable? (spec 071 decision 2)" do
+    it "is true for a live card of a type with a vocabulary and a source, and reads nothing from the database", :aggregate_failures do
+      entry = create(:catalog_entry)
+      expect(entry).to be_deck_addable
+      expect(count_queries { entry.deck_addable? }).to eq(0)
+    end
+
+    it "is false for a retired printing and a token", :aggregate_failures do
+      expect(create(:catalog_entry, :retired)).not_to be_deck_addable
+      expect(create(:catalog_entry, kind: "token")).not_to be_deck_addable
+    end
+
+    it "is false for a type that has a vocabulary and no source, and for one that has neither", :aggregate_failures, :other_collecting do
+      expect(Catalog.collecting).to have_key("other") # the control: the vocabulary is there, the source is not
+      expect(Catalog.sources).not_to have_key("other")
+      expect(create(:catalog_entry, collectible_type: "other")).not_to be_deck_addable
+      expect(create(:catalog_entry, collectible_type: "unregistered")).not_to be_deck_addable
+    end
+  end
 end

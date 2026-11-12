@@ -57,6 +57,18 @@ class Location::Choices
   # @return [Group, nil]
   def deck(id) = decks.find { it.location.id.to_s == id.to_s }
 
+  # The decks of one collectible type, with their zones: what a card of that type can be added to (spec 071 decision 3). One
+  # more statement than {#decks}, which already holds the rows; no deck of another type is ever offered.
+  #
+  # @param collectible_type [String] the printing's type
+  # @return [Array<Group>] the groups of {#decks} whose deck has that type
+  def decks_of(collectible_type)
+    return [] unless @account
+
+    ids = Deck.where(account_id: @account.id, collectible_type:).pluck(:location_id).to_set
+    decks.select { |group| ids.include?(group.location.id) }
+  end
+
   private
     def loaded
       @loaded ||= begin

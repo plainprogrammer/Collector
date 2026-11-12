@@ -18,7 +18,7 @@
     </details>
   </div>
 </header>
-<main class="c-main c-page">
+<main class="c-main c-page c-decks">
   <div class="c-pagehead"><div><h1 class="c-pagehead__title">Add Lightning Bolt to a deck</h1></div></div>
   <form class="c-form" action="/catalog/entries/…/deck_additions" method="post">
     <div class="c-field">
@@ -35,7 +35,8 @@
     <fieldset class="c-choices c-pick">
       <legend class="c-field__label">What to use</legend>
       <label class="c-check"><input required type="radio" value="copies" name="use">My copies (3 free: 2 in Blue binder, 1 in Red box)</label>
-      <label class="c-check"><input required type="radio" value="proxy" name="use">A proxy of <span class="is-data">2X2 · 117</span> foil</label>
+      <label class="c-check"><input required type="radio" value="proxy:nonfoil" name="use">A proxy of <span class="is-data">2X2 · 117</span> Nonfoil</label>
+      <label class="c-check"><input required type="radio" value="proxy:foil" name="use">A proxy of <span class="is-data">2X2 · 117</span> Foil</label>
     </fieldset>
     <div class="c-form__actions">
       <input type="submit" value="Add to deck" class="c-btn c-btn--primary">

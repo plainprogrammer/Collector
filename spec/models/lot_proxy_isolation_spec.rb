@@ -2,6 +2,8 @@ require "rails_helper"
 
 # Spec 068 decision 11 (closing spec 065 decision 11): no way of adding, moving, editing, bulk-moving, typing, scanning or
 # removing a copy changes a proxy, and a catalog refresh doesn't either. The proxy is checked by id, quantity and times.
+# The two replacement pages of spec 070 (Use my copy, Add a new copy) are the paths that do move or add a copy and lower the
+# proxy, in the same write; every path this spec exercises, `Lot::MoveIntoZone` among them, still never does.
 RSpec.describe "Proxies and the ways copies reach a zone", type: :model do
   let(:account) { create(:user).account }
   let(:deck) { create(:deck, account:) }
@@ -16,6 +18,9 @@ RSpec.describe "Proxies and the ways copies reach a zone", type: :model do
     expect(unchanged?).to be(true)
     elsewhere = create(:location, account:)
     Lot::Move.new(lot:, to: elsewhere, copies: "1").call!
+    Lot::MoveIntoZone.new(account:, zone: deck.zone("main"), picks: [ [ Lot.find_by!(location: elsewhere), 1 ] ]).call!
+    expect(unchanged?).to be(true)
+    Lot::Move.new(lot: lot.reload, to: elsewhere, copies: "1").call!
     Lot::Move.new(lot: Lot.find_by!(location: elsewhere), to: deck.zone("main"), copies: "1").call!
     expect(unchanged?).to be(true)
     lot.reload.revise!(quantity: 4)

@@ -1,7 +1,8 @@
 # A card a deck's zone needs that the collector doesn't own (spec 068): a printing and a finish with a quantity, in one zone.
-# It is never a lot: it is in no count of owned copies, and it changes only by hand (the add, change and remove pages, a
-# format change, a deck's removal, an import that carries proxies). One row per zone, printing and finish (the unique index,
-# which also holds when the finish is NULL).
+# It is never a lot: it is in no count of owned copies, and it changes only by hand (the add, change and remove pages, the
+# two replacement pages of spec 070, which move or add a copy and lower the proxy in the same write, a format change, a deck's
+# removal, an import that carries proxies). One row per zone, printing and finish (the unique index, which also holds when the
+# finish is NULL).
 #
 # The finish and entry rules are creation-time rules (decisions 2, 19): a stored proxy is never revalidated against the
 # catalog, so a refresh that changes a printing's finishes leaves its proxies editable and exportable.
@@ -64,6 +65,15 @@ class Deck::Proxy < ApplicationRecord
   # @return [Integer, nil]
   def self.parse_quantity(text) = Integer(text.to_s.strip, 10, exception: false)&.then { it if it.between?(1, MAX_QUANTITY) }
 
+  # Whether the two replacement pages (spec 070) can be offered for a proxy of this printing: they name finishes and conditions
+  # from the printing's collectible's vocabulary, so a printing whose collectible the instance no longer registers has none. The
+  # test reads the printing's type and not the deck's (spec 070 decision 1): a change of format can leave a deck of one type
+  # holding proxies of another (decision 19 of spec 068).
+  #
+  # @param entry [Catalog::Entry]
+  # @return [Boolean]
+  def self.replaceable?(entry) = Catalog.collecting.key?(entry.collectible_type)
+
   # Sets the quantity. The same quantity writes nothing (not even `updated_at`).
   #
   # @param count [Integer]
@@ -72,6 +82,19 @@ class Deck::Proxy < ApplicationRecord
   def change_quantity!(count)
     self.quantity = count
     save! if changed?
+    self
+  end
+
+  # Lowers the quantity by +count+ and removes the proxy when that reaches zero: the proxy's share of a replacement by copies
+  # (spec 070 decision 6). Call it inside the transaction that moved or added the copies, on a proxy read again under the lock.
+  #
+  # @param count [Integer] from 1 to the quantity
+  # @return [Deck::Proxy] self (destroyed when the count was the whole quantity)
+  # @raise [ArgumentError] when +count+ is below 1 or over the quantity, a programming error: the callers judge it first
+  def lower_by!(count)
+    raise ArgumentError, "count must be from 1 to #{quantity}" unless count.is_a?(Integer) && count.between?(1, quantity)
+
+    count == quantity ? destroy! : update!(quantity: quantity - count)
     self
   end
 

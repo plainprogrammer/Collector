@@ -52,16 +52,52 @@ module DecksHelper
     "#{proxy.entry.name} (#{detail})"
   end
 
-  # A row menu item's words (spec 068 decision 5): "Change proxy count" / "Remove proxy", with the finish named when the row has
-  # proxies of more than one finish: "Change Foil proxy count", "Remove Foil proxy".
+  # A row menu item's words (spec 068 decision 5, spec 070 decision 1): "Use my copy", "Add a new copy", "Change proxy count",
+  # "Remove proxy", with the finish named when the row has proxies of more than one finish: "Use my copy for Foil proxy",
+  # "Add a new copy for Foil proxy", "Change Foil proxy count", "Remove Foil proxy".
   #
-  # @param verb [String] "Change" or "Remove"
+  # @param verb [String] "Use", "Add", "Change" or "Remove"
   # @param line [Deck::Page::Line]
   # @param row [Deck::Page::Row]
   # @return [String]
   def proxy_item_label(verb, line, row)
     finish = line.finish && row.lines.size > 1 ? "#{proxy_finish_label(row.entry, line.finish)} " : ""
-    verb == "Change" ? "Change #{finish}proxy count" : "Remove #{finish}proxy"
+    case verb
+    when "Use" then finish.empty? ? "Use my copy" : "Use my copy for #{finish}proxy"
+    when "Add" then finish.empty? ? "Add a new copy" : "Add a new copy for #{finish}proxy"
+    when "Change" then "Change #{finish}proxy count"
+    else "Remove #{finish}proxy"
+    end
+  end
+
+  # "Replaces 2 proxies in Izzet Tempo › Main · 2X2 · 117, Foil": the muted line of both replacement pages (spec 070 AC-2.1,
+  # AC-4.1). The printing is `deck_set_line`'s (with ` · LANG` for a language other than English), the finish the vocabulary's
+  # label, only when the proxy has one.
+  #
+  # @param deck [Deck]
+  # @param proxy [Deck::Proxy] with its zone, entry and set loaded
+  # @return [ActiveSupport::SafeBuffer]
+  def replaces_line(deck, proxy)
+    printing = safe_join([ tag.span(deck_set_line(proxy.entry), class: "is-data"), (", #{proxy.finish_label}" if proxy.finish) ])
+    safe_join([ "Replaces #{pluralize(number_with_delimiter(proxy.quantity), "proxy", "proxies")} in #{proxy_zone_label(deck, proxy.zone)} · ", printing ])
+  end
+
+  # A free lot's row text on Use my copy (spec 070 decision 4): the printing, the finish and the condition as the vocabulary
+  # labels them (each only when the lot has one), "paid $1.25" in the account's currency when it has a price, the place ("No
+  # location" when unplaced) and "×N free". It names the row's number field.
+  #
+  # Needs `Current.account` set: for a lot with a price paid it reads the account's currency (`Current.account.currency_unit`),
+  # and a view outside a signed-in request has no account to read it from.
+  #
+  # @param lot [Lot] with its entry and location loaded
+  # @return [ActiveSupport::SafeBuffer]
+  def lot_pick_label(lot)
+    vocabulary = lot.vocabulary
+    finish = vocabulary.finish_label(lot.finish) if lot.finish
+    condition = vocabulary.conditions.fetch(lot.condition) { [ lot.condition.humanize ] }.first if lot.condition
+    price = "paid #{number_to_currency(lot.price_paid, unit: Current.account.currency_unit.symbol)}" if lot.price_paid
+    rest = [ condition, price, lot.place_label || "No location", "×#{number_with_delimiter(lot.quantity)} free" ].compact.join(", ")
+    safe_join([ tag.span(deck_set_line(lot.entry), class: "is-data"), (" #{finish}" if finish), ", ", rest ])
   end
 
   # The finish as its collectible's vocabulary labels it; the humanised key for a collectible this instance no longer has.
