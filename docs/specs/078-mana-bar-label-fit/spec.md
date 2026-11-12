@@ -1,6 +1,6 @@
 # Feature 078: A Mana Bar Label Fits Its Segment or Isn't Drawn
 
-**Status:** Draft (awaiting spec review and Gate A); the approach, D1, was ruled by the maintainer on 2026-11-12 (decision 1)
+**Status:** Approved by the coordinator under the maintainer's delegation (2026-11-12, Gate A) at 0.2.1, after two spec review rounds; the approach, D1, was ruled by the maintainer on 2026-11-12 (decision 1)
 **Version:** 0.2.1
 **Created:** 2026-11-12
 **Last Updated:** 2026-11-12
