@@ -120,7 +120,6 @@ img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches:
 .c-select select { height:28px; max-width:220px; padding:0 var(--space-2); background:var(--surface-raised); color:var(--ink);
   border:1px solid var(--line-strong); border-radius:var(--radius-md); font:400 13px/18px var(--font-sans); }
 .c-select select:focus-visible { outline:2px solid var(--focus); outline-offset:2px; }
-@media (pointer: coarse) { .c-select select { min-height:40px; } }
 
 /* ---------- Grouped select (spec 057): optgroup labels and options, in a form and in the filter bar ---------- */
 /* A group label is quiet text, not the browser's bold italic, and options keep ink on a raised ground in both themes.
@@ -137,6 +136,18 @@ img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches:
    whatever the order. */
 @container collection (min-width: 640px) {
   .c-select.c-select--wide select { max-width:300px; }
+}
+
+/* ---------- Selects meet the touch floor on a coarse pointer (spec 072) ---------- */
+/* A select is 36px in a form (`.c-field select`) and 28px in the filter bar (`.c-select select`), so a desktop keeps compact rows.
+   Every other control reaches the touch floor on a touch screen (40px for small buttons, chips and the view switch) and so does a select, by `min-height`, which only raises. `.c-field` and
+   `.c-select` are the design system's two select shapes (`Form`, `FilterSelect`), so no page needs a rule of its own.
+   The filter row's children use the default `stretch` and a `c-btn--sm` (40px there, an explicit height) does not stretch, so beside
+   a 44px select it would sit at the top of the row, 4px short: the row centres its controls on a coarse pointer. Headless Firefox has
+   a fine pointer, so `spec/system/select_touch_floor_spec.rb` reads these rules and applies them. */
+@media (pointer: coarse) {
+  .c-field select, .c-select select { min-height:var(--touch-floor); }
+  .c-filterbar__filters { align-items:center; }
 }
 
 /* ---------- Pagination ---------- */
@@ -555,12 +566,6 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
    each held lot's "Deck › Zone" line, so each breaks inside a word on a phone instead of widening the page (the lesson of
    `.c-locations__name` and `.c-pick`). */
 .c-decks .c-confirm :is(h1, p), .c-decks .c-list li > span:first-child { min-width:0; overflow-wrap:anywhere; }
-
-/* ---------- Deck pages' selects (spec 068 AC-9.1): the touch floor on a coarse pointer ---------- */
-/* The add-a-proxy chooser's Set select (`.c-select`, 40px on a touch screen) and the form's Finish select (`.c-field`, 36px) sit
-   under the 44px floor every other control of the deck pages meets. The rule is scoped to `.c-decks`, so it also lifts the Change
-   format page's Format select (spec 064), which shares that class; raising the select floor app-wide is out of scope. */
-@media (pointer: coarse) { .c-decks .c-select select, .c-decks .c-field select { min-height:var(--touch-floor); } }
 
 /* ---------- Small icon stroke (spec 063) ---------- */
 /* An icon's stroke scales with it: weight on screen = stroke-width × drawn width ÷ 24 (the viewBox). The partials write
