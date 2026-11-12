@@ -1,6 +1,6 @@
 # Verification: spec 075, small controls meet the touch floor on a coarse pointer
 
-**Branch:** `075-small-controls-touch-floor` | **Issue:** [#316](https://github.com/plainprogrammer/Collector/issues/316) | **Spec:** [spec.md](spec.md) 0.3.2 | **Plan:** [plan.md](plan.md) 0.2.0
+**Branch:** `075-small-controls-touch-floor` | **Issue:** [#316](https://github.com/plainprogrammer/Collector/issues/316) | **Spec:** [spec.md](spec.md) 0.3.2 | **Plan:** plan (retired in `b4fdb6924629fc6cc925c3a4af2536990e4c4e82`; read it with `git show b4fdb6924629fc6cc925c3a4af2536990e4c4e82^:docs/specs/075-small-controls-touch-floor/plan.md`) 0.2.0
 
 ## Acceptance criteria
 
