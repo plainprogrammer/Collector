@@ -122,4 +122,68 @@ RSpec.describe Catalog::DeckChecks, type: :model do
       expect(lines(report(*zones)).first).to eq([ "Short", "Main: 0 cards; tight needs at least 1." ])
     end
   end
+
+  describe "copy results" do
+    let(:bolt) { card("Lightning Bolt", 1) }
+
+    it "names a card over its limit across zones, printings and owned plus proxy", :aggregate_failures do
+      register(copies: copies(%w[main bench], limit(4)))
+      zones = [ zone("main", "Main", row(bolt, owned: 3), row(card("Lightning Bolt", 1), proxy: 1)), zone("bench", "Bench", row(bolt, owned: 1)) ]
+      expect(lines(report(*zones))).to include([ "Over the limit", "Lightning Bolt: 5 copies; the limit is 4." ])
+    end
+
+    it "passes at the limit and counts no copy in an unnamed zone", :aggregate_failures do
+      register(copies: copies(%w[main], limit(4)))
+      zones = [ zone("main", "Main", row(bolt, owned: 4)), zone("considering", "Considering", row(bolt, owned: 9)) ]
+      expect(lines(report(*zones))).to include([ "Pass", "No card is over its limit." ])
+    end
+
+    it "passes at the limit across two named zones (4 of 3 + 1)" do
+      register(copies: copies(%w[main bench], limit(4)))
+      zones = [ zone("main", "Main", row(bolt, owned: 3)), zone("bench", "Bench", row(bolt, owned: 1)) ]
+      expect(lines(report(*zones))).to include([ "Pass", "No card is over its limit." ])
+    end
+
+    it "breaks a tie on the lowest limit by the first printing in page order", :aggregate_failures do
+      first = card("Black Lotus", 2)
+      second = card("Black Lotus", 2)
+      answer = ->(entry) { Catalog::DeckChecks::Limit.new(count: 1, reason: entry.equal?(first) ? "restricted to 1" : "banned past 1") }
+      register(copies: copies(%w[main], answer))
+      expect(lines(report(zone("main", "Main", row(second, owned: 1), row(first, owned: 1))))).to include([ "Over the limit", "Black Lotus: 2 copies; banned past 1." ])
+    end
+
+    it "orders two findings of one zone by name, then by identity when the names match", :aggregate_failures do
+      register(copies: copies(%w[main], limit(0)))
+      zones = [ zone("main", "Main", row(card("Zed", 1), owned: 1), row(card("Abe", 5), owned: 2), row(card("Abe", 2), owned: 1)) ]
+      expect(lines(report(*zones)).first(3).map(&:last)).to eq([ "Abe: 1 copy; the limit is 0.", "Abe: 2 copies; the limit is 0.", "Zed: 1 copy; the limit is 0." ])
+    end
+
+    it "holds a card to the lowest limit its printings answer, with that reason", :aggregate_failures do
+      one = card("Black Lotus", 2)
+      two = card("Black Lotus", 2)
+      answer = ->(entry) { entry.equal?(one) ? Catalog::DeckChecks::Limit.new(count: 4, reason: nil) : Catalog::DeckChecks::Limit.new(count: 1, reason: "restricted to 1") }
+      register(copies: copies(%w[main], answer))
+      expect(lines(report(zone("main", "Main", row(one, owned: 1), row(two, owned: 1))))).to include([ "Over the limit", "Black Lotus: 2 copies; restricted to 1." ])
+    end
+
+    it "treats nil as above every number: unlimited only when every printing says nil", :aggregate_failures do
+      free = card("Plains", 3)
+      mixed = card("Plains", 3)
+      register(copies: copies(%w[main], ->(entry) { Catalog::DeckChecks::Limit.new(count: 4, reason: nil) unless entry.equal?(free) }))
+      expect(lines(report(zone("main", "Main", row(free, owned: 20))))).to include([ "Pass", "No card is over its limit." ])
+      expect(lines(report(zone("main", "Main", row(free, owned: 3), row(mixed, owned: 2))))).to include([ "Over the limit", "Plains: 5 copies; the limit is 4." ])
+    end
+
+    it "orders findings by first zone, then name, then identity; leaves out another collectible", :aggregate_failures do
+      register(copies: copies(%w[main bench], limit(1)))
+      zones = [ zone("main", "Main", row(card("Zed", 1), owned: 2)), zone("bench", "Bench", row(card("Abe", 2), owned: 2), row(card("Other", 3, type: "stranger"), owned: 9)) ]
+      expect(lines(report(*zones)).map(&:last)).to start_with("Zed: 2 copies; the limit is 1.", "Abe: 2 copies; the limit is 1.")
+      expect(lines(report(*zones)).map(&:last)).not_to include(a_string_matching(/Other/))
+    end
+
+    it "says the singular for one copy" do
+      register(copies: copies(%w[main], limit(0)))
+      expect(lines(report(zone("main", "Main", row(bolt, owned: 1))))).to include([ "Over the limit", "Lightning Bolt: 1 copy; the limit is 0." ])
+    end
+  end
 end

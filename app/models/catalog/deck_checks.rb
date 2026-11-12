@@ -75,9 +75,31 @@ module Catalog::DeckChecks
 
   # @api private
   def self.rule_lines(rules, deck_type, format_key, zones, counted)
-    rules.sizes.map { size_line(it, deck_type, format_key, zones, counted) }
+    sizes = rules.sizes.map { size_line(it, deck_type, format_key, zones, counted) }
+    sizes + (rules.copies ? copy_lines(rules.copies, counted) : [])
   end
   private_class_method :rule_lines
+
+  # The copy check (decisions 1, 3, 4): copies by catalog identity over the rule's zones, owned plus proxy; one finding per
+  # card over its limit, ordered by the first zone that holds it, then its name, then its identity; or one pass line. A card
+  # is held to the lowest number its printings answer; `min_by` keeps the first printing in page order on a tie.
+  # @api private
+  def self.copy_lines(rule, counted)
+    in_rule = counted.select { rule.zone_keys.include?(it.zone.location.zone) }
+    findings = in_rule.group_by { it.row.entry.catalog_identity_id }.filter_map do |identity_id, cards|
+      copies = cards.sum { it.row.total }
+      limit = cards.map { it.row.entry }.uniq.filter_map { rule.limit_for.call(it) }.min_by(&:count)
+      next if limit.nil? || copies <= limit.count
+
+      [ cards.map(&:position).min, cards.first.row.entry.name, identity_id, copies, limit ]
+    end
+    return [ Line.new(status: "Pass", sentence: "No card is over its limit.", fault: false) ] if findings.empty?
+
+    findings.sort_by { it.first(3) }.map do |_position, name, _identity_id, copies, limit|
+      Line.new(status: "Over the limit", sentence: "#{name}: #{counted_words(copies, 'copy')}; #{limit.reason || "the limit is #{limit.count}"}.", fault: true)
+    end
+  end
+  private_class_method :copy_lines
 
   # One size result (decision 6). Zones are named in the rule's key order: by the zone row's shown name, else by the format's
   # registration, else by the key.
