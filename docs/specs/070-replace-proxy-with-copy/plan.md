@@ -1170,7 +1170,7 @@ RSpec.describe "Use my copy", type: :request do
         same = lot_in(binder, entry, 1, finish: "foil")
         other_finish = lot_in(box, entry, 1, finish: "nonfoil")
         newer = lot_in(box, printing(set: "mm3", number: "122"), 1, finish: "foil")
-        newer.entry.set.update!(released_on: Date.new(2030, 1, 1)) # newest printing first
+        newer.entry.update_columns(released_on: Date.new(2030, 1, 1)) # `newest_first` sorts by the entry's own release date
         retired = lot_in(binder, create(:mtg_printing, entry: create(:catalog_entry, :retired, name: "Lightning Bolt", identity: bolt)).entry, 1)
 
         get new_deck_proxy_replacement_path(deck, proxy)
@@ -1470,7 +1470,9 @@ Note: the proxy's `used` is the quantity; `proxy_name(@proxy)` reads the proxy a
         get collection_path(view: "table")
         expect(html.text).to include("Izzet Tempo › Main").and include("Blue binder")
         get decks_path
-        expect(html.at_css("tbody tr").css("td").map { it.text.squish }.first(5)).to include("2")
+        row = html.at_css("tbody tr")
+        expect(row.text.squish).to include("2 owned") # the phone line; Owned was 0 before the replacement
+        expect(row.at_css(".c-proxy")).to be_nil
       end
 
       it "shows the changed-lots sentence above the empty state when every chosen lot stopped being free", :aggregate_failures do
@@ -1818,7 +1820,7 @@ and the Cancel link: `<%= link_to "Cancel", cancel_path || lot_return_path(entry
 .c-decks .c-field__value { margin:0; overflow-wrap:anywhere; }
 ```
 
-  Document the class in `AddProxy.md` (T14); `spec/design_system_files_spec.rb` finds the block by its heading, so run it in Step 6.
+  Document the class in `AddProxy.md` (T14); The widths and the refused pages of T12 are what check the rule.
 
 - [ ] **Step 4: The controller** `app/controllers/decks/proxies/copies_controller.rb`:
 
@@ -2046,7 +2048,16 @@ end
     Lot::MoveIntoZone.new(account:, zone: deck.zone("main"), picks: [ [ Lot.find_by!(location: elsewhere), 1 ] ]).call!
     expect(unchanged?).to be(true)
 ```
-(use the lot that is in `elsewhere` at that point of the example; read the example and place the call where such a lot exists).
+Exact edit: after the example's first `Lot::Move.new(lot:, to: elsewhere, copies: "1").call!` (the main lot holds 1, `elsewhere` holds 1) insert the `MoveIntoZone` call above and its `expect(unchanged?)`, then the main lot holds 2 (the moved copy merged into it) and `elsewhere` none, so the example's next line must put a copy back first. The sequence reads:
+
+```ruby
+    Lot::Move.new(lot:, to: elsewhere, copies: "1").call!
+    Lot::MoveIntoZone.new(account:, zone: deck.zone("main"), picks: [ [ Lot.find_by!(location: elsewhere), 1 ] ]).call!
+    expect(unchanged?).to be(true)
+    Lot::Move.new(lot: lot.reload, to: elsewhere, copies: "1").call!
+    Lot::Move.new(lot: Lot.find_by!(location: elsewhere), to: deck.zone("main"), copies: "1").call!
+    expect(unchanged?).to be(true)
+```
 
 - [ ] **Step 2: Run** `bin/rspec spec/requests/deck_proxy_replacements_spec.rb spec/models/deck_proxy_replacement_round_trip_spec.rb spec/models/lot_proxy_isolation_spec.rb`. Expected: PASS (nothing new in the app is needed); if the round trip fails the format rejects something the replacement wrote, which is a finding. Commit `test(decks): a replacement exports and restores as any collection and no other path changes a proxy (spec 070, #257)`.
 
@@ -2163,10 +2174,12 @@ RSpec.describe "Replacing a proxy", type: :system do
           end
         end
 
-        # The refused pages (AC-6.1's "an error is shown with its field"): the form is submitted inside the frame, over the count.
+        # The refused pages (AC-6.1's "an error is shown with its field"): the form is submitted inside the frame.
         it "fits the refused Use my copy and Add a new copy at #{width}px in the #{theme} theme, each error read by its field (AC-6.1)", :aggregate_failures do
-          [ [ new_deck_proxy_replacement_path(deck, proxy), -> { find("input[type=number]").set("9"); click_button "Use these copies" }, "input[type=number][aria-describedby]" ],
-            [ new_deck_proxy_copy_path(deck, proxy), -> { fill_in "Quantity", with: "9"; click_button "Add copy" }, "input[name='lot[quantity]'][aria-describedby]" ] ].each do |path, submit, described|
+          # Refusals the browser lets through and the server makes (a field's `max` and `required` would stop a typed 9 first):
+          # every field left at 0 (the sum), and a price the server refuses (the field has no pattern).
+          [ [ new_deck_proxy_replacement_path(deck, proxy), -> { click_button "Use these copies" }, "fieldset[aria-describedby='replacement-error']" ],
+            [ new_deck_proxy_copy_path(deck, proxy), -> { fill_in "Price paid per copy (USD)", with: "abc"; click_button "Add copy" }, "input[name='lot[price_paid]'][aria-describedby]" ] ].each do |path, submit, described|
             visit deck_path(deck)
             open_in_narrow_frame(path, width:, ready: "main")
             within_narrow_frame do
@@ -2181,6 +2194,29 @@ RSpec.describe "Replacing a proxy", type: :system do
       end
     end
 
+    # AC-6.2: the controls of both pages and the rule that gives each its 44px floor on a coarse pointer. Headless Firefox has a
+    # fine pointer, so the example reads the stylesheets' rules (the media rule, its selectors, the resolved `--touch-floor`) and
+    # measures what is drawn under the rules that apply at every pointer; a control under a coarse-only rule is read, not measured.
+    it "gives each control of both pages the rule that lifts it to the touch floor on a coarse pointer (AC-6.2)", :aggregate_failures do
+      visit new_deck_proxy_replacement_path(deck, proxy)
+      expect(page.evaluate_script("document.querySelector('main').classList.contains('c-decks')")).to be(true)
+      expect(top_level_rule(".c-pick__lot .c-input")).to include("minHeight" => "var(--touch-floor)") # the number fields, additions.css
+      expect(top_level_rule(".c-decks .c-btn")).to include("minHeight" => "var(--touch-floor)")      # Use these copies, Cancel, the empty state's button
+      expect(coarse_rule(".c-btn")).to include("minHeight" => "44px")                                 # components.css, and the app bar's back link (`c-btn`)
+      expect(coarse_rule(".c-input")).to include("minHeight" => "44px")                               # Quantity and Price paid on Add a new copy
+      expect(coarse_rule(".c-decks .c-field select")).to include("minHeight" => "var(--touch-floor)") # Finish and Condition on Add a new copy, spec 068
+      expect(page.evaluate_script("parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--touch-floor'))")).to be >= 44
+      drawn = page.evaluate_script("[...document.querySelectorAll('main .c-btn, main .c-pick__lot .c-input')].map((el) => el.getBoundingClientRect().height)")
+      expect(drawn.size).to be >= 3 # the field, Use these copies and Cancel
+      expect(drawn).to all(be >= 44)
+
+      visit new_deck_proxy_copy_path(deck, proxy)
+      expect(page.evaluate_script("document.querySelector('main').classList.contains('c-decks')")).to be(true)
+      buttons = page.evaluate_script("[...document.querySelectorAll('main .c-btn')].map((el) => el.getBoundingClientRect().height)")
+      expect(buttons.size).to eq(2) # Add copy and Cancel
+      expect(buttons).to all(be >= 44)
+    end
+
     # AC-6.3: a field with focus shows the 2px focus ring: a number field's on its `c-input` wrapper (the pattern of spec 060's
     # `UseMyCopy` example, on the real page), the Finish select's own, reached by Tab from Quantity as a keyboard reaches it.
     it "shows the focus ring on a focused number field's wrapper and on the Finish select", :aggregate_failures do
@@ -2193,6 +2229,15 @@ RSpec.describe "Replacing a proxy", type: :system do
       find("input[name='lot[quantity]']").send_keys(:tab)
       expect(page.evaluate_script("document.activeElement.name")).to eq("lot[finish]")
       expect(page.evaluate_script("(() => { const s = getComputedStyle(document.activeElement); return [s.outlineStyle, s.outlineWidth]; })()")).to eq([ "solid", "2px" ])
+    end
+
+    # The first plain (not media) rule whose selector list contains +selector+.
+    def top_level_rule(selector)
+      page.evaluate_script(<<~JS)
+        (() => { for (const sheet of document.styleSheets) for (const rule of sheet.cssRules)
+          if (rule.selectorText?.split(",").map((s) => s.trim()).includes(#{selector.to_json})) return { minHeight: rule.style.minHeight }
+          return null })()
+      JS
     end
 
     # The first rule of a `pointer: coarse` media block whose selector list contains +selector+ (headless Firefox has a fine
