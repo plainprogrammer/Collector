@@ -98,6 +98,19 @@ Mode B (`sdd-review`), a read-only Opus reviewer, two rounds. Round 1 (commit ra
 
 Checked by the reviewer and found sound: every AC has an example that can fail, with run-time controls for each absence (the other account's own page, the collector's table reads, the write spy, a counted-proxy cell); tenancy (every read through the account, a visitor reads nothing, deck names escaped, no inline style or `html_safe`); the complement of `Lot::FreeCopies#lots` as "in decks" (retired printings and other printings included, no location-kind test); the row order; `deck_count`; no migration, schema or export change; no shipped spec of another number edited; the screenshots cover every required state, both themes, both device classes, the before and after of each CSS or markup change and the two GIFs.
 
+## Distillation
+
+Distilled on 2026-11-11 into two area docs, by `distill-feature` (state 2), after the implementation review above.
+
+- `docs/architecture/collection-and-lots.md`: the card-page paragraphs (the three-stat strip, the one definition of free read through `Lot::FreeCopies` with "In decks" as its complement, the "In decks" section and its head count, the card as the scope, the three scoped CSS rules, "Your copies"' place class), the Considering bullet in "A deck", the scope bullet for `Lot::FreeCopies` and the open-issues line for #50 were already written in the implementation commits and were re-read against the spec and found true; added in this step: the scope bullet for what the card page says about the collector's copies now names "In decks" and `Deck::CardUses`, the Sources entry for spec 073 states what it supersedes and fulfils, and one Distillation log row. No statement saying "Free to use is not built" or a single-stat card page remains (grep of `docs/architecture`, `CLAUDE.md` and `docs/roadmap.md`).
+- `docs/architecture/catalog-core.md`: the card page's order, the visitor rule (no collection part, no query against `lots`, `locations`, `decks` or `deck_proxies`) and the open-issues line were already written; added: "In decks" in the Neighbours line, a Sources entry for the parts of spec 073 this doc holds (decision 4's place of the section, decision 1 and AC-3.1) and one Distillation log row.
+- `docs/architecture/README.md`: spec 073 added to the "Specs it covers" cells of both areas.
+- `docs/specs/README.md`: the 073 row is Frozen by both area docs, Areas set, Plan "retirement owed"; its Supersedes cell now also names spec 070's Non-Goal and spec 057 decisions 7 and 8; the 004 and 071 rows already carried the 073 pointer. Specs 029, 032, 033, 057 and 070 are named only as fulfilled Non-Goals in the 073 row, as the spec lists them; their rows are unchanged.
+- `CLAUDE.md`: the deck sentence already names the stats and section and restates no rule; no change.
+- The spec's `**Frozen:**` line (spec 027 D4, a commit of its own).
+
+No ADR needed: no decision of lasting weight is outside the spec; the supersessions are in the index. The design system is not an area doc, and its files (`ItemPage.md`, `ItemPagePhone.md`, `SingleStat.md`, the previews, the README line) were changed in the implementation commits and checked under AC-6.1.
+
 ## Test runs
 
 Filled in from the final full `bin/ci` run (below).
