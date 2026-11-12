@@ -146,7 +146,7 @@ App additions (spec 063, in `collector/additions.css`): the stroke of small icon
 
 App additions (spec 074, #326, in `collector/additions.css`): two blocks, no new class. `Menu`'s clearance of the phone tab bar (`scroll-margin-top` and `scroll-margin-bottom` on `.c-menu__list` and a room box, an `::after` on the open list, below 640px on a tabbed shell; the controller's scroll is in `menu_controller.js`), and `DeckPage`'s zone tables' menu column floor (`th.c-zone__c-menu`, 4rem below 640px of the table's container). See `Menu` and `DeckPage`.
 
-App additions (spec 079, #258, in `collector/additions.css`): `DeckCheck` (`c-check` on the deck page, `c-check__title`, `c-check__summary`, `c-check__list`, `c-check__row` with `--pass`, `--fault` and `--plain`, `c-check__status`, `c-check__text`), the Check deck results; and the wrapping of a long zone name in a zone's head and the shape fold's facts line, documented in `DeckPage`. The section's root class shares its name with `Form`'s checkbox row, so its rule is scoped to the deck page.
+App additions (spec 079, #258, in `collector/additions.css`): `DeckCheck` (`c-deckcheck`, `c-deckcheck__title`, `c-deckcheck__summary`, `c-deckcheck__list`, `c-deckcheck__row` with `--pass`, `--fault` and `--plain`, `c-deckcheck__status`, `c-deckcheck__text`), the Check deck results; and the wrapping of a long zone name in a zone's head and the shape fold's facts line, documented in `DeckPage`.
 
 ## Logo
 

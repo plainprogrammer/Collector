@@ -50,7 +50,7 @@ RSpec.describe "Deck checks", type: :system do
     within_narrow_frame do
       %w[light dark].each do |theme|
         set_theme(theme)
-        expect([ page_fits_sideways?, clipped(".c-check__text, .c-check__status, .c-item__actions .c-btn") ]).to eq([ true, 0 ])
+        expect([ page_fits_sideways?, clipped(".c-deckcheck__text, .c-deckcheck__status, .c-item__actions .c-btn") ]).to eq([ true, 0 ])
       end
     end
   end
@@ -58,8 +58,8 @@ RSpec.describe "Deck checks", type: :system do
   it "says pass or fault in words with an icon on every row, never by colour alone (AC-6.2)", :aggregate_failures do
     create_lot_in_zone(deck, "main", entry: printing("Plains"), quantity: 58)
     visit deck_check_path(deck)
-    rows = all(".c-check__row--fault .c-check__status")
+    rows = all(".c-deckcheck__row--fault .c-deckcheck__status")
     expect(rows.map(&:text)).to all(be_in([ "Short", "Over", "Over the limit", "Owned and proxy" ]))
-    expect(page).to have_css(".c-check__status svg", count: page.all(".c-check__status").size)
+    expect(page).to have_css(".c-deckcheck__status svg", count: page.all(".c-deckcheck__status").size)
   end
 end

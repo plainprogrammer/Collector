@@ -16,7 +16,7 @@ RSpec.describe "Deck checks", type: :request do
   def plains = printing(name: "Plains", type_line: "Basic Land — Plains")
   def own(zone, entry, quantity: 1) = create_lot_in_zone(deck, zone, entry:, quantity:)
   def proxy_in(zone, entry) = create(:deck_proxy, zone: deck.zone(zone), account:, entry:, finish: "nonfoil", quantity: 1)
-  def rows = html.css(".c-check__row").map { it.text.squish }
+  def rows = html.css(".c-deckcheck__row").map { it.text.squish }
 
   context "when signed in" do
     before { sign_in_as(user) }
@@ -33,10 +33,10 @@ RSpec.describe "Deck checks", type: :request do
       own("main", plains, quantity: 58)
       get deck_check_path(deck)
       expect(response).to have_http_status(:ok)
-      expect([ html.at_css("#deck-check-title").text, html.at_css(".c-check__summary").text ]).to eq([ "Deck check", "1 finding" ])
+      expect([ html.at_css("#deck-check-title").text, html.at_css(".c-deckcheck__summary").text ]).to eq([ "Deck check", "1 finding" ])
       expect(rows).to eq([ "Short Main: 58 cards; Standard needs at least 60.", "Pass Sideboard: 0 cards; Standard allows at most 15.",
                            "Pass No card is over its limit.", "Pass No card has both owned copies and proxies in one zone." ])
-      expect(html.css("main > *").first(3).map { it["class"].to_s.split.first }).to eq(%w[c-item__head c-check c-deck])
+      expect(html.css("main > *").first(3).map { it["class"].to_s.split.first }).to eq(%w[c-item__head c-deckcheck c-deck])
       expect(response.body).to include('<meta name="turbo-cache-control" content="no-cache">')
       expect(html.at_css("main form")).to be_nil
     end
@@ -82,13 +82,13 @@ RSpec.describe "Deck checks", type: :request do
     it "words no findings, one finding and several (AC-1.7)", :aggregate_failures do
       own("main", plains, quantity: 60)
       get deck_check_path(deck)
-      expect(html.at_css(".c-check__summary").text).to eq("No findings")
+      expect(html.at_css(".c-deckcheck__summary").text).to eq("No findings")
       own("sideboard", plains, quantity: 16)
       get deck_check_path(deck)
-      expect(html.at_css(".c-check__summary").text).to eq("1 finding")
+      expect(html.at_css(".c-deckcheck__summary").text).to eq("1 finding")
       own("main", printing(name: "Shock"), quantity: 5)
       get deck_check_path(deck)
-      expect(html.at_css(".c-check__summary").text).to eq("2 findings")
+      expect(html.at_css(".c-deckcheck__summary").text).to eq("2 findings")
     end
 
     it "gives a deck with no rules the no-rules line and the owned-plus-proxy result (AC-2.7)" do
