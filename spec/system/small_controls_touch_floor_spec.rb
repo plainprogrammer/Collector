@@ -68,6 +68,56 @@ RSpec.describe "Small controls meet the touch floor on a coarse pointer", :solid
     JS
   end
 
+  # The rows whose line counts AC-1.5 compares.
+  def rows = ".c-filterbar, .c-bulkbar, .c-pager, .c-section__head, .c-decks__actions, .c-numentry__language, .c-jobs__filters, .c-appbar"
+
+  # Counts the lines of every row of `rows` on the current page: a line is a cluster of the row's drawn controls whose vertical
+  # extents overlap, so controls of different heights centred on one line are one line. Returns the `[selector#index, lines]`
+  # pairs and the height of the first `.c-filterbar`.
+  def row_lines
+    page.evaluate_script(<<~JS, rows, small)
+      (() => {
+        const [rows, small] = arguments
+        const wanted = "button, input:not([type=hidden]), select, summary, a[href], .c-btn, .c-filter, " + small
+        const drawn = (el) => { const d = el.closest("details:not([open])"); const box = el.getBoundingClientRect()
+          return box.width > 0 && box.height > 0 && !el.closest(".c-sr") && !(d && !(el.tagName === "SUMMARY" && el.parentElement === d)) }
+        const lines = [...document.querySelectorAll(rows)].map((row, index) => {
+          const boxes = [...row.querySelectorAll(wanted)].filter(drawn).map((el) => el.getBoundingClientRect()).sort((a, b) => a.top - b.top)
+          let count = 0, bottom = -Infinity
+          for (const box of boxes) { if (box.top >= bottom - 1) { count += 1; bottom = box.bottom } else { bottom = Math.max(bottom, box.bottom) } }
+          return [row.className.split(" ")[0] + "#" + index, count]
+        })
+        const bar = document.querySelector(".c-filterbar")
+        return { lines, bar: bar ? bar.getBoundingClientRect().height : null }
+      })()
+    JS
+  end
+
+  # The filter row's select and button heights, and how far apart their vertical centres are (AC-1.6).
+  def row_alignment
+    page.evaluate_script(<<~JS)
+      (() => {
+        const row = document.querySelector(".c-filterbar__filters")
+        const select = row.querySelector("select"), button = row.querySelector(".c-btn")
+        const centre = (el) => { const rect = el.getBoundingClientRect(); return rect.top + rect.height / 2 }
+        return { select: select.getBoundingClientRect().height, button: button.getBoundingClientRect().height, offset: Math.abs(centre(select) - centre(button)) }
+      })()
+    JS
+  end
+
+  # Name, label, width and height of every control that is not a small control (AC-1.7), in document order: the page's `main` and
+  # its header (the printings page has no control in `main` that is not small, and the check must still compare something there).
+  def other_controls
+    page.evaluate_script(<<~JS)
+      [...document.querySelectorAll(":is(main, .c-appbar) :is(button, input, textarea, select, summary, .c-btn)")]
+        .filter((el) => !el.closest(".c-sr") && el.type !== "hidden" && !el.matches(".c-btn--sm, .c-filter, .c-seg button"))
+        .map((el) => {
+          const box = el.getBoundingClientRect()
+          return [el.tagName, (el.textContent.trim() || el.value || el.name || el.id).slice(0, 24), Math.round(box.width * 100) / 100, Math.round(box.height * 100) / 100]
+        })
+    JS
+  end
+
   context "with an admin's account" do
     let(:user) { create(:admin) } # an admin is a collector too, so one sign-in reaches the admin pages and the rest
     let!(:lot) { owned_printing("Lightning Bolt", account: user.account, location: create(:location, account: user.account, name: "Blue binder"), number: "138", quantity: 2) }
@@ -234,6 +284,209 @@ RSpec.describe "Small controls meet the touch floor on a coarse pointer", :solid
         end
         expect(compact).to be > 10 # at least some pages had controls to measure
       end
+    end
+
+    it "keeps every page whole at 360px with all the coarse rules: no overflow, no overlap, nothing past the edge (AC-1.4)", :aggregate_failures do
+      pages.each_key do |name|
+        in_page(name, width: 360) do
+          inject_coarse(needs: block_rules)
+          report = layout_report(roots: [ "main", ".c-appbar", "#status" ])
+          expect(report["overflow"]).to be <= 0, "#{name}: scrolls sideways by #{report['overflow']}px"
+          expect(report["overlaps"]).to be_empty, "#{name}: overlapping controls: #{report['overlaps']}"
+          edge = page.evaluate_script("document.documentElement.clientWidth")
+          past = small_controls.reject { it["row"] }.select { it["right"] > edge + 1 }.map { it["name"] }
+          expect(past).to be_empty, "#{name}: past the right edge: #{past}"
+        end
+      end
+    end
+
+    # The filter bars: the collection (grid view and bulk mode), the card search and the add-a-proxy chooser.
+    def filter_pages = [ "collection grid", "bulk mode", "card search", "proxy chooser" ]
+
+    [ 1280, 360 ].each do |width|
+      it "levels the filter row's small button with its select, both at least 44px, at #{width}px (AC-1.6)", :aggregate_failures do
+        filter_pages.each do |name|
+          in_page(name, width:) do
+            inject_coarse(needs: block_rules)
+            row = row_alignment
+            expect([ row["select"], row["button"] ]).to all(be >= 44), "#{name}: #{row}"
+            expect(row["offset"]).to be <= 1, "#{name}: the button's centre is #{row['offset']}px off the select's"
+          end
+        end
+      end
+    end
+
+    # The line counts (and the first filter bar's height) of every page at a width, with every coarse rule applied except `except`
+    # and with `extra` CSS. The scrollbar is pinned on so a taller page can't narrow the frame by 15px (which is no layout defect).
+    def rows_of(width, except: [], extra: "")
+      pages.keys.to_h do |name|
+        report = nil
+        in_page(name, width:) do
+          inject_coarse(except:, extra: "html { overflow-y: scroll; } #{extra}", needs: block_rules)
+          report = row_lines
+        end
+        [ name, report ]
+      end
+    end
+
+    [ 1280, 360 ].each do |width|
+      it "adds no line to any row of controls at #{width}px (AC-1.5)", :aggregate_failures do
+        without = rows_of(width, except: block_rules)
+        with = rows_of(width)
+        pages.each_key do |name|
+          expect(with.fetch(name)["lines"]).to eq(without.fetch(name)["lines"]), "#{name}: lines per row changed"
+        end
+        next unless width == 360
+
+        expect(with.fetch("collection grid")["bar"] - without.fetch("collection grid")["bar"]).to be <= 8
+      end
+    end
+
+    def other_controls_of(name, except: [], extra: "")
+      controls = nil
+      in_page(name, width: 360) do
+        inject_coarse(except:, extra: "html { overflow-y: scroll; } #{extra}", needs: block_rules)
+        controls = other_controls
+      end
+      controls
+    end
+
+    it "changes no other control's size: all coarse rules with and without the block's two (AC-1.7)", :aggregate_failures do
+      pages.each_key do |name|
+        without = other_controls_of(name, except: block_rules)
+        with = other_controls_of(name)
+        expect(without).not_to be_empty, "#{name}: no control found"
+        expect(with.size).to eq(without.size), "#{name}: #{without.size} controls without the block, #{with.size} with it"
+        changed = without.zip(with).reject { |before, after| before == after }
+        expect(changed).to be_empty, "#{name}: controls whose size changed: #{changed}"
+      end
+    end
+
+    # Number entry's Add button is a `c-btn` that is not small (card search has none: its Search, Show all, quick add and pager are all
+    # small, so the variant could not change anything there and the example would be green for the wrong reason).
+    it "notices a rule that grows another control (AC-1.7 can fail)", :aggregate_failures do
+      without = other_controls_of("number entry", except: block_rules)
+      with = other_controls_of("number entry", extra: ".c-input, .c-btn:not(.c-btn--sm) { min-height: 90px; }")
+      expect(with).not_to eq(without)
+      expect(without.map { it[3] }.max).to be < 90
+    end
+
+    it "notices a row that gains a line (AC-1.5 can fail)", :aggregate_failures do
+      [ "bulk mode", "number entry" ].each do |name|
+        in_page(name, width: 360) do
+          inject_coarse(except: block_rules, extra: "html { overflow-y: scroll; }", needs: block_rules)
+          before = row_lines["lines"]
+          inject_coarse(extra: ".c-btn--sm { min-width: 300px; }", needs: block_rules) # a second adopted sheet on top of the first
+          after = row_lines["lines"]
+          expect(after.sum { |_, lines| lines }).to be > before.sum { |_, lines| lines }, "#{name}: no row gained a line"
+        end
+      end
+    end
+
+    it "has a control under 44px without the block: the floor is the block's doing (AC-1.2 can fail)" do
+      in_page("collection grid") do
+        inject_coarse(except: block_rules, needs: block_rules)
+        expect(small_controls.reject { it["page"] }.map { it["height"] }.min).to be < 44
+      end
+    end
+
+    # Removes every lot in bulk mode (the "…" menu holds Remove below 640px), confirms, and returns the status line's Undo heights.
+    def remove_all_and_measure_undo(narrow)
+      check "Select all"
+      if narrow
+        find(".c-bulkbar__more summary").click
+        within(".c-bulkbar__more") { click_on "Remove" }
+      else
+        within(".c-bulkbar__extra") { click_on "Remove" }
+      end
+      find(:button, text: /\ARemove \d+ items?\z/).click
+      expect(page).to have_css("#status .c-btn--sm", text: "Undo")
+      inject_coarse(needs: block_rules)
+      heights = small_controls.select { it["name"].include?("Undo") }.map { it["height"] }
+      click_on "Undo" # puts the lots back for the next width, inside the frame at 360px
+      expect(page).to have_css("#status", text: /Restored/)
+      heights
+    end
+
+    it "draws the status message's Undo at 44px after a bulk removal (AC-1.2, row 16)", :aggregate_failures do
+      [ 1280, 360 ].each do |width|
+        heights = nil
+        if width < 500
+          visit collection_path(view: "grid")
+          open_in_narrow_frame(collection_path(bulk: 1), width:, ready: "main")
+          within_narrow_frame { heights = remove_all_and_measure_undo(true) }
+        else
+          visit collection_path(bulk: 1)
+          heights = remove_all_and_measure_undo(false)
+        end
+        expect(heights.size).to eq(1), "exactly one Undo is drawn at #{width}px"
+        expect(heights).to all(be >= 44)
+      end
+    end
+  end
+
+  context "without the admin's fixtures" do
+    before { page.driver.browser.manage.window.resize_to(1280, 900) }
+
+    # Row 1: a visitor's "Sign in" on an open catalog.
+    def sign_in_height_with_coarse_rules
+      inject_coarse(needs: [ block_height ])
+      page.evaluate_script("document.querySelector('.c-appbar a.c-btn--sm').getBoundingClientRect().height")
+    end
+
+    [ 1280, 360 ].each do |width|
+      it "draws a visitor's Sign in at 44px on an open catalog at #{width}px (AC-1.2, row 1)", :public_catalog do
+        create(:user) # with no account yet every visit goes to the first-run page
+        visit catalog_entries_path
+        height = nil
+        if width < 500
+          open_in_narrow_frame(catalog_entries_path, width:, ready: "main")
+          within_narrow_frame { height = sign_in_height_with_coarse_rules }
+        else
+          height = sign_in_height_with_coarse_rules
+        end
+        expect(height).to be >= 44
+      end
+    end
+
+    # Row 14b: a candidate's Add buttons and "Other printings" link, then the printings frame's "Show N more" (setup as
+    # scanner_adding_spec.rb, plus a second English printing of the card so the frame has one more than SHOWN = 1).
+    def read_a_card
+      stub_const("Scanner::OtherPrintings::SHOWN", 1)
+      identity = create(:catalog_identity, name: "Lightning Bolt")
+      mom = create(:catalog_set, code: "mom", name: "March of the Machine")
+      create(:mtg_printing, finishes: %w[nonfoil foil], entry: create(:catalog_entry, identity:, name: "Lightning Bolt", set: mom, number: "123"))
+      create(:mtg_printing, finishes: %w[nonfoil foil], entry: create(:catalog_entry, identity:, name: "Lightning Bolt", set: create(:catalog_set), number: "9"))
+      Catalog::NameIndex.new("mtg").rebuild
+      system_sign_in_as(create(:user))
+    end
+
+    def candidate_heights
+      show_synthetic_card
+      click_on "Capture"
+      expect(page).to have_css(".c-scanner__candidate", text: "Lightning Bolt", wait: 30)
+      click_on "Other printings"
+      expect(page).to have_css("#scanner_printings summary.c-btn--sm", text: "Show 1 more")
+      inject_coarse(needs: block_rules)
+      small_controls(".c-scanner__candidate .c-btn--sm, #scanner_printings .c-btn--sm").map { it["height"] }
+    end
+
+    it "draws a candidate's Other printings and Add buttons at 44px at 1280px (AC-1.2, row 14b)", :aggregate_failures do
+      read_a_card
+      visit scanner_path
+      heights = candidate_heights
+      expect(heights.size).to be >= 6 # Nonfoil, Foil, Other printings; the frame's Nonfoil, Foil and "Show 1 more"
+      expect(heights).to all(be >= 44)
+    end
+
+    it "draws a candidate's Other printings and Add buttons at 44px at 360px (AC-1.2, row 14b)", :aggregate_failures do
+      read_a_card
+      visit collection_path(view: "grid")
+      open_in_narrow_frame(scanner_path, width: 360, ready: "main")
+      heights = nil
+      within_narrow_frame { heights = candidate_heights }
+      expect(heights.size).to be >= 6
+      expect(heights).to all(be >= 44)
     end
   end
 end
