@@ -1,7 +1,7 @@
 # Plan: 069 The Deck Shape Panel
 
 **Spec:** [spec.md](spec.md) v0.2.1 (Approved at Gate A) · **Issue:** [#256](https://github.com/plainprogrammer/Collector/issues/256) · **Branch:** `069-deck-shape-panel`
-**Status:** Draft (Gate B pending)
+**Status:** Draft v1.1 (plan review round 1 applied; Gate B pending)
 
 ## Goal
 
@@ -125,7 +125,7 @@ module Catalog::DeckShape
 end
 ```
 
-`spec/deck_core_spec.rb`: add `app/models/catalog/deck_shape.rb` to `patterns` next to `deck_cards.rb`; the count example becomes `20 + 6 + 1 + 1 + 4 + 1 + 15 + 2` with the comment "spec 069 adds 2: the seam `app/models/catalog/deck_shape.rb` and the page's frame `app/views/decks/_shape.html.erb` (the views glob already covers it; T7 creates it, so the count example is red until then: commit this edit with T7, and in T1 leave the count at its old value and add the pattern)". Concretely: T1 adds the pattern and the count `+ 1`; T7 raises it to `+ 2`.
+`spec/deck_core_spec.rb`: add `app/models/catalog/deck_shape.rb` to `patterns` next to `deck_cards.rb`; the count example becomes `20 + 6 + 1 + 1 + 4 + 1 + 15 + 2` with the comment "spec 069 adds 2: the seam `app/models/catalog/deck_shape.rb` and the page's frame `app/views/decks/_shape.html.erb` (the views glob already covers it)". The guard totals 48 today. T1 adds the pattern, so its count is `+ 1` (49 files); T7 creates `_shape.html.erb` and raises it to `+ 2` (50), so every commit's suite is green.
 
 Run: `bin/rspec spec/models/catalog/deck_shape_spec.rb spec/deck_core_spec.rb`. Commit `feat(decks): add Catalog::DeckShape, the panel's seam (#256)`.
 
@@ -217,18 +217,22 @@ describe ".build" do
     expect(figures.cards).to eq(4)
     expect(figures.scope).to eq("Main · 4 cards")
     expect(figures.types.map(&:name)).to eq([ "Instants" ])
+    expect(figures.curve.last.total).to eq(0) # the 7s are outside the counted zones (add this line in T4)
+    expect(figures.symbols.map(&:colour)).to eq([ "R" ]) # (add this line in T5)
   end
 
   it "counts Commander and Main together, in the deck's zone order, and not Considering", :aggregate_failures do
     krenko = create(:deck, account:, name: "Krenko", format: "commander")
     own(card, 1, zone: "commander", in_deck: krenko)
     own(card, 99, zone: "main", in_deck: krenko)
-    own(card(type_line: "Land"), 3, zone: "considering", in_deck: krenko)
+    own(card(type_line: "Sorcery", cost: "{G}", mana_value: 7.0), 3, zone: "considering", in_deck: krenko) # a type, a colour and a value the counted zones lack
 
     figures = shape(krenko)
 
     expect(figures.scope).to eq("Commander + Main · 100 cards")
     expect(figures.types.map(&:name)).to eq([ "Instants" ])
+    expect(figures.curve.last.total).to eq(0) # add in T4
+    expect(figures.symbols.map(&:colour)).to eq([ "R" ]) # add in T5
   end
 
   it "says '1 card' and '0 cards' and delimits thousands", :aggregate_failures do
@@ -292,14 +296,16 @@ end
 
 Note for the implementer: a lot of an unregistered collectible type may not be creatable by factory; if so, test AC-3.5 with hand-built `Deck::Page::Zone`/`Group`/`Row` data objects (they are `Data`, constructible: `Deck::Page::Row.new(entry:, owned: 4, lines: [], answer: Catalog::DeckCards::NONE)`), and say so in `verification.md`. The request example (T7) proves the page-level case if a lot can be placed.
 
+**Class layout (one `private`, written once here).** The class is laid out as: constants (`COUNTED_ZONES`, `Type` now; `TOP_COLUMN`, `Column` in T4; `COLOURS`, `Segment` in T5), `attr_reader`, `self.build`, `initialize`, every public method, then a single `private` holding the helpers (`counted`, built on `delimited`, both defined once; `nonland`, `valued`, `mana_values` from T4; `symbol_counts` from T5). T4 and T5 insert their public methods and constants **above** that `private` and their helpers below it; appending a public method after it makes it private and its callers raise `NoMethodError`.
+
 Code (this task writes the class's frame, the rows, types and scope; the curve and symbols arrive in T4 and T5):
 
 ```ruby
 # The figures of the deck shape panel for Magic (spec 069, #256): what a deck's Commander and Main zones hold, counted by
 # type, by mana value and by coloured mana symbol, owned copies and proxies together and the curve and types keeping them
 # apart. A plain object built once per request from `Deck::Page#zones`; it reads the rows' loaded printings and runs one
-# statement of its own (the cards' mana values, none when no card counts). It is the only place the rules of the spec's
-# decisions 2 to 10 live.
+# statement of its own (the cards' mana values, none when no card counts). It is the code of the spec's
+# decisions 2 to 10 (the rules themselves are in the area doc).
 #
 # Known limit (spec 069 Non-Goals, decision 7): a card is read through its first face, as the zone tables read it, so the second half of a
 # split card adds no symbol to the bar, though its mana value (Scryfall's, both halves added) is in the curve. That is deliberate.
@@ -312,6 +318,8 @@ class MTG::DeckShape
 
   attr_reader :rows
 
+  # The figures of a deck page's counted zones (decision 2), or nil when the deck has neither a Commander nor a Main zone.
+  #
   # @param zones [Array<Deck::Page::Zone>] `Deck::Page#zones`
   # @return [MTG::DeckShape, nil] nil when the deck has no counted zone
   def self.build(zones)
@@ -347,7 +355,9 @@ class MTG::DeckShape
   end
 
   private
-    def counted(number, word) = "#{ActiveSupport::NumberHelper.number_to_delimited(number)} #{number == 1 ? word : word.pluralize}"
+    def delimited(number) = ActiveSupport::NumberHelper.number_to_delimited(number)
+
+    def counted(number, word) = "#{delimited(number)} #{number == 1 ? word : word.pluralize}"
 end
 ```
 
@@ -390,21 +400,23 @@ describe "#curve" do
   end
 
   it "leaves lands out and keeps Dryad Arbor in column 0 (AC-2.6)", :aggregate_failures do
-    own(card(type_line: "Land Creature — Forest Dryad", cost: "{G}", mana_value: 1.0)) # Dryad Arbor: a Creature; stored value 1
+    own(card(type_line: "Land Creature — Forest Dryad", cost: "", mana_value: 0.0)) # Dryad Arbor: a Creature, mana value 0
     own(card(type_line: "Artifact Land", cost: "", mana_value: 0.0))
     own(card(type_line: "Basic Land — Island", cost: "", mana_value: 0.0))
 
-    expect(shape.curve.map(&:total)).to eq([ 0, 1, 0, 0, 0, 0, 0 ])
+    expect(shape.curve.map(&:total)).to eq([ 1, 0, 0, 0, 0, 0, 0 ])
     expect(shape.curve_owned).to eq(1)
   end
 
   it "uses the card's stored value for a double-faced and a reversible card, and keeps a Sorcery // Land in the curve (AC-2.7)" do
     own(card(mana_value: 2.0, faces: [ { "name" => "A", "type_line" => "Creature — Human", "mana_cost" => "{1}{U}" },
-                                       { "name" => "B", "type_line" => "Land", "mana_cost" => "" } ]))
-    own(card(mana_value: 4.0))
+                                       { "name" => "B", "type_line" => "Land", "mana_cost" => "" } ])) # transform: front Creature, back Land
+    own(card(mana_value: 4.0, faces: [ { "name" => "Ajani", "type_line" => "Legendary Planeswalker — Ajani", "mana_cost" => "{2}{W}{W}" },
+                                       { "name" => "Ajani", "type_line" => "Legendary Planeswalker — Ajani", "mana_cost" => "{2}{W}{W}" } ])) # reversible: stored value 4
     own(card(mana_value: 3.0, faces: [ { "name" => "C", "type_line" => "Sorcery", "mana_cost" => "{2}{B}" }, { "name" => "D", "type_line" => "Land", "mana_cost" => "" } ]))
 
     expect(shape.curve.map(&:total)).to eq([ 0, 0, 1, 1, 1, 0, 0 ])
+    expect(shape.types.map { [ it.name, it.count ] }).to eq([ [ "Creatures", 1 ], [ "Planeswalkers", 1 ], [ "Sorceries", 1 ] ]) # by the front face's type
   end
 
   it "leaves a nonland card with no mana value out and counts it for the note (AC-2.5)", :aggregate_failures do
@@ -464,31 +476,24 @@ describe "#average_text" do
 end
 
 describe "statements" do
-  def statements
-    count = 0
-    counter = ->(*, payload) { count += 1 unless payload[:cached] || %w[SCHEMA TRANSACTION].include?(payload[:name]) }
-    ActiveSupport::Notifications.subscribed(counter, "sql.active_record") { yield }
-    count
-  end
-
   it "runs one statement for the mana values however many cards, and none for an empty deck (AC-6.1)", :aggregate_failures do
     page_zones = zones_of
-    expect(statements { described_class.build(page_zones).curve }).to eq(0)
+    expect(count_queries { described_class.build(page_zones).curve }).to eq(0)
 
     10.times { own(card) }
     page_zones = zones_of
-    expect(statements { described_class.build(page_zones).curve }).to eq(1)
+    expect(count_queries { described_class.build(page_zones).curve }).to eq(1)
 
     30.times { own(card) }
     page_zones = zones_of
-    expect(statements { described_class.build(page_zones).curve }).to eq(1)
+    expect(count_queries { described_class.build(page_zones).curve }).to eq(1)
   end
 
   it "reads the mana values once for the curve, the average and the note (AC-6.3)" do
     own(card)
     figures = described_class.build(zones_of)
 
-    expect(statements { figures.curve; figures.average_text; figures.unvalued; figures.curve_max }).to eq(1)
+    expect(count_queries { figures.curve; figures.average_text; figures.unvalued; figures.curve_max }).to eq(1)
   end
 end
 ```
@@ -573,7 +578,7 @@ Code to add to `MTG::DeckShape` (comments for each public method; the first-use 
     end
 ```
 
-(`counted` is the T3 helper; make it private-shared, not duplicated. `format("%.1f", Rational#round(1).to_f)`: `Rational(1,5).to_f` is 0.2 so "0.2"; `Rational(13,10)` → "1.3".) Note `unvalued` and `valued` use the same `mana_values` memo, so the statement count is 1. Run, commit `feat(decks): add the shape panel's curve and average (#256)`.
+(`counted` and `delimited` are T3's private helpers, not redefined. `format("%.1f", Rational#round(1).to_f)`: `Rational(1,5).to_f` is 0.2 so "0.2"; `Rational(13,10)` → "1.3".) Note `unvalued` and `valued` use the same `mana_values` memo, so the statement count is 1. Run, commit `feat(decks): add the shape panel's curve and average (#256)`.
 
 #### T5: Coloured symbols, percentages and the texts
 
@@ -764,8 +769,6 @@ Code:
   def facts = [ scope, ("average mana value #{average_text}" if average_text) ].compact.join(" · ")
 
   private
-    def delimited(number) = ActiveSupport::NumberHelper.number_to_delimited(number)
-
     # { "W" => 3, … } for every colour: each symbol of every row's first face's cost, times the row's cards.
     def symbol_counts
       @symbol_counts ||= rows.each_with_object(COLOURS.keys.index_with { 0 }) do |row, counts|
@@ -843,7 +846,7 @@ Run both new files. Commit `feat(decks): answer the deck page's shape panel for 
 #### T7: The views, the controller line and the request examples
 
 **Implements** FR-3, decision 12. **Satisfies** AC-1.1 to AC-1.8, AC-2.9, AC-2.10 (markup), AC-4.9 (markup), AC-6.1 (request level), AC-1.7.
-**Files:** create `app/views/mtg/deck_shapes/_parts.html.erb`, `app/views/decks/_shape.html.erb`, `spec/requests/deck_shape_panel_spec.rb`; edit `app/controllers/decks_controller.rb`, `app/views/decks/show.html.erb`, `spec/requests/deck_pages_spec.rb`, `spec/deck_core_spec.rb`.
+**Files:** create `app/views/mtg/deck_shapes/_parts.html.erb`, `app/views/decks/_shape.html.erb`, `spec/requests/deck_shape_panel_spec.rb`; edit `app/controllers/decks_controller.rb`, `app/views/decks/show.html.erb`, `spec/requests/deck_pages_spec.rb`, `spec/system/deck_page_spec.rb`, `spec/deck_core_spec.rb`.
 
 Examples first, `spec/requests/deck_shape_panel_spec.rb`:
 
@@ -869,9 +872,13 @@ RSpec.describe "Deck shape panel", type: :request do
   before { sign_in_as(user) }
 
   describe "the two copies (Story 1)" do
+    # Bolt (owned 3), Counterspell (owned 1, proxy 2: one column holding both) and two Forests: 8 cards, 6 in the curve.
     before do
       own(card(name: "Lightning Bolt"), 3)
-      proxy(card(name: "Counterspell", cost: "{U}{U}", mana_value: 2.0), 2)
+      counterspell = card(name: "Counterspell", cost: "{U}{U}", mana_value: 2.0)
+      own(counterspell, 1)
+      proxy(counterspell, 2)
+      own(card(name: "Forest", type_line: "Basic Land — Forest", cost: "", mana_value: 0.0), 2)
       get deck_path(deck)
     end
 
@@ -879,10 +886,10 @@ RSpec.describe "Deck shape panel", type: :request do
       expect(html.css(".c-deck > *").map { it["class"] }).to eq([ "c-shapefold", "c-deck__shape", "c-deck__zones" ])
       aside = html.at_css("aside.c-deck__shape")
       expect(aside.at_css("section.c-shape h2.c-shape__title").text).to eq("Deck shape")
-      expect(aside.at_css(".c-shape__scope").text).to eq("Main · 5 cards")
+      expect(aside.at_css(".c-shape__scope").text).to eq("Main · 8 cards")
       summary = html.at_css("details.c-shapefold summary")
       expect(summary.at_css(".c-shapefold__title").text).to eq("Deck shape")
-      expect(summary.at_css(".c-shapefold__facts").text).to eq("Main · 5 cards · average mana value 1.4")
+      expect(summary.at_css(".c-shapefold__facts").text).to eq("Main · 8 cards · average mana value 1.5")
       expect(html.at_css("details.c-shapefold")["open"]).to be_nil
     end
 
@@ -901,30 +908,42 @@ RSpec.describe "Deck shape panel", type: :request do
 
     it "reads each chart for a screen reader once per copy and hides the columns (AC-2.9, AC-4.9)", :aggregate_failures do
       aside = html.at_css("aside.c-deck__shape")
-      expect(aside.at_css(".c-curve [role=img]")["aria-label"]).to eq("Mana curve of the 5 nonland cards in Main: mana value 1, 3 cards (3 owned); 2, 2 cards (2 proxy). Average mana value 1.4.")
+      expect(aside.at_css(".c-curve [role=img]")["aria-label"]).to eq(
+        "Mana curve of the 6 nonland cards in Main: mana value 1, 3 cards (3 owned); 2, 3 cards (1 owned, 2 proxy). Average mana value 1.5."
+      )
       expect(aside.at_css(".c-curve__cols")["aria-hidden"]).to eq("true")
-      expect(aside.at_css(".c-manabar")["aria-label"]).to eq("Coloured mana symbols in Main: blue 4, red 3")
+      expect(aside.at_css(".c-manabar")["aria-label"]).to eq("Coloured mana symbols in Main: blue 6, red 3")
     end
 
-    it "draws a column as owned below proxy with numbers only in style, a part of zero having no element (AC-2.9, AC-2.10)", :aggregate_failures do
+    it "draws a column with the proxy part above the owned part, numbers only in style, a part of zero having no element (AC-2.9, AC-2.10)", :aggregate_failures do
       cols = html.css("aside .c-curve__col")
       expect(cols.size).to eq(7)
-      expect(cols[1].at_css(".c-curve__owned")["style"]).to eq("--owned:3;--max:3")
-      expect(cols[1].at_css(".c-curve__proxy")).to be_nil
-      expect(cols[2].at_css(".c-curve__proxy")["style"]).to eq("--proxy:2;--max:3")
-      expect(cols[2].at_css(".c-curve__owned")).to be_nil
-      expect(html.css("aside [style]").map { it["style"] }).to all(match(/\A(--\w+:\d+;?)+\z/))
-      expect(html.css("aside .c-curve__legend li").map(&:text)).to eq([ "Owned 3", "Proxy 2" ])
-      expect(html.at_css("aside .c-curve__avg").text.strip).to eq("Average mana value 1.4")
+      expect(cols[1].css(".c-curve__bar > *").map { [ it["class"], it["style"] ] }).to eq([ [ "c-curve__owned", "--owned:3;--max:3" ] ])
+      expect(cols[2].css(".c-curve__bar > *").map { [ it["class"], it["style"] ] }).to eq(
+        [ [ "c-curve__proxy", "--proxy:2;--max:3" ], [ "c-curve__owned", "--owned:1;--max:3" ] ] # the proxy part first: it sits on top
+      )
+      expect(html.css("aside [style]").map { it["style"] }).to all(match(/\A(--\w+:\d+;?)+\z/)) # no colour in a style attribute
+      expect(html.css("aside .c-curve__legend li").map(&:text)).to eq([ "Owned 4", "Proxy 2" ])
+      expect(html.at_css("aside .c-curve__avg").text.strip).to eq("Average mana value 1.5")
     end
 
-    it "lists the types with the proxy suffix and the symbol segments with their letters (AC-3.1, AC-4.1)", :aggregate_failures do
-      expect(html.css("aside .c-types li").map { it.text.squish }).to eq([ "Instants 5 2 proxy" ])
+    it "lists the types with the proxy suffix, empty where a row has none, and the symbol segments with their letters (AC-3.1, AC-4.1)", :aggregate_failures do
+      expect(html.css("aside .c-types li").map { |li| li.css("span").map(&:text) }).to eq([ [ "Instants", "6", "2 proxy" ], [ "Lands", "2", "" ] ])
       expect(html.css("aside .c-manabar__seg").map { [ it["class"], it["style"], it.text ] }).to eq(
-        [ [ "c-manabar__seg c-manabar__seg--u", "--n:4", "U 4" ], [ "c-manabar__seg c-manabar__seg--r", "--n:3", "R 3" ] ]
+        [ [ "c-manabar__seg c-manabar__seg--u", "--n:6", "U 6" ], [ "c-manabar__seg c-manabar__seg--r", "--n:3", "R 3" ] ]
       )
-      expect(html.at_css("aside .c-manacap").text).to eq("Blue 4 · 57% · Red 3 · 43%")
+      expect(html.at_css("aside .c-manacap").text).to eq("Blue 6 · 67% · Red 3 · 33%")
     end
+  end
+
+  it "marks a segment under 10% of the symbols narrow in the page (AC-4.6)", :aggregate_failures do
+    own(card(cost: "{W}"), 1)
+    own(card(cost: "{U}"), 19)
+    get deck_path(deck)
+
+    segments = html.css("aside .c-manabar__seg").to_h { [ it["class"][/seg--(\w+)/, 1], it["class"].include?("c-manabar__seg--narrow") ] }
+    expect(segments).to eq({ "w" => true, "u" => false })
+    expect(html.at_css("aside .c-manacap").text).to eq("White 1 · 5% · Blue 19 · 95%")
   end
 
   it "shows the empty states of a deck with no card (AC-1.5)", :aggregate_failures do
@@ -952,7 +971,7 @@ RSpec.describe "Deck shape panel", type: :request do
 
   it "keeps the panel for a format the instance no longer registers (AC-1.8)", :aggregate_failures do
     own(card, 2)
-    Deck.where(location_id: deck.location_id).update_all(format: "retired") # spec fixture: a stored key the registry lacks
+    deck.update!(format: "retired") # a stored key the registry lacks, as deck_pages_spec.rb does
     get deck_path(deck)
 
     expect(html.at_css("aside .c-shape__scope").text).to eq("Main · 2 cards")
@@ -975,11 +994,12 @@ RSpec.describe "Deck shape panel", type: :request do
     expect(html.css("aside.c-deck__shape, details.c-shapefold")).to be_empty
   end
 
-  it "draws no panel for a deck of a type no longer registered (AC-1.4)", :other_collecting do
-    other = create(:deck, account:, name: "Gone deck", pair: "other/standard")
-    Catalog.collecting.delete("other") # the around hook deletes it again afterwards
-    get deck_path(other)
+  it "draws no panel for a deck of a type no longer registered, and still answers 200 (AC-1.4)", :aggregate_failures do
+    own(card)
+    deck.update!(collectible_type: "gone") # the fixture deck_pages_spec.rb uses for a type the instance no longer has
+    get deck_path(deck)
 
+    expect(response).to have_http_status(:ok)
     expect(html.css("aside.c-deck__shape, details.c-shapefold")).to be_empty
   end
 
@@ -994,9 +1014,7 @@ RSpec.describe "Deck shape panel", type: :request do
 end
 ```
 
-(Fix the "Gone deck" example if `get` of a deck whose type is unregistered 404s for another reason: spec 066 already renders such a deck; if `Deck::Page` needs the type, follow `spec/requests/deck_pages_spec.rb`'s existing unregistered-type example for the fixture and reuse it. The AC-1.4 requirement is that the page is 200 with no panel.)
-
-Delete the `be_nil` line and rewrite the example in `spec/requests/deck_pages_spec.rb:76-83`: title becomes "has a dash in the Proxy cell of a row with no proxy (AC-1.6; spec 068 supersedes spec 066 AC-1.6's no proxy control, and spec 069 its no shape panel)" and drops the `aside.c-deck__shape, details.c-shapefold` `be_nil` expectation (the panel is now proved in the new file).
+Two existing examples go red the moment the panel renders, so both are rewritten **in this commit**: (1) delete the `be_nil` line and rewrite the example in `spec/requests/deck_pages_spec.rb:76-83`: title becomes "has a dash in the Proxy cell of a row with no proxy (AC-1.6; spec 068 supersedes spec 066 AC-1.6's no proxy control, and spec 069 its no shape panel)" and drops the `aside.c-deck__shape, details.c-shapefold` `be_nil` expectation (the panel is now proved in the new file). (2) Rewrite `spec/system/deck_page_spec.rb:202-214` ("leaves the second column empty from 992px…", which asserts `.c-deck` has one child and goes red now that a Magic deck has three): the example uses a deck of another collectible, `let(:other_deck) { create(:deck, account:, name: "Other deck", pair: "other/standard") }` with the `:other_collecting` tag, visits `deck_path(other_deck)` and keeps every assertion (`children` 1, `columns` 2, the zones narrower than the grid); retitle it "leaves the second column empty from 992px for a deck whose collectible draws no panel (AC-5.1; spec 069 supersedes it for a Magic deck, spec 060 AC-3.12)".
 
 Code. `app/controllers/decks_controller.rb`, in `show` (one line, the only controller edit):
 
@@ -1089,11 +1107,11 @@ Code. `app/controllers/decks_controller.rb`, in `show` (one line, the only contr
 </div>
 ```
 
-(The test above asserts the markup's exact shapes: `.c-types li` text "Instants 5 2 proxy" after `squish`; the class attribute order `c-manabar__seg c-manabar__seg--u` comes from `class_names`.)
+(The test above asserts the markup's exact shapes: each `.c-types li` holds three spans, name, count and the proxy suffix, the last empty for a row with none; the class attribute order `c-manabar__seg c-manabar__seg--u` comes from `class_names`.)
 
 `spec/deck_core_spec.rb`: the count example's comment and sum go to `+ 2` (the seam and `app/views/decks/_shape.html.erb`).
 
-Run: `bin/rspec spec/requests/deck_shape_panel_spec.rb spec/requests/deck_pages_spec.rb spec/deck_core_spec.rb spec/models/mtg spec/models/catalog/deck_shape_spec.rb`. Also run `bin/rails zeitwerk:check`. Re-run the supersession grep above and record the result. Commit `feat(decks): show the shape panel on the deck page (#256)`.
+Run: `bin/rspec spec/requests/deck_shape_panel_spec.rb spec/requests/deck_pages_spec.rb spec/system/deck_page_spec.rb spec/deck_core_spec.rb spec/models/mtg spec/models/catalog/deck_shape_spec.rb` (one run at a time: the system file shares the database). Also run `bin/rails zeitwerk:check`. Re-run the supersession grep above and record the result. Commit `feat(decks): show the shape panel on the deck page (#256)`.
 
 #### T8: The page's statements stay bounded; `Deck::Page` is untouched
 
@@ -1113,21 +1131,36 @@ it "keeps the deck page's queries the same with 60 cards of 40 printings as with
   create_lot_in_zone(deck, "main", entry: card.call, quantity: 1)
   few = queries_for(deck_path(deck))
 
-  39.times { |n| create_lot_in_zone(deck, "main", entry: card.call, quantity: 1) }
+  39.times { create_lot_in_zone(deck, "main", entry: card.call, quantity: 1) }
   20.times { create(:deck_proxy, zone: deck.zone("main"), account: user.account, entry: card.call, quantity: 2) }
 
   expect(queries_for(deck_path(deck))).to eq(few)
 end
 ```
 
-Also assert `Deck::Page`'s own counts did not move: run `bin/rspec spec/models/deck/page_spec.rb` unchanged (it asserts the 3 and 6; no edit). The model-level proof of "one statement, none for an empty deck, built once" is T4's "statements" examples. Run `bin/rspec spec/requests/query_counts_spec.rb spec/models/deck/page_spec.rb`. Commit `test(decks): the deck page's queries stay bounded with the panel (#256)`.
+Add the example that pins the panel's one statement (AC-6.1, AC-6.3), where the only change is which zone holds the card:
+
+```ruby
+it "adds one statement for the panel, and none when Commander and Main hold no card (spec 069 AC-6.1, AC-6.3)" do
+  entry = printing
+  create(:mtg_card, identity: entry.identity, mana_value: 2.0)
+  outside = create(:deck, account: user.account, name: "Sideboard only")
+  inside = create(:deck, account: user.account, name: "In Main")
+  create_lot_in_zone(outside, "sideboard", entry:)
+  create_lot_in_zone(inside, "main", entry:)
+
+  expect(queries_for(deck_path(inside))).to eq(queries_for(deck_path(outside)) + 1) # the mana values, read once for the curve, average and note
+end
+```
+
+`Deck::Page` reads the same for both decks (one lot, one entry), so the one statement is the panel's. (`deck_path(outside)`'s panel is empty of cards in its counted zones, so it reads no mana value; the order of the two `queries_for` calls doesn't matter.) Also assert `Deck::Page`'s own counts did not move: run `bin/rspec spec/models/deck/page_spec.rb` unchanged (it asserts the 3 and 6; no edit). The model-level proof of "one statement, none for an empty deck, built once" is T4's "statements" examples. Run `bin/rspec spec/requests/query_counts_spec.rb spec/models/deck/page_spec.rb`. Commit `test(decks): the deck page's queries stay bounded with the panel (#256)`.
 
 ### Phase 4: Browser proof
 
 #### T9: The panel on the real page at every width and in both themes
 
-**Satisfies** AC-1.3, AC-2.10, AC-4.9 (colours), AC-5.1 to AC-5.4. Also rewrites spec 066's AC-5.1 example for the panel-less case.
-**Files:** create `spec/system/deck_shape_panel_spec.rb`; edit `spec/system/deck_page_spec.rb`.
+**Satisfies** AC-1.3, AC-2.10, AC-4.9 (colours), AC-5.1 to AC-5.4.
+**Files:** create `spec/system/deck_shape_panel_spec.rb`.
 
 The CSS is proved by `design_system_deck_components_spec.rb`; this proves the real page puts the right markup where that CSS works. Test:
 
@@ -1148,12 +1181,15 @@ RSpec.describe "Deck shape panel", type: :system do
     entry
   end
 
-  # Every type, a five-colour hybrid-heavy cost, proxies, and a mana value of 1,000,000 (the average line's worst case).
+  # Every type (Creatures to Other), a five-colour hybrid-heavy cost, proxies, and a mana value of 1,000,000 (the average line's worst case).
   before do
     create_lot_in_zone(deck, "main", entry: card(name: "Worst"), quantity: 123)
     create(:deck_proxy, zone: deck.zone("main"), account:, entry: card(name: "Gleemax", cost: "{W/U}{U/B}{B/R}{R/G}{G/W}", mana_value: 1_000_000.0), quantity: 1234)
     create_lot_in_zone(deck, "main", entry: card(name: "Bolt", type_line: "Instant", cost: "{R}", mana_value: 1.0), quantity: 4)
     create_lot_in_zone(deck, "main", entry: card(name: "Island", type_line: "Basic Land — Island", cost: "", mana_value: 0.0), quantity: 20)
+    { "Jace" => "Legendary Planeswalker — Jace", "Invasion of Zendikar" => "Battle — Siege", "Rite" => "Sorcery", "Sol Ring" => "Artifact",
+      "Pacifism" => "Enchantment — Aura" }.each { |name, type_line| create_lot_in_zone(deck, "main", entry: card(name:, type_line:, cost: "{1}", mana_value: 1.0), quantity: 1) }
+    create_lot_in_zone(deck, "main", entry: create(:mtg_printing, faces: []).entry, quantity: 1) # a printing with no face data: Other
   end
 
   def set_theme(name) = page.execute_script("document.documentElement.dataset.theme = #{name.to_json}")
@@ -1161,8 +1197,9 @@ RSpec.describe "Deck shape panel", type: :system do
   def shown?(selector) = page.evaluate_script("(() => { const el = document.querySelector(#{selector.to_json}); return !!el && el.getClientRects().length > 0 })()")
 
   describe "the page container's widths (AC-1.3)" do
-    it "shows the details copy, closed, under 640px, and not the aside", :aggregate_failures do
-      open_in_narrow_frame(deck_path(deck), width: 360, ready: "details.c-shapefold")
+    [ 360, 640 ].each do |width|
+    it "shows the details copy, closed, in a #{width}px frame (a container under 640px), and not the aside", :aggregate_failures do
+      open_in_narrow_frame(deck_path(deck), width:, ready: "details.c-shapefold")
       within_narrow_frame do
         expect(shown?("details.c-shapefold")).to be(true)
         expect(shown?("aside.c-deck__shape")).to be(false)
@@ -1170,9 +1207,12 @@ RSpec.describe "Deck shape panel", type: :system do
         expect(page.evaluate_script('document.querySelector("details.c-shapefold summary").getBoundingClientRect().height')).to be >= 44
       end
     end
+    end
 
-    [ 640, 768 ].each do |width|
-      it "shows the aside, open and not sticky, above the zones at #{width}px, and not the details copy", :aggregate_failures do
+    # The page container is the frame minus the page's 32px side padding from 640px and a 15px classic scrollbar, so 640px of
+    # container needs a frame of at least 640 + 64 + 15 = 719px, and a 640px frame (container 561px) still shows the fold.
+    [ 768, 1000 ].each do |width|
+      it "shows the aside, open and not sticky, above the zones in a #{width}px frame (a container of 640px to 991px), and not the details copy", :aggregate_failures do
         open_in_narrow_frame(deck_path(deck), width:, ready: "aside.c-deck__shape")
         within_narrow_frame do
           expect(shown?("aside.c-deck__shape")).to be(true)
@@ -1195,10 +1235,11 @@ RSpec.describe "Deck shape panel", type: :system do
     end
   end
 
-  it "opens and closes the fold from the keyboard with no script (AC-5.2)", :aggregate_failures do
+  it "opens and closes the fold from the keyboard with no script, its summary ending in Show (AC-5.2)", :aggregate_failures do
     open_in_narrow_frame(deck_path(deck), width: 360, ready: "details.c-shapefold")
     within_narrow_frame do
       summary = find("details.c-shapefold summary")
+      expect(page.evaluate_script('getComputedStyle(document.querySelector("details.c-shapefold summary"), "::after").content')).to include("Show")
       summary.send_keys(:enter)
       expect(page).to have_css("details.c-shapefold[open]")
       summary.send_keys(:space)
@@ -1217,16 +1258,22 @@ RSpec.describe "Deck shape panel", type: :system do
     end
   end
 
-  it "fits the open fold's parts in the 279px inside it at 360px, the average line wrapping (AC-5.3)", :aggregate_failures do
+  # The 360px frame's container is 313px (360 - 15 for the classic scrollbar - 32 of page padding), the details' border takes 2 and the
+  # panel's padding 32: 279px inside. Each check can fail: the panel scrolling sideways, an element drawn past the padding box's
+  # right edge, and a text element cut off at its own box.
+  it "fits the open fold's parts in the 279px inside it at 360px, with nothing cut off (AC-5.3)", :aggregate_failures do
     open_in_narrow_frame(deck_path(deck), width: 360, ready: "details.c-shapefold")
     within_narrow_frame do
       page.execute_script('document.querySelector("details.c-shapefold").open = true')
       fit = page.evaluate_script(<<~JS)
-        (() => { const panel = document.querySelector("details.c-shapefold .c-shape")
-          return { inside: Math.round(panel.clientWidth - 32), overflow: [...panel.querySelectorAll("*")].filter((el) => el.scrollWidth > el.clientWidth + 1 && getComputedStyle(el).overflow === "visible" && el.getBoundingClientRect().right > panel.getBoundingClientRect().right).length,
-                   cols: panel.querySelectorAll(".c-curve__col").length } })()
+        (() => { const panel = document.querySelector("details.c-shapefold .c-shape"), box = panel.getBoundingClientRect()
+          const right = box.right - parseFloat(getComputedStyle(panel).paddingRight)
+          return { inside: Math.round(panel.clientWidth - 32), scrolls: panel.scrollWidth > panel.clientWidth,
+            beyond: [...panel.querySelectorAll("*")].filter((el) => el.getClientRects().length && el.getBoundingClientRect().right > right + 0.5).length,
+            clipped: [...panel.querySelectorAll(".c-curve__count, .c-types li > *, .c-curve__legend li, .c-curve__avg, .c-manacap")].filter((el) => el.scrollWidth > el.clientWidth + 1).length,
+            cols: panel.querySelectorAll(".c-curve__col").length } })()
       JS
-      expect(fit).to eq({ "inside" => 279, "overflow" => 0, "cols" => 7 })
+      expect(fit).to eq({ "inside" => 279, "scrolls" => false, "beyond" => 0, "clipped" => 0, "cols" => 7 })
     end
   end
 
@@ -1250,8 +1297,6 @@ RSpec.describe "Deck shape panel", type: :system do
   end
 end
 ```
-
-Rewrite `spec/system/deck_page_spec.rb:202-214` ("leaves the second column empty from 992px… (AC-5.1)"): the page is a deck of another collectible (`:other_collecting`, `create(:deck, account:, pair: "other/standard")`) and the assertion is unchanged (`children` 1, `columns` 2); retitle "(AC-5.1; spec 069: a Magic deck now has the panel, so the empty column is a deck whose collectible draws none, spec 060 AC-3.12)". Because the file's `deck` is Magic's, write the new example with its own `let(:other_deck)` and `:other_collecting`.
 
 Run the new system file and `deck_page_spec` one at a time (shared test database). Prove each narrow assertion once by breaking the CSS or markup (the lesson of `headless-firefox-narrow-frame`): e.g. temporarily rename `c-shapefold` in `_shape.html.erb`, see the 360px example fail, restore. Commit `test(decks): the shape panel at every width and in both themes (#256)`.
 
@@ -1312,6 +1357,7 @@ Write `docs/specs/069-deck-shape-panel/verification.md` (AC → the example or t
 ## Risks and notes
 
 - `Deck::Page` is not edited; if the page spec's statement counts (3 and 6) change, a mistake was made.
-- The rounding rule needs `Rational`; a float would fail the 0.15 example on purpose.
+- The rounding rule needs `Rational`: Ruby's `Float#round(1)` happens to give 0.2 for 0.15, so the 0.15 example guards against `format("%.1f", float)` (which rounds the binary value) rather than against `round` itself.
+- The system fixture's 6+ column count is "1,357" (123 owned + 1,234 proxy) in a column about 36px wide at 360px. If AC-5.3's `clipped` check fails on `.c-curve__count`, that is a real finding to take back to spec 060's CSS (a scope question for the coordinator), not something to hide by shrinking the fixture.
 - `row.answer.position` is the page's own group, so the panel can't disagree with the zone tables about a card's type.
 - #257 (spec 070) may edit `decks/show.html.erb` and `DecksController`: the edits here are one block inside `c-deck` and one line in `show`; on a merge conflict keep both.
