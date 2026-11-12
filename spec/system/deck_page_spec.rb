@@ -1,7 +1,9 @@
 require "rails_helper"
 
 # Spec 066 Story 5, spec 068 AC-2.4, AC-2.5 and AC-2.11: the deck page at 360, 640, 768 and 1280px in both themes, in headless
-# Firefox. Phone widths use the narrow frame (a window can't go below 500px), whose page is a same-origin iframe.
+# Firefox. Phone widths use the narrow frame (a window can't go below 500px), whose page is a same-origin iframe. Two kinds of
+# 360px are in this file: the overflow and zone-head examples open a true 360px viewport (open_deck_page_at, #318), the structure
+# examples (headers, wrapping, button heights) a 360px frame, which lays out in about 345px with its classic scrollbar.
 RSpec.describe "Deck page", type: :system do
   let!(:user) { system_sign_in_as(create(:user)) }
   let(:account) { user.account }
@@ -28,7 +30,6 @@ RSpec.describe "Deck page", type: :system do
   end
 
   def set_theme(name) = page.execute_script("document.documentElement.dataset.theme = #{name.to_json}")
-  def fits? = page.evaluate_script("document.documentElement.scrollWidth <= window.innerWidth")
 
   def shown_headers
     page.evaluate_script(<<~JS)
@@ -66,13 +67,23 @@ RSpec.describe "Deck page", type: :system do
     JS
   end
 
+  # 360px is a phone's viewport (spec 074 measured the worst case there: the document does not scroll sideways), so its frame is
+  # sized from the measured scrollbar. A "360px" narrow frame lays out in about 345px, where the worst-case row's table spills
+  # 7 to 10px past the page, by platform (#318: the old checks compared with innerWidth and could not see it). The wider widths are frames.
+  def open_deck_page_at(width)
+    ready = ".c-zone:first-of-type table"
+    return open_in_narrow_frame(deck_path(deck), width:, ready:) unless width == 360
+
+    expect(open_in_viewport_frame(deck_path(deck), viewport: 360, ready:)).to eq(360)
+  end
+
   [ 360, 640, 768, 1280 ].each do |width|
     %w[light dark].each do |theme|
       it "has no horizontal overflow at #{width}px in the #{theme} theme and keeps a six-symbol cost inside its cell (AC-5.4, AC-5.5)", :aggregate_failures do
-        open_in_narrow_frame(deck_path(deck), width:, ready: ".c-zone:first-of-type table")
+        open_deck_page_at(width)
         within_narrow_frame do
           set_theme(theme)
-          expect(fits?).to be(true)
+          expect(page_fits_sideways?).to be(true)
           worst = page.evaluate_script(<<~JS)
             (() => { const cost = [...document.querySelectorAll(".c-zone td:nth-child(2)")].find((td) => td.querySelectorAll(".c-mana").length === 6)
               return [cost.scrollWidth, cost.clientWidth] })()
@@ -191,12 +202,12 @@ RSpec.describe "Deck page", type: :system do
   end
 
   it "keeps each zone head inside the frame, with Add a proxy on the name's line, at 360px (NFR Accessibility)", :aggregate_failures do
-    open_in_narrow_frame(deck_path(deck), width: 360, ready: ".c-zone:first-of-type table")
+    open_deck_page_at(360)
     within_narrow_frame do
-      expect(fits?).to be(true)
+      expect(page_fits_sideways?).to be(true)
       heads = page.evaluate_script(<<~JS)
         [...document.querySelectorAll(".c-zone .c-section__head")].map((head) => { const title = head.querySelector(".c-section__title").getBoundingClientRect(), add = head.querySelector(".c-section__actions").getBoundingClientRect()
-          return { inside: add.right <= window.innerWidth, sameLine: add.top < title.bottom } })
+          return { inside: add.right <= document.documentElement.clientWidth, sameLine: add.top < title.bottom } })
       JS
       expect(heads).to all(eq({ "inside" => true, "sameLine" => true }))
     end
@@ -232,7 +243,7 @@ RSpec.describe "Deck page", type: :system do
   # Whether each of the head's parts lies inside the frame, and whether the name is cut.
   def head_boxes
     page.evaluate_script(<<~JS)
-      (() => { const title = document.querySelector(".c-item__title"), width = window.innerWidth
+      (() => { const title = document.querySelector(".c-item__title"), width = document.documentElement.clientWidth
         const inside = (el) => { const box = el.getBoundingClientRect(); return box.left >= 0 && box.right <= width }
         return { cut: title.scrollWidth > title.clientWidth, title: inside(title),
                  buttons: [...document.querySelectorAll(".c-item__actions .c-btn")].map(inside) } })()
@@ -244,7 +255,7 @@ RSpec.describe "Deck page", type: :system do
       open_in_narrow_frame(deck_path(create(:deck, account:, name: long_name)), width: 360, ready: ".c-item__head")
       within_narrow_frame do
         set_theme(theme)
-        expect(fits?).to be(true)
+        expect(page_fits_sideways?).to be(true)
         expect(head_boxes).to eq({ "cut" => false, "title" => true, "buttons" => [ true, true ] })
       end
     end

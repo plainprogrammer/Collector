@@ -66,7 +66,7 @@ RSpec.describe "Card page", type: :system do
         return { oneLine: Math.max(...controls.map((c) => c.height)) >= box.height - 1, tall: controls.every((c) => c.height >= 44),
                  inside: controls.every((c) => c.left >= box.left - 0.5 && c.right <= box.right + 0.5),
                  unclipped: primary.scrollWidth <= primary.clientWidth + 1,
-                 overflow: document.documentElement.scrollWidth > window.innerWidth } })()
+                 overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth } })()
     JS
   end
 

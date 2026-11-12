@@ -201,7 +201,7 @@ RSpec.describe "Design system: deck rules, navigation and pickers", type: :syste
         return { links: links.length, lines: new Set(links.map((el) => Math.round(el.getBoundingClientRect().top))).size,
                  inside: links.every((el) => el.getBoundingClientRect().right <= box.right + 0.5),
                  beforeAccount: box.right <= actions.left, accountInside: actions.right <= barEnd + 0.5,
-                 scrolls: document.documentElement.scrollWidth > window.innerWidth }
+                 scrolls: document.documentElement.scrollWidth > document.documentElement.clientWidth }
       JS
     end
 
@@ -265,7 +265,7 @@ RSpec.describe "Design system: deck rules, navigation and pickers", type: :syste
         open_in_narrow_frame(collection_path, width:, ready: "main", height: 1200)
         within_narrow_frame do
           expect(evaluate("return [...document.querySelectorAll('.c-appbar__nav a')].map((el) => el.textContent.trim())")).to eq(%w[Collection Decks Search Scan Locations])
-          expect(evaluate("return document.documentElement.scrollWidth <= window.innerWidth")).to be(true)
+          expect(page_fits_sideways?).to be(true)
         end
       end
     end

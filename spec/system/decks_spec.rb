@@ -5,9 +5,6 @@ RSpec.describe "Decks", type: :system do
   let!(:user) { system_sign_in_as(create(:user)) }
   let(:account) { user.account }
 
-  # Whether the frame's page scrolls sideways, and what the narrow frame's page reports.
-  def fits? = page.evaluate_script("document.documentElement.scrollWidth <= window.innerWidth")
-
   describe "the Decks page at 360px (AC-4.5)" do
     let(:long_name) { "W" * 60 }
 
@@ -27,7 +24,7 @@ RSpec.describe "Decks", type: :system do
         expect(page).to have_css(".c-decks .c-table__sub", text: "Casual · 0 owned")
         name = find(".c-decks td:first-child .c-table__item span", text: long_name, match: :first)
         expect(name.native.rect.height).to be > 20 # more than one line: the name wraps
-        expect(fits?).to be(true)
+        expect(page_fits_sideways?).to be(true)
         expect(page).to have_link("New deck") # stays visible on a phone (spec 060 decision 24)
         expect(find_link("New deck").native.rect.height).to be >= 36
       end
@@ -38,7 +35,7 @@ RSpec.describe "Decks", type: :system do
       expect(page).to have_css(".c-decks thead th", text: "Format")
       expect(page).to have_css(".c-decks thead th", text: "Owned")
       expect(page).to have_css(".c-decks td", text: "Modern")
-      expect(fits?).to be(true)
+      expect(page_fits_sideways?).to be(true)
     end
   end
 
@@ -63,7 +60,7 @@ RSpec.describe "Decks", type: :system do
         expect(shown).to eq([ "Deck", "Cards", "Actions" ])
         expect(find(".c-decks .c-table__sub").text.squish).to eq("Modern · 58 owned Proxy 11")
         expect(page).to have_css(".c-decks .c-table__sub .c-proxy", text: /Proxy\s+11/)
-        expect(fits?).to be(true)
+        expect(page_fits_sideways?).to be(true)
       end
     end
 
@@ -73,7 +70,7 @@ RSpec.describe "Decks", type: :system do
           open_in_narrow_frame(decks_path, width:, ready: ".c-decks table")
           within_narrow_frame do
             set_theme(theme)
-            expect(fits?).to be(true)
+            expect(page_fits_sideways?).to be(true)
             boxes = page.evaluate_script(<<~JS)
               (() => { const row = document.querySelector(".c-decks tbody tr")
                 const visible = (el) => el.getClientRects().length > 0
@@ -100,7 +97,7 @@ RSpec.describe "Decks", type: :system do
           })()
         JS
         expect(inside).to be(true)
-        expect(fits?).to be(true)
+        expect(page_fits_sideways?).to be(true)
         expect(page).to have_select("Format", selected: "Casual")
       end
     end
@@ -135,7 +132,7 @@ RSpec.describe "Decks", type: :system do
         expect(page).to have_link("Back to decks")
         expect(page).to have_css("main button", text: "Move them in bulk mode")
         expect(page).to have_no_css("main button", text: /\ARemove/)
-        expect(fits?).to be(true)
+        expect(page_fits_sideways?).to be(true)
       end
     end
   end
@@ -169,10 +166,10 @@ RSpec.describe "Decks", type: :system do
       create(:deck, account:, name: "W" * 60, format: "casual")
 
       open_in_narrow_frame(decks_path, width: 360, ready: ".c-decks table")
-      within_narrow_frame { expect(fits?).to be(true) }
+      within_narrow_frame { expect(page_fits_sideways?).to be(true) }
 
       open_in_narrow_frame(edit_deck_format_path(account.decks.first), width: 360, ready: ".c-decks form")
-      within_narrow_frame { expect(fits?).to be(true) }
+      within_narrow_frame { expect(page_fits_sideways?).to be(true) }
     end
 
     # Between the buttons' 640px breakpoint and the table's own container query a name does not wrap by the viewport alone.
@@ -184,7 +181,7 @@ RSpec.describe "Decks", type: :system do
           open_in_narrow_frame(decks_path, width:, ready: ".c-decks table")
           within_narrow_frame do
             expect(page).to have_css(".c-decks__actions a", count: 3)
-            expect(fits?).to be(true)
+            expect(page_fits_sideways?).to be(true)
           end
         end
       end

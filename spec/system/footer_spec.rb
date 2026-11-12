@@ -23,6 +23,7 @@ RSpec.describe "The footer", type: :system do
           mainPadding: main ? getComputedStyle(main).paddingBottom : null,
           contentBottom: main && main.lastElementChild ? main.lastElementChild.getBoundingClientRect().bottom : null,
           gutter: main ? main.getBoundingClientRect().left + parseFloat(getComputedStyle(main).paddingLeft) : null,
+          viewport: document.documentElement.clientWidth,
           tabbarTop: tabbar && getComputedStyle(tabbar).position === "fixed" ? tabbar.getBoundingClientRect().top : null }
       })()
     JS
@@ -79,7 +80,7 @@ RSpec.describe "The footer", type: :system do
         expect(footer.values_at("tabbarTop", "scrolled")).to all(be_positive), "#{path} at #{width}px: no fixed tab bar, or nothing to scroll"
         expect(footer["lines"].map { |line| line["bottom"] }).to all(be <= footer["tabbarTop"]), "#{path} at #{width}px: text under the tab bar"
         expect(footer["lines"]).to all(include("uncovered" => true, "left" => footer["gutter"])), "#{path} at #{width}px: not on the gutter"
-        expect(footer["lines"].map { |line| line["right"] }).to all(be <= width - footer["gutter"]), "#{path} at #{width}px: text past the gutter"
+        expect(footer["lines"].map { |line| line["right"] }).to all(be <= footer["viewport"] - footer["gutter"]), "#{path} at #{width}px: text past the gutter"
         expect(footer["top"]).to be_within(0.5).of(footer["mainBottom"]), "#{path} at #{width}px: a gap after main"
         expect(footer["mainPadding"]).to eq("16px"), "#{path} at #{width}px: main keeps the tab bar's clearance as well"
       end
@@ -93,7 +94,7 @@ RSpec.describe "The footer", type: :system do
 
     expect(fits).to eq([ 360, true ])
     expect(footer["lines"]).to all(include("uncovered" => true, "left" => footer["gutter"]))
-    expect(footer["lines"].map { |line| line["right"] }).to all(be <= 360 - footer["gutter"])
+    expect(footer["lines"].map { |line| line["right"] }).to all(be <= footer["viewport"] - footer["gutter"])
   end
 
   it "clears the sticky filter bar and the bulk bar (AC-3.6)", :aggregate_failures do

@@ -33,7 +33,7 @@ RSpec.describe "Locations", type: :system do
           const nav = document.querySelector(".c-appbar__nav").getBoundingClientRect()
           const actions = document.querySelector(".c-appbar__actions").getBoundingClientRect()
           return [links.length, new Set(links.map((link) => Math.round(link.getBoundingClientRect().top))).size,
-            nav.right <= actions.left, document.documentElement.scrollWidth <= window.innerWidth]
+            nav.right <= actions.left, document.documentElement.scrollWidth <= document.documentElement.clientWidth]
         })()
       JS
     end
@@ -57,7 +57,7 @@ RSpec.describe "Locations", type: :system do
       expect(open_in_narrow_frame(path, width:, ready: "main")).to eq([ width, true ]), "#{path} at #{width}px"
       within_narrow_frame do
         page.execute_script("document.documentElement.setAttribute('data-theme', arguments[0])", theme)
-        expect(page.evaluate_script("document.documentElement.scrollWidth <= window.innerWidth")).to be(true), "#{path} at #{width}px, #{theme}"
+        expect(page_fits_sideways?).to be(true), "#{path} at #{width}px, #{theme}"
         # Measured, not declared: the box each target really has (plan review m4).
         small = page.evaluate_script("#{targets}.filter((el) => { const box = el.getBoundingClientRect(); return box.height < 44 || box.width < 44 }).map((el) => el.outerHTML.slice(0, 60))")
         expect(small).to eq([]), "#{path} at #{width}px, #{theme}: a target under 44px"
@@ -88,7 +88,7 @@ RSpec.describe "Locations", type: :system do
 
     expect(open_in_narrow_frame(new_location_removal_path(blue), width: 360, ready: "main")).to eq([ 360, true ])
     within_narrow_frame do
-      expect(page.evaluate_script("document.documentElement.scrollWidth <= window.innerWidth")).to be(true)
+      expect(page_fits_sideways?).to be(true)
       expect(page.evaluate_script("[...document.querySelectorAll('main button, main input[type=submit]')].map((el) => el.textContent.trim())")).to eq([ "Move them in bulk mode from “Blue binder”" ]) # spec 059: the shortcut, and no Remove (spec 032 AC-5.2)
       expect(page.evaluate_script("#{targets}.filter((el) => { const box = el.getBoundingClientRect(); return box.height < 44 || box.width < 44 }).length")).to eq(0)
     end

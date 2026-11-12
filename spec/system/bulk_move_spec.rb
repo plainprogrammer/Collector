@@ -6,8 +6,6 @@ RSpec.describe "Bulk Move to…", type: :system do
   let(:account) { user.account }
   let!(:blue) { create(:location, account:, name: "Blue binder") }
 
-  def frame_fits? = page.evaluate_script("(() => { const view = document.getElementById('narrow').contentWindow; return view.document.documentElement.scrollWidth <= view.innerWidth })()")
-
   # Tab until the element with this id has focus, as a keyboard does.
   def tab_to(id)
     20.times do
@@ -79,6 +77,6 @@ RSpec.describe "Bulk Move to…", type: :system do
       expect(page).to have_css("h1", text: "Move 9,999 items").and have_css(".c-appbar__back")
       expect(page).to have_select("To", options: [ "Choose…", "No location", "Blue binder" ])
     end
-    expect(frame_fits?).to be(true)
+    expect(narrow_frame_fits?).to be(true)
   end
 end

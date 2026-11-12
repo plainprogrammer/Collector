@@ -4,8 +4,6 @@ require "rails_helper"
 RSpec.describe "Add to deck", type: :system do
   def set_theme(name) = page.execute_script("document.documentElement.dataset.theme = #{name.to_json}") # no colour is read here, so no pause (testing.md: no sleep)
 
-  def fits? = page.evaluate_script("document.documentElement.scrollWidth <= window.innerWidth")
-
   # The drawn height of every control of the page, by kind. `html` is pinned to a scrollbar in both pointer states, so a
   # taller page can't narrow the layout by a scrollbar's width and move what wraps (spec 072's lesson).
   def control_heights
@@ -39,13 +37,13 @@ RSpec.describe "Add to deck", type: :system do
           open_in_narrow_frame(new_catalog_entry_deck_addition_path(wide_entry), width:, ready: "main")
           within_narrow_frame do
             set_theme(theme)
-            expect(fits?).to be(true)
+            expect(page_fits_sideways?).to be(true)
             overflow = page.evaluate_script(<<~JS)
               (() => { const form = document.querySelector(".c-form").getBoundingClientRect()
                 const select = document.querySelector("#deck_zone").getBoundingClientRect()
                 const text = document.createRange(); text.selectNodeContents(document.querySelector(".c-pick .c-check"))
                 return { select: select.width <= form.width, text: text.getBoundingClientRect().right <= document.querySelector(".c-pick").getBoundingClientRect().right + 0.5,
-                         title: document.querySelector(".c-pagehead__title").getBoundingClientRect().right <= window.innerWidth } })()
+                         title: document.querySelector(".c-pagehead__title").getBoundingClientRect().right <= document.documentElement.clientWidth } })()
             JS
             expect(overflow).to eq("select" => true, "text" => true, "title" => true)
           end
@@ -73,8 +71,8 @@ RSpec.describe "Add to deck", type: :system do
       page.evaluate_script(<<~JS)
         (() => { const sentence = document.querySelector(".c-field__error"), text = document.createRange() // the drawn text, not the box
           text.selectNodeContents(sentence)
-          return { page: document.documentElement.scrollWidth <= window.innerWidth,
-                   edge: text.getBoundingClientRect().right <= window.innerWidth, scroll: sentence.scrollWidth <= sentence.clientWidth } })()
+          return { page: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+                   edge: text.getBoundingClientRect().right <= document.documentElement.clientWidth, scroll: sentence.scrollWidth <= sentence.clientWidth } })()
       JS
     end
 

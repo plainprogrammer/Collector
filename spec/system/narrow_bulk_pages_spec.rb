@@ -9,8 +9,6 @@ RSpec.describe "Table and bulk pages at 360px", type: :system do
     visit collection_path
   end
 
-  def frame_fits? = page.evaluate_script("(() => { const view = document.getElementById('narrow').contentWindow; return view.document.documentElement.scrollWidth <= view.innerWidth })()")
-
   def select_all_and_choose(action)
     open_in_narrow_frame(collection_path(bulk: 1), width: 360, ready: ".c-bulkbar")
     within_narrow_frame do
@@ -31,18 +29,18 @@ RSpec.describe "Table and bulk pages at 360px", type: :system do
       click_on "Edit many"
       expect(page).to have_css(".c-bulkbar")
     end
-    expect(frame_fits?).to be(true)
+    expect(narrow_frame_fits?).to be(true)
   end
 
   it "fits the Set condition page, with a Back link", :aggregate_failures do
     select_all_and_choose("Set condition…")
     within_narrow_frame { expect(page).to have_css("h1", text: "Set the condition of 9,999 items").and have_css(".c-appbar__back") }
-    expect(frame_fits?).to be(true)
+    expect(narrow_frame_fits?).to be(true)
   end
 
   it "fits the removal confirmation, with a Back link", :aggregate_failures do
     select_all_and_choose("Remove")
     within_narrow_frame { expect(page).to have_css("h1", text: "Remove 9,999 items?").and have_css(".c-appbar__back") }
-    expect(frame_fits?).to be(true)
+    expect(narrow_frame_fits?).to be(true)
   end
 end
