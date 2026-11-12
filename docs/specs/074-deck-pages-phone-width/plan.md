@@ -1,6 +1,6 @@
 # Implementation Plan: Deck Pages at Phone Width (spec 074, #326)
 
-**Spec:** docs/specs/074-deck-pages-phone-width/spec.md (v0.5.0, approved at Gate A by the coordinator at 0.3.0; Gate B approved the plan with 0.4.1; 0.5.0 adds AC-1.13 from the coordinator)
+**Spec:** docs/specs/074-deck-pages-phone-width/spec.md (v0.6.0, approved at Gate A by the coordinator at 0.3.0; Gate B approved the plan with 0.4.1; 0.5.0 adds AC-1.13 and 0.6.0 adds AC-1.14 and AC-1.15, both ruled by the coordinator; Task 3b is the 0.6.0 patch)
 **Decisions:** none (no ADR; the rulings are the spec's Decisions 1 to 5)
 **Created:** 2026-11-11
 
@@ -12,6 +12,7 @@ Copied from the spec; every phase includes them.
 - No view, helper, model, Rails controller, migration or export file changes (FR-5). The `menu` Stimulus controller and `additions.css` change.
 - The CSS applies only below 640px (`@media (max-width: 639px)`) on a tabbed shell (`.c-shell:not(.c-shell--untabbed)`); 640px and wider, and a shell with no tab bar, keep today's behaviour exactly.
 - The tab bar is drawn 67px high (56px link minimum height, 6px plus 4px link padding, 1px border, default `content-box`); the app bar 57px (56px plus 1px border). The margins are `calc(57px + var(--space-2))` above and `calc(67px + env(safe-area-inset-bottom) + var(--space-2))` below; the comment says where the 57px and 67px come from, so a later change to either bar finds them (Gate A condition 1).
+- The zone tables' menu column is at least 4rem (64px, border-box) below 640px of the table's container (`@container collection (max-width: 639px)` on `th.c-zone__c-menu`), the wide layout's own width, so every zone's columns sit at one x (spec Decision 6, AC-1.14); the comment names the 64px, the 46px column a trigger makes (30px button, 8px padding a side) and spec 075's 60px (44px trigger plus padding).
 - A menu is closed on `turbo:before-cache` (a document listener added in `connect`, removed in `disconnect`), at every width (spec AC-1.13).
 - The controller scrolls only when the open list's bottom edge plus its bottom margin is below the viewport; "nearest" alignment; `instant` under `prefers-reduced-motion: reduce`, `smooth` otherwise, read when the menu opens.
 - A 360px viewport in a spec is a frame of 360px plus the measured scrollbar, no taller than the window's viewport; overflow is compared with `clientWidth`, never `innerWidth` (#318).
@@ -647,6 +648,69 @@ export default class extends Controller {
 
 ---
 
+### Task 3b: the zone menu column floor (spec 0.6.0: AC-1.14, AC-1.15)
+
+**Implements:** FR-1a | **Satisfies:** AC-1.14, AC-1.15 | **Files:** `spec/system/menu_tab_bar_clearance_spec.rb`, `app/assets/stylesheets/collector/additions.css`
+
+Found while doing Task 4: the real page's zones misalign at 360px (measured: menu column 46px in Main, 16px in Sideboard; Cost and Total edges 30px apart). Test first on the real page, then the rule.
+
+- [ ] In `spec/system/menu_tab_bar_clearance_spec.rb`, add this helper next to `clearance_styles`:
+
+```ruby
+  # Each zone table's menu column width and the right edges of its Cost and Total columns, as the frame draws them.
+  def zone_columns
+    frame_js(<<~JS)
+      return [...d.querySelectorAll(".c-zone table")].map((table) => {
+        const box = (name) => table.querySelector("th." + name).getBoundingClientRect()
+        return { menu: box("c-zone__c-menu").width, cost: box("c-zone__c-cost").right, total: box("c-zone__c-total").right }
+      })
+    JS
+  end
+```
+
+- [ ] In the same file, inside `context "with a collector's pages"`, after the `describe "the deck page"` group and before `describe "a deck whose row has proxies of three finishes"`, add:
+
+```ruby
+    describe "the zones' columns" do
+      # Main has a row with proxies (a menu trigger); Sideboard and Considering hold owned cards only, so their menu cells are empty.
+      before do
+        proxy_row(deck, "main", "Proxied")
+        create_lot_in_zone(deck, "sideboard", entry: create(:mtg_printing, entry: create(:catalog_entry, name: "Owned only")).entry, quantity: 2)
+        create_lot_in_zone(deck, "considering", entry: create(:mtg_printing, entry: create(:catalog_entry, name: "Considered")).entry)
+      end
+
+      it "keeps the menu column and the Cost and Total edges at one x in every zone at 360px (AC-1.14)", :aggregate_failures do
+        open_phone(deck_path(deck), ready: ".c-zone:first-child table")
+        columns = zone_columns
+        spread = ->(key) { columns.pluck(key).then { |values| values.max - values.min } }
+        expect(columns.size).to eq(3)
+        expect(columns.pluck("menu").min).to be >= 63.5
+        expect([ spread.("menu"), spread.("cost"), spread.("total") ]).to all(be <= 1)
+      end
+    end
+```
+
+- [ ] Run: `bin/rspec spec/system/menu_tab_bar_clearance_spec.rb -e "(AC-1.14)"` — expect FAIL (the menu column is 46px, 16px, 16px; the Cost and Total edges 30px apart; record the numbers).
+- [ ] Append to the end of `app/assets/stylesheets/collector/additions.css`, inside this spec's block (after its `@media (max-width: 639px)` rule, same heading, nothing above it touched):
+
+```css
+
+/* The zone tables' menu column (spec 074, Decision 6). Below 640px of the table's container a zone table keeps its auto layout, where the
+   menu column is as wide as its widest cell: 46px with a trigger (a 30px button and 8px of padding a side) and 16px when every cell is
+   empty (a row with no proxy has no trigger), so a zone with no proxy was 30px narrower there and its Cost and Total moved with it
+   (spec 060 AC-3.11). The floor is the 64px the wide layout already fixes (`width: 4rem` in the zone rules above), and it clears a
+   coarse pointer's 44px trigger (60px of column with its padding). th is border-box there, as in the wide layout: 4rem is the whole column. */
+@container collection (max-width: 639px) {
+  .c-zone .c-table th.c-zone__c-menu { box-sizing: border-box; min-width: 4rem; }
+}
+```
+
+- [ ] Run: `bin/rspec spec/system/menu_tab_bar_clearance_spec.rb -e "(AC-1.14)"` — expect PASS. If the column does not reach 64px (a browser may ignore `min-width` on a header cell in an auto layout), try `width: 4rem` on the same selector in the same container query; report which worked.
+- [ ] Run: `bin/rspec spec/design_system_files_spec.rb` — expect PASS.
+- [ ] Commit: `fix(design-system): the deck zones' menu column keeps 4rem below 640px so every zone's columns align (spec 074)`
+
+---
+
 ## Phase 2: The previews, the design system and the memory line
 
 **Implements:** FR-3 | **Satisfies:** AC-2.1, AC-2.2, AC-3.2, AC-3.3, AC-3.4
@@ -684,7 +748,7 @@ for path in sys.argv[1:]:
   end
 ```
 
-- [ ] Run: `bin/rspec spec/system/design_system_deck_components_spec.rb` — expect PASS. If an example now fails because the empty cell changes a width at a phone width, the failure is about the page's real width (the page draws the empty cell): stop, record the example and numbers, and report to the supervisor before changing any assertion.
+- [ ] Run: `bin/rspec spec/system/design_system_deck_components_spec.rb` — expect PASS (Task 3b's floor is what keeps the AC-3.11 example, "lines up the right edges of Cost, Total and the menu in every zone at 360px", green with the empty cells; before Task 3b it failed by 30px). If another example fails, stop, record the example and numbers, and report to the supervisor before changing any assertion.
 - [ ] Look at both previews in a browser (serve the worktree as `.claude/memory/pr-screenshots-workflow.md` says: `python3 -m http.server 3871 --bind 127.0.0.1 --directory "$PWD"`, then Firefox) or by the screenshots in Phase 3: rows with no proxy show an empty last cell and the open menu on Murktide Regent is unchanged.
 - [ ] Commit: `docs(design-system): the deck page previews draw an empty menu cell on rows with no proxy (spec 074)` (the previews and the spec file in one commit)
 
@@ -725,6 +789,14 @@ for path in sys.argv[1:]:
 - [ ] Read the five edited files once for sentence-case, no hard-coded colours and the "Used by" lists; the design-system skill's voice rules apply. No RSpec on prose (`.claude/rules/testing.md`).
 - [ ] Commit: `docs(design-system): state the menu clearance rule in Menu, TableActions, TabBar, DeckPage and the README (spec 074)`
 
+### Task 5b: document the menu column floor (spec 0.6.0)
+
+- [ ] `docs/design-system/components/DeckPage.md`, "The zone table", the bullet "**Auto layout below 640px of the table's container.**": append the sentence "The menu column keeps at least 4rem (64px, the wide layout's own width) here too, so a zone whose rows have no proxy (an empty menu cell) keeps Cost and Total at the same x as a zone with proxies (spec 074, AC-1.14; spec 068's empty cell had shrunk it to 16px against a trigger's 46px)." If that bullet's wording differs, put the sentence at the end of the bullet that describes the auto layout.
+- [ ] `docs/design-system/components/TableActions.md`: after the bullet "The cell is `width:1%` …" add the sentence to that bullet: " A zone table of `DeckPage` keeps the column at 4rem or more below 640px, so rows with no menu don't narrow it (`DeckPage`, spec 074)."
+- [ ] Commit: `docs(design-system): the deck zones' menu column floor in DeckPage and TableActions (spec 074)`
+
+---
+
 ### Task 6: the memory line and the index
 
 - [ ] `.claude/memory/pr-screenshots-workflow.md`: append this paragraph (the coordinator approved the line, 2026-11-11):
@@ -751,19 +823,21 @@ for path in sys.argv[1:]:
 - [ ] Remove `pointer-events: none` from the room box: run `-e "under the room box"` — expect FAIL. Restore.
 - [ ] Remove the room box rule: run `-e "(AC-1.8)"` — expect FAIL. Restore.
 - [ ] Remove `scroll-margin-top`: run `-e "(AC-1.9)"` — expect FAIL. Restore.
+- [ ] Remove Task 3b's `min-width: 4rem` rule: run `-e "(AC-1.14)"` — expect FAIL, and `bin/rspec spec/system/design_system_deck_components_spec.rb -e "lines up the right edges"` — expect FAIL. Restore.
 - [ ] Remove the `turbo:before-cache` listener (the line in `connect`): run `-e "(AC-1.13)"` — expect FAIL (the restored page holds an open menu). Restore.
 - [ ] In `app/views/decks/show.html.erb` (do not commit) remove `<%= render "layouts/tabbar", section: :decks %>`: run `-e "(AC-3.1)"` — expect FAIL naming "Deck". Restore (`git checkout app/views/decks/show.html.erb`).
 - [ ] `git status --short` shows only the intended files. Record each mutation and its result in `verification.md`.
 
 ### Task 8: the whole file, the neighbours, the lint, the doc build
 
-- [ ] Run: `bin/rspec spec/system/menu_tab_bar_clearance_spec.rb spec/design_system_files_spec.rb spec/system/design_system_deck_components_spec.rb spec/system/deck_page_spec.rb` — expect PASS; note the counts.
+- [ ] Run: `bin/rspec spec/system/menu_tab_bar_clearance_spec.rb spec/design_system_files_spec.rb spec/system/design_system_deck_components_spec.rb spec/system/deck_page_spec.rb spec/system/deck_proxies_spec.rb spec/system/deck_shape_panel_spec.rb` — expect PASS; note the counts. (AC-1.15: these hold the worst-case examples, a 60-character name, a six-symbol cost, a three-digit quantity and a four-digit proxy count, at 360px.)
 - [ ] Run: `bin/rubocop` on the changed Ruby files, `bin/yard doc` (a YARD warning fails `bin/ci checks`; `menu_controller.js` is not in YARD's scope, the spec file is not either) and `bin/brakeman` — expect clean.
 - [ ] The full `bin/ci` runs at the push with a slot from the coordinator (CLAUDE.md: the pre-push hook runs it).
 
 ### Task 9: screenshots and the record (throwaway spec; nothing from it is committed except the images)
 
 - [ ] Write `spec/system/zz_074_screenshots_spec.rb` (uncommitted) with factory data as `.claude/memory/pr-screenshots-workflow.md` describes: the deck of Phase 0's fixture, `SHOTS_DIR=<scratchpad>`. Window taller than the frame: `page.current_window.resize_to(1400, 1400)` (the default). Shots, each in light and dark (set `data-theme` in the page and inside the frame, pause 0.6s after each switch), at a 360px viewport (`open_phone`-style frame, 640px tall): (1) AFTER: the deck page, Proxy Card 4's menu opened 40px above the bar, settled; (2) AFTER: Tail Card's eight-item menu at the page's end; (3) BEFORE, emulated: the same two states with the page restored to the scroll position it had when the menu opened (`w.scrollTo(0, before)` right after the click settles), which is what the old code showed; say so in `verification.md`; (4) the two previews (`DeckPage.html`, `DeckPagePhone.html`) served as the memory file's "static previews" paragraph says, at 1280px and a 390px frame, both themes; (5) the card page's copies menu and the collection table's row menu opened near the bottom, after only; (6) one 1280px shot of the deck page with a menu open (nothing moved). Look at every shot yourself before keeping it, and look for the tab bar in each phone shot.
+- [ ] Record the Card column's width at 360px before and after the floor (an in-frame measurement of `.c-zone th:first-child` on the worst-case deck of `deck_page_spec.rb`'s fixture, with `th.c-zone__c-menu { min-width: 0 }` injected for "before"; the spec says about 18px narrower) in `verification.md` (AC-1.15), and include one shot of the three-zone alignment (Main with proxies, Sideboard and Considering without) before and after, both themes.
 - [ ] Compress with `magick in.png -resize 1000x -quality 70 out.jpg`; copy into `docs/specs/074-deck-pages-phone-width/screenshots/` with names like `01-row-menu-near-bottom-after-360-light.jpg`; list them in `verification.md`. A short GIF of the menu opening and the page scrolling (frames at 4 per second: `ffmpeg -framerate 4 -pattern_type glob -i 'f-*.png' -vf "scale=960:-1,split[a][b];[a]palettegen=max_colors=128[p];[b][p]paletteuse" -loop 0 menu-clears-tab-bar-360.gif`, under 1 MB).
 - [ ] Delete `spec/system/zz_074_screenshots_spec.rb` and `spec/system/zz_074_probe_spec.rb` before committing. Commit the images: `docs(spec): add the before and after shots for spec 074`.
 - [ ] Fill `verification.md`: the red and green lists of Phase 0, the mutation results, the test counts, the Back check is AC-1.13's example (its mutation in Task 7 is the evidence), the measured move when the menu closes at a page's end, the existing-example runs, the screenshots, the 0.5px tolerance, and that the headless Firefox can't emulate a coarse pointer (the 44px row items are not measured here). Then the implementation review (Mode B, read-only, Opus) under `## Implementation review` with its verdict on the first line.
