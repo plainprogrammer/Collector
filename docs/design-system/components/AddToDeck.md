@@ -6,7 +6,7 @@ The page that adds a card to a deck zone, from the card page's "Add to deck" but
 
 ```html
 <header class="c-appbar c-appbar--detail">…back link to the card page, brand, nav, avatar…</header>
-<main class="c-main c-page">
+<main class="c-main c-page c-decks">
   <div class="c-pagehead"><div><h1 class="c-pagehead__title">Add Lightning Bolt to a deck</h1></div></div>
   <form class="c-form" action="/catalog/entries/…/deck_additions" method="post">
     <div class="c-field">
