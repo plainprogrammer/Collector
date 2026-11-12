@@ -3,6 +3,7 @@
 **Spec:** [spec.md](spec.md) (v0.4.0, Approved at Gate A, 2026-11-11, by the coordinator under the maintainer's delegation); plan awaiting Gate B
 **Decisions:** none new; ADR 0028's deck model and spec 068's proxy table are used as they are (spec decision 14)
 **Created:** 2026-11-11
+**Revision:** 2 (from plan review round 1: 1 blocking, 8 major, 13 minor)
 
 ## Global Constraints
 
@@ -13,7 +14,7 @@
 - **The vocabulary gate reads the proxy's printing's collectible type** (`Deck::Proxy.replaceable?(entry)`), never the deck's (decision 1; AC-1.4, AC-2.9, AC-4.8).
 - **One transaction, judged under the lock.** The proxy and the chosen lots are read again inside the write transaction; a refusal leaves it by an exception nothing rescues inside, and the page that shows the refusal is built from a read made after the rollback, with every `shown` field written again (decisions 6, 7, 9, 10).
 - **The core guard.** Deck files never name a game, a source, a format or a zone key but `considering`, comments included, and `mtg`, `scryfall` and `magic` are banned anywhere in them (`spec/deck_core_spec.rb`); the new controllers, the new `Deck::Proxy::*` classes, the new views and `lots/_form.html.erb` are matched by its globs already, so the file count changes (T13). `app/models/lot/*.rb` is outside the guard but names no collectible either.
-- **Design system:** tokens and `c-*` classes only. Both pages' `main` is `c-main c-page c-decks` (the touch floor of `.c-decks .c-btn`, the wrap of `.c-decks .c-pagehead__title`, spec 068's select floor). The design needs no new CSS: the `c-pick` rules of spec 060 exist (T10 verifies, and adds a rule under its own heading only if a measurement fails).
+- **Design system:** tokens and `c-*` classes only. Both pages' `main` is `c-main c-page c-decks` (the touch floor of `.c-decks .c-btn`, the wrap of `.c-decks .c-pagehead__title`, spec 068's select floor). The `c-pick` rules of spec 060 exist; the one new rule is the wrap of Add a new copy's read-only Location line (`.c-decks .c-field__value`, T9 Step 3a, under its own heading); T12 measures every width and adds no other CSS for a control that already meets its rule.
 - **The existing examples this change breaks** are found by a grep, not memory (spec "Supersedes and updates"): T6 lists them with their lines.
 - **Tests:** tag spec types explicitly; `:aggregate_failures` on multi-expectation examples; an "absent" assertion uses a fixture that could produce the present case (the lesson of spec 066); a request example that asserts a name is absent builds it at run time (the 404 page prints the spec's source); no prose documents checked from RSpec; the "works without scripting" examples run under `rack_test` with `driven_by` declared before the sign-in and the driver asserted.
 - **Code documentation** (`.claude/rules/code-documentation.md`): every public class, module and method added or changed gets a summary comment (the why, side effects, whether it needs `Current.account`, transactions); no collectible named in a core file's comments.
@@ -49,10 +50,11 @@ A collector opens a proxy row's menu and uses a free copy they own ("Use my copy
 | `app/helpers/decks_helper.rb`, `app/views/decks/_proxy_menu.html.erb`, `spec/requests/deck_pages_spec.rb` | edit | The menu's two new items and their labels; the examples that read the menu (T6) |
 | `app/controllers/decks/proxies/replacements_controller.rb`, `app/views/decks/proxies/replacements/new.html.erb`, `spec/requests/deck_proxy_replacements_spec.rb` | new | Use my copy's pages (T7, T8) |
 | `app/views/lots/_form.html.erb` | edit | Fixed place, Quantity maximum, Cancel path, shown count (T9) |
-| `app/controllers/decks/proxies/copies_controller.rb`, `app/views/decks/proxies/copies/new.html.erb`, `spec/requests/deck_proxy_copies_spec.rb` | new | Add a new copy's pages (T9, T10) |
-| `spec/requests/deck_proxy_replacement_tenancy_spec.rb` | new | A 404 per page and verb, another account's lot (T11) |
+| `app/controllers/decks/proxies/copies_controller.rb`, `app/views/decks/proxies/copies/new.html.erb`, `spec/requests/deck_proxy_copies_spec.rb`, `app/assets/stylesheets/collector/additions.css` | new, edit | Add a new copy's pages and the wrap rule of its read-only Location (T9) |
+| `spec/requests/deck_proxy_replacement_tenancy_spec.rb` | new | A 404 per page and verb, another account's lot (T10) |
+| `spec/models/deck_proxy_replacement_round_trip_spec.rb`, `spec/models/lot_proxy_isolation_spec.rb` | new, edit | The export and restore after a replacement; `Lot::MoveIntoZone` is no path that changes a proxy (T11) |
 | `spec/system/deck_proxy_replacements_spec.rb` | new | Both flows in Firefox and under `rack_test`; widths, themes and the touch-floor rules (T12) |
-| `spec/deck_core_spec.rb` | edit | The file count (T13) |
+| `spec/deck_core_spec.rb`, `spec/import_apply_core_spec.rb` | edit | The file count; the guard of `Lot::MoveIntoZone` (T13) |
 | `app/models/deck/proxy.rb` (header), `spec/models/lot_proxy_isolation_spec.rb` (header), `docs/design-system/**`, `docs/architecture/**`, `CLAUDE.md`, `docs/roadmap.md`, `docs/specs/README.md` | edit | Comments and documents (T14, T15) |
 | `docs/specs/070-replace-proxy-with-copy/screenshots/**`, `verification.md` | new | Evidence (T16, T17) |
 
@@ -90,7 +92,8 @@ RSpec.describe Lot, ".free", type: :model do
 
   it "chains with the account's lots and other conditions, and leaves the account scoping to the caller", :aggregate_failures do
     mine = create(:lot, account:)
-    theirs = create(:lot, location: create(:location))
+    other = create(:user).account
+    theirs = create(:lot, account: other, location: create(:location, account: other))
 
     expect(account.lots.free.where(catalog_entry_id: mine.catalog_entry_id)).to contain_exactly(mine)
     expect(described_class.free).to include(mine, theirs)
@@ -181,7 +184,8 @@ RSpec.describe Lot::MoveIntoZone, type: :model do
 
   it "refuses a lot that is no longer free, another account's lot and a lot that is gone, naming each and writing nothing", :aggregate_failures do
     taken = lot_in(deck.zone("sideboard"), 2)
-    theirs = create(:lot, entry:, location: create(:location), quantity: 2)
+    other = create(:user).account
+    theirs = create(:lot, account: other, entry:, location: create(:location, account: other), quantity: 2)
     gone = lot_in(binder, 2).tap(&:destroy!)
     fine = lot_in(binder, 2)
 
@@ -250,8 +254,10 @@ end
 # condition it no longer lists; `Lot` validates both on save) is `:not_saveable` rather than moved without validation. A `:cap`
 # refusal can only be found while moving, so it leaves the transaction by the exception below and the earlier moves roll back.
 #
-# Needs a write transaction (SQLite's is IMMEDIATE, so the reads below are under the lock) and joins an outer one: the caller
-# may lower a proxy in the same transaction. The exception must not be rescued inside it. Names no collectible.
+# "Free" is `Lot.free`: in no deck zone (unplaced or in a place; spec 057's "Free to use"). It takes the account explicitly and
+# never reads `Current.account`. Needs a write transaction (SQLite's is IMMEDIATE, so the reads below are under the lock) and
+# joins an outer one: the caller may lower a proxy in the same transaction. The exception must not be rescued inside it. Names
+# no collectible.
 class Lot::MoveIntoZone
   # Why one lot can't be moved. `reasons` maps a lot's id to one of `:not_free` (no longer one of the account's free lots),
   # `:count` (not from 1 to the copies it holds now), `:not_saveable` (the lot can't be saved as it is) and `:cap` (the zone's
@@ -440,7 +446,8 @@ RSpec.describe Deck::Proxy::UseCopies, type: :model do
       lot_in(zone, entry, 1, finish: "foil")                                     # in this zone
       lot_in(deck.zone("considering"), entry, 1, finish: "foil")                 # in Considering
       create(:lot, entry: create(:mtg_printing, entry: create(:catalog_entry, name: "Other card")).entry, location: binder, account:) # another card
-      create(:lot, entry:, location: create(:location), quantity: 1, finish: "foil") # another account's
+      other = create(:user).account
+      create(:lot, account: other, entry:, location: create(:location, account: other), quantity: 1, finish: "foil") # another account's
 
       groups = uses(proxy).groups
 
@@ -542,7 +549,8 @@ RSpec.describe Deck::Proxy::UseCopies, type: :model do
       gone = lot_in(binder, entry, 1, finish: "foil")
       taken = lot_in(box, entry, 1, finish: "foil")
       part = lot_in(binder, entry, 5, finish: "nonfoil")
-      theirs = create(:lot, entry:, location: create(:location), quantity: 1)
+      other = create(:user).account
+      theirs = create(:lot, account: other, entry:, location: create(:location, account: other), quantity: 1)
       typed = { gone.id.to_s => "1", taken.id.to_s => "1", part.id.to_s => "1", theirs.id.to_s => "1" }
       shown = { gone.id.to_s => "1", taken.id.to_s => "1", part.id.to_s => "5", theirs.id.to_s => "1" }
       gone.destroy!
@@ -615,6 +623,18 @@ RSpec.describe Deck::Proxy::UseCopies, type: :model do
       expect(form.rows.first.errors).to eq([ "Edit this copy first: its finish or condition isn't offered any more." ])
     end
 
+    it "shows a lot the vocabulary can't save beside a total over the count: the lot's sentence and not the sum's", :aggregate_failures do
+      stale = lot_in(binder, entry, 2, finish: "foil")
+      stale.update_columns(finish: "retired_finish")
+      fine = lot_in(box, entry, 2, finish: "nonfoil")
+      form = uses(proxy, { stale.id.to_s => "2", fine.id.to_s => "2" }) # a total of 4 over the count of 2
+
+      expect(form.save).to be(false)
+      expect(form.rows.find { it.lot == stale }.errors).to eq([ "Edit this copy first: its finish or condition isn't offered any more." ])
+      expect(form.fieldset_errors).to eq([])
+    end
+
+    # A characterisation, not a red: it passes on arrival, since the lots drawn are read after the transaction (AC-3.15).
     it "builds the page of a refusal from a fresh read after the rollback (the first lot holds what it held)", :aggregate_failures do
       lot_in(zone, entry, 9_999, finish: "foil")
       first = lot_in(binder, entry, 2, finish: "nonfoil")
@@ -702,6 +722,8 @@ class Deck::Proxy::UseCopies
     [ [ "This printing", own ], [ "Other printings", rest ] ].reject { |_name, in_group| in_group.empty? }
   end
 
+  # The free lots as {Row}s, in the lots' order: what was typed for each ("0" at first), the quantity to show and its sentences.
+  #
   # @return [Array<Row>]
   def rows
     free_lots.map { |lot| Row.new(lot:, typed: @typed.fetch(lot.id.to_s, "0"), shown: lot.quantity, errors: @field_errors[lot.id].dup) }
@@ -750,6 +772,8 @@ class Deck::Proxy::UseCopies
         end
         field(lot, "Enter a number from 0 to #{number(lot.quantity)}.") if count.nil? || count > lot.quantity
         next unless count&.positive?
+
+        field(lot, NOT_OFFERED) unless lot.valid? # a finish or condition the vocabulary no longer lists: judged with the other checks (decision 9); MoveIntoZone's own check is the backstop
 
         changed unless @shown[key].to_s.match?(/\A\d+\z/) && @shown[key].to_i == lot.quantity
         picks << [ lot, count ] if count <= lot.quantity
@@ -959,7 +983,7 @@ end
 
 ### T6: The routes and the menu
 
-- [ ] **Step 1: List the examples this breaks** (from the spec's grep): `git grep -n "Change proxy count\|Remove proxy\|Change Foil proxy\|c-menu__item" -- spec ':!.kamal/secrets'`. The ones that read a proxy row's menu: `spec/requests/deck_pages_spec.rb` lines 135 to 160 (two examples: "has a menu cell with the proxy items…" and "names the finish in a row with proxies of two finishes…"). No system example reads it.
+- [ ] **Step 1: List what this breaks, by the spec's own grep**: `git grep -n -i "use my copy\|add a new copy\|UseMyCopy\|#257\|writers\|only by hand\|changes a proxy\|Change proxy count\|Remove proxy" -- spec docs CLAUDE.md app ':!.kamal/secrets'`. Each hit and what becomes of it: `spec/requests/deck_pages_spec.rb` lines 135 to 160 (the two menu examples) change in this task; `spec/requests/deck_proxies_spec.rb:254-256` (the Change page's sentence "To remove it, use Remove proxy.") is unaffected; `spec/system/design_system_deck_components_spec.rb:201` draws a static menu and is unaffected; `app/helpers/decks_helper.rb:55` (`proxy_item_label`'s comment) is replaced in this task; the comment at `app/assets/stylesheets/collector/additions.css:520-523` ("Pick list for AddToDeck and UseMyCopy") stays true; `app/models/deck/proxy.rb`'s header and `spec/models/lot_proxy_isolation_spec.rb`'s header change in T14; the design-system documents (`DeckPage.md` lines 5, 82, 83; `UseMyCopy.md`; the previews `DeckPage.html` and `DeckPagePhone.html`, whose row menus draw "Add a new copy" and "Move copies" without "Use my copy") change in T14; the area docs and `CLAUDE.md` in T15; `docs/roadmap.md`'s #257 line in T15. Record this list in `verification.md` (T17).
 
 - [ ] **Step 2: The failing examples.** In `spec/requests/deck_pages_spec.rb` change the two examples to:
 
@@ -1002,14 +1026,18 @@ end
         expect(items[2, 2].map { it["href"] }).to eq([ new_deck_proxy_copy_path(deck, foil), new_deck_proxy_copy_path(deck, nonfoil) ])
       end
 
-      it "leaves the two replacement items out for a proxy whose printing's collectible the instance no longer registers (AC-1.4)", :aggregate_failures do
+      it "leaves the two replacement items out for a proxy whose printing's collectible the instance no longer registers, and keeps them for a registered printing in a deck of an unregistered type (AC-1.4)", :aggregate_failures do
         bolt = printing
         proxy_in("main", bolt)
         bolt.update_columns(collectible_type: "gone")
 
         get deck_path(deck)
-
         expect(card_rows(zone_section("Main")).first.css(".c-menu__item").map { it.text.strip }).to eq([ "Change proxy count", "Remove proxy" ])
+
+        bolt.update_columns(collectible_type: "mtg")
+        deck.update_columns(collectible_type: "gone") # a change of format can leave such a deck (spec 068 decision 19)
+        get deck_path(deck)
+        expect(card_rows(zone_section("Main")).first.css(".c-menu__item").map { it.text.strip }).to include("Use my copy", "Add a new copy")
       end
 ```
 
@@ -1138,17 +1166,20 @@ RSpec.describe "Use my copy", type: :request do
         expect(html.at_css("label.c-input input[id='lot_#{lot.id}']")).to be_present
       end
 
-      it "groups This printing (the proxy's printing and finish) before Other printings, leaving an empty group out", :aggregate_failures do
+      it "groups This printing (the proxy's printing and finish) before Other printings in the card page's order, leaving an empty group out", :aggregate_failures do
         same = lot_in(binder, entry, 1, finish: "foil")
         other_finish = lot_in(box, entry, 1, finish: "nonfoil")
-        elsewhere = lot_in(box, printing(set: "mm3", number: "122"), 1, finish: "foil")
+        newer = lot_in(box, printing(set: "mm3", number: "122"), 1, finish: "foil")
+        newer.entry.set.update!(released_on: Date.new(2030, 1, 1)) # newest printing first
+        retired = lot_in(binder, create(:mtg_printing, entry: create(:catalog_entry, :retired, name: "Lightning Bolt", identity: bolt)).entry, 1)
 
         get new_deck_proxy_replacement_path(deck, proxy)
 
         expect(html.css(".c-pick__group").map(&:text)).to eq([ "This printing", "Other printings" ])
         ids = html.css(".c-pick__lot input[type=number]").map { it["id"] }
         expect(ids.first).to eq("lot_#{same.id}")
-        expect(ids.drop(1)).to match_array([ "lot_#{other_finish.id}", "lot_#{elsewhere.id}" ])
+        expect(ids.drop(1).first).to eq("lot_#{newer.id}") # newest printing first, whatever the finish
+        expect(ids.drop(1)).to match_array([ "lot_#{newer.id}", "lot_#{other_finish.id}", "lot_#{retired.id}" ])
 
         same.destroy!
         other_finish.destroy!
@@ -1161,11 +1192,23 @@ RSpec.describe "Use my copy", type: :request do
         lot_in(deck.zone("main"), entry, 1, finish: "foil")
         lot_in(deck.zone("considering"), entry, 1, finish: "foil")
         lot_in(binder, create(:mtg_printing, entry: create(:catalog_entry, name: "Other card")).entry, 1)
-        create(:lot, entry:, location: create(:location), quantity: 1, finish: "foil")
+        stranger = create(:user).account
+        create(:lot, account: stranger, entry:, location: create(:location, account: stranger), quantity: 1, finish: "foil")
+        other_deck = create(:deck, account:, name: "Other deck")
+        lot_in(other_deck.zone("main"), entry, 1, finish: "foil") # a zone of another deck of the account
 
         get new_deck_proxy_replacement_path(deck, proxy)
 
         expect(html.css(".c-pick__lot input[type=number]").map { it["id"] }).to eq([ "lot_#{free.id}" ])
+      end
+
+      it "reads a place with the zone's name as the place's name and the proxy line as Deck › Zone (AC-2.5)", :aggregate_failures do
+        lot = lot_in(create(:location, account:, name: "Main"), entry, 1, finish: "foil")
+
+        get new_deck_proxy_replacement_path(deck, proxy)
+
+        expect(html.at_css("label[for='lot_#{lot.id}']").text.squish).to eq("2X2 · 117 Foil, Main, ×1 free")
+        expect(html.at_css(".c-pagehead__stats").text.squish).to start_with("Replaces 2 proxies in Izzet Tempo › Main")
       end
 
       it "says '1 proxy' and keeps a 60-character place name whole", :aggregate_failures do
@@ -1184,18 +1227,22 @@ RSpec.describe "Use my copy", type: :request do
         get new_deck_proxy_replacement_path(deck, proxy)
 
         expect(html.at_css(".c-empty").text.squish).to eq("You have no free copy of Lightning Bolt to use.")
-        expect(html.at_css("a.c-btn[href='#{deck_path(deck)}']").text).to eq("Back to Izzet Tempo")
+        expect(html.at_css("main a.c-btn[href='#{deck_path(deck)}']").text).to eq("Back to Izzet Tempo")
         expect(html.css("form")).to be_empty
       end
 
-      it "runs the same number of statements for 1 lot and for 12 lots of 4 printings (AC-2.7)", :aggregate_failures do
+      it "runs the same number of statements for 1 lot and for 200 lots of 20 printings in 2 places (AC-2.7)", :aggregate_failures do
         lot_in(binder, entry, 1, finish: "foil")
-        get new_deck_proxy_replacement_path(deck, proxy) # warm the caches the counts would otherwise differ by
+        get new_deck_proxy_replacement_path(deck, proxy) # warm what the counts would otherwise differ by
         few = count_queries { get new_deck_proxy_replacement_path(deck, proxy) }
 
-        4.times { |n| 3.times { |m| lot_in(m.zero? ? binder : box, printing(set: "s#{n}", number: "#{n}#{m}"), 1 + m, finish: "foil") } }
+        20.times do |n|
+          other = printing(set: "s#{n}", number: "#{n + 200}")
+          10.times { |m| lot_in(m.even? ? binder : box, other, 1 + m, finish: "foil", price_paid_cents: m) } # 10 identities a printing
+        end
         many = count_queries { get new_deck_proxy_replacement_path(deck, proxy) }
 
+        expect(account.lots.free.count).to eq(201)
         expect(many).to eq(few)
       end
     end
@@ -1309,6 +1356,7 @@ Note: the proxy's `used` is the quantity; `proxy_name(@proxy)` reads the proxy a
     </div>
   </div>
   <% if @replacement.groups.empty? %>
+    <%= render "shared/field_errors", messages: @replacement.fieldset_errors, id: "replacement-error" %>
     <p class="c-empty">You have no free copy of <%= @proxy.entry.name %> to use.</p>
     <div class="c-form__actions">
       <%= link_to "Back to #{@deck.name}", deck_path(@deck), class: "c-btn c-btn--secondary" %>
@@ -1316,14 +1364,14 @@ Note: the proxy's `used` is the quantity; `proxy_name(@proxy)` reads the proxy a
   <% else %>
     <% fieldset_errors = @replacement.fieldset_errors %>
     <%= form_with url: deck_proxy_replacement_path(@deck, @proxy), method: :post, class: "c-form" do |form| %>
-      <fieldset class="c-choices c-pick" aria-describedby="<%= field_error_describedby("replacement-error", fieldset_errors) %>">
+      <%= tag.fieldset class: "c-choices c-pick", "aria-describedby": field_error_describedby("replacement-error", fieldset_errors) do %>
         <legend class="c-field__label">Which copies</legend>
         <% @replacement.groups.each do |name, rows| %>
           <p class="c-pick__group"><%= name %></p>
           <% rows.each do |row| %>
-            <div class="c-pick__lot">
+            <div class="c-pick__lot<%= " c-field--invalid" if row.errors.any? %>">
               <label class="c-pick__label" for="lot_<%= row.lot.id %>"><%= lot_pick_label(row.lot) %></label>
-              <label class="c-input<%= " c-field--invalid" if row.errors.any? %>">
+              <label class="c-input">
                 <%= number_field_tag "lots[#{row.lot.id}]", row.typed, id: "lot_#{row.lot.id}", min: 0, max: row.lot.quantity, step: 1, inputmode: "numeric",
                       "aria-describedby": field_error_describedby("lot_#{row.lot.id}-error", row.errors) %>
               </label>
@@ -1333,7 +1381,7 @@ Note: the proxy's `used` is the quantity; `proxy_name(@proxy)` reads the proxy a
           <% end %>
         <% end %>
         <%= render "shared/field_errors", messages: fieldset_errors, id: "replacement-error" %>
-      </fieldset>
+      <% end %>
       <div class="c-form__actions">
         <%= form.submit "Use these copies", class: "c-btn c-btn--primary" %>
         <%= link_to "Cancel", deck_path(@deck), class: "c-btn c-btn--secondary" %>
@@ -1385,13 +1433,55 @@ Note: the proxy's `used` is the quantity; `proxy_name(@proxy)` reads the proxy a
         expect(html.at_css(".c-item__type").text).to eq("Modern · 2 cards · 2 owned · 0 proxy")
       end
 
-      it "uses copies of another printing: it enters as a row of its own and the Total of the card is unchanged", :aggregate_failures do
+      it "uses copies of another printing: it enters as a row of its own and the card's Total on the deck page is unchanged (AC-3.3)", :aggregate_failures do
         other = lot_in(box, printing(set: "mm3", number: "122"), 1, finish: "foil")
 
         post_use({ other.id.to_s => "1" })
+        follow_redirect!
 
         expect(proxy.reload.quantity).to eq(1)
         expect(account.lots.find_by(location: deck.zone("main")).catalog_entry_id).to eq(other.catalog_entry_id)
+        main = html.css("section.c-zone").find { it.at_css("h2").text == "Main" }
+        rows = main.css("tbody tr:not(.c-zone__group)")
+        expect(rows.size).to eq(2) # the proxy's printing keeps its row; the copy's printing has one of its own
+        expect(html.at_css(".c-item__type").text).to eq("Modern · 2 cards · 1 owned · 1 proxy") # 2 cards before and after
+      end
+
+      it "judges a proxy lowered since the page was shown against its count now (AC-3.10)", :aggregate_failures do
+        lot = lot_in(binder, entry, 5, finish: "foil")
+        proxy.update!(quantity: 1) # lowered in another tab
+
+        post_use({ lot.id.to_s => "2" })
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(html.at_css("#replacement-error").text).to eq("Enter a number from 1 to 1.")
+        expect(lot.reload.location).to eq(binder)
+      end
+
+      it "agrees across the deck page, the card page's Your copies, the collection and the Decks page after a replacement (AC-3.12)", :aggregate_failures do
+        lot = lot_in(binder, entry, 3, finish: "foil")
+
+        post_use({ lot.id.to_s => "2" })
+
+        get deck_path(deck)
+        expect(html.at_css(".c-item__type").text).to eq("Modern · 2 cards · 2 owned · 0 proxy")
+        get catalog_entry_path(entry)
+        expect(html.text).to include("Izzet Tempo › Main")
+        get collection_path(view: "table")
+        expect(html.text).to include("Izzet Tempo › Main").and include("Blue binder")
+        get decks_path
+        expect(html.at_css("tbody tr").css("td").map { it.text.squish }.first(5)).to include("2")
+      end
+
+      it "shows the changed-lots sentence above the empty state when every chosen lot stopped being free", :aggregate_failures do
+        lot = lot_in(binder, entry, 2, finish: "foil")
+        lot.update!(location: deck.zone("sideboard")) # taken into a zone since the page was shown
+
+        post_use({ lot.id.to_s => "1" }, { lot.id.to_s => "2" })
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(html.at_css("#replacement-error").text).to eq("Those copies changed. Check the numbers and try again.")
+        expect(html.at_css(".c-empty").text.squish).to eq("You have no free copy of Lightning Bolt to use.")
       end
 
       it "writes nothing and re-renders with every entry kept for a number outside the lot's copies (AC-3.5)", :aggregate_failures do
@@ -1459,7 +1549,6 @@ Note: the proxy's `used` is the quantity; `proxy_name(@proxy)` reads the proxy a
         expect(response).to have_http_status(:unprocessable_content)
         expect(html.at_css("#lot_#{second.id}-error").text).to eq("One lot can hold at most 9,999 copies.")
         expect([ first.reload.location, second.reload.location, proxy.reload.quantity ]).to eq([ binder, box, 2 ])
-        expect(html.css("input[type=number]").size).to eq(2) # drawn from the read after the rollback
       end
 
       it "ignores an account id, a zone id and a location id in the request (AC-3.13)", :aggregate_failures do
@@ -1485,7 +1574,8 @@ Note: the proxy's `used` is the quantity; `proxy_name(@proxy)` reads the proxy a
 
       it "leaves the other proxies, other decks and the other account's lots as they were (AC-5.2)", :aggregate_failures do
         sibling = proxy_of(printing(set: "sib"), quantity: 2)
-        theirs = create(:lot, entry:, location: create(:location), quantity: 4, finish: "foil")
+        stranger = create(:user).account
+        theirs = create(:lot, account: stranger, entry:, location: create(:location, account: stranger), quantity: 4, finish: "foil")
         lot = lot_in(binder, entry, 1, finish: "foil")
 
         post_use({ lot.id.to_s => "1" })
@@ -1546,7 +1636,7 @@ RSpec.describe "Add a new copy", type: :request do
         expect(html.css("select[name='lot[condition]'], input[name='lot[price_paid]']").size).to eq(2)
         expect(html.at_css("select[name='lot[location_id]']")).to be_nil
         expect(html.at_css("p.c-field__label").text).to eq("Location")
-        expect(html.text).to include("Izzet Tempo › Main")
+        expect(html.at_css("p.c-field__label + p.c-field__value").text).to eq("Izzet Tempo › Main")
         expect(html.text).not_to include("Add a location")
         expect(html.at_css("input[name=shown_quantity]")["value"]).to eq("3")
         expect(html.at_css("input[type=submit]")["value"]).to eq("Add copy")
@@ -1578,11 +1668,13 @@ RSpec.describe "Add a new copy", type: :request do
         expect(html.at_css("input[name='lot[quantity]']")["max"]).to eq("9999")
         expect(html.at_css("select[name='lot[location_id]']")).to be_present
         expect(html.at_css("input[name=shown_quantity]")).to be_nil
+        expect(html.css("a.c-btn").find { it.text == "Cancel" }["href"]).to eq(catalog_entry_path(entry))
 
         lot = create(:lot, account:, entry:, location: place)
         get edit_lot_path(lot)
         expect(html.at_css("input[name='lot[quantity]']")["max"]).to eq("9999")
         expect(html.at_css("select[name='lot[location_id]']")).to be_present
+        expect(html.css("a.c-btn").find { it.text == "Cancel" }["href"]).not_to eq(deck_path(deck))
       end
     end
 
@@ -1597,11 +1689,14 @@ RSpec.describe "Add a new copy", type: :request do
         expect(account.lots.find_by(location: deck.zone("main"))).to have_attributes(entry:, quantity: 2, finish: "foil", condition: "near_mint", price_paid_cents: 125)
       end
 
-      it "says '1 proxy' and removes the proxy when the quantity is its whole count", :aggregate_failures do
+      it "says '3 proxies' and removes the proxy when the quantity is its whole count, and '1 proxy' for one", :aggregate_failures do
         post_copy({ quantity: "3" })
-
         expect(flash[:notice]).to end_with("replacing 3 proxies.")
         expect(Deck::Proxy.exists?(proxy.id)).to be(false)
+
+        one = create(:deck_proxy, zone: deck.zone("main"), account:, entry:, finish: "nonfoil", quantity: 1)
+        post_copy({ quantity: "1", finish: "nonfoil" }, shown: "1", to: one)
+        expect(flash[:notice]).to end_with("replacing 1 proxy.")
       end
 
       it "lowers the proxy in the path whatever the copy's finish (AC-4.5)", :aggregate_failures do
@@ -1700,7 +1795,7 @@ Quantity field: `max: quantity_max`. Location block:
   <% if fixed_place %>
     <div class="c-field">
       <p class="c-field__label">Location</p>
-      <p><%= fixed_place %></p>
+      <p class="c-field__value"><%= fixed_place %></p>
     </div>
   <% elsif choices.any? %>
     <div class="c-field">
@@ -1713,6 +1808,17 @@ Quantity field: `max: quantity_max`. Location block:
   <%= hidden_field_tag :shown_quantity, shown_quantity, id: nil unless shown_quantity.nil? %>
 ```
 and the Cancel link: `<%= link_to "Cancel", cancel_path || lot_return_path(entry), class: "c-btn c-btn--secondary" %>`.
+
+- [ ] **Step 3a: The wrap rule for the read-only Location** (a deck name of 60 characters with no space plus " › Main" must not scroll the page sideways at 360px; no existing rule covers a bare `p` in a form). In `app/assets/stylesheets/collector/additions.css`, under its own heading comment, after the "Deck pages' selects (spec 068 AC-9.1)" block:
+
+```css
+/* ---------- Add a new copy's read-only Location (spec 070 AC-6.1) ---------- */
+/* The zone's label ("Deck › Zone") names a deck of up to 60 characters with no space, so the read-only line breaks inside a
+   word like the page head's stats line instead of widening the form. It is the value under a `c-field__label` paragraph. */
+.c-decks .c-field__value { margin:0; overflow-wrap:anywhere; }
+```
+
+  Document the class in `AddProxy.md` (T14); `spec/design_system_files_spec.rb` finds the block by its heading, so run it in Step 6.
 
 - [ ] **Step 4: The controller** `app/controllers/decks/proxies/copies_controller.rb`:
 
@@ -1776,7 +1882,7 @@ end
 <%= render "layouts/tabbar", section: :decks %>
 ```
 
-- [ ] **Step 6: Run** `bin/rspec spec/requests/deck_proxy_copies_spec.rb spec/requests/lots_spec.rb spec/requests/lot_edit_spec.rb` (the names of the card page's lot request specs: find them with `ls spec/requests | grep lot`). Expected: PASS, the card page's form and Edit copy unchanged. `bin/rubocop -a`.
+- [ ] **Step 6: Run** `bin/rspec spec/requests/deck_proxy_copies_spec.rb spec/requests/lots_spec.rb spec/requests/lot_moves_spec.rb spec/design_system_files_spec.rb`. Expected: PASS, the card page's form and Edit copy unchanged. `bin/rubocop -a`.
 - [ ] **Step 7: Commit**: `feat(decks): Add a new copy, the Add a copy form for a proxy's printing and zone (spec 070, #257)`.
 
 ### T10: Tenancy and the other 404s
@@ -1799,12 +1905,14 @@ RSpec.describe "Replacing a proxy: tenancy", type: :request do
   let(:other_deck) { create(:deck, account: other, name: rival) }
   let!(:other_proxy) { create(:deck_proxy, zone: other_deck.zone("main"), account: other, entry:, finish: "foil", quantity: 2) }
   let(:binder) { create(:location, account:, name: "Blue binder") }
+  let!(:sibling_proxy) { create(:deck_proxy, zone: create(:deck, account:, name: "Sibling deck").zone("main"), account:, entry:, finish: "foil", quantity: 2) }
 
   before { sign_in_as(user) }
 
   [
     [ "another account's deck and proxy", ->(t) { [ t.other_deck, t.other_proxy ] } ],
     [ "this deck with another account's proxy", ->(t) { [ t.deck, t.other_proxy ] } ],
+    [ "this deck with a proxy of another deck of the account", ->(t) { [ t.deck, t.sibling_proxy ] } ],
     [ "another account's deck with this proxy", ->(t) { [ t.other_deck, t.proxy ] } ],
     [ "a place's id as the deck", ->(t) { [ t.binder, t.proxy ] } ],
     [ "a zone's id as the deck", ->(t) { [ t.deck.zone("main"), t.proxy ] } ],
@@ -1824,7 +1932,7 @@ RSpec.describe "Replacing a proxy: tenancy", type: :request do
       post deck_proxy_copy_path(deck_arg, proxy_arg), params: { lot: { quantity: "1", finish: "foil" }, shown_quantity: "2" }
       expect(response).to have_http_status(:not_found)
 
-      expect([ lot.reload.location, proxy.reload.quantity, other_proxy.reload.quantity, Lot.where(location: deck.zone("main")).count ]).to eq([ binder, 2, 2, 0 ])
+      expect([ lot.reload.location, proxy.reload.quantity, other_proxy.reload.quantity, sibling_proxy.reload.quantity, Lot.where(location: deck.zone("main")).count ]).to eq([ binder, 2, 2, 2, 0 ])
     end
   end
 
@@ -1866,9 +1974,9 @@ end
 **Implements:** Stories 5, 6, 7 | **Satisfies:** AC-3.3, AC-3.12, AC-5.1 to AC-5.4, AC-6.1 to AC-6.5, AC-7.1, AC-7.3, AC-7.4
 **Files:** `spec/system/deck_proxy_replacements_spec.rb`, `spec/deck_core_spec.rb`, `app/models/deck/proxy.rb` (header), `spec/models/lot_proxy_isolation_spec.rb` (header), `docs/design-system/**`, `docs/architecture/**`, `CLAUDE.md`, `docs/roadmap.md`, `docs/specs/README.md`
 
-### T11: The no-other-path and export examples
+### T11: The export, the round trip and the no-other-path examples
 
-- [ ] **Step 1: The failing spec**: add to `spec/models/lot_proxy_isolation_spec.rb`'s neighbour `spec/requests/deck_proxy_replacements_spec.rb` two examples inside `describe "Use these copies"`:
+- [ ] **Step 1: The failing examples.** (a) In `spec/requests/deck_proxy_replacements_spec.rb`, two examples inside `describe "Use these copies"`:
 
 ```ruby
       it "leaves the export consistent: the moved lots in the zone's place and the lowered proxy, no new field (AC-5.3)", :aggregate_failures do
@@ -1878,7 +1986,7 @@ end
         data = CollectionExport.new(account:, at: Time.current).to_h
 
         expect(data["proxies"].map { it.slice("quantity", "finish") }).to eq([ { "quantity" => 1, "finish" => "foil" } ])
-        expect(data["lots"].map { it["location"]&.fetch("zone", nil) }).to include("main")
+        expect(data["lots"].filter_map { it["location"]["zone"] if it["location"].is_a?(Hash) }).to include("main")
         expect(data.keys).to match_array(CollectionExport.new(account: create(:user).account, at: Time.current).to_h.keys)
       end
 
@@ -1891,7 +1999,56 @@ end
 ```
 
 
-- [ ] **Step 2: Run, expect PASS** (nothing new is needed); commit `test(decks): a replacement leaves the export as any export and no other path changes a proxy (spec 070, #257)`.
+(b) The round trip (AC-5.3, "applying that export on a fresh instance gives the same deck page"): a new file `spec/models/deck_proxy_replacement_round_trip_spec.rb`, `type: :model`, built like `spec/models/collection_import/round_trip_spec.rb` (read its `export`, `same_collection?` and `apply!` helpers and copy them):
+
+```ruby
+require "rails_helper"
+
+# Spec 070 AC-5.3: a collection after a replacement exports and restores on a fresh account as the same collection, the same
+# deck page's counts included.
+RSpec.describe "Export and import after replacing a proxy", type: :model do
+  let(:source) { create(:user, name: "Source", email_address: "source@example.test") }
+  let(:target) { create(:user, name: "Target", email_address: "target@example.test") }
+  let(:entry) { create(:mtg_printing, finishes: %w[foil nonfoil]).entry }
+
+  def export(user, at: Time.utc(2026, 11, 11, 12)) = JSON.parse(CollectionExport.new(account: user.account, at:).to_json)
+
+  def same_collection?(one, other)
+    ExportFormatRules.same_collection?(one.merge("profile" => one["profile"].except("name", "email_address")),
+      other.merge("profile" => other["profile"].except("name", "email_address")))
+  end
+
+  def apply!(user, data)
+    upload = store_import!(account: user.account, data:)
+    CollectionImport::Apply.new(account: user.account.reload, fingerprint: upload&.fingerprint, confirmed: true).call
+  end
+
+  it "restores the deck with the lowered proxy and the moved copies as the same collection", :aggregate_failures do
+    deck = create(:deck, account: source.account, name: "Izzet Tempo")
+    proxy = create(:deck_proxy, zone: deck.zone("main"), account: source.account, entry:, finish: "foil", quantity: 3)
+    lot = create(:lot, account: source.account, entry:, location: create(:location, account: source.account, name: "Blue binder"), quantity: 2, finish: "foil")
+    Deck::Proxy::UseCopies.new(proxy:, typed: { lot.id.to_s => "2" }, shown: { lot.id.to_s => "2" }).save
+
+    original = export(source)
+    apply!(target, original)
+
+    expect(original["proxies"].map { it["quantity"] }).to eq([ 1 ])
+    expect(same_collection?(original, export(target))).to be(true)
+    restored = Deck::Page.new(target.account.decks.includes(:location).sole)
+    expect([ restored.owned, restored.proxy ]).to eq([ 2, 1 ])
+  end
+end
+```
+
+(c) In `spec/models/lot_proxy_isolation_spec.rb`, add `Lot::MoveIntoZone` to the paths that never change a proxy (AC-5.1; spec 071 reuses it): next to the `Lot::Move` call of its first example add
+
+```ruby
+    Lot::MoveIntoZone.new(account:, zone: deck.zone("main"), picks: [ [ Lot.find_by!(location: elsewhere), 1 ] ]).call!
+    expect(unchanged?).to be(true)
+```
+(use the lot that is in `elsewhere` at that point of the example; read the example and place the call where such a lot exists).
+
+- [ ] **Step 2: Run** `bin/rspec spec/requests/deck_proxy_replacements_spec.rb spec/models/deck_proxy_replacement_round_trip_spec.rb spec/models/lot_proxy_isolation_spec.rb`. Expected: PASS (nothing new in the app is needed); if the round trip fails the format rejects something the replacement wrote, which is a finding. Commit `test(decks): a replacement exports and restores as any collection and no other path changes a proxy (spec 070, #257)`.
 
 ### T12: The system examples
 
@@ -2005,24 +2162,37 @@ RSpec.describe "Replacing a proxy", type: :system do
             end
           end
         end
+
+        # The refused pages (AC-6.1's "an error is shown with its field"): the form is submitted inside the frame, over the count.
+        it "fits the refused Use my copy and Add a new copy at #{width}px in the #{theme} theme, each error read by its field (AC-6.1)", :aggregate_failures do
+          [ [ new_deck_proxy_replacement_path(deck, proxy), -> { find("input[type=number]").set("9"); click_button "Use these copies" }, "input[type=number][aria-describedby]" ],
+            [ new_deck_proxy_copy_path(deck, proxy), -> { fill_in "Quantity", with: "9"; click_button "Add copy" }, "input[name='lot[quantity]'][aria-describedby]" ] ].each do |path, submit, described|
+            visit deck_path(deck)
+            open_in_narrow_frame(path, width:, ready: "main")
+            within_narrow_frame do
+              set_theme(theme)
+              instance_exec(&submit)
+              expect(page).to have_css(".c-field__error")
+              expect(page).to have_css(described)
+              expect(fits?).to be(true), "#{path} refused at #{width}px in #{theme}"
+            end
+          end
+        end
       end
     end
 
-    it "gives the number fields, the buttons and the selects the touch floor on a coarse pointer, by the rules the pages are under (AC-6.2)", :aggregate_failures do
+    # AC-6.3: a field with focus shows the 2px focus ring: a number field's on its `c-input` wrapper (the pattern of spec 060's
+    # `UseMyCopy` example, on the real page), the Finish select's own, reached by Tab from Quantity as a keyboard reaches it.
+    it "shows the focus ring on a focused number field's wrapper and on the Finish select", :aggregate_failures do
       visit new_deck_proxy_replacement_path(deck, proxy)
-      expect(page.evaluate_script("document.querySelector('main').classList.contains('c-decks')")).to be(true)
-      expect(coarse_rule(".c-pick__lot .c-input")).to include("minHeight" => "var(--touch-floor)")
-      expect(coarse_rule(".c-btn")).to include("minHeight" => "44px")      # components.css: `.c-btn, .c-input` on a coarse pointer
-      expect(coarse_rule(".c-input")).to include("minHeight" => "44px")
-      expect(coarse_rule(".c-decks .c-field select")).to include("minHeight" => "var(--touch-floor)")
-      expect(page.evaluate_script("parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--touch-floor'))")).to be >= 44
-      heights = page.evaluate_script("[...document.querySelectorAll('main .c-btn, main .c-pick__lot .c-input')].map((el) => el.getBoundingClientRect().height)")
-      expect(heights).to all(be >= 44)
+      find("input[type=number]").click
+      ring = page.evaluate_script("(() => { const s = getComputedStyle(document.activeElement.closest('.c-input')); return [s.outlineStyle, s.outlineWidth]; })()")
+      expect(ring).to eq([ "solid", "2px" ])
 
       visit new_deck_proxy_copy_path(deck, proxy)
-      expect(page.evaluate_script("document.querySelector('main').classList.contains('c-decks')")).to be(true)
-      heights = page.evaluate_script("[...document.querySelectorAll('main .c-btn, main label.c-input')].map((el) => el.getBoundingClientRect().height)")
-      expect(heights).to all(be >= 44)
+      find("input[name='lot[quantity]']").send_keys(:tab)
+      expect(page.evaluate_script("document.activeElement.name")).to eq("lot[finish]")
+      expect(page.evaluate_script("(() => { const s = getComputedStyle(document.activeElement); return [s.outlineStyle, s.outlineWidth]; })()")).to eq([ "solid", "2px" ])
     end
 
     # The first rule of a `pointer: coarse` media block whose selector list contains +selector+ (headless Firefox has a fine
@@ -2040,7 +2210,7 @@ RSpec.describe "Replacing a proxy", type: :system do
 end
 ```
 
-- [ ] **Step 2: Run** `bin/rspec spec/system/deck_proxy_replacements_spec.rb`. Expected: PASS where the code is right; FAIL are findings: a width that overflows, a missing `c-decks` (the page), a `.c-pick__lot .c-input` rule that does not exist by that exact selector text (adjust the example to the stylesheet's selector, which reads `.c-pick__lot .c-input`, additions.css line 532), a selector list of `.c-btn, .c-input` in components.css whose entries must be found after the split. If a measured control is under 44px on its rule, add the rule under its own heading in `additions.css` (scoped `.c-decks`) test-first and document it in T14; otherwise no CSS is added.
+- [ ] **Step 2: Run** `bin/rspec spec/system/deck_proxy_replacements_spec.rb`. Expected: PASS where the code is right; a FAIL is a finding: a width that overflows (the new Location line's wrap rule is T9's), a missing `c-decks`, a selector that is not in the stylesheet as written (`.c-pick__lot .c-input` is a plain rule at additions.css line 532; `.c-btn, .c-input` is the coarse-pointer rule at components.css line 171). Add no CSS for a measured control that already meets its rule.
 - [ ] **Step 3: Commit**: `test(decks): both replacement flows with and without scripting, at three widths in both themes (spec 070, #257)`.
 
 ### T13: The core guard
@@ -2048,12 +2218,13 @@ end
 - [ ] **Step 1: The failing example.** Run `bin/rspec spec/deck_core_spec.rb`: the "covers every file of the feature" example fails with the new count. The new files the globs match: `app/controllers/decks/proxies/replacements_controller.rb`, `copies_controller.rb`, `app/models/deck/proxy/use_copies.rb`, `add_copy.rb`, `app/views/decks/proxies/replacements/new.html.erb`, `copies/new.html.erb`: **6**. (`app/views/lots/_form.html.erb` is already in the list; `app/models/lot/move_into_zone.rb` is not and stays out: it is a `Lot` file.)
 - [ ] **Step 2: Fix the count**: in `spec/deck_core_spec.rb` change `20 + 6 + 1 + 1 + 4 + 1 + 15` to `20 + 6 + 1 + 1 + 4 + 1 + 15 + 6` and append to its trailing comment `; spec 070 adds 6: the replacements and copies controllers, UseCopies and AddCopy, and the two new views (the globs already cover them)`. (Spec 071 adds its own term when both land: sum the counts.)
 - [ ] **Step 3: Run** `bin/rspec spec/deck_core_spec.rb`. PASS: none of the new files names a game, a source, a format or a zone key but `considering` (the examples' words "Foil", "Lightning" are not in a file; check the comments of `use_copies.rb`).
-- [ ] **Step 4: Commit**: `test(decks): the deck core guard counts spec 070's six files (#257)`.
+- [ ] **Step 4: Guard the shared part.** `app/models/lot/move_into_zone.rb` is in no core guard (decision 8: "these shared files name no collectible"). In `spec/import_apply_core_spec.rb` add `app/models/lot/move_into_zone.rb` beside `app/models/lot/move.rb` in its `files` list; the example "never names a collectible type or a source" covers it. (This is the guard, not T2's commit: the shared files themselves stay as they were handed over.) Run `bin/rspec spec/import_apply_core_spec.rb`.
+- [ ] **Step 5: Commit**: `test(decks): the deck core guard counts spec 070's six files and covers Lot::MoveIntoZone (#257)`.
 
 ### T14: Code comments and the design system
 
 - [ ] **Step 1: Code comments that said only the old writers change a proxy.** `app/models/deck/proxy.rb` header: replace "(the add, change and remove pages, a format change, a deck's removal, an import that carries proxies)" with "(the add, change and remove pages, the two replacement pages of spec 070, a format change, a deck's removal, an import that carries proxies)". `spec/models/lot_proxy_isolation_spec.rb` header: add that the two replacement pages move or add a copy and lower the proxy in the same write (spec 070), and that every path this spec exercises still never does. Run `bin/yard doc 2>&1 | tail -3` (no warning) and `bin/rspec spec/models/lot_proxy_isolation_spec.rb`.
-- [ ] **Step 2: The design system** (the supervisor writes these, reading `.claude/skills/collector-design-system/SKILL.md` and `docs/design-system/README.md` first): `UseMyCopy.md` (the built route `/decks/:deck_id/proxies/:id/replacement`, `c-decks` on `main`, the price in the lot's label, the finish as the vocabulary labels it, "×N free", the `shown` hidden fields, the new sentences "Those copies changed…", "Edit this copy first…", the empty state's secondary button, the order of the lots, "built as drawn"); `AddProxy.md` (a section "Add a new copy": the page, the read-only Location as a `c-field__label` paragraph and text, Quantity's `max` and its sentences, the hidden count, the refusals, Cancel to the deck); `DeckPage.md` lines 5, 82 and 83 (the menu's items, the finish naming); the README's Components line (`UseMyCopy` is built, "Add a new copy" is a use of `lots/_form`); the previews `UseMyCopy.html` and `UseMyCopyPhone.html` brought in line (price in a label, `c-decks`) and a new pair `AddNewCopy.html`, `AddNewCopyPhone.html` (copy `AddProxy.html`'s shell; the form of `lots/_form` with the fixed Location). Run `bin/rspec spec/system/design_system_deck_components_spec.rb spec/design_system_files_spec.rb`; fix any list or count they pin (spec 060 AC-7.2's twelve previews becomes fourteen only if a spec pins the number: read the failure).
+- [ ] **Step 2: The design system** (the supervisor writes these, reading `.claude/skills/collector-design-system/SKILL.md` and `docs/design-system/README.md` first): `UseMyCopy.md` (the built route `/decks/:deck_id/proxies/:id/replacement`, `c-decks` on `main`, the price in the lot's label, the finish as the vocabulary labels it, "×N free", the `shown` hidden fields, the new sentences "Those copies changed…", "Edit this copy first…", the empty state's secondary button, the order of the lots, "built as drawn"); `AddProxy.md` (a section "Add a new copy": the page, the read-only Location as a `c-field__label` paragraph and text, Quantity's `max` and its sentences, the hidden count, the refusals, Cancel to the deck); `DeckPage.md` lines 5, 82 and 83 (the menu's items, the finish naming); the README's Components line (`UseMyCopy` is built, "Add a new copy" is a use of `lots/_form`); the previews `UseMyCopy.html` and `UseMyCopyPhone.html` brought in line (price in a label, `c-decks`) the previews `DeckPage.html` and `DeckPagePhone.html` (a proxy row's open menu lists "Use my copy", "Add a new copy", "Change proxy count", then "Remove proxy"), and a new pair `AddNewCopy.html`, `AddNewCopyPhone.html` (copy `AddProxy.html`'s shell; the form of `lots/_form` with the fixed Location under `c-field__label` and `c-field__value`); `AddProxy.md` documents the `c-field__value` class and its wrap rule; the App additions line of the README names it. Run `bin/rspec spec/system/design_system_deck_components_spec.rb spec/design_system_files_spec.rb`; fix any list or count they pin (spec 060 AC-7.2's twelve previews becomes fourteen only if a spec pins the number: read the failure).
 - [ ] **Step 3: Commit** each: `docs(design-system): Use my copy as built and Add a new copy (spec 070, #257)`; `refactor(decks): the writers of a proxy named in the comments (spec 070)`.
 
 ### T15: Area docs, CLAUDE.md, roadmap, index
@@ -2088,9 +2259,9 @@ Following `.claude/memory/pr-screenshots-workflow.md`: an uncommitted throwaway 
 | FR-3 the shared parts; decision 8 | T1, T2 |
 | Story 1 (the menu): AC-1.1 to AC-1.5 | T6 |
 | AC-2.1 to AC-2.9 | T7 (2.8 and 2.9 also T10) |
-| AC-3.1 to AC-3.13 | T4, T8; AC-3.14 T2, T4, T8; AC-3.15 T4, T8 |
+| AC-3.1 to AC-3.13 | T4, T8 (3.10: T8's lowered-meanwhile example; 3.12: T8's agreement example); AC-3.14 T2, T4 (at the page: the model example is the proof); AC-3.15 T4 (a characterisation, see its note) and T8 |
 | AC-4.1 to AC-4.9 | T5, T9, T10 |
-| AC-5.1 to AC-5.4 | T8, T11 (5.4 is spec 068 AC-4.3's example, which still passes: run in T8 Step 3) |
-| AC-6.1 to AC-6.5 | T12, T14, T16 |
+| AC-5.1 to AC-5.4 | T8, T11 (5.3: the export and the round trip; 5.1: the isolation spec; 5.4 is spec 068 AC-4.3's example, which still passes: run in T8 Step 3) |
+| AC-6.1 to AC-6.5 | T9 (the wrap rule), T12 (widths, the refused pages in the frame, the touch-floor rules, the focus ring), T14, T16 |
 | AC-7.1 to AC-7.4 | T13, T2/T4/T5 comments with the ratchet in T17, T6 (the grep), T15 |
 | Decisions 1–14 | 1: T3, T6; 2: T1; 3, 4: T4, T7; 5: T9; 6: T3, T4, T5; 7: T2, T4; 8: T1, T2; 9: T4, T8; 10: T5, T9; 11: T8, T9; 12: no task (nothing new in the data; T11 shows the export); 13: no script in any task; 14: no ADR |
