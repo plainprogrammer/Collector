@@ -162,7 +162,8 @@ img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches:
    in `components.css` (a re-export restores them and still loses here), so keep this block after them. The icon variant and the
    view switch get a width too: an icon-only view-switch button is 38px wide below 640px of its container. Locations, the Decks pages,
    number entry's list and the scanner already give their buttons 44px at every pointer by rules of their own; those stay.
-   Headless Firefox has a fine pointer, so `spec/system/small_controls_touch_floor_spec.rb` reads these rules and applies them. */
+   Documented in the README's Touch rule. Headless Firefox has a fine pointer, so
+   `spec/system/small_controls_touch_floor_spec.rb` reads these rules and applies them. */
 @media (pointer: coarse) {
   .c-btn--sm, .c-filter, .c-seg button { min-height:var(--touch-floor); }
   .c-btn--sm.c-btn--icon, .c-seg button { min-width:var(--touch-floor); }
