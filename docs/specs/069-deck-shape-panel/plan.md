@@ -1,7 +1,7 @@
 # Plan: 069 The Deck Shape Panel
 
 **Spec:** [spec.md](spec.md) v0.2.1 (Approved at Gate A) · **Issue:** [#256](https://github.com/plainprogrammer/Collector/issues/256) · **Branch:** `069-deck-shape-panel`
-**Status:** Draft v1.1 (plan review round 1 applied; Gate B pending)
+**Status:** Draft v1.2 (two plan review rounds applied; Gate B pending)
 
 ## Goal
 
