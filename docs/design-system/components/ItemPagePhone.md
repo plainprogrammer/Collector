@@ -9,4 +9,5 @@ The same card page at phone width (390px). Same markup as `ItemPage`; only CSS c
 - Tables take their narrow layout: set, finish, condition, language and location fold into a second line under the printing.
 - Printings rows keep the `SET · number` code (`.c-list .is-data`) on one line; only the set name beside it wraps. (Collector addition, `additions.css`.)
 - In decks is the full-width table with Zone folded under the deck name and the format (`c-table__sub`); Format legality follows it (spec 057 decision 8).
+- The section folds whenever it is narrower than 640px: the cell reads the deck's name, then the format and the zone ("Modern · Main"), Owned and Proxy stay, and the name wraps inside its cell (spec 073 AC-5.2).
 - The bottom tab bar stays, with Collection current.
