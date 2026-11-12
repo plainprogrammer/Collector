@@ -237,3 +237,23 @@ Its four follow-ups, and how each was resolved:
 4. The index's Supersedes cell for 079 now says it does the "deck rules" of 069's non-goal in part (size and copy limits) and supersedes nothing.
 
 The reviewer did not re-run the supersession grep, YARD or the comment ratchet (`bin/ci` did), and did not open the walkthrough GIF.
+
+## Distillation
+
+Distilled on 2026-11-12 by the `distill-feature` skill, state 2, before the pull request is opened.
+
+- **Area doc:** [`collection-and-lots.md`](../../architecture/collection-and-lots.md), written in T5.1 (`32b86d92`, `178a00ec`) and checked against the finished code (`Catalog::DeckChecks`, `MTG::DeckRules`, `MTG::Collecting.deck_rules`, `Decks::ChecksController`, `decks/_check`, `decks/show`). It now states:
+  - Check deck: a link to `GET /decks/:id/check` after Edit deck, no `form`, the 404 and sign-in rules, the results section between the head and the zones with focus on "Deck check", prefetch off and why, nothing stored, `turbo-cache-control: no-cache` on the results page only, the statement count (decisions 7, 8, 9; AC-1.x, AC-5.1–AC-5.3, AC-6.3).
+  - The seam: `deck_rules` as the vocabulary's fourth answer, the core `Catalog::DeckChecks` with the contract pointed to in its comment and not restated, the no-rules cases (decision 1, FR-1, AC-5.5).
+  - What is counted: owned plus proxy, by catalog identity, Considering and unnamed zones never (even when a rule names Considering, added in this distillation after `56b26fba`), another collectible's cards never, a printing with no card data like any card, the lowest limit and the mixed case (decisions 1, 3, 4).
+  - Owned plus proxy for every deck, each zone alone (decisions 2, 5).
+  - Magic's rules and their Named constants (`MTG::DeckRules`; decision 3).
+  - The words, the order and the summary line (decisions 6, 10).
+  - The glossary's check, finding and pass (spec 079 Terms; added in this distillation).
+  - The deck guard's 68 files, a decision (on demand, advice, rules in the extension), an accepted limit (a 60-character zone name with no space), Sources (spec 079, #258), and that spec 069's "deck rules" non-goal is done in part (AC-7.1).
+  - Corrected in this distillation: the deck page's collectible part is three optional answers after `formats`, not two.
+- **Design system:** the results section's markup and CSS rule are `DeckCheck` (`docs/design-system/components/DeckCheck.md`, `.c-deckcheck` in `additions.css`), and the head's link is in `DeckPage.md`; both were written in T4.1 and T5.1 and agree with the final CSS (the `c-deckcheck` rename of `4ca7014d`). They are not area docs.
+- **ADR:** none proposed. ADR 0028 already puts a deck's collectible part behind the collecting vocabulary; specs 066 and 069 added optional answers to it and this spec adds a third the same way (the spec's header).
+- **CLAUDE.md:** its Project Status clause for the checks (AC-7.6) restates no rule of the area doc; unchanged.
+- **Index:** 079 is Frozen by the area doc, with `DeckCheck` in the design system; Plan is "retirement owed": the plan stays on the branch and is retired after the pull request merges (state 1 of the skill). Spec 079 supersedes nothing, so no other row changed.
+- **Distillation log:** the row names "spec 079's pull request" until the pull request has a number; state 1 replaces it with the link after the merge.
