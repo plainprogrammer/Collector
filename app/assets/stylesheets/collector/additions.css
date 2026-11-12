@@ -471,10 +471,20 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
 
 /* ---------- DeckShape mana bar (spec 060): one bar split by colour, the only chart that may use the mana fills ---------- */
 /* README Charts rule: every segment has its letter and count (the caption carries a segment under 10%, which the markup
-   marks narrow), and a 1px line-strong outline and divider, because the white and black fills vanish on the ground. */
+   marks narrow, and one whose label does not fit (spec 078)), and a 1px line-strong outline and divider, because the white
+   and black fills vanish on the ground. */
 .c-manabar { display:flex; height:32px; margin:0; padding:0; list-style:none; border:1px solid var(--line-strong); border-radius:var(--radius-sm); overflow:hidden; }
-.c-manabar__seg { flex:var(--n) 1 0; min-width:0; display:flex; align-items:center; justify-content:center; background:var(--mana-c); color:var(--on-mana-c);
+/* Spec 078 (#330): a label is drawn only if it fits its segment, on one line, whatever its length or the bar's width. The segment is a
+   wrapping flex container whose first item, the ::before, is zero wide and as high as the segment, so it always stays on the first line
+   and gives that line the segment's height (the label stays centred); the label does not shrink. The browser's line breaking then keeps
+   the label on that line only if it fits the segment's content width, and otherwise moves it to a second line below the segment, where
+   overflow:clip hides it (clip, not hidden, so the segment is no scroll container and find-in-page or scrollIntoView cannot scroll to
+   it). No number about the font: the rule follows the rendered label. The 10% narrow class below stays: a segment under 10% has no
+   label at all; the caption carries the count of a colour whose label is not drawn. */
+.c-manabar__seg { flex:var(--n) 1 0; min-width:0; display:flex; flex-wrap:wrap; align-content:flex-start; align-items:center; justify-content:center; overflow:clip; background:var(--mana-c); color:var(--on-mana-c);
   font:600 12px/16px var(--font-mono); }
+.c-manabar__seg::before { content:""; height:100%; }
+.c-manabar__seg > span { flex:none; }
 .c-manabar__seg + .c-manabar__seg { border-left:1px solid var(--line-strong); }
 .c-manabar__seg--w { background:var(--mana-w); color:var(--on-mana-w); }
 .c-manabar__seg--u { background:var(--mana-u); color:var(--on-mana-u); }
