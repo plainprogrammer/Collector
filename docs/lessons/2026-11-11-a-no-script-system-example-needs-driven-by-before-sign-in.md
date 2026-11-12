@@ -21,6 +21,8 @@ Spec 067 AC-5.1 and AC-3.1 ask for the deck shortcut to work in a browser withou
 
 For a "works without scripting" criterion, write the example in its own context with `before { driven_by :rack_test }` declared before the `let!` that signs in, assert the driver, and run the whole scenario in it (see the next lesson on why not part of it). Don't copy the Firefox examples' viewport, focus-ring or narrow-frame checks into it: `rack_test` runs no layout and no script.
 
+Spec 070 (#257) adds one more `rack_test` fact: a menu drawn as a closed `<details>` hides its links from `rack_test`, which can't open it (a no-script browser opens it natively). The example asserts the row's `details > summary[aria-label=…]` exists, then clicks the link with `visible: :all`, scoped to the row's section (a bare `within("details.c-menu")` is ambiguous when the page has several menus). The menu is closed again after every redirect, so each click needs the same treatment.
+
 ## Signals to watch for
 
 - A new system example that needs no script but runs in Firefox, so nothing shows that it works without script.

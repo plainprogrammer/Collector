@@ -1,0 +1,44 @@
+<% content_for :title, "Use my copy of #{@proxy.entry.name} · Collector" %>
+<%= render "layouts/appbar", section: :decks, detail: true, back_path: deck_path(@deck) %>
+<main class="c-main c-page c-decks">
+  <div class="c-pagehead">
+    <div>
+      <h1 class="c-pagehead__title">Use my copy of <%= @proxy.entry.name %></h1>
+      <p class="c-pagehead__stats"><%= replaces_line(@deck, @proxy) %></p>
+    </div>
+  </div>
+  <% if @replacement.groups.empty? %>
+    <%= render "shared/field_errors", messages: @replacement.fieldset_errors, id: "replacement-error" %>
+    <p class="c-empty">You have no free copy of <%= @proxy.entry.name %> to use.</p>
+    <div class="c-form__actions">
+      <%= link_to "Back to #{@deck.name}", deck_path(@deck), class: "c-btn c-btn--secondary" %>
+    </div>
+  <% else %>
+    <% fieldset_errors = @replacement.fieldset_errors %>
+    <%= form_with url: deck_proxy_replacement_path(@deck, @proxy), method: :post, class: "c-form" do |form| %>
+      <%= tag.fieldset class: "c-choices c-pick", "aria-describedby": field_error_describedby("replacement-error", fieldset_errors) do %>
+        <legend class="c-field__label">Which copies</legend>
+        <% @replacement.groups.each do |name, rows| %>
+          <p class="c-pick__group"><%= name %></p>
+          <% rows.each do |row| %>
+            <div class="c-pick__lot<%= " c-field--invalid" if row.errors.any? %>">
+              <label class="c-pick__label" for="lot_<%= row.lot.id %>"><%= lot_pick_label(row.lot) %></label>
+              <label class="c-input">
+                <%= number_field_tag "lots[#{row.lot.id}]", row.typed, id: "lot_#{row.lot.id}", min: 0, max: row.lot.quantity, step: 1, inputmode: "numeric",
+                      "aria-describedby": field_error_describedby("lot_#{row.lot.id}-error", row.errors) %>
+              </label>
+              <%= hidden_field_tag "shown[#{row.lot.id}]", row.shown, id: nil %>
+              <%= render "shared/field_errors", messages: row.errors, id: "lot_#{row.lot.id}-error" %>
+            </div>
+          <% end %>
+        <% end %>
+        <%= render "shared/field_errors", messages: fieldset_errors, id: "replacement-error" %>
+      <% end %>
+      <div class="c-form__actions">
+        <%= form.submit "Use these copies", class: "c-btn c-btn--primary" %>
+        <%= link_to "Cancel", deck_path(@deck), class: "c-btn c-btn--secondary" %>
+      </div>
+    <% end %>
+  <% end %>
+</main>
+<%= render "layouts/tabbar", section: :decks %>

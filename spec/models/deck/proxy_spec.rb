@@ -123,4 +123,41 @@ RSpec.describe Deck::Proxy, type: :model do
       expect(proxy.reload.quantity).to eq(2)
     end
   end
+
+  describe ".replaceable?" do
+    it "is true for a printing of a registered collectible and false for one the instance lost (spec 070 decision 1)", :aggregate_failures do
+      expect(described_class.replaceable?(entry)).to be(true)
+      expect(described_class.replaceable?(build(:catalog_entry, collectible_type: "gone"))).to be(false)
+    end
+  end
+
+  describe "#lower_by!" do
+    it "lowers the quantity and keeps the row and its times but updated_at", :aggregate_failures do
+      proxy = add(quantity: 5)
+      proxy.update_columns(created_at: 2.days.ago, updated_at: 2.days.ago)
+
+      proxy.lower_by!(2)
+
+      expect(proxy.reload).to have_attributes(quantity: 3)
+      expect(proxy.created_at).to be < 1.day.ago
+      expect(proxy.updated_at).to be > 1.day.ago
+    end
+
+    it "removes the proxy when the count equals its quantity", :aggregate_failures do
+      proxy = add(quantity: 2)
+
+      proxy.lower_by!(2)
+
+      expect(proxy).to be_destroyed
+      expect(described_class.count).to eq(0)
+    end
+
+    it "refuses a count below 1 or over the quantity and changes nothing", :aggregate_failures do
+      proxy = add(quantity: 2)
+
+      expect { proxy.lower_by!(0) }.to raise_error(ArgumentError)
+      expect { proxy.lower_by!(3) }.to raise_error(ArgumentError)
+      expect(proxy.reload.quantity).to eq(2)
+    end
+  end
 end

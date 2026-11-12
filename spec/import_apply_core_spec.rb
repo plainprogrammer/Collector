@@ -17,7 +17,7 @@ RSpec.describe "Apply an import, core code", type: :config do
       app/views/collections/import_previews/_locations.html.erb app/views/collections/import_previews/_decks.html.erb
       app/models/collection_import/location_changes.rb
       app/models/location/holdings.rb app/views/locations/removals/refused.html.erb app/helpers/locations_helper.rb
-      app/models/lot/move.rb app/controllers/lots/moves_controller.rb app/views/lots/moves/new.html.erb
+      app/models/lot/move.rb app/models/lot/move_into_zone.rb app/controllers/lots/moves_controller.rb app/views/lots/moves/new.html.erb
       app/models/lot/bulk_move.rb app/controllers/collections/moves_controller.rb app/views/collections/moves/new.html.erb
       app/controllers/locations/selections_controller.rb app/controllers/concerns/bulk_mode_shortcut.rb
     ]
