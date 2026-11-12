@@ -19,6 +19,10 @@ class Deck::Page
 
     # Owned plus proxy: the Total column.
     def total = owned + proxy
+
+    # Whether the replacement items of a proxy row are offered: they need the printing's collectible's vocabulary (spec 070
+    # decision 1), so a printing whose collectible the instance no longer registers has Change and Remove only.
+    def replaceable? = Deck::Proxy.replaceable?(entry)
   end
   # The rows under one group's name; a nil name is the flat group of a collectible that answers nothing.
   Group = Data.define(:name, :rows) do

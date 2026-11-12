@@ -52,16 +52,22 @@ module DecksHelper
     "#{proxy.entry.name} (#{detail})"
   end
 
-  # A row menu item's words (spec 068 decision 5): "Change proxy count" / "Remove proxy", with the finish named when the row has
-  # proxies of more than one finish: "Change Foil proxy count", "Remove Foil proxy".
+  # A row menu item's words (spec 068 decision 5, spec 070 decision 1): "Use my copy", "Add a new copy", "Change proxy count",
+  # "Remove proxy", with the finish named when the row has proxies of more than one finish: "Use my copy for Foil proxy",
+  # "Add a new copy for Foil proxy", "Change Foil proxy count", "Remove Foil proxy".
   #
-  # @param verb [String] "Change" or "Remove"
+  # @param verb [String] "Use", "Add", "Change" or "Remove"
   # @param line [Deck::Page::Line]
   # @param row [Deck::Page::Row]
   # @return [String]
   def proxy_item_label(verb, line, row)
     finish = line.finish && row.lines.size > 1 ? "#{proxy_finish_label(row.entry, line.finish)} " : ""
-    verb == "Change" ? "Change #{finish}proxy count" : "Remove #{finish}proxy"
+    case verb
+    when "Use" then finish.empty? ? "Use my copy" : "Use my copy for #{finish}proxy"
+    when "Add" then finish.empty? ? "Add a new copy" : "Add a new copy for #{finish}proxy"
+    when "Change" then "Change #{finish}proxy count"
+    else "Remove #{finish}proxy"
+    end
   end
 
   # The finish as its collectible's vocabulary labels it; the humanised key for a collectible this instance no longer has.

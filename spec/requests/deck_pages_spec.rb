@@ -128,35 +128,77 @@ RSpec.describe "Deck page", type: :request do
         expect(html.at_css("main form")).to be_nil
       end
 
-      it "has a menu cell with the proxy items for a row with a proxy, and none for a row without (AC-2.6, AC-2.7)", :aggregate_failures do
+      it "has a menu cell with the proxy items for a row with a proxy (AC-1.1)", :aggregate_failures do
         bolt = printing
-        proxy_in("main", bolt)
+        proxy = proxy_in("main", bolt)
+
+        get deck_path(deck)
+
+        row = card_rows(zone_section("Main")).first
+        expect(row.at_css("td.c-table__actions summary")["aria-label"]).to match(/\AActions for Lightning Bolt /)
+        items = row.css(".c-menu__item")
+        expect(items.map { it.text.strip }).to eq([ "Use my copy", "Add a new copy", "Change proxy count", "Remove proxy" ])
+        expect(items.map { it["href"] }).to eq([ new_deck_proxy_replacement_path(deck, proxy), new_deck_proxy_copy_path(deck, proxy),
+                                                  edit_deck_proxy_path(deck, proxy), new_deck_proxy_removal_path(deck, proxy) ])
+        expect(items.last["class"]).to include("c-menu__item--danger")
+        expect(row.css(".c-menu__sep").size).to eq(1)
+        expect(row.css("form, button")).to be_empty
+      end
+
+      it "has an empty menu cell for a row with no proxy, beside a row with one (AC-1.3)", :aggregate_failures do
+        proxy_in("main", printing)
         own("main", printing(name: "Spell Pierce"))
 
         get deck_path(deck)
 
-        rows = card_rows(zone_section("Main"))
-        with, without = rows.partition { it.at_css("a").text.include?("Lightning") }.map(&:first)
-        trigger = with.at_css("td.c-table__actions summary")
-        expect(trigger["aria-label"]).to match(/\AActions for Lightning Bolt /)
-        items = with.css(".c-menu__item")
-        expect(items.map { it.text.strip }).to eq([ "Change proxy count", "Remove proxy" ])
-        expect(items.last["class"]).to include("c-menu__item--danger")
-        expect(with.css(".c-menu__sep").size).to eq(1)
+        without = card_rows(zone_section("Main")).find { it.at_css("a").text.include?("Spell Pierce") }
         expect(without.at_css("td.c-table__actions").children.map(&:text).join.strip).to eq("")
         expect(without.at_css("summary")).to be_nil
         expect(html.css("th").map { it.text.strip }.first(6)).to eq([ "Card", "Cost", "Owned", "Proxy", "Total", "Actions" ])
       end
 
-      it "names the finish in a row with proxies of two finishes (AC-2.6)", :aggregate_failures do
+      it "names the finish in a row with proxies of two finishes (AC-1.2)", :aggregate_failures do
         bolt = printing
-        proxy_in("main", bolt, finish: "foil", quantity: 1)
-        proxy_in("main", bolt, finish: "nonfoil", quantity: 2)
+        foil = proxy_in("main", bolt, finish: "foil", quantity: 1)
+        nonfoil = proxy_in("main", bolt, finish: "nonfoil", quantity: 2)
 
         get deck_path(deck)
 
-        items = card_rows(zone_section("Main")).first.css(".c-menu__item").map { it.text.strip }
-        expect(items).to eq([ "Change Foil proxy count", "Change Nonfoil proxy count", "Remove Foil proxy", "Remove Nonfoil proxy" ])
+        items = card_rows(zone_section("Main")).first.css(".c-menu__item")
+        expect(items.map { it.text.strip }).to eq([ "Use my copy for Foil proxy", "Use my copy for Nonfoil proxy", "Add a new copy for Foil proxy",
+                                                     "Add a new copy for Nonfoil proxy", "Change Foil proxy count", "Change Nonfoil proxy count",
+                                                     "Remove Foil proxy", "Remove Nonfoil proxy" ])
+        expect(items.first(2).map { it["href"] }).to eq([ new_deck_proxy_replacement_path(deck, foil), new_deck_proxy_replacement_path(deck, nonfoil) ])
+        expect(items[2, 2].map { it["href"] }).to eq([ new_deck_proxy_copy_path(deck, foil), new_deck_proxy_copy_path(deck, nonfoil) ])
+      end
+
+      it "leaves the two replacement items out for a proxy whose printing's collectible the instance no longer registers, and keeps them for a registered printing in a deck of an unregistered type (AC-1.4)", :aggregate_failures do
+        bolt = printing
+        proxy_in("main", bolt)
+        bolt.update_columns(collectible_type: "gone")
+
+        get deck_path(deck)
+        expect(card_rows(zone_section("Main")).first.css(".c-menu__item").map { it.text.strip }).to eq([ "Change proxy count", "Remove proxy" ])
+
+        bolt.update_columns(collectible_type: "mtg")
+        deck.update_columns(collectible_type: "gone") # a change of format can leave such a deck (spec 068 decision 19)
+        get deck_path(deck)
+        expect(card_rows(zone_section("Main")).first.css(".c-menu__item").map { it.text.strip }).to include("Use my copy", "Add a new copy")
+      end
+
+      it "runs the same statements for one proxy row as for many rows with proxies of two finishes, the new items adding none (AC-1.5)", :aggregate_failures do
+        proxy_in("main", printing(number: "1"))
+        get deck_path(deck) # warm what the counts would otherwise differ by
+        one = count_queries { get deck_path(deck) }
+
+        two_finishes = printing(number: "2")
+        proxy_in("main", two_finishes, finish: "foil")
+        proxy_in("main", two_finishes, finish: "nonfoil", quantity: 2)
+        4.times { |n| proxy_in(%w[main sideboard][n % 2], printing(name: "Card #{n}", number: (n + 3).to_s)) }
+        many = count_queries { get deck_path(deck) }
+
+        expect(html.css(".c-menu__item").size).to be > 12 # every row's items were drawn
+        expect(many).to eq(one)
       end
 
       it "shows a proxy of a retired printing and a legality marker on a proxy row (AC-2.8, AC-2.9)", :aggregate_failures do
