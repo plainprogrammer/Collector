@@ -24,8 +24,10 @@ RSpec.describe "Add to deck", type: :system do
     let(:account) { user.account }
     let(:wide_entry) { create(:mtg_printing, entry: create(:catalog_entry, name: "W" * 60), finishes: %w[nonfoil foil]).entry }
 
+    let(:deck) { create(:deck, account:, name: "D" * 60) }
+
     before do
-      create(:deck, account:, name: "D" * 60)
+      deck
       create(:lot, account:, entry: wide_entry, quantity: 2, location: create(:location, account:, name: "P" * 60))
       create(:lot, account:, entry: wide_entry, quantity: 1)
     end
@@ -47,6 +49,41 @@ RSpec.describe "Add to deck", type: :system do
             JS
             expect(overflow).to eq("select" => true, "text" => true, "title" => true)
           end
+        end
+      end
+    end
+
+    # The refusal names the card, so a 60-character name with no space is in a sentence that must wrap (AC-6.1). The zone holds
+    # 9,995 foil and the free copies (2 + 1 + 10) are all taken, so the 10 free foil merge past the 9,999 cap.
+    def refuse_over_the_cap_in_the_frame
+      create_lot_in_zone(deck, "main", entry: wide_entry, finish: "foil", quantity: 9_995)
+      create(:lot, account:, entry: wide_entry, finish: "foil", quantity: 10)
+      visit catalog_entry_path(wide_entry) # the outer page hosts the frame
+      open_in_narrow_frame(new_catalog_entry_deck_addition_path(wide_entry), width: 360, ready: "main")
+      within_narrow_frame do
+        select "#{"D" * 60} › Main", from: "Deck and zone"
+        fill_in "How many", with: "13"
+        choose "use_copies"
+        click_button "Add to deck"
+        expect(page).to have_css(".c-field__error", text: "Nothing changed.")
+      end
+    end
+
+    def refusal_sentence_overflow
+      page.evaluate_script(<<~JS)
+        (() => { const sentence = document.querySelector(".c-field__error"), text = document.createRange() // the drawn text, not the box
+          text.selectNodeContents(sentence)
+          return { page: document.documentElement.scrollWidth <= window.innerWidth,
+                   edge: text.getBoundingClientRect().right <= window.innerWidth, scroll: sentence.scrollWidth <= sentence.clientWidth } })()
+      JS
+    end
+
+    %w[light dark].each do |theme|
+      it "wraps the refusal sentence that names a 60-character card at 360px in the #{theme} theme (AC-6.1)", :aggregate_failures do
+        refuse_over_the_cap_in_the_frame
+        within_narrow_frame do
+          set_theme(theme)
+          expect(refusal_sentence_overflow).to eq("page" => true, "edge" => true, "scroll" => true)
         end
       end
     end

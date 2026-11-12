@@ -597,9 +597,14 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
    The card page's head also gets a phone rule (AC-1.5 wants its three controls on one line): at 360px they need 318 to 326px
    against a 297px row in the frame the examples use (a 15px scrollbar; 312px on a real phone), so below 640px of the page
    container the Add to deck link drops its icon (about 24px with its gap) and the row's gaps go from 8px to 4px (8px). The
-   `:has` keeps the deck page's head, which shares `.c-item__actions`, as it is. */
+   `:has` keeps the deck page's head, which shares `.c-item__actions`, as it is.
+   The refusal sentences of the page name the card ("Nothing changed. <card> (SET · 1) would have more than 9,999 copies in one lot."),
+   up to 60 characters with no space (AC-6.1), so `.c-field__error` breaks inside a word like the titles above instead of widening
+   the page. Scoped to the Decks pages: other pages' error lines are their own. It also lets the other deck pages' sentences that
+   name a long card or deck wrap. */
 @media (pointer: coarse) { .c-decks .c-pick .c-check { min-height:var(--touch-floor); } }
 @container page (max-width: 639px) {
   .c-item__adddeck svg { display:none; }
   .c-item__actions:has(> .c-item__adddeck) { gap:var(--space-1); }
 }
+.c-decks .c-field__error { overflow-wrap:anywhere; }
