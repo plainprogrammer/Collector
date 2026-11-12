@@ -7,6 +7,7 @@
 **Depends on:** [spec 068](../068-deck-proxies/spec.md) (AC-9.1 lifted the deck pages' selects only and left the rest of the app out of scope; this is its follow-up), [spec 057](../057-deck-design-rules/spec.md) (the grouped selects and the filter bar's select), all merged
 **Branch:** `072-select-touch-floor`
 **Issue:** [#315](https://github.com/plainprogrammer/Collector/issues/315) (design-system lane, filed by the maintainer's ruling from spec 068's implementation review)
+**Frozen:** the current rules are in [`design-system/README.md`](../../design-system/README.md) (whole spec); see the [specs index](../README.md)
 
 ---
 
