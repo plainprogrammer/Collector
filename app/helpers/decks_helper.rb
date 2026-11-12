@@ -86,6 +86,9 @@ module DecksHelper
   # labels them (each only when the lot has one), "paid $1.25" in the account's currency when it has a price, the place ("No
   # location" when unplaced) and "×N free". It names the row's number field.
   #
+  # Needs `Current.account` set: for a lot with a price paid it reads the account's currency (`Current.account.currency_unit`),
+  # and a view outside a signed-in request has no account to read it from.
+  #
   # @param lot [Lot] with its entry and location loaded
   # @return [ActiveSupport::SafeBuffer]
   def lot_pick_label(lot)
