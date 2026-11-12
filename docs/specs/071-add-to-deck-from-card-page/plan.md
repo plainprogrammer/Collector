@@ -28,7 +28,7 @@ A signed-in collector on a card page presses "Add to deck", chooses a zone of on
 - **Simplicity (≤3 components).** Three: the free-copies reading (`Lot::FreeCopies` and its sentence helper), the form object (`Deck::Addition`, with `Location::Choices#decks_of` and `Catalog::Entry#deck_addable?`), and the page (controller, route, view, the card page's link, one CSS rule). No gem, JavaScript, job or table.
 - **Anti-abstraction.** `Deck::Addition` is the one representation of the page's three fields; it calls `Deck::Proxy.add!` and `Lot::MoveIntoZone` directly. The view reads prepared values (`uses`, `chosen`, `groups`), no queries in it.
 - **Integration-first.** The shared contract (T0) is read before any code; model specs come before the request specs and the views; every task starts with its failing spec.
-- **Statement bound fixed here (AC-2.9).** The page's statement count is equal for one lot and forty, one deck and ten (the example compares the two counts); `Lot::FreeCopies` reads in 2 statements (the lots with their entries, sets and places preloaded, and the printings' order) however many lots there are.
+- **Statement bound fixed here (AC-2.9).** The page's statement count is equal for one lot and forty, one deck and ten (the example compares the two counts); `Lot::FreeCopies` reads in 3 statements (the lots with their entries and sets, their places, and the printings' order) however many lots there are.
 
 ## File map
 
@@ -161,9 +161,8 @@ RSpec.describe Lot::FreeCopies, type: :model do
   end
 
   describe "#take" do
-    let(:blue) { create(:location, account:, name: "Blue binder") }
     let!(:first) { create(:lot, account:, entry: shown, quantity: 1) }
-    let!(:second) { create(:lot, account:, entry: shown, quantity: 2, location: blue) }
+    let!(:second) { create(:lot, account:, entry: shown, quantity: 2, location: create(:location, account:, name: "Blue binder")) }
 
     it "takes whole lots from the front, then part of the next" do
       expect(free.take(2)).to eq([ [ first, 1 ], [ second, 1 ] ])
@@ -198,7 +197,7 @@ end
 # (`Lot.free`: spec 057's "Free to use", spec 071 decision 4), in the order a count takes them (decision 5) and the places they
 # are in, for the "My copies" sentence (decision 7). Free is judged on the card, not the shown printing: a deck uses a card.
 #
-# Reads the account's lots when first asked (two statements however many lots there are) and keeps them, so build a new one
+# Reads the account's lots when first asked (three statements however many lots there are: the lots with their entries and sets, their places, and the printings' order) and keeps them, so build a new one
 # inside the transaction that writes. The order is made in Ruby from preloaded rows, so it doesn't depend on the SQL of
 # `Lot.free`. Takes the account explicitly; never reads `Current.account`. Collectible-agnostic.
 # @see file:collection-and-lots.md
@@ -367,8 +366,10 @@ Append to `spec/models/catalog/entry_spec.rb`:
 
 ```ruby
   describe "#deck_addable? (spec 071 decision 2)" do
-    it "is true for a live card of a type with a vocabulary and a source" do
-      expect(create(:catalog_entry)).to be_deck_addable
+    it "is true for a live card of a type with a vocabulary and a source, and reads nothing from the database", :aggregate_failures do
+      entry = create(:catalog_entry)
+      expect(entry).to be_deck_addable
+      expect(count_queries { entry.deck_addable? }).to eq(0)
     end
 
     it "is false for a retired printing and a token", :aggregate_failures do
@@ -497,6 +498,16 @@ RSpec.describe Deck::Addition, type: :model do
       expect(account.lots.where(location: zone).sum(:quantity)).to eq(2)
     end
 
+    it "moves whole lots keeping their ids and fields when the zone has no lot of their identity (AC-3.2)", :aggregate_failures do
+      first = lot_in(blue, quantity: 2, finish: "foil", price_paid_cents: 150)
+      second = lot_in(nil, quantity: 1)
+      before = [ first, second ].map { it.attributes.slice("id", "finish", "condition", "price_paid_cents", "quantity") }
+
+      expect(addition(use: "copies", quantity: "3").save).to be(true)
+      expect([ first, second ].map { it.reload.attributes.slice("id", "finish", "condition", "price_paid_cents", "quantity") }).to eq(before)
+      expect([ first, second ].map { it.location }).to eq([ zone, zone ])
+    end
+
     it "refuses a count over the free copies with the free total, changing nothing (AC-3.3)", :aggregate_failures do
       lot_in(blue, quantity: 3)
       subject = addition(use: "copies", quantity: "4")
@@ -537,7 +548,8 @@ RSpec.describe Deck::Addition, type: :model do
       create(:lot, account:, entry: shown, quantity: 9_995, finish: "foil", location: zone)
       first = lot_in(nil, quantity: 1)
       lot_in(nil, quantity: 10, finish: "foil")
-      subject = addition(use: "copies", quantity: "11")
+      lot_in(blue, quantity: 1, finish: "nonfoil") # taken third: the cap is found on the second
+      subject = addition(use: "copies", quantity: "12")
 
       expect(subject.save).to be(false)
       expect(subject.errors[:base]).to eq([ "Nothing changed. Lightning Bolt (#{ApplicationController.helpers.set_number(shown)}) would have more than 9,999 copies in one lot." ])
@@ -556,6 +568,16 @@ RSpec.describe Deck::Addition, type: :model do
       expect([ first, broken, third ].map { it.reload.location&.name }).to eq([ nil, nil, "Red box" ]) # the move judges before it writes, so none moved
     end
 
+    it "names a lot whose condition the vocabulary no longer knows in the same way (AC-3.11)", :aggregate_failures do
+      odd = lot_in(nil, quantity: 1)
+      odd.update_columns(condition: "no_longer_a_condition")
+      subject = addition(use: "copies", quantity: "1")
+
+      expect(subject.save).to be(false)
+      expect(subject.errors[:base].first).to end_with("can't be moved until it is edited.")
+      expect(odd.reload.location).to be_nil
+    end
+
     it "raises RecordNotFound when the zone was removed after the page opened (AC-3.12)" do
       lot_in(blue, quantity: 1)
       subject = addition(use: "copies")
@@ -567,23 +589,20 @@ RSpec.describe Deck::Addition, type: :model do
 
     it "changes no proxy, deck, location, other card's lot or other account's rows (AC-3.10)", :aggregate_failures do
       proxy = create(:deck_proxy, zone:, account:, entry: shown, quantity: 4)
-      lot_in(blue, quantity: 1)
+      mine = lot_in(blue, quantity: 1)
       theirs = create(:lot, entry: shown)
       unrelated = create(:lot, account:, entry: create(:mtg_printing).entry, quantity: 2)
-      locations = account.locations.pluck(:id, :name, :updated_at)
-
-      decks = locations_written = nil
+      saved = decks = locations_written = nil
       proxies_written = write_statements_to("deck_proxies") do
         locations_written = write_statements_to("locations") do
-          decks = write_statements_to("decks") { addition(use: "copies").save }
+          decks = write_statements_to("decks") { saved = addition(use: "copies").save }
         end
       end
 
+      expect(saved).to be(true) # the positive control: the take did happen
       expect([ proxies_written, locations_written, decks ]).to all(be_empty)
-      expect(proxy.reload.quantity).to eq(4)
-      expect(theirs.reload.location).to be_nil
-      expect(unrelated.reload).to have_attributes(location: nil, quantity: 2)
-      expect(account.locations.pluck(:id, :name, :updated_at)).to eq(locations)
+      expect(mine.reload.location).to eq(zone)
+      expect([ proxy.reload.quantity, theirs.reload.location, unrelated.reload.location ]).to eq([ 4, nil, nil ])
     end
   end
 
@@ -1170,8 +1189,8 @@ Notes for the implementer: `field_error_describedby` returns nil for no errors, 
 
 ```ruby
     describe "My copies (AC-3.1 to AC-3.3, AC-3.6)" do
-      let(:blue) { create(:location, account:, name: "Blue binder") }
-      let(:zone) { deck.zone("main") }
+      def blue = @blue ||= create(:location, account:, name: "Blue binder") # methods, not lets: RSpec/MultipleMemoizedHelpers allows five
+      def zone = deck.zone("main")
 
       def add(use:, quantity: "1", zone_id: zone.id, **extra) = post(catalog_entry_deck_additions_path(entry, **extra), params: { zone_id:, use:, quantity: })
 
@@ -1310,12 +1329,15 @@ Notes for the implementer: `field_error_describedby` returns nil for no errors, 
     end
 
     describe "refusals and tenancy (AC-5.1 to AC-5.3)" do
+      before { deck } # a 422 needs the form: with no deck the page draws the empty state instead
+
       it "answers 422 with a sentence on the field for no zone, no choice or no recognised choice", :aggregate_failures do
         post catalog_entry_deck_additions_path(entry), params: { zone_id: "", quantity: "1" }
 
         expect(response).to have_http_status(:unprocessable_content)
         expect(html.at_css("#deck_addition_zone-error").text).to eq("Choose a deck and zone.")
         expect(html.at_css("#deck_addition_use-error").text).to eq("Choose what to use.")
+        expect(html.at_css("input#how_many")["value"]).to eq("1") # what was typed is kept
         expect(Deck::Proxy.count).to eq(0)
       end
 
@@ -1394,13 +1416,12 @@ Notes for the implementer: `field_error_describedby` returns nil for no errors, 
     end
 
     it "runs the same number of statements with the link as without it (AC-2.9's last clause)" do
-      place = create(:location, account: user.account)
-      token = create(:mtg_printing, entry: create(:catalog_entry, kind: "token")).entry # no link on its page
-      [ printing, token ].each { |entry| create(:lot, account: user.account, entry:, location: place) }
+      create(:lot, account: user.account, entry: printing, location: create(:location, account: user.account))
       get catalog_entry_path(printing) # warm-up
 
       with_link = count_queries { get catalog_entry_path(printing) }
-      without = count_queries { get catalog_entry_path(token) }
+      printing.update!(retired_at: 1.day.ago) # the same card, now without the link
+      without = count_queries { get catalog_entry_path(printing) }
       expect(with_link).to eq(without)
     end
 
@@ -1437,7 +1458,7 @@ In `spec/requests/catalog/visitors_spec.rb`, add `"a[href*='/deck_additions/new'
       post catalog_entry_deck_additions_path(printing), params: { zone_id: "1", use: "proxy:foil", quantity: "1" }
     end
 
-    expect(response).to redirect_to(new_session_path)
+    expect(response).to redirect_to(new_session_path) # the POST's; the GET's is the same (asserted in T5's signed-out example)
     expect(statements.grep(/"lots"/)).to be_empty
     expect(Deck::Proxy.count).to eq(0)
   end
@@ -1471,18 +1492,35 @@ require "rails_helper"
 
 # Spec 071 Story 5 (AC-5.5) and Story 6 (AC-6.1 to AC-6.5): the Add to deck page in a browser, with and without scripting.
 RSpec.describe "Add to deck", type: :system do
-  let(:long_card) { "W" * 60 }
-  let(:entry) { create(:mtg_printing, entry: create(:catalog_entry, name: "Lightning Bolt"), finishes: %w[nonfoil foil]).entry }
 
   def set_theme(name) = page.execute_script("document.documentElement.dataset.theme = #{name.to_json}") # no colour is read here, so no pause (testing.md: no sleep)
 
   def fits? = page.evaluate_script("document.documentElement.scrollWidth <= window.innerWidth")
 
+  # The coarse-pointer rules that give each control type its floor, read from the stylesheet, and the buttons as drawn.
+  def coarse_rules
+    page.evaluate_script(<<~JS)
+      (() => { const found = {}
+        for (const sheet of document.styleSheets) for (const media of sheet.cssRules) {
+          if (!(media instanceof CSSMediaRule) || !media.conditionText.includes("pointer: coarse")) continue
+          for (const rule of media.cssRules) {
+            const sel = rule.selectorText || ""
+            if (sel === ".c-decks .c-pick .c-check") found.check = rule.style.minHeight
+            if (sel.includes(".c-decks .c-field select")) found.select = rule.style.minHeight
+            if (sel.split(",").map((part) => part.trim()).includes(".c-input")) found.input = rule.style.minHeight
+          } }
+        found.floor = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--touch-floor")) || 0
+        found.buttons = [...document.querySelectorAll("main .c-btn")].map((el) => el.getBoundingClientRect().height)
+        return found })()
+    JS
+  end
+
+
   context "with scripting" do
     let!(:user) { system_sign_in_as(create(:user)) }
     let(:account) { user.account }
     let(:deck) { create(:deck, account:, name: "D" * 60) }
-    let(:wide_entry) { create(:mtg_printing, entry: create(:catalog_entry, name: long_card), finishes: %w[nonfoil foil]).entry }
+    let(:wide_entry) { create(:mtg_printing, entry: create(:catalog_entry, name: "W" * 60), finishes: %w[nonfoil foil]).entry }
 
     before do
       create(:lot, account:, entry: wide_entry, quantity: 2, location: create(:location, account:, name: "P" * 60))
@@ -1524,20 +1562,7 @@ RSpec.describe "Add to deck", type: :system do
     # the number field (components.css' `.c-input`, coarse), the radio rows (this spec's one rule, coarse).
     it "gives every control of the page the 44px floor by a rule it reads (AC-6.3, AC-6.4)", :aggregate_failures do
       visit new_catalog_entry_deck_addition_path(wide_entry)
-      rules = page.evaluate_script(<<~JS)
-        (() => { const found = {}
-          for (const sheet of document.styleSheets) for (const media of sheet.cssRules) {
-            if (!(media instanceof CSSMediaRule) || !media.conditionText.includes("pointer: coarse")) continue
-            for (const rule of media.cssRules) {
-              const sel = rule.selectorText || ""
-              if (sel === ".c-decks .c-pick .c-check") found.check = rule.style.minHeight
-              if (sel.includes(".c-decks .c-field select")) found.select = rule.style.minHeight
-              if (sel.split(",").map((part) => part.trim()).includes(".c-input")) found.input = rule.style.minHeight
-            } }
-          found.floor = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--touch-floor")) || 0
-          found.buttons = [...document.querySelectorAll("main .c-btn")].map((el) => el.getBoundingClientRect().height)
-          return found })()
-      JS
+      rules = coarse_rules
       expect(rules.slice("check", "select")).to eq("check" => "var(--touch-floor)", "select" => "var(--touch-floor)")
       expect(rules["input"]).to eq("44px")
       expect(rules["floor"]).to be >= 44
@@ -1562,6 +1587,7 @@ RSpec.describe "Add to deck", type: :system do
     let!(:user) { system_sign_in_as(create(:user)) }
     let(:account) { user.account }
     let!(:deck) { create(:deck, account:, name: "Izzet Tempo") }
+    let(:entry) { create(:mtg_printing, entry: create(:catalog_entry, name: "Lightning Bolt"), finishes: %w[nonfoil foil]).entry }
 
     it "moves free copies from the card page to the deck page (AC-5.5)", :aggregate_failures do
       expect(page.driver).to be_a(Capybara::RackTest::Driver)
@@ -1629,7 +1655,8 @@ and a helper plus examples (inside the same describe):
     { "with" => true, "without" => false }.each do |label, menu|
       it "keeps the head's controls on one line at #{width}px #{label} the … menu, also with the coarse pointer's sizes (AC-1.5)", :aggregate_failures do
         system_sign_in_as(create(:user))
-        printing = create(:mtg_printing, entry: create(:catalog_entry, name: "Lightning Bolt"), scryfall_uri: (menu ? "https://scryfall.com/card/x/1" : nil)).entry
+        # `scryfall_uri` is required, so the menu-less card has a link no source vouches for: `catalog_url` returns nil for its host
+        printing = create(:mtg_printing, entry: create(:catalog_entry, name: "Lightning Bolt"), scryfall_uri: (menu ? "https://scryfall.com/card/x/1" : "https://example.com/card/x/1")).entry
         visit catalog_entry_path(printing)
         open_in_narrow_frame(catalog_entry_path(printing), width:, height: 800, ready: ".c-item__title")
         within_narrow_frame do
@@ -1644,7 +1671,7 @@ and a helper plus examples (inside the same describe):
   end
 ```
 
-(If a card with no Scryfall link can't be made because the factory's `scryfall_uri { … }` default can't be overridden with `nil`, build the printing then `update!(scryfall_uri: nil)`; `catalog_url(nil)` is nil, so the menu is left out.)
+(`MTG::Printing` validates `scryfall_uri` present and the column is NOT NULL, so the absent-menu case uses a link whose host the source doesn't vouch for; `catalog_url` then returns nil and the card page leaves the "…" menu out. Read `catalog_url` in `app/helpers/catalog_helper.rb` to confirm the host rule and pick a host it rejects.)
 
 - [ ] **Step 2:** `bin/rspec spec/system/deck_additions_spec.rb spec/system/card_page_spec.rb`. Expected: FAIL on the floor examples (no rule yet) and, if the row doesn't fit, on `head_row_fits`.
 - [ ] **Step 3: implement the CSS.** Append at the end of `app/assets/stylesheets/collector/additions.css`:
@@ -1658,7 +1685,7 @@ and a helper plus examples (inside the same describe):
 @media (pointer: coarse) { .c-decks .c-pick .c-check { min-height:var(--touch-floor); } }
 ```
 
-- [ ] **Step 4:** run both system files. Expected: 0 failures. If a head-row example fails at 360px (the controls don't fit one line), stop: AC-1.5 says one line, so a wrapping row is a change of the approved criterion and needs `sdd-spec-update` and the coordinator first (the options are a smaller `Add to deck` label on a phone, a wrapping row, or the secondary action moved into the "…" menu; the row's rules are shared with the deck page's head, so `bin/rspec spec/system/deck_page_spec.rb` would then run too). Do not loosen the example.
+- [ ] **Step 4:** run both system files. Expected: 0 failures. If a head-row example fails at 360px (the controls don't fit one line): AC-1.5 already lets the plan change the head's rules (a smaller label on a phone, say) and record it in `verification.md`, with no spec change, but then run `bin/rspec spec/system/deck_page_spec.rb` too, since the deck page's head reads the same `.c-item__actions` rules; only a row that wraps contradicts "one line" and needs `sdd-spec-update` and the coordinator first. Do not loosen the example.
 - [ ] **Step 5: commit** `feat(design): the radio rows' coarse floor, and the Add to deck browser examples (spec 071, #255)`.
 
 ### T9: The design documents and previews
