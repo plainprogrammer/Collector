@@ -9,6 +9,7 @@
 **Issue:** [#257](https://github.com/plainprogrammer/Collector/issues/257)
 **ADR:** none: ADR 0028 already makes a zone a location that holds lots and spec 068 made a proxy a row that belongs to a zone; this spec adds two ways a proxy becomes lots and records them as decisions
 **Overlap:** [#255](https://github.com/plainprogrammer/Collector/issues/255) (spec 071) also needs "free copies" and a move of free copies into a zone; decision 8 names the shared parts and leaves their names to the plan
+**Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (the whole spec but the 404 rule of the replacement pages) and [`tenancy-and-accounts.md`](../../architecture/tenancy-and-accounts.md) (AC-2.8, AC-4.8 and decision 9's treatment of another account's lot id); the pages' markup is `UseMyCopy` and `AddProxy` in the [design system](../../design-system/README.md); see the [specs index](../README.md)
 
 ---
 
