@@ -1,0 +1,43 @@
+<% content_for :title, "Add #{@entry.name} to a deck · Collector" %>
+<%= render "layouts/appbar", section: card_context, detail: true, back_path: catalog_entry_path(@entry, **card_params) %>
+<main class="c-main c-page c-decks">
+  <div class="c-pagehead">
+    <div>
+      <h1 class="c-pagehead__title">Add <%= @entry.name %> to a deck</h1>
+    </div>
+  </div>
+  <% if !@addition.decks? %>
+    <p class="c-empty">You have no decks yet. Add a deck first. <%= link_to "New deck", new_deck_path %></p>
+  <% else %>
+    <% zone_errors = @addition.errors[:zone_id] %>
+    <% quantity_errors = @addition.errors[:quantity] %>
+    <% use_errors = @addition.errors[:use] %>
+    <%= form_with url: catalog_entry_deck_additions_path(@entry, **card_params), method: :post, class: "c-form" do %>
+      <div class="c-field<%= " c-field--invalid" if zone_errors.any? %>">
+        <%= label_tag :deck_zone, "Deck and zone", class: "c-field__label" %>
+        <%= select_tag :zone_id, deck_zone_options(@addition.groups, selected: @addition.zone_id), include_blank: "Choose a deck and zone…", required: true,
+              id: "deck_zone", "aria-describedby": field_error_describedby("deck_addition_zone-error", zone_errors) %>
+        <%= render "shared/field_errors", messages: zone_errors, id: "deck_addition_zone-error" %>
+      </div>
+      <div class="c-field<%= " c-field--invalid" if quantity_errors.any? %>">
+        <%= label_tag :how_many, "How many", class: "c-field__label" %>
+        <label class="c-input"><%= number_field_tag :quantity, @addition.quantity, id: "how_many", min: 1, step: 1, inputmode: "numeric", required: true,
+              "aria-describedby": field_error_describedby("deck_addition_quantity-error", quantity_errors) %></label>
+        <%= render "shared/field_errors", messages: quantity_errors, id: "deck_addition_quantity-error" %>
+      </div>
+      <%= tag.fieldset class: [ "c-choices", "c-pick", ("c-field--invalid" if use_errors.any?) ], aria: { describedby: field_error_describedby("deck_addition_use-error", use_errors) } do %>
+        <legend class="c-field__label">What to use</legend>
+        <% @addition.uses.each do |use| %>
+          <label class="c-check"><%= radio_button_tag :use, use.value, @addition.chosen == use.value, required: true %><%= use_label(@addition, use) %></label>
+        <% end %>
+        <%= render "shared/field_errors", messages: use_errors, id: "deck_addition_use-error" %>
+      <% end %>
+      <%= render "shared/field_errors", messages: @addition.errors[:base], id: "deck_addition_base-error" %>
+      <div class="c-form__actions">
+        <%= submit_tag "Add to deck", class: "c-btn c-btn--primary", name: nil %>
+        <%= link_to "Cancel", catalog_entry_path(@entry, **card_params), class: "c-btn c-btn--secondary" %>
+      </div>
+    <% end %>
+  <% end %>
+</main>
+<%= render "layouts/tabbar", section: card_context %>

@@ -15,4 +15,27 @@ module DeckAdditionsHelper
     parts << "and #{hidden} more #{"place".pluralize(hidden)}" if hidden.positive?
     "#{number_with_delimiter(free.total)} free: #{parts.join(", ")}"
   end
+
+  # The Deck and zone select's options: one `optgroup` "Decks" holding "Deck › Zone" for every zone, valued with the zone's
+  # id; the placeholder is the select's `include_blank` (spec 071 decision 3; no Places group, only a zone can be chosen).
+  #
+  # @param groups [Array<Location::Choices::Group>] from `Deck::Addition#groups`
+  # @param selected [String, nil] the zone id to mark
+  # @return [ActiveSupport::SafeBuffer]
+  def deck_zone_options(groups, selected: nil)
+    zones = groups.flat_map { |group| group.zones.map { |zone| [ zone.label, zone.id.to_s ] } }
+    grouped_options_for_select([ [ "Decks", zones ] ], selected)
+  end
+
+  # A radio's words: "My copies (3 free: …)" or "A proxy of SET · number Foil", `SET · number` in `is-data` (decision 9).
+  #
+  # @param addition [Deck::Addition]
+  # @param use [Deck::Addition::Use]
+  # @return [ActiveSupport::SafeBuffer, String]
+  def use_label(addition, use)
+    return "My copies (#{free_copies_sentence(addition.free)})" if use.kind == :copies
+
+    finish = addition.finish_label(use)
+    safe_join([ "A proxy of ", tag.span(set_number(addition.entry), class: "is-data"), (" #{finish}" if finish) ])
+  end
 end
