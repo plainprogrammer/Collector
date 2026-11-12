@@ -55,13 +55,14 @@ RSpec.describe "Adding a proxy", type: :system do
     end
 
     # The selects' floor applies on a coarse pointer only, and headless Firefox can't emulate one, so the example reads the rule.
+    # Since spec 072 the rule is the app-wide one (`.c-field select, .c-select select`), not one scoped to the deck pages.
     it "lifts the chooser's Set select and the form's Finish select to the touch floor on a coarse pointer (AC-9.1)", :aggregate_failures do
       visit new_deck_zone_proxy_path(deck, "main", q: "WWWW")
       rule = page.evaluate_script(<<~JS)
         (() => { for (const sheet of document.styleSheets) for (const media of sheet.cssRules)
           if (media instanceof CSSMediaRule && media.conditionText.includes("pointer: coarse"))
             for (const rule of media.cssRules)
-              if (rule.selectorText?.includes(".c-decks .c-select select") && rule.selectorText.includes(".c-decks .c-field select"))
+              if (rule.selectorText === ".c-field select, .c-select select")
                 return { minHeight: rule.style.minHeight,
                          floor: parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--touch-floor")) || 0 }
           return null })()
