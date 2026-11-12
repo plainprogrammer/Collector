@@ -9,7 +9,7 @@
 - Headless Firefox has a fine pointer and can't emulate a coarse one: examples read the `(pointer: coarse)` rules from the loaded stylesheets and apply them as an adopted stylesheet (spec decision 3). Every example that needs the rule reads it first and says so when it is missing, so a red run names the missing rule and not a downstream symptom.
 - No view, helper, controller, model, migration or export change, and no stylesheet but `additions.css` (FR-4, AC-3.1). The block's comment may cite specs 057, 068 and 072 and must not contain "spec 019", "spec 021" or "spec 023" (`spec/design_system_files_spec.rb` counts them across the whole file).
 - Styles use the token `var(--touch-floor)`, never a literal 44px (`additions.css` line 367).
-- Commit trailer: the one the session's attribution reminder gives, `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>` (earlier commits of this branch carry Opus, left as they are by the coordinator's ruling). One git operation per shell call (stage, then commit).
+- Commit trailer: the `Co-Authored-By` line the session's attribution reminder gives, whichever model it names (earlier commits of this branch carry a different one; the coordinator ruled to leave them). One git operation per shell call (stage, then commit).
 - Off limits: `.kamal/secrets`, `config/master.key`, `.env*`, `storage/`, `*.sqlite3`; every `git grep` ends with `':!.kamal/secrets'`.
 - Run `bin/rubocop -a` on each Ruby file written (the project's hook does too); array literals use the omakase style `[ a, b ]`.
 
@@ -379,19 +379,7 @@ RSpec.describe "Selects meet the touch floor on a coarse pointer", type: :system
 
   it "has no select rule scoped to the deck pages and none in the filter bar's own block (AC-1.6)", :aggregate_failures do
     visit new_deck_path
-    rules = page.evaluate_script(<<~JS)
-      (() => {
-        const all = []
-        const walk = (list, coarse) => {
-          for (const rule of list) {
-            if (rule.cssRules && rule.conditionText !== undefined) walk(rule.cssRules, coarse || rule.conditionText.includes("pointer: coarse"))
-            else if (rule.selectorText) all.push({ selector: rule.selectorText, coarse })
-          }
-        }
-        for (const sheet of document.styleSheets) walk(sheet.cssRules, false)
-        return all
-      })()
-    JS
+    rules = all_rules
     expect(rules.map { it["selector"] }.grep(/\.c-decks .*select/)).to be_empty
     expect(rules.select { it["coarse"] }.map { it["selector"] }).not_to include(".c-select select")
   end
@@ -500,7 +488,7 @@ If a different example fails, read the report's message and decide which it is. 
 
 and in line 103 replace "in `components/bundle.css`" with "in `collector/components.css`, with the app's additions in `collector/additions.css`".
 
-**Step 2: `Form.md`.** In the bullet that begins "- Selects get the same height, border and focus ring as `c-input`;" replace those first words with "Selects get the same border and focus ring as `c-input`, and its height at both pointers: 36px on a fine pointer, at least the touch floor, 44px, on a coarse one (`min-height: var(--touch-floor)` on `.c-field select`, spec 072; it covers every form's selects: the lot form's, Move copies', bulk Move to…'s, the location picker, the scanner's sitting, the deck pages' and the currency page's);" and keep the rest of the bullet ("a blank first option says …") as it is.
+**Step 2: `Form.md`.** In the bullet that begins "- Selects get the same height, border and focus ring as `c-input`;" replace those first words (keep the leading `- `) with "Selects get the same border and focus ring as `c-input`, and its height at both pointers: 36px on a fine pointer, at least the touch floor, 44px, on a coarse one (`min-height: var(--touch-floor)` on `.c-field select`, spec 072; it covers every form's selects: the lot form's, Move copies', bulk Move to…'s, the location picker, the scanner's sitting, the deck pages' and the currency page's);" and keep the rest of the bullet ("a blank first option says …") as it is.
 
 **Step 3: `FilterSelect.md`.** Replace "on touch screens it grows to at least 40px." with "on a coarse pointer (a touch screen) it is at least the touch floor, 44px, high (`min-height: var(--touch-floor)` on `.c-select select`, spec 072), and the filter row centres its controls there, so the 40px small button beside it sits level with it." and in the file's last bullet, which begins "- Used by the catalog search (the set, button "Search") and the collection page (the location, button "Filter", spec 037).", insert after "(the location, button "Filter", spec 037)" the words ", the add-a-proxy chooser (the set, button "Search", spec 068) and number entry's language row (the language, button "Change language", spec 026)" and turn the " and the collection page" before it into ", the collection page", keeping the rest of the bullet (the sentence about bulk mode) unchanged.
 
@@ -574,6 +562,7 @@ Headless Firefox draws a fine pointer, so "after" injects every coarse rule of t
       page.driver.browser.manage.window.resize_to(1280, [ height + 100, 900 ].max)
       find("#narrow").native.save_screenshot(path)
     else
+      page.driver.browser.manage.window.resize_to(1280, 900) # a phone shot above grew the window
       visit pages.fetch(name)
       expect(page).to have_css("main")
       apply(state)
