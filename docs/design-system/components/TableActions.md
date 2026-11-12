@@ -24,4 +24,5 @@ The last cell of a table row, just wide enough for the row's "…" menu.
 - The cell is `width:1%`, so it shrinks to its menu and the other columns get the space; never set the width inline.
 - The trigger's `aria-label` names the row ("Actions for Sam", "Actions for M10 · 146 NM"), since every row's button looks the same.
 - A destructive item is last, after a separator, and links to a `ConfirmPage` rather than acting at once.
+- The "…" trigger is a small icon button: 28px square with a mouse and at least 44px square on a touch screen (README, Touch rule, spec 075).
 - Used by the card page's copies table, the admin users list and `DeckPage`'s zone tables.

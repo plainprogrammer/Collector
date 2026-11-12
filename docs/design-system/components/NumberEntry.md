@@ -36,4 +36,4 @@ Adding cards from one set by collector number (spec 026): the chosen set and lan
 - The number and quantity inputs take the `data` face through `c-numentry__data-input`.
 - Everything works without scripting. The `number-entry` Stimulus controller selects a rejected number and lets Enter on the finish select add the line.
 - The Language label and its select are one `c-select` label with a visible name and the `--space-2` gap `FilterSelect` gives every `c-select` with a visible name (issue #317); the language row adds no spacing rule for it.
-- On a coarse pointer the Language select (`c-select`) and the line form's Finish and Location selects (`c-field`) are at least the touch floor (44px) high (`FilterSelect`, `Form`, spec 072); the language row (which already centred its controls) keeps its select and its 40px "Change language" button.
+- On a coarse pointer the Language select (`c-select`) and the line form's Finish and Location selects (`c-field`) are at least the touch floor (44px) high (`FilterSelect`, `Form`, spec 072); the language row (which already centred its controls) keeps its select and its "Change language" button, both 44px there (spec 075).

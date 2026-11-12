@@ -16,3 +16,4 @@ A segmented control that switches how a collection is shown; the pressed option 
 - Wrap labels in `c-seg__label`: below 640px inside `.c-collection` they become screen-reader-only and the switch shows icons alone, so only wrap a label that has an icon beside it; text-only options (Large / Compact) keep their words.
 - The choice is a URL param (`?view=table`) saved to the user's preference, so Turbo's back button restores it.
 - Use for mutually exclusive views only (grid/table, large/compact); for on/off filters use `c-filter`.
+- On a coarse pointer (a touch screen) each button is at least 44px high and 44px wide, also with its label hidden below 640px (README, Touch rule, spec 075).

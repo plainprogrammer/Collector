@@ -12,5 +12,6 @@ Buttons trigger actions; one primary per view, in `brand`, the rest secondary or
 
 - Do use a `<button>` for actions and an `<a class="c-btn">` only for navigation.
 - Do disable with the `disabled` attribute and change the label to say what is happening ("Saving…").
+- On a coarse pointer (a touch screen) every button is at least 44px high, `c-btn--sm` included, and a `c-btn--icon` is 44px wide; 28px and 36px are the fine pointer's (README, Touch rule, spec 075).
 - Don't put two primary buttons side by side, and don't colour a button with a category accent.
 - In Rails, `button_to` and `link_to` take `class: "c-btn c-btn--primary"`.

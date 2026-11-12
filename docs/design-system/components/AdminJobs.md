@@ -40,5 +40,6 @@ The admin's jobs pages (spec 015): the background jobs by state, one job in full
 - Only a failed job has actions. "Retry" acts at once and is announced in the status message ("Retrying Catalog::RefreshJob."). "Discard…" leads to a `ConfirmPage` that names the job and says it won't run again.
 - The confirmation's sentence quotes the job's arguments, so it carries `c-job__note` and wraps anywhere.
 - An empty state names the state: "No failed jobs."
+- The four state chips and each row's "…" trigger are 44px on a touch screen (README, Touch rule, spec 075).
 - `pre.c-pre` is `surface-sunken`, mono, and scrolls sideways inside itself.
 - While any job is running or queued, `<main>` carries `data-controller="poll"`: the page refreshes itself about every 2 seconds with a Turbo morph, keeping the scroll position, and stops when no job is running or queued. The refresh waits while a row's menu is open. Nothing on the page needs the script: reloading shows the same thing.

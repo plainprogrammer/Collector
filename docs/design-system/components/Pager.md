@@ -17,3 +17,4 @@ Previous/next links around the current page position, for results and collection
 - The position states the page and total exactly, in mono `ink-muted` text; on the first or last page the missing link is left out, not disabled.
 - An out-of-range or invalid page number shows the nearest real page rather than an error.
 - Centred under the grid with `space-6` above and below; it needs no narrow layout.
+- Previous and Next are small buttons, 44px high on a touch screen (README, Touch rule, spec 075).
