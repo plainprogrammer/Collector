@@ -145,7 +145,7 @@ RSpec.describe "Card page", type: :request do
 
     body = response.body
     order = [ "c-item__image", "c-item__title", "c-chip--cards", "c-rules", "c-details", "<dt>Owned</dt>", "Your copies",
-      %(<h2 class="c-section__title">Printings</h2>), "Format legality" ]
+      %(<h2 class="c-section__title">Printings</h2>), "In decks</h2>", "Format legality" ]
     expect(order.map { |marker| body.index(marker) }).to eq(order.map { |marker| body.index(marker) }.sort)
     expect(body).to include("Magic: The Gathering", "Legal", "Not legal", "Standard", "Modern", "Premodern")
     expect(body).not_to include("Alchemy")
@@ -282,6 +282,7 @@ RSpec.describe "Card page", type: :request do
       expect(html.css("dl.c-stats").size).to eq(1)
       expect(html.at_css("dl.c-stats")["class"].split).to include("c-stats--three")
       expect(html.css("dl.c-stats .c-stat dt").map(&:text)).to eq([ "Owned", "In decks", "Free to use" ])
+      expect(html.at_css("#in-decks h2").text).to eq("In decks")
     end
   end
 end
