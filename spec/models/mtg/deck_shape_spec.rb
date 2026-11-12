@@ -85,10 +85,11 @@ RSpec.describe MTG::DeckShape, type: :model do
       expect(shape.types.map(&:name)).to eq(%w[Creatures Planeswalkers Instants Lands])
     end
 
-    it "counts a proxy of a land under Lands (AC-3.4)" do
+    it "counts a proxy of a land under Lands, and not in the curve (AC-3.4)", :aggregate_failures do
       proxy(card(type_line: "Basic Land — Forest", cost: "", mana_value: 0.0))
 
       expect(shape.types.map { [ it.name, it.count, it.proxy ] }).to eq([ [ "Lands", 1, 1 ] ])
+      expect(shape.curve.sum(&:total)).to eq(0)
     end
 
     it "agrees with the zone table's group counts for a Main-only deck (AC-3.2)" do

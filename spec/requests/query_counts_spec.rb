@@ -186,7 +186,7 @@ RSpec.describe "Page query counts", type: :request do
     expect(paths.map { |path| queries_for(path) }).to eq(with_one)
   end
 
-  it "keeps the deck page's queries the same with 60 cards of 40 printings as with one, panel included (spec 069 AC-6.1)", :aggregate_failures do
+  it "keeps the deck page's queries the same with 40 printings, owned and proxied, as with one printing, panel included (spec 069 AC-6.1)" do
     deck = create(:deck, account: user.account, name: "Izzet Tempo")
     card = lambda do
       entry = printing
