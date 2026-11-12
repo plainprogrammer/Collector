@@ -95,5 +95,32 @@ RSpec.describe "Card page: Free to use and In decks", type: :system do
       JS
       expect(rule).to eq("white" => "normal", "wrap" => "anywhere")
     end
+
+    %w[light dark].each do |theme|
+      [ 360, 390 ].each do |width|
+        it "does not cut the head count and puts it under the title at #{width}px in the #{theme} theme (AC-5.5)" do
+          visit catalog_entry_path(card)
+          open_in_narrow_frame(catalog_entry_path(card), width:, ready: "#in-decks table")
+          within_narrow_frame do
+            set_theme(theme)
+            measured = page.evaluate_script(<<~JS)
+              (() => { const count = document.querySelector("#in-decks .c-section__count"), title = document.querySelector("#in-decks .c-section__title")
+                return { cut: count.scrollWidth > count.clientWidth + 1, below: count.getBoundingClientRect().top >= title.getBoundingClientRect().bottom - 1 } })()
+            JS
+            expect(measured).to eq("cut" => false, "below" => true)
+          end
+        end
+      end
+    end
+  end
+
+  describe "the empty state (AC-5.6)" do
+    it "keeps the Add to deck link on one line at 390px" do
+      visit catalog_entry_path(card)
+      open_in_narrow_frame(catalog_entry_path(card), width: 390, ready: "#in-decks .c-empty")
+      within_narrow_frame do
+        expect(page.evaluate_script('document.querySelector("#in-decks .c-empty a").getClientRects().length')).to eq(1)
+      end
+    end
   end
 end
