@@ -1,7 +1,7 @@
 # Feature 077: The Deck Shape Panel Stays Tidy at Extreme Counts
 
 **Status:** Approved by the coordinator under the maintainer's delegation (2026-11-11, Gate A) at 0.3.0, after two spec review rounds; decision 2 ruled A by the maintainer
-**Version:** 0.3.1
+**Version:** 0.3.2
 **Created:** 2026-11-11
 **Last Updated:** 2026-11-11
 **Depends on:** [spec 060](../060-deck-components/spec.md) (the `DeckShape` component and its CSS), [spec 069](../069-deck-shape-panel/spec.md) (the panel's figures; its verification "Findings" 1 to 4 are this spec's input), both merged
@@ -14,6 +14,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.3.2 | 2026-11-11 | PATCH (a pointer only): the follow-up issue for the mana-label band is #330 |
 | 0.3.1 | 2026-11-11 | PATCH (`sdd-spec-update`, spec only; found while writing the plan, before it was approved): the measurement table's caption column is corrected (at a 320px viewport the old caption breaks between colours, not inside one; at 345px it splits "Green / 2,591"), so AC-4.3's failing variant runs at 345px and 360px, not 320px; the sweep found the leading dot (16 of 72 frame widths), so AC-4.3 gains a 366px frame and its no-leading-dot clause can fail; the label shares are measured, 14%, 17% and 20%, not the arithmetic 13.5%, 16.5% and 19.5%; AC-3.1b adds "not cut off" and a variant for the name cell's wrap rule; the 0.84px room is 0.44px (an integer `clientWidth`). No behaviour changes |
 | 0.3.0 | 2026-11-11 | Spec review round 2 (Opus, read-only; REVISE: 0 blocking, 1 major, 4 minor, 3 nit), all taken: the fixture's red is 2,595 (AC-4.1's strings); the band's shares are 13.5%, 16.5% and 19.5% in both places; the Non-Goal and Goal 1 agree on five-digit Card types rows; AC-5.1 and AC-5.3 require the band and its follow-up issue to be recorded and the 060 AC-2.4 row is qualified; option B is costed; the method is named (`short_count`); AC-2.2's thin room is flagged for the CI runner; the preview comment's chain |
 | 0.2.0 | 2026-11-11 | Spec review round 1 (Opus, read-only; REVISE: 0 blocking, 4 major, 10 minor, 7 nit), all taken: AC-1.2's numbers follow spec 069's real fixture (column 1 reads "9", "Owned 132"); AC-2.2 measures against the segment's `clientWidth` less 2px and the label's width is the synthesized bold's (about 43.5px); Goal 1 is narrowed to what is fixed and the unfixed mana band is measured and named, with a narrow rule that follows the label offered as option B for Gate A; decision 1 states its trade-off (a column's exact count is in the `aria-label` only); decision 3's alternative corrected, the name cell's `overflow-wrap`, FR-2's CSS points and AC-3.1b for five-digit counts; AC-4.3's unfailable clause explained; AC-6.2's comment update; the `allow_browser` floor; spec 074's possible padding change; the preview's stale comment; nits |
@@ -196,7 +197,7 @@ Existing examples this changes (a grep, not memory; the command is repeated in `
 
 ## Open Questions
 
-None. Gate A (2026-11-11) approved decisions 1 to 5 as written, and the maintainer ruled decision 2 **A**: spec 060's 10% rule stays, and the mana-label band is recorded in `DeckShape.md` as a documented limit with the shares above and becomes its own issue (filed by the coordinator from the text in the plan's Gate B message; its number is cited in `DeckShape.md`, the area doc's Issues bullet and here once it exists). Option B is not taken.
+None. Gate A (2026-11-11) approved decisions 1 to 5 as written, and the maintainer ruled decision 2 **A**: spec 060's 10% rule stays, and the mana-label band is recorded in `DeckShape.md` as a documented limit with the shares above and becomes its own issue, [#330](https://github.com/plainprogrammer/Collector/issues/330) (filed by the coordinator; cited in `DeckShape.md`, the area doc's Issues bullet and here). Option B is not taken.
 
 ## Notes for the plan
 
