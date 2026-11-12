@@ -8,6 +8,7 @@
 **Branch:** `071-add-to-deck-from-card-page`
 **Issue:** [#255](https://github.com/plainprogrammer/Collector/issues/255)
 **ADR:** none: a deck is already a location and a zone its child (ADR 0028), a move is already `Lot::Move` and a proxy already a spec 068 row; what is decided here (which lots a count takes, the shape of the finish choice) is this spec's (decisions 4, 5 and 9)
+**Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (the whole spec but the tenancy part) and [`tenancy-and-accounts.md`](../../architecture/tenancy-and-accounts.md) (AC-1.2, AC-1.3, AC-5.2 to AC-5.4); the page's markup is `AddToDeck` in the [design system](../../design-system/README.md); see the [specs index](../README.md)
 
 ---
 
