@@ -8,6 +8,7 @@
 **Branch:** `078-mana-bar-label-fit`
 **Issue:** [#330](https://github.com/plainprogrammer/Collector/issues/330) (design-system lane, filed by the maintainer's ruling from spec 077)
 **Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (whole spec); the panel's markup and CSS rule are `DeckShape` in the [design system](../../design-system/README.md); see the [specs index](../README.md)
+**Plan:** retired in `b275dc7e20ef03355d825eec48569c2eb7ce8df0`; read it with `git show b275dc7e20ef03355d825eec48569c2eb7ce8df0^:docs/specs/078-mana-bar-label-fit/plan.md`
 
 ---
 
