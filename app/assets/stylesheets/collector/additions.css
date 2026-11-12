@@ -120,7 +120,7 @@ img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches:
 /* A `c-select` is a label wrapping its name and the select. The name is visually hidden (`c-sr`, absolute, so it is no flex
    item and the gap never offsets the select) in the filter bars, but number entry's Language shows it (`c-field__label`), and
    as inline text it touched the select (#317). The component spaces them, so no page needs a rule of its own. */
-.c-select { display:flex; align-items:center; gap:var(--space-2); }
+.c-select { display:inline-flex; align-items:center; gap:var(--space-2); }
 .c-select select { height:28px; max-width:220px; padding:0 var(--space-2); background:var(--surface-raised); color:var(--ink);
   border:1px solid var(--line-strong); border-radius:var(--radius-md); font:400 13px/18px var(--font-sans); }
 .c-select select:focus-visible { outline:2px solid var(--focus); outline-offset:2px; }

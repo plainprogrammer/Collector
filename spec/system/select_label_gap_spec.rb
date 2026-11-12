@@ -7,20 +7,26 @@ require "rails_helper"
 RSpec.describe "A filter-bar select's label and select", type: :system do
   let(:user) { create(:user) }
   let!(:blue) { create(:location, account: user.account, name: "Blue binder") }
-  let!(:deck) { create(:deck, account: user.account, name: "Izzet Tempo") }
+  let(:deck) { create(:deck, account: user.account, name: "Izzet Tempo") }
   let!(:lot) { owned_printing("Lightning Bolt", account: user.account, location: blue, number: "138", quantity: 2) }
 
   before do
-    # A second language of the same printing, so number entry shows its Language select (spec 026 decision 2).
-    entry = lot.entry
-    create(:mtg_printing, finishes: %w[nonfoil foil],
-      entry: create(:catalog_entry, identity: entry.identity, name: entry.name, set: entry.set, number: entry.number, language: "ja"))
     page.driver.browser.manage.window.resize_to(1280, 900)
     system_sign_in_as(user)
   end
 
+  # A second language of the same printing, so number entry shows its Language select (spec 026 decision 2).
+  def add_japanese_printing
+    entry = lot.entry
+    create(:mtg_printing, finishes: %w[nonfoil foil],
+      entry: create(:catalog_entry, identity: entry.identity, name: entry.name, set: entry.set, number: entry.number, language: "ja"))
+  end
+
   # The pages that draw a `c-select`, by name: the one with a visible label first, then those with a hidden one.
-  def visible_label_page = collection_number_entry_path(type: "mtg", set: lot.entry.set.code, language: "en")
+  def visible_label_page
+    add_japanese_printing
+    collection_number_entry_path(type: "mtg", set: lot.entry.set.code, language: "en")
+  end
 
   def hidden_label_pages
     { "collection location" => collection_path(view: "grid"),
@@ -57,7 +63,7 @@ RSpec.describe "A filter-bar select's label and select", type: :system do
     within_narrow_frame { measure }
   end
 
-  # The gap is a whole token on a line the name and the select share (AC: the label never touches its select).
+  # The gap is a whole token on a line the name and the select share (the label never touches its select).
   def expect_gap_of_one_token(found)
     expect(found.size).to eq(1)
     expect(found.first["gap"]).to be_within(0.5).of(found.first["token"])
@@ -75,9 +81,7 @@ RSpec.describe "A filter-bar select's label and select", type: :system do
     expect_gap_of_one_token(measure_in_frame(visible_label_page, width: 360))
   end
 
-  hidden_label_names = [ "collection location", "card search set", "proxy chooser set" ]
-
-  hidden_label_names.each do |name|
+  [ "collection location", "card search set", "proxy chooser set" ].each do |name|
     it "leaves the select of #{name} where its label starts (a hidden name takes no gap)", :aggregate_failures do
       visit hidden_label_pages.fetch(name)
       expect(page).to have_css("label.c-select select")
