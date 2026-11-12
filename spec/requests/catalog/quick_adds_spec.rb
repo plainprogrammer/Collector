@@ -52,7 +52,7 @@ RSpec.describe "Quick add", type: :request do
     expect(response).to have_http_status(:unprocessable_content)
     expect(response.body).to include("You already have the most copies one lot can hold (9,999).", "Your copies", "9999")
     html = Nokogiri::HTML5(response.body)
-    expect(html.css(".c-stat dt").map(&:text)).to eq([ "Owned" ]) # spec 023 AC-6.2: the collection parts stay
+    expect(html.css(".c-stat dt").map(&:text)).to eq([ "Owned", "In decks", "Free to use" ]) # spec 023 AC-6.2: the collection parts stay (spec 073 adds two stats and the section)
     expect(html.at_css(".c-avatar")).to be_present
   end
 

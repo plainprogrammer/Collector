@@ -48,9 +48,7 @@
       <%= render_catalog_extension @entry, :head %>
       <%= render_catalog_extension @entry, :details %>
       <% if collector? %>
-        <dl class="c-stats c-stats--single">
-          <div class="c-stat"><dt>Owned</dt><dd><%= number_with_delimiter(@overview.owned_count) %></dd><small><%= pluralize(@overview.printings_owned, "printing") %></small></div>
-        </dl>
+        <%= render "catalog/entries/stats", overview: @overview %>
         <%= render "catalog/entries/copies", overview: @overview %>
       <% end %>
       <%= render "catalog/entries/printings", overview: @overview %>

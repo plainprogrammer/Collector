@@ -275,15 +275,13 @@ RSpec.describe "Card page", type: :request do
       expect(response.body).to include("Add to deck")
     end
 
-    it "leaves the stats strip and the sections as they are, so #50's places are free (AC-1.4)", :aggregate_failures do
+    it "has the three-stat strip, which spec 073 puts where spec 071 left room for it (supersedes spec 071 AC-1.4)", :aggregate_failures do
       get catalog_entry_path(card)
 
       html = Nokogiri::HTML5(response.body)
       expect(html.css("dl.c-stats").size).to eq(1)
-      expect(html.at_css("dl.c-stats")["class"]).to include("c-stats--single")
-      expect(html.css("dl.c-stats .c-stat dt").map(&:text)).to eq([ "Owned" ])
-      expect(response.body).not_to include("Free to use")
-      expect(response.body).not_to include("In decks")
+      expect(html.at_css("dl.c-stats")["class"].split).to include("c-stats--three")
+      expect(html.css("dl.c-stats .c-stat dt").map(&:text)).to eq([ "Owned", "In decks", "Free to use" ])
     end
   end
 end

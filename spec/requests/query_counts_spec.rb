@@ -55,11 +55,17 @@ RSpec.describe "Page query counts", type: :request do
     expect(queries_for(new_location_removal_path(location))).to eq(few)
   end
 
+  # Since spec 073 the card page preloads the lots' places twice (`Catalog::CardOverview#lots` and `Lot::FreeCopies#lots`). With a
+  # single placed lot, or with lots whose two lists agree, both preloads issue the same statement and the second is a query-cache
+  # hit that the counter skips, which says nothing about scaling. So the baseline has two lots listed in different orders: the
+  # overview sorts the unpriced lot first, while `Lot::FreeCopies` reads in the order of the `lot_key` index, which puts it
+  # last, so the two statements differ and neither is a cache hit (spec 070's statement-count lesson,
+  # docs/lessons/2026-11-11-a-statement-count-example-needs-different-printings-for-its-two-runs.md).
   it "keeps the card page's queries independent of the number of placed lots (spec 032 NFR)" do
     entry = printing
-    own(entry, location: create(:location, account: user.account))
+    [ nil, 100 ].each { |cents| own(entry, location: create(:location, account: user.account), price_paid_cents: cents) }
     few = queries_for(catalog_entry_path(entry))
-    19.times { |n| own(entry, location: create(:location, account: user.account), price_paid_cents: n) }
+    18.times { |n| own(entry, location: create(:location, account: user.account), price_paid_cents: 200 + n) }
 
     expect(queries_for(catalog_entry_path(entry))).to eq(few)
   end
@@ -107,12 +113,13 @@ RSpec.describe "Page query counts", type: :request do
 
   # Spec 062 AC-5.4: a zone's label names its deck, so every lot list preloads the parent. A zone lot costs at most the one
   # query that loads the parents (a place has none to load), and no query more however many lots or decks there are.
-  it "keeps the grid's, the table's, the bulk table's and the card page's queries to a place's plus one for lots in zones", :aggregate_failures do
+  # The card page reads the card's decks too (spec 073) and is judged by its own example below.
+  it "keeps the grid's, the table's and the bulk table's queries to a place's plus one for lots in zones", :aggregate_failures do
     user.update!(collection_view: "table")
     entry = printing
     lot = own(entry, location: create(:location, account: user.account))
     post collection_selection_path
-    paths = { grid: collection_path(view: "grid"), table: collection_path, bulk: collection_path(bulk: 1), card: catalog_entry_path(entry) }
+    paths = { grid: collection_path(view: "grid"), table: collection_path, bulk: collection_path(bulk: 1) }
     in_a_place = paths.transform_values { |path| queries_for(path) }
 
     lot.update!(location: create(:deck, account: user.account, name: "Deck 0").zone("main"))
