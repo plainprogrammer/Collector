@@ -7,6 +7,7 @@
 **Depends on:** [spec 068](../068-deck-proxies/spec.md) (decision 5 and AC-2.6: the row menu), [spec 070](../070-replace-proxy-with-copy/spec.md) (the menu's items), [spec 071](../071-add-to-deck-from-card-page/spec.md) (its shots 04 and 05), [spec 060](../060-deck-components/spec.md) (`DeckPage`, `Menu`, `TableActions`), all merged
 **Branch:** `074-deck-pages-phone-width`
 **Issue:** [#326](https://github.com/plainprogrammer/Collector/issues/326) (design-system lane, filed by the maintainer's ruling from the implementation reviews of specs 070 and 071)
+**Frozen:** the current rules are in [`design-system/README.md`](../../design-system/README.md) and its component documents `Menu`, `TableActions`, `TabBar` and `DeckPage` (whole spec); see the [specs index](../README.md)
 
 ---
 
