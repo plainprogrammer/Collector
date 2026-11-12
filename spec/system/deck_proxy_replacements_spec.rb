@@ -154,6 +154,16 @@ RSpec.describe "Replacing a proxy", type: :system do
       expect(drawn).to all(be >= 44)
     end
 
+    # AC-6.1: the read-only Location label is a paragraph (it labels no control), and a paragraph has the browser's 1em margins
+    # that the other fields' `label` elements don't, so the gap around "Location" would be larger than around the other fields.
+    it "draws Add a new copy's read-only Location label with no paragraph margins (AC-6.1)", :aggregate_failures do
+      visit new_deck_proxy_copy_path(deck, proxy)
+
+      margins = page.evaluate_script("(() => { const s = getComputedStyle(document.querySelector('p.c-field__label')); return [s.marginTop, s.marginBottom]; })()")
+
+      expect(margins).to eq([ "0px", "0px" ])
+    end
+
     it "gives Add a new copy's buttons and page the touch floor of the Decks pages (AC-6.2)", :aggregate_failures do
       visit new_deck_proxy_copy_path(deck, proxy)
       expect(page.evaluate_script("document.querySelector('main').classList.contains('c-decks')")).to be(true)

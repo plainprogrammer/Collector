@@ -569,8 +569,11 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
 
 /* ---------- Add a new copy's read-only Location (spec 070 AC-6.1) ---------- */
 /* The zone's label ("Deck › Zone") names a deck of up to 60 characters with no space, so the read-only line breaks inside a
-   word like the page head's stats line instead of widening the form. It is the value under a `c-field__label` paragraph. */
-.c-decks .c-field__value { margin:0; overflow-wrap:anywhere; }
+   word like the page head's stats line instead of widening the form. It is the value under a `c-field__label` paragraph. Both
+   are paragraphs (the label labels no control, so it is not a `label`), and nothing resets a paragraph's default 1em margins,
+   which would open a larger gap around "Location" than around the other fields: the label's margins are reset with the value's. */
+.c-decks .c-field > p.c-field__label, .c-decks .c-field__value { margin:0; }
+.c-decks .c-field__value { overflow-wrap:anywhere; }
 
 /* ---------- Small icon stroke (spec 063) ---------- */
 /* An icon's stroke scales with it: weight on screen = stroke-width × drawn width ÷ 24 (the viewBox). The partials write
