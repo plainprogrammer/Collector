@@ -35,6 +35,7 @@ The page that adds a card to a deck zone, from the card page's "Add to deck" but
 
 - **The page.** It is a `ChoicePage` variant (spec 060 decision 14): the heading names the action and the card ("Add Lightning Bolt to a deck"), the choice is a fieldset of radios with a visible legend, Add to deck is the only primary action, and the page works without scripting. The form is a `Form`, at most 420px wide.
 - **Deck and zone.** One native `select` (spec 060 decision 14; spec 057 decision 2). Its options are written "Deck › Zone" under an `optgroup` labelled "Decks". There is no "Places" group, because only a zone can be chosen. The first option, "Choose a deck and zone…", submits an empty value, so the browser refuses a submission without a choice (`Form`). A long deck name is cut inside the select; it never widens the form (spec 060 AC-5.2; spec 040 AC-7.1).
+- On a coarse pointer the select is at least the touch floor (44px) high, as every select is (`Form`, spec 072).
 - **How many** is a `c-input` number field, `min` 1, with 1 in it at first.
 - **What to use** has up to two options, in this order:
   - "My copies", shown only when copies are free. Its sentence gives the free count and where they are, "3 free: 2 in Blue binder, 1 in Red box", so the collector sees which places they would come from.
