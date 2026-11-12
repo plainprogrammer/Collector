@@ -97,3 +97,7 @@ Mode B, read-only, on Opus, round 1, over the branch's whole diff, the spec (v0.
 | F8 (nit, process) | AC-1.14 and AC-1.15 were committed in the same commit as the floor CSS (`1662035e`), so git doesn't show the red run | none: this file records it (the menu column 16px against 64px, the 30px spread) and the mutation table backs it up |
 
 After the fixes: `menu_tab_bar_clearance_spec.rb` and `design_system_files_spec.rb`, 36 examples, 0 failures.
+
+## Distillation (`distill-feature`)
+
+No `docs/architecture` area doc covers menus, the tab bar's clearance or the deck zone tables' column widths (the implementation review checked `collection-and-lots.md:133` and found it still true), so no area doc changes. The rules live in the design system's README and component documents, which this branch updated (`Menu`, `TableActions`, `TabBar`, `DeckPage`, the Navigation section, the App additions entry). Index row 074 is Frozen by the design system, its plan's retirement owed (`636c4505`), and the spec carries its frozen line (`fb0956fe`, spec 027 D4). CLAUDE.md restates none of these rules, so it is unchanged.
