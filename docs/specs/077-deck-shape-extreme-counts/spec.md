@@ -7,6 +7,7 @@
 **Depends on:** [spec 060](../060-deck-components/spec.md) (the `DeckShape` component and its CSS), [spec 069](../069-deck-shape-panel/spec.md) (the panel's figures; its verification "Findings" 1 to 4 are this spec's input), both merged
 **Branch:** `077-deck-shape-extreme-counts`
 **Issue:** [#320](https://github.com/plainprogrammer/Collector/issues/320) (design-system lane, filed by the maintainer's ruling from spec 069's implementation review)
+**Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (whole spec); the panel's markup is `DeckShape` in the [design system](../../design-system/README.md); see the [specs index](../README.md)
 
 ---
 
