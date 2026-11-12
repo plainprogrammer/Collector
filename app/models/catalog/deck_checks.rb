@@ -15,7 +15,9 @@
 # The core counts copies by catalog identity over every counted printing and holds a card to the lowest number its printings
 # answer; nil is above every number, so a card is unlimited only when every counted printing answers nil, and the reason is
 # the one given with the lowest number (the first printing in page order on a tie). A card of another collectible than the
-# deck's is left out of every check. Considering and any zone no rule names are counted by no size or copy rule.
+# deck's is left out of every check. A size or copy rule counts only the zones it names, and the core never counts
+# Considering for one, even when a rule names its key (decision 3): such a rule still names it in a size line's subject.
+# The owned-plus-proxy check judges every zone, Considering included (decision 5).
 # A vocabulary without `deck_rules`, a nil answer, a type no longer registered and a deck whose format is no longer registered
 # have no size or copy rules.
 # @see file:collection-and-lots.md
@@ -73,6 +75,14 @@ module Catalog::DeckChecks
   end
   private_class_method :counted_rows
 
+  # The rows a size or copy rule counts: those in a zone the rule names, never Considering (decision 3), so a vocabulary that
+  # lists Considering among a rule's zones still has none of its cards counted.
+  # @api private
+  def self.in_zones(rule, counted)
+    counted.select { rule.zone_keys.include?(it.zone.location.zone) && it.zone.location.zone != Catalog::Formats::CONSIDERING }
+  end
+  private_class_method :in_zones
+
   # @api private
   def self.rule_lines(rules, deck_type, format_key, zones, counted)
     sizes = rules.sizes.map { size_line(it, deck_type, format_key, zones, counted) }
@@ -85,7 +95,7 @@ module Catalog::DeckChecks
   # is held to the lowest number its printings answer; `min_by` keeps the first printing in page order on a tie.
   # @api private
   def self.copy_lines(rule, counted)
-    in_rule = counted.select { rule.zone_keys.include?(it.zone.location.zone) }
+    in_rule = in_zones(rule, counted)
     findings = in_rule.group_by { it.row.entry.catalog_identity_id }.filter_map do |identity_id, cards|
       copies = cards.sum { it.row.total }
       limit = cards.map { it.row.entry }.uniq.filter_map { rule.limit_for.call(it) }.min_by(&:count)
@@ -105,7 +115,7 @@ module Catalog::DeckChecks
   # registration, else by the key.
   # @api private
   def self.size_line(rule, deck_type, format_key, zones, counted)
-    total = counted.select { rule.zone_keys.include?(it.zone.location.zone) }.sum { it.row.total }
+    total = in_zones(rule, counted).sum { it.row.total }
     subject = rule.zone_keys.map { zone_name(it, deck_type, format_key, zones) }.join(" + ")
     status = if rule.min && total < rule.min then "Short" elsif rule.max && total > rule.max then "Over" else "Pass" end
     format_name = Catalog::Formats.name_for(deck_type, format_key)

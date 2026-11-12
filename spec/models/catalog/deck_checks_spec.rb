@@ -111,6 +111,12 @@ RSpec.describe Catalog::DeckChecks, type: :model do
       expect(lines(report(*zones)).first).to eq([ "Pass", "Main: 100 cards; tight needs exactly 100." ])
     end
 
+    it "counts nothing in Considering even when a rule names it, and still names it in the subject (decision 3)" do
+      register(sizes: [ size(%W[main #{Catalog::Formats::CONSIDERING}], min: 5) ])
+      zones = [ zone("main", "Main", row(card("A", 1), owned: 3)), zone(Catalog::Formats::CONSIDERING, "Considering", row(card("B", 2), owned: 10)) ]
+      expect(lines(report(*zones)).first).to eq([ "Short", "Main + Considering: 3 cards; tight needs at least 5." ])
+    end
+
     it "separates thousands in a count" do
       register(sizes: [ size(%w[main], min: 60) ])
       expect(lines(report(zone("main", "Main", row(card("A", 1), owned: 1_234)))).first.last).to eq("Main: 1,234 cards; tight needs at least 60.")
@@ -136,6 +142,12 @@ RSpec.describe Catalog::DeckChecks, type: :model do
       register(copies: copies(%w[main], limit(4)))
       zones = [ zone("main", "Main", row(bolt, owned: 4)), zone("considering", "Considering", row(bolt, owned: 9)) ]
       expect(lines(report(*zones))).to include([ "Pass", "No card is over its limit." ])
+    end
+
+    it "counts no copy in Considering even when the rule names it (decision 3)" do
+      register(copies: copies(%W[main #{Catalog::Formats::CONSIDERING}], limit(4)))
+      zones = [ zone("main", "Main", row(bolt, owned: 3)), zone(Catalog::Formats::CONSIDERING, "Considering", row(bolt, owned: 3)) ]
+      expect(lines(report(*zones)).first).to eq([ "Pass", "No card is over its limit." ])
     end
 
     it "passes at the limit across two named zones (4 of 3 + 1)" do

@@ -234,6 +234,21 @@ RSpec.describe "Catalog::DeckChecks for a Magic deck", type: :model do
     )
   end
 
+  it "names a Standard deck's 5 copies of one card in Main over the limit of 4 (AC-3.1)" do
+    deck = deck_of("standard")
+    own(deck, "main", card("Lightning Bolt"), 5)
+    expect(lines(deck)).to include([ "Over the limit", "Lightning Bolt: 5 copies; the limit is 4." ])
+  end
+
+  it "says a deck whose format is no longer registered has no rules and still flags its owned and proxy card (AC-4.5)" do
+    deck = deck_of("standard")
+    bolt = card("Lightning Bolt")
+    own(deck, "main", bolt, 2)
+    proxy(deck, "main", bolt)
+    deck.update!(format: "retired")
+    expect(lines(deck)).to eq([ [ nil, "retired has no rules to check." ], [ "Owned and proxy", "Lightning Bolt in Main: 2 owned, 1 proxy." ] ])
+  end
+
   it "does not flag another collectible's owned copy and proxy in a Magic deck's Main (AC-4.9)" do
     deck = deck_of("standard")
     odd = create(:catalog_entry, collectible_type: "stranger", name: "Odd")
