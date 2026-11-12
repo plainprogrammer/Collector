@@ -43,7 +43,7 @@ RSpec.describe "Add to deck", type: :system do
                 const select = document.querySelector("#deck_zone").getBoundingClientRect()
                 const text = document.createRange(); text.selectNodeContents(document.querySelector(".c-pick .c-check"))
                 return { select: select.width <= form.width, text: text.getBoundingClientRect().right <= document.querySelector(".c-pick").getBoundingClientRect().right + 0.5,
-                         title: document.querySelector(".c-pagehead__title").getBoundingClientRect().right <= window.innerWidth } })()
+                         title: document.querySelector(".c-pagehead__title").getBoundingClientRect().right <= document.documentElement.clientWidth } })()
             JS
             expect(overflow).to eq("select" => true, "text" => true, "title" => true)
           end
@@ -72,7 +72,7 @@ RSpec.describe "Add to deck", type: :system do
         (() => { const sentence = document.querySelector(".c-field__error"), text = document.createRange() // the drawn text, not the box
           text.selectNodeContents(sentence)
           return { page: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
-                   edge: text.getBoundingClientRect().right <= window.innerWidth, scroll: sentence.scrollWidth <= sentence.clientWidth } })()
+                   edge: text.getBoundingClientRect().right <= document.documentElement.clientWidth, scroll: sentence.scrollWidth <= sentence.clientWidth } })()
       JS
     end
 
