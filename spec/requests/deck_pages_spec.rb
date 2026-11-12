@@ -73,13 +73,12 @@ RSpec.describe "Deck page", type: :request do
         expect(items.last["href"]).to eq(new_deck_removal_path(deck))
       end
 
-      it "has no shape panel, and a dash in the Proxy cell of a row with no proxy (AC-1.6; spec 068 supersedes spec 066 AC-1.6's no proxy control)", :aggregate_failures do
+      it "has a dash in the Proxy cell of a row with no proxy (AC-1.6; spec 068 supersedes spec 066 AC-1.6's no proxy control, and spec 069 its no shape panel)", :aggregate_failures do
         own("main", printing)
 
         get deck_path(deck)
 
         expect(card_rows(zone_section("Main")).first.css("td")[3].at_css(".is-muted").text).to eq("–")
-        expect(html.at_css("aside.c-deck__shape, details.c-shapefold")).to be_nil
       end
     end
 

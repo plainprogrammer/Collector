@@ -1,0 +1,46 @@
+<%# The three parts of the deck shape panel for Magic (spec 069, DeckShape.md): a part of zero has no element. %>
+<div class="c-shape__part"><h3 class="c-shape__heading">Mana curve</h3>
+  <div class="c-curve">
+    <div role="img" aria-label="<%= figures.curve_label %>">
+      <div class="c-curve__cols" aria-hidden="true">
+        <% figures.curve.each do |column| %>
+          <div class="c-curve__col"><span class="c-curve__count"><%= number_with_delimiter(column.total) %></span>
+            <div class="c-curve__bar">
+              <% if column.proxy.positive? %><div class="c-curve__proxy" style="--proxy:<%= column.proxy %>;--max:<%= figures.curve_max %>"></div><% end %>
+              <% if column.owned.positive? %><div class="c-curve__owned" style="--owned:<%= column.owned %>;--max:<%= figures.curve_max %>"></div><% end %>
+            </div></div>
+        <% end %>
+      </div>
+      <div class="c-curve__labels" aria-hidden="true"><% %w[0 1 2 3 4 5 6+].each do |label| %><span><%= label %></span><% end %></div>
+    </div>
+    <ul class="c-curve__legend">
+      <li><span class="c-curve__swatch c-curve__swatch--owned"></span>Owned <%= number_with_delimiter(figures.curve_owned) %></li>
+      <li><span class="c-curve__swatch c-curve__swatch--proxy"></span>Proxy <%= number_with_delimiter(figures.curve_proxy) %></li>
+    </ul>
+    <% if figures.average_text %><p class="c-curve__avg">Average mana value <b><%= figures.average_text %></b></p><% end %>
+    <% if figures.unvalued_note %><p class="c-curve__avg"><%= figures.unvalued_note %></p><% end %>
+  </div>
+</div>
+<div class="c-shape__part"><h3 class="c-shape__heading">Card types</h3>
+  <% if figures.types.any? %>
+    <ul class="c-types">
+      <% figures.types.each do |type| %>
+        <li><span><%= type.name %></span><span class="c-types__n"><%= number_with_delimiter(type.count) %></span><span class="c-types__proxy"><%= "#{number_with_delimiter(type.proxy)} proxy" if type.proxy.positive? %></span></li>
+      <% end %>
+    </ul>
+  <% else %>
+    <p class="c-manacap">No cards yet.</p>
+  <% end %>
+</div>
+<div class="c-shape__part"><h3 class="c-shape__heading">Mana symbols</h3>
+  <% if figures.symbols.any? %>
+    <ul class="c-manabar" role="img" aria-label="<%= figures.symbols_label %>">
+      <% figures.symbols.each do |segment| %>
+        <li class="<%= class_names("c-manabar__seg", "c-manabar__seg--#{segment.colour.downcase}", "c-manabar__seg--narrow": segment.narrow) %>" style="--n:<%= segment.count %>"><span><%= segment.colour %> <%= number_with_delimiter(segment.count) %></span></li>
+      <% end %>
+    </ul>
+    <p class="c-manacap"><%= figures.caption %></p>
+  <% else %>
+    <p class="c-manacap">No coloured mana symbols.</p>
+  <% end %>
+</div>
