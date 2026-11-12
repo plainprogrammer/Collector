@@ -252,6 +252,8 @@ RSpec.describe "Deck shape panel", type: :system do
           for (let node = walker.nextNode(); node; node = walker.nextNode()) { for (let i = 0; i < node.length; i++) { const r = document.createRange(); r.setStart(node, i); r.setEnd(node, i + 1)
             const box = r.getClientRects()[0]; if (box && node.data[i] !== " " && !starts.has(Math.round(box.top))) starts.set(Math.round(box.top), node.data[i]) } }
           return { viewport: document.documentElement.clientWidth,
+            columns: cols.length,
+            narrowest: cols.length ? Math.min(...cols.map((col) => col.getBoundingClientRect().width)) : 0,
             scrolls: panel.scrollWidth > panel.clientWidth,
             beyond: [...panel.querySelectorAll("*")].filter((el) => el.getClientRects().length && el.getBoundingClientRect().right > edge + 0.5).length,
             clipped: [...panel.querySelectorAll(".c-curve__count, .c-types li > *, .c-curve__legend li, .c-curve__avg, .c-manacap")].filter((el) => el.scrollWidth > el.clientWidth + 1).length,
@@ -269,9 +271,12 @@ RSpec.describe "Deck shape panel", type: :system do
     end
 
     # `clientWidth` is a whole number, so a 46.38px segment reads 46 and a label has 0.44px to spare at a 320px viewport (the bound is 2px).
-    def counts_fit?(found) = found["countRoom"] >= 0 && !found["scrolls"] && found["beyond"].zero? && found["clipped"].zero?
+    # A page whose panel is not drawn measures nothing, so the seven columns and a column with a width are part of "fits".
+    def counts_fit?(found)
+      found["countRoom"] >= 0 && !found["scrolls"] && found["beyond"].zero? && found["clipped"].zero? && found["columns"] == 7 && found["narrowest"] > 0
+    end
     def labels_fit?(found) = found["labels"].any? && found["labels"].all? { |label| label["lines"] == 1 && label["inside"] && label["text"] <= label["room"] - 2 }
-    def counts_aligned?(found) = (found["rights"].max - found["rights"].min) <= 0.5
+    def counts_aligned?(found) = found["rights"].any? && found["rights"].min > 0 && (found["rights"].max - found["rights"].min) <= 0.5
     def types_tidy?(found) = counts_aligned?(found) && found["suffixGap"].all? { it <= 0.5 } && found["rowOver"].zero? && found["cut"].zero?
     def wide_row_tidy?(found) = found["rowOver"].zero? && found["cut"].zero? && counts_aligned?(found) && found["rights"].size == 2
     def floor_held?(found) = counts_aligned?(found) && found["suffixWidth"].all? { it >= 71.5 }
@@ -316,11 +321,13 @@ RSpec.describe "Deck shape panel", type: :system do
       widths.each { |width| at_width(width, deck_path(rows_deck)) { |panel| expect_in_both_themes(width, panel) { types_tidy?(it) } } }
     end
 
-    it "can fail: flex rows with a 4.5rem suffix put the 9,999 proxy row's count left of the others' (AC-3.1)" do
+    it "can fail: flex rows with a 4.5rem suffix put the 9,999 proxy row's count left of the others' (AC-3.1)", :aggregate_failures do
       build_rows
       at_width(320, deck_path(rows_deck)) do |panel|
         inject_css(".c-types{display:block !important} .c-types li{display:flex !important;gap:var(--space-2)} .c-types__n{margin-left:auto !important}")
-        expect(types_tidy?(measure(panel))).to be(false)
+        found = measure(panel)
+        expect(types_tidy?(found)).to be(false)
+        expect(found["rights"].max - found["rights"].min).to be > 5
       end
     end
 
@@ -364,6 +371,7 @@ RSpec.describe "Deck shape panel", type: :system do
           found = measure(panel)
           expect(caption_whole?(found)).to be(false), "at #{width}: #{found.inspect}"
           expect(found["lineStarts"]).to include("·") if width == :frame366
+          expect(found["itemLines"].any? { it > 1 }).to be(true), "at #{width}: no item spans two lines: #{found.inspect}" if width.is_a?(Integer)
         end
       end
     end

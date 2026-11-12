@@ -206,4 +206,17 @@ RSpec.describe "Deck shape panel", type: :request do
       expect(html.css("aside .c-types li").first.css("span").map(&:text)).to eq([ "Creatures", "1,357", "1,234 proxy" ])
     end
   end
+
+  describe "counts under 1,000 in a slot of fixed width (spec 077, #320)" do
+    before do
+      own(card(cost: "{U}"), 44)
+      own(card(cost: "{R}"), 56)
+      get deck_path(deck)
+    end
+
+    it "writes counts under 1,000 in full in a slot of fixed width (AC-2.1)", :aggregate_failures do
+      expect(html.css("aside .c-manabar__seg span").map(&:text)).to eq([ "U 44", "R 56" ])
+      expect(html.css("aside .c-curve__count").map(&:text)[1]).to eq("100")
+    end
+  end
 end
