@@ -26,3 +26,4 @@ Write the spec's supersession list and the plan's "existing examples that change
 - A spec that fills in, extends or reverses something a recent spec left empty "until #NNN".
 - A plan step that says "update the existing examples" without a list of files and lines.
 - A helper or fixture that builds a file or a page shape another feature changed (`file_v4`, `as_current_version`).
+- A list of pages or controls copied from an issue, not from a grep: spec 072's issue named import and admin (which draw no select) and missed the Currency page, and the first audit table kept Edit a proxy (no select) until a review traced each view; its audit table comes from `git grep -n -E "<select|form\.select|f\.select|select_tag|collection_select|grouped_collection_select|c-select" -- app ':!app/assets'`, named in its `verification.md`.
