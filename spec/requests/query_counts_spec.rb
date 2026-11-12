@@ -185,4 +185,32 @@ RSpec.describe "Page query counts", type: :request do
 
     expect(paths.map { |path| queries_for(path) }).to eq(with_one)
   end
+
+  it "keeps the deck page's queries the same with 40 printings, owned and proxied, as with one printing, panel included (spec 069 AC-6.1)" do
+    deck = create(:deck, account: user.account, name: "Izzet Tempo")
+    card = lambda do
+      entry = printing
+      create(:mtg_card, identity: entry.identity, mana_value: 2.0)
+      entry
+    end
+    create_lot_in_zone(deck, "main", entry: card.call, quantity: 1)
+    few = queries_for(deck_path(deck))
+
+    entries = Array.new(39) { card.call }
+    entries.each { |entry| create_lot_in_zone(deck, "main", entry:, quantity: 1) }
+    entries.first(20).each { |entry| create(:deck_proxy, zone: deck.zone("main"), account: user.account, entry:, quantity: 2) } # 40 printings, lots and proxies
+
+    expect(queries_for(deck_path(deck))).to eq(few)
+  end
+
+  it "adds one statement for the panel, and none when Commander and Main hold no card (spec 069 AC-6.1, AC-6.3)" do
+    entry = printing
+    create(:mtg_card, identity: entry.identity, mana_value: 2.0)
+    outside = create(:deck, account: user.account, name: "Sideboard only")
+    inside = create(:deck, account: user.account, name: "In Main")
+    create_lot_in_zone(outside, "sideboard", entry:)
+    create_lot_in_zone(inside, "main", entry:)
+
+    expect(queries_for(deck_path(inside))).to eq(queries_for(deck_path(outside)) + 1) # the mana values, read once for the curve, average and note
+  end
 end

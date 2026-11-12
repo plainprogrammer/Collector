@@ -58,6 +58,17 @@ module MTG::Collecting
       legality: deck_legality(printing, face, format_key), costed: !printing.nil?)
   end
 
+  # The deck page's shape panel for Magic (spec 069, the extension side of `Catalog::DeckShape`): the figures of the Commander
+  # and Main zones and the partial that draws them. See {MTG::DeckShape} for the rules and the one statement it runs.
+  #
+  # @param zones [Array<Deck::Page::Zone>] `Deck::Page#zones`
+  # @return [Catalog::DeckShape::Answer, nil] nil when the deck has no Commander or Main zone
+  def self.deck_shape(zones)
+    figures = MTG::DeckShape.build(zones) or return
+
+    Catalog::DeckShape::Answer.new(partial: "mtg/deck_shapes/parts", figures:, scope: figures.scope, facts: figures.facts)
+  end
+
   # A printing with no extension record or no face data is not judged: it has no card data to be a legal or a banned card,
   # so it gets no marker (spec 066 AC-6.6).
   # @api private

@@ -25,4 +25,10 @@ module MTG::DeckGroups
   # @param position [Integer] from {position}
   # @return [String]
   def self.group_name(position) = NAMES.fetch(position)
+
+  # Whether a position is the Lands group's, so a caller can leave lands out without naming an index (spec 069: the curve).
+  #
+  # @param position [Integer, nil] from {position}
+  # @return [Boolean] false for nil
+  def self.land?(position) = !position.nil? && position == TYPES.index("Land")
 end

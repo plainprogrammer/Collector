@@ -16,7 +16,7 @@ RSpec.describe "The deck code", type: :config do
   let(:patterns) do
     %w[
     app/controllers/decks_controller.rb app/controllers/decks/*.rb app/views/decks/**/*.erb
-    app/models/deck.rb app/models/deck/*.rb app/models/location/placement.rb app/models/catalog/formats.rb app/models/catalog/deck_cards.rb
+    app/models/deck.rb app/models/deck/*.rb app/models/location/placement.rb app/models/catalog/formats.rb app/models/catalog/deck_cards.rb app/models/catalog/deck_shape.rb
     app/helpers/decks_helper.rb app/models/collection_import/decks.rb app/models/collection_import/deck_changes.rb
     app/views/collections/import_previews/_decks.html.erb app/views/icons/_decks.html.erb
     app/models/location/choices.rb app/helpers/location_choices_helper.rb
@@ -34,7 +34,7 @@ RSpec.describe "The deck code", type: :config do
   def relative(files) = files.map { |file| file.relative_path_from(Rails.root).to_s }
 
   it "covers every file of the feature" do
-    expect(files.size).to eq(20 + 6 + 1 + 1 + 4 + 1 + 15 + 6) # spec 064 brought the list to 20; spec 065 adds the choices model, its helper and the four picker views; spec 067 adds the selections controller (the glob already covers it); spec 066 adds Deck::Page and the deck page's four views (the `app/models/deck/*.rb` and `app/views/decks/**/*.erb` globs already cover them) and the seam `app/models/catalog/deck_cards.rb`; spec 068 adds 15: `deck/proxy.rb` and the proxies controller (the globs already cover them), the six proxy views under `app/views/decks`, `decks/proxies/removals_controller.rb`, `deck/proxy/addition.rb` and `cap_exceeded.rb`, `finds_deck.rb`, the import's `proxies.rb` and `proxy_rows.rb`, and the preview's `_proxies.html.erb`; spec 070 adds 6: the replacements and copies controllers, UseCopies and AddCopy, and the two new views (the globs already cover them)
+    expect(files.size).to eq(20 + 6 + 1 + 1 + 4 + 1 + 15 + 2 + 6) # spec 069 adds the seam `app/models/catalog/deck_shape.rb` and the page's frame `app/views/decks/_shape.html.erb` (the views glob already covers it); spec 064 brought the list to 20; spec 065 adds the choices model, its helper and the four picker views; spec 067 adds the selections controller (the glob already covers it); spec 066 adds Deck::Page and the deck page's four views (the `app/models/deck/*.rb` and `app/views/decks/**/*.erb` globs already cover them) and the seam `app/models/catalog/deck_cards.rb`; spec 068 adds 15: `deck/proxy.rb` and the proxies controller (the globs already cover them), the six proxy views under `app/views/decks`, `decks/proxies/removals_controller.rb`, `deck/proxy/addition.rb` and `cap_exceeded.rb`, `finds_deck.rb`, the import's `proxies.rb` and `proxy_rows.rb`, and the preview's `_proxies.html.erb`; spec 070 adds 6: the replacements and copies controllers, UseCopies and AddCopy, and the two new views (the globs already cover them)
   end
 
   it "names every file it lists, each of which exists" do
