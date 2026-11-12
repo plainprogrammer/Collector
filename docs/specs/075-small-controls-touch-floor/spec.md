@@ -7,6 +7,7 @@
 **Depends on:** [spec 072](../072-select-touch-floor/spec.md) (selects at 44px, the filter row centred, the coarse-pointer example technique; its Non-Goals named this change as a separate design-system ruling), [spec 063](../063-small-icon-stroke/spec.md) (decision 2: the app's additions go in `additions.css`, never in the export's `components.css`), all merged
 **Branch:** `075-small-controls-touch-floor`
 **Issue:** [#316](https://github.com/plainprogrammer/Collector/issues/316) (design-system lane, a follow-up of spec 072 / #315, filed by the maintainer's ruling)
+**Frozen:** the current rules are in [`design-system/README.md`](../../design-system/README.md) (whole spec); see the [specs index](../README.md)
 
 ---
 
