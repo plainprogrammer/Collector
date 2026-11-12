@@ -22,20 +22,25 @@ module NarrowFrame
     [ page.evaluate_script("document.getElementById('narrow').contentWindow.innerWidth"), narrow_frame_fits? ]
   end
 
-  # Whether the page in the narrow frame fits without horizontal scrolling, measured now.
-  # Call it from the top page, outside within_narrow_frame (it reaches the frame through #narrow).
+  # Whether the page the driver is in (the top page, or the frame's inside within_narrow_frame) fits without horizontal
+  # scrolling, measured now. The one measure of sideways overflow, so a check never has to write it again (#318).
   #
   # The page's scrollWidth is compared with the documentElement's clientWidth, the width the layout has, and not with
   # innerWidth: innerWidth includes a vertical scrollbar (classic in system specs, #271, about 15px on a Mac and 12px on
-  # CI), which the frame draws whenever its page is taller than it, so a page scrolling sideways by up to that much would
-  # pass (#318).
+  # CI), which the page has whenever it is taller than its window or frame, so a page scrolling sideways by up to that
+  # much would pass.
+  #
+  # @return [Boolean]
+  def page_fits_sideways?
+    page.evaluate_script("document.documentElement.scrollWidth <= document.documentElement.clientWidth")
+  end
+
+  # Whether the page in the narrow frame fits without horizontal scrolling, measured now (see page_fits_sideways?).
+  # Call it from the top page, outside within_narrow_frame, which it enters itself.
   #
   # @return [Boolean]
   def narrow_frame_fits?
-    page.evaluate_script(<<~JS)
-      (() => { const doc = document.getElementById("narrow").contentWindow.document.documentElement
-        return doc.scrollWidth <= doc.clientWidth })()
-    JS
+    within_narrow_frame { page_fits_sideways? }
   end
 
   def within_narrow_frame(&)

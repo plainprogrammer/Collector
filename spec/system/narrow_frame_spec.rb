@@ -38,4 +38,12 @@ RSpec.describe "The narrow-frame helper", type: :system do
     expect(measured["overflow"]).to eq(5)
     expect(narrow_frame_fits?).to be(false)
   end
+
+  # The same trap for the checks that run inside within_narrow_frame, or on the top page, and measure the page they are in.
+  it "reports the same overflow for the page the driver is in", :aggregate_failures do
+    open_sign_up_frame
+    within_narrow_frame { expect(page_fits_sideways?).to be(true) }
+    overflow_frame_page(5)
+    within_narrow_frame { expect(page_fits_sideways?).to be(false) }
+  end
 end
