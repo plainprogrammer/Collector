@@ -128,7 +128,7 @@ RSpec.describe "Selects meet the touch floor on a coarse pointer", type: :system
   end
 
   # Page overflow, wide selects and overlapping controls of the current document (AC-1.4). A control counts when it is not
-  # visually hidden (`.c-sr`), has a box, and is not clipped away by the nearest ancestor that clips its overflow (the
+  # visually hidden (`.c-sr`) or in a closed menu, has a box, and is not clipped away by the nearest ancestor that clips its overflow (the
   # document itself never clips: the whole page counts, not the viewport); a control of the filter row always counts, as
   # the row scrolls sideways inside itself on a phone (spec 057 decision 4).
   def layout_report
@@ -141,10 +141,16 @@ RSpec.describe "Selects meet the touch floor on a coarse pointer", type: :system
           }
           return null
         }
+        // Firefox still reports a box for the items of a closed `<details>` menu (an absolutely placed list nobody sees), which
+        // would overlap the table beneath it; only the menu's own summary is drawn.
+        const inClosedMenu = (el) => {
+          const details = el.closest("details:not([open])")
+          return !!details && !(el.tagName === "SUMMARY" && el.parentElement === details)
+        }
         const meets = (a, b) => !(a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top)
         const label = (el) => el.tagName.toLowerCase() + (el.id ? "#" + el.id : "") + (el.className ? "." + String(el.className).split(" ").join(".") : "")
         const controls = [...document.querySelectorAll("main select, main input:not([type=hidden]), main button, main .c-btn, main summary")]
-          .filter((el) => !el.closest(".c-sr"))
+          .filter((el) => !el.closest(".c-sr") && !inClosedMenu(el))
           .map((el) => ({ el, rect: el.getBoundingClientRect(), row: !!el.closest(".c-filterbar__filters") }))
           .filter(({ el, rect, row }) => rect.width > 0 && rect.height > 0 && (row || !clipper(el) || meets(rect, clipper(el).getBoundingClientRect())))
         const overlaps = []
