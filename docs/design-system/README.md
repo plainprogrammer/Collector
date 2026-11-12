@@ -71,7 +71,7 @@ It should feel like a well-kept archive that gets used: warm paper, deep ink, on
 - Phones get a compact header and a bottom tab bar (see Navigation).
 - On narrow screens secondary actions move into a "…" `Menu`; the primary action and `Done` stay visible. On wide screens those actions are plain buttons (e.g. `Edit many` in the `FilterBar`).
 - On touch devices every target is at least 44px (40px for small buttons, chips and the view switch); `collector/components.css` and `collector/additions.css` handle this with `pointer: coarse`. A select is at least 44px high there too (spec 072, [#315](https://github.com/plainprogrammer/Collector/issues/315)): `min-height: var(--touch-floor)` on `.c-field select` and `.c-select select`, one rule in `additions.css`; the compact heights, 36px in a form and 28px in the filter bar, are the fine pointer's. On a coarse pointer the filter row (`c-filterbar__filters`) centres its controls, so a 40px small button sits level with the 44px select. A new select is a `c-field` or `c-select` select and meets the floor with no rule of its own; a select outside both shapes is a design-system violation, not something the rule hides.
-- Nothing needs JavaScript to render or work. Menus are `<details>`; Stimulus only enhances (outside-click to close, arrow keys, `/` to focus search, live selection counts).
+- Nothing needs JavaScript to render or work. Menus are `<details>`; Stimulus only enhances (outside-click to close, `/` to focus search, live selection counts, and, on a phone, scrolling an opened menu clear of the tab bar).
 - State lives in the URL so Turbo Drive's back button and cache work: search and filters are a GET form, view and bulk mode are params (`?view=table&bulk=1`), and the results sit in a Turbo Frame the form targets.
 - Bulk actions submit a form and answer with Turbo Streams that replace the affected rows and the count; undo is a Turbo Stream too.
 - Nothing is hover-only: every hover affordance has a tap equivalent.
@@ -143,6 +143,8 @@ App additions (spec 062 and 064, in `collector/additions.css`): `DecksIndex`'s r
 App additions (spec 070, #257, in `collector/additions.css`): `c-field__value`, the read-only value under a `c-field__label` paragraph (`.c-decks .c-field__value`: no margin, a break inside a word; the label paragraph above it, `.c-decks .c-field > p.c-field__label`, has no margin either), used by Add a new copy's fixed Location and documented in `AddProxy`. `UseMyCopy` is built as drawn and adds no class.
 
 App additions (spec 063, in `collector/additions.css`): the stroke of small icons, set by the component that draws them (`c-badge`, `c-legal`, `c-btn`, `c-input`, `c-menu__item`, `c-filter`, `c-seg`), documented in Iconography.
+
+App additions (spec 074, #326, in `collector/additions.css`): two blocks, no new class. `Menu`'s clearance of the phone tab bar (`scroll-margin-top` and `scroll-margin-bottom` on `.c-menu__list` and a room box, an `::after` on the open list, below 640px on a tabbed shell; the controller's scroll is in `menu_controller.js`), and `DeckPage`'s zone tables' menu column floor (`th.c-zone__c-menu`, 4rem below 640px of the table's container). See `Menu` and `DeckPage`.
 
 ## Logo
 
