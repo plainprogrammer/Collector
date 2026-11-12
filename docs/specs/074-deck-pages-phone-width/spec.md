@@ -8,6 +8,7 @@
 **Branch:** `074-deck-pages-phone-width`
 **Issue:** [#326](https://github.com/plainprogrammer/Collector/issues/326) (design-system lane, filed by the maintainer's ruling from the implementation reviews of specs 070 and 071)
 **Frozen:** the current rules are in [`design-system/README.md`](../../design-system/README.md) and its component documents `Menu`, `TableActions`, `TabBar` and `DeckPage` (whole spec); see the [specs index](../README.md)
+**Plan:** retired in `e9cd9fdd2c5c78dd58565efaf190af154ef95bb5`; read it with `git show e9cd9fdd2c5c78dd58565efaf190af154ef95bb5^:docs/specs/074-deck-pages-phone-width/plan.md`
 
 ---
 
