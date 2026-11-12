@@ -30,6 +30,18 @@ module DecksHelper
   # @return [String]
   def deck_page_line(page) = "#{page.deck.format_name} · #{deck_counts_line(page.owned, page.proxy)}"
 
+  # "4 copies in 2 decks · 2 proxy": the count beside the card page's "In decks" (spec 073 decision 5). The copies and the decks
+  # come first, only when copies are in decks; the proxies follow, as the deck pages count them ("proxy" has no plural).
+  #
+  # @param uses [Deck::CardUses]
+  # @return [String] empty when the card is in no deck zone and has no proxy
+  def card_decks_count_line(uses)
+    parts = []
+    parts << "#{pluralize(number_with_delimiter(uses.owned), "copy")} in #{pluralize(number_with_delimiter(uses.deck_count), "deck")}" if uses.owned.positive?
+    parts << "#{number_with_delimiter(uses.proxy)} proxy" if uses.proxy.positive?
+    parts.join(" · ")
+  end
+
   # The dashed tag of a proxy count: `<span class="c-proxy">Proxy <b>2</b></span>` (ProxyTag, spec 060 FR-1).
   #
   # @param count [Integer]
