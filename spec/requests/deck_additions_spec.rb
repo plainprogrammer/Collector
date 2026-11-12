@@ -350,9 +350,23 @@ RSpec.describe "Add to deck", type: :request do
           expect(response.body).not_to include(rival)
         end
         expect(Deck::Proxy.count).to eq(0)
+      end
 
-        get new_catalog_entry_deck_addition_path(entry) # the owner's own request shows the owner's deck (positive control)
+      # The control of the example above: its absence of the rival's name means something only if each account's own page shows its own.
+      it "shows each account its own decks on the page and not the other's", :aggregate_failures do
+        rival = "Rival #{SecureRandom.hex(4)}"
+        theirs = create(:deck, name: rival)
+        own = create(:deck, account:, name: "Own #{SecureRandom.hex(4)}")
+        get new_catalog_entry_deck_addition_path(entry)
         expect(html.at_css("select#deck_zone").text).to include(own.name)
+        expect(html.at_css("select#deck_zone").text).not_to include(rival)
+
+        delete session_path
+        sign_in_as(User.find_by!(account: theirs.account))
+        get new_catalog_entry_deck_addition_path(entry)
+        expect(response).to have_http_status(:ok)
+        expect(html.at_css("select#deck_zone").text).to include(rival)
+        expect(html.at_css("select#deck_zone").text).not_to include(own.name)
       end
 
       it "ignores an account, user, location, kind or lot in the request (AC-5.3)", :aggregate_failures do

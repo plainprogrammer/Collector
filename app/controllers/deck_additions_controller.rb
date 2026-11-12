@@ -6,7 +6,8 @@
 class DeckAdditionsController < ApplicationController
   before_action :set_entry
 
-  # A zone removed while the form was open: the foreign key (the proxy path) or the lookup (the take) refused it.
+  # A zone removed while the form was open: the foreign key refused the proxy path's insert. This is that path's backstop; the
+  # take's own lookup of the zone raises `RecordNotFound` itself and never reaches this handler.
   rescue_from(ActiveRecord::InvalidForeignKey) { raise ActiveRecord::RecordNotFound }
 
   # The form, with nothing chosen but what the page itself decides (`Deck::Addition#chosen`).

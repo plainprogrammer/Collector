@@ -268,6 +268,7 @@ RSpec.describe "Card page", type: :request do
     it "is absent for a retired printing and a token (AC-1.3)", :aggregate_failures do
       [ create(:catalog_entry, :retired), create(:catalog_entry, kind: "token") ].each do |bad|
         get catalog_entry_path(bad)
+        expect(response).to have_http_status(:ok), bad.kind # the page answers, so the absence below is the link's and not an error page's
         expect(response.body).not_to include("Add to deck"), bad.kind
       end
       get catalog_entry_path(card) # the control: the same page for a live card has it

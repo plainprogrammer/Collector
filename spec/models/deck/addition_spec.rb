@@ -106,12 +106,12 @@ RSpec.describe Deck::Addition, type: :model do
     end
 
     it "merges into the zone's lot of the same identity (AC-3.4)", :aggregate_failures do
-      create(:lot, account:, entry: shown, quantity: 2, location: zone)
+      zone_lot = create(:lot, account:, entry: shown, quantity: 2, location: zone)
       lot_in(blue, quantity: 1)
       lot_in(nil, quantity: 1)
 
       expect(addition(use: "copies", quantity: "2").save).to be(true)
-      expect(account.lots.where(location: zone).pluck(:quantity)).to eq([ 4 ])
+      expect(account.lots.where(location: zone).pluck(:id, :quantity)).to eq([ [ zone_lot.id, 4 ] ]) # the zone's lot kept its id and gained the copies
     end
 
     it "refuses past 9,999 in one lot of the zone, naming the lot and rolling the first move back (AC-3.5)", :aggregate_failures do

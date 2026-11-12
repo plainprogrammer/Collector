@@ -225,6 +225,16 @@ RSpec.describe "The catalog for visitors", type: :request do
       expect(Deck::Proxy.count).to eq(0)
     end
 
+    it "reads lots for a signed-in collector's Add to deck page, so the visitor example's grep can fail (control of spec 071 AC-1.2)", :aggregate_failures do
+      create(:deck, account: collector.account) # a collector with no deck is shown the empty state, which reads no lots
+      create(:lot, account: collector.account, entry: printing)
+      sign_in_as(collector)
+      statements = statements_during { get new_catalog_entry_deck_addition_path(printing) }
+
+      expect(response).to have_http_status(:ok)
+      expect(statements.grep(/"lots"/)).not_to be_empty
+    end
+
     it "still sends a visitor to sign in for quick add, a new lot, the collection, the scanner and More (AC-4.3)",
       :aggregate_failures do
       expect { post catalog_entry_quick_add_path(printing) }.not_to change(Lot, :count)

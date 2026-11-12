@@ -57,7 +57,6 @@ RSpec.describe "Card page", type: :system do
 
   private
 
-  # Signs in, owns one foil copy of the card, and opens the card page in a 390px frame.
   # The head's actions at the frame's width: on one line, every control inside the row, the primary not clipped, no overflow.
   def head_row_fits
     page.evaluate_script(<<~JS)
@@ -94,6 +93,7 @@ RSpec.describe "Card page", type: :system do
     end
   end
 
+  # Signs in, owns one foil copy of the card, and opens the card page in a 390px frame.
   def open_card_on_phone
     user = system_sign_in_as(create(:user))
     create(:lot, account: user.account, entry:, finish: "foil", condition: "near_mint")

@@ -47,7 +47,7 @@ class Lot::FreeCopies
     lots.group_by(&:location_id).map { |_, group| Place.new(name: group.first.location&.name, count: group.sum(&:quantity)) }
   end
 
-  # The lots and counts a request for +count+ copies takes: whole lots from the front while a whole lot fits, then the rest
+  # The lots and counts a request for `count` copies takes: whole lots from the front while a whole lot fits, then the rest
   # from the next lot, which splits.
   #
   # @param count [Integer] from 1 to {#total}

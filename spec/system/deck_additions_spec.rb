@@ -131,6 +131,7 @@ RSpec.describe "Add to deck", type: :system do
       expect(block).to be_present
       expect(block).to include("@media (pointer: coarse) { .c-decks .c-pick .c-check { min-height:var(--touch-floor); } }")
       expect(block).not_to match(/#[0-9a-fA-F]{3,6}\b|font-family|rgb\(/)
+      expect(block).not_to include(".c-item__adddeck", ".c-field__error") # the block ends at the next heading: the other two rules have their own
     end
   end
 
