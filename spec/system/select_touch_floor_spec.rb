@@ -163,7 +163,8 @@ RSpec.describe "Selects meet the touch floor on a coarse pointer", type: :system
           const box = el.closest(".c-form, .c-numentry__line, .c-filterbar__filters, main")
           return el.getBoundingClientRect().width > box.getBoundingClientRect().width + 1
         }).map(label)
-        return { overflow: document.documentElement.scrollWidth - window.innerWidth, overlaps, wide }
+        // clientWidth, not innerWidth: innerWidth includes a classic scrollbar's 15px, which would hide a sideways overflow that small
+        return { overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, overlaps, wide }
       })()
     JS
   end
@@ -307,6 +308,7 @@ RSpec.describe "Selects meet the touch floor on a coarse pointer", type: :system
       without = other_controls_of(name, except: needs, needs:)
       with = other_controls_of(name, needs:)
       expect(without).not_to be_empty, "#{name}: no control found"
+      expect(with.size).to eq(without.size), "#{name}: #{without.size} controls without the block, #{with.size} with it"
       changed = without.zip(with).reject { |before, after| before == after }
       expect(changed).to be_empty, "#{name}: controls whose size changed: #{changed}"
     end

@@ -140,7 +140,7 @@ img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches:
 
 /* ---------- Selects meet the touch floor on a coarse pointer (spec 072) ---------- */
 /* A select is 36px in a form (`.c-field select`) and 28px in the filter bar (`.c-select select`), so a desktop keeps compact rows.
-   Every other control reaches 44px on a touch screen and so does a select, by `min-height`, which only raises. `.c-field` and
+   Every other control reaches the touch floor on a touch screen (40px for small buttons, chips and the view switch) and so does a select, by `min-height`, which only raises. `.c-field` and
    `.c-select` are the design system's two select shapes (`Form`, `FilterSelect`), so no page needs a rule of its own.
    The filter row's children use the default `stretch` and a `c-btn--sm` (40px there, an explicit height) does not stretch, so beside
    a 44px select it would sit at the top of the row, 4px short: the row centres its controls on a coarse pointer. Headless Firefox has

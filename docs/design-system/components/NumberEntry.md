@@ -35,4 +35,4 @@ Adding cards from one set by collector number (spec 026): the chosen set and lan
 - The page uses `.c-main.c-page`, the detail-page container (`c-page`, from `ItemPage`), so its parts respond to the page's width below 640px.
 - The number and quantity inputs take the `data` face through `c-numentry__data-input`.
 - Everything works without scripting. The `number-entry` Stimulus controller selects a rejected number and lets Enter on the finish select add the line.
-- On a coarse pointer the Language select (`c-select`) and the line form's Finish and Location selects (`c-field`) are at least the touch floor (44px) high (`FilterSelect`, `Form`, spec 072); the language row centres its select and its 40px "Change language" button.
+- On a coarse pointer the Language select (`c-select`) and the line form's Finish and Location selects (`c-field`) are at least the touch floor (44px) high (`FilterSelect`, `Form`, spec 072); the language row (which already centred its controls) keeps its select and its 40px "Change language" button.
