@@ -111,4 +111,39 @@ RSpec.describe "Deck checks", type: :request do
     get deck_check_path(deck)
     expect(response).to redirect_to(new_session_path)
   end
+
+  describe "statements" do
+    before { sign_in_as(user) }
+
+    # `count_queries` is `spec/support/query_counting.rb`'s (cached, SCHEMA and TRANSACTION statements are not counted).
+    def queries_for(path)
+      count = count_queries { get path }
+      expect(response).to have_http_status(:ok)
+      count
+    end
+
+    # +rows+ printings of one identity, bulk-inserted and owned in the deck's Main zone, ten of them also as proxies.
+    def fill(deck, rows, label)
+      set = create(:catalog_set, code: label)
+      identity = create(:catalog_identity, name: "Bulk #{label}")
+      now = Time.current
+      Catalog::Entry.insert_all(Array.new(rows) { |i| { collectible_type: "mtg", external_key: "#{label}-#{i}", catalog_set_id: set.id, catalog_identity_id: identity.id, number: i.to_s, language: "en", name: "Card #{i}", kind: "card", content_digest: "d", created_at: now, updated_at: now } })
+      ids = Catalog::Entry.where(catalog_set_id: set.id).pluck(:id)
+      MTG::Printing.insert_all(ids.map { |id| { catalog_entry_id: id, rarity: "common", finishes: %w[nonfoil], layout: "normal", scryfall_uri: "https://example.test/#{id}", faces: [], created_at: now, updated_at: now } })
+      location = deck.zone("main")
+      Lot.insert_all(ids.map { |id| { account_id: account.id, catalog_entry_id: id, quantity: 2, finish: "nonfoil", price_paid_cents: nil, location_id: location.id, lot_key: Lot.key_for("nonfoil", nil, nil, location.id), created_at: now, updated_at: now } })
+      ids.first(10).each { |id| create(:deck_proxy, zone: location, account:, entry: Catalog::Entry.find(id), finish: "nonfoil", quantity: 1) }
+    end
+
+    it "runs the plain deck page's statements however many rows the deck has", :aggregate_failures do
+      small = create(:deck, account:, name: "Small", format: "standard")
+      big = create(:deck, account:, name: "Big", format: "standard")
+      fill(small, 5, "small")
+      fill(big, 500, "big")
+      [ small, big ].each { |deck| get deck_path(deck) } # warm the page once
+      expect(queries_for(deck_check_path(small))).to eq(queries_for(deck_path(small)))
+      expect(queries_for(deck_check_path(big))).to eq(queries_for(deck_path(big)))
+      expect(queries_for(deck_check_path(big))).to eq(queries_for(deck_check_path(small)))
+    end
+  end
 end
