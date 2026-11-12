@@ -3,10 +3,11 @@ require "rails_helper"
 # The narrow-frame helper (spec/support/narrow_frame.rb) is what every phone-width example trusts to say a page doesn't
 # scroll sideways (#318), so it is checked against a page it can make overflow.
 RSpec.describe "The narrow-frame helper", type: :system do
-  # A short frame, so the sign-in page is taller than it and the frame draws its (classic, 15px in system specs) vertical scrollbar.
-  def open_sign_in_frame
-    visit new_session_path
-    open_in_narrow_frame(new_session_path, width: 360, height: 320, ready: "main")
+  # A short frame, so the sign-up page (the first-run page, with no account yet) is taller than it and the frame draws its
+  # vertical scrollbar (classic in system specs, about 12 to 15px by platform).
+  def open_sign_up_frame
+    visit new_registration_path
+    open_in_narrow_frame(new_registration_path, width: 360, height: 320, ready: "main")
   end
 
   # Makes the frame's page scroll sideways by overflow px (a one-pixel-high box at the left edge, wider than the viewport) and
@@ -24,14 +25,14 @@ RSpec.describe "The narrow-frame helper", type: :system do
   end
 
   it "reports a page that fits as fitting", :aggregate_failures do
-    expect(open_sign_in_frame).to eq([ 360, true ])
+    expect(open_sign_up_frame).to eq([ 360, true ])
     expect(narrow_frame_fits?).to be(true)
   end
 
   # The trap of #318: the old comparison was against innerWidth, which includes the scrollbar, so a page scrolling sideways
   # by less than the scrollbar's width passed whenever the frame scrolled vertically.
   it "reports a page that scrolls sideways by less than a scrollbar's width", :aggregate_failures do
-    open_sign_in_frame
+    open_sign_up_frame
     measured = overflow_frame_page(5)
     expect(measured["scrollbar"]).to be > 5
     expect(measured["overflow"]).to eq(5)
