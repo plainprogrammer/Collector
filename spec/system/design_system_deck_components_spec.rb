@@ -798,7 +798,7 @@ RSpec.describe "Design system: deck components", type: :system do
         const actions = getComputedStyle(document.querySelector("#probe .c-pagehead__actions")), button = document.querySelector("#probe .c-btn--primary")
         const shown = button.getClientRects().length > 0 && getComputedStyle(button).display !== "none"
         return { actions: actions.display, shown, height: button.getBoundingClientRect().height,
-                 fits: document.documentElement.scrollWidth <= window.innerWidth }
+                 fits: document.documentElement.scrollWidth <= document.documentElement.clientWidth }
       JS
     end
 
@@ -854,7 +854,7 @@ RSpec.describe "Design system: deck components", type: :system do
         const rect = (selector) => document.querySelector(selector).getBoundingClientRect()
         const text = document.createRange()
         text.selectNodeContents(document.querySelector("#probe .c-check"))
-        return { fits: document.documentElement.scrollWidth <= window.innerWidth, select: rect("#deck_zone").width, form: rect("#probe .c-form").width,
+        return { fits: document.documentElement.scrollWidth <= document.documentElement.clientWidth, select: rect("#deck_zone").width, form: rect("#probe .c-form").width,
                  textRight: text.getBoundingClientRect().right, fieldsetRight: rect("#probe .c-choices").right }
       JS
     end

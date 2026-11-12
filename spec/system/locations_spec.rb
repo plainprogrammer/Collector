@@ -33,7 +33,7 @@ RSpec.describe "Locations", type: :system do
           const nav = document.querySelector(".c-appbar__nav").getBoundingClientRect()
           const actions = document.querySelector(".c-appbar__actions").getBoundingClientRect()
           return [links.length, new Set(links.map((link) => Math.round(link.getBoundingClientRect().top))).size,
-            nav.right <= actions.left, document.documentElement.scrollWidth <= window.innerWidth]
+            nav.right <= actions.left, document.documentElement.scrollWidth <= document.documentElement.clientWidth]
         })()
       JS
     end

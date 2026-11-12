@@ -71,7 +71,7 @@ RSpec.describe "Add to deck", type: :system do
       page.evaluate_script(<<~JS)
         (() => { const sentence = document.querySelector(".c-field__error"), text = document.createRange() // the drawn text, not the box
           text.selectNodeContents(sentence)
-          return { page: document.documentElement.scrollWidth <= window.innerWidth,
+          return { page: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
                    edge: text.getBoundingClientRect().right <= window.innerWidth, scroll: sentence.scrollWidth <= sentence.clientWidth } })()
       JS
     end

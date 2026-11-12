@@ -201,7 +201,7 @@ RSpec.describe "Design system: deck rules, navigation and pickers", type: :syste
         return { links: links.length, lines: new Set(links.map((el) => Math.round(el.getBoundingClientRect().top))).size,
                  inside: links.every((el) => el.getBoundingClientRect().right <= box.right + 0.5),
                  beforeAccount: box.right <= actions.left, accountInside: actions.right <= barEnd + 0.5,
-                 scrolls: document.documentElement.scrollWidth > window.innerWidth }
+                 scrolls: document.documentElement.scrollWidth > document.documentElement.clientWidth }
       JS
     end
 
