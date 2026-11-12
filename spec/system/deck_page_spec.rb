@@ -166,10 +166,11 @@ RSpec.describe "Deck page", type: :system do
         return found })()
     JS
     trigger = page.evaluate_script(<<~JS)
-      (() => { const box = document.querySelector(".c-zone td.c-table__actions summary").getBoundingClientRect(); return [box.width, box.height] })()
+      (() => { const box = document.querySelector(".c-zone td.c-table__actions summary").getBoundingClientRect(); const token = getComputedStyle(document.documentElement).getPropertyValue("--touch-floor"); return { size: [box.width, box.height], token: parseFloat(token) } })()
     JS
     expect(floor).to eq("var(--touch-floor)")
-    expect(trigger).to all(be >= 30) # a small button drawn for a fine pointer
+    expect(trigger["token"]).to be >= 44 # what the rule's token resolves to
+    expect(trigger["size"]).to all(be >= 30) # a small button drawn for a fine pointer
   end
 
   # "Add a proxy" is a small ghost button, 28px with a mouse and 44px on a touch screen by the design system's rule (spec 075). The deck page's own rule lifts it to
