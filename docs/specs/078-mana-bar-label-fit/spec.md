@@ -7,6 +7,7 @@
 **Depends on:** [spec 077](../077-deck-shape-extreme-counts/spec.md) (the abbreviation and the band this closes; its measurements and screenshots are the baseline), [spec 060](../060-deck-components/spec.md) (the `DeckShape` CSS and decision 4's 10% rule), [spec 069](../069-deck-shape-panel/spec.md) (decision 9, the narrow class), all merged
 **Branch:** `078-mana-bar-label-fit`
 **Issue:** [#330](https://github.com/plainprogrammer/Collector/issues/330) (design-system lane, filed by the maintainer's ruling from spec 077)
+**Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (whole spec); the panel's markup and CSS rule are `DeckShape` in the [design system](../../design-system/README.md); see the [specs index](../README.md)
 
 ---
 
