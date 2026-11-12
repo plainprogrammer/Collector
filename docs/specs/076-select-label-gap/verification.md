@@ -54,3 +54,7 @@ Read-only review on Opus (one round) of `git diff origin/main...HEAD`, against t
 - Minor, no proxy chooser or bulk-mode screenshots, and the issue's "Sort". Covered by the geometry examples and the audit above; no screenshot added.
 - Nit, the block heading "Select inside the filter bar" no longer describes number entry's language row. Not changed: the issue and `FilterSelect.md` name the block by it, and a rename would touch #316's neighbouring edits in the same file.
 - Nit, the collection shot pairs differ only in the factory set code. Stated above.
+
+## Distillation
+
+`distill-feature` ran before the pull request: no area doc under `docs/architecture/` covers the design system (the index lists it "no area doc", as for spec 044), so nothing was written there; the rule's current home is `FilterSelect.md` and `NumberEntry.md`, updated in this branch. There is no spec to freeze and no plan to retire, so the index row stays "Approved" until the merge. No ADR is proposed: the change is one rule in the component.
