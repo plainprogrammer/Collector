@@ -104,7 +104,7 @@ Code:
 #   that count and reads only what the rows already hold (the printings' loaded extension records); it runs a fixed number of
 #   statements however many rows there are, and none when no card counts.
 # * `partial` is the view that draws the panel's parts, rendered with a local `figures`; `figures` is what it draws;
-#   `scope` is the scope line ("Main · 60 cards") and `facts` the fold's facts line.
+#   `scope` is the scope line (the counted zones' names and their card count) and `facts` the fold's facts line.
 # A vocabulary without `deck_shape`, a type no longer registered and a nil answer give the page no panel.
 # @see file:collection-and-lots.md
 module Catalog::DeckShape
@@ -175,7 +175,7 @@ RSpec.describe MTG::DeckShape, type: :model do
   let(:account) { create(:user).account }
   let(:deck) { create(:deck, account:, name: "Izzet Tempo") }
 
-  # A printing with a face, and its card's mana value (nil: the card has none yet; omit :mana_value to give none).
+  # A printing with a face, and its card's mana value (pass `mana_value: nil` for a card with none yet).
   def card(name: "Card #{SecureRandom.hex(3)}", type_line: "Instant", cost: "{R}", mana_value: 1.0, faces: nil)
     entry = create(:catalog_entry, name:)
     faces ||= [ { "name" => name, "type_line" => type_line, "mana_cost" => cost, "image_uris" => {} } ]
@@ -217,8 +217,6 @@ describe ".build" do
     expect(figures.cards).to eq(4)
     expect(figures.scope).to eq("Main · 4 cards")
     expect(figures.types.map(&:name)).to eq([ "Instants" ])
-    expect(figures.curve.last.total).to eq(0) # the 7s are outside the counted zones (add this line in T4)
-    expect(figures.symbols.map(&:colour)).to eq([ "R" ]) # (add this line in T5)
   end
 
   it "counts Commander and Main together, in the deck's zone order, and not Considering", :aggregate_failures do
@@ -231,8 +229,6 @@ describe ".build" do
 
     expect(figures.scope).to eq("Commander + Main · 100 cards")
     expect(figures.types.map(&:name)).to eq([ "Instants" ])
-    expect(figures.curve.last.total).to eq(0) # add in T4
-    expect(figures.symbols.map(&:colour)).to eq([ "R" ]) # add in T5
   end
 
   it "says '1 card' and '0 cards' and delimits thousands", :aggregate_failures do
@@ -368,6 +364,8 @@ Run `bin/rspec spec/models/mtg/deck_shape_spec.rb`. Commit `feat(decks): add the
 **Implements** decisions 4, 5, 6, 7 (mana value), 11 (one statement). **Satisfies** AC-2.1 to AC-2.7, AC-1.5 (curve parts), AC-6.1/AC-6.3 (statement).
 **Files:** `app/models/mtg/deck_shape.rb`, `spec/models/mtg/deck_shape_spec.rb`.
 
+**Edit T3's two zone examples first**: add `expect(figures.curve.last.total).to eq(0)` to each (the 7s in Sideboard and Considering are outside the counted zones; the curve's 6+ column would hold them if they were counted).
+
 Examples first:
 
 ```ruby
@@ -408,7 +406,7 @@ describe "#curve" do
     expect(shape.curve_owned).to eq(1)
   end
 
-  it "uses the card's stored value for a double-faced and a reversible card, and keeps a Sorcery // Land in the curve (AC-2.7)" do
+  it "uses the card's stored value for a double-faced and a reversible card, and keeps a Sorcery // Land in the curve (AC-2.7)", :aggregate_failures do
     own(card(mana_value: 2.0, faces: [ { "name" => "A", "type_line" => "Creature — Human", "mana_cost" => "{1}{U}" },
                                        { "name" => "B", "type_line" => "Land", "mana_cost" => "" } ])) # transform: front Creature, back Land
     own(card(mana_value: 4.0, faces: [ { "name" => "Ajani", "type_line" => "Legendary Planeswalker — Ajani", "mana_cost" => "{2}{W}{W}" },
@@ -548,7 +546,7 @@ Code to add to `MTG::DeckShape` (comments for each public method; the first-use 
     return if curve_cards.zero?
 
     mean = valued.sum { |row, value| value.to_r * row.total } / curve_cards
-    ActiveSupport::NumberHelper.number_to_delimited(format("%.1f", mean.round(1).to_f))
+    delimited(format("%.1f", mean.round(1).to_f))
   end
 
   # The nonland cards with no mana value (decision 6): a catalog not refreshed since spec 058, or a card Scryfall gave none.
@@ -563,13 +561,13 @@ Code to add to `MTG::DeckShape` (comments for each public method; the first-use 
     "#{counted(unvalued, 'nonland card')} #{unvalued == 1 ? 'has' : 'have'} no mana value yet."
   end
 
-  private
+  # Helpers go below the class's single `private` (T3), not under a second one.
     def nonland = @nonland ||= rows.reject { MTG::DeckGroups.land?(it.answer.position) }
 
     # [[row, mana value]] for the nonland rows whose card has one.
     def valued = @valued ||= nonland.filter_map { |row| (value = mana_values[row.entry.catalog_identity_id]) && [ row, value ] }
 
-    # One statement, none when no card counts: { identity id => mana value } (spec 058's column, global catalog data).
+    # One statement, none when no card counts: `{ identity id => mana value }` (spec 058's column, global catalog data).
     def mana_values
       @mana_values ||= begin
         ids = rows.map { it.entry.catalog_identity_id }.uniq
@@ -584,6 +582,8 @@ Code to add to `MTG::DeckShape` (comments for each public method; the first-use 
 
 **Implements** decisions 7 (first face's cost), 8, 9, 10, 14. **Satisfies** AC-4.1 to AC-4.8, AC-4.10, AC-2.9 (label text), AC-4.9 (label text), AC-1.5, scope facts.
 **Files:** `app/models/mtg/deck_shape.rb`, `spec/models/mtg/deck_shape_spec.rb`.
+
+**Edit T3's two zone examples first** ("counts Main only…" and "counts Commander and Main together…"): add `expect(figures.symbols.map(&:colour)).to eq([ "R" ])` to each. The Sideboard and Considering cards hold a colour (G), a type (Sorcery) and a mana value (7) that the counted zones lack, so counting them would change the figure; that is what makes AC-2.8 and AC-4.10 able to fail.
 
 Examples first (symbols):
 
@@ -768,8 +768,8 @@ Code:
   # @return [String]
   def facts = [ scope, ("average mana value #{average_text}" if average_text) ].compact.join(" · ")
 
-  private
-    # { "W" => 3, … } for every colour: each symbol of every row's first face's cost, times the row's cards.
+  # Below the single `private` too:
+    # `{ "W" => 3, … }` for every colour: each symbol of every row's first face's cost, times the row's cards.
     def symbol_counts
       @symbol_counts ||= rows.each_with_object(COLOURS.keys.index_with { 0 }) do |row, counts|
         cost = row.entry.extension&.faces&.first&.dig("mana_cost")
@@ -778,7 +778,7 @@ Code:
     end
 ```
 
-(`counted` changes to use `delimited`; keep one definition.) Check the AC-2.9 expected string in the example: 14 cards in the curve = 11+1+2; column 1 = 12; column 6+ = 2; average (12×1 + 2×6)/14 = 24/14 = 1.714 → "1.7". Run, commit `feat(decks): add the shape panel's coloured symbols and texts (#256)`.
+Check the AC-2.9 expected string in the example: 14 cards in the curve = 11+1+2; column 1 = 12; column 6+ = 2; average (12×1 + 2×6)/14 = 24/14 = 1.714 → "1.7". Run, commit `feat(decks): add the shape panel's coloured symbols and texts (#256)`.
 
 ### Phase 3: The vocabulary's answer and the page
 
@@ -946,8 +946,19 @@ RSpec.describe "Deck shape panel", type: :request do
     expect(html.at_css("aside .c-manacap").text).to eq("White 1 · 5% · Blue 19 · 95%")
   end
 
-  it "shows the empty states of a deck with no card (AC-1.5)", :aggregate_failures do
+  it "skips a card of another collectible in the panel and shows its row flat in the zone table (AC-3.5)", :other_collecting, :aggregate_failures do
+    own(card, 2)
+    stranger = create(:catalog_entry, collectible_type: "other", name: "Foreign card")
+    create_lot_in_zone(deck, "main", entry: stranger, quantity: 4)
     get deck_path(deck)
+
+    expect(html.at_css("aside .c-shape__scope").text).to eq("Main · 2 cards")
+    expect(html.css("aside .c-types li").map { |li| li.css("span").first.text }).to eq([ "Instants" ])
+    expect(html.css("section.c-zone").find { it.at_css("h2").text == "Main" }.text).to include("Foreign card")
+  end
+
+  it "shows the empty states of a Casual deck with no card (AC-1.5)", :aggregate_failures do
+    get deck_path(create(:deck, account:, name: "Empty casual", format: "casual"))
 
     aside = html.at_css("aside.c-deck__shape")
     expect(aside.at_css(".c-shape__scope").text).to eq("Main · 0 cards")
@@ -1131,8 +1142,9 @@ it "keeps the deck page's queries the same with 60 cards of 40 printings as with
   create_lot_in_zone(deck, "main", entry: card.call, quantity: 1)
   few = queries_for(deck_path(deck))
 
-  39.times { create_lot_in_zone(deck, "main", entry: card.call, quantity: 1) }
-  20.times { create(:deck_proxy, zone: deck.zone("main"), account: user.account, entry: card.call, quantity: 2) }
+  entries = Array.new(39) { card.call }
+  entries.each { |entry| create_lot_in_zone(deck, "main", entry:, quantity: 1) }
+  entries.first(20).each { |entry| create(:deck_proxy, zone: deck.zone("main"), account: user.account, entry:, quantity: 2) } # 40 printings, lots and proxies
 
   expect(queries_for(deck_path(deck))).to eq(few)
 end
@@ -1198,14 +1210,14 @@ RSpec.describe "Deck shape panel", type: :system do
 
   describe "the page container's widths (AC-1.3)" do
     [ 360, 640 ].each do |width|
-    it "shows the details copy, closed, in a #{width}px frame (a container under 640px), and not the aside", :aggregate_failures do
-      open_in_narrow_frame(deck_path(deck), width:, ready: "details.c-shapefold")
-      within_narrow_frame do
-        expect(shown?("details.c-shapefold")).to be(true)
-        expect(shown?("aside.c-deck__shape")).to be(false)
-        expect(page.evaluate_script('document.querySelector("details.c-shapefold").open')).to be(false)
-        expect(page.evaluate_script('document.querySelector("details.c-shapefold summary").getBoundingClientRect().height')).to be >= 44
-      end
+      it "shows the details copy, closed, in a #{width}px frame (a container under 640px), and not the aside", :aggregate_failures do
+        open_in_narrow_frame(deck_path(deck), width:, ready: "details.c-shapefold")
+        within_narrow_frame do
+          expect(shown?("details.c-shapefold")).to be(true)
+          expect(shown?("aside.c-deck__shape")).to be(false)
+          expect(page.evaluate_script('document.querySelector("details.c-shapefold").open')).to be(false)
+          expect(page.evaluate_script('document.querySelector("details.c-shapefold summary").getBoundingClientRect().height')).to be >= 44
+        end
     end
     end
 
@@ -1287,12 +1299,13 @@ RSpec.describe "Deck shape panel", type: :system do
       paint = page.evaluate_script(<<~JS)
         (() => { const token = (name) => { const p = document.createElement("span"); p.style.color = `var(${name})`; document.body.append(p); const c = getComputedStyle(p).color; p.remove(); return c }
           const owned = getComputedStyle(document.querySelector("aside .c-curve__owned")), proxy = getComputedStyle(document.querySelector("aside .c-curve__proxy"))
-          const seg = document.querySelector("aside .c-manabar__seg--u"), segStyle = getComputedStyle(seg)
+          const segments = [...document.querySelectorAll("aside .c-manabar__seg")].map((seg) => { const colour = seg.className.match(/seg--([wubrg])\b/)[1], style = getComputedStyle(seg)
+            return style.backgroundColor === token(`--mana-${colour}`) && style.color === token(`--on-mana-${colour}`) })
           return { owned: owned.backgroundColor === token("--ink-muted"), proxyHatch: proxy.backgroundImage.includes("repeating-linear-gradient"),
                    noBrand: [owned, proxy].every((s) => s.backgroundColor !== token("--brand") && s.borderTopColor !== token("--brand")),
-                   seg: segStyle.backgroundColor === token("--mana-u") && segStyle.color === token("--on-mana-u") } })()
+                   segments: segments.length, segmentsRight: segments.every(Boolean) } })()
       JS
-      expect(paint).to eq({ "owned" => true, "proxyHatch" => true, "noBrand" => true, "seg" => true })
+      expect(paint).to eq({ "owned" => true, "proxyHatch" => true, "noBrand" => true, "segments" => 5, "segmentsRight" => true })
     end
   end
 end
@@ -1307,7 +1320,7 @@ Run the new system file and `deck_page_spec` one at a time (shared test database
 **Satisfies** AC-7.1 to AC-7.4. Documents are verified by reading, never by RSpec (`.claude/rules/testing.md`).
 **Files and statements to change** (each with spec 069 and #256 as the source, inline):
 
-- `docs/architecture/collection-and-lots.md`: (1) the deck-page paragraph's last sentence "The right column stays empty for the shape panel (#256)." becomes the panel's rules: the seam (a third optional answer, `deck_shape(zones)`, asked once by `DecksController#show`), the counted zones (Commander and Main, chosen by the extension), one type per card by the zone tables' group in their order, the curve (nonland cards with a mana value, floor bucketing, 6+ from 6, owned and proxy apart), the exact one-decimal average, the cards with no mana value left out and noted, the first face's cost and Scryfall's mana value, the symbol rules (hybrid and Phyrexian count toward each colour, half symbols and generic never), the percentages and the narrow rule, one added statement and none for an empty deck; (2) **the split-card limit named as deliberate** ("a split card's second half adds no symbol; its mana value is Scryfall's, both halves added"), as the coordinator asked; (3) the second paragraph's list of answers ("The page's collectible part is a second optional answer…") gains the third; (4) line ~152's "(both not built …)" and line ~291's "the shape panel (#256) and proxies (#254) are not" statements brought up to date (grep first: `git grep -n "shape panel\|#256\|not built" -- docs/architecture ':!.kamal/secrets'`); (5) Sources gain spec 069 and #256; (6) the Named constants table gains `MTG::DeckShape::COUNTED_ZONES`, `TOP_COLUMN` and the narrow threshold (10%).
+- `docs/architecture/collection-and-lots.md`: (1) the deck-page paragraph's last sentence "The right column stays empty for the shape panel (#256)." becomes the panel's rules: the seam (a second optional answer after `deck_card`, `deck_shape(zones)`, asked once by `DecksController#show`), the counted zones (Commander and Main, chosen by the extension), one type per card by the zone tables' group in their order, the curve (nonland cards with a mana value, floor bucketing, 6+ from 6, owned and proxy apart), the exact one-decimal average, the cards with no mana value left out and noted, the first face's cost and Scryfall's mana value, the symbol rules (hybrid and Phyrexian count toward each colour, half symbols and generic never), the percentages and the narrow rule, one added statement and none for an empty deck; (2) **the split-card limit named as deliberate** ("a split card's second half adds no symbol; its mana value is Scryfall's, both halves added"), as the coordinator asked; (3) the second paragraph's list of answers ("The page's collectible part is a second optional answer…") gains the third; (4) line ~152's "(both not built …)" and line ~291's "the shape panel (#256) and proxies (#254) are not" statements brought up to date (grep first: `git grep -n "shape panel\|#256\|not built" -- docs/architecture ':!.kamal/secrets'`); (5) Sources gain spec 069 and #256; (6) the Named constants table gains `MTG::DeckShape::COUNTED_ZONES`, `TOP_COLUMN` and the narrow threshold (10%).
 - `docs/architecture/catalog-core.md:180`: "Nothing reads the column yet; the deck shape panel … is its first reader" becomes "The deck shape panel's curve and average read it (spec 069, `MTG::DeckShape`); a card with no value is left out of the curve and noted".
 - `docs/design-system/components/DeckShape.md`: replace "Spec 060 builds nothing that reads it … are #256's" with what #256 settled: the bucketing, the average's rounding and exactness, the type order (the zone tables'), which cost counts (first face), the symbol rules, the note under the curve (a second `c-curve__avg` paragraph, after the average) and the empty Card types and Mana symbols sentences (`c-manacap`), the aria-label wording with 0 and 1 cards. `DeckPage.md`: the "As built" paragraph no longer says neither copy is rendered and the second column stays empty; the "**No shape panel** (a deck page before the panel exists)" bullet reads "a deck whose collectible draws no panel"; spec 069 is named in the paragraph's source line.
 - `CLAUDE.md`: the decks sentence gains "and shows the deck's shape, its mana curve, card types and coloured mana symbols, in a panel beside the zones (`Catalog::DeckShape`, `MTG::DeckShape`, spec 069)", and the guard sentence "(the deck page's `Catalog::DeckCards` seam among them)" names `Catalog::DeckShape` too. Keep the edit to those two phrases (shared file).
@@ -1358,6 +1371,6 @@ Write `docs/specs/069-deck-shape-panel/verification.md` (AC → the example or t
 
 - `Deck::Page` is not edited; if the page spec's statement counts (3 and 6) change, a mistake was made.
 - The rounding rule needs `Rational`: Ruby's `Float#round(1)` happens to give 0.2 for 0.15, so the 0.15 example guards against `format("%.1f", float)` (which rounds the binary value) rather than against `round` itself.
-- The system fixture's 6+ column count is "1,357" (123 owned + 1,234 proxy) in a column about 36px wide at 360px. If AC-5.3's `clipped` check fails on `.c-curve__count`, that is a real finding to take back to spec 060's CSS (a scope question for the coordinator), not something to hide by shrinking the fixture.
+- The system fixture's 6+ column count is "1,357" (123 owned + 1,234 proxy) in a column about 36px wide at 360px. If AC-5.3's `clipped` check fails on `.c-curve__count`, that is a real finding to take back to spec 060's CSS (a scope question for the coordinator), not something to hide by shrinking the fixture. The margin is thin (the count is about 36.0px wide in a column of about 36.4px, in IBM Plex Mono at 12px): T9 also measures the count's width against its column and records the margin in `verification.md`; if the check fails, ask the coordinator before touching the CSS (spec 060 owns it).
 - `row.answer.position` is the page's own group, so the panel can't disagree with the zone tables about a card's type.
 - #257 (spec 070) may edit `decks/show.html.erb` and `DecksController`: the edits here are one block inside `c-deck` and one line in `show`; on a merge conflict keep both.
