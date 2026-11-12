@@ -110,7 +110,7 @@ RSpec.describe "Deck shape panel", type: :system do
   # A 375px frame is a 360px viewport: the frame keeps a classic 15px scrollbar that a phone doesn't have. Its chain is the body's 344px
   # (8px margin a side), the main's 16px padding a side (a 312px container), the details' 2px border (310px) and the panel's 16px padding
   # a side (a 278px inside). A pinned-scrollbar 360px frame is 15px narrower (263px inside), where the fixture's 1,357 count overflows
-  # its column by about 1px: a CSS question raised with the maintainer, not decided here. Each check can fail: the panel scrolling
+  # its column by about 1.85px: a CSS question raised with the maintainer, not decided here. Each check can fail: the panel scrolling
   # sideways, an element drawn past the padding box's right edge, and a text element cut off at its own box.
   it "fits the open fold's parts in the panel's interior at a real phone's 360px viewport, with nothing cut off and each count with room in its column (AC-5.3)", :aggregate_failures do
     open_in_narrow_frame(deck_path(deck), width: 375, ready: "details.c-shapefold")
