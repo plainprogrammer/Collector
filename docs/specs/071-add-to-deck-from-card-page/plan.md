@@ -1506,7 +1506,7 @@ RSpec.describe "Add to deck", type: :system do
           for (const rule of media.cssRules) {
             const sel = rule.selectorText || ""
             if (sel === ".c-decks .c-pick .c-check") found.check = rule.style.minHeight
-            if (sel.includes(".c-decks .c-field select")) found.select = rule.style.minHeight
+            if (sel.split(",").map((part) => part.trim()).includes(".c-field select")) found.select = rule.style.minHeight
             if (sel.split(",").map((part) => part.trim()).includes(".c-input")) found.input = rule.style.minHeight
           } }
         found.floor = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--touch-floor")) || 0
@@ -1558,7 +1558,7 @@ RSpec.describe "Add to deck", type: :system do
     end
 
     # Headless Firefox has a fine pointer, so the coarse-pointer sizes are read from the stylesheet (spec 068's lesson). The rule
-    # of each control type, in order: buttons (`.c-decks .c-btn`, every pointer), the select (`.c-decks .c-field select`, coarse),
+    # of each control type, in order: buttons (`.c-decks .c-btn`, every pointer), the select (`.c-field select`, coarse: spec 072's app-wide rule),
     # the number field (components.css' `.c-input`, coarse), the radio rows (this spec's one rule, coarse).
     it "gives every control of the page the 44px floor by a rule it reads (AC-6.3, AC-6.4)", :aggregate_failures do
       visit new_catalog_entry_deck_addition_path(wide_entry)
