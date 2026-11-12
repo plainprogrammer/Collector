@@ -19,6 +19,10 @@
     </div>
   </div>
   <div class="c-deck">
+    <% if @shape %>
+      <%= render "decks/shape", answer: @shape, copy: :fold %>
+      <%= render "decks/shape", answer: @shape, copy: :aside %>
+    <% end %>
     <div class="c-deck__zones">
       <%= render partial: "decks/zone", collection: @page.zones, as: :zone %>
     </div>

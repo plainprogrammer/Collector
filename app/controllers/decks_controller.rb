@@ -9,9 +9,11 @@ class DecksController < ApplicationController
     @listing = Deck::Listing.new(Current.account)
   end
 
-  # One deck's zones with the cards the account owns in them (spec 066). Reads only.
+  # One deck's zones with the cards the account owns in them (spec 066), and the shape panel its collectible draws beside them
+  # (spec 069). Reads only.
   def show
     @page = Deck::Page.new(@deck)
+    @shape = Catalog::DeckShape.answer(@deck.collectible_type, @page.zones) # spec 069: the panel, nil when the collectible draws none
   end
 
   def new

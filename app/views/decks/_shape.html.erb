@@ -1,0 +1,15 @@
+<%# One copy of the shape panel (spec 069, DeckShape.md "The two copies"): the extension's partial draws the parts, this frame is the page's. %>
+<% parts = render(partial: answer.partial, locals: { figures: answer.figures }) %>
+<% if copy == :aside %>
+  <aside class="c-deck__shape">
+    <section class="c-shape" aria-labelledby="shape-title-aside">
+      <div><h2 class="c-shape__title" id="shape-title-aside">Deck shape</h2><p class="c-shape__scope"><%= answer.scope %></p></div>
+      <%= parts %>
+    </section>
+  </aside>
+<% else %>
+  <details class="c-shapefold">
+    <summary><span class="c-shapefold__title">Deck shape</span><span class="c-shapefold__facts"><%= answer.facts %></span></summary>
+    <div class="c-shape c-shape--bare"><%= parts %></div>
+  </details>
+<% end %>

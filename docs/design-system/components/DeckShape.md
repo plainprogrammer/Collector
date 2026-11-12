@@ -42,7 +42,13 @@ The `details` copy, shown below 640px of the page container, holds the same thre
 
 - Figures come from the deck's Main zone and its Commander zone only, never Sideboard or Considering. The scope line says which and how many cards ("Main · 60 cards").
 - The curve takes seven `[owned, proxy]` pairs, for mana value 0 to 6+, counting nonland cards. Lands are not in the curve; they are in the card types.
-- The mana value is `mtg_cards.mana_value` of spec 058. Spec 060 builds nothing that reads it. How 6+ and half values fall into the seven columns, which faces of a double-faced card count and the order of the card types are #256's, as are hybrid and Phyrexian symbols in the mana bar (spec 060 Non-Goals).
+- The mana value is `mtg_cards.mana_value` of spec 058, which spec 069 (#256) reads. Spec 069 settled what spec 060 left to it:
+  - **Bucketing:** column `n` from 0 to 5 holds the values from `n` up to but not including `n + 1` (floor, so 0.5 is in column 0 and 2.5 in column 2) and 6+ holds every value from 6 (spec 069 decision 4).
+  - **The average** is exact (the mean of the curve's cards, in rational arithmetic), shown to one decimal rounded half up with the trailing zero kept ("3.0") and a thousands delimiter, and is left out when no card is in the curve (decision 5, decision 14).
+  - **The order of the types** is the zone tables' groups (`MTG::DeckGroups::NAMES`), only those that have a card, each type once (decision 3).
+  - **The cost that counts** is the first face's: a double-faced or split card's symbols are its first face's, and its mana value is Scryfall's number for the card (decision 7).
+  - **Symbols:** a hybrid counts one toward each colour, a Phyrexian symbol one toward its colour, `{2/W}` and `{C/W}` one toward the colour only; generic, `{X}`, `{C}`, snow and half symbols never count (decision 8). A percentage is the colour's share, rounded half up on its own (decision 9).
+  - **A nonland card with no mana value** is left out of the curve and the average, and a note in a second `c-curve__avg` paragraph after the average line reads "N nonland cards have no mana value yet." ("1 nonland card has no mana value yet."), absent when there is none (decision 6, decision 12).
 - Card types take a name with its owned and proxy counts.
 - The mana bar takes the counts of coloured symbols for W, U, B, R and G. It draws only those five, never generic or colourless symbols, and always in W, U, B, R, G order (spec 060 decision 4).
 - The average mana value and the scope line are given as text.
@@ -54,13 +60,14 @@ The `details` copy, shown below 640px of the page container, holds the same thre
 - A column is a count above a bar of at most 96px, with the proxy part on top of the owned part, and one baseline in `line-strong` under the seven columns. The mana values 0 to 6+ are labelled under it. The count above a column is owned plus proxy, in mono.
 - The numbers are custom properties in a `style` attribute: `--owned`, `--proxy` and `--max` (the tallest column's owned plus proxy), all unitless. The CSS makes a part's height `96px × part ÷ max`. No value in a `style` attribute is a colour.
 - Owned is a solid `ink-muted` fill. Proxy is the hatch: lines at 45°, 1.5px wide in `line-strong` every 5px on `surface-raised`, with a 1px `ink-muted` outline. The two outlines share one line.
-- Under the chart sit the legend, with a swatch for each series ("Owned 30", "Proxy 6"), and "Average mana value 2.3". Counts, legend and average repeat what the chart shows, so no value is carried by fill or pattern alone.
-- The chart is `role="img"` and its `aria-label` reads every column: the scope, the number of nonland cards, then each mana value with its card count and the owned and proxy split, then the average. The columns and the labels are `aria-hidden`, so a screen reader gets the label once. A part of zero is left out of the sentence ("1, 12 cards (11 owned, 1 proxy)"; "0, 4 cards (4 owned)").
+- Under the chart sit the legend, with a swatch for each series ("Owned 30", "Proxy 6"), and "Average mana value 2.3" (and, when a nonland card has no mana value, the note as a second `c-curve__avg` paragraph, spec 069 decision 12). Counts, legend and average repeat what the chart shows, so no value is carried by fill or pattern alone.
+- The chart is `role="img"` and its `aria-label` reads every column: the scope, the number of nonland cards, then each mana value with its card count and the owned and proxy split, then the average. The columns and the labels are `aria-hidden`, so a screen reader gets the label once. A part of zero is left out of the sentence ("1, 12 cards (11 owned, 1 proxy)"; "0, 4 cards (4 owned)"). With one card the label reads "Mana curve of the 1 nonland card in Main: …", and with none "Mana curve of the 0 nonland cards in Main: no cards." (spec 069 decision 14).
 
 **Card types** (`c-types`, spec 060 decision 2, AC-2.5).
 
 - Each type is one row: its name, its count (owned plus proxy, mono) at the end, and, when it has proxies, a muted "N proxy" (mono, 12px, `ink-muted`) after the count. Rows are divided by `line`.
 - A type with no proxies keeps an empty `c-types__proxy`. The element has a minimum width of 4.5rem, so the counts of every row line up whether or not a row has a suffix.
+- With no card in the counted zones the part keeps its heading and says "No cards yet." in a `c-manacap` paragraph in place of the list (spec 069 decision 14).
 
 **The mana bar** (`c-manabar`, `c-manacap`, spec 060 decisions 3 and 4, AC-2.6, AC-2.7).
 
@@ -69,6 +76,7 @@ The `details` copy, shown below 640px of the page container, holds the same thre
 - A segment under 10% of the symbols adds `c-manabar__seg--narrow`, which hides its label: the server sets the class, with no JavaScript. The caption carries that segment's count.
 - The caption (`c-manacap`) names every colour present with its count and its percentage: "Blue 44 · 73% · Red 16 · 27%". In a five-colour deck whose white segment is under 10%, that segment shows no label and the caption still gives white's count and percentage.
 - The bar is `role="img"` and its `aria-label` reads the counts ("Coloured mana symbols in Main: blue 44, red 16").
+- With no coloured symbol the part has no bar and no caption and says "No coloured mana symbols." in a `c-manacap` paragraph (spec 069 decision 14).
 - The `mana-*` fills are used here and in `ManaCost`'s pips only (README Charts rule).
 
 **Colour and contrast** (spec 060 FR-2).
@@ -77,7 +85,7 @@ The `details` copy, shown below 640px of the page container, holds the same thre
 - The panel itself is `surface-raised` with a 1px `line` border, `radius-md` corners, `space-4` padding and `space-6` between its parts. The title is the sans family at 20px and weight 600; the scope line is mono and `ink-muted`.
 - Fills and outlines hold 3:1 on `surface`, `surface-raised` and `surface-sunken` in both themes (the tokens' contrast is guarded by spec 057 AC-2.3).
 
-**Width.** The panel works in 279px, the space inside its border and padding when it stacks in a 360px frame (313px wide, 279px inside); every count, the legend and the types fit with no horizontal overflow (spec 060 AC-2.4). Beside the zones it is 320px wide (spec 060 decision 6).
+**Width.** The panel works in 279px, the space inside its border and padding when it stacks in a 360px frame (313px wide, 279px inside); every count, the legend and the types fit with no horizontal overflow (spec 060 AC-2.4). Beside the zones it is 320px wide (spec 060 decision 6). Measured on the built page (spec 069, #256): a phone's 360px viewport gives a 278px interior (8px body margin, 16px page padding, 2px border and 32px panel padding), one pixel under the 279px the component was drawn for. With the app's classic scrollbar in a 360px browser frame the interior is 263px, and a four-digit count in the 6+ column ("1,357") overflows its column by about 1.85px. That is a known limit, raised with the maintainer, and spec 069 changes no CSS.
 
 **The two copies** (spec 060 decision 7, AC-3.4). A closed `details` hides its content whatever the CSS says, and `::details-content` would put a browser floor under the page, so the deck page renders the panel twice and each copy hides the other with `display: none`.
 

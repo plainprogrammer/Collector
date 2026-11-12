@@ -34,6 +34,19 @@ RSpec.describe MTG::DeckGroups, type: :model do
     end
   end
 
+  describe ".land?" do
+    it "is true only for the Lands group's position", :aggregate_failures do
+      positions = ->(type_line) { described_class.position(type_line) }
+
+      expect(described_class.land?(positions.("Basic Land — Forest"))).to be(true)
+      expect(described_class.land?(positions.("Artifact Land"))).to be(true)
+      expect(described_class.land?(positions.("Land Creature — Forest Dryad"))).to be(false) # Dryad Arbor is a Creature
+      expect(described_class.land?(positions.("Instant"))).to be(false)
+      expect(described_class.land?(positions.(nil))).to be(false) # Other
+      expect(described_class.land?(nil)).to be(false)
+    end
+  end
+
   describe "NAMES" do
     it "lists the groups in the order the page shows them (decision 6)" do
       expect(described_class::NAMES).to eq(%w[Creatures Planeswalkers Battles Instants Sorceries Artifacts Enchantments Lands Other])
