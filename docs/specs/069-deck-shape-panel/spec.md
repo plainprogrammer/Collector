@@ -9,6 +9,7 @@
 **Issue:** [#256](https://github.com/plainprogrammer/Collector/issues/256) (roadmap item 14k)
 **ADR:** none: ADR 0028 already puts a deck's collectible part behind the collecting vocabulary, and spec 066 decision 5 added the first optional answer to that seam; this spec adds a second one the same way (decision 1)
 **Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) and [`catalog-core.md`](../../architecture/catalog-core.md) (whole spec); the panel's markup is `DeckShape` and `DeckPage` in the [design system](../../design-system/README.md); see the [specs index](../README.md)
+**Plan:** retired in `5cbc812b8b308b27103c9261f35a515d7fed798c`; read it with `git show 5cbc812b8b308b27103c9261f35a515d7fed798c^:docs/specs/069-deck-shape-panel/plan.md`
 
 ---
 
