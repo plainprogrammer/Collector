@@ -1,6 +1,6 @@
 # Verification: spec 072, selects meet the touch floor on a coarse pointer
 
-**Branch:** `072-select-touch-floor` | **Issue:** [#315](https://github.com/plainprogrammer/Collector/issues/315) | **Spec:** [spec.md](spec.md) 0.3.0 | **Plan:** [plan.md](plan.md)
+**Branch:** `072-select-touch-floor` | **Issue:** [#315](https://github.com/plainprogrammer/Collector/issues/315) | **Spec:** [spec.md](spec.md) 0.3.0 | **Plan:** plan (retired in `022679a996491c671137474380b1b12c6f92ec12`; read it with `git show 022679a996491c671137474380b1b12c6f92ec12^:docs/specs/072-select-touch-floor/plan.md`)
 
 ## Acceptance criteria
 

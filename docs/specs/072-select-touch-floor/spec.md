@@ -8,6 +8,7 @@
 **Branch:** `072-select-touch-floor`
 **Issue:** [#315](https://github.com/plainprogrammer/Collector/issues/315) (design-system lane, filed by the maintainer's ruling from spec 068's implementation review)
 **Frozen:** the current rules are in [`design-system/README.md`](../../design-system/README.md) (whole spec); see the [specs index](../README.md)
+**Plan:** retired in `022679a996491c671137474380b1b12c6f92ec12`; read it with `git show 022679a996491c671137474380b1b12c6f92ec12^:docs/specs/072-select-touch-floor/plan.md`
 
 ---
 
