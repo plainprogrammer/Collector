@@ -25,7 +25,10 @@ module NarrowFrame
   # Loads path in a frame whose viewport (its documentElement.clientWidth) is viewport px wide, the way a phone of that width is:
   # open_in_narrow_frame's width includes the frame's classic scrollbar, so a "360px" frame there lays a page out in 345px or 348px.
   # The frame is the viewport plus the scrollbar it draws, measured (about 15px on a Mac, 12px on the Linux runner) and reopened
-  # once if the first guess was wrong.
+  # once if the first guess was wrong. A page shorter than the frame has no scrollbar and gets a frame exactly viewport px wide.
+  #
+  # It does not raise: when the reopened page gains or loses its scrollbar the viewport it got differs, so the caller asserts the
+  # width it returns.
   #
   # @param path [String] the page to load, on the current origin
   # @param viewport [Integer] the width the page is laid out in, in px

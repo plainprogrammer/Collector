@@ -1,7 +1,9 @@
 require "rails_helper"
 
 # Spec 066 Story 5, spec 068 AC-2.4, AC-2.5 and AC-2.11: the deck page at 360, 640, 768 and 1280px in both themes, in headless
-# Firefox. Phone widths use the narrow frame (a window can't go below 500px), whose page is a same-origin iframe.
+# Firefox. Phone widths use the narrow frame (a window can't go below 500px), whose page is a same-origin iframe. Two kinds of
+# 360px are in this file: the overflow and zone-head examples open a true 360px viewport (open_deck_page_at, #318), the structure
+# examples (headers, wrapping, button heights) a 360px frame, which lays out in about 345px with its classic scrollbar.
 RSpec.describe "Deck page", type: :system do
   let!(:user) { system_sign_in_as(create(:user)) }
   let(:account) { user.account }
@@ -67,7 +69,7 @@ RSpec.describe "Deck page", type: :system do
 
   # 360px is a phone's viewport (spec 074 measured the worst case there: the document does not scroll sideways), so its frame is
   # sized from the measured scrollbar. A "360px" narrow frame lays out in about 345px, where the worst-case row's table spills
-  # 10px past the page (#318: the old checks compared with innerWidth and could not see it). The wider widths are frames.
+  # 7 to 10px past the page, by platform (#318: the old checks compared with innerWidth and could not see it). The wider widths are frames.
   def open_deck_page_at(width)
     ready = ".c-zone:first-of-type table"
     return open_in_narrow_frame(deck_path(deck), width:, ready:) unless width == 360

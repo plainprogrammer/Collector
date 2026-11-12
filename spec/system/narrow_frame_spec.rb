@@ -54,7 +54,7 @@ RSpec.describe "The narrow-frame helper", type: :system do
   it "reports the same overflow for the page the driver is in", :aggregate_failures do
     open_sign_up_frame
     within_narrow_frame { expect(page_fits_sideways?).to be(true) }
-    overflow_frame_page(5)
+    expect(overflow_frame_page(5)["scrollbar"]).to be > 5 # under a scrollbar wider than the overflow, the case the old measure missed
     within_narrow_frame { expect(page_fits_sideways?).to be(false) }
   end
 end
