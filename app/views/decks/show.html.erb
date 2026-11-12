@@ -10,6 +10,7 @@
     </div>
     <div class="c-item__actions">
       <%= link_to "Edit deck", edit_deck_path(@deck), class: "c-btn c-btn--secondary" %>
+      <%# No hover prefetch: it would run a check nobody asked for, wasted work that could show results from before an edit (spec 079 decision 7). %>
       <%= link_to "Check deck", deck_check_path(@deck), class: "c-btn c-btn--secondary", data: { turbo_prefetch: false } %>
       <details class="c-menu" data-controller="menu">
         <summary class="c-btn c-btn--secondary c-btn--icon" aria-label="More actions"><%= render "icons/more" %></summary>
