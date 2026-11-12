@@ -1,6 +1,6 @@
 # Implementation Plan: Add to a Deck from the Card Page
 
-**Spec:** [spec.md](spec.md) (v0.4.0, Approved at Gate A, 2026-11-11)
+**Spec:** [spec.md](spec.md) (v0.5.0: approved at Gate A as 0.4.0; 0.5.0 clarifies AC-1.3 and decision 2 only, from plan review, and goes to Gate B with the plan)
 **Decisions:** none new; ADR 0028's deck model and spec 068's proxies are used as they are
 **Created:** 2026-11-11
 
@@ -54,19 +54,20 @@ A signed-in collector on a card page presses "Add to deck", chooses a zone of on
 
 ## Existing examples that change (from a grep of `spec/`, `docs/`, `app/`)
 
-Run once at the start of execution and kept in `verification.md`: `git grep -n 'Add a copy\|c-item__actions\|AddToDeck\|A proxy of\|My copies\|up to two options\|#255\|deck_additions' -- spec docs app CLAUDE.md ':!.kamal/secrets'`. The hits this plan changes:
+Run once at the start of execution and kept in `verification.md`: `git grep -n 'Add a copy\|Add to deck\|c-item__actions\|AddToDeck\|A proxy of\|My copies\|Free to use\|up to two options\|#255\|deck_additions' -- spec docs app CLAUDE.md ':!.kamal/secrets'`. The hits this plan changes:
 
 | Where | Change | Task |
 |-------|--------|------|
-| `spec/system/card_page_spec.rb:20-25` | The phone example's `widths[2] > widths[0] / 2` and `> 200` assume one primary button and the menu; replaced by the measurable checks of AC-1.5 | T9 |
-| `spec/requests/catalog/visitors_spec.rb:196` (absent selectors) and `:202` (absent strings) | Gain `a[href*='/deck_additions/new']` and "Add to deck" | T8 |
-| `spec/system/visitor_catalog_spec.rb:52` | Gains `have_no_text("Add to deck")` | T8 |
-| `docs/design-system/components/VisitorHeader.md:42` | "no 'Add a copy' button" gains "Add to deck" | T10 |
-| `docs/design-system/components/AddToDeck.md` (bullets "What to use has up to two options", "What #255 decides", the lower-case "foil") and both previews | Per-finish radios, the refusals drawn, the label's case | T10 |
-| `spec/system/design_system_deck_components_spec.rb` `use_choices` | A second proxy radio and one example | T10 |
-| `docs/design-system/components/ItemPage.md`, `ItemPagePhone.md` | The head action's place and the row's fit | T10 |
-| `docs/architecture/collection-and-lots.md` open-issues line (#255, #254 "are not") and card-page section | The action, the page, the stale clause | T11 |
-| `docs/specs/README.md` rows 060 and 071 | Both directions (done at Gate A) | T11 checks |
+| `spec/system/card_page_spec.rb:20-25` | The phone example's `widths[2] > widths[0] / 2` and `> 200` assume one primary button and the menu; replaced by the measurable checks of AC-1.5 | T8 |
+| `spec/requests/catalog/visitors_spec.rb:196` (absent selectors) and `:202` (absent strings) | Gain `a[href*='/deck_additions/new']` and "Add to deck" | T7 |
+| `spec/system/visitor_catalog_spec.rb:52` | Gains `have_no_text("Add to deck")` | T7 |
+| `docs/design-system/components/VisitorHeader.md:42` | "no 'Add a copy' button" gains "Add to deck" | T9 |
+| `docs/design-system/components/AddToDeck.md` (bullets "What to use has up to two options", "What #255 decides", the lower-case "foil", and the markup's `<main class="c-main c-page">`, which gains `c-decks`) and both previews | Per-finish radios, the refusals drawn, the label's case | T9 |
+| `spec/system/design_system_deck_components_spec.rb` `use_choices` | A second proxy radio and one example | T9 |
+| `docs/design-system/components/ItemPage.md`, `ItemPagePhone.md` | The head action's place and the row's fit | T9 |
+| `docs/architecture/collection-and-lots.md` open-issues line (#255, #254 "are not") and card-page section | The action, the page, the stale clause | T10 |
+| `docs/specs/README.md` rows 060 and 071 | Both directions (done at Gate A) | T10 checks |
+| `spec/system/design_system_deck_components_spec.rb:926` (a lower-case "… foil" in a drawn option) | Doesn't break; left as is, the example it sits in checks fit only | T9 |
 | `docs/roadmap.md` item 14j | Marked by the distillation step at merge, not here | session end |
 
 ---
@@ -180,7 +181,7 @@ RSpec.describe Lot::FreeCopies, type: :model do
 
   it "reads in a number of statements that does not grow with the lots (AC-2.9)" do
     count = ->(reader) { count_queries { reader.lots } }
-    create(:lot, account:, entry: shown)
+    create(:lot, account:, entry: shown, location: create(:location, account:)) # placed, so the small read also loads a place
     small = count.call(free)
     12.times { |n| create(:lot, account:, entry: shown, finish: n.even? ? "foil" : nil, location: create(:location, account:)) }
 
@@ -229,10 +230,15 @@ class Lot::FreeCopies
     end
   end
 
-  # @return [Integer] the copies that are free
+  # The copies that are free, summed over {#lots}.
+  #
+  # @return [Integer]
   def total = lots.sum(&:quantity)
 
-  # @return [Array<Place>] each place once with its copies summed, in the order the copies would be taken
+  # The places the free copies are in, for the "My copies" sentence: each once with its copies summed, in the order the copies would
+  # be taken.
+  #
+  # @return [Array<Place>]
   def places
     lots.group_by(&:location_id).map { |_, group| Place.new(name: group.first.location&.name, count: group.sum(&:quantity)) }
   end
@@ -287,7 +293,7 @@ RSpec.describe DeckAdditionsHelper, type: :helper do
     expect(helper.free_copies_sentence(free(place(nil, 1)))).to eq("1 free: 1 with no location")
   end
 
-  it "names five places and counts the rest, in the singular for one" do
+  it "names five places and counts the rest, in the singular for one", :aggregate_failures do
     seven = (1..7).map { |n| place("P#{n}", 1) }
     expect(helper.free_copies_sentence(free(*seven))).to eq("7 free: 1 in P1, 1 in P2, 1 in P3, 1 in P4, 1 in P5, and 2 more places")
     six = (1..6).map { |n| place("P#{n}", 1) }
@@ -347,7 +353,7 @@ end
       expect(described_class.new(account).decks_of("other").map { it.location.name }).to eq([ "Elsewhere" ])
     end
 
-    it "is empty for an account with no deck of the type, one more statement than the choices' own" do
+    it "is empty for an account with no deck of the type, one more statement than the choices' own", :aggregate_failures do
       choices = described_class.new(account)
       choices.decks
 
@@ -365,9 +371,15 @@ Append to `spec/models/catalog/entry_spec.rb`:
       expect(create(:catalog_entry)).to be_deck_addable
     end
 
-    it "is false for a retired printing, a token and a type with no vocabulary or no source", :aggregate_failures do
+    it "is false for a retired printing and a token", :aggregate_failures do
       expect(create(:catalog_entry, :retired)).not_to be_deck_addable
       expect(create(:catalog_entry, kind: "token")).not_to be_deck_addable
+    end
+
+    it "is false for a type that has a vocabulary and no source, and for one that has neither", :aggregate_failures, :other_collecting do
+      expect(Catalog.collecting).to have_key("other") # the control: the vocabulary is there, the source is not
+      expect(Catalog.sources).not_to have_key("other")
+      expect(create(:catalog_entry, collectible_type: "other")).not_to be_deck_addable
       expect(create(:catalog_entry, collectible_type: "unregistered")).not_to be_deck_addable
     end
   end
@@ -383,6 +395,8 @@ Append to `spec/models/catalog/entry_spec.rb`:
   # @param collectible_type [String] the printing's type
   # @return [Array<Group>] the groups of {#decks} whose deck has that type
   def decks_of(collectible_type)
+    return [] unless @account
+
     ids = Deck.where(account_id: @account.id, collectible_type:).pluck(:location_id).to_set
     decks.select { |group| ids.include?(group.location.id) }
   end
@@ -445,19 +459,26 @@ RSpec.describe Deck::Addition, type: :model do
       expect(addition(entry: none).chosen).to eq("proxy")
     end
 
-    it "keeps what was submitted as the chosen option" do
+    it "keeps what was submitted as the chosen option, unless it is no longer one (decision 11)", :aggregate_failures do
       expect(addition(use: "proxy:foil").chosen).to eq("proxy:foil")
+
+      one_finish = create(:mtg_printing, entry: create(:catalog_entry), finishes: %w[nonfoil]).entry
+      expect(addition(use: "copies", entry: one_finish).chosen).to eq("proxy:nonfoil") # nothing is free, so My copies isn't drawn
     end
   end
 
   describe "#save with My copies" do
     let(:blue) { create(:location, account:, name: "Blue binder") }
 
-    it "moves part of the first lot and leaves the rest where it was (AC-3.1)", :aggregate_failures do
+    it "moves part of the first lot and leaves the rest and another printing's lot where they were (AC-3.1)", :aggregate_failures do
+      red = create(:location, account:, name: "Red box")
+      other = create(:mtg_printing, entry: create(:catalog_entry, name: "Lightning Bolt", identity: shown.identity, released_on: Date.new(1999, 1, 1)), finishes: %w[nonfoil]).entry
+      elsewhere = create(:lot, account:, entry: other, quantity: 1, location: red)
       stay = lot_in(blue, quantity: 3)
       subject = addition(use: "copies", quantity: "1")
 
       expect(subject.save).to be(true)
+      expect(elsewhere.reload).to have_attributes(location: red, quantity: 1)
       expect(stay.reload.quantity).to eq(2)
       expect(stay.location).to eq(blue)
       expect(account.lots.find_by(location: zone).quantity).to eq(1)
@@ -523,15 +544,16 @@ RSpec.describe Deck::Addition, type: :model do
       expect(first.reload.location).to be_nil
     end
 
-    it "names a lot the vocabulary no longer accepts, rolling the first move back (AC-3.11)", :aggregate_failures do
+    it "names a lot the vocabulary no longer accepts, taken second of three, and writes nothing (AC-3.11)", :aggregate_failures do
       first = lot_in(nil, quantity: 1)
-      broken = build(:lot, account:, entry: shown, quantity: 1, finish: "etched").tap { it.save!(validate: false) }
-      subject = addition(use: "copies", quantity: "2")
+      broken = lot_in(nil, quantity: 1, finish: "foil")
+      broken.update_columns(finish: "etched") # a catalog refresh dropped the finish: `Lot` now refuses to save it (spec 070's example does the same)
+      third = lot_in(create(:location, account:, name: "Red box"), quantity: 1, finish: "nonfoil") # "" < "etched" < "nonfoil": the broken lot is taken second
+      subject = addition(use: "copies", quantity: "3")
 
       expect(subject.save).to be(false)
       expect(subject.errors[:base]).to eq([ "Nothing changed. Lightning Bolt (#{ApplicationController.helpers.set_number(shown)}) can't be moved until it is edited." ])
-      expect(first.reload.location).to be_nil
-      expect(broken.reload.location).to be_nil
+      expect([ first, broken, third ].map { it.reload.location&.name }).to eq([ nil, nil, "Red box" ]) # the move judges before it writes, so none moved
     end
 
     it "raises RecordNotFound when the zone was removed after the page opened (AC-3.12)" do
@@ -543,15 +565,25 @@ RSpec.describe Deck::Addition, type: :model do
       expect { subject.save }.to raise_error(ActiveRecord::RecordNotFound)
     end
 
-    it "changes no proxy, deck or other account's rows (AC-3.10)", :aggregate_failures do
+    it "changes no proxy, deck, location, other card's lot or other account's rows (AC-3.10)", :aggregate_failures do
       proxy = create(:deck_proxy, zone:, account:, entry: shown, quantity: 4)
       lot_in(blue, quantity: 1)
       theirs = create(:lot, entry: shown)
+      unrelated = create(:lot, account:, entry: create(:mtg_printing).entry, quantity: 2)
+      locations = account.locations.pluck(:id, :name, :updated_at)
 
-      addition(use: "copies").save
+      decks = locations_written = nil
+      proxies_written = write_statements_to("deck_proxies") do
+        locations_written = write_statements_to("locations") do
+          decks = write_statements_to("decks") { addition(use: "copies").save }
+        end
+      end
 
+      expect([ proxies_written, locations_written, decks ]).to all(be_empty)
       expect(proxy.reload.quantity).to eq(4)
       expect(theirs.reload.location).to be_nil
+      expect(unrelated.reload).to have_attributes(location: nil, quantity: 2)
+      expect(account.locations.pluck(:id, :name, :updated_at)).to eq(locations)
     end
   end
 
@@ -611,7 +643,7 @@ RSpec.describe Deck::Addition, type: :model do
       place = create(:location, account:)
       theirs = create(:deck).zone("main")
       elsewhere = create(:deck, account:, pair: "other/standard").zones.first
-      [ place.id, deck.id, theirs.id, elsewhere.id, "12x" ].each do |bad|
+      [ place.id, deck.location_id, theirs.id, elsewhere.id, "12x" ].each do |bad|
         expect { addition(zone_id: bad.to_s, use: "proxy:foil").save }.to raise_error(ActiveRecord::RecordNotFound), bad.to_s
       end
       expect(account.deck_proxies.count).to eq(0)
@@ -658,13 +690,20 @@ class Deck::Addition
     @account, @entry = account, entry
   end
 
+  # The decks the card can be added to, with their zones.
+  #
   # @return [Array<Location::Choices::Group>] the account's decks of the printing's type with their zones
   def groups = @groups ||= Location::Choices.new(account).decks_of(entry.collectible_type)
 
-  # @return [Boolean] whether there is a deck to add to
+  # Whether the account has a deck to add the card to; with none the page shows a sentence and no form (decision 12).
+  #
+  # @return [Boolean]
   def decks? = groups.any?
 
-  # @return [Lot::FreeCopies] the card's free copies as of the first call; {#save} reads them again under the lock
+  # The card's free copies as the page shows them; {#save} reads them again under the write lock, so this is never what a take
+  # is judged on.
+  #
+  # @return [Lot::FreeCopies] as of the first call
   def free = @free ||= Lot::FreeCopies.new(account:, entry:)
 
   # The radios of "What to use" in page order: My copies when copies are free, then one proxy per finish the printing lists, or
@@ -680,11 +719,17 @@ class Deck::Addition
     end
   end
 
-  # @return [String, nil] the value to check at first: what was submitted, else the only option
-  def chosen = use.presence || (uses.first.value if uses.one?)
+  # The radio to check when the page is drawn: what was submitted when that is still an option (after "no free copy" the page
+  # draws without My copies, so a submitted `copies` is no longer one), else the only option when there is just one
+  # (spec 060 decision 14).
+  #
+  # @return [String, nil]
+  def chosen = (use if uses.any? { |option| option.value == use }) || (uses.first.value if uses.one?)
 
+  # A proxy option's finish in the vocabulary's words ("Foil").
+  #
   # @param use [Use]
-  # @return [String, nil] the finish as the vocabulary labels it, nil for a proxy with none
+  # @return [String, nil] nil for a proxy with none
   def finish_label(use) = use.finish && vocabulary.finish_label(use.finish)
 
   # Checks and writes.
@@ -738,7 +783,7 @@ class Deck::Addition
       id, reason = error.reasons.first
       lot = fresh.lots.find { |candidate| candidate.id == id }
       what = reason == :cap ? "would have more than #{ActiveSupport::NumberHelper.number_to_delimited(Lot::MAX_QUANTITY)} copies in one lot." : "can't be moved until it is edited."
-      errors.add(:base, "Nothing changed. #{lot.entry.name} (#{ApplicationController.helpers.set_number(lot.entry)}) #{what}")
+      errors.add(:base, "Nothing changed. #{lot.entry.name} (#{lot.entry.set.code.upcase} · #{lot.entry.number}) #{what}")
       false
     end
 
@@ -807,15 +852,17 @@ RSpec.describe "Add to deck", type: :request do
         expect(html.at_css("header.c-appbar--detail")).to be_present
         expect(html.at_css("main.c-decks")).to be_present
         expect(html.at_css("form.c-form")["action"]).to eq(catalog_entry_deck_additions_path(entry))
-        expect(html.at_css("a.c-btn--secondary", text: "Cancel")["href"]).to eq(catalog_entry_path(entry))
+        expect(html.css("a.c-btn--secondary").find { it.text == "Cancel" }["href"]).to eq(catalog_entry_path(entry))
+        expect(html.at_css("a.c-appbar__back")["href"]).to eq(catalog_entry_path(entry))
         expect(html.at_css("input[type=submit]")["value"]).to eq("Add to deck")
       end
 
-      it "carries the collection mark on the form, Cancel and the back link" do
+      it "carries the collection mark on the form, Cancel and the back link", :aggregate_failures do
         get new_catalog_entry_deck_addition_path(entry, from: "collection")
 
         expect(html.at_css("form.c-form")["action"]).to eq(catalog_entry_deck_additions_path(entry, from: "collection"))
-        expect(html.at_css("a.c-btn--secondary", text: "Cancel")["href"]).to eq(catalog_entry_path(entry, from: "collection"))
+        expect(html.css("a.c-btn--secondary").find { it.text == "Cancel" }["href"]).to eq(catalog_entry_path(entry, from: "collection"))
+        expect(html.at_css("a.c-appbar__back")["href"]).to eq(catalog_entry_path(entry, from: "collection"))
       end
 
       it "lists every zone of the account's decks under one Decks group, no Places and no No location (AC-2.2)", :aggregate_failures do
@@ -837,8 +884,9 @@ RSpec.describe "Add to deck", type: :request do
 
         field = html.at_css("input#how_many")
         expect(html.at_css("label[for=how_many]").text).to eq("How many")
-        expect(field.attributes.slice("type", "name", "min", "step", "value", "required").transform_values(&:value))
+        expect(field.attributes.slice("type", "name", "min", "step", "value").transform_values(&:value))
           .to include("type" => "number", "name" => "quantity", "min" => "1", "step" => "1", "value" => "1")
+        expect(field["required"]).to be_present
         expect(field["max"]).to be_nil
       end
     end
@@ -881,6 +929,18 @@ RSpec.describe "Add to deck", type: :request do
         expect(html.text).to include("3 free: 3 with no location")
       end
 
+      it "offers two radios and chooses neither when copies are free and the printing has one finish, or two finishes and none free (AC-2.7)", :aggregate_failures do
+        one = create(:mtg_printing, entry: create(:catalog_entry), finishes: %w[foil]).entry
+        create(:lot, account:, entry: one)
+        get new_catalog_entry_deck_addition_path(one)
+        expect(radios.map { it["value"] }).to eq(%w[copies proxy:foil])
+        expect(radios.map { it["checked"] }).to all(be_nil)
+
+        get new_catalog_entry_deck_addition_path(entry) # two finishes, none free
+        expect(radios.map { it["value"] }).to eq(%w[proxy:nonfoil proxy:foil])
+        expect(radios.map { it["checked"] }).to all(be_nil)
+      end
+
       it "chooses the only option when one is left (spec 060 decision 14)", :aggregate_failures do
         one = create(:mtg_printing, entry: create(:catalog_entry), finishes: %w[foil]).entry
         get new_catalog_entry_deck_addition_path(one)
@@ -914,21 +974,23 @@ RSpec.describe "Add to deck", type: :request do
       expect(zone_path_options.map(&:text).join).to include("Izzet Tempo")
     end
 
-    it "is 404 for a retired printing, a token and an unknown key (AC-1.3)", :aggregate_failures do
-      retired = create(:catalog_entry, :retired)
-      token = create(:catalog_entry, kind: "token")
+    it "is 404, on the page and on the create, for a retired printing, a token, a type with a vocabulary and no source, an unregistered type and an unknown key (AC-1.3)", :aggregate_failures, :other_collecting do
+      zone_id = deck.zone("main").id
+      bad = [ create(:catalog_entry, :retired), create(:catalog_entry, kind: "token"), create(:catalog_entry, collectible_type: "other"),
+              create(:catalog_entry, collectible_type: "unregistered") ].map(&:external_key) + [ "no-such-key" ]
 
-      [ retired, token ].each do |bad|
-        get new_catalog_entry_deck_addition_path(bad)
-        expect(response).to have_http_status(:not_found)
+      bad.each do |key|
+        get "/catalog/entries/#{key}/deck_additions/new"
+        expect(response).to have_http_status(:not_found), key
+        post "/catalog/entries/#{key}/deck_additions", params: { zone_id:, use: "proxy:foil", quantity: "1" }
+        expect(response).to have_http_status(:not_found), key
       end
-      get new_catalog_entry_deck_addition_path("no-such-key")
-      expect(response).to have_http_status(:not_found)
+      expect(Deck::Proxy.count).to eq(0)
     end
 
     it "runs the same number of statements for one lot and deck as for forty lots and ten decks (AC-2.9)" do
       deck
-      create(:lot, account:, entry:)
+      create(:lot, account:, entry:, location: create(:location, account:)) # placed, so the small page also loads a place
       get new_catalog_entry_deck_addition_path(entry) # warm-up
       small = count_queries { get new_catalog_entry_deck_addition_path(entry) }
       9.times { |n| create(:deck, account:, name: "Deck #{n}") }
@@ -940,6 +1002,7 @@ RSpec.describe "Add to deck", type: :request do
 
   context "when signed out (AC-1.2, AC-5.4)" do
     it "sends the page and the create to sign in, writing nothing", :aggregate_failures do
+      user # an account exists, or the first-run page answers instead of sign in
       get new_catalog_entry_deck_addition_path(entry)
       expect(response).to redirect_to(new_session_path)
 
@@ -988,7 +1051,7 @@ class DeckAdditionsController < ApplicationController
     @addition = build(addition_params)
     return render(:new, status: :unprocessable_content) unless @addition.save
 
-    redirect_to catalog_entry_path(@entry, **card_params), status: :see_other, notice: notice(@addition)
+    redirect_to catalog_entry_path(@entry, **card_params), status: :see_other, notice: notice_for(@addition)
   end
 
   private
@@ -1005,7 +1068,8 @@ class DeckAdditionsController < ApplicationController
     # and that case is a 422 with a sentence (AC-5.1). Nothing else is read (AC-5.3).
     def addition_params = params.permit(:zone_id, :quantity, :use).to_h.symbolize_keys
 
-    def notice(addition)
+    # The sentence after a success: a proxy as spec 068 words its notice, a move in copies (decision 10).
+    def notice_for(addition)
       if addition.proxy
         added = helpers.pluralize(helpers.number_with_delimiter(addition.count), "proxy", "proxies")
         "Added #{added} of #{helpers.proxy_name(addition.proxy)} to #{addition.zone.label}."
@@ -1075,13 +1139,13 @@ end
               "aria-describedby": field_error_describedby("deck_addition_quantity-error", quantity_errors) %></label>
         <%= render "shared/field_errors", messages: quantity_errors, id: "deck_addition_quantity-error" %>
       </div>
-      <fieldset class="c-choices c-pick<%= " c-field--invalid" if use_errors.any? %>" aria-describedby="<%= field_error_describedby("deck_addition_use-error", use_errors) %>">
+      <%= tag.fieldset class: [ "c-choices", "c-pick", ("c-field--invalid" if use_errors.any?) ], aria: { describedby: field_error_describedby("deck_addition_use-error", use_errors) } do %>
         <legend class="c-field__label">What to use</legend>
         <% @addition.uses.each do |use| %>
           <label class="c-check"><%= radio_button_tag :use, use.value, @addition.chosen == use.value, required: true %><%= use_label(@addition, use) %></label>
         <% end %>
         <%= render "shared/field_errors", messages: use_errors, id: "deck_addition_use-error" %>
-      </fieldset>
+      <% end %>
       <%= render "shared/field_errors", messages: @addition.errors[:base], id: "deck_addition_base-error" %>
       <div class="c-form__actions">
         <%= submit_tag "Add to deck", class: "c-btn c-btn--primary", name: nil %>
@@ -1093,9 +1157,9 @@ end
 <%= render "layouts/tabbar", section: card_context %>
 ```
 
-Notes for the implementer: `field_error_describedby` returns nil for no errors, so `aria-describedby=""` would render empty on the fieldset: use `<%= tag.fieldset ... %>` or the conditional attribute pattern the other views use if the empty attribute fails a spec; `form_with url:` with no model emits `name="zone_id"`, `name="quantity"`, `name="use"` flat as the spec says; `select_tag`'s `include_blank` text and `required` are honoured. If `form_with` adds `data-turbo` or an authenticity field, that is normal.
+Notes for the implementer: `field_error_describedby` returns nil for no errors, and `tag.fieldset` leaves the attribute out then (a valid page has no empty `aria-describedby`); `form_with url:` with no model emits `name="zone_id"`, `name="quantity"`, `name="use"` flat as the spec says; `select_tag`'s `include_blank` text and `required` are honoured. If `form_with` adds `data-turbo` or an authenticity field, that is normal.
 
-- [ ] **Step 7:** `bin/rspec spec/requests/deck_additions_spec.rb`. Expected: all pass. The fixes the first run is likely to need: the entry's "kind" values for the token example, `aria-describedby` on the fieldset (omit it when empty), the free sentence's order of places ("1 with no location, 2 in Blue binder": the unplaced lot sorts before places), and `new_session_path` for the sign-in redirect (read an existing request spec's signed-out example for the path helper).
+- [ ] **Step 7:** `bin/rspec spec/requests/deck_additions_spec.rb`. Expected: all pass. The fixes the first run is likely to need: the entry's "kind" values for the token example, the free sentence's order of places ("1 with no location, 2 in Blue binder": the unplaced lot sorts before places), and `new_session_path` for the sign-in redirect (read an existing request spec's signed-out example for the path helper).
 - [ ] **Step 8: commit** `feat(decks): the Add to deck page (spec 071, #255)`.
 
 ### T6: The writes, refusals and tenancy through the request
@@ -1127,6 +1191,26 @@ Notes for the implementer: `field_error_describedby` returns nil for no errors, 
         add(use: "copies", from: "collection")
 
         expect(response).to redirect_to(catalog_entry_path(entry, from: "collection"))
+      end
+
+      it "answers 404 and moves nothing when the zone was removed after the page opened (AC-3.12)", :aggregate_failures do
+        lot = create(:lot, account:, entry:, quantity: 1, location: blue)
+        gone = zone.id
+        account.locations.where(id: gone).delete_all # removed in another tab (the zone held nothing)
+        add(use: "copies", zone_id: gone)
+
+        expect(response).to have_http_status(:not_found)
+        expect(lot.reload.location).to eq(blue)
+      end
+
+      it "offers only the proxy once nothing is free any more, chosen, after the refusal (decision 11)", :aggregate_failures do
+        one = create(:mtg_printing, entry: create(:catalog_entry, name: "Island"), finishes: %w[nonfoil]).entry
+        post catalog_entry_deck_additions_path(one), params: { zone_id: zone.id, use: "copies", quantity: "1" }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(html.at_css("#deck_addition_use-error").text).to eq("You have no free copy of Island to use.")
+        expect(radios.map { it["value"] }).to eq(%w[proxy:nonfoil])
+        expect(radios.first["checked"]).to be_present
       end
 
       it "says copies for more than one, and shows them as Deck › Zone in Your copies (AC-3.2, AC-3.6)", :aggregate_failures do
@@ -1194,6 +1278,37 @@ Notes for the implementer: `field_error_describedby` returns nil for no errors, 
       end
     end
 
+    describe "a proxy's refusals (AC-4.3, AC-4.4)" do
+      it "answers 422 for an unlisted finish, a bare proxy and a finish on a printing that lists none, on the choice", :aggregate_failures do
+        none = create(:mtg_printing, entry: create(:catalog_entry, name: "Island"), finishes: []).entry
+        zone_id = deck.zone("main").id
+        { [ entry, "proxy:etched" ] => "That finish isn't available for this printing.", [ entry, "proxy" ] => "Choose a finish.",
+          [ none, "proxy:foil" ] => "That finish isn't available for this printing." }.each do |(printing, use), sentence|
+          post catalog_entry_deck_additions_path(printing), params: { zone_id:, use:, quantity: "1" }
+          expect(response).to have_http_status(:unprocessable_content), use
+          expect(html.at_css("#deck_addition_use-error").text).to eq(sentence), use
+        end
+        expect(Deck::Proxy.count).to eq(0)
+      end
+
+      it "answers 422 for a quantity that isn't 1 to 9,999 and keeps what was typed (AC-4.4)", :aggregate_failures do
+        post catalog_entry_deck_additions_path(entry), params: { zone_id: deck.zone("main").id, use: "proxy:foil", quantity: "10000" }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(html.at_css("#deck_addition_quantity-error").text).to eq("Enter a number from 1 to 9,999.")
+        expect(html.at_css("input#how_many")["value"]).to eq("10000")
+        expect(html.at_css("input[value='proxy:foil']")["checked"]).to be_present
+      end
+
+      it "leaves the card page's Owned as it was (AC-4.5)" do
+        create(:lot, account:, entry:, quantity: 3)
+        post catalog_entry_deck_additions_path(entry), params: { zone_id: deck.zone("main").id, use: "proxy:foil", quantity: "2" }
+
+        get catalog_entry_path(entry)
+        expect(html.at_css(".c-stat dd").text).to eq("3")
+      end
+    end
+
     describe "refusals and tenancy (AC-5.1 to AC-5.3)" do
       it "answers 422 with a sentence on the field for no zone, no choice or no recognised choice", :aggregate_failures do
         post catalog_entry_deck_additions_path(entry), params: { zone_id: "", quantity: "1" }
@@ -1204,12 +1319,25 @@ Notes for the implementer: `field_error_describedby` returns nil for no errors, 
         expect(Deck::Proxy.count).to eq(0)
       end
 
+      it "ties each sentence to its field, with no inline style and one primary action (AC-6.5)", :aggregate_failures do
+        post catalog_entry_deck_additions_path(entry), params: { zone_id: "", quantity: "1" }
+        expect(html.at_css("select#deck_zone")["aria-describedby"]).to eq("deck_addition_zone-error")
+        expect(html.at_css("fieldset.c-pick")["aria-describedby"]).to eq("deck_addition_use-error")
+
+        post catalog_entry_deck_additions_path(entry), params: { zone_id: deck.zone("main").id, quantity: "0", use: "proxy:foil" }
+        expect(html.at_css("input#how_many")["aria-describedby"]).to eq("deck_addition_quantity-error")
+        expect(html.at_css("main [style]")).to be_nil
+        expect(html.css("main .c-btn--primary, main input.c-btn--primary").size).to eq(1)
+        get new_catalog_entry_deck_addition_path(entry) # a page with no error has no empty aria-describedby
+        expect(html.css("[aria-describedby='']")).to be_empty
+      end
+
       it "answers 404 for another account's zone, a place, a deck's own row, a missing zone and a bad id, writing nothing and leaking nothing", :aggregate_failures do
         rival = "Rival #{SecureRandom.hex(4)}" # built at run time: the test 404 page prints the spec's source
         theirs = create(:deck, name: rival)
         place = create(:location, account:)
         own = create(:deck, account:, name: "Own #{SecureRandom.hex(4)}")
-        [ theirs.zone("main").id, place.id, own.id, 0, "abc" ].each do |bad|
+        [ theirs.zone("main").id, place.id, own.location_id, 0, "abc" ].each do |bad|
           post catalog_entry_deck_additions_path(entry), params: { zone_id: bad, use: "proxy:foil", quantity: "1" }
           expect(response).to have_http_status(:not_found), bad.to_s
           expect(response.body).not_to include(rival)
@@ -1234,8 +1362,8 @@ Notes for the implementer: `field_error_describedby` returns nil for no errors, 
 
 (`before { deck }` is not set in this group: examples that need the deck reference `deck`/`zone`, which creates it; the proxy examples call `deck.zone` for the same reason. The "double submit" example posts twice sequentially; the genuinely concurrent case is covered by `Lot::MoveIntoZone`'s own lock and `Deck::Proxy.add!`'s retry, which spec 070 and spec 068 prove.)
 
-- [ ] **Step 2:** `bin/rspec spec/requests/deck_additions_spec.rb`. Expected: these examples run against the finished page from T5; any that fail show a real gap (the notice's `set_number`, the `Moved 1 copy` pluralization, `flash` access in request specs: use `follow_redirect!` and read the notice from the page if `flash` isn't available in this project's request specs; `grep -rn 'flash\[:notice\]' spec/requests | head -3` shows the local idiom).
-- [ ] **Step 3:** fix what failed in the code, never in the expectation's meaning; re-run until 0 failures.
+- [ ] **Step 2:** `bin/rspec spec/requests/deck_additions_spec.rb`. Expected: the new examples PASS on a first run: the controller's `create` was written in T5 over a form object that T4 proved test-first, so these are integration examples, not red-green (said here so nobody reads them as one). Because they were never red, prove each describe can fail (spec 066's lesson): one at a time, break the code, run the file, see that describe's examples fail, and restore it with `git checkout -- <file>`: (a) in `DeckAdditionsController#create` change `status: :see_other` to `:found`; (b) delete `**card_params` from the redirect; (c) in `Deck::Addition#take` change `fresh.take(wanted)` to `fresh.take(1)`; (d) in `Deck::Addition#offered_zone!` replace the `raise` by `nil`; (e) in `notice_for` swap the two branches. Each must turn at least one example red.
+- [ ] **Step 3:** fix what failed in the code, never in the expectation's meaning (the notice's `set_number`, `Moved 1 copy`'s pluralization, and `flash` access in request specs: if `flash[:notice]` isn't available, `follow_redirect!` and read the notice from the page, as the project's other request specs do; `grep -rn 'flash\[:notice\]\|follow_redirect' spec/requests | head -3` shows the local idiom); re-run until 0 failures.
 - [ ] **Step 4: commit** `test(decks): the Add to deck writes, refusals and tenancy (spec 071, #255)`.
 
 ---
@@ -1250,12 +1378,9 @@ Notes for the implementer: `field_error_describedby` returns nil for no errors, 
 
 ```ruby
   describe "the Add to deck action (spec 071 AC-1.1, AC-1.3, AC-1.4)" do
-    let(:user) { create(:user) }
-    let(:printing) { create(:mtg_printing, entry: create(:catalog_entry, name: "Lightning Bolt")).entry }
+    let(:printing) { create(:mtg_printing, entry: create(:catalog_entry, name: "Lightning Bolt")).entry } # the file's own context already signs a user in; reuse it and its `user`
 
-    before { sign_in_as(user) }
-
-    it "is a secondary link before Add a copy, to the page, keeping the collection mark", :aggregate_failures do
+    it "is a secondary link before Add a copy, to the page, keeping the collection mark, with the menu still there", :aggregate_failures do
       get catalog_entry_path(printing, from: "collection")
 
       actions = Nokogiri::HTML5(response.body).at_css(".c-item__actions")
@@ -1265,6 +1390,18 @@ Notes for the implementer: `field_error_describedby` returns nil for no errors, 
       expect(links.first[2]).to include("c-btn--secondary")
       expect(links.last[2]).to include("c-btn--primary")
       expect(actions.at_css("a.c-btn--secondary svg")).to be_present
+      expect(actions.at_css("details.c-menu summary[aria-label='More actions']")).to be_present # the printing has a Scryfall link
+    end
+
+    it "runs the same number of statements with the link as without it (AC-2.9's last clause)" do
+      place = create(:location, account: user.account)
+      token = create(:mtg_printing, entry: create(:catalog_entry, kind: "token")).entry # no link on its page
+      [ printing, token ].each { |entry| create(:lot, account: user.account, entry:, location: place) }
+      get catalog_entry_path(printing) # warm-up
+
+      with_link = count_queries { get catalog_entry_path(printing) }
+      without = count_queries { get catalog_entry_path(token) }
+      expect(with_link).to eq(without)
     end
 
     it "is absent for a retired printing and a token (AC-1.3)", :aggregate_failures do
@@ -1294,10 +1431,18 @@ In `spec/requests/catalog/visitors_spec.rb`, add `"a[href*='/deck_additions/new'
 ```ruby
   it "sends a visitor's request for the Add to deck page to sign in (spec 071 AC-1.2)", :public_catalog, :aggregate_failures do
     printing = create(:mtg_printing).entry
-    get new_catalog_entry_deck_addition_path(printing)
+    create(:lot, entry: printing) # another account's copy: a visitor's request must read no lots
+    statements = statements_during do
+      get new_catalog_entry_deck_addition_path(printing)
+      post catalog_entry_deck_additions_path(printing), params: { zone_id: "1", use: "proxy:foil", quantity: "1" }
+    end
+
     expect(response).to redirect_to(new_session_path)
+    expect(statements.grep(/"lots"/)).to be_empty
+    expect(Deck::Proxy.count).to eq(0)
   end
 ```
+(`statements_during` is the helper this file already has, line 37, as its AC-4.2 example uses it.)
 (read the file's existing visitor examples for the tag and the path helper they use for sign-in, and copy them.)
 
 - [ ] **Step 2:** `bin/rspec spec/requests/catalog/entries_show_spec.rb spec/requests/catalog/visitors_spec.rb`. Expected: FAIL (no link yet; the visitor lists pass trivially until the link exists, so the first example is the red one).
@@ -1329,10 +1474,7 @@ RSpec.describe "Add to deck", type: :system do
   let(:long_card) { "W" * 60 }
   let(:entry) { create(:mtg_printing, entry: create(:catalog_entry, name: "Lightning Bolt"), finishes: %w[nonfoil foil]).entry }
 
-  def set_theme(name)
-    page.execute_script("document.documentElement.dataset.theme = #{name.to_json}")
-    sleep 0.6 # the buttons transition their background over 0.12s; a shot or a colour read right after a switch is mid-fade
-  end
+  def set_theme(name) = page.execute_script("document.documentElement.dataset.theme = #{name.to_json}") # no colour is read here, so no pause (testing.md: no sleep)
 
   def fits? = page.evaluate_script("document.documentElement.scrollWidth <= window.innerWidth")
 
@@ -1462,7 +1604,7 @@ Replace the phone example in `spec/system/card_page_spec.rb` (lines ~19-26, the 
         [ ".c-item__actions", ".c-item__body" ].map((selector) => document.querySelector(selector).getBoundingClientRect().width)
       JS
       expect(widths[0]).to eq(widths[1])
-      expect(head_row_fits).to eq("oneLine" => true, "inside" => true, "unclipped" => true, "overflow" => false)
+      expect(head_row_fits.except("tall")).to eq("oneLine" => true, "inside" => true, "unclipped" => true, "overflow" => false) # a fine pointer: 36px controls
 ```
 and a helper plus examples (inside the same describe):
 
@@ -1473,28 +1615,36 @@ and a helper plus examples (inside the same describe):
       (() => { const row = document.querySelector(".c-item__actions"), box = row.getBoundingClientRect()
         const controls = [...row.querySelectorAll(".c-btn")].map((el) => el.getBoundingClientRect())
         const primary = row.querySelector(".c-btn--primary")
-        return { oneLine: Math.max(...controls.map((c) => c.height)) >= box.height - 1,
+        return { oneLine: Math.max(...controls.map((c) => c.height)) >= box.height - 1, tall: controls.every((c) => c.height >= 44),
                  inside: controls.every((c) => c.left >= box.left - 0.5 && c.right <= box.right + 0.5),
                  unclipped: primary.scrollWidth <= primary.clientWidth + 1,
                  overflow: document.documentElement.scrollWidth > window.innerWidth } })()
     JS
   end
 
-  it "keeps the head's three controls on one line at 360px, also with the coarse pointer's sizes (AC-1.5)", :aggregate_failures do
-    system_sign_in_as(create(:user))
-    visit catalog_entry_path(entry)
-    open_in_narrow_frame(catalog_entry_path(entry), width: 360, height: 800, ready: ".c-item__title")
-    within_narrow_frame do
-      expect(page).to have_link("Add to deck")
-      expect(head_row_fits).to eq("oneLine" => true, "inside" => true, "unclipped" => true, "overflow" => false)
-      # A fine pointer doesn't apply components.css' coarse sizes (the menu is 8px wider); inject them, as the example's lesson asks.
-      page.execute_script("const s = document.createElement('style'); s.textContent = '.c-btn { min-height:44px } .c-btn--icon { min-width:44px }'; document.head.append(s)")
-      expect(head_row_fits).to eq("oneLine" => true, "inside" => true, "unclipped" => true, "overflow" => false)
+  # AC-1.5: one line, every control inside the row, the primary not clipped, no overflow, with the menu present and absent, at 360px
+  # and 390px, and then with the coarse pointer's sizes applied (a fine pointer doesn't apply components.css' `.c-btn { min-height:44px }
+  # .c-btn--icon { min-width:44px }`, which makes the menu 8px wider), when every control is also 44px high.
+  [ 360, 390 ].each do |width|
+    { "with" => true, "without" => false }.each do |label, menu|
+      it "keeps the head's controls on one line at #{width}px #{label} the … menu, also with the coarse pointer's sizes (AC-1.5)", :aggregate_failures do
+        system_sign_in_as(create(:user))
+        printing = create(:mtg_printing, entry: create(:catalog_entry, name: "Lightning Bolt"), scryfall_uri: (menu ? "https://scryfall.com/card/x/1" : nil)).entry
+        visit catalog_entry_path(printing)
+        open_in_narrow_frame(catalog_entry_path(printing), width:, height: 800, ready: ".c-item__title")
+        within_narrow_frame do
+          expect(page).to have_link("Add to deck")
+          expect(page.all(".c-item__actions summary[aria-label='More actions']").size).to eq(menu ? 1 : 0)
+          expect(head_row_fits.except("tall")).to eq("oneLine" => true, "inside" => true, "unclipped" => true, "overflow" => false)
+          page.execute_script("const s = document.createElement('style'); s.textContent = '.c-btn { min-height:44px } .c-btn--icon { min-width:44px }'; document.head.append(s)")
+          expect(head_row_fits).to eq("oneLine" => true, "tall" => true, "inside" => true, "unclipped" => true, "overflow" => false)
+        end
+      end
     end
   end
 ```
 
-(A card with no Scryfall link has no "…" menu: the entry's extension decides it, so the "menu absent" case is one more example that visits a card whose `MTG::Printing` has `scryfall_uri: nil`; add it with `create(:mtg_printing, entry:, scryfall_uri: nil)` if the factory allows `nil`, else skip the absent case and note it in `verification.md`.)
+(If a card with no Scryfall link can't be made because the factory's `scryfall_uri { … }` default can't be overridden with `nil`, build the printing then `update!(scryfall_uri: nil)`; `catalog_url(nil)` is nil, so the menu is left out.)
 
 - [ ] **Step 2:** `bin/rspec spec/system/deck_additions_spec.rb spec/system/card_page_spec.rb`. Expected: FAIL on the floor examples (no rule yet) and, if the row doesn't fit, on `head_row_fits`.
 - [ ] **Step 3: implement the CSS.** Append at the end of `app/assets/stylesheets/collector/additions.css`:
@@ -1508,7 +1658,7 @@ and a helper plus examples (inside the same describe):
 @media (pointer: coarse) { .c-decks .c-pick .c-check { min-height:var(--touch-floor); } }
 ```
 
-- [ ] **Step 4:** run both system files. Expected: 0 failures. If `head_row_fits` fails at 360px (the three controls don't fit), apply the spec's fallback: let the row wrap (`.c-item__actions { flex-wrap:wrap }` in the narrow `@container` block of `components.css`... but that file is the export: add the rule in `additions.css` under a heading of its own, scoped to `.c-item .c-item__actions`), re-run the deck page's examples (`bin/rspec spec/system/deck_page_spec.rb`, which read the same class) and record the change in `verification.md`. Do not loosen the AC.
+- [ ] **Step 4:** run both system files. Expected: 0 failures. If a head-row example fails at 360px (the controls don't fit one line), stop: AC-1.5 says one line, so a wrapping row is a change of the approved criterion and needs `sdd-spec-update` and the coordinator first (the options are a smaller `Add to deck` label on a phone, a wrapping row, or the secondary action moved into the "…" menu; the row's rules are shared with the deck page's head, so `bin/rspec spec/system/deck_page_spec.rb` would then run too). Do not loosen the example.
 - [ ] **Step 5: commit** `feat(design): the radio rows' coarse floor, and the Add to deck browser examples (spec 071, #255)`.
 
 ### T9: The design documents and previews
@@ -1560,10 +1710,10 @@ and change the Cancel bullet to say the back link and Cancel return to the card 
 **Implements:** decision 14, the documentation NFR | **Satisfies:** AC-6.5 (guard), the documentation duties | **Files:** `spec/deck_core_spec.rb`, `docs/architecture/collection-and-lots.md`, `docs/architecture/tenancy-and-accounts.md`, `CLAUDE.md`, `docs/specs/README.md` | **Interfaces:** (none)
 
 - [ ] **Step 1: failing guard.** In `spec/deck_core_spec.rb`, add to the `patterns` list `app/controllers/deck_additions_controller.rb app/views/deck_additions/*.erb app/models/lot/free_copies.rb app/helpers/deck_additions_helper.rb` and extend the count: `…+ 15 + 5` with the comment `; spec 071 adds 5: the controller, its view, Lot::FreeCopies and the helper (new patterns) and deck/addition.rb (the glob already covers it)`. (If spec 070 has landed first, sum the counts when merging: keep both.)
-- [ ] **Step 2:** `bin/rspec spec/deck_core_spec.rb`. Expected: PASS only if no new file names a collectible, format or zone key; a failure names the file, and the fix is to reword the comment or code (the likely hit is a comment with "standard" or "modern").
+- [ ] **Step 2:** `bin/rspec spec/deck_core_spec.rb`. Expected: this is a characterisation, not a red-green: the list and count change in Step 1 and the guard passes only if no new file names a collectible, format or zone key; a failure names the file, and the fix is to reword the comment or code (the likely hit is a comment with "standard" or "modern").
 - [ ] **Step 3: area docs.** `collection-and-lots.md`: (a) Scope bullets: add "Adding a card to a deck from its card page: `DeckAdditionsController`, `Deck::Addition`, `Lot::FreeCopies`, the free-copies rule and the take (spec 071)". (b) Glossary: a **Free copy** entry: "a copy of a card, of any printing, in no deck zone (unplaced or in a place); Considering counts as a deck zone; proxies never count (spec 071 decision 4; spec 057 FR-3; `Lot.free`, spec 070)". (c) "The card page and search": add the head action and the page, in one paragraph: the link's place and conditions (decision 1, 2), the select (decision 3), the free definition and the take order (decisions 4, 5), the sentence (decision 7), the count's limits (decision 8), a proxy per finish (decision 9), the result and notice (decision 10: card page; ruled by the maintainer, option A), the refusals (decision 11), the empty state (decision 12). (d) "Named constants": `Lot::FreeCopies::PLACES_SHOWN` = 5, "Places named in the My copies sentence", spec 071 decision 7; `Deck::Addition::CHOOSE_ZONE`, `CHOOSE_USE`. (e) "Decisions not in an ADR": "**A count takes free lots in a stated order** (shown printing first, then newer printings, then the card page's order); the alternatives, the lowest condition first and the collector's own pick, were not chosen (spec 071 decision 5)" and "**A proxy of a printing with several finishes is one option per finish** (spec 071 decision 9; supersedes spec 060 decision 14's single option for such printings)". (f) Open issues: replace the #50 line's "The deck page is built (#253, spec 066); the shape panel (#256) and proxies (#254) are not;" by "The deck page, proxies and Add to deck are built (#253, #254, #255); the shape panel (#256) is not;" and add: "The card page's `Add to deck` is hidden for a retired printing or a token, even for My copies (spec 071 decision 2)". (g) Sources: add Spec 071 with its decisions and ACs. (h) Distillation log: left to `distill-feature`.
-  `tenancy-and-accounts.md`: in the route/404 table add the row for `GET/POST /catalog/entries/:key/deck_additions`: another account's zone, a place's id, a deck's own row, a zone of another type's deck, a removed zone and a non-searchable printing are 404; signed out is sent to sign in; free lots are the account's own (spec 071 AC-1.2, AC-1.3, AC-5.2 to AC-5.4).
-  `CLAUDE.md`: in the deck sentence add "a collector adds a card to a deck from its card page, free copies or a proxy (`Deck::Addition`, `Lot::FreeCopies`, spec 071)"; add `spec/deck_core_spec.rb`'s new names are not needed there.
+  `tenancy-and-accounts.md` (it has no route table: add a bullet after the proxy pages' bullet, near line 47) for `GET/POST /catalog/entries/:key/deck_additions`: another account's zone, a place's id, a deck's own row, a zone of another type's deck, a removed zone and a non-searchable printing are 404; signed out is sent to sign in; free lots are the account's own (spec 071 AC-1.2, AC-1.3, AC-5.2 to AC-5.4).
+  `CLAUDE.md`: in the deck sentence of "Project Status" add "a collector adds a card to a deck from its card page, their free copies or a proxy (`Deck::Addition`, `Lot::FreeCopies`, spec 071)".
   `docs/specs/README.md`: row 071 is already there ("Approved"); set its Areas column to "[Collection and lots](../architecture/collection-and-lots.md), [tenancy and accounts](../architecture/tenancy-and-accounts.md), [design system](../design-system/README.md) (`AddToDeck`)" and its Plan column to "in progress" (the distillation step changes both to frozen and retired).
 - [ ] **Step 4:** `bin/yard doc` (a `{…}` or an unknown tag in the new comments fails it) and `bin/rubocop -a` on the changed Ruby files; fix findings. Expected: 0 warnings, 0 offenses.
 - [ ] **Step 5: commit** `docs(architecture): add to a deck from the card page (spec 071, #255)`.
