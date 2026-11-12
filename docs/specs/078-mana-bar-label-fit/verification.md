@@ -59,3 +59,7 @@ Mode B, Opus, read-only (it read the branch and did not run the suite), 2026-11-
 - Nit: commit trailers name Sonnet 5.5 and Opus 5.5 by session. Left as they are (the plan says earlier commits keep their trailer).
 
 Not verifiable by this review and still to come: the full `bin/ci` and the Linux CI run, and the maintainer's phone check (AC-2.4, above).
+
+## Distillation (distill-feature, 2026-11-12)
+
+Area doc: [collection and lots](../../architecture/collection-and-lots.md), the only area doc for the spec (the design system has none; its `DeckShape.md` was written with the feature, Task 3). The panel's paragraph, the Issues bullet and Sources were written with the feature (Task 4); the distillation added the Distillation log row (the pull request named once it has a number) and the index row: Status Frozen, by collection and lots, Plan "retirement owed"; 077's "Superseded by" already names 078. No Named constant (the rule has no number), no ADR (the ruling is decision 1 of the spec), nothing in CLAUDE.md restated the limit. The plan is retired after the merge (`distill-feature`, state 1).
