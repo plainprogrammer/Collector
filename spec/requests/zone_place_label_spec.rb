@@ -24,7 +24,9 @@ RSpec.describe "A zone shown as a place", type: :request do
     expect(row.css("td.is-opt").map { it.text.squish }).to include(label)
     expect(row.at_css(".c-table__sub").text).to include(label)
     expect(row.at_css("summary")["aria-label"]).to end_with(" in #{label}")
-    expect(without_label).not_to include("Main")
+    # "In decks" names the zone in its own Zone column on the deck's row, next to the deck's link (spec 073 decision 4), so it is
+    # never the zone's name alone (spec 062 decision 6); the check is on the rest of the page.
+    expect(without_label.sub(%r{<section id="in-decks">.*?</section>}m, "")).not_to include("Main")
   end
 
   it "orders a deck's zones together under the deck's name on the card page", :aggregate_failures do

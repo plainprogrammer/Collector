@@ -195,11 +195,13 @@ RSpec.describe "Design system: deck components", type: :system do
     %(<tr>#{card}<td>#{row[:cost] ? cost_html(row[:cost]) : dash}</td><td class="is-num is-opt">#{row[:owned]}</td><td class="is-num is-opt">#{proxy ? proxy_tag(row[:proxy]) : dash}</td><td class="is-num">#{row[:owned] + row[:proxy]}</td>#{menu_cell(row)}</tr>)
   end
 
-  # `TableActions`: every row has its menu (decision 17), so the menu column is the same in every zone.
+  # `TableActions`: a row with proxies has its menu (decision 17, spec 068 decision 5); a row with none has an empty cell, so the
+  # menu column is the same in every zone (the page builds it so: `decks/_proxy_menu`).
   def menu_cell(row)
+    return %(<td class="c-table__actions"></td>) unless row[:proxy].positive?
+
     dots = %(<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>)
-    items = row[:proxy].positive? ? %(<a class="c-menu__item" href="#">Use my copy</a>) : %(<a class="c-menu__item" href="#">Move copies</a>)
-    %(<td class="c-table__actions"><details class="c-menu"><summary class="c-btn c-btn--ghost c-btn--sm c-btn--icon" aria-label="Actions for #{row[:name]} #{row[:set]}">#{dots}</summary><div class="c-menu__list">#{items}</div></details></td>)
+    %(<td class="c-table__actions"><details class="c-menu"><summary class="c-btn c-btn--ghost c-btn--sm c-btn--icon" aria-label="Actions for #{row[:name]} #{row[:set]}">#{dots}</summary><div class="c-menu__list"><a class="c-menu__item" href="#">Use my copy</a></div></details></td>)
   end
 
   # The deck page body: the closed `details` copy of the panel, the `aside` copy, then the zones. `panel: false` leaves out both copies.

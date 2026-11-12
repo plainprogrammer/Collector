@@ -55,11 +55,17 @@ RSpec.describe "Page query counts", type: :request do
     expect(queries_for(new_location_removal_path(location))).to eq(few)
   end
 
+  # Since spec 073 the card page preloads the lots' places twice (`Catalog::CardOverview#lots` and `Lot::FreeCopies#lots`). With a
+  # single placed lot, or with lots whose two lists agree, both preloads issue the same statement and the second is a query-cache
+  # hit that the counter skips, which says nothing about scaling. So the baseline has two lots listed in different orders: the
+  # overview sorts the unpriced lot first, while `Lot::FreeCopies` reads in the order of the `lot_key` index, which puts it
+  # last, so the two statements differ and neither is a cache hit (spec 070's statement-count lesson,
+  # docs/lessons/2026-11-11-a-statement-count-example-needs-different-printings-for-its-two-runs.md).
   it "keeps the card page's queries independent of the number of placed lots (spec 032 NFR)" do
     entry = printing
-    own(entry, location: create(:location, account: user.account))
+    [ nil, 100 ].each { |cents| own(entry, location: create(:location, account: user.account), price_paid_cents: cents) }
     few = queries_for(catalog_entry_path(entry))
-    19.times { |n| own(entry, location: create(:location, account: user.account), price_paid_cents: n) }
+    18.times { |n| own(entry, location: create(:location, account: user.account), price_paid_cents: 200 + n) }
 
     expect(queries_for(catalog_entry_path(entry))).to eq(few)
   end
@@ -107,12 +113,13 @@ RSpec.describe "Page query counts", type: :request do
 
   # Spec 062 AC-5.4: a zone's label names its deck, so every lot list preloads the parent. A zone lot costs at most the one
   # query that loads the parents (a place has none to load), and no query more however many lots or decks there are.
-  it "keeps the grid's, the table's, the bulk table's and the card page's queries to a place's plus one for lots in zones", :aggregate_failures do
+  # The card page reads the card's decks too (spec 073) and is judged by its own example below.
+  it "keeps the grid's, the table's and the bulk table's queries to a place's plus one for lots in zones", :aggregate_failures do
     user.update!(collection_view: "table")
     entry = printing
     lot = own(entry, location: create(:location, account: user.account))
     post collection_selection_path
-    paths = { grid: collection_path(view: "grid"), table: collection_path, bulk: collection_path(bulk: 1), card: catalog_entry_path(entry) }
+    paths = { grid: collection_path(view: "grid"), table: collection_path, bulk: collection_path(bulk: 1) }
     in_a_place = paths.transform_values { |path| queries_for(path) }
 
     lot.update!(location: create(:deck, account: user.account, name: "Deck 0").zone("main"))
@@ -121,6 +128,37 @@ RSpec.describe "Page query counts", type: :request do
 
     5.times { |n| own(entry, location: create(:deck, account: user.account, name: "Deck #{n + 1}").zone("sideboard"), price_paid_cents: n) }
     expect(paths.transform_values { |path| queries_for(path) }).to eq(in_a_zone)
+  end
+
+  # Decks of the account with a lot and a proxy of the card in each of the zones, and free lots in places, every one on a printing of
+  # the card other than the shown one (spec 073 AC-3.3).
+  def stock_card_decks(identity, decks:, zones:, free_lots:)
+    decks.times do
+      deck = create(:deck, account: user.account, name: "Deck #{Deck.count}")
+      zones.each do |zone|
+        create_lot_in_zone(deck, zone, entry: printing(identity:), quantity: 2)
+        create(:deck_proxy, zone: deck.zone(zone), entry: printing(identity:), quantity: 1)
+      end
+    end
+    free_lots.times { own(printing(identity:), location: create(:location, account: user.account)) }
+  end
+
+  # Spec 073 AC-3.3: the card page's reads don't grow with the account's lots, places, decks, zones or proxies. Both runs have the
+  # same shape (a free lot, a lot in a zone and a proxy, on printings other than the shown one) so every preload has rows to load
+  # and the request's query cache hides none (spec 070's lesson); the page is warmed once before each count. A deck that holds
+  # only a proxy of the card is in both runs: with one deck the overview's read of the lots' decks (its parent preload) and
+  # `Deck::CardUses`' read of the zones' parents are the same statement, and the second is a cache hit the counter skips.
+  it "keeps the card page's queries independent of the number of lots, decks, zones and proxies (spec 073 AC-3.3)" do
+    entry = printing(identity:)
+    stock_card_decks(identity, decks: 1, zones: %w[main], free_lots: 1)
+    proxy_only_deck = create(:deck, account: user.account, name: "Proxy only")
+    create(:deck_proxy, zone: proxy_only_deck.zone("main"), entry: printing(identity:), quantity: 1)
+    queries_for(catalog_entry_path(entry)) # warm
+    few = queries_for(catalog_entry_path(entry))
+    stock_card_decks(identity, decks: 10, zones: %w[main sideboard considering], free_lots: 20)
+    queries_for(catalog_entry_path(entry)) # warm
+
+    expect(queries_for(catalog_entry_path(entry))).to eq(few)
   end
 
   # Spec 065 AC-8.2. A regression proof, not a red-first example: the filter already read the account's locations in one

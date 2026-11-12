@@ -17,7 +17,7 @@
               <td class="is-opt"><%= lot_finish(lot) %></td>
               <td class="is-data is-opt"><%= lot_condition(lot) %></td>
               <td class="is-data is-opt"><%= lot.entry.language.upcase %></td>
-              <td class="is-data is-opt"><%= lot_place(lot) %></td>
+              <td class="is-data is-opt<%= " c-table__place" if lot.location_id %>"><span class="c-table__place-name"><%= lot_place(lot) %></span></td>
               <td class="is-num"><%= lot.quantity %></td>
               <td class="is-num is-opt"><%= lot_price(lot) %></td>
               <td class="c-table__actions">

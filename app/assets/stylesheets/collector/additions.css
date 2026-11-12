@@ -177,7 +177,7 @@ img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches:
 .c-empty { margin:var(--space-6) 0; padding:var(--space-6); text-align:center; background:var(--surface-sunken);
   border-radius:var(--radius-md); font:400 15px/22px var(--font-sans); color:var(--ink); }
 
-/* ---------- Card page: details list, single stat, faces ---------- */
+/* ---------- Card page: details list, single stat (SingleStat; the card page itself uses c-stats--three since spec 073), faces ---------- */
 .c-details { display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:var(--space-3) var(--space-4); margin:0; }
 .c-details dt { font:600 12px/16px var(--font-sans); color:var(--ink-muted); }
 .c-details dd { margin:var(--space-1) 0 0; font:400 14px/20px var(--font-sans); color:var(--ink); overflow-wrap:anywhere; } /* a value may be one long unbroken string, such as an error naming a URL */
@@ -199,6 +199,19 @@ img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches:
   .c-stats.c-stats--three .c-stat { padding:var(--space-3); border-top:0; }
   .c-stats.c-stats--three .c-stat + .c-stat { border-left:1px solid var(--line); }
 }
+
+/* ---------- Card page "In decks" (spec 073): a deck's name wraps ---------- */
+/* The export's `.c-table td` is nowrap, and the only rule that lets a deck's name wrap is the Decks pages' (`.c-decks td:first-child`),
+   so a deck named with 60 characters and no space scrolled the card page sideways at 360px. Scoped by the section's id, so
+   "Your copies" and "Printings" keep their cells. The screenshot walkthrough found two more defects, each fixed by one rule below:
+   at 360px `.c-section__count`'s ellipsis cut the head count ("2 copies in 1 deck · 1 pr…"), so below 640px the count takes its own
+   line as the deck pages' zone heads do, and at 390px the empty state's "Add to deck" link broke across two lines. */
+#in-decks td:first-child { white-space:normal; overflow-wrap:anywhere; }
+@container page (max-width: 639px) {
+  #in-decks .c-section__head { flex-wrap:wrap; }
+  #in-decks .c-section__count { flex-basis:100%; white-space:normal; }
+}
+#in-decks .c-empty a { white-space:nowrap; }
 
 /* ---------- Header room for five links (spec 057 decision 19): the logo mark stands in for the wordmark from 640px to 719px ---------- */
 /* With five links the header overflows from 640px (the account menu ends 54.6px past the bar), and five links plus the wordmark
@@ -517,7 +530,7 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
   .c-zone .c-table .c-zone__c-menu { width:4rem; }
 }
 @container collection (max-width: 639px) {
-  .c-zone .c-zone__c-total { width:1%; } /* the auto layout shares spare width among auto columns; Total keeps its content's, as the menu does */
+  .c-zone .c-zone__c-total { width:1%; } /* the auto layout shares spare width among auto columns; Total keeps its content's; the menu column keeps at least 4rem (spec 074's floor block at the end of this file) */
 }
 .c-zone td:first-child { white-space:normal; overflow-wrap:anywhere; } /* every width: the Card column is 128px with the menu column (spec 060, built by spec 068), so a name would spill into Cost under the export's nowrap */
 .c-zone .c-cost { flex-wrap:wrap; min-width:94px; } /* four pips (4 x 22px + 3 x 2px) never wrap: the auto layout shrinks a cell to its min-content, one wrapped pip, so a phone's Cryptic Command cost took two lines (spec 060 final visual review) */
@@ -639,3 +652,41 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
    the page. Scoped to the Decks pages: other pages' error lines are their own. It also lets the other deck pages' sentences that
    name a long card or deck wrap. */
 .c-decks .c-field__error { overflow-wrap:anywhere; }
+
+/* ---------- Menus open clear of the tab bar (spec 074) ---------- */
+/* Below 640px a fixed tab bar covers the bottom 67px of the screen (the link's 56px minimum height and 6px + 4px padding, and the
+   bar's 1px border: components.css `.c-tabbar`; a change to the bar's size changes the 67px here; the margin is a literal, not
+   read from the bar, because the room box below is pure CSS and must agree with it, and the spec's AC-1.6 reads both bars' drawn
+   heights from the page, so a mismatch fails an example) and the sticky app bar the top 57px (56px height and a 1px border:
+   `.c-appbar`). A menu's list opens downward and is absolutely positioned, so it can end behind the bar. The menu controller
+   scrolls an opened list into view (`scrollIntoView`, nearest alignment), and these margins say how far: the list's bottom edge
+   ends `space-2` above the bar (plus the home indicator's inset, as `.c-main`'s padding does), a list taller than the room between
+   the two bars starts just under the app bar. The empty box under an open list gives the page the scroll range to do it: the page
+   ends 80px under its content, and a list adds overflow only to its own bottom edge, so without the box the last rows' menus could
+   not be scrolled clear (measured, spec 074). The box is as wide as the list (an engine may ignore a zero-width box) and
+   `pointer-events: none`, so a tap in it reaches the page and the controller still sees an outside click. Only below 640px on a shell with
+   a tab bar: wider screens and `c-shell--untabbed` pages draw neither margin nor box. Menu items are 36px at a fine pointer and
+   44px at a coarse one, so nothing here states an item height. */
+@media (max-width: 639px) {
+  .c-shell:not(.c-shell--untabbed) .c-menu__list {
+    scroll-margin-top: calc(57px + var(--space-2));
+    scroll-margin-bottom: calc(67px + env(safe-area-inset-bottom) + var(--space-2));
+  }
+  .c-shell:not(.c-shell--untabbed) .c-menu[open] > .c-menu__list::after {
+    content: ""; position: absolute; top: 100%; left: 0; right: 0; pointer-events: none;
+    height: calc(67px + env(safe-area-inset-bottom) + var(--space-2));
+  }
+}
+
+/* ---------- Deck zones' menu column floor (spec 074) ---------- */
+/* The zone tables' menu column (spec 074, Decision 6). Below 640px of the table's container a zone table keeps its auto layout,
+   where the menu column is as wide as its widest cell: 46px with a trigger (a 30px button and 8px of padding a side) and 16px when
+   every cell is empty (a row with no proxy has no trigger), so a zone with no proxy was 30px narrower there and its Cost and Total
+   moved with it (spec 060 AC-3.11). The floor is the 64px the wide layout already fixes (`width: 4rem` in the zone rules above),
+   and it clears a coarse pointer's trigger (58px of column today at 40px, 62px at #316's 44px target, spec 075, not yet built).
+   The worst-case row (a 60-character unbroken name, a six-symbol cost, 1,234 proxies) spills 19px past its container with it, 1px
+   (fine pointer) or 13px (coarse) without: wrapping the proxy tag would remove that, and is out of this spec's scope. th is
+   border-box there, as in the wide layout: 4rem is the whole column. */
+@container collection (max-width: 639px) {
+  .c-zone .c-table th.c-zone__c-menu { box-sizing: border-box; min-width: 4rem; }
+}
