@@ -1,6 +1,6 @@
 # Verification: Feature 069, The Deck Shape Panel
 
-**Spec:** [spec.md](spec.md) (v0.2.2) · **Plan:** [plan.md](plan.md) (v1.2) · **Issue:** [#256](https://github.com/plainprogrammer/Collector/issues/256)
+**Spec:** [spec.md](spec.md) (v0.2.2) · **Plan:** plan (retired in `5cbc812b8b308b27103c9261f35a515d7fed798c`; read it with `git show 5cbc812b8b308b27103c9261f35a515d7fed798c^:docs/specs/069-deck-shape-panel/plan.md`) · **Issue:** [#256](https://github.com/plainprogrammer/Collector/issues/256)
 
 Each acceptance criterion with the spec example (or the document check) that proves it. A path is a spec file; a quoted name is the example's title or its `describe`. Documents are verified by reading, never by RSpec (`.claude/rules/testing.md`).
 
