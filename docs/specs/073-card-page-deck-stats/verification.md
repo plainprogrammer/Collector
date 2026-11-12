@@ -1,6 +1,6 @@
 # Verification: Feature 073, "Free to use" and "In decks" on the Card Page
 
-**Spec:** [spec.md](spec.md) (v0.2.5) · **Plan:** [plan.md](plan.md)
+**Spec:** [spec.md](spec.md) (v0.2.5) · **Plan:** plan (retired in `1bdb1c62a908b76131f1eb2a94f769b419a78689`; read it with `git show 1bdb1c62a908b76131f1eb2a94f769b419a78689^:docs/specs/073-card-page-deck-stats/plan.md`)
 
 Each acceptance criterion with the example (or the document check) that proves it. A path is a spec file; a quoted name is the example's title or its `describe`. Documents are verified by reading, as `.claude/rules/testing.md` requires.
 

@@ -8,6 +8,7 @@
 **Branch:** `077-deck-shape-extreme-counts`
 **Issue:** [#320](https://github.com/plainprogrammer/Collector/issues/320) (design-system lane, filed by the maintainer's ruling from spec 069's implementation review)
 **Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (whole spec); the panel's markup is `DeckShape` in the [design system](../../design-system/README.md); see the [specs index](../README.md)
+**Plan:** retired in `a54b85eeb63a0ac540bd38b88747c79a0c2d47b4`; read it with `git show a54b85eeb63a0ac540bd38b88747c79a0c2d47b4^:docs/specs/077-deck-shape-extreme-counts/plan.md`
 
 ---
 

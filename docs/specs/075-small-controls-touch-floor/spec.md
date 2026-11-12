@@ -8,6 +8,7 @@
 **Branch:** `075-small-controls-touch-floor`
 **Issue:** [#316](https://github.com/plainprogrammer/Collector/issues/316) (design-system lane, a follow-up of spec 072 / #315, filed by the maintainer's ruling)
 **Frozen:** the current rules are in [`design-system/README.md`](../../design-system/README.md) (whole spec); see the [specs index](../README.md)
+**Plan:** retired in `b4fdb6924629fc6cc925c3a4af2536990e4c4e82`; read it with `git show b4fdb6924629fc6cc925c3a4af2536990e4c4e82^:docs/specs/075-small-controls-touch-floor/plan.md`
 
 ---
 
