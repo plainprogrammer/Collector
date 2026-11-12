@@ -25,3 +25,4 @@ The last cell of a table row, just wide enough for the row's "…" menu.
 - The trigger's `aria-label` names the row ("Actions for Sam", "Actions for M10 · 146 NM"), since every row's button looks the same.
 - A destructive item is last, after a separator, and links to a `ConfirmPage` rather than acting at once.
 - Used by the card page's copies table, the admin users list and `DeckPage`'s zone tables.
+- Rows near the bottom of a phone open their menu clear of the tab bar (`Menu`, spec 074): the page scrolls for the list, so a row's last item, often the destructive one, is never behind the bar. Nothing here sets a height for it.
