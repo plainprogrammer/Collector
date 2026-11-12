@@ -2,7 +2,7 @@
 
 The page that replaces the proxies of a deck zone with copies the collector owns: the free copies of the card as lots, each with its own quantity field. Shown here for a Magic: The Gathering card; the page names no collectible in its rules. Built by spec 070 (#257) as drawn by spec 060 decision 15 (ruled B: a quantity on every lot), with the changes listed under "As built".
 
-**Route** — `GET /decks/:deck_id/proxies/:id/replacement/new` is the page and `POST /decks/:deck_id/proxies/:id/replacement` is the form's action: the proxy by its id under its deck (`Decks::Proxies::ReplacementsController`). It is a link in the row menu of the deck page (`DeckPage`), never a form there.
+**Route** — `GET /decks/:deck_id/proxies/:proxy_id/replacement/new` is the page and `POST /decks/:deck_id/proxies/:proxy_id/replacement` is the form's action: the proxy by its id under its deck (`Decks::Proxies::ReplacementsController`). It is a link in the row menu of the deck page (`DeckPage`), never a form there.
 
 **Markup** — under `c-appbar--detail`, a `main` that carries `c-main c-page c-decks`: a heading that names the card, a line that names the proxy row, then a `c-form` holding a `c-choices c-pick` fieldset of lot rows in groups, and the actions: Use these copies (primary) and Cancel back to the deck.
 

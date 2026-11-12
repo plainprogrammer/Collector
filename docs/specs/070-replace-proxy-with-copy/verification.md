@@ -1,6 +1,6 @@
 # Verification: Spec 070, Replace a Proxy with a Copy (#257)
 
-Spec v0.4.0 (Approved at Gate A), plan revision 3 (Approved at Gate B). Branch `070-replace-proxy-with-copy`.
+Spec v0.4.1 (Approved at Gate A; 0.4.1 is a one-sentence patch when `main` moved), plan revision 3 (Approved at Gate B). Branch `070-replace-proxy-with-copy`.
 
 ## Acceptance criteria and the examples that prove them
 
@@ -77,3 +77,24 @@ Screenshots and GIFs are in `screenshots/` (factory data, placeholder card image
 - The deck page after: `deck-page-after-use-wide-light` (proxy lowered, owned row), `deck-page-after-add-phone-light` (proxy gone).
 - GIFs: `use-my-copy-wide-light.gif`, `add-new-copy-wide-light.gif`, `use-my-copy-phone-light.gif`.
 - Seen while capturing, both existing behaviour of the deck page and not this spec's: at 360px the last items of a row's menu near the bottom of the viewport sit behind the fixed tab bar until the page is scrolled, and a short card name can break mid-word in the narrow Card column.
+
+## Implementation review
+
+SPEC-ALIGNED
+
+`sdd-review` Mode B, read-only, on `opus`, against `origin/main...HEAD` at the merge of `origin/main` (`bfaec02b`): no blocking or major finding; ten minor findings, taken as follows. One round; the fixes are small and each is pinned by an example that was seen to fail (or a mutation that makes it fail), so no second round was run.
+
+| Finding | Disposition |
+|---------|-------------|
+| F1 the read-only Location label kept a paragraph's default margins (a larger gap in `add-new-copy-wide-light.jpg`) | Fixed in `1fcbb9ca`: the rule of `.c-decks .c-field__value` also resets `.c-decks .c-field > p.c-field__label`; a system example measures the margins (it read `12px` before the CSS); `AddProxy.md` and the README's App additions line updated |
+| F2 "This proxy changed…" was hidden when the form had its own error, and the page then rewrote `shown_quantity` to the new count | Fixed in `015571de`, test first (model and request examples failed before): the changed check always runs after the form's own sentences (decision 10's order) |
+| F3 `lot_pick_label` read `Current.account` without saying so | `9ebbe91a`: the comment says it |
+| F4 the specs index row of 070 read Draft; 068's row lacked "AC-4.2 in part" | Fixed in the index |
+| F5 the new routes' parameter written `:id` in the docs, `:proxy_id` in the route | Fixed in `UseMyCopy.md`, `AddProxy.md` and `collection-and-lots.md` (the older rows of spec 068 are left as written) |
+| F6 AC-2.2's order inside a group was proved only by the newest printing | `60775f8b`: two examples assert the exact order of lots that differ by finish, condition, price paid and place; mutating the `ORDER BY` fails them |
+| F7 AC-4.3 and AC-4.4 assertions were partial | `60775f8b`: exact sentences (the cap, the price, the condition, the finish), an unknown-condition case |
+| F8 two Error Scenarios had no example (a retired proxy printing; a proxy with no finish on a printing that lists some) | `60775f8b`: a request example for each, both pages |
+| F9 the `lower_by!` example's title promised `updated_at` | `60775f8b`: `updated_at` is made old first and asserted changed |
+| F10 this file cited spec v0.4.0 | Fixed (v0.4.1) |
+
+Strengths the review recorded: tenancy (every read through `Current.account`, no parameter names an account, zone, location or entry, another account's lot id is only ever "no longer free"), the transaction structure (`Lot::MoveIntoZone` joins the caller's transaction, the refusal propagates, the page is built after the rollback), the statement counts, the escaping in `lot_pick_label` and `replaces_line` (plain Strings through `safe_join`), and the frozen shared files (no blocking defect).

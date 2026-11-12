@@ -52,7 +52,7 @@ All four are detail pages: `c-appbar--detail` with a back arrow, Decks the curre
 
 ## Add a new copy
 
-`GET /decks/:deck_id/proxies/:id/copy/new` and `POST /decks/:deck_id/proxies/:id/copy` (`Decks::Proxies::CopiesController`; spec 070 decision 5, #257): the Add a copy form (`lots/_form`, the card page's) for the proxy's printing, on a deck-side page, so that the copy lands in the proxy's zone while the proxy is lowered by the same quantity. It is a link in the row menu, never a form there. It is a detail page like the four above: `c-appbar--detail`, Decks the current section, `main` of `c-main c-page c-decks`, the heading and the muted line breaking inside a word. The card page's own Add a copy and Edit copy, which share the partial, are unchanged (spec 070 AC-4.9).
+`GET /decks/:deck_id/proxies/:proxy_id/copy/new` and `POST /decks/:deck_id/proxies/:proxy_id/copy` (`Decks::Proxies::CopiesController`; spec 070 decision 5, #257): the Add a copy form (`lots/_form`, the card page's) for the proxy's printing, on a deck-side page, so that the copy lands in the proxy's zone while the proxy is lowered by the same quantity. It is a link in the row menu, never a form there. It is a detail page like the four above: `c-appbar--detail`, Decks the current section, `main` of `c-main c-page c-decks`, the heading and the muted line breaking inside a word. The card page's own Add a copy and Edit copy, which share the partial, are unchanged (spec 070 AC-4.9).
 
 ```html
 <main class="c-main c-page c-decks">
