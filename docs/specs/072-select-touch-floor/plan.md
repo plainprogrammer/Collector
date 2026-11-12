@@ -9,13 +9,13 @@
 - Headless Firefox has a fine pointer and can't emulate a coarse one: examples read the `(pointer: coarse)` rules from the loaded stylesheets and apply them as an adopted stylesheet (spec decision 3). Every example that needs the rule reads it first and says so when it is missing, so a red run names the missing rule and not a downstream symptom.
 - No view, helper, controller, model, migration or export change, and no stylesheet but `additions.css` (FR-4, AC-3.1). The block's comment may cite specs 057, 068 and 072 and must not contain "spec 019", "spec 021" or "spec 023" (`spec/design_system_files_spec.rb` counts them across the whole file).
 - Styles use the token `var(--touch-floor)`, never a literal 44px (`additions.css` line 367).
-- Commit trailer: `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. One git operation per shell call (stage, then commit).
+- Commit trailer: the one the session's attribution reminder gives, `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>` (earlier commits of this branch carry Opus, left as they are by the coordinator's ruling). One git operation per shell call (stage, then commit).
 - Off limits: `.kamal/secrets`, `config/master.key`, `.env*`, `storage/`, `*.sqlite3`; every `git grep` ends with `':!.kamal/secrets'`.
 - Run `bin/rubocop -a` on each Ruby file written (the project's hook does too); array literals use the omakase style `[ a, b ]`.
 
 ## Goal
 
-One block in `additions.css` gives every `c-field` and `c-select` select the touch floor on a coarse pointer and centres the filter row's controls there; two rules it makes redundant go (the `.c-select` 40px coarse rule and the `.c-decks` select block); eight component documents and the README's Touch rule say so; one system spec file proves it against the twelve pages of the spec's audit (and measurement mode); evidence shots show the selects before and after on a coarse pointer, as far as the stylesheet allows.
+One block in `additions.css` gives every `c-field` and `c-select` select the touch floor on a coarse pointer and centres the filter row's controls there; two rules it makes redundant go (the `.c-select` 40px coarse rule and the `.c-decks` select block); seven component documents and the README's Touch rule say so; one system spec file proves it against the twelve pages of the spec's audit (and measurement mode); evidence shots show the selects before and after on a coarse pointer, as far as the stylesheet allows.
 
 ## Pre-implementation gates
 
@@ -37,7 +37,8 @@ Command (run 2026-11-11 from the repo root): `git grep -n -E "c-decks \.c-(selec
 | `docs/design-system/components/DecksIndex.md:144` (the scoped-rule bullet) | rewritten (Task 3) |
 | `docs/design-system/components/Form.md:38` ("Selects get the same height…") | kept; a bullet follows it (Task 3) |
 | `spec/system/deck_page_spec.rb:156-185`, `components.css:170-173`, `additions.css:367-551` (other touch rules; buttons, links, the `--touch-floor` token) | kept: they don't touch a select |
-| `docs/design-system/components/AddProxy.md:5,9`, `DeckPage.md:63`, `DecksIndex.md:141`, `Locations.md:32` | kept: they speak of buttons and links, not selects |
+| `docs/design-system/components/AddProxy.md:9` and `:40` (name `.c-decks .c-select select` and `.c-decks .c-field select`) | rewritten to point to the app-wide rule (Task 3 Step 5) |
+| `docs/design-system/components/AddProxy.md:5`, `DeckPage.md:63`, `DecksIndex.md:141`, `Locations.md:32` | kept: they speak of buttons and links, not selects |
 | `docs/specs/**` (including 068's `verification.md`) | history, not edited |
 
 ## File structure
@@ -71,12 +72,10 @@ require "rails_helper"
 # the narrow frame, since a window can't go below 500px. The coarse rules are applied in source order as one sheet.
 RSpec.describe "Selects meet the touch floor on a coarse pointer", type: :system do
   let(:user) { create(:user) }
-  let(:account) { user.account }
-  let!(:blue) { create(:location, account:, name: "Blue binder") }
-  let!(:deck) { create(:deck, account:, name: "Izzet Tempo") }
-  let!(:lot) { owned_printing("Lightning Bolt", account:, location: blue, number: "138", quantity: 2) }
-  let(:entry) { lot.entry }
-  let(:corpus) { Pathname(Dir.mktmpdir("corpus")) }
+  let!(:blue) { create(:location, account: user.account, name: "Blue binder") }
+  let!(:deck) { create(:deck, account: user.account, name: "Izzet Tempo") }
+  let!(:lot) { owned_printing("Lightning Bolt", account: user.account, location: blue, number: "138", quantity: 2) }
+  let(:corpus) { Pathname(Dir.mktmpdir("corpus")) } # five memoized helpers: the cap of RSpec/MultipleMemoizedHelpers
 
   # Measurement mode (development only) draws its select only with a manifest and a run directory.
   around do |example|
@@ -96,6 +95,8 @@ RSpec.describe "Selects meet the touch floor on a coarse pointer", type: :system
     system_sign_in_as(user)
   end
 
+  def entry = lot.entry # a method, not a `let`: the cop counts memoized helpers
+
   # The two rules of the spec's block, as the browser serialises their selectors.
   def select_rule = ".c-field select, .c-select select"
   def row_rule = ".c-filterbar__filters"
@@ -103,7 +104,7 @@ RSpec.describe "Selects meet the touch floor on a coarse pointer", type: :system
   # The audit table of spec 072: every page that draws a select, by name.
   def pages
     { "card search" => catalog_entries_path,
-      "collection" => collection_path,
+      "collection" => collection_path(view: "grid"), # the view is a saved preference of the user: name it
       "collection in bulk mode" => collection_path(bulk: 1),
       "number entry" => collection_number_entry_path(type: "mtg", set: entry.set.code, language: "en"),
       "add a copy" => new_catalog_entry_lot_path(entry),
@@ -121,14 +122,11 @@ RSpec.describe "Selects meet the touch floor on a coarse pointer", type: :system
 
   # Bulk Move to… needs a selection, which lives in the session: tick everything in bulk mode and press Move to… once.
   def select_everything
-    return if @selected
-
-    visit collection_path
-    click_on "Edit many"
+    visit collection_path(view: "grid")
+    click_on "Edit many" # starts an empty selection, so calling this again is harmless
     check "Select all"
     within(".c-bulkbar__extra") { click_on "Move to…" }
     expect(page).to have_css("h1", text: /\AMove \d+ items?\z/)
-    @selected = true
   end
 
   # Runs the block on the page: in the window at 1280px, or in a frame `width` px wide (the frame is the document the
@@ -137,14 +135,24 @@ RSpec.describe "Selects meet the touch floor on a coarse pointer", type: :system
     path = pages.fetch(name)
     select_everything if name == "bulk move to"
     if width < 500
-      visit collection_path
+      visit collection_path(view: "grid")
       open_in_narrow_frame(path, width:, ready: "main")
-      within_narrow_frame(&block)
+      within_narrow_frame do
+        settle(name)
+        block.call
+      end
     else
       visit path
       expect(page).to have_css("main")
+      settle(name)
       yield
     end
+  end
+
+  # The scanner's stage is unhidden by script some time after `main` exists (the fake camera) and is about 416px tall, so
+  # a measure taken either side of it differs: wait for it on the two scanner pages.
+  def settle(name)
+    expect(page).to have_css(".c-scanner__stage:not([hidden])", wait: 10) if [ "scanner", "measurement mode" ].include?(name)
   end
 
   # Applies the coarse-pointer rules of the loaded stylesheets, media wrapper removed, to the current document as one
@@ -199,7 +207,7 @@ RSpec.describe "Selects meet the touch floor on a coarse pointer", type: :system
         }
         const meets = (a, b) => !(a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top)
         const label = (el) => el.tagName.toLowerCase() + (el.id ? "#" + el.id : "") + (el.className ? "." + String(el.className).split(" ").join(".") : "")
-        const controls = [...document.querySelectorAll("main select, main input:not([type=hidden]), main button, main a.c-btn, main summary")]
+        const controls = [...document.querySelectorAll("main select, main input:not([type=hidden]), main button, main .c-btn, main summary")]
           .filter((el) => !el.closest(".c-sr"))
           .map((el) => ({ el, rect: el.getBoundingClientRect(), row: !!el.closest(".c-filterbar__filters") }))
           .filter(({ el, rect, row }) => rect.width > 0 && rect.height > 0 && (row || !clipper(el) || meets(rect, clipper(el).getBoundingClientRect())))
@@ -237,14 +245,14 @@ RSpec.describe "Selects meet the touch floor on a coarse pointer", type: :system
         .filter((el) => !el.closest(".c-sr") && el.type !== "hidden")
         .map((el) => {
           const rect = el.getBoundingClientRect()
-          return [el.tagName, el.name || el.id || el.textContent.trim().slice(0, 24), Math.round(rect.width * 100) / 100, Math.round(rect.height * 100) / 100]
+          return [el.tagName, (el.textContent.trim() || el.value || el.name || el.id).slice(0, 24), Math.round(rect.width * 100) / 100, Math.round(rect.height * 100) / 100]
         })
     JS
   end
 
-  it "has one coarse-pointer rule for selects, covering both shapes at the touch floor (AC-1.1)", :aggregate_failures do
-    visit new_deck_path
-    read = page.evaluate_script(<<~JS)
+  # The coarse-pointer rules that set a min-height, as selector and value, and the resolved `--touch-floor` (AC-1.1).
+  def coarse_min_heights
+    page.evaluate_script(<<~JS)
       (() => {
         const found = []
         for (const sheet of document.styleSheets)
@@ -255,6 +263,39 @@ RSpec.describe "Selects meet the touch floor on a coarse pointer", type: :system
         return { found, floor: parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--touch-floor")) || 0 }
       })()
     JS
+  end
+
+  # Every style rule of the loaded stylesheets as its selector and whether a coarse-pointer block holds it (AC-1.6).
+  def all_rules
+    page.evaluate_script(<<~JS)
+      (() => {
+        const all = []
+        const walk = (list, coarse) => {
+          for (const rule of list) {
+            if (rule.cssRules && rule.conditionText !== undefined) walk(rule.cssRules, coarse || rule.conditionText.includes("pointer: coarse"))
+            else if (rule.selectorText) all.push({ selector: rule.selectorText, coarse })
+          }
+        }
+        for (const sheet of document.styleSheets) walk(sheet.cssRules, false)
+        return all
+      })()
+    JS
+  end
+
+  # The controls other than selects of a page at 360px, with the coarse rules applied (AC-1.7). The scrollbar is pinned on
+  # so a taller page can't narrow the frame by 15px and change every stretched control's width, which is no layout defect.
+  def other_controls_of(name, extra: "", **injection)
+    controls = nil
+    in_page(name, width: 360) do
+      inject_coarse(extra: "html { overflow-y: scroll; } #{extra}", **injection)
+      controls = other_controls
+    end
+    controls
+  end
+
+  it "has one coarse-pointer rule for selects, covering both shapes at the touch floor (AC-1.1)", :aggregate_failures do
+    visit new_deck_path
+    read = coarse_min_heights
     select_rules = read["found"].select { it["selector"].include?("select") }
     expect(select_rules).to eq([ { "selector" => select_rule, "minHeight" => "var(--touch-floor)" } ])
     expect(read["floor"]).to be >= 44
@@ -294,8 +335,8 @@ RSpec.describe "Selects meet the touch floor on a coarse pointer", type: :system
     end
   end
 
-  # The filter bars: the collection (a list and bulk mode), the card search and the add-a-proxy chooser.
-  filter_pages = [ "collection", "collection in bulk mode", "card search", "proxy chooser" ]
+  # The filter bars: the collection (grid view and bulk mode), the card search and the add-a-proxy chooser.
+  def filter_pages = [ "collection", "collection in bulk mode", "card search", "proxy chooser" ]
 
   [ 1280, 360 ].each do |width|
     it "centres the filter row's button on its select at #{width}px (AC-1.5)", :aggregate_failures do
@@ -319,17 +360,10 @@ RSpec.describe "Selects meet the touch floor on a coarse pointer", type: :system
   end
 
   it "changes no other control's size: all coarse rules with and without the block's two (AC-1.7)", :aggregate_failures do
+    needs = [ select_rule, row_rule ]
     pages.each_key do |name|
-      without = nil
-      with = nil
-      in_page(name, width: 360) do
-        inject_coarse(except: [ select_rule, row_rule ], needs: [ select_rule, row_rule ])
-        without = other_controls
-      end
-      in_page(name, width: 360) do
-        inject_coarse(needs: [ select_rule, row_rule ])
-        with = other_controls
-      end
+      without = other_controls_of(name, except: needs, needs:)
+      with = other_controls_of(name, needs:)
       expect(without).not_to be_empty, "#{name}: no control found"
       changed = without.zip(with).reject { |before, after| before == after }
       expect(changed).to be_empty, "#{name}: controls whose size changed: #{changed}"
@@ -337,17 +371,10 @@ RSpec.describe "Selects meet the touch floor on a coarse pointer", type: :system
   end
 
   it "notices a rule that grows another control (AC-1.7 can fail)" do
-    without = nil
-    with = nil
-    in_page("card search", width: 360) do
-      inject_coarse(except: [ select_rule, row_rule ])
-      without = other_controls
-    end
-    in_page("card search", width: 360) do
-      inject_coarse(extra: ".c-btn--sm { min-height: 90px; }")
-      with = other_controls
-    end
-    expect(with).not_to eq(without)
+    without = other_controls_of("card search", except: [ select_rule, row_rule ])
+    with = other_controls_of("card search", extra: ".c-btn--sm { min-height: 90px; }")
+    search = ->(controls) { controls.find { |control| control[1] == "Search" }.last }
+    expect([ search.(without), search.(with) ]).to eq([ 40, 90 ])
   end
 
   it "has no select rule scoped to the deck pages and none in the filter bar's own block (AC-1.6)", :aggregate_failures do
@@ -435,7 +462,7 @@ Leave one blank line between the blocks around it, as the file keeps.
 /* ---------- Selects meet the touch floor on a coarse pointer (spec 072) ---------- */
 /* A select is 36px in a form (`.c-field select`) and 28px in the filter bar (`.c-select select`), so a desktop keeps compact rows.
    Every other control reaches 44px on a touch screen and so does a select, by `min-height`, which only raises. `.c-field` and
-   `.c-select` are the design system's two select shapes (`Form`, `FilterSelect`); spec 068 had lifted the deck pages' selects alone.
+   `.c-select` are the design system's two select shapes (`Form`, `FilterSelect`), so no page needs a rule of its own.
    The filter row's children use the default `stretch` and a `c-btn--sm` (40px there, an explicit height) does not stretch, so beside
    a 44px select it would sit at the top of the row, 4px short: the row centres its controls on a coarse pointer. Headless Firefox has
    a fine pointer, so `spec/system/select_touch_floor_spec.rb` reads these rules and applies them. */
@@ -453,7 +480,7 @@ Leave one blank line between the blocks around it, as the file keeps.
   .c-filterbar__filters .c-select { display:flex; }
 ```
 
-If a different example fails, read the report's message and fix the cause in the CSS only when it is a real layout defect of a coarse pointer (an overflow, an overlap, a grown control); do not loosen an example. Report any such finding to the supervisor before changing the block beyond Step 5's line.
+If a different example fails, read the report's message and decide which it is. A difference that comes from the measurement (a page that grew past the frame's height and gained a scrollbar, a scanner stage that unhid between two loads, a control that moved because a page taller than the viewport scrolls) is fixed in the example, with a comment, without loosening what it asserts. A real layout defect of a coarse pointer (an overflow, an overlap, a grown control, an off-centre row) is fixed in the CSS only inside the block's `@media`, with the cause named in the commit message; if the fix is more than Step 5's line, report it to the supervisor first.
 
 **Step 6: lint and commit.** `bin/rubocop -a` has nothing to say about CSS; run `git add app/assets/stylesheets/collector/additions.css`, then `git commit -m "feat(design-system): selects meet the 44px touch floor on a coarse pointer (#315)"` with the trailer and a body that names the deleted rules.
 
@@ -468,22 +495,14 @@ If a different example fails, read the report's message and fix the cause in the
 **Step 1: README.** Replace line 73 with:
 
 ```markdown
-- On touch devices every target is at least 44px (40px for small buttons, chips and the view switch); `collector/components.css` and `collector/additions.css` handle this with `pointer: coarse`. A select is 44px high there too (spec 072, [#315](https://github.com/plainprogrammer/Collector/issues/315)): `min-height: var(--touch-floor)` on `.c-field select` and `.c-select select`, one rule in `additions.css`; the compact heights, 36px in a form and 28px in the filter bar, are the fine pointer's. On a coarse pointer the filter row (`c-filterbar__filters`) centres its controls, so a 40px small button sits level with the 44px select. A new select is a `c-field` or `c-select` select and meets the floor with no rule of its own; a select outside both shapes is a design-system violation, not something the rule hides.
+- On touch devices every target is at least 44px (40px for small buttons, chips and the view switch); `collector/components.css` and `collector/additions.css` handle this with `pointer: coarse`. A select is at least 44px high there too (spec 072, [#315](https://github.com/plainprogrammer/Collector/issues/315)): `min-height: var(--touch-floor)` on `.c-field select` and `.c-select select`, one rule in `additions.css`; the compact heights, 36px in a form and 28px in the filter bar, are the fine pointer's. On a coarse pointer the filter row (`c-filterbar__filters`) centres its controls, so a 40px small button sits level with the 44px select. A new select is a `c-field` or `c-select` select and meets the floor with no rule of its own; a select outside both shapes is a design-system violation, not something the rule hides.
 ```
 
 and in line 103 replace "in `components/bundle.css`" with "in `collector/components.css`, with the app's additions in `collector/additions.css`".
 
-**Step 2: `Form.md`.** After the bullet that begins "- Selects get the same height, border and focus ring as `c-input`;" insert:
+**Step 2: `Form.md`.** In the bullet that begins "- Selects get the same height, border and focus ring as `c-input`;" replace those first words with "Selects get the same border and focus ring as `c-input`, and its height at both pointers: 36px on a fine pointer, at least the touch floor, 44px, on a coarse one (`min-height: var(--touch-floor)` on `.c-field select`, spec 072; it covers every form's selects: the lot form's, Move copies', bulk Move to…'s, the location picker, the scanner's sitting, the deck pages' and the currency page's);" and keep the rest of the bullet ("a blank first option says …") as it is.
 
-```markdown
-- On a coarse pointer a select is at least the touch floor, 44px, high (`min-height: var(--touch-floor)` on `.c-field select`, spec 072), as `c-input` is; the 36px above is the fine pointer's. The rule covers every form's selects: the lot form's, Move copies' and bulk Move to…'s, the location picker, the scanner's sitting, the deck pages' and the currency page's.
-```
-
-**Step 3: `FilterSelect.md`.** Replace "on touch screens it grows to at least 40px." with "on a coarse pointer (a touch screen) it is at least the touch floor, 44px, high (`min-height: var(--touch-floor)` on `.c-select select`, spec 072), and the filter row centres its controls there, so the 40px small button beside it sits level with it." and append at the end of the file:
-
-```markdown
-- Also used by the add-a-proxy chooser (the set, button "Search", spec 068) and number entry's language row (the language, button "Change language", spec 026).
-```
+**Step 3: `FilterSelect.md`.** Replace "on touch screens it grows to at least 40px." with "on a coarse pointer (a touch screen) it is at least the touch floor, 44px, high (`min-height: var(--touch-floor)` on `.c-select select`, spec 072), and the filter row centres its controls there, so the 40px small button beside it sits level with it." and in the file's last bullet, which begins "- Used by the catalog search (the set, button "Search") and the collection page (the location, button "Filter", spec 037).", insert after "(the location, button "Filter", spec 037)" the words ", the add-a-proxy chooser (the set, button "Search", spec 068) and number entry's language row (the language, button "Change language", spec 026)" and turn the " and the collection page" before it into ", the collection page", keeping the rest of the bullet (the sentence about bulk mode) unchanged.
 
 **Step 4: `DecksIndex.md`.** Replace the whole bullet on line 144 (it starts "- **Selects take the touch floor on a coarse pointer**") with:
 
@@ -491,7 +510,7 @@ and in line 103 replace "in `components/bundle.css`" with "in `collector/compone
 - **Selects take the touch floor on a coarse pointer** (spec 068 AC-9.1; since spec 072 the design system's own rule for every select, in `Form` and `FilterSelect`): the add-a-proxy chooser's Set, the form's Finish and the Change format page's Format are at least the touch floor (44px) high there, by `@media (pointer: coarse) { .c-field select, .c-select select { min-height: var(--touch-floor) } }` in `additions.css`. The deck pages carry no select rule of their own.
 ```
 
-**Step 5: the four documents that draw a select.** `AddProxy.md`: append to the final "Sources:" line the sentence " The selects' touch floor is the app-wide rule of spec 072 (`Form`, `FilterSelect`)." `AddToDeck.md`: after the bullet that begins "- **Deck and zone.**" insert
+**Step 5: the four documents that draw a select.** `AddProxy.md`: on line 9 replace "lifted to the 44px touch floor by `.c-decks .c-select select` (spec 068 AC-9.1; `DecksIndex`)" with "at least the 44px touch floor, by the app-wide rule for selects (`FilterSelect`, spec 072; spec 068 AC-9.1)"; on line 40 replace "(`.c-decks .c-field select`, spec 068 AC-9.1)" with "(the app-wide rule for selects, `Form`, spec 072; spec 068 AC-9.1)"; and append to the final "Sources:" line the sentence " The selects' touch floor is the app-wide rule of spec 072 (`Form`, `FilterSelect`)." `AddToDeck.md`: after the bullet that begins "- **Deck and zone.**" insert
 
 ```markdown
 - On a coarse pointer the select is at least the touch floor (44px) high, as every select is (`Form`, spec 072).
@@ -509,7 +528,7 @@ and in line 103 replace "in `components/bundle.css`" with "in `collector/compone
 - On a coarse pointer the sitting's Condition and Location selects (`c-field`) and the measurement panel's "Card to capture" select are at least the touch floor (44px) high (`Form`, spec 072).
 ```
 
-**Step 6: check by reading and commit.** `git grep -n -E "grows to at least 40|bundle\.css" -- docs/design-system ':!.kamal/secrets'` must print nothing from the files above (a `bundle.css` in a preview or a historical note elsewhere is left). `git diff` shows only these eight files. Then `git add docs/design-system`, then `git commit -m "docs(design-system): the touch floor of a select (#315)"` with the trailer.
+**Step 6: check by reading and commit.** `git grep -n -E "grows to at least 40|bundle\.css|c-decks \.c-(select|field)" -- docs/design-system ':!.kamal/secrets'` must print nothing from the files above (a `bundle.css` in a preview or a historical note elsewhere is left). `git diff` shows only these eight files. Then `git add docs/design-system`, then `git commit -m "docs(design-system): the touch floor of a select (#315)"` with the trailer.
 
 ---
 
@@ -543,12 +562,16 @@ Headless Firefox draws a fine pointer, so "after" injects every coarse rule of t
   # A wide shot of the window, or a 360px shot of the frame element; the theme is set in the document that is drawn.
   def shoot(name, kind:, theme:, state:, path:)
     if kind == "phone"
-      visit collection_path
+      visit collection_path(view: "grid")
       open_in_narrow_frame(pages.fetch(name), width: 360, ready: "main", height: 700)
       within_narrow_frame do
         apply(state)
         set_theme(theme)
       end
+      # Grow the frame to its page, so a select below the fold is in the shot, then shoot the frame element.
+      height = page.evaluate_script("document.getElementById('narrow').contentDocument.documentElement.scrollHeight")
+      page.execute_script("document.getElementById('narrow').style.height = arguments[0] + 'px'", height)
+      page.driver.browser.manage.window.resize_to(1280, [ height + 100, 900 ].max)
       find("#narrow").native.save_screenshot(path)
     else
       visit pages.fetch(name)
@@ -578,9 +601,28 @@ Headless Firefox draws a fine pointer, so "after" injects every coarse rule of t
 
 Create the directory in the session scratchpad first (`mkdir -p /private/tmp/claude-501/-Users-james-orca-workspaces-Collector-072-select-touch-floor/d9cd9c69-0567-4a95-bf3c-532bdcc6cbf2/scratchpad/shots`), then run `SHOTS_DIR=/private/tmp/claude-501/-Users-james-orca-workspaces-Collector-072-select-touch-floor/d9cd9c69-0567-4a95-bf3c-532bdcc6cbf2/scratchpad/shots bin/rspec spec/system/zz_072_screenshots_spec.rb`. Expected: one example passes and 48 png files exist (6 pages x 2 themes x 2 widths x before and after).
 
-**Step 2: look at every shot yourself** (the Read tool shows images): first one of each theme and width, then all. Check: the light shots are light (headless Firefox prefers dark: `data-theme` is set from the name before each save), the before/after pairs differ only in the selects' height (and the filter row's alignment), nothing overflows at 360px, no control overlaps another. Report anything that looks wrong to the supervisor; do not fix CSS here.
+**Step 2: look at every shot yourself** (the Read tool shows images): first one of each theme and width, then all. Check: the light shots are light (`spec/support/system.rb` pins the light scheme; `data-theme` is set from the name before each save anyway), the before/after pairs differ only in the selects' height (and the filter row's alignment), nothing overflows at 360px, no control overlaps another. Report anything that looks wrong to the supervisor; do not fix CSS here.
 
-**Step 3: compress and store.** For each png: `magick in.png -resize 1000x -quality 70 out.jpg` into `docs/specs/072-select-touch-floor/screenshots/` (about 48 files; keep their names). Delete `spec/system/zz_072_screenshots_spec.rb`. `git status` must show only the screenshots as new. Then `git add docs/specs/072-select-touch-floor/screenshots`, then `git commit -m "docs(specs): before and after shots of spec 072's selects (#315)"` with the trailer.
+**Step 3: compress and store.** For each png: `magick in.png -resize '1000x>' -quality 70 out.jpg` (the `>` never enlarges a 360px frame shot) into `docs/specs/072-select-touch-floor/screenshots/` (about 48 files; keep their names). Delete `spec/system/zz_072_screenshots_spec.rb`. `git status` must show only the screenshots as new. Then `git add docs/specs/072-select-touch-floor/screenshots`, then `git commit -m "docs(specs): before and after shots of spec 072's selects (#315)"` with the trailer.
+
+---
+
+### Task 5: verification.md
+
+**Files:** `docs/specs/072-select-touch-floor/verification.md`.
+
+**Step 1: write the file** (a document: no RSpec checks it, `.claude/rules/testing.md`) with these sections, in this order, each filled from what the earlier tasks produced:
+
+1. `# Verification: spec 072` and one line per AC (AC-1.1 to AC-3.2) naming the example or the document and the command that showed it (`bin/rspec spec/system/select_touch_floor_spec.rb` with the example counts, from the run).
+2. `## The audit` : the exact command `git grep -n -E "<select|form\.select|f\.select|select_tag|collection_select|grouped_collection_select|c-select" -- app ':!app/assets' ':!.kamal/secrets'` and its hits, the twelve pages and measurement mode they make, and that import and admin draw no select.
+3. `## The supersession grep` : the command and the table of dispositions from this plan, as they came out.
+4. `## Readings` : AC-2.1 and AC-2.2, each document read and the sentence it now says; AC-3.1 with the output of `git diff --stat origin/main...HEAD -- app db config lib`.
+5. `## Decisions taken while implementing` : whether Task 2 Step 5's `display:flex` fallback was needed, any scanner overlap exclusion, any scrollbar or timing fix to an example, each with its reason.
+6. `## Evidence` : the shots' folder and a table of file names; the note that the shots are of factory data with placeholder card images, that "after" applies every coarse rule of the shipped stylesheet to a fine-pointer page and "before" applies every coarse rule but the block's two, plus the filter bar's old 40px and the deck pages' old rule, and that headless Firefox can't emulate a coarse pointer.
+7. `## Implementation review` is added after the review (spec 027 rule: the verdict on its first line).
+8. The new spec file is slow (about 80 page loads); say so, and whether `spec/support/runtime_log.txt` was refreshed (optional, `script/ci/record_runtime_log`).
+
+**Step 2: commit.** `git add docs/specs/072-select-touch-floor/verification.md`, then `git commit -m "docs(specs): verification of spec 072 (#315)"` with the trailer.
 
 ---
 
@@ -601,14 +643,14 @@ Create the directory in the session scratchpad first (`mkdir -p /private/tmp/cla
 | AC-3.2 | Phase 1 Step 2, green by Phase 2; the width examples of specs 064 and 068 run in Phase 2 Step 4 |
 | FR-1 | Phase 2; FR-2 Phase 3; FR-3 Phase 1; FR-4 AC-3.1 |
 
-Interpretations the plan makes of the spec, for the reviewers: AC-1.4's "nearest scrolling ancestor" is the nearest ancestor that clips its overflow, and the document itself never clips (the whole page counts); AC-1.7 runs at 360px only (the width where wrapping can grow a control; AC-1.5 covers the filter row at 1280px too).
+Interpretations the plan makes of the spec, for the reviewers: decision 3 says the coarse rules are applied in a `<style>`; the plan applies them as an adopted constructable stylesheet (`CSSStyleSheet#replaceSync`), which is the same cascade position (after every link) and is not blocked by the scanner pages' policy, so it is the same technique; AC-1.5's "list view" is the collection's grid view, named in the URL because the view is a saved preference (bulk mode is its own page of the list); AC-1.4's "nearest scrolling ancestor" is the nearest ancestor that clips its overflow, and the document itself never clips (the whole page counts); AC-1.7 runs at 360px only (the width where wrapping can grow a control; AC-1.5 covers the filter row at 1280px too).
 
 ## Integration verification
 
 - `bin/rspec spec/system/select_touch_floor_spec.rb spec/system/deck_proxies_spec.rb spec/design_system_files_spec.rb` green after Phase 2, and the Phase 2 Step 4 list green.
 - `bin/rubocop` clean, `bin/yard doc` has no new warning (no Ruby API changed), `ruby script/upgrade/guard.rb` unaffected.
 - Full `bin/ci` once, with a slot from the coordinator, before the push.
-- The implementation review (sdd-review Mode B, Opus, read-only) after Phase 4, recorded in `verification.md` under `## Implementation review`, verdict first.
+- Task 5 writes `verification.md`; the implementation review (sdd-review Mode B, Opus, read-only) follows Phase 4 and Task 5, recorded in `verification.md` under `## Implementation review`, verdict first.
 
 ## Quickstart validation
 
