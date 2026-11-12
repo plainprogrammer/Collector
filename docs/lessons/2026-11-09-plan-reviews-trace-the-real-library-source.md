@@ -23,3 +23,9 @@ When a plan's code depends on a library's internals, give the plan reviewer the 
 - A plan whose test expectations quote strings a library generates, with no one having read the generator.
 - A review brief that lists only repository files.
 - Implementers reporting "plan code needed a correction" more than once per phase.
+
+## A second case (spec 075, #316): the plan's snippets and the repo's RSpec cops
+
+Spec 075's plan held about 500 lines of new spec code. Two review rounds found, in the plan text and before any code existed, cops that cannot be autocorrected and that the pre-commit hook blocks on: constants declared inside `RSpec.describe` (`RSpec/LeakyConstantDeclaration`), a second top-level `describe` (`RSpec/MultipleDescribes`), a context named "as a visitor …" (`RSpec/ContextWording` wants when/with/without), examples over 15 lines, and two expectations without `:aggregate_failures`. Round 2 found three of them again, introduced by the round 1 fix (the snippet for the second group had been rewritten as a describe). The implementers then ran green with `bin/rubocop` clean.
+
+**Next time:** write a plan's spec snippets in the shape the cops accept (one-line methods instead of constants, one describe with contexts, one example per width, `:aggregate_failures` on any example with two expectations), and name the cops in the review brief; when a review fix rewrites a snippet, re-read the snippet against the same cops.
