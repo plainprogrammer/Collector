@@ -46,6 +46,8 @@ RSpec.describe "Deck checks", type: :system do
     visit deck_path(deck)
     expect(open_in_viewport_frame(deck_check_path(deck), viewport: 360, ready: "#deck-check-title")).to eq(360)
     within_narrow_frame do
+      expect(page).to have_css(".c-deckcheck__text", text: "N" * 60) # the clipped count below measures real elements
+      expect(page).to have_css(".c-deckcheck__status", minimum: 1)
       %w[light dark].each do |theme|
         set_theme(theme)
         expect([ page_fits_sideways?, clipped(".c-deckcheck__text, .c-deckcheck__status, .c-item__actions .c-btn") ]).to eq([ true, 0 ])
@@ -70,8 +72,10 @@ RSpec.describe "Deck checks", type: :system do
   it "says pass or fault in words with an icon on every row, never by colour alone (AC-6.2)", :aggregate_failures do
     create_lot_in_zone(deck, "main", entry: printing("Plains"), quantity: 58)
     visit deck_check_path(deck)
-    rows = all(".c-deckcheck__row--fault .c-deckcheck__status")
-    expect(rows.map(&:text)).to all(be_in([ "Short", "Over", "Over the limit", "Owned and proxy" ]))
-    expect(page).to have_css(".c-deckcheck__status svg", count: page.all(".c-deckcheck__status").size)
+    expect(page).to have_css(".c-deckcheck__row--fault .c-deckcheck__status", minimum: 1) # an empty set would pass the rest
+    words = all(".c-deckcheck__row--fault .c-deckcheck__status").map(&:text)
+    expect(words).to all(be_in([ "Short", "Over", "Over the limit", "Owned and proxy" ]))
+    expect(page).to have_css(".c-deckcheck__status svg", minimum: 1)
+    expect(all(".c-deckcheck__status svg").size).to eq(all(".c-deckcheck__status").size)
   end
 end
