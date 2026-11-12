@@ -114,7 +114,7 @@ RSpec.describe "The scanner's sitting", type: :system do
       visit collection_path
       expect(open_in_narrow_frame(scanner_path, width: 360, ready: "#sitting_location_id")).to eq([ 360, true ])
       within_narrow_frame do
-        expect(page.evaluate_script("document.documentElement.scrollWidth")).to be <= 360
+        expect(page_fits_sideways?).to be(true)
         expect(page).to have_css("#scanner_sitting h2", text: "in #{long.name}")
       end
     end
@@ -125,7 +125,7 @@ RSpec.describe "The scanner's sitting", type: :system do
     visit collection_path
     expect(open_in_narrow_frame(scanner_path, width: 360, ready: ".c-scanner__stage:not([hidden])")).to eq([ 360, true ])
     within_narrow_frame do
-      expect(page.evaluate_script("document.documentElement.scrollWidth")).to be <= 360
+      expect(page_fits_sideways?).to be(true)
       expect(page.evaluate_script(%(document.querySelector(".c-scanner__shutter").getBoundingClientRect().top))).to be >= 800 * 2 / 3
     end
   end
@@ -193,7 +193,7 @@ RSpec.describe "The scanner's sitting", type: :system do
       visit collection_path
       expect(open_in_narrow_frame(scanner_path, width: 390, ready: "#sitting_condition")).to eq([ 390, true ])
       within_narrow_frame do
-        expect(page.evaluate_script("document.documentElement.scrollWidth")).to be <= 390
+        expect(page_fits_sideways?).to be(true)
         expect(page.evaluate_script(%(Array.from(document.querySelectorAll("#scanner_sitting select, #scanner_sitting input[type=submit]")).every(el => el.getBoundingClientRect().right <= document.getElementById("scanner_sitting").getBoundingClientRect().right + 1)))).to be(true)
       end
       page.current_window.resize_to(1280, 900)
