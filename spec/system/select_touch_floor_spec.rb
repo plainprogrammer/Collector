@@ -227,9 +227,19 @@ RSpec.describe "Selects meet the touch floor on a coarse pointer", type: :system
     end
   end
 
-  it "needs the alignment rule: without it the small button sits off the select's centre (AC-1.5 can fail)" do
+  # A button shorter than the select (spec 075: small buttons are 44px too, so a 30px one stands in for "a control that is not 44px").
+  def short_button = ".c-filterbar__filters .c-btn { min-height:30px; height:30px; }"
+
+  it "keeps a shorter button level with the select by the alignment rule (AC-1.5)" do
     in_page("card search") do
-      inject_coarse(except: [ row_rule ], needs: [ select_rule ]) # the select rule must exist, or there is nothing to compare
+      inject_coarse(needs: [ select_rule, row_rule ], extra: short_button)
+      expect(row_alignment["offset"]).to be <= 1
+    end
+  end
+
+  it "needs the alignment rule: without it a shorter button sits off the select's centre (AC-1.5 can fail)" do
+    in_page("card search") do
+      inject_coarse(except: [ row_rule ], needs: [ select_rule ], extra: short_button) # the select rule must exist, or there is nothing to compare
       expect(row_alignment["offset"]).to be > 1
     end
   end
@@ -250,7 +260,7 @@ RSpec.describe "Selects meet the touch floor on a coarse pointer", type: :system
     without = other_controls_of("card search", except: [ select_rule, row_rule ])
     with = other_controls_of("card search", extra: ".c-btn--sm { min-height: 90px; }")
     search = ->(controls) { controls.find { |control| control[1] == "Search" }.last }
-    expect([ search.(without), search.(with) ]).to eq([ 40, 90 ])
+    expect([ search.(without), search.(with) ]).to eq([ 44, 90 ])
   end
 
   it "has no select rule scoped to the deck pages and none in the filter bar's own block (AC-1.6)", :aggregate_failures do
