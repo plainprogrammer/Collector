@@ -1148,6 +1148,59 @@ with
 - [ ] Run `bin/rspec spec/system/card_page_decks_spec.rb spec/system/card_page_spec.rb spec/requests/catalog` — expect: PASS (the 1280px examples now pass; "Your copies" text is unchanged, so the request examples that read it still pass).
 - [ ] Commit: `fix: the card page's Your copies wraps a long zone label (spec 073)`.
 
+### Task 6.3: The head count and the empty state's link (found in the screenshot walkthrough; spec 0.2.4)
+
+**Satisfies:** AC-5.5, AC-5.6. Two defects the pictures showed: at 360px `.c-section__count`'s ellipsis cuts "In decks"' count ("2 copies in 1 deck · 1 pr…") and at 390px the empty state's link breaks as "Add / to deck". The deck pages solved the first the same way (additions.css, `.c-zone .c-section__head` inside `@container page (max-width: 639px)`: "a cut count is information lost").
+
+- [ ] In `spec/system/card_page_decks_spec.rb`, inside `describe "the table (AC-5.2)"` (its `before` has copies and a proxy of the card in a 60-character deck) add after the "carries the wrap rule" example:
+
+```ruby
+    %w[light dark].each do |theme|
+      [ 360, 390 ].each do |width|
+        it "does not cut the head count and puts it under the title at #{width}px in the #{theme} theme (AC-5.5)" do
+          visit catalog_entry_path(card)
+          open_in_narrow_frame(catalog_entry_path(card), width:, ready: "#in-decks table")
+          within_narrow_frame do
+            set_theme(theme)
+            measured = page.evaluate_script(<<~JS)
+              (() => { const count = document.querySelector("#in-decks .c-section__count"), title = document.querySelector("#in-decks .c-section__title")
+                return { cut: count.scrollWidth > count.clientWidth + 1, below: count.getBoundingClientRect().top >= title.getBoundingClientRect().bottom - 1 } })()
+            JS
+            expect(measured).to eq("cut" => false, "below" => true)
+          end
+        end
+      end
+    end
+```
+
+  and, as a new group at the end of the file (before the final `end`):
+
+```ruby
+  describe "the empty state (AC-5.6)" do
+    it "keeps the Add to deck link on one line at 390px" do
+      visit catalog_entry_path(card)
+      open_in_narrow_frame(catalog_entry_path(card), width: 390, ready: "#in-decks .c-empty")
+      within_narrow_frame do
+        expect(page.evaluate_script('document.querySelector("#in-decks .c-empty a").getClientRects().length')).to eq(1)
+      end
+    end
+  end
+```
+
+- [ ] Run `bin/rspec spec/system/card_page_decks_spec.rb -e "head count" -e "empty state"` — expect: FAIL (the count is cut and not under the title; the link has two line boxes).
+- [ ] In `app/assets/stylesheets/collector/additions.css`, in the `(spec 073)` block after `#in-decks td:first-child { … }`, add (and extend that block's comment with one sentence naming the two defects):
+
+```css
+@container page (max-width: 639px) {
+  #in-decks .c-section__head { flex-wrap:wrap; }
+  #in-decks .c-section__count { flex-basis:100%; white-space:normal; }
+}
+#in-decks .c-empty a { white-space:nowrap; }
+```
+
+- [ ] Run `bin/rspec spec/system/card_page_decks_spec.rb spec/system/card_page_spec.rb spec/system/narrow_pages_spec.rb spec/design_system_files_spec.rb` (one run at a time) — expect: PASS.
+- [ ] Commit the failing examples and the rules together if the examples cannot be committed red (this repo's guards must stay green per commit): `fix: the card page's In decks head count and empty-state link stay whole on a phone (spec 073)`.
+
 ---
 
 ## Phase 7: Documents
