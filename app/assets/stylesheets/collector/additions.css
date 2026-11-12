@@ -444,10 +444,15 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
 .c-curve__avg b { font:600 13px/18px var(--font-mono); color:var(--ink); }
 
 /* ---------- DeckShape card types (spec 060): a name, a count, and the proxies in a muted suffix ---------- */
-.c-types { margin:0; padding:0; list-style:none; border-top:1px solid var(--line); }
-.c-types li { display:flex; align-items:baseline; gap:var(--space-2); min-height:32px; padding:var(--space-1) 0; border-bottom:1px solid var(--line); font:400 14px/20px var(--font-sans); }
-.c-types__n { margin-left:auto; font:400 14px/20px var(--font-mono); }
-.c-types__proxy { min-width:4.5rem; text-align:right; font:400 12px/16px var(--font-mono); color:var(--ink-muted); } /* reserved even when empty, so the counts line up */
+/* Spec 077 (#320): the list is a grid of three columns and every row takes them as its own (subgrid), so the count column is as
+   wide as the widest count and the suffix column as wide as the widest suffix, and every count ends at one x whatever a suffix
+   says. The suffix cell keeps its 4.5rem floor so a list of short suffixes looks as it did; the name cell may wrap, even mid-word,
+   so a five-digit count and suffix at a 320px viewport never push a row past the list. */
+.c-types { display:grid; grid-template-columns:minmax(0, 1fr) auto auto; column-gap:var(--space-2); margin:0; padding:0; list-style:none; border-top:1px solid var(--line); }
+.c-types li { display:grid; grid-template-columns:subgrid; grid-column:1 / -1; align-items:baseline; min-height:32px; padding:var(--space-1) 0; border-bottom:1px solid var(--line); font:400 14px/20px var(--font-sans); }
+.c-types li > :first-child { min-width:0; overflow-wrap:anywhere; }
+.c-types__n { margin-left:auto; font:400 14px/20px var(--font-mono); } /* in a grid cell an auto margin right-aligns it, as in the old flex row */
+.c-types__proxy { min-width:4.5rem; text-align:right; font:400 12px/16px var(--font-mono); color:var(--ink-muted); } /* reserved even when empty, so a list with short suffixes keeps its look */
 
 /* ---------- DeckShape mana bar (spec 060): one bar split by colour, the only chart that may use the mana fills ---------- */
 /* README Charts rule: every segment has its letter and count (the caption carries a segment under 10%, which the markup
@@ -463,6 +468,7 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
 .c-manabar__seg--g { background:var(--mana-g); color:var(--on-mana-g); }
 .c-manabar__seg--narrow span { display:none; }
 .c-manacap { margin:0; font:400 13px/18px var(--font-sans); color:var(--ink-muted); }
+.c-manacap__item { white-space:nowrap; } /* spec 077 (#320): a caption line breaks only between colours, so a name stays with its count and no line starts with a dot */
 
 /* ---------- Deck page layout and the panel's two copies (spec 060) ---------- */
 /* The shape panel is rendered twice, an aside and a closed details, and each hides the other: a closed details hides its

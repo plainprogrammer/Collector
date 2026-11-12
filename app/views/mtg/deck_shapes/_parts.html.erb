@@ -1,10 +1,10 @@
-<%# The three parts of the deck shape panel for Magic (spec 069, DeckShape.md): a part of zero has no element. %>
+<%# The three parts of the deck shape panel for Magic (spec 069, DeckShape.md): a part of zero has no element. A curve column's count and a mana segment's label are in slots of fixed width, so they are abbreviated from 1,000 (spec 077, MTG::DeckShape#short_count); every other number is exact. %>
 <div class="c-shape__part"><h3 class="c-shape__heading">Mana curve</h3>
   <div class="c-curve">
     <div role="img" aria-label="<%= figures.curve_label %>">
       <div class="c-curve__cols" aria-hidden="true">
         <% figures.curve.each do |column| %>
-          <div class="c-curve__col"><span class="c-curve__count"><%= number_with_delimiter(column.total) %></span>
+          <div class="c-curve__col"><span class="c-curve__count"><%= figures.short_count(column.total) %></span>
             <div class="c-curve__bar">
               <% if column.proxy.positive? %><div class="c-curve__proxy" style="--proxy:<%= column.proxy %>;--max:<%= figures.curve_max %>"></div><% end %>
               <% if column.owned.positive? %><div class="c-curve__owned" style="--owned:<%= column.owned %>;--max:<%= figures.curve_max %>"></div><% end %>
@@ -36,10 +36,10 @@
   <% if figures.symbols.any? %>
     <ul class="c-manabar" role="img" aria-label="<%= figures.symbols_label %>">
       <% figures.symbols.each do |segment| %>
-        <li class="<%= class_names("c-manabar__seg", "c-manabar__seg--#{segment.colour.downcase}", "c-manabar__seg--narrow": segment.narrow) %>" style="--n:<%= segment.count %>"><span><%= segment.colour %> <%= number_with_delimiter(segment.count) %></span></li>
+        <li class="<%= class_names("c-manabar__seg", "c-manabar__seg--#{segment.colour.downcase}", "c-manabar__seg--narrow": segment.narrow) %>" style="--n:<%= segment.count %>"><span><%= segment.colour %> <%= figures.short_count(segment.count) %></span></li>
       <% end %>
     </ul>
-    <p class="c-manacap"><%= figures.caption %></p>
+    <p class="c-manacap"><%= safe_join(figures.caption_items.map { |item| tag.span(item, class: "c-manacap__item") }, " ") %></p>
   <% else %>
     <p class="c-manacap">No coloured mana symbols.</p>
   <% end %>
