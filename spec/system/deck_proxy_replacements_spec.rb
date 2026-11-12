@@ -147,7 +147,7 @@ RSpec.describe "Replacing a proxy", type: :system do
       expect(top_level_rule(".c-decks .c-btn")).to include("minHeight" => "var(--touch-floor)")      # Use these copies, Cancel, the empty state's button
       expect(coarse_rule(".c-btn")).to include("minHeight" => "44px")                                 # components.css, and the app bar's back link (`c-btn`)
       expect(coarse_rule(".c-input")).to include("minHeight" => "44px")                               # Quantity and Price paid on Add a new copy
-      expect(coarse_rule(".c-decks .c-field select")).to include("minHeight" => "var(--touch-floor)") # Finish and Condition on Add a new copy, spec 068
+      expect(coarse_rule(".c-field select")).to include("minHeight" => "var(--touch-floor)") # Finish and Condition on Add a new copy: the app-wide select rule of spec 072
       expect(page.evaluate_script("parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--touch-floor'))")).to be >= 44
       drawn = page.evaluate_script("[...document.querySelectorAll('main .c-btn, main .c-pick__lot .c-input')].map((el) => el.getBoundingClientRect().height)")
       expect(drawn.size).to be >= 3 # the field, Use these copies and Cancel
