@@ -57,6 +57,15 @@ RSpec.describe Deck::Proxy::AddCopy, type: :model do
     expect([ proxy.reload.quantity, account.lots.sum(:quantity) ]).to eq([ 2, 1 ])
   end
 
+  it "says the proxy changed after the form's own sentence when both apply (decision 10)", :aggregate_failures do
+    stale = add(form(quantity: "1", price_paid: "-1"), shown: "5")
+
+    expect(stale.save).to be(false)
+    expect(stale.form.errors[:price_paid]).to be_present
+    expect(stale.form.errors[:quantity]).to eq([ "This proxy changed. Check the quantity and try again." ])
+    expect(account.lots.count).to eq(0)
+  end
+
   it "fails closed on a missing shown count", :aggregate_failures do
     expect(add(form, shown: nil).save).to be(false)
     expect(account.lots.count).to eq(0)

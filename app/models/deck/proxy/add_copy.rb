@@ -4,7 +4,9 @@
 # refused, which is what stops a second submit of one form from adding twice (decision 10).
 #
 # Sentences, in this order: the form's own (`Lot::Form`'s, a quantity that isn't a whole number from 1 to 9,999 included), then
-# "This proxy changed…", then "Enter a number from 1 to N." (N the proxy's count now).
+# "This proxy changed…" (added even when the form has sentences of its own, so a collector told of a bad price still hears the
+# count moved), then "Enter a number from 1 to N." (N the proxy's count now; only when the form is valid and the count is the
+# one shown).
 # @see file:collection-and-lots.md
 class Deck::Proxy::AddCopy
   CHANGED = "This proxy changed. Check the quantity and try again.".freeze
@@ -46,11 +48,11 @@ class Deck::Proxy::AddCopy
 
   private
     def acceptable?
-      return false unless form.valid?
+      form.valid? # its own sentences first; the checks below add to them, never replace them (decision 10)
 
       if @shown_quantity.to_s != proxy.quantity.to_s
         form.errors.add(:quantity, CHANGED)
-      elsif form.lot_attributes[:quantity] > proxy.quantity
+      elsif form.errors.empty? && form.lot_attributes[:quantity] > proxy.quantity
         form.errors.add(:quantity, "Enter a number from 1 to #{ActiveSupport::NumberHelper.number_to_delimited(proxy.quantity)}.")
       end
       form.errors.empty?

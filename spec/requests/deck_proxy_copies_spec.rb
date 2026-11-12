@@ -141,6 +141,16 @@ RSpec.describe "Add a new copy", type: :request do
         expect(response).to redirect_to(deck_path(deck))
       end
 
+      it "says the proxy changed as well as the price's own sentence, and shows the count now (decision 10)", :aggregate_failures do
+        post_copy({ quantity: "1", price_paid: "-1" }, shown: "5")
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(html.at_css("#lot_price_paid-error").text).to be_present
+        expect(html.at_css("#lot_quantity-error").text).to eq("This proxy changed. Check the quantity and try again.")
+        expect(html.at_css("input[name=shown_quantity]")["value"]).to eq("3")
+        expect([ proxy.reload.quantity, account.lots.count ]).to eq([ 3, 0 ])
+      end
+
       it "refuses a merge past 9,999 and changes nothing (AC-4.4)", :aggregate_failures do
         create(:lot, account:, entry:, location: deck.zone("main"), finish: "foil", quantity: 9_999)
 
