@@ -1,6 +1,6 @@
 # Feature 072: Selects Meet the Touch Floor on a Coarse Pointer, App-Wide
 
-**Status:** Draft
+**Status:** Approved by the coordinator under the maintainer's delegation (2026-11-11, Gate A) at 0.3.0, after two spec review rounds
 **Version:** 0.3.0
 **Created:** 2026-11-11
 **Last Updated:** 2026-11-11
