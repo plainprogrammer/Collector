@@ -1,7 +1,8 @@
 # A card a deck's zone needs that the collector doesn't own (spec 068): a printing and a finish with a quantity, in one zone.
-# It is never a lot: it is in no count of owned copies, and it changes only by hand (the add, change and remove pages, a
-# format change, a deck's removal, an import that carries proxies). One row per zone, printing and finish (the unique index,
-# which also holds when the finish is NULL).
+# It is never a lot: it is in no count of owned copies, and it changes only by hand (the add, change and remove pages, the
+# two replacement pages of spec 070, which move or add a copy and lower the proxy in the same write, a format change, a deck's
+# removal, an import that carries proxies). One row per zone, printing and finish (the unique index, which also holds when the
+# finish is NULL).
 #
 # The finish and entry rules are creation-time rules (decisions 2, 19): a stored proxy is never revalidated against the
 # catalog, so a refresh that changes a printing's finishes leaves its proxies editable and exportable.
