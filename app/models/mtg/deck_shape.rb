@@ -121,6 +121,13 @@ class MTG::DeckShape
   # The five colours in the order the bar draws them, with the words the caption and label use.
   COLOURS = { "W" => "white", "U" => "blue", "B" => "black", "R" => "red", "G" => "green" }.freeze
 
+  # Counts below this are written in full; from it a count in a slot of fixed width takes a unit, and each unit is this many of the one
+  # before (spec 077 decision 5). The abbreviation is uniform, not width-driven: the server cannot know the width, and a count that
+  # fits at a 360px viewport still overflows at 320px.
+  SHORT_COUNT_STEP = 1_000
+  # The units of an abbreviated count: thousands, millions, billions.
+  SHORT_COUNT_UNITS = %w[k m b].freeze
+
   # The segments of the mana bar for the colours that have a symbol (decision 8), in W, U, B, R, G order.
   # @return [Array<Segment>]
   def symbols
@@ -135,10 +142,50 @@ class MTG::DeckShape
     end
   end
 
-  # "White 2 · 25% · Blue 4 · 50%": every colour present with its count and percentage.
+  # "White 2 · 25% · Blue 4 · 50%": every colour present with its count and percentage, exact (the abbreviation is for a slot of
+  # fixed width and this is prose). Built from {#caption_items}.
   # @return [String, nil] nil when there is no coloured symbol
-  def caption
-    symbols.map { |s| "#{COLOURS[s.colour].capitalize} #{delimited(s.count)} · #{s.percent}%" }.join(" · ").presence
+  def caption = caption_items.join(" ").presence
+
+  # The caption as one string per colour, "White 2 · 25% ·" and, last, "Blue 4 · 50%": every item but the last ends in the separator, so a
+  # view that sets each item as an unbreakable unit lets a line break only between items and never before a "·" (spec 077 decision 4,
+  # #320). Joined with one space they are {#caption}, character for character.
+  # @return [Array<String>] empty when there is no coloured symbol
+  def caption_items
+    items = symbols.map { |s| "#{COLOURS[s.colour].capitalize} #{delimited(s.count)} · #{s.percent}%" }
+    items.each_with_index.map { |item, index| index == items.size - 1 ? item : "#{item} ·" }
+  end
+
+  # A count written for a slot of fixed width, the curve's column count and a mana segment's label (spec 077 decisions 1, 2 and 5, #320).
+  # Below 1,000 it is the number as it is. From there it takes a unit: one decimal under 10 of the unit with a trailing ".0" dropped
+  # ("1.4k", "2k"), whole from 10 ("12k", "123k"), rounded half up on exact integers (1,350 is "1.4k", 1,349 "1.3k"). A value that
+  # rounds to 1,000 of its unit moves to the next unit (999,500 is "1m"), and one that rounds to 10.0 is written whole (9,999 is "10k"),
+  # so nothing is longer than four characters through "999m". It is not `number_to_human`, which keeps two significant digits (123,456
+  # would read "120k"). The exact number stays in every `aria-label`, the legend, the caption and the types.
+  #
+  # @example
+  #   short_count(999)     # => "999"
+  #   short_count(1_357)   # => "1.4k"
+  #   short_count(9_999)   # => "10k"
+  #   short_count(999_500) # => "1m"
+  # @param number [Integer] a count, 0 or more
+  # @return [String]
+  def short_count(number)
+    return delimited(number) if number < SHORT_COUNT_STEP
+
+    value = Rational(number, SHORT_COUNT_STEP)
+    unit = 0
+    while value.round >= SHORT_COUNT_STEP && unit < SHORT_COUNT_UNITS.size - 1
+      value /= SHORT_COUNT_STEP
+      unit += 1
+    end
+    tenths = (value * 10).round
+    body = if value < 10 && tenths < 100
+      (tenths % 10).zero? ? (tenths / 10).to_s : format("%d.%d", *tenths.divmod(10))
+    else
+      value.round.to_s
+    end
+    "#{body}#{SHORT_COUNT_UNITS[unit]}"
   end
 
   # "Coloured mana symbols in Main: white 2, blue 4" for the bar's `aria-label`.

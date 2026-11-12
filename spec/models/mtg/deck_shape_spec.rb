@@ -362,4 +362,51 @@ RSpec.describe MTG::DeckShape, type: :model do
       expect(shape(krenko).symbols_label).to eq("Coloured mana symbols in Commander + Main: red 1")
     end
   end
+
+  # Spec 077 decision 5: a count in a slot of fixed width is written with a unit from 1,000.
+  describe "#short_count" do
+    it "writes 0 to 999 as they are and 1,000 up with one decimal under 10,000, whole from there, half up (AC-1.1)", :aggregate_failures do
+      expected = { 0 => "0", 999 => "999", 1_000 => "1k", 1_049 => "1k", 1_050 => "1.1k", 1_350 => "1.4k", 1_357 => "1.4k", 9_949 => "9.9k",
+                   9_950 => "10k", 9_999 => "10k", 10_000 => "10k", 12_345 => "12k", 123_456 => "123k", 999_499 => "999k", 999_500 => "1m",
+                   1_250_000 => "1.3m", 12_000_000 => "12m" }
+
+      figures = shape
+      expected.each { |number, text| expect(figures.short_count(number)).to eq(text), "for #{number}" }
+      expect(expected.keys.map { figures.short_count(it).length }.max).to be <= 4
+    end
+
+    it "rounds 1,349 down to 1.3k and a count that reaches 1,000 of its unit moves to the next, 9,999,500 being 10m", :aggregate_failures do
+      expect(shape.short_count(1_349)).to eq("1.3k")
+      expect(shape.short_count(9_999_500)).to eq("10m")
+      expect(shape.short_count(2_000_000_000)).to eq("2b")
+    end
+  end
+
+  # Spec 077 decision 4: the caption as items a view can keep whole.
+  describe "#caption_items" do
+    # Spec 069's worst case: 123 owned five-colour creatures, 1,234 proxies of a hybrid card and 4 Bolts, red being 2,595.
+    def worst_case
+      own(card(name: "Worst", type_line: "Creature — Elf", cost: "{2}{W}{U}{B}{R}{G}", mana_value: 7.0), 123)
+      proxy(card(name: "Gleemax", cost: "{W/U}{U/B}{B/R}{R/G}{G/W}", mana_value: 1_000_000.0), 1_234)
+      own(card(name: "Bolt", cost: "{R}", mana_value: 1.0), 4)
+    end
+
+    it "gives one item per colour, each but the last ending in the separator, and `caption` is the items joined (AC-4.1)", :aggregate_failures do
+      worst_case
+      figures = shape
+
+      expect(figures.caption).to eq("White 2,591 · 20% · Blue 2,591 · 20% · Black 2,591 · 20% · Red 2,595 · 20% · Green 2,591 · 20%")
+      expect(figures.caption_items).to eq([ "White 2,591 · 20% ·", "Blue 2,591 · 20% ·", "Black 2,591 · 20% ·", "Red 2,595 · 20% ·", "Green 2,591 · 20%" ])
+      expect(figures.caption_items.join(" ")).to eq(figures.caption)
+    end
+
+    it "has one item with no trailing separator for one colour, and none for no colour (AC-4.1)", :aggregate_failures do
+      own(card(cost: "{1}"))
+      expect(shape.caption_items).to eq([])
+      expect(shape.caption).to be_nil
+
+      own(card(cost: "{R}"), 3)
+      expect(shape.caption_items).to eq([ "Red 3 · 100%" ])
+    end
+  end
 end
