@@ -225,6 +225,39 @@ RSpec.describe Lot::MoveIntoZone, type: :model do
     expect { described_class.new(account:, zone:, picks: [ [ lot, 1 ], [ lot, 1 ] ]) }.to raise_error(ArgumentError)
   end
 
+  it "joins a caller's transaction: a refusal inside it rolls the caller's own earlier writes back, and the caller's reads and picks stay under its lock", :aggregate_failures do
+    in_zone = lot_in(zone, 9_998)
+    first = lot_in(binder, 1)
+    second = lot_in(box, 1)
+    marker = create(:location, account:, name: "Marker")
+
+    expect do
+      Lot.transaction do
+        marker.update!(name: "Renamed")
+        free = account.lots.free.where(id: [ first.id, second.id ]).to_a # read and chosen under the caller's own lock
+        move(free.map { |lot| [ lot, 1 ] })
+      end
+    end.to raise_error(described_class::Refused) { |refused| expect(refused.reasons).to eq({ second.id => :cap }) }
+
+    expect(marker.reload.name).to eq("Marker") # the caller's write was rolled back with the moves
+    expect([ in_zone.reload.quantity, first.reload.location ]).to eq([ 9_998, binder ])
+  end
+
+  it "tells a lot that fails its own validation, naming it, from the cap", :aggregate_failures do
+    bad = lot_in(binder, 2)
+    bad.update_columns(finish: "retired_finish")
+    in_zone = lot_in(zone, 9_999, finish: "foil")
+    capped = lot_in(box, 1, finish: "foil")
+
+    expect(reasons_of([ [ bad, 1 ] ])).to eq({ bad.id => :not_saveable })
+    expect(reasons_of([ [ capped, 1 ] ])).to eq({ capped.id => :cap })
+    expect(in_zone.reload.quantity).to eq(9_999)
+  end
+
+  it "moves nothing and returns 0 for no picks" do
+    expect(move([])).to eq(0)
+  end
+
   it "leaves a failure of an outer transaction rolled back as a whole", :aggregate_failures do
     lot = lot_in(binder, 2)
 
@@ -255,9 +288,17 @@ end
 # refusal can only be found while moving, so it leaves the transaction by the exception below and the earlier moves roll back.
 #
 # "Free" is `Lot.free`: in no deck zone (unplaced or in a place; spec 057's "Free to use"). It takes the account explicitly and
-# never reads `Current.account`. Needs a write transaction (SQLite's is IMMEDIATE, so the reads below are under the lock) and
-# joins an outer one: the caller may lower a proxy in the same transaction. The exception must not be rescued inside it. Names
-# no collectible.
+# never reads `Current.account`.
+#
+# Transactions: it works nested inside a caller's transaction, by plain participation (`Lot.transaction` without
+# `requires_new`: no savepoint), so a caller that has read the free lots and chosen the picks under its own write lock, or that
+# lowers a proxy in the same transaction, keeps one transaction and one rollback. Called on its own it opens one (SQLite's is
+# IMMEDIATE, so the reads below are under the lock). A refusal leaves by an exception, never a false return, and nothing in
+# here rescues it; a caller must not rescue it inside its transaction either, or the earlier moves stay. Names no collectible.
+#
+# Refusals: {Refused#reasons} names every lot that can't move, by id, with one reason each: `:cap` (the zone's lot of its
+# identity would pass 9,999, which is `Lot::FULL_MESSAGE`'s case) is told apart from `:not_saveable` (the lot fails its own
+# validation, a finish or condition the vocabulary no longer lists), `:not_free`, and `:count`.
 class Lot::MoveIntoZone
   # Why one lot can't be moved. `reasons` maps a lot's id to one of `:not_free` (no longer one of the account's free lots),
   # `:count` (not from 1 to the copies it holds now), `:not_saveable` (the lot can't be saved as it is) and `:cap` (the zone's
