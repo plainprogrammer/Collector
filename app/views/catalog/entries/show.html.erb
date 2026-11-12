@@ -52,6 +52,7 @@
         <%= render "catalog/entries/copies", overview: @overview %>
       <% end %>
       <%= render "catalog/entries/printings", overview: @overview %>
+      <%= render "catalog/entries/decks", overview: @overview if collector? %>
       <%= render_catalog_extension @entry, :legality %>
     </div>
   </div>

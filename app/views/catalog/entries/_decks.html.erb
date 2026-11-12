@@ -1,0 +1,27 @@
+<%# "In decks" (spec 073 decisions 4 and 5): a row per deck zone that holds a copy or a proxy of the card, for a collector. Owned counts copies, Proxy counts proxies, each across the card's printings. A proxy never counts as owned. %>
+<% uses = overview.uses %>
+<section id="in-decks">
+  <div class="c-section__head">
+    <h2 class="c-section__title" id="in-decks-title">In decks</h2>
+    <% if (line = card_decks_count_line(uses)).present? %><span class="c-section__count"><%= line %></span><% end %>
+  </div>
+  <% if uses.rows.empty? %>
+    <p class="c-empty">This card isn't in any of your decks.<% if overview.entry.deck_addable? %> <%= link_to "Add to deck", new_catalog_entry_deck_addition_path(overview.entry, **card_params) %><% end %></p>
+  <% else %>
+    <div class="c-collection">
+      <table class="c-table" aria-labelledby="in-decks-title">
+        <thead><tr><th>Deck</th><th class="is-opt">Zone</th><th class="is-num">Owned</th><th class="is-num">Proxy</th></tr></thead>
+        <tbody>
+          <% uses.rows.each do |row| %>
+            <tr>
+              <td><div class="c-table__item"><div><%= link_to row.deck.name, deck_path(row.deck) %><span class="is-opt is-muted"> · <%= row.deck.format_name %></span><span class="c-table__sub"><%= row.deck.format_name %> · <%= row.zone.name %></span></div></div></td>
+              <td class="is-opt"><%= row.zone.name %></td>
+              <td class="is-num"><%= number_with_delimiter(row.owned) %></td>
+              <% if row.proxy.zero? %><td class="is-num is-muted">—</td><% else %><td class="is-num"><%= number_with_delimiter(row.proxy) %></td><% end %>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
+</section>
