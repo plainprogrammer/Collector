@@ -1,0 +1,183 @@
+# Feature 078: A Mana Bar Label Fits Its Segment or Isn't Drawn
+
+**Status:** Approved by the coordinator under the maintainer's delegation (2026-11-12, Gate A) at 0.2.1, after two spec review rounds; the approach, D1, was ruled by the maintainer on 2026-11-12 (decision 1)
+**Version:** 0.2.1
+**Created:** 2026-11-12
+**Last Updated:** 2026-11-12
+**Depends on:** [spec 077](../077-deck-shape-extreme-counts/spec.md) (the abbreviation and the band this closes; its measurements and screenshots are the baseline), [spec 060](../060-deck-components/spec.md) (the `DeckShape` CSS and decision 4's 10% rule), [spec 069](../069-deck-shape-panel/spec.md) (decision 9, the narrow class), all merged
+**Branch:** `078-mana-bar-label-fit`
+**Issue:** [#330](https://github.com/plainprogrammer/Collector/issues/330) (design-system lane, filed by the maintainer's ruling from spec 077)
+**Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (whole spec); the panel's markup and CSS rule are `DeckShape` in the [design system](../../design-system/README.md); see the [specs index](../README.md)
+
+---
+
+## Changelog
+
+| Version | Date | Change |
+|---------|------|--------|
+| 0.2.1 | 2026-11-12 | Spec review round 2 (Opus, read-only; REVISE: 1 blocking, 2 major, 3 minor), all taken, wording only: FR-2 and the plan note use the fractional content width and `overflowX` of `clip` or `hidden`; AC-1.1 names only the label that is not drawn on every platform and takes a 0.5px tolerance inside the box; two Error Scenarios and Terms clarifications |
+| 0.2.0 | 2026-11-12 | Spec review round 1 (Opus, read-only; REVISE: 1 blocking, 2 major, 5 minor, nits), all taken: the fit test is the fractional content width with a 0.5px band (the integer `clientWidth` fails the Linux runner on a named deck); the segment uses `overflow:clip`, not `hidden`, so it is not a scroll container (probed: same result); the supersession table and the index row carry spec 077's AC-5.1, AC-5.3, its 060 AC-2.4 row and its Open Questions; the non-vacuity rule is in AC-1.1; AC-1.3 has a failing variant; AC-1.4 lists what it resets; deck 3's labels are described right; the bar and segment heights; two Error Scenarios rows and the platform note |
+| 0.1.0 | 2026-11-12 | First draft from issue #330, spec 077's decision 2 and measurements, and a throwaway probe in headless Firefox (below). Routing: the issue asks for a ruling between three options and the ruling changes a documented limit of a shipped spec, so it is a spec, not a direct fix. The maintainer ruled **D1** (decision 1) |
+
+## Problem Statement
+
+On the deck shape panel's mana bar a segment shows its label ("U 44", "W 2.6k") whenever the segment is at least 10% of the symbols (spec 060 decision 4, spec 069 decision 9). A label needs more room than that. Its text has a space, so a label that is wider than its segment's content box breaks into two lines ("W" over "12") and the second line is cut off at the bar's height. Spec 077 abbreviated four-digit counts (fixing #320's five-equal-segments case) and recorded this band as a documented limit by the maintainer's ruling of 2026-11-11 (its decision 2, option A), offering it as #330.
+
+> **Terms.** A *label* is the span inside a segment ("U 44"). A segment's *content width* is its box's width less its 1px divider border (every segment but the first has one), as a fraction (`getBoundingClientRect().width` less `border-left-width`); `clientWidth` is that rounded to a whole pixel, which this spec does not use for the fit test (decision 3). A segment's *share* in the table below is its box's width over the bar's, not its share of the symbols (the 10% rule's, 12% for the 11.7% box). The *bar* is the `c-manabar`; its width is the panel's interior (238px at a 320px viewport, 263px in a 360px frame, 278px at a 360px viewport, 286px in the aside; spec 077's chain).
+
+### Measurement (2026-11-12, headless Firefox on a Mac, the 12px mono face at weight 600)
+
+A label is 29.2px wide for four characters ("W 12", "U 44"), 36.4px for five ("W 120", "W 999") and 43.6px for six ("W 2.6k"): about 7.3px a character. On a bar of 238px (a 320px viewport), a label with these counts is on one line inside its segment only from a share of about 13% for four characters, 16% for five and 19% for six (the segment's content width, its box less its 1px divider where it has one, is at least the label's; issue #330 and spec 077 measured 14%, 17% and 20% with a further 2px gap, which this spec does not ask for, decision 3). A segment between the 10% rule's line and that share wraps its label onto two lines, whatever the count:
+
+| Deck (symbols per colour) | Segment | Box share | Content width at 320px | Label | Before | At 360px (278px bar) |
+|---|---|---|---|---|---|---|
+| W 12, U 13, B 15, R 16, G 44 | "W 12" | 11.7% | 28px | 29.2px | wraps onto two lines | 33px, fits |
+| the same | "U 13" | 13.1% | 30px | 29.2px | fits | fits |
+| W 120, U 160, B 180, R 190, G 350 | "W 120" | 11.7% | 28px | 36.4px | wraps | wraps (33px) |
+| W 1200, U 1800, B 2000, R 2100, G 3900 (labels of six characters, and "B 2k" of four) | "W 1.2k" | 10.6% | 25px | 43.6px | wraps | wraps (30px) |
+| the same | "U 1.8k" | 16.4% | 38px | 43.6px | wraps | fits (45px) |
+
+So whether a label fits depends on its length and on the width the bar happens to have, both known only to the browser.
+
+### The probe (not committed; its method is Story 1's example)
+
+A candidate rule, a few lines of CSS inside the mana bar block (decision 1; the probe ran it with `overflow:hidden` and again with `overflow:clip`, with the same result), was injected into the three decks above at a 320px and a 360px viewport and in the 1280px aside. Every label that fits (content width at least the label's width) stayed on one line inside its segment, among them the 11.7% "W 12" at 360px and in the aside; every label that does not fit left its segment box (below it, 24px from the segment's centre where a drawn label is 0px from it, clipped); none wrapped onto two lines inside the segment or was cut off.
+
+## Goals
+
+- On the mana bar, a label either sits on one line inside its segment or isn't drawn, at any width of the bar and for any label length. The caption and the bar's `aria-label` keep the exact count of every colour.
+- A label that fits is drawn: the rule hides only what cannot fit (a 12% "W 12" shows on a 360px phone and in the aside, where it fits).
+- The rule follows the label's rendered width, so it holds when the font, its weight, the abbreviation or the page's padding change, with no number about fonts in Ruby or in CSS.
+
+## Non-Goals
+
+- The 10% rule and the narrow class (spec 060 decision 4, spec 069 decision 9): kept as they are, a segment under 10% still has no label (decision 2). Retiring the rule (option D2 of the ruling) is not taken.
+- Any change to the markup, the figures (`MTG::DeckShape`), the abbreviation, the caption or the `aria-label`s: the whole change is CSS and documents.
+- Counts, curve, Card types and caption: spec 077's work, unchanged.
+- A real-phone check by an agent: the maintainer checks a phone (WebKit) as a manual item (decision 4).
+
+## Decisions
+
+### 1. The fit rule is CSS and follows the rendered label (ruled D1 by the maintainer, 2026-11-12)
+
+The options, from the issue and the brainstorm, and why this one:
+
+- **A, leave it as the documented limit** (spec 077 decision 2): costs nothing; the label still wraps and is cut off at a 320px viewport, so the issue's outcome is not met.
+- **B, a server-side rule by label length:** hides a label below the share it needs at the narrowest interior. It supersedes the 10% rule, hides labels in the aside and on a 360px phone where they fit, and hard-codes font metrics (about 7.3px a character and a 232px bar in Ruby) that drift silently if the font, weight or padding change.
+- **C, a container query by width:** a query cannot read content, so it needs the label's length as a class or attribute and a pixel or `ch` threshold per length; right at every width, but a server-set class per length and still an approximation of the font.
+- **E, JavaScript that measures the label:** exact, but the design system says nothing needs JavaScript to render (README), it flashes before it runs, and the project's Hotwire rule puts plain HTML and CSS first.
+- **D, chosen: the browser's own line breaking decides.** Each segment is a wrapping flex container with `overflow:clip`. A zero-width `::before` the height of the segment is its first item, and the label is an item that does not shrink. The browser puts the label on the first line only if it fits the content width; otherwise it moves to a second line, below the segment's box, where the `overflow` clips it (`clip`, not `hidden`: `hidden` makes the segment a scroll container that find-in-page or `scrollIntoView` could scroll to show the clipped label, which `clip` never does; `clip` is Safari 16+, Chrome 90+ and Firefox 81+, all inside the allowed browsers). No server change, no font number, no JavaScript, no new class, right at every width and for any label length, and the text still centres vertically in the segment when it fits (the `::before`'s height gives the first line the segment's whole height).
+- **Trade-offs, recorded:** a clipped label stays in the DOM (the bar is `role="img"` with an exact `aria-label`, so a screen reader reads the figures once; find-in-page may match the clipped text, but nothing scrolls to show it); the technique is unusual CSS, so the block says why in a comment; and it relies on flex line breaking (decision 4).
+
+### 2. The 10% narrow class stays (D1)
+
+The server still marks a segment under 10% of the symbols narrow and `.c-manabar__seg--narrow span` still hides its label (spec 060 decision 4, spec 069 decision 9 and AC-4.6, unchanged). The fit rule is added on top: a label is drawn when its segment is at least 10% **and** the label fits. The class is a floor the maintainer ruled, not the fit test; the caption carries the count of a segment under it, as before.
+
+### 3. The gap, and the tolerance
+
+A label that exactly fills its segment's content width is drawn: the criterion is that its width is at most the content width, with no margin added (the 1px or 2px a margin would take would hide labels that fit, and a label at the edge is on one line inside its segment, which is the outcome). Both numbers are fractions of a pixel and differ by platform (a label is 43.56px on a Mac and about 44.70px on the Linux runner; the engines lay out in 1/60px or 1/64px units), so an example compares the **fractional** content width and allows a band of 0.5px: a label at least 0.5px narrower than its content width is drawn, one at least 0.5px wider is not drawn, and one within the band may go either way. The integer `clientWidth` is not used: at a 360px viewport the third deck's "U 1.8k" segment is 44.52px, which `clientWidth` reads as 45 while the Linux label (44.70px) is wider than the segment and is clipped.
+
+### 4. Browsers and the manual phone check
+
+The rule relies on flex line breaking: in a multi-line flex container an item moves to a new line when the line's items would exceed the container's inner main size, and the first item of a line always stays on it (CSS Flexbox, "collect flex items into flex lines"). That is old and standard behaviour in every browser the app allows (`allow_browser versions: :modern`: Safari 17.2, Chrome 120, Firefox 121 and later). The suite runs it in headless Firefox only, and a percentage height of a stretched flex item's child (the `::before`'s `height:100%`) is the one other thing it relies on, and engines differ at the boundary by a fraction of a pixel (decision 3). **The maintainer will check it on a phone (WebKit) as a manual verification item**, recorded in `verification.md` as owed until done.
+
+## Supersedes
+
+| Document | What it says | What changes |
+|---|---|---|
+| [Spec 077](../077-deck-shape-extreme-counts/spec.md) decision 2 (its "What this leaves" paragraph and option A), Goal 1's qualification of the unfixed band, Open Questions ("the maintainer ruled decision 2 **A**"), its Error Scenarios row "A mana segment between 10% and about 14% …", AC-5.1 (the band recorded in `DeckShape.md` as a limit with its shares) and AC-5.3 (the area doc's Issues bullet names the follow-up issue "under option A"), and its Supersedes row for spec 060 AC-2.4 ("except the mana-label band of decision 2") | the band of segments between 10% and the label's share is a documented limit: the label wraps and is cut off, offered as #330 | the band is closed by this spec's decision 1: a label that cannot fit is not drawn; the panel now fits in 238px with no exception; the label's abbreviation (the rest of decision 2) and AC-2.1 to AC-2.3 stand |
+| `DeckShape.md` "Width" (Known limit (1)) and the mana bar paragraph's mention of the limit; the area doc's Issues bullet | the limit is recorded with its shares of 14%, 17% and 20%, and #330 as open | the limit is replaced by the fit rule; limit (2), the five-digit Card types rows, stays; #330 is closed by this spec |
+
+Spec 060 decision 4 and AC-2.6's "a segment's label reads its letter and count" and spec 069 decision 9 and AC-4.6 are **not** superseded: the 10% rule stays and a drawn label still reads its letter and count (the README's Charts rule says every segment has its letter and count, the caption carrying one under 10%; the caption now also carries a segment whose label does not fit, which `DeckShape.md` states). Recorded in the specs index, in both directions; spec 077 is frozen and is not edited.
+
+## User Stories
+
+### Story 1: A label fits its segment or isn't drawn
+
+**As a** collector looking at a deck's mana bar on a phone
+**I want** every label to sit on one line inside its segment or not be drawn
+**So that** the bar never shows half a word or a label spilling into its neighbour, and the caption below still gives me every colour's exact count
+
+- [ ] **AC-1.1** Given three decks whose mana symbols are W 12, U 13, B 15, R 16, G 44 (labels of four characters), W 120, U 160, B 180, R 190, G 350 (five) and W 1,200, U 1,800, B 2,000, R 2,100, G 3,900 (six, "W 1.2k", and "B 2k" of four) When the open fold is measured at a 320px, a 345px and a 360px viewport, in a 366px and a 640px frame, and in the aside at 1280px, in both themes Then every label is exactly one of: **drawn**, that is on one line (its text box is at most one line high) with its text box inside its segment's box (to within 0.5px); or **not drawn**, that is its segment is narrow (no box), or its text box lies wholly outside its segment's box (below it) with the segment's `overflow` computed as `clip` or `hidden`. No label is on two lines, and none is partly inside and partly outside. At a 320px viewport the first deck has at least one label of each kind, so the example cannot pass because everything is clipped or because nothing is ("W 12", 29.2px in a 27.83px segment, is the one that is not drawn on every platform; which of the others sit within AC-1.2's band depends on the platform, so the example does not name them).
+- [ ] **AC-1.2** Given the same measurement When a label's width is at least 0.5px less than its segment's fractional content width (`getBoundingClientRect().width` less `border-left-width`) Then it is drawn, and When it is at least 0.5px more Then it is not drawn (a label within 0.5px may be either: decision 3). A label that fits is never hidden and one that cannot fit never wraps. (On a Mac at a 320px viewport "W 12" is 29.2px in a 27.83px segment, not drawn, and "U 13" 29.2px in about 30px, drawn; the numbers differ by platform and are not asserted.)
+- [ ] **AC-1.3** Given a drawn label When its text box's vertical centre and its segment's are compared Then they are within 1px (the label is centred in the bar as before). A variant that sets `.c-manabar__seg::before { content:none }` fails: with no first item the line is only as high as the label and sits at the segment's top, off centre.
+- [ ] **AC-1.4** Given the rule is removed (the variant: a `<style>` restoring `flex-wrap:nowrap`, `overflow:visible`, the span's `flex:0 1 auto` and `::before{content:none}` on `.c-manabar__seg`) When AC-1.1 is measured at a 320px viewport on the first deck Then it fails: "W 12" is on two lines. The example can fail.
+- [ ] **AC-1.5** Given spec 069's worst-case fixture (five segments of about 2,591, labels "W 2.6k") When AC-1.1 is measured at the widths above Then every label is drawn at every width (as spec 077 AC-2.2 measures: one line, within its content width), unchanged. It is a guard against a rule that hides too much (a padding on the segment would hide "W 2.6k" at a 320px viewport).
+- [ ] **AC-1.6** Given a segment under 10% of the symbols When the bar renders Then it still carries `c-manabar__seg--narrow` and no label is drawn (spec 069 AC-4.6 unchanged), and the bar's markup, `aria-label` and caption are unchanged character for character (the request examples of specs 069 and 077 pass unchanged).
+
+### Story 2: The documents
+
+**As a** developer, or an agent, drawing the mana bar
+**I want** the component document and the area doc to say when a label is drawn
+**So that** the next fixed-width slot is built the same way
+
+- [ ] **AC-2.1** `docs/design-system/components/DeckShape.md` states the fit rule in the mana bar paragraph (a label is drawn when its segment is at least 10% and the label fits on one line; otherwise it is clipped and the caption carries the count), says it relies on flex line breaking and the `::before`'s height, names the browsers (Safari 17.2, Chrome 120, Firefox 121 and later; run in Firefox, a phone check owed to the maintainer), and replaces the "Width" paragraph's Known limit (1) with it; limit (2) stays. (Verified by reading.)
+- [ ] **AC-2.2** `docs/design-system/README.md`'s `DeckShape` addition line and `docs/design-system/previews/DeckShape.html` are read for a statement of the limit or of the 10% rule and corrected where they differ (the previews draw the real stylesheet, so no markup changes). (Verified by reading.)
+- [ ] **AC-2.3** `docs/architecture/collection-and-lots.md` states the rule in the panel's paragraph, its Issues bullet no longer lists #330 as open and its Sources and Distillation log name this spec; `docs/specs/README.md` has this spec's row with 077 in "Supersedes" and 078 in 077's "Superseded by". (Verified by reading.)
+- [ ] **AC-2.4** `verification.md` lists the maintainer's check of the bar on a phone (WebKit) as a manual item, owed until the maintainer records it. (Verified by reading.)
+
+### Story 3: Nothing else moves
+
+**As a** maintainer
+**I want** the change to be small
+**So that** it merges cleanly beside other CSS work in `additions.css`
+
+- [ ] **AC-3.1** The branch's diff to `app/` is `app/assets/stylesheets/collector/additions.css` only, inside the mana bar block; it adds no colour, font family or spacing literal the tokens could give and no class (`spec/design_system_files_spec.rb` passes unchanged). No view, model or script changes. (Verified by the diff.)
+- [ ] **AC-3.2** `spec/deck_core_spec.rb`, `spec/requests/query_counts_spec.rb`, spec 077's system and request examples, spec 069's examples and `spec/system/design_system_deck_components_spec.rb` pass with their assertions unchanged.
+
+## Functional Requirements
+
+- **FR-1.** `additions.css`, inside the DeckShape mana bar block, gives `.c-manabar__seg` `flex-wrap:wrap`, `align-content:flex-start` and `overflow:clip`; gives `.c-manabar__seg::before` an empty content and `height:100%`; and gives `.c-manabar__seg > span` `flex:none`. A comment says why (spec 078, #330): the browser's line breaking moves a label that does not fit to a second line below the segment, which the `overflow` clips (`clip`, so the segment is not a scroll container); the `::before` is the first item that always stays on the first line and gives that line the segment's height; the 10% narrow class is separate. The exact declarations are the plan's, checked against AC-1.1 to AC-1.3 (the probe's were these, with `overflow:hidden` or `clip`).
+- **FR-2.** Examples first, red before the CSS: the AC-1.1 to AC-1.3 and AC-1.5 examples in the nested `describe` of `spec/system/deck_shape_panel_spec.rb` (the spec 077 block) beside the AC-2.2 examples, measured as they are (a `Range` over the label's text for lines and box, the segment's fractional content width (`getBoundingClientRect().width` less `border-left-width`) with AC-1.2's 0.5px band, the frame sized from the measured scrollbar as `open_fold_in_frame` does, `documentElement.clientWidth` not `innerWidth`), and AC-1.4's variant.
+- **FR-3.** The documents of Story 2 and the screenshots of the non-functional requirements.
+
+## Non-Functional Requirements
+
+- **Compatibility:** no migration, no schema change, the export unchanged at version 4, upgrade-safe from the previous release; no view or model change.
+- **Hosted-door cost per account (north star rule 4):** none (a stylesheet rule); the other three hosted-door rules do not apply (no catalog source, no admin page, no setting).
+- **Accessibility:** unchanged: the bar is `role="img"` with the exact `aria-label`; a clipped label is in the DOM but inside a `role="img"` and below the bar's visible box; the caption stays.
+- **Visual change:** yes: a label in the band is no longer drawn (it was wrapped and cut off) and a label that fits is drawn where it was drawn. Before and after screenshots of the bar in the band deck at a 320px, a 360px and the desktop aside, both themes, in the pull request ("before" is the old rule restored by a `<style>`, `.claude/memory/pr-screenshots-workflow.md`).
+
+## Error Scenarios
+
+| Scenario | Behaviour |
+|---|---|
+| A label exactly as wide as its segment's content width | Drawn; the examples accept either result within 0.5px (decision 3, AC-1.2) |
+| A label wider than every segment (a bar of five tiny segments at a narrow width) | None drawn; the caption carries every count |
+| A segment under 10% | No label, as before (decision 2); the fit rule never applies to it |
+| A label of three characters ("B 4", about 22px) | Drawn when its segment is at least 10% and its content width at least 22px (the narrow class decides first; the fit rule second) |
+| The font, its weight or the page's padding changes | The rule follows the rendered label and segment, so nothing in the rule changes |
+| Text size is enlarged (browser zoom or text-only zoom) | A label that no longer fits is not drawn; a label that fits is |
+| The browser lacks multi-line flex or `::before` as a flex item | Not reachable (decision 4) |
+| A clipped label found by find-in-page or reached by `scrollIntoView` | The text may match but nothing scrolls to show it (`overflow:clip`); recorded as a trade-off (decision 1) |
+| A web font replaces the mono face after load, or the label's width changes by a fraction of a pixel between platforms | The rule follows the rendered label, so the layout settles by itself; a label within 0.5px of its content width may be drawn on one platform and clipped on another (decision 3) |
+
+## Open Questions
+
+None. The approach was ruled by the maintainer (D1, 2026-11-12); the phone check is a manual item (decision 4, AC-2.4).
+
+## Notes for the plan
+
+- The probe is `spec/system/zz_probe_label_spec.rb` (uncommitted, the plan's first example is its descendant); the fixture decks need one `card(cost: "{W}")` of `n` copies per colour, as the probe's `counts` builds them. Delete the probe before committing.
+- Spec 077's AC-2.2 example measures a deck in the same nested `describe`; add the band decks beside it and reuse its `at_width`, `open_fold_in_frame` and `measure`-style helpers (in that file, not in `spec/support/narrow_frame.rb`, which the #318 worker is changing to compare with `clientWidth`: if it lands first, merge `main`; don't edit it).
+- A label's drawn/not-drawn state is read from geometry, not from `display`: a clipped label is a box below its segment (`range.getBoundingClientRect().top >= segment.getBoundingClientRect().bottom - 0.5`) and `getComputedStyle(segment).overflowX` is `clip` or `hidden`; the example expects at least one of each kind at a 320px viewport so it cannot pass vacuously.
+- The aside's bar is the `aside .c-manabar`; the fold's is `details.c-shapefold .c-manabar` (the other copy is `display:none` and measures 0).
+- A label's width differs by platform (the Mac's 43.56px, the Linux runner's about 44.70px for six characters): the examples assert the rule (AC-1.2's band), never a per-label list, and the screenshots are taken on a Mac, where "R 2.1k" at a 320px viewport (44.30px against a 43.56px label) is drawn and on Linux would be clipped.
+- `spec/system/design_system_deck_components_spec.rb` builds a 288px bar of "U 44" and "R 16": both keep fitting, so it passes unchanged (AC-3.2).
+- Keep the CSS edit inside the mana bar block; `spec/design_system_files_spec.rb` counts the strings "spec 019", "spec 021" and "spec 023" across the whole file; "spec 078" is fine.
+- Run `bin/yard doc` only if a Ruby comment changes (none is expected); run `bin/rspec spec/system/design_system_deck_components_spec.rb` after the CSS edit (it builds its own `c-manabar` markup and reads the segment's paints and the bar's outline).
+- Screenshots: a throwaway `spec/system/zz_078_screenshots_spec.rb` (workflow in `.claude/memory/pr-screenshots-workflow.md`): the band deck of each length at a 320px, 360px and 1280px aside, both themes, "before" with the old rule restored by a `<style>`; look at each shot, and at the first of each theme, before trusting the rest.
+
+## Out of Scope (Future Considerations)
+
+- Retiring the 10% rule (option D2) or showing a label's letter alone ("W") in a segment too narrow for its count: a later ruling.
+- A tooltip or `title` with the count on a segment that shows no label: the caption carries it.
+- A check in Chrome or Safari by an agent.
+
+## Documents that change
+
+- `app/assets/stylesheets/collector/additions.css` (the mana bar block); `spec/system/deck_shape_panel_spec.rb` (new examples).
+- `docs/design-system/components/DeckShape.md`; `docs/design-system/README.md` and `docs/design-system/previews/DeckShape.html` only if they state the limit or the rule (AC-2.2).
+- `docs/architecture/collection-and-lots.md` (the panel's paragraph, the Issues bullet, Sources and the Distillation log); `docs/specs/README.md` (this spec's row; 077's "Superseded by").
+- No ADR: the ruling is this spec's decision 1; no new area doc.
+- Left as history, not edited: specs 060, 069 and 077 and their `verification.md` files.
