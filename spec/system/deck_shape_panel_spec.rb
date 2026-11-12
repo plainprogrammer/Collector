@@ -107,15 +107,34 @@ RSpec.describe "Deck shape panel", type: :system do
     JS
   end
 
-  # A 375px frame is a 360px viewport: the frame keeps a classic 15px scrollbar that a phone doesn't have. Its chain is the body's 344px
-  # (8px margin a side), the main's 16px padding a side (a 312px container), the details' 2px border (310px) and the panel's 16px padding
-  # a side (a 278px inside). A pinned-scrollbar 360px frame is 15px narrower (263px inside), where the fixture's 1,357 count overflows
-  # its column by about 1.85px: a CSS question raised with the maintainer, not decided here. Each check can fail: the panel scrolling
-  # sideways, an element drawn past the padding box's right edge, and a text element cut off at its own box.
+  # Opens the deck page in a frame whose viewport (the page's `documentElement.clientWidth`, the frame less its classic scrollbar) is
+  # 360px, with the fold open, and returns that viewport's width so the example can assert it. The scrollbar's width depends on the
+  # platform (15px on the Mac, about 12px on the Linux CI runner, found when CI measured an inside of 281px where the Mac measured
+  # 278px), so the frame is sized from the measured scrollbar, `360 + scrollbar`, and never from a constant: it opens at 375px, the
+  # Mac's answer, and reopens only when the scrollbar isn't 15px.
+  def open_phone_frame
+    width = 375
+    2.times do
+      open_in_narrow_frame(deck_path(deck), width:, ready: "details.c-shapefold")
+      within_narrow_frame do
+        page.execute_script('document.querySelector("details.c-shapefold").open = true')
+        scrollbar = page.evaluate_script("window.innerWidth - document.documentElement.clientWidth")
+        width = 360 + scrollbar
+      end
+      break if width == 375
+    end
+    within_narrow_frame { page.evaluate_script("document.documentElement.clientWidth") }
+  end
+
+  # A phone's 360px viewport has no scrollbar and the frame keeps a classic one, so the frame is 360px plus the measured scrollbar
+  # (375px with the Mac's 15px). The chain is the viewport's 360px less the body's 16px (8px margin a side, a 344px body), the main's
+  # 32px padding (a 312px container), the details' 2px border (310px) and the panel's 32px padding (a 278px inside). A frame with the
+  # scrollbar inside a 360px width is 15px narrower (263px inside), where the fixture's 1,357 count overflows its column by about
+  # 1.85px: a CSS question raised with the maintainer, not decided here. Each check can fail: the panel scrolling sideways, an element
+  # drawn past the padding box's right edge, and a text element cut off at its own box.
   it "fits the open fold's parts in the panel's interior at a real phone's 360px viewport, with nothing cut off and each count with room in its column (AC-5.3)", :aggregate_failures do
-    open_in_narrow_frame(deck_path(deck), width: 375, ready: "details.c-shapefold")
+    expect(open_phone_frame).to eq(360)
     within_narrow_frame do
-      page.execute_script('document.querySelector("details.c-shapefold").open = true')
       fit = open_fold_fit
       expect(fit.except("countRoom")).to eq({ "inside" => 278, "scrolls" => false, "beyond" => 0, "clipped" => 0, "cols" => 7 })
       expect(fit["countRoom"]).to be >= 0, "the least room a count has in its column: #{fit['countRoom']}px"
