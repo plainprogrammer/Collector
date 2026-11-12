@@ -1,6 +1,6 @@
 # Implementation Plan: Replace a Proxy with a Copy
 
-**Spec:** [spec.md](spec.md) (v0.4.0, Approved at Gate A, 2026-11-11, by the coordinator under the maintainer's delegation); plan awaiting Gate B
+**Spec:** [spec.md](spec.md) (v0.4.0, Approved at Gate A, 2026-11-11, by the coordinator under the maintainer's delegation); plan approved at Gate B (the coordinator, under the maintainer's delegation, 2026-11-11; revision 3, with the Lot::MoveIntoZone contract additions)
 **Decisions:** none new; ADR 0028's deck model and spec 068's proxy table are used as they are (spec decision 14)
 **Created:** 2026-11-11
 **Revision:** 2 (from plan review round 1: 1 blocking, 8 major, 13 minor)
