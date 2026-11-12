@@ -32,7 +32,7 @@
         </div>
         <div class="c-item__actions">
           <% if collector? && @entry.deck_addable? %>
-            <%= link_to new_catalog_entry_deck_addition_path(@entry, **card_params), class: "c-btn c-btn--secondary" do %><%= render "icons/decks" %>Add to deck<% end %>
+            <%= link_to new_catalog_entry_deck_addition_path(@entry, **card_params), class: "c-btn c-btn--secondary c-item__adddeck" do %><%= render "icons/decks" %>Add to deck<% end %>
           <% end %>
           <% if collector? %>
             <%= link_to new_catalog_entry_lot_path(@entry, **card_params), class: "c-btn c-btn--primary" do %><%= render "icons/plus" %>Add a copy<% end %>

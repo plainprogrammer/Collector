@@ -10,19 +10,17 @@ RSpec.describe "Card page", type: :system do
   end
 
   # Firefox won't open a window narrower than 500px, so the phone layout is checked in a 390px frame.
-  it "shows a back link and a full-width add action on a phone", :aggregate_failures do
+  it "shows a back link and the head's actions on one line on a phone", :aggregate_failures do
     expect(open_card_on_phone).to eq([ 390, true ])
     within_narrow_frame do
       expect(page).to have_link("Back", href: catalog_entries_path)
       expect(page).to have_no_css(".c-appbar__brand", visible: :visible)
       expect(page).to have_no_css(".c-appbar__add", visible: :visible)
       widths = page.evaluate_script(<<~JS)
-        [ ".c-item__actions", ".c-item__body", ".c-item__actions .c-btn--primary" ]
-          .map((selector) => document.querySelector(selector).getBoundingClientRect().width)
+        [ ".c-item__actions", ".c-item__body" ].map((selector) => document.querySelector(selector).getBoundingClientRect().width)
       JS
       expect(widths[0]).to eq(widths[1])
-      expect(widths[2]).to be > widths[0] / 2
-      expect(page.evaluate_script("document.querySelector('.c-item__actions .c-btn--primary').getBoundingClientRect().width")).to be > 200
+      expect(head_row_fits.except("tall")).to eq("oneLine" => true, "inside" => true, "unclipped" => true, "overflow" => false) # a fine pointer: 36px controls
     end
   end
 
@@ -60,6 +58,42 @@ RSpec.describe "Card page", type: :system do
   private
 
   # Signs in, owns one foil copy of the card, and opens the card page in a 390px frame.
+  # The head's actions at the frame's width: on one line, every control inside the row, the primary not clipped, no overflow.
+  def head_row_fits
+    page.evaluate_script(<<~JS)
+      (() => { const row = document.querySelector(".c-item__actions"), box = row.getBoundingClientRect()
+        const controls = [...row.querySelectorAll(".c-btn")].map((el) => el.getBoundingClientRect())
+        const primary = row.querySelector(".c-btn--primary")
+        return { oneLine: Math.max(...controls.map((c) => c.height)) >= box.height - 1, tall: controls.every((c) => c.height >= 44),
+                 inside: controls.every((c) => c.left >= box.left - 0.5 && c.right <= box.right + 0.5),
+                 unclipped: primary.scrollWidth <= primary.clientWidth + 1,
+                 overflow: document.documentElement.scrollWidth > window.innerWidth } })()
+    JS
+  end
+
+  # AC-1.5: one line, every control inside the row, the primary not clipped, no overflow, with the menu present and absent, at 360px
+  # and 390px, and then with every coarse-pointer rule applied (`apply_coarse_rules`: a fine pointer doesn't apply components.css'
+  # `.c-btn { min-height:44px }` and `.c-btn--icon { min-width:44px }`, which makes the menu 8px wider), when every control is also 44px high.
+  [ 360, 390 ].each do |width|
+    { "with" => true, "without" => false }.each do |label, menu|
+      it "keeps the head's controls on one line at #{width}px #{label} the … menu, also with the coarse pointer's sizes (AC-1.5)", :aggregate_failures do
+        system_sign_in_as(create(:user))
+        # `scryfall_uri` is required, so the menu-less card has a link no source vouches for: `catalog_url` returns nil for its host
+        uri = menu ? "https://scryfall.com/card/x/1" : "https://example.com/card/x/1"
+        printing = create(:mtg_printing, entry: create(:catalog_entry, name: "Lightning Bolt"), scryfall_uri: uri).entry
+        visit catalog_entry_path(printing)
+        open_in_narrow_frame(catalog_entry_path(printing), width:, height: 800, ready: ".c-item__title")
+        within_narrow_frame do
+          expect(page).to have_link("Add to deck")
+          expect(page.all(".c-item__actions summary[aria-label='More actions']").size).to eq(menu ? 1 : 0)
+          expect(head_row_fits.except("tall")).to eq("oneLine" => true, "inside" => true, "unclipped" => true, "overflow" => false)
+          apply_coarse_rules(needs: [ ".c-btn, .c-input", ".c-btn--icon" ])
+          expect(head_row_fits).to eq("oneLine" => true, "tall" => true, "inside" => true, "unclipped" => true, "overflow" => false)
+        end
+      end
+    end
+  end
+
   def open_card_on_phone
     user = system_sign_in_as(create(:user))
     create(:lot, account: user.account, entry:, finish: "foil", condition: "near_mint")
