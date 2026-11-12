@@ -2,7 +2,7 @@
 # the page in a fixed-width same-origin iframe (id "narrow") on top of the current page.
 module NarrowFrame
   # Loads path in a width × height frame, waits for the ready selector inside it and returns
-  # [the frame's innerWidth, whether its page fits without horizontal scrolling].
+  # [the frame's innerWidth, whether its page fits without horizontal scrolling (see narrow_frame_fits?)].
   def open_in_narrow_frame(path, width:, ready:, height: 800)
     page.execute_script(<<~JS, path, width, height)
       document.getElementById("narrow")?.remove()
@@ -18,10 +18,14 @@ module NarrowFrame
 
   # Whether the page in the narrow frame fits without horizontal scrolling, measured now.
   # Call it from the top page, outside within_narrow_frame (it reaches the frame through #narrow).
+  #
+  # The page's scrollWidth is compared with the documentElement's clientWidth, the width the layout has, and not with
+  # innerWidth: innerWidth includes a vertical scrollbar (classic, 15px, in system specs, #271), which the frame draws
+  # whenever its page is taller than it, so a page scrolling sideways by up to that much would pass (#318).
   def narrow_frame_fits?
     page.evaluate_script(<<~JS)
-      (() => { const view = document.getElementById("narrow").contentWindow
-        return view.document.documentElement.scrollWidth <= view.innerWidth })()
+      (() => { const doc = document.getElementById("narrow").contentWindow.document.documentElement
+        return doc.scrollWidth <= doc.clientWidth })()
     JS
   end
 
