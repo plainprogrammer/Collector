@@ -1,6 +1,6 @@
 # Verification: spec 077, the deck shape panel at extreme counts
 
-Spec 0.3.1, plan `plan.md` (commit `8bee6a51`). Issue [#320](https://github.com/plainprogrammer/Collector/issues/320); the follow-up for the mana-label band is [#330](https://github.com/plainprogrammer/Collector/issues/330).
+Spec 0.3.2, plan `plan.md` (commit `8bee6a51`). Issue [#320](https://github.com/plainprogrammer/Collector/issues/320); the follow-up for the mana-label band is [#330](https://github.com/plainprogrammer/Collector/issues/330).
 
 ## Acceptance criteria
 
@@ -47,6 +47,9 @@ Each "can fail" example injects the old text or the old rule into the page and e
 2. Spec 0.3.1 (a PATCH, spec only) was made while planning: the table's caption column corrected, AC-4.3's variant widths changed and a 366px frame added, the label shares measured (14%, 17%, 20%), AC-3.1b's "not cut off" and its variant (the spec's changelog row). The plan, reviewed twice, follows it.
 3. The follow-up issue #330 was filed by the coordinator (decision 2 ruled option A by the maintainer, 2026-11-11).
 4. A 0.3.2 row of the spec cites #330 (a pointer only).
+5. The spec's Notes say to wait about 0.6s after a theme switch; the geometry examples don't (`testing.md` forbids sleeps, and the second reading in the other theme is a guard, since layout cannot depend on the theme; the helper's comment says so).
+6. The non-functional requirements describe the "before" shots as made by injecting the old rules and stubbing the abbreviation; they were taken from the unchanged code at the start of the branch (the same fixture, run before any app change), which is the real "before", not an emulation.
+7. `docs/architecture/collection-and-lots.md`'s Sources and Distillation log are written by `distill-feature` at the end (the plan leaves them there), not by Task 5.
 
 ## Screenshots
 
@@ -58,3 +61,15 @@ In [`screenshots/`](screenshots/): factory data, placeholder card images; each p
 - `before-wide1280-*`, `after-wide1280-*`: the 320px aside at 1280px.
 
 Every shot was looked at. Before: the 6+ count "1,357" crowds its column and the label "W 2,591" touches its borders (at 320px it wraps onto two lines and is cut off), the "Creatures" and "Instants" counts sit left of the "Artifacts" and "Lands" counts, and the caption breaks inside a colour. After: the counts read "10k" and "1.4k" over their columns, every label reads "W 2.6k" on one line inside its segment, every Card types count ends at one x, and the caption breaks only between colours; both themes read alike.
+
+## Implementation review
+
+SPEC-ALIGNED WITH MINOR FINDINGS (round 1, `sdd-review` Mode B, read-only Opus review of `46568b3d..86e54034` at spec 0.3.2, with the supervisor's fresh run beside it: 253 examples, 0 failures over the model, request and system deck-shape specs, `design_system_deck_components_spec`, `deck_page_spec`, `design_system_files_spec`, `deck_core_spec`, `query_counts_spec` and `deck_pages_spec`; rubocop clean on the four changed Ruby files; the comment ratchet "3 added or changed public objects, all with a comment")
+
+- **Checked, no finding:** `short_count` by hand (1,049, 1,050, 9,949, 9,950, 999,499, 999,500, 1,250,000, 9,999,500, 2,000,000,000), `caption` unchanged, the YARD comments, what the partial abbreviates and what stays exact, the CSS (only the two DeckShape blocks, tokens only), AC-6.1 (the app diff is exactly three files), the unchanged guards (`deck_core_spec`, `query_counts_spec`, specs 060 and 069), the documents against the code, 20 example titles cited here (each exists once), and the screenshot pairs.
+- **No blocking or major findings.** Minor findings and their resolution:
+  1. The area doc's Sources and Distillation log had no spec 077 entry: left to `distill-feature` (deviation 7), done in the distillation commit.
+  2. Three geometry predicates would pass if the panel were not drawn, and "all seven columns" was not counted: fixed in `430295a3` (`measure` returns the column count and the narrowest column, `counts_fit?` requires seven columns of positive width, `counts_aligned?` requires positive right edges).
+  3. Two "can fail" examples proved only that the predicate could be false: fixed in `430295a3` (the AC-3.1 variant expects the count edges to spread over 5px, the AC-4.3 variant at 345px and 360px expects an item on two lines).
+  - Nits: the version and unrecorded deviations (5, 6, 7 above, fixed here); the literal "U 44" of AC-2.1 had no example of its own (a request example "writes counts under 1,000 in full in a slot of fixed width (AC-2.1)" was added in `430295a3`); "never longer than four characters" overstated past 999m (the area doc and `DeckShape.md` now say "through 999m", `366ae43c`).
+- **Owed to CI, not defects:** two checks have little margin and were proved on a Mac only: AC-2.2's 0.44px at a 320px viewport, and the 366px frame's leading dot (an interior of 272px on the Linux runner, inside the measured range). If either fails on the runner, the spec is updated through `sdd-spec-update` before a bound moves.
