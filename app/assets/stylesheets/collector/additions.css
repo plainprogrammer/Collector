@@ -562,6 +562,11 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
    format page's Format select (spec 064), which shares that class; raising the select floor app-wide is out of scope. */
 @media (pointer: coarse) { .c-decks .c-select select, .c-decks .c-field select { min-height:var(--touch-floor); } }
 
+/* ---------- Add a new copy's read-only Location (spec 070 AC-6.1) ---------- */
+/* The zone's label ("Deck › Zone") names a deck of up to 60 characters with no space, so the read-only line breaks inside a
+   word like the page head's stats line instead of widening the form. It is the value under a `c-field__label` paragraph. */
+.c-decks .c-field__value { margin:0; overflow-wrap:anywhere; }
+
 /* ---------- Small icon stroke (spec 063) ---------- */
 /* An icon's stroke scales with it: weight on screen = stroke-width × drawn width ÷ 24 (the viewBox). The partials write
    1.5, Lucide's weight at 20px (1.25px on screen); at 12px that is 0.75px, a hairline beside a 600-weight word, and at
