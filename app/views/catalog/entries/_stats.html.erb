@@ -1,0 +1,6 @@
+<%# The card page's stats for a collector (spec 073 decision 3): Owned, In decks and Free to use, for the card as a whole. A proxy is in none of them. %>
+<dl class="c-stats c-stats--three">
+  <div class="c-stat"><dt>Owned</dt><dd><%= number_with_delimiter(overview.owned_count) %></dd><small><%= pluralize(overview.printings_owned, "printing") %></small></div>
+  <div class="c-stat"><dt>In decks</dt><dd><%= number_with_delimiter(overview.in_decks_count) %></dd><small>in <%= pluralize(overview.uses.deck_count, "deck") %></small></div>
+  <div class="c-stat"><dt>Free to use</dt><dd><%= number_with_delimiter(overview.free_count) %></dd><small>not in a deck</small></div>
+</dl>

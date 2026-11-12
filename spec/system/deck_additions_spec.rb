@@ -149,7 +149,7 @@ RSpec.describe "Add to deck", type: :system do
       expect(page.driver).to be_a(Capybara::RackTest::Driver)
       create(:lot, account:, entry:, quantity: 2, location: create(:location, account:, name: "Blue binder"))
       visit catalog_entry_path(entry)
-      click_link "Add to deck"
+      within(".c-item__actions") { click_link "Add to deck" }
       select "Izzet Tempo › Main", from: "Deck and zone"
       fill_in "How many", with: "2"
       choose "My copies (2 free: 2 in Blue binder)"
@@ -165,7 +165,7 @@ RSpec.describe "Add to deck", type: :system do
     it "records a proxy from the card page and shows it on the deck page (AC-5.5)", :aggregate_failures do
       expect(page.driver).to be_a(Capybara::RackTest::Driver)
       visit catalog_entry_path(entry)
-      click_link "Add to deck"
+      within(".c-item__actions") { click_link "Add to deck" }
       select "Izzet Tempo › Sideboard", from: "Deck and zone"
       fill_in "How many", with: "3"
       choose "A proxy of #{ApplicationController.helpers.set_number(entry)} Foil"
