@@ -60,8 +60,8 @@ RSpec.describe "Card scanner", type: :system do
       navigator.mediaDevices.getUserMedia = async (constraints) => { window.__cameraRequests.push(constraints); throw new Error("asked") }
     JS
     restart_camera
-    expect(page).to have_text("The live camera needs this page to be served over HTTPS")
-    expect(page).to have_field("Use a photo", type: "file", visible: :all, disabled: false)
+    expect(page).to have_css(".c-scan__notice:not([hidden])", text: "The live camera needs this page to be served over HTTPS")
+    within(".c-scan__notice") { expect(page).to have_field("Use a photo", type: "file", visible: :all, disabled: false) }
     expect(page).to have_no_button("Try the camera again")
     expect(page.evaluate_script("window.__cameraRequests.length")).to eq(0)
   end
@@ -70,7 +70,7 @@ RSpec.describe "Card scanner", type: :system do
     wait_for_scanner
     page.execute_script(%(navigator.mediaDevices.getUserMedia = async () => { throw new DOMException("blocked", "NotAllowedError") }))
     restart_camera
-    expect(page).to have_text("The camera is blocked for this site")
+    expect(page).to have_css(".c-scan__notice:not([hidden])", text: "The camera is blocked for this site")
     expect(page).to have_button("Try the camera again")
     expect(page).to have_button("Capture", disabled: true)
   end

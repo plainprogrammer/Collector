@@ -101,4 +101,31 @@ RSpec.describe "The one-screen scanner", type: :system do
       expect_states_at(width, height)
     end
   end
+
+  # A real failed load: the engine's script is not served, so there is no engine to start (spec 007 AC-2.2). A fresh version in
+  # the path keeps the browser's cache of the files from earlier examples out of it. Ruling: this, not a stubbed `createWorker`
+  # plus `retryEngine`, because a loaded worker is cached for the page's life, so a retry after a good load never fails.
+  def withhold_the_engine
+    stub_const("Collector::OcrEngine::VERSION", "v0.0.1")
+    allow(Collector::OcrEngine).to receive(:path_for).and_return(nil)
+  end
+
+  [ [ 390, 844 ], [ 360, 640 ], [ 360, 560 ] ].each do |width, height|
+    it "shows the engine's failure as a stage notice, the main button in view at #{width} × #{height} (Error Scenarios, AC-1.2)", :aggregate_failures do
+      withhold_the_engine
+      open_scanner_frame(width:, height:)
+      within_narrow_frame do
+        expect(page).to have_css(".c-scan__notice:not([hidden])", text: "The scanner couldn't load", wait: 30)
+        expect(page).to have_button("Load the scanner again")
+        expect(page).to have_button("Capture", disabled: true)
+        expect_one_screen(height)
+      end
+    end
+  end
+
+  it "says the catalog isn't loaded on a line at the stage's foot (Error Scenarios, decision 14)", :aggregate_failures do
+    visit scanner_path # no catalog refresh has run in this example
+    expect(page).to have_css(".c-scan__catalog #catalog_not_loaded", text: "The card catalog hasn't been loaded yet.")
+    expect(page).to have_button("Capture", wait: 30)
+  end
 end
