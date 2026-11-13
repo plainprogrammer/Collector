@@ -9,7 +9,7 @@ require "tmpdir"
 # before and after it.
 module BackupHelpers
   PRODUCTION_NAMES = { "primary" => "production.sqlite3", "cache" => "production_cache.sqlite3",
-    "queue" => "production_queue.sqlite3", "cable" => "production_cable.sqlite3" }.freeze
+    "queue" => "production_queue.sqlite3", "cable" => "production_cable.sqlite3", "prices" => "production_prices.sqlite3" }.freeze
   SECRETS = { "SECRET_KEY_BASE" => "sk-recognisable-secret-key-base-value-30303",
     "RAILS_MASTER_KEY" => "mk-recognisable-master-key-value-40404",
     "COLLECTOR_TRUSTED_PROXIES" => "198.51.100.77" }.freeze
@@ -72,6 +72,7 @@ module BackupHelpers
   def production_paths(directory) = PRODUCTION_NAMES.transform_values { directory.join(it) }
   def databases_for(directory) = Collector::Backup::Databases.new(production_paths(directory))
   def instance_database = Collector::Backup::Databases.configured.primary
+  def instance_prices_database = Rails.root.join(ActiveRecord::Base.configurations.configs_for(env_name: "test", name: "prices").database)
   def release_versions = Collector::Backup.release_schema_versions
 
   # The examples' clock: the second a backup is taken (decision 5's file name).
@@ -164,20 +165,33 @@ module BackupHelpers
     expect(status.signaled? && status.termsig == 9).to be(true), "the run wasn't stopped at #{step}: #{status.inspect}"
   end
 
-  # A child Rails process on a database file: the application as a booted instance would be (AC-2.2, AC-3.6). DATABASE_URL
-  # is Rails' own setting, so the application gets no setting of its own. SCHEMA keeps a migration from rewriting db/schema.rb.
-  def app_command(database, *command, environment: {})
-    env = { "RAILS_ENV" => "test", "DATABASE_URL" => "sqlite3:#{database}", "SCHEMA" => scratch_path("schema-dump.rb").to_s }.merge(environment)
+  # A child Rails process on a database file and its prices file beside it (spec 081 decision 12): an instance as a booted
+  # one would be. DATABASE_URL reaches the primary only, so the prices database gets PRICES_DATABASE_URL: without it the
+  # child would open the suite's own test prices file. Each command gets its own SCHEMA path, absent when it starts: Rails
+  # returns SCHEMA as every database's schema file, so both databases are built by their migrations, any dump lands in the
+  # scratch directory, and neither db/schema.rb nor db/prices_structure.sql is written (AC-6.9).
+  def app_command(database, *command, prices: prices_beside(database), environment: {})
+    env = { "RAILS_ENV" => "test", "DATABASE_URL" => "sqlite3:#{database}", "PRICES_DATABASE_URL" => "sqlite3:#{prices}",
+      "SCHEMA" => scratch_path("schema-#{SecureRandom.hex(4)}.dump").to_s }.merge(environment)
     Open3.capture3(env, Rails.root.join("bin/rails").to_s, *command, chdir: Rails.root.to_s)
   end
 
-  # Empties every table the application knows (not the FTS5 index's shadow tables, which a DELETE would corrupt; no spec
-  # of this feature creates catalog names), leaving the schema and its versions.
+  # The prices file a volume holds beside +database+: production_prices.sqlite3 beside production.sqlite3, or
+  # <name>_prices.sqlite3 beside any other name.
+  def prices_beside(database)
+    path = Pathname(database)
+    path.dirname.join(path.basename.to_s == "production.sqlite3" ? "production_prices.sqlite3" : "#{path.basename(".sqlite3")}_prices.sqlite3")
+  end
+
+  # Empties every table the application knows in both databases (not the FTS5 index's shadow tables, which a DELETE would
+  # corrupt; no spec of this feature creates catalog names), leaving the schema and its versions.
   def clear_instance!
-    connection = ActiveRecord::Base.connection
     keep = %w[schema_migrations ar_internal_metadata]
-    connection.disable_referential_integrity do
-      (connection.tables - keep).grep_v(/\Acatalog_names_fts/).each { |table| connection.execute("DELETE FROM #{connection.quote_table_name(table)}") }
+    [ ActiveRecord::Base, PricesRecord ].each do |klass|
+      connection = klass.lease_connection
+      connection.disable_referential_integrity do
+        (connection.tables - keep).grep_v(/\Acatalog_names_fts/).each { |table| connection.execute("DELETE FROM #{connection.quote_table_name(table)}") }
+      end
     end
   end
 
@@ -230,16 +244,21 @@ module BackupHelpers
     $stdout, $stderr = original
   end
 
-  # Points Active Record at a restored file for the block, as an instance started on that volume would be, then back at the
-  # test database. Requests made in the block meet that file's rows only (AC-2.2, AC-2.4, AC-2.8 to AC-2.10).
-  def with_restored_instance(path)
-    original = ActiveRecord::Base.connection_db_config
-    ActiveRecord::Base.connection_pool.disconnect!
-    ActiveRecord::Base.establish_connection(original.configuration_hash.merge(database: path.to_s))
+  # Points Active Record and PricesRecord at a restored primary and prices file for the block, as an instance started on that
+  # volume would be, then back at the test databases. Requests made in the block meet those files' rows only (AC-2.2, AC-2.4,
+  # AC-2.8 to AC-2.10). Each new config keeps its name, because HealthController#check_database finds pools by name.
+  def with_restored_instance(path, prices: prices_beside(path))
+    pairs = [ [ ActiveRecord::Base, path ], [ PricesRecord, prices ] ].map { |klass, file| [ klass, klass.connection_db_config, file ] }
+    pairs.each do |klass, config, file|
+      klass.connection_pool.disconnect!
+      klass.establish_connection(ActiveRecord::DatabaseConfigurations::HashConfig.new(config.env_name, config.name, config.configuration_hash.merge(database: file.to_s)))
+    end
     yield
   ensure
-    ActiveRecord::Base.connection_pool.disconnect!
-    ActiveRecord::Base.establish_connection(original)
+    pairs&.each do |klass, config, _file|
+      klass.connection_pool.disconnect!
+      klass.establish_connection(config)
+    end
   end
 
   # What Rails logged while the block ran (the commands log nothing, AC-1.7).

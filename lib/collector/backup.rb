@@ -87,9 +87,10 @@ module Collector
     end
 
     # The release's migrations as the framework finds them: the digits that start each file's name. Read from the files,
-    # never through a connection (FR-8); primary's migrations_paths is the default, db/migrate.
-    def self.release_schema_versions(root = Rails.root)
-      Dir[root.join("db/migrate/**/[0-9]*_*.rb").to_s].filter_map { File.basename(it)[/\A(\d+)_/, 1] }.sort_by(&:to_i)
+    # never through a connection (FR-8). The primary's by default; "db/prices_migrate" for the prices database (spec 081
+    # decision 8).
+    def self.release_schema_versions(root = Rails.root, directory = "db/migrate")
+      Dir[root.join(directory, "**/[0-9]*_*.rb").to_s].filter_map { File.basename(it)[/\A(\d+)_/, 1] }.sort_by(&:to_i)
     end
 
     # A new, empty file readable by its owner only from the moment it exists (decision 7). Returns it open for writing.
