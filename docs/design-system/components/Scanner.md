@@ -1,5 +1,111 @@
 # Scanner
 
+The card scanner. Two sections: the phone-first scanner, drawn by spec 080 (#343) and built by #344 (the one-screen page) and #345 (the selection pane); and the scanner as built today, which stays true until those merge. Each of them deletes what it replaces in the second section.
+
+## The phone-first scanner (drawn by spec 080, built by #344 and #345)
+
+One screen that never scrolls: a top bar with the sitting's destination, the camera filling everything between the bars, and a bottom bar whose main button is always in view. After a capture the frozen capture shrinks into a strip and the selection pane slides up over the rest of the stage. Nothing here is live yet: no view renders these parts, and the scanner works as the second section says until #344 and #345 merge. Previews: `ScannerFlow.html` (the five steps), `ScannerConfidence.html` (the pane's three states), `Sheet.html` (the two sheets).
+
+**Markup** — no view renders it yet. Shown for a Magic: The Gathering card, with a result.
+
+```html
+<body class="c-shell c-shell--untabbed c-shell--focused">
+<div class="c-scan c-scan--result">
+  <div class="c-scan__top">
+    <a class="c-scan__back" href="/collection" aria-label="Back"><svg …back…></svg></a>
+    <button type="button" class="c-scan__dest"><span class="c-scan__dest-label">Adding to</span> <span class="c-scan__dest-value"><span class="c-scan__dest-text">Atraxa › Main · NM</span><svg …chevron…></svg></span></button>
+    <a class="c-btn c-btn--ghost c-scan__done" href="…">Done</a>
+  </div>
+  <div class="c-scan__stage">
+    <video class="c-scan__video" playsinline muted></video>
+    <div class="c-scan__guide" aria-hidden="true"></div>
+    <div class="c-scan__line c-scan__line--status" hidden><p class="c-scan__line-text" role="status"></p></div>
+    <div class="c-scan__line c-scan__line--added" hidden><p class="c-scan__line-text" role="status"></p><form class="c-scan__undo">…<button class="c-btn c-btn--ghost">Undo</button></form></div>
+    <div class="c-scan__strip">
+      <canvas class="c-scan__capture"></canvas>
+      <div class="c-scan__read"><p class="c-scan__read-label">Read from the card</p><p class="c-scan__read-name">Lightning Bolt</p><p class="c-scan__read-line">MOM · 123 · EN</p></div>
+    </div>
+    <div class="c-scanpane">
+      <p class="c-band c-band--success" role="status"><svg …check…></svg><span>Matched by its collector line</span></p>
+      <div class="c-scanpane__body">
+        <div class="c-scanpane__rowwrap">
+          <ul class="c-scanpane__row">
+            <li class="c-scanpane__item" aria-current="true"><img src="…" alt="Lightning Bolt, March of the Machine, MOM · 123"></li>
+            <li class="c-scanpane__item"><img src="…" alt="…"></li>
+          </ul>
+          <button type="button" class="c-btn c-btn--secondary c-scanpane__nav c-scanpane__nav--prev" aria-label="Previous printing" disabled><svg …></svg></button>
+          <button type="button" class="c-btn c-btn--secondary c-scanpane__nav c-scanpane__nav--next" aria-label="Next printing"><svg …></svg></button>
+        </div>
+        <div class="c-scanpane__card">
+          <div class="c-scanpane__details">
+            <h2 class="c-scanpane__name">Lightning Bolt</h2>
+            <p class="c-scanpane__set">March of the Machine</p>
+            <p class="c-scanpane__meta"><span class="c-tag">MOM · 123</span> <span>2023</span> <span class="c-scanpane__position">1 of 14 printings</span></p>
+          </div>
+          <div class="c-scanpane__adds">
+            <form class="c-scanpane__add">…<button class="c-btn c-btn--secondary" aria-label="Add Lightning Bolt MOM · 123 Nonfoil">Add nonfoil</button></form>
+            <form class="c-scanpane__add">…<button class="c-btn c-btn--secondary" aria-label="Add Lightning Bolt MOM · 123 Foil"><svg …star… aria-hidden="true"></svg>Add foil</button></form>
+          </div>
+        </div>
+        <div class="c-scanpane__card" hidden>…</div>
+      </div>
+    </div>
+  </div>
+  <div class="c-scan__bottom">
+    <button type="button" class="c-btn c-btn--secondary c-scan__count" aria-label="12 added. Show this sitting's cards."><b>12</b><span>added</span></button>
+    <button type="button" class="c-btn c-btn--secondary c-scan__main">Scan again</button>
+    <button type="button" class="c-btn c-btn--secondary c-scan__torch" aria-label="Torch" aria-pressed="false"><svg …></svg></button>
+  </div>
+</div>
+</body>
+```
+
+Without a result the shell has no `c-scan--result`, the stage holds no strip and no pane, and the main button is the primary "Capture". The two lines over the camera, while aiming and after an add:
+
+```html
+<div class="c-scan__line c-scan__line--status"><p class="c-scan__line-text" role="status">Line the card up with the guide, then capture.</p></div>
+<div class="c-scan__line c-scan__line--added" hidden><p class="c-scan__line-text" role="status"></p><form class="c-scan__undo">…<button class="c-btn c-btn--ghost">Undo</button></form></div>
+
+<div class="c-scan__line c-scan__line--status" hidden><p class="c-scan__line-text" role="status"></p></div>
+<div class="c-scan__line c-scan__line--added"><p class="c-scan__line-text" role="status">Added Lightning Bolt MOM · 123, foil</p><form class="c-scan__undo">…<button class="c-btn c-btn--ghost">Undo</button></form></div>
+```
+
+- **A focused page** (README, Mobile and Hotwire): no app header and no tab bar. The `<body>` carries `c-shell--focused` beside `c-shell--untabbed`, so the shell (`c-scan`, as tall as the dynamic viewport) is exactly the screen and the document never scrolls. The top bar is 56px, the bottom bar 96px, and the stage is everything between.
+- **Controls** are 44px or more at every pointer: Back (44px), the destination, Done, the count (84 × 56px), the main button (64px high, taking the room that is left; the torch's too when there is none) and the torch (56px, only where the camera reports one).
+- **The destination** opens the sitting's choices in a `Sheet`; the count opens the sitting's list in another. Neither navigates: every visit to the scanner releases the camera. "Done" keeps its confirm page and "Details" of an add still leaves for Edit copy. The destination sheet's form keeps `c-scanner__place` (its fieldset's `min-width:0`, spec 042 AC-7.1), and the list keeps `c-scanner__sitting`.
+- **State is in the markup, never in a script's memory.** `c-scan--result` on the shell shows the capture strip and the pane; without it the stage is the live camera. The main button's `disabled` is the reading state. The row's centred item carries `aria-current="true"`. The server renders one `c-scanpane__card` per image, and every one but the centred card's carries `hidden`. Parts are shown and hidden with the `hidden` attribute (`.c-scan [hidden]` and `.c-scanpane [hidden]` keep a hidden `c-btn` hidden).
+- **The stage follows the theme**: `surface-sunken` under the picture, which covers it. The guide is drawn as today (`brand`, with an `on-brand` dashed line inside), its box set inline by the camera controller. The guide's geometry is #344's, which re-measures the reading at the new framing.
+- **Two lines over the camera**, 16px under the stage's top, on `surface-raised` with a `line-strong` border: the status line, centred, and the after-add line, which takes its place and spans the stage. While one shows, the other's wrapper carries `hidden`. Each line's `role="status"` element stays in the document and its text is inserted or replaced, which is what gets announced; Undo sits in the wrapper, outside the live region. The status line, the after-add line and the band are the page's three live regions.
+- **Capture and add stay the collector's taps**, and one reading adds at most one copy. The frozen frame and the capture strip are drawn in the page from the captured frame: the picture never leaves the device and nothing new is sent.
+- **The capture strip** is 144px with a 124px picture, 96px with a 76px one when the shell (on a phone, the screen) is less than 720px high, and never taller: the name read is one line, ending in an ellipsis.
+- **The pane** fills the rest of the stage. The `StatusBand` is its top edge and never scrolls. Under it the image row gives way on a short screen: the images are 288px high at most and 160px at least. When the pane still does not fit (below 640px of screen, or with a wrapped band or set name), its content scrolls inside it; the bars, the strip and the band never move.
+- **The row** scrolls sideways with scroll snap and draws no scrollbar. It holds the candidates first (three at most, in ranked order), then the centred card's other printings in today's Other printings order; when the scanner is not sure of the card it holds the candidate cards (design decision 17). The centred image has a 2px `brand` outline, and the images carry no text.
+- **A swipe is never the only way**: Previous and Next sit over the neighbours (44px, the one at the row's end disabled). The centred card is announced through the band, which follows it (design decision 14): on a printing other than the matched one it reads "Not the printing that was read". The band is one element whose form, icon and sentence are replaced in place (`StatusBand`).
+- **One details block** describes the centred card, each fact on its own line: the name; the set's full name, free to wrap; the set code and number as a tag with the year, and the position at the end.
+- **One add button per finish**, sharing the pane's width, 52px high, wrapping onto two lines when it must; a special finish's button carries the star in `foil`. A foil marker read off the card relabels its button and chooses nothing.
+- **Motion**: the capture's shrink and the pane's slide take 200ms and stop under reduced motion (README, Motion). The shrink starts from `--from` times the picture's size (4 unless the script sets it on `c-scan__capture`).
+
+**Copy**
+
+| Where | Words |
+|---|---|
+| Status line | "Line the card up with the guide, then capture." while aiming; "Reading the card…" while a reading runs |
+| Top bar | "Adding to" over the destination: "Atraxa › Main · NM" (a place and a condition), "Blue binder" (a place alone), "No location · NM" (a condition alone), "No location". "Done". The back arrow is named "Back" |
+| Count | "12 added" ("0 added", "1 added"); its accessible name is "12 added. Show this sitting's cards." |
+| Main button | "Capture"; "Scan again" while a result shows. The torch is named "Torch" |
+| Capture strip | "Read from the card", the name read, and the collector line read or "nothing read" |
+| Band, success | "Matched by its collector line"; "Matched by its collector line, one digit corrected"; "Matched by its artwork" |
+| Band, warning | "Printing not confirmed. Swipe to check." (alert); "Not sure of this card. Check it against your capture." (question mark); "Not the printing that was read" (alert, on a swipe away from the match) |
+| Position | "1 of 14 printings"; "1 of 3 possible cards" |
+| Add buttons | "Add nonfoil", "Add foil", "Add" and a finish's name in lower case ("Add etched"); "Add" alone for one finish or none; "Add foil · read from the card" when the foil marker was read. Accessible names stay today's: "Add Lightning Bolt MOM · 123 Foil" |
+| After-add line | "Added Lightning Bolt MOM · 123, foil"; "Added Lightning Bolt MOM · 123" for a printing with no finish; "Undo". It names no condition or place: the top bar shows them |
+| Previous and Next | "Previous printing", "Next printing"; "Previous card", "Next card" while the row holds possible cards |
+| Sheets | "Adding to" (the destination); "This sitting: 12 cards" (the list) |
+
+**Placed by #344 and #345** (today's copy stands until then): "Use a photo", the artwork-matching line, the photo-framing hint, the camera-unavailable states, "Nothing could be read", "No card matches", the catalog-not-ready notice, the send failures and the art-overrule sentence; the layout from 640px up, landscape and the bars' safe-area insets; how many printings load at once.
+
+## As built, until #344 and #345
+
 The card scanner (spec 007): a live camera feed with a card-shaped guide, the controls under it, and what the scanner read with its candidate printings.
 
 **Markup** — `scanners/_scanner.html.erb` renders it; the controllers `card-reader` and `camera` bring it to life.
