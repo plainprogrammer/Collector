@@ -55,6 +55,14 @@ The design system's "where is it" ([docs/design-system/README.md](design-system/
 
 The scanner as built (specs 005 and 007–011) stays as it is until this theme. The spikes may run earlier as measurement only.
 
+The phone-first layout comes first (maintainer, 2026-11-12; [design](superpowers/specs/2026-11-12-scanner-phone-first-design.md)), design system before features, each depending on the one before:
+
+- [#343](https://github.com/plainprogrammer/Collector/issues/343) Design system: the phone-first scanner.
+- [#344](https://github.com/plainprogrammer/Collector/issues/344) Scanner: capture always in view. It changes the guide's geometry and re-measures the reading.
+- [#345](https://github.com/plainprogrammer/Collector/issues/345) Scanner: the selection pane.
+
+The spikes' build specs and 21c then build on that layout.
+
 17. [#52](https://github.com/plainprogrammer/Collector/issues/52) Spike: the art margin on unseen cards (the 300-bit threshold, kept by ruling in spec 011).
 18. [#53](https://github.com/plainprogrammer/Collector/issues/53) Spike: detection on live frames. A build spec follows if the maintainer rules for it.
 19. [#54](https://github.com/plainprogrammer/Collector/issues/54) Spike: continuous capture (trigger, duplicates, rate). The build spec follows.

@@ -1,6 +1,6 @@
 # Scanner: a phone-first layout and selection flow
 
-**Date:** 2026-11-12. **Status:** draft, awaiting the maintainer's approval. Nothing is filed yet.
+**Date:** 2026-11-12. **Status:** approved by the maintainer, 2026-11-12; issues filed (see "Filed" at the end).
 **Builds on:** the scanner as built (specs 007, 009, 011, 040, 042, 047; [`docs/architecture/scanner.md`](../../architecture/scanner.md); [`Scanner.md`](../../design-system/components/Scanner.md)), read against `main` at `100c961`, and an interview with mock-ups on 2026-11-12.
 **Mock-ups:** in [`2026-11-12-scanner-phone-first-mockups/`](2026-11-12-scanner-phone-first-mockups/), drawn at 390 × 844 with placeholder card images: `scanner-flow.png` (the five steps), `scanner-confidence.png` (the pane's three states), `scanner-shell.png` and `scanner-pane.png` (the same screens, cut per issue). The working canvas, with the three layouts that were compared, is the maintainer's private artifact <https://claude.ai/artifact/SPaiks4wPGq48UkmDRvV9Q>.
 **Deliverable:** design-system changes and GitHub issues that Claude Code agents can each take through the SDD workflow as one outcome in one PR, design-system issue first (as the decks design of 2026-11-09 did).
@@ -134,3 +134,13 @@ New issues carry `theme: scanner`, use the roadmap's issue format (an **Outcome*
 - Landscape, and the safe-area insets of phones with a home indicator.
 - How many printings load at once, and what replaces "Show N more".
 - The exact tokens for text on the band, checked for contrast in both themes.
+
+## Filed
+
+Filed 2026-11-12, on the 1.0 milestone with `theme: scanner`:
+
+- [1] [#343](https://github.com/plainprogrammer/Collector/issues/343) Design system: the phone-first scanner (also `design-system`).
+- [2] [#344](https://github.com/plainprogrammer/Collector/issues/344) Scanner: capture always in view.
+- [3] [#345](https://github.com/plainprogrammer/Collector/issues/345) Scanner: the selection pane.
+
+Changed the same day: #262 (rewritten on this layout, depends on #345; its milestone is still the maintainer's to place), #58, #54 and #53 (one bullet each).
