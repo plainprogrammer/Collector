@@ -37,7 +37,43 @@ module ScannersHelper
     [ sitting.condition && conditions.dig(sitting.condition, 0), ("in #{sitting.location.label}" if sitting.location) ].compact
   end
 
+  # "Atraxa › Main · NM": the top bar's value, the sitting's place (a zone by its label) and its condition's short label, in spec
+  # 082 decision 7's four forms ("Blue binder", "No location · NM", "No location"). The scale is the Hash the caller gives
+  # (condition key => [ long label, short label ]); nil sitting reads as nothing set.
+  #
+  # @param sitting [Scanner::Sitting, nil]
+  # @param conditions [Hash{String => Array(String, String)}]
+  # @return [String]
+  def scanner_destination(sitting, conditions)
+    short = sitting&.condition && conditions.dig(sitting.condition, 1)
+    [ sitting&.location&.label || "No location", short ].compact.join(" · ")
+  end
+
+  # "This sitting: 12 cards, Near mint, in Blue binder": the list sheet's title, today's heading (spec 009 AC-3.2), with no
+  # sitting too ("This sitting: 0 cards", spec 082 decision 9).
+  #
+  # @param sitting [Scanner::Sitting, nil]
+  # @param entries [Array] the kept entries
+  # @param conditions [Hash{String => Array(String, String)}]
+  # @return [String]
+  def sitting_title(sitting, entries, conditions)
+    words = sitting ? sitting_choices(sitting, conditions) : []
+    "This sitting: #{pluralize(entries.size, "card")}#{", #{words.join(", ")}" if words.any?}"
+  end
+
+  # "Added Lightning Bolt MOM · 123, foil": the after-add line, which names no condition or place, since the top bar shows them
+  # (spec 080 decision 11, spec 082 decision 12); a printing with no finish listed has none.
+  #
+  # @param printing [Catalog::Entry]
+  # @param finish [String, nil]
+  # @return [String]
+  def scanner_added(printing, finish)
+    label = scanner_finish(printing, finish)
+    "Added #{printing.name} #{set_number(printing)}#{", #{label.downcase}" if label}"
+  end
+
   # The data of a redrawn sitting panel that puts keyboard focus back (spec 047 decision 3): nil on a page render and after an
-  # add, so nothing is focused by them. `focus` is :set or :heading, a word of ours; the Stimulus controller reads it once.
+  # add, so nothing is focused by them. `focus` is :set, :heading or :main (the main button, spec 082 decision 15), a word of
+  # ours; the Stimulus controller reads it once.
   def sitting_focus_data(focus) = (focus ? { controller: "sitting-focus", sitting_focus_to_value: focus } : nil)
 end
