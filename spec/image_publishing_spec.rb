@@ -103,6 +103,19 @@ RSpec.describe "Image publishing files" do
       expect(script.scan("printenv").size).to eq(2) # the two named variables and nothing else
       expect(script).to include("COLLECTOR_SOURCE_URL") # the failure message names all three build arguments
     end
+
+    it "requests the licence page before any user exists and reads its list in the image, from captured output (spec 087 AC-6.1, AC-6.2)", :aggregate_failures do
+      script = Rails.root.join("bin/image-smoke").read
+      expect(script).to include(
+        %([ "$(status /licences)" = "200" ] || fail "the licence page did not render before any user exists"),
+        %(licences="$(curl -s "http://127.0.0.1:${port}/licences")" || fail "the licence page did not load"),
+        %(for want in 'Third-party licences' 'c-licences__name">tesseract.js<' 'c-licences__name">turbo-rails<' 'c-licences__file">MIT-LICENSE<'; do),
+        %(grep -qF "$want" <<<"$licences" || fail "the licence page lacks: ${want}"),
+        %(if grep -qF 'c-licences__name">yard<' <<<"$licences"; then fail "the licence page lists yard, a development gem the image leaves out"; fi),
+        %(grep -qF 'href="/licences"' <<<"$sign_in"))
+      expect(script.index('status /licences')).to be < script.index("collector:user[smoke@example.com]") # no user exists yet
+      expect(script).not_to match(/\| *grep -q/)
+    end
   end
 
   describe "compose.yaml" do

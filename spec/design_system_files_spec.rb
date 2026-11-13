@@ -54,6 +54,20 @@ RSpec.describe "Design system files" do
     end
   end
 
+  describe "the licences page's block (spec 087)" do
+    let(:additions) { root.join("app/assets/stylesheets/collector/additions.css").read }
+    let(:block) { additions[%r{/\* -+ Licences \(spec 087\).*?(?=\n\n/\* -|\z)}m] }
+
+    it "keeps the rules in one block of their own, with tokens only and a document (AC-1.10)", :aggregate_failures do
+      expect(additions.scan("spec 087").size).to eq(1)
+      expect(additions.index("Licences (spec 087)")).to be > additions.index("Footer (spec 018)")
+      expect(additions.index("Licences (spec 087)")).to be < additions.index("Untabbed shell (spec 023)")
+      expect(block).to include(".c-licences__text {", "var(--font-mono)", "max-height:24rem")
+      expect(block).not_to match(/#\h{3,8}\b|rgba?\(|hsla?\(|font-family|["']/i)
+      expect(root.join("docs/design-system/components/Licences.md")).to exist
+    end
+  end
+
   describe "the untabbed shell (spec 023, spec 084 decision 11)" do
     let(:additions) { root.join("app/assets/stylesheets/collector/additions.css").read }
     let(:block) { additions[%r{/\* -+ Untabbed shell \(spec 023\).*?(?=\n\n/\* -|\z)}m] }

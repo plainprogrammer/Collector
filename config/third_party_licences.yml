@@ -1,0 +1,108 @@
+# The third-party software and assets in the image that aren't gems, with their licences (spec 087, decisions 3 and 5).
+# The gems are read from the running bundle; nothing here is generated. Every fact below was read from the source its
+# `source` names, on 2026-11-13, and no copyright line or licence text is written from memory: where a source has none,
+# the entry has none (decision 5). A change to a pinned engine package, a served JavaScript file, a font file or an icon
+# file fails spec/third_party_licences_manifest_spec.rb until its entry is looked at (decision 3's guard).
+#
+# Keys: `name`, `version`, `spdx`, `home`, `copyright` (optional), `source`; `texts` (a `title` and a `file` in
+# config/third_party_licences/) or `text: none` with a `reason` (an entry with a `gem` takes its text from that gem's
+# licence files); `note` (optional, shown after the identifier); the kind's own keys: `sha256` (ocr), `gem`,
+# `gem_version`, `pins`, `files` (javascript, fonts, icons).
+
+javascript:
+  - name: Turbo
+    version: "8.0.23 (turbo-rails 2.0.23)"
+    spdx: MIT
+    home: https://github.com/hotwired/turbo-rails
+    copyright: "Copyright © 2026 37signals LLC"
+    gem: turbo-rails
+    gem_version: "2.0.23"
+    pins: ["@hotwired/turbo-rails"]
+    files:
+      turbo.min.js: 16b926211f18ab2744bfb37073038c36fe3a91e0a4a8a007f8a807b542377208
+    source: "turbo-rails 2.0.23 (rubygems): MIT-LICENSE and the metadata homepage; turbo.min.js's own header reads 'Turbo 8.0.23, Copyright © 2026 37signals LLC'"
+  - name: Stimulus
+    version: "1.3.4 (stimulus-rails)"
+    spdx: MIT
+    home: https://stimulus.hotwired.dev
+    gem: stimulus-rails
+    gem_version: "1.3.4"
+    pins: ["@hotwired/stimulus", "@hotwired/stimulus-loading"]
+    files:
+      stimulus.min.js: 0acd633353c5a12959e474aad56300cab93554eed5d8033d02de800701ca7d59
+      stimulus-loading.js: 6480747bf3025ea2ac4780cb4e4dda3c98b5d74911d7a07ce66c211f3247e59c
+    source: "stimulus-rails 1.3.4 (rubygems): MIT-LICENSE and the metadata homepage; the files carry no version and no copyright line, so the row shows the gem's version and none"
+
+ocr:
+  - name: tesseract.js
+    version: "7.0.0"
+    spdx: Apache-2.0
+    home: https://github.com/naptha/tesseract.js
+    sha256: 9a93bf51c3387f945d10a24bf8b3a4bf2e45c7c7161b8242aafbaf9d3c4b606a
+    texts:
+      - { title: LICENSE.md, file: tesseract-js-LICENSE.txt }
+      - { title: Bundled libraries, file: tesseract-js-bundled.txt }
+    source: "npm tesseract.js 7.0.0 tarball, SHA-256 9a93bf51c3387f945d10a24bf8b3a4bf2e45c7c7161b8242aafbaf9d3c4b606a (the pin in lib/collector/ocr_engine.rb): package.json, LICENSE.md, dist/*.LICENSE.txt"
+  - name: tesseract.js-core
+    version: "7.0.0"
+    spdx: Apache-2.0
+    home: https://github.com/naptha/tesseract.js-core
+    sha256: ba584355515eaff877552022853c0e71f2cb70466e759d1d6940484929718ee0
+    texts:
+      - { title: LICENSE, file: tesseract-js-core-LICENSE.txt }
+    source: "npm tesseract.js-core 7.0.0 tarball, SHA-256 ba584355515eaff877552022853c0e71f2cb70466e759d1d6940484929718ee0 (the pin in lib/collector/ocr_engine.rb): package.json, LICENSE"
+  - name: "@tesseract.js-data/eng"
+    version: "1.0.0"
+    spdx: MIT
+    home: https://github.com/naptha/tessdata
+    sha256: c9bddf2e2f0a214ac7918f3f4a3caf45e09ce8674fe26662ae7787ac8927f7bb
+    note: as the package declares
+    text: none
+    reason: the package declares MIT in its package.json and ships no licence text and no copyright line
+    source: "npm @tesseract.js-data/eng 1.0.0 tarball, SHA-256 c9bddf2e2f0a214ac7918f3f4a3caf45e09ce8674fe26662ae7787ac8927f7bb (the pin in lib/collector/ocr_engine.rb): package.json (license MIT), README.md; no LICENSE file"
+
+fonts:
+  - name: Fraunces
+    version: "5.3.0 (Fontsource)"
+    spdx: OFL-1.1
+    home: https://fontsource.org/fonts/fraunces
+    copyright: "Copyright 2020 The Fraunces Project Authors (github.com/undercasetype/Fraunces)"
+    files:
+      collector/fraunces-latin-600-normal.woff2: 3a1de7711d147bad4422825045f87597fd77cca72e7c96d3b0a81735d00dda82
+    texts:
+      - { title: LICENSE, file: fraunces-OFL.txt }
+    source: "npm @fontsource/fraunces 5.3.0 tarball, SHA-256 c4d77f0157ec3128e53ee83aafa0f1ef0ab0ae5a23708f611e49584821c1f6ce: package.json (license OFL-1.1) and LICENSE; the files here are byte-identical to the package's files/ copies, compared by SHA-256 on 2026-11-13"
+
+  - name: IBM Plex Sans
+    version: "5.3.0 (Fontsource)"
+    spdx: OFL-1.1
+    home: https://fontsource.org/fonts/ibm-plex-sans
+    copyright: "Copyright 2019 IBM Corp. All rights reserved."
+    files:
+      collector/ibm-plex-sans-latin-400-normal.woff2: 3b646991d30055a93a4ecc499713d4347953a74a947ecab435ab72070cbdab0e
+      collector/ibm-plex-sans-latin-600-normal.woff2: 8960851d691c054ed38e259bdcf1a6190d157b4203ed5bb32c632a863fb8ec2f
+    texts:
+      - { title: LICENSE, file: ibm-plex-sans-OFL.txt }
+    source: "npm @fontsource/ibm-plex-sans 5.3.0 tarball, SHA-256 232592af20ae413026cc705fc9c104135fb760432fd710f06a02c39e062d3213: package.json (license OFL-1.1) and LICENSE; the files here are byte-identical to the package's files/ copies, compared by SHA-256 on 2026-11-13"
+
+  - name: IBM Plex Mono
+    version: "5.3.0 (Fontsource)"
+    spdx: OFL-1.1
+    home: https://fontsource.org/fonts/ibm-plex-mono
+    copyright: "Copyright 2017 IBM Corp. All rights reserved."
+    files:
+      collector/ibm-plex-mono-latin-400-normal.woff2: 08949f728dc52d528e69b1667d15c89a5686a4ee9a296ff90983985f99c380f7
+    texts:
+      - { title: LICENSE, file: ibm-plex-mono-OFL.txt }
+    source: "npm @fontsource/ibm-plex-mono 5.3.0 tarball, SHA-256 60d3c0cfa549cb06fcb8867ee83f994d78e212abfac3bef3275436acb5c4d029: package.json (license OFL-1.1) and LICENSE; the files here are byte-identical to the package's files/ copies, compared by SHA-256 on 2026-11-13"
+
+icons:
+  - name: Lucide
+    version: "as in lucide-static 1.72.0"
+    spdx: ISC
+    home: https://lucide.dev
+    copyright: "Copyright (c) 2026 Lucide Icons and Contributors"
+    files: [_alert.html.erb, _back.html.erb, _check.html.erb, _collection.html.erb, _cross.html.erb, _decks.html.erb, _grid.html.erb, _more.html.erb, _plus.html.erb, _scan.html.erb, _search.html.erb, _star.html.erb, _table.html.erb]
+    texts:
+      - { title: LICENSE, file: lucide-LICENSE.txt }
+    source: "npm lucide-static 1.72.0 tarball, SHA-256 3d3b3a42e4c5498d2161c86c9f3e97808b0aa3a1b8e54429890b212096902e0c: package.json (license ISC, homepage https://lucide.dev) and LICENSE (the ISC text, the Feather list and its MIT text). That the 13 inline icons derive from Lucide is the maintainer's word (2026-11-13, spec 087 decision 7), not established from the files: only _check and _back match lucide-static 1.72.0's paths"
