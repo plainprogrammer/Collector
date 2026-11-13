@@ -1,3 +1,4 @@
+# Waits for Turbo to be idle before a system example goes Back or Forward: no visit in flight and no scroll event still queued.
 module TurboIdle
   # Waits until Turbo has finished the current navigation (no aria-busy on <html>) and the scroll events it queued have been
   # delivered, so page.go_back/go_forward don't land mid-navigation or in the frame of the page's own scroll-to-top.
@@ -13,11 +14,12 @@ module TurboIdle
   # A Turbo visit scrolls the new page to the top when it renders, and that queues a scroll event for the next frame. Back before
   # that frame makes `popstate` switch Turbo's current restoration identifier to the previous page's entry first, so the queued
   # event, which reports the new page's scroll of 0, is recorded against the previous entry and replaces the position the
-  # restore visit is about to put back: the page comes back scrolled to 0. No `aria-busy` shows it (Turbo clears it at
-  # `turbo:load`, before the frame), so {#wait_for_turbo_idle}'s first expectation passes in the gap.
+  # restore visit is about to put back: the page comes back scrolled to 0. No `aria-busy` shows it (Turbo clears it just
+  # before `turbo:load`, which is also before the frame), so {#wait_for_turbo_idle}'s first expectation passes in the gap.
   #
-  # It waits two animation frames (a scroll event is delivered in the rendering step before a frame's callbacks), or two
-  # timeouts when the window is hidden, as Turbo's own render does.
+  # It waits two animation frames (a scroll event is delivered in the rendering step before a frame's callbacks). A hidden
+  # window runs no animation frames, so there it waits two timeouts instead, as Turbo's own render does, only so the script
+  # can't hang; a hidden document delivers no scroll events and doesn't have this race.
   #
   # @param frame [String, nil] the id of an iframe on the top page whose window to wait in (the narrow frame, `"narrow"`);
   #   nil waits in the top page's window. Always call it from the top page, never inside `within_frame`.
