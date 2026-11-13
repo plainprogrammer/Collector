@@ -15,7 +15,7 @@ RSpec.describe "Small controls meet the touch floor on a coarse pointer", :solid
   def small = "main .c-btn--sm, main .c-filter, main .c-seg button, .c-appbar .c-btn--sm, #status .c-btn--sm"
   # The page rules (spec 075 decision 3) that give their buttons 44px at every pointer: the rows marked `page` in the audit.
   def page_rule_scopes
-    ".c-locations, .c-decks, .c-deckpage .c-section__actions, .c-numentry__list, .c-scanner__add, .c-scanner__undo, .c-scanner__sitting"
+    ".c-locations, .c-decks, .c-deckpage .c-section__actions, .c-numentry__list, .c-scanner__add, .c-scanner__undo, .c-scanner__sitting, .c-scan .c-sheet"
   end
 
   # Every drawn small control of the current document (AC-1.2's set): its name, size, whether a page rule covers it, whether it is
@@ -206,9 +206,9 @@ RSpec.describe "Small controls meet the touch floor on a coarse pointer", :solid
         "admin jobs" => { path: admin_jobs_path(status: "failed"), # row 12
           wide: [ [ ".c-filter", "Failed" ], [ ".c-filter", "Running" ], [ ".c-filter", "Queued" ], [ ".c-filter", "Scheduled" ], [ "summary.c-btn--sm.c-btn--icon", nil ] ] },
         "admin users" => { path: admin_users_path, wide: [ [ "summary.c-btn--sm.c-btn--icon", nil ] ] }, # row 13
-        "scanner" => { path: scanner_path, # row 14 (the sitting)
-          wide: [ [ "#scanner_sitting .c-btn--sm", "Done" ], [ "#scanner_sitting .c-btn--sm", "Undo" ], [ "#scanner_sitting .c-btn--sm", "Details" ],
-                  [ "#scanner_sitting summary.c-btn--sm", "Show all" ], [ "#scanner_sitting .c-btn--sm", "Set" ] ] },
+        "scanner" => { path: scanner_path, # row 14 (the sitting's sheets; Done is the top bar's 44px button, not a small control)
+          wide: [ [ "#scanner_sitting .c-btn--sm", "Undo" ], [ "#scanner_sitting .c-btn--sm", "Details" ],
+                  [ "#scanner_sitting summary.c-btn--sm", "Show all" ], [ "#scanner_picker .c-btn--sm", "Set" ] ] },
         "measurement mode" => { path: scanner_measurement_path, wide: [ [ ".c-btn--sm", "Skip" ] ] } } # row 15
     end
 
@@ -231,9 +231,19 @@ RSpec.describe "Small controls meet the touch floor on a coarse pointer", :solid
       end
     end
 
-    # The scanner's stage is unhidden by script some time after `main` exists (the fake camera); wait for it on the two scanner pages.
+    # The scanner's feed is unhidden by script some time after `main` exists (the fake camera); wait for it on the two scanner pages,
+    # then draw the sheets without a modal so their controls have a size (this spec measures sizes, not overlap; spec 082 AC-1.9).
     def settle(name)
-      expect(page).to have_css(".c-scanner__stage:not([hidden])", wait: 10) if [ "scanner", "measurement mode" ].include?(name)
+      return unless [ "scanner", "measurement mode" ].include?(name)
+
+      expect(page).to have_css(".c-scan__feed:not([hidden])", wait: 10)
+      page.execute_script("document.querySelectorAll('dialog.c-sheet').forEach((sheet) => sheet.show())")
+    end
+
+    # `settle` shows every sheet at once so their controls have a size; two open sheets overlap each other, which no collector
+    # sees, so an overlap check keeps the first and closes the rest.
+    def keep_one_sheet
+      page.execute_script("document.querySelectorAll('dialog.c-sheet[open]').forEach((sheet, index) => { if (index > 0) sheet.close() })")
     end
 
     # What the page expects to draw at this width: the `narrow` list when the table gives one (the pages whose controls differ below
@@ -312,6 +322,7 @@ RSpec.describe "Small controls meet the touch floor on a coarse pointer", :solid
       pages.each_key do |name|
         in_page(name, width: 360) do
           inject_coarse(needs: block_rules)
+          keep_one_sheet
           report = layout_report(roots: [ "main", ".c-appbar", "#status" ])
           expect(report["overflow"]).to be <= 0, "#{name}: scrolls sideways by #{report['overflow']}px"
           expect(report["overlaps"]).to be_empty, "#{name}: overlapping controls: #{report['overlaps']}"
@@ -402,6 +413,25 @@ RSpec.describe "Small controls meet the touch floor on a coarse pointer", :solid
           after = row_lines["lines"]
           expect(after.sum { |_, lines| lines }).to be > before.sum { |_, lines| lines }, "#{name}: no row gained a line"
         end
+      end
+    end
+
+    # The sizes of the one-screen scanner's own controls, drawn at a fine pointer (nothing injected) with both sheets shown.
+    def scanner_control_sizes
+      page.evaluate_script(<<~JS)
+        [...document.querySelectorAll(".c-scan__back, .c-scan__dest, .c-scan__done, #scanner_count, .c-scan__main, .c-scan__torch, dialog .c-btn")]
+          .map((el) => { const box = el.getBoundingClientRect()
+            return { name: el.className + " | " + (el.getAttribute("aria-label") || el.textContent.trim()).slice(0, 30), height: box.height, width: box.width } })
+          .filter((control) => control.height > 0 && control.width > 0)
+      JS
+    end
+
+    # Spec 082 AC-1.9, read with spec 072's exception: the sheets' selects are 36px at a fine pointer and are not in the list.
+    it "the one-screen scanner's controls are 44px at every pointer (spec 082 AC-1.9)", :aggregate_failures do
+      in_page("scanner") do
+        sizes = scanner_control_sizes
+        expect(sizes.size).to be >= 6
+        expect(sizes.select { it["height"] < 44 || it["width"] < 44 }.map { it["name"] }).to be_empty
       end
     end
 
