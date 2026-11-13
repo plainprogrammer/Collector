@@ -1,14 +1,14 @@
 # Feature 087: The Licences of the Third-Party Software and Assets in the Image, Readable from the App
 
-**Status:** Draft
-**Version:** 0.3.0
+**Status:** Approved (2026-11-13, Gate A: the coordinator under the maintainer's delegation, v0.3.1)
+**Version:** 0.3.1
 **Created:** 2026-11-13
 **Last Updated:** 2026-11-13
 **Depends on:** [spec 084](../084-version-and-licence-in-app/spec.md) (the licence line and the shared notice partial; frozen, by [catalog core](../../architecture/catalog-core.md)), [spec 007](../007-card-scanner-live-capture/spec.md) and [ADR 0001](../../adr/README.md) (the pinned OCR engine; frozen, by [scanner](../../architecture/scanner.md))
 **Branch:** `087-third-party-licences`
 **Issue:** [#376](https://github.com/plainprogrammer/Collector/issues/376) (the 1.0 milestone, housekeeping lane)
 **ADR:** none. Every decision here is cheap to reverse: a page, a manifest and a guard. The one rule of lasting weight, that the list is read from the running image and not generated at build time, is written in the area docs (decision 3).
-**Plan:** none yet
+**Plan:** [plan.md](plan.md)
 
 ---
 
@@ -16,6 +16,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.3.1 | 2026-11-13 | **Gate A: approved** by the coordinator under the maintainer's delegation (2026-11-13): two Fable rounds, nothing blocking after round 2, all findings fixed. The plan states the icon count the guard sees (13: `ls app/views/icons` lists thirteen partials; the first draft's "twelve" was a miscount by eye and was corrected in 0.2.0). No requirement changed |
 | 0.3.0 | 2026-11-13 | Spec review round 2 (Fable, Mode A, APPROVE WITH CHANGES, 0 blocking, 3 important, 7 minor) fixed: the pin rule is inverted so a `vendor/javascript` pin or a URL pin can't pass with no entry, and `pin_all_from` directories are checked (decision 3, AC-5.3); a JavaScript entry records its gem's version (decision 3); the Lucide row's version reads "as in lucide-static 1.72.0" (decision 7); the memo's comparison with the build facts, the licence-file regex, AC-1.8's collector clause, AC-2.2's example version and AC-6.1's gem-text check are corrected. No requirement was removed |
 | 0.2.1 | 2026-11-13 | The maintainer's ruling on decision 7: option (a), Lucide listed for all thirteen icons on the maintainer's word, with the Feather section; no `unattributed` list. The language data's upstream licence is owed to the maintainer in `verification.md` |
 | 0.2.0 | 2026-11-13 | Spec review round 1 (Fable, Mode A, NEEDS REVISION, 4 blocking, 9 important, 8 minor) fixed. **Blocking:** icons are 13 files (decision 7); a manifest entry may declare `text: none` with a reason (decisions 3 and 4); the licence-file rule is an explicit pattern that includes `BSDL` and `LEGAL` (decision 3); OCR and JavaScript entries record the pinned digests so a bump can't leave a stale entry, and how a pin is known to resolve into a gem is stated (decision 3). **Also:** the guard covers a superset of the image's bundle and the image-specific proof is the smoke check (decision 3, AC-6.1); the supersessions of spec 084 are complete (decision 1); the sheets claim is true only once spec 082 merges (decision 1); where the link's address lives (decision 1); where the memo lives and how specs reset it (decision 3); testable AC-1.8; security notes; the base image's packages and Ruby are out of scope with the reason; a new pattern, not `Details` (decision 6); hosted-door rules; `CLAUDE.md`'s Project Status |
