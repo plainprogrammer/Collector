@@ -56,6 +56,7 @@ Who may use an instance and whose data a request sees: the account that owns eve
   |---|---|---|
   | Sign-in and sign-up | They are how one gets a session | spec 004 AC-4.1–AC-4.5 |
   | `/up` (the health check; inherits `Rails::HealthController`, not `ApplicationController`) | A monitor has no session; also on an instance with no users | spec 004 AC-3.1, Error Scenarios |
+  | `/licences` (`LicencesController`) | The third-party licences list: no tenant data, the same page for everyone; the licence line links it from every page; also before the first user | spec 087 decision 1, AC-1.1–AC-1.3; [catalog core](catalog-core.md) |
   | `/ocr/<version>/*path` (`OcrAssetsController`) | A public library, immutable and versioned; also before the first user | spec 011 AC-4.1 ("as the OCR engine … are"); the controller says it is a public library (no spec says so for the engine itself); [ADR 0001](../adr/0001-browser-ocr-engine-and-asset-hosting.md) serves it |
   | `/scanner/art/<name>` (`Scanner::ArtIndexesController`) | Global catalog data; also before the first user | spec 011 AC-4.1, Story 4; [ADR 0007](../adr/0007-art-search-in-the-browser.md) |
   | The search, card and printings pages | Only with `COLLECTOR_PUBLIC_CATALOG` on; never on an instance with no users | spec 023 FR-1, FR-2, AC-2.3; [catalog core](catalog-core.md) |
