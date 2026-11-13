@@ -18,6 +18,10 @@ class MTG::Scryfall::PriceQuotes
   # The UTC timestamp Scryfall puts at the end of a bulk file's name, the string the catalog keeps as the version.
   FILE_STAMP = /-(\d{4})(\d{2})(\d{2})\d{6}\.jsonl(?:\.gz)?\z/
 
+  # A price as Scryfall writes it: whole dollars or euros with at most two decimals. Nine integer digits (below a
+  # billion) keep a garbled value from becoming a price (spec 085 decision 6).
+  PRICE = /\A\d{1,9}(\.\d{1,2})?\z/
+
   # The key this source is registered and stored under (price_sources.key); never changed once released.
   def self.key = "scryfall"
 
@@ -53,4 +57,77 @@ class MTG::Scryfall::PriceQuotes
 
     Date.new(year, month, day)
   end
+
+  # Yields a quote for every price the bulk file carries, for the paper printings in the given languages, one card at a
+  # time (spec 085 decisions 3, 5 and 6). It makes no network call, writes nothing and applies no twin rule. A price
+  # that is null or missing has no quote; one that can't be read is a `Malformed` that names its series (so it isn't
+  # taken for an absence), and a card that can't be read at all is a `Malformed` too. Blank lines are skipped.
+  #
+  # @param path [Pathname, String] the gzip'd JSON Lines file the catalog refresh downloaded
+  # @param languages [Array<String>] the languages the catalog holds (`MTG::Scryfall::Source#languages`)
+  # @yieldparam record [Prices::Sources::Quote, Prices::Sources::Malformed]
+  # @return [Enumerator, nil] an Enumerator when no block is given
+  # @raise [Prices::Sources::IntegrityError] before yielding anything, when the file's name carries no date
+  # @raise [Zlib::Error] from the reader, when the file is corrupt or cut short; quotes already yielded stay yielded
+  def each_quote(path, languages:, &block)
+    return enum_for(:each_quote, path, languages:) unless block
+
+    date = reported_on(path)
+    allowed = languages.to_set
+    File.open(path, "rb") do |file|
+      Zlib::GzipReader.wrap(file) do |gzip|
+        gzip.each_line { |line| each_card_record(line, allowed, date, &block) }
+      end
+    end
+    nil
+  end
+
+  private
+    def each_card_record(line, allowed, date)
+      return if line.strip.empty?
+
+      card = parse(line)
+      return yield(card) if card.is_a?(Prices::Sources::Malformed)
+      return yield(malformed(nil, "the line is not a JSON object")) unless card.is_a?(Hash)
+      return unless allowed.include?(card["lang"]) && MTG::Scryfall::Mapper.paper?(card)
+
+      id = card["id"]
+      return yield(malformed(nil, "the card has no id")) unless id.is_a?(String) && !id.strip.empty?
+
+      prices = card["prices"]
+      return if prices.nil?
+      return yield(malformed(id, "prices is not an object")) unless prices.is_a?(Hash)
+
+      each_price_record(id, prices, date) { |record| yield record }
+    end
+
+    def each_price_record(id, prices, date)
+      SERIES_BY_KEY.each do |key, series|
+        value = prices[key]
+        next if value.nil?
+
+        cents = cents_from(value)
+        if cents
+          yield Prices::Sources::Quote.new(external_key: id, finish: series.finish, currency: series.currency, kind: series.kind, cents:, reported_on: date)
+        else
+          yield malformed(id, "prices.#{key} #{value.inspect} is not a price of whole cents", series)
+        end
+      end
+    end
+
+    def parse(line)
+      JSON.parse(line)
+    rescue JSON::ParserError => error
+      malformed(nil, "#{error.class}: #{error.message}")
+    end
+
+    def malformed(external_key, error, series = nil) = Prices::Sources::Malformed.new(external_key:, error:, series:)
+
+    # Whole cents from the digits of a price string; nil for anything else. No Float: 0.29 * 100 is 28.999…
+    def cents_from(value)
+      return unless value.is_a?(String) && value.match?(PRICE)
+
+      whole, fraction = value.split(".")
+      (whole.to_i * 100) + fraction.to_s.ljust(2, "0").to_i
+    end
 end
