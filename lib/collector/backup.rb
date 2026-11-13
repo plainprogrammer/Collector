@@ -99,6 +99,10 @@ module Collector
     # The release's migrations as the framework finds them: the digits that start each file's name. Read from the files,
     # never through a connection (FR-8). The primary's by default; "db/prices_migrate" for the prices database (spec 081
     # decision 8).
+    #
+    # @param root [Pathname] the application root
+    # @param directory [String] the migrations directory under +root+: +db/migrate+ (the primary's) or +db/prices_migrate+
+    # @return [Array<String>] the version digits, in ascending order
     def self.release_schema_versions(root = Rails.root, directory = "db/migrate")
       Dir[root.join(directory, "**/[0-9]*_*.rb").to_s].filter_map { File.basename(it)[/\A(\d+)_/, 1] }.sort_by(&:to_i)
     end
