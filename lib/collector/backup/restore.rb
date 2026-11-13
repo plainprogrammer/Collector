@@ -150,7 +150,7 @@ module Collector
           free = @free_space.call(volume)
           return unless free && free < need
 
-          raise Refusal.new("The volume at #{volume} has #{Backup.size_phrase(free)} free; the snapshot needs #{Backup.size_phrase(need)}.",
+          raise Refusal.new("The volume at #{volume} has #{Backup.size_phrase(free)} free; the snapshots need #{Backup.size_phrase(need)}.",
             "Free some space or use a larger volume.")
         end
 

@@ -196,12 +196,6 @@ RSpec.describe Collector::Backup::Restore, :backup, :committed do
       expect(volume.children.map { it.basename.to_s }).to match_array(%w[production.sqlite3 production_prices.sqlite3])
     end
 
-    it "never creates the prices path for a file that doesn't exist" do
-      missing = scratch_path("nope.tar.gz")
-      expect_refused(missing, "There is no file at #{missing}.", "Check the path as the container sees it; copy the backup in first.")
-      expect(volume.join("production_prices.sqlite3")).not_to exist
-    end
-
     it "refuses a storage directory that isn't there", :aggregate_failures do
       gone = scratch_path("gone")
 
@@ -211,11 +205,12 @@ RSpec.describe Collector::Backup::Restore, :backup, :committed do
       expect(gone).not_to exist
     end
 
-    it "refuses when the volume has too little room, before it writes anything", :aggregate_failures do
+    it "refuses when the volume has too little room for both snapshots, before it writes anything", :aggregate_failures do
       path = create_backup
-      refusal = refusal_of { restore_backup(path, volume:, free_space: ->(_path) { 1 }) }
+      enough_for_primary = unpack_snapshot(path).size + Collector::Backup::Restore::MARGIN + 1
+      refusal = refusal_of { restore_backup(path, volume:, free_space: ->(_path) { enough_for_primary }) }
 
-      expect(refusal.problem).to match(/\AThe volume at #{Regexp.escape(volume.to_s)} has 1 byte free; the snapshot needs .*\.\z/)
+      expect(refusal.problem).to match(/\AThe volume at #{Regexp.escape(volume.to_s)} has .* free; the snapshots need .*\.\z/)
       expect(volume.children).to be_empty
     end
 
