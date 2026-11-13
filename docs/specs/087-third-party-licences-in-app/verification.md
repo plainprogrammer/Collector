@@ -47,7 +47,11 @@ Prose documents are verified by reading (`.claude/rules/testing.md`); code crite
 
 ## The image proof (T5.2)
 
-Pending: the local image build and `bin/image-smoke` need the coordinator's slot.
+Run under the coordinator's slot, 2026-11-13, on the local colima docker, at `1f8cc4ac`: `docker build -t collector:licences-smoke` with the three `--build-arg` flags (`COLLECTOR_VERSION=0.0.0-087`, `COLLECTOR_REVISION` the commit, `COLLECTOR_SOURCE_URL` its tree) exited 0, then `bin/image-smoke collector:licences-smoke` exited 0 and printed "OK: collector:licences-smoke passed the smoke test", through the new "== the third-party licences page (spec 087)" block and the first-run `/licences` check (AC-6.1, AC-6.2, AC-1.3 in the image).
+
+Read from the built image's own page (`/licences`, no session): status 200, 551,796 bytes; sections JavaScript 2, OCR engine 3, Fonts 3, Icons 1, Ruby gems **139** (the spec's figure, measured on the image's bundle; the suite's 142 includes `development`); `yard` and `web-console` (development gems) absent; `brakeman`, `rspec-core`, `turbo-rails` and `nokogiri` present (the test group is in the image: #408); 9 rows read "Licence text not found" (the eight gems named above and `@tesseract.js-data/eng`).
+
+Negative proof: a throwaway copy of the script that requires a `yard` row (the opposite of the real check) fails against the same image with "FAIL: negative proof: no yard row, as expected for the image" (exit 1), so the check can fail. The copy was deleted. The image `collector:licences-smoke` was local only.
 
 ## Implementation review
 
