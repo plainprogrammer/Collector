@@ -6,7 +6,7 @@ RSpec.describe "the tasks need no secret (spec 030 decision 4, research.md 1)", 
   # developer's real config/master.key from supplying a secret_key_base. A boot is different: see boot below.
   def production(*command, environment: {})
     env = { "RAILS_ENV" => "production", "SECRET_KEY_BASE" => nil, "SECRET_KEY_BASE_DUMMY" => nil, "RAILS_MASTER_KEY" => "0" * 32,
-      "DATABASE_URL" => "sqlite3:#{scratch_path("boot.sqlite3")}" }.merge(environment)
+      "DATABASE_URL" => "sqlite3:#{scratch_path("boot.sqlite3")}", "PRICES_DATABASE_URL" => "sqlite3:#{scratch_path("boot_prices.sqlite3")}" }.merge(environment)
     Open3.capture3(env, Rails.root.join("bin/rails").to_s, *command, chdir: Rails.root.to_s)
   end
 

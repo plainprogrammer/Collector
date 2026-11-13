@@ -15,14 +15,46 @@ RSpec.describe Upgrade::Harness, :git_sandbox, :upgrade do
       "/collection/export" => FakeWeb::Response.new(200, JSON.generate("format_version" => 2, "lots" => Array.new(2001) { {} })) }
   end
   let(:web) { FakeWeb.new(pages:, log:) }
-  let(:databases) { [ seeded("old", old_migrations), seeded("upgraded", all_migrations), seeded("next", all_migrations) ] }
+  let(:prices_previous) { false } # whether the previous release's tag has db/prices_migrate/ (spec 081 decision 10)
+  let(:work_prices_files) { {} }
+  let(:prices_migrations) { %w[20261113100001] }
+  let(:databases) { [ seeded("old", old_migrations), pair(seeded("upgraded", all_migrations)), pair(seeded("next", all_migrations)) ] }
   let(:engine) { FakeEngine.new(databases:, log:) }
 
   before do
-    build_history(root, "v0.2.1" => { "db/migrate/20261001000001_create_a.rb" => "a\n", "script/upgrade/seeds/0.2.1.rb" => "# fake seed\n",
+    released = { "db/migrate/20261001000001_create_a.rb" => "a\n", "script/upgrade/seeds/0.2.1.rb" => "# fake seed\n",
       "script/upgrade/seeds/next.rb" => "# fake seed\n", "script/upgrade/seed_exceptions.yml" => "\"0.2.1\": []\nnext: []\n",
-      "script/upgrade/expected_changes.yml" => "changes: []\n", "app/models/export_format/v2.schema.json" => "{}\n" },
-      "work" => { "db/migrate/20261002000001_create_b.rb" => "b\n" })
+      "script/upgrade/expected_changes.yml" => "changes: []\n", "app/models/export_format/v2.schema.json" => "{}\n" }
+    released["db/prices_migrate/20261113100001_create_price_tables.rb"] = "p\n" if prices_previous
+    build_history(root, "v0.2.1" => released,
+      "work" => { "db/migrate/20261002000001_create_b.rb" => "b\n", "db/prices_migrate/20261113100001_create_price_tables.rb" => "p\n",
+        "db/prices_structure.sql" => prices_structure }.merge(work_prices_files))
+  end
+
+  def prices_structure = Rails.root.join("db/prices_structure.sql").read
+
+  # A prices database as a release makes it: the five tables of db/prices_structure.sql, each holding a row, `changes` of them
+  # in price_changes, and the given migrations recorded. `without_rowid: false` rebuilds current_prices with a rowid.
+  def seeded_prices(name, versions, changes: 1, without_rowid: true, empty: nil)
+    sql = prices_structure.sub(/INSERT INTO "schema_migrations".*\z/m, "")
+    sql = sql.sub(" WITHOUT ROWID", "") unless without_rowid
+    build_database(File.join(dir, "#{name}_prices.sqlite3")) do |db|
+      db.execute_batch(sql)
+      versions.each { db.execute("INSERT INTO schema_migrations VALUES (?)", [ it ]) }
+      db.execute_batch(<<~SQL)
+        INSERT INTO price_sources (key, name, attribution, created_at, updated_at) VALUES ('s', 'S', 'A', '2026-11-12', '2026-11-12');
+        INSERT INTO price_series (finish, currency, kind, created_at, updated_at) VALUES ('plain', 'USD', 'market', '2026-11-12', '2026-11-12');
+        INSERT INTO current_prices VALUES (1, 1, 1, 100, '2026-11-12', '2026-11-12');
+        #{(1..changes).map { "INSERT INTO price_changes VALUES (1, 1, 1, '2026-11-#{format("%02d", it)}', #{100 + it});" }.join}
+        INSERT INTO price_refresh_runs (price_source_id, run_on, status, started_at, created_at, updated_at) VALUES (1, '2026-11-12', 'finished', '2026-11-12', '2026-11-12', '2026-11-12');
+      SQL
+      db.execute("DELETE FROM #{empty}") if empty
+    end
+  end
+
+  # A databases entry for FakeEngine: the primary and a prices file made for it (the working tree's prices migrations by default).
+  def pair(primary, versions: prices_migrations, **options)
+    { primary:, prices: seeded_prices(File.basename(primary, ".sqlite3"), versions, **options) }
   end
 
   # A seeded database as a release makes it (accounts, users, 2,000 lots, sign-up open), with the given migrations recorded.
@@ -61,6 +93,104 @@ RSpec.describe Upgrade::Harness, :git_sandbox, :upgrade do
     expect(log[upgrade_start..snapshot]).not_to include(:runner, :sign_in, :get)
     expect(out.string).to match(/lots\s+old\s+2000\s+new\s+2000\s+same/)
     expect(out.string).to include("== upgrade", "== snapshot and compare", "== behaviour", "skipped").and match(/^OK: v0\.2\.1/)
+  end
+
+  describe "the prices database (spec 081 AC-6.4, AC-6.5)" do
+    let(:prices_line) { "prices: 5 tables, schema 20261113100001, WITHOUT ROWID on current_prices and price_changes" }
+
+    def run_with(upgraded: pair(seeded("upgraded", all_migrations)), old: seeded("old", old_migrations), nxt: pair(seeded("next", all_migrations)), **engine_options)
+      harness(engine: FakeEngine.new(databases: [ old, upgraded, nxt ], **engine_options)).call
+    end
+
+    it "checks the upgraded volume's prices file against a previous release that has none, and prints what it checked", :aggregate_failures do
+      expect(harness.call).to eq(0)
+      expect(out.string).to include(prices_line).and match(/^OK: v0\.2\.1/)
+    end
+
+    it "fails when the upgraded volume holds no prices file", :aggregate_failures do
+      expect(run_with(upgraded: seeded("upgraded", all_migrations))).to eq(1)
+      expect(out.string).to include("the upgraded volume holds no production_prices.sqlite3")
+    end
+
+    it "fails naming the prices migration the upgraded prices file lacks", :aggregate_failures do
+      expect(run_with(upgraded: pair(seeded("upgraded", all_migrations), versions: []))).to eq(1)
+      expect(out.string).to include("20261113100001", "prices")
+    end
+
+    it "fails naming current_prices when it was not made WITHOUT ROWID", :aggregate_failures do
+      expect(run_with(upgraded: pair(seeded("upgraded", all_migrations), without_rowid: false))).to eq(1)
+      expect(out.string).to include("current_prices", "WITHOUT ROWID")
+    end
+
+    it "fails naming the prices database and foreign_key_check when a price change names a missing series", :aggregate_failures do
+      upgraded = pair(seeded("upgraded", all_migrations))
+      SQLite3::Database.new(upgraded.fetch(:prices)).tap do |db|
+        db.execute("PRAGMA foreign_keys = OFF")
+        db.execute("INSERT INTO price_changes VALUES (1, 1, 999, '2026-11-20', 5)")
+        db.close
+      end
+
+      expect(run_with(upgraded:)).to eq(1)
+      expect(out.string).to include("the upgraded prices database: foreign_key_check: price_changes")
+    end
+
+    it "fails when the next release's seed left a table of the prices database empty, naming it", :aggregate_failures do
+      expect(run_with(nxt: pair(seeded("next", all_migrations), empty: "price_refresh_runs"))).to eq(1)
+      expect(out.string).to include("table price_refresh_runs has no row after script/upgrade/seeds/next.rb")
+    end
+
+    it "fails when the next release's seed produced no prices file", :aggregate_failures do
+      expect(run_with(nxt: seeded("next", all_migrations))).to eq(1)
+      expect(out.string).to include("the next volume holds no production_prices.sqlite3")
+    end
+
+    it "takes the seed exceptions of a primary table out of the prices coverage" do
+      File.write(File.join(root, "script/upgrade/seed_exceptions.yml"), "\"0.2.1\": []\nnext:\n  - table: sessions\n    reason: the seed has no session\n")
+      expect(run_with(nxt: pair(seeded("next", all_migrations, extra: "CREATE TABLE sessions (id INTEGER PRIMARY KEY);")))).to eq(0)
+    end
+
+    context "with a previous release that has a prices database" do
+      let(:prices_previous) { true }
+      let(:old) { pair(seeded("old", old_migrations), versions: %w[20261113100001], changes: 2) }
+
+      it "compares the old and the upgraded prices databases and prints the table when they are equal", :aggregate_failures do
+        expect(run_with(old:, upgraded: pair(seeded("upgraded", all_migrations), changes: 2))).to eq(0)
+        expect(out.string).to match(/^price_changes\s+old\s+2\s+new\s+2\s+same/)
+        expect(out.string).to include(prices_line)
+      end
+
+      it "fails on the comparison's line when the upgrade loses a price change (AC-6.5)", :aggregate_failures do
+        expect(run_with(old:, upgraded: pair(seeded("upgraded", all_migrations), changes: 1))).to eq(1)
+        expect(out.string).to include("FAIL price_changes", "the prices database")
+      end
+
+      it "fails when the previous release's volume holds no prices file", :aggregate_failures do
+        expect(run_with(old: seeded("old", old_migrations))).to eq(1)
+        expect(out.string).to include("the previous release should have made production_prices.sqlite3")
+      end
+
+      it "fails when the old prices file lacks a table's rows, as the primary does (decision 10)", :aggregate_failures do
+        expect(run_with(old: pair(seeded("old", old_migrations), versions: %w[20261113100001], empty: "price_sources"))).to eq(1)
+        expect(out.string).to include("table price_sources has no row after script/upgrade/seeds/0.2.1.rb")
+      end
+    end
+
+    context "with a previous release that has a prices database and an expected change for a prices table" do
+      let(:prices_previous) { true }
+      let(:old) { pair(seeded("old", old_migrations), versions: %w[20261113100001], changes: 2) }
+      let(:work_prices_files) { { "db/prices_migrate/20261113100002_trim_changes.rb" => "t\n" } }
+      let(:prices_migrations) { %w[20261113100001 20261113100002] }
+
+      before do
+        File.write(File.join(root, "script/upgrade/expected_changes.yml"),
+          "changes:\n  - table: price_changes\n    kind: rows_removed\n    migration: \"20261113100002\"\n    reason: \"Spec 99\"\n")
+      end
+
+      it "matches it in the prices comparison and leaves the primary's list without an unmatched entry", :aggregate_failures do
+        expect(run_with(old:, upgraded: pair(seeded("upgraded", all_migrations), changes: 1))).to eq(0)
+        expect(out.string).to include("expected: price_changes rows_removed").and(satisfy { !it.include?("matched no difference") })
+      end
+    end
   end
 
   it "prints 'no previous release' and touches no container when there is none (AC-1.2)", :aggregate_failures do
@@ -319,7 +449,7 @@ RSpec.describe Upgrade::Harness, :git_sandbox, :upgrade do
     let(:listing) { FakeEngine::Result.new("rails backup:create[DIRECTORY]  # Back up\nrails backup:restore[FILE]  # Restore\n", "", 0) }
     let(:sessions) { "CREATE TABLE sessions (id INTEGER PRIMARY KEY); INSERT INTO sessions VALUES (1), (2);" }
     let(:ended) { "CREATE TABLE sessions (id INTEGER PRIMARY KEY);" }
-    let(:leg_databases) { [ seeded("old2", old_migrations, extra: sessions), seeded("upgraded2", all_migrations, extra: sessions), seeded("restored", all_migrations, extra: ended), databases[2] ] }
+    let(:leg_databases) { [ seeded("old2", old_migrations, extra: sessions), pair(seeded("upgraded2", all_migrations, extra: sessions)), pair(seeded("restored", all_migrations, extra: ended)), databases[2] ] }
 
     it "backs up with the previous release, restores with the code under test under another secret, and compares (AC-6.1, AC-6.2)", :aggregate_failures do
       engine = FakeEngine.new(databases: leg_databases, tasks: listing)
@@ -337,6 +467,34 @@ RSpec.describe Upgrade::Harness, :git_sandbox, :upgrade do
       engine = FakeEngine.new(databases: leg_databases, tasks: listing)
       harness(engine:).call
       expect(engine.calls.count { it.first == :runner && it[1].last.include?("perform_later") }).to eq(1)
+    end
+
+    it "checks the restored volume's prices file, failing when it is missing and passing when it is there (spec 081 AC-6.4)", :aggregate_failures do
+      without = leg_databases.take(2) + [ seeded("restored-bare", all_migrations, extra: ended), databases[2] ]
+      expect(harness(engine: FakeEngine.new(databases: without, tasks: listing)).call).to eq(1)
+      expect(out.string).to include("the restored volume holds no production_prices.sqlite3")
+      out.truncate(0)
+      out.rewind
+      expect(harness(engine: FakeEngine.new(databases: leg_databases, tasks: listing)).call).to eq(0)
+    end
+
+    context "with a previous release that has a prices database" do
+      let(:prices_previous) { true }
+      let(:old_pair) { pair(seeded("old2", old_migrations, extra: sessions), versions: %w[20261113100001], changes: 2) }
+
+      def leg(restored_changes:)
+        restored = pair(seeded("restored", all_migrations, extra: ended), changes: restored_changes)
+        [ old_pair, pair(seeded("upgraded2", all_migrations, extra: sessions), changes: 2), restored, databases[2] ]
+      end
+
+      it "compares the restored prices database with the old one and fails on a lost price change (AC-6.5)", :aggregate_failures do
+        expect(harness(engine: FakeEngine.new(databases: leg(restored_changes: 1), tasks: listing)).call).to eq(1)
+        expect(out.string).to include("FAIL: backup leg", "FAIL price_changes", "the prices database")
+      end
+
+      it "passes when the restored prices database equals the old one" do
+        expect(harness(engine: FakeEngine.new(databases: leg(restored_changes: 2), tasks: listing)).call).to eq(0)
+      end
     end
 
     it "fails when the sessions a restore ends are still there (P4)", :aggregate_failures do

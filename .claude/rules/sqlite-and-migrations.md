@@ -1,7 +1,8 @@
 # SQLite in Production & Migrations
 
 - ✓ Keep Rails 8's SQLite defaults (WAL, busy timeout, IMMEDIATE transactions) — don't override them in `database.yml` without a benchmark.
-- ✓ Keep separate SQLite files for primary, `queue`, `cache`, and `cable`; only the primary DB needs backing up, with `backup:create` ([ADR 0024](../../docs/adr/0024-backup-with-vacuum-into.md)); Litestream and volume snapshots are alternatives the app doesn't test.
+- ✓ Keep separate SQLite files for primary, `prices`, `queue`, `cache`, and `cable`; the primary and prices databases need backing up, both held by `backup:create` ([ADR 0024](../../docs/adr/0024-backup-with-vacuum-into.md), [ADR 0029](../../docs/adr/0029-prices-database-held-by-the-backup.md)); Litestream and volume snapshots are alternatives the app doesn't test.
+- ✓ The prices database's `current_prices` and `price_changes` are `WITHOUT ROWID` with no index beyond their primary key, an accepted exception to indexing every foreign key; a change to either is a new migration that recreates the table (`docs/architecture/prices.md`).
 - ✓ Keep write transactions short; do network I/O and heavy computation outside `transaction do … end`.
 - ✓ Write reversible migrations, safe to run unattended on a self-hoster's upgrade (`bin/rails db:prepare` on boot).
 - ✓ Separate schema migrations from data backfills; backfill in batches and make backfills idempotent.

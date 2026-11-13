@@ -6,6 +6,7 @@ RSpec.describe "backup:restore", :backup, :committed, type: :task do
   let!(:seed) { seed_instance }
   # The real database, taken before the stub below points Databases.configured at the scratch volume.
   let!(:live) { instance_database }
+  let!(:live_prices) { instance_prices_database }
 
   before do
     Rails.application.load_tasks unless Rake::Task.task_defined?("backup:restore")
@@ -18,16 +19,16 @@ RSpec.describe "backup:restore", :backup, :committed, type: :task do
   end
 
   it "restores onto the configured volume, prints the facts and exits 0 (AC-2.1)", :aggregate_failures do
-    path = create_backup(source: live)
+    path = create_backup(source: live, prices_source: live_prices)
     out, err, status = run_task(path.to_s)
 
     expect([ status, err ]).to eq([ 0, "" ])
-    expect(out).to include("Restored #{path.basename} into #{volume}.", "it holds 1 account, 1 user and 3 lots.", "Start Collector now")
+    expect(out).to include("Restored #{path.basename} into #{volume}.", "it holds 1 account, 1 user and 3 lots; 0 current prices and 0 price changes.", "Start Collector now")
     expect(volume.join("production.sqlite3")).to exist
   end
 
   it "prints no recognisable name, address or card, and logs none (AC-1.7)", :aggregate_failures do
-    path = create_backup(source: live)
+    path = create_backup(source: live, prices_source: live_prices)
     out = err = nil
     log = captured_log { out, err, = run_task(path.to_s) }
 
@@ -39,7 +40,7 @@ RSpec.describe "backup:restore", :backup, :committed, type: :task do
   end
 
   it "prints each refusal as two lines, exits 1 and prints nothing else (AC-3.8)", :aggregate_failures do
-    path = create_backup(source: live)
+    path = create_backup(source: live, prices_source: live_prices)
     volume.join("production.sqlite3").write("in the way")
     out, err, status = run_task(path.to_s)
 

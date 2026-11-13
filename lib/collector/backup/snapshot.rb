@@ -41,17 +41,22 @@ module Collector
           problems = database.execute("PRAGMA integrity_check").flatten
           raise Damaged, problems.first(3).join("; ") unless problems == [ "ok" ]
 
-          # One result per broken key, so a row with two broken keys counts once: the count is of rows.
-          rows = database.execute("PRAGMA foreign_key_check").map { it.first(2) }.uniq
-          raise OrphanRows.new(rows.size) if rows.any?
+          # One result per broken key, so a row of a rowid table with two broken keys counts once: the count is of rows. A
+          # WITHOUT ROWID table has no rowid to tell its rows apart (SQLite reports it as null), so each of its violations
+          # counts on its own, and a row with two broken keys there counts twice (spec 081 decision 3).
+          results = database.execute("PRAGMA foreign_key_check")
+          count = results.select { it[1] }.map { it.first(2) }.uniq.size + results.count { it[1].nil? }
+          raise OrphanRows.new(count) if count.positive?
         end
       end
 
-      # Counts only, never a name or an address (hosted-door rule 2, AC-1.7). Cross-tenant by nature: it counts the instance.
-      def counts
-        with(readonly: true) do |database|
-          %w[accounts users lots].to_h { |table| [ table, database.get_first_value("SELECT COUNT(*) FROM #{table}") ] }
-        end
+      # Counts only, never a name or an address (hosted-door rule 2, AC-1.7): the primary's three tables unless +names+ says
+      # otherwise (the prices database's, spec 081 decision 6). Cross-tenant by nature: it counts the instance.
+      #
+      # @param names [Array<String>] table names, from the library's own lists, never from input
+      # @return [Hash{String => Integer}]
+      def counts(names = Manifest::COUNT_NAMES)
+        with(readonly: true) { |database| names.to_h { |table| [ table, database.get_first_value("SELECT COUNT(*) FROM #{table}") ] } }
       end
 
       def schema_versions

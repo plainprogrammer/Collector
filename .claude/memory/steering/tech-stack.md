@@ -15,12 +15,12 @@ Ruby 4.0.7, pinned via `.ruby-version`. Minimal JavaScript via Stimulus.
 - Solid Queue (jobs), Solid Cache (cache), Solid Cable (Action Cable) — chosen to keep moving parts to a minimum
 
 ## Data
-- SQLite for all environments, including production; separate DB files for primary, queue, cache, cable under `storage/`
+- SQLite for all environments, including production; separate DB files for primary, prices, queue, cache, cable under `storage/` (the test environment has primary and prices; spec 081)
 - External catalog data: Scryfall (bulk data, cached locally) for Magic: The Gathering
 
 ## Infrastructure
 Self-hostable; both paths run the published image `ghcr.io/plainprogrammer/collector` (built by CI from the Rails-generated `Dockerfile` for amd64 and arm64, Thruster in front of Puma, non-root uid 1000, `db:prepare` on boot) and run Solid Queue inside Puma (`SOLID_QUEUE_IN_PUMA=true`):
-- **Docker Compose** (`compose.yaml`, service `web`): `image:` defaults to the published `ghcr.io/plainprogrammer/collector:latest` (`COLLECTOR_IMAGE` overrides; no `build:`); requires `SECRET_KEY_BASE`; optional `COLLECTOR_PORT` (host port, default 3000 → container 8080); named volume `collector_storage` at `/rails/storage` holds all four production SQLite DBs; healthcheck on `/up`; no TLS (reverse proxy in front). Works with `docker compose` and `podman compose`.
+- **Docker Compose** (`compose.yaml`, service `web`): `image:` defaults to the published `ghcr.io/plainprogrammer/collector:latest` (`COLLECTOR_IMAGE` overrides; no `build:`); requires `SECRET_KEY_BASE`; optional `COLLECTOR_PORT` (host port, default 3000 → container 8080); named volume `collector_storage` at `/rails/storage` holds all five production SQLite DBs; healthcheck on `/up`; no TLS (reverse proxy in front). Works with `docker compose` and `podman compose`.
 - **Kamal 2.12.0** (`config/deploy.yml`, registry `ghcr.io`, placeholder server; deploy a release with `bin/kamal deploy --skip-push --version X.Y.Z`): secrets via `.kamal/secrets` (`RAILS_MASTER_KEY` from `config/master.key`, `KAMAL_REGISTRY_PASSWORD` from env); same `collector_storage:/rails/storage` volume.
 - Local containers: Docker (the dev machine has no Podman); files stay Podman-compatible, as the README promises self-hosters.
 - CI: GitHub Actions runs `bin/ci`, then builds, smoke-tests and (on `main` and `vX.Y.Z` tags) publishes the image; Dependabot for bundler and github-actions. Releases: `docs/releasing.md`.

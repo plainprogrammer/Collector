@@ -15,4 +15,4 @@ Push with the Bash tool's `run_in_background: true` (a timeout of up to 2 hours)
 
 **Correction (2026-10-31, later):** the silent hook in that session wasn't only the timeout. After a worker restart, the session's project directory was `/home/user`, so no repository hook was loaded at all; see [[hooks-need-repo-project-dir]]. A push that returns in seconds means the hook didn't run, not that `bin/ci` passed.
 
-**Shared test database (spec 037, 2026-11-06):** the hook's `bin/ci` uses the worktree's one test database (`storage/test.sqlite3`, `config/database.yml`), so while a background push runs, write code or documents but don't run `bin/rspec` or `bin/ci` in the same worktree.
+**Shared test database (spec 037, 2026-11-06):** the hook's `bin/ci` uses the worktree's test databases (`storage/test.sqlite3` and, since spec 081, `storage/test_prices.sqlite3`; `config/database.yml`), so while a background push runs, write code or documents but don't run `bin/rspec` or `bin/ci` in the same worktree.

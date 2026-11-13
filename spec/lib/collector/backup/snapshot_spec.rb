@@ -5,6 +5,9 @@ RSpec.describe Collector::Backup::Snapshot, :backup do
   let(:snapshot) { described_class.new(copy) }
   let(:now) { "2026-10-21 14:21:00" }
 
+  # A copy of the test prices database in the scratch directory, made with VACUUM INTO.
+  def prices_copy(name) = scratch_path(name).tap { described_class.take(source: Collector::Backup::Databases.configured.prices, into: it) }
+
   def insert_account_and_user(database, email: "a@example.test")
     database.execute("INSERT INTO accounts (created_at, updated_at) VALUES (?, ?)", [ now, now ])
     account_id = database.last_insert_row_id
@@ -79,10 +82,38 @@ RSpec.describe Collector::Backup::Snapshot, :backup do
       expect { snapshot.verify! }.to raise_error(described_class::OrphanRows) { |error| expect(error.count).to eq(1) }
     end
 
+    it "counts each orphan row of a WITHOUT ROWID table, whose rowid is null (spec 081 AC-4.5, decision 3)", :aggregate_failures do
+      prices = prices_copy("prices-orphans.sqlite3")
+      sqlite(prices) do |database|
+        database.execute("PRAGMA foreign_keys = OFF")
+        database.execute("INSERT INTO price_sources (key, name, attribution, created_at, updated_at) VALUES ('s', 'S', 'a', ?, ?)", [ now, now ])
+        source_id = database.last_insert_row_id # not 1: the copy keeps the test database's sequence
+        3.times { |day| database.execute("INSERT INTO price_changes (catalog_entry_id, price_source_id, price_series_id, recorded_on, cents) VALUES (1, ?, 999, ?, 5)", [ source_id, "2026-11-0#{day + 1}" ]) }
+      end
+
+      expect { described_class.new(prices).verify! }.to raise_error(described_class::OrphanRows) { |error| expect(error.count).to eq(3) }
+    end
+
     it "calls a file that is not a database damaged" do
       garbage = scratch_path("garbage.sqlite3").tap { it.binwrite("this is not a database" * 100) }
 
       expect { described_class.new(garbage).verify! }.to raise_error(described_class::Damaged)
+    end
+  end
+
+  describe "#counts with table names" do
+    it "counts the prices tables of a copy of the prices database (spec 081 decision 6)" do
+      prices = prices_copy("prices-copy.sqlite3")
+      sqlite(prices) do |database|
+        database.execute("INSERT INTO price_sources (key, name, attribution, created_at, updated_at) VALUES ('s', 'S', 'a', ?, ?)", [ now, now ])
+        source_id = database.last_insert_row_id
+        database.execute("INSERT INTO price_series (finish, currency, kind, created_at, updated_at) VALUES ('nonfoil', 'USD', 'market', ?, ?)", [ now, now ])
+        series_id = database.last_insert_row_id
+        2.times { |card| database.execute("INSERT INTO current_prices VALUES (?, ?, ?, 100, '2026-11-13', '2026-11-13')", [ card + 1, source_id, series_id ]) }
+        3.times { |day| database.execute("INSERT INTO price_changes VALUES (1, ?, ?, ?, 100)", [ source_id, series_id, "2026-11-0#{day + 1}" ]) }
+      end
+
+      expect(described_class.new(prices).counts(%w[current_prices price_changes])).to eq("current_prices" => 2, "price_changes" => 3)
     end
   end
 

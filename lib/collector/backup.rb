@@ -7,6 +7,15 @@ require "sqlite3"
 require "zlib"
 require "rubygems/package"
 
+module Collector
+  module Backup
+    # The databases a backup holds, by configuration name, and the archive entry each is stored as, in archive order
+    # (spec 081 decision 6). Archive's entry names and Restore's placing read it; spec/backup_guards_spec.rb compares it
+    # with its own lists. The queue, cache and cable databases are left out.
+    HELD = { "primary" => "primary.sqlite3", "prices" => "prices.sqlite3" }.freeze
+  end
+end
+
 require_relative "backup/refusal"
 require_relative "backup/databases"
 require_relative "backup/free_space"
@@ -25,7 +34,7 @@ module Collector
   #
   # @see file:release-and-deploy.md
   module Backup
-    FORMAT_VERSIONS = [ 1 ].freeze # the backup format versions this release restores (decision 5, AC-3.4)
+    FORMAT_VERSIONS = [ 1, 2 ].freeze # the backup format versions this release restores (decision 5, AC-3.4)
     FORMAT_VERSION = FORMAT_VERSIONS.last # the one backup:create writes
     BUSY_TIMEOUT_MS = 5_000 # the database's own busy timeout (config/database.yml), for the commands' direct connections
     STALE_PARTIAL_SECONDS = 24 * 60 * 60 # a .partial file older than this is a dead run's (decision 7, AC-1.6)
@@ -72,15 +81,30 @@ module Collector
       index.zero? ? "#{bytes} #{bytes == 1 ? "byte" : "bytes"}" : format("%.1f %s", value, units[index])
     end
 
+    # The prices counts as a sentence part, "1 current price and 2 price changes".
+    #
+    # @param counts [Hash] the manifest's prices counts, +current_prices+ and +price_changes+
+    # @return [String]
+    def self.prices_phrase(counts)
+      n = counts.fetch("current_prices")
+      m = counts.fetch("price_changes")
+      "#{n} current #{n == 1 ? "price" : "prices"} and #{m} price #{m == 1 ? "change" : "changes"}"
+    end
+
     def self.counts_phrase(counts)
       parts = %w[accounts users lots].map { |name| "#{counts.fetch(name)} #{counts.fetch(name) == 1 ? name.chomp("s") : name}" }
       "#{parts[0..-2].join(", ")} and #{parts.last}"
     end
 
     # The release's migrations as the framework finds them: the digits that start each file's name. Read from the files,
-    # never through a connection (FR-8); primary's migrations_paths is the default, db/migrate.
-    def self.release_schema_versions(root = Rails.root)
-      Dir[root.join("db/migrate/**/[0-9]*_*.rb").to_s].filter_map { File.basename(it)[/\A(\d+)_/, 1] }.sort_by(&:to_i)
+    # never through a connection (FR-8). The primary's by default; "db/prices_migrate" for the prices database (spec 081
+    # decision 8).
+    #
+    # @param root [Pathname] the application root
+    # @param directory [String] the migrations directory under +root+: +db/migrate+ (the primary's) or +db/prices_migrate+
+    # @return [Array<String>] the version digits, in ascending order
+    def self.release_schema_versions(root = Rails.root, directory = "db/migrate")
+      Dir[root.join(directory, "**/[0-9]*_*.rb").to_s].filter_map { File.basename(it)[/\A(\d+)_/, 1] }.sort_by(&:to_i)
     end
 
     # A new, empty file readable by its owner only from the moment it exists (decision 7). Returns it open for writing.

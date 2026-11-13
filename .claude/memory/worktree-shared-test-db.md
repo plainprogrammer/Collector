@@ -5,7 +5,7 @@ metadata:
   type: reference
 ---
 
-Each worktree has its own databases, but within a worktree `bin/ci`, `bin/rspec`, and every subagent working in it share one SQLite test database (`storage/test.sqlite3`; the path is off-limits for reads). Two suite runs at once would truncate and seed each other's tables.
+Each worktree has its own databases, but within a worktree `bin/ci`, `bin/rspec`, and every subagent working in it share the SQLite test databases (`storage/test.sqlite3` and, since spec 081, `storage/test_prices.sqlite3`; the paths are off-limits for reads). Two suite runs at once would truncate and seed each other's tables.
 
 In spec 023 (2026-10-14) a background `bin/ci` (3.5 minutes) ran alongside a subagent writing `verification.md` and a read-only sdd-review subagent. Both briefs said "DO NOT run RSpec or bin/ci (a CI run is using the test database); reading code and git is fine". Both finished without touching the suite, and CI stayed green.
 
