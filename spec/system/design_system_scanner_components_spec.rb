@@ -209,6 +209,152 @@ RSpec.describe "Design system: phone-first scanner components", type: :system do
     end
   end
 
+  describe "the shell (AC-3.1 to AC-3.9)" do
+    # [top, height] of the shell and its three rows, and whether the document scrolls either way.
+    def shell_rows
+      evaluate(<<~JS)
+        const rect = (selector) => { const r = document.querySelector(selector).getBoundingClientRect(); return [r.top, r.height] }
+        const root = document.documentElement
+        return { scan: rect(".c-scan"), top: rect(".c-scan__top"), stage: rect(".c-scan__stage"), bottom: rect(".c-scan__bottom"),
+          scrolls: root.scrollHeight > root.clientHeight || root.scrollWidth > root.clientWidth }
+      JS
+    end
+
+    # The top bar's children in order, and the [width, height] of each control and of the back arrow's icon.
+    def top_bar_boxes
+      evaluate(<<~JS)
+        const size = (selector) => { const r = document.querySelector(selector).getBoundingClientRect(); return [r.width, r.height] }
+        const order = [...document.querySelector(".c-scan__top").children].map((el) => el.className.split(" ").pop())
+        return { order, back: size(".c-scan__back"), dest: size(".c-scan__dest"), done: size(".c-scan__done"),
+          icon: size(".c-scan__back svg"), chevron: size(".c-scan__dest svg") }
+      JS
+    end
+
+    # [left, width, height] of each control in the bottom bar, in order.
+    def bottom_boxes
+      evaluate(<<~JS)
+        return [...document.querySelector(".c-scan__bottom").children].map((el) => {
+          const r = el.getBoundingClientRect(); return [r.left, r.width, r.height] })
+      JS
+    end
+
+    # The main button in one of its states: its box, its ground, opacity and text, with the two grounds it may have.
+    def main_button(main)
+      in_viewport(390, 844, shell(main:)) do
+        { box: bottom_boxes[1], style: computed(".c-scan__main", "background-color", "opacity", "font-size", "font-weight"),
+          brand: token("--brand"), raised: token("--surface-raised") }
+      end
+    end
+
+    [ [ 390, 844 ], [ 360, 640 ] ].each do |width, height|
+      it "is the whole #{width} × #{height} viewport and never scrolls (AC-3.1)", :aggregate_failures do
+        in_viewport(width, height, shell) do
+          found = shell_rows
+          expect(found["scan"]).to eq([ 0, height ])
+          expect(found.values_at("top", "stage", "bottom")).to eq([ [ 0, 56 ], [ 56, height - 152 ], [ height - 96, 96 ] ])
+          expect(found["scrolls"]).to be(false)
+        end
+      end
+    end
+
+    it "scrolls by the body's margin without c-shell--focused (the measure can fail)" do
+      in_viewport(390, 844, shell) do
+        page.execute_script("document.body.classList.remove('c-shell--focused')")
+        expect(shell_rows["scrolls"]).to be(true)
+      end
+    end
+
+    it "has a 56px top bar holding Back, the destination and Done, each 44px (AC-3.2)", :aggregate_failures do
+      in_viewport(390, 844, shell) do
+        found = top_bar_boxes
+        expect(found["order"]).to eq(%w[c-scan__back c-scan__dest c-scan__done])
+        expect(found.values_at("back", "icon", "chevron")).to eq([ [ 44, 44 ], [ 20, 20 ], [ 20, 20 ] ])
+        expect(found["dest"].last).to be >= 44
+        expect(found["done"]).to all(be >= 44)
+        expect(computed(".c-scan__top", "padding-left", "padding-right")).to eq(%w[8px 8px])
+        expect(stroke_width(".c-scan__back svg")).to eq(1.5)
+      end
+    end
+
+    it "cuts a long destination with an ellipsis and keeps Done whole (AC-3.3)", :aggregate_failures do
+      in_viewport(360, 640, shell(value: "A deck with a very long name indeed › Considering · NM")) do
+        expect(computed(".c-scan__dest-label", "font-size", "color")).to eq([ "12px", token("--ink-muted") ])
+        expect(computed(".c-scan__dest-text", "font-size", "font-weight", "text-overflow", "white-space", "color"))
+          .to eq([ "15px", "600", "ellipsis", "nowrap", token("--ink") ])
+        expect(evaluate('const el = document.querySelector(".c-scan__dest-text"); return el.scrollWidth > el.clientWidth')).to be(true)
+        expect(box(".c-scan__done")["right"]).to be_within(0.5).of(352)
+        expect(box(".c-scan__dest-value")["height"]).to eq(22)
+        expect(page_fits_sideways?).to be(true)
+      end
+    end
+
+    it "lays out the count, the main button and the torch in a 96px bar at 390px (AC-3.4)", :aggregate_failures do
+      in_viewport(390, 844, shell) do
+        expect(bottom_boxes).to eq([ [ 16, 84, 56 ], [ 112, 194, 64 ], [ 318, 56, 56 ] ])
+        expect(computed(".c-scan__count b", "font-family").first).to include("IBM Plex Mono")
+        expect([ box(".c-scan__torch svg")["width"], stroke_width(".c-scan__torch svg") ]).to eq([ 20, 1.5 ])
+        expect(page).to have_button("Torch").and have_button("12 added. Show this sitting's cards.")
+        expect(find(".c-scan__torch")["aria-pressed"]).to eq("false")
+      end
+    end
+
+    it "draws Capture, Capture while reading and Scan again at one place and size (AC-3.5)", :aggregate_failures do
+      capture, reading, again = %i[capture reading again].map { main_button(it) }
+      expect([ capture, reading, again ].map { it[:box] }.uniq).to eq([ [ 112, 194, 64 ] ])
+      expect(capture[:style]).to eq([ capture[:brand], "1", "16px", "600" ])
+      expect(reading[:style]).to eq([ reading[:brand], "0.5", "16px", "600" ])
+      expect(again[:style]).to eq([ again[:raised], "1", "16px", "600" ])
+    end
+
+    it "gives the torch's room to the main button when there is no torch (AC-3.6)" do
+      in_viewport(390, 844, shell(torch: false)) { expect(bottom_boxes).to eq([ [ 16, 84, 56 ], [ 112, 262, 64 ] ]) }
+    end
+
+    %w[light dark].each do |name|
+      it "draws the status line on a raised ground, centred 16px under the stage's top, in the #{name} theme (AC-3.7)", :aggregate_failures do
+        in_viewport(390, 844, shell) do
+          theme(name)
+          line, stage = box(".c-scan__line--status"), box(".c-scan__stage")
+          expect(computed(".c-scan__line--status", "background-color", "border-top-color", "border-top-width", "border-top-left-radius", "color"))
+            .to eq([ token("--surface-raised"), token("--line-strong"), "1px", "8px", token("--ink") ])
+          expect(line["top"] - stage["top"]).to eq(16)
+          expect((line["left"] + line["right"]) / 2).to be_within(0.5).of(195)
+        end
+      end
+    end
+
+    it "puts the after-add line in the status line's place, Undo at its end and outside the live region (AC-3.7)", :aggregate_failures do
+      in_viewport(390, 844, shell(added: "Added Lightning Bolt MOM · 123, foil", count: 13)) do
+        line, stage = box(".c-scan__line--added"), box(".c-scan__stage")
+        expect([ line["top"] - stage["top"], line["left"], line["right"] ]).to eq([ 16, 16, 374 ])
+        expect(computed(".c-scan__line--status", "display")).to eq([ "none" ])
+        expect(computed(".c-scan__line--added", "background-color", "border-top-color")).to eq([ token("--surface-raised"), token("--line-strong") ])
+        expect(box(".c-scan__undo .c-btn")["height"]).to eq(44)
+        expect(evaluate('return !!document.querySelector(".c-scan__line--added [role=status] .c-scan__undo")')).to be(false)
+      end
+    end
+
+    it "wraps a long after-add line at 360px with Undo on its first line (AC-3.8)", :aggregate_failures do
+      in_viewport(360, 640, shell(added: "Added A card name of forty characters wrapping CLB · 187, foil, and more words")) do
+        text, undo, line = box(".c-scan__line--added .c-scan__line-text"), box(".c-scan__undo .c-btn"), box(".c-scan__line--added")
+        expect(text["height"]).to be > 44
+        expect(undo["top"] - line["top"]).to eq(1)
+        expect(line["right"] - undo["right"]).to be_within(0.5).of(1)
+        expect(page_fits_sideways?).to be(true)
+      end
+    end
+
+    it "grounds the stage in surface-sunken under a covering picture, the guide drawn as today (AC-3.9)", :aggregate_failures do
+      in_viewport(390, 844, shell(guide: "left:5px;top:80px;width:380px;height:531px")) do
+        expect(computed(".c-scan__stage", "background-color")).to eq([ token("--surface-sunken") ])
+        expect(computed(".c-scan__video", "object-fit", "position")).to eq(%w[cover absolute])
+        expect(box(".c-scan__video").values_at("width", "height")).to eq([ 390, 692 ])
+        expect(computed(".c-scan__guide", "border-top-style", "border-top-width", "border-top-color", "outline-style", "outline-color", "outline-offset"))
+          .to eq([ "solid", "2px", token("--brand"), "dashed", token("--on-brand"), "-6px" ])
+      end
+    end
+  end
+
   describe "reduced motion, app-wide (AC-6.4)" do
     def moving
       %(<button class="c-btn c-btn--primary" id="button">Add</button><a class="c-tile" href="#"><div class="c-tile__media" id="media"></div></a>)

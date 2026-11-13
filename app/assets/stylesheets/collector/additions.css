@@ -775,6 +775,55 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
 .c-sheet__foot a:focus-visible { outline:2px solid var(--focus); outline-offset:2px; border-radius:var(--radius-sm); }
 .c-sheet [hidden] { display:none; } /* c-btn's display would otherwise show a hidden control */
 
+/* ---------- Scan shell (spec 080): the one-screen scanner page, a top bar, the camera's stage and a bottom bar ---------- */
+/* A focused page (README Mobile and Hotwire): no app header, no tab bar, never scrolls; its body carries the focused
+   shell's class (the block above), so a shell as tall as the dynamic viewport is the whole screen. The shell is a size
+   container named `scan`: the short-screen rule in the pane's block answers to the shell's own height, so a preview's
+   frame and a test's frame behave as a phone of that size does. Every size is an outer size (the export sets no
+   box-sizing). The stage, the status line and the after-add line follow the theme: there are no always-dark tokens
+   (spec 080 decision 5). The stage is its own stacking context, so the lines, the strip and the pane stay inside it.
+   Controls are 44px or more at every pointer. State is in the markup: `c-scan--result` shows the capture strip and the
+   pane (the pane's block), the main button's `disabled` is the reading state, and the two lines over the camera swap
+   with `hidden` on their wrappers. */
+.c-scan { container:scan / size; box-sizing:border-box; display:flex; flex-direction:column; height:100vh; height:100dvh; overflow:hidden;
+  background:var(--surface); color:var(--ink); font-family:var(--font-sans); }
+.c-scan__top { box-sizing:border-box; flex:none; display:flex; align-items:center; gap:var(--space-1); height:56px; padding:0 var(--space-2);
+  background:var(--surface-raised); border-bottom:1px solid var(--line); }
+.c-scan__back { box-sizing:border-box; flex:none; display:inline-flex; align-items:center; justify-content:center; width:44px; height:44px;
+  border-radius:var(--radius-md); color:var(--ink); }
+.c-scan__back:focus-visible, .c-scan__dest:focus-visible { outline:2px solid var(--focus); outline-offset:2px; }
+.c-scan__back svg, .c-scan__dest svg, .c-scan__torch svg { flex:none; width:20px; height:20px; stroke-width:1.5; }
+.c-scan__dest { box-sizing:border-box; flex:1 1 auto; min-width:0; display:flex; flex-direction:column; align-items:flex-start; justify-content:center;
+  min-height:44px; padding:0 var(--space-2); border:0; border-radius:var(--radius-md); background:transparent; color:var(--ink);
+  font:inherit; text-align:left; cursor:pointer; }
+.c-scan__dest-label { font:600 12px/16px var(--font-sans); color:var(--ink-muted); }
+.c-scan__dest-value { display:flex; align-items:center; gap:var(--space-1); max-width:100%; font:600 15px/22px var(--font-sans); }
+.c-scan__dest-text { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.c-scan__done { box-sizing:border-box; flex:none; height:44px; min-width:44px; }
+.c-scan__stage { position:relative; isolation:isolate; flex:1 1 auto; min-height:0; display:flex; flex-direction:column; overflow:hidden;
+  background:var(--surface-sunken); }
+.c-scan__video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+/* The guide's box is set inline by the camera controller, as the shipped scanner's is; its geometry is the page's spec's. */
+.c-scan__guide { position:absolute; border:2px solid var(--brand); outline:2px dashed var(--on-brand); outline-offset:-6px;
+  border-radius:var(--radius-card) / calc(var(--radius-card) * 63 / 88); pointer-events:none; }
+.c-scan__line { position:absolute; top:var(--space-4); z-index:1; box-sizing:border-box; display:flex; background:var(--surface-raised);
+  border:1px solid var(--line-strong); border-radius:var(--radius-md); color:var(--ink); font:400 14px/20px var(--font-sans); }
+.c-scan__line-text { flex:1 1 auto; min-width:0; margin:0; overflow-wrap:anywhere; }
+.c-scan__line--status { left:50%; transform:translateX(-50%); width:max-content; max-width:calc(100% - var(--space-4) * 2);
+  padding:var(--space-2) var(--space-3); text-align:center; }
+/* Undo is 44px and the sentence's first line sits level with it: 12px above a 20px line. */
+.c-scan__line--added { left:var(--space-4); right:var(--space-4); align-items:flex-start; gap:var(--space-3); padding-left:var(--space-3); }
+.c-scan__line--added .c-scan__line-text { padding:var(--space-3) 0; }
+.c-scan__undo { flex:none; margin:0; }
+.c-scan__undo .c-btn { box-sizing:border-box; height:44px; min-width:44px; }
+.c-scan__bottom { box-sizing:border-box; flex:none; display:flex; align-items:center; gap:var(--space-3); height:96px; padding:0 var(--space-4);
+  background:var(--surface-raised); border-top:1px solid var(--line); }
+.c-scan__count { box-sizing:border-box; flex:none; flex-direction:column; gap:0; width:84px; height:56px; padding:0; font:400 12px/16px var(--font-sans); }
+.c-scan__count b { font:400 13px/18px var(--font-mono); }
+.c-scan__main { box-sizing:border-box; flex:1 1 auto; min-width:0; height:64px; font-size:16px; line-height:24px; }
+.c-scan__torch { box-sizing:border-box; flex:none; width:56px; height:56px; padding:0; }
+.c-scan [hidden] { display:none; } /* c-btn's display, and the lines' flex, would otherwise show a hidden part */
+
 /* ---------- Reduced motion, app-wide (spec 080 decision 14) ---------- */
 /* The README's Motion rule: under `prefers-reduced-motion: reduce` nothing eases or slides, in any component. A universal
    selector loses to any class rule (the export's `.c-btn` and `.c-tile__media` set a transition), so these two declarations
