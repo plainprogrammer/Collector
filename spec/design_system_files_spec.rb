@@ -87,5 +87,17 @@ RSpec.describe "Design system files" do
       expect(rules.grep(/#\h{3,8}\b|rgba?\(|hsla?\(/i)).to be_empty
       expect(rules.join.scan(/font(?:-family)?:[^;}]*/).reject { it.include?("var(--font-") || it == "font:inherit" }).to be_empty
     end
+
+    it "sets box-sizing:border-box on each rule that sets a size (decision 15)" do
+      # A rule sets a size when it gives width, height or a min- or max- of either a value with a digit in it other than a
+      # bare 0 (so 100% and calc() count; none, auto and max-content don't). The test reads each rule on its own: a rule
+      # that gets border-box from another rule on the same element still fails, so the decision holds literally. It reads
+      # the innermost braces, so a rule inside @container or @media is read as a rule; it doesn't resolve var() or know
+      # which elements a selector matches.
+      rules = blocks.join.gsub(%r{/\*.*?\*/}m, "").scan(/([^{}]+)\{([^{}]*)\}/)
+      sizing = rules.select { |_, body| body.match?(/(?<![\w-])(?:(?:min|max)-)?(?:width|height)\s*:\s*(?!0\s*(?:;|\z))[^;]*\d/) }
+      offenders = sizing.reject { |_, body| body.match?(/box-sizing\s*:\s*border-box/) }.map { it.first.strip }
+      expect(offenders).to be_empty, "Sized with no box-sizing:border-box: #{offenders.join(' | ')}"
+    end
   end
 end
