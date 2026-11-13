@@ -13,7 +13,7 @@ Commands run in the worktree after the last implementation commit (`b96c8c55`), 
 | `bin/ci checks` | `Continuous Integration passed in 39.53s`: RuboCop, YARD without warnings, the comment ratchet, Brakeman (0 warnings), bundler-audit, importmap audit |
 | `git status --short db/` | empty: no schema or structure file changed, no migration |
 
-Examples per file (counted with `bin/rspec --dry-run`): `prices_spec` 3, `prices/sources_spec` 14, `price_quotes_spec` 17 with the timing example excluded by default (`:timing`), `price_series_spec` 4, `price_source_spec` 6, `price_source_core_spec` 2. The full suite and the one full `bin/ci` run are the push's pre-push hook (the coordinator's ruling: one full CI run).
+Examples per file (counted with `bin/rspec --dry-run`): `prices_spec` 3, `prices/sources_spec` 14, `price_quotes_spec` 17 when the review ran and 18 now (the UTF-8 example below), the timing example excluded by default (`:timing`), `price_series_spec` 4, `price_source_spec` 6, `price_source_core_spec` 2. The full suite and the one full `bin/ci` run are the push's pre-push hook (the coordinator's ruling: one full CI run).
 
 Timing, `SCANNER_TIMING=1 bin/rspec spec/models/mtg/scryfall/price_quotes_spec.rb -e "reads 50,000 cards"`: `price quotes: 300000 quotes from 50,000 cards in 1.2 s` (dev machine; no threshold).
 
@@ -50,3 +50,20 @@ Timing, `SCANNER_TIMING=1 bin/rspec spec/models/mtg/scryfall/price_quotes_spec.r
 None in behaviour. The plan's one stated exception: T2.3's examples were written after the behaviour (mutation proof instead of failing-first, ruled by the coordinator at Gate B).
 
 ## Implementation review
+
+SPEC-ALIGNED: every AC, FR and decision of spec 085 v1.0.4 is built and proved by a test or by reading; nothing reaches into #365, #366 or #369.
+
+Review (`sdd-review` Mode B, read-only, Opus 5.5, 2026-11-13) of commits `16c00d8e..b9f32016`: a coverage matrix of every AC (1.1 to 4.3), FR-1 to FR-3 and decisions 1 to 12 against the specs and the code, with every row OK. It checked the core files for collectible names (none), the one home of the hosted flag (`price_quotes.rb`, one example), the comments against the code, and the documents against the code. It did not run the suite.
+
+Findings and what was done:
+
+| # | Severity | Finding | Resolution |
+|---|---|---|---|
+| 1 | minor | A line with invalid UTF-8 makes `line.strip` raise and stops the whole read, against the reliability NFR and the Error Scenarios row "A line isn't JSON" | Fixed test-first in `38780d34`: an example writes a gzip with a `\xFF` byte and a good line after it (red: `Encoding::CompatibilityError` from `String#strip`), and `each_card_record` now yields a `Malformed` first (`valid_encoding?`). The catalog's `entry_or_malformed` (`app/models/mtg/scryfall/source.rb`) has the same gap; it is outside this spec, and is raised in the PR as a follow-up for the maintainer |
+| 2 | nit | The contract header's member table lost its layout in the YARD site | Indented as a code block in `b80337dc` |
+| 3 | nit | `verify_series!`, `https_or_nil?` and `refuse!` are public | Left as they are: they carry `@api private`, which the comment ratchet accepts; making them private class methods is a style choice with no behaviour |
+| 4 | nit | `CLASS_MEMBERS` and `INSTANCE_MEMBERS` share one comment | Left: the comment covers both |
+| 5 | nit | `prices.md` showed `(\.gz)?`, the code has `(?:\.gz)?` | Fixed in `5ca02247` |
+| 6 | nit | The header didn't name `Malformed`'s `error` field | Added in `b80337dc` |
+
+After the fixes: `bin/rspec spec/models/mtg/scryfall/price_quotes_spec.rb spec/price_source_core_spec.rb` gave `20 examples, 0 failures`; `bin/yard doc` gave 0 warnings.
