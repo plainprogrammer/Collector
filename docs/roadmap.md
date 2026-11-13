@@ -1,10 +1,10 @@
 # Roadmap
 
-**Last ruled on:** 2026-10-11. Goal, 1.0 test and rules: [north-star.md](north-star.md).
+**Last ruled on:** 2026-11-13. Goal, 1.0 test and rules: [north-star.md](north-star.md).
 
 The roadmap has one main line, built in order, with a research lane and a housekeeping lane beside it. Each numbered item is a **candidate spec** sized to the north star's one-outcome rule. Candidates are refined, split or dropped when their turn comes; they are not specified ahead.
 
-**Tracking.** Every candidate has a GitHub issue on the [1.0 milestone](https://github.com/plainprogrammer/Collector/milestone/1), labelled by theme (`theme: data-safety`, `theme: typed-entry`, `theme: locations`, `theme: scanner`) or `housekeeping`, with `spike` on the spikes and `design-system` on candidates that change the design system. Work recorded for after 1.0 has issues on the [2.0 milestone](https://github.com/plainprogrammer/Collector/milestone/2). This file holds the order and the reasons; the issues hold the state. A candidate that is added, split or dropped changes both in the same PR. A spec's PR closes its issue. Build specs that follow a spike get their issue after the maintainer's ruling. Specs 001–015 are done and aren't listed here.
+**Tracking.** Every candidate has a GitHub issue on the [1.0 milestone](https://github.com/plainprogrammer/Collector/milestone/1), labelled by theme (`theme: data-safety`, `theme: typed-entry`, `theme: locations`, `theme: scanner`, `theme: prices`) or `housekeeping`, with `spike` on the spikes and `design-system` on candidates that change the design system. Work recorded for after 1.0 has issues on the [2.0 milestone](https://github.com/plainprogrammer/Collector/milestone/2). This file holds the order and the reasons; the issues hold the state. A candidate that is added, split or dropped changes both in the same PR. A spec's PR closes its issue. Build specs that follow a spike get their issue after the maintainer's ruling. Specs 001–015 are done and aren't listed here.
 
 ## Main line
 
@@ -101,6 +101,23 @@ Runs beside the main line, when the maintainer starts it.
 - **Comics source research** ([issue #23](https://github.com/plainprogrammer/Collector/issues/23)), **deferred on 2026-10-11** (ruling 26); no start is set. It will report the candidate sources, their terms against hosted-door rule 1, and what the data supports for reading state and barcodes.
 - Theme D's spikes (items 17–20).
 
+## Prices lane
+
+Runs beside the main line, when the maintainer starts it (rulings 35–40; [design](superpowers/specs/2026-11-13-price-data-design.md)). Market prices were parked until after 1.0 by ruling 14; the maintainer moved them into 1.0 on 2026-11-13, because price history can only be recorded from the day an instance starts recording it. In 1.0 the data has one use, a basic display. Each candidate depends on the ones before it:
+
+- [#361](https://github.com/plainprogrammer/Collector/issues/361) Spike: prices on non-English printings.
+- [#362](https://github.com/plainprogrammer/Collector/issues/362) Ask Scryfall in writing about recording prices and showing their history. Not code; it doesn't block the rest.
+- [#363](https://github.com/plainprogrammer/Collector/issues/363) A prices database that the backup holds.
+- [#364](https://github.com/plainprogrammer/Collector/issues/364) A price source contract, and Scryfall's prices through it (after #361 and #363).
+- [#365](https://github.com/plainprogrammer/Collector/issues/365) Prices refresh once a day, and each change is recorded once.
+- [#366](https://github.com/plainprogrammer/Collector/issues/366) Each price refresh records what it did and how large the database is.
+- [#367](https://github.com/plainprogrammer/Collector/issues/367) An admin reads the price refresh log.
+- [#368](https://github.com/plainprogrammer/Collector/issues/368) An operator chooses how much price history the instance keeps (after #365).
+- [#369](https://github.com/plainprogrammer/Collector/issues/369) A card's market price on its page and in the collection (after #365).
+- [#370](https://github.com/plainprogrammer/Collector/issues/370) Operator documentation: what each price history level costs (after #366 and #368).
+
+After 1.0: [#371](https://github.com/plainprogrammer/Collector/issues/371) prices follow a printing that Scryfall merges into another (it needs `/migrations`, parked below).
+
 ## Housekeeping lane
 
 Taken between specs.
@@ -144,7 +161,7 @@ Taken between specs.
 
 | Item | Deferred by |
 |---|---|
-| Market prices, estimated value, "Update prices" | Specs 002, 004, 006; ruling 2026-10-11 |
+| Estimated value, price charts, value over time, price alerts, "Update prices" | Specs 002, 004, 006; ruling 2026-10-11. Market prices themselves moved into 1.0 on 2026-11-13 (rulings 35–40, the prices lane) |
 | Wishlists | Spec 004; ruling 2026-10-11 |
 | Lending | Spec 006; ruling 2026-10-11 |
 | Personal and household collections side by side | Spec 004 (one user per account); ruling 2026-10-11 |
@@ -216,3 +233,14 @@ Rulings by the maintainer. Later planning builds on these and doesn't ask them a
 | # | Question | Ruling |
 |---|---|---|
 | 34 | Do locations make the export format version 2, as ruling 32 says? | Yes: ruling 32 stands for the locations list (the places themselves, [spec 029](specs/029-manage-locations/spec.md) decision 1, [ADR 0023](adr/0023-locations-make-export-format-version-2.md)). Putting a lot in a location (item 10) is a further change to data the collector owns and raises the format to version 3. |
+
+### 2026-11-13: market prices (price data design)
+
+| # | Question | Ruling |
+|---|---|---|
+| 35 | Do market prices stay parked until after 1.0 (ruling 14)? | No. Recording prices, and a basic display of them, move into 1.0 as the prices lane ([design](superpowers/specs/2026-11-13-price-data-design.md)). Estimated value, charts, value over time and alerts stay after 1.0. |
+| 36 | Where do prices come from? | Scryfall's bulk file, the catalog's own source. Sources are pluggable, and only Scryfall's is built. Card Kingdom's price list is left out because its terms for commercial use are unclear. |
+| 37 | Who sees prices and their history? | Everyone who can see the card: anonymous visitors of an open catalog and free accounts as well as paid ones (ruling 27). No price API or dataset is published. |
+| 38 | How much history is kept? | A hosted instance keeps it for the whole catalog. A self-hosted instance chooses a level, and the documentation says what each costs in disk. |
+| 39 | How is history stored? | Changes only: a row when a price differs from the last one recorded. Thinning old history is a later concern. |
+| 40 | What does the price refresh record about itself? | Each run's work and the prices database's size, to measure growth in the beta environment. This covers the price refresh only, not the catalog refresh. |
