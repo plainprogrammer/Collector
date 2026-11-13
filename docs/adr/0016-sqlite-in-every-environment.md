@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (recorded 2026-10-11, after the fact; decided in spec 001)
+Accepted (recorded 2026-10-11, after the fact; decided in spec 001). Extended by [0029](0029-prices-database-held-by-the-backup.md) (a fifth file, prices, which the backup holds)
 
 **Date:** 2026-10-11
 **Feature:** 001-rails-app-skeleton
