@@ -92,6 +92,20 @@ RSpec.describe "Adding from the scanner", type: :system do
     expect(page.evaluate_script("window.__marker")).to eq("still here")
   end
 
+  it "keeps the reading and offers the retry when the add fails on the network, then adds once it is back (AC-4.7)", :aggregate_failures do
+    read_card
+    page.execute_script("const send = window.fetch; window.__add = send; window.fetch = (url, options = {}) => String(options.method).toUpperCase() === 'POST' ? Promise.reject(new TypeError('offline')) : send(url, options)")
+    find(foil_button).click
+    expect(page).to have_css("#status", text: "That card wasn't added. Check your connection, then tap its add button again.")
+    expect(page).to have_css(".c-scanner__candidate", text: "Lightning Bolt")
+    expect(page).to have_css("#{foil_button}:not([disabled])")
+    expect(user.account.lots).to be_empty
+    page.execute_script("window.fetch = window.__add")
+    find(foil_button).click
+    expect(page).to have_css("#scanner_added_text", text: "Added Lightning Bolt MOM · 123, foil")
+    expect(user.account.lots.sole.quantity).to eq(1)
+  end
+
   it "opens Other printings in place and adds the one chosen (AC-2.2, AC-2.6)", :aggregate_failures do
     m10 = create(:catalog_set, code: "m10", name: "Magic 2010", released_on: Date.new(2009, 7, 17))
     older = create(:mtg_printing, finishes: %w[nonfoil foil], entry: create(:catalog_entry, identity: Catalog::Identity.sole, name: "Lightning Bolt", set: m10, number: "146")).entry

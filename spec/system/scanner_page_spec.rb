@@ -67,6 +67,46 @@ RSpec.describe "The one-screen scanner", type: :system do
     expect(page.evaluate_script("window.__tracks.every((track) => track.readyState === 'live')")).to be(true)
   end
 
+  # Writes a sentence into the sheet's region as an answer to a Set does, then closes it three ways and reads the region each time.
+  it "leaves the sheet's live region empty once the sheet closes, however it closes (AC-2.4)", :aggregate_failures do
+    visit scanner_path
+    region = "document.getElementById('scanner_destination_status').textContent"
+    [ -> { click_on "Close" }, -> { find("dialog[open]").send_keys(:escape) } ].each do |close|
+      open_destination
+      click_on "Set"
+      expect(page).to have_css("#scanner_destination_status", text: "Cards you scan now")
+      close.call
+      expect(page).to have_no_css("dialog[open]")
+      expect(page.evaluate_script(region)).to eq("")
+    end
+  end
+
+  # The bottom bar's padding on each side is the design system's --space-4 (16px) when no inset is set.
+  def main_beside_torch
+    page.evaluate_script(<<~JS)
+      (() => {
+        const bar = document.querySelector(".c-scan__bottom"), main = document.querySelector(".c-scan__main").getBoundingClientRect()
+        const padding = parseFloat(getComputedStyle(bar).paddingRight)
+        return { gap: bar.getBoundingClientRect().right - padding - main.right, width: main.width, torchShown: !document.querySelector(".c-scan__torch").hidden }
+      })()
+    JS
+  end
+
+  it "gives the main button the torch's room until the camera has a torch (AC-1.5)", :aggregate_failures do
+    open_scanner_frame(width: 390, height: 844)
+    within_narrow_frame do
+      show_synthetic_card
+      without = main_beside_torch
+      expect(without).to include("torchShown" => false)
+      expect(without["gap"]).to be_within(0.5).of(0)
+      show_synthetic_card(torch: true)
+      expect(page).to have_css(".c-scan__torch:not([hidden])")
+      with = main_beside_torch
+      expect(with["width"]).to be < without["width"]
+      expect(without["width"] - with["width"]).to be_within(1).of(56 + 12) # the torch's width and the bar's gap
+    end
+  end
+
   it "holds the sheet's parts in order: its region, the form, Use a photo and its hint, the foot (AC-2.2)" do
     visit scanner_path
     open_destination
