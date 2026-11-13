@@ -341,6 +341,7 @@ RSpec.describe "Menus and the phone's tab bar", type: :system do
           find("details.c-menu[open] a", text: "Change proxy count").click
           expect(page).to have_no_css(".c-zone")
         end
+        wait_for_scroll_events(frame: "narrow") # Back in the frame of the new page's scroll-to-top loses the saved scroll (#404)
         frame_run("w.history.back()")
         within_narrow_frame { expect(page).to have_css(".c-zone table").and(have_no_css("html[aria-busy]")) }
         settle

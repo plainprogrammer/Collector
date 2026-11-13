@@ -164,6 +164,8 @@ App additions (spec 080, #343, in `collector/additions.css`; the scanner page re
 
 App additions (spec 082, #344, in `collector/additions.css`): the scanner page's own parts, no new component: the `Scanner` shell's `c-scan__sitting` (the sitting's top-bar parts, `display: contents`), `__feed`, `__frozen` (the frozen frame's canvas), `__notice` with `__notice-text` (a stage notice), `__catalog` (the not-loaded line at the stage's foot), `__pane-status` and `__sheet-status` (a live region shown only while it holds a sentence), `__photo` ("Use a photo" in the destination sheet), `__added-action`, `__line--alert`, `__run` and `__framing` (measurement mode's top-bar button and framing buttons), and `c-scanpane__results` (the pane's interim scrolling body, #345's to remove); the bars' safe-area insets; and, from 640px, the shell as a centred 480px column with the scanner's sheets under it (`Scanner`, `Sheet`).
 
+App additions (spec 087, #376, in `collector/additions.css`): `Licences` (`c-licences`, `c-licences__title`, `__count`, `__list`, `__row`, `__details`, `__heading`, `__name`, `__meta`, `__home`, `__copyright`, `__file`, `__text`, `__missing`), the third-party licences page at `/licences`: a row per work, its licence text in a disclosure.
+
 ## Logo
 
 - The mark is three fanned cards, the front one vault teal with a foil diamond: a collection, one piece of which is special. It is deliberately game-neutral so it grows past trading cards.

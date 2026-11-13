@@ -126,7 +126,7 @@ RSpec.describe Collector::Backup::Restore, :backup, :committed do
         path = create_backup
 
         refusal = expect_refused(path, "The volume at #{volume} isn't empty: it holds #{name}.",
-          "It may be the prices database of a restore that stopped: remove production_prices.sqlite3 and its -wal, -shm and -journal files, then restore again. Never start Collector on this volume as it is.")
+          "It may be the prices database of a restore that stopped: remove production_prices.sqlite3 and its -wal, -shm and -journal files, then restore again. Collector refuses to start on this volume as it is.")
         expect(refusal.advice).not_to include("#375")
       end
     end

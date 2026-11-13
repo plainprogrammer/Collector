@@ -108,8 +108,8 @@ Runs beside the main line, when the maintainer starts it (rulings 35–41; [desi
 - [#361](https://github.com/plainprogrammer/Collector/issues/361) Spike: prices on non-English printings. Done: [research 083](specs/083-non-english-printing-prices/research.md), ruling 41.
 - [#362](https://github.com/plainprogrammer/Collector/issues/362) Ask Scryfall in writing about recording prices and showing their history. Not code; it doesn't block the rest.
 - [#363](https://github.com/plainprogrammer/Collector/issues/363) A prices database that the backup holds.
-- [#375](https://github.com/plainprogrammer/Collector/issues/375) A start refuses a volume that holds a prices database and no primary (after #363; spec 081 decision 8).
-- [#364](https://github.com/plainprogrammer/Collector/issues/364) A price source contract, and Scryfall's prices through it (after #361 and #363).
+- [#375](https://github.com/plainprogrammer/Collector/issues/375) A start refuses a volume that holds a prices database and no primary (after #363; spec 081 decision 8). Done: [spec 086](specs/086-start-refuses-orphan-prices/spec.md).
+- [#364](https://github.com/plainprogrammer/Collector/issues/364) A price source contract, and Scryfall's prices through it (after #361 and #363). Done: [spec 085](specs/085-price-source-contract/spec.md).
 - [#365](https://github.com/plainprogrammer/Collector/issues/365) Prices refresh once a day, and each change is recorded once.
 - [#366](https://github.com/plainprogrammer/Collector/issues/366) Each price refresh records what it did and how large the database is.
 - [#367](https://github.com/plainprogrammer/Collector/issues/367) An admin reads the price refresh log.
@@ -194,7 +194,7 @@ Taken between specs.
 - [#402](https://github.com/plainprogrammer/Collector/issues/402): CI fails on a dependency whose licence isn't allowed (accounts design, 2026-11-13).
 - [#122](https://github.com/plainprogrammer/Collector/issues/122): the art index panel and `catalog:status` say "ready" when the finished build's index file is missing (after a restore, or a lost directory). Done when its pull request merges: [spec 039](specs/039-art-index-missing-file/spec.md).
 - [#374](https://github.com/plainprogrammer/Collector/issues/374): show the running version, the commit it was built from and Collector's licence (AGPL-3.0, with a link to the source of the running build) in the footer on every page; the image carries its build facts and `bin/image-smoke` checks them. **In progress:** [spec 084](specs/084-version-and-licence-in-app/spec.md).
-- [#376](https://github.com/plainprogrammer/Collector/issues/376): list the licences of the third-party software and assets in the image (the gems, the OCR engine, the JavaScript, the fonts), readable from the app (split from #374 by the maintainer's ruling of 2026-11-13, spec 084 decision 8).
+- [#376](https://github.com/plainprogrammer/Collector/issues/376): list the licences of the third-party software and assets in the image (the gems, the OCR engine, the JavaScript, the fonts), readable from the app (split from #374 by the maintainer's ruling of 2026-11-13, spec 084 decision 8). **In progress:** [spec 087](specs/087-third-party-licences-in-app/spec.md).
 
 ## Parked until after 1.0
 

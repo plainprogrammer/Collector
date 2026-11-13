@@ -214,6 +214,10 @@ The app is then available at `http://localhost:3000` (or your `COLLECTOR_PORT`).
   be read; a fork passes its own repository's address, not `plainprogrammer`'s, so the footer's "source code"
   link offers the code that runs. An image built without them still runs, but its footer reads "unknown
   version" and `bin/image-smoke` fails it.
+- **Third-party licences:** the footer's licence line ends "Read the third-party licences.", a link to `/licences`,
+  which anyone who can reach the instance can open, signed in or not. It lists the gems, the OCR engine, the
+  JavaScript, the fonts and the icons in the image with each one's licence text. The gems are read from the
+  running image and the rest from `config/third_party_licences.yml`, so the list follows what the image holds.
 - **HTTPS:** the Compose setup serves plain HTTP. Signing in over plain HTTP sends your password unencrypted, which is only acceptable on a trusted private network. Put an HTTPS reverse proxy (for example Caddy, nginx, or Traefik) in front of it and set `COLLECTOR_HTTPS=true`.
 - **Upload limit:** the app refuses a request body over 40 MB (Puma and Thruster), which is more than the largest export file it imports (32 MB). A reverse proxy in front may set a lower limit of its own; keep it at 40 MB or more.
 
@@ -462,7 +466,7 @@ Keep several, and delete old ones yourself.
 
 A restore needs a **new, empty volume** and runs **before the instance's first start**, as a one-off command in a container of the image you will run. It refuses a volume that already holds a Collector database (or the `-wal`, `-shm` or `-journal` file of one, or the prices, queue, cache or cable database) and changes nothing: to restore over a running instance, restore onto a new volume and switch to it. It restores a backup taken by the same release or an older one, which the first start then migrates as any upgrade does; a backup from a newer release is refused. A backup made before prices existed restores too; the first start then creates an empty prices database. Use the image tag you run (`COLLECTOR_IMAGE`), and a release that has `backup:restore`.
 
-**If a restore was interrupted** (a power loss, a killed container), the volume may hold `production_prices.sqlite3` and no `production.sqlite3`. The next restore refuses it and says so. **Don't start Collector on that volume**: it would start blank and keep stale prices that no longer match its cards. Remove the prices file and its `-wal`, `-shm` and `-journal` files, or use a new volume, then restore again ([#375](https://github.com/plainprogrammer/Collector/issues/375) will make the start refuse it).
+**If a restore was interrupted** (a power loss, a killed container), the volume may hold `production_prices.sqlite3` and no `production.sqlite3`. The next restore refuses it and says so, and **so does a start of Collector** (spec 086, issue [#375](https://github.com/plainprogrammer/Collector/issues/375)): the container exits with status 1 before it creates anything, and its log says what it found (the prices file and no primary database), why it stops (a start would create a blank primary and keep stale prices that no longer match its cards) and what to do. Remove the prices file and its `-wal`, `-shm` and `-journal` files (and any empty or broken `production.sqlite3`, or sidecar of it, that the message names), then restore again onto a volume that holds no other Collector database, or start blank, and run nothing else on the volume meanwhile.
 
 A restore ends every session (everyone signs in again) and drops pending bulk-removal Undos and selections; no collection is lost. It leaves the art index file behind: with art matching on, press **Build art index** on the admin catalog page afterwards, which needs no downloads. Until you do, that page reads "Index file missing" and `catalog:status` "Art matching: index file missing".
 

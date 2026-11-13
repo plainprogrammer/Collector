@@ -1,7 +1,10 @@
 #!/bin/bash -e
 
-# If running the rails server then create or migrate existing database
+# If running the rails server then refuse a volume that holds a prices database and no primary (spec 086), then create or
+# migrate existing database. The check is its own statement: a failure stops the start here (bash -e), before db:prepare
+# can create a blank primary.
 if [ "${@: -2:1}" == "./bin/rails" ] && [ "${@: -1:1}" == "server" ]; then
+  ./bin/rails start:check
   ./bin/rails db:prepare
 fi
 

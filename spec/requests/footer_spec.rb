@@ -10,10 +10,10 @@ RSpec.describe "The footer", type: :request do
   let(:attribution) { "Card data and images provided by Scryfall." }
   let(:links) do
     [ [ "Fan Content Policy", "https://company.wizards.com/en/legal/fancontentpolicy" ], [ "Scryfall", "https://scryfall.com" ],
-      [ "AGPL-3.0", "https://www.gnu.org/licenses/agpl-3.0.html" ], [ "source code", "https://github.com/plainprogrammer/Collector" ] ]
+      [ "AGPL-3.0", "https://www.gnu.org/licenses/agpl-3.0.html" ], [ "source code", "https://github.com/plainprogrammer/Collector" ], [ "third-party licences", "/licences" ] ]
   end
 
-  def licence = "Collector (unknown version) is free software under the AGPL-3.0. Get the source code."
+  def licence = "Collector (unknown version) is free software under the AGPL-3.0. Get the source code. Read the third-party licences."
 
   def html = Nokogiri::HTML5(response.body)
 
@@ -23,7 +23,7 @@ RSpec.describe "The footer", type: :request do
 
   def lines = footer.css("> p").map(&:text)
 
-  # The one footer, straight after the page's main content where it has one, with the three lines and their four links.
+  # The one footer, straight after the page's main content where it has one, with the three lines and their five links.
   def expect_the_footer(on)
     expect(footers.size).to eq(1), "#{on}: #{footers.size} footers"
     expect(lines).to eq([ notice, attribution, licence ]), on
@@ -185,7 +185,7 @@ RSpec.describe "The footer", type: :request do
 
       expect(lines[-2]).to eq(%(Zeta <b>bold</b> & "quoted"))
       expect(response.body).to include("Zeta &lt;b&gt;bold&lt;/b&gt; &amp; &quot;quoted&quot;")
-      expect(footer.css("a").size).to eq(4)
+      expect(footer.css("a").size).to eq(5)
       expect(response.body).not_to include("javascript:")
     end
 

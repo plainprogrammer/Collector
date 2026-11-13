@@ -354,6 +354,30 @@ img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches:
   .c-shell--footed > .c-main { padding-bottom:var(--space-4); }
 }
 
+/* ---------- Licences (spec 087): the third-party licences page ---------- */
+/* The page lists what the image carries and, per work, a closed disclosure holding its licence text. The text sits in a
+   box that scrolls inside itself (max-height and overflow), and every long string wraps, so nothing scrolls the page
+   sideways at 360px. c-list is only the divider: its rows are flex, and a disclosure needs block flow. */
+.c-licences { margin-top:var(--space-6); }
+.c-licences__title { display:flex; align-items:baseline; gap:var(--space-2); margin:0 0 var(--space-2); font:600 20px/28px var(--font-sans); color:var(--ink); }
+.c-licences__count { font:400 13px/18px var(--font-mono); color:var(--ink-muted); }
+.c-licences__list > .c-licences__row { display:block; min-height:0; padding:var(--space-3) 0; }
+.c-licences__row p { margin:var(--space-2) 0 0; overflow-wrap:anywhere; }
+.c-licences__heading, .c-licences__details > summary { overflow-wrap:anywhere; }
+.c-licences__details > summary { cursor:pointer; }
+.c-licences__details > summary:focus-visible { outline:2px solid var(--focus); outline-offset:2px; border-radius:var(--radius-sm); }
+.c-licences__name { font-weight:600; color:var(--ink); }
+.c-licences__meta { font:400 12px/16px var(--font-sans); color:var(--ink-muted); }
+.c-licences__file { margin:var(--space-4) 0 var(--space-2); font:600 14px/20px var(--font-sans); color:var(--ink); overflow-wrap:anywhere; }
+.c-licences__text { margin:0; padding:var(--space-3); max-height:24rem; overflow:auto; background:var(--surface-sunken);
+  border-radius:var(--radius-sm); font:400 13px/18px var(--font-mono); white-space:pre-wrap; overflow-wrap:anywhere; }
+.c-licences__missing { color:var(--ink-muted); }
+.c-licences__intro { margin-top:var(--space-3); }
+.c-licences__intro p { margin:0 0 var(--space-2); }
+.c-licences__intro a, .c-licences__row a { color:var(--brand); font-weight:400; text-decoration:none; }
+.c-licences__intro a:hover, .c-licences__row a:hover { text-decoration:underline; }
+.c-licences__intro a:focus-visible, .c-licences__row a:focus-visible { outline:2px solid var(--focus); outline-offset:2px; border-radius:var(--radius-sm); }
+
 /* ---------- Untabbed shell (spec 023) ----------
    Below bp-narrow the footer keeps 80px clear for the fixed tab bar. A page with no tab bar (a visitor's catalog page,
    sign-in, sign-up) is marked c-shell--untabbed and the footer gives that clearance up. Every shell is footed (spec 084

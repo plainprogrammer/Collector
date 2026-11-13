@@ -17,8 +17,9 @@
 - [Pre-commit hook staging](precommit-hook-staging.md) — hook reads the command text for `git add` / `commit -a`; stage separately to be safe
 - [Worktree isolation command guard](worktree-isolation-command-guard.md) — isolated agents' Bash calls are refused when a chain mentions git or is too complex; one git op per call, edit with Edit, partial commits via a scratchpad copy
 - [Reproduce CI with its seed](reproduce-ci-with-seed.md) — on CI failure, run the full suite with the CI seed as an early reproduction step; a non-Image flake is re-run once only with the coordinator's go-ahead
+- [Third-party fault reproducers stay out of the suite](third-party-fault-reproducers-stay-out-of-the-suite.md) — a reproducer asserting a library's fault is the failing-first proof only; code goes in the issue and commit body
 - [Pre-push CI evidence](pre-push-ci-evidence.md) — a passing pre-push hook prints nothing; cite the pushed SHA, count examples with bin/rspec --dry-run
-- [Turbo Back navigation quirks](turbo-back-navigation-quirks.md) — frame-advance has two races (the late visit cancels Back or a click, issue #62); filters now plain Drive GET visits + no-cache; stuck full-width progress bar = cancelled visit; wait_for_turbo_idle
+- [Turbo Back navigation quirks](turbo-back-navigation-quirks.md) — frame-advance has two races (the late visit cancels Back or a click, issue #62); filters now plain Drive GET visits + no-cache; stuck full-width progress bar = cancelled visit; Back within one frame of a render loses the saved scroll (#404); wait_for_turbo_idle, wait_for_scroll_events
 - [Turbo Stream strings are html_safe](turbo-stream-string-is-html-safe.md) — turbo_stream.update(target, "text") inserts the string as HTML; escape card and place names with ERB::Util.html_escape or use a partial (spec 082)
 - [PR #5 follow-ups](pr5-open-followups.md) — back-button flake fixed by PR #9 (merged 2026-10-02), watch CI; uncaptured failure
 - [Card scanner direction](card-scanner-direction.md) — spec 011 executed 2026-10-08 (34/35 right card first, margin 300 kept by ruling); next = sdd-review Mode B, then finishing
@@ -86,5 +87,6 @@
 - [Name the guards that go red between plan commits](name-the-guards-that-go-red-between-plan-commits.md) — per task, list the guards it turns red and mark them pending until the task that turns them green; a pending example that passes fails the run
 - [Nokogiri :scope selector unsupported](nokogiri-scope-selector-unsupported.md) — `css(":scope > option")` raises in Nokogiri 1.19; use `xpath("./option")` in request-spec HTML checks
 - [Lint plan code with `bin/rubocop --stdin`](rubocop-stdin-lint.md) — extract the plan's Ruby to a scratch file and lint it with the repo path (+ `ruby -c`): the project's RSpec cops apply and nothing runs; redo after each plan patch
-- [No git stash in briefs](no-git-stash-in-briefs.md) — forbid git stash/reset/checkout in every subagent brief (except restoring a mutation-tested file); a stash/pop on a clean tree applied an unrelated old stash in spec 080
+- [No git stash or sqlite3 in briefs](no-git-stash-in-briefs.md) — forbid git stash/reset/checkout and the sqlite3 command (it prompts the maintainer) in every subagent brief (except restoring a mutation-tested file); a stash/pop on a clean tree applied an unrelated old stash in spec 080
 - [Unset `config.x` answers nil](rails-config-x-unset.md) — an unset `Rails.configuration.x` key is an empty OrderedOptions; assert a boot reading's class, not only nil attributes
+- [Mutation proof in place of failing-first](mutation-proof-when-behaviour-already-built.md) — only where an earlier task already built the behaviour; each mutation and its failure go in the commit body (coordinator, spec 085 Gate B)
