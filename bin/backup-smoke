@@ -218,8 +218,8 @@ echo "== a start refuses a volume that holds a prices database and no primary (s
 volume_d="collector-backup-smoke-d-$tag"
 volumes+=("$volume_d")
 "$cli" volume create "$volume_d" >/dev/null
-"$cli" run --rm -u 1000 ${run_flags[@]+"${run_flags[@]}"} -v "$volume_d:/rails/storage" -v "$work/restore:/backups:ro" -e SECRET_KEY_BASE_DUMMY=1 \
-  "$restore_image" bin/rails "backup:restore[/backups/$file]" >/dev/null 2>&1 || fail "the restore for the refusal leg failed"
+restored="$("$cli" run --rm -u 1000 ${run_flags[@]+"${run_flags[@]}"} -v "$volume_d:/rails/storage" -v "$work/restore:/backups:ro" -e SECRET_KEY_BASE_DUMMY=1 \
+  "$restore_image" bin/rails "backup:restore[/backups/$file]" 2>&1)" || fail "the restore for the refusal leg failed:"$'\n'"$restored"
 # the state a killed restore leaves, made without killing anything: the primary and its sidecars removed
 "$cli" run --rm -u 0 -v "$volume_d:/rails/storage" "$restore_image" sh -c 'rm -f /rails/storage/production.sqlite3 /rails/storage/production.sqlite3-wal /rails/storage/production.sqlite3-shm /rails/storage/production.sqlite3-journal && test -e /rails/storage/production_prices.sqlite3' >/dev/null || fail "the refusal leg's volume wasn't made"
 refused_name="backup-smoke-refused-$tag"
@@ -235,7 +235,8 @@ done
   || fail "spec 086 AC-4.1: the image started on a volume that holds a prices database and no primary (still running after $((attempts * 2)) s)"
 [ "$("$cli" inspect -f '{{.State.ExitCode}}' "$refused_name")" = "1" ] || fail "spec 086 AC-4.1: the refused start didn't exit with status 1"
 refused="$("$cli" logs "$refused_name" 2>&1)"
-grep -q "production_prices.sqlite3" <<<"$refused" && grep -q "restore again" <<<"$refused" && grep -q "Nothing was changed" <<<"$refused" \
+grep -q "Collector did not start" <<<"$refused" && grep -q "production_prices.sqlite3" <<<"$refused" && grep -q "no primary database" <<<"$refused" \
+  && grep -q "restore again" <<<"$refused" && grep -q "Nothing was changed" <<<"$refused" \
   || fail "spec 086 AC-4.1: the refusal didn't carry the message; it printed:"$'\n'"$refused"
 "$cli" rm -f "$refused_name" >/dev/null
 [ "$("$cli" run --rm -u 0 -v "$volume_d:/rails/storage" "$restore_image" sh -c 'test ! -e /rails/storage/production.sqlite3 && echo none')" = "none" ] \
@@ -243,7 +244,7 @@ grep -q "production_prices.sqlite3" <<<"$refused" && grep -q "restore again" <<<
 "$cli" run --rm -u 0 -v "$volume_d:/rails/storage" "$restore_image" sh -c 'rm -f /rails/storage/production_prices.sqlite3 /rails/storage/production_prices.sqlite3-wal /rails/storage/production_prices.sqlite3-shm /rails/storage/production_prices.sqlite3-journal' >/dev/null || fail "removing the prices files failed"
 d="backup-smoke-d-$tag"
 start "$d" "$volume_d" "a-fourth-secret-of-the-fourth-instance-0004" "$restore_image"
-blank="$("$cli" exec "$d" bin/rails runner 'puts [ User.count, PricesRecord.lease_connection.select_value("SELECT count(*) FROM current_prices"), %w[production production_prices production_cache production_queue production_cable].all? { Rails.root.join("storage/#{it}.sqlite3").exist? } ].join(",")' 2>&1 | tail -n 1)"
+blank="$("$cli" exec "$d" bin/rails runner 'puts [ User.count, PricesRecord.lease_connection.select_value("SELECT count(*) FROM current_prices"), %w[production production_prices production_cache production_queue production_cable].all? { Rails.root.join("storage/#{it}.sqlite3").exist? } ].join(",")' 2>&1 | tail -n 1)" || true
 [ "$blank" = "0,0,true" ] || fail "spec 086 AC-4.2: the start after removing the prices files wasn't a blank instance; got: $blank"
 
 echo "OK: ${image} was backed up and restored into ${restore_image} the documented ways"

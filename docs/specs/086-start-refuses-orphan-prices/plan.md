@@ -287,4 +287,3 @@ Implementation review (Opus, read-only, no `sqlite3`), recorded in `verification
 
 - **Decision 7's measure** may show a connection leaves a one-page primary: the spec's limit already says so (T1's measure).
 - **`db:prepare` in the entrypoint examples** runs for real in the test environment against scratch files: `SCHEMA` absent per command as `app_command` does, so neither `db/schema.rb` nor `db/prices_structure.sql` is written.
-- **`Rails.root` in `start_check.rb`'s `require_relative`** and the backup library's `require Rails.root.join(...)` of the same file: Ruby dedups by real path; T1's spec requires both and checks `Collector::Backup::Databases` is defined once.

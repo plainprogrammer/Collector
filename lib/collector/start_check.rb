@@ -50,8 +50,8 @@ module Collector
 
       def lines(prices, leftovers)
         names = leftovers.map { it.basename.to_s }
-        instead = leftovers.empty? ? "" : " (it holds #{leftovers.map { "#{it.basename}, #{kind(it)}" }.join("; ")} instead, which is not a database)"
-        removal = [ "#{@databases.prices.basename} and its -wal, -shm and -journal files", *names ].then { it.size > 2 ? "#{it[..-2].join(", ")} and #{it.last}" : it.join(" and ") }
+        instead = leftovers.empty? ? "" : " (it holds #{leftovers.map { "#{it.basename} (#{kind(it)})" }.join(" and ")} instead, which #{leftovers.size == 1 ? "is" : "are"} not a database)"
+        removal = [ "#{@databases.prices} and its -wal, -shm and -journal files", *names ].then { it.size > 2 ? "#{it[..-2].join(", ")} and #{it.last}" : it.join(" and ") }
         [ "Collector did not start: the storage directory #{@databases.directory} holds #{prices.join(", ")} and no primary database#{instead}.",
           "A backup:restore that stopped between placing the prices database and the primary leaves this state. Starting here would create a blank primary and keep these prices, which the new catalog's printings don't own.",
           "Remove #{removal}, then restore again onto a volume that holds no other Collector database, or start Collector blank. Run nothing else on the volume meanwhile. Nothing was changed." ]

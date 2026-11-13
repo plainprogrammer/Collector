@@ -72,7 +72,7 @@ RSpec.describe Collector::StartCheck, :backup, type: :model do
         put(prices)
         put(primary, "")
 
-        expect(message).to include("production.sqlite3, an empty file")
+        expect(message).to include("production.sqlite3 (an empty file)")
         expect(message).to include("production_prices.sqlite3 and its -wal, -shm and -journal files and production.sqlite3")
       end
 
@@ -80,7 +80,7 @@ RSpec.describe Collector::StartCheck, :backup, type: :model do
         put(prices)
         File.symlink(scratch_path("nowhere").to_s, primary.to_s)
 
-        expect(message).to include("production.sqlite3, a broken link")
+        expect(message).to include("production.sqlite3 (a broken link)")
       end
 
       it "refuses a prices file that is a dangling symlink" do
@@ -93,7 +93,7 @@ RSpec.describe Collector::StartCheck, :backup, type: :model do
         put(prices)
         put(volume.join("production.sqlite3-wal"))
 
-        expect(message).to include("production.sqlite3-wal, a sidecar left behind")
+        expect(message).to include(prices.to_s, "production.sqlite3-wal (a sidecar left behind)")
         expect(message).to include("and production.sqlite3-wal, then restore again")
       end
 
