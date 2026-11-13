@@ -19,9 +19,9 @@ class CreatePriceTables < ActiveRecord::Migration[8.1]
       t.boolean :hosted_paid_allowed, null: false, default: false
       t.timestamps
       t.index :key, unique: true
-      t.check_constraint "length(key) >= 1", name: "price_sources_key_present"
-      t.check_constraint "length(name) >= 1", name: "price_sources_name_present"
-      t.check_constraint "length(attribution) >= 1", name: "price_sources_attribution_present"
+      t.check_constraint "length(trim(key)) >= 1", name: "price_sources_key_present"
+      t.check_constraint "length(trim(name)) >= 1", name: "price_sources_name_present"
+      t.check_constraint "length(trim(attribution)) >= 1", name: "price_sources_attribution_present"
     end
 
     create_table :price_series do |t|

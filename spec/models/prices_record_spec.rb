@@ -50,9 +50,45 @@ RSpec.describe PricesRecord, type: :model do
       "INSERT INTO price_series (finish, currency, kind, created_at, updated_at) VALUES ('shiny', 'usd', 'market', '2026-11-13', '2026-11-13')",
       "INSERT INTO current_prices (catalog_entry_id, price_source_id, price_series_id, cents, reported_on, changed_on) VALUES (1, #{source}, 999, 5, '2026-11-13', '2026-11-13')",
       "INSERT INTO price_changes (catalog_entry_id, price_source_id, price_series_id, recorded_on, cents) VALUES (1, #{source}, #{series}, '2026-11-13', -5)",
-      "INSERT INTO price_refresh_runs (price_source_id, run_on, status, started_at, created_at, updated_at) VALUES (#{source}, '2026-11-13', 'lost', '2026-11-13', '2026-11-13', '2026-11-13')"
+      "INSERT INTO price_refresh_runs (price_source_id, run_on, status, started_at, created_at, updated_at) VALUES (#{source}, '2026-11-13', 'lost', '2026-11-13', '2026-11-13', '2026-11-13')",
+      "INSERT INTO price_sources (key, name, attribution, hosted_paid_allowed, created_at, updated_at) VALUES ('b', '', 'x', 0, '2026-11-13', '2026-11-13')",
+      "INSERT INTO price_sources (key, name, attribution, hosted_paid_allowed, created_at, updated_at) VALUES ('b', 'B', '', 0, '2026-11-13', '2026-11-13')",
+      "INSERT INTO price_sources (key, name, attribution, hosted_paid_allowed, created_at, updated_at) VALUES ('   ', 'B', 'x', 0, '2026-11-13', '2026-11-13')",
+      "INSERT INTO price_sources (key, name, attribution, hosted_paid_allowed, created_at, updated_at) VALUES ('b', '  ', 'x', 0, '2026-11-13', '2026-11-13')",
+      "INSERT INTO price_sources (key, name, attribution, hosted_paid_allowed, created_at, updated_at) VALUES ('c', 'B', '  ', 0, '2026-11-13', '2026-11-13')"
     ]
     bad.each { |sql| expect { connection.execute(sql) }.to raise_error(ActiveRecord::StatementInvalid), sql }
+  end
+
+  it "refuses a second current price for the same printing, source and series (AC-1.4)" do
+    source = source!
+    series = series!
+    row = "INSERT INTO current_prices (catalog_entry_id, price_source_id, price_series_id, cents, reported_on, changed_on) VALUES (1, #{source}, #{series}, 5, '2026-11-13', '2026-11-13')"
+    connection.execute(row)
+    expect { connection.execute(row) }.to raise_error(ActiveRecord::StatementInvalid, /UNIQUE|PRIMARY/i)
+  end
+
+  it "allows two refresh runs of one source on one date: the index isn't unique (AC-1.4)" do
+    source = source!
+    run = "INSERT INTO price_refresh_runs (price_source_id, run_on, status, started_at, created_at, updated_at) VALUES (#{source}, '2026-11-13', 'running', '2026-11-13', '2026-11-13', '2026-11-13')"
+    2.times { connection.execute(run) }
+    expect(connection.select_value("SELECT count(*) FROM price_refresh_runs")).to eq(2)
+  end
+
+  it "has the columns and primary keys of decision 2's table (AC-1.4)", :aggregate_failures do
+    columns = {
+      "price_sources" => %w[id key name attribution attribution_url hosted_paid_allowed created_at updated_at],
+      "price_series" => %w[id finish currency kind created_at updated_at],
+      "current_prices" => %w[catalog_entry_id price_source_id price_series_id cents reported_on changed_on],
+      "price_changes" => %w[catalog_entry_id price_source_id price_series_id recorded_on cents],
+      "price_refresh_runs" => %w[id price_source_id run_on source_version status error started_at finished_at created_at updated_at]
+    }
+    keys = { "current_prices" => %w[catalog_entry_id price_source_id price_series_id],
+             "price_changes" => %w[catalog_entry_id price_source_id price_series_id recorded_on] }
+    columns.each do |table, names|
+      expect(connection.columns(table).map(&:name)).to match_array(names), table
+      expect(connection.primary_key(table)).to eq(keys.fetch(table, "id")), table
+    end
   end
 
   it "takes a price change with no cents: the price went away that day (decision 2)" do
