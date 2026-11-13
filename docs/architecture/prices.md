@@ -56,7 +56,7 @@ Neighbouring areas: the backup that holds the prices database, its format and it
 - [Spec 081](../specs/081-prices-database-in-backup/spec.md): decisions 1 to 5, 9 and 12, Stories 1 to 3 (the backup's part is in [release and deploy](release-and-deploy.md)).
 - [ADR 0029](../adr/0029-prices-database-held-by-the-backup.md).
 - [Price data design](../superpowers/specs/2026-11-13-price-data-design.md) (2026-11-13); roadmap rulings 35 to 40.
-- Issues [#363](https://github.com/plainprogrammer/Collector/issues/363) (this database), [#375](https://github.com/plainprogrammer/Collector/issues/375) (a start that refuses a prices file with no primary).
+- Issues [#363](https://github.com/plainprogrammer/Collector/issues/363) (this database), [#375](https://github.com/plainprogrammer/Collector/issues/375) (a start that refuses a prices file with no primary: built by [spec 086](../specs/086-start-refuses-orphan-prices/spec.md), whose rules, the check and its message, are in [release and deploy](release-and-deploy.md)).
 
 ## Distillation log
 

@@ -108,7 +108,7 @@ Runs beside the main line, when the maintainer starts it (rulings 35–41; [desi
 - [#361](https://github.com/plainprogrammer/Collector/issues/361) Spike: prices on non-English printings. Done: [research 083](specs/083-non-english-printing-prices/research.md), ruling 41.
 - [#362](https://github.com/plainprogrammer/Collector/issues/362) Ask Scryfall in writing about recording prices and showing their history. Not code; it doesn't block the rest.
 - [#363](https://github.com/plainprogrammer/Collector/issues/363) A prices database that the backup holds.
-- [#375](https://github.com/plainprogrammer/Collector/issues/375) A start refuses a volume that holds a prices database and no primary (after #363; spec 081 decision 8).
+- [#375](https://github.com/plainprogrammer/Collector/issues/375) A start refuses a volume that holds a prices database and no primary (after #363; spec 081 decision 8). Done: [spec 086](specs/086-start-refuses-orphan-prices/spec.md).
 - [#364](https://github.com/plainprogrammer/Collector/issues/364) A price source contract, and Scryfall's prices through it (after #361 and #363).
 - [#365](https://github.com/plainprogrammer/Collector/issues/365) Prices refresh once a day, and each change is recorded once.
 - [#366](https://github.com/plainprogrammer/Collector/issues/366) Each price refresh records what it did and how large the database is.
