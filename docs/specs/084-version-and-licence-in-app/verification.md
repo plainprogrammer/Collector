@@ -20,8 +20,8 @@ Short names used below:
   - T2.2: 28 examples.
   - Phase 3: publishing and `spec/smoke_scripts_spec.rb`, 40 examples, then publishing with T3.2's two examples, 39 examples, 0 failures.
 - **Broad targeted run** (2026-11-13, after every task): `bin/rspec spec/requests spec/lib spec/*_spec.rb spec/system/footer_spec.rb spec/system/visitor_catalog_spec.rb`: 1826 examples, 0 failures.
-- **Full `bin/ci`:** run by the pre-push hook at the first push, with a slot: RESULT_CI.
-- **The pull request's CI run:** RESULT_PR.
+- **Full `bin/ci`:** run by the pre-push hook at the first push, with a slot: passed at `62679906` (the hook prints nothing on success; the suite has 4712 examples by `bin/rspec --dry-run`).
+- **The pull request's CI run:** [run 43453666543](https://github.com/plainprogrammer/Collector/actions/runs/43453666543) of [#378](https://github.com/plainprogrammer/Collector/pull/378), green at `62679906`: checks, the four RSpec shards, `ci`, `Image (linux/amd64)` and `Image (linux/arm64)` passed, and `Publish manifest list` was skipped, as on every pull request. In each `Image` job, the `Build` step's log reads `build-args: COLLECTOR_VERSION=pr-378` and `--build-arg COLLECTOR_REVISION=ad088972c548cef6cd16d2230137564feaf0fab9`, GitHub's merge commit. Its `Smoke test` step prints `== the build facts (spec 084)` and then `OK: collector:smoke passed the smoke test`.
 
 ### Image proof (T3.3, local, Docker 29.5.2 on arm64 via colima)
 
@@ -90,10 +90,10 @@ Decision 6's "never raises on any value" is also proved by facts "never raises, 
 |---|---|
 | AC-3.1 | publishing "takes the build facts last in the final stage, after every COPY (spec 084 AC-3.1)" |
 | AC-3.2 | publishing "passes the same build facts to both builds, pr-N on a pull request (spec 084 AC-3.2, AC-3.6)" |
-| AC-3.3 | The image proof's passing run; publishing "fails an image that reports no version or no full revision, from captured output (spec 084 decision 7)" (the script's text); RESULT_PR (both architectures' `Smoke test` steps) |
+| AC-3.3 | The image proof's passing run; publishing "fails an image that reports no version or no full revision, from captured output (spec 084 decision 7)" (the script's text); [run 43453666543](https://github.com/plainprogrammer/Collector/actions/runs/43453666543) (both architectures' `Smoke test` steps passed the build facts check) |
 | AC-3.4 | The image proof's three failing runs (no revision, a short revision, no version), each naming the three build arguments |
-| AC-3.5 | RESULT_PR |
-| AC-3.6 | RESULT_PR (the `Build` step's logged `COLLECTOR_VERSION=pr-N`). Also checked statically: publishing's AC-3.2/3.6 example and the second mutation proof. The spec says "there is no automated check of the workflow file"; the static example was added on top, and the run is still the evidence of the behaviour |
+| AC-3.5 | [run 43453666543](https://github.com/plainprogrammer/Collector/actions/runs/43453666543): `bin/image-smoke` passed in both `Image` jobs with the version `pr-378` (Runs, above) |
+| AC-3.6 | [run 43453666543](https://github.com/plainprogrammer/Collector/actions/runs/43453666543): both `Build` steps logged `COLLECTOR_VERSION=pr-378`, although `docker/metadata-action` gave no version. Also checked statically: publishing's AC-3.2/3.6 example and the second mutation proof. The spec says "there is no automated check of the workflow file"; the static example was added on top, and the run is still the evidence of the behaviour |
 
 ### Story 4: The footer still fits every screen
 
@@ -133,7 +133,7 @@ SPEC-ALIGNED (sdd-review Mode B, Opus 5.5, read-only, 2026-11-13, at `fd9705fe`)
 
 The code matches spec 084 v0.4.0: every FR, decisions 1 to 12, and the exact strings of decision 2's table. Each claim in this file from AC-1.1 to AC-2.14 and AC-4.1 to AC-4.3 was checked against its example. The review had one major finding and seven minor ones.
 
-1. **Major:** AC-3.5 and AC-3.6 wait for the pull request's CI run (and AC-3.3's two architectures with them). **Open until that run;** it is recorded under Runs above when green.
+1. **Major:** AC-3.5 and AC-3.6 wait for the pull request's CI run (and AC-3.3's two architectures with them). **Closed by [run 43453666543](https://github.com/plainprogrammer/Collector/actions/runs/43453666543)** (Runs, above).
 2. **Minor:** AC-3.4's failing runs override a built image's facts with `-e` instead of building an image without them. **Accepted:** both routes leave the same environment for the script's `printenv`, which is what the check reads.
 3. **Minor:** the `Dockerfile` comment and the area doc said that declaring the facts last means "a new commit rebuilds only this layer", which is false, since `COPY . .` rebuilds on every commit. **Fixed:** the area doc in `2db4fb20`, and the `Dockerfile` in `12ca0372` (the maintainer approved the text).
 4. **Minor:** `VisitorHeader.md` still let `c-main` carry the clearance. **Fixed** in `2db4fb20`.
