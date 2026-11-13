@@ -105,6 +105,11 @@ entry = Catalog::Entry.create!(collectible_type: "mtg", external_key: "smoke-ent
 MTG::Printing.create!(entry: entry, rarity: "common", finishes: %w[nonfoil foil], layout: "normal", scryfall_uri: "https://scryfall.com/card/smk/1", faces: [ { "name" => "Smoke Dragon", "mana_cost" => "{R}", "type_line" => "Creature", "oracle_text" => "Smoke.", "artist" => "Nobody", "image_uris" => {} } ])
 user, = User::Command.call(email: "smoke@example.com", password: "smoke-password-1234")
 Lot.create!(account: user.account, entry: entry, quantity: 2)
+prices = PricesRecord.lease_connection
+now = prices.quote(Time.current)
+prices.execute("INSERT INTO price_sources (key, name, attribution, created_at, updated_at) VALUES (#{prices.quote("smoke-source")}, #{prices.quote("Smoke Source")}, #{prices.quote("Prices from the smoke")}, #{now}, #{now})")
+prices.execute("INSERT INTO price_series (finish, currency, kind, created_at, updated_at) VALUES (#{prices.quote("plain")}, #{prices.quote("USD")}, #{prices.quote("market")}, #{now}, #{now})")
+prices.execute("INSERT INTO current_prices (catalog_entry_id, price_source_id, price_series_id, cents, reported_on, changed_on) VALUES (#{entry.id}, #{prices.select_value("SELECT id FROM price_sources")}, #{prices.select_value("SELECT id FROM price_series")}, 150, #{prices.quote("2026-11-12")}, #{prices.quote("2026-11-12")})")
 Catalog::RefreshJob.set(wait: 1.year).perform_later("mtg", "smoke-marker")
 Rails.cache.write("smoke-marker", "1")
 puts "seeded"
@@ -114,15 +119,17 @@ puts "seeded"
 # argument, and a cache entry.
 marker_ruby='puts [ SolidQueue::Job.where("arguments LIKE ?", "%smoke-marker%").count, Rails.cache.read("smoke-marker").inspect ].join(",")'
 
-# The four databases exist, the marker job and cache entry are gone, the recurring tasks of config/recurring.yml are
-# registered, and the collection came back (AC-2.3).
+# The five databases exist, the marker job and cache entry are gone, the recurring tasks of config/recurring.yml are
+# registered, and the collection and the price row came back (AC-2.3; spec 081 AC-6.3). The last number is the prices database's
+# current_prices rows.
 state_ruby='
 require "yaml"
 storage = Rails.root.join("storage")
-files = %w[production production_cache production_queue production_cable].all? { |name| storage.join("#{name}.sqlite3").exist? }
+files = %w[production production_prices production_cache production_queue production_cable].all? { |name| storage.join("#{name}.sqlite3").exist? }
 expected = YAML.load_file(Rails.root.join("config/recurring.yml"), aliases: true).fetch("production").keys.sort
 puts [ files, SolidQueue::Job.where("arguments LIKE ?", "%smoke-marker%").count, Rails.cache.read("smoke-marker").inspect,
-  SolidQueue::RecurringTask.pluck(:key).sort == expected, Lot.count, User.count ].join(",")
+  SolidQueue::RecurringTask.pluck(:key).sort == expected, Lot.count, User.count,
+  PricesRecord.lease_connection.select_value("SELECT count(*) FROM current_prices") ].join(",")
 '
 
 # verify_restored <container> <port> <label>: AC-2.3 and AC-4.2 on a started, restored instance.
@@ -130,10 +137,10 @@ verify_restored() {
   local name="$1" port="$2" label="$3" state=""
   for _ in $(seq 1 30); do # the scheduler registers the recurring tasks a few seconds after /up
     state="$("$cli" exec "$name" bin/rails runner "$state_ruby" 2>&1 | tail -n 1)" || true
-    [ "$state" = "true,0,nil,true,1,1" ] && break
+    [ "$state" = "true,0,nil,true,1,1,1" ] && break
     sleep 2
   done
-  [ "$state" = "true,0,nil,true,1,1" ] || fail "$label: the restored instance's databases weren't a fresh instance's with the collection (AC-2.3); got: $state"
+  [ "$state" = "true,0,nil,true,1,1,1" ] || fail "$label: the restored instance's databases weren't a fresh instance's with the collection (AC-2.3); got: $state"
   sign_in "$port" "$work/jar-$label" || fail "$label: the admin couldn't sign in with their password under a different SECRET_KEY_BASE (AC-4.2)"
   collection_has_lot "$port" "$work/jar-$label" "$label" || fail "$label: the lot isn't on the collection page"
   [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$work/jar-a" "http://127.0.0.1:$port/collection")" = "302" ] \
@@ -182,7 +189,7 @@ volumes+=("$volume_b")
 restored="$("$cli" run --rm -u 1000 ${run_flags[@]+"${run_flags[@]}"} -v "$volume_b:/rails/storage" -v "$work/restore:/backups:ro" -e SECRET_KEY_BASE_DUMMY=1 \
   "$restore_image" bin/rails "backup:restore[/backups/$file]" 2>&1)" || fail "backup:restore (host directory) exited $?:"$'\n'"$restored"
 grep -q "^Restored $file into /rails/storage\." <<<"$restored" || fail "backup:restore didn't say it restored; it printed:"$'\n'"$restored"
-grep -q "it holds 1 account, 1 user and 1 lot\." <<<"$restored" || fail "backup:restore's counts are not the seeded instance's:"$'\n'"$restored"
+grep -q "it holds 1 account, 1 user and 1 lot; 1 current price and 0 price changes\." <<<"$restored" || fail "backup:restore's counts are not the seeded instance's:"$'\n'"$restored"
 
 echo "== start the second instance under a different SECRET_KEY_BASE (AC-2.3, AC-4.2)"
 b="backup-smoke-b-$tag"
