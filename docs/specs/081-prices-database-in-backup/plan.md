@@ -1,7 +1,7 @@
 # Implementation Plan: A Prices Database That the Backup Holds (spec 081, issue #363)
 
 **Spec:** `docs/specs/081-prices-database-in-backup/spec.md` (Approved 1.2.2) · **ADR:** 0029 (Proposed) · **Issue:** #363 · **Branch:** `081-prices-database-in-backup` · **Created:** 2026-11-13
-Plan review: Opus, read-only (pending). Gate B: the coordinator (pending). Retired by `distill-feature` after the merge (spec 027).
+Plan review: Opus, read-only, round 1 2026-11-13: REVISE (one blocking, seven major, ten minor), all applied in this revision. Gate B: the coordinator (pending). Retired by `distill-feature` after the merge (spec 027).
 
 ## Context
 
@@ -17,7 +17,33 @@ Spec 081 adds a fifth SQLite database, `prices`, with five tables that #364 to #
 - **Core names no collectible.** `lib/collector/backup/`, `lib/tasks/backup.rake`, `db/prices_migrate/`, `db/prices_structure.sql` and `app/models/prices_record.rb` never contain `MTG`, `Scryfall` or `Magic`, comments included (`spec/backup_guards_spec.rb:43`, `spec/prices_core_spec.rb`, new).
 - **Schema noise** (`.claude/memory/migrate-schema-noise.md`): after any `bin/rails db:migrate` in development, run `git status`. If `db/schema.rb`, `db/cache_schema.rb`, `db/queue_schema.rb` or `db/cable_schema.rb` changed, restore them with `git checkout -- <file>`; only `db/prices_structure.sql` may change.
 - **No deployment file changes:** `Dockerfile`, `config/deploy*.yml`, `compose.yaml` and `.github/workflows/**` stay as they are (spec FR-1). If a task seems to need one, stop and report.
-- **Existing examples this feature changes** (they are named in each task): `spec/backup_guards_spec.rb:46` (four databases) and `:61` (the file count, 10); `spec/lib/collector/backup/manifest_spec.rb:9`; `archive_spec.rb:15`; `create_spec.rb:21` and `:37`; `restore_spec.rb:25` (the volume's children); `spec/backup_upgrade_spec.rb:27` (`db:migrate VERSION=` becomes `db:migrate:primary VERSION=`); `spec/support/backup_helpers.rb` (decision 12); `spec/support/upgrade_fakes.rb` (`copy_database`); `bin/backup-smoke:122` and `:185`.
+- **Existing examples and callers this feature changes**, named again in their tasks. A commit is green only once its task's list is done:
+  - **T1.1:**
+    - `spec/backup_guards_spec.rb:37`: four databases become five. The file count at `:84` stays 10.
+    - `spec/lib/collector/backup/databases_spec.rb:8`: production names, now five.
+    - `databases_spec.rb:16`: the test environment is no longer single-database; its names are `primary` and `prices`.
+  - **T2.1:**
+    - `spec/backup_upgrade_spec.rb:27`: `db:migrate VERSION=` becomes `db:migrate:primary VERSION=`.
+    - `spec/backup_boot_spec.rb:7`.
+    - `spec/support/backup_helpers.rb` (decision 12).
+  - **T3.1:**
+    - `manifest_spec.rb:9`; `archive_spec.rb:14`.
+    - `archive_spec.rb:152`, `:160` and `restore_spec.rb:197`: their "unknown version" fixture uses 2, which is now known. Use 99, and expect "restores versions 1, 2".
+    - Restore's `extract` (`restore.rb:99`) writes only the primary's chunks.
+  - **T3.3:**
+    - `create_spec.rb:18`: report.
+    - `create_spec.rb:21` and `:37`: three files.
+    - `create_spec.rb:129`: the child process has no Rails.
+    - `create_spec.rb:184`: "twice the two databases' sizes".
+    - `script/backup/measure.rb:71`.
+  - **T3.4:**
+    - `restore_spec.rb:25`, `:42` and `:60`: the volume's children and the report.
+    - `restore_spec.rb:97`: a primary clash.
+    - `restore_spec.rb:110`: the child process has no Rails.
+    - `databases_spec.rb:36`: also `collector-restore-prices.partial`.
+    - `script/backup/measure.rb:78`.
+  - **T4.2:** `spec/support/upgrade_fakes.rb` (`copy_database`).
+  - **T4.4:** `bin/backup-smoke:122` and `:185`.
 
 ## Goal
 
@@ -89,12 +115,20 @@ After this branch: `bin/rails db:prepare` creates `storage/<env>_prices.sqlite3`
      ```
      Keep the "Warning: The database defined as "test" will be erased…" comment above `test:`.
   2. Run `bin/rspec spec/backup_guards_spec.rb`. **Expected red:** "knows exactly the four production databases" fails, with the guard's advice text. Copy the failure's first lines into the commit body (verification.md cites them as the first failing test).
-  3. Decide the contents. In `lib/collector/backup.rb`, below `TEMPORARY_MODE`:
+  3. Decide the contents. In `lib/collector/backup.rb`, define `HELD` in a `module Collector; module Backup; … end; end` block **above** the `require_relative` lines (`backup.rb:10-17`), so that `archive.rb` can derive its entry names from it (T3.1). Keep the main module's comment where it is:
      ```ruby
-     # The databases a backup holds, by configuration name, and the archive entry each is stored as (spec 081 decision 6;
-     # spec/backup_guards_spec.rb compares this with its own lists). The queue, cache and cable databases are left out.
-     HELD = { "primary" => "primary.sqlite3", "prices" => "prices.sqlite3" }.freeze
+     module Collector
+       module Backup
+         # The databases a backup holds, by configuration name, and the archive entry each is stored as, in archive order
+         # (spec 081 decision 6). Archive's entry names and Restore's placing read it; spec/backup_guards_spec.rb compares it
+         # with its own lists. The queue, cache and cable databases are left out.
+         HELD = { "primary" => "primary.sqlite3", "prices" => "prices.sqlite3" }.freeze
+       end
+     end
      ```
+     `spec/lib/collector/backup/databases_spec.rb`:
+     - `:8`: `contain_exactly("primary", "cache", "queue", "cable", "prices")`.
+     - `:14-18`: becomes "reads the test environment's two databases", expecting `names` to be `%w[primary prices]` and `primary.basename` to be `test.sqlite3`.
   4. Rewrite the guard's database example (`spec/backup_guards_spec.rb:46-51`):
      ```ruby
      # Spec 081 decision 6 (supersedes spec 030 AC-5.5's four): what the backup holds, and why the rest stay out.
@@ -156,9 +190,10 @@ After this branch: `bin/rails db:prepare` creates `storage/<env>_prices.sqlite3`
          expect(connection.tables).to include("price_sources", "price_series", "current_prices", "price_changes", "price_refresh_runs")
        end
 
-       it "rolls a price row back with the example (AC-1.5), so this one starts empty" do
-         expect(connection.select_value("SELECT count(*) FROM price_sources")).to eq(0)
+       it "runs each example inside a transaction on the prices database too, so its rows roll back (AC-1.5)", :aggregate_failures do
          source!
+         expect(connection.transaction_open?).to be(true)
+         expect(connection.select_value("SELECT count(*) FROM price_sources")).to eq(1)
        end
 
        it "has no account or user column in any table (AC-3.1)" do
@@ -200,7 +235,7 @@ After this branch: `bin/rails db:prepare` creates `storage/<env>_prices.sqlite3`
        end
      end
      ```
-     If `RSpec/MultipleMemoizedHelpers` or line length objects, split the helpers into private methods; keep the cases.
+     If `RSpec/MultipleMemoizedHelpers` or line length objects, split the helpers into private methods; keep the cases. The `:committed` half of AC-1.5 is proven in T2.1.
   2. Green: create `app/models/prices_record.rb`:
      ```ruby
      # The connection to the prices database, the instance's fifth SQLite file (spec 081 decisions 1 and 5; ADR 0029).
@@ -210,9 +245,10 @@ After this branch: `bin/rails db:prepare` creates `storage/<env>_prices.sqlite3`
      class PricesRecord < ActiveRecord::Base
        self.abstract_class = true
 
-       connects_to database: { writing: :prices, reading: :prices }
+       connects_to database: { writing: :prices }
      end
      ```
+     Writing role only: nothing reads from a replica, and a reading pool that `with_restored_instance` doesn't re-point would be a trap.
   3. Create `db/prices_migrate/20261113100001_create_price_tables.rb`:
      ```ruby
      # The prices database's tables (spec 081 decision 2; ADR 0029). current_prices and price_changes are WITHOUT ROWID: their
@@ -371,7 +407,7 @@ After this branch: `bin/rails db:prepare` creates `storage/<env>_prices.sqlite3`
     end
   end
   ```
-  For AC-3.2, add one example to the export's request spec that already downloads an export (find it with `git grep -n "collection/export" spec/requests ':!.kamal/secrets'`). After creating one price row through `PricesRecord.lease_connection` with the lot's `catalog_entry_id`, the downloaded document's `format_version` is 4 and its JSON has no key matching `/price(?!_paid)/` at any depth. Write a small recursive key collector in the example. Commit: `test(prices): the prices schema names no collectible, and the export holds no price (#363)`.
+  For AC-3.2, add one example to the export's request spec that already downloads an export (find it with `git grep -n "collection/export" spec/requests ':!.kamal/secrets'`). After creating a source, a series and one current price through `PricesRecord.lease_connection` (the foreign keys need the first two) with the lot's `catalog_entry_id`, the downloaded document's `format_version` is 4 and its JSON has no key matching `/price(?!_paid)/` at any depth. Write a small recursive key collector in the example. Commit: `test(prices): the prices schema names no collectible, and the export holds no price (#363)`.
 
 ## Phase 2: The suite runs with two test databases (decision 12)
 
@@ -404,7 +440,8 @@ After this branch: `bin/rails db:prepare` creates `storage/<env>_prices.sqlite3`
        it "creates the prices file beside a primary that has no prices file, and keeps the primary's rows (AC-1.3)", :aggregate_failures, :committed do
          seed_instance(lots: 2)
          volume = scratch("volume")
-         primary = copy_of_instance.then { FileUtils.cp(it, volume.join("production.sqlite3")) && volume.join("production.sqlite3") }
+         primary = volume.join("production.sqlite3")
+         FileUtils.cp(copy_of_instance, primary)
          rows = table_rows(primary)
          _out, err, status = app_command(primary, "db:prepare")
 
@@ -412,9 +449,22 @@ After this branch: `bin/rails db:prepare` creates `storage/<env>_prices.sqlite3`
          expect(volume.join("production_prices.sqlite3")).to exist
          expect(table_rows(primary).except("schema_migrations", "ar_internal_metadata")).to eq(rows.except("schema_migrations", "ar_internal_metadata"))
        end
+
+       it "empties the prices database after a committed example (AC-1.5, decision 12)", :committed do
+         PricesRecord.lease_connection.execute("INSERT INTO price_sources (key, name, attribution, hosted_paid_allowed, created_at, updated_at) VALUES ('kept', 'Kept', 'x', 0, '2026-11-13', '2026-11-13')")
+         clear_instance!
+         expect(PricesRecord.lease_connection.select_value("SELECT count(*) FROM price_sources")).to eq(0)
+       end
+
+       it "gives each child command a SCHEMA path that doesn't exist yet (AC-6.9, the second half)" do
+         paths = []
+         allow(Open3).to receive(:capture3).and_wrap_original { |original, env, *rest, **kw| paths << File.exist?(env["SCHEMA"]); original.call(env, *rest, **kw) }
+         2.times { app_command(scratch("volume").join("production.sqlite3"), "db:prepare") }
+         expect(paths).to eq([ false, false ])
+       end
      end
      ```
-     It fails: `app_command` sets only `DATABASE_URL`, so the child prepares the suite's own `storage/test_prices.sqlite3` and the volume gets no prices file.
+     The `clear_instance!` example is `:committed`, so its own `before` clears too. What it proves is that `clear_instance!` reaches the prices database. Simplify the `allow(...).and_wrap_original` example if RuboCop objects to its line length; keep the assertion. It fails: `app_command` sets only `DATABASE_URL`, so the child prepares the suite's own `storage/test_prices.sqlite3` and the volume gets no prices file.
   2. Green: edit `spec/support/backup_helpers.rb`:
      - `PRODUCTION_NAMES` gains `"prices" => "production_prices.sqlite3"`.
      - `app_command`:
@@ -439,13 +489,13 @@ After this branch: `bin/rails db:prepare` creates `storage/<env>_prices.sqlite3`
        ```
      - `clear_instance!` empties both databases. Run the same loop on `PricesRecord.lease_connection` (no FTS tables there).
      - `instance_prices_database = Collector::Backup::Databases.configured.prices` (it needs T3.1's `Databases#prices`; until then, `Rails.root.join(ActiveRecord::Base.configurations.configs_for(env_name: "test", name: "prices").database)`). Switch to `Databases.configured.prices` in T3.1.
-     - `with_restored_instance(path, prices: prices_beside(path))` reconnects `PricesRecord` the same way as `ActiveRecord::Base`, and restores both in `ensure`:
+     - `with_restored_instance(path, prices: prices_beside(path))` reconnects `PricesRecord` the same way as `ActiveRecord::Base`, and restores both in `ensure`. Each new config keeps its name, because `HealthController#check_database` (`health_controller.rb:18`) finds pools by name, and a bare hash would be named "primary":
        ```ruby
        def with_restored_instance(path, prices: prices_beside(path))
          pairs = [ [ ActiveRecord::Base, path ], [ PricesRecord, prices ] ].map { |klass, file| [ klass, klass.connection_db_config, file ] }
          pairs.each do |klass, config, file|
            klass.connection_pool.disconnect!
-           klass.establish_connection(config.configuration_hash.merge(database: file.to_s))
+           klass.establish_connection(ActiveRecord::DatabaseConfigurations::HashConfig.new(config.env_name, config.name, config.configuration_hash.merge(database: file.to_s)))
          end
          yield
        ensure
@@ -456,7 +506,7 @@ After this branch: `bin/rails db:prepare` creates `storage/<env>_prices.sqlite3`
        end
        ```
        `PricesRecord.establish_connection(config)` with the original `DatabaseConfig` is how `connects_to` registered it; check with the restored-instance specs that the role is still `:writing`. If `establish_connection` on an abstract class with `connects_to` misbehaves, use `PricesRecord.connection_handler.establish_connection(config, owner_name: PricesRecord, role: :writing)`.
-  3. `spec/backup_upgrade_spec.rb:27`: `db:migrate VERSION=` becomes `db:migrate:primary VERSION=`. With two databases, an unnamed `VERSION` would also move the prices database. Add to its last expectation that `db/prices_structure.sql` is unchanged too.
+  3. `spec/backup_upgrade_spec.rb:27`: `db:migrate VERSION=` becomes `db:migrate:primary VERSION=`. With two databases, Rails' unnamed `db:migrate` runs only pending versions (`database_tasks.rb:241-257`), so the rollback would silently do nothing. Add to its last expectations that `db/prices_structure.sql` is unchanged too, and that `volume.join("production_prices.sqlite3")` exists after its `db:prepare`. That is a version 1 restore's first start creating the prices database (AC-5.2).
   4. `spec/backup_boot_spec.rb:7`: add `"PRICES_DATABASE_URL" => "sqlite3:#{scratch_path("boot_prices.sqlite3")}"` to `production`'s environment.
   5. Run, one at a time: `bin/rspec spec/backup_prices_spec.rb`, then `bin/rspec spec/backup_*_spec.rb spec/lib/collector/backup`. All are green, except examples that only T3.x makes pass; there should be none yet, because the backup code is unchanged. Commit: `test(backup): child processes and helpers reach both test databases (#363)`.
 
@@ -527,39 +577,48 @@ After this branch: `bin/rails db:prepare` creates `storage/<env>_prices.sqlite3`
        ```
        In `parse`, the expected keys depend on the version: `members.map(&:to_s) - (version == 1 ? [ "prices" ] : [])`. In `valid?`, add the prices rule: for version 1, `prices.nil?`. For version 2, `prices` is a Hash whose keys are `PRICES_MEMBERS`, with `schema_version` a String, `snapshot_bytes` a non-negative Integer, `snapshot_sha256` 64 hex, and `counts` a Hash whose keys are `PRICES_COUNT_NAMES` with Integer values. Update the class comment (versions 1 and 2) and `COUNT_NAMES`' neighbours.
      - `lib/collector/backup/archive.rb`:
-       - `PRICES = "prices.sqlite3".freeze`.
+       - `SNAPSHOT = HELD.fetch("primary")` and `PRICES = HELD.fetch("prices")`, replacing the literal `SNAPSHOT` (M6: the guard's `HELD` is what the archive uses).
        - `write(path, manifest:, snapshot:, prices: nil)` adds the prices entry after the primary when `prices` is given. It raises `ArgumentError` unless `manifest.entries.size` matches the files given.
        - `read_entries` replaces the single-snapshot block with a loop over `manifest.entries`. A manifest of an unknown version has no entries, so keep today's behaviour of reading the next entry's size and refusing at the end: read entries while `entry_size` finds another ustar file, with `[ SNAPSHOT, PRICES ]` as the only acceptable names in that order, and check the count and names against `manifest.entries` at the end. Each entry's bytes are digested, and `sink.call(chunk, name)` is called for each chunk.
        - At the end, check that every entry's digest and size equal the manifest's. Any mismatch raises `changed(name)`. A missing entry, where the gzip ends with an end block where an entry was expected, raises `not_a_backup(nil, name)`.
        - `Result` stays `Data.define(:manifest, :sha256, :bytes)`, for the primary.
        - Update the class comment: "manifest.json, primary.sqlite3 and, from version 2, prices.sqlite3 (spec 081 decision 6)".
-     - `spec/support/backup_helpers.rb`: `unpack_snapshot(archive, name = "unpacked.sqlite3", entry: "primary.sqlite3")` writes only the chunks of `entry`, as in `{ |chunk, entry_name| file.write(chunk) if entry_name == entry }`. `manifest_for` and `archive_of` take `prices:` (a path) and build a version 2 manifest when it is given, and version 1 otherwise. Restore's `extract` is changed in T3.4; until then, a version 1 archive yields only primary chunks, so its existing block still works.
+     - `snapshot.rb` `counts(names = Manifest::COUNT_NAMES)` (moved here from T3.2, because `Manifest.for` and `manifest_for(prices:)` call it):
+       ```ruby
+       # Counts only, never a name or an address (hosted-door rule 2, AC-1.7): the primary's three tables unless +names+ says
+       # otherwise (the prices database's, spec 081 decision 6). Cross-tenant by nature: it counts the instance.
+       def counts(names = Manifest::COUNT_NAMES)
+         with(readonly: true) { |database| names.to_h { |table| [ table, database.get_first_value("SELECT COUNT(*) FROM #{table}") ] } }
+       end
+       ```
+     - `restore.rb` `extract` (`:99`) writes only the primary's chunks, until T3.4 gives prices its own file. Without this, T3.3's version 2 files would put the prices bytes into the primary's temporary file:
+       ```ruby
+       Archive.read(@file) { |chunk, name| file.write(chunk) if name == Archive::SNAPSHOT }
+       ```
+     - `spec/support/backup_helpers.rb`: `unpack_snapshot(archive, name = "unpacked.sqlite3", entry: "primary.sqlite3")` writes only the chunks of `entry`, as in `{ |chunk, entry_name| file.write(chunk) if entry_name == entry }`. `manifest_for` and `archive_of` take `prices:` (a path) and build a version 2 manifest when it is given, and version 1 otherwise.
+     - The "unknown version" fixtures at `archive_spec.rb:152`, `:160` and `restore_spec.rb:197` use version 2, which is now known. Change them to 99, and the expected text to "this release restores versions 1, 2." (`Archive.unknown_version` joins with ", "). `:160` expects "incomplete" for a cut-short unknown-version file; with 99, check that it still reads "incomplete".
   3. `bin/rspec spec/lib/collector/backup/manifest_spec.rb spec/lib/collector/backup/archive_spec.rb` is green, then the rest of `spec/lib/collector/backup` (Create still writes version 1 until T3.3: `FORMAT_VERSION` is 2 now, so `Manifest.for` writes version 2 without `prices`. That is invalid, so T3.1 keeps Create working by having `Manifest.for` write `backup_format_version: prices ? 2 : 1`. T3.3 always passes `prices`, after which version 1 is never written). Commit: `feat(backup): backup format version 2, with a prices.sqlite3 entry (#363)`.
 
 - [ ] **T3.2 `Snapshot`'s counts and the orphan count of `WITHOUT ROWID` tables (AC-4.5, decision 3).**
   1. Red, `spec/lib/collector/backup/snapshot_spec.rb`:
-     - `counts(%w[current_prices price_changes])` on a copy of the test prices database (`Snapshot.take(source: Databases.configured.prices, into: …)`) with 2 current prices and 3 changes returns them.
+     - `counts(%w[current_prices price_changes])` on a copy of the test prices database (`Snapshot.take(source: Databases.configured.prices, into: …)`) returns 2 and 3, after inserting a source, a series, 2 current prices and 3 changes **into the copy** through `sqlite(copy)`. The example isn't `:committed`, so rows written through Active Record would not be in the source the copy is taken from.
      - A prices copy where three `price_changes` rows name a missing series (insert them with `PRAGMA foreign_keys = OFF` on the copy through `sqlite`) raises `OrphanRows` with `count == 3`.
      - A primary copy with one row having two broken keys still counts 1, as today.
-  2. Green, `snapshot.rb`:
-     ```ruby
-     # Counts only, never a name or an address (hosted-door rule 2, AC-1.7): the primary's three tables unless +names+ says
-     # otherwise (the prices database's, spec 081 decision 6). Cross-tenant by nature: it counts the instance.
-     def counts(names = Manifest::COUNT_NAMES)
-       with(readonly: true) { |database| names.to_h { |table| [ table, database.get_first_value("SELECT COUNT(*) FROM #{table}") ] } }
-     end
-     ```
-     In `verify!`, count rows of rowid tables once each, and each violation of a `WITHOUT ROWID` table (whose rowid SQLite reports as null) on its own (spec 081 decision 3):
+  2. Green, `snapshot.rb` (`counts(names)` already exists from T3.1). In `verify!`, count rows of rowid tables once each, and each violation of a `WITHOUT ROWID` table (whose rowid SQLite reports as null) on its own (spec 081 decision 3):
      ```ruby
      results = database.execute("PRAGMA foreign_key_check")
      count = results.select { it[1] }.map { it.first(2) }.uniq.size + results.count { it[1].nil? }
      raise OrphanRows.new(count) if count.positive?
      ```
      Update the comment above it.
-  3. Switch `instance_prices_database` in the helpers to `Collector::Backup::Databases.configured.prices`. Commit: `feat(backup): count a prices snapshot, and orphans of WITHOUT ROWID tables (#363)`.
+  3. Switch `instance_prices_database` in the helpers to `Collector::Backup::Databases.configured.prices`. Commit: `feat(backup): count the orphans of WITHOUT ROWID tables (#363)`.
 
 - [ ] **T3.3 `backup:create` holds both databases (AC-4.1 to AC-4.8).**
   1. Red, `spec/lib/collector/backup/create_spec.rb`:
+     - Change the existing examples:
+       - `:18`, the report's lines: the schema line becomes `Schema version: <v>; prices <pv>`, and the counts line gains the prices phrase.
+       - `:184`: the refusal says "(twice the two databases' sizes)".
+       - `:129`, the killed run, runs in a child process with no Rails, so pass `prices_source:` as an argument, as `source:` is passed. Add the prices temporary file to what it expects to find: the prices `.partial` exists only after `:snapshot_written` (it is created after the primary is taken). At the existing kill point the leftovers are still the one primary `.partial`, so `leftovers.size == 1` holds.
      - Change `:21` ("holds the manifest and a rollback-journal snapshot…") to expect `backup_format_version` 2 and a `prices` member that agrees with `prices.sqlite3`. Change `:37` ("nothing but the two files") to the three files `manifest.json primary.sqlite3 prices.sqlite3` (AC-4.1).
      - Add these examples:
        - Seeding two price rows through `PricesRecord.lease_connection` (in a `:committed` example) makes `prices.sqlite3` hold them, in rollback-journal mode, passing `verify!` (AC-4.1, AC-4.3).
@@ -568,16 +627,16 @@ After this branch: `bin/rails db:prepare` creates `storage/<env>_prices.sqlite3`
        - A damaged prices source (`damage_table!` on a copy, passed as `prices_source:`) refuses with spec 030's damage message, `The prices database reports damage, so no backup was made.`, and leaves nothing (AC-4.5).
        - A prices source whose `price_changes` holds three rows naming a missing series refuses with `The prices database fails its foreign-key check (3 rows), so no backup was made.` (AC-4.5).
        - With `free_space:` returning one byte less than `2 * (primary.size + prices.size)`, it refuses, naming that need (AC-4.6).
-       - AC-4.8 reuses the writers of `create_spec.rb:89`. Add a third writer kind, `prices`, to `BackupHelpers::WRITER`, which inserts `price_changes` rows through its own `SQLite3::Database` on the prices file, and assert its commits keep going under 5 s while the backup runs, as the existing example asserts for `pairs` and `lots`. The writer needs a source and a series row. Seed them first in the example.
+       - AC-4.8 reuses the writers of `create_spec.rb:89`, with a new checkpoint `:prices_starting`, fired just before the prices `VACUUM INTO`, so the prices writer's commits are measured while the prices snapshot is taken. Add a third writer kind, `prices`, to `BackupHelpers::WRITER`, which inserts `price_changes` rows through its own `SQLite3::Database` on the prices file, and assert its commits keep going under 5 s while the backup runs, as the existing example asserts for `pairs` and `lots`. The writer needs a source and a series row. Seed them first in the example.
   2. Green, `create.rb`:
      - `initialize(directory:, source: Databases.configured.primary, prices_source: Databases.configured.prices, …)` sets `@prices_source = Pathname(prices_source)`.
      - `check_destination`: after `raise no_source unless @source.file?`, add `raise no_prices unless @prices_source.file?`. The need becomes `2 * (@source.size + @prices_source.size)`, and the refusal says "(twice the two databases' sizes)".
-     - `make`: a second temporary `prices_file = @directory.join("#{final.basename(".tar.gz")}.prices.sqlite3.#{token}.partial")`, created private. Take, journal-switch and verify it right after the primary, with `@checkpoint.call(:prices_written)` after taking it. The manifest is `Manifest.for(snapshot, taken_at:, prices: Snapshot.new(prices_file))`, and the archive is `Archive.write(archive_file, manifest:, snapshot: snapshot_file, prices: prices_file)`. The `ensure` also removes `prices_file`. `PARTIAL` must match the new name: `/\Acollector-backup-\d{8}T\d{6}Z\.(?:tar\.gz|sqlite3|prices\.sqlite3)\.\h{16}\.partial(?:-journal|-wal|-shm)?\z/`. Update the comment on `PARTIAL`.
+     - `make`: a second temporary `prices_file = @directory.join("#{final.basename(".tar.gz")}.prices.sqlite3.#{token}.partial")`, created private after `:snapshot_written`. Take, journal-switch and verify it right after the primary, with `@checkpoint.call(:prices_starting)` before taking it and `@checkpoint.call(:prices_written)` after. The manifest is `Manifest.for(snapshot, taken_at:, prices: Snapshot.new(prices_file))`, and the archive is `Archive.write(archive_file, manifest:, snapshot: snapshot_file, prices: prices_file)`. The `ensure` also removes `prices_file`. `PARTIAL` must match the new name: `/\Acollector-backup-\d{8}T\d{6}Z\.(?:tar\.gz|sqlite3|prices\.sqlite3)\.\h{16}\.partial(?:-journal|-wal|-shm)?\z/`. Update the comment on `PARTIAL`.
      - `translating`: a `Snapshot::Damaged` or `OrphanRows` raised while the prices file is handled must name the prices database. Wrap the prices steps in `rescue Snapshot::Damaged => e; raise PricesDamaged …`, or keep a `@stage` (`:primary` or `:prices`) that `translating` reads to choose "The database" or "The prices database". Use the `@stage` instance variable: it is one line in `make` before each stage.
      - `Result` gains `prices_schema_version` and `prices_counts`. `report` gives `Schema version: #{schema_version}; prices #{prices_schema_version}` and `Holds: #{Backup.counts_phrase(counts)}; #{Backup.prices_phrase(prices_counts)}`.
      - `no_prices` returns `Refusal.new("There is no prices database at #{@prices_source}.", "Start Collector once on this release, which creates it, then run this again.")`.
      - The class comment says "of the primary and prices databases (spec 081 decision 7); the two snapshots are taken one after the other, not at one moment".
-  3. `lib/tasks/backup.rake`: the create task's `desc` reads `Back up the primary and prices databases into DIRECTORY, …`. Update the file's comment.
+  3. `script/backup/measure.rb:71` passes nothing new: its process has Rails, so `prices_source:` defaults to the configured file. Check that the development prices database exists there (`bin/rails db:prepare`), and otherwise leave the call as it is. `lib/tasks/backup.rake`: the create task's `desc` reads `Back up the primary and prices databases into DIRECTORY, …`. Update the file's comment.
   4. `bin/rspec spec/lib/collector/backup/create_spec.rb`, then `spec/lib/collector/backup spec/backup_*_spec.rb`, one at a time. Commit: `feat(backup): backup:create holds the prices database (#363)`.
 
 - [ ] **T3.4 `backup:restore` restores versions 1 and 2, both databases or neither (AC-5.1 to AC-5.8).**
@@ -591,16 +650,30 @@ After this branch: `bin/rails db:prepare` creates `storage/<env>_prices.sqlite3`
      - AC-5.6: run with a `checkpoint:` that, at `:prices_placed`, creates `production.sqlite3` in the volume (as `restore_spec.rb:91` does for the primary). The restore refuses as not fresh, and the volume then holds only that planted file: the prices file it placed was removed.
      - AC-5.7: `stub_const("Collector::Backup::FORMAT_VERSIONS", [ 1 ])` plus `stub_const("Collector::Backup::FORMAT_VERSION", 1)`, then restoring a version 2 file is refused with `… uses backup format version 2; this release restores version 1.`.
      - AC-5.8: extend the existing "never creates the primary's path" example (`:104`) to the prices path too.
+     - Change the existing examples:
+       - `:42`: the report sentence "3 lots." is now "3 lots; 0 current prices and 0 price changes.".
+       - `:60`: the `contain_exactly` list gains `production_prices.sqlite3`.
+       - `:97`: on a primary clash, the refusal still names only `production.sqlite3`, because the clash block removes the placed prices file first (below).
+       - `:110`: the killed child passes `release_prices_versions:` as JSON beside `release_versions:`, and builds its `Databases` with `"prices" => volume.join("production_prices.sqlite3")`. At `:snapshot_ready` the volume holds the two temporary files, and nothing is placed yet.
+     - `databases_spec.rb:36`: add `collector-restore-prices.partial` and its `-journal` to the files `occupied` ignores.
   2. Green, `restore.rb`:
      - `TEMPORARY_PRICES = "collector-restore-prices.partial".freeze`.
      - `initialize(…, release_versions: Backup.release_schema_versions, release_prices_versions: Backup.release_schema_versions(Rails.root, "db/prices_migrate"), …)`.
      - `refuse_without_room`: `need = manifest.entries.sum { it[1] } + MARGIN`.
      - `call`: after reading, remove both temporary files (with `RESTORE_SUFFIXES`). `extract` writes each entry to its temporary file (`{ |chunk, name| (name == Archive::PRICES ? prices_io : primary_io).write(chunk) }`) and checks each size against the manifest's entry. `prepare` checks the primary as today. When `manifest.prices`, it then checks the prices temporary file: `Snapshot#verify!`, the schema check against `@release_prices_versions` (its own message), `rollback_journal!`, and `counts(Manifest::PRICES_COUNT_NAMES) == manifest.prices["counts"]`. It does not run `end_sessions!`.
-     - Placing: when `manifest.prices`, publish the prices temporary file to `@databases.prices` (on a clash, `raise not_fresh`), set `prices_placed = true`, call `@checkpoint.call(:prices_placed)`, then publish the primary. On any exception after `prices_placed` and before the primary is placed, the `ensure` removes `@databases.prices` and its sidecars. That file is the run's own, because the volume was fresh and `publish` never replaces a file.
-     - `not_fresh`: when `occupied` includes the prices file and not the primary, the advice is `It may be the prices database of a restore that stopped: remove <name> and its -wal, -shm and -journal files, then restore again. Never start Collector on this volume as it is (#375).` Otherwise the advice is unchanged.
+     - Placing:
+       - `:snapshot_ready` fires once both temporary files are prepared, before anything is placed, as today.
+       - `Backup.fsync_file` both temporary files.
+       - When `manifest.prices`, publish the prices temporary file to `@databases.prices` (on a clash, `raise not_fresh`), set `prices_placed = true` and call `@checkpoint.call(:prices_placed)`.
+       - Then publish the primary. Its clash block first removes the placed prices file and its sidecars, then raises `not_fresh`. The refusal then lists only what was there before the run, and "Nothing was changed" stays true.
+       - On any other exception after `prices_placed` and before the primary is placed, the `ensure` removes `@databases.prices` and its sidecars. That file is the run's own, because the volume was fresh and `publish` never replaces a file.
+       - The archive's entries map to the volume's paths through `HELD`: `HELD.key(Archive::PRICES)` is `"prices"`, read with a `Databases#path(name)` (`@paths.fetch(name)`). Add `path(name)` in this task, documented.
+       - When `manifest.prices` is set and `@databases` has no `prices` path, raise `ArgumentError`: a configuration without a prices database is a programming error, not an operator's.
+     - `not_fresh`: when `occupied` includes the prices file or any of its sidecars, and neither the primary nor any of its sidecars, the advice is `It may be the prices database of a restore that stopped: remove <name> and its -wal, -shm and -journal files, then restore again. Never start Collector on this volume as it is (#375).` Otherwise the advice is unchanged.
      - `Result#report`: with `manifest.prices`, the second line reads `Taken … at schema version X (prices Y); it holds #{counts}; #{Backup.prices_phrase(…)}. Compare …`. Without it, the second line is as today, plus the sentence `The backup holds no prices; Collector's first start creates an empty prices database.`
      - Update the class comment: two temporary files, prices placed first and removed on failure, the killed case, and `@see file:release-and-deploy.md`.
-  3. `bin/rspec spec/lib/collector/backup/restore_spec.rb`, then `spec/lib/collector/backup spec/backup_*_spec.rb`, one at a time. Commit: `feat(backup): backup:restore brings the prices database back, or neither (#363)`.
+  3. `script/backup/measure.rb:78`: `Databases.new("primary" => volume.join("production.sqlite3"), "prices" => volume.join("production_prices.sqlite3"))`.
+  4. `bin/rspec spec/lib/collector/backup/restore_spec.rb`, then `spec/lib/collector/backup spec/backup_*_spec.rb`, one at a time. Commit: `feat(backup): backup:restore brings the prices database back, or neither (#363)`.
 
 - [ ] **T3.5 A killed restore, and the round trip with price rows (AC-5.9, AC-6.2).**
   1. `restore_spec.rb`, AC-5.9:
@@ -628,7 +701,7 @@ After this branch: `bin/rails db:prepare` creates `storage/<env>_prices.sqlite3`
      - `release.rb`: `MIGRATION_DIRECTORIES = %w[db/migrate db/prices_migrate].freeze` (with a comment citing spec 081 decision 10). Add `def migration_files(ref, directory = "db/migrate")` and `def migration_versions(ref, directory = "db/migrate")`, and `def all_migration_versions(ref) = MIGRATION_DIRECTORIES.flat_map { migration_versions(ref, it) }`. A ref without `db/prices_migrate/` gives `[]`: `git ls-tree` prints nothing for a missing path.
      - `guard.rb`: `released_files(tag) = Release::MIGRATION_DIRECTORIES.flat_map { @release.migration_files(tag, it) }`. Update the header comment.
      - `rules.rb`: the "not a file in db/migrate/" message names both directories.
-     - `harness.rb`: `working_versions` covers both directories. Where it calls `ExpectedChanges.load`, `previous_versions:` and `current_versions:` use the versions of both directories: `all_migration_versions(@plan[:ref])` and the working tree's two directories.
+     - `harness.rb`: **`working_versions` stays `db/migrate` only**, because `compare` (`harness.rb:303`) checks the primary's `schema_migrations` against it, and a prices version there would fail every upgrade. Add `working_prices_versions` for `db/prices_migrate`. Only `ExpectedChanges.load` gets the union: `current_versions: working_versions + working_prices_versions` and `previous_versions: @release.all_migration_versions(@plan[:ref])`. `verify_old` and `compare` keep using `migration_versions(ref)` (the default directory) for the primary.
   3. Commit: `feat(upgrade): the migration guard and expected changes cover db/prices_migrate (#363)`.
 
 - [ ] **T4.2 The harness copies, checks and compares the prices file (AC-6.4, AC-6.5).**
@@ -644,6 +717,8 @@ After this branch: `bin/rails db:prepare` creates `storage/<env>_prices.sqlite3`
        - (f) The same tag where both prices files are equal passes and prints the prices comparison table.
        - (g) The backup leg: a restored entry without a prices file fails as in (b), and with an equal one passes.
        - (h) When the previous tag has `db/prices_migrate/` but the old entry has no prices file, it fails with `the previous release should have made production_prices.sqlite3`.
+       - (i) An `expected_changes.yml` entry for a prices table: with a previous release that has prices, and the difference it names in `price_changes`, the run passes and the primary's report shows no unmatched entry (M1).
+       - (j) A `seed_exceptions.yml` `next:` entry for a primary table doesn't fail the prices coverage.
        - In each scenario, the "next" database has a prices file whose tables all hold a row, or the coverage rule names the empty one.
      - `spec/script/upgrade/engine_spec.rb`: `copy_database`'s `ls`/`cp` commands now take `production_prices.sqlite3` and its sidecars when listed. The allowlist example (AC-8.3) still passes.
   2. Green:
@@ -651,7 +726,7 @@ After this branch: `bin/rails db:prepare` creates `storage/<env>_prices.sqlite3`
      - `harness.rb`:
        - Add `PRICES_FILE = "production_prices.sqlite3".freeze` and `PRICES_WITHOUT_ROWID = %w[current_prices price_changes].freeze`, each with a comment citing spec 081 decisions 3 and 10.
        - `stop_and_snapshot` also consolidates the prices file when the copy holds it: `@prices[label] = Snapshot.open(Snapshot.consolidate(copies, PRICES_FILE, File.join(@scratch, "#{label}_prices.sqlite3")))`, or `nil` when it is absent. It still returns the primary.
-       - `prices_at_previous? = @release.migration_versions(@plan[:ref], "db/prices_migrate").any?`, computed once after `resolve`. When `@plan[:ref]` is nil (an image given without a version), it is false.
+       - `prices_at_previous? = @release.migration_versions(@plan[:ref], "db/prices_migrate").any?`, computed once after `fetch_previous`, because for an explicit image without a version, `settle_version` sets `@plan[:ref]` only during the fetch. When `@plan[:ref]` is still nil, it is false.
        - In `verify_old`, if `prices_at_previous?`, `@prices["old"]` must exist (else fail with (h)'s message), and its `schema_migrations` must equal the tag's prices versions (`AC-2.1` wording, naming the prices database).
        - Add `check_prices(label, old_label)`. It fails unless:
          - `@prices[label]` exists (message (b), with the label's volume role);
@@ -660,7 +735,10 @@ After this branch: `bin/rails db:prepare` creates `storage/<env>_prices.sqlite3`
          - each `PRICES_WITHOUT_ROWID` table's `sql` ends in `WITHOUT ROWID`.
          It prints `prices: <n> tables, schema <latest>, WITHOUT ROWID on current_prices and price_changes`. When `@prices[old_label]` exists, it runs `Compare.new(@prices[old_label], @prices[label], expected: @changes.live).call`, prints its lines, and fails on `!ok?` naming "the prices database".
        - Call `check_prices("upgraded", "old")` from `upgrade` after `compare`, and `check_prices("restored", "old")` from `backup_leg` after its `compare`.
-       - In `next_release`, run `SeedExceptions.coverage(@prices["next"], exceptions.entries, …)` too, and fail when `@prices["next"]` is missing.
+       - **Each comparison gets the expected changes of its own database.** `Compare#call` resets `matched` on every entry it is given (`compare.rb:82`) and reports the unmatched ones (`:177`), so one list shared by both comparisons fails whichever database lacks the entry's table. Add `def changes_for(db) = @changes.live.select { Compare.tables(db).include?(it.table) }`, written against the old database (whose tables a dropped-table entry names). Pass `expected: changes_for(old)` to the primary's `Compare.new` in `compare` and `expected: changes_for(@prices[old_label])` to the prices one. An entry whose table is in neither old database matches nothing, and the primary's report flags it as unmatched, as today.
+       - **Seed exceptions likewise.** `SeedExceptions.coverage` flags a listed table that its database doesn't have (`rules.rb:88`). Give each call `entries.select { Compare.tables(db).include?(it.table) }`, and fail once, in `next_release`, for a listed table that is in neither database, with the existing message. Apply this to `verify_old` and `next_release` for the primary and for prices.
+       - In `next_release`, run the coverage on `@prices["next"]` too, and fail when `@prices["next"]` is missing.
+       - In `verify_old`, when `prices_at_previous?`, also run the coverage on `@prices["old"]` (decision 10: the old prices database is checked as the primary is).
        - Update the header comment, `backup_leg`'s comment (no longer "the backup holds the primary only"; a version 1 backup's restored instance gets its prices file from its first start) and `stop_and_snapshot`'s.
   3. `bin/rspec spec/script/upgrade`. Commit: `feat(upgrade): the upgrade proof checks and compares the prices database (#363)`.
 
@@ -706,7 +784,7 @@ After this branch: `bin/rails db:prepare` creates `storage/<env>_prices.sqlite3`
      - It appends `PricesRecord.lease_connection.select_value("SELECT count(*) FROM current_prices")` to the printed line.
      - `verify_restored`'s expected string becomes `true,0,nil,true,1,1,1`, in both places.
      - Update the comment above `state_ruby` ("The five databases exist … and the price row came back").
-  3. After the first restore's counts check (`:185`), add `grep -q "; 1 current price and 0 price changes\." <<<"$restored" || fail "backup:restore didn't print the prices counts:"$'\n'"$restored"`. Match the exact report text T3.4 prints.
+  3. The counts check at `:185` greps for `it holds 1 account, 1 user and 1 lot\.`, but the report now continues after "1 lot" with "; …". Replace it with `grep -q "it holds 1 account, 1 user and 1 lot; 1 current price and 0 price changes\." <<<"$restored" || fail "backup:restore's counts are not the seeded instance's:"$'\n'"$restored"`. Match the exact report text T3.4 prints.
   4. `spec/smoke_scripts_spec.rb` may pin parts of the script. Run it: `bin/rspec spec/smoke_scripts_spec.rb`.
   5. Commit: `test(backup): bin/backup-smoke carries a price row through the restore (#363)`.
   6. **The container runs are not this task's.** They need colima and a slot; see T5.3.
