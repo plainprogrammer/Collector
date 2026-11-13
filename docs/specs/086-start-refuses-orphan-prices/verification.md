@@ -23,8 +23,17 @@ Suite examples are in `spec/lib/collector/start_check_spec.rb` (class level, `St
 | AC-2.7 | process spec (removal, then a new instance; removal, restore again onto the volume, then a start with the restored rows) | proven |
 | AC-3.1 | `restore_spec.rb` (exact advice text, red before the change) | proven |
 | AC-3.2 | read, below | proven by reading |
-| AC-4.1, AC-4.2 | `bin/backup-smoke`'s new leg | image run recorded below |
-| AC-4.3 | `bin/backup-smoke collector:branch collector:main` (the restore image is an image of `origin/main`) | image run recorded below |
+| AC-4.1, AC-4.2 | `bin/backup-smoke`'s new leg, run on the branch image | proven, run 1 below |
+| AC-4.3 | `bin/backup-smoke collector:s086 collector:s086main` (the restore image is an image of `origin/main`) | proven, run 2 below |
+
+## The image runs (T7, 2026-11-13, macOS arm64, docker through colima)
+
+Images built locally with `docker build -t …` (no build arguments are needed by `bin/backup-smoke`): `collector:s086` from the branch at `e5678a04` and `collector:s086main` from `git archive origin/main` (`b66b767f`); `grep -c start:check /rails/bin/docker-entrypoint` in each image printed 1 and 0. `bin/backup-smoke` ran with a `mktemp` shim ahead of the real one on the PATH (colima shares only `$HOME`; `.claude/memory/container-engine-colima-macos.md`).
+
+1. `bin/backup-smoke collector:s086`: **OK**, exit 0. Every leg passed, the new one included: the container run detached on a volume that holds the restored prices file and no primary exited with status 1 and its log held "Collector did not start", the prices file's name, "no primary database", "restore again" and "Nothing was changed"; the volume held no primary afterwards (AC-4.1); after the prices files were removed, a start answered `/up` 200 and a `runner` reported no user, no current price and all five database files (AC-4.2).
+2. `bin/backup-smoke collector:s086 collector:s086main` (the restore image is main's): **FAIL**, exit 1, at the new leg, with `FAIL: spec 086 AC-4.1: the image started on a volume that holds a prices database and no primary (still running after 120 s)`. Every earlier leg passed on main's image, so the failure is the leg's own and names this spec (AC-4.3). The wait is bounded: the run didn't hang.
+
+Logs: `tmp/s086-smoke-branch.log` and `tmp/s086-smoke-main.log` in the worktree (ignored by git).
 
 ## Decision 7's measure
 
@@ -41,4 +50,4 @@ Each says that a start refuses the volume, and none says only "never start" or t
 
 ## Implementation review
 
-SPEC-ALIGNED WITH FINDINGS (Opus 5.5, read-only, 2026-11-13; 0 blocking, 1 major, 11 minor). The major finding, a missing `verification.md`, is this file. Fixed in `9438f2bb`: the smoke leg prints the restore's output on failure and the AC-4.2 line on a failing `runner`, and greps more of the message; the message names the prices file by its full path and words several leftovers plainly; the README names a leftover primary file; the class spec asserts the prices path for AC-1.8; the plan's Risks line without an example is dropped. Not changed, by choice: AC-1.5's "the placed file" rests on a row count and unchanged checksums, which is adequate. AC-4.1 to AC-4.3 await the image runs.
+SPEC-ALIGNED WITH FINDINGS (Opus 5.5, read-only, 2026-11-13; 0 blocking, 1 major, 11 minor). The major finding, a missing `verification.md`, is this file. Fixed in `9438f2bb`: the smoke leg prints the restore's output on failure and the AC-4.2 line on a failing `runner`, and greps more of the message; the message names the prices file by its full path and words several leftovers plainly; the README names a leftover primary file; the class spec asserts the prices path for AC-1.8; the plan's Risks line without an example is dropped. Not changed, by choice: AC-1.5's "the placed file" rests on a row count and unchanged checksums, which is adequate. AC-4.1 to AC-4.3 are proven by the image runs above.
