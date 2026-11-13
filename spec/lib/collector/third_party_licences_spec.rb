@@ -100,4 +100,132 @@ RSpec.describe Collector::ThirdPartyLicences, type: :model do
       end
     end
   end
+
+  describe ".build" do
+    let(:text_dir) { dir.join("texts").tap(&:mkpath) }
+
+    def write_manifest(sections)
+      dir.join("manifest.yml").tap { it.write(sections.to_yaml) }
+    end
+
+    def build(sections, specs: [])
+      described_class.build(specs:, manifest: write_manifest(sections), text_dir:)
+    end
+
+    def entry(name, **more) = { "name" => name, "version" => "1.0", "spdx" => "MIT", "home" => "https://#{name}.test" }.merge(more.transform_keys(&:to_s))
+
+    it "has the five sections in page order with their titles (AC-1.5)", :aggregate_failures do
+      sections = build({}).sections
+
+      expect(sections.map(&:key)).to eq(%i[javascript ocr fonts icons gems])
+      expect(sections.map(&:title)).to eq([ "JavaScript", "OCR engine", "Fonts", "Icons", "Ruby gems" ])
+    end
+
+    it "sorts each section's components by name, ignoring case", :aggregate_failures do
+      instance = build({ "fonts" => [ entry("beta"), entry("Alpha"), entry("zeta") ] }, specs: [ stand_in_gem(dir, name: "b"), stand_in_gem(dir, name: "A") ])
+
+      expect(instance.sections.find { it.key == :fonts }.components.map(&:name)).to eq(%w[Alpha beta zeta])
+      expect(instance.sections.find { it.key == :gems }.components.map(&:name)).to eq(%w[A b])
+    end
+
+    it "shows an entry's texts under their titles and the fields it gives (AC-3.4)", :aggregate_failures do
+      text_dir.join("one.txt").write("first text")
+      text_dir.join("two.txt").write("second text")
+      instance = build({ "ocr" => [ entry("engine", copyright: "Copyright 2020 Someone", texts: [ { "title" => "LICENSE.md", "file" => "one.txt" }, { "title" => "More", "file" => "two.txt" } ]) ] })
+
+      component = instance.sections.find { it.key == :ocr }.components.first
+
+      expect(component.texts).to eq([ [ "LICENSE.md", "first text" ], [ "More", "second text" ] ])
+      expect([ component.version, component.identifiers, component.home, component.copyright ]).to eq([ "1.0", [ "MIT" ], "https://engine.test", "Copyright 2020 Someone" ])
+    end
+
+    it "shows no texts for an entry that says text: none, with its note and not its reason (AC-3.5)", :aggregate_failures do
+      instance = build({ "ocr" => [ entry("data", text: "none", reason: "ships no text", note: "as the package declares") ] })
+
+      component = instance.sections.find { it.key == :ocr }.components.first
+
+      expect(component.texts).to eq([])
+      expect(component.note).to eq("as the package declares")
+      expect(component.to_h.values.flatten).not_to include("ships no text")
+    end
+
+    it "takes a gem entry's texts from that gem's files under their file names (AC-3.4)", :aggregate_failures do
+      gem = stand_in_gem(dir, name: "turbo-rails", files: { "MIT-LICENSE" => "mit text" })
+      instance = build({ "javascript" => [ entry("Turbo", gem: "turbo-rails") ] }, specs: [ gem ])
+
+      expect(instance.sections.first.components.first.texts).to eq([ [ "MIT-LICENSE", "mit text" ] ])
+    end
+
+    it "shows no texts for a gem entry whose gem isn't in the bundle" do
+      instance = build({ "javascript" => [ entry("Turbo", gem: "turbo-rails") ] }, specs: [ stand_in_gem(dir, name: "other", files: { "LICENSE" => "text" }) ])
+
+      expect(instance.sections.first.components.first.texts).to eq([])
+    end
+
+    it "leaves out a text whose file is missing, empty or unreadable (AC-4.3)", :aggregate_failures do
+      text_dir.join("empty.txt").write("")
+      text_dir.join("ok.txt").write("ok text")
+      texts = [ { "title" => "Gone", "file" => "gone.txt" }, { "title" => "Empty", "file" => "empty.txt" }, { "title" => "Ok", "file" => "ok.txt" } ]
+
+      component = build({ "icons" => [ entry("Icons", texts:) ] }).sections.find { it.key == :icons }.components.first
+
+      expect(component.texts).to eq([ [ "Ok", "ok text" ] ])
+    end
+
+    it "reads the gems of the running bundle, each answering the five readers (AC-1.5)", :aggregate_failures do
+      specs = Bundler.load.specs.to_a
+
+      expect(specs).not_to be_empty
+      expect(specs.map { [ it.name, it.version, it.licenses, it.homepage, it.full_gem_path ] }.size).to eq(specs.size)
+      expect(described_class.gem_components(specs).map(&:name)).to include("rails")
+    end
+  end
+
+  describe ".load_manifest" do
+    it "reads a manifest with string keys" do
+      path = dir.join("manifest.yml")
+      path.write("fonts:\n  - name: Plain\n")
+
+      expect(described_class.load_manifest(path)).to eq({ "fonts" => [ { "name" => "Plain" } ] })
+    end
+
+    it "refuses an object tag instead of building the object (decision 3)" do
+      path = dir.join("manifest.yml")
+      path.write("fonts:\n  - !ruby/object:Object {}\n")
+
+      expect { described_class.load_manifest(path) }.to raise_error(Psych::DisallowedClass)
+    end
+  end
+
+  describe ".current" do
+    after { described_class.reset }
+
+    def counting_builder(calls) = -> { calls.push(:built).then { described_class.new([]) } }
+
+    it "builds once and returns the same list afterwards (AC-1.8)", :aggregate_failures do
+      calls = []
+      builder = counting_builder(calls)
+
+      first = described_class.current(builder:)
+
+      expect(described_class.current(builder:)).to equal(first)
+      expect(calls.size).to eq(1)
+    end
+
+    it "doesn't keep a build that raised, and tries again on the next call (AC-1.8)", :aggregate_failures do
+      expect { described_class.current(builder: -> { raise "no manifest" }) }.to raise_error("no manifest")
+
+      calls = []
+      expect(described_class.current(builder: counting_builder(calls))).to be_a(described_class)
+      expect(calls.size).to eq(1)
+    end
+
+    it "serves the list set with .current= until .reset", :aggregate_failures do
+      replacement = described_class.new([ described_class::Section.new(key: :gems, title: "Ruby gems", components: []) ])
+      described_class.current = replacement
+
+      expect(described_class.current(builder: -> { raise "not asked" })).to equal(replacement)
+      expect(replacement.sections.map(&:key)).to eq([ :gems ])
+    end
+  end
 end
