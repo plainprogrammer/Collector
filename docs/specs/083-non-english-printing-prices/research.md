@@ -139,3 +139,5 @@ Read-only reviews of the method and the findings, on Fable 5.2, 2026-11-13:
 ## The maintainer's ruling
 
 **2026-11-13, option C** ([roadmap ruling 41](../../roadmap.md#2026-11-13-prices-on-non-english-printings-research-083)), as recommended: a non-English printing with an English twin (the English printing of the same set code and collector number) shows the twin's price for the same finish, labelled as the English printing's, and nothing for a finish the twin hasn't; a printing with no twin shows its own. The consequences for [#364](https://github.com/plainprogrammer/Collector/issues/364), [#365](https://github.com/plainprogrammer/Collector/issues/365), [#368](https://github.com/plainprogrammer/Collector/issues/368) and [#369](https://github.com/plainprogrammer/Collector/issues/369) are those listed under the recommendation, for their specs to settle.
+
+No area doc covers prices yet, so nothing of this note is distilled now: the prices area doc takes ruling 41 when #364 is specified, as research 016 went to [catalog core](../../architecture/catalog-core.md).
