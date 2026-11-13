@@ -51,7 +51,7 @@ The counts section numbers below (§0 to §8) are those of [`counts.md`](counts.
 - **Every card object has a `prices` object of its own,** in every language (§1). For a non-English printing it is almost always empty: 97.5% of Japanese paper printings (62,440 of 64,033) have no price at all, and 96.6% to 99.8% of every other major language. English: 5.4%.
 - **A non-English printing with an English twin carries no price of its language.** Of 428,442 such printings in ten languages, none has a USD price, none has a `tcgplayer_id`, and where one has a EUR price (5,256 nonfoil, 2,411 foil) it is the twin's price, to the cent: 5,282 of the 5,293 printings with a EUR price carry the twin's `cardmarket_id` (§3, §4, §5a). The file holds 12 exceptions, and only 11 of them are a price of the language (§4, §5a, §7).
 - **The pairing holds.** No two English paper printings share a set code and number, and every pair is the same card (`oracle_id`, §0). But 1,697 Japanese pairs (1,654 foil, 43 nonfoil) are for a finish the twin hasn't, so the twin has no price to lend for it (§4c).
-- **A printing with no English twin has prices of its own,** often for Japanese (90.1% of foil, 30.9% of nonfoil) and less often elsewhere (none of the 370 Korean or Traditional Chinese `4bb` printings): those are separate products, such as the Japanese War of the Spark planeswalkers numbered with a ★ (`war`, `pwar`) and the Japanese printings of `sta` and `soa` with numbers of their own (§3, §4b).
+- **A printing with no English twin has prices of its own,** often for Japanese (90.1% of foil, 30.9% of nonfoil) and less often elsewhere (none of the 370 Korean `4bb` printings, nor of the 370 Traditional Chinese): those are separate products, such as the Japanese War of the Spark planeswalkers numbered with a ★ (`war`, `pwar`) and the Japanese printings of `sta` and `soa` with numbers of their own (§3, §4b).
 - **Equal means equal in EUR only, never in both currencies** (§4a), because no paired non-English printing has a USD price.
 - **`default_cards` and `all_cards` carry the same prices for the same card id** (all 120,063 ids, §8). The file decides which printings exist, not what they cost.
 - **The file has no `eur_etched` key at all** (§2), in any object. The price data design lists it among the prices; it is five series, not six.
@@ -82,10 +82,10 @@ Every Japanese `tcgplayer_id` in the file (512, §1) is on a printing with no En
 
 ### The other languages
 
-The same pattern holds for French, German, Spanish, Italian, Simplified and Traditional Chinese, Portuguese, Russian and Korean (§3 to §5): no USD price on any printing with an English twin; a EUR price on 0.2% to 1.7% of them, equal to the twin's and under its `cardmarket_id`; a finish the twin hasn't on 10,962 foil and 329 nonfoil pairs (§4c). The exceptions, 12 prices of 428,442 pairs (§7 lists them all):
+The same pattern holds for French, German, Spanish, Italian, Simplified and Traditional Chinese, Portuguese, Russian and Korean (§3 to §5): no USD price on any printing with an English twin; a EUR price on 0.2% to 1.7% of them, equal to the twin's (but for the 12 exceptions below) and under its `cardmarket_id`; a finish the twin hasn't on 10,962 foil and 329 nonfoil pairs (§4c). The exceptions, 12 prices of 428,442 pairs (§7 lists them all):
 
-- 11 Spanish printings, 7 Portal (`por`) and 4 Introductory Two-Player Set (`itp`), with a `cardmarket_id` of their own and a EUR price that differs from the English one (median ratio 0.83, §6). These are the only prices of a language on a printing with a twin.
-- 1 French printing (`bro` 379) with a EUR price where its English twin has none. It carries the twin's `cardmarket_id`, so it is the same Cardmarket product with the English object's `eur` empty that day, not a French price.
+- 11 Spanish printings, 7 Portal (`por`) and 4 Introductory Two-Player Set (`itp`), with a `cardmarket_id` of their own and a EUR price that differs from the English one (median ratio 0.83, §6). By their own `cardmarket_id`, these are the only prices of a language on a printing with a twin (inferred, see below).
+- 1 French printing (`bro` 379) with a nonfoil EUR price. Its English twin is foil only, so it has no `eur` (its `eur_foil` is 0.25); the French object lists nonfoil and carries 0.16 under the twin's `cardmarket_id`. It is the one priced row of §4c, a finish the twin hasn't, and not equal to any price of the twin.
 
 The printings with no twin are mostly language-only sets (§4b): Foreign Black Border (`4bb`, `fbb`), the Renaissance sets (`ren`, `rin`), Salvat (`psal`, `ps11`), the Japanese `bchr`; and the languages of a few cards (`ph`, `tlh`, `qya`, `dw`, `grc`, `ar`, `he`, `la`, `sa`), every one with no twin.
 
@@ -93,7 +93,7 @@ The printings with no twin are mostly language-only sets (§4b): Foreign Black B
 
 - All 120,063 card ids of `default_cards` are in `all_cards`, with identical `prices` (§8). `default_cards` also carries 2,660 non-English objects, a card's only language (§8), which an English-only catalog leaves out today (spec 002 FR-3): the source keeps only the configured languages.
 - The printings with no twin that `all_cards` alone carries are priced only for German (119 of 428, `fbb` and `ren`) and Portuguese (219 of 375, `4bb`); none for Japanese, whose 378 are all `4bb` (§4b, second table).
-- `default_cards` carries no non-English printing that has a twin. So it lacks the copied EUR prices (7,667 quotes) and the 12 exceptions; under option C below none of them is shown, so it would show the same prices for every printing a catalog with Japanese holds.
+- `default_cards` carries no non-English printing that has a twin: its paper count per language equals the printings with no twin it carries (§4b, §8). So it lacks the copied EUR prices (7,667 quotes) and the 12 exceptions; under option C below none of them is shown, so it would show the same prices for every printing a catalog with Japanese holds.
 
 ### Inferred, not confirmed
 
@@ -114,7 +114,7 @@ A **twin** is the English printing of the same set code and collector number. Th
 
 With the 2026-11-13 file, B and C show the same numbers on every printing but the 12 exceptions, of which only the 11 Spanish are a price of the language; they differ in the label.
 
-Under B and C, a finish the twin hasn't (§4c: 1,654 Japanese foil and 43 nonfoil pairs) has no price to show. The twin's other finish is a different product at a different price, so it isn't lent. Such a finish shows no price, like any unpriced printing.
+Under C, a finish the twin hasn't (§4c: 1,654 Japanese foil and 43 nonfoil pairs) has no price to show. The twin's other finish is a different product at a different price, so it isn't lent. Such a finish shows no price, like any unpriced printing. Of all these pairs in every language, one has a price of its own for that finish (French `bro` 379, above): B would show it, C doesn't.
 
 C is consistent with the design's display: "A collection row shows the price for its finish. Condition and language don't change it." The design names no twin and no label; it predates this finding.
 
@@ -128,6 +128,13 @@ What follows for the issues after this one, for their specs to settle:
 - **[#365](https://github.com/plainprogrammer/Collector/issues/365), the daily refresh:** reading the catalog's file, as designed, keeps the point above: every printing's quotes are stored. Under C, an instance with Japanese only would show the same prices from `default_cards`, at about a fifth of the download (81 MB against 408 MB), but would store none of the copied EUR or the 12 exceptions; with German or Portuguese it would lose the prices of 338 language-only printings. Which file the price refresh reads stays the design's (the catalog's), unless #365 rules otherwise.
 - **[#368](https://github.com/plainprogrammer/Collector/issues/368), the history levels:** under C an owned Japanese printing displays its twin's price, and the twin isn't owned. The tracked level should count the twin of an owned non-English printing as tracked, or the price a collector sees has no history at that level.
 - **[#369](https://github.com/plainprogrammer/Collector/issues/369), the display:** the card page and a collection row of a non-English printing look up its twin by set code and number (unique, §0), for the lot's finish, and the label names the English printing. The label's wording for EUR depends on whether Cardmarket's price is per language (see "Inferred, not confirmed"). A lot's language doesn't change its price, as the design says; the label says why.
+
+## Reviews
+
+Read-only reviews of the method and the findings, on Fable 5.2, 2026-11-13:
+
+- **Round 1: APPROVE WITH CHANGES.** 3 major (the Spanish exceptions are `por` and `itp`, not all `por`; a finish the twin hasn't; option C and the tracked history level), 9 minor and 6 nits. The reviewer streamed `all_cards` to check the pairing. All resolved: the script gained §0, §4c and §5a, and the note was corrected.
+- **Round 2: APPROVE WITH CHANGES.** All round 1 findings resolved and the new numbers checked against `counts.md`. 1 minor (the French `bro` 379 is a finish the twin hasn't, not a day's gap) and 3 nits, all resolved.
 
 ## The maintainer's ruling
 
