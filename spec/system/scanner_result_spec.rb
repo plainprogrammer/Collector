@@ -96,17 +96,19 @@ RSpec.describe "A result in the pane", type: :system do
     expect(scanner_sent.size).to eq(sent)
   end
 
-  it "scrolls a long result inside the pane at 360 × 640, the document still (AC-4.3, AC-1.2)", :aggregate_failures do
-    open_scanner_frame(width: 360, height: 640)
-    within_narrow_frame do
-      show_synthetic_card
-      click_on "Capture"
-      expect(page).to have_css(".c-scanner__candidate", wait: 30)
-      click_on "Other printings"
-      expect(page).to have_css("#scanner_printings li", minimum: 1, wait: 10)
-      scrolled = page.evaluate_script("(() => { const body = document.querySelector('.c-scanpane__results'); body.scrollTop = body.scrollHeight; return body.scrollTop })()")
-      expect(scrolled).to be > 0
-      expect_one_screen(640) # the bars stay at the viewport's edges while the pane is scrolled to its end
+  [ [ 390, 844 ], [ 360, 640 ], [ 360, 560 ] ].each do |width, height|
+    it "scrolls a long result inside the pane at #{width} × #{height}, the document still (AC-4.3, AC-1.2)", :aggregate_failures do
+      open_scanner_frame(width:, height:)
+      within_narrow_frame do
+        show_synthetic_card
+        click_on "Capture"
+        expect(page).to have_css(".c-scanner__candidate", wait: 30)
+        click_on "Other printings"
+        expect(page).to have_css("#scanner_printings li", minimum: 1, wait: 10)
+        scrolled = page.evaluate_script("(() => { const body = document.querySelector('.c-scanpane__results'); body.scrollTop = body.scrollHeight; return body.scrollTop })()")
+        expect(scrolled).to be > 0 if height < 700 # the short screens' pane overflows; the tall one may fit it all
+        expect_one_screen(height) # the bars stay at the viewport's edges while the pane is scrolled to its end
+      end
     end
   end
 

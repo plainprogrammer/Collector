@@ -127,6 +127,41 @@ RSpec.describe "The one-screen scanner", type: :system do
     expect(page.evaluate_script("window.__tracks.every((track) => track.readyState === 'live')")).to be(true)
   end
 
+  # The after-add line's box against the guide's, and how many lines its sentence takes, read in one script (spec 082 AC-3.1).
+  def added_line_clear_of_guide
+    page.evaluate_script(<<~JS)
+      (() => {
+        const text = document.querySelector("#scanner_added_text"), line = document.querySelector(".c-scan__line--added").getBoundingClientRect()
+        const guide = document.querySelector(".c-scan__guide").getBoundingClientRect()
+        return { clear: line.bottom <= guide.top || line.top >= guide.bottom, lines: Math.round(text.getBoundingClientRect().height / parseFloat(getComputedStyle(text).lineHeight)) }
+      })()
+    JS
+  end
+
+  # While the engine loads (AC-1.2): startEngine's synchronous part sets the state before its first await, so the state is read
+  # in the same script that calls it, with nothing else able to run between.
+  def engine_loading_state
+    page.evaluate_script(<<~JS)
+      (() => {
+        const reader = window.Stimulus.getControllerForElementAndIdentifier(document.querySelector(".c-scan"), "card-reader")
+        reader.startEngine()
+        const main = document.querySelector(".c-scan__main"), box = main.getBoundingClientRect(), root = document.documentElement
+        window.scrollTo(0, root.scrollHeight)
+        return { label: main.textContent.trim(), disabled: main.disabled, busy: main.getAttribute("aria-busy"), inView: box.top >= 0 && box.bottom <= window.innerHeight,
+                 scrolls: root.scrollHeight > root.clientHeight || window.scrollY > 0 }
+      })()
+    JS
+  end
+
+  [ [ 390, 844 ], [ 360, 640 ], [ 360, 560 ] ].each do |width, height|
+    it "shows Capture disabled and busy, in view, while the engine loads at #{width} × #{height} (AC-1.2)", :aggregate_failures do
+      open_scanner_frame(width:, height:)
+      within_narrow_frame do
+        expect(engine_loading_state).to eq("label" => "Capture", "disabled" => true, "busy" => "true", "inView" => true, "scrolls" => false)
+      end
+    end
+  end
+
   # AC-1.2's states at one viewport: aiming, reading, a result, after an add, the camera unavailable; the engine failing is
   # T6.1's. The main button's label and state are the table's, and the page stays one screen in each.
   def expect_states_at(width, height)
@@ -147,6 +182,7 @@ RSpec.describe "The one-screen scanner", type: :system do
       expect(page).to have_css("#scanner_added_text", text: "Added")
       expect(page).to have_button("Capture", disabled: false)
       expect_one_screen(height)
+      expect(added_line_clear_of_guide).to include("clear" => true) # AC-3.1, however many lines the sentence wraps to
       page.execute_script(%(navigator.mediaDevices.getUserMedia = async () => { throw new DOMException("blocked", "NotAllowedError") }))
       restart_camera
       expect(page).to have_button("Capture", disabled: true)
