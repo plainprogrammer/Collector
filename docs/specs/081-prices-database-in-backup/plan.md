@@ -1,7 +1,7 @@
 # Implementation Plan: A Prices Database That the Backup Holds (spec 081, issue #363)
 
 **Spec:** `docs/specs/081-prices-database-in-backup/spec.md` (Approved 1.2.2) · **ADR:** 0029 (Proposed) · **Issue:** #363 · **Branch:** `081-prices-database-in-backup` · **Created:** 2026-11-13
-Plan review: Opus, read-only. Round 1 (2026-11-13): REVISE, with one blocking, seven major and ten minor findings. Round 2: APPROVE WITH CHANGES, with three major and eleven minor findings. All are applied in this revision. Gate B: the coordinator (pending). Retired by `distill-feature` after the merge (spec 027).
+Plan review: Opus, read-only. Round 1 (2026-11-13): REVISE, with one blocking, seven major and ten minor findings. Round 2: APPROVE WITH CHANGES, with three major and eleven minor findings. All are applied in this revision. **Approved 2026-11-13** (Gate B, by the coordinator under the maintainer's delegation). Retired by `distill-feature` after the merge (spec 027).
 
 ## Context
 
