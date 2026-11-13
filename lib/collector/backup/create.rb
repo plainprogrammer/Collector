@@ -5,6 +5,7 @@ module Collector
     # not at one moment. Everything it writes is in +directory+, under a .partial name created 0600, until the finished
     # archive is hard-linked to its final name, which it never replaces.
     class Create
+      # What a finished run made: the file, its size, both databases' schema versions and counts, and how long it took.
       Result = Data.define(:path, :bytes, :schema_version, :counts, :prices_schema_version, :prices_counts, :seconds) do
         # The operator's report: five lines, the schema line and the counts line naming both databases (AC-4.7).
         #

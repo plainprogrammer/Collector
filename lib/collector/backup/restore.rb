@@ -55,6 +55,11 @@ module Collector
         @checkpoint = checkpoint
       end
 
+      # Restores the backup: every check first, then the prices snapshot and the primary placed, both or neither (spec 030
+      # FR-2; spec 081 decision 8). A version 1 backup places the primary only.
+      #
+      # @return [Result] the file, the volume and the backup's manifest, for the report
+      # @raise [Refusal] when anything is wrong; the volume is then as it was
       def call
         volume = @databases.directory
         raise Refusal.new("The storage directory #{volume} doesn't exist.", "Mount the volume where Collector expects it, then run this again.") unless volume.directory?

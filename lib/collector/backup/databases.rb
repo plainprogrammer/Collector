@@ -14,8 +14,16 @@ module Collector
         @paths = paths.transform_values { Pathname(it) }
       end
 
+      # The configuration's names of the databases, such as primary and prices.
+      #
+      # @return [Array<String>]
       def names = @paths.keys
+
+      # The primary database's path.
+      #
+      # @return [Pathname]
       def primary = @paths.fetch("primary")
+
       # The prices database's path, nil when the configuration has none (a version 1 world in a spec).
       #
       # @return [Pathname, nil]

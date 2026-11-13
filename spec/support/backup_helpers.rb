@@ -72,9 +72,13 @@ module BackupHelpers
     @scratch_root = nil
   end
 
+  # Each production database's file in +directory+, as a volume holds them.
   def production_paths(directory) = PRODUCTION_NAMES.transform_values { directory.join(it) }
+  # The databases of a volume at +directory+, all five, as a restore onto it sees them.
   def databases_for(directory) = Collector::Backup::Databases.new(production_paths(directory))
+  # The test environment's primary database file.
   def instance_database = Collector::Backup::Databases.configured.primary
+  # The test environment's prices database file, beside instance_database (spec 081 decision 12).
   def instance_prices_database = Collector::Backup::Databases.configured.prices
   def release_versions = Collector::Backup.release_schema_versions
 
