@@ -342,6 +342,17 @@ RSpec.describe "The scanner's sitting", type: :system do
     expect(page.evaluate_script("document.activeElement.classList.contains('c-scan__dest')")).to be(true)
   end
 
+  # The page-load alert flash is drawn by the server with this class (`_added_line`); the example puts it on the line as that render
+  # does, since no page the scanner can be left for answers with an alert flash in a way a system example can reach cheaply.
+  it "drops the alert style from the after-add line on the next capture", :aggregate_failures do
+    visit scanner_path
+    page.execute_script("document.querySelector('.c-scan__line--added').classList.add('c-scan__line--alert')")
+    show_synthetic_card
+    click_on "Capture"
+    expect(page).to have_css(".c-scan--result .c-scanner__candidate", wait: 30)
+    expect(page).to have_no_css(".c-scan__line--alert", visible: :all)
+  end
+
   it "empties the after-add line on the next capture (AC-5.4)", :aggregate_failures do
     visit scanner_path
     add_by_scanning
