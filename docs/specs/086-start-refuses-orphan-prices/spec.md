@@ -8,6 +8,7 @@
 **Branch:** `086-start-refuses-orphan-prices`
 **Issue:** [#375](https://github.com/plainprogrammer/Collector/issues/375) (the 1.0 milestone, prices lane, after #363)
 **ADR:** none. The start check is not costly to reverse and decides nothing that [ADR 0029](../../adr/0029-prices-database-held-by-the-backup.md) leaves open: that ADR names this start as its follow-up.
+**Frozen:** the current rules are in [`release-and-deploy.md`](../../architecture/release-and-deploy.md) (whole spec); see the [specs index](../README.md)
 
 ---
 
