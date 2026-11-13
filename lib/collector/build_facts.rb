@@ -3,7 +3,8 @@ module Collector
   # the commit it was built from and the address of that commit's source. The image's build sets them as environment
   # variables (`COLLECTOR_VERSION`, `COLLECTOR_REVISION`, `COLLECTOR_SOURCE_URL`); a development checkout falls back to
   # git for the revision. Each fact is trimmed and checked, and one that fails its rule counts as not given, so no value
-  # an image or an operator passes can break a page (spec 084 decision 6).
+  # an image or an operator passes can break a page (spec 084 decision 6). The line also links the third-party
+  # licences page (spec 087), whose address is {LICENCES_PATH}.
   #
   # `config/initializers/build_facts.rb` reads them once at boot; {.current} returns that reading. Specs replace it with
   # `build_facts(...)` (`spec/support/build_facts.rb`) and never through the process environment (decision 10).
@@ -20,6 +21,10 @@ module Collector
     VERSION_RULE = /\A[0-9A-Za-z.+_-]{1,64}\z/
     # A full commit SHA. A short one is refused so that two builds can't show the same ambiguous prefix (decision 6).
     REVISION_RULE = /\A\h{40}\z/
+    # The page that lists the third-party licences (spec 087). A constant, because `licence_parts` is in lib/ with no
+    # route helpers; spec/requests/licences_link_spec.rb asserts it equals `licences_path`, so the route can't move
+    # without it.
+    LICENCES_PATH = "/licences"
 
     attr_reader :version, :revision, :source_url
 
@@ -61,13 +66,15 @@ module Collector
     def short_revision = revision&.first(7)
 
     # The licence line in reading order as `[text, address]` parts, the address nil where the text isn't a link, the
-    # shape the footer renders for every line. The links sit on the fixed words "AGPL-3.0" and "source code", never
-    # found by searching the text, so a version that contains them moves nothing (spec 084 decision 2, AC-2.13).
+    # shape the footer renders for every line. The links sit on the fixed words "AGPL-3.0", "source code" and
+    # "third-party licences", never found by searching the text, so a version that contains them moves nothing (spec 084
+    # decision 2, AC-2.13, which now has three links; the third is spec 087 decision 1).
     #
     # @return [Array<Array(String, String), Array(String, nil)>]
     def licence_parts
       [ [ "#{name} is free software under the ", nil ], [ "AGPL-3.0", LICENCE_URL ], [ ". Get the ", nil ],
-        [ "source code", source_url ], [ ".", nil ] ]
+        [ "source code", source_url ], [ ".", nil ], [ " Read the ", nil ], [ "third-party licences", LICENCES_PATH ],
+        [ ".", nil ] ]
     end
 
     # scrub: a byte that isn't UTF-8 would make match? and URI.parse raise, and this runs at boot (decision 6).

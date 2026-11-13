@@ -83,7 +83,7 @@ RSpec.describe "The footer", type: :system do
         expect(footer["lines"].map { |line| line["right"] }).to all(be <= footer["viewport"] - footer["gutter"]), "#{path} at #{width}px: text past the gutter"
         expect(footer["top"]).to be_within(0.5).of(footer["mainBottom"]), "#{path} at #{width}px: a gap after main"
         expect(footer["mainPadding"]).to eq("16px"), "#{path} at #{width}px: main keeps the tab bar's clearance as well"
-        expect(footer["lines"].last["text"]).to end_with("Get the source code."), "#{path} at #{width}px: the licence line isn't measured last"
+        expect(footer["lines"].last["text"]).to end_with("Read the third-party licences."), "#{path} at #{width}px: the licence line isn't measured last"
       end
     end
   end
@@ -96,7 +96,7 @@ RSpec.describe "The footer", type: :system do
     expect(fits).to eq([ 360, true ])
     expect(footer["lines"]).to all(include("uncovered" => true, "left" => footer["gutter"]))
     expect(footer["lines"].map { |line| line["right"] }).to all(be <= footer["viewport"] - footer["gutter"])
-    expect(footer["lines"].last["text"]).to end_with("Get the source code.")
+    expect(footer["lines"].last["text"]).to end_with("Read the third-party licences.")
   end
 
   it "clears the sticky filter bar and the bulk bar (AC-3.6)", :aggregate_failures do
@@ -166,9 +166,11 @@ RSpec.describe "The footer", type: :system do
     expect(page).to have_css(".c-scanner")
 
     expect(colours.values_at("text", "link")).to eq([ "rgb(95, 90, 82)", "rgb(19, 89, 90)" ])
-    expect(page.all("body > footer.c-footer a").map { |link| link[:href] })
-      .to eq([ "https://company.wizards.com/en/legal/fancontentpolicy", "https://scryfall.com/",
-        "https://www.gnu.org/licenses/agpl-3.0.html", "https://github.com/plainprogrammer/Collector" ])
+    hrefs = page.all("body > footer.c-footer a").map { |link| link[:href] } # the driver resolves the last, a path, against the host
+    expect(hrefs.first(4)).to eq([ "https://company.wizards.com/en/legal/fancontentpolicy", "https://scryfall.com/",
+      "https://www.gnu.org/licenses/agpl-3.0.html", "https://github.com/plainprogrammer/Collector" ])
+    expect(URI(hrefs.last).path).to eq(licences_path)
+    expect(hrefs.size).to eq(5)
     expect(page).to have_no_css("body > footer.c-footer [style]")
     expect(measure["lines"]).to all(include("uncovered" => true))
   end

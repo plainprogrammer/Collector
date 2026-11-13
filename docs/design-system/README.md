@@ -162,6 +162,8 @@ App additions (spec 079, #258, in `collector/additions.css`): `DeckCheck` (`c-de
 
 App additions (spec 080, #343, in `collector/additions.css`; no view uses them yet): `StatusBand` (`c-band`, `c-band--success`, `c-band--warning`); `Sheet` (`c-sheet` and its `__head`, `__title`, `__dismiss`, `__close`, `__body`, `__foot`); the phone-first `Scanner`'s shell (`c-scan` with `c-scan--result`, its `__top`, `__back`, `__dest` with `__dest-label`, `__dest-value` and `__dest-text`, `__done`, `__stage`, `__video`, `__guide`, `__line` with `__line--status`, `__line--added` and `__line-text`, `__undo`, `__strip`, `__capture`, `__read` with `__read-label`, `__read-name` and `__read-line`, `__bottom`, `__count`, `__main`, `__torch`, and `c-shell--focused` on the `<body>`) and pane (`c-scanpane` and its `__body`, `__rowwrap`, `__row`, `__item`, `__nav` with `__nav--prev` and `__nav--next`, `__card`, `__details`, `__name`, `__set`, `__meta`, `__position`, `__adds`, `__add`); and the app-wide reduced-motion block (Motion). Tokens: `on-success`, `on-warning`, `scrim`.
 
+App additions (spec 087, #376, in `collector/additions.css`): `Licences` (`c-licences`, `c-licences__title`, `__count`, `__list`, `__row`, `__details`, `__heading`, `__name`, `__meta`, `__home`, `__copyright`, `__file`, `__text`, `__missing`), the third-party licences page at `/licences`: a row per work, its licence text in a disclosure.
+
 ## Logo
 
 - The mark is three fanned cards, the front one vault teal with a foil diamond: a collection, one piece of which is special. It is deliberately game-neutral so it grows past trading cards.
