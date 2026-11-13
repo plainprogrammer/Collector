@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed (2026-11-13), with spec 081. The maintainer ruled decision 3 (option A) on 2026-11-13. It supersedes [ADR 0024](0024-backup-with-vacuum-into.md) decisions 2, 3 and 4 in part: what a backup holds, the backup file's layout, and the restore's fresh volume (five databases) and placing (two files). It extends [ADR 0016](0016-sqlite-in-every-environment.md) with a fifth file.
+Accepted (2026-11-13). Written with spec 081 as Proposed; the maintainer accepted it with the pull request ([#405](https://github.com/plainprogrammer/Collector/pull/405)) the same day. The maintainer ruled decision 3 (option A) on 2026-11-13. It supersedes [ADR 0024](0024-backup-with-vacuum-into.md) decisions 2, 3 and 4 in part: what a backup holds, the backup file's layout, and the restore's fresh volume (five databases) and placing (two files). It extends [ADR 0016](0016-sqlite-in-every-environment.md) with a fifth file.
 
 **Date:** 2026-11-13
 **Feature:** 081-prices-database-in-backup
