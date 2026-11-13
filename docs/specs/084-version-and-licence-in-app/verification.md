@@ -1,6 +1,6 @@
 # Verification: Feature 084, the Running Version, Its Commit and the Licence, Shown in the App
 
-**Spec:** [spec.md](spec.md) (v0.4.0) · **Plan:** [plan.md](plan.md) · **Issue:** [#374](https://github.com/plainprogrammer/Collector/issues/374)
+**Spec:** [spec.md](spec.md) (v0.4.0) · **Plan:** plan (retired in `8c6af54dac8197b04d0019b075026337bb3f4230`; read it with `git show 8c6af54dac8197b04d0019b075026337bb3f4230^:docs/specs/084-version-and-licence-in-app/plan.md`) · **Issue:** [#374](https://github.com/plainprogrammer/Collector/issues/374)
 
 This file maps each acceptance criterion to the spec example, run or document check that proves it. A path is a spec file; a quoted name is an example's title. Documents are verified by reading, never by RSpec (`.claude/rules/testing.md`).
 

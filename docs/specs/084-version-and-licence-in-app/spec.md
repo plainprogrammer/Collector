@@ -9,6 +9,7 @@
 **Issue:** [#374](https://github.com/plainprogrammer/Collector/issues/374) (the 1.0 milestone, housekeeping lane)
 **ADR:** none. How the build passes its facts to the image is a rule of the release-and-deploy area, written in its area doc (decision 3). No decision here is costly to reverse.
 **Frozen:** the current rules are in [`catalog-core.md`](../../architecture/catalog-core.md) and [`release-and-deploy.md`](../../architecture/release-and-deploy.md) (whole spec); see the [specs index](../README.md)
+**Plan:** retired in `8c6af54dac8197b04d0019b075026337bb3f4230`; read it with `git show 8c6af54dac8197b04d0019b075026337bb3f4230^:docs/specs/084-version-and-licence-in-app/plan.md`
 
 ---
 
