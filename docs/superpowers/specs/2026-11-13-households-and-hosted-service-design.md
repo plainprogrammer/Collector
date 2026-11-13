@@ -4,7 +4,7 @@
 **Builds on:** accounts and tenancy as built on `main` at `7de9574` ([`tenancy-and-accounts.md`](../../architecture/tenancy-and-accounts.md), [ADR 0017](../../adr/0017-row-level-tenancy-one-user-per-account.md), [ADR 0019](../../adr/0019-lot-as-the-unit-of-ownership.md), [ADR 0025](../../adr/0025-a-lots-location-is-part-of-its-identity.md), [ADR 0028](../../adr/0028-decks-are-locations-with-zones.md)), the export format ([`data-portability.md`](../../architecture/data-portability.md)), the [north star](../../north-star.md) and its hosted-door rules, [research 016](../../specs/016-scryfall-hosting-terms/research.md) (rulings 27 to 30), and the licensing research of 2026-11-13.
 **Supersedes:** the project draft "Collector — Hosted SaaS: Accounts, Plans, and Billing" (2026-10-15). That draft was written before it was checked against the code; "What changed" lists the differences.
 **Deliverable:** GitHub issues under two new labels, `theme: households` and `theme: hosted`, both on the 1.0 milestone, each one outcome that a Claude Code agent takes through the SDD workflow in one PR, and two roadmap lanes.
-**Roadmap:** this reverses ruling 6 and ruling 14 for hosted-service features, and the two matching lines of the north star's "Not before 1.0" (rulings 42 to 45). Ruling 27 stands as written until the maintainer rules on decision 19, which proposes to narrow it.
+**Roadmap:** this reverses ruling 6 and ruling 14 for hosted-service features, and the two matching lines of the north star's "Not before 1.0" (rulings 42 to 47). Ruling 46 narrows ruling 27 from "built" to "offered" (decision 19).
 
 ## Why
 
@@ -25,7 +25,7 @@ Both are built in 1.0, because the maintainer wants to take the hosted service t
 | Tiers: Free, Collector, Family | Plus tiers added, with monthly AI quotas | Pricing direction of 2026-11 |
 | Entry granularity was an open question | Answered | A lot splits by finish, condition, price paid and place (ADRs 0019, 0025), so a cap on distinct catalog entries counts `DISTINCT catalog_entry_id` |
 | AGPL footer link to the deployed commit | Already an issue | [#374](https://github.com/plainprogrammer/Collector/issues/374), on the 1.0 milestone |
-| Billing built with the tenancy work | Billing is a lane of its own in 1.0, after households | A plan belongs to a household; ruling 45; decision 19 proposes that ruling 27 gate the sale, not the code |
+| Billing built with the tenancy work | Billing is a lane of its own in 1.0, after households | A plan belongs to a household; ruling 45; ruling 27 gates the sale, not the code (ruling 46) |
 
 ## Decisions
 
@@ -49,11 +49,11 @@ Both are built in 1.0, because the maintainer wants to take the hosted service t
 | 16 | The export stays one file per account. The shared collection has its own file. | Proposed |
 | 17 | Hosted mode is one operator setting. Without it an instance has no plans, no limits and no billing routes. | Proposed |
 | 18 | A plan belongs to the household, and a limit counts across the household's accounts. | Proposed |
-| 19 | The hosted lane's first item settles ruling 27 (Wizards' position on charging). The plan and billing code is built behind hosted mode meanwhile, and no paid plan is offered at a hosted instance before that item closes. | Proposed: it narrows ruling 27's "built" to "offered" |
+| 19 | The hosted lane's first item settles ruling 27 (Wizards' position on charging). The plan and billing code is built behind hosted mode meanwhile, and no paid plan is offered at a hosted instance before that item closes. | Maintainer, 2026-11-13 (ruling 46): it narrows ruling 27's "built" to "offered" |
 | 20 | Outside contributions to the core are accepted under a sign-off (DCO) from the first one. Whether to ask for a wider inbound licence is decided before the first outside pull request to the core. | Proposed |
-| 21 | A member borrows copies from the household's collection into a deck of their own, and returns them. It is built in 1.0. | Proposed |
+| 21 | A member borrows copies from the household's collection into a deck of their own, and returns them. It is built in 1.0: borrowing and lending are needed for a household to work well. | Maintainer, 2026-11-13 (ruling 47) |
 
-Decisions 10 to 21 are the design's proposals. Each is settled in the spec of the issue that carries it. Decisions 19 and 21 change what is in 1.0, so the maintainer confirms them before their issues start.
+Decisions 10 to 18 and 20 are the design's proposals. Each is settled in the spec of the issue that carries it.
 
 ## Goals, non-goals and anti-goals
 
@@ -85,7 +85,7 @@ Decisions 10 to 21 are the design's proposals. Each is settled in the spec of th
 - **No email.** The app sends none today: no invitation and no password reset. The hosted lane brings the first ([#395](https://github.com/plainprogrammer/Collector/issues/395)); households don't depend on it.
 - **Sign-up.** Closed by default once the first user exists. An admin creates users or opens sign-up.
 - **The hosted-door rules.** Each spec states what it costs per account, stores a collector's choices per account or user, and gives an admin no view into a collection.
-- **Ruling 27.** No paid plan is built until Wizards' position on charging is settled in writing or by legal advice. Decision 19 proposes "offered" in place of "built".
+- **Ruling 27, as narrowed by ruling 46.** No paid plan is offered until Wizards' position on charging is settled in writing or by legal advice. Its code may be built before that.
 - **SQLite in every environment** ([ADR 0016](../../adr/0016-sqlite-in-every-environment.md)), one host. Migrations run unattended on a self-hoster's upgrade and are never edited after release.
 
 ## Approaches to ownership
@@ -196,7 +196,7 @@ On the [1.0 milestone](https://github.com/plainprogrammer/Collector/milestone/1)
 | [#394](https://github.com/plainprogrammer/Collector/issues/394) | A plan's limits are enforced | #393 |
 | [#395](https://github.com/plainprogrammer/Collector/issues/395) | Reset a password by email | |
 | [#396](https://github.com/plainprogrammer/Collector/issues/396) | Public sign-up that resists abuse | #395 |
-| [#397](https://github.com/plainprogrammer/Collector/issues/397) | Pay for a plan, manage it and cancel it (waits for #390 under ruling 27) | #390, #394, #395 |
+| [#397](https://github.com/plainprogrammer/Collector/issues/397) | Pay for a plan, manage it and cancel it (not offered before #390 closes) | #394, #395 |
 | [#398](https://github.com/plainprogrammer/Collector/issues/398) | What a household keeps after a downgrade | #397 |
 | [#399](https://github.com/plainprogrammer/Collector/issues/399) | Off-host backups for a hosted instance, with a restore drill | #392 |
 | [#400](https://github.com/plainprogrammer/Collector/issues/400) | Terms, privacy and refund pages, with the rule for children's sign-ins | |

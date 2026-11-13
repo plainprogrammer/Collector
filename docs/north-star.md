@@ -1,6 +1,6 @@
 # North Star
 
-**Decided:** 2026-10-11, by the maintainer, in a planning interview. **Amended:** 2026-11-13 (rulings 42 to 45: households and the hosted-service features move into 1.0). The rulings behind each line are in the [roadmap's decision log](roadmap.md#decision-log).
+**Decided:** 2026-10-11, by the maintainer, in a planning interview. **Amended:** 2026-11-13 (rulings 42 to 47: households and the hosted-service features move into 1.0). The rulings behind each line are in the [roadmap's decision log](roadmap.md#decision-log).
 
 This document says what Collector is being built towards and the rules every future spec is checked against. It builds on the [foundation](../.claude/memory/foundation.md) (mission and principles) and doesn't replace it. The [roadmap](roadmap.md) says what is built in which order.
 
@@ -38,7 +38,7 @@ Notes on applying them:
 - A setting that decides what the global catalog ingests, or what it costs the operator to build, is an operator's choice and may stay an instance setting. `COLLECTOR_MTG_LANGUAGES` and `COLLECTOR_MTG_ART_MATCHING` are of this kind.
 - An operator manages accounts, so the second rule allows it: creating and deleting an account (deleting a user deletes their collection), changing a user's name, email or password, and showing each account's copy count, as spec 004's admin users page does. It doesn't allow listing, opening or editing what a collection holds.
 - Currency is a collector's choice. It was stored as an instance setting (spec 004), the one known breach of the third rule, until spec 038 moved it to each account; `COLLECTOR_CURRENCY` is now only the currency a new account starts with, as `COLLECTOR_MTG_LANGUAGES` holds the operator's starting point.
-- Scryfall passes the first rule for a free hosted service ([research 016](specs/016-scryfall-hosting-terms/research.md), ruled 2026-10-11). For a paid one there are two conditions. Any Wizards of the Coast or Scryfall data is publicly accessible on a hosted instance: catalog search and card pages are open to everyone, signed in or not. That is an operator setting, off by default, which a hosted instance turns on. No paid plan is built until Wizards' position on charging is settled in writing or by legal advice.
+- Scryfall passes the first rule for a free hosted service ([research 016](specs/016-scryfall-hosting-terms/research.md), ruled 2026-10-11). For a paid one there are two conditions. Any Wizards of the Coast or Scryfall data is publicly accessible on a hosted instance: catalog search and card pages are open to everyone, signed in or not. That is an operator setting, off by default, which a hosted instance turns on. No paid plan is offered until Wizards' position on charging is settled in writing or by legal advice; its code may be built behind hosted mode meanwhile (ruling 46).
 
 ## Spec rules
 

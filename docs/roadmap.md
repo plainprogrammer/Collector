@@ -131,12 +131,12 @@ Runs beside the main line (rulings 43 and 44; [design](superpowers/specs/2026-11
 - [#385](https://github.com/plainprogrammer/Collector/issues/385) Move copies between my collection and the household's (after #384).
 - [#386](https://github.com/plainprogrammer/Collector/issues/386) Move many lots between collections from bulk mode (after #385).
 - [#387](https://github.com/plainprogrammer/Collector/issues/387) Move a deck between my collection and the household's (after #385).
-- [#388](https://github.com/plainprogrammer/Collector/issues/388) Borrow copies from the household's collection (after #384 and #385). Placed in 1.0 by the design as a proposal (design decision 21); the maintainer confirms or moves it. Lending outside the household stays on the 2.0 milestone ([#259](https://github.com/plainprogrammer/Collector/issues/259)).
+- [#388](https://github.com/plainprogrammer/Collector/issues/388) Borrow copies from the household's collection (after #384 and #385). In 1.0 by ruling 47: a household doesn't work well without it. Lending outside the household stays on the 2.0 milestone ([#259](https://github.com/plainprogrammer/Collector/issues/259)).
 - [#389](https://github.com/plainprogrammer/Collector/issues/389) Households on the admin users page (after #380).
 
 ## Hosted lane
 
-Runs beside the main line, after #380 (rulings 42 and 45; the same [design](superpowers/specs/2026-11-13-households-and-hosted-service-design.md)). Hosted-service features were parked until after 1.0 by ruling 14; the maintainer moved them into 1.0 on 2026-11-13, to take a hosted service to market sooner. Collector stays AGPL-3.0 as one codebase (ruling 42): each candidate is a feature of that code, switched on by configuration, and a self-hosted instance loses nothing. Ruling 27 stands: no paid plan is built until Wizards' position is settled, so #397 waits for #390 unless the maintainer rules for design decision 19.
+Runs beside the main line, after #380 (rulings 42 and 45; the same [design](superpowers/specs/2026-11-13-households-and-hosted-service-design.md)). Hosted-service features were parked until after 1.0 by ruling 14; the maintainer moved them into 1.0 on 2026-11-13, to take a hosted service to market sooner. Collector stays AGPL-3.0 as one codebase (ruling 42): each candidate is a feature of that code, switched on by configuration, and a self-hosted instance loses nothing. Ruling 46 narrows ruling 27: the plan and billing code is built behind hosted mode, and no paid plan is offered at a hosted instance until #390 closes.
 
 - [#390](https://github.com/plainprogrammer/Collector/issues/390) Settle Wizards of the Coast's position on charging for a hosted instance. Not code.
 - [#391](https://github.com/plainprogrammer/Collector/issues/391) Ask Scryfall in writing about the free plan's cap. Not code.
@@ -145,7 +145,7 @@ Runs beside the main line, after #380 (rulings 42 and 45; the same [design](supe
 - [#394](https://github.com/plainprogrammer/Collector/issues/394) A plan's limits are enforced (after #393).
 - [#395](https://github.com/plainprogrammer/Collector/issues/395) Reset a password by email. The first email the app sends.
 - [#396](https://github.com/plainprogrammer/Collector/issues/396) Public sign-up that resists abuse (after #395).
-- [#397](https://github.com/plainprogrammer/Collector/issues/397) Pay for a plan, manage it and cancel it (after #390, #394 and #395).
+- [#397](https://github.com/plainprogrammer/Collector/issues/397) Pay for a plan, manage it and cancel it (after #394 and #395). Not offered at a hosted instance before #390 closes (ruling 46).
 - [#398](https://github.com/plainprogrammer/Collector/issues/398) What a household keeps after a downgrade (after #397).
 - [#399](https://github.com/plainprogrammer/Collector/issues/399) Off-host backups for a hosted instance, with a restore drill (after #392).
 - [#400](https://github.com/plainprogrammer/Collector/issues/400) Terms, privacy and refund pages, with the rule for children's sign-ins. Before the first sale.
@@ -199,7 +199,7 @@ Taken between specs.
 |---|---|
 | Estimated value, price charts, value over time, price alerts, "Update prices" | Specs 002, 004, 006; ruling 2026-10-11. Market prices themselves moved into 1.0 on 2026-11-13 (rulings 35–40, the prices lane) |
 | Wishlists | Spec 004; ruling 2026-10-11 |
-| Lending outside the household | Spec 006; ruling 2026-10-11. Borrowing within a household is proposed for 1.0 ([#388](https://github.com/plainprogrammer/Collector/issues/388)) |
+| Lending outside the household | Spec 006; ruling 2026-10-11. Borrowing within a household is in 1.0 (ruling 47, [#388](https://github.com/plainprogrammer/Collector/issues/388)) |
 | Importing files from other tools | Ruling 2026-10-11 |
 | Art matching on the photo path | Spec 011; ruling 2026-10-11 |
 | Native apps | Spec 005; ruling 2026-10-11 |
@@ -293,5 +293,5 @@ Rulings by the maintainer. Later planning builds on these and doesn't ask them a
 | 43 | Do personal and household collections side by side stay after 1.0 (ruling 6)? | No. They move into 1.0 as the households lane, alongside the deck and location work. |
 | 44 | What is the ownership model? | A household of accounts: an account stays the unit of ownership and privacy, and a household has each member's own account and one shared account. A member or the household can own a deck, a binder or any other location. A kid's collection is treated like any other member's and isn't visible to other members by default. The ADR that supersedes the one-user half of ADR 0017 is written with [#380](https://github.com/plainprogrammer/Collector/issues/380). |
 | 45 | Do hosted-service features stay after 1.0 (ruling 14)? | No. Hosted mode, plans, limits, billing, email, public sign-up and operator backups move into 1.0 as the hosted lane, to take a hosted service to market sooner. The 1.0 test is unchanged. |
-
-Not ruled on: whether ruling 27's "no paid plan is built" becomes "no paid plan is offered", so that the billing code can be built while Wizards' position is being settled (design decision 19, [#390](https://github.com/plainprogrammer/Collector/issues/390) and [#397](https://github.com/plainprogrammer/Collector/issues/397)); and whether borrowing from the household's collection is in 1.0 (design decision 21, [#388](https://github.com/plainprogrammer/Collector/issues/388)).
+| 46 | Does ruling 27's "no paid plan is built until Wizards' position is settled" hold the billing code back? | No. Ruling 27 is narrowed from "built" to "offered": the plan and billing code is built behind hosted mode while the position is being settled ([#390](https://github.com/plainprogrammer/Collector/issues/390)), and no paid plan is offered at a hosted instance before it is. The rest of ruling 27 stands. |
+| 47 | Is borrowing from the household's collection in 1.0? | Yes ([#388](https://github.com/plainprogrammer/Collector/issues/388)). Borrowing and lending are needed for a household to work well, so the scope is accepted. |
