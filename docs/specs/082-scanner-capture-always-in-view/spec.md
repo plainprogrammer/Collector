@@ -8,6 +8,7 @@
 **Branch:** `082-scanner-capture-always-in-view`
 **Issue:** [#344](https://github.com/plainprogrammer/Collector/issues/344) (roadmap Theme D, the phone-first layout's second item)
 **Frozen:** the current rules are in [`scanner.md`](../../architecture/scanner.md) and [`catalog-core.md`](../../architecture/catalog-core.md) (whole spec; Story 7's paired re-measure was withdrawn by the maintainer, 1.1.0); see the [specs index](../README.md)
+**Plan:** retired in `92b6ce71eb4809135cbc24c0abe03cd3c088f9ad`; read it with `git show 92b6ce71eb4809135cbc24c0abe03cd3c088f9ad^:docs/specs/082-scanner-capture-always-in-view/plan.md`
 
 ---
 
