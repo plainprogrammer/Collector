@@ -1,7 +1,7 @@
 # Implementation Plan: The Running Version, Its Commit and the Licence, Shown in the App (spec 084, issue #374)
 
 **Spec:** `docs/specs/084-version-and-licence-in-app/spec.md` (Approved v0.3.1) · **Issue:** #374 · **Branch:** `084-version-and-licence-in-app` · **Created:** 2026-11-13
-**Status:** Draft, for Gate B. Plan review (Opus, read-only, 2026-11-13): APPROVE WITH CHANGES (3 major, 10 minor), all applied. Retired by `distill-feature` after the merge (spec 027).
+**Status:** Approved (Gate B, 2026-11-13, the coordinator under the maintainer's delegation; T3.2 and T3.3 held until the maintainer's word on the prompting edits). Plan review (Opus, read-only, 2026-11-13): APPROVE WITH CHANGES (3 major, 10 minor), all applied. Retired by `distill-feature` after the merge (spec 027).
 
 ## Context
 
