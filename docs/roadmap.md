@@ -103,9 +103,9 @@ Runs beside the main line, when the maintainer starts it.
 
 ## Prices lane
 
-Runs beside the main line, when the maintainer starts it (rulings 35–40; [design](superpowers/specs/2026-11-13-price-data-design.md)). Market prices were parked until after 1.0 by ruling 14; the maintainer moved them into 1.0 on 2026-11-13, because price history can only be recorded from the day an instance starts recording it. In 1.0 the data has one use, a basic display. Each candidate depends on the ones before it:
+Runs beside the main line, when the maintainer starts it (rulings 35–41; [design](superpowers/specs/2026-11-13-price-data-design.md)). Market prices were parked until after 1.0 by ruling 14; the maintainer moved them into 1.0 on 2026-11-13, because price history can only be recorded from the day an instance starts recording it. In 1.0 the data has one use, a basic display. Each candidate depends on the ones before it:
 
-- [#361](https://github.com/plainprogrammer/Collector/issues/361) Spike: prices on non-English printings.
+- [#361](https://github.com/plainprogrammer/Collector/issues/361) Spike: prices on non-English printings. Done: [research 083](specs/083-non-english-printing-prices/research.md), ruling 41.
 - [#362](https://github.com/plainprogrammer/Collector/issues/362) Ask Scryfall in writing about recording prices and showing their history. Not code; it doesn't block the rest.
 - [#363](https://github.com/plainprogrammer/Collector/issues/363) A prices database that the backup holds.
 - [#364](https://github.com/plainprogrammer/Collector/issues/364) A price source contract, and Scryfall's prices through it (after #361 and #363).
@@ -244,3 +244,9 @@ Rulings by the maintainer. Later planning builds on these and doesn't ask them a
 | 38 | How much history is kept? | A hosted instance keeps it for the whole catalog. A self-hosted instance chooses a level, and the documentation says what each costs in disk. |
 | 39 | How is history stored? | Changes only: a row when a price differs from the last one recorded. Thinning old history is a later concern. |
 | 40 | What does the price refresh record about itself? | Each run's work and the prices database's size, to measure growth in the beta environment. This covers the price refresh only, not the catalog refresh. |
+
+### 2026-11-13: prices on non-English printings (research 083)
+
+| # | Question | Ruling |
+|---|---|---|
+| 41 | What price does a non-English printing show? | Option C of [research 083](specs/083-non-english-printing-prices/research.md): Scryfall's file carries no price of its language for a non-English printing that has an English twin (the English printing of the same set code and collector number), so such a printing shows the twin's price for the same finish, labelled as the English printing's, and nothing for a finish the twin hasn't. A printing with no twin is a product of its own and shows its own price. The consequences for [#364](https://github.com/plainprogrammer/Collector/issues/364), [#365](https://github.com/plainprogrammer/Collector/issues/365), [#368](https://github.com/plainprogrammer/Collector/issues/368) and [#369](https://github.com/plainprogrammer/Collector/issues/369) are listed in the research note. |
