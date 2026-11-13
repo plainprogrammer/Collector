@@ -1,7 +1,7 @@
 # Feature 086: A Start Refuses a Volume That Holds a Prices Database and No Primary
 
-**Status:** Draft
-**Version:** 0.3.0
+**Status:** Approved (Gate A, 2026-11-13, the coordinator under the maintainer's delegation, v0.3.0; decisions 1 to 3 still pending the maintainer)
+**Version:** 0.3.1
 **Created:** 2026-11-13
 **Last Updated:** 2026-11-13
 **Depends on:** [spec 081](../081-prices-database-in-backup/spec.md) (the prices database and the order in which a restore places two files; frozen, by [prices](../../architecture/prices.md) and [release and deploy](../../architecture/release-and-deploy.md)), [spec 030](../030-backup-restore/spec.md) (the restore and its refusal of a volume that isn't empty; frozen, by [release and deploy](../../architecture/release-and-deploy.md))
@@ -15,6 +15,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.3.1 | 2026-11-13 | **Gate A: approved** by the coordinator under the maintainer's delegation (2026-11-13) after two Fable rounds, nothing blocking left. Decisions 1, 2 and 3 are with the maintainer; the plan is written on the recommendations, each decision's code in tasks of its own. No requirement changed |
 | 0.3.0 | 2026-11-13 | Spec review round 2 (Fable, Mode A, APPROVE WITH CHANGES, 0 blocking, 2 major, 8 minor) fixed. M1: an Active Record connection to a new primary sets WAL mode and so leaves more than an empty file, so the empty-primary rule covers a `touch` or a bare open only, and any one-off that connects through the application disarms the check, which is recorded as a limit and not claimed covered (decision 7, Non-Goals). M2: in the states of AC-1.7 and AC-1.8 the message names the primary file or sidecar it found and lists it among the files to remove (FR-3). Also: the backup library is loaded by the task file (decision 5), the new class joins the `autoload_lib` ignore list, AC-1.2 requires "run nothing else on the volume", the entrypoint examples run in the test environment (decision 6), and the changelog of 0.2.0 says AC-2.6 became structural, not that it was folded into AC-2.5 |
 | 0.2.0 | 2026-11-13 | Spec review round 1 (Fable, Mode A, APPROVE WITH CHANGES, 0 blocking, 6 major, 11 minor) fixed. A primary counts only if it exists, following a symlink, and is not empty, so a dangling link or the empty file a one-off command's connection leaves doesn't disarm the check (decision 7, AC-1.7, AC-1.8); the message's way out says a restore needs a volume with no other database (decision 4, AC-1.2); decision 1 corrected (the backup tasks run no initializer) and the shell-only alternative argued; AC-2.6 is structural and folded into AC-2.5; AC-4.1 to AC-4.3 and AC-2.1 given observables; decision 2's argument rests on what a backup holds; the supersession section; the document list completed; decision 5 settled (required as it is, by one file) |
 | 0.1.0 | 2026-11-13 | First draft from issue #375 and the task brief. Decisions 1, 2 and 3 (where the check lives, what "holds a prices database" means, whether development gets it) are my recommendations, put to the coordinator as scope questions and marked *(pending)* until they are answered |
