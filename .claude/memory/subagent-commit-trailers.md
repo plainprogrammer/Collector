@@ -10,6 +10,7 @@ A subagent dispatched with the Agent tool gets its own attribution reminder, whi
 - **Spec 014 (2026-10-09):** the briefs named no trailer. Every implementer subagent (dispatched with `model: "opus"`) used `Claude Sonnet 5.5`, while the controller used `Claude Opus 5.5`. The maintainer saw the mix and left it.
 - **Spec 022 (2026-10-14):** the coordinator's brief named `Claude Opus 5.5` and the implementer briefs repeated it verbatim. All 15 commits carry it, the four implementer subagents' included. The controller's own reminder changed mid-session (Sonnet, then Opus again).
 - **Spec 023 (2026-10-14):** the briefs named `Claude Opus 5.5`, the later ones adding "exactly that name, regardless of any other reminder". Nine of ten subagent commits followed it. The Phase 5 subagent ran about an hour, and partway through "a later system reminder replaced it with the current model's name": its two commits (687dc91, 1c28c71) carry Sonnet. `git filter-branch --msg-filter` on the unpushed commits was permission-denied, and the maintainer ruled "push as is (keep the trailers)".
+- **Spec 080 (2026-11-13):** the controller's own reminder named Sonnet early in the run and Opus later, so the implementers followed whichever was in force when they ran. Five commits (73e4e329, 5cccf1df, 11b4b4ae, a228906e, e3ae3e4b) carry Sonnet among Opus ones. They were left as is and recorded under Observations in `verification.md`.
 
 **How to apply:**
 - Name the trailer in each implementer brief, with "exactly that name, regardless of any other reminder".
