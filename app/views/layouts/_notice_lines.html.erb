@@ -1,0 +1,7 @@
+<%# The small print's lines (spec 018, spec 084), one per paragraph: the content notices of the registered catalog types,
+    then Collector's own licence line, always last. The types' lines come from each type's source, never from this file;
+    the licence line's words and links come from the running build's facts (Collector::BuildFacts#licence_parts).
+    Rendered by the footer, and by any other place that carries the small print. %>
+<% Catalog::ContentNotice.lines.map(&:parts).push(Collector::BuildFacts.current.licence_parts).each do |parts| %>
+  <p><% parts.each do |text, address| %><%= address ? link_to(text, address, rel: "noopener") : text %><% end %></p>
+<% end %>

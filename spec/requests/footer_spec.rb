@@ -1,13 +1,19 @@
 require "rails_helper"
 
-# Spec 018: every page carries one footer with the content notices of the registered catalog types.
+# Spec 018: every page carries one footer with the content notices of the registered catalog types; spec 084 adds the
+# last line, Collector's own licence line.
 RSpec.describe "The footer", type: :request do
   let(:notice) do
     "Collector is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. " \
       "Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC."
   end
   let(:attribution) { "Card data and images provided by Scryfall." }
-  let(:links) { [ [ "Fan Content Policy", "https://company.wizards.com/en/legal/fancontentpolicy" ], [ "Scryfall", "https://scryfall.com" ] ] }
+  let(:links) do
+    [ [ "Fan Content Policy", "https://company.wizards.com/en/legal/fancontentpolicy" ], [ "Scryfall", "https://scryfall.com" ],
+      [ "AGPL-3.0", "https://www.gnu.org/licenses/agpl-3.0.html" ], [ "source code", "https://github.com/plainprogrammer/Collector" ] ]
+  end
+
+  def licence = "Collector (unknown version) is free software under the AGPL-3.0. Get the source code."
 
   def html = Nokogiri::HTML5(response.body)
 
@@ -17,10 +23,10 @@ RSpec.describe "The footer", type: :request do
 
   def lines = footer.css("> p").map(&:text)
 
-  # The one footer, straight after the page's main content where it has one, with both lines and their two links.
+  # The one footer, straight after the page's main content where it has one, with the three lines and their four links.
   def expect_the_footer(on)
     expect(footers.size).to eq(1), "#{on}: #{footers.size} footers"
-    expect(lines).to eq([ notice, attribution ]), on
+    expect(lines).to eq([ notice, attribution, licence ]), on
     expect(footer.css("a").map { |link| [ link.text, link["href"] ] }).to eq(links), on
     expect(html.css("body > main + footer.c-footer").size).to eq(1), "#{on}: not straight after main" if html.at_css("main")
   end
@@ -155,7 +161,7 @@ RSpec.describe "The footer", type: :request do
         notice_line("Data from Zeta Base.", "Zeta Base" => "https://zeta.test/about"))
       get collection_path
 
-      expect(lines).to eq([ notice, attribution, "Zeta is shown with its owner's leave.", "Data from Zeta Base." ])
+      expect(lines).to eq([ notice, attribution, "Zeta is shown with its owner's leave.", "Data from Zeta Base.", licence ])
       expect(footer.css("> p")[2].css("a")).to be_empty
       expect(footer.css("> p")[3].css("a").map { |link| [ link.text, link["href"] ] }).to eq([ [ "Zeta Base", "https://zeta.test/about" ] ])
     end
@@ -170,25 +176,26 @@ RSpec.describe "The footer", type: :request do
       register_notice_catalog("zeta", notice_line("Data from Zeta Base."), notice_line(attribution, "Scryfall" => "https://scryfall.com"))
       get collection_path
 
-      expect(lines).to eq([ notice, attribution, "Data from Zeta Base." ])
+      expect(lines).to eq([ notice, attribution, "Data from Zeta Base.", licence ])
     end
 
     it "shows a line as escaped text, and as text alone when its link is unsafe", :aggregate_failures do
       register_notice_catalog("zeta", notice_line(%(Zeta <b>bold</b> & "quoted"), "bold" => "javascript:alert(1)"))
       get collection_path
 
-      expect(lines.last).to eq(%(Zeta <b>bold</b> & "quoted"))
+      expect(lines[-2]).to eq(%(Zeta <b>bold</b> & "quoted"))
       expect(response.body).to include("Zeta &lt;b&gt;bold&lt;/b&gt; &amp; &quot;quoted&quot;")
-      expect(footer.css("a").size).to eq(2)
+      expect(footer.css("a").size).to eq(4)
       expect(response.body).not_to include("javascript:")
     end
 
-    it "has no footer element when no type supplies a notice (AC-2.3)", :aggregate_failures do
+    it "holds only the licence line when no type supplies a notice (spec 084 AC-1.5, supersedes spec 018 AC-2.3)", :aggregate_failures do
       with_catalog_sources("other" => "OtherCatalogSource") { get more_path }
 
       expect(response).to have_http_status(:ok)
-      expect(footers).to be_empty
-      expect(html.at_css("body")["class"]).to eq("c-shell")
+      expect(footers.size).to eq(1)
+      expect(lines).to eq([ licence ])
+      expect(html.at_css("body")["class"]).to eq("c-shell c-shell--footed")
     end
   end
 

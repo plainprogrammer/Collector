@@ -5,18 +5,25 @@ A release is a git tag. CI builds the image for amd64 and arm64, smoke-tests it,
 
 ## What each trigger publishes
 
-| Trigger | Tags published |
-|---|---|
-| Pull request | none (both architectures are built and smoke-tested) |
-| Push to `main` | `edge`, `sha-<7-character sha>` |
-| Tag `vX.Y.Z` | `X.Y.Z`, `X.Y`, `latest`, and `X` when X ≥ 1 (no bare `0` for `0.y.z`) |
-| Tag `vX.Y.Z-<suffix>` (pre-release, suffix `[0-9A-Za-z.-]+`) | `X.Y.Z-<suffix>` only; `latest` does not move |
+| Trigger | Tags published | Version the image reports |
+|---|---|---|
+| Pull request | none (both architectures are built and smoke-tested) | `pr-N` |
+| Push to `main` | `edge`, `sha-<7-character sha>` | `edge` |
+| Tag `vX.Y.Z` | `X.Y.Z`, `X.Y`, `latest`, and `X` when X ≥ 1 (no bare `0` for `0.y.z`) | `X.Y.Z` |
+| Tag `vX.Y.Z-<suffix>` (pre-release, suffix `[0-9A-Za-z.-]+`) | `X.Y.Z-<suffix>` only; `latest` does not move | `X.Y.Z-<suffix>` |
 
 The workflow publishes on any tag push matching those two patterns. Any other tag (`v1.2`, `release-1`) runs
 nothing. The workflow does not check that the tag is annotated or on `main`; that is procedure (step 2 below).
 A pre-release suffix must be valid semver: a tag such as `v1.2.3-rc_1` matches the trigger but publishes
 nothing and fails the run. Every published image carries OCI labels for its source, version, revision, licence
 and description.
+
+Every image CI builds, published or not, also carries the build facts the app shows in its footer (spec 084): the
+version in the table's last column, the full SHA of the commit it was built from, and the address of that commit's
+source in the repository that ran the workflow. The workflow passes them as the `COLLECTOR_VERSION`,
+`COLLECTOR_REVISION` and `COLLECTOR_SOURCE_URL` build arguments to both of the image job's builds. A pull request's
+version is `pr-N`, passed by the workflow itself because `docker/metadata-action` gives a pull request no version.
+`bin/image-smoke` fails an image that doesn't report them, so none is published without them.
 
 ## Cutting a release
 
@@ -45,7 +52,8 @@ and description.
 4. Before announcing a release that touches import or export, restore the maintainer's own real collection from its export into a fresh instance (their NAS) through the pages and compare the new export with the old (spec 028 AC-6.5; the suite and `verification.md` only show it on one instance with a seeded catalog).
 5. Before announcing a release that changes the schema, the backup or the restore, restore the maintainer's own real backup onto the new image (spec 030 AC-5.7). CI already proves that a seeded database of the previous release upgrades on the new image and, once a release has the backup commands, that a backup it took restores on the next (spec 031); this step is only what no seed imitates, the shape and size of real data. Take a backup of the NAS instance on the previous release, restore it onto a fresh Compose project of the new image (`docs/backup-restore.md` and the README's "Backup and restore"), start it, sign in, and compare the printed counts and an export of each with the source's. Record the steps, counts and timings in the feature's `verification.md`.
 6. Deploy with Kamal by version: `bin/kamal deploy --skip-push --version 0.1.0`. Never run a plain
-   `bin/kamal deploy` against the public image.
+   `bin/kamal deploy` against the public image. Then open the instance and check that its footer reads
+   `Collector X.Y.Z (<first 7 characters of the tag's commit>)` (spec 084).
 7. After the tag, delete the entries of `script/upgrade/expected_changes.yml` whose migration the tag contains (the proof ignores them from now on and prints them as retired).
 
 **Re-runs.** Only the newest release's workflow may be re-run: a re-run moves `latest`, `X` and `X.Y` to the
