@@ -1,7 +1,7 @@
 # Implementation Plan: The Running Version, Its Commit and the Licence, Shown in the App (spec 084, issue #374)
 
 **Spec:** `docs/specs/084-version-and-licence-in-app/spec.md` (Approved v0.3.1) · **Issue:** #374 · **Branch:** `084-version-and-licence-in-app` · **Created:** 2026-11-13
-**Status:** Draft, for the Opus plan review and Gate B. Retired by `distill-feature` after the merge (spec 027).
+**Status:** Draft, for Gate B. Plan review (Opus, read-only, 2026-11-13): APPROVE WITH CHANGES (3 major, 10 minor), all applied. Retired by `distill-feature` after the merge (spec 027).
 
 ## Context
 
@@ -43,23 +43,23 @@ Every page's footer ends with the licence line, worded from the build facts. A p
 | `lib/collector/build_facts.rb` | create | read, clean and keep the facts; the licence line's parts |
 | `config/initializers/build_facts.rb` | create | read once at boot into `Rails.configuration.x.build_facts` |
 | `spec/support/build_facts.rb` | create | `build_facts(...)` helper; restores after the example |
-| `app/views/layouts/_footer.html.erb`, `application.html.erb` | edit | always a footer, licence line last; always `c-shell--footed` |
+| `app/views/layouts/_notice_lines.html.erb`, `_footer.html.erb`, `application.html.erb` | create, edit, edit | the lines (types' notices, then the licence line) as paragraphs, in one core partial the footer wraps and #344's sheet foot can render; always a footer; always `c-shell--footed` |
 | `app/assets/stylesheets/collector/additions.css` | edit | drop the two unfooted clearance rules; comments |
 | `bin/image-smoke` | edit | the build facts check |
 | `Dockerfile`, `.github/workflows/ci.yml` | edit (prompting) | build arguments; header comment |
 | `compose.yaml` | edit | comment only |
-| `spec/models/collector/build_facts_spec.rb`, `spec/requests/licence_line_spec.rb` | create | the proofs |
-| `spec/footer_core_spec.rb`, `spec/requests/footer_spec.rb`, `spec/system/footer_spec.rb`, `spec/design_system_files_spec.rb`, `spec/image_publishing_spec.rb` | edit | the guard's files; the third line; the CSS block; the file shapes |
-| `docs/design-system/components/Footer.md`, `VisitorHeader.md`, `docs/design-system/README.md` | edit | the always-present footer and its licence line |
+| `spec/lib/collector/build_facts_spec.rb`, `spec/requests/licence_line_spec.rb` | create | the proofs |
+| `spec/footer_core_spec.rb`, `spec/requests/footer_spec.rb`, `spec/system/footer_spec.rb`, `spec/system/visitor_catalog_spec.rb`, `spec/design_system_files_spec.rb`, `spec/image_publishing_spec.rb` | edit | the guard's files; the third line; the unfooted-shell example; the CSS block; the file shapes |
+| `docs/design-system/components/Footer.md`, `VisitorHeader.md`, `Sheet.md`, `docs/design-system/README.md` | edit | the always-present footer and its licence line |
 | `docs/architecture/catalog-core.md`, `docs/architecture/release-and-deploy.md`, `README.md`, `docs/releasing.md`, `CLAUDE.md` | edit | Story 5 |
 | `docs/specs/084-version-and-licence-in-app/verification.md`, `screenshots/` | create | evidence |
 
 ## Phase 1: The build facts reader (contracts first)
 
 **Implements:** FR-2; decisions 4, 6, 10 · **Satisfies:** AC-2.5, AC-2.6, AC-2.10 (git half), AC-2.11, AC-2.12 (reader level), AC-2.13 and AC-2.14 (parts)
-**Files:** `lib/collector/build_facts.rb`, `config/initializers/build_facts.rb`, `spec/support/build_facts.rb`, `spec/models/collector/build_facts_spec.rb`
+**Files:** `lib/collector/build_facts.rb`, `config/initializers/build_facts.rb`, `spec/support/build_facts.rb`, `spec/lib/collector/build_facts_spec.rb`
 
-- [ ] **T1.1 The reader and the licence line's parts.** Test first: `spec/models/collector/build_facts_spec.rb` (`type: :model`). Every example calls `described_class.read(env:, rails_env:, git:)` with a `git` lambda; none touches `ENV`.
+- [ ] **T1.1 The reader and the licence line's parts.** Test first: `spec/lib/collector/build_facts_spec.rb` (`type: :model`, mirroring `lib/` as the other `Collector::` specs do). Every example calls `described_class.read(env:, rails_env:, git:)` with a `git` lambda; none touches `ENV`.
 
   ```ruby
   require "rails_helper"
@@ -68,7 +68,12 @@ Every page's footer ends with the licence line, worded from the build facts. A p
   RSpec.describe Collector::BuildFacts, type: :model do
     let(:sha) { "a9f6de7c0ffee1234567890abcdef1234567890a" } # 40 hexadecimal characters
 
-    def read(env = {}, rails_env: "production", git: -> { raise "git asked" }) = described_class.read(env:, rails_env:, git:)
+    # Counts git's calls: a git that raised would be swallowed by the reader's rescue, so a stray call is caught by count.
+    def git_calls = @git_calls ||= []
+
+    def counting_git(answer = sha) = -> { git_calls.push(:asked).then { answer } }
+
+    def read(env = {}, rails_env: "production", git: counting_git) = described_class.read(env:, rails_env:, git:)
 
     def text(facts) = facts.licence_parts.map(&:first).join
 
@@ -94,8 +99,10 @@ Every page's footer ends with the licence line, worded from the build facts. A p
       end
 
       it "keeps a given fact in development and asks git only for the revision it lacks (decision 4)", :aggregate_failures do
-        expect(read({ "COLLECTOR_VERSION" => "0.3.0" }, rails_env: "development", git: -> { sha }).version).to eq("0.3.0")
-        expect(read({ "COLLECTOR_REVISION" => sha }, rails_env: "development").revision).to eq(sha) # git would raise "git asked"
+        expect(read({ "COLLECTOR_VERSION" => "0.3.0" }, rails_env: "development").version).to eq("0.3.0")
+        expect(git_calls.size).to eq(1)
+        expect(read({ "COLLECTOR_REVISION" => sha }, rails_env: "development").revision).to eq(sha)
+        expect(git_calls.size).to eq(1)
       end
 
       it "gives no revision, and raises nothing, when git is missing, fails or answers no SHA (AC-2.6)", :aggregate_failures do
@@ -105,12 +112,17 @@ Every page's footer ends with the licence line, worded from the build facts. A p
         end
       end
 
-      it "never asks git in test or production (AC-2.10)", :aggregate_failures do
-        asked = 0
-        git = -> { (asked += 1) && sha }
-        %w[test production].each { |rails_env| read(rails_env:, git:) }
+      it "never asks git in test or production (AC-2.10)" do
+        %w[test production].each { |rails_env| read(rails_env:) }
 
-        expect(asked).to eq(0)
+        expect(git_calls).to be_empty
+      end
+
+      it "never raises, on a byte that isn't UTF-8 or an address URI can't parse (decision 6)", :aggregate_failures do
+        facts = read("COLLECTOR_VERSION" => "0.3.0\xFF", "COLLECTOR_REVISION" => "\xFF" * 40, "COLLECTOR_SOURCE_URL" => "https://\xFF")
+
+        expect([ facts.version, facts.revision, facts.source_url ]).to eq([ nil, nil, "https://github.com/plainprogrammer/Collector" ])
+        expect(read("COLLECTOR_SOURCE_URL" => "https://exa mple.test/%zz").source_url).to eq("https://github.com/plainprogrammer/Collector")
       end
 
       it "drops a version that breaks the rule (AC-2.7)", :aggregate_failures do
@@ -236,15 +248,16 @@ Every page's footer ends with the licence line, worded from the build facts. A p
           [ "source code", source_url ], [ ".", nil ] ]
       end
 
+      # scrub: a byte that isn't UTF-8 would make match? and URI.parse raise, and this runs at boot (decision 6).
       def self.cleaned(value, rule)
-        value = value.to_s.strip
+        value = value.to_s.scrub.strip
         value if value.match?(rule)
       end
 
       def self.https(value)
-        uri = URI.parse(value.to_s.strip)
+        uri = URI.parse(value.to_s.scrub.strip)
         uri.to_s if uri.is_a?(URI::HTTPS) && uri.host.present?
-      rescue URI::InvalidURIError
+      rescue URI::Error
         nil
       end
 
@@ -289,13 +302,17 @@ Every page's footer ends with the licence line, worded from the build facts. A p
       expect(described_class.current.source_url).to eq("https://github.com/plainprogrammer/Collector")
     end
 
-    it "is back to the boot reading in the next example (order-independent restore)" do
-      expect(described_class.current.version).to be_nil
+    it "puts the boot reading back (the suite's after hook)" do
+      boot = described_class.current
+      build_facts(version: "1.0.0")
+      restore_build_facts
+
+      expect(described_class.current).to equal(boot)
     end
   end
   ```
 
-  (The third example proves the restore only when it runs after the second. Also prove it directly: an example that calls `build_facts(version: "1.0.0")`, then runs the `after` hook's body by hand (`restore_build_facts`), and expects `nil`.) Then:
+  Then:
 
   `config/initializers/build_facts.rb`:
 
@@ -382,7 +399,7 @@ Every page's footer ends with the licence line, worded from the build facts. A p
   Add, each its own example in that file:
   - **Deck page and admin page (AC-1.1).** As an admin with a deck: `deck_path(deck)` and `admin_catalog_path`.
   - **Visitor (AC-1.2).** `new_registration_path` (first run), then, after `create(:user)` and `InstanceSetting.current.update!(sign_up_open: true)`, `new_session_path` and `new_registration_path`.
-  - **Open catalog (AC-1.3).** Tagged `:public_catalog`: `catalog_entries_path` and `catalog_entry_path(create(:catalog_entry))` signed out; the last `p` is the line.
+  - **Open catalog (AC-1.3).** Tagged `:public_catalog`: `catalog_entries_path` and `catalog_entry_path(create(:mtg_printing).entry)` signed out, as `visitors_spec.rb` builds an entry; the last `p` is the line.
   - **Release facts (AC-2.1).** `build_facts(version: "0.3.0", revision: sha, source_url: "https://example.test/tree/#{sha}")`, then `new_session_path` signed out and `collection_path` signed in: the text is `"Collector 0.3.0 (a9f6de7)#{tail}"` and the "source code" link is `"https://example.test/tree/#{sha}"`.
   - **Edge (AC-2.2).** `build_facts(version: "edge", revision: sha)`: the text starts with `"Collector edge (a9f6de7) is free software"`.
   - **No revision (AC-2.3).** `build_facts(version: "0.3.0")`: the text is `"Collector 0.3.0#{tail}"`.
@@ -393,27 +410,33 @@ Every page's footer ends with the licence line, worded from the build facts. A p
   **(b)** Edit `spec/requests/footer_spec.rb`:
   - `expect_the_footer` expects three lines: `[ notice, attribution, licence ]`, with `def licence = "Collector (unknown version) is free software under the AGPL-3.0. Get the source code."`.
   - `links` gains `[ "AGPL-3.0", "https://www.gnu.org/licenses/agpl-3.0.html" ], [ "source code", "https://github.com/plainprogrammer/Collector" ]`.
-  - In "with other catalog types", the line lists become `[ notice, attribution, "Zeta …", "Data from Zeta Base.", licence ]`. The paragraph indexes `[2]` and `[3]` stay. The unsafe-link example's `footer.css("a").size` becomes 4.
+  - In "with other catalog types", the line lists become `[ notice, attribution, "Zeta …", "Data from Zeta Base.", licence ]` (AC-2.1) and `[ notice, attribution, "Data from Zeta Base.", licence ]` (AC-2.4, line 173). The paragraph indexes `[2]` and `[3]` stay. The unsafe-link example's `lines.last` becomes `lines[-2]` (line 180), and its `footer.css("a").size` becomes 4.
   - The AC-2.3 example becomes AC-1.5 of spec 084: rename it to "holds only the licence line when no type supplies a notice (spec 084 AC-1.5, supersedes spec 018 AC-2.3)", expect `footers.size == 1`, `lines == [ licence ]` and `body class == "c-shell c-shell--footed"`.
   - "is text and its links" keeps its assertions; `rel` and `href` hold for all four links.
   - Add to the file's header comment that spec 084 adds the last line.
 
-  **(c)** `spec/footer_core_spec.rb`: the `files` list gains `lib/collector/build_facts.rb` and `config/initializers/build_facts.rb`. The first example's description becomes "covers the layout, the footer's partial, the model that collects the notices and the build facts' reader". The header comment names spec 084 AC-1.8.
+  **(c)** `spec/footer_core_spec.rb`: the `files` list gains `app/views/layouts/_notice_lines.html.erb`, `lib/collector/build_facts.rb` and `config/initializers/build_facts.rb`. The first example's description becomes "covers the layout, the footer's partial, the model that collects the notices and the build facts' reader". The header comment names spec 084 AC-1.8.
 
   Run (a), (b) and (c): red. Then implement:
+
+  `app/views/layouts/_notice_lines.html.erb` (new; one core partial for the lines, which the footer wraps and which a focused page's sheet foot can render, spec 080 decision 13, #344):
+
+  ```erb
+  <%# The small print's lines (spec 018, spec 084), one per paragraph: the content notices of the registered catalog types,
+      then Collector's own licence line, always last. The types' lines come from each type's source, never from this file;
+      the licence line's words and links come from the running build's facts (Collector::BuildFacts#licence_parts).
+      Rendered by the footer, and by any other place that carries the small print. %>
+  <% Catalog::ContentNotice.lines.map(&:parts).push(Collector::BuildFacts.current.licence_parts).each do |parts| %>
+    <p><% parts.each do |text, address| %><%= address ? link_to(text, address, rel: "noopener") : text %><% end %></p>
+  <% end %>
+  ```
 
   `app/views/layouts/_footer.html.erb`:
 
   ```erb
-  <%# The page's footer, on every page (spec 018, spec 084): the content notices of the registered catalog types, one line
-      per paragraph, then Collector's own licence line, always last. The types' lines come from each type's source, never
-      from this file; the licence line's words and links come from the running build's facts
-      (Collector::BuildFacts#licence_parts). %>
+  <%# The page's footer, on every page (spec 018, spec 084): the small print's lines, the licence line last. %>
   <footer class="c-footer">
-    <% lines.each do |line| %>
-      <p><% line.parts.each do |text, address| %><%= address ? link_to(text, address, rel: "noopener") : text %><% end %></p>
-    <% end %>
-    <p><% licence.each do |text, address| %><%= address ? link_to(text, address, rel: "noopener") : text %><% end %></p>
+    <%= render "layouts/notice_lines" %>
   </footer>
   ```
 
@@ -424,15 +447,19 @@ Every page's footer ends with the licence line, worded from the build facts. A p
   <body class="<%= class_names("c-shell", "c-shell--footed", "c-shell--untabbed": !content_for?(:tabbar)) %>">
   ```
 
-  (The old one-line comment above it is replaced.) The render line becomes `<%= render "layouts/footer", lines: notice_lines, licence: Collector::BuildFacts.current.licence_parts %>`.
+  (The old one-line comment above it is replaced.) `<% notice_lines = Catalog::ContentNotice.lines %>` goes, since nothing in the layout needs it now, and the render line becomes `<%= render "layouts/footer" %>`. `spec/footer_core_spec.rb`'s list also gains `app/views/layouts/_notice_lines.html.erb`.
 
-  Green: (a), (b), (c), `spec/requests/catalog/visitors_spec.rb`, `spec/requests/catalog/entries_show_spec.rb`, `spec/system/visitor_catalog_spec.rb`. Commit: `feat(footer): end every page's footer with the licence line (#374)`.
+  **(d)** `spec/system/visitor_catalog_spec.rb:85-101`, "gives up the tab bar's clearance on an unfooted shell …": with the "other" source the shell is now footed and the footer holds the licence line alone. Rename it "… on a footed shell holding only the licence line …" (spec 084 decision 11). Expect the visitor's `px(footer) < 80` and `main == "16px"`, and the collector's `px(footer) >= 80` and `main == "16px"`. Its "Amendment 5" comment becomes: the "other" type has no content notice, so the footer holds only the licence line, and the search page without a query shows no tiles.
+
+  AC-1.7 (no licence line in an answer that isn't a page) is proved by `spec/requests/footer_spec.rb:75-91`, which finds no `<footer>` in those answers; no new example.
+
+  Green: (a), (b), (c), (d), `spec/requests/catalog/visitors_spec.rb`, `spec/requests/catalog/entries_show_spec.rb`. Commit: `feat(footer): end every page's footer with the licence line (#374)`.
 
 - [ ] **T2.2 The shell's CSS and the browser checks.** Test first.
   - `spec/design_system_files_spec.rb` "the untabbed shell": `include` only `".c-shell--untabbed > .c-footer { padding-bottom:calc(var(--space-4) + env(safe-area-inset-bottom)); }"`, with `not_to include(".c-shell--untabbed > .c-main")` and a rule count of 1. Name spec 084 decision 11 in the example's description.
   - `spec/system/footer_spec.rb`:
     - "is styled on the scanner page" expects four hrefs: the existing two, then `"https://www.gnu.org/licenses/agpl-3.0.html"` and `"https://github.com/plainprogrammer/Collector"` (spec 084 AC-4.3).
-    - Add one example: the licence line at 360px on `collection_path` and `new_session_path` through `measure_at` (as the 390/360 example does). Every line is uncovered, on the gutter, inside `viewport - gutter`, and on the collection page above the tab bar (AC-4.1).
+    - AC-4.1 is already measured: `spec/system/footer_spec.rb:71-98` measures every `p` at 390 and 360px on the collection, card and sign-in pages. In both examples, add that the last `p`'s text ends with "Get the source code." (the `measure` script returns each line's `text: line.textContent` too), so the measured lines include the licence line.
     - Add one example in the light theme: `find("body > footer.c-footer a", text: "source code")` has the brand colour `rgb(19, 89, 90)`, contrast ≥ 4.5, and the 2px focus ring (AC-4.2, light).
     - In the dark example, add that the licence line's link colour is `rgb(95, 183, 178)` (AC-4.2, dark).
   - Run: the design-system example is red.
@@ -536,7 +563,7 @@ Every page's footer ends with the licence line, worded from the build facts. A p
   ```dockerfile
   # This Dockerfile is designed for production, not development. Use with Kamal, or build it by hand as README.md's
   # "Building from source" says, passing the build facts at the end of this file (spec 084), and then run it:
-  # docker run -d -p 80:80 -e RAILS_MASTER_KEY=<value from config/master.key> --name collector collector
+  # docker run -d -p 80:80 -e RAILS_MASTER_KEY=<value from config/master.key> --name collector collector:local
   ```
 
   and, between `ENV MAX_REQUEST_BODY="40000000"` and `# Entrypoint prepares the database.`, insert:
@@ -557,7 +584,6 @@ Every page's footer ends with the licence line, worded from the build facts. A p
   **`.github/workflows/ci.yml`**, in the `image` job. In the `Build` step (`id: build`), after `labels: ${{ steps.meta.outputs.labels }}`, insert:
 
   ```yaml
-            # The build facts the footer shows (spec 084): metadata-action gives no version on a pull request, so pr-N.
             build-args: |
               COLLECTOR_VERSION=${{ steps.meta.outputs.version || format('pr-{0}', github.event.pull_request.number) }}
               COLLECTOR_REVISION=${{ github.sha }}
@@ -567,14 +593,13 @@ Every page's footer ends with the licence line, worded from the build facts. A p
   In the `Push by digest` step (`id: push`), after its `labels:` line, insert:
 
   ```yaml
-            # The same build facts as the smoke-tested build, so the cache gives the same image (spec 084).
             build-args: |
               COLLECTOR_VERSION=${{ steps.meta.outputs.version || format('pr-{0}', github.event.pull_request.number) }}
               COLLECTOR_REVISION=${{ github.sha }}
               COLLECTOR_SOURCE_URL=${{ github.server_url }}/${{ github.repository }}/tree/${{ github.sha }}
   ```
 
-  Nothing else changes in either file. Green: `spec/image_publishing_spec.rb`. Commit: `build(image): pass the build facts to the image (#374)`.
+  Nothing else changes in either file (FR-3: in `ci.yml`, only the build-args lines). Why `pr-N` comes from the workflow is in the release-and-deploy area doc (T4.3), not a workflow comment. Green: `spec/image_publishing_spec.rb`. Commit: `build(image): pass the build facts to the image (#374)`.
 
 - [ ] **T3.3 Prove the image locally** (Docker through colima; no slot needed, it isn't `bin/ci`; run in the background, one build at a time):
   1. `docker build --build-arg COLLECTOR_VERSION=0.0.0-smoke --build-arg COLLECTOR_REVISION=$(git rev-parse HEAD) --build-arg COLLECTOR_SOURCE_URL=https://github.com/plainprogrammer/Collector/tree/$(git rev-parse HEAD) -t collector:084 .` (write it as a script under the scratchpad and run that script).
@@ -596,9 +621,10 @@ Every page's footer ends with the licence line, worded from the build facts. A p
     - "When no catalog type supplies a notice there is no element at all" becomes "There is always a footer: with no type's notice it holds the licence line alone, and the shell is always `c-shell--footed`".
     - "A line's wording belongs to its catalog type" applies to the types' lines.
   - Add a rule: the licence line is last, is the core's, and its links are the two fixed words.
+  - `Sheet.md:26`, "The foot": the foot holds the small print's lines (`layouts/notice_lines`), which always end with the licence line, so every sheet of such a page has a foot; "A source that supplies no notice gives no foot" goes.
   - `VisitorHeader.md`, the bullet on `c-main`'s foot: every shell is footed, so `c-main` keeps `space-4` (the footer block's rule), and the untabbed block holds only the footer's rule.
   - `docs/design-system/README.md`:
-    - Line 81 ("A focused page that is one screen high and has no footer shows the content notice's lines in the foot of each of its sheets") gains "and the licence line" (see Gate B's note on #344).
+    - Line 81 ("A focused page that is one screen high and has no footer shows the content notice's lines in the foot of each of its sheets") gains "and the licence line, through the same partial as the footer" (spec 084 decision 12).
     - Line 129 gains "spec 084 adds the licence line".
 
   Commit: `docs(design-system): the footer is always there and ends with the licence line (#374)`.
@@ -655,7 +681,8 @@ Every page's footer ends with the licence line, worded from the build facts. A p
   - FR-2: T1.1, T1.2.
   - FR-3: T3.1, T3.2.
   - Story 4: T2.2, T4.1.
-  - Story 5: T4.1 to T4.4, and the roadmap (done at Gate A, `a40d0e44`).
+  - Story 5: T4.1 to T4.4. The roadmap (AC-5.5) was done at Gate A (`a40d0e44`), and the index row with both supersession entries (AC-5.4's index half) at `b7ed6183` and `e90c34e1`.
+  - Decision 12 (a focused page with no footer, #344): the shared partial (T2.1) and `Sheet.md` (T4.1).
   - AC-3.5 and AC-3.6: the PR run (T5.2), with AC-3.6's expression also checked statically (T3.2). The spec's AC-3.6 says there is no automated check of the workflow file; the static example is extra, and `verification.md` notes it.
 - **Placeholders:** none.
 - **Names:** `Collector::BuildFacts.read(env:, rails_env:, git:)`, `.current`, `#version`, `#revision`, `#short_revision`, `#source_url`, `#licence_parts`; the spec helper `build_facts(version:, revision:, source_url:)` and `restore_build_facts`; the partial's locals are `lines:` and `licence:`.
