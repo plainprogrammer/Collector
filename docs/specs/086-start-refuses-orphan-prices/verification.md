@@ -51,3 +51,7 @@ Each says that a start refuses the volume, and none says only "never start" or t
 ## Implementation review
 
 SPEC-ALIGNED WITH FINDINGS (Opus 5.5, read-only, 2026-11-13; 0 blocking, 1 major, 11 minor). The major finding, a missing `verification.md`, is this file. Fixed in `9438f2bb`: the smoke leg prints the restore's output on failure and the AC-4.2 line on a failing `runner`, and greps more of the message; the message names the prices file by its full path and words several leftovers plainly; the README names a leftover primary file; the class spec asserts the prices path for AC-1.8; the plan's Risks line without an example is dropped. Not changed, by choice: AC-1.5's "the placed file" rests on a row count and unchanged checksums, which is adequate. AC-4.1 to AC-4.3 are proven by the image runs above.
+
+## Distillation
+
+2026-11-13 (`distill-feature`, before the merge): the rules went into [release and deploy](../../architecture/release-and-deploy.md) (the server-start rule with the check before `db:prepare`, the killed-restore rule, the smoke leg, Sources, the issues line, a Distillation log row) and a pointer into [prices](../../architecture/prices.md) (Sources and a log row); `CLAUDE.md`'s Project Status clause and the Release and deploy bullet's spec list name spec 086. The specs index row reads Frozen, by release and deploy, with Plan "retirement owed"; the supersession of spec 081 decision 8 and AC-5.9 in part is in both rows. No ADR: no decision here is costly to reverse. The log rows name "spec 086's pull request" until it is opened.
