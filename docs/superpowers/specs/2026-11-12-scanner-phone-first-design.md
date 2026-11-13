@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-12. **Status:** draft, awaiting the maintainer's approval. Nothing is filed yet.
 **Builds on:** the scanner as built (specs 007, 009, 011, 040, 042, 047; [`docs/architecture/scanner.md`](../../architecture/scanner.md); [`Scanner.md`](../../design-system/components/Scanner.md)), read against `main` at `100c961`, and an interview with mock-ups on 2026-11-12.
-**Mock-ups:** <https://claude.ai/artifact/SPaiks4wPGq48UkmDRvV9Q> (rows "Option A, step by step" and "Confidence states of the selection pane"; the first row holds the three layouts that were compared).
+**Mock-ups:** in [`2026-11-12-scanner-phone-first-mockups/`](2026-11-12-scanner-phone-first-mockups/), drawn at 390 × 844 with placeholder card images: `scanner-flow.png` (the five steps), `scanner-confidence.png` (the pane's three states), `scanner-shell.png` and `scanner-pane.png` (the same screens, cut per issue). The working canvas, with the three layouts that were compared, is the maintainer's private artifact <https://claude.ai/artifact/SPaiks4wPGq48UkmDRvV9Q>.
 **Deliverable:** design-system changes and GitHub issues that Claude Code agents can each take through the SDD workflow as one outcome in one PR, design-system issue first (as the decks design of 2026-11-09 did).
 
 ## Why
@@ -32,7 +32,7 @@ Each is the maintainer's unless it is marked *(my call)*.
 
 ### The capture flow
 
-The five steps of the mock-ups' second row.
+![The five steps of the capture flow](2026-11-12-scanner-phone-first-mockups/scanner-flow.png)
 
 7. **Aim.** Live camera with the guide. A status line sits over the top of the camera ("Line the card up with the guide, then capture.").
 8. **Reading.** On capture the view freezes on the captured frame and the status says "Reading the card…". The capture button is disabled while a reading runs, as today.
@@ -42,6 +42,8 @@ The five steps of the mock-ups' second row.
 12. **While a result shows, the main button reads "Scan again"** *(my call)*: same place, same size, secondary style. It discards the reading and returns to the live camera. The usual rhythm is Capture, Add foil, Capture.
 
 ### The selection pane
+
+![The selection pane's three confidence states](2026-11-12-scanner-phone-first-mockups/scanner-confidence.png)
 
 13. **A status band forms the pane's top edge and shows confidence**, filled with a status colour, always with an icon and words:
 
