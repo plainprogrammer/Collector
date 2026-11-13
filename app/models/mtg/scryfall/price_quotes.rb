@@ -34,6 +34,11 @@ class MTG::Scryfall::PriceQuotes
   # Where a page links the attribution to.
   def self.attribution_url = "https://scryfall.com"
 
+  # Spec 085 decision 9, ruled true by the maintainer on 2026-11-13: ruling 27 allows this source's data on a hosted instance
+  # with paid plans while it stays publicly accessible, and rulings 37 and 38 show prices to everyone who can see the
+  # card. The one place the value is written; issue #362 (Scryfall's written answer) is open and may change it.
+  def self.hosted_paid_allowed? = true
+
   # Spec 085 decision 10: what a page may say beside these prices.
   def self.attribution
     "Prices are provided by Scryfall. USD prices are TCGplayer's market price and EUR prices are Cardmarket's, " \

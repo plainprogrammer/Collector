@@ -21,4 +21,19 @@ RSpec.describe Prices, type: :model do
       expect(described_class.sources_for("gadgets")).to eq([])
     end
   end
+
+  describe "the registered sources (spec 085, AC-1.6)" do
+    it "each meet the contract, under their own key, for a collectible the catalog has", :aggregate_failures do
+      expect(described_class.sources.keys).to include("scryfall")
+      described_class.sources.each do |key, class_name|
+        source_class = class_name.constantize
+
+        expect(Prices::Sources.verify!(source_class)).to eq(source_class)
+        expect(source_class.key).to eq(key)
+        expect(Catalog.sources).to have_key(source_class.collectible_type)
+      end
+      expect(described_class.source_class("scryfall")).to eq(MTG::Scryfall::PriceQuotes)
+      expect(described_class.sources_for("mtg")).to eq([ MTG::Scryfall::PriceQuotes ])
+    end
+  end
 end

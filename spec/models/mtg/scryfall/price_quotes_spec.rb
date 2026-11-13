@@ -50,6 +50,15 @@ RSpec.describe MTG::Scryfall::PriceQuotes, type: :model do
     end
   end
 
+  # Spec 085 decision 9: ruled true by the maintainer on 2026-11-13; issue #362 may change it. A ruling of false changes this
+  # example, the one line `hosted_paid_allowed?` in the class and the sentence in prices.md that states it, and nothing else.
+  describe ".hosted_paid_allowed? (decision 9, AC-2.11)" do
+    it "says a hosted instance with paid plans may show Scryfall's prices, and so meets the contract", :aggregate_failures do
+      expect(described_class.hosted_paid_allowed?).to be(true)
+      expect(Prices::Sources.verify!(described_class)).to eq(described_class)
+    end
+  end
+
   describe "#each_quote (spec 085 decisions 5 and 6)" do
     let(:all_prices) do
       { "usd" => "1.42", "usd_foil" => "3.10", "usd_etched" => "5.00", "eur" => "1.20", "eur_foil" => "2.55", "eur_etched" => "4.10" }
