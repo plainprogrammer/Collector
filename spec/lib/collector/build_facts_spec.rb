@@ -110,7 +110,8 @@ RSpec.describe Collector::BuildFacts, type: :model do
   end
 
   describe ".current" do
-    it "is read at boot from nothing in the test environment (AC-2.4, decision 10)" do
+    it "is read at boot from nothing in the test environment (AC-2.4, decision 10)", :aggregate_failures do
+      expect(described_class.current).to be_a(described_class)
       expect([ described_class.current.version, described_class.current.revision ]).to eq([ nil, nil ])
     end
 
