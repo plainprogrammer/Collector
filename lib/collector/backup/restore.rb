@@ -10,7 +10,8 @@ module Collector
     # The prices file is placed first and the primary second, so that a primary never stands without its prices. If the
     # primary can't be placed (its name was taken meanwhile, the disk filled), the prices file just placed is removed, so
     # the volume is as it was. A run killed between the two placings can't clean up and leaves the prices file alone: the
-    # next run refuses the volume as not fresh and says to remove that file (spec 081 AC-5.9; #375 owns a start-up check).
+    # next run refuses the volume as not fresh and says to remove that file (spec 081 AC-5.9), and a server start refuses
+    # it too, before +db:prepare+ (+Collector::StartCheck+, spec 086).
     # @see file:release-and-deploy.md
     class Restore
       TEMPORARY = "collector-restore.partial".freeze
@@ -132,13 +133,13 @@ module Collector
         end
 
         # A volume that holds a prices file and no primary may be a killed restore's (spec 081 AC-5.9): the advice then says to
-        # remove the file, and never to start Collector on it.
+        # remove the file, and that a start of Collector refuses the volume as it is (+Collector::StartCheck+, spec 086 FR-4).
         def not_fresh
           names = @databases.occupied.map { it.basename.to_s }
           prices = names.select { it.start_with?(@databases.prices.basename.to_s) } if @databases.prices
           advice = if prices.present? && names.none? { it.start_with?(@databases.primary.basename.to_s) }
             "It may be the prices database of a restore that stopped: remove #{@databases.prices.basename} and its -wal, -shm and -journal files, then restore again. " \
-              "Never start Collector on this volume as it is."
+              "Collector refuses to start on this volume as it is."
           else
             "Restore onto a new, empty volume and start Collector on that. Nothing was changed."
           end
