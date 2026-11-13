@@ -166,9 +166,11 @@ RSpec.describe "The footer", type: :system do
     expect(page).to have_css(".c-scanner")
 
     expect(colours.values_at("text", "link")).to eq([ "rgb(95, 90, 82)", "rgb(19, 89, 90)" ])
-    expect(page.all("body > footer.c-footer a").map { |link| link[:href] })
-      .to eq([ "https://company.wizards.com/en/legal/fancontentpolicy", "https://scryfall.com/",
-        "https://www.gnu.org/licenses/agpl-3.0.html", "https://github.com/plainprogrammer/Collector" ])
+    hrefs = page.all("body > footer.c-footer a").map { |link| link[:href] } # the driver resolves the last, a path, against the host
+    expect(hrefs.first(4)).to eq([ "https://company.wizards.com/en/legal/fancontentpolicy", "https://scryfall.com/",
+      "https://www.gnu.org/licenses/agpl-3.0.html", "https://github.com/plainprogrammer/Collector" ])
+    expect(URI(hrefs.last).path).to eq(licences_path)
+    expect(hrefs.size).to eq(5)
     expect(page).to have_no_css("body > footer.c-footer [style]")
     expect(measure["lines"]).to all(include("uncovered" => true))
   end
