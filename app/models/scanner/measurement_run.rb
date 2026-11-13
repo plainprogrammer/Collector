@@ -17,7 +17,12 @@ class Scanner::MeasurementRun
   # Spec 009 adds the reading key, the outline ("live", "found" or "not_found") and the detector's timings (AC-9.2, AC-9.3);
   # spec 011 the art search's time, the index's download and parse times, and when the scanner was ready, in ms since the
   # page loaded (AC-9.5).
-  EXTRA_FIELDS = %w[reading_key outline detect_ms warp_ms art_ms art_download_ms art_ready_ms ready_ms].freeze
+  # Spec 082 AC-7.2 adds the video's and the stage's sizes and the framing the capture was taken under.
+  EXTRA_FIELDS = %w[reading_key outline detect_ms warp_ms art_ms art_download_ms art_ready_ms ready_ms
+                    video_width video_height stage_width stage_height framing].freeze
+  # The two framings a paired re-measure compares (spec 082 decision 5): the live guide, and the shipped card size in the tall
+  # stage. Each stores its run under `<dir>/<framing>`.
+  FRAMINGS = %w[full shipped].freeze
   EVENT_KINDS = %w[add undo details].freeze
 
   def self.enabled? = Rails.configuration.x.scanner_measurement.present?
@@ -25,9 +30,29 @@ class Scanner::MeasurementRun
   # Spec 010: live captures also keep their full frame when the measurement config's keep_frames is set (development only).
   def self.keep_frames? = Rails.configuration.x.scanner_measurement.to_h[:keep_frames].present?
 
-  def self.current
+  # The configured run, or the run of one framing (spec 082 decision 5). With no framing, the configured directory itself, which
+  # is what the findings tasks of earlier specs score.
+  #
+  # @param framing [String, nil] "full" or "shipped"
+  # @return [Scanner::MeasurementRun, nil] nil when measurement mode is off
+  # @raise [ArgumentError] for any other framing
+  def self.current(framing: nil)
     config = Rails.configuration.x.scanner_measurement
-    new(manifest: config.fetch(:manifest), dir: config.fetch(:dir)) if config.present?
+    return unless config.present?
+    raise ArgumentError, "Unknown framing #{framing.inspect}" if framing && !FRAMINGS.include?(framing)
+
+    dir = Pathname(config.fetch(:dir))
+    new(manifest: config.fetch(:manifest), dir: framing ? dir.join(framing) : dir)
+  end
+
+  # The framing a session chose, "full" when it chose none or something else (spec 082 decision 5); the one rule the
+  # measurement pages and the readings endpoint share, so a reading lands in the run its capture does.
+  #
+  # @param session [#[]] the request's session
+  # @return [String] one of FRAMINGS
+  def self.framing_in(session)
+    framing = session[:scanner_framing].to_s
+    FRAMINGS.include?(framing) ? framing : "full"
   end
 
   attr_reader :dir

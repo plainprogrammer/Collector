@@ -119,4 +119,38 @@ RSpec.describe Scanner::MeasurementRun, type: :model do
       expect(run.dir.join("readings.jsonl")).to exist
     end
   end
+
+  describe ".current" do
+    around do |example|
+      Rails.configuration.x.scanner_measurement = { manifest: "/tmp/m.csv", dir: "/tmp/runs/live" }
+      example.run
+    ensure
+      Rails.configuration.x.scanner_measurement = nil
+    end
+
+    it "stores each framing's run in a directory of its own, and the configured one with none (spec 082 decision 5)", :aggregate_failures do
+      expect(described_class.current(framing: "full").dir.to_s).to end_with("/tmp/runs/live/full")
+      expect(described_class.current(framing: "shipped").dir.to_s).to end_with("/tmp/runs/live/shipped")
+      expect(described_class.current.dir.to_s).to end_with("/tmp/runs/live")
+      expect { described_class.current(framing: "wide") }.to raise_error(ArgumentError)
+    end
+  end
+
+  describe ".framing_in" do
+    it "is the session's framing when it is one of the two, else full (spec 082 decision 5)", :aggregate_failures do
+      expect(described_class.framing_in({ scanner_framing: "shipped" })).to eq("shipped")
+      expect(described_class.framing_in({ scanner_framing: "wide" })).to eq("full")
+      expect(described_class.framing_in({})).to eq("full")
+    end
+  end
+
+  describe "#record! sizes and framing (spec 082 AC-7.2)" do
+    it "keeps the video and stage sizes and the framing from extra" do
+      png = -> { StringIO.new("\x89PNG\r\n\x1A\n".b) }
+      dir.join("manifest.csv").write("file,set,number\nS001,mom,123\n")
+      run.record!(run.row("S001"), name_text: "Bolt", collector_text: "", ms: 200, user_agent: "iPhone", name_strip: png.call, collector_strip: png.call,
+        extra: { "video_width" => 1280, "video_height" => 720, "stage_width" => 390, "stage_height" => 700, "framing" => "shipped" })
+      expect(run.captures(run.row("S001")).sole).to include("video_width" => 1280, "video_height" => 720, "stage_width" => 390, "stage_height" => 700, "framing" => "shipped")
+    end
+  end
 end
