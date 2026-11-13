@@ -27,7 +27,10 @@ RSpec.describe "the prices database in a prepared volume (spec 081 AC-1.2, AC-1.
     _out, err, status = app_command(primary, "db:prepare")
 
     expect(status).to be_success, err
-    expect(volume.join("production_prices.sqlite3")).to exist
+    prices = volume.join("production_prices.sqlite3")
+    expect(prices).to exist
+    expect(Collector::Backup::Snapshot.new(prices).schema_versions).to match_array(prices_versions)
+    expect(tables(prices)).to include("price_sources", "price_series", "current_prices", "price_changes", "price_refresh_runs")
     expect(table_rows(primary).except("schema_migrations", "ar_internal_metadata")).to eq(rows.except("schema_migrations", "ar_internal_metadata"))
   end
 

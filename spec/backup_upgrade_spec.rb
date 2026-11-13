@@ -41,6 +41,9 @@ RSpec.describe "restoring a backup from an older release (AC-3.6)", :backup, :co
     expect(snapshot.counts).to eq("accounts" => 1, "users" => 1, "lots" => 3) # nothing was lost, and schema:load would have emptied it
     expect(Digest::SHA256.file(Rails.root.join("db/schema.rb")).hexdigest).to eq(schema_before)
     expect(Digest::SHA256.file(Rails.root.join("db/prices_structure.sql")).hexdigest).to eq(prices_structure_before)
-    expect(volume.join("production_prices.sqlite3")).to exist # a version 1 restore's first start creates the prices database (AC-5.2)
+    prices = volume.join("production_prices.sqlite3") # a version 1 restore's first start creates the prices database (AC-5.2)
+    expect(prices).to exist
+    expect(Collector::Backup::Snapshot.new(prices).schema_versions).to match_array(Collector::Backup.release_schema_versions(Rails.root, "db/prices_migrate"))
+    expect(sqlite(prices, readonly: true) { |db| db.execute("SELECT name FROM sqlite_master WHERE type = 'table'").flatten }).to include("price_sources", "price_series", "current_prices", "price_changes", "price_refresh_runs")
   end
 end
