@@ -7,6 +7,7 @@
 **Depends on:** [the phone-first scanner design](../../superpowers/specs/2026-11-12-scanner-phone-first-design.md) (approved 2026-11-12; decisions 1 to 19 and "What it changes in the design system"), [spec 075](../075-small-controls-touch-floor/spec.md) (the 44px touch floor), [spec 063](../063-small-icon-stroke/spec.md) (icon strokes), [spec 047](../047-sitting-focus-after-redraw/spec.md) (announcements and focus)
 **Branch:** `080-phone-first-scanner-components`
 **Issue:** [#343](https://github.com/plainprogrammer/Collector/issues/343) (roadmap Theme D, the phone-first layout's first item)
+**Frozen:** the current rules are in the [design system](../../design-system/README.md) and its component docs (whole spec: the tokens, the status band, the sheet, the scanner's shell and selection pane, the reduced-motion block, their previews and the CSS in `additions.css`); see the [specs index](../README.md)
 
 ---
 
