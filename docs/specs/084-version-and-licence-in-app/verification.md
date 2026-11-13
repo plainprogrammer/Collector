@@ -36,7 +36,7 @@ Built at `e8f04ba2` with `docker build --build-arg COLLECTOR_VERSION=0.0.0-smoke
 
 The run flags reach `docker run` and override the image's `ENV`, so one build serves all four runs.
 
-The passing run was first attempted under macOS's `/bin/bash` 3.2, and the script stopped at line 25 with `run_flags[@]: unbound variable`. This is a quirk of bash 3.2 with an empty array under `set -u`, and it predates this branch. CI's runners have bash 5, so it was re-run with `/opt/homebrew/bin/bash` 5.3 and passed. The three failing runs pass run flags, so the array isn't empty and bash 3.2 ran them normally.
+The passing run was first attempted under macOS's `/bin/bash` 3.2, and the script stopped at line 25 with `run_flags[@]: unbound variable`. Bash 3.2 calls an empty array unbound under `set -u`, a defect that predates this branch, and CI's bash 5 never met it. The run above used `/opt/homebrew/bin/bash` 5.3. The coordinator ruled to fix the defect in this PR, and `550586df` expands the flags as `${run_flags[@]+"${run_flags[@]}"}`. Re-run with `/bin/bash` 3.2.57 against `collector:084`: no flags gives exit 0, `OK: collector:084 passed the smoke test`; `-e COLLECTOR_REVISION=` gives exit 1 with the build-arguments message, so a flag still reaches `docker run`.
 
 ### Mutation proofs
 
@@ -124,7 +124,7 @@ Decision 6's "never raises on any value" is also proved by facts "never raises, 
   - `licence` in footer is a `def`, because of `RSpec/MultipleMemoizedHelpers`.
   - The boot example also asserts the reading's class, since an unset `Rails.configuration.x` key answers nil to anything.
 - **`release-and-deploy.md`'s `ci.yml:NNN` citations were already out of date on `main`** before this branch (for example "Digest artifact retention … `ci.yml:206`" when the line was 218). This branch's build-args move them a few lines further. Fixing them all is left to a separate change; the two new citations (`ci.yml:160-163`, `ci.yml:202-205`) are correct at `e8f04ba2`.
-- **`bin/image-smoke` under macOS's bash 3.2** stops on an empty `run_flags` array. This predates this branch, and CI is unaffected.
+- **`bin/image-smoke` under macOS's bash 3.2** stopped on an empty `run_flags` array. This predated the branch; it is fixed in `550586df`, as the coordinator ruled.
 - **Screenshots** (`1396a1b6`) use factory data with placeholder printings, built by a throwaway system spec with `build_facts(version: "0.3.0", revision: "a9f6de7c…")`, which was deleted before the commit.
 
 ## Implementation review
@@ -141,3 +141,13 @@ The code matches spec 084 v0.4.0: every FR, decisions 1 to 12, and the exact str
 6. **Minor:** `catalog-core.md`'s phrase-search rule read as if it covered the licence line. **Fixed** in `2db4fb20` ("A type's line's …").
 7. **Minor:** after a code reload in development, the stored facts are an instance of the old class. **Accepted and documented** in the initializer's comment (`8cb049c0`): the facts can't change while the process runs, and a reload of the reader takes effect at the next boot.
 8. **Minor:** commit hygiene. T1.2 has a follow-up test commit (`9f38fcdc`, from the batch B fix), and `a40d0e44`'s subject has no `(#374)`. **Accepted:** history isn't rewritten. Every commit's trailer names the model that wrote it.
+
+## Distillation
+
+`distill-feature`, 2026-11-13. The area docs took the feature's rules during the build: `catalog-core.md` in T4.2 (`dff68597`, corrected in `2db4fb20`) and `release-and-deploy.md` in T4.3 (`b8ec874d`, corrected in `2db4fb20`). The distillation checked them against the spec and made these changes:
+
+- **Distillation logs:** added one row to each doc (`4e8b3438`).
+- **Index row:** spec 084 is Frozen by those two docs, its footer markup is the design system's `Footer`, and its Plan reads "retirement owed" (`4e8b3438`).
+- **The spec:** its `**Frozen:**` line went in on its own (`492362a3`, spec 027 D4).
+
+No area lacks a doc, no ADR is proposed, and `CLAUDE.md` restates no rule the feature changed. The plan is retired after the merge.
