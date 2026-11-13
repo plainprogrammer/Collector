@@ -1,6 +1,6 @@
 require "rails_helper"
 
-# Spec 087 AC-1.10 and Story 6: the licences page fits a 360px phone with a long text open, in both themes (the theme is set
+# Spec 087 AC-1.10 and AC-2.1: the licences page fits a 360px phone with a long text open, in both themes (the theme is set
 # through `data-theme`, as spec/system/locations_spec.rb does), and the licence line's link lands on it.
 RSpec.describe "The third-party licences page", type: :system do
   before { system_sign_in_as(create(:user)) }
@@ -30,7 +30,7 @@ RSpec.describe "The third-party licences page", type: :system do
     end
   end
 
-  it "opens from the licence line's link on a signed-in page (Story 6)", :aggregate_failures do
+  it "opens from the licence line's link on a signed-in page (AC-2.1)", :aggregate_failures do
     visit more_path
     within("footer.c-footer") { click_link "third-party licences" }
 

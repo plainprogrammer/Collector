@@ -207,6 +207,8 @@ RSpec.describe "The third-party licences page", type: :request do
       expect(row("@tesseract.js-data/eng").at_css("a")["href"]).to be_present
       expect([ "Fraunces", "IBM Plex Sans", "IBM Plex Mono" ].map { row(it).at_css(".c-licences__meta").text }).to all(eq("5.3.0 (Fontsource) · OFL-1.1"))
       expect(row("Fraunces").text).to include("Copyright 2020 The Fraunces Project Authors")
+      expect(row("IBM Plex Sans").text).to include("Copyright 2019 IBM Corp. All rights reserved.")
+      expect(row("IBM Plex Mono").text).to include("Copyright 2017 IBM Corp. All rights reserved.")
       expect(row("Lucide").text).to include("Cole Bemis", "Copyright (c) 2026 Lucide Icons and Contributors")
     end
 

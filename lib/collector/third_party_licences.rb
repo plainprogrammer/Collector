@@ -151,7 +151,7 @@ module Collector
       # An address safe to put in a link: absolute, with a host, and http or https.
       #
       # A gem's metadata is the gem author's, so a `javascript:` address, a relative one or a blank one gives no link
-      # rather than a link a visitor could be led through (spec 087 AC-4.1).
+      # rather than a link a visitor could be led through (spec 087 AC-4.4).
       #
       # @param address [String, nil] a homepage as a gem or the manifest gives it
       # @return [String, nil] the address stripped of surrounding space, or nil

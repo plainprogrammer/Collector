@@ -8,7 +8,7 @@ RSpec.describe Collector::ThirdPartyLicences, type: :model do
   after { FileUtils.remove_entry(dir) }
 
   describe ".gem_components" do
-    it "shows a gem's licence files under their file names, in name order, and not other files (AC-3.1)", :aggregate_failures do
+    it "shows a gem's licence files under their file names, in name order, and not other files (AC-1.6)", :aggregate_failures do
       gem = stand_in_gem(dir, files: { "MIT-LICENSE" => "mit text", "BSDL" => "bsd text", "LEGAL.rdoc" => "legal text", "README.md" => "readme" })
       dir.join("example/lib").mkpath
       dir.join("example/lib/LICENSE").write("nested")
@@ -18,7 +18,7 @@ RSpec.describe Collector::ThirdPartyLicences, type: :model do
       expect(component.texts).to eq([ [ "BSDL", "bsd text" ], [ "LEGAL.rdoc", "legal text" ], [ "MIT-LICENSE", "mit text" ] ])
     end
 
-    it "takes the identifiers, version and home from the gem's metadata (AC-3.2)", :aggregate_failures do
+    it "takes the identifiers, version and home from the gem's metadata (AC-1.5)", :aggregate_failures do
       gem = stand_in_gem(dir, name: "multi", version: "4.5.6", licenses: [ "MIT", "Ruby" ], homepage: "https://multi.test/gem")
 
       component = described_class.gem_components([ gem ]).first
@@ -27,7 +27,7 @@ RSpec.describe Collector::ThirdPartyLicences, type: :model do
       expect([ component.copyright, component.note ]).to eq([ nil, nil ])
     end
 
-    it "shows no text for a gem that declares a licence and ships no file (AC-3.3)", :aggregate_failures do
+    it "shows no text for a gem that declares a licence and ships no file (AC-4.1)", :aggregate_failures do
       component = described_class.gem_components([ stand_in_gem(dir, licenses: [ "MIT" ]) ]).first
 
       expect(component.identifiers).to eq([ "MIT" ])
@@ -89,12 +89,12 @@ RSpec.describe Collector::ThirdPartyLicences, type: :model do
   end
 
   describe ".safe_home" do
-    it "keeps an absolute http or https address (AC-4.1)", :aggregate_failures do
+    it "keeps an absolute http or https address (AC-4.4)", :aggregate_failures do
       expect(described_class.safe_home("https://example.test/path")).to eq("https://example.test/path")
       expect(described_class.safe_home("http://example.test")).to eq("http://example.test")
     end
 
-    it "gives no home for anything else (AC-4.1)", :aggregate_failures do
+    it "gives no home for anything else (AC-4.4)", :aggregate_failures do
       [ "javascript:alert(1)", "", nil, "/relative", "ftp://example.test", "https://", "https://exa mple.test" ].each do |address|
         expect(described_class.safe_home(address)).to be_nil, "expected no home for #{address.inspect}"
       end
@@ -114,7 +114,7 @@ RSpec.describe Collector::ThirdPartyLicences, type: :model do
 
     def entry(name, **more) = { "name" => name, "version" => "1.0", "spdx" => "MIT", "home" => "https://#{name}.test" }.merge(more.transform_keys(&:to_s))
 
-    it "has the five sections in page order with their titles (AC-1.5)", :aggregate_failures do
+    it "has the five sections in page order with their titles (AC-1.4)", :aggregate_failures do
       sections = build({}).sections
 
       expect(sections.map(&:key)).to eq(%i[javascript ocr fonts icons gems])
@@ -139,7 +139,7 @@ RSpec.describe Collector::ThirdPartyLicences, type: :model do
       expect([ component.version, component.identifiers, component.home, component.copyright ]).to eq([ "1.0", [ "MIT" ], "https://engine.test", "Copyright 2020 Someone" ])
     end
 
-    it "shows no texts for an entry that says text: none, with its note and not its reason (AC-3.5)", :aggregate_failures do
+    it "shows no texts for an entry that says text: none, with its note and not its reason (AC-4.2)", :aggregate_failures do
       instance = build({ "ocr" => [ entry("data", text: "none", reason: "ships no text", note: "as the package declares") ] })
 
       component = instance.sections.find { it.key == :ocr }.components.first
