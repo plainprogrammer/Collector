@@ -1,7 +1,7 @@
 # Implementation Plan: A Start Refuses a Volume That Holds a Prices Database and No Primary (spec 086, issue #375)
 
 **Spec:** `docs/specs/086-start-refuses-orphan-prices/spec.md` (Approved v0.3.1) · **Issue:** #375 · **Branch:** `086-start-refuses-orphan-prices` · **Created:** 2026-11-13
-**Status:** Draft, awaiting the plan review and Gate B. Decisions 1, 2 and 3 are the maintainer's and are still pending: the plan follows my recommendations and puts each decision's code in a task of its own (T1 for decision 2 and 7, T2 for decision 3, T3 for decision 1), so a different ruling changes one task.
+**Status:** Draft, awaiting Gate B. Plan review (Fable, read-only, 2026-11-13): APPROVE WITH CHANGES (0 blocking, 4 major, 9 minor), all fixed below. Decisions 1, 2 and 3 are the maintainer's and are still pending: the plan follows my recommendations and puts each decision's code in a task of its own (T1 for decision 2 and 7, T2 for decision 3, T3 for decision 1), so a different ruling changes one task.
 
 ## Context
 
@@ -94,7 +94,9 @@ module Collector
       @databases = databases
     end
 
-    # @return [Array<String>, nil] the three sentences of the refusal, or nil
+    # The three sentences that refuse this volume, or nil when the start may go on.
+    #
+    # @return [Array<String>, nil]
     def refusal
       return unless @databases.prices
 
@@ -110,13 +112,20 @@ module Collector
       # The files among a database's file and its sidecars that exist or are links.
       def present(path) = Backup::Databases::SIDECARS.map { Pathname("#{path}#{it}") }.select { it.exist? || it.symlink? }
 
+      # What a leftover primary file is, for the message: a broken link, a sidecar left behind, or an empty file.
+      def kind(path)
+        return "a broken link" if path.symlink? && !path.exist?
+
+        path.to_s == @databases.primary.to_s ? "an empty file" : "a sidecar left behind"
+      end
+
       def lines(prices, leftovers)
         names = leftovers.map { it.basename.to_s }
-        instead = names.empty? ? "" : " (it holds #{names.join(", ")} instead, which is not a database: an empty file, a broken link or a sidecar left behind)"
-        removal = [ "#{@databases.prices.basename} and its -wal, -shm and -journal files", *names ]
+        instead = leftovers.empty? ? "" : " (it holds #{leftovers.map { "#{it.basename}, #{kind(it)}" }.join("; ")} instead, which is not a database)"
+        removal = [ "#{@databases.prices.basename} and its -wal, -shm and -journal files", *names ].then { it.size > 2 ? "#{it[..-2].join(", ")} and #{it.last}" : it.join(" and ") }
         [ "Collector did not start: the storage directory #{@databases.directory} holds #{prices.join(", ")} and no primary database#{instead}.",
           "A backup:restore that stopped between placing the prices database and the primary leaves this state. Starting here would create a blank primary and keep these prices, which the new catalog's printings don't own.",
-          "Remove #{removal.join(", and ")}, then restore again onto a volume that holds no other Collector database, or start Collector blank. Run nothing else on the volume meanwhile. Nothing was changed." ]
+          "Remove #{removal}, then restore again onto a volume that holds no other Collector database, or start Collector blank. Run nothing else on the volume meanwhile. Nothing was changed." ]
       end
   end
 end
@@ -126,7 +135,7 @@ end
 
 Green: `bin/rspec spec/lib/collector/start_check_spec.rb`; `bin/rubocop -a`. Commit: `feat(start): refuse a start on orphan prices, as a class (#375)`.
 
-**Decision 7's measure, in the spec file:** one example builds a primary through Active Record's SQLite adapter in the scratch directory (`ActiveRecord::Base.establish_connection(adapter: "sqlite3", database: path)` then `lease_connection.execute("select 1")`, then back to the test pool as `with_restored_instance` does) and records `File.size(path)` in the example's description text only by asserting it is `> 0` or `== 0`, whichever it is; the implementer reports which to the supervisor, who records it in `verification.md` and corrects the Non-Goals sentence and decision 7 of the spec if the premise was wrong (spec review round 2 M1 predicts more than zero bytes, in which case the spec's limit stands as written and nothing changes).
+**Decision 7's measure, in the spec file:** one example runs the one-off command decision 7 is about in a child, `app_command(path, "runner", "ActiveRecord::Base.lease_connection.execute('select 1')")` on a scratch path that doesn't exist (the suite's own pool is left alone), then reads `File.size(path)` and asserts it is `> 0` or `== 0`, whichever it is; the implementer reports which to the supervisor, who records it in `verification.md` and corrects the Non-Goals sentence and decision 7 of the spec if the premise was wrong (spec review round 2 M1 predicts more than zero bytes, in which case the spec's limit stands as written and nothing changes).
 
 ## Phase 2: The task (decision 3)
 
@@ -135,7 +144,7 @@ Green: `bin/rspec spec/lib/collector/start_check_spec.rb`; `bin/rubocop -a`. Com
 **Implements:** FR-2; decision 3, 5 · **Satisfies:** AC-2.6
 **Files:** `lib/tasks/start.rake`, `spec/start_check_spec.rb` (the guard example)
 
-**Red first:** in `spec/start_check_spec.rb` (`type: :task`, tag `:backup`, `require "rake"`), the example of `spec/backup_boot_spec.rb:23`'s shape: `Rails.application.load_tasks unless Rake::Task.task_defined?("start:check")`, then `expect(Rake::Task["start:check"].all_prerequisite_tasks.map(&:name)).not_to include("environment")`; and a second example reading text: `git grep`-free, by `Rails.root.glob` over `config/initializers/**/*.rb`, `config/application.rb` (minus its `autoload_lib(ignore:)` line), `config/environments/*.rb` and `app/**/*.rb`, none contains `StartCheck` or `start_check`.
+**Red first:** in `spec/start_check_spec.rb` (`type: :task`, tag `:backup`, `require "rake"`), the example of `spec/backup_boot_spec.rb:23`'s shape: `Rails.application.load_tasks unless Rake::Task.task_defined?("start:check")`, then `expect(Rake::Task["start:check"].all_prerequisite_tasks.map(&:name)).not_to include("environment")`; and a second example reading text: `git grep`-free, by `Rails.root.glob` over `config/initializers/**/*.rb`, `config/application.rb` (minus its `autoload_lib(ignore:)` line), `config/environments/*.rb` and `app/**/*.rb`, none contains `StartCheck` or `start_check` once comment lines (`line.sub(/(\A|\s)#.*/, "")`, as `spec/smoke_scripts_spec.rb:24` strips them) and `config/application.rb`'s `autoload_lib(ignore:)` line are left out: T1's new comment names the file.
 
 **Then** `lib/tasks/start.rake`:
 
@@ -173,7 +182,9 @@ Green; RuboCop. Commit: `feat(start): the start:check task, with no :environment
 - No secret (AC-1.6): the same entrypoint with `RAILS_ENV=production`, `SECRET_KEY_BASE` and `SECRET_KEY_BASE_DUMMY` nil, `RAILS_MASTER_KEY` of 32 zeros (as `backup_boot_spec`'s `production` helper), the scratch URLs: the stderr is the message and does not mention `secret_key_base`.
 - Pass-through: no files, status 0 and stdout `./bin/rails server` and both scratch files created (AC-2.1); primary and prices: status 0 (AC-2.2; build them by running the entrypoint once on the empty directory); primary only: status 0 and the prices file is created (AC-2.3).
 - A one-off command on the refused volume (AC-2.5): `bin/rails runner 'puts :ok'` is not touched by the check — assert instead that the entrypoint run with `echo hello` (condition false) prints `hello`, status 0, on the refused volume.
-- The way out (AC-2.7): refused volume, remove the prices file and sidecars, the entrypoint passes.
+- The way out (AC-2.7), both halves in the AC-1.5 example (`:committed`, marked `# rubocop:disable RSpec/ExampleLength -- one scenario`, as `restore_spec.rb:185` is): after the refusal, delete the prices file and call `restore_backup(path, volume:)` (the restore succeeds with the killed run's `collector-restore.partial` left behind, `restore_spec.rb:194-196`), then the entrypoint passes with status 0 and the restored rows are there; and a separate example: refused volume, the prices file and sidecars removed, the entrypoint passes as a new instance.
+- **Assertions.** A passing start runs `db:prepare`, which migrates (no schema file) and prints on stdout: assert `out.lines.last == "./bin/rails server\n"`, never equality. The refusal asserts `err.lines(chomp: true)` equals the three lines exactly (FR-3's "no stack trace"; `backup_boot_spec.rb:37` does the same). The `SCHEMA` path is fresh per entrypoint invocation, not per example (`app_command` does that per call): an example that runs the entrypoint twice must not load run 1's dump into run 2. "Primary only" (AC-2.3) is built as `spec/backup_prices_spec.rb:21-27` builds a volume (`copy_of_instance` under `:committed`), not by deleting after a first run.
+- **Red-first, honestly.** Before the entrypoint edit only the refusal examples (the message), AC-1.5 and AC-1.6 are red; the pass-through, `echo hello` and way-out examples are green from the start, and are regression guards. A refusal's red is the missing message, not the exit status: `db:prepare` already fails on a prices file that isn't a database.
 
 **Then** `bin/docker-entrypoint`:
 
@@ -219,11 +230,22 @@ volumes+=("$volume_d")
   "$restore_image" bin/rails "backup:restore[/backups/$file]" >/dev/null 2>&1 || fail "the restore for the refusal leg failed"
 # the state a killed restore leaves, made without killing anything: the primary and its sidecars removed
 "$cli" run --rm -u 0 -v "$volume_d:/rails/storage" "$restore_image" sh -c 'rm -f /rails/storage/production.sqlite3 /rails/storage/production.sqlite3-wal /rails/storage/production.sqlite3-shm /rails/storage/production.sqlite3-journal && test -e /rails/storage/production_prices.sqlite3' >/dev/null || fail "the refusal leg's volume wasn't made"
-if refused="$("$cli" run --rm ${run_flags[@]+"${run_flags[@]}"} -v "$volume_d:/rails/storage" -e SECRET_KEY_BASE="a-secret-for-the-refused-start-0000004" "$restore_image" 2>&1)"; then
-  fail "spec 086 AC-4.1: the image started on a volume that holds a prices database and no primary"
-fi
+refused_name="backup-smoke-refused-$tag"
+containers+=("$refused_name")
+"$cli" run -d --name "$refused_name" ${run_flags[@]+"${run_flags[@]}"} -v "$volume_d:/rails/storage" \
+  -e SECRET_KEY_BASE="a-secret-for-the-refused-start-0000004" -e HTTP_PORT=8080 "$restore_image" >/dev/null
+# bounded: an image that doesn't refuse starts a server that never exits, and must fail here, naming the spec
+for _ in $(seq 1 "$attempts"); do
+  [ "$("$cli" inspect -f '{{.State.Running}}' "$refused_name")" = "false" ] && break
+  sleep 2
+done
+[ "$("$cli" inspect -f '{{.State.Running}}' "$refused_name")" = "false" ] \
+  || fail "spec 086 AC-4.1: the image started on a volume that holds a prices database and no primary (still running after $((attempts * 2)) s)"
+[ "$("$cli" inspect -f '{{.State.ExitCode}}' "$refused_name")" = "1" ] || fail "spec 086 AC-4.1: the refused start didn't exit with status 1"
+refused="$("$cli" logs "$refused_name" 2>&1)"
 grep -q "production_prices.sqlite3" <<<"$refused" && grep -q "restore again" <<<"$refused" && grep -q "Nothing was changed" <<<"$refused" \
   || fail "spec 086 AC-4.1: the refusal didn't carry the message; it printed:"$'\n'"$refused"
+"$cli" rm -f "$refused_name" >/dev/null
 [ "$("$cli" run --rm -u 0 -v "$volume_d:/rails/storage" "$restore_image" sh -c 'test ! -e /rails/storage/production.sqlite3 && echo none')" = "none" ] \
   || fail "spec 086 AC-4.1: the refused start created a primary"
 "$cli" run --rm -u 0 -v "$volume_d:/rails/storage" "$restore_image" sh -c 'rm -f /rails/storage/production_prices.sqlite3 /rails/storage/production_prices.sqlite3-wal /rails/storage/production_prices.sqlite3-shm /rails/storage/production_prices.sqlite3-journal' >/dev/null || fail "removing the prices files failed"
@@ -233,7 +255,7 @@ blank="$("$cli" exec "$d" bin/rails runner 'puts [ User.count, PricesRecord.leas
 [ "$blank" = "0,0,true" ] || fail "spec 086 AC-4.2: the start after removing the prices files wasn't a blank instance; got: $blank"
 ```
 
-The `grep … && grep … || fail` line uses herestrings, not pipes into `grep -q`. Update the script's header comment (one sentence: the refusal leg). Run `bin/rspec spec/smoke_scripts_spec.rb` and `bash -n bin/backup-smoke`. Commit: `test(smoke): a start refuses a volume with a prices database and no primary (#375)`. The run against a built image is T7.
+The container is run detached and its wait is bounded, so an image that doesn't refuse fails the leg and names the spec instead of hanging until the job's timeout (plan review M2); the exit status is asserted to be exactly 1, so a kill (137) or a crash isn't taken for the refusal. This deviates from AC-4.1's word "foreground" (the spec's observable is the status, the log and the volume): recorded in `verification.md`. The `grep … && grep … || fail` line uses herestrings, not pipes into `grep -q`. Update the script's header comment (one sentence: the refusal leg). Run `bin/rspec spec/smoke_scripts_spec.rb` and `bash -n bin/backup-smoke`. Commit: `test(smoke): a start refuses a volume with a prices database and no primary (#375)`. The run against a built image is T7.
 
 ## Phase 6: The documents (FR-4, AC-3.2)
 
@@ -243,13 +265,13 @@ Edit, each with its source (spec 086 FR-x) inline, one commit per two or three f
 
 - `README.md:465`, `docs/backup-restore.md:39`: a start of Collector refuses the volume, with the message's three parts; remove "Don't start" / "Never start" and "#375 will make…".
 - `docs/releasing.md` (the upgrade notes, newest first): a note that a start can now refuse a volume with a prices file and no primary, and what to do.
-- `docs/architecture/release-and-deploy.md`: line 85 (the server-start rule gains the check before `db:prepare`), line 138 (a start refuses it), line 312 (#375 built, spec 086), the Sources and Named-behaviour lists where they cite the restore's advice; the distillation-log row at line 326 stays.
+- `docs/architecture/release-and-deploy.md`: line 85 (the server-start rule gains the check before `db:prepare`, and its citation `bin/docker-entrypoint:4-6` becomes the new line range), line 138 (a start refuses it), line 312 (#375 built, spec 086), the Sources and Named-behaviour lists where they cite the restore's advice; the distillation-log row at line 326 stays.
 - `docs/architecture/prices.md:59` (its Sources).
 - `docs/roadmap.md:111`: #375 done, spec 086.
 - `CLAUDE.md`'s status paragraph: one clause (a start refuses a volume with a prices database and no primary, spec 086); the `Release and deploy` bullet's spec list gains 086 only if the area doc's source list does.
 - the comment of `bin/docker-entrypoint` is T3's; `bin/backup-smoke`'s header is T5's.
 
-Create `docs/specs/086-start-refuses-orphan-prices/verification.md` with the AC table (each AC, its evidence: the example, or the document line read). Commits: `docs(…): … (#375)`.
+Create `docs/specs/086-start-refuses-orphan-prices/verification.md` with the AC table (each AC, its evidence: the example, or the document line read). AC-1.3, 1.4, 1.7, 1.8 and 2.4 are proven at class level, with the wiring proven by AC-1.1 and AC-1.5; AC-2.5's evidence also cites `restore_spec.rb:124-131` and `:185` (a second restore refuses the volume itself). Commits: `docs(…): … (#375)`.
 
 ## Phase 7: The proof on the image (needs the container engine and a CI slot)
 
