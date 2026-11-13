@@ -86,5 +86,5 @@
 - [Name the guards that go red between plan commits](name-the-guards-that-go-red-between-plan-commits.md) — per task, list the guards it turns red and mark them pending until the task that turns them green; a pending example that passes fails the run
 - [Nokogiri :scope selector unsupported](nokogiri-scope-selector-unsupported.md) — `css(":scope > option")` raises in Nokogiri 1.19; use `xpath("./option")` in request-spec HTML checks
 - [Lint plan code with `bin/rubocop --stdin`](rubocop-stdin-lint.md) — extract the plan's Ruby to a scratch file and lint it with the repo path (+ `ruby -c`): the project's RSpec cops apply and nothing runs; redo after each plan patch
-- [No git stash in briefs](no-git-stash-in-briefs.md) — forbid git stash/reset/checkout in every subagent brief (except restoring a mutation-tested file); a stash/pop on a clean tree applied an unrelated old stash in spec 080
+- [No git stash or sqlite3 in briefs](no-git-stash-in-briefs.md) — forbid git stash/reset/checkout and the sqlite3 command (it prompts the maintainer) in every subagent brief (except restoring a mutation-tested file); a stash/pop on a clean tree applied an unrelated old stash in spec 080
 - [Unset `config.x` answers nil](rails-config-x-unset.md) — an unset `Rails.configuration.x` key is an empty OrderedOptions; assert a boot reading's class, not only nil attributes
