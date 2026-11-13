@@ -23,8 +23,8 @@ class PriceCounts
   OTHER_EXAMPLES = 3
 
   # A non-English paper printing, kept until every English one has been read.
-  Other = Struct.new(:lang, :set, :number, :name, :finishes, :prices, :tcgplayer_id, :cardmarket_id, :id)
-  English = Struct.new(:prices, :tcgplayer_id, :cardmarket_id)
+  Other = Struct.new(:lang, :set, :number, :name, :finishes, :prices, :tcgplayer_id, :cardmarket_id, :id, :oracle_id)
+  English = Struct.new(:prices, :tcgplayer_id, :cardmarket_id, :finishes, :oracle_id)
 
   def initialize(all_path, default_path)
     @all_path = all_path
@@ -127,15 +127,20 @@ class PriceCounts
 
     def keep_for_pairing(lang, card)
       if lang == "en"
+        key = [ card.fetch("set"), card.fetch("collector_number") ]
         @english_sets << card.fetch("set")
-        @english[[ card.fetch("set"), card.fetch("collector_number") ]] =
-          English.new(prices(card).slice(*PRICE_KEYS), card["tcgplayer_id"], card["cardmarket_id"])
+        @files[:duplicate_english_keys] += 1 if @english.key?(key)
+        @english[key] = English.new(prices(card).slice(*PRICE_KEYS), card["tcgplayer_id"], card["cardmarket_id"],
+          Array(card["finishes"]), oracle_id(card))
       else
         @others << Other.new(lang, card.fetch("set"), card.fetch("collector_number"), card.fetch("name"),
           Array(card["finishes"]), prices(card).slice(*PRICE_KEYS), card["tcgplayer_id"], card["cardmarket_id"],
-          card.fetch("id"))
+          card.fetch("id"), oracle_id(card))
       end
     end
+
+    # As MTG::Scryfall::Mapper.identity_record reads it: the card's own, else its first face's.
+    def oracle_id(card) = card["oracle_id"] || Array(card["card_faces"]).first&.dig("oracle_id")
 
     def pair_others
       @pairs = Hash.new { |hash, key| hash[key] = Hash.new(0) }
@@ -146,6 +151,9 @@ class PriceCounts
       @unpaired = Hash.new { |hash, key| hash[key] = Hash.new(0) }
       @unpaired_sets = Hash.new { |hash, key| hash[key] = Hash.new(0) }
       @unpaired_files = Hash.new(0)
+      @unpaired_file_sets = Hash.new { |hash, key| hash[key] = Hash.new(0) }
+      @finish_gaps = Hash.new { |hash, key| hash[key] = Hash.new(0) }
+      @eur_ids = Hash.new(0)
       @others.each do |other|
         english = @english[[ other.set, other.number ]]
         group = english ? "with an English twin" : "no English twin"
@@ -178,26 +186,42 @@ class PriceCounts
       @unpaired_sets[[ other.lang, reason ]][other.set] += 1
       file = @default_ids.include?(other.id) ? :in_default : :all_only
       @unpaired_files[[ other.lang, file ]] += 1
+      @unpaired_file_sets[[ other.lang, file ]][other.set] += 1
       @unpaired_files[[ other.lang, :"#{file}_priced" ]] += 1 if other.prices.except("tix").values.any?
     end
 
     def compare_pair(other, english)
       ids = @ids[other.lang]
       ids[:pairs] += 1
+      @files[:oracle_mismatch] += 1 if other.oracle_id != english.oracle_id
       other.finishes.each do |finish|
         next unless FINISH_KEYS.key?(finish)
 
         usd, eur = FINISH_KEYS.fetch(finish).values_at("USD", "EUR").map { |key| outcome(english.prices[key], other.prices[key]) }
         @currencies[[ other.lang, finish, usd, eur ]] += 1
+        count_finish_gap(other, english, finish)
       end
       ids[:"tcgplayer_#{id_relation(other.tcgplayer_id, english.tcgplayer_id)}"] += 1
-      ids[:"cardmarket_#{id_relation(other.cardmarket_id, english.cardmarket_id)}"] += 1
+      cardmarket = id_relation(other.cardmarket_id, english.cardmarket_id)
+      ids[:"cardmarket_#{cardmarket}"] += 1
+      eur = other.prices.values_at("eur", "eur_foil", "eur_etched").any? ? "with a EUR price" : "no EUR price"
+      @eur_ids[[ other.lang, cardmarket, eur ]] += 1
       PRICE_KEYS.each do |key|
         outcome = outcome(english.prices[key], other.prices[key])
         @pairs[[ other.lang, key ]][outcome] += 1
         @ratios[[ other.lang, key ]] << other.prices[key].to_f / english.prices[key].to_f if outcome == :different
         keep_example(other, english, key, outcome)
       end
+    end
+
+    # A finish the non-English printing has and its English twin hasn't: the twin has no price to lend for it.
+    def count_finish_gap(other, english, finish)
+      return if english.finishes.include?(finish)
+
+      counts = @finish_gaps[[ other.lang, finish ]]
+      counts[:pairs] += 1
+      counts[:own_priced] += 1 if other.prices.values_at(*FINISH_KEYS.fetch(finish).values).any?
+      counts[:twin_priced] += 1 if english.prices.except("tix").values.any?
     end
 
     def id_relation(own, english)
@@ -217,12 +241,16 @@ class PriceCounts
     def keep_example(other, english, key, outcome)
       return if outcome == :both_empty
 
-      limit = other.lang == "ja" ? EXAMPLES : OTHER_EXAMPLES
+      # Every exception (a price that differs, or one the English twin lacks) is listed; the common outcomes are sampled.
+      limit = if %i[different other_only].include?(outcome) then Float::INFINITY
+      elsif other.lang == "ja" then EXAMPLES
+      else OTHER_EXAMPLES
+      end
       examples = @examples[[ other.lang, outcome ]]
       return if examples.size >= limit || examples.any? { |example| example[:number] == other.number && example[:set] == other.set }
 
       examples << { set: other.set, number: other.number, name: other.name, key:, english: english.prices[key],
-                    other: other.prices[key] }
+                    other: other.prices[key], cardmarket: id_relation(other.cardmarket_id, english.cardmarket_id) }
     end
 
     def languages_in_order
@@ -256,13 +284,16 @@ class PriceCounts
       puts "# Counts for research 083"
       puts
       table(%w[File Lines], @files.select { |key, _| key.is_a?(String) }.map { |file, lines| [ "`#{file}`", count(lines) ] })
+      report_pairing_checks
       report_languages
       report_keys
       report_coverage
       report_pairs
       report_currencies
       report_unpaired
+      report_finish_gaps
       report_ids
+      report_eur_ids
       report_ratios
       report_examples
       report_default
@@ -270,7 +301,7 @@ class PriceCounts
 
     def report_languages
       %w[paper all].each do |population|
-        puts "## 1. Card objects by language (#{population})"
+        puts "## 1#{population == "paper" ? "a" : "b"}. Card objects by language (#{population})"
         puts
         rows = languages_in_order.map do |lang|
           counts = @languages[[ population, lang ]]
@@ -286,7 +317,8 @@ class PriceCounts
     def report_keys
       puts "## 2. Price keys present (objects whose `prices` has the key)"
       puts
-      table(%w[Key Paper All], PRICE_KEYS.map { |key| [ "`#{key}`", count(@keys_present["paper"][key]), count(@keys_present["all"][key]) ] })
+      keys = PRICE_KEYS | @keys_present["all"].keys
+      table(%w[Key Paper All], keys.map { |key| [ "`#{key}`", count(@keys_present["paper"][key]), count(@keys_present["all"][key]) ] })
     end
 
     def report_coverage
@@ -350,9 +382,38 @@ class PriceCounts
       puts "The same printings by the file that carries them. Priced: any USD or EUR price."
       puts
       rows = (languages_in_order - [ "en" ]).map do |lang|
-        [ lang, *%i[in_default in_default_priced all_only all_only_priced].map { |key| count(@unpaired_files[[ lang, key ]]) } ]
+        sets = @unpaired_file_sets[[ lang, :all_only ]].sort_by { |set, printings| [ -printings, set ] }.first(5)
+        [ lang, *%i[in_default in_default_priced all_only all_only_priced].map { |key| count(@unpaired_files[[ lang, key ]]) },
+          sets.map { |set, printings| "#{set} #{printings}" }.join(", ") ]
       end
-      table([ "Lang", "In `default_cards` too", "Of those, priced", "In `all_cards` only", "Of those, priced" ], rows)
+      table([ "Lang", "In `default_cards` too", "Of those, priced", "In `all_cards` only", "Of those, priced",
+              "Sets of those in `all_cards` only" ], rows)
+    end
+
+    def report_pairing_checks
+      puts "## 0. Pairing checks"
+      puts
+      table(%w[Check Count], [
+        [ "English paper printings that share a set code and number with another", count(@files[:duplicate_english_keys]) ],
+        [ "Pairs whose two printings have different `oracle_id`s", count(@files[:oracle_mismatch]) ]
+      ])
+    end
+
+    def report_finish_gaps
+      puts "## 4c. Pairs where the non-English printing has a finish its English twin hasn't (paper)"
+      puts
+      rows = @finish_gaps.sort_by { |(lang, finish), _| [ languages_in_order.index(lang), FINISH_KEYS.keys.index(finish) ] }
+        .map { |(lang, finish), counts| [ lang, finish, *%i[pairs own_priced twin_priced].map { |key| count(counts[key]) } ] }
+      table([ "Lang", "Finish", "Pairs", "Of those, the non-English printing priced for it",
+              "Of those, the twin priced for a finish of its own" ], rows)
+    end
+
+    def report_eur_ids
+      puts "## 5a. Pairs by the non-English printing's `cardmarket_id` and whether it has a EUR price (paper)"
+      puts
+      rows = @eur_ids.sort_by { |(lang, relation, eur), _| [ languages_in_order.index(lang), relation, eur ] }
+        .map { |(lang, relation, eur), pairs| [ lang, relation, eur, count(pairs) ] }
+      table([ "Lang", "Cardmarket id", "EUR", "Pairs" ], rows)
     end
 
     def report_ids
@@ -386,17 +447,18 @@ class PriceCounts
     end
 
     def report_examples
-      puts "## 7. Examples (paper; ten for Japanese, three for another language, per outcome)"
+      puts "## 7. Examples (paper): every \"different\" and \"other language only\"; of each other outcome, ten for " \
+           "Japanese and three for another language"
       puts
       rows = (languages_in_order - [ "en" ]).flat_map do |lang|
         (OUTCOMES - [ :both_empty ]).flat_map do |outcome|
           @examples[[ lang, outcome ]].map do |example|
             [ lang, outcome.to_s.tr("_", " "), example[:set], example[:number], example[:name], "`#{example[:key]}`",
-              example[:english] || "–", example[:other] || "–" ]
+              example[:english] || "–", example[:other] || "–", example[:cardmarket] ]
           end
         end
       end
-      table([ "Lang", "Outcome", "Set", "Number", "Name", "Price", "English", "Other language" ], rows)
+      table([ "Lang", "Outcome", "Set", "Number", "Name", "Price", "English", "Other language", "Cardmarket id" ], rows)
     end
 
     def report_default

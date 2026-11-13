@@ -5,7 +5,14 @@
 | `default-cards-20261113100623.jsonl.gz` | 120,063 |
 | `all-cards-20261113102214.jsonl.gz` | 551,935 |
 
-## 1. Card objects by language (paper)
+## 0. Pairing checks
+
+| Check | Count |
+|---|---|
+| English paper printings that share a set code and number with another | 0 |
+| Pairs whose two printings have different `oracle_id`s | 0 |
+
+## 1a. Card objects by language (paper)
 
 | Lang | Objects | With `prices` | All prices empty | Share all empty | With `tcgplayer_id` | With `cardmarket_id` | With `tix` |
 |---|---|---|---|---|---|---|---|
@@ -30,7 +37,7 @@
 | la | 1 | 1 | 0 | 0.0% | 1 | 1 | 0 |
 | sa | 1 | 1 | 0 | 0.0% | 1 | 1 | 0 |
 
-## 1. Card objects by language (all)
+## 1b. Card objects by language (all)
 
 | Lang | Objects | With `prices` | All prices empty | Share all empty | With `tcgplayer_id` | With `cardmarket_id` | With `tix` |
 |---|---|---|---|---|---|---|---|
@@ -439,27 +446,52 @@ One row per combination that occurs. A pair counts once for each finish the non-
 
 The same printings by the file that carries them. Priced: any USD or EUR price.
 
-| Lang | In `default_cards` too | Of those, priced | In `all_cards` only | Of those, priced |
+| Lang | In `default_cards` too | Of those, priced | In `all_cards` only | Of those, priced | Sets of those in `all_cards` only |
+|---|---|---|---|---|---|
+| ja | 652 | 632 | 378 | 0 | 4bb 378 |
+| fr | 430 | 428 | 600 | 0 | psal 600 |
+| de | 9 | 8 | 428 | 119 | fbb 306, ren 122 |
+| es | 1,207 | 1,124 | 0 | 0 |  |
+| it | 194 | 146 | 906 | 0 | psal 600, fbb 306 |
+| zhs | 62 | 57 | 0 | 0 |  |
+| pt | 3 | 3 | 375 | 219 | 4bb 375 |
+| zht | 4 | 1 | 373 | 0 | 4bb 370, plg21 2, pcy 1 |
+| ru | 5 | 5 | 0 | 0 |  |
+| ko | 1 | 1 | 370 | 0 | 4bb 370 |
+| ph | 49 | 49 | 0 | 0 |  |
+| tlh | 15 | 10 | 0 | 0 |  |
+| qya | 7 | 6 | 0 | 0 |  |
+| dw | 5 | 5 | 0 | 0 |  |
+| grc | 3 | 3 | 0 | 0 |  |
+| ar | 1 | 1 | 0 | 0 |  |
+| he | 1 | 1 | 0 | 0 |  |
+| la | 1 | 1 | 0 | 0 |  |
+| sa | 1 | 1 | 0 | 0 |  |
+
+## 4c. Pairs where the non-English printing has a finish its English twin hasn't (paper)
+
+| Lang | Finish | Pairs | Of those, the non-English printing priced for it | Of those, the twin priced for a finish of its own |
 |---|---|---|---|---|
-| ja | 652 | 632 | 378 | 0 |
-| fr | 430 | 428 | 600 | 0 |
-| de | 9 | 8 | 428 | 119 |
-| es | 1,207 | 1,124 | 0 | 0 |
-| it | 194 | 146 | 906 | 0 |
-| zhs | 62 | 57 | 0 | 0 |
-| pt | 3 | 3 | 375 | 219 |
-| zht | 4 | 1 | 373 | 0 |
-| ru | 5 | 5 | 0 | 0 |
-| ko | 1 | 1 | 370 | 0 |
-| ph | 49 | 49 | 0 | 0 |
-| tlh | 15 | 10 | 0 | 0 |
-| qya | 7 | 6 | 0 | 0 |
-| dw | 5 | 5 | 0 | 0 |
-| grc | 3 | 3 | 0 | 0 |
-| ar | 1 | 1 | 0 | 0 |
-| he | 1 | 1 | 0 | 0 |
-| la | 1 | 1 | 0 | 0 |
-| sa | 1 | 1 | 0 | 0 |
+| ja | nonfoil | 43 | 0 | 42 |
+| ja | foil | 1,654 | 0 | 1,652 |
+| fr | nonfoil | 41 | 1 | 41 |
+| fr | foil | 1,635 | 0 | 1,635 |
+| de | nonfoil | 43 | 0 | 43 |
+| de | foil | 1,651 | 0 | 1,651 |
+| es | nonfoil | 40 | 0 | 40 |
+| es | foil | 1,503 | 0 | 1,503 |
+| it | nonfoil | 40 | 0 | 40 |
+| it | foil | 1,502 | 0 | 1,502 |
+| zhs | nonfoil | 42 | 0 | 42 |
+| zhs | foil | 1,464 | 0 | 1,464 |
+| pt | nonfoil | 36 | 0 | 36 |
+| pt | foil | 1,420 | 0 | 1,420 |
+| zht | nonfoil | 41 | 0 | 41 |
+| zht | foil | 1,051 | 0 | 1,051 |
+| ru | nonfoil | 40 | 0 | 40 |
+| ru | foil | 719 | 0 | 719 |
+| ko | nonfoil | 6 | 0 | 6 |
+| ko | foil | 17 | 0 | 17 |
 
 ## 5. Marketplace ids of the non-English printing (paper)
 
@@ -487,94 +519,129 @@ Same: equal to the English twin's. Own: present and different. Absent: none.
 | la | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
 | sa | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
 
+## 5a. Pairs by the non-English printing's `cardmarket_id` and whether it has a EUR price (paper)
+
+| Lang | Cardmarket id | EUR | Pairs |
+|---|---|---|---|
+| ja | absent | no EUR price | 62,041 |
+| ja | same | no EUR price | 1 |
+| ja | same | with a EUR price | 961 |
+| fr | absent | no EUR price | 58,882 |
+| fr | same | with a EUR price | 705 |
+| de | absent | no EUR price | 59,143 |
+| de | same | with a EUR price | 703 |
+| es | absent | no EUR price | 52,882 |
+| es | own | with a EUR price | 11 |
+| es | same | with a EUR price | 708 |
+| it | absent | no EUR price | 52,382 |
+| it | same | with a EUR price | 705 |
+| zhs | absent | no EUR price | 40,255 |
+| zhs | same | with a EUR price | 553 |
+| pt | absent | no EUR price | 37,858 |
+| pt | same | with a EUR price | 654 |
+| zht | absent | no EUR price | 23,098 |
+| zht | same | with a EUR price | 107 |
+| ru | absent | no EUR price | 21,602 |
+| ru | same | with a EUR price | 154 |
+| ko | absent | no EUR price | 15,005 |
+| ko | same | with a EUR price | 32 |
+
 ## 6. Where both are priced and differ: the other language's price over the English one's
 
 | Lang | Price | Pairs | Lower half's median | Median | Upper half's median |
 |---|---|---|---|---|---|
 | es | `eur` | 11 | 0.71 | 0.83 | 1.18 |
 
-## 7. Examples (paper; ten for Japanese, three for another language, per outcome)
+## 7. Examples (paper): every "different" and "other language only"; of each other outcome, ten for Japanese and three for another language
 
-| Lang | Outcome | Set | Number | Name | Price | English | Other language |
-|---|---|---|---|---|---|---|---|
-| ja | equal | ltc | 259 | Reclamation Sage | `eur` | 0.20 | 0.20 |
-| ja | equal | vow | 236 | Edgar, Charmed Groom // Edgar Markov's Coffin | `eur` | 4.59 | 4.59 |
-| ja | equal | ddk | 63 | Recoup | `eur` | 0.26 | 0.26 |
-| ja | equal | ltr | 182 | Pippin's Bravery | `eur` | 0.06 | 0.06 |
-| ja | equal | 40k | 27 | Vanguard Suppressor | `eur` | 0.42 | 0.42 |
-| ja | equal | ltc | 347 | Woodland Stream | `eur` | 0.30 | 0.30 |
-| ja | equal | ltr | 250 | Sting, the Glinting Dagger | `eur` | 2.16 | 2.16 |
-| ja | equal | ltr | 243 | Lembas | `eur` | 1.90 | 1.90 |
-| ja | equal | ddj | 54 | Stinkweed Imp | `eur` | 0.87 | 0.87 |
-| ja | equal | ncc | 69 | Cabaretti Confluence | `eur` | 0.20 | 0.20 |
-| ja | english only | kld | 265 | Chandra, Pyrogenius | `usd_foil` | 0.99 | – |
-| ja | english only | trk | 242 | Kira Nerys, Firebrand | `usd` | 0.33 | – |
-| ja | english only | brr | 125 | Well of Lost Dreams | `usd` | 1.66 | – |
-| ja | english only | ltc | 259 | Reclamation Sage | `usd` | 0.36 | – |
-| ja | english only | m20 | 218 | Skyknight Vanguard | `usd` | 0.37 | – |
-| ja | english only | msh | 375 | Storm, Windrider | `usd` | 2.17 | – |
-| ja | english only | vow | 236 | Edgar, Charmed Groom // Edgar Markov's Coffin | `usd` | 3.56 | – |
-| ja | english only | tle | 190 | Nyla, Shirshu Sleuth | `usd` | 0.34 | – |
-| ja | english only | dft | 449 | Gas Guzzler | `usd_foil` | 1.22 | – |
-| ja | english only | ths | 124 | Hammer of Purphoros | `usd` | 0.64 | – |
-| fr | equal | ltr | 185 | Revive the Shire | `eur` | 0.11 | 0.11 |
-| fr | equal | m19 | 269 | Swamp | `eur` | 0.08 | 0.08 |
-| fr | equal | vow | 68 | Mirrorhall Mimic // Ghastly Mimicry | `eur` | 0.87 | 0.87 |
-| fr | english only | c17 | 73 | Spirit of the Hearth | `usd` | 0.36 | – |
-| fr | english only | fic | 192 | Yuna, Grand Summoner | `usd` | 3.89 | – |
-| fr | english only | jou | 1 | Aegis of the Gods | `usd` | 1.07 | – |
-| fr | other only | bro | 379 | Queen Kayla bin-Kroog | `eur` | – | 0.16 |
-| de | equal | ltr | 123 | Erkenbrand, Lord of Westfold | `eur` | 0.09 | 0.09 |
-| de | equal | woc | 102 | Perplexing Test | `eur` | 0.32 | 0.32 |
-| de | equal | 40k | 39 | Lychguard | `eur` | 0.23 | 0.23 |
-| de | english only | mic | 124 | Lord of the Accursed | `usd` | 0.42 | – |
-| de | english only | rtr | 122 | Drudge Beetle | `usd` | 0.04 | – |
-| de | english only | dft | 533 | Guardian Sunmare | `usd_foil` | 3.16 | – |
-| es | equal | m19 | 181 | Ghastbark Twins | `eur` | 0.06 | 0.06 |
-| es | equal | ltr | 200 | Elrond, Master of Healing | `eur` | 0.25 | 0.25 |
-| es | equal | vow | 205 | Howlpack Piper // Wildsong Howler | `eur` | 0.94 | 0.94 |
-| es | different | por | 158 | Anaconda | `eur` | 0.21 | 0.22 |
-| es | different | por | 96 | Hand of Death | `eur` | 0.25 | 0.18 |
-| es | different | por | 163 | Elite Cat Warrior | `eur` | 0.13 | 0.15 |
-| es | english only | mh2 | 321 | Shardless Agent | `usd` | 1.26 | – |
-| es | english only | spg | 88 | Lord of the Undead | `usd` | 10.71 | – |
-| es | english only | lrw | 165 | Flamekin Bladewhirl | `usd` | 0.19 | – |
-| it | equal | ltr | 144 | Relentless Rohirrim | `eur` | 0.04 | 0.04 |
-| it | equal | 40k | 39 | Lychguard | `eur` | 0.23 | 0.23 |
-| it | equal | ncc | 41 | Wave of Rats | `eur` | 2.09 | 2.09 |
-| it | english only | rav | 49 | Flight of Fancy | `usd` | 0.15 | – |
-| it | english only | drc | 142 | Talisman of Hierarchy | `usd` | 0.42 | – |
-| it | english only | rix | 99 | Dire Fleet Daredevil | `usd` | 0.36 | – |
-| zhs | equal | ltr | 181 | Peregrin Took | `eur` | 0.28 | 0.28 |
-| zhs | equal | ltr | 198 | Denethor, Ruling Steward | `eur` | 0.09 | 0.09 |
-| zhs | equal | ltr | 88 | Gríma Wormtongue | `eur` | 0.12 | 0.12 |
-| zhs | english only | ody | 243 | Holistic Wisdom | `usd` | 1.75 | – |
-| zhs | english only | snc | 231 | Ziatora, the Incinerator | `usd` | 0.66 | – |
-| zhs | english only | pip | 12 | Brotherhood Outcast | `usd` | 0.32 | – |
-| pt | equal | 40k | 31 | Blight Grenade | `eur` | 0.30 | 0.30 |
-| pt | equal | ltr | 255 | The Grey Havens | `eur` | 0.21 | 0.21 |
-| pt | equal | woc | 101 | Opt | `eur` | 0.14 | 0.14 |
-| pt | english only | jud | 57 | Wormfang Drake | `usd` | 0.20 | – |
-| pt | english only | tsr | 38 | Riftmarked Knight | `usd` | 0.15 | – |
-| pt | english only | ice | 285 | Earthlink | `usd` | 0.96 | – |
-| zht | equal | ncc | 22 | Aven Courier | `eur` | 2.20 | 2.20 |
-| zht | equal | ncc | 57 | Crash the Party | `eur` | 0.37 | 0.37 |
-| zht | equal | ncc | 28 | Mask of the Schemer | `eur` | 0.39 | 0.39 |
-| zht | english only | dgm | 4 | Maze Sentinel | `usd` | 0.14 | – |
-| zht | english only | mh2 | 302 | Mishra's Factory | `usd` | 0.27 | – |
-| zht | english only | ths | 114 | Borderland Minotaur | `usd` | 0.03 | – |
-| ru | equal | ncc | 84 | Smuggler's Buggy | `eur` | 0.95 | 0.95 |
-| ru | equal | vow | 187 | Avabruck Caretaker // Hollowhenge Huntmaster | `eur` | 4.78 | 4.78 |
-| ru | equal | ncc | 74 | Life Insurance | `eur` | 0.46 | 0.46 |
-| ru | english only | rav | 186 | Transluminant | `usd` | 0.07 | – |
-| ru | english only | vow | 18 | Heron of Hope | `usd` | 0.22 | – |
-| ru | english only | mh2 | 266 | Soul Snare | `usd` | 0.24 | – |
-| ko | equal | m19 | 75 | Snapping Drake | `eur` | 0.05 | 0.05 |
-| ko | equal | m19 | 148 | Inferno Hellion | `eur` | 0.08 | 0.08 |
-| ko | equal | m19 | 180 | Elvish Rejuvenator | `eur` | 0.13 | 0.13 |
-| ko | english only | vow | 59 | Fear of Death | `usd` | 0.19 | – |
-| ko | english only | akh | 223 | Cut // Ribbons | `usd` | 0.48 | – |
-| ko | english only | xln | 209 | Spike-Tailed Ceratops | `usd` | 0.12 | – |
+| Lang | Outcome | Set | Number | Name | Price | English | Other language | Cardmarket id |
+|---|---|---|---|---|---|---|---|---|
+| ja | equal | ltc | 259 | Reclamation Sage | `eur` | 0.20 | 0.20 | same |
+| ja | equal | vow | 236 | Edgar, Charmed Groom // Edgar Markov's Coffin | `eur` | 4.59 | 4.59 | same |
+| ja | equal | ddk | 63 | Recoup | `eur` | 0.26 | 0.26 | same |
+| ja | equal | ltr | 182 | Pippin's Bravery | `eur` | 0.06 | 0.06 | same |
+| ja | equal | 40k | 27 | Vanguard Suppressor | `eur` | 0.42 | 0.42 | same |
+| ja | equal | ltc | 347 | Woodland Stream | `eur` | 0.30 | 0.30 | same |
+| ja | equal | ltr | 250 | Sting, the Glinting Dagger | `eur` | 2.16 | 2.16 | same |
+| ja | equal | ltr | 243 | Lembas | `eur` | 1.90 | 1.90 | same |
+| ja | equal | ddj | 54 | Stinkweed Imp | `eur` | 0.87 | 0.87 | same |
+| ja | equal | ncc | 69 | Cabaretti Confluence | `eur` | 0.20 | 0.20 | same |
+| ja | english only | kld | 265 | Chandra, Pyrogenius | `usd_foil` | 0.99 | – | absent |
+| ja | english only | trk | 242 | Kira Nerys, Firebrand | `usd` | 0.33 | – | absent |
+| ja | english only | brr | 125 | Well of Lost Dreams | `usd` | 1.66 | – | absent |
+| ja | english only | ltc | 259 | Reclamation Sage | `usd` | 0.36 | – | same |
+| ja | english only | m20 | 218 | Skyknight Vanguard | `usd` | 0.37 | – | absent |
+| ja | english only | msh | 375 | Storm, Windrider | `usd` | 2.17 | – | absent |
+| ja | english only | vow | 236 | Edgar, Charmed Groom // Edgar Markov's Coffin | `usd` | 3.56 | – | same |
+| ja | english only | tle | 190 | Nyla, Shirshu Sleuth | `usd` | 0.34 | – | absent |
+| ja | english only | dft | 449 | Gas Guzzler | `usd_foil` | 1.22 | – | absent |
+| ja | english only | ths | 124 | Hammer of Purphoros | `usd` | 0.64 | – | absent |
+| fr | equal | ltr | 185 | Revive the Shire | `eur` | 0.11 | 0.11 | same |
+| fr | equal | m19 | 269 | Swamp | `eur` | 0.08 | 0.08 | same |
+| fr | equal | vow | 68 | Mirrorhall Mimic // Ghastly Mimicry | `eur` | 0.87 | 0.87 | same |
+| fr | english only | c17 | 73 | Spirit of the Hearth | `usd` | 0.36 | – | absent |
+| fr | english only | fic | 192 | Yuna, Grand Summoner | `usd` | 3.89 | – | absent |
+| fr | english only | jou | 1 | Aegis of the Gods | `usd` | 1.07 | – | absent |
+| fr | other only | bro | 379 | Queen Kayla bin-Kroog | `eur` | – | 0.16 | same |
+| de | equal | ltr | 123 | Erkenbrand, Lord of Westfold | `eur` | 0.09 | 0.09 | same |
+| de | equal | woc | 102 | Perplexing Test | `eur` | 0.32 | 0.32 | same |
+| de | equal | 40k | 39 | Lychguard | `eur` | 0.23 | 0.23 | same |
+| de | english only | mic | 124 | Lord of the Accursed | `usd` | 0.42 | – | absent |
+| de | english only | rtr | 122 | Drudge Beetle | `usd` | 0.04 | – | absent |
+| de | english only | dft | 533 | Guardian Sunmare | `usd_foil` | 3.16 | – | absent |
+| es | equal | m19 | 181 | Ghastbark Twins | `eur` | 0.06 | 0.06 | same |
+| es | equal | ltr | 200 | Elrond, Master of Healing | `eur` | 0.25 | 0.25 | same |
+| es | equal | vow | 205 | Howlpack Piper // Wildsong Howler | `eur` | 0.94 | 0.94 | same |
+| es | different | por | 158 | Anaconda | `eur` | 0.21 | 0.22 | own |
+| es | different | por | 96 | Hand of Death | `eur` | 0.25 | 0.18 | own |
+| es | different | por | 163 | Elite Cat Warrior | `eur` | 0.13 | 0.15 | own |
+| es | different | por | 38† | Warrior's Charge | `eur` | 0.12 | 0.17 | own |
+| es | different | itp | 57 | Island | `eur` | 0.30 | 0.25 | own |
+| es | different | por | 145 | Raging Goblin | `eur` | 0.34 | 0.23 | own |
+| es | different | itp | 54 | Plains | `eur` | 0.18 | 0.37 | own |
+| es | different | por | 118 | Blaze | `eur` | 0.43 | 0.16 | own |
+| es | different | itp | 53 | Plains | `eur` | 0.25 | 0.30 | own |
+| es | different | itp | 56 | Island | `eur` | 0.37 | 0.26 | own |
+| es | different | por | 173 | Monstrous Growth | `eur` | 0.24 | 0.17 | own |
+| es | english only | mh2 | 321 | Shardless Agent | `usd` | 1.26 | – | absent |
+| es | english only | spg | 88 | Lord of the Undead | `usd` | 10.71 | – | absent |
+| es | english only | lrw | 165 | Flamekin Bladewhirl | `usd` | 0.19 | – | absent |
+| it | equal | ltr | 144 | Relentless Rohirrim | `eur` | 0.04 | 0.04 | same |
+| it | equal | 40k | 39 | Lychguard | `eur` | 0.23 | 0.23 | same |
+| it | equal | ncc | 41 | Wave of Rats | `eur` | 2.09 | 2.09 | same |
+| it | english only | rav | 49 | Flight of Fancy | `usd` | 0.15 | – | absent |
+| it | english only | drc | 142 | Talisman of Hierarchy | `usd` | 0.42 | – | absent |
+| it | english only | rix | 99 | Dire Fleet Daredevil | `usd` | 0.36 | – | absent |
+| zhs | equal | ltr | 181 | Peregrin Took | `eur` | 0.28 | 0.28 | same |
+| zhs | equal | ltr | 198 | Denethor, Ruling Steward | `eur` | 0.09 | 0.09 | same |
+| zhs | equal | ltr | 88 | Gríma Wormtongue | `eur` | 0.12 | 0.12 | same |
+| zhs | english only | ody | 243 | Holistic Wisdom | `usd` | 1.75 | – | absent |
+| zhs | english only | snc | 231 | Ziatora, the Incinerator | `usd` | 0.66 | – | absent |
+| zhs | english only | pip | 12 | Brotherhood Outcast | `usd` | 0.32 | – | absent |
+| pt | equal | 40k | 31 | Blight Grenade | `eur` | 0.30 | 0.30 | same |
+| pt | equal | ltr | 255 | The Grey Havens | `eur` | 0.21 | 0.21 | same |
+| pt | equal | woc | 101 | Opt | `eur` | 0.14 | 0.14 | same |
+| pt | english only | jud | 57 | Wormfang Drake | `usd` | 0.20 | – | absent |
+| pt | english only | tsr | 38 | Riftmarked Knight | `usd` | 0.15 | – | absent |
+| pt | english only | ice | 285 | Earthlink | `usd` | 0.96 | – | absent |
+| zht | equal | ncc | 22 | Aven Courier | `eur` | 2.20 | 2.20 | same |
+| zht | equal | ncc | 57 | Crash the Party | `eur` | 0.37 | 0.37 | same |
+| zht | equal | ncc | 28 | Mask of the Schemer | `eur` | 0.39 | 0.39 | same |
+| zht | english only | dgm | 4 | Maze Sentinel | `usd` | 0.14 | – | absent |
+| zht | english only | mh2 | 302 | Mishra's Factory | `usd` | 0.27 | – | absent |
+| zht | english only | ths | 114 | Borderland Minotaur | `usd` | 0.03 | – | absent |
+| ru | equal | ncc | 84 | Smuggler's Buggy | `eur` | 0.95 | 0.95 | same |
+| ru | equal | vow | 187 | Avabruck Caretaker // Hollowhenge Huntmaster | `eur` | 4.78 | 4.78 | same |
+| ru | equal | ncc | 74 | Life Insurance | `eur` | 0.46 | 0.46 | same |
+| ru | english only | rav | 186 | Transluminant | `usd` | 0.07 | – | absent |
+| ru | english only | vow | 18 | Heron of Hope | `usd` | 0.22 | – | absent |
+| ru | english only | mh2 | 266 | Soul Snare | `usd` | 0.24 | – | absent |
+| ko | equal | m19 | 75 | Snapping Drake | `eur` | 0.05 | 0.05 | same |
+| ko | equal | m19 | 148 | Inferno Hellion | `eur` | 0.08 | 0.08 | same |
+| ko | equal | m19 | 180 | Elvish Rejuvenator | `eur` | 0.13 | 0.13 | same |
+| ko | english only | vow | 59 | Fear of Death | `usd` | 0.19 | – | absent |
+| ko | english only | akh | 223 | Cut // Ribbons | `usd` | 0.48 | – | absent |
+| ko | english only | xln | 209 | Spike-Tailed Ceratops | `usd` | 0.12 | – | absent |
 
 ## 8. `default_cards` against `all_cards`
 
