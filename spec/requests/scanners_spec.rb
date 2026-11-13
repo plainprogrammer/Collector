@@ -83,6 +83,24 @@ RSpec.describe "Scanner page", type: :request do
         expect(Nokogiri::HTML5(response.body).at("#scanner_added_text").text).to be_empty
       end
 
+      # No link sends a collector from a removal to the scanner (the removal redirects to the collection, which consumes the flash),
+      # so the example skips that redirect: the flash a bulk removal writes is the only one carrying an Undo, and the scanner's
+      # line must put its form beside the sentence, outside the live region.
+      it "puts a flash's Undo beside the sentence on the after-add line, outside its live region (AC-5.6)", :aggregate_failures do
+        lot = owned_printing("Lightning Bolt", account: user.account)
+        post collection_selection_path, params: { q: "" }
+        patch collection_selection_path, params: { go: "remove", q: "", rendered_q: "", all_rendered: "0", shown_ids: [ lot.id ], ticked_ids: [ lot.id ] }
+        post collection_bulk_removals_path
+        get scanner_path
+        body = Nokogiri::HTML5(response.body)
+        expect(body.at("#scanner_added_text").text).to start_with("Removed")
+        form = body.at("#scanner_added_action form")
+        expect(form["action"]).to eq(collection_bulk_removal_undo_path(BulkRemoval.sole))
+        expect(form.at("input[name=return_to]")["value"]).to eq(scanner_path)
+        expect(body.at("#scanner_added_action").ancestors("[role=status]")).to be_empty
+        expect(body.at("#scanner_added_text").ancestors("[role=status]")).to be_empty
+      end
+
       # The sitting bar's wrapper is `display: contents`, so its button and Done sit in the top bar's row after the back link.
       def top_bar_row(body) = body.css(".c-scan__top a.c-scan__back, .c-scan__top .c-scan__dest, .c-scan__top .c-scan__done").map { it["class"].to_s[/c-scan__\w+/] }
 
