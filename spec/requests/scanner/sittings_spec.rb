@@ -269,6 +269,14 @@ RSpec.describe "Scanner sittings", type: :request do
       expect(account.scanner_sitting.reload.location).to eq(blue)
     end
 
+    it "redraws the top bar and the sitting in a refused answer too (spec 082 decision 10)", :aggregate_failures do
+      place(blue.id)
+      place("abc")
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(html.css("turbo-stream[action='replace'][target='scanner_sitting_bar']").size).to eq(1)
+      expect(html.at_css("turbo-stream[target='scanner_sitting_bar'] .c-scan__dest").text).to include("Blue binder")
+    end
+
     it "refuses a bad value with no sitting open, opening none (AC-4.1)", :aggregate_failures do
       place(create(:location).id)
       expect(response).to have_http_status(:unprocessable_content)
