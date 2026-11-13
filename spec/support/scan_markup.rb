@@ -1,7 +1,9 @@
 # Markup of the phone-first scanner's parts (spec 080): the status band, the sheet, the one-screen shell and the selection
-# pane. No view renders them yet (#344 and #345 build the views), so the examples that prove their CSS and the previews
-# under docs/design-system/previews are written from these strings; a view that replaces a part takes its examples with it.
-# Plain Ruby with no Rails, so a script can require this file by path.
+# pane. No view renders them yet (#344 and #345 build the views), so the examples that prove their CSS are written from
+# these strings; a view that replaces a part takes its examples with it. The four previews under
+# docs/design-system/previews were generated once from these strings and are edited by hand from now on, so a change here
+# doesn't reach them. Plain Ruby with no Rails, so `ruby -r ./spec/support/scan_markup.rb` can print a part's markup for
+# a document.
 module ScanMarkup
   # The icons the parts draw: Lucide's paths in a 24px viewBox (README Iconography). The torch, the question mark and the
   # chevrons have no partial under app/views/icons yet.

@@ -1,6 +1,7 @@
 # What a system example about the design system's CSS needs to read from the browser: a computed style, a token as the
-# theme resolves it, an element's box. Written twice before it was moved here, with a third copy due (spec 080); an example group that
-# proves CSS includes it. Every method works on the page the driver is in, so inside `within_narrow_frame` it reads the frame.
+# theme resolves it, an element's box. The one home of these probes: every example group that proves the design system's
+# CSS includes this module rather than writing its own. Every method works on the page the driver is in, so inside
+# `within_narrow_frame` it reads the frame.
 module DesignSystemProbe
   # Pins the page's theme, as the app's `data-theme` does.
   #
