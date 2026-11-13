@@ -1,7 +1,7 @@
 # Implementation Plan: The Licences of the Third-Party Software and Assets in the Image, Readable from the App (spec 087, issue #376)
 
 **Spec:** `docs/specs/087-third-party-licences-in-app/spec.md` (Approved v0.3.1) · **Issue:** #376 · **Branch:** `087-third-party-licences` · **Created:** 2026-11-13
-**Status:** Draft, for Gate B. Plan review (Fable, read-only, 2026-11-13): round 1 NEEDS REVISION (2 blocking, 7 major, 12 minor), round 2 APPROVE WITH CHANGES (0 blocking, 0 major, 3 minor), all applied. Retired by `distill-feature` after the merge (spec 027).
+**Status:** Approved (Gate B, 2026-11-13, the coordinator under the maintainer's delegation). Plan review (Fable, read-only, 2026-11-13): round 1 NEEDS REVISION (2 blocking, 7 major, 12 minor), round 2 APPROVE WITH CHANGES (0 blocking, 0 major, 3 minor), all applied. Retired by `distill-feature` after the merge (spec 027).
 
 ## Context
 
