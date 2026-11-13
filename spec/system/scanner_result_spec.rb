@@ -72,6 +72,7 @@ RSpec.describe "A result in the pane", type: :system do
     expect(page).to have_css("canvas.c-scan__frozen:not([hidden])")
     expect(page).to have_css("#scanner_status_text", text: "Reading the card…", wait: 30)
     expect(page).to have_button("Capture", disabled: true)
+    eventually("typeof window.__release === 'function'", wait: 30) # the held request is made once the OCR has run (slower on CI)
     page.execute_script("window.__release()")
     expect(page).to have_css(".c-scan.c-scan--result .c-scanpane__results #scanner_result .c-scanner__candidate", text: "Lightning Bolt", wait: 30)
     expect(page).to have_css("#status", text: "Done. What the scanner read and its candidates are showing.")
