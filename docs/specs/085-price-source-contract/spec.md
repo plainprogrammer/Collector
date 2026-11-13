@@ -1,7 +1,7 @@
 # Feature 085: A Price Source Contract, and Scryfall's Prices Through It
 
-**Status:** Draft
-**Version:** 1.0.2
+**Status:** Approved by the coordinator under the maintainer's delegation (2026-11-13), after two Mode A review rounds (Fable 5.2); the value of `hosted_paid_allowed?` for Scryfall (decision 9) is pending the maintainer
+**Version:** 1.0.3
 **Created:** 2026-11-13
 **Last Updated:** 2026-11-13
 **Branch:** `085-price-source-contract`
@@ -14,6 +14,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.0.3 | 2026-11-13 | Approved (Gate A). Decision 9 says issue #362 is open and may change the flag, and that the value lives in one place; status line (PATCH) |
 | 1.0.2 | 2026-11-13 | Review round 2 (Fable 5.2): `.name` is `.title` (a class already has `.name`, so a missing one could not be found); a `Malformed` with a key and no series, and one with no key, say what they mean for absence; `verify!` and `Quote` rules tightened; a date that isn't one is an `IntegrityError`; text fixes (PATCH) |
 | 1.0.1 | 2026-11-13 | Review round 1 (Fable 5.2): `#reported_on(path)` added to the contract; `Malformed` carries a series and is not an absence; acquisition left explicitly to #365; the Scryfall class is `MTG::Scryfall::PriceQuotes`; `hosted_paid_allowed?` for Scryfall is `true`, pending the maintainer; `verify!` and the criteria tightened (PATCH) |
 | 1.0.0 | 2026-11-13 | First draft |
@@ -115,7 +116,7 @@ Built: `PriceSource`, `PriceSeries` and the contract's value classes, because th
 
 ### 9. Whether a hosted, paid service may show a source: stated, not enforced
 
-A source states `hosted_paid_allowed?`: whether its prices may be shown on a hosted instance that has paid plans. Scryfall's is `true` **[pending the maintainer's confirmation, asked through the coordinator]**: ruling 27 allows its data on a paid hosted service when it is publicly accessible, and rulings 37 and 38 have the hosted instance show prices and history to everyone who can see the card. What Scryfall's terms forbid is a paywall, which is a display rule (prices and history are never a paid feature, ruling 37), not a reason to refuse the source on a hosted instance. With `false`, the refusal the design describes would switch Scryfall's prices off on the hosted service. The flag fits a source that may not be shown on a paid service at all (Card Kingdom, design decision 4). It is stored in `price_sources.hosted_paid_allowed`. Nothing reads it yet: the refusal needs a setting for the kind of instance, which doesn't exist; hosted mode (`COLLECTOR_HOSTED`, #392) is the issue that adds one (Non-Goals).
+A source states `hosted_paid_allowed?`: whether its prices may be shown on a hosted instance that has paid plans. Scryfall's is `true` **[pending the maintainer's confirmation, asked through the coordinator]**: ruling 27 allows its data on a paid hosted service when it is publicly accessible, and rulings 37 and 38 have the hosted instance show prices and history to everyone who can see the card. What Scryfall's terms forbid is a paywall, which is a display rule (prices and history are never a paid feature, ruling 37), not a reason to refuse the source on a hosted instance. With `false`, the refusal the design describes would switch Scryfall's prices off on the hosted service. The flag fits a source that may not be shown on a paid service at all (Card Kingdom, design decision 4). It is stored in `price_sources.hosted_paid_allowed`. The value is written in one place, the source's declaration (`hosted_paid_allowed?`), and its spec sits in a plan task of its own, so a ruling of `false` is a one-line change. Issue #362 (the written question to Scryfall about recording prices and showing their history) is still open, and its answer may change the flag. Nothing reads it yet: the refusal needs a setting for the kind of instance, which doesn't exist; hosted mode (`COLLECTOR_HOSTED`, #392) is the issue that adds one (Non-Goals).
 
 ### 10. Scryfall's attribution
 
