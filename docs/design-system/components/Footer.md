@@ -2,7 +2,7 @@
 
 The small print at the end of every page: what the owners of the catalogs' content ask to be said, and where the data comes from. For Magic cards that is Wizards of the Coast's unofficial-content notice and the Scryfall attribution.
 
-**Markup**: the layout renders it on every page, after the page's `<main>` and before the tab bar, through the `layouts/footer` partial, and adds `c-shell--footed` to the shell (`<body class="c-shell c-shell--footed">`) when it does. A page provides nothing. The lines come from each catalog type's source (`.content_notice`, see `app/models/catalog/sources.rb`), never from a view.
+**Markup**: the layout renders it on every page but a one-screen focused page (the scanner, below), after the page's `<main>` and before the tab bar, through the `layouts/footer` partial, and adds `c-shell--footed` to the shell (`<body class="c-shell c-shell--footed">`) when it does. A page provides nothing. The lines come from each catalog type's source (`.content_notice`, see `app/models/catalog/sources.rb`), never from a view.
 
 ```html
 <footer class="c-footer">
@@ -11,7 +11,7 @@ The small print at the end of every page: what the owners of the catalogs' conte
 </footer>
 ```
 
-- One `<footer>` per page, a direct child of the shell, so it is the page's `contentinfo` landmark. When no catalog type supplies a notice there is no element at all.
+- One `<footer>` per page, a direct child of the shell, so it is the page's `contentinfo` landmark. When no catalog type supplies a notice there is no element at all. The exception is a one-screen focused page (the scanner), which has no footer and no `contentinfo` landmark: its sheets carry the notice in their foot (`Sheet`), and with script off its `<noscript>` stage notice does (spec 082 decision 16). The lines are the same partial, `layouts/_notice_lines`, which the footer renders too.
 - One line per paragraph, in the order the types are registered and each type gives its lines. No heading, no type name, no list.
 - Text only, apart from the links a line names: no logo, image, icon, set symbol or button. A source's name is a name, never a mark, and the wording never suggests the source or the owner endorses Collector.
 - A line's wording belongs to its catalog type. Don't edit, shorten or translate a notice in a view; an owner's required wording is shown word for word.
