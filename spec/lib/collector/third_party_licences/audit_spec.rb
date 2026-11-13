@@ -166,6 +166,14 @@ RSpec.describe Collector::ThirdPartyLicences::Audit, type: :model do
       end
     end
 
+    it "names an entry whose spdx list is empty (AC-5.6)" do
+      expect(problems_with { |manifest| manifest["fonts"].first["spdx"] = [] }).to include(a_string_including("fonts", "spdx"))
+    end
+
+    it "names an entry whose texts list is empty and has no text: none (AC-5.6)" do
+      expect(problems_with { |manifest| manifest["ocr"].first["texts"] = [] }).to contain_exactly(a_string_including("engine", "text"))
+    end
+
     it "names an entry whose text file is missing (AC-5.6)" do
       expect(problems_with { |manifest| manifest["ocr"].first["texts"].first["file"] = "nope.txt" }).to contain_exactly(a_string_including("engine", "nope.txt"))
     end
@@ -212,9 +220,9 @@ RSpec.describe Collector::ThirdPartyLicences::Audit, type: :model do
       expect(Rails.application.assets.load_path.find("turbo.min.js").path.to_s).to end_with("turbo.min.js")
     end
 
-    it "answers an audit whose problems are strings", :aggregate_failures do
-      expect(audit).to be_a(described_class)
-      expect(audit.problems).to all(be_a(String))
+    it "takes the application pin and the pin_all_from directories for Collector's own", :aggregate_failures do
+      expect(audit.problems).to eq([])
+      expect(Rails.application.importmap.directories.keys).to all(start_with("app/javascript"))
     end
   end
 end

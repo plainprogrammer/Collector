@@ -184,11 +184,11 @@ module Collector
       end
 
       def field_problems(section, entry)
-        REQUIRED_FIELDS.select { entry[it].to_s.strip.empty? }.map { "#{label(section, entry)} has no #{it}" }
+        REQUIRED_FIELDS.select { Array(entry[it]).map(&:to_s).all? { |value| value.strip.empty? } }.map { "#{label(section, entry)} has no #{it}" }
       end
 
       def text_problems(section, entry)
-        if entry["texts"]
+        if Array(entry["texts"]).any?
           Array(entry["texts"]).filter_map { |text| text_file_problem(section, entry, text["file"].to_s) }
         elsif entry["text"].to_s == "none"
           entry["reason"].to_s.strip.empty? ? [ "#{label(section, entry)} says text: none with no reason" ] : []
