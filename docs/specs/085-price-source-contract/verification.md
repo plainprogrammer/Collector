@@ -67,3 +67,13 @@ Findings and what was done:
 | 6 | nit | The header didn't name `Malformed`'s `error` field | Added in `b80337dc` |
 
 After the fixes: `bin/rspec spec/models/mtg/scryfall/price_quotes_spec.rb spec/price_source_core_spec.rb` gave `20 examples, 0 failures`; `bin/yard doc` gave 0 warnings.
+
+## Distillation
+
+`distill-feature`, 2026-11-13 (the feature is finished: SPEC-ALIGNED above), approved at the digest by the coordinator:
+
+- **Area doc:** [`prices.md`](../../architecture/prices.md) carries the contract, the models, the sync, the constants, the decisions and the sources (T4.1), and a Distillation log row (the pull request reads "spec 085's pull request" until it has a number); the sentence on why an unreadable price is not an absence is in the contract's comment and in the doc (commit `8c4a58d0`). The Prices row of the [area map](../../architecture/README.md) lists 085.
+- **Specs index:** row 085 is Frozen, by prices, with its plan owed a retirement after the merge; no supersession (spec 081 decision 5 stays true: the models for the three tables left are #365's and #366's). The 083 row says ruling 41 is distilled.
+- **Spec:** the frozen line in its header (`e74c656b`, spec 027 D4). No ADR (Gate A).
+- **CLAUDE.md:** its status paragraph points to the area doc (T4.2); nothing more restated.
+- **Memory and lessons:** one memory (`mutation-proof-when-behaviour-already-built`) and three lessons in `docs/lessons/` (`2026-11-13-absent-is-not-unreadable`, `-never-name-a-contract-member-name`, `-the-polarity-of-a-flag-from-its-false`); the coordinator dropped a fourth (RuboCop-RSpec cops), which `.rubocop.yml` and the commit hook already tell an agent.
