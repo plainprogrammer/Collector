@@ -17,7 +17,7 @@ RSpec.describe "what a backup holds (spec 030 decisions 2 and 3)", :backup, type
 
   def application_models
     Rails.application.eager_load!
-    ApplicationRecord.descendants.select { it.name && !it.abstract_class? && Object.const_defined?(it.name) }
+    (ApplicationRecord.descendants + PricesRecord.descendants).select { it.name && !it.abstract_class? && Object.const_defined?(it.name) }
   end
 
   it "knows every collector-owned attachment: only ImportUpload's, listed as transient (AC-5.5)" do
