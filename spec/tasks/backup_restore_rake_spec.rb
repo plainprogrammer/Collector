@@ -23,7 +23,7 @@ RSpec.describe "backup:restore", :backup, :committed, type: :task do
     out, err, status = run_task(path.to_s)
 
     expect([ status, err ]).to eq([ 0, "" ])
-    expect(out).to include("Restored #{path.basename} into #{volume}.", "it holds 1 account, 1 user and 3 lots.", "Start Collector now")
+    expect(out).to include("Restored #{path.basename} into #{volume}.", "it holds 1 account, 1 user and 3 lots; 0 current prices and 0 price changes.", "Start Collector now")
     expect(volume.join("production.sqlite3")).to exist
   end
 

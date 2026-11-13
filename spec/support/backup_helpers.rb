@@ -126,7 +126,7 @@ module BackupHelpers
       snapshot_bytes: snapshot_path.size, snapshot_sha256: Digest::SHA256.file(snapshot_path).hexdigest,
       counts: { "accounts" => 0, "users" => 0, "lots" => 0 } }
     fields[:counts] = snapshot.counts unless changes.key?(:counts)
-    fields.merge!(backup_format_version: 2, prices: prices_member_for(prices_snapshot)) if prices_snapshot
+    fields.merge!(backup_format_version: 2, prices: changes.fetch(:prices) { prices_member_for(prices_snapshot) }) if prices_snapshot
     Collector::Backup::Manifest.new(**fields.merge(changes))
   end
 

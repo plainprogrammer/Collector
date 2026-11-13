@@ -26,15 +26,15 @@ RSpec.describe Collector::Backup::Databases, :backup do
       expect(databases.occupied).to be_empty
     end
 
-    it "names each of the four databases and each -wal, -shm and -journal file that is there (decision 6)", :aggregate_failures do
-      names = %w[production.sqlite3 production_cache.sqlite3-wal production_queue.sqlite3-shm production_cable.sqlite3-journal]
+    it "names each of the five databases and each -wal, -shm and -journal file that is there (decision 6)", :aggregate_failures do
+      names = %w[production.sqlite3 production_cache.sqlite3-wal production_queue.sqlite3-shm production_cable.sqlite3-journal production_prices.sqlite3-wal]
       names.each { |name| directory.join(name).write("x") }
 
       expect(databases.occupied.map { it.basename.to_s }).to match_array(names)
     end
 
     it "ignores the restore's own temporary file and its journal, and other files of the volume", :aggregate_failures do
-      %w[collector-restore.partial collector-restore.partial-journal catalog.txt].each { |name| directory.join(name).write("x") }
+      %w[collector-restore.partial collector-restore.partial-journal collector-restore-prices.partial collector-restore-prices.partial-journal catalog.txt].each { |name| directory.join(name).write("x") }
 
       expect(databases.occupied).to be_empty
     end

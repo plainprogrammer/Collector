@@ -21,6 +21,13 @@ module Collector
       # @return [Pathname, nil]
       def prices = @paths["prices"]
 
+      # The path of the database called +name+ (a key of HELD or another configured name).
+      #
+      # @param name [String]
+      # @return [Pathname]
+      # @raise [KeyError] when the configuration has no database of that name
+      def path(name) = @paths.fetch(name)
+
       def directory = primary.dirname
 
       # Every file of the five databases that exists, a stale -wal or -journal included: a -wal beside a restored
