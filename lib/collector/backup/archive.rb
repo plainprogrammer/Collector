@@ -50,6 +50,13 @@ module Collector
       # +allow_partial+ lets Create read back the archive it wrote under its own .partial name; for anyone else a .partial
       # name means the run that made the file didn't finish. +on_manifest+ is called with the manifest of a known version
       # as soon as it is parsed, before the snapshot is read (Restore checks the room there, as FR-2 orders).
+      #
+      # @param path [String, Pathname] the backup file
+      # @param allow_partial [Boolean] accept a +.partial+ name (Create's read-back of its own file)
+      # @param on_manifest [#call, nil] called with the {Manifest} of a known version before any snapshot is read; it may raise
+      # @yield [chunk, name] each chunk of each snapshot entry, with the entry's name (+primary.sqlite3+ or +prices.sqlite3+)
+      # @return [Result] the manifest and the primary snapshot's SHA-256 and size
+      # @raise [Refusal] when the file isn't a backup, is incomplete, is of an unknown version, or was changed
       def self.read(path, allow_partial: false, on_manifest: nil, &sink)
         name = File.basename(path.to_s)
         File.open(path, "rb") do |file|

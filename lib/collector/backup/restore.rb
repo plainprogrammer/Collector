@@ -16,7 +16,7 @@ module Collector
       TEMPORARY = "collector-restore.partial".freeze
       TEMPORARY_PRICES = "collector-restore-prices.partial".freeze # the prices snapshot's temporary file, with the same suffixes
       RESTORE_SUFFIXES = [ "", "-journal" ].freeze # the temporary file is in rollback-journal mode: no -wal, no -shm (FR-6)
-      MARGIN = 16 * 1024 * 1024 # room for the delete's journal and the rename, beyond the snapshot's own size
+      MARGIN = 16 * 1024 * 1024 # room for the delete's journal and the rename, beyond the snapshots' own sizes
 
       Result = Data.define(:file, :volume, :manifest) do
         # The operator's report. A version 2 backup's second line gives both schema versions and both sets of counts; a
@@ -137,8 +137,8 @@ module Collector
           names = @databases.occupied.map { it.basename.to_s }
           prices = names.select { it.start_with?(@databases.prices.basename.to_s) } if @databases.prices
           advice = if prices.present? && names.none? { it.start_with?(@databases.primary.basename.to_s) }
-            "It may be the prices database of a restore that stopped: remove #{prices.first} and its -wal, -shm and -journal files, then restore again. " \
-              "Never start Collector on this volume as it is (#375)."
+            "It may be the prices database of a restore that stopped: remove #{@databases.prices.basename} and its -wal, -shm and -journal files, then restore again. " \
+              "Never start Collector on this volume as it is."
           else
             "Restore onto a new, empty volume and start Collector on that. Nothing was changed."
           end

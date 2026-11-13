@@ -1,7 +1,7 @@
 module Collector
   module Backup
-    # Where this environment's databases live: the files that make a volume "not fresh" (decision 6) and the path of the
-    # primary. Read from config/database.yml without a connection pool, so it works before the application is initialized.
+    # Where this environment's databases live: the files that make a volume "not fresh" (decision 6) and the paths of the
+    # primary and the prices database. Read from config/database.yml without a connection pool, so it works before the application is initialized.
     class Databases
       SIDECARS = [ "", "-wal", "-shm", "-journal" ].freeze
 

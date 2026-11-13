@@ -49,6 +49,11 @@ module Collector
       end
 
       # The version is read first: a manifest of a version this release doesn't know may have other members (AC-3.4).
+      #
+      # @param text [String] the manifest's JSON
+      # @return [Manifest]
+      # @raise [UnknownVersion] when the backup format version isn't one this release knows
+      # @raise [Invalid] when the text isn't JSON, or its members or their types differ from the format's
       def self.parse(text)
         data = JSON.parse(text)
         raise Invalid, "not an object" unless data.is_a?(Hash) && data["backup_format_version"].is_a?(Integer)
