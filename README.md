@@ -214,6 +214,10 @@ The app is then available at `http://localhost:3000` (or your `COLLECTOR_PORT`).
   be read; a fork passes its own repository's address, not `plainprogrammer`'s, so the footer's "source code"
   link offers the code that runs. An image built without them still runs, but its footer reads "unknown
   version" and `bin/image-smoke` fails it.
+- **Third-party licences:** the footer's licence line ends "Read the third-party licences.", a link to `/licences`,
+  which anyone who can reach the instance can open, signed in or not. It lists the gems, the OCR engine, the
+  JavaScript, the fonts and the icons in the image with each one's licence text. The gems are read from the
+  running image and the rest from `config/third_party_licences.yml`, so the list follows what the image holds.
 - **HTTPS:** the Compose setup serves plain HTTP. Signing in over plain HTTP sends your password unencrypted, which is only acceptable on a trusted private network. Put an HTTPS reverse proxy (for example Caddy, nginx, or Traefik) in front of it and set `COLLECTOR_HTTPS=true`.
 - **Upload limit:** the app refuses a request body over 40 MB (Puma and Thruster), which is more than the largest export file it imports (32 MB). A reverse proxy in front may set a lower limit of its own; keep it at 40 MB or more.
 

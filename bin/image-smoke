@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Smoke-tests a built Collector image (spec 012, AC-6.1 to AC-6.4): boots it, checks the pages and files it must
 # serve, runs the operational rake tasks, then checks that /rails/vendor holds nothing unexpected and that
-# development-only paths and secrets are absent, and that it reports its version and revision (spec 084).
+# development-only paths and secrets are absent, that it reports its version and revision (spec 084), and that the
+# licence page (spec 087) renders before any user exists, lists the image's own bundle and engine with a gem's licence
+# file under its own name and no development gem, and is linked from the sign-in page's licence line.
 #
 #   bin/image-smoke <image> [extra `run` flags, e.g. --platform linux/arm64]
 #
@@ -36,6 +38,7 @@ done
 
 echo "== first run"
 [ "$(status /registration/new)" = "200" ] || fail "first-run registration page did not render"
+[ "$(status /licences)" = "200" ] || fail "the licence page did not render before any user exists"
 
 echo "== operational tasks"
 # Each task's output is captured first, then tested, so no pipe can end early under pipefail. A fresh instance's
@@ -73,6 +76,16 @@ short="$(tr 'A-F' 'a-f' <<<"${revision:0:7}")"
 sign_in="$(curl -s "http://127.0.0.1:${port}/session/new")" || fail "the sign-in page did not load"
 grep -qF "Collector ${version} (${short}) is free software" <<<"$sign_in" \
   || fail "the sign-in page's licence line doesn't read 'Collector ${version} (${short})'"
+grep -qF 'href="/licences"' <<<"$sign_in" || fail "the sign-in page's licence line doesn't link /licences (spec 087)"
+
+# The page that lists the third-party licences (spec 087): the image's own bundle, engine, JavaScript and licence texts,
+# not the repository's. Captured, then tested (no pipe).
+echo "== the third-party licences page (spec 087)"
+licences="$(curl -s "http://127.0.0.1:${port}/licences")" || fail "the licence page did not load"
+for want in 'Third-party licences' 'c-licences__name">tesseract.js<' 'c-licences__name">turbo-rails<' 'c-licences__file">MIT-LICENSE<'; do
+  grep -qF "$want" <<<"$licences" || fail "the licence page lacks: ${want}"
+done
+if grep -qF 'c-licences__name">yard<' <<<"$licences"; then fail "the licence page lists yard, a development gem the image leaves out"; fi
 
 # Rejects extras only: an empty listing passes. That ocr is there is shown by the OCR files served above.
 echo "== nothing unexpected in /rails/vendor: at most .keep, javascript and ocr (issue #31)"
