@@ -82,21 +82,21 @@ RSpec.describe "A visitor's catalog", :public_catalog, type: :system do
     expect(shell["main"]).to eq("16px")
   end
 
-  # Amendment 5: the "other" type has no content notice, so the shell has no footer; the search page without a query
-  # shows no tiles, whose images that source wouldn't allow.
-  it "gives up the tab bar's clearance on an unfooted shell with no tab bar, and keeps it for a collector (AC-5.7)", :aggregate_failures do
+  # Amendment 5, and spec 084 decision 11: the "other" type has no content notice, so the footer holds only the licence
+  # line; the search page without a query shows no tiles, whose images that source wouldn't allow.
+  it "gives up the tab bar's clearance on a footed shell holding only the licence line, and keeps it for a collector (AC-5.7)", :aggregate_failures do
     with_catalog_sources("other" => "OtherCatalogSource") do
       visit catalog_entries_path
       visitor = clearance_at(catalog_entries_path, ready: "main.c-main")
       expect(visitor["scrolled"]).to be_positive
-      expect(visitor["footer"]).to be_nil
-      expect(px(visitor["main"])).to be < 80
+      expect(px(visitor["footer"])).to be < 80
+      expect(visitor["main"]).to eq("16px")
 
       system_sign_in_as(user)
       collector = clearance_at(catalog_entries_path, ready: "main.c-main")
       expect(collector["scrolled"]).to be_positive
-      expect(collector["footer"]).to be_nil
-      expect(px(collector["main"])).to be >= 80
+      expect(px(collector["footer"])).to be >= 80
+      expect(collector["main"]).to eq("16px")
     end
   end
 
