@@ -106,4 +106,58 @@ module Prices::Sources
   Malformed = Data.define(:external_key, :error, :series) do
     def initialize(external_key:, error:, series: nil) = super
   end
+
+  # The members a source class answers and the instance methods it defines: the table in this module's comment.
+  CLASS_MEMBERS = %i[key collectible_type title attribution attribution_url hosted_paid_allowed? series].freeze
+  INSTANCE_MEMBERS = %i[reported_on each_quote].freeze
+  # A source key is stored and compared, so it is lower case letters, digits and underscores only.
+  KEY = /\A[a-z0-9_]+\z/
+
+  # Checks a class against the contract (see the comment of this module). A class and its members are all it sees, so
+  # whether `.key` is the key the class is registered under, and whether `.collectible_type` is a key of
+  # `Catalog.sources`, are the suite's to check for the registered sources.
+  #
+  # @param source_class [Class]
+  # @return [Class] the same class, when it meets the contract
+  # @raise [ConfigurationError] naming the first member that is missing or wrong
+  def self.verify!(source_class)
+    CLASS_MEMBERS.each { |member| refuse!(source_class, member, "is missing") unless source_class.respond_to?(member) }
+    INSTANCE_MEMBERS.each { |member| refuse!(source_class, member, "is missing") unless source_class.method_defined?(member) }
+    refuse!(source_class, :key, "must match #{KEY.inspect}") unless source_class.key.is_a?(String) && source_class.key.match?(KEY)
+    %i[collectible_type title attribution].each do |member|
+      value = source_class.public_send(member)
+      refuse!(source_class, member, "must be a non-blank String, got #{value.inspect}") unless value.is_a?(String) && !value.strip.empty?
+    end
+    refuse!(source_class, :attribution_url, "must be nil or an https URL") unless https_or_nil?(source_class.attribution_url)
+    unless [ true, false ].include?(source_class.hosted_paid_allowed?)
+      refuse!(source_class, :hosted_paid_allowed?, "must be true or false, got #{source_class.hosted_paid_allowed?.inspect}")
+    end
+    verify_series!(source_class)
+    source_class
+  end
+
+  # @api private
+  def self.verify_series!(source_class)
+    series = source_class.series
+    unless series.is_a?(Array) && series.any? && series.all?(Series)
+      refuse!(source_class, :series, "must be a non-empty Array of Prices::Sources::Series")
+    end
+    refuse!(source_class, :series, "has two equal entries") unless series.uniq.size == series.size
+  end
+
+  # @api private
+  def self.https_or_nil?(url)
+    return true if url.nil?
+    return false unless url.is_a?(String)
+
+    uri = URI.parse(url)
+    uri.is_a?(URI::HTTPS) && !uri.host.to_s.empty?
+  rescue URI::InvalidURIError
+    false
+  end
+
+  # @api private
+  def self.refuse!(source_class, member, problem)
+    raise ConfigurationError, "#{source_class} #{member} #{problem}"
+  end
 end

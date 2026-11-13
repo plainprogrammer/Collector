@@ -43,6 +43,44 @@ RSpec.describe Prices::Sources, type: :model do
     end
   end
 
+  describe ".verify! (spec 085 decision 1, AC-1.1, AC-1.2)" do
+    it "returns a class that provides every member" do
+      expect(described_class.verify!(FakePriceSource)).to eq(FakePriceSource)
+    end
+
+    it "refuses a member that is wrong and names it", :aggregate_failures do
+      {
+        key: "Bad Key", collectible_type: " ", title: "", attribution: nil, attribution_url: "http://prices.example.test",
+        hosted_paid_allowed?: nil, series: []
+      }.each do |member, value|
+        expect { described_class.verify!(FakePriceSource.with(member => value)) }
+          .to raise_error(described_class::ConfigurationError, /#{Regexp.escape(member.to_s)}/), "expected #{member}: #{value.inspect} to be refused"
+      end
+    end
+
+    it "refuses a key that is blank, upper case or has a character outside a-z, 0-9 and underscore", :aggregate_failures do
+      [ "", "UPPER", "with-dash", "with space" ].each do |key|
+        expect { described_class.verify!(FakePriceSource.with(key:)) }.to raise_error(described_class::ConfigurationError, /key/), "expected #{key.inspect} to be refused"
+      end
+    end
+
+    it "refuses an address that is not an https URL, a series list with a repeat, and a series that is not a Series", :aggregate_failures do
+      expect { described_class.verify!(FakePriceSource.with(attribution_url: "not a url")) }.to raise_error(described_class::ConfigurationError, /attribution_url/)
+      expect { described_class.verify!(FakePriceSource.with(series: [ series, series ])) }.to raise_error(described_class::ConfigurationError, /series/)
+      expect { described_class.verify!(FakePriceSource.with(series: [ "plain" ])) }.to raise_error(described_class::ConfigurationError, /series/)
+    end
+
+    it "accepts no address" do
+      expect(described_class.verify!(FakePriceSource.with(attribution_url: nil))).to be_a(Class)
+    end
+
+    it "refuses a class that lacks a class member or an instance method", :aggregate_failures do
+      expect { described_class.verify!(Class.new { def self.key = "x" }) }.to raise_error(described_class::ConfigurationError, /collectible_type/)
+      expect { described_class.verify!(Class.new(FakePriceSource) { undef_method :each_quote }) }.to raise_error(described_class::ConfigurationError, /each_quote/)
+      expect { described_class.verify!(Class.new(FakePriceSource) { undef_method :reported_on }) }.to raise_error(described_class::ConfigurationError, /reported_on/)
+    end
+  end
+
   describe "the contract shown by a fake source (AC-1.4)" do
     let(:quote) { described_class::Quote.new(external_key: "abc-1", finish: "plain", currency: "USD", kind: "market", cents: 142, reported_on:) }
     let(:records) { [ quote, described_class::Malformed.new(external_key: "abc-2", error: "unreadable", series:), described_class::Malformed.new(external_key: nil, error: "not JSON") ] }
