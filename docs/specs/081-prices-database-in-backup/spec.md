@@ -7,6 +7,7 @@
 **Branch:** `081-prices-database-in-backup`
 **Issue:** [#363](https://github.com/plainprogrammer/Collector/issues/363)
 **Frozen:** the current rules are in [`prices.md`](../../architecture/prices.md) (parts: decisions 1 to 5, 9 and 12), [`release-and-deploy.md`](../../architecture/release-and-deploy.md) (parts: decisions 6 to 8, 10 and 11) and [`data-portability.md`](../../architecture/data-portability.md) (parts: decision 4's export, AC-3.2); see the [specs index](../README.md)
+**Plan:** retired in `9a9e0f5e32766dc072eb642522ca38ca24a12275`; read it with `git show 9a9e0f5e32766dc072eb642522ca38ca24a12275^:docs/specs/081-prices-database-in-backup/plan.md`
 
 ---
 
