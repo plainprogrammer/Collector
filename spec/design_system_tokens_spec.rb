@@ -58,4 +58,30 @@ RSpec.describe "Design system tokens: the contrast floor (spec 057 AC-2.3)" do
     palette = colours(block("light")).merge("line-strong" => "#b0a898")
     expect(below_floor(palette).map(&:first)).to include("line-strong")
   end
+
+  # Spec 080 AC-1.1, AC-1.2: the status band is the one filled use of a status colour, so the text on it has its own tokens.
+  # `scrim` is an eight-digit literal (black at 40%), which `colours` skips: nothing is written on it.
+  describe "the status band's text and the scrim (spec 080)" do
+    def band_text
+      { "light" => %w[#ffffff #ffffff], "dark" => %w[#0c1f1f #231a08], "dark by preference" => %w[#0c1f1f #231a08] }
+    end
+
+    [ "light", "dark", "dark by preference" ].each do |name|
+      it "defines on-success, on-warning and scrim in the #{name} block (AC-1.1)", :aggregate_failures do
+        expect(colours(block(name)).values_at("on-success", "on-warning")).to eq(band_text.fetch(name))
+        expect(block(name)[/--scrim:\s*(#\h{8})\b/, 1]).to eq("#00000066")
+      end
+
+      it "holds 4.5:1 for the band's text on its fill in the #{name} block (AC-1.2)", :aggregate_failures do
+        palette = colours(block(name))
+        expect(ratio(palette.fetch("on-success"), palette.fetch("success"))).to be >= 4.5
+        expect(ratio(palette.fetch("on-warning"), palette.fetch("warning"))).to be >= 4.5
+      end
+    end
+
+    it "flags white on the dark success fill (the check can fail)" do
+      palette = colours(block("dark")).merge("on-success" => "#ffffff")
+      expect(ratio(palette.fetch("on-success"), palette.fetch("success"))).to be < 4.5
+    end
+  end
 end
