@@ -1,6 +1,6 @@
 # Verification: spec 087, the third-party licences readable from the app (#376)
 
-**Spec:** [spec.md](spec.md) v0.3.1 · **Plan:** [plan.md](plan.md) · **Branch:** `087-third-party-licences` · **Date:** 2026-11-13
+**Spec:** [spec.md](spec.md) v0.3.1 · **Plan:** plan (retired in `11de80918d734d3b6e001d16b013f8a77c820ffc`; read it with `git show 11de80918d734d3b6e001d16b013f8a77c820ffc^:docs/specs/087-third-party-licences-in-app/plan.md`) · **Branch:** `087-third-party-licences` · **Date:** 2026-11-13
 
 Prose documents are verified by reading (`.claude/rules/testing.md`); code criteria by the specs named below. Evidence for the pull request (screenshots, GIF) is in [screenshots/](screenshots/).
 
