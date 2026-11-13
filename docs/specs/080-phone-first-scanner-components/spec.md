@@ -8,6 +8,7 @@
 **Branch:** `080-phone-first-scanner-components`
 **Issue:** [#343](https://github.com/plainprogrammer/Collector/issues/343) (roadmap Theme D, the phone-first layout's first item)
 **Frozen:** the current rules are in the [design system](../../design-system/README.md) and its component docs (whole spec: the tokens, the status band, the sheet, the scanner's shell and selection pane, the reduced-motion block, their previews and the CSS in `additions.css`); see the [specs index](../README.md)
+**Plan:** retired in `93580784d80713b5b1ca8151b442d29c256fa38a`; read it with `git show 93580784d80713b5b1ca8151b442d29c256fa38a^:docs/specs/080-phone-first-scanner-components/plan.md`
 
 ---
 
