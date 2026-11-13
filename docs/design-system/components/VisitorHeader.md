@@ -27,10 +27,10 @@ The header a visitor sees on the open catalog's pages (search, a card page, all 
 
 A visitor gets no `TabBar`: a bar with one destination is not navigation, and the header already holds the way in. This is an exception to the design system README's "Phones get a compact header and a bottom tab bar", which isn't edited because it is exported.
 
-Below 640px the shell keeps 80px at the foot of the page clear for the fixed tab bar: `c-main` carries it, or, on a footed shell (`c-shell--footed`, see `Footer`), the footer does. With no tab bar that is an empty band. So the layout adds `c-shell--untabbed` to the shell whenever a page renders no tab bar (`<body class="c-shell c-shell--footed c-shell--untabbed">`), and one block in `collector/additions.css`, headed `Untabbed shell (spec 023)`, gives the clearance up there:
+Below 640px the footer keeps 80px at the foot of the page clear for the fixed tab bar (every shell is footed, see `Footer`). With no tab bar that is an empty band. So the layout adds `c-shell--untabbed` to the shell whenever a page renders no tab bar (`<body class="c-shell c-shell--footed c-shell--untabbed">`), and one block in `collector/additions.css`, headed `Untabbed shell (spec 023)`, gives the clearance up there:
 
-- `c-main` keeps an ordinary `space-6` at its foot (plus the home indicator's inset); on a footed shell it keeps `space-4`, as under `c-shell--footed`.
-- The footer keeps `space-4` at its foot, plus the home indicator's inset.
+- `c-main` keeps `space-4` at its foot, the footer block's rule under `c-shell--footed`: every shell is footed, so the block holds no rule of its own for `c-main` (spec 084 decision 11).
+- The footer keeps `space-4` at its foot, plus the home indicator's inset. This is the block's only rule.
 
 A visitor's catalog pages, sign-in and sign-up are untabbed. A page provides nothing: the class follows from whether the page rendered a tab bar. A collector's pages have the tab bar, and their clearance is unchanged.
 

@@ -59,6 +59,15 @@ RSpec.describe "Image publishing files" do
       expect(instructions.grep(/\ACOPY\s.*vendor\/\*/)).to be_empty
       expect(instructions).to include("COPY . .", "RUN bin/fetch-ocr-engine")
     end
+
+    it "takes the build facts last in the final stage, after every COPY (spec 084 AC-3.1)", :aggregate_failures do
+      final = instructions[instructions.rindex { it.start_with?("FROM ") }..]
+      facts = %w[COLLECTOR_VERSION COLLECTOR_REVISION COLLECTOR_SOURCE_URL]
+
+      expect(final).to include(*facts.map { %(ARG #{it}="") })
+      expect(final.index(%(ARG COLLECTOR_VERSION=""))).to be > final.rindex { it.start_with?("COPY ") }
+      expect(final.join("\n")).to include(*facts.map { %(#{it}="${#{it}}") })
+    end
   end
 
   describe "bin/image-smoke" do
@@ -84,6 +93,15 @@ RSpec.describe "Image publishing files" do
       expect(script).to include('"$name" bin/rails "collector:user[smoke@example.com]" 2>&1)"',
                                 'grep -qxF "Created admin smoke@example.com." <<<"$user_task"')
       expect(script).not_to match(/\| *grep -q/)
+    end
+
+    it "fails an image that reports no version or no full revision, from captured output (spec 084 decision 7)", :aggregate_failures do
+      script = Rails.root.join("bin/image-smoke").read
+      expect(script).to include(%(version="$(trim "$("$cli" exec "$name" printenv COLLECTOR_VERSION 2>/dev/null || true)")"),
+                                %(revision="$(trim "$("$cli" exec "$name" printenv COLLECTOR_REVISION 2>/dev/null || true)")"),
+                                %(grep -qF "Collector ${version} (${short}) is free software" <<<"$sign_in"))
+      expect(script.scan("printenv").size).to eq(2) # the two named variables and nothing else
+      expect(script).to include("COLLECTOR_SOURCE_URL") # the failure message names all three build arguments
     end
   end
 
@@ -247,6 +265,16 @@ RSpec.describe "Image publishing files" do
         "org.opencontainers.image.licenses=AGPL-3.0",
         "org.opencontainers.image.description=Self-hostable, multi-tenant web app for tracking collectibles, " \
         "starting with Magic: The Gathering cards.")
+    end
+
+    it "passes the same build facts to both builds, pr-N on a pull request (spec 084 AC-3.2, AC-3.6)", :aggregate_failures do
+      expected = <<~ARGS
+        COLLECTOR_VERSION=${{ steps.meta.outputs.version || format('pr-{0}', github.event.pull_request.number) }}
+        COLLECTOR_REVISION=${{ github.sha }}
+        COLLECTOR_SOURCE_URL=${{ github.server_url }}/${{ github.repository }}/tree/${{ github.sha }}
+      ARGS
+      expect(step("build").dig("with", "build-args")).to eq(expected)
+      expect(step("push").dig("with", "build-args")).to eq(expected)
     end
   end
 

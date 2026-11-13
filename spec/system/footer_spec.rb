@@ -1,6 +1,6 @@
 require "rails_helper"
 
-# Spec 018 Stories 3 and 4: where the footer sits and how it reads, on wide screens and phones, in both themes and
+# Spec 018 Stories 3 and 4, and spec 084 Story 4 for the licence line: where the footer sits and how it reads, on wide screens and phones, in both themes and
 # under the scanner's policy. Phone widths are loaded in a frame (spec/support/narrow_frame.rb).
 RSpec.describe "The footer", type: :system do
   # What the page shows of the footer once scrolled to its end: each line's box, whether the footer is what's drawn at
@@ -15,7 +15,7 @@ RSpec.describe "The footer", type: :system do
         const lines = [ ...footer.querySelectorAll("p") ].map((line) => {
           const box = line.getBoundingClientRect()
           const seen = document.elementFromPoint(box.left + 4, box.top + box.height / 2)
-          return { left: box.left, right: box.right, bottom: box.bottom, uncovered: Boolean(seen && seen.closest("footer.c-footer")) }
+          return { text: line.textContent, left: box.left, right: box.right, bottom: box.bottom, uncovered: Boolean(seen && seen.closest("footer.c-footer")) }
         })
         return { lines, scrolled: scrollY, height: innerHeight, position: getComputedStyle(footer).position,
           top: footer.getBoundingClientRect().top, bottom: footer.getBoundingClientRect().bottom,
@@ -83,6 +83,7 @@ RSpec.describe "The footer", type: :system do
         expect(footer["lines"].map { |line| line["right"] }).to all(be <= footer["viewport"] - footer["gutter"]), "#{path} at #{width}px: text past the gutter"
         expect(footer["top"]).to be_within(0.5).of(footer["mainBottom"]), "#{path} at #{width}px: a gap after main"
         expect(footer["mainPadding"]).to eq("16px"), "#{path} at #{width}px: main keeps the tab bar's clearance as well"
+        expect(footer["lines"].last["text"]).to end_with("Get the source code."), "#{path} at #{width}px: the licence line isn't measured last"
       end
     end
   end
@@ -95,6 +96,7 @@ RSpec.describe "The footer", type: :system do
     expect(fits).to eq([ 360, true ])
     expect(footer["lines"]).to all(include("uncovered" => true, "left" => footer["gutter"]))
     expect(footer["lines"].map { |line| line["right"] }).to all(be <= footer["viewport"] - footer["gutter"])
+    expect(footer["lines"].last["text"]).to end_with("Get the source code.")
   end
 
   it "clears the sticky filter bar and the bulk bar (AC-3.6)", :aggregate_failures do
@@ -131,6 +133,17 @@ RSpec.describe "The footer", type: :system do
     expect([ style["outlineStyle"], style["outlineWidth"], style["outlineOffset"] ]).to eq(%w[solid 2px 2px])
   end
 
+  it "gives the licence line's link the brand colour, contrast and focus ring, in the light theme (AC-4.2)", :aggregate_failures do
+    system_sign_in_as(user)
+    visit collection_path
+    link = find("body > footer.c-footer a", text: "source code")
+
+    expect(page.evaluate_script("getComputedStyle(arguments[0]).color", link)).to eq("rgb(19, 89, 90)")
+    expect(contrast("rgb(19, 89, 90)", colours["ground"])).to be >= 4.5
+    page.execute_script("arguments[0].focus({ focusVisible: true })", link)
+    expect(%w[outlineStyle outlineWidth].map { |property| page.evaluate_script("getComputedStyle(arguments[0])[arguments[1]]", link, property) }).to eq(%w[solid 2px])
+  end
+
   it "holds its contrast in the dark theme (AC-3.4)", :aggregate_failures do
     driven_by :selenium, using: :headless_firefox, screen_size: [ 1280, 900 ], options: { name: :firefox_dark } do |options|
       FirefoxBinary.pin(options)
@@ -144,6 +157,7 @@ RSpec.describe "The footer", type: :system do
     expect(colours.values_at("ground", "text", "link")).to eq([ "rgb(22, 21, 19)", "rgb(170, 162, 152)", "rgb(95, 183, 178)" ])
     expect(contrast(colours["text"], colours["ground"])).to be >= 4.5
     expect(contrast(colours["link"], colours["ground"])).to be >= 4.5
+    expect(page.evaluate_script("getComputedStyle(document.querySelector('body > footer.c-footer p:last-child a')).color")).to eq("rgb(95, 183, 178)")
   end
 
   it "has no footer on the scanner; the notice is in each sheet's foot (spec 082 decision 16)", :aggregate_failures do
@@ -155,7 +169,9 @@ RSpec.describe "The footer", type: :system do
     [ [ ".c-scan__dest", "#scanner_destination_sheet" ], [ "#scanner_count", "#scanner_list_sheet" ] ].each do |opener, sheet|
       find(opener).send_keys(:enter)
       expect(page).to have_css("#{sheet}[open] .c-sheet__foot")
-      expect(find("#{sheet} .c-sheet__foot").all("a").map { |link| link[:href] }).to eq([ "https://company.wizards.com/en/legal/fancontentpolicy", "https://scryfall.com/" ])
+      expect(find("#{sheet} .c-sheet__foot").all("a").map { |link| link[:href] })
+        .to eq([ "https://company.wizards.com/en/legal/fancontentpolicy", "https://scryfall.com/",
+          "https://www.gnu.org/licenses/agpl-3.0.html", "https://github.com/plainprogrammer/Collector" ])
       click_on "Close"
       expect(page).to have_no_css("dialog[open]")
     end

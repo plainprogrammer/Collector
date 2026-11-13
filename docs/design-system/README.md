@@ -78,7 +78,7 @@ It should feel like a well-kept archive that gets used: warm paper, deep ink, on
 - Collection components respond to their container, not the viewport: wrap a collection in `.c-collection` and it switches to its narrow layout below `bp-narrow` (640px). This keeps them correct inside Turbo Frames, side panels and previews.
 - Phones get a compact header and a bottom tab bar (see Navigation).
 - **Focused pages.** A page for one task done many times in a row may drop the app header and the tab bar when it keeps a back arrow and its own primary action in view at all times. Its `<body>` carries `c-shell--focused` beside `c-shell--untabbed`, which removes the body's margin and minimum height so the page is exactly the screen (spec 080). The phone-first scanner is the first, built by spec 082 (`Scanner`).
-- A focused page that is one screen high and has no footer shows the content notice's lines in the foot of each of its sheets (`Sheet`); such a page has a sheet or keeps the footer, and a focused page that scrolls keeps the footer. The scanner does (spec 082 decision 16).
+- A focused page that is one screen high and has no footer shows the content notice's lines, and the licence line, through the same partial as the footer, in the foot of each of its sheets (`Sheet`; spec 084 decision 12); such a page has a sheet or keeps the footer, and a focused page that scrolls keeps the footer. The scanner does (spec 082 decision 16): it is the focused-page exception to spec 084's footer on every page.
 - **Sheets.** Content that would otherwise take the collector off a page whose state a navigation would lose (a running camera) opens in a `Sheet`, a bottom sheet over the page, which keeps that state. A sheet is a native `<dialog>` opened as a modal, which needs script. It is the one exception to "Nothing needs JavaScript" below: use it only on a page that already needs script, or give its opener a plain link to a page that holds the same content (spec 080 decision 2).
 - **Swipes.** A swipe always has a button that does the same: Previous and Next beside a row that is swiped. The buttons are the way for a keyboard, switch access and a fine pointer (spec 080).
 - On narrow screens secondary actions move into a "…" `Menu`; the primary action and `Done` stay visible. On wide screens those actions are plain buttons (e.g. `Edit many` in the `FilterBar`).
@@ -126,7 +126,7 @@ App additions (spec 007, in `collector/additions.css`): `Scanner`.
 
 App additions (spec 015, in `collector/additions.css`): `AdminJobs`, `AdminCatalog`, `StageList`, `ProgressMeter`.
 
-App additions (spec 018, in `collector/additions.css`): `Footer`.
+App additions (spec 018, in `collector/additions.css`): `Footer`; spec 084 adds the licence line.
 
 App additions (spec 019, in `collector/additions.css`): `ImageFit`. It overrides the export's image fitting.
 
