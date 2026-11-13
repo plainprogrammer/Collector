@@ -19,6 +19,26 @@ RSpec.describe "The one-screen scanner", type: :system do
     end
   end
 
+  # Spec 080 decision 8: a live region taken out of the accessibility tree while empty is not announced when it is filled in the
+  # same moment, so the empty regions stay rendered and take no space instead.
+  it "keeps the empty live regions rendered, taking no space (spec 080 decision 8)", :aggregate_failures do
+    visit scanner_path
+    expect(page).to have_css(".c-scan__feed:not([hidden])", wait: 10)
+    regions = page.evaluate_script(<<~JS)
+      [...document.querySelectorAll(".c-scan__pane-status, .c-scan__sheet-status")].map((region) => {
+        const style = getComputedStyle(region)
+        const gap = parseFloat(getComputedStyle(region.parentElement).rowGap) || 0
+        return { id: region.id, empty: region.textContent === "", display: style.display, visibility: style.visibility,
+                 space: parseFloat(style.marginTop) + parseFloat(style.marginBottom) + parseFloat(style.paddingTop) + parseFloat(style.paddingBottom) + gap }
+      })
+    JS
+    expect(regions.map { it["id"] }).to contain_exactly("status", "scanner_list_status", "scanner_destination_status")
+    expect(regions).to all(include("empty" => true, "visibility" => "visible"))
+    expect(regions.map { it["display"] }).not_to include("none")
+    # the pane's region cancels the column's gap; a sheet's region has no margin and its parent no gap
+    expect(regions.map { it["space"] }).to all(eq(0))
+  end
+
   it "is a centred 480px column at a desktop width, its sheet under it (AC-1.7)", :aggregate_failures do
     page.current_window.resize_to(1280, 900)
     visit scanner_path

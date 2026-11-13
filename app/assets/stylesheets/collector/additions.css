@@ -886,8 +886,8 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
    notch or home indicator (decision 18). The frozen frame is the captured frame on a canvas, cropped as the video is, so the
    collector sees what was read while it is read (decision 11). A stage notice is centred on the stage (the camera or the
    engine unavailable, no script); the catalog-not-loaded line sits at the stage's foot (decision 14). Today's result sits in an
-   interim scrolling body until #345 replaces it (decision 11, `c-scanpane__results`). Each sheet's live region shows only
-   when it holds a sentence. From 640px the shell is a centred 480px column and the scanner's sheets sit under it (decision
+   interim scrolling body until #345 replaces it (decision 11, `c-scanpane__results`). Each live region stays rendered while
+   empty, taking no space (spec 080 decision 8). From 640px the shell is a centred 480px column and the scanner's sheets sit under it (decision
    17), by a rule scoped to the scanner, so the sheet's own rule is unchanged. */
 .c-scan__sitting { display:contents; }
 .c-scan__top { box-sizing:border-box; height:calc(56px + env(safe-area-inset-top)); padding:env(safe-area-inset-top) calc(var(--space-2) + env(safe-area-inset-right)) 0 calc(var(--space-2) + env(safe-area-inset-left)); }
@@ -906,8 +906,12 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
 .c-scan__catalog { box-sizing:border-box; position:absolute; z-index:1; left:var(--space-4); right:var(--space-4); bottom:var(--space-4); }
 .c-scanpane__results { box-sizing:border-box; flex:1 1 auto; min-height:0; display:flex; flex-direction:column; gap:var(--space-4);
   overflow-y:auto; overscroll-behavior:contain; padding:var(--space-4); }
-.c-scan__pane-status:empty, .c-scan__sheet-status:empty { display:none; }
 .c-scan__sheet-status { margin-bottom:var(--space-4); }
+/* An empty live region stays rendered, so a sentence written into it is announced (spec 080 decision 8): `display:none` removes
+   it from the accessibility tree, and one shown in the same moment it is filled is not read out. It takes no space instead: a
+   sheet's loses its margin, and the pane's, an item of the results' flex column, takes back the column's gap. */
+.c-scan__sheet-status:empty { margin:0; }
+.c-scan__pane-status:empty { margin-bottom:calc(-1 * var(--space-4)); }
 .c-scan__photo { display:flex; flex-direction:column; align-items:flex-start; gap:var(--space-2); margin-top:var(--space-4); }
 .c-scan .c-sheet .c-btn { box-sizing:border-box; min-height:44px; min-width:44px; }
 .c-scan .c-sheet__title:focus { outline:2px solid var(--focus); outline-offset:2px; border-radius:var(--radius-sm); } /* programmatic focus after an Undo (spec 047); Firefox gives it no :focus-visible once the focused Undo is replaced */
