@@ -7,16 +7,16 @@
   <% if component.texts.any? %>
     <details class="c-licences__details">
       <summary><span class="c-licences__name"><%= component.name %></span> <span class="c-licences__meta"><%= meta %></span></summary>
-      <% if component.home %><p><%= link_to component.home, component.home, rel: "noopener" %></p><% end %>
-      <% if component.copyright.present? %><p><%= component.copyright %></p><% end %>
+      <% if component.home %><p class="c-licences__home"><%= link_to component.home, component.home, rel: "noopener" %></p><% end %>
+      <% if component.copyright.present? %><p class="c-licences__copyright"><%= component.copyright %></p><% end %>
       <% component.texts.each do |title, text| %>
         <h3 class="c-licences__file"><%= title %></h3>
         <pre class="c-licences__text"><%= text %></pre>
       <% end %>
     </details>
   <% else %>
-    <div><span class="c-licences__name"><%= component.name %></span> <span class="c-licences__meta"><%= meta %></span></div>
-    <% if component.home %><p><%= link_to component.home, component.home, rel: "noopener" %></p><% end %>
+    <div class="c-licences__heading"><span class="c-licences__name"><%= component.name %></span> <span class="c-licences__meta"><%= meta %></span></div>
+    <% if component.home %><p class="c-licences__home"><%= link_to component.home, component.home, rel: "noopener" %></p><% end %>
     <p class="c-licences__missing">Licence text not found</p>
   <% end %>
 </li>
