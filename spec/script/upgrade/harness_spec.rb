@@ -122,6 +122,18 @@ RSpec.describe Upgrade::Harness, :git_sandbox, :upgrade do
       expect(out.string).to include("current_prices", "WITHOUT ROWID")
     end
 
+    it "fails naming the prices database and foreign_key_check when a price change names a missing series", :aggregate_failures do
+      upgraded = pair(seeded("upgraded", all_migrations))
+      SQLite3::Database.new(upgraded.fetch(:prices)).tap do |db|
+        db.execute("PRAGMA foreign_keys = OFF")
+        db.execute("INSERT INTO price_changes VALUES (1, 1, 999, '2026-11-20', 5)")
+        db.close
+      end
+
+      expect(run_with(upgraded:)).to eq(1)
+      expect(out.string).to include("the upgraded prices database: foreign_key_check: price_changes")
+    end
+
     it "fails when the next release's seed left a table of the prices database empty, naming it", :aggregate_failures do
       expect(run_with(nxt: pair(seeded("next", all_migrations), empty: "price_refresh_runs"))).to eq(1)
       expect(out.string).to include("table price_refresh_runs has no row after script/upgrade/seeds/next.rb")
