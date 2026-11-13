@@ -7,6 +7,15 @@ require "sqlite3"
 require "zlib"
 require "rubygems/package"
 
+module Collector
+  module Backup
+    # The databases a backup holds, by configuration name, and the archive entry each is stored as, in archive order
+    # (spec 081 decision 6). Archive's entry names and Restore's placing read it; spec/backup_guards_spec.rb compares it
+    # with its own lists. The queue, cache and cable databases are left out.
+    HELD = { "primary" => "primary.sqlite3", "prices" => "prices.sqlite3" }.freeze
+  end
+end
+
 require_relative "backup/refusal"
 require_relative "backup/databases"
 require_relative "backup/free_space"

@@ -5,15 +5,15 @@ RSpec.describe Collector::Backup::Databases, :backup do
     it "reads the production databases from config/database.yml without connecting (FR-8)", :aggregate_failures do
       databases = described_class.configured(env: "production")
 
-      expect(databases.names).to contain_exactly("primary", "cache", "queue", "cable")
+      expect(databases.names).to contain_exactly("primary", "cache", "queue", "cable", "prices")
       expect(databases.primary).to eq(Rails.root.join("storage/production.sqlite3"))
       expect(databases.directory).to eq(Rails.root.join("storage"))
     end
 
-    it "reads a single-database environment as its primary", :aggregate_failures do
+    it "reads the test environment's two databases", :aggregate_failures do
       databases = described_class.configured(env: "test")
 
-      expect(databases.names).to eq([ "primary" ])
+      expect(databases.names).to eq(%w[primary prices])
       expect(databases.primary.basename.to_s).to eq("test.sqlite3")
     end
   end
