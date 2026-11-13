@@ -1,6 +1,6 @@
 # Verification: spec 080, design system: the phone-first scanner
 
-**Spec:** [spec.md](spec.md) 1.2.2 | **Plan:** [plan.md](plan.md) | **Issue:** [#343](https://github.com/plainprogrammer/Collector/issues/343) | **Pull request:** [#360](https://github.com/plainprogrammer/Collector/pull/360) (draft)
+**Spec:** [spec.md](spec.md) 1.2.2 | **Plan:** plan (retired in `93580784d80713b5b1ca8151b442d29c256fa38a`; read it with `git show 93580784d80713b5b1ca8151b442d29c256fa38a^:docs/specs/080-phone-first-scanner-components/plan.md`) | **Issue:** [#343](https://github.com/plainprogrammer/Collector/issues/343) | **Pull request:** [#360](https://github.com/plainprogrammer/Collector/pull/360) (draft)
 **Recorded:** 2026-11-13, on branch `080-phone-first-scanner-components` at `bc21f9cd`, brought up to date at `f1dad843` after the implementation review's fixes (merge base with `main` `59b0bdaa`; `origin/main` at `8ee8d291` when the diffs below were read, which changes none of the paths they name).
 
 Each criterion with the example or the reading that proves it. Documents are verified by reading, never by RSpec (`.claude/rules/testing.md`). The red runs, rulings and measurements are as the implementers reported them in their commit bodies.
