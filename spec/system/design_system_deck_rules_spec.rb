@@ -5,6 +5,8 @@ require "rails_helper"
 # tab bar are the app's own partials with the app's own Decks link and tab (spec 062 AC-4.2): the examples count them and
 # never add them. The "can fail" controls still clone links and tabs, which is the point of them.
 RSpec.describe "Design system: deck rules, navigation and pickers", type: :system do
+  include DesignSystemProbe
+
   let(:user) { create(:user) }
   let(:binder) { create(:location, account: user.account, name: "Blue binder") }
 
@@ -29,29 +31,6 @@ RSpec.describe "Design system: deck rules, navigation and pickers", type: :syste
   end
 
   def own = owned_printing("Lightning Bolt", account: user.account, location: binder)
-  def theme(name) = page.execute_script("document.documentElement.dataset.theme = #{name.to_json}")
-  def add_to_main(html) = page.execute_script("document.querySelector('main').insertAdjacentHTML('beforeend', arguments[0])", html)
-  def evaluate(script) = page.evaluate_script("(() => { #{script} })()")
-
-  # The computed values of one element, by CSS property name, in the order asked.
-  def computed(selector, *properties)
-    evaluate(<<~JS)
-      const style = getComputedStyle(document.querySelector(#{selector.to_json}))
-      return #{properties.to_json}.map((name) => style.getPropertyValue(name))
-    JS
-  end
-
-  # A token as the browser resolves it for the current theme, written "rgb(r, g, b)".
-  def token(name)
-    evaluate(<<~JS)
-      const probe = document.createElement("span")
-      probe.style.color = "var(#{name})"
-      document.body.append(probe)
-      const value = getComputedStyle(probe).color
-      probe.remove()
-      return value
-    JS
-  end
 
   describe "grouped selects (AC-4.2, AC-4.3)" do
     { form: "#probe-form select", filter: "#probe-filter select" }.each do |kind, select|
