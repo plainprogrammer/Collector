@@ -72,7 +72,7 @@ module BackupHelpers
   def production_paths(directory) = PRODUCTION_NAMES.transform_values { directory.join(it) }
   def databases_for(directory) = Collector::Backup::Databases.new(production_paths(directory))
   def instance_database = Collector::Backup::Databases.configured.primary
-  def instance_prices_database = Rails.root.join(ActiveRecord::Base.configurations.configs_for(env_name: "test", name: "prices").database)
+  def instance_prices_database = Collector::Backup::Databases.configured.prices
   def release_versions = Collector::Backup.release_schema_versions
 
   # The examples' clock: the second a backup is taken (decision 5's file name).
