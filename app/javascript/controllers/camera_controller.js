@@ -79,6 +79,12 @@ export default class extends Controller {
     return { image, card: guideInFrame(image.width, image.height, view.width, view.height, guide) }
   }
 
+  // The video's and the stage's sizes at a capture, for measurement mode's record (spec 082 AC-7.2).
+  sizes() {
+    const view = this.stageTarget.getBoundingClientRect()
+    return { videoWidth: this.videoTarget.videoWidth, videoHeight: this.videoTarget.videoHeight, stageWidth: Math.round(view.width), stageHeight: Math.round(view.height) }
+  }
+
   async toggleTorch() {
     const on = !this.torchOn
     try {

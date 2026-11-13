@@ -904,6 +904,7 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
 .c-scan__top { box-sizing:border-box; height:calc(56px + env(safe-area-inset-top)); padding:env(safe-area-inset-top) calc(var(--space-2) + env(safe-area-inset-right)) 0 calc(var(--space-2) + env(safe-area-inset-left)); }
 .c-scan__bottom { box-sizing:border-box; height:calc(96px + env(safe-area-inset-bottom)); padding:0 calc(var(--space-4) + env(safe-area-inset-right)) env(safe-area-inset-bottom) calc(var(--space-4) + env(safe-area-inset-left)); }
 .c-scan__feed { position:absolute; inset:0; }
+.c-scan__guide { box-sizing:border-box; } /* spec 080's rule sets none, so its 2px border grew the box past the rule's size (AC-3.1) */
 .c-scan__frozen { box-sizing:border-box; position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
 .c-scan__line--alert { border-color:var(--warning); }
 .c-scan__added-action { display:contents; } /* its Undo form or link is the line's flex item; empty, it draws nothing */

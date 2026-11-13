@@ -70,6 +70,9 @@ module ScannerHelpers
     }
   JS
 
+  # The picker input a photo is picked through unless a spec names another.
+  PICKER = "[data-card-reader-target=picker]".freeze
+
   # Detection runs on a full-size picture, so the detector specs give their scripts longer than Capybara's default wait.
   DETECTION_SCRIPT_WAIT = 30
 
@@ -133,9 +136,10 @@ module ScannerHelpers
 
   # Picks a photo of a synthetic card drawn anywhere in it (or none), so the detector rather than the guide has to find it.
   # noise is detect_synthetic's: a flat photo gives the detector no real edge strengths to threshold on.
-  def pick_photo(card: { x: 40, y: 360, width: 859, height: 1200 }, width: 1200, height: 1600, name: "Lightning Bolt", lines: [ "R 0123", "MOM • EN" ], noise: 0)
-    using_wait_time(DETECTION_SCRIPT_WAIT) { page.evaluate_async_script(<<~JS, width, height, card, name, lines, noise) }
-      const [ width, height, card, name, lines, noise, done ] = arguments
+  # input is the CSS selector of the picker to fire (spec 082 AC-2.2): the stage notice's by default, which comes first in the page.
+  def pick_photo(card: { x: 40, y: 360, width: 859, height: 1200 }, width: 1200, height: 1600, name: "Lightning Bolt", lines: [ "R 0123", "MOM • EN" ], noise: 0, input: PICKER)
+    using_wait_time(DETECTION_SCRIPT_WAIT) { page.evaluate_async_script(<<~JS, width, height, card, name, lines, noise, input) }
+      const [ width, height, card, name, lines, noise, selector, done ] = arguments
       #{CARD_JS}
       #{NOISE_JS}
       const canvas = Object.assign(document.createElement("canvas"), { width, height })
@@ -153,7 +157,7 @@ module ScannerHelpers
       canvas.toBlob((blob) => {
         const transfer = new DataTransfer()
         transfer.items.add(new File([ blob ], "card.png", { type: "image/png" }))
-        const input = document.querySelector("[data-card-reader-target=picker]")
+        const input = document.querySelector(selector)
         input.files = transfer.files
         input.dispatchEvent(new Event("change", { bubbles: true }))
         done(true)
@@ -192,14 +196,15 @@ module ScannerHelpers
     expect(page).to have_button("Capture", disabled: false, wait: 30)
   end
 
-  def pick_synthetic_photo(name: "Lightning Bolt", lines: [ "R 0123", "MOM • EN" ])
-    page.evaluate_async_script(<<~JS, name, lines)
-      const [ name, lines, done ] = arguments
+  # Picks a photo of a synthetic card at the shipped guide, through the picker input matches (see pick_photo).
+  def pick_synthetic_photo(name: "Lightning Bolt", lines: [ "R 0123", "MOM • EN" ], input: PICKER)
+    page.evaluate_async_script(<<~JS, name, lines, input)
+      const [ name, lines, selector, done ] = arguments
       #{CARD_JS}
       window.__syntheticCard(name, lines).then(({ canvas }) => canvas.toBlob((blob) => {
         const transfer = new DataTransfer()
         transfer.items.add(new File([ blob ], "card.png", { type: "image/png" }))
-        const input = document.querySelector("[data-card-reader-target=picker]")
+        const input = document.querySelector(selector)
         input.files = transfer.files
         input.dispatchEvent(new Event("change", { bubbles: true }))
         done(true)
@@ -245,6 +250,27 @@ module ScannerHelpers
                  top: box(".c-scan__top"), stage: box(".c-scan__stage"), bottom: box(".c-scan__bottom"), main: box(".c-scan__main") }
       })()
     JS
+  end
+
+  # Asserts the page in the frame is one screen of viewport_height: no scroll, the bars at the viewport's edges, the stage
+  # between them and the main button inside (spec 082 AC-1.1, AC-1.2).
+  #
+  # @param viewport_height [Integer] the height the page should fill
+  def expect_one_screen(viewport_height)
+    measures = one_screen
+    expect(measures["scrollable"]).to be(false)
+    expect(measures["scrollY"]).to eq(0)
+    expect(measures["top"]["top"]).to eq(0)
+    expect(measures["height"]).to eq(viewport_height)
+    expect(measures["bottom"]["bottom"]).to be_within(0.5).of(viewport_height)
+    expect(measures["stage"]["top"]).to be_within(0.5).of(measures["top"]["bottom"])
+    expect(measures["stage"]["bottom"]).to be_within(0.5).of(measures["bottom"]["top"])
+    expect(measures["main"]["bottom"]).to be <= viewport_height
+  end
+
+  # Holds the next reading's request until window.__release() is called, so the reading state can be measured.
+  def hold_readings
+    page.execute_script("const send = window.fetch; window.fetch = (url, options) => url.includes('/scanner/readings') ? new Promise((resolve) => { window.__release = () => resolve(send(url, options)) }) : send(url, options)")
   end
 
   # Opens the destination sheet, as the collector's tap on the top bar does.

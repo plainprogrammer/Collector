@@ -7,18 +7,6 @@ RSpec.describe "The one-screen scanner", type: :system do
 
   before { system_sign_in_as(user) }
 
-  def expect_one_screen(viewport_height)
-    measures = one_screen
-    expect(measures["scrollable"]).to be(false)
-    expect(measures["scrollY"]).to eq(0)
-    expect(measures["top"]["top"]).to eq(0)
-    expect(measures["height"]).to eq(viewport_height)
-    expect(measures["bottom"]["bottom"]).to be_within(0.5).of(viewport_height)
-    expect(measures["stage"]["top"]).to be_within(0.5).of(measures["top"]["bottom"])
-    expect(measures["stage"]["bottom"]).to be_within(0.5).of(measures["bottom"]["top"])
-    expect(measures["main"]["bottom"]).to be <= viewport_height
-  end
-
   [ [ 390, 844 ], [ 360, 640 ], [ 360, 560 ] ].each do |width, height|
     it "is one screen at #{width} × #{height}, with the body focused and no header, tab bar or footer (AC-1.1)", :aggregate_failures do
       expect(open_scanner_frame(width:, height:)).to eq(width)
@@ -77,5 +65,40 @@ RSpec.describe "The one-screen scanner", type: :system do
     expect(page).to have_css("#scanner_list_sheet .c-empty", text: "Nothing added yet.")
     expect(page.evaluate_script("window.__marker")).to eq("still here")
     expect(page.evaluate_script("window.__tracks.every((track) => track.readyState === 'live')")).to be(true)
+  end
+
+  # AC-1.2's states at one viewport: aiming, reading, a result, after an add, the camera unavailable; the engine failing is
+  # T6.1's. The main button's label and state are the table's, and the page stays one screen in each.
+  def expect_states_at(width, height)
+    open_scanner_frame(width:, height:)
+    within_narrow_frame do
+      expect(page).to have_button("Capture", disabled: false, wait: 30)
+      expect_one_screen(height)
+      show_synthetic_card
+      hold_readings
+      click_on "Capture"
+      expect(page).to have_button("Capture", disabled: true, wait: 30)
+      expect_one_screen(height)
+      eventually("typeof window.__release === 'function'", wait: 30) # the held request is made once the OCR has run
+      page.execute_script("window.__release()")
+      expect(page).to have_button("Scan again", wait: 30)
+      expect_one_screen(height)
+      find("button[aria-label='Add Lightning Bolt MOM · 123 Foil']").click
+      expect(page).to have_css("#scanner_added_text", text: "Added")
+      expect(page).to have_button("Capture", disabled: false)
+      expect_one_screen(height)
+      page.execute_script(%(navigator.mediaDevices.getUserMedia = async () => { throw new DOMException("blocked", "NotAllowedError") }))
+      restart_camera
+      expect(page).to have_button("Capture", disabled: true)
+      expect_one_screen(height)
+    end
+  end
+
+  [ [ 390, 844 ], [ 360, 640 ], [ 360, 560 ] ].each do |width, height|
+    it "keeps the main button in view through aiming, reading, a result, an add and the camera unavailable at #{width} × #{height} (AC-1.2, AC-1.6)", :aggregate_failures do
+      create(:mtg_printing, finishes: %w[nonfoil foil], entry: create(:catalog_entry, identity: create(:catalog_identity, name: "Lightning Bolt"), name: "Lightning Bolt", set: create(:catalog_set, code: "mom"), number: "123"))
+      Catalog::NameIndex.new("mtg").rebuild
+      expect_states_at(width, height)
+    end
   end
 end
