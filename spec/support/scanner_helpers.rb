@@ -184,7 +184,7 @@ module ScannerHelpers
     JS
     restart_camera
     wait_for_scanner
-    eventually("window.__tracks.length > 0 && document.querySelector('.c-scan__video, .c-scanner__video').readyState >= 2")
+    eventually("window.__tracks.length > 0 && document.querySelector('.c-scan__video').readyState >= 2")
   end
 
   # The engine has loaded and a live camera feed is showing (the shutter enables only then).
@@ -208,7 +208,7 @@ module ScannerHelpers
   end
 
   def restart_camera
-    page.execute_script(%(window.Stimulus.getControllerForElementAndIdentifier(document.querySelector(".c-scan, .c-scanner"), "camera").restart()))
+    page.execute_script(%(window.Stimulus.getControllerForElementAndIdentifier(document.querySelector(".c-scan"), "camera").restart()))
   end
 
   # Waits for a JavaScript expression to become truthy, the way Capybara's matchers wait for the DOM.
@@ -217,6 +217,41 @@ module ScannerHelpers
   end
 
   def scanner_sent = page.evaluate_script("window.__sent")
+
+  # Opens the scanner in a frame `width` × `height` from the collection page (the scanner's own policy frames nothing,
+  # `frame-src 'none'`), and waits for the live feed. The page never scrolls, so the frame draws no scrollbar and its width is
+  # the viewport's (spec 082 Verification).
+  #
+  # @param width [Integer] the frame's width in px
+  # @param height [Integer] the frame's height in px
+  # @param path [String] the page to open, the scanner or measurement mode
+  # @return [Integer] the frame's viewport width
+  def open_scanner_frame(width:, height:, path: scanner_path)
+    visit collection_path
+    open_in_narrow_frame(path, width:, height:, ready: ".c-scan__feed:not([hidden])").first
+  end
+
+  # The one-screen measures of the page the driver is in, read in one script (spec 082 AC-1.1, AC-1.2): whether the document
+  # scrolls, after an attempt to scroll to its end, and the boxes of the bars, the stage and the main button.
+  #
+  # @return [Hash] "scrollable", "scrollY", "height" and "top", "stage", "bottom", "main" boxes (top, bottom)
+  def one_screen
+    page.evaluate_script(<<~JS)
+      (() => {
+        const root = document.documentElement
+        window.scrollTo(0, root.scrollHeight)
+        const box = (selector) => { const b = document.querySelector(selector).getBoundingClientRect(); return { top: b.top, bottom: b.bottom, height: b.height } }
+        return { scrollable: root.scrollHeight > root.clientHeight, scrollY: window.scrollY, height: window.innerHeight,
+                 top: box(".c-scan__top"), stage: box(".c-scan__stage"), bottom: box(".c-scan__bottom"), main: box(".c-scan__main") }
+      })()
+    JS
+  end
+
+  # Opens the destination sheet, as the collector's tap on the top bar does.
+  def open_destination = find(".c-scan__dest").click
+
+  # Opens the sitting's list sheet from the count.
+  def open_sitting_list = find("#scanner_count").click
 end
 
 RSpec.configure { |config| config.include ScannerHelpers, type: :system }

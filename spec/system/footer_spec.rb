@@ -152,10 +152,12 @@ RSpec.describe "The footer", type: :system do
     expect(page).to have_css(".c-scan")
 
     expect(page).to have_no_css("body > footer.c-footer")
-    feet = page.all(".c-scan dialog .c-sheet__foot", visible: :all)
-    expect(feet.size).to eq(2)
-    feet.each do |foot|
-      expect(foot.all("a", visible: :all).map { |link| link[:href] }).to eq([ "https://company.wizards.com/en/legal/fancontentpolicy", "https://scryfall.com/" ])
+    [ [ ".c-scan__dest", "#scanner_destination_sheet" ], [ "#scanner_count", "#scanner_list_sheet" ] ].each do |opener, sheet|
+      find(opener).send_keys(:enter)
+      expect(page).to have_css("#{sheet}[open] .c-sheet__foot")
+      expect(find("#{sheet} .c-sheet__foot").all("a").map { |link| link[:href] }).to eq([ "https://company.wizards.com/en/legal/fancontentpolicy", "https://scryfall.com/" ])
+      click_on "Close"
+      expect(page).to have_no_css("dialog[open]")
     end
   end
 

@@ -22,8 +22,8 @@ const REASONS = {
 const NO_EDGE = "No card edge was found, so the photo was read as if framed like the guide. For a better reading, photograph the whole card, upright, filling most of the photo, on a plain background."
 
 export default class extends Controller {
-  static targets = [ "status", "shutter", "picker", "result", "unavailable", "reason", "retry", "engineRetry",
-    "failure", "failureMessage", "failureName", "failureCollector", "signIn", "resend", "artStatus" ]
+  static targets = [ "status", "main", "picker", "result", "unavailable", "reason", "retry", "engineRetry", "engineFailed",
+    "frozen", "paneStatus", "addedText", "failure", "failureName", "failureCollector", "signIn", "resend", "artStatus" ]
   static values = { readingsUrl: String, enginePath: String, artIndexUrl: String, artSettings: Object }
 
   connect() {
@@ -35,6 +35,7 @@ export default class extends Controller {
     this.engineReady = false
     this.busy = true
     this.engineRetryTarget.hidden = true
+    this.engineFailedTarget.hidden = true
     this.render()
     this.say("Loading the scanner…")
     try {
@@ -45,6 +46,7 @@ export default class extends Controller {
       this.say(this.cameraLive ? "Ready. Line the card up with the guide, then capture." : "Ready.")
     } catch {
       this.engineRetryTarget.hidden = false
+      this.engineFailedTarget.hidden = false
       this.say("The scanner couldn't load, so neither the camera nor a photo can be read. Check your connection and load it again.")
     } finally {
       this.busy = false
@@ -110,15 +112,23 @@ export default class extends Controller {
     this.camera.restart()
   }
 
+  // The main button's action; T4.2 adds "Scan again" while a result shows.
+  main() {
+    this.capture()
+  }
+
+  // The shell's result state changed (scan-shell:changed); the pane's behaviour is added with the result (spec 082 Story 4).
+  shellChanged() {}
+
   capture() {
     if (!this.engineReady || !this.cameraLive || this.busy) return
     const { image, card } = this.camera.grab()
     this.read(() => ({ image, card, layout: STRIPS, outline: "live" }))
   }
 
-  pick() {
-    const file = this.pickerTarget.files[0]
-    this.pickerTarget.value = ""
+  pick(event) {
+    const file = event.target.files[0]
+    event.target.value = ""
     if (!file || !this.engineReady || this.busy) return
     this.read(async () => {
       const photo = await createImageBitmap(file) // applies the photo's orientation
@@ -147,9 +157,9 @@ export default class extends Controller {
       const frame = source.outline === "live" ? { image, guide: card } : null
       this.dispatch("read", { detail: { ...reading, strips, frame, art: this.artTimings || null, readyMs: this.readyMs } })
       this.lastReading = reading
-      if (await this.send(reading) && reading.outline === "not_found") this.say(NO_EDGE)
+      if (await this.send(reading) && reading.outline === "not_found") this.sayInPane(NO_EDGE)
     } catch {
-      this.say("The card couldn't be read. Line it up with the guide and try again.")
+      this.sayInPane("The card couldn't be read. Line it up with the guide and try again.")
     } finally {
       this.busy = false
       this.render()
@@ -182,29 +192,35 @@ export default class extends Controller {
     if (response.type === "opaqueredirect") return this.failed("Your session has ended. Sign in again, then capture the card again.", { signedOut: true })
     if (!response.ok && response.status !== 422) return this.failed("The scanner had a problem with that card. Send it again.", { signedOut: false })
     Turbo.renderStreamMessage(await response.text())
-    this.say("Done. What the scanner read and its candidates are below.")
+    this.sayInPane("Done. What the scanner read and its candidates are below.")
     return true
   }
 
   failed(message, { signedOut }) {
-    this.failureMessageTarget.textContent = message
     this.failureNameTarget.textContent = this.lastReading?.nameText || "Nothing read"
     this.failureCollectorTarget.textContent = this.lastReading?.collectorText || "Nothing read"
     this.resendTarget.hidden = signedOut
     this.signInTarget.hidden = !signedOut
     this.failureTarget.hidden = false
-    this.say(message)
+    this.sayInPane(message)
     return false
   }
 
   render() {
-    this.shutterTarget.disabled = !(this.engineReady && this.cameraLive) || this.busy
-    this.shutterTarget.setAttribute("aria-busy", String(this.busy || !this.engineReady))
-    this.pickerTarget.disabled = !this.engineReady || this.busy
+    this.mainTarget.disabled = !(this.engineReady && this.cameraLive) || this.busy
+    this.mainTarget.setAttribute("aria-busy", String(this.busy || !this.engineReady))
+    this.pickerTargets.forEach((picker) => { picker.disabled = !this.engineReady || this.busy })
   }
 
   say(message) {
     this.statusTarget.textContent = message
+  }
+
+  // A sentence about a result goes in the pane's own region (spec 082 decision 10): the shell empties the status line whenever
+  // the pane shows. Written as a paragraph, so the shell sees the pane has something to show.
+  sayInPane(message) {
+    const line = Object.assign(document.createElement("p"), { className: "c-status__message", textContent: message })
+    this.paneStatusTarget.replaceChildren(line)
   }
 
   get camera() {

@@ -1,6 +1,7 @@
 // Card guide and strip geometry for the scanner (spec 007 AC-1.3, AC-4.2). The shipped framing (a 3:4 stage, the guide 80% of
 // its height) is the photo path's; the live guide is the full framing of spec 082, drawn and cropped from one computation.
-// Strips are fractions of the guide, and the CSS gives .c-scanner__stage the same aspect ratio.
+// Strips are fractions of the guide. The live stage is the shell's, of any aspect ratio (the guide is mapped through the stage's
+// own size); only the photo path's picture keeps the 3:4 of STAGE_ASPECT.
 export const CARD_ASPECT = 63 / 88
 export const STAGE_ASPECT = 3 / 4
 export const GUIDE = { height: 0.8, maxWidth: 0.9 } // shares of the stage

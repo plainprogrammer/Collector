@@ -13,7 +13,7 @@ RSpec.describe "Card scanner", type: :system do
   it "asks for the rear camera, draws the guide and reads a lined-up card (AC-1.1, AC-1.3, AC-2.1, AC-3.2)", :aggregate_failures do
     wait_for_scanner
     show_synthetic_card
-    expect(page).to have_css(".c-scanner__stage:not([hidden]) .c-scanner__guide")
+    expect(page).to have_css(".c-scan__feed:not([hidden]) .c-scan__guide")
     click_on "Capture"
     expect(page).to have_css(".c-scanner__candidate", text: "Lightning Bolt", wait: 30)
     expect(first(".c-scanner__candidate")).to have_text("Matched by its collector line")
@@ -23,14 +23,14 @@ RSpec.describe "Card scanner", type: :system do
 
   it "reads one card at a time (AC-2.6)", :aggregate_failures do
     show_synthetic_card
-    page.execute_script(%(const shutter = document.querySelector(".c-scanner__shutter"); shutter.click(); shutter.click()))
+    page.execute_script(%(const shutter = document.querySelector(".c-scan__main"); shutter.click(); shutter.click()))
     expect(page).to have_css(".c-scanner__candidate", text: "Lightning Bolt", wait: 30)
     expect(scanner_sent.size).to eq(1)
   end
 
   it "stops every camera track when the scanner leaves the page (AC-1.4)" do
     show_synthetic_card
-    page.execute_script(%(document.querySelector(".c-scanner").remove()))
+    page.execute_script(%(document.querySelector(".c-scan").remove()))
     expect(eventually("window.__tracks.length > 0 && window.__tracks.every((track) => track.readyState === 'ended')")).to be(true)
   end
 
@@ -38,7 +38,7 @@ RSpec.describe "Card scanner", type: :system do
     show_synthetic_card
     visit collection_path
     page.go_back
-    expect(eventually("document.querySelector('.c-scanner__video')?.srcObject?.active === true", wait: 30)).to be(true)
+    expect(eventually("document.querySelector('.c-scan__video')?.srcObject?.active === true", wait: 30)).to be(true)
   end
 
   it "offers the torch only when the camera has one (AC-1.5)", :aggregate_failures do
@@ -46,7 +46,7 @@ RSpec.describe "Card scanner", type: :system do
     expect(page).to have_no_button("Torch")
     show_synthetic_card(torch: true)
     click_on "Torch"
-    expect(page).to have_css("button[aria-pressed=true]", text: "Torch")
+    expect(page).to have_css("button[aria-label=Torch][aria-pressed=true]")
     click_on "Torch"
     eventually("window.__torch.length === 2")
     expect(page.evaluate_script("window.__torch")).to eq([ true, false ])
@@ -88,13 +88,5 @@ RSpec.describe "Card scanner", type: :system do
     page.driver.browser.manage.delete_cookie("session_id")
     click_on "Capture"
     expect(page).to have_text("Your session has ended", wait: 30)
-  end
-
-  it "fits a 360px screen with the shutter in the bottom third (NFR Accessibility)", :aggregate_failures do
-    visit collection_path # the scanner's own policy (frame-src 'none') won't let it host the narrow frame
-    expect(open_in_narrow_frame(scanner_path, width: 360, ready: ".c-scanner__stage:not([hidden])")).to eq([ 360, true ])
-    within_narrow_frame do
-      expect(page.evaluate_script(%(document.querySelector(".c-scanner__shutter").getBoundingClientRect().top))).to be >= 800 * 2 / 3
-    end
   end
 end

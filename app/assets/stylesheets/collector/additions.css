@@ -891,6 +891,42 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
   .c-scan__capture { box-sizing:border-box; height:76px; }
 }
 
+/* ---------- Scanner page (spec 082): the one-screen scanner built on the scan shell ---------- */
+/* The shell, the lines and the pane are spec 080's; this block is what the page adds. The sitting's top-bar parts are one
+   element an answer replaces, laid out as the top bar's own children. The bars grow by the safe-area insets of a phone with a
+   notch or home indicator (decision 18). The frozen frame is the captured frame on a canvas, cropped as the video is, so the
+   collector sees what was read while it is read (decision 11). A stage notice is centred on the stage (the camera or the
+   engine unavailable, no script); the catalog-not-loaded line sits at the stage's foot (decision 14). Today's result sits in an
+   interim scrolling body until #345 replaces it (decision 11, `c-scanpane__results`). Each sheet's live region shows only
+   when it holds a sentence. From 640px the shell is a centred 480px column and the scanner's sheets sit under it (decision
+   17), by a rule scoped to the scanner, so the sheet's own rule is unchanged. */
+.c-scan__sitting { display:contents; }
+.c-scan__top { box-sizing:border-box; height:calc(56px + env(safe-area-inset-top)); padding:env(safe-area-inset-top) calc(var(--space-2) + env(safe-area-inset-right)) 0 calc(var(--space-2) + env(safe-area-inset-left)); }
+.c-scan__bottom { box-sizing:border-box; height:calc(96px + env(safe-area-inset-bottom)); padding:0 calc(var(--space-4) + env(safe-area-inset-right)) env(safe-area-inset-bottom) calc(var(--space-4) + env(safe-area-inset-left)); }
+.c-scan__feed { position:absolute; inset:0; }
+.c-scan__frozen { box-sizing:border-box; position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+.c-scan__line--alert { border-color:var(--warning); }
+.c-scan__added-action { display:contents; } /* its Undo form or link is the line's flex item; empty, it draws nothing */
+.c-scan__notice { box-sizing:border-box; position:absolute; z-index:1; left:var(--space-4); right:var(--space-4); top:50%; transform:translateY(-50%);
+  display:flex; flex-direction:column; align-items:center; gap:var(--space-3); margin:0; padding:var(--space-4); background:var(--surface-raised);
+  border:1px solid var(--line-strong); border-radius:var(--radius-md); color:var(--ink); font:400 14px/20px var(--font-sans); text-align:center; }
+.c-scan__notice-text { margin:0; overflow-wrap:anywhere; }
+.c-scan__notice .c-btn { box-sizing:border-box; min-height:44px; }
+.c-scan__notice .c-sheet__foot { align-self:stretch; text-align:left; }
+.c-scan__catalog { box-sizing:border-box; position:absolute; z-index:1; left:var(--space-4); right:var(--space-4); bottom:var(--space-4); }
+.c-scanpane__results { box-sizing:border-box; flex:1 1 auto; min-height:0; display:flex; flex-direction:column; gap:var(--space-4);
+  overflow-y:auto; overscroll-behavior:contain; padding:var(--space-4); }
+.c-scan__pane-status:empty, .c-scan__sheet-status:empty { display:none; }
+.c-scan__sheet-status { margin-bottom:var(--space-4); }
+.c-scan__photo { display:flex; flex-direction:column; align-items:flex-start; gap:var(--space-2); margin-top:var(--space-4); }
+.c-scan .c-sheet .c-btn { box-sizing:border-box; min-height:44px; min-width:44px; }
+.c-scan .c-sheet__title:focus-visible { outline:2px solid var(--focus); outline-offset:2px; border-radius:var(--radius-sm); }
+@media (min-width: 640px) {
+  .c-shell--focused { background:var(--surface-sunken); }
+  .c-scan { box-sizing:border-box; max-width:480px; margin:0 auto; }
+  .c-scan .c-sheet[open] { box-sizing:border-box; max-width:480px; margin:0 auto; }
+}
+
 /* ---------- Reduced motion, app-wide (spec 080 decision 14) ---------- */
 /* The README's Motion rule: under `prefers-reduced-motion: reduce` nothing eases or slides, in any component. A universal
    selector loses to any class rule (the export's `.c-btn` and `.c-tile__media` set a transition), so these two declarations

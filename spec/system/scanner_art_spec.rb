@@ -25,7 +25,7 @@ RSpec.describe "Art matching on the scanner page", type: :system do
     show_synthetic_card
     click_on "Capture"
     expect(page).to have_css(".c-scanner__candidate", text: "Lightning Bolt", wait: 30)
-    expect(page).to have_no_css(".c-scanner__art")
+    expect(page).to have_no_css(".c-scanner__art", visible: :all)
     expect(scanner_sent).to eq([ text_fields ])
   end
 
@@ -33,13 +33,16 @@ RSpec.describe "Art matching on the scanner page", type: :system do
     it "has no status line until an index is built (Error Scenarios)" do
       visit scanner_path
       wait_for_scanner
-      expect(page).to have_no_css(".c-scanner__art")
+      expect(page).to have_no_css(".c-scanner__art", visible: :all)
     end
 
     it "loads the index after the scanner starts and sends the 10 nearest artworks with a live capture (AC-5.1–AC-5.3, AC-5.5)", :aggregate_failures do
       write_index
       visit scanner_path
+      wait_for_scanner
+      open_destination
       expect(page).to have_css(".c-scanner__art[role=status][aria-live=polite]", text: "Artwork matching is on", wait: 30)
+      click_on "Close"
       show_synthetic_card
       click_on "Capture"
 
@@ -53,7 +56,10 @@ RSpec.describe "Art matching on the scanner page", type: :system do
       bytes[8, 16] = "0123456789abcdef"
       path.binwrite(ActiveSupport::Gzip.compress(bytes))
       visit scanner_path
+      wait_for_scanner
+      open_destination
       expect(page).to have_css(".c-scanner__art", text: "Artwork matching isn't available. The scanner is reading text only.", wait: 30)
+      click_on "Close"
       show_synthetic_card
       click_on "Capture"
 
@@ -64,7 +70,10 @@ RSpec.describe "Art matching on the scanner page", type: :system do
     it "sends no artworks with a picked photo (AC-5.4)", :aggregate_failures do
       write_index
       visit scanner_path
+      wait_for_scanner
+      open_destination
       expect(page).to have_css(".c-scanner__art", text: "Artwork matching is on", wait: 30)
+      click_on "Close"
       pick_photo
       expect(page).to have_css(".c-scanner__candidate", text: "Lightning Bolt", wait: 60)
       expect(scanner_sent).to eq([ text_fields ])
