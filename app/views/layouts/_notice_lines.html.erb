@@ -1,0 +1,6 @@
+<%# The content notices' lines, one per paragraph, their links as the footer draws them (spec 018 FR-1, FR-4). The footer renders
+    them, and so does the foot of a sheet on a one-screen focused page, which has no footer (spec 082 decision 16). Shared with
+    spec 084, which adds the licence line after them. %>
+<% Catalog::ContentNotice.lines.each do |line| %>
+  <p><% line.parts.each do |text, address| %><%= address ? link_to(text, address, rel: "noopener") : text %><% end %></p>
+<% end %>

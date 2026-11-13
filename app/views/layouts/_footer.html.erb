@@ -2,8 +2,6 @@
     element when there are none. The lines come from each type's source, never from this file. %>
 <% if lines.any? %>
   <footer class="c-footer">
-    <% lines.each do |line| %>
-      <p><% line.parts.each do |text, address| %><%= address ? link_to(text, address, rel: "noopener") : text %><% end %></p>
-    <% end %>
+    <%= render "layouts/notice_lines" %>
   </footer>
 <% end %>

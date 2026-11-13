@@ -4,11 +4,12 @@ require "rails_helper"
 # address. A type's notice reaches the footer only through its source's optional hook (app/models/catalog/sources.rb).
 RSpec.describe "The core's footer code" do
   let(:files) do
-    %w[app/views/layouts/application.html.erb app/views/layouts/_footer.html.erb app/models/catalog/content_notice.rb]
+    %w[app/views/layouts/application.html.erb app/views/layouts/_footer.html.erb app/views/layouts/_notice_lines.html.erb
+       app/views/layouts/_notice_foot.html.erb app/models/catalog/content_notice.rb]
       .map { |path| Rails.root.join(path) }
   end
 
-  it "covers the layout, the footer's partial and the model that collects the notices" do
+  it "covers the layout, the footer's and the sheets' foot's partials and the model that collects the notices" do
     expect(files).to all(exist)
   end
 
