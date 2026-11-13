@@ -243,8 +243,12 @@ The images were not opened to write this record; their content is as the commit 
 
 ## Implementation review
 
-SPEC-ALIGNED, by the supervisor after round 2 (not the reviewer's own verdict); Story 7's AC-7.3 to 7.5 are owed to the maintainer's re-measure by design (decision 1).
+SPEC-ALIGNED, by the supervisor after round 2 (not the reviewer's own verdict), and the coordinator checked the three commits that closed it; Story 7's AC-7.3 to 7.5 are owed to the maintainer's re-measure by design (decision 1).
 
 - Round 1 (Opus, read-only, sdd-review Mode B): INCOMPLETE. No blocking finding; 4 major (empty live regions hidden from the accessibility tree; AC-4.5's network and server failures unproved; three controls under 44px; the paired report missing art on/off and the user agents and bar A's boundaries), 9 minor, and partly-proved clauses of AC-1.2 to 1.6, 2.3 to 2.5, 3.1, 4.2, 4.3, 4.5 to 4.7, 5.1, 5.3, 5.5, 5.6, 6.2, 7.1, 7.2. All fixed in `7783f23f`..`7bfd66da` and proved in `fa4bf23c`..`ec8a6609`; m9 accepted (development-only).
 - Round 2 (the same reviewer): INCOMPLETE. Every round-1 finding fixed, no spec drift, nothing new broken; four clauses still without an example (AC-1.2's engine loading and Other printings at all three sizes, AC-3.1's after-add line clear of the guide, AC-5.6's flash action) and the alert style left after a list-sheet Undo. Closed in `e977d110`, `f7b19c1a`, `c896cf62`; the supervisor checked the diff and the run (305 examples, 0 failures; `bin/ci checks` passing) rather than spend a third review round (the run's limit is two).
 - Owed: the paired re-measure (Phase 9), the detector parity run, a screen-reader pass on a phone, a phone check of the frozen canvas's crop.
+
+## Distillation
+
+Distilled on 2026-11-13 (`distill-feature`, state 2), before the pull request: the area docs `docs/architecture/scanner.md` and `catalog-core.md` were written with the feature (`231c8b8b`) and updated at the merge of spec 084 (`57841039`); `e2e35985` adds their distillation log rows ("spec 082's pull request" until it has a number), sets the index row to Frozen in part (all but Story 7's outcome, the re-measure owed to the maintainer) with its plan owed a retirement, and names spec 082 in CLAUDE.md's card scanner paragraph; `2879cb0b` adds the spec's frozen line (spec 027 D4). Not distilled: Story 7's outcome. Phase 9 adds `research.md`, and the area doc and `geometry.js` change only if bar A fails (AC-7.5). The design-system documents (`Scanner`, `Sheet`, `Footer`, the README) were written in `855c786e`.
