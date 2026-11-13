@@ -9,6 +9,7 @@ export default class extends Controller {
   static targets = [ "result", "paneStatus", "failure", "statusLine", "statusText", "added", "addedText" ]
 
   connect() {
+    this.addedAtConnect = this.addedTextTarget.textContent
     this.observer = new MutationObserver(() => this.sync())
     this.observer.observe(this.element, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: [ "hidden" ] })
     this.sync()
@@ -23,6 +24,8 @@ export default class extends Controller {
     const added = filled(this.addedTextTarget)
     this.element.classList.toggle("c-scan--result", result)
     setHidden(this.addedTarget, !added)
+    // The alert style belongs to the sentence the page loaded with; any later answer (an Undo from the list sheet) isn't a warning.
+    if (this.addedTextTarget.textContent !== this.addedAtConnect && this.addedTarget.classList.contains("c-scan__line--alert")) this.addedTarget.classList.remove("c-scan__line--alert")
     if ((added || result) && filled(this.statusTextTarget)) this.statusTextTarget.textContent = ""
     setHidden(this.statusLineTarget, !filled(this.statusTextTarget) || added || result)
     if (result !== this.result) {

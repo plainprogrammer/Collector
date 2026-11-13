@@ -455,6 +455,16 @@ RSpec.describe "The scanner's sitting", type: :system do
     expect(page).to have_no_css(".c-scan__line--alert", visible: :all)
   end
 
+  it "drops the alert style once an Undo from the list sheet writes its answer on the line", :aggregate_failures do
+    Scanner::Sitting.add!(account: user.account, printing:, finish: "foil", reading_key: "a" * 32)
+    visit scanner_path
+    page.execute_script("document.querySelector('.c-scan__line--added').classList.add('c-scan__line--alert')")
+    open_sitting_list
+    find("#scanner_sitting").find_button("Undo", match: :first).click
+    expect(page).to have_css("#scanner_added_text", text: "Removed", visible: :all)
+    expect(page).to have_no_css(".c-scan__line--alert", visible: :all)
+  end
+
   it "empties the after-add line on the next capture (AC-5.4)", :aggregate_failures do
     visit scanner_path
     add_by_scanning
