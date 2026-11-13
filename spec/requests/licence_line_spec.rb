@@ -26,15 +26,21 @@ RSpec.describe "The licence line", type: :request do
     end
   end
 
-  # Spec 082 decision 16 (patch 1.0.3): the scanner is a one-screen focused page with no footer, the exception to AC-1.1; the
-  # licence line ends the foot of each of its sheets instead.
-  it "ends each sheet's foot on the scanner, which has no footer (spec 082 decision 16)", :aggregate_failures do
+  # Spec 082 decision 16 (patch 1.0.3): the scanner is a one-screen focused page with no footer, the exception to AC-1.1 and
+  # AC-4.3, met through its sheets' foot; with script off, its noscript notice carries the same lines.
+  it "ends each sheet's foot and the noscript notice on the scanner, which has no footer (AC-1.1; spec 082 decision 16)", :aggregate_failures do
+    build_facts(version: "0.3.0", revision: sha, source_url: "https://example.test/tree/#{sha}")
     sign_in_as(create(:user))
     get scanner_path
     expect(html.css("body > footer.c-footer")).to be_empty
-    feet = html.css("dialog.c-sheet .c-sheet__foot")
-    expect(feet.size).to eq(2)
-    expect(feet.map { |foot| foot.at_css("p:last-child").text }).to all(eq("Collector (unknown version)#{tail}"))
+    noscript = Nokogiri::HTML5.fragment(html.at_css(".c-scan noscript").inner_html)
+    places = [ *html.css("dialog.c-sheet .c-sheet__foot"), noscript.at_css(".c-sheet__foot") ]
+    expect(places.size).to eq(3)
+    places.map { |foot| foot.at_css("p:last-child") }.each do |last|
+      expect(last.text).to eq("Collector 0.3.0 (a9f6de7)#{tail}")
+      expect(last.css("a").map { |link| [ link.text, link["href"] ] }).to eq([ [ "AGPL-3.0", "https://www.gnu.org/licenses/agpl-3.0.html" ],
+        [ "source code", "https://example.test/tree/#{sha}" ] ])
+    end
   end
 
   it "ends the deck page and an admin page (AC-1.1)", :aggregate_failures do
