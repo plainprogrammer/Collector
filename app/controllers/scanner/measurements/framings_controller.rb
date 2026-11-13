@@ -4,7 +4,7 @@ class Scanner::Measurements::FramingsController < ApplicationController
   include MeasurementMode
 
   def update
-    framing = params.expect(:framing).to_s
+    framing = params[:framing].is_a?(String) ? params[:framing] : "" # a hash or a list, or none, is refused with the rest: a 422, not params.expect's 400
     return head(:unprocessable_content) unless Scanner::MeasurementRun::FRAMINGS.include?(framing)
 
     session[:scanner_framing] = framing

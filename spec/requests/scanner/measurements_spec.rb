@@ -173,6 +173,15 @@ RSpec.describe "Scanner measurement mode", type: :request do
       expect(response).to have_http_status(:not_found)
     end
 
+    it "answers 422, not 400, for a framing that arrives as a hash or a list", :aggregate_failures do
+      patch scanner_measurement_framing_path, params: { framing: { x: "1" } }
+      expect(response).to have_http_status(:unprocessable_content)
+      patch scanner_measurement_framing_path, params: { framing: [ "full" ] }
+      expect(response).to have_http_status(:unprocessable_content)
+      patch scanner_measurement_framing_path
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+
     it "stores a capture and a reading under the chosen framing's run", :aggregate_failures do
       create(:catalog_entry, set: create(:catalog_set, code: "mom"), number: "123", name: "Lightning Bolt")
       choose("shipped")
