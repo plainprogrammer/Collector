@@ -1,6 +1,7 @@
 # The account's open scanner sitting as the scanner shows it (spec 009 Story 3): the sitting and its kept entries,
-# newest first, loaded in the controller and handed to the partials; and the streams that redraw it after a change, into the regions spec 082 decision 10 names. The
-# account's places and deck zones come along for the sitting's place (spec 040 decision 3, spec 065), loaded once per request.
+# newest first, loaded in the controller and handed to the partials; and the streams that redraw it after a change, into the
+# regions spec 082 decision 10 names. The account's places and deck zones come along for the sitting's place (spec 040
+# decision 3, spec 065), loaded once per request.
 module ScannerSitting
   extend ActiveSupport::Concern
 

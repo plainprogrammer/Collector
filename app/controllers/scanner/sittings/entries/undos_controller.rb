@@ -17,7 +17,8 @@ class Scanner::Sittings::Entries::UndosController < ApplicationController
     message = "Removed 1 × #{copy} from your collection."
     render turbo_stream: [ say_in("scanner_list_status", message), *added_line(message), *sitting_redraw(focus: :heading) ]
   rescue Scanner::SittingEntry::NotUndoable => error
-    render turbo_stream: [ say_in("scanner_list_status", REFUSED.fetch(error.message), alert: true), *sitting_redraw(focus: :heading) ],
+    refusal = REFUSED.fetch(error.message)
+    render turbo_stream: [ say_in("scanner_list_status", refusal, alert: true), *added_line(refusal), *sitting_redraw(focus: :heading) ],
       status: :unprocessable_content
   end
 end

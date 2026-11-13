@@ -100,6 +100,15 @@ RSpec.describe "Scanner sittings", type: :request do
       expect(CGI.unescapeHTML(response.body)).to include("That copy has changed in your collection, so it can't be undone here.")
     end
 
+    it "shows a refused Undo on the after-add line as well as the list sheet (decision 10's table)", :aggregate_failures do
+      entry = add("a")
+      undo(entry)
+      undo(entry)
+      html = Nokogiri::HTML5(response.body)
+      expect(html.at_css("turbo-stream[target=scanner_added_text] template").text.strip).to eq("That card was already undone.")
+      expect(html.at_css("turbo-stream[target=scanner_list_status]")).to be_present
+    end
+
     it "answers 404 once the sitting has ended (Error Scenarios)" do
       entry = add("a")
       account.scanner_sitting.end!
