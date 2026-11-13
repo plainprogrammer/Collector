@@ -728,6 +728,17 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
   .c-zone .c-table th.c-zone__c-menu { box-sizing: border-box; min-width: 4rem; }
 }
 
+/* ---------- StatusBand (spec 080): a filled band that says how sure a result is, in an icon and a sentence ---------- */
+/* The one filled use of a status colour (README Color): `success` or `warning` as the ground, the matching `on-` token for
+   the sentence and the icon. A grid, so one line sits centred in the 40px minimum, and a sentence that wraps grows the band
+   (56px for two lines) with the icon staying on its first line: the icon's block margin makes it as tall as a line. Sizes are
+   outer sizes; the export sets no box-sizing. `danger` has no band: something that went wrong is a StatusMessage. */
+.c-band { box-sizing:border-box; display:grid; grid-template-columns:16px minmax(0, 1fr); column-gap:var(--space-2); align-content:center;
+  min-height:40px; margin:0; padding:var(--space-2) var(--space-4); font:600 14px/20px var(--font-sans); overflow-wrap:anywhere; }
+.c-band svg { width:16px; height:16px; margin:calc((20px - 16px) / 2) 0; stroke-width:2; }
+.c-band--success { background:var(--success); color:var(--on-success); }
+.c-band--warning { background:var(--warning); color:var(--on-warning); }
+
 /* ---------- Reduced motion, app-wide (spec 080 decision 14) ---------- */
 /* The README's Motion rule: under `prefers-reduced-motion: reduce` nothing eases or slides, in any component. A universal
    selector loses to any class rule (the export's `.c-btn` and `.c-tile__media` set a transition), so these two declarations
