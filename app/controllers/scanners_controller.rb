@@ -6,7 +6,7 @@ class ScannersController < ApplicationController
 
   def show
     @sitting = sitting_locals(current_sitting)
-    @summary = flash[:sitting_summary]
+    @line = nil
     @unloaded_catalogs = Catalog.unloaded_titles
     @catalogs_named = Catalog.sources.many?
   end

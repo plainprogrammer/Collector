@@ -1,0 +1,13 @@
+<%# locals: (entry: nil, link: nil, removal_undo: nil, focus: nil) %>
+<%# What the after-add line offers beside its sentence: Undo for the entry just added, the collection after a sitting ends, or a
+    flash's Undo; nothing after an Undo. `focus` is where focus goes once it connects (spec 082 decision 15). %>
+<%= tag.div id: "scanner_added_action", class: "c-scan__added-action", data: sitting_focus_data(focus) do %>
+  <% if entry %>
+    <%= button_to "Undo", scanner_sitting_entry_undo_path(entry), class: "c-btn c-btn--ghost", "aria-label": "Undo #{scanner_copy(entry.printing, entry.finish)}",
+          form: { class: "c-scan__undo", data: { scanner_event: "undo", reading_key: entry.reading_key } } %>
+  <% elsif link %>
+    <%= link_to link.first, link.last, class: "c-btn c-btn--ghost" %>
+  <% elsif removal_undo %>
+    <%= button_to "Undo", collection_bulk_removal_undo_path(removal_undo), params: { return_to: scanner_path }, class: "c-btn c-btn--ghost", form: { class: "c-scan__undo", data: { turbo: false } } %>
+  <% end %>
+<% end %>

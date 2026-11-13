@@ -17,7 +17,7 @@ RSpec.describe "Scanner page", type: :request do
     it "loads the engine from this app's versioned path, with the shutter busy until it's ready (AC-2.2, AC-2.5)", :aggregate_failures do
       get scanner_path
       expect(response.body).to include('src="/ocr/v7.0.0/tesseract.min.js"', 'data-card-reader-engine-path-value="/ocr/v7.0.0"')
-      expect(response.body).to match(/<button[^>]*c-scanner__shutter[^>]*disabled[^>]*aria-busy="true"/)
+      expect(response.body).to match(/<button[^>]*c-scan__main[^>]*disabled[^>]*aria-busy="true"/)
       expect(response.body).to include('<meta name="turbo-visit-control" content="reload">', '<meta name="turbo-cache-control" content="no-cache">')
     end
 
@@ -52,10 +52,33 @@ RSpec.describe "Scanner page", type: :request do
       expect(html.css(".c-tabbar a[href='#{scanner_path}']").map { it.text.strip }).to eq([ "Scan" ])
       expect(html.css(".c-pagehead__actions a[href='#{scanner_path}']").map { it.text.strip }).to eq([ "Scan cards" ])
       expect(html.css("a[href='#{scanner_path}']").map { it["data-turbo-prefetch"] }).to eq(%w[false false false])
-      get scanner_path
+      Scanner::Sitting.create!(account: user.account, condition: "near_mint")
+      get new_scanner_sitting_ending_path
       html = Nokogiri::HTML5(response.body)
       expect(html.css(".c-appbar__nav a[aria-current=page]").map(&:text)).to eq([ "Scan" ])
       expect(html.css(".c-tabbar a[aria-current=page]").map { it.text.strip }).to eq([ "Scan" ])
+      get scanner_path
+      expect(Nokogiri::HTML5(response.body).css("nav")).to be_empty # decision 24
+    end
+
+    describe "the one-screen page (spec 082)" do
+      it "renders the focused shell with its bars, stage, pane and two sheets (AC-1.1, AC-1.3, AC-1.5, AC-2.2, decision 16)", :aggregate_failures do
+        get scanner_path
+        body = Nokogiri::HTML5(response.body)
+        expect(body.at("body")["class"].split).to include("c-shell", "c-shell--untabbed", "c-shell--focused")
+        expect(body.css("#appbar, .c-tabbar, footer.c-footer, body > #status")).to be_empty
+        expect(body.at("main.c-scan h1.c-sr").text).to eq("Scan a card")
+        expect(body.css(".c-scan__top > *").map { it["class"].to_s[/c-scan__\w+/] }).to eq(%w[c-scan__back c-scan__sitting])
+        expect(body.at(".c-scan__back")["href"]).to eq(collection_path)
+        expect(body.at(".c-scan__dest").text.squish).to eq("Adding to No location")
+        expect(body.css(".c-scan__done")).to be_empty # no sitting open (spec 009 AC-3.7)
+        expect(body.css(".c-scan__bottom > *").map { it["id"] || it["class"].to_s[/c-scan__\w+/] }).to eq(%w[scanner_count c-scan__main c-scan__torch])
+        expect(body.at("#scanner_count")["aria-label"]).to eq("0 added. Show this sitting's cards.")
+        expect(body.at("dialog#scanner_destination_sheet .c-sheet__title").text).to eq("Adding to")
+        expect(body.at("dialog#scanner_list_sheet #scanner-sitting-heading").text).to eq("This sitting: 0 cards")
+        expect(body.css("dialog .c-sheet__foot").size).to eq(2)
+        expect(body.at("main.c-scan noscript").inner_html).to include("The scanner needs JavaScript", "c-sheet__foot")
+      end
     end
   end
 end

@@ -1,0 +1,4 @@
+<%# locals: (count:) %>
+<%# The bottom bar's count (spec 080 decision 11): the sitting's kept entries; it opens the list sheet. %>
+<%= tag.button type: "button", id: "scanner_count", class: "c-btn c-btn--secondary c-scan__count", "aria-label": "#{count} added. Show this sitting's cards.",
+      data: { action: "sheets#open", sheets_id_param: "scanner_list_sheet" } do %><b><%= count %></b><span>added</span><% end %>
