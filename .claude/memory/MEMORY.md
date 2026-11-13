@@ -37,7 +37,7 @@
 - [Sitting capture alignment](sitting-capture-alignment.md) — check each row's first-capture name vs the expected card (re-scans shift rows; CAPTURES override); brief "scan and add" explicitly
 - [Session-wrap before PR review](session-wrap-before-pr-review.md) — wrap and commit memories/lessons before marking a PR ready; offer post-merge housekeeping then too; after merges, rewrite follow-ups that name merged PRs
 - [Local image builds duplicate OCR](local-image-builds-duplicate-ocr.md) — issue #31: set-up checkouts build images ~14 MB larger; measure paths with `du`, not total sizes
-- [Subagent commit trailers](subagent-commit-trailers.md) — trailers aren't stable (own reminder, or a mid-run switch to Sonnet); name it in briefs, check the log per unit, never rewrite history; the maintainer keeps mixed trailers
+- [Subagent commit trailers](subagent-commit-trailers.md) — trailers aren't stable (own reminder, or a mid-run switch to Sonnet); name it in briefs, check the log per unit, never rewrite history; the maintainer keeps mixed trailers (spec 080: 5 Sonnet commits, left as is)
 - [SDD execute](sdd-execute-exact-plans.md) — one subagent per phase even for a small plan (maintainer, 2026-10-11); blocks are strong drafts, not pre-run (2026-10-15): red, then green, deviations recorded as rulings; prototype branches dropped
 - [PR exists and conflicts check](pr-exists-and-conflicts-check.md) — `gh pr list --head` before creating; a conflicting PR gets no CI run, merge main and push; stacked PRs on an unmerged sibling; maintainer-pushed scratch branches built on the merged head, via `!`
 - [Spec 015 follow-ups](spec-015-followups.md) — PR #32 draft, CI green; unchecked: graceful restart, art matching on, focus rings; later spec: "Running." after a crash, "Attempts 0"
@@ -85,3 +85,4 @@
 - [Name the guards that go red between plan commits](name-the-guards-that-go-red-between-plan-commits.md) — per task, list the guards it turns red and mark them pending until the task that turns them green; a pending example that passes fails the run
 - [Nokogiri :scope selector unsupported](nokogiri-scope-selector-unsupported.md) — `css(":scope > option")` raises in Nokogiri 1.19; use `xpath("./option")` in request-spec HTML checks
 - [Lint plan code with `bin/rubocop --stdin`](rubocop-stdin-lint.md) — extract the plan's Ruby to a scratch file and lint it with the repo path (+ `ruby -c`): the project's RSpec cops apply and nothing runs; redo after each plan patch
+- [No git stash in briefs](no-git-stash-in-briefs.md) — forbid git stash/reset/checkout in every subagent brief (except restoring a mutation-tested file); a stash/pop on a clean tree applied an unrelated old stash in spec 080

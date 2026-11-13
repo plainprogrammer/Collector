@@ -4,6 +4,8 @@ require "rails_helper"
 # (#49 builds the first), so each component's markup is added to a real page (the Locations page) inside a wrapper `div`
 # whose width the example sets; a container query answers the wrapper's width.
 RSpec.describe "Design system: deck components", type: :system do
+  include DesignSystemProbe
+
   let(:user) { create(:user) }
 
   before do
@@ -11,10 +13,6 @@ RSpec.describe "Design system: deck components", type: :system do
     visit locations_path
     blank_host
   end
-
-  def theme(name) = page.execute_script("document.documentElement.dataset.theme = #{name.to_json}")
-  def add_to_main(html) = page.execute_script("document.querySelector('main').insertAdjacentHTML('beforeend', arguments[0])", html)
-  def evaluate(script) = page.evaluate_script("(() => { #{script} })()")
 
   # Clears the host page so its own rules cannot answer the examples: the Locations page's `c-locations` class gives every
   # `.c-btn` and `.c-input` a 44px floor, which would pass a size example without the new rule, and its own `.c-form` and
@@ -24,34 +22,6 @@ RSpec.describe "Design system: deck components", type: :system do
       const main = document.querySelector("main")
       main.className = "c-main c-page"
       main.replaceChildren()
-    JS
-  end
-
-  # The computed values of one element, by CSS property name, in the order asked.
-  def computed(selector, *properties)
-    evaluate(<<~JS)
-      const style = getComputedStyle(document.querySelector(#{selector.to_json}))
-      return #{properties.to_json}.map((name) => style.getPropertyValue(name))
-    JS
-  end
-
-  # A token as the browser resolves it for the current theme, written "rgb(r, g, b)".
-  def token(name)
-    evaluate(<<~JS)
-      const probe = document.createElement("span")
-      probe.style.color = "var(#{name})"
-      document.body.append(probe)
-      const value = getComputedStyle(probe).color
-      probe.remove()
-      return value
-    JS
-  end
-
-  # An element's border box in viewport pixels.
-  def box(selector)
-    evaluate(<<~JS)
-      const rect = document.querySelector(#{selector.to_json}).getBoundingClientRect()
-      return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height }
     JS
   end
 

@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en" data-theme="light"><head>
+<link rel="stylesheet" href="preview-fonts.css"><link rel="stylesheet" href="../../../app/assets/stylesheets/collector/tokens.css"><link rel="stylesheet" href="../../../app/assets/stylesheets/collector/components.css"><link rel="stylesheet" href="../../../app/assets/stylesheets/collector/additions.css"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Scanner: the capture flow</title>
+<style>html, body { margin:0; } body { background:var(--surface); }
+/* Preview only: frames and captions. A frame is one 390 × 844 screen: it gives the shell its height and is the containing
+   block of a sheet drawn with the open attribute. Camera pictures and card images are placeholders with a caption. */
+.pv { display:flex; flex-wrap:wrap; align-items:flex-start; gap:var(--space-8); padding:var(--space-6); color:var(--ink); font-family:var(--font-sans); }
+.pv__cap { margin:0 0 var(--space-2); font:600 12px/16px var(--font-sans); color:var(--ink-muted); }
+.pv__note { flex-basis:100%; margin:0; font:400 14px/20px var(--font-sans); color:var(--ink-muted); }
+.pv__frame { position:relative; width:390px; height:844px; overflow:hidden; transform:translateZ(0); border:1px solid var(--line-strong); border-radius:var(--radius-md); }
+.pv__frame .c-scan { height:100%; }
+.pv__list { display:flex; flex-direction:column; gap:var(--space-2); width:390px; }
+.pv__ph { display:grid; place-items:center; height:100%; font:400 12px/16px var(--font-sans); color:var(--ink-muted); text-align:center; }
+</style></head>
+<body>
+<div class="pv">
+<section><p class="pv__cap">1 · Aim</p><div class="pv__frame">
+<div class="c-scan">
+  <div class="c-scan__top">
+  <a class="c-scan__back" href="#" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></a>
+  <button type="button" class="c-scan__dest"><span class="c-scan__dest-label">Adding to</span> <span class="c-scan__dest-value"><span class="c-scan__dest-text">Atraxa › Main · NM</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></button>
+  <a class="c-btn c-btn--ghost c-scan__done" href="#">Done</a>
+</div>
+
+  <div class="c-scan__stage">
+    <video class="c-scan__video" playsinline muted></video>
+    <div class="c-scan__guide" aria-hidden="true" style="left:5px;top:80px;width:380px;height:531px"><span class="pv__ph">live camera<br>card in the guide</span></div>
+    <div class="c-scan__line c-scan__line--status"><p class="c-scan__line-text" role="status">Line the card up with the guide, then capture.</p></div>
+<div class="c-scan__line c-scan__line--added" hidden><p class="c-scan__line-text" role="status"></p><form class="c-scan__undo"><button type="button" class="c-btn c-btn--ghost">Undo</button></form></div>
+
+    
+    
+  </div>
+  <div class="c-scan__bottom">
+  <button type="button" class="c-btn c-btn--secondary c-scan__count" aria-label="12 added. Show this sitting's cards."><b>12</b><span>added</span></button>
+  <button type="button" class="c-btn c-btn--primary c-scan__main">Capture</button>
+  <button type="button" class="c-btn c-btn--secondary c-scan__torch" aria-label="Torch" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></svg></button>
+</div>
+
+</div>
+</div></section>
+<section><p class="pv__cap">2 · Reading</p><div class="pv__frame">
+<div class="c-scan">
+  <div class="c-scan__top">
+  <a class="c-scan__back" href="#" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></a>
+  <button type="button" class="c-scan__dest"><span class="c-scan__dest-label">Adding to</span> <span class="c-scan__dest-value"><span class="c-scan__dest-text">Atraxa › Main · NM</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></button>
+  <a class="c-btn c-btn--ghost c-scan__done" href="#">Done</a>
+</div>
+
+  <div class="c-scan__stage">
+    <video class="c-scan__video" playsinline muted></video>
+    <div class="c-scan__guide" aria-hidden="true" style="left:5px;top:80px;width:380px;height:531px"><span class="pv__ph">frozen on the captured frame</span></div>
+    <div class="c-scan__line c-scan__line--status"><p class="c-scan__line-text" role="status">Reading the card…</p></div>
+<div class="c-scan__line c-scan__line--added" hidden><p class="c-scan__line-text" role="status"></p><form class="c-scan__undo"><button type="button" class="c-btn c-btn--ghost">Undo</button></form></div>
+
+    
+    
+  </div>
+  <div class="c-scan__bottom">
+  <button type="button" class="c-btn c-btn--secondary c-scan__count" aria-label="12 added. Show this sitting's cards."><b>12</b><span>added</span></button>
+  <button type="button" class="c-btn c-btn--primary c-scan__main" disabled>Capture</button>
+  <button type="button" class="c-btn c-btn--secondary c-scan__torch" aria-label="Torch" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></svg></button>
+</div>
+
+</div>
+</div></section>
+<section><p class="pv__cap">3 · Match</p><div class="pv__frame">
+<div class="c-scan c-scan--result">
+  <div class="c-scan__top">
+  <a class="c-scan__back" href="#" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></a>
+  <button type="button" class="c-scan__dest"><span class="c-scan__dest-label">Adding to</span> <span class="c-scan__dest-value"><span class="c-scan__dest-text">Atraxa › Main · NM</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></button>
+  <a class="c-btn c-btn--ghost c-scan__done" href="#">Done</a>
+</div>
+
+  <div class="c-scan__stage">
+    <video class="c-scan__video" playsinline muted></video>
+    <div class="c-scan__guide" aria-hidden="true"></div>
+    <div class="c-scan__line c-scan__line--status" hidden><p class="c-scan__line-text" role="status"></p></div>
+<div class="c-scan__line c-scan__line--added" hidden><p class="c-scan__line-text" role="status"></p><form class="c-scan__undo"><button type="button" class="c-btn c-btn--ghost">Undo</button></form></div>
+
+    <div class="c-scan__strip">
+  <div class="c-scan__capture"><span class="pv__ph">your capture</span></div>
+  <div class="c-scan__read"><p class="c-scan__read-label">Read from the card</p><p class="c-scan__read-name">Lightning Bolt</p><p class="c-scan__read-line">MOM · 123 · EN</p></div>
+</div>
+
+    <div class="c-scanpane">
+  <p class="c-band c-band--success" role="status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span>Matched by its collector line</span></p>
+  <div class="c-scanpane__body">
+    <div class="c-scanpane__rowwrap">
+      <ul class="c-scanpane__row"><li class="c-scanpane__item" aria-current="true"><span class="pv__ph">Card image</span></li><li class="c-scanpane__item"><span class="pv__ph">Card image</span></li><li class="c-scanpane__item"><span class="pv__ph">Card image</span></li></ul>
+      <button type="button" class="c-btn c-btn--secondary c-scanpane__nav c-scanpane__nav--prev" aria-label="Previous printing" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
+      <button type="button" class="c-btn c-btn--secondary c-scanpane__nav c-scanpane__nav--next" aria-label="Next printing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
+    </div>
+    <div class="c-scanpane__card">
+  <div class="c-scanpane__details">
+    <h2 class="c-scanpane__name">Lightning Bolt</h2>
+    <p class="c-scanpane__set">March of the Machine</p>
+    <p class="c-scanpane__meta"><span class="c-tag">MOM · 123</span> <span>2023</span> <span class="c-scanpane__position">1 of 14 printings</span></p>
+  </div>
+  <div class="c-scanpane__adds"><form class="c-scanpane__add"><button type="button" class="c-btn c-btn--secondary" aria-label="Add Lightning Bolt MOM · 123 Nonfoil">Add nonfoil</button></form><form class="c-scanpane__add"><button type="button" class="c-btn c-btn--secondary" aria-label="Add Lightning Bolt MOM · 123 Foil"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><path d="m12 2 3 6.5 7 .8-5.2 4.8 1.4 7L12 17.6 5.8 21.1l1.4-7L2 9.3l7-.8z"/></svg>Add foil</button></form></div>
+</div>
+<div class="c-scanpane__card" hidden>
+  <div class="c-scanpane__details">
+    <h2 class="c-scanpane__name">Lightning Bolt</h2>
+    <p class="c-scanpane__set">Double Masters 2022</p>
+    <p class="c-scanpane__meta"><span class="c-tag">2X2 · 117</span> <span>2022</span> <span class="c-scanpane__position">2 of 14 printings</span></p>
+  </div>
+  <div class="c-scanpane__adds"><form class="c-scanpane__add"><button type="button" class="c-btn c-btn--secondary" aria-label="Add Lightning Bolt 2X2 · 117 Nonfoil">Add nonfoil</button></form><form class="c-scanpane__add"><button type="button" class="c-btn c-btn--secondary" aria-label="Add Lightning Bolt 2X2 · 117 Foil"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><path d="m12 2 3 6.5 7 .8-5.2 4.8 1.4 7L12 17.6 5.8 21.1l1.4-7L2 9.3l7-.8z"/></svg>Add foil</button></form></div>
+</div>
+<div class="c-scanpane__card" hidden>
+  <div class="c-scanpane__details">
+    <h2 class="c-scanpane__name">Lightning Bolt</h2>
+    <p class="c-scanpane__set">Commander Legends: Battle for Baldur’s Gate</p>
+    <p class="c-scanpane__meta"><span class="c-tag">CLB · 187</span> <span>2022</span> <span class="c-scanpane__position">3 of 14 printings</span></p>
+  </div>
+  <div class="c-scanpane__adds"><form class="c-scanpane__add"><button type="button" class="c-btn c-btn--secondary" aria-label="Add Lightning Bolt CLB · 187 Nonfoil">Add nonfoil</button></form><form class="c-scanpane__add"><button type="button" class="c-btn c-btn--secondary" aria-label="Add Lightning Bolt CLB · 187 Foil"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><path d="m12 2 3 6.5 7 .8-5.2 4.8 1.4 7L12 17.6 5.8 21.1l1.4-7L2 9.3l7-.8z"/></svg>Add foil</button></form></div>
+</div>
+
+  </div>
+</div>
+
+  </div>
+  <div class="c-scan__bottom">
+  <button type="button" class="c-btn c-btn--secondary c-scan__count" aria-label="12 added. Show this sitting's cards."><b>12</b><span>added</span></button>
+  <button type="button" class="c-btn c-btn--secondary c-scan__main">Scan again</button>
+  <button type="button" class="c-btn c-btn--secondary c-scan__torch" aria-label="Torch" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></svg></button>
+</div>
+
+</div>
+</div></section>
+<section><p class="pv__cap">4 · Swipe</p><div class="pv__frame">
+<div class="c-scan c-scan--result">
+  <div class="c-scan__top">
+  <a class="c-scan__back" href="#" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></a>
+  <button type="button" class="c-scan__dest"><span class="c-scan__dest-label">Adding to</span> <span class="c-scan__dest-value"><span class="c-scan__dest-text">Atraxa › Main · NM</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></button>
+  <a class="c-btn c-btn--ghost c-scan__done" href="#">Done</a>
+</div>
+
+  <div class="c-scan__stage">
+    <video class="c-scan__video" playsinline muted></video>
+    <div class="c-scan__guide" aria-hidden="true"></div>
+    <div class="c-scan__line c-scan__line--status" hidden><p class="c-scan__line-text" role="status"></p></div>
+<div class="c-scan__line c-scan__line--added" hidden><p class="c-scan__line-text" role="status"></p><form class="c-scan__undo"><button type="button" class="c-btn c-btn--ghost">Undo</button></form></div>
+
+    <div class="c-scan__strip">
+  <div class="c-scan__capture"><span class="pv__ph">your capture</span></div>
+  <div class="c-scan__read"><p class="c-scan__read-label">Read from the card</p><p class="c-scan__read-name">Lightning Bolt</p><p class="c-scan__read-line">MOM · 123 · EN</p></div>
+</div>
+
+    <div class="c-scanpane">
+  <p class="c-band c-band--warning" role="status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4 2.5 20h19z"/><path d="M12 10v4M12 17h.01"/></svg><span>Not the printing that was read</span></p>
+  <div class="c-scanpane__body">
+    <div class="c-scanpane__rowwrap">
+      <ul class="c-scanpane__row"><li class="c-scanpane__item"><span class="pv__ph">Card image</span></li><li class="c-scanpane__item" aria-current="true"><span class="pv__ph">Card image</span></li><li class="c-scanpane__item"><span class="pv__ph">Card image</span></li></ul>
+      <button type="button" class="c-btn c-btn--secondary c-scanpane__nav c-scanpane__nav--prev" aria-label="Previous printing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
+      <button type="button" class="c-btn c-btn--secondary c-scanpane__nav c-scanpane__nav--next" aria-label="Next printing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
+    </div>
+    <div class="c-scanpane__card" hidden>
+  <div class="c-scanpane__details">
+    <h2 class="c-scanpane__name">Lightning Bolt</h2>
+    <p class="c-scanpane__set">March of the Machine</p>
+    <p class="c-scanpane__meta"><span class="c-tag">MOM · 123</span> <span>2023</span> <span class="c-scanpane__position">1 of 14 printings</span></p>
+  </div>
+  <div class="c-scanpane__adds"><form class="c-scanpane__add"><button type="button" class="c-btn c-btn--secondary" aria-label="Add Lightning Bolt MOM · 123 Nonfoil">Add nonfoil</button></form><form class="c-scanpane__add"><button type="button" class="c-btn c-btn--secondary" aria-label="Add Lightning Bolt MOM · 123 Foil"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><path d="m12 2 3 6.5 7 .8-5.2 4.8 1.4 7L12 17.6 5.8 21.1l1.4-7L2 9.3l7-.8z"/></svg>Add foil</button></form></div>
+</div>
+<div class="c-scanpane__card">
+  <div class="c-scanpane__details">
+    <h2 class="c-scanpane__name">Lightning Bolt</h2>
+    <p class="c-scanpane__set">Double Masters 2022</p>
+    <p class="c-scanpane__meta"><span class="c-tag">2X2 · 117</span> <span>2022</span> <span class="c-scanpane__position">2 of 14 printings</span></p>
+  </div>
+  <div class="c-scanpane__adds"><form class="c-scanpane__add"><button type="button" class="c-btn c-btn--secondary" aria-label="Add Lightning Bolt 2X2 · 117 Nonfoil">Add nonfoil</button></form><form class="c-scanpane__add"><button type="button" class="c-btn c-btn--secondary" aria-label="Add Lightning Bolt 2X2 · 117 Foil"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><path d="m12 2 3 6.5 7 .8-5.2 4.8 1.4 7L12 17.6 5.8 21.1l1.4-7L2 9.3l7-.8z"/></svg>Add foil</button></form></div>
+</div>
+<div class="c-scanpane__card" hidden>
+  <div class="c-scanpane__details">
+    <h2 class="c-scanpane__name">Lightning Bolt</h2>
+    <p class="c-scanpane__set">Commander Legends: Battle for Baldur’s Gate</p>
+    <p class="c-scanpane__meta"><span class="c-tag">CLB · 187</span> <span>2022</span> <span class="c-scanpane__position">3 of 14 printings</span></p>
+  </div>
+  <div class="c-scanpane__adds"><form class="c-scanpane__add"><button type="button" class="c-btn c-btn--secondary" aria-label="Add Lightning Bolt CLB · 187 Nonfoil">Add nonfoil</button></form><form class="c-scanpane__add"><button type="button" class="c-btn c-btn--secondary" aria-label="Add Lightning Bolt CLB · 187 Foil"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><path d="m12 2 3 6.5 7 .8-5.2 4.8 1.4 7L12 17.6 5.8 21.1l1.4-7L2 9.3l7-.8z"/></svg>Add foil</button></form></div>
+</div>
+
+  </div>
+</div>
+
+  </div>
+  <div class="c-scan__bottom">
+  <button type="button" class="c-btn c-btn--secondary c-scan__count" aria-label="12 added. Show this sitting's cards."><b>12</b><span>added</span></button>
+  <button type="button" class="c-btn c-btn--secondary c-scan__main">Scan again</button>
+  <button type="button" class="c-btn c-btn--secondary c-scan__torch" aria-label="Torch" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></svg></button>
+</div>
+
+</div>
+</div></section>
+<section><p class="pv__cap">5 · Added</p><div class="pv__frame">
+<div class="c-scan">
+  <div class="c-scan__top">
+  <a class="c-scan__back" href="#" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></a>
+  <button type="button" class="c-scan__dest"><span class="c-scan__dest-label">Adding to</span> <span class="c-scan__dest-value"><span class="c-scan__dest-text">Atraxa › Main · NM</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></button>
+  <a class="c-btn c-btn--ghost c-scan__done" href="#">Done</a>
+</div>
+
+  <div class="c-scan__stage">
+    <video class="c-scan__video" playsinline muted></video>
+    <div class="c-scan__guide" aria-hidden="true" style="left:5px;top:80px;width:380px;height:531px"><span class="pv__ph">live camera<br>next card</span></div>
+    <div class="c-scan__line c-scan__line--status" hidden><p class="c-scan__line-text" role="status"></p></div>
+<div class="c-scan__line c-scan__line--added"><p class="c-scan__line-text" role="status">Added Lightning Bolt MOM · 123, foil</p><form class="c-scan__undo"><button type="button" class="c-btn c-btn--ghost">Undo</button></form></div>
+
+    
+    
+  </div>
+  <div class="c-scan__bottom">
+  <button type="button" class="c-btn c-btn--secondary c-scan__count" aria-label="13 added. Show this sitting's cards."><b>13</b><span>added</span></button>
+  <button type="button" class="c-btn c-btn--primary c-scan__main">Capture</button>
+  <button type="button" class="c-btn c-btn--secondary c-scan__torch" aria-label="Torch" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></svg></button>
+</div>
+
+</div>
+</div></section>
+</div>
+<script>/* preview only: ?theme=dark, and each row rests on its centred card */
+if(new URLSearchParams(location.search).get("theme")==="dark")document.documentElement.dataset.theme="dark";
+document.querySelectorAll(".c-scanpane__row").forEach(function(row){var item=row.querySelector('[aria-current="true"]');if(item)row.scrollTo({left:item.offsetLeft-(row.clientWidth-item.offsetWidth)/2,behavior:"instant"});});</script>
+</body></html>

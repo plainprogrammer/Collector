@@ -69,4 +69,35 @@ RSpec.describe "Design system files" do
       expect(block).not_to match(/#\h{3,8}\b|rgba?\(|hsla?\(|font/i)
     end
   end
+
+  describe "the phone-first scanner's blocks (spec 080)" do
+    let(:additions) { root.join("app/assets/stylesheets/collector/additions.css").read }
+    let(:blocks) { additions.scan(%r{/\* -+ [^\n]*\(spec 080[^\n]*\n.*?(?=\n\n/\* -|\z)}m) }
+
+    it "uses !important only in the reduced-motion block, which is the last block (FR-7)", :aggregate_failures do
+      rules = root.glob("app/assets/stylesheets/**/*.css").map { |path| path.read.gsub(%r{/\*.*?\*/}m, "") }.join
+      expect(rules.scan("!important").size).to eq(2)
+      expect(blocks.last).to include("transition:none !important; animation:none !important;")
+      expect(additions.rstrip).to end_with(blocks.last.rstrip)
+    end
+
+    it "keeps each part in a block of its own, with no colour literal and no font but the tokens' (AC-6.2)", :aggregate_failures do
+      expect(blocks.map { it[%r{/\* -+ (.+?) \(spec 080}, 1] }).to eq([ "StatusBand", "Focused shell", "Sheet", "Scan shell", "Scan pane", "Reduced motion, app-wide" ])
+      rules = blocks.map { it.gsub(%r{/\*.*?\*/}m, "") }
+      expect(rules.grep(/#\h{3,8}\b|rgba?\(|hsla?\(/i)).to be_empty
+      expect(rules.join.scan(/font(?:-family)?:[^;}]*/).reject { it.include?("var(--font-") || it == "font:inherit" }).to be_empty
+    end
+
+    it "sets box-sizing:border-box on each rule that sets a size (decision 15)" do
+      # A rule sets a size when it gives width, height or a min- or max- of either a value with a digit in it other than a
+      # bare 0 (so 100% and calc() count; none, auto and max-content don't). The test reads each rule on its own: a rule
+      # that gets border-box from another rule on the same element still fails, so the decision holds literally. It reads
+      # the innermost braces, so a rule inside @container or @media is read as a rule; it doesn't resolve var() or know
+      # which elements a selector matches.
+      rules = blocks.join.gsub(%r{/\*.*?\*/}m, "").scan(/([^{}]+)\{([^{}]*)\}/)
+      sizing = rules.select { |_, body| body.match?(/(?<![\w-])(?:(?:min|max)-)?(?:width|height)\s*:\s*(?!0\s*(?:;|\z))[^;]*\d/) }
+      offenders = sizing.reject { |_, body| body.match?(/box-sizing\s*:\s*border-box/) }.map { it.first.strip }
+      expect(offenders).to be_empty, "Sized with no box-sizing:border-box: #{offenders.join(' | ')}"
+    end
+  end
 end
