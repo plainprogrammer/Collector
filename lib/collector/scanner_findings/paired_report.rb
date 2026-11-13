@@ -1,6 +1,7 @@
 module Collector
   module ScannerFindings
-    # Spec 082 Story 7: the paired re-measure. Scores each framing's run (its first capture per row) against the ground truth,
+    # Spec 082 Story 7: the paired re-measure (the maintainer withdrew its bar after one unpaired pass, spec 082 1.1.0; the
+    # tool stays for a later paired run). Scores each framing's run (its first capture per row) against the ground truth,
     # lists the cards one framing got right first and the other didn't, and applies bar A: the full framing passes when its
     # right card first is at most one card below the shipped framing's and its exact printing at most two below (maintainer,
     # 2026-11-13). Text is re-ranked as `rescore` does; where the run recorded readings (art matching on), the first candidate

@@ -41,8 +41,8 @@ export function guideRect(viewWidth, viewHeight) {
 // line and the after-add line sit (16px above a one-line line of 38px, and a 10px gap), so a one-line line never covers it. It
 // is as large as `height` of the area allows, never narrower than the shipped framing's guide for the stage's width (so a card
 // never gets fewer pixels than it did on a portrait stage that has room), at most `maxWidth` of the stage's width and
-// `maxHeight` of the area's height. The re-measure (spec 082 Story 7) decides whether it ships at this size or at the shipped
-// card size ("shipped").
+// `maxHeight` of the area's height. It ships at this size: the maintainer withdrew the paired re-measure (spec 082 1.1.0). The
+// shipped card size ("shipped") stays for measurement mode's other framing.
 export const LIVE_GUIDE = { top: 64, height: 0.8, maxWidth: 0.975, maxHeight: 0.95 }
 
 // The width the shipped framing's guide has in a 3:4 stage `stageWidth` wide (0.7636 of it).

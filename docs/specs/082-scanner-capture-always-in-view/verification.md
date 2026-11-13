@@ -83,15 +83,15 @@ Each criterion with the example or the reading that proves it. Documents are ver
 
 ### Story 7: The re-measure at the new framing
 
-Story 7 is owed in part: AC-7.3, AC-7.4's run and AC-7.5 wait on the maintainer's paired run (plan Phase 9). The tooling has examples.
+The maintainer withdrew the paired comparison after the sitting (spec 1.1.0): AC-7.4's bar and AC-7.5 are not applied, and no shipped-framing pass was taken. The sitting's one full-framing pass is a hand-reconstructed record in [`research.md`](research.md) (working in [`research-captures.md`](research-captures.md)), not a pass of any bar. The tooling has examples.
 
 | AC | Proof |
 |---|---|
 | AC-7.1 | The same shell, the top-bar button with the next row, "‹captured› of ‹rows›" and the framing, and the run sheet holding the panel: `spec/system/scanner_measurement_spec.rb:102` ("IMG_1.jpeg · 0 of 1 · full", the "Card to capture" select in `#measurement_sheet`), the store from a capture and the button after it ("All done · 1 of 1 · full", "Stored IMG_1.jpeg as the measured capture", the strip file on disk): `:102`, `:120`, `:134`. The hidden `<h1>` "Measure the scanner" and the framing switch's two buttons in the sheet: `:62`; a store failure showing in the pane's `#status` as well as the sheet's line: `:72` (`ec8a6609`; the fix `423301e6`). The button reading the framing: `spec/requests/scanner/measurements_spec.rb:159`. The three sheets' feet: `spec/requests/footer_spec.rb:238` |
 | AC-7.2 | The shipped framing's box in the tall stage: `spec/system/scanner_geometry_spec.rb:30` (297.8 × 416.0 at y 170.0 for 390 × 692). The session's framing, its form, the 422 for another value (and for a hash or a list, `:177`, `fc22bb48`), the 404 with measurement mode off, a capture and the reading's record under `‹run dir›/shipped` with the framing, frame size and stage size, the scanner's own page drawing the full framing: `spec/requests/scanner/measurements_spec.rb:159`, `:169`, `:186`, `:198`. The run directory per framing, and `.framing_in`: `spec/models/scanner/measurement_run_spec.rb:131`, `:140`; the sizes in a capture: `:147`. A reload keeping the framing is `spec/requests/scanner/measurements_spec.rb:159`'s second request. A Skip stored under `shipped`, with the shipped framing's guide drawn in the browser: `spec/system/scanner_measurement_spec.rb:84` (`ec8a6609`) |
-| AC-7.3 | Owed to the maintainer, with the corpus and `research.md` (Phase 9). The tasks it names, `scanner:ground_truth` and `scanner:overlap`, are existing tooling, not changed here |
+| AC-7.3 | Run on 2026-11-13 against this worktree's development catalog: `scanner:ground_truth` resolved 40 rows with 0 errors; `scanner:overlap` named C029 as spec 007's tuning card T011, which the maintainer kept (scored both ways); the foil column and eras checked; recorded in `research.md` |
 | AC-7.4 | The tooling: `spec/lib/collector/scanner_findings/paired_report_spec.rb:48`, `:54`, `:59`, `:65` (one column per framing, the discordant cards, the sizes, bar A passing and failing, a card measured by one framing left out and listed), and the task `scanner:paired_findings` (`lib/tasks/scanner.rake:145`). The report on real runs in `research.md`: owed to the maintainer |
-| AC-7.5 | Owed to the maintainer, after the run: only if bar A fails (spec decision 4). Not applicable until then |
+| AC-7.5 | Withdrawn (spec 1.1.0): no bar is applied, the full framing ships as built |
 
 ## Functional requirements
 
@@ -120,7 +120,7 @@ Story 7 is owed in part: AC-7.3, AC-7.4's run and AC-7.5 wait on the maintainer'
 - **The stage is short:** `spec/system/scanner_page_spec.rb:194` at 360 × 560 (the bars stay, one screen), `spec/system/scanner_geometry_spec.rb:23` (the guide's box at 360 × 408), `spec/system/scanner_result_spec.rb:99` (a result scrolls in the pane, at 360 × 640).
 - **A source supplies no content notice:** the licence line alone in the foot, `spec/requests/footer_spec.rb:192` (spec 084's example, for the shared partial).
 - **Measurement mode's manifest is broken:** `spec/requests/scanner/measurements_spec.rb:147` ("No manifest at", the scanner itself unaffected). The top bar and a stage notice with no camera requested: not proved by an example.
-- **The re-measure misses the bar:** AC-7.5, owed.
+- **The re-measure misses the bar:** withdrawn (spec 1.1.0).
 
 ## Documentation requirement
 
@@ -198,7 +198,7 @@ Deviations from the plan and the run:
 - **The detector parity script could not run here (AC-3.5).** `script/scanner/detector_parity.rb` needs the spike corpus under `~/card-scanner-corpus/runs/phase2` and a dev server. Owed: the maintainer runs it. `78c92256` changed `guideInFrame` (a fifth `rect` parameter that defaults to the old computation) and left the shipped framing's `guideRect`, `GUIDE`, `STAGE_ASPECT` and the detector untouched (checked by diff against `main`), so a failure is not expected; the run is the maintainer's.
 - **The `scanner_page_spec.rb` "states" examples were red between T4 and T5.1, as declared** in `6f590c0d`: the three "keeps the main button in view …" examples (390 × 844, 360 × 640, 360 × 560) reached the add step and failed on the sitting answer (unknown local `choices`) until T5.1 (`33b110dc`) rewrote the answers. Other examples were red between tasks as each commit body lists (the sitting and adding examples until `8233d050`, the touch floors until `b9fc02cc`, `scanner_measurement_spec` until T7.2, `select_touch_floor_spec` until T6.3); none was red at the head.
 - **The main session ran on Sonnet 5.5 for part of the run, against the brief's Opus 5.5.** The 25 commits `dee35908` through `cf5b0790` carry a Sonnet 5.5 `Co-Authored-By` trailer, the supervisor's own commits among them; the spec's drafting and revisions (`bd0515db` through `f5c8d950`), the merge `57841039` and the last commit `c4cbfe7e` carry Opus 5.5.
-- The plan's Phase 9 (the re-measure) did not run; the pull request stays a draft until it has (spec decision 1).
+- **Phase 9 ran as one unpaired pass, then was withdrawn.** The maintainer's sitting (2026-11-13) captured the 40 cards once at the full framing, not in ABBA blocks; the framing was never switched during it. Measurement mode filed in-place retakes under the next row and every capture after the 40th under C001 ([#419](https://github.com/plainprogrammer/Collector/issues/419), not fixed here), so the figures were reconstructed by hand (`research.md`). The maintainer then withdrew the paired comparison and its bar (spec 1.1.0); the pull request no longer waits on a re-measure.
 - **Two statements in the design system were stale** (found in this reading, fixed in `7bfd66da`; see Documents verified by reading); as found: `docs/design-system/README.md` line 85, in the touch-target bullet, still says of the rules drawn for the shell, pane and a sheet's Close "(spec 080; no page uses them yet)", and the spec's Documentation item names the README's "no page does yet". The scanner uses the shell, the sheet and Close now. `docs/design-system/components/StatusBand.md` line 18 and `Scanner.md` line 89 say "no view renders" a band or the pane; those are about #345's pane and stay true.
 
 ## Documents verified by reading
@@ -230,7 +230,9 @@ The images were not opened to write this record; their content is as the commit 
 
 ## Owed to the maintainer
 
-- **The paired re-measure (Phase 9, Story 7).** The corpus (AC-7.3), the two runs, the report from `scanner:paired_findings` and bar A's outcome in `research.md` (AC-7.4), and, only on a miss, the fall-back (AC-7.5). The pull request stays a draft until it has run.
+Not done at the sitting (2026-11-13), and owed unless the maintainer says otherwise: the screen-reader pass, the frozen-frame check and the detector parity run below.
+
+- ~~**The paired re-measure (Phase 9, Story 7).**~~ Withdrawn by the maintainer (spec 1.1.0); the one pass is in `research.md`. The corpus (AC-7.3), the two runs, the report from `scanner:paired_findings` and bar A's outcome in `research.md` (AC-7.4), and, only on a miss, the fall-back (AC-7.5). The pull request stays a draft until it has run.
 - **A screen-reader pass on a phone** over the sheets, an add, an Undo from each place and a refused add, checking each sentence is said once (NFR Accessibility, decision 10).
 - **The detector parity run:** `SCANNER_EMAIL=… SCANNER_PASSWORD=… bundle exec ruby script/scanner/detector_parity.rb` on a dev server with the spike corpus (AC-3.5).
 - **A phone check of the frozen canvas's crop:** `object-fit: cover` on a `canvas` (`.c-scan__frozen`) is read by the examples only as a hidden or shown element; whether the cover crop of a canvas matches the video's crop on a real phone is not shown (plan, Risks).
@@ -243,12 +245,14 @@ The images were not opened to write this record; their content is as the commit 
 
 ## Implementation review
 
-SPEC-ALIGNED, by the supervisor after round 2 (not the reviewer's own verdict), and the coordinator checked the three commits that closed it; Story 7's AC-7.3 to 7.5 are owed to the maintainer's re-measure by design (decision 1).
+SPEC-ALIGNED, by the supervisor after round 2 (not the reviewer's own verdict), and the coordinator checked the three commits that closed it; Story 7's paired comparison was later withdrawn by the maintainer (spec 1.1.0).
 
 - Round 1 (Opus, read-only, sdd-review Mode B): INCOMPLETE. No blocking finding; 4 major (empty live regions hidden from the accessibility tree; AC-4.5's network and server failures unproved; three controls under 44px; the paired report missing art on/off and the user agents and bar A's boundaries), 9 minor, and partly-proved clauses of AC-1.2 to 1.6, 2.3 to 2.5, 3.1, 4.2, 4.3, 4.5 to 4.7, 5.1, 5.3, 5.5, 5.6, 6.2, 7.1, 7.2. All fixed in `7783f23f`..`7bfd66da` and proved in `fa4bf23c`..`ec8a6609`; m9 accepted (development-only).
 - Round 2 (the same reviewer): INCOMPLETE. Every round-1 finding fixed, no spec drift, nothing new broken; four clauses still without an example (AC-1.2's engine loading and Other printings at all three sizes, AC-3.1's after-add line clear of the guide, AC-5.6's flash action) and the alert style left after a list-sheet Undo. Closed in `e977d110`, `f7b19c1a`, `c896cf62`; the supervisor checked the diff and the run (305 examples, 0 failures; `bin/ci checks` passing) rather than spend a third review round (the run's limit is two).
-- Owed: the paired re-measure (Phase 9), the detector parity run, a screen-reader pass on a phone, a phone check of the frozen canvas's crop.
+- Not done, at or after the sitting: the detector parity run, a screen-reader pass on a phone, a phone check of the frozen canvas's crop. The paired re-measure was withdrawn (spec 1.1.0).
 
 ## Distillation
 
 Distilled on 2026-11-13 (`distill-feature`, state 2), before the pull request: the area docs `docs/architecture/scanner.md` and `catalog-core.md` were written with the feature (`231c8b8b`) and updated at the merge of spec 084 (`57841039`); `e2e35985` adds their distillation log rows ("spec 082's pull request" until it has a number), sets the index row to Frozen in part (all but Story 7's outcome, the re-measure owed to the maintainer) with its plan owed a retirement, and names spec 082 in CLAUDE.md's card scanner paragraph; `2879cb0b` adds the spec's frozen line (spec 027 D4). Not distilled: Story 7's outcome. Phase 9 adds `research.md`, and the area doc and `geometry.js` change only if bar A fails (AC-7.5). The design-system documents (`Scanner`, `Sheet`, `Footer`, the README) were written in `855c786e`.
+
+After the sitting (2026-11-13): the paired re-measure was withdrawn (spec 1.1.0), so Story 7 owes no run; the index row reads Frozen by the scanner and catalog-core area docs, whole spec, and the area doc's open item became a record of the withdrawal (`research.md`, #419).
