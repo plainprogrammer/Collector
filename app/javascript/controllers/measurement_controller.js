@@ -55,6 +55,7 @@ export default class extends Controller {
       // The status line is hidden while a result shows (spec 082 decision 10), so the failure also shows in the pane's region.
       const note = document.createElement("p")
       note.className = "c-status__message c-status__message--alert"
+      note.dataset.paneKeep = "" // the pane's later sentence ("Done…") must not replace it; Scan again clears it
       note.textContent = this.statusTarget.textContent
       document.getElementById("status")?.replaceChildren(note)
     }

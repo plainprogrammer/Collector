@@ -274,6 +274,7 @@ export default class extends Controller {
   // Writes a sentence to the pane's live region once the pane shows: a region filled while hidden and then shown is not
   // announced (spec 080 decision 8; spec 082 decision 10). Waits for `c-scan--result` (set by scan-shell from the answer), at
   // most about two seconds, then one more frame.
+  // It replaces only its own sentence: a child marked `data-pane-keep` (measurement mode's "capture wasn't stored") stays.
   // A sentence for a reading the collector has since discarded ("Scan again", an add, a new reading bump `paneSaid`) is dropped,
   // so a late write can never reopen the pane.
   async paneSay(message, { alert = false } = {}) {
@@ -282,7 +283,8 @@ export default class extends Controller {
     await nextFrame()
     if (said !== this.paneSaid) return
     const paragraph = Object.assign(document.createElement("p"), { className: `c-status__message${alert ? " c-status__message--alert" : ""}`, textContent: message })
-    this.paneStatusTarget.replaceChildren(paragraph)
+    const kept = [ ...this.paneStatusTarget.children ].filter((child) => child.hasAttribute("data-pane-keep"))
+    this.paneStatusTarget.replaceChildren(...kept, paragraph)
   }
 
   get camera() {
