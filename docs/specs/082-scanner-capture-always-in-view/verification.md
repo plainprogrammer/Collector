@@ -1,6 +1,6 @@
 # Verification: spec 082, scanner: capture always in view
 
-**Spec:** [spec.md](spec.md) 1.0.3 | **Plan:** [plan.md](plan.md) | **Issue:** [#344](https://github.com/plainprogrammer/Collector/issues/344)
+**Spec:** [spec.md](spec.md) 1.0.3 | **Plan:** plan (retired in `92b6ce71eb4809135cbc24c0abe03cd3c088f9ad`; read it with `git show 92b6ce71eb4809135cbc24c0abe03cd3c088f9ad^:docs/specs/082-scanner-capture-always-in-view/plan.md`) | **Issue:** [#344](https://github.com/plainprogrammer/Collector/issues/344)
 **Branch:** `082-scanner-capture-always-in-view`
 **Commits:** `main..HEAD`, 54 commits, `bd0515db` (first, "draft spec 082") to `c896cf62` (last, "engine loading, a result with Other printings and the after-add line are proved at the three viewports"); the record was written at `c4cbfe7e` and updated at `c896cf62` after the implementation review's two rounds; merge base with `main` `19cc6dae` (spec 084's merge).
 **Recorded:** 2026-11-13.
