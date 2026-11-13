@@ -92,6 +92,15 @@ RSpec.describe "Design system: phone-first scanner components", type: :system do
     end
   end
 
+  describe "the focused shell (AC-3.1)" do
+    it "takes the body's margin and minimum height away, so an empty focused page does not scroll", :aggregate_failures do
+      in_viewport(390, 844, "") do
+        expect(computed("body", "margin-top", "margin-left", "min-height")).to eq(%w[0px 0px 0px])
+        expect(evaluate("const root = document.documentElement; return root.scrollHeight <= root.clientHeight")).to be(true)
+      end
+    end
+  end
+
   describe "reduced motion, app-wide (AC-6.4)" do
     def moving
       %(<button class="c-btn c-btn--primary" id="button">Add</button><a class="c-tile" href="#"><div class="c-tile__media" id="media"></div></a>)

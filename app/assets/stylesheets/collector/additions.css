@@ -739,6 +739,12 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
 .c-band--success { background:var(--success); color:var(--on-success); }
 .c-band--warning { background:var(--warning); color:var(--on-warning); }
 
+/* ---------- Focused shell (spec 080): a focused page's body is exactly the screen ---------- */
+/* The app's body keeps the browser's 8px margin, and `c-shell` gives it a minimum height of 100vh, which on a phone is
+   taller than the screen while the address bar shows. Either would scroll a page that must be one screen high, so the
+   layout marks a focused page's body with this class, beside the one for a page with no tab bar (README Mobile and Hotwire). */
+.c-shell--focused { margin:0; min-height:0; }
+
 /* ---------- Reduced motion, app-wide (spec 080 decision 14) ---------- */
 /* The README's Motion rule: under `prefers-reduced-motion: reduce` nothing eases or slides, in any component. A universal
    selector loses to any class rule (the export's `.c-btn` and `.c-tile__media` set a transition), so these two declarations
