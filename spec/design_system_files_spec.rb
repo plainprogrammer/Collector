@@ -69,4 +69,16 @@ RSpec.describe "Design system files" do
       expect(block).not_to match(/#\h{3,8}\b|rgba?\(|hsla?\(|font/i)
     end
   end
+
+  describe "the phone-first scanner's blocks (spec 080)" do
+    let(:additions) { root.join("app/assets/stylesheets/collector/additions.css").read }
+    let(:blocks) { additions.scan(%r{/\* -+ [^\n]*\(spec 080[^\n]*\n.*?(?=\n\n/\* -|\z)}m) }
+
+    it "uses !important only in the reduced-motion block, which is the last block (FR-7)", :aggregate_failures do
+      rules = root.glob("app/assets/stylesheets/**/*.css").map { |path| path.read.gsub(%r{/\*.*?\*/}m, "") }.join
+      expect(rules.scan("!important").size).to eq(2)
+      expect(blocks.last).to include("transition:none !important; animation:none !important;")
+      expect(additions.rstrip).to end_with(blocks.last.rstrip)
+    end
+  end
 end

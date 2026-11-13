@@ -727,3 +727,13 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
 @container collection (max-width: 639px) {
   .c-zone .c-table th.c-zone__c-menu { box-sizing: border-box; min-width: 4rem; }
 }
+
+/* ---------- Reduced motion, app-wide (spec 080 decision 14) ---------- */
+/* The README's Motion rule: under `prefers-reduced-motion: reduce` nothing eases or slides, in any component. A universal
+   selector loses to any class rule (the export's `.c-btn` and `.c-tile__media` set a transition), so these two declarations
+   carry `!important`, the stylesheets' only use of it. A scroll the browser animates is not a transition, so the row that
+   scrolls smoothly gets its `auto` here too. Keep this block last: a new block goes above this heading, so a rule of the
+   same weight further up cannot win over the row's `auto`. The older `.c-scanner *` rule above stays as it is. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after, ::backdrop { transition:none !important; animation:none !important; }
+}
