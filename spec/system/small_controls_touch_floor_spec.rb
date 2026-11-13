@@ -435,6 +435,35 @@ RSpec.describe "Small controls meet the touch floor on a coarse pointer", :solid
       end
     end
 
+    # The controls the page draws only in some states (the failure block's Send again and Sign in, the after-add line's link and
+    # Undo, a stage notice's button) are drawn for the measure by script, with the classes the views give them.
+    def draw_state_dependent_buttons
+      # The shell hides the after-add line while its sentence is empty, so a summary is written first and the wait is for it to show.
+      page.execute_script(<<~JS)
+        document.querySelector("#scanner_added_text").textContent = "Added Lightning Bolt."
+        document.querySelector(".c-scan__added-action").innerHTML = '<a class="c-btn c-btn--ghost" href="#">Open your collection</a><form class="c-scan__undo"><button class="c-btn c-btn--ghost">Undo</button></form>'
+      JS
+      expect(page).to have_css(".c-scan__line--added:not([hidden])")
+      expect(page).to have_css("[data-scan-main]:not([disabled])", wait: 30) # the engine has loaded: it no longer hides its failure notice
+      page.execute_script(<<~JS)
+        document.querySelectorAll(".c-scanner__failure, .c-scanner__failure [hidden], .c-scan__notice, .c-scan__notice [hidden]").forEach((el) => el.hidden = false)
+        document.querySelector(".c-scan__notice").insertAdjacentHTML("beforeend", '<button type="button" class="c-btn c-btn--secondary">Try again</button>')
+      JS
+      page.evaluate_script(<<~JS)
+        [...document.querySelectorAll(".c-scan__added-action .c-btn, .c-scanner__failure .c-btn, .c-scan__notice .c-btn")]
+          .map((el) => { const box = el.getBoundingClientRect()
+            return { name: el.textContent.trim(), height: box.height, width: box.width } })
+      JS
+    end
+
+    it "the scanner's state-dependent buttons are 44px too (spec 082 AC-1.9)", :aggregate_failures do
+      in_page("scanner") do
+        sizes = draw_state_dependent_buttons
+        expect(sizes.map { it["name"] }).to include("Open your collection", "Undo", "Send again", "Sign in", "Try again")
+        expect(sizes.select { it["height"] < 44 || it["width"] < 44 }.map { it["name"] }).to be_empty
+      end
+    end
+
     it "has a control under 44px without the block: the floor is the block's doing (AC-1.2 can fail)" do
       in_page("collection grid") do
         inject_coarse(except: block_rules, needs: block_rules)
