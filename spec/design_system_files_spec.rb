@@ -80,5 +80,12 @@ RSpec.describe "Design system files" do
       expect(blocks.last).to include("transition:none !important; animation:none !important;")
       expect(additions.rstrip).to end_with(blocks.last.rstrip)
     end
+
+    it "keeps each part in a block of its own, with no colour literal and no font but the tokens' (AC-6.2)", :aggregate_failures do
+      expect(blocks.map { it[%r{/\* -+ (.+?) \(spec 080}, 1] }).to eq([ "StatusBand", "Focused shell", "Sheet", "Scan shell", "Scan pane", "Reduced motion, app-wide" ])
+      rules = blocks.map { it.gsub(%r{/\*.*?\*/}m, "") }
+      expect(rules.grep(/#\h{3,8}\b|rgba?\(|hsla?\(/i)).to be_empty
+      expect(rules.join.scan(/font(?:-family)?:[^;}]*/).reject { it.include?("var(--font-") || it == "font:inherit" }).to be_empty
+    end
   end
 end
