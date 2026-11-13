@@ -85,12 +85,12 @@ Decisions 10 to 21 are the design's proposals. Each is settled in the spec of th
 - **No email.** The app sends none today: no invitation and no password reset. The hosted lane brings the first ([#395](https://github.com/plainprogrammer/Collector/issues/395)); households don't depend on it.
 - **Sign-up.** Closed by default once the first user exists. An admin creates users or opens sign-up.
 - **The hosted-door rules.** Each spec states what it costs per account, stores a collector's choices per account or user, and gives an admin no view into a collection.
-- **Ruling 27.** No paid plan is offered until Wizards' position on charging is settled in writing or by legal advice (decision 19).
+- **Ruling 27.** No paid plan is built until Wizards' position on charging is settled in writing or by legal advice. Decision 19 proposes "offered" in place of "built".
 - **SQLite in every environment** ([ADR 0016](../../adr/0016-sqlite-in-every-environment.md)), one host. Migrations run unattended on a self-hoster's upgrade and are never edited after release.
 
 ## Approaches to ownership
 
-| | A. A household of accounts (proposed) | B. An owner on each row |
+| | A. A household of accounts (chosen) | B. An owner on each row |
 |---|---|---|
 | Shape | A household has each member's account and one shared account | One account per household; places, decks and lots carry the member who owns them, or none for the household |
 | Queries | Unchanged: everything goes through `Current.account` | Every query on owned data gains "mine or the household's" |
@@ -196,7 +196,7 @@ On the [1.0 milestone](https://github.com/plainprogrammer/Collector/milestone/1)
 | [#394](https://github.com/plainprogrammer/Collector/issues/394) | A plan's limits are enforced | #393 |
 | [#395](https://github.com/plainprogrammer/Collector/issues/395) | Reset a password by email | |
 | [#396](https://github.com/plainprogrammer/Collector/issues/396) | Public sign-up that resists abuse | #395 |
-| [#397](https://github.com/plainprogrammer/Collector/issues/397) | Pay for a plan, manage it and cancel it (not switched on before #390 closes) | #394, #395 |
+| [#397](https://github.com/plainprogrammer/Collector/issues/397) | Pay for a plan, manage it and cancel it (waits for #390 under ruling 27) | #390, #394, #395 |
 | [#398](https://github.com/plainprogrammer/Collector/issues/398) | What a household keeps after a downgrade | #397 |
 | [#399](https://github.com/plainprogrammer/Collector/issues/399) | Off-host backups for a hosted instance, with a restore drill | #392 |
 | [#400](https://github.com/plainprogrammer/Collector/issues/400) | Terms, privacy and refund pages, with the rule for children's sign-ins | |
