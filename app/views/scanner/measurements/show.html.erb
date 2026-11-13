@@ -5,7 +5,7 @@
   <main class="c-scan">
     <h1 class="c-sr">Measure the scanner</h1>
     <div class="c-scan__top"><%= link_to scanner_path, class: "c-scan__back", "aria-label": "Back" do %><%= render "icons/back" %><% end %></div>
-    <div class="c-scan__stage"><div class="c-scan__notice"><p class="c-scan__notice-text"><%= @manifest_problem %> Measurement mode can't start. The scanner itself is unaffected.</p></div></div>
+    <div class="c-scan__stage"><div class="c-scan__notice"><p class="c-scan__notice-text"><%= @manifest_problem %> Measurement mode can't start. The scanner itself is unaffected.</p><%= render "layouts/notice_foot" %></div></div>
   </main>
 <% else %>
   <%= render "scanners/scanner", **@sitting, heading: "Measure the scanner", measurement: @panel, framing: @panel[:framing] %>

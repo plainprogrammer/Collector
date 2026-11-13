@@ -148,6 +148,7 @@ RSpec.describe "Scanner measurement mode", type: :request do
     corpus.join("manifest.csv").delete
     get scanner_measurement_path
     expect(response.body).to include("No manifest at")
+    expect(Nokogiri::HTML5(response.body).css(".c-scan__notice .c-sheet__foot p").last.text).to include("AGPL") # the licence line, spec 084
     get scanner_path
     expect(response).to have_http_status(:ok)
   end
