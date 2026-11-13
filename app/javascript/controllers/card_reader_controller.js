@@ -149,13 +149,19 @@ export default class extends Controller {
   // Spec 082 decision 13: discards the reading and its key, empties the pane, and returns to the camera (or to the stage notice
   // when the camera is unavailable). Nothing is sent.
   scanAgain() {
+    this.clearResult()
+    this.say(this.cameraLive ? READY_LIVE : "Ready.")
+  }
+
+  // What "Scan again" and a photo picked while a result shows have in common: the result, its reading and key, the pane's
+  // sentences, the failure block and the frozen frame go. It says nothing on the status line; each caller says its own.
+  clearResult() {
     this.paneSaid += 1
     this.lastReading = null
     this.resultTarget.replaceChildren()
     this.paneStatusTarget.replaceChildren()
     this.failureTarget.hidden = true
     this.frozenTarget.hidden = true
-    this.say(this.cameraLive ? READY_LIVE : "Ready.")
   }
 
   // The pane closed (an add cleared the result) or opened: the frozen frame goes with the result, and the main button follows.
@@ -170,6 +176,7 @@ export default class extends Controller {
     event.target.value = ""
     if (!file || !this.engineReady || this.busy) return
     event.target.closest("dialog")?.close()
+    if (this.resultShowing) this.clearResult() // the old result and its frozen frame go; the new reading says "Reading the card…"
     this.read(async () => {
       const photo = await createImageBitmap(file) // applies the photo's orientation
       const found = findCard(photo)

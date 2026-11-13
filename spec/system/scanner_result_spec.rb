@@ -116,6 +116,24 @@ RSpec.describe "A result in the pane", type: :system do
     expect(page).to have_css(".c-scan--result .c-scanner__candidate", text: "Lightning Bolt", wait: 30)
   end
 
+  it "clears the shown result and its frozen frame when a photo is picked, the new reading keeping the status line (decision 13)", :aggregate_failures do
+    visit scanner_path
+    show_synthetic_card
+    click_on "Capture"
+    expect(page).to have_css(".c-scan--result .c-scanner__candidate", wait: 30)
+    open_destination
+    eventually("!document.querySelector('#scanner_destination_sheet [data-card-reader-target=picker]').disabled", wait: 30)
+    hold_readings
+    pick_synthetic_photo(input: "#scanner_destination_sheet [data-card-reader-target=picker]")
+    expect(page).to have_css("#scanner_status_text", text: "Reading the card…")
+    expect(page).to have_no_css(".c-scanner__candidate")
+    expect(page).to have_css("canvas.c-scan__frozen[hidden]", visible: :all)
+    expect(page.evaluate_script("document.getElementById('status').textContent")).to eq("")
+    eventually("typeof window.__release === 'function'", wait: 30)
+    page.execute_script("window.__release()")
+    expect(page).to have_css(".c-scan--result .c-scanner__candidate", text: "Lightning Bolt", wait: 30)
+  end
+
   it "returns to the camera-unavailable notice on Scan again after a photo (AC-4.9)", :aggregate_failures do
     visit scanner_path
     page.execute_script(%(navigator.mediaDevices.getUserMedia = async () => { throw new DOMException("blocked", "NotAllowedError") }))
