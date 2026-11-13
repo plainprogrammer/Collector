@@ -122,5 +122,62 @@ RSpec.describe MTG::Scryfall::PriceQuotes, type: :model do
       expect(records.first(3).map { |record| [ record.external_key, record.series ] }).to eq([ [ nil, nil ], [ nil, nil ], [ "c3", nil ] ])
       expect(records.last.external_key).to eq("good")
     end
+
+    it "yields a non-English printing's copied EUR as that printing's own quote, with no USD and no twin lookup (AC-2.8, ruling 41)", :aggregate_failures do
+      cards = [ scryfall_card("id" => "en-1", "cardmarket_id" => 7, "prices" => { "usd" => "1.00", "eur" => "0.50" }),
+                scryfall_card("id" => "ja-1", "lang" => "ja", "cardmarket_id" => 7, "prices" => { "usd" => nil, "eur" => "0.50" }) ]
+      records = read(cards, languages: [ "en", "ja" ])
+
+      expect(records.select { |record| record.external_key == "ja-1" }.map { |record| [ record.finish, record.currency, record.cents ] }).to eq([ [ "nonfoil", "EUR", 50 ] ])
+      expect(records.size).to eq(3)
+    end
+
+    it "reads the file the catalog reads, and calls no one (AC-2.9)", :aggregate_failures do
+      path = write_file([ scryfall_card("id" => "card-1", "prices" => { "usd" => "1.00" }), scryfall_card("id" => "card-2", "prices" => { "eur" => "2.00" }) ])
+      entries = []
+      MTG::Scryfall::Source.new.each_entry(path, languages: [ "en" ]) { |record| entries << record }
+
+      expect(entries.map(&:external_key)).to eq([ "card-1", "card-2" ])
+      expect(source.each_quote(path, languages: [ "en" ]).map(&:external_key)).to eq(entries.map(&:external_key))
+      expect(a_request(:any, /.*/)).not_to have_been_made
+    end
+
+    it "reads the file as a stream: the first card's quotes arrive before a cut-short file's error (AC-2.10)", :aggregate_failures do
+      io = StringIO.new
+      gzip = Zlib::GzipWriter.new(io)
+      gzip.puts(JSON.generate(scryfall_card("id" => "first", "prices" => { "usd" => "1.00" })))
+      gzip.flush # the first line is readable; the stream's end is never written
+      bytes = io.string.dup
+      gzip.close # closed after the copy, so it doesn't warn at garbage collection
+      path = dir.join("default-cards-20261113100623.jsonl.gz")
+      path.binwrite(bytes)
+      yielded = []
+
+      expect { source.each_quote(path, languages: [ "en" ]) { |record| yielded << record } }.to raise_error(Zlib::GzipFile::Error)
+      expect(yielded.map(&:external_key)).to eq([ "first" ])
+    end
+
+    it "refuses a file with no date before it yields anything (AC-2.4)", :aggregate_failures do
+      path = dir.join("cards.jsonl.gz")
+      path.binwrite(gzip_jsonl([ scryfall_card ]))
+      yielded = []
+
+      expect { source.each_quote(path, languages: [ "en" ]) { |record| yielded << record } }.to raise_error(Prices::Sources::IntegrityError)
+      expect { source.each_quote(path, languages: [ "en" ]).to_a }.to raise_error(Prices::Sources::IntegrityError)
+      expect(yielded).to be_empty
+    end
+
+    # Measured, never gating (spec 085 NFR): the time to read a file of 50,000 cards, for #365 and #366 to plan from.
+    it "reads 50,000 cards", :timing do
+      cards = Array.new(50_000) { |index| scryfall_card("id" => "c#{index}", "prices" => all_prices) }
+      path = write_file(cards)
+      count = 0
+      started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      source.each_quote(path, languages: [ "en" ]) { count += 1 }
+      seconds = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+
+      RSpec.configuration.reporter.message "price quotes: #{count} quotes from 50,000 cards in #{seconds.round(2)} s"
+      expect(count).to eq(300_000)
+    end
   end
 end
