@@ -6,6 +6,7 @@
 **Last Updated:** 2026-11-13
 **Branch:** `081-prices-database-in-backup`
 **Issue:** [#363](https://github.com/plainprogrammer/Collector/issues/363)
+**Frozen:** the current rules are in [`prices.md`](../../architecture/prices.md) (parts: decisions 1 to 5, 9 and 12), [`release-and-deploy.md`](../../architecture/release-and-deploy.md) (parts: decisions 6 to 8, 10 and 11) and [`data-portability.md`](../../architecture/data-portability.md) (parts: decision 4's export, AC-3.2); see the [specs index](../README.md)
 
 ---
 
