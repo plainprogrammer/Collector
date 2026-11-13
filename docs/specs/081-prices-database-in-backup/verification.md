@@ -139,3 +139,16 @@ SPEC-ALIGNED (Mode B, read-only, Opus 5.5, 2026-11-13; one round). Every AC from
   - the targeted run `bin/rspec spec/models/prices_record_spec.rb spec/prices_schema_spec.rb spec/prices_core_spec.rb spec/backup_*_spec.rb spec/lib/collector/backup spec/script/upgrade spec/tasks` gave 327 examples, 0 failures;
   - `bin/ci checks` passed every step at `7f68dbb9`.
   - The full suite runs at the push.
+
+## Distillation
+
+Distilled on 2026-11-13, before the pull request (`distill-feature`, state 2), after the coordinator approved the digest.
+
+- **`docs/architecture/prices.md`** (new): decisions 1 to 5, 9 and 12.
+- **`docs/architecture/release-and-deploy.md`:** decisions 6 to 8, 10 and 11, and ADR 0029.
+- **`docs/architecture/data-portability.md`:** decision 4's export part, AC-3.2.
+- **Bookkeeping:**
+  - Each doc has its Sources and a Distillation log row (pull request: "spec 081's pull request" until it has a number).
+  - The specs index row reads Frozen, by those three docs, with Plan "retirement owed".
+  - The spec has its frozen line (`e2ec38ce`).
+  - The plan is retired after the merge.
