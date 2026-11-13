@@ -242,8 +242,19 @@ RSpec.describe "Small controls meet the touch floor on a coarse pointer", :solid
 
     # `settle` shows every sheet at once so their controls have a size; two open sheets overlap each other, which no collector
     # sees, so an overlap check keeps the first and closes the rest.
-    def keep_one_sheet
-      page.execute_script("document.querySelectorAll('dialog.c-sheet[open]').forEach((sheet, index) => { if (index > 0) sheet.close() })")
+    # AC-1.4's layout reports: the page's own controls, and on the scanner pages each sheet on its own, measured after its 200ms
+    # rise has finished. CI's 360px run flagged the sheet's Close over the main button: measured mid-rise (a probe at 360 x 800:
+    # Close starts at y 809 and rests at 294 for the destination sheet, 460 for the list; the main button is at 721-785), so the
+    # head crossed the bar while sliding. At rest no sheet control overlaps the bar, and a collector's sheet is modal, which leaves
+    # the bar under it covered and inert (spec 082 decision 9), so a sheet is measured against itself, not the bars beneath.
+    def layout_reports
+      page_roots = [ "main", ".c-appbar", "#status" ]
+      sheets = page.evaluate_script("Array.from(document.querySelectorAll('dialog.c-sheet')).map((sheet) => sheet.id)")
+      page.execute_script("document.querySelectorAll('dialog.c-sheet[open]').forEach((sheet) => sheet.close())")
+      [ layout_report(roots: page_roots) ] + sheets.map do |id|
+        page.execute_script("document.querySelectorAll('dialog.c-sheet[open]').forEach((sheet) => sheet.close()); document.getElementById(arguments[0]).show(); document.getAnimations().forEach((motion) => motion.finish())", id)
+        layout_report(roots: [ "##{id}" ])
+      end
     end
 
     # What the page expects to draw at this width: the `narrow` list when the table gives one (the pages whose controls differ below
@@ -322,10 +333,10 @@ RSpec.describe "Small controls meet the touch floor on a coarse pointer", :solid
       pages.each_key do |name|
         in_page(name, width: 360) do
           inject_coarse(needs: block_rules)
-          keep_one_sheet
-          report = layout_report(roots: [ "main", ".c-appbar", "#status" ])
-          expect(report["overflow"]).to be <= 0, "#{name}: scrolls sideways by #{report['overflow']}px"
-          expect(report["overlaps"]).to be_empty, "#{name}: overlapping controls: #{report['overlaps']}"
+          layout_reports.each do |report|
+            expect(report["overflow"]).to be <= 0, "#{name}: scrolls sideways by #{report['overflow']}px"
+            expect(report["overlaps"]).to be_empty, "#{name}: overlapping controls: #{report['overlaps']}"
+          end
           edge = page.evaluate_script("document.documentElement.clientWidth")
           past = small_controls.reject { it["row"] }.select { it["right"] > edge + 1 }.map { it["name"] }
           expect(past).to be_empty, "#{name}: past the right edge: #{past}"
