@@ -83,6 +83,23 @@ RSpec.describe "Scanner page", type: :request do
         expect(Nokogiri::HTML5(response.body).at("#scanner_added_text").text).to be_empty
       end
 
+      # The sitting bar's wrapper is `display: contents`, so its button and Done sit in the top bar's row after the back link.
+      def top_bar_row(body) = body.css(".c-scan__top a.c-scan__back, .c-scan__top .c-scan__dest, .c-scan__top .c-scan__done").map { it["class"].to_s[/c-scan__\w+/] }
+
+      it "orders the top bar's children Back, the destination, Done while a sitting is open (AC-1.3)", :aggregate_failures do
+        get scanner_path
+        expect(top_bar_row(Nokogiri::HTML5(response.body))).to eq(%w[c-scan__back c-scan__dest])
+        Scanner::Sitting.create!(account: user.account, condition: "near_mint")
+        get scanner_path
+        expect(top_bar_row(Nokogiri::HTML5(response.body))).to eq(%w[c-scan__back c-scan__dest c-scan__done])
+      end
+
+      it "reads a zone's destination as Deck › Zone on the top bar (AC-1.4)" do
+        Scanner::Sitting.create!(account: user.account, location: create(:deck, account: user.account, name: "Izzet Tempo").zone("main"))
+        get scanner_path
+        expect(Nokogiri::HTML5(response.body).at(".c-scan__dest-text").text).to eq("Izzet Tempo › Main")
+      end
+
       it "leaves the after-add line empty and hidden on a plain visit", :aggregate_failures do
         get scanner_path
         body = Nokogiri::HTML5(response.body)

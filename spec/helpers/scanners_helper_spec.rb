@@ -63,6 +63,12 @@ RSpec.describe ScannersHelper, type: :helper do
         expect(helper.scanner_destination(Scanner::Sitting.new(account:, condition: "near_mint"), conditions)).to eq("No location · NM")
         expect(helper.scanner_destination(nil, conditions)).to eq("No location")
       end
+
+      it "reads a deck's zone as Deck › Zone, with the condition after it (spec 082 AC-1.4)", :aggregate_failures do
+        zone = create(:deck, account:, name: "Izzet Tempo").zone("main")
+        expect(helper.scanner_destination(Scanner::Sitting.new(account:, location: zone), conditions)).to eq("Izzet Tempo › Main")
+        expect(helper.scanner_destination(Scanner::Sitting.new(account:, location: zone, condition: "near_mint"), conditions)).to eq("Izzet Tempo › Main · NM")
+      end
     end
 
     describe "#sitting_title" do
