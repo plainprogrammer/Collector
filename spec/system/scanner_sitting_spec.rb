@@ -46,6 +46,17 @@ RSpec.describe "The scanner's sitting", type: :system do
     expect(user.account.lots).to be_empty
   end
 
+  it "opens the list sheet with its live region empty after an Undo from the after-add line wrote into it (spec 082 decision 10)", :aggregate_failures do
+    visit scanner_path
+    add_by_scanning
+    click_on "Undo"
+    expect(page).to have_css("#scanner_added_text", text: "Removed 1 × Lightning Bolt")
+    expect(page.evaluate_script("document.getElementById('scanner_list_status').textContent.trim()")).not_to be_empty # written while the sheet is closed
+    open_sitting_list
+    expect(page).to have_css("dialog#scanner_list_sheet[open]")
+    expect(page.evaluate_script("document.getElementById('scanner_list_status').textContent.trim()")).to eq("")
+  end
+
   def set_sitting(condition: nil, location: nil)
     open_destination unless page.has_css?("dialog#scanner_destination_sheet[open]", wait: 0)
     select condition, from: "Condition" if condition
