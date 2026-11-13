@@ -355,6 +355,253 @@ RSpec.describe "Design system: phone-first scanner components", type: :system do
     end
   end
 
+  describe "the selection pane (AC-4.1 to AC-4.11)" do
+    def three_cards
+      [ sample_card(set: "Double Masters 2022", code: "2X2 · 117", year: "2022"), sample_card,
+        sample_card(set: "Commander Legends: Battle for Baldur’s Gate", code: "CLB · 187", year: "2022") ]
+    end
+
+    def matched = band(:success, "Matched by its collector line")
+    def unsure = band(:warning, "Not sure of this card. Check it against your capture.", mark: :question)
+    def shown = ".c-scanpane__card:not([hidden])"
+
+    # A shell showing a result: the pane over the stage, the second of three cards centred unless told otherwise.
+    def result(status: matched, cards: three_cards, current: 1, **options)
+      shell(result: pane(band: status, cards:, current:, total: 14, **options))
+    end
+
+    # Runs the block in a frame showing a result with its centred card at rest in the middle, as #345's script will leave it.
+    def in_result(width, height, html = result)
+      in_viewport(width, height, html) do
+        evaluate(<<~JS)
+          const row = document.querySelector(".c-scanpane__row"), item = row.querySelector('[aria-current="true"]')
+          row.scrollTo({ left: item.offsetLeft - (row.clientWidth - item.offsetWidth) / 2, behavior: "instant" })
+        JS
+        yield
+      end
+    end
+
+    # Heights of the strip, its picture, the pane, the band, the centred image and the details block; the pane's gaps to
+    # the strip above and the bottom bar below; the image's width for a height of 88; the add buttons' gap to the bottom
+    # bar; and whether the pane's body scrolls.
+    def pane_layout
+      evaluate(<<~JS)
+        const rect = (selector) => document.querySelector(selector).getBoundingClientRect(), round = (value) => Math.round(value * 10) / 10
+        const body = document.querySelector(".c-scanpane__body"), image = rect('.c-scanpane__item[aria-current="true"]')
+        return { strip: rect(".c-scan__strip").height, picture: rect(".c-scan__capture").height, pane: rect(".c-scanpane").height,
+          above: rect(".c-scanpane").top - rect(".c-scan__strip").bottom, below: rect(".c-scan__bottom").top - rect(".c-scanpane").bottom,
+          band: rect(".c-band").height, image: round(image.height), ratio: round(image.width * 88 / image.height),
+          details: rect("#{shown} .c-scanpane__details").height, addsGap: round(rect(".c-scan__bottom").top - rect("#{shown} .c-scanpane__adds").bottom),
+          scrolls: body.scrollHeight > body.clientHeight }
+      JS
+    end
+
+    # The row at rest: the centred image's width and centre, how much of each neighbour shows, the gap, the inline
+    # padding, the room a scrollbar takes, the snap, and whether the outline's 4px clear the row's clipping edges.
+    def row_layout
+      evaluate(<<~JS)
+        const row = document.querySelector(".c-scanpane__row"), items = [...row.children].map((el) => el.getBoundingClientRect())
+        const at = [...row.children].findIndex((el) => el.getAttribute("aria-current") === "true"), mid = items[at], view = row.getBoundingClientRect()
+        const round = (value) => Math.round(value * 10) / 10, style = getComputedStyle(row)
+        return { width: round(mid.width), centre: round((mid.left + mid.right) / 2), before: round(items[at - 1].right - view.left),
+          after: round(view.right - items[at + 1].left), gap: round(mid.left - items[at - 1].right), padding: round(parseFloat(style.paddingLeft)),
+          bar: row.offsetHeight - row.clientHeight, snap: [style.scrollSnapType, getComputedStyle(row.children[at]).scrollSnapAlign],
+          clear: mid.top - view.top >= 4 && view.bottom - mid.bottom >= 4 }
+      JS
+    end
+
+    # Where the first image's centre is with the row scrolled to its start, and the last one's with it scrolled to its end.
+    def end_centres
+      evaluate(<<~JS)
+        const row = document.querySelector(".c-scanpane__row")
+        const centre = (el) => { const r = el.getBoundingClientRect(); return Math.round((r.left + r.right) / 2) }
+        row.scrollTo({ left: 0, behavior: "instant" })
+        const first = centre(row.firstElementChild)
+        row.scrollTo({ left: row.scrollWidth, behavior: "instant" })
+        return [first, centre(row.lastElementChild)]
+      JS
+    end
+
+    # Each add button of the shown panel: [left, width, height], the lines its words take, and whether they fit inside it.
+    def add_buttons
+      evaluate(<<~JS)
+        return [...document.querySelectorAll("#{shown} .c-scanpane__add .c-btn")].map((el) => {
+          const words = [...el.childNodes].find((node) => node.nodeType === 3 && node.textContent.trim()), range = document.createRange()
+          range.selectNodeContents(words)
+          const lines = new Set([...range.getClientRects()].map((r) => Math.round(r.top))).size, r = el.getBoundingClientRect()
+          return { box: [r.left, r.width, r.height], lines, fits: el.scrollHeight <= el.clientHeight && el.scrollWidth <= el.clientWidth } })
+      JS
+    end
+
+    # The tops of the parts that must never move.
+    def fixed_tops = %w[.c-scan__top .c-scan__strip .c-band .c-scan__bottom].map { box(it)["top"] }
+
+    it "shows the capture strip at the top of the stage: a 124px picture and what was read (AC-4.1)", :aggregate_failures do
+      in_result(390, 844) do
+        strip, picture, stage = box(".c-scan__strip"), box(".c-scan__capture"), box(".c-scan__stage")
+        expect([ strip["top"] - stage["top"], strip["height"], picture["height"], picture["top"] - strip["top"] ]).to eq([ 0, 144, 124, 10 ])
+        expect(picture["width"]).to be_within(0.1).of(124 * 63 / 88.0)
+        expect(computed(".c-scan__read-label", "font-size", "color")).to eq([ "12px", token("--ink-muted") ])
+        expect(computed(".c-scan__read-name", "font-size", "font-weight", "text-overflow", "white-space")).to eq(%w[15px 600 ellipsis nowrap])
+        expect(computed(".c-scan__read-line", "font-family").first).to include("IBM Plex Mono")
+      end
+    end
+
+    it "fits the band, the row, the details and the add buttons in 548px at 390 × 844 (AC-4.2)", :aggregate_failures do
+      in_result(390, 844) do
+        found = pane_layout
+        expect(found.values_at("above", "below", "pane", "band", "image")).to eq([ 0, 0, 548, 40, 288 ])
+        expect(found.values_at("scrolls", "addsGap")).to eq([ false, 16 ])
+        expect(computed(".c-scanpane", "border-top-left-radius", "border-top-right-radius")).to eq(%w[8px 8px])
+        expect(box(".c-band")["top"]).to eq(box(".c-scanpane")["top"])
+      end
+    end
+
+    it "centres a 206px image with 80px of each neighbour, snapped, with no scrollbar (AC-4.3)", :aggregate_failures do
+      in_result(390, 844) do
+        found = row_layout
+        expect(found.values_at("width", "padding")).to match([ be_within(1).of(206), be_within(1).of(92) ])
+        expect(found["centre"]).to be_within(0.5).of(195)
+        expect(found.values_at("before", "after")).to all(be_within(1).of(80))
+        expect(found.values_at("gap", "bar", "snap", "clear")).to eq([ 12, 0, [ "x mandatory", "center" ], true ])
+        expect(page_fits_sideways?).to be(true)
+      end
+    end
+
+    it "outlines the centred image in brand, 63:88 with the card's corners (AC-4.3)", :aggregate_failures do
+      in_result(390, 844) do
+        centred = '.c-scanpane__item[aria-current="true"]'
+        expect(computed(centred, "outline-style", "outline-width", "outline-color")).to eq([ "solid", "2px", token("--brand") ])
+        expect(computed(centred, "border-top-left-radius").first).to start_with("4.75%")
+        expect(computed(".c-scanpane__item:not([aria-current])", "outline-style")).to eq([ "none" ])
+        expect(pane_layout["ratio"]).to eq(63)
+      end
+    end
+
+    it "can centre its first and its last image (AC-4.3)" do
+      in_result(390, 844) { expect(end_centres).to eq([ 195, 195 ]) }
+    end
+
+    it "puts Previous and Next over the neighbours, 44px, the one at the row's end disabled (AC-4.4)", :aggregate_failures do
+      in_result(390, 844, result(current: 0)) do
+        prev, nxt, wrap = box(".c-scanpane__nav--prev"), box(".c-scanpane__nav--next"), box(".c-scanpane__rowwrap")
+        expect([ prev, nxt ].map { it.values_at("width", "height") }).to eq([ [ 44, 44 ], [ 44, 44 ] ])
+        expect([ prev["left"], 390 - nxt["right"], (prev["top"] + prev["bottom"]) / 2 - wrap["top"] ]).to eq([ 8, 8, 16 + 144 ])
+        expect(page).to have_button("Previous printing", disabled: true).and have_button("Next printing", disabled: false)
+        expect(computed(".c-scanpane__nav--next", "background-color")).to eq([ token("--surface-raised") ])
+        expect([ box(".c-scanpane__nav--next svg")["width"], stroke_width(".c-scanpane__nav--next svg") ]).to eq([ 20, 1.5 ])
+      end
+    end
+
+    it "rings Next on keyboard focus, and scrolls the row smoothly only without the reduced-motion preference (AC-4.4)", :aggregate_failures do
+      in_result(390, 844) do
+        find(".c-scanpane__nav--prev").send_keys(:tab)
+        expect(computed(".c-scanpane__nav--next", "outline-style", "outline-width", "outline-color")).to eq([ "solid", "2px", token("--focus") ])
+        expect(computed(".c-scanpane__row", "scroll-behavior")).to eq([ "smooth" ])
+        apply_reduced_motion_rules(needs: [ ".c-scanpane__row" ])
+        expect(computed(".c-scanpane__row", "scroll-behavior")).to eq([ "auto" ])
+      end
+    end
+
+    it "describes the centred card in one 80px block: name, set, then code, year and position (AC-4.5)", :aggregate_failures do
+      in_result(390, 844) do
+        expect(box("#{shown} .c-scanpane__details").values_at("left", "right", "height")).to eq([ 16, 374, 80 ])
+        expect(computed("#{shown} .c-scanpane__name", "font-size", "font-weight") + computed("#{shown} .c-scanpane__set", "font-size")).to eq(%w[20px 600 15px])
+        expect(computed("#{shown} .c-scanpane__meta", "color")).to eq([ token("--ink-muted") ])
+        expect(computed("#{shown} .c-scanpane__meta", "font-family").first).to include("IBM Plex Mono")
+        expect(box("#{shown} .c-scanpane__position")["right"]).to eq(374)
+        expect(find("#{shown} .c-scanpane__meta").text(normalize_ws: true)).to eq("MOM · 123 2023 2 of 14 printings")
+      end
+    end
+
+    it "shares the pane's width between two add buttons, the special finish with its star (AC-4.6)", :aggregate_failures do
+      in_result(390, 844) do
+        expect(add_buttons.map { it["box"] }).to eq([ [ 16, 175, 52 ], [ 199, 175, 52 ] ])
+        expect(computed("#{shown} .c-scanpane__add .c-btn", "font-size", "line-height", "font-weight", "padding-left", "background-color"))
+          .to eq([ "15px", "20px", "600", "8px", token("--surface-raised") ])
+        expect(computed("#{shown} .c-scanpane__add svg", "width", "color")).to eq([ "14px", token("--foil") ])
+        expect(evaluate(%(return [...document.querySelectorAll("#{shown} .c-scanpane__add svg")].map((el) => el.getAttribute("aria-hidden")))))
+          .to eq([ "true" ])
+      end
+    end
+
+    it "gives one finish a full-width Add, and a row of one card no way to move (AC-4.6)", :aggregate_failures do
+      in_result(390, 844, result(cards: [ sample_card(finishes: %w[nonfoil]) ], current: 0)) do
+        expect(add_buttons.map { it["box"] }).to eq([ [ 16, 358, 52 ] ])
+        expect(page).to have_button("Previous printing", disabled: true).and have_button("Next printing", disabled: true)
+      end
+    end
+
+    it "shrinks the strip and the images at 390 × 664 and still shows the add buttons (AC-4.7)", :aggregate_failures do
+      in_result(390, 664) do
+        found = pane_layout
+        expect(found.values_at("strip", "picture", "ratio", "scrolls", "addsGap")).to eq([ 96, 76, 63, false, 16 ])
+        expect(found["image"]).to be_within(2).of(184)
+      end
+    end
+
+    it "holds the images at 160px at 360 × 640 with a one-line band, nothing scrolling (AC-4.7)" do
+      in_result(360, 640) { expect(pane_layout.values_at("band", "image", "scrolls")).to eq([ 40, 160, false ]) }
+    end
+
+    it "scrolls the pane's content at 360 × 640 with a two-line band (AC-4.7)" do
+      in_result(360, 640, result(status: unsure, noun: "possible cards", step: "card")) do
+        expect(pane_layout.values_at("band", "image", "scrolls")).to eq([ 56, 160, true ])
+      end
+    end
+
+    it "scrolls the pane's content at 360 × 560 and keeps the bars, the strip and the band in place (AC-4.7)", :aggregate_failures do
+      in_result(360, 560) do
+        before = fixed_tops
+        evaluate('document.querySelector(".c-scanpane__body").scrollTop = 60')
+        expect(pane_layout["scrolls"]).to be(true)
+        expect(fixed_tops).to eq(before)
+        expect(evaluate('return [window.scrollY, document.querySelector(".c-scanpane__body").scrollTop]')).to eq([ 0, 60 ])
+      end
+    end
+
+    it "shrinks the capture and slides the pane in 200ms, and neither under reduced motion (AC-4.8)", :aggregate_failures do
+      in_result(390, 844) do
+        expect(computed(".c-scanpane", "animation-name", "animation-duration")).to eq(%w[c-scanpane-rise 0.2s])
+        expect(computed(".c-scan__capture", "animation-name", "animation-duration")).to eq(%w[c-scan-shrink 0.2s])
+        apply_reduced_motion_rules(needs: [ "::backdrop" ])
+        expect(computed(".c-scanpane", "animation-name") + computed(".c-scan__capture", "animation-name")).to eq(%w[none none])
+      end
+    end
+
+    it "wraps a 60-character set name and a 40-character card name at 360px (AC-4.9)", :aggregate_failures do
+      long = sample_card(name: "A card name of forty characters wrapping", set: "A set name of sixty characters long enough to wrap two lines")
+      in_result(360, 640, result(cards: [ long ], current: 0)) do
+        expect([ box(".c-scanpane__name")["height"], box(".c-scanpane__set")["height"] ]).to eq([ 56, 44 ])
+        expect(box(".c-scanpane__set")["right"]).to be <= 344
+        expect(evaluate('const el = document.querySelector(".c-scanpane__body"); return el.scrollWidth <= el.clientWidth')).to be(true)
+        expect(page_fits_sideways?).to be(true)
+      end
+    end
+
+    it "shows only the centred card's panel (AC-4.10)" do
+      in_result(390, 844) do
+        heights = evaluate('return [...document.querySelectorAll(".c-scanpane__card")].map((el) => el.getBoundingClientRect().height > 0)')
+        expect(heights).to eq([ false, true, false ])
+      end
+    end
+
+    it "keeps a hidden button hidden in the shell, the pane and a sheet (AC-4.10)" do
+      hidden = %(<button class="c-btn" hidden>Hidden</button>)
+      add_to_main(%(<div class="c-scan">#{hidden}</div><div class="c-scanpane">#{hidden}</div>) + sheet(title: "Adding to", body: hidden, open: true))
+      expect(evaluate('return [...document.querySelectorAll("main .c-btn[hidden]")].map((el) => getComputedStyle(el).display)')).to eq(%w[none none none])
+    end
+
+    it "wraps the foil marker's label onto two lines inside a 160px button at 360px (AC-4.11)", :aggregate_failures do
+      in_result(360, 640, result(labels: { "foil" => "Add foil · read from the card" })) do
+        found = add_buttons
+        expect(found.map { it["box"].last(2) }).to eq([ [ 160, 52 ], [ 160, 52 ] ])
+        expect(found.map { it.values_at("lines", "fits") }).to eq([ [ 1, true ], [ 2, true ] ])
+        expect(computed("#{shown} .c-scanpane__add:last-child .c-btn", "text-align")).to eq([ "center" ])
+      end
+    end
+  end
+
   describe "reduced motion, app-wide (AC-6.4)" do
     def moving
       %(<button class="c-btn c-btn--primary" id="button">Add</button><a class="c-tile" href="#"><div class="c-tile__media" id="media"></div></a>)

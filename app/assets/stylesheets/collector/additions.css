@@ -824,6 +824,73 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
 .c-scan__torch { box-sizing:border-box; flex:none; width:56px; height:56px; padding:0; }
 .c-scan [hidden] { display:none; } /* c-btn's display, and the lines' flex, would otherwise show a hidden part */
 
+/* ---------- Scan pane (spec 080): a result over the stage: the capture strip, the band, a row of card images, one details block, the add buttons ---------- */
+/* `c-scan--result` on the shell shows both. The strip is the frozen capture, shrunk, with what was read beside it: 144px
+   high with a 124px picture, 96px with a 76px one in a shell less than 720px high (the container query at the end), and
+   never taller, so the name read is one line. The pane fills the rest of the stage. Its band never scrolls; its body is a
+   grid of two rows. The first is the image row, 160px to 288px of image and its own 16px above and 12px below; the second
+   is the centred card's panel and takes what is left, its add buttons at its foot, so spare room goes above them. When the
+   two do not fit (a short screen, a wrapped band or set name) the images have already given way to 160px and the body
+   scrolls inside the pane. The sums are in spec 080 decision 7.
+   The row is a size container, so an image's width is known from the row's height: the inline padding is half the row less
+   half an image, which lets the first and the last image be centred. The row draws no scrollbar (Previous and Next are the
+   way to move it without a swipe, and a classic scrollbar would take 12px to 15px of the pane), snaps each image to the
+   centre, and scrolls smoothly; its `auto` under reduced motion is in the last block. The centred image is the one with
+   `aria-current="true"`; the server renders one `c-scanpane__card` per image and all but the centred one carry `hidden`.
+   An add button wraps its words onto two lines: a foil marker read off the card makes a label wider than half a pane.
+   The capture's shrink starts from `--from` times its size (about the guide's height over the picture's), which the page's
+   script may set; both movements take 200ms and stop under reduced motion. */
+.c-scan__strip { position:relative; z-index:1; box-sizing:border-box; flex:none; display:none; align-items:center; gap:var(--space-4); height:144px;
+  padding:0 var(--space-4); background:var(--surface-sunken); }
+.c-scan--result .c-scan__strip { display:flex; }
+.c-scan__capture { box-sizing:border-box; flex:none; height:124px; aspect-ratio:63 / 88; border:1px solid var(--line-strong);
+  border-radius:var(--radius-card) / calc(var(--radius-card) * 63 / 88); background:var(--surface-raised); object-fit:cover; }
+.c-scan--result .c-scan__capture { transform-origin:top left; animation:c-scan-shrink .2s ease-out; }
+@keyframes c-scan-shrink { from { transform:scale(var(--from, 4)); } }
+.c-scan__read { min-width:0; display:flex; flex-direction:column; gap:var(--space-1); }
+.c-scan__read-label { margin:0; font:600 12px/16px var(--font-sans); color:var(--ink-muted); }
+.c-scan__read-name { margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font:600 15px/22px var(--font-sans); color:var(--ink); }
+.c-scan__read-line { margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font:400 13px/18px var(--font-mono); color:var(--ink); }
+.c-scanpane { position:relative; z-index:1; box-sizing:border-box; flex:1 1 auto; min-height:0; display:none; flex-direction:column; overflow:hidden;
+  border-radius:var(--radius-md) var(--radius-md) 0 0; background:var(--surface); }
+.c-scan--result .c-scanpane { display:flex; animation:c-scanpane-rise .2s ease-out; }
+@keyframes c-scanpane-rise { from { transform:translateY(100%); } }
+.c-scanpane > .c-band { flex:none; }
+.c-scanpane__body { flex:1 1 auto; min-height:0; display:grid; overflow-y:auto; overscroll-behavior:contain;
+  grid-template-rows:minmax(calc(160px + var(--space-4) + var(--space-3)), calc(288px + var(--space-4) + var(--space-3))) 1fr; }
+.c-scanpane__rowwrap { container-type:size; position:relative; min-height:0; }
+.c-scanpane__row { box-sizing:border-box; display:flex; gap:var(--space-3); height:100%; margin:0; list-style:none;
+  padding:var(--space-4) calc(50cqw - (100cqh - var(--space-4) - var(--space-3)) * 63 / 176) var(--space-3);
+  overflow-x:auto; overflow-y:hidden; overscroll-behavior-x:contain; scroll-snap-type:x mandatory; scroll-behavior:smooth; scrollbar-width:none; }
+.c-scanpane__row::-webkit-scrollbar { display:none; }
+.c-scanpane__item { box-sizing:border-box; flex:none; height:100%; aspect-ratio:63 / 88; overflow:hidden; scroll-snap-align:center;
+  border-radius:var(--radius-card) / calc(var(--radius-card) * 63 / 88); background:var(--surface-sunken); }
+.c-scanpane__item[aria-current="true"] { outline:2px solid var(--brand); outline-offset:2px; }
+.c-scanpane__item img { display:block; width:100%; height:100%; object-fit:contain; }
+/* Previous and Next: over the visible part of each neighbour, level with the images' middle. */
+.c-scanpane__nav { position:absolute; top:calc(var(--space-4) + (100% - var(--space-4) - var(--space-3)) / 2 - 22px); box-sizing:border-box;
+  width:44px; height:44px; padding:0; }
+.c-scanpane__nav--prev { left:var(--space-2); }
+.c-scanpane__nav--next { right:var(--space-2); }
+.c-scanpane__nav svg { width:20px; height:20px; stroke-width:1.5; }
+.c-scanpane__card { box-sizing:border-box; display:flex; flex-direction:column; padding:0 var(--space-4) var(--space-4); }
+.c-scanpane__details { display:flex; flex-direction:column; gap:var(--space-1); }
+.c-scanpane__name { margin:0; font:600 20px/28px var(--font-sans); color:var(--ink); overflow-wrap:anywhere; }
+.c-scanpane__set { margin:0; font:400 15px/22px var(--font-sans); color:var(--ink); overflow-wrap:anywhere; }
+/* 22px: the tag on this line is 20px with its border, and the line would otherwise be 20px (the block is 80px). */
+.c-scanpane__meta { display:flex; align-items:center; gap:var(--space-2); min-height:22px; margin:0; font:400 13px/18px var(--font-mono); color:var(--ink-muted); }
+.c-scanpane__position { margin-left:auto; white-space:nowrap; }
+.c-scanpane__adds { display:flex; gap:var(--space-2); margin-top:auto; padding-top:var(--space-4); }
+.c-scanpane__add { flex:1 1 0; min-width:0; margin:0; }
+.c-scanpane__add .c-btn { box-sizing:border-box; width:100%; height:52px; padding:0 var(--space-2); font-size:15px; line-height:20px;
+  white-space:normal; text-align:center; }
+.c-scanpane__add .c-btn svg { width:14px; height:14px; color:var(--foil); }
+.c-scanpane [hidden] { display:none; } /* c-btn's display, and a panel's flex, would otherwise show a hidden part */
+@container scan (max-height: 719px) {
+  .c-scan__strip { height:96px; }
+  .c-scan__capture { height:76px; }
+}
+
 /* ---------- Reduced motion, app-wide (spec 080 decision 14) ---------- */
 /* The README's Motion rule: under `prefers-reduced-motion: reduce` nothing eases or slides, in any component. A universal
    selector loses to any class rule (the export's `.c-btn` and `.c-tile__media` set a transition), so these two declarations
@@ -832,4 +899,5 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
    same weight further up cannot win over the row's `auto`. The older `.c-scanner *` rule above stays as it is. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after, ::backdrop { transition:none !important; animation:none !important; }
+  .c-scanpane__row { scroll-behavior:auto; }
 }
