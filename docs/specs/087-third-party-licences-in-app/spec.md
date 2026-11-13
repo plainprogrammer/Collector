@@ -9,7 +9,8 @@
 **Issue:** [#376](https://github.com/plainprogrammer/Collector/issues/376) (the 1.0 milestone, housekeeping lane)
 **ADR:** none. Every decision here is cheap to reverse: a page, a manifest and a guard. The one rule of lasting weight, that the list is read from the running image and not generated at build time, is written in the area docs (decision 3).
 **Frozen:** the current rules are in [`catalog-core.md`](../../architecture/catalog-core.md), [`release-and-deploy.md`](../../architecture/release-and-deploy.md) and [`tenancy-and-accounts.md`](../../architecture/tenancy-and-accounts.md) (whole spec); see the [specs index](../README.md)
-**Plan:** [plan.md](plan.md)
+**Plan:** retired in `11de80918d734d3b6e001d16b013f8a77c820ffc`; read it with `git show 11de80918d734d3b6e001d16b013f8a77c820ffc^:docs/specs/087-third-party-licences-in-app/plan.md`
+**Plan:** plan (retired in `11de80918d734d3b6e001d16b013f8a77c820ffc`; read it with `git show 11de80918d734d3b6e001d16b013f8a77c820ffc^:docs/specs/087-third-party-licences-in-app/plan.md`)
 
 ---
 
