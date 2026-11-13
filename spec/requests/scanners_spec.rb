@@ -62,6 +62,34 @@ RSpec.describe "Scanner page", type: :request do
     end
 
     describe "the one-screen page (spec 082)" do
+      it "shows the end of a sitting's summary on the after-add line with a link to the collection (AC-5.6)", :aggregate_failures do
+        entry = create(:mtg_printing).entry
+        Scanner::Sitting.add!(account: user.account, printing: entry, finish: "nonfoil", reading_key: "a" * 32)
+        post scanner_sitting_ending_path
+        follow_redirect!
+        body = Nokogiri::HTML5(response.body)
+        expect(body.at("#scanner_added_text").text).to eq("Added 1 card in this sitting.")
+        expect(body.at("#scanner_added_action a").text).to eq("Open your collection")
+        expect(body.at("#scanner_added_action a")["href"]).to eq(collection_path)
+        expect(body.at(".c-scan__line--added")["hidden"]).to be_nil
+      end
+
+      it "shows a flash from a page the scanner was left for on the after-add line, once (AC-6.4)", :aggregate_failures do
+        lot = create(:lot, account: user.account, quantity: 1)
+        patch lot_path(lot, return_to: scanner_path), params: { lot: { quantity: "2" } }
+        follow_redirect!
+        expect(Nokogiri::HTML5(response.body).at("#scanner_added_text").text).to be_present
+        get scanner_path
+        expect(Nokogiri::HTML5(response.body).at("#scanner_added_text").text).to be_empty
+      end
+
+      it "leaves the after-add line empty and hidden on a plain visit", :aggregate_failures do
+        get scanner_path
+        body = Nokogiri::HTML5(response.body)
+        expect(body.at("#scanner_added_text").text).to be_empty
+        expect(body.at(".c-scan__line--added")["hidden"]).to eq("")
+      end
+
       it "renders the focused shell with its bars, stage, pane and two sheets (AC-1.1, AC-1.3, AC-1.5, AC-2.2, decision 16)", :aggregate_failures do
         get scanner_path
         body = Nokogiri::HTML5(response.body)
