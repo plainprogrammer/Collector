@@ -382,9 +382,11 @@ img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches:
 .c-licences__text { margin:0; padding:var(--space-3); max-height:24rem; overflow:auto; background:var(--surface-sunken);
   border-radius:var(--radius-sm); font:400 13px/18px var(--font-mono); white-space:pre-wrap; overflow-wrap:anywhere; }
 .c-licences__missing { color:var(--ink-muted); }
-.c-licences__row a { color:var(--brand); text-decoration:none; }
-.c-licences__row a:hover { text-decoration:underline; }
-.c-licences__row a:focus-visible { outline:2px solid var(--focus); outline-offset:2px; border-radius:var(--radius-sm); }
+.c-licences__intro { margin-top:var(--space-3); }
+.c-licences__intro p { margin:0 0 var(--space-2); }
+.c-licences__intro a, .c-licences__row a { color:var(--brand); font-weight:400; text-decoration:none; }
+.c-licences__intro a:hover, .c-licences__row a:hover { text-decoration:underline; }
+.c-licences__intro a:focus-visible, .c-licences__row a:focus-visible { outline:2px solid var(--focus); outline-offset:2px; border-radius:var(--radius-sm); }
 
 /* ---------- Untabbed shell (spec 023) ----------
    Below bp-narrow the footer keeps 80px clear for the fixed tab bar. A page with no tab bar (a visitor's catalog page,

@@ -30,6 +30,7 @@ The page at `/licences`: every third-party work in the image, one row each, with
 - The text sits in a `pre` in `font-mono` on the `surface-sunken` ground. It wraps (`pre-wrap`, `overflow-wrap:anywhere`), is at most 24rem tall and scrolls inside its own box (`overflow:auto`), so a long text never lengthens the page by much and nothing scrolls the page sideways at 360px. Long names and addresses wrap too.
 - `c-list` supplies only the `line` divider; the row takes block flow (`c-list`'s rows are flex), with `space-3` above and below.
 - The summary shows the browser's disclosure marker and a pointer cursor, so it reads as clickable. It takes the `focus` ring on `:focus-visible`, as the footer's links do.
+- The two intro paragraphs sit in `c-licences__intro`, whose links take the same brand style as the rows' (without it the intro's AGPL-3.0 link showed in the browser's default blue).
 - Links are brand links at the text's own weight, underlined on hover, with the `focus` ring; they open in the same tab with `rel="noopener"`. A home address that is not an absolute http or https address is not shown.
 - The section's count is `ink-muted` mono, a number and not a claim. Every value goes through the template's escaping; a text is data, never markup.
 - `c-licences__heading`, `c-licences__home` and `c-licences__copyright` are named for the markup and for specs; the first wraps long names, the others take the row's paragraph rule.

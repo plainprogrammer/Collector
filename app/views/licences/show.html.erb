@@ -10,8 +10,10 @@
       <h1 class="c-pagehead__title">Third-party licences</h1>
     </div>
   </div>
-  <p>Collector is free software under the <%= link_to "AGPL-3.0", Collector::BuildFacts::LICENCE_URL, rel: "noopener" %>. What follows ships in the image under its own licence.</p>
-  <p>Ruby and the operating system's packages in the image carry their notices in the image, in /usr/share/doc/&lt;package&gt;/copyright.</p>
+  <div class="c-licences__intro">
+    <p>Collector is free software under the <%= link_to "AGPL-3.0", Collector::BuildFacts::LICENCE_URL, rel: "noopener" %>. What follows ships in the image under its own licence.</p>
+    <p>Ruby and the operating system's packages in the image carry their notices in the image, in /usr/share/doc/&lt;package&gt;/copyright.</p>
+  </div>
   <% @sections.each do |section| %>
     <section class="c-licences" aria-labelledby="licences-<%= section.key %>">
       <h2 class="c-licences__title" id="licences-<%= section.key %>"><%= section.title %> <span class="c-licences__count"><%= section.components.size %></span></h2>
