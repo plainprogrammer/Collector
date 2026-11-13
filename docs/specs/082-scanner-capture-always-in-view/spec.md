@@ -7,7 +7,7 @@
 **Depends on:** [spec 080](../080-phone-first-scanner-components/spec.md) (the shell, the sheet, the lines over the camera, `c-shell--focused`; frozen into the [design system](../../design-system/README.md)), [the phone-first scanner design](../../superpowers/specs/2026-11-12-scanner-phone-first-design.md) (approved 2026-11-12), the scanner as built ([scanner](../../architecture/scanner.md) area doc; specs 007, 009, 011, 040, 042, 047, 065)
 **Branch:** `082-scanner-capture-always-in-view`
 **Issue:** [#344](https://github.com/plainprogrammer/Collector/issues/344) (roadmap Theme D, the phone-first layout's second item)
-**Frozen:** the current rules are in [`scanner.md`](../../architecture/scanner.md) and [`catalog-core.md`](../../architecture/catalog-core.md) (parts: all but Story 7's outcome, the re-measure owed to the maintainer); see the [specs index](../README.md)
+**Frozen:** the current rules are in [`scanner.md`](../../architecture/scanner.md) and [`catalog-core.md`](../../architecture/catalog-core.md) (whole spec; Story 7's paired re-measure was withdrawn by the maintainer, 1.1.0); see the [specs index](../README.md)
 
 ---
 
