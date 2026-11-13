@@ -23,7 +23,7 @@ class PriceCounts
   OTHER_EXAMPLES = 3
 
   # A non-English paper printing, kept until every English one has been read.
-  Other = Struct.new(:lang, :set, :number, :name, :finishes, :prices, :tcgplayer_id, :cardmarket_id)
+  Other = Struct.new(:lang, :set, :number, :name, :finishes, :prices, :tcgplayer_id, :cardmarket_id, :id)
   English = Struct.new(:prices, :tcgplayer_id, :cardmarket_id)
 
   def initialize(all_path, default_path)
@@ -37,6 +37,7 @@ class PriceCounts
     @english_not_paper = Set.new
     @others = []
     @default_prices = {}
+    @default_ids = Set.new
     @default_languages = Hash.new { |hash, key| hash[key] = Hash.new(0) }
     @files = Hash.new(0)
   end
@@ -67,6 +68,7 @@ class PriceCounts
 
     def default_card(card)
       @default_prices[card.fetch("id")] = prices(card)
+      @default_ids << card.fetch("id")
       counts = @default_languages[card.fetch("lang")]
       counts[:objects] += 1
       return unless paper?(card)
@@ -130,7 +132,8 @@ class PriceCounts
           English.new(prices(card).slice(*PRICE_KEYS), card["tcgplayer_id"], card["cardmarket_id"])
       else
         @others << Other.new(lang, card.fetch("set"), card.fetch("collector_number"), card.fetch("name"),
-          Array(card["finishes"]), prices(card).slice(*PRICE_KEYS), card["tcgplayer_id"], card["cardmarket_id"])
+          Array(card["finishes"]), prices(card).slice(*PRICE_KEYS), card["tcgplayer_id"], card["cardmarket_id"],
+          card.fetch("id"))
       end
     end
 
@@ -142,6 +145,7 @@ class PriceCounts
       @currencies = Hash.new(0)
       @unpaired = Hash.new { |hash, key| hash[key] = Hash.new(0) }
       @unpaired_sets = Hash.new { |hash, key| hash[key] = Hash.new(0) }
+      @unpaired_files = Hash.new(0)
       @others.each do |other|
         english = @english[[ other.set, other.number ]]
         group = english ? "with an English twin" : "no English twin"
@@ -172,6 +176,9 @@ class PriceCounts
       counts[:usd] += 1 if other.prices.values_at("usd", "usd_foil", "usd_etched").any?
       counts[:eur] += 1 if other.prices.values_at("eur", "eur_foil", "eur_etched").any?
       @unpaired_sets[[ other.lang, reason ]][other.set] += 1
+      file = @default_ids.include?(other.id) ? :in_default : :all_only
+      @unpaired_files[[ other.lang, file ]] += 1
+      @unpaired_files[[ other.lang, :"#{file}_priced" ]] += 1 if other.prices.except("tix").values.any?
     end
 
     def compare_pair(other, english)
@@ -340,6 +347,12 @@ class PriceCounts
           sets.map { |set, printings| "#{set} #{printings}" }.join(", ") ]
       end
       table([ "Lang", "Reason", "Printings", "Any USD price", "Any EUR price", "Most common sets" ], rows)
+      puts "The same printings by the file that carries them. Priced: any USD or EUR price."
+      puts
+      rows = (languages_in_order - [ "en" ]).map do |lang|
+        [ lang, *%i[in_default in_default_priced all_only all_only_priced].map { |key| count(@unpaired_files[[ lang, key ]]) } ]
+      end
+      table([ "Lang", "In `default_cards` too", "Of those, priced", "In `all_cards` only", "Of those, priced" ], rows)
     end
 
     def report_ids
