@@ -64,6 +64,20 @@ upload = ImportUpload.store!(account: grace.account, bytes: "{}", plan:)
 ActiveStorage::VariantRecord.create!(blob: upload.file.blob, variation_digest: "upgrade-seed")
 Catalog::RefreshJob.set(wait: 1.year).perform_later("mtg", marker)
 
+# The prices database (spec 081 decision 10): a row in each of its five tables, through its connection, with SQL because no
+# price model exists yet. Each printing is named by its catalog entry's id, with no foreign key across the two files.
+prices = PricesRecord.lease_connection
+prices.execute("INSERT INTO price_sources (key, name, attribution, hosted_paid_allowed, created_at, updated_at) VALUES ('upgrade-source', 'Upgrade Source', 'Prices from the upgrade seed', 0, #{prices.quote(now)}, #{prices.quote(now)})")
+source_id = prices.select_value("SELECT id FROM price_sources WHERE key = 'upgrade-source'")
+prices.execute("INSERT INTO price_series (finish, currency, kind, created_at, updated_at) VALUES ('plain', 'USD', 'market', #{prices.quote(now)}, #{prices.quote(now)})")
+series_id = prices.select_value("SELECT id FROM price_series WHERE finish = 'plain' AND currency = 'USD'")
+entries.first(3).each_with_index do |entry, index|
+  prices.execute("INSERT INTO current_prices (catalog_entry_id, price_source_id, price_series_id, cents, reported_on, changed_on) VALUES (#{entry.id}, #{source_id}, #{series_id}, #{100 + index}, '2026-11-12', '2026-11-12')")
+  prices.execute("INSERT INTO price_changes (catalog_entry_id, price_source_id, price_series_id, recorded_on, cents) VALUES (#{entry.id}, #{source_id}, #{series_id}, '2026-11-12', #{100 + index})")
+end
+prices.execute("INSERT INTO price_changes (catalog_entry_id, price_source_id, price_series_id, recorded_on, cents) VALUES (#{entries.last.id}, #{source_id}, #{series_id}, '2026-11-12', NULL)")
+prices.execute("INSERT INTO price_refresh_runs (price_source_id, run_on, source_version, status, started_at, finished_at, created_at, updated_at) VALUES (#{source_id}, '2026-11-12', 'upgrade-seed', 'finished', #{prices.quote(now)}, #{prices.quote(now)}, #{prices.quote(now)}, #{prices.quote(now)})")
+
 facts = { release: "next", password:, marker:, locations: locations.map(&:name),
   users: [ { email: ada.email_address, lots: ada.account.lots.count, names: }, { email: grace.email_address, lots: 0, names: [] } ] }
 puts "UPGRADE-SEED-COMPLETE #{facts.to_json}"
