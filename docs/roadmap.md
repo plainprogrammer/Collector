@@ -51,6 +51,22 @@ The design system's "where is it" ([docs/design-system/README.md](design-system/
 15. [#50](https://github.com/plainprogrammer/Collector/issues/50) "Free to use" and "In decks" on the card page (after 14e and 14i). **Done 2026-11-12 ([#333](https://github.com/plainprogrammer/Collector/pull/333), merged):** [spec 073](specs/073-card-page-deck-stats/spec.md): the card page's stats (Owned, In decks, Free to use) and an "In decks" table of the decks and zones that hold the card's copies and proxies.
 16. [#51](https://github.com/plainprogrammer/Collector/issues/51) Choose a location during typed entry. **Built 2026-10-26, done when its pull request merges:** [spec 034](specs/034-location-in-typed-entry/spec.md).
 
+The deck builder follows on the [2.0 milestone](https://github.com/plainprogrammer/Collector/milestone/2) (maintainer, 2026-11-12; [design](superpowers/specs/2026-11-12-deck-builder-design.md)), design system before features. It rewrites #260 as build mode. Build mode and its views need no data change; planned cards raise the export format to version 5.
+
+- [#347](https://github.com/plainprogrammer/Collector/issues/347) Design system: the deck builder.
+- [#260](https://github.com/plainprogrammer/Collector/issues/260) Build mode: whittle a deck on its page (after #347).
+- [#350](https://github.com/plainprogrammer/Collector/issues/350) Find a card in build mode (after #260).
+- [#351](https://github.com/plainprogrammer/Collector/issues/351) Build mode: the cards view (after #260).
+- [#352](https://github.com/plainprogrammer/Collector/issues/352) Build mode: one card at a time (after #351).
+- [#348](https://github.com/plainprogrammer/Collector/issues/348) Planned cards: a deck slot that is planned, not proxied (after #347).
+- [#349](https://github.com/plainprogrammer/Collector/issues/349) A planned slot fills itself when a copy arrives (after #348).
+- [#353](https://github.com/plainprogrammer/Collector/issues/353) Add cards from inside build mode (after #348 and #260).
+- [#354](https://github.com/plainprogrammer/Collector/issues/354) The pull list (after #348).
+- [#355](https://github.com/plainprogrammer/Collector/issues/355) Start a deck from a pasted list (after #348).
+- [#356](https://github.com/plainprogrammer/Collector/issues/356) Start a Commander deck from its commander (after #353).
+
+Not yet placed: [#357](https://github.com/plainprogrammer/Collector/issues/357) a wish list section and [#358](https://github.com/plainprogrammer/Collector/issues/358) suggested cards in build mode, recorded on 2026-11-12 from the deck builder design. The maintainer places them.
+
 ### Theme D: Scanner bulk entry
 
 The scanner as built (specs 005 and 007–011) stays as it is until this theme. The spikes may run earlier as measurement only.

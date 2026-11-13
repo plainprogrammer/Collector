@@ -148,4 +148,22 @@ Suggested order: [1], then [4] → [5], [6] → [7] for flow one. [2] → [3] ma
 
 ## Filed
 
-To be recorded when the issues are filed.
+Filed 2026-11-12 with `theme: locations`, on the 2.0 milestone unless noted:
+
+| Here | Issue |
+| --- | --- |
+| [1] | [#347](https://github.com/plainprogrammer/Collector/issues/347) (also `design-system`) |
+| [2] | [#348](https://github.com/plainprogrammer/Collector/issues/348) |
+| [3] | [#349](https://github.com/plainprogrammer/Collector/issues/349) |
+| [4] | [#260](https://github.com/plainprogrammer/Collector/issues/260) (rewritten and retitled "Build mode: whittle a deck on its page") |
+| [5] | [#350](https://github.com/plainprogrammer/Collector/issues/350) |
+| [6] | [#351](https://github.com/plainprogrammer/Collector/issues/351) |
+| [7] | [#352](https://github.com/plainprogrammer/Collector/issues/352) |
+| [8] | [#353](https://github.com/plainprogrammer/Collector/issues/353) |
+| [9] | [#354](https://github.com/plainprogrammer/Collector/issues/354) |
+| [10] | [#355](https://github.com/plainprogrammer/Collector/issues/355) |
+| [11] | [#356](https://github.com/plainprogrammer/Collector/issues/356) |
+| [12] | [#357](https://github.com/plainprogrammer/Collector/issues/357) (no milestone) |
+| [13] | [#358](https://github.com/plainprogrammer/Collector/issues/358) (no milestone) |
+
+Roadmap items are in `docs/roadmap.md`, theme C, after item 16.
