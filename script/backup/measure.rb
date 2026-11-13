@@ -1,10 +1,11 @@
 # AC-1.10, decision 13 (spec 030): times a backup and a restore of a SEEDED instance (a catalog of English-catalog size and
 # 50,000 lots) and the longest wait of a write made while the backup runs. It builds its own database under tmp/ and never
 # reads or writes storage/ or the maintainer's instance, so it needs nobody's database and no agent reads one. Run it in the
-# test environment, whose only database is the primary, pointed at a scratch file:
+# test environment, whose primary and prices databases are pointed at scratch files (without PRICES_DATABASE_URL the prices
+# database would be the suite's own, shared with every spec run):
 #
-#   mkdir -p tmp/measure && rm -f tmp/measure/primary.sqlite3*
-#   export RAILS_ENV=test DATABASE_URL=sqlite3:$PWD/tmp/measure/primary.sqlite3
+#   mkdir -p tmp/measure && rm -f tmp/measure/primary.sqlite3* tmp/measure/prices.sqlite3*
+#   export RAILS_ENV=test DATABASE_URL=sqlite3:$PWD/tmp/measure/primary.sqlite3 PRICES_DATABASE_URL=sqlite3:$PWD/tmp/measure/prices.sqlite3
 #   bin/rails db:schema:load
 #   bin/rails runner script/backup/measure.rb
 #
@@ -14,7 +15,7 @@
 require Rails.root.join("lib/collector/backup").to_s
 require "tmpdir"
 
-abort "Run it against a scratch database under tmp/measure (see the header)." unless Rails.env.test? && ENV["DATABASE_URL"].to_s.include?("/tmp/measure/")
+abort "Run it against a scratch database under tmp/measure (see the header)." unless Rails.env.test? && ENV["DATABASE_URL"].to_s.include?("/tmp/measure/") && ENV["PRICES_DATABASE_URL"].to_s.include?("/tmp/measure/")
 
 LOTS = 50_000
 entries = Integer(ENV.fetch("MEASURE_ENTRIES", 100_000))
@@ -47,6 +48,8 @@ writer_ids = ids.drop(LOTS).first(2_000).presence || ids.first(2_000)
 
 clock = -> { Process.clock_gettime(Process::CLOCK_MONOTONIC) }
 primary = Collector::Backup::Databases.configured.primary
+# The URL overrides this config's path, and Databases.configured reads the unmerged file, so name it from the merged config.
+prices = Pathname(ActiveRecord::Base.configurations.configs_for(env_name: "test", name: "prices").database)
 database_bytes = primary.size
 waits = Queue.new
 stop = false
@@ -68,14 +71,14 @@ Dir.mktmpdir("collector-measure") do |dir|
   end
 
   began = clock.call
-  result = Collector::Backup::Create.new(directory:, source: primary).call
+  result = Collector::Backup::Create.new(directory:, source: primary, prices_source: prices).call
   backup_seconds = clock.call - began
   stop = true
   writer.join
   waited = Array.new(waits.size) { waits.pop }
 
   volume = Pathname(dir).join("volume").tap(&:mkpath)
-  databases = Collector::Backup::Databases.new("primary" => volume.join("production.sqlite3"))
+  databases = Collector::Backup::Databases.new("primary" => volume.join("production.sqlite3"), "prices" => volume.join("production_prices.sqlite3"))
   began = clock.call
   Collector::Backup::Restore.new(file: result.path, databases:).call
   restore_seconds = clock.call - began

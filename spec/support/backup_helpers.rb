@@ -13,7 +13,7 @@ module BackupHelpers
   SECRETS = { "SECRET_KEY_BASE" => "sk-recognisable-secret-key-base-value-30303",
     "RAILS_MASTER_KEY" => "mk-recognisable-master-key-value-40404",
     "COLLECTOR_TRUSTED_PROXIES" => "198.51.100.77" }.freeze
-  # The app's writers for AC-1.2 and AC-1.3, as a script for a child process with a connection of its own, so that nothing of
+  # The app's writers for AC-1.2, AC-1.3 and AC-4.8, as a script for a child process with a connection of its own, so that nothing of
   # the backup's process (its Ruby threads, its Active Record pool) can stand in for contention. Each commit is logged as
   # "kind started finished account_id" in wall-clock seconds, and a file's appearance stops it.
   WRITER = <<~'RUBY'.freeze
@@ -33,7 +33,10 @@ module BackupHelpers
       created = nil
       begin
         database.transaction(:immediate) do
-          if kind == "pairs"
+          if kind == "prices"
+            created = index
+            database.execute("INSERT INTO price_changes (catalog_entry_id, price_source_id, price_series_id, recorded_on, cents) VALUES (?, 1, 1, '2026-10-21', 1)", [ index ])
+          elsif kind == "pairs"
             database.execute("INSERT INTO accounts (created_at, updated_at) VALUES (?, ?)", [ stamp, stamp ])
             created = database.last_insert_row_id
             database.execute("INSERT INTO users (account_id, name, email_address, password_digest, created_at, updated_at) VALUES (?, ?, ?, 'x', ?, ?)",
@@ -86,6 +89,18 @@ module BackupHelpers
     Seed.new(user:, entries:, lots: made, values: [ "Zebra Quartz", "zebra.quartz@example.test", "Zebra Quartz Dragon" ])
   end
 
+  # One price source, one series and +current+ current prices (one per entry id), through PricesRecord, so that a prices
+  # snapshot has rows to carry (spec 081 AC-4.1). The source and the series are id 1.
+  def seed_prices(entry_ids:, current: entry_ids.size)
+    connection = PricesRecord.lease_connection
+    stamp = "2026-10-21 14:21:00"
+    connection.execute("INSERT INTO price_sources (id, key, name, attribution, created_at, updated_at) VALUES (1, 'source', 'Source', 'Attribution', '#{stamp}', '#{stamp}')")
+    connection.execute("INSERT INTO price_series (id, finish, currency, kind, created_at, updated_at) VALUES (1, 'nonfoil', 'USD', 'market', '#{stamp}', '#{stamp}')")
+    entry_ids.first(current).each do |id|
+      connection.execute("INSERT INTO current_prices (catalog_entry_id, price_source_id, price_series_id, cents, reported_on, changed_on) VALUES (#{id.to_i}, 1, 1, 100, '2026-10-21', '2026-10-21')")
+    end
+  end
+
   # A session with a pending bulk selection (a mark) and a bulk removal, the working state a restore clears (decision 3).
   def seed_session(user, lot)
     session = user.sessions.create!
@@ -94,8 +109,9 @@ module BackupHelpers
     session
   end
 
-  def create_backup(into: scratch("backups"), source: instance_database, clock: clock_at, **options)
-    Collector::Backup::Create.new(directory: into, source:, clock:, **options).call.path
+  # +prices_source+ is read at the call: a spec that stubs Databases.configured passes it, taken before the stub.
+  def create_backup(into: scratch("backups"), source: instance_database, prices_source: instance_prices_database, clock: clock_at, **options)
+    Collector::Backup::Create.new(directory: into, source:, prices_source:, clock:, **options).call.path
   end
 
   def restore_backup(file, volume: scratch("volume"), **options)
