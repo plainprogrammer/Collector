@@ -93,19 +93,26 @@ RSpec.describe Collector::BuildFacts, type: :model do
 
   describe "#licence_parts" do
     it "reads each row of decision 2's table", :aggregate_failures do
-      tail = " is free software under the AGPL-3.0. Get the source code."
+      tail = " is free software under the AGPL-3.0. Get the source code. Read the third-party licences."
       expect(text(read("COLLECTOR_VERSION" => "0.3.0", "COLLECTOR_REVISION" => sha))).to eq("Collector 0.3.0 (a9f6de7)#{tail}")
       expect(text(read("COLLECTOR_VERSION" => "0.3.0"))).to eq("Collector 0.3.0#{tail}")
       expect(text(read("COLLECTOR_VERSION" => "bad version", "COLLECTOR_REVISION" => sha))).to eq("Collector (unknown version, a9f6de7)#{tail}")
       expect(text(read)).to eq("Collector (unknown version)#{tail}")
     end
 
-    it "puts its two links on the fixed words, whatever the version says (AC-1.4, AC-2.13)", :aggregate_failures do
-      [ "AGPL-3.0", "source-code" ].each do |version|
+    it "puts its three links on the fixed words, whatever the version says (AC-1.4, AC-2.13, spec 087 AC-2.2)", :aggregate_failures do
+      [ "AGPL-3.0", "source-code", "third-party-licences" ].each do |version|
         facts = read("COLLECTOR_VERSION" => version, "COLLECTOR_REVISION" => sha, "COLLECTOR_SOURCE_URL" => "https://example.test/src")
-        expect(links(facts)).to eq([ [ "AGPL-3.0", "https://www.gnu.org/licenses/agpl-3.0.html" ], [ "source code", "https://example.test/src" ] ])
+        expect(links(facts)).to eq([ [ "AGPL-3.0", "https://www.gnu.org/licenses/agpl-3.0.html" ], [ "source code", "https://example.test/src" ],
+          [ "third-party licences", "/licences" ] ])
         expect(facts.licence_parts.first).to eq([ "Collector #{version} (a9f6de7) is free software under the ", nil ])
       end
+    end
+  end
+
+  describe "::LICENCES_PATH" do
+    it "is the page that lists the third-party licences (spec 087 decision 1)" do
+      expect(described_class::LICENCES_PATH).to eq("/licences")
     end
   end
 
