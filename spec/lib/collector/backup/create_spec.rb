@@ -303,6 +303,7 @@ RSpec.describe Collector::Backup::Create, :backup, :committed do
       window = marks.fetch(:prices_starting)..marks.fetch(:prices_written)
 
       expect(rows.select { it.first == "error" }).to be_empty
+      expect(rows.map { |_kind, started, finished| finished.to_f - started.to_f }).to all(be < 5), "a price change waited past the 5-second busy timeout"
       expect(rows.count { |_kind, _started, finished| window.cover?(finished.to_f) }).to be_positive, "no price change committed while the prices snapshot was taken"
     end
   end
