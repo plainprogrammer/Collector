@@ -108,4 +108,25 @@ RSpec.describe Collector::BuildFacts, type: :model do
       end
     end
   end
+
+  describe ".current" do
+    it "is read at boot from nothing in the test environment (AC-2.4, decision 10)" do
+      expect([ described_class.current.version, described_class.current.revision ]).to eq([ nil, nil ])
+    end
+
+    it "is replaced by the spec helper with raw values, cleaned as the image's would be (decision 10)", :aggregate_failures do
+      build_facts(version: " 0.3.0\n", revision: "A" * 40, source_url: "http://insecure.test")
+
+      expect([ described_class.current.version, described_class.current.revision ]).to eq([ "0.3.0", "a" * 40 ])
+      expect(described_class.current.source_url).to eq("https://github.com/plainprogrammer/Collector")
+    end
+
+    it "puts the boot reading back (the suite's after hook)" do
+      boot = described_class.current
+      build_facts(version: "1.0.0")
+      restore_build_facts
+
+      expect(described_class.current).to equal(boot)
+    end
+  end
 end
