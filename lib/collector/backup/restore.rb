@@ -96,7 +96,7 @@ module Collector
         # The second pass over the archive: the snapshot's bytes go to the temporary file, created private (decision 7).
         def extract(temporary, manifest)
           file = Backup.create_private(temporary)
-          Archive.read(@file) { file.write(it) }
+          Archive.read(@file) { |chunk, name| file.write(chunk) if name == Archive::SNAPSHOT }
           file.flush
           file.fsync
           raise damaged_inside unless temporary.size == manifest.snapshot_bytes

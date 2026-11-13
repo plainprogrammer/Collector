@@ -16,9 +16,14 @@ module Collector
 
       def names = @paths.keys
       def primary = @paths.fetch("primary")
+      # The prices database's path, nil when the configuration has none (a version 1 world in a spec).
+      #
+      # @return [Pathname, nil]
+      def prices = @paths["prices"]
+
       def directory = primary.dirname
 
-      # Every file of the four databases that exists, a stale -wal or -journal included: a -wal beside a restored
+      # Every file of the five databases that exists, a stale -wal or -journal included: a -wal beside a restored
       # database would be replayed into it, and an old queue database would run old jobs against it (decision 6).
       def occupied
         @paths.values.flat_map { |path| SIDECARS.map { Pathname("#{path}#{it}") } }.select { it.exist? || it.symlink? }

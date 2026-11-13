@@ -102,19 +102,31 @@ module BackupHelpers
     Collector::Backup::Restore.new(file:, databases: databases_for(volume), release_versions:, **options).call
   end
 
-  # The manifest of a snapshot file built by hand (a damaged or altered one), not made by backup:create.
-  def manifest_for(snapshot_path, **changes)
+  # The manifest of a snapshot file built by hand (a damaged or altered one), not made by backup:create. Version 2, with a
+  # prices member, when +prices_snapshot+ (a path) is given; a +prices:+ among +changes+ overrides that member.
+  def manifest_for(snapshot_path, prices_snapshot: nil, **changes)
     snapshot = Collector::Backup::Snapshot.new(snapshot_path)
     fields = { backup_format_version: 1, taken_at: "2026-10-21T14:21:00Z", schema_version: release_versions.max_by(&:to_i),
       snapshot_bytes: snapshot_path.size, snapshot_sha256: Digest::SHA256.file(snapshot_path).hexdigest,
       counts: { "accounts" => 0, "users" => 0, "lots" => 0 } }
     fields[:counts] = snapshot.counts unless changes.key?(:counts)
+    fields.merge!(backup_format_version: 2, prices: prices_member_for(prices_snapshot)) if prices_snapshot
     Collector::Backup::Manifest.new(**fields.merge(changes))
   end
 
-  # An archive built by hand around a snapshot file, with a correct manifest unless changes say otherwise.
-  def archive_of(snapshot_path, into: scratch("archives"), name: "collector-backup-20261021T142100Z.tar.gz", **changes)
-    into.join(name).tap { Collector::Backup::Archive.write(it, manifest: manifest_for(snapshot_path, **changes), snapshot: snapshot_path) }
+  # The prices member of a manifest for a prices snapshot file built by hand.
+  def prices_member_for(path)
+    prices = Collector::Backup::Snapshot.new(path)
+    { "schema_version" => prices.schema_versions.max_by(&:to_i), "snapshot_bytes" => path.size,
+      "snapshot_sha256" => Digest::SHA256.file(path).hexdigest, "counts" => prices.counts(Collector::Backup::Manifest::PRICES_COUNT_NAMES) }
+  end
+
+  # An archive built by hand around a snapshot file, with a correct manifest unless changes say otherwise. Version 2 when
+  # +prices_snapshot+ (a path) is given.
+  def archive_of(snapshot_path, into: scratch("archives"), name: "collector-backup-20261021T142100Z.tar.gz", prices_snapshot: nil, **changes)
+    into.join(name).tap do
+      Collector::Backup::Archive.write(it, manifest: manifest_for(snapshot_path, prices_snapshot:, **changes), snapshot: snapshot_path, prices: prices_snapshot)
+    end
   end
 
   # A .tar.gz built by hand from [name, bytes] pairs, for the files AC-3.3 and AC-3.4 refuse.
@@ -224,9 +236,11 @@ module BackupHelpers
     end
   end
 
-  # The snapshot inside an archive, written out to a scratch file.
-  def unpack_snapshot(archive, name = "unpacked.sqlite3")
-    scratch_path(name).tap { |path| File.open(path, "wb") { |file| Collector::Backup::Archive.read(archive) { file.write(it) } } }
+  # The +entry+ (primary.sqlite3 or prices.sqlite3) inside an archive, written out to a scratch file.
+  def unpack_snapshot(archive, name = "unpacked.sqlite3", entry: "primary.sqlite3")
+    scratch_path(name).tap do |path|
+      File.open(path, "wb") { |file| Collector::Backup::Archive.read(archive) { |chunk, entry_name| file.write(chunk) if entry_name == entry } }
+    end
   end
 
   def captured_streams

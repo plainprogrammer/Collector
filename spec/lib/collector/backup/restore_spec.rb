@@ -194,9 +194,9 @@ RSpec.describe Collector::Backup::Restore, :backup, :committed do
     end
 
     it "refuses an unknown backup format version, naming the ones it restores (AC-3.4)" do
-      future = raw_archive([ "manifest.json", JSON.generate("backup_format_version" => 2) ], [ "primary.sqlite3", "x" ], name: "v2.tar.gz")
+      future = raw_archive([ "manifest.json", JSON.generate("backup_format_version" => 99) ], [ "primary.sqlite3", "x" ], name: "v2.tar.gz")
 
-      expect_refused(future, "v2.tar.gz uses backup format version 2; this release restores version 1.", "Restore it with a release that knows that version.")
+      expect_refused(future, "v2.tar.gz uses backup format version 99; this release restores versions 1, 2.", "Restore it with a release that knows that version.")
     end
 
     it "refuses a newer release's backup, naming both schema versions (AC-3.5)" do

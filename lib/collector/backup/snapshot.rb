@@ -47,11 +47,13 @@ module Collector
         end
       end
 
-      # Counts only, never a name or an address (hosted-door rule 2, AC-1.7). Cross-tenant by nature: it counts the instance.
-      def counts
-        with(readonly: true) do |database|
-          %w[accounts users lots].to_h { |table| [ table, database.get_first_value("SELECT COUNT(*) FROM #{table}") ] }
-        end
+      # Counts only, never a name or an address (hosted-door rule 2, AC-1.7): the primary's three tables unless +names+ says
+      # otherwise (the prices database's, spec 081 decision 6). Cross-tenant by nature: it counts the instance.
+      #
+      # @param names [Array<String>] table names, from the library's own lists, never from input
+      # @return [Hash{String => Integer}]
+      def counts(names = Manifest::COUNT_NAMES)
+        with(readonly: true) { |database| names.to_h { |table| [ table, database.get_first_value("SELECT COUNT(*) FROM #{table}") ] } }
       end
 
       def schema_versions

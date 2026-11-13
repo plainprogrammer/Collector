@@ -31,7 +31,7 @@ RSpec.describe Collector::Backup::Archive, :backup do
   describe ".read" do
     it "reads the whole archive once, yielding the snapshot's bytes, and reports what it saw", :aggregate_failures do
       chunks = []
-      result = described_class.read(archive) { chunks << it }
+      result = described_class.read(archive) { |chunk, _name| chunks << chunk }
 
       expect(chunks.join.b).to eq(payload.b)
       expect(result).to have_attributes(manifest:, sha256: fields[:snapshot_sha256], bytes: payload.bytesize)
@@ -76,7 +76,7 @@ RSpec.describe Collector::Backup::Archive, :backup do
     it "reads an intact *.partial file when it is told the file is its own (Create's read-back, plan-review C1)", :aggregate_failures do
       partial = scratch("partial").join("#{archive.basename}.0123456789abcdef.partial").tap { it.binwrite(archive.binread) }
       chunks = []
-      result = described_class.read(partial, allow_partial: true) { chunks << it }
+      result = described_class.read(partial, allow_partial: true) { |chunk, _name| chunks << chunk }
 
       expect(chunks.join.b).to eq(payload.b)
       expect(result.sha256).to eq(fields[:snapshot_sha256])
@@ -98,7 +98,7 @@ RSpec.describe Collector::Backup::Archive, :backup do
         seen = read
         raise Collector::Backup::Refusal.new("No room.", "Make some.")
       end
-      refusal = refusal_of { described_class.read(altered, on_manifest: no_room) { chunks << it } }
+      refusal = refusal_of { described_class.read(altered, on_manifest: no_room) { |chunk, _name| chunks << chunk } }
 
       expect(refusal.problem).to eq("No room.") # not the checksum refusal the same file gets without the callback
       expect(seen).to eq(manifest)
@@ -106,7 +106,7 @@ RSpec.describe Collector::Backup::Archive, :backup do
     end
 
     it "does not call on_manifest for a file that isn't a backup or names an unknown version", :aggregate_failures do
-      future = raw_archive([ "manifest.json", JSON.generate("backup_format_version" => 2) ], [ "primary.sqlite3", "x" ], name: "v2.tar.gz")
+      future = raw_archive([ "manifest.json", JSON.generate("backup_format_version" => 99) ], [ "primary.sqlite3", "x" ], name: "v2.tar.gz")
       text = scratch_path("note.txt").tap { it.write("hello") }
       calls = []
       [ future, text ].each { |file| refusal_of { described_class.read(file, on_manifest: ->(read) { calls << read }) } }
@@ -150,18 +150,60 @@ RSpec.describe Collector::Backup::Archive, :backup do
     end
 
     it "refuses a backup format version this release doesn't restore, naming the ones it does (AC-3.4)", :aggregate_failures do
-      future = raw_archive([ "manifest.json", JSON.generate("backup_format_version" => 2, "newer" => true) ], [ "primary.sqlite3", "x" ], name: "v2.tar.gz")
+      future = raw_archive([ "manifest.json", JSON.generate("backup_format_version" => 99, "newer" => true) ], [ "primary.sqlite3", "x" ], name: "v2.tar.gz")
       refusal = refusal_of { described_class.read(future) }
 
-      expect(refusal.problem).to eq("#{future.basename} uses backup format version 2; this release restores version 1.")
+      expect(refusal.problem).to eq("#{future.basename} uses backup format version 99; this release restores versions 1, 2.")
       expect(refusal.advice).to eq("Restore it with a release that knows that version.")
     end
 
     it "calls a cut-short file of an unknown version incomplete first (FR-2's order)" do
-      future = raw_archive([ "manifest.json", JSON.generate("backup_format_version" => 2) ], [ "primary.sqlite3", Random.bytes(100_000) ], name: "v2.tar.gz")
+      future = raw_archive([ "manifest.json", JSON.generate("backup_format_version" => 99) ], [ "primary.sqlite3", Random.bytes(100_000) ], name: "v2.tar.gz")
       cut = scratch("cut").join("v2.tar.gz").tap { it.binwrite(future.binread[0...-200]) }
 
       expect(refusal_of { described_class.read(cut) }.problem).to include("is incomplete")
+    end
+  end
+
+  context "with a version 2 file (spec 081 decision 6)" do
+    def prices_payload = (@prices_payload ||= Random.bytes(1024 * 1024 + 5))
+    def prices_snapshot = scratch_path("prices.sqlite3").tap { it.binwrite(prices_payload) }
+
+    def manifest2
+      member = { "schema_version" => "20261113100001", "snapshot_bytes" => prices_payload.bytesize, "snapshot_sha256" => Digest::SHA256.hexdigest(prices_payload),
+        "counts" => { "current_prices" => 0, "price_changes" => 0 } }
+      Collector::Backup::Manifest.new(**fields, backup_format_version: 2, prices: member)
+    end
+
+    def archive2 = scratch("archives2").join("collector-backup-20261021T142100Z.tar.gz").tap { described_class.write(it, manifest: manifest2, snapshot:, prices: prices_snapshot) }
+
+    it "lists manifest.json, primary.sqlite3 and prices.sqlite3 for the system tar" do
+      listing, status = Open3.capture2("tar", "-tzf", archive2.to_s)
+
+      expect([ status.success?, listing.lines(chomp: true) ]).to eq([ true, %w[manifest.json primary.sqlite3 prices.sqlite3] ])
+    end
+
+    it "yields [chunk, name] pairs that rebuild both payloads", :aggregate_failures do
+      parts = Hash.new { |hash, key| hash[key] = +"".b }
+      result = described_class.read(archive2) { |chunk, name| parts[name] << chunk }
+
+      expect(parts.keys).to eq(%w[primary.sqlite3 prices.sqlite3])
+      expect(parts.transform_values(&:itself)).to eq("primary.sqlite3" => payload.b, "prices.sqlite3" => prices_payload.b)
+      expect(result).to have_attributes(manifest: manifest2, bytes: payload.bytesize)
+    end
+
+    it "refuses a missing, cut-short or changed prices entry (AC-5.5)", :aggregate_failures do
+      without = raw_archive([ "manifest.json", manifest2.to_json ], [ "primary.sqlite3", payload ], name: "missing.tar.gz")
+      cut = scratch("cut").join("cut.tar.gz").tap { it.binwrite(archive2.binread[0...-100]) }
+      altered = raw_archive([ "manifest.json", manifest2.to_json ], [ "primary.sqlite3", payload ], [ "prices.sqlite3", prices_payload.dup.tap { it.setbyte(10, it.getbyte(10) ^ 1) } ], name: "changed.tar.gz")
+
+      expect(refusal_of { described_class.read(without) }.problem).to eq("missing.tar.gz isn't a Collector backup.")
+      expect(refusal_of { described_class.read(cut) }.problem).to include("is incomplete")
+      expect(refusal_of { described_class.read(altered) }.problem).to include("doesn't match its checksum")
+    end
+
+    it "refuses a write whose files don't match the manifest" do
+      expect { described_class.write(scratch_path("x.tar.gz"), manifest: manifest2, snapshot:) }.to raise_error(ArgumentError)
     end
   end
 end

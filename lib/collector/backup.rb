@@ -34,7 +34,7 @@ module Collector
   #
   # @see file:release-and-deploy.md
   module Backup
-    FORMAT_VERSIONS = [ 1 ].freeze # the backup format versions this release restores (decision 5, AC-3.4)
+    FORMAT_VERSIONS = [ 1, 2 ].freeze # the backup format versions this release restores (decision 5, AC-3.4)
     FORMAT_VERSION = FORMAT_VERSIONS.last # the one backup:create writes
     BUSY_TIMEOUT_MS = 5_000 # the database's own busy timeout (config/database.yml), for the commands' direct connections
     STALE_PARTIAL_SECONDS = 24 * 60 * 60 # a .partial file older than this is a dead run's (decision 7, AC-1.6)
@@ -79,6 +79,16 @@ module Collector
         index += 1
       end
       index.zero? ? "#{bytes} #{bytes == 1 ? "byte" : "bytes"}" : format("%.1f %s", value, units[index])
+    end
+
+    # The prices counts as a sentence part, "1 current price and 2 price changes".
+    #
+    # @param counts [Hash] the manifest's prices counts, +current_prices+ and +price_changes+
+    # @return [String]
+    def self.prices_phrase(counts)
+      n = counts.fetch("current_prices")
+      m = counts.fetch("price_changes")
+      "#{n} current #{n == 1 ? "price" : "prices"} and #{m} price #{m == 1 ? "change" : "changes"}"
     end
 
     def self.counts_phrase(counts)
