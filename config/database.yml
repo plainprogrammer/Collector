@@ -25,13 +25,24 @@ development:
     <<: *default
     database: storage/development_cable.sqlite3
     migrations_paths: db/cable_migrate
+  prices:
+    <<: *default
+    database: storage/development_prices.sqlite3
+    migrations_paths: db/prices_migrate
+    schema_format: sql
 
 # Warning: The database defined as "test" will be erased and
 # re-generated from your development database when you run "rake".
 # Do not set this db to the same as development or production.
 test:
-  <<: *default
-  database: storage/test.sqlite3
+  primary:
+    <<: *default
+    database: storage/test.sqlite3
+  prices:
+    <<: *default
+    database: storage/test_prices.sqlite3
+    migrations_paths: db/prices_migrate
+    schema_format: sql
 
 # Store production database in the storage/ directory, which by default
 # is mounted as a persistent Docker volume in config/deploy.yml.
@@ -51,3 +62,8 @@ production:
     <<: *default
     database: storage/production_cable.sqlite3
     migrations_paths: db/cable_migrate
+  prices:
+    <<: *default
+    database: storage/production_prices.sqlite3
+    migrations_paths: db/prices_migrate
+    schema_format: sql

@@ -79,6 +79,18 @@ RSpec.describe Upgrade::Engine do
     expect(copy).not_to include("/rails/storage/production_cache.sqlite3")
   end
 
+  context "when the volume holds a prices database (spec 081 AC-6.4)" do
+    let(:listing) { "production.sqlite3\nproduction_prices.sqlite3\nproduction_prices.sqlite3-wal\nproduction_prices.sqlite3-shm\nproduction_queue.sqlite3\n" }
+
+    it "also copies out the prices file and its -wal and -shm, still not the other databases", :aggregate_failures do
+      names = engine.copy_database(volume: "v", image: "img:1", into: "/tmp/out")
+      copy = calls.find { it.include?("cp") }
+      expect(names).to eq(%w[production.sqlite3 production_prices.sqlite3 production_prices.sqlite3-wal production_prices.sqlite3-shm])
+      expect(copy.last(5)).to eq(%w[/rails/storage/production.sqlite3 /rails/storage/production_prices.sqlite3 /rails/storage/production_prices.sqlite3-wal /rails/storage/production_prices.sqlite3-shm /out/])
+      expect(copy).not_to include("/rails/storage/production_queue.sqlite3")
+    end
+  end
+
   it "has a fake that answers every builder, so the harness specs cover what the harness calls" do
     fake = FakeEngine.new
     expect(described_class.public_instance_methods(false)).to all(satisfy { |name| fake.respond_to?(name) })

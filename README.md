@@ -185,7 +185,7 @@ docker compose up -d     # or: podman compose up -d
 
 The app is then available at `http://localhost:3000` (or your `COLLECTOR_PORT`).
 
-- **Data:** all four production SQLite databases live in the named volume
+- **Data:** all five production SQLite databases live in the named volume
   `collector_storage`, mounted at `/rails/storage`. Back it up with Collector's own command, not by copying
   the files of a running instance: see [Backup and restore](#backup-and-restore).
 - **Jobs:** Solid Queue runs inside the web process; no separate worker is needed.
@@ -391,15 +391,15 @@ A collector's export is not a backup of the instance, and a backup is not a coll
 
 ## Backup and restore
 
-Everything a collector owns, and the card catalog, is in one SQLite file on your instance's `storage/` volume. A **backup** is one file, made while Collector keeps running, that holds that file as it was at one moment: every account, user, lot and setting, and the catalog. A **restore** puts it onto a new, empty volume before Collector's first start. The backup is yours to keep wherever you like. Collector doesn't schedule, rotate or upload it.
+Everything a collector owns, and the card catalog, is in one SQLite file on your instance's `storage/` volume, and market prices with their history are in a second one. Price history can't be downloaded again. A **backup** is one file, made while Collector keeps running, that holds both databases, each as it was at one moment: every account, user, lot and setting, the catalog, and the prices. A **restore** puts it onto a new, empty volume before Collector's first start. The backup is yours to keep wherever you like. Collector doesn't schedule, rotate or upload it.
 
 ### Export or backup?
 
 | | Export (a collector, in the app) | Backup (you, the operator) |
 |---|---|---|
-| Whose | One collector's collection | The whole instance: every account, user and setting, and the catalog |
+| Whose | One collector's collection | The whole instance: every account, user and setting, the catalog and the prices |
 | Made by | The collector, from the account menu or More | The operator, with a command on the host |
-| Holds | Profile, currency, locations and lots, keyed by the card source's ids | The primary database as it is |
+| Holds | Profile, currency, locations and lots, keyed by the card source's ids | The primary and prices databases as they are |
 | Restores into | Any instance of a release that reads the file's format version (this one reads versions 1 to 3), even one with another catalog build; replaces that collector's lots and, for a version 2 file, locations | A new, empty instance of the same release or a newer one |
 | Doesn't hold | Passwords, other users, settings, the catalog | Secrets, `COLLECTOR_*` settings, queued jobs, the art index file, downloads |
 | Use it for | Moving a collection between instances, a collector's own safety copy, a file they can read ([Your data](#your-data)) | Recovering the instance after a failed disk, moving it to new hardware, a copy before an upgrade |
@@ -412,7 +412,7 @@ The file is **sensitive**: it holds every user's password hash and every collect
 
 ### Back up
 
-Run the command in the running container, with a directory the container's user (uid 1000) can write. Quote the argument for your shell (it can't contain a comma). It prints the file, its size, the schema version, the counts of accounts, users and lots, and how long it took; it stops with a plain message when the directory is missing, isn't writable, has less than twice the database's size free, or the database fails its checks.
+Run the command in the running container, with a directory the container's user (uid 1000) can write. Quote the argument for your shell (it can't contain a comma). It prints the file, its size, the schema versions, the counts of accounts, users and lots and of current prices and price changes, and how long it took; it stops with a plain message when the directory is missing, isn't writable, has less than twice the two databases' size free, there is no prices database (start Collector once on the release first), or a database fails its checks.
 
 **Docker Compose** (the stock `compose.yaml`; `/tmp` is writable in the container):
 
@@ -460,7 +460,9 @@ Keep several, and delete old ones yourself.
 
 ### Restore
 
-A restore needs a **new, empty volume** and runs **before the instance's first start**, as a one-off command in a container of the image you will run. It refuses a volume that already holds a Collector database (or the `-wal`, `-shm` or `-journal` file of one, or the queue, cache or cable database) and changes nothing: to restore over a running instance, restore onto a new volume and switch to it. It restores a backup taken by the same release or an older one, which the first start then migrates as any upgrade does; a backup from a newer release is refused. Use the image tag you run (`COLLECTOR_IMAGE`), and a release that has `backup:restore`.
+A restore needs a **new, empty volume** and runs **before the instance's first start**, as a one-off command in a container of the image you will run. It refuses a volume that already holds a Collector database (or the `-wal`, `-shm` or `-journal` file of one, or the prices, queue, cache or cable database) and changes nothing: to restore over a running instance, restore onto a new volume and switch to it. It restores a backup taken by the same release or an older one, which the first start then migrates as any upgrade does; a backup from a newer release is refused. A backup made before prices existed restores too; the first start then creates an empty prices database. Use the image tag you run (`COLLECTOR_IMAGE`), and a release that has `backup:restore`.
+
+**If a restore was interrupted** (a power loss, a killed container), the volume may hold `production_prices.sqlite3` and no `production.sqlite3`. The next restore refuses it and says so. **Don't start Collector on that volume**: it would start blank and keep stale prices that no longer match its cards. Remove the prices file and its `-wal`, `-shm` and `-journal` files, or use a new volume, then restore again ([#375](https://github.com/plainprogrammer/Collector/issues/375) will make the start refuse it).
 
 A restore ends every session (everyone signs in again) and drops pending bulk-removal Undos and selections; no collection is lost. It leaves the art index file behind: with art matching on, press **Build art index** on the admin catalog page afterwards, which needs no downloads. Until you do, that page reads "Index file missing" and `catalog:status` "Art matching: index file missing".
 

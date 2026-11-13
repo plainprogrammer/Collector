@@ -3,8 +3,8 @@ require "rails_helper"
 RSpec.describe "what a backup holds (spec 030 decisions 2 and 3)", :backup, type: :model do
   let(:transient) { { "ImportUpload" => %i[file] } } # spec 028's stored import file: one hour, restored without its file (ADR 0022)
   let(:advice) do
-    "Spec 030 decision 2: decide what a backup does with it, then update that decision's table, docs/backup-restore.md " \
-      "and the README's Backup and restore section, and list it here"
+    "Spec 081 decision 6 (spec 030 decision 2): decide what a backup does with it, then update that decision, " \
+      "docs/backup-restore.md and the README's Backup and restore section, and list it here"
   end
 
   def attachments_of(models)
@@ -17,7 +17,7 @@ RSpec.describe "what a backup holds (spec 030 decisions 2 and 3)", :backup, type
 
   def application_models
     Rails.application.eager_load!
-    ApplicationRecord.descendants.select { it.name && !it.abstract_class? && Object.const_defined?(it.name) }
+    (ApplicationRecord.descendants + PricesRecord.descendants).select { it.name && !it.abstract_class? && Object.const_defined?(it.name) }
   end
 
   it "knows every collector-owned attachment: only ImportUpload's, listed as transient (AC-5.5)" do
@@ -34,11 +34,16 @@ RSpec.describe "what a backup holds (spec 030 decisions 2 and 3)", :backup, type
     expect(unlisted([ cover ])).to eq("CoverPhotoOwner" => [ :photo ])
   end
 
-  it "knows exactly the four production databases (AC-5.5)" do
+  # Spec 081 decision 6 (supersedes spec 030 AC-5.5's four): what the backup holds, and why the rest stay out.
+  def held_databases = %w[primary prices]
+  def left_out = { "queue" => "jobs in flight are lost; db:prepare creates it empty", "cache" => "it refills", "cable" => "it is ephemeral" }
+
+  it "knows exactly the five production databases, and holds the primary and prices ones (spec 081 AC-6.1)", :aggregate_failures do
     names = ActiveRecord::DatabaseConfigurations.new(Rails.application.config.database_configuration)
       .configs_for(env_name: "production").map(&:name)
 
-    expect(names).to match_array(%w[primary queue cache cable]), advice
+    expect(names).to match_array(held_databases + left_out.keys), advice
+    expect(Collector::Backup::HELD.keys).to eq(held_databases), advice
   end
 
   def uncascaded_session_keys

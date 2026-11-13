@@ -75,10 +75,13 @@ module Upgrade
         "-e", "SECRET_KEY_BASE_DUMMY=1", image, "bin/rails", "backup:restore[/backups/#{file}]" ])
     end
 
-    # The primary database file and any -wal and -shm out of a stopped volume into a host directory (AC-2.4).
+    # The primary and the prices database files, with any -wal and -shm, out of a stopped volume into a host directory
+    # (AC-2.4; spec 081 decision 10). The primary must be there; the prices file is copied when the volume holds it, because
+    # a release before spec 081 has none. The queue, cache and cable databases are left behind.
+    # @return [Array<String>] the file names copied
     def copy_database(volume:, image:, into:)
       listing = oneoff!(image, [ "#{volume}:/rails/storage:ro" ], %w[ls /rails/storage]).out.split
-      files = listing.grep(/\Aproduction\.sqlite3(-wal|-shm)?\z/)
+      files = listing.grep(/\Aproduction(?:_prices)?\.sqlite3(?:-wal|-shm)?\z/)
       raise Failure, "the volume #{volume} holds no production.sqlite3 (it holds: #{listing.join(" ")})" unless files.include?("production.sqlite3")
 
       oneoff!(image, [ "#{volume}:/rails/storage:ro", "#{into}:/out" ], [ "cp", "-p", *files.map { "/rails/storage/#{it}" }, "/out/" ])

@@ -40,6 +40,18 @@ RSpec.describe "Upgrade seeds", :upgrade do
       database.results_as_hash = true
     end
 
+    it "fills every table of the prices database, except those listed under next (spec 081 AC-6.6)" do
+      run_seed("next.rb")
+      tables = Rails.root.join("db/prices_structure.sql").read.scan(/^CREATE TABLE (?:IF NOT EXISTS )?"([^"]+)"/).flatten - %w[schema_migrations ar_internal_metadata]
+      listed = Upgrade::SeedExceptions.load(seeds.join("../seed_exceptions.yml"), "next").entries
+      prices = PricesRecord.lease_connection.raw_connection
+      prices.results_as_hash = false # as for the primary above: Upgrade::Compare reads rows as arrays
+      problems, = Upgrade::SeedExceptions.coverage(prices, listed, label: "next", seed: "script/upgrade/seeds/next.rb", only: tables)
+      expect([ tables.size, problems ]).to eq([ 5, [] ])
+    ensure
+      prices&.results_as_hash = true
+    end
+
     it "leaves what AC-2.3 asks for" do
       run_seed("next.rb")
       expect(Upgrade::Compare.seed_problems(database)).to be_empty

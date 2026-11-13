@@ -9,11 +9,11 @@ require "tmpdir"
 # before and after it.
 module BackupHelpers
   PRODUCTION_NAMES = { "primary" => "production.sqlite3", "cache" => "production_cache.sqlite3",
-    "queue" => "production_queue.sqlite3", "cable" => "production_cable.sqlite3" }.freeze
+    "queue" => "production_queue.sqlite3", "cable" => "production_cable.sqlite3", "prices" => "production_prices.sqlite3" }.freeze
   SECRETS = { "SECRET_KEY_BASE" => "sk-recognisable-secret-key-base-value-30303",
     "RAILS_MASTER_KEY" => "mk-recognisable-master-key-value-40404",
     "COLLECTOR_TRUSTED_PROXIES" => "198.51.100.77" }.freeze
-  # The app's writers for AC-1.2 and AC-1.3, as a script for a child process with a connection of its own, so that nothing of
+  # The app's writers for AC-1.2, AC-1.3 and AC-4.8, as a script for a child process with a connection of its own, so that nothing of
   # the backup's process (its Ruby threads, its Active Record pool) can stand in for contention. Each commit is logged as
   # "kind started finished account_id" in wall-clock seconds, and a file's appearance stops it.
   WRITER = <<~'RUBY'.freeze
@@ -33,7 +33,10 @@ module BackupHelpers
       created = nil
       begin
         database.transaction(:immediate) do
-          if kind == "pairs"
+          if kind == "prices"
+            created = index
+            database.execute("INSERT INTO price_changes (catalog_entry_id, price_source_id, price_series_id, recorded_on, cents) VALUES (?, 1, 1, '2026-10-21', 1)", [ index ])
+          elsif kind == "pairs"
             database.execute("INSERT INTO accounts (created_at, updated_at) VALUES (?, ?)", [ stamp, stamp ])
             created = database.last_insert_row_id
             database.execute("INSERT INTO users (account_id, name, email_address, password_digest, created_at, updated_at) VALUES (?, ?, ?, 'x', ?, ?)",
@@ -69,9 +72,14 @@ module BackupHelpers
     @scratch_root = nil
   end
 
+  # Each production database's file in +directory+, as a volume holds them.
   def production_paths(directory) = PRODUCTION_NAMES.transform_values { directory.join(it) }
+  # The databases of a volume at +directory+, all five, as a restore onto it sees them.
   def databases_for(directory) = Collector::Backup::Databases.new(production_paths(directory))
+  # The test environment's primary database file.
   def instance_database = Collector::Backup::Databases.configured.primary
+  # The test environment's prices database file, beside instance_database (spec 081 decision 12).
+  def instance_prices_database = Collector::Backup::Databases.configured.prices
   def release_versions = Collector::Backup.release_schema_versions
 
   # The examples' clock: the second a backup is taken (decision 5's file name).
@@ -85,6 +93,18 @@ module BackupHelpers
     Seed.new(user:, entries:, lots: made, values: [ "Zebra Quartz", "zebra.quartz@example.test", "Zebra Quartz Dragon" ])
   end
 
+  # One price source, one series and +current+ current prices (one per entry id), through PricesRecord, so that a prices
+  # snapshot has rows to carry (spec 081 AC-4.1). The source and the series are id 1.
+  def seed_prices(entry_ids:, current: entry_ids.size)
+    connection = PricesRecord.lease_connection
+    stamp = "2026-10-21 14:21:00"
+    connection.execute("INSERT INTO price_sources (id, key, name, attribution, created_at, updated_at) VALUES (1, 'source', 'Source', 'Attribution', '#{stamp}', '#{stamp}')")
+    connection.execute("INSERT INTO price_series (id, finish, currency, kind, created_at, updated_at) VALUES (1, 'nonfoil', 'USD', 'market', '#{stamp}', '#{stamp}')")
+    entry_ids.first(current).each do |id|
+      connection.execute("INSERT INTO current_prices (catalog_entry_id, price_source_id, price_series_id, cents, reported_on, changed_on) VALUES (#{id.to_i}, 1, 1, 100, '2026-10-21', '2026-10-21')")
+    end
+  end
+
   # A session with a pending bulk selection (a mark) and a bulk removal, the working state a restore clears (decision 3).
   def seed_session(user, lot)
     session = user.sessions.create!
@@ -93,27 +113,40 @@ module BackupHelpers
     session
   end
 
-  def create_backup(into: scratch("backups"), source: instance_database, clock: clock_at, **options)
-    Collector::Backup::Create.new(directory: into, source:, clock:, **options).call.path
+  # +prices_source+ is read at the call: a spec that stubs Databases.configured passes it, taken before the stub.
+  def create_backup(into: scratch("backups"), source: instance_database, prices_source: instance_prices_database, clock: clock_at, **options)
+    Collector::Backup::Create.new(directory: into, source:, prices_source:, clock:, **options).call.path
   end
 
   def restore_backup(file, volume: scratch("volume"), **options)
     Collector::Backup::Restore.new(file:, databases: databases_for(volume), release_versions:, **options).call
   end
 
-  # The manifest of a snapshot file built by hand (a damaged or altered one), not made by backup:create.
-  def manifest_for(snapshot_path, **changes)
+  # The manifest of a snapshot file built by hand (a damaged or altered one), not made by backup:create. Version 2, with a
+  # prices member, when +prices_snapshot+ (a path) is given; a +prices:+ among +changes+ overrides that member.
+  def manifest_for(snapshot_path, prices_snapshot: nil, **changes)
     snapshot = Collector::Backup::Snapshot.new(snapshot_path)
     fields = { backup_format_version: 1, taken_at: "2026-10-21T14:21:00Z", schema_version: release_versions.max_by(&:to_i),
       snapshot_bytes: snapshot_path.size, snapshot_sha256: Digest::SHA256.file(snapshot_path).hexdigest,
       counts: { "accounts" => 0, "users" => 0, "lots" => 0 } }
     fields[:counts] = snapshot.counts unless changes.key?(:counts)
+    fields.merge!(backup_format_version: 2, prices: changes.fetch(:prices) { prices_member_for(prices_snapshot) }) if prices_snapshot
     Collector::Backup::Manifest.new(**fields.merge(changes))
   end
 
-  # An archive built by hand around a snapshot file, with a correct manifest unless changes say otherwise.
-  def archive_of(snapshot_path, into: scratch("archives"), name: "collector-backup-20261021T142100Z.tar.gz", **changes)
-    into.join(name).tap { Collector::Backup::Archive.write(it, manifest: manifest_for(snapshot_path, **changes), snapshot: snapshot_path) }
+  # The prices member of a manifest for a prices snapshot file built by hand.
+  def prices_member_for(path)
+    prices = Collector::Backup::Snapshot.new(path)
+    { "schema_version" => prices.schema_versions.max_by(&:to_i), "snapshot_bytes" => path.size,
+      "snapshot_sha256" => Digest::SHA256.file(path).hexdigest, "counts" => prices.counts(Collector::Backup::Manifest::PRICES_COUNT_NAMES) }
+  end
+
+  # An archive built by hand around a snapshot file, with a correct manifest unless changes say otherwise. Version 2 when
+  # +prices_snapshot+ (a path) is given.
+  def archive_of(snapshot_path, into: scratch("archives"), name: "collector-backup-20261021T142100Z.tar.gz", prices_snapshot: nil, **changes)
+    into.join(name).tap do
+      Collector::Backup::Archive.write(it, manifest: manifest_for(snapshot_path, prices_snapshot:, **changes), snapshot: snapshot_path, prices: prices_snapshot)
+    end
   end
 
   # A .tar.gz built by hand from [name, bytes] pairs, for the files AC-3.3 and AC-3.4 refuse.
@@ -164,20 +197,33 @@ module BackupHelpers
     expect(status.signaled? && status.termsig == 9).to be(true), "the run wasn't stopped at #{step}: #{status.inspect}"
   end
 
-  # A child Rails process on a database file: the application as a booted instance would be (AC-2.2, AC-3.6). DATABASE_URL
-  # is Rails' own setting, so the application gets no setting of its own. SCHEMA keeps a migration from rewriting db/schema.rb.
-  def app_command(database, *command, environment: {})
-    env = { "RAILS_ENV" => "test", "DATABASE_URL" => "sqlite3:#{database}", "SCHEMA" => scratch_path("schema-dump.rb").to_s }.merge(environment)
+  # A child Rails process on a database file and its prices file beside it (spec 081 decision 12): an instance as a booted
+  # one would be. DATABASE_URL reaches the primary only, so the prices database gets PRICES_DATABASE_URL: without it the
+  # child would open the suite's own test prices file. Each command gets its own SCHEMA path, absent when it starts: Rails
+  # returns SCHEMA as every database's schema file, so both databases are built by their migrations, any dump lands in the
+  # scratch directory, and neither db/schema.rb nor db/prices_structure.sql is written (AC-6.9).
+  def app_command(database, *command, prices: prices_beside(database), environment: {})
+    env = { "RAILS_ENV" => "test", "DATABASE_URL" => "sqlite3:#{database}", "PRICES_DATABASE_URL" => "sqlite3:#{prices}",
+      "SCHEMA" => scratch_path("schema-#{SecureRandom.hex(4)}.dump").to_s }.merge(environment)
     Open3.capture3(env, Rails.root.join("bin/rails").to_s, *command, chdir: Rails.root.to_s)
   end
 
-  # Empties every table the application knows (not the FTS5 index's shadow tables, which a DELETE would corrupt; no spec
-  # of this feature creates catalog names), leaving the schema and its versions.
+  # The prices file a volume holds beside +database+: production_prices.sqlite3 beside production.sqlite3, or
+  # <name>_prices.sqlite3 beside any other name.
+  def prices_beside(database)
+    path = Pathname(database)
+    path.dirname.join(path.basename.to_s == "production.sqlite3" ? "production_prices.sqlite3" : "#{path.basename(".sqlite3")}_prices.sqlite3")
+  end
+
+  # Empties every table the application knows in both databases (not the FTS5 index's shadow tables, which a DELETE would
+  # corrupt; no spec of this feature creates catalog names), leaving the schema and its versions.
   def clear_instance!
-    connection = ActiveRecord::Base.connection
     keep = %w[schema_migrations ar_internal_metadata]
-    connection.disable_referential_integrity do
-      (connection.tables - keep).grep_v(/\Acatalog_names_fts/).each { |table| connection.execute("DELETE FROM #{connection.quote_table_name(table)}") }
+    [ ActiveRecord::Base, PricesRecord ].each do |klass|
+      connection = klass.lease_connection
+      connection.disable_referential_integrity do
+        (connection.tables - keep).grep_v(/\Acatalog_names_fts/).each { |table| connection.execute("DELETE FROM #{connection.quote_table_name(table)}") }
+      end
     end
   end
 
@@ -210,9 +256,11 @@ module BackupHelpers
     end
   end
 
-  # The snapshot inside an archive, written out to a scratch file.
-  def unpack_snapshot(archive, name = "unpacked.sqlite3")
-    scratch_path(name).tap { |path| File.open(path, "wb") { |file| Collector::Backup::Archive.read(archive) { file.write(it) } } }
+  # The +entry+ (primary.sqlite3 or prices.sqlite3) inside an archive, written out to a scratch file.
+  def unpack_snapshot(archive, name = "unpacked.sqlite3", entry: "primary.sqlite3")
+    scratch_path(name).tap do |path|
+      File.open(path, "wb") { |file| Collector::Backup::Archive.read(archive) { |chunk, entry_name| file.write(chunk) if entry_name == entry } }
+    end
   end
 
   def captured_streams
@@ -230,16 +278,21 @@ module BackupHelpers
     $stdout, $stderr = original
   end
 
-  # Points Active Record at a restored file for the block, as an instance started on that volume would be, then back at the
-  # test database. Requests made in the block meet that file's rows only (AC-2.2, AC-2.4, AC-2.8 to AC-2.10).
-  def with_restored_instance(path)
-    original = ActiveRecord::Base.connection_db_config
-    ActiveRecord::Base.connection_pool.disconnect!
-    ActiveRecord::Base.establish_connection(original.configuration_hash.merge(database: path.to_s))
+  # Points Active Record and PricesRecord at a restored primary and prices file for the block, as an instance started on that
+  # volume would be, then back at the test databases. Requests made in the block meet those files' rows only (AC-2.2, AC-2.4,
+  # AC-2.8 to AC-2.10). Each new config keeps its name, because HealthController#check_database finds pools by name.
+  def with_restored_instance(path, prices: prices_beside(path))
+    pairs = [ [ ActiveRecord::Base, path ], [ PricesRecord, prices ] ].map { |klass, file| [ klass, klass.connection_db_config, file ] }
+    pairs.each do |klass, config, file|
+      klass.connection_pool.disconnect!
+      klass.establish_connection(ActiveRecord::DatabaseConfigurations::HashConfig.new(config.env_name, config.name, config.configuration_hash.merge(database: file.to_s)))
+    end
     yield
   ensure
-    ActiveRecord::Base.connection_pool.disconnect!
-    ActiveRecord::Base.establish_connection(original)
+    pairs&.each do |klass, config, _file|
+      klass.connection_pool.disconnect!
+      klass.establish_connection(config)
+    end
   end
 
   # What Rails logged while the block ran (the commands log nothing, AC-1.7).

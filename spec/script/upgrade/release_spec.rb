@@ -126,5 +126,15 @@ RSpec.describe Upgrade::Release, :git_sandbox, :upgrade do
       expect(release.show("v0.1.0", files.first)).to eq("a\n")
       expect(release.ancestor?("v0.1.0")).to be(true)
     end
+
+    it "lists the files and versions of db/prices_migrate at the ref, and leaves the default to db/migrate (spec 081 decision 10)", :aggregate_failures do
+      build_history(dir, "v0.1.0" => { "db/migrate/20261001000001_create_a.rb" => "a\n" },
+        "v0.2.0" => { "db/prices_migrate/20261113100001_x.rb" => "x\n" })
+      expect(release.migration_files("v0.2.0", "db/prices_migrate")).to eq([ "db/prices_migrate/20261113100001_x.rb" ])
+      expect(release.migration_files("v0.2.0")).to eq([ "db/migrate/20261001000001_create_a.rb" ])
+      expect(release.migration_versions("v0.2.0", "db/prices_migrate")).to eq(%w[20261113100001])
+      expect(release.migration_versions("v0.1.0", "db/prices_migrate")).to eq([])
+      expect(release.all_migration_versions("v0.2.0")).to eq(%w[20261001000001 20261113100001])
+    end
   end
 end

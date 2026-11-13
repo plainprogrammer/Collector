@@ -4,8 +4,18 @@ RSpec.describe Collector::Backup::Create, :backup, :committed do
   let(:directory) { scratch("out") }
   let!(:seed) { seed_instance }
 
-  def run(into: directory, source: instance_database, clock: clock_at, **options)
-    described_class.new(directory: into, source:, clock:, **options).call
+  def run(into: directory, source: instance_database, prices_source: instance_prices_database, clock: clock_at, **options)
+    described_class.new(directory: into, source:, prices_source:, clock:, **options).call
+  end
+
+  def prices_member(path)
+    Collector::Backup::Manifest.parse(unpack_member(path, "manifest.json")).prices
+  end
+
+  def unpack_member(path, name)
+    unpacked = scratch("member-#{SecureRandom.hex(3)}")
+    Open3.capture2("tar", "-xzf", path.to_s, "-C", unpacked.to_s)
+    unpacked.join(name).read
   end
 
   it "writes one file named by the UTC second and returns its facts (AC-1.1)", :aggregate_failures do
@@ -13,28 +23,33 @@ RSpec.describe Collector::Backup::Create, :backup, :committed do
 
     expect(directory.children.map { it.basename.to_s }).to eq([ "collector-backup-20261021T142100Z.tar.gz" ])
     expect(result).to have_attributes(path: directory.join("collector-backup-20261021T142100Z.tar.gz"),
-      schema_version: release_versions.max_by(&:to_i), counts: { "accounts" => 1, "users" => 1, "lots" => 3 })
+      schema_version: release_versions.max_by(&:to_i), counts: { "accounts" => 1, "users" => 1, "lots" => 3 },
+      prices_schema_version: Collector::Backup.release_schema_versions(Rails.root, "db/prices_migrate").max_by(&:to_i),
+      prices_counts: { "current_prices" => 0, "price_changes" => 0 })
     expect(result.bytes).to eq(result.path.size)
-    expect(result.report).to match(/\ABackup written: .*\nSize: .*\nSchema version: \d+\nHolds: 1 account, 1 user and 3 lots\nTook: \d+\.\d s\z/)
+    expect(result.report).to match(/\ABackup written: .*\nSize: .*\nSchema version: \d+; prices \d+\nHolds: 1 account, 1 user and 3 lots; 0 current prices and 0 price changes\nTook: \d+\.\d s\z/)
   end
 
-  it "holds the manifest and a rollback-journal snapshot that agrees with it, and no sidecar (AC-1.4)", :aggregate_failures do
+  it "holds the manifest and rollback-journal snapshots that agree with it, and no sidecar (AC-1.4, AC-4.1)", :aggregate_failures do
     path = run.path
     unpacked = scratch("unpacked")
     _output, status = Open3.capture2("tar", "-xzf", path.to_s, "-C", unpacked.to_s)
     snapshot = unpacked.join("primary.sqlite3")
+    prices = unpacked.join("prices.sqlite3")
     manifest = Collector::Backup::Manifest.parse(unpacked.join("manifest.json").read)
 
     expect(status).to be_success
-    expect(unpacked.children.map { it.basename.to_s }).to match_array(%w[manifest.json primary.sqlite3])
-    expect(manifest).to have_attributes(backup_format_version: 1, taken_at: "2026-10-21T14:21:00Z", snapshot_bytes: snapshot.size,
+    expect(unpacked.children.map { it.basename.to_s }).to match_array(%w[manifest.json primary.sqlite3 prices.sqlite3])
+    expect(manifest).to have_attributes(backup_format_version: 2, taken_at: "2026-10-21T14:21:00Z", snapshot_bytes: snapshot.size,
       snapshot_sha256: Digest::SHA256.file(snapshot).hexdigest, counts: { "accounts" => 1, "users" => 1, "lots" => 3 })
-    expect(File.binread(snapshot, 2, 18).bytes).to eq([ 1, 1 ])
-    expect(Dir["#{snapshot}-*"]).to be_empty
-    expect { Collector::Backup::Snapshot.new(snapshot).verify! }.not_to raise_error
+    expect(manifest.prices).to include("snapshot_bytes" => prices.size, "snapshot_sha256" => Digest::SHA256.file(prices).hexdigest,
+      "counts" => { "current_prices" => 0, "price_changes" => 0 })
+    expect([ snapshot, prices ].map { File.binread(it, 2, 18).bytes }).to eq([ [ 1, 1 ], [ 1, 1 ] ])
+    expect(Dir["#{snapshot}-*", "#{prices}-*"]).to be_empty
+    expect { [ snapshot, prices ].each { Collector::Backup::Snapshot.new(it).verify! } }.not_to raise_error
   end
 
-  it "is private and holds no secret or setting, and nothing but the two files (AC-1.8, AC-4.1)", :aggregate_failures do
+  it "is private and holds no secret or setting, and nothing but the three files (AC-1.8, AC-4.1)", :aggregate_failures do
     with_env(BackupHelpers::SECRETS) { run }
     path = directory.children.sole
     unpacked = scratch("unpacked")
@@ -43,7 +58,7 @@ RSpec.describe Collector::Backup::Create, :backup, :committed do
     bytes = unpacked.children.sum("".b) { it.binread }
 
     expect(path.stat.mode & 0o777).to eq(0o600)
-    expect(listing.lines(chomp: true)).to eq(%w[manifest.json primary.sqlite3])
+    expect(listing.lines(chomp: true)).to eq(%w[manifest.json primary.sqlite3 prices.sqlite3])
     BackupHelpers::SECRETS.each_value { |value| expect(bytes).not_to include(value) }
   end
 
@@ -127,8 +142,8 @@ RSpec.describe Collector::Backup::Create, :backup, :committed do
   end
 
   it "leaves at worst a private .partial file when it is killed with the snapshot written (AC-1.6)", :aggregate_failures do
-    run_killed_at(:snapshot_written, <<~RUBY, directory, instance_database)
-      Collector::Backup::Create.new(directory: ARGV[0], source: ARGV[1], checkpoint: STOP_HERE).call
+    run_killed_at(:snapshot_written, <<~RUBY, directory, instance_database, instance_prices_database)
+      Collector::Backup::Create.new(directory: ARGV[0], source: ARGV[1], prices_source: ARGV[2], checkpoint: STOP_HERE).call
     RUBY
 
     leftovers = directory.children
@@ -181,8 +196,17 @@ RSpec.describe Collector::Backup::Create, :backup, :committed do
     end
 
     refusal = refusal_of { run(free_space: ->(_path) { 1 }) }
-    expect(refusal.problem).to match(/\A#{Regexp.escape(directory.to_s)} has 1 byte free; a backup needs about .* \(twice the database's size\)\.\z/)
+    expect(refusal.problem).to match(/\A#{Regexp.escape(directory.to_s)} has 1 byte free; a backup needs about .* \(twice the two databases' sizes\)\.\z/)
     expect(directory.children).to be_empty
+  end
+
+  it "refuses a free-space need of twice the two databases, and one byte less than that fails (AC-4.6)", :aggregate_failures do
+    need = 2 * (instance_database.size + instance_prices_database.size)
+    refusal = refusal_of { run(free_space: ->(_path) { need - 1 }) }
+
+    expect(refusal.problem).to include("a backup needs about #{Collector::Backup.size_phrase(need)} (twice the two databases' sizes)")
+    expect(directory.children).to be_empty
+    expect { run(free_space: ->(_path) { need }) }.not_to raise_error
   end
 
   it "refuses a source that isn't there without creating it", :aggregate_failures do
@@ -203,5 +227,84 @@ RSpec.describe Collector::Backup::Create, :backup, :committed do
     expect(refusal.problem).to eq("The database fails its foreign-key check (1 row), so no backup was made.")
     expect(refusal.advice).to include("Export collection")
     expect(directory.children).to be_empty
+  end
+
+  describe "the prices database (spec 081 decision 7)" do
+    def seed_two_prices
+      seed_prices(entry_ids: seed.entries.first(2).map(&:id), current: 2)
+    end
+
+    it "holds the prices rows in a rollback-journal file that passes its checks, and reports them (AC-4.1, AC-4.3, AC-4.7)", :aggregate_failures do
+      seed_two_prices
+      result = run
+      snapshot = unpack_snapshot(result.path, "prices.sqlite3", entry: "prices.sqlite3")
+
+      expect(table_rows(snapshot)).to eq(table_rows(instance_prices_database))
+      expect(File.binread(snapshot, 2, 18).bytes).to eq([ 1, 1 ])
+      expect { Collector::Backup::Snapshot.new(snapshot).verify! }.not_to raise_error
+      expect(prices_member(result.path)["counts"]).to eq("current_prices" => 2, "price_changes" => 0)
+      expect(result.report.lines(chomp: true)[2..3]).to match([ /\ASchema version: \d+; prices \d+\z/, "Holds: 1 account, 1 user and 3 lots; 2 current prices and 0 price changes" ])
+    end
+
+    it "refuses a prices source that isn't there, creating nothing (AC-4.4)", :aggregate_failures do
+      missing = scratch_path("no-prices.sqlite3")
+      refusal = refusal_of { run(prices_source: missing) }
+
+      expect(refusal.problem).to eq("There is no prices database at #{missing}.")
+      expect(refusal.advice).to eq("Start Collector once on this release, which creates it, then run this again.")
+      expect([ missing.exist?, directory.children ]).to eq([ false, [] ])
+    end
+
+    it "refuses a damaged prices database, naming it, and leaves nothing (AC-4.5)", :aggregate_failures do
+      seed_two_prices
+      damaged = scratch_path("damaged-prices.sqlite3").tap { Collector::Backup::Snapshot.take(source: instance_prices_database, into: it) }
+      damage_table!(damaged, "price_sources")
+      refusal = refusal_of { run(prices_source: damaged) }
+
+      expect(refusal.problem).to eq("The prices database reports damage, so no backup was made.")
+      expect(directory.children).to be_empty
+    end
+
+    it "refuses a prices database that fails its foreign-key check, counting the rows (AC-4.5)", :aggregate_failures do
+      broken = scratch_path("orphaned-prices.sqlite3").tap { Collector::Backup::Snapshot.take(source: instance_prices_database, into: it) }
+      sqlite(broken) do |database|
+        database.execute("INSERT INTO price_sources (id, key, name, attribution, created_at, updated_at) VALUES (1, 'k', 'n', 'a', '2026-10-21', '2026-10-21')")
+        database.execute("PRAGMA foreign_keys = OFF")
+        3.times { |index| database.execute("INSERT INTO price_changes (catalog_entry_id, price_source_id, price_series_id, recorded_on, cents) VALUES (?, 1, 999, '2026-10-21', 5)", [ index + 1 ]) }
+      end
+      refusal = refusal_of { run(prices_source: broken) }
+
+      expect(refusal.problem).to eq("The prices database fails its foreign-key check (3 rows), so no backup was made.")
+      expect(directory.children).to be_empty
+    end
+  end
+
+  describe "while the prices writer commits (AC-4.8)" do
+    let(:log) { scratch_path("prices-writer.log") }
+    let(:stop) { scratch_path("prices-writer.stop") }
+
+    it "keeps committing price changes while the prices snapshot is taken", :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- a concurrency scenario: a writer, a measured backup, then the log
+      FileUtils.touch(log)
+      PricesRecord.lease_connection.execute("INSERT INTO price_sources (id, key, name, attribution, created_at, updated_at) VALUES (1, 'k', 'n', 'a', '2026-10-21', '2026-10-21')")
+      PricesRecord.lease_connection.execute("INSERT INTO price_series (id, finish, currency, kind, created_at, updated_at) VALUES (1, 'nonfoil', 'USD', 'market', '2026-10-21', '2026-10-21')")
+      PricesRecord.lease_connection.execute("INSERT INTO price_changes (catalog_entry_id, price_source_id, price_series_id, recorded_on, cents) WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 50000) SELECT -i, 1, 1, '2026-10-20', i FROM n")
+      pid = Process.spawn(RbConfig.ruby, "-e", BackupHelpers::WRITER, instance_prices_database.to_s, log.to_s, stop.to_s, "prices", "0", "0",
+        chdir: Rails.root.to_s, out: File::NULL, err: File::NULL)
+      Timeout.timeout(60) { sleep 0.05 until log.readlines.size >= 3 }
+      marks = {}
+      checkpoint = ->(step) { marks[step] = Process.clock_gettime(Process::CLOCK_REALTIME) }
+      begin
+        run(checkpoint:)
+      ensure
+        FileUtils.touch(stop) # a failed run must not leave the child writing
+        Process.wait(pid)
+      end
+      rows = log.readlines(chomp: true).map(&:split)
+      window = marks.fetch(:prices_starting)..marks.fetch(:prices_written)
+
+      expect(rows.select { it.first == "error" }).to be_empty
+      expect(rows.map { |_kind, started, finished| finished.to_f - started.to_f }).to all(be < 5), "a price change waited past the 5-second busy timeout"
+      expect(rows.count { |_kind, _started, finished| window.cover?(finished.to_f) }).to be_positive, "no price change committed while the prices snapshot was taken"
+    end
   end
 end

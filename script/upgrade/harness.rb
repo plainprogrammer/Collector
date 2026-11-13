@@ -1,6 +1,7 @@
 # The upgrade proof (spec 031): boots the previous release's image, seeds it through its own code, starts the image built
 # from the code under test on the same volume, and fails unless the database upgraded unattended, lost nothing and the app
-# serves the collection as it was. Orchestration only: the commands are Upgrade::Engine's, the reading of the databases is
+# serves the collection as it was. The prices database (spec 081 decision 10) is held to the same proof: its file is copied,
+# checked and, against a previous release that has one, compared. Orchestration only: the commands are Upgrade::Engine's, the reading of the databases is
 # Upgrade::Snapshot and Upgrade::Compare, the rules Upgrade::ExpectedChanges and Upgrade::SeedExceptions.
 require "fileutils"
 require "json"
@@ -30,6 +31,9 @@ module Upgrade
     QUEUE_START_ATTEMPTS = 15 # log reads, QUEUE_START_WAIT seconds apart: 28 s of waiting, inside the stop's own 30 s grace
     QUEUE_START_WAIT = 2
     STOP_LOG_LINES = 20
+    # The prices database's file in a volume, and the two tables that must be WITHOUT ROWID (spec 081 decisions 3 and 10).
+    PRICES_FILE = "production_prices.sqlite3".freeze
+    PRICES_WITHOUT_ROWID = %w[current_prices price_changes].freeze
     SEED_LINE = "UPGRADE-SEED-COMPLETE ".freeze
     EMPTY_COLLECTION_MARKER = "c-empty".freeze # the design system's empty-state class, which /collection renders for no lots
     SECRET = "secret-of-the-previous-release-instance-0001".freeze
@@ -74,6 +78,7 @@ module Upgrade
       @tag = Process.pid
       @containers = []
       @volumes = []
+      @prices = {}
       @step = "start"
     end
 
@@ -99,6 +104,7 @@ module Upgrade
 
         find_seed_and_rules if @plan[:version] || !@plan[:release]
         fetch_previous
+        @prices_at_previous = prices_at_previous?
         find_seed_and_rules unless @seed
         @scratch = Dir.mktmpdir("upgrade-smoke")
         old = previous_database
@@ -151,7 +157,7 @@ module Upgrade
 
         exceptions = SeedExceptions.load(File.join(@root, "script/upgrade/seed_exceptions.yml"), @plan[:release] ? @plan[:version] : "next")
         changes = ExpectedChanges.load(File.join(@root, "script/upgrade/expected_changes.yml"),
-          previous_versions: @release.migration_versions(@plan[:ref]), current_versions: working_versions)
+          previous_versions: @release.all_migration_versions(@plan[:ref]), current_versions: working_versions + working_prices_versions)
         problems = exceptions.errors + changes.errors
         raise Failure, "script/upgrade yml files: #{problems.join("; ")}" if problems.any?
 
@@ -233,6 +239,8 @@ module Upgrade
         { up: web.status("/up"), sign_in: web.status("/session/new"), sign_up: [ signup.status, Web.signup_form?(signup.body) ] }
       end
 
+      # Stops the instance and returns its primary database's snapshot; the prices database's snapshot, when the volume holds
+      # one, is kept in @prices under the label.
       def stop_and_snapshot(instance, label)
         wait_for_queue(instance)
         stopping = Process.clock_gettime(Process::CLOCK_MONOTONIC)
@@ -247,6 +255,10 @@ module Upgrade
         copies = File.join(@scratch, "copies", label)
         FileUtils.mkdir_p(copies)
         @engine.copy_database(volume: instance.volume, image: @current, into: copies)
+        @prices[label] =
+          if File.file?(File.join(copies, PRICES_FILE))
+            Snapshot.open(Snapshot.consolidate(copies, PRICES_FILE, File.join(@scratch, "#{label}_prices.sqlite3")))
+          end
         Snapshot.open(Snapshot.consolidate(copies, "production.sqlite3", File.join(@scratch, "#{label}.sqlite3")))
       end
 
@@ -274,11 +286,30 @@ module Upgrade
           raise Failure, "AC-2.1: schema_migrations of the old database isn't the versions of db/migrate at #{@plan[:tag]} (missing #{expected - actual}, extra #{actual - expected}); #{@plan[:image]} didn't make it"
         end
 
-        problems, notes = SeedExceptions.coverage(db, @exceptions, label: @plan[:version] || "next", seed: relative(@seed))
-        notes.each { @out.puts it }
-        raise Failure, problems.join("\n") if problems.any?
+        verify_old_prices if @prices_at_previous
+        label = @plan[:version] || "next"
+        report_coverage(SeedExceptions.coverage(db, primary_exceptions, label:, seed: relative(@seed)))
+        report_coverage(SeedExceptions.coverage(@prices["old"], prices_exceptions, label:, seed: relative(@seed), only: prices_tables)) if @prices_at_previous
 
         problems = Compare.seed_problems(db)
+        raise Failure, problems.join("\n") if problems.any?
+      end
+
+      # A previous release with a prices database made the file with the migrations of its tag's db/prices_migrate (decision 10).
+      def verify_old_prices
+        raise Failure, "the previous release should have made #{PRICES_FILE}, since #{@plan[:tag]} has db/prices_migrate/; the old volume holds none" unless @prices["old"]
+
+        expected = @release.migration_versions(@plan[:ref], "db/prices_migrate").sort
+        actual = @prices["old"].execute("SELECT version FROM schema_migrations").flatten.sort
+        return if expected == actual
+
+        raise Failure, "AC-2.1: schema_migrations of the old prices database isn't the versions of db/prices_migrate at #{@plan[:tag]} (missing #{expected - actual}, extra #{actual - expected}); #{@plan[:image]} didn't make it"
+      end
+
+      # Prints the notes of a coverage check and fails on its problems.
+      def report_coverage(result)
+        problems, notes = result
+        notes.each { @out.puts it }
         raise Failure, problems.join("\n") if problems.any?
       end
 
@@ -288,12 +319,12 @@ module Upgrade
         step("snapshot and compare")
         upgraded = stop_and_snapshot(instance, "upgraded")
         @engine.remove(instance.name)
-        compare(old, upgraded)
+        compare(old, upgraded).tap { check_prices("upgraded", "old") }
       end
 
       # Prints the comparison; returns how many tables it covered.
       def compare(old, upgraded, optional: [], emptied: [])
-        report = Compare.new(old, upgraded, expected: @changes.live, optional:, emptied:).call
+        report = Compare.new(old, upgraded, expected: primary_changes, optional:, emptied:).call
         report.to_lines.each { @out.puts it }
         raise Failure, "the upgraded database differs from the old one (see above)" unless report.ok?
 
@@ -304,6 +335,37 @@ module Upgrade
         raise Failure, "AC-3.2: schema_migrations of the upgraded database lacks #{missing}" if missing.any?
 
         report.lines.size
+      end
+
+      # The prices database of a volume (AC-6.4, AC-6.5): it exists, records the migrations of the code under test and of the old
+      # one, passes SQLite's checks and has its two WITHOUT ROWID tables; and, when the previous release had one, nothing in it
+      # was lost or changed beyond the expected changes of its tables.
+      def check_prices(label, old_label)
+        prices = @prices[label] || raise(Failure, "the #{label} volume holds no #{PRICES_FILE}; the code under test creates it on its first start")
+        old = @prices[old_label]
+        recorded = prices.execute("SELECT version FROM schema_migrations").flatten
+        missing = (working_prices_versions + (old ? old.execute("SELECT version FROM schema_migrations").flatten : [])) - recorded
+        raise Failure, "AC-3.2: schema_migrations of the #{label} prices database lacks #{missing}" if missing.any?
+
+        problems = Compare.integrity(prices)
+        raise Failure, "AC-3.5: the #{label} prices database: #{problems.first(3).join("; ")}" if problems.any?
+
+        check_without_rowid(prices, label)
+        @out.puts "prices: #{Compare.tables(prices).size} tables, schema #{recorded.max}, WITHOUT ROWID on #{PRICES_WITHOUT_ROWID.join(" and ")}"
+        compare_prices(old, prices, label) if old
+      end
+
+      def check_without_rowid(prices, label)
+        PRICES_WITHOUT_ROWID.each do |table|
+          sql = prices.get_first_value("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?", [ table ]).to_s
+          raise Failure, "the #{label} prices database's #{table} is not WITHOUT ROWID (spec 081 decision 3)" unless sql.match?(/WITHOUT ROWID\s*(?:\/\*.*\*\/)?\s*\z/m)
+        end
+      end
+
+      def compare_prices(old, prices, label)
+        report = Compare.new(old, prices, expected: prices_changes).call
+        report.to_lines.each { @out.puts it }
+        raise Failure, "the prices database of the #{label} volume differs from the old one (see above)" unless report.ok?
       end
 
       def behaviour_after_upgrade
@@ -404,8 +466,10 @@ module Upgrade
       end
 
       # Skipped only when the previous release lists no backup task (AC-6.4). Otherwise the backup it took is restored by the
-      # code under test onto a fresh volume under another secret, and the database is judged as the upgrade's is, except that
-      # the sessions the restore ends are expected gone (P4) and AC-5.7 doesn't apply (the backup holds the primary only).
+      # code under test onto a fresh volume under another secret, and the databases are judged as the upgrade's are, except that
+      # the sessions the restore ends are expected gone (P4) and AC-5.7 doesn't apply (the backup doesn't hold the queue). A
+      # backup of a release before spec 081 holds the primary only, so the restored instance's prices file is the one its first
+      # start creates; a later release's backup holds the prices database too, and it is compared with the old one.
       def backup_leg(old)
         step("backup leg")
         return @out.puts("previous release #{@plan[:tag]} has no backup task; backup leg skipped") unless @backup_expected
@@ -418,6 +482,7 @@ module Upgrade
         restored = stop_and_snapshot(instance, "restored")
         @engine.remove(instance.name)
         compare(old, restored, optional: ExpectedChanges.restore_effects, emptied: ExpectedChanges::RESTORE_ENDS_SESSIONS)
+        check_prices("restored", "old")
         check_behaviour(boot("restored-behaviour", @current, volume, RESTORE_SECRET), queue: false)
       end
 
@@ -432,9 +497,9 @@ module Upgrade
         exceptions = SeedExceptions.load(File.join(@root, "script/upgrade/seed_exceptions.yml"), "next")
         raise Failure, exceptions.errors.join("; ") if exceptions.errors.any?
 
-        problems, notes = SeedExceptions.coverage(database, exceptions.entries, label: "next", seed: "script/upgrade/seeds/next.rb")
-        notes.each { @out.puts it }
-        raise Failure, problems.join("\n") if problems.any?
+        report_coverage(SeedExceptions.coverage(database, split_exceptions(exceptions.entries).last, label: "next", seed: "script/upgrade/seeds/next.rb"))
+        prices = @prices["next"] || raise(Failure, "the next volume holds no #{PRICES_FILE}, so the seed of the next release filled no prices table")
+        report_coverage(SeedExceptions.coverage(prices, split_exceptions(exceptions.entries).first, label: "next", seed: "script/upgrade/seeds/next.rb", only: prices_tables))
 
         problems = Compare.seed_problems(database)
         raise Failure, problems.join("\n") if problems.any?
@@ -509,7 +574,33 @@ module Upgrade
 
       def elapsed = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - @started).round
 
+      # The primary's only, because compare checks its schema_migrations against this list; a prices version there would fail every upgrade.
       def working_versions = Dir[File.join(@root, "db/migrate/*.rb")].filter_map { File.basename(it)[/\A\d+/] }
+
+      def working_prices_versions = Dir[File.join(@root, "db/prices_migrate/*.rb")].filter_map { File.basename(it)[/\A\d+/] }
+
+      # The tables of the prices database, read from its structure file (spec 081 decision 10); not schema_migrations or ar_internal_metadata.
+      def prices_tables
+        @prices_tables ||= File.read(File.join(@root, "db/prices_structure.sql")).scan(/^CREATE TABLE (?:IF NOT EXISTS )?"([^"]+)"/).flatten - Compare::SKIPPED
+      end
+
+      def prices_entry?(entry) = prices_tables.include?(entry.table)
+
+      # Expected changes and seed exceptions are split by the prices tables, so each comparison gets the entries of its own
+      # database and an entry for no table at all stays in the primary's list, where it is flagged as unmatched.
+      def primary_changes = @changes.live.reject { prices_entry?(it) }
+
+      def prices_changes = @changes.live.select { prices_entry?(it) }
+
+      def primary_exceptions = split_exceptions(@exceptions).last
+
+      def prices_exceptions = split_exceptions(@exceptions).first
+
+      def split_exceptions(entries) = entries.partition { prices_tables.include?(it.table) }
+
+      # Whether the previous release has a prices database: its tag has db/prices_migrate/. Read after fetch_previous, because
+      # settle_version sets the ref of an image named without a version only during the fetch; with no ref it is false.
+      def prices_at_previous? = !@plan[:ref].nil? && @release.migration_versions(@plan[:ref], "db/prices_migrate").any?
 
       def relative(path) = path.delete_prefix("#{@root}/")
   end

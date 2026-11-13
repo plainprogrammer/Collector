@@ -7,6 +7,10 @@ module Upgrade
     Error = Class.new(StandardError)
     TagsNotFetched = Class.new(Error)
 
+    # The directories whose migrations are released, and so never edited: the primary's and the prices database's (spec 081
+    # decision 10). A ref without the second one lists nothing, because `git ls-tree` prints nothing for a missing path.
+    MIGRATION_DIRECTORIES = %w[db/migrate db/prices_migrate].freeze
+
     TAG = /\Av(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?\z/
 
     # A release tag with semver precedence: by number, a pre-release before its release, pre-release identifiers
@@ -90,9 +94,14 @@ module Upgrade
       stable.max
     end
 
-    def migration_files(ref) = git("ls-tree", "-r", "--name-only", ref, "--", "db/migrate").lines(chomp: true).sort
+    # The migration files of one directory at a ref, sorted; `db/migrate` unless another is named.
+    def migration_files(ref, directory = "db/migrate") = git("ls-tree", "-r", "--name-only", ref, "--", directory).lines(chomp: true).sort
 
-    def migration_versions(ref) = migration_files(ref).filter_map { File.basename(it)[/\A\d+/] }
+    # The versions of those files.
+    def migration_versions(ref, directory = "db/migrate") = migration_files(ref, directory).filter_map { File.basename(it)[/\A\d+/] }
+
+    # The versions of every migration directory at a ref, the primary's first (spec 081 decision 10).
+    def all_migration_versions(ref) = MIGRATION_DIRECTORIES.flat_map { migration_versions(ref, it) }
 
     def show(ref, path) = git("show", "#{ref}:#{path}", binmode: true)
 

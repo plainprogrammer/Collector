@@ -3,6 +3,15 @@ require "rails_helper"
 RSpec.describe Collector::Backup::Restore, :backup, :committed do
   let(:volume) { scratch("volume") }
   let!(:seed) { seed_instance }
+  # The child of the killed runs has no Rails, so every path and version list is an argument.
+  let(:killed_child) do
+    <<~'RUBY'
+      files = { "primary" => "production.sqlite3", "cache" => "production_cache.sqlite3", "queue" => "production_queue.sqlite3", "cable" => "production_cable.sqlite3", "prices" => "production_prices.sqlite3" }
+      databases = Collector::Backup::Databases.new(files.transform_values { |name| Pathname(ARGV[1]).join(name) })
+      Collector::Backup::Restore.new(file: ARGV[0], databases: databases, release_versions: JSON.parse(ARGV[2]), release_prices_versions: JSON.parse(ARGV[3]), checkpoint: STOP_HERE).call
+    RUBY
+  end
+  let(:prices_versions) { Collector::Backup.release_schema_versions(Rails.root, "db/prices_migrate") }
 
   # A refusal that changes nothing in the volume and reads as two plain sentences (AC-3.8): each starts with a capital, a path
   # or the file's name (collector-backup-….tar.gz, note.txt) and ends with a full stop.
@@ -31,15 +40,18 @@ RSpec.describe Collector::Backup::Restore, :backup, :committed do
       live = table_rows(instance_database)
       restored = table_rows(primary)
 
-      expect(volume.children.map { it.basename.to_s }).to eq([ "production.sqlite3" ])
-      expect(File.binread(primary, 2, 18).bytes).to eq([ 1, 1 ])
+      prices = volume.join("production_prices.sqlite3")
+
+      expect(volume.children.map { it.basename.to_s }).to match_array(%w[production.sqlite3 production_prices.sqlite3])
+      expect([ primary, prices ].map { File.binread(it, 2, 18).bytes }).to eq([ [ 1, 1 ], [ 1, 1 ] ])
+      expect(table_rows(prices)).to eq(table_rows(instance_prices_database))
       expect(restored.keys).to eq(live.keys)
       (live.keys - cleared).each { |table| expect(restored.fetch(table)).to eq(live.fetch(table)), table }
       cleared.each { |table| expect(restored.fetch(table)).to be_empty, table }
       expect(live.fetch("sessions")).not_to be_empty # the source had them
-      expect { Collector::Backup::Snapshot.new(primary).verify! }.not_to raise_error
+      expect { [ primary, prices ].each { Collector::Backup::Snapshot.new(it).verify! } }.not_to raise_error
       expect(result.report.lines(chomp: true)).to include("Restored #{path.basename} into #{volume}.")
-      expect(result.report).to include("it holds 1 account, 1 user and 3 lots.", "Everyone signs in again",
+      expect(result.report).to include("at schema version #{release_versions.max_by(&:to_i)} (prices #{prices_versions.max_by(&:to_i)}); it holds 1 account, 1 user and 3 lots; 0 current prices and 0 price changes.", "Everyone signs in again",
         "pending bulk-removal Undos and selections are gone", "Start Collector now", "Build art index")
     end
 
@@ -50,6 +62,23 @@ RSpec.describe Collector::Backup::Restore, :backup, :committed do
       expect(result.report).to include("The backup holds no users: the first person to reach the restored instance becomes its admin.")
     end
 
+    it "carries the price rows exactly (AC-5.1)", :aggregate_failures do
+      seed_prices(entry_ids: seed.entries.map(&:id), current: 2)
+      result = restore_backup(create_backup, volume:)
+      restored = volume.join("production_prices.sqlite3")
+
+      expect(table_rows(restored)).to eq(table_rows(instance_prices_database))
+      expect(table_rows(restored).fetch("current_prices").size).to eq(2)
+      expect(result.report).to include("; 2 current prices and 0 price changes.")
+    end
+
+    it "restores a version 1 backup onto the primary only, and says the backup holds no prices (AC-5.2)", :aggregate_failures do
+      result = restore_backup(archive_of(copy_of_instance), volume:)
+
+      expect(volume.children.map { it.basename.to_s }).to eq([ "production.sqlite3" ])
+      expect(result.report.lines(chomp: true)[1]).to include("it holds 1 account, 1 user and 3 lots. The backup holds no prices; Collector's first start creates an empty prices database. Compare")
+    end
+
     it "restores from a file that lives in the volume, and leaves it as it was", :aggregate_failures do
       path = create_backup
       inside = volume.join(path.basename).tap { FileUtils.cp(path, it) }
@@ -57,7 +86,7 @@ RSpec.describe Collector::Backup::Restore, :backup, :committed do
 
       restore_backup(inside, volume:)
 
-      expect(volume.children.map { it.basename.to_s }).to contain_exactly(inside.basename.to_s, "production.sqlite3")
+      expect(volume.children.map { it.basename.to_s }).to contain_exactly(inside.basename.to_s, "production.sqlite3", "production_prices.sqlite3")
       expect(Digest::SHA256.file(inside).hexdigest).to eq(before)
     end
 
@@ -88,6 +117,20 @@ RSpec.describe Collector::Backup::Restore, :backup, :committed do
       end
     end
 
+    {
+      "only a prices database" => "production_prices.sqlite3",
+      "only a -wal file of a prices database" => "production_prices.sqlite3-wal"
+    }.each do |label, name|
+      it "refuses a volume that holds #{label}, with the advice for a stopped restore (AC-5.3)", :aggregate_failures do
+        volume.join(name).write("whatever was there")
+        path = create_backup
+
+        refusal = expect_refused(path, "The volume at #{volume} isn't empty: it holds #{name}.",
+          "It may be the prices database of a restore that stopped: remove production_prices.sqlite3 and its -wal, -shm and -journal files, then restore again. Never start Collector on this volume as it is.")
+        expect(refusal.advice).not_to include("#375")
+      end
+    end
+
     it "refuses a primary that appears while the restore runs, and removes its temporary file (never overwrites)", :aggregate_failures do
       path = create_backup
       appear = ->(step) { volume.join("production.sqlite3").write("appeared") if step == :snapshot_ready }
@@ -98,6 +141,26 @@ RSpec.describe Collector::Backup::Restore, :backup, :committed do
       expect(volume.children.map { it.basename.to_s }).to eq([ "production.sqlite3" ])
       expect(volume.join("production.sqlite3").read).to eq("appeared")
     end
+
+    it "removes the prices file it placed when the primary's name is taken after that (AC-5.6)", :aggregate_failures do
+      path = create_backup
+      appear = ->(step) { volume.join("production.sqlite3").write("appeared") if step == :prices_placed }
+
+      refusal = refusal_of { restore_backup(path, volume:, checkpoint: appear) }
+
+      expect(refusal.problem).to eq("The volume at #{volume} isn't empty: it holds production.sqlite3.")
+      expect(volume.children.map { it.basename.to_s }).to eq([ "production.sqlite3" ])
+    end
+
+    it "refuses a prices database that appears while the restore runs, removing both temporary files", :aggregate_failures do
+      path = create_backup
+      appear = ->(step) { volume.join("production_prices.sqlite3").write("appeared") if step == :snapshot_ready }
+
+      refusal = refusal_of { restore_backup(path, volume:, checkpoint: appear) }
+
+      expect(refusal.problem).to include("it holds production_prices.sqlite3")
+      expect(volume.children.map { it.basename.to_s }).to eq([ "production_prices.sqlite3" ])
+    end
   end
 
   describe "a restore that is refused or stopped (AC-2.6)" do
@@ -107,19 +170,30 @@ RSpec.describe Collector::Backup::Restore, :backup, :committed do
       expect_refused(missing, "There is no file at #{missing}.", "Check the path as the container sees it; copy the backup in first.")
     end
 
-    it "leaves no primary database when it is killed with the snapshot written, and the next restore succeeds and cleans up", :aggregate_failures do
+    it "leaves no database when it is killed with the snapshots written, and the next restore succeeds and cleans up", :aggregate_failures do
       path = create_backup
-      run_killed_at(:snapshot_ready, <<~RUBY, path, volume, release_versions.to_json)
-        files = { "primary" => "production.sqlite3", "cache" => "production_cache.sqlite3", "queue" => "production_queue.sqlite3", "cable" => "production_cable.sqlite3" }
-        databases = Collector::Backup::Databases.new(files.transform_values { |name| Pathname(ARGV[1]).join(name) })
-        Collector::Backup::Restore.new(file: ARGV[0], databases: databases, release_versions: JSON.parse(ARGV[2]), checkpoint: STOP_HERE).call
-      RUBY
-      expect(volume.children.map { it.basename.to_s }).to eq([ "collector-restore.partial" ])
+      run_killed_at(:snapshot_ready, killed_child, path, volume, release_versions.to_json, prices_versions.to_json)
+      expect(volume.children.map { it.basename.to_s }).to match_array(%w[collector-restore.partial collector-restore-prices.partial])
       volume.join("collector-restore.partial-journal").write("a stopped run's journal")
+      volume.join("collector-restore-prices.partial-journal").write("a stopped run's journal")
 
       restore_backup(path, volume:)
 
-      expect(volume.children.map { it.basename.to_s }).to eq([ "production.sqlite3" ])
+      expect(volume.children.map { it.basename.to_s }).to match_array(%w[production.sqlite3 production_prices.sqlite3])
+    end
+
+    it "leaves the prices file alone when it is killed between the two placings, and refuses to go on until it is removed (AC-5.9)", :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- one scenario: kill, refuse, remove, restore
+      path = create_backup
+      run_killed_at(:prices_placed, killed_child, path, volume, release_versions.to_json, prices_versions.to_json)
+      expect(volume.children.map { it.basename.to_s }).to match_array(%w[production_prices.sqlite3 collector-restore.partial])
+
+      refusal = refusal_of { restore_backup(path, volume:) }
+      expect(refusal.problem).to eq("The volume at #{volume} isn't empty: it holds production_prices.sqlite3.")
+      expect(refusal.advice).to include("remove production_prices.sqlite3 and its -wal")
+
+      volume.join("production_prices.sqlite3").delete
+      restore_backup(path, volume:)
+      expect(volume.children.map { it.basename.to_s }).to match_array(%w[production.sqlite3 production_prices.sqlite3])
     end
 
     it "refuses a storage directory that isn't there", :aggregate_failures do
@@ -131,11 +205,12 @@ RSpec.describe Collector::Backup::Restore, :backup, :committed do
       expect(gone).not_to exist
     end
 
-    it "refuses when the volume has too little room, before it writes anything", :aggregate_failures do
+    it "refuses when the volume has too little room for both snapshots, before it writes anything", :aggregate_failures do
       path = create_backup
-      refusal = refusal_of { restore_backup(path, volume:, free_space: ->(_path) { 1 }) }
+      enough_for_primary = unpack_snapshot(path).size + Collector::Backup::Restore::MARGIN + 1
+      refusal = refusal_of { restore_backup(path, volume:, free_space: ->(_path) { enough_for_primary }) }
 
-      expect(refusal.problem).to match(/\AThe volume at #{Regexp.escape(volume.to_s)} has 1 byte free; the snapshot needs .*\.\z/)
+      expect(refusal.problem).to match(/\AThe volume at #{Regexp.escape(volume.to_s)} has .* free; the snapshots need .*\.\z/)
       expect(volume.children).to be_empty
     end
 
@@ -194,9 +269,9 @@ RSpec.describe Collector::Backup::Restore, :backup, :committed do
     end
 
     it "refuses an unknown backup format version, naming the ones it restores (AC-3.4)" do
-      future = raw_archive([ "manifest.json", JSON.generate("backup_format_version" => 2) ], [ "primary.sqlite3", "x" ], name: "v2.tar.gz")
+      future = raw_archive([ "manifest.json", JSON.generate("backup_format_version" => 99) ], [ "primary.sqlite3", "x" ], name: "v2.tar.gz")
 
-      expect_refused(future, "v2.tar.gz uses backup format version 2; this release restores version 1.", "Restore it with a release that knows that version.")
+      expect_refused(future, "v2.tar.gz uses backup format version 99; this release restores versions 1, 2.", "Restore it with a release that knows that version.")
     end
 
     it "refuses a newer release's backup, naming both schema versions (AC-3.5)" do
@@ -218,6 +293,53 @@ RSpec.describe Collector::Backup::Restore, :backup, :committed do
 
       [ archive_of(damaged, into: scratch("a"), counts: zero), archive_of(orphaned, into: scratch("b")) ].each do |archive|
         expect_refused(archive, "The database inside #{archive.basename} is damaged.", "Use another copy of the backup.")
+      end
+    end
+
+    context "with a prices snapshot (AC-5.4)" do
+      def primary_copy = (@primary_copy ||= copy_of_instance("primary-copy.sqlite3"))
+      def prices_copy = (@prices_copy ||= scratch_path("prices-copy.sqlite3").tap { Collector::Backup::Snapshot.take(source: instance_prices_database, into: it) })
+
+      it "refuses a damaged prices snapshot, and one with an orphan row, as damaged, leaving the volume empty", :aggregate_failures do
+        seed_prices(entry_ids: seed.entries.map(&:id), current: 2)
+        damaged = scratch_path("prices-damaged.sqlite3").tap { Collector::Backup::Snapshot.take(source: instance_prices_database, into: it); damage_table!(it, "current_prices") }
+        orphaned = scratch_path("prices-orphaned.sqlite3").tap { Collector::Backup::Snapshot.take(source: instance_prices_database, into: it) }
+        sqlite(orphaned) do |database|
+          database.execute("PRAGMA foreign_keys = OFF")
+          database.execute("INSERT INTO price_changes (catalog_entry_id, price_source_id, price_series_id, recorded_on, cents) VALUES (1, 1, 999, '2026-10-21', 5)")
+        end
+
+        zero = { "current_prices" => 0, "price_changes" => 0 }
+        damaged_member = { "schema_version" => prices_versions.max_by(&:to_i), "snapshot_bytes" => damaged.size, "snapshot_sha256" => Digest::SHA256.file(damaged).hexdigest, "counts" => zero }
+
+        [ archive_of(primary_copy, into: scratch("a"), prices_snapshot: damaged, prices: damaged_member), archive_of(primary_copy, into: scratch("b"), prices_snapshot: orphaned) ].each do |archive|
+          expect_refused(archive, "The database inside #{archive.basename} is damaged.", "Use another copy of the backup.")
+          expect(volume.children).to be_empty
+        end
+      end
+
+      it "refuses a prices snapshot that lists a migration this release lacks, naming both prices schema versions", :aggregate_failures do
+        sqlite(prices_copy) { |database| database.execute("INSERT INTO schema_migrations (version) VALUES ('29991231000000')") }
+        archive = archive_of(primary_copy, prices_snapshot: prices_copy)
+
+        expect_refused(archive, "#{archive.basename} was taken by a newer release of Collector (prices schema version 29991231000000; this release has #{prices_versions.max_by(&:to_i)}).",
+          "Restore it onto that release or a newer one.")
+        expect(volume.children).to be_empty
+      end
+
+      it "refuses prices counts that differ from the manifest's", :aggregate_failures do
+        archive = archive_of(primary_copy, prices_snapshot: prices_copy, prices: prices_member_for(prices_copy).merge("counts" => { "current_prices" => 9, "price_changes" => 9 }))
+
+        expect_refused(archive, "The restored database doesn't match the backup's counts.", "Use another copy of the backup.")
+        expect(volume.children).to be_empty
+      end
+
+      it "refuses a version 2 backup when this release restores only version 1 (AC-5.7)" do
+        stub_const("Collector::Backup::FORMAT_VERSIONS", [ 1 ])
+        stub_const("Collector::Backup::FORMAT_VERSION", 1)
+        archive = archive_of(primary_copy, prices_snapshot: prices_copy)
+
+        expect_refused(archive, "#{archive.basename} uses backup format version 2; this release restores version 1.", "Restore it with a release that knows that version.")
       end
     end
 

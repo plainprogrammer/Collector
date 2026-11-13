@@ -42,6 +42,23 @@ RSpec.describe Upgrade::Guard, :git_sandbox, :upgrade do
     expect(guard.lines.join("\n")).to include("#{second} was deleted or renamed")
   end
 
+  context "with a prices migration released (spec 081 AC-6.7)" do
+    let(:prices) { "db/prices_migrate/20261113100001_x.rb" }
+
+    before { build_history(dir, "v0.2.0" => { first => "a\n", prices => "class X; end\n" }) }
+
+    it "fails naming an edited prices migration", :aggregate_failures do
+      File.write(File.join(dir, prices), "edited\n")
+      expect(guard).not_to be_ok
+      expect(guard.lines.join("\n")).to include("#{prices} was edited since v0.2.0")
+    end
+
+    it "fails naming a deleted prices migration" do
+      File.delete(File.join(dir, prices))
+      expect(guard.lines.join("\n")).to include("#{prices} was deleted or renamed since v0.2.0")
+    end
+  end
+
   it "says the code under test is behind the release when a branch lacks a released migration (AC-8.4)", :aggregate_failures do
     build_history(dir, "v0.1.0" => { first => "a\n" }, "v0.2.0" => { second => "b\n" })
     git!(dir, "checkout", "-q", "v0.1.0")

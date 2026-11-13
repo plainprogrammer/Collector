@@ -27,7 +27,8 @@ class FakeEngine
 
   attr_reader :calls
 
-  # `databases`: the files that copy_database hands out, in order (old, upgraded, ...); `log` receives each call's name;
+  # `databases`: what copy_database hands out, in order (old, upgraded, ...): a path to a primary database, or a Hash
+  # `{ primary:, prices: }` with the prices database's path too (spec 081 AC-6.4); `log` receives each call's name;
   # `facts`: what the seed reports; `runner_answers`: { /code pattern/ => Result } consulted before the defaults.
   def initialize(databases: [], log: [], facts: FACTS, runner_answers: {}, **scripted)
     @databases = databases.dup
@@ -44,10 +45,19 @@ class FakeEngine
     record(:runner, [ name, code ], {}) { default_runner(code) }
   end
 
+  # Copies the next entry of `databases` into `into` as `production.sqlite3` and, when the entry carries one, the prices
+  # database as `production_prices.sqlite3`; returns the names it copied, as Upgrade::Engine#copy_database does.
   def copy_database(volume:, image:, into:)
     record(:copy_database, [], { volume:, image:, into: }) do
-      FileUtils.cp(@databases.shift || raise("no database left for copy_database"), File.join(into, "production.sqlite3"))
-      [ "production.sqlite3" ]
+      entry = @databases.shift || raise("no database left for copy_database")
+      entry = { primary: entry } unless entry.is_a?(Hash)
+      FileUtils.cp(entry.fetch(:primary), File.join(into, "production.sqlite3"))
+      names = [ "production.sqlite3" ]
+      if entry[:prices]
+        FileUtils.cp(entry[:prices], File.join(into, "production_prices.sqlite3"))
+        names << "production_prices.sqlite3"
+      end
+      names
     end
   end
 

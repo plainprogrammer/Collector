@@ -6,6 +6,25 @@ RSpec.describe "Collection export", type: :request do
 
   def printing = create(:mtg_printing).entry
 
+  # Every key at any depth of a parsed JSON document.
+  def keys_of(node)
+    case node
+    when Hash then node.keys + node.values.flat_map { keys_of(it) }
+    when Array then node.flat_map { keys_of(it) }
+    else []
+    end
+  end
+
+  # One current price of the entry in the prices database (the foreign keys need a source and a series first).
+  def record_a_price_of(entry)
+    connection = PricesRecord.lease_connection
+    now = "2026-11-13"
+    connection.execute("INSERT INTO price_sources (key, name, attribution, hosted_paid_allowed, created_at, updated_at) VALUES ('a-source', 'A', 'Prices from A', 0, '#{now}', '#{now}')")
+    connection.execute("INSERT INTO price_series (finish, currency, kind, created_at, updated_at) VALUES ('plain', 'USD', 'market', '#{now}', '#{now}')")
+    connection.execute("INSERT INTO current_prices (catalog_entry_id, price_source_id, price_series_id, cents, reported_on, changed_on) " \
+                       "VALUES (#{entry.id.to_i}, #{connection.select_value('SELECT max(id) FROM price_sources')}, #{connection.select_value('SELECT max(id) FROM price_series')}, 150, '#{now}', '#{now}')")
+  end
+
   context "when signed in" do
     before { sign_in_as(user) }
 
@@ -35,6 +54,18 @@ RSpec.describe "Collection export", type: :request do
       expect(file["lots"].map { |lot| [ lot["entry"]["source_id"], lot["quantity"] ] }).to eq([ [ shared.external_key, 2 ] ])
       expect(file["lots"].map { |lot| lot.values_at("quantity", "price_paid") }.flatten).not_to include(8_888, "777.77")
       expect(response.body).not_to include("Zebulon Otherperson", "zebulon.otherperson@example.test")
+    end
+
+    it "holds no price from the prices database, and stays at format version 4 (spec 081 AC-3.2)", :aggregate_failures do
+      entry = printing
+      create(:lot, account: user.account, entry:, price_paid_cents: 1250)
+      record_a_price_of(entry)
+
+      get collection_export_path
+      file = JSON.parse(response.body)
+
+      expect(file["format_version"]).to eq(4)
+      expect(keys_of(file).grep(/price(?!_paid)/)).to be_empty
     end
 
     it "answers no format suffix" do
