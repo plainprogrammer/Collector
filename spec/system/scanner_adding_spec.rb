@@ -32,9 +32,9 @@ RSpec.describe "Adding from the scanner", type: :system do
     page.execute_script("window.__marker = 'still here'")
     expect(page).to have_css(".c-scanner__add button", text: "Nonfoil").and have_css(".c-scanner__add button", text: "Foil")
     find(foil_button).click
-    expect(page).to have_css("#status", text: "Added 1 × Lightning Bolt (MOM · 123, Foil) to your collection.")
+    expect(page).to have_css("#scanner_added_text", text: "Added Lightning Bolt MOM · 123, foil")
     expect(page).to have_no_css(".c-scanner__candidate")
-    expect(page).to have_css("#scanner_sitting", text: "This sitting: 1 card")
+    expect(page).to have_button("1 added. Show this sitting's cards.")
     expect(page).to have_button("Capture", disabled: false)
     expect(page.evaluate_script("window.__marker")).to eq("still here")
     expect(page.evaluate_script("window.__tracks.length === 1 && window.__tracks[0].readyState === 'live'")).to be(true)
@@ -44,7 +44,7 @@ RSpec.describe "Adding from the scanner", type: :system do
   it "adds one copy even when both buttons are tapped at once (AC-1.4, AC-1.5)", :aggregate_failures do
     read_card
     page.execute_script("document.querySelectorAll('.c-scanner__add button').forEach((button) => button.click())")
-    expect(page).to have_css("#scanner_sitting", text: "This sitting: 1 card")
+    expect(page).to have_button("1 added. Show this sitting's cards.")
     expect(user.account.lots.sum(:quantity)).to eq(1)
   end
 
@@ -53,8 +53,18 @@ RSpec.describe "Adding from the scanner", type: :system do
     pick_synthetic_photo
     expect(page).to have_css(".c-scanner__candidate", text: "Lightning Bolt", wait: 30)
     find(foil_button).click
-    expect(page).to have_css("#status", text: "Added 1 × Lightning Bolt")
+    expect(page).to have_css("#scanner_added_text", text: "Added Lightning Bolt")
+    open_destination
     expect(page).to have_field("Use a photo", type: "file", visible: :all, disabled: false)
+  end
+
+  it "keeps the pane open with the sentence and no add button for a replay of an undone add (AC-4.8)", :aggregate_failures do
+    read_card
+    key = page.evaluate_script("document.querySelector(\"input[name='entry[reading_key]']\").value")
+    Scanner::Sitting.add!(account: user.account, printing: Catalog::Entry.find_by!(number: "123"), finish: "foil", reading_key: key).entry.undo!
+    find(foil_button).click
+    expect(page).to have_css("#status", text: "You added this card, then undid it. Scan it again to add it.")
+    expect(page).to have_no_css(".c-scanner__add")
   end
 
   it "sends you to sign in when your session ended before the add (Error Scenarios)" do
@@ -90,7 +100,7 @@ RSpec.describe "Adding from the scanner", type: :system do
     click_on "Other printings"
     expect(page).to have_css("#status", text: "Other printings of Lightning Bolt are below.")
     within("turbo-frame#scanner_printings") { find("button[aria-label='Add Lightning Bolt M10 · 146 Nonfoil']").click }
-    expect(page).to have_css("#status", text: "Added 1 × Lightning Bolt (M10 · 146, Nonfoil) to your collection.")
+    expect(page).to have_css("#scanner_added_text", text: "Added Lightning Bolt M10 · 146, nonfoil")
     expect(page.evaluate_script("window.__marker")).to eq("still here")
     expect(user.account.scanner_sitting.entries.sole.printing).to eq(older)
   end

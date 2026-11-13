@@ -19,12 +19,12 @@ RSpec.describe "Scanner timings", :timing, type: :system do
     sorted.size.odd? ? sorted[sorted.size / 2] : (sorted[sorted.size / 2 - 1] + sorted[sorted.size / 2]) / 2.0
   end
 
-  # Milliseconds from tapping Foil to #status changing, for one fresh reading.
+  # Milliseconds from tapping Foil to #scanner_added_text changing, for one fresh reading.
   def time_scanner_add
     click_on "Capture"
     button = find("button[aria-label='Add Lightning Bolt MOM · 123 Foil']", wait: 30)
     page.execute_script(<<~JS)
-      const status = document.getElementById("status")
+      const status = document.getElementById("scanner_added_text")
       window.__added = null
       new MutationObserver((_, observer) => { window.__added = performance.now(); observer.disconnect() }).observe(status, { childList: true, subtree: true, characterData: true })
       window.__tapped = performance.now()
