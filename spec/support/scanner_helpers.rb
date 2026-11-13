@@ -10,13 +10,21 @@ module ScannerHelpers
       script.textContent = `import * as geometry from "scanner/geometry"; window.__scannerGeometry = geometry; dispatchEvent(new Event("geometry-ready"))`
       document.head.append(script)
     })
-    window.__syntheticCard = async (name, lines) => {
-      const { guideRect } = await window.__geometry
+    // A live card is drawn where the page's guide falls in the frame (spec 082 AC-3.1): the stage's live guide mapped into the
+    // 3:4 frame the way the camera controller maps it; a photo's card where the shipped guide is (the photo path's framing).
+    window.__syntheticCard = async (name, lines, live = false) => {
+      const { guideRect, guideInFrame, liveGuideRect } = await window.__geometry
       const canvas = Object.assign(document.createElement("canvas"), { width: 900, height: 1200 })
       const context = canvas.getContext("2d")
-      const card = guideRect(canvas.width, canvas.height)
+      const cardBox = () => {
+        const stage = document.querySelector(".c-scan__stage")?.getBoundingClientRect()
+        if (!live || !stage) return guideRect(canvas.width, canvas.height)
+        const framing = document.querySelector(".c-scan")?.dataset.cameraFramingValue || "full"
+        return guideInFrame(canvas.width, canvas.height, stage.width, stage.height, liveGuideRect(stage.width, stage.height, framing))
+      }
       // Text is sized and placed from the card, as on a real card, so strip tuning doesn't change the test text.
       const draw = () => {
+        const card = cardBox()
         context.fillStyle = "gray"; context.fillRect(0, 0, canvas.width, canvas.height)
         context.fillStyle = "white"; context.fillRect(card.x, card.y, card.width, card.height)
         context.fillStyle = "black"; context.textBaseline = "middle"
@@ -157,7 +165,7 @@ module ScannerHelpers
     page.evaluate_async_script(<<~JS, name, lines, torch)
       const [ name, lines, torch, done ] = arguments
       #{CARD_JS}
-      window.__syntheticCard(name, lines).then(({ canvas, draw }) => {
+      window.__syntheticCard(name, lines, true).then(({ canvas, draw }) => {
         window.__tracks = []; window.__cameraRequests = []; window.__torch = []
         navigator.mediaDevices.getUserMedia = async (constraints) => {
           window.__cameraRequests.push(constraints)
@@ -176,7 +184,7 @@ module ScannerHelpers
     JS
     restart_camera
     wait_for_scanner
-    eventually("window.__tracks.length > 0 && document.querySelector('.c-scanner__video').readyState >= 2")
+    eventually("window.__tracks.length > 0 && document.querySelector('.c-scan__video, .c-scanner__video').readyState >= 2")
   end
 
   # The engine has loaded and a live camera feed is showing (the shutter enables only then).
@@ -200,7 +208,7 @@ module ScannerHelpers
   end
 
   def restart_camera
-    page.execute_script(%(window.Stimulus.getControllerForElementAndIdentifier(document.querySelector(".c-scanner"), "camera").restart()))
+    page.execute_script(%(window.Stimulus.getControllerForElementAndIdentifier(document.querySelector(".c-scan, .c-scanner"), "camera").restart()))
   end
 
   # Waits for a JavaScript expression to become truthy, the way Capybara's matchers wait for the DOM.
