@@ -332,6 +332,108 @@ RSpec.describe "The scanner's sitting", type: :system do
     expect(page.evaluate_script("window.__added === document.getElementById('scanner_added_text')")).to be(true)
   end
 
+  def count_label = "#scanner_count[aria-label='%s added. Show this sitting\\'s cards.']"
+  def counted(number) = have_css(format(count_label, number))
+
+  # A second printing, shown to the camera by its own name and collector line.
+  def add_counterspell_by_scanning
+    create(:mtg_printing, finishes: %w[nonfoil foil], entry: create(:catalog_entry, identity: create(:catalog_identity, name: "Counterspell"), name: "Counterspell", set: Catalog::Set.find_by!(code: "mom"), number: "124"))
+    Catalog::NameIndex.new("mtg").rebuild
+    show_synthetic_card(name: "Counterspell", lines: [ "R 0124", "MOM • EN" ])
+    click_on "Capture"
+    find("button[aria-label='Add Counterspell MOM · 124 Foil']", wait: 30).click
+  end
+
+  it "reads the place and the short condition on the top bar after one Set (spec 082 AC-2.3)", :aggregate_failures do
+    create(:location, account: user.account, name: "Blue binder")
+    visit scanner_path
+    open_destination
+    select "Near mint (NM)", from: "Condition"
+    select "Blue binder", from: "Location"
+    click_on "Set"
+    expect(page).to have_css(".c-scan__dest-text", exact_text: "Blue binder · NM")
+    expect(page).to have_css("#scanner_destination_status", text: "Cards you scan now: Near mint, in Blue binder.")
+  end
+
+  it "shows the sitting's choices on the top bar after leaving the scanner and coming back (spec 082 AC-2.5)", :aggregate_failures do
+    binder = create(:location, account: user.account, name: "Blue binder")
+    visit scanner_path
+    expect(page).to have_css(".c-scan__dest-text", exact_text: "No location")
+    Scanner::Sitting.choose!(account: user.account, condition: "near_mint", location: binder)
+    visit more_path
+    visit scanner_path
+    expect(page).to have_css(".c-scan__dest-text", exact_text: "Blue binder · NM")
+    expect(page).to have_css(".c-scan__done")
+  end
+
+  it "hides the frozen frame once an add has cleared the result (spec 082 AC-5.1)", :aggregate_failures do
+    visit scanner_path
+    show_synthetic_card
+    click_on "Capture"
+    find("button[aria-label='Add Lightning Bolt MOM · 123 Foil']", wait: 30).click
+    expect(page).to have_css("#scanner_added_text", text: "Added")
+    expect(page).to have_css("canvas.c-scan__frozen[hidden]", visible: :all)
+    expect(page).to have_no_css(".c-scan--result")
+  end
+
+  it "offers no Undo after an Undo from the after-add line, and the count reads one less (spec 082 AC-5.3)", :aggregate_failures do
+    visit scanner_path
+    add_by_scanning
+    add_by_scanning
+    expect(page).to counted(2)
+    click_on "Undo"
+    expect(page).to have_css("#scanner_added_text", text: "Removed 1 × Lightning Bolt")
+    expect(page).to have_no_button("Undo")
+    expect(page).to counted(1)
+    expect(page.evaluate_script("document.querySelector('#scanner_added_action').children.length")).to eq(0)
+  end
+
+  it "names the second card on the second Undo when two different cards were added (spec 082 AC-5.5)", :aggregate_failures do
+    visit scanner_path
+    add_by_scanning
+    expect(page).to have_css("#scanner_added_text", text: "Added Lightning Bolt")
+    add_counterspell_by_scanning
+    expect(page).to have_css("#scanner_added_text", text: "Added Counterspell MOM · 124, foil")
+    expect(page).to have_button("Undo Counterspell (MOM · 124, Foil)").and have_no_button("Undo Lightning Bolt (MOM · 123, Foil)")
+    click_on "Undo"
+    expect(page).to have_css("#scanner_added_text", text: "Removed 1 × Counterspell (MOM · 124, Foil)")
+    expect(user.account.lots.map { it.entry.name }).to eq([ "Lightning Bolt" ])
+  end
+
+  # The end-of-sitting summary's link and its sentence, measured in one script: the link is outside the live region and on its row.
+  def summary_geometry
+    page.evaluate_script(<<~JS)
+      (() => {
+        const link = document.querySelector("#scanner_added_action a"), text = document.getElementById("scanner_added_text")
+        const a = link.getBoundingClientRect(), t = text.getBoundingClientRect()
+        return { inStatus: !!link.closest("[role=status]"), besideText: a.left >= t.left && a.top < t.bottom && a.bottom > t.top,
+                 sameWrapper: link.closest(".c-scan__line--added") === text.closest(".c-scan__line--added") }
+      })()
+    JS
+  end
+
+  it "puts Open your collection beside the end-of-sitting sentence, outside its live region (spec 082 AC-5.6)", :aggregate_failures do
+    visit scanner_path
+    add_by_scanning
+    expect(page).to have_css("#scanner_added_text", text: "Added Lightning Bolt")
+    end_sitting
+    expect(page).to have_css("#scanner_added_text", text: "Added 1 card in this sitting.")
+    expect(page).to have_link("Open your collection")
+    expect(summary_geometry).to eq("inStatus" => false, "besideText" => true, "sameWrapper" => true)
+  end
+
+  it "counts one less after an Undo in the list sheet (spec 082 AC-6.2)", :aggregate_failures do
+    Scanner::Sitting.add!(account: user.account, printing:, finish: "foil", reading_key: "a" * 32)
+    Scanner::Sitting.add!(account: user.account, printing:, finish: "foil", reading_key: "b" * 32)
+    visit scanner_path
+    expect(page).to counted(2)
+    open_sitting_list
+    find("#scanner_sitting").find_button("Undo", match: :first).click
+    expect(page).to have_css("#scanner_list_status", text: "Removed 1 × Lightning Bolt")
+    expect(page).to counted(1)
+    expect(page).to have_css("#scanner-sitting-heading", visible: :all, text: "This sitting: 1 card")
+  end
+
   it "returns focus to the destination after a Set redrew it while the sheet was open (decision 15, AC-2.4)", :aggregate_failures do
     visit scanner_path
     find(".c-scan__dest").send_keys(:enter)

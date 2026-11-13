@@ -33,6 +33,72 @@ RSpec.describe "Scanner measurement mode", type: :system do
     end
   end
 
+  def sign_in_with_a_catalog
+    identity = create(:catalog_identity, name: "Lightning Bolt")
+    create(:mtg_printing, finishes: %w[nonfoil foil], entry: create(:catalog_entry, identity:, name: "Lightning Bolt", set: create(:catalog_set, code: "mom"), number: "123"))
+    Catalog::NameIndex.new("mtg").rebuild
+    system_sign_in_as(create(:user))
+  end
+
+  def choose_shipped_framing
+    find("#measurement_run_button").click
+    click_on "Shipped framing"
+    expect(page).to have_css("#measurement_run_button", text: "· shipped")
+  end
+
+  # The drawn guide's box in the stage and the rule's for the framing the page draws, as the page's own geometry module computes it.
+  def drawn_and_rule(framing)
+    page.evaluate_async_script(<<~JS, framing)
+      const [ framing, done ] = arguments
+      #{ScannerHelpers::MODULES_JS}
+      window.__modules.then(({ geometry }) => {
+        const stage = document.querySelector(".c-scan__stage").getBoundingClientRect(), guide = document.querySelector(".c-scan__guide").getBoundingClientRect()
+        const rule = geometry.liveGuideRect(stage.width, stage.height, framing)
+        done({ drawn: [ guide.width, guide.height ].map((v) => Math.round(v)), rule: [ rule.width, rule.height ].map((v) => Math.round(v)) })
+      })
+    JS
+  end
+
+  it "has the hidden heading and the run sheet's two framing buttons (spec 082 AC-7.1)", :aggregate_failures do
+    sign_in_with_a_catalog
+    visit scanner_measurement_path
+    expect(page).to have_css("main.c-scan h1.c-sr", text: "Measure the scanner", visible: :all)
+    expect(page.evaluate_script("(() => { const b = document.querySelector('main.c-scan h1').getBoundingClientRect(); return b.width <= 1 && b.height <= 1 })()")).to be(true)
+    find("#measurement_run_button").click
+    expect(page).to have_css("dialog#measurement_sheet[open]")
+    expect(page).to have_button("Full framing", disabled: true).and have_button("Shipped framing", disabled: false)
+  end
+
+  it "shows a capture that couldn't be stored in the pane's region, as well as the sheet's line (spec 082 AC-7.1)", :aggregate_failures do
+    sign_in_with_a_catalog
+    visit scanner_measurement_path
+    show_synthetic_card
+    page.execute_script("const send = window.fetch; window.fetch = (url, options) => String(url).includes('/measurement/captures') ? Promise.reject(new TypeError('offline')) : send(url, options)")
+    click_on "Capture"
+    expect(page).to have_css(".c-scan--result #status", text: "The capture wasn't stored, so it doesn't count yet. Store it again.", wait: 30)
+    expect(page).to have_css(".c-scanner__candidate", text: "Lightning Bolt")
+    expect(page).to have_css("#measurement_panel [data-measurement-target=retry]:not([hidden])", visible: :all)
+    expect(corpus.join("runs/live/full/IMG_1.jpeg/capture-001.json")).not_to exist
+  end
+
+  it "stores a Skip under the shipped framing's run, and draws that framing's guide (spec 082 AC-7.2)", :aggregate_failures do
+    sign_in_with_a_catalog
+    visit scanner_measurement_path
+    expect(page).to have_css(".c-scan__feed:not([hidden])", wait: 10)
+    full = drawn_and_rule("full")
+    expect(full["drawn"]).to eq(full["rule"])
+    choose_shipped_framing
+    expect(page).to have_css(".c-scan__feed:not([hidden])", wait: 10)
+    measured = drawn_and_rule("shipped")
+    expect(measured["drawn"]).to eq(measured["rule"])
+    expect(measured["drawn"]).not_to eq(full["rule"])
+    find("#measurement_run_button").click
+    click_on "Skip IMG_1.jpeg"
+    expect(page).to have_text("Skipped IMG_1.jpeg.")
+    expect(corpus.join("runs/live/shipped/IMG_1.jpeg/skipped.json")).to exist
+    expect(corpus.join("runs/live/full/IMG_1.jpeg/skipped.json")).not_to exist
+  end
+
   it "stores a capture against the card chosen before the shutter (AC-5.2, AC-5.3)", :aggregate_failures do
     identity = create(:catalog_identity, name: "Lightning Bolt")
     create(:mtg_printing, entry: create(:catalog_entry, identity:, name: "Lightning Bolt", set: create(:catalog_set, code: "mom"), number: "123"))
