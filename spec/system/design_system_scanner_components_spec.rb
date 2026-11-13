@@ -43,6 +43,24 @@ RSpec.describe "Design system: phone-first scanner components", type: :system do
   # An icon's computed stroke, as a number.
   def stroke_width(selector) = evaluate("return parseFloat(getComputedStyle(document.querySelector(#{selector.to_json})).strokeWidth)").to_f
 
+  # A token that is no colour, as the root declares it ("8px" for --radius-md).
+  def custom(name) = evaluate("return getComputedStyle(document.documentElement).getPropertyValue(#{name.to_json}).trim()")
+
+  # A font token as a computed font-family serialises it, so the two compare as strings.
+  def font_token(name)
+    evaluate(<<~JS)
+      const probe = document.createElement("span")
+      probe.style.fontFamily = "var(#{name})"
+      document.body.append(probe)
+      const value = getComputedStyle(probe).fontFamily
+      probe.remove()
+      return value
+    JS
+  end
+
+  # The four corner radii's property names, clockwise from the top left.
+  def corners = %w[border-top-left-radius border-top-right-radius border-bottom-right-radius border-bottom-left-radius]
+
   describe "StatusBand (AC-1.3 to AC-1.5)" do
     def unsure = "Not sure of this card. Check it against your capture."
 
@@ -61,12 +79,13 @@ RSpec.describe "Design system: phone-first scanner components", type: :system do
     end
 
     %w[light dark].each do |name|
-      it "fills with the status colour and writes in its on- token, in the #{name} theme (AC-1.3)", :aggregate_failures do
+      it "fills with the status colour and writes in its on- token and the sans font, in the #{name} theme (AC-1.3)", :aggregate_failures do
         add_to_main(bands)
         theme(name)
         expect(computed("#ok", "background-color", "color")).to eq([ token("--success"), token("--on-success") ])
         expect(computed("#warn", "background-color", "color")).to eq([ token("--warning"), token("--on-warning") ])
-        expect(computed("#ok svg", "color")).to eq([ token("--on-success") ])
+        expect(computed("#ok svg", "color") + computed("#warn svg", "color")).to eq([ token("--on-success"), token("--on-warning") ])
+        expect(computed("#ok", "font-family")).to eq([ font_token("--font-sans") ])
       end
     end
 
@@ -143,6 +162,7 @@ RSpec.describe "Design system: phone-first scanner components", type: :system do
           expect(computed("#sheet", "background-color", "border-top-color", "border-top-width", "border-top-left-radius", "box-shadow"))
             .to eq([ token("--surface-raised"), token("--line-strong"), "1px", "8px", "none" ])
           expect(evaluate('return getComputedStyle(document.getElementById("sheet"), "::backdrop").backgroundColor')).to eq(token("--scrim"))
+          expect(computed("#sheet", *corners, "position")).to eq([ custom("--radius-md"), custom("--radius-md"), "0px", "0px", "fixed" ])
         end
       end
     end
@@ -182,6 +202,24 @@ RSpec.describe "Design system: phone-first scanner components", type: :system do
         expect(computed("#sheet", "animation-name", "animation-duration")).to eq(%w[c-sheet-rise 0.2s])
         apply_reduced_motion_rules(needs: [ "::backdrop" ])
         expect(computed("#sheet", "animation-name")).to eq([ "none" ])
+      end
+    end
+
+    # Closes the open sheet and reads it at once: [display, animation names, transition durations, running animations]. An
+    # exit animation, or a transition that keeps the dialog shown (`display … allow-discrete`), changes one of the four.
+    def close_sheet
+      evaluate(<<~JS)
+        const sheet = document.getElementById("sheet")
+        sheet.close()
+        const style = getComputedStyle(sheet)
+        return [style.display, style.animationName, style.transitionDuration, sheet.getAnimations().length]
+      JS
+    end
+
+    it "closes at once, with no animation and no transition (AC-2.4)" do
+      in_viewport(390, 844, "") do
+        open_sheet
+        expect(close_sheet).to eq([ "none", "none", "0s", 0 ])
       end
     end
 
@@ -288,10 +326,28 @@ RSpec.describe "Design system: phone-first scanner components", type: :system do
       end
     end
 
+    # Done's width, and whether the destination's chevron starts where its value's text ends or later, at 360px.
+    def done_and_chevron(value)
+      in_viewport(360, 640, shell(value:)) do
+        evaluate(<<~JS)
+          const rect = (selector) => document.querySelector(selector).getBoundingClientRect()
+          return [rect(".c-scan__done").width, rect(".c-scan__dest svg").left >= rect(".c-scan__dest-text").right]
+        JS
+      end
+    end
+
+    it "keeps Done as wide with a long value as with a short one, the chevron after the value (AC-3.3)", :aggregate_failures do
+      long = done_and_chevron("A deck with a very long name indeed › Considering · NM")
+      expect(long).to eq(done_and_chevron("Binder · NM"))
+      expect(long.last).to be(true)
+    end
+
     it "lays out the count, the main button and the torch in a 96px bar at 390px (AC-3.4)", :aggregate_failures do
       in_viewport(390, 844, shell) do
         expect(bottom_boxes).to eq([ [ 16, 84, 56 ], [ 112, 194, 64 ], [ 318, 56, 56 ] ])
         expect(computed(".c-scan__count b", "font-family").first).to include("IBM Plex Mono")
+        expect(computed(".c-scan__count b", "font-size", "line-height")).to eq(%w[13px 18px])
+        expect(box(".c-scan__count b")["bottom"]).to be <= box(".c-scan__count span")["top"]
         expect([ box(".c-scan__torch svg")["width"], stroke_width(".c-scan__torch svg") ]).to eq([ 20, 1.5 ])
         expect(page).to have_button("Torch").and have_button("12 added. Show this sitting's cards.")
         expect(find(".c-scan__torch")["aria-pressed"]).to eq("false")
@@ -331,6 +387,16 @@ RSpec.describe "Design system: phone-first scanner components", type: :system do
         expect(computed(".c-scan__line--added", "background-color", "border-top-color")).to eq([ token("--surface-raised"), token("--line-strong") ])
         expect(box(".c-scan__undo .c-btn")["height"]).to eq(44)
         expect(evaluate('return !!document.querySelector(".c-scan__line--added [role=status] .c-scan__undo")')).to be(false)
+      end
+    end
+
+    %w[light dark].each do |name|
+      it "rounds the after-add line's corners and writes it in ink, in the #{name} theme (AC-3.7)", :aggregate_failures do
+        in_viewport(390, 844, shell(added: "Added Lightning Bolt MOM · 123, foil", count: 13)) do
+          theme(name)
+          expect(computed(".c-scan__line--added", *corners)).to eq([ custom("--radius-md") ] * 4)
+          expect(computed(".c-scan__line--added .c-scan__line-text", "color")).to eq([ token("--ink") ])
+        end
       end
     end
 
@@ -443,6 +509,7 @@ RSpec.describe "Design system: phone-first scanner components", type: :system do
         expect(picture["width"]).to be_within(0.1).of(124 * 63 / 88.0)
         expect(computed(".c-scan__read-label", "font-size", "color")).to eq([ "12px", token("--ink-muted") ])
         expect(computed(".c-scan__read-name", "font-size", "font-weight", "text-overflow", "white-space")).to eq(%w[15px 600 ellipsis nowrap])
+        expect(computed(".c-scan__read-name", "color")).to eq([ token("--ink") ])
         expect(computed(".c-scan__read-line", "font-family").first).to include("IBM Plex Mono")
       end
     end
@@ -482,6 +549,22 @@ RSpec.describe "Design system: phone-first scanner components", type: :system do
       in_result(390, 844) { expect(end_centres).to eq([ 195, 195 ]) }
     end
 
+    # Each side's [width, style, colour] of the border of Previous and of Next, in one list.
+    def nav_borders
+      %w[prev next].flat_map do |nav|
+        %w[top right bottom left].map { |side| computed(".c-scanpane__nav--#{nav}", *%w[width style color].map { "border-#{side}-#{it}" }) }
+      end
+    end
+
+    # Whether the star in the special finish's button starts left of the button's words.
+    def star_before_words?
+      evaluate(<<~JS)
+        const star = document.querySelector("#{shown} .c-scanpane__add svg"), range = document.createRange()
+        range.selectNodeContents([...star.closest(".c-btn").childNodes].find((node) => node.nodeType === 3 && node.textContent.trim()))
+        return star.getBoundingClientRect().left < range.getBoundingClientRect().left
+      JS
+    end
+
     it "puts Previous and Next over the neighbours, 44px, the one at the row's end disabled (AC-4.4)", :aggregate_failures do
       in_result(390, 844, result(current: 0)) do
         prev, nxt, wrap = box(".c-scanpane__nav--prev"), box(".c-scanpane__nav--next"), box(".c-scanpane__rowwrap")
@@ -490,6 +573,7 @@ RSpec.describe "Design system: phone-first scanner components", type: :system do
         expect(page).to have_button("Previous printing", disabled: true).and have_button("Next printing", disabled: false)
         expect(computed(".c-scanpane__nav--next", "background-color")).to eq([ token("--surface-raised") ])
         expect([ box(".c-scanpane__nav--next svg")["width"], stroke_width(".c-scanpane__nav--next svg") ]).to eq([ 20, 1.5 ])
+        expect(nav_borders.uniq).to eq([ [ "1px", "solid", token("--line-strong") ] ])
       end
     end
 
@@ -522,6 +606,7 @@ RSpec.describe "Design system: phone-first scanner components", type: :system do
         expect(computed("#{shown} .c-scanpane__add svg", "width", "color")).to eq([ "14px", token("--foil") ])
         expect(evaluate(%(return [...document.querySelectorAll("#{shown} .c-scanpane__add svg")].map((el) => el.getAttribute("aria-hidden")))))
           .to eq([ "true" ])
+        expect(star_before_words?).to be(true)
       end
     end
 
