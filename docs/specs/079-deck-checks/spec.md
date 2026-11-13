@@ -8,6 +8,7 @@
 **Branch:** `079-deck-checks`
 **Issue:** [#258](https://github.com/plainprogrammer/Collector/issues/258) (the 2.0 milestone, roadmap theme C)
 **ADR:** none: ADR 0028 already puts a deck's collectible part behind the collecting vocabulary, and specs 066 and 069 added optional answers to that seam; this spec adds a third the same way (decision 1)
+**Plan:** retired in `2086fd143fdd0a99fb5ade70f050e15ab2b0650d`; read it with `git show 2086fd143fdd0a99fb5ade70f050e15ab2b0650d^:docs/specs/079-deck-checks/plan.md`
 **Frozen:** the current rules are in [`collection-and-lots.md`](../../architecture/collection-and-lots.md) (whole spec); the results section's markup and CSS rule are `DeckCheck` in the [design system](../../design-system/README.md); see the [specs index](../README.md)
 
 ---
