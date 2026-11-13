@@ -1,7 +1,7 @@
 # Implementation Plan: A Start Refuses a Volume That Holds a Prices Database and No Primary (spec 086, issue #375)
 
 **Spec:** `docs/specs/086-start-refuses-orphan-prices/spec.md` (Approved v0.3.1) · **Issue:** #375 · **Branch:** `086-start-refuses-orphan-prices` · **Created:** 2026-11-13
-**Status:** Approved (Gate B, 2026-11-13, the coordinator under the maintainer's delegation; no push before the maintainer rules on decisions 1 to 3). Plan review (Fable, read-only, 2026-11-13): APPROVE WITH CHANGES (0 blocking, 4 major, 9 minor), all fixed below. Decisions 1, 2 and 3 are the maintainer's and are still pending: the plan follows my recommendations and puts each decision's code in a task of its own (T1 for decision 2 and 7, T2 for decision 3, T3 for decision 1), so a different ruling changes one task.
+**Status:** Approved (Gate B, 2026-11-13, the coordinator under the maintainer's delegation; the maintainer ruled decisions 1 to 3 as recommended on 2026-11-13). Plan review (Fable, read-only, 2026-11-13): APPROVE WITH CHANGES (0 blocking, 4 major, 9 minor), all fixed below. Decisions 1, 2 and 3 were the maintainer's and are ruled as recommended (2026-11-13): the plan puts each decision's code in a task of its own (T1 for decision 2 and 7, T2 for decision 3, T3 for decision 1), so a different ruling changes one task.
 
 ## Context
 
