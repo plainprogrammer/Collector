@@ -19,8 +19,18 @@ module ThirdPartyLicencesHelpers
     files.each { |file, text| path.join(file).write(text) }
     StandIn.new(name:, version: Gem::Version.new(version), licenses:, homepage:, full_gem_path: path.to_s)
   end
+
+  # Makes the third-party licences page and reader serve these sections for the rest of this example, so a spec of the
+  # page needs neither the bundle nor the manifest. The suite puts the real reading back after every example.
+  #
+  # @param sections [Array<Collector::ThirdPartyLicences::Section>] the sections to serve, in page order
+  # @return [Collector::ThirdPartyLicences] the list now in force
+  def third_party_licences(sections)
+    Collector::ThirdPartyLicences.new(sections).tap { Collector::ThirdPartyLicences.current = it }
+  end
 end
 
 RSpec.configure do |config|
   config.include ThirdPartyLicencesHelpers
+  config.after { Collector::ThirdPartyLicences.reset }
 end

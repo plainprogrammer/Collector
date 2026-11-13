@@ -228,4 +228,34 @@ RSpec.describe Collector::ThirdPartyLicences, type: :model do
       expect(replacement.sections.map(&:key)).to eq([ :gems ])
     end
   end
+
+  describe "the third_party_licences helper" do
+    def sections = [ described_class::Section.new(key: :gems, title: "Ruby gems", components: []) ]
+
+    def counting_builder(calls) = -> { calls.push(:built).then { described_class.new([]) } }
+
+    it "serves the sections it is given, and a reset brings the builder back", :aggregate_failures do
+      replacement = third_party_licences(sections)
+      expect(described_class.current(builder: -> { raise "not asked" })).to equal(replacement)
+
+      described_class.reset
+      calls = []
+      described_class.current(builder: counting_builder(calls))
+
+      expect(calls).to eq([ :built ])
+    end
+
+    context "when two examples run in order", order: :defined do
+      it "replaces the list in the first" do
+        expect(third_party_licences(sections).sections.map(&:key)).to eq([ :gems ])
+      end
+
+      it "finds the replacement gone in the next, with no reset of its own" do
+        calls = []
+        described_class.current(builder: counting_builder(calls))
+
+        expect(calls).to eq([ :built ])
+      end
+    end
+  end
 end
