@@ -78,7 +78,7 @@ Neighbouring areas: the backup that holds the prices database, its format and it
 - [Research 083](../specs/083-non-english-printing-prices/research.md) and [ruling 41](../roadmap.md#2026-11-13-prices-on-non-english-printings-research-083) (quotes store what the file carries).
 - [ADR 0029](../adr/0029-prices-database-held-by-the-backup.md).
 - [Price data design](../superpowers/specs/2026-11-13-price-data-design.md) (2026-11-13); roadmap rulings 35 to 40; rulings 27, 37 and 38 (the hosted flag).
-- Issues [#363](https://github.com/plainprogrammer/Collector/issues/363) (this database), [#375](https://github.com/plainprogrammer/Collector/issues/375) (a start that refuses a prices file with no primary), [#364](https://github.com/plainprogrammer/Collector/issues/364) (the contract), [#362](https://github.com/plainprogrammer/Collector/issues/362) (Scryfall's written answer, open; it may change the hosted flag).
+- Issues [#363](https://github.com/plainprogrammer/Collector/issues/363) (this database), [#375](https://github.com/plainprogrammer/Collector/issues/375) (a start that refuses a prices file with no primary: built by [spec 086](../specs/086-start-refuses-orphan-prices/spec.md), whose rules, the check and its message, are in [release and deploy](release-and-deploy.md)), [#364](https://github.com/plainprogrammer/Collector/issues/364) (the contract), [#362](https://github.com/plainprogrammer/Collector/issues/362) (Scryfall's written answer, open; it may change the hosted flag).
 
 ## Distillation log
 
@@ -86,3 +86,4 @@ Neighbouring areas: the backup that holds the prices database, its format and it
 |---|---|---|
 | 2026-11-13 | Spec 081 (decisions 1 to 5, 9 and 12: the prices database, its five tables, `WITHOUT ROWID` with the SQL schema file, the index exception, `PricesRecord`, the rules that keep prices global and apart; this doc's first distillation) | [#405](https://github.com/plainprogrammer/Collector/pull/405) |
 | 2026-11-13 | Spec 085 (decisions 1 to 12: the price source contract and its registry, the Scryfall source's quotes, the rows of sources and series written from a declaration, the hosted flag, the core guard; ruling 41 distilled) | [#413](https://github.com/plainprogrammer/Collector/pull/413) |
+| 2026-11-13 | Spec 086 (a start refuses a volume that holds the prices file and no primary: the pointer to release and deploy, which holds the rules; #375) | spec 086's pull request |

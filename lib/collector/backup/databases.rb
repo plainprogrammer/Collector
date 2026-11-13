@@ -2,6 +2,7 @@ module Collector
   module Backup
     # Where this environment's databases live: the files that make a volume "not fresh" (decision 6) and the paths of the
     # primary and the prices database. Read from config/database.yml without a connection pool, so it works before the application is initialized.
+    # It is also read by +Collector::StartCheck+ (spec 086), which asks only for the primary and prices paths, the directory and the sidecar names.
     class Databases
       SIDECARS = [ "", "-wal", "-shm", "-journal" ].freeze
 
