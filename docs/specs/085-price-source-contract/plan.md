@@ -1,7 +1,7 @@
 # Implementation Plan: A Price Source Contract, and Scryfall's Prices Through It (spec 085, issue #364)
 
 **Spec:** `docs/specs/085-price-source-contract/spec.md` (Approved 1.0.4) · **ADR:** none (Gate A: the contract's comment and `prices.md` carry the rules) · **Issue:** #364 · **Branch:** `085-price-source-contract` · **Created:** 2026-11-13
-Plan review: Fable 5.2, read-only. Round 1 (2026-11-13): APPROVE WITH CHANGES, 1 blocking, 3 major, 14 minor. Round 2: APPROVE WITH CHANGES, 1 major (a stale sentence), 4 minor, 5 nits. All applied in this revision.
+Plan review: Fable 5.2, read-only. Round 1 (2026-11-13): APPROVE WITH CHANGES, 1 blocking, 3 major, 14 minor. Round 2: APPROVE WITH CHANGES, 1 major (a stale sentence), 4 minor, 5 nits. All applied in this revision. **Approved 2026-11-13** (Gate B, by the coordinator under the maintainer's delegation); the T2.3 mutation proof stands in place of failing-first, and the one full CI run is the push's hook. Retired by `distill-feature` after the merge (spec 027).
 
 ## Global Constraints
 
