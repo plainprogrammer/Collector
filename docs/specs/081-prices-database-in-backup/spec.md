@@ -1,7 +1,7 @@
 # Feature 081: A Prices Database That the Backup Holds
 
-**Status:** Draft
-**Version:** 1.2.0
+**Status:** Approved by the coordinator under the maintainer's delegation (2026-11-13), after two Mode A review rounds (Fable 5.2), nothing blocking and nothing open; the maintainer ruled decision 3 (option A) on 2026-11-13. Two points are with the maintainer and don't block the plan: decision 2's index exception and decision 8's follow-up issue
+**Version:** 1.2.1
 **Created:** 2026-11-13
 **Last Updated:** 2026-11-13
 **Branch:** `081-prices-database-in-backup`
@@ -13,6 +13,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.2.1 | 2026-11-13 | Approved (Gate A). Status line only; no requirement, criterion or decision changes (PATCH) |
 | 1.2.0 | 2026-11-13 | Revised after the Mode A review, round 2 (no blocking findings; two major, nine minor). Starting on a volume that holds a prices file and no primary keeps the stale prices and gives the new catalog's printings the wrong history, so the documents and the refusal say never to start on it; a boot-time refusal is a follow-up (decision 8). The child processes' schema files: a fresh, absent `SCHEMA` path per command, and the repository's schema files stay untouched (decision 12, AC-6.9). The proof tells a previous release with prices from one without by its tag's `db/prices_migrate/`, and copies the prices file with its sidecars (decision 10). The runs index isn't unique. The orphan count's wording. Testable AC-1.2, AC-1.3 and AC-1.5. More superseded parts of specs 030 and 031 and of ADR 0024 decision 4 |
 | 1.1.0 | 2026-11-13 | Revised after the Mode A review, round 1 (no blocking findings; four major, eight minor). A killed restore can leave a prices file alone, and the documents and the refusal say what to do (decision 8, AC-5.9). The suite's own machinery for two test databases (decision 12). No secondary index on the two large tables and `on_delete: :restrict` on every key, a ruled exception to "index every foreign key" (decision 2). The run's status values (decision 2). The connection class is named (decision 5). The orphan-row count for `WITHOUT ROWID` tables (decision 3). The reports' schema versions (decisions 7 and 8). The guard's lists come from the backup's own constant (AC-6.1). How AC-5.7 is verified. The harness's version checks (decision 10). More superseded parts of specs 030 and 031, and more documents (decision 11) |
 | 1.0.0 | 2026-11-13 | Written from issue #363, the [price data design](../../superpowers/specs/2026-11-13-price-data-design.md) (decisions 7, 10, 12 and 13, "Data", "The run record"), the roadmap's prices lane (rulings 35 to 40), [ADR 0024](../../adr/0024-backup-with-vacuum-into.md), spec 030 and spec 031 as built, and the maintainer's ruling of 2026-11-13 on `WITHOUT ROWID` (decision 3, option A) |
