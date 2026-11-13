@@ -1,14 +1,15 @@
 require "rails_helper"
 
-# Spec 018 AC-2.5 and AC-2.6: the core's footer code names no collectible, source or rights holder, in text or in an
+# Spec 018 AC-2.5 and AC-2.6, and spec 084 AC-1.8: the core's footer code names no collectible, source or rights holder, in text or in an
 # address. A type's notice reaches the footer only through its source's optional hook (app/models/catalog/sources.rb).
 RSpec.describe "The core's footer code" do
   let(:files) do
-    %w[app/views/layouts/application.html.erb app/views/layouts/_footer.html.erb app/models/catalog/content_notice.rb]
+    %w[app/views/layouts/application.html.erb app/views/layouts/_footer.html.erb app/views/layouts/_notice_lines.html.erb
+       app/models/catalog/content_notice.rb lib/collector/build_facts.rb config/initializers/build_facts.rb]
       .map { |path| Rails.root.join(path) }
   end
 
-  it "covers the layout, the footer's partial and the model that collects the notices" do
+  it "covers the layout, the footer's partial, the model that collects the notices and the build facts' reader" do
     expect(files).to all(exist)
   end
 

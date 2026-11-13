@@ -144,6 +144,10 @@ deploying to your own servers. Both run the published image `ghcr.io/plainprogra
 on a persistent volume. `latest` is the newest release; `edge` follows `main`. Releases and their
 tags are described in `docs/releasing.md`.
 
+Every page's footer shows the running version and the commit it was built from, for example
+"Collector 0.3.0 (a9f6de7)". Quote it when you report a problem, and check it after an upgrade to see that
+the new release is the one running.
+
 > **Before you expose Collector:** the first person to reach a new or freshly upgraded instance becomes its admin. Either sign up straight away while the instance is only reachable on your private network, or create the admin from the command line first (see [Accounts](#accounts)).
 
 ### Docker Compose
@@ -195,8 +199,21 @@ The app is then available at `http://localhost:3000` (or your `COLLECTOR_PORT`).
   its background processes have started. No committed write is lost, because SQLite recovers its write-ahead
   log on the next start; a job that was running at that moment can be retried at `/admin/jobs`. A stop a few
   seconds after the app is ready is graceful.
-- **Building from source:** `docker build -t collector:local .` in a checkout, then start Compose with
-  `COLLECTOR_IMAGE=collector:local`.
+- **Building from source:** build the image in a checkout, passing the build facts the footer shows, then start
+  Compose with `COLLECTOR_IMAGE=collector:local`:
+
+  ```sh
+  docker build -t collector:local \
+    --build-arg COLLECTOR_VERSION=0.3.0-local \
+    --build-arg COLLECTOR_REVISION="$(git rev-parse HEAD)" \
+    --build-arg COLLECTOR_SOURCE_URL="https://github.com/you/collector/tree/$(git rev-parse HEAD)" .
+  ```
+
+  `COLLECTOR_VERSION` is the version you choose to call the build. `COLLECTOR_REVISION` is the full 40-character
+  SHA of the commit you build from. `COLLECTOR_SOURCE_URL` is the `https` address where that commit's source can
+  be read; a fork passes its own repository's address, not `plainprogrammer`'s, so the footer's "source code"
+  link offers the code that runs. An image built without them still runs, but its footer reads "unknown
+  version" and `bin/image-smoke` fails it.
 - **HTTPS:** the Compose setup serves plain HTTP. Signing in over plain HTTP sends your password unencrypted, which is only acceptable on a trusted private network. Put an HTTPS reverse proxy (for example Caddy, nginx, or Traefik) in front of it and set `COLLECTOR_HTTPS=true`.
 - **Upload limit:** the app refuses a request body over 40 MB (Puma and Thruster), which is more than the largest export file it imports (32 MB). A reverse proxy in front may set a lower limit of its own; keep it at 40 MB or more.
 
@@ -219,7 +236,16 @@ Kamal (`bin/kamal`) deploys the same image to servers you control over SSH.
 To deploy an image you build yourself, change `image` and `registry` in `config/deploy.yml` to
 a registry you own, then run `bin/kamal deploy`. Never run a plain `bin/kamal deploy` with the
 registry set to `ghcr.io/plainprogrammer/collector`: it would push a single-architecture `latest`
-over the published image.
+over the published image. Kamal builds that image through `builder:`, so give it the same build facts as
+"Building from source" does (`config/deploy.yml` is read through ERB; the stock file has a commented `args:`
+there), with your own repository's address:
+
+```yaml
+args:
+  COLLECTOR_VERSION: 0.3.0-yourname
+  COLLECTOR_REVISION: "<%= %x(git rev-parse HEAD).strip %>"
+  COLLECTOR_SOURCE_URL: "https://github.com/you/collector/tree/<%= %x(git rev-parse HEAD).strip %>"
+```
 
 Data is stored in the `collector_storage` volume (mounted at `/rails/storage`), and Solid
 Queue runs inside Puma (`SOLID_QUEUE_IN_PUMA`). How to back it up and restore it is in [Backup and restore](#backup-and-restore).
@@ -497,4 +523,4 @@ It doesn't back up for you (no schedule, no retention, no upload), encrypt the f
 
 ## License
 
-Collector is licensed under the GNU Affero General Public License v3.0. See [LICENSE](LICENSE).
+Collector is licensed under the GNU Affero General Public License v3.0. See [LICENSE](LICENSE). Every page's footer says so, with a link to the source of the running build.

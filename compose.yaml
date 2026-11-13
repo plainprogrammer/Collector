@@ -1,7 +1,7 @@
 # Self-host Collector with Docker Compose (or podman compose) from the published image.
 # Required: SECRET_KEY_BASE (generate with: openssl rand -hex 64)
 # Optional: COLLECTOR_IMAGE (image to run, default ghcr.io/plainprogrammer/collector:latest;
-#           e.g. collector:local after `docker build -t collector:local .`)
+#           e.g. collector:local, built as README.md's "Building from source" says, with the build facts)
 # Optional: COLLECTOR_PORT (host port, default 3000)
 # Optional: COLLECTOR_MTG_LANGUAGES (extra card languages, e.g. "ja,de")
 # Optional: COLLECTOR_MTG_ART_MATCHING ("true" turns on art matching for the scanner; first build ~708 MB, ~2.6 h)

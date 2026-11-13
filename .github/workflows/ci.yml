@@ -157,6 +157,10 @@ jobs:
           load: true
           tags: collector:smoke
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            COLLECTOR_VERSION=${{ steps.meta.outputs.version || format('pr-{0}', github.event.pull_request.number) }}
+            COLLECTOR_REVISION=${{ github.sha }}
+            COLLECTOR_SOURCE_URL=${{ github.server_url }}/${{ github.repository }}/tree/${{ github.sha }}
           provenance: false
           sbom: false
           cache-from: type=gha,scope=${{ steps.platform.outputs.pair }}
@@ -195,6 +199,10 @@ jobs:
           context: .
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            COLLECTOR_VERSION=${{ steps.meta.outputs.version || format('pr-{0}', github.event.pull_request.number) }}
+            COLLECTOR_REVISION=${{ github.sha }}
+            COLLECTOR_SOURCE_URL=${{ github.server_url }}/${{ github.repository }}/tree/${{ github.sha }}
           provenance: false
           sbom: false
           cache-from: type=gha,scope=${{ steps.platform.outputs.pair }}

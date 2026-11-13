@@ -4,7 +4,7 @@
 
 The roadmap has one main line, built in order, with a research lane and a housekeeping lane beside it. Each numbered item is a **candidate spec** sized to the north star's one-outcome rule. Candidates are refined, split or dropped when their turn comes; they are not specified ahead.
 
-**Tracking.** Every candidate has a GitHub issue on the [1.0 milestone](https://github.com/plainprogrammer/Collector/milestone/1), labelled by theme (`theme: data-safety`, `theme: typed-entry`, `theme: locations`, `theme: scanner`, `theme: prices`) or `housekeeping`, with `spike` on the spikes and `design-system` on candidates that change the design system. Work recorded for after 1.0 has issues on the [2.0 milestone](https://github.com/plainprogrammer/Collector/milestone/2). This file holds the order and the reasons; the issues hold the state. A candidate that is added, split or dropped changes both in the same PR. A spec's PR closes its issue. Build specs that follow a spike get their issue after the maintainer's ruling. Specs 001–015 are done and aren't listed here.
+**Tracking.** Every candidate has a GitHub issue on the [1.0 milestone](https://github.com/plainprogrammer/Collector/milestone/1), labelled by theme (`theme: data-safety`, `theme: typed-entry`, `theme: locations`, `theme: scanner`, `theme: prices`, `theme: households`, `theme: hosted`) or `housekeeping`, with `spike` on the spikes and `design-system` on candidates that change the design system. Work recorded for after 1.0 has issues on the [2.0 milestone](https://github.com/plainprogrammer/Collector/milestone/2). This file holds the order and the reasons; the issues hold the state. A candidate that is added, split or dropped changes both in the same PR. A spec's PR closes its issue. Build specs that follow a spike get their issue after the maintainer's ruling. Specs 001–015 are done and aren't listed here.
 
 ## Main line
 
@@ -119,6 +119,40 @@ Runs beside the main line, when the maintainer starts it (rulings 35–41; [desi
 
 After 1.0: [#371](https://github.com/plainprogrammer/Collector/issues/371) prices follow a printing that Scryfall merges into another (it needs `/migrations`, parked below).
 
+## Households lane
+
+Runs beside the main line (rulings 43 and 44; [design](superpowers/specs/2026-11-13-households-and-hosted-service-design.md)). Personal and household collections side by side were parked until after 1.0 by ruling 6; the maintainer moved them into 1.0 on 2026-11-13, alongside the deck and location work, because the change to who owns a row gets dearer with each table added. An account stays the unit of ownership and privacy, and a household is a group of accounts: each member's own and one the household shares. Design system before features:
+
+- [#379](https://github.com/plainprogrammer/Collector/issues/379) Design system: households.
+- [#380](https://github.com/plainprogrammer/Collector/issues/380) Every user has a household. Its spec writes the ADR that supersedes the one-user half of [ADR 0017](adr/0017-row-level-tenancy-one-user-per-account.md).
+- [#381](https://github.com/plainprogrammer/Collector/issues/381) Join a household with an invitation code (after #379 and #380).
+- [#382](https://github.com/plainprogrammer/Collector/issues/382) Leave a household, or be removed from it (after #381).
+- [#383](https://github.com/plainprogrammer/Collector/issues/383) Hand the manager role to another member (after #381).
+- [#384](https://github.com/plainprogrammer/Collector/issues/384) Work in the household's shared collection (after #379 and #381). It raises the export format.
+- [#385](https://github.com/plainprogrammer/Collector/issues/385) Move copies between my collection and the household's (after #384).
+- [#386](https://github.com/plainprogrammer/Collector/issues/386) Move many lots between collections from bulk mode (after #385).
+- [#387](https://github.com/plainprogrammer/Collector/issues/387) Move a deck between my collection and the household's (after #385).
+- [#388](https://github.com/plainprogrammer/Collector/issues/388) Borrow copies from the household's collection (after #384 and #385). In 1.0 by ruling 47: a household doesn't work well without it. Lending outside the household stays on the 2.0 milestone ([#259](https://github.com/plainprogrammer/Collector/issues/259)).
+- [#389](https://github.com/plainprogrammer/Collector/issues/389) Households on the admin users page (after #380).
+
+## Hosted lane
+
+Runs beside the main line, after #380 (rulings 42 and 45; the same [design](superpowers/specs/2026-11-13-households-and-hosted-service-design.md)). Hosted-service features were parked until after 1.0 by ruling 14; the maintainer moved them into 1.0 on 2026-11-13, to take a hosted service to market sooner. Collector stays AGPL-3.0 as one codebase (ruling 42): each candidate is a feature of that code, switched on by configuration, and a self-hosted instance loses nothing. Ruling 46 narrows ruling 27: the plan and billing code is built behind hosted mode, and no paid plan is offered at a hosted instance until #390 closes.
+
+- [#390](https://github.com/plainprogrammer/Collector/issues/390) Settle Wizards of the Coast's position on charging for a hosted instance. Not code.
+- [#391](https://github.com/plainprogrammer/Collector/issues/391) Ask Scryfall in writing about the free plan's cap. Not code.
+- [#392](https://github.com/plainprogrammer/Collector/issues/392) Hosted mode: one operator setting.
+- [#393](https://github.com/plainprogrammer/Collector/issues/393) A household has a plan (after #392 and #380).
+- [#394](https://github.com/plainprogrammer/Collector/issues/394) A plan's limits are enforced (after #393).
+- [#395](https://github.com/plainprogrammer/Collector/issues/395) Reset a password by email. The first email the app sends.
+- [#396](https://github.com/plainprogrammer/Collector/issues/396) Public sign-up that resists abuse (after #395).
+- [#397](https://github.com/plainprogrammer/Collector/issues/397) Pay for a plan, manage it and cancel it (after #394 and #395). Not offered at a hosted instance before #390 closes (ruling 46).
+- [#398](https://github.com/plainprogrammer/Collector/issues/398) What a household keeps after a downgrade (after #397).
+- [#399](https://github.com/plainprogrammer/Collector/issues/399) Off-host backups for a hosted instance, with a restore drill (after #392).
+- [#400](https://github.com/plainprogrammer/Collector/issues/400) Terms, privacy and refund pages, with the rule for children's sign-ins. Before the first sale.
+
+The source offer on every page is [#374](https://github.com/plainprogrammer/Collector/issues/374).
+
 ## Housekeeping lane
 
 Taken between specs.
@@ -156,7 +190,11 @@ Taken between specs.
 - [#145](https://github.com/plainprogrammer/Collector/issues/145): spike: why `bin/ci` grew from minutes to 20–30, and why the pre-push hook stopped gating past its timeout. **Done 2026-10-31:** findings in [research.md](specs/035-ci-shards/research.md); the fixes in [#147](https://github.com/plainprogrammer/Collector/pull/147) (the parity example) and [#148](https://github.com/plainprogrammer/Collector/pull/148) (the hooks block on a timeout).
 - Spec 035, from #145: `bin/ci` groups, used by GitHub's RSpec shards and by the pre-push hook, which skips RSpec for a documentation-only branch. **Shipped 2026-11-01:** [spec 035](specs/035-ci-shards/spec.md), [PR #149](https://github.com/plainprogrammer/Collector/pull/149), with its verification, review fixes and four shards in a follow-up pull request; GitHub's verdict went from a median 348 s to 140 s.
 - [#164](https://github.com/plainprogrammer/Collector/issues/164): dependency advisories: Dependabot's security updates for the Ruby gems as one group, a daily scheduled run of both audits on `main`, and the response to a red audit written into the release-and-deploy area doc (found on 2026-11-03, when five Dependabot pull requests failed on advisories for gems that no Dependabot pull request covered). **Done 2026-11-03:** [spec 036](specs/036-advisory-response/spec.md), [PR #163](https://github.com/plainprogrammer/Collector/pull/163); the maintainer's post-merge checks are in its `verification.md`.
+- [#401](https://github.com/plainprogrammer/Collector/issues/401): contribution policy: a sign-off on every commit, and licence identifiers in the source (accounts design, 2026-11-13).
+- [#402](https://github.com/plainprogrammer/Collector/issues/402): CI fails on a dependency whose licence isn't allowed (accounts design, 2026-11-13).
 - [#122](https://github.com/plainprogrammer/Collector/issues/122): the art index panel and `catalog:status` say "ready" when the finished build's index file is missing (after a restore, or a lost directory). Done when its pull request merges: [spec 039](specs/039-art-index-missing-file/spec.md).
+- [#374](https://github.com/plainprogrammer/Collector/issues/374): show the running version, the commit it was built from and Collector's licence (AGPL-3.0, with a link to the source of the running build) in the footer on every page; the image carries its build facts and `bin/image-smoke` checks them. **In progress:** [spec 084](specs/084-version-and-licence-in-app/spec.md).
+- [#376](https://github.com/plainprogrammer/Collector/issues/376): list the licences of the third-party software and assets in the image (the gems, the OCR engine, the JavaScript, the fonts), readable from the app (split from #374 by the maintainer's ruling of 2026-11-13, spec 084 decision 8).
 
 ## Parked until after 1.0
 
@@ -164,12 +202,10 @@ Taken between specs.
 |---|---|
 | Estimated value, price charts, value over time, price alerts, "Update prices" | Specs 002, 004, 006; ruling 2026-10-11. Market prices themselves moved into 1.0 on 2026-11-13 (rulings 35–40, the prices lane) |
 | Wishlists | Spec 004; ruling 2026-10-11 |
-| Lending | Spec 006; ruling 2026-10-11 |
-| Personal and household collections side by side | Spec 004 (one user per account); ruling 2026-10-11 |
+| Lending outside the household | Spec 006; ruling 2026-10-11. Borrowing within a household is in 1.0 (ruling 47, [#388](https://github.com/plainprogrammer/Collector/issues/388)) |
 | Importing files from other tools | Ruling 2026-10-11 |
 | Art matching on the photo path | Spec 011; ruling 2026-10-11 |
 | Native apps | Spec 005; ruling 2026-10-11 |
-| Hosted-service features (billing, limits, hardened sign-up, email, operator backups) | Ruling 2026-10-11 |
 | Quick filters (set, finish, condition), grid sort | Specs 004, 006 |
 | Scryfall `/migrations`, set-change probe, digital-only printings, search syntax | Spec 002 |
 | A general jobs console, settings for schedule and languages in the app | Spec 015 |
@@ -251,3 +287,14 @@ Rulings by the maintainer. Later planning builds on these and doesn't ask them a
 | # | Question | Ruling |
 |---|---|---|
 | 41 | What price does a non-English printing show? | Option C of [research 083](specs/083-non-english-printing-prices/research.md): Scryfall's file carries no price of its language for a non-English printing that has an English twin (the English printing of the same set code and collector number), so such a printing shows the twin's price for the same finish, labelled as the English printing's, and nothing for a finish the twin hasn't. A printing with no twin is a product of its own and shows its own price. The consequences for [#364](https://github.com/plainprogrammer/Collector/issues/364), [#365](https://github.com/plainprogrammer/Collector/issues/365), [#368](https://github.com/plainprogrammer/Collector/issues/368) and [#369](https://github.com/plainprogrammer/Collector/issues/369) are listed in the research note. |
+
+### 2026-11-13: households and the hosted service (accounts design)
+
+| # | Question | Ruling |
+|---|---|---|
+| 42 | What form does the hosted offering take (ruling 2), and under which licence? | A paid service with a free plan, on the same AGPL-3.0 code. Collector stays one codebase with no proprietary add-ons, and a hosted instance differs from a self-hosted one by configuration only. The service sells hosting, backups, catalog upkeep, household sharing, support and, later, AI features on the operator's keys. Plans are priced per household ([design](superpowers/specs/2026-11-13-households-and-hosted-service-design.md), decisions 1 and 5 to 8). |
+| 43 | Do personal and household collections side by side stay after 1.0 (ruling 6)? | No. They move into 1.0 as the households lane, alongside the deck and location work. |
+| 44 | What is the ownership model? | A household of accounts: an account stays the unit of ownership and privacy, and a household has each member's own account and one shared account. A member or the household can own a deck, a binder or any other location. A kid's collection is treated like any other member's and isn't visible to other members by default. The ADR that supersedes the one-user half of ADR 0017 is written with [#380](https://github.com/plainprogrammer/Collector/issues/380). |
+| 45 | Do hosted-service features stay after 1.0 (ruling 14)? | No. Hosted mode, plans, limits, billing, email, public sign-up and operator backups move into 1.0 as the hosted lane, to take a hosted service to market sooner. The 1.0 test is unchanged. |
+| 46 | Does ruling 27's "no paid plan is built until Wizards' position is settled" hold the billing code back? | No. Ruling 27 is narrowed from "built" to "offered": the plan and billing code is built behind hosted mode while the position is being settled ([#390](https://github.com/plainprogrammer/Collector/issues/390)), and no paid plan is offered at a hosted instance before it is. The rest of ruling 27 stands. |
+| 47 | Is borrowing from the household's collection in 1.0? | Yes ([#388](https://github.com/plainprogrammer/Collector/issues/388)). Borrowing and lending are needed for a household to work well, so the scope is accepted. |
