@@ -10,13 +10,21 @@ module ScannerHelpers
       script.textContent = `import * as geometry from "scanner/geometry"; window.__scannerGeometry = geometry; dispatchEvent(new Event("geometry-ready"))`
       document.head.append(script)
     })
-    window.__syntheticCard = async (name, lines) => {
-      const { guideRect } = await window.__geometry
+    // A live card is drawn where the page's guide falls in the frame (spec 082 AC-3.1): the stage's live guide mapped into the
+    // 3:4 frame the way the camera controller maps it; a photo's card where the shipped guide is (the photo path's framing).
+    window.__syntheticCard = async (name, lines, live = false) => {
+      const { guideRect, guideInFrame, liveGuideRect } = await window.__geometry
       const canvas = Object.assign(document.createElement("canvas"), { width: 900, height: 1200 })
       const context = canvas.getContext("2d")
-      const card = guideRect(canvas.width, canvas.height)
+      const cardBox = () => {
+        const stage = document.querySelector(".c-scan__stage")?.getBoundingClientRect()
+        if (!live || !stage) return guideRect(canvas.width, canvas.height)
+        const framing = document.querySelector(".c-scan")?.dataset.cameraFramingValue || "full"
+        return guideInFrame(canvas.width, canvas.height, stage.width, stage.height, liveGuideRect(stage.width, stage.height, framing))
+      }
       // Text is sized and placed from the card, as on a real card, so strip tuning doesn't change the test text.
       const draw = () => {
+        const card = cardBox()
         context.fillStyle = "gray"; context.fillRect(0, 0, canvas.width, canvas.height)
         context.fillStyle = "white"; context.fillRect(card.x, card.y, card.width, card.height)
         context.fillStyle = "black"; context.textBaseline = "middle"
@@ -61,6 +69,9 @@ module ScannerHelpers
       context.putImageData(image, 0, 0)
     }
   JS
+
+  # The picker input a photo is picked through unless a spec names another.
+  PICKER = "[data-card-reader-target=picker]".freeze
 
   # Detection runs on a full-size picture, so the detector specs give their scripts longer than Capybara's default wait.
   DETECTION_SCRIPT_WAIT = 30
@@ -125,9 +136,10 @@ module ScannerHelpers
 
   # Picks a photo of a synthetic card drawn anywhere in it (or none), so the detector rather than the guide has to find it.
   # noise is detect_synthetic's: a flat photo gives the detector no real edge strengths to threshold on.
-  def pick_photo(card: { x: 40, y: 360, width: 859, height: 1200 }, width: 1200, height: 1600, name: "Lightning Bolt", lines: [ "R 0123", "MOM • EN" ], noise: 0)
-    using_wait_time(DETECTION_SCRIPT_WAIT) { page.evaluate_async_script(<<~JS, width, height, card, name, lines, noise) }
-      const [ width, height, card, name, lines, noise, done ] = arguments
+  # input is the CSS selector of the picker to fire (spec 082 AC-2.2): the stage notice's by default, which comes first in the page.
+  def pick_photo(card: { x: 40, y: 360, width: 859, height: 1200 }, width: 1200, height: 1600, name: "Lightning Bolt", lines: [ "R 0123", "MOM • EN" ], noise: 0, input: PICKER)
+    using_wait_time(DETECTION_SCRIPT_WAIT) { page.evaluate_async_script(<<~JS, width, height, card, name, lines, noise, input) }
+      const [ width, height, card, name, lines, noise, selector, done ] = arguments
       #{CARD_JS}
       #{NOISE_JS}
       const canvas = Object.assign(document.createElement("canvas"), { width, height })
@@ -145,7 +157,7 @@ module ScannerHelpers
       canvas.toBlob((blob) => {
         const transfer = new DataTransfer()
         transfer.items.add(new File([ blob ], "card.png", { type: "image/png" }))
-        const input = document.querySelector("[data-card-reader-target=picker]")
+        const input = document.querySelector(selector)
         input.files = transfer.files
         input.dispatchEvent(new Event("change", { bubbles: true }))
         done(true)
@@ -153,11 +165,18 @@ module ScannerHelpers
     JS
   end
 
+  # Puts a synthetic card in front of the camera (ADR 0002): getUserMedia answers with a canvas stream whose card is drawn where
+  # the page's live guide falls in the frame (spec 082 AC-3.1), then the camera restarts and the feed is waited for.
+  #
+  # @param name [String] the name drawn in the card's name bar
+  # @param lines [Array<String>] the collector line's rows
+  # @param torch [Boolean] whether the fake track reports a torch
+  # @return [void]
   def show_synthetic_card(name: "Lightning Bolt", lines: [ "R 0123", "MOM • EN" ], torch: false)
     page.evaluate_async_script(<<~JS, name, lines, torch)
       const [ name, lines, torch, done ] = arguments
       #{CARD_JS}
-      window.__syntheticCard(name, lines).then(({ canvas, draw }) => {
+      window.__syntheticCard(name, lines, true).then(({ canvas, draw }) => {
         window.__tracks = []; window.__cameraRequests = []; window.__torch = []
         navigator.mediaDevices.getUserMedia = async (constraints) => {
           window.__cameraRequests.push(constraints)
@@ -176,7 +195,7 @@ module ScannerHelpers
     JS
     restart_camera
     wait_for_scanner
-    eventually("window.__tracks.length > 0 && document.querySelector('.c-scanner__video').readyState >= 2")
+    eventually("window.__tracks.length > 0 && document.querySelector('.c-scan__video').readyState >= 2")
   end
 
   # The engine has loaded and a live camera feed is showing (the shutter enables only then).
@@ -184,14 +203,15 @@ module ScannerHelpers
     expect(page).to have_button("Capture", disabled: false, wait: 30)
   end
 
-  def pick_synthetic_photo(name: "Lightning Bolt", lines: [ "R 0123", "MOM • EN" ])
-    page.evaluate_async_script(<<~JS, name, lines)
-      const [ name, lines, done ] = arguments
+  # Picks a photo of a synthetic card at the shipped guide, through the picker input matches (see pick_photo).
+  def pick_synthetic_photo(name: "Lightning Bolt", lines: [ "R 0123", "MOM • EN" ], input: PICKER)
+    page.evaluate_async_script(<<~JS, name, lines, input)
+      const [ name, lines, selector, done ] = arguments
       #{CARD_JS}
       window.__syntheticCard(name, lines).then(({ canvas }) => canvas.toBlob((blob) => {
         const transfer = new DataTransfer()
         transfer.items.add(new File([ blob ], "card.png", { type: "image/png" }))
-        const input = document.querySelector("[data-card-reader-target=picker]")
+        const input = document.querySelector(selector)
         input.files = transfer.files
         input.dispatchEvent(new Event("change", { bubbles: true }))
         done(true)
@@ -199,8 +219,11 @@ module ScannerHelpers
     JS
   end
 
+  # Restarts the scanner's camera controller, so a getUserMedia substituted in the page is asked again.
+  #
+  # @return [void]
   def restart_camera
-    page.execute_script(%(window.Stimulus.getControllerForElementAndIdentifier(document.querySelector(".c-scanner"), "camera").restart()))
+    page.execute_script(%(window.Stimulus.getControllerForElementAndIdentifier(document.querySelector(".c-scan"), "camera").restart()))
   end
 
   # Waits for a JavaScript expression to become truthy, the way Capybara's matchers wait for the DOM.
@@ -209,6 +232,62 @@ module ScannerHelpers
   end
 
   def scanner_sent = page.evaluate_script("window.__sent")
+
+  # Opens the scanner in a frame `width` × `height` from the collection page (the scanner's own policy frames nothing,
+  # `frame-src 'none'`), and waits for the live feed. The page never scrolls, so the frame draws no scrollbar and its width is
+  # the viewport's (spec 082 Verification).
+  #
+  # @param width [Integer] the frame's width in px
+  # @param height [Integer] the frame's height in px
+  # @param path [String] the page to open, the scanner or measurement mode
+  # @return [Integer] the frame's viewport width
+  def open_scanner_frame(width:, height:, path: scanner_path)
+    visit collection_path
+    open_in_narrow_frame(path, width:, height:, ready: ".c-scan__feed:not([hidden])").first
+  end
+
+  # The one-screen measures of the page the driver is in, read in one script (spec 082 AC-1.1, AC-1.2): whether the document
+  # scrolls, after an attempt to scroll to its end, and the boxes of the bars, the stage and the main button.
+  #
+  # @return [Hash] "scrollable", "scrollY", "height" and "top", "stage", "bottom", "main" boxes (top, bottom)
+  def one_screen
+    page.evaluate_script(<<~JS)
+      (() => {
+        const root = document.documentElement
+        window.scrollTo(0, root.scrollHeight)
+        const box = (selector) => { const b = document.querySelector(selector).getBoundingClientRect(); return { top: b.top, bottom: b.bottom, height: b.height } }
+        return { scrollable: root.scrollHeight > root.clientHeight, scrollY: window.scrollY, height: window.innerHeight,
+                 top: box(".c-scan__top"), stage: box(".c-scan__stage"), bottom: box(".c-scan__bottom"), main: box(".c-scan__main") }
+      })()
+    JS
+  end
+
+  # Asserts the page in the frame is one screen of viewport_height: no scroll, the bars at the viewport's edges, the stage
+  # between them and the main button inside (spec 082 AC-1.1, AC-1.2).
+  #
+  # @param viewport_height [Integer] the height the page should fill
+  def expect_one_screen(viewport_height)
+    measures = one_screen
+    expect(measures["scrollable"]).to be(false)
+    expect(measures["scrollY"]).to eq(0)
+    expect(measures["top"]["top"]).to eq(0)
+    expect(measures["height"]).to eq(viewport_height)
+    expect(measures["bottom"]["bottom"]).to be_within(0.5).of(viewport_height)
+    expect(measures["stage"]["top"]).to be_within(0.5).of(measures["top"]["bottom"])
+    expect(measures["stage"]["bottom"]).to be_within(0.5).of(measures["bottom"]["top"])
+    expect(measures["main"]["bottom"]).to be <= viewport_height
+  end
+
+  # Holds the next reading's request until window.__release() is called, so the reading state can be measured.
+  def hold_readings
+    page.execute_script("const send = window.fetch; window.fetch = (url, options) => url.includes('/scanner/readings') ? new Promise((resolve) => { window.__release = () => resolve(send(url, options)) }) : send(url, options)")
+  end
+
+  # Opens the destination sheet, as the collector's tap on the top bar does.
+  def open_destination = find(".c-scan__dest").click
+
+  # Opens the sitting's list sheet from the count.
+  def open_sitting_list = find("#scanner_count").click
 end
 
 RSpec.configure { |config| config.include ScannerHelpers, type: :system }

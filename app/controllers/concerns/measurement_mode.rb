@@ -18,16 +18,20 @@ module MeasurementMode
       head :not_found unless request.local?
     end
 
-    def measurement_run = @measurement_run ||= Scanner::MeasurementRun.current
+    # The framing the session chose (spec 082 decision 5), the one rule `Scanner::ReadingsController` shares.
+    def measurement_framing = Scanner::MeasurementRun.framing_in(session)
+
+    def measurement_run = @measurement_run ||= Scanner::MeasurementRun.current(framing: measurement_framing)
 
     def panel_locals(notice: nil, alert: false)
       next_row = measurement_run.next_row
       { run: measurement_run, next_row:, expected: next_row && measurement_run.expected_name(next_row),
-        keep_frames: Scanner::MeasurementRun.keep_frames?, notice:, alert: }
+        keep_frames: Scanner::MeasurementRun.keep_frames?, notice:, alert:, framing: measurement_framing }
     end
 
     def render_panel(notice, alert: false, status: :ok)
-      render turbo_stream: turbo_stream.replace("measurement_panel", partial: "scanner/measurements/panel",
-        locals: panel_locals(notice:, alert:)), status:
+      locals = panel_locals(notice:, alert:)
+      render turbo_stream: [ turbo_stream.replace("measurement_panel", partial: "scanner/measurements/panel", locals:),
+        turbo_stream.replace("measurement_run_button", partial: "scanner/measurements/run_button", locals:) ], status:
     end
 end

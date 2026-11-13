@@ -40,7 +40,7 @@ RSpec.describe "The footer", type: :request do
     it "is on every page, after the main content (AC-1.1, AC-1.2, AC-1.6, AC-1.9, AC-1.10)", :aggregate_failures do
       [ collection_path, collection_path(view: "table"), collection_path(view: "table", bulk: 1), catalog_entries_path,
         catalog_entries_path(q: lot.entry.name), catalog_entry_path(lot.entry), catalog_identity_path(lot.entry.identity),
-        scanner_path, more_path, new_catalog_entry_lot_path(lot.entry), edit_lot_path(lot),
+        more_path, new_catalog_entry_lot_path(lot.entry), edit_lot_path(lot),
         new_lot_removal_path(lot) ].each do |path|
         get path
         expect(response).to have_http_status(:ok), path
@@ -214,12 +214,13 @@ RSpec.describe "The footer", type: :request do
 
     before { sign_in_as(create(:user)) }
 
-    it "is on the scanner page, which sends the policy it always sent (AC-4.2)", :aggregate_failures do
+    it "is on the scanner page, which sends the policy it always sent, and its sheets carry the notice (spec 082 decision 16)", :aggregate_failures do
       get scanner_path
 
-      expect_the_footer("scanner")
       expect_the_scanner_policy
-      expect(footer.to_html).not_to match(/style=|nonce=|<script/)
+      expect(html.css("footer.c-footer")).to be_empty
+      expect(html.css("dialog .c-sheet__foot").size).to eq(2)
+      expect(html.css("dialog .c-sheet__foot").to_html).not_to match(/style=|nonce=|<script/)
     end
 
     context "with measurement mode on" do
@@ -234,13 +235,16 @@ RSpec.describe "The footer", type: :request do
         FileUtils.remove_entry(corpus)
       end
 
-      it "is on the measurement page and its replay page, under the same policy (AC-4.3)", :aggregate_failures do
-        [ scanner_measurement_path, scanner_measurement_replay_path(label: "a") ].each do |path|
-          get path
-          expect(response).to have_http_status(:ok), path
-          expect_the_footer(path)
-          expect_the_scanner_policy
-        end
+      it "is on the replay page, and the measurement page carries it in its three sheets' feet, under the same policy (AC-4.3, spec 082 decision 16)", :aggregate_failures do
+        get scanner_measurement_path
+        expect(response).to have_http_status(:ok)
+        expect(footers).to be_empty
+        expect(html.css("dialog.c-sheet > .c-sheet__body > .c-sheet__foot").size).to eq(3)
+        expect_the_scanner_policy
+        get scanner_measurement_replay_path(label: "a")
+        expect(response).to have_http_status(:ok)
+        expect_the_footer(scanner_measurement_replay_path(label: "a"))
+        expect_the_scanner_policy
       end
     end
   end

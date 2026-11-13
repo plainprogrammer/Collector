@@ -50,4 +50,41 @@ RSpec.describe ScannersHelper, type: :helper do
       expect(helper.sitting_choices(Scanner::Sitting.new, conditions)).to eq([])
     end
   end
+
+  describe "the one-screen page's sentences (spec 082)" do
+    let(:conditions) { Catalog.collecting_for("mtg").conditions }
+    let(:account) { create(:account) }
+    let(:binder) { create(:location, account:, name: "Blue binder") }
+
+    describe "#scanner_destination" do
+      it "names the place and the short condition in decision 7's four forms (spec 082 AC-1.4)", :aggregate_failures do
+        expect(helper.scanner_destination(Scanner::Sitting.new(account:, condition: "near_mint", location: binder), conditions)).to eq("Blue binder · NM")
+        expect(helper.scanner_destination(Scanner::Sitting.new(account:, location: binder), conditions)).to eq("Blue binder")
+        expect(helper.scanner_destination(Scanner::Sitting.new(account:, condition: "near_mint"), conditions)).to eq("No location · NM")
+        expect(helper.scanner_destination(nil, conditions)).to eq("No location")
+      end
+
+      it "reads a deck's zone as Deck › Zone, with the condition after it (spec 082 AC-1.4)", :aggregate_failures do
+        zone = create(:deck, account:, name: "Izzet Tempo").zone("main")
+        expect(helper.scanner_destination(Scanner::Sitting.new(account:, location: zone), conditions)).to eq("Izzet Tempo › Main")
+        expect(helper.scanner_destination(Scanner::Sitting.new(account:, location: zone, condition: "near_mint"), conditions)).to eq("Izzet Tempo › Main · NM")
+      end
+    end
+
+    describe "#sitting_title" do
+      it "is today's heading, with no sitting too (spec 082 decision 9)", :aggregate_failures do
+        sitting = Scanner::Sitting.new(account:, condition: "near_mint", location: binder)
+        expect(helper.sitting_title(sitting, [ :one, :two ], conditions)).to eq("This sitting: 2 cards, Near mint, in Blue binder")
+        expect(helper.sitting_title(nil, [], conditions)).to eq("This sitting: 0 cards")
+      end
+    end
+
+    describe "#scanner_added" do
+      it "is the after-add line's sentence (spec 082 decision 12, AC-5.1, AC-5.2)", :aggregate_failures do
+        printing = create(:mtg_printing, finishes: %w[nonfoil foil], entry: create(:catalog_entry, name: "Lightning Bolt", set: create(:catalog_set, code: "mom"), number: "123")).entry
+        expect(helper.scanner_added(printing, "foil")).to eq("Added Lightning Bolt MOM · 123, foil")
+        expect(helper.scanner_added(printing, nil)).to eq("Added Lightning Bolt MOM · 123")
+      end
+    end
+  end
 end

@@ -28,11 +28,16 @@ class Scanner::SittingsController < ApplicationController
       choices[:location] = location
     end
 
-    render turbo_stream: sitting_stream(chosen_message(Scanner::Sitting.choose!(account: Current.account, **choices)), focus: :set)
+    message = chosen_message(Scanner::Sitting.choose!(account: Current.account, **choices))
+    render turbo_stream: [ say_in("scanner_destination_status", message), picker_redraw, *sitting_redraw ]
   end
 
   private
-    def refuse(message) = render(turbo_stream: sitting_stream(message, alert: true, focus: :set), status: :unprocessable_content)
+    # The refused "Set" redraws what an accepted one does (spec 082 decision 10), so the top bar and the sheet show what the
+    # sitting holds, not what the collector chose.
+    def refuse(message)
+      render turbo_stream: [ say_in("scanner_destination_status", message, alert: true), picker_redraw, *sitting_redraw ], status: :unprocessable_content
+    end
 
     # Says what later adds get (spec 042 decision 3, spec 047 decision 1): both choices for an account with locations, the
     # condition alone otherwise. A sitting "Set" deleted, or none open, says the nothing-set sentence: a deleted sitting held

@@ -1,0 +1,8 @@
+<%# locals: (message: nil, alert: false, link: nil, removal_undo: nil) %>
+<%# The after-add line (spec 080 decision 17, spec 082 decisions 10 and 12): its `role="status"` paragraph stays in the document
+    and an answer replaces its text; the action (Undo, a link) sits beside it, outside the live region. A page load shows a flash
+    or the end of a sitting here. `scan-shell` shows the wrapper while the text isn't empty. %>
+<div class="c-scan__line c-scan__line--added<%= " c-scan__line--alert" if alert %>" data-scan-shell-target="added" data-card-reader-target="added" <%= "hidden" if message.blank? %>>
+  <p class="c-scan__line-text" id="scanner_added_text" role="status" aria-live="polite" data-scan-shell-target="addedText" data-card-reader-target="addedText"><%= message %></p>
+  <%= render "scanners/added_action", link:, removal_undo: %>
+</div>

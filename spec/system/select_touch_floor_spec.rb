@@ -85,11 +85,22 @@ RSpec.describe "Selects meet the touch floor on a coarse pointer", type: :system
     end
   end
 
-  # The scanner's stage is unhidden by script some time after `main` exists (the fake camera) and is about 416px tall, so
-  # a measure taken either side of it differs: wait for it on the two scanner pages.
+  # The scanner's feed is unhidden by script some time after `main` exists (the fake camera): wait for it on the two scanner
+  # pages. Their selects sit in sheets (spec 082), so one sheet per page is opened as a modal, which the selects need to be drawn.
   def settle(name)
-    expect(page).to have_css(".c-scanner__stage:not([hidden])", wait: 10) if [ "scanner", "measurement mode" ].include?(name)
+    sheet = scanner_sheets[name]
+    return unless sheet
+
+    expect(page).to have_css(".c-scan__feed:not([hidden])", wait: 10)
+    page.execute_script("document.getElementById(arguments[0]).showModal()", sheet)
   end
+
+  # The sheet each scanner page opens in `settle`: the destination sheet's selects, and measurement mode's card-to-capture select.
+  def scanner_sheets = { "scanner" => "scanner_destination_sheet", "measurement mode" => "measurement_sheet" }
+
+  # What a layout report measures on a page: a modal sheet covers the bottom bar, so on the two scanner pages the overlap check
+  # is scoped to the open sheet (spec 082 AC-1.4).
+  def report_roots(name) = scanner_sheets.key?(name) ? [ "dialog[open]" ] : [ "main" ]
 
   # Every drawn select of the current document: its name, its height and which of the two shapes holds it.
   def selects
@@ -202,7 +213,7 @@ RSpec.describe "Selects meet the touch floor on a coarse pointer", type: :system
     pages.each_key do |name|
       in_page(name, width: 360) do
         inject_coarse(needs: [ select_rule, row_rule ])
-        report = layout_report
+        report = layout_report(roots: report_roots(name))
         expect(report["overflow"]).to be <= 0, "#{name}: scrolls sideways by #{report['overflow']}px"
         expect(report["wide"]).to be_empty, "#{name}: wider than its container: #{report['wide']}"
         expect(report["overlaps"]).to be_empty, "#{name}: overlapping controls: #{report['overlaps']}"
@@ -221,7 +232,7 @@ RSpec.describe "Selects meet the touch floor on a coarse pointer", type: :system
           row = row_alignment
           expect(row["select"]).to be >= 44, "#{name}: #{row}"
           expect(row["offset"]).to be <= 1, "#{name}: the button's centre is #{row['offset']}px off the select's"
-          expect(layout_report["overlaps"]).to be_empty, "#{name}: overlapping controls"
+          expect(layout_report(roots: report_roots(name))["overlaps"]).to be_empty, "#{name}: overlapping controls"
         end
       end
     end

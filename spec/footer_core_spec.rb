@@ -5,11 +5,12 @@ require "rails_helper"
 RSpec.describe "The core's footer code" do
   let(:files) do
     %w[app/views/layouts/application.html.erb app/views/layouts/_footer.html.erb app/views/layouts/_notice_lines.html.erb
-       app/models/catalog/content_notice.rb lib/collector/build_facts.rb config/initializers/build_facts.rb]
+       app/views/layouts/_notice_foot.html.erb app/models/catalog/content_notice.rb lib/collector/build_facts.rb
+       config/initializers/build_facts.rb]
       .map { |path| Rails.root.join(path) }
   end
 
-  it "covers the layout, the footer's partial, the model that collects the notices and the build facts' reader" do
+  it "covers the layout, the footer's and the sheets' foot's partials, the model that collects the notices and the build facts' reader" do
     expect(files).to all(exist)
   end
 

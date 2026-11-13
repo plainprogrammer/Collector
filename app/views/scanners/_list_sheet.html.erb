@@ -1,0 +1,15 @@
+<%# locals: (sitting:, entries:, conditions:, added_any:) %>
+<%# The sitting's list as a sheet (spec 082 decision 9): today's heading as its title, focusable for spec 047's focus after an
+    Undo; its own live region; today's entries; the notice's foot. An answer replaces the title's text and the entries' section,
+    never the dialog, so an open sheet stays open (decision 15). %>
+<dialog class="c-sheet" id="scanner_list_sheet" aria-labelledby="scanner-sitting-heading" data-action="click->sheets#backdrop close->sheets#closed">
+  <div class="c-sheet__head">
+    <h2 class="c-sheet__title" id="scanner-sitting-heading" tabindex="-1"><%= sitting_title(sitting, entries, conditions) %></h2>
+    <form method="dialog" class="c-sheet__dismiss"><button class="c-btn c-btn--ghost c-sheet__close" aria-label="Close"><%= render "icons/cross" %></button></form>
+  </div>
+  <div class="c-sheet__body">
+    <div id="scanner_list_status" class="c-scan__sheet-status" role="status" aria-live="polite" data-sheet-status></div>
+    <%= render "scanners/sitting", sitting:, entries:, conditions:, added_any: %>
+    <%= render "layouts/notice_foot" %>
+  </div>
+</dialog>

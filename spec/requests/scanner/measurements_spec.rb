@@ -2,13 +2,13 @@ require "rails_helper"
 
 RSpec.describe "Scanner measurement mode", type: :request do
   let(:corpus) { Pathname(Dir.mktmpdir("corpus")) }
-  let(:run_dir) { corpus.join("runs/live") }
+  let(:run_dir) { corpus.join("runs/live/full") }
   let(:png) { "\x89PNG\r\n\x1A\nstrip".b }
   let(:turbo) { { "Accept" => "text/vnd.turbo-stream.html" } }
 
   around do |example|
     corpus.join("manifest.csv").write("file,set,number,foil\nIMG_1.jpeg,mom,123,no\nIMG_2.jpeg,neo,51,yes\n")
-    Rails.configuration.x.scanner_measurement = { manifest: corpus.join("manifest.csv").to_s, dir: run_dir.to_s }
+    Rails.configuration.x.scanner_measurement = { manifest: corpus.join("manifest.csv").to_s, dir: corpus.join("runs/live").to_s }
     example.run
   ensure
     Rails.configuration.x.scanner_measurement = nil
@@ -32,7 +32,7 @@ RSpec.describe "Scanner measurement mode", type: :request do
       guide: { x: 1.5, y: 2, width: 10, height: 14 }.to_json } }
   end
 
-  def current = Scanner::MeasurementRun.current
+  def current = Scanner::MeasurementRun.current(framing: "full")
 
   context "when measurement mode is off (AC-5.1)" do
     before { Rails.configuration.x.scanner_measurement = nil }
@@ -63,7 +63,7 @@ RSpec.describe "Scanner measurement mode", type: :request do
     Scanner::Sitting.create!(account: User.sole.account)
     get scanner_measurement_path
     expect(Scanner::Sitting.count).to eq(0)
-    expect(Nokogiri::HTML5(response.body).at_css("#scanner_sitting select#sitting_condition")).not_to be_nil
+    expect(Nokogiri::HTML5(response.body).at_css("#scanner_picker select#sitting_condition")).not_to be_nil
   end
 
   it "stores the text and both strips outside the repository, then moves on (AC-5.3)", :aggregate_failures do
@@ -148,8 +148,58 @@ RSpec.describe "Scanner measurement mode", type: :request do
     corpus.join("manifest.csv").delete
     get scanner_measurement_path
     expect(response.body).to include("No manifest at")
+    expect(Nokogiri::HTML5(response.body).css(".c-scan__notice .c-sheet__foot p").last.text).to include("AGPL") # the licence line, spec 084
     get scanner_path
     expect(response).to have_http_status(:ok)
+  end
+
+  describe "the framing (spec 082 decision 5, AC-7.1, AC-7.2)" do
+    def choose(framing) = patch(scanner_measurement_framing_path, params: { framing: })
+
+    it "keeps the chosen framing in the session and draws it on the page", :aggregate_failures do
+      choose("shipped")
+      expect(response).to redirect_to(scanner_measurement_path)
+      expect(response).to have_http_status(:see_other)
+      get scanner_measurement_path
+      page = Nokogiri::HTML5(response.body)
+      expect(page.at_css(".c-scan")["data-camera-framing-value"]).to eq("shipped")
+      expect(page.at_css("#measurement_run_button").text.strip).to end_with("· shipped")
+    end
+
+    it "refuses a framing that isn't one, and answers 404 with measurement mode off", :aggregate_failures do
+      choose("wide")
+      expect(response).to have_http_status(:unprocessable_content)
+      Rails.configuration.x.scanner_measurement = nil
+      choose("full")
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it "answers 422, not 400, for a framing that arrives as a hash or a list", :aggregate_failures do
+      patch scanner_measurement_framing_path, params: { framing: { x: "1" } }
+      expect(response).to have_http_status(:unprocessable_content)
+      patch scanner_measurement_framing_path, params: { framing: [ "full" ] }
+      expect(response).to have_http_status(:unprocessable_content)
+      patch scanner_measurement_framing_path
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+
+    it "stores a capture and a reading under the chosen framing's run", :aggregate_failures do
+      create(:catalog_entry, set: create(:catalog_set, code: "mom"), number: "123", name: "Lightning Bolt")
+      choose("shipped")
+      post scanner_measurement_captures_path, headers: turbo, params: { capture: { file: "IMG_1.jpeg", name_text: "Bolt", collector_text: "", ms: "1",
+        user_agent: "iPhone", name_strip: upload(png), collector_strip: upload(png), outline: "live", video_width: "1280", video_height: "720",
+        stage_width: "390", stage_height: "700", framing: "full" } }
+      shipped = corpus.join("runs/live/shipped")
+      expect(JSON.parse(shipped.join("IMG_1.jpeg/capture-001.json").read)).to include("framing" => "shipped", "video_width" => 1280, "stage_height" => 700)
+      post scanner_readings_path, headers: turbo, params: { reading: { name_text: "Lightning Bolt", collector_text: "", key: "a" * 32 } }
+      expect(shipped.join("readings.jsonl")).to exist
+    end
+
+    it "is never read by the scanner's own page, which draws the full framing" do
+      choose("shipped")
+      get scanner_path
+      expect(Nokogiri::HTML5(response.body).at_css(".c-scan")["data-camera-framing-value"]).to eq("full")
+    end
   end
 
   describe "events (spec 009 AC-9.2)" do

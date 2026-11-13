@@ -257,27 +257,17 @@ img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches:
 .c-empty a:focus-visible { outline:2px solid var(--focus); outline-offset:2px; border-radius:var(--radius-sm); }
 
 /* ---------- Scanner (spec 007): live camera with the card guide, controls, what was read ---------- */
-.c-scanner { display:flex; flex-direction:column; gap:var(--space-4); max-width:480px; }
 .c-scanner__status { margin:0; font:400 15px/22px var(--font-sans); color:var(--ink); }
-.c-scanner__stage { position:relative; width:100%; aspect-ratio:3 / 4; overflow:hidden; background:var(--surface-sunken);
-  border:1px solid var(--line); border-radius:var(--radius-md); }
-.c-scanner [hidden] { display:none; } /* c-btn's display would otherwise show hidden controls */
 #measurement_panel [hidden] { display:none; } /* the development-only measurement panel (spec 007 Story 5) */
-.c-scanner__video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
-.c-scanner__guide { position:absolute; border:2px solid var(--brand); outline:2px dashed var(--on-brand); outline-offset:-6px;
-  border-radius:var(--radius-card) / calc(var(--radius-card) * 63 / 88); pointer-events:none; }
-.c-scanner__controls { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-2); }
-.c-scanner__shutter, .c-scanner__torch, .c-scanner__photo { min-height:44px; min-width:44px; }
-.c-scanner__shutter { flex:1 1 auto; }
+.c-scanner__photo { min-height:44px; min-width:44px; }
 .c-scanner__photo:focus-within { outline:2px solid var(--focus); outline-offset:2px; }
-.c-scanner__unavailable, .c-scanner__failure { display:flex; flex-direction:column; align-items:flex-start; gap:var(--space-2); }
+.c-scanner__failure { display:flex; flex-direction:column; align-items:flex-start; gap:var(--space-2); }
 .c-scanner__read { display:grid; grid-template-columns:max-content 1fr; gap:var(--space-1) var(--space-3); margin:0;
   font:400 14px/20px var(--font-sans); }
 .c-scanner__read dt { color:var(--ink-muted); }
 .c-scanner__read dd { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; }
 .c-scanner__mono { font-family:var(--font-mono); }
 .c-scanner__result { display:flex; flex-direction:column; gap:var(--space-6); }
-.c-scanner__note { margin:var(--space-3) 0 0; font:400 14px/20px var(--font-sans); color:var(--ink-muted); }
 @media (prefers-reduced-motion: reduce) { .c-scanner * { transition:none; animation:none; } }
 
 /* Scanner confirm flow (spec 009): evidence on a candidate, add buttons per finish, Other printings and the sitting. */
@@ -913,6 +903,53 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
   .c-scan__strip { box-sizing:border-box; height:96px; }
   .c-scan__capture { box-sizing:border-box; height:76px; }
 }
+
+/* ---------- Scanner page (spec 082): the one-screen scanner built on the scan shell ---------- */
+/* The shell, the lines and the pane are spec 080's; this block is what the page adds. The sitting's top-bar parts are one
+   element an answer replaces, laid out as the top bar's own children. The bars grow by the safe-area insets of a phone with a
+   notch or home indicator (decision 18). The frozen frame is the captured frame on a canvas, cropped as the video is, so the
+   collector sees what was read while it is read (decision 11). A stage notice is centred on the stage (the camera or the
+   engine unavailable, no script); the catalog-not-loaded line sits at the stage's foot (decision 14). Today's result sits in an
+   interim scrolling body until #345 replaces it (decision 11, `c-scanpane__results`). Each live region stays rendered while
+   empty, taking no space (spec 080 decision 8). From 640px the shell is a centred 480px column and the scanner's sheets sit under it (decision
+   17), by a rule scoped to the scanner, so the sheet's own rule is unchanged. */
+.c-scan__sitting { display:contents; }
+.c-scan__top { box-sizing:border-box; height:calc(56px + env(safe-area-inset-top)); padding:env(safe-area-inset-top) calc(var(--space-2) + env(safe-area-inset-right)) 0 calc(var(--space-2) + env(safe-area-inset-left)); }
+.c-scan__bottom { box-sizing:border-box; height:calc(96px + env(safe-area-inset-bottom)); padding:0 calc(var(--space-4) + env(safe-area-inset-right)) env(safe-area-inset-bottom) calc(var(--space-4) + env(safe-area-inset-left)); }
+.c-scan__feed { position:absolute; inset:0; }
+.c-scan__guide { box-sizing:border-box; } /* spec 080's rule sets none, so its 2px border grew the box past the rule's size (AC-3.1) */
+.c-scan__frozen { box-sizing:border-box; position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+.c-scan__line--alert { border-color:var(--warning); }
+.c-scan__added-action { display:contents; } /* its Undo form or link is the line's flex item; empty, it draws nothing */
+.c-scan__notice { box-sizing:border-box; position:absolute; z-index:1; left:var(--space-4); right:var(--space-4); top:50%; transform:translateY(-50%);
+  display:flex; flex-direction:column; align-items:center; gap:var(--space-3); margin:0; padding:var(--space-4); background:var(--surface-raised);
+  border:1px solid var(--line-strong); border-radius:var(--radius-md); color:var(--ink); font:400 14px/20px var(--font-sans); text-align:center; }
+.c-scan__notice-text { margin:0; overflow-wrap:anywhere; }
+.c-scan__notice .c-btn { box-sizing:border-box; min-height:44px; min-width:44px; }
+.c-scan__notice .c-sheet__foot { align-self:stretch; text-align:left; }
+.c-scan__catalog { box-sizing:border-box; position:absolute; z-index:1; left:var(--space-4); right:var(--space-4); bottom:var(--space-4); }
+.c-scanpane__results { box-sizing:border-box; flex:1 1 auto; min-height:0; display:flex; flex-direction:column; gap:var(--space-4);
+  overflow-y:auto; overscroll-behavior:contain; padding:var(--space-4); }
+.c-scan__sheet-status { margin-bottom:var(--space-4); }
+/* An empty live region stays rendered, so a sentence written into it is announced (spec 080 decision 8): `display:none` removes
+   it from the accessibility tree, and one shown in the same moment it is filled is not read out. It takes no space instead: a
+   sheet's loses its margin, and the pane's, an item of the results' flex column, takes back the column's gap. */
+.c-scan__sheet-status:empty { margin:0; }
+.c-scan__pane-status:empty { margin-bottom:calc(-1 * var(--space-4)); }
+.c-scan__photo { display:flex; flex-direction:column; align-items:flex-start; gap:var(--space-2); margin-top:var(--space-4); }
+.c-scan .c-sheet .c-btn { box-sizing:border-box; min-height:44px; min-width:44px; }
+.c-scan .c-sheet__title:focus { outline:2px solid var(--focus); outline-offset:2px; border-radius:var(--radius-sm); } /* programmatic focus after an Undo (spec 047); Firefox gives it no :focus-visible once the focused Undo is replaced */
+@media (min-width: 640px) {
+  .c-shell--focused { background:var(--surface-sunken); }
+  .c-scan { box-sizing:border-box; max-width:480px; margin:0 auto; }
+  .c-scan .c-sheet[open] { box-sizing:border-box; max-width:480px; margin:0 auto; }
+}
+
+/* The after-add line's action and the failure block's buttons: 44px at every pointer (spec 082 AC-1.9). */
+.c-scan__added-action > .c-btn, .c-scan__added-action form .c-btn, .c-scanner__failure .c-btn { box-sizing:border-box; min-height:44px; min-width:44px; }
+
+.c-scan__run { box-sizing:border-box; flex:none; min-height:44px; max-width:40%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.c-scan__framing { display:flex; flex-wrap:wrap; gap:var(--space-2); margin-top:var(--space-4); }
 
 /* ---------- Reduced motion, app-wide (spec 080 decision 14) ---------- */
 /* The README's Motion rule: under `prefers-reduced-motion: reduce` nothing eases or slides, in any component. A universal

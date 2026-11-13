@@ -7,12 +7,12 @@ require "rails_helper"
 # word character and `\b` would let them through.
 RSpec.describe "The scanner sitting's code" do
   let(:files) do
-    Rails.root.glob("{app/models/scanner/sitting{,_entry}.rb,app/views/scanners/_{sitting,sitting_entry,picker,summary}.html.erb," \
+    Rails.root.glob("{app/models/scanner/sitting{,_entry}.rb,app/views/scanners/_{sitting,sitting_entry,picker,sitting_bar,count,added_line,added_action,destination_sheet,list_sheet}.html.erb," \
       "app/helpers/scanners_helper.rb}")
   end
 
   it "covers every file of the feature" do
-    expect(files.size).to eq(7)
+    expect(files.size).to eq(12)
   end
 
   it "never names a collectible type or a source" do

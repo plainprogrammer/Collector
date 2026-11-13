@@ -16,27 +16,53 @@ RSpec.describe "Scanner adds", type: :request do
       headers: { "Accept" => "text/vnd.turbo-stream.html, text/html" }
   end
 
-  it "adds one copy, clears the reading, lists it and announces it (AC-1.2, AC-1.3, AC-3.1, AC-3.2)", :aggregate_failures do
+  # The stream of an answer for `target`, as Nokogiri sees it; its template's text is what the page gets.
+  def stream(target, action = nil)
+    selector = "turbo-stream[target=#{target}]#{"[action=#{action}]" if action}"
+    Nokogiri::HTML5(response.body).at_css(selector)
+  end
+
+  def text_of(target, action = "update") = stream(target, action).at_css("template").text.strip
+
+  it "adds one copy, empties the pane and the lines, says so on the after-add line and redraws the sitting (AC-4.7, AC-5.1, AC-5.2)", :aggregate_failures do
     add
     expect(response).to have_http_status(:ok)
     expect(response.media_type).to eq("text/vnd.turbo-stream.html")
-    expect(response.body).to match(%r{<turbo-stream action="update" target="scanner_result"><template>\s*</template></turbo-stream>})
-    expect(response.body).to include('<turbo-stream action="replace" target="scanner_sitting">', "This sitting: 1 card")
-    expect(response.body).to include("Added 1 × Lightning Bolt (MOM · 123, Foil) to your collection.")
+    expect([ text_of("scanner_result"), text_of("status"), text_of("scanner_status_text") ]).to all(be_empty)
+    expect(text_of("scanner_added_text")).to eq("Added Lightning Bolt MOM · 123, foil")
     expect(user.account.lots.sole).to have_attributes(entry: printing, finish: "foil", quantity: 1, condition: nil)
+  end
+
+  it "offers Undo for the entry, with focus on the main button, redraws the bar and the count and retitles the list (AC-5.1, AC-5.3)", :aggregate_failures do
+    add
+    undo = stream("scanner_added_action", "replace").at_css("form[data-scanner-event=undo]")
+    expect(undo["action"]).to eq(scanner_sitting_entry_undo_path(Scanner::SittingEntry.sole))
+    expect(stream("scanner_added_action", "replace").at_css("[data-sitting-focus-to-value=main]")).to be_present
+    expect(stream("scanner_sitting", "replace")).to be_present
+    expect(stream("scanner_sitting_bar", "replace")).to be_present
+    expect(stream("scanner_count", "replace").at_css("[aria-label]")["aria-label"]).to eq("1 added. Show this sitting's cards.")
+    expect(text_of("scanner-sitting-heading")).to eq("This sitting: 1 card")
+  end
+
+  it "escapes a place's name in the list's title (security)", :aggregate_failures do
+    Scanner::Sitting.choose!(account: user.account, location: create(:location, account: user.account, name: "<b>bold</b>"))
+    add
+    template = stream("scanner-sitting-heading", "update").at_css("template")
+    expect(template.inner_html).to include("&lt;b&gt;")
+    expect(template.at_css("b")).to be_nil
   end
 
   it "leaves the finish out of the message for a printing with none listed (AC-1.3)" do
     MTG::Printing.find_by!(catalog_entry_id: printing.id).update!(finishes: [])
     add(finish: "")
-    expect(response.body).to include("Added 1 × Lightning Bolt (MOM · 123) to your collection.")
+    expect(text_of("scanner_added_text")).to eq("Added Lightning Bolt MOM · 123")
   end
 
   it "adds nothing for a reading already added, and answers as if it had just succeeded (AC-1.5)", :aggregate_failures do
     add
     add(finish: "nonfoil")
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Added 1 × Lightning Bolt (MOM · 123, Foil) to your collection.")
+    expect(text_of("scanner_added_text")).to eq("Added Lightning Bolt MOM · 123, foil")
     expect(user.account.lots.sum(:quantity)).to eq(1)
   end
 
@@ -44,11 +70,14 @@ RSpec.describe "Scanner adds", type: :request do
     add
     Scanner::SittingEntry.sole.undo!
     add
-    expect(response.body).to include("You added this card, then undid it. Scan it again to add it.")
+    expect(text_of("status")).to eq("You added this card, then undid it. Scan it again to add it.")
+    expect(stream("status").at_css(".c-status__message--alert")).to be_present
+    expect(stream("scanner_added_text")).to be_nil
+    expect(text_of("scanner_result")).to be_empty
     add(reading_key: "b" * 32)
     user.account.lots.sole.destroy!
     add(reading_key: "b" * 32)
-    expect(response.body).to include("You added this card, and it has since changed in your collection.")
+    expect(text_of("status")).to eq("You added this card, and it has since changed in your collection.")
     expect(user.account.lots).to be_empty
   end
 
@@ -83,20 +112,20 @@ RSpec.describe "Scanner adds", type: :request do
     def place(location) = Scanner::Sitting.choose!(account: user.account, location:)
     def html = Nokogiri::HTML5(response.body)
 
-    it "adds into the place and names it in the notice, and redraws the control (AC-1.3, FR-1)", :aggregate_failures do
+    it "adds into the place, names it on the top bar and not on the after-add line (AC-5.1, decision 12)", :aggregate_failures do
       place(blue)
       add
-      expect(response.body).to include("Added 1 × Lightning Bolt (MOM · 123, Foil) in Blue binder to your collection.")
+      expect(text_of("scanner_added_text")).to eq("Added Lightning Bolt MOM · 123, foil")
       expect(user.account.lots.sole).to have_attributes(location: blue, quantity: 1, finish: "foil")
-      expect(html.at_css("select#sitting_location_id option[selected]").text).to eq("Blue binder")
+      expect(html.at_css("#scanner_sitting_bar .c-scan__dest-text").text).to eq("Blue binder")
     end
 
-    it "keeps spec 009's notice with no place set (AC-1.5)", :aggregate_failures do
+    it "shows No location on the top bar with no place set (AC-2.3)", :aggregate_failures do
       blue
       add
-      expect(response.body).to include("Added 1 × Lightning Bolt (MOM · 123, Foil) to your collection.")
+      expect(text_of("scanner_added_text")).to eq("Added Lightning Bolt MOM · 123, foil")
       expect(user.account.lots.sole.location).to be_nil
-      expect(html.at_css("select#sitting_location_id option[selected]").text).to eq("No location")
+      expect(html.at_css("#scanner_sitting_bar .c-scan__dest-text").text).to eq("No location")
     end
 
     it "refuses at the cap in the place with the existing message (AC-1.6)", :aggregate_failures do
@@ -107,22 +136,22 @@ RSpec.describe "Scanner adds", type: :request do
       expect(response.body).to include("You already have the most copies one lot can hold (9,999).")
     end
 
-    it "names the entry's lot's place on a replay, not the sitting's place now (AC-4.3)", :aggregate_failures do
+    it "adds nothing on a replay after the sitting's place changed (AC-4.3)", :aggregate_failures do
       place(blue)
       add
       place(create(:location, account: user.account, name: "Long box"))
       add
-      expect(response.body).to include("Added 1 × Lightning Bolt (MOM · 123, Foil) in Blue binder to your collection.")
+      expect(text_of("scanner_added_text")).to eq("Added Lightning Bolt MOM · 123, foil")
       expect(user.account.lots.sum(:quantity)).to eq(1)
     end
 
-    it "adds unplaced and names no place once the place's location was removed (AC-3.2)", :aggregate_failures do
+    it "adds unplaced and shows No location once the place's location was removed (AC-3.2)", :aggregate_failures do
       place(blue)
       delete location_path(blue)
       add
-      expect(response.body).to include("Added 1 × Lightning Bolt (MOM · 123, Foil) to your collection.")
+      expect(text_of("scanner_added_text")).to eq("Added Lightning Bolt MOM · 123, foil")
       expect(user.account.lots.sole.location).to be_nil
-      expect(html.at_css("select#sitting_location_id")).to be_nil
+      expect(html.at_css("#scanner_sitting_bar .c-scan__dest-text").text).to eq("No location")
     end
   end
 
@@ -131,34 +160,35 @@ RSpec.describe "Scanner adds", type: :request do
     def choose(**choices) = Scanner::Sitting.choose!(account: user.account, **choices)
     def html = Nokogiri::HTML5(response.body)
 
-    it "adds into the lot of that condition and names it by its short label after the finish (AC-1.3)", :aggregate_failures do
+    it "adds into the lot of that condition and shows its short label on the top bar (AC-1.3, AC-2.3)", :aggregate_failures do
       choose(condition: "near_mint")
       add
-      expect(response.body).to include("Added 1 × Lightning Bolt (MOM · 123, Foil, NM) to your collection.")
+      expect(text_of("scanner_added_text")).to eq("Added Lightning Bolt MOM · 123, foil")
       expect(user.account.lots.sole).to have_attributes(condition: "near_mint", finish: "foil", location: nil, price_paid_cents: nil)
-      expect(html.at_css("select#sitting_condition option[selected]").text).to eq("Near mint (NM)")
+      expect(html.at_css("#scanner_sitting_bar .c-scan__dest-text").text).to eq("No location · NM")
       expect(html.at_css("#scanner_sitting li .c-list__meta").text.squish).to match(/\AMOM · 123 · Foil · NM · Added/)
     end
 
-    it "names the condition and the place together (AC-1.4)", :aggregate_failures do
+    it "adds into the condition and the place together, the top bar naming both (AC-1.4)", :aggregate_failures do
       choose(condition: "near_mint", location: blue)
       add
-      expect(response.body).to include("Added 1 × Lightning Bolt (MOM · 123, Foil, NM) in Blue binder to your collection.")
+      expect(html.at_css("#scanner_sitting_bar .c-scan__dest-text").text).to eq("Blue binder · NM")
       expect(user.account.lots.sole).to have_attributes(condition: "near_mint", location: blue)
     end
 
-    it "leaves the finish out and keeps the condition for a printing with no finish listed (decision 3)" do
+    it "leaves the finish out for a printing with none listed, keeping the condition (decision 3)", :aggregate_failures do
       MTG::Printing.find_by!(catalog_entry_id: printing.id).update!(finishes: [])
       choose(condition: "near_mint")
       add(finish: "")
-      expect(response.body).to include("Added 1 × Lightning Bolt (MOM · 123, NM) to your collection.")
+      expect(text_of("scanner_added_text")).to eq("Added Lightning Bolt MOM · 123")
+      expect(user.account.lots.sole.condition).to eq("near_mint")
     end
 
     # Passes before the change: regression guard.
-    it "names no condition when the sitting has none (AC-1.5)", :aggregate_failures do
+    it "adds with no condition when the sitting has none (AC-1.5)", :aggregate_failures do
       choose(location: blue)
       add
-      expect(response.body).to include("Added 1 × Lightning Bolt (MOM · 123, Foil) in Blue binder to your collection.")
+      expect(text_of("scanner_added_text")).to eq("Added Lightning Bolt MOM · 123, foil")
       expect(user.account.lots.sole.condition).to be_nil
     end
 
@@ -167,9 +197,10 @@ RSpec.describe "Scanner adds", type: :request do
       choose(condition: "near_mint")
       add
       expect(html.at_css("#scanner_sitting form.c-scanner__undo input[type=submit], #scanner_sitting form.c-scanner__undo button")["aria-label"]).to eq("Undo Lightning Bolt (MOM · 123, Foil)")
+      expect(html.at_css("#scanner_added_action button")["aria-label"]).to eq("Undo Lightning Bolt (MOM · 123, Foil)")
       expect(html.at_css("#scanner_sitting a[data-scanner-event=details]")["aria-label"]).to eq("Details of Lightning Bolt (MOM · 123, Foil)")
       post scanner_sitting_entry_undo_path(Scanner::SittingEntry.sole), headers: { "Accept" => "text/vnd.turbo-stream.html, text/html" }
-      expect(response.body).to include("Removed 1 × Lightning Bolt (MOM · 123, Foil) from your collection.")
+      expect(text_of("scanner_added_text")).to eq("Removed 1 × Lightning Bolt (MOM · 123, Foil) from your collection.")
     end
 
     # Passes before the change: regression guard.
@@ -185,21 +216,21 @@ RSpec.describe "Scanner adds", type: :request do
       expect(response).to have_http_status(:ok)
     end
 
-    it "names the entry's lot's condition and place on a replay, never the sitting's now (AC-4.4)", :aggregate_failures do
+    it "adds nothing on a replay after the sitting's condition and place changed (AC-4.4)", :aggregate_failures do
       choose(condition: "near_mint", location: blue)
       add
       choose(condition: "damaged", location: create(:location, account: user.account, name: "Long box"))
       add
-      expect(response.body).to include("Added 1 × Lightning Bolt (MOM · 123, Foil, NM) in Blue binder to your collection.")
+      expect(text_of("scanner_added_text")).to eq("Added Lightning Bolt MOM · 123, foil")
       expect(user.account.lots.sum(:quantity)).to eq(1)
     end
 
-    it "names the condition the entry's lot has been edited to (decision 3)" do
+    it "keeps the after-add line free of the condition after the lot was edited (decision 12)" do
       choose(condition: "near_mint")
       add
       user.account.lots.sole.update!(condition: "lightly_played")
       add
-      expect(response.body).to include("Added 1 × Lightning Bolt (MOM · 123, Foil, LP) to your collection.")
+      expect(text_of("scanner_added_text")).to eq("Added Lightning Bolt MOM · 123, foil")
     end
 
     # Passes before the change: regression guard.

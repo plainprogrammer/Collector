@@ -1,6 +1,7 @@
-// Card guide and strip geometry for the scanner (spec 007 AC-1.3, AC-4.2). The stage is 3:4; the guide is a
-// 63:88 card centred in it; strips are fractions of the guide. Live frames and picked photos use the same
-// rules, and the CSS gives .c-scanner__stage the same aspect ratio.
+// Card guide and strip geometry for the scanner (spec 007 AC-1.3, AC-4.2). The shipped framing (a 3:4 stage, the guide 80% of
+// its height) is the photo path's; the live guide is the full framing of spec 082, drawn and cropped from one computation.
+// Strips are fractions of the guide. The live stage is the shell's, of any aspect ratio (the guide is mapped through the stage's
+// own size); only the photo path's picture keeps the 3:4 of STAGE_ASPECT.
 export const CARD_ASPECT = 63 / 88
 export const STAGE_ASPECT = 3 / 4
 export const GUIDE = { height: 0.8, maxWidth: 0.9 } // shares of the stage
@@ -36,13 +37,36 @@ export function guideRect(viewWidth, viewHeight) {
   return { x: (viewWidth - width) / 2, y: (viewHeight - height) / 2, width, height }
 }
 
-// The guide in image pixels when a frameWidth × frameHeight image fills a view with object-fit: cover.
-export function guideInFrame(frameWidth, frameHeight, viewWidth, viewHeight) {
+// The live guide (spec 082 decision 2): it sits in the stage's aiming area, the stage less its top `top` px, where the status
+// line and the after-add line sit (16px above a one-line line of 38px, and a 10px gap), so a one-line line never covers it. It
+// is as large as `height` of the area allows, never narrower than the shipped framing's guide for the stage's width (so a card
+// never gets fewer pixels than it did on a portrait stage that has room), at most `maxWidth` of the stage's width and
+// `maxHeight` of the area's height. It ships at this size: the maintainer withdrew the paired re-measure (spec 082 1.1.0). The
+// shipped card size ("shipped") stays for measurement mode's other framing.
+export const LIVE_GUIDE = { top: 64, height: 0.8, maxWidth: 0.975, maxHeight: 0.95 }
+
+// The width the shipped framing's guide has in a 3:4 stage `stageWidth` wide (0.7636 of it).
+export function shippedGuideWidth(stageWidth) {
+  return guideRect(stageWidth, stageWidth / STAGE_ASPECT).width
+}
+
+// The live guide's box in a stage of this size, in stage pixels. framing "shipped" draws the shipped card size in the same
+// place (measurement mode's other half, spec 082 decision 5).
+export function liveGuideRect(stageWidth, stageHeight, framing = "full") {
+  const area = Math.max(stageHeight - LIVE_GUIDE.top, 0)
+  const shipped = shippedGuideWidth(stageWidth)
+  let width = framing === "shipped" ? shipped : Math.max(area * LIVE_GUIDE.height * CARD_ASPECT, shipped)
+  width = Math.min(width, stageWidth * LIVE_GUIDE.maxWidth, area * LIVE_GUIDE.maxHeight * CARD_ASPECT)
+  const height = width / CARD_ASPECT
+  return { x: (stageWidth - width) / 2, y: LIVE_GUIDE.top + (area - height) / 2, width, height }
+}
+
+// The guide (by default the shipped one) in image pixels when a frameWidth × frameHeight image fills a view with object-fit: cover.
+export function guideInFrame(frameWidth, frameHeight, viewWidth, viewHeight, rect = guideRect(viewWidth, viewHeight)) {
   const scale = Math.max(viewWidth / frameWidth, viewHeight / frameHeight)
   const offsetX = (frameWidth - viewWidth / scale) / 2
   const offsetY = (frameHeight - viewHeight / scale) / 2
-  const guide = guideRect(viewWidth, viewHeight)
-  return { x: offsetX + guide.x / scale, y: offsetY + guide.y / scale, width: guide.width / scale, height: guide.height / scale }
+  return { x: offsetX + rect.x / scale, y: offsetY + rect.y / scale, width: rect.width / scale, height: rect.height / scale }
 }
 
 export function cropStrips(image, card, layout = STRIPS) {

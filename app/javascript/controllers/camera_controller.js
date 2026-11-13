@@ -1,11 +1,12 @@
 import { Controller } from "@hotwired/stimulus"
-import { guideInFrame, guideRect } from "scanner/geometry"
+import { guideInFrame, liveGuideRect } from "scanner/geometry"
 
 // Owns the scanner's camera (spec 007 Story 1). It asks for the rear camera, shows it with the card guide
 // over it, offers the torch when the track has one, and stops every track when the page is left, cached or
 // hidden, or the controller disconnects. Dispatches camera:ready and camera:unavailable ({ reason }).
 export default class extends Controller {
-  static targets = [ "stage", "video", "guide", "torch" ]
+  static targets = [ "stage", "feed", "video", "guide", "torch" ]
+  static values = { framing: { type: String, default: "full" } }
 
   connect() {
     this.stop = this.stop.bind(this)
@@ -45,7 +46,7 @@ export default class extends Controller {
       this.track.addEventListener("ended", () => this.unavailable("lost"))
       this.videoTarget.srcObject = stream
       await this.videoTarget.play()
-      this.stageTarget.hidden = false
+      this.feedTarget.hidden = false
       this.layoutGuide()
       this.torchTarget.hidden = !this.track.getCapabilities?.()?.torch
       this.dispatch("ready")
@@ -74,7 +75,14 @@ export default class extends Controller {
     const image = Object.assign(document.createElement("canvas"), { width: video.videoWidth, height: video.videoHeight })
     image.getContext("2d").drawImage(video, 0, 0)
     const view = this.stageTarget.getBoundingClientRect()
-    return { image, card: guideInFrame(image.width, image.height, view.width, view.height) }
+    const guide = liveGuideRect(view.width, view.height, this.framingValue)
+    return { image, card: guideInFrame(image.width, image.height, view.width, view.height, guide) }
+  }
+
+  // The video's and the stage's sizes at a capture, for measurement mode's record (spec 082 AC-7.2).
+  sizes() {
+    const view = this.stageTarget.getBoundingClientRect()
+    return { videoWidth: this.videoTarget.videoWidth, videoHeight: this.videoTarget.videoHeight, stageWidth: Math.round(view.width), stageHeight: Math.round(view.height) }
   }
 
   async toggleTorch() {
@@ -90,13 +98,13 @@ export default class extends Controller {
 
   layoutGuide() {
     const view = this.stageTarget.getBoundingClientRect()
-    const guide = guideRect(view.width, view.height)
+    const guide = liveGuideRect(view.width, view.height, this.framingValue)
     Object.assign(this.guideTarget.style, { left: `${guide.x}px`, top: `${guide.y}px`, width: `${guide.width}px`, height: `${guide.height}px` })
   }
 
   unavailable(reason) {
     this.stop()
-    this.stageTarget.hidden = true
+    this.feedTarget.hidden = true
     this.torchTarget.hidden = true
     this.dispatch("unavailable", { detail: { reason } })
   }

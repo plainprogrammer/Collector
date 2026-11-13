@@ -160,30 +160,34 @@ RSpec.describe "The footer", type: :system do
     expect(page.evaluate_script("getComputedStyle(document.querySelector('body > footer.c-footer p:last-child a')).color")).to eq("rgb(95, 183, 178)")
   end
 
-  it "is styled on the scanner page, under its policy (AC-4.1)", :aggregate_failures do
+  it "has no footer on the scanner; the notice is in each sheet's foot (spec 082 decision 16)", :aggregate_failures do
     system_sign_in_as(user)
     visit scanner_path
-    expect(page).to have_css(".c-scanner")
+    expect(page).to have_css(".c-scan")
 
-    expect(colours.values_at("text", "link")).to eq([ "rgb(95, 90, 82)", "rgb(19, 89, 90)" ])
-    hrefs = page.all("body > footer.c-footer a").map { |link| link[:href] } # the driver resolves the last, a path, against the host
-    expect(hrefs.first(4)).to eq([ "https://company.wizards.com/en/legal/fancontentpolicy", "https://scryfall.com/",
-      "https://www.gnu.org/licenses/agpl-3.0.html", "https://github.com/plainprogrammer/Collector" ])
-    expect(URI(hrefs.last).path).to eq(licences_path)
-    expect(hrefs.size).to eq(5)
-    expect(page).to have_no_css("body > footer.c-footer [style]")
-    expect(measure["lines"]).to all(include("uncovered" => true))
+    expect(page).to have_no_css("body > footer.c-footer")
+    [ [ ".c-scan__dest", "#scanner_destination_sheet" ], [ "#scanner_count", "#scanner_list_sheet" ] ].each do |opener, sheet|
+      find(opener).send_keys(:enter)
+      expect(page).to have_css("#{sheet}[open] .c-sheet__foot")
+      hrefs = find("#{sheet} .c-sheet__foot").all("a").map { |link| link[:href] } # the last, a path, resolved against the host
+      expect(hrefs.first(4)).to eq([ "https://company.wizards.com/en/legal/fancontentpolicy", "https://scryfall.com/",
+        "https://www.gnu.org/licenses/agpl-3.0.html", "https://github.com/plainprogrammer/Collector" ])
+      expect(URI(hrefs.last).path).to eq(licences_path) # spec 087's link, through the shared partial
+      click_on "Close"
+      expect(page).to have_no_css("dialog[open]")
+    end
   end
 
-  it "clears the scanner and the tab bar on a phone (AC-4.4)", :aggregate_failures do
-    system_sign_in_as(user)
-    visit collection_path # the scanner's own policy lets it frame nothing, so the phone-width frame opens from here
-    fits, footer = measure_at(scanner_path, width: 390, ready: ".c-scanner")
-    expect(fits).to eq([ 390, true ])
-    expect(footer["scrolled"]).to be_positive
-    expect(footer["lines"]).to all(include("uncovered" => true))
-    expect(footer["lines"].map { |line| line["bottom"] }).to all(be <= footer["tabbarTop"])
-    expect(footer["top"]).to be >= footer["contentBottom"] # measured in the same moment: the scanner grows as the camera starts
+  context "with script off" do
+    before { driven_by :rack_test } # an instance method: before the sign-in, or it goes through Firefox
+
+    it "shows the notice with script off in the <noscript> notice (spec 082 decision 16)", :aggregate_failures do
+      system_sign_in_as(user)
+      visit scanner_path
+
+      notice = Nokogiri::HTML5.fragment(page.find(".c-scan noscript", visible: :all).native.inner_html)
+      expect(notice.css("a").map { |link| link["href"] }).to include("https://company.wizards.com/en/legal/fancontentpolicy", "https://scryfall.com")
+    end
   end
 
   it "is there once after a Turbo visit and after going back (FR-2)", :aggregate_failures do

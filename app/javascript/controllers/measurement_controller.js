@@ -10,7 +10,7 @@ export default class extends Controller {
   static targets = [ "row", "status", "retry" ]
   static values = { capturesUrl: String, eventsUrl: String, keepFrames: Boolean }
 
-  async store({ detail: { nameText, collectorText, ms, key, outline, detectMs, warpMs, artMs, art, readyMs, strips, frame } }) {
+  async store({ detail: { nameText, collectorText, ms, key, outline, detectMs, warpMs, artMs, art, readyMs, strips, frame, sizes } }) {
     const body = new FormData()
     body.append("capture[file]", this.rowTarget.value)
     body.append("capture[name_text]", nameText)
@@ -25,6 +25,8 @@ export default class extends Controller {
     body.append("capture[art_download_ms]", art?.downloadMs ?? "")
     body.append("capture[art_ready_ms]", art?.readyMs ?? "")
     body.append("capture[ready_ms]", readyMs ?? "")
+    if (sizes) Object.entries({ video_width: sizes.videoWidth, video_height: sizes.videoHeight, stage_width: sizes.stageWidth, stage_height: sizes.stageHeight })
+      .forEach(([ name, value ]) => body.append(`capture[${name}]`, value ?? ""))
     body.append("capture[name_strip]", await png(strips.name), "name.png")
     body.append("capture[collector_strip]", await png(strips.collector), "collector.png")
     if (this.keepFramesValue && frame) {
@@ -50,6 +52,12 @@ export default class extends Controller {
       this.statusTarget.textContent = "The capture wasn't stored, so it doesn't count yet. Store it again."
       this.statusTarget.hidden = false
       this.retryTarget.hidden = false
+      // The status line is hidden while a result shows (spec 082 decision 10), so the failure also shows in the pane's region.
+      const note = document.createElement("p")
+      note.className = "c-status__message c-status__message--alert"
+      note.dataset.paneKeep = "" // the pane's later sentence ("Done…") must not replace it; Scan again clears it
+      note.textContent = this.statusTarget.textContent
+      document.getElementById("status")?.replaceChildren(note)
     }
   }
 

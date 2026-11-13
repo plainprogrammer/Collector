@@ -1,5 +1,5 @@
-# The card scanner in measurement mode (spec 007 Story 5): the manifest row to capture next, above the
-# normal scanner.
+# The card scanner in measurement mode (spec 007 Story 5): the manifest row to capture next, in the
+# one-screen scanner's own shell (its run button in the top bar, its run sheet beside the sitting's).
 class Scanner::MeasurementsController < ApplicationController
   include MeasurementMode
   include ScannerPage

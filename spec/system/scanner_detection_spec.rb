@@ -53,18 +53,19 @@ RSpec.describe "Detection on the scanner's photo path", type: :system do
 
   it "falls back to the guide and says no card edge was found (AC-7.2)" do
     pick_photo(card: nil)
-    expect(page).to have_css(".c-scanner__status", text: "No card edge was found", wait: 30)
+    expect(page).to have_css("#status", text: "No card edge was found", wait: 30)
   end
 
   it "runs no detection on a live capture (AC-7.6)", :aggregate_failures do
     show_synthetic_card
-    page.execute_script("window.__outlines = []; document.querySelector('.c-scanner').addEventListener('card-reader:read', (event) => window.__outlines.push(event.detail.outline))")
+    page.execute_script("window.__outlines = []; document.querySelector('.c-scan').addEventListener('card-reader:read', (event) => window.__outlines.push(event.detail.outline))")
     click_on "Capture"
     expect(page).to have_css(".c-scanner__candidate", text: "Lightning Bolt", wait: 30)
     expect(page.evaluate_script("window.__outlines")).to eq([ "live" ])
   end
 
-  it "tells the collector how to take a photo (AC-7.4)" do
+  it "tells the collector how to take a photo, in the destination sheet (AC-7.4)" do
+    open_destination
     expect(page).to have_text("Using a photo? Take the whole card, upright, filling most of the photo as the live guide does, on a plain background.")
   end
 

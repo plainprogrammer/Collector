@@ -21,7 +21,7 @@ class Scanner::ReadingsController < ApplicationController
   private
     # Development measurement mode only (spec 011 AC-9.3): never fails or changes the answer.
     def record_measurement(key, reading)
-      Scanner::MeasurementRun.current&.record_reading!(key, reading)
+      Scanner::MeasurementRun.current(framing: Scanner::MeasurementRun.framing_in(session))&.record_reading!(key, reading)
     rescue StandardError => error
       Rails.logger.warn("scanner.measurement reading not recorded: #{error.class}: #{error.message}")
     end

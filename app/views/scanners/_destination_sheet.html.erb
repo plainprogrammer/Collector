@@ -1,0 +1,19 @@
+<%# locals: (sitting:, conditions:, choices:, art:) %>
+<%# The sitting's choices as a sheet (spec 082 decision 9): its own live region (a modal makes the rest of the page inert,
+    decision 10), today's form, "Use a photo" with the framing hint, the art line, the notice's foot (decision 16). %>
+<dialog class="c-sheet" id="scanner_destination_sheet" aria-labelledby="scanner_destination_title" data-action="click->sheets#backdrop close->sheets#closed">
+  <div class="c-sheet__head">
+    <h2 class="c-sheet__title" id="scanner_destination_title">Adding to</h2>
+    <form method="dialog" class="c-sheet__dismiss"><button class="c-btn c-btn--ghost c-sheet__close" aria-label="Close"><%= render "icons/cross" %></button></form>
+  </div>
+  <div class="c-sheet__body">
+    <div id="scanner_destination_status" class="c-scan__sheet-status" role="status" aria-live="polite" data-sheet-status></div>
+    <%= render "scanners/picker", condition: sitting&.condition, location_id: sitting&.location_id, conditions:, choices: %>
+    <div class="c-scan__photo">
+      <label class="c-btn c-btn--secondary c-scanner__photo">Use a photo<input type="file" accept="image/*" class="c-sr" data-card-reader-target="picker" data-action="change->card-reader#pick" disabled></label>
+      <p class="c-scanner__hint">Using a photo? Take the whole card, upright, filling most of the photo as the live guide does, on a plain background.</p>
+    </div>
+    <% if art %><p class="c-scanner__art" role="status" aria-live="polite" data-card-reader-target="artStatus">Loading artwork matching…</p><% end %>
+    <%= render "layouts/notice_foot" %>
+  </div>
+</dialog>
