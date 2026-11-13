@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en" data-theme="light"><head>
+<link rel="stylesheet" href="preview-fonts.css"><link rel="stylesheet" href="../../../app/assets/stylesheets/collector/tokens.css"><link rel="stylesheet" href="../../../app/assets/stylesheets/collector/components.css"><link rel="stylesheet" href="../../../app/assets/stylesheets/collector/additions.css"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sheet</title>
+<style>html, body { margin:0; } body { background:var(--surface); }
+/* Preview only: frames and captions. A frame is one 390 × 844 screen: it gives the shell its height and is the containing
+   block of a sheet drawn with the open attribute. Camera pictures and card images are placeholders with a caption. */
+.pv { display:flex; flex-wrap:wrap; align-items:flex-start; gap:var(--space-8); padding:var(--space-6); color:var(--ink); font-family:var(--font-sans); }
+.pv__cap { margin:0 0 var(--space-2); font:600 12px/16px var(--font-sans); color:var(--ink-muted); }
+.pv__note { flex-basis:100%; margin:0; font:400 14px/20px var(--font-sans); color:var(--ink-muted); }
+.pv__frame { position:relative; width:390px; height:844px; overflow:hidden; transform:translateZ(0); border:1px solid var(--line-strong); border-radius:var(--radius-md); }
+.pv__frame .c-scan { height:100%; }
+.pv__list { display:flex; flex-direction:column; gap:var(--space-2); width:390px; }
+.pv__ph { display:grid; place-items:center; height:100%; font:400 12px/16px var(--font-sans); color:var(--ink-muted); text-align:center; }
+</style></head>
+<body>
+<div class="pv">
+<p class="pv__note">A sheet is opened as a modal by the page's script. These are drawn with the <code>open</code> attribute, so they have no backdrop; on a page the scrim dims everything behind the sheet.</p>
+<section><p class="pv__cap">The destination</p><div class="pv__frame">
+<div class="c-scan">
+  <div class="c-scan__top">
+  <a class="c-scan__back" href="#" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></a>
+  <button type="button" class="c-scan__dest"><span class="c-scan__dest-label">Adding to</span> <span class="c-scan__dest-value"><span class="c-scan__dest-text">Atraxa › Main · NM</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></button>
+  <a class="c-btn c-btn--ghost c-scan__done" href="#">Done</a>
+</div>
+
+  <div class="c-scan__stage">
+    <video class="c-scan__video" playsinline muted></video>
+    <div class="c-scan__guide" aria-hidden="true" style="left:5px;top:80px;width:380px;height:531px"><span class="pv__ph">live camera</span></div>
+    <div class="c-scan__line c-scan__line--status"><p class="c-scan__line-text" role="status">Line the card up with the guide, then capture.</p></div>
+<div class="c-scan__line c-scan__line--added" hidden><p class="c-scan__line-text" role="status"></p><form class="c-scan__undo"><button type="button" class="c-btn c-btn--ghost">Undo</button></form></div>
+
+    
+    
+  </div>
+  <div class="c-scan__bottom">
+  <button type="button" class="c-btn c-btn--secondary c-scan__count" aria-label="12 added. Show this sitting's cards."><b>12</b><span>added</span></button>
+  <button type="button" class="c-btn c-btn--primary c-scan__main">Capture</button>
+  <button type="button" class="c-btn c-btn--secondary c-scan__torch" aria-label="Torch" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></svg></button>
+</div>
+
+</div>
+<dialog class="c-sheet" id="pv_destination" aria-labelledby="pv_destination_title" open>
+  <div class="c-sheet__head">
+    <h2 class="c-sheet__title" id="pv_destination_title">Adding to</h2>
+    <form method="dialog" class="c-sheet__dismiss"><button class="c-btn c-btn--ghost c-sheet__close" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></form>
+  </div>
+  <div class="c-sheet__body"><form class="c-form c-scanner__place"><fieldset class="c-choices"><legend class="c-field__label">This sitting's cards</legend>
+  <div class="c-field"><label class="c-field__label" for="pv_condition">Condition</label><select id="pv_condition"><option>Not specified</option><option selected>Near mint (NM)</option><option>Lightly played (LP)</option></select></div>
+  <div class="c-field"><label class="c-field__label" for="pv_location">Location</label><select id="pv_location"><option>No location</option><optgroup label="Places"><option>Blue binder</option></optgroup><optgroup label="Decks"><option selected>Atraxa › Main</option><option>Atraxa › Sideboard</option></optgroup></select></div>
+</fieldset><div class="c-form__actions"><button type="button" class="c-btn c-btn--secondary">Set</button></div></form>
+<div class="c-sheet__foot"><p>Collector is unofficial Fan Content permitted under the <a rel="noopener" href="https://company.wizards.com/en/legal/fancontentpolicy">Fan Content Policy</a>. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC.</p><p>Card data and images provided by <a rel="noopener" href="https://scryfall.com">Scryfall</a>.</p></div></div>
+</dialog>
+</div></section>
+<section><p class="pv__cap">The sitting's list</p><div class="pv__frame">
+<div class="c-scan">
+  <div class="c-scan__top">
+  <a class="c-scan__back" href="#" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></a>
+  <button type="button" class="c-scan__dest"><span class="c-scan__dest-label">Adding to</span> <span class="c-scan__dest-value"><span class="c-scan__dest-text">Atraxa › Main · NM</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></button>
+  <a class="c-btn c-btn--ghost c-scan__done" href="#">Done</a>
+</div>
+
+  <div class="c-scan__stage">
+    <video class="c-scan__video" playsinline muted></video>
+    <div class="c-scan__guide" aria-hidden="true" style="left:5px;top:80px;width:380px;height:531px"><span class="pv__ph">live camera</span></div>
+    <div class="c-scan__line c-scan__line--status"><p class="c-scan__line-text" role="status">Line the card up with the guide, then capture.</p></div>
+<div class="c-scan__line c-scan__line--added" hidden><p class="c-scan__line-text" role="status"></p><form class="c-scan__undo"><button type="button" class="c-btn c-btn--ghost">Undo</button></form></div>
+
+    
+    
+  </div>
+  <div class="c-scan__bottom">
+  <button type="button" class="c-btn c-btn--secondary c-scan__count" aria-label="12 added. Show this sitting's cards."><b>12</b><span>added</span></button>
+  <button type="button" class="c-btn c-btn--primary c-scan__main">Capture</button>
+  <button type="button" class="c-btn c-btn--secondary c-scan__torch" aria-label="Torch" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></svg></button>
+</div>
+
+</div>
+<dialog class="c-sheet" id="pv_list" aria-labelledby="pv_list_title" open>
+  <div class="c-sheet__head">
+    <h2 class="c-sheet__title" id="pv_list_title">This sitting: 12 cards</h2>
+    <form method="dialog" class="c-sheet__dismiss"><button class="c-btn c-btn--ghost c-sheet__close" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></form>
+  </div>
+  <div class="c-sheet__body"><div class="c-scanner__sitting"><ul class="c-list"><li><span>Lightning Bolt</span> <span class="c-list__meta">MOM · 123 · Foil · NM · in Atraxa › Main · Added 1 minute ago</span> <span class="c-list__end c-scanner__entry-actions"><a class="c-btn c-btn--ghost c-btn--sm" href="#">Details</a> <button type="button" class="c-btn c-btn--secondary c-btn--sm">Undo</button></span></li><li><span>Counterspell</span> <span class="c-list__meta">MH2 · 267 · Nonfoil · NM · in Atraxa › Main · Added 2 minutes ago</span> <span class="c-list__end c-scanner__entry-actions"><a class="c-btn c-btn--ghost c-btn--sm" href="#">Details</a> <button type="button" class="c-btn c-btn--secondary c-btn--sm">Undo</button></span></li><li><span>Arcane Signet</span> <span class="c-list__meta">CLB · 297 · Nonfoil · NM · in Atraxa › Main · Added 4 minutes ago</span> <span class="c-list__end c-scanner__entry-actions"><a class="c-btn c-btn--ghost c-btn--sm" href="#">Details</a> <button type="button" class="c-btn c-btn--secondary c-btn--sm">Undo</button></span></li></ul></div><div class="c-sheet__foot"><p>Collector is unofficial Fan Content permitted under the <a rel="noopener" href="https://company.wizards.com/en/legal/fancontentpolicy">Fan Content Policy</a>. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC.</p><p>Card data and images provided by <a rel="noopener" href="https://scryfall.com">Scryfall</a>.</p></div></div>
+</dialog>
+</div></section>
+</div>
+<script>/* preview only: ?theme=dark, and each row rests on its centred card */
+if(new URLSearchParams(location.search).get("theme")==="dark")document.documentElement.dataset.theme="dark";
+document.querySelectorAll(".c-scanpane__row").forEach(function(row){var item=row.querySelector('[aria-current="true"]');if(item)row.scrollTo({left:item.offsetLeft-(row.clientWidth-item.offsetWidth)/2,behavior:"instant"});});</script>
+</body></html>
