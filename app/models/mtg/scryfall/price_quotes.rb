@@ -89,6 +89,7 @@ class MTG::Scryfall::PriceQuotes
 
   private
     def each_card_record(line, allowed, date)
+      return yield(malformed(nil, "the line is not valid UTF-8")) unless line.valid_encoding?
       return if line.strip.empty?
 
       card = parse(line)

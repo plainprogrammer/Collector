@@ -132,6 +132,20 @@ RSpec.describe MTG::Scryfall::PriceQuotes, type: :model do
       expect(records.last.external_key).to eq("good")
     end
 
+    it "yields a Malformed for a line that is not valid UTF-8, and goes on (AC-2.7)", :aggregate_failures do
+      path = dir.join("default-cards-20261113100623.jsonl.gz")
+      Zlib::GzipWriter.open(path.to_s) do |gzip|
+        gzip.write("{\"id\":\"bad\",\"name\":\"\xFF\"}\n".b)
+        gzip.write("#{JSON.generate(scryfall_card("id" => "good", "prices" => { "usd" => "1.00" }))}\n".b)
+      end
+      records = source.each_quote(path, languages: [ "en" ]).to_a
+
+      expect(records.map(&:class)).to eq([ Prices::Sources::Malformed, Prices::Sources::Quote ])
+      expect([ records.first.external_key, records.first.series ]).to eq([ nil, nil ])
+      expect(records.first.error).to include("UTF-8")
+      expect(records.last.external_key).to eq("good")
+    end
+
     it "yields a non-English printing's copied EUR as that printing's own quote, with no USD and no twin lookup (AC-2.8, ruling 41)", :aggregate_failures do
       cards = [ scryfall_card("id" => "en-1", "cardmarket_id" => 7, "prices" => { "usd" => "1.00", "eur" => "0.50" }),
                 scryfall_card("id" => "ja-1", "lang" => "ja", "cardmarket_id" => 7, "prices" => { "usd" => nil, "eur" => "0.50" }) ]
