@@ -192,6 +192,7 @@ RSpec.describe "The footer", type: :system do
     expect(page).to have_current_path(catalog_entries_path)
     expect(page).to have_css("body > footer.c-footer", count: 1)
 
+    wait_for_turbo_idle
     page.go_back
     expect(page).to have_current_path(collection_path)
     expect(page).to have_css("body > footer.c-footer", count: 1)
