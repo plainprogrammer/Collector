@@ -126,3 +126,18 @@ Decision 6's "never raises on any value" is also proved by facts "never raises, 
 - **`release-and-deploy.md`'s `ci.yml:NNN` citations were already out of date on `main`** before this branch (for example "Digest artifact retention … `ci.yml:206`" when the line was 218). This branch's build-args move them a few lines further. Fixing them all is left to a separate change; the two new citations (`ci.yml:160-163`, `ci.yml:202-205`) are correct at `e8f04ba2`.
 - **`bin/image-smoke` under macOS's bash 3.2** stops on an empty `run_flags` array. This predates this branch, and CI is unaffected.
 - **Screenshots** (`1396a1b6`) use factory data with placeholder printings, built by a throwaway system spec with `build_facts(version: "0.3.0", revision: "a9f6de7c…")`, which was deleted before the commit.
+
+## Implementation review
+
+SPEC-ALIGNED (sdd-review Mode B, Opus 5.5, read-only, 2026-11-13, at `fd9705fe`)
+
+The code matches spec 084 v0.4.0: every FR, decisions 1 to 12, and the exact strings of decision 2's table. Each claim in this file from AC-1.1 to AC-2.14 and AC-4.1 to AC-4.3 was checked against its example. The review had one major finding and seven minor ones.
+
+1. **Major:** AC-3.5 and AC-3.6 wait for the pull request's CI run (and AC-3.3's two architectures with them). **Open until that run;** it is recorded under Runs above when green.
+2. **Minor:** AC-3.4's failing runs override a built image's facts with `-e` instead of building an image without them. **Accepted:** both routes leave the same environment for the script's `printenv`, which is what the check reads.
+3. **Minor:** the `Dockerfile` comment and the area doc said that declaring the facts last means "a new commit rebuilds only this layer", which is false, since `COPY . .` rebuilds on every commit. **Fixed:** the area doc in `2db4fb20`, and the `Dockerfile` in `12ca0372` (the maintainer approved the text).
+4. **Minor:** `VisitorHeader.md` still let `c-main` carry the clearance. **Fixed** in `2db4fb20`.
+5. **Minor:** `Footer.md` listed three of the four readings. **Fixed** in `2db4fb20` (AC-2.14's reading added).
+6. **Minor:** `catalog-core.md`'s phrase-search rule read as if it covered the licence line. **Fixed** in `2db4fb20` ("A type's line's …").
+7. **Minor:** after a code reload in development, the stored facts are an instance of the old class. **Accepted and documented** in the initializer's comment (`8cb049c0`): the facts can't change while the process runs, and a reload of the reader takes effect at the next boot.
+8. **Minor:** commit hygiene. T1.2 has a follow-up test commit (`9f38fcdc`, from the batch B fix), and `a40d0e44`'s subject has no `(#374)`. **Accepted:** history isn't rewritten. Every commit's trailer names the model that wrote it.
