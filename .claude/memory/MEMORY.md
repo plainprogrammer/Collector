@@ -88,3 +88,4 @@
 - [Lint plan code with `bin/rubocop --stdin`](rubocop-stdin-lint.md) — extract the plan's Ruby to a scratch file and lint it with the repo path (+ `ruby -c`): the project's RSpec cops apply and nothing runs; redo after each plan patch
 - [No git stash in briefs](no-git-stash-in-briefs.md) — forbid git stash/reset/checkout in every subagent brief (except restoring a mutation-tested file); a stash/pop on a clean tree applied an unrelated old stash in spec 080
 - [Unset `config.x` answers nil](rails-config-x-unset.md) — an unset `Rails.configuration.x` key is an empty OrderedOptions; assert a boot reading's class, not only nil attributes
+- [Mutation proof in place of failing-first](mutation-proof-when-behaviour-already-built.md) — only where an earlier task already built the behaviour; each mutation and its failure go in the commit body (coordinator, spec 085 Gate B)
