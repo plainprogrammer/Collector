@@ -32,6 +32,8 @@
 #   - one with an `external_key` and no `series` is a printing whose prices could not be read at all: no series of that
 #     printing may be read as absent;
 #   - one with no `external_key` names no printing, so the run's absences can't be trusted.
+#   The reason is a caller that deletes a price when its quote is absent: it must never delete one the source failed to
+#   parse, because the deletion would be recorded in history that can't be fetched again.
 # - It raises `IntegrityError` (before yielding anything) for a file whose day it can't tell, and lets the reader's own
 #   error (a corrupt file) surface to the caller.
 #
