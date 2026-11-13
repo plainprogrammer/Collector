@@ -85,4 +85,4 @@ Neighbouring areas: the backup that holds the prices database, its format and it
 | Date | What | Pull request |
 |---|---|---|
 | 2026-11-13 | Spec 081 (decisions 1 to 5, 9 and 12: the prices database, its five tables, `WITHOUT ROWID` with the SQL schema file, the index exception, `PricesRecord`, the rules that keep prices global and apart; this doc's first distillation) | [#405](https://github.com/plainprogrammer/Collector/pull/405) |
-| 2026-11-13 | Spec 085 (decisions 1 to 12: the price source contract and its registry, the Scryfall source's quotes, the rows of sources and series written from a declaration, the hosted flag, the core guard; ruling 41 distilled) | spec 085's pull request |
+| 2026-11-13 | Spec 085 (decisions 1 to 12: the price source contract and its registry, the Scryfall source's quotes, the rows of sources and series written from a declaration, the hosted flag, the core guard; ruling 41 distilled) | [#413](https://github.com/plainprogrammer/Collector/pull/413) |
