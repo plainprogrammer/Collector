@@ -1,0 +1,22 @@
+<%# One listed work (spec 087 decision 2): its heading, then the home link, copyright line and texts in a closed disclosure,
+    or, with no readable text, the heading, the home link and "Licence text not found". Every value goes through ERB's escaping. %>
+<% identifiers = component.identifiers.join(", ") %>
+<% meta = [ component.version, identifiers.presence ].compact.join(" · ") %>
+<% meta = "#{meta} (#{component.note})" if component.note.present? %>
+<li class="c-licences__row">
+  <% if component.texts.any? %>
+    <details class="c-licences__details">
+      <summary><span class="c-licences__name"><%= component.name %></span> <span class="c-licences__meta"><%= meta %></span></summary>
+      <% if component.home %><p><%= link_to component.home, component.home, rel: "noopener" %></p><% end %>
+      <% if component.copyright.present? %><p><%= component.copyright %></p><% end %>
+      <% component.texts.each do |title, text| %>
+        <h3 class="c-licences__file"><%= title %></h3>
+        <pre class="c-licences__text"><%= text %></pre>
+      <% end %>
+    </details>
+  <% else %>
+    <div><span class="c-licences__name"><%= component.name %></span> <span class="c-licences__meta"><%= meta %></span></div>
+    <% if component.home %><p><%= link_to component.home, component.home, rel: "noopener" %></p><% end %>
+    <p class="c-licences__missing">Licence text not found</p>
+  <% end %>
+</li>
