@@ -3,21 +3,21 @@
 # mirrors `Catalog::Sources`, the contract for the catalog. A source is a class, registered in `Prices.sources` under
 # its key (config/initializers/prices.rb), built with `.new` and no arguments, that provides:
 #
-#   .key                      the source's stable key: lower case letters, digits and underscores, such as "widget_prices";
-#                             stored as price_sources.key, and never changed once released
-#   .collectible_type         the key of the `Catalog.sources` entry whose printings this source's external ids name
-#   .title                    the source's name, stored as price_sources.name (not `.name`, which every class answers)
-#   .attribution              the text a page shows beside this source's prices
-#   .attribution_url          an https address, or nil
-#   .hosted_paid_allowed?     true or false: whether a hosted instance with paid plans may show this source's prices. Stated
-#                             and stored; nothing refuses a source by it yet
-#   .series                   the `Series` this source quotes: an Array, not empty, with no two equal
-#   #reported_on(path)        the Date the data in the file at path is from. Raises IntegrityError when the file doesn't say
-#   #each_quote(path, languages:) { |Quote or Malformed| }
-#                             streamed, for the file at path, each Quote carrying #reported_on's date; without a block it
-#                             returns an Enumerator. `languages:` is what the collectible's catalog source returns from
-#                             `#languages`, so quotes are yielded for the printings the catalog holds; a source for a
-#                             collectible without languages ignores it
+#     .key                      the source's stable key: lower case letters, digits and underscores, such as "widget_prices";
+#                               stored as price_sources.key, and never changed once released
+#     .collectible_type         the key of the `Catalog.sources` entry whose printings this source's external ids name
+#     .title                    the source's name, stored as price_sources.name (not `.name`, which every class answers)
+#     .attribution              the text a page shows beside this source's prices
+#     .attribution_url          an https address, or nil
+#     .hosted_paid_allowed?     true or false: whether a hosted instance with paid plans may show this source's prices. Stated
+#                               and stored; nothing refuses a source by it yet
+#     .series                   the `Series` this source quotes: an Array, not empty, with no two equal
+#     #reported_on(path)        the Date the data in the file at path is from. Raises IntegrityError when the file doesn't say
+#     #each_quote(path, languages:) { |Quote or Malformed| }
+#                               streamed, for the file at path, each Quote carrying #reported_on's date; without a block it
+#                               returns an Enumerator. `languages:` is what the collectible's catalog source returns from
+#                               `#languages`, so quotes are yielded for the printings the catalog holds; a source for a
+#                               collectible without languages ignores it
 #
 # What `#each_quote` must and must not do:
 #
@@ -37,7 +37,8 @@
 #
 # A `Quote` is one price of one printing: the source's id for the printing (the catalog entry's `external_key`), its
 # series (finish, currency, kind), whole `cents` and the day it was reported. Values validate when built, so a source
-# can't yield what the prices database would refuse.
+# can't yield what the prices database would refuse. A `Malformed` carries `external_key`, `error` and `series`: the
+# printing's id when the line could be read that far, a message, and the `Series` of an unreadable price.
 #
 # @see file:prices.md
 module Prices::Sources
