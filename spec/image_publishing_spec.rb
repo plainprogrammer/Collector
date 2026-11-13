@@ -85,6 +85,15 @@ RSpec.describe "Image publishing files" do
                                 'grep -qxF "Created admin smoke@example.com." <<<"$user_task"')
       expect(script).not_to match(/\| *grep -q/)
     end
+
+    it "fails an image that reports no version or no full revision, from captured output (spec 084 decision 7)", :aggregate_failures do
+      script = Rails.root.join("bin/image-smoke").read
+      expect(script).to include(%(version="$(trim "$("$cli" exec "$name" printenv COLLECTOR_VERSION 2>/dev/null || true)")"),
+                                %(revision="$(trim "$("$cli" exec "$name" printenv COLLECTOR_REVISION 2>/dev/null || true)")"),
+                                %(grep -qF "Collector ${version} (${short}) is free software" <<<"$sign_in"))
+      expect(script.scan("printenv").size).to eq(2) # the two named variables and nothing else
+      expect(script).to include("COLLECTOR_SOURCE_URL") # the failure message names all three build arguments
+    end
   end
 
   describe "compose.yaml" do
