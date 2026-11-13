@@ -1,5 +1,5 @@
 # The engine-free half of the upgrade proof (spec 031 decision 1, Story 8): a released migration is never edited,
-# deleted or renamed. Compares every file in db/migrate/ at the previous release's tag with the working tree. Standard
+# deleted or renamed. Compares every file in db/migrate/ and db/prices_migrate/ (spec 081 decision 10) at the previous release's tag with the working tree. Standard
 # library only. Run as `ruby script/upgrade/guard.rb` from the repository root (the bin/ci step).
 require_relative "release"
 
@@ -31,7 +31,7 @@ module Upgrade
     end
 
     private
-      def released_files(tag) = @release.migration_files(tag)
+      def released_files(tag) = Release::MIGRATION_DIRECTORIES.flat_map { @release.migration_files(tag, it) }
 
       def describe_edited(files, tag) = files.map { "#{it} was edited since #{tag}." }
 

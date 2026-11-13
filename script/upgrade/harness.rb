@@ -151,7 +151,7 @@ module Upgrade
 
         exceptions = SeedExceptions.load(File.join(@root, "script/upgrade/seed_exceptions.yml"), @plan[:release] ? @plan[:version] : "next")
         changes = ExpectedChanges.load(File.join(@root, "script/upgrade/expected_changes.yml"),
-          previous_versions: @release.migration_versions(@plan[:ref]), current_versions: working_versions)
+          previous_versions: @release.all_migration_versions(@plan[:ref]), current_versions: working_versions + working_prices_versions)
         problems = exceptions.errors + changes.errors
         raise Failure, "script/upgrade yml files: #{problems.join("; ")}" if problems.any?
 
@@ -509,7 +509,10 @@ module Upgrade
 
       def elapsed = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - @started).round
 
+      # The primary's only, because compare checks its schema_migrations against this list; a prices version there would fail every upgrade.
       def working_versions = Dir[File.join(@root, "db/migrate/*.rb")].filter_map { File.basename(it)[/\A\d+/] }
+
+      def working_prices_versions = Dir[File.join(@root, "db/prices_migrate/*.rb")].filter_map { File.basename(it)[/\A\d+/] }
 
       def relative(path) = path.delete_prefix("#{@root}/")
   end

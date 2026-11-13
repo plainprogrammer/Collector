@@ -47,7 +47,17 @@ RSpec.describe Upgrade::ExpectedChanges, :upgrade do
   end
 
   it "names an entry whose migration is no file of the code under test (AC-4.5)" do
-    expect(load_yaml(entry.sub("20261101100001", "20269999999999")).errors.first).to include("20269999999999", "not a file in db/migrate/")
+    expect(load_yaml(entry.sub("20261101100001", "20269999999999")).errors.first).to include("20269999999999", "not a file in db/migrate/ or db/prices_migrate/")
+  end
+
+  it "reads a version of db/prices_migrate as live, and names one in neither directory (spec 081 AC-6.8)", :aggregate_failures do
+    prices = entry.sub("20261101100001", "20261113100001").sub("lots", "price_changes")
+    path = File.join(dir, "expected_changes.yml")
+    File.write(path, prices)
+    loaded = described_class.load(path, previous_versions: [], current_versions: current + %w[20261113100001])
+    expect(loaded.errors).to be_empty
+    expect(loaded.live.map(&:migration)).to eq(%w[20261113100001])
+    expect(load_yaml(prices).errors.first).to include("20261113100001", "is not a file in db/migrate/ or db/prices_migrate/")
   end
 
   it "refuses an unknown top-level key and a file that is not a mapping", :aggregate_failures do

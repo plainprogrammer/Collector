@@ -48,7 +48,7 @@ module Upgrade
       problems << "#{where}: kind #{raw["kind"].inspect} is none of #{KINDS.join(", ")}" if raw["kind"] && !KINDS.include?(raw["kind"])
       problems << "#{where}: a rewritten change names its column" if raw["kind"] == "rewritten" && raw["column"].to_s.empty?
       migration = raw["migration"].to_s
-      problems << "#{where} names migration #{migration}, which is not a file in db/migrate/" unless migration.empty? || current_versions.include?(migration)
+      problems << "#{where} names migration #{migration}, which is not a file in db/migrate/ or db/prices_migrate/" unless migration.empty? || current_versions.include?(migration)
       return [ nil, problems ] if problems.any?
 
       [ Entry.new(table: raw["table"], column: raw["column"]&.to_s, kind: raw["kind"], migration:, reason: raw["reason"]), [] ]
