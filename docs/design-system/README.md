@@ -102,7 +102,7 @@ The words every deck screen uses (spec 057 FR-3). They name no format and no col
 ## Components
 
 - Components are plain CSS classes (prefix `c-`) in `collector/components.css`, with the app's additions in `collector/additions.css`, built only on these tokens. There is no JavaScript bundle: each component's README gives the HTML, which you wrap in a Rails partial or ViewComponent.
-- Current set: `AppHeader`, `TabBar`, `Button`, `Menu`, `Input`, `Chip` (category chip, filter chip, tag), `Badge`, `ManaCost`, `ViewSwitch`, `FilterBar`, `ItemTile` (with `c-grid`), `CollectionTable` (with its `c-bulkbar`), `DeckShape` and `ProxyTag` (parts). Full screens: `CollectionPage` and `ItemPage` (desktop), `CollectionPagePhone` and `ItemPagePhone`, `DeckPage`, `DecksIndex` (with its New deck, Rename and removal pages), `AddToDeck`, `UseMyCopy` (built by spec 070, #257) and `AddProxy` (with its Add a new copy page, a use of `lots/_form`, spec 070). Card-page parts: `c-crumbs`, `c-item`, `c-rules`, `c-stats`, `c-section`, `c-list`, `c-legality`.
+- Current set: `AppHeader`, `TabBar`, `Button`, `Menu`, `Input`, `Chip` (category chip, filter chip, tag), `Badge`, `ManaCost`, `ViewSwitch`, `FilterBar`, `ItemTile` (with `c-grid`), `CollectionTable` (with its `c-bulkbar`), `DeckShape`, `DeckCheck` and `ProxyTag` (parts). Full screens: `CollectionPage` and `ItemPage` (desktop), `CollectionPagePhone` and `ItemPagePhone`, `DeckPage`, `DecksIndex` (with its New deck, Rename and removal pages), `AddToDeck`, `UseMyCopy` (built by spec 070, #257) and `AddProxy` (with its Add a new copy page, a use of `lots/_form`, spec 070). Card-page parts: `c-crumbs`, `c-item`, `c-rules`, `c-stats`, `c-section`, `c-list`, `c-legality`.
 - Build new components from these before inventing new styles; a new pattern gets its own entry here first.
 - The design system is the project's own, in code (spec 057 decision 12). A new pattern goes in `collector/additions.css`, with a doc under `components/` and a line in the App additions list below; a rule changes in this README, in the same change as the code.
 
@@ -146,6 +146,8 @@ App additions (spec 063, in `collector/additions.css`): the stroke of small icon
 
 App additions (spec 074, #326, in `collector/additions.css`): two blocks, no new class. `Menu`'s clearance of the phone tab bar (`scroll-margin-top` and `scroll-margin-bottom` on `.c-menu__list` and a room box, an `::after` on the open list, below 640px on a tabbed shell; the controller's scroll is in `menu_controller.js`), and `DeckPage`'s zone tables' menu column floor (`th.c-zone__c-menu`, 4rem below 640px of the table's container). See `Menu` and `DeckPage`.
 
+App additions (spec 079, #258, in `collector/additions.css`): `DeckCheck` (`c-deckcheck`, `c-deckcheck__title`, `c-deckcheck__summary`, `c-deckcheck__list`, `c-deckcheck__row` with `--pass`, `--fault` and `--plain`, `c-deckcheck__status`, `c-deckcheck__text`), the Check deck results.
+
 ## Logo
 
 - The mark is three fanned cards, the front one vault teal with a foil diamond: a collection, one piece of which is special. It is deliberately game-neutral so it grows past trading cards.
@@ -155,5 +157,5 @@ App additions (spec 074, #326, in `collector/additions.css`): two blocks, no new
 ## Iconography
 
 - No icon set chosen yet. Until one is, use Lucide (ISC-licensed) in `currentColor`, which matches Plex's weight. Flag any other set here before adopting it.
-- Stroke follows the size an icon is drawn at (spec 063). A stroke scales with its icon, so a Lucide stroke of 1.5 draws 1.25px on screen at 20px but 0.75px at 12px, a hairline beside a 600-weight word. Below 20px an icon keeps about 1.25px on screen: the stroke is `30 ÷ size`, with the size in px, rounded to a half, never below 1.5 or above 2.5. The app draws 1.5 at 20px and above (the tab bar's 22px), 2 at 14px to 16px (buttons, inputs, menu items, the view switch, filter chips) and 2.5 at 12px (badges, legality marks).
+- Stroke follows the size an icon is drawn at (spec 063). A stroke scales with its icon, so a Lucide stroke of 1.5 draws 1.25px on screen at 20px but 0.75px at 12px, a hairline beside a 600-weight word. Below 20px an icon keeps about 1.25px on screen: the stroke is `30 ÷ size`, with the size in px, rounded to a half, never below 1.5 or above 2.5. The app draws 1.5 at 20px and above (the tab bar's 22px), 2 at 14px to 16px (buttons, inputs, menu items, the view switch, filter chips) and 2.5 at 12px (badges, legality marks, `DeckCheck`'s status icons).
 - Every icon keeps `stroke-width="1.5"` in its markup (the weight at 20px, so a copied icon looks right on its own). `additions.css` sets the heavier stroke by the component that draws the icon, so an icon placed in one of those components needs nothing more. An icon drawn at a size no component sets gets its stroke by the rule above, and its size and stroke are added to the list of sizes above.

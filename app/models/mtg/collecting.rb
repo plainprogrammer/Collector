@@ -69,6 +69,13 @@ module MTG::Collecting
     Catalog::DeckShape::Answer.new(partial: "mtg/deck_shapes/parts", figures:, scope: figures.scope, facts: figures.facts)
   end
 
+  # The deck checks' rules for one format (spec 079, the extension side of `Catalog::DeckChecks`): size and copy limits.
+  # See `MTG::DeckRules`.
+  #
+  # @param format_key [String] the deck's stored format key
+  # @return [Catalog::DeckChecks::Rules, nil] nil for casual and for a key with no rules
+  def self.deck_rules(format_key) = MTG::DeckRules.for(format_key.to_s)
+
   # A printing with no extension record or no face data is not judged: it has no card data to be a legal or a banned card,
   # so it gets no marker (spec 066 AC-6.6).
   # @api private

@@ -523,6 +523,27 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
   .c-zone .c-section__actions { margin-left:auto; }
 }
 
+/* ---------- DeckCheck (spec 079): the Check deck results between the deck page's head and its zones ---------- */
+/* A row is a status word with its icon and a sentence; the word and the icon say pass or fault, so colour is never the only
+   signal (decision 8). A row breaks inside a word: a card or zone name may be 60 characters with no space (AC-6.4). The
+   class is `c-deckcheck`, distinct from Form's `c-check` checkbox row. The 12px icon takes the 2.5 stroke, as a badge's
+   does (Iconography). */
+.c-deckcheck { margin-top:var(--space-6); display:flex; flex-direction:column; gap:var(--space-3); min-width:0; }
+.c-deckcheck__title:focus-visible { outline:2px solid var(--focus); outline-offset:2px; border-radius:var(--radius-sm); }
+.c-deckcheck__summary { margin:0; font:400 13px/18px var(--font-mono); color:var(--ink-muted); }
+.c-deckcheck__list { list-style:none; margin:0; padding:0; background:var(--surface-raised); border:1px solid var(--line); border-radius:var(--radius-md); }
+.c-deckcheck__row { display:grid; grid-template-columns:minmax(0, 1fr); gap:var(--space-1); padding:var(--space-3) var(--space-4); border-top:1px solid var(--line); overflow-wrap:anywhere; }
+.c-deckcheck__row:first-child { border-top:0; }
+.c-deckcheck__status { display:inline-flex; align-items:center; gap:var(--space-2); font:600 13px/18px var(--font-sans); color:var(--ink); }
+.c-deckcheck__status svg { width:12px; height:12px; flex:none; stroke-width:2.5; }
+.c-deckcheck__row--pass .c-deckcheck__status svg { color:var(--success); }
+.c-deckcheck__row--fault .c-deckcheck__status svg { color:var(--warning); }
+.c-deckcheck__text { font:400 15px/22px var(--font-sans); color:var(--ink); }
+@container page (min-width: 640px) {
+  .c-deckcheck__row { grid-template-columns:11rem minmax(0, 1fr); align-items:baseline; gap:var(--space-4); }
+  .c-deckcheck__row--plain .c-deckcheck__text { grid-column:1 / -1; }
+}
+
 /* ---------- Deck page zones (spec 060): a table per zone, grouped rows, one shared column layout ---------- */
 /* From 640px of the table's container every zone table has the same fixed widths, so Cost, Owned, Proxy, Total and the
    menu sit at one x in every zone (decision 25). th is border-box: a width is the whole column, padding included. A pip is
