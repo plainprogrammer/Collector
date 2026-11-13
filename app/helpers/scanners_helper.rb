@@ -72,8 +72,8 @@ module ScannersHelper
     "Added #{printing.name} #{set_number(printing)}#{", #{label.downcase}" if label}"
   end
 
-  # The data of a redrawn sitting panel that puts keyboard focus back (spec 047 decision 3): nil on a page render and after an
-  # add, so nothing is focused by them. `focus` is :set, :heading or :main (the main button, spec 082 decision 15), a word of
-  # ours; the Stimulus controller reads it once.
+  # The data of a redrawn sitting panel that puts keyboard focus back (spec 047 decision 3): nil on a page render, so nothing is
+  # focused by it. `focus` is :set, :heading or :main (the main button, spec 082 decision 15; an add names :main, since its
+  # button went with the result), a word of ours; the Stimulus controller reads it once.
   def sitting_focus_data(focus) = (focus ? { controller: "sitting-focus", sitting_focus_to_value: focus } : nil)
 end

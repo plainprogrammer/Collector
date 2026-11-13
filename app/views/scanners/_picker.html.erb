@@ -1,7 +1,7 @@
 <%# locals: (condition:, location_id:, conditions:, choices:, focus: nil) %>
 <%# The sitting's one control (spec 042 decision 2, spec 040 decision 3): native selects and "Set" in one form, grouped under a
     legend, in the destination sheet (spec 082 decision 9), answered by a Turbo Stream that redraws it, so it works by keyboard and without script (AC-7.1; a small
-    controller only puts focus back on "Set" after the redraw, spec 047, from the panel's `sitting_focus_data`). The
+    controller only puts focus back on "Set" after the redraw, spec 047, from the sheet's `sitting_focus_data`). The
     fieldset is the choice page's c-choices (a flex column, no border): the two fields stack, as spec 040's did. %>
 <%= tag.div id: "scanner_picker", data: sitting_focus_data(focus) do %>
   <%= form_with url: scanner_sitting_path, method: :patch, scope: :sitting, class: "c-form c-scanner__place" do |form| %>
