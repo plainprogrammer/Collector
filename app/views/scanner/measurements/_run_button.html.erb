@@ -1,0 +1,6 @@
+<%# locals: (run:, next_row:, framing:, **) %>
+<%# Measurement mode's top-bar button (spec 082 decision 5): the next row, the count and the framing, redrawn with every stored
+    capture, so the row is in view while capturing; it opens the run's sheet. %>
+<%= tag.button type: "button", id: "measurement_run_button", class: "c-btn c-btn--secondary c-scan__run", data: { action: "sheets#open", sheets_id_param: "measurement_sheet" } do %>
+  <%= [ next_row&.file || "All done", "#{run.counts.fetch(:captured, 0)} of #{run.rows.size}", framing ].join(" · ") %>
+<% end %>

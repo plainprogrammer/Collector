@@ -1,13 +1,12 @@
 <% content_for :title, "Measure the scanner · Collector" %>
+<% content_for :focused, "true" %>
 <%= render "scanners/head" %>
-<%= render "layouts/appbar", section: :scanner %>
-<main class="c-main c-page">
-  <div class="c-pagehead"><div><h1 class="c-pagehead__title">Measure the scanner</h1></div></div>
-  <% if @manifest_problem %>
-    <p class="c-status__message c-status__message--alert"><%= @manifest_problem %> Measurement mode can't start. The scanner itself is unaffected.</p>
-  <% else %>
-    <%= render "scanner/measurements/panel", @panel %>
-    <%= render "scanners/scanner", **@sitting, heading: "Measure the scanner" %>
-  <% end %>
-</main>
-<%= render "layouts/tabbar", section: :scanner %>
+<% if @manifest_problem %>
+  <main class="c-scan">
+    <h1 class="c-sr">Measure the scanner</h1>
+    <div class="c-scan__top"><%= link_to scanner_path, class: "c-scan__back", "aria-label": "Back" do %><%= render "icons/back" %><% end %></div>
+    <div class="c-scan__stage"><div class="c-scan__notice"><p class="c-scan__notice-text"><%= @manifest_problem %> Measurement mode can't start. The scanner itself is unaffected.</p></div></div>
+  </main>
+<% else %>
+  <%= render "scanners/scanner", **@sitting, heading: "Measure the scanner", measurement: @panel, framing: @panel[:framing] %>
+<% end %>

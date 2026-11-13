@@ -1,0 +1,17 @@
+<%# locals: (run:, next_row:, expected:, keep_frames:, notice:, alert:, framing:) %>
+<%# Measurement mode's run as a sheet (spec 082 decision 5): the panel, then the framing switch (full or shipped), then the
+    notice's foot (decision 16). %>
+<dialog class="c-sheet" id="measurement_sheet" aria-labelledby="measurement_sheet_title" data-action="click->sheets#backdrop close->sheets#closed">
+  <div class="c-sheet__head">
+    <h2 class="c-sheet__title" id="measurement_sheet_title">Measured run</h2>
+    <form method="dialog" class="c-sheet__dismiss"><button class="c-btn c-btn--ghost c-sheet__close" aria-label="Close"><%= render "icons/cross" %></button></form>
+  </div>
+  <div class="c-sheet__body">
+    <%= render "scanner/measurements/panel", run:, next_row:, expected:, keep_frames:, notice:, alert:, framing: %>
+    <div class="c-scan__framing">
+      <%= button_to "Full framing", scanner_measurement_framing_path, method: :patch, params: { framing: "full" }, class: "c-btn c-btn--secondary", disabled: framing == "full", form: { data: { turbo: false } } %>
+      <%= button_to "Shipped framing", scanner_measurement_framing_path, method: :patch, params: { framing: "shipped" }, class: "c-btn c-btn--secondary", disabled: framing == "shipped", form: { data: { turbo: false } } %>
+    </div>
+    <%= render "layouts/notice_foot" %>
+  </div>
+</dialog>

@@ -228,13 +228,16 @@ RSpec.describe "The footer", type: :request do
         FileUtils.remove_entry(corpus)
       end
 
-      it "is on the measurement page and its replay page, under the same policy (AC-4.3)", :aggregate_failures do
-        [ scanner_measurement_path, scanner_measurement_replay_path(label: "a") ].each do |path|
-          get path
-          expect(response).to have_http_status(:ok), path
-          expect_the_footer(path)
-          expect_the_scanner_policy
-        end
+      it "is on the replay page, and the measurement page carries it in its three sheets' feet, under the same policy (AC-4.3, spec 082 decision 16)", :aggregate_failures do
+        get scanner_measurement_path
+        expect(response).to have_http_status(:ok)
+        expect(footers).to be_empty
+        expect(html.css("dialog.c-sheet > .c-sheet__body > .c-sheet__foot").size).to eq(3)
+        expect_the_scanner_policy
+        get scanner_measurement_replay_path(label: "a")
+        expect(response).to have_http_status(:ok)
+        expect_the_footer(scanner_measurement_replay_path(label: "a"))
+        expect_the_scanner_policy
       end
     end
   end

@@ -20,13 +20,16 @@ RSpec.describe "Scanner measurement mode", type: :system do
     visit scanner_measurement_path
     show_synthetic_card
     click_on "Capture"
-    expect(page).to have_text("Stored IMG_1.jpeg as the measured capture", wait: 30)
+    expect(page).to have_css("#measurement_run_button", text: "All done · 1 of 1 · full", wait: 30)
+    find("#measurement_run_button").click
+    expect(page).to have_css("#measurement_panel [data-measurement-target=status]", text: "Stored IMG_1.jpeg as the measured capture")
+    find("#measurement_sheet .c-sheet__close").click
   end
 
   # The events the server has written for a row, waited for like a Capybara matcher (they post after the page updates).
   def recorded_events(row, count:)
     page.document.synchronize(10) do
-      Scanner::MeasurementRun.current.events(row).tap { raise Capybara::ExpectationNotMet, "#{count} events" if it.size < count }
+      Scanner::MeasurementRun.current(framing: "full").events(row).tap { raise Capybara::ExpectationNotMet, "#{count} events" if it.size < count }
     end
   end
 
@@ -36,21 +39,26 @@ RSpec.describe "Scanner measurement mode", type: :system do
     Catalog::NameIndex.new("mtg").rebuild
     system_sign_in_as(create(:user))
     visit scanner_measurement_path
+    expect(page).to have_css("#measurement_run_button", text: "IMG_1.jpeg · 0 of 1 · full")
+    find("#measurement_run_button").click
     expect(page).to have_select("Card to capture", selected: "IMG_1.jpeg · MOM 123 (pending)")
+    find("#measurement_sheet .c-sheet__close").click
     show_synthetic_card
     click_on "Capture"
-    expect(page).to have_text("Stored IMG_1.jpeg as the measured capture", wait: 30)
-    expect(corpus.join("runs/live/IMG_1.jpeg/capture-001-collector.png")).to exist
+    expect(page).to have_css("#measurement_run_button", text: "All done · 1 of 1 · full", wait: 30)
+    find("#measurement_run_button").click
+    expect(page).to have_text("Stored IMG_1.jpeg as the measured capture")
+    expect(corpus.join("runs/live/full/IMG_1.jpeg/capture-001-collector.png")).to exist
   end
 
   it "records the add with its rank and the Undo against the capture's reading key (AC-9.2)", :aggregate_failures do
     capture_lightning_bolt
     find("button[aria-label='Add Lightning Bolt MOM · 123 Foil']", wait: 30).click
-    expect(page).to have_css("#scanner_sitting", text: "This sitting: 1 card")
+    expect(page).to have_css("#scanner_added_text", text: "Added Lightning Bolt MOM · 123, foil")
     click_on "Undo"
-    expect(page).to have_css("#status", text: "Removed 1 × Lightning Bolt (MOM · 123, Foil)")
-    row = Scanner::MeasurementRun.current.row("IMG_1.jpeg")
-    capture = Scanner::MeasurementRun.current.captures(row).sole
+    expect(page).to have_css("#scanner_added_text", text: "Removed 1 × Lightning Bolt (MOM · 123, Foil)")
+    row = Scanner::MeasurementRun.current(framing: "full").row("IMG_1.jpeg")
+    capture = Scanner::MeasurementRun.current(framing: "full").captures(row).sole
     expect(capture).to include("reading_key" => match(/\A\h{32}\z/), "outline" => "live")
     events = recorded_events(row, count: 2)
     expect(events.map { it.values_at("kind", "rank") }).to eq([ %w[add 1], [ "undo", nil ] ])
@@ -60,9 +68,9 @@ RSpec.describe "Scanner measurement mode", type: :system do
   it "keeps the live frame and its guide rect, and still sends only the text and key for the reading (spec 010 AC-3.1, AC-5.5)", :aggregate_failures do
     Rails.configuration.x.scanner_measurement = Rails.configuration.x.scanner_measurement.merge(keep_frames: true)
     capture_lightning_bolt
-    capture = Scanner::MeasurementRun.current.captures(Scanner::MeasurementRun.current.row("IMG_1.jpeg")).sole
+    capture = Scanner::MeasurementRun.current(framing: "full").captures(Scanner::MeasurementRun.current(framing: "full").row("IMG_1.jpeg")).sole
     expect(capture).to include("frame_width" => 900, "frame_height" => 1200, "guide" => include("width" => be > 0))
-    expect(corpus.join("runs/live/IMG_1.jpeg/capture-001-frame.png")).to exist
+    expect(corpus.join("runs/live/full/IMG_1.jpeg/capture-001-frame.png")).to exist
     expect(scanner_sent).to include([ "reading[name_text]", "reading[collector_text]", "reading[key]" ])
     frames = scanner_sent.select { it.include?("capture[frame]:file") } # file fields are recorded as "<name>:file"
     expect(frames.size).to eq(1)
