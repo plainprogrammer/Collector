@@ -165,6 +165,13 @@ module ScannerHelpers
     JS
   end
 
+  # Puts a synthetic card in front of the camera (ADR 0002): getUserMedia answers with a canvas stream whose card is drawn where
+  # the page's live guide falls in the frame (spec 082 AC-3.1), then the camera restarts and the feed is waited for.
+  #
+  # @param name [String] the name drawn in the card's name bar
+  # @param lines [Array<String>] the collector line's rows
+  # @param torch [Boolean] whether the fake track reports a torch
+  # @return [void]
   def show_synthetic_card(name: "Lightning Bolt", lines: [ "R 0123", "MOM • EN" ], torch: false)
     page.evaluate_async_script(<<~JS, name, lines, torch)
       const [ name, lines, torch, done ] = arguments
@@ -212,6 +219,9 @@ module ScannerHelpers
     JS
   end
 
+  # Restarts the scanner's camera controller, so a getUserMedia substituted in the page is asked again.
+  #
+  # @return [void]
   def restart_camera
     page.execute_script(%(window.Stimulus.getControllerForElementAndIdentifier(document.querySelector(".c-scan"), "camera").restart()))
   end
