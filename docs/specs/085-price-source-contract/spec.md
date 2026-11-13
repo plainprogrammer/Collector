@@ -8,6 +8,7 @@
 **Issue:** [#364](https://github.com/plainprogrammer/Collector/issues/364)
 **Builds on:** [spec 081](../081-prices-database-in-backup/spec.md) and [`prices.md`](../../architecture/prices.md) (the prices database and its five tables), [research 083](../083-non-english-printing-prices/research.md) and [ruling 41](../../roadmap.md#2026-11-13-prices-on-non-english-printings-research-083), the [price data design](../../superpowers/specs/2026-11-13-price-data-design.md) ("The source contract"), [`catalog-core.md`](../../architecture/catalog-core.md) (the `Catalog::Sources` contract this one mirrors)
 **Frozen:** the current rules are in [`prices.md`](../../architecture/prices.md) (whole spec); see the [specs index](../README.md)
+**Plan:** retired in `e78c902bc0f9f6158bfddc1fbfffdf1edf9da3e4`; read it with `git show e78c902bc0f9f6158bfddc1fbfffdf1edf9da3e4^:docs/specs/085-price-source-contract/plan.md`
 
 ---
 

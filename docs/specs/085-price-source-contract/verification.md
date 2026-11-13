@@ -1,6 +1,6 @@
 # Verification: spec 085, a price source contract and Scryfall's prices through it (#364)
 
-**Spec:** [`spec.md`](spec.md) (Approved 1.0.4) · **Plan:** [`plan.md`](plan.md) · **Branch:** `085-price-source-contract` · **Date:** 2026-11-13
+**Spec:** [`spec.md`](spec.md) (Approved 1.0.4) · **Plan:** plan (retired in `e78c902bc0f9f6158bfddc1fbfffdf1edf9da3e4`; read it with `git show e78c902bc0f9f6158bfddc1fbfffdf1edf9da3e4^:docs/specs/085-price-source-contract/plan.md`) · **Branch:** `085-price-source-contract` · **Date:** 2026-11-13
 
 ## Evidence
 
