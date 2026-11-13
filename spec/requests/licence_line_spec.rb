@@ -19,11 +19,22 @@ RSpec.describe "The licence line", type: :request do
 
   it "ends the footer of a collector's pages (AC-1.1, AC-1.4)", :aggregate_failures do
     lot = create(:lot, account: sign_in_as(create(:user)).account)
-    [ collection_path, catalog_entry_path(lot.entry), scanner_path, more_path ].each do |path|
+    [ collection_path, catalog_entry_path(lot.entry), more_path ].each do |path|
       get path
       expect_the_unknown_line(path)
       expect(line.css("a").map { |link| link.attributes.keys }).to all(match_array(%w[rel href])), path
     end
+  end
+
+  # Spec 082 decision 16 (patch 1.0.3): the scanner is a one-screen focused page with no footer, the exception to AC-1.1; the
+  # licence line ends the foot of each of its sheets instead.
+  it "ends each sheet's foot on the scanner, which has no footer (spec 082 decision 16)", :aggregate_failures do
+    sign_in_as(create(:user))
+    get scanner_path
+    expect(html.css("body > footer.c-footer")).to be_empty
+    feet = html.css("dialog.c-sheet .c-sheet__foot")
+    expect(feet.size).to eq(2)
+    expect(feet.map { |foot| foot.at_css("p:last-child").text }).to all(eq("Collector (unknown version)#{tail}"))
   end
 
   it "ends the deck page and an admin page (AC-1.1)", :aggregate_failures do
