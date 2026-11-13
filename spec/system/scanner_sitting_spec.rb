@@ -335,8 +335,13 @@ RSpec.describe "The scanner's sitting", type: :system do
     visit scanner_path
     add_by_scanning
     expect(page).to have_css("#scanner_added_text", text: "Added")
+    show_synthetic_card
+    hold_readings # the reading waits for the request, so the status line can't be replaced by an answer before it is asserted
     click_on "Capture"
     expect(page).to have_css(".c-scan__line--added[hidden]", visible: :all)
     expect(page).to have_css(".c-scan__line--status:not([hidden])")
+    eventually("typeof window.__release === 'function'", wait: 30)
+    page.execute_script("window.__release()")
+    expect(page).to have_button("Scan again", wait: 30)
   end
 end
