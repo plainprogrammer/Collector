@@ -1,5 +1,5 @@
 # Adds the scanned card: one copy of the chosen printing and finish, at most once per reading (spec 009 Story 1). Every
-# answer is a Turbo Stream, so the scanner and its camera stay on the page (AC-1.3).
+# answer is a Turbo Stream (AC-1.3); an add returns the shell to the camera with the after-add line (spec 082 decision 12).
 class Scanner::Sittings::EntriesController < ApplicationController
   include ScannerSitting
 
@@ -12,8 +12,8 @@ class Scanner::Sittings::EntriesController < ApplicationController
   def create
     attributes = params.expect(entry: %i[printing finish reading_key])
     printing = Catalog::Entry.includes(:set).find_by(external_key: attributes[:printing].to_s)
-    added = Scanner::Sitting.add!(account: Current.account, printing:, finish: attributes[:finish], reading_key: attributes[:reading_key])
-    render turbo_stream: [ result_stream(added.entry), *sitting_stream(message_for(added.entry), alert: added.entry.state != :added) ]
+    entry = Scanner::Sitting.add!(account: Current.account, printing:, finish: attributes[:finish], reading_key: attributes[:reading_key]).entry
+    render turbo_stream: [ turbo_stream.update("scanner_result", ""), *answer_for(entry), *sitting_redraw ]
   rescue Scanner::Sitting::Refused
     refuse NOT_ADDED
   rescue ActiveRecord::RecordInvalid
@@ -21,26 +21,16 @@ class Scanner::Sittings::EntriesController < ApplicationController
   end
 
   private
-    def message_for(entry)
-      return REPLAYED.fetch(entry.state) unless entry.state == :added
+    # An add empties the pane and the status line and says so on the after-add line, focus on the main button; a replay of an
+    # undone or changed entry keeps the pane open with its sentence and no add button (spec 009 AC-1.5; spec 082 AC-4.8).
+    def answer_for(entry)
+      return [ say_in("status", REPLAYED.fetch(entry.state), alert: true) ] unless entry.state == :added
 
-      # The condition and the place are the entry's lot's as it is now, so a replay names where its copy went (spec 040
-      # decision 4, spec 042 decision 3, AC-4.4).
-      lot = entry.lot
-      place = lot&.place_label
-      "Added 1 × #{helpers.scanner_copy(entry.printing, entry.finish, lot&.condition)}#{" in #{place}" if place} to your collection."
-    end
-
-    # The reading clears once its card is in (AC-1.3); a replay of an undone or changed add shows that instead, with no
-    # add button (AC-1.5).
-    def result_stream(entry)
-      return turbo_stream.update("scanner_result", "") if entry.state == :added
-
-      turbo_stream.update("scanner_result", partial: "shared/status_message", locals: { message: REPLAYED.fetch(entry.state), alert: true })
+      [ turbo_stream.update("status", ""), turbo_stream.update("scanner_status_text", ""),
+        *added_line(helpers.scanner_added(entry.printing, entry.finish), entry:, focus: :main) ]
     end
 
     def refuse(message)
-      render turbo_stream: turbo_stream.update("status", partial: "shared/status_message", locals: { message:, alert: true }),
-        status: :unprocessable_content
+      render turbo_stream: say_in("status", message, alert: true), status: :unprocessable_content
     end
 end

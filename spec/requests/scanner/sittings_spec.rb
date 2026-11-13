@@ -14,6 +14,11 @@ RSpec.describe "Scanner sittings", type: :request do
 
   def add(key, finish: "foil", to: account, card: printing) = Scanner::Sitting.add!(account: to, printing: card, finish:, reading_key: key * 32).entry
   def html = Nokogiri::HTML5(response.body)
+
+  def status_text(region) = html.at_css("turbo-stream[target=#{region}] .c-status__message").text.squish
+
+  # The list sheet's title: on the page, or as the stream's text after an answer (spec 082 decision 9).
+  def heading = html.at_css("#scanner-sitting-heading") || html.at_css("turbo-stream[target=scanner-sitting-heading] template")
   def undo(entry) = post(scanner_sitting_entry_undo_path(entry), headers: stream)
 
   describe "the list on the scanner" do
@@ -23,13 +28,13 @@ RSpec.describe "Scanner sittings", type: :request do
       add("b")
       add("c", finish: "", card: plain)
       get scanner_path
-      expect(html.at_css("#scanner_sitting h2").text).to eq("This sitting: 3 cards")
+      expect(heading.text.strip).to eq("This sitting: 3 cards")
       rows = html.css("#scanner_sitting > ul > li")
       expect(rows.map { it.at_css(".c-list__meta").text.squish })
         .to match([ /\AMOM · 7 · — · Added .+ ago\z/, /\AMOM · 123 · Foil · Added .+ ago\z/, /\AMOM · 123 · Nonfoil · Added .+ ago\z/ ])
       expect(rows.last.at_css("a[data-scanner-event=details]")["href"]).to eq(edit_lot_path(first.lot_id, return_to: scanner_path))
       expect(rows.last.at_css("form.c-scanner__undo")["action"]).to eq(scanner_sitting_entry_undo_path(first))
-      expect(html.at_css("#scanner_sitting a[href='#{new_scanner_sitting_ending_path}']").text).to eq("Done")
+      expect(html.at_css("#scanner_sitting_bar a[href='#{new_scanner_sitting_ending_path}']").text).to eq("Done")
     end
 
     it "shows the 10 newest and the rest behind Show all (AC-3.2)", :aggregate_failures do
@@ -43,8 +48,8 @@ RSpec.describe "Scanner sittings", type: :request do
     it "shows no list or Done without a sitting (AC-3.7)", :aggregate_failures do
       get scanner_path
       expect(html.at_css("#scanner_sitting")["hidden"]).to be_nil
-      expect(html.at_css("#scanner_sitting select#sitting_condition")).not_to be_nil
-      expect(html.at_css("#scanner_sitting h2")).to be_nil
+      expect(html.at_css("#scanner_picker select#sitting_condition")).not_to be_nil
+      expect(heading.text.strip).to eq("This sitting: 0 cards")
       expect(response.body).not_to include(new_scanner_sitting_ending_path)
     end
 
@@ -60,7 +65,7 @@ RSpec.describe "Scanner sittings", type: :request do
     it "keeps each account's sitting to itself (AC-3.8)", :aggregate_failures do
       theirs = add("f", to: create(:user).account)
       get scanner_path
-      expect(html.at_css("#scanner_sitting h2")).to be_nil
+      expect(heading.text.strip).to eq("This sitting: 0 cards")
       undo(theirs)
       expect(response).to have_http_status(:not_found)
       expect(theirs.reload.state).to eq(:added)
@@ -114,8 +119,8 @@ RSpec.describe "Scanner sittings", type: :request do
       expect(response).to redirect_to(scanner_path)
       expect(response).to have_http_status(:see_other)
       follow_redirect!
-      expect(html.at_css("#scanner_sitting").text.squish).to include("Added 1 card in this sitting")
-      expect(html.at_css("#scanner_sitting a[href='#{collection_path}']")).not_to be_nil
+      expect(html.at_css("#scanner_added_text").text.squish).to include("Added 1 card in this sitting")
+      expect(html.at_css("#scanner_added_action a[href='#{collection_path}']")).not_to be_nil
       get scanner_path
       expect(response.body).not_to include("Added 1 card in this sitting")
       expect([ Scanner::Sitting.count, account.lots.sum(:quantity) ]).to eq([ 0, 1 ])
@@ -142,7 +147,7 @@ RSpec.describe "Scanner sittings", type: :request do
     def long_box = @long_box ||= create(:location, account:, name: "Long box")
 
     def place(value, **extra) = patch(scanner_sitting_path, params: { sitting: { location_id: value } }.merge(extra), headers: stream)
-    def picker = html.at_css("#scanner_sitting form[action='#{scanner_sitting_path}']")
+    def picker = html.at_css("#scanner_picker form[action='#{scanner_sitting_path}']")
     def chosen = picker.at_css("select#sitting_location_id option[selected]")
 
     it "shows the control alone with no sitting open: No location first and selected, then the locations in order (AC-1.1)", :aggregate_failures do
@@ -155,7 +160,7 @@ RSpec.describe "Scanner sittings", type: :request do
       expect(chosen.text).to eq("No location")
       expect(picker.at_css("input[type=submit], button[type=submit]")["value"] || picker.at_css("button").text).to eq("Set")
       expect(html.at_css("#scanner_sitting")["hidden"]).to be_nil
-      expect(html.at_css("#scanner_sitting h2")).to be_nil
+      expect(heading.text.strip).to eq("This sitting: 0 cards")
       expect(response.body).not_to include(new_scanner_sitting_ending_path)
     end
 
@@ -186,14 +191,14 @@ RSpec.describe "Scanner sittings", type: :request do
       moved.lot.update!(location: long_box)
       changed.lot.destroy!
       get scanner_path
-      expect(html.at_css("#scanner_sitting h2").text).to eq("This sitting: 3 cards, in Long box")
+      expect(heading.text.strip).to eq("This sitting: 3 cards, in Long box")
       metas = html.css("#scanner_sitting > ul > li .c-list__meta").map { it.text.squish }
       expect(metas).to match([ /\AMOM · 9 · Foil · Added .+ ago\z/, /\AMOM · 7 · Foil · in Blue binder · Added .+ ago\z/, /\AMOM · 123 · Foil · in Long box · Added .+ ago\z/ ])
     end
 
     it "says where cards go in a placed sitting with no entries, and keeps spec 009's copy once all were undone (AC-1.2)", :aggregate_failures do
       place(blue.id)
-      expect(html.at_css("#scanner_sitting h2").text).to eq("This sitting: 0 cards, in Blue binder")
+      expect(heading.text.strip).to eq("This sitting: 0 cards, in Blue binder")
       expect(html.at_css("#scanner_sitting .c-empty").text).to eq("Cards you scan now: in Blue binder.")
       expect(html.at_css("#scanner_sitting ul")).to be_nil
       add("a").undo!
@@ -207,8 +212,8 @@ RSpec.describe "Scanner sittings", type: :request do
       delete location_path(blue)
       place(blue.id)
       expect(response).to have_http_status(:unprocessable_content)
-      expect(html.at_css("#scanner_sitting h2").text).to eq("This sitting: 0 cards")
-      expect(html.at_css("#scanner_sitting .c-empty").text).to eq("Nothing added yet.")
+      expect(status_text("scanner_destination_status")).to eq(Scanner::SittingsController::GONE)
+      expect(html.at_css("#scanner_picker select#sitting_location_id option[selected]").text).to eq("No location")
     end
 
     it "keeps the place on a reload (AC-1.7)" do
@@ -230,8 +235,8 @@ RSpec.describe "Scanner sittings", type: :request do
       expect(Scanner::Sitting.count).to eq(0)
       expect(response).to have_http_status(:ok)
       expect(html.at_css("select#sitting_location_id option[selected]").text).to eq("No location")
-      expect(response.body).not_to include("This sitting:")
-      expect(html.at_css("turbo-stream[target=status] .c-status__message").text.squish).to eq("Cards you scan now: condition not specified, no location.")
+      expect(heading.text.strip).to eq("This sitting: 0 cards")
+      expect(html.at_css("turbo-stream[target=scanner_destination_status] .c-status__message").text.squish).to eq("Cards you scan now: condition not specified, no location.")
     end
 
     it "answers 400 to a request with no place, changing nothing (AC-3.3)", :aggregate_failures do
@@ -282,7 +287,7 @@ RSpec.describe "Scanner sittings", type: :request do
       place(long_box.id)
       add("b")
       undo(first)
-      expect(html.at_css("select#sitting_location_id option[selected]").text).to eq("Long box")
+      expect(html.at_css("#scanner_sitting_bar .c-scan__dest-text").text).to eq("Long box")
       expect(account.lots.map { [ it.location&.name, it.quantity ] }).to eq([ [ "Long box", 1 ] ])
     end
 
@@ -292,7 +297,7 @@ RSpec.describe "Scanner sittings", type: :request do
       expect(Scanner::Sitting.sole.location).to be_nil
       get scanner_path
       expect(Scanner::Sitting.count).to eq(0)
-      expect(html.at_css("#scanner_sitting h2")).to be_nil
+      expect(heading.text.strip).to eq("This sitting: 0 cards")
       expect(html.at_css("#scanner_sitting")["hidden"]).to be_nil
       expect(response.body).not_to include(new_scanner_sitting_ending_path)
     end
@@ -302,7 +307,7 @@ RSpec.describe "Scanner sittings", type: :request do
       add("a").undo!
       delete location_path(blue)
       get scanner_path
-      expect(html.at_css("#scanner_sitting h2").text).to eq("This sitting: 0 cards")
+      expect(heading.text.strip).to eq("This sitting: 0 cards")
       expect(response.body).to include(new_scanner_sitting_ending_path)
       expect(html.at_css("select#sitting_location_id")).to be_nil
       expect(html.at_css("select#sitting_condition")).not_to be_nil
@@ -313,7 +318,7 @@ RSpec.describe "Scanner sittings", type: :request do
       add("a")
       post scanner_sitting_ending_path
       follow_redirect!
-      expect(html.at_css("#scanner_sitting").text.squish).to include("Added 1 card in this sitting")
+      expect(html.at_css("#scanner_added_text").text.squish).to include("Added 1 card in this sitting")
       expect(chosen.text).to eq("No location")
       expect([ Scanner::Sitting.count, account.lots.sole.location ]).to eq([ 0, blue ])
       place(long_box.id)
@@ -325,8 +330,8 @@ RSpec.describe "Scanner sittings", type: :request do
       add("a")
       post scanner_sitting_ending_path
       follow_redirect!
-      expect(html.at_css("#scanner_sitting select#sitting_condition")).not_to be_nil
-      expect(html.at_css("#scanner_sitting select#sitting_location_id")).to be_nil
+      expect(html.at_css("#scanner_picker select#sitting_condition")).not_to be_nil
+      expect(html.at_css("#scanner_picker select#sitting_location_id")).to be_nil
     end
   end
 
@@ -337,7 +342,7 @@ RSpec.describe "Scanner sittings", type: :request do
     def deck = @deck ||= create(:deck, account:, name: "Izzet Tempo")
     def blue = @blue ||= create(:location, account:, name: "Blue binder")
     def place(value) = patch(scanner_sitting_path, params: { sitting: { location_id: value } }, headers: stream)
-    def picker = html.at_css("#scanner_sitting form[action='#{scanner_sitting_path}']")
+    def picker = html.at_css("#scanner_picker form[action='#{scanner_sitting_path}']")
     def select = picker.at_css("select#sitting_location_id")
 
     it "lists No location, Places and Decks as Deck › Zone in the picker (spec 065 AC-5.1)", :aggregate_failures do
@@ -355,7 +360,7 @@ RSpec.describe "Scanner sittings", type: :request do
       deck
       get scanner_path
       expect(select.css("optgroup").map { it["label"] }).to eq(%w[Decks])
-      expect(html.at_css("#scanner_sitting select#sitting_condition")).not_to be_nil
+      expect(html.at_css("#scanner_picker select#sitting_condition")).not_to be_nil
     end
 
     it "offers the zones in the panel in each state: none open, open, after Set and the ended summary (spec 065 AC-5.1)", :aggregate_failures do
@@ -372,7 +377,7 @@ RSpec.describe "Scanner sittings", type: :request do
       expect(picker.at_css("select#sitting_location_id option[selected]").text).to eq("Izzet Tempo › Main")
       post scanner_sitting_ending_path
       follow_redirect!
-      expect(html.at_css("#scanner_sitting").text.squish).to include("Added 1 card in this sitting")
+      expect(html.at_css("#scanner_added_text").text.squish).to include("Added 1 card in this sitting")
       expect(decks_group.call(picker)).to eq(zones)
     end
 
@@ -427,7 +432,7 @@ RSpec.describe "Scanner sittings", type: :request do
         [ "Heavily played (HP)", "heavily_played" ], [ "Damaged (DMG)", "damaged" ] ]
     end
 
-    def picker = html.at_css("#scanner_sitting form[action='#{scanner_sitting_path}']")
+    def picker = html.at_css("#scanner_picker form[action='#{scanner_sitting_path}']")
     def chosen(field) = picker.at_css("select#sitting_#{field} option[selected]").text
     def choose(**choices) = Scanner::Sitting.choose!(account:, **choices)
     def metas = html.css("#scanner_sitting > ul > li .c-list__meta").map { it.text.squish }
@@ -442,7 +447,7 @@ RSpec.describe "Scanner sittings", type: :request do
       expect(picker.at_css("input[type=submit]")["value"]).to eq("Set")
       expect(picker.at_css("select#sitting_location_id")).to be_nil # no locations, so no Location select and no hint to /locations
       expect(html.at_css("#scanner_sitting a")).to be_nil
-      expect(html.at_css("#scanner_sitting h2")).to be_nil
+      expect(heading.text.strip).to eq("This sitting: 0 cards")
       expect(response.body).not_to include(new_scanner_sitting_ending_path)
     end
 
@@ -458,14 +463,14 @@ RSpec.describe "Scanner sittings", type: :request do
       choose(condition: "near_mint", location: blue)
       3.times { add(format("%x", it)) }
       get scanner_path
-      expect(html.at_css("#scanner_sitting h2").text).to eq("This sitting: 3 cards, Near mint, in Blue binder")
+      expect(heading.text.strip).to eq("This sitting: 3 cards, Near mint, in Blue binder")
       expect([ chosen(:condition), chosen(:location_id) ]).to eq([ "Near mint (NM)", "Blue binder" ])
       choose(location: nil)
       get scanner_path
-      expect(html.at_css("#scanner_sitting h2").text).to eq("This sitting: 3 cards, Near mint")
+      expect(heading.text.strip).to eq("This sitting: 3 cards, Near mint")
       choose(condition: nil, location: blue)
       get scanner_path
-      expect(html.at_css("#scanner_sitting h2").text).to eq("This sitting: 3 cards, in Blue binder")
+      expect(heading.text.strip).to eq("This sitting: 3 cards, in Blue binder")
     end
 
     it "says what cards go into in a sitting with no entries, naming only what is set (decision 3, AC-1.2)", :aggregate_failures do
@@ -476,7 +481,7 @@ RSpec.describe "Scanner sittings", type: :request do
       choose(location: nil)
       get scanner_path
       expect(html.at_css("#scanner_sitting .c-empty").text).to eq("Cards you scan now: Near mint.")
-      expect(html.at_css("#scanner_sitting h2").text).to eq("This sitting: 0 cards, Near mint")
+      expect(heading.text.strip).to eq("This sitting: 0 cards, Near mint")
       choose(condition: nil, location: blue)
       get scanner_path
       expect(html.at_css("#scanner_sitting .c-empty").text).to eq("Cards you scan now: in Blue binder.")
@@ -486,7 +491,7 @@ RSpec.describe "Scanner sittings", type: :request do
       Scanner::Sitting.create!(account:) # what a redraw with neither choice leaves ("Nothing added yet.") until the next render
       get scanner_path
       expect(Scanner::Sitting.count).to eq(0)
-      expect(html.at_css("#scanner_sitting h2")).to be_nil
+      expect(heading.text.strip).to eq("This sitting: 0 cards")
       expect(picker.at_css("select#sitting_condition")).not_to be_nil
       choose(condition: "near_mint")
       add("a").undo!
@@ -498,13 +503,13 @@ RSpec.describe "Scanner sittings", type: :request do
       choose(condition: "near_mint")
       get scanner_path
       expect(Scanner::Sitting.count).to eq(1)
-      expect(html.at_css("#scanner_sitting h2").text).to eq("This sitting: 0 cards, Near mint")
+      expect(heading.text.strip).to eq("This sitting: 0 cards, Near mint")
     end
 
     it "keeps the condition on a reload (AC-1.7)" do
       choose(condition: "lightly_played")
       get scanner_path
-      expect(chosen(:condition)).to eq("Lightly played (LP)")
+      expect(html.at_css("#scanner_sitting_bar .c-scan__dest-text").text).to eq("No location · LP")
     end
 
     it "shows the short label after the finish, from the entry's lot as it is now (decision 3, AC-2.3)", :aggregate_failures do
@@ -535,7 +540,7 @@ RSpec.describe "Scanner sittings", type: :request do
       add("a")
       post scanner_sitting_ending_path
       follow_redirect!
-      expect(html.at_css("#scanner_sitting").text.squish).to include("Added 1 card in this sitting")
+      expect(html.at_css("#scanner_added_text").text.squish).to include("Added 1 card in this sitting")
       expect(chosen(:condition)).to eq("Not specified")
       expect(Scanner::Sitting.count).to eq(0)
     end
@@ -561,17 +566,17 @@ RSpec.describe "Scanner sittings", type: :request do
     def blue = @blue ||= create(:location, account:, name: "Blue binder")
     def set(**fields) = patch(scanner_sitting_path, params: { sitting: fields }, headers: stream)
     def chosen(field) = html.at_css("select#sitting_#{field} option[selected]").text
-    # The status line in the stream's update of "status" (`#status` itself is in the layout, not in a stream body).
-    def status_line = html.at_css("turbo-stream[target=status] .c-status__message").text.squish
+    # The destination sheet's live region in the stream's update (spec 082 decision 10's table).
+    def status_line = html.at_css("turbo-stream[target=scanner_destination_status] .c-status__message").text.squish
 
     it "opens a sitting holding the condition, redrawing the panel, for an account with no locations (AC-1.2, AC-3.1)", :aggregate_failures do
       set(condition: "near_mint")
       expect(response).to have_http_status(:ok)
       expect(response.media_type).to eq("text/vnd.turbo-stream.html")
-      expect(response.body).to include('<turbo-stream action="replace" target="scanner_sitting">')
-      expect(response.body).not_to include('target="scanner_result"')
+      expect(response.body).to include('<turbo-stream action="replace" target="scanner_sitting">', '<turbo-stream action="replace" target="scanner_picker">')
+      expect(response.body).not_to include('target="scanner_result"', 'target="status"')
       expect(account.scanner_sitting).to have_attributes(condition: "near_mint", location: nil)
-      expect(html.at_css("#scanner_sitting h2").text).to eq("This sitting: 0 cards, Near mint")
+      expect(heading.text.strip).to eq("This sitting: 0 cards, Near mint")
       expect(html.at_css("#scanner_sitting .c-empty").text).to eq("Cards you scan now: Near mint.")
       expect(status_line).to eq("Cards you scan now: Near mint.")
       expect(chosen(:condition)).to eq("Near mint (NM)")
@@ -606,7 +611,7 @@ RSpec.describe "Scanner sittings", type: :request do
       set(condition: "lightly_played")
       expect(account.scanner_sitting.reload).to have_attributes(condition: "lightly_played", location: blue, entries:)
       expect(entries.map { it.lot.reload.condition }.uniq).to eq([ "near_mint" ])
-      expect(html.at_css("#scanner_sitting h2").text).to eq("This sitting: 3 cards, Lightly played, in Blue binder")
+      expect(heading.text.strip).to eq("This sitting: 3 cards, Lightly played, in Blue binder")
       set(location_id: create(:location, account:, name: "Long box").id)
       expect(account.scanner_sitting.reload).to have_attributes(condition: "lightly_played", location: Location.find_by!(name: "Long box"))
     end
@@ -616,7 +621,7 @@ RSpec.describe "Scanner sittings", type: :request do
       add("a")
       set(condition: "")
       expect(account.scanner_sitting.reload.condition).to be_nil
-      expect(html.at_css("#scanner_sitting h2").text).to eq("This sitting: 1 card")
+      expect(heading.text.strip).to eq("This sitting: 1 card")
 
       account.scanner_sitting.entries.sole.undo!
       set(condition: "near_mint")
@@ -624,7 +629,7 @@ RSpec.describe "Scanner sittings", type: :request do
       expect(Scanner::Sitting.count).to eq(0)
       expect(response).to have_http_status(:ok)
       expect(chosen(:condition)).to eq("Not specified")
-      expect(html.at_css("#scanner_sitting h2")).to be_nil
+      expect(heading.text.strip).to eq("This sitting: 0 cards")
       expect(status_line).to eq("Cards you scan now: condition not specified.") # this account has no locations
     end
 
@@ -724,7 +729,7 @@ RSpec.describe "Scanner sittings", type: :request do
       add("b")
       undo(first)
       expect(account.lots.map { [ it.condition, it.quantity ] }).to eq([ [ "lightly_played", 1 ] ])
-      expect(chosen(:condition)).to eq("Lightly played (LP)")
+      expect(html.at_css("#scanner_sitting_bar .c-scan__dest-text").text).to eq("No location · LP")
     end
 
     # Passes before the change (the old controller or model already behaves so): regression guard.
@@ -747,15 +752,15 @@ RSpec.describe "Scanner sittings", type: :request do
   describe "after a redraw (spec 047)" do
     def blue = @blue ||= create(:location, account:, name: "Blue binder")
     def set(**fields) = patch(scanner_sitting_path, params: { sitting: fields }, headers: stream)
-    def status_line = html.at_css("turbo-stream[target=status] .c-status__message").text.squish
-    # Where the redrawn panel says focus goes: nil when it names none.
-    def focus_to = html.at_css("#scanner_sitting")["data-sitting-focus-to-value"]
+    def status_line(region = "scanner_destination_status") = html.at_css("turbo-stream[target=#{region}] .c-status__message").text.squish
+    # Where the redrawn part says focus goes: nil when it names none.
+    def focus_to(part = "#scanner_picker") = html.at_css(part)["data-sitting-focus-to-value"]
 
     it "names the Set button after a Set that opens, changes, or clears a sitting (AC-1.1 to AC-1.4)", :aggregate_failures do
       blue
       set(condition: "near_mint")
       expect(focus_to).to eq("set")
-      expect(html.at_css("#scanner_sitting")["data-controller"]).to eq("sitting-focus")
+      expect(html.at_css("#scanner_picker")["data-controller"]).to eq("sitting-focus")
       expect(status_line).to eq("Cards you scan now: Near mint, no location.")
       set(condition: "")
       expect(Scanner::Sitting.count).to eq(0)
@@ -770,27 +775,27 @@ RSpec.describe "Scanner sittings", type: :request do
       set(condition: "mint-ish")
       expect(response).to have_http_status(:unprocessable_content)
       expect(focus_to).to eq("set")
-      expect(html.at_css("turbo-stream[target=status] .c-status__message--alert").text.squish).to eq(Scanner::SittingsController::UNKNOWN_CONDITION)
+      expect(html.at_css("turbo-stream[target=scanner_destination_status] .c-status__message--alert").text.squish).to eq(Scanner::SittingsController::UNKNOWN_CONDITION)
     end
 
     it "names the Set button when the location is no longer the account's (AC-1.5)", :aggregate_failures do
       set(location_id: create(:location).id) # another account's location
       expect(response).to have_http_status(:unprocessable_content)
       expect(focus_to).to eq("set")
-      expect(html.at_css("turbo-stream[target=status] .c-status__message--alert").text.squish).to eq(Scanner::SittingsController::GONE)
+      expect(html.at_css("turbo-stream[target=scanner_destination_status] .c-status__message--alert").text.squish).to eq(Scanner::SittingsController::GONE)
     end
 
     it "names the heading after an Undo, done or refused (AC-2.1, AC-2.3)", :aggregate_failures do
       entry = add("a")
       add("b")
       undo(entry)
-      expect(focus_to).to eq("heading")
-      expect(html.at_css("#scanner_sitting h2[tabindex='-1'][data-sitting-focus-target='heading']").text).to eq("This sitting: 1 card")
-      expect(status_line).to start_with("Removed 1 × Lightning Bolt")
+      expect(focus_to("#scanner_sitting")).to eq("heading")
+      expect(heading.text.strip).to eq("This sitting: 1 card")
+      expect(status_line("scanner_list_status")).to start_with("Removed 1 × Lightning Bolt")
       undo(entry)
       expect(response).to have_http_status(:unprocessable_content)
-      expect(focus_to).to eq("heading")
-      expect(status_line).to eq("That card was already undone.")
+      expect(focus_to("#scanner_sitting")).to eq("heading")
+      expect(status_line("scanner_list_status")).to eq("That card was already undone.")
     end
 
     it "names no target after an add, or on the page's own render (AC-3.1, AC-3.2)", :aggregate_failures do
@@ -800,15 +805,17 @@ RSpec.describe "Scanner sittings", type: :request do
       expect(html.at_css("#scanner_sitting")["data-controller"]).to be_nil
       post scanner_sitting_entries_path, params: { entry: { printing: printing.external_key, finish: "foil", reading_key: "b" * 32 } }, headers: stream
       expect(response).to have_http_status(:ok)
-      expect(focus_to).to be_nil
+      expect(focus_to("#scanner_sitting")).to be_nil
+      expect(focus_to("#scanner_added_action")).to eq("main")
     end
 
-    it "writes a sentence in #status after every redraw, one example each (AC-4.1)", :aggregate_failures do
+    it "writes a sentence in the region that names the change after every redraw (AC-4.1, decision 10)", :aggregate_failures do
       entry = add("a")
       undo(entry)
-      expect(status_line).not_to be_blank
+      expect(status_line("scanner_list_status")).not_to be_blank
+      expect(html.at_css("turbo-stream[target=scanner_added_text] template").text).to start_with("Removed 1 × ")
       post scanner_sitting_entries_path, params: { entry: { printing: printing.external_key, finish: "foil", reading_key: "a" * 32 } }, headers: stream
-      expect(status_line).to eq("You added this card, then undid it. Scan it again to add it.") # a replayed add redraws the panel
+      expect(status_line("status")).to eq("You added this card, then undid it. Scan it again to add it.")
       set(condition: "near_mint")
       expect(status_line).not_to be_blank
     end

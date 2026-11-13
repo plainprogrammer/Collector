@@ -1,5 +1,5 @@
 # The account's open scanner sitting as the scanner shows it (spec 009 Story 3): the sitting and its kept entries,
-# newest first, loaded in the controller and handed to the partials; and the streams that redraw it after a change. The
+# newest first, loaded in the controller and handed to the partials; and the streams that redraw it after a change, into the regions spec 082 decision 10 names. The
 # account's places and deck zones come along for the sitting's place (spec 040 decision 3, spec 065), loaded once per request.
 module ScannerSitting
   extend ActiveSupport::Concern
@@ -29,11 +29,33 @@ module ScannerSitting
     # A sitting's adds go to one of them or to none, never to a deck's own row.
     def account_choices = @account_choices ||= Location::Choices.new(Current.account)
 
-    # Redraws the panel (after an add, an Undo or a change of place, spec 040 FR-1) and says what happened; the message is
-    # never empty, so every redraw is announced (spec 047 FR-1). `focus` is where the new panel puts keyboard focus once it
-    # connects: :set after a "Set", :heading after an Undo, nil after an add (spec 047 decision 2).
-    def sitting_stream(message, alert: false, focus: nil)
-      [ turbo_stream.replace("scanner_sitting", partial: "scanners/sitting", locals: sitting_locals.merge(focus:)),
-        turbo_stream.update("status", partial: "shared/status_message", locals: { message:, alert: }) ]
+    # The streams that redraw what shows the sitting (spec 082 decisions 7 to 9): the list's entries, the list sheet's title, the
+    # top bar's destination and Done, the count. `focus` (:heading after an Undo) is where focus goes once the entries connect
+    # (spec 047 decision 2; spec 082 decision 15). Texts go through html_escape: a stream's string is used as HTML.
+    def sitting_redraw(focus: nil)
+      locals = sitting_locals
+      [ turbo_stream.replace("scanner_sitting", partial: "scanners/sitting", locals: locals.slice(:sitting, :entries, :conditions, :added_any).merge(focus:)),
+        turbo_stream.update("scanner-sitting-heading", ERB::Util.html_escape(helpers.sitting_title(locals[:sitting], locals[:entries], locals[:conditions]))),
+        turbo_stream.replace("scanner_sitting_bar", partial: "scanners/sitting_bar", locals: locals.slice(:sitting, :conditions)),
+        turbo_stream.replace("scanner_count", partial: "scanners/count", locals: { count: locals[:entries].size }) ]
+    end
+
+    # The destination sheet's form, redrawn after a "Set" with focus back on "Set" (spec 047 decision 2).
+    def picker_redraw(focus: :set)
+      sitting = Current.account.scanner_sitting
+      turbo_stream.replace("scanner_picker", partial: "scanners/picker",
+        locals: { condition: sitting&.condition, location_id: sitting&.location_id, conditions: scanner_conditions, choices: account_choices, focus: })
+    end
+
+    # A sentence in one of the page's live regions (spec 082 decision 10's table): never empty, so every redraw is announced
+    # (spec 047 FR-1).
+    def say_in(region, message, alert: false)
+      turbo_stream.update(region, partial: "shared/status_message", locals: { message:, alert: })
+    end
+
+    # The after-add line's sentence and its action: Undo for `entry`, or nothing (spec 082 decision 12).
+    def added_line(message, entry: nil, focus: nil)
+      [ turbo_stream.update("scanner_added_text", ERB::Util.html_escape(message)),
+        turbo_stream.replace("scanner_added_action", partial: "scanners/added_action", locals: { entry:, focus: }) ]
     end
 end
