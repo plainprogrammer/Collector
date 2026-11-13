@@ -51,8 +51,25 @@ module Collector
         end
       end
 
+      # Whether art matching was on for each framing's run: a capture timed an art search (`art_ms`) or a recorded reading
+      # carries an art outcome (`art_status`). A paired comparison of an art-matched run with a text-only one means little, so the
+      # report says which each was (spec 082 AC-7.4).
+      #
+      # @return [Hash{String => Boolean}]
+      def art_matching
+        @runs.transform_values do |run|
+          run.measured_captures.any? { it["art_ms"].present? } || run.readings.any? { it["art_status"].present? }
+        end
+      end
+
+      # The user agents the measured captures were taken with, per framing, so a re-measure on two devices shows.
+      #
+      # @return [Hash{String => Array<String>}]
+      def user_agents = @runs.transform_values { |run| run.measured_captures.filter_map { it["user_agent"].presence }.uniq }
+
       # The report for research.md: a table per framing (right card first, top 3, exact printing with its foil and non-foil
-      # split, name read), the frame and stage sizes seen, the discordant and unpaired cards, and bar A's outcome.
+      # split, name read), the frame and stage sizes seen, whether art matching was on and the user agents seen, the
+      # discordant and unpaired cards, and bar A's outcome.
       #
       # @return [String]
       def to_markdown
@@ -65,6 +82,8 @@ module Collector
         sizes = records.transform_values { |rows_of| rows_of.map { it["sizes"].values.join("×") }.uniq.join(", ") }
         [ "| Rate | #{records.keys.join(" | ")} |", "|---|#{"---|" * records.size}", *table, *exact, "",
           "Sizes (video × stage): #{sizes.map { |framing, seen| "#{framing} #{seen}" }.join("; ")}.",
+          "Art matching: #{art_matching.map { |framing, on| "#{framing} #{on ? "on" : "off"}" }.join("; ")}.",
+          "User agents: #{user_agents.map { |framing, seen| "#{framing} #{seen.join(", ").presence || "none"}" }.join("; ")}.",
           "Discordant: #{discordant.join("; ").presence || "none"}.", "Unpaired (left out): #{unpaired.join(", ").presence || "none"}.", "", "Bar A: #{bar}." ].join("\n")
       end
 
