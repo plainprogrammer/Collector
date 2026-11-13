@@ -9,9 +9,10 @@ namespace :scanner do
   end
 
   desc "Score the measurement run against Phase 0 (spec 007 Story 6). FIXTURES=1 writes the text fixtures; GROUND_TRUTH=path " \
-       "for a tuning run; RUN_LABEL names the run's column, FIXTURES_PREFIX its fixture files"
+       "for a tuning run; RUN_LABEL names the run's column, FIXTURES_PREFIX its fixture files; " \
+       "FRAMING=full|shipped picks the run (unset: full; empty: the configured directory itself)"
   task findings: :environment do
-    run = Scanner::MeasurementRun.current
+    run = Scanner::MeasurementRun.current(framing: ENV.fetch("FRAMING", "full").presence)
     abort "Measurement mode is off; run this in development." unless run
     report = Collector::ScannerFindings::Report.new(run:, **{ ground_truth: ENV["GROUND_TRUTH"], label: ENV["RUN_LABEL"].presence,
       prefix: ENV["FIXTURES_PREFIX"].presence }.compact, format_version: ENV.fetch("FORMAT_VERSION", "2").to_i)
@@ -71,9 +72,9 @@ namespace :scanner do
     end
   end
 
-  desc "Spec 009 AC-6.4, AC-6.6: rates of the configured measurement run against GROUND_TRUTH; COMPARE_DIR names a run to diff names with"
+  desc "Spec 009 AC-6.4, AC-6.6: rates of the configured measurement run against GROUND_TRUTH; COMPARE_DIR names a run to diff names with; FRAMING as for scanner:findings"
   task detected_score: :environment do
-    run = Scanner::MeasurementRun.current
+    run = Scanner::MeasurementRun.current(framing: ENV.fetch("FRAMING", "full").presence)
     abort "Measurement mode is off; run this in development." unless run
     truth = JSON.parse(Pathname(ENV.fetch("GROUND_TRUTH")).expand_path.read).fetch("photos").to_h { [ it["file"], it ] }
     records = Collector::ScannerFindings.rescore(truth, run.measured_captures)
@@ -86,9 +87,9 @@ namespace :scanner do
     end
   end
 
-  desc "Spec 009 AC-6.2, AC-6.3: rates of a desktop replay of the configured run against GROUND_TRUTH"
+  desc "Spec 009 AC-6.2, AC-6.3: rates of a desktop replay of the configured run against GROUND_TRUTH; FRAMING as for scanner:findings"
   task :replay_score, [ :label ] => :environment do |_task, args|
-    run = Scanner::MeasurementRun.current
+    run = Scanner::MeasurementRun.current(framing: ENV.fetch("FRAMING", "full").presence)
     abort "Measurement mode is off; run this in development." unless run
     truth = JSON.parse(Pathname(ENV.fetch("GROUND_TRUTH")).expand_path.read).fetch("photos").to_h { [ it["file"], it ] }
     records = Collector::ScannerFindings.rescore(truth, run.replays.fetch(args.fetch(:label)))
@@ -120,18 +121,18 @@ namespace :scanner do
     puts "#{fresh["photos"].size} cards, none used by an earlier corpus."
   end
 
-  desc "Spec 009 AC-9.1: score the live sitting (before Done): SCANNER_EMAIL=… GROUND_TRUTH=… bin/rails scanner:sitting_findings"
+  desc "Spec 009 AC-9.1: score the live sitting (before Done): SCANNER_EMAIL=… GROUND_TRUTH=… [FRAMING=…] bin/rails scanner:sitting_findings"
   task sitting_findings: :environment do
-    run = Scanner::MeasurementRun.current
+    run = Scanner::MeasurementRun.current(framing: ENV.fetch("FRAMING", "full").presence)
     abort "Measurement mode is off; run this in development." unless run
     account = User.find_by!(email_address: ENV.fetch("SCANNER_EMAIL")).account
     puts Collector::ScannerFindings::SittingReport.new(run:, account:, ground_truth: ENV.fetch("GROUND_TRUTH")).to_markdown
   end
 
   desc "Spec 011 AC-9.2–AC-9.6: score the art sitting (before Done), write its fixture: SCANNER_EMAIL=… GROUND_TRUTH=… " \
-    "[CAPTURES=IMG_6835.jpeg=2,…] bin/rails scanner:art_sitting_findings"
+    "[CAPTURES=IMG_6835.jpeg=2,…] [FRAMING=…] bin/rails scanner:art_sitting_findings"
   task art_sitting_findings: :environment do
-    run = Scanner::MeasurementRun.current
+    run = Scanner::MeasurementRun.current(framing: ENV.fetch("FRAMING", "full").presence)
     abort "Measurement mode is off; run this in development." unless run
     account = User.find_by!(email_address: ENV.fetch("SCANNER_EMAIL")).account
     # CAPTURES scores a row on another capture (file=number, comma-separated); unset, every row uses its first.
@@ -139,5 +140,13 @@ namespace :scanner do
     report = Collector::ScannerFindings::ArtSittingReport.new(run:, account:, ground_truth: ENV.fetch("GROUND_TRUTH"), captures:)
     Rails.root.join("spec/fixtures/card_scanner/phase3_shipped_sitting.json").write(JSON.pretty_generate(report.fixture) + "\n")
     puts report.to_markdown
+  end
+
+  desc "Spec 082 AC-7.4: the paired re-measure, each framing's run against GROUND_TRUTH, the cards one framing got right and the other didn't, and bar A"
+  task paired_findings: :environment do
+    runs = Scanner::MeasurementRun::FRAMINGS.to_h { [ it, Scanner::MeasurementRun.current(framing: it) ] }
+    abort "Measurement mode is off; run this in development." if runs.values.any?(&:nil?)
+    truth = JSON.parse(Pathname(ENV.fetch("GROUND_TRUTH")).expand_path.read).fetch("photos").to_h { [ it["file"], it ] }
+    puts Collector::ScannerFindings::PairedReport.new(runs:, truth:).to_markdown
   end
 end
