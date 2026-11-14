@@ -5,7 +5,8 @@ module Collector
     #
     # Every input is injected, so a spec shows each rule failing on a small fixture; {.for_repository} builds the real ones
     # and the `licences:check` task prints the problems. A component passes if any one of its identifiers is allowed (spec 091
-    # decision 2); one with none, or with a string that is not exactly an allowed id, fails (decision 5). Nothing here reads
+    # decision 2); one with none, or with a string that is not exactly an allowed id, fails (decision 5). A named exception
+    # may instead require every licence of its gem to be allowed (`all_required`, spec 091 decision 3). Nothing here reads
     # a gem or a licence file: the one reader is {ThirdPartyLicences} (no second reader of the bundle).
     #
     # @see file:catalog-core.md
@@ -14,7 +15,8 @@ module Collector
       # The policy file, relative to `Rails.root`.
       PATH = "config/licence_policy.yml".freeze
 
-      # The decision the failure message points at.
+      # The decision the failure messages point at: ADR 0031, not the policy YAML, holds the rule (any one of several
+      # licences, every group, exceptions that go stale); the YAML holds only the list and the reasons.
       DECISION = "ADR 0031".freeze
 
       # A named exception, as the rules use it: the `gem`, its `licences` (sorted, a set) and whether its list is `all_required`.
@@ -72,7 +74,8 @@ module Collector
       # What is off the policy, one sentence per offender, each naming it, its licence and the policy file.
       #
       # Pure of side effects. While the policy's own shape is wrong it reports only that, because judging against a
-      # malformed list would blame every gem.
+      # malformed list would blame every gem. Otherwise the judged sentences come first, in the order
+      # {ThirdPartyLicences.build} lists the components, and the stale-exception sentences follow, in the policy file's order.
       #
       # @return [Array<String>] empty when everything agrees; the policy's shape problems alone when it is malformed
       def problems
