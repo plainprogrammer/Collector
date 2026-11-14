@@ -72,6 +72,8 @@ It passed, as expected. The output that reads against the expectation:
 
 So the two tiers held on the real database the v0.3.0 seed leaves (two users, two accounts, 2,003 lots, a row in each of the thirteen tables that reference `accounts`): every user has one manager membership in a household named for them, every account is in its user's household and personal, nothing old changed (`expected_changes.yml` is empty), and the third migration's table copy lost no row. This closes AC-6.1, AC-6.2 (restore leg), AC-6.6 and the m5 finding.
 
+**Second run, on the merged commit.** After spec 089's merge (two prices-database migrations, `db/prices_structure.sql`) the same run on `60951eec3404c0bbefee752ecaced6cd68c579ec` (the commit that is pushed), with the current image rebuilt from it: all 28 old tables `same` after the upgrade; **`households: ok (backfilled)`** after the upgraded and again after the restored snapshot; the prices line reads `schema 20261113190002`; the backup leg's `expected:` rows are the same four (`sessions` and the three bulk tables); `OK: v0.3.0 (collector@sha256:61834f698f57…) upgraded to 60951eec3404; 28 tables compared, behaviour verified, 62 s`. On the same tree `bin/rails db:prepare` and 325 targeted examples passed (`spec/script/upgrade`, the backup guards and upgrade, `spec/models/prices_record_spec.rb`, `spec/prices_core_spec.rb`, `spec/migrations`, the household model and request specs, the export guard): 0 failures, seed 6927.
+
 ### The full `bin/ci`
 
 To be recorded with the CI run of the push.
