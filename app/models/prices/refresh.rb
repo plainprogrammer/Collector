@@ -103,6 +103,10 @@ class Prices::Refresh
       @series.fetch(quote.series) do
         raise Prices::Sources::ConfigurationError, "#{@source_class} yielded a quote of #{quote.series.inspect}, which it did not declare"
       end
+      # A repeat of a pending printing and series is ignored on arrival (the first is judged, AC-2.10): the batch counts
+      # printings, so a file repeating one key would otherwise grow its list without limit.
+      return if @pending[quote.external_key]&.any? { |queued| queued.series == quote.series }
+
       (@pending[quote.external_key] ||= []) << quote
     end
 

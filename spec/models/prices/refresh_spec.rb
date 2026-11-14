@@ -218,6 +218,22 @@ RSpec.describe Prices::Refresh, type: :model do
       expect(CurrentPrice.find_by(catalog_entry_id: entry.id).cents).to eq(100)
     end
 
+    it "ignores a quote repeated while its printing is pending, so a file that repeats one cannot grow the batch without limit (AC-2.10)", :aggregate_failures do
+      stub_const("Prices::Refresh::BATCH_SIZE", 1)
+      run_refresh = refresh
+      waiting = nil
+      peek = -> { waiting = run_refresh.instance_variable_get(:@pending).transform_values(&:size) } # the batch's memory, read mid-file
+      use_widget_sources(records: [ *Array.new(5) { |index| widget_quote("w-1", 100 + index) }, peek, widget_quote("w-2", 5) ])
+      entry = widget_entry("w-1")
+      widget_entry("w-2")
+
+      run = run_refresh.call
+
+      expect(waiting).to eq({ "w-1" => 1 })
+      expect(run).to have_attributes(status: "finished", quotes_seen: 2, added: 2)
+      expect(CurrentPrice.find_by(catalog_entry_id: entry.id).cents).to eq(100)
+    end
+
     it "replaces a history row of the same day when a second file of that day differs (AC-2.7)", :aggregate_failures do
       use_widget_sources(records: [ widget_quote("w-1", 150) ], version: "v2")
       entry = widget_entry("w-1")
