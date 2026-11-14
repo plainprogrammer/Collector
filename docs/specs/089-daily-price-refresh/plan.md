@@ -3,6 +3,7 @@
 **Spec:** docs/specs/089-daily-price-refresh/spec.md (v0.4.2: v0.4.1 approved at Gate A, 2026-11-13; 0.4.2 patches AC-4.4's method after plan review)
 **Decisions:** none in an ADR (the decisions are the spec's; the area doc carries the rules)
 **Created:** 2026-11-13
+**Status:** Approved at Gate B by the coordinator under the maintainer's delegation (2026-11-13), after two plan review rounds (Fable 5.2); the coordinator read the round 2 fix diff (4c65fdb9) itself
 
 ## Global Constraints
 
