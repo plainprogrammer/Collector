@@ -91,3 +91,4 @@
 - [Unset `config.x` answers nil](rails-config-x-unset.md) — an unset `Rails.configuration.x` key is an empty OrderedOptions; assert a boot reading's class, not only nil attributes
 - [Mutation proof in place of failing-first](mutation-proof-when-behaviour-already-built.md) — only where an earlier task already built the behaviour; each mutation and its failure go in the commit body (coordinator, spec 085 Gate B)
 - [Re-review a changed data-loss step](rereview-changed-data-loss-steps.md) — after a plan changes a step that can lose data (a table copy, a delete), run the read-only review again on that step before its batch (spec 090 phase 6)
+- [Harness changes the model mid-run](harness-changes-the-model-mid-run.md) — a worker's main session can change model without being asked; state the model per commit at gates, answer from what the harness reports

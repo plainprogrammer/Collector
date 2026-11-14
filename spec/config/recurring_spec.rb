@@ -9,6 +9,15 @@ RSpec.describe "config/recurring.yml", type: :config do # rubocop:disable RSpec/
     expect(Fugit.parse_cronish(task["schedule"]).to_cron_s).to eq("15 3 * * 1")
   end
 
+  it "refreshes prices daily in production, at another time than the catalog's refresh, and not in development (spec 089 AC-5.1)", :aggregate_failures do
+    config = YAML.load_file(Rails.root.join("config/recurring.yml"), aliases: true)
+    task = config.dig("production", "refresh_prices")
+
+    expect(task).to include("class" => "Prices::RefreshJob", "args" => [ "scryfall" ], "queue" => "sync")
+    expect(Fugit.parse_cronish(task["schedule"]).to_cron_s).to eq("30 11 * * *")
+    expect(config.dig("development", "refresh_prices")).to be_nil
+  end
+
   %w[development production].each do |environment|
     it "schedules the import upload sweep every 15 minutes in #{environment} (spec 028 AC-5.5)" do
       task = YAML.load_file(Rails.root.join("config/recurring.yml"), aliases: true).dig(environment, "sweep_import_uploads")

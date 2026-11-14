@@ -1,4 +1,5 @@
 # A price source for the contract's own specs (spec 085): it knows no real collectible and yields the records it is given.
+# A record that responds to `call` is called, not yielded, so an example can raise partway.
 #
 # @api private
 class FakePriceSource
@@ -30,7 +31,7 @@ class FakePriceSource
   def each_quote(path, languages:, &block)
     return enum_for(:each_quote, path, languages:) unless block
 
-    @records.each(&block)
+    @records.each { |record| record.respond_to?(:call) ? record.call : block.call(record) }
   end
 end
 
