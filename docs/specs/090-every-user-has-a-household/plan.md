@@ -1,6 +1,7 @@
 # Plan 090: Every User Has a Household
 
 **Spec:** [spec.md](spec.md) v0.3.2 (Approved by the coordinator under the maintainer's delegation, 2026-11-13; the maintainer ruled step (c) the same day: take the copy). **ADR:** [0030](../../adr/0030-a-household-is-a-group-of-accounts.md). **Issue:** #380. **Branch:** `090-every-user-has-a-household`.
+**Gate B:** approved by the coordinator under the maintainer's delegation (2026-11-13) for phases 1 to 5 and 7. **Condition on phase 6:** its batch does not start until a second read-only Fable review of phase 6 as it now stands (with `require_enforcement_off`, `require_no_broken_keys`, the fault-after-DROP spec and the corrected `down`) and of the changed `User` validation (it can never leave a user without a household and never reads one on an ordinary request) has been sent to the coordinator with its verdict.
 **Written by:** the main session (Opus 5.5 from this step; the spec and ADR were written on Sonnet 5.5). Implementers: Sonnet 5.5 (`model: "sonnet"`), 2 to 4 consecutive tasks each, test first, one commit per task, reading this file by line range; the main session checks each batch's diff.
 
 ## Global Constraints
