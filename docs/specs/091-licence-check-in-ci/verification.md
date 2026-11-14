@@ -37,4 +37,16 @@ Spec, ADR 0031 and plan: my main session (Sonnet 5.5). Spec, ADR and plan review
 
 ## Implementation review
 
-*(not run yet)*
+SPEC-ALIGNED WITH FINDINGS
+
+Opus 5.5, `sdd-superpowers:sdd-review` Mode B, read-only, 2026-11-13, over `git diff 71212946..HEAD`. No blocking or major finding. It ran the five feature spec files (40 examples, 0 failures) and `bin/rails licences:check` on the real tree (151 components, exit 0, as above), and found no change under `.github/`, no Dockerfile, deploy or settings file, and no collectible named in the new files. Every AC and FR is covered (the table above), and the docs state what the code does.
+
+Findings, all minor:
+
+1. `all_required` was never type-checked (a string `"true"` read as false). Fixed: a shape problem now names the entry.
+2. An empty policy file loaded as `{}` and produced about 151 "not allowed" lines instead of one shape problem. Fixed: a mapping without `allowed` is one shape problem; `allowed: []` stays valid.
+3. Stale-exception sentences follow the component sentences, not interleaved. Fixed in the `#problems` comment and the area doc.
+4. The `Policy` class comment omitted `all_required`. Fixed.
+5. The `DECISION` constant's comment said what, not why. Fixed.
+6. The specs index row said Draft while the spec is Approved. Fixed.
+7. README.md's numbered `bin/ci` step list was already stale before this branch (no migration guard, YARD or ratchet) and now also lacks the licence check. Not changed: the spec doesn't require it; owed to the maintainer as a README tidy.
