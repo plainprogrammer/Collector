@@ -99,7 +99,7 @@ class Prices::Refresh
 
     def queue_quote(quote)
       @quotes_yielded += 1
-      flush if !@pending.key?(quote.external_key) && @pending.size >= BATCH_SIZE # earlier batches stand when the next raises
+      flush if !@pending.key?(quote.external_key) && pending_size >= BATCH_SIZE # earlier batches stand when the next raises
       @series.fetch(quote.series) do
         raise Prices::Sources::ConfigurationError, "#{@source_class} yielded a quote of #{quote.series.inspect}, which it did not declare"
       end
@@ -109,8 +109,13 @@ class Prices::Refresh
     def queue_malformed(record)
       @counts[:malformed] += 1
       Rails.logger.warn("prices.refresh skipped malformed #{record.external_key.inspect}: #{record.error}")
+      flush if pending_size >= BATCH_SIZE
       @pending_malformed << record
     end
+
+    # Printings and unreadable records waiting for the next flush. Both count toward BATCH_SIZE: a file of mostly
+    # unreadable lines would otherwise pile up in memory and in one huge `IN` lookup of keys.
+    def pending_size = @pending.size + @pending_malformed.size
 
     # Judges and writes the pending printings. The primary is read here, outside any transaction; the prices database
     # is read and written in one short transaction; the counts are tallied after it commits.

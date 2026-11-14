@@ -300,6 +300,19 @@ RSpec.describe Prices::Refresh, type: :model do
       expect(CurrentPrice.pluck(:cents).uniq).to eq([ 100 ]) # nothing was written
       expect(progress.size).to eq(3) # a progress write per batch (2, 2 and 1 printings): only they put quotes_seen in an UPDATE's SET
     end
+
+    it "flushes unreadable records by the batch size too, so a file of mostly unreadable lines isn't held whole (spec 089 decision 6)" do
+      stub_const("Prices::Refresh::BATCH_SIZE", 2)
+      keys = Array.new(5) { |index| "m-#{index + 1}" }
+      use_widget_sources(records: keys.map { widget_malformed(it, series: PriceRefreshHelpers::PLAIN) } + [ widget_quote("w-1", 100) ])
+      (keys + [ "w-1" ]).each { widget_entry(it) }
+      lookups = 0
+      callback = ->(*, payload) { lookups += 1 if payload[:sql].to_s.match?(/FROM "catalog_entries".*external_key/m) && payload[:sql].start_with?("SELECT") }
+
+      ActiveSupport::Notifications.subscribed(callback, "sql.active_record") { refresh.call }
+
+      expect(lookups).to eq(3) # after two unreadable records, after two more, and the final flush (the quote and the fifth)
+    end
   end
 
   describe "absences" do
