@@ -1,0 +1,64 @@
+# Verification: spec 090, every user has a household
+
+Spec v0.3.2, plan, ADR 0030. Issue #380. Branch `090-every-user-has-a-household`. Models: the spec, ADR and plan were written by the main session (Sonnet 5.5 until the plan, Opus 5.5 and Sonnet 5.5 after, as the session reminders gave them); every implementer batch was Sonnet 5.5; the spec reviews (two rounds), the plan review and the extra phase 6 review were read-only Fable 5.2; the implementation review was read-only Opus 5.5.
+
+## Implementation review
+
+SPEC-ALIGNED WITH FINDINGS
+
+Reviewed 2026-11-13 (sdd-review Mode B, read-only, Opus 5.5) against spec 090 v0.3.2, plan 090 and ADR 0030, over `git diff 71212946..HEAD` at the documentation commits (code 3c01b6a3 to 40f3553d). Nothing blocking; one important finding and nine minor; all fixed or recorded below. `bin/upgrade-smoke` from the v0.3.0 tag (AC-6.6) and the one full `bin/ci` had not run at the time of the review.
+
+### Coverage (AC to test, from the review)
+
+| AC | Test | Note |
+|----|------|------|
+| 1.1 to 1.4, 1.6, 1.7 | `spec/requests/households_creation_spec.rb`; `spec/models/user_spec.rb` | the first-user race is approximated by an admin created between the GET and the POST |
+| 1.5 | `household_spec.rb` `.name_for`; `user_spec.rb`; `backfill_households_spec.rb` | the same three names in the harness fixture |
+| 2.1 to 2.7, 2.9 | `membership_spec.rb`, `account_spec.rb`, `household_spec.rb`, `create_households_and_memberships_spec.rb` (model and database halves) | |
+| 2.8 | `expect_household_invariants!` after the four create paths, the delete and an apply | the apply was added after the review (m1) |
+| 3.1 to 3.3, 3.8 | `spec/migrations/backfill_households_spec.rb` | |
+| 3.4 | `create_households_and_memberships_spec.rb` (literals and the full shape of the three tables before and after) | m3 fixed |
+| 3.5 | `create_households_and_memberships_spec.rb` (all thirteen referencing tables filled, down and up), `make_account_household_required_spec.rb` | I1 fixed |
+| 3.6, 3.7 | `make_account_household_required_spec.rb` (ten examples: counts, sequence, PRAGMA checks, shapes, the enforcement refusal, a dangling row kept, the fault after the DROP, the orphan refusal, the stragglers step, a count of each of the thirteen tables changing) | m2 fixed |
+| 4.1, 4.5 | `spec/requests/households_invisible_spec.rb` (admin, collector, signed out; queries naming the new tables counted on all) | m4 fixed |
+| 4.2 | `bin/rails routes` check, recorded below | |
+| 4.3 | the existing tenancy request specs, unedited | 1403 examples green on their implementer's run; the full `bin/ci` is the final proof |
+| 4.4 | `households_creation_spec.rb`, `user_spec.rb` | |
+| 5.1 to 5.4 | `spec/export_format_document_spec.rb`; `collection_import/household_untouched_spec.rb`; the backup guards; the format README | |
+| 6.1 to 6.5 | `spec/script/upgrade/households_spec.rb`, `harness_spec.rb` ("the households"), `seeds_spec.rb` | the restore leg's household check is proved by the smoke run (m5) |
+| 6.6 | `bin/upgrade-smoke`, recorded below | |
+
+### Findings and their disposition
+
+- **I1 (important), AC-3.5: migration (a)'s `down` was untested with rows in the eleven cascading tables and lacked (c)'s guards.** Fixed in `7187f2f1`: `fill_every_referencing_table` is a spec support module used by both migration specs; (a)'s `down` has `require_enforcement_off` and the before and after state check; two examples (rows in all thirteen referencing tables going down through all three migrations and back; an outer-transaction refusal) were added. The refusal example failed first for the right reason (the cascades deleted rows and the columns were dropped); the rows example is a characterisation of the working path and passed first.
+- **m1** invariants after an apply: fixed (`051d55ec`). **m2** "run again changes nothing" could not fail: fixed to capture the counts and sequence and run the migration instance (`7187f2f1`). **m3** AC-3.4 literals only: the full shape before and after added (`7187f2f1`, `30c19498` for the column order a schema-loaded table has). **m4** queries counted on the collector's and signed-out requests: fixed (`051d55ec`).
+- **m5** the harness spec has no restore-leg household example: accepted; the smoke run below is the evidence that the restored snapshot passes both tiers.
+- **m6** an older container's delete of a user after the third migration leaves a household with no member that nothing removes: added to `docs/releasing.md`'s Upgrade note (`2c251ca4`); #381 or an operator removes it.
+- **m7** comment accuracy: `Household.name_for`'s comment names the two specs, the harness fixture uses `Household.name_for`, the history phrase is gone (`26f210a7`). **m8** the format README's sentence carries its reason (`2c251ca4`). **m9** ADR 0030's wording (`2c251ca4`).
+- **m10** (c)'s orphan-account refusal and the re-homing `UPDATE` before it go beyond decision 5: deliberate, sound, and inside the one transaction; recorded here. The plan's note on why they are right is in `plan.md` phase 6.
+
+### Migration (c) review trail
+
+Traced line by line against activerecord 8.1.4.1's `sqlite3_adapter.rb` and `database_statements.rb` by a plan review (Fable 5.2) before the batch, and again as changed by a second review (APPROVE WITH CHANGES; the dangling-row boot loop, the unproven guards and the lambda's association instance were fixed), then by this review. One bug neither trace found was found by the phase 1 implementer: a table copy builds a TEMP table with AUTOINCREMENT, so a bare `sqlite_sequence` resolves to `temp.sqlite_sequence`; every migration now reads and writes `main.sqlite_sequence` (lesson recorded in the wrap).
+
+## Evidence
+
+All commands from the worktree. Targeted runs until the final one; one full `bin/ci` is owed after the smoke.
+
+| Check | Result |
+|---|---|
+| `bin/ci checks` on the code commit before the review fixes | green (RuboCop, YARD with no warning, the comment ratchet on 6 objects, Brakeman, bundler-audit, importmap audit) |
+| `bin/ci checks` on the merge `b13fb164` (origin/main at f7df86ce, with the new licences step) | green, 30.4 s |
+| Targeted specs on the merge `b13fb164`: `spec/migrations spec/script/upgrade`, the household model, request and import specs, the export guard, the backup guards | 471 examples, 0 failures (seed 15539) |
+| Phase runs by the implementers | phase 1: 11 + 9 examples; phase 2: 39; phase 3: 7 (+ the 10,000-user timing example, 3.0 s and 4.1 s); phases 4 and 5: `spec/requests` 1403, `spec/script/upgrade` 171; phase 6: `spec/migrations` 80 under three seeds; review fixes: 95 |
+| One-off search (decision 9 (iv)): `git grep -n -i 'household\|membership' -- app/views app/helpers app/controllers app/javascript config/locales ':!.kamal/secrets'` | nothing |
+| Routes (AC-4.2, decision 9 (iii)) | `git diff main -- config/routes.rb` empty; no controller, route or view file changed in the diff; `bin/rails routes | wc -l` is 145 on the branch |
+| `households_invisible_spec` and `household_untouched_spec` on their first run | passed (nothing visible was added; an apply never wrote a household), as the plan expected |
+
+### `bin/upgrade-smoke`
+
+To be recorded when it runs on the commit that is pushed (the previous release v0.3.0 built from its tag with `git archive`, the code under test built beside it, `--previous-version 0.3.0`). **Expected to print** for the households: `households: ok (backfilled)` after the upgraded snapshot's comparison and again after the restored snapshot's, and nothing for the `next` snapshot unless it fails (it raises `AC-6.1: the next snapshot: …`); the comparison lines show `accounts`, `users`, `lots` and every old table `same`; the run ends `OK: v0.3.0`.
+
+### The full `bin/ci`
+
+To be recorded with the CI run of the push.
