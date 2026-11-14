@@ -11,6 +11,7 @@
 **Supersedes:** spec 004 FR-3 in part ("an account has exactly one user": an account is now in a household, and `users.account_id` stays unique) and [ADR 0017](../../adr/0017-row-level-tenancy-one-user-per-account.md)'s one-user half, by ADR 0030; the area doc [`tenancy-and-accounts.md`](../../architecture/tenancy-and-accounts.md) records it
 **Design:** [households and the hosted service](../../superpowers/specs/2026-11-13-households-and-hosted-service-design.md), decisions 9 to 11 (rulings 43 and 44 of the [roadmap](../../roadmap.md))
 **Frozen:** the current rules are in [`tenancy-and-accounts.md`](../../architecture/tenancy-and-accounts.md), [`release-and-deploy.md`](../../architecture/release-and-deploy.md) and [`data-portability.md`](../../architecture/data-portability.md) (whole spec); see the [specs index](../README.md)
+**Plan:** retired in `6fb9759ba071e26da9add1c93e40a6be8c614839`; read it with `git show 6fb9759ba071e26da9add1c93e40a6be8c614839^:docs/specs/090-every-user-has-a-household/plan.md`
 
 ---
 
