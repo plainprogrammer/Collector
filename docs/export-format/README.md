@@ -527,7 +527,7 @@ Every table in Collector's database that belongs to an account or to a user is l
 
 `currency` is `accounts.currency`.
 
-`households` has neither `account_id` nor `user_id`, so the guard above does not ask for it; it is not in the file either, and the question of what the shared collection's file carries about its household is decided with the shared collection (issue #384, the design's open question 4).
+`households` has neither `account_id` nor `user_id`, so the guard above does not ask for it; it is not in the file either, because a household is a fact about a group of accounts, not about the collection, and the question of what the shared collection's file carries about its household is decided with the shared collection (issue #384, the design's open question 4).
 
 ## Examples
 
