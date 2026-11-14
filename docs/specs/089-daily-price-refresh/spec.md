@@ -9,6 +9,7 @@
 **Builds on:** [`prices.md`](../../architecture/prices.md) (the prices database, the `WITHOUT ROWID` rules, the contract's absence rules), [spec 081](../081-prices-database-in-backup/spec.md), [spec 085](../085-price-source-contract/spec.md), [ADR 0029](../../adr/0029-prices-database-held-by-the-backup.md), [research 083](../083-non-english-printing-prices/research.md) and [ruling 41](../../roadmap.md#2026-11-13-prices-on-non-english-printings-research-083), the [price data design](../../superpowers/specs/2026-11-13-price-data-design.md) ("The daily refresh"), [`catalog-operations.md`](../../architecture/catalog-operations.md) (the refresh lifecycle this one follows in part), `.claude/rules/background-jobs.md`
 **Supersedes:** spec 002 FR-3's wording that a download goes through "a partial file" (decision 1); spec 081's table for `price_refresh_runs`, whose `run_on` was `NOT NULL` (decision 2)
 **Frozen:** the current rules are in [`prices.md`](../../architecture/prices.md) (whole spec) and [`catalog-operations.md`](../../architecture/catalog-operations.md) (parts: decision 1's shared download); see the [specs index](../README.md)
+**Plan:** retired in `043cffabe2cccf48c2956b67df5c07d8b35973f1`; read it with `git show 043cffabe2cccf48c2956b67df5c07d8b35973f1^:docs/specs/089-daily-price-refresh/plan.md`
 
 ---
 
