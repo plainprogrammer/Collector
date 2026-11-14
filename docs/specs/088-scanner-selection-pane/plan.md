@@ -29,24 +29,25 @@ After a capture the collector sees their capture beside the match under a status
 ## Phase 0: Contracts and tests first
 
 **Implements:** FR-1, FR-2 | **Satisfies:** AC-2.1 to AC-2.6, AC-3.1, AC-3.8 to AC-3.11, AC-6.1 to AC-6.3, AC-8.1
-**Files:** `spec/models/mtg/reading_candidate_spec.rb`, `spec/models/scanner/selection_spec.rb`, `spec/requests/scanner/readings_spec.rb`, `spec/requests/scanner/printings_spec.rb`
+**Files:** `spec/models/mtg/reading/candidate_spec.rb`, `spec/models/scanner/selection_spec.rb`, `spec/requests/scanner/readings_spec.rb`, `spec/requests/scanner/printings_spec.rb`
 **Interfaces:** Consumes: nothing. Produces: the failing specs that Phases 1 and 2 turn green; `MTG::Reading::Candidate#card_sure?`, `Scanner::Selection` (see Phase 1), the answers of `POST /scanner/readings` and `GET /scanner/printings` as the request specs state them.
 
 The units and the two requests are specified before any of them exists. The system specs of Phase 4 onward are written in their own phases, test first, because they need the pane.
 
 ### Task 1: `Candidate#card_sure?` (failing spec, then code)
 
-- [ ] Write `spec/models/mtg/reading_candidate_spec.rb`:
+- [ ] Write `spec/models/mtg/reading/candidate_spec.rb` (the path RSpec/SpecFilePathFormat wants for `MTG::Reading::Candidate`; no method string in the describe):
 
 ```ruby
 require "rails_helper"
 
 # Spec 088 decision 2: the one new reading of the evidence, "sure of the card". It changes nothing the ranking does.
-RSpec.describe MTG::Reading::Candidate, "#card_sure?" do
+RSpec.describe MTG::Reading::Candidate, type: :model do
   def candidate(evidence, strong_name: false)
     described_class.new(entry: nil, evidence:, name_rank: 0, strong_name:)
   end
 
+  describe "#card_sure?" do
   it "trusts the card on collector-line evidence, plain or corrected", :aggregate_failures do
     expect(candidate(%i[collector_line])).to be_card_sure
     expect(candidate(%i[name collector_line_corrected])).to be_card_sure
@@ -61,10 +62,11 @@ RSpec.describe MTG::Reading::Candidate, "#card_sure?" do
     expect(candidate(%i[name])).not_to be_card_sure
     expect(candidate(%i[name art_weak])).not_to be_card_sure
   end
+  end
 end
 ```
 
-- [ ] Run `bin/rspec spec/models/mtg/reading_candidate_spec.rb` — expect FAIL (`undefined method card_sure?`).
+- [ ] Run `bin/rspec spec/models/mtg/reading/candidate_spec.rb` — expect FAIL (`undefined method card_sure?`).
 - [ ] In `app/models/mtg/reading.rb`, inside `Candidate`, after `def printing_confirmed? = …` add:
 
 ```ruby
@@ -84,7 +86,7 @@ end
 require "rails_helper"
 
 # Spec 088 decisions 2 to 4, 15: what the pane's row holds, in which band state, and how many printings load at once.
-RSpec.describe Scanner::Selection do
+RSpec.describe Scanner::Selection, type: :model do
   let(:key) { "f" * 32 }
   let(:identity) { create(:catalog_identity, name: "Lightning Bolt") }
 
@@ -143,8 +145,8 @@ RSpec.describe Scanner::Selection do
     end
 
     it "puts the read set first among the others (the Other printings order)" do
-      selection = described_class.for_reading(reading(candidate(matched, %i[name], strong_name: true)), key:)
-      expect(selection.items.second.entry).to eq(others.first).or eq(others.second)
+      selection = described_class.for_card(identity:, match: matched, state: "guess", key:, set: "2x2")
+      expect(selection.items.map { it.entry.set.code }.first(2)).to eq(%w[mom 2x2])
     end
   end
 
@@ -183,6 +185,8 @@ RSpec.describe Scanner::Selection do
       expect(selection.more).to eq(0)
       expect(selection.current).to eq(19)
       expect(described_class.for_card(identity:, match: matched, state: "guess", key:, limit: 5).limit).to eq(20)
+      expect(described_class.for_card(identity:, match: matched, state: "guess", key:, limit: 21).limit).to eq(40)
+      expect(described_class.for_card(identity:, match: matched, state: "guess", key:, limit: [ "x" ]).limit).to eq(20)
       expect(described_class.for_card(identity:, match: matched, state: "guess", key:, limit: 9_999).limit).to eq(200)
     end
 
@@ -202,8 +206,9 @@ end
 # with the status band it reads, as the server renders them. Two kinds. When the scanner is sure of the card the row is its
 # printings, the matched one first and then the others in `Scanner::OtherPrintings` order, the first `STEP` of them; when it
 # is not sure it is the candidate cards, one printing each, and a card's own printings are one tap away (`for_card`). It ranks
-# nothing and reads nothing: it takes a reading's candidates as ranked (`MTG::Reading::Candidate`'s predicates) and the
-# printings as `OtherPrintings` orders them, and it names no collectible.
+# nothing and reads nothing: it takes a reading's candidates as ranked (their evidence predicates: `collector_line?`,
+# `corrected?`, `art?`, `art_unique`, `card_sure?`) and the printings as `OtherPrintings` orders them, and it names no
+# collectible (`spec/scanner_sitting_core_spec.rb`).
 #
 # @example the answer to a reading
 #   selection = Scanner::Selection.for_reading(reading, key: key)
@@ -235,13 +240,18 @@ class Scanner::Selection
   # The band state of a reading's first candidate: the evidence when its printing is confirmed, a guess when the card is
   # sure and the printing is not, else :unsure.
   #
-  # @param candidate [MTG::Reading::Candidate]
+  # @param candidate [#collector_line?, #corrected?, #art?, #art_unique, #card_sure?] a ranked candidate
   # @return [Symbol] one of :collector_line, :collector_line_corrected, :art, :guess, :unsure
   def self.state_of(candidate)
     printing_state_of(candidate, sure: candidate.card_sure?) || :unsure
   end
 
-  # The same for a printing whose card the collector has chosen: never :unsure.
+  # The band state of a printing whose card the collector has chosen ("All printings"): the evidence when its printing is
+  # confirmed, else a guess, never :unsure.
+  #
+  # @param candidate [#collector_line?, #corrected?, #art?, #art_unique] a ranked candidate
+  # @param sure [Boolean] whether the card is trusted; false returns nil for a printing that is not confirmed
+  # @return [Symbol, nil]
   def self.printing_state_of(candidate, sure: true)
     if candidate.collector_line? then candidate.corrected? ? :collector_line_corrected : :collector_line
     elsif candidate.art? && candidate.art_unique then :art
@@ -251,7 +261,7 @@ class Scanner::Selection
 
   # The selection a reading's answer renders.
   #
-  # @param reading [#candidates, #finish_hint, #collector_line] a resolved `MTG::Reading` (at least one candidate)
+  # @param reading [#candidates, #finish_hint, #collector_line] a resolved reading with at least one candidate
   # @param key [String] the reading's key
   # @return [Scanner::Selection]
   def self.for_reading(reading, key:)
@@ -278,8 +288,8 @@ class Scanner::Selection
   # @param first_rank [Integer, nil] the rank the first item's add event records
   # @return [Scanner::Selection]
   def self.for_card(identity:, match:, state:, key:, set: nil, number: nil, finish_hint: nil, artwork: nil, limit: STEP, current: nil, first_rank: nil)
-    state = state.to_s.to_sym.then { PRINTING_STATES.include?(it) ? it : :guess }
-    limit = limit.to_i.clamp(STEP, MAX)
+    state = PRINTING_STATES.find { it.to_s == state.to_s } || :guess
+    limit = (limit.to_s.to_i + STEP - 1).then { it / STEP * STEP }.clamp(STEP, MAX) # a multiple of STEP; arrays and junk read as 0
     others = Scanner::OtherPrintings.new(identity:, set_code: set, number:, artwork:).entries.reject { it.id == match.id }
     ordered = [ match, *others ]
     items = ordered.first(limit).each_with_index.map do |entry, index|
@@ -296,19 +306,32 @@ class Scanner::Selection
   end
 
   # Printings not rendered yet (the row's "more" item); always 0 for a cards row.
+  #
+  # @return [Integer]
   def more = kind == :printings ? total - items.size : 0
 
+  # Whether the row ends with a "more printings" item.
+  #
+  # @return [Boolean]
   def more? = more.positive?
 
   # The row's items, with the more item when there is one: Previous and Next step through this many.
+  #
+  # @return [Integer]
   def count = items.size + (more? ? 1 : 0)
 
   # The query of the selection frame's request for this card (`GET /scanner/printings`), with the given params merged in.
+  #
+  # @param extra [Hash] params that replace or add to the card's
+  # @return [Hash{Symbol => String, Integer}] only the params that have a value
   def link_params(**extra)
     { card: identity.external_key, key:, set:, number:, finish_hint:, artwork:, match: match.external_key, band: state, limit: }.compact.merge(extra)
   end
 
   # The query that opens a possible card's own printings ("All printings"): that printing first, its band by its own evidence.
+  #
+  # @param item [Item] a possible card's item
+  # @return [Hash{Symbol => String, Integer}]
   def printings_params(item)
     { card: item.entry.identity.external_key, key:, set:, number:, finish_hint:, match: item.entry.external_key, band: item.state, limit: STEP }.compact
   end
@@ -350,9 +373,9 @@ end
     end
 
     it "gives every panel one add button per finish, named for the printing, with the star on a special finish (AC-4.2)", :aggregate_failures do
-      bolt.extension.update!(finishes: %w[nonfoil foil]) # the printing's extension row
+      MTG::Printing.find_by!(catalog_entry_id: bolt.id).update!(finishes: %w[nonfoil foil])
       read("Lightning Bolt", "R 0123\nMOM • EN")
-      forms = pane.css(".c-scanpane__card:first-child .c-scanpane__add")
+      forms = pane.css(".c-scanpane__card:not([hidden]) .c-scanpane__add")
       expect(forms.map { it.at_css("button").text.strip }).to eq([ "Add nonfoil", "Add foil" ])
       expect(forms.map { it.at_css("button")["aria-label"] }).to eq([ "Add Lightning Bolt MOM · 123 Nonfoil", "Add Lightning Bolt MOM · 123 Foil" ])
       expect(forms.map { it["data-turbo-frame"] }.uniq).to eq([ "_top" ])
@@ -360,9 +383,9 @@ end
     end
 
     it "relabels the foil button when the foil marker was read, and adds nothing more (AC-4.3)" do
-      bolt.extension.update!(finishes: %w[nonfoil foil])
+      MTG::Printing.find_by!(catalog_entry_id: bolt.id).update!(finishes: %w[nonfoil foil])
       read("Lightning Bolt", "R 0123\nMOM ★ EN")
-      forms = pane.css(".c-scanpane__card:first-child .c-scanpane__add")
+      forms = pane.css(".c-scanpane__card:not([hidden]) .c-scanpane__add")
       expect(forms.map { it.at_css("button").text.strip }).to eq([ "Add nonfoil", "Add foil · read from the card" ])
     end
 
@@ -384,10 +407,10 @@ end
       expect(response.body).to include('target="scanner_status_text"', "No card matches what was read. Line the card up with the guide and capture it again.")
     end
 ```
-  and, in the `context` where the name index is empty (the existing "catalog isn't ready" example) expect: `include('target="status"', "The card catalog isn't ready yet", "c-status__message--alert")` and `not_to include('target="scanner_result"')`; in the examples for a too-long text and a malformed key expect the 422 body to include `target="status"` and the sentence in the alert style, and `not_to include('target="scanner_result"')`.
+  and, in the `context` where the name index is empty (the existing "catalog isn't ready" example) expect: `include('target="status"', "c-status__message--alert")` and `CGI.unescapeHTML(response.body)` to `include("The card catalog isn't ready yet")` (the status partial escapes the apostrophe, as `sitting_entries_spec.rb:97` reads it) and `not_to include('target="scanner_result"')`; in the examples for a too-long text and a malformed key expect the 422 body to include `target="status"` and the sentence in the alert style, and `not_to include('target="scanner_result"')`.
 
-- [ ] In the same file add an example for a sure-of-the-card reading with an unrelated second candidate, expecting the second card not in `.c-scanpane__item` names, and one for a not-sure reading (a misspelt name with no collector line, name score below the strong threshold: `read("Lighming Bo1t", "")`) expecting `.c-scanpane__position` text "1 of 1 possible card" or "1 of 2 possible cards" per the data, the question-mark band (`template.inner_html` includes "Not sure of this card. Check it against your capture."), the row group named "Possible cards" and an "All printings" link per panel whose `href` carries `match=` and `band=guess`.
-- [ ] Replace `spec/requests/scanner/printings_spec.rb` with examples for the selection frame request (setup: one card with 25 printings as in the Selection spec; sign in as a user):
+- [ ] In the same file add an example for a sure-of-the-card reading with an unrelated second candidate, expecting the second card not in `.c-scanpane__item` names, and one for a not-sure reading (a misspelt name with no collector line, name score below the strong threshold: `read("Lightnlng Bo1t", "")`) expecting `.c-scanpane__position` text "1 of 1 possible card" or "1 of 2 possible cards" per the data, the question-mark band (`template.inner_html` includes "Not sure of this card. Check it against your capture."), the row group named "Possible cards" and an "All printings" link per panel whose `href` carries `match=` and `band=guess`.
+- [ ] Rewrite `spec/requests/scanner/printings_spec.rb` for the selection frame request. Keep, adapted to the new markup (items and panels instead of list rows), the file's examples about the order by read set and number, the artwork's printings first, `finish_hint` and an invalid artwork id being ignored (decision 15 keeps them "as today"), and add these (setup: one card with 25 printings as in the Selection spec; sign in as a user):
 
 ```ruby
 require "rails_helper"
@@ -412,10 +435,10 @@ RSpec.describe "The scanner's selection frame", type: :request do
     expect(response).to have_http_status(:ok)
     expect(page.css("turbo-frame#scanner_selection .c-scanpane__item").size).to eq(21) # 20 and the more item
     expect(page.at_css(".c-scanpane__item--more").text).to include("5 more printings")
-    expect(page.at_css(".c-scanpane__card:first-child .c-scanpane__position").text).to eq("1 of 25 printings")
+    expect(page.at_css(".c-scanpane__card:not([hidden]) .c-scanpane__position").text).to eq("1 of 25 printings")
     expect(page.at_css(".c-scanpane__row")["data-selection-focus"]).to eq("true")
     more = page.css(".c-scanpane__card").last.at_css("a.c-btn")
-    expect(more.text).to eq("Show 5 more")
+    expect(more.text).to eq("Show 20 more")
     expect(more["href"]).to include("limit=40", "current=")
   end
 
@@ -486,7 +509,7 @@ The row and its panels are one frame the server renders whole (decision 4); the 
   # @param index [Integer] the item's place in the row
   # @return [String]
   def selection_tail(selection, index)
-    return "#{pluralize(selection.more, "more printing")}. Show #{[ selection.more, Scanner::Selection::STEP ].min} more." if index >= selection.items.size
+    return "#{pluralize(selection.more, "more printing")}. Show 20 more." if index >= selection.items.size
 
     entry = selection.items[index].entry
     noun = selection.kind == :cards ? "Card" : "Printing"
@@ -494,6 +517,10 @@ The row and its panels are one frame the server renders whole (decision 4); the 
   end
 
   # "2 of 14 printings", "1 of 3 possible cards": the details block's position (design decision 15).
+  #
+  # @param selection [Scanner::Selection]
+  # @param index [Integer] the item's place in the row
+  # @return [String]
   def selection_position(selection, index)
     noun = selection.kind == :cards ? "possible card" : "printing"
     "#{index + 1} of #{pluralize(selection.total, noun)}"
@@ -569,9 +596,9 @@ The row and its panels are one frame the server renders whole (decision 4); the 
   <div class="c-scanpane__details">
     <h2 class="c-scanpane__name"><%= entry.display_name %></h2>
     <p class="c-scanpane__set"><%= entry.set.name %></p>
-    <p class="c-scanpane__meta">
+    <p class="c-scanpane__meta<%= " c-scanpane__meta--cards" if selection.kind == :cards %>">
       <span class="c-tag"><%= set_number(entry) %></span>
-      <% if entry.released_on %><span><%= entry.released_on.year %></span><% end %>
+      <% if entry.released_on && selection.kind == :printings %><span><%= entry.released_on.year %></span><% end %>
       <span class="c-scanpane__position"><%= selection_position(selection, index) %></span>
       <% if selection.kind == :cards %>
         <%= link_to "All printings", scanner_printings_path(selection.printings_params(item)), class: "c-btn c-btn--ghost c-btn--sm",
@@ -600,7 +627,7 @@ The row and its panels are one frame the server renders whole (decision 4); the 
   </div>
   <div class="c-scanpane__adds">
     <div class="c-scanpane__add">
-      <%= link_to "Show #{[ selection.more, Scanner::Selection::STEP ].min} more",
+      <%= link_to "Show 20 more",
             scanner_printings_path(selection.link_params(limit: selection.limit + Scanner::Selection::STEP, current: last.entry.external_key)),
             class: "c-btn c-btn--secondary", data: { turbo_frame: "scanner_selection", failure_message: "More printings couldn't be loaded. Tap “Show 20 more” again.", action: "scanner-reading#remember" } %>
     </div>
@@ -730,6 +757,8 @@ end
 
 ### Task 6: the pane's skeleton and the CSS (failing system spec first)
 
+Before this task and Task 9, invoke the `collector-design-system` skill and read `docs/design-system/README.md` (CLAUDE.md requires it before any view, partial or stylesheet change).
+
 - [ ] Write `spec/system/scanner_selection_spec.rb` (the shared setup and the first examples; later tasks add to it). Data: Lightning Bolt in three sets, a collector-line capture of the first:
 
 ```ruby
@@ -768,7 +797,7 @@ RSpec.describe "The selection pane", type: :system do
     capture_synthetic
     expect(page).to have_css(".c-scan.c-scan--result .c-scan__strip .c-scan__read-name", text: "Lightning Bolt")
     expect(page).to have_css(".c-scan__read-line", text: /MOM/)
-    expect(page.evaluate_script("document.querySelector('.c-scan__capture').width > 0 && document.querySelector('.c-scan__capture').height > 0")).to be(true)
+    expect(page.evaluate_script("[document.querySelector('.c-scan__capture').width, document.querySelector('.c-scan__capture').height]")).to eq([ 178, 248 ])
     expect(band).to have_css("svg").and have_text("Matched by its collector line")
     expect(band[:class]).to include("c-band--success")
     expect(page).to have_css(".c-scanpane__item", count: 3)
@@ -780,8 +809,7 @@ RSpec.describe "The selection pane", type: :system do
 
   it "writes the reading's text as text (AC-1.2)" do
     visit scanner_path
-    show_synthetic_card
-    page.execute_script("document.querySelector('[data-card-reader-target=readName]').textContent = ''")
+    show_synthetic_card(name: "<b>Bolt</b>")
     click_on "Capture"
     wait_for_pane
     expect(page).to have_no_css(".c-scan__read-name b")
@@ -819,16 +847,14 @@ The pane (replacing the old one, `c-scanpane__results` and the failure block's n
 ```
 
   and delete the `failureName` and `failureCollector` targets from `card_reader_controller.js`'s `static targets` and from `failed()` (Task 8 edits that file; remove the two lines now so the page does not break: `this.failureNameTarget.textContent = …` and `this.failureCollectorTarget.textContent = …`).
-- [ ] Edit `app/assets/stylesheets/collector/additions.css`: (a) in spec 080's block change the body's rows to read the floor from a variable, `grid-template-rows:minmax(calc(var(--scan-image-min, 160px) + var(--space-4) + var(--space-3)), calc(288px + var(--space-4) + var(--space-3))) 1fr;` (b) delete the `.c-scanpane__results { … }` rule and `.c-scan__pane-status:empty { … }` and fix the block's comment that mentions them; (c) add, above the reduced-motion block, this block (it holds the layout numbers of decision 13, which Task 9 proves):
+- [ ] Edit `app/assets/stylesheets/collector/additions.css`: (a) (the images' floor and the strip's compact height are Task 9's, so the layout numbers have one home and their specs; not here) (b) delete the `.c-scanpane__results { … }` rule and `.c-scan__pane-status:empty { … }` and fix the block's comment that mentions them; (c) add, above the reduced-motion block, this block (it holds the layout numbers of decision 13, which Task 9 proves):
 
 ```css
 /* ---------- Scanner selection pane (spec 088): the band's empty state, the selection frame, the layout numbers ---------- */
 /* The band and the pane's `#status` stay rendered while empty and take no space, so a sentence written into them is announced
    (spec 080 decision 8); `#status` has no padding, margin or gap of its own, and the spacing is on the message inside it. The result
    container is a flex column that takes the pane's remaining height, so the selection frame (a grid by its class) sizes as spec 080's
-   body did. The layout numbers of decision 13 are here and nowhere else: the images' floor (96px, spec 080 had 160px) and, in a shell
-   less than 600px high, a 64px strip with a 52px picture (spec 080 had 96px and 76px under 720px), after spec 080's 719px step. */
-.c-scanpane { --scan-image-min:96px; }
+   body did. The layout numbers of decision 13 are not here: they are Task 9's, in one place. */
 .c-band:empty { min-height:0; padding:0; }
 .c-scanpane__result { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; }
 .c-scanpane__result > .c-scanpane__body { flex:1 1 auto; }
@@ -839,10 +865,9 @@ The pane (replacing the old one, `c-scanpane__results` and the failure block's n
   padding:var(--space-2); text-align:center; font:600 13px/18px var(--font-sans); color:var(--ink-muted); overflow-wrap:anywhere; }
 .c-scanpane__missing span { font:400 13px/18px var(--font-mono); }
 .c-scanpane__meta .c-btn { box-sizing:border-box; flex:none; min-height:44px; min-width:44px; }
-@container scan (max-height: 599px) {
-  .c-scan__strip { box-sizing:border-box; height:64px; }
-  .c-scan__capture { box-sizing:border-box; height:52px; }
-}
+/* A possible-cards row (spec 088 decision 3): the line holds the tag, the position and the 44px "All printings", which do not fit
+   on one line at 360px with the year, so the year is left out and the position wraps to two lines, right-aligned, inside the 44px. */
+.c-scanpane__meta--cards .c-scanpane__position { min-width:0; white-space:normal; text-align:right; }
 ```
 
 - [ ] Run `bin/rspec spec/system/scanner_selection_spec.rb:` (the first example needs Task 7's controller and Task 8's reader changes for the strip, the band and "Done."; it stays red here by design). Run `bin/rspec spec/system/design_system_scanner_components_spec.rb` to see which of spec 080's examples the floor changes (Task 9 updates them). Commit: `feat(scanner): the pane's skeleton, strip and empty-band styles (spec 088)`.
@@ -875,7 +900,7 @@ The pane (replacing the old one, `c-scanpane__results` and the failure block's n
     capture_synthetic
     click_on "Next printing"
     expect(page).to have_css(".c-scanpane__item:nth-child(2)[aria-current='true']")
-    find_button("Next printing").click
+    find_button("Next printing").send_keys(:enter) # Firefox on a Mac does not focus a clicked button (scanner_page_spec.rb:57)
     expect(page).to have_button("Next printing", disabled: true)
     expect(page.evaluate_script("document.activeElement.getAttribute('aria-label')")).to eq("Previous printing")
   end
@@ -894,7 +919,7 @@ The pane (replacing the old one, `c-scanpane__results` and the failure block's n
     capture_synthetic
     page.execute_script("const row = document.querySelector('.c-scanpane__row'); row.style.scrollBehavior = 'auto'; row.scrollLeft = row.scrollWidth")
     expect(page).to have_css(".c-scanpane__item:nth-child(3)[aria-current='true']", wait: 5)
-    find(".c-scanpane__item:nth-child(2)").click
+    page.execute_script("document.querySelectorAll('.c-scanpane__item')[1].click()") # Next covers the neighbour's visible part, so a driver click is intercepted
     expect(page).to have_css(".c-scanpane__item:nth-child(2)[aria-current='true']")
   end
 ```
@@ -968,6 +993,7 @@ export default class extends Controller {
   }
 
   settle() {
+    if (!this.hasRowTarget) return // the row went away while the timer ran
     const row = this.rowTarget.getBoundingClientRect(), middle = row.left + row.width / 2
     let nearest = this.index, distance = Infinity
     this.itemTargets.forEach((item, index) => {
@@ -1033,7 +1059,7 @@ export default class extends Controller {
     expect(page).to have_css("#scanner_added_text", text: "Added Lightning Bolt MOM · 123, foil", wait: 10)
     expect(page).to have_no_css(".c-scan--result")
     expect(page).to have_css("#scanner_band:empty")
-    expect(page.evaluate_script("document.activeElement.classList.contains('c-scan__main')")).to be(true)
+    eventually("document.activeElement.classList.contains('c-scan__main')")
     expect(page).to have_css("canvas.c-scan__frozen[hidden]", visible: :all)
     expect(Lot.where(finish: "foil").count).to eq(1)
   end
@@ -1083,6 +1109,95 @@ export default class extends Controller {
   end
 ```
 
+- [ ] Add these examples too, failing first (AC-1.3, 2.6, 3.9, 3.10, 3.11, 6.3, 7.3, 8.2):
+
+```ruby
+  it "shows a picked photo's card on the strip, and a no-edge sentence after 'Done.' (AC-1.3)", :aggregate_failures do
+    visit scanner_path
+    page.execute_script("document.querySelector('.c-scan__feed').hidden = true")
+    pick_photo(card: nil) # a photo with no card edge: guide placement, the no-edge sentence
+    wait_for_pane
+    expect(page).to have_css(".c-scan__read-name", visible: :all)
+    expect(page).to have_css("#status .c-sr", text: /\ADone\. /, visible: :all)
+    expect(page).to have_css("#status .c-status__message:not(.c-status__message--alert)", text: /No card edge was found/)
+  end
+
+  it "says nothing about art in the pane with art matching off (AC-2.6)" do
+    visit scanner_path
+    capture_synthetic
+    expect(page).to have_no_text(/artwork/i, wait: 0)
+    expect(page).to have_no_css("#scanner_art_status, [data-card-reader-target=artStatus]", visible: :all) # it is in the destination sheet only with art on
+  end
+
+  it "opens a possible card's printings from All printings, in the frame, with focus on Next (AC-3.9)", :aggregate_failures do
+    visit scanner_path
+    show_synthetic_card(name: "Lightnlng Bo1t", lines: [])
+    click_on "Capture"
+    wait_for_pane
+    expect(band).to have_text("Not sure of this card. Check it against your capture.")
+    expect(find(".c-scanpane__row")["aria-label"] || find(".c-scanpane__rowwrap")["aria-label"]).to eq("Possible cards")
+    page.execute_script("window.__marker = true")
+    find_link("All printings").send_keys(:enter)
+    expect(page).to have_css(".c-scanpane__card:not([hidden]) .c-scanpane__position", text: "1 of 3 printings")
+    expect(band).to have_text("Printing not confirmed. Swipe to check.")
+    expect(page.evaluate_script("document.activeElement.getAttribute('aria-label')")).to eq("Next printing")
+    expect(page.evaluate_script("window.__marker")).to be(true)
+    expect(page.evaluate_script("window.__tracks.every((track) => track.readyState === 'live')")).to be(true)
+  end
+
+  it "keeps the centred printing centred and focus on Next when Show 20 more renders the frame again (AC-3.10)", :aggregate_failures do
+    24.times { |i| create(:mtg_printing, entry: create(:catalog_entry, identity:, name: "Lightning Bolt", set: create(:catalog_set, code: "t#{i}", name: "Set #{i}"), number: i.to_s)) }
+    visit scanner_path
+    capture_synthetic
+    expect(page).to have_css(".c-scanpane__item--more")
+    expect(page).to have_css(".c-scanpane__card:not([hidden]) .c-scanpane__position", text: "1 of 27 printings")
+    page.execute_script("const row = document.querySelector('.c-scanpane__row'); row.style.scrollBehavior = 'auto'; row.scrollLeft = row.scrollWidth")
+    expect(page).to have_css(".c-scanpane__card:not([hidden]) a.c-btn", text: "Show 20 more", wait: 5)
+    find_link("Show 20 more").send_keys(:enter)
+    expect(page).to have_css(".c-scanpane__item", count: 27)
+    expect(page).to have_no_css(".c-scanpane__item--more")
+    expect(page).to have_css(".c-scanpane__item[aria-current='true']", count: 1)
+    expect(page).to have_css(".c-scanpane__card:not([hidden]) .c-scanpane__position", text: "20 of 27 printings")
+    expect(page.evaluate_script("document.activeElement.getAttribute('aria-label')")).to eq("Next printing")
+  end
+
+  it "says so in the pane's region and leaves the row as it was when the selection request fails (AC-3.11)", :aggregate_failures do
+    visit scanner_path
+    show_synthetic_card(name: "Lightnlng Bo1t", lines: [])
+    click_on "Capture"
+    wait_for_pane
+    page.execute_script("const send = window.fetch; window.fetch = (url, options) => String(url).includes('/scanner/printings') ? Promise.reject(new TypeError('offline')) : send(url, options)")
+    find_link("All printings").send_keys(:enter)
+    expect(page).to have_css("#status .c-status__message--alert", text: "The card's printings couldn't be loaded. Tap “All printings” again.")
+    expect(page).to have_css(".c-scanpane__item", count: 1)
+  end
+
+  it "shows a card named with markup as text on every pane surface (AC-6.3)", :aggregate_failures do
+    Catalog::Entry.find_by!(number: "123").update!(name: "Bolt <i>x</i>")
+    visit scanner_path
+    capture_synthetic
+    expect(page).to have_no_css(".c-scanpane__name i, .c-scanpane__item img[alt*='<i>'] ~ i, #scanner_band i", visible: :all)
+    expect(find(".c-scanpane__card:not([hidden]) .c-scanpane__name").text).to eq("Bolt <i>x</i>")
+  end
+
+  it "keeps the destination sheet's own region working while a result shows (AC-7.3)", :aggregate_failures do
+    visit scanner_path
+    capture_synthetic
+    open_destination
+    within("#scanner_destination_sheet") { click_on "Set" }
+    expect(page).to have_css("#scanner_destination_status", text: /Cards you scan now/)
+    expect(page).to have_no_css("#status .c-status__message", text: /Cards you scan now/)
+  end
+
+  it "records the add's rank: 1 on the matched printing, 'other' on a swiped-to one (AC-8.2)", :aggregate_failures do
+    visit scanner_path
+    capture_synthetic
+    expect(page).to have_css(".c-scanpane__card:not([hidden]) form.c-scanpane__add[data-rank='1']", minimum: 1)
+    click_on "Next printing"
+    expect(page).to have_css(".c-scanpane__card:not([hidden]) form.c-scanpane__add[data-rank='other']", minimum: 1)
+  end
+```
+
 - [ ] Run — expect FAIL. Then edit `app/javascript/controllers/card_reader_controller.js`:
   - add targets `"strip", "capture", "readName", "readLine", "band"` (and remove `failureName`, `failureCollector` if Task 6 has not);
   - replace the constants `SHOWING` with `const READING = "Reading the card…"` and keep `COULD_NOT_READ`, `NO_EDGE`; update the header comment's last sentence to describe the strip and the opening sentence (spec 088 decisions 8, 9, 11);
@@ -1094,6 +1209,7 @@ export default class extends Controller {
 ```
 
   - replace the end of `read()`'s try block (`if (await this.send(reading) && reading.outline === "not_found") this.paneSay(NO_EDGE)`) with `if (await this.send(reading) && reading.outline === "not_found") this.paneSay(NO_EDGE, { append: true })`, and `say("Reading the card…")` with `this.say(READING)`;
+  - in `resend()` clear the old failure alert before sending again, so a nothing-read or no-match answer does not leave it in the region: `this.paneStatusTarget.replaceChildren(...[ ...this.paneStatusTarget.children ].filter((child) => child.hasAttribute("data-pane-keep")))`;
   - replace in `send()`:
 
 ```javascript
@@ -1138,6 +1254,7 @@ export default class extends Controller {
     canvas.getContext("2d").drawImage(image, card.x, card.y, card.width, card.height, 0, 0, canvas.width, canvas.height)
     const guide = outline === "live" && this.element.querySelector(".c-scan__guide")?.getBoundingClientRect().height
     if (guide) canvas.style.setProperty("--from", (guide / parseFloat(getComputedStyle(canvas).height || 124)).toFixed(2))
+    else canvas.style.removeProperty("--from") // a photo has no guide on the stage: spec 080's default
   }
 
   // What the reader read, on one line each (escaped by textContent; "nothing read" for a blank).
@@ -1292,7 +1409,7 @@ export default class extends Controller {
   it "gives the images their 96px floor and lets the body scroll only at 360 × 560 with the not-sure band (AC-5.2)", :aggregate_failures do
     open_scanner_frame(width: 360, height: 560)
     within_narrow_frame do
-      show_synthetic_card(name: "Lighming Bo1t", lines: [])
+      show_synthetic_card(name: "Lightnlng Bo1t", lines: [])
       click_on "Capture"
       wait_for_pane
       boxes = pane_boxes
@@ -1313,18 +1430,30 @@ export default class extends Controller {
   end
 ```
 
-  (Adjust the not-sure example's synthetic card if "Lighming Bo1t" turns out to rank as a strong name: it must produce a name-only, non-strong match; verify with `read(...)` in the request spec of Task 3 and reuse that text.)
-- [ ] Run them — expect FAIL where the CSS has not been fitted; adjust only `--scan-image-min` and the 599px block (never other rules) until PASS, then record the measured boxes in `verification.md`.
-- [ ] Update `spec/system/design_system_scanner_components_spec.rb` (spec 080's examples, which draw the pane from markup the spec builds): the example "holds the images at 160px at 360 × 640 with a one-line band" stays; "scrolls the pane's content at 360 × 640 with a two-line band" becomes `expect(pane_layout.values_at("band", "image", "scrolls")).to eq([ 56, 144, false ])` (title: "gives way to 144px images with nothing scrolling at 360 × 640 with a two-line band (spec 088 decision 13)"); "scrolls the pane's content at 360 × 560 …" is replaced by an example that, at 360 × 560 with the one-line band, expects `[ 40, 112, false ]` and `strip` 64, and keeps the check that the bars, strip and band stay in place when the body is scrolled by 60px at 360 × 560 with a *wrapped set name* (the accepted limit); the 390 × 664 example's `strip` expectation stays 96. Run `bin/rspec spec/system/design_system_scanner_components_spec.rb`.
+  (Adjust the not-sure example's synthetic card if "Lightnlng Bo1t" turns out to rank as a strong name: it must produce a name-only, non-strong match; verify with `read(...)` in the request spec of Task 3 and reuse that text.)
+- [ ] Run them — expect FAIL (spec 080's 160px floor and 96px strip are still in force: 360 × 560 shows a strip of 96px and images under 112px or a scrolling body).
+- [ ] Write the layout numbers, here and nowhere else. In spec 080's pane block of `additions.css` change the body's rows to read the floor from a variable, `grid-template-rows:minmax(calc(var(--scan-image-min, 160px) + var(--space-4) + var(--space-3)), calc(288px + var(--space-4) + var(--space-3))) 1fr;`, update that block's comment (it says 160px, and "96px with a 76px one under 720px" only), and add to the `(spec 088 …)` block, after spec 080's 719px step:
+
+```css
+.c-scanpane { --scan-image-min:96px; }
+@container scan (max-height: 599px) {
+  .c-scan__strip { box-sizing:border-box; height:64px; }
+  .c-scan__capture { box-sizing:border-box; height:52px; }
+}
+```
+
+  Run them again — expect PASS; adjust only these two values until it does, then record the measured boxes in `verification.md`. Decision 14 asks for reduced motion where a box is read; the examples wait for `document.getAnimations()` to be idle instead, which measures the same rest state.
+- [ ] Update `spec/system/design_system_scanner_components_spec.rb` (spec 080's examples, which draw the pane from markup the spec builds): the example "holds the images at 160px at 360 × 640 with a one-line band" stays; "scrolls the pane's content at 360 × 640 with a two-line band" becomes `expect(pane_layout.values_at("band", "image", "scrolls")).to eq([ 56, 144, false ])` (title: "gives way to 144px images with nothing scrolling at 360 × 640 with a two-line band (spec 088 decision 13)"); "scrolls the pane's content at 360 × 560 …" is replaced by an example that, at 360 × 560 with the one-line band, expects `[ 40, 112, false ]` and `strip` 64, and keeps the check that the bars, strip and band stay in place when the body is scrolled at 360 × 560 with a *wrapped set name and a two-line band* (the accepted limit; it scrolls by only a few pixels, so the example scrolls to the end and expects `scrollTop` above 0); the 390 × 664 example's `strip` expectation stays 96. Run `bin/rspec spec/system/design_system_scanner_components_spec.rb`.
 - [ ] Update every document that states the old numbers (grep `160px`, `96px with a 76px`, `76px`, `at least 160px` in `docs/design-system/` and the previews `ScannerFlow.html`, `ScannerConfidence.html`, `StatusBand.html`, `Sheet.html`): `Scanner.md`'s "capture strip" and "pane" bullets (strip 144px with a 124px picture, 96px with a 76px one under 720px, 64px with a 52px one under 600px; the images 288px at most and 96px at least) and the sums in spec 088's note; the previews need no change unless a frame is shorter than 600px (check their frames; if one is, redraw its numbers). Mark spec 080's decision 7 and AC-4.7 as superseded for the two numbers in `docs/specs/README.md` (already recorded) and in `Scanner.md`'s sources.
 - [ ] Run `bin/rspec spec/system/design_system_scanner_components_spec.rb spec/system/scanner_selection_spec.rb`. Commit: `feat(scanner): fit the pane to the three phone sizes (spec 088 decision 13)` and `docs(design-system): the pane's new floors (spec 088 decision 13)`.
 
 ### Task 10: guards, the touch floor and the documents
 
 - [ ] In `spec/system/small_controls_touch_floor_spec.rb`: add `.c-scanpane__meta` and `.c-scanpane__add` to `page_rule_scopes` (replacing `.c-scanner__add`, now unused) and add the scanner's pane controls ("All printings", "Show 20 more", Previous, Next, the add buttons) to the scanner pages' control list with the result showing, following that file's existing pattern for the scanner (spec 082 AC-1.9); run the file.
-- [ ] In `spec/scanner_sitting_core_spec.rb` add nothing unless a new partial is the sitting's: the pane's partials are not; run the file to confirm it passes. Run `bin/rspec spec/requests/footer_spec.rb` (the policy's pin).
+- [ ] In `spec/scanner_sitting_core_spec.rb` add the selection's files to the glob (`app/models/scanner/selection.rb` and `app/views/scanners/_{selection,item,more_item,panel,more_panel,band_content,add_buttons}.html.erb`), so FR-1's "names no collectible" is guarded; fix any file it flags (comments included); run the file. Run `bin/rspec spec/requests/footer_spec.rb` (the policy's pin).
+- [ ] Remove `Scanner::OtherPrintings#shown` and `#rest` (the frame replaced them; `SHOWN` stays, as `Scanner::Selection::STEP`) and their examples in `spec/models/scanner/other_printings_spec.rb`; in `lib/collector/scanner_findings/sitting_report.rb` check how the rank "other" is labelled ("Other printings") and keep the report's output stable (rank "other" is still recorded); in `spec/requests/footer_spec.rb` around line 83 change any `Turbo-Frame: scanner_printings` header to `scanner_selection`.
 - [ ] Remove the `c-scanner__*` CSS rules no view uses any more: for each selector of `.c-scanner__candidate`, `.c-scanner__adds`, `.c-scanner__add`, `.c-scanner__evidence`, `.c-scanner__printings`, `.c-scanner__result`, `.c-scanner__read`, `.c-scanner__mono`, run `git grep -n '<selector without the dot>' -- app ':!.kamal/secrets'`; delete a rule only when nothing else uses it (the sitting's `c-scanner__more`, `c-scanner__undo` and `c-scanner__sitting` stay); add the name of each removed rule to the commit body; run `spec/design_system_files_spec.rb`.
-- [ ] Write the documents: `docs/architecture/scanner.md` (the pane, the band and its three states and wordings, the row's contents, the selection frame's request and its params, the strip, the outcomes' places, decision 13's numbers in Named constants, the accepted limits: a card with more than 200 English printings, a confidently wrong card is a "Scan again", a failed read shows no capture; the regions table gains the new rows; the supersessions in Sources and its distillation log is `distill-feature`'s); `docs/design-system/components/Scanner.md` (replace "What #345 builds in the pane" and "The result partial, until #345" with the pane as built, its markup from `scanners/_selection`, `_panel`, `_item`; keep one sentence on measurement mode's record); `StatusBand.md` (first use is built; "Not the printing that was read" is on every printing other than the matched one); `CLAUDE.md`'s scanner paragraph gains one sentence (the pane, spec 088). Documents are verified by reading, recorded in `verification.md`, never by RSpec.
+- [ ] Write the documents: `docs/architecture/scanner.md` (the pane, the band and its three states and wordings, the row's contents, the selection frame's request and its params, the strip, the outcomes' places, decision 13's numbers in Named constants, the accepted limits: a card with more than 200 English printings, a confidently wrong card is a "Scan again", a failed read shows no capture; the regions table gains the new rows; the supersessions in Sources and its distillation log is `distill-feature`'s); `docs/design-system/README.md` (the Mobile and Hotwire and Motion rules mention "built by #345" where they do; the band's first use; AC-8.4), `docs/design-system/components/Scanner.md` (replace "What #345 builds in the pane" and "The result partial, until #345" with the pane as built, its markup from `scanners/_selection`, `_panel`, `_item`; keep one sentence on measurement mode's record); `StatusBand.md` (first use is built; "Not the printing that was read" is on every printing other than the matched one); `CLAUDE.md`'s scanner paragraph gains one sentence (the pane, spec 088). Documents are verified by reading, recorded in `verification.md`, never by RSpec.
 - [ ] Commit: `docs(scanner): the selection pane in the area doc and the design system (spec 088)`.
 
 ---
@@ -1334,7 +1463,7 @@ export default class extends Controller {
 **Implements:** All FRs | **Satisfies:** All ACs
 
 - [ ] Run `bin/ci checks`, then (with the coordinator's slot) the full `bin/ci` once, after the implementation review and the wrap.
-- [ ] Targeted runs before that: `bin/rspec spec/models spec/requests/scanner spec/helpers spec/system/scanner_selection_spec.rb spec/system/scanner_result_spec.rb spec/system/scanner_adding_spec.rb spec/system/design_system_scanner_components_spec.rb spec/system/small_controls_touch_floor_spec.rb spec/scanner_sitting_core_spec.rb spec/requests/footer_spec.rb`.
+- [ ] Targeted runs before that, one file at a time: `bin/rspec spec/models spec/requests/scanner spec/helpers spec/system/scanner_selection_spec.rb spec/system/scanner_result_spec.rb spec/system/scanner_adding_spec.rb spec/system/scanner_page_spec.rb spec/system/scanner_spec.rb spec/system/scanner_art_spec.rb spec/system/scanner_detection_spec.rb spec/system/scanner_sitting_spec.rb spec/system/scanner_measurement_spec.rb spec/system/scanner_timing_spec.rb spec/system/design_system_scanner_components_spec.rb spec/system/small_controls_touch_floor_spec.rb spec/scanner_sitting_core_spec.rb spec/requests/footer_spec.rb` (the suite is red from Task 5 until Task 8 has brought the system specs along; that is expected and the commits say so).
 - [ ] Screenshots and GIFs, looked at before the specs are trusted (`.claude/memory/pr-screenshots-workflow.md`): a confident match, a swipe with the band replaced, the three bands, a short phone (360 × 560), the failure and the nothing-read line, light and dark, desktop and phone; the GIF of capture, swipe, add foil; embedded by SHA-pinned links in the PR; saved in `docs/specs/088-scanner-selection-pane/screenshots/`.
 - [ ] Write `verification.md` (criterion by criterion, documents read, the measured boxes) and the implementation review (`## Implementation review`, verdict first line, Opus 5.5).
 
