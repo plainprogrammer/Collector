@@ -139,8 +139,8 @@ class MTG::Scryfall::Source
     end
 
     # The first check, before any strip or parse: `String#strip` raises Encoding::CompatibilityError on a line that isn't
-    # valid UTF-8, which nothing rescues, so one bad byte would stop every refresh instead of counting one malformed line
-    # (issue #411). MTG::Scryfall::PriceQuotes makes the same check for the same file.
+    # valid UTF-8 (ArgumentError when the bad byte comes first), and nothing rescued the first, so one bad byte would stop
+    # every refresh instead of counting one malformed line (issue #411). MTG::Scryfall::PriceQuotes makes the same check for the same file.
     def entry_or_malformed(line, allowed)
       return Catalog::Sources::Malformed.new(external_key: nil, error: "the line is not valid UTF-8") unless line.valid_encoding?
       return if line.strip.empty?
