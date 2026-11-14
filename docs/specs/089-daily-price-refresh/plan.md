@@ -502,19 +502,37 @@ The rebuild touches a rowid table (`price_refresh_runs`), so the `WITHOUT ROWID`
     def running? = status == "running"
 
     # Records the file this run is for.
+    #
+    # @param version [String] the catalog source's version (the file's name without its extension)
+    # @param languages [String] the sorted language set, comma-joined
+    # @return [true]
     def record_file!(version:, languages:) = update!(source_version: version, languages:)
 
     # Ends the run as skipped, with the reason in `error`; `run_on` when it is known.
+    #
+    # @param reason [String]
+    # @param run_on [Date, nil]
+    # @return [true]
     def skip!(reason, run_on: nil) = update!(status: "skipped", error: reason, run_on: run_on || self.run_on, finished_at: Time.current)
 
     # Ends the run as finished with its counts (keys outside COUNTS are ignored).
+    #
+    # @param counts [Hash{Symbol => Integer}]
+    # @return [true]
     def finish!(counts) = update!(status: "finished", finished_at: Time.current, **counted(counts))
 
     # Ends the run as failed with `"<class>: <message>"` and the counts so far.
+    #
+    # @param error [StandardError]
+    # @param counts [Hash{Symbol => Integer}]
+    # @return [true]
     def fail!(error, counts) = update!(status: "failed", error: "#{error.class}: #{error.message}", finished_at: Time.current, **counted(counts))
 
     # Stores the counts so far and counts as progress (the stall rule reads `updated_at`). Written outside any batch's
     # transaction.
+    #
+    # @param counts [Hash{Symbol => Integer}]
+    # @return [true]
     def progress!(counts) = update!(**counted(counts), updated_at: Time.current)
 
     # A progress callback for a download (called with bytes done and total): touches the run at most once per
@@ -564,7 +582,7 @@ This is a contract change (`#download` now has two callers that can run together
       expect(dir.children.map { |path| path.basename.to_s }).to contain_exactly("#{version}.jsonl.gz", fresh.basename.to_s)
     end
 
-    it "writes each download to a partial file of its own, so a second download of the version, started inside the first, is harmless (spec 089 AC-4.8)", :aggregate_failures do
+    it "writes each download to a partial file of its own, so a second download of the version, started inside the first, is harmless (spec 089 AC-4.8)", :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- one scenario
       cards = [ scryfall_card ]
       stub_scryfall(cards:)
       version = source.current_version(languages: [ "en" ])
@@ -616,9 +634,9 @@ This is a contract change (`#download` now has two callers that can run together
       # Keeps the newest KEEP_DOWNLOADS files and drops stale partial files. A concurrent download may rename or delete a
       # file between the listing and its use, so each file is judged, and removed, tolerating that (spec 089 decision 1).
       def prune(dir)
-        aged = ->(paths) { paths.filter_map { |path| [ path.mtime, path ] rescue nil } } # rubocop:disable Style/RescueModifier -- a file may vanish between glob and stat
-        aged.call(dir.glob("*.jsonl.gz")).sort_by(&:first).reverse.drop(KEEP_DOWNLOADS).each { |_mtime, path| path.delete if path.exist? }
-        aged.call(dir.glob("*.part")).select { |mtime, _path| mtime < STALE_PARTIAL_AFTER.ago }.each { |_mtime, path| path.delete if path.exist? }
+        aged = ->(paths) { paths.filter_map { |path| [ path.mtime, path ] rescue nil } } # a file may vanish between glob and stat
+        aged.call(dir.glob("*.jsonl.gz")).sort_by(&:first).reverse.drop(KEEP_DOWNLOADS).each { |_mtime, path| FileUtils.rm_f(path) }
+        aged.call(dir.glob("*.part")).select { |mtime, _path| mtime < STALE_PARTIAL_AFTER.ago }.each { |_mtime, path| FileUtils.rm_f(path) }
       rescue Errno::ENOENT
         nil # the directory itself was removed under us
       end
@@ -687,7 +705,7 @@ This is a contract change (`#download` now has two callers that can run together
         expect(last_run.price_source.key).to eq("fake_source")
       end
 
-      it "skips a file already applied for the same version and languages, copying its date and asking for no download (AC-1.2)", :aggregate_failures do
+      it "skips a file already applied for the same version and languages, copying its date (AC-1.2; the end-to-end example proves nothing is downloaded again)", :aggregate_failures do
         use_widget_sources(version: "v1")
         widget_entry("w-1")
         PriceRefreshRun.create!(price_source: price_source_row, status: "finished", source_version: "v1", languages: "en",
@@ -734,7 +752,7 @@ This is a contract change (`#download` now has two callers that can run together
         same_day = refresh.call
 
         expect(older.status).to eq("skipped")
-        expect(same_day).to have_attributes(status: "finished", run_on: Date.new(2026, 11, 13), added: 1)
+        expect(same_day).to have_attributes(status: "finished", run_on: Date.new(2026, 11, 13))
       end
 
       it "ends the run failed, with its error, when the source's file has no date, and nothing is written (AC-1.9)", :aggregate_failures do
@@ -804,8 +822,8 @@ This is a contract change (`#download` now has two callers that can run together
   #
   # @see file:prices.md
   class Prices::Refresh
-    # Printings per write transaction, and current prices per removal transaction: a few thousand rows, so the database
-    # is held briefly (spec 089 decision 7).
+    # Printings per write transaction, and printings (their current prices) per removal slice and transaction: a few
+    # thousand rows each, so the database is held briefly (spec 089 decision 7).
     BATCH_SIZE = 1_000
 
     # The largest share of the source's candidate current prices a run may remove in one day (spec 089 decision 4, ruled
@@ -1045,12 +1063,12 @@ This is a contract change (`#download` now has two callers that can run together
         entries.each { |entry| seed_price(entry, 100) }
         use_widget_sources(records: entries.map { widget_quote(it.external_key, 100) }) # all unchanged: no batch writes a price
         progress = []
-        callback = ->(*, payload) { progress << payload[:sql] if payload[:sql].to_s.start_with?('UPDATE "price_refresh_runs" SET') && payload[:sql].include?('"updated_at"') }
+        callback = ->(*, payload) { progress << payload[:sql] if payload[:sql].to_s.start_with?('UPDATE "price_refresh_runs" SET') && payload[:sql].include?('"quotes_seen"') }
 
         ActiveSupport::Notifications.subscribed(callback, "sql.active_record") { refresh.call }
 
         expect(CurrentPrice.pluck(:cents).uniq).to eq([ 100 ]) # nothing was written
-        expect(progress.size).to be >= 3 # batches of two, two and one, each a progress write (then the finish)
+        expect(progress.size).to eq(3) # a progress write per batch (2, 2 and 1 printings): only they put quotes_seen in an UPDATE's SET
       end
     end
   ```
@@ -1273,7 +1291,7 @@ This is a contract change (`#download` now has two callers that can run together
         expect(CurrentPrice.where(catalog_entry_id: new_entry.id).count).to eq(1)
       end
 
-      it "fails the run, with the reader's error, when the file is cut short; earlier batches stand, nothing is removed, and a whole file of the day finishes without a duplicate row (AC-3.4)", :aggregate_failures do
+      it "fails the run, with the reader's error, when the file is cut short; earlier batches stand, nothing is removed, and a whole file of the day finishes without a duplicate row (AC-3.4)", :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- two runs of one scenario
         stub_const("Prices::Refresh::BATCH_SIZE", 2)
         seed_candidates(10)
         gone = widget_entry("gone").tap { seed_price(it, 100) }
@@ -1388,7 +1406,7 @@ This is a contract change (`#download` now has two callers that can run together
 
 - [ ] **T6.2** Run `bin/rspec spec/models/prices/refresh_spec.rb -e "absences"` — expect FAIL.
 
-- [ ] **T6.3** Implement. In `#apply`, after `@counts[:unknown_printings] = @unknown.size`, add `remove_absent`; add to the `private` section:
+- [ ] **T6.3** Implement. In `#apply`, after the final `flush` (the last statement of Phase 5's `#apply`), add `remove_absent`; add to the `private` section:
 
   ```ruby
       # Absence is trusted only as far as the file is (spec 089 decision 4). The file has been read to the end here (a
@@ -1520,7 +1538,7 @@ This is a contract change (`#download` now has two callers that can run together
     it "fails on the third attempt of a transient error, not retried again (AC-4.6)" do
       allow(Prices::Refresh).to receive(:new).and_raise(Catalog::Sources::TransientError, "timeout")
       job = described_class.new("fake_source")
-      job.executions = 2 # perform_now makes this the third attempt of retry_on's three
+      2.times { job.perform_now } # two retries are queued (retry_on counts per exception class, in the job's exception_executions)
 
       expect { job.perform_now }.to raise_error(Catalog::Sources::TransientError, "timeout")
     end
@@ -1656,7 +1674,7 @@ This is a contract change (`#download` now has two callers that can run together
       FileUtils.rm_rf(Rails.configuration.x.catalog_download_dir)
     end
 
-    it "downloads once, applies the file's quotes dated by its name, and makes no request inside a transaction (AC-4.5)", :aggregate_failures do
+    it "downloads once, applies the file's quotes dated by its name, and makes no request inside a transaction (AC-4.5)", :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- one scenario
       one = create(:catalog_entry, collectible_type: "mtg", external_key: "card-1")
       two = create(:catalog_entry, collectible_type: "mtg", external_key: "card-2")
       stub_scryfall(cards: cards("card-1" => { "usd" => "1.42", "usd_foil" => "3.10", "eur" => nil }, "card-2" => { "usd" => "0.05" }), stamp:)
@@ -1749,7 +1767,7 @@ This is a contract change (`#download` now has two callers that can run together
 
   The cards' `prices` carry `usd`, `usd_foil` and `eur`; the file is built in memory by `stub_scryfall` (110,000 lines, a few tens of MB). If building it in memory is too slow or too large, write it under `tmp/` with `gzip_jsonl` and stub the download to return that file. Do not add the example to the default suite (it is excluded without `SCANNER_TIMING`).
 
-- [ ] **T8.4** Run `bin/rspec spec/models/prices/` — expect PASS; run `SCANNER_TIMING=1 bin/rspec spec/models/prices/refresh_timing_spec.rb` once, **alone**, and keep its printed line for `verification.md`. Commit: `test(prices): prove the refresh's transactions, its requests and its time (spec 089)`.
+- [ ] **T8.4** (If a command below asks for permission, bring the prompt to the coordinator; never answer it.) Run `bin/rspec spec/models/prices/` — expect PASS; run `SCANNER_TIMING=1 bin/rspec spec/models/prices/refresh_timing_spec.rb` once, **alone**, and keep its printed line for `verification.md`. Commit: `test(prices): prove the refresh's transactions, its requests and its time (spec 089)`.
 
 ---
 
@@ -1759,7 +1777,7 @@ This is a contract change (`#download` now has two callers that can run together
 **Files:** `README.md` (the backup advice only), `docs/roadmap.md`, `CLAUDE.md` (the status paragraph), `docs/specs/README.md`, `docs/specs/089-daily-price-refresh/verification.md`; `docs/architecture/prices.md` and `docs/architecture/catalog-operations.md` by `distill-feature`
 **Interfaces:** Consumes: the finished code. Produces: documents that say what the job does, each statement with its source.
 
-- [ ] **T9.1** Run the checks: `bin/rubocop`, `bin/yard doc` (no warning), `ruby script/yard/comment_ratchet.rb` (the step `bin/ci checks` runs; read `config/ci.rb` for its exact command), `bin/brakeman -q`, `bin/rspec spec/price_source_core_spec.rb spec/prices_core_spec.rb spec/prices_schema_spec.rb spec/backup_guards_spec.rb spec/config/recurring_spec.rb`, `ruby script/upgrade/guard.rb`. Fix what they say (a missing comment, a `{…}` in a comment, a collectible name in a core comment). Commit any fixes: `chore(prices): satisfy the comment ratchet and the core guard (spec 089)`.
+- [ ] **T9.1** Run `bin/ci checks` (RuboCop, YARD with no warning, the comment ratchet, Brakeman, bundler-audit, importmap audit, the migration guard; it needs no CI slot) and `bin/rspec spec/price_source_core_spec.rb spec/prices_core_spec.rb spec/prices_schema_spec.rb spec/backup_guards_spec.rb spec/config/recurring_spec.rb`. Fix what they say (a missing comment, a `{…}` in a comment, a collectible name in a core comment). Commit any fixes: `chore(prices): satisfy the comment ratchet and the core guard (spec 089)`.
 
 - [ ] **T9.2** `README.md`, "Back up": the advice reads "before every upgrade and daily, never Monday 03:00–05:00". Add the daily window: the price refresh runs daily at 11:30 server time and writes the prices database, which a backup's read transaction holds back (ADR 0029, Cost): "never Monday 03:00–05:00, and not around 11:30 (the daily price refresh)". Keep the table row in `release-and-deploy.md` in step (`Backup schedule advice`) — that area doc is `distill-feature`'s, so only `README.md` here. Source: spec 089 decision 8; ADR 0029.
 
