@@ -21,7 +21,8 @@ Add a line here with each new ADR. All are Accepted unless the line says otherwi
 ### Foundation
 
 - [0016](0016-sqlite-in-every-environment.md): SQLite in every environment, one file per role
-- [0017](0017-row-level-tenancy-one-user-per-account.md): Row-level tenancy, one user per account
+- [0017](0017-row-level-tenancy-one-user-per-account.md): Row-level tenancy, one user per account (the one-user half superseded by 0030)
+- [0030](0030-a-household-is-a-group-of-accounts.md): A household is a group of accounts; an account stays the unit of ownership and privacy
 - [0018](0018-collectible-agnostic-catalog-core.md): A collectible-agnostic catalog core with per-type extensions
 - [0019](0019-lot-as-the-unit-of-ownership.md): The lot is the unit of ownership
 

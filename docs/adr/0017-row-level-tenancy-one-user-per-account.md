@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (recorded 2026-10-11, after the fact; decided in spec 004)
+Accepted (recorded 2026-10-11, after the fact; decided in spec 004). The one-user half ("an account has exactly one user" as the shape of tenancy) is superseded by [ADR 0030](0030-a-household-is-a-group-of-accounts.md); the rest stands.
 
 **Date:** 2026-10-11
 **Feature:** 004-design-system-collection
