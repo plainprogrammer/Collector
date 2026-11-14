@@ -61,3 +61,21 @@ In [screenshots/](screenshots/), factory data (placeholder card images: a tile w
 ## Documents
 
 Read by the implementation review below: `docs/architecture/scanner.md`, `docs/design-system/components/Scanner.md`, `StatusBand.md`, the README, `CLAUDE.md`'s scanner bullet, the specs index row and the supersessions both ways.
+
+## Implementation review
+
+SPEC-ALIGNED WITH FINDINGS (0 blocking, 2 major, 7 minor). Mode B, by Opus 5.5 (read-only), on the head after the screenshots (`5f07f405`); the findings were fixed by a Sonnet 5.5 implementer in the commits below and are re-proved by the examples named, run green after the fixes. The reviewer checked: the band as one persistent element copied from the centred panel's template; the hidden "Done." sentence only with band text; refusals as visible alerts in `#status`; nothing read and no match on the status line with the frozen frame hidden and no pane; the add forms targeting `_top`; the selection frame's params (closed `band` list, clamped `limit`, arrays read as 0, `match` looked up within the card, 404s, sign-in); measurement mode untouched (no diff to `measurement_run.rb`, the measurements controllers, the measurement-mode concern or `scan_shell_controller.js`); the documents and the supersessions both ways; and the screenshots against the mock-ups.
+
+| Finding | Fix | Proof |
+|---|---|---|
+| M1 the 200 cap was not built: at `limit` 200 the row kept a "more" item that re-rendered the same 200 | `fe912ed4`: `more` is 0 and `more?` false at the cap | `selection_spec.rb` (MAX stubbed), `printings_spec.rb` |
+| M2 "Send again" emptied the strip's texts and closed and reopened the pane | `beab3aa9`: the failure block stays shown while a resend is in flight and hides in the same render as the answer | `scanner_result_spec.rb` Send again example (strip texts and no flicker) |
+| 1 a failed-load alert outlived a successful retry; `announce` dropped measurement mode's note | `315dce32` | `scanner_selection_spec.rb` retry example |
+| 2 AC-5.3 overlap check only in the confident examples | `b0ecad2d` | the not-sure fit examples |
+| 3 a possible-cards row of more than one card never exercised | `ade4a10e` | `readings_spec.rb` (three candidates, "Card n of 3", ranks 1 to 3), a system example stepping Next card |
+| 4 "Add etched" unproven | `ade4a10e` | `readings_spec.rb` |
+| 5 AC-7.2, AC-7.4, AC-6.1 (photo), AC-2.5 unproven clauses | `5ca5187e` | the four assertions |
+| 6 dead CSS rule | `606cdd9f` | `git grep` |
+| 7 tests-first not visible in the history | not changed: several tasks carry their spec and code in one commit by the plan's batching; the red runs are in the commit bodies of the fixes and in the implementers' reports, and Task 3's request specs were committed red on their own (`58539866`) | |
+
+Not fixed, accepted: the spec's Documents table names `_strip` and `_band` partials; what was built is the strip inline in `_scanner` and `_band_content` (decision 15 is unchanged), and `scanner/printings/index` stays as a one-line render. In `phone-short-unsure` the body's classic scrollbar is drawn and the add buttons end 6px below the bar until scrolled (spec 1.0.2). Still owed: that "a fling announces once" (AC-3.5) and each sentence being said once are the maintainer's screen-reader pass; AC-3.11 is proved for a failed "All printings" request only (a failed "Show 20 more", a server error and an ended session are by reading `scanner_reading_controller.js`).
