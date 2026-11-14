@@ -35,4 +35,57 @@ RSpec.describe User, type: :model do
   it "uses the first letter of the name as the avatar initial" do
     expect(build(:user, name: "james").initial).to eq("J")
   end
+
+  describe "household (spec 090)" do
+    it "is made with a household named for it, an account in it and a manager membership (AC-1.1)", :aggregate_failures do
+      user = create(:user, name: "Ada")
+
+      expect(user.membership).to have_attributes(role: "manager", household: have_attributes(name: "Ada's household"))
+      expect(user.account).to have_attributes(kind: "personal", household: user.membership.household)
+      expect(Household.count).to eq(1)
+    end
+
+    it "gives a user with 100 characters a name of exactly 100 (AC-1.5)" do
+      expect(create(:user, name: "n" * 100).membership.household.name).to eq("#{"n" * 88}'s household")
+    end
+
+    it "makes nothing for a user that is invalid (AC-1.6)", :aggregate_failures do
+      expect { build(:user, name: "").save }.not_to change { [ Household.count, Membership.count, Account.count ] }
+    end
+
+    it "is refused when its membership is in another household than its account's (AC-2.6)", :aggregate_failures do
+      user = create(:user)
+      user.account.household = create(:household)
+
+      expect(user).not_to be_valid
+      expect(user.errors[:membership]).to be_present
+      expect(create(:user)).to be_valid
+    end
+
+    it "removes its membership, its account and its household when it is deleted (AC-4.4)", :aggregate_failures do
+      user = create(:user)
+      household = user.membership.household
+
+      user.destroy!
+
+      expect([ Household.exists?(household.id), Membership.exists?(user_id: user.id), Account.exists?(user.account_id) ]).to eq([ false, false, false ])
+    end
+
+    it "reads no household or membership when a user loaded as a session loads it is validated, twice (AC-4.5)", :aggregate_failures do
+      user = create(:user)
+      loaded = Session.includes(user: :account).find(user.sessions.create!.id).user
+      seen = []
+      ActiveSupport::Notifications.subscribed(->(*, payload) { seen << payload[:sql] if payload[:sql].match?(/\b(households|memberships)\b/i) }, "sql.active_record") do
+        2.times { expect(loaded).to be_valid }
+        loaded.update!(collection_view: "table")
+      end
+      expect(seen).to be_empty
+    end
+
+    it "keeps the invariants however it is made and deleted (AC-2.8)" do
+      create(:user)
+      create(:admin).destroy!
+      expect_household_invariants!
+    end
+  end
 end

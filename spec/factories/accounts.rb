@@ -1,5 +1,11 @@
 FactoryBot.define do
-  factory :account
+  factory :household do
+    sequence(:name) { |n| "Household #{n}" }
+  end
+
+  factory :account do
+    household
+  end
 
   factory :user do
     sequence(:name) { |n| "Collector #{n}" }

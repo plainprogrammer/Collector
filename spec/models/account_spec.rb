@@ -39,7 +39,7 @@ RSpec.describe Account, type: :model do
       [ "XYZ", "eur", "", nil, "EUR " ].each do |code|
         expect(described_class.new(currency: code).tap(&:validate).errors[:currency]).to eq([ "Choose one of the listed currencies." ])
       end
-      expect(described_class.new(currency: "SEK")).to be_valid
+      expect(build(:account, currency: "SEK")).to be_valid
     end
 
     it "answers its currency as a unit" do
@@ -54,6 +54,18 @@ RSpec.describe Account, type: :model do
       account = create(:account)
       default_to("EUR")
       expect(account.reload.currency).to eq("USD")
+    end
+  end
+
+  describe "household and kind (spec 090)" do
+    it "needs a household (decision 8)" do
+      expect(described_class.new.tap(&:validate).errors[:household]).to be_present
+    end
+
+    it "is personal by default and shared or personal only (AC-2.5)", :aggregate_failures do
+      expect(create(:account).kind).to eq("personal")
+      expect(build(:account, kind: "other")).not_to be_valid
+      expect { described_class.connection.execute("UPDATE accounts SET kind = 'other' WHERE id = #{create(:account).id}") }.to raise_error(ActiveRecord::StatementInvalid, /accounts_kind_known/)
     end
   end
 end
