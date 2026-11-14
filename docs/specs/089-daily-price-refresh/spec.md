@@ -1,7 +1,7 @@
 # Feature 089: Prices Refresh Once a Day, and Each Change Is Recorded Once
 
 **Status:** Approved by the coordinator under the maintainer's delegation (2026-11-13), after two Mode A review rounds (Fable 5.2). The maintainer ruled decisions 1 to 4 as recommended on 2026-11-13 (relayed by the coordinator)
-**Version:** 0.4.3
+**Version:** 0.5.0
 **Created:** 2026-11-13
 **Last Updated:** 2026-11-13
 **Branch:** `089-daily-price-refresh`
@@ -15,6 +15,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.5.0 | 2026-11-13 | Implementation review: a current price whose series the source no longer declares is not a candidate for removal, as for a language not read (decision 4, AC-3.7) (MINOR) |
 | 0.4.3 | 2026-11-13 | Execution: the count column `changed` is `repriced`, because Active Record reserves the attribute name `changed` and `PriceRefreshRun` can't be built with it; decision 2's table, the identity of AC-5.3 and the history-rows sentence follow; no behaviour changes (PATCH) |
 | 0.4.2 | 2026-11-13 | Plan review round 1: AC-4.4 measures savepoint spans, not transaction depth, because the suite's non-joinable transaction makes every write a savepoint (a testing method; no behaviour changes) (PATCH) |
 | 0.4.1 | 2026-11-13 | Approved (Gate A). Status line only (PATCH) |
@@ -105,7 +106,7 @@ The run's date is the UTC date of the bulk file (`#reported_on`, spec 085 decisi
 
 A source yields no quote for a price the file leaves empty (spec 085 decision 2), and it can't say whether a printing with no quote was in the file at all. So "gone" is told from absence, and absence is trusted only as far as the file is.
 
-**A current price is a candidate for removal** when its printing is a catalog entry of the collectible type, in a language of the run's `languages`, whether or not the entry is retired. A price whose printing the primary doesn't have (a restore's lag, spec 081) or whose language isn't configured (an operator dropped `ja`) is left alone: the file wasn't asked about it, and it is not counted as withheld. A printing missing from the file altogether, and a retired entry the file no longer lists, are absent like any other. (A printing whose language changed to one not configured, and a card whose `lang` is missing or garbled and so is filtered out by the source without a `Malformed`, are removed as absent: rare, the source's contract behaviour, and bounded by the ceiling.) A candidate with no quote in this file is *absent*.
+**A current price is a candidate for removal** when its printing is a catalog entry of the collectible type, in a language of the run's `languages`, whether or not the entry is retired, and its series is one the source declares today (`.series`). A price whose printing the primary doesn't have (a restore's lag, spec 081), whose language isn't configured (an operator dropped `ja`) or whose series the source no longer declares (a later build dropped one) is left alone: the file wasn't asked about it, and it is not counted as withheld. A printing missing from the file altogether, and a retired entry the file no longer lists, are absent like any other. (A printing whose language changed to one not configured, and a card whose `lang` is missing or garbled and so is filtered out by the source without a `Malformed`, are removed as absent: rare, the source's contract behaviour, and bounded by the ceiling.) A candidate with no quote in this file is *absent*.
 
 **An absent candidate is removed** (the current price is deleted and a history row with no cents is written for the run's date) only when all of these hold; otherwise it is withheld and counted in `removals_withheld`:
 
@@ -217,7 +218,7 @@ Core files name no collectible, comments included: `spec/price_source_core_spec.
 - [ ] **AC-3.4** Given a gzip file cut short after some cards When the job runs Then the run is `failed` with the reader's error in `error`, no price is removed, the prices written before the cut stand, and the next run of a whole file of that date applies the rest and writes no row twice.
 - [ ] **AC-3.5** Given an empty file, or one in which nothing is readable When the job runs Then the run is `failed` with `no valid quotes`, and no row of either price table is written; and Given a file whose quotes are all for printings the catalog doesn't have Then the run finishes with `quotes_seen` 0, `unknown_printings` counted and nothing removed or written.
 - [ ] **AC-3.6** Given absent candidates above `MAX_REMOVED_SHARE` of all candidate rows When the run reaches its removals Then none is applied, the run is `failed` and `error` names how many of how many, `removals_withheld` counts them all, and the quotes' changes already written stand; and Given absent candidates exactly at the share Then they are removed (the comparison is exact, with a `Rational`).
-- [ ] **AC-3.7** Given a current price whose printing is in a language the run didn't read, or that the primary doesn't have When the file lacks it Then it is not removed and is not counted as withheld.
+- [ ] **AC-3.7** Given a current price whose printing is in a language the run didn't read, or that the primary doesn't have, or whose series the source doesn't declare When the file lacks it Then it is not removed and is not counted as withheld.
 - [ ] **AC-3.8** Given a failed run When the job runs again on the same file Then the file is read again (a failed run is not applied).
 - [ ] **AC-3.9** Given a failure injected in a removal batch When it happens Then that batch's current prices and blank history rows are both still there or both gone, never one, and a later run removes what is left (among at least ten candidate rows).
 
