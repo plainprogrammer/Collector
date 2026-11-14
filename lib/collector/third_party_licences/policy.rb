@@ -97,7 +97,20 @@ module Collector
         ids = component.identifiers.uniq.sort
         return [ "#{label(section, component)} declares no licence; #{@path} can judge only a declared SPDX id (#{DECISION})" ] if ids.empty?
 
-        allowed?(ids, strict: false) ? [] : [ disallowed(section, component, ids) ]
+        exemption = exemption_for(section, component)
+        return [] if exemption && ids == exemption.licences
+
+        allowed?(ids, strict: exemption&.all_required) ? [] : [ disallowed(section, component, ids, strict: exemption&.all_required) ]
+      end
+
+      def exemptions
+        @exemptions ||= raw_exceptions.map do |entry|
+          Exemption.new(gem: entry["gem"], licences: entry["licences"].uniq.sort, all_required: entry["all_required"] == true)
+        end
+      end
+
+      def exemption_for(section, component)
+        exemptions.find { it.gem == component.name } if section.key == :gems
       end
 
       def allowed?(ids, strict:)
@@ -108,13 +121,40 @@ module Collector
         section.key == :gems ? "gem #{component.name} #{component.version}" : "#{section.title} entry #{component.name.inspect} (#{component.version})"
       end
 
-      def disallowed(section, component, ids)
+      def disallowed(section, component, ids, strict: false)
         way_out = section.key == :gems ? "allow the licence there, or list the gem under `exceptions` with its reason" : "allow the licence there, or drop the dependency"
-        "#{label(section, component)} is under #{ids.join(", ")}, none of which is on the allowed list in #{@path}: #{way_out} (#{DECISION})"
+        if strict
+          "#{label(section, component)} is under #{ids.join(", ")}, which includes #{(ids - allowed_ids).join(", ")}, off the allowed list in #{@path} " \
+            "(every licence of this gem must be allowed): #{way_out} (#{DECISION})"
+        else
+          "#{label(section, component)} is under #{ids.join(", ")}, none of which is on the allowed list in #{@path}: #{way_out} (#{DECISION})"
+        end
       end
 
-      # T1.2 fills this in; until then there is none.
-      def exemption_problems = []
+      # The stale exceptions: for a gem the lockfile no longer names, one whose licences changed, or one the list now allows.
+      def exemption_problems
+        gems = @sections.find { it.key == :gems }&.components.to_a
+        exemptions.flat_map do |exemption|
+          component = gems.find { it.name == exemption.gem }
+          if !@locked_names.include?(exemption.gem)
+            [ "#{@path}: the exception for gem #{exemption.gem} is stale: the lockfile no longer names it (#{DECISION})" ]
+          elsif component.nil?
+            [] # in the lockfile and not installed (a run with a group left out): neither judged nor stale
+          else
+            stale_problem(exemption, component.identifiers.uniq.sort)
+          end
+        end
+      end
+
+      def stale_problem(exemption, ids)
+        if ids != exemption.licences
+          [ "#{@path}: the exception for gem #{exemption.gem} is stale: it declares #{ids.join(", ")} now and the exception covers #{exemption.licences.join(", ")}; review it (#{DECISION})" ]
+        elsif allowed?(ids, strict: exemption.all_required)
+          [ "#{@path}: the exception for gem #{exemption.gem} is stale: the gem is allowed without it (#{DECISION})" ]
+        else
+          []
+        end
+      end
     end
   end
 end
