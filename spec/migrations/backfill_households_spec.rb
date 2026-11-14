@@ -7,19 +7,35 @@ require Rails.root.join("db/migrate/20261113120002_backfill_households")
 RSpec.describe BackfillHouseholds, :backup, :committed, type: :model do
   let(:connection) { ActiveRecord::Base.connection }
 
+  # Migration (c), which makes accounts.household_id NOT NULL, comes after this one: the examples that put a household-less account
+  # in the database take (c) down first (forget_households) and the around puts it back.
   around do |example|
     ActiveRecord::Migration.verbose = false
     example.run
   ensure
+    context.run(:up, 2026_11_13_120003) if household_nullable?
+    Account.reset_column_information
     ActiveRecord::Migration.verbose = true
   end
 
+  def context = ActiveRecord::Base.connection_pool.migration_context
+
+  def household_nullable? = connection.columns(:accounts).find { it.name == "household_id" }.null
+
   def run_up = described_class.new.migrate(:up)
+
+  # An account in a household of its own, by SQL, as the NOT NULL column needs; answers the account's id.
+  def insert_account(now = "2026-11-13 12:00:00")
+    household = connection.insert("INSERT INTO households (name, created_at, updated_at) VALUES ('h', '#{now}', '#{now}')")
+    connection.insert("INSERT INTO accounts (created_at, updated_at, household_id) VALUES ('#{now}', '#{now}', #{household})")
+  end
 
   def count(table) = connection.select_value("SELECT COUNT(*) FROM #{table}") # Safe: a literal table name from this spec
 
-  # Takes every household away, as the previous release leaves users and accounts.
+  # Takes every household away, as the previous release leaves users and accounts: (c) goes down first, because it forbids an account
+  # with no household.
   def forget_households
+    context.run(:down, 2026_11_13_120003) unless household_nullable?
     connection.execute("DELETE FROM memberships")
     connection.execute("UPDATE accounts SET household_id = NULL")
     connection.execute("DELETE FROM households")
@@ -77,18 +93,21 @@ RSpec.describe BackfillHouseholds, :backup, :committed, type: :model do
     expect(described_class::BATCH).to eq(500)
     now = "2026-11-13 12:00:00"
     stub_const("BackfillHouseholds::BATCH", 2) # 5 users make 3 batches
-    5.times { |i| connection.execute("INSERT INTO accounts (created_at, updated_at) VALUES ('#{now}', '#{now}')") ; connection.execute("INSERT INTO users (account_id, name, email_address, password_digest, created_at, updated_at) VALUES (#{connection.select_value("SELECT MAX(id) FROM accounts")}, 'U#{i}', 'u#{i}@example.test', 'x', '#{now}', '#{now}')") }
+    5.times { |i| connection.execute("INSERT INTO users (account_id, name, email_address, password_digest, created_at, updated_at) VALUES (#{insert_account(now)}, 'U#{i}', 'u#{i}@example.test', 'x', '#{now}', '#{now}')") }
     forget_households
     begins = 0
     counter = ->(*, payload) { begins += 1 if payload[:sql].match?(/\ABEGIN/i) }
 
-    ActiveSupport::Notifications.subscribed(counter, "sql.active_record") { run_up }
+    # The class by its name, not described_class: the Migrator reloads a migration's file (`load`), which makes a new class under the same name once any
+    # example has taken (c) down, and the constant stubbed above belongs to the new one.
+    ActiveSupport::Notifications.subscribed(counter, "sql.active_record") { described_class.name.constantize.new.migrate(:up) }
 
     expect(count("households")).to eq(5)
     expect(begins).to eq(3) # one transaction for each of the three batches; the empty read that ends the loop opens none
   end
 
   it "makes 10,000 households in 20 batches, and says how long it took (the NFR)", :timing do
+    context.run(:down, 2026_11_13_120003) # (c) forbids the household-less accounts of the previous release's database
     connection.execute("WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 10000) INSERT INTO accounts (created_at, updated_at) SELECT datetime('now'), datetime('now') FROM n")
     connection.execute("INSERT INTO users (account_id, name, email_address, password_digest, created_at, updated_at) SELECT id, 'U' || id, 'u' || id || '@example.test', 'x', datetime('now'), datetime('now') FROM accounts")
     started = Process.clock_gettime(Process::CLOCK_MONOTONIC)

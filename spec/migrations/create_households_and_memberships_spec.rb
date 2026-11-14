@@ -1,5 +1,7 @@
 require "rails_helper"
 require Rails.root.join("db/migrate/20261113120001_create_households_and_memberships")
+require Rails.root.join("db/migrate/20261113120002_backfill_households")
+require Rails.root.join("db/migrate/20261113120003_make_account_household_required")
 
 # Spec 090 decision 1, decision 5 (a): the tables, the two columns of accounts, their keys and checks. The migration runs outside a
 # transaction (disable_ddl_transaction!), so the examples commit their rows (:committed empties the database around them) and go
@@ -9,8 +11,8 @@ RSpec.describe CreateHouseholdsAndMemberships, :backup, :committed, type: :model
   let(:connection) { ActiveRecord::Base.connection }
   let(:stamp) { "2026-11-13 12:00:00" }
 
-  # Every version of the households migrations that exists, in order. Phase 6 adds the third.
-  def versions = [ 2026_11_13_120001 ]
+  # Every version of the households migrations that exists, in order.
+  def versions = [ 2026_11_13_120001, 2026_11_13_120002, 2026_11_13_120003 ]
 
   def context = ActiveRecord::Base.connection_pool.migration_context
 
