@@ -262,21 +262,11 @@ img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches:
 .c-scanner__photo { min-height:44px; min-width:44px; }
 .c-scanner__photo:focus-within { outline:2px solid var(--focus); outline-offset:2px; }
 .c-scanner__failure { display:flex; flex-direction:column; align-items:flex-start; gap:var(--space-2); }
-.c-scanner__read { display:grid; grid-template-columns:max-content 1fr; gap:var(--space-1) var(--space-3); margin:0;
-  font:400 14px/20px var(--font-sans); }
-.c-scanner__read dt { color:var(--ink-muted); }
-.c-scanner__read dd { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; }
-.c-scanner__mono { font-family:var(--font-mono); }
-.c-scanner__result { display:flex; flex-direction:column; gap:var(--space-6); }
 @media (prefers-reduced-motion: reduce) { .c-scanner * { transition:none; animation:none; } }
 
-/* Scanner confirm flow (spec 009): evidence on a candidate, add buttons per finish, Other printings and the sitting. */
-.c-scanner__candidate { display:flex; flex-direction:column; align-items:flex-start; gap:var(--space-2); }
-.c-scanner__evidence { font:400 13px/18px var(--font-sans); color:var(--ink-muted); }
-.c-scanner__result .c-status__message + .c-grid { margin-top:var(--space-3); } /* the art overrule note above the candidates (spec 011) */
-.c-scanner__adds { display:flex; flex-wrap:wrap; gap:var(--space-2); }
-.c-scanner__add, .c-scanner__undo { margin:0; }
-.c-scanner__add .c-btn, .c-scanner__undo .c-btn, .c-scanner__sitting .c-btn { min-height:44px; min-width:44px; }
+/* Scanner confirm flow (spec 009): the sitting's list and its Undo (the candidates grid, evidence, read-text list and printings frame went with spec 088). */
+.c-scanner__undo { margin:0; }
+.c-scanner__undo .c-btn, .c-scanner__sitting .c-btn { min-height:44px; min-width:44px; }
 .c-scanner__sitting .c-list li { flex-wrap:wrap; }
 .c-scanner__sitting .c-section__title { min-width:0; white-space:normal; overflow-wrap:anywhere; } /* "…, in <place>" wraps (spec 040 AC-7.1) */
 .c-scanner__sitting .c-section__title:focus-visible { outline:2px solid var(--focus); outline-offset:2px; border-radius:var(--radius-sm); } /* the heading takes focus after an Undo (spec 047) */
@@ -284,8 +274,6 @@ img.c-table__thumb { height:auto; object-fit:contain; } /* the export stretches:
 .c-scanner__entry-actions { display:flex; gap:var(--space-2); font-family:var(--font-sans); }
 .c-scanner__more > summary { list-style:none; width:max-content; margin-top:var(--space-2); }
 .c-scanner__more > summary::-webkit-details-marker { display:none; }
-.c-scanner__printings .c-list li { flex-wrap:wrap; }
-.c-scanner__printings .c-list__end { font-family:var(--font-sans); }
 .c-scanner__hint { margin:0; font:400 14px/20px var(--font-sans); color:var(--ink-muted); }
 /* Art matching's status under the scanner's controls (spec 011 AC-5.1): quiet, like the hint. */
 .c-scanner__art { margin:0; font:400 14px/20px var(--font-sans); color:var(--ink-muted); }
@@ -841,10 +829,11 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
 /* `c-scan--result` on the shell shows both. The strip is the frozen capture, shrunk, with what was read beside it: 144px
    high with a 124px picture, 96px with a 76px one in a shell less than 720px high (the container query at the end), and
    never taller, so the name read is one line. The pane fills the rest of the stage. Its band never scrolls; its body is a
-   grid of two rows. The first is the image row, 160px to 288px of image and its own 16px above and 12px below; the second
-   is the centred card's panel and takes what is left, its add buttons at its foot, so spare room goes above them. When the
-   two do not fit (a short screen, a wrapped band or set name) the images have already given way to 160px and the body
-   scrolls inside the pane. The sums are in spec 080 decision 7.
+   grid of two rows. The first is the image row, `--scan-image-min` to 288px of image (the floor is read from the variable,
+   160px without one; spec 088 sets it, below) and its own 16px above and 12px below; the second is the centred card's panel
+   and takes what is left, its add buttons at its foot, so spare room goes above them. When the two do not fit (a short
+   screen, a wrapped band or set name) the images have already given way to the floor and the body scrolls inside the pane.
+   The sums were spec 080 decision 7's; spec 088 decision 13 supersedes its 160px floor and 76px picture.
    The row is a size container, so an image's width is known from the row's height: the inline padding is half the row less
    half an image, which lets the first and the last image be centred. The row draws no scrollbar (Previous and Next are the
    way to move it without a swipe, and a classic scrollbar would take 12px to 15px of the pane), snaps each image to the
@@ -870,7 +859,7 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
 @keyframes c-scanpane-rise { from { transform:translateY(100%); } }
 .c-scanpane > .c-band { flex:none; }
 .c-scanpane__body { flex:1 1 auto; min-height:0; display:grid; overflow-y:auto; overscroll-behavior:contain;
-  grid-template-rows:minmax(calc(160px + var(--space-4) + var(--space-3)), calc(288px + var(--space-4) + var(--space-3))) 1fr; }
+  grid-template-rows:minmax(calc(var(--scan-image-min, 160px) + var(--space-4) + var(--space-3)), calc(288px + var(--space-4) + var(--space-3))) 1fr; }
 .c-scanpane__rowwrap { container-type:size; position:relative; min-height:0; }
 .c-scanpane__row { box-sizing:border-box; display:flex; gap:var(--space-3); height:100%; margin:0; list-style:none;
   padding:var(--space-4) calc(50cqw - (100cqh - var(--space-4) - var(--space-3)) * 63 / 176) var(--space-3);
@@ -909,9 +898,8 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
    element an answer replaces, laid out as the top bar's own children. The bars grow by the safe-area insets of a phone with a
    notch or home indicator (decision 18). The frozen frame is the captured frame on a canvas, cropped as the video is, so the
    collector sees what was read while it is read (decision 11). A stage notice is centred on the stage (the camera or the
-   engine unavailable, no script); the catalog-not-loaded line sits at the stage's foot (decision 14). Today's result sits in an
-   interim scrolling body until #345 replaces it (decision 11, `c-scanpane__results`). Each live region stays rendered while
-   empty, taking no space (spec 080 decision 8). From 640px the shell is a centred 480px column and the scanner's sheets sit under it (decision
+   engine unavailable, no script); the catalog-not-loaded line sits at the stage's foot (decision 14). A result sits in the
+   selection pane (spec 088). Each live region stays rendered while empty, taking no space (spec 080 decision 8). From 640px the shell is a centred 480px column and the scanner's sheets sit under it (decision
    17), by a rule scoped to the scanner, so the sheet's own rule is unchanged. */
 .c-scan__sitting { display:contents; }
 .c-scan__top { box-sizing:border-box; height:calc(56px + env(safe-area-inset-top)); padding:env(safe-area-inset-top) calc(var(--space-2) + env(safe-area-inset-right)) 0 calc(var(--space-2) + env(safe-area-inset-left)); }
@@ -928,14 +916,11 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
 .c-scan__notice .c-btn { box-sizing:border-box; min-height:44px; min-width:44px; }
 .c-scan__notice .c-sheet__foot { align-self:stretch; text-align:left; }
 .c-scan__catalog { box-sizing:border-box; position:absolute; z-index:1; left:var(--space-4); right:var(--space-4); bottom:var(--space-4); }
-.c-scanpane__results { box-sizing:border-box; flex:1 1 auto; min-height:0; display:flex; flex-direction:column; gap:var(--space-4);
-  overflow-y:auto; overscroll-behavior:contain; padding:var(--space-4); }
 .c-scan__sheet-status { margin-bottom:var(--space-4); }
 /* An empty live region stays rendered, so a sentence written into it is announced (spec 080 decision 8): `display:none` removes
    it from the accessibility tree, and one shown in the same moment it is filled is not read out. It takes no space instead: a
-   sheet's loses its margin, and the pane's, an item of the results' flex column, takes back the column's gap. */
+   sheet's loses its margin (the pane's `#status` has none to lose, spec 088). */
 .c-scan__sheet-status:empty { margin:0; }
-.c-scan__pane-status:empty { margin-bottom:calc(-1 * var(--space-4)); }
 .c-scan__photo { display:flex; flex-direction:column; align-items:flex-start; gap:var(--space-2); margin-top:var(--space-4); }
 .c-scan .c-sheet .c-btn { box-sizing:border-box; min-height:44px; min-width:44px; }
 .c-scan .c-sheet__title:focus { outline:2px solid var(--focus); outline-offset:2px; border-radius:var(--radius-sm); } /* programmatic focus after an Undo (spec 047); Firefox gives it no :focus-visible once the focused Undo is replaced */
@@ -950,6 +935,39 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
 
 .c-scan__run { box-sizing:border-box; flex:none; min-height:44px; max-width:40%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .c-scan__framing { display:flex; flex-wrap:wrap; gap:var(--space-2); margin-top:var(--space-4); }
+
+/* ---------- Scanner selection pane (spec 088): the band's empty state, the selection frame, the layout numbers ---------- */
+/* The band and the pane's `#status` stay rendered while empty and take no space, so a sentence written into them is announced
+   (spec 080 decision 8); `#status` has no padding, margin or gap of its own, and the spacing is on the message inside it. The result
+   container is a flex column that takes the pane's remaining height, so the selection frame (a grid by its class) sizes as spec 080's
+   body did. */
+.c-band:empty { min-height:0; padding:0; }
+.c-scanpane__result { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; }
+.c-scanpane__result > .c-scanpane__body { flex:1 1 auto; }
+.c-scan__pane-status .c-status__message { margin:var(--space-3) var(--space-4); }
+.c-scanpane > .c-scanner__failure { padding:0 var(--space-4) var(--space-3); }
+.c-scanpane__missing { box-sizing:border-box; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:var(--space-1);
+  padding:var(--space-2); text-align:center; font:600 13px/18px var(--font-sans); color:var(--ink-muted); overflow-wrap:anywhere; }
+.c-scanpane__missing span { font:400 13px/18px var(--font-mono); }
+.c-scanpane__meta .c-btn { box-sizing:border-box; flex:none; min-height:44px; min-width:44px; }
+/* A possible-cards row (spec 088 decision 3): the line holds the tag, the position and the 44px "All printings", which do not fit
+   on one line at 360px with the year, so the year is left out and the position wraps to two lines, right-aligned, inside the 44px. */
+.c-scanpane__meta--cards .c-scanpane__position { min-width:0; white-space:normal; text-align:right; }
+
+/* The layout numbers of decision 13, here and nowhere else (the examples that prove them are in spec/system/scanner_selection_spec.rb
+   and design_system_scanner_components_spec.rb): the images' floor is 96px, not spec 080's 160px, so a not-sure pane (a two-line
+   band and the 44px "All printings" line) fits a 360 x 640 screen without scrolling and a confident one shows 112px images at
+   360 x 560; and in a shell under 600px high (a 360 x 560 screen) the strip is 64px with a 52px picture, after spec 080's 719px
+   step above (96px with a 76px picture, which this block supersedes under 600px). */
+.c-scanpane { --scan-image-min:96px; }
+@container scan (max-height: 599px) {
+  .c-scan__strip { box-sizing:border-box; height:64px; }
+  .c-scan__capture { box-sizing:border-box; height:52px; }
+  /* The label's 16px + 4px gap and the name, the gap and the line (22 + 4 + 18) would fill the 64px strip exactly, the label on its
+     top edge and the line on the band. Visually hidden, as `.c-sr` is (not `display:none`: assistive technology still reads "Read
+     from the card"), the name and the line are 44px, centred, 10px above and below. At 144px and 96px the label shows. */
+  .c-scan__read-label { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+}
 
 /* ---------- Reduced motion, app-wide (spec 080 decision 14) ---------- */
 /* The README's Motion rule: under `prefers-reduced-motion: reduce` nothing eases or slides, in any component. A universal

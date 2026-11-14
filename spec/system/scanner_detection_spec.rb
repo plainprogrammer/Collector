@@ -11,6 +11,9 @@ RSpec.describe "Detection on the scanner's photo path", type: :system do
     wait_for_scanner
   end
 
+  # The centred card's panel, which the reading's answer leaves showing (spec 088 decision 3).
+  def card = ".c-scanpane__card:not([hidden])"
+
   def corners_of(card, tilt_degrees)
     cx, cy = card[:x] + card[:width] / 2.0, card[:y] + card[:height] / 2.0
     angle = tilt_degrees * Math::PI / 180
@@ -46,21 +49,24 @@ RSpec.describe "Detection on the scanner's photo path", type: :system do
 
   it "reads a card the guide would miss, sending only the text and the key (AC-7.1, FR-4)", :aggregate_failures do
     pick_photo(noise: 2)
-    expect(page).to have_css(".c-scanner__candidate", text: "Lightning Bolt", wait: 30)
-    expect(first(".c-scanner__candidate")).to have_text("Matched by its collector line")
+    expect(page).to have_css("#{card} .c-scanpane__name", text: "Lightning Bolt", wait: 30)
+    expect(find("#scanner_band")).to have_text("Matched by its collector line")
     expect(scanner_sent).to eq([ [ "reading[name_text]", "reading[collector_text]", "reading[key]" ] ])
   end
 
-  it "falls back to the guide and says no card edge was found (AC-7.2)" do
-    pick_photo(card: nil)
-    expect(page).to have_css("#status", text: "No card edge was found", wait: 30)
+  # A photo with no text and no edge reads as nothing and opens no pane (spec 088 decision 11), so the no-edge sentence needs
+  # readable text on a flat white photo: no card edge for the detector, so the guide's placement reads it (spec 088 AC-1.3).
+  it "falls back to the guide and says no card edge was found, after a result only (AC-7.2)", :aggregate_failures do
+    pick_synthetic_photo(flat: true)
+    expect(page).to have_css("#{card} .c-scanpane__name", text: "Lightning Bolt", wait: 30)
+    expect(page).to have_css("#status .c-status__message", text: "No card edge was found")
   end
 
   it "runs no detection on a live capture (AC-7.6)", :aggregate_failures do
     show_synthetic_card
     page.execute_script("window.__outlines = []; document.querySelector('.c-scan').addEventListener('card-reader:read', (event) => window.__outlines.push(event.detail.outline))")
     click_on "Capture"
-    expect(page).to have_css(".c-scanner__candidate", text: "Lightning Bolt", wait: 30)
+    expect(page).to have_css("#{card} .c-scanpane__name", text: "Lightning Bolt", wait: 30)
     expect(page.evaluate_script("window.__outlines")).to eq([ "live" ])
   end
 

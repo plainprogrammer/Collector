@@ -1,0 +1,20 @@
+<%# locals: (selection:) %>
+<%# The "more printings" item's panel (spec 088 decision 4): it keeps the last item's band and offers the rest. `current` names the printing
+    before it, so the frame renders again with that card centred. %>
+<% last = selection.items.last %>
+<% index = selection.items.size %>
+<%= tag.div class: "c-scanpane__card", hidden: true, data: { selection_target: "panel" } do %>
+  <template data-band="c-band--<%= last.band.form %>"><%= render "scanners/band_content", band: last.band, tail: selection_tail(selection, index) %></template>
+  <div class="c-scanpane__details">
+    <h2 class="c-scanpane__name"><%= selection.identity.name %></h2>
+    <p class="c-scanpane__set"><%= pluralize(selection.more, "more printing") %></p>
+    <p class="c-scanpane__meta"></p>
+  </div>
+  <div class="c-scanpane__adds">
+    <div class="c-scanpane__add">
+      <%= link_to "Show 20 more",
+            scanner_printings_path(selection.link_params(limit: selection.limit + Scanner::Selection::STEP, current: last.entry.external_key)),
+            class: "c-btn c-btn--secondary", data: { turbo_frame: "scanner_selection", failure_message: "More printings couldn't be loaded. Tap “Show 20 more” again.", action: "scanner-reading#remember" } %>
+    </div>
+  </div>
+<% end %>

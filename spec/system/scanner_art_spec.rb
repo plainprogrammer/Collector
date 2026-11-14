@@ -12,6 +12,9 @@ RSpec.describe "Art matching on the scanner page", type: :system do
     system_sign_in_as(create(:user))
   end
 
+  # The centred card's name in the selection (spec 088 decision 3): the reading's answer has landed.
+  def card_name = ".c-scanpane__card:not([hidden]) .c-scanpane__name"
+
   # 12 artworks with seeded random fingerprints, so a search finds 10 (AC-5.3). The index is served immutable and the
   # browser's cache outlives an example, so an example that alters the file names its own catalog version.
   def write_index(count: 12, catalog_version: "v1")
@@ -24,7 +27,7 @@ RSpec.describe "Art matching on the scanner page", type: :system do
     visit scanner_path
     show_synthetic_card
     click_on "Capture"
-    expect(page).to have_css(".c-scanner__candidate", text: "Lightning Bolt", wait: 30)
+    expect(page).to have_css(card_name, text: "Lightning Bolt", wait: 30)
     expect(page).to have_no_css(".c-scanner__art", visible: :all)
     expect(scanner_sent).to eq([ text_fields ])
   end
@@ -46,7 +49,7 @@ RSpec.describe "Art matching on the scanner page", type: :system do
       show_synthetic_card
       click_on "Capture"
 
-      expect(page).to have_css(".c-scanner__candidate", text: "Lightning Bolt", wait: 30)
+      expect(page).to have_css(card_name, text: "Lightning Bolt", wait: 30)
       expect(scanner_sent).to eq([ text_fields + art_fields * 10 ])
     end
 
@@ -63,7 +66,7 @@ RSpec.describe "Art matching on the scanner page", type: :system do
       show_synthetic_card
       click_on "Capture"
 
-      expect(page).to have_css(".c-scanner__candidate", text: "Lightning Bolt", wait: 30)
+      expect(page).to have_css(card_name, text: "Lightning Bolt", wait: 30)
       expect(scanner_sent).to eq([ text_fields ])
     end
 
@@ -75,7 +78,7 @@ RSpec.describe "Art matching on the scanner page", type: :system do
       expect(page).to have_css(".c-scanner__art", text: "Artwork matching is on", wait: 30)
       click_on "Close"
       pick_photo
-      expect(page).to have_css(".c-scanner__candidate", text: "Lightning Bolt", wait: 60)
+      expect(page).to have_css(card_name, text: "Lightning Bolt", wait: 60)
       expect(scanner_sent).to eq([ text_fields ])
     end
   end

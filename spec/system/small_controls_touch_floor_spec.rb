@@ -15,7 +15,7 @@ RSpec.describe "Small controls meet the touch floor on a coarse pointer", :solid
   def small = "main .c-btn--sm, main .c-filter, main .c-seg button, .c-appbar .c-btn--sm, #status .c-btn--sm"
   # The page rules (spec 075 decision 3) that give their buttons 44px at every pointer: the rows marked `page` in the audit.
   def page_rule_scopes
-    ".c-locations, .c-decks, .c-deckpage .c-section__actions, .c-numentry__list, .c-scanner__add, .c-scanner__undo, .c-scanner__sitting, .c-scan .c-sheet"
+    ".c-locations, .c-decks, .c-deckpage .c-section__actions, .c-numentry__list, .c-scanpane__meta, .c-scanpane__add, .c-scanner__undo, .c-scanner__sitting, .c-scan .c-sheet"
   end
 
   # Every drawn small control of the current document (AC-1.2's set): its name, size, whether a page rule covers it, whether it is
@@ -541,10 +541,11 @@ RSpec.describe "Small controls meet the touch floor on a coarse pointer", :solid
       end
     end
 
-    # Row 14b: a candidate's Add buttons and "Other printings" link, then the printings frame's "Show N more" (setup as
-    # scanner_adding_spec.rb, plus a second English printing of the card so the frame has one more than SHOWN = 1).
+    # Row 14b (spec 088 AC-5.6): the selection pane's controls, in a confident answer (Previous, Next, the add buttons, "Show 20 more")
+    # and in a not-sure one ("All printings"). Setup as scanner_selection_spec.rb: two printings of one card, with STEP = 1 so the
+    # row ends in the "more printings" item.
     def read_a_card
-      stub_const("Scanner::OtherPrintings::SHOWN", 1)
+      stub_const("Scanner::Selection::STEP", 1)
       identity = create(:catalog_identity, name: "Lightning Bolt")
       mom = create(:catalog_set, code: "mom", name: "March of the Machine")
       create(:mtg_printing, finishes: %w[nonfoil foil], entry: create(:catalog_entry, identity:, name: "Lightning Bolt", set: mom, number: "123"))
@@ -553,32 +554,49 @@ RSpec.describe "Small controls meet the touch floor on a coarse pointer", :solid
       system_sign_in_as(create(:user))
     end
 
-    def candidate_heights
+    # Name, height and width of the pane's drawn controls matching `selector`, once the pane shows, with the coarse rules applied.
+    def pane_controls(selector)
+      expect(page).to have_css(".c-scan--result .c-scanpane__item[aria-current='true']", wait: 30)
+      inject_coarse(needs: block_rules)
+      small_controls(selector).map { it.slice("name", "height", "width") }
+    end
+
+    def expect_floor(controls, *names)
+      expect(controls.map { it["name"] }.join(" ")).to include(*names)
+      expect(controls.select { it["height"] < 44 || it["width"] < 44 }.map { it["name"] }).to be_empty
+    end
+
+    # A confident answer, then Next to the "Show 20 more" item.
+    def confident_pane_controls
       show_synthetic_card
       click_on "Capture"
-      expect(page).to have_css(".c-scanner__candidate", text: "Lightning Bolt", wait: 30)
-      click_on "Other printings"
-      expect(page).to have_css("#scanner_printings summary.c-btn--sm", text: "Show 1 more")
-      inject_coarse(needs: block_rules)
-      small_controls(".c-scanner__candidate .c-btn--sm, #scanner_printings .c-btn--sm").map { it["height"] }
+      controls = pane_controls(".c-scanpane__nav, .c-scanpane__add .c-btn")
+      click_on "Next printing"
+      expect(page).to have_css(".c-scanpane__card:not([hidden]) a.c-btn", text: "Show 20 more")
+      controls + small_controls(".c-scanpane__add .c-btn").map { it.slice("name", "height", "width") }
     end
 
-    it "draws a candidate's Other printings and Add buttons at 44px at 1280px (AC-1.2, row 14b)", :aggregate_failures do
+    # A not-sure answer: the possible cards' "All printings".
+    def unsure_pane_controls
+      show_synthetic_card(name: "Lightning", lines: [])
+      click_on "Capture"
+      pane_controls(".c-scanpane__meta .c-btn--sm, .c-scanpane__nav, .c-scanpane__add .c-btn")
+    end
+
+    it "draws the pane's controls at 44px at 1280px (AC-1.2, row 14b; spec 088 AC-5.6)", :aggregate_failures do
       read_a_card
       visit scanner_path
-      heights = candidate_heights
-      expect(heights.size).to be >= 6 # Nonfoil, Foil, Other printings; the frame's Nonfoil, Foil and "Show 1 more"
-      expect(heights).to all(be >= 44)
+      expect_floor(confident_pane_controls, "Previous printing", "Next printing", "· 123 Nonfoil", "· 123 Foil", "Show 20 more")
+      visit scanner_path
+      expect_floor(unsure_pane_controls, "All printings", "Next card")
     end
 
-    it "draws a candidate's Other printings and Add buttons at 44px at 360px (AC-1.2, row 14b)", :aggregate_failures do
+    it "draws the pane's controls at 44px at 360px (AC-1.2, row 14b; spec 088 AC-5.6)", :aggregate_failures do
       read_a_card
-      visit collection_path(view: "grid")
-      open_in_narrow_frame(scanner_path, width: 360, ready: "main")
-      heights = nil
-      within_narrow_frame { heights = candidate_heights }
-      expect(heights.size).to be >= 6
-      expect(heights).to all(be >= 44)
+      open_scanner_frame(width: 360, height: 640)
+      within_narrow_frame { expect_floor(confident_pane_controls, "Previous printing", "Next printing", "· 123 Nonfoil", "· 123 Foil", "Show 20 more") }
+      open_scanner_frame(width: 360, height: 640)
+      within_narrow_frame { expect_floor(unsure_pane_controls, "All printings", "Next card") }
     end
   end
 end

@@ -21,19 +21,24 @@ RSpec.describe "Adding from the scanner", type: :system do
     Capybara.raise_server_errors = raising
   end
 
-  def read_card
-    show_synthetic_card
+  # The centred card's panel (spec 088 decision 3); the add buttons of the reading are in it.
+  def card = ".c-scanpane__card:not([hidden])"
+
+  # Captures a synthetic card and waits for the selection. The default reads as the matched printing; a partial name reads as a
+  # possible card, whose panel offers "All printings" (spec 088 decision 4).
+  def read_card(name: "Lightning Bolt", lines: [ "R 0123", "MOM • EN" ])
+    show_synthetic_card(name:, lines:)
     click_on "Capture"
-    expect(page).to have_css(".c-scanner__candidate", text: "Lightning Bolt", wait: 30)
+    expect(page).to have_css("#{card} .c-scanpane__name", text: "Lightning Bolt", wait: 30)
   end
 
   it "adds with one tap and is ready for the next card, the camera still running (AC-1.1, AC-1.3)", :aggregate_failures do
     read_card
     page.execute_script("window.__marker = 'still here'")
-    expect(page).to have_css(".c-scanner__add button", text: "Nonfoil").and have_css(".c-scanner__add button", text: "Foil")
+    expect(page).to have_css("#{card} .c-scanpane__add button", text: "Add nonfoil").and have_css("#{card} .c-scanpane__add button", text: "Add foil")
     find(foil_button).click
     expect(page).to have_css("#scanner_added_text", text: "Added Lightning Bolt MOM · 123, foil")
-    expect(page).to have_no_css(".c-scanner__candidate")
+    expect(page).to have_no_css(".c-scanpane__card", visible: :all)
     expect(page).to have_button("1 added. Show this sitting's cards.")
     expect(page).to have_button("Capture", disabled: false)
     expect(page.evaluate_script("window.__marker")).to eq("still here")
@@ -43,7 +48,7 @@ RSpec.describe "Adding from the scanner", type: :system do
 
   it "adds one copy even when both buttons are tapped at once (AC-1.4, AC-1.5)", :aggregate_failures do
     read_card
-    page.execute_script("document.querySelectorAll('.c-scanner__add button').forEach((button) => button.click())")
+    page.execute_script("document.querySelectorAll('.c-scanpane__add button').forEach((button) => button.click())")
     expect(page).to have_button("1 added. Show this sitting's cards.")
     expect(user.account.lots.sum(:quantity)).to eq(1)
   end
@@ -51,7 +56,7 @@ RSpec.describe "Adding from the scanner", type: :system do
   it "adds from a picked photo and offers the picker again (AC-1.3)", :aggregate_failures do
     wait_for_scanner
     pick_synthetic_photo
-    expect(page).to have_css(".c-scanner__candidate", text: "Lightning Bolt", wait: 30)
+    expect(page).to have_css("#{card} .c-scanpane__name", text: "Lightning Bolt", wait: 30)
     find(foil_button).click
     expect(page).to have_css("#scanner_added_text", text: "Added Lightning Bolt")
     open_destination
@@ -64,7 +69,7 @@ RSpec.describe "Adding from the scanner", type: :system do
     Scanner::Sitting.add!(account: user.account, printing: Catalog::Entry.find_by!(number: "123"), finish: "foil", reading_key: key).entry.undo!
     find(foil_button).click
     expect(page).to have_css("#status", text: "You added this card, then undid it. Scan it again to add it.")
-    expect(page).to have_no_css(".c-scanner__add")
+    expect(page).to have_no_css(".c-scanpane__add", visible: :all)
   end
 
   it "sends you to sign in when your session ended before the add (Error Scenarios)" do
@@ -74,10 +79,10 @@ RSpec.describe "Adding from the scanner", type: :system do
     expect(page).to have_button("Sign in")
   end
 
-  it "sends you to sign in when your session ended before Other printings (Error Scenarios)" do
-    read_card
+  it "sends you to sign in when your session ended before All printings (Error Scenarios)" do
+    read_card(name: "Lightning", lines: [])
     page.driver.browser.manage.delete_cookie("session_id")
-    click_on "Other printings"
+    find_link("All printings").send_keys(:enter)
     expect(page).to have_button("Sign in")
   end
 
@@ -87,7 +92,7 @@ RSpec.describe "Adding from the scanner", type: :system do
     allow(Scanner::Sitting).to receive(:add!).and_raise(StandardError, "boom")
     find(foil_button).click
     expect(page).to have_css("#status", text: "That card wasn't added. Check your connection, then tap its add button again.")
-    expect(page).to have_css(".c-scanner__candidate", text: "Lightning Bolt")
+    expect(page).to have_css("#{card} .c-scanpane__name", text: "Lightning Bolt")
     expect(page).to have_css("#{foil_button}:not([disabled])")
     expect(page.evaluate_script("window.__marker")).to eq("still here")
   end
@@ -97,7 +102,7 @@ RSpec.describe "Adding from the scanner", type: :system do
     page.execute_script("const send = window.fetch; window.__add = send; window.fetch = (url, options = {}) => String(options.method).toUpperCase() === 'POST' ? Promise.reject(new TypeError('offline')) : send(url, options)")
     find(foil_button).click
     expect(page).to have_css("#status", text: "That card wasn't added. Check your connection, then tap its add button again.")
-    expect(page).to have_css(".c-scanner__candidate", text: "Lightning Bolt")
+    expect(page).to have_css("#{card} .c-scanpane__name", text: "Lightning Bolt")
     expect(page).to have_css("#{foil_button}:not([disabled])")
     expect(user.account.lots).to be_empty
     page.execute_script("window.fetch = window.__add")
@@ -106,24 +111,24 @@ RSpec.describe "Adding from the scanner", type: :system do
     expect(user.account.lots.sole.quantity).to eq(1)
   end
 
-  it "opens Other printings in place and adds the one chosen (AC-2.2, AC-2.6)", :aggregate_failures do
+  it "adds the printing swiped to, in place, and not the matched one (AC-3.2, AC-4.5)", :aggregate_failures do
     m10 = create(:catalog_set, code: "m10", name: "Magic 2010", released_on: Date.new(2009, 7, 17))
     older = create(:mtg_printing, finishes: %w[nonfoil foil], entry: create(:catalog_entry, identity: Catalog::Identity.sole, name: "Lightning Bolt", set: m10, number: "146")).entry
     read_card
     page.execute_script("window.__marker = 'still here'")
-    click_on "Other printings"
-    expect(page).to have_css("#status", text: "Other printings of Lightning Bolt are below.")
-    within("turbo-frame#scanner_printings") { find("button[aria-label='Add Lightning Bolt M10 · 146 Nonfoil']").click }
+    click_on "Next printing"
+    expect(page).to have_css("#{card} .c-scanpane__position", text: "2 of 2 printings")
+    within(card) { find("button[aria-label='Add Lightning Bolt M10 · 146 Nonfoil']").click }
     expect(page).to have_css("#scanner_added_text", text: "Added Lightning Bolt M10 · 146, nonfoil")
     expect(page.evaluate_script("window.__marker")).to eq("still here")
     expect(user.account.scanner_sitting.entries.sole.printing).to eq(older)
   end
 
-  it "says so in place when Other printings can't load (Error Scenarios)", :aggregate_failures, :server_error do
-    read_card
-    allow(Scanner::OtherPrintings).to receive(:new).and_raise(StandardError, "boom")
-    click_on "Other printings"
-    expect(page).to have_css("turbo-frame#scanner_printings", text: "Other printings couldn't be loaded.")
-    expect(page).to have_css(".c-scanner__candidate", text: "Lightning Bolt")
+  it "says so in place when All printings can't load on the server (Error Scenarios, AC-3.11)", :aggregate_failures, :server_error do
+    read_card(name: "Lightning", lines: [])
+    allow(Scanner::Selection).to receive(:for_card).and_raise(StandardError, "boom")
+    find_link("All printings").send_keys(:enter)
+    expect(page).to have_css("#status .c-status__message--alert", text: "The card's printings couldn't be loaded. Tap “All printings” again.")
+    expect(page).to have_css(card, text: "Lightning Bolt")
   end
 end

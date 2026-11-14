@@ -18,81 +18,156 @@ RSpec.describe "Scanner readings", type: :request do
   context "when the name index is built" do
     before { Catalog::NameIndex.new("mtg").rebuild }
 
-    it "shows what was read and the candidates, the collector-line match first (AC-3.1, AC-3.2)", :aggregate_failures do
+    def pane = Nokogiri::HTML5(response.body)
+
+    it "answers a collector-line match with a selection frame of its printings, the match first, success band in the first panel (AC-2.1, AC-3.1)", :aggregate_failures do
       read("Lightnlng Bo1t", "R 0123\nMOM • EN")
       expect(response.media_type).to eq("text/vnd.turbo-stream.html")
-      expect(response.body).to include('<turbo-stream action="update" target="scanner_result">', "Lightnlng Bo1t", "R 0123")
-      expect(response.body).to include("Matched one printing", "Matched by its collector line", "MOM · 123", "March of the Machine")
+      expect(response.body).to include('<turbo-stream action="update" target="scanner_result">')
+      expect(pane.css("turbo-frame#scanner_selection.c-scanpane__body").size).to eq(1)
+      items = pane.css(".c-scanpane__item")
+      expect(items.first["aria-current"]).to eq("true")
+      expect(items.drop(1).map { it["aria-current"] }).to all(be_nil)
+      panels = pane.css(".c-scanpane__card")
+      expect(panels.map { it["hidden"] }).to eq([ nil, *Array.new(panels.size - 1, "hidden") ])
+      template = panels.first.at_css("template[data-band]")
+      expect(template["data-band"]).to eq("c-band--success")
+      expect(template.inner_html).to include("Matched by its collector line", "Printing 1 of 1: Lightning Bolt, March of the Machine, MOM · 123.")
+      expect(panels.first.at_css(".c-scanpane__position").text).to eq("1 of 1 printing")
+      expect(response.body).not_to include("What the scanner read", "c-scanner__candidate", "scanner_printings")
     end
 
-    it "marks a candidate found by its name alone as a guess at the printing (AC-2.1, AC-5.1)", :aggregate_failures do
+    it "marks a name-only match of the right card as a printing guess (AC-2.2)", :aggregate_failures do
       read("Lightning Bolt", "")
-      expect(response.body).to include("Printing not confirmed", "Matched by its name")
-      expect(response.body).not_to include("Matched by its collector line")
+      template = pane.at_css(".c-scanpane__card template[data-band]")
+      expect(template["data-band"]).to eq("c-band--warning")
+      expect(template.inner_html).to include("Printing not confirmed. Swipe to check.")
+      expect(response.body).not_to include("Matched by its name")
     end
 
-    it "puts a candidate's image in the tile slot, with no class or style of its own (spec 019 AC-1.4)", :aggregate_failures do
+    it "reads 'Lightning' as a name-only, not strong match, so the system examples that draw it get the possible-cards row (execution note)", :aggregate_failures do
+      read("Lightning", "")
+      template = pane.at_css(".c-scanpane__card template[data-band]")
+      expect(template.inner_html).to include("Not sure of this card. Check it against your capture.")
+      expect(pane.css(".c-scanpane__row").first.ancestors(".c-scanpane__rowwrap").first["aria-label"]).to eq("Possible cards")
+    end
+
+    it "holds only the matched card's printings when the scanner is sure, not the other candidate cards (AC-3.8)", :aggregate_failures do
+      create(:mtg_printing, entry: create(:catalog_entry, identity: create(:catalog_identity, name: "Lightning Helix"), name: "Lightning Helix", set: mom, number: "7"))
+      Catalog::NameIndex.new("mtg").rebuild
+      read("Lightning Bolt", "R 0123\nMOM • EN")
+      expect(pane.css(".c-scanpane__name").map(&:text)).to eq([ "Lightning Bolt" ])
+      expect(response.body).not_to include("Lightning Helix")
+    end
+
+    it "answers a name that is not strong with the candidate cards, the question band and All printings per panel (AC-2.3, AC-3.8, AC-3.9)", :aggregate_failures do
+      read("Lightnlng Bo1t", "")
+      template = pane.at_css(".c-scanpane__card template[data-band]")
+      expect(template["data-band"]).to eq("c-band--warning")
+      expect(template.inner_html).to include("Not sure of this card. Check it against your capture.")
+      expect(pane.at_css(".c-scanpane__rowwrap")["aria-label"]).to eq("Possible cards")
+      expect(pane.at_css(".c-scanpane__position").text).to match(/\A1 of [12] possible cards?\z/)
+      pane.css(".c-scanpane__card").each do |panel|
+        link = panel.css("a").find { it.text.strip == "All printings" }
+        expect(link["href"]).to include("match=", "band=guess")
+        expect(link["data-turbo-frame"]).to eq("scanner_selection")
+      end
+    end
+
+    it "answers three candidate cards as a row of three possible cards, ranked 1 to 3, each band 'not sure' (AC-3.8, AC-2.3)", :aggregate_failures do
+      %w[Helix Strike].each_with_index { |word, i| create(:mtg_printing, entry: create(:catalog_entry, identity: create(:catalog_identity, name: "Lightning #{word}"), name: "Lightning #{word}", set: mom, number: (200 + i).to_s)) }
+      Catalog::NameIndex.new("mtg").rebuild
+      read("Lightning", "")
+      panels = pane.css(".c-scanpane__card")
+      expect(pane.css(".c-scanpane__item").size).to eq(3)
+      expect(panels.size).to eq(3)
+      expect(panels.first.at_css(".c-scanpane__position").text).to eq("1 of 3 possible cards")
+      expect(panels.map { it.at_css("template[data-band]").inner_html }).to all(include("Not sure of this card. Check it against your capture."))
+      expect(panels.each_with_index.map { |panel, i| panel.at_css("template[data-band]").inner_html[/Card #{i + 1} of 3: [^<]*/] }.compact.size).to eq(3)
+      expect(pane.css(".c-scanpane__nav").map { it["aria-label"] }).to eq([ "Previous card", "Next card" ])
+      expect(panels.map { it.at_css("form.c-scanpane__add")["data-rank"] }).to eq(%w[1 2 3])
+    end
+
+    it "puts a candidate's image in the row item, with no class or style of its own (spec 019 AC-1.4)", :aggregate_failures do
       bolt.update!(image_url: "https://cards.scryfall.io/normal/front/b/o/bolt.jpg")
       read("Lightning Bolt", "")
-      image = Nokogiri::HTML5(response.body).at_css(".c-scanner__candidate .c-tile__media > img")
+      image = pane.at_css(".c-scanpane__item > img")
       expect(image&.[]("src")).to eq(bolt.image_url)
       expect([ image["class"], image["style"] ]).to eq([ nil, nil ])
     end
 
-    it "says when the collector line matches several printings or none (AC-3.3)", :aggregate_failures do
-      create(:mtg_printing, entry: create(:catalog_entry, identity: bolt.identity, name: "Lightning Bolt", set: mom, number: "123"))
+    it "gives every panel one add button per finish, named for the printing, with the star on a special finish (AC-4.2)", :aggregate_failures do
+      MTG::Printing.find_by!(catalog_entry_id: bolt.id).update!(finishes: %w[nonfoil foil])
       read("Lightning Bolt", "R 0123\nMOM • EN")
-      expect(response.body).to include("Several printings").and include("Lightning Bolt")
-      read("Lightning Bolt", "R 0999\nMOM • EN")
-      expect(response.body).to include("No printing")
+      forms = pane.css(".c-scanpane__card:not([hidden]) .c-scanpane__add")
+      expect(forms.map { it.at_css("button").text.strip }).to eq([ "Add nonfoil", "Add foil" ])
+      expect(forms.map { it.at_css("button")["aria-label"] }).to eq([ "Add Lightning Bolt MOM · 123 Nonfoil", "Add Lightning Bolt MOM · 123 Foil" ])
+      expect(forms.map { it["data-turbo-frame"] }.uniq).to eq([ "_top" ])
+      expect(forms.map { it.css("svg").size }).to eq([ 0, 1 ])
     end
 
-    it "offers an add button per finish carrying the reading key, and no 'coming' note (AC-1.1, AC-8.4)", :aggregate_failures do
+    it "carries the reading key and the rank on every add, and says nothing about adding being 'coming' (AC-4.1, AC-8.4)", :aggregate_failures do
       read("Lightning Bolt", "R 0123\nMOM • EN")
-      html = Nokogiri::HTML5(response.body)
-      forms = html.css("form.c-scanner__add")
+      forms = pane.css(".c-scanpane__card:not([hidden]) form.c-scanpane__add")
       expect(forms.map { it.at_css("input[name='entry[finish]']")["value"] }).to eq(%w[nonfoil foil])
       expect(forms.map { it.at_css("input[name='entry[reading_key]']")["value"] }.uniq).to eq([ key ])
-      expect(forms.map { it["data-rank"] }).to eq(%w[1 1])
-      expect(html.css("form.c-scanner__add button").map { it["aria-label"] })
-        .to eq([ "Add Lightning Bolt MOM · 123 Nonfoil", "Add Lightning Bolt MOM · 123 Foil" ])
+      expect(forms.map { it["data-rank"] }.uniq).to eq([ "1" ])
       expect(response.body).not_to include("Adding cards from the scanner is coming")
     end
 
-    it "offers a single Add for a one-finish printing (AC-1.1)" do
+    it "offers Add etched beside nonfoil and foil, a star on the special finishes only (AC-4.2)", :aggregate_failures do
+      MTG::Printing.find_by!(catalog_entry_id: bolt.id).update!(finishes: %w[nonfoil foil etched])
+      read("Lightning Bolt", "R 0123\nMOM • EN")
+      forms = pane.css(".c-scanpane__card:not([hidden]) .c-scanpane__add")
+      expect(forms.map { it.at_css("button").text.strip }).to eq([ "Add nonfoil", "Add foil", "Add etched" ])
+      expect(forms.map { it.css("svg").size }).to eq([ 0, 1, 1 ])
+    end
+
+    it "offers a single Add for a one-finish printing (AC-4.2)" do
       MTG::Printing.find_by!(catalog_entry_id: bolt.id).update!(finishes: %w[nonfoil])
       read("Lightning Bolt", "R 0123\nMOM • EN")
-      expect(Nokogiri::HTML5(response.body).css("form.c-scanner__add button").map { it.text.strip }).to eq([ "Add" ])
+      expect(pane.css(".c-scanpane__card:not([hidden]) .c-scanpane__add button").map { it.text.strip }).to eq([ "Add" ])
     end
 
-    it "offers Other printings on every candidate, with what was read (AC-2.1)", :aggregate_failures do
-      read("Lightning Bolt", "R 0123\nMOM • EN")
-      link = Nokogiri::HTML5(response.body).at_css("a[data-turbo-frame=scanner_printings]")
-      expect(link.text).to eq("Other printings")
-      expect(Rack::Utils.parse_query(URI(link["href"]).query)).to include("card" => bolt.identity.external_key, "key" => key, "set" => "MOM", "number" => "123")
-    end
-
-    it "marks the Foil button when the separator reads as the foil marker, adding nothing by itself (AC-6.5)", :aggregate_failures do
+    it "relabels the foil button when the foil marker was read, and adds nothing more (AC-4.3)", :aggregate_failures do
+      MTG::Printing.find_by!(catalog_entry_id: bolt.id).update!(finishes: %w[nonfoil foil])
       read("Lightning Bolt", "R 0123\nMOM ★ EN")
-      labels = Nokogiri::HTML5(response.body).css("form.c-scanner__add button").map { it.text.strip }
-      expect(labels).to eq([ "Nonfoil", "Foil · read from the card" ])
+      forms = pane.css(".c-scanpane__card:not([hidden]) .c-scanpane__add")
+      expect(forms.map { it.at_css("button").text.strip }).to eq([ "Add nonfoil", "Add foil · read from the card" ])
       expect(Lot.count).to eq(0)
     end
 
-    it "turns away a reading without a well-formed key" do
+    it "writes a card named with markup as text everywhere the answer says it (AC-6.3)", :aggregate_failures do
+      bolt.update!(name: "Bolt <script>alert(1)</script>")
+      read("Lightning Bolt", "R 0123\nMOM • EN")
+      expect(response.body).not_to include("<script>alert(1)</script>")
+      expect(response.body).to include("&lt;script&gt;alert(1)&lt;/script&gt;")
+    end
+
+    it "says 'Nothing could be read' on the status line and opens no pane (AC-6.1)", :aggregate_failures do
+      read("", "")
+      expect(response.body).to include('<turbo-stream action="update" target="scanner_status_text">', "Nothing could be read. Line the card up with the guide and capture it again.")
+      expect(response.body).not_to include('target="scanner_result"', 'target="status"')
+    end
+
+    it "says 'No card matches' on the status line when text was read and nothing matches (AC-6.1)", :aggregate_failures do
+      read("Zzzzzzzz Qqqqqq", "")
+      expect(response.body).to include('target="scanner_status_text"', "No card matches what was read. Line the card up with the guide and capture it again.")
+    end
+
+    it "turns away a reading without a well-formed key with an alert in the pane's status region, and no result (AC-6.2)", :aggregate_failures do
       read("Lightning Bolt", "", key: "nope")
       expect(response).to have_http_status(:unprocessable_content)
+      expect(response.body).to include('target="status"', "c-status__message--alert")
+      expect(CGI.unescapeHTML(response.body)).to include("That reading couldn't be used. Capture the card again.")
+      expect(response.body).not_to include('target="scanner_result"')
     end
 
-    it "says when nothing could be read" do
-      read("", "")
-      expect(response.body).to include("Nothing could be read")
-    end
-
-    it "turns away text over 2,000 characters", :aggregate_failures do
+    it "turns away text over 2,000 characters in the same alert, and no result (AC-6.2)", :aggregate_failures do
       read("a" * 2_001, "")
       expect(response).to have_http_status(:unprocessable_content)
-      expect(response.body).to include("That reading was too long to use")
+      expect(response.body).to include('target="status"', "c-status__message--alert", "That reading was too long to use")
+      expect(response.body).not_to include('target="scanner_result"')
     end
 
     context "with art matching on (spec 011)", :art_matching do
@@ -123,40 +198,30 @@ RSpec.describe "Scanner readings", type: :request do
 
       def html = Nokogiri::HTML5(response.body)
 
-      it "shows Matched, the art badge on the artwork's only printing, and the note when art overrules (AC-7.1, AC-7.2, AC-7.4)", :aggregate_failures do
+      it "says 'Matched by its artwork' in the band when the artwork belongs to one printing, and holds only that card's printings (AC-2.1, AC-3.8)", :aggregate_failures do
         create(:mtg_printing, entry: create(:catalog_entry, identity: create(:catalog_identity, name: "Shock"), name: "Shock", set: mom, number: "9"))
         Catalog::NameIndex.new("mtg").rebuild
         read_with_art([ { id: art, distance: 150 } ], name_text: "Shock")
 
-        expect(html.css(".c-scanner__read dt").map(&:text)).to include("Artwork")
-        expect(html.at_css(".c-scanner__read dt:contains('Artwork') + dd").text).to eq("Matched")
-        expect(html.at_css(".c-scanner__candidate .c-badge--success").text.strip).to eq("Matched by its artwork")
-        expect(response.body).to include("The artwork matches a different card from the one the name suggests.")
-        expect(html.at_css(".c-scanner__candidate a[href*='artwork=#{art}']")).to be_present
+        template = html.at_css(".c-scanpane__card template[data-band]")
+        expect(template["data-band"]).to eq("c-band--success")
+        expect(template.inner_html).to include("Matched by its artwork")
+        expect(html.css(".c-scanpane__name").map(&:text)).to eq([ "Lightning Bolt" ])
+        expect(response.body).not_to include("The artwork matches a different card")
       end
 
-      it "marks a shared artwork's printing as not confirmed, with the art as evidence (AC-7.2)", :aggregate_failures do
+      it "marks a shared artwork's printing as not confirmed (AC-2.2)", :aggregate_failures do
         create(:mtg_printing, illustration_id: art, entry: create(:catalog_entry, identity: bolt.identity, name: "Lightning Bolt", set: create(:catalog_set, code: "m25"), number: "5"))
         read_with_art([ { id: art, distance: 150 } ], name_text: "")
 
-        candidate = html.at_css(".c-scanner__candidate")
-        expect(candidate.at_css(".c-badge--warning").text).to include("Printing not confirmed")
-        expect(candidate.css(".c-scanner__evidence").map(&:text)).to include("Matched by its artwork")
+        template = html.at_css(".c-scanpane__card template[data-band]")
+        expect(template["data-band"]).to eq("c-band--warning")
+        expect(template.inner_html).to include("Printing not confirmed. Swipe to check.")
       end
 
-      it "shows Looks similar and the weak evidence line, with no art badge (AC-7.1, AC-7.3)", :aggregate_failures do
+      it "says nothing about a weak artwork in the pane (decision 12)", :aggregate_failures do
         read_with_art([ { id: art, distance: 420 } ], name_text: "Lightning Bolt")
-
-        expect(html.at_css(".c-scanner__read dt:contains('Artwork') + dd").text).to eq("Looks similar")
-        expect(html.css(".c-scanner__evidence").map(&:text)).to include("Artwork looks similar")
-        expect(response.body).not_to include("Matched by its artwork")
-      end
-
-      it "shows No match when no sent artwork is usable, and no Artwork row when none were sent (AC-7.1)", :aggregate_failures do
-        read_with_art([ { id: "bbbbbbbb-0000-4000-8000-000000000002", distance: 10 } ], name_text: "Lightning Bolt")
-        expect(html.at_css(".c-scanner__read dt:contains('Artwork') + dd").text).to eq("No match")
-        read("Lightning Bolt", "")
-        expect(html.css(".c-scanner__read dt").map(&:text)).not_to include("Artwork")
+        expect(response.body).not_to include("Artwork looks similar", "Matched by its artwork", "Looks similar")
       end
     end
 
@@ -167,9 +232,11 @@ RSpec.describe "Scanner readings", type: :request do
     end
   end
 
-  it "says the catalog isn't ready while the name index is empty (AC-3.8)" do
+  it "says the catalog isn't ready in the pane while the name index is empty (AC-6.2)", :aggregate_failures do
     read("Lightning Bolt", "")
-    expect(response.body).to include("The card catalog isn't ready yet")
+    expect(response.body).to include('target="status"', "c-status__message--alert")
+    expect(CGI.unescapeHTML(response.body)).to include("The card catalog isn't ready yet")
+    expect(response.body).not_to include('target="scanner_result"')
   end
 
   it "sends an expired session to sign in" do

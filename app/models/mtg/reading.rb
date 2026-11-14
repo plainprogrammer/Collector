@@ -34,6 +34,11 @@ class MTG::Reading
     def art_weak? = evidence.include?(:art_weak)
     def printing_confirmed? = collector_line? || (art? && art_unique)
 
+    # Whether the scanner trusts the card itself (spec 088 decision 2): collector-line evidence (plain or corrected), confident
+    # art, or a strong name match. A candidate that is not sure, and whose printing is not confirmed, is "not sure of this card"
+    # on the pane's band. Reads the evidence only; the ranking is `rank_key`, unchanged.
+    def card_sure? = collector_line? || art? || strong_name
+
     # The one ranking rule (spec 009 AC-5.5, spec 011 AC-6.6). Without art it orders exactly as spec 009's did.
     def rank_key = [ art? ? 0 : 1, strong_name ? 0 : 1, collector_line? ? 0 : 1, art_weak? ? 0 : 1, name_rank || CANDIDATES ]
   end

@@ -1,7 +1,9 @@
-# A card's English printings for "Other printings" on the scanner (spec 009 Story 2), retired ones left out. With a
-# confident artwork (spec 011 AC-7.5), the printings sharing it come first; then those matching what was read (set and
-# number, then set, then number); each group in the catalog's newest-first order.
+# A card's English printings in the order the scanner's selection row shows them (`Scanner::Selection`, spec 088; spec 009
+# Story 2's "Other printings"), retired ones left out. With a confident
+# artwork (spec 011 AC-7.5), the printings sharing it come first; then those matching what was read (set and number, then set,
+# then number); each group in the catalog's newest-first order.
 class Scanner::OtherPrintings
+  # How many printings the selection loads at once, and per "Show 20 more" (`Scanner::Selection::STEP` reads it).
   SHOWN = 20
 
   def self.plain_number(number) = number.to_s.sub(/\A0+(?=\d)/, "").downcase.presence
@@ -20,10 +22,6 @@ class Scanner::OtherPrintings
       all.each_with_index.sort_by { |entry, index| [ group(entry), index ] }.map(&:first)
     end
   end
-
-  def shown = entries.first(SHOWN)
-
-  def rest = entries.drop(SHOWN)
 
   private
     def group(entry)

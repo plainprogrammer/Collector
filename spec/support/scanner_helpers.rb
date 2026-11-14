@@ -12,7 +12,8 @@ module ScannerHelpers
     })
     // A live card is drawn where the page's guide falls in the frame (spec 082 AC-3.1): the stage's live guide mapped into the
     // 3:4 frame the way the camera controller maps it; a photo's card where the shipped guide is (the photo path's framing).
-    window.__syntheticCard = async (name, lines, live = false) => {
+    // flat paints the background white as well, so the photo has no card edge for the detector to find (spec 088 AC-1.3).
+    window.__syntheticCard = async (name, lines, live = false, flat = false) => {
       const { guideRect, guideInFrame, liveGuideRect } = await window.__geometry
       const canvas = Object.assign(document.createElement("canvas"), { width: 900, height: 1200 })
       const context = canvas.getContext("2d")
@@ -25,7 +26,7 @@ module ScannerHelpers
       // Text is sized and placed from the card, as on a real card, so strip tuning doesn't change the test text.
       const draw = () => {
         const card = cardBox()
-        context.fillStyle = "gray"; context.fillRect(0, 0, canvas.width, canvas.height)
+        context.fillStyle = flat ? "white" : "gray"; context.fillRect(0, 0, canvas.width, canvas.height)
         context.fillStyle = "white"; context.fillRect(card.x, card.y, card.width, card.height)
         context.fillStyle = "black"; context.textBaseline = "middle"
         context.font = `${Math.round(card.height * 0.045)}px sans-serif`
@@ -203,12 +204,14 @@ module ScannerHelpers
     expect(page).to have_button("Capture", disabled: false, wait: 30)
   end
 
-  # Picks a photo of a synthetic card at the shipped guide, through the picker input matches (see pick_photo).
-  def pick_synthetic_photo(name: "Lightning Bolt", lines: [ "R 0123", "MOM • EN" ], input: PICKER)
-    page.evaluate_async_script(<<~JS, name, lines, input)
-      const [ name, lines, selector, done ] = arguments
+  # Picks a photo of a synthetic card at the shipped guide, through the picker input matches (see pick_photo). With flat: true
+  # the photo's background is as white as the card, so the detector finds no edge and the reading is the guide placement's
+  # (the result then carries the no-edge sentence, spec 088 AC-1.3).
+  def pick_synthetic_photo(name: "Lightning Bolt", lines: [ "R 0123", "MOM • EN" ], input: PICKER, flat: false)
+    page.evaluate_async_script(<<~JS, name, lines, input, flat)
+      const [ name, lines, selector, flat, done ] = arguments
       #{CARD_JS}
-      window.__syntheticCard(name, lines).then(({ canvas }) => canvas.toBlob((blob) => {
+      window.__syntheticCard(name, lines, false, flat).then(({ canvas }) => canvas.toBlob((blob) => {
         const transfer = new DataTransfer()
         transfer.items.add(new File([ blob ], "card.png", { type: "image/png" }))
         const input = document.querySelector(selector)

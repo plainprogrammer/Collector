@@ -13,8 +13,10 @@ import { loadArtIndex, matchArtwork } from "scanner/art"
 // collectorText, ms, key, outline, detectMs, warpMs, artworks, artMs, art, readyMs, strips, frame }) for measurement mode,
 // where outline is "live", "found" or "not_found". frame is { image, guide } for live captures, else null; sizes is the video's
 // and the stage's sizes for a live capture, else null. On the one-screen page (spec 082) a capture freezes on its frame (a
-// canvas, decision 11), the answer opens the pane, and the main button reads "Scan again" while a result shows (decision 13); a
-// sentence about a result is written to the pane's region once the pane shows (decision 10).
+// canvas, decision 11), the answer opens the pane, and the main button reads "Scan again" while a result shows (decision 13).
+// The capture's box is drawn on the strip beside what was read from it (spec 088 decisions 8, 9); once the pane shows, the
+// reader says "Done." and the band's sentence once, as hidden text in the pane's region, and a refusal or the no-edge sentence
+// is written there too (spec 082 decision 10, spec 088 decision 11). It never writes the band: the selection controller does.
 const REASONS = {
   insecure: "The live camera needs this page to be served over HTTPS. You can use a photo instead.",
   denied: "The camera is blocked for this site. Allow it in your browser's settings, or use a photo instead.",
@@ -23,13 +25,13 @@ const REASONS = {
   lost: "The camera stopped. Try again, or use a photo instead."
 }
 const READY_LIVE = "Ready. Line the card up with the guide, then capture."
-const SHOWING = "Done. What the scanner read and its candidates are showing."
+const READING = "Reading the card…"
 const COULD_NOT_READ = "The card couldn't be read. Line it up with the guide and try again."
 const NO_EDGE = "No card edge was found, so the photo was read as if framed like the guide. For a better reading, photograph the whole card, upright, filling most of the photo, on a plain background."
 
 export default class extends Controller {
   static targets = [ "status", "main", "picker", "result", "unavailable", "reason", "retry", "engineRetry", "engineFailed",
-    "frozen", "paneStatus", "added", "addedText", "failure", "failureName", "failureCollector", "signIn", "resend", "artStatus" ]
+    "frozen", "paneStatus", "added", "addedText", "failure", "signIn", "resend", "artStatus", "strip", "capture", "readName", "readLine", "band" ]
   static values = { readingsUrl: String, enginePath: String, artIndexUrl: String, artSettings: Object }
 
   connect() {
@@ -166,7 +168,11 @@ export default class extends Controller {
 
   // The pane closed (an add cleared the result) or opened: the frozen frame goes with the result, and the main button follows.
   shellChanged({ detail: { result } }) {
-    if (!result) this.paneSaid += 1
+    if (!result) {
+      this.paneSaid += 1
+      this.readNameTarget.textContent = ""
+      this.readLineTarget.textContent = ""
+    }
     if (!result && !this.busy) this.frozenTarget.hidden = true
     this.render()
   }
@@ -195,7 +201,7 @@ export default class extends Controller {
     this.addedTextTarget.textContent = ""
     this.addedTarget.classList.remove("c-scan__line--alert") // a page-load alert flash styled the line; the next sentence is not one
     this.render()
-    this.say("Reading the card…")
+    this.say(READING)
     try {
       const { image, card, layout, ...source } = await prepare()
       // Spec 011: art runs on live captures only (AC-5.4), before OCR, about 35 ms on the phone.
@@ -205,9 +211,11 @@ export default class extends Controller {
       if (!this.element.isConnected) return
       // Spec 010: a live capture's frame and guide rect travel with the event, in memory, for measurement mode only.
       const frame = source.outline === "live" ? { image, guide: card } : null
+      this.drawCapture(image, card, source.outline)
+      this.writeRead(reading.nameText, reading.collectorText)
       this.dispatch("read", { detail: { ...reading, sizes: source.sizes || null, strips, frame, art: this.artTimings || null, readyMs: this.readyMs } })
       this.lastReading = reading
-      if (await this.send(reading) && reading.outline === "not_found") this.paneSay(NO_EDGE)
+      if (await this.send(reading) && reading.outline === "not_found") this.paneSay(NO_EDGE, { append: true })
     } catch {
       this.frozenTarget.hidden = true
       this.say(COULD_NOT_READ)
@@ -218,13 +226,19 @@ export default class extends Controller {
   }
 
   resend() {
-    if (this.lastReading) this.send(this.lastReading)
+    if (!this.lastReading) return
+    // The old failure alert goes before the new answer: a nothing-read or no-match answer opens no pane to replace it.
+    this.paneStatusTarget.replaceChildren(...[ ...this.paneStatusTarget.children ].filter((child) => child.hasAttribute("data-pane-keep")))
+    this.send(this.lastReading)
   }
 
   // Sends the text, the reading key (spec 009 FR-5) and a live capture's nearest artworks (spec 011 FR-5), never the
   // outline, timings or a fingerprint; true when the answer was shown.
+  //
+  // The failure block (and so the pane) stays shown while a resend is in flight and is hidden in the same render as the answer
+  // (`hideFailureWith`): hiding it first would empty the shell's result state for the answer's two frames, and `shellChanged`
+  // would clear the strip's texts and close the pane under an answer that is about to reopen it (spec 088 decisions 9, 11).
   async send({ nameText, collectorText, key, artworks }) {
-    this.failureTarget.hidden = true
     const body = new FormData()
     body.append("reading[name_text]", nameText)
     body.append("reading[collector_text]", collectorText)
@@ -242,14 +256,67 @@ export default class extends Controller {
     }
     if (response.type === "opaqueredirect") return this.failed("Your session has ended. Sign in again, then capture the card again.", { signedOut: true })
     if (!response.ok && response.status !== 422) return this.failed("The scanner had a problem with that card. Send it again.", { signedOut: false })
-    Turbo.renderStreamMessage(await response.text())
-    this.paneSay(SHOWING)
+    const text = await response.text()
+    const hideFailure = this.hideFailureWith()
+    document.addEventListener("turbo:before-stream-render", hideFailure)
+    try {
+      Turbo.renderStreamMessage(text)
+      return await this.opened()
+    } finally {
+      document.removeEventListener("turbo:before-stream-render", hideFailure)
+      this.failureTarget.hidden = true
+    }
+  }
+
+  // A `turbo:before-stream-render` listener that wraps the stream's render so the failure block hides in the same task as the
+  // answer's DOM change: the shell's observer then sees one state, never "no result" in between.
+  hideFailureWith() {
+    return (event) => {
+      const render = event.detail.render
+      event.detail.render = (stream) => {
+        this.failureTarget.hidden = true
+        return render(stream)
+      }
+    }
+  }
+
+  // Waits for the answer to land and says what it did (spec 088 decision 11): a selection opens the pane (the band holds its
+  // sentence) and says "Done." once, as hidden text; a refusal in the pane is its own alert; "nothing read" or "no match" is the
+  // status line's sentence, so the frozen frame goes and no pane opens. Turbo applies a stream after a repaint, so wait for the
+  // pane or for the status line to change, at most about a second; after a failure, for the failure block to hide with the answer.
+  async opened() {
+    for (let frame = 0; frame < 60 && (!this.failureTarget.hidden || (!this.resultShowing && this.statusTarget.textContent === READING)); frame++) await nextFrame()
+    await nextFrame()
+    if (!this.resultShowing) {
+      this.frozenTarget.hidden = true
+      return false
+    }
+    const sentence = this.bandTarget.textContent.replace(/\s+/g, " ").trim()
+    if (!sentence) return false
+    this.paneSay(`Done. ${sentence}`, { hidden: true })
     return true
   }
 
+  // The card's box drawn on the strip's canvas at twice its size, so the strip shows the card and not the whole frame (spec 088
+  // decision 9); a live capture's shrink starts from the guide's height over the picture's (spec 080's `--from`).
+  drawCapture(image, card, outline) {
+    const canvas = this.captureTarget
+    canvas.height = 248
+    canvas.width = Math.round(248 * 63 / 88)
+    canvas.getContext("2d").drawImage(image, card.x, card.y, card.width, card.height, 0, 0, canvas.width, canvas.height)
+    const guide = outline === "live" && this.element.querySelector(".c-scan__guide")?.getBoundingClientRect().height
+    if (guide) canvas.style.setProperty("--from", (guide / parseFloat(getComputedStyle(canvas).height || 124)).toFixed(2))
+    else canvas.style.removeProperty("--from") // a photo has no guide on the stage: spec 080's default
+  }
+
+  // What the reader read, on one line each (escaped by textContent; "nothing read" for a blank).
+  writeRead(nameText, collectorText) {
+    const line = (text) => text.replace(/\s+/g, " ").trim() || "nothing read"
+    this.readNameTarget.textContent = line(nameText)
+    this.readLineTarget.textContent = line(collectorText)
+  }
+
   failed(message, { signedOut }) {
-    this.failureNameTarget.textContent = this.lastReading?.nameText || "Nothing read"
-    this.failureCollectorTarget.textContent = this.lastReading?.collectorText || "Nothing read"
     this.resendTarget.hidden = signedOut
     this.signInTarget.hidden = !signedOut
     this.failureTarget.hidden = false
@@ -274,16 +341,19 @@ export default class extends Controller {
   // Writes a sentence to the pane's live region once the pane shows: a region filled while hidden and then shown is not
   // announced (spec 080 decision 8; spec 082 decision 10). Waits for `c-scan--result` (set by scan-shell from the answer), at
   // most about two seconds, then one more frame.
-  // It replaces only its own sentence: a child marked `data-pane-keep` (measurement mode's "capture wasn't stored") stays.
+  // `hidden` writes it as visually hidden text ("Done." for the screen reader); `append` keeps the paragraphs already there
+  // (the no-edge sentence follows "Done."), else it replaces its own sentence: a child marked `data-pane-keep` (measurement
+  // mode's "capture wasn't stored") stays either way.
   // A sentence for a reading the collector has since discarded ("Scan again", an add, a new reading bump `paneSaid`) is dropped,
-  // so a late write can never reopen the pane.
-  async paneSay(message, { alert = false } = {}) {
+  // so a late write can never reopen the pane, and so is one for a pane that never opened (spec 088 decision 11).
+  async paneSay(message, { alert = false, hidden = false, append = false } = {}) {
     const said = this.paneSaid
     for (let frame = 0; frame < 120 && !this.resultShowing; frame++) await nextFrame()
     await nextFrame()
-    if (said !== this.paneSaid) return
-    const paragraph = Object.assign(document.createElement("p"), { className: `c-status__message${alert ? " c-status__message--alert" : ""}`, textContent: message })
-    const kept = [ ...this.paneStatusTarget.children ].filter((child) => child.hasAttribute("data-pane-keep"))
+    if (said !== this.paneSaid || !this.resultShowing) return
+    const className = hidden ? "c-sr" : `c-status__message${alert ? " c-status__message--alert" : ""}`
+    const paragraph = Object.assign(document.createElement("p"), { className, textContent: message })
+    const kept = [ ...this.paneStatusTarget.children ].filter((child) => append || child.hasAttribute("data-pane-keep"))
     this.paneStatusTarget.replaceChildren(...kept, paragraph)
   }
 

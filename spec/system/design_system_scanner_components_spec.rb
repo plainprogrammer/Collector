@@ -629,19 +629,29 @@ RSpec.describe "Design system: phone-first scanner components", type: :system do
       in_result(360, 640) { expect(pane_layout.values_at("band", "image", "scrolls")).to eq([ 40, 160, false ]) }
     end
 
-    it "scrolls the pane's content at 360 × 640 with a two-line band (AC-4.7)" do
+    # Spec 088 decision 13 supersedes spec 080 decision 7 (AC-4.7) for the images' floor (96px) and the strip under 600px (64px, a
+    # 52px picture): the numbers are in additions.css and nowhere else, and these examples and scanner_selection_spec.rb prove them.
+    it "gives way to 144px images with nothing scrolling at 360 × 640 with a two-line band (spec 088 decision 13)" do
       in_result(360, 640, result(status: unsure, noun: "possible cards", step: "card")) do
-        expect(pane_layout.values_at("band", "image", "scrolls")).to eq([ 56, 160, true ])
+        expect(pane_layout.values_at("band", "image", "scrolls")).to eq([ 56, 144, false ])
       end
     end
 
-    it "scrolls the pane's content at 360 × 560 and keeps the bars, the strip and the band in place (AC-4.7)", :aggregate_failures do
+    it "shrinks the strip to 64px and the images to 112px at 360 × 560 with a one-line band, nothing scrolling (spec 088 decision 13)", :aggregate_failures do
       in_result(360, 560) do
+        found = pane_layout
+        expect(found.values_at("strip", "picture", "band", "image", "scrolls")).to eq([ 64, 52, 40, 112, false ])
+      end
+    end
+
+    it "keeps the bars, the strip and the band in place when the pane scrolls at 360 × 560 with a wrapped set name and a two-line band (the accepted limit)", :aggregate_failures do
+      long = sample_card(set: "A set name of sixty characters long enough to wrap two lines")
+      in_result(360, 560, result(status: unsure, noun: "possible cards", step: "card", cards: [ long, sample_card, sample_card ], current: 0)) do
         before = fixed_tops
-        evaluate('document.querySelector(".c-scanpane__body").scrollTop = 60')
+        evaluate('const body = document.querySelector(".c-scanpane__body"); body.scrollTop = body.scrollHeight')
         expect(pane_layout["scrolls"]).to be(true)
         expect(fixed_tops).to eq(before)
-        expect(evaluate('return [window.scrollY, document.querySelector(".c-scanpane__body").scrollTop]')).to eq([ 0, 60 ])
+        expect(evaluate('return [window.scrollY, document.querySelector(".c-scanpane__body").scrollTop > 0]')).to eq([ 0, true ])
       end
     end
 
