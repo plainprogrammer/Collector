@@ -1,7 +1,7 @@
 # Feature 088: Scanner: the Selection Pane
 
 **Status:** Approved at Gate A on 2026-11-13 by the coordinator under the maintainer's delegation (version 0.3.1, as 1.0.0); decision 13 (the images' floor and the strip under 600px) is a visible design change the coordinator put to the maintainer
-**Version:** 1.0.1
+**Version:** 1.0.2
 **Created:** 2026-11-13
 **Last Updated:** 2026-11-13
 **Depends on:** [spec 080](../080-phone-first-scanner-components/spec.md) (the pane, the band, the strip and the row, drawn with their CSS), [spec 082](../082-scanner-capture-always-in-view/spec.md) (the one-screen page, the sheets, the lines, "Scan again", decisions 10, 11 and 13), [the phone-first scanner design](../../superpowers/specs/2026-11-12-scanner-phone-first-design.md) (approved 2026-11-12; decisions 8 to 19), the scanner as built ([scanner](../../architecture/scanner.md) area doc; specs 009, 011, 040, 042, 047)
@@ -14,6 +14,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.0.2 | 2026-11-13 | PATCH, found while building Task 9: at 360 × 560 with the not-sure band the body scrolls by about 6px, not the 22px AC-5.2 computed (the measured boxes are in `verification.md`). No requirement changes |
 | 1.0.1 | 2026-11-13 | PATCH, found by the plan review (Fable): in a possible-cards row the details line leaves the year out and lets the position wrap, since the tag, the position and the 44px "All printings" overflow 360px otherwise (decision 3); AC-4.1's year applies to a printings row. No sum changes |
 | 1.0.0 | 2026-11-13 | Approved at Gate A (the coordinator, under the maintainer's delegation), as 0.3.1 but for the icon note of decision 5 (Previous reuses `icons/back`; the question mark and the right chevron are the new partials). Call (d), decision 13's numbers, is flagged to the maintainer; the plan keeps them in one place and their specs in tasks of their own, and updates the design-system docs and previews that state spec 080's old numbers |
 | 0.3.1 | 2026-11-13 | PATCH, the second review (Fable; NEEDS REVISION; 0 blocking, 2 major, 8 minor; text only), fixed without a third review (the limit is two rounds): the opening sentence only with a band text, refusals as visible alerts in `#status`, the no-edge sentence appended and visible, the pane region's spacing, the frozen frame's wait, the strip's and the band's writes, the more item's tail source, the add rank after "Show 20 more", AC-5.2's wrap |
@@ -148,7 +149,7 @@ Decisions 2 to 4, 7, 8, 11 and 12 are the maintainer's, ruled on 2026-11-13 as I
 **Acceptance criteria:**
 
 - [ ] **AC-5.1** Given a confident match (band "Matched by its collector line", a one-line set name) at rest in a 390 × 844, a 360 × 640 and a 360 × 560 viewport When the pane shows Then the band, Previous and Next, the details block and the add buttons are wholly inside the pane, the pane's body does not scroll, the document does not scroll, the images are 288, 160 and 112px high (within 1px; 96px at 360 × 560 with a two-line band), and the strip is 144, 96 and 64px
-- [ ] **AC-5.2** Given the same viewports and the band "Not sure of this card. Check it against your capture." (a two-line band at 360px, and the 44px "All printings" line: a fixed part of 270px) When the pane shows Then (the band wraps to two lines at 360px; at 390px it may fit on one, which gives 288px: the example reads the band's height and checks the sum) at 390 × 844 the images are 278px or 288px and at 360 × 640 122px (within 2px) and the add buttons are inside the viewport with no scrolling inside the pane; at 360 × 560 the images are at their 96px floor and the pane's body scrolls by about 22px, the bars, strip and band in place
+- [ ] **AC-5.2** Given the same viewports and the band "Not sure of this card. Check it against your capture." (a two-line band at 360px, and the 44px "All printings" line: a fixed part of 270px) When the pane shows Then (the band wraps to two lines at 360px; at 390px it may fit on one, which gives 288px: the example reads the band's height and checks the sum) at 390 × 844 the images are 278px or 288px and at 360 × 640 122px (within 2px) and the add buttons are inside the viewport with no scrolling inside the pane; at 360 × 560 the images are at their 96px floor and the pane's body scrolls by about 6px (measured: the add buttons end 6px below the bottom bar's top at rest and are in view at the end of the scroll), the bars, strip and band in place
 - [ ] **AC-5.3** Given the pane at rest in every state of AC-5.1 and AC-5.2 When the boxes of the strip, band, row, Previous, Next, details and add buttons are compared Then no two of them overlap but Previous and Next over the row's neighbours
 - [ ] **AC-5.4** Given a 60-character set name and a 40-character card name at 360px wide When the pane shows Then both wrap inside the details block and nothing overflows horizontally
 - [ ] **AC-5.5** Given the pane in the light and the dark theme When it is read Then every colour is a token (`on-success`, `on-warning` on the band) and the band's contrast holds (spec 080 AC-1.2)
