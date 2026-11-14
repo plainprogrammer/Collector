@@ -1,61 +1,77 @@
 require "rails_helper"
 
-RSpec.describe "Scanner other printings", type: :request do
+# Spec 088 decisions 3, 4, 15: the selection frame for one card, which "All printings" and "Show 20 more" request.
+RSpec.describe "The scanner's selection frame", type: :request do
+  let(:key) { "f" * 32 }
   let(:identity) { create(:catalog_identity, name: "Lightning Bolt") }
-  let(:key) { "c" * 32 }
+  let!(:matched) { create(:mtg_printing, entry: create(:catalog_entry, identity:, name: "Lightning Bolt", set: create(:catalog_set, code: "mom", name: "March of the Machine"), number: "123")).entry }
 
   before do
+    24.times { |i| create(:mtg_printing, entry: create(:catalog_entry, identity:, name: "Lightning Bolt", set: create(:catalog_set, code: "s#{i}", name: "Set #{i}"), number: i.to_s)) }
     sign_in_as(create(:user))
-    { "m10" => Date.new(2009, 7, 17), "m11" => Date.new(2010, 7, 16) }.each do |code, released_on|
-      set = create(:catalog_set, code:, name: "Set #{code}", released_on:)
-      create(:mtg_printing, finishes: %w[nonfoil foil], entry: create(:catalog_entry, identity:, name: "Lightning Bolt", set:, number: "146", released_on:))
-    end
   end
 
-  def other_printings(**params)
-    get scanner_printings_path(card: identity.external_key, key:, **params), headers: { "Turbo-Frame" => "scanner_printings" }
+  def frame(**params)
+    get scanner_printings_path(card: identity.external_key, key:, match: matched.external_key, band: "guess", **params), headers: { "Turbo-Frame" => "scanner_selection" }
+    Nokogiri::HTML5(response.body)
   end
 
-  it "answers the frame with the card's printings, each with add buttons for the same reading (AC-2.2, AC-2.6)", :aggregate_failures do
-    other_printings(set: "m10", number: "146")
-    frame = Nokogiri::HTML5(response.body).at_css("turbo-frame#scanner_printings")
-    expect(frame.at_css("h2").text).to eq("Other printings of Lightning Bolt")
-    expect(frame.css("li .is-data").map(&:text)).to eq([ "M10 · 146", "M11 · 146" ])
-    expect(frame.css("li .c-list__meta").first.text).to include("Set m10", "17 July 2009")
-    expect(frame.css("input[name='entry[reading_key]']").map { it["value"] }.uniq).to eq([ key ])
-    expect(frame.css("form.c-scanner__add").map { it["data-rank"] }.uniq).to eq([ "other" ])
-    expect(response.body).not_to include("turbo-visit-control")
+  def tags(page) = page.css(".c-scanpane__card .c-tag").map(&:text)
+
+  it "answers the card's printings in the selection frame, the named one first, 20 at a time with a more item (AC-3.1, AC-3.10)", :aggregate_failures do
+    page = frame
+    expect(response).to have_http_status(:ok)
+    expect(page.css("turbo-frame#scanner_selection .c-scanpane__item").size).to eq(21) # 20 and the more item
+    expect(page.at_css(".c-scanpane__item--more").text).to include("5 more printings")
+    expect(page.at_css(".c-scanpane__card:not([hidden]) .c-scanpane__position").text).to eq("1 of 25 printings")
+    expect(page.at_css(".c-scanpane__row")["data-selection-focus"]).to eq("true")
+    more = page.css(".c-scanpane__card").last.at_css("a.c-btn")
+    expect(more.text).to eq("Show 20 more")
+    expect(more["href"]).to include("limit=40", "current=")
   end
 
-  it "marks the Foil buttons when the reading suggested foil (AC-6.5)" do
-    other_printings(finish_hint: "foil")
-    expect(Nokogiri::HTML5(response.body).css("form.c-scanner__add button").map { it.text.strip }.uniq).to eq([ "Nonfoil", "Foil · read from the card" ])
+  it "answers every printing at a raised limit, centred on the current one (AC-3.10)", :aggregate_failures do
+    current = Catalog::Entry.where(catalog_identity_id: identity.id).order(:id).last.external_key
+    page = frame(limit: 40, current:)
+    expect(page.css(".c-scanpane__item--more")).to be_empty
+    expect(page.css(".c-scanpane__item").size).to eq(25)
+    expect(page.css(".c-scanpane__item").map { it["aria-current"] }.compact.size).to eq(1)
   end
 
-  it "shows 20, and the rest behind a control (AC-2.5)", :aggregate_failures do
-    25.times { create(:catalog_entry, identity:, name: "Lightning Bolt", released_on: Date.new(2000, 1, 1)) }
-    other_printings
-    html = Nokogiri::HTML5(response.body)
-    expect(html.css("turbo-frame > section > ul > li").size).to eq(20)
-    expect(html.at_css("details summary").text.strip).to eq("Show 7 more")
+  it "reads a band outside the closed list as a guess (decision 15)", :aggregate_failures do
+    frame(band: "<b>x</b>")
+    expect(response.body).to include("Printing not confirmed. Swipe to check.")
+    expect(response.body).not_to include("<b>x</b>")
   end
 
-  it "answers 404 for a malformed key or an unknown card", :aggregate_failures do
-    other_printings(key: "nope")
-    expect(response).to have_http_status(:not_found)
-    get scanner_printings_path(card: "unknown", key:)
-    expect(response).to have_http_status(:not_found)
+  it "puts the printings of the read set, then of the read number, after the named one (AC-3.1, spec 009 AC-2.2)" do
+    expect(tags(frame(set: "s7", number: "3")).first(3)).to eq([ "MOM · 123", "S7 · 7", "S3 · 3" ])
   end
 
-  it "lists the confident artwork's printings first, newest first, then spec 009's order (spec 011 AC-7.5)", :aggregate_failures do
+  it "lists the confident artwork's printings first, then the read set's and number's (spec 011 AC-7.5)", :aggregate_failures do
     art = "aaaaaaaa-0000-4000-8000-000000000001"
-    m11 = Catalog::Entry.joins(:set).find_by!(catalog_sets: { code: "m11" })
-    MTG::Printing.find_by!(catalog_entry_id: m11.id).update!(illustration_id: art)
+    s9 = Catalog::Entry.joins(:set).find_by!(catalog_sets: { code: "s9" })
+    MTG::Printing.find_by!(catalog_entry_id: s9.id).update!(illustration_id: art)
 
-    other_printings(set: "m10", number: "146", artwork: art)
-    expect(Nokogiri::HTML5(response.body).css("li .is-data").map(&:text)).to eq([ "M11 · 146", "M10 · 146" ])
+    expect(tags(frame(set: "s7", number: "3", artwork: art)).first(3)).to eq([ "MOM · 123", "S9 · 9", "S7 · 7" ])
+    expect(tags(frame(set: "s7", number: "3", artwork: "not-an-artwork")).first(3)).to eq([ "MOM · 123", "S7 · 7", "S3 · 3" ])
+  end
 
-    other_printings(set: "m10", number: "146", artwork: "not-an-artwork")
-    expect(Nokogiri::HTML5(response.body).css("li .is-data").map(&:text)).to eq([ "M10 · 146", "M11 · 146" ])
+  it "marks the foil button when the reading suggested foil (AC-4.3)" do
+    page = frame(finish_hint: "foil")
+    expect(page.css(".c-scanpane__card:not([hidden]) .c-scanpane__add button").map { it.text.strip }).to eq([ "Add nonfoil", "Add foil · read from the card" ])
+  end
+
+  it "answers 404 for a malformed key or an unknown card, as before", :aggregate_failures do
+    get scanner_printings_path(card: identity.external_key, key: "nope"), headers: { "Turbo-Frame" => "scanner_selection" }
+    expect(response).to have_http_status(:not_found)
+    get scanner_printings_path(card: "missing", key:), headers: { "Turbo-Frame" => "scanner_selection" }
+    expect(response).to have_http_status(:not_found)
+  end
+
+  it "needs a sign-in" do
+    delete session_path
+    get scanner_printings_path(card: identity.external_key, key:)
+    expect(response).to redirect_to(new_session_path)
   end
 end
