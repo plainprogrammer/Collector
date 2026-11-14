@@ -1,0 +1,21 @@
+<%# locals: (selection:, item:, index:) %>
+<%# One card's panel (spec 088 decisions 3, 5, 10): the band it makes the pane show, the details block and one add per finish. Hidden
+    unless it is the centred card's. In a possible-cards row it also offers "All printings", which navigates the frame. %>
+<% entry = item.entry %>
+<%= tag.div class: "c-scanpane__card", hidden: index != selection.current, data: { selection_target: "panel" } do %>
+  <template data-band="c-band--<%= item.band.form %>"><%= render "scanners/band_content", band: item.band, tail: selection_tail(selection, index) %></template>
+  <div class="c-scanpane__details">
+    <h2 class="c-scanpane__name"><%= entry.display_name %></h2>
+    <p class="c-scanpane__set"><%= entry.set.name %></p>
+    <p class="c-scanpane__meta<%= " c-scanpane__meta--cards" if selection.kind == :cards %>">
+      <span class="c-tag"><%= set_number(entry) %></span>
+      <% if entry.released_on && selection.kind == :printings %><span><%= entry.released_on.year %></span><% end %>
+      <span class="c-scanpane__position"><%= selection_position(selection, index) %></span>
+      <% if selection.kind == :cards %>
+        <%= link_to "All printings", scanner_printings_path(selection.printings_params(item)), class: "c-btn c-btn--ghost c-btn--sm",
+              data: { turbo_frame: "scanner_selection", failure_message: "The card's printings couldn't be loaded. Tap “All printings” again.", action: "scanner-reading#remember" } %>
+      <% end %>
+    </p>
+  </div>
+  <div class="c-scanpane__adds"><%= render "scanners/add_buttons", printing: entry, key: selection.key, finish_hint: selection.finish_hint, rank: item.rank || "other" %></div>
+<% end %>

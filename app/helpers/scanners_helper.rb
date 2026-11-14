@@ -1,20 +1,27 @@
 module ScannersHelper
-  COLLECTOR_OUTCOMES = { one: "Matched one printing", none: "No printing", several: "Several printings", unread: "Not read" }.freeze
+  # The visually hidden tail of a band sentence, naming the centred card so the band's text changes with every swipe and is
+  # announced each time (spec 088 decision 8): "Printing 2 of 14: Lightning Bolt, Double Masters 2022, 2X2 · 117." The more item
+  # (index past the items) says what it offers instead.
+  #
+  # @param selection [Scanner::Selection]
+  # @param index [Integer] the item's place in the row
+  # @return [String]
+  def selection_tail(selection, index)
+    return "#{pluralize(selection.more, "more printing")}. Show 20 more." if index >= selection.items.size
 
-  def collector_outcome(reading) = COLLECTOR_OUTCOMES.fetch(reading.collector_status)
+    entry = selection.items[index].entry
+    noun = selection.kind == :cards ? "Card" : "Printing"
+    "#{noun} #{index + 1} of #{selection.total}: #{entry.display_name}, #{entry.set.name}, #{set_number(entry)}."
+  end
 
-  ART_OUTCOMES = { matched: "Matched", similar: "Looks similar", no_match: "No match" }.freeze
-
-  # The Artwork row of "What the scanner read" (spec 011 AC-7.1): nil when no artworks were sent.
-  def scanner_art_outcome(reading) = reading.art_status && ART_OUTCOMES.fetch(reading.art_status)
-
-  # One sentence when confident art overruled what the text suggested (spec 011 AC-7.4).
-  def scanner_overrule_note(reading)
-    return unless reading.overruled
-
-    what = reading.overruled_scope == :card ? "card" : "printing"
-    by = reading.overruled == :collector_line ? "collector line" : "name"
-    "The artwork matches a different #{what} from the one the #{by} suggests. The artwork's match is first."
+  # "2 of 14 printings", "1 of 3 possible cards": the details block's position (spec 088, design decision 15).
+  #
+  # @param selection [Scanner::Selection]
+  # @param index [Integer] the item's place in the row
+  # @return [String]
+  def selection_position(selection, index)
+    noun = selection.kind == :cards ? "possible card" : "printing"
+    "#{index + 1} of #{pluralize(selection.total, noun)}"
   end
 
   def ocr_engine_path = "/ocr/#{::Collector::OcrEngine::VERSION}"

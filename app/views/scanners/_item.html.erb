@@ -1,0 +1,9 @@
+<%# locals: (item:, current:) %>
+<% entry = item.entry %>
+<%= tag.li class: "c-scanpane__item", aria: { current: ("true" if current) }, data: { selection_target: "item" } do %>
+  <% if (image = catalog_url(entry.image_url)) %>
+    <%= image_tag image, alt: "#{entry.display_name}, #{entry.set.name}, #{set_number(entry)}", loading: "lazy", width: 206, height: 288 %>
+  <% else %>
+    <div class="c-scanpane__missing"><strong><%= entry.display_name %></strong><span><%= set_number(entry) %></span></div>
+  <% end %>
+<% end %>

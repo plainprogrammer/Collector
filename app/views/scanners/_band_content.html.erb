@@ -1,0 +1,3 @@
+<%# locals: (band:, tail:) %>
+<%# The band's icon and sentence, then the visually hidden tail naming the centred card (spec 088 decision 8). %>
+<%= render "icons/#{band.icon}" %><span><%= band.sentence %><span class="c-sr"><%= band.sentence.end_with?(".") ? " " : ". " %><%= tail %></span></span>

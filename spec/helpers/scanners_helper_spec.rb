@@ -1,29 +1,41 @@
 require "rails_helper"
 
 RSpec.describe ScannersHelper, type: :helper do
-  let(:reading_class) { Data.define(:art_status, :overruled, :overruled_scope) }
+  describe "the selection's sentences (spec 088 decision 8)" do
+    let(:entries) do
+      identity = create(:catalog_identity, name: "Lightning Bolt")
+      [ [ "mom", "123", "March of the Machine" ], [ "2x2", "117", "Double Masters 2022" ] ].map do |code, number, set_name|
+        set = create(:catalog_set, code:, name: set_name)
+        create(:mtg_printing, entry: create(:catalog_entry, identity:, name: identity.name, set:, number:)).entry
+      end
+    end
+    let(:printings) { selection(:printings, 14) }
+    let(:cards) { selection(:cards, 3) }
 
-  def reading(art_status, overruled = nil, overruled_scope = nil) = reading_class.new(art_status, overruled, overruled_scope)
+    def selection(kind, total)
+      band = Scanner::Selection::BANDS.fetch(:collector_line)
+      items = entries.map { Scanner::Selection::Item.new(entry: it, rank: nil, band:, state: :guess) }
+      Scanner::Selection.new(kind:, items:, total:, current: 0, limit: 20, key: "f" * 32)
+    end
 
-  it "names the artwork's outcome for a reading sent with artworks, and nothing otherwise (AC-7.1)", :aggregate_failures do
-    expect(%i[matched similar no_match].map { helper.scanner_art_outcome(reading(it)) }).to eq([ "Matched", "Looks similar", "No match" ])
-    expect(helper.scanner_art_outcome(reading(nil))).to be_nil
-  end
 
-  it "says what confident art overruled, the name or the collector line, and whether the card or the printing (AC-7.4)" do
-    notes = [ %i[name card], %i[name printing], %i[collector_line card], %i[collector_line printing] ]
-      .map { |overruled, scope| helper.scanner_overrule_note(reading(:matched, overruled, scope)) }
+    describe "#selection_tail" do
+      it "names the centred printing or card so the band's text changes with every swipe", :aggregate_failures do
+        expect(helper.selection_tail(printings, 1)).to eq("Printing 2 of 14: Lightning Bolt, Double Masters 2022, 2X2 · 117.")
+        expect(helper.selection_tail(cards, 0)).to eq("Card 1 of 3: Lightning Bolt, March of the Machine, MOM · 123.")
+      end
 
-    expect(notes).to eq([
-      "The artwork matches a different card from the one the name suggests. The artwork's match is first.",
-      "The artwork matches a different printing from the one the name suggests. The artwork's match is first.",
-      "The artwork matches a different card from the one the collector line suggests. The artwork's match is first.",
-      "The artwork matches a different printing from the one the collector line suggests. The artwork's match is first."
-    ])
-  end
+      it "says what the more item offers" do
+        expect(helper.selection_tail(printings, 2)).to eq("12 more printings. Show 20 more.")
+      end
+    end
 
-  it "has no note when art overruled nothing" do
-    expect(helper.scanner_overrule_note(reading(:matched))).to be_nil
+    describe "#selection_position" do
+      it "is the details block's position in words", :aggregate_failures do
+        expect(helper.selection_position(printings, 1)).to eq("2 of 14 printings")
+        expect(helper.selection_position(cards, 0)).to eq("1 of 3 possible cards")
+      end
+    end
   end
 
   describe "the condition in the sitting's copy (spec 042 decision 3)" do

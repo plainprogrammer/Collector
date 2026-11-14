@@ -1,0 +1,23 @@
+<%# locals: (selection:, focus: false) %>
+<%# The selection (spec 088 decisions 3, 4, 15): the swipe row of card images and one panel per image, as one Turbo Frame the server
+    renders whole; the `selection` controller notes which is centred. `focus` (a frame request) asks it to put focus on Next. %>
+<%= turbo_frame_tag "scanner_selection", class: "c-scanpane__body" do %>
+  <% cards = selection.kind == :cards %>
+  <div class="c-scanpane__rowwrap" role="group" aria-label="<%= cards ? "Possible cards" : "Printings" %>">
+    <%= tag.ul class: "c-scanpane__row", tabindex: 0,
+          data: { selection_target: "row", selection_focus: (focus || nil), action: "scroll->selection#scrolled keydown->selection#key click->selection#tap" } do %>
+      <% selection.items.each_with_index do |item, index| %>
+        <%= render "scanners/item", item:, current: index == selection.current %>
+      <% end %>
+      <%= render("scanners/more_item", selection:) if selection.more? %>
+    <% end %>
+    <%= tag.button type: "button", class: "c-btn c-btn--secondary c-scanpane__nav c-scanpane__nav--prev", "aria-label": (cards ? "Previous card" : "Previous printing"),
+          disabled: selection.current.zero?, data: { selection_target: "prev", action: "selection#previous" } do %><%= render "icons/back" %><% end %>
+    <%= tag.button type: "button", class: "c-btn c-btn--secondary c-scanpane__nav c-scanpane__nav--next", "aria-label": (cards ? "Next card" : "Next printing"),
+          disabled: selection.current == selection.count - 1, data: { selection_target: "next", action: "selection#next" } do %><%= render "icons/chevron_right" %><% end %>
+  </div>
+  <% selection.items.each_with_index do |item, index| %>
+    <%= render "scanners/panel", selection:, item:, index: %>
+  <% end %>
+  <%= render("scanners/more_panel", selection:) if selection.more? %>
+<% end %>
