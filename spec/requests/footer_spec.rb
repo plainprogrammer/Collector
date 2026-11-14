@@ -80,7 +80,7 @@ RSpec.describe "The footer", type: :request do
 
     it "is left out of an answer that isn't a page (AC-1.8)", :aggregate_failures do
       printings = scanner_printings_path(card: lot.entry.identity.external_key, key: "c" * 32)
-      get printings, headers: { "Turbo-Frame" => "scanner_printings" }
+      get printings, headers: { "Turbo-Frame" => "scanner_selection" }
       expect(response.body).to include("<turbo-frame")
       expect(footers).to be_empty
 

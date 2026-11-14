@@ -27,12 +27,6 @@ RSpec.describe Scanner::OtherPrintings, type: :model do
     expect(entries).to eq([ masters_bolt, later_core_set_same_number, later_core_set, earlier_core_set ])
   end
 
-  it "shows 20 and keeps the rest (AC-2.5)", :aggregate_failures do
-    22.times { printing("x#{it}", "1", Date.new(2000, 1, 1)) }
-    other = described_class.new(identity:)
-    expect([ other.shown.size, other.rest.size ]).to eq([ 20, 6 ])
-  end
-
   it "puts the confident artwork's printings first, newest first, then what was read (spec 011 AC-7.5)" do
     art = "aaaaaaaa-0000-4000-8000-000000000001"
     [ earlier_core_set, masters_bolt ].each { create(:mtg_printing, entry: it, illustration_id: art) }

@@ -4,6 +4,8 @@
 # before "Done", which discards the entries. Medians here are conventional: the mean of the middle two for an even count.
 class Collector::ScannerFindings::SittingReport
   KINDS = [ "right first time", "right after a correction", "wrong", "not added" ].freeze
+  # "Other printings" is rank "other" in an add event: a printing of the selection row other than the matched one (spec 088 keeps the
+  # rank, so the report reads the same as before the pane).
   CORRECTIONS = [ "a candidate other than the first", "Other printings", "Undo and re-add", "details edited" ].freeze
 
   Outcome = Data.define(:file, :truth, :entry, :finish, :corrections, :scans, :name_text, :collector_text) do
