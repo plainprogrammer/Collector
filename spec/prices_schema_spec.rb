@@ -33,19 +33,28 @@ RSpec.describe "the prices schema keeps WITHOUT ROWID (spec 081 AC-2.1 to AC-2.3
   end
 
   # A database built only by running db/prices_migrate's migrations, in a child Ruby process with Active Record alone.
-  def migrated_database
-    path = Pathname(Dir.mktmpdir("prices-migrated")).join("prices.sqlite3")
+  # `through` stops at a version (nil: all); `path` continues a database already begun.
+  def migrated_database(through: nil, path: nil)
+    path ||= Pathname(Dir.mktmpdir("prices-migrated")).join("prices.sqlite3")
     script = <<~RUBY
       require "bundler/setup"
       require "active_record"
       ActiveRecord::Base.establish_connection(adapter: "sqlite3", database: ARGV[0])
       ActiveRecord::Migration.verbose = false
-      ActiveRecord::MigrationContext.new(ARGV[1]).migrate
+      target = ARGV[2].to_s.empty? ? nil : ARGV[2].to_i
+      ActiveRecord::MigrationContext.new(ARGV[1]).migrate(target)
     RUBY
-    _out, err, status = Open3.capture3(RbConfig.ruby, "-e", script, path.to_s, Rails.root.join("db/prices_migrate").to_s, chdir: Rails.root.to_s)
+    _out, err, status = Open3.capture3(RbConfig.ruby, "-e", script, path.to_s, Rails.root.join("db/prices_migrate").to_s, through.to_s, chdir: Rails.root.to_s)
     raise "migrating failed: #{err}" unless status.success?
 
     path
+  end
+
+  def execute_in(path, sql)
+    database = SQLite3::Database.new(path.to_s)
+    database.execute(sql)
+  ensure
+    database&.close
   end
 
   def master_of(path)
@@ -76,5 +85,52 @@ RSpec.describe "the prices schema keeps WITHOUT ROWID (spec 081 AC-2.1 to AC-2.3
              [ "price_changes", "table", 'CREATE TABLE "price_changes" ("a" integer, PRIMARY KEY ("a")) WITHOUT ROWID /*application=\'Collector\'*/' ] ]
 
     expect(rowid_problems(definitions(rows))).to eq([ "current_prices: isn't WITHOUT ROWID; #{advice}" ])
+  end
+
+  context "with spec 089's migration (AC-5.2, AC-1.9)" do
+    let(:released) { "20261113100001" }
+    let(:count_columns) { %w[quotes_seen unchanged changed added removed removals_withheld unknown_printings malformed] }
+
+    def columns_of(path)
+      execute_in(path, "PRAGMA table_info(price_refresh_runs)").to_h { |_cid, name, type, notnull, default, _pk| [ name, { type:, notnull:, default: } ] }
+    end
+
+    it "keeps a run row of a database migrated as main has it, and its table's check, key and index", :aggregate_failures do
+      path = migrated_database(through: released)
+      execute_in(path, "INSERT INTO price_sources (key, name, attribution, created_at, updated_at) VALUES ('s', 'S', 'a', '2026-11-13', '2026-11-13')")
+      execute_in(path, "INSERT INTO price_refresh_runs (price_source_id, run_on, status, started_at, created_at, updated_at) VALUES (1, '2026-11-12', 'finished', '2026-11-12 10:00:00', '2026-11-12', '2026-11-12')")
+
+      migrated_database(path:)
+      columns = columns_of(path)
+      master = execute_in(path, "SELECT name, sql FROM sqlite_master").to_h
+
+      expect(execute_in(path, "SELECT run_on, quotes_seen, job_id FROM price_refresh_runs")).to eq([ [ "2026-11-12", 0, nil ] ])
+      expect(columns["run_on"][:notnull]).to eq(0)
+      expect(columns.keys).to include("job_id", "languages", *count_columns)
+      expect(count_columns.map { |name| columns[name].values_at(:notnull, :default) }.uniq).to eq([ [ 1, "0" ] ])
+      expect(master["price_refresh_runs"]).to include("price_refresh_runs_status_known", "REFERENCES \"price_sources\"")
+      expect(master).to have_key("index_price_refresh_runs_on_price_source_id_and_run_on")
+      expect(rowid_problems(definitions(master_of(path)))).to be_empty
+    end
+
+    it "accepts a run with no date and refuses an unknown status", :aggregate_failures do
+      path = migrated_database
+      execute_in(path, "INSERT INTO price_sources (key, name, attribution, created_at, updated_at) VALUES ('s', 'S', 'a', '2026-11-13', '2026-11-13')")
+
+      expect { execute_in(path, "INSERT INTO price_refresh_runs (price_source_id, status, started_at, created_at, updated_at) VALUES (1, 'skipped', '2026-11-13', '2026-11-13', '2026-11-13')") }.not_to raise_error
+      expect { execute_in(path, "INSERT INTO price_refresh_runs (price_source_id, status, started_at, created_at, updated_at) VALUES (1, 'bogus', '2026-11-13', '2026-11-13', '2026-11-13')") }.to raise_error(SQLite3::ConstraintException)
+    end
+
+    it "goes down without losing a row: a nil run_on takes the date of started_at", :aggregate_failures do
+      path = migrated_database
+      execute_in(path, "INSERT INTO price_sources (key, name, attribution, created_at, updated_at) VALUES ('s', 'S', 'a', '2026-11-13', '2026-11-13')")
+      execute_in(path, "INSERT INTO price_refresh_runs (price_source_id, status, started_at, created_at, updated_at) VALUES (1, 'skipped', '2026-11-13 09:00:00', '2026-11-13', '2026-11-13')")
+
+      migrated_database(through: released, path:)
+
+      expect(execute_in(path, "SELECT run_on FROM price_refresh_runs")).to eq([ [ "2026-11-13" ] ])
+      expect(columns_of(path)["run_on"][:notnull]).to eq(1)
+      expect(columns_of(path).keys).not_to include("job_id", "quotes_seen")
+    end
   end
 end

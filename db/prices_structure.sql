@@ -18,11 +18,12 @@ FOREIGN KEY ("price_source_id")
 FOREIGN KEY ("price_series_id")
   REFERENCES "price_series" ("id")
  ON DELETE RESTRICT, CONSTRAINT price_changes_cents_non_negative CHECK (cents IS NULL OR cents >= 0)) WITHOUT ROWID /*application='Collector'*/;
-CREATE TABLE "price_refresh_runs" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "price_source_id" integer NOT NULL, "run_on" date NOT NULL, "source_version" varchar, "status" varchar NOT NULL, "error" text, "started_at" datetime(6) NOT NULL, "finished_at" datetime(6), "created_at" datetime(6) NOT NULL, "updated_at" datetime(6) NOT NULL, CONSTRAINT "fk_rails_c95c78b8b6"
+CREATE TABLE "price_refresh_runs" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "price_source_id" integer NOT NULL, "run_on" date, "source_version" varchar, "status" varchar NOT NULL, "error" text, "started_at" datetime(6) NOT NULL, "finished_at" datetime(6), "created_at" datetime(6) NOT NULL, "updated_at" datetime(6) NOT NULL, "job_id" varchar, "languages" varchar, "quotes_seen" integer DEFAULT 0 NOT NULL, "unchanged" integer DEFAULT 0 NOT NULL, "changed" integer DEFAULT 0 NOT NULL, "added" integer DEFAULT 0 NOT NULL, "removed" integer DEFAULT 0 NOT NULL, "removals_withheld" integer DEFAULT 0 NOT NULL, "unknown_printings" integer DEFAULT 0 NOT NULL, "malformed" integer DEFAULT 0 NOT NULL, CONSTRAINT "fk_rails_c95c78b8b6"
 FOREIGN KEY ("price_source_id")
   REFERENCES "price_sources" ("id")
  ON DELETE RESTRICT, CONSTRAINT price_refresh_runs_status_known CHECK (status IN ('running', 'finished', 'skipped', 'failed')));
 CREATE INDEX "index_price_refresh_runs_on_price_source_id_and_run_on" ON "price_refresh_runs" ("price_source_id", "run_on") /*application='Collector'*/;
 INSERT INTO "schema_migrations" (version) VALUES
+('20261113190001'),
 ('20261113100001');
 
