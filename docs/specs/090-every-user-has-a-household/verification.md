@@ -74,6 +74,8 @@ So the two tiers held on the real database the v0.3.0 seed leaves (two users, tw
 
 **Second run, on the merged commit.** After spec 089's merge (two prices-database migrations, `db/prices_structure.sql`) the same run on `60951eec3404c0bbefee752ecaced6cd68c579ec` (the commit that is pushed), with the current image rebuilt from it: all 28 old tables `same` after the upgrade; **`households: ok (backfilled)`** after the upgraded and again after the restored snapshot; the prices line reads `schema 20261113190002`; the backup leg's `expected:` rows are the same four (`sessions` and the three bulk tables); `OK: v0.3.0 (collector@sha256:61834f698f57…) upgraded to 60951eec3404; 28 tables compared, behaviour verified, 62 s`. On the same tree `bin/rails db:prepare` and 325 targeted examples passed (`spec/script/upgrade`, the backup guards and upgrade, `spec/models/prices_record_spec.rb`, `spec/prices_core_spec.rb`, `spec/migrations`, the household model and request specs, the export guard): 0 failures, seed 6927.
 
+**Third merge (docs only).** `origin/main` at ad9c76cd (the retirement of spec 089's plan, PR #427) touched only the specs index and two area docs' distillation logs; the merge `386b9942` conflicted only on the index (both rows kept). No code, migration, schema or `script/upgrade/` file changed, so the smoke was not run again; the second run above, on `60951eec`, is the proof for the code that ships.
+
 ### The full `bin/ci`
 
 To be recorded with the CI run of the push.
