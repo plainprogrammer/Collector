@@ -1,7 +1,7 @@
 # Feature 089: Prices Refresh Once a Day, and Each Change Is Recorded Once
 
-**Status:** Draft, after two Mode A review rounds (Fable 5.2); for Gate A. The maintainer ruled decisions 1 to 4 as recommended on 2026-11-13 (relayed by the coordinator)
-**Version:** 0.4.0
+**Status:** Approved by the coordinator under the maintainer's delegation (2026-11-13), after two Mode A review rounds (Fable 5.2). The maintainer ruled decisions 1 to 4 as recommended on 2026-11-13 (relayed by the coordinator)
+**Version:** 0.4.1
 **Created:** 2026-11-13
 **Last Updated:** 2026-11-13
 **Branch:** `089-daily-price-refresh`
@@ -15,6 +15,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.4.1 | 2026-11-13 | Approved (Gate A). Status line only (PATCH) |
 | 0.4.0 | 2026-11-13 | Review round 2 fixes (listed in the 0.3.0 row's second half); not re-reviewed (two rounds is the limit) |
 | 0.3.0 | 2026-11-13 | Review round 1 (Fable 5.2): `run_on` becomes nullable and `job_id` is added (a run opens before its file's date is known); stale partial downloads are pruned; a removal batch is atomic; errors and their fates are one table, with no `discard_on` (a guard failure shows under Failed on `/admin/jobs`); the older-file guard counts finished and failed runs (a failed run may have written rows); `quotes_seen` counts known printings only; constants have values; duplicate quotes and an undeclared series are decided; ACs added for the uncovered rules; AC-4.4 and AC-4.5 rebuilt so they can be written; the index row. Review round 2 (Fable 5.2): the source is looked up and synced before a run exists; "at least one quote" is any `Quote` yielded; the ceiling is two-phase and needs ten candidates in examples; counts are tallied after commit; a catch-all row and the no-discard rationale in the errors table; the download-size error is retried; stale partials by mtime; `#download` must tolerate concurrent calls (the catalog contract's comment); `down` of the migration; AC wording (MINOR) |
 | 0.2.0 | 2026-11-13 | The maintainer's rulings on decisions 1 to 4 recorded (as recommended); decision 4's ceiling is a named constant documented as a guess until #366 measures it; the supersession of spec 002 FR-3's partial-file wording is named (MINOR) |
