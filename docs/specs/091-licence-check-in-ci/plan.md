@@ -1,7 +1,7 @@
 # Implementation Plan: CI Fails on a Dependency Whose Licence Isn't Allowed (spec 091, issue #402)
 
 **Spec:** `docs/specs/091-licence-check-in-ci/spec.md` (Approved v0.5.0) · **ADR:** [0031](../../adr/0031-a-dependency-licence-is-a-decision.md) (Proposed) · **Issue:** #402 · **Branch:** `091-licence-check-in-ci` · **Created:** 2026-11-13
-**Status:** Draft, for Gate B. Written by my main session; plan review round 1 (Fable, read-only): APPROVE WITH CHANGES (0 blocking, 3 major, 8 minor), all fixed in this version.
+**Status:** Approved (Gate B, 2026-11-13, the coordinator under the maintainer's delegation, no second plan round). Written by my main session; plan review round 1 (Fable, read-only): APPROVE WITH CHANGES (0 blocking, 3 major, 8 minor), all fixed in this version.
 
 ## Context
 
@@ -481,7 +481,11 @@ No code test (AC-3.4 is verified by reading; T2.3's run proves it judges). The f
 # A component with several licences passes if any one is allowed. A licence is compared exactly as an SPDX id: "MIT License"
 # or an expression in one string fails. An exception names a gem, the licences it was reviewed under (a set) and a reason; it
 # goes stale, and fails the check, when the lockfile no longer names the gem, the gem declares other licences, or the gem is
-# allowed without it. `all_required: true` marks a gem whose list of licences is not a choice, so every one must be allowed.
+# allowed without it. `all_required: true` marks a gem whose list of licences is not a choice, so every one must be allowed. Why
+# it exists: a gem such as vcr declares Hippocratic-2.1 and MIT, and the rule "any one allowed" would pass it on MIT, so an
+# ordinary exception for it would read as stale (the gem is allowed without it). With `all_required` the gem fails without the
+# exception, the exception is what lets it through, and it goes stale only when every one of the gem's licences is allowed.
+# Copy this form only for a gem whose declared alternatives you do not trust; an ordinary exception is for a gem that fails.
 
 allowed:
   - { id: MIT, reason: "Permissive, notice only: the copyright line and licence text travel with the copies, which the third-party licences page carries (spec 087)" }
@@ -717,7 +721,7 @@ Add to `exceptions:` in `config/licence_policy.yml`:
   - gem: vcr
     licences: [Hippocratic-2.1, MIT]
     all_required: true
-    reason: "A test recorder the application never loads. It declares Hippocratic-2.1 and MIT, ships no licence file, and issue #408 calls it Hippocratic-2.1, so its declared MIT is not trusted: it passes by name, and the exception goes stale if it ever declares only allowed licences"
+    reason: "A test recorder the application never loads. It declares Hippocratic-2.1 and MIT, ships no licence file, and issue #408 calls it Hippocratic-2.1, so its declared MIT is not trusted. all_required is why this is an exception at all: without it the gem would pass on its MIT and this entry would read as stale. It goes stale only when every licence it declares is allowed"
 ```
 Evidence (no new spec: AC-3.4 is read-and-record): `bin/ci checks` stays green with the entry (the step judges `vcr` by name); with the entry removed, `spec/lib/.../policy_spec.rb`'s `all_required` examples already prove the form, and a local run would then pass `vcr` as `MIT`. Commit `feat(licences): vcr is let through by name, its declared MIT not trusted (#402)`.
 
