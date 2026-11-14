@@ -1,7 +1,8 @@
 require "rails_helper"
 
 # Spec 082 Story 4 and AC-3.1: a capture freezes on its frame, its result fills the stage in the pane, and "Scan again" returns
-# to the camera; the guide the page draws is the one the crop uses.
+# to the camera; the guide the page draws is the one the crop uses. The result is spec 088's selection pane; what it shows is in
+# scanner_selection_spec.rb.
 RSpec.describe "A result in the pane", type: :system do
   before do
     identity = create(:catalog_identity, name: "Lightning Bolt")
@@ -11,6 +12,12 @@ RSpec.describe "A result in the pane", type: :system do
     Catalog::NameIndex.new("mtg").rebuild
     system_sign_in_as(create(:user))
   end
+
+  # The centred card's panel, the one a result's selection leaves showing (spec 088 decision 3).
+  def card = ".c-scanpane__card:not([hidden])"
+
+  # The pane's hidden "Done." sentence: written once the pane shows, and only when the band holds text (spec 088 decision 11).
+  def have_done_sentence = have_css("#status .c-sr", text: /\ADone\. /, visible: :all, wait: 30)
 
   def guide_and_rule
     page.evaluate_async_script(<<~JS)
@@ -33,8 +40,8 @@ RSpec.describe "A result in the pane", type: :system do
       expect(measured["rule"]).to eq([ 15, 127, 360, 502 ])
       show_synthetic_card
       click_on "Capture"
-      expect(page).to have_css(".c-scanner__candidate", text: "Lightning Bolt", wait: 30)
-      expect(first(".c-scanner__candidate")).to have_text("Matched by its collector line")
+      expect(page).to have_css("#{card} .c-scanpane__name", text: "Lightning Bolt", wait: 30)
+      expect(find("#scanner_band")).to have_text("Matched by its collector line")
     end
   end
 
@@ -74,8 +81,8 @@ RSpec.describe "A result in the pane", type: :system do
     expect(page).to have_button("Capture", disabled: true)
     eventually("typeof window.__release === 'function'", wait: 30) # the held request is made once the OCR has run (slower on CI)
     page.execute_script("window.__release()")
-    expect(page).to have_css(".c-scan.c-scan--result .c-scanpane__results #scanner_result .c-scanner__candidate", text: "Lightning Bolt", wait: 30)
-    expect(page).to have_css("#status", text: "Done. What the scanner read and its candidates are showing.")
+    expect(page).to have_css(".c-scan.c-scan--result #scanner_result #{card} .c-scanpane__name", text: "Lightning Bolt", wait: 30)
+    expect(page).to have_done_sentence
     expect(page).to have_css(".c-scan__line--status[hidden]", visible: :all)
     expect(page.evaluate_script("document.getElementById('scanner_status_text').textContent")).to eq("") # AC-4.2: emptied, so the next sentence is announced
     expect(page).to have_button("Scan again", class: "c-btn--secondary")
@@ -86,7 +93,7 @@ RSpec.describe "A result in the pane", type: :system do
     visit scanner_path
     show_synthetic_card
     click_on "Capture"
-    expect(page).to have_css(".c-scanner__candidate", wait: 30)
+    expect(page).to have_css(card, wait: 30)
     sent = scanner_sent.size
     click_on "Scan again"
     expect(page).to have_no_css(".c-scan--result")
@@ -97,29 +104,14 @@ RSpec.describe "A result in the pane", type: :system do
     expect(scanner_sent.size).to eq(sent)
   end
 
-  [ [ 390, 844 ], [ 360, 640 ], [ 360, 560 ] ].each do |width, height|
-    it "scrolls a long result inside the pane at #{width} × #{height}, the document still (AC-4.3, AC-1.2)", :aggregate_failures do
-      open_scanner_frame(width:, height:)
-      within_narrow_frame do
-        show_synthetic_card
-        click_on "Capture"
-        expect(page).to have_css(".c-scanner__candidate", wait: 30)
-        click_on "Other printings"
-        expect(page).to have_css("#scanner_printings li", minimum: 1, wait: 10)
-        scrolled = page.evaluate_script("(() => { const body = document.querySelector('.c-scanpane__results'); body.scrollTop = body.scrollHeight; return body.scrollTop })()")
-        expect(scrolled).to be > 0 if height < 700 # the short screens' pane overflows; the tall one may fit it all
-        expect_one_screen(height) # the bars stay at the viewport's edges while the pane is scrolled to its end
-      end
-    end
-  end
-
-  it "shows a send failure in the pane, and Scan again discards it (AC-4.5)", :aggregate_failures do
+  it "shows a send failure in the pane, and Scan again discards it (AC-1.4)", :aggregate_failures do
     visit scanner_path
     show_synthetic_card
     page.driver.browser.manage.delete_cookie("session_id")
     click_on "Capture"
     expect(page).to have_css(".c-scan--result #status", text: "Your session has ended", wait: 30)
     expect(page).to have_link("Sign in")
+    expect(page).to have_no_css(".c-scanpane__card", visible: :all)
     click_on "Scan again"
     expect(page).to have_no_css(".c-scan--result")
     expect(page).to have_no_link("Sign in")
@@ -151,18 +143,20 @@ RSpec.describe "A result in the pane", type: :system do
   def failure_block = find(".c-scanner__failure", visible: true)
 
   %w[network server].each do |kind|
-    it "shows a #{kind} failure in the pane with what was read and Send again, which sends again (AC-4.5)", :aggregate_failures do
+    it "shows a #{kind} failure in the pane with what was read and Send again, which sends again (AC-1.4)", :aggregate_failures do
       visit scanner_path
       show_synthetic_card
       fail_readings(kind)
       click_on "Capture"
       expect(page).to have_css(".c-scan--result #status", text: kind == "network" ? "The text couldn't be sent" : "The scanner had a problem with that card", wait: 30)
-      expect(failure_block).to have_css("dd", text: /bolt/i).and have_text("Collector line").and have_button("Send again")
+      expect(page).to have_css(".c-scan__read-label", text: "Read from the card").and have_css(".c-scan__read-name", text: /bolt/i)
+      expect(page).to have_no_css(".c-scan__read-line", text: "nothing read")
+      expect(page).to have_no_css(".c-scanpane__card", visible: :all)
+      expect(failure_block).to have_button("Send again")
       expect(failure_block).to have_no_link("Sign in")
-      expect(failure_block).to have_no_css("dd", text: "Nothing read")
       restore_readings
       click_on "Send again"
-      expect(page).to have_css(".c-scan--result .c-scanner__candidate", text: "Lightning Bolt", wait: 30)
+      expect(page).to have_css(".c-scan--result #{card} .c-scanpane__name", text: "Lightning Bolt", wait: 30)
       expect(page).to have_no_css(".c-scanner__failure", visible: true)
     end
   end
@@ -188,29 +182,40 @@ RSpec.describe "A result in the pane", type: :system do
     click_on "Capture"
   end
 
-  def expect_pane_sentence_then_camera(text)
-    expect(page).to have_css(".c-scan--result", text:, wait: 30)
-    expect(page).to have_no_css(".c-scanner__candidate")
+  # Nothing read and no match are the status line's sentence with no pane, the camera live behind it (spec 088 decision 11).
+  def expect_status_sentence(text)
+    expect(page).to have_css("#scanner_status_text", text:, wait: 30)
+    expect(page).to have_no_css(".c-scan--result")
+    expect(page).to have_no_css(".c-scanpane__card", visible: :all)
+    expect(page).to have_css("canvas.c-scan__frozen[hidden]", visible: :all)
+    expect(page).to have_button("Capture", disabled: false)
+  end
+
+  # A refusal that opens the pane is a visible alert in its region with the result empty; Scan again returns to the camera.
+  def expect_pane_alert_then_camera(text)
+    expect(page).to have_css(".c-scan--result #status .c-status__message--alert", text:, wait: 30)
+    expect(page).to have_css(".c-scan__read-name", text: "Lightning Bolt")
+    expect(page).to have_no_css(".c-scanpane__card", visible: :all)
     click_on "Scan again"
     expect(page).to have_no_css(".c-scan--result")
     expect(page).to have_button("Capture", disabled: false)
     expect(page).to have_css("#scanner_status_text", text: "Ready. Line the card up with the guide")
   end
 
-  it "says nothing could be read in the pane, and Scan again returns to the camera (AC-4.6)" do
+  it "says nothing could be read on the status line, with no pane (AC-6.1)", :aggregate_failures do
     capture_card_reading(name: "", lines: [ "", "" ])
-    expect_pane_sentence_then_camera("Nothing could be read")
+    expect_status_sentence("Nothing could be read")
   end
 
-  it "says no card matches what was read, and Scan again returns to the camera (AC-4.6)" do
+  it "says no card matches what was read on the status line, with no pane (AC-6.1)", :aggregate_failures do
     capture_card_reading(name: "Zzyzx Quuxwhistle", lines: [ "R 9999", "ZZZ • EN" ])
-    expect_pane_sentence_then_camera("No card matches what was read")
+    expect_status_sentence("No card matches what was read")
   end
 
-  it "says the catalog isn't ready, and Scan again returns to the camera (AC-4.6)" do
+  it "says the catalog isn't ready in the pane, and Scan again returns to the camera (AC-6.2)", :aggregate_failures do
     Catalog::Name.delete_all # the name index a refresh fills is empty
     capture_card_reading(name: "Lightning Bolt", lines: [ "R 0123", "MOM • EN" ])
-    expect_pane_sentence_then_camera("The card catalog isn't ready yet")
+    expect_pane_alert_then_camera("The card catalog isn't ready yet")
   end
 
   it "says the card couldn't be read and returns to the camera when reading throws (AC-4.10)", :aggregate_failures do
@@ -230,25 +235,25 @@ RSpec.describe "A result in the pane", type: :system do
     eventually("!document.querySelector('#scanner_destination_sheet [data-card-reader-target=picker]').disabled", wait: 30)
     pick_synthetic_photo(input: "#scanner_destination_sheet [data-card-reader-target=picker]")
     expect(page).to have_no_css("dialog[open]")
-    expect(page).to have_css(".c-scan--result .c-scanner__candidate", text: "Lightning Bolt", wait: 30)
+    expect(page).to have_css(".c-scan--result #{card} .c-scanpane__name", text: "Lightning Bolt", wait: 30)
   end
 
   it "clears the shown result and its frozen frame when a photo is picked, the new reading keeping the status line (decision 13)", :aggregate_failures do
     visit scanner_path
     show_synthetic_card
     click_on "Capture"
-    expect(page).to have_css(".c-scan--result .c-scanner__candidate", wait: 30)
+    expect(page).to have_css(".c-scan--result #{card}", wait: 30)
     open_destination
     eventually("!document.querySelector('#scanner_destination_sheet [data-card-reader-target=picker]').disabled", wait: 30)
     hold_readings
     pick_synthetic_photo(input: "#scanner_destination_sheet [data-card-reader-target=picker]")
     expect(page).to have_css("#scanner_status_text", text: "Reading the card…")
-    expect(page).to have_no_css(".c-scanner__candidate")
+    expect(page).to have_no_css(".c-scanpane__card", visible: :all)
     expect(page).to have_css("canvas.c-scan__frozen[hidden]", visible: :all)
     expect(page.evaluate_script("document.getElementById('status').textContent")).to eq("")
     eventually("typeof window.__release === 'function'", wait: 30)
     page.execute_script("window.__release()")
-    expect(page).to have_css(".c-scan--result .c-scanner__candidate", text: "Lightning Bolt", wait: 30)
+    expect(page).to have_css(".c-scan--result #{card} .c-scanpane__name", text: "Lightning Bolt", wait: 30)
   end
 
   it "returns to the camera-unavailable notice on Scan again after a photo (AC-4.9)", :aggregate_failures do
@@ -258,7 +263,7 @@ RSpec.describe "A result in the pane", type: :system do
     expect(page).to have_css(".c-scan__notice:not([hidden])", text: "Use a photo", wait: 30)
     eventually("!document.querySelector('[data-card-reader-target=picker]').disabled", wait: 30)
     pick_synthetic_photo
-    expect(page).to have_css(".c-scan--result .c-scanner__candidate", wait: 30)
+    expect(page).to have_css(".c-scan--result #{card}", wait: 30)
     click_on "Scan again"
     expect(page).to have_no_css(".c-scan--result")
     expect(page).to have_css(".c-scan__notice:not([hidden])", text: "Use a photo")
