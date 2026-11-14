@@ -140,6 +140,23 @@ RSpec.describe "A result in the pane", type: :system do
 
   def restore_readings = page.execute_script("window.fetch = window.__readings")
 
+  # What Send again's answer leaves: the selection, no failure block, the strip's texts as read and a pane that never closed.
+  def expect_answer_under_the_failure
+    expect(page).to have_css(".c-scan--result #{card} .c-scanpane__name", text: "Lightning Bolt", wait: 30)
+    expect(page).to have_no_css(".c-scanner__failure", visible: true)
+    expect(page).to have_css(".c-scan__read-name", text: /bolt/i).and have_css(".c-scan__read-line", text: /mom/i)
+    expect(page.evaluate_script("window.__paneClosed")).to be(false)
+  end
+
+  # Records in `window.__paneClosed` whether the shell ever lost `c-scan--result` from now on (a pane that closes and reopens).
+  def watch_pane_close
+    page.execute_script(<<~JS)
+      const shell = document.querySelector(".c-scan")
+      window.__paneClosed = false
+      new MutationObserver(() => { if (!shell.classList.contains("c-scan--result")) window.__paneClosed = true }).observe(shell, { attributes: true, attributeFilter: [ "class" ] })
+    JS
+  end
+
   def failure_block = find(".c-scanner__failure", visible: true)
 
   %w[network server].each do |kind|
@@ -155,9 +172,9 @@ RSpec.describe "A result in the pane", type: :system do
       expect(failure_block).to have_button("Send again")
       expect(failure_block).to have_no_link("Sign in")
       restore_readings
+      watch_pane_close
       click_on "Send again"
-      expect(page).to have_css(".c-scan--result #{card} .c-scanpane__name", text: "Lightning Bolt", wait: 30)
-      expect(page).to have_no_css(".c-scanner__failure", visible: true)
+      expect_answer_under_the_failure
     end
   end
 

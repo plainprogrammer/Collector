@@ -234,8 +234,11 @@ export default class extends Controller {
 
   // Sends the text, the reading key (spec 009 FR-5) and a live capture's nearest artworks (spec 011 FR-5), never the
   // outline, timings or a fingerprint; true when the answer was shown.
+  //
+  // The failure block (and so the pane) stays shown while a resend is in flight and is hidden in the same render as the answer
+  // (`hideFailureWith`): hiding it first would empty the shell's result state for the answer's two frames, and `shellChanged`
+  // would clear the strip's texts and close the pane under an answer that is about to reopen it (spec 088 decisions 9, 11).
   async send({ nameText, collectorText, key, artworks }) {
-    this.failureTarget.hidden = true
     const body = new FormData()
     body.append("reading[name_text]", nameText)
     body.append("reading[collector_text]", collectorText)
@@ -253,16 +256,36 @@ export default class extends Controller {
     }
     if (response.type === "opaqueredirect") return this.failed("Your session has ended. Sign in again, then capture the card again.", { signedOut: true })
     if (!response.ok && response.status !== 422) return this.failed("The scanner had a problem with that card. Send it again.", { signedOut: false })
-    Turbo.renderStreamMessage(await response.text())
-    return this.opened()
+    const text = await response.text()
+    const hideFailure = this.hideFailureWith()
+    document.addEventListener("turbo:before-stream-render", hideFailure)
+    try {
+      Turbo.renderStreamMessage(text)
+      return await this.opened()
+    } finally {
+      document.removeEventListener("turbo:before-stream-render", hideFailure)
+      this.failureTarget.hidden = true
+    }
+  }
+
+  // A `turbo:before-stream-render` listener that wraps the stream's render so the failure block hides in the same task as the
+  // answer's DOM change: the shell's observer then sees one state, never "no result" in between.
+  hideFailureWith() {
+    return (event) => {
+      const render = event.detail.render
+      event.detail.render = (stream) => {
+        this.failureTarget.hidden = true
+        return render(stream)
+      }
+    }
   }
 
   // Waits for the answer to land and says what it did (spec 088 decision 11): a selection opens the pane (the band holds its
   // sentence) and says "Done." once, as hidden text; a refusal in the pane is its own alert; "nothing read" or "no match" is the
   // status line's sentence, so the frozen frame goes and no pane opens. Turbo applies a stream after a repaint, so wait for the
-  // pane or for the status line to change, at most about a second.
+  // pane or for the status line to change, at most about a second; after a failure, for the failure block to hide with the answer.
   async opened() {
-    for (let frame = 0; frame < 60 && !this.resultShowing && this.statusTarget.textContent === READING; frame++) await nextFrame()
+    for (let frame = 0; frame < 60 && (!this.failureTarget.hidden || (!this.resultShowing && this.statusTarget.textContent === READING)); frame++) await nextFrame()
     await nextFrame()
     if (!this.resultShowing) {
       this.frozenTarget.hidden = true
