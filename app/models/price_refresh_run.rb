@@ -52,6 +52,8 @@ class PriceRefreshRun < PricesRecord
   # Whether nothing works on this running run any more: its last progress is older than STALL_AFTER, or it carries the
   # starting job's own id (the queue re-ran it after a restart).
   #
+  # @param job_id [String, nil] the Active Job id of the job now starting a run
+  # @param now [Time] the time the stall is measured against
   # @return [Boolean]
   def left_behind?(job_id:, now: Time.current) = updated_at < now - STALL_AFTER || (job_id.present? && self.job_id == job_id)
 
@@ -94,8 +96,10 @@ class PriceRefreshRun < PricesRecord
   # @return [true]
   def progress!(counts) = update!(**counted(counts), updated_at: Time.current)
 
-  # A progress callback for a download (called with bytes done and total): touches the run at most once per
-  # HEARTBEAT_EVERY.
+  # A progress callback for a download: touches the run at most once per HEARTBEAT_EVERY. It ignores its arguments (a
+  # download's progress callback passes the bytes done and the total).
+  #
+  # @return [Boolean, nil] true when it touched the run, nil when it was too soon to touch it again
   def heartbeat(*)
     now = Time.current
     return if @last_beat && now - @last_beat < HEARTBEAT_EVERY
