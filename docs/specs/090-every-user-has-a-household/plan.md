@@ -1202,7 +1202,7 @@ RSpec.describe MakeAccountHouseholdRequired, :backup, :committed, type: :model d
 
   def counts = (tables + %w[accounts households memberships sessions]).to_h { [ it, count(it) ] }
 
-  def sequence = connection.select_value("SELECT seq FROM sqlite_sequence WHERE name = 'accounts'")
+  def sequence = connection.select_value("SELECT seq FROM main.sqlite_sequence WHERE name = 'accounts'")
 
   def shapes = (%w[accounts] + tables).to_h { [ it, shape(it) ] }
 
@@ -1465,13 +1465,14 @@ class MakeAccountHouseholdRequired < ActiveRecord::Migration[8.1]
     end
 
     # As CreateHouseholdsAndMemberships: the copy resets accounts' row of sqlite_sequence, which the proof can't see (compare.rb skips sqlite_ tables).
+    # Always `main.sqlite_sequence`: the copy builds a TEMP table with AUTOINCREMENT, so a bare name resolves to `temp.sqlite_sequence` (found in phase 1).
     def keeping_sequence
-      seq = connection.select_value("SELECT seq FROM sqlite_sequence WHERE name = 'accounts'")
+      seq = connection.select_value("SELECT seq FROM main.sqlite_sequence WHERE name = 'accounts'")
       yield
       return unless seq
 
-      connection.execute "UPDATE sqlite_sequence SET seq = #{seq.to_i} WHERE name = 'accounts' AND seq < #{seq.to_i}"
-      connection.execute "INSERT INTO sqlite_sequence (name, seq) SELECT 'accounts', #{seq.to_i} WHERE NOT EXISTS (SELECT 1 FROM sqlite_sequence WHERE name = 'accounts')"
+      connection.execute "UPDATE main.sqlite_sequence SET seq = #{seq.to_i} WHERE name = 'accounts' AND seq < #{seq.to_i}"
+      connection.execute "INSERT INTO main.sqlite_sequence (name, seq) SELECT 'accounts', #{seq.to_i} WHERE NOT EXISTS (SELECT 1 FROM main.sqlite_sequence WHERE name = 'accounts')"
     end
 end
 ```
