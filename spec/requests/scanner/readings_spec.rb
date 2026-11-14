@@ -74,6 +74,20 @@ RSpec.describe "Scanner readings", type: :request do
       end
     end
 
+    it "answers three candidate cards as a row of three possible cards, ranked 1 to 3, each band 'not sure' (AC-3.8, AC-2.3)", :aggregate_failures do
+      %w[Helix Strike].each_with_index { |word, i| create(:mtg_printing, entry: create(:catalog_entry, identity: create(:catalog_identity, name: "Lightning #{word}"), name: "Lightning #{word}", set: mom, number: (200 + i).to_s)) }
+      Catalog::NameIndex.new("mtg").rebuild
+      read("Lightning", "")
+      panels = pane.css(".c-scanpane__card")
+      expect(pane.css(".c-scanpane__item").size).to eq(3)
+      expect(panels.size).to eq(3)
+      expect(panels.first.at_css(".c-scanpane__position").text).to eq("1 of 3 possible cards")
+      expect(panels.map { it.at_css("template[data-band]").inner_html }).to all(include("Not sure of this card. Check it against your capture."))
+      expect(panels.each_with_index.map { |panel, i| panel.at_css("template[data-band]").inner_html[/Card #{i + 1} of 3: [^<]*/] }.compact.size).to eq(3)
+      expect(pane.css(".c-scanpane__nav").map { it["aria-label"] }).to eq([ "Previous card", "Next card" ])
+      expect(panels.map { it.at_css("form.c-scanpane__add")["data-rank"] }).to eq(%w[1 2 3])
+    end
+
     it "puts a candidate's image in the row item, with no class or style of its own (spec 019 AC-1.4)", :aggregate_failures do
       bolt.update!(image_url: "https://cards.scryfall.io/normal/front/b/o/bolt.jpg")
       read("Lightning Bolt", "")
@@ -99,6 +113,14 @@ RSpec.describe "Scanner readings", type: :request do
       expect(forms.map { it.at_css("input[name='entry[reading_key]']")["value"] }.uniq).to eq([ key ])
       expect(forms.map { it["data-rank"] }.uniq).to eq([ "1" ])
       expect(response.body).not_to include("Adding cards from the scanner is coming")
+    end
+
+    it "offers Add etched beside nonfoil and foil, a star on the special finishes only (AC-4.2)", :aggregate_failures do
+      MTG::Printing.find_by!(catalog_entry_id: bolt.id).update!(finishes: %w[nonfoil foil etched])
+      read("Lightning Bolt", "R 0123\nMOM • EN")
+      forms = pane.css(".c-scanpane__card:not([hidden]) .c-scanpane__add")
+      expect(forms.map { it.at_css("button").text.strip }).to eq([ "Add nonfoil", "Add foil", "Add etched" ])
+      expect(forms.map { it.css("svg").size }).to eq([ 0, 1, 1 ])
     end
 
     it "offers a single Add for a one-finish printing (AC-4.2)" do

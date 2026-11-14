@@ -198,6 +198,24 @@ RSpec.describe "The selection pane", type: :system do
     expect(page.evaluate_script("window.__tracks.every((track) => track.readyState === 'live')")).to be(true)
   end
 
+  it "steps through three possible cards with Next card, the band and the add rank following (AC-3.2, AC-3.8)", :aggregate_failures do
+    mom = Catalog::Set.find_by!(code: "mom")
+    %w[Helix Strike].each_with_index { |word, i| create(:mtg_printing, entry: create(:catalog_entry, identity: create(:catalog_identity, name: "Lightning #{word}"), name: "Lightning #{word}", set: mom, number: (200 + i).to_s)) }
+    Catalog::NameIndex.new("mtg").rebuild
+    visit scanner_path
+    show_synthetic_card(name: "Lightning", lines: [])
+    click_on "Capture"
+    wait_for_pane
+    expect(page).to have_css(".c-scanpane__item", count: 3)
+    expect(page).to have_css(".c-scanpane__card:not([hidden]) .c-scanpane__position", text: "1 of 3 possible cards")
+    click_on "Next card"
+    click_on "Next card"
+    expect(page).to have_css(".c-scanpane__card:not([hidden]) .c-scanpane__position", text: "3 of 3 possible cards")
+    expect(band.text(:all)).to include("Card 3 of 3:")
+    expect(page).to have_button("Next card", disabled: true)
+    expect(page).to have_css(".c-scanpane__card:not([hidden]) form.c-scanpane__add[data-rank='3']", minimum: 1)
+  end
+
   it "keeps the centred printing centred and focus on Next when Show 20 more renders the frame again (AC-3.10)", :aggregate_failures do
     24.times { |i| create(:mtg_printing, entry: create(:catalog_entry, identity:, name: "Lightning Bolt", set: create(:catalog_set, code: "t#{i}", name: "Set #{i}"), number: i.to_s)) }
     visit scanner_path
