@@ -8,6 +8,7 @@
 **Branch:** `088-scanner-selection-pane`
 **Issue:** [#345](https://github.com/plainprogrammer/Collector/issues/345) (roadmap Theme D, the phone-first layout's third item)
 **Frozen:** the current rules are in [`scanner.md`](../../architecture/scanner.md) (whole spec; the markup and copy are [`Scanner`](../../design-system/components/Scanner.md) and [`StatusBand`](../../design-system/components/StatusBand.md) in the design system); see the [specs index](../README.md)
+**Plan:** retired in `d379da8fa47c56b896128fbb27da636884573353`; read it with `git show d379da8fa47c56b896128fbb27da636884573353^:docs/specs/088-scanner-selection-pane/plan.md`
 
 ---
 
