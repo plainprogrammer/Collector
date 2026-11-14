@@ -12,6 +12,9 @@ RSpec.describe "Locations", type: :system do
     expect(page).to have_css(".c-locations__name", text: "Blue binder")
 
     click_on "Rename Blue binder"
+    # Wait for the rename page: this page has a field labelled "Name" too, so until the visit renders, the text goes into
+    # the add form and the rename page arrives still holding "Blue binder" (#417).
+    expect(page).to have_css("h1", text: "Rename location")
     fill_in "Name", with: "Trade binder"
     click_on "Save"
     expect(page).to have_css("#status", text: "Renamed “Blue binder” to “Trade binder”.")
