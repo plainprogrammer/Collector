@@ -481,7 +481,18 @@ Append to `spec/models/user_spec.rb` (inside the describe):
       expect([ Household.exists?(household.id), Membership.exists?(user_id: user.id), Account.exists?(user.account_id) ]).to eq([ false, false, false ])
     end
 
-    it "keeps the invariants however it is made and deleted (AC-2.8)" do
+    it "reads no household or membership when a user loaded as a session loads it is validated, twice (AC-4.5)", :aggregate_failures do
+    user = create(:user)
+    loaded = Session.includes(user: :account).find(user.sessions.create!.id).user
+    seen = []
+    ActiveSupport::Notifications.subscribed(->(*, payload) { seen << payload[:sql] if payload[:sql].match?(/\b(households|memberships)\b/i) }, "sql.active_record") do
+      2.times { expect(loaded).to be_valid }
+      loaded.update!(collection_view: "table")
+    end
+    expect(seen).to be_empty
+  end
+
+  it "keeps the invariants however it is made and deleted (AC-2.8)" do
       create(:user)
       create(:admin).destroy!
       expect_household_invariants!
@@ -652,8 +663,9 @@ Edit `app/models/user.rb`: replace `belongs_to :account, dependent: :destroy` th
   ...
   validates :membership, presence: true, on: :create
   # Only when both are loaded (a new user, or a user a caller loaded both for): an update of a signed-in user, whose account the
-  # session loads, must not read a household (spec 090 Story 4, AC-4.5).
-  validate :membership_is_in_the_accounts_household, if: -> { association(:membership).loaded? && association(:account).loaded? }
+  # session loads, must not read a household (spec 090 Story 4, AC-4.5). `association_cached?` first: `association(:membership)` would
+  # otherwise create the association instance, and the next validation's autosave check would then read it.
+  validate :membership_is_in_the_accounts_household, if: -> { association_cached?(:membership) && association(:membership).loaded? && association(:account).loaded? }
 
   before_validation :build_account_and_household, on: :create, unless: :account
   before_destroy :keep_a_manager_for_the_others, prepend: true
@@ -840,7 +852,7 @@ class BackfillHouseholds < ActiveRecord::Migration[8.1]
       connection.transaction do
         users.each do |user_id, account_id|
           household = connection.insert("INSERT INTO households (name, created_at, updated_at) SELECT substr(name, 1, 88) || '''s household', #{now}, #{now} FROM users WHERE id = #{user_id.to_i}")
-          raise ActiveRecord::MigrationError, "no household was made for user #{user_id}" unless household
+          raise ActiveRecord::MigrationError, "no household was made for user #{user_id}" unless connection.select_value("SELECT changes()").to_i == 1
           connection.execute "INSERT INTO memberships (household_id, user_id, role, created_at, updated_at) VALUES (#{household.to_i}, #{user_id.to_i}, 'manager', #{now}, #{now})"
           connection.execute "UPDATE accounts SET household_id = #{household.to_i} WHERE id = #{account_id.to_i}"
         end
@@ -1271,6 +1283,27 @@ RSpec.describe MakeAccountHouseholdRequired, :backup, :committed, type: :model d
     expect { up }.not_to raise_error # a second run changes nothing
   end
 
+  it "refuses to run when foreign keys are enforced, and changes nothing (AC-3.6)", :aggregate_failures do
+    create(:user)
+    down
+    before = counts
+
+    connection.transaction { expect { described_class.new.migrate(:up) }.to raise_error(ActiveRecord::MigrationError, /enforced/) }
+
+    expect([ nullable?, counts ]).to eq([ true, before ])
+  end
+
+  it "is not stopped by a dangling row the database already held, and keeps it (AC-3.6)", :aggregate_failures do
+    create(:user)
+    down
+    connection.disable_referential_integrity do # as an operator's sqlite3 session does
+      connection.execute("INSERT INTO locations (account_id, name, name_key, created_at, updated_at) VALUES (999999, 'Dangling', 'dangling', datetime('now'), datetime('now'))")
+    end
+
+    expect { up }.not_to raise_error
+    expect(connection.select_value("SELECT COUNT(*) FROM locations WHERE account_id = 999999")).to eq(1)
+  end
+
   it "undoes a failure of the copy itself, after the old table was dropped: nothing is lost (AC-3.6)", :aggregate_failures do
     create(:user)
     down
@@ -1337,8 +1370,9 @@ class MakeAccountHouseholdRequired < ActiveRecord::Migration[8.1]
         house_stragglers
         remove_empty_households
         refuse_accounts_nobody_can_house
+        before = state
         keeping_sequence { change_column_null :accounts, :household_id, false }
-        require_no_broken_keys
+        require_nothing_lost(before)
       end
     end
   end
@@ -1349,14 +1383,15 @@ class MakeAccountHouseholdRequired < ActiveRecord::Migration[8.1]
     connection.disable_referential_integrity do
       connection.transaction do
         require_enforcement_off
+        before = state
         keeping_sequence { change_column_null :accounts, :household_id, true }
-        require_no_broken_keys
+        require_nothing_lost(before)
       end
     end
   end
 
   private
-    def household_nullable? = columns(:accounts).find { it.name == "household_id" }.null
+    def household_nullable? = connection.columns(:accounts).find { it.name == "household_id" }&.null
 
     # The same SQL as BackfillHouseholds (migrations don't share code: a released one is never edited).
     def house_stragglers
@@ -1367,7 +1402,7 @@ class MakeAccountHouseholdRequired < ActiveRecord::Migration[8.1]
 
         users.each do |user_id, account_id|
           household = connection.insert("INSERT INTO households (name, created_at, updated_at) SELECT substr(name, 1, 88) || '''s household', #{now}, #{now} FROM users WHERE id = #{user_id.to_i}")
-          raise ActiveRecord::MigrationError, "no household was made for user #{user_id}" unless household
+          raise ActiveRecord::MigrationError, "no household was made for user #{user_id}" unless connection.select_value("SELECT changes()").to_i == 1
           connection.execute "INSERT INTO memberships (household_id, user_id, role, created_at, updated_at) VALUES (#{household.to_i}, #{user_id.to_i}, 'manager', #{now}, #{now})"
           connection.execute "UPDATE accounts SET household_id = #{household.to_i} WHERE id = #{account_id.to_i}"
         end
@@ -1375,16 +1410,31 @@ class MakeAccountHouseholdRequired < ActiveRecord::Migration[8.1]
     end
 
     # Rails runs no check after a copy and, inside a transaction, enforcement can't be switched off: if either went wrong the copy would
-    # have cascaded silently, so a run that finds enforcement on, or rows left pointing at accounts or households, stops and rolls back.
+    # have cascaded silently, so a run that finds enforcement on stops and rolls back, and so does one after which a table that
+    # references accounts holds fewer rows, or a key points at a missing account or household that did not before (a database an
+    # operator edited with enforcement off may hold dangling rows already; they are not this run's).
     def require_enforcement_off
       return if connection.select_value("PRAGMA foreign_keys").to_i.zero?
 
       raise ActiveRecord::MigrationError, "foreign keys are enforced inside the table copy, which would delete the collections that reference accounts; nothing was changed"
     end
 
-    def require_no_broken_keys
+    # Safe: literal table names. The thirteen tables that reference accounts; accounts itself is counted with them.
+    REFERENCING = %w[bulk_removals bulk_selection_marks bulk_selections deck_proxies decks import_uploads locations lots number_entries number_entry_lines scanner_sitting_entries scanner_sittings users].freeze
+
+    def state
+      rows = ([ "accounts" ] + REFERENCING).to_h { [ it, connection.select_value("SELECT COUNT(*) FROM #{it}").to_i ] }
       broken = connection.select_rows("PRAGMA foreign_key_check").select { |_table, _row, parent, *| %w[accounts households].include?(parent) }
-      raise ActiveRecord::MigrationError, "the copy left rows pointing at accounts or households (#{broken.first(3).inspect}); nothing was changed" if broken.any?
+      { rows:, broken: }
+    end
+
+    def require_nothing_lost(before)
+      after = state
+      lost = after[:rows].reject { |table, count| count == before[:rows][table] }
+      new_broken = after[:broken] - before[:broken]
+      return if lost.empty? && new_broken.empty?
+
+      raise ActiveRecord::MigrationError, "the table copy changed row counts #{lost.inspect} or broke keys #{new_broken.first(3).inspect}; nothing was changed"
     end
 
     def remove_empty_households
@@ -1392,11 +1442,13 @@ class MakeAccountHouseholdRequired < ActiveRecord::Migration[8.1]
     end
 
     def refuse_accounts_nobody_can_house
-      orphans = connection.select_values("SELECT id FROM accounts WHERE household_id IS NULL")
+      # an account whose user has a membership but which was left with no household (a database edited by hand) is put in it
+      connection.execute "UPDATE accounts SET household_id = (SELECT memberships.household_id FROM users JOIN memberships ON memberships.user_id = users.id WHERE users.account_id = accounts.id) WHERE household_id IS NULL"
+      orphans = connection.select_values("SELECT id FROM accounts WHERE household_id IS NULL AND NOT EXISTS (SELECT 1 FROM users WHERE users.account_id = accounts.id)")
       return if orphans.empty?
 
       raise ActiveRecord::MigrationError, "accounts #{orphans.first(5).join(", ")} have no household and no user, so no household can be made for them; " \
-        "remove them (an account is made with its user and is deleted with it) and start again; nothing was changed"
+        "remove them with `bin/rails runner 'Account.find(ID).destroy'` (which deletes what they own; a bare DELETE with the sqlite3 command leaves rows behind, because it does not enforce keys) and start again; nothing was changed"
     end
 
     # As CreateHouseholdsAndMemberships: the copy resets accounts' row of sqlite_sequence, which the proof can't see (compare.rb skips sqlite_ tables).
@@ -1410,7 +1462,7 @@ class MakeAccountHouseholdRequired < ActiveRecord::Migration[8.1]
     end
 end
 ```
-- [ ] **6.5 Dump and prepare:** `bin/rails db:migrate` and `bin/rails db:test:prepare`; `git diff db/schema.rb` shows `t.integer "household_id", null: false` and the new version `2026_11_13_120003`, and no other change to `accounts`, its foreign keys or the thirteen tables (any other line is a failure of the copy: stop and report). Run `bin/rspec spec/migrations/make_account_household_required_spec.rb` (6 examples, 0 failures).
+- [ ] **6.5 Dump and prepare:** `bin/rails db:migrate` and `bin/rails db:test:prepare`; `git diff db/schema.rb` shows `t.integer "household_id", null: false` and the new version `2026_11_13_120003`, and no other change to `accounts`, its foreign keys or the thirteen tables (any other line is a failure of the copy: stop and report). Run `bin/rspec spec/migrations/make_account_household_required_spec.rb` (every example green; the count is whatever the file holds, record it).
 - [ ] **6.6 Make the earlier specs follow the final shape.** In `spec/migrations/create_households_and_memberships_spec.rb` and `spec/migrations/backfill_households_spec.rb`, extend the versions so a spec's down and up cover (c): in the first, `def versions = [ 2026_11_13_120001, 2026_11_13_120002, 2026_11_13_120003 ]` and add `require` lines for the other two migrations; in the second, add to the `around` an `ensure` that reruns `context.run(:up, 2026_11_13_120003)` when `accounts.household_id` is nullable after an example that goes down. In `backfill_households_spec.rb`'s batch example and its 10,000-user timing example (both insert accounts by SQL), the raw `INSERT INTO accounts` rows get a household (the timing example inserts one household first and gives every account that id, or runs with (c) down as `forget_households` does): insert a household first and pass `household_id` (the column is NOT NULL now); `forget_households` sets `household_id = NULL`, which the copy refuses: have it first `down` (c) when the column is NOT NULL (`context.run(:down, 2026_11_13_120003)`) and `up` it in `ensure`. In `spec/support/backup_helpers.rb:40` and `spec/lib/collector/backup/snapshot_spec.rb:12` insert a household and give the account its id (`INSERT INTO households (name, created_at, updated_at) VALUES ('h', ?, ?)`, then `accounts (created_at, updated_at, household_id)`). Run `bin/rspec spec/migrations spec/lib/collector/backup spec/backup_guards_spec.rb spec/backup_upgrade_spec.rb` (green).
 - [ ] **6.7 Commit:** `feat(db): accounts.household_id is NOT NULL, by a copy that loses no row (spec 090 phase 6)` and `test(db): the earlier households specs follow the final shape (spec 090 phase 6)`.
 
