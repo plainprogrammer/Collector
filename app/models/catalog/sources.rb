@@ -8,7 +8,9 @@
 #   .alternate_names(entries)           optional: [[identity id, name], …] the name index adds to identity names
 #   #languages                          sorted language codes to ingest (raises ConfigurationError)
 #   #current_version(languages:)        opaque String naming the current source data
-#   #download(version, dir:)            Pathname of the verified local copy (IntegrityError, TransientError)
+#   #download(version, dir:)            Pathname of the verified local copy (IntegrityError, TransientError). Two callers
+#                                       (the catalog refresh and a price refresh) may call it for one version at once, so it
+#                                       must tolerate concurrent calls: a partial download is never shared between calls
 #   #each_set { |SetRecord| }
 #   #each_entry(path, languages:) { |EntryRecord or Malformed| }   streamed, filtered to languages
 #   #reapply?                           optional: true to apply a version again although it was applied (asked before a skip)

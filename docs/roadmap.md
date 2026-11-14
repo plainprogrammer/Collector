@@ -110,7 +110,7 @@ Runs beside the main line, when the maintainer starts it (rulings 35–41; [desi
 - [#363](https://github.com/plainprogrammer/Collector/issues/363) A prices database that the backup holds.
 - [#375](https://github.com/plainprogrammer/Collector/issues/375) A start refuses a volume that holds a prices database and no primary (after #363; spec 081 decision 8). Done: [spec 086](specs/086-start-refuses-orphan-prices/spec.md).
 - [#364](https://github.com/plainprogrammer/Collector/issues/364) A price source contract, and Scryfall's prices through it (after #361 and #363). Done: [spec 085](specs/085-price-source-contract/spec.md).
-- [#365](https://github.com/plainprogrammer/Collector/issues/365) Prices refresh once a day, and each change is recorded once.
+- [#365](https://github.com/plainprogrammer/Collector/issues/365) Prices refresh once a day, and each change is recorded once. Done: [spec 089](specs/089-daily-price-refresh/spec.md).
 - [#366](https://github.com/plainprogrammer/Collector/issues/366) Each price refresh records what it did and how large the database is.
 - [#367](https://github.com/plainprogrammer/Collector/issues/367) An admin reads the price refresh log.
 - [#368](https://github.com/plainprogrammer/Collector/issues/368) An operator chooses how much price history the instance keeps (after #365).

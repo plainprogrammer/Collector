@@ -454,7 +454,7 @@ scp root@192.168.0.1:/srv/collector-backups/collector-backup-20261021T142100Z.ta
 
 The file is mode 0600 and owned by uid 1000 on the server; Kamal logs in as root by default (`ssh:` in `config/deploy.yml`), which can read it. Any other login needs `sudo`.
 
-**When to back up:** before every upgrade, and at least daily for a collection that changes daily. From a host's cron, for example (02:17 every day, clear of Monday 03:00 to 05:00 in the container's time zone, UTC unless you set one, when the weekly catalog refresh writes the most and a backup would hold the database's write-ahead log back):
+**When to back up:** before every upgrade, and at least daily for a collection that changes daily. From a host's cron, for example (02:17 every day, clear of Monday 03:00 to 05:00 in the container's time zone, UTC unless you set one, when the weekly catalog refresh writes the most and a backup would hold the database's write-ahead log back, and clear of 11:30 in the same time zone, when the daily price refresh starts writing the prices database, which a backup's read transaction holds back in the same way):
 
 ```cron
 17 2 * * * cd /srv/collector && docker compose run --rm -T -v /srv/collector-backups:/backups web bin/rails "backup:create[/backups]" >> /var/log/collector-backup.log 2>&1
