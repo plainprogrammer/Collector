@@ -1,13 +1,13 @@
 # Plan 090: Every User Has a Household
 
-**Spec:** [spec.md](spec.md) v0.3.1 (Approved by the coordinator under the maintainer's delegation, 2026-11-13; the maintainer ruled step (c) the same day: take the copy). **ADR:** [0030](../../adr/0030-a-household-is-a-group-of-accounts.md). **Issue:** #380. **Branch:** `090-every-user-has-a-household`.
+**Spec:** [spec.md](spec.md) v0.3.2 (Approved by the coordinator under the maintainer's delegation, 2026-11-13; the maintainer ruled step (c) the same day: take the copy). **ADR:** [0030](../../adr/0030-a-household-is-a-group-of-accounts.md). **Issue:** #380. **Branch:** `090-every-user-has-a-household`.
 **Written by:** the main session (Opus 5.5 from this step; the spec and ADR were written on Sonnet 5.5). Implementers: Sonnet 5.5 (`model: "sonnet"`), 2 to 4 consecutive tasks each, test first, one commit per task, reading this file by line range; the main session checks each batch's diff.
 
 ## Global Constraints
 
 - **No agent runs the `sqlite3` command**, `bin/rails console`, `db:rollback`, `db:migrate:down`, `db:seed`, anything with `RAILS_ENV=production`, `bundle update`, or anything else that prompts. Migrations go down and up **inside specs, through the Migrator** (`MigrationContext#run`), as `spec/migrations/add_decks_spec.rb` does. `bin/rails db:migrate` (development) writes `db/schema.rb`; `bin/rails db:test:prepare` then loads it into the test database.
 - Targeted `bin/rspec <file>` runs need no slot. Never two test runs at once (one shared test database). No full `bin/ci` and no push without a slot from the coordinator.
-- Released migrations are never edited. The three new files are `20261113120001_create_households_and_memberships.rb`, `20261113120002_backfill_households.rb`, `20261113120003_make_account_household_required.rb` (phase 6; the only one that exists only if the maintainer rules (c)). None references an application model; all use `disable_ddl_transaction!` and guard each step.
+- Released migrations are never edited. The three new files are `20261113120001_create_households_and_memberships.rb`, `20261113120002_backfill_households.rb`, `20261113120003_make_account_household_required.rb` (phase 6; ruled by the maintainer, 2026-11-13, and the last of the migrations). None references an application model; all use `disable_ddl_transaction!` and guard each step.
 - Every public method added in `app/models/`, `lib/`, `script/upgrade/` or `spec/support/` has a YARD summary (the comment ratchet); no `{…}` in comments; no collectible named in a core file's comments.
 - `household_id`, `role` and `kind` are never permitted from parameters (no controller changes at all: Story 4).
 - Commits: Conventional Commits, one per task, stage and commit in separate shell calls, ending with the trailer the session reminder gives.
@@ -83,7 +83,7 @@ RSpec.describe CreateHouseholdsAndMemberships, :backup, :committed, type: :model
 
   # What PRAGMA says about a table: columns, foreign keys, indexes, checks (not the table's SQL text).
   def shape(table)
-    [ connection.columns(table).map { [ it.name, it.sql_type, it.null, it.default ] },
+    [ connection.columns(table).map { [ it.name, it.sql_type, it.null, it.default ] }.sort_by(&:first), # by name: a copy moves a column
       connection.foreign_keys(table).map { [ it.to_table, it.column, it.on_delete ] }.sort_by(&:to_s),
       connection.indexes(table).map { [ it.name, it.columns, it.unique, it.where ] }.sort_by(&:to_s),
       connection.check_constraints(table).map { [ it.name, it.expression ] }.sort_by(&:to_s) ]
@@ -105,10 +105,9 @@ RSpec.describe CreateHouseholdsAndMemberships, :backup, :committed, type: :model
 
   around do |example|
     ActiveRecord::Migration.verbose = false
-    @before = shape(:accounts)
     example.run
   ensure
-    up_all unless connection.table_exists?(:households)
+    up_all # the Migrator skips a version that is recorded
     Account.reset_column_information
     ActiveRecord::Migration.verbose = true
   end
@@ -187,10 +186,19 @@ RSpec.describe CreateHouseholdsAndMemberships, :backup, :committed, type: :model
     expect(sequence).to eq(seq)
   end
 
-  it "leaves accounts, after down and up, in the shape the schema file gives it (AC-3.4)" do
+  it "leaves accounts, households and memberships, after down and up, as the schema states them (AC-3.4)", :aggregate_failures do
     down_all
     up_all
-    expect(shape(:accounts)).to eq(@before)
+
+    # The literals are what db/schema.rb dumps for the migration; if a check's expression text differs, correct the literal to the
+    # dumped text and say so, don't loosen the example.
+    expect(shape(:accounts)[1..]).to eq([ [ [ "households", "household_id", nil ] ],
+      [ [ "index_accounts_on_household_id", %w[household_id], false, nil ] ], [ [ "accounts_kind_known", "kind IN ('personal', 'shared')" ] ] ])
+    expect(connection.columns(:accounts).map(&:name).sort).to eq(%w[created_at currency household_id id kind updated_at])
+    expect(shape(:households)[1..]).to eq([ [], [], [ [ "households_name_length", "length(name) BETWEEN 1 AND 100" ] ] ])
+    expect(shape(:memberships)[1..]).to eq([ [ [ "households", "household_id", nil ], [ "users", "user_id", :cascade ] ],
+      [ [ "index_memberships_on_household_id", %w[household_id], false, nil ], [ "index_memberships_on_user_id", %w[user_id], true, nil ] ],
+      [ [ "memberships_role_known", "role IN ('manager', 'member')" ] ] ])
   end
 
   it "refuses to go down while a household has two members or a shared account exists, and changes nothing (AC-3.5)", :aggregate_failures do
@@ -239,11 +247,11 @@ class CreateHouseholdsAndMemberships < ActiveRecord::Migration[8.1]
     # ADD COLUMN copies no table: REFERENCES is accepted because the default is NULL, and a named CHECK on the column is
     # tested against every row and kept by the schema dump (the precedent is AddDecks).
     unless column_exists?(:accounts, :household_id)
-      execute "ALTER TABLE accounts ADD COLUMN household_id integer REFERENCES households (id)"
+      connection.execute "ALTER TABLE accounts ADD COLUMN household_id integer REFERENCES households (id)"
     end
     add_index :accounts, :household_id unless index_exists?(:accounts, :household_id)
     unless column_exists?(:accounts, :kind)
-      execute "ALTER TABLE accounts ADD COLUMN kind varchar NOT NULL DEFAULT 'personal' " \
+      connection.execute "ALTER TABLE accounts ADD COLUMN kind varchar NOT NULL DEFAULT 'personal' " \
               "CONSTRAINT accounts_kind_known CHECK (kind IN ('personal', 'shared'))"
     end
   end
@@ -268,8 +276,8 @@ class CreateHouseholdsAndMemberships < ActiveRecord::Migration[8.1]
 
   private
     def refuse_what_the_older_release_cannot_hold
-      shared_households = table_exists?(:memberships) ? select_value("SELECT COUNT(*) FROM (SELECT 1 FROM memberships GROUP BY household_id HAVING COUNT(*) > 1)").to_i : 0
-      shared_accounts = column_exists?(:accounts, :kind) ? select_value("SELECT COUNT(*) FROM accounts WHERE kind = 'shared'").to_i : 0
+      shared_households = table_exists?(:memberships) ? connection.select_value("SELECT COUNT(*) FROM (SELECT 1 FROM memberships GROUP BY household_id HAVING COUNT(*) > 1)").to_i : 0
+      shared_accounts = column_exists?(:accounts, :kind) ? connection.select_value("SELECT COUNT(*) FROM accounts WHERE kind = 'shared'").to_i : 0
       return if shared_households.zero? && shared_accounts.zero?
 
       raise ActiveRecord::IrreversibleMigration,
@@ -281,18 +289,18 @@ class CreateHouseholdsAndMemberships < ActiveRecord::Migration[8.1]
     # deleted account could be issued again. The sequence is read before and restored after, never lowered, and the row is made
     # when the copy left none (an empty table has none).
     def keeping_sequence
-      seq = select_value("SELECT seq FROM sqlite_sequence WHERE name = 'accounts'")
+      seq = connection.select_value("SELECT seq FROM sqlite_sequence WHERE name = 'accounts'")
       yield
       return unless seq
 
-      execute "UPDATE sqlite_sequence SET seq = #{seq.to_i} WHERE name = 'accounts' AND seq < #{seq.to_i}"
-      execute "INSERT INTO sqlite_sequence (name, seq) SELECT 'accounts', #{seq.to_i} WHERE NOT EXISTS (SELECT 1 FROM sqlite_sequence WHERE name = 'accounts')"
+      connection.execute "UPDATE sqlite_sequence SET seq = #{seq.to_i} WHERE name = 'accounts' AND seq < #{seq.to_i}"
+      connection.execute "INSERT INTO sqlite_sequence (name, seq) SELECT 'accounts', #{seq.to_i} WHERE NOT EXISTS (SELECT 1 FROM sqlite_sequence WHERE name = 'accounts')"
     end
 end
 ```
 
-- [ ] **1.4 Dump the schema and prepare the test database:** `bin/rails db:migrate` then `bin/rails db:test:prepare`. Check `git diff db/schema.rb`: the two tables, `accounts.household_id` and `accounts.kind` with their key, index and check, `add_foreign_key "accounts", "households"`, `add_foreign_key "memberships", "households"`, `add_foreign_key "memberships", "users", on_delete: :cascade`, and the version `2026_11_13_120001`. The prices structure file is untouched.
-- [ ] **1.5 Run the spec to see it pass:** `bin/rspec spec/migrations/create_households_and_memberships_spec.rb`. Expected: 10 examples, 0 failures. If the shape example fails on a check's expression text, print both shapes in the failure and report it: do not weaken the example.
+- [ ] **1.4 Dump the schema and prepare the test database:** `bin/rails db:migrate` then `bin/rails db:test:prepare`. Also do steps 4.3 and 4.4 now, before the commit (they are phase 1's: without them `spec/export_format_document_spec.rb` fails). `spec/script/upgrade/seeds_spec.rb`'s example "fills every table db/schema.rb creates" stays red until step 2.5 (the seed makes users through the old model, which makes no household): phases 1 and 2 are one implementer's batch and the suite is green again at 2.6. Check `git diff db/schema.rb`: the two tables, `accounts.household_id` and `accounts.kind` with their key, index and check, `add_foreign_key "accounts", "households"`, `add_foreign_key "memberships", "households"`, `add_foreign_key "memberships", "users", on_delete: :cascade`, and the version `2026_11_13_120001`. The prices structure file is untouched.
+- [ ] **1.5 Run the spec to see it pass:** `bin/rspec spec/migrations/create_households_and_memberships_spec.rb`. Expected: 11 examples, 0 failures. If the shape example fails on a check's expression text, print both shapes in the failure and report it: do not weaken the example.
 - [ ] **1.6 Commit:** `feat(db): households, memberships and the account's household and kind (spec 090 phase 1)`.
 
 ---
@@ -317,12 +325,12 @@ Create `spec/support/household_invariants.rb`:
 ```ruby
 # The invariants of a household, checked on the test database (spec 090 AC-2.8): the same four the upgrade proof's tier 1 checks.
 module HouseholdInvariants
-  # Fails the example, naming the broken rule, unless every user has exactly one membership, every household with a member has a
+  # Fails the example, naming the broken rule, unless every user has exactly one membership, every household has a
   # manager, every account has a household and a personal account's household is its user's.
   def expect_household_invariants!
     connection = ActiveRecord::Base.connection
     expect(connection.select_values("SELECT users.id FROM users LEFT JOIN memberships ON memberships.user_id = users.id GROUP BY users.id HAVING COUNT(memberships.id) <> 1")).to be_empty, "a user without exactly one membership"
-    expect(connection.select_values("SELECT households.id FROM households WHERE EXISTS (SELECT 1 FROM memberships m WHERE m.household_id = households.id) AND NOT EXISTS (SELECT 1 FROM memberships m WHERE m.household_id = households.id AND m.role = 'manager')")).to be_empty, "a household without a manager"
+    expect(connection.select_values("SELECT households.id FROM households WHERE NOT EXISTS (SELECT 1 FROM memberships m WHERE m.household_id = households.id AND m.role = 'manager')")).to be_empty, "a household without a manager"
     expect(connection.select_values("SELECT id FROM accounts WHERE household_id IS NULL")).to be_empty, "an account without a household"
     expect(connection.select_values("SELECT accounts.id FROM accounts JOIN users ON users.account_id = accounts.id JOIN memberships ON memberships.user_id = users.id WHERE accounts.kind = 'personal' AND accounts.household_id <> memberships.household_id")).to be_empty, "a personal account outside its user's household"
   end
@@ -381,7 +389,9 @@ RSpec.describe Membership, type: :model do
 
   it "has a role of manager or member only (AC-2.1)", :aggregate_failures do
     expect(described_class.new(role: "boss").tap(&:validate).errors[:role]).to be_present
-    expect { described_class.insert!({ household_id: manager.membership.household_id, user_id: create(:user).id, role: "boss" }) }.to raise_error(ActiveRecord::StatementInvalid, /memberships_role_known/)
+    bare = create(:user)
+    described_class.where(user_id: bare.id).delete_all # a user with no membership, by SQL
+    expect { described_class.insert!({ household_id: manager.membership.household_id, user_id: bare.id, role: "boss" }) }.to raise_error(ActiveRecord::StatementInvalid, /memberships_role_known/)
   end
 
   it "is one per user (AC-2.2)", :aggregate_failures do
@@ -491,6 +501,7 @@ RSpec.describe "A household with every user (spec 090 Story 1)", type: :request 
     expect(user.membership).to have_attributes(role: "manager", household: have_attributes(name: named))
     expect(user.account).to have_attributes(kind: "personal", household: user.membership.household)
     expect(user.membership.household.memberships.count).to eq(1)
+    expect_household_invariants!
   end
 
   it "gives the first visitor a household of one and lands them in the collection (AC-1.1)", :aggregate_failures do
@@ -522,13 +533,24 @@ RSpec.describe "A household with every user (spec 090 Story 1)", type: :request 
     expect_a_household_of_one(user, named: "ops's household")
   end
 
-  it "makes nothing for a sign-up that is invalid or loses the first-user race (AC-1.6)", :aggregate_failures do
+  it "makes nothing for a sign-up that is invalid: a blank name on an empty instance, a used email while sign-up is open (AC-1.6)", :aggregate_failures do
+    expect { sign_up(name: "") }.not_to change { [ Household.count, Membership.count, Account.count ] }
+    expect(response).to have_http_status(:unprocessable_content)
+    create(:admin, email_address: "ann@example.test")
+    InstanceSetting.current.update!(sign_up_open: true)
+    expect { sign_up }.not_to change { [ Household.count, Membership.count, Account.count ] }
+    expect(response).to have_http_status(:unprocessable_content)
+  end
+
+  it "makes nothing for a sign-up that finds a user already there, as when it loses the first-user race (AC-1.6)", :aggregate_failures do
+    get new_registration_path
     create(:admin)
-    expect { post registration_path, params: { user: { name: "", email_address: "x@example.test", password:, password_confirmation: password } } }.not_to change { [ Household.count, Membership.count, Account.count ] }
+    expect { sign_up }.not_to change { [ Household.count, Membership.count, Account.count ] }
+    expect(response).to have_http_status(:unprocessable_content)
   end
 
   it "ignores a household, role or kind in the parameters of a sign-up and of an admin's form (AC-1.7)", :aggregate_failures do
-    other = create(:household)
+    other = create(:user).membership.household # a household with a manager, so the invariants helper holds
     sign_up(household_id: other.id, role: "member", kind: "shared")
     ann = User.find_by!(email_address: "ann@example.test")
     expect_a_household_of_one(ann)
@@ -623,12 +645,14 @@ Edit `app/models/user.rb`: replace `belongs_to :account, dependent: :destroy` th
 ```ruby
   has_secure_password
   # Deleted without callbacks (Membership refuses a direct destroy; the database would cascade it anyway), before the user's row.
-  has_one :membership, dependent: :delete, inverse_of: :user
+  has_one :membership, dependent: :delete, inverse_of: :user, autosave: true
   belongs_to :account, dependent: :destroy
   has_many :sessions, dependent: :delete_all
   ...
   validates :membership, presence: true, on: :create
-  validate :membership_is_in_the_accounts_household
+  # Only when both are loaded (a new user, or a user a caller loaded both for): an update of a signed-in user, whose account the
+  # session loads, must not read a household (spec 090 Story 4, AC-4.5).
+  validate :membership_is_in_the_accounts_household, if: -> { association(:membership).loaded? && association(:account).loaded? }
 
   before_validation :build_account_and_household, on: :create, unless: :account
   before_destroy :keep_a_manager_for_the_others, prepend: true
@@ -664,7 +688,7 @@ and in `private`:
     # The household of a user whose delete left no member and no account goes with them; `Household` refuses while it holds either.
     def remove_an_empty_household = @leaving_household&.destroy
 ```
-- [ ] **2.6 Run the specs to see them pass:** same command as 2.4. Expected: 0 failures. Then `bin/rspec spec/requests spec/models` (no slot needed) to see nothing else broke; fix a factory-made account in any spec that needs the household (only the three named in the spec's decision 9 (ii) use `create(:account)`, now with a household).
+- [ ] **2.6 Run the specs to see them pass:** same command as 2.4. Expected: 0 failures. Then `bin/rspec spec/requests spec/models` (no slot needed) to see nothing else broke; edit `spec/models/account_spec.rb` line 42 (`expect(described_class.new(currency: "SEK")).to be_valid` becomes `expect(build(:account, currency: "SEK")).to be_valid`: an account needs its household now; change nothing in the model to keep the old line passing); fix a factory-made account in any other spec that needs the household (only the three named in the spec's decision 9 (ii) use `create(:account)`, now with a household).
 - [ ] **2.7 Commit** in two commits: `feat(models): household and membership, an account's household and kind (spec 090 phase 2)` (models, factories, helper, model specs) and `feat(auth): every way of making a user makes a household of one (spec 090 phase 2)` if the request spec was written after; otherwise one.
 
 ---
@@ -685,7 +709,14 @@ require Rails.root.join("db/migrate/20261113120002_backfill_households")
 RSpec.describe BackfillHouseholds, :backup, :committed, type: :model do
   let(:connection) { ActiveRecord::Base.connection }
 
-  def run_up = described_class.new.tap { it.verbose = false }.migrate(:up)
+  around do |example|
+    ActiveRecord::Migration.verbose = false
+    example.run
+  ensure
+    ActiveRecord::Migration.verbose = true
+  end
+
+  def run_up = described_class.new.migrate(:up)
 
   def count(table) = connection.select_value("SELECT COUNT(*) FROM #{table}") # Safe: a literal table name from this spec
 
@@ -750,13 +781,21 @@ RSpec.describe BackfillHouseholds, :backup, :committed, type: :model do
     stub_const("BackfillHouseholds::BATCH", 2) # 5 users make 3 batches
     5.times { |i| connection.execute("INSERT INTO accounts (created_at, updated_at) VALUES ('#{now}', '#{now}')") ; connection.execute("INSERT INTO users (account_id, name, email_address, password_digest, created_at, updated_at) VALUES (#{connection.select_value("SELECT MAX(id) FROM accounts")}, 'U#{i}', 'u#{i}@example.test', 'x', '#{now}', '#{now}')") }
     forget_households
-    batches = 0
-    counter = ->(*, payload) { batches += 1 if payload[:sql].match?(/\ASELECT .*FROM users/i) }
+    begins = 0
+    counter = ->(*, payload) { begins += 1 if payload[:sql].match?(/\ABEGIN/i) }
 
     ActiveSupport::Notifications.subscribed(counter, "sql.active_record") { run_up }
 
     expect(count("households")).to eq(5)
-    expect(batches).to eq(4) # three batches with rows, one empty read that ends the loop
+    expect(begins).to eq(3) # one transaction for each of the three batches; the empty read that ends the loop opens none
+  end
+
+  it "makes 10,000 households in 20 batches, and says how long it took (the NFR)", timing: true do
+    connection.execute("WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 10000) INSERT INTO accounts (created_at, updated_at) SELECT datetime('now'), datetime('now') FROM n")
+    connection.execute("INSERT INTO users (account_id, name, email_address, password_digest, created_at, updated_at) SELECT id, 'U' || id, 'u' || id || '@example.test', 'x', datetime('now'), datetime('now') FROM accounts")
+    seconds = Benchmark.realtime { run_up }
+    expect(count("households")).to eq(10_000)
+    puts "backfill of 10,000 users: #{seconds.round(2)} s"
   end
 
   it "succeeds on a database with no user (AC-3.4)" do
@@ -776,7 +815,7 @@ RSpec.describe BackfillHouseholds, :backup, :committed, type: :model do
   end
 end
 ```
-Note for the implementer: the batch-count example reads `SELECT … FROM users` once per batch; if the migration's read differs, fix the example's regexp to count the reads of the unhoused users, not the migration to fit it. The example's `accounts` inserts rely on `household_id` being nullable and `kind` defaulted: in phase 6 (c) makes `household_id` NOT NULL, and phase 6 edits this one example (step 6.6).
+Note for the implementer: the batch example counts the `BEGIN` statements of the run (one for each batch); `run_up` below is wrapped in the `around` that sets `ActiveRecord::Migration.verbose = false` and restores it. The example's `accounts` inserts rely on `household_id` being nullable and `kind` defaulted: in phase 6 (c) makes `household_id` NOT NULL, and phase 6 edits this one example (step 6.6).
 - [ ] **3.2 Run it to see it fail** (`LoadError`), then **3.3 write the migration** `db/migrate/20261113120002_backfill_households.rb`:
 
 ```ruby
@@ -794,15 +833,15 @@ class BackfillHouseholds < ActiveRecord::Migration[8.1]
   def up
     now = connection.quote(Time.current.utc.strftime("%Y-%m-%d %H:%M:%S.%6N"))
     loop do
-      users = select_rows("SELECT id, account_id FROM users WHERE NOT EXISTS (SELECT 1 FROM memberships WHERE memberships.user_id = users.id) ORDER BY id LIMIT #{BATCH.to_i}")
+      users = connection.select_rows("SELECT id, account_id FROM users WHERE NOT EXISTS (SELECT 1 FROM memberships WHERE memberships.user_id = users.id) ORDER BY id LIMIT #{BATCH.to_i}")
       break if users.empty?
 
       connection.transaction do
         users.each do |user_id, account_id|
-          execute "INSERT INTO households (name, created_at, updated_at) SELECT substr(name, 1, 88) || '''s household', #{now}, #{now} FROM users WHERE id = #{user_id.to_i}"
-          household = select_value("SELECT last_insert_rowid()")
-          execute "INSERT INTO memberships (household_id, user_id, role, created_at, updated_at) VALUES (#{household.to_i}, #{user_id.to_i}, 'manager', #{now}, #{now})"
-          execute "UPDATE accounts SET household_id = #{household.to_i} WHERE id = #{account_id.to_i}"
+          household = connection.insert("INSERT INTO households (name, created_at, updated_at) SELECT substr(name, 1, 88) || '''s household', #{now}, #{now} FROM users WHERE id = #{user_id.to_i}")
+          raise ActiveRecord::MigrationError, "no household was made for user #{user_id}" unless household
+          connection.execute "INSERT INTO memberships (household_id, user_id, role, created_at, updated_at) VALUES (#{household.to_i}, #{user_id.to_i}, 'manager', #{now}, #{now})"
+          connection.execute "UPDATE accounts SET household_id = #{household.to_i} WHERE id = #{account_id.to_i}"
         end
       end
     end
@@ -829,7 +868,7 @@ require "rails_helper"
 # Spec 090 Story 4, decision 9 (i): no page says "household", and no request of these pages reads a household or a membership.
 RSpec.describe "A household is invisible (spec 090 Story 4)", type: :request do
   let!(:admin) { create(:admin, name: "Ann") }
-  let(:paths) { [ collection_path, admin_users_path, more_path, catalog_entries_path ] }
+  let(:paths) { [ collection_path, collection_path(view: "table"), admin_users_path, more_path, catalog_entries_path ] }
 
   def statements_naming(pattern, &)
     seen = []
@@ -847,6 +886,14 @@ RSpec.describe "A household is invisible (spec 090 Story 4)", type: :request do
       end
     end
     expect(seen).to be_empty
+  end
+
+  it "shows a collector who is not an admin no page with the word (AC-4.1)", :aggregate_failures do
+    sign_in_as(create(:user))
+    [ collection_path, collection_path(view: "table"), more_path, catalog_entries_path ].each do |path|
+      get path
+      expect(response.body.downcase).not_to include("household"), "#{path} says household"
+    end
   end
 
   it "shows no signed-out page the word (AC-4.1)", :aggregate_failures do
@@ -867,8 +914,8 @@ RSpec.describe "A household is invisible (spec 090 Story 4)", type: :request do
 end
 ```
 Run it: it should pass at once (nothing visible was added); that is the point of this check. Record in `verification.md` that it passed on the first run. Then **4.2 the one-off checks** (recorded in `verification.md`, no commit): `git grep -n -i 'household\|membership' -- app/views app/helpers app/controllers app/javascript config/locales ':!.kamal/secrets'` prints nothing; `bin/rails routes > "$TMPDIR/routes_branch.txt"`, then the same on `main` in the main checkout is not allowed (read-only worktree rule): compare with `git show main:config/routes.rb` against `config/routes.rb` (`git diff main -- config/routes.rb` is empty) and `bin/rails routes | wc -l` equal to the line count recorded from the first `bin/rails routes` run in phase 0 (add that run to step 0.1's record).
-- [ ] **4.3 Failing spec edits for the coverage guard** (`spec/export_format_document_spec.rb`): in the `"marks each table as the spec rules"` example add `memberships` to the `%w[...]` list of "Left out" tables (alphabetical: `… import_uploads memberships number_entries …`); in the columns example add `accounts.household_id accounts.kind` after `accounts.updated_at` in the left-out list. Run `bin/rspec spec/export_format_document_spec.rb`: the coverage examples fail (the document lacks the rows).
-- [ ] **4.4 Edit `docs/export-format/README.md`.** In the Coverage tables: add the row `| \`memberships\` | Left out | A household's membership of a user: a fact about a group, not about the collection. A household of one is made with every user, so a person who imports their file is given one by the same rule (spec 090 decision 4). |` between `import_uploads` and `number_entries` (the table is alphabetical after `accounts`, `lots`, ... as the file lists; keep its order of "Exported" rows first, then "Left out" alphabetically); in the Column table add after `accounts.updated_at`: `| \`accounts.household_id\` | Left out | An internal id of a group. A file is one account's collection, and the household is not in it. |` and `| \`accounts.kind\` | Left out | Whether the account is a member's own or the household's. A file is one account's collection, and every account that has a file is personal until the shared collection (#384) decides its own file. |`. After the Coverage tables add the sentence: "`households` has neither `account_id` nor `user_id`, so the guard above does not ask for it; it is not in the file either, and the question of what the shared collection's file carries about its household is decided with the shared collection (issue #384, the design's open question 4)." Replace the sentence at the Versions history (line 336 area) "One change is already expected: collections shared by a household will change who owns a lot and will raise the version ([ADR 0017](../adr/0017-row-level-tenancy-one-user-per-account.md))." by "One change is already expected: the household's shared collection has its own file and will raise the version ([ADR 0030](../adr/0030-a-household-is-a-group-of-accounts.md), issue #384). A household itself, one per user from spec 090, is not in the file and raised no version." Edit `docs/architecture/data-portability.md` line 47's sentence to add: "`memberships` and `accounts.household_id` and `.kind` were listed as left out with spec 090; `households` has neither key and is outside the guard." Run `bin/rspec spec/export_format_document_spec.rb` (expected green) and `bin/rspec spec/models/export_format spec/models/collection_export_spec.rb` (green).
+- [ ] **4.3 (done in step 1.4) Failing spec edits for the coverage guard** (`spec/export_format_document_spec.rb`): in the `"marks each table as the spec rules"` example add `memberships` to the `%w[...]` list of "Left out" tables (alphabetical: `… import_uploads memberships number_entries …`); in the columns example add `accounts.household_id accounts.kind` after `accounts.updated_at` in the left-out list. Run `bin/rspec spec/export_format_document_spec.rb`: the coverage examples fail (the document lacks the rows).
+- [ ] **4.4 (done in step 1.4) Edit `docs/export-format/README.md`.** In the Coverage tables: add the row `| \`memberships\` | Left out | A household's membership of a user: a fact about a group, not about the collection. A household of one is made with every user, so a person who imports their file is given one by the same rule (spec 090 decision 4). |` between `import_uploads` and `number_entries` (the table is alphabetical after `accounts`, `lots`, ... as the file lists; keep its order of "Exported" rows first, then "Left out" alphabetically); in the Column table add after `accounts.updated_at`: `| \`accounts.household_id\` | Left out | An internal id of a group. A file is one account's collection, and the household is not in it. |` and `| \`accounts.kind\` | Left out | Whether the account is a member's own or the household's. A file is one account's collection, and every account that has a file is personal until the shared collection (#384) decides its own file. |`. After the Coverage tables add the sentence: "`households` has neither `account_id` nor `user_id`, so the guard above does not ask for it; it is not in the file either, and the question of what the shared collection's file carries about its household is decided with the shared collection (issue #384, the design's open question 4)." Replace the sentence at the Versions history (line 336 area) "One change is already expected: collections shared by a household will change who owns a lot and will raise the version ([ADR 0017](../adr/0017-row-level-tenancy-one-user-per-account.md))." by "One change is already expected: the household's shared collection has its own file and will raise the version ([ADR 0030](../adr/0030-a-household-is-a-group-of-accounts.md), issue #384). A household itself, one per user from spec 090, is not in the file and raised no version." Edit `docs/architecture/data-portability.md` line 47's sentence to add: "`memberships` and `accounts.household_id` and `.kind` were listed as left out with spec 090; `households` has neither key and is outside the guard." Run `bin/rspec spec/export_format_document_spec.rb` (expected green) and `bin/rspec spec/models/export_format spec/models/collection_export_spec.rb` (green).
 - [ ] **4.5 Failing spec for the round trip and the backup.** Create `spec/models/collection_import/household_untouched_spec.rb`:
 
 ```ruby
@@ -1223,7 +1270,24 @@ RSpec.describe MakeAccountHouseholdRequired, :backup, :committed, type: :model d
     expect { up }.not_to raise_error # a second run changes nothing
   end
 
-  it "changes nothing when it fails, and succeeds on the next run (AC-3.6, the Error Scenarios row)", :aggregate_failures do
+  it "undoes a failure of the copy itself, after the old table was dropped: nothing is lost (AC-3.6)", :aggregate_failures do
+    create(:user)
+    down
+    orphan = connection.insert("INSERT INTO accounts (created_at, updated_at) VALUES (datetime('now'), datetime('now'))")
+    before = counts.merge("sequence" => sequence)
+    # Fault injection: the refusal that would stop the run before any DDL is switched off, so the copy-back's NOT NULL fails.
+    migration = Class.new(described_class) { private def refuse_accounts_nobody_can_house = nil }.new
+
+    expect { migration.migrate(:up) }.to raise_error(ActiveRecord::StatementInvalid, /NOT NULL/)
+
+    expect([ nullable?, connection.select_value("PRAGMA foreign_keys") ]).to eq([ true, 1 ])
+    expect(counts.merge("sequence" => sequence)).to eq(before)
+    expect(connection.select_value("SELECT COUNT(*) FROM accounts WHERE id = #{orphan}")).to eq(1)
+    connection.execute("DELETE FROM accounts WHERE id = #{orphan}")
+    expect { up }.not_to raise_error
+  end
+
+  it "changes nothing when it refuses, and succeeds on the next run (AC-3.6, the Error Scenarios row)", :aggregate_failures do
     create(:user)
     straggler = create(:user, name: "Late")
     down
@@ -1235,6 +1299,7 @@ RSpec.describe MakeAccountHouseholdRequired, :backup, :committed, type: :model d
     expect { up }.to raise_error(StandardError, /accounts? .*#{orphan}.* no user/m)
 
     expect(nullable?).to be(true)
+    expect(connection.select_value("PRAGMA foreign_keys")).to eq(1)
     expect(counts.merge("sequence" => sequence)).to eq(before)
     expect(connection.select_value("SELECT COUNT(*) FROM memberships WHERE user_id = #{straggler.id}")).to eq(0) # the stragglers step was rolled back
     connection.execute("DELETE FROM accounts WHERE id = #{orphan}")
@@ -1267,10 +1332,12 @@ class MakeAccountHouseholdRequired < ActiveRecord::Migration[8.1]
 
     connection.disable_referential_integrity do
       connection.transaction do
+        require_enforcement_off
         house_stragglers
         remove_empty_households
         refuse_accounts_nobody_can_house
         keeping_sequence { change_column_null :accounts, :household_id, false }
+        require_no_broken_keys
       end
     end
   end
@@ -1279,7 +1346,11 @@ class MakeAccountHouseholdRequired < ActiveRecord::Migration[8.1]
     return if household_nullable?
 
     connection.disable_referential_integrity do
-      connection.transaction { keeping_sequence { change_column_null :accounts, :household_id, true } }
+      connection.transaction do
+        require_enforcement_off
+        keeping_sequence { change_column_null :accounts, :household_id, true }
+        require_no_broken_keys
+      end
     end
   end
 
@@ -1290,24 +1361,37 @@ class MakeAccountHouseholdRequired < ActiveRecord::Migration[8.1]
     def house_stragglers
       now = connection.quote(Time.current.utc.strftime("%Y-%m-%d %H:%M:%S.%6N"))
       loop do
-        users = select_rows("SELECT id, account_id FROM users WHERE NOT EXISTS (SELECT 1 FROM memberships WHERE memberships.user_id = users.id) ORDER BY id LIMIT #{BATCH.to_i}")
+        users = connection.select_rows("SELECT id, account_id FROM users WHERE NOT EXISTS (SELECT 1 FROM memberships WHERE memberships.user_id = users.id) ORDER BY id LIMIT #{BATCH.to_i}")
         break if users.empty?
 
         users.each do |user_id, account_id|
-          execute "INSERT INTO households (name, created_at, updated_at) SELECT substr(name, 1, 88) || '''s household', #{now}, #{now} FROM users WHERE id = #{user_id.to_i}"
-          household = select_value("SELECT last_insert_rowid()")
-          execute "INSERT INTO memberships (household_id, user_id, role, created_at, updated_at) VALUES (#{household.to_i}, #{user_id.to_i}, 'manager', #{now}, #{now})"
-          execute "UPDATE accounts SET household_id = #{household.to_i} WHERE id = #{account_id.to_i}"
+          household = connection.insert("INSERT INTO households (name, created_at, updated_at) SELECT substr(name, 1, 88) || '''s household', #{now}, #{now} FROM users WHERE id = #{user_id.to_i}")
+          raise ActiveRecord::MigrationError, "no household was made for user #{user_id}" unless household
+          connection.execute "INSERT INTO memberships (household_id, user_id, role, created_at, updated_at) VALUES (#{household.to_i}, #{user_id.to_i}, 'manager', #{now}, #{now})"
+          connection.execute "UPDATE accounts SET household_id = #{household.to_i} WHERE id = #{account_id.to_i}"
         end
       end
     end
 
+    # Rails runs no check after a copy and, inside a transaction, enforcement can't be switched off: if either went wrong the copy would
+    # have cascaded silently, so a run that finds enforcement on, or rows left pointing at accounts or households, stops and rolls back.
+    def require_enforcement_off
+      return if connection.select_value("PRAGMA foreign_keys").to_i.zero?
+
+      raise ActiveRecord::MigrationError, "foreign keys are enforced inside the table copy, which would delete the collections that reference accounts; nothing was changed"
+    end
+
+    def require_no_broken_keys
+      broken = connection.select_rows("PRAGMA foreign_key_check").select { |_table, _row, parent, *| %w[accounts households].include?(parent) }
+      raise ActiveRecord::MigrationError, "the copy left rows pointing at accounts or households (#{broken.first(3).inspect}); nothing was changed" if broken.any?
+    end
+
     def remove_empty_households
-      execute "DELETE FROM households WHERE NOT EXISTS (SELECT 1 FROM memberships WHERE memberships.household_id = households.id) AND NOT EXISTS (SELECT 1 FROM accounts WHERE accounts.household_id = households.id)"
+      connection.execute "DELETE FROM households WHERE NOT EXISTS (SELECT 1 FROM memberships WHERE memberships.household_id = households.id) AND NOT EXISTS (SELECT 1 FROM accounts WHERE accounts.household_id = households.id)"
     end
 
     def refuse_accounts_nobody_can_house
-      orphans = select_values("SELECT id FROM accounts WHERE household_id IS NULL")
+      orphans = connection.select_values("SELECT id FROM accounts WHERE household_id IS NULL")
       return if orphans.empty?
 
       raise ActiveRecord::MigrationError, "accounts #{orphans.first(5).join(", ")} have no household and no user, so no household can be made for them; " \
@@ -1316,17 +1400,17 @@ class MakeAccountHouseholdRequired < ActiveRecord::Migration[8.1]
 
     # As CreateHouseholdsAndMemberships: the copy resets accounts' row of sqlite_sequence, which the proof can't see (compare.rb skips sqlite_ tables).
     def keeping_sequence
-      seq = select_value("SELECT seq FROM sqlite_sequence WHERE name = 'accounts'")
+      seq = connection.select_value("SELECT seq FROM sqlite_sequence WHERE name = 'accounts'")
       yield
       return unless seq
 
-      execute "UPDATE sqlite_sequence SET seq = #{seq.to_i} WHERE name = 'accounts' AND seq < #{seq.to_i}"
-      execute "INSERT INTO sqlite_sequence (name, seq) SELECT 'accounts', #{seq.to_i} WHERE NOT EXISTS (SELECT 1 FROM sqlite_sequence WHERE name = 'accounts')"
+      connection.execute "UPDATE sqlite_sequence SET seq = #{seq.to_i} WHERE name = 'accounts' AND seq < #{seq.to_i}"
+      connection.execute "INSERT INTO sqlite_sequence (name, seq) SELECT 'accounts', #{seq.to_i} WHERE NOT EXISTS (SELECT 1 FROM sqlite_sequence WHERE name = 'accounts')"
     end
 end
 ```
 - [ ] **6.5 Dump and prepare:** `bin/rails db:migrate` and `bin/rails db:test:prepare`; `git diff db/schema.rb` shows `t.integer "household_id", null: false` and the new version `2026_11_13_120003`, and no other change to `accounts`, its foreign keys or the thirteen tables (any other line is a failure of the copy: stop and report). Run `bin/rspec spec/migrations/make_account_household_required_spec.rb` (6 examples, 0 failures).
-- [ ] **6.6 Make the earlier specs follow the final shape.** In `spec/migrations/create_households_and_memberships_spec.rb` and `spec/migrations/backfill_households_spec.rb`, extend the versions so a spec's down and up cover (c): in the first, `def versions = [ 2026_11_13_120001, 2026_11_13_120002, 2026_11_13_120003 ]` and add `require` lines for the other two migrations; in the second, add to the `around` an `ensure` that reruns `context.run(:up, 2026_11_13_120003)` when `accounts.household_id` is nullable after an example that goes down. In `backfill_households_spec.rb`'s batch example, the raw `INSERT INTO accounts` rows get a household: insert a household first and pass `household_id` (the column is NOT NULL now); `forget_households` sets `household_id = NULL`, which the copy refuses: have it first `down` (c) when the column is NOT NULL (`context.run(:down, 2026_11_13_120003)`) and `up` it in `ensure`. In `spec/support/backup_helpers.rb:40` and `spec/lib/collector/backup/snapshot_spec.rb:12` insert a household and give the account its id (`INSERT INTO households (name, created_at, updated_at) VALUES ('h', ?, ?)`, then `accounts (created_at, updated_at, household_id)`). Run `bin/rspec spec/migrations spec/lib/collector/backup spec/backup_guards_spec.rb spec/backup_upgrade_spec.rb` (green).
+- [ ] **6.6 Make the earlier specs follow the final shape.** In `spec/migrations/create_households_and_memberships_spec.rb` and `spec/migrations/backfill_households_spec.rb`, extend the versions so a spec's down and up cover (c): in the first, `def versions = [ 2026_11_13_120001, 2026_11_13_120002, 2026_11_13_120003 ]` and add `require` lines for the other two migrations; in the second, add to the `around` an `ensure` that reruns `context.run(:up, 2026_11_13_120003)` when `accounts.household_id` is nullable after an example that goes down. In `backfill_households_spec.rb`'s batch example and its 10,000-user timing example (both insert accounts by SQL), the raw `INSERT INTO accounts` rows get a household (the timing example inserts one household first and gives every account that id, or runs with (c) down as `forget_households` does): insert a household first and pass `household_id` (the column is NOT NULL now); `forget_households` sets `household_id = NULL`, which the copy refuses: have it first `down` (c) when the column is NOT NULL (`context.run(:down, 2026_11_13_120003)`) and `up` it in `ensure`. In `spec/support/backup_helpers.rb:40` and `spec/lib/collector/backup/snapshot_spec.rb:12` insert a household and give the account its id (`INSERT INTO households (name, created_at, updated_at) VALUES ('h', ?, ?)`, then `accounts (created_at, updated_at, household_id)`). Run `bin/rspec spec/migrations spec/lib/collector/backup spec/backup_guards_spec.rb spec/backup_upgrade_spec.rb` (green).
 - [ ] **6.7 Commit:** `feat(db): accounts.household_id is NOT NULL, by a copy that loses no row (spec 090 phase 6)` and `test(db): the earlier households specs follow the final shape (spec 090 phase 6)`.
 
 ---
@@ -1336,8 +1420,8 @@ end
 **Implements:** FR-5, decision 11, Story 6's evidence | **Satisfies:** AC-4.2, AC-6.6, the documentation criteria (verified by reading, `verification.md`) | **Interfaces:** none.
 
 - [ ] **7.1 `docs/architecture/tenancy-and-accounts.md`** (the source of each statement inline): in the Scope bullet "The tenant and its holder" add `Household`, `Membership` (spec 090; ADR 0030); Glossary: replace the Account entry's "created with its user and deleted with it" tail with "created with its user and deleted with it, and in a household (`accounts.household_id`) as a personal account (`accounts.kind`)", add **Household**, **Membership (manager, member)**, **Personal and shared account** entries and the note that "member" also means an admin page's non-admin (spec 090 Terms); the Tenant-owned list gains `memberships` (user-owned, instance-level) and says `households` and `memberships` carry no `account_id`, are never scoped through `Current.account` and no request names one; Invariants: change "One user per account" to the new rule ("`users.account_id` stays unique; a household is a group of accounts; a household always has a manager; a personal account is in its user's household; a household is made with its user by `User#build_account_and_household`" with `spec 090`, ADR 0030), add the cross-account reads sentence (the household tables are read by the model and the proof only); the "Deleting a user" paragraph gains the order (membership, user, account, household when empty) and the last-manager refusal; "Accepted limits" replaces "An account has exactly one user. Personal and household collections side by side will supersede that half of ADR 0017" with what exists now (a household of one for every user; the rest is #381 to #389); Sources gains spec 090, ADR 0030 and #380; Distillation log gains a row once the PR number exists (the distill-feature step writes it).
-- [ ] **7.2** `.claude/rules/multi-tenancy.md`: add one line under the ✓ list: "✓ `households` and `memberships` are instance-level, not tenant-owned: read them through the user or the account, never through `Current.account`'s collections, and name none in a request." `docs/architecture/release-and-deploy.md`: in the upgrade proof's paragraph add the two-tier households check (decision 10; `Upgrade::Households`; spec 090 AC-6.1 to AC-6.5) and that `expected_changes.yml` stays empty because `compare.rb` reads only the old database's columns. `docs/releasing.md`'s Upgrade notes: the entry for this migration with its warning (an older image can't create a user after it; going back is a restore of the backup taken before; a failed third migration stops the boot and changes nothing; Kamal's old container fails sign-up for seconds). `CLAUDE.md`: in the Project Status accounts sentence add "every user belongs to a household (spec 090, ADR 0030): a household of one is made with the user and an existing instance gains one on upgrade, nothing visible yet; the shared collection and joining are the households lane (#381 to #389)". `docs/adr/0030`: Status becomes Accepted. `docs/specs/README.md`: spec 004's row gains "Superseded by 090 in part (FR-3's one user per account)" and 090's row Status "Approved".
-- [ ] **7.3 Evidence for `verification.md`** (create it with the headings the other specs use; write each result as it is produced): the phase 0 and each phase's spec runs with counts; the grep and the routes diff of step 4.2; **`bin/upgrade-smoke`**: build the previous release from its tag as `.claude/memory/container-engine-colima-macos.md` says (`git archive` of `v0.3.0` into its own directory, three `--build-arg` flags for the image: `README.md`, Building from source), build the code under test the same way, then `bin/upgrade-smoke <previous-image> <current-image>` with `TMPDIR` under the worktree and `/opt/homebrew/bin` appended to `PATH`; expected: the run ends `OK: v0.3.0` and prints `households: ok (backfilled)` for the upgraded and the restored snapshot and `households: ok` for the next one. **Ask the coordinator for the container engine and a slot before this step.** A failure is read, not re-run blindly (`.claude/memory/reproduce-ci-with-seed.md` for CI).
+- [ ] **7.2** `.claude/rules/multi-tenancy.md`: add one line under the ✓ list: "✓ `households` and `memberships` are instance-level, not tenant-owned: read them through the user or the account, never through `Current.account`'s collections, and name none in a request." `docs/architecture/release-and-deploy.md`: in the upgrade proof's paragraph add the two-tier households check (decision 10; `Upgrade::Households`; spec 090 AC-6.1 to AC-6.5) and that `expected_changes.yml` stays empty because `compare.rb` reads only the old database's columns. `docs/releasing.md`'s Upgrade notes: the entry for this migration with its warning (an older image can't create a user after it; going back is a restore of the backup taken before; a failed third migration stops the boot and changes nothing; Kamal's old container fails sign-up for seconds). `CLAUDE.md`: in the Project Status accounts sentence add "every user belongs to a household (spec 090, ADR 0030): a household of one is made with the user and an existing instance gains one on upgrade, nothing visible yet; the shared collection and joining are the households lane (#381 to #389)". `docs/adr/0030`: Status becomes Accepted (ADR 0017's "superseded in part by 0030" status line and both ADR index rows were written with the ADR: verify them). `docs/specs/README.md`: spec 004's row gains "Superseded by 090 in part (FR-3's one user per account)" and 090's row Status "Approved".
+- [ ] **7.3 Evidence for `verification.md`** (create it with the headings the other specs use; write each result as it is produced): the phase 0 and each phase's spec runs with counts; the grep and the routes diff of step 4.2; **`bin/upgrade-smoke`**: build the previous release from its tag as `.claude/memory/container-engine-colima-macos.md` says (`git archive` of `v0.3.0` into its own directory, three `--build-arg` flags for the image: `README.md`, Building from source), build the code under test the same way, then `bin/upgrade-smoke <previous-image> <current-image>` with `TMPDIR` under the worktree and `/opt/homebrew/bin` appended to `PATH`; expected: the run ends `OK: v0.3.0` and prints `households: ok (backfilled)` for the upgraded and the restored snapshot and `households: ok` for the next one. **Run it on the final commit that will be pushed: after 7.4 and after the implementation review's fixes of 7.5; if code changes after a run, run it again, and record the SHA it ran on in `verification.md`.** **Ask the coordinator for the container engine and a slot before this step.** A failure is read, not re-run blindly (`.claude/memory/reproduce-ci-with-seed.md` for CI).
 - [ ] **7.4 `bin/ci checks`** (a documentation-and-code branch: it runs RuboCop, YARD, the comment ratchet, Brakeman, bundler-audit, importmap audit and the migration guard): expected green; the comment ratchet needs a summary on each new public method (the models and `Upgrade::Households` have them). Fix and re-run.
 - [ ] **7.5 The implementation review** (`sdd-review` Mode B, read-only, Opus 5.5) recorded in `verification.md` under `## Implementation review` with the verdict first; then `sdd-superpowers:session-wrap` and `distill-feature` (digest to the coordinator before commit); then one slot for the one full `bin/ci`; push; draft PR closing #380; CI green; `gh pr ready`; `gh pr edit --add-assignee @me`; `worker_done`.
 
