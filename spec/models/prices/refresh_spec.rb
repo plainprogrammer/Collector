@@ -218,6 +218,19 @@ RSpec.describe Prices::Refresh, type: :model do
       expect(CurrentPrice.find_by(catalog_entry_id: entry.id).cents).to eq(100)
     end
 
+    it "ignores a second quote for a printing and series already judged in an earlier batch (AC-2.10)", :aggregate_failures do
+      stub_const("Prices::Refresh::BATCH_SIZE", 1)
+      use_widget_sources(records: [ widget_quote("w-1", 100), widget_quote("w-2", 5), widget_quote("w-1", 999) ])
+      entry = widget_entry("w-1")
+      widget_entry("w-2")
+
+      run = refresh.call
+
+      expect(run).to have_attributes(quotes_seen: 2, added: 2)
+      expect(CurrentPrice.find_by(catalog_entry_id: entry.id).cents).to eq(100)
+      expect(PriceChange.where(catalog_entry_id: entry.id).pluck(:cents)).to eq([ 100 ])
+    end
+
     it "ignores a quote repeated while its printing is pending, so a file that repeats one cannot grow the batch without limit (AC-2.10)", :aggregate_failures do
       stub_const("Prices::Refresh::BATCH_SIZE", 1)
       run_refresh = refresh
@@ -457,7 +470,7 @@ RSpec.describe Prices::Refresh, type: :model do
       expect(last_run.error).to include("unexpected end of file")
       expect(CurrentPrice.where(catalog_entry_id: gone.id).count).to eq(1)
       written = CurrentPrice.where(catalog_entry_id: fresh.map(&:id)).count
-      expect(written).to be_between(2, 4)
+      expect(written).to eq(2) # the batches flushed before the error: the last two printings were still pending
 
       use_widget_sources(records: keep_quotes(10) + fresh.map { widget_quote(it.external_key, 7) }, version: "v1")
       second = refresh.call
@@ -491,12 +504,15 @@ RSpec.describe Prices::Refresh, type: :model do
     it "refuses every removal and fails the run when absences exceed the share, counting them as withheld (AC-3.6)", :aggregate_failures do
       seed_candidates(10)
       gone = Array.new(2) { |index| widget_entry("gone-#{index}").tap { seed_price(it, 100) } }
-      use_widget_sources(records: keep_quotes(10)) # 2 of 12 candidates absent: over 1/10
+      repriced = seed_candidates(1, prefix: "moved").first
+      use_widget_sources(records: keep_quotes(10) + [ widget_quote("moved-0", 150) ]) # 2 of 13 candidates absent: over 1/10
 
-      expect { refresh.call }.to raise_error(Prices::Refresh::GuardError, /2 of 12/)
+      expect { refresh.call }.to raise_error(Prices::Refresh::GuardError, /2 of 13/)
 
-      expect(last_run).to have_attributes(status: "failed", removed: 0, removals_withheld: 2)
+      expect(last_run).to have_attributes(status: "failed", removed: 0, removals_withheld: 2, repriced: 1)
       expect(CurrentPrice.where(catalog_entry_id: gone.map(&:id)).count).to eq(2)
+      expect(CurrentPrice.find_by(catalog_entry_id: repriced.id).cents).to eq(150) # changes already written stand
+      expect(PriceChange.where(catalog_entry_id: repriced.id).count).to eq(2)
     end
 
     it "removes absences exactly at the share (AC-3.6)", :aggregate_failures do
@@ -533,7 +549,9 @@ RSpec.describe Prices::Refresh, type: :model do
 
       ActiveSupport::Notifications.subscribed(callback, "sql.active_record") { refresh.call }
 
-      expect(progress.size).to be >= 12 # eleven candidates in slices of two: six slices in each of the two walks
+      progress.reject! { it.include?('"status"') } # the run's end is not a touch
+      walks = progress.drop(progress.rindex { it.include?('"quotes_seen"') } + 1) # only the read's flushes write quotes_seen; what follows is the two walks
+      expect(walks.size).to eq(12) # eleven candidates in slices of two: six slices in each of the two walks
     end
 
     it "leaves both or neither of a removal batch's current price and blank history row when the batch fails (AC-3.9)", :aggregate_failures do

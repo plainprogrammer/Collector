@@ -42,6 +42,16 @@ RSpec.describe Prices::RefreshJob, type: :job do
     end
   end
 
+  it "waits at least Catalog::RateLimitRetry::SHORTEST_WAIT before it tries a rate-limited source again, which retry_on's own backoff would not (AC-4.6)", :aggregate_failures do
+    allow(Prices::Refresh).to receive(:new).and_raise(Catalog::Sources::RateLimitedError, "slow down")
+    job = described_class.new("fake_source")
+
+    job.perform_now
+
+    expect(ActiveJob::Base.queue_adapter.enqueued_jobs.last[:at]).to be >= Time.now.to_f + Catalog::RateLimitRetry::SHORTEST_WAIT.to_i - 1
+    expect(job.exception_executions).to include(Catalog::RateLimitRetry::COUNTED_AS => 1)
+  end
+
   it "fails on the third attempt of a transient error, not retried again (AC-4.6)" do
     allow(Prices::Refresh).to receive(:new).and_raise(Catalog::Sources::TransientError, "timeout")
     job = described_class.new("fake_source")
