@@ -57,7 +57,20 @@ All commands from the worktree. Targeted runs until the final one; one full `bin
 
 ### `bin/upgrade-smoke`
 
-To be recorded when it runs on the commit that is pushed (the previous release v0.3.0 built from its tag with `git archive`, the code under test built beside it, `--previous-version 0.3.0`). **Expected to print** for the households: `households: ok (backfilled)` after the upgraded snapshot's comparison and again after the restored snapshot's, and nothing for the `next` snapshot unless it fails (it raises `AC-6.1: the next snapshot: …`); the comparison lines show `accounts`, `users`, `lots` and every old table `same`; the run ends `OK: v0.3.0`.
+Run 2026-11-13 on the merge `0a098089957c19835529fbee6ce0d28b5c58cfb1` (origin/main at b9da192e merged; the commits after it change only `verification.md`), docker through colima: the previous release v0.3.0 built from its tag (`git archive v0.3.0` into `tmp/smoke090/v030`, image `collector:v030local`, digest `sha256:61834f698f57…`), the code under test built from the worktree (`collector:smoke090`, `--build-arg` COLLECTOR_VERSION, REVISION and SOURCE_URL), `TMPDIR` under the worktree, `/opt/homebrew/bin` appended to the PATH:
+
+```
+TMPDIR="$PWD/tmp/smoke090/run" bin/upgrade-smoke collector:v030local collector:smoke090 --previous-version 0.3.0
+```
+
+It passed, as expected. The output that reads against the expectation:
+
+- After the upgraded snapshot's comparison: all 28 old tables `same` (accounts 2, users 2, lots 2003, locations 6, decks 1, deck_proxies 1, bulk_selections 1, bulk_selection_marks 3, bulk_removals 1, import_uploads 1, number_entries 1, scanner_sittings 1 and the rest, each with its digest), then **`households: ok (backfilled)`**, then the prices line.
+- After the backup leg's comparison: `sessions`, `bulk_removals`, `bulk_selections` and `bulk_selection_marks` `differs` and listed as `expected: … rows_removed (backup:restore ends every session …)` (spec 030, not this feature), every other table `same`, then **`households: ok (backfilled)`** again.
+- The seed of the next release printed nothing for the households (its check raises only on a problem).
+- The last line: `OK: v0.3.0 (collector@sha256:61834f698f57…) upgraded to 0a098089957c; 28 tables compared, behaviour verified, 83 s`.
+
+So the two tiers held on the real database the v0.3.0 seed leaves (two users, two accounts, 2,003 lots, a row in each of the thirteen tables that reference `accounts`): every user has one manager membership in a household named for them, every account is in its user's household and personal, nothing old changed (`expected_changes.yml` is empty), and the third migration's table copy lost no row. This closes AC-6.1, AC-6.2 (restore leg), AC-6.6 and the m5 finding.
 
 ### The full `bin/ci`
 
