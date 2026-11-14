@@ -28,6 +28,11 @@ production:
     args: [ "mtg", "scheduled" ]
     queue: sync
     schedule: every monday at 3:15am
+  refresh_prices:
+    class: Prices::RefreshJob
+    args: [ "scryfall" ]
+    queue: sync
+    schedule: at 11:30am every day
   sweep_import_uploads:
     class: ImportUpload::SweepJob
     queue: default
