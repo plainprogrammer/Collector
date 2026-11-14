@@ -96,6 +96,7 @@ module Collector
 
       def shape_problems
         return [ "#{@path} isn't a mapping with `allowed` and `exceptions`" ] unless @data.is_a?(Hash)
+        return [ "#{@path} has no `allowed` list" ] unless @data.key?("allowed")
 
         allowed_shape + exception_shape
       end
@@ -108,13 +109,22 @@ module Collector
 
       def exception_shape
         bad = raw_exceptions.each_with_index.reject { |entry, _| well_formed_exception?(entry) }
-          .map { |entry, index| "#{@path}: exception entry #{index + 1} (#{entry.is_a?(Hash) ? entry["gem"] : "not a mapping"}) needs a `gem`, `licences` (a list) and a `reason`" }
+          .map { |entry, index| "#{@path}: exception entry #{index + 1} (#{entry.is_a?(Hash) ? entry["gem"] : "not a mapping"}) #{exception_needs(entry)}" }
         bad + repeated(raw_exceptions.filter_map { it["gem"] if it.is_a?(Hash) }).map { "#{@path}: the exception for gem #{it} is listed twice" }
       end
 
       def well_formed_exception?(entry)
         entry.is_a?(Hash) && filled?(entry["gem"]) && filled?(entry["reason"]) &&
-          entry["licences"].is_a?(Array) && entry["licences"].any? && entry["licences"].all? { filled?(it) }
+          entry["licences"].is_a?(Array) && entry["licences"].any? && entry["licences"].all? { filled?(it) } &&
+          valid_all_required?(entry)
+      end
+
+      # `all_required` may be absent; given, it is exactly true or false (a string such as "true" would silently mean false).
+      def valid_all_required?(entry) = !entry.key?("all_required") || [ true, false ].include?(entry["all_required"])
+
+      def exception_needs(entry)
+        needs = "needs a `gem`, `licences` (a list) and a `reason`"
+        entry.is_a?(Hash) && !valid_all_required?(entry) ? "#{needs}; `all_required` must be true or false" : needs
       end
 
       def repeated(values) = values.tally.select { |_, count| count > 1 }.keys

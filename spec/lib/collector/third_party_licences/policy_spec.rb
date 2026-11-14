@@ -87,6 +87,25 @@ RSpec.describe Collector::ThirdPartyLicences::Policy, type: :model do
       expect(shape_problems(data(exceptions: [ ok, ok ])).first).to include("gem y", "twice")
     end
 
+    it "names an exception whose `all_required` is neither true nor false, and accepts it absent or boolean", :aggregate_failures do
+      ok = { "gem" => "y", "licences" => [ "GPL-3.0-only" ], "reason" => "r" }
+      judged = ->(entry) { problems_for(section(:gems), data: data(exceptions: [ entry ]), locked: %w[y]) }
+
+      expect(judged.call(ok.merge("all_required" => "true")))
+        .to contain_exactly(a_string_including(path, "exception entry 1", "(y)", "all_required", "true or false"))
+      expect(judged.call(ok)).to be_empty
+      expect(judged.call(ok.merge("all_required" => true))).to be_empty
+      expect(judged.call(ok.merge("all_required" => false))).to be_empty
+    end
+
+    it "reports one problem for a policy with no `allowed` list, and accepts an empty list", :aggregate_failures do
+      gems = section(:gems, component("rake", "MIT"), component("viral", "GPL-3.0-only"))
+
+      expect(problems_for(gems, data: {})).to contain_exactly(a_string_including(path, "no `allowed` list"))
+      expect(problems_for(gems, data: { "exceptions" => [] }).size).to eq(1)
+      expect(problems_for(gems, data: { "allowed" => [] }).size).to eq(2) # valid shape: everything is judged and none is allowed
+    end
+
     it "judges nothing while the policy is malformed (it would report every gem)" do
       expect(problems_for(section(:gems, component("viral", "GPL-3.0-only")), data: { "allowed" => "MIT" }).size).to eq(1)
     end
