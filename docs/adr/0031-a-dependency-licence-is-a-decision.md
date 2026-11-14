@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed (2026-11-13). Numbered 0031 because 0030 is spec 090's, on its own branch. Written with spec 091; the maintainer ruled its decisions 1 to 9 as recommended on 2026-11-13 and asked for this ADR (the coordinator's number 0031). It becomes Accepted with the pull request.
+Accepted (2026-11-13; the maintainer, after the merge of [#422](https://github.com/plainprogrammer/Collector/pull/422)). Written as Proposed. Numbered 0031 because 0030 is spec 090's, on its own branch. Written with spec 091; the maintainer ruled its decisions 1 to 9 as recommended on 2026-11-13 and asked for this ADR (the coordinator's number 0031). It becomes Accepted with the pull request.
 
 **Date:** 2026-11-13
 **Feature:** 091-licence-check-in-ci

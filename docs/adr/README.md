@@ -68,7 +68,7 @@ Add a line here with each new ADR. All are Accepted unless the line says otherwi
 
 ### Dependencies and licensing
 
-- [0031](0031-a-dependency-licence-is-a-decision.md): A dependency's licence is a decision: an allowed list, named exceptions, and a CI step that enforces both (Proposed)
+- [0031](0031-a-dependency-licence-is-a-decision.md): A dependency's licence is a decision: an allowed list, named exceptions, and a CI step that enforces both
 
 ### Expected
 
