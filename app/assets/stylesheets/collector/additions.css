@@ -964,6 +964,10 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
 @container scan (max-height: 599px) {
   .c-scan__strip { box-sizing:border-box; height:64px; }
   .c-scan__capture { box-sizing:border-box; height:52px; }
+  /* The label's 16px + 4px gap and the name, the gap and the line (22 + 4 + 18) would fill the 64px strip exactly, the label on its
+     top edge and the line on the band. Visually hidden, as `.c-sr` is (not `display:none`: assistive technology still reads "Read
+     from the card"), the name and the line are 44px, centred, 10px above and below. At 144px and 96px the label shows. */
+  .c-scan__read-label { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
 }
 
 /* ---------- Reduced motion, app-wide (spec 080 decision 14) ---------- */

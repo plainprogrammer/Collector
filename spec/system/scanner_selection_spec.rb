@@ -285,6 +285,48 @@ RSpec.describe "The selection pane", type: :system do
     end
   end
 
+  # Decision 13: the 64px strip's text block is the name and the collector line (44px) centred, so its label "Read from the card" is
+  # visually hidden there (still in the document for assistive technology); at 144px and 96px it shows.
+  def read_label_box
+    page.evaluate_script(<<~JS)
+      (() => {
+        const rect = (selector) => { const b = document.querySelector(selector).getBoundingClientRect(); return { top: b.top, bottom: b.bottom, width: b.width, height: b.height } }
+        const label = document.querySelector(".c-scan__read-label")
+        return { label: rect(".c-scan__read-label"), strip: rect(".c-scan__strip"), name: rect(".c-scan__read-name"), line: rect(".c-scan__read-line"),
+                 text: label.textContent, clip: getComputedStyle(label).clip, overflow: getComputedStyle(label).overflow, display: getComputedStyle(label).display }
+      })()
+    JS
+  end
+
+  it "shows the strip's label 'Read from the card' at 390 × 844 (decision 13)", :aggregate_failures do
+    open_scanner_frame(width: 390, height: 844)
+    within_narrow_frame do
+      capture_synthetic
+      read = read_label_box
+      expect(read["text"]).to eq("Read from the card")
+      expect(read["label"]["height"]).to eq(16)
+      expect(read["label"]["width"]).to be > 16
+    end
+  end
+
+  it "hides the strip's label visually, not from the document, in the 64px strip at 360 × 560, and centres the name and the line (decision 13)", :aggregate_failures do
+    open_scanner_frame(width: 360, height: 560)
+    within_narrow_frame do
+      capture_synthetic
+      read = read_label_box
+      expect(read["strip"]["height"]).to eq(64)
+      expect(read["text"]).to eq("Read from the card")
+      expect(read["display"]).not_to eq("none")
+      expect([ read["label"]["width"], read["label"]["height"] ]).to eq([ 1, 1 ])
+      expect(read["overflow"]).to eq("hidden")
+      expect(read["clip"]).to start_with("rect(")
+      expect(read["name"]["top"] - read["strip"]["top"]).to be >= 8
+      expect(read["strip"]["bottom"] - read["line"]["bottom"]).to be >= 8
+      expect(read["name"]["top"]).to be >= read["strip"]["top"]
+      expect(read["line"]["bottom"]).to be <= read["strip"]["bottom"]
+    end
+  end
+
   # The not-sure state: a two-line band at 360px and the 44px "All printings" line (a fixed part of 270px; 254px with a one-line
   # band at 390px). Images: 390 × 844 278px or 288px, 360 × 640 122px (within 2px), 360 × 560 the 96px floor with the body scrolling.
   [ [ 390, 844, [ 278, 288 ], false ], [ 360, 640, [ 120, 124 ], false ], [ 360, 560, [ 96 ], true ] ].each do |width, height, images, scrolls|
