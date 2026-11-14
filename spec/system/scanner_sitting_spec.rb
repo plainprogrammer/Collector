@@ -451,7 +451,7 @@ RSpec.describe "The scanner's sitting", type: :system do
     page.execute_script("document.querySelector('.c-scan__line--added').classList.add('c-scan__line--alert')")
     show_synthetic_card
     click_on "Capture"
-    expect(page).to have_css(".c-scan--result .c-scanner__candidate", wait: 30)
+    expect(page).to have_css(".c-scan--result .c-scanpane__card:not([hidden])", wait: 30)
     expect(page).to have_no_css(".c-scan__line--alert", visible: :all)
   end
 
