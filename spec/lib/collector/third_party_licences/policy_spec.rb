@@ -92,6 +92,26 @@ RSpec.describe Collector::ThirdPartyLicences::Policy, type: :model do
     end
   end
 
+  describe ".for_repository" do
+    it "reads the lockfile's gem names once each, with no `bundler` (AC-3.5)", :aggregate_failures do
+      names = described_class.locked_names
+
+      expect(names).to include("rails", "sqlite3")
+      expect(names).to eq(names.uniq)
+      expect(names).not_to include("bundler")
+    end
+
+    it "raises for a policy file it can't read, and reports a file that isn't a mapping (AC-3.3)", :aggregate_failures do
+      Dir.mktmpdir("licence-policy") do |dir|
+        list = File.join(dir, "list.yml")
+        File.write(list, "- MIT\n")
+
+        expect { described_class.for_repository(policy_path: File.join(dir, "absent.yml"), sections: []) }.to raise_error(SystemCallError)
+        expect(described_class.for_repository(policy_path: list, sections: []).problems.first).to include(list.delete_prefix("#{Rails.root}/"), "mapping")
+      end
+    end
+  end
+
   describe "exceptions (decision 3)" do
     let(:viral) { component("viral", "GPL-3.0-only") }
     let(:exception) { { "gem" => "viral", "licences" => [ "GPL-3.0-only" ], "reason" => "a tool, never loaded" } }

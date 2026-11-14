@@ -3,7 +3,7 @@ module Collector
     # Judges the components of {ThirdPartyLicences.build}'s sections against the allowed list and the named exceptions in
     # `config/licence_policy.yml` (spec 091), as a list of problems each naming its offender, the licence and the file.
     #
-    # Every input is injected, so a spec shows each rule failing on a small fixture; `for_repository` (T1.3) builds the real ones
+    # Every input is injected, so a spec shows each rule failing on a small fixture; {.for_repository} builds the real ones
     # and the `licences:check` task prints the problems. A component passes if any one of its identifiers is allowed (spec 091
     # decision 2); one with none, or with a string that is not exactly an allowed id, fails (decision 5). Nothing here reads
     # a gem or a licence file: the one reader is {ThirdPartyLicences} (no second reader of the bundle).
@@ -20,6 +20,37 @@ module Collector
       # A named exception, as the rules use it: the `gem`, its `licences` (sorted, a set) and whether its list is `all_required`.
       # Its `reason` is for the reader of the file; no rule reads it.
       Exemption = Data.define(:gem, :licences, :all_required)
+
+      class << self
+        # The policy of this repository: the file at `policy_path`, the sections of the running bundle and manifest, and the
+        # lockfile's gem names.
+        #
+        # Reads the policy and, unless `sections` is given, every licence file {ThirdPartyLicences.build} reads (about 400 KB).
+        #
+        # @param policy_path [String, Pathname] the policy file; default `config/licence_policy.yml`
+        # @param sections [Array<ThirdPartyLicences::Section>] the components to judge; default the real ones
+        # @return [Policy]
+        # @raise [SystemCallError] when the policy file can't be read
+        # @raise [Psych::Exception] when it isn't valid YAML or holds more than plain data
+        def for_repository(policy_path: Rails.root.join(PATH), sections: ThirdPartyLicences.build.sections)
+          new(data: ThirdPartyLicences.load_manifest(policy_path), path: display_path(policy_path), sections:, locked_names:)
+        end
+
+        # The gem names the lockfile holds, once each.
+        #
+        # A gem the lockfile names for several platforms repeats there (`ffi`, `sqlite3`); `bundler` is in the bundle and
+        # not in the lockfile, so it is never among them.
+        #
+        # @return [Array<String>]
+        def locked_names
+          Bundler::LockfileParser.new(Bundler.default_lockfile.read).specs.map(&:name).uniq
+        end
+
+        private
+
+        # The path as a message prints it: relative to the application when it is inside it.
+        def display_path(path) = path.to_s.delete_prefix("#{Rails.root}/")
+      end
 
       # @param data [Hash{String=>Array<Hash>}, Object] the loaded policy: `allowed` (each `id`, `reason`) and `exceptions`
       #   (each `gem`, `licences`, `reason`, optional `all_required`); anything but a mapping is a problem, not a crash
