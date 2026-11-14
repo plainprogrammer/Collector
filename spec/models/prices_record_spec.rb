@@ -81,7 +81,9 @@ RSpec.describe PricesRecord, type: :model do
       "price_series" => %w[id finish currency kind created_at updated_at],
       "current_prices" => %w[catalog_entry_id price_source_id price_series_id cents reported_on changed_on],
       "price_changes" => %w[catalog_entry_id price_source_id price_series_id recorded_on cents],
-      "price_refresh_runs" => %w[id price_source_id run_on source_version status error started_at finished_at created_at updated_at]
+      # spec 089 decision 2 added job_id, languages and the counts after spec 081's columns (`repriced` is v0.4.3's name)
+      "price_refresh_runs" => %w[id price_source_id run_on source_version status error started_at finished_at created_at updated_at
+                                 job_id languages quotes_seen unchanged repriced added removed removals_withheld unknown_printings malformed]
     }
     keys = { "current_prices" => %w[catalog_entry_id price_source_id price_series_id],
              "price_changes" => %w[catalog_entry_id price_source_id price_series_id recorded_on] }

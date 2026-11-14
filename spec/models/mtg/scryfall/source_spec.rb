@@ -123,6 +123,47 @@ RSpec.describe MTG::Scryfall::Source, type: :model do
       expect(WebMock).to have_requested(:get, /data\.scryfall\.io/).once
       expect(dir.children.map { |path| path.basename.to_s }).to contain_exactly("c.jsonl.gz", "#{version}.jsonl.gz")
     end
+
+    it "deletes a partial file left by a killed download once it is a day old, and keeps a fresh one (spec 089 AC-4.8)", :aggregate_failures do
+      old = dir.join("default-cards-1.jsonl.gz.dead.part")
+      fresh = dir.join("default-cards-1.jsonl.gz.live.part")
+      fixed = dir.join("default-cards-0.jsonl.gz.part") # a fixed-name partial file from an earlier build
+      [ old, fresh, fixed ].each { |path| path.write("x") }
+      FileUtils.touch(old, mtime: Time.now - 2.days)
+      FileUtils.touch(fixed, mtime: Time.now - 2.days)
+      stub_scryfall(cards: [ scryfall_card ])
+      version = source.current_version(languages: [ "en" ])
+
+      source.download(version, dir:)
+
+      expect(dir.children.map { |path| path.basename.to_s }).to contain_exactly("#{version}.jsonl.gz", fresh.basename.to_s)
+    end
+
+    it "writes each download to a partial file of its own, so a second download of the version, started inside the first, is harmless (spec 089 AC-4.8)", :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- one scenario
+      cards = [ scryfall_card ]
+      stub_scryfall(cards:)
+      version = source.current_version(languages: [ "en" ])
+      body = gzip_jsonl(cards)
+      url = "https://data.scryfall.io/default-cards/#{version}.jsonl.gz"
+      other = described_class.new(client: MTG::Scryfall::Client.new, env: {})
+      other.current_version(languages: [ "en" ])
+      calls = 0
+      partials_while_nested = nil
+      stub_request(:get, url).to_return do |_request|
+        calls += 1
+        if calls == 1
+          partials_while_nested = dir.glob("*.part").size # the first download's own partial file is open
+          other.download(version, dir:)
+        end
+        { body:, headers: { "Content-Type" => "application/gzip" } }
+      end
+
+      path = source.download(version, dir:)
+
+      expect(partials_while_nested).to eq(1)
+      expect(path.size).to eq(body.bytesize)
+      expect(dir.glob("*.part")).to be_empty
+    end
   end
 
   describe "#each_entry" do
@@ -142,6 +183,23 @@ RSpec.describe MTG::Scryfall::Source, type: :model do
 
       expect(yielded.grep(Catalog::Sources::EntryRecord).map(&:external_key)).to eq(%w[en-1 ja-1])
       expect(yielded.grep(Catalog::Sources::Malformed).map(&:external_key)).to eq([ "bad-1", nil ])
+    end
+
+    # Issue #411: String#strip raises Encoding::CompatibilityError on such a line, which no rescue caught, so one bad byte
+    # stopped the whole refresh instead of counting one malformed line.
+    it "yields a Malformed for a line that is not valid UTF-8, and goes on with the next line (#411)", :aggregate_failures do
+      path = dir.join("f.jsonl.gz")
+      Zlib::GzipWriter.open(path.to_s) do |gzip|
+        gzip.write("{\"id\":\"bad\",\"name\":\"\xFF\"}\n".b)
+        gzip.write("#{JSON.generate(scryfall_card("id" => "good"))}\n".b)
+      end
+
+      yielded = []
+      source.each_entry(path, languages: %w[en]) { |record| yielded << record }
+
+      expect(yielded.map(&:class)).to eq([ Catalog::Sources::Malformed, Catalog::Sources::EntryRecord ])
+      expect([ yielded.first.external_key, yielded.first.error ]).to eq([ nil, "the line is not valid UTF-8" ])
+      expect(yielded.last.external_key).to eq("good")
     end
   end
 

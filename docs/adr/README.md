@@ -65,6 +65,10 @@ Add a line here with each new ADR. All are Accepted unless the line says otherwi
 - [0029](0029-prices-database-held-by-the-backup.md): Prices live in a fifth database with `WITHOUT ROWID` history, and the backup holds it (backup format version 2)
 - [0026](0026-forms-show-field-errors-through-the-design-system.md): Forms show field errors through the design system, not Rails' wrapper
 
+### Dependencies and licensing
+
+- [0031](0031-a-dependency-licence-is-a-decision.md): A dependency's licence is a decision: an allowed list, named exceptions, and a CI step that enforces both
+
 ### Expected
 
 Named by the [roadmap](../roadmap.md) and written with their specs: none now. The upload-retention ADR expected by spec 028 is 0022 above, and the YARD ADR (spec 027 slice B) is 0027 above (it was expected as 0023, then as the next free number: 0023 went to locations, 0025 to lots in locations, 0026 to form errors).

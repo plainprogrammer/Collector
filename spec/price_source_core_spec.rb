@@ -5,7 +5,7 @@ require "rails_helper"
 RSpec.describe "the price source contract is core", type: :model do
   let(:matcher) { /mtg|magic|scryfall|tcgplayer|cardmarket/i }
   let(:core_files) do
-    %w[app/models/prices.rb app/models/prices/**/*.rb app/models/price_source.rb app/models/price_series.rb]
+    %w[app/models/prices.rb app/models/prices/**/*.rb app/models/price_source.rb app/models/price_series.rb app/models/current_price.rb app/models/price_change.rb app/models/price_refresh_run.rb app/jobs/prices/**/*.rb]
       .flat_map { |pattern| Rails.root.glob(pattern) }
   end
 
