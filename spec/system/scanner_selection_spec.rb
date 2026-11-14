@@ -225,6 +225,33 @@ RSpec.describe "The selection pane", type: :system do
     expect(page).to have_css(".c-scanpane__item", count: 1)
   end
 
+  # Puts measurement mode's kept note in the pane's region, and makes the printings request fail until `window.__failPrintings` is false.
+  def keep_a_note_and_fail_printings
+    page.execute_script(<<~JS)
+      const note = Object.assign(document.createElement("p"), { textContent: "This capture wasn't stored." })
+      note.setAttribute("data-pane-keep", "")
+      document.getElementById("status").append(note)
+      const send = window.fetch
+      window.__failPrintings = true
+      window.fetch = (url, options) => window.__failPrintings && String(url).includes("/scanner/printings") ? Promise.reject(new TypeError("offline")) : send(url, options)
+    JS
+  end
+
+  it "drops the failed-load alert once a retry loads, keeping measurement mode's note in the region (AC-3.11)", :aggregate_failures do
+    visit scanner_path
+    show_synthetic_card(name: "Lightning", lines: [])
+    click_on "Capture"
+    wait_for_pane
+    keep_a_note_and_fail_printings
+    find_link("All printings").send_keys(:enter)
+    expect(page).to have_css("#status .c-status__message--alert", text: "couldn't be loaded")
+    page.execute_script("window.__failPrintings = false")
+    find_link("All printings").send_keys(:enter)
+    expect(page).to have_css(".c-scanpane__card:not([hidden]) .c-scanpane__position", text: "1 of 3 printings")
+    expect(page).to have_no_css("#status .c-status__message--alert")
+    expect(page).to have_css("#status [data-pane-keep]", text: "This capture wasn't stored.", visible: :all)
+  end
+
   it "shows a card named with markup as text on every pane surface (AC-6.3)", :aggregate_failures do
     Catalog::Entry.find_by!(number: "123").update!(name: "Bolt <i>x</i>")
     visit scanner_path

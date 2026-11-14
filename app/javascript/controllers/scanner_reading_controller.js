@@ -54,11 +54,24 @@ export default class extends Controller {
   }
 
   printingsFailed() {
-    this.announce(this.failureMessage || PRINTINGS_FAILED, { alert: true })
+    this.announce(this.failureMessage || PRINTINGS_FAILED, { alert: true, printings: true })
   }
 
-  announce(text, { alert = false } = {}) {
-    document.getElementById("status")?.replaceChildren(this.message(text, { alert }))
+  // A retry that loads: the "couldn't be loaded" alert is stale, and only that one (an add's failure alert stays until it is
+  // answered). The frame event bubbles from the frame, so the action sits on `#scanner_result`.
+  printingsLoaded({ target }) {
+    if (target.id === "scanner_selection") document.querySelectorAll("#status [data-printings-failed]").forEach((alert) => alert.remove())
+  }
+
+  // Replaces the region's sentence, but not a child marked `data-pane-keep` (measurement mode's "capture wasn't stored" note),
+  // as `card-reader#paneSay` does.
+  announce(text, { alert = false, printings = false } = {}) {
+    const region = document.getElementById("status")
+    if (!region) return
+    const kept = [ ...region.children ].filter((child) => child.hasAttribute("data-pane-keep"))
+    const paragraph = this.message(text, { alert })
+    if (printings) paragraph.setAttribute("data-printings-failed", "")
+    region.replaceChildren(...kept, paragraph)
   }
 
   message(text, { alert }) {
