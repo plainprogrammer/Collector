@@ -29,7 +29,8 @@ RSpec.describe CreateHouseholdsAndMemberships, :backup, :committed, type: :model
 
   def counts = ([ "accounts" ] + referencing_tables).to_h { [ it, count(it) ] }
 
-  def account_rows = connection.select_rows("SELECT * FROM accounts ORDER BY id")
+  # Named columns: a table loaded from db/schema.rb and one that went down and up order the new columns differently.
+  def account_rows = connection.select_rows("SELECT id, created_at, updated_at, currency FROM accounts ORDER BY id")
 
   def sequence = connection.select_value("SELECT seq FROM main.sqlite_sequence WHERE name = 'accounts'")
 
@@ -161,13 +162,13 @@ RSpec.describe CreateHouseholdsAndMemberships, :backup, :committed, type: :model
     gone = create(:user)
     connection.execute("DELETE FROM users WHERE id = #{gone.id}")
     connection.execute("DELETE FROM accounts WHERE id = #{gone.account_id}")
-    before = [ counts, account_rows.map { it.first(4) }, sequence ]
+    before = [ counts, account_rows, sequence ]
     expect(before.first.values_at(*referencing_tables)).to all(be >= 1)
     expect(before.last).to be > before[1].last.first
 
     [ -> { down_all }, -> { up_all } ].each do |step|
       step.call
-      expect([ counts, account_rows.map { it.first(4) }, sequence ]).to eq(before)
+      expect([ counts, account_rows, sequence ]).to eq(before)
       expect(connection.select_rows("PRAGMA foreign_key_check")).to be_empty
     end
   end
