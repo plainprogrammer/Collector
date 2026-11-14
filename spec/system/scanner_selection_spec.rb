@@ -249,4 +249,74 @@ RSpec.describe "The selection pane", type: :system do
     click_on "Next printing"
     expect(page).to have_css(".c-scanpane__card:not([hidden]) form.c-scanpane__add[data-rank='other']", minimum: 1)
   end
+
+  # The boxes of the pane's parts in the page the driver is in, and whether the pane's body scrolls.
+  def pane_boxes
+    page.evaluate_script(<<~JS)
+      (() => {
+        const box = (selector) => { const el = document.querySelector(selector); if (!el) return null; const b = el.getBoundingClientRect(); return { top: b.top, bottom: b.bottom, left: b.left, right: b.right, width: b.width, height: b.height } }
+        const body = document.querySelector(".c-scanpane__body")
+        return { strip: box(".c-scan__strip"), band: box("#scanner_band"), row: box(".c-scanpane__rowwrap"), image: box(".c-scanpane__item[aria-current='true']"),
+                 prev: box(".c-scanpane__nav--prev"), next: box(".c-scanpane__nav--next"), details: box(".c-scanpane__card:not([hidden]) .c-scanpane__details"),
+                 adds: box(".c-scanpane__card:not([hidden]) .c-scanpane__adds"), pane: box(".c-scanpane"), bottom: box(".c-scan__bottom"),
+                 scrolls: body.scrollHeight > body.clientHeight + 1, viewport: window.innerHeight }
+      })()
+    JS
+  end
+
+  # Spec 088 decision 13 owns these numbers (the images' floor and the strip's height, in one place in additions.css); the
+  # examples that prove them are here and in design_system_scanner_components_spec.rb, so a different ruling changes those two.
+  [ [ 390, 844, 144, 288 ], [ 360, 640, 96, 160 ], [ 360, 560, 64, 112 ] ].each do |width, height, strip, image|
+    it "fits the band, Previous and Next, the details and the add buttons at #{width} × #{height} for a confident match (AC-5.1, AC-5.3)", :aggregate_failures do
+      open_scanner_frame(width:, height:)
+      within_narrow_frame do
+        capture_synthetic
+        boxes = pane_boxes
+        expect(boxes["strip"]["height"]).to eq(strip)
+        expect(boxes["image"]["height"]).to be_within(1).of(image)
+        expect(boxes["scrolls"]).to be(false)
+        expect(boxes["adds"]["bottom"]).to be <= boxes["bottom"]["top"]
+        parts = %w[strip band row details adds].map { boxes[it] }
+        parts.each_cons(2) { |above, below| expect(above["bottom"]).to be <= below["top"] + 0.5 }
+        expect(boxes["prev"]["top"]).to be >= boxes["row"]["top"]
+        expect(boxes["next"]["bottom"]).to be <= boxes["row"]["bottom"] + 0.5
+        expect_one_screen(height)
+      end
+    end
+  end
+
+  # The not-sure state: a two-line band at 360px and the 44px "All printings" line (a fixed part of 270px; 254px with a one-line
+  # band at 390px). Images: 390 × 844 278px or 288px, 360 × 640 122px (within 2px), 360 × 560 the 96px floor with the body scrolling.
+  [ [ 390, 844, [ 278, 288 ], false ], [ 360, 640, [ 120, 124 ], false ], [ 360, 560, [ 96 ], true ] ].each do |width, height, images, scrolls|
+    it "fits the not-sure pane at #{width} × #{height} (AC-5.2, AC-5.4)", :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- one scenario: measure the pane at rest, then again scrolled to its end
+      open_scanner_frame(width:, height:)
+      within_narrow_frame do
+        show_synthetic_card(name: "Lightning", lines: [])
+        click_on "Capture"
+        wait_for_pane
+        expect(band).to have_text("Not sure of this card")
+        before = pane_boxes
+        expect(images.any? { |h| (before["image"]["height"] - h).abs <= 2 }).to be(true), "images #{before["image"]["height"]}px, expected one of #{images}"
+        expect(before["scrolls"]).to be(scrolls)
+        expect(page.evaluate_script("(() => { const b = document.querySelector('.c-scanpane__body'); return b.scrollWidth <= b.clientWidth })()")).to be(true)
+        # The possible-cards line (tag, position and "All printings") holds its parts without scrolling sideways (decision 3).
+        expect(page.evaluate_script("(() => { const m = document.querySelector('.c-scanpane__card:not([hidden]) .c-scanpane__meta'); return m.scrollWidth <= m.clientWidth })()")).to be(true)
+        page.execute_script("const b = document.querySelector('.c-scanpane__body'); b.scrollTop = b.scrollHeight")
+        after = pane_boxes
+        expect(after["adds"]["bottom"]).to be <= after["bottom"]["top"] + 0.5 # reachable: in view once the body is scrolled to its end, at every size
+        expect([ after["strip"]["top"], after["band"]["top"] ]).to eq([ before["strip"]["top"], before["band"]["top"] ])
+        expect_one_screen(height)
+      end
+    end
+  end
+
+  it "wraps a long set and card name inside the details at 360px and never scrolls sideways (AC-5.4)", :aggregate_failures do
+    Catalog::Set.find_by(code: "mom").update!(name: "A set name of sixty characters long enough to wrap two lines")
+    Catalog::Entry.find_by!(number: "123").update!(name: "A card name of forty characters or so, long")
+    open_scanner_frame(width: 360, height: 640)
+    within_narrow_frame do
+      capture_synthetic
+      expect(page.evaluate_script("(() => { const b = document.querySelector('.c-scanpane__body'); return b.scrollWidth <= b.clientWidth && document.documentElement.scrollWidth <= document.documentElement.clientWidth })()")).to be(true)
+    end
+  end
 end
