@@ -1,7 +1,7 @@
 # Feature 089: Prices Refresh Once a Day, and Each Change Is Recorded Once
 
-**Status:** Draft (Mode A review pending). Decisions 1, 3, 4 and 5 carry a recommendation that the coordinator has not yet ruled on; they are marked **Pending**
-**Version:** 0.1.0
+**Status:** Draft, for Mode A review. The maintainer ruled decisions 1 to 4 as recommended on 2026-11-13 (relayed by the coordinator)
+**Version:** 0.2.0
 **Created:** 2026-11-13
 **Last Updated:** 2026-11-13
 **Branch:** `089-daily-price-refresh`
@@ -14,6 +14,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.2.0 | 2026-11-13 | The maintainer's rulings on decisions 1 to 4 recorded (as recommended); decision 4's ceiling is a named constant documented as a guess until #366 measures it; the supersession of spec 002 FR-3's partial-file wording is named (MINOR) |
 | 0.1.0 | 2026-11-13 | First draft |
 
 ---
@@ -49,7 +50,7 @@ The prices database has its five tables (spec 081) and Scryfall's prices come ou
 
 ## Decisions
 
-### 1. A job of its own on the catalog's file (Pending)
+### 1. A job of its own on the catalog's file
 
 **The question (the issue's open point):** does the daily refresh share the catalog refresh's download and its operation lifecycle (`Catalog::Operation`)?
 
@@ -61,7 +62,7 @@ The prices database has its five tables (spec 081) and Scryfall's prices come ou
 
 **Alternatives:** (a) a fully shared lifecycle (one operation, two stages) couples the catalog refresh to prices and makes a prices failure look like a catalog failure; (b) a separate download (a second request for the bulk-data index and a second 81 to 408 MB file a day) is the simplest and the most wasteful.
 
-### 2. What a run records at this stage, and where the line is (Pending)
+### 2. What a run records at this stage, and where the line is
 
 **Recommendation:** `price_refresh_runs` already has the run's identity (source, `run_on`, `source_version`, status, error) and its times (`started_at`, `finished_at`). A migration adds `languages` and the counts of what the job did to rows, all integers that default to 0:
 
@@ -81,7 +82,7 @@ The prices database has its five tables (spec 081) and Scryfall's prices come ou
 
 `error` holds the reason a run didn't finish: the error of a failed run (`"<class>: <message>"`), or why it was skipped. A skipped run is never "applied".
 
-### 3. The run's date and what "unchanged" means for `reported_on` (Pending)
+### 3. The run's date and what "unchanged" means for `reported_on`
 
 The run's date is the UTC date of the bulk file (`#reported_on`, spec 085 decision 4), never the clock's. A quote is *unchanged* when its cents equal the current price's; nothing is written for it, so `current_prices.reported_on` and `changed_on` are both the run date of the last write. The two columns therefore agree for every row this job writes; both are written because spec 081 made both, and a later source that reports per quote may separate them.
 
@@ -89,7 +90,7 @@ The run's date is the UTC date of the bulk file (`#reported_on`, spec 085 decisi
 
 A file whose date is earlier than the latest finished run's `run_on` for the source is skipped, not applied: a history row dated before a later one would reorder history that readers take in date order. A file of the same date and another version (a second publication that day, or a changed language set) is applied: its unchanged prices write nothing, and its changes write one history row per series and date, replacing a row of the same date (decision 6).
 
-### 4. "Gone" is not "the file is bad" (Pending)
+### 4. "Gone" is not "the file is bad"
 
 A source yields no quote for a price the file leaves empty (spec 085 decision 2), and it can't say whether a printing with no quote was in the file at all. So "gone" is told from absence, and absence is trusted only as far as the file is.
 
@@ -105,7 +106,7 @@ A source yields no quote for a price the file leaves empty (spec 085 decision 2)
 
 **What fails the run versus what finishes it.** Items 1, 2 and 5 fail it (an operator should look); 3 and 4 finish it with `removals_withheld` counted, because the next day's file will remove the price if it is really gone, and the quotes that were readable are applied. A failed run is not "applied" (decision 5), so the same file is read again on the next run.
 
-**Pending, for the coordinator:** the ceiling's value and whether item 5 fails or only withholds. Recommendation: 10 percent, and fail.
+**Ruled (maintainer, 2026-11-13):** 10 percent, and a breach fails the run. `MAX_REMOVED_SHARE` is a named constant whose comment and whose row in `prices.md`'s Named constants table say it is a guess until #366 measures the daily share of disappearing prices, and that a real drop above it is refused until the constant moves.
 
 **Limit.** A real, permanent drop above the ceiling is refused every day until the ceiling moves. Nothing forces it now (Non-Goals). The failed run says so in plain words.
 
@@ -254,7 +255,9 @@ Core files name no collectible, comments included: `spec/price_source_core_spec.
 
 ## Open Questions
 
-Decisions 1 to 4 carry a recommendation and wait for the coordinator: (1) the file is shared and the lifecycle isn't; (2) the run's columns and the line with #366; (3) a price's freshness is the source's latest finished `run_on`, not a column; (4) the ceiling's value (10 percent) and whether a breach fails the run. The schedule's 11:30 is a guess from one day's publication time and is a one-line change.
+None are open. The maintainer ruled decisions 1 to 4 on 2026-11-13: (1) the file is shared and the lifecycle isn't, with a unique partial-download name; (2) the run's columns and the line with #366; (3) a price's freshness is the source's latest finished `run_on`, not a column, and earlier-dated files are skipped; (4) the removal conditions, a ceiling of 10 percent, and a failed run on breach. The schedule's 11:30 is a guess from one day's publication time and is a one-line change.
+
+**Supersession (decision 1):** this spec supersedes spec 002 FR-3's wording that a download goes through "a partial file": the partial file's name is unique per download. It is recorded here and in `docs/specs/README.md` (the 002 row's superseded-by cell and this spec's row), and in [`catalog-operations.md`](../../architecture/catalog-operations.md).
 
 ## Out of Scope (Future Considerations)
 
