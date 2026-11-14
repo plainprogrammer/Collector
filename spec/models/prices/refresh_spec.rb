@@ -525,4 +525,43 @@ RSpec.describe Prices::Refresh, type: :model do
       expect(blank_history(gone)).to eq([ Date.new(2026, 11, 13) ])
     end
   end
+
+  describe "transactions (AC-4.4)" do
+    it "writes in batches of BATCH_SIZE printings inside savepoint spans, the run row in spans of its own, and reads the primary outside them", :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- one subscribed run, one set of assertions
+      stub_const("Prices::Refresh::BATCH_SIZE", 2)
+      entries = Array.new(5) { |index| widget_entry("w-#{index}") }
+      use_widget_sources(records: entries.map { widget_quote(it.external_key, 100) })
+      entries.each { |entry| seed_price(entry, 90) } # five changes, so every batch writes both tables
+      prices = PricesRecord.lease_connection
+      baseline = prices.open_transactions # the example's own wrapping transaction
+      stack = [] # open spans on the prices connection: each a list of its statements
+      spans = []
+      outside = []
+      primary_inside = []
+      callback = lambda do |_name, _start, _finish, _id, payload|
+        sql = payload[:sql].to_s
+        if payload[:connection].equal?(prices)
+          if sql.start_with?("SAVEPOINT") then stack.push([])
+          elsif sql.start_with?("RELEASE SAVEPOINT", "ROLLBACK TO SAVEPOINT") then spans << stack.pop
+          elsif stack.any? then stack.last << sql
+          else outside << sql
+          end
+        elsif prices.open_transactions > baseline # not stack.any?: Rails opens a savepoint lazily, at the transaction's first statement
+          primary_inside << sql
+        end
+      end
+
+      ActiveSupport::Notifications.subscribed(callback, "sql.active_record") { refresh.call }
+
+      write = ->(sql, table) { sql.match?(/\A\s*(INSERT|UPDATE|DELETE)\b.*?\b#{table}\b/m) }
+      data = ->(sql) { write.call(sql, "current_prices") || write.call(sql, "price_changes") }
+      batch_spans = spans.select { |statements| statements.any?(&data) }
+      expect(outside.grep(/\A\s*(INSERT|UPDATE|DELETE)/)).to all(include("price_refresh_runs")) # no price write outside a span
+      expect(batch_spans.size).to eq(3) # five printings in batches of two: 2, 2 and 1
+      expect(batch_spans.flat_map { |statements| statements.select { write.call(it, "price_refresh_runs") } }).to be_empty # the run row is not written inside a batch
+      expect(batch_spans.map { |statements| statements.find { write.call(it, "current_prices") }.scan(/\),\s*\(/).size + 1 }).to eq([ 2, 2, 1 ]) # tuples of each batch's insert
+      expect(primary_inside).to be_empty
+      expect(CurrentPrice.count).to eq(5)
+    end
+  end
 end
