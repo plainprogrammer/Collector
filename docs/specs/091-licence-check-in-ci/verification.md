@@ -33,7 +33,9 @@ Spec, ADR 0031 and plan: my main session (Sonnet 5.5). Spec, ADR and plan review
 
 ## Owed
 
-- The implementation review below, then `session-wrap`, `distill-feature`, the full `bin/ci` under a slot and the push.
+- **`vcr` (to the maintainer):** `vcr` 6.4.1 declares `Hippocratic-2.1` and `MIT` and ships no licence file; whether its `MIT` is a real choice is unverified upstream. It is a named `all_required` exception for that reason (spec decision 3). Checking upstream would settle it.
+- **README step list (to the maintainer):** README.md's numbered `bin/ci` step list (lines 124 to 132) predates this branch (it lacks the migration guard, YARD and the ratchet) and now also lacks the licence check; not changed, as the spec doesn't require it.
+- The full `bin/ci` under a coordinator slot, then the push.
 
 ## Implementation review
 
