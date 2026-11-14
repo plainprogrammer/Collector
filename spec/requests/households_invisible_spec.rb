@@ -25,17 +25,23 @@ RSpec.describe "A household is invisible (spec 090 Story 4)", type: :request do
 
   it "shows a collector who is not an admin no page with the word (AC-4.1)", :aggregate_failures do
     sign_in_as(create(:user))
-    [ collection_path, collection_path(view: "table"), more_path, catalog_entries_path ].each do |path|
-      get path
-      expect(response.body.downcase).not_to include("household"), "#{path} says household"
+    seen = statements_naming(/\b(households|memberships)\b/i) do
+      [ collection_path, collection_path(view: "table"), more_path, catalog_entries_path ].each do |path|
+        get path
+        expect(response.body.downcase).not_to include("household"), "#{path} says household"
+      end
     end
+    expect(seen).to be_empty
   end
 
   it "shows no signed-out page the word (AC-4.1)", :aggregate_failures do
-    [ new_session_path, new_registration_path ].each do |path|
-      get path
-      expect(response.body.downcase).not_to include("household"), "#{path} says household"
+    seen = statements_naming(/\b(households|memberships)\b/i) do
+      [ new_session_path, new_registration_path ].each do |path|
+        get path
+        expect(response.body.downcase).not_to include("household"), "#{path} says household"
+      end
     end
+    expect(seen).to be_empty
   end
 
   it "lists users as before: a row, its copies and the same buttons (AC-4.5)", :aggregate_failures do

@@ -29,5 +29,6 @@ RSpec.describe "Applying an export and the household (spec 090 AC-5.2)", type: :
 
     expect([ household_facts(source), household_facts(target) ]).to eq(before)
     expect(target.account.lots.sum(:quantity)).to eq(3)
+    expect_household_invariants!
   end
 end
