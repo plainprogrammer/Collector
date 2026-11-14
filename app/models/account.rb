@@ -1,6 +1,9 @@
 # The tenant: owns every piece of collection data. One per user (spec 004 FR-3).
 class Account < ApplicationRecord
   has_one :user, dependent: nil
+  # The household this account is in: a user's own account (personal) is in that user's household, and a shared account (none
+  # exists yet, #384) is the household's. Required, and `NOT NULL` once spec 090's third migration has run.
+  belongs_to :household
   # Order matters: the foreign key from a lot to its location refuses deleting a location a lot is in, so the lots go first.
   # spec/models/account_spec.rb guards it (spec 032 AC-6.6).
   has_many :lots, dependent: :delete_all
@@ -16,6 +19,7 @@ class Account < ApplicationRecord
   # The currency every price of the account is shown in; a new account starts at the instance default (spec 038 decision 1–2).
   attribute :currency, :string, default: -> { Rails.configuration.x.default_currency.code }
   validates :currency, inclusion: { in: Collector::Currency::SYMBOLS.keys, message: "Choose one of the listed currencies." }
+  enum :kind, { personal: "personal", shared: "shared" }, default: :personal, validate: true
 
   def copies_count = lots.sum(:quantity)
 

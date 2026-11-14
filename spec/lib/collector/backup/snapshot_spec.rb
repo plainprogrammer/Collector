@@ -9,7 +9,9 @@ RSpec.describe Collector::Backup::Snapshot, :backup do
   def prices_copy(name) = scratch_path(name).tap { described_class.take(source: Collector::Backup::Databases.configured.prices, into: it) }
 
   def insert_account_and_user(database, email: "a@example.test")
-    database.execute("INSERT INTO accounts (created_at, updated_at) VALUES (?, ?)", [ now, now ])
+    database.execute("INSERT INTO households (name, created_at, updated_at) VALUES ('h', ?, ?)", [ now, now ])
+    household_id = database.last_insert_row_id
+    database.execute("INSERT INTO accounts (created_at, updated_at, household_id) VALUES (?, ?, ?)", [ now, now, household_id ])
     account_id = database.last_insert_row_id
     database.execute("INSERT INTO users (account_id, name, email_address, password_digest, created_at, updated_at) VALUES (?, 'N', ?, 'd', ?, ?)",
       [ account_id, email, now, now ])

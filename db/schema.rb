@@ -10,11 +10,15 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_11_150001) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_13_120003) do
   create_table "accounts", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "currency", default: "USD", null: false
+    t.integer "household_id", null: false
+    t.string "kind", default: "personal", null: false
+    t.index ["household_id"], name: "index_accounts_on_household_id"
+    t.check_constraint "kind IN ('personal', 'shared')", name: "accounts_kind_known"
   end
 
   create_table "active_storage_attachments", force: :cascade do |t|
@@ -185,6 +189,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_150001) do
     t.index ["location_id"], name: "index_decks_on_location_id", unique: true
   end
 
+  create_table "households", force: :cascade do |t|
+    t.string "name", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.check_constraint "length(name) BETWEEN 1 AND 100", name: "households_name_length"
+  end
+
   create_table "import_uploads", force: :cascade do |t|
     t.integer "account_id", null: false
     t.string "fingerprint", null: false
@@ -237,6 +248,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_150001) do
     t.index ["location_id"], name: "index_lots_on_location_id"
     t.check_constraint "price_paid_cents IS NULL OR price_paid_cents >= 0", name: "lots_price_non_negative"
     t.check_constraint "quantity BETWEEN 1 AND 9999", name: "lots_quantity_range"
+  end
+
+  create_table "memberships", force: :cascade do |t|
+    t.integer "household_id", null: false
+    t.integer "user_id", null: false
+    t.string "role", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["household_id"], name: "index_memberships_on_household_id"
+    t.index ["user_id"], name: "index_memberships_on_user_id", unique: true
+    t.check_constraint "role IN ('manager', 'member')", name: "memberships_role_known"
   end
 
   create_table "mtg_art_builds", force: :cascade do |t|
@@ -379,6 +401,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_150001) do
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
   end
 
+  add_foreign_key "accounts", "households"
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "bulk_removals", "accounts", on_delete: :cascade
@@ -402,6 +425,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_150001) do
   add_foreign_key "lots", "accounts"
   add_foreign_key "lots", "catalog_entries"
   add_foreign_key "lots", "locations", on_delete: :restrict
+  add_foreign_key "memberships", "households"
+  add_foreign_key "memberships", "users", on_delete: :cascade
   add_foreign_key "mtg_artworks", "catalog_entries"
   add_foreign_key "mtg_cards", "catalog_identities"
   add_foreign_key "mtg_printings", "catalog_entries"

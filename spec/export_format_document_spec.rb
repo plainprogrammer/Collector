@@ -76,7 +76,7 @@ RSpec.describe "The export format's document" do
 
       expect(status).to include("lots" => "Exported", "users" => "Exported", "locations" => "Exported", "accounts" => "Exported", "deck_proxies" => "Exported")
       expect(status.select { |_table, mark| mark == "Left out" }.keys)
-        .to match_array(%w[bulk_removals bulk_selection_marks bulk_selections import_uploads number_entries number_entry_lines scanner_sitting_entries scanner_sittings sessions])
+        .to match_array(%w[bulk_removals bulk_selection_marks bulk_selections import_uploads memberships number_entries number_entry_lines scanner_sitting_entries scanner_sittings sessions])
       expect(covered_tables.map { |row| row["Why"] }).to all(match(/\S/))
     end
 
@@ -86,7 +86,7 @@ RSpec.describe "The export format's document" do
       expect(left_out.map { |row| row["Why left out"] }).to all(match(/\S/))
       expect(mapped.map { |row| row["In the file"] } - fields).to be_empty
       expect(left_out.map { |row| row["Column"] }).to match_array(%w[
-        accounts.id accounts.created_at accounts.updated_at
+        accounts.id accounts.created_at accounts.updated_at accounts.household_id accounts.kind
         locations.id locations.account_id locations.name_key locations.created_at locations.updated_at locations.kind locations.parent_id
         decks.id decks.account_id decks.location_id decks.created_at decks.updated_at
         deck_proxies.id deck_proxies.account_id deck_proxies.created_at deck_proxies.updated_at

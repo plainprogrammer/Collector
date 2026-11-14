@@ -333,7 +333,7 @@ The meaning of a version never changes once it has been released.
 
 Version 4 gained `proxies` before any release wrote a version 4 file, so it is one version (the maintainer's ruling of 2026-11-11); a version 4 file written by a development build before that has no `proxies` and isn't a well-formed version 4 file.
 
-One change is already expected: collections shared by a household will change who owns a lot and will raise the version ([ADR 0017](../adr/0017-row-level-tenancy-one-user-per-account.md)). A currency for each account (issue #64, spec 038) moved where the code the file carries comes from, from the instance to the account, without a version, because the field's meaning didn't change.
+One change is already expected: the household's shared collection has its own file and will raise the version ([ADR 0030](../adr/0030-a-household-is-a-group-of-accounts.md), issue #384). A household itself, one per user from spec 090, is not in the file and raised no version. A currency for each account (issue #64, spec 038) moved where the code the file carries comes from, from the instance to the account, without a version, because the field's meaning didn't change.
 
 ## Extending the format
 
@@ -463,6 +463,7 @@ Every table in Collector's database that belongs to an account or to a user is l
 | `bulk_selection_marks` | Left out | Working state that lasts for one bulk edit. |
 | `bulk_selections` | Left out | Working state that lasts for one bulk edit. |
 | `import_uploads` | Left out | Transient working state: the previewed file, kept for an hour so it can be applied. The file is the collector's own export, already restored into the lots by applying it. |
+| `memberships` | Left out | A household's membership of a user: a fact about a group, not about the collection. A household of one is made with every user, so a person who imports their file is given one by the same rule (spec 090 decision 4). |
 | `number_entries` | Left out | Working state of one run of adding cards by number. What it adds is already in the lots. |
 | `number_entry_lines` | Left out | Working state of one run of adding cards by number. What it adds is already in the lots. |
 | `scanner_sitting_entries` | Left out | Working state of one sitting at the scanner. What a sitting adds is already in the lots. |
@@ -474,6 +475,8 @@ Every table in Collector's database that belongs to an account or to a user is l
 | `accounts.id` | Left out | An internal id. |
 | `accounts.created_at` | Left out | A fact about the instance, not about the collection. |
 | `accounts.updated_at` | Left out | A fact about the instance, not about the collection. |
+| `accounts.household_id` | Left out | An internal id of a group. A file is one account's collection, and the household is not in it. |
+| `accounts.kind` | Left out | Whether the account is a member's own or the household's. A file is one account's collection, and every account that has a file is personal until the shared collection (#384) decides its own file. |
 | `accounts.currency` | `currency` | |
 | `lots.id` | Left out | An internal id. |
 | `lots.account_id` | Left out | An internal id. A file is one account's collection. |
@@ -523,6 +526,8 @@ Every table in Collector's database that belongs to an account or to a user is l
 `lots.catalog_entry_id` is an internal id too. The file writes the entry it points at by its type and source id.
 
 `currency` is `accounts.currency`.
+
+`households` has neither `account_id` nor `user_id`, so the guard above does not ask for it; it is not in the file either, because a household is a fact about a group of accounts, not about the collection, and the question of what the shared collection's file carries about its household is decided with the shared collection (issue #384, the design's open question 4).
 
 ## Examples
 

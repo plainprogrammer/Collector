@@ -58,20 +58,24 @@ RSpec.describe Upgrade::Harness, :git_sandbox, :upgrade do
   end
 
   # A seeded database as a release makes it (accounts, users, 2,000 lots, sign-up open), with the given migrations recorded.
-  def seeded(name, versions, lots: 2000, extra: "")
+  # `households: false` is a release from before spec 090: no households or memberships tables and no household columns.
+  def seeded(name, versions, lots: 2000, extra: "", households: true)
+    accounts = households ? "id INTEGER PRIMARY KEY, household_id INTEGER, kind TEXT DEFAULT 'personal'" : "id INTEGER PRIMARY KEY"
+    users = households ? "id INTEGER PRIMARY KEY, password_digest TEXT, name TEXT, account_id INTEGER" : "id INTEGER PRIMARY KEY, password_digest TEXT"
     build_database(File.join(dir, "#{name}.sqlite3")) do |db|
       db.execute_batch(<<~SQL)
-        CREATE TABLE accounts (id INTEGER PRIMARY KEY); CREATE TABLE users (id INTEGER PRIMARY KEY, password_digest TEXT);
+        CREATE TABLE accounts (#{accounts}); CREATE TABLE users (#{users});
         CREATE TABLE lots (id INTEGER PRIMARY KEY, account_id INTEGER); CREATE TABLE instance_settings (id INTEGER PRIMARY KEY, sign_up_open BOOLEAN);
         CREATE TABLE schema_migrations (version TEXT PRIMARY KEY);
-        INSERT INTO accounts VALUES (1), (2); INSERT INTO users VALUES (1, 'x'), (2, 'y'); INSERT INTO instance_settings VALUES (1, 1);
+        #{households ? "INSERT INTO accounts VALUES (1, 1, 'personal'), (2, 2, 'personal'); INSERT INTO users VALUES (1, 'x', 'Ada', 1), (2, 'y', 'Grace', 2);" : "INSERT INTO accounts VALUES (1), (2); INSERT INTO users VALUES (1, 'x'), (2, 'y');"}
+        INSERT INTO instance_settings VALUES (1, 1);
+        #{households ? "CREATE TABLE households (id INTEGER PRIMARY KEY, name TEXT); CREATE TABLE memberships (id INTEGER PRIMARY KEY, household_id INTEGER, user_id INTEGER, role TEXT); INSERT INTO households VALUES (1, 'Ada''s household'), (2, 'Grace''s household'); INSERT INTO memberships VALUES (1, 1, 1, 'manager'), (2, 2, 2, 'manager');" : ""}
         WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < #{lots}) INSERT INTO lots SELECT i, 1 FROM n;
         #{versions.map { "INSERT INTO schema_migrations VALUES ('#{it}');" }.join}
         #{extra}
       SQL
     end
   end
-
 
   def with_tmpdir(path)
     original = ENV.fetch("TMPDIR", nil)
@@ -93,6 +97,34 @@ RSpec.describe Upgrade::Harness, :git_sandbox, :upgrade do
     expect(log[upgrade_start..snapshot]).not_to include(:runner, :sign_in, :get)
     expect(out.string).to match(/lots\s+old\s+2000\s+new\s+2000\s+same/)
     expect(out.string).to include("== upgrade", "== snapshot and compare", "== behaviour", "skipped").and match(/^OK: v0\.2\.1/)
+  end
+
+  describe "the households (spec 090 AC-6.1, decision 10)" do
+    def run_with(old: seeded("old", old_migrations), upgraded: pair(seeded("upgraded", all_migrations)), nxt: pair(seeded("next", all_migrations)))
+      harness(engine: FakeEngine.new(databases: [ old, upgraded, nxt ], log:)).call
+    end
+
+    it "checks the backfill's facts when the previous release had no households, and says so (AC-6.1)", :aggregate_failures do
+      expect(run_with(old: seeded("old", old_migrations, households: false))).to eq(0)
+      expect(out.string).to include("households: ok (backfilled)").and match(/^OK: v0\.2\.1/)
+    end
+
+    it "checks only the invariants when the previous release already had them, and says so (AC-6.1)", :aggregate_failures do
+      expect(run_with).to eq(0)
+      expect(out.string).to match(/^households: ok$/)
+    end
+
+    it "fails naming AC-6.1 when the upgrade leaves a user with no membership (AC-6.1, AC-6.5)", :aggregate_failures do
+      upgraded = pair(seeded("upgraded", all_migrations, extra: "DELETE FROM memberships WHERE id = 2;"))
+      expect(run_with(old: seeded("old", old_migrations, households: false), upgraded:)).to eq(1)
+      expect(out.string).to include("AC-6.1", "user 2 has 0 memberships")
+    end
+
+    it "fails naming AC-6.1 and the next snapshot when only the next release's seed breaks the rule (AC-6.1, AC-6.4)", :aggregate_failures do
+      nxt = pair(seeded("next", all_migrations, extra: "DELETE FROM memberships WHERE id = 2;"))
+      expect(run_with(nxt:)).to eq(1)
+      expect(out.string).to include("AC-6.1: the next snapshot", "user 2 has 0 memberships")
+    end
   end
 
   describe "the prices database (spec 081 AC-6.4, AC-6.5)" do

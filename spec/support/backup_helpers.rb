@@ -37,7 +37,8 @@ module BackupHelpers
             created = index
             database.execute("INSERT INTO price_changes (catalog_entry_id, price_source_id, price_series_id, recorded_on, cents) VALUES (?, 1, 1, '2026-10-21', 1)", [ index ])
           elsif kind == "pairs"
-            database.execute("INSERT INTO accounts (created_at, updated_at) VALUES (?, ?)", [ stamp, stamp ])
+            database.execute("INSERT INTO households (name, created_at, updated_at) VALUES ('Pair #{index}', ?, ?)", [ stamp, stamp ])
+            database.execute("INSERT INTO accounts (created_at, updated_at, household_id) VALUES (?, ?, ?)", [ stamp, stamp, database.last_insert_row_id ])
             created = database.last_insert_row_id
             database.execute("INSERT INTO users (account_id, name, email_address, password_digest, created_at, updated_at) VALUES (?, ?, ?, 'x', ?, ?)",
               [ created, "Pair #{index}", "pair#{index}@example.test", stamp, stamp ])

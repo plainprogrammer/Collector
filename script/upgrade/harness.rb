@@ -12,6 +12,7 @@ require "tmpdir"
 require_relative "release"
 require_relative "snapshot"
 require_relative "compare"
+require_relative "households"
 require_relative "rules"
 require_relative "engine"
 require_relative "web"
@@ -331,6 +332,11 @@ module Upgrade
         problems = Compare.integrity(upgraded)
         raise Failure, "AC-3.5: #{problems.first(3).join("; ")}" if problems.any?
 
+        problems = Households.problems(upgraded, backfill: !Compare.tables(old).include?("households"))
+        raise Failure, "AC-6.1: #{problems.first(3).join("; ")}" if problems.any?
+
+        @out.puts "households: ok#{" (backfilled)" unless Compare.tables(old).include?("households")}"
+
         missing = (working_versions + @release.migration_versions(@plan[:ref])) - upgraded.execute("SELECT version FROM schema_migrations").flatten
         raise Failure, "AC-3.2: schema_migrations of the upgraded database lacks #{missing}" if missing.any?
 
@@ -503,6 +509,9 @@ module Upgrade
 
         problems = Compare.seed_problems(database)
         raise Failure, problems.join("\n") if problems.any?
+
+        households = Households.problems(database)
+        raise Failure, "AC-6.1: the next snapshot: #{households.first(3).join("; ")}" if households.any?
       end
 
       # -- containers ----------------------------------------------------------------------------------------------

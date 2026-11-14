@@ -5,6 +5,7 @@
 - ✓ Scope every query through the tenant (`Current.account.collections.find(params[:id])`); bare `Model.find(params[:id])` on tenant data is a bug.
 - ✓ Pass the account (or a record owning it) into every job and restore `Current.account` before the job body runs.
 - ✓ Add a request spec per tenant-scoped resource proving another account's record returns 404.
+- ✓ `households` and `memberships` are instance-level, not tenant-owned: read them through the user or the account, never through `Current.account`'s collections, and name none in a request.
 - ✓ Shared catalog data (e.g. Scryfall cards) is global; user-owned data (copies, conditions, prices paid, notes) is always tenant-scoped.
 - ✗ Never use `unscoped` or cross-tenant queries without an explanatory comment.
 - ✗ Don't cache tenant data under keys that omit the account.
