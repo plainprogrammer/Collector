@@ -3,6 +3,7 @@
 **Spec:** docs/specs/088-scanner-selection-pane/spec.md (1.0.1; 1.0.0 approved at Gate A on 2026-11-13)
 **Decisions:** none (no ADR, decision 17)
 **Created:** 2026-11-13
+**Status:** Approved at Gate B on 2026-11-13 by the coordinator under the maintainer's delegation (plan at `a6bb3fe1`, spec 1.0.1; the coordinator read the round-2 fixes itself). Two execution notes from that read: the first implementer who touches the not-sure examples asserts in the request spec that "Lightning" is not a strong name against the test catalog (Task 3's example), and changes the drawn name if a fixture makes it strong, never the threshold; the red window from Task 5 to Task 8 is named in each commit message and no full `bin/ci` runs inside it.
 
 ## Global Constraints
 
@@ -370,6 +371,13 @@ end
       expect(template["data-band"]).to eq("c-band--warning")
       expect(template.inner_html).to include("Printing not confirmed. Swipe to check.")
       expect(response.body).not_to include("Matched by its name")
+    end
+
+    it "reads 'Lightning' as a name-only, not strong match, so the system examples that draw it get the possible-cards row (execution note)", :aggregate_failures do
+      read("Lightning", "")
+      template = pane.at_css(".c-scanpane__card template[data-band]")
+      expect(template.inner_html).to include("Not sure of this card. Check it against your capture.")
+      expect(pane.css(".c-scanpane__row").first.ancestors(".c-scanpane__rowwrap").first["aria-label"]).to eq("Possible cards")
     end
 
     it "gives every panel one add button per finish, named for the printing, with the star on a special finish (AC-4.2)", :aggregate_failures do
@@ -1421,10 +1429,10 @@ export default class extends Controller {
         before = pane_boxes
         expect(images.any? { |h| (before["image"]["height"] - h).abs <= 2 }).to be(true), "images #{before["image"]["height"]}px, expected one of #{images}"
         expect(before["scrolls"]).to be(scrolls)
-        expect(before["adds"]["bottom"]).to be <= before["bottom"]["top"] unless scrolls
         expect(page.evaluate_script("(() => { const b = document.querySelector('.c-scanpane__body'); return b.scrollWidth <= b.clientWidth })()")).to be(true)
         page.execute_script("const b = document.querySelector('.c-scanpane__body'); b.scrollTop = b.scrollHeight")
         after = pane_boxes
+        expect(after["adds"]["bottom"]).to be <= after["bottom"]["top"] + 0.5 # reachable: in view once the body is scrolled to its end, at every size
         expect([ after["strip"]["top"], after["band"]["top"] ]).to eq([ before["strip"]["top"], before["band"]["top"] ])
         expect_one_screen(height)
       end
