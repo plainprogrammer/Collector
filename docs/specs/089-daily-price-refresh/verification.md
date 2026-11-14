@@ -1,6 +1,6 @@
 # Verification: spec 089, prices refresh once a day, and each change is recorded once (#365)
 
-**Spec:** [`spec.md`](spec.md) (0.4.3) · **Plan:** [`plan.md`](plan.md)
+**Spec:** [`spec.md`](spec.md) (0.4.3) · **Plan:** plan (retired in `043cffabe2cccf48c2956b67df5c07d8b35973f1`; read it with `git show 043cffabe2cccf48c2956b67df5c07d8b35973f1^:docs/specs/089-daily-price-refresh/plan.md`)
 
 ## Evidence
 
