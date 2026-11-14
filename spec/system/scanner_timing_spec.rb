@@ -19,7 +19,7 @@ RSpec.describe "Scanner timings", :timing, type: :system do
     sorted.size.odd? ? sorted[sorted.size / 2] : (sorted[sorted.size / 2 - 1] + sorted[sorted.size / 2]) / 2.0
   end
 
-  # Milliseconds from tapping Foil to #scanner_added_text changing, for one fresh reading.
+  # Milliseconds from tapping Add foil to #scanner_added_text changing, for one fresh reading.
   def time_scanner_add
     click_on "Capture"
     button = find("button[aria-label='Add Lightning Bolt MOM · 123 Foil']", wait: 30)
@@ -34,7 +34,7 @@ RSpec.describe "Scanner timings", :timing, type: :system do
     page.evaluate_script("window.__added - window.__tapped")
   end
 
-  # Milliseconds for each of 20 Other printings frame requests, fetched from the page. Capybara's wait (2 s) is also
+  # Milliseconds for each of 20 selection frame requests ("All printings", spec 088 decision 4), fetched from the page. Capybara's wait (2 s) is also
   # the async script timeout, which 20 requests can outlast, so it is raised for this script only.
   def time_other_printings(url)
     using_wait_time(60) { page.evaluate_async_script(<<~JS, url) }
@@ -43,7 +43,7 @@ RSpec.describe "Scanner timings", :timing, type: :system do
         const times = []
         for (let i = 0; i < 20; i++) {
           const started = performance.now()
-          await (await fetch(url, { headers: { "Turbo-Frame": "scanner_printings" } })).text()
+          await (await fetch(url, { headers: { "Turbo-Frame": "scanner_selection" } })).text()
           times.push(performance.now() - started)
         }
         done(times)
@@ -58,11 +58,11 @@ RSpec.describe "Scanner timings", :timing, type: :system do
     expect(median(times)).to be <= 500
   end
 
-  it "answers Other printings for a card with 100 printings within 300 ms at the 95th percentile (desktop)" do
+  it "answers the printings frame for a card with 100 printings within 300 ms at the 95th percentile (desktop)" do
     100.times { |index| create(:mtg_printing, entry: create(:catalog_entry, identity:, name: "Lightning Bolt", number: (200 + index).to_s)) }
     times = time_other_printings(scanner_printings_path(card: identity.external_key, key: "d" * 32, set: "mom", number: "123"))
     p95 = times.sort[(0.95 * (times.size - 1)).ceil]
-    report "Other printings, 100 printings: p95 #{p95.round} ms (n=20)"
+    report "Printings frame, 100 printings: p95 #{p95.round} ms (n=20)"
     expect(p95).to be <= 300
   end
 end
