@@ -38,6 +38,15 @@ RSpec.describe "The scanner's selection frame", type: :request do
     expect(page.css(".c-scanpane__item").map { it["aria-current"] }.compact.size).to eq(1)
   end
 
+  it "ends a row at the cap with no more item and no Show 20 more link (decision 4)", :aggregate_failures do
+    stub_const("Scanner::Selection::MAX", 20)
+    page = frame(limit: 20)
+    expect(page.css(".c-scanpane__item").size).to eq(20)
+    expect(page.css(".c-scanpane__item--more")).to be_empty
+    expect(page.at_css(".c-scanpane__card:not([hidden]) .c-scanpane__position").text).to eq("1 of 25 printings")
+    expect(response.body).not_to include("Show 20 more")
+  end
+
   it "reads a band outside the closed list as a guess (decision 15)", :aggregate_failures do
     frame(band: "<b>x</b>")
     expect(response.body).to include("Printing not confirmed. Swipe to check.")

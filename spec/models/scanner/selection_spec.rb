@@ -107,6 +107,16 @@ RSpec.describe Scanner::Selection, type: :model do
       expect(described_class.for_card(identity:, match: matched, state: "guess", key:, limit: 9_999).limit).to eq(200)
     end
 
+    it "ends the row at the cap with no more item, the position still counting every printing (decision 4)", :aggregate_failures do
+      stub_const("Scanner::Selection::MAX", 20)
+      selection = described_class.for_card(identity:, match: matched, state: "guess", key:, limit: 20)
+      expect(selection.items.size).to eq(20)
+      expect(selection.total).to eq(25)
+      expect(selection.more).to eq(0)
+      expect(selection.more?).to be(false)
+      expect(selection.count).to eq(20)
+    end
+
     it "treats a band state outside the closed list as a guess" do
       selection = described_class.for_card(identity:, match: matched, state: "<script>", key:)
       expect(selection.items.first.band.sentence).to eq("Printing not confirmed. Swipe to check.")

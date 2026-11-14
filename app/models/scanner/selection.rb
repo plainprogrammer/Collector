@@ -101,12 +101,13 @@ class Scanner::Selection
     @identity, @match, @state = identity, match, state
   end
 
-  # Printings not rendered yet (the row's "more" item); always 0 for a cards row.
+  # Printings not rendered yet (the row's "more" item); always 0 for a cards row, and 0 at the cap: a row at `MAX` ends there,
+  # because "Show 20 more" would render the same `MAX` printings again (spec 088 decision 4).
   #
   # @return [Integer]
-  def more = kind == :printings ? total - items.size : 0
+  def more = kind == :printings && limit < MAX ? total - items.size : 0
 
-  # Whether the row ends with a "more printings" item.
+  # Whether the row ends with a "more printings" item (never at the cap, see `more`).
   #
   # @return [Boolean]
   def more? = more.positive?
