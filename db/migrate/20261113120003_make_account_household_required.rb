@@ -105,7 +105,7 @@ class MakeAccountHouseholdRequired < ActiveRecord::Migration[8.1]
     end
 
     # As CreateHouseholdsAndMemberships: the copy resets accounts' row of sqlite_sequence, which the proof can't see (compare.rb skips sqlite_ tables).
-    # Always `main.sqlite_sequence`: the copy builds a TEMP table with AUTOINCREMENT, so a bare name resolves to `temp.sqlite_sequence` (found in phase 1).
+    # Always `main.sqlite_sequence`: the copy builds a TEMP table with AUTOINCREMENT, so a bare name resolves to `temp.sqlite_sequence`.
     def keeping_sequence
       seq = connection.select_value("SELECT seq FROM main.sqlite_sequence WHERE name = 'accounts'")
       yield

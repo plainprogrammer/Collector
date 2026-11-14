@@ -17,7 +17,7 @@ RSpec.describe Upgrade::Households, :upgrade do
       SQL
       users.each_with_index do |name, i|
         id = i + 1
-        db.execute("INSERT INTO households VALUES (?, ?)", [ id, "#{name[0, 88]}'s household" ]) unless households == :none
+        db.execute("INSERT INTO households VALUES (?, ?)", [ id, Household.name_for(name) ]) unless households == :none
         db.execute("INSERT INTO accounts VALUES (?, ?, 'personal')", [ id, id ])
         db.execute("INSERT INTO users VALUES (?, ?, ?)", [ id, name, id ])
         db.execute("INSERT INTO memberships VALUES (?, ?, ?, 'manager')", [ id, id, id ]) unless memberships == :none

@@ -14,7 +14,9 @@ class Household < ApplicationRecord
   before_destroy :refuse_while_held, prepend: true
 
   # The name a household of one gets (spec 090 decision 2): the user's first 88 characters and "'s household", at most 100.
-  # `script/upgrade/households.rb` and the backfill migration build the same name in SQL with `substr`; a spec holds the three equal.
+  # `script/upgrade/households.rb` and the backfill migration build the same name in SQL with `substr`:
+  # `spec/migrations/backfill_households_spec.rb` holds the backfill's SQL equal to this method, and
+  # `spec/script/upgrade/households_spec.rb` builds its fixture names with it, against the check's SQL.
   #
   # @param user_name [String] the user's name
   # @return [String]
