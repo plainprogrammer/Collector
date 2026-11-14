@@ -1,0 +1,34 @@
+# The licences Collector's dependencies may be under, and the dependencies that are let through by name (spec 091, ADR 0031).
+# `bin/ci checks` fails a gem, a pinned JavaScript package, an OCR package, a font or an icon set under a licence that is not
+# in `allowed` and has no entry in `exceptions`. Adding to either list is a decision for the maintainer: say why in `reason`,
+# and put the change in a pull request of its own or beside the dependency it is for.
+#
+# A component with several licences passes if any one is allowed. A licence is compared exactly as an SPDX id: "MIT License"
+# or an expression in one string fails. An exception names a gem, the licences it was reviewed under (a set) and a reason; it
+# goes stale, and fails the check, when the lockfile no longer names the gem, the gem declares other licences, or the gem is
+# allowed without it. `all_required: true` marks a gem whose list of licences is not a choice, so every one must be allowed. Why
+# it exists: a gem such as vcr declares Hippocratic-2.1 and MIT, and the rule "any one allowed" would pass it on MIT, so an
+# ordinary exception for it would read as stale (the gem is allowed without it). With `all_required` the gem fails without the
+# exception, the exception is what lets it through, and it goes stale only when every one of the gem's licences is allowed.
+# Copy this form only for a gem whose declared alternatives you do not trust; an ordinary exception is for a gem that fails.
+
+allowed:
+  - { id: MIT, reason: "Permissive, notice only: the copyright line and licence text travel with the copies, which the third-party licences page carries (spec 087)" }
+  - { id: BSD-2-Clause, reason: "Permissive, notice only; carried by the third-party licences page" }
+  - { id: BSD-3-Clause, reason: "Permissive, notice only, and a clause against using the authors' names to endorse; carried by the third-party licences page" }
+  - { id: Apache-2.0, reason: "Permissive, with a patent grant and a notice file that travels with the copies; carried by the third-party licences page" }
+  - { id: ISC, reason: "Permissive, notice only; the icons' licence" }
+  - { id: Ruby, reason: "Ruby's own licence, declared by the default gems, usually beside BSD-2-Clause" }
+  - { id: OFL-1.1, reason: "The licence of the self-hosted typefaces: the licence text travels with the font files, which are unmodified copies of their packages" }
+
+exceptions:
+  - gem: bundler-audit
+    licences: [GPL-3.0-or-later]
+    reason: "A command-line audit run by bin/ci; the application never loads it, and it leaves the image when #408 lands"
+  - gem: brakeman
+    licences: [Brakeman Public Use License]
+    reason: "A static analyser run by bin/ci and the commit hook; the application never loads it, and it leaves the image when #408 lands"
+  - gem: vcr
+    licences: [Hippocratic-2.1, MIT]
+    all_required: true
+    reason: "A test recorder the application never loads. It declares Hippocratic-2.1 and MIT, ships no licence file, and issue #408 calls it Hippocratic-2.1, so its declared MIT is not trusted. all_required is why this is an exception at all: without it the gem would pass on its MIT and this entry would read as stale. It goes stale only when every licence it declares is allowed"

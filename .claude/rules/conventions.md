@@ -9,4 +9,5 @@
 - ✓ Document code by `.claude/rules/code-documentation.md` (YARD: rationale, reusable code, extension contracts, syntax).
 - ✗ Don't disable cops inline without a justification comment on the same line.
 - ✗ Don't create god-object services or `utils.rb` dumping grounds; name classes after what they do (`MTG::BulkImporter`, `Exports::CollectionArchive`).
+- ✗ Don't add a gem or a package under a licence that isn't in `config/licence_policy.yml` to get `bin/ci` green: allowing one is the maintainer's decision, recorded there with a reason, and a named exception is for a tool the app never loads (ADR 0031).
 - ✗ Don't add gems for trivial functionality; prefer Rails built-ins (Solid*, `has_secure_password`, Active Storage, `Rails.cache`).

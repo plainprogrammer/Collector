@@ -35,6 +35,17 @@ RSpec.describe "The CI definition", type: :config do # rubocop:disable RSpec/Des
     expect(ratchet).to be < lines.each_index.find { |i| i > guarded && lines[i] == "end" }
   end
 
+  it "runs the licence check in bin/ci checks, directly after the importmap audit and not with the RSpec group (spec 091 AC-4.1)", :aggregate_failures do
+    lines = Rails.root.join("config/ci.rb").readlines(chomp: true).map(&:strip)
+    audit = lines.index('step "Security: Importmap vulnerability audit", "bin/importmap audit"')
+    licences = lines.index('step "Licences: dependencies are under allowed licences", "bin/rails licences:check"')
+    guarded = lines.index("unless selection.group == :rspec")
+
+    expect(licences).not_to be_nil
+    expect(licences).to eq(audit + 1)
+    expect(licences).to be < lines.each_index.find { |i| i > guarded && lines[i] == "end" }
+  end
+
   it "lets a session run bin/ci and its groups without a permission prompt (AC-1.8)" do
     allowed = JSON.parse(Rails.root.join(".claude/settings.json").read).dig("permissions", "allow")
 

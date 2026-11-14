@@ -32,6 +32,7 @@ CI.run do
     step "Security: Brakeman code analysis", "bin/brakeman --quiet --no-pager --exit-on-warn --exit-on-error"
     step "Security: Gem audit", "bin/bundler-audit"
     step "Security: Importmap vulnerability audit", "bin/importmap audit"
+    step "Licences: dependencies are under allowed licences", "bin/rails licences:check"
   end
 
   step "Tests: RSpec", rspec unless selection.group == :checks
