@@ -50,4 +50,50 @@ RSpec.describe "The selection pane", type: :system do
     wait_for_pane
     expect(page).to have_no_css(".c-scan__read-name b")
   end
+
+  it "steps to the next printing with Next: the same band element, replaced in place (AC-2.4, AC-3.2, AC-7.2)", :aggregate_failures do
+    visit scanner_path
+    capture_synthetic
+    page.evaluate_script("window.__band = document.getElementById('scanner_band'); true")
+    expect(page).to have_button("Previous printing", disabled: true)
+    click_on "Next printing"
+    expect(page).to have_css(".c-scanpane__item:nth-child(2)[aria-current='true']")
+    expect(page).to have_css(".c-scanpane__card:not([hidden]) .c-scanpane__position", text: "2 of 3 printings")
+    expect(band).to have_text("Not the printing that was read")
+    expect(band[:class]).to include("c-band--warning")
+    expect(band.text(:all)).to include("Printing 2 of 3:")
+    expect(page.evaluate_script("window.__band === document.getElementById('scanner_band') && document.querySelectorAll('.c-band').length === 1")).to be(true)
+    expect(page).to have_button("Previous printing", disabled: false)
+    expect(page.evaluate_script("window.__tracks.every((track) => track.readyState === 'live')")).to be(true)
+    click_on "Previous printing"
+    expect(band).to have_text("Matched by its collector line")
+  end
+
+  it "disables Next at the last item and moves focus to Previous (AC-3.3)", :aggregate_failures do
+    visit scanner_path
+    capture_synthetic
+    click_on "Next printing"
+    expect(page).to have_css(".c-scanpane__item:nth-child(2)[aria-current='true']")
+    find_button("Next printing").send_keys(:enter) # Firefox on a Mac does not focus a clicked button (scanner_page_spec.rb:57)
+    expect(page).to have_button("Next printing", disabled: true)
+    expect(page.evaluate_script("document.activeElement.getAttribute('aria-label')")).to eq("Previous printing")
+  end
+
+  it "steps with the arrow keys on the focused row (AC-3.4)", :aggregate_failures do
+    visit scanner_path
+    capture_synthetic
+    find(".c-scanpane__row").send_keys(:arrow_right)
+    expect(page).to have_css(".c-scanpane__item:nth-child(2)[aria-current='true']")
+    find(".c-scanpane__row").send_keys(:arrow_left)
+    expect(page).to have_css(".c-scanpane__item:nth-child(1)[aria-current='true']")
+  end
+
+  it "notes the nearest item when the row is scrolled by script, and when a neighbour is tapped (AC-3.5, AC-3.6)", :aggregate_failures do
+    visit scanner_path
+    capture_synthetic
+    page.execute_script("const row = document.querySelector('.c-scanpane__row'); row.style.scrollBehavior = 'auto'; row.scrollLeft = row.scrollWidth")
+    expect(page).to have_css(".c-scanpane__item:nth-child(3)[aria-current='true']", wait: 5)
+    page.execute_script("document.querySelectorAll('.c-scanpane__item')[1].click()") # Next covers the neighbour's visible part, so a driver click is intercepted
+    expect(page).to have_css(".c-scanpane__item:nth-child(2)[aria-current='true']")
+  end
 end
