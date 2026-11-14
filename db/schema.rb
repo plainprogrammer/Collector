@@ -10,12 +10,12 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_13_120002) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_13_120003) do
   create_table "accounts", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "currency", default: "USD", null: false
-    t.integer "household_id"
+    t.integer "household_id", null: false
     t.string "kind", default: "personal", null: false
     t.index ["household_id"], name: "index_accounts_on_household_id"
     t.check_constraint "kind IN ('personal', 'shared')", name: "accounts_kind_known"
