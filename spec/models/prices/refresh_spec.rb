@@ -371,6 +371,20 @@ RSpec.describe Prices::Refresh, type: :model do
       expect(CurrentPrice.where(catalog_entry_id: [ japanese.id, 9_999_999 ]).count).to eq(2)
     end
 
+    it "leaves a price of a series the source no longer declares, and does not count it (AC-3.7)", :aggregate_failures do
+      retired_series = Prices::Sources::Series.new(finish: "gold", currency: "USD", kind: "market")
+      seed_candidates(10)
+      legacy = widget_entry("legacy")
+      seed_price(legacy, 100, series: retired_series) # the source declares only the plain series today
+      use_widget_sources(records: keep_quotes(10))
+
+      run = refresh.call
+
+      expect(run).to have_attributes(status: "finished", removed: 0, removals_withheld: 0)
+      expect(CurrentPrice.where(catalog_entry_id: legacy.id, price_series_id: series_row(retired_series).id).count).to eq(1)
+      expect(PriceChange.where(catalog_entry_id: legacy.id, cents: nil)).to be_empty
+    end
+
     it "does not remove a price whose quote was unreadable, and the printing's other series are judged as usual (AC-3.1)", :aggregate_failures do
       other = Prices::Sources::Series.new(finish: "foil", currency: "USD", kind: "market")
       seed_candidates(10)

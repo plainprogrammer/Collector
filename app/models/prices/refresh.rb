@@ -212,17 +212,20 @@ class Prices::Refresh
 
     # Yields the source's candidate current prices as [entry id, series id], a slice of BATCH_SIZE printings at a time,
     # by keyset on the printing id. A candidate's printing is a catalog entry of this type in a language of the run,
-    # retired or not; one the primary lacks, or in a language not read, isn't asked about and is left out. The primary is
-    # read outside any transaction, and each slice touches the run as progress.
+    # retired or not; one the primary lacks, or in a language not read, isn't asked about and is left out. So is a price
+    # of a series the source doesn't declare today: the file can't speak for a series the source no longer reads, so its
+    # absence says nothing (spec 089 v0.5.0, AC-3.7). The primary is read outside any transaction, and each slice
+    # touches the run as progress.
     def each_candidate_slice
       last = 0
+      declared = @series.values.map(&:id)
       loop do
         ids = CurrentPrice.where(price_source_id: @source.id).where("catalog_entry_id > ?", last).distinct.order(:catalog_entry_id).limit(BATCH_SIZE).pluck(:catalog_entry_id)
         break if ids.empty?
 
         last = ids.last
         languages = Catalog::Entry.where(collectible_type:, id: ids).pluck(:id, :language).to_h
-        rows = CurrentPrice.where(price_source_id: @source.id, catalog_entry_id: ids).pluck(:catalog_entry_id, :price_series_id)
+        rows = CurrentPrice.where(price_source_id: @source.id, catalog_entry_id: ids, price_series_id: declared).pluck(:catalog_entry_id, :price_series_id)
         yield rows.select { |entry_id, _series_id| @languages.include?(languages[entry_id]) }
         @run.progress!(@counts)
       end
