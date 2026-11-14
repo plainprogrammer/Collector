@@ -62,3 +62,7 @@ To be recorded when it runs on the commit that is pushed (the previous release v
 ### The full `bin/ci`
 
 To be recorded with the CI run of the push.
+
+## Distillation
+
+Written during phase 7 and checked by the implementation review against the code: `tenancy-and-accounts.md` (the household, membership, personal and shared account, the invariants, the instance-level tables, the delete order, the accepted limits), `release-and-deploy.md` (the upgrade proof's two-tier households check), `data-portability.md` (the household's tables and columns left out, `households` outside the guard), `.claude/rules/multi-tenancy.md`, `docs/releasing.md`'s Upgrade note and `CLAUDE.md`. At the wrap (maintainer-approved digest): one Distillation log row in each of the three area docs with the placeholder "spec 090's pull request" (replaced by the pull request's link once it is open), the index row Frozen, by those three docs, Plan "retirement owed", and the spec's frozen line (spec 027 D4). No new ADR: ADR 0030 stays Proposed in the pull request; the maintainer accepts it, recorded in the plan-retirement pull request as for ADR 0029. Lessons: two (`docs/lessons/2026-11-13-a-table-copy-of-a-referenced-table.md`, `...-association-name-creates-the-association.md`); one feedback memory (`rereview-changed-data-loss-steps`).
