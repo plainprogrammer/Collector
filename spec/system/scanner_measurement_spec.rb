@@ -12,9 +12,10 @@ RSpec.describe "Scanner measurement mode", type: :system do
     FileUtils.remove_entry(corpus)
   end
 
-  def capture_lightning_bolt
+  def capture_lightning_bolt(other_printing: false)
     identity = create(:catalog_identity, name: "Lightning Bolt")
     create(:mtg_printing, finishes: %w[nonfoil foil], entry: create(:catalog_entry, identity:, name: "Lightning Bolt", set: create(:catalog_set, code: "mom"), number: "123"))
+    create(:mtg_printing, entry: create(:catalog_entry, identity:, name: "Lightning Bolt", set: create(:catalog_set, code: "m10"), number: "146")) if other_printing
     Catalog::NameIndex.new("mtg").rebuild
     system_sign_in_as(create(:user))
     visit scanner_measurement_path
@@ -76,7 +77,7 @@ RSpec.describe "Scanner measurement mode", type: :system do
     page.execute_script("const send = window.fetch; window.fetch = (url, options) => String(url).includes('/measurement/captures') ? Promise.reject(new TypeError('offline')) : send(url, options)")
     click_on "Capture"
     expect(page).to have_css(".c-scan--result #status", text: "The capture wasn't stored, so it doesn't count yet. Store it again.", wait: 30)
-    expect(page).to have_css(".c-scanner__candidate", text: "Lightning Bolt")
+    expect(page).to have_css(".c-scanpane__card:not([hidden])", text: "Lightning Bolt")
     expect(page).to have_css("#measurement_panel [data-measurement-target=retry]:not([hidden])", visible: :all)
     expect(corpus.join("runs/live/full/IMG_1.jpeg/capture-001.json")).not_to exist
   end
@@ -129,6 +130,16 @@ RSpec.describe "Scanner measurement mode", type: :system do
     events = recorded_events(row, count: 2)
     expect(events.map { it.values_at("kind", "rank") }).to eq([ %w[add 1], [ "undo", nil ] ])
     expect(events.map { it["reading_key"] }).to all(eq(capture["reading_key"]))
+  end
+
+  it "records the add of a swiped-to printing with the rank 'other' (spec 088 AC-8.2)", :aggregate_failures do
+    capture_lightning_bolt(other_printing: true)
+    click_on "Next printing"
+    expect(page).to have_css(".c-scanpane__card:not([hidden]) .c-scanpane__position", text: "2 of 2 printings")
+    within(".c-scanpane__card:not([hidden])") { first(".c-scanpane__add button").click }
+    expect(page).to have_css("#scanner_added_text", text: /\AAdded Lightning Bolt M10 · 146/, wait: 10)
+    row = Scanner::MeasurementRun.current(framing: "full").row("IMG_1.jpeg")
+    expect(recorded_events(row, count: 1).map { it.values_at("kind", "rank") }).to eq([ %w[add other] ])
   end
 
   it "keeps the live frame and its guide rect, and still sends only the text and key for the reading (spec 010 AC-3.1, AC-5.5)", :aggregate_failures do
