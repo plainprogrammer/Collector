@@ -10,6 +10,7 @@
 **ADR:** [0030](../../adr/0030-a-household-is-a-group-of-accounts.md), which supersedes the one-user half of [ADR 0017](../../adr/0017-row-level-tenancy-one-user-per-account.md)
 **Supersedes:** spec 004 FR-3 in part ("an account has exactly one user": an account is now in a household, and `users.account_id` stays unique) and [ADR 0017](../../adr/0017-row-level-tenancy-one-user-per-account.md)'s one-user half, by ADR 0030; the area doc [`tenancy-and-accounts.md`](../../architecture/tenancy-and-accounts.md) records it
 **Design:** [households and the hosted service](../../superpowers/specs/2026-11-13-households-and-hosted-service-design.md), decisions 9 to 11 (rulings 43 and 44 of the [roadmap](../../roadmap.md))
+**Frozen:** the current rules are in [`tenancy-and-accounts.md`](../../architecture/tenancy-and-accounts.md), [`release-and-deploy.md`](../../architecture/release-and-deploy.md) and [`data-portability.md`](../../architecture/data-portability.md) (whole spec); see the [specs index](../README.md)
 
 ---
 
