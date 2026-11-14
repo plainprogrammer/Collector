@@ -27,7 +27,7 @@ RSpec.describe "Scanner readings", type: :request do
       expect(pane.css("turbo-frame#scanner_selection.c-scanpane__body").size).to eq(1)
       items = pane.css(".c-scanpane__item")
       expect(items.first["aria-current"]).to eq("true")
-      expect(items.drop(1).map { it["aria-current"] }.uniq).to eq([ nil ])
+      expect(items.drop(1).map { it["aria-current"] }).to all(be_nil)
       panels = pane.css(".c-scanpane__card")
       expect(panels.map { it["hidden"] }).to eq([ nil, *Array.new(panels.size - 1, "hidden") ])
       template = panels.first.at_css("template[data-band]")
