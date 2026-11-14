@@ -7,6 +7,7 @@
 **Depends on:** [spec 080](../080-phone-first-scanner-components/spec.md) (the pane, the band, the strip and the row, drawn with their CSS), [spec 082](../082-scanner-capture-always-in-view/spec.md) (the one-screen page, the sheets, the lines, "Scan again", decisions 10, 11 and 13), [the phone-first scanner design](../../superpowers/specs/2026-11-12-scanner-phone-first-design.md) (approved 2026-11-12; decisions 8 to 19), the scanner as built ([scanner](../../architecture/scanner.md) area doc; specs 009, 011, 040, 042, 047)
 **Branch:** `088-scanner-selection-pane`
 **Issue:** [#345](https://github.com/plainprogrammer/Collector/issues/345) (roadmap Theme D, the phone-first layout's third item)
+**Frozen:** the current rules are in [`scanner.md`](../../architecture/scanner.md) (whole spec; the markup and copy are [`Scanner`](../../design-system/components/Scanner.md) and [`StatusBand`](../../design-system/components/StatusBand.md) in the design system); see the [specs index](../README.md)
 
 ---
 
