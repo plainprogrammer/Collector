@@ -1,7 +1,7 @@
 # Implementation Plan: CI Fails on a Dependency Whose Licence Isn't Allowed (spec 091, issue #402)
 
 **Spec:** `docs/specs/091-licence-check-in-ci/spec.md` (Approved v0.5.0) · **ADR:** [0031](../../adr/0031-a-dependency-licence-is-a-decision.md) (Proposed) · **Issue:** #402 · **Branch:** `091-licence-check-in-ci` · **Created:** 2026-11-13
-**Status:** Draft, for Gate B. Written by my main session; plan review (Fable, read-only) to follow.
+**Status:** Draft, for Gate B. Written by my main session; plan review round 1 (Fable, read-only): APPROVE WITH CHANGES (0 blocking, 3 major, 8 minor), all fixed in this version.
 
 ## Context
 
@@ -22,6 +22,7 @@ Facts the tasks rely on, read from the files on `main` at `71212946`:
 - **No agent runs the `sqlite3` command, `bin/rails console`, `bundle add`/`update`, `bin/importmap pin`, or anything else on the ask list, and none runs `bin/rails licences:check` as a Bash command** (it isn't allowed in `.claude/settings.json` and would prompt): run the task in-process in its spec, and the real tree through `bin/ci checks`. Never touch `Dockerfile`, `.github/workflows/**`, `config/deploy*.yml` or `.claude/settings.json`. `config/ci.rb` is a plain edit.
 - **Comments:** every public class, module and method gets a summary (the comment ratchet in `bin/ci checks`), with `@param`/`@return` on reusable code, and `@see file:catalog-core.md` and `@see file:0031-a-dependency-licence-is-a-decision.md`. No `{…}` outside YARD links (write paths in backticks).
 - **No migration, no export, import or backup change** (the export format stays 4); no gem, no JavaScript; `spec/support/runtime_log.txt` is not refreshed; the existing `Audit`'s rules and `spec/third_party_licences_manifest_spec.rb` are not changed.
+- **Run `bin/yard doc` only through `bin/ci checks`** (a plain `bin/yard` isn't on the allow list); an implementer who adds a class runs `bin/ci checks` once at the end of its batch, not per task.
 - **Shared test database:** one test run at a time in this worktree; a targeted `bin/rspec <file>` needs no CI slot, a full `bin/ci` and a push do (the coordinator's).
 
 ## Goal
@@ -66,8 +67,8 @@ require "tmpdir"
 RSpec.describe Collector::ThirdPartyLicences::Policy, type: :model do
   let(:path) { "config/licence_policy.yml" }
 
-  def component(name, *identifiers, version: "1.0")
-    Collector::ThirdPartyLicences::Component.new(name:, version:, identifiers:, home: nil, copyright: nil, texts: [], note: nil)
+  def component(name, *identifiers, version: "1.0", texts: [])
+    Collector::ThirdPartyLicences::Component.new(name:, version:, identifiers:, home: nil, copyright: nil, texts:, note: nil)
   end
 
   def section(key, *components, title: key.to_s.capitalize)
@@ -103,6 +104,7 @@ RSpec.describe Collector::ThirdPartyLicences::Policy, type: :model do
 
   it "fails a gem that declares no licence, and one whose string is not an exact allowed id (AC-1.3, AC-1.4)", :aggregate_failures do
     expect(problems_for(section(:gems, component("bare"))).first).to include("gem bare 1.0", "no licence")
+    expect(problems_for(section(:gems, component("filed", texts: [ [ "LICENSE", "text" ] ]))).first).to include("gem filed 1.0", "no licence")
     %w[MIT\ License Apache\ 2.0 MIT\ OR\ Apache-2.0].each do |string|
       expect(problems_for(section(:gems, component("odd", string))).first).to include(string)
     end
@@ -141,9 +143,9 @@ RSpec.describe Collector::ThirdPartyLicences::Policy, type: :model do
       bad = { "gem" => "x", "licences" => [], "reason" => "r" }
       ok = { "gem" => "y", "licences" => [ "GPL-3.0-only" ], "reason" => "r" }
 
-      expect(shape_problems(data(exceptions: [ bad ])).first).to include("exception entry 1", "x")
+      expect(shape_problems(data(exceptions: [ bad ])).first).to include("exception entry 1", "(x)")
       expect(shape_problems(data(exceptions: [ ok.except("reason") ])).first).to include("exception entry 1")
-      expect(shape_problems(data(exceptions: [ ok, ok ])).first).to include("y", "twice")
+      expect(shape_problems(data(exceptions: [ ok, ok ])).first).to include("gem y", "twice")
     end
 
     it "judges nothing while the policy is malformed (it would report every gem)" do
@@ -161,7 +163,7 @@ module Collector
     # Judges the components of {ThirdPartyLicences.build}'s sections against the allowed list and the named exceptions in
     # `config/licence_policy.yml` (spec 091), as a list of problems each naming its offender, the licence and the file.
     #
-    # Every input is injected, so a spec shows each rule failing on a small fixture; {.for_repository} builds the real ones
+    # Every input is injected, so a spec shows each rule failing on a small fixture; `for_repository` (T1.3) builds the real ones
     # and the `licences:check` task prints the problems. A component passes if any one of its identifiers is allowed (spec 091
     # decision 2); one with none, or with a string that is not exactly an allowed id, fails (decision 5). Nothing here reads
     # a gem or a licence file: the one reader is {ThirdPartyLicences} (no second reader of the bundle).
@@ -175,6 +177,10 @@ module Collector
       # The decision the failure message points at.
       DECISION = "ADR 0031".freeze
 
+      # A named exception, as the rules use it: the `gem`, its `licences` (sorted, a set) and whether its list is `all_required`.
+      # Its `reason` is for the reader of the file; no rule reads it.
+      Exemption = Data.define(:gem, :licences, :all_required)
+
       # @param data [Hash{String=>Array<Hash>}, Object] the loaded policy: `allowed` (each `id`, `reason`) and `exceptions`
       #   (each `gem`, `licences`, `reason`, optional `all_required`); anything but a mapping is a problem, not a crash
       # @param path [String] the policy's path, as the messages print it
@@ -187,7 +193,9 @@ module Collector
         @locked_names = locked_names
       end
 
-      # @return [Integer] how many components the sections hold (what a passing run reports it judged)
+      # How many components the sections hold, which is what a passing run reports it judged.
+      #
+      # @return [Integer]
       def component_count = components.size
 
       # What is off the policy, one sentence per offender, each naming it, its licence and the policy file.
@@ -211,7 +219,7 @@ module Collector
 
       def raw_exceptions = Array(@data["exceptions"])
 
-      def allowed_ids = @allowed_ids ||= raw_allowed.map { it["id"] }
+      def allowed_ids = @allowed_ids ||= raw_allowed.filter_map { it["id"] if it.is_a?(Hash) }
 
       def filled?(value) = value.is_a?(String) && !value.strip.empty?
 
@@ -276,7 +284,7 @@ Verify green (`bin/rspec spec/lib/collector/third_party_licences/policy_spec.rb`
 
 ### T1.2 Exceptions, staleness and `all_required` (AC-3.1, AC-3.2, AC-3.5 first clause, AC-3.6, AC-2.3)
 
-Add to `policy_spec.rb` (red first):
+Add to `policy_spec.rb` (red first; the AC-2.3 and AC-3.5 examples already pass on T1.1's code, so they are pins, not red):
 
 ```ruby
   describe "exceptions (decision 3)" do
@@ -337,12 +345,10 @@ Add to `policy_spec.rb` (red first):
 Implementation: replace the T1.1 stand-ins.
 
 ```ruby
-      # A named exception: the `gem`, its `licences` (sorted, a set), whether its list is `all_required`, and the `reason`.
-      Exemption = Data.define(:gem, :licences, :all_required, :reason)
 
       def exemptions
         @exemptions ||= raw_exceptions.map do |entry|
-          Exemption.new(gem: entry["gem"], licences: entry["licences"].uniq.sort, all_required: entry["all_required"] == true, reason: entry["reason"])
+          Exemption.new(gem: entry["gem"], licences: entry["licences"].uniq.sort, all_required: entry["all_required"] == true)
         end
       end
 
@@ -420,7 +426,7 @@ Red first, in `policy_spec.rb`:
     end
   end
 ```
-The second example is wrong as drafted for a lazy read; write it as the task needs: `for_repository` reads the file when called, so use `expect { described_class.for_repository(policy_path: tmp.join("absent.yml"), sections: []) }.to raise_error(SystemCallError)` with `tmp = Pathname(Dir.mktmpdir)` removed in `after`, and a second example writing `"- MIT\n"` to a tmp file and asserting `.problems.first` includes the path and "mapping". Implement:
+The class comment's `for_repository` in backticks becomes the YARD link `{.for_repository}` in this task, once the method exists. Implement:
 
 ```ruby
       class << self
@@ -558,10 +564,14 @@ module Collector
         @policy = policy
       end
 
-      # @return [Array<String>] the guard's problems, then the policy's; empty when both agree
+      # The guard's problems, then the policy's.
+      #
+      # @return [Array<String>] empty when both agree
       def problems = @audit.problems + @policy.problems
 
-      # @return [Integer] how many components the policy judged
+      # How many components the policy judged.
+      #
+      # @return [Integer]
       def component_count = @policy.component_count
     end
   end
@@ -579,21 +589,30 @@ require "rails_helper"
 require "rake"
 require "tmpdir"
 
-# Spec 091 FR-3, AC-4.2 and AC-4.3. The step is run on the real tree by bin/ci checks (evidence in verification.md); here the
-# task runs in-process, the passing run on the repository's own policy and the failing one on a policy that allows nothing.
+# Spec 091 FR-3, AC-4.2 and AC-4.3. The step judges the repository's own policy in `bin/ci checks` (evidence in verification.md);
+# here the task runs in-process, so a licence change in the bundle can't take a shard down: the passing run uses a policy that
+# allows every licence the list declares, the failing one a policy that allows nothing.
 RSpec.describe "licences rake task", type: :task do # rubocop:disable RSpec/DescribeClass -- rake tasks have no class
   before { Rails.application.load_tasks unless Rake::Task.task_defined?("licences:check") }
 
   after { Rake::Task["licences:check"].reenable }
 
-  # The catalog task spec defines its own capture_stdout the same way; this one is local to the file.
-  def capture_stderr
-    original = $stderr
-    $stderr = StringIO.new
-    yield
-    $stderr.string
+  # Runs the task with its output captured and `exit` rescued (RSpec doesn't rescue SystemExit, so an unrescued exit would end
+  # the whole process), as [standard output, standard error, exit status].
+  def run_check(*args)
+    out = StringIO.new
+    err = StringIO.new
+    original = [ $stdout, $stderr ]
+    $stdout, $stderr = out, err
+    status = begin
+      Rake::Task["licences:check"].invoke(*args)
+      0
+    rescue SystemExit => error
+      error.status
+    end
+    [ out.string, err.string, status ]
   ensure
-    $stderr = original
+    $stdout, $stderr = original
   end
 
   def with_policy(yaml)
@@ -604,31 +623,40 @@ RSpec.describe "licences rake task", type: :task do # rubocop:disable RSpec/Desc
     end
   end
 
-  it "exits 0 on today's tree and prints how many components it judged on standard output (AC-4.2)" do
-    expect { Rake::Task["licences:check"].invoke }.to output(/Licences: \d+ components judged/).to_stdout
+  def allow_everything_yaml
+    ids = Collector::ThirdPartyLicences.build.sections.flat_map(&:components).flat_map(&:identifiers).uniq
+    { "allowed" => ids.map { { "id" => it, "reason" => "a fixture" } }, "exceptions" => [] }.to_yaml
+  end
+
+  it "exits 0 and prints how many components it judged on standard output (AC-4.2)", :aggregate_failures do
+    with_policy(allow_everything_yaml) do |file|
+      out, err, status = run_check(file)
+
+      expect(status).to eq(0)
+      expect(out).to match(/Licences: \d+ components judged/)
+      expect(err).to be_empty
+    end
   end
 
   it "exits 1 against a policy that allows nothing, printing each dependency, its licence and the file on standard error (AC-4.3)", :aggregate_failures do
     with_policy("allowed: []\nexceptions: []\n") do |file|
-      printed = capture_stderr do
-        expect { Rake::Task["licences:check"].invoke(file) }.to raise_error(SystemExit) { |error| expect(error.status).to eq(1) }
-      end
+      _out, err, status = run_check(file)
 
-      expect(printed).to include("gem rake", "MIT", file)
-      expect(printed.lines.size).to be > 100
+      expect(status).to eq(1)
+      expect(err).to include("gem rake", "MIT", file)
+      expect(err.lines.size).to be > 100
     end
   end
 
-  it "exits 1 naming the file when it can't be read" do
-    printed = capture_stderr do
-      expect { Rake::Task["licences:check"].invoke("/nonexistent/policy.yml") }.to raise_error(SystemExit) { |error| expect(error.status).to eq(1) }
-    end
+  it "exits 1 naming the file when it can't be read", :aggregate_failures do
+    _out, err, status = run_check("/nonexistent/policy.yml")
 
-    expect(printed).to include("/nonexistent/policy.yml")
+    expect(status).to eq(1)
+    expect(err).to include("/nonexistent/policy.yml")
   end
 end
 ```
-The first example doesn't expect `SystemExit`: if the real tree has a problem the task exits and the example fails, so it doubles as the pass check.
+The first example doesn't judge the repository's own policy, which `bin/ci checks` does (AC-4.2's evidence is that run, recorded in `verification.md`).
 
 Implementation, `lib/tasks/licences.rake`:
 
@@ -677,11 +705,11 @@ Then in `config/ci.rb`, after the importmap audit line, add `    step "Licences:
 
 **Phase 2 verification:** `bin/rspec spec/lib/collector/third_party_licences spec/tasks/licences_rake_spec.rb spec/config/ci_definition_spec.rb` green; `bin/ci checks` green with the step's line `Licences: ... components judged`.
 
-## Phase 3: `vcr` (pending the maintainer)
+## Phase 3: `vcr` (ruled by the maintainer, 2026-11-13: a named exception)
 
-**Satisfies** AC-3.4's third entry and AC-3.6 on the real tree. One task, so the maintainer's ruling either way is one commit.
+**Satisfies** AC-3.4's third entry and AC-3.6 on the real tree. One task of its own, because the coordinator asked for the entry to be separable; the `all_required` rule is in T1.2's commit and stays whatever happens to the entry. Spec 0.5.1 and ADR 0031 already record the ruling.
 
-### T3.1 The `vcr` exception, the form's default (spec decision 2, decision 3)
+### T3.1 The `vcr` exception (spec decisions 2 and 3, AC-3.4, AC-3.6)
 
 Add to `exceptions:` in `config/licence_policy.yml`:
 
@@ -691,7 +719,7 @@ Add to `exceptions:` in `config/licence_policy.yml`:
     all_required: true
     reason: "A test recorder the application never loads. It declares Hippocratic-2.1 and MIT, ships no licence file, and issue #408 calls it Hippocratic-2.1, so its declared MIT is not trusted: it passes by name, and the exception goes stale if it ever declares only allowed licences"
 ```
-Evidence (no new spec: AC-3.4 is read-and-record): `bin/ci checks` stays green with the entry (the step judges `vcr` by name); with the entry removed, `spec/lib/.../policy_spec.rb`'s `all_required` examples already prove the form, and a local run would then pass `vcr` as `MIT`. **If the maintainer rules to trust the declared MIT:** revert this task's commit (`git revert`), and change spec decision 2's pending sentence and AC-3.4 by a spec update (`sdd-spec-update`). Commit `feat(licences): vcr is let through by name, its declared MIT not trusted (#402)`.
+Evidence (no new spec: AC-3.4 is read-and-record): `bin/ci checks` stays green with the entry (the step judges `vcr` by name); with the entry removed, `spec/lib/.../policy_spec.rb`'s `all_required` examples already prove the form, and a local run would then pass `vcr` as `MIT`. Commit `feat(licences): vcr is let through by name, its declared MIT not trusted (#402)`.
 
 ## Phase 4: Documents, the core spec and the evidence
 
@@ -746,5 +774,5 @@ Edit `spec/licences_core_spec.rb`'s file list: add `lib/collector/third_party_li
 
 ## Owed to the maintainer
 
-- `vcr` (T3.1): the exception form or trusting its declared `MIT`.
+- T4.2 edits two files under `.claude/rules/`; if the harness prompts for them, the maintainer answers (nothing here edits `.claude/settings.json`).
 - A session can't run `bin/rails licences:check` without a prompt, because `.claude/settings.json` lists no such command; add `Bash(bin/rails licences:check*)` if wanted (the task still runs through `bin/ci checks`).
