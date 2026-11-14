@@ -1,6 +1,6 @@
 # Implementation Plan: Prices Refresh Once a Day, and Each Change Is Recorded Once
 
-**Spec:** docs/specs/089-daily-price-refresh/spec.md (v0.4.2: v0.4.1 approved at Gate A, 2026-11-13; 0.4.2 patches AC-4.4's method after plan review)
+**Spec:** docs/specs/089-daily-price-refresh/spec.md (v0.4.3: the count `changed` is `repriced`; v0.4.2: v0.4.1 approved at Gate A, 2026-11-13; 0.4.2 patches AC-4.4's method after plan review)
 **Decisions:** none in an ADR (the decisions are the spec's; the area doc carries the rules)
 **Created:** 2026-11-13
 **Status:** Approved at Gate B by the coordinator under the maintainer's delegation (2026-11-13), after two plan review rounds (Fable 5.2); the coordinator read the round 2 fix diff (4c65fdb9) itself
@@ -132,7 +132,7 @@ Three components (the run record, the refresh, the job) plus two thin models: wi
 
 **Implements:** Decision 2, FR-3 | **Satisfies:** AC-5.2, AC-1.9 (the table accepts a nil `run_on`)
 **Files:** `db/prices_migrate/20261113190001_prepare_price_refresh_runs.rb`, `db/prices_structure.sql`, `spec/prices_schema_spec.rb`
-**Interfaces:** Consumes: the table of `20261113100001_create_price_tables.rb`. Produces: `price_refresh_runs` with `run_on` nullable, `job_id` and `languages` (nullable strings) and the integer counts `quotes_seen`, `unchanged`, `changed`, `added`, `removed`, `removals_withheld`, `unknown_printings`, `malformed` (`null: false, default: 0`).
+**Interfaces:** Consumes: the table of `20261113100001_create_price_tables.rb`. Produces: `price_refresh_runs` with `run_on` nullable, `job_id` and `languages` (nullable strings) and the integer counts `quotes_seen`, `unchanged`, `repriced` (T1.6 renames the `changed` that T1.3 adds), `added`, `removed`, `removals_withheld`, `unknown_printings`, `malformed` (`null: false, default: 0`).
 
 The rebuild touches a rowid table (`price_refresh_runs`), so the `WITHOUT ROWID` trap of the two large tables doesn't apply; the schema spec proves they are untouched.
 
@@ -252,6 +252,21 @@ The rebuild touches a rowid table (`price_refresh_runs`), so the `WITHOUT ROWID`
 
 - [ ] **T1.5** Run `bin/rspec spec/prices_schema_spec.rb spec/backup_guards_spec.rb` and `ruby script/upgrade/guard.rb` — expect PASS. Commit (stage the migration, the structure file and the spec; the structure file is generated, never hand-edited): `feat(prices): make price_refresh_runs fit the daily refresh (spec 089 decision 2)`.
 
+- [ ] **T1.6** (Added at execution, spec v0.4.3.) Active Record reserves the attribute name `changed`, so a model of `price_refresh_runs` can't be built with the column T1.3 added. A second migration renames it: `db/prices_migrate/20261113190002_rename_price_refresh_runs_changed.rb`:
+
+  ```ruby
+  # Active Record reserves the attribute name `changed` (ActiveRecord::DangerousAttributeError), so the count of repriced
+  # quotes that 20261113190001 added under that name is `repriced` (spec 089 decision 2, v0.4.3). A rowid table, so the
+  # table rebuild of rename_column is safe; the migration before it is unreleased and stays as built.
+  class RenamePriceRefreshRunsChanged < ActiveRecord::Migration[8.1]
+    def change
+      rename_column :price_refresh_runs, :changed, :repriced
+    end
+  end
+  ```
+
+  Run `bin/rails db:migrate` (stage only `db/prices_structure.sql` of what it generates), `bin/rails db:test:prepare`; the schema spec's `count_columns` list uses `repriced`; `spec/prices_core_spec.rb`'s file count (`expect(files.size).to eq(...)`, which says "a new migration raises this") becomes 5 (two migrations, the structure file and the class). Commit: `fix(prices): count repriced quotes under a name Active Record allows (spec 089 v0.4.3)`.
+
 ---
 
 ## Phase 2: The models of the three tables, and the run's guard
@@ -280,7 +295,7 @@ The rebuild touches a rowid table (`price_refresh_runs`), so the `WITHOUT ROWID`
       described_class.upsert_all([ keys.merge(cents: 150, reported_on: Date.new(2026, 11, 13), changed_on: Date.new(2026, 11, 13)) ], unique_by: described_class.primary_key)
 
       expect(described_class.primary_key).to eq(%w[catalog_entry_id price_source_id price_series_id])
-      expect(described_class.pluck(:cents, :changed_on)).to eq([ [ 150, Date.new(2026, 11, 13) ] ])
+      expect(described_class.pluck(:cents, :repriced_on)).to eq([ [ 150, Date.new(2026, 11, 13) ] ])
     end
 
     it "lives in the prices database and has no account" do
@@ -351,11 +366,11 @@ The rebuild touches a rowid table (`price_refresh_runs`), so the `WITHOUT ROWID`
     describe "#skip!, #finish!, #fail!" do
       it "ends a run with its reason or counts", :aggregate_failures do
         a = run!.tap { it.skip!("v1 already applied", run_on: Date.new(2026, 11, 13)) }
-        b = run!(job_id: "x").tap { it.finish!(unchanged: 3, changed: 1, bogus: 9) }
+        b = run!(job_id: "x").tap { it.finish!(unchanged: 3, repriced: 1, bogus: 9) }
         c = run!(job_id: "y").tap { it.fail!(RuntimeError.new("boom"), added: 2) }
 
         expect(a).to have_attributes(status: "skipped", error: "v1 already applied", run_on: Date.new(2026, 11, 13))
-        expect(b).to have_attributes(status: "finished", unchanged: 3, changed: 1)
+        expect(b).to have_attributes(status: "finished", unchanged: 3, repriced: 1)
         expect(c).to have_attributes(status: "failed", error: "RuntimeError: boom", added: 2)
         expect([ a, b, c ].map(&:finished_at)).to all(be_present)
       end
@@ -449,7 +464,7 @@ The rebuild touches a rowid table (`price_refresh_runs`), so the `WITHOUT ROWID`
   # @see file:prices.md
   class PriceRefreshRun < PricesRecord
     # What a run counts (spec 089 decision 2); the columns have these names and default to 0.
-    COUNTS = %i[quotes_seen unchanged changed added removed removals_withheld unknown_printings malformed].freeze
+    COUNTS = %i[quotes_seen unchanged repriced added removed removals_withheld unknown_printings malformed].freeze
     # A running run with no progress for this long is left behind. The catalog refresh's own threshold (spec 089 decision 7).
     STALL_AFTER = 15.minutes
     # The most often the run row is touched while a download reports progress, so a long download never reads as stalled.
@@ -911,7 +926,7 @@ This is a contract change (`#download` now has two callers that can run together
 
   ```ruby
     describe "judging quotes" do
-      def rows = CurrentPrice.pluck(:catalog_entry_id, :cents, :reported_on, :changed_on)
+      def rows = CurrentPrice.pluck(:catalog_entry_id, :cents, :reported_on, :repriced_on)
       def history = PriceChange.order(:catalog_entry_id, :recorded_on).pluck(:catalog_entry_id, :recorded_on, :cents)
 
       it "adds a price no one has, with a history row for the run's date, and finishes the run (AC-1.1, AC-2.1)", :aggregate_failures do
@@ -921,7 +936,7 @@ This is a contract change (`#download` now has two callers that can run together
         run = refresh.call
 
         expect(run).to have_attributes(status: "finished", run_on: Date.new(2026, 11, 13), source_version: "v1", languages: "en",
-          job_id: "job-1", added: 1, quotes_seen: 1, unchanged: 0, changed: 0)
+          job_id: "job-1", added: 1, quotes_seen: 1, unchanged: 0, repriced: 0)
         expect(run.started_at).to be_present
         expect(run.finished_at).to be_present
         expect(rows).to eq([ [ entry.id, 142, Date.new(2026, 11, 13), Date.new(2026, 11, 13) ] ])
@@ -935,7 +950,7 @@ This is a contract change (`#download` now has two callers that can run together
 
         run = refresh.call
 
-        expect(run).to have_attributes(unchanged: 1, changed: 0, added: 0, quotes_seen: 1)
+        expect(run).to have_attributes(unchanged: 1, repriced: 0, added: 0, quotes_seen: 1)
         expect(rows).to eq([ [ entry.id, 100, Date.new(2026, 11, 12), Date.new(2026, 11, 12) ] ])
         expect(history.size).to eq(1)
       end
@@ -947,7 +962,7 @@ This is a contract change (`#download` now has two callers that can run together
 
         run = refresh.call
 
-        expect(run).to have_attributes(changed: 1, added: 0, unchanged: 0)
+        expect(run).to have_attributes(repriced: 1, added: 0, unchanged: 0)
         expect(rows).to eq([ [ entry.id, 150, Date.new(2026, 11, 13), Date.new(2026, 11, 13) ] ])
         expect(history).to eq([ [ entry.id, Date.new(2026, 11, 12), 100 ], [ entry.id, Date.new(2026, 11, 13), 150 ] ])
       end
@@ -963,7 +978,7 @@ This is a contract change (`#download` now has two callers that can run together
 
         run = refresh.call
 
-        expect(run).to have_attributes(quotes_seen: 3, unchanged: 1, changed: 1, added: 1)
+        expect(run).to have_attributes(quotes_seen: 3, unchanged: 1, repriced: 1, added: 1)
         expect(CurrentPrice.count).to eq(3)
       end
 
@@ -1005,7 +1020,7 @@ This is a contract change (`#download` now has two callers that can run together
 
         travel_to(Time.utc(2026, 12, 25, 12)) { refresh.call }
 
-        expect(CurrentPrice.pluck(:reported_on, :changed_on)).to eq([ [ Date.new(2026, 11, 13), Date.new(2026, 11, 13) ] ])
+        expect(CurrentPrice.pluck(:reported_on, :repriced_on)).to eq([ [ Date.new(2026, 11, 13), Date.new(2026, 11, 13) ] ])
         expect(PriceChange.pluck(:recorded_on)).to eq([ Date.new(2026, 11, 13) ])
       end
 
@@ -1015,11 +1030,11 @@ This is a contract change (`#download` now has two callers that can run together
         widget_entry("w-2")
 
         refresh.call
-        first = [ CurrentPrice.pluck(:catalog_entry_id, :cents, :changed_on).sort, PriceChange.pluck(:catalog_entry_id, :cents, :recorded_on).sort ]
+        first = [ CurrentPrice.pluck(:catalog_entry_id, :cents, :repriced_on).sort, PriceChange.pluck(:catalog_entry_id, :cents, :recorded_on).sort ]
         second = refresh.call
 
         expect(second).to have_attributes(status: "skipped", error: "v1 already applied")
-        expect([ CurrentPrice.pluck(:catalog_entry_id, :cents, :changed_on).sort, PriceChange.pluck(:catalog_entry_id, :cents, :recorded_on).sort ]).to eq(first)
+        expect([ CurrentPrice.pluck(:catalog_entry_id, :cents, :repriced_on).sort, PriceChange.pluck(:catalog_entry_id, :cents, :recorded_on).sort ]).to eq(first)
         expect(PriceRefreshRun.count).to eq(2)
       end
 
@@ -1165,7 +1180,7 @@ This is a contract change (`#download` now has two callers that can run together
             had = existing[[ entry_id, series_id ]]
             next tally[:unchanged] += 1 if had == cents
 
-            tally[had ? :changed : :added] += 1
+            tally[had ? :repriced : :added] += 1
             keys = { catalog_entry_id: entry_id, price_source_id: @source.id, price_series_id: series_id }
             currents << keys.merge(cents:, reported_on: @run_on, changed_on: @run_on)
             changes << keys.merge(recorded_on: @run_on, cents:)
@@ -1705,13 +1720,13 @@ This is a contract change (`#download` now has two callers that can run together
       create(:catalog_entry, collectible_type: "mtg", external_key: "card-1")
       stub_scryfall(cards: cards("card-1" => { "usd" => "1.42" }), stamp:)
       Prices::Refresh.new("scryfall").call
-      before = [ CurrentPrice.pluck(:cents, :changed_on), PriceChange.pluck(:cents, :recorded_on) ]
+      before = [ CurrentPrice.pluck(:cents, :repriced_on), PriceChange.pluck(:cents, :recorded_on) ]
 
       run = Prices::Refresh.new("scryfall").call
 
       expect(run).to have_attributes(status: "skipped", error: "default-cards-#{stamp} already applied")
       expect(a_request(:get, /data\.scryfall\.io/)).to have_been_made.once # the file is not downloaded again
-      expect([ CurrentPrice.pluck(:cents, :changed_on), PriceChange.pluck(:cents, :recorded_on) ]).to eq(before)
+      expect([ CurrentPrice.pluck(:cents, :repriced_on), PriceChange.pluck(:cents, :recorded_on) ]).to eq(before)
     end
   end
   ```
@@ -1759,7 +1774,7 @@ This is a contract change (`#download` now has two callers that can run together
       # rubocop:enable RSpec/Output
       expect(first.status).to eq("finished")
       expect(second).to have_attributes(status: "finished")
-      expect(second.changed).to be > 0
+      expect(second.repriced).to be > 0
     ensure
       FileUtils.rm_rf(Rails.configuration.x.catalog_download_dir)
     end

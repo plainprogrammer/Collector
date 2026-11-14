@@ -1,7 +1,7 @@
 # Feature 089: Prices Refresh Once a Day, and Each Change Is Recorded Once
 
 **Status:** Approved by the coordinator under the maintainer's delegation (2026-11-13), after two Mode A review rounds (Fable 5.2). The maintainer ruled decisions 1 to 4 as recommended on 2026-11-13 (relayed by the coordinator)
-**Version:** 0.4.2
+**Version:** 0.4.3
 **Created:** 2026-11-13
 **Last Updated:** 2026-11-13
 **Branch:** `089-daily-price-refresh`
@@ -15,6 +15,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.4.3 | 2026-11-13 | Execution: the count column `changed` is `repriced`, because Active Record reserves the attribute name `changed` and `PriceRefreshRun` can't be built with it; decision 2's table, the identity of AC-5.3 and the history-rows sentence follow; no behaviour changes (PATCH) |
 | 0.4.2 | 2026-11-13 | Plan review round 1: AC-4.4 measures savepoint spans, not transaction depth, because the suite's non-joinable transaction makes every write a savepoint (a testing method; no behaviour changes) (PATCH) |
 | 0.4.1 | 2026-11-13 | Approved (Gate A). Status line only (PATCH) |
 | 0.4.0 | 2026-11-13 | Review round 2 fixes (listed in the 0.3.0 row's second half); not re-reviewed (two rounds is the limit) |
@@ -77,16 +78,16 @@ A migration (`db/prices_migrate/`, a new one: released migrations are never edit
 | Column | Counts |
 |---|---|
 | `languages` | the sorted language set read, as the catalog's run keeps it (`"en,ja"`) |
-| `quotes_seen` | quotes of printings the catalog has, read from the file: `unchanged + changed + added`. A duplicate of a quote already read in this file is not counted |
+| `quotes_seen` | quotes of printings the catalog has, read from the file: `unchanged + repriced + added`. A duplicate of a quote already read in this file is not counted |
 | `unchanged` | quotes whose price equals the current price: nothing written |
-| `changed` | quotes whose price differs from the current price: current price and history row written |
+| `repriced` | quotes whose price differs from the current price: current price and history row written (the column is not `changed`: Active Record reserves that attribute name, and a model of the table can't be built with it) |
 | `added` | quotes of a printing and series with no current price: written the same way |
 | `removed` | prices whose absence was applied: current price deleted, blank history row written |
 | `removals_withheld` | absent candidates that were not removed for any reason in decision 4 (a `Malformed`, a keyless `Malformed`, or the ceiling) |
 | `unknown_printings` | printings in the file the catalog doesn't have, each counted once; their quotes are in no other count |
 | `malformed` | `Malformed` records, of any kind |
 
-**The line.** Everything above counts a decision the job took. Left to #366: time spent downloading and processing, the file's size, lines read, printings matched, the prices database's size, WAL, free pages and row counts, and peak memory. History rows written is `changed + added + removed`, so it has no column.
+**The line.** Everything above counts a decision the job took. Left to #366: time spent downloading and processing, the file's size, lines read, printings matched, the prices database's size, WAL, free pages and row counts, and peak memory. History rows written is `repriced + added + removed`, so it has no column.
 
 `error` holds the reason a run didn't finish: the error of a failed run (`"<class>: <message>"`), or why it was skipped. A skipped run is never "applied". A failed run's counts are those so far: the counts are tallied after a batch commits (a rolled-back batch adds nothing) and persisted with each progress touch, so a run closed as `interrupted` keeps the counts of its last touch. A run skipped as already applied records its `source_version` and `languages`.
 
@@ -239,7 +240,7 @@ Core files name no collectible, comments included: `spec/price_source_core_spec.
 
 - [ ] **AC-5.1** Given `config/recurring.yml` When the production block is read Then `refresh_prices` runs `Prices::RefreshJob` with `scryfall` on queue `sync`, at a time of day other than the catalog refresh's, and the development block has none.
 - [ ] **AC-5.2** Given the migration When the prices database is built from the migrations and from `db/prices_structure.sql` Then both have the columns of decision 2 and a nullable `run_on`, the status check, foreign key and index of `price_refresh_runs` survive, and `current_prices` and `price_changes` are still `WITHOUT ROWID` (`spec/prices_schema_spec.rb`); `spec/backup_guards_spec.rb` and `ruby script/upgrade/guard.rb` pass; and `bin/upgrade-smoke` passes in CI's image job (it is not a `bin/ci` step).
-- [ ] **AC-5.3** Given a finished run When it is read Then its counts are those of the file, with `quotes_seen = unchanged + changed + added`.
+- [ ] **AC-5.3** Given a finished run When it is read Then its counts are those of the file, with `quotes_seen = unchanged + repriced + added`.
 - [ ] **AC-5.4** Given the new core files When the guard reads them, comments included Then none names a collectible, source or marketplace.
 - [ ] **AC-5.5** Given `bin/ci checks` When it runs Then new public code has comments, YARD builds, and RuboCop and Brakeman pass.
 - [ ] **AC-5.6** Given a generated file of 110,000 cards with about 300,000 quotes, built under `tmp/` by the example, and the test databases When the job applies it as a first run, and again as a typical day (10 to 20 percent of prices changed) Then the example records both durations (`:timing`, no threshold; it is excluded unless `SCANNER_TIMING` is set, so it is run by hand and the numbers are recorded in `verification.md`).
