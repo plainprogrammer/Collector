@@ -1,6 +1,6 @@
 # Testing (RSpec)
 
-- ✓ `bin/ci` (driven by `config/ci.rb`) is the project's local CI tool and the pre-push gate. Keep it maintained: it runs `bundle exec rspec` (not the default `bin/rails test`), `bin/rubocop`, `bin/brakeman`, `bin/bundler-audit`, and `bin/importmap audit`. When adding a new check, add it to `config/ci.rb`.
+- ✓ `bin/ci` (driven by `config/ci.rb`) is the project's local CI tool and the pre-push gate. Keep it maintained: it runs `bundle exec rspec` (not the default `bin/rails test`), `bin/rubocop`, `bin/brakeman`, `bin/bundler-audit`, `bin/importmap audit`, and `bin/rails licences:check` (a dependency's licence is allowed in `config/licence_policy.yml`, spec 091). When adding a new check, add it to `config/ci.rb`.
 - ✓ Mirror `app/` in `spec/` (`spec/models`, `spec/requests`, `spec/system`, `spec/jobs`); files end in `_spec.rb`.
 - ✓ Prefer request specs over controller specs; keep system specs (Capybara) for critical Hotwire flows.
 - ✓ FactoryBot with minimal valid factories and traits; prefer `build`/`build_stubbed` when persistence isn't needed.
