@@ -28,3 +28,7 @@ exceptions:
   - gem: brakeman
     licences: [Brakeman Public Use License]
     reason: "A static analyser run by bin/ci and the commit hook; the application never loads it, and it leaves the image when #408 lands"
+  - gem: vcr
+    licences: [Hippocratic-2.1, MIT]
+    all_required: true
+    reason: "A test recorder the application never loads. It declares Hippocratic-2.1 and MIT, ships no licence file, and issue #408 calls it Hippocratic-2.1, so its declared MIT is not trusted. all_required is why this is an exception at all: without it the gem would pass on its MIT and this entry would read as stale. It goes stale only when every licence it declares is allowed"
