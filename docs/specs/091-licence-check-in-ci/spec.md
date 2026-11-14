@@ -8,6 +8,7 @@
 **Branch:** `091-licence-check-in-ci`
 **Issue:** [#402](https://github.com/plainprogrammer/Collector/issues/402) (the 1.0 milestone, housekeeping lane)
 **ADR:** [0031](../../adr/0031-a-dependency-licence-is-a-decision.md) (Proposed; the maintainer ruled decision 9 on 2026-11-13).
+**Frozen:** the current rules are in [`catalog-core.md`](../../architecture/catalog-core.md) and [`release-and-deploy.md`](../../architecture/release-and-deploy.md) (whole spec); see the [specs index](../README.md)
 
 ---
 
