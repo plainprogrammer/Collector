@@ -8,6 +8,8 @@ require Rails.root.join("db/migrate/20261113120003_make_account_household_requir
 # down and up through the Migrator, as db:rollback does (the precedent is spec/migrations/add_decks_spec.rb). Rows are made with
 # SQL, so the examples don't depend on the models.
 RSpec.describe CreateHouseholdsAndMemberships, :backup, :committed, type: :model do
+  include ReferencingTableHelpers
+
   let(:connection) { ActiveRecord::Base.connection }
   let(:stamp) { "2026-11-13 12:00:00" }
 
@@ -21,6 +23,13 @@ RSpec.describe CreateHouseholdsAndMemberships, :backup, :committed, type: :model
   def up_all = versions.each { |version| context.run(:up, version) }
 
   def count(table) = connection.select_value("SELECT COUNT(*) FROM #{table}") # Safe: a literal table name from this spec
+
+  # The thirteen tables that reference accounts, and accounts itself.
+  def referencing_tables = %w[bulk_removals bulk_selection_marks bulk_selections deck_proxies decks import_uploads locations lots number_entries number_entry_lines scanner_sitting_entries scanner_sittings users]
+
+  def counts = ([ "accounts" ] + referencing_tables).to_h { [ it, count(it) ] }
+
+  def account_rows = connection.select_rows("SELECT * FROM accounts ORDER BY id")
 
   def sequence = connection.select_value("SELECT seq FROM main.sqlite_sequence WHERE name = 'accounts'")
 
@@ -130,8 +139,10 @@ RSpec.describe CreateHouseholdsAndMemberships, :backup, :committed, type: :model
   end
 
   it "leaves accounts, households and memberships, after down and up, as the schema states them (AC-3.4)", :aggregate_failures do
+    before = %i[accounts households memberships].to_h { [ it, shape(it) ] } # the test database is loaded from db/schema.rb
     down_all
     up_all
+    expect(%i[accounts households memberships].to_h { [ it, shape(it) ] }).to eq(before)
 
     # The literals are what db/schema.rb dumps for the migration; if a check's expression text differs, correct the literal to the
     # dumped text and say so, don't loosen the example.
@@ -142,6 +153,34 @@ RSpec.describe CreateHouseholdsAndMemberships, :backup, :committed, type: :model
     expect(shape(:memberships)[1..]).to eq([ [ [ "households", "household_id", nil ], [ "users", "user_id", :cascade ] ],
       [ [ "index_memberships_on_household_id", %w[household_id], false, nil ], [ "index_memberships_on_user_id", %w[user_id], true, nil ] ],
       [ [ "memberships_role_known", "role IN ('manager', 'member')" ] ] ])
+  end
+
+  it "keeps every row of the thirteen tables that reference accounts, the accounts and their id sequence, going down through all three migrations and up (AC-3.5)", :aggregate_failures do
+    # Down and up through all three versions, as the file's other examples do: (c) is undone before (a) can drop household_id.
+    fill_every_referencing_table(create(:user))
+    gone = create(:user)
+    connection.execute("DELETE FROM users WHERE id = #{gone.id}")
+    connection.execute("DELETE FROM accounts WHERE id = #{gone.account_id}")
+    before = [ counts, account_rows.map { it.first(4) }, sequence ]
+    expect(before.first.values_at(*referencing_tables)).to all(be >= 1)
+    expect(before.last).to be > before[1].last.first
+
+    [ -> { down_all }, -> { up_all } ].each do |step|
+      step.call
+      expect([ counts, account_rows.map { it.first(4) }, sequence ]).to eq(before)
+      expect(connection.select_rows("PRAGMA foreign_key_check")).to be_empty
+    end
+  end
+
+  it "refuses to go down when foreign keys are enforced, and changes nothing (AC-3.5)", :aggregate_failures do
+    fill_every_referencing_table(create(:user))
+    context.run(:down, 2026_11_13_120003)
+    context.run(:down, 2026_11_13_120002)
+    before = { counts:, sequence:, columns: connection.columns(:accounts).map(&:name) }
+
+    connection.transaction { expect { described_class.new.migrate(:down) }.to raise_error(ActiveRecord::MigrationError, /enforced/) }
+
+    expect({ counts:, sequence:, columns: connection.columns(:accounts).map(&:name) }).to eq(before)
   end
 
   it "refuses to go down while a household has two members or a shared account exists, and changes nothing (AC-3.5)", :aggregate_failures do

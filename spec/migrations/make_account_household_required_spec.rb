@@ -5,6 +5,8 @@ require Rails.root.join("db/migrate/20261113120003_make_account_household_requir
 # keys, keep the id sequence, give a straggler a household, and change nothing when it fails. It commits its rows and runs through the
 # Migrator OUTSIDE any example transaction (inside one, enforcement stays on and the cascades would fire).
 RSpec.describe MakeAccountHouseholdRequired, :backup, :committed, type: :model do
+  include ReferencingTableHelpers
+
   let(:connection) { ActiveRecord::Base.connection }
   let(:tables) { %w[bulk_removals bulk_selection_marks bulk_selections deck_proxies decks import_uploads locations lots number_entries number_entry_lines scanner_sitting_entries scanner_sittings users] }
 
@@ -29,25 +31,6 @@ RSpec.describe MakeAccountHouseholdRequired, :backup, :committed, type: :model d
       connection.foreign_keys(table).map { [ it.to_table, it.column, it.on_delete ] }.sort_by(&:to_s),
       connection.indexes(table).map { [ it.name, it.columns, it.unique, it.where ] }.sort_by(&:to_s),
       connection.check_constraints(table).map { [ it.name, it.expression ] }.sort_by(&:to_s) ]
-  end
-
-  # One row in each of the thirteen tables, as the upgrade seed makes them (script/upgrade/seeds/next.rb).
-  def fill_every_referencing_table(user)
-    account = user.account
-    entry = import_printing
-    Lot.add!(account:, entry:, quantity: 2, finish: "nonfoil")
-    Scanner::Sitting.add!(account:, printing: entry, finish: "nonfoil", reading_key: SecureRandom.hex(16))
-    session = user.sessions.create!
-    selection = BulkSelection.for(session)
-    account.lots.limit(3).pluck(:id).each { |lot_id| selection.marks.create!(lot_id:, account:) }
-    BulkRemoval.create!(session:, account:, copies: 2,
-      lots_data: [ { "catalog_entry_id" => entry.id, "finish" => "foil", "condition" => "damaged", "price_paid_cents" => nil, "quantity" => 2 } ])
-    Location.create!(account:, name: "Binder A")
-    deck = Deck::Creation.new(account:, name: "Upgrade Deck", format: "mtg/modern").tap(&:save!).deck
-    Lot.add!(account:, entry:, quantity: 3, finish: "nonfoil", location: deck.zone("main"))
-    Deck::Proxy.add!(account:, zone: deck.zone("sideboard"), entry:, finish: "foil", quantity: 2)
-    NumberEntry.add!(account:, entry:, quantity: 2, finish: "foil", line_key: SecureRandom.hex(16))
-    ImportUpload.store!(account:, bytes: "{}", plan: ImportHelpers::FakePlan.new("fingerprint"))
   end
 
   around do |example|
@@ -114,7 +97,10 @@ RSpec.describe MakeAccountHouseholdRequired, :backup, :committed, type: :model d
 
     expect(connection.select_value("SELECT households.name FROM users JOIN memberships ON memberships.user_id = users.id JOIN households ON households.id = memberships.household_id WHERE users.id = #{straggler.id}")).to eq("Late's household")
     expect(connection.select_value("SELECT COUNT(*) FROM households WHERE id = #{emptied}")).to eq(0)
-    expect { up }.not_to raise_error # a second run changes nothing
+
+    settled = counts.merge("sequence" => sequence)
+    described_class.new.migrate(:up) # the Migrator skips a recorded version, so the migration itself is run again
+    expect(counts.merge("sequence" => sequence)).to eq(settled)
   end
 
   it "stops and rolls back when a count of accounts or of any of the thirteen referencing tables differs after the copy (AC-3.6)", :aggregate_failures do
