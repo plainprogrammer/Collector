@@ -33,7 +33,7 @@ RSpec.describe Prices::Refresh, type: :model do
       use_widget_sources
       widget_entry("w-1")
 
-      expect { refresh.call }.not_to raise_error # Phase 6 makes a file with no quote a GuardError; T6.3 updates this example
+      expect { refresh.call }.to raise_error(Prices::Refresh::GuardError, /no valid quotes/) # a file with no quote is a GuardError (AC-3.5)
 
       expect(PriceSource.pluck(:key)).to eq([ "fake_source" ])
       expect(PriceSeries.count).to eq(1)
@@ -299,6 +299,217 @@ RSpec.describe Prices::Refresh, type: :model do
 
       expect(CurrentPrice.pluck(:cents).uniq).to eq([ 100 ]) # nothing was written
       expect(progress.size).to eq(3) # a progress write per batch (2, 2 and 1 printings): only they put quotes_seen in an UPDATE's SET
+    end
+  end
+
+  describe "absences" do
+    def seed_candidates(count, prefix: "keep") = Array.new(count) { |index| widget_entry("#{prefix}-#{index}").tap { seed_price(it, 100) } }
+    def keep_quotes(count, prefix: "keep") = Array.new(count) { |index| widget_quote("#{prefix}-#{index}", 100) }
+    def blank_history(entry) = PriceChange.where(catalog_entry_id: entry.id, cents: nil).pluck(:recorded_on)
+
+    it "removes a price the file leaves out and writes a blank history row for the run's date (AC-2.4)", :aggregate_failures do
+      kept = seed_candidates(10)
+      gone = widget_entry("gone").tap { seed_price(it, 100) }
+      use_widget_sources(records: keep_quotes(10))
+
+      run = refresh.call
+
+      expect(run).to have_attributes(status: "finished", removed: 1, removals_withheld: 0, unchanged: 10)
+      expect(CurrentPrice.where(catalog_entry_id: gone.id)).to be_empty
+      expect(blank_history(gone)).to eq([ Date.new(2026, 11, 13) ])
+      expect(CurrentPrice.where(catalog_entry_id: kept.map(&:id)).count).to eq(10)
+    end
+
+    it "treats a price that comes back as an added quote with its own history row (AC-2.4)", :aggregate_failures do
+      seed_candidates(10)
+      gone = widget_entry("gone").tap { seed_price(it, 100) }
+      use_widget_sources(records: keep_quotes(10), version: "v1")
+      refresh.call
+      use_widget_sources(records: keep_quotes(10) + [ widget_quote("gone", 120) ], version: "v2", reported_on: Date.new(2026, 11, 14))
+
+      run = refresh.call
+
+      expect(run).to have_attributes(added: 1, unchanged: 10)
+      expect(CurrentPrice.find_by(catalog_entry_id: gone.id).cents).to eq(120)
+      expect(PriceChange.where(catalog_entry_id: gone.id).order(:recorded_on).pluck(:recorded_on, :cents)).to eq([ [ Date.new(2026, 11, 12), 100 ], [ Date.new(2026, 11, 13), nil ], [ Date.new(2026, 11, 14), 120 ] ])
+    end
+
+    it "removes a price of a printing absent from the file altogether, and of a retired entry (AC-2.9)", :aggregate_failures do
+      seed_candidates(20)
+      absent = widget_entry("absent").tap { seed_price(it, 100) }
+      retired = widget_entry("retired", retired_at: 1.day.ago).tap { seed_price(it, 100) }
+      use_widget_sources(records: keep_quotes(20))
+
+      run = refresh.call
+
+      expect(run).to have_attributes(removed: 2)
+      expect(CurrentPrice.where(catalog_entry_id: [ absent.id, retired.id ])).to be_empty
+    end
+
+    it "leaves a price whose printing is in a language the run did not read, or the primary lacks, and does not count it (AC-3.7)", :aggregate_failures do
+      seed_candidates(10)
+      japanese = widget_entry("ja-1", language: "ja").tap { seed_price(it, 100) }
+      CurrentPrice.insert_all!([ { catalog_entry_id: 9_999_999, price_source_id: price_source_row.id, price_series_id: series_row.id, cents: 5, reported_on: Date.new(2026, 11, 12), changed_on: Date.new(2026, 11, 12) } ])
+      use_widget_sources(records: keep_quotes(10))
+
+      run = refresh.call
+
+      expect(run).to have_attributes(removed: 0, removals_withheld: 0)
+      expect(CurrentPrice.where(catalog_entry_id: [ japanese.id, 9_999_999 ]).count).to eq(2)
+    end
+
+    it "does not remove a price whose quote was unreadable, and the printing's other series are judged as usual (AC-3.1)", :aggregate_failures do
+      other = Prices::Sources::Series.new(finish: "foil", currency: "USD", kind: "market")
+      seed_candidates(10)
+      entry = widget_entry("w-x")
+      seed_price(entry, 100)
+      seed_price(entry, 100, series: other)
+      use_widget_sources(series: [ PriceRefreshHelpers::PLAIN, other ], records: keep_quotes(10) + [ widget_malformed("w-x", series: PriceRefreshHelpers::PLAIN) ])
+
+      run = refresh.call
+
+      expect(run).to have_attributes(malformed: 1, removals_withheld: 1, removed: 1)
+      expect(CurrentPrice.where(catalog_entry_id: entry.id, price_series_id: series_row.id).count).to eq(1) # kept
+      expect(CurrentPrice.where(catalog_entry_id: entry.id, price_series_id: series_row(other).id)).to be_empty # absent and trusted
+      expect(blank_history(entry)).to eq([ Date.new(2026, 11, 13) ])
+    end
+
+    it "removes none of a printing's prices when its line could be read only as far as its key (AC-3.2)", :aggregate_failures do
+      other = Prices::Sources::Series.new(finish: "foil", currency: "USD", kind: "market")
+      seed_candidates(10)
+      entry = widget_entry("w-x")
+      seed_price(entry, 100)
+      seed_price(entry, 100, series: other)
+      use_widget_sources(series: [ PriceRefreshHelpers::PLAIN, other ], records: keep_quotes(10) + [ widget_malformed("w-x") ])
+
+      run = refresh.call
+
+      expect(run).to have_attributes(removed: 0, removals_withheld: 2)
+      expect(CurrentPrice.where(catalog_entry_id: entry.id).count).to eq(2)
+    end
+
+    it "removes nothing at all when a line names no printing, applying the quotes around it (AC-3.3)", :aggregate_failures do
+      seed_candidates(10)
+      gone = widget_entry("gone").tap { seed_price(it, 100) }
+      new_entry = widget_entry("fresh")
+      use_widget_sources(records: keep_quotes(10).first(5) + [ widget_malformed ] + keep_quotes(10).last(5) + [ widget_quote("fresh", 77) ])
+
+      run = refresh.call
+
+      expect(run).to have_attributes(status: "finished", removed: 0, removals_withheld: 1, added: 1)
+      expect(CurrentPrice.where(catalog_entry_id: gone.id).count).to eq(1)
+      expect(CurrentPrice.where(catalog_entry_id: new_entry.id).count).to eq(1)
+    end
+
+    it "fails the run, with the reader's error, when the file is cut short; earlier batches stand, nothing is removed, and a whole file of the day finishes without a duplicate row (AC-3.4)", :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- two runs of one scenario
+      stub_const("Prices::Refresh::BATCH_SIZE", 2)
+      seed_candidates(10)
+      gone = widget_entry("gone").tap { seed_price(it, 100) }
+      fresh = Array.new(4) { |index| widget_entry("new-#{index}") }
+      use_widget_sources(records: keep_quotes(10) + fresh.map { widget_quote(it.external_key, 7) } + [ -> { raise Zlib::GzipFile::Error, "unexpected end of file" } ])
+
+      expect { refresh.call }.to raise_error(Zlib::GzipFile::Error)
+
+      expect(last_run).to have_attributes(status: "failed", removed: 0)
+      expect(last_run.error).to include("unexpected end of file")
+      expect(CurrentPrice.where(catalog_entry_id: gone.id).count).to eq(1)
+      written = CurrentPrice.where(catalog_entry_id: fresh.map(&:id)).count
+      expect(written).to be_between(2, 4)
+
+      use_widget_sources(records: keep_quotes(10) + fresh.map { widget_quote(it.external_key, 7) }, version: "v1")
+      second = refresh.call
+
+      expect(second.status).to eq("finished")
+      expect(CurrentPrice.where(catalog_entry_id: fresh.map(&:id)).count).to eq(4)
+      expect(PriceChange.where(catalog_entry_id: fresh.map(&:id)).count).to eq(4)
+    end
+
+    it "fails the run, 'no valid quotes', and writes nothing when the file yields no quote (AC-3.5)", :aggregate_failures do
+      seed_candidates(10)
+      use_widget_sources(records: [ widget_malformed ])
+
+      expect { refresh.call }.to raise_error(Prices::Refresh::GuardError, /no valid quotes/)
+
+      expect(last_run).to have_attributes(status: "failed", removed: 0)
+      expect(CurrentPrice.count).to eq(10)
+      expect(PriceChange.count).to eq(10)
+    end
+
+    it "finishes a file whose quotes are all for printings the catalog lacks, counting them and writing or removing nothing (AC-3.5)", :aggregate_failures do
+      widget_entry("w-1") # the catalog has a printing of the type, so the run isn't skipped
+      use_widget_sources(records: [ widget_quote("ghost-1", 1), widget_quote("ghost-2", 1) ])
+
+      run = refresh.call
+
+      expect(run).to have_attributes(status: "finished", unknown_printings: 2, quotes_seen: 0, removed: 0)
+      expect([ CurrentPrice.count, PriceChange.count ]).to eq([ 0, 0 ])
+    end
+
+    it "refuses every removal and fails the run when absences exceed the share, counting them as withheld (AC-3.6)", :aggregate_failures do
+      seed_candidates(10)
+      gone = Array.new(2) { |index| widget_entry("gone-#{index}").tap { seed_price(it, 100) } }
+      use_widget_sources(records: keep_quotes(10)) # 2 of 12 candidates absent: over 1/10
+
+      expect { refresh.call }.to raise_error(Prices::Refresh::GuardError, /2 of 12/)
+
+      expect(last_run).to have_attributes(status: "failed", removed: 0, removals_withheld: 2)
+      expect(CurrentPrice.where(catalog_entry_id: gone.map(&:id)).count).to eq(2)
+    end
+
+    it "removes absences exactly at the share (AC-3.6)", :aggregate_failures do
+      seed_candidates(9)
+      gone = widget_entry("gone").tap { seed_price(it, 100) } # 1 of 10 candidates: exactly 1/10
+      use_widget_sources(records: keep_quotes(9))
+
+      run = refresh.call
+
+      expect(run).to have_attributes(status: "finished", removed: 1)
+      expect(CurrentPrice.where(catalog_entry_id: gone.id)).to be_empty
+    end
+
+    it "reads a failed file again on the next run (AC-3.8)", :aggregate_failures do
+      seed_candidates(10)
+      widget_entry("gone").tap { seed_price(it, 100) }
+      widget_entry("gone-2").tap { seed_price(it, 100) }
+      use_widget_sources(records: keep_quotes(10))
+      expect { refresh.call }.to raise_error(Prices::Refresh::GuardError)
+
+      expect { refresh.call }.to raise_error(Prices::Refresh::GuardError) # read again, not skipped as applied
+
+      expect(PriceRefreshRun.where(status: "failed").count).to eq(2)
+      expect(PriceRefreshRun.where(status: "skipped")).to be_empty
+    end
+
+    it "touches the run for each slice of the removal walk (AC-4.7)" do
+      stub_const("Prices::Refresh::BATCH_SIZE", 2)
+      seed_candidates(10)
+      widget_entry("gone").tap { seed_price(it, 100) }
+      use_widget_sources(records: keep_quotes(10))
+      progress = []
+      callback = ->(*, payload) { progress << payload[:sql] if payload[:sql].to_s.start_with?('UPDATE "price_refresh_runs" SET') && payload[:sql].include?('"updated_at"') }
+
+      ActiveSupport::Notifications.subscribed(callback, "sql.active_record") { refresh.call }
+
+      expect(progress.size).to be >= 12 # eleven candidates in slices of two: six slices in each of the two walks
+    end
+
+    it "leaves both or neither of a removal batch's current price and blank history row when the batch fails (AC-3.9)", :aggregate_failures do
+      seed_candidates(10)
+      gone = widget_entry("gone").tap { seed_price(it, 100) }
+      use_widget_sources(records: keep_quotes(10))
+      PricesRecord.lease_connection.execute("CREATE TRIGGER no_blank_history BEFORE INSERT ON price_changes WHEN NEW.cents IS NULL BEGIN SELECT RAISE(ABORT, 'injected'); END")
+
+      expect { refresh.call }.to raise_error(ActiveRecord::StatementInvalid, /injected/)
+
+      expect(CurrentPrice.where(catalog_entry_id: gone.id).count).to eq(1)
+      expect(blank_history(gone)).to be_empty
+
+      PricesRecord.lease_connection.execute("DROP TRIGGER no_blank_history")
+      run = refresh.call
+
+      expect(run).to have_attributes(status: "finished", removed: 1)
+      expect(CurrentPrice.where(catalog_entry_id: gone.id)).to be_empty
+      expect(blank_history(gone)).to eq([ Date.new(2026, 11, 13) ])
     end
   end
 end

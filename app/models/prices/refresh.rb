@@ -76,7 +76,7 @@ class Prices::Refresh
       @run.finish!(@counts)
     end
 
-    # Reads the file once, flushing a batch of printings at a time (decision 6), then handles absences (Phase 6).
+    # Reads the file once, flushing a batch of printings at a time (decision 6), then handles absences (decision 4).
     def apply(reader, path)
       @seen = Set.new # [entry id, series id] judged this run: a duplicate quote is ignored, an unseen candidate is absent
       @unknown = Set.new
@@ -94,6 +94,7 @@ class Prices::Refresh
         end
       end
       flush
+      remove_absent
     end
 
     def queue_quote(quote)
@@ -172,5 +173,69 @@ class Prices::Refresh
       end
       tally.each { |name, count| @counts[name] += count }
       @counts[:quotes_seen] += judged.size
+    end
+
+    # Absence is trusted only as far as the file is (spec 089 decision 4). The file has been read to the end here (a
+    # reader's error would have left `#apply` already). Two walks over the source's candidate current prices by printing
+    # id: the first counts the candidates and the absences, so the ceiling is judged on the whole; the second removes.
+    def remove_absent
+      raise GuardError, "the file yielded no valid quotes (#{@counts[:malformed]} malformed), so nothing was written or removed" if @quotes_yielded.zero?
+
+      candidates = absent_clear = absent_held = 0
+      each_candidate_slice do |rows|
+        rows.each do |entry_id, series_id|
+          candidates += 1
+          next if @seen.include?([ entry_id, series_id ])
+
+          held?(entry_id, series_id) ? absent_held += 1 : absent_clear += 1
+        end
+      end
+      @counts[:removals_withheld] = absent_held
+      return if absent_clear.zero?
+
+      if absent_clear > candidates * MAX_REMOVED_SHARE
+        @counts[:removals_withheld] += absent_clear
+        raise GuardError, "#{absent_clear} of #{candidates} current prices are missing from the file, more than the #{(MAX_REMOVED_SHARE * 100).to_i} percent " \
+                          "a day may lose, so nothing was removed. A file that loses that much in a day is usually truncated or damaged; a real, " \
+                          "lasting drop is refused until Prices::Refresh::MAX_REMOVED_SHARE is raised."
+      end
+
+      each_candidate_slice { |rows| remove(rows.reject { |entry_id, series_id| @seen.include?([ entry_id, series_id ]) || held?(entry_id, series_id) }) }
+    end
+
+    def held?(entry_id, series_id) = @untrusted || @held_entries.include?(entry_id) || @held_series.include?([ entry_id, series_id ])
+
+    # Yields the source's candidate current prices as [entry id, series id], a slice of BATCH_SIZE printings at a time,
+    # by keyset on the printing id. A candidate's printing is a catalog entry of this type in a language of the run,
+    # retired or not; one the primary lacks, or in a language not read, isn't asked about and is left out. The primary is
+    # read outside any transaction, and each slice touches the run as progress.
+    def each_candidate_slice
+      last = 0
+      loop do
+        ids = CurrentPrice.where(price_source_id: @source.id).where("catalog_entry_id > ?", last).distinct.order(:catalog_entry_id).limit(BATCH_SIZE).pluck(:catalog_entry_id)
+        break if ids.empty?
+
+        last = ids.last
+        languages = Catalog::Entry.where(collectible_type:, id: ids).pluck(:id, :language).to_h
+        rows = CurrentPrice.where(price_source_id: @source.id, catalog_entry_id: ids).pluck(:catalog_entry_id, :price_series_id)
+        yield rows.select { |entry_id, _series_id| @languages.include?(languages[entry_id]) }
+        @run.progress!(@counts)
+      end
+    end
+
+    # Deletes the current prices and records their blank history rows in ONE transaction: a price deleted without its row
+    # would no longer be a candidate, and the removal would be lost for good. `delete_all` is bulk maintenance of
+    # global rows by key; no callbacks or validations apply.
+    def remove(rows)
+      return if rows.empty?
+
+      PricesRecord.transaction do
+        rows.group_by(&:first).each do |entry_id, pairs|
+          CurrentPrice.where(price_source_id: @source.id, catalog_entry_id: entry_id, price_series_id: pairs.map(&:last)).delete_all
+        end
+        PriceChange.upsert_all(rows.map { |entry_id, series_id| { catalog_entry_id: entry_id, price_source_id: @source.id, price_series_id: series_id, recorded_on: @run_on, cents: nil } },
+          unique_by: PriceChange.primary_key)
+      end
+      @counts[:removed] += rows.size
     end
 end
