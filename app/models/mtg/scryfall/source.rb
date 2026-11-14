@@ -5,6 +5,10 @@ class MTG::Scryfall::Source
   LANGUAGES = %w[en es fr de it pt ja ko ru zhs zht he la grc ar sa ph qya].freeze
   LANGUAGES_ENV = "COLLECTOR_MTG_LANGUAGES"
   KEEP_DOWNLOADS = 2
+  # A partial file this old belongs to a killed download: a live one is far younger (a job that never reports ends at its
+  # 6-hour lock). Each download writes its own partial file, so a killed one leaves an orphan for `prune` to remove
+  # (spec 089 decision 1, which supersedes spec 002 FR-3's "a partial file").
+  STALE_PARTIAL_AFTER = 1.day
 
   def self.entry_extension_model = MTG::Printing
   def self.identity_extension_model = MTG::Card
@@ -122,8 +126,12 @@ class MTG::Scryfall::Source
 
     def mana_values_missing? = MTG::Card.exists? && !MTG::Card.where.not(mana_value: nil).exists?
 
+    # Each call writes its own partial file, so two downloads of one version (the catalog refresh and a price refresh share
+    # the directory) never share one; the verified file is renamed into place, which replaces any earlier copy atomically.
+    # A failed download deletes its own partial file: an orphan of up to 408 MB would otherwise wait for a later
+    # successful download to prune it.
     def fetch(url, path, expected)
-      partial = Pathname("#{path}.part")
+      partial = Pathname("#{path}.#{SecureRandom.hex(4)}.part")
       File.open(partial, "wb") do |io|
         @client.download(url, to: io) { |received| @progress&.call(received, expected) }
       end
@@ -132,10 +140,19 @@ class MTG::Scryfall::Source
       actual = partial.size
       partial.delete
       raise Catalog::Sources::IntegrityError, "#{path.basename}: downloaded #{actual} bytes, Scryfall published #{expected}"
+    rescue StandardError
+      FileUtils.rm_f(partial) if partial
+      raise
     end
 
+    # Keeps the newest KEEP_DOWNLOADS files and drops stale partial files. A concurrent download may rename or delete a
+    # file between the listing and its use, so each file is judged, and removed, tolerating that (spec 089 decision 1).
     def prune(dir)
-      dir.glob("*.jsonl.gz").sort_by(&:mtime).reverse.drop(KEEP_DOWNLOADS).each(&:delete)
+      aged = ->(paths) { paths.filter_map { |path| [ path.mtime, path ] rescue nil } } # a file may vanish between glob and stat
+      aged.call(dir.glob("*.jsonl.gz")).sort_by(&:first).reverse.drop(KEEP_DOWNLOADS).each { |_mtime, path| FileUtils.rm_f(path) }
+      aged.call(dir.glob("*.part")).select { |mtime, _path| mtime < STALE_PARTIAL_AFTER.ago }.each { |_mtime, path| FileUtils.rm_f(path) }
+    rescue Errno::ENOENT
+      nil # the directory itself was removed under us
     end
 
     def entry_or_malformed(line, allowed)
