@@ -909,9 +909,8 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
    element an answer replaces, laid out as the top bar's own children. The bars grow by the safe-area insets of a phone with a
    notch or home indicator (decision 18). The frozen frame is the captured frame on a canvas, cropped as the video is, so the
    collector sees what was read while it is read (decision 11). A stage notice is centred on the stage (the camera or the
-   engine unavailable, no script); the catalog-not-loaded line sits at the stage's foot (decision 14). Today's result sits in an
-   interim scrolling body until #345 replaces it (decision 11, `c-scanpane__results`). Each live region stays rendered while
-   empty, taking no space (spec 080 decision 8). From 640px the shell is a centred 480px column and the scanner's sheets sit under it (decision
+   engine unavailable, no script); the catalog-not-loaded line sits at the stage's foot (decision 14). A result sits in the
+   selection pane (spec 088). Each live region stays rendered while empty, taking no space (spec 080 decision 8). From 640px the shell is a centred 480px column and the scanner's sheets sit under it (decision
    17), by a rule scoped to the scanner, so the sheet's own rule is unchanged. */
 .c-scan__sitting { display:contents; }
 .c-scan__top { box-sizing:border-box; height:calc(56px + env(safe-area-inset-top)); padding:env(safe-area-inset-top) calc(var(--space-2) + env(safe-area-inset-right)) 0 calc(var(--space-2) + env(safe-area-inset-left)); }
@@ -928,14 +927,11 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
 .c-scan__notice .c-btn { box-sizing:border-box; min-height:44px; min-width:44px; }
 .c-scan__notice .c-sheet__foot { align-self:stretch; text-align:left; }
 .c-scan__catalog { box-sizing:border-box; position:absolute; z-index:1; left:var(--space-4); right:var(--space-4); bottom:var(--space-4); }
-.c-scanpane__results { box-sizing:border-box; flex:1 1 auto; min-height:0; display:flex; flex-direction:column; gap:var(--space-4);
-  overflow-y:auto; overscroll-behavior:contain; padding:var(--space-4); }
 .c-scan__sheet-status { margin-bottom:var(--space-4); }
 /* An empty live region stays rendered, so a sentence written into it is announced (spec 080 decision 8): `display:none` removes
    it from the accessibility tree, and one shown in the same moment it is filled is not read out. It takes no space instead: a
-   sheet's loses its margin, and the pane's, an item of the results' flex column, takes back the column's gap. */
+   sheet's loses its margin (the pane's `#status` has none to lose, spec 088). */
 .c-scan__sheet-status:empty { margin:0; }
-.c-scan__pane-status:empty { margin-bottom:calc(-1 * var(--space-4)); }
 .c-scan__photo { display:flex; flex-direction:column; align-items:flex-start; gap:var(--space-2); margin-top:var(--space-4); }
 .c-scan .c-sheet .c-btn { box-sizing:border-box; min-height:44px; min-width:44px; }
 .c-scan .c-sheet__title:focus { outline:2px solid var(--focus); outline-offset:2px; border-radius:var(--radius-sm); } /* programmatic focus after an Undo (spec 047); Firefox gives it no :focus-visible once the focused Undo is replaced */
@@ -950,6 +946,25 @@ body:has(.c-locations) .c-appbar__back { min-height:var(--touch-floor); min-widt
 
 .c-scan__run { box-sizing:border-box; flex:none; min-height:44px; max-width:40%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .c-scan__framing { display:flex; flex-wrap:wrap; gap:var(--space-2); margin-top:var(--space-4); }
+
+/* ---------- Scanner selection pane (spec 088): the band's empty state, the selection frame, the layout numbers ---------- */
+/* The band and the pane's `#status` stay rendered while empty and take no space, so a sentence written into them is announced
+   (spec 080 decision 8); `#status` has no padding, margin or gap of its own, and the spacing is on the message inside it. The result
+   container is a flex column that takes the pane's remaining height, so the selection frame (a grid by its class) sizes as spec 080's
+   body did. The layout numbers of decision 13 are not here: they are Task 9's, in one place. */
+.c-band:empty { min-height:0; padding:0; }
+.c-scanpane__result { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; }
+.c-scanpane__result > .c-scanpane__body { flex:1 1 auto; }
+.c-scanpane__result > .c-status__message { margin:var(--space-3) var(--space-4); }
+.c-scan__pane-status .c-status__message { margin:var(--space-3) var(--space-4); }
+.c-scanpane > .c-scanner__failure { padding:0 var(--space-4) var(--space-3); }
+.c-scanpane__missing { box-sizing:border-box; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:var(--space-1);
+  padding:var(--space-2); text-align:center; font:600 13px/18px var(--font-sans); color:var(--ink-muted); overflow-wrap:anywhere; }
+.c-scanpane__missing span { font:400 13px/18px var(--font-mono); }
+.c-scanpane__meta .c-btn { box-sizing:border-box; flex:none; min-height:44px; min-width:44px; }
+/* A possible-cards row (spec 088 decision 3): the line holds the tag, the position and the 44px "All printings", which do not fit
+   on one line at 360px with the year, so the year is left out and the position wraps to two lines, right-aligned, inside the 44px. */
+.c-scanpane__meta--cards .c-scanpane__position { min-width:0; white-space:normal; text-align:right; }
 
 /* ---------- Reduced motion, app-wide (spec 080 decision 14) ---------- */
 /* The README's Motion rule: under `prefers-reduced-motion: reduce` nothing eases or slides, in any component. A universal

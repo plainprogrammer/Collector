@@ -29,7 +29,7 @@ const NO_EDGE = "No card edge was found, so the photo was read as if framed like
 
 export default class extends Controller {
   static targets = [ "status", "main", "picker", "result", "unavailable", "reason", "retry", "engineRetry", "engineFailed",
-    "frozen", "paneStatus", "added", "addedText", "failure", "failureName", "failureCollector", "signIn", "resend", "artStatus" ]
+    "frozen", "paneStatus", "added", "addedText", "failure", "signIn", "resend", "artStatus" ]
   static values = { readingsUrl: String, enginePath: String, artIndexUrl: String, artSettings: Object }
 
   connect() {
@@ -248,8 +248,6 @@ export default class extends Controller {
   }
 
   failed(message, { signedOut }) {
-    this.failureNameTarget.textContent = this.lastReading?.nameText || "Nothing read"
-    this.failureCollectorTarget.textContent = this.lastReading?.collectorText || "Nothing read"
     this.resendTarget.hidden = signedOut
     this.signInTarget.hidden = !signedOut
     this.failureTarget.hidden = false

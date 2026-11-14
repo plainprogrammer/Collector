@@ -34,20 +34,23 @@
       <button type="button" class="c-btn c-btn--secondary" data-card-reader-target="engineRetry" data-action="card-reader#retryEngine">Load the scanner again</button>
     </div>
     <noscript><div class="c-scan__notice"><p class="c-scan__notice-text">The scanner needs JavaScript. <%= link_to "Search the catalog", catalog_entries_path %> instead.</p><%= render "layouts/notice_foot" %></div></noscript>
-    <div class="c-scanpane">
-      <div class="c-scanpane__results">
-        <div id="status" class="c-scan__pane-status" role="status" aria-live="polite" data-card-reader-target="paneStatus" data-scan-shell-target="paneStatus"></div>
-        <div class="c-scanner__failure" data-card-reader-target="failure" data-scan-shell-target="failure" hidden>
-          <dl class="c-scanner__read">
-            <dt>Name</dt><dd data-card-reader-target="failureName"></dd>
-            <dt>Collector line</dt><dd class="c-scanner__mono" data-card-reader-target="failureCollector"></dd>
-          </dl>
-          <button type="button" class="c-btn c-btn--secondary" data-card-reader-target="resend" data-action="card-reader#resend">Send again</button>
-          <%= link_to "Sign in", new_session_path, class: "c-btn c-btn--primary", data: { card_reader_target: "signIn", turbo: false }, hidden: true %>
-        </div>
-        <div id="scanner_result" class="c-scanner__result" data-card-reader-target="result" data-scan-shell-target="result" data-controller="scanner-reading"
-             data-action="turbo:submit-start->scanner-reading#lock turbo:submit-end->scanner-reading#unlock turbo:before-fetch-response->scanner-reading#inspect turbo:frame-missing->scanner-reading#printingsMissing turbo:fetch-request-error->scanner-reading#printingsErrored turbo:frame-load->scanner-reading#printingsLoaded"></div>
+    <div class="c-scan__strip" data-card-reader-target="strip">
+      <canvas class="c-scan__capture" data-card-reader-target="capture" aria-hidden="true"></canvas>
+      <div class="c-scan__read">
+        <p class="c-scan__read-label">Read from the card</p>
+        <p class="c-scan__read-name" data-card-reader-target="readName"></p>
+        <p class="c-scan__read-line" data-card-reader-target="readLine"></p>
       </div>
+    </div>
+    <div class="c-scanpane" data-controller="selection">
+      <p id="scanner_band" class="c-band" role="status" aria-live="polite" data-selection-target="band" data-card-reader-target="band"></p>
+      <div id="status" class="c-scan__pane-status" role="status" aria-live="polite" data-card-reader-target="paneStatus" data-scan-shell-target="paneStatus"></div>
+      <div class="c-scanner__failure" data-card-reader-target="failure" data-scan-shell-target="failure" hidden>
+        <button type="button" class="c-btn c-btn--secondary" data-card-reader-target="resend" data-action="card-reader#resend">Send again</button>
+        <%= link_to "Sign in", new_session_path, class: "c-btn c-btn--primary", data: { card_reader_target: "signIn", turbo: false }, hidden: true %>
+      </div>
+      <div id="scanner_result" class="c-scanpane__result" data-card-reader-target="result" data-scan-shell-target="result" data-controller="scanner-reading"
+           data-action="turbo:submit-start->scanner-reading#lock turbo:submit-end->scanner-reading#unlock turbo:before-fetch-response->scanner-reading#inspect turbo:frame-missing->scanner-reading#printingsMissing turbo:fetch-request-error->scanner-reading#printingsErrored"></div>
     </div>
   </div>
   <div class="c-scan__bottom">
