@@ -1,6 +1,6 @@
 # Implementation Plan: Prices Refresh Once a Day, and Each Change Is Recorded Once
 
-**Spec:** docs/specs/089-daily-price-refresh/spec.md (v0.4.1, approved at Gate A, 2026-11-13)
+**Spec:** docs/specs/089-daily-price-refresh/spec.md (v0.4.2: v0.4.1 approved at Gate A, 2026-11-13; 0.4.2 patches AC-4.4's method after plan review)
 **Decisions:** none in an ADR (the decisions are the spec's; the area doc carries the rules)
 **Created:** 2026-11-13
 
@@ -16,6 +16,7 @@
 - No real network in the suite (WebMock/VCR). No agent runs the `sqlite3` command, `bin/rails console`, `db:rollback`, `db:migrate:down`, `db:seed`, or anything with `RAILS_ENV=production`; never `bin/jobs`.
 - Public code gets a YARD comment (summary, `@param`/`@return`/`@raise`, side effects, idempotency); constants say why they have their value; `{…}` stays out of comments; the core never names a collectible (`.claude/rules/code-documentation.md`).
 - Array and hash literals use RuboCop omakase spacing (`[ a, b ]`). Tag spec types explicitly (`type: :model`, `type: :job`); multi-expectation examples use `:aggregate_failures`.
+- RuboCop's RSpec department is on with `ExampleLength` at 15 lines: an example longer than that carries `# rubocop:disable RSpec/ExampleLength -- <why it is one example>` on its `it` line (the repo's precedent); an example with several expectations carries `:aggregate_failures`; use `describe`, not `context`, for a group named without "when/with/without".
 - Targeted runs only while implementing (`bin/rspec <file>`); one example at a time on the shared test database; no full `bin/ci` until the coordinator gives the slot.
 - Every implementer's prompt says: never run the `sqlite3` command or anything else on the permission-ask list.
 - The area docs (`prices.md`, `catalog-operations.md`) are written by `distill-feature` after the implementation review (the run's finish order); Phase 9 lists what they must say, and the other documents are written in Phase 9.
@@ -99,7 +100,7 @@ Three components (the run record, the refresh, the job) plus two thin models: wi
 
     def widget_entry(key, **attributes) = create(:catalog_entry, collectible_type: "widgets", external_key: key, **attributes)
 
-    def price_source_row = PriceSource.sync!(Prices.source_class("fake_source"))
+    def price_source_row = PriceSource.sync!(FakePriceSource) # the same row `fake_source` has, before an example registers its own
 
     def series_row(series = PLAIN) = PriceSeries.ensure!([ series ]).fetch(series)
 
@@ -155,9 +156,9 @@ The rebuild touches a rowid table (`price_refresh_runs`), so the `WITHOUT ROWID`
       path
     end
 
-    def execute_in(path, sql, *binds)
+    def execute_in(path, sql)
       database = SQLite3::Database.new(path.to_s)
-      database.execute(sql, *binds)
+      database.execute(sql)
     ensure
       database&.close
     end
@@ -192,7 +193,7 @@ The rebuild touches a rowid table (`price_refresh_runs`), so the `WITHOUT ROWID`
         expect(rowid_problems(definitions(master_of(path)))).to be_empty
       end
 
-      it "accepts a run with no date and refuses an unknown status" do
+      it "accepts a run with no date and refuses an unknown status", :aggregate_failures do
         path = migrated_database
         execute_in(path, "INSERT INTO price_sources (key, name, attribution, created_at, updated_at) VALUES ('s', 'S', 'a', '2026-11-13', '2026-11-13')")
 
@@ -200,7 +201,7 @@ The rebuild touches a rowid table (`price_refresh_runs`), so the `WITHOUT ROWID`
         expect { execute_in(path, "INSERT INTO price_refresh_runs (price_source_id, status, started_at, created_at, updated_at) VALUES (1, 'bogus', '2026-11-13', '2026-11-13', '2026-11-13')") }.to raise_error(SQLite3::ConstraintException)
       end
 
-      it "goes down without losing a row: a nil run_on takes the date of started_at" do
+      it "goes down without losing a row: a nil run_on takes the date of started_at", :aggregate_failures do
         path = migrated_database
         execute_in(path, "INSERT INTO price_sources (key, name, attribution, created_at, updated_at) VALUES ('s', 'S', 'a', '2026-11-13', '2026-11-13')")
         execute_in(path, "INSERT INTO price_refresh_runs (price_source_id, status, started_at, created_at, updated_at) VALUES (1, 'skipped', '2026-11-13 09:00:00', '2026-11-13', '2026-11-13')")
@@ -241,14 +242,12 @@ The rebuild touches a rowid table (`price_refresh_runs`), so the `WITHOUT ROWID`
     def down
       execute "UPDATE price_refresh_runs SET run_on = date(started_at) WHERE run_on IS NULL"
       change_column_null :price_refresh_runs, :run_on, false
-      COUNTS.reverse_each { |name| remove_column :price_refresh_runs, name }
-      remove_column :price_refresh_runs, :languages
-      remove_column :price_refresh_runs, :job_id
+      remove_columns :price_refresh_runs, *COUNTS, :languages, :job_id
     end
   end
   ```
 
-- [ ] **T1.4** Run `bin/rails db:migrate` (development; it re-dumps `db/prices_structure.sql`; the `sqlite3` command is run by Rails, not by you), then `bin/rails db:prepare`. Check `git diff db/prices_structure.sql`: `price_refresh_runs` has the new columns, `run_on` without `NOT NULL`, the status check, the foreign key and the index, a new `schema_migrations` row, and **the two `WITHOUT ROWID` tables unchanged**. If the test database is stale, `bin/rails db:test:prepare`.
+- [ ] **T1.4** Run `bin/rails db:migrate` (development; it re-dumps `db/prices_structure.sql`; the `sqlite3` command is run by Rails, not by you), then `bin/rails db:prepare`. `db:migrate` migrates and dumps every development database: stage only `db/prices_structure.sql` of what it generates, and check `git status` that `db/schema.rb` and the other structure files didn't change. Check `git diff db/prices_structure.sql`: `price_refresh_runs` has the new columns, `run_on` without `NOT NULL`, the status check, the foreign key and the index, a new `schema_migrations` row, and **the two `WITHOUT ROWID` tables unchanged**. If the test database is stale, `bin/rails db:test:prepare`.
 
 - [ ] **T1.5** Run `bin/rspec spec/prices_schema_spec.rb spec/backup_guards_spec.rb` and `ruby script/upgrade/guard.rb` — expect PASS. Commit (stage the migration, the structure file and the spec; the structure file is generated, never hand-edited): `feat(prices): make price_refresh_runs fit the daily refresh (spec 089 decision 2)`.
 
@@ -260,9 +259,9 @@ The rebuild touches a rowid table (`price_refresh_runs`), so the `WITHOUT ROWID`
 **Files:** `app/models/current_price.rb`, `app/models/price_change.rb`, `app/models/price_refresh_run.rb`, `spec/models/current_price_spec.rb`, `spec/models/price_change_spec.rb`, `spec/models/price_refresh_run_spec.rb`, `spec/price_source_core_spec.rb`
 **Interfaces:** Consumes: `PricesRecord`, `PriceSource`, Phase 1's columns. Produces:
 `CurrentPrice` and `PriceChange` (composite primary keys; `upsert_all(rows, unique_by: Model.primary_key)` works on them),
-`PriceRefreshRun::STATUSES`, `COUNTS`, `STALL_AFTER` (15 minutes), `HEARTBEAT_EVERY` (30 seconds), scopes `running`, `finished`,
+`PriceRefreshRun::COUNTS`, `STALL_AFTER` (15 minutes), `HEARTBEAT_EVERY` (30 seconds), scopes `running`, `finished`,
 `PriceRefreshRun.start!(source, job_id:, now: Time.current)` → a `running` run, or a `skipped` one with `error: "already running"` (after closing runs left behind as `failed`/`interrupted`),
-`#left_behind?(job_id:, now:)`, `#record_file!(version:, languages:)`, `#skip!(reason, run_on: nil)`, `#finish!(counts)`, `#fail!(error, counts)`, `#progress!(counts)`, `#heartbeat(*)`,
+`#left_behind?(job_id:, now:)`, `#running?`, `#record_file!(version:, languages:)`, `#skip!(reason, run_on: nil)`, `#finish!(counts)`, `#fail!(error, counts)`, `#progress!(counts)`, `#heartbeat(*)`,
 `PriceRefreshRun.applied(source, version, languages)` (finished runs), `PriceRefreshRun.latest_run_on(source)` (the latest `run_on` of finished or failed runs).
 
 - [ ] **T2.1** Failing tests. `spec/models/current_price_spec.rb`:
@@ -389,8 +388,10 @@ The rebuild touches a rowid table (`price_refresh_runs`), so the `WITHOUT ROWID`
         first = run.reload.updated_at
         travel_to(now + 10.seconds) { run.heartbeat }
         second = run.reload.updated_at
-        travel_to(now + 31.seconds) { run.heartbeat }
-        run.progress!(unchanged: 4, malformed: 1)
+        travel_to(now + 31.seconds) do
+          run.heartbeat
+          run.progress!(unchanged: 4, malformed: 1)
+        end
 
         expect([ first, second ]).to eq([ now, now ])
         expect(run.reload.updated_at).to be >= now + 31.seconds
@@ -446,7 +447,6 @@ The rebuild touches a rowid table (`price_refresh_runs`), so the `WITHOUT ROWID`
   #
   # @see file:prices.md
   class PriceRefreshRun < PricesRecord
-    STATUSES = %w[running finished skipped failed].freeze
     # What a run counts (spec 089 decision 2); the columns have these names and default to 0.
     COUNTS = %i[quotes_seen unchanged changed added removed removals_withheld unknown_printings malformed].freeze
     # A running run with no progress for this long is left behind. The catalog refresh's own threshold (spec 089 decision 7).
@@ -496,6 +496,11 @@ The rebuild touches a rowid table (`price_refresh_runs`), so the `WITHOUT ROWID`
     # @return [Boolean]
     def left_behind?(job_id:, now: Time.current) = updated_at < now - STALL_AFTER || (job_id.present? && self.job_id == job_id)
 
+    # Whether the run is still open (not finished, skipped or failed).
+    #
+    # @return [Boolean]
+    def running? = status == "running"
+
     # Records the file this run is for.
     def record_file!(version:, languages:) = update!(source_version: version, languages:)
 
@@ -527,7 +532,7 @@ The rebuild touches a rowid table (`price_refresh_runs`), so the `WITHOUT ROWID`
   end
   ```
 
-  `validates :status, inclusion: { in: STATUSES }` is not added: the table's check is the guard (as the other prices models).
+  No status validation is added: the table's check constraint is the guard (as the other prices models).
 
 - [ ] **T2.4** Run the three model specs and `bin/rspec spec/price_source_core_spec.rb` — expect PASS. Run `bin/rubocop -a` on the files. Commit: `feat(prices): add the models of current prices, price changes and refresh runs (spec 089)`.
 
@@ -602,13 +607,20 @@ This is a contract change (`#download` now has two callers that can run together
   ```ruby
       def fetch(url, path, expected)
         partial = Pathname("#{path}.#{SecureRandom.hex(4)}.part")
-        # (rest unchanged)
+        # (rest unchanged, except that the download is wrapped so a failed one deletes its own partial file:
+        #  `rescue StandardError; partial.delete if partial.exist?; raise` around the File.open block; an orphan of
+        #  up to 408 MB would otherwise wait for a later successful download to prune it)
   ```
 
   ```ruby
+      # Keeps the newest KEEP_DOWNLOADS files and drops stale partial files. A concurrent download may rename or delete a
+      # file between the listing and its use, so each file is judged, and removed, tolerating that (spec 089 decision 1).
       def prune(dir)
-        dir.glob("*.jsonl.gz").sort_by(&:mtime).reverse.drop(KEEP_DOWNLOADS).each(&:delete)
-        dir.glob("*.part").select { it.mtime < STALE_PARTIAL_AFTER.ago }.each(&:delete)
+        aged = ->(paths) { paths.filter_map { |path| [ path.mtime, path ] rescue nil } } # rubocop:disable Style/RescueModifier -- a file may vanish between glob and stat
+        aged.call(dir.glob("*.jsonl.gz")).sort_by(&:first).reverse.drop(KEEP_DOWNLOADS).each { |_mtime, path| path.delete if path.exist? }
+        aged.call(dir.glob("*.part")).select { |mtime, _path| mtime < STALE_PARTIAL_AFTER.ago }.each { |_mtime, path| path.delete if path.exist? }
+      rescue Errno::ENOENT
+        nil # the directory itself was removed under us
       end
   ```
 
@@ -639,12 +651,14 @@ This is a contract change (`#download` now has two callers that can run together
     def refresh(job_id: "job-1") = described_class.new("fake_source", job_id:)
     def last_run = PriceRefreshRun.order(:id).last
 
-    context "before it applies anything" do
+    describe "before it applies anything" do
       it "skips with a reason and no date when the catalog has no printing of the type, asking the catalog's source nothing (AC-1.5)", :aggregate_failures do
         use_widget_sources(records: [ widget_quote("w-1", 100) ])
+        allow(Catalog).to receive(:source_for).and_call_original
 
         run = refresh.call
 
+        expect(Catalog).not_to have_received(:source_for)
         expect(run).to have_attributes(status: "skipped", run_on: nil)
         expect(run.error).to include("no printing")
         expect([ CurrentPrice.count, PriceChange.count ]).to eq([ 0, 0 ])
@@ -696,7 +710,7 @@ This is a contract change (`#download` now has two callers that can run together
         expect(run).to have_attributes(status: "finished", languages: "de,en")
       end
 
-      it "skips a file older than the latest finished or failed run, and applies one of the same day (AC-1.4)", :aggregate_failures do
+      it "skips a file older than the latest finished or failed run (AC-1.4)", :aggregate_failures do
         use_widget_sources(reported_on: Date.new(2026, 11, 12), records: [ widget_quote("w-1", 100) ])
         widget_entry("w-1")
         PriceRefreshRun.create!(price_source: price_source_row, status: "failed", source_version: "other", languages: "en",
@@ -707,6 +721,20 @@ This is a contract change (`#download` now has two callers that can run together
         expect(older).to have_attributes(status: "skipped", run_on: Date.new(2026, 11, 12))
         expect(older.error).to include("2026-11-13")
         expect([ CurrentPrice.count, PriceChange.count ]).to eq([ 0, 0 ])
+      end
+
+      it "skips a file older than a finished run, and applies another version of the finished run's own day (AC-1.4)", :aggregate_failures do
+        widget_entry("w-1")
+        PriceRefreshRun.create!(price_source: price_source_row, status: "finished", source_version: "v1", languages: "en",
+          run_on: Date.new(2026, 11, 13), started_at: 2.hours.ago)
+        use_widget_sources(reported_on: Date.new(2026, 11, 12), records: [ widget_quote("w-1", 100) ], version: "old")
+        older = refresh.call
+        use_widget_sources(reported_on: Date.new(2026, 11, 13), records: [ widget_quote("w-1", 100) ], version: "v2")
+
+        same_day = refresh.call
+
+        expect(older.status).to eq("skipped")
+        expect(same_day).to have_attributes(status: "finished", run_on: Date.new(2026, 11, 13), added: 1)
       end
 
       it "ends the run failed, with its error, when the source's file has no date, and nothing is written (AC-1.9)", :aggregate_failures do
@@ -744,13 +772,17 @@ This is a contract change (`#download` now has two callers that can run together
       it "touches the run while the download reports progress, at most once per HEARTBEAT_EVERY (AC-4.7)", :aggregate_failures do
         use_widget_sources(records: [ widget_quote("w-1", 100) ])
         widget_entry("w-1")
-        stub_const("WidgetCatalog", Class.new(ReportingCatalogSource) { define_method(:initialize) { |*| super(version: "v1", languages: [ "en" ]) } })
         touches = []
+        during = nil
+        stub_const("WidgetCatalog", Class.new(ReportingCatalogSource) do
+          define_method(:initialize) { |*| super(version: "v1", languages: [ "en" ]) }
+          define_method(:download) { |version, dir:| before = touches.size; super(version, dir:).tap { during = touches.size - before } }
+        end)
         callback = ->(*, payload) { touches << payload[:sql] if payload[:sql].to_s.match?(/UPDATE "price_refresh_runs" SET "updated_at" = [^,]+ WHERE/) }
 
         ActiveSupport::Notifications.subscribed(callback, "sql.active_record") { refresh.call }
 
-        expect(touches.size).to eq(1) # ReportingCatalogSource reports twice within one instant: one touch (a touch sets only updated_at)
+        expect(during).to eq(1) # ReportingCatalogSource reports twice within one instant while downloading: one touch, which sets only updated_at
       end
     end
   end
@@ -818,7 +850,7 @@ This is a contract change (`#download` now has two callers that can run together
       def collectible_type = @source_class.collectible_type
 
       def perform
-        return @run.skip!("the catalog has no #{collectible_type} printings yet") unless Catalog::Entry.exists?(collectible_type:)
+        return @run.skip!("the catalog has no printing of the type #{collectible_type} yet") unless Catalog::Entry.exists?(collectible_type:)
 
         catalog = Catalog.source_for(collectible_type)
         @languages = catalog.languages
@@ -852,7 +884,7 @@ This is a contract change (`#download` now has two callers that can run together
 
 ## Phase 5: Each quote is judged and written
 
-**Implements:** Decisions 2 (counts), 3, 6, FR-1 | **Satisfies:** AC-1.1, AC-1.6, AC-1.7, AC-2.1, AC-2.2, AC-2.3, AC-2.5, AC-2.6, AC-2.7, AC-2.8, AC-2.10, AC-2.11, AC-2.12, AC-5.3
+**Implements:** Decisions 2 (counts), 3, 6, FR-1 | **Satisfies:** AC-1.1, AC-1.6, AC-1.7, AC-2.1, AC-2.2, AC-2.3, AC-2.5, AC-2.6, AC-2.7, AC-2.8, AC-2.10, AC-2.11, AC-2.12, AC-4.7 (batches), AC-5.3
 **Files:** `app/models/prices/refresh.rb`, `spec/models/prices/refresh_spec.rb`
 **Interfaces:** Consumes: Phase 4's `Prices::Refresh`, `CurrentPrice`, `PriceChange`, `Catalog::Entry`. Produces: `#apply` reads `reader.each_quote(path, languages: @languages)`, batches by distinct printing (`BATCH_SIZE`), looks up entry ids on the primary by `external_key` (outside any transaction), judges against current prices inside one prices transaction, writes `upsert_all`, tallies `@counts` after the commit, calls `@run.progress!(@counts)` after each batch. It records, for Phase 6: `@seen` (a `Set` of `[entry_id, series_id]`), `@held_entries`, `@held_series`, `@untrusted`, `@quotes_yielded`, `@unknown`.
 
@@ -942,7 +974,6 @@ This is a contract change (`#download` now has two callers that can run together
         use_widget_sources(records: [ widget_quote("w-1", 150) ], version: "v2")
         entry = widget_entry("w-1")
         seed_price(entry, 100, on: Date.new(2026, 11, 13))
-        PriceChange.where(catalog_entry_id: entry.id).update_all(recorded_on: Date.new(2026, 11, 13)) # rubocop:disable Rails/SkipsModelValidations -- fixture setup
 
         refresh.call
 
@@ -1007,6 +1038,20 @@ This is a contract change (`#download` now has two callers that can run together
         expect(run.malformed).to eq(1)
         expect(Rails.logger).to have_received(:warn).with(/prices\.refresh skipped malformed .*w-1.*unreadable/)
       end
+
+      it "touches the run after every batch, even one that writes nothing (AC-4.7)", :aggregate_failures do
+        stub_const("Prices::Refresh::BATCH_SIZE", 2)
+        entries = Array.new(5) { |index| widget_entry("w-#{index}") }
+        entries.each { |entry| seed_price(entry, 100) }
+        use_widget_sources(records: entries.map { widget_quote(it.external_key, 100) }) # all unchanged: no batch writes a price
+        progress = []
+        callback = ->(*, payload) { progress << payload[:sql] if payload[:sql].to_s.start_with?('UPDATE "price_refresh_runs" SET') && payload[:sql].include?('"updated_at"') }
+
+        ActiveSupport::Notifications.subscribed(callback, "sql.active_record") { refresh.call }
+
+        expect(CurrentPrice.pluck(:cents).uniq).to eq([ 100 ]) # nothing was written
+        expect(progress.size).to be >= 3 # batches of two, two and one, each a progress write (then the finish)
+      end
     end
   ```
 
@@ -1033,15 +1078,14 @@ This is a contract change (`#download` now has two callers that can run together
           end
         end
         flush
-        @counts[:unknown_printings] = @unknown.size
       end
 
       def queue_quote(quote)
         @quotes_yielded += 1
+        flush if !@pending.key?(quote.external_key) && @pending.size >= BATCH_SIZE # earlier batches stand when the next raises
         @series.fetch(quote.series) do
           raise Prices::Sources::ConfigurationError, "#{@source_class} yielded a quote of #{quote.series.inspect}, which it did not declare"
         end
-        flush if !@pending.key?(quote.external_key) && @pending.size >= BATCH_SIZE
         (@pending[quote.external_key] ||= []) << quote
       end
 
@@ -1072,6 +1116,7 @@ This is a contract change (`#download` now has two callers that can run together
         write_judged(judged)
         @pending = {}
         @pending_malformed = []
+        @counts[:unknown_printings] = @unknown.size
         @run.progress!(@counts)
       end
 
@@ -1122,7 +1167,7 @@ This is a contract change (`#download` now has two callers that can run together
 
 ## Phase 6: Gone is not bad: absences and their guards
 
-**Implements:** Decision 4, decision 6 (removal), FR-1 must-nots | **Satisfies:** AC-2.4, AC-2.9, AC-3.1 to AC-3.9, AC-5.3 (withheld)
+**Implements:** Decision 4, decision 6 (removal), FR-1 must-nots | **Satisfies:** AC-2.4, AC-2.9, AC-3.1 to AC-3.9, AC-4.7 (removal slices), AC-5.3 (withheld)
 **Files:** `app/models/prices/refresh.rb`, `spec/models/prices/refresh_spec.rb`
 **Interfaces:** Consumes: Phase 5's `@seen`, `@held_entries`, `@held_series`, `@untrusted`, `@quotes_yielded`, `@languages`, `@run_on`, `@counts`. Produces: after the whole file is read, `#remove_absent` raises `GuardError` when the file yielded no `Quote`; walks the source's current prices twice by printing id in slices of `BATCH_SIZE` (the first walk counts candidates and absences, the second removes, only if the ceiling holds); a removal slice deletes the current prices and upserts blank history rows in one transaction; `@counts[:removed]` and `[:removals_withheld]`.
 
@@ -1176,7 +1221,7 @@ This is a contract change (`#download` now has two callers that can run together
       it "leaves a price whose printing is in a language the run did not read, or the primary lacks, and does not count it (AC-3.7)", :aggregate_failures do
         seed_candidates(10)
         japanese = widget_entry("ja-1", language: "ja").tap { seed_price(it, 100) }
-        unknown = CurrentPrice.insert_all!([ { catalog_entry_id: 9_999_999, price_source_id: price_source_row.id, price_series_id: series_row.id, cents: 5, reported_on: Date.new(2026, 11, 12), changed_on: Date.new(2026, 11, 12) } ])
+        CurrentPrice.insert_all!([ { catalog_entry_id: 9_999_999, price_source_id: price_source_row.id, price_series_id: series_row.id, cents: 5, reported_on: Date.new(2026, 11, 12), changed_on: Date.new(2026, 11, 12) } ])
         use_widget_sources(records: keep_quotes(10))
 
         run = refresh.call
@@ -1307,18 +1352,31 @@ This is a contract change (`#download` now has two callers that can run together
         expect(PriceRefreshRun.where(status: "skipped")).to be_empty
       end
 
+      it "touches the run for each slice of the removal walk (AC-4.7)" do
+        stub_const("Prices::Refresh::BATCH_SIZE", 2)
+        seed_candidates(10)
+        widget_entry("gone").tap { seed_price(it, 100) }
+        use_widget_sources(records: keep_quotes(10))
+        progress = []
+        callback = ->(*, payload) { progress << payload[:sql] if payload[:sql].to_s.start_with?('UPDATE "price_refresh_runs" SET') && payload[:sql].include?('"updated_at"') }
+
+        ActiveSupport::Notifications.subscribed(callback, "sql.active_record") { refresh.call }
+
+        expect(progress.size).to be >= 12 # eleven candidates in slices of two: six slices in each of the two walks
+      end
+
       it "leaves both or neither of a removal batch's current price and blank history row when the batch fails (AC-3.9)", :aggregate_failures do
         seed_candidates(10)
         gone = widget_entry("gone").tap { seed_price(it, 100) }
         use_widget_sources(records: keep_quotes(10))
-        PricesRecord.connection.execute("CREATE TRIGGER no_blank_history BEFORE INSERT ON price_changes WHEN NEW.cents IS NULL BEGIN SELECT RAISE(ABORT, 'injected'); END")
+        PricesRecord.lease_connection.execute("CREATE TRIGGER no_blank_history BEFORE INSERT ON price_changes WHEN NEW.cents IS NULL BEGIN SELECT RAISE(ABORT, 'injected'); END")
 
         expect { refresh.call }.to raise_error(ActiveRecord::StatementInvalid, /injected/)
 
         expect(CurrentPrice.where(catalog_entry_id: gone.id).count).to eq(1)
         expect(blank_history(gone)).to be_empty
 
-        PricesRecord.connection.execute("DROP TRIGGER no_blank_history")
+        PricesRecord.lease_connection.execute("DROP TRIGGER no_blank_history")
         run = refresh.call
 
         expect(run).to have_attributes(status: "finished", removed: 1)
@@ -1448,7 +1506,7 @@ This is a contract change (`#download` now has two callers that can run together
       "Prices::Refresh::GuardError" => [ Prices::Refresh::GuardError, "over the ceiling", :failed ],
       "RuntimeError" => [ RuntimeError, "anything else", :failed ]
     }.each do |name, (error, message, fate)|
-      it "#{fate == :retried ? "retries" : "fails, without a retry or a discard,"} on #{name} (AC-4.6)" do
+      it "#{fate == :retried ? "retries" : "fails, without a retry or a discard,"} on #{name} (AC-4.6)", :aggregate_failures do
         allow(Prices::Refresh).to receive(:new).and_raise(error, message)
 
         if fate == :retried
@@ -1457,6 +1515,14 @@ This is a contract change (`#download` now has two callers that can run together
           expect { described_class.perform_now("fake_source") }.to raise_error(error, message)
         end
       end
+    end
+
+    it "fails on the third attempt of a transient error, not retried again (AC-4.6)" do
+      allow(Prices::Refresh).to receive(:new).and_raise(Catalog::Sources::TransientError, "timeout")
+      job = described_class.new("fake_source")
+      job.executions = 2 # perform_now makes this the third attempt of retry_on's three
+
+      expect { job.perform_now }.to raise_error(Catalog::Sources::TransientError, "timeout")
     end
   end
   ```
@@ -1534,38 +1600,39 @@ This is a contract change (`#download` now has two callers that can run together
 
   ```ruby
     describe "transactions (AC-4.4)" do
-      it "writes in batches of BATCH_SIZE printings at transaction depth 1, the run row at depth 0, and reads the primary outside them", :aggregate_failures do
+      it "writes in batches of BATCH_SIZE printings inside savepoint spans, the run row in spans of its own, and reads the primary outside them", :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- one subscribed run, one set of assertions
         stub_const("Prices::Refresh::BATCH_SIZE", 2)
         entries = Array.new(5) { |index| widget_entry("w-#{index}") }
         use_widget_sources(records: entries.map { widget_quote(it.external_key, 100) })
         entries.each { |entry| seed_price(entry, 90) } # five changes, so every batch writes both tables
-        prices = PricesRecord.connection
-        baseline = prices.open_transactions # the example's own transaction; a batch's transaction is a savepoint inside it
-        data_writes = []
-        run_writes = []
+        prices = PricesRecord.lease_connection
+        stack = [] # open spans on the prices connection: each a list of its statements
+        spans = []
+        outside = []
         primary_inside = []
         callback = lambda do |_name, _start, _finish, _id, payload|
-          depth = prices.open_transactions - baseline
           sql = payload[:sql].to_s
           if payload[:connection].equal?(prices)
-            table = sql[/\A\s*(?:INSERT(?: OR \w+)? INTO|UPDATE|DELETE FROM)\s+"?(\w+)"?/i, 1]
-            data_writes << [ table, depth, sql ] if %w[current_prices price_changes].include?(table)
-            run_writes << depth if table == "price_refresh_runs"
-          elsif depth == 1
+            if sql.start_with?("SAVEPOINT") then stack.push([])
+            elsif sql.start_with?("RELEASE SAVEPOINT", "ROLLBACK TO SAVEPOINT") then spans << stack.pop
+            elsif stack.any? then stack.last << sql
+            else outside << sql
+            end
+          elsif stack.any?
             primary_inside << sql
           end
         end
 
         ActiveSupport::Notifications.subscribed(callback, "sql.active_record") { refresh.call }
 
-        current_inserts = data_writes.select { |table, _depth, _sql| table == "current_prices" }
-        expect(data_writes).not_to be_empty
-        expect(data_writes.map { |_table, depth, _sql| depth }.uniq).to eq([ 1 ])
-        expect(run_writes).not_to be_empty
-        expect(run_writes.uniq).to eq([ 0 ])
+        write = ->(sql, table) { sql.match?(/\A\s*(INSERT|UPDATE|DELETE)\b.*?\b#{table}\b/m) }
+        data = ->(sql) { write.call(sql, "current_prices") || write.call(sql, "price_changes") }
+        batch_spans = spans.select { |statements| statements.any?(&data) }
+        expect(outside.grep(/\A\s*(INSERT|UPDATE|DELETE)/)).to all(include("price_refresh_runs")) # no price write outside a span
+        expect(batch_spans.size).to eq(3) # five printings in batches of two: 2, 2 and 1
+        expect(batch_spans.flat_map { |statements| statements.select { write.call(it, "price_refresh_runs") } }).to be_empty # the run row is not written inside a batch
+        expect(batch_spans.map { |statements| statements.find { write.call(it, "current_prices") }.scan(/\),\s*\(/).size + 1 }).to eq([ 2, 2, 1 ]) # tuples of each batch's insert
         expect(primary_inside).to be_empty
-        expect(current_inserts.size).to eq(3) # five printings in batches of two: 2, 2 and 1
-        expect(current_inserts.map { |_table, _depth, sql| sql.scan(/\),\s*\(/).size + 1 }).to eq([ 2, 2, 1 ]) # tuples of each insert
         expect(CurrentPrice.count).to eq(5)
       end
     end
@@ -1593,14 +1660,15 @@ This is a contract change (`#download` now has two callers that can run together
       one = create(:catalog_entry, collectible_type: "mtg", external_key: "card-1")
       two = create(:catalog_entry, collectible_type: "mtg", external_key: "card-2")
       stub_scryfall(cards: cards("card-1" => { "usd" => "1.42", "usd_foil" => "3.10", "eur" => nil }, "card-2" => { "usd" => "0.05" }), stamp:)
-      connections = [ ApplicationRecord.connection, PricesRecord.connection ]
+      connections = [ ApplicationRecord.lease_connection, PricesRecord.lease_connection ]
       baselines = connections.map(&:open_transactions)
       inside = []
       seen = 0
-      WebMock.after_request do |request, _response|
+      callback = lambda do |request, _response|
         seen += 1
         inside << request.uri.to_s if connections.zip(baselines).any? { |connection, baseline| connection.open_transactions > baseline }
       end
+      WebMock.after_request(&callback)
 
       run = Prices::Refresh.new("scryfall").call
 
@@ -1611,7 +1679,7 @@ This is a contract change (`#download` now has two callers that can run together
       expect(CurrentPrice.where(catalog_entry_id: two.id).pluck(:cents)).to eq([ 5 ])
       expect(PriceChange.pluck(:recorded_on).uniq).to eq([ Date.new(2026, 11, 13) ])
     ensure
-      WebMock.reset_callbacks
+      WebMock::CallbackRegistry.callbacks.reject! { |entry| entry[:block].equal?(callback) } # only this example's, never VCR's
     end
 
     it "changes nothing when the same file is read again (AC-1.7)", :aggregate_failures do
@@ -1623,12 +1691,13 @@ This is a contract change (`#download` now has two callers that can run together
       run = Prices::Refresh.new("scryfall").call
 
       expect(run).to have_attributes(status: "skipped", error: "default-cards-#{stamp} already applied")
+      expect(a_request(:get, /data\.scryfall\.io/)).to have_been_made.once # the file is not downloaded again
       expect([ CurrentPrice.pluck(:cents, :changed_on), PriceChange.pluck(:cents, :recorded_on) ]).to eq(before)
     end
   end
   ```
 
-  The suite's WebMock setup may already use `after_request` callbacks (check `spec/support/http_stubbing.rb`); if `WebMock.reset_callbacks` would remove the suite's own, remove only this example's callback (`WebMock::CallbackRegistry`'s list is mutable; keep a reference and delete it). The `PriceSource.sync!` of `"scryfall"` writes the real source row; the example needs no registration.
+  The example removes only its own callback: VCR hooks into WebMock with an `after_request` callback of its own, which `WebMock.reset_callbacks` would drop. `PriceSource.sync!` of `"scryfall"` writes the real source row; the example needs no registration.
 
 - [ ] **T8.3** AC-5.6, `spec/models/prices/refresh_timing_spec.rb` (excluded unless `SCANNER_TIMING` is set; run by hand: `SCANNER_TIMING=1 bin/rspec spec/models/prices/refresh_timing_spec.rb`):
 
@@ -1643,18 +1712,18 @@ This is a contract change (`#download` now has two callers that can run together
 
     def card_lines(shift)
       Array.new(count) do |index|
-        scryfall_card("id" => "card-#{index}", "prices" => { "usd" => format("%.2f", 1 + index / 100.0 + shift(index)), "usd_foil" => (index.even? ? format("%.2f", 2 + index / 100.0) : nil), "eur" => format("%.2f", 1 + index / 120.0) })
+        scryfall_card("id" => "card-#{index}", "prices" => { "usd" => format("%.2f", 1 + index / 100.0 + shift.call(index)), "usd_foil" => (index.even? ? format("%.2f", 2 + index / 100.0) : nil), "eur" => format("%.2f", 1 + index / 120.0) })
       end
     end
 
-    it "applies a first run and then a typical day", :aggregate_failures do
+    it "applies a first run and then a typical day", :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- one measured scenario
       set = create(:catalog_set, collectible_type: "mtg")
       identity = create(:catalog_identity, collectible_type: "mtg")
       now = Time.current
-      Catalog::Entry.insert_all(Array.new(count) do |index|
+      Array.new(count) do |index|
         { collectible_type: "mtg", external_key: "card-#{index}", catalog_set_id: set.id, catalog_identity_id: identity.id, number: index.to_s, language: "en",
           name: "Card #{index}", kind: "card", content_digest: "d", created_at: now, updated_at: now }
-      end)
+      end.each_slice(1_000) { |rows| Catalog::Entry.insert_all(rows) } # one statement per 1,000: a single one would pass SQLite's statement size
       timings = {}
 
       stub_scryfall(cards: card_lines(->(_) { 0 }), stamp: stamp)
@@ -1666,7 +1735,9 @@ This is a contract change (`#download` now has two callers that can run together
       timings[:typical_day] = Benchmark.realtime { Prices::Refresh.new("scryfall").call }
       second = PriceRefreshRun.order(:id).last
 
+      # rubocop:disable RSpec/Output -- the measurement is the point of this example
       puts "price refresh timing: #{timings.transform_values { it.round(1) }.inspect}, first #{first.attributes.slice(*PriceRefreshRun::COUNTS.map(&:to_s)).inspect}, second #{second.attributes.slice(*PriceRefreshRun::COUNTS.map(&:to_s)).inspect}"
+      # rubocop:enable RSpec/Output
       expect(first.status).to eq("finished")
       expect(second).to have_attributes(status: "finished")
       expect(second.changed).to be > 0

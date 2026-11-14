@@ -1,7 +1,7 @@
 # Feature 089: Prices Refresh Once a Day, and Each Change Is Recorded Once
 
 **Status:** Approved by the coordinator under the maintainer's delegation (2026-11-13), after two Mode A review rounds (Fable 5.2). The maintainer ruled decisions 1 to 4 as recommended on 2026-11-13 (relayed by the coordinator)
-**Version:** 0.4.1
+**Version:** 0.4.2
 **Created:** 2026-11-13
 **Last Updated:** 2026-11-13
 **Branch:** `089-daily-price-refresh`
@@ -15,6 +15,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.4.2 | 2026-11-13 | Plan review round 1: AC-4.4 measures savepoint spans, not transaction depth, because the suite's non-joinable transaction makes every write a savepoint (a testing method; no behaviour changes) (PATCH) |
 | 0.4.1 | 2026-11-13 | Approved (Gate A). Status line only (PATCH) |
 | 0.4.0 | 2026-11-13 | Review round 2 fixes (listed in the 0.3.0 row's second half); not re-reviewed (two rounds is the limit) |
 | 0.3.0 | 2026-11-13 | Review round 1 (Fable 5.2): `run_on` becomes nullable and `job_id` is added (a run opens before its file's date is known); stale partial downloads are pruned; a removal batch is atomic; errors and their fates are one table, with no `discard_on` (a guard failure shows under Failed on `/admin/jobs`); the older-file guard counts finished and failed runs (a failed run may have written rows); `quotes_seen` counts known printings only; constants have values; duplicate quotes and an undeclared series are decided; ACs added for the uncovered rules; AC-4.4 and AC-4.5 rebuilt so they can be written; the index row. Review round 2 (Fable 5.2): the source is looked up and synced before a run exists; "at least one quote" is any `Quote` yielded; the ceiling is two-phase and needs ten candidates in examples; counts are tallied after commit; a catch-all row and the no-discard rationale in the errors table; the download-size error is retried; stale partials by mtime; `#download` must tolerate concurrent calls (the catalog contract's comment); `down` of the migration; AC wording (MINOR) |
@@ -226,7 +227,7 @@ Core files name no collectible, comments included: `spec/price_source_core_spec.
 - [ ] **AC-4.1** Given a run that is running with recent progress When another job starts Then its run is `skipped` with `already running`, and nothing is downloaded or written.
 - [ ] **AC-4.2** Given a running run whose last progress is older than `STALL_AFTER`, or whose `job_id` is the starting job's When a job starts Then that run is closed `failed` with `interrupted` and the new run proceeds.
 - [ ] **AC-4.3** Given `Prices::RefreshJob` When its concurrency limit is read Then it is one job per source key for `LOCK_FOR`, on queue `sync`.
-- [ ] **AC-4.4** Given a file of five printings and `BATCH_SIZE` stubbed to 2 When it is applied, with a subscriber on `sql.active_record` recording the prices connection's open transactions minus a baseline taken before the run (the suite's own transaction makes batches savepoints, so the depth, not the transaction events, is the measure) Then every write to `current_prices` and `price_changes` is at depth 1, each depth-1 span holds at most 2 distinct printings, every write to `price_refresh_runs` is at depth 0, and no statement on the primary's connection arrives while the prices depth is 1.
+- [ ] **AC-4.4** Given a file of five printings and `BATCH_SIZE` stubbed to 2 When it is applied, with a subscriber on `sql.active_record` that cuts the prices connection's statements into spans from `SAVEPOINT` to its release or rollback (the suite's own transaction is non-joinable, so every transaction, a batch's or a single run-row write, is a savepoint, and a depth count can't tell them apart) Then every write to `current_prices` and `price_changes` is inside a span; no span holds both such a write and a write to `price_refresh_runs` (the run row's progress is written outside the batch transactions); three spans hold data writes, each of at most 2 printings; and no statement on the primary's connection arrives while a prices span is open.
 - [ ] **AC-4.5** Given the run at the catalog source's level (`MTG::Scryfall::Source` with stubbed requests, since the fake catalog source makes no HTTP call and would make the check vacuous) When it downloads and applies a file, with a `WebMock` `after_request` hook that records any request made while either connection's open transactions exceed the baseline Then the recorded list is empty and at least one request was seen.
 - [ ] **AC-4.6** Given each error of decision 7's table When the job meets it Then the run ends `failed` with the error (none for the errors of step 0), and the job is retried, rescheduled or failed as the table says; and no error is discarded.
 - [ ] **AC-4.7** Given a download in progress When the source reports progress Then the run row's `updated_at` is touched at most once per `HEARTBEAT_EVERY`, a batch read that writes nothing also touches it, and so does each slice of the removal walk.
