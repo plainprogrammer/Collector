@@ -109,3 +109,7 @@ What the review found, and what was done (by Sonnet 5.5 implementers, test first
 | `fetch` also deletes its own partial file on failure, beyond FR-2's wording; two migrations (190001 adds `changed`, 190002 renames it) where FR-3 says one | Accepted: benign, recorded as deviations (a) and (b); `catalog-operations.md` says it |
 
 Fresh evidence after the fixes: `bin/rspec spec/models/prices spec/jobs/prices spec/prices_core_spec.rb spec/price_source_core_spec.rb spec/models/price_refresh_run_spec.rb`: 85 examples, 0 failures; `bin/rubocop` on the touched files: no offenses; `bin/yard doc`: no warnings. The wider targeted run (prices, catalog, scryfall, config, backup guards: 630 examples) passed before the fixes; the full suite and `bin/ci` run once, with the coordinator's slot, at the push.
+
+## Distillation
+
+Written by `distill-feature` after the implementation review, in `docs/architecture/prices.md` (the refresh's invariants and states, the operator's view of a daily failure, the run model's migrations and accepted limits, the named constants including `MAX_REMOVED_SHARE` as a guess until #366, the sources and the log row) and `docs/architecture/catalog-operations.md` (the shared download, the partial file per download, `STALE_PARTIAL_AFTER`, the supersession of spec 002 FR-3's "a partial file", the sources and the log row). AC-5.7's two area documents are now written; the log rows name "spec 089's pull request" until it has a number. The index row is Frozen with its plan "retirement owed".
