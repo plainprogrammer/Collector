@@ -367,6 +367,8 @@ RSpec.describe "The selection pane", type: :system do
         before = pane_boxes
         expect(images.any? { |h| (before["image"]["height"] - h).abs <= 2 }).to be(true), "images #{before["image"]["height"]}px, expected one of #{images}"
         expect(before["scrolls"]).to be(scrolls)
+        parts = (scrolls ? %w[strip band row] : %w[strip band row details adds]).map { before[it] } # a scrolling body clips what is below the row
+        parts.each_cons(2) { |above, below| expect(above["bottom"]).to be <= below["top"] + 0.5 }
         expect(page.evaluate_script("(() => { const b = document.querySelector('.c-scanpane__body'); return b.scrollWidth <= b.clientWidth })()")).to be(true)
         # The possible-cards line (tag, position and "All printings") holds its parts without scrolling sideways (decision 3).
         expect(page.evaluate_script("(() => { const m = document.querySelector('.c-scanpane__card:not([hidden]) .c-scanpane__meta'); return m.scrollWidth <= m.clientWidth })()")).to be(true)
