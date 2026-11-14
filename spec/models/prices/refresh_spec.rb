@@ -138,4 +138,167 @@ RSpec.describe Prices::Refresh, type: :model do
       expect(during).to eq(1) # ReportingCatalogSource reports twice within one instant while downloading: one touch, which sets only updated_at
     end
   end
+
+  describe "judging quotes" do
+    def rows = CurrentPrice.pluck(:catalog_entry_id, :cents, :reported_on, :changed_on)
+    def history = PriceChange.order(:catalog_entry_id, :recorded_on).pluck(:catalog_entry_id, :recorded_on, :cents)
+
+    it "adds a price no one has, with a history row for the run's date, and finishes the run (AC-1.1, AC-2.1)", :aggregate_failures do
+      use_widget_sources(records: [ widget_quote("w-1", 142) ], reported_on: Date.new(2026, 11, 13))
+      entry = widget_entry("w-1")
+
+      run = refresh.call
+
+      expect(run).to have_attributes(status: "finished", run_on: Date.new(2026, 11, 13), source_version: "v1", languages: "en",
+        job_id: "job-1", added: 1, quotes_seen: 1, unchanged: 0, repriced: 0)
+      expect(run.started_at).to be_present
+      expect(run.finished_at).to be_present
+      expect(rows).to eq([ [ entry.id, 142, Date.new(2026, 11, 13), Date.new(2026, 11, 13) ] ])
+      expect(history).to eq([ [ entry.id, Date.new(2026, 11, 13), 142 ] ])
+    end
+
+    it "writes nothing for an unchanged price, and the current price's dates stay (AC-2.2)", :aggregate_failures do
+      use_widget_sources(records: [ widget_quote("w-1", 100) ])
+      entry = widget_entry("w-1")
+      seed_price(entry, 100, on: Date.new(2026, 11, 12))
+
+      run = refresh.call
+
+      expect(run).to have_attributes(unchanged: 1, repriced: 0, added: 0, quotes_seen: 1)
+      expect(rows).to eq([ [ entry.id, 100, Date.new(2026, 11, 12), Date.new(2026, 11, 12) ] ])
+      expect(history.size).to eq(1)
+    end
+
+    it "updates a changed price and adds one history row, leaving the earlier ones (AC-2.3)", :aggregate_failures do
+      use_widget_sources(records: [ widget_quote("w-1", 150) ])
+      entry = widget_entry("w-1")
+      seed_price(entry, 100, on: Date.new(2026, 11, 12))
+
+      run = refresh.call
+
+      expect(run).to have_attributes(repriced: 1, added: 0, unchanged: 0)
+      expect(rows).to eq([ [ entry.id, 150, Date.new(2026, 11, 13), Date.new(2026, 11, 13) ] ])
+      expect(history).to eq([ [ entry.id, Date.new(2026, 11, 12), 100 ], [ entry.id, Date.new(2026, 11, 13), 150 ] ])
+    end
+
+    it "judges each series of a printing on its own (AC-2.6)", :aggregate_failures do
+      series = [ PriceRefreshHelpers::PLAIN,
+                 Prices::Sources::Series.new(finish: "foil", currency: "USD", kind: "market"),
+                 Prices::Sources::Series.new(finish: "etched", currency: "USD", kind: "market") ]
+      use_widget_sources(series:, records: [ widget_quote("w-1", 100, series: series[0]), widget_quote("w-1", 300, series: series[1]), widget_quote("w-1", 500, series: series[2]) ])
+      entry = widget_entry("w-1")
+      seed_price(entry, 100, series: series[0]) # unchanged
+      seed_price(entry, 250, series: series[1]) # changed
+
+      run = refresh.call
+
+      expect(run).to have_attributes(quotes_seen: 3, unchanged: 1, repriced: 1, added: 1)
+      expect(CurrentPrice.count).to eq(3)
+    end
+
+    it "skips a printing the catalog doesn't have, counting it once however many series it has (AC-2.5)", :aggregate_failures do
+      series = [ PriceRefreshHelpers::PLAIN, Prices::Sources::Series.new(finish: "foil", currency: "USD", kind: "market") ]
+      use_widget_sources(series:, records: [ widget_quote("ghost", 1, series: series[0]), widget_quote("ghost", 2, series: series[1]), widget_quote("w-1", 100) ])
+      widget_entry("w-1")
+
+      run = refresh.call
+
+      expect(run).to have_attributes(unknown_printings: 1, quotes_seen: 1, added: 1)
+      expect(CurrentPrice.count).to eq(1)
+    end
+
+    it "judges the first of two quotes for one printing and series, ignoring the second (AC-2.10)", :aggregate_failures do
+      use_widget_sources(records: [ widget_quote("w-1", 100), widget_quote("w-2", 5), widget_quote("w-1", 999) ])
+      entry = widget_entry("w-1")
+      widget_entry("w-2")
+
+      run = refresh.call
+
+      expect(run).to have_attributes(quotes_seen: 2, added: 2)
+      expect(CurrentPrice.find_by(catalog_entry_id: entry.id).cents).to eq(100)
+    end
+
+    it "replaces a history row of the same day when a second file of that day differs (AC-2.7)", :aggregate_failures do
+      use_widget_sources(records: [ widget_quote("w-1", 150) ], version: "v2")
+      entry = widget_entry("w-1")
+      seed_price(entry, 100, on: Date.new(2026, 11, 13))
+
+      refresh.call
+
+      expect(history).to eq([ [ entry.id, Date.new(2026, 11, 13), 150 ] ])
+    end
+
+    it "gives every written row the file's date, whatever the clock says (AC-1.6)", :aggregate_failures do
+      use_widget_sources(records: [ widget_quote("w-1", 100) ], reported_on: Date.new(2026, 11, 13))
+      widget_entry("w-1")
+
+      travel_to(Time.utc(2026, 12, 25, 12)) { refresh.call }
+
+      expect(CurrentPrice.pluck(:reported_on, :changed_on)).to eq([ [ Date.new(2026, 11, 13), Date.new(2026, 11, 13) ] ])
+      expect(PriceChange.pluck(:recorded_on)).to eq([ Date.new(2026, 11, 13) ])
+    end
+
+    it "writes the same rows when the job is performed twice on one file (AC-1.7)", :aggregate_failures do
+      use_widget_sources(records: [ widget_quote("w-1", 100), widget_quote("w-2", 200) ])
+      widget_entry("w-1")
+      widget_entry("w-2")
+
+      refresh.call
+      first = [ CurrentPrice.pluck(:catalog_entry_id, :cents, :changed_on).sort, PriceChange.pluck(:catalog_entry_id, :cents, :recorded_on).sort ]
+      second = refresh.call
+
+      expect(second).to have_attributes(status: "skipped", error: "v1 already applied")
+      expect([ CurrentPrice.pluck(:catalog_entry_id, :cents, :changed_on).sort, PriceChange.pluck(:catalog_entry_id, :cents, :recorded_on).sort ]).to eq(first)
+      expect(PriceRefreshRun.count).to eq(2)
+    end
+
+    it "keeps rows keyed by the entry's id, in the prices database (AC-2.8)", :aggregate_failures do
+      use_widget_sources(records: [ widget_quote("w-1", 100) ])
+      entry = widget_entry("w-1")
+
+      refresh.call
+
+      expect(CurrentPrice.first.catalog_entry_id).to eq(entry.id)
+      expect([ CurrentPrice, PriceChange, PriceRefreshRun ].map { it.connection_db_config.name }.uniq).to eq([ "prices" ])
+    end
+
+    it "raises, fails the run and keeps earlier batches when a quote's series was not declared (AC-2.11)", :aggregate_failures do
+      undeclared = Prices::Sources::Series.new(finish: "gold", currency: "USD", kind: "market")
+      stub_const("Prices::Refresh::BATCH_SIZE", 1)
+      use_widget_sources(records: [ widget_quote("w-1", 100), widget_quote("w-2", 5, series: undeclared) ])
+      widget_entry("w-1")
+      widget_entry("w-2")
+
+      expect { refresh.call }.to raise_error(Prices::Sources::ConfigurationError, /gold/)
+
+      expect(last_run).to have_attributes(status: "failed", added: 1)
+      expect(CurrentPrice.count).to eq(1)
+    end
+
+    it "logs a malformed record's key and error, and counts it (AC-2.12)", :aggregate_failures do
+      use_widget_sources(records: [ widget_malformed("w-1", series: PriceRefreshHelpers::PLAIN), widget_quote("w-2", 5) ])
+      widget_entry("w-1")
+      widget_entry("w-2")
+      allow(Rails.logger).to receive(:warn)
+
+      run = refresh.call
+
+      expect(run.malformed).to eq(1)
+      expect(Rails.logger).to have_received(:warn).with(/prices\.refresh skipped malformed .*w-1.*unreadable/)
+    end
+
+    it "touches the run after every batch, even one that writes nothing (AC-4.7)", :aggregate_failures do
+      stub_const("Prices::Refresh::BATCH_SIZE", 2)
+      entries = Array.new(5) { |index| widget_entry("w-#{index}") }
+      entries.each { |entry| seed_price(entry, 100) }
+      use_widget_sources(records: entries.map { widget_quote(it.external_key, 100) }) # all unchanged: no batch writes a price
+      progress = []
+      callback = ->(*, payload) { progress << payload[:sql] if payload[:sql].to_s.start_with?('UPDATE "price_refresh_runs" SET') && payload[:sql].include?('"quotes_seen"') }
+
+      ActiveSupport::Notifications.subscribed(callback, "sql.active_record") { refresh.call }
+
+      expect(CurrentPrice.pluck(:cents).uniq).to eq([ 100 ]) # nothing was written
+      expect(progress.size).to eq(3) # a progress write per batch (2, 2 and 1 printings): only they put quotes_seen in an UPDATE's SET
+    end
+  end
 end

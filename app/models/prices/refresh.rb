@@ -76,6 +76,101 @@ class Prices::Refresh
       @run.finish!(@counts)
     end
 
-    # Filled in by the next phases.
-    def apply(_reader, _path); end
+    # Reads the file once, flushing a batch of printings at a time (decision 6), then handles absences (Phase 6).
+    def apply(reader, path)
+      @seen = Set.new # [entry id, series id] judged this run: a duplicate quote is ignored, an unseen candidate is absent
+      @unknown = Set.new
+      @held_entries = Set.new
+      @held_series = Set.new
+      @untrusted = false
+      @quotes_yielded = 0
+      @pending = {}
+      @pending_malformed = []
+
+      reader.each_quote(path, languages: @languages) do |record|
+        case record
+        when Prices::Sources::Quote then queue_quote(record)
+        when Prices::Sources::Malformed then queue_malformed(record)
+        end
+      end
+      flush
+    end
+
+    def queue_quote(quote)
+      @quotes_yielded += 1
+      flush if !@pending.key?(quote.external_key) && @pending.size >= BATCH_SIZE # earlier batches stand when the next raises
+      @series.fetch(quote.series) do
+        raise Prices::Sources::ConfigurationError, "#{@source_class} yielded a quote of #{quote.series.inspect}, which it did not declare"
+      end
+      (@pending[quote.external_key] ||= []) << quote
+    end
+
+    def queue_malformed(record)
+      @counts[:malformed] += 1
+      Rails.logger.warn("prices.refresh skipped malformed #{record.external_key.inspect}: #{record.error}")
+      @pending_malformed << record
+    end
+
+    # Judges and writes the pending printings. The primary is read here, outside any transaction; the prices database
+    # is read and written in one short transaction; the counts are tallied after it commits.
+    def flush
+      return if @pending.empty? && @pending_malformed.empty?
+
+      keys = (@pending.keys + @pending_malformed.filter_map(&:external_key)).uniq
+      ids = Catalog::Entry.where(collectible_type:, external_key: keys).pluck(:external_key, :id).to_h
+      hold_malformed(ids)
+      judged = []
+      @pending.each do |key, quotes|
+        id = ids[key]
+        next @unknown << key unless id
+
+        quotes.each do |quote|
+          series_id = @series.fetch(quote.series).id
+          judged << [ id, series_id, quote.cents ] if @seen.add?([ id, series_id ])
+        end
+      end
+      write_judged(judged)
+      @pending = {}
+      @pending_malformed = []
+      @counts[:unknown_printings] = @unknown.size
+      @run.progress!(@counts)
+    end
+
+    # What a Malformed holds back from removal (decision 4, items 3 and 4): no key, the whole run; a key and no series (or
+    # a series the source didn't declare), every series of the printing; a key and a series, that series.
+    def hold_malformed(ids)
+      @pending_malformed.each do |record|
+        entry_id = ids[record.external_key]
+        if record.external_key.nil? then @untrusted = true
+        elsif entry_id.nil? then next
+        elsif record.series.nil? || @series[record.series].nil? then @held_entries << entry_id
+        else @held_series << [ entry_id, @series[record.series].id ]
+        end
+      end
+    end
+
+    def write_judged(judged)
+      return if judged.empty?
+
+      tally = Hash.new(0)
+      PricesRecord.transaction do
+        existing = CurrentPrice.where(price_source_id: @source.id, catalog_entry_id: judged.map(&:first).uniq)
+          .pluck(:catalog_entry_id, :price_series_id, :cents).to_h { |entry_id, series_id, cents| [ [ entry_id, series_id ], cents ] }
+        currents = []
+        changes = []
+        judged.each do |entry_id, series_id, cents|
+          had = existing[[ entry_id, series_id ]]
+          next tally[:unchanged] += 1 if had == cents
+
+          tally[had ? :repriced : :added] += 1
+          keys = { catalog_entry_id: entry_id, price_source_id: @source.id, price_series_id: series_id }
+          currents << keys.merge(cents:, reported_on: @run_on, changed_on: @run_on)
+          changes << keys.merge(recorded_on: @run_on, cents:)
+        end
+        CurrentPrice.upsert_all(currents, unique_by: CurrentPrice.primary_key) if currents.any?
+        PriceChange.upsert_all(changes, unique_by: PriceChange.primary_key) if changes.any?
+      end
+      tally.each { |name, count| @counts[name] += count }
+      @counts[:quotes_seen] += judged.size
+    end
 end
