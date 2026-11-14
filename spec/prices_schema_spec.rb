@@ -89,7 +89,7 @@ RSpec.describe "the prices schema keeps WITHOUT ROWID (spec 081 AC-2.1 to AC-2.3
 
   context "with spec 089's migration (AC-5.2, AC-1.9)" do
     let(:released) { "20261113100001" }
-    let(:count_columns) { %w[quotes_seen unchanged changed added removed removals_withheld unknown_printings malformed] }
+    let(:count_columns) { %w[quotes_seen unchanged repriced added removed removals_withheld unknown_printings malformed] }
 
     def columns_of(path)
       execute_in(path, "PRAGMA table_info(price_refresh_runs)").to_h { |_cid, name, type, notnull, default, _pk| [ name, { type:, notnull:, default: } ] }
