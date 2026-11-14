@@ -27,6 +27,12 @@ RSpec.describe "Upgrade seeds", :upgrade do
       expect(facts["locations"]).to eq([ "Binder A", "Shelf B" ])
     end
 
+    it "gives every seeded user a household of one, so households and memberships hold rows (spec 090 AC-6.4)", :aggregate_failures do
+      run_seed("next.rb")
+      expect([ Household.count, Membership.count ]).to eq([ User.count, User.count ])
+      expect(Upgrade::SeedExceptions.load(seeds.join("../seed_exceptions.yml"), "next").entries).to be_empty
+    end
+
     it "fills every table db/schema.rb creates, except those listed under next (AC-2.6, FR-7)" do
       run_seed("next.rb")
       schema_tables = Rails.root.join("db/schema.rb").read.scan(/^  create_table "([^"]+)"/).flatten
