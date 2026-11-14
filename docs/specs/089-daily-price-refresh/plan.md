@@ -295,7 +295,7 @@ The rebuild touches a rowid table (`price_refresh_runs`), so the `WITHOUT ROWID`
       described_class.upsert_all([ keys.merge(cents: 150, reported_on: Date.new(2026, 11, 13), changed_on: Date.new(2026, 11, 13)) ], unique_by: described_class.primary_key)
 
       expect(described_class.primary_key).to eq(%w[catalog_entry_id price_source_id price_series_id])
-      expect(described_class.pluck(:cents, :repriced_on)).to eq([ [ 150, Date.new(2026, 11, 13) ] ])
+      expect(described_class.pluck(:cents, :changed_on)).to eq([ [ 150, Date.new(2026, 11, 13) ] ])
     end
 
     it "lives in the prices database and has no account" do
@@ -926,7 +926,7 @@ This is a contract change (`#download` now has two callers that can run together
 
   ```ruby
     describe "judging quotes" do
-      def rows = CurrentPrice.pluck(:catalog_entry_id, :cents, :reported_on, :repriced_on)
+      def rows = CurrentPrice.pluck(:catalog_entry_id, :cents, :reported_on, :changed_on)
       def history = PriceChange.order(:catalog_entry_id, :recorded_on).pluck(:catalog_entry_id, :recorded_on, :cents)
 
       it "adds a price no one has, with a history row for the run's date, and finishes the run (AC-1.1, AC-2.1)", :aggregate_failures do
@@ -1020,7 +1020,7 @@ This is a contract change (`#download` now has two callers that can run together
 
         travel_to(Time.utc(2026, 12, 25, 12)) { refresh.call }
 
-        expect(CurrentPrice.pluck(:reported_on, :repriced_on)).to eq([ [ Date.new(2026, 11, 13), Date.new(2026, 11, 13) ] ])
+        expect(CurrentPrice.pluck(:reported_on, :changed_on)).to eq([ [ Date.new(2026, 11, 13), Date.new(2026, 11, 13) ] ])
         expect(PriceChange.pluck(:recorded_on)).to eq([ Date.new(2026, 11, 13) ])
       end
 
@@ -1030,11 +1030,11 @@ This is a contract change (`#download` now has two callers that can run together
         widget_entry("w-2")
 
         refresh.call
-        first = [ CurrentPrice.pluck(:catalog_entry_id, :cents, :repriced_on).sort, PriceChange.pluck(:catalog_entry_id, :cents, :recorded_on).sort ]
+        first = [ CurrentPrice.pluck(:catalog_entry_id, :cents, :changed_on).sort, PriceChange.pluck(:catalog_entry_id, :cents, :recorded_on).sort ]
         second = refresh.call
 
         expect(second).to have_attributes(status: "skipped", error: "v1 already applied")
-        expect([ CurrentPrice.pluck(:catalog_entry_id, :cents, :repriced_on).sort, PriceChange.pluck(:catalog_entry_id, :cents, :recorded_on).sort ]).to eq(first)
+        expect([ CurrentPrice.pluck(:catalog_entry_id, :cents, :changed_on).sort, PriceChange.pluck(:catalog_entry_id, :cents, :recorded_on).sort ]).to eq(first)
         expect(PriceRefreshRun.count).to eq(2)
       end
 
@@ -1720,13 +1720,13 @@ This is a contract change (`#download` now has two callers that can run together
       create(:catalog_entry, collectible_type: "mtg", external_key: "card-1")
       stub_scryfall(cards: cards("card-1" => { "usd" => "1.42" }), stamp:)
       Prices::Refresh.new("scryfall").call
-      before = [ CurrentPrice.pluck(:cents, :repriced_on), PriceChange.pluck(:cents, :recorded_on) ]
+      before = [ CurrentPrice.pluck(:cents, :changed_on), PriceChange.pluck(:cents, :recorded_on) ]
 
       run = Prices::Refresh.new("scryfall").call
 
       expect(run).to have_attributes(status: "skipped", error: "default-cards-#{stamp} already applied")
       expect(a_request(:get, /data\.scryfall\.io/)).to have_been_made.once # the file is not downloaded again
-      expect([ CurrentPrice.pluck(:cents, :repriced_on), PriceChange.pluck(:cents, :recorded_on) ]).to eq(before)
+      expect([ CurrentPrice.pluck(:cents, :changed_on), PriceChange.pluck(:cents, :recorded_on) ]).to eq(before)
     end
   end
   ```
