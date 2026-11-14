@@ -92,3 +92,20 @@ in seconds; the whole example took 36.55 s (it builds the file and the catalog e
 - (e) T8.1's check that the primary is not read inside a prices transaction compares the prices connection's open transactions to a baseline, because Rails opens a savepoint lazily.
 
 ## Implementation review
+
+SPEC-ALIGNED
+
+Mode B review of commits `eb205c8f` to `39cc2c08`, by a read-only reviewer on **Opus 5.5** (spec v0.4.3; it read the code and the specs and ran nothing that writes). It found no blocking and no major finding, and every invariant held against a hunt for counterexamples: a price whose quote was unreadable, or whose printing, language or series the file was not asked about, is never deleted or blanked; only a trusted absence removes a price, with its blank history row in the same transaction; no history row for an unchanged price; an older file is never applied; two runs never both write; the core files name no collectible; no join across the two files, no new index, both large tables still `WITHOUT ROWID`; the released migration is untouched. Open by design: AC-5.2's `bin/upgrade-smoke` clause (CI's image job) and AC-5.7's two area docs, which `distill-feature` writes after this review.
+
+What the review found, and what was done (by Sonnet 5.5 implementers, test first, commits `ea0c6eb2`, `2dc0896a`, `0f2a9161`, `3aa57018`; the spec change by the main session):
+
+| Finding | Outcome |
+|---|---|
+| A current price whose series the source no longer declares would read as absent: a later build that drops a series would fail every run on the ceiling, or blank prices the file was never asked about | **Fixed, and the spec changed** (v0.5.0: decision 4's candidate rule and AC-3.7); `each_candidate_slice` filters to the declared series (`ea0c6eb2`) |
+| Quotes repeated while their printing is pending pile up in `@pending[key]` without a bound (the class of the `queue_malformed` finding) | Fixed: a repeat of a pending printing and series is ignored when queued (`2dc0896a`) |
+| The rate-limit row of the job spec passed without `Catalog::RateLimitRetry`; the slice-touch example (`>= 12`) was too loose; AC-2.10 covered only a same-batch duplicate; AC-3.4 `be_between(2, 4)`; AC-3.6 did not assert that changes already written stand | Fixed, each proved able to fail (`0f2a9161`) |
+| `left_behind?` and `heartbeat` lacked `@param`/`@return`; the core guard's note said "two migrations" | Fixed (`3aa57018`) |
+| `@seen` as two-element arrays (about 30 MB for 300,000), `#remove` sending one `DELETE` per printing, `quote.series` rebuilt and validated per quote, `progress!` and `finish!` not checking the run is still `running`, `PriceSeries.ensure!` called twice | **Accepted, not changed**: the measured first run (18.4 s for 110,000 cards) and a typical day (7.4 s) are well inside a daily window, and the hairline of a process resuming after the 6-hour lock lapsed needs two failures at once; the area doc records them so #366's measurements can reopen them |
+| `fetch` also deletes its own partial file on failure, beyond FR-2's wording; two migrations (190001 adds `changed`, 190002 renames it) where FR-3 says one | Accepted: benign, recorded as deviations (a) and (b); `catalog-operations.md` says it |
+
+Fresh evidence after the fixes: `bin/rspec spec/models/prices spec/jobs/prices spec/prices_core_spec.rb spec/price_source_core_spec.rb spec/models/price_refresh_run_spec.rb`: 85 examples, 0 failures; `bin/rubocop` on the touched files: no offenses; `bin/yard doc`: no warnings. The wider targeted run (prices, catalog, scryfall, config, backup guards: 630 examples) passed before the fixes; the full suite and `bin/ci` run once, with the coordinator's slot, at the push.
