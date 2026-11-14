@@ -37,6 +37,8 @@ RSpec.describe "The selection pane", type: :system do
     expect(page.evaluate_script("[document.querySelector('.c-scan__capture').width, document.querySelector('.c-scan__capture').height]")).to eq([ 178, 248 ])
     expect(band).to have_css("svg").and have_text("Matched by its collector line")
     expect(band[:class]).to include("c-band--success")
+    expect(band[:role]).to eq("status") # AC-2.5
+    expect(page.evaluate_script("[...document.querySelectorAll('#scanner_band svg')].every((icon) => icon.getAttribute('aria-hidden') === 'true')")).to be(true)
     expect(page).to have_css(".c-scanpane__item", count: 3)
     expect(page).to have_css(".c-scanpane__item[aria-current='true']", count: 1)
     expect(page).to have_css(".c-scanpane__card:not([hidden])", count: 1)
@@ -68,6 +70,15 @@ RSpec.describe "The selection pane", type: :system do
     expect(page.evaluate_script("window.__tracks.every((track) => track.readyState === 'live')")).to be(true)
     click_on "Previous printing"
     expect(band).to have_text("Matched by its collector line")
+  end
+
+  it "writes nothing to the pane's region on a swipe (AC-7.2)", :aggregate_failures do
+    visit scanner_path
+    capture_synthetic
+    said = page.evaluate_script("document.getElementById('status').innerHTML")
+    click_on "Next printing"
+    expect(page).to have_css(".c-scanpane__item:nth-child(2)[aria-current='true']")
+    expect(page.evaluate_script("document.getElementById('status').innerHTML")).to eq(said)
   end
 
   it "disables Next at the last item and moves focus to Previous (AC-3.3)", :aggregate_failures do
@@ -115,6 +126,8 @@ RSpec.describe "The selection pane", type: :system do
     expect(page).to have_css("#scanner_added_text", text: "Added Lightning Bolt MOM · 123, foil", wait: 10)
     expect(page).to have_no_css(".c-scan--result")
     expect(page).to have_css("#scanner_band:empty", visible: :all)
+    texts = "[ '.c-scan__read-name', '.c-scan__read-line', '#status' ].map((selector) => document.querySelector(selector).textContent)"
+    expect(page.evaluate_script(texts)).to eq([ "", "", "" ]) # AC-7.4: the strip's texts and the region go with the pane
     eventually("document.activeElement.classList.contains('c-scan__main')")
     expect(page).to have_css("canvas.c-scan__frozen[hidden]", visible: :all)
     expect(Lot.where(finish: "foil").count).to eq(1)
@@ -138,6 +151,16 @@ RSpec.describe "The selection pane", type: :system do
     expect(page).to have_css("canvas.c-scan__frozen[hidden]", visible: :all)
     expect(page).to have_no_css("#status .c-sr, #status .c-status__message")
     expect(page).to have_button("Capture", disabled: false)
+  end
+
+  it "says nothing read for a picked photo with no text: no pane and no no-edge sentence (AC-6.1)", :aggregate_failures do
+    visit scanner_path
+    wait_for_scanner
+    pick_synthetic_photo(name: "", lines: [], flat: true, input: "#scanner_destination_sheet input[type=file]")
+    expect(page).to have_css("#scanner_status_text", text: /Nothing could be read/, wait: 30)
+    expect(page).to have_no_css(".c-scan--result")
+    expect(page).to have_no_css("#status .c-status__message, #status .c-sr", visible: :all)
+    expect(page.evaluate_script("document.getElementById('status').textContent")).to eq("")
   end
 
   it "returns to the camera on Scan again, emptying the band, the strip's texts and the region (AC-7.5)", :aggregate_failures do
