@@ -143,6 +143,23 @@ RSpec.describe MTG::Scryfall::Source, type: :model do
       expect(yielded.grep(Catalog::Sources::EntryRecord).map(&:external_key)).to eq(%w[en-1 ja-1])
       expect(yielded.grep(Catalog::Sources::Malformed).map(&:external_key)).to eq([ "bad-1", nil ])
     end
+
+    # Issue #411: String#strip raises Encoding::CompatibilityError on such a line, which no rescue caught, so one bad byte
+    # stopped the whole refresh instead of counting one malformed line.
+    it "yields a Malformed for a line that is not valid UTF-8, and goes on with the next line (#411)", :aggregate_failures do
+      path = dir.join("f.jsonl.gz")
+      Zlib::GzipWriter.open(path.to_s) do |gzip|
+        gzip.write("{\"id\":\"bad\",\"name\":\"\xFF\"}\n".b)
+        gzip.write("#{JSON.generate(scryfall_card("id" => "good"))}\n".b)
+      end
+
+      yielded = []
+      source.each_entry(path, languages: %w[en]) { |record| yielded << record }
+
+      expect(yielded.map(&:class)).to eq([ Catalog::Sources::Malformed, Catalog::Sources::EntryRecord ])
+      expect([ yielded.first.external_key, yielded.first.error ]).to eq([ nil, "the line is not valid UTF-8" ])
+      expect(yielded.last.external_key).to eq("good")
+    end
   end
 
   describe "progress (spec 015 FR-2)" do
