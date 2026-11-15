@@ -67,7 +67,7 @@ Foundation principle 1 asks that every release upgrade in place, and principle 2
 
 ## Consequences
 
-- **Good:** no alias layer exists to test, document or remove later, and after the release a search for the old name finds only what decisions 3, 4, 6 and 7 leave.
+- **Good:** no alias layer exists to test, document or remove later, and after the release a search for the old name finds only what decisions 3, 4, 6 and 7 leave, the old backup prefix where old data is still read, the upgrade proof's rules for 0.3.0 ([ADR 0033](0033-the-image-moves-to-a-new-package.md)) and `spikes/`.
 - **Cost:** the upgrade from 0.3.0 to 0.4.0 needs an operator: rename the settings, copy the volume (Docker has no volume rename) and, under Kamal, move to the new service. An operator who upgrades without the notes gets an instance on an empty volume with default settings; the old volume is untouched, so nothing is lost, but nothing warns them. This is an accepted exception to principle 1, taken because the only instance is the maintainer's.
 - **Cost:** the upgrade proof (`bin/upgrade-smoke`, spec 031) must drive this one upgrade across the rename; spec 092 says how, and [ADR 0033](0033-the-image-moves-to-a-new-package.md) covers where it pulls the previous release from.
 - **Limit:** two lowercase spellings (`wyrms_hoard`, `wyrmshoard`) and one hyphenated one exist. A guard against the old name is cheap; a wrong new spelling is for review to catch.
