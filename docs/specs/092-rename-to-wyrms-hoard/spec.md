@@ -1,7 +1,7 @@
 # Feature 092: Rename the Application to Wyrm's Hoard
 
 **Status:** Draft
-**Version:** 0.3.0
+**Version:** 0.3.1
 **Created:** 2026-11-14
 **Last Updated:** 2026-11-14
 **Depends on:** nothing unshipped. It changes names fixed by shipped specs; they are listed under [Supersedes](#supersedes).
@@ -16,6 +16,7 @@
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.3.1 | 2026-11-14 | The maintainer's rulings of 2026-11-14: decision 18 as written; `edge` calling itself Collector between pull requests C and D is accepted; `.kamal/` confirmed to name no old image or setting. No requirement changed |
 | 0.3.0 | 2026-11-14 | Spec review round 2 (Fable, read-only, APPROVE WITH CHANGES, 0 blocking, 6 major, 11 minor) fixed. Decision 17 says it replaces the PRD's and ADR 0032's "copy the volume", and the notes say what a backup doesn't carry and how to recover from a start on the empty volume; decision 14 rules the four-link header; decision 10's rule passes `MimeResponds::Collector` and AC-7.3 says which kinds pass by exclusion; decision 15 keeps dated entries; decision 18 says when the spec is shipped; each pull request fills its own index cells; the brand app bar, the Kamal order, the hosted-door line and the minor findings |
 | 0.2.0 | 2026-11-14 | Spec review round 1 (Opus, read-only, APPROVE WITH CHANGES, 0 blocking, 9 major, 14 minor) fixed. AC-1.4 allows the ratchet's comments to change; AC-2.1 and AC-2.2 say what pull request B searches and removes; a person's name in an example and the two `MimeResponds` comments are settled (decisions 10 and 11, FR-2); decision 14 measures the header at 720px and 640px, where the wordmark shows; the User-Agents take the hyphenated spelling (decision 9, AC-6.10); AC-5.7 drops the `0` tag; decision 15 rules on issue links and quoted titles; the upgrade notes move the data by backup and restore (decision 17, AC-8.2); and the minor findings |
 | 0.1.0 | 2026-11-14 | First draft from the approved PRD and ADRs 0032 and 0033, with two inventories taken on `main` at `50435ba3`: the forms of the old name in code and configuration, and the criteria of shipped specs the rename supersedes. Decisions 1 to 6 are the maintainer's, from the brainstorm; decisions 7 to 18 are the author's, each marked *(author's)*, for the maintainer to rule |
@@ -58,7 +59,7 @@ The application is called Collector, its repository `plainprogrammer/Collector` 
 
 ## Decisions
 
-Decisions 1 to 6 are the maintainer's (the brainstorm of 2026-11-14, the PRD and the ADRs). Decisions 7 to 18 are the author's, to be ruled with this spec.
+Decisions 1 to 6 are the maintainer's (the brainstorm of 2026-11-14, the PRD and the ADRs). Decisions 7 to 17 are the author's, to be ruled with this spec; decision 18 is ruled.
 
 1. **The order of work.** Each step is checked before the next.
    1. The repository is renamed to `plainprogrammer/wyrmshoard` ([#435](https://github.com/plainprogrammer/Collector/issues/435)). CI still publishes to the old image.
@@ -66,7 +67,7 @@ Decisions 1 to 6 are the maintainer's (the brainstorm of 2026-11-14, the PRD and
    3. **Pull request B** ([#436](https://github.com/plainprogrammer/Collector/issues/436)): the internal names (FR-2).
    4. **Pull request C** ([#437](https://github.com/plainprogrammer/Collector/issues/437)): the operator contract, the image's name, the data made before the rename and the upgrade proof (FR-3 to FR-6), with the documents that describe them.
    5. **Pull request D** ([#438](https://github.com/plainprogrammer/Collector/issues/438)): the display name, the repository's links, the rest of the living documents, the check and the supersessions (FR-7 to FR-11).
-   Between pull requests C and D the new package's `edge` is an image that still calls itself Collector in its pages; that is accepted, as `edge` is not a release.
+   Between pull requests C and D the new package's `edge` is an image that still calls itself Collector in its pages; that is accepted, as `edge` is not a release (the maintainer, 2026-11-14).
    6. The new package is checked to be public ([#439](https://github.com/plainprogrammer/Collector/issues/439)), release 0.4.0 is tagged and the maintainer's instance is upgraded by the notes ([#440](https://github.com/plainprogrammer/Collector/issues/440)).
 2. **The spellings** (ADR 0032 decision 2): `Wyrm's Hoard` for display, with a straight apostrophe as the interface's other copy has; `WyrmsHoard` for Ruby constants; `wyrms_hoard` for file and directory names, Ruby identifiers, the rake namespace and the volume; `WYRMS_HOARD_` for environment variables and build arguments; `wyrms-hoard` for hyphenated names; `wyrmshoard` for the repository and the image, and nothing else. No inflection rule is added.
 3. **A clean break** (ADR 0032 decision 1). No old operator name is read.
@@ -150,7 +151,7 @@ Decisions 1 to 6 are the maintainer's (the brainstorm of 2026-11-14, the PRD and
     - **Records, kept:** shipped specs and their contracts, accepted ADRs, `docs/lessons/`, `docs/superpowers/`, and what a memory file says happened.
     - A living document may still name an old form where it describes the rename or what stays: the upgrade notes, the two-package rule, the sweep of both prefixes, the released migration.
     - **A dated entry keeps the names of its time:** the upgrade notes of releases up to 0.3.0 in `docs/releasing.md` (which tell an instance older than 0.3.0 to set `COLLECTOR_CURRENCY`, still true by ADR 0032 decision 7), and a dated row of a decision log such as the roadmap's.
-    - `docs/screenshots/` holds records of how pages looked and is left; `.kamal/` is not read by the check or by an agent (`.kamal/secrets` is off-limits), so the maintainer confirms by eye that it names no old image or setting.
+    - `docs/screenshots/` holds records of how pages looked and is left; `.kamal/` is not read by the check or by an agent (`.kamal/secrets` is off-limits), so the maintainer confirmed by eye, on 2026-11-14, that it names no old image or setting.
     - **Links to issues, pull requests and commits stay as written** (345 in the living documents, `https://github.com/plainprogrammer/Collector/…`): GitHub redirects them, and they cite a place, they don't name the application. A link to the repository's front page or its source is rewritten.
     - **A record's title quoted in an index stays** as the record has it ("012 Build and Publish Collector Images").
     - **Memory files:** the plan lists, from a search, each file under `.claude/memory/` that states a current name, path, command or image, and those statements are brought up to date; the rest of each file is left.
@@ -158,7 +159,7 @@ Decisions 1 to 6 are the maintainer's (the brainstorm of 2026-11-14, the PRD and
 16. *(author's)* **A shipped spec that only mentions an internal name is not superseded.** 44 shipped specs name `Collector::…`, `lib/collector/…`, an asset path or the design system's skill as the place something lives. Those are pointers of their time, and the area docs hold the current paths. A criterion is superseded when it fixes a value a person or an operator meets: a setting, a command, a file name, an image, a message, a title or a label. The [Supersedes](#supersedes) table lists those.
 
 17. *(author's)* **The upgrade moves the data by backup and restore, not by copying a volume.** This replaces the wording of PRD goal 7 ("how to copy the volume") and of ADR 0032's Cost consequence ("copy the volume"); ADR 0032's decision 1 asks only that the notes "say how to move the data", which this meets, and the accepted ADR is not edited. The notes tell an operator, in order: take a backup on 0.3.0 with `backup:create` once nothing is writing (or accept that later writes are lost); stop the old service, under Kamal with the old configuration, before `service` changes; restore the backup onto the new, empty volume with `backup:restore` from the new image; start the new service. This is the path the upgrade proof runs (AC-5.2, AC-5.4): 0.3.0 writes a backup of the primary database, the new release restores it, and its first start creates an empty prices database. A copy of a volume whose database is in use can be inconsistent, and a Compose volume's real name carries the project's prefix. The notes also say what a backup doesn't carry, which a volume copy would have kept: everyone signs in again; pending Undos and bulk selections are gone; queued jobs and a previewed import are not carried; catalog downloads are fetched again at the next refresh; and the art index is rebuilt from Admin where art matching is on. The old volume is left untouched until the operator removes it.
-18. *(author's)* **The spec is shipped when pull request D merges.** Its implementation review is taken then, over pull requests A to D. AC-5.6 to AC-5.8 (the package is public, release 0.4.0, the maintainer's instance) are steps of the release, checked by hand; `verification.md` lists them as owed at the review and records their evidence when [#439](https://github.com/plainprogrammer/Collector/issues/439) and [#440](https://github.com/plainprogrammer/Collector/issues/440) close. The other criteria checked by hand (AC-5.1, AC-5.5, AC-8.6) are recorded there too, with the command and its output.
+18. **The spec is shipped when pull request D merges** (ruled by the maintainer, 2026-11-14). Its implementation review is taken then, over pull requests A to D. AC-5.6 to AC-5.8 (the package is public, release 0.4.0, the maintainer's instance) are steps of the release, checked by hand; `verification.md` lists them as owed at the review and records their evidence when [#439](https://github.com/plainprogrammer/Collector/issues/439) and [#440](https://github.com/plainprogrammer/Collector/issues/440) close. The other criteria checked by hand (AC-5.1, AC-5.5, AC-8.6) are recorded there too, with the command and its output.
 
 **Hosted door** (`docs/north-star.md`): the rename adds no setting, renames the existing ones, and has no per-account cost or limit; it neither opens nor closes anything for a hosted service.
 
@@ -498,7 +499,7 @@ Looked at and not superseded: spec 038 AC-4.1 and its error row (the released mi
 
 ## Open Questions
 
-None open. Decisions 7 to 18 are the author's and are put to the maintainer with this spec; a ruling against one changes the criteria that cite it.
+None open. Decisions 7 to 17 are the author's and are put to the maintainer with this spec; a ruling against one changes the criteria that cite it.
 
 ## Out of Scope (Future Considerations)
 
