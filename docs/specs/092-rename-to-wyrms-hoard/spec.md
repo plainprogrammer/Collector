@@ -1,7 +1,7 @@
 # Feature 092: Rename the Application to Wyrm's Hoard
 
 **Status:** Draft
-**Version:** 0.1.0
+**Version:** 0.2.0
 **Created:** 2026-11-14
 **Last Updated:** 2026-11-14
 **Depends on:** nothing unshipped. It changes names fixed by shipped specs; they are listed under [Supersedes](#supersedes).
@@ -16,7 +16,8 @@
 
 | Version | Date | Change |
 |---------|------|--------|
-| 0.1.0 | 2026-11-14 | First draft from the approved PRD and ADRs 0032 and 0033, with two inventories taken on `main` at `50435ba3`: the forms of the old name in code and configuration, and the criteria of shipped specs the rename supersedes. Decisions 1 to 6 are the maintainer's, from the brainstorm; decisions 7 to 16 are the author's, each marked *(author's)*, for the maintainer to rule |
+| 0.2.0 | 2026-11-14 | Spec review round 1 (Opus, read-only, APPROVE WITH CHANGES, 0 blocking, 9 major, 14 minor) fixed. AC-1.4 allows the ratchet's comments to change; AC-2.1 and AC-2.2 say what pull request B searches and removes; a person's name in an example and the two `MimeResponds` comments are settled (decisions 10 and 11, FR-2); decision 14 measures the header at 720px and 640px, where the wordmark shows; the User-Agents take the hyphenated spelling (decision 9, AC-6.10); AC-5.7 drops the `0` tag; decision 15 rules on issue links and quoted titles; the upgrade notes move the data by backup and restore (decision 17, AC-8.2); and the minor findings |
+| 0.1.0 | 2026-11-14 | First draft from the approved PRD and ADRs 0032 and 0033, with two inventories taken on `main` at `50435ba3`: the forms of the old name in code and configuration, and the criteria of shipped specs the rename supersedes. Decisions 1 to 6 are the maintainer's, from the brainstorm; decisions 7 to 17 are the author's, each marked *(author's)*, for the maintainer to rule |
 
 ## Problem Statement
 
@@ -56,7 +57,7 @@ The application is called Collector, its repository `plainprogrammer/Collector` 
 
 ## Decisions
 
-Decisions 1 to 6 are the maintainer's (the brainstorm of 2026-11-14, the PRD and the ADRs). Decisions 7 to 16 are the author's, to be ruled with this spec.
+Decisions 1 to 6 are the maintainer's (the brainstorm of 2026-11-14, the PRD and the ADRs). Decisions 7 to 17 are the author's, to be ruled with this spec.
 
 1. **The order of work.** Each step is checked before the next.
    1. The repository is renamed to `plainprogrammer/wyrmshoard` ([#435](https://github.com/plainprogrammer/Collector/issues/435)). CI still publishes to the old image.
@@ -105,44 +106,49 @@ Decisions 1 to 6 are the maintainer's (the brainstorm of 2026-11-14, the PRD and
    | `collector_storage` | 5 | C |
    | `service: collector`, `collector-db` | 2 | C |
    | `/srv/collector-backups` | 3 | C |
-   | `collector-backup-` | 45 | C (decision 12 keeps some) |
+   | `collector-backup-` | 39 | C (decision 12 keeps some) |
    | `collector-restore.partial`, `collector-restore-prices.partial` | 8 | C (decision 12 keeps some) |
-   | Image tags `collector:smoke`, `collector:local`; `--name collector` | 13 | C |
+   | Image tags `collector:smoke`, `collector:local`; `--name collector`. They become `wyrms-hoard:smoke`, `wyrms-hoard:local` and `--name wyrms-hoard`: a local tag is a name of the developer's, not the published image, so it is hyphenated | 13 | C |
    | `collector-smoke-`, `collector-backup-smoke-`, `collector-measure`, `collector-backup-spec` | 7 | C |
    | `collector-dev-https`, `collector-dev.crt`, `CN=Collector dev` | 7 | C |
    | `plainprogrammer/collector` as an image or a package (`ghcr.io/…`, `image:`, `packages/container/collector`, the pull token's scope) | 17 | C (decision 13 keeps some) |
    | `https://github.com/plainprogrammer/Collector` | 19 | D |
    | `collector.git` and checkout paths in fixtures (`/home/a/Collector/wt-1`, `/srv/orca/Collector/feature`, `/no/such/place/for/collector`) | 6 | D |
    | `collector-mark`, `collector-wordmark` | 5 and 4 file names | D |
-   | `collector-ghcr-cleanup` (a User-Agent) | 1 | D |
+   | User-Agents: `Collector/1.0 (+…)` (and the spec's `%r{\ACollector/}`), `collector-ghcr-cleanup (+…)`, `Collector OCR engine fetch`. They become `wyrms-hoard/1.0 (+https://github.com/plainprogrammer/wyrmshoard)`, `wyrms-hoard-ghcr-cleanup (+…)` and `wyrms-hoard OCR engine fetch`: a User-Agent's product is one token, so it is hyphenated (ADR 0032 decision 2) | 5 | D |
    | `Collector` as a capitalised whole word, in a string, a view or a comment, that isn't one of decision 10's | about 190 | D |
 
-   The last row covers the title suffix `· Collector` (56 lines), the name alone (`"Collector"`, `alt`, `aria-label`, `content`, `--title`), "Collector home", "Collector search", the licence line's "Collector 0.3.0 (…)", the notice "Collector is unofficial Fan Content…", "Collector is free software", "Collector export" in messages and the schemas' titles and descriptions, the backup's, restore's and start check's messages, "Set up Collector", "Collector can't show prices in …", "a newer version of Collector", the User-Agents `Collector/1.0` and "Collector OCR engine fetch", and prose in comments.
+   The last row covers the title suffix `· Collector` (56 lines), the name alone (`"Collector"`, `alt`, `aria-label`, `content`, `--title`), "Collector home", "Collector search", the licence line's "Collector 0.3.0 (…)", the notice "Collector is unofficial Fan Content…", "Collector is free software", "Collector export" in messages and the schemas' titles and descriptions, the backup's, restore's and start check's messages, "Set up Collector", "Collector needs at least one admin.", "Collector can't show prices in …", "a newer version of Collector", and prose in comments.
 10. *(author's)* **What is not the old name, and stays.**
     - **The collector line:** `collector_number`, `collector_text`, `collector_line`, `collector_line_corrected`, `collector_confidence`, `collector_strip`, `collector_status`, `collector_match`, `collector_entries`, `collectorText`, `collector-line`, `MTG::CollectorLine`, `MTG::CollectorNumber` and their files; the strip's key `collector` (`STRIPS.collector`, `text.collector`, `collector.png`, `%w[name collector]`); "collector number", "collector line" and "collector strip" in any case, plural or not.
-    - **The person:** "a collector" and its kin in prose; `collector?`; a variable, a factory or a value named for a person (`let(:collector)`, `sign_in_as(collector)`, `"collector#{n}@example.test"`); a person's name in a factory, `"Collector #{n}"`.
+    - **The person:** "a collector" and its kin in prose; `collector?`; a variable, a factory or a value named for a person (`let(:collector)`, `sign_in_as(collector)`, `"collector#{n}@example.test"`); a person's name in a factory or an example, `"Collector #{n}"` or `"Collector #{i}"`.
     - **Others' names:** Rails' `ActionController::MimeResponds::Collector`; a card set's name ("… Commander Collector Showcase Extras").
     - **The export identifier:** `collector-export`, `urn:collector:`.
 
-    In code and configuration no capitalised `Collector` is the person at the start of a sentence, so the rule is: a capitalised whole word `Collector` is the old name unless the next word is `number`, `numbers`, `line`, `lines` or `strip`, or the line is one of the excluded places of decision 11.
+    In code and configuration no capitalised `Collector` is the person at the start of a sentence, so the rule is: a capitalised whole word `Collector` is the old name unless the next word is `number`, `numbers`, `line`, `lines` or `strip`, or the line is one of the excluded places of decision 11. "Whole word" is judged so that `\ACollector/` in a pattern still counts as the name. Rails' `MimeResponds::Collector` is named today only by two comments that explain why the code writes `::Collector::`; pull request B removes them with the need for them (FR-2), so it is a kind the check must pass, not a place it excludes.
 11. *(author's)* **The check's exclusions**, each written in the check with its reason:
     - `db/migrate/` (released migrations) and `spec/migrations/set_account_currency_from_the_instance_spec.rb`;
     - `spikes/`;
     - the upgrade proof's rules for a previous release of 0.3.0 or earlier, and the specs and fakes of those rules (decision 13);
     - the old backup and restore prefixes where decision 12 keeps them;
-    - the factory lines that name a person `"Collector #{n}"`, the line that names `MimeResponds::Collector` and the line that names the card set;
+    - the two lines that name a person `"Collector #{n}"` or `"Collector #{i}"` (`spec/factories/accounts.rb`, `spec/migrations/backfill_households_spec.rb`) and the line that names the card set;
     - the check's own file and spec, and the examples that prove an old name is gone (FR-3's proofs that `collector:user` is no task and that no `COLLECTOR_*` setting is read).
 
-    The check reads `app/`, `bin/`, `config/`, `db/`, `lib/`, `script/`, `spec/`, `.github/`, `.githooks/`, `.claude/hooks/` and the root's deployment and tool files that are not Markdown. It reads file names as well as contents. It does not read documents (decision 15).
+    The check reads `app/`, `bin/`, `config/`, `db/`, `lib/`, `public/`, `script/`, `spec/`, `.github/`, `.githooks/`, `.claude/hooks/` and these root files: `.dockerignore`, `.rubocop.yml`, `.yardopts`, `.worktreeinclude`, `Dockerfile`, `compose.yaml`, `orca.yaml`, `Gemfile`, `Gemfile.lock`, `Rakefile`, `config.ru`. It judges every tracked file's path, a trailing `…/collector` with no slash included, and the contents of every file that is text; a binary file is judged by its path only. It does not read documents (decision 15).
 12. *(author's)* **Old backup and restore names where old data is read.** New backups are `wyrms-hoard-backup-<time>.tar.gz`, and the restore's temporary files are `wyrms-hoard-restore.partial` and `wyrms-hoard-restore-prices.partial`. `backup:create`'s sweep of stale partial files, and the restore's removal of a stopped run's temporary files, match both the old and the new prefix, so what an interrupted run of 0.3.0 left is still cleaned up. Restore never judged a backup by its name's prefix and still doesn't; an example proves a backup named `collector-backup-<time>.tar.gz` restores.
 13. *(author's)* **The upgrade proof across the rename** (ADR 0033 decision 4). It pulls a previous release of 0.3.0 or earlier from `ghcr.io/plainprogrammer/collector` and a later one from `ghcr.io/plainprogrammer/wyrmshoard`; the `UPGRADE_IMAGE_REPOSITORY` override still wins. When it takes a backup on the previous build it accepts either backup prefix in that build's output, so a previous build given by ref, which has no version, needs no rule of its own.
-14. *(author's)* **The text wordmark keeps the app bar's rules.** It is shown where the wordmark SVGs were, in the design system's display type and colours for each theme, and gives way to the mark alone at the widths where spec 057 swaps them. Spec 057's measured width of the wordmark (138px) is a fact about the SVG; the text's width is measured at 320px and 360px and recorded, and the swap point changes only if the text doesn't fit where the SVG did.
+14. *(author's)* **The text wordmark keeps the app bar's rules, re-measured.** It is shown where the wordmark SVGs were, beside the mark, in the design system's display type and colours for each theme. Below 640px the app bar already shows the mark alone, so the text is never on screen there. Spec 057 decision 19 put the swap between the wordmark and the mark at 720px from a wordmark 138px wide: the first width at which the header's links and the wordmark fit, plus 25px. The mark with the text is measured, the header with its five links is measured at 720px and with four at 640px, and the swap point is set by the same rule; it moves only if the measurement moves it. The widths 320px and 360px stay as a guard that nothing overflows. The measurements are recorded in `verification.md`.
 15. *(author's)* **Living documents and records.**
     - **Living, renamed:** `README.md`, `CLAUDE.md`, `docs/architecture/`, `docs/design-system/`, `docs/roadmap.md`, `docs/north-star.md`, `docs/releasing.md`, `docs/backup-restore.md`, `docs/git-convention.md`, the prose of `docs/export-format/`, the READMEs of `docs/adr/` and `docs/specs/`, `.claude/CLAUDE.md`, `.claude/rules/`, `.claude/integrations.md`, `.claude/memory/foundation.md` and `.claude/memory/steering/`, the design system's skill (its directory becomes `wyrms-hoard-design-system`), and a memory file where it states a current name or command.
     - **Records, kept:** shipped specs and their contracts, accepted ADRs, `docs/lessons/`, `docs/superpowers/`, and what a memory file says happened.
     - A living document may still name an old form where it describes the rename or what stays: the upgrade notes, the two-package rule, the sweep of both prefixes, the released migration.
+    - **Links to issues, pull requests and commits stay as written** (345 in the living documents, `https://github.com/plainprogrammer/Collector/…`): GitHub redirects them, and they cite a place, they don't name the application. A link to the repository's front page or its source is rewritten.
+    - **A record's title quoted in an index stays** as the record has it ("012 Build and Publish Collector Images").
+    - **Memory files:** the plan lists, from a search, each file under `.claude/memory/` that states a current name, path, command or image, and those statements are brought up to date; the rest of each file is left.
     - Documents are verified by reading, recorded in `verification.md` (`.claude/rules/testing.md`).
 16. *(author's)* **A shipped spec that only mentions an internal name is not superseded.** 44 shipped specs name `Collector::…`, `lib/collector/…`, an asset path or the design system's skill as the place something lives. Those are pointers of their time, and the area docs hold the current paths. A criterion is superseded when it fixes a value a person or an operator meets: a setting, a command, a file name, an image, a message, a title or a label. The [Supersedes](#supersedes) table lists those.
+
+17. *(author's)* **The upgrade moves the data by backup and restore, not by copying a volume.** The upgrade notes tell an operator to take a backup on 0.3.0 with `backup:create`, stop the old service, start nothing on the new volume, restore the backup onto it with `backup:restore` from the new image, and start the new service. This is the path the upgrade proof already runs (decision 13, AC-4.1); a copy of a volume whose database is in use can be inconsistent, and a Compose volume's real name carries the project's prefix. The old volume is left untouched until the operator removes it. Under Kamal the notes also say to remove the old `collector` service, which would otherwise keep running beside the new one.
 
 ## User Stories
 
@@ -157,7 +163,7 @@ Decisions 1 to 6 are the maintainer's (the brainstorm of 2026-11-14, the PRD and
 - [ ] **AC-1.1** Given `main` before pull request A When the ratchet's judgement is run over every public object under `lib/collector/` as though each were added Then pull request A's branch reports none without a summary (94 lack one on `main` at `50435ba3`).
 - [ ] **AC-1.2** Given the four objects outside `lib/collector/` whose text names the module or an old form (`ScannersHelper#ocr_engine_path`; `BackupHelpers#release_versions`, `#restore_backup` and `#scratch_root`) When pull request A is merged Then each has a summary comment.
 - [ ] **AC-1.3** Given pull request A's diff When it is read Then it changes comments only: no line of code, no name, and `bin/ci` passes.
-- [ ] **AC-1.4** Given pull request B's branch, made after A merges When `bin/ci checks` runs Then the step "Docs: new and changed public code has a comment" passes with no change to `script/yard/comment_ratchet.rb`.
+- [ ] **AC-1.4** Given pull request B's branch, made after A merges When `bin/ci checks` runs Then the step "Docs: new and changed public code has a comment" passes with no change to the ratchet's rules or scope; a comment in `script/yard/comment_ratchet.rb` that names the module changes with it.
 
 ### Story 2: The code's own names say Wyrm's Hoard (pull request B)
 
@@ -167,18 +173,19 @@ Decisions 1 to 6 are the maintainer's (the brainstorm of 2026-11-14, the PRD and
 
 **Acceptance criteria:**
 
-- [ ] **AC-2.1** Given pull request B is merged When the tracked files are searched Then no file holds `module Collector`, `Collector::` or `::Collector::` outside decision 11's exclusions, and the application's module is `WyrmsHoard`.
-- [ ] **AC-2.2** Given pull request B is merged When the tree is listed Then `lib/wyrms_hoard/`, `spec/lib/wyrms_hoard/`, `lib/tasks/wyrms_hoard.rake`, `spec/tasks/wyrms_hoard_rake_spec.rb` and `app/assets/{stylesheets,fonts,images}/wyrms_hoard/` exist, and no directory or file under the check's directories is named `collector` or `collector.*` other than the collector line's (`collector_line.rb`, `collector_number.rb` and their specs).
+- [ ] **AC-2.1** Given pull request B is merged When the check's directories (decision 11) and the living documents (decision 15) are searched Then no file holds `module Collector`, `Collector::` or `::Collector::` outside decision 11's exclusions, and the application's module is `WyrmsHoard`.
+- [ ] **AC-2.2** Given pull request B is merged When the tree is listed Then `lib/wyrms_hoard/`, `spec/lib/wyrms_hoard/`, `lib/tasks/wyrms_hoard.rake`, `spec/tasks/wyrms_hoard_rake_spec.rb` and `app/assets/{stylesheets,fonts,images}/wyrms_hoard/` exist, and none of `lib/collector/`, `spec/lib/collector/`, `lib/tasks/collector.rake`, `spec/tasks/collector_rake_spec.rb` or an asset directory named `collector/` does. The four logo files keep their names (`collector-mark….svg`, `collector-wordmark….svg`) until pull request D.
 - [ ] **AC-2.3** Given a page of the running application after pull request B When it loads Then its stylesheets, its fonts and its logo images load from the renamed paths with no failed request, and the third-party licences page lists the same fonts as before.
 - [ ] **AC-2.4** Given pull request B is merged When `bin/rails "collector:user[EMAIL]"` is run Then it still works: the rake file is renamed, the namespace is not.
-- [ ] **AC-2.5** Given pull request B's branch When `bin/ci` runs Then every step passes, among them Zeitwerk's check, RuboCop, the YARD build, the ratchet, Brakeman with a regenerated ignore file that ignores what it ignored before and nothing more, and the image job's smoke tests.
+- [ ] **AC-2.5** Given pull request B's branch When `bin/ci` runs Then every step passes, among them Zeitwerk's check, RuboCop, the YARD build, the ratchet, Brakeman with a regenerated ignore file that ignores what it ignored before and nothing more; and CI's image job passes its smoke tests.
 - [ ] **AC-2.6** Given the image built from pull request B When `bin/image-smoke` runs Then the development files it guards against are absent under their new paths (`lib/wyrms_hoard/ghcr_cleanup.rb`, `lib/wyrms_hoard/ci_groups.rb`, `lib/wyrms_hoard/ci_shard.rb`, `lib/wyrms_hoard/push_scope.rb`), and `.dockerignore` names those paths.
 - [ ] **AC-2.7** Given a signed-in collector with a session from before pull request B When they load a page after it Then they are still signed in; a form they had open before it is refused once as stale and works after a reload.
 - [ ] **AC-2.8** Given pull request B is merged When the design system's preview pages under `docs/design-system/previews/` are opened from the checkout Then each loads its stylesheets from the renamed directory, and the design system's skill and documents name the renamed paths.
 - [ ] **AC-2.9** Given pull request B is merged When a plain `git push` of a documentation-only branch is made Then the pre-push hook runs, having loaded the push-scope rules from their renamed path.
 - [ ] **AC-2.10** Given pull request B is merged When `db/prices_structure.sql` is read Then it holds no `application='Collector'`, and loading it gives the schema it gave before.
 - [ ] **AC-2.11** Given pull request B is merged When the shards' run-time log is read Then every path in it exists.
-- [ ] **AC-2.12** Given pull request B is merged When an operator's or a collector's view of the application is compared with the build before it Then nothing differs but AC-2.7: every setting, command, message, title and file name is as it was.
+- [ ] **AC-2.13** Given pull request B is merged When the design system's skill is listed Then its directory and name are `wyrms-hoard-design-system`, and `CLAUDE.md` and the rules point to it.
+- [ ] **AC-2.12** Given pull request B is merged When an operator's or a collector's view of the application is compared with the build before it Then every setting, command, message, title and file an operator writes or reads is as it was. What differs is AC-2.7, the assets' URLs, and the console's prompt, which shows the application's name.
 
 ### Story 3: An operator runs Wyrm's Hoard with its own settings (pull request C)
 
@@ -195,7 +202,7 @@ Decisions 1 to 6 are the maintainer's (the brainstorm of 2026-11-14, the PRD and
 - [ ] **AC-3.5** Given `compose.yaml` When it is read Then its image default is `ghcr.io/plainprogrammer/wyrmshoard:latest` under `WYRMS_HOARD_IMAGE`, its port is `WYRMS_HOARD_PORT`, it passes the six pass-through settings under their new names, and its volume is `wyrms_hoard_storage`.
 - [ ] **AC-3.6** Given `config/deploy.yml` When it is read Then `service` is `wyrms-hoard`, `image` is `plainprogrammer/wyrmshoard`, the volume is `wyrms_hoard_storage`, the commented settings carry their new names and the commented backup directory is `/srv/wyrms-hoard-backups`.
 - [ ] **AC-3.7** Given an image built with the build arguments `WYRMS_HOARD_VERSION`, `WYRMS_HOARD_REVISION` and `WYRMS_HOARD_SOURCE_URL` When it runs Then the footer shows that version and short SHA and links that source; and `bin/image-smoke` fails an image built without them.
-- [ ] **AC-3.8** Given a running instance When `backup:create[DIRECTORY]` is run Then it writes `wyrms-hoard-backup-<time>.tar.gz` and prints that name.
+- [ ] **AC-3.8** Given a running instance When `backup:create[DIRECTORY]` is run Then it writes `wyrms-hoard-backup-<time>.tar.gz` and prints that name; and given a file that isn't a backup is given to `backup:restore` Then the refusal's hint names a `wyrms-hoard-backup-….tar.gz` file.
 - [ ] **AC-3.9** Given a developer's checkout after pull request C When they use a developer setting of decision 8, `bin/dev-certificate`, `bin/image-smoke`, `bin/backup-smoke` or the backup measurement script Then each works under the new names: the certificate is made in a `wyrms-hoard-dev-https` directory, and the scripts' images, containers and volumes are named `wyrms-hoard…`.
 - [ ] **AC-3.10** Given pull request C is merged When `README.md`'s deployment sections, the release and deploy area doc and `docs/backup-restore.md` are read Then every setting, command, volume, service, image and backup name they give is the one the deployment files and the code use on that commit.
 
@@ -229,7 +236,7 @@ Decisions 1 to 6 are the maintainer's (the brainstorm of 2026-11-14, the PRD and
 - [ ] **AC-5.4** Given a previous build whose `backup:create` prints either backup prefix When the proof takes its backup Then the proof accepts the output and goes on.
 - [ ] **AC-5.5** Given the weekly cleanup When it runs after pull request C Then it lists and deletes versions of the package `wyrmshoard` only, and reads manifests and its pull token for that package.
 - [ ] **AC-5.6** Given the new package after pull request C's merge When an anonymous pull of `:edge` is tried Then it succeeds; if it doesn't, the maintainer makes the package public and the pull is tried again before any tag is pushed.
-- [ ] **AC-5.7** Given tag `v0.4.0` is pushed When CI finishes Then `ghcr.io/plainprogrammer/wyrmshoard` has `0.4.0`, `0.4`, `0` and `latest` by spec 012's tag rules, each pulls anonymously and passes `bin/image-smoke`, and the old package's `latest` is still 0.3.0.
+- [ ] **AC-5.7** Given tag `v0.4.0` is pushed When CI finishes Then `ghcr.io/plainprogrammer/wyrmshoard` has `0.4.0`, `0.4` and `latest` (ADR 0009: no major-only tag below 1), each pulls anonymously and passes `bin/image-smoke`, its footer's licence line begins "Wyrm's Hoard 0.4.0", and the old package's `latest` is still 0.3.0.
 - [ ] **AC-5.8** Given the maintainer's instance on 0.3.0 When it is upgraded by following `docs/releasing.md`'s upgrade notes for 0.4.0 and nothing else Then it starts on the new image and shows the collection, the locations and the decks it had.
 
 ### Story 6: The application calls itself Wyrm's Hoard (pull request D)
@@ -242,14 +249,14 @@ Decisions 1 to 6 are the maintainer's (the brainstorm of 2026-11-14, the PRD and
 
 - [ ] **AC-6.1** Given any page with a title When it loads Then the title ends `· Wyrm's Hoard` where it ended `· Collector`, and a page with no title of its own is titled `Wyrm's Hoard`.
 - [ ] **AC-6.2** Given a signed-in page at a width where the wordmark shows When it loads Then the app bar shows the mark and the words "Wyrm's Hoard" as text, in both themes, and no image on the page draws the word "Collector".
-- [ ] **AC-6.3** Given the app bar at the widths where spec 057 shows the mark alone When it loads Then the mark alone shows, and at 320px and 360px nothing in the app bar overflows or wraps.
-- [ ] **AC-6.4** Given any page When its accessible names are read Then the brand link is "Wyrm's Hoard home" (or "Wyrm's Hoard search" on the open catalog), the mark's `alt` is "Wyrm's Hoard", and no `alt`, `aria-label` or `title` says "Collector" as the application's name.
+- [ ] **AC-6.3** Given the app bar at the swap point decision 14's measurement gives When it loads at that width and one pixel under it Then the mark and the text show at it and the mark alone under it, the header's links fit on one line at 720px (five links) and 640px (four), and at 320px and 360px nothing in the app bar overflows or wraps.
+- [ ] **AC-6.4** Given any page When its accessible names are read Then the brand link is "Wyrm's Hoard home" (or "Wyrm's Hoard search" on the open catalog), the brand is named once (the mark's `alt` is empty wherever visible text or a labelled link names it, and "Wyrm's Hoard" where the mark stands alone with no label), and no `alt`, `aria-label` or `title` says "Collector" as the application's name.
 - [ ] **AC-6.5** Given the mark's files When they are listed Then they are `wyrms-hoard-mark.svg` and `wyrms-hoard-mark-reversed.svg` with `aria-label="Wyrm's Hoard"`, their drawing is unchanged, the favicon is the mark, and the two wordmark SVGs are gone.
-- [ ] **AC-6.6** Given the footer When it renders Then the licence line begins "Wyrm's Hoard 0.4.0 (<short SHA>)" in the forms of spec 084's table with the name replaced, the collectible's notice begins "Wyrm's Hoard is unofficial Fan Content", and the source link opens `https://github.com/plainprogrammer/wyrmshoard` at the running build.
+- [ ] **AC-6.6** Given the footer When it renders Then the licence line begins "Wyrm's Hoard <version> (<short SHA>)" in the forms of spec 084's table with the name replaced, the collectible's notice begins "Wyrm's Hoard is unofficial Fan Content", and the source link opens `https://github.com/plainprogrammer/wyrmshoard` at the running build.
 - [ ] **AC-6.7** Given the web app manifest and the page head When they are read Then the manifest's `name` is "Wyrm's Hoard", its `description` names it, and `application-name` is "Wyrm's Hoard".
-- [ ] **AC-6.8** Given each message of decision 9's last row When the condition that shows it occurs Then it says "Wyrm's Hoard" where it said "Collector" and is otherwise word for word the same: the backup's, restore's and start check's messages, the import's refusals and its "newer version" message, "Set up Wyrm's Hoard", the third-party licences page's first sentence.
+- [ ] **AC-6.8** Given each message of decision 9's last row When the condition that shows it occurs Then it says "Wyrm's Hoard" where it said "Collector" and is otherwise word for word the same: the backup's, restore's and start check's messages, the import's refusals and its "newer version" message, "Set up Wyrm's Hoard", "Wyrm's Hoard needs at least one admin.", the third-party licences page's first sentence.
 - [ ] **AC-6.9** Given the export format's schemas When they are read Then each `title` and `description` says "Wyrm's Hoard export" and each `$id` and the `format` constant are unchanged.
-- [ ] **AC-6.10** Given a request the application sends to Scryfall, the OCR engine's fetch and the registry cleanup When its User-Agent is read Then it names Wyrm's Hoard and links `https://github.com/plainprogrammer/wyrmshoard` where it linked the old repository.
+- [ ] **AC-6.10** Given a request the application sends to Scryfall, the OCR engine's fetch and the registry cleanup When its User-Agent is read Then it is the string decision 9 gives for it.
 - [ ] **AC-6.11** Given `bin/yard doc` When it builds Then the site's title is "Wyrm's Hoard", its links to the source open the renamed repository, and it builds with no warning.
 - [ ] **AC-6.12** Given a build with no upstream source set When the footer's source link is read Then it is `https://github.com/plainprogrammer/wyrmshoard`.
 
@@ -277,12 +284,11 @@ Decisions 1 to 6 are the maintainer's (the brainstorm of 2026-11-14, the PRD and
 **Acceptance criteria:**
 
 - [ ] **AC-8.1** Given `main` after pull request D When each living document of decision 15 is read Then it calls the application Wyrm's Hoard and gives the names of decision 2, and it names an old form only where it describes the rename or what stays; the reading is recorded per document in `verification.md`.
-- [ ] **AC-8.2** Given `docs/releasing.md` after pull request C When its upgrade notes for 0.4.0 are read Then they give, in order: that an instance older than 0.3.0 upgrades to 0.3.0 first; each of the nine operator settings with its old and new name; the new image name; the renamed user command; the volume's new name and the commands that copy the old volume's contents to it for Compose; the same for Kamal with the service's new name and the backup directory; and that the old volume is left untouched until the operator removes it.
+- [ ] **AC-8.2** Given `docs/releasing.md` after pull request C When its upgrade notes for 0.4.0 are read Then they give, in order: that an instance older than 0.3.0 upgrades to 0.3.0 first; each of the nine operator settings with its old and new name; the new image name; the renamed user command; the procedure of decision 17 for Compose, command by command (back up on 0.3.0, stop it, restore onto the new volume from the new image, start); the same for Kamal with the service's new name, the removal of the old service and the backup directory; that the old volume is left untouched until the operator removes it; and, for an operator who builds the image, the three build arguments' new names.
 - [ ] **AC-8.3** Given the release and deploy area doc after pull request C When it is read Then it states the rule of two packages for the upgrade proof, the sweep of both prefixes and the frozen old package, each with its source (this spec's criterion or the ADR).
 - [ ] **AC-8.4** Given `docs/specs/README.md` after pull request D When row 092 and the rows of the specs in the [Supersedes](#supersedes) table are read Then row 092's Supersedes cell names each spec and criterion of that table, and each of those rows' Superseded by cell names 092 with the criteria.
 - [ ] **AC-8.5** Given the records of decision 15 When `git diff` from before pull request A to after pull request D is taken over them Then it is empty, but for the lines `.claude/rules/documentation.md` allows.
-- [ ] **AC-8.6** Given the design system's skill When it is listed Then its directory and name are `wyrms-hoard-design-system`, and `CLAUDE.md` and the rules point to it.
-- [ ] **AC-8.7** Given the GitHub repository after step 1 of decision 1 When `https://github.com/plainprogrammer/Collector` is opened Then it redirects to `plainprogrammer/wyrmshoard`, and a push and a CI run on the renamed repository succeed before pull request A is opened.
+- [ ] **AC-8.6** Given the GitHub repository after step 1 of decision 1 When `https://github.com/plainprogrammer/Collector` is opened Then it redirects to `plainprogrammer/wyrmshoard`, and a push and a CI run on the renamed repository succeed before pull request A is opened; pull request A's merge is the first `main` build there, and it publishes `edge` to the old package as before.
 
 ## Functional Requirements
 
@@ -306,6 +312,9 @@ Pull request B renames the module to `WyrmsHoard` and the directories and files 
 - Regenerate `config/brakeman.ignore` and show, in the pull request, that it ignores the same warnings as before.
 - Regenerate `db/prices_structure.sql` from a prices database created after the rename, so its comments carry the new name; state in the pull request that a developer recreates their development prices database once.
 - Keep the rake namespace `collector`, every `COLLECTOR_*` variable, every message, title and file name as they are (AC-2.12).
+
+- Remove the two comments that explain `::Collector::` beside Rails' `MimeResponds::Collector` (`licences_controller.rb`, `ocr_assets_controller.rb`), and the leading `::` they explain, since `WyrmsHoard` collides with nothing.
+- Rename the design system's skill directory to `wyrms-hoard-design-system` (AC-2.13).
 
 **Must not:**
 - Add an inflection rule.
@@ -360,6 +369,8 @@ Pull request D replaces the old name with "Wyrm's Hoard" in every place of decis
 - Change only the name in each message, title and label; the rest of the wording stays.
 - Add the text wordmark as a design system pattern, with its component document, and update `docs/design-system/logos.md`, the previews and `tokens.json`'s `name`.
 - Carry screenshots of the app bar at desktop and phone widths in both themes in the pull request.
+- Have every check that reads raw HTML for the name (`bin/image-smoke`'s licence line, request specs) match the escaped form or the parsed text: the apostrophe is written `&#39;` in a page's source.
+- Leave the image's description label as it is; it doesn't name the application.
 
 **Must not:**
 - Hard-code a colour, a size or a font for the text wordmark; it uses the design system's tokens.
@@ -397,7 +408,7 @@ A spec in the suite that reads the tracked files of decision 11's directories an
 ### FR-11: The supersessions
 
 **Must:**
-- Add row 092 to `docs/specs/README.md` when this spec is approved, and complete its Supersedes cell and the other rows' Superseded by cells in pull request D, from the [Supersedes](#supersedes) table.
+- Keep row 092 of `docs/specs/README.md` (added with this draft) in step with this spec's status, and complete its Supersedes cell and the other rows' Superseded by cells in pull request D, from the [Supersedes](#supersedes) table.
 - Update the area doc where one covers a superseded criterion.
 
 ## Non-Functional Requirements
@@ -428,7 +439,7 @@ A spec in the suite that reads the tracked files of decision 11's directories an
 | Scenario | Expected Behavior |
 |----------|-------------------|
 | An operator upgrades to 0.4.0 without renaming a setting | The setting is ignored and its default applies, with no warning (AC-3.2). The upgrade notes say so first. |
-| An operator upgrades to 0.4.0 without copying the volume | The instance starts on an empty `wyrms_hoard_storage` volume and shows first-run setup. The old volume is untouched; copying it and restarting recovers everything (AC-8.2). |
+| An operator upgrades to 0.4.0 without moving the data | The instance starts on an empty `wyrms_hoard_storage` volume and shows first-run setup. The old volume is untouched; following decision 17's procedure from it recovers everything (AC-8.2). |
 | An instance older than 0.3.0 is upgraded straight to 0.4.0 with only `WYRMS_HOARD_CURRENCY` set | The currency migration runs with its default, USD. The upgrade notes say to go through 0.3.0 first (ADR 0032 decision 7). |
 | `collector:user` is run on 0.4.0 | It fails as an unknown task (AC-3.4). |
 | A backup named `collector-backup-….tar.gz` is restored on 0.4.0 | It restores (AC-4.1). |
@@ -461,11 +472,12 @@ Criteria of shipped specs that fix a value the rename changes (decision 16). Eac
 | 032 | `contracts/api.md`'s "newer version" message; `contracts/export-v3.md`'s schema title | The name in the message and the title; the `$id` stays |
 | 038 | Decision 2, Glossary, AC-3.1, AC-3.3, AC-3.4, Error Scenarios, its documents table; decision 7, AC-6.6 | `WYRMS_HOARD_CURRENCY` as the boot setting; "Wyrm's Hoard can't show prices in XYZ." Not AC-4.1: the released migration still reads `COLLECTOR_CURRENCY` |
 | 049 | Context | `WYRMS_HOARD_REQUEST_LOG` |
-| 057 | Decision 19, AC-1.2 to AC-1.6 in part; and spec 062 AC-4.2 in part | The wordmark is text; its measured width (decision 14) |
+| 057 | Decision 19, AC-1.2 to AC-1.6 in part | The wordmark is text; its measured width and the swap point by the same rule (decision 14) |
+| 062 | AC-4.2 in part | The wordmark's measured width (decision 14) |
 | 064, 066, 068, 071 | AC-1.2; AC-1.1; AC-1.2; AC-2.1 | The titles end `· Wyrm's Hoard` |
 | 081 | Decisions 7 and 8, AC-4.4, Error Scenarios | The messages name Wyrm's Hoard |
 | 084 | Decision 2's table, AC-2.1 to AC-2.5, AC-2.9, AC-2.14, Error Scenarios; decisions 3, 7 and 9, AC-3.1, AC-3.3, AC-3.6, FR-2; decision 5 | The licence line's name; the build facts' three names; the smoke test's line; `WYRMS_HOARD_IMAGE`; the upstream source URL |
-| 086 | AC-1.2, AC-3.1, AC-4.3, FR-3, FR-4, decision 4 | The messages name Wyrm's Hoard; the CI step's image tag |
+| 086 | AC-3.1, AC-4.3, FR-3, FR-4, decision 4 | The messages name Wyrm's Hoard; the CI step's image tag |
 | 087 | Decision 1, AC-1.4 | The licence line's substring and the page's first sentence |
 | 089 | Error Scenarios | `WYRMS_HOARD_MTG_LANGUAGES` |
 | 090 | Decision 8 | `bin/rails wyrms_hoard:user` |
@@ -474,7 +486,7 @@ Looked at and not superseded: spec 038 AC-4.1 and its error row (the released mi
 
 ## Open Questions
 
-None open. Decisions 7 to 16 are the author's and are put to the maintainer with this spec; a ruling against one changes the criteria that cite it.
+None open. Decisions 7 to 17 are the author's and are put to the maintainer with this spec; a ruling against one changes the criteria that cite it.
 
 ## Out of Scope (Future Considerations)
 
