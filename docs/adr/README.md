@@ -40,7 +40,7 @@ Add a line here with each new ADR. All are Accepted unless the line says otherwi
 
 ### Images and publishing
 
-- [0008](0008-public-images-from-the-private-repository.md): Publish public container images from the private repository (the package name as a public contract superseded by 0033)
+- [0008](0008-public-images-from-the-private-repository.md): Publish public container images from the private repository (the package name as a public contract superseded by 0033, once accepted)
 - [0009](0009-image-tags-and-release-channels.md): Image tags and release channels
 - [0010](0010-native-multi-architecture-image-builds.md): Native multi-architecture image builds
 - [0011](0011-own-ghcr-cleanup-script.md): Own script for GHCR untagged-version cleanup
