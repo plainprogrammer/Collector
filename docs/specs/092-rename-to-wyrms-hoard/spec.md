@@ -1,6 +1,6 @@
 # Feature 092: Rename the Application to Wyrm's Hoard
 
-**Status:** Draft
+**Status:** Approved (2026-11-14, the maintainer, v0.6.0, after four read-only reviews)
 **Version:** 0.6.0
 **Created:** 2026-11-14
 **Last Updated:** 2026-11-14
