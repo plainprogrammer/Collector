@@ -25,7 +25,7 @@ Add a line here with each new ADR. All are Accepted unless the line says otherwi
 - [0030](0030-a-household-is-a-group-of-accounts.md): A household is a group of accounts; an account stays the unit of ownership and privacy
 - [0018](0018-collectible-agnostic-catalog-core.md): A collectible-agnostic catalog core with per-type extensions
 - [0019](0019-lot-as-the-unit-of-ownership.md): The lot is the unit of ownership
-- [0032](0032-the-rename-is-a-clean-break.md): The rename to Wyrm's Hoard is a clean break: one spelling per context, no aliases, and the export identifier stays (Proposed)
+- [0032](0032-the-rename-is-a-clean-break.md): The rename to Wyrm's Hoard is a clean break: one spelling per context, no aliases, and the export identifier stays
 
 ### Card scanner
 
@@ -40,11 +40,11 @@ Add a line here with each new ADR. All are Accepted unless the line says otherwi
 
 ### Images and publishing
 
-- [0008](0008-public-images-from-the-private-repository.md): Publish public container images from the private repository (the package name as a public contract superseded by 0033, once accepted)
+- [0008](0008-public-images-from-the-private-repository.md): Publish public container images from the private repository (the package name as a public contract superseded by 0033)
 - [0009](0009-image-tags-and-release-channels.md): Image tags and release channels
 - [0010](0010-native-multi-architecture-image-builds.md): Native multi-architecture image builds
 - [0011](0011-own-ghcr-cleanup-script.md): Own script for GHCR untagged-version cleanup
-- [0033](0033-the-image-moves-to-a-new-package.md): The image moves to a new package, `ghcr.io/plainprogrammer/wyrmshoard`, with new releases only; the old package stays frozen (Proposed)
+- [0033](0033-the-image-moves-to-a-new-package.md): The image moves to a new package, `ghcr.io/plainprogrammer/wyrmshoard`, with new releases only; the old package stays frozen
 - [0013](0013-active-storage-variants-with-vips.md): Process Active Storage variants with libvips through `ruby-vips`
 
 ### Admin

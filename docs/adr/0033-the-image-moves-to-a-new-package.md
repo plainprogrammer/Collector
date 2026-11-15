@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed (2026-11-14). Written with the PRD of spec 092; the maintainer chose the option below in the brainstorm of 2026-11-14 ([#433](https://github.com/plainprogrammer/Collector/issues/433), [#434](https://github.com/plainprogrammer/Collector/issues/434)). It becomes Accepted with the maintainer's approval of the PRD. It supersedes one consequence of [ADR 0008](0008-public-images-from-the-private-repository.md), and nothing else of it: that the package name `ghcr.io/plainprogrammer/collector` is a public contract. From release 0.4.0 the contract is the new name.
+Accepted (2026-11-14; the maintainer, with the PRD of spec 092, after five read-only reviews). Written as Proposed. Written with the PRD of spec 092; the maintainer chose the option below in the brainstorm of 2026-11-14 ([#433](https://github.com/plainprogrammer/Collector/issues/433), [#434](https://github.com/plainprogrammer/Collector/issues/434)). It supersedes one consequence of [ADR 0008](0008-public-images-from-the-private-repository.md), and nothing else of it: that the package name `ghcr.io/plainprogrammer/collector` is a public contract. From release 0.4.0 the contract is the new name.
 
 **Date:** 2026-11-14
 **Feature:** 092-rename-to-wyrms-hoard

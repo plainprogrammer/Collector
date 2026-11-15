@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed (2026-11-14). Written with the PRD of spec 092; the maintainer chose each option below in the brainstorm of 2026-11-14 ([#433](https://github.com/plainprogrammer/Collector/issues/433), [#434](https://github.com/plainprogrammer/Collector/issues/434)). It becomes Accepted with the maintainer's approval of the PRD.
+Accepted (2026-11-14; the maintainer, with the PRD of spec 092, after five read-only reviews). Written as Proposed. Written with the PRD of spec 092; the maintainer chose each option below in the brainstorm of 2026-11-14 ([#433](https://github.com/plainprogrammer/Collector/issues/433), [#434](https://github.com/plainprogrammer/Collector/issues/434)).
 
 **Date:** 2026-11-14
 **Feature:** 092-rename-to-wyrms-hoard
