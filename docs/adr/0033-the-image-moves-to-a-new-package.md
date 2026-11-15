@@ -27,7 +27,7 @@ Facts that bound the choice:
 
 ## Decision
 
-1. **The image is `ghcr.io/plainprogrammer/wyrmshoard`** from the first build of `main` that carries the rename. Everything that names the image names the new one.
+1. **The image is `ghcr.io/plainprogrammer/wyrmshoard`** from the first build of `main` that names the new image. Everything that names the image names the new one.
 2. **No existing image is copied, rebuilt or retagged.** The new package's first release is 0.4.0.
 3. **The old package, `ghcr.io/plainprogrammer/collector`, is frozen:** nothing pushes to it, nothing deletes from it, and the weekly cleanup works on the new package only. Its `latest` stays 0.3.0 and its `edge` stays the last build before the rename.
 4. **The upgrade proof pulls a release of 0.3.0 or earlier from the old package and any later release from the new one.** The rule is written once, beside the proof's repository constant and its `UPGRADE_IMAGE_REPOSITORY` override, with this ADR as its source.
